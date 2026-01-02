@@ -18,10 +18,10 @@ docs/.vitepress/cache/
 # Serena MCP
 .serena/cache/
 
-# Claude local context (personal settings, flo-generated)
+# Claude local context (flo-generated, machine-specific)
 .claude/*.local.md
-.claude/*.local.json
 CLAUDE.local.md
+# Note: .claude/settings.local.json is committed for worktree permission sharing
 
 # Turborepo
 .turbo
