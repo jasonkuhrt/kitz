@@ -2,7 +2,7 @@ import { Str } from '@kitz/core'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Data, Effect } from 'effect'
+import { Data, Effect, Option, Schema as S } from 'effect'
 import { auditPackageHistory, type AuditResult, validateAdjacent, type ValidationResult } from './lint/ops/monotonic.js'
 
 /**
@@ -91,7 +91,7 @@ export const set = (
     const git = yield* Git.Git
     const moniker = Pkg.Moniker.parse(options.pkg)
     const version = options.ver
-    const versionString = version.version.toString()
+    const versionString = version.toString()
     const tag = Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: moniker, version }))
     const push = options.push ?? true
     const move = options.move ?? false
@@ -180,15 +180,14 @@ export const audit = (
   Effect.gen(function*() {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
+    const decodeExactPin = S.decodeUnknownOption(Pkg.Pin.Exact.FromString)
 
     // Find all packages with release tags
     const packageNames = new Set<string>()
     for (const tag of tags) {
-      const atIndex = tag.lastIndexOf('@')
-      if (atIndex > 0) {
-        // Has @ after position 0 (scoped package)
-        const packageName = tag.slice(0, atIndex)
-        packageNames.add(packageName)
+      const pin = decodeExactPin(tag)
+      if (Option.isSome(pin)) {
+        packageNames.add(pin.value.name.moniker)
       }
     }
 
@@ -252,7 +251,7 @@ export const formatTagExistsError = (error: TagExistsError): string => {
 export const formatMonotonicViolationError = (error: MonotonicViolationError): string => {
   const { validation } = error
   const b = Str.Builder()
-  b`Error: Cannot set ${validation.version.version.toString()} at ${validation.sha.slice(0, 7)}`
+  b`Error: Cannot set ${validation.version.toString()} at ${validation.sha.slice(0, 7)}`
   b``
 
   for (const violation of validation.violations) {

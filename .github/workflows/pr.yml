@@ -1,6 +1,9 @@
 name: pr
 on:
   pull_request: {}
+permissions:
+  contents: read
+  pull-requests: write
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -39,6 +42,20 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       - run: pnpm format:check
+
+  api-model-style:
+    needs: check-type
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+      - uses: ./.github/actions/setup
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+      - name: Check API model style
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+        run: pnpm check:api-model-style
+      - run: echo "Skipped for chore.docs/ci commit"
+        if: needs.check-type.outputs.skip-code-checks == 'true'
 
   # Validate that "no-release" CC types don't have package src/ changes
   # Bypass with "<!-- cc-bypass -->" in PR body for edge cases
@@ -106,14 +123,14 @@ jobs:
       - name: Build packages (affected or all)
         if: needs.check-type.outputs.skip-code-checks != 'true'
         run: |
-          FILTER="--filter='./packages/*...[origin/${{ github.event.pull_request.base.ref }}]'"
-          TASK_COUNT=$(pnpm turbo run build $FILTER --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
+          FILTER_ARGS=(--filter="...[origin/${{ github.event.pull_request.base.ref }}]" --filter="./packages/*")
+          TASK_COUNT=$(pnpm turbo run build "${FILTER_ARGS[@]}" --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
           if [[ "$TASK_COUNT" == "0" ]]; then
             echo "No affected packages found, running all packages"
-            pnpm turbo run build --filter='./packages/*'
+            pnpm turbo run build --filter="./packages/*"
           else
             echo "Running $TASK_COUNT affected package(s)"
-            pnpm turbo run build $FILTER
+            pnpm turbo run build "${FILTER_ARGS[@]}"
           fi
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
@@ -132,14 +149,14 @@ jobs:
       - name: Type check packages (affected or all)
         if: needs.check-type.outputs.skip-code-checks != 'true'
         run: |
-          FILTER="--filter='./packages/*...[origin/${{ github.event.pull_request.base.ref }}]'"
-          TASK_COUNT=$(pnpm turbo run check:types $FILTER --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
+          FILTER_ARGS=(--filter="...[origin/${{ github.event.pull_request.base.ref }}]" --filter="./packages/*")
+          TASK_COUNT=$(pnpm turbo run check:types "${FILTER_ARGS[@]}" --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
           if [[ "$TASK_COUNT" == "0" ]]; then
             echo "No affected packages found, running all packages"
-            pnpm turbo run check:types --filter='./packages/*'
+            pnpm turbo run check:types --filter="./packages/*"
           else
             echo "Running $TASK_COUNT affected package(s)"
-            pnpm turbo run check:types $FILTER
+            pnpm turbo run check:types "${FILTER_ARGS[@]}"
           fi
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
@@ -157,14 +174,14 @@ jobs:
       - name: Lint packages (affected or all)
         if: needs.check-type.outputs.skip-code-checks != 'true'
         run: |
-          FILTER="--filter='./packages/*...[origin/${{ github.event.pull_request.base.ref }}]'"
-          TASK_COUNT=$(pnpm turbo run check:lint $FILTER --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
+          FILTER_ARGS=(--filter="...[origin/${{ github.event.pull_request.base.ref }}]" --filter="./packages/*")
+          TASK_COUNT=$(pnpm turbo run check:lint "${FILTER_ARGS[@]}" --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
           if [[ "$TASK_COUNT" == "0" ]]; then
             echo "No affected packages found, running all packages"
-            pnpm turbo run check:lint --filter='./packages/*'
+            pnpm turbo run check:lint --filter="./packages/*"
           else
             echo "Running $TASK_COUNT affected package(s)"
-            pnpm turbo run check:lint $FILTER
+            pnpm turbo run check:lint "${FILTER_ARGS[@]}"
           fi
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
@@ -182,14 +199,14 @@ jobs:
       - name: Publint packages (affected or all)
         if: needs.check-type.outputs.skip-code-checks != 'true'
         run: |
-          FILTER="--filter='./packages/*...[origin/${{ github.event.pull_request.base.ref }}]'"
-          TASK_COUNT=$(pnpm turbo run check:package $FILTER --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
+          FILTER_ARGS=(--filter="...[origin/${{ github.event.pull_request.base.ref }}]" --filter="./packages/*")
+          TASK_COUNT=$(pnpm turbo run check:package "${FILTER_ARGS[@]}" --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
           if [[ "$TASK_COUNT" == "0" ]]; then
             echo "No affected packages found, running all packages"
-            pnpm turbo run check:package --filter='./packages/*'
+            pnpm turbo run check:package --filter="./packages/*"
           else
             echo "Running $TASK_COUNT affected package(s)"
-            pnpm turbo run check:package $FILTER
+            pnpm turbo run check:package "${FILTER_ARGS[@]}"
           fi
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
@@ -207,14 +224,127 @@ jobs:
       - name: Test packages (affected or all)
         if: needs.check-type.outputs.skip-code-checks != 'true'
         run: |
-          FILTER="--filter='./packages/*...[origin/${{ github.event.pull_request.base.ref }}]'"
-          TASK_COUNT=$(pnpm turbo run test $FILTER --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
+          FILTER_ARGS=(--filter="...[origin/${{ github.event.pull_request.base.ref }}]" --filter="./packages/*")
+          TASK_COUNT=$(pnpm turbo run test "${FILTER_ARGS[@]}" --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
           if [[ "$TASK_COUNT" == "0" ]]; then
             echo "No affected packages found, running all packages"
-            pnpm turbo run test --filter='./packages/*'
+            pnpm turbo run test --filter="./packages/*"
           else
             echo "Running $TASK_COUNT affected package(s)"
-            pnpm turbo run test $FILTER
+            pnpm turbo run test "${FILTER_ARGS[@]}"
           fi
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
+
+  # Generate PR release plan and post/update a comment for reviewer visibility
+  release-plan-comment:
+    needs: check-type
+    if: needs.check-type.outputs.skip-code-checks != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Fetch base and tags
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          git fetch --tags --force
+      - uses: ./.github/actions/setup
+      - name: Build release package
+        run: pnpm turbo run build --filter=@kitz/release
+      - name: Generate PR release plan
+        env:
+          CLI_PARAMETER_TYPE: pr
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          node packages/release/build/cli/cli.js plan > /tmp/release-plan-output.txt
+      - name: Build release plan comment body
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs')
+
+          const marker = '<!-- kitz-release-plan -->'
+          const plan = JSON.parse(fs.readFileSync('.release/plan.json', 'utf8'))
+          const cliOutput = fs.readFileSync('/tmp/release-plan-output.txt', 'utf8')
+
+          const all = [...plan.releases, ...plan.cascades]
+          const tableRows = all.slice(0, 80).map((item) => {
+            const kind = plan.cascades.includes(item) ? 'cascade' : 'primary'
+            const name = item.package.name.moniker ?? item.package.name.name ?? String(item.package.name)
+            const version = `0.0.0-pr.${item.prerelease.prNumber}.${item.prerelease.iteration}.${item.prerelease.sha}`
+            return `| \`${name}\` | \`${version}\` | ${kind} | ${item.commits.length} |`
+          })
+
+          const lines = [
+            marker,
+            '## Release Plan',
+            '',
+            `Generated for PR #${plan.releases[0]?.prerelease?.prNumber ?? 'unknown'} on ${plan.timestamp}.`,
+            `Primary: **${plan.releases.length}**, Cascades: **${plan.cascades.length}**, Total: **${all.length}**.`,
+            '',
+            '| Package | Planned Version | Kind | Commits |',
+            '| --- | --- | --- | ---: |',
+            ...tableRows,
+          ]
+
+          if (all.length > tableRows.length) {
+            lines.push(`| _...truncated_ |  |  |  |`)
+            lines.push(``)
+            lines.push(`Showing first ${tableRows.length} of ${all.length} planned releases.`)
+          }
+
+          const cliLines = cliOutput.trim().split('\n')
+          lines.push('')
+          lines.push('<details><summary>CLI output</summary>')
+          lines.push('')
+          lines.push('```text')
+          lines.push(...cliLines.slice(0, 240))
+          if (cliLines.length > 240) {
+            lines.push('...truncated...')
+          }
+          lines.push('```')
+          lines.push('</details>')
+
+          fs.writeFileSync('/tmp/release-plan-comment.md', lines.join('\n'))
+          NODE
+      - name: Upsert PR release plan comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('node:fs')
+            const marker = '<!-- kitz-release-plan -->'
+            const body = fs.readFileSync('/tmp/release-plan-comment.md', 'utf8')
+            const { owner, repo } = context.repo
+            const issue_number = context.issue.number
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            })
+
+            const existing = comments.find((c) =>
+              c.user?.type === 'Bot' &&
+              typeof c.body === 'string' &&
+              c.body.includes(marker),
+            )
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              })
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              })
+            }

@@ -2,7 +2,7 @@ import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
-import { Oak } from '@kitz/oak'
+import { EffectSchema, Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 
@@ -12,6 +12,7 @@ import * as Api from '../../api/__.js'
  * Show unreleased changes since last release.
  */
 const args = Oak.Command.create()
+  .use(EffectSchema)
   .description('Show unreleased changes since last release')
   .parameter(
     'pkg p',
@@ -72,21 +73,10 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
 
     // Output based on format
     if (args.format === 'json') {
-      const jsonOutput = result.logs.map((log) => ({
-        package: log.package.name.moniker,
-        currentVersion: log.currentVersion._tag === 'Some'
-          ? log.currentVersion.value.version.toString()
-          : null,
-        nextVersion: log.nextVersion.version.toString(),
-        bump: log.bump,
-        changelog: log.changelog.markdown,
-        hasBreakingChanges: log.changelog.hasBreakingChanges,
-      }))
+      const jsonOutput = Api.Log.toJsonLogs(result.logs)
       yield* Console.log(JSON.stringify(jsonOutput, null, 2))
     } else {
-      for (const log of result.logs) {
-        yield* Console.log(log.changelog.markdown)
-      }
+      yield* Console.log(Api.Log.renderMarkdownLogs(result.logs))
     }
   }),
 )

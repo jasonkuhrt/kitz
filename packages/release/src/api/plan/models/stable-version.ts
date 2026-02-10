@@ -5,7 +5,7 @@ import { Schema as S } from 'effect'
  * First release of a package - no previous version exists.
  */
 export class StableVersionFirst extends S.Class<StableVersionFirst>('First')({
-  version: Semver.SemverSchema,
+  version: Semver.Semver,
 }) {
   static is = S.is(StableVersionFirst)
 }
@@ -14,8 +14,8 @@ export class StableVersionFirst extends S.Class<StableVersionFirst>('First')({
  * Increment from an existing version.
  */
 export class StableVersionIncrement extends S.Class<StableVersionIncrement>('Increment')({
-  from: Semver.SemverSchema,
-  to: Semver.SemverSchema,
+  from: Semver.Semver,
+  to: Semver.Semver,
   bump: S.Literal('major', 'minor', 'patch'),
 }) {
   static is = S.is(StableVersionIncrement)

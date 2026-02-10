@@ -37,7 +37,7 @@ const Workspaces = S.Struct({
  */
 export class Manifest extends S.Class<Manifest>('Manifest')({
   name: S.optionalWith(Moniker.FromString, { default: () => new Moniker.Unscoped({ name: 'unnamed' }) }),
-  version: S.optionalWith(Semver.Semver, { default: () => Semver.make(0, 0, 0) }),
+  version: S.optionalWith(Semver.Schema, { default: () => Semver.zero }),
   description: S.optional(S.String),
   main: S.optional(S.String),
   type: S.optional(S.Literal('module', 'commonjs')),

@@ -4,8 +4,6 @@ import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Either, Option, Schema as S } from 'effect'
 import {
-  encodePreviewPrerelease,
-  encodePrPrerelease,
   makePreviewPrerelease,
   makePrPrerelease,
   PreviewPrereleaseSchema,
@@ -31,6 +29,8 @@ const getBump = (type: ConventionalCommits.Type.Type, breaking: boolean): Semver
   if (!ConventionalCommits.Type.Standard.is(type)) return 'patch'
   return Option.getOrNull(ConventionalCommits.Type.impact(type))
 }
+
+const decodeExactPin = S.decodeUnknownOption(Pkg.Pin.Exact.FromString)
 
 /**
  * Extract package impacts from a git commit.
@@ -158,19 +158,13 @@ export const findLatestTagVersion = (
   packageName: Pkg.Moniker.Moniker,
   tags: string[],
 ): Option.Option<Semver.Semver> => {
-  // Match tags like @kitz/core@1.0.0 or kitz@1.0.0
-  const prefix = `${packageName.moniker}@`
   const versions: Semver.Semver[] = []
 
   for (const tag of tags) {
-    if (tag.startsWith(prefix)) {
-      const versionPart = tag.slice(prefix.length)
-      try {
-        versions.push(Semver.fromString(versionPart))
-      } catch {
-        // Skip invalid version tags
-      }
-    }
+    const parsed = decodeExactPin(tag)
+    if (Option.isNone(parsed)) continue
+    if (parsed.value.name.moniker !== packageName.moniker) continue
+    versions.push(parsed.value.version)
   }
 
   if (versions.length === 0) return Option.none()
@@ -191,16 +185,20 @@ export const findLatestPreviewNumber = (
   baseVersion: Semver.Semver,
   tags: string[],
 ): number => {
-  const prefix = `${packageName.moniker}@${baseVersion.version}-`
   let highest = 0
 
   for (const tag of tags) {
-    if (tag.startsWith(prefix)) {
-      const prereleasePart = tag.slice(prefix.length)
-      const decoded = S.decodeUnknownOption(PreviewPrereleaseSchema)(prereleasePart)
-      if (Option.isSome(decoded) && decoded.value.iteration > highest) {
-        highest = decoded.value.iteration
-      }
+    const parsed = decodeExactPin(tag)
+    if (Option.isNone(parsed)) continue
+    if (parsed.value.name.moniker !== packageName.moniker) continue
+    if (!Semver.equivalence(Semver.stripPre(parsed.value.version), Semver.stripPre(baseVersion))) continue
+
+    const prerelease = Semver.getPrerelease(parsed.value.version)
+    if (!prerelease) continue
+
+    const decoded = S.decodeUnknownOption(PreviewPrereleaseSchema)(prerelease.join('.'))
+    if (Option.isSome(decoded) && decoded.value.iteration > highest) {
+      highest = decoded.value.iteration
     }
   }
 
@@ -217,7 +215,7 @@ export const calculatePreviewVersion = (
   existingPreviewNumber: number,
 ): Semver.Semver => {
   const prerelease = makePreviewPrerelease(existingPreviewNumber + 1)
-  return Semver.fromString(`${nextStableVersion.version}-${encodePreviewPrerelease(prerelease)}`)
+  return Semver.withPre(nextStableVersion, ['next', prerelease.iteration])
 }
 
 /**
@@ -231,16 +229,20 @@ export const findLatestPrNumber = (
   prNumber: number,
   tags: string[],
 ): number => {
-  const prefix = `${packageName.moniker}@${Semver.zero.version}-`
   let highest = 0
 
   for (const tag of tags) {
-    if (tag.startsWith(prefix)) {
-      const prereleasePart = tag.slice(prefix.length)
-      const decoded = S.decodeUnknownOption(PrPrereleaseSchema)(prereleasePart)
-      if (Option.isSome(decoded) && decoded.value.prNumber === prNumber && decoded.value.iteration > highest) {
-        highest = decoded.value.iteration
-      }
+    const parsed = decodeExactPin(tag)
+    if (Option.isNone(parsed)) continue
+    if (parsed.value.name.moniker !== packageName.moniker) continue
+    if (!Semver.equivalence(Semver.stripPre(parsed.value.version), Semver.zero)) continue
+
+    const prerelease = Semver.getPrerelease(parsed.value.version)
+    if (!prerelease) continue
+
+    const decoded = S.decodeUnknownOption(PrPrereleaseSchema)(prerelease.join('.'))
+    if (Option.isSome(decoded) && decoded.value.prNumber === prNumber && decoded.value.iteration > highest) {
+      highest = decoded.value.iteration
     }
   }
 
@@ -258,5 +260,5 @@ export const calculatePrVersion = (
   sha: Git.Sha.Sha,
 ): Semver.Semver => {
   const prerelease = makePrPrerelease(prNumber, existingPrNumber + 1, sha)
-  return Semver.fromString(`${Semver.zero.version}-${encodePrPrerelease(prerelease)}`)
+  return Semver.withPre(Semver.zero, ['pr', prerelease.prNumber, prerelease.iteration, prerelease.sha])
 }

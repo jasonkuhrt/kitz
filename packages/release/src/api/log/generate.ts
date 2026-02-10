@@ -3,6 +3,7 @@
  */
 
 import { Git } from '@kitz/git'
+import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Option } from 'effect'
 import { ReleaseCommit } from '../release-commit.js'
@@ -69,7 +70,7 @@ const findLastReleaseTag = (
     if (Option.isSome(version)) {
       if (!latestVersion || Semver.greaterThan(version.value, latestVersion)) {
         latestVersion = version.value
-        latestTag = `${pkg.name.moniker}@${version.value.version.toString()}`
+        latestTag = Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version: version.value }))
       }
     }
   }
@@ -156,9 +157,9 @@ export const generate = (
         scope: pkg.name.moniker,
         commits: commitEntries,
         previousVersion: Option.isSome(currentVersion)
-          ? currentVersion.value.version.toString()
+          ? currentVersion.value.toString()
           : undefined,
-        newVersion: nextVersion.version.toString(),
+        newVersion: nextVersion.toString(),
       })
 
       logs.push({

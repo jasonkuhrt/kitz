@@ -1,6 +1,6 @@
 import { Assert } from '#kitz/assert'
-import { Null } from '#null'
 import { property } from '#kitz/test/test'
+import { Null } from '#null'
 import fc from 'fast-check'
 import { expect, test } from 'vitest'
 

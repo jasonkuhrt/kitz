@@ -23,7 +23,7 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, Layer, Option, Schema, Stream } from 'effect'
+import { Effect, Layer, Match, Option, Schema, Stream } from 'effect'
 import * as Log from './log/__.js'
 import type { Item, Plan } from './plan/models/__.js'
 import { type PreflightError, run as runPreflight } from './preflight.js'
@@ -450,8 +450,8 @@ export const toWorkflowPayload = (
   releases: [...plan.releases, ...plan.cascades].map((r) => ({
     packageName: r.package.name.moniker,
     packagePath: Fs.Path.toString(r.package.path),
-    currentVersion: r.currentVersion.pipe(Option.map((v) => v.version.toString())),
-    nextVersion: r.nextVersion.version.toString(),
+    currentVersion: r.currentVersion.pipe(Option.map((v) => v.toString())),
+    nextVersion: r.nextVersion.toString(),
     bump: r.bumpType,
     commits: r.commits.map((c) => {
       const info = c.forScope(r.package.scope)
@@ -532,6 +532,24 @@ export interface ObservableWorkflowResult {
   }
 }
 
+export interface LifecycleEventLine {
+  readonly level: 'info' | 'error'
+  readonly message: string
+}
+
+/**
+ * Convert workflow lifecycle events to printable log lines.
+ */
+export const formatLifecycleEvent = (event: Flo.LifecycleEvent): LifecycleEventLine | undefined =>
+  Match.value(event).pipe(
+    Match.tags({
+      ActivityStarted: (e): LifecycleEventLine => ({ level: 'info', message: `  Starting: ${e.activity}` }),
+      ActivityCompleted: (e): LifecycleEventLine => ({ level: 'info', message: `✓ Completed: ${e.activity}` }),
+      ActivityFailed: (e): LifecycleEventLine => ({ level: 'error', message: `✗ Failed: ${e.activity} - ${e.error}` }),
+    }),
+    Match.orElse(() => undefined),
+  )
+
 /**
  * Execute the release workflow with observable events and graph info.
  *
@@ -581,16 +599,12 @@ export const executeWorkflowObservable = (
 
     // Get graph structure for visualization
     const { layers, nodes } = ReleaseWorkflow.toGraph(payload)
+    const typedNodes = nodes as ReadonlyMap<string, { dependencies: readonly string[] }>
 
     // Build edges for renderer
     const graphInfo = {
       layers,
-      nodes: new Map(
-        Array.from(nodes.entries()).map(([name, def]) => [
-          name,
-          { dependencies: def.dependencies },
-        ]),
-      ),
+      nodes: new Map(typedNodes.entries()),
     }
 
     // Get observable execution
@@ -598,7 +612,7 @@ export const executeWorkflowObservable = (
 
     // Wrap execute to extract results and provide workflow runtime
     const execute = workflowExecute.pipe(
-      Effect.map((result) => ({
+      Effect.map((result: { publishes: string[]; createTags: string[]; createGHReleases: string[] }) => ({
         releasedPackages: result.publishes as string[],
         createdTags: result.createTags as string[],
         createdGHReleases: result.createGHReleases as string[],

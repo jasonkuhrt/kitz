@@ -1,9 +1,9 @@
 import { Fs } from '@kitz/fs'
 import { Syn } from '@kitz/syn'
 import { Match } from 'effect'
-import { readFileSync, writeFileSync } from 'node:fs'
-import { mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync, writeFileSync } from 'fs'
+import { mkdirSync } from 'fs'
+import { join } from 'path'
 import type {
   BodySection,
   Entrypoint,

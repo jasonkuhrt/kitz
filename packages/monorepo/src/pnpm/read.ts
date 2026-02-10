@@ -181,10 +181,10 @@ const expandGlobs = (
  */
 const loadManifest = (
   path: Fs.Path.AbsDir,
-): Effect.Effect<DiscoveredPackage, Resource.ResourceError, FileSystem.FileSystem> =>
+): Effect.Effect<Option.Option<DiscoveredPackage>, Resource.ResourceError, FileSystem.FileSystem> =>
   Effect.gen(function*() {
-    const manifest = yield* Pkg.Manifest.resource.readRequired(path)
-    return { path, manifest }
+    const manifest = yield* Pkg.Manifest.resource.read(path)
+    return Option.map(manifest, (m) => ({ path, manifest: m }))
   })
 
 // ============================================================================
@@ -258,7 +258,10 @@ export const read: {
       }
 
       // 6. Load manifests for each package
-      const packages = yield* Effect.all(expandedPaths.map((path) => loadManifest(path)), { concurrency: 'unbounded' })
+      const packageOptions = yield* Effect.all(expandedPaths.map((path) => loadManifest(path)), {
+        concurrency: 'unbounded',
+      })
+      const packages = packageOptions.filter(Option.isSome).map((pkg) => pkg.value)
 
       return {
         ...config,

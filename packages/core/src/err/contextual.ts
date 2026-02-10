@@ -82,6 +82,7 @@ export interface TaggedContextualErrorClass<
   ContextSchema extends S.Schema.Any,
   CauseSchema extends S.Schema.Any | undefined,
 > extends
+  // eslint-disable-next-line import/namespace -- Effect Schema types expose nested members via namespace.
   S.Schema<
     TaggedContextualErrorInstance<
       $Tag,

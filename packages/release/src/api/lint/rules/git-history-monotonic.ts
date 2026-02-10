@@ -1,5 +1,6 @@
 import { Git } from '@kitz/git'
-import { Effect } from 'effect'
+import { Pkg } from '@kitz/pkg'
+import { Effect, Option, Schema as S } from 'effect'
 import { RuleId } from '../models/rule-defaults.js'
 import * as RuntimeRule from '../models/runtime-rule.js'
 import { GitHistory } from '../models/violation-location.js'
@@ -12,12 +13,11 @@ import * as Monotonic from '../ops/monotonic.js'
  * Tags are expected to be in format: `packageName@version`
  */
 const extractPackageNames = (tags: string[]): string[] => {
+  const decodeExactPin = S.decodeUnknownOption(Pkg.Pin.Exact.FromString)
   const packageNames = new Set<string>()
   for (const tag of tags) {
-    const atIndex = tag.lastIndexOf('@')
-    if (atIndex > 0) {
-      packageNames.add(tag.slice(0, atIndex))
-    }
+    const pin = decodeExactPin(tag)
+    if (Option.isSome(pin)) packageNames.add(pin.value.name.moniker)
   }
   return [...packageNames]
 }

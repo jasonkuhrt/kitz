@@ -1,7 +1,7 @@
 import { Fs } from '@kitz/fs'
 import { Schema as S } from 'effect'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { basename, dirname, extname, join } from 'node:path'
+import { existsSync, readdirSync, readFileSync } from 'fs'
+import { basename, dirname, extname, join } from 'path'
 import { type ExportDeclaration, type ModuleDeclaration, Node, type SourceFile } from 'ts-morph'
 import {
   Docs,

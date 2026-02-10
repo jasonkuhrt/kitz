@@ -11,6 +11,7 @@
     "build:packages": "turbo build",
     "format": "dprint fmt",
     "format:check": "dprint check",
+    "check:api-model-style": "node tools/check-api-model-style.mjs",
     "_:build": "tsgo -p tsconfig.build.json",
     "_:dev": "tsgo -p tsconfig.build.json --watch",
     "_:check:types": "tsgo --noEmit",

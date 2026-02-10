@@ -1,6 +1,7 @@
 import { Git } from '@kitz/git'
+import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect } from 'effect'
+import { Effect, Option, Schema as S } from 'effect'
 import type { AuditResult, AuditViolation, TagInfo, ValidationResult, Violation } from '../models/monotonic.js'
 
 // Re-export types for single-source imports
@@ -17,23 +18,18 @@ export const getPackageTagInfos = (
 ): Effect.Effect<TagInfo[], Git.GitError | Git.GitParseError, Git.Git> =>
   Effect.gen(function*() {
     const git = yield* Git.Git
-    const prefix = `${packageName}@`
     const tagInfos: TagInfo[] = []
+    const decodeExactPin = S.decodeUnknownOption(Pkg.Pin.Exact.FromString)
 
     for (const tag of tags) {
-      if (tag.startsWith(prefix)) {
-        const versionPart = tag.slice(prefix.length)
-        try {
-          // Only consider stable versions (no prerelease)
-          const version = Semver.fromString(versionPart)
-          if (!versionPart.includes('-')) {
-            const sha = yield* git.getTagSha(tag)
-            tagInfos.push({ tag, version, sha })
-          }
-        } catch {
-          // Skip invalid version tags
-        }
-      }
+      const pin = decodeExactPin(tag)
+      if (Option.isNone(pin)) continue
+      if (pin.value.name.moniker !== packageName) continue
+      // Only consider stable versions (no prerelease)
+      if (pin.value.version._tag !== 'SemverOfficialRelease') continue
+
+      const sha = yield* git.getTagSha(tag)
+      tagInfos.push({ tag, version: pin.value.version, sha })
     }
 
     // Sort by version descending
@@ -90,9 +86,9 @@ export const validateAdjacent = (
         existingVersion: highestAncestor.version,
         existingSha: highestAncestor.sha,
         relationship: 'ancestor',
-        message: `Version ${highestAncestor.version.version} at ${
+        message: `Version ${highestAncestor.version.toString()} at ${
           highestAncestor.sha.slice(0, 7)
-        } is on an EARLIER commit but has version >= ${newVersion.version}`,
+        } is on an EARLIER commit but has version >= ${newVersion.toString()}`,
       })
     }
 
@@ -102,9 +98,9 @@ export const validateAdjacent = (
         existingVersion: lowestDescendant.version,
         existingSha: lowestDescendant.sha,
         relationship: 'descendant',
-        message: `Version ${lowestDescendant.version.version} at ${
+        message: `Version ${lowestDescendant.version.toString()} at ${
           lowestDescendant.sha.slice(0, 7)
-        } is on a LATER commit but has version <= ${newVersion.version}`,
+        } is on a LATER commit but has version <= ${newVersion.toString()}`,
       })
     }
 
@@ -147,7 +143,7 @@ export const auditPackageHistory = (
             violations.push({
               earlier: a,
               later: b,
-              message: `${a.version.version} at ${a.sha.slice(0, 7)} comes BEFORE ${b.version.version} at ${
+              message: `${a.version.toString()} at ${a.sha.slice(0, 7)} comes BEFORE ${b.version.toString()} at ${
                 b.sha.slice(0, 7)
               }, but has higher/equal version`,
             })
@@ -158,7 +154,7 @@ export const auditPackageHistory = (
             violations.push({
               earlier: b,
               later: a,
-              message: `${b.version.version} at ${b.sha.slice(0, 7)} comes BEFORE ${a.version.version} at ${
+              message: `${b.version.toString()} at ${b.sha.slice(0, 7)} comes BEFORE ${a.version.toString()} at ${
                 a.sha.slice(0, 7)
               }, but has higher/equal version`,
             })

@@ -752,9 +752,6 @@ importers:
 
   packages/semver:
     dependencies:
-      '@vltpkg/semver':
-        specifier: ^1.0.0-rc.12
-        version: 1.0.0-rc.12
       effect:
         specifier: ^3.0.0
         version: 3.19.13

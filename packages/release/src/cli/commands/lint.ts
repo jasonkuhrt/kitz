@@ -3,7 +3,7 @@ import { Cli } from '@kitz/cli'
 import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
-import { Oak } from '@kitz/oak'
+import { EffectSchema, Oak } from '@kitz/oak'
 import { Cause, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 import * as Preconditions from '../../api/lint/services/preconditions.js'
@@ -14,6 +14,7 @@ import * as Preconditions from '../../api/lint/services/preconditions.js'
  * Run lint rules and report violations.
  */
 const args = Oak.Command.create()
+  .use(EffectSchema)
   .description('Run lint rules and report violations')
   .parameter(
     'only-rule',

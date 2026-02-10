@@ -38,14 +38,14 @@ export class Stable extends S.Class<Stable>('Stable')({
   static is = S.is(Stable)
 
   get nextVersion(): Semver.Semver {
-    return StableVersionFirst.is(this.version) ? this.version.version : this.version.to
+    return 'to' in this.version ? this.version.to : this.version.version
   }
 
   get currentVersion(): Option.Option<Semver.Semver> {
-    return StableVersionFirst.is(this.version) ? Option.none() : Option.some(this.version.from)
+    return 'from' in this.version ? Option.some(this.version.from) : Option.none()
   }
 
   get bumpType(): Semver.BumpType {
-    return StableVersionFirst.is(this.version) ? 'minor' : this.version.bump
+    return 'bump' in this.version ? this.version.bump : 'minor'
   }
 }

@@ -9,13 +9,13 @@ import { ItemBaseFields } from './item-stable.js'
  */
 export class Preview extends S.Class<Preview>('Preview')({
   ...ItemBaseFields,
-  baseVersion: Semver.SemverSchema,
+  baseVersion: Semver.Semver,
   prerelease: PreviewPrerelease,
 }) {
   static is = S.is(Preview)
 
   get nextVersion(): Semver.Semver {
-    return Semver.fromString(`${this.baseVersion.version}-next.${this.prerelease.iteration}`)
+    return Semver.withPre(this.baseVersion, ['next', this.prerelease.iteration])
   }
 
   get currentVersion(): Option.Option<Semver.Semver> {

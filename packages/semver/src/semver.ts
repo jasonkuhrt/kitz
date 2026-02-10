@@ -273,6 +273,60 @@ export const getPrerelease = (version: Semver): ReadonlyArray<string | number> |
   version._tag === 'SemverPreRelease' ? version.prerelease : undefined
 
 /**
+ * Options for converting an official release to a pre-release.
+ */
+export interface OfficialToPreOptions {
+  /**
+   * Prerelease identifiers to set (e.g. `['next', 1]`, `['pr', 42, 1, 'abc1234']`).
+   */
+  readonly prerelease: PreRelease['prerelease']
+  /**
+   * Optional build metadata override.
+   * When omitted, existing build metadata from the base version is preserved.
+   */
+  readonly build?: PreRelease['build']
+}
+
+/**
+ * Convert a release to pre-release form.
+ */
+export const officialToPre = (
+  version: OfficialRelease,
+  options: OfficialToPreOptions,
+): PreRelease =>
+  PreRelease.make({
+    major: version.major,
+    minor: version.minor,
+    patch: version.patch,
+    prerelease: options.prerelease,
+    build: options.build ?? version.build,
+  })
+
+/**
+ * Remove prerelease identifiers from a version.
+ *
+ * Preserves major/minor/patch and build metadata.
+ */
+export const stripPre = (version: Semver): OfficialRelease =>
+  OfficialRelease.make({
+    major: version.major,
+    minor: version.minor,
+    patch: version.patch,
+    build: version.build,
+  })
+
+/**
+ * Set prerelease identifiers on a version.
+ *
+ * Equivalent to `officialToPre(stripPre(version), ...)`.
+ */
+export const withPre = (
+  version: Semver,
+  prerelease: PreRelease['prerelease'],
+  build?: PreRelease['build'],
+): PreRelease => officialToPre(stripPre(version), { prerelease, build })
+
+/**
  * Increment a version by bump type (major/minor/patch only).
  *
  * For prerelease versions, increments the base version and removes prerelease.

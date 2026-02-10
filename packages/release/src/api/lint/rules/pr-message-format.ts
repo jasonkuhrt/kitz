@@ -7,9 +7,6 @@ export const rule = RuntimeRule.create({
   id: RuleId.make('pr.message.format'),
   description: 'Custom regex message enforcement',
   preconditions: [Precondition.HasOpenPR.make()],
-  check: Effect.gen(function*() {
-    // TODO: Implement custom regex check against PR title/body
-    // Config would provide the regex pattern
-    return undefined
-  }),
+  // TODO: Implement custom regex check against PR title/body from config.
+  check: Effect.succeed(undefined),
 })

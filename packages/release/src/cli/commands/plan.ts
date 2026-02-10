@@ -4,24 +4,9 @@ import { Str } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
-import { Oak } from '@kitz/oak'
-import { Console, Effect, Layer, Option, Schema } from 'effect'
+import { EffectSchema, Oak } from '@kitz/oak'
+import { Console, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
-
-/**
- * Format a planned release for display.
- */
-const formatRelease = (release: Api.Plan.Item, prefix: string = ''): string => {
-  const current = release.currentVersion.pipe(Option.map((v) => v.version), Option.getOrElse(() => '(none)'))
-  const next = release.nextVersion.version
-  const commitCount = release.commits.length
-
-  return [
-    `${prefix}${release.package.name}`,
-    `${prefix}  ${current} → ${next} (${release.bumpType ?? 'cascade'})`,
-    `${prefix}  ${commitCount} commit${commitCount === 1 ? '' : 's'}`,
-  ].join(Str.Char.newline)
-}
 
 /**
  * release plan <type>
@@ -34,6 +19,7 @@ const formatRelease = (release: Api.Plan.Item, prefix: string = ''): string => {
  * - pr      - PR preview release
  */
 const args = Oak.Command.create()
+  .use(EffectSchema)
   .description('Generate a release plan')
   .parameter(
     'type',
@@ -84,19 +70,13 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     header``
     yield* Console.log(header.render())
 
-    let plan: Api.Plan.Plan
-
-    switch (args.type) {
-      case 'stable':
-        plan = yield* Api.Plan.stable({ packages }, options)
-        break
-      case 'preview':
-        plan = yield* Api.Plan.preview({ packages }, options)
-        break
-      case 'pr':
-        plan = yield* Api.Plan.pr({ packages }, options)
-        break
-    }
+    const plan = yield* (
+      args.type === 'stable'
+        ? Api.Plan.stable({ packages }, options)
+        : args.type === 'preview'
+        ? Api.Plan.preview({ packages }, options)
+        : Api.Plan.pr({ packages }, options)
+    )
 
     if (plan.releases.length === 0) {
       yield* Console.log('No releases planned - no unreleased changes found.')
@@ -104,21 +84,7 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     }
 
     // Display plan
-    const s = Str.Builder()
-    s`Primary releases:`
-    for (const release of plan.releases) {
-      s(formatRelease(release, '  '))
-      s``
-    }
-
-    if (plan.cascades.length > 0) {
-      s`Cascade releases (dependencies):`
-      for (const cascade of plan.cascades) {
-        s(formatRelease(cascade, '  '))
-        s``
-      }
-    }
-    yield* Console.log(s.render())
+    yield* Console.log(Api.Plan.renderPlan(plan))
 
     // Write plan file using resource
     const env = yield* Env.Env

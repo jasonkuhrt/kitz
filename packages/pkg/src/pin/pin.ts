@@ -1,5 +1,5 @@
 import { Semver } from '@kitz/semver'
-import { Match, Option, Schema as S } from 'effect'
+import { Match, Option, ParseResult, Schema as S } from 'effect'
 import { Moniker } from '../moniker/_.js'
 import { Range as SemverRange } from '../range/_.js'
 
@@ -171,6 +171,42 @@ export class Exact extends S.TaggedClass<Exact>()('PinExact', {
   static is = S.is(Exact)
 
   /**
+   * String codec for exact pins.
+   *
+   * Parses `<name>@<semver>` strings into {@link Exact}.
+   */
+  static FromString: S.Schema<Exact, string> = S.transformOrFail(
+    S.String,
+    Exact,
+    {
+      strict: true,
+      decode: (value, _, ast) => {
+        const atIndex = value.lastIndexOf('@')
+        if (atIndex <= 0 || atIndex >= value.length - 1) {
+          return ParseResult.fail(new ParseResult.Type(ast, value, `Invalid exact pin: expected '<name>@<version>'`))
+        }
+
+        const name = S.decodeUnknownOption(Moniker.FromString)(value.slice(0, atIndex))
+        if (Option.isNone(name)) {
+          return ParseResult.fail(new ParseResult.Type(ast, value, `Invalid package name in exact pin`))
+        }
+
+        const version = S.decodeUnknownOption(Semver.Schema)(value.slice(atIndex + 1))
+        if (Option.isNone(version)) {
+          return ParseResult.fail(new ParseResult.Type(ast, value, `Invalid semver in exact pin`))
+        }
+
+        return ParseResult.succeed({
+          _tag: 'PinExact' as const,
+          name: name.value.moniker,
+          version: version.value,
+        })
+      },
+      encode: (pin) => ParseResult.succeed(`${pin.name}@${pin.version.toString()}`),
+    },
+  )
+
+  /**
    * Parse an exact pin from string.
    *
    * @example
@@ -179,13 +215,7 @@ export class Exact extends S.TaggedClass<Exact>()('PinExact', {
    * //    ^? Exact
    * ```
    */
-  static fromString = (input: string): Exact => {
-    const { name, specifier } = splitNameSpecifier(input)
-    return Exact.make({
-      name: Moniker.parse(name),
-      version: Semver.fromString(specifier),
-    })
-  }
+  static fromString = S.decodeSync(Exact.FromString)
 }
 
 /**
@@ -485,6 +515,15 @@ export const fromString = <const $S extends string>(input: $S): ParsePin<$S> => 
   }
   return Tag.fromString(input) as any
 }
+
+/**
+ * Decode a string literal to a specific Pin variant type.
+ *
+ * Use this when you want explicit "literal parser" semantics,
+ * matching the path module style.
+ */
+export const fromLiteral = <const $S extends string>(input: $S): ParsePin<$S> =>
+  fromString(input)
 
 // ============================================================================
 // Pattern Matching Helper

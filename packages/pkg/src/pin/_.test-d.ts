@@ -100,3 +100,14 @@ type _plainString = Assert.exact.of<
   ReturnType<typeof Pin.fromString<string>>,
   Pin.Pin
 >
+
+// fromLiteral should infer specific types from literal strings (path-style API)
+type _literalExact = Assert.exact.of<
+  ReturnType<typeof Pin.fromLiteral<'@kitz/core@1.0.0'>>,
+  Pin.Exact
+>
+
+type _literalRange = Assert.exact.of<
+  ReturnType<typeof Pin.fromLiteral<'@kitz/core@^1.0.0'>>,
+  Pin.Range
+>

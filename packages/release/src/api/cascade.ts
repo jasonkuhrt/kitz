@@ -13,6 +13,15 @@ import { calculateNextVersion, findLatestTagVersion } from './version.js'
 export type DependencyGraph = Map<string, string[]>
 
 /**
+ * Cascade analysis for a requested package identifier.
+ */
+export interface RequestedCascadeAnalysis {
+  readonly requestedPackage: string
+  readonly packageName: string | null
+  readonly cascades: readonly PlanModels.Stable[]
+}
+
+/**
  * Build a reverse dependency graph from package.json files.
  *
  * Maps each package name to the list of packages that depend on it.
@@ -55,6 +64,42 @@ export const buildDependencyGraph = (
     }
 
     return graph
+  })
+
+/**
+ * Analyze cascade impact for a list of requested package identifiers.
+ *
+ * Requested identifiers may be either full package names or workspace scopes.
+ */
+export const analyzeRequested = (
+  packages: Package[],
+  releases: readonly PlanModels.Item[],
+  requestedPackages: readonly string[],
+  tags: string[],
+): Effect.Effect<readonly RequestedCascadeAnalysis[], Resource.ResourceError, FileSystem.FileSystem> =>
+  Effect.gen(function*() {
+    const dependencyGraph = yield* buildDependencyGraph(packages)
+
+    return requestedPackages.map((requestedPackage) => {
+      const pkg = packages.find((p) => p.name.moniker === requestedPackage || p.scope === requestedPackage)
+
+      if (!pkg) {
+        return {
+          requestedPackage,
+          packageName: null,
+          cascades: [],
+        } satisfies RequestedCascadeAnalysis
+      }
+
+      const pkgReleases = releases.filter((release) => release.package.name.moniker === pkg.name.moniker)
+      const cascades = detect(packages, pkgReleases, dependencyGraph, tags)
+
+      return {
+        requestedPackage,
+        packageName: pkg.name.moniker,
+        cascades,
+      } satisfies RequestedCascadeAnalysis
+    })
   })
 
 /**
@@ -116,7 +161,7 @@ export const detect = (
           cascadeCommits.push(
             makeCascadeCommit(
               pkg.scope,
-              `Depends on ${primary.package.name.moniker}@${primary.nextVersion.version}`,
+              `Depends on ${primary.package.name.moniker}@${primary.nextVersion.toString()}`,
             ),
           )
         }

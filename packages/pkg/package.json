@@ -19,7 +19,7 @@
     "./__": "./build/__.js",
     "./manifest": "./build/manifest/__.js",
     "./manager": "./build/manager/__.js",
-    "./pin": "./build/pin/__.js"
+    "./pin": "./build/pin/_.js"
   },
   "files": [
     "build",

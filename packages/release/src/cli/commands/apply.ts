@@ -1,11 +1,10 @@
 import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
-import { Str } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
-import { Oak } from '@kitz/oak'
-import { Console, Effect, Fiber, Layer, Match, Option, Schema, Stream } from 'effect'
+import { EffectSchema, Oak } from '@kitz/oak'
+import { Console, Effect, Fiber, Layer, Option, Schema, Stream } from 'effect'
 import * as Api from '../../api/__.js'
 
 /**
@@ -14,6 +13,7 @@ import * as Api from '../../api/__.js'
  * Execute the release plan. Requires plan file from 'release plan'.
  */
 const args = Oak.Command.create()
+  .use(EffectSchema)
   .description('Execute the release plan')
   .parameter(
     'yes y',
@@ -60,10 +60,8 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     const planFileOption = yield* Api.Plan.resource.read(planDir)
 
     if (Option.isNone(planFileOption)) {
-      const b = Str.Builder()
-      b`No release plan found at ${Fs.Path.toString(Api.Plan.PLAN_FILE)}`
-      b`Run 'release plan <type>' first to generate a plan.`
-      yield* Console.error(b.render())
+      yield* Console.error(`No release plan found at ${Fs.Path.toString(Api.Plan.PLAN_FILE)}`)
+      yield* Console.error(`Run 'release plan <type>' first to generate a plan.`)
       return env.exit(1)
     }
 
@@ -72,44 +70,15 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
 
     // Plan file now stores rich PlannedRelease data directly - no conversion needed
     const plan = planFileOption.value
-    const { type, releases, cascades } = plan
-
-    const totalReleases = releases.length + cascades.length
 
     // Confirmation prompt (unless --yes)
     if (!args.yes && !args.dryRun) {
-      const b = Str.Builder()
-      b`Applying ${type} release plan...`
-      b`${String(totalReleases)} package${totalReleases === 1 ? '' : 's'} to release`
-      b``
-      b`Releases:`
-      for (const r of plan.releases) {
-        b`  ${r.package.name.moniker}@${r.nextVersion.version.toString()}`
-      }
-      for (const r of plan.cascades) {
-        b`  ${r.package.name.moniker}@${r.nextVersion.version.toString()} (cascade)`
-      }
-      b``
-      b`This will:`
-      b`  1. Run preflight checks`
-      b`  2. Publish all packages to npm`
-      b`  3. Create git tags`
-      b`  4. Push tags to remote`
-      b``
-      b`Use --yes to skip this prompt.`
-      yield* Console.log(b.render())
+      yield* Console.log(Api.Plan.renderApplyConfirmation(plan))
       return
     }
 
     if (args.dryRun) {
-      const b = Str.Builder()
-      b`[DRY RUN] Would execute:`
-      for (const r of [...plan.releases, ...plan.cascades]) {
-        b`  - Publish ${r.package.name.moniker}@${r.nextVersion.version.toString()}`
-      }
-      b`  - Create ${String(totalReleases)} git tag${totalReleases === 1 ? '' : 's'}`
-      b`  - Push tags to origin`
-      yield* Console.log(b.render())
+      yield* Console.log(Api.Plan.renderApplyDryRun(plan))
       return
     }
 
@@ -121,16 +90,11 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
 
     // Fork event consumer to stream status updates
     const eventFiber = yield* events.pipe(
-      Stream.tap((event) =>
-        Match.value(event).pipe(
-          Match.tags({
-            ActivityStarted: (e) => Console.log(`  Starting: ${e.activity}`),
-            ActivityCompleted: (e) => Console.log(`✓ Completed: ${e.activity}`),
-            ActivityFailed: (e) => Console.error(`✗ Failed: ${e.activity} - ${e.error}`),
-          }),
-          Match.orElse(() => Effect.void),
-        )
-      ),
+      Stream.tap((event) => {
+        const line = Api.Workflow.formatLifecycleEvent(event)
+        if (!line) return Effect.void
+        return line.level === 'error' ? Console.error(line.message) : Console.log(line.message)
+      }),
       Stream.runDrain,
       Effect.fork,
     )
@@ -141,12 +105,7 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     // Wait for events to flush
     yield* Fiber.join(eventFiber)
 
-    const done = Str.Builder()
-    done``
-    done`Done. ${String(result.releasedPackages.length)} package${
-      result.releasedPackages.length === 1 ? '' : 's'
-    } released.`
-    yield* Console.log(done.render())
+    yield* Console.log(Api.Plan.renderApplyDone(result.releasedPackages.length))
 
     // Clean up plan file on success
     const planPath = Fs.Path.join(env.cwd, Api.Plan.PLAN_FILE)

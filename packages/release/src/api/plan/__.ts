@@ -1,6 +1,7 @@
 export * from './helpers.js'
 export * from './models/__.js'
 export * from './options.js'
+export * from './presentation.js'
 export * from './pr.js'
 export * from './preview.js'
 export * from './resource.js'

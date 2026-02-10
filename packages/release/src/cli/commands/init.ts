@@ -4,7 +4,7 @@ import { Str } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
-import { Oak } from '@kitz/oak'
+import { EffectSchema, Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Match, Schema as S } from 'effect'
 import * as Api from '../../api/__.js'
 
@@ -16,6 +16,7 @@ const RELEASE_DIR_PATTERN = '.release/'
  * Initialize release in a project.
  */
 Oak.Command.create()
+  .use(EffectSchema)
   .description('Initialize release configuration')
   .parameter(
     'force f',

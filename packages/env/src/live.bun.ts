@@ -8,7 +8,6 @@ declare const Bun: {
 
 import { Fs } from '@kitz/fs'
 import { Layer } from 'effect'
-import process from 'node:process'
 import { Env } from './env.js'
 import type { Arch, Os } from './types.js'
 

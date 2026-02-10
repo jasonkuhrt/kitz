@@ -1,8 +1,8 @@
 import { Pat, Str } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Schema as S } from 'effect'
-import { existsSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, readFileSync } from 'fs'
+import { join } from 'path'
 import { Project } from 'ts-morph'
 import {
   Docs,
