@@ -522,8 +522,7 @@ export const fromString = <const $S extends string>(input: $S): ParsePin<$S> => 
  * Use this when you want explicit "literal parser" semantics,
  * matching the path module style.
  */
-export const fromLiteral = <const $S extends string>(input: $S): ParsePin<$S> =>
-  fromString(input)
+export const fromLiteral = <const $S extends string>(input: $S): ParsePin<$S> => fromString(input)
 
 // ============================================================================
 // Pattern Matching Helper

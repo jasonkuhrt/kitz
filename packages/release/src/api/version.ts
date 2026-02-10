@@ -3,12 +3,7 @@ import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Either, Option, Schema as S } from 'effect'
-import {
-  makePreviewPrerelease,
-  makePrPrerelease,
-  PreviewPrereleaseSchema,
-  PrPrereleaseSchema,
-} from './prerelease.js'
+import { makePreviewPrerelease, makePrPrerelease, PreviewPrereleaseSchema, PrPrereleaseSchema } from './prerelease.js'
 import { ReleaseCommit } from './release-commit.js'
 
 /**

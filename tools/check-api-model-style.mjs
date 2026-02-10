@@ -83,7 +83,8 @@ const packageTsFiles = listFiles('packages').filter((file) =>
 
 for (const file of packageTsFiles) {
   const content = readFileSync(join(repoRoot, file), 'utf8')
-  const topLevelLiteralAwareFromString = /export const fromString\s*=\s*<const\s+([A-Za-z_$][\w$]*)\s+extends\s+string>\s*\([\s\S]{0,300}?\)\s*:\s*([^=\n]+?)=>/g
+  const topLevelLiteralAwareFromString =
+    /export const fromString\s*=\s*<const\s+([A-Za-z_$][\w$]*)\s+extends\s+string>\s*\([\s\S]{0,300}?\)\s*:\s*([^=\n]+?)=>/g
 
   for (const match of content.matchAll(topLevelLiteralAwareFromString)) {
     const genericName = match[1]
@@ -99,7 +100,8 @@ for (const file of packageTsFiles) {
     })
   }
 
-  const classLiteralAwareFromString = /static fromString\s*=\s*<const\s+([A-Za-z_$][\w$]*)\s+extends\s+string>\s*\([\s\S]{0,300}?Analyze<\1>[\s\S]{0,300}?\)\s*=>/g
+  const classLiteralAwareFromString =
+    /static fromString\s*=\s*<const\s+([A-Za-z_$][\w$]*)\s+extends\s+string>\s*\([\s\S]{0,300}?Analyze<\1>[\s\S]{0,300}?\)\s*=>/g
   const hasClassLiteralAwareFromString = classLiteralAwareFromString.test(content)
 
   if (hasClassLiteralAwareFromString && !/static fromLiteral\s*=/.test(content)) {

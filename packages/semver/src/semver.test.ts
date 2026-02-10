@@ -61,7 +61,10 @@ Test.describe('officialToPre')
   )
   .cases(
     [[Semver.OfficialRelease.OfficialRelease.make({ major: 1, minor: 2, patch: 3 }), pre('next', 1)], '1.2.3-next.1'],
-    [[Semver.OfficialRelease.OfficialRelease.make({ major: 1, minor: 2, patch: 3, build: ['build', '7'] }), pre('next', 2)], '1.2.3-next.2+build.7'],
+    [[
+      Semver.OfficialRelease.OfficialRelease.make({ major: 1, minor: 2, patch: 3, build: ['build', '7'] }),
+      pre('next', 2),
+    ], '1.2.3-next.2+build.7'],
     [[Semver.stripPre(Semver.fromString('1.2.3-beta.1+build.7')), pre('rc', 1)], '1.2.3-rc.1+build.7'],
   )
   .test()
