@@ -202,7 +202,7 @@ export class Exact extends S.TaggedClass<Exact>()('PinExact', {
           version: version.value,
         })
       },
-      encode: (pin) => ParseResult.succeed(`${pin.name}@${pin.version.toString()}`),
+      encode: (pin) => ParseResult.succeed(`${pin.name}@${Semver.toString(pin.version)}`),
     },
   )
 
@@ -576,7 +576,7 @@ export const match = <$A>(
 export const toString = (pin: Pin): string =>
   match(pin, {
     PinRange: (p) => `${monikerToString(p.name)}@${p.range.toString()}`,
-    PinExact: (p) => `${monikerToString(p.name)}@${p.version.toString()}`,
+    PinExact: (p) => `${monikerToString(p.name)}@${Semver.toString(p.version)}`,
     PinTag: (p) => `${monikerToString(p.name)}@${p.tag}`,
     PinWorkspace: (p) => {
       const rangeStr = typeof p.range === 'string' ? p.range : p.range.toString()

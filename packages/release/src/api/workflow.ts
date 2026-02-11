@@ -158,10 +158,10 @@ export const ReleaseWorkflow = Flo.Workflow.make({
         runPreflight(plannedReleases, {
           ...(payload.options.registry && { registry: payload.options.registry }),
         }).pipe(
-          Effect.mapError((e) =>
+          Effect.mapError((e: PreflightError) =>
             new WorkflowPreflightError({
               context: {
-                check: 'check' in e ? (e as PreflightError).context.check : 'unknown',
+                check: e.context.check,
                 detail: e.message,
               },
             })

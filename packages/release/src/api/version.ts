@@ -159,6 +159,8 @@ export const findLatestTagVersion = (
     const parsed = decodeExactPin(tag)
     if (Option.isNone(parsed)) continue
     if (parsed.value.name.moniker !== packageName.moniker) continue
+    // Current released version baseline is always an official release.
+    if (Semver.getPrerelease(parsed.value.version)) continue
     versions.push(parsed.value.version)
   }
 

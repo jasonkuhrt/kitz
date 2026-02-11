@@ -138,7 +138,7 @@ export const Schema: S.Schema<OfficialRelease | PreRelease, string> = S.transfor
       }
       return ParseResult.succeed(OfficialRelease.make(base))
     },
-    encode: (semver) => ParseResult.succeed(semver.toString()),
+    encode: (semver) => ParseResult.succeed(formatSemver(semver)),
   },
 )
 
@@ -147,6 +147,19 @@ export const Schema: S.Schema<OfficialRelease | PreRelease, string> = S.transfor
 // ============================================================================
 
 export type Semver = typeof Semver.Type
+
+/**
+ * Encode a semver value to string via variant combinators.
+ */
+const formatSemver = (version: Semver): string =>
+  version._tag === 'SemverPreRelease'
+    ? PreRelease.toString(version)
+    : OfficialRelease.toString(version)
+
+/**
+ * Encode a semver value to string via variant combinators.
+ */
+export const toString = (version: Semver): string => formatSemver(version)
 
 // ============================================================================
 // Constructors

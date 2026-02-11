@@ -169,7 +169,7 @@ const parse = (content: string): Gitignore => {
 /**
  * Serialize gitignore to string format.
  */
-const stringify = (gitignore: Gitignore): string => {
+const toStringGitignore = (gitignore: Gitignore): string => {
   const parts: string[] = []
 
   for (const section of gitignore.sections) {
@@ -250,7 +250,7 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
     {
       strict: true,
       decode: (content) => parse(content) as any,
-      encode: (gitignore) => stringify(gitignore as any),
+      encode: (gitignore) => toStringGitignore(gitignore as any),
     },
   ) as any
 

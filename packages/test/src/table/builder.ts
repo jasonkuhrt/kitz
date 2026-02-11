@@ -205,7 +205,7 @@ export function create(state: State = defaultState): any {
      * - Functions: Use .toString() with whitespace compression
      * - All other values: Use object-inspect (handles circular refs, special types, etc.)
      */
-    const stringifyForTestName = (value: any, maxLength = 80): string => {
+    const formatForTestName = (value: any, maxLength = 80): string => {
       const str = typeof value === 'function'
         ? value.toString().replace(/\s+/g, ' ').trim()
         : objectInspect(value)
@@ -229,10 +229,10 @@ export function create(state: State = defaultState): any {
       const generateName = (input: any, output?: any): string => {
         const fnName = fn?.name || 'fn'
         const inputStr = Array.isArray(input)
-          ? input.map(p => stringifyForTestName(p)).join(', ')
-          : stringifyForTestName(input)
+          ? input.map(p => formatForTestName(p)).join(', ')
+          : formatForTestName(input)
         return output !== undefined
-          ? `${fnName}(${inputStr}) → ${stringifyForTestName(output)}`
+          ? `${fnName}(${inputStr}) → ${formatForTestName(output)}`
           : `${fnName}(${inputStr})`
       }
 
@@ -336,7 +336,7 @@ export function create(state: State = defaultState): any {
           const name = Object.keys(matrixCombo).length > 0
             ? `${baseName} [matrix: ${
               Object.entries(matrixCombo)
-                .map(([k, v]) => `${k}=${stringifyForTestName(v, 40)}`)
+                .map(([k, v]) => `${k}=${formatForTestName(v, 40)}`)
                 .join(', ')
             }]`
             : baseName
