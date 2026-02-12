@@ -76,7 +76,8 @@ const resolveReleaseTarget = (
         Effect.fail(
           new RuntimeResolutionError({
             context: {
-              detail: `Could not read git remote "origin". Set GITHUB_REPOSITORY="<owner>/<repo>" or configure origin to github.com. (${error.message})`,
+              detail:
+                `Could not read git remote "origin". Set GITHUB_REPOSITORY="<owner>/<repo>" or configure origin to github.com. (${error.message})`,
             },
           }),
         )
@@ -88,7 +89,8 @@ const resolveReleaseTarget = (
       return yield* Effect.fail(
         new RuntimeResolutionError({
           context: {
-            detail: `Could not resolve GitHub repository from origin remote "${remoteUrl}". Set GITHUB_REPOSITORY="<owner>/<repo>" or configure origin to github.com.`,
+            detail:
+              `Could not resolve GitHub repository from origin remote "${remoteUrl}". Set GITHUB_REPOSITORY="<owner>/<repo>" or configure origin to github.com.`,
           },
         }),
       )
@@ -102,7 +104,9 @@ const resolveReleaseTarget = (
     } satisfies ReleaseTarget
   })
 
-const resolveGithubToken = (vars: Record<string, string | undefined>): Effect.Effect<string, RuntimeResolutionError> => {
+const resolveGithubToken = (
+  vars: Record<string, string | undefined>,
+): Effect.Effect<string, RuntimeResolutionError> => {
   const token = vars['GITHUB_TOKEN']
   if (!token || token.trim() === '') {
     return Effect.fail(
