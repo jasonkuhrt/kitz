@@ -402,10 +402,39 @@ export const makeWorkflowRuntime = (config: WorkflowRuntimeConfig = {}) =>
     config.github
       ? Github.LiveFetch(config.github)
       : Layer.succeed(Github.Github, {
-        // Stub implementation when no github config provided
-        releaseExists: () => Effect.succeed(false),
-        createRelease: () => Effect.die('GitHub not configured'),
-        updateRelease: () => Effect.die('GitHub not configured'),
+        releaseExists: () =>
+          Effect.fail(
+            new Github.GithubError({
+              context: {
+                operation: 'releaseExists',
+                detail:
+                  'GitHub runtime is not configured. Resolve runtime with Api.Runtime.resolveReleaseRuntime() and pass Api.Runtime.toWorkflowRuntimeConfig(runtime).github.',
+              },
+              cause: new Error('GitHub runtime is not configured'),
+            }),
+          ),
+        createRelease: () =>
+          Effect.fail(
+            new Github.GithubError({
+              context: {
+                operation: 'createRelease',
+                detail:
+                  'GitHub runtime is not configured. Resolve runtime with Api.Runtime.resolveReleaseRuntime() and pass Api.Runtime.toWorkflowRuntimeConfig(runtime).github.',
+              },
+              cause: new Error('GitHub runtime is not configured'),
+            }),
+          ),
+        updateRelease: () =>
+          Effect.fail(
+            new Github.GithubError({
+              context: {
+                operation: 'updateRelease',
+                detail:
+                  'GitHub runtime is not configured. Resolve runtime with Api.Runtime.resolveReleaseRuntime() and pass Api.Runtime.toWorkflowRuntimeConfig(runtime).github.',
+              },
+              cause: new Error('GitHub runtime is not configured'),
+            }),
+          ),
       }),
   ).pipe(
     Layer.provideMerge(SingleRunner.layer({ runnerStorage: 'sql' })),
@@ -592,7 +621,13 @@ export const formatLifecycleEvent = (event: Flo.LifecycleEvent): LifecycleEventL
  */
 export const executeWorkflowObservable = (
   plan: Plan,
-  options: { dryRun?: boolean; tag?: string; registry?: string; dbPath?: string } = {},
+  options: {
+    dryRun?: boolean
+    tag?: string
+    registry?: string
+    dbPath?: string
+    github?: WorkflowRuntimeConfig['github']
+  } = {},
 ): Effect.Effect<ObservableWorkflowResult, never, never> =>
   Effect.gen(function*() {
     const payload = toWorkflowPayload(plan, options)
@@ -610,6 +645,11 @@ export const executeWorkflowObservable = (
     // Get observable execution
     const { events, execute: workflowExecute } = yield* ReleaseWorkflow.observable(payload)
 
+    const runtimeConfig: WorkflowRuntimeConfig = {
+      ...(options.dbPath && { dbPath: options.dbPath }),
+      ...(options.github && { github: options.github }),
+    }
+
     // Wrap execute to extract results and provide workflow runtime
     const execute = workflowExecute.pipe(
       Effect.map((result: { publishes: string[]; createTags: string[]; createGHReleases: string[] }) => ({
@@ -617,7 +657,7 @@ export const executeWorkflowObservable = (
         createdTags: result.createTags as string[],
         createdGHReleases: result.createGHReleases as string[],
       })),
-      Effect.provide(makeWorkflowRuntime(options.dbPath ? { dbPath: options.dbPath } : {})),
+      Effect.provide(makeWorkflowRuntime(runtimeConfig)),
     ) as Effect.Effect<WorkflowResult, ReleaseWorkflowError>
 
     return {

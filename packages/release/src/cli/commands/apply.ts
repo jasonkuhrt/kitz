@@ -82,10 +82,14 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
       return
     }
 
+    const runtime = yield* Api.Runtime.resolveReleaseRuntime()
+    const workflowRuntime = Api.Runtime.toWorkflowRuntimeConfig(runtime)
+
     // Execute with observable workflow
     const { events, execute } = yield* Api.Workflow.executeWorkflowObservable(plan, {
       dryRun: args.dryRun,
       ...(args.tag && { tag: args.tag }),
+      github: workflowRuntime.github,
     })
 
     // Fork event consumer to stream status updates
