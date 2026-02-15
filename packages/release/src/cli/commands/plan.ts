@@ -48,8 +48,16 @@ const args = Oak.Command.create()
   )
   .parameter(
     'comment',
-    Schema.UndefinedOr(Schema.Literal(true)).pipe(
-      Schema.annotations({ description: 'Output PR comment markdown to stdout' }),
+    Schema.transform(
+      Schema.UndefinedOr(Schema.Boolean),
+      Schema.Boolean,
+      {
+        strict: true,
+        decode: (v) => v ?? false,
+        encode: (v) => v,
+      },
+    ).pipe(
+      Schema.annotations({ description: 'Output PR comment markdown to stdout', default: false }),
     ),
   )
   .parameter(
@@ -66,8 +74,16 @@ const args = Oak.Command.create()
   )
   .parameter(
     'json j',
-    Schema.UndefinedOr(Schema.Literal(true)).pipe(
-      Schema.annotations({ description: 'Output enriched plan as JSON to stdout' }),
+    Schema.transform(
+      Schema.UndefinedOr(Schema.Boolean),
+      Schema.Boolean,
+      {
+        strict: true,
+        decode: (v) => v ?? false,
+        encode: (v) => v,
+      },
+    ).pipe(
+      Schema.annotations({ description: 'Output enriched plan as JSON to stdout', default: false }),
     ),
   )
   .parse()
