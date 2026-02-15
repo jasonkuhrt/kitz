@@ -1,46 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(rm:*)",
-      "Bash(pnpm test:*)",
-      "Bash(pnpm check:types:*)",
-      "mcp__ref__ref_search_documentation",
-      "mcp__ref__ref_read_url",
-      "mcp__playwright__browser_evaluate",
-      "mcp__effect-docs__effect_docs_search",
-      "Read(//Users/jasonkuhrt/.claude/docs/prompts/**)",
-      "Read(//Users/jasonkuhrt/.claude/docs/conventions/**)",
-      "Read(//Users/jasonkuhrt/.claude/**)",
-      "Read(//Users/jasonkuhrt/.config/fish/completions/**)",
-      "Read(//Users/jasonkuhrt/.config/zed/**)",
-      "Read(//Users/jasonkuhrt/projects/oraios/serena/**)",
-      "Read(//Users/jasonkuhrt/projects/the-guild-org/polen-copy/**)",
-      "Read(//Users/jasonkuhrt/.serena/**)",
-      "Read(//Users/jasonkuhrt/projects/jasonkuhrt/experiment-ts-chain/**)",
-      "Read(//tmp/chaindown-analysis/**)",
-      "Read(//Users/jasonkuhrt/projects/**)",
-      "Skill(committing-changes)",
-      "Skill(creating-packages)",
-      "Skill(creating-modules)",
-      "Skill(syncing-tsconfig-paths)",
-      "Skill(superpowers:brainstorm)",
-      "Skill(superpowers:brainstorming)",
-      "Skill(superpowers:using-git-worktrees)",
-      "Skill(superpowers:writing-plans)",
-      "Skill(authoring-global-scripts)",
-      "Skill(superpowers:subagent-driven-development)",
-      "Skill(superpowers:finishing-a-development-branch)",
-      "Skill(writing-tests)",
-      "Skill(pr-address-feedback)",
-      "Skill(running-scripts)",
-      "Skill(using-effect-schema)",
-      "Skill(using-string-builder)",
-      "Skill(plugin-dev:skill-development)",
-      "Skill(creating-rules)",
-      "Skill(kitz-cli-output)",
-      "Skill(kitz-fs)",
-      "Skill(kitz-data-modeling)",
-      "Skill(kitz-services)"
+      "Bash(*)",
+      "Read(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Skill(*)",
+      "mcp__ref__*",
+      "mcp__serena__*",
+      "mcp__effect-docs__*",
+      "mcp__playwright__*"
     ],
     "deny": [],
     "additionalDirectories": [
@@ -52,5 +21,6 @@
       "/Users/jasonkuhrt/projects/jasonkuhrt/flo"
     ]
   },
-  "outputStyle": "Explanatory"
+  "outputStyle": "Explanatory",
+  "prefersReducedMotion": false
 }
