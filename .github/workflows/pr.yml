@@ -253,98 +253,47 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Build release package
         run: pnpm turbo run build --filter=@kitz/release
-      - name: Generate PR release plan
-        env:
-          CLI_PARAMETER_TYPE: pr
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          node packages/release/build/cli/cli.js plan > /tmp/release-plan-output.txt
-      - name: Build release plan comment body
-        run: |
-          node <<'NODE'
-          const fs = require('node:fs')
-
-          const marker = '<!-- kitz-release-plan -->'
-          const plan = JSON.parse(fs.readFileSync('.release/plan.json', 'utf8'))
-          const cliOutput = fs.readFileSync('/tmp/release-plan-output.txt', 'utf8')
-
-          const all = [...plan.releases, ...plan.cascades]
-          const tableRows = all.slice(0, 80).map((item) => {
-            const kind = plan.cascades.includes(item) ? 'cascade' : 'primary'
-            const name = item.package.name.moniker ?? item.package.name.name ?? String(item.package.name)
-            const version = `0.0.0-pr.${item.prerelease.prNumber}.${item.prerelease.iteration}.${item.prerelease.sha}`
-            return `| \`${name}\` | \`${version}\` | ${kind} | ${item.commits.length} |`
-          })
-
-          const lines = [
-            marker,
-            '## Release Plan',
-            '',
-            `Generated for PR #${plan.releases[0]?.prerelease?.prNumber ?? 'unknown'} on ${plan.timestamp}.`,
-            `Primary: **${plan.releases.length}**, Cascades: **${plan.cascades.length}**, Total: **${all.length}**.`,
-            '',
-            '| Package | Planned Version | Kind | Commits |',
-            '| --- | --- | --- | ---: |',
-            ...tableRows,
-          ]
-
-          if (all.length > tableRows.length) {
-            lines.push(`| _...truncated_ |  |  |  |`)
-            lines.push(``)
-            lines.push(`Showing first ${tableRows.length} of ${all.length} planned releases.`)
-          }
-
-          const cliLines = cliOutput.trim().split('\n')
-          lines.push('')
-          lines.push('<details><summary>CLI output</summary>')
-          lines.push('')
-          lines.push('```text')
-          lines.push(...cliLines.slice(0, 240))
-          if (cliLines.length > 240) {
-            lines.push('...truncated...')
-          }
-          lines.push('```')
-          lines.push('</details>')
-
-          fs.writeFileSync('/tmp/release-plan-comment.md', lines.join('\n'))
-          NODE
-      - name: Upsert PR release plan comment
+      - name: Extract publish history from existing comment
         uses: actions/github-script@v7
+        id: history
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('node:fs')
             const marker = '<!-- kitz-release-plan -->'
-            const body = fs.readFileSync('/tmp/release-plan-comment.md', 'utf8')
             const { owner, repo } = context.repo
             const issue_number = context.issue.number
 
             const comments = await github.paginate(github.rest.issues.listComments, {
-              owner,
-              repo,
-              issue_number,
-              per_page: 100,
+              owner, repo, issue_number, per_page: 100,
             })
-
-            const existing = comments.find((c) =>
-              c.user?.type === 'Bot' &&
-              typeof c.body === 'string' &&
-              c.body.includes(marker),
+            const existing = comments.find(c =>
+              c.user?.type === 'Bot' && c.body?.includes(marker)
             )
 
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner,
-                repo,
-                comment_id: existing.id,
-                body,
-              })
-            } else {
-              await github.rest.issues.createComment({
-                owner,
-                repo,
-                issue_number,
-                body,
-              })
-            }
+            const historyRe = /<!-- kitz-release-publish-history\n([\s\S]*?)\n-->/
+            const match = existing?.body?.match(historyRe)
+            const history = match ? match[1] : '{"publishes":[]}'
+            fs.writeFileSync('/tmp/publish-history.json', history)
+            core.info(`Extracted publish history: ${history.length} bytes`)
+      - name: Generate enriched plan JSON
+        env:
+          CLI_PARAMETER_TYPE: pr
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          node packages/release/build/cli/cli.js plan --json \
+            --publish-history /tmp/publish-history.json \
+            > /tmp/enriched-plan.json
+      - name: Render release plan comment
+        env:
+          CLI_PARAMETER_FORMAT: comment
+        run: |
+          node packages/release/build/cli/cli.js render \
+            --from-file /tmp/enriched-plan.json \
+            > /tmp/release-plan-comment.md
+      - name: Upsert PR release plan comment
+        uses: ./.github/actions/upsert-pr-comment
+        with:
+          file: /tmp/release-plan-comment.md
+          github-token: ${{ secrets.GITHUB_TOKEN }}

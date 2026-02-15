@@ -15,6 +15,7 @@ import { Effect, Layer } from 'effect'
  * - status [pkg...] - Show unreleased changes
  * - plan <type>     - Generate release plan (stable|preview|pr)
  * - apply           - Execute release plan
+ * - render <format> - Render enriched plan data (comment|tree)
  * - log [pkg]       - Output changelog
  * - init            - Initialize release in project
  */

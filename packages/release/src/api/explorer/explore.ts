@@ -35,7 +35,7 @@ const parseGitHubRemote = (url: string): { owner: string; repo: string } | null 
   return { owner: match[1]!, repo: match[2]! }
 }
 
-const resolveReleaseTarget = (
+export const resolveReleaseTarget = (
   vars: Record<string, string | undefined>,
 ): Effect.Effect<GitIdentity, ExplorerError, Git.Git> =>
   Effect.gen(function*() {

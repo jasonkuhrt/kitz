@@ -1,3 +1,4 @@
+import { FileSystem } from '@effect/platform'
 import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'
@@ -45,6 +46,30 @@ const args = Oak.Command.create()
       Schema.annotations({ description: 'Dist-tag for preview (default: next)' }),
     ),
   )
+  .parameter(
+    'comment',
+    Schema.UndefinedOr(Schema.Literal(true)).pipe(
+      Schema.annotations({ description: 'Output PR comment markdown to stdout' }),
+    ),
+  )
+  .parameter(
+    'viz',
+    Schema.UndefinedOr(Schema.Literal('tree')).pipe(
+      Schema.annotations({ description: 'Output tree visualization to stdout' }),
+    ),
+  )
+  .parameter(
+    'publish-history',
+    Schema.UndefinedOr(Schema.String).pipe(
+      Schema.annotations({ description: 'Path to JSON file with publish history (from existing PR comment)' }),
+    ),
+  )
+  .parameter(
+    'json j',
+    Schema.UndefinedOr(Schema.Literal(true)).pipe(
+      Schema.annotations({ description: 'Output enriched plan as JSON to stdout' }),
+    ),
+  )
   .parse()
 
 Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
@@ -70,7 +95,12 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     const header = Str.Builder()
     header`Generating ${args.type} release plan...`
     header``
-    yield* Console.log(header.render())
+
+    // Only show human-readable header when not in machine output mode
+    const machineOutput = args.comment || args.viz || args.json
+    if (!machineOutput) {
+      yield* Console.log(header.render())
+    }
 
     // Analyze first — the expensive analytical core
     const tags = yield* git.getTags()
@@ -96,9 +126,6 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
       return
     }
 
-    // Display plan
-    yield* Console.log(Api.Planner.renderPlan(plan))
-
     // Write plan file using resource
     const env = yield* Env.Env
     const planDir = Fs.Path.join(env.cwd, Api.Planner.PLAN_DIR)
@@ -109,9 +136,46 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     // Write plan using schema-validated resource
     yield* Api.Planner.resource.write(plan, planDir)
 
-    const done = Str.Builder()
-    done`Plan written to ${Fs.Path.toString(Api.Planner.PLAN_FILE)}`
-    done`Run 'release apply' to execute.`
-    yield* Console.log(done.render())
+    // Machine output modes: --comment or --viz
+    if (machineOutput) {
+      const prNumber = Api.Planner.detectPrNumber(env.vars) ?? 0
+      const github = yield* Api.Planner.resolveGitHubContext(prNumber)
+
+      // Read publish history from file if provided
+      let publishHistory: Api.Planner.PublishRecord[] = []
+      if (args.publishHistory) {
+        const fs = yield* FileSystem.FileSystem
+        const content = yield* fs.readFileString(args.publishHistory)
+        try {
+          const parsed = JSON.parse(content)
+          if (parsed?.publishes && Array.isArray(parsed.publishes)) {
+            publishHistory = parsed.publishes
+          }
+        } catch {
+          // Malformed JSON — proceed with empty history
+        }
+      }
+
+      const commentData = Api.Planner.enrichPlan(plan, { github, publishHistory })
+
+      if (args.json) {
+        const serialized = Api.Planner.serializeCommentData(commentData)
+        yield* Console.log(JSON.stringify(serialized, null, 2))
+      }
+      if (args.comment) {
+        yield* Console.log(Api.Planner.renderComment(commentData))
+      }
+      if (args.viz === 'tree') {
+        yield* Console.log(Api.Planner.renderTree(commentData))
+      }
+    } else {
+      // Human-readable output
+      yield* Console.log(Api.Planner.renderPlan(plan))
+
+      const done = Str.Builder()
+      done`Plan written to ${Fs.Path.toString(Api.Planner.PLAN_FILE)}`
+      done`Run 'release apply' to execute.`
+      yield* Console.log(done.render())
+    }
   }),
 )
