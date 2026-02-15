@@ -75,17 +75,21 @@ describe('explore', () => {
     }
   })
 
-  test('fails when token is missing', async () => {
+  test('succeeds with null credentials when token is missing', async () => {
     const result = await runExplore(
       {
         GITHUB_REPOSITORY: 'kitz-org/kitz',
       },
     )
 
-    expect(result._tag).toBe('Left')
-    if (result._tag === 'Left') {
-      expect(result.left._tag).toBe('ExplorerError')
-      expect(result.left.context.detail).toContain('Missing GITHUB_TOKEN')
+    expect(result._tag).toBe('Right')
+    if (result._tag === 'Right') {
+      expect(result.right.github.target).toEqual({
+        owner: 'kitz-org',
+        repo: 'kitz',
+        source: 'env:GITHUB_REPOSITORY',
+      })
+      expect(result.right.github.credentials).toBeNull()
     }
   })
 

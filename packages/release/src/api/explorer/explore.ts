@@ -113,18 +113,10 @@ export const resolveReleaseTarget = (
 
 const resolveGithubToken = (
   vars: Record<string, string | undefined>,
-): Effect.Effect<string, ExplorerError> => {
+): string | null => {
   const token = vars['GITHUB_TOKEN']
-  if (!token || token.trim() === '') {
-    return Effect.fail(
-      new ExplorerError({
-        context: {
-          detail: 'Missing GITHUB_TOKEN. Export GITHUB_TOKEN with a token that can create releases.',
-        },
-      }),
-    )
-  }
-  return Effect.succeed(token)
+  if (!token || token.trim() === '') return null
+  return token
 }
 
 // ---------------------------------------------------------------------------
@@ -147,7 +139,7 @@ export const explore = (): Effect.Effect<
 
     const ci = detectExecutionContext(vars)
     const target = yield* resolveReleaseTarget(vars)
-    const githubToken = yield* resolveGithubToken(vars)
+    const githubToken = resolveGithubToken(vars)
 
     // Gather real git state
     const branch = yield* git.getCurrentBranch()
@@ -158,10 +150,9 @@ export const explore = (): Effect.Effect<
       ci,
       github: {
         target,
-        credentials: {
-          token: githubToken,
-          source: 'env:GITHUB_TOKEN',
-        },
+        credentials: githubToken
+          ? { token: githubToken, source: 'env:GITHUB_TOKEN' as const }
+          : null,
       },
       npm: {
         authenticated: false,
