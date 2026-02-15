@@ -49,9 +49,11 @@ const args = Oak.Command.create()
 
 Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
   Effect.gen(function*() {
+    const git = yield* Git.Git
+
     // Load config and scan packages
     const _config = yield* Api.Config.load()
-    const packages = yield* Api.Workspace.scan
+    const packages = yield* Api.Analyzer.Workspace.scan
 
     if (packages.length === 0) {
       yield* Console.log('No packages found.')
@@ -70,12 +72,23 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     header``
     yield* Console.log(header.render())
 
+    // Analyze first — the expensive analytical core
+    const tags = yield* git.getTags()
+    const analysis = yield* Api.Analyzer.analyze({
+      packages,
+      tags,
+      filter: args.pkg ? [...args.pkg] : undefined,
+      exclude: args.exclude ? [...args.exclude] : undefined,
+    })
+
+    // Plan — lightweight version projection
+    const ctx = { packages }
     const plan = yield* (
       args.type === 'stable'
-        ? Api.Plan.stable({ packages }, options)
+        ? Api.Planner.stable(analysis, ctx, options)
         : args.type === 'preview'
-        ? Api.Plan.preview({ packages }, options)
-        : Api.Plan.pr({ packages }, options)
+        ? Api.Planner.preview(analysis, ctx, options)
+        : Api.Planner.pr(analysis, ctx, options)
     )
 
     if (plan.releases.length === 0) {
@@ -84,20 +97,20 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     }
 
     // Display plan
-    yield* Console.log(Api.Plan.renderPlan(plan))
+    yield* Console.log(Api.Planner.renderPlan(plan))
 
     // Write plan file using resource
     const env = yield* Env.Env
-    const planDir = Fs.Path.join(env.cwd, Api.Plan.PLAN_DIR)
+    const planDir = Fs.Path.join(env.cwd, Api.Planner.PLAN_DIR)
 
     // Ensure directory exists
     yield* Fs.write(planDir, { recursive: true })
 
     // Write plan using schema-validated resource
-    yield* Api.Plan.resource.write(plan, planDir)
+    yield* Api.Planner.resource.write(plan, planDir)
 
     const done = Str.Builder()
-    done`Plan written to ${Fs.Path.toString(Api.Plan.PLAN_FILE)}`
+    done`Plan written to ${Fs.Path.toString(Api.Planner.PLAN_FILE)}`
     done`Run 'release apply' to execute.`
     yield* Console.log(done.render())
   }),

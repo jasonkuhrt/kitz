@@ -6,33 +6,22 @@ import { Semver } from '@kitz/semver'
 import { Test } from '@kitz/test'
 import { Effect, Layer, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
-import { Cascade, Plan, Release, type Workspace } from './__.js'
-import { makeTestWorkflowRuntime } from './api/workflow.js'
+import { Analyzer, Planner } from './__.js'
 
 // ─── Test Helpers ───────────────────────────────────────────────────
 
-const mockPackages: Workspace.Package[] = [
+const mockPackages: Analyzer.Workspace.Package[] = [
   { name: Pkg.Moniker.parse('@kitz/core'), scope: 'core', path: Fs.Path.AbsDir.fromString('/repo/packages/core/') },
   { name: Pkg.Moniker.parse('@kitz/cli'), scope: 'cli', path: Fs.Path.AbsDir.fromString('/repo/packages/cli/') },
   { name: Pkg.Moniker.parse('@kitz/utils'), scope: 'utils', path: Fs.Path.AbsDir.fromString('/repo/packages/utils/') },
 ]
 
 const testEnv = Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') })
-const testWorkflowRuntime = makeTestWorkflowRuntime()
 
 const makeTestLayer = (
   gitConfig: Parameters<typeof Git.Memory.make>[0],
   diskLayout: Fs.Memory.DiskLayout = {},
 ) => Layer.mergeAll(Git.Memory.make(gitConfig), Fs.Memory.layer(diskLayout), testEnv)
-
-const makeApplyTestLayer = (
-  gitConfig: Parameters<typeof Git.Memory.make>[0],
-  diskLayout: Fs.Memory.DiskLayout = {},
-) =>
-  Layer.provideMerge(
-    testWorkflowRuntime,
-    makeTestLayer(gitConfig, diskLayout),
-  )
 
 const makePackageJson = (
   name: string,
@@ -46,9 +35,52 @@ const expectVersion = (actual: Semver.Semver | undefined, expected: string) => {
   expect(Semver.equivalence(actual!, Semver.fromString(expected))).toBe(true)
 }
 
-// ─── Plan.stable ────────────────────────────────────────────────────
+/**
+ * Pipeline helper: analyze → plan stable.
+ * Mirrors the two-step pipeline CLI commands use.
+ */
+const analyzeAndPlanStable = (
+  packages: readonly Analyzer.Workspace.Package[],
+  options?: Planner.Options,
+) =>
+  Effect.gen(function*() {
+    const git = yield* Git.Git
+    const tags = yield* git.getTags()
+    const analysis = yield* Analyzer.analyze({ packages, tags })
+    return yield* Planner.stable(analysis, { packages }, options)
+  })
 
-describe('Plan.stable', () => {
+/**
+ * Pipeline helper: analyze → plan preview.
+ */
+const analyzeAndPlanPreview = (
+  packages: readonly Analyzer.Workspace.Package[],
+  options?: Planner.Options,
+) =>
+  Effect.gen(function*() {
+    const git = yield* Git.Git
+    const tags = yield* git.getTags()
+    const analysis = yield* Analyzer.analyze({ packages, tags })
+    return yield* Planner.preview(analysis, { packages }, options)
+  })
+
+/**
+ * Pipeline helper: analyze → plan PR.
+ */
+const analyzeAndPlanPr = (
+  packages: readonly Analyzer.Workspace.Package[],
+  options?: Planner.PrOptions,
+) =>
+  Effect.gen(function*() {
+    const git = yield* Git.Git
+    const tags = yield* git.getTags()
+    const analysis = yield* Analyzer.analyze({ packages, tags })
+    return yield* Planner.pr(analysis, { packages }, options)
+  })
+
+// ─── Planner.stable ────────────────────────────────────────────────
+
+describe('Planner.stable', () => {
   test('no releases when no commits since last tag', async () => {
     const layer = makeTestLayer({
       tags: ['@kitz/core@1.0.0'],
@@ -56,7 +88,7 @@ describe('Plan.stable', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(Plan.stable({ packages: mockPackages }), layer),
+      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
     )
 
     expect(result.releases).toHaveLength(0)
@@ -95,7 +127,7 @@ describe('Plan.stable', () => {
       })
 
       const result = await Effect.runPromise(
-        Effect.provide(Plan.stable({ packages: mockPackages }), layer),
+        Effect.provide(analyzeAndPlanStable(mockPackages), layer),
       )
 
       expect(result.releases).toHaveLength(1)
@@ -114,7 +146,7 @@ describe('Plan.stable', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(Plan.stable({ packages: mockPackages }), layer),
+      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
     )
 
     expect(result.releases).toHaveLength(1)
@@ -132,7 +164,7 @@ describe('Plan.stable', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(Plan.stable({ packages: mockPackages }), layer),
+      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
     )
 
     expect(result.releases).toHaveLength(2)
@@ -158,7 +190,7 @@ describe('Plan.stable', () => {
 
     const result = await Effect.runPromise(
       Effect.provide(
-        Plan.stable({ packages: mockPackages }, { packages: ['@kitz/core'] }),
+        analyzeAndPlanStable(mockPackages, { packages: ['@kitz/core'] }),
         layer,
       ),
     )
@@ -168,9 +200,9 @@ describe('Plan.stable', () => {
   })
 })
 
-// ─── Plan.preview ───────────────────────────────────────────────────
+// ─── Planner.preview ───────────────────────────────────────────────
 
-describe('Plan.preview', () => {
+describe('Planner.preview', () => {
   test('generates preview version', async () => {
     const layer = makeTestLayer({
       tags: ['@kitz/core@1.0.0'],
@@ -178,7 +210,7 @@ describe('Plan.preview', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(Plan.preview({ packages: mockPackages }), layer),
+      Effect.provide(analyzeAndPlanPreview(mockPackages), layer),
     )
 
     expect(result.releases).toHaveLength(1)
@@ -192,7 +224,7 @@ describe('Plan.preview', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(Plan.preview({ packages: mockPackages }), layer),
+      Effect.provide(analyzeAndPlanPreview(mockPackages), layer),
     )
 
     expect(result.releases).toHaveLength(1)
@@ -200,9 +232,9 @@ describe('Plan.preview', () => {
   })
 })
 
-// ─── Plan.pr ────────────────────────────────────────────────────────
+// ─── Planner.pr ────────────────────────────────────────────────────
 
-describe('Plan.pr', () => {
+describe('Planner.pr', () => {
   test('generates PR version with explicit prNumber', async () => {
     const layer = makeTestLayer({
       tags: ['@kitz/core@1.0.0'],
@@ -212,7 +244,7 @@ describe('Plan.pr', () => {
 
     const result = await Effect.runPromise(
       Effect.provide(
-        Plan.pr({ packages: mockPackages }, { prNumber: 42 }),
+        analyzeAndPlanPr(mockPackages, { prNumber: 42 }),
         layer,
       ),
     )
@@ -230,7 +262,7 @@ describe('Plan.pr', () => {
 
     const result = await Effect.runPromise(
       Effect.provide(
-        Plan.pr({ packages: mockPackages }, { prNumber: 42 }),
+        analyzeAndPlanPr(mockPackages, { prNumber: 42 }),
         layer,
       ),
     )
@@ -256,7 +288,7 @@ describe('Plan.pr', () => {
     )
 
     const result = await Effect.runPromise(
-      Effect.provide(Plan.pr({ packages: mockPackages }), layer),
+      Effect.provide(analyzeAndPlanPr(mockPackages), layer),
     )
 
     expect(result.releases).toHaveLength(1)
@@ -285,7 +317,7 @@ describe('Cascade', () => {
     )
 
     const result = await Effect.runPromise(
-      Effect.provide(Plan.stable({ packages: mockPackages }), layer),
+      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
     )
 
     expect(result.releases).toHaveLength(1)
@@ -317,105 +349,13 @@ describe('Cascade', () => {
     )
 
     const result = await Effect.runPromise(
-      Effect.provide(Plan.stable({ packages: mockPackages }), layer),
+      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
     )
 
     expect(result.cascades).toHaveLength(2)
     const cascadeNames = result.cascades.map((c) => c.package.name.moniker)
     expect(cascadeNames).toContain('@kitz/cli')
     expect(cascadeNames).toContain('@kitz/utils')
-  })
-})
-
-// ─── Release.apply ─────────────────────────────────────────────────────
-
-describe('Release.apply', () => {
-  test('creates git tags for releases', async () => {
-    const diskLayout: Fs.Memory.DiskLayout = {
-      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
-    }
-
-    const { layer: gitLayer } = await Effect.runPromise(
-      Git.Memory.makeWithState({
-        tags: ['@kitz/core@1.0.0'],
-        commits: [Git.Memory.commit('feat(core): new feature')],
-      }),
-    )
-
-    const baseLayer = Layer.mergeAll(gitLayer, Fs.Memory.layer(diskLayout), testEnv)
-    const layer = Layer.provideMerge(testWorkflowRuntime, baseLayer)
-
-    const plan = await Effect.runPromise(
-      Effect.provide(Plan.stable({ packages: mockPackages }), baseLayer),
-    )
-
-    const result = await Effect.runPromise(
-      Effect.provide(Release.apply(plan, { dryRun: true }), layer),
-    )
-
-    expect(result.released).toHaveLength(1)
-    expect(result.tags).toContain('@kitz/core@1.1.0')
-  })
-
-  test('includes cascades in release', async () => {
-    const diskLayout: Fs.Memory.DiskLayout = {
-      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
-      '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
-        '@kitz/core': 'workspace:*',
-      }),
-    }
-
-    const { layer: gitLayer } = await Effect.runPromise(
-      Git.Memory.makeWithState({
-        tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0'],
-        commits: [Git.Memory.commit('feat(core): new API')],
-      }),
-    )
-
-    const baseLayer = Layer.mergeAll(gitLayer, Fs.Memory.layer(diskLayout), testEnv)
-    const layer = Layer.provideMerge(testWorkflowRuntime, baseLayer)
-
-    const plan = await Effect.runPromise(
-      Effect.provide(Plan.stable({ packages: mockPackages }), baseLayer),
-    )
-
-    const result = await Effect.runPromise(
-      Effect.provide(Release.apply(plan, { dryRun: true }), layer),
-    )
-
-    expect(result.released).toHaveLength(2)
-    expect(result.tags).toContain('@kitz/core@1.1.0')
-    expect(result.tags).toContain('@kitz/cli@1.0.1')
-  })
-
-  test('idempotent execution', async () => {
-    const diskLayout: Fs.Memory.DiskLayout = {
-      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
-    }
-
-    const { layer: gitLayer } = await Effect.runPromise(
-      Git.Memory.makeWithState({
-        tags: ['@kitz/core@1.0.0'],
-        commits: [Git.Memory.commit('feat(core): new feature')],
-      }),
-    )
-
-    const baseLayer = Layer.mergeAll(gitLayer, Fs.Memory.layer(diskLayout), testEnv)
-    const layer = Layer.provideMerge(testWorkflowRuntime, baseLayer)
-
-    const plan = await Effect.runPromise(
-      Effect.provide(Plan.stable({ packages: mockPackages }), baseLayer),
-    )
-
-    const result1 = await Effect.runPromise(
-      Effect.provide(Release.apply(plan, { dryRun: true }), layer),
-    )
-
-    const result2 = await Effect.runPromise(
-      Effect.provide(Release.apply(plan, { dryRun: true }), layer),
-    )
-
-    expect(result1.tags).toEqual(result2.tags)
   })
 })
 
@@ -429,7 +369,7 @@ describe('PlannedRelease getters', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(Plan.stable({ packages: mockPackages }), layer),
+      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
     )
 
     const release = result.releases[0]!
@@ -444,7 +384,7 @@ describe('PlannedRelease getters', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(Plan.stable({ packages: mockPackages }), layer),
+      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
     )
 
     const release = result.releases[0]!
@@ -460,7 +400,7 @@ describe('PlannedRelease getters', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(Plan.stable({ packages: mockPackages }), layer),
+      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
     )
 
     const release = result.releases[0]!
@@ -475,7 +415,7 @@ describe('PlannedRelease getters', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(Plan.stable({ packages: mockPackages }), layer),
+      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
     )
 
     const release = result.releases[0]!

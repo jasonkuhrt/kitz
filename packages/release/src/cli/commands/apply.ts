@@ -56,11 +56,11 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     const env = yield* Env.Env
 
     // Load plan file using schema-validated resource
-    const planDir = Fs.Path.join(env.cwd, Api.Plan.PLAN_DIR)
-    const planFileOption = yield* Api.Plan.resource.read(planDir)
+    const planDir = Fs.Path.join(env.cwd, Api.Planner.PLAN_DIR)
+    const planFileOption = yield* Api.Planner.resource.read(planDir)
 
     if (Option.isNone(planFileOption)) {
-      yield* Console.error(`No release plan found at ${Fs.Path.toString(Api.Plan.PLAN_FILE)}`)
+      yield* Console.error(`No release plan found at ${Fs.Path.toString(Api.Planner.PLAN_FILE)}`)
       yield* Console.error(`Run 'release plan <type>' first to generate a plan.`)
       return env.exit(1)
     }
@@ -73,29 +73,29 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
 
     // Confirmation prompt (unless --yes)
     if (!args.yes && !args.dryRun) {
-      yield* Console.log(Api.Plan.renderApplyConfirmation(plan))
+      yield* Console.log(Api.Planner.renderApplyConfirmation(plan))
       return
     }
 
     if (args.dryRun) {
-      yield* Console.log(Api.Plan.renderApplyDryRun(plan))
+      yield* Console.log(Api.Planner.renderApplyDryRun(plan))
       return
     }
 
-    const runtime = yield* Api.Runtime.resolveReleaseRuntime()
-    const workflowRuntime = Api.Runtime.toWorkflowRuntimeConfig(runtime)
+    const recon = yield* Api.Explorer.explore()
+    const runtimeConfig = Api.Explorer.toExecutorRuntimeConfig(recon)
 
     // Execute with observable workflow
-    const { events, execute } = yield* Api.Workflow.executeWorkflowObservable(plan, {
+    const { events, execute } = yield* Api.Executor.executeObservable(plan, {
       dryRun: args.dryRun,
       ...(args.tag && { tag: args.tag }),
-      github: workflowRuntime.github,
+      github: runtimeConfig.github,
     })
 
     // Fork event consumer to stream status updates
     const eventFiber = yield* events.pipe(
       Stream.tap((event) => {
-        const line = Api.Workflow.formatLifecycleEvent(event)
+        const line = Api.Executor.formatLifecycleEvent(event)
         if (!line) return Effect.void
         return line.level === 'error' ? Console.error(line.message) : Console.log(line.message)
       }),
@@ -109,10 +109,10 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     // Wait for events to flush
     yield* Fiber.join(eventFiber)
 
-    yield* Console.log(Api.Plan.renderApplyDone(result.releasedPackages.length))
+    yield* Console.log(Api.Planner.renderApplyDone(result.releasedPackages.length))
 
     // Clean up plan file on success
-    const planPath = Fs.Path.join(env.cwd, Api.Plan.PLAN_FILE)
+    const planPath = Fs.Path.join(env.cwd, Api.Planner.PLAN_FILE)
     yield* Fs.remove(planPath)
   }),
 )

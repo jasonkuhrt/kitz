@@ -24,17 +24,21 @@ const args = Oak.Command.create()
 
 Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
   Effect.gen(function*() {
+    const git = yield* Git.Git
+
     // Load config and scan packages
     const _config = yield* Api.Config.load()
-    const packages = yield* Api.Workspace.scan
+    const packages = yield* Api.Analyzer.Workspace.scan
 
     if (packages.length === 0) {
       yield* Console.log('No packages found.')
       return
     }
 
-    // Plan what would be released
-    const plan = yield* Api.Plan.stable({ packages })
+    // Analyze then plan what would be released
+    const tags = yield* git.getTags()
+    const analysis = yield* Api.Analyzer.analyze({ packages, tags })
+    const plan = yield* Api.Planner.stable(analysis, { packages })
 
     if (plan.releases.length === 0) {
       yield* Console.log('No unreleased changes.')
@@ -42,13 +46,17 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     }
 
     // Display all pending releases
-    yield* Console.log(Api.Plan.renderStatus(plan.releases))
+    yield* Console.log(Api.Planner.renderStatus(plan.releases))
 
     // If specific packages requested, show cascade analysis
     if (args.packages && args.packages.length > 0) {
-      const tags = yield* Git.Git.pipe(Effect.flatMap((git) => git.getTags()))
-      const cascadeAnalysis = yield* Api.Cascade.analyzeRequested(packages, plan.releases, args.packages, tags)
-      yield* Console.log(Api.Plan.renderCascadeAnalysis(cascadeAnalysis))
+      const cascadeAnalysis = yield* Api.Planner.Cascade.analyzeRequested(
+        packages,
+        plan.releases,
+        args.packages,
+        tags,
+      )
+      yield* Console.log(Api.Planner.renderCascadeAnalysis(cascadeAnalysis))
     }
   }),
 )

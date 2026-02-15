@@ -53,7 +53,7 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer))(
     )
 
     // Scan packages
-    const packages = yield* Api.Workspace.scan
+    const packages = yield* Api.Analyzer.Workspace.scan
     yield* Console.log(`✓ Detected ${packages.length} package${packages.length === 1 ? '' : 's'}`)
 
     // Add .release/ to .gitignore

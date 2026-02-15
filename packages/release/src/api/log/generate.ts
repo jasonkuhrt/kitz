@@ -6,9 +6,10 @@ import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Option } from 'effect'
-import { ReleaseCommit } from '../release-commit.js'
-import type { Package } from '../scanner.js'
-import { aggregateByPackage, calculateNextVersion, extractImpacts, findLatestTagVersion } from '../version.js'
+import { ReleaseCommit } from '../analyzer/commit.js'
+import { aggregateByPackage, extractImpacts, findLatestTagVersion } from '../analyzer/version.js'
+import type { Package } from '../analyzer/workspace.js'
+import { calculateNextVersion } from '../planner/version.js'
 import { type CommitEntry, format, type FormattedChangelog } from './format.js'
 
 /**
