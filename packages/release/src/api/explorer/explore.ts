@@ -9,7 +9,7 @@ import type { CiContext, GitIdentity, Recon } from './models/__.js'
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-const detectPrNumber = (vars: Record<string, string | undefined>): number | null => {
+export const detectPrNumber = (vars: Record<string, string | undefined>): number | null => {
   if (vars['GITHUB_PR_NUMBER']) {
     const num = parseInt(vars['GITHUB_PR_NUMBER'], 10)
     if (!isNaN(num)) return num
