@@ -5,58 +5,58 @@ import { Resource } from '@kitz/resource'
 import { Effect } from 'effect'
 import { buildDependencyGraph } from '../analyzer/cascade.js'
 import type { Analysis } from '../analyzer/models/__.js'
-import { PrPrerelease } from '../analyzer/prerelease.js'
 import { findLatestPrNumber } from '../analyzer/version.js'
 import type { Package } from '../analyzer/workspace.js'
+import * as Version from '../version/__.js'
 import { detect as detectCascades } from './cascade.js'
 import { ReleaseError } from './errors.js'
 import { detectPrNumber } from './helpers.js'
-import { Pr } from './models/item-pr.js'
+import { Ephemeral } from './models/item-ephemeral.js'
 import type { Item } from './models/item.js'
 import { Plan } from './models/plan.js'
+import type { Context } from './official.js'
 import type { PrOptions } from './options.js'
-import type { Context } from './stable.js'
 
 /**
- * Detect cascades for PR releases with PR version format.
+ * Detect cascades for ephemeral releases with ephemeral version format.
  */
-const detectCascadesForPr = (
+const detectCascadesForEphemeral = (
   packages: Package[],
   primaryReleases: Item[],
   dependencyGraph: Map<string, string[]>,
   tags: string[],
   prNumber: number,
   sha: Git.Sha.Sha,
-): Pr[] => {
-  // Get standard cascades (as stable releases)
+): Ephemeral[] => {
+  // Get standard cascades (as official releases)
   const baseCascades = detectCascades(packages, primaryReleases, dependencyGraph, tags)
 
-  // Convert to PR releases
+  // Convert to ephemeral releases
   return baseCascades.map((cascade) => {
     const prReleaseNumber = findLatestPrNumber(cascade.package.name, prNumber, tags)
 
-    return Pr.make({
+    return Ephemeral.make({
       package: cascade.package,
-      prerelease: PrPrerelease.make({ prNumber, iteration: prReleaseNumber + 1, sha }),
+      prerelease: Version.Ephemeral.make({ prNumber, iteration: prReleaseNumber + 1, sha }),
       commits: cascade.commits,
     })
   })
 }
 
 /**
- * Plan a PR release from a pre-computed Analysis.
+ * Plan an ephemeral release from a pre-computed Analysis.
  *
- * Receives impacts from the Analyzer, applies PR version arithmetic,
- * and assembles a Plan. PR versions follow the pattern:
+ * Receives impacts from the Analyzer, applies ephemeral version arithmetic,
+ * and assembles a Plan. Ephemeral versions follow the pattern:
  * `0.0.0-pr.${prNumber}.${n}.${sha}`
  *
  * @example
  * ```ts
  * const analysis = yield* Analyzer.analyze(recon, packages)
- * const plan = yield* Planner.pr(analysis, ctx, { prNumber: 123 })
+ * const plan = yield* Planner.ephemeral(analysis, ctx, { prNumber: 123 })
  * ```
  */
-export const pr = (
+export const ephemeral = (
   analysis: Analysis,
   ctx: Context,
   options?: PrOptions,
@@ -87,8 +87,8 @@ export const pr = (
     const shaString = yield* git.getHeadSha()
     const sha = Git.Sha.make(shaString)
 
-    // 3. Transform analysis impacts to PR planned releases
-    const releases: Pr[] = []
+    // 3. Transform analysis impacts to ephemeral planned releases
+    const releases: Ephemeral[] = []
 
     for (const impact of analysis.impacts) {
       // Apply exclude filter
@@ -97,31 +97,31 @@ export const pr = (
       // Apply include filter
       if (options?.packages && !options.packages.includes(impact.package.name.moniker)) continue
 
-      // Find existing PR releases for this PR
-      const prReleaseNumber = findLatestPrNumber(impact.package.name, prNumber, analysis.tags)
+      // Find existing ephemeral releases for this PR
+      const prReleaseNumber = findLatestPrNumber(impact.package.name, prNumber, [...analysis.tags])
 
-      releases.push(Pr.make({
+      releases.push(Ephemeral.make({
         package: impact.package,
-        prerelease: PrPrerelease.make({ prNumber, iteration: prReleaseNumber + 1, sha }),
+        prerelease: Version.Ephemeral.make({ prNumber, iteration: prReleaseNumber + 1, sha }),
         commits: impact.commits,
       }))
     }
 
     // 4. Detect cascade releases
     const dependencyGraph = yield* buildDependencyGraph([...ctx.packages])
-    const cascades = detectCascadesForPr(
+    const cascades = detectCascadesForEphemeral(
       [...ctx.packages],
       releases,
       dependencyGraph,
-      analysis.tags,
+      [...analysis.tags],
       prNumber,
       sha,
     )
 
-    return Plan.withAnalysis({
-      type: 'pr',
+    return Plan.make({
+      lifecycle: 'ephemeral',
       timestamp: new Date().toISOString(),
       releases,
       cascades,
-    }, analysis)
+    })
   })

@@ -1,28 +1,28 @@
 import { Str } from '@kitz/core'
-import type { CommentData, EnrichedCascade, EnrichedRelease } from './comment-data.js'
+import type { Forecast, ForecastCascade, ForecastRelease } from '../forecaster/models.js'
 
 /**
- * Render a text tree visualization of the release plan.
+ * Render a text tree visualization of a forecast.
  *
  * Box-drawing characters with dot-leaders for column alignment.
  * Primary items sorted by commit count descending, top N shown.
  */
-export const renderTree = (data: CommentData, options?: { maxItems?: number }): string => {
-  const maxItems = options?.maxItems ?? 5
-  const totalPackages = data.releases.length + data.cascades.length
+export const renderTree = (forecast: Forecast, options?: { maxItems?: number }): string => {
+  const maxItems = options?.maxItems ?? 0
+  const totalPackages = forecast.releases.length + forecast.cascades.length
   const output = Str.Builder()
 
-  output`${data.planType} release plan · ${String(totalPackages)} packages`
+  output`release forecast ${Str.Char.middleDot} ${String(totalPackages)} packages`
 
-  const hasCascades = data.cascades.length > 0
+  const hasCascades = forecast.cascades.length > 0
   const primaryPrefix = hasCascades ? '│  ' : '   '
   const primaryBranch = hasCascades ? '├─' : '└─'
 
   // Primary releases
-  output`${primaryBranch} primary (${String(data.releases.length)})`
+  output`${primaryBranch} primary (${String(forecast.releases.length)})`
 
-  const sorted = [...data.releases].sort((a, b) => b.commits.length - a.commits.length)
-  const shown = sorted.slice(0, maxItems)
+  const sorted = [...forecast.releases].sort((a, b) => b.commits.length - a.commits.length)
+  const shown = maxItems > 0 ? sorted.slice(0, maxItems) : sorted
   const remaining = sorted.length - shown.length
 
   for (let i = 0; i < shown.length; i++) {
@@ -39,11 +39,11 @@ export const renderTree = (data: CommentData, options?: { maxItems?: number }): 
   // Cascades
   if (hasCascades) {
     output`│`
-    output`└─ cascades (${String(data.cascades.length)})`
+    output`└─ cascades (${String(forecast.cascades.length)})`
 
-    for (let i = 0; i < data.cascades.length; i++) {
-      const cascade = data.cascades[i]!
-      const isLast = i === data.cascades.length - 1
+    for (let i = 0; i < forecast.cascades.length; i++) {
+      const cascade = forecast.cascades[i]!
+      const isLast = i === forecast.cascades.length - 1
       const branch = isLast ? '└─' : '├─'
       output`   ${branch} ${formatCascadeLine(cascade)}`
     }
@@ -56,8 +56,8 @@ export const renderTree = (data: CommentData, options?: { maxItems?: number }): 
 // Helpers
 // ---------------------------------------------------------------------------
 
-const formatPrimaryLine = (release: EnrichedRelease): string => {
-  const name = release.item.package.name.moniker
+const formatPrimaryLine = (release: ForecastRelease): string => {
+  const name = release.packageName
   const commitCount = release.commits.length
   const latestCommit = release.commits[0]
 
@@ -69,10 +69,10 @@ const formatPrimaryLine = (release: EnrichedRelease): string => {
   return `${dotLeader(name, 24)} ${countLabel}${commitSuffix}`
 }
 
-const formatCascadeLine = (cascade: EnrichedCascade): string => {
-  const name = cascade.item.package.name.moniker
-  const viaLabel = cascade.via.length > 0
-    ? `via ${cascade.via.join(', ')}`
+const formatCascadeLine = (cascade: ForecastCascade): string => {
+  const name = cascade.packageName
+  const viaLabel = cascade.triggeredBy.length > 0
+    ? `via ${cascade.triggeredBy.join(', ')}`
     : 'cascade'
   return `${dotLeader(name, 24)} ${viaLabel}`
 }

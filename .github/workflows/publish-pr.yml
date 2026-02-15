@@ -95,7 +95,7 @@ jobs:
       - name: Generate plan and publish
         if: steps.gate.outputs.should-publish == 'true'
         env:
-          CLI_PARAMETER_TYPE: pr
+          CLI_PARAMETER_LIFECYCLE: ephemeral
           GITHUB_PR_NUMBER: ${{ github.event.issue.number }}
           PR_NUMBER: ${{ github.event.issue.number }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

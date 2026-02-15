@@ -278,7 +278,7 @@ jobs:
             core.info(`Extracted publish history: ${history.length} bytes`)
       - name: Generate enriched plan JSON
         env:
-          CLI_PARAMETER_TYPE: pr
+          CLI_PARAMETER_LIFECYCLE: ephemeral
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |

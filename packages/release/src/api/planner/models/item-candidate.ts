@@ -1,18 +1,18 @@
 import { Semver } from '@kitz/semver'
 import { Option, Schema as S } from 'effect'
-import { PreviewPrerelease } from '../../analyzer/prerelease.js'
-import { ItemBaseFields } from './item-stable.js'
+import * as Version from '../../version/__.js'
+import { ItemBaseFields } from './item-official.js'
 
 /**
- * A preview (canary) release plan item.
+ * A candidate release plan item.
  * Version format: `${baseVersion}-next.${iteration}`
  */
-export class Preview extends S.Class<Preview>('Preview')({
+export class Candidate extends S.TaggedClass<Candidate>()('Candidate', {
   ...ItemBaseFields,
   baseVersion: Semver.Semver,
-  prerelease: PreviewPrerelease,
+  prerelease: Version.Candidate,
 }) {
-  static is = S.is(Preview)
+  static is = S.is(Candidate)
 
   get nextVersion(): Semver.Semver {
     return Semver.withPre(this.baseVersion, ['next', this.prerelease.iteration])

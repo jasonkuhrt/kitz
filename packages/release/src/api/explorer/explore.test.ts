@@ -26,7 +26,7 @@ describe('explore', () => {
 
     expect(result._tag).toBe('Right')
     if (result._tag === 'Right') {
-      expect(result.right.ci).toEqual({ detected: true, provider: 'github-actions' })
+      expect(result.right.ci).toEqual({ detected: true, provider: 'github-actions', prNumber: null })
       expect(result.right.github.target).toEqual({
         owner: 'kitz-org',
         repo: 'kitz',
@@ -47,7 +47,7 @@ describe('explore', () => {
 
     expect(result._tag).toBe('Right')
     if (result._tag === 'Right') {
-      expect(result.right.ci).toEqual({ detected: false, provider: null })
+      expect(result.right.ci).toEqual({ detected: false, provider: null, prNumber: null })
       expect(result.right.github.target).toEqual({
         owner: 'jasonkuhrt',
         repo: 'kitz',
@@ -123,7 +123,7 @@ describe('explore', () => {
 describe('toExecutorRuntimeConfig', () => {
   test('maps recon to executor runtime github config', () => {
     const recon = {
-      ci: { detected: false as const, provider: null },
+      ci: { detected: false as const, provider: null, prNumber: null },
       github: {
         target: {
           owner: 'jasonkuhrt',
@@ -143,6 +143,7 @@ describe('toExecutorRuntimeConfig', () => {
       git: {
         clean: true,
         branch: 'main',
+        headSha: 'abc1234',
         remotes: {},
       },
     }

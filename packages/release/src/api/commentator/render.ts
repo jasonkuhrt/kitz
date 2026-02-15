@@ -1,16 +1,16 @@
 import { Str } from '@kitz/core'
-import { Option } from 'effect'
-import type { CommentData, CommitDisplay, EnrichedCascade, EnrichedRelease, PublishRecord } from './comment-data.js'
-import type { PublishState } from './comment-metadata.js'
-import { renderMetadataBlock } from './comment-metadata.js'
-import { renderTree } from './render-tree.js'
+import type { CommitDisplay, Forecast, ForecastCascade, ForecastRelease } from '../forecaster/models.js'
+import { renderTree } from '../renderer/tree.js'
+import type { PublishRecord, PublishState } from './metadata.js'
+import { renderMetadataBlock } from './metadata.js'
 
 // ---------------------------------------------------------------------------
 // Options
 // ---------------------------------------------------------------------------
 
-export interface CommentRenderOptions {
+export interface RenderOptions {
   readonly publishState?: PublishState
+  readonly publishHistory?: readonly PublishRecord[]
 }
 
 // ---------------------------------------------------------------------------
@@ -18,24 +18,24 @@ export interface CommentRenderOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * Render the full PR comment markdown from enriched plan data.
+ * Render the full PR comment markdown from a Forecast.
  *
  * Produces nested list format with checkboxes, commit SHA links,
- * stable version projections, publish history, and embedded tree.
+ * official version projections, publish history, and embedded tree.
  */
-export const renderComment = (
-  data: CommentData,
-  options?: CommentRenderOptions,
+export const render = (
+  forecast: Forecast,
+  options?: RenderOptions,
 ): string => {
-  const { github } = data
   const state = options?.publishState ?? 'idle'
+  const publishHistory = options?.publishHistory ?? []
   const output = Str.Builder()
 
   // Metadata block (invisible HTML comments)
   output(renderMetadataBlock({
-    headSha: github.headSha,
+    headSha: forecast.headSha,
     publishState: state,
-    publishHistory: data.releases.flatMap((r) => [...r.publishedVersions]),
+    publishHistory,
   }))
   output``
 
@@ -44,46 +44,46 @@ export const renderComment = (
   output``
 
   // Summary line
-  const totalPackages = data.releases.length + data.cascades.length
+  const totalPackages = forecast.releases.length + forecast.cascades.length
   const headLink = `[\`${
-    github.headSha.slice(0, 7)
-  }\`](https://github.com/${github.owner}/${github.repo}/commit/${github.headSha})`
+    forecast.headSha.slice(0, 7)
+  }\`](https://github.com/${forecast.owner}/${forecast.repo}/commit/${forecast.headSha})`
   output`${String(totalPackages)} packages ${Str.Char.middleDot} ${
-    String(data.releases.length)
-  } primary ${Str.Char.middleDot} ${String(data.cascades.length)} cascades ${Str.Char.middleDot} head ${headLink}`
+    String(forecast.releases.length)
+  } primary ${Str.Char.middleDot} ${String(forecast.cascades.length)} cascades ${Str.Char.middleDot} head ${headLink}`
   output``
 
   // Status banner (if publishing/published/failed)
   if (state !== 'idle') {
-    output(renderStatusBanner(state, github.owner, github.repo))
+    output(renderStatusBanner(state, forecast.owner, forecast.repo))
     output``
   }
 
   // Explainer toggle
-  output(renderExplainer(data))
+  output(renderExplainer())
   output``
 
   output`---`
   output``
 
   // Primary releases
-  if (data.releases.length > 0) {
-    output`### Primary (${String(data.releases.length)})`
+  if (forecast.releases.length > 0) {
+    output`### Primary (${String(forecast.releases.length)})`
     output``
 
-    const sorted = [...data.releases].sort((a, b) => b.commits.length - a.commits.length)
+    const sorted = [...forecast.releases].sort((a, b) => b.commits.length - a.commits.length)
     for (const release of sorted) {
-      output(renderReleaseItem(release))
+      output(renderReleaseItem(release, publishHistory))
       output``
     }
   }
 
   // Cascade releases
-  if (data.cascades.length > 0) {
-    output`### Cascades (${String(data.cascades.length)})`
+  if (forecast.cascades.length > 0) {
+    output`### Cascades (${String(forecast.cascades.length)})`
     output``
 
-    for (const cascade of data.cascades) {
+    for (const cascade of forecast.cascades) {
       output(renderCascadeItem(cascade))
       output``
     }
@@ -93,7 +93,7 @@ export const renderComment = (
   output`<details><summary>Tree</summary>`
   output``
   output`\`\`\`text`
-  output(renderTree(data))
+  output(renderTree(forecast, { maxItems: 5 }))
   output`\`\`\``
   output``
   output`</details>`
@@ -106,12 +106,12 @@ export const renderComment = (
 // ---------------------------------------------------------------------------
 
 const renderReleaseItem = (
-  release: EnrichedRelease,
+  release: ForecastRelease,
+  publishHistory: readonly PublishRecord[],
 ): string => {
-  const name = release.item.package.name.moniker
+  const name = release.packageName
   const commitCount = release.commits.length
   const sourceLink = `[${Str.Char.blackSquare}](${release.sourceUrl})`
-  const versionStr = release.item.nextVersion.toString()
 
   const lines: string[] = []
 
@@ -123,25 +123,26 @@ const renderReleaseItem = (
     lines.push(`  ${renderCommitShas(release.commits, 5)}`)
   }
 
-  // Version line: PR version → stable projection
-  const versionLine = renderVersionLine(versionStr, release)
+  // Version line: official version projection
+  const versionLine = renderVersionLine(release)
   lines.push(`  ${versionLine}`)
 
   // Published versions (if any)
-  if (release.publishedVersions.length > 0) {
-    lines.push(`  published: ${renderPublishedVersions(release.publishedVersions, name)}`)
+  const published = publishHistory.filter((p) => p.package === name)
+  if (published.length > 0) {
+    lines.push(`  published: ${renderPublishedVersions(published, name)}`)
   }
 
   return lines.join(Str.Char.newline)
 }
 
 const renderCascadeItem = (
-  cascade: EnrichedCascade,
+  cascade: ForecastCascade,
 ): string => {
-  const name = cascade.item.package.name.moniker
+  const name = cascade.packageName
   const sourceLink = `[${Str.Char.blackSquare}](${cascade.sourceUrl})`
-  const viaStr = cascade.via.length > 0 ? ` via \`${cascade.via.join('`, `')}\`` : ''
-  const versionStr = cascade.item.nextVersion.toString()
+  const viaStr = cascade.triggeredBy.length > 0 ? ` via \`${cascade.triggeredBy.join('`, `')}\`` : ''
+  const versionStr = cascade.nextOfficialVersion.toString()
 
   const lines: string[] = []
   lines.push(`- [ ] ${sourceLink} **${name}**${viaStr}`)
@@ -165,18 +166,9 @@ const renderCommitShas = (commits: readonly CommitDisplay[], max: number): strin
   return shas.join(' ')
 }
 
-const renderVersionLine = (prVersion: string, release: EnrichedRelease): string => {
-  const projection = release.stableProjection
-  if (!projection) {
-    return `\`${prVersion}\``
-  }
-
-  const stableStr = projection.version.toString()
-  const currentStr = Option.match(projection.current, {
-    onNone: () => 'new',
-    onSome: (v) => v.toString(),
-  })
-  return `\`${prVersion}\` ${Str.Char.rightwardsArrow} merged: **\`${stableStr}\`** ${projection.bump} (from ${currentStr})`
+const renderVersionLine = (release: ForecastRelease): string => {
+  const officialStr = release.nextOfficialVersion.toString()
+  return `**\`${officialStr}\`** ${release.bump} (from ${release.currentVersionDisplay})`
 }
 
 const renderPublishedVersions = (versions: readonly PublishRecord[], packageName: string): string => {
@@ -224,18 +216,18 @@ const renderStatusBanner = (state: PublishState, owner: string, repo: string): s
 // Explainer
 // ---------------------------------------------------------------------------
 
-const renderExplainer = (data: CommentData): string => {
-  const prNumber = data.github.prNumber
+const renderExplainer = (): string => {
   const lines = [
     '<details><summary>How release calculation works</summary>',
     '',
     '**Primary** — packages with commits directly touching their source in this PR.',
     '**Cascade** — packages that depend on a primary release; re-published for consistency.',
     '',
-    '| Context | Version Format | Example |',
-    '| --- | --- | --- |',
-    `| PR | \`0.0.0-pr.<pr>.<iter>.<sha>\` | \`0.0.0-pr.${prNumber}.1.${data.github.headSha.slice(0, 7)}\` |`,
-    '| Stable | Semver bump from conventional commits | `0.2.0` |',
+    '| Context | Version Format |',
+    '| --- | --- |',
+    '| Ephemeral (PR) | `0.0.0-pr.<N>.<iter>.<sha>` |',
+    '| Candidate | `<base>-next.<N>` |',
+    '| Official | Semver bump from conventional commits |',
     '',
     'Bump rules: `feat()` → minor · `fix()` → patch · `!` → major',
     'Cascades inherit patch bump.',

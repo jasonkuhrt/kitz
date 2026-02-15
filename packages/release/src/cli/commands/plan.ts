@@ -10,22 +10,22 @@ import { Console, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 
 /**
- * release plan <type>
+ * release plan <lifecycle>
  *
  * Generate a release plan. Writes to .release/plan.json.
  *
- * Types:
- * - stable  - Standard semver release
- * - preview - Pre-release to @next tag
- * - pr      - PR preview release
+ * Lifecycle types:
+ * - official   - Standard semver release to @latest
+ * - candidate  - Pre-release to @next tag
+ * - ephemeral  - Disposable PR build to @pr-N tag
  */
 const args = Oak.Command.create()
   .use(EffectSchema)
   .description('Generate a release plan')
   .parameter(
-    'type',
-    Schema.Literal('stable', 'preview', 'pr').pipe(
-      Schema.annotations({ description: 'Release type: stable, preview, or pr' }),
+    'lifecycle',
+    Schema.Literal('official', 'candidate', 'ephemeral').pipe(
+      Schema.annotations({ description: 'Lifecycle type: official, candidate, or ephemeral' }),
     ),
   )
   .parameter(
@@ -107,9 +107,9 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
       ...(args.exclude && { exclude: args.exclude }),
     }
 
-    // Generate plan based on type
+    // Generate plan based on lifecycle
     const header = Str.Builder()
-    header`Generating ${args.type} release plan...`
+    header`Generating ${args.lifecycle} release plan...`
     header``
 
     // Only show human-readable header when not in machine output mode
@@ -130,11 +130,11 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     // Plan — lightweight version projection
     const ctx = { packages }
     const plan = yield* (
-      args.type === 'stable'
-        ? Api.Planner.stable(analysis, ctx, options)
-        : args.type === 'preview'
-        ? Api.Planner.preview(analysis, ctx, options)
-        : Api.Planner.pr(analysis, ctx, options)
+      args.lifecycle === 'official'
+        ? Api.Planner.official(analysis, ctx, options)
+        : args.lifecycle === 'candidate'
+        ? Api.Planner.candidate(analysis, ctx, options)
+        : Api.Planner.ephemeral(analysis, ctx, options)
     )
 
     if (plan.releases.length === 0) {
@@ -154,11 +154,11 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
 
     // Machine output modes: --comment or --viz
     if (machineOutput) {
-      const prNumber = Api.Planner.detectPrNumber(env.vars) ?? 0
-      const github = yield* Api.Planner.resolveGitHubContext(prNumber)
+      const recon = yield* Api.Explorer.explore()
+      const fc = Api.Forecaster.forecast(analysis, recon)
 
       // Read publish history from file if provided
-      let publishHistory: Api.Planner.PublishRecord[] = []
+      let publishHistory: Api.Commentator.PublishRecord[] = []
       if (args.publishHistory) {
         const fs = yield* FileSystem.FileSystem
         const content = yield* fs.readFileString(args.publishHistory)
@@ -172,21 +172,19 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
         }
       }
 
-      const commentData = Api.Planner.enrichPlan(plan, { github, publishHistory })
-
       if (args.json) {
-        const serialized = Api.Planner.serializeCommentData(commentData)
+        const serialized = Schema.encodeSync(Api.Forecaster.Forecast)(fc)
         yield* Console.log(JSON.stringify(serialized, null, 2))
       }
       if (args.comment) {
-        yield* Console.log(Api.Planner.renderComment(commentData))
+        yield* Console.log(Api.Commentator.render(fc, { publishHistory }))
       }
       if (args.viz === 'tree') {
-        yield* Console.log(Api.Planner.renderTree(commentData))
+        yield* Console.log(Api.Renderer.renderTree(fc))
       }
     } else {
       // Human-readable output
-      yield* Console.log(Api.Planner.renderPlan(plan))
+      yield* Console.log(Api.Renderer.renderPlan(plan))
 
       const done = Str.Builder()
       done`Plan written to ${Fs.Path.toString(Api.Planner.PLAN_FILE)}`

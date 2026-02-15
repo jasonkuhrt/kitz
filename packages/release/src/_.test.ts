@@ -36,10 +36,10 @@ const expectVersion = (actual: Semver.Semver | undefined, expected: string) => {
 }
 
 /**
- * Pipeline helper: analyze → plan stable.
+ * Pipeline helper: analyze → plan official.
  * Mirrors the two-step pipeline CLI commands use.
  */
-const analyzeAndPlanStable = (
+const analyzeAndPlanOfficial = (
   packages: readonly Analyzer.Workspace.Package[],
   options?: Planner.Options,
 ) =>
@@ -47,13 +47,13 @@ const analyzeAndPlanStable = (
     const git = yield* Git.Git
     const tags = yield* git.getTags()
     const analysis = yield* Analyzer.analyze({ packages, tags })
-    return yield* Planner.stable(analysis, { packages }, options)
+    return yield* Planner.official(analysis, { packages }, options)
   })
 
 /**
- * Pipeline helper: analyze → plan preview.
+ * Pipeline helper: analyze → plan candidate.
  */
-const analyzeAndPlanPreview = (
+const analyzeAndPlanCandidate = (
   packages: readonly Analyzer.Workspace.Package[],
   options?: Planner.Options,
 ) =>
@@ -61,13 +61,13 @@ const analyzeAndPlanPreview = (
     const git = yield* Git.Git
     const tags = yield* git.getTags()
     const analysis = yield* Analyzer.analyze({ packages, tags })
-    return yield* Planner.preview(analysis, { packages }, options)
+    return yield* Planner.candidate(analysis, { packages }, options)
   })
 
 /**
- * Pipeline helper: analyze → plan PR.
+ * Pipeline helper: analyze → plan ephemeral.
  */
-const analyzeAndPlanPr = (
+const analyzeAndPlanEphemeral = (
   packages: readonly Analyzer.Workspace.Package[],
   options?: Planner.PrOptions,
 ) =>
@@ -75,12 +75,12 @@ const analyzeAndPlanPr = (
     const git = yield* Git.Git
     const tags = yield* git.getTags()
     const analysis = yield* Analyzer.analyze({ packages, tags })
-    return yield* Planner.pr(analysis, { packages }, options)
+    return yield* Planner.ephemeral(analysis, { packages }, options)
   })
 
-// ─── Planner.stable ────────────────────────────────────────────────
+// ─── Planner.official ────────────────────────────────────────────────
 
-describe('Planner.stable', () => {
+describe('Planner.official', () => {
   test('no releases when no commits since last tag', async () => {
     const layer = makeTestLayer({
       tags: ['@kitz/core@1.0.0'],
@@ -88,7 +88,7 @@ describe('Planner.stable', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
     )
 
     expect(result.releases).toHaveLength(0)
@@ -127,7 +127,7 @@ describe('Planner.stable', () => {
       })
 
       const result = await Effect.runPromise(
-        Effect.provide(analyzeAndPlanStable(mockPackages), layer),
+        Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
       )
 
       expect(result.releases).toHaveLength(1)
@@ -146,7 +146,7 @@ describe('Planner.stable', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
     )
 
     expect(result.releases).toHaveLength(1)
@@ -164,7 +164,7 @@ describe('Planner.stable', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
     )
 
     expect(result.releases).toHaveLength(2)
@@ -190,7 +190,7 @@ describe('Planner.stable', () => {
 
     const result = await Effect.runPromise(
       Effect.provide(
-        analyzeAndPlanStable(mockPackages, { packages: ['@kitz/core'] }),
+        analyzeAndPlanOfficial(mockPackages, { packages: ['@kitz/core'] }),
         layer,
       ),
     )
@@ -200,31 +200,31 @@ describe('Planner.stable', () => {
   })
 })
 
-// ─── Planner.preview ───────────────────────────────────────────────
+// ─── Planner.candidate ───────────────────────────────────────────────
 
-describe('Planner.preview', () => {
-  test('generates preview version', async () => {
+describe('Planner.candidate', () => {
+  test('generates candidate version', async () => {
     const layer = makeTestLayer({
       tags: ['@kitz/core@1.0.0'],
       commits: [Git.Memory.commit('feat(core): new feature')],
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(analyzeAndPlanPreview(mockPackages), layer),
+      Effect.provide(analyzeAndPlanCandidate(mockPackages), layer),
     )
 
     expect(result.releases).toHaveLength(1)
     expectVersion(result.releases[0]!.nextVersion, '1.1.0-next.1')
   })
 
-  test('increments preview number', async () => {
+  test('increments candidate number', async () => {
     const layer = makeTestLayer({
       tags: ['@kitz/core@1.0.0', '@kitz/core@1.1.0-next.1', '@kitz/core@1.1.0-next.2'],
       commits: [Git.Memory.commit('feat(core): new feature')],
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(analyzeAndPlanPreview(mockPackages), layer),
+      Effect.provide(analyzeAndPlanCandidate(mockPackages), layer),
     )
 
     expect(result.releases).toHaveLength(1)
@@ -232,10 +232,10 @@ describe('Planner.preview', () => {
   })
 })
 
-// ─── Planner.pr ────────────────────────────────────────────────────
+// ─── Planner.ephemeral ────────────────────────────────────────────────────
 
-describe('Planner.pr', () => {
-  test('generates PR version with explicit prNumber', async () => {
+describe('Planner.ephemeral', () => {
+  test('generates ephemeral version with explicit prNumber', async () => {
     const layer = makeTestLayer({
       tags: ['@kitz/core@1.0.0'],
       commits: [Git.Memory.commit('feat(core): new feature')],
@@ -244,7 +244,7 @@ describe('Planner.pr', () => {
 
     const result = await Effect.runPromise(
       Effect.provide(
-        analyzeAndPlanPr(mockPackages, { prNumber: 42 }),
+        analyzeAndPlanEphemeral(mockPackages, { prNumber: 42 }),
         layer,
       ),
     )
@@ -253,7 +253,7 @@ describe('Planner.pr', () => {
     expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.42.1.abc1234')
   })
 
-  test('increments PR iteration', async () => {
+  test('increments ephemeral iteration', async () => {
     const layer = makeTestLayer({
       tags: ['@kitz/core@1.0.0', '@kitz/core@0.0.0-pr.42.1.def5678'],
       commits: [Git.Memory.commit('feat(core): new feature')],
@@ -262,7 +262,7 @@ describe('Planner.pr', () => {
 
     const result = await Effect.runPromise(
       Effect.provide(
-        analyzeAndPlanPr(mockPackages, { prNumber: 42 }),
+        analyzeAndPlanEphemeral(mockPackages, { prNumber: 42 }),
         layer,
       ),
     )
@@ -288,7 +288,7 @@ describe('Planner.pr', () => {
     )
 
     const result = await Effect.runPromise(
-      Effect.provide(analyzeAndPlanPr(mockPackages), layer),
+      Effect.provide(analyzeAndPlanEphemeral(mockPackages), layer),
     )
 
     expect(result.releases).toHaveLength(1)
@@ -317,7 +317,7 @@ describe('Cascade', () => {
     )
 
     const result = await Effect.runPromise(
-      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
     )
 
     expect(result.releases).toHaveLength(1)
@@ -349,7 +349,7 @@ describe('Cascade', () => {
     )
 
     const result = await Effect.runPromise(
-      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
     )
 
     expect(result.cascades).toHaveLength(2)
@@ -369,7 +369,7 @@ describe('PlannedRelease getters', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
     )
 
     const release = result.releases[0]!
@@ -384,7 +384,7 @@ describe('PlannedRelease getters', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
     )
 
     const release = result.releases[0]!
@@ -400,7 +400,7 @@ describe('PlannedRelease getters', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
     )
 
     const release = result.releases[0]!
@@ -408,14 +408,14 @@ describe('PlannedRelease getters', () => {
     expect(Option.isNone(release.currentVersion)).toBe(true)
   })
 
-  test('bumpType returns bump type for stable releases', async () => {
+  test('bumpType returns bump type for official releases', async () => {
     const layer = makeTestLayer({
       tags: ['@kitz/core@1.0.0'],
       commits: [Git.Memory.commit('feat(core): feature')],
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(analyzeAndPlanStable(mockPackages), layer),
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
     )
 
     const release = result.releases[0]!

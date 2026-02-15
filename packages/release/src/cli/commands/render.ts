@@ -9,8 +9,8 @@ import * as Api from '../../api/__.js'
 /**
  * release render <format>
  *
- * Render enriched plan data into a specific output format.
- * Reads enriched CommentData JSON from a file or stdin.
+ * Render Forecast data into a specific output format.
+ * Reads Forecast JSON from a file or stdin.
  *
  * Formats:
  * - comment - PR comment markdown
@@ -18,7 +18,7 @@ import * as Api from '../../api/__.js'
  */
 const args = Oak.Command.create()
   .use(EffectSchema)
-  .description('Render enriched plan data')
+  .description('Render forecast data')
   .parameter(
     'format',
     Schema.Literal('comment', 'tree').pipe(
@@ -28,7 +28,7 @@ const args = Oak.Command.create()
   .parameter(
     'from-file',
     Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotations({ description: 'Read enriched JSON from file (otherwise reads stdin)' }),
+      Schema.annotations({ description: 'Read Forecast JSON from file (otherwise reads stdin)' }),
     ),
   )
   .parse()
@@ -46,15 +46,15 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer))(
       jsonStr = yield* Effect.promise(() => readStdin())
     }
 
-    // Deserialize into CommentData
+    // Deserialize into Forecast
     const json = JSON.parse(jsonStr)
-    const data = Api.Planner.deserializeCommentData(json)
+    const fc = Schema.decodeUnknownSync(Api.Forecaster.Forecast)(json)
 
     // Render based on format
     if (args.format === 'comment') {
-      yield* Console.log(Api.Planner.renderComment(data))
+      yield* Console.log(Api.Commentator.render(fc))
     } else {
-      yield* Console.log(Api.Planner.renderTree(data))
+      yield* Console.log(Api.Renderer.renderTree(fc))
     }
   }),
 )

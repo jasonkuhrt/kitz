@@ -38,7 +38,7 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     // Analyze then plan what would be released
     const tags = yield* git.getTags()
     const analysis = yield* Api.Analyzer.analyze({ packages, tags })
-    const plan = yield* Api.Planner.stable(analysis, { packages })
+    const plan = yield* Api.Planner.official(analysis, { packages })
 
     if (plan.releases.length === 0) {
       yield* Console.log('No unreleased changes.')
@@ -46,7 +46,7 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     }
 
     // Display all pending releases
-    yield* Console.log(Api.Planner.renderStatus(plan.releases))
+    yield* Console.log(Api.Renderer.renderStatus(plan.releases))
 
     // If specific packages requested, show cascade analysis
     if (args.packages && args.packages.length > 0) {
@@ -56,7 +56,7 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
         args.packages,
         tags,
       )
-      yield* Console.log(Api.Planner.renderCascadeAnalysis(cascadeAnalysis))
+      yield* Console.log(Api.Renderer.renderCascadeAnalysis(cascadeAnalysis))
     }
   }),
 )

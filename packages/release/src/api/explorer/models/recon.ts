@@ -16,6 +16,7 @@ export interface Recon {
   readonly git: {
     readonly clean: boolean
     readonly branch: string
+    readonly headSha: string
     readonly remotes: Record<string, string>
   }
 }

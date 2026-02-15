@@ -4,4 +4,5 @@
 export interface CiContext {
   readonly detected: boolean
   readonly provider: 'github-actions' | 'generic' | null
+  readonly prNumber: number | null
 }

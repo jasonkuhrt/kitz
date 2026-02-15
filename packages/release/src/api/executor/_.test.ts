@@ -33,22 +33,22 @@ const tag = (name: Pkg.Moniker.Moniker, version: string) =>
 
 const tagCore = (version: string) => tag(Pkg.Moniker.parse('@kitz/core'), version)
 
-/** Pipeline helper: analyze → plan stable */
-const planStable = (packages: readonly PlanApi.Context['packages'][number][]) =>
+/** Pipeline helper: analyze → plan official */
+const planOfficial = (packages: readonly PlanApi.Context['packages'][number][]) =>
   Effect.gen(function*() {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
     const analysis = yield* AnalyzerApi.analyze({ packages, tags })
-    return yield* PlanApi.stable(analysis, { packages })
+    return yield* PlanApi.official(analysis, { packages })
   })
 
-/** Pipeline helper: analyze → plan preview */
-const planPreview = (packages: readonly PlanApi.Context['packages'][number][]) =>
+/** Pipeline helper: analyze → plan candidate */
+const planCandidate = (packages: readonly PlanApi.Context['packages'][number][]) =>
   Effect.gen(function*() {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
     const analysis = yield* AnalyzerApi.analyze({ packages, tags })
-    return yield* PlanApi.preview(analysis, { packages })
+    return yield* PlanApi.candidate(analysis, { packages })
   })
 
 const decodeSemverFromManifest = (value: unknown): Semver.Semver =>
@@ -171,7 +171,7 @@ describe('Executor integration', () => {
         },
       })
 
-      const plan = yield* planStable(workspacePackages).pipe(
+      const plan = yield* planOfficial(workspacePackages).pipe(
         Effect.provide(harness.planLayer),
       )
 
@@ -225,7 +225,7 @@ describe('Executor integration', () => {
         },
       })
 
-      const plan = yield* planStable(workspacePackages).pipe(
+      const plan = yield* planOfficial(workspacePackages).pipe(
         Effect.provide(harness.planLayer),
       )
       const plannedRelease = plan.releases[0]
@@ -267,7 +267,7 @@ describe('Executor integration', () => {
         failPublish: true,
       })
 
-      const plan = yield* planStable(workspacePackages).pipe(
+      const plan = yield* planOfficial(workspacePackages).pipe(
         Effect.provide(harness.planLayer),
       )
 
@@ -316,7 +316,7 @@ describe('Executor integration', () => {
         },
       })
 
-      const plan = yield* planPreview(workspacePackages).pipe(
+      const plan = yield* planCandidate(workspacePackages).pipe(
         Effect.provide(harness.planLayer),
       )
 
@@ -361,7 +361,7 @@ describe('Executor integration', () => {
         },
       })
 
-      const plan = yield* planStable(workspacePackages).pipe(
+      const plan = yield* planOfficial(workspacePackages).pipe(
         Effect.provide(harness.planLayer),
       )
 

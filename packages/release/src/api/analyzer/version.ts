@@ -3,8 +3,9 @@ import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Either, Option, Schema as S } from 'effect'
-import { ReleaseCommit } from './commit.js'
-import { PreviewPrereleaseSchema, PrPrereleaseSchema } from './prerelease.js'
+import { CandidateSchema } from '../version/models/candidate.js'
+import { EphemeralSchema } from '../version/models/ephemeral.js'
+import { ReleaseCommit } from './models/commit.js'
 
 /**
  * Information about a commit's effect on a package.
@@ -154,7 +155,7 @@ export const findLatestPreviewNumber = (
     const prerelease = Semver.getPrerelease(parsed.value.version)
     if (!prerelease) continue
 
-    const decoded = S.decodeUnknownOption(PreviewPrereleaseSchema)(prerelease.join('.'))
+    const decoded = S.decodeUnknownOption(CandidateSchema)(prerelease.join('.'))
     if (Option.isSome(decoded) && decoded.value.iteration > highest) {
       highest = decoded.value.iteration
     }
@@ -185,7 +186,7 @@ export const findLatestPrNumber = (
     const prerelease = Semver.getPrerelease(parsed.value.version)
     if (!prerelease) continue
 
-    const decoded = S.decodeUnknownOption(PrPrereleaseSchema)(prerelease.join('.'))
+    const decoded = S.decodeUnknownOption(EphemeralSchema)(prerelease.join('.'))
     if (Option.isSome(decoded) && decoded.value.prNumber === prNumber && decoded.value.iteration > highest) {
       highest = decoded.value.iteration
     }

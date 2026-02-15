@@ -9,14 +9,34 @@ import type { CiContext, GitIdentity, Recon } from './models/__.js'
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+const detectPrNumber = (vars: Record<string, string | undefined>): number | null => {
+  if (vars['GITHUB_PR_NUMBER']) {
+    const num = parseInt(vars['GITHUB_PR_NUMBER'], 10)
+    if (!isNaN(num)) return num
+  }
+  if (vars['PR_NUMBER']) {
+    const num = parseInt(vars['PR_NUMBER'], 10)
+    if (!isNaN(num)) return num
+  }
+  if (vars['CI_PULL_REQUEST']) {
+    const match = vars['CI_PULL_REQUEST'].match(/\/pull\/(\d+)/)
+    if (match) {
+      const num = parseInt(match[1]!, 10)
+      if (!isNaN(num)) return num
+    }
+  }
+  return null
+}
+
 const detectExecutionContext = (vars: Record<string, string | undefined>): CiContext => {
+  const prNumber = detectPrNumber(vars)
   if (vars['GITHUB_ACTIONS'] === 'true') {
-    return { detected: true, provider: 'github-actions' }
+    return { detected: true, provider: 'github-actions', prNumber }
   }
   if (vars['CI'] === 'true') {
-    return { detected: true, provider: 'generic' }
+    return { detected: true, provider: 'generic', prNumber }
   }
-  return { detected: false, provider: null }
+  return { detected: false, provider: null, prNumber }
 }
 
 const parseGitHubRepository = (value: string): { owner: string; repo: string } | null => {
@@ -117,16 +137,22 @@ const resolveGithubToken = (
  */
 export const explore = (): Effect.Effect<
   Recon,
-  ExplorerError,
+  ExplorerError | Git.GitError | Git.GitParseError,
   Env.Env | Git.Git
 > =>
   Effect.gen(function*() {
     const env = yield* Env.Env
+    const git = yield* Git.Git
     const vars = env.vars
 
     const ci = detectExecutionContext(vars)
     const target = yield* resolveReleaseTarget(vars)
     const githubToken = yield* resolveGithubToken(vars)
+
+    // Gather real git state
+    const branch = yield* git.getCurrentBranch()
+    const headSha = yield* git.getHeadSha()
+    const isClean = yield* git.isClean()
 
     return {
       ci,
@@ -143,8 +169,9 @@ export const explore = (): Effect.Effect<
         registry: 'https://registry.npmjs.org',
       },
       git: {
-        clean: true,
-        branch: 'main',
+        clean: isClean,
+        branch,
+        headSha,
         remotes: {},
       },
     } satisfies Recon

@@ -2,14 +2,14 @@ import { FileSystem } from '@effect/platform'
 import { Resource } from '@kitz/resource'
 import { Effect, Option } from 'effect'
 import { buildDependencyGraph, type DependencyGraph } from '../analyzer/cascade.js'
-import { makeCascadeCommit, type ReleaseCommit } from '../analyzer/commit.js'
+import { makeCascadeCommit, type ReleaseCommit } from '../analyzer/models/commit.js'
 import { findLatestTagVersion } from '../analyzer/version.js'
 import type { Package } from '../analyzer/workspace.js'
-import { Stable } from './models/item-stable.js'
+import { calculateNextVersion } from '../version/calculate.js'
+import { OfficialFirst } from '../version/models/official-first.js'
+import { OfficialIncrement } from '../version/models/official-increment.js'
+import { Official } from './models/item-official.js'
 import type { Item } from './models/item.js'
-import type { StableVersion } from './models/stable-version.js'
-import { StableVersionFirst, StableVersionIncrement } from './models/stable-version.js'
-import { calculateNextVersion } from './version.js'
 
 /**
  * Cascade analysis for a requested package identifier.
@@ -17,7 +17,7 @@ import { calculateNextVersion } from './version.js'
 export interface RequestedCascadeAnalysis {
   readonly requestedPackage: string
   readonly packageName: string | null
-  readonly cascades: readonly Stable[]
+  readonly cascades: readonly Official[]
 }
 
 /**
@@ -71,7 +71,7 @@ export const detect = (
   primaryReleases: Item[],
   dependencyGraph: DependencyGraph,
   tags: string[],
-): Stable[] => {
+): Official[] => {
   // Set of packages already getting released (use string form for Set/Map operations)
   const releasing = new Set(primaryReleases.map((r) => r.package.name.moniker))
 
@@ -96,7 +96,7 @@ export const detect = (
 
   // Build cascade releases (use string keys for Map lookup)
   const nameToPackage = new Map(packages.map((p) => [p.name.moniker, p]))
-  const cascades: Stable[] = []
+  const cascades: Official[] = []
 
   for (const name of needsCascade) {
     const pkg = nameToPackage.get(name)
@@ -128,11 +128,11 @@ export const detect = (
     }
 
     // Build version union
-    const version: StableVersion = Option.isSome(currentVersion)
-      ? StableVersionIncrement.make({ from: currentVersion.value, to: nextVersion, bump: 'patch' })
-      : StableVersionFirst.make({ version: nextVersion })
+    const version: OfficialFirst | OfficialIncrement = Option.isSome(currentVersion)
+      ? OfficialIncrement.make({ from: currentVersion.value, to: nextVersion, bump: 'patch' })
+      : OfficialFirst.make({ version: nextVersion })
 
-    cascades.push(Stable.make({
+    cascades.push(Official.make({
       package: pkg,
       version,
       commits: cascadeCommits,

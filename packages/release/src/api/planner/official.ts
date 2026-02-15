@@ -3,13 +3,13 @@ import { Resource } from '@kitz/resource'
 import { Effect, Option } from 'effect'
 import { buildDependencyGraph } from '../analyzer/cascade.js'
 import type { Analysis } from '../analyzer/models/__.js'
+import { calculateNextVersion } from '../version/calculate.js'
+import { OfficialFirst } from '../version/models/official-first.js'
+import { OfficialIncrement } from '../version/models/official-increment.js'
 import { detect as detectCascades } from './cascade.js'
-import { Stable } from './models/item-stable.js'
+import { Official } from './models/item-official.js'
 import { Plan } from './models/plan.js'
-import type { StableVersion } from './models/stable-version.js'
-import { StableVersionFirst, StableVersionIncrement } from './models/stable-version.js'
 import type { Options } from './options.js'
-import { calculateNextVersion } from './version.js'
 
 /**
  * Context required for planning.
@@ -19,7 +19,7 @@ export interface Context {
 }
 
 /**
- * Plan a stable release from a pre-computed Analysis.
+ * Plan an official release from a pre-computed Analysis.
  *
  * Receives impacts and cascades from the Analyzer, applies version
  * arithmetic, and assembles a Plan.
@@ -27,10 +27,10 @@ export interface Context {
  * @example
  * ```ts
  * const analysis = yield* Analyzer.analyze(recon, packages)
- * const plan = yield* Planner.stable(analysis, ctx)
+ * const plan = yield* Planner.official(analysis, ctx)
  * ```
  */
-export const stable = (
+export const official = (
   analysis: Analysis,
   ctx: Context,
   options?: Options,
@@ -41,7 +41,7 @@ export const stable = (
 > =>
   Effect.gen(function*() {
     // 1. Transform analysis impacts to planned releases
-    const releases: Stable[] = []
+    const releases: Official[] = []
 
     for (const impact of analysis.impacts) {
       // Apply exclude filter
@@ -54,11 +54,11 @@ export const stable = (
       const nextVersion = calculateNextVersion(impact.currentVersion, impact.bump)
 
       // Build version union
-      const version: StableVersion = Option.isSome(impact.currentVersion)
-        ? StableVersionIncrement.make({ from: impact.currentVersion.value, to: nextVersion, bump: impact.bump })
-        : StableVersionFirst.make({ version: nextVersion })
+      const version: OfficialFirst | OfficialIncrement = Option.isSome(impact.currentVersion)
+        ? OfficialIncrement.make({ from: impact.currentVersion.value, to: nextVersion, bump: impact.bump })
+        : OfficialFirst.make({ version: nextVersion })
 
-      releases.push(Stable.make({
+      releases.push(Official.make({
         package: impact.package,
         version,
         commits: impact.commits,
@@ -67,12 +67,12 @@ export const stable = (
 
     // 2. Detect cascade releases (packages that depend on released packages)
     const dependencyGraph = yield* buildDependencyGraph([...ctx.packages])
-    const cascades = detectCascades([...ctx.packages], releases, dependencyGraph, analysis.tags)
+    const cascades = detectCascades([...ctx.packages], releases, dependencyGraph, [...analysis.tags])
 
-    return Plan.withAnalysis({
-      type: 'stable',
+    return Plan.make({
+      lifecycle: 'official',
       timestamp: new Date().toISOString(),
       releases,
       cascades,
-    }, analysis)
+    })
   })

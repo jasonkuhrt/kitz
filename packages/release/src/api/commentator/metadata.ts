@@ -1,12 +1,19 @@
-import type { PublishRecord } from './comment-data.js'
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
 export type PublishState = 'idle' | 'publishing' | 'published' | 'failed'
 
-export interface CommentMetadata {
+export interface PublishRecord {
+  readonly package: string
+  readonly version: string
+  readonly iteration: number
+  readonly sha: string
+  readonly timestamp: string
+  readonly runId: string
+}
+
+export interface Metadata {
   readonly headSha: string
   readonly publishState: PublishState
   readonly publishHistory: readonly PublishRecord[]
@@ -30,7 +37,7 @@ const PUBLISH_HISTORY_RE = /<!-- kitz-release-publish-history\n([\s\S]*?)\n-->/
  *
  * Returns `null` if the body does not contain the release plan marker.
  */
-export const parseMetadata = (body: string): CommentMetadata | null => {
+export const parseMetadata = (body: string): Metadata | null => {
   if (!body.includes(PLAN_MARKER)) return null
 
   const shaMatch = body.match(HEAD_SHA_RE)
@@ -72,7 +79,7 @@ export const parsePublishHistory = (body: string): readonly PublishRecord[] => {
 /**
  * Generate the metadata HTML comment block for embedding in a comment body.
  */
-export const renderMetadataBlock = (metadata: CommentMetadata): string => {
+export const renderMetadataBlock = (metadata: Metadata): string => {
   const lines = [
     PLAN_MARKER,
     `<!-- head-sha:${metadata.headSha} -->`,

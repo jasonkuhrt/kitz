@@ -1,3 +1,5 @@
-export type * from './analysis.js'
-export type * from './cascade-impact.js'
-export type * from './impact.js'
+export * from './analysis.js'
+export * from './cascade-impact.js'
+export * from './commit.js'
+export * from './impact.js'
+export * from './package-schema.js'

@@ -73,12 +73,12 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
 
     // Confirmation prompt (unless --yes)
     if (!args.yes && !args.dryRun) {
-      yield* Console.log(Api.Planner.renderApplyConfirmation(plan))
+      yield* Console.log(Api.Renderer.renderApplyConfirmation(plan))
       return
     }
 
     if (args.dryRun) {
-      yield* Console.log(Api.Planner.renderApplyDryRun(plan))
+      yield* Console.log(Api.Renderer.renderApplyDryRun(plan))
       return
     }
 
@@ -109,7 +109,7 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     // Wait for events to flush
     yield* Fiber.join(eventFiber)
 
-    yield* Console.log(Api.Planner.renderApplyDone(result.releasedPackages.length))
+    yield* Console.log(Api.Renderer.renderApplyDone(result.releasedPackages.length))
 
     // Clean up plan file on success
     const planPath = Fs.Path.join(env.cwd, Api.Planner.PLAN_FILE)

@@ -13,10 +13,10 @@ import { Resource } from '@kitz/resource'
 import { Semver } from '@kitz/semver'
 import { Effect, Option } from 'effect'
 import { buildDependencyGraph } from './cascade.js'
-import type { ReleaseCommit } from './commit.js'
-import type { Analysis } from './models/analysis.js'
-import type { CascadeImpact } from './models/cascade-impact.js'
-import type { Impact } from './models/impact.js'
+import { Analysis } from './models/analysis.js'
+import { CascadeImpact } from './models/cascade-impact.js'
+import type { ReleaseCommit } from './models/commit.js'
+import { Impact } from './models/impact.js'
 import { aggregateByPackage, extractImpacts, findLatestTagVersion } from './version.js'
 import type { Package } from './workspace.js'
 
@@ -136,12 +136,12 @@ export const analyze = (
       // Find current version from tags
       const currentVersion = findLatestTagVersion(pkg.name, tags as string[])
 
-      impacts.push({
+      impacts.push(Impact.make({
         package: pkg,
         bump,
         commits: packageCommits,
         currentVersion,
-      })
+      }))
     }
 
     // ── Step 4: Detect cascade impacts ────────────────────────────────
@@ -183,11 +183,11 @@ export const analyze = (
 
       const currentVersion = findLatestTagVersion(pkg.name, tags as string[])
 
-      cascades.push({
+      cascades.push(CascadeImpact.make({
         package: pkg,
         triggeredBy,
         currentVersion,
-      })
+      }))
     }
 
     // ── Unchanged packages ────────────────────────────────────────────
@@ -199,10 +199,10 @@ export const analyze = (
       return !changedScopes.has(p.scope) && !needsCascade.has(p.name.moniker)
     })
 
-    return {
+    return Analysis.make({
       impacts,
       cascades,
       unchanged: [...unchanged],
       tags: [...tags],
-    } satisfies Analysis
+    })
   })
