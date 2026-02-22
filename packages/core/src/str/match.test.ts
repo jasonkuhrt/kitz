@@ -1,4 +1,4 @@
-import { Assert } from '#assert'
+import { Assert } from '#kitz/assert'
 import { Str } from '#str'
 import { Option } from 'effect'
 import { describe, expect, test } from 'vitest'
@@ -24,7 +24,8 @@ describe('pattern', () => {
 
   test('preserves flags at type level', () => {
     const p = pattern('^\\d$', 'gi')
-    A.exact.ofAs<Str.Regex<`${bigint}`, { flags: 'gi' }>>().on(p)
+    // Note: arkregex infers ${number} for \d pattern (see arkregex bug note at top)
+    A.exact.ofAs<Str.Regex<`${number}`, { flags: 'gi' }>>().on(p)
   })
 })
 
@@ -136,7 +137,7 @@ describe('replace', () => {
     const p = pattern('\\d+')
     const result = replace('a1 b2', p, (m) => {
       A.exact.ofAs<{
-        value: `${string}${bigint}${string}${string}` // see arkregex bug note at top
+        value: `${number}` // arkregex infers ${number} for \d+ pattern
         offset: number
         captures: []
         groups: {}
@@ -167,7 +168,7 @@ describe('replaceAll', () => {
     const p = pattern('\\d+', 'g')
     const result = replaceAll('a1 b2 c3', p, (m) => {
       A.exact.ofAs<{
-        value: `${string}${bigint}${string}${string}` // see arkregex bug note at top
+        value: `${number}` // arkregex infers ${number} for \d+ pattern
         offset: number
         captures: []
         groups: {}

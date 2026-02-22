@@ -1,5 +1,5 @@
+import { Test } from '#kitz/test'
 import { Str } from '#str'
-import { Test } from '#test'
 
 // list() function tests
 Test.describe(`Nat > list > empty`)

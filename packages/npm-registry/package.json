@@ -1,0 +1,33 @@
+{
+  "name": "@kitz/npm-registry",
+  "version": "0.0.0-kitz-release",
+  "type": "module",
+  "sideEffects": false,
+  "imports": {
+    "#npm-registry": "./build/_.js",
+    "#npm-registry/*": "./build/*.js"
+  },
+  "exports": {
+    ".": "./build/_.js",
+    "./__": "./build/__.js"
+  },
+  "files": [
+    "build",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsgo -p tsconfig.build.json",
+    "dev": "tsgo -p tsconfig.build.json --watch",
+    "check:types": "tsgo --noEmit",
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
+  },
+  "dependencies": {
+    "@effect/platform": "^0.94.0",
+    "@kitz/core": "workspace:*",
+    "@kitz/fs": "workspace:*",
+    "@kitz/pkg": "workspace:*",
+    "@kitz/semver": "workspace:*",
+    "effect": "^3.19.13"
+  }
+}

@@ -18,6 +18,7 @@ pnpm exec tsx .claude/skills/syncing-tsconfig-paths/scripts/sync-tsconfig-paths.
 ### Auditing
 
 Run with `--check` flag to verify without modifying:
+
 ```bash
 pnpm exec tsx .claude/skills/syncing-tsconfig-paths/scripts/sync-tsconfig-paths.ts --check
 ```

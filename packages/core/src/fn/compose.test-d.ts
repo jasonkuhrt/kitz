@@ -2,7 +2,7 @@
  * Type-level tests for compose function.
  */
 
-import { Type as A } from '#assert/assert'
+import { Type as A } from '#kitz/assert/assert'
 import type { Optic } from '#optic'
 import { Ts } from '#ts'
 import { compose, compose2, type ComposeKind } from './compose.js'

@@ -1,4 +1,4 @@
-import { Type as A } from '#assert/assert'
+import { Type as A } from '#kitz/assert/assert'
 import { Ts } from '#ts'
 import { describe, test } from 'vitest'
 

@@ -1,4 +1,4 @@
-import { Assert } from '#assert'
+import { Assert } from '#kitz/assert'
 import { test } from 'vitest'
 import { fn0p, fn1p, fn1pOptional, fn2p, fn2pOptional, fn3p } from './_test.js'
 import { curry } from './curry.js'

@@ -1,6 +1,6 @@
 import { CoreFn as Fn } from '#fn/core'
 import { Char } from './char/_.js'
-import { prependWith, repeat } from './replace.js'
+import { prependWith, repeat, replaceWith } from './replace.js'
 import { joinWith, splitWith } from './split.js'
 
 /**
@@ -22,6 +22,58 @@ export const defaultIndentCharacter = Char.spaceNoBreak
  */
 export const defaultLineSeparator = Char.newline
 
+// ─── Line Endings ────────────────────────────────────────────────────────────
+
+/**
+ * Carriage return character (CR, U+000D).
+ * Used alone as line ending in classic Mac OS (pre-OS X).
+ * @category Line Endings
+ */
+export const cr = '\r'
+
+/**
+ * Line feed character (LF, U+000A).
+ * Used as line ending in Unix/Linux/macOS.
+ * @category Line Endings
+ */
+export const lf = '\n'
+
+/**
+ * Carriage return + line feed sequence (CRLF).
+ * Used as line ending in Windows.
+ * @category Line Endings
+ */
+export const crlf = '\r\n'
+
+/**
+ * Pattern matching any line ending style (CRLF, CR, or LF).
+ *
+ * Order matters: CRLF (`\r\n`) must be matched first to avoid
+ * splitting it into separate CR and LF matches.
+ *
+ * @category Line Endings
+ */
+export const lineEndingPattern = /\r\n|\r|\n/
+
+/**
+ * Normalize all line endings to LF.
+ *
+ * Converts CRLF (`\r\n`) and CR (`\r`) to LF (`\n`) for consistent
+ * cross-platform text handling. Implements "wider input, narrow output"
+ * pattern - accept any line ending style, output only LF.
+ *
+ * @category Line Endings
+ * @param text - Text with potentially mixed line endings
+ * @returns Text with all line endings normalized to LF
+ * @example
+ * ```typescript
+ * normalizeLineEndings('hello\r\nworld')  // 'hello\nworld'
+ * normalizeLineEndings('hello\rworld')    // 'hello\nworld'
+ * normalizeLineEndings('a\r\nb\rc\n')     // 'a\nb\nc\n'
+ * ```
+ */
+export const normalizeLineEndings = replaceWith(/\r\n|\r/g, lf)
+
 // Types
 
 /**
@@ -34,17 +86,24 @@ export type Column = string[]
 
 /**
  * Split text into an array of lines.
- * Pre-configured {@link splitWith} using newline separator.
+ *
+ * Handles all common line ending styles:
+ * - LF (`\n`) - Unix/Linux/macOS
+ * - CRLF (`\r\n`) - Windows
+ * - CR (`\r`) - Classic Mac OS
+ *
  * @category Text Formatting
  * @param text - The text to split into lines
  * @returns Array of lines
  * @example
  * ```typescript
- * lines('hello\nworld\n!') // ['hello', 'world', '!']
- * lines('single line') // ['single line']
+ * lines('hello\nworld')     // ['hello', 'world'] - Unix
+ * lines('hello\r\nworld')   // ['hello', 'world'] - Windows
+ * lines('hello\rworld')     // ['hello', 'world'] - Classic Mac
+ * lines('mixed\r\n\n\r')    // ['mixed', '', ''] - Mixed endings
  * ```
  */
-export const lines = splitWith(defaultLineSeparator)
+export const lines = (text: string): string[] => text.split(lineEndingPattern)
 
 /**
  * Join an array of lines into text.

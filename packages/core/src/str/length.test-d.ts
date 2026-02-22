@@ -1,4 +1,4 @@
-import type { Type as A } from '#assert/assert'
+import type { Type as A } from '#kitz/assert/assert'
 import type { Ts } from '#ts'
 import type { Length } from './length.js'
 

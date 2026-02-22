@@ -11,7 +11,6 @@ import { builder } from '../../../builder-singleton.js'
  * Relation: subtype relation (extends)
  */
 
-
 /**
  * Base matcher accepting any expected type.
  * Extraction chain: (p1: any, p2: any, p3: any, p4: any, p5: T) => any → T
@@ -35,7 +34,6 @@ type of_<$Expected, $Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>>
                                                                          : never
 const of_ = builder.parameter5.not.sub.of
 
-
 /**
  * Pre-curried matcher for string.
  * Extraction chain: (p1: any, p2: any, p3: any, p4: any, p5: T) => any → T
@@ -55,7 +53,6 @@ type string_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [string, __actual__, true]>
                                                                          : never
 const string_ = builder.parameter5.not.sub.string
-
 
 /**
  * Pre-curried matcher for number.
@@ -77,7 +74,6 @@ type number_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
                                                                          : never
 const number_ = builder.parameter5.not.sub.number
 
-
 /**
  * Pre-curried matcher for bigint.
  * Extraction chain: (p1: any, p2: any, p3: any, p4: any, p5: T) => any → T
@@ -97,7 +93,6 @@ type bigint_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [bigint, __actual__, true]>
                                                                          : never
 const bigint_ = builder.parameter5.not.sub.bigint
-
 
 /**
  * Pre-curried matcher for boolean.
@@ -119,7 +114,6 @@ type boolean_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
                                                                          : never
 const boolean_ = builder.parameter5.not.sub.boolean
 
-
 /**
  * Pre-curried matcher for true.
  * Extraction chain: (p1: any, p2: any, p3: any, p4: any, p5: T) => any → T
@@ -139,7 +133,6 @@ type true_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [true, __actual__, true]>
                                                                          : never
 const true_ = builder.parameter5.not.sub.true
-
 
 /**
  * Pre-curried matcher for false.
@@ -161,7 +154,6 @@ type false_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
                                                                          : never
 const false_ = builder.parameter5.not.sub.false
 
-
 /**
  * Pre-curried matcher for undefined.
  * Extraction chain: (p1: any, p2: any, p3: any, p4: any, p5: T) => any → T
@@ -181,7 +173,6 @@ type undefined_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [undefined, __actual__, true]>
                                                                          : never
 const undefined_ = builder.parameter5.not.sub.undefined
-
 
 /**
  * Pre-curried matcher for null.
@@ -203,7 +194,6 @@ type null_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
                                                                          : never
 const null_ = builder.parameter5.not.sub.null
 
-
 /**
  * Pre-curried matcher for symbol.
  * Extraction chain: (p1: any, p2: any, p3: any, p4: any, p5: T) => any → T
@@ -223,7 +213,6 @@ type symbol_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [symbol, __actual__, true]>
                                                                          : never
 const symbol_ = builder.parameter5.not.sub.symbol
-
 
 /**
  * Pre-curried matcher for Date.
@@ -245,7 +234,6 @@ type Date_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
                                                                          : never
 const Date_ = builder.parameter5.not.sub.Date
 
-
 /**
  * Pre-curried matcher for RegExp.
  * Extraction chain: (p1: any, p2: any, p3: any, p4: any, p5: T) => any → T
@@ -265,7 +253,6 @@ type RegExp_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [RegExp, __actual__, true]>
                                                                          : never
 const RegExp_ = builder.parameter5.not.sub.RegExp
-
 
 /**
  * Pre-curried matcher for Error.
@@ -287,7 +274,6 @@ type Error_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
                                                                          : never
 const Error_ = builder.parameter5.not.sub.Error
 
-
 /**
  * Pre-curried matcher for unknown.
  * Extraction chain: (p1: any, p2: any, p3: any, p4: any, p5: T) => any → T
@@ -308,7 +294,6 @@ type unknown_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
                                                                          : never
 const unknown_ = builder.parameter5.not.sub.unknown
 
-
 /**
  * Pre-curried matcher for any.
  * Extraction chain: (p1: any, p2: any, p3: any, p4: any, p5: T) => any → T
@@ -328,7 +313,6 @@ type any_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [any, __actual__, true]>
                                                                          : never
 const any_ = builder.parameter5.not.sub.any
-
 
 /**
  * Pre-curried matcher for never.
@@ -353,21 +337,21 @@ const never_ = builder.parameter5.not.sub.never
 const ofAs_ = <$Type>() => builder.parameter5.not.sub.ofAs<$Type>()
 
 export {
-  of_ as of,
-  string_ as string,
-  number_ as number,
+  any_ as any,
   bigint_ as bigint,
   boolean_ as boolean,
-  true_ as true,
-  false_ as false,
-  undefined_ as undefined,
-  null_ as null,
-  symbol_ as symbol,
   Date_ as Date,
-  RegExp_ as RegExp,
   Error_ as Error,
-  unknown_ as unknown,
-  any_ as any,
+  false_ as false,
   never_ as never,
+  null_ as null,
+  number_ as number,
+  of_ as of,
   ofAs_ as ofAs,
+  RegExp_ as RegExp,
+  string_ as string,
+  symbol_ as symbol,
+  true_ as true,
+  undefined_ as undefined,
+  unknown_ as unknown,
 }

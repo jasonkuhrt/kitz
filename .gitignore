@@ -26,3 +26,6 @@ CLAUDE.local.md
 # Turborepo
 .turbo
 .worktrees/
+
+# Release CLI output
+.release/

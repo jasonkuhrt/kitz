@@ -1,6 +1,6 @@
-import { Assert } from '#assert'
 import { Err } from '#err'
-import { Test } from '#test'
+import { Assert } from '#kitz/assert'
+import { Test } from '#kitz/test'
 import { describe, expect, test } from 'vitest'
 import { tryAllOrRethrow, tryOr, tryOrRethrow } from './try.js'
 import { wrapWith } from './wrap.js'
@@ -191,16 +191,12 @@ Test
   .on(tryOr)
   .cases(
     [[() => 42, 'fallback'], 42],
-    // dprint-ignore
-    [
-      [() => { throw new Error('fail') }, 'fallback' ],
-      'fallback',
-    ],
-    // dprint-ignore
-    [
-      [() => { throw new Error('fail') }, () => 'lazy fallback' ],
-     'lazy fallback'
-    ],
+    [[() => {
+      throw new Error('fail')
+    }, 'fallback'], 'fallback'],
+    [[() => {
+      throw new Error('fail')
+    }, () => 'lazy fallback'], 'lazy fallback'],
   )
   .test()
 

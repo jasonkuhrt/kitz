@@ -5,7 +5,7 @@
  * These utilities handle the conversions between these different path formats.
  */
 
-import { relative } from 'node:path'
+import { relative } from 'path'
 
 /**
  * Create a build path to source path transformer.

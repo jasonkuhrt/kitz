@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'fs'
+import { readFile } from 'fs/promises'
+import { join } from 'path'
 import { generate } from './adaptors/vitepress.js'
 import { extract } from './extractor/extract.js'
 import { addTwoslashAnnotations } from './transformers.js'

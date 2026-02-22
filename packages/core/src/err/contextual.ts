@@ -1,50 +1,14 @@
-import { Cause, Data } from 'effect'
+import { Cause, Schema as S } from 'effect'
 
-/**
- * Error with attached context object.
- *
- * Extends Effect's Data.TaggedError to provide:
- * - Type-safe context property
- * - Automatic cause chaining (Effect 3.5+)
- * - _tag discriminant for catchTag
- *
- * @example
- * ```typescript
- * throw new ContextualError({
- *   context: { userId: '123', operation: 'delete' },
- *   cause: originalError
- * })
- * ```
- *
- * @example
- * ```typescript
- * // Use with Effect.catchTag
- * import { Effect } from 'effect'
- *
- * const program: Effect.Effect<string, ContextualError> = Effect.fail(
- *   new ContextualError({ context: { step: 'validation' } })
- * )
- *
- * program.pipe(
- *   Effect.catchTag('ContextualError', (error) =>
- *     Effect.succeed(`Recovered from: ${error.context.step}`)
- *   )
- * )
- * ```
- */
-export class ContextualError<
-  $Context extends Record<string, unknown> = Record<string, unknown>,
-  $Cause extends Error = Error,
-> extends Data.TaggedError('ContextualError')<{
-  message?: string
-  context: $Context
-  cause?: $Cause
-}> {}
+// =============================================================================
+// Types
+// =============================================================================
 
 /**
  * Shape of errors created by TaggedContextualError factory.
  */
 export interface TaggedContextualErrorLike {
+  readonly _tag: string
   readonly tags: readonly string[]
 }
 
@@ -64,14 +28,49 @@ export type ErrorsWithTag<$Errors, $Tag extends string> = $Errors extends Tagged
   : never
 
 /**
- * Configuration for constraining an error class.
+ * Configuration for creating a contextual error.
  */
-export interface ConstraintConfig<$Context extends Record<string, unknown>> {
+export interface TaggedContextualErrorConfig<
+  ContextSchema extends S.Schema.Any,
+  CauseSchema extends S.Schema.Any | undefined = undefined,
+> {
+  /**
+   * Schema defining the context structure.
+   * Type is inferred from the schema - no need for generic type params.
+   *
+   * @example
+   * ```typescript
+   * context: Schema.Struct({
+   *   path: Fs.Path.AbsDir,
+   *   resource: Schema.String,
+   * })
+   * ```
+   */
+  context: ContextSchema
   /**
    * Function to derive the error message from context.
-   * If provided, message will be automatically computed when not explicitly passed at throw site.
+   * The context type is inferred from the schema.
    */
-  message?: (context: $Context) => string
+  message: (context: S.Schema.Type<ContextSchema>) => string
+  /**
+   * Optional schema for constraining the cause type.
+   */
+  cause?: CauseSchema
+}
+
+/**
+ * Instance type of a TaggedContextualError class.
+ */
+export interface TaggedContextualErrorInstance<
+  $Tag extends string,
+  $Tags extends readonly string[],
+  $Context extends Record<string, unknown>,
+  $Cause extends Error | undefined,
+> extends Cause.YieldableError {
+  readonly _tag: $Tag
+  readonly tags: $Tags
+  readonly context: $Context
+  readonly cause: $Cause
 }
 
 /**
@@ -79,135 +78,119 @@ export interface ConstraintConfig<$Context extends Record<string, unknown>> {
  */
 export interface TaggedContextualErrorClass<
   $Tag extends string,
-  $Tags extends readonly string[] = readonly string[],
-  $Context extends Record<string, unknown> = Record<string, unknown>,
-  $Cause extends Error = Error,
-  $CauseEnsured extends boolean = false,
-> {
+  $Tags extends readonly string[],
+  ContextSchema extends S.Schema.Any,
+  CauseSchema extends S.Schema.Any | undefined,
+> extends
+  // eslint-disable-next-line import/namespace -- Effect Schema types expose nested members via namespace.
+  S.Schema<
+    TaggedContextualErrorInstance<
+      $Tag,
+      $Tags,
+      S.Schema.Type<ContextSchema>,
+      CauseSchema extends S.Schema.Any ? S.Schema.Type<CauseSchema> : Error | undefined
+    >,
+    {
+      readonly _tag: $Tag
+      readonly context: S.Schema.Encoded<ContextSchema>
+      readonly cause?: CauseSchema extends S.Schema.Any ? S.Schema.Encoded<CauseSchema> : unknown
+    },
+    S.Schema.Context<ContextSchema> | (CauseSchema extends S.Schema.Any ? S.Schema.Context<CauseSchema> : never)
+  >
+{
   readonly _tag: $Tag
   readonly tags: $Tags
 
-  /**
-   * Constrain the context and optionally add message derivation.
-   *
-   * @example
-   * ```typescript
-   * const MyError = TaggedContextualError('MyError', ['input'])
-   *   .constrain<{ userId: string }>({
-   *     message: (ctx) => `User ${ctx.userId} not found`,
-   *   })
-   *
-   * // Usage - message derived automatically
-   * new MyError({ context: { userId: '123' } })
-   *
-   * // Or override with explicit message
-   * new MyError({ message: 'Custom', context: { userId: '123' } })
-   * ```
-   */
-  constrain<$NewContext extends Record<string, unknown>>(
-    config?: ConstraintConfig<$NewContext>,
-  ): TaggedContextualErrorClass<$Tag, $Tags, $NewContext, $Cause, $CauseEnsured>
-
-  /**
-   * Constrain the context type for this error class.
-   * @deprecated Use `.constrain()` instead
-   */
-  constrainContext<$NewContext extends Record<string, unknown>>(): TaggedContextualErrorClass<
+  new(
+    args:
+      & {
+        context: S.Schema.Type<ContextSchema>
+      }
+      & (CauseSchema extends S.Schema.Any ? { cause?: S.Schema.Type<CauseSchema> }
+        : { cause?: Error }),
+  ): TaggedContextualErrorInstance<
     $Tag,
     $Tags,
-    $NewContext,
-    $Cause,
-    $CauseEnsured
+    S.Schema.Type<ContextSchema>,
+    CauseSchema extends S.Schema.Any ? S.Schema.Type<CauseSchema> : Error | undefined
   >
-
-  /**
-   * Constrain the cause type and optionally ensure it's always present.
-   *
-   * @param ensured - If true, cause is always present (not optional). Defaults to false.
-   *
-   * @example
-   * ```typescript
-   * // Optional cause (default)
-   * const MyError = TaggedContextualError('MyError').constrainCause<Error>()
-   *
-   * // Ensured cause (always present)
-   * const MyError = TaggedContextualError('MyError').constrainCause<Error>(true)
-   * ```
-   */
-  constrainCause<$NewCause extends Error>(
-    ensured: true,
-  ): TaggedContextualErrorClass<$Tag, $Tags, $Context, $NewCause, true>
-  constrainCause<$NewCause extends Error>(
-    ensured?: false,
-  ): TaggedContextualErrorClass<$Tag, $Tags, $Context, $NewCause, false>
-
-  new(
-    args: {
-      message?: string
-      context: $Context
-    } & ($CauseEnsured extends true ? { cause: $Cause } : { cause?: $Cause }),
-  ): Cause.YieldableError & {
-    readonly _tag: $Tag
-    readonly tags: $Tags
-    readonly message?: string
-    readonly context: $Context
-  } & ($CauseEnsured extends true ? { readonly cause: $Cause } : { readonly cause?: $Cause })
 }
 
+// =============================================================================
+// Factory
+// =============================================================================
+
 /**
- * Factory for creating custom tagged contextual error classes.
+ * Factory for creating tagged contextual error classes.
+ *
+ * Creates Schema-compatible error classes with:
+ * - Category tags for filtering errors by domain
+ * - Typed context with full schema encoding support
+ * - Automatic message derivation from context
+ * - Optional cause type constraints
  *
  * @example
  * ```typescript
- * const MyError = TaggedContextualError('MyError', ['input', 'recoverable'])
- * throw new MyError({ context: { userId: '123' } })
+ * import { Err } from '@kitz/core'
+ * import { Fs } from '@kitz/fs'
+ * import { Schema as S } from 'effect'
  *
- * // Narrow by tag
- * type InputErrors = ErrorsWithTag<AllErrors, 'input'>
+ * const FileNotFound = Err.TaggedContextualError('ResourceFileNotFound', ['kit', 'resource'], {
+ *   context: S.Struct({
+ *     path: Fs.Path.AbsDir,      // Rich type preserved!
+ *     resource: S.String,
+ *   }),
+ *   message: (ctx) => `${ctx.resource} not found at ${Fs.Path.toString(ctx.path)}`,
+ * })
+ *
+ * // Usage
+ * throw new FileNotFound({
+ *   context: { path: somePath, resource: 'package.json' },
+ * })
+ *
+ * // Works in Schema.Union for workflow error handling
+ * const WorkflowError = S.Union(FileNotFound, OtherError)
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // Filter errors by category tag
+ * import { Err } from '@kitz/core'
+ *
+ * type AllErrors = FileNotFound | NetworkError | ValidationError
+ * type ResourceErrors = Err.ErrorsWithTag<AllErrors, 'resource'>
+ * // => FileNotFound (if it has 'resource' in tags)
  * ```
  */
 export const TaggedContextualError = <
   const $Tag extends string,
-  const $Tags extends readonly string[] = readonly never[],
+  const $Tags extends readonly string[],
+  ContextSchema extends S.Schema.Any,
+  CauseSchema extends S.Schema.Any | undefined = undefined,
 >(
   tag: $Tag,
-  tags?: $Tags,
-): TaggedContextualErrorClass<$Tag, $Tags> => {
-  const tags_ = tags ?? ([] as unknown as $Tags)
+  tags: $Tags,
+  config: TaggedContextualErrorConfig<ContextSchema, CauseSchema>,
+): TaggedContextualErrorClass<$Tag, $Tags, ContextSchema, CauseSchema> => {
+  // Cast to any so class extension works (same pattern as Effect's makeClass)
+  const Base = S.TaggedError<any>()(tag, {
+    context: config.context,
+    cause: config.cause ?? S.optional(S.Unknown),
+  }) as any
 
-  const createErrorClass = (deriveMessage?: (context: Record<string, unknown>) => string) => {
-    const ErrorClass = class TaggedContextualError extends Data.TaggedError(tag)<{
-      message?: string
-      context: Record<string, unknown>
-      cause?: Error
-    }> {
-      static readonly _tag = tag
-      static readonly tags = tags_
-      readonly tags = tags_
+  return class extends Base {
+    static tags = tags
+    readonly tags = tags
 
-      constructor(args: { message?: string; context: Record<string, unknown>; cause?: Error }) {
-        // If message provided, use it; otherwise derive from context if derivation exists
-        const message = args.message ?? (deriveMessage ? deriveMessage(args.context) : undefined)
-        super(message !== undefined ? { ...args, message } : args)
-      }
-
-      static constrain(config?: ConstraintConfig<Record<string, unknown>>) {
-        return createErrorClass(config?.message)
-      }
-
-      static constrainContext() {
-        return this
-      }
-
-      static constrainCause(_ensured?: boolean) {
-        return this
-      }
+    get message(): string {
+      return config.message(this['context'])
     }
-    return ErrorClass
-  }
-
-  return createErrorClass() as any
+  } as any
 }
+
+// =============================================================================
+// Type Guards
+// =============================================================================
 
 /**
  * Type guard for narrowing errors by tag.

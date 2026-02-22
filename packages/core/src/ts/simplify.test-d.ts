@@ -3,7 +3,7 @@ import type { Num } from '#num'
 import { Ts } from '#ts'
 import type { Fn } from '#fn'
 import type * as Simplify from './simplify.js'
-import { Assert } from '#assert'
+import { Assert } from '#kitz/assert'
 
 const A = Assert.Type.exact
 

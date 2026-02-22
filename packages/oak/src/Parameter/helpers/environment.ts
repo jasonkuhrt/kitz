@@ -1,5 +1,5 @@
-import { Str } from '@kitz/core'
 import type { Cli } from '@kitz/cli'
+import { Str } from '@kitz/core'
 import type { Settings } from '../../Settings/_.js'
 import type { Environment } from './types.js'
 

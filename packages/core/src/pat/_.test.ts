@@ -1,5 +1,5 @@
+import { Test } from '#kitz/test'
 import { Pat } from '#pat'
-import { Test } from '#test'
 import * as S from 'effect/Schema'
 import { expect } from 'vitest'
 

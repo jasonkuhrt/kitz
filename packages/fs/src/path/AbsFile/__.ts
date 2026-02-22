@@ -17,7 +17,20 @@ class AbsFileClass extends S.TaggedClass<AbsFileClass>()('FsPathAbsFile', {
   override toString() {
     return S.encodeSync(Schema)(this)
   }
+
+  /** The filename including extension (e.g., `file.txt`). */
+  get name(): string {
+    return name(this)
+  }
 }
+
+/**
+ * Get the filename including extension.
+ */
+export const name = (instance: AbsFileClass): string =>
+  instance.fileName.extension
+    ? instance.fileName.stem + instance.fileName.extension
+    : instance.fileName.stem
 
 /**
  * Schema for absolute file paths with string codec baked in.
@@ -51,8 +64,8 @@ export const Schema: S.Schema<AbsFileClass, string> = S.transformOrFail(
       return ParseResult.succeed(pathString.length > 0 ? `/${pathString}/${fileString}` : `/${fileString}`)
     },
     decode: (input, options, ast) => {
-      // Analyze the input string
-      const analysis = analyze(input)
+      // Analyze the input string with file hint for ambiguous dotfiles
+      const analysis = analyze(input, { hint: 'file' })
 
       // Validate it's an absolute file
       if (analysis._tag !== 'file') {

@@ -1,6 +1,6 @@
 import { Date, Lang, Str } from '@kitz/core'
-import * as Os from 'node:os'
 import objectInspect from 'object-inspect'
+import * as Os from 'os'
 import * as Level from './level.js'
 import * as Logger from './logger.js'
 

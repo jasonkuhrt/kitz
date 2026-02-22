@@ -1,6 +1,6 @@
 {
   "name": "@kitz/semver",
-  "version": "0.0.0",
+  "version": "0.0.0-kitz-release",
   "description": "Semantic versioning utilities",
   "type": "module",
   "sideEffects": false,
@@ -9,14 +9,16 @@
     "./__": "./build/__.js"
   },
   "dependencies": {
-    "@vltpkg/semver": "^1.0.0-rc.12",
     "effect": "^3.0.0"
+  },
+  "devDependencies": {
+    "@kitz/test": "workspace:*"
   },
   "scripts": {
     "build": "tsgo -p tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
-    "check:lint": "oxlint --config ../../oxlint.json src/",
-    "check:package": "publint && attw --pack"
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   }
 }

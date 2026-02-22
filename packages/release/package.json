@@ -1,0 +1,59 @@
+{
+  "name": "@kitz/release",
+  "version": "0.0.0-kitz-release",
+  "type": "module",
+  "sideEffects": false,
+  "imports": {
+    "#release": "./build/_.js",
+    "#release/*": "./build/*.js"
+  },
+  "exports": {
+    ".": "./build/_.js",
+    "./__": "./build/__.js"
+  },
+  "files": [
+    "build",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsgo -p tsconfig.build.json",
+    "dev": "tsgo -p tsconfig.build.json --watch",
+    "check:types": "tsgo --noEmit",
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error",
+    "test": "vitest run --root ../.. packages/release/src"
+  },
+  "bin": {
+    "release": "./build/cli/cli.js"
+  },
+  "dependencies": {
+    "@effect/cluster": "^0.56.0",
+    "@effect/experimental": "^0.58.0",
+    "@effect/platform": "^0.94.0",
+    "@effect/platform-node": "^0.104.0",
+    "@effect/rpc": "^0.73.0",
+    "@effect/sql": "^0.49.0",
+    "@effect/sql-sqlite-node": "^0.50.0",
+    "@effect/workflow": "^0.16.0",
+    "@kitz/cli": "workspace:*",
+    "@kitz/conf": "workspace:*",
+    "@kitz/conventional-commits": "workspace:*",
+    "@kitz/core": "workspace:*",
+    "@kitz/env": "workspace:*",
+    "@kitz/flo": "workspace:*",
+    "@kitz/fs": "workspace:*",
+    "@kitz/git": "workspace:*",
+    "@kitz/github": "workspace:*",
+    "@kitz/mod": "workspace:*",
+    "@kitz/monorepo": "workspace:*",
+    "@kitz/npm-registry": "workspace:*",
+    "@kitz/oak": "workspace:*",
+    "@kitz/pkg": "workspace:*",
+    "@kitz/resource": "workspace:*",
+    "@kitz/semver": "workspace:*",
+    "effect": "^3.19.13"
+  },
+  "devDependencies": {
+    "@kitz/test": "workspace:*"
+  }
+}

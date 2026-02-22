@@ -1,4 +1,4 @@
-import type { inspect as nodeInspect } from 'node:util'
+import type { inspect as nodeInspect } from 'util'
 
 type InspectParameters = Parameters<typeof nodeInspect>
 

@@ -1,5 +1,5 @@
 import { Effect, Exit, Stream } from 'effect'
-import * as Readline from 'node:readline/promises'
+import * as Readline from 'readline/promises'
 import { KeyPress } from '../../KeyPress/_.js'
 import type { KeyPressEvent } from '../../KeyPress/KeyPress.js'
 import type { PromptEngine } from '../../PromptEngine/PromptEngine.js'

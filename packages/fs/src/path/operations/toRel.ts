@@ -1,4 +1,4 @@
-import * as NodePath from 'node:path'
+import * as NodePath from 'path'
 import type { $Abs } from '../$Abs/_.js'
 import type { $Rel } from '../$Rel/_.js'
 import { AbsDir } from '../AbsDir/_.js'

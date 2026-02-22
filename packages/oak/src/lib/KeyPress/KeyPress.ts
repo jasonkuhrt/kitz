@@ -1,7 +1,5 @@
-import { Exit, pipe, Stream } from 'effect'
-import { Effect } from 'effect'
-import { stdin, stdout } from 'node:process'
-import * as Readline from 'node:readline'
+import { Effect, Exit, pipe, Stream } from 'effect'
+import * as Readline from 'readline'
 
 export type Key =
   | 'up'
@@ -49,25 +47,25 @@ export interface KeyPressEvent<Name extends Key = Key> {
 
 export const readOne = Effect.async<KeyPressEvent>((resume) => {
   const rl = Readline.promises.createInterface({
-    input: stdin,
-    output: stdout,
+    input: process.stdin,
+    output: process.stdout,
     terminal: false,
   })
-  const originalIsRawState = stdin.isRaw
-  if (!stdin.isRaw) {
-    stdin.setRawMode(true)
+  const originalIsRawState = process.stdin.isRaw
+  if (!process.stdin.isRaw) {
+    process.stdin.setRawMode(true)
   }
-  Readline.emitKeypressEvents(stdin, rl)
+  Readline.emitKeypressEvents(process.stdin, rl)
   const listener = (_key: string, event: KeyPressEvent) => {
     rl.close()
-    stdin.removeListener(`keypress`, listener)
+    process.stdin.removeListener(`keypress`, listener)
     if (!originalIsRawState) {
       process.stdin.setRawMode(false)
     }
     resume(Effect.succeed(event))
   }
 
-  stdin.on(`keypress`, listener)
+  process.stdin.on(`keypress`, listener)
 })
 
 export const readMany = (params?: { exitOnCtrlC?: boolean }) =>

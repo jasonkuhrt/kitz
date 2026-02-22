@@ -1,0 +1,35 @@
+{
+  "name": "@kitz/github",
+  "version": "0.0.0-kitz-release",
+  "type": "module",
+  "sideEffects": false,
+  "imports": {
+    "#github": "./build/_.js",
+    "#github/*": "./build/*.js"
+  },
+  "exports": {
+    ".": "./build/_.js",
+    "./__": "./build/__.js"
+  },
+  "files": [
+    "build",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsgo -p tsconfig.build.json",
+    "dev": "tsgo -p tsconfig.build.json --watch",
+    "check:types": "tsgo --noEmit",
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
+  },
+  "dependencies": {
+    "@kitz/core": "workspace:*",
+    "@effect/platform": "^0.81.0",
+    "@octokit/types": "^13.10.0",
+    "effect": "^3.19.13"
+  },
+  "devDependencies": {
+    "@effect/vitest": "^0.27.0",
+    "@kitz/test": "workspace:*"
+  }
+}

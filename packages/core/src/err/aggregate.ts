@@ -1,5 +1,4 @@
 import { Data } from 'effect'
-import type { ContextualError } from './contextual.js'
 
 /**
  * Aggregate multiple errors with optional context.
@@ -31,7 +30,7 @@ import type { ContextualError } from './contextual.js'
  * ```
  */
 export class ContextualAggregateError<
-  $Errors extends Error | ContextualError = Error,
+  $Errors extends Error = Error,
   $Context extends Record<string, unknown> = Record<string, unknown>,
 > extends Data.TaggedError('ContextualAggregateError')<{
   errors: $Errors[]

@@ -1,5 +1,5 @@
+import { Test } from '#kitz/test'
 import { Obj } from '#obj'
-import { Test } from '#test'
 
 // Test visitors
 const errorToMessage = (value: any) => {
@@ -22,36 +22,35 @@ const replaceSpecificObject = (value: any) => {
   }
 }
 
-// dprint-ignore
 Test.on(Obj.mapValuesDeep)
   .describeInputs('primitives pass through', [
-    ['hello',      () => undefined],
-    [42,           () => undefined],
-    [true,         () => undefined],
-    [null,         () => undefined],
-    [undefined,    () => undefined],
+    ['hello', () => undefined],
+    [42, () => undefined],
+    [true, () => undefined],
+    [null, () => undefined],
+    [undefined, () => undefined],
   ])
   .describeInputs('early exit on match', [
-    [new Error('test error'),                errorToMessage],
-    ['short',                                truncateLongStrings],
-    ['this is a very long string',           truncateLongStrings],
-    [5,                                      doubleNumbers],
-    [{ num: 10, nested: { num: 20 } },       doubleNumbers],
+    [new Error('test error'), errorToMessage],
+    ['short', truncateLongStrings],
+    ['this is a very long string', truncateLongStrings],
+    [5, doubleNumbers],
+    [{ num: 10, nested: { num: 20 } }, doubleNumbers],
   ])
   .describeInputs('array recursion', [
-    [[1, 2, 3],                              doubleNumbers],
-    [[new Error('e1'), new Error('e2')],     errorToMessage],
-    [['short', 'this is long'],              truncateLongStrings],
+    [[1, 2, 3], doubleNumbers],
+    [[new Error('e1'), new Error('e2')], errorToMessage],
+    [['short', 'this is long'], truncateLongStrings],
   ])
   .describeInputs('object recursion', [
-    [{ a: 5, b: { c: 10 } },                 doubleNumbers],
-    [{ err: new Error('test') },             errorToMessage],
-    [{ str: 'short and long string' },       truncateLongStrings],
+    [{ a: 5, b: { c: 10 } }, doubleNumbers],
+    [{ err: new Error('test') }, errorToMessage],
+    [{ str: 'short and long string' }, truncateLongStrings],
   ])
   .describeInputs('mixed structures', [
-    [{ nums: [1, 2], nested: { nums: [3, 4] } },  doubleNumbers],
+    [{ nums: [1, 2], nested: { nums: [3, 4] } }, doubleNumbers],
   ])
   .describeInputs('early exit stops recursion', [
-    [{ replace: true, nested: { untouched: 'data' } },  replaceSpecificObject],
+    [{ replace: true, nested: { untouched: 'data' } }, replaceSpecificObject],
   ])
   .test()

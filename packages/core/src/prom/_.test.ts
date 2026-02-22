@@ -1,5 +1,5 @@
-import { Test } from '#test'
-import { property } from '#test/test'
+import { Test } from '#kitz/test'
+import { property } from '#kitz/test/test'
 import fc from 'fast-check'
 import { describe, expect, test } from 'vitest'
 import { Prom } from './_.js'

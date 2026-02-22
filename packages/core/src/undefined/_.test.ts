@@ -1,5 +1,5 @@
-import { Assert } from '#assert'
-import { property } from '#test/test'
+import { Assert } from '#kitz/assert'
+import { property } from '#kitz/test/test'
 import { Undefined } from '#undefined'
 import fc from 'fast-check'
 import { expect, test } from 'vitest'

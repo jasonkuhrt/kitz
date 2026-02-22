@@ -1,6 +1,6 @@
 {
   "name": "@kitz/log",
-  "version": "0.0.0",
+  "version": "0.0.0-kitz-release",
   "description": "Logging utilities",
   "type": "module",
   "sideEffects": false,
@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
+    "effect": "^3.17.4",
     "es-toolkit": "^1.43.0",
     "object-inspect": "^1.13.4"
   },
@@ -17,8 +18,8 @@
     "build": "tsgo -p tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
-    "check:lint": "oxlint --config ../../oxlint.json src/",
-    "check:package": "publint && attw --pack"
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   },
   "devDependencies": {
     "@types/object-inspect": "^1.13.0"

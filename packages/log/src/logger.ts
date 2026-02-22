@@ -1,5 +1,5 @@
 import { cloneDeep, merge } from 'es-toolkit/compat'
-import * as OS from 'node:os'
+import * as OS from 'os'
 import * as Filter from './filter.js'
 import { validPathSegmentNameRegex } from './internal.js'
 import { LEVELS } from './level.js'

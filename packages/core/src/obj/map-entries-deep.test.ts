@@ -1,5 +1,5 @@
+import { Test } from '#kitz/test'
 import { Obj } from '#obj'
-import { Test } from '#test'
 
 const stripDollarPrefix = (key: string, value: Obj.DeepObjectValue) =>
   key.startsWith('$') ? { key: key.slice(1), value } : undefined
@@ -19,41 +19,40 @@ const combinedTransform = (key: string, value: Obj.DeepObjectValue) => {
   return undefined
 }
 
-// dprint-ignore
 Test.on(Obj.mapEntriesDeep)
   .describeInputs('primitives', [
-    ['hello',    () => undefined],
-    [42,         () => undefined],
-    [true,       () => undefined],
-    [null,       () => undefined],
+    ['hello', () => undefined],
+    [42, () => undefined],
+    [true, () => undefined],
+    [null, () => undefined],
   ])
   .describeInputs('empty objects', [
-    [{},         uppercaseKeysTransform],
+    [{}, uppercaseKeysTransform],
   ])
   .describeInputs('key transformations', [
-    [{ $foo: 'bar', $baz: { $nested: 'value' } },       stripDollarPrefix],
-    [{ $a: { $b: { $c: { $d: 'deep' } } } },            stripDollarPrefix],
-    [{ $foo: 'a', bar: 'b', $baz: { nested: 'c' } },    stripDollarPrefix],
+    [{ $foo: 'bar', $baz: { $nested: 'value' } }, stripDollarPrefix],
+    [{ $a: { $b: { $c: { $d: 'deep' } } } }, stripDollarPrefix],
+    [{ $foo: 'a', bar: 'b', $baz: { nested: 'c' } }, stripDollarPrefix],
   ])
   .describeInputs('value transformations', [
-    [{ name: 'alice', address: { city: 'nyc' } },       uppercaseStrings],
-    [{ str: 'hi', num: 42, bool: true, nil: null },     uppercaseStrings],
+    [{ name: 'alice', address: { city: 'nyc' } }, uppercaseStrings],
+    [{ str: 'hi', num: 42, bool: true, nil: null }, uppercaseStrings],
   ])
   .describeInputs('arrays', [
-    [{ users: [{ $id: 1, $name: 'alice' }, { $id: 2, $name: 'bob' }] },  stripDollarPrefix],
-    [{ numbers: [1, 2, 3], strings: ['a', 'b'] },                        () => undefined],
+    [{ users: [{ $id: 1, $name: 'alice' }, { $id: 2, $name: 'bob' }] }, stripDollarPrefix],
+    [{ numbers: [1, 2, 3], strings: ['a', 'b'] }, () => undefined],
   ])
   .describeInputs('mixed structures', [
     [{ str: 'hello', arr: [1, 'two', { nested: 'obj' }], obj: { inner: 'value' } }, uppercaseStrings],
   ])
   .describeInputs('selective transformations', [
-    [{ keep: 'me', transform: 'this' },  selectiveTransform],
+    [{ keep: 'me', transform: 'this' }, selectiveTransform],
   ])
   .describeInputs('combined transformations', [
     [{ $name: 'alice', age: 25, $email: 'alice@example.com' }, combinedTransform],
   ])
   .describeInputs('non-plain objects (Date, RegExp, etc.)', [
-    [{ $pattern: /test/i as any },  stripDollarPrefix],
-    [{ nested: { $regex: /[a-z]+/ as any } },  stripDollarPrefix],
+    [{ $pattern: /test/i as any }, stripDollarPrefix],
+    [{ nested: { $regex: /[a-z]+/ as any } }, stripDollarPrefix],
   ])
   .test()

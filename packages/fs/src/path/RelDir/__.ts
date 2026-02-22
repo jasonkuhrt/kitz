@@ -26,7 +26,17 @@ class RelDirClass extends S.TaggedClass<RelDirClass>()('FsPathRelDir', {
   override toString() {
     return S.encodeSync(Schema)(this)
   }
+
+  /** The directory name (last segment), or empty string for current/parent-only paths. */
+  get name(): string {
+    return name(this)
+  }
 }
+
+/**
+ * Get the directory name (last segment), or empty string for current/parent-only paths.
+ */
+export const name = (instance: RelDirClass): string => instance.segments.at(-1) ?? ''
 
 /**
  * Schema for relative directory paths with string codec baked in.
@@ -71,8 +81,8 @@ export const Schema: S.Schema<RelDirClass, string> = S.transformOrFail(
       return ParseResult.succeed(pathString.length > 0 ? `${herePrefix}${pathString}${separator}` : herePrefix)
     },
     decode: (input, options, ast) => {
-      // Analyze the input string
-      const analysis = analyze(input)
+      // Analyze the input string with directory hint for ambiguous paths
+      const analysis = analyze(input, { hint: 'directory' })
 
       // Validate it's a relative directory
       if (analysis._tag !== 'dir') {

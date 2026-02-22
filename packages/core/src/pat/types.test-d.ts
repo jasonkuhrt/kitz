@@ -1,4 +1,4 @@
-import type { Type as A } from '#assert/assert'
+import type { Type as A } from '#kitz/assert/assert'
 import { Pat } from '#pat'
 import { Ts } from '#ts'
 import * as S from 'effect/Schema'

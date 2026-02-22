@@ -1,5 +1,5 @@
+import { Test } from '#kitz/test'
 import { Str } from '#str'
-import { Test } from '#test'
 
 // Test constant case conversion
 Test.describe(`Case > constant`)

@@ -1,6 +1,6 @@
 {
   "name": "@kitz/tree",
-  "version": "0.0.0",
+  "version": "0.0.0-kitz-release",
   "description": "Tree data structure utilities",
   "type": "module",
   "sideEffects": false,
@@ -15,8 +15,8 @@
     "build": "tsgo -p tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
-    "check:lint": "oxlint --config ../../oxlint.json src/",
-    "check:package": "publint && attw --pack"
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   },
   "dependencies": {
     "fast-check": "^3.0.0"

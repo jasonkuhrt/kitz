@@ -1,4 +1,4 @@
-import { Type as A } from '#assert/assert'
+import { Type as A } from '#kitz/assert/assert'
 import { Pat } from '#pat'
 
 A.parameter1.sub.ofAs<Pat.Pattern<number>>().on(Pat.isMatchOn(42))

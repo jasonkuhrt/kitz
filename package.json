@@ -11,18 +11,24 @@
     "build:packages": "turbo build",
     "format": "dprint fmt",
     "format:check": "dprint check",
-    "release": "changeset publish",
+    "check:api-model-style": "node tools/check-api-model-style.mjs",
     "_:build": "tsgo -p tsconfig.build.json",
     "_:dev": "tsgo -p tsconfig.build.json --watch",
     "_:check:types": "tsgo --noEmit",
-    "_:check:lint": "oxlint --config ../../oxlint.json src/",
-    "_:check:package": "publint && attw --pack"
+    "_:check:lint": "oxlint src/",
+    "_:check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error",
+    "release": "node packages/release/build/cli/cli.js"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
     "@ark/attest": "^0.56.0",
     "@ark/attest-ts-default": "npm:typescript@^5.9.3",
-    "@changesets/cli": "^2.29.8",
+    "@effect/vitest": "^0.27.0",
     "@tsconfig/node-lts": "^24.0.0",
     "@tsconfig/strictest": "^2.0.8",
     "@types/node": "^25.0.3",

@@ -1,4 +1,4 @@
-import { Assert } from '#assert'
+import { Assert } from '#kitz/assert'
 import { Obj } from '#obj'
 
 const A = Assert.Type.exact.ofAs

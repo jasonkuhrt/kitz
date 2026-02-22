@@ -1,6 +1,6 @@
-import { Assert } from '#assert'
-import { Test } from '#test'
-import { expect } from 'vitest'
+import { Assert } from '#kitz/assert'
+import { Test } from '#kitz/test'
+import { describe, expect, test } from 'vitest'
 import { type FromEntries, fromEntries, hasSymbolLike, hasSymbolLikeWith } from './obj.js'
 
 const sym = (name: string, val: unknown) => {
@@ -88,11 +88,8 @@ Test.describe('fromEntries')
     expect(fromEntries(input)).toEqual(output)
   })
 
-Test.describe('FromEntries > type-level')
-  .inputType<void>()
-  .outputType<void>()
-  .cases([undefined, undefined])
-  .test(() => {
+describe('FromEntries type-level', () => {
+  test('preserves keys and values', () => {
     // Basic key preservation
     Assert.Type.exact.ofAs<{ a: 1; b: 2 }>().onAs<FromEntries<readonly [readonly ['a', 1], readonly ['b', 2]]>>()
 
@@ -114,3 +111,4 @@ Test.describe('FromEntries > type-level')
     const result = fromEntries(entries)
     Assert.Type.exact.ofAs<{ a: 1; b: 'hello' }>().on(result)
   })
+})

@@ -1,8 +1,8 @@
-import { Err } from '@kitz/core'
 import { FileSystem } from '@effect/platform'
 import type { PlatformError } from '@effect/platform/Error'
+import { Err } from '@kitz/core'
 import { Fs } from '@kitz/fs'
-import { Effect, Option, pipe } from 'effect'
+import { Effect, Option, pipe, Schema as S } from 'effect'
 
 /**
  * Base ES module type. Use as constraint or when module structure is unknown.
@@ -28,12 +28,15 @@ const baseTags = ['kit', 'mod', 'import'] as const
 export const ImportErrorNotFound = Err.TaggedContextualError(
   'KitModImportErrorNotFound',
   baseTags,
-).constrain<{
-  /** The file path that was not found. */
-  path: Fs.Path.AbsFile
-}>({
-  message: (ctx) => `Module not found: ${Fs.Path.toString(ctx.path)}`,
-}).constrainCause<Error>(true)
+  {
+    context: S.Struct({
+      /** The file path that was not found. */
+      path: Fs.Path.AbsFile.Schema,
+    }),
+    message: (ctx) => `Module not found: ${Fs.Path.toString(ctx.path)}`,
+    cause: S.instanceOf(Error),
+  },
+)
 
 /**
  * Instance type of {@link ImportErrorNotFound}.
@@ -48,12 +51,15 @@ export type ImportErrorNotFound = InstanceType<typeof ImportErrorNotFound>
 export const ImportErrorSyntax = Err.TaggedContextualError(
   'KitModImportErrorSyntax',
   baseTags,
-).constrain<{
-  /** The file path with syntax error. */
-  path: Fs.Path.AbsFile
-}>({
-  message: (ctx) => `Syntax error in module: ${Fs.Path.toString(ctx.path)}`,
-}).constrainCause<SyntaxError>(true)
+  {
+    context: S.Struct({
+      /** The file path with syntax error. */
+      path: Fs.Path.AbsFile.Schema,
+    }),
+    message: (ctx) => `Syntax error in module: ${Fs.Path.toString(ctx.path)}`,
+    cause: S.instanceOf(SyntaxError),
+  },
+)
 
 /**
  * Instance type of {@link ImportErrorSyntax}.
@@ -68,14 +74,17 @@ export type ImportErrorSyntax = InstanceType<typeof ImportErrorSyntax>
 export const ImportErrorPackageConfig = Err.TaggedContextualError(
   'KitModImportErrorPackageConfig',
   baseTags,
-).constrain<{
-  /** The file path that triggered the error. */
-  path: Fs.Path.AbsFile
-  /** The Node.js error code. */
-  code: string
-}>({
-  message: (ctx) => `Package config error for ${Fs.Path.toString(ctx.path)}: ${ctx.code}`,
-}).constrainCause<Error>(true)
+  {
+    context: S.Struct({
+      /** The file path that triggered the error. */
+      path: Fs.Path.AbsFile.Schema,
+      /** The Node.js error code. */
+      code: S.String,
+    }),
+    message: (ctx) => `Package config error for ${Fs.Path.toString(ctx.path)}: ${ctx.code}`,
+    cause: S.instanceOf(Error),
+  },
+)
 
 /**
  * Instance type of {@link ImportErrorPackageConfig}.
@@ -90,12 +99,15 @@ export type ImportErrorPackageConfig = InstanceType<typeof ImportErrorPackageCon
 export const ImportErrorPermissionDenied = Err.TaggedContextualError(
   'KitModImportErrorPermissionDenied',
   baseTags,
-).constrain<{
-  /** The file path that permission was denied for. */
-  path: Fs.Path.AbsFile
-}>({
-  message: (ctx) => `Permission denied: ${Fs.Path.toString(ctx.path)}`,
-}).constrainCause<Error>(true)
+  {
+    context: S.Struct({
+      /** The file path that permission was denied for. */
+      path: Fs.Path.AbsFile.Schema,
+    }),
+    message: (ctx) => `Permission denied: ${Fs.Path.toString(ctx.path)}`,
+    cause: S.instanceOf(Error),
+  },
+)
 
 /**
  * Instance type of {@link ImportErrorPermissionDenied}.
@@ -110,14 +122,17 @@ export type ImportErrorPermissionDenied = InstanceType<typeof ImportErrorPermiss
 export const ImportErrorUnsupportedFormat = Err.TaggedContextualError(
   'KitModImportErrorUnsupportedFormat',
   baseTags,
-).constrain<{
-  /** The file path with unsupported format. */
-  path: Fs.Path.AbsFile
-  /** The file extension, if available. */
-  extension?: string
-}>({
-  message: (ctx) => `Unsupported format: ${Fs.Path.toString(ctx.path)}${ctx.extension ? ` (${ctx.extension})` : ''}`,
-}).constrainCause<Error>(true)
+  {
+    context: S.Struct({
+      /** The file path with unsupported format. */
+      path: Fs.Path.AbsFile.Schema,
+      /** The file extension, if available. */
+      extension: S.optional(S.String),
+    }),
+    message: (ctx) => `Unsupported format: ${Fs.Path.toString(ctx.path)}${ctx.extension ? ` (${ctx.extension})` : ''}`,
+    cause: S.instanceOf(Error),
+  },
+)
 
 /**
  * Instance type of {@link ImportErrorUnsupportedFormat}.
@@ -130,14 +145,17 @@ export type ImportErrorUnsupportedFormat = InstanceType<typeof ImportErrorUnsupp
 export const ImportErrorOther = Err.TaggedContextualError(
   'KitModImportErrorOther',
   baseTags,
-).constrain<{
-  /** The file path that failed to import. */
-  path: Fs.Path.AbsFile
-  /** The Node.js error code, if available. */
-  code?: string
-}>({
-  message: (ctx) => `Import failed: ${Fs.Path.toString(ctx.path)}${ctx.code ? ` (${ctx.code})` : ''}`,
-}).constrainCause<Error>(true)
+  {
+    context: S.Struct({
+      /** The file path that failed to import. */
+      path: Fs.Path.AbsFile.Schema,
+      /** The Node.js error code, if available. */
+      code: S.optional(S.String),
+    }),
+    message: (ctx) => `Import failed: ${Fs.Path.toString(ctx.path)}${ctx.code ? ` (${ctx.code})` : ''}`,
+    cause: S.instanceOf(Error),
+  },
+)
 
 /**
  * Instance type of {@link ImportErrorOther}.

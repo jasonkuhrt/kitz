@@ -1,5 +1,5 @@
-import type { Path } from '../_.js'
 import { $Rel } from '../$Rel/_.js'
+import type { Path } from '../_.js'
 import type { Input } from '../inputs.js'
 import { normalizeDynamic } from '../inputs.js'
 import { Schema } from '../Schema.js'

@@ -37,6 +37,12 @@ const transformImportsToPaths = (
   const paths: Record<string, string[]> = {}
 
   for (const [key, value] of Object.entries(imports)) {
+    // Skip #kitz/* patterns - these are manually maintained for circular devDep workaround
+    // See .claude/rules/circular-devdep-workaround.md
+    if (key.startsWith('#kitz/')) {
+      continue
+    }
+
     // Skip conditional imports (objects with browser/default/etc conditions)
     if (typeof value !== 'string') {
       console.warn(`  Warning: ${packageName} has conditional import "${key}", skipping`)
@@ -87,8 +93,11 @@ const checkPackage = (packageDir: string): Issue[] => {
     }
   }
 
-  // Check for extra paths
+  // Check for extra paths (skip #kitz/* - manually maintained for circular devDep workaround)
   for (const key of Object.keys(currentPaths)) {
+    if (key.startsWith('#kitz/')) {
+      continue
+    }
     if (!(key in expectedPaths)) {
       issues.push({ package: name, type: 'extra', path: key, actual: currentPaths[key] })
     }
@@ -116,19 +125,30 @@ const syncPackage = (packageDir: string): { name: string; updated: boolean } => 
 
   const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, 'utf-8'))
   const newPaths = transformImportsToPaths(imports, name)
-  const currentPaths = tsconfig.compilerOptions?.paths
+  const currentPaths = (tsconfig.compilerOptions?.paths ?? {}) as Record<string, string[]>
+
+  // Preserve existing #kitz/* paths (manually maintained for circular devDep workaround)
+  const preservedPaths: Record<string, string[]> = {}
+  for (const [key, value] of Object.entries(currentPaths)) {
+    if (key.startsWith('#kitz/')) {
+      preservedPaths[key] = value
+    }
+  }
+
+  // Merge: new synced paths + preserved #kitz/* paths
+  const mergedPaths = { ...newPaths, ...preservedPaths }
 
   // Check if update needed
-  const newPathsJson = JSON.stringify(newPaths, null, 2)
+  const mergedPathsJson = JSON.stringify(mergedPaths, null, 2)
   const currentPathsJson = JSON.stringify(currentPaths, null, 2)
 
-  if (newPathsJson === currentPathsJson) {
+  if (mergedPathsJson === currentPathsJson) {
     return { name, updated: false }
   }
 
   // Update tsconfig
   tsconfig.compilerOptions = tsconfig.compilerOptions ?? {}
-  tsconfig.compilerOptions.paths = newPaths
+  tsconfig.compilerOptions.paths = mergedPaths
 
   fs.writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2) + '\n')
 

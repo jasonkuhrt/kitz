@@ -1,12 +1,14 @@
 {
   "name": "@kitz/conf",
-  "version": "0.0.0",
+  "version": "0.0.0-kitz-release",
   "type": "module",
   "sideEffects": false,
   "imports": {
     "#conf": "./build/_.js",
     "#conf/*": "./build/*.js",
-    "#configurator": "./build/configurator.js"
+    "#configurator": "./build/configurator.js",
+    "#file": "./build/file/__.js",
+    "#file/*": "./build/file/*.js"
   },
   "exports": {
     ".": "./build/_.js",
@@ -20,11 +22,17 @@
     "build": "tsgo -p tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
-    "check:lint": "oxlint --config ../../oxlint.json src/",
-    "check:package": "publint && attw --pack"
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   },
   "dependencies": {
+    "@effect/platform": "*",
     "@kitz/core": "workspace:*",
+    "@kitz/env": "workspace:*",
+    "@kitz/fs": "workspace:*",
+    "@kitz/mod": "workspace:*",
+    "@kitz/sch": "workspace:*",
+    "effect": "*",
     "type-fest": "*"
   }
 }

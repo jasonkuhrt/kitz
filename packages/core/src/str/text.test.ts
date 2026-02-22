@@ -1,6 +1,6 @@
-import { Test } from '#test'
+import { Test } from '#kitz/test'
 import { describe, expect } from 'vitest'
-import { stripIndent } from './text.js'
+import { lines, normalizeLineEndings, stripIndent } from './text.js'
 
 describe('stripIndent', () => {
   // dprint-ignore
@@ -51,3 +51,30 @@ describe('stripIndent', () => {
       expect(result).toBe(output)
     })
 })
+
+// ─── Line Endings ────────────────────────────────────────────────────────────
+
+// dprint-ignore
+Test.describe('lines > cross-platform')
+  .on(lines)
+  .cases(
+    [['a\nb\nc'],       ['a', 'b', 'c']],       // LF (Unix)
+    [['a\r\nb\r\nc'],   ['a', 'b', 'c']],       // CRLF (Windows)
+    [['a\rb\rc'],       ['a', 'b', 'c']],       // CR (Classic Mac)
+    [['a\r\nb\nc\rd'],  ['a', 'b', 'c', 'd']],  // Mixed
+    [['single'],        ['single']],
+    [[''],              ['']],
+  )
+  .test()
+
+// dprint-ignore
+Test.describe('normalizeLineEndings')
+  .on(normalizeLineEndings)
+  .cases(
+    [['a\r\nb'],    'a\nb'],       // CRLF → LF
+    [['a\rb'],      'a\nb'],       // CR → LF
+    [['a\nb'],      'a\nb'],       // LF unchanged
+    [['a\r\nb\rc'], 'a\nb\nc'],    // Mixed
+    [['no-nl'],     'no-nl'],      // No line endings
+  )
+  .test()

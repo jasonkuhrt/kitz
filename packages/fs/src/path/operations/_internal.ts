@@ -1,6 +1,6 @@
-import type { Path } from '../_.js'
 import { Match } from 'effect'
 import { $Rel } from '../$Rel/_.js'
+import type { Path } from '../_.js'
 import { AbsDir } from '../AbsDir/_.js'
 import { AbsFile } from '../AbsFile/_.js'
 import { RelDir } from '../RelDir/_.js'

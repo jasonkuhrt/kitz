@@ -1,13 +1,13 @@
 import type { Fn } from '@kitz/core'
-import { builder } from '../../builder-singleton.js'
 import { Optic } from '@kitz/core'
 import type { Either } from 'effect'
-import type { AssertExactKind, AssertEquivKind, AssertSubKind } from '../../asserts.js'
+import type { AssertEquivKind, AssertExactKind, AssertSubKind } from '../../asserts.js'
+import { builder } from '../../builder-singleton.js'
 
-export * as exact from './exact.js'
 export * as equiv from './equiv.js'
-export * as sub from './sub.js'
+export * as exact from './exact.js'
 export * as not from './not/__.js'
+export * as sub from './sub.js'
 // Value-level extractor chaining via builder proxy
 export const awaited = builder.array.awaited
 export const returned = builder.array.returned

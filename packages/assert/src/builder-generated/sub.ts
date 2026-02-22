@@ -9,7 +9,6 @@ import { builder } from '../builder-singleton.js'
  * Relation: subtype relation (extends)
  */
 
-
 /**
  * Base matcher accepting any expected type.
  *
@@ -28,7 +27,6 @@ import { builder } from '../builder-singleton.js'
 type of_<$Expected, $Actual> = Fn.Kind.Apply<AssertSubKind, [$Expected, $Actual]>
 const of_ = builder.sub.of
 
-
 /**
  * Pre-curried matcher for string.
  *
@@ -43,7 +41,6 @@ const of_ = builder.sub.of
  */
 type string_<$Actual> = Fn.Kind.Apply<AssertSubKind, [string, $Actual]>
 const string_ = builder.sub.string
-
 
 /**
  * Pre-curried matcher for number.
@@ -60,7 +57,6 @@ const string_ = builder.sub.string
 type number_<$Actual> = Fn.Kind.Apply<AssertSubKind, [number, $Actual]>
 const number_ = builder.sub.number
 
-
 /**
  * Pre-curried matcher for bigint.
  *
@@ -75,7 +71,6 @@ const number_ = builder.sub.number
  */
 type bigint_<$Actual> = Fn.Kind.Apply<AssertSubKind, [bigint, $Actual]>
 const bigint_ = builder.sub.bigint
-
 
 /**
  * Pre-curried matcher for boolean.
@@ -92,7 +87,6 @@ const bigint_ = builder.sub.bigint
 type boolean_<$Actual> = Fn.Kind.Apply<AssertSubKind, [boolean, $Actual]>
 const boolean_ = builder.sub.boolean
 
-
 /**
  * Pre-curried matcher for true.
  *
@@ -107,7 +101,6 @@ const boolean_ = builder.sub.boolean
  */
 type true_<$Actual> = Fn.Kind.Apply<AssertSubKind, [true, $Actual]>
 const true_ = builder.sub.true
-
 
 /**
  * Pre-curried matcher for false.
@@ -124,7 +117,6 @@ const true_ = builder.sub.true
 type false_<$Actual> = Fn.Kind.Apply<AssertSubKind, [false, $Actual]>
 const false_ = builder.sub.false
 
-
 /**
  * Pre-curried matcher for undefined.
  *
@@ -139,7 +131,6 @@ const false_ = builder.sub.false
  */
 type undefined_<$Actual> = Fn.Kind.Apply<AssertSubKind, [undefined, $Actual]>
 const undefined_ = builder.sub.undefined
-
 
 /**
  * Pre-curried matcher for null.
@@ -156,7 +147,6 @@ const undefined_ = builder.sub.undefined
 type null_<$Actual> = Fn.Kind.Apply<AssertSubKind, [null, $Actual]>
 const null_ = builder.sub.null
 
-
 /**
  * Pre-curried matcher for symbol.
  *
@@ -171,7 +161,6 @@ const null_ = builder.sub.null
  */
 type symbol_<$Actual> = Fn.Kind.Apply<AssertSubKind, [symbol, $Actual]>
 const symbol_ = builder.sub.symbol
-
 
 /**
  * Pre-curried matcher for Date.
@@ -188,7 +177,6 @@ const symbol_ = builder.sub.symbol
 type Date_<$Actual> = Fn.Kind.Apply<AssertSubKind, [Date, $Actual]>
 const Date_ = builder.sub.Date
 
-
 /**
  * Pre-curried matcher for RegExp.
  *
@@ -203,7 +191,6 @@ const Date_ = builder.sub.Date
  */
 type RegExp_<$Actual> = Fn.Kind.Apply<AssertSubKind, [RegExp, $Actual]>
 const RegExp_ = builder.sub.RegExp
-
 
 /**
  * Pre-curried matcher for Error.
@@ -220,7 +207,6 @@ const RegExp_ = builder.sub.RegExp
 type Error_<$Actual> = Fn.Kind.Apply<AssertSubKind, [Error, $Actual]>
 const Error_ = builder.sub.Error
 
-
 /**
  * Pre-curried matcher for unknown.
  *
@@ -236,7 +222,6 @@ const Error_ = builder.sub.Error
 type unknown_<$Actual> = Fn.Kind.Apply<AssertSubKind, [unknown, $Actual]>
 const unknown_ = builder.sub.unknown
 
-
 /**
  * Pre-curried matcher for any.
  *
@@ -251,7 +236,6 @@ const unknown_ = builder.sub.unknown
  */
 type any_<$Actual> = Fn.Kind.Apply<AssertSubKind, [any, $Actual]>
 const any_ = builder.sub.any
-
 
 /**
  * Pre-curried matcher for never.
@@ -278,23 +262,23 @@ const noExcess_ = builder.sub.noExcess
 const noExcessAs_ = <$Type>() => builder.sub.noExcessAs<$Type>()
 
 export {
-  of_ as of,
-  string_ as string,
-  number_ as number,
+  any_ as any,
   bigint_ as bigint,
   boolean_ as boolean,
-  true_ as true,
-  false_ as false,
-  undefined_ as undefined,
-  null_ as null,
-  symbol_ as symbol,
   Date_ as Date,
-  RegExp_ as RegExp,
   Error_ as Error,
-  unknown_ as unknown,
-  any_ as any,
+  false_ as false,
   never_ as never,
-  ofAs_ as ofAs,
   noExcess_ as noExcess,
   noExcessAs_ as noExcessAs,
+  null_ as null,
+  number_ as number,
+  of_ as of,
+  ofAs_ as ofAs,
+  RegExp_ as RegExp,
+  string_ as string,
+  symbol_ as symbol,
+  true_ as true,
+  undefined_ as undefined,
+  unknown_ as unknown,
 }

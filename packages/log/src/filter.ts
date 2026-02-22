@@ -1,4 +1,5 @@
 import { Arr, Err, Lang, Str } from '@kitz/core'
+import { Schema as S } from 'effect'
 import type * as FilterTypes from './filter.types.js'
 import { validPathSegmentNameRegex } from './internal.js'
 import * as Level from './level.js'
@@ -298,11 +299,20 @@ export const parseUnsafe = (defaults: Defaults, pattern: string): Parsed[] => {
   })
 }
 
-type ParseError = Err.ContextualError<{ pattern: string; hint: string | undefined }>
+const baseTags = ['kit', 'log', 'filter'] as const
+
+const ParseError = Err.TaggedContextualError('LogFilterParseError', baseTags, {
+  context: S.Struct({
+    pattern: S.String,
+    hint: S.optional(S.String),
+  }),
+  message: (ctx) => `Invalid filter pattern: "${ctx.pattern}${ctx.hint ? `. ${ctx.hint}` : ``}"`,
+})
+
+type ParseError = InstanceType<typeof ParseError>
 
 const createInvalidPattern = (pattern: string, hint?: string): ParseError => {
-  return new Err.ContextualError({
-    message: `Invalid filter pattern: "${pattern}${hint ? `. ${hint}` : ``}"`,
+  return new ParseError({
     context: {
       pattern,
       hint,

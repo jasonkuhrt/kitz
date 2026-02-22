@@ -4,20 +4,29 @@ This project is designed for Claude Code-assisted development. Common workflows 
 
 ## Skills
 
-| Skill                      | Purpose                                     |
-| -------------------------- | ------------------------------------------- |
-| `running-scripts`          | Turbo commands, caching, and test execution |
-| `creating-packages`        | Create new packages with full scaffolding   |
-| `creating-modules`         | Add modules to existing packages            |
-| `implementing-functions`   | Function design with currying patterns      |
-| `writing-tests`            | Test patterns and organization              |
-| `committing-changes`       | Conventional commits and changesets         |
-| `authoring-global-scripts` | Manage `_:*` template scripts               |
-| `syncing-tsconfig-paths`   | Keep tsconfig paths in sync with imports    |
-| `refreshing-docs`          | Update README tables                        |
-| `auditing-project`         | Check for out-of-band inconsistencies       |
+| Skill                      | Purpose                                        |
+| -------------------------- | ---------------------------------------------- |
+| `running-scripts`          | Turbo commands, caching, and test execution    |
+| `creating-packages`        | Create new packages with full scaffolding      |
+| `creating-modules`         | Add modules to existing packages               |
+| `creating-rules`           | Add conventions with correct scoping           |
+| `writing-tests`            | Test patterns and organization                 |
+| `committing-changes`       | Conventional commits and CI validation         |
+| `authoring-global-scripts` | Manage `_:*` template scripts                  |
+| `syncing-tsconfig-paths`   | Keep tsconfig paths in sync with imports       |
+| `refreshing-docs`          | Update README tables                           |
+| `auditing-project`         | Check for out-of-band inconsistencies          |
+| `kitz-cli-output`          | CLI output with Str.Builder and Effect Console |
+| `kitz-data-modeling`       | Schema, Match, lookup tables for domain types  |
+| `kitz-fs`                  | Filesystem and path operations with @kitz/fs   |
+| `kitz-functions`           | Function design with currying patterns         |
+| `kitz-services`            | Effect services with multiple implementations  |
 
 Just describe what you need and Claude Code will handle it.
+
+## Package Conventions
+
+Some packages have their own conventions in `packages/<name>/.claude/CONVENTIONS.md`. These are auto-loaded via `.claude/rules/package-conventions.md` when working on that package.
 
 ## Architecture
 

@@ -20,12 +20,26 @@ export const fromLiteral = <const $input extends string>(
 ): normalize<$input> => S.decodeSync(Schema)($input) as any
 
 /**
- * Decode a runtime string to a Path instance.
- * Use this for dynamic/runtime string values.
+ * Decode a string to the appropriate Path type.
+ *
+ * When called with a string literal, the specific path type is inferred:
+ * - `./.release/` → RelDir (starts with `./`, ends with `/`)
+ * - `./config.json` → RelFile (starts with `./`, has extension)
+ * - `/home/user/` → AbsDir (starts with `/`, ends with `/`)
+ * - `/home/user/config.json` → AbsFile (starts with `/`, has extension)
+ *
+ * When called with a plain `string`, returns the union type `Path`.
  *
  * @example
  * ```ts
- * const path = fromString(someRuntimeVariable)  // Path
+ * // Literal strings infer specific types
+ * const dir = fromString('./.release/')        // RelDir
+ * const file = fromString('./config.json')     // RelFile
+ *
+ * // Runtime strings return Path union
+ * const path = fromString(someVariable)        // Path
  * ```
  */
-export const fromString = (input: string): Path => S.decodeSync(Schema)(input)
+export const fromString = <const $input extends string>(
+  $input: $input,
+): normalize<$input> => S.decodeSync(Schema)($input) as any

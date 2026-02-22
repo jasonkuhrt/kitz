@@ -1,10 +1,10 @@
-import { Err, Str } from '@kitz/core'
 import { FileSystem } from '@effect/platform'
 import type { PlatformError } from '@effect/platform/Error'
+import { Err, Str } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Mod } from '@kitz/mod'
-import { Effect, ParseResult } from 'effect'
+import { Effect, ParseResult, Schema as S } from 'effect'
 import { parseArgv } from './argv.js'
 import { type CommandTarget, getCommandTarget } from './commend-target.js'
 
@@ -20,12 +20,14 @@ const baseTags = ['kit', 'cli', 'dispatch'] as const
 export const DiscoverCommandsDirNotFoundError = Err.TaggedContextualError(
   'KitCliDiscoverCommandsDirNotFoundError',
   baseTags,
-).constrain<{
-  /** The directory path that was not found. */
-  path: Fs.Path.AbsDir
-}>({
-  message: (ctx) => `Commands directory not found: ${Fs.Path.toString(ctx.path)}`,
-}).constrainCause<Error>(true)
+  {
+    context: S.Struct({
+      path: Fs.Path.AbsDir.Schema,
+    }),
+    message: (ctx) => `Commands directory not found: ${Fs.Path.toString(ctx.path)}`,
+    cause: S.instanceOf(Error),
+  },
+)
 
 /**
  * Instance type of {@link DiscoverCommandsDirNotFoundError}.

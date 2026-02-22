@@ -1,6 +1,6 @@
-import { Type as A } from '#assert/assert'
 import { Fn } from '#fn'
-import { Test } from '#test'
+import { Type as A } from '#kitz/assert/assert'
+import { Test } from '#kitz/test'
 import { Ts } from '#ts'
 import fc from 'fast-check'
 import { expect, test } from 'vitest'

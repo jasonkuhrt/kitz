@@ -1,19 +1,18 @@
+import { Test } from '#kitz/test'
 import { Obj } from '#obj'
-import { Test } from '#test'
 import * as fc from 'fast-check'
 import { expect, test } from 'vitest'
 
 const testObj = { a: 1, b: 2, c: 3, d: 4 }
 
-// dprint-ignore
 Test.on(Obj.policyFilter)
   .cases(
     [['allow', testObj, ['a', 'c']], { a: 1, c: 3 }],
-    [['allow', testObj, []],         {}],
+    [['allow', testObj, []], {}],
     [['allow', testObj, ['a', 'z']], { a: 1 }],
-    [['deny',  testObj, ['a', 'c']], { b: 2, d: 4 }],
-    [['deny',  testObj, []],         { a: 1, b: 2, c: 3, d: 4 }],
-    [['deny',  testObj, ['z']],      { a: 1, b: 2, c: 3, d: 4 }],
+    [['deny', testObj, ['a', 'c']], { b: 2, d: 4 }],
+    [['deny', testObj, []], { a: 1, b: 2, c: 3, d: 4 }],
+    [['deny', testObj, ['z']], { a: 1, b: 2, c: 3, d: 4 }],
   )
   .test()
 
@@ -22,51 +21,45 @@ test('policyFilter preserves undefined values', () => {
   expect(Obj.policyFilter('allow', obj, ['a', 'b'])).toEqual({ a: 1, b: undefined })
 })
 
-// dprint-ignore
 Test.on((obj: Record<string, number>) => Obj.pick(obj, (_k, v: number) => v > 2))
   .cases(
     [[testObj], { c: 3, d: 4 }],
   )
   .test()
 
-// dprint-ignore
 Test.on((obj: Record<string, number>) => Obj.pick(obj, k => k === 'a' || k === 'c'))
   .cases(
     [[testObj], { a: 1, c: 3 }],
   )
   .test()
 
-// dprint-ignore
-Test.on((obj: Record<string, number>) => Obj.pick(obj, (_k, v: number, o?: Record<string, number>) => {
-  const avg = Object.values(o!).reduce((a: number, b: number) => a + b, 0) / Object.keys(o!).length
-  return v < avg
-}))
-  .cases(
-    [[testObj], { a: 1, b: 2 }],
-  )
+Test.on((obj: Record<string, number>) =>
+  Obj.pick(obj, (_k, v: number, o?: Record<string, number>) => {
+    const avg = Object.values(o!).reduce((a: number, b: number) => a + b, 0) / Object.keys(o!).length
+    return v < avg
+  })
+)
+  .cases([[testObj], { a: 1, b: 2 }])
   .test()
 
-// dprint-ignore
 Test.on((obj: Record<string, number>) => Obj.pick(obj, () => false))
   .cases(
     [[testObj], {}],
   )
   .test()
 
-// dprint-ignore
 Test.on((obj: Record<string, number>) => Obj.pick(obj, () => true))
   .cases(
-    [[testObj],  { a: 1, b: 2, c: 3, d: 4 }],
-    [[{}],       {}],
+    [[testObj], { a: 1, b: 2, c: 3, d: 4 }],
+    [[{}], {}],
   )
   .test()
 
-// dprint-ignore
-Test.on(Obj.partition)
+Test.on((obj: Record<string, number>, keys: readonly string[]) => Obj.partition(obj, keys))
   .cases(
     [[{ a: 1, b: 2, c: 3, d: 4 }, ['a', 'c']], { picked: { a: 1, c: 3 }, omitted: { b: 2, d: 4 } }],
-    [[{ a: 1, b: 2 }, []],                     { picked: {}, omitted: { a: 1, b: 2 } }],
-    [[{ a: 1, b: 2 }, ['a', 'z']],             { picked: { a: 1 }, omitted: { b: 2 } }],
+    [[{ a: 1, b: 2 }, []], { picked: {}, omitted: { a: 1, b: 2 } }],
+    [[{ a: 1, b: 2 }, ['a', 'z']], { picked: { a: 1 }, omitted: { b: 2 } }],
   )
   .test()
 

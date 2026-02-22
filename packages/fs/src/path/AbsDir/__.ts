@@ -1,6 +1,5 @@
-import { Fn } from '@kitz/core'
 import { ParseResult, Schema as S } from 'effect'
-import type { RefineSchemaId, TypeId } from 'effect/Schema'
+import type { RefineSchemaId } from 'effect/Schema'
 import { analyze } from '../../path-analyzer/codec-string/analyzer.js'
 import { stringSeparator } from '../constants.js'
 import { Segments } from '../types/segments.js'
@@ -17,7 +16,17 @@ class AbsDirClass extends S.TaggedClass<AbsDirClass>()('FsPathAbsDir', {
   override toString() {
     return S.encodeSync(Schema)(this)
   }
+
+  /** The directory name (last segment), or empty string for root. */
+  get name(): string {
+    return name(this)
+  }
 }
+
+/**
+ * Get the directory name (last segment), or empty string for root.
+ */
+export const name = (instance: AbsDirClass): string => instance.segments.at(-1) ?? ''
 
 /**
  * Schema for absolute directory paths with string codec baked in.
@@ -48,8 +57,8 @@ export const Schema: S.Schema<AbsDirClass, string> = S.transformOrFail(
       return ParseResult.succeed(string)
     },
     decode: (input, options, ast) => {
-      // Analyze the input string
-      const analysis = analyze(input)
+      // Analyze the input string with directory hint for ambiguous paths
+      const analysis = analyze(input, { hint: 'directory' })
 
       // Validate it's an absolute directory
       if (analysis._tag !== 'dir') {

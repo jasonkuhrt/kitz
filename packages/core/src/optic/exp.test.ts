@@ -1,4 +1,4 @@
-import { Assert } from '#assert'
+import { Assert } from '#kitz/assert'
 import { Either } from 'effect'
 import { describe, expect, test } from 'vitest'
 import {

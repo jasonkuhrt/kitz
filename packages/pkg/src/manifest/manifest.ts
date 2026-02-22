@@ -3,6 +3,7 @@ import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
 import { Semver } from '@kitz/semver'
 import { Effect, Option, Schema as S } from 'effect'
+import * as Moniker from '../moniker/moniker.js'
 
 const Author = S.Struct({
   name: S.optional(S.String),
@@ -35,8 +36,8 @@ const Workspaces = S.Struct({
  * Class schema for package.json manifest
  */
 export class Manifest extends S.Class<Manifest>('Manifest')({
-  name: S.optionalWith(S.String, { default: () => 'unnamed' }),
-  version: S.optionalWith(Semver.Semver, { default: () => Semver.make(0, 0, 0) }),
+  name: S.optionalWith(Moniker.FromString, { default: () => new Moniker.Unscoped({ name: 'unnamed' }) }),
+  version: S.optionalWith(Semver.Schema, { default: () => Semver.zero }),
   description: S.optional(S.String),
   main: S.optional(S.String),
   type: S.optional(S.Literal('module', 'commonjs')),
@@ -122,43 +123,41 @@ export const make = Manifest.make.bind(Manifest)
 export const emptyManifest = Manifest.make()
 
 /**
- * Resource for reading/writing package.json with Schema validation
+ * Resource for reading/writing package.json with Schema validation.
+ *
+ * Uses `preserveExcessProperties: true` to ensure unknown fields in package.json
+ * (like `turbo`, `publishConfig`, custom fields) survive round-trips.
  */
-export const resource: Resource.Resource<Manifest> = {
-  read: (dirPath: Fs.Path.AbsDir) =>
-    Resource.createSchemaResource(
-      'package.json',
-      Manifest,
-      emptyManifest,
-    ).read(dirPath),
-  write: (value: Manifest, dirPath: Fs.Path.AbsDir) =>
-    Resource.createSchemaResource(
-      'package.json',
-      Manifest,
-      emptyManifest,
-    ).write(value, dirPath),
-  readOrEmpty: (dirPath: Fs.Path.AbsDir) =>
-    Resource.createSchemaResource(
-      'package.json',
-      Manifest,
-      emptyManifest,
-    ).readOrEmpty(dirPath),
-}
+export const resource: Resource.Resource<Manifest> = Resource.createJson(
+  'package.json',
+  Manifest,
+  emptyManifest,
+  { preserveExcessProperties: true },
+)
 
 /**
  * Mutable resource for backward compatibility
  * @deprecated Use resource instead and call toMutable() on the result if needed
  */
 export const resourceMutable: Resource.Resource<ManifestMutable> = {
-  read: (dirPath: Fs.Path.AbsDir) =>
-    resource.read(dirPath).pipe(
+  read: (path: Fs.Path.$Abs) =>
+    resource.read(path).pipe(
       Effect.map(Option.map((m) => m.toMutable())),
     ),
-  write: (value: ManifestMutable, dirPath: Fs.Path.AbsDir) => resource.write(Manifest.make(value), dirPath),
-  readOrEmpty: (dirPath: Fs.Path.AbsDir) =>
-    resource.readOrEmpty(dirPath).pipe(
+  readRequired: (path: Fs.Path.$Abs) =>
+    resource.readRequired(path).pipe(
       Effect.map((m) => m.toMutable()),
     ),
+  write: (value: ManifestMutable, path: Fs.Path.$Abs) => resource.write(Manifest.make(value), path),
+  readOrEmpty: (path: Fs.Path.$Abs) =>
+    resource.readOrEmpty(path).pipe(
+      Effect.map((m) => m.toMutable()),
+    ),
+  update: (path: Fs.Path.$Abs, fn: (current: ManifestMutable) => ManifestMutable) =>
+    resource.update(path, (m) => Manifest.make(fn(m.toMutable()))).pipe(
+      Effect.map((m) => m.toMutable()),
+    ),
+  delete: (path: Fs.Path.$Abs) => resource.delete(path),
 }
 
 /**

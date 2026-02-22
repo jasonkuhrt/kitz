@@ -1,4 +1,4 @@
-import { Test } from '#test'
+import { Test } from '#kitz/test'
 import { capped, equal, priority, proportional } from './allocation.js'
 
 Test.describe('capped')

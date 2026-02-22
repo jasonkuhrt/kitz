@@ -51,7 +51,7 @@ export const parse = (environment: RawInputs, specs: Parameter[]): ParsedInputs 
         }
         const e = report.errors.find((_) => _._tag === `OakErrorDuplicateEnvArg`)
         if (e) {
-          e.context.instances.push(instance)
+          ;(e.context.instances as typeof instance[]).push(instance)
         } else {
           report.errors.push(
             new Errors.ErrorDuplicateEnvArg({

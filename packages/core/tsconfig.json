@@ -129,6 +129,24 @@
       ],
       "#deps/*": [
         "./src/deps/*.js"
+      ],
+      "#kitz/test": [
+        "../test/src/_.ts"
+      ],
+      "#kitz/test/test": [
+        "../test/src/__.ts"
+      ],
+      "#kitz/test/*": [
+        "../test/src/*.ts"
+      ],
+      "#kitz/assert": [
+        "../assert/src/_.ts"
+      ],
+      "#kitz/assert/assert": [
+        "../assert/src/__.ts"
+      ],
+      "#kitz/assert/*": [
+        "../assert/src/*.ts"
       ]
     }
   },
@@ -137,9 +155,6 @@
   ],
   "exclude": [
     "build",
-    "node_modules",
-    "**/*.bench-d.ts",
-    "**/*.test.ts",
-    "**/*.test-d.ts"
+    "node_modules"
   ]
 }

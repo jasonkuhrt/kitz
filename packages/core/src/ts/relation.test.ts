@@ -7,7 +7,7 @@
  * The examples here should match exactly what's shown in the GetRelation JSDoc.
  */
 
-import { Assert } from '#assert'
+import { Assert } from '#kitz/assert'
 import { Ts } from '#ts'
 import { test } from 'vitest'
 

@@ -1,86 +1,160 @@
+/**
+ * JSONC (JSON with Comments) resources.
+ *
+ * JSONC resources are read-only because round-tripping would lose comments.
+ * If you need to write JSONC files, use regular JSON resources which produce
+ * valid JSONC output (without comments).
+ *
+ * @example
+ * ```ts
+ * import { Resource } from '@kitz/resource'
+ *
+ * const tsconfig = Resource.createJsonc(
+ *   'tsconfig.json',
+ *   TsConfigSchema,
+ *   defaultTsConfig
+ * )
+ *
+ * // Read-only operations
+ * const config = yield* tsconfig.readOrEmpty(projectDir)
+ * // tsconfig.write() // ← TypeScript error: property doesn't exist
+ * ```
+ *
+ * @module
+ */
+
 import { FileSystem } from '@effect/platform'
+import type { PlatformError } from '@effect/platform/Error'
+import { Fs } from '@kitz/fs'
 import { Jsonc } from '@kitz/jsonc'
-import { Effect, ParseResult, Schema } from 'effect'
-import { type Codec, createResource, EncodeError, ParseError, type Resource } from './resource.js'
+import { Effect, Option, ParseResult, Schema, SchemaAST } from 'effect'
+import { NotFoundError, ParseError, ReadError } from './errors.js'
+import type { CreateOptions, ReadOnlyResource, ResourceError } from './resource.js'
 
-export type { Resource } from './resource.js'
+export type { ReadOnlyResource } from './resource.js'
 
-/**
- * JSONC codec for parsing JSON with comments
- */
-export const jsoncCodec = <T>(): Codec<T> => ({
-  decode: (content: string, resource: string, path: string) =>
-    Effect.gen(function*() {
-      const parsed = yield* Schema.decodeUnknown(Jsonc.parseJsonc())(content).pipe(
-        Effect.mapError((error) =>
-          new ParseError({
-            path,
-            resource,
-            message: `Failed to parse JSONC: ${ParseResult.TreeFormatter.formatErrorSync(error)}`,
-          })
-        ),
-      )
-      return parsed as T
-    }),
-  encode: (value: T, resource: string) =>
-    Effect.try({
-      try: () => JSON.stringify(value, null, 2),
-      catch: (error) =>
-        new EncodeError({
-          resource,
-          message: `Failed to stringify JSON: ${error instanceof Error ? error.message : String(error)}`,
-        }),
-    }),
-})
+// ─── Internal Helpers ────────────────────────────────────────────────────────
 
 /**
- * JSONC codec with schema validation
+ * Resolve path to absolute file path.
+ * If path is already a file, use it directly.
+ * If path is a directory, join with filename.
  */
-export const schemaJsoncCodec = <S extends Schema.Schema<any, any>>(
-  schema: S,
-): Codec<Schema.Schema.Type<S>, Schema.Schema.Context<S>> => ({
-  decode: (content: string, resource: string, path: string) =>
-    Effect.gen(function*() {
-      // Compose parseJsonc with the provided schema
-      const jsoncSchema = Schema.compose(Jsonc.parseJsonc(), schema)
-      return yield* Schema.decodeUnknown(jsoncSchema)(content).pipe(
-        Effect.mapError((error) =>
-          new ParseError({
-            path,
-            resource,
-            message: `Schema validation failed: ${ParseResult.TreeFormatter.formatErrorSync(error)}`,
-          })
-        ),
-      )
-    }),
-  encode: (value: Schema.Schema.Type<S>, resource: string) =>
-    Effect.gen(function*() {
-      const encoded = yield* Schema.encode(schema)(value).pipe(
-        Effect.mapError((error) =>
-          new EncodeError({
-            resource,
-            message: `Schema encoding failed: ${ParseResult.TreeFormatter.formatErrorSync(error)}`,
-          })
-        ),
-      )
-      return JSON.stringify(encoded, null, 2)
-    }),
-})
+const resolvePath = (path: Fs.Path.$Abs, filename: string): Fs.Path.AbsFile => {
+  if (Fs.Path.AbsFile.is(path)) {
+    return path
+  }
+  const relFile = Schema.decodeSync(Fs.Path.RelFile.Schema)(filename)
+  return Fs.Path.join(path, relFile)
+}
+
+// ─── JSONC Factory ───────────────────────────────────────────────────────────
 
 /**
- * Create a JSONC (JSON with Comments) resource with Schema validation
+ * Create a read-only JSONC resource.
+ *
+ * JSONC (JSON with Comments) files like tsconfig.json can be read but not
+ * written, because encoding would lose comments. This returns a
+ * {@link ReadOnlyResource} with only `read`, `readRequired`, and `readOrEmpty` methods.
+ *
+ * @param filename - Filename to use when path is a directory
+ * @param schema - Schema for the JSON object type
+ * @param emptyValue - Default value when file doesn't exist
+ * @param options - Optional configuration
+ *
+ * @example
+ * ```ts
+ * const tsconfig = Resource.createJsonc(
+ *   'tsconfig.json',
+ *   Schema.Struct({
+ *     compilerOptions: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+ *   }),
+ *   {}
+ * )
+ *
+ * const config = yield* tsconfig.readOrEmpty(projectDir)
+ * ```
  */
-export const createSchemaJsoncResource = <S extends Schema.Schema<any, any>>(
+export const createJsonc = <A, I, R = never>(
   filename: string,
-  schema: S,
-  emptyValue: Schema.Schema.Type<S>,
-): Resource<Schema.Schema.Type<S>, FileSystem.FileSystem | Schema.Schema.Context<S>> =>
-  createResource(filename, schemaJsoncCodec(schema), emptyValue)
+  schema: Schema.Schema<A, I, R>,
+  emptyValue: A,
+  options?: CreateOptions,
+): ReadOnlyResource<A, FileSystem.FileSystem | R> => {
+  const parseOptions: SchemaAST.ParseOptions | undefined = options?.preserveExcessProperties
+    ? { onExcessProperty: 'preserve' }
+    : undefined
 
-/**
- * Create a JSONC (JSON with Comments) resource without schema validation
- */
-export const createJsoncResource = <T>(
-  filename: string,
-  emptyValue: T,
-): Resource<T> => createResource(filename, jsoncCodec<T>(), emptyValue)
+  // Compose parseJsonc with the provided schema to get Schema<A, string>
+  const jsoncSchema = Schema.compose(Jsonc.parseJsonc(), schema)
+
+  const decode = (content: string, filePath: Fs.Path.AbsFile) =>
+    Schema.decode(jsoncSchema, parseOptions)(content).pipe(
+      Effect.mapError((error) =>
+        new ParseError({
+          context: {
+            path: filePath,
+            detail: ParseResult.TreeFormatter.formatErrorSync(error),
+          },
+        })
+      ),
+    )
+
+  const read = (path: Fs.Path.$Abs): Effect.Effect<Option.Option<A>, ResourceError, FileSystem.FileSystem | R> =>
+    Effect.gen(function*() {
+      const filePath = resolvePath(path, filename)
+
+      const exists = yield* Fs.exists(filePath).pipe(
+        Effect.mapError((error: PlatformError) =>
+          new ReadError({
+            context: {
+              path: filePath,
+              detail: `check exists: ${error.message}`,
+            },
+          })
+        ),
+      )
+
+      if (!exists) return Option.none()
+
+      const content = yield* Fs.readString(filePath).pipe(
+        Effect.mapError((error: PlatformError) =>
+          new ReadError({
+            context: {
+              path: filePath,
+              detail: error.message,
+            },
+          })
+        ),
+      )
+
+      const decoded = yield* decode(content, filePath)
+      return Option.some(decoded)
+    })
+
+  const readRequired = (path: Fs.Path.$Abs): Effect.Effect<A, ResourceError, FileSystem.FileSystem | R> =>
+    Effect.gen(function*() {
+      const result = yield* read(path)
+      if (Option.isNone(result)) {
+        const filePath = resolvePath(path, filename)
+        return yield* Effect.fail(
+          new NotFoundError({
+            context: { path: filePath },
+          }),
+        )
+      }
+      return result.value
+    })
+
+  const readOrEmpty = (path: Fs.Path.$Abs): Effect.Effect<A, ResourceError, FileSystem.FileSystem | R> =>
+    Effect.gen(function*() {
+      const result = yield* read(path)
+      return Option.getOrElse(result, () => emptyValue)
+    })
+
+  return {
+    read,
+    readRequired,
+    readOrEmpty,
+  }
+}

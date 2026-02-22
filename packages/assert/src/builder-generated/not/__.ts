@@ -1,9 +1,9 @@
 import type { Fn } from '@kitz/core'
+import type { AssertEquivKind, AssertExactKind, AssertSubKind } from '../../asserts.js'
 import { builder } from '../../builder-singleton.js'
-import type { AssertExactKind, AssertEquivKind, AssertSubKind } from '../../asserts.js'
 
-export * as exact from './exact.js'
 export * as equiv from './equiv.js'
+export * as exact from './exact.js'
 export * as sub from './sub.js'
 
 // Unary relators (negated)

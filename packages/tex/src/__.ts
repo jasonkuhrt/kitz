@@ -121,3 +121,30 @@ export { Block } from './nodes/block.js'
  * @category Text Formatting
  */
 export { Box } from './box/_.js'
+
+/**
+ * Terminal glyph library.
+ *
+ * Organized collection of Unicode characters for terminal UIs:
+ * - `Glyph.box` - Box drawing characters (edges, corners, connectors)
+ * - `Glyph.status` - Status indicators (check, cross, circles)
+ * - `Glyph.arrow` - Arrow characters
+ *
+ * @category Text Formatting
+ *
+ * @example
+ * ```typescript
+ * import { Tex } from '@kitz/tex'
+ *
+ * // Box drawing
+ * const border = `${Tex.Glyph.box.corner.topLeft}${Tex.Glyph.box.edge.horizontal}`
+ *
+ * // Status symbols
+ * const done = Tex.Glyph.status.check  // ✓
+ * const fail = Tex.Glyph.status.cross  // ✗
+ *
+ * // Arrows
+ * const next = Tex.Glyph.arrow.right   // →
+ * ```
+ */
+export { Glyph } from './glyph/_.js'

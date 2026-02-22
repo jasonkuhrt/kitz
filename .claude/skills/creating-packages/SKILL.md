@@ -20,13 +20,14 @@ The script creates:
 ```
 packages/<name>/
 ├── src/
-│   ├── _.ts              # Namespace file
-│   ├── __.ts             # Barrel file
-│   └── <name>.ts         # Main implementation
+│   ├── _.ts              # Namespace (export * as Name from './__.js')
+│   └── __.ts             # Barrel (exports implementation)
 ├── package.json          # @kitz/<name> with workspace deps
 ├── tsconfig.json         # Development config
 └── tsconfig.build.json   # Build config
 ```
+
+Note: Packages always use `__.ts` for consistency, even when starting with a single implementation. Module elision (skipping `__.ts`) only applies within modules inside packages—see `creating-modules` skill.
 
 Package naming:
 
@@ -35,6 +36,6 @@ Package naming:
 
 ## Notes
 
+- Use `creating-modules` skill to add modules within the package
 - The `kitz` aggregator package is separate and exports from all other packages
 - After creating, you may want to add the new package to `kitz/src/` exports
-- Run `syncing-package-scripts` skill if the new package needs updated scripts

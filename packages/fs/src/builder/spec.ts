@@ -1,6 +1,6 @@
 import type { Json } from '@kitz/json'
 import { Schema as S } from 'effect'
-import { join } from 'node:path'
+import { join } from 'path'
 import type { InferFileContent } from '../filesystem.js'
 import { Path } from '../path/_.js'
 

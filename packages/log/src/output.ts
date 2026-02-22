@@ -1,4 +1,4 @@
-import * as Os from 'node:os'
+import * as Os from 'os'
 import type { LogRecord } from './logger.js'
 import { Renderer } from './renderer.js'
 import type { Data as SettingsData } from './settings.js'

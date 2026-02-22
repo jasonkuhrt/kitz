@@ -1,6 +1,6 @@
-import { Obj, Tup } from '@kitz/core'
 import { Bldr } from '@kitz/bldr'
 import { Conf } from '@kitz/conf'
+import { Obj, Tup } from '@kitz/core'
 import type { Writable } from 'type-fest'
 // for resolving '... cannot be named ...' error
 export type { Writable } from 'type-fest'

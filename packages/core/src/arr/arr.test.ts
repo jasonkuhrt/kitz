@@ -1,4 +1,4 @@
-import { Test } from '#test'
+import { Test } from '#kitz/test'
 import { describe, expect, test } from 'vitest'
 import { Arr } from './_.js'
 

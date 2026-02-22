@@ -1,6 +1,6 @@
 {
   "name": "@kitz/fs",
-  "version": "0.0.0",
+  "version": "0.0.0-kitz-release",
   "description": "Filesystem utilities",
   "type": "module",
   "sideEffects": false,
@@ -16,11 +16,15 @@
     "effect": "^3.0.0",
     "tinyglobby": "^0.2.15"
   },
+  "devDependencies": {
+    "@kitz/assert": "workspace:*",
+    "@kitz/test": "workspace:*"
+  },
   "scripts": {
     "build": "tsgo -p tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
-    "check:lint": "oxlint --config ../../oxlint.json src/",
-    "check:package": "publint && attw --pack"
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   }
 }

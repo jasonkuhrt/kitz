@@ -9,7 +9,6 @@ import { builder } from '../builder-singleton.js'
  * Relation: exact structural equality
  */
 
-
 /**
  * Base matcher accepting any expected type.
  *
@@ -28,7 +27,6 @@ import { builder } from '../builder-singleton.js'
 type of_<$Expected, $Actual> = Fn.Kind.Apply<AssertExactKind, [$Expected, $Actual]>
 const of_ = builder.exact.of
 
-
 /**
  * Pre-curried matcher for string.
  *
@@ -43,7 +41,6 @@ const of_ = builder.exact.of
  */
 type string_<$Actual> = Fn.Kind.Apply<AssertExactKind, [string, $Actual]>
 const string_ = builder.exact.string
-
 
 /**
  * Pre-curried matcher for number.
@@ -60,7 +57,6 @@ const string_ = builder.exact.string
 type number_<$Actual> = Fn.Kind.Apply<AssertExactKind, [number, $Actual]>
 const number_ = builder.exact.number
 
-
 /**
  * Pre-curried matcher for bigint.
  *
@@ -75,7 +71,6 @@ const number_ = builder.exact.number
  */
 type bigint_<$Actual> = Fn.Kind.Apply<AssertExactKind, [bigint, $Actual]>
 const bigint_ = builder.exact.bigint
-
 
 /**
  * Pre-curried matcher for boolean.
@@ -92,7 +87,6 @@ const bigint_ = builder.exact.bigint
 type boolean_<$Actual> = Fn.Kind.Apply<AssertExactKind, [boolean, $Actual]>
 const boolean_ = builder.exact.boolean
 
-
 /**
  * Pre-curried matcher for true.
  *
@@ -107,7 +101,6 @@ const boolean_ = builder.exact.boolean
  */
 type true_<$Actual> = Fn.Kind.Apply<AssertExactKind, [true, $Actual]>
 const true_ = builder.exact.true
-
 
 /**
  * Pre-curried matcher for false.
@@ -124,7 +117,6 @@ const true_ = builder.exact.true
 type false_<$Actual> = Fn.Kind.Apply<AssertExactKind, [false, $Actual]>
 const false_ = builder.exact.false
 
-
 /**
  * Pre-curried matcher for undefined.
  *
@@ -139,7 +131,6 @@ const false_ = builder.exact.false
  */
 type undefined_<$Actual> = Fn.Kind.Apply<AssertExactKind, [undefined, $Actual]>
 const undefined_ = builder.exact.undefined
-
 
 /**
  * Pre-curried matcher for null.
@@ -156,7 +147,6 @@ const undefined_ = builder.exact.undefined
 type null_<$Actual> = Fn.Kind.Apply<AssertExactKind, [null, $Actual]>
 const null_ = builder.exact.null
 
-
 /**
  * Pre-curried matcher for symbol.
  *
@@ -171,7 +161,6 @@ const null_ = builder.exact.null
  */
 type symbol_<$Actual> = Fn.Kind.Apply<AssertExactKind, [symbol, $Actual]>
 const symbol_ = builder.exact.symbol
-
 
 /**
  * Pre-curried matcher for Date.
@@ -188,7 +177,6 @@ const symbol_ = builder.exact.symbol
 type Date_<$Actual> = Fn.Kind.Apply<AssertExactKind, [Date, $Actual]>
 const Date_ = builder.exact.Date
 
-
 /**
  * Pre-curried matcher for RegExp.
  *
@@ -203,7 +191,6 @@ const Date_ = builder.exact.Date
  */
 type RegExp_<$Actual> = Fn.Kind.Apply<AssertExactKind, [RegExp, $Actual]>
 const RegExp_ = builder.exact.RegExp
-
 
 /**
  * Pre-curried matcher for Error.
@@ -220,7 +207,6 @@ const RegExp_ = builder.exact.RegExp
 type Error_<$Actual> = Fn.Kind.Apply<AssertExactKind, [Error, $Actual]>
 const Error_ = builder.exact.Error
 
-
 /**
  * Pre-curried matcher for unknown.
  *
@@ -236,7 +222,6 @@ const Error_ = builder.exact.Error
 type unknown_<$Actual> = Fn.Kind.Apply<AssertExactKind, [unknown, $Actual]>
 const unknown_ = builder.exact.unknown
 
-
 /**
  * Pre-curried matcher for any.
  *
@@ -251,7 +236,6 @@ const unknown_ = builder.exact.unknown
  */
 type any_<$Actual> = Fn.Kind.Apply<AssertExactKind, [any, $Actual]>
 const any_ = builder.exact.any
-
 
 /**
  * Pre-curried matcher for never.
@@ -273,22 +257,22 @@ type noExcess_ = never
 const noExcess_ = builder.exact.noExcess
 
 export {
-  of_ as of,
-  string_ as string,
-  number_ as number,
+  any_ as any,
   bigint_ as bigint,
   boolean_ as boolean,
-  true_ as true,
-  false_ as false,
-  undefined_ as undefined,
-  null_ as null,
-  symbol_ as symbol,
   Date_ as Date,
-  RegExp_ as RegExp,
   Error_ as Error,
-  unknown_ as unknown,
-  any_ as any,
+  false_ as false,
   never_ as never,
-  ofAs_ as ofAs,
   noExcess_ as noExcess,
+  null_ as null,
+  number_ as number,
+  of_ as of,
+  ofAs_ as ofAs,
+  RegExp_ as RegExp,
+  string_ as string,
+  symbol_ as symbol,
+  true_ as true,
+  undefined_ as undefined,
+  unknown_ as unknown,
 }

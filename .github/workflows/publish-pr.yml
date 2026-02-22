@@ -1,0 +1,188 @@
+name: publish-pr
+on:
+  issue_comment:
+    types: [edited]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
+jobs:
+  publish:
+    # Gate 1: Must be a PR comment (not an issue)
+    if: github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check gate conditions
+        id: gate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.comment.body
+            const marker = '<!-- kitz-release-plan -->'
+
+            // Gate 2: Must contain release plan marker
+            if (!body.includes(marker)) {
+              core.info('Comment does not contain release plan marker')
+              return
+            }
+
+            // Gate 3: Publish state must be idle or failed
+            const stateMatch = body.match(/<!-- publish-state:(\S+) -->/)
+            const state = stateMatch?.[1] ?? 'idle'
+            if (state !== 'idle' && state !== 'failed') {
+              core.info(`Publish state is "${state}", skipping`)
+              return
+            }
+
+            // Gate 4: At least one checkbox is checked
+            if (!body.match(/- \[x\]/i)) {
+              core.info('No checkboxes checked')
+              return
+            }
+
+            // Extract head SHA from comment metadata
+            const shaMatch = body.match(/<!-- head-sha:(\S+) -->/)
+            const headSha = shaMatch?.[1] ?? ''
+            if (!headSha) {
+              core.setFailed('Could not extract head SHA from comment metadata')
+              return
+            }
+
+            core.setOutput('should-publish', 'true')
+            core.setOutput('head-sha', headSha)
+            core.setOutput('comment-id', String(context.payload.comment.id))
+            core.info(`Publishing at SHA ${headSha}`)
+
+      - name: Update comment to publishing state
+        if: steps.gate.outputs.should-publish == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo
+            const commentId = parseInt('${{ steps.gate.outputs.comment-id }}', 10)
+            const { data: comment } = await github.rest.issues.getComment({
+              owner, repo, comment_id: commentId,
+            })
+
+            const body = comment.body
+              .replace(/<!-- publish-state:\S+ -->/, '<!-- publish-state:publishing -->')
+            await github.rest.issues.updateComment({
+              owner, repo, comment_id: commentId, body,
+            })
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.should-publish == 'true'
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.gate.outputs.head-sha }}
+
+      - name: Fetch tags
+        if: steps.gate.outputs.should-publish == 'true'
+        run: git fetch --tags --force
+
+      - uses: ./.github/actions/setup
+        if: steps.gate.outputs.should-publish == 'true'
+
+      - name: Build release package
+        if: steps.gate.outputs.should-publish == 'true'
+        run: pnpm turbo run build --filter=@kitz/release
+
+      - name: Generate plan and publish
+        if: steps.gate.outputs.should-publish == 'true'
+        env:
+          CLI_PARAMETER_LIFECYCLE: ephemeral
+          GITHUB_PR_NUMBER: ${{ github.event.issue.number }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          node packages/release/build/cli/cli.js plan
+          cp .release/plan.json /tmp/release-plan.json
+          node packages/release/build/cli/cli.js apply --yes --tag pr
+
+      - name: Update comment to published state
+        if: steps.gate.outputs.should-publish == 'true' && success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs')
+            const { owner, repo } = context.repo
+            const commentId = parseInt('${{ steps.gate.outputs.comment-id }}', 10)
+            const prNumber = context.payload.issue.number
+            const headSha = '${{ steps.gate.outputs.head-sha }}'
+            const runId = '${{ github.run_id }}'
+
+            // Read the saved plan (apply deletes .release/plan.json on success)
+            const plan = JSON.parse(fs.readFileSync('/tmp/release-plan.json', 'utf8'))
+            const allItems = [...plan.releases, ...(plan.cascades ?? [])]
+            const now = new Date().toISOString()
+            const newRecords = allItems.map((item, i) => {
+              const name = item.package?.name?.moniker ?? item.package?.name?.name ?? String(item.package?.name)
+              const version = `0.0.0-pr.${item.prerelease?.prNumber}.${item.prerelease?.iteration}.${item.prerelease?.sha}`
+              return {
+                package: name,
+                version,
+                iteration: item.prerelease?.iteration ?? 1,
+                sha: headSha.slice(0, 7),
+                timestamp: now,
+                runId,
+              }
+            })
+
+            // Read existing comment to merge publish history
+            const { data: comment } = await github.rest.issues.getComment({
+              owner, repo, comment_id: commentId,
+            })
+            const historyRe = /<!-- kitz-release-publish-history\n([\s\S]*?)\n-->/
+            const match = comment.body.match(historyRe)
+            let existingRecords = []
+            if (match?.[1]) {
+              try {
+                const parsed = JSON.parse(match[1])
+                existingRecords = parsed?.publishes ?? []
+              } catch {}
+            }
+
+            const mergedHistory = [...newRecords, ...existingRecords]
+            const historyJson = JSON.stringify({ publishes: mergedHistory })
+
+            // Update comment: published state + merged history + check all boxes
+            let body = comment.body
+              .replace(/<!-- publish-state:\S+ -->/, '<!-- publish-state:published -->')
+              .replace(historyRe, `<!-- kitz-release-publish-history\n${historyJson}\n-->`)
+              .replace(/- \[ \]/g, '- [x]')
+
+            await github.rest.issues.updateComment({
+              owner, repo, comment_id: commentId, body,
+            })
+            core.info(`Published ${newRecords.length} packages, updated comment`)
+
+      - name: Update comment to failed state
+        if: steps.gate.outputs.should-publish == 'true' && failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo
+            const commentId = parseInt('${{ steps.gate.outputs.comment-id }}', 10)
+            const runUrl = `https://github.com/${owner}/${repo}/actions/runs/${{ github.run_id }}`
+
+            const { data: comment } = await github.rest.issues.getComment({
+              owner, repo, comment_id: commentId,
+            })
+
+            const body = comment.body
+              .replace(/<!-- publish-state:\S+ -->/, '<!-- publish-state:failed -->')
+              .replace(
+                /## Release Plan Preview/,
+                `## Release Plan Preview\n\n> **Publish failed.** See [workflow run](${runUrl}) for details. Re-check a checkbox to retry.`
+              )
+
+            await github.rest.issues.updateComment({
+              owner, repo, comment_id: commentId, body,
+            })
+            core.info('Marked comment as failed')

@@ -1,4 +1,4 @@
-import { Assert } from '#assert'
+import { Assert } from '#kitz/assert'
 import type { Either } from 'effect'
 import type * as Indexed from './indexed.js'
 

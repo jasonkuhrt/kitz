@@ -1,5 +1,5 @@
-import { Ts } from '@kitz/core'
 import type { Conf } from '@kitz/conf'
+import { Ts } from '@kitz/core'
 import type { StepDefinition } from '../StepDefinition.js'
 
 export interface Data<

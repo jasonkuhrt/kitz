@@ -6,7 +6,7 @@ import { test } from 'vitest'
  * of sync/async functions and fallbacks.
  */
 
-import { Type as A } from '#assert/assert'
+import { Type as A } from '#kitz/assert/assert'
 import { Ts } from '#ts'
 import { tryOr, tryOrAsync, tryOrAsyncWith, tryOrNull, tryOrUndefined, tryOrWith } from './try.js'
 

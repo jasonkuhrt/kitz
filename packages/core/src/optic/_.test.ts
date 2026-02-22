@@ -1,4 +1,4 @@
-import { Assert } from '#assert'
+import { Assert } from '#kitz/assert'
 import { Optic } from '#optic'
 import { describe, expect, test } from 'vitest'
 

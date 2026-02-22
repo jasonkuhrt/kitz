@@ -183,5 +183,4 @@ export type SetKeysOptional<
  * type T2 = AppendOptional<[1, 2], undefined>  // [1, 2]
  * ```
  */
-export type AppendOptional<$Array extends any[], $Value> =
-  $Value extends undefined ? $Array : [...$Array, $Value]
+export type AppendOptional<$Array extends any[], $Value> = $Value extends undefined ? $Array : [...$Array, $Value]

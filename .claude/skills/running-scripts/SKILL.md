@@ -1,9 +1,14 @@
 ---
 name: running-scripts
-description: How to run scripts in this pnpm + turbo monorepo. Covers turbo task filtering, caching, package-local scripts, and common pitfalls.
+description: INVOKE BEFORE running any script (build, test, check, lint). This monorepo uses pnpm + turbo with specific command patterns. Don't guess - check here first.
 ---
 
 # Running Scripts
+
+## Rules
+
+- **MUST invoke this skill before running ANY script** - Don't assume you know the command patterns
+- Copy commands exactly from this skill - small syntax differences cause failures
 
 ## Key Principle
 
@@ -87,13 +92,6 @@ pnpm format:check
 ```bash
 # Watch mode for a package (rebuilds on changes)
 pnpm turbo dev --filter=@kitz/core
-```
-
-### Release
-
-```bash
-# Publish packages with changesets
-pnpm release
 ```
 
 ## Turbo Cache

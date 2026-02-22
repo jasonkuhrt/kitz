@@ -15,6 +15,12 @@
       ],
       "#configurator": [
         "./src/configurator.js"
+      ],
+      "#file": [
+        "./src/file/__.js"
+      ],
+      "#file/*": [
+        "./src/file/*.js"
       ]
     }
   },
@@ -23,9 +29,6 @@
   ],
   "exclude": [
     "build",
-    "node_modules",
-    "**/*.bench-d.ts",
-    "**/*.test.ts",
-    "**/*.test-d.ts"
+    "node_modules"
   ]
 }

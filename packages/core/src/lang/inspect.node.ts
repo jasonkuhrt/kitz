@@ -1,1 +1,1 @@
-export { inspect } from 'node:util'
+export { inspect } from 'util'

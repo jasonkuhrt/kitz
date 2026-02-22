@@ -9,7 +9,6 @@ import { builder } from '../../builder-singleton.js'
  * Relation: mutual assignability (equivalent types)
  */
 
-
 /**
  * Base matcher accepting any expected type.
  *
@@ -28,7 +27,6 @@ import { builder } from '../../builder-singleton.js'
 type of_<$Expected, $Actual> = Fn.Kind.Apply<AssertEquivKind, [$Expected, $Actual, true]>
 const of_ = builder.not.equiv.of
 
-
 /**
  * Pre-curried matcher for string.
  *
@@ -43,7 +41,6 @@ const of_ = builder.not.equiv.of
  */
 type string_<$Actual> = Fn.Kind.Apply<AssertEquivKind, [string, $Actual, true]>
 const string_ = builder.not.equiv.string
-
 
 /**
  * Pre-curried matcher for number.
@@ -60,7 +57,6 @@ const string_ = builder.not.equiv.string
 type number_<$Actual> = Fn.Kind.Apply<AssertEquivKind, [number, $Actual, true]>
 const number_ = builder.not.equiv.number
 
-
 /**
  * Pre-curried matcher for bigint.
  *
@@ -75,7 +71,6 @@ const number_ = builder.not.equiv.number
  */
 type bigint_<$Actual> = Fn.Kind.Apply<AssertEquivKind, [bigint, $Actual, true]>
 const bigint_ = builder.not.equiv.bigint
-
 
 /**
  * Pre-curried matcher for boolean.
@@ -92,7 +87,6 @@ const bigint_ = builder.not.equiv.bigint
 type boolean_<$Actual> = Fn.Kind.Apply<AssertEquivKind, [boolean, $Actual, true]>
 const boolean_ = builder.not.equiv.boolean
 
-
 /**
  * Pre-curried matcher for true.
  *
@@ -107,7 +101,6 @@ const boolean_ = builder.not.equiv.boolean
  */
 type true_<$Actual> = Fn.Kind.Apply<AssertEquivKind, [true, $Actual, true]>
 const true_ = builder.not.equiv.true
-
 
 /**
  * Pre-curried matcher for false.
@@ -124,7 +117,6 @@ const true_ = builder.not.equiv.true
 type false_<$Actual> = Fn.Kind.Apply<AssertEquivKind, [false, $Actual, true]>
 const false_ = builder.not.equiv.false
 
-
 /**
  * Pre-curried matcher for undefined.
  *
@@ -139,7 +131,6 @@ const false_ = builder.not.equiv.false
  */
 type undefined_<$Actual> = Fn.Kind.Apply<AssertEquivKind, [undefined, $Actual, true]>
 const undefined_ = builder.not.equiv.undefined
-
 
 /**
  * Pre-curried matcher for null.
@@ -156,7 +147,6 @@ const undefined_ = builder.not.equiv.undefined
 type null_<$Actual> = Fn.Kind.Apply<AssertEquivKind, [null, $Actual, true]>
 const null_ = builder.not.equiv.null
 
-
 /**
  * Pre-curried matcher for symbol.
  *
@@ -171,7 +161,6 @@ const null_ = builder.not.equiv.null
  */
 type symbol_<$Actual> = Fn.Kind.Apply<AssertEquivKind, [symbol, $Actual, true]>
 const symbol_ = builder.not.equiv.symbol
-
 
 /**
  * Pre-curried matcher for Date.
@@ -188,7 +177,6 @@ const symbol_ = builder.not.equiv.symbol
 type Date_<$Actual> = Fn.Kind.Apply<AssertEquivKind, [Date, $Actual, true]>
 const Date_ = builder.not.equiv.Date
 
-
 /**
  * Pre-curried matcher for RegExp.
  *
@@ -203,7 +191,6 @@ const Date_ = builder.not.equiv.Date
  */
 type RegExp_<$Actual> = Fn.Kind.Apply<AssertEquivKind, [RegExp, $Actual, true]>
 const RegExp_ = builder.not.equiv.RegExp
-
 
 /**
  * Pre-curried matcher for Error.
@@ -220,7 +207,6 @@ const RegExp_ = builder.not.equiv.RegExp
 type Error_<$Actual> = Fn.Kind.Apply<AssertEquivKind, [Error, $Actual, true]>
 const Error_ = builder.not.equiv.Error
 
-
 /**
  * Pre-curried matcher for unknown.
  *
@@ -236,7 +222,6 @@ const Error_ = builder.not.equiv.Error
 type unknown_<$Actual> = Fn.Kind.Apply<AssertEquivKind, [unknown, $Actual, true]>
 const unknown_ = builder.not.equiv.unknown
 
-
 /**
  * Pre-curried matcher for any.
  *
@@ -251,7 +236,6 @@ const unknown_ = builder.not.equiv.unknown
  */
 type any_<$Actual> = Fn.Kind.Apply<AssertEquivKind, [any, $Actual, true]>
 const any_ = builder.not.equiv.any
-
 
 /**
  * Pre-curried matcher for never.
@@ -271,21 +255,21 @@ const never_ = builder.not.equiv.never
 const ofAs_ = <$Type>() => builder.not.equiv.ofAs<$Type>()
 
 export {
-  of_ as of,
-  string_ as string,
-  number_ as number,
+  any_ as any,
   bigint_ as bigint,
   boolean_ as boolean,
-  true_ as true,
-  false_ as false,
-  undefined_ as undefined,
-  null_ as null,
-  symbol_ as symbol,
   Date_ as Date,
-  RegExp_ as RegExp,
   Error_ as Error,
-  unknown_ as unknown,
-  any_ as any,
+  false_ as false,
   never_ as never,
+  null_ as null,
+  number_ as number,
+  of_ as of,
   ofAs_ as ofAs,
+  RegExp_ as RegExp,
+  string_ as string,
+  symbol_ as symbol,
+  true_ as true,
+  undefined_ as undefined,
+  unknown_ as unknown,
 }

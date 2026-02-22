@@ -1,8 +1,8 @@
-import type { Path } from '../_.js'
 import { Array, Equivalence, Match, Option } from 'effect'
 import type { $Abs } from '../$Abs/_.js'
 import type { $Dir } from '../$Dir/_.js'
 import { $Rel } from '../$Rel/_.js'
+import type { Path } from '../_.js'
 import { AbsDir } from '../AbsDir/_.js'
 import { RelDir } from '../RelDir/_.js'
 

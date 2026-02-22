@@ -1,9 +1,9 @@
 // Force TS to resolve internal paths for consumer type inference discovery
 // See: https://github.com/microsoft/TypeScript/issues/61700
 import type * as __err from '@kitz/core/_internal/ts/err'
-import type * as __simplify from '@kitz/core/_internal/ts/simplify'
-import type * as __simpleSignature from '@kitz/core/_internal/ts/simple-signature'
 import type * as __inhabitance from '@kitz/core/_internal/ts/inhabitance'
+import type * as __simpleSignature from '@kitz/core/_internal/ts/simple-signature'
+import type * as __simplify from '@kitz/core/_internal/ts/simplify'
 import type * as __union from '@kitz/core/_internal/ts/union'
 import type * as __variancePhantom from '@kitz/core/_internal/ts/variance-phantom'
 

@@ -1,11 +1,11 @@
 import type { Fn } from '@kitz/core'
-import { builder } from '../../../builder-singleton.js'
 import { Optic } from '@kitz/core'
 import type { Either } from 'effect'
-import type { AssertExactKind, AssertEquivKind, AssertSubKind } from '../../../asserts.js'
+import type { AssertEquivKind, AssertExactKind, AssertSubKind } from '../../../asserts.js'
+import { builder } from '../../../builder-singleton.js'
 
-export * as exact from './exact.js'
 export * as equiv from './equiv.js'
+export * as exact from './exact.js'
 export * as sub from './sub.js'
 
 // Unary relators (negated)

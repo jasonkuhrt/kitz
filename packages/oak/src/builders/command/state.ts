@@ -1,5 +1,5 @@
-import { Obj, Ts } from '@kitz/core'
 import type { Cli } from '@kitz/cli'
+import { Obj, Ts } from '@kitz/core'
 import type { StandardSchemaV1 } from '@standard-schema/spec'
 import type { SomeExtension } from '../../extension.js'
 import type { Values } from '../../helpers.js'

@@ -1,6 +1,6 @@
 {
   "name": "@kitz/pkg",
-  "version": "0.0.0",
+  "version": "0.0.0-kitz-release",
   "description": "Package utilities (manifest schema, manager helpers)",
   "type": "module",
   "sideEffects": false,
@@ -10,13 +10,16 @@
     "#manifest": "./build/manifest/_.js",
     "#manifest/*": "./build/manifest/*.js",
     "#manager": "./build/manager/_.js",
-    "#manager/*": "./build/manager/*.js"
+    "#manager/*": "./build/manager/*.js",
+    "#pin": "./build/pin/_.js",
+    "#pin/*": "./build/pin/*.js"
   },
   "exports": {
     ".": "./build/_.js",
     "./__": "./build/__.js",
     "./manifest": "./build/manifest/__.js",
-    "./manager": "./build/manager/__.js"
+    "./manager": "./build/manager/__.js",
+    "./pin": "./build/pin/_.js"
   },
   "files": [
     "build",
@@ -26,8 +29,8 @@
     "build": "tsgo -p tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
-    "check:lint": "oxlint --config ../../oxlint.json src/",
-    "check:package": "publint && attw --pack"
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   },
   "dependencies": {
     "@effect/platform": "^0.94.0",
@@ -36,6 +39,11 @@
     "@kitz/fs": "workspace:*",
     "@kitz/resource": "workspace:*",
     "@kitz/semver": "workspace:*",
+    "@vltpkg/semver": "1.0.0-rc.12",
     "effect": "^3.0.0"
+  },
+  "devDependencies": {
+    "@kitz/assert": "workspace:*",
+    "@kitz/test": "workspace:*"
   }
 }

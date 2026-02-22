@@ -1,6 +1,6 @@
 {
   "name": "@kitz/cli",
-  "version": "0.0.0",
+  "version": "0.0.0-kitz-release",
   "description": "CLI framework",
   "type": "module",
   "sideEffects": false,
@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@effect/platform": "^0.94.0",
+    "@effect/platform-node": "^0.104.0",
     "@kitz/core": "workspace:*",
     "@kitz/env": "workspace:*",
     "@kitz/fs": "workspace:*",
@@ -20,7 +21,7 @@
     "build": "tsgo -p tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
-    "check:lint": "oxlint --config ../../oxlint.json src/",
-    "check:package": "publint && attw --pack"
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   }
 }

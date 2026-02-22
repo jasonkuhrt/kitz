@@ -1,6 +1,6 @@
-import { Assert } from '#assert'
 import { Fn } from '#fn'
-import { Test } from '#test'
+import { Assert } from '#kitz/assert'
+import { Test } from '#kitz/test'
 import fc from 'fast-check'
 import { expect, test } from 'vitest'
 

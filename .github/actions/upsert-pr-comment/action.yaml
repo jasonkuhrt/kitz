@@ -1,0 +1,58 @@
+name: Upsert PR Comment
+description: Find an existing bot comment by marker and update or create it.
+inputs:
+  file:
+    description: Path to markdown file containing the comment body.
+    required: true
+  marker:
+    description: HTML comment marker to identify the comment.
+    required: false
+    default: "<!-- kitz-release-plan -->"
+  github-token:
+    description: GitHub token for API access.
+    required: false
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    - name: Upsert comment
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          const fs = require('node:fs')
+          const marker = `${{ inputs.marker }}`
+          const body = fs.readFileSync(`${{ inputs.file }}`, 'utf8')
+          const { owner, repo } = context.repo
+          const issue_number = context.issue.number
+
+          const comments = await github.paginate(github.rest.issues.listComments, {
+            owner,
+            repo,
+            issue_number,
+            per_page: 100,
+          })
+
+          const existing = comments.find((c) =>
+            c.user?.type === 'Bot' &&
+            typeof c.body === 'string' &&
+            c.body.includes(marker),
+          )
+
+          if (existing) {
+            await github.rest.issues.updateComment({
+              owner,
+              repo,
+              comment_id: existing.id,
+              body,
+            })
+            core.info(`Updated existing comment ${existing.id}`)
+          } else {
+            const created = await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number,
+              body,
+            })
+            core.info(`Created new comment ${created.data.id}`)
+          }

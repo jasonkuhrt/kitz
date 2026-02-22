@@ -51,7 +51,8 @@
     "./tex": "./build/tex.js",
     "./tree": "./build/tree.js",
     "./url": "./build/url.js",
-    "./ware": "./build/ware.js"
+    "./ware": "./build/ware.js",
+    "./monorepo": "./build/monorepo.js"
   },
   "files": [
     "build",
@@ -61,8 +62,8 @@
     "build": "tsgo -p tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
-    "check:lint": "oxlint --config ../../oxlint.json src/",
-    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm"
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   },
   "dependencies": {
     "@kitz/assert": "workspace:*",
@@ -81,6 +82,7 @@
     "@kitz/jsonc": "workspace:*",
     "@kitz/log": "workspace:*",
     "@kitz/mod": "workspace:*",
+    "@kitz/monorepo": "workspace:*",
     "@kitz/name": "workspace:*",
     "@kitz/num": "workspace:*",
     "@kitz/oak": "workspace:*",

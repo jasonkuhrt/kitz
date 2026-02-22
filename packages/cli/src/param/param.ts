@@ -329,6 +329,18 @@ export class Param extends S.Class<Param>('Param')({
   }
 
   /**
+   * Create a typed Param from a literal string.
+   *
+   * Canonical literal-parser naming across the monorepo.
+   */
+  static fromLiteral = <const $input extends string>(
+    $input: Param.Analyze<$input> extends string ? ErrorParamParse<Param.Analyze<$input>>
+      : $input,
+  ) => {
+    return Param.fromString($input as any) as any
+  }
+
+  /**
    * Runtime analyzer function.
    * @see {@link analyze}
    */

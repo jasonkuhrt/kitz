@@ -1,4 +1,5 @@
 import { Schema as S } from 'effect'
+import type * as EAST from 'effect/SchemaAST'
 import { isLiteral, isTransformation, isTypeLiteral } from 'effect/SchemaAST'
 import * as AST from './ast.js'
 
@@ -161,3 +162,106 @@ export type GetFieldLiteralType<
     : never
   : never
   : never
+
+// ============================================================================
+// Required Fields Detection
+// ============================================================================
+
+/**
+ * Get the underlying TypeLiteral AST from a schema, handling transformations.
+ *
+ * Schema.Class creates a Transformation where:
+ * - `from` is the encoded TypeLiteral (what user provides)
+ * - `to` is the decoded Declaration (the class instance)
+ *
+ * For config loading, we care about the encoded side (what user provides in file).
+ */
+const getTypeLiteralAst = (ast: EAST.AST): EAST.TypeLiteral | null => {
+  if (isTypeLiteral(ast)) {
+    return ast
+  }
+  if (isTransformation(ast)) {
+    // For Schema.Class, `from` is the TypeLiteral representing the input shape
+    return getTypeLiteralAst(ast.from)
+  }
+  return null
+}
+
+/**
+ * Check if a struct schema has any required fields on the encoded (input) side.
+ *
+ * A field is considered required if:
+ * - It has `isOptional === false` on the property signature
+ *
+ * This means the user must provide a value for it when decoding.
+ * Fields with defaults (via `optionalWith({ default: ... })`) have `isOptional === true`
+ * on the encoded side and are therefore not required.
+ *
+ * @example
+ * ```ts
+ * // Has required fields (apiKey is required)
+ * const Config1 = S.Struct({ apiKey: S.String })
+ * hasRequiredFields(Config1) // true
+ *
+ * // No required fields (all optional with defaults)
+ * const Config2 = S.Struct({
+ *   port: S.optionalWith(S.Number, { default: () => 3000 })
+ * })
+ * hasRequiredFields(Config2) // false
+ *
+ * // Works with Schema.Class too
+ * class Config3 extends S.Class<Config3>('Config3')({
+ *   apiKey: S.String,
+ * }) {}
+ * hasRequiredFields(Config3) // true
+ * ```
+ */
+export const hasRequiredFields = (schema: S.Schema.AnyNoContext): boolean => {
+  const typeLiteral = getTypeLiteralAst(schema.ast)
+  if (!typeLiteral) {
+    // Not a struct-like schema
+    return false
+  }
+
+  for (const prop of typeLiteral.propertySignatures) {
+    if (!prop.isOptional) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
+ * Type-level check if a struct schema has any required fields.
+ *
+ * Returns `true` if the schema's `Encoded` type has any required properties,
+ * `false` otherwise.
+ *
+ * @example
+ * ```ts
+ * // true - apiKey is required
+ * type A = HasRequiredFields<typeof S.Struct({ apiKey: S.String })>
+ *
+ * // false - all fields optional
+ * type B = HasRequiredFields<typeof S.Struct({
+ *   port: S.optionalWith(S.Number, { default: () => 3000 })
+ * })>
+ * ```
+ */
+// dprint-ignore
+export type HasRequiredFields<$Schema extends S.Schema.AnyNoContext> =
+  // Check if all keys of Encoded are optional by comparing with Partial
+  {} extends S.Schema.Encoded<$Schema>
+    ? false
+    : RequiredKeysOf<S.Schema.Encoded<$Schema>> extends never
+      ? false
+      : true
+
+/**
+ * Extract required keys from a type.
+ * A key is required if it's not optional (no `?` modifier).
+ */
+type RequiredKeysOf<$T> = {
+  [K in keyof $T]-?: {} extends Pick<$T, K> ? never : K
+}[keyof $T]
