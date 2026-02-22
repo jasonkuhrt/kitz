@@ -233,8 +233,10 @@ export const ReleaseWorkflow = Flo.Workflow.make({
 
     // Layer 4: Create GitHub releases (each depends on its corresponding pushTag)
     const createGHReleases = payload.releases.map((release, i) => {
-      const tag = formatTag(Pkg.Moniker.parse(release.packageName), Semver.fromString(release.nextVersion))
+      const nextVersion = Semver.fromString(release.nextVersion)
+      const tag = formatTag(Pkg.Moniker.parse(release.packageName), nextVersion)
       const isPreview = payload.options.tag === 'next' || tag.endsWith('@next')
+      const isPrerelease = Semver.getPrerelease(nextVersion) !== undefined
       return node(
         `CreateGHRelease:${tag}`,
         Effect.gen(function*() {
@@ -277,6 +279,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
               tag,
               title: `${release.packageName} v${release.nextVersion}`,
               body: changelog.markdown,
+              ...(isPrerelease && { prerelease: true }),
             })
           }
 

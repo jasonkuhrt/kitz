@@ -1,3 +1,4 @@
+import * as Readline from 'node:readline/promises'
 import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
@@ -51,6 +52,23 @@ const args = Oak.Command.create()
   )
   .parse()
 
+const confirm = (message: string): Effect.Effect<boolean> =>
+  Effect.promise(async () => {
+    const readline = Readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    })
+    try {
+      const answer = await readline.question(message)
+      const normalized = answer.trim().toLowerCase()
+      return normalized === 'y' || normalized === 'yes'
+    } finally {
+      readline.close()
+    }
+  }).pipe(
+    Effect.catchAll(() => Effect.succeed(false)),
+  )
+
 Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
   Effect.gen(function*() {
     const env = yield* Env.Env
@@ -66,15 +84,20 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     }
 
     // Load config (scanning packages is no longer needed - plan has full PlannedRelease data)
-    const _config = yield* Api.Config.load()
+    const config = yield* Api.Config.load()
 
     // Plan file now stores rich PlannedRelease data directly - no conversion needed
     const plan = planFileOption.value
+    const tag = args.tag ?? (plan.lifecycle === 'official' ? config.npmTag : config.previewTag)
 
     // Confirmation prompt (unless --yes)
     if (!args.yes && !args.dryRun) {
       yield* Console.log(Api.Renderer.renderApplyConfirmation(plan))
-      return
+      const approved = yield* confirm('Proceed with release? [y/N] ')
+      if (!approved) {
+        yield* Console.log('Release canceled.')
+        return env.exit(1)
+      }
     }
 
     if (args.dryRun) {
@@ -82,13 +105,13 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
       return
     }
 
-    const recon = yield* Api.Explorer.explore()
-    const runtimeConfig = Api.Explorer.toExecutorRuntimeConfig(recon)
+    const runtime = yield* Api.Explorer.explore()
+    const runtimeConfig = Api.Explorer.toExecutorRuntimeConfig(runtime)
 
     // Execute with observable workflow
     const { events, execute } = yield* Api.Executor.executeObservable(plan, {
       dryRun: args.dryRun,
-      ...(args.tag && { tag: args.tag }),
+      tag,
       github: runtimeConfig.github,
     })
 

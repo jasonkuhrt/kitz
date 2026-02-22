@@ -6,9 +6,9 @@ import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Option } from 'effect'
-import { ReleaseCommit } from '../analyzer/models/commit.js'
-import { aggregateByPackage, extractImpacts, findLatestTagVersion } from '../analyzer/version.js'
+import type { ReleaseCommit } from '../analyzer/models/commit.js'
 import type { Package } from '../analyzer/workspace.js'
+import { extractImpacts, findLatestTagVersion } from '../analyzer/version.js'
 import { calculateNextVersion } from '../version/calculate.js'
 import { type CommitEntry, format, type FormattedChangelog } from './format.js'
 
@@ -38,7 +38,7 @@ export interface GenerateOptions {
   readonly packages: readonly Package[]
   /** All git tags (for finding last release) */
   readonly tags: readonly string[]
-  /** Start of commit range - tag or SHA (default: last release tag) */
+  /** Start of commit range - tag or SHA (default: per-package last release tag) */
   readonly since?: string | undefined
   /** End of commit range (default: HEAD) */
   readonly until?: string | undefined
@@ -57,27 +57,10 @@ export interface GenerateResult {
 }
 
 /**
- * Find the last release tag across all packages.
+ * Build a package-specific release tag from package name and version.
  */
-const findLastReleaseTag = (
-  packages: readonly Package[],
-  tags: readonly string[],
-): string | undefined => {
-  let latestTag: string | undefined
-  let latestVersion: Semver.Semver | undefined
-
-  for (const pkg of packages) {
-    const version = findLatestTagVersion(pkg.name, tags as string[])
-    if (Option.isSome(version)) {
-      if (!latestVersion || Semver.greaterThan(version.value, latestVersion)) {
-        latestVersion = version.value
-        latestTag = Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version: version.value }))
-      }
-    }
-  }
-
-  return latestTag
-}
+const toReleaseTag = (pkg: Package, version: Semver.Semver): string =>
+  Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version }))
 
 /**
  * Generate logs for packages with changes.
@@ -104,47 +87,49 @@ export const generate = (
     const git = yield* Git.Git
     const { packages, tags, filter } = options
 
-    // Determine commit range
-    const since = options.since ?? findLastReleaseTag(packages, tags)
-    const commits = yield* git.getCommitsSince(since)
-
-    // Extract impacts from all commits
-    const allImpacts = yield* Effect.all(
-      commits.map((c) => extractImpacts(c)),
-      { concurrency: 'unbounded' },
-    )
-    const impacts = allImpacts.flat()
-
-    // Aggregate by package
-    const aggregated = aggregateByPackage(impacts)
-
-    // Build scope-to-package map
-    const scopeToPackage = new Map(packages.map((p) => [p.scope, p]))
-
-    // Generate logs for packages with changes
+    // Generate logs package-by-package so each package uses its own release boundary.
     const logs: PackageLog[] = []
-    const changedScopes = new Set<string>()
+    const unchanged: Package[] = []
 
-    for (const [scope, { bump, commits: packageCommits }] of aggregated) {
-      const pkg = scopeToPackage.get(scope)
-      if (!pkg) continue
-
-      // Apply filter if specified
+    for (const pkg of packages) {
       if (filter && !filter.includes(pkg.name.moniker) && !filter.includes(pkg.scope)) {
         continue
       }
 
-      changedScopes.add(scope)
-
-      // Find current version
       const currentVersion = findLatestTagVersion(pkg.name, tags as string[])
+      const since = options.since
+        ?? Option.match(currentVersion, {
+          onNone: () => undefined,
+          onSome: (version) => toReleaseTag(pkg, version),
+        })
+      const commits = yield* git.getCommitsSince(since)
 
-      // Calculate next version
+      const impactsByCommit = yield* Effect.all(
+        commits.map((commit) => extractImpacts(commit)),
+        { concurrency: 'unbounded' },
+      )
+      const impacts = impactsByCommit.flat().filter((impact) => impact.scope === pkg.scope)
+
+      if (impacts.length === 0) {
+        unchanged.push(pkg)
+        continue
+      }
+
+      let bump = impacts[0]!.bump
+      const seenCommits = new Set<string>()
+      const packageCommits: ReleaseCommit[] = []
+
+      for (const impact of impacts) {
+        bump = Semver.maxBump(bump, impact.bump)
+        if (!seenCommits.has(impact.commit.hash)) {
+          seenCommits.add(impact.commit.hash)
+          packageCommits.push(impact.commit)
+        }
+      }
+
       const nextVersion = calculateNextVersion(currentVersion, bump)
-
-      // Convert commits to changelog entries
-      const commitEntries: CommitEntry[] = packageCommits.map((c) => {
-        const info = c.forScope(scope)
+      const commitEntries: CommitEntry[] = packageCommits.map((commit) => {
+        const info = commit.forScope(pkg.scope)
         return {
           type: info.type,
           message: info.description,
@@ -153,7 +138,6 @@ export const generate = (
         }
       })
 
-      // Format changelog
       const changelog = yield* format({
         scope: pkg.name.moniker,
         commits: commitEntries,
@@ -172,14 +156,6 @@ export const generate = (
         changelog,
       })
     }
-
-    // Find unchanged packages
-    const unchanged = packages.filter((p) => {
-      if (filter && !filter.includes(p.name.moniker) && !filter.includes(p.scope)) {
-        return false
-      }
-      return !changedScopes.has(p.scope)
-    })
 
     return { logs, unchanged }
   })

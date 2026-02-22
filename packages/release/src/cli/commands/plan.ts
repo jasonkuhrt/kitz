@@ -1,4 +1,3 @@
-import { FileSystem } from '@effect/platform'
 import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'
@@ -10,22 +9,22 @@ import { Console, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 
 /**
- * release plan <lifecycle>
+ * release plan <type>
  *
  * Generate a release plan. Writes to .release/plan.json.
  *
- * Lifecycle types:
- * - official   - Standard semver release to @latest
- * - candidate  - Pre-release to @next tag
- * - ephemeral  - Disposable PR build to @pr-N tag
+ * Types:
+ * - stable  - Standard semver release
+ * - preview - Pre-release to @next tag
+ * - pr      - PR preview release
  */
 const args = Oak.Command.create()
   .use(EffectSchema)
   .description('Generate a release plan')
   .parameter(
-    'lifecycle',
-    Schema.Literal('official', 'candidate', 'ephemeral').pipe(
-      Schema.annotations({ description: 'Lifecycle type: official, candidate, or ephemeral' }),
+    'type',
+    Schema.Literal('stable', 'preview', 'pr').pipe(
+      Schema.annotations({ description: 'Release type: stable, preview, or pr' }),
     ),
   )
   .parameter(
@@ -38,52 +37,6 @@ const args = Oak.Command.create()
     'exclude x',
     Schema.UndefinedOr(Schema.Array(Schema.String)).pipe(
       Schema.annotations({ description: 'Exclude package(s)' }),
-    ),
-  )
-  .parameter(
-    'tag t',
-    Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotations({ description: 'Dist-tag for preview (default: next)' }),
-    ),
-  )
-  .parameter(
-    'comment',
-    Schema.transform(
-      Schema.UndefinedOr(Schema.Boolean),
-      Schema.Boolean,
-      {
-        strict: true,
-        decode: (v) => v ?? false,
-        encode: (v) => v,
-      },
-    ).pipe(
-      Schema.annotations({ description: 'Output PR comment markdown to stdout', default: false }),
-    ),
-  )
-  .parameter(
-    'viz',
-    Schema.UndefinedOr(Schema.Literal('tree')).pipe(
-      Schema.annotations({ description: 'Output tree visualization to stdout' }),
-    ),
-  )
-  .parameter(
-    'publish-history',
-    Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotations({ description: 'Path to JSON file with publish history (from existing PR comment)' }),
-    ),
-  )
-  .parameter(
-    'json j',
-    Schema.transform(
-      Schema.UndefinedOr(Schema.Boolean),
-      Schema.Boolean,
-      {
-        strict: true,
-        decode: (v) => v ?? false,
-        encode: (v) => v,
-      },
-    ).pipe(
-      Schema.annotations({ description: 'Output enriched plan as JSON to stdout', default: false }),
     ),
   )
   .parse()
@@ -107,18 +60,12 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
       ...(args.exclude && { exclude: args.exclude }),
     }
 
-    // Generate plan based on lifecycle
+    // Generate plan based on type
     const header = Str.Builder()
-    header`Generating ${args.lifecycle} release plan...`
+    header`Generating ${args.type} release plan...`
     header``
+    yield* Console.log(header.render())
 
-    // Only show human-readable header when not in machine output mode
-    const machineOutput = args.comment || args.viz || args.json
-    if (!machineOutput) {
-      yield* Console.log(header.render())
-    }
-
-    // Analyze first — the expensive analytical core
     const tags = yield* git.getTags()
     const analysis = yield* Api.Analyzer.analyze({
       packages,
@@ -126,13 +73,12 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
       filter: args.pkg ? [...args.pkg] : undefined,
       exclude: args.exclude ? [...args.exclude] : undefined,
     })
-
-    // Plan — lightweight version projection
     const ctx = { packages }
+
     const plan = yield* (
-      args.lifecycle === 'official'
+      args.type === 'stable'
         ? Api.Planner.official(analysis, ctx, options)
-        : args.lifecycle === 'candidate'
+        : args.type === 'preview'
         ? Api.Planner.candidate(analysis, ctx, options)
         : Api.Planner.ephemeral(analysis, ctx, options)
     )
@@ -141,6 +87,9 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
       yield* Console.log('No releases planned - no unreleased changes found.')
       return
     }
+
+    // Display plan
+    yield* Console.log(Api.Renderer.renderPlan(plan))
 
     // Write plan file using resource
     const env = yield* Env.Env
@@ -152,44 +101,9 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     // Write plan using schema-validated resource
     yield* Api.Planner.resource.write(plan, planDir)
 
-    // Machine output modes: --comment or --viz
-    if (machineOutput) {
-      const recon = yield* Api.Explorer.explore()
-      const fc = Api.Forecaster.forecast(analysis, recon)
-
-      // Read publish history from file if provided
-      let publishHistory: Api.Commentator.PublishRecord[] = []
-      if (args.publishHistory) {
-        const fs = yield* FileSystem.FileSystem
-        const content = yield* fs.readFileString(args.publishHistory)
-        try {
-          const parsed = JSON.parse(content)
-          if (parsed?.publishes && Array.isArray(parsed.publishes)) {
-            publishHistory = parsed.publishes
-          }
-        } catch {
-          // Malformed JSON — proceed with empty history
-        }
-      }
-
-      if (args.json) {
-        const serialized = Schema.encodeSync(Api.Forecaster.Forecast)(fc)
-        yield* Console.log(JSON.stringify(serialized, null, 2))
-      }
-      if (args.comment) {
-        yield* Console.log(Api.Commentator.render(fc, { publishHistory }))
-      }
-      if (args.viz === 'tree') {
-        yield* Console.log(Api.Renderer.renderTree(fc))
-      }
-    } else {
-      // Human-readable output
-      yield* Console.log(Api.Renderer.renderPlan(plan))
-
-      const done = Str.Builder()
-      done`Plan written to ${Fs.Path.toString(Api.Planner.PLAN_FILE)}`
-      done`Run 'release apply' to execute.`
-      yield* Console.log(done.render())
-    }
+    const done = Str.Builder()
+    done`Plan written to ${Fs.Path.toString(Api.Planner.PLAN_FILE)}`
+    done`Run 'release apply' to execute.`
+    yield* Console.log(done.render())
   }),
 )
