@@ -103,11 +103,13 @@ const makeService = (state: GitMemoryState): GitService => ({
       // Find the index where the tag points to
       const tagIndex = tags.indexOf(tag)
       if (tagIndex === -1) {
-        return Effect.fail(
+        const detail = `tag not found: ${tag}`
+        return yield* Effect.fail(
           new GitError({
-            context: { operation: 'getCommitsSince', detail: `tag not found: ${tag}` },
+            context: { operation: 'getCommitsSince', detail },
+            cause: new Error(detail),
           }),
-        ) as never
+        )
       }
 
       // Parse tag to find package@version pattern
@@ -156,11 +158,13 @@ const makeService = (state: GitMemoryState): GitService => ({
       const tagShas = yield* Ref.get(state.tagShas)
       const sha = tagShas[tag]
       if (!sha) {
-        return Effect.fail(
+        const detail = `tag not found: ${tag}`
+        return yield* Effect.fail(
           new GitError({
-            context: { operation: 'getTagSha', detail: `tag not found: ${tag}` },
+            context: { operation: 'getTagSha', detail },
+            cause: new Error(detail),
           }),
-        ) as never
+        )
       }
       return sha
     }),

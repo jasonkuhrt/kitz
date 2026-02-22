@@ -142,6 +142,46 @@ describe('Git', () => {
     expect(result[0]!.message).toBe('feat(core): feature 1')
   })
 
+  test('getCommitsSince fails when tag is missing', async () => {
+    const layer = Git.Memory.make({ tags: [] })
+
+    const result = await Effect.runPromise(
+      Effect.gen(function*() {
+        const git = yield* Git.Git
+        return yield* git.getCommitsSince('@kitz/core@1.0.0')
+      }).pipe(
+        Effect.provide(layer),
+        Effect.either,
+      ),
+    )
+
+    expect(result._tag).toBe('Left')
+    if (result._tag === 'Left') {
+      expect(result.left._tag).toBe('GitError')
+      expect(result.left.context.operation).toBe('getCommitsSince')
+    }
+  })
+
+  test('getTagSha fails when tag is missing', async () => {
+    const layer = Git.Memory.make({ tags: [] })
+
+    const result = await Effect.runPromise(
+      Effect.gen(function*() {
+        const git = yield* Git.Git
+        return yield* git.getTagSha('@kitz/core@1.0.0')
+      }).pipe(
+        Effect.provide(layer),
+        Effect.either,
+      ),
+    )
+
+    expect(result._tag).toBe('Left')
+    if (result._tag === 'Left') {
+      expect(result.left._tag).toBe('GitError')
+      expect(result.left.context.operation).toBe('getTagSha')
+    }
+  })
+
   test('createTag adds tag and records it', async () => {
     const { layer, state } = await Effect.runPromise(Git.Memory.makeWithState({}))
 

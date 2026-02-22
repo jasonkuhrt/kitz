@@ -157,14 +157,14 @@ const makeGithubService = (
   const { owner, repo } = config
   const releasesPath = `/repos/${owner}/${repo}/releases`
   const headers = makeAuthHeaders(token)
+  const encodeTag = (tag: string): string => encodeURIComponent(tag)
 
   const httpGet = <$data>(path: string, operation: GithubOperation): Effect.Effect<$data, GithubErrors> =>
     client
       .get(`${BASE_URL}${path}`, { headers })
       .pipe(
-        Effect.flatMap((response: HttpClientResponse.HttpClientResponse) =>
-          response.json as Effect.Effect<$data, HttpClientError.ResponseError>
-        ),
+        Effect.flatMap((response: HttpClientResponse.HttpClientResponse) => HttpClientResponse.filterStatusOk(response)),
+        Effect.flatMap((response) => response.json as Effect.Effect<$data, HttpClientError.ResponseError>),
         Effect.mapError((error: HttpClientError.HttpClientError) =>
           error._tag === 'ResponseError'
             ? mapResponseError(operation, path, error)
@@ -180,9 +180,8 @@ const makeGithubService = (
     client
       .post(`${BASE_URL}${path}`, { headers, body: jsonBody(data) })
       .pipe(
-        Effect.flatMap((response: HttpClientResponse.HttpClientResponse) =>
-          response.json as Effect.Effect<$data, HttpClientError.ResponseError>
-        ),
+        Effect.flatMap((response: HttpClientResponse.HttpClientResponse) => HttpClientResponse.filterStatusOk(response)),
+        Effect.flatMap((response) => response.json as Effect.Effect<$data, HttpClientError.ResponseError>),
         Effect.mapError((error: HttpClientError.HttpClientError): PostErrors =>
           error._tag === 'ResponseError'
             ? mapPostResponseError(operation, path, error)
@@ -198,9 +197,8 @@ const makeGithubService = (
     client
       .patch(`${BASE_URL}${path}`, { headers, body: jsonBody(data) })
       .pipe(
-        Effect.flatMap((response: HttpClientResponse.HttpClientResponse) =>
-          response.json as Effect.Effect<$data, HttpClientError.ResponseError>
-        ),
+        Effect.flatMap((response: HttpClientResponse.HttpClientResponse) => HttpClientResponse.filterStatusOk(response)),
+        Effect.flatMap((response) => response.json as Effect.Effect<$data, HttpClientError.ResponseError>),
         Effect.mapError((error: HttpClientError.HttpClientError) =>
           error._tag === 'ResponseError'
             ? mapResponseError(operation, path, error)
@@ -210,7 +208,7 @@ const makeGithubService = (
 
   return {
     releaseExists: (tag) =>
-      httpGet<Release>(`${releasesPath}/tags/${tag}`, 'releaseExists').pipe(
+      httpGet<Release>(`${releasesPath}/tags/${encodeTag(tag)}`, 'releaseExists').pipe(
         Effect.map(() => true),
         Effect.catchTag('GithubNotFoundError', () => Effect.succeed(false)),
       ),
@@ -228,7 +226,7 @@ const makeGithubService = (
       ),
 
     updateRelease: (tag, params) =>
-      httpGet<Release>(`${releasesPath}/tags/${tag}`, 'getRelease').pipe(
+      httpGet<Release>(`${releasesPath}/tags/${encodeTag(tag)}`, 'getRelease').pipe(
         Effect.flatMap((release) =>
           httpPatch<Release>(
             `${releasesPath}/${release.id}`,

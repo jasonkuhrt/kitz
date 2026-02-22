@@ -109,7 +109,7 @@ export const set = (
     }
 
     // Get all tags to check for conflicts and validate monotonicity
-    const tags = yield* git.getTags()
+    let tags = yield* git.getTags()
 
     // Check if tag already exists
     const existingTagIndex = tags.indexOf(tag)
@@ -135,6 +135,8 @@ export const set = (
       // Move the tag: delete old, create new
       yield* git.deleteTag(tag)
       yield* git.deleteRemoteTag(tag, remote).pipe(Effect.ignore) // May not exist on remote
+      // Refresh tag list so monotonic validation does not inspect the deleted tag.
+      tags = yield* git.getTags()
     }
 
     // Validate monotonic versioning (adjacent check)
