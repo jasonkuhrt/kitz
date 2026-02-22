@@ -3,7 +3,7 @@ import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Ref } from 'effect'
 import { describe, expect, test } from 'vitest'
-import * as History from './history.js'
+import * as History from './analyzer/history.js'
 
 const packageName = '@kitz/core'
 const version = Semver.fromString('1.0.0')
