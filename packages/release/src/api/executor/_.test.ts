@@ -253,6 +253,40 @@ describe('Executor integration', () => {
       expect(createdTags).toHaveLength(0)
     }))
 
+  test.effect('fails preflight when git working tree is dirty', (_ctx) =>
+    Effect.gen(function*() {
+      const harness = yield* makeHarness({
+        git: {
+          tags: [tagCore('1.0.0')],
+          commits: [Git.Memory.commit('feat(core): new API')],
+          isClean: false,
+        },
+        diskLayout: {
+          '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+        },
+      })
+
+      const plan = yield* planOfficial(workspacePackages).pipe(
+        Effect.provide(harness.planLayer),
+      )
+
+      const outcome = yield* execute(plan, { dryRun: false }).pipe(
+        Effect.provide(harness.workflowLayer),
+        Effect.either,
+      )
+
+      expect(outcome._tag).toBe('Left')
+      if (outcome._tag === 'Left') {
+        expect(outcome.left._tag).toBe('ExecutorPreflightError')
+        if (outcome.left._tag === 'ExecutorPreflightError') {
+          expect(outcome.left.context.check).toBe('env.git-clean')
+        }
+      }
+
+      const publishAttempts = yield* Ref.get(harness.publishAttempts)
+      expect(publishAttempts).toBe(0)
+    }))
+
   test.effect('maps publish failures to ExecutorPublishError and restores manifest after retries', (_ctx) =>
     Effect.gen(function*() {
       const harness = yield* makeHarness({

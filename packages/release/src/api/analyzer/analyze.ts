@@ -10,7 +10,6 @@ import { FileSystem } from '@effect/platform'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
-import { Semver } from '@kitz/semver'
 import { Effect, Option } from 'effect'
 import { buildDependencyGraph } from './cascade.js'
 import { Analysis } from './models/analysis.js'
@@ -44,22 +43,33 @@ export interface AnalyzeOptions {
 const findLastReleaseTag = (
   packages: readonly Package[],
   tags: readonly string[],
-): string | undefined => {
-  let latestTag: string | undefined
-  let latestVersion: Semver.Semver | undefined
+): Effect.Effect<string | undefined, Git.GitError | Git.GitParseError, Git.Git> =>
+  Effect.gen(function*() {
+    const candidates = new Set<string>()
 
-  for (const pkg of packages) {
-    const version = findLatestTagVersion(pkg.name, tags as string[])
-    if (Option.isSome(version)) {
-      if (!latestVersion || Semver.greaterThan(version.value, latestVersion)) {
-        latestVersion = version.value
-        latestTag = Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version: version.value }))
+    for (const pkg of packages) {
+      const version = findLatestTagVersion(pkg.name, tags as string[])
+      if (Option.isSome(version)) {
+        candidates.add(Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version: version.value })))
       }
     }
-  }
 
-  return latestTag
-}
+    if (candidates.size === 0) return undefined
+
+    const git = yield* Git.Git
+    let closestTag: string | undefined
+    let closestDistance = Number.POSITIVE_INFINITY
+
+    for (const tag of candidates) {
+      const commitsSince = yield* git.getCommitsSince(tag)
+      if (commitsSince.length < closestDistance) {
+        closestTag = tag
+        closestDistance = commitsSince.length
+      }
+    }
+
+    return closestTag
+  })
 
 /**
  * Analyze a repository for changes since the last release.
@@ -97,7 +107,7 @@ export const analyze = (
     const { packages, tags, filter, exclude } = options
 
     // ── Step 1: Fetch commits since last release ──────────────────────
-    const since = options.since ?? findLastReleaseTag(packages, tags)
+    const since = options.since ?? (yield* findLastReleaseTag(packages, tags))
     const commits = yield* git.getCommitsSince(since)
 
     // ── Step 2: Extract impacts from all commits ──────────────────────

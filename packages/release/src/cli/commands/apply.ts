@@ -107,6 +107,11 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
 
     const runtime = yield* Api.Explorer.explore()
     const runtimeConfig = Api.Explorer.toExecutorRuntimeConfig(runtime)
+    if (!runtimeConfig.github) {
+      yield* Console.error('GitHub release target and token are required for release apply.')
+      yield* Console.error('Set GITHUB_TOKEN and ensure origin points to GitHub, then retry.')
+      return env.exit(1)
+    }
 
     // Execute with observable workflow
     const { events, execute } = yield* Api.Executor.executeObservable(plan, {

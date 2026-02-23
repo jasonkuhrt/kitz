@@ -61,6 +61,12 @@ export interface InitOptions {
    * @default Env.cwd
    */
   readonly directory?: Fs.Path.AbsDir
+  /**
+   * Overwrite an existing config file if present.
+   *
+   * @default false
+   */
+  readonly force?: boolean
 }
 
 /**
@@ -127,7 +133,7 @@ export const init = <S extends Schema.Schema.AnyNoContext>(
 
     // Check if file already exists
     const exists = yield* Fs.exists(filePath)
-    if (exists) {
+    if (exists && !options.force) {
       return InitResult.AlreadyExists()
     }
 

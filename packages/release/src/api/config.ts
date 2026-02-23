@@ -124,6 +124,11 @@ export const load = (
  */
 export type InitResult = Conf.File.InitResult
 
+export interface InitOptions {
+  readonly directory?: Fs.Path.AbsDir
+  readonly force?: boolean
+}
+
 /**
  * Initialize a release.config.ts file in the target directory.
  *
@@ -133,15 +138,16 @@ export type InitResult = Conf.File.InitResult
  *
  * Returns a tagged union indicating whether the file was created or already existed.
  *
- * @param directory - Target directory (defaults to Env.cwd)
+ * @param options - Init options (directory and force overwrite)
  */
 export const init = (
-  directory?: Fs.Path.AbsDir,
+  options?: InitOptions,
 ): Effect.Effect<InitResult, PlatformError, FileSystem.FileSystem | Env.Env> =>
   Conf.File.init(ConfigFile, {
     defineConfigImport: {
       specifier: '@kitz/release',
       namedExport: 'defineConfig',
     },
-    ...(directory && { directory }),
+    ...(options?.directory && { directory: options.directory }),
+    ...(options?.force && { force: options.force }),
   })

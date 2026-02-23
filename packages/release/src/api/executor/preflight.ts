@@ -73,8 +73,18 @@ export const run = (
       onlyRules: ['env.*', 'plan.*'],
       skipRules: skipRules.length > 0 ? skipRules : undefined,
       rules: {
+        'env.npm-authenticated': Lint.RuleConfig.make({
+          overrides: Lint.RuleDefaults.make({ enabled: true }),
+          options: {
+            ...(options?.registry && { registry: options.registry }),
+          },
+        }),
+        'env.git-clean': Lint.RuleConfig.make({
+          overrides: Lint.RuleDefaults.make({ enabled: true }),
+          options: {},
+        }),
         'env.git-remote': Lint.RuleConfig.make({
-          overrides: Lint.RuleDefaults.make({}),
+          overrides: Lint.RuleDefaults.make({ enabled: true }),
           options: { remote: options?.remote ?? 'origin' },
         }),
         'plan.tags-unique': Lint.RuleConfig.make({

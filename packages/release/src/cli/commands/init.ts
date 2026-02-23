@@ -15,7 +15,7 @@ const RELEASE_DIR_PATTERN = '.release/'
  *
  * Initialize release in a project.
  */
-Oak.Command.create()
+const args = Oak.Command.create()
   .use(EffectSchema)
   .description('Initialize release configuration')
   .parameter(
@@ -44,7 +44,7 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer))(
     yield* Console.log(header.render())
 
     // Initialize config file
-    const configResult = yield* Api.Config.init()
+    const configResult = yield* Api.Config.init({ force: args.force })
     yield* Match.value(configResult).pipe(
       Match.tagsExhaustive({
         Created: (r) => Console.log(`✓ Created ${r.path.name}`),

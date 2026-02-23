@@ -95,6 +95,25 @@ describe('Planner.official', () => {
     expect(result.cascades).toHaveLength(0)
   })
 
+  test('uses the most recent package tag in git history as analysis baseline', async () => {
+    const layer = makeTestLayer({
+      tags: ['@kitz/core@9.0.0', '@kitz/cli@1.0.0'],
+      commits: [
+        Git.Memory.commit('chore: housekeeping'),
+        Git.Memory.commit('feat(cli): 1.0.0 release'),
+        Git.Memory.commit('chore: bridge'),
+        Git.Memory.commit('feat(core): 9.0.0 release'),
+      ],
+    })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
+
+    expect(result.releases).toHaveLength(0)
+    expect(result.cascades).toHaveLength(0)
+  })
+
   Test.describe('bump detection')
     .inputType<{ tags: string[]; commit: string }>()
     .outputType<{ bump: Semver.BumpType; version: string }>()

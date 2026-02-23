@@ -46,8 +46,8 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     const git = yield* Git.Git
 
     // Load config and scan packages
-    const _config = yield* Api.Config.load()
-    const packages = yield* Api.Analyzer.Workspace.scan
+    const config = yield* Api.Config.load()
+    const packages = yield* Api.Analyzer.Workspace.resolvePackages(config.packages)
 
     if (packages.length === 0) {
       yield* Console.log('No packages found.')
