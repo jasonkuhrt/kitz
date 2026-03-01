@@ -1,3 +1,16 @@
+/**
+ * @module cli/commands/plan
+ *
+ * Generate a release plan based on conventional commits since the last release.
+ *
+ * Supports three release types:
+ * - `stable` — Standard semver release (official lifecycle)
+ * - `preview` — Pre-release to the `@next` dist-tag (candidate lifecycle)
+ * - `pr` — PR preview release for integration testing (ephemeral lifecycle)
+ *
+ * The plan is written to `.release/plan.json` and can be executed with `release apply`.
+ */
+import { FileSystem } from '@effect/platform'
 import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'
@@ -7,6 +20,33 @@ import { Git } from '@kitz/git'
 import { EffectSchema, Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
+
+const readPublishHistory = (
+  filePath: string | undefined,
+): Effect.Effect<readonly Api.Commentator.PublishRecord[], never, FileSystem.FileSystem> =>
+  Effect.gen(function*() {
+    if (!filePath) return []
+
+    const fs = yield* FileSystem.FileSystem
+    const raw = yield* fs.readFileString(filePath).pipe(
+      Effect.catchAll(() => Effect.succeed('{"publishes":[]}')),
+    )
+
+    const parsed = yield* Effect.try({
+      try: () => JSON.parse(raw) as unknown,
+      catch: () => ({ publishes: [] }),
+    })
+
+    if (Array.isArray(parsed)) {
+      return parsed as Api.Commentator.PublishRecord[]
+    }
+
+    if (parsed && typeof parsed === 'object' && Array.isArray((parsed as Record<string, unknown>)['publishes'])) {
+      return (parsed as { publishes: Api.Commentator.PublishRecord[] }).publishes
+    }
+
+    return []
+  }).pipe(Effect.catchAll(() => Effect.succeed([])))
 
 /**
  * release plan <type>
@@ -39,6 +79,26 @@ const args = Oak.Command.create()
       Schema.annotations({ description: 'Exclude package(s)' }),
     ),
   )
+  .parameter(
+    'json',
+    Schema.transform(
+      Schema.UndefinedOr(Schema.Boolean),
+      Schema.Boolean,
+      {
+        strict: true,
+        decode: (v) => v ?? false,
+        encode: (v) => v,
+      },
+    ).pipe(
+      Schema.annotations({ description: 'Output forecast JSON for render/comment workflows', default: false }),
+    ),
+  )
+  .parameter(
+    'publish-history',
+    Schema.UndefinedOr(Schema.String).pipe(
+      Schema.annotations({ description: 'Path to JSON file containing prior publish history' }),
+    ),
+  )
   .parse()
 
 Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
@@ -50,7 +110,10 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     const packages = yield* Api.Analyzer.Workspace.resolvePackages(config.packages)
 
     if (packages.length === 0) {
-      yield* Console.log('No packages found.')
+      yield* Console.log(
+        'No packages found. Check release.config.ts `packages` field '
+          + 'or ensure pnpm-workspace.yaml defines workspace packages.',
+      )
       return
     }
 
@@ -61,10 +124,12 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     }
 
     // Generate plan based on type
-    const header = Str.Builder()
-    header`Generating ${args.type} release plan...`
-    header``
-    yield* Console.log(header.render())
+    if (!args.json) {
+      const header = Str.Builder()
+      header`Generating ${args.type} release plan...`
+      header``
+      yield* Console.log(header.render())
+    }
 
     const tags = yield* git.getTags()
     const analysis = yield* Api.Analyzer.analyze({
@@ -82,6 +147,19 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
         ? Api.Planner.candidate(analysis, ctx, options)
         : Api.Planner.ephemeral(analysis, ctx, options)
     )
+
+    if (args.json) {
+      const recon = yield* Api.Explorer.explore()
+      const publishHistory = yield* readPublishHistory(args.publishHistory)
+      const forecast = Api.Forecaster.forecast(analysis, recon)
+
+      yield* Console.log(JSON.stringify({
+        forecast,
+        publishState: 'idle' as const,
+        publishHistory,
+      }))
+      return
+    }
 
     if (plan.releases.length === 0) {
       yield* Console.log('No releases planned - no unreleased changes found.')

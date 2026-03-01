@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/refs/heads/main/npm/oxlint/configuration_schema.json",
-  "plugins": ["import", "vitest"],
+  "plugins": ["import", "vitest", "promise"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
@@ -10,11 +10,28 @@
     "eslint/no-unused-vars": "off",
     "eslint/no-unused-expressions": ["error", { "allowTaggedTemplates": true }],
     "eslint/no-control-regex": "off",
+    "typescript/no-explicit-any": "warn",
+    "typescript/no-unsafe-type-assertion": "warn",
+    "typescript/no-unnecessary-type-assertion": "warn",
     "eslint-plugin-jest/expect-expect": "off",
     "eslint-plugin-jest/no-standalone-expect": "off",
     "eslint-plugin-jest/no-conditional-expect": "off",
     "eslint-plugin-jest/valid-title": "off",
     "eslint-plugin-import/no-unassigned-import": "off",
+    "eslint-plugin-promise/no-new-statics": "warn",
+    "eslint-plugin-promise/no-callback-in-promise": "warn",
+    "eslint-plugin-promise/prefer-await-to-then": "warn",
+    "eslint/no-restricted-globals": [
+      "warn",
+      {
+        "name": "JSON",
+        "message": "Use Effect Schema decode/codec APIs at IO boundaries instead of JSON.parse."
+      },
+      {
+        "name": "Promise",
+        "message": "Use Effect combinators and typed Effect error channels instead of Promise APIs."
+      }
+    ],
     "eslint/no-restricted-imports": [
       "error",
       {

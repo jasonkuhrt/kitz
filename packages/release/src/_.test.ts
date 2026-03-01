@@ -376,6 +376,98 @@ describe('Cascade', () => {
     expect(cascadeNames).toContain('@kitz/cli')
     expect(cascadeNames).toContain('@kitz/utils')
   })
+
+  test('annotates cascade commits with triggering primary release', async () => {
+    const diskLayout: Fs.Memory.DiskLayout = {
+      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+      '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
+        '@kitz/core': 'workspace:*',
+      }),
+    }
+
+    const layer = Layer.mergeAll(
+      Git.Memory.make({
+        tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0'],
+        commits: [Git.Memory.commit('feat(core): new API')],
+      }),
+      Fs.Memory.layer(diskLayout),
+      testEnv,
+    )
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
+
+    expect(result.cascades).toHaveLength(1)
+    const cascade = result.cascades[0]!
+    const info = cascade.commits[0]!.forScope(cascade.package.scope)
+
+    expect(info.description).toContain('Depends on @kitz/core@1.1.0')
+  })
+})
+
+describe('Analyzer', () => {
+  test('records cascade trigger packages in analysis output', async () => {
+    const diskLayout: Fs.Memory.DiskLayout = {
+      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+      '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
+        '@kitz/core': 'workspace:*',
+      }),
+    }
+
+    const layer = Layer.mergeAll(
+      Git.Memory.make({
+        tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0'],
+        commits: [Git.Memory.commit('feat(core): new API')],
+      }),
+      Fs.Memory.layer(diskLayout),
+      testEnv,
+    )
+
+    const analysis = await Effect.runPromise(
+      Effect.provide(
+        Effect.gen(function*() {
+          const git = yield* Git.Git
+          const tags = yield* git.getTags()
+          return yield* Analyzer.analyze({ packages: mockPackages, tags })
+        }),
+        layer,
+      ),
+    )
+
+    expect(analysis.cascades).toHaveLength(1)
+    expect(analysis.cascades[0]!.triggeredBy.map((pkg) => pkg.name.moniker)).toContain('@kitz/core')
+  })
+
+  test('respects until boundary when analyzing commits', async () => {
+    const olderHash = Git.Sha.make('1111111')
+    const newerHash = Git.Sha.make('2222222')
+
+    const layer = makeTestLayer({
+      tags: [],
+      commits: [
+        Git.Memory.commit('feat(core): should be excluded by until', { hash: newerHash }),
+        Git.Memory.commit('chore(core): boundary commit', { hash: olderHash }),
+      ],
+    })
+
+    const analysis = await Effect.runPromise(
+      Effect.provide(
+        Effect.gen(function*() {
+          const git = yield* Git.Git
+          const tags = yield* git.getTags()
+          return yield* Analyzer.analyze({
+            packages: mockPackages,
+            tags,
+            until: olderHash,
+          })
+        }),
+        layer,
+      ),
+    )
+
+    expect(analysis.impacts).toHaveLength(0)
+  })
 })
 
 // ─── Getter Methods ───────────────────────────────────────────────

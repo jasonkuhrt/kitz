@@ -12,9 +12,12 @@ import { Official } from './models/item-official.js'
 import type { Item } from './models/item.js'
 
 /**
- * Cascade analysis for a requested package identifier.
+ * Result of cascade analysis for a single requested package identifier.
+ *
+ * - `packageName` is null when the requested identifier does not match any workspace package.
+ * - `cascades` is empty when the package has no dependents that need cascade releases.
  */
-export interface RequestedCascadeAnalysis {
+export interface CascadeQueryResult {
   readonly requestedPackage: string
   readonly packageName: string | null
   readonly cascades: readonly Official[]
@@ -30,41 +33,57 @@ export const analyzeRequested = (
   releases: readonly Item[],
   requestedPackages: readonly string[],
   tags: string[],
-): Effect.Effect<readonly RequestedCascadeAnalysis[], Resource.ResourceError, FileSystem.FileSystem> =>
+): Effect.Effect<readonly CascadeQueryResult[], Resource.ResourceError, FileSystem.FileSystem> =>
   Effect.gen(function*() {
     const dependencyGraph = yield* buildDependencyGraph(packages)
+    const results: CascadeQueryResult[] = []
 
-    return requestedPackages.map((requestedPackage) => {
+    for (const requestedPackage of requestedPackages) {
       const pkg = packages.find((p) => p.name.moniker === requestedPackage || p.scope === requestedPackage)
 
       if (!pkg) {
-        return {
+        yield* Effect.logWarning(
+          `Cascade analysis: requested package "${requestedPackage}" not found in workspace. `
+            + `Available packages: ${packages.map((p) => p.name.moniker).join(', ')}`,
+        )
+        results.push({
           requestedPackage,
           packageName: null,
           cascades: [],
-        } satisfies RequestedCascadeAnalysis
+        })
+        continue
       }
 
       const pkgReleases = releases.filter((release) => release.package.name.moniker === pkg.name.moniker)
       const cascades = detect(packages, pkgReleases, dependencyGraph, tags)
 
-      return {
+      results.push({
         requestedPackage,
         packageName: pkg.name.moniker,
         cascades,
-      } satisfies RequestedCascadeAnalysis
-    })
+      })
+    }
+
+    return results
   })
 
 /**
- * Find all packages that need cascade releases.
+ * Find all packages that need cascade releases using BFS traversal.
+ *
+ * **Algorithm**: Starting from the set of primary releases, performs a
+ * breadth-first search over the reverse dependency graph (dependents).
+ * Each unvisited dependent is marked for a cascade patch release.
+ * The BFS continues from cascade packages to find transitive dependents.
  *
  * A package needs a cascade release if:
- * 1. It depends on a package being released
- * 2. It's not already in the primary releases list
+ * 1. It depends (directly or transitively) on a package being released
+ * 2. It is not already in the primary releases list
  *
- * Cascade releases propagate recursively - if A depends on B and B depends on C,
- * and C is released, both B and A get cascade releases.
+ * **Circular dependencies**: The visited set prevents infinite loops.
+ * If A depends on B and B depends on A, each is visited at most once.
+ *
+ * **Version strategy**: All cascade releases receive a patch bump.
+ * If no current version exists, a first release is created.
  */
 export const detect = (
   packages: Package[],
@@ -78,7 +97,8 @@ export const detect = (
   // Set of packages that need cascade releases
   const needsCascade = new Set<string>()
 
-  // Queue for BFS traversal
+  // BFS traversal with visited guard to handle circular dependencies safely
+  const visited = new Set<string>(releasing)
   const queue = [...releasing]
 
   while (queue.length > 0) {
@@ -86,9 +106,10 @@ export const detect = (
     const dependents = dependencyGraph.get(pkgName) ?? []
 
     for (const dependent of dependents) {
-      // Skip if already releasing or already queued for cascade
-      if (releasing.has(dependent) || needsCascade.has(dependent)) continue
+      // Skip if already visited (releasing, already queued for cascade, or in queue)
+      if (visited.has(dependent)) continue
 
+      visited.add(dependent)
       needsCascade.add(dependent)
       queue.push(dependent) // Propagate cascades
     }
@@ -108,17 +129,15 @@ export const detect = (
     // Find which primary release(s) triggered this cascade
     // Create synthetic commit entries for changelog generation
     const cascadeCommits: ReleaseCommit[] = []
-    const deps = dependencyGraph.get(name)
-    if (deps) {
-      for (const primary of primaryReleases) {
-        if (deps.includes(primary.package.name.moniker)) {
-          cascadeCommits.push(
-            makeCascadeCommit(
-              pkg.scope,
-              `Depends on ${primary.package.name.moniker}@${primary.nextVersion.toString()}`,
-            ),
-          )
-        }
+    for (const primary of primaryReleases) {
+      const primaryDependents = dependencyGraph.get(primary.package.name.moniker) ?? []
+      if (primaryDependents.includes(name)) {
+        cascadeCommits.push(
+          makeCascadeCommit(
+            pkg.scope,
+            `Depends on ${primary.package.name.moniker}@${primary.nextVersion.toString()}`,
+          ),
+        )
       }
     }
 

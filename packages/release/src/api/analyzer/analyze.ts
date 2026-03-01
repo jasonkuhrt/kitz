@@ -108,9 +108,31 @@ export const analyze = (
 
     // ── Step 1: Fetch commits since last release ──────────────────────
     const since = options.since ?? (yield* findLastReleaseTag(packages, tags))
-    const commits = yield* git.getCommitsSince(since)
+    let commits = yield* git.getCommitsSince(since)
+
+    // Apply optional upper boundary (until), trimming newer commits.
+    if (options.until) {
+      const until = options.until
+      const boundaryIndex = commits.findIndex((commit) =>
+        commit.hash === until || commit.hash.startsWith(until) || until.startsWith(commit.hash)
+      )
+
+      if (boundaryIndex >= 0) {
+        commits = commits.slice(boundaryIndex)
+      } else if (tags.includes(until)) {
+        const newerCommits = yield* git.getCommitsSince(until).pipe(
+          Effect.catchAll(() => Effect.succeed([])),
+        )
+        const newerHashes = new Set(newerCommits.map((commit) => commit.hash))
+        commits = commits.filter((commit) => !newerHashes.has(commit.hash))
+      }
+    }
 
     // ── Step 2: Extract impacts from all commits ──────────────────────
+    // Unbounded concurrency is safe here: extractImpacts is pure (CPU-only,
+    // no IO) — it parses conventional-commit messages and maps scopes to
+    // packages.  Individual failures surface as empty impact arrays, so
+    // a single malformed commit won't abort the pipeline.
     const allImpacts = yield* Effect.all(
       commits.map((c) => extractImpacts(c)),
       { concurrency: 'unbounded' },
@@ -120,8 +142,9 @@ export const analyze = (
     // ── Step 3: Aggregate by package ──────────────────────────────────
     const aggregated = aggregateByPackage(flatImpacts)
 
-    // Build scope-to-package map
+    // Pre-compute lookup maps (used for both impact extraction and cascade detection)
     const scopeToPackage = new Map(packages.map((p) => [p.scope, p]))
+    const nameToPackage = new Map(packages.map((p) => [p.name.moniker, p]))
 
     // Build impacts and track changed scopes
     const impacts: Impact[] = []
@@ -157,8 +180,10 @@ export const analyze = (
     // ── Step 4: Detect cascade impacts ────────────────────────────────
     const dependencyGraph = yield* buildDependencyGraph([...packages])
 
-    // BFS to find all packages that transitively depend on impacted packages
+    // BFS to find all packages that transitively depend on impacted packages.
+    // Visited guard prevents infinite loops from circular dependencies.
     const needsCascade = new Set<string>()
+    const visited = new Set<string>(impactedPackages)
     const queue = [...impactedPackages]
 
     while (queue.length > 0) {
@@ -166,14 +191,14 @@ export const analyze = (
       const dependents = dependencyGraph.get(pkgName) ?? []
 
       for (const dependent of dependents) {
-        if (impactedPackages.has(dependent) || needsCascade.has(dependent)) continue
+        if (visited.has(dependent)) continue
+        visited.add(dependent)
         needsCascade.add(dependent)
         queue.push(dependent)
       }
     }
 
     // Build cascade impact objects
-    const nameToPackage = new Map(packages.map((p) => [p.name.moniker, p]))
     const cascades: CascadeImpact[] = []
 
     for (const name of needsCascade) {
@@ -182,12 +207,10 @@ export const analyze = (
 
       // Find which impacted packages triggered this cascade
       const triggeredBy: Package[] = []
-      const deps = dependencyGraph.get(name)
-      if (deps) {
-        for (const impact of impacts) {
-          if (deps.includes(impact.package.name.moniker)) {
-            triggeredBy.push(impact.package)
-          }
+      for (const impact of impacts) {
+        const impactDependents = dependencyGraph.get(impact.package.name.moniker) ?? []
+        if (impactDependents.includes(name)) {
+          triggeredBy.push(impact.package)
         }
       }
 
