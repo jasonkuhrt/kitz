@@ -1,12 +1,21 @@
 // @ts-check
 
+import fs from 'node:fs'
+import { builtinModules } from 'node:module'
 import path from 'node:path'
+import { Either, Option, pipe, Schema } from 'effect'
 import { definePlugin, defineRule } from 'oxlint'
 
 /** @typedef {import('oxlint').ESTree.Expression} Expression */
+/** @typedef {import('oxlint').ESTree.FunctionDeclaration | import('oxlint').ESTree.FunctionExpression | import('oxlint').ESTree.ArrowFunctionExpression} FunctionLikeNode */
 /** @typedef {import('oxlint').ESTree.MemberExpression} MemberExpression */
+/** @typedef {import('oxlint').ESTree.Program} Program */
+/** @typedef {import('oxlint').ESTree.Statement} Statement */
 /** @typedef {import('oxlint').ESTree.TSType} TSType */
 /** @typedef {import('oxlint').ESTree.TSTypeName} TSTypeName */
+/** @typedef {{ namespaceName: string, sourcePath: string }} NamespaceExport */
+/** @typedef {{ importAlias: string, namespaceName: string }} CoreNamespaceConvention */
+/** @typedef {{ expectedNamespaceName: string, expectedTargetPath: string | null }} NamespaceFileConvention */
 
 const MESSAGE_IDS = {
   noJsonParse: `noJsonParse`,
@@ -14,6 +23,7 @@ const MESSAGE_IDS = {
   noNativePromiseConstruction: `noNativePromiseConstruction`,
   noTypeAssertion: `noTypeAssertion`,
   noNativeMapSetInEffectModules: `noNativeMapSetInEffectModules`,
+  noNodejsBuiltinImports: `noNodejsBuiltinImports`,
   noThrow: `noThrow`,
   noPromiseThenChain: `noPromiseThenChain`,
   noEffectRunInLibraryCode: `noEffectRunInLibraryCode`,
@@ -24,6 +34,21 @@ const MESSAGE_IDS = {
   noMathRandomInDomain: `noMathRandomInDomain`,
   noConsoleInEffectModules: `noConsoleInEffectModules`,
   requireTaggedErrorTypes: `requireTaggedErrorTypes`,
+  namespaceFileConventionsSingleStatement: `namespaceFileConventionsSingleStatement`,
+  namespaceFileConventionsNamespaceExport: `namespaceFileConventionsNamespaceExport`,
+  namespaceFileConventionsNamespaceDeclaration: `namespaceFileConventionsNamespaceDeclaration`,
+  namespaceFileConventionsNamespaceDeclarationName: `namespaceFileConventionsNamespaceDeclarationName`,
+  namespaceFileConventionsNamespaceDeclarationJsDoc: `namespaceFileConventionsNamespaceDeclarationJsDoc`,
+  namespaceFileConventionsTypeDeclarationName: `namespaceFileConventionsTypeDeclarationName`,
+  namespaceFileConventionsNamespaceName: `namespaceFileConventionsNamespaceName`,
+  namespaceFileConventionsTarget: `namespaceFileConventionsTarget`,
+  barrelFileConventionsMissingExport: `barrelFileConventionsMissingExport`,
+  barrelFileConventionsDefaultExport: `barrelFileConventionsDefaultExport`,
+  barrelFileConventionsOnlyImportExport: `barrelFileConventionsOnlyImportExport`,
+  moduleStructureConventionsMissingBarrel: `moduleStructureConventionsMissingBarrel`,
+  moduleStructureConventionsMultiFileNamespaceTarget: `moduleStructureConventionsMultiFileNamespaceTarget`,
+  moduleStructureConventionsSingleFileNamespaceTarget: `moduleStructureConventionsSingleFileNamespaceTarget`,
+  moduleStructureConventionsRootEntrypoints: `moduleStructureConventionsRootEntrypoints`,
 }
 
 const MESSAGES = {
@@ -32,6 +57,8 @@ const MESSAGES = {
   [MESSAGE_IDS.noNativePromiseConstruction]: `Use Effect constructors/combinators.`,
   [MESSAGE_IDS.noTypeAssertion]: `Remove assertion casts; use schema decode/typed constructors.`,
   [MESSAGE_IDS.noNativeMapSetInEffectModules]: `Prefer Effect HashMap / HashSet (mutable variants only when justified).`,
+  [MESSAGE_IDS.noNodejsBuiltinImports]:
+    `Do not import Node.js built-ins, fs-extra, or pathe; use Effect/@kitz abstractions.`,
   [MESSAGE_IDS.noThrow]: `Use typed Effect failures instead of throw (except approved boundary adapters).`,
   [MESSAGE_IDS.noPromiseThenChain]: `Prefer Effect combinators over Promise.then/catch/finally chains.`,
   [MESSAGE_IDS.noEffectRunInLibraryCode]: `Do not run Effects in library code; return Effects and run them in app/CLI entrypoints or tests.`,
@@ -42,6 +69,35 @@ const MESSAGES = {
   [MESSAGE_IDS.noMathRandomInDomain]: `Use Effect Random service instead of Math.random in domain/library code.`,
   [MESSAGE_IDS.noConsoleInEffectModules]: `Use Effect.log* or structured logging adapters instead of console.* in Effect modules.`,
   [MESSAGE_IDS.requireTaggedErrorTypes]: `Effect error channel types should be tagged (include _tag) for pattern matching.`,
+  [MESSAGE_IDS.namespaceFileConventionsSingleStatement]:
+    `Namespace files (_.ts) may only contain: one namespace export, type-only exports, and one namespace declaration.`,
+  [MESSAGE_IDS.namespaceFileConventionsNamespaceExport]:
+    `Namespace files (_.ts) must include exactly one value namespace export using 'export * as Name from ...'.`,
+  [MESSAGE_IDS.namespaceFileConventionsNamespaceDeclaration]:
+    `Namespace files (_.ts) must include one empty exported namespace declaration: 'export namespace Name {}'.`,
+  [MESSAGE_IDS.namespaceFileConventionsNamespaceDeclarationName]:
+    `Namespace declaration name must match the namespace export name.`,
+  [MESSAGE_IDS.namespaceFileConventionsNamespaceDeclarationJsDoc]:
+    `Namespace declaration must be preceded by a JSDoc target comment for the namespace export.`,
+  [MESSAGE_IDS.namespaceFileConventionsTypeDeclarationName]:
+    `In _.ts, exported in-file type declarations must be named exactly the same as the namespace export name.`,
+  [MESSAGE_IDS.namespaceFileConventionsNamespaceName]:
+    `Namespace export name must match path conventions (including explicit Core* conventions from packages/core/package.json imports).`,
+  [MESSAGE_IDS.namespaceFileConventionsTarget]:
+    `Namespace export target must match path conventions ('./__.js' for explicit core patterns, otherwise './__.js' or './<module>.js').`,
+  [MESSAGE_IDS.barrelFileConventionsMissingExport]:
+    `Barrel files (__.ts) must export at least one symbol.`,
+  [MESSAGE_IDS.barrelFileConventionsDefaultExport]: `Barrel files (__.ts) must not use default exports.`,
+  [MESSAGE_IDS.barrelFileConventionsOnlyImportExport]:
+    `Barrel files (__.ts) may only contain top-level import/export declarations.`,
+  [MESSAGE_IDS.moduleStructureConventionsMissingBarrel]:
+    `Module directories with multiple implementation files must include __.ts.`,
+  [MESSAGE_IDS.moduleStructureConventionsMultiFileNamespaceTarget]:
+    `Namespace files for multi-file modules must target './__.js'.`,
+  [MESSAGE_IDS.moduleStructureConventionsSingleFileNamespaceTarget]:
+    `Namespace files for single-file elided modules must target './<implementation>.js'.`,
+  [MESSAGE_IDS.moduleStructureConventionsRootEntrypoints]:
+    `Regular packages must define both src/_.ts and src/__.ts root entrypoints.`,
 }
 
 /**
@@ -153,6 +209,296 @@ const isMathObjectReference = (expression) => {
   return getPropertyName(expression) === `Math`
 }
 
+const NODE_BUILTIN_MODULES = new Set(
+  builtinModules.map((moduleName) => moduleName.startsWith(`node:`) ? moduleName.slice(`node:`.length) : moduleName),
+)
+const DISALLOWED_EFFECT_PLATFORM_ALTERNATIVES = [`fs-extra`, `pathe`]
+const NODE_COMPATIBLE_CONDITION_KEYS = new Set([`node`, `bun`])
+
+const PackageJsonRecordSchema = Schema.Record({ key: Schema.String, value: Schema.Unknown })
+const PackageConditionTargetSchema = Schema.suspend(() =>
+  Schema.Union(
+    Schema.String,
+    Schema.Null,
+    Schema.Array(PackageConditionTargetSchema),
+    Schema.Record({ key: Schema.String, value: PackageConditionTargetSchema }),
+  ))
+
+const decodePackageJsonRecord = Schema.decodeUnknownOption(Schema.parseJson(PackageJsonRecordSchema))
+const decodePackageConditionTarget = Schema.decodeUnknownOption(PackageConditionTargetSchema)
+
+/**
+ * @param {unknown} literalNode
+ * @returns {string | null}
+ */
+const getStringLiteralValue = (literalNode) =>
+  typeof literalNode === `object` &&
+    literalNode !== null &&
+    `type` in literalNode &&
+    literalNode.type === `Literal` &&
+    typeof literalNode.value === `string`
+    ? literalNode.value
+    : null
+
+/**
+ * @param {string} importPath
+ * @returns {boolean}
+ */
+const isNodeBuiltinImportPath = (importPath) => {
+  const normalized = importPath.startsWith(`node:`) ? importPath.slice(`node:`.length) : importPath
+
+  if (NODE_BUILTIN_MODULES.has(normalized)) {
+    return true
+  }
+
+  if (normalized.startsWith(`@`)) {
+    return false
+  }
+
+  const slashIndex = normalized.indexOf(`/`)
+  if (slashIndex <= 0) {
+    return false
+  }
+
+  return NODE_BUILTIN_MODULES.has(normalized.slice(0, slashIndex))
+}
+
+/**
+ * @param {string} importPath
+ * @returns {boolean}
+ */
+const isDisallowedEffectPlatformAlternativePath = (importPath) =>
+  DISALLOWED_EFFECT_PLATFORM_ALTERNATIVES.some((packageName) =>
+    importPath === packageName || importPath.startsWith(`${packageName}/`))
+
+/**
+ * @param {Record<string, unknown>} packageJsonRecord
+ * @param {'exports' | 'imports'} fieldName
+ * @returns {Option.Option<Option.Option<unknown>>}
+ */
+const decodeOptionalPackageConditionTarget = (packageJsonRecord, fieldName) => {
+  if (!(fieldName in packageJsonRecord)) {
+    return Option.some(Option.none())
+  }
+
+  return pipe(
+    decodePackageConditionTarget(packageJsonRecord[fieldName]),
+    Option.map((target) => Option.some(target)),
+  )
+}
+
+/**
+ * @param {string} packageJsonContent
+ * @returns {Option.Option<{ exports?: unknown, imports?: unknown }>}
+ */
+const decodeRuntimeConditionPackageJson = (packageJsonContent) =>
+  pipe(
+    decodePackageJsonRecord(packageJsonContent),
+    Option.flatMap((packageJsonRecord) =>
+      pipe(
+        decodeOptionalPackageConditionTarget(packageJsonRecord, `exports`),
+        Option.flatMap((exportsTarget) =>
+          pipe(
+            decodeOptionalPackageConditionTarget(packageJsonRecord, `imports`),
+            Option.map((importsTarget) => ({
+              exports: Option.match(exportsTarget, {
+                onNone: () => undefined,
+                onSome: (target) => target,
+              }),
+              imports: Option.match(importsTarget, {
+                onNone: () => undefined,
+                onSome: (target) => target,
+              }),
+            })),
+          ),
+        ),
+      ),
+    ),
+  )
+
+/**
+ * @param {unknown} targetNode
+ * @param {boolean} withinNodeCompatibleCondition
+ * @param {Set<string>} nodeCompatibleTargets
+ * @returns {void}
+ */
+const collectNodeCompatibleTargets = (
+  targetNode,
+  withinNodeCompatibleCondition,
+  nodeCompatibleTargets,
+) => {
+  if (typeof targetNode === `string`) {
+    if (withinNodeCompatibleCondition) {
+      nodeCompatibleTargets.add(normalizePath(targetNode))
+    }
+    return
+  }
+
+  if (targetNode === null) {
+    return
+  }
+
+  if (Array.isArray(targetNode)) {
+    for (const entry of targetNode) {
+      collectNodeCompatibleTargets(entry, withinNodeCompatibleCondition, nodeCompatibleTargets)
+    }
+    return
+  }
+
+  if (!isRecord(targetNode)) {
+    return
+  }
+
+  for (const [conditionName, conditionValue] of Object.entries(targetNode)) {
+    collectNodeCompatibleTargets(
+      conditionValue,
+      withinNodeCompatibleCondition || NODE_COMPATIBLE_CONDITION_KEYS.has(conditionName),
+      nodeCompatibleTargets,
+    )
+  }
+}
+
+/**
+ * @param {string} sourceFilePath
+ * @returns {Option.Option<string>}
+ */
+const findNearestPackageJsonPath = (sourceFilePath) => {
+  let currentDirectory = path.dirname(sourceFilePath)
+
+  while (true) {
+    const packageJsonPath = path.join(currentDirectory, `package.json`)
+    if (fs.existsSync(packageJsonPath)) {
+      return Option.some(packageJsonPath)
+    }
+
+    const parentDirectory = path.dirname(currentDirectory)
+    if (parentDirectory === currentDirectory) {
+      return Option.none()
+    }
+    currentDirectory = parentDirectory
+  }
+}
+
+/**
+ * @param {string} sourceExtension
+ * @returns {string[]}
+ */
+const getBuildTargetExtensionsForSourceExtension = (sourceExtension) => {
+  if (sourceExtension === `.mts`) {
+    return [`.mjs`, `.js`]
+  }
+
+  if (sourceExtension === `.cts`) {
+    return [`.cjs`, `.js`]
+  }
+
+  if (sourceExtension === `.ts` || sourceExtension === `.tsx`) {
+    return [`.js`]
+  }
+
+  return []
+}
+
+/**
+ * @param {string} packageRoot
+ * @param {string} sourceFilePath
+ * @returns {Option.Option<Set<string>>}
+ */
+const getFileTargetCandidates = (packageRoot, sourceFilePath) => {
+  const relativePath = normalizePath(path.relative(packageRoot, sourceFilePath))
+  if (relativePath.length === 0 || relativePath.startsWith(`..`)) {
+    return Option.none()
+  }
+
+  const targetCandidates = new Set([`./${relativePath}`])
+
+  if (!relativePath.startsWith(`src/`)) {
+    return Option.some(targetCandidates)
+  }
+
+  const sourceRelativePath = relativePath.slice(`src/`.length)
+  const sourceExtensionMatch = /\.[^/.]+$/.exec(sourceRelativePath)
+  if (sourceExtensionMatch === null) {
+    return Option.some(targetCandidates)
+  }
+
+  const sourceExtension = sourceExtensionMatch[0]
+  const sourcePathWithoutExtension = sourceRelativePath.slice(0, -sourceExtension.length)
+  for (const buildExtension of getBuildTargetExtensionsForSourceExtension(sourceExtension)) {
+    targetCandidates.add(`./build/${sourcePathWithoutExtension}${buildExtension}`)
+  }
+
+  return Option.some(targetCandidates)
+}
+
+/**
+ * @param {string} sourceFilePath
+ * @returns {Option.Option<{ packageRoot: string, runtimeConditions: { exports?: unknown, imports?: unknown } }>}
+ */
+const readNearestRuntimeConditionPackage = (sourceFilePath) =>
+  pipe(
+    findNearestPackageJsonPath(sourceFilePath),
+    Option.flatMap((packageJsonPath) =>
+      pipe(
+        Either.try({
+          try: () => fs.readFileSync(packageJsonPath, `utf8`),
+          catch: () => null,
+        }),
+        Either.match({
+          onLeft: () => Option.none(),
+          onRight: (packageJsonContent) =>
+            pipe(
+              decodeRuntimeConditionPackageJson(packageJsonContent),
+              Option.map((runtimeConditions) => ({
+                packageRoot: path.dirname(packageJsonPath),
+                runtimeConditions,
+              })),
+            ),
+        }),
+      ),
+    ),
+  )
+
+/**
+ * @param {string} sourceFilePath
+ * @returns {boolean}
+ */
+const isNodeBuiltinImportAllowedInFile = (sourceFilePath) =>
+  pipe(
+    readNearestRuntimeConditionPackage(sourceFilePath),
+    Option.map(({ packageRoot, runtimeConditions }) => {
+      const nodeCompatibleTargets = new Set()
+      if (runtimeConditions.exports !== undefined) {
+        collectNodeCompatibleTargets(runtimeConditions.exports, false, nodeCompatibleTargets)
+      }
+
+      if (runtimeConditions.imports !== undefined) {
+        collectNodeCompatibleTargets(runtimeConditions.imports, false, nodeCompatibleTargets)
+      }
+
+      if (nodeCompatibleTargets.size === 0) {
+        return false
+      }
+
+      return pipe(
+        getFileTargetCandidates(packageRoot, sourceFilePath),
+        Option.map((targetCandidates) => {
+          for (const candidate of targetCandidates) {
+            for (const targetPattern of nodeCompatibleTargets) {
+              if (matchesGlobPattern(candidate, targetPattern)) {
+                return true
+              }
+            }
+          }
+
+          return false
+        }),
+        Option.getOrElse(() => false),
+      )
+    }),
+    Option.getOrElse(() => false),
+  )
+
 /**
  * @param {TSTypeName} typeName
  * @returns {string | null}
@@ -174,6 +520,513 @@ const getTypeName = (typeName) => {
  * @returns {string}
  */
 const normalizePath = (filePath) => filePath.split(path.sep).join(`/`)
+
+const globRegexCache = new Map()
+const reportedMissingRootEntrypoints = new Set()
+const coreNamespaceConventionsCache = new Map()
+
+/**
+ * @param {string} pattern
+ * @returns {RegExp}
+ */
+const compileGlobPattern = (pattern) => {
+  const normalizedPattern = normalizePath(pattern)
+  if (globRegexCache.has(normalizedPattern)) {
+    return globRegexCache.get(normalizedPattern)
+  }
+
+  let expression = `^`
+  for (let index = 0; index < normalizedPattern.length; index += 1) {
+    const char = normalizedPattern[index]
+
+    if (char === `*`) {
+      if (normalizedPattern[index + 1] === `*`) {
+        expression += `.*`
+        index += 1
+      } else {
+        expression += `[^/]*`
+      }
+      continue
+    }
+
+    if (char === `?`) {
+      expression += `[^/]`
+      continue
+    }
+
+    if (`\\^$+?.()|{}[]`.includes(char)) {
+      expression += `\\${char}`
+      continue
+    }
+
+    expression += char
+  }
+
+  expression += `$`
+  const regularExpression = new RegExp(expression)
+  globRegexCache.set(normalizedPattern, regularExpression)
+  return regularExpression
+}
+
+/**
+ * @param {string} filePath
+ * @param {string} pattern
+ * @returns {boolean}
+ */
+const matchesGlobPattern = (filePath, pattern) => compileGlobPattern(pattern).test(filePath)
+
+/**
+ * @param {unknown} value
+ * @returns {value is Record<string, unknown>}
+ */
+const isRecord = (value) => typeof value === `object` && value !== null && !Array.isArray(value)
+
+/**
+ * @param {string} sourceFileName
+ * @returns {string}
+ */
+const toModuleRuntimeFileName = (sourceFileName) => sourceFileName.replace(/\.[cm]?[jt]sx?$/, `.js`)
+
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+const toPascalCase = (value) => {
+  const withoutLeadingUnderscore = value.replace(/^_+/, ``)
+  const hasDollarPrefix = withoutLeadingUnderscore.startsWith(`$`)
+  const normalized = hasDollarPrefix ? withoutLeadingUnderscore.slice(1) : withoutLeadingUnderscore
+  const parts = normalized.split(/[-_]/g).filter((part) => part.length > 0)
+  const pascal = parts.map((part) => part[0].toUpperCase() + part.slice(1)).join(``)
+  return hasDollarPrefix ? `$${pascal}` : pascal
+}
+
+/**
+ * @param {string} value
+ * @returns {string}
+ */
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, `\\$&`)
+
+/**
+ * @param {string} filePath
+ * @returns {{
+ *   packageName: string,
+ *   sourceRelativePath: string,
+ *   packageSourceDirectoryRelativePath: string,
+ * } | null}
+ */
+const getPackageSourcePathDetails = (filePath) => {
+  const pathSegments = filePath.split(`/`)
+  const packagesSegmentIndex = pathSegments.findIndex((segment, index) => {
+    return segment === `packages` && pathSegments[index + 2] === `src`
+  })
+
+  if (packagesSegmentIndex === -1) {
+    return null
+  }
+
+  const packageName = pathSegments[packagesSegmentIndex + 1]
+  if (typeof packageName !== `string`) {
+    return null
+  }
+
+  const packageSourceDirectoryRelativePath = pathSegments.slice(0, packagesSegmentIndex + 3).join(`/`)
+  const sourceRelativePath = pathSegments.slice(packagesSegmentIndex + 3).join(`/`)
+
+  return {
+    packageName,
+    sourceRelativePath,
+    packageSourceDirectoryRelativePath,
+  }
+}
+
+/**
+ * @param {string} filePath
+ * @returns {string | null}
+ */
+const getExpectedNamespaceName = (filePath) => {
+  const packageSourcePathDetails = getPackageSourcePathDetails(filePath)
+  if (!packageSourcePathDetails) {
+    return null
+  }
+
+  if (packageSourcePathDetails.sourceRelativePath === `_.ts`) {
+    return toPascalCase(packageSourcePathDetails.packageName)
+  }
+
+  return toPascalCase(path.basename(path.dirname(filePath)))
+}
+
+/**
+ * @param {string} cwd
+ * @returns {Map<string, CoreNamespaceConvention>}
+ */
+const getCoreNamespaceConventions = (cwd) => {
+  const cacheKey = normalizePath(cwd)
+  if (coreNamespaceConventionsCache.has(cacheKey)) {
+    return coreNamespaceConventionsCache.get(cacheKey)
+  }
+
+  const conventions = new Map()
+  const corePackageJsonPath = path.join(cwd, `packages/core/package.json`)
+  const corePackageImports = pipe(
+    Either.try({
+      try: () => fs.readFileSync(corePackageJsonPath, `utf8`),
+      catch: () => null,
+    }),
+    Either.match({
+      onLeft: () => Option.none(),
+      onRight: (packageJsonContent) =>
+        pipe(
+          decodePackageJsonRecord(packageJsonContent),
+          Option.flatMap((packageJsonRecord) =>
+            `imports` in packageJsonRecord && isRecord(packageJsonRecord.imports)
+              ? Option.some(packageJsonRecord.imports)
+              : Option.none()),
+        ),
+    }),
+  )
+
+  if (Option.isNone(corePackageImports)) {
+    coreNamespaceConventionsCache.set(cacheKey, conventions)
+    return conventions
+  }
+
+  for (const [importAlias, importTarget] of Object.entries(corePackageImports.value)) {
+    if (!importAlias.startsWith(`#`) || !importAlias.endsWith(`/core`) || typeof importTarget !== `string`) {
+      continue
+    }
+
+    const moduleName = importAlias.slice(1, -`/core`.length)
+    if (!/^[a-z0-9-]+$/.test(moduleName)) {
+      continue
+    }
+
+    const normalizedImportTarget = normalizePath(importTarget)
+    const expectedImportTarget = `./build/${moduleName}/core/_.js`
+    if (normalizedImportTarget !== expectedImportTarget) {
+      continue
+    }
+
+    conventions.set(moduleName, {
+      importAlias,
+      namespaceName: `Core${toPascalCase(moduleName)}`,
+    })
+  }
+
+  coreNamespaceConventionsCache.set(cacheKey, conventions)
+  return conventions
+}
+
+/**
+ * @param {string} filePath
+ * @param {string} cwd
+ * @returns {NamespaceFileConvention | null}
+ */
+const getNamespaceFileConvention = (filePath, cwd) => {
+  const packageSourcePathDetails = getPackageSourcePathDetails(filePath)
+  if (
+    packageSourcePathDetails !== null &&
+    packageSourcePathDetails.packageName === `core`
+  ) {
+    const coreModuleMatch = /^([^/]+)\/core\/_.ts$/.exec(packageSourcePathDetails.sourceRelativePath)
+    if (coreModuleMatch !== null) {
+      const [, moduleName] = coreModuleMatch
+      const coreConvention = getCoreNamespaceConventions(cwd).get(moduleName)
+      if (coreConvention !== undefined) {
+        return {
+          expectedNamespaceName: coreConvention.namespaceName,
+          expectedTargetPath: `./__.js`,
+        }
+      }
+    }
+  }
+
+  const expectedNamespaceName = getExpectedNamespaceName(filePath)
+  if (expectedNamespaceName === null) {
+    return null
+  }
+
+  return {
+    expectedNamespaceName,
+    expectedTargetPath: null,
+  }
+}
+
+/**
+ * @param {string} sourcePath
+ * @returns {boolean}
+ */
+const isValidNamespaceTargetPath = (sourcePath) =>
+  sourcePath === `./__.js` || /^\.\/[^/]+\.js$/.test(sourcePath)
+
+/**
+ * @param {unknown} moduleExportName
+ * @returns {string | null}
+ */
+const getModuleExportName = (moduleExportName) => {
+  if (!isRecord(moduleExportName) || moduleExportName.type === undefined) {
+    return null
+  }
+
+  if (
+    moduleExportName.type === `Identifier` ||
+    moduleExportName.type === `IdentifierReference` ||
+    moduleExportName.type === `IdentifierName`
+  ) {
+    return typeof moduleExportName.name === `string` ? moduleExportName.name : null
+  }
+
+  if (moduleExportName.type === `Literal`) {
+    return typeof moduleExportName.value === `string` ? moduleExportName.value : null
+  }
+
+  return null
+}
+
+/**
+ * @param {Statement} statement
+ * @returns {{ namespaceName: string, sourcePath: string } | null}
+ */
+const getNamespaceExportFromStatement = (statement) => {
+  if (
+    statement.type === `ExportAllDeclaration` &&
+    statement.exported !== null &&
+    statement.exportKind !== `type`
+  ) {
+    const namespaceName = getModuleExportName(statement.exported)
+    const sourcePath = statement.source.value
+    if (namespaceName === null || typeof sourcePath !== `string`) {
+      return null
+    }
+
+    return {
+      namespaceName,
+      sourcePath,
+    }
+  }
+
+  if (
+    statement.type === `ExportNamedDeclaration` &&
+    statement.exportKind !== `type` &&
+    statement.source !== null &&
+    statement.specifiers.length === 1
+  ) {
+    const [specifier] = statement.specifiers
+    if (!isRecord(specifier) || specifier.type === undefined) {
+      return null
+    }
+
+    if (specifier.type === `ExportNamespaceSpecifier`) {
+      const namespaceName = getModuleExportName(specifier.exported)
+      const sourcePath = statement.source.value
+      if (namespaceName === null || typeof sourcePath !== `string`) {
+        return null
+      }
+
+      return {
+        namespaceName,
+        sourcePath,
+      }
+    }
+
+    if (specifier.type !== `ExportSpecifier`) {
+      return null
+    }
+
+    const localName = getModuleExportName(specifier.local)
+    const namespaceName = getModuleExportName(specifier.exported)
+    const sourcePath = statement.source.value
+
+    if (localName !== `*` || namespaceName === null || typeof sourcePath !== `string`) {
+      return null
+    }
+
+    return {
+      namespaceName,
+      sourcePath,
+    }
+  }
+
+  return null
+}
+
+/**
+ * @param {Program} program
+ * @returns {NamespaceExport[]}
+ */
+const getNamespaceExportsFromProgram = (program) =>
+  program.body
+    .map((statement) => getNamespaceExportFromStatement(statement))
+    .filter((namespaceExport) => namespaceExport !== null)
+
+/**
+ * @param {Program} program
+ * @returns {NamespaceExport | null}
+ */
+const getNamespaceExportFromProgram = (program) => {
+  const namespaceExports = getNamespaceExportsFromProgram(program)
+  if (namespaceExports.length !== 1) {
+    return null
+  }
+
+  return namespaceExports[0]
+}
+
+/**
+ * @param {Statement} statement
+ * @returns {boolean}
+ */
+const isTypeOnlyExportStatement = (statement) => {
+  if (statement.type === `ExportAllDeclaration`) {
+    return statement.exportKind === `type`
+  }
+
+  if (statement.type !== `ExportNamedDeclaration`) {
+    return false
+  }
+
+  if (statement.exportKind === `type`) {
+    return true
+  }
+
+  if (!isRecord(statement.declaration)) {
+    return false
+  }
+
+  return (
+    statement.declaration.type === `TSInterfaceDeclaration` ||
+    statement.declaration.type === `TSTypeAliasDeclaration`
+  )
+}
+
+/**
+ * @param {Statement} statement
+ * @returns {Array<{ typeName: string, node: unknown }>}
+ */
+const getInFileExportedTypeDeclarations = (statement) => {
+  if (statement.type !== `ExportNamedDeclaration` || !isRecord(statement.declaration)) {
+    return []
+  }
+
+  const declaration = statement.declaration
+  if (
+    declaration.type !== `TSInterfaceDeclaration` &&
+    declaration.type !== `TSTypeAliasDeclaration`
+  ) {
+    return []
+  }
+
+  const typeName = getModuleExportName(declaration.id)
+  if (typeName === null) {
+    return []
+  }
+
+  return [
+    {
+      typeName,
+      node: declaration.id,
+    },
+  ]
+}
+
+/**
+ * @param {Statement} statement
+ * @returns {{ namespaceName: string, isEmpty: boolean } | null}
+ */
+const getNamespaceDeclarationFromStatement = (statement) => {
+  if (statement.type !== `ExportNamedDeclaration` || !isRecord(statement.declaration)) {
+    return null
+  }
+
+  const declaration = statement.declaration
+  if (declaration.type !== `TSModuleDeclaration`) {
+    return null
+  }
+
+  const namespaceName = getModuleExportName(declaration.id)
+  if (namespaceName === null) {
+    return null
+  }
+
+  const body = declaration.body
+  const isEmpty = isRecord(body) && body.type === `TSModuleBlock` && Array.isArray(body.body) && body.body.length === 0
+
+  return {
+    namespaceName,
+    isEmpty,
+  }
+}
+
+/**
+ * @param {string} sourceText
+ * @param {string} namespaceName
+ * @returns {boolean}
+ */
+const hasNamespaceDeclarationWithJsDoc = (sourceText, namespaceName) => {
+  const escapedNamespaceName = escapeRegExp(namespaceName)
+  const jsDocPattern = new RegExp(
+    `/\\*\\*[\\s\\S]*?\\*/\\s*export\\s+namespace\\s+${escapedNamespaceName}\\s*\\{\\s*\\}`,
+    `m`,
+  )
+  return jsDocPattern.test(sourceText)
+}
+
+/**
+ * @param {string} fileName
+ * @returns {boolean}
+ */
+const isTsSourceFileName = (fileName) => /\.[cm]?[jt]sx?$/.test(fileName)
+
+/**
+ * @param {string} fileName
+ * @returns {boolean}
+ */
+const isTypeDefinitionFileName = (fileName) =>
+  fileName.endsWith(`.d.ts`) || fileName.endsWith(`.test-d.ts`) || fileName.endsWith(`.spec-d.ts`)
+
+/**
+ * @param {string} fileName
+ * @returns {boolean}
+ */
+const isTestLikeFileName = (fileName) =>
+  fileName.includes(`.test.`) ||
+  fileName.includes(`.spec.`) ||
+  fileName.includes(`.bench.`) ||
+  fileName.endsWith(`.test-d.ts`) ||
+  fileName.endsWith(`.spec-d.ts`)
+
+/**
+ * @param {string} fileName
+ * @returns {boolean}
+ */
+const isImplementationSourceFileName = (fileName) =>
+  isTsSourceFileName(fileName) &&
+  fileName !== `_.ts` &&
+  fileName !== `__.ts` &&
+  !isTypeDefinitionFileName(fileName) &&
+  !isTestLikeFileName(fileName)
+
+/**
+ * @param {string} directoryPath
+ * @returns {{ hasBarrel: boolean, implementationFiles: string[] } | null}
+ */
+const readModuleDirectoryState = (directoryPath) => {
+  let directoryEntries
+  try {
+    directoryEntries = fs.readdirSync(directoryPath, { withFileTypes: true })
+  } catch {
+    return null
+  }
+
+  const tsFileNames = directoryEntries
+    .filter((entry) => entry.isFile() && isTsSourceFileName(entry.name))
+    .map((entry) => entry.name)
+
+  return {
+    hasBarrel: tsFileNames.includes(`__.ts`),
+    implementationFiles: tsFileNames.filter(isImplementationSourceFileName),
+  }
+}
 
 /**
  * @param {import('oxlint').Context} context
@@ -211,11 +1064,30 @@ const isBoundaryAdapterFile = (filePath) => {
     filePath.includes(`/src/adapters/`) ||
     filePath.includes(`/src/adaptors/`) ||
     filePath.includes(`/src/live/`) ||
+    filePath.includes(`/scripts/`) ||
     filePath.includes(`/bin/`) ||
     filePath.endsWith(`/cli.ts`) ||
     filePath.endsWith(`/main.ts`) ||
     filePath.endsWith(`/entrypoint.ts`)
   )
+}
+
+/**
+ * Packages that intentionally do NOT use Effect and should be excluded
+ * from Effect-first rules (no-throw, no-try-catch, no-promise-then-chain).
+ */
+const nonEffectPackages = [
+  `packages/ware/`,
+]
+
+/**
+ * Check if a file belongs to a non-Effect package.
+ *
+ * Non-Effect packages use promises, throws, and try/catch as their
+ * standard patterns — Effect-first lint rules don't apply there.
+ */
+const isNonEffectPackage = (filePath) => {
+  return nonEffectPackages.some((pkg) => filePath.startsWith(pkg))
 }
 
 /**
@@ -262,6 +1134,214 @@ const isEffectTypeName = (typeName) => {
  */
 const isAnyOrUnknownType = (typeAnnotation) =>
   typeAnnotation.type === `TSAnyKeyword` || typeAnnotation.type === `TSUnknownKeyword`
+
+/**
+ * @param {TSType} typeAnnotation
+ * @returns {boolean}
+ */
+const isAnyTypeAnnotation = (typeAnnotation) => typeAnnotation.type === `TSAnyKeyword`
+
+const ADVANCED_SIGNATURE_TYPE_NODES = new Set([
+  `TSConditionalType`,
+  `TSImportType`,
+  `TSIndexedAccessType`,
+  `TSInferType`,
+  `TSMappedType`,
+  `TSTemplateLiteralType`,
+  `TSTypeOperator`,
+])
+
+/**
+ * @param {unknown} node
+ * @returns {node is FunctionLikeNode}
+ */
+const isFunctionLikeNode = (node) =>
+  typeof node === `object` &&
+    node !== null &&
+    `type` in node &&
+    (node.type === `FunctionDeclaration` ||
+      node.type === `FunctionExpression` ||
+      node.type === `ArrowFunctionExpression`)
+
+/**
+ * @param {unknown} node
+ * @param {Set<object>} [visited]
+ * @returns {boolean}
+ */
+const nodeContainsAdvancedSignatureType = (node, visited = new Set()) => {
+  if (typeof node !== `object` || node === null) {
+    return false
+  }
+
+  if (visited.has(node)) {
+    return false
+  }
+  visited.add(node)
+
+  if (
+    `type` in node &&
+    typeof node.type === `string` &&
+    ADVANCED_SIGNATURE_TYPE_NODES.has(node.type)
+  ) {
+    return true
+  }
+
+  for (const [key, value] of Object.entries(/** @type {Record<string, unknown>} */ (node))) {
+    if (key === `parent`) {
+      continue
+    }
+
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (nodeContainsAdvancedSignatureType(item, visited)) {
+          return true
+        }
+      }
+      continue
+    }
+
+    if (nodeContainsAdvancedSignatureType(value, visited)) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
+ * @param {unknown} parameterNode
+ * @returns {TSType | null}
+ */
+const getParameterTypeAnnotation = (parameterNode) => {
+  if (typeof parameterNode !== `object` || parameterNode === null || !(`type` in parameterNode)) {
+    return null
+  }
+
+  if (
+    `typeAnnotation` in parameterNode &&
+    typeof parameterNode.typeAnnotation === `object` &&
+    parameterNode.typeAnnotation !== null &&
+    `type` in parameterNode.typeAnnotation &&
+    parameterNode.typeAnnotation.type === `TSTypeAnnotation`
+  ) {
+    return parameterNode.typeAnnotation.typeAnnotation
+  }
+
+  if (parameterNode.type === `AssignmentPattern`) {
+    return getParameterTypeAnnotation(parameterNode.left)
+  }
+
+  if (parameterNode.type === `RestElement`) {
+    return getParameterTypeAnnotation(parameterNode.argument)
+  }
+
+  if (parameterNode.type === `TSParameterProperty`) {
+    return getParameterTypeAnnotation(parameterNode.parameter)
+  }
+
+  return null
+}
+
+/**
+ * @param {FunctionLikeNode} functionNode
+ * @returns {boolean}
+ */
+const signatureHasAdvancedType = (functionNode) => {
+  const typeParameters = functionNode.typeParameters?.params ?? []
+  for (const typeParameter of typeParameters) {
+    if (nodeContainsAdvancedSignatureType(typeParameter)) {
+      return true
+    }
+  }
+
+  for (const parameter of functionNode.params) {
+    const typeAnnotation = getParameterTypeAnnotation(parameter)
+    if (typeAnnotation !== null && nodeContainsAdvancedSignatureType(typeAnnotation)) {
+      return true
+    }
+  }
+
+  if (
+    functionNode.returnType !== null &&
+    functionNode.returnType !== undefined &&
+    nodeContainsAdvancedSignatureType(functionNode.returnType.typeAnnotation)
+  ) {
+    return true
+  }
+
+  return false
+}
+
+/**
+ * @param {FunctionLikeNode} functionNode
+ * @returns {boolean}
+ */
+const isComplexSignature = (functionNode) =>
+  (functionNode.typeParameters?.params?.length ?? 0) > 0 && signatureHasAdvancedType(functionNode)
+
+/**
+ * @param {unknown} node
+ * @returns {FunctionLikeNode | null}
+ */
+const getEnclosingFunction = (node) => {
+  let current = typeof node === `object` && node !== null && `parent` in node ? node.parent : null
+  while (current) {
+    if (isFunctionLikeNode(current)) {
+      return current
+    }
+    current = current.parent
+  }
+  return null
+}
+
+/**
+ * @param {unknown} node
+ * @param {FunctionLikeNode} functionNode
+ * @returns {boolean}
+ */
+const isWithinReturnedExpression = (node, functionNode) => {
+  let current = typeof node === `object` && node !== null ? node : null
+
+  if (functionNode.type === `ArrowFunctionExpression` && functionNode.expression) {
+    while (current && current !== functionNode) {
+      if (current === functionNode.body) {
+        return true
+      }
+      current = current.parent
+    }
+    return false
+  }
+
+  while (current && current !== functionNode) {
+    if (current.type === `ReturnStatement` && current.argument !== null) {
+      return true
+    }
+    current = current.parent
+  }
+
+  return false
+}
+
+/**
+ * @param {import('oxlint').ESTree.TSAsExpression | import('oxlint').ESTree.TSTypeAssertion} node
+ * @returns {boolean}
+ */
+const isAllowedComplexReturnAnyAssertion = (node) => {
+  if (!isAnyTypeAnnotation(node.typeAnnotation)) {
+    return false
+  }
+
+  const enclosingFunction = getEnclosingFunction(node)
+  if (enclosingFunction === null) {
+    return false
+  }
+
+  if (!isComplexSignature(enclosingFunction)) {
+    return false
+  }
+
+  return isWithinReturnedExpression(node, enclosingFunction)
+}
 
 /**
  * @param {string} filePath
@@ -483,7 +1563,8 @@ const noTryCatchRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
-    if (isTestFilePath(getNormalizedRelativePath(context))) {
+    const filePath = getNormalizedRelativePath(context)
+    if (isTestFilePath(filePath) || isNonEffectPackage(filePath)) {
       return {}
     }
 
@@ -563,12 +1644,18 @@ const noTypeAssertionRule = defineRule({
         if (isAsConstType(node.typeAnnotation) && !isInsideFunction(node)) {
           return
         }
+        if (isAllowedComplexReturnAnyAssertion(node)) {
+          return
+        }
         context.report({
           node,
           messageId: MESSAGE_IDS.noTypeAssertion,
         })
       },
       TSTypeAssertion(node) {
+        if (isAllowedComplexReturnAnyAssertion(node)) {
+          return
+        }
         context.report({
           node,
           messageId: MESSAGE_IDS.noTypeAssertion,
@@ -622,6 +1709,84 @@ const noNativeMapSetInEffectModulesRule = defineRule({
   },
 })
 
+const noNodejsBuiltinImportsRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Disallow Node.js built-ins and non-Effect fs/path helper imports.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    const nodeBuiltinImportsAllowed = isNodeBuiltinImportAllowedInFile(context.filename)
+
+    const maybeReport = (specifierNode, importPath) => {
+      if (isDisallowedEffectPlatformAlternativePath(importPath)) {
+        context.report({
+          node: specifierNode,
+          messageId: MESSAGE_IDS.noNodejsBuiltinImports,
+        })
+        return
+      }
+
+      if (!isNodeBuiltinImportPath(importPath) || nodeBuiltinImportsAllowed) {
+        return
+      }
+
+      context.report({
+        node: specifierNode,
+        messageId: MESSAGE_IDS.noNodejsBuiltinImports,
+      })
+    }
+
+    return {
+      ImportDeclaration(node) {
+        const importPath = getStringLiteralValue(node.source)
+        if (importPath !== null) {
+          maybeReport(node.source, importPath)
+        }
+      },
+      ExportNamedDeclaration(node) {
+        if (node.source === null) {
+          return
+        }
+
+        const importPath = getStringLiteralValue(node.source)
+        if (importPath !== null) {
+          maybeReport(node.source, importPath)
+        }
+      },
+      ExportAllDeclaration(node) {
+        const importPath = getStringLiteralValue(node.source)
+        if (importPath !== null) {
+          maybeReport(node.source, importPath)
+        }
+      },
+      ImportExpression(node) {
+        const importPath = getStringLiteralValue(node.source)
+        if (importPath !== null) {
+          maybeReport(node.source, importPath)
+        }
+      },
+      CallExpression(node) {
+        if (!isIdentifier(node.callee) || node.callee.name !== `require`) {
+          return
+        }
+
+        if (node.arguments.length === 0) {
+          return
+        }
+
+        const importPath = getStringLiteralValue(node.arguments[0])
+        if (importPath !== null) {
+          maybeReport(node.arguments[0], importPath)
+        }
+      },
+    }
+  },
+})
+
 const noThrowRule = defineRule({
   meta: {
     type: `problem`,
@@ -632,7 +1797,8 @@ const noThrowRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
-    if (isBoundaryAdapterFile(getNormalizedRelativePath(context))) {
+    const filePath = getNormalizedRelativePath(context)
+    if (isBoundaryAdapterFile(filePath) || isNonEffectPackage(filePath)) {
       return {}
     }
 
@@ -657,7 +1823,8 @@ const noPromiseThenChainRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
-    if (isBoundaryAdapterFile(getNormalizedRelativePath(context))) {
+    const filePath = getNormalizedRelativePath(context)
+    if (isBoundaryAdapterFile(filePath) || isNonEffectPackage(filePath)) {
       return {}
     }
 
@@ -986,6 +2153,308 @@ const requireTaggedErrorTypesRule = defineRule({
   },
 })
 
+const namespaceFileConventionsRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Enforce _.ts namespace file conventions.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    const filePath = getNormalizedRelativePath(context)
+    if (!filePath.endsWith(`/_.ts`)) {
+      return {}
+    }
+
+    const namespaceFileConvention = getNamespaceFileConvention(filePath, context.cwd)
+    if (namespaceFileConvention === null) {
+      return {}
+    }
+
+    return {
+      Program(node) {
+        /** @type {Array<{ statement: Statement, namespaceExport: NamespaceExport }>} */
+        const namespaceExports = []
+        /** @type {Array<{ statement: Statement, namespaceName: string, isEmpty: boolean }>} */
+        const namespaceDeclarations = []
+        /** @type {Array<{ typeName: string, node: unknown }>} */
+        const inFileExportedTypeDeclarations = []
+
+        for (const statement of node.body) {
+          const namespaceExport = getNamespaceExportFromStatement(statement)
+          if (namespaceExport !== null) {
+            namespaceExports.push({ statement, namespaceExport })
+            continue
+          }
+
+          const namespaceDeclaration = getNamespaceDeclarationFromStatement(statement)
+          if (namespaceDeclaration !== null) {
+            namespaceDeclarations.push({
+              statement,
+              namespaceName: namespaceDeclaration.namespaceName,
+              isEmpty: namespaceDeclaration.isEmpty,
+            })
+            if (!namespaceDeclaration.isEmpty) {
+              context.report({
+                node: statement,
+                messageId: MESSAGE_IDS.namespaceFileConventionsNamespaceDeclaration,
+              })
+            }
+            continue
+          }
+
+          if (isTypeOnlyExportStatement(statement)) {
+            inFileExportedTypeDeclarations.push(...getInFileExportedTypeDeclarations(statement))
+            continue
+          }
+
+          context.report({
+            node: statement,
+            messageId: MESSAGE_IDS.namespaceFileConventionsSingleStatement,
+          })
+          return
+        }
+
+        if (namespaceExports.length !== 1) {
+          context.report({
+            node,
+            messageId: MESSAGE_IDS.namespaceFileConventionsNamespaceExport,
+          })
+          return
+        }
+
+        const [namespaceExportStatement] = namespaceExports
+        for (const inFileExportedTypeDeclaration of inFileExportedTypeDeclarations) {
+          if (inFileExportedTypeDeclaration.typeName === namespaceExportStatement.namespaceExport.namespaceName) {
+            continue
+          }
+
+          context.report({
+            node: inFileExportedTypeDeclaration.node,
+            messageId: MESSAGE_IDS.namespaceFileConventionsTypeDeclarationName,
+          })
+        }
+
+        if (
+          namespaceExportStatement.namespaceExport.namespaceName !==
+          namespaceFileConvention.expectedNamespaceName
+        ) {
+          context.report({
+            node: namespaceExportStatement.statement,
+            messageId: MESSAGE_IDS.namespaceFileConventionsNamespaceName,
+          })
+        }
+
+        const expectedTargetPath = namespaceFileConvention.expectedTargetPath
+        const actualTargetPath = namespaceExportStatement.namespaceExport.sourcePath
+        if (
+          (expectedTargetPath !== null && actualTargetPath !== expectedTargetPath) ||
+          (expectedTargetPath === null && !isValidNamespaceTargetPath(actualTargetPath))
+        ) {
+          context.report({
+            node: namespaceExportStatement.statement,
+            messageId: MESSAGE_IDS.namespaceFileConventionsTarget,
+          })
+        }
+
+        if (namespaceDeclarations.length === 0) {
+          context.report({
+            node,
+            messageId: MESSAGE_IDS.namespaceFileConventionsNamespaceDeclaration,
+          })
+          return
+        }
+
+        const matchingNamespaceDeclarations = namespaceDeclarations.filter((namespaceDeclaration) =>
+          namespaceDeclaration.namespaceName === namespaceFileConvention.expectedNamespaceName)
+        if (matchingNamespaceDeclarations.length === 0) {
+          context.report({
+            node: namespaceDeclarations[0].statement,
+            messageId: MESSAGE_IDS.namespaceFileConventionsNamespaceDeclarationName,
+          })
+          return
+        }
+
+        const hasMatchingEmptyNamespaceDeclaration = matchingNamespaceDeclarations.some(
+          (namespaceDeclaration) => namespaceDeclaration.isEmpty,
+        )
+        if (!hasMatchingEmptyNamespaceDeclaration) {
+          context.report({
+            node: matchingNamespaceDeclarations[0].statement,
+            messageId: MESSAGE_IDS.namespaceFileConventionsNamespaceDeclaration,
+          })
+          return
+        }
+
+        const sourceText = fs.readFileSync(context.filename, `utf8`)
+        if (!hasNamespaceDeclarationWithJsDoc(sourceText, namespaceFileConvention.expectedNamespaceName)) {
+          context.report({
+            node: matchingNamespaceDeclarations[0].statement,
+            messageId: MESSAGE_IDS.namespaceFileConventionsNamespaceDeclarationJsDoc,
+          })
+        }
+      },
+    }
+  },
+})
+
+const barrelFileConventionsRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Enforce __.ts barrel file conventions.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    const filePath = getNormalizedRelativePath(context)
+    if (!filePath.endsWith(`/__.ts`)) {
+      return {}
+    }
+
+    const directoryState = readModuleDirectoryState(path.dirname(context.filename))
+    const hasPeerImplementationFiles =
+      directoryState !== null && directoryState.implementationFiles.length > 0
+
+    return {
+      Program(node) {
+        if (!hasPeerImplementationFiles) {
+          for (const statement of node.body) {
+            if (statement.type !== `ExportDefaultDeclaration`) {
+              continue
+            }
+
+            context.report({
+              node: statement,
+              messageId: MESSAGE_IDS.barrelFileConventionsDefaultExport,
+            })
+          }
+
+          return
+        }
+
+        let hasAnyExport = false
+
+        for (const statement of node.body) {
+          if (statement.type === `ImportDeclaration`) {
+            continue
+          }
+
+          if (statement.type === `ExportDefaultDeclaration`) {
+            context.report({
+              node: statement,
+              messageId: MESSAGE_IDS.barrelFileConventionsDefaultExport,
+            })
+            hasAnyExport = true
+            continue
+          }
+
+          if (statement.type === `ExportAllDeclaration` || statement.type === `ExportNamedDeclaration`) {
+            hasAnyExport = true
+            continue
+          }
+
+          context.report({
+            node: statement,
+            messageId: MESSAGE_IDS.barrelFileConventionsOnlyImportExport,
+          })
+          return
+        }
+
+        if (!hasAnyExport) {
+          context.report({
+            node,
+            messageId: MESSAGE_IDS.barrelFileConventionsMissingExport,
+          })
+        }
+      },
+    }
+  },
+})
+
+const moduleStructureConventionsRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Enforce module directory structure and _.ts/__.ts elision conventions.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    const filePath = getNormalizedRelativePath(context)
+    const packageSourcePathDetails = getPackageSourcePathDetails(filePath)
+    if (packageSourcePathDetails === null) {
+      return {}
+    }
+
+    return {
+      Program(node) {
+        const packageRootIssueKey = `${normalizePath(context.cwd)}:${packageSourcePathDetails.packageSourceDirectoryRelativePath}`
+        if (!reportedMissingRootEntrypoints.has(packageRootIssueKey)) {
+          reportedMissingRootEntrypoints.add(packageRootIssueKey)
+          const packageSourceDirectory = path.join(
+            context.cwd,
+            packageSourcePathDetails.packageSourceDirectoryRelativePath,
+          )
+          const hasNamespaceEntrypoint = fs.existsSync(path.join(packageSourceDirectory, `_.ts`))
+          const hasBarrelEntrypoint = fs.existsSync(path.join(packageSourceDirectory, `__.ts`))
+
+          if (!hasNamespaceEntrypoint || !hasBarrelEntrypoint) {
+            context.report({
+              node,
+              messageId: MESSAGE_IDS.moduleStructureConventionsRootEntrypoints,
+            })
+          }
+        }
+
+        if (!filePath.endsWith(`/_.ts`)) {
+          return
+        }
+
+        const directoryState = readModuleDirectoryState(path.dirname(context.filename))
+        if (directoryState === null) {
+          return
+        }
+
+        const namespaceExport = getNamespaceExportFromProgram(node)
+        const implementationCount = directoryState.implementationFiles.length
+
+        if (implementationCount > 1) {
+          if (!directoryState.hasBarrel) {
+            context.report({
+              node,
+              messageId: MESSAGE_IDS.moduleStructureConventionsMissingBarrel,
+            })
+          }
+
+          if (namespaceExport !== null && namespaceExport.sourcePath !== `./__.js`) {
+            context.report({
+              node,
+              messageId: MESSAGE_IDS.moduleStructureConventionsMultiFileNamespaceTarget,
+            })
+          }
+
+          return
+        }
+
+        if (implementationCount === 1 && !directoryState.hasBarrel && namespaceExport !== null) {
+          const expectedRuntimeTarget = `./${toModuleRuntimeFileName(directoryState.implementationFiles[0])}`
+          if (namespaceExport.sourcePath !== expectedRuntimeTarget) {
+            context.report({
+              node,
+              messageId: MESSAGE_IDS.moduleStructureConventionsSingleFileNamespaceTarget,
+            })
+          }
+        }
+      },
+    }
+  },
+})
+
 export default definePlugin({
   meta: {
     name: `kitz`,
@@ -996,6 +2465,7 @@ export default definePlugin({
     'no-native-promise-construction': noNativePromiseConstructionRule,
     'no-type-assertion': noTypeAssertionRule,
     'no-native-map-set-in-effect-modules': noNativeMapSetInEffectModulesRule,
+    'no-nodejs-builtin-imports': noNodejsBuiltinImportsRule,
     'no-throw': noThrowRule,
     'no-promise-then-chain': noPromiseThenChainRule,
     'no-effect-run-in-library-code': noEffectRunInLibraryCodeRule,
@@ -1006,5 +2476,8 @@ export default definePlugin({
     'no-math-random-in-domain': noMathRandomInDomainRule,
     'no-console-in-effect-modules': noConsoleInEffectModulesRule,
     'require-tagged-error-types': requireTaggedErrorTypesRule,
+    'namespace-file-conventions': namespaceFileConventionsRule,
+    'barrel-file-conventions': barrelFileConventionsRule,
+    'module-structure-conventions': moduleStructureConventionsRule,
   },
 })
