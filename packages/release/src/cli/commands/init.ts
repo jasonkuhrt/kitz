@@ -1,3 +1,12 @@
+/**
+ * @module cli/commands/init
+ *
+ * Initialize release configuration in a project.
+ *
+ * Creates a `release.config.ts` file with sensible defaults, scans
+ * the workspace for packages, and adds `.release/` to `.gitignore`.
+ * Safe to run multiple times (idempotent).
+ */
 import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'

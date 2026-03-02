@@ -1,6 +1,11 @@
-import { Either as Ef } from 'effect'
+import { Either as Ef, Option, Schema as S } from 'effect'
 import type { OakSchema } from './oak-schema.js'
 import { isFailure, isSuccess, validateWithStandardSchema } from './standard-schema.js'
+
+const decodeJsonUnknown = S.decodeUnknownOption(S.parseJson())
+
+const parseJsonOrString = (value: string): unknown =>
+  decodeJsonUnknown(value).pipe(Option.getOrElse((): unknown => value))
 
 /**
  * Validate a value using a OakSchema.
@@ -13,19 +18,22 @@ export const validate = <___Input, ___Output>(
   schema: OakSchema<___Input, ___Output>,
   value: unknown,
 ): Ef.Either<___Output | undefined, { value: unknown; errors: string[] }> => {
-  // Cast to synchronous result - oak only uses sync schemas
-  const result = validateWithStandardSchema(schema.standardSchema, value) as any
+  const result = validateWithStandardSchema(schema.standardSchema, value)
+
+  if (result instanceof Promise) {
+    return Ef.left({ value, errors: [`Oak only supports synchronous schemas`] })
+  }
 
   if (isSuccess(result)) {
-    return Ef.right(result.value) as any
+    return Ef.right(result.value)
   }
 
   if (isFailure(result)) {
     const errors = result.issues?.map((issue) => issue.message ?? `Validation failed`) ?? [`Validation failed`]
-    return Ef.left({ value, errors }) as any
+    return Ef.left({ value, errors })
   }
 
-  return Ef.left({ value, errors: [`Unknown validation error`] }) as any
+  return Ef.left({ value, errors: [`Unknown validation error`] })
 }
 
 /**
@@ -81,28 +89,23 @@ export const deserialize = <___Input, ___Output>(
 
     case `union`:
       // For unions, try JSON parse, fall back to string
-      try {
-        parsedValue = JSON.parse(serializedValue)
-      } catch {
-        parsedValue = serializedValue
-      }
+      parsedValue = parseJsonOrString(serializedValue)
       break
 
     default:
       // Fallback: try JSON parse, fall back to string
-      try {
-        parsedValue = JSON.parse(serializedValue)
-      } catch {
-        parsedValue = serializedValue
-      }
+      parsedValue = parseJsonOrString(serializedValue)
   }
 
   // Validate the parsed value
-  // Cast to synchronous result - oak only uses sync schemas
-  const result = validateWithStandardSchema(schema.standardSchema, parsedValue) as any
+  const result = validateWithStandardSchema(schema.standardSchema, parsedValue)
+
+  if (result instanceof Promise) {
+    return Ef.left(new Error(`Oak only supports synchronous schemas`))
+  }
 
   if (isSuccess(result)) {
-    return Ef.right(result.value as ___Output)
+    return Ef.right(result.value)
   }
 
   if (isFailure(result)) {
@@ -158,7 +161,7 @@ export const getTag = <___Input, ___Output>(schema: OakSchema<___Input, ___Outpu
  */
 export const help = <___Input, ___Output>(
   schema: OakSchema<___Input, ___Output>,
-  _settings?: any,
+  _settings?: unknown,
 ): string => {
   const parts: string[] = []
 

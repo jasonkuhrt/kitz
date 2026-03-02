@@ -489,31 +489,33 @@ export const is = S.is(Pin)
  * const e = Tag.fromString('lodash@latest')
  * ```
  */
-export const fromString = <const $S extends string>(input: $S): ParsePin<$S> => {
+export function fromString<const $S extends string>(input: $S): ParsePin<$S>
+export function fromString(input: string): Pin
+export function fromString(input: string): Pin {
   const { specifier } = splitNameSpecifier(input)
 
   if (specifier.startsWith('workspace:')) {
-    return Workspace.fromString(input) as any
+    return Workspace.fromString(input)
   }
   if (specifier.startsWith('git+') || specifier.startsWith('github:')) {
-    return Git.fromString(input) as any
+    return Git.fromString(input)
   }
   if (specifier.startsWith('file:')) {
-    return Path.fromString(input) as any
+    return Path.fromString(input)
   }
   if (specifier.startsWith('https://') || specifier.startsWith('http://')) {
-    return Url.fromString(input) as any
+    return Url.fromString(input)
   }
   if (specifier.startsWith('npm:')) {
-    return Alias.fromString(input) as any
+    return Alias.fromString(input)
   }
   if (isExactVersion(specifier)) {
-    return Exact.fromString(input) as any
+    return Exact.fromString(input)
   }
   if (isRangeLike(specifier)) {
-    return Range.fromString(input) as any
+    return Range.fromString(input)
   }
-  return Tag.fromString(input) as any
+  return Tag.fromString(input)
 }
 
 /**
@@ -557,7 +559,7 @@ export const match = <$A>(
     PinUrl: (p: Url) => $A
     PinAlias: (p: Alias) => $A
   },
-): $A => Match.value(pin).pipe(Match.tagsExhaustive(cases)) as $A
+) => Match.value(pin).pipe(Match.tagsExhaustive(cases))
 
 // ============================================================================
 // String Codec
@@ -663,13 +665,7 @@ const hasRangeOperators = (specifier: string): boolean => {
 const isExactVersion = (specifier: string): boolean => {
   if (!/^\d/.test(specifier)) return false
   if (hasRangeOperators(specifier)) return false
-  // Try to parse as exact semver - if it fails, it's not exact
-  try {
-    Semver.fromString(specifier)
-    return true
-  } catch {
-    return false
-  }
+  return Option.isSome(S.decodeUnknownOption(Semver.Schema)(specifier))
 }
 
 /**

@@ -18,8 +18,31 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { EffectSchema, Oak } from '@kitz/oak'
-import { Console, Effect, Layer, Schema } from 'effect'
+import { Console, Effect, Layer, Option, Schema } from 'effect'
 import * as Api from '../../api/__.js'
+
+const PublishStateSchema = Schema.Literal('idle', 'publishing', 'published', 'failed')
+const PublishRecordSchema = Schema.Struct({
+  package: Schema.String,
+  version: Schema.String,
+  iteration: Schema.Number,
+  sha: Schema.String,
+  timestamp: Schema.String,
+  runId: Schema.String,
+})
+const PublishHistoryEnvelopeSchema = Schema.Struct({
+  publishes: Schema.Array(PublishRecordSchema),
+})
+const PublishHistoryJsonSchema = Schema.parseJson(PublishHistoryEnvelopeSchema)
+const decodePublishHistory = Schema.decodeUnknownOption(PublishHistoryJsonSchema)
+
+const ForecastEnvelopeSchema = Schema.Struct({
+  forecast: Api.Forecaster.Forecast,
+  publishState: PublishStateSchema,
+  publishHistory: Schema.Array(PublishRecordSchema),
+})
+const ForecastEnvelopeJsonSchema = Schema.parseJson(ForecastEnvelopeSchema)
+const encodeForecastEnvelope = Schema.encodeSync(ForecastEnvelopeJsonSchema)
 
 const readPublishHistory = (
   filePath: string | undefined,
@@ -28,25 +51,16 @@ const readPublishHistory = (
     if (!filePath) return []
 
     const fs = yield* FileSystem.FileSystem
-    const raw = yield* fs.readFileString(filePath).pipe(
-      Effect.catchAll(() => Effect.succeed('{"publishes":[]}')),
+    const parsed = yield* fs.readFileString(filePath).pipe(
+      Effect.option,
+      Effect.map(Option.flatMap(decodePublishHistory)),
     )
 
-    const parsed = yield* Effect.try({
-      try: () => JSON.parse(raw) as unknown,
-      catch: () => ({ publishes: [] }),
-    })
-
-    if (Array.isArray(parsed)) {
-      return parsed as Api.Commentator.PublishRecord[]
-    }
-
-    if (parsed && typeof parsed === 'object' && Array.isArray((parsed as Record<string, unknown>)['publishes'])) {
-      return (parsed as { publishes: Api.Commentator.PublishRecord[] }).publishes
-    }
-
-    return []
-  }).pipe(Effect.catchAll(() => Effect.succeed([])))
+    return parsed.pipe(
+      Option.map((value) => value.publishes),
+      Option.getOrElse((): readonly Api.Commentator.PublishRecord[] => []),
+    )
+  })
 
 /**
  * release plan <type>
@@ -153,9 +167,9 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
       const publishHistory = yield* readPublishHistory(args.publishHistory)
       const forecast = Api.Forecaster.forecast(analysis, recon)
 
-      yield* Console.log(JSON.stringify({
+      yield* Console.log(encodeForecastEnvelope({
         forecast,
-        publishState: 'idle' as const,
+        publishState: 'idle',
         publishHistory,
       }))
       return

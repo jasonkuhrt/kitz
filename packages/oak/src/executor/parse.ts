@@ -60,9 +60,9 @@ export interface ParseProgressDone {
       openingParseResult: OpeningArgs.ParseResult['basicParameters'][string]
       prompt: {
         enabled: boolean
-        arg: any // todo better type
+        arg: ArgumentValue
       }
-      arg: any // todo better type
+      arg: ArgumentValue
     }
   >
 }
@@ -197,13 +197,13 @@ export const parse = (
    * Progress to the next parse stage wherein we will execute prompts.
    */
 
-  const tailProcess = (parseProgressPostPrompts: ParseProgressPostPrompt) => {
+  const tailProcess = (parseProgressPostPrompts: ParseProgressPostPrompt | ParseProgressPostPromptAnnotation) => {
     const args = {
       ...Object.fromEntries(
         Obj.entries(parseProgressPostPrompts.basicParameters)
           .map(([k, v]): [string, ArgumentValue] | null => {
             if (v.prompt.enabled) {
-              return [k, v.prompt.arg]
+              return `arg` in v.prompt ? [k, v.prompt.arg] : null
             } else if (v.openingParseResult._tag === `supplied`) {
               return [k, v.openingParseResult.value]
             } else if (v.openingParseResult._tag === `omitted`) {
@@ -244,6 +244,10 @@ export const parse = (
   }
 
   return hasPrompt
-    ? Effect.runPromise(prompt(parseProgressPostPromptAnnotation, argInputsPrompter)).then(tailProcess)
-    : tailProcess(parseProgressPostPromptAnnotation as ParseProgressPostPrompt)
+    ? Effect.runPromise(
+      prompt(parseProgressPostPromptAnnotation, argInputsPrompter).pipe(
+        Effect.map(tailProcess),
+      ),
+    )
+    : tailProcess(parseProgressPostPromptAnnotation)
 }

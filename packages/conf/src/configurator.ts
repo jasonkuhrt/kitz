@@ -102,7 +102,7 @@ export const empty: States.Empty = {
 
 export const InputResolver$FuncSymbol = Symbol(`InputResolver$Func`)
 
-const isBuilder = (value: any): value is Builder<Configurator> =>
+const isBuilder = (value: unknown): value is Builder<Configurator> =>
   typeof value === `object` && value !== null && BuilderTypeSymbol in value
 
 const BuilderTypeSymbol = Symbol(`Builder`)

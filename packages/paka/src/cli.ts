@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { Either, Effect } from 'effect'
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'fs'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
@@ -9,26 +10,42 @@ import { addTwoslashAnnotations } from './transformers.js'
 /**
  * Get dprint formatter for markdown.
  */
-const getMarkdownFormatter = async () => {
-  try {
-    const { createFromBuffer } = await import('@dprint/formatter')
-    const { getPath } = await import('@dprint/markdown')
-    const buffer = await readFile(getPath())
-    const formatter = createFromBuffer(buffer as any)
+type MarkdownFormatter = {
+  formatText: (fileText: string) => string
+}
 
-    return {
-      formatText: (fileText: string) => {
-        return formatter.formatText({
-          filePath: 'file.md',
-          fileText,
-          overrideConfig: {},
-        })
+const getMarkdownFormatter = async (): Promise<MarkdownFormatter | null> => {
+  const loadResult = await Effect.runPromise(
+    Effect.tryPromise({
+      try: async () => {
+        const { createFromBuffer } = await import('@dprint/formatter')
+        const { getPath } = await import('@dprint/markdown')
+        const buffer = await readFile(getPath())
+        const formatter = createFromBuffer(buffer)
+        return {
+          formatText: (fileText: string) =>
+            formatter.formatText({
+              filePath: 'file.md',
+              fileText,
+              overrideConfig: {},
+            }),
+        } satisfies MarkdownFormatter
       },
-    }
-  } catch (error) {
-    console.warn('Warning: Could not load dprint formatter:', error)
+      catch: (error) => error,
+    }).pipe(
+      Effect.match({
+        onFailure: (error) => ({ _tag: 'load-failed' as const, error }),
+        onSuccess: (formatter) => ({ _tag: 'loaded' as const, formatter }),
+      }),
+    ),
+  )
+
+  if (loadResult._tag === 'load-failed') {
+    console.warn('Warning: Could not load dprint formatter:', loadResult.error)
     return null
   }
+
+  return loadResult.formatter
 }
 
 /**
@@ -132,10 +149,14 @@ const generateDocs = async () => {
 
     // 1. Format with dprint
     if (formatter) {
-      try {
-        content = formatter.formatText(content)
-      } catch (error) {
-        console.warn(`Warning: Failed to format ${file}:`, error)
+      const formattedResult = Either.try({
+        try: () => formatter.formatText(content),
+        catch: (error) => error,
+      })
+      if (Either.isRight(formattedResult)) {
+        content = formattedResult.right
+      } else {
+        console.warn(`Warning: Failed to format ${file}:`, formattedResult.left)
       }
     }
 
@@ -150,14 +171,17 @@ const generateDocs = async () => {
     content = content.replace(
       /```typescript( twoslash)?\n([\s\S]*?)```/g,
       (match, twoslash, code) => {
-        try {
-          const processed = addTwoslashAnnotations(code)
+        const processedResult = Either.try({
+          try: () => addTwoslashAnnotations(code),
+          catch: (error) => error,
+        })
+        if (Either.isRight(processedResult)) {
+          const processed = processedResult.right
           return `\`\`\`typescript${twoslash || ''}\n${processed}\`\`\``
-        } catch (error) {
-          // If AST parsing fails, render as vanilla TypeScript (remove twoslash)
-          console.warn('Warning: Failed to parse TypeScript code block, rendering as vanilla:', error)
-          return `\`\`\`typescript\n${code}\`\`\``
         }
+        // If AST parsing fails, render as vanilla TypeScript (remove twoslash)
+        console.warn('Warning: Failed to parse TypeScript code block, rendering as vanilla:', processedResult.left)
+        return `\`\`\`typescript\n${code}\`\`\``
       },
     )
 
@@ -176,7 +200,10 @@ const generateDocs = async () => {
   console.log('✅ Documentation generated successfully')
 }
 
-main().catch((error) => {
-  console.error('Error generating documentation:', error)
-  process.exit(1)
-})
+void Promise.resolve(main()).then(
+  () => undefined,
+  (error) => {
+    console.error('Error generating documentation:', error)
+    process.exit(1)
+  },
+)

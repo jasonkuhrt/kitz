@@ -15,13 +15,20 @@ type SearchResult =
   | { readonly _tag: 'PackageJson'; readonly path: Fs.Path.AbsFile; readonly field: string }
   | { readonly _tag: 'NotFound' }
 
+const JsonUnknownSchema = Schema.parseJson()
+const JsonObjectSchema = Schema.Record({ key: Schema.String, value: Schema.Unknown })
+const JsonObjectFromStringSchema = Schema.parseJson(JsonObjectSchema)
+
+const decodeJsonUnknown = Schema.decodeUnknown(JsonUnknownSchema)
+const decodeJsonObject = Schema.decodeUnknown(JsonObjectFromStringSchema)
+
 /**
  * Search for a config file in the given directory.
  */
 const searchForConfig = (
   definition: ConfigDefinition<Schema.Schema.AnyNoContext>,
   cwd: Fs.Path.AbsDir,
-): Effect.Effect<SearchResult, PlatformError, FileSystem.FileSystem> => {
+): Effect.Effect<SearchResult, PlatformError | ParseResult.ParseError, FileSystem.FileSystem> => {
   const { name, extensions, json, packageJson } = definition
 
   return Effect.gen(function*() {
@@ -52,7 +59,7 @@ const searchForConfig = (
       const exists = yield* fs.exists(Fs.Path.toString(pkgPath))
       if (exists) {
         const content = yield* fs.readFileString(Fs.Path.toString(pkgPath))
-        const pkg = JSON.parse(content) as Record<string, unknown>
+        const pkg = yield* decodeJsonObject(content)
         for (const field of packageJson) {
           if (field in pkg) {
             return { _tag: 'PackageJson' as const, path: pkgPath, field }
@@ -71,7 +78,7 @@ const searchForConfig = (
 const loadRawConfig = (
   result: Exclude<SearchResult, { _tag: 'NotFound' }>,
   definition: ConfigDefinition<Schema.Schema.AnyNoContext>,
-): Effect.Effect<unknown, Mod.ImportError | PlatformError | InvalidExportError, FileSystem.FileSystem> => {
+): Effect.Effect<unknown, Mod.ImportError | PlatformError | InvalidExportError | ParseResult.ParseError, FileSystem.FileSystem> => {
   return Effect.gen(function*() {
     const fs = yield* FileSystem.FileSystem
 
@@ -96,11 +103,11 @@ const loadRawConfig = (
       }
       case 'Json': {
         const content = yield* fs.readFileString(Fs.Path.toString(result.path))
-        return JSON.parse(content)
+        return yield* decodeJsonUnknown(content)
       }
       case 'PackageJson': {
         const content = yield* fs.readFileString(Fs.Path.toString(result.path))
-        const pkg = JSON.parse(content) as Record<string, unknown>
+        const pkg = yield* decodeJsonObject(content)
         return pkg[result.field]
       }
     }

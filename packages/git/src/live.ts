@@ -136,14 +136,11 @@ const makeGitService = (git: SimpleGit): GitService => ({
   isAncestor: (sha1, sha2) =>
     gitEffect(
       'isAncestor',
-      async () => {
-        try {
-          await git.raw(['merge-base', '--is-ancestor', sha1, sha2])
-          return true // Exit code 0 = is ancestor
-        } catch {
-          return false // Exit code 1 = not ancestor
-        }
-      },
+      () =>
+        git.raw(['merge-base', '--is-ancestor', sha1, sha2]).then(
+          () => true, // Exit code 0 = is ancestor
+          () => false, // Exit code 1 = not ancestor
+        ),
       `${sha1} -> ${sha2}`,
     ),
 
@@ -165,14 +162,11 @@ const makeGitService = (git: SimpleGit): GitService => ({
   commitExists: (sha) =>
     gitEffect(
       'commitExists',
-      async () => {
-        try {
-          await git.raw(['cat-file', '-t', sha])
-          return true
-        } catch {
-          return false
-        }
-      },
+      () =>
+        git.raw(['cat-file', '-t', sha]).then(
+          () => true,
+          () => false,
+        ),
       sha,
     ),
 

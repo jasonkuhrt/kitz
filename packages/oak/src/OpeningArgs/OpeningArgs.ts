@@ -1,6 +1,7 @@
 import { Err, Obj } from '@kitz/core'
 import { Group } from '@kitz/group'
 import { Alge } from 'alge'
+import { Either } from 'effect'
 import { Errors } from '../Errors/_.js'
 import type { ParameterExclusive } from '../Parameter/exclusive.js'
 import type { Parameter } from '../Parameter/types.js'
@@ -87,30 +88,43 @@ export const parse = ({
         .else((argReportValue) => {
           // Note: OakSchema doesn't have transform, we just validate directly
           const validationResult = SchemaRuntime.validate(parameter.type, argReportValue.value)
-          return Alge.match(validationResult)
-            .Right((result) => {
+          if (Either.isRight(validationResult)) {
+            if (isArgumentValue(validationResult.right)) {
               return {
                 _tag: `supplied` as const,
-                parameter: parameter,
-                value: result.right as any, // Cast validated value to ArgumentValue
-              }
-            })
-            .Left((result) => {
-              return {
-                _tag: `error` as const,
                 parameter,
-                errors: [
-                  new Errors.ErrorInvalidArgument({
-                    context: {
-                      spec: parameter,
-                      validationErrors: result.left.errors,
-                      value: result.left.value,
-                    },
-                  }),
-                ],
+                value: validationResult.right,
               }
-            })
-            .done()
+            }
+
+            return {
+              _tag: `error` as const,
+              parameter,
+              errors: [
+                new Errors.ErrorInvalidArgument({
+                  context: {
+                    spec: parameter,
+                    validationErrors: [`Supported types are string, number, boolean, null, and undefined.`],
+                    value: validationResult.right,
+                  },
+                }),
+              ],
+            }
+          }
+
+          return {
+            _tag: `error` as const,
+            parameter,
+            errors: [
+              new Errors.ErrorInvalidArgument({
+                context: {
+                  spec: parameter,
+                  validationErrors: validationResult.left.errors,
+                  value: validationResult.left.value,
+                },
+              }),
+            ],
+          }
         })
       continue
     }
@@ -121,25 +135,36 @@ export const parse = ({
 
     result.basicParameters[parameter.name.canonical] = Alge.match(parameter.type.metadata.optionality)
       .default((optionality) => {
-        let defaultValue
-        try {
-          defaultValue = optionality.getValue()
-        } catch (someError) {
+        const defaultValueOrError = Err.tryCatch(() => optionality.getValue())
+        if (defaultValueOrError instanceof Error) {
           return {
             _tag: `error` as const,
             parameter,
             errors: [
               new Errors.ErrorFailedToGetDefaultArgument({
                 context: { spec: parameter },
-                cause: Err.ensure(someError),
+                cause: defaultValueOrError,
               }),
             ],
           }
         }
+        if (!isArgumentValue(defaultValueOrError)) {
+          return {
+            _tag: `error` as const,
+            parameter,
+            errors: [
+              new Errors.ErrorFailedToGetDefaultArgument({
+                context: { spec: parameter },
+                cause: new Error(`Unsupported default argument type.`),
+              }),
+            ],
+          }
+        }
+
         return {
           _tag: `supplied` as const,
           parameter,
-          value: defaultValue as any, // Cast default value to ArgumentValue
+          value: defaultValueOrError,
         }
       })
       .required(() => {
@@ -267,3 +292,10 @@ export const parse = ({
 
   return result
 }
+
+const isArgumentValue = (value: unknown): value is undefined | null | string | number | boolean =>
+  value === undefined
+  || value === null
+  || typeof value === 'string'
+  || typeof value === 'number'
+  || typeof value === 'boolean'

@@ -1,4 +1,4 @@
-import { Obj, Str } from '@kitz/core'
+import { Err, Obj, Str } from '@kitz/core'
 import { Group } from '@kitz/group'
 import { Tex } from '@kitz/tex'
 import ansis from 'ansis'
@@ -257,17 +257,18 @@ const parameterDefault = (parameter: Parameter) => {
     return Term.colors.dim(`–`)
   }
 
-  if (parameter.type.metadata.optionality._tag === `optional`) {
+  const optionality = parameter.type.metadata.optionality
+
+  if (optionality._tag === `optional`) {
     return Term.colors.secondary(`undefined`)
   }
 
-  if (parameter.type.metadata.optionality._tag === `default`) {
-    try {
-      return Term.colors.secondary(String(parameter.type.metadata.optionality.getValue()))
-    } catch (e) {
-      const error = e instanceof Error ? e : new Error(String(e))
-      return ansis.bold(Term.colors.alert(`Error trying to render this default: ${error.message}`))
+  if (optionality._tag === `default`) {
+    const valueOrError = Err.tryCatch(() => optionality.getValue())
+    if (valueOrError instanceof Error) {
+      return ansis.bold(Term.colors.alert(`Error trying to render this default: ${valueOrError.message}`))
     }
+    return Term.colors.secondary(String(valueOrError))
   }
 
   return labels.required

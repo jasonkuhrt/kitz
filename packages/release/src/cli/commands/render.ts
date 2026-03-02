@@ -15,6 +15,24 @@ import { EffectSchema, Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Option, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 
+const PublishStateSchema = Schema.Literal('idle', 'publishing', 'published', 'failed')
+const PublishRecordSchema = Schema.Struct({
+  package: Schema.String,
+  version: Schema.String,
+  iteration: Schema.Number,
+  sha: Schema.String,
+  timestamp: Schema.String,
+  runId: Schema.String,
+})
+const JsonRecordSchema = Schema.Record({ key: Schema.String, value: Schema.Unknown })
+const JsonTextSchema = Schema.parseJson()
+
+const decodeJsonText = Schema.decodeUnknown(JsonTextSchema)
+const decodeJsonRecord = Schema.decodeUnknownOption(JsonRecordSchema)
+const decodeForecast = Schema.decodeUnknown(Api.Forecaster.Forecast)
+const decodePublishState = Schema.decodeUnknownOption(PublishStateSchema)
+const decodePublishHistory = Schema.decodeUnknownOption(Schema.Array(PublishRecordSchema))
+
 /**
  * release render <format>
  *
@@ -52,16 +70,12 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer))(
       jsonStr = yield* fs.readFileString(args.fromFile)
     } else {
       // Read from stdin
-      jsonStr = yield* Effect.promise(() => readStdin())
+      jsonStr = yield* readStdin()
     }
 
-    // Deserialize into Forecast
-    const json = JSON.parse(jsonStr)
+    const json = yield* decodeJsonText(jsonStr)
     const envelope = parseEnvelope(json)
-    const fc = Option.match(envelope, {
-      onNone: () => Schema.decodeUnknownSync(Api.Forecaster.Forecast)(json),
-      onSome: (value) => value.forecast,
-    })
+    const fc = Option.isSome(envelope) ? envelope.value.forecast : yield* decodeForecast(json)
 
     // Render based on format
     if (args.format === 'comment') {
@@ -81,14 +95,31 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer))(
   }),
 )
 
-const readStdin = (): Promise<string> => {
-  return new Promise((resolve, reject) => {
+const readStdin = (): Effect.Effect<string, Error> =>
+  Effect.async((resume) => {
     const chunks: Buffer[] = []
-    process.stdin.on('data', (chunk: Buffer) => chunks.push(chunk))
-    process.stdin.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')))
-    process.stdin.on('error', reject)
+    const onData = (chunk: Buffer) => chunks.push(chunk)
+    const onEnd = () => {
+      cleanup()
+      resume(Effect.succeed(Buffer.concat(chunks).toString('utf8')))
+    }
+    const onError = (error: Error) => {
+      cleanup()
+      resume(Effect.fail(error))
+    }
+    const cleanup = () => {
+      process.stdin.off('data', onData)
+      process.stdin.off('end', onEnd)
+      process.stdin.off('error', onError)
+    }
+
+    process.stdin.on('data', onData)
+    process.stdin.once('end', onEnd)
+    process.stdin.once('error', onError)
+    process.stdin.resume()
+
+    return Effect.sync(cleanup)
   })
-}
 
 const parseEnvelope = (
   json: unknown,
@@ -97,30 +128,21 @@ const parseEnvelope = (
   publishState: Api.Commentator.PublishState
   publishHistory: readonly Api.Commentator.PublishRecord[]
 }> => {
-  if (!json || typeof json !== 'object') return Option.none()
-  if (!('forecast' in json)) return Option.none()
-
-  const candidate = json as Record<string, unknown>
-  const decodedForecast = Schema.decodeUnknownOption(Api.Forecaster.Forecast)(candidate['forecast'])
-  if (Option.isNone(decodedForecast)) return Option.none()
-
-  const stateRaw = candidate['publishState']
-  const publishState: Api.Commentator.PublishState = stateRaw === 'publishing'
-    || stateRaw === 'published'
-    || stateRaw === 'failed'
-    || stateRaw === 'idle'
-    ? stateRaw
-    : 'idle'
-
-  const publishHistoryRaw = candidate['publishHistory']
-  const publishHistory = Array.isArray(publishHistoryRaw)
-    ? publishHistoryRaw.filter((entry): entry is Api.Commentator.PublishRecord =>
-      !!entry && typeof entry === 'object')
-    : []
-
-  return Option.some({
-    forecast: decodedForecast.value,
-    publishState,
-    publishHistory,
-  })
+  return decodeJsonRecord(json).pipe(
+    Option.flatMap((candidate) =>
+      Option.fromNullable(candidate['forecast']).pipe(
+        Option.flatMap(Schema.decodeUnknownOption(Api.Forecaster.Forecast)),
+        Option.map((forecast) => ({
+          forecast,
+          publishState: Option.fromNullable(candidate['publishState']).pipe(
+            Option.flatMap(decodePublishState),
+            Option.getOrElse((): Api.Commentator.PublishState => 'idle'),
+          ),
+          publishHistory: Option.fromNullable(candidate['publishHistory']).pipe(
+            Option.flatMap(decodePublishHistory),
+            Option.getOrElse((): readonly Api.Commentator.PublishRecord[] => []),
+          ),
+        })),
+      )),
+  )
 }

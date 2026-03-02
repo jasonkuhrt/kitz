@@ -707,7 +707,7 @@ export const dedupe = <$arr extends readonly unknown[]>(arr: $arr): $arr => {
  * Frozen arrays produce new frozen arrays; mutable arrays produce mutable arrays.
  *
  * @param items - The array to partition
- * @param predicate - Type predicate to test elements
+ * @param predicate - Predicate to test elements
  * @returns Tuple of [non-matching items, matching items].
  * @example
  * ```ts
@@ -716,16 +716,24 @@ export const dedupe = <$arr extends readonly unknown[]>(arr: $arr): $arr => {
  * // odds: [1, 3], evens: [2, 4]
  * ```
  */
-export const partition = <item, itemSub extends item>(
+export function partition<item, itemSub extends item>(
   items: readonly item[],
   predicate: (value: item) => value is itemSub,
-): [Exclude<item, itemSub>[], itemSub[]] => {
-  const itemsA: Exclude<item, itemSub>[] = []
-  const itemsB: itemSub[] = []
+): [Exclude<item, itemSub>[], itemSub[]]
+export function partition<item>(
+  items: readonly item[],
+  predicate: (value: item) => boolean,
+): [item[], item[]]
+export function partition<item>(
+  items: readonly item[],
+  predicate: (value: item) => boolean,
+): [item[], item[]] {
+  const itemsA: item[] = []
+  const itemsB: item[] = []
 
   for (const value of items) {
     if (predicate(value)) itemsB.push(value)
-    else itemsA.push(value as Exclude<item, itemSub>)
+    else itemsA.push(value)
   }
 
   if (Obj.isImmutable(items)) {

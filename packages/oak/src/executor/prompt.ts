@@ -7,6 +7,7 @@ import { Text } from '../lib/Text/_.js'
 import * as SchemaRuntime from '../schema/schema-runtime.js'
 import { Term } from '../term.js'
 import type { ParseProgressPostPrompt, ParseProgressPostPromptAnnotation } from './parse.js'
+import type { ArgumentValue } from './types.js'
 
 /**
  * Get args from the user interactively via the console for the given parameters.
@@ -16,9 +17,23 @@ export const prompt = (
   prompter: null | Prompter.Prompter,
 ): Effect.Effect<ParseProgressPostPrompt> =>
   Effect.gen(function*(_) {
-    if (prompter === null) return parseProgress as ParseProgressPostPrompt
+    if (prompter === null) {
+      return {
+        ...parseProgress,
+        basicParameters: Obj.mapEntries(parseProgress.basicParameters, (parameterName, value) => [
+          parameterName,
+          {
+            ...value,
+            prompt: {
+              enabled: value.prompt.enabled,
+              arg: undefined,
+            },
+          },
+        ]),
+      }
+    }
 
-    const args: Record<string, any> = {}
+    const args: Record<string, ArgumentValue> = {}
     const parameters = Obj.entries(parseProgress.basicParameters)
       .filter((_) => _[1].prompt.enabled)
       .map((_) => _[1].spec)
@@ -50,15 +65,25 @@ export const prompt = (
           question,
           prompt: `❯ `,
           marginLeft: gutterWidth,
-          parameter: parameter as any,
+          parameter,
         })
         const arg = yield* _(asking)
         const validationResult = SchemaRuntime.validate(parameter.type, arg)
         if (validationResult._tag === `Right`) {
-          args[parameter.name.canonical] = validationResult.right
-          prompter.say(``) // newline
-          indexCurrent++
-          break
+          if (isArgumentValue(validationResult.right)) {
+            args[parameter.name.canonical] = validationResult.right
+            prompter.say(``) // newline
+            indexCurrent++
+            break
+          }
+          prompter.say(
+            Text.pad(
+              `left`,
+              gutterWidth,
+              ` `,
+              Term.colors.alert(`Invalid value: expected string, number, boolean, null, or undefined`),
+            ),
+          )
         } else {
           prompter.say(
             Text.pad(
@@ -72,11 +97,24 @@ export const prompt = (
       }
     }
 
-    // todo do not mutate
-    const parseProgressPostPrompt = parseProgress as ParseProgressPostPrompt
-    for (const [parameterName, arg] of Obj.entries(args)) {
-      parseProgressPostPrompt.basicParameters[parameterName]!.prompt.arg = arg
+    return {
+      ...parseProgress,
+      basicParameters: Obj.mapEntries(parseProgress.basicParameters, (parameterName, value) => [
+        parameterName,
+        {
+          ...value,
+          prompt: {
+            enabled: value.prompt.enabled,
+            arg: args[parameterName],
+          },
+        },
+      ]),
     }
-
-    return parseProgressPostPrompt
   })
+
+const isArgumentValue = (value: unknown): value is ArgumentValue =>
+  value === undefined
+  || value === null
+  || typeof value === `string`
+  || typeof value === `number`
+  || typeof value === `boolean`

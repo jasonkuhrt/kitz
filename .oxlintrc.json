@@ -1,6 +1,12 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/refs/heads/main/npm/oxlint/configuration_schema.json",
   "plugins": ["import", "vitest", "promise"],
+  "jsPlugins": [
+    {
+      "name": "kitz",
+      "specifier": "./tools/oxlint-custom-rules/plugin.mjs"
+    }
+  ],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
@@ -21,17 +27,16 @@
     "eslint-plugin-promise/no-new-statics": "warn",
     "eslint-plugin-promise/no-callback-in-promise": "warn",
     "eslint-plugin-promise/prefer-await-to-then": "warn",
-    "eslint/no-restricted-globals": [
-      "warn",
-      {
-        "name": "JSON",
-        "message": "Use Effect Schema decode/codec APIs at IO boundaries instead of JSON.parse."
-      },
-      {
-        "name": "Promise",
-        "message": "Use Effect combinators and typed Effect error channels instead of Promise APIs."
-      }
-    ],
+    "kitz/no-json-parse": "error",
+    "kitz/no-try-catch": "error",
+    "kitz/no-native-promise-construction": "error",
+    "kitz/no-type-assertion": "error",
+    "kitz/no-native-map-set-in-effect-modules": "error",
+    "kitz/no-throw": "error",
+    "kitz/no-promise-then-chain": "error",
+    "kitz/no-effect-run-in-library-code": "error",
+    "kitz/require-typed-effect-errors": "error",
+    "kitz/require-schema-decode-at-boundary": "error",
     "eslint/no-restricted-imports": [
       "error",
       {
@@ -60,6 +65,7 @@
     "**/build/**",
     "**/node_modules/**",
     "**/*.d.ts",
-    "**/__examples/**"
+    "**/__examples/**",
+    "tools/oxlint-custom-rules/tests/fixtures/**"
   ]
 }

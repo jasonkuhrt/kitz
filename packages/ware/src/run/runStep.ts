@@ -3,11 +3,11 @@ import { Log } from '@kitz/log'
 import { ContextualError } from '../_errors.js'
 import type { InterceptorGeneric } from '../Interceptor/Interceptor.js'
 import type { Pipeline } from '../Pipeline/Pipeline.js'
+import type { ResultSuccess } from '../Result.js'
 import type { StepDefinition } from '../StepDefinition.js'
 import type { StepResult, StepResultErrorAsync } from '../StepResult.js'
 import { StepTrigger } from '../StepTrigger.js'
 import type { StepTriggerEnvelope } from '../StepTriggerEnvelope.js'
-import type { ResultEnvelop } from './resultEnvelope.js'
 
 // 'anyware:step'
 const debug = Log.create({})
@@ -16,7 +16,9 @@ type HookDoneResolver = (input: StepResult) => void
 
 const createExecutableChunk = <$Extension extends InterceptorGeneric>(extension: $Extension) => ({
   ...extension,
-  currentChunk: Prom.createDeferred<StepTriggerEnvelope | ($Extension['retrying'] extends true ? Error : never)>(),
+  currentChunk: Prom.createDeferred<
+    StepTriggerEnvelope | ResultSuccess | ($Extension['retrying'] extends true ? Error : never)
+  >(),
 })
 
 export const runStep = async (
@@ -81,7 +83,7 @@ export const runStep = async (
 
   if (extension) {
     const debugExtension = debug.child(`extension_${extension.name}`)
-    const hookInvokedDeferred = Prom.createDeferred()
+    const hookInvokedDeferred = Prom.createDeferred<true>()
 
     debugExtension.trace(`start`)
     let hookFailed = false
@@ -140,16 +142,16 @@ export const runStep = async (
             nextInterceptorsStack,
             customSlots: customSlotsResolved,
           })
-          return extensionRetry.currentChunk.promise.then(async (envelope) => {
-            const envelop_ = envelope as StepTriggerEnvelope // todo ... better way?
-            const hook = envelop_[name] // as (params:{input:object;previous:object;using:Slots}) =>
+          return extensionRetry.currentChunk.promise.then(async (nextChunk) => {
+            if (nextChunk instanceof Error) return nextChunk
+            if (isResultSuccess(nextChunk)) return nextChunk.value
+            const hook = nextChunk[name]
             if (!hook) throw new Error(`Hook not found in envelope: ${name}`)
             // todo use inputResolved ?
-            const result = await hook({
+            return await hook({
               ...extensionParameters,
               input: extensionParameters?.input ?? inputOriginalOrFromExtension,
-            }) as Promise<StepTriggerEnvelope | Error | ResultEnvelop>
-            return result
+            })
           })
         }
       } else {
@@ -173,7 +175,7 @@ export const runStep = async (
             debugExtension.trace(`received hook error`)
             hookFailed = true
           }
-          return _
+          return isResultSuccess(_) ? _.value : _
         })
       }
     })
@@ -191,15 +193,15 @@ export const runStep = async (
     // to pass through it.
     // If the extension returns a non-hook-envelope value, it wants to short-circuit the pipeline.
     debugHook.trace(`start race between extension returning or invoking next hook`)
-    const { branch, result } = await Promise.race([
-      hookInvokedDeferred.promise.then(result => {
-        return { branch: `hookInvoked`, result } as const
-      }).catch((e: unknown) => ({ branch: `hookInvokedButThrew`, result: e } as const)),
-      // rename branch to "extension"
-      extension.body.promise.then(result => {
-        return { branch: `extensionReturned`, result } as const
-      }).catch((e: unknown) => ({ branch: `extensionThrew`, result: e } as const)),
-    ])
+    const hookInvokedBranch = hookInvokedDeferred.promise.then(
+      (result) => ({ branch: `hookInvoked` as const, result }),
+      (result) => ({ branch: `hookInvokedButThrew` as const, result }),
+    )
+    const extensionReturnedBranch = extension.body.promise.then(
+      (result) => ({ branch: `extensionReturned` as const, result }),
+      (result) => ({ branch: `extensionThrew` as const, result }),
+    )
+    const { branch, result } = await racePromises(hookInvokedBranch, extensionReturnedBranch)
 
     switch (branch) {
       case `hookInvoked`: {
@@ -258,24 +260,25 @@ export const runStep = async (
       throw new ContextualError(`Implementation not found for step name ${name}`, { hookName: name })
     }
 
-    let result
-    try {
-      const slotsResolved = {
-        ...implementation.slots,
-        ...customSlots,
-      }
-      result = await implementation.run(
+    const slotsResolved = {
+      ...implementation.slots,
+      ...customSlots,
+    }
+    const implementationEnvelope = await Prom.maybeAsyncEnvelope(() =>
+      implementation.run(
         inputOriginalOrFromExtension,
         slotsResolved,
         previousStepsCompleted,
       )
-    } catch (error) {
+    )
+    if (implementationEnvelope.fail) {
       debugHook.trace(`implementation error`)
       const lastExtension = nextInterceptorsStack[nextInterceptorsStack.length - 1]
+      const implementationError = Err.ensure(implementationEnvelope.value)
       if (lastExtension && lastExtension.retrying) {
-        lastExtension.currentChunk.resolve(Err.ensure(error))
+        lastExtension.currentChunk.resolve(implementationError)
       } else {
-        done({ type: `error`, hookName: name, source: `implementation`, error: Err.ensure(error) })
+        done({ type: `error`, hookName: name, source: `implementation`, error: implementationError })
       }
       return
     }
@@ -286,9 +289,24 @@ export const runStep = async (
 
     done({
       type: `completed`,
-      result,
+      result: implementationEnvelope.value,
       effectiveInput: inputOriginalOrFromExtension,
       nextExtensionsStack: nextInterceptorsStack,
     })
   }
 }
+
+const racePromises = <$First, $Second>(
+  first: Promise<$First>,
+  second: Promise<$Second>,
+): Promise<$First | $Second> => {
+  const winner = Prom.createDeferred<$First | $Second>({ strict: false })
+  void first.then(winner.resolve, winner.reject)
+  void second.then(winner.resolve, winner.reject)
+  return winner.promise
+}
+
+const isResultSuccess = (value: unknown): value is ResultSuccess =>
+  typeof value === 'object'
+  && value !== null
+  && 'value' in value

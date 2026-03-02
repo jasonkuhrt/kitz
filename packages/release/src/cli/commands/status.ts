@@ -1,3 +1,12 @@
+/**
+ * @module cli/commands/status
+ *
+ * Show unreleased changes across workspace packages.
+ *
+ * Analyzes commits since the last release tag for each package and
+ * displays projected version bumps. When specific packages are provided,
+ * also performs cascade analysis to show transitive dependent releases.
+ */
 import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
@@ -31,7 +40,10 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     const packages = yield* Api.Analyzer.Workspace.scan
 
     if (packages.length === 0) {
-      yield* Console.log('No packages found.')
+      yield* Console.log(
+        'No packages found. Check release.config.ts `packages` field '
+          + 'or ensure pnpm-workspace.yaml defines workspace packages.',
+      )
       return
     }
 

@@ -3,13 +3,13 @@ import { stripeNegatePrefix } from '../../helpers.js'
 import * as SchemaRuntime from '../../schema/schema-runtime.js'
 import type { Parameter } from '../types.js'
 
-export const validate = <T>(parameter: Parameter, value: unknown) => {
+export const validate = (parameter: Parameter, value: unknown) => {
   if (parameter.type.metadata.optionality._tag === `optional` && value === undefined) {
     // Use the omittedValue if specified (e.g., null for NullOr schemas)
     const result = parameter.type.metadata.optionality.omittedValue ?? value
-    return Either.right(result as T)
+    return Either.right(result)
   }
-  return SchemaRuntime.validate(parameter.type, value) as any
+  return SchemaRuntime.validate(parameter.type, value)
 }
 
 export const findByName = (name: string, specs: Parameter[]): null | Parameter => {
@@ -23,13 +23,13 @@ export const findByName = (name: string, specs: Parameter[]): null | Parameter =
 /**
  * Get all the names of a parameter in array form.
  */
-export const getNames = (parameter: Parameter): [string, ...string[]] => {
+export const getNames = (parameter: Parameter): readonly string[] => {
   return [
     ...parameter.name.aliases.long,
     ...parameter.name.aliases.short,
     ...(parameter.name.long === null ? [] : [parameter.name.long]),
     ...(parameter.name.short === null ? [] : [parameter.name.short]),
-  ] as [string, ...string[]]
+  ]
 }
 
 type NameHit =

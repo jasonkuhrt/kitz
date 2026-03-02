@@ -89,7 +89,7 @@ const makeNodeHandle = <A>(name: string): NodeHandle<A> => ({
  */
 export interface NodeOptions {
   /** Dependencies - nodes that must complete before this one */
-  readonly after?: NodeHandle<any> | readonly NodeHandle<any>[]
+  readonly after?: NodeHandle<unknown> | readonly NodeHandle<unknown>[]
   /** Retry policy for transient failures */
   readonly retry?: { readonly times: number }
 }
@@ -103,7 +103,7 @@ export interface NodeOptions {
  */
 interface NodeDef {
   readonly name: string
-  readonly execute: Effect.Effect<any, any, any>
+  readonly execute: Effect.Effect<unknown, unknown, unknown>
   readonly dependencies: readonly string[]
   readonly retry?: { readonly times: number } | undefined
 }
@@ -118,14 +118,19 @@ interface GraphBuilderState {
 /**
  * Normalize after option to array of dependency names.
  */
-const normalizeDependencies = (after: NodeHandle<any> | readonly NodeHandle<any>[] | undefined): string[] => {
+const normalizeDependencies = (
+  after: NodeHandle<unknown> | readonly NodeHandle<unknown>[] | undefined,
+): string[] => {
   if (!after) return []
-  if (Array.isArray(after)) {
+  if (isNodeHandleArray(after)) {
     return after.map((h) => h.name)
   }
-  // Single NodeHandle
-  return [(after as NodeHandle<any>).name]
+  return [after.name]
 }
+
+const isNodeHandleArray = (
+  value: NodeHandle<unknown> | readonly NodeHandle<unknown>[],
+): value is readonly NodeHandle<unknown>[] => Array.isArray(value)
 
 /**
  * Create a graph builder that collects node definitions.
@@ -446,7 +451,7 @@ export const make = <
               name: nodeName,
               success: Schema.Unknown,
               error: Schema.Unknown,
-              execute: nodeDef.execute as Effect.Effect<unknown, unknown, any>,
+              execute: nodeDef.execute as Effect.Effect<unknown, unknown, unknown>,
             })
 
             // Build the effect to run (with optional retry)
@@ -454,39 +459,46 @@ export const make = <
               ? activity.pipe(Activity.retry({ times: nodeDef.retry.times }))
               : activity
 
-            try {
-              const result = yield* activityEffect
-              results.set(nodeName, result)
+            return yield* activityEffect.pipe(
+              Effect.matchEffect({
+                onSuccess: (result) =>
+                  Effect.gen(function*() {
+                    results.set(nodeName, result)
 
-              // Emit completion event
-              if (Option.isSome(maybePubsub)) {
-                const durationMs = Date.now() - startTime
-                yield* maybePubsub.value.publish(
-                  ActivityModel.Completed.make({
-                    activity: nodeName,
-                    timestamp: new Date(),
-                    durationMs,
-                    resumed: durationMs < RESUME_THRESHOLD_MS,
-                  }),
-                )
-              }
+                    // Emit completion event
+                    if (Option.isSome(maybePubsub)) {
+                      const durationMs = Date.now() - startTime
+                      yield* maybePubsub.value.publish(
+                        ActivityModel.Completed.make({
+                          activity: nodeName,
+                          timestamp: new Date(),
+                          durationMs,
+                          resumed: durationMs < RESUME_THRESHOLD_MS,
+                        }),
+                      )
+                    }
 
-              return result
-            } catch (error) {
-              // Emit failure event
-              if (Option.isSome(maybePubsub)) {
-                yield* maybePubsub.value.publish(
-                  ActivityModel.Failed.make({
-                    activity: nodeName,
-                    timestamp: new Date(),
-                    error: typeof error === 'object' && error !== null && 'message' in error
-                      ? String((error as { message: unknown }).message)
-                      : String(error),
+                    return result
                   }),
-                )
-              }
-              throw error
-            }
+                onFailure: (error) =>
+                  Effect.gen(function*() {
+                    // Emit failure event
+                    if (Option.isSome(maybePubsub)) {
+                      const errorMessage = error instanceof Error
+                        ? error.message
+                        : String(error)
+                      yield* maybePubsub.value.publish(
+                        ActivityModel.Failed.make({
+                          activity: nodeName,
+                          timestamp: new Date(),
+                          error: errorMessage,
+                        }),
+                      )
+                    }
+                    return yield* Effect.fail(error)
+                  }),
+              }),
+            )
           })
         })
 

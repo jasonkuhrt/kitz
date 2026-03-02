@@ -1,3 +1,12 @@
+/**
+ * @module cli/commands/log
+ *
+ * Generate and display changelogs from unreleased commits.
+ *
+ * Fetches commits since the last release tag, extracts conventional
+ * commit impacts, and formats them as markdown or JSON. Optionally
+ * filters to a specific package.
+ */
 import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
@@ -51,7 +60,10 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     const packages = yield* Api.Analyzer.Workspace.scan
 
     if (packages.length === 0) {
-      yield* Console.log('No packages found.')
+      yield* Console.log(
+        'No packages found. Check release.config.ts `packages` field '
+          + 'or ensure pnpm-workspace.yaml defines workspace packages.',
+      )
       return
     }
 

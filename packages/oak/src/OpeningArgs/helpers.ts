@@ -7,24 +7,26 @@ import type { Value } from './types.js'
 
 export { stripeDashPrefix }
 
-export const parseSerializedValue = (name: string, serializedValue: string, spec: Parameter): Value => {
+export const parseSerializedValue = (
+  name: string,
+  serializedValue: string,
+  spec: Parameter,
+): Either.Either<Value, Error> => {
   const either = SchemaRuntime.deserialize(spec.type, serializedValue)
 
   if (Either.isLeft(either)) {
-    // Preserve the actual validation error message from the schema
-    throw either.left
+    return Either.left(either.left)
   }
-  // TODO make return unknown
+
   const value = either.right
-  const type = typeof value
-  if (type === `string`) return { _tag: `string`, value: value as string }
-  if (type === `number`) return { _tag: `number`, value: value as number }
-  if (type === `undefined`) return { _tag: `undefined`, value: undefined }
-  if (type === `boolean`) {
-    // dump(isEnvarNegated(name, spec))
-    return { _tag: `boolean`, value: value as boolean, negated: isEnvarNegated(name, spec) }
+  if (typeof value === `string`) return Either.right({ _tag: `string`, value })
+  if (typeof value === `number`) return Either.right({ _tag: `number`, value })
+  if (value === undefined) return Either.right({ _tag: `undefined`, value: undefined })
+  if (typeof value === `boolean`) {
+    return Either.right({ _tag: `boolean`, value, negated: isEnvarNegated(name, spec) })
   }
-  throw new Error(`Supported type ${type}.`)
+
+  return Either.left(new Error(`Unsupported type ${typeof value}.`))
 }
 
 /**

@@ -3,6 +3,7 @@ import { Log } from '@kitz/log'
 import { ContextualError } from '../_errors.js'
 import type { InterceptorGeneric } from '../Interceptor/Interceptor.js'
 import type { Pipeline } from '../Pipeline/Pipeline.js'
+import { successfulResult } from '../Result.js'
 import type { Step } from '../Step.js'
 import type { StepResult, StepResultErrorAsync } from '../StepResult.js'
 import { createResultEnvelope } from './resultEnvelope.js'
@@ -30,7 +31,7 @@ export const runPipeline = async (
     asyncErrorDeferred: StepResultErrorAsync
     previousStepsCompleted: object
   },
-): Promise<ResultEnvelop | ContextualError> => {
+): Promise<ResultEnvelop | Error> => {
   const [stepToProcess, ...stepsRestToProcess] = stepsToProcess
 
   if (!stepToProcess) {
@@ -58,9 +59,7 @@ export const runPipeline = async (
     nextInterceptorsStack: [],
   })
 
-  const signal = await Promise.race(
-    [done.promise, asyncErrorDeferred.promise],
-  )
+  const signal = await racePromises(done.promise, asyncErrorDeferred.promise)
 
   switch (signal.type) {
     case `completed`: {
@@ -89,11 +88,11 @@ export const runPipeline = async (
       debug.trace(`signal: error`)
 
       if (pipeline.config.passthroughErrorWith?.(signal)) {
-        return signal.error as any // todo change return type to be unknown since this function could permit anything?
+        return signal.error
       }
 
       if (pipeline.config.passthroughErrorInstanceOf.some(_ => signal.error instanceof _)) {
-        return signal.error as any // todo change return type to include object... given this instanceof permits that?
+        return signal.error
       }
 
       const wasAsync = asyncErrorDeferred.isResolved
@@ -138,10 +137,20 @@ const runPipelineEnd = async ({
   if (!interceptor) return result
 
   debug.trace(`interceptor ${interceptor.name}: end`)
-  interceptor.currentChunk.resolve(result as any)
+  interceptor.currentChunk.resolve(successfulResult(result))
   const nextResult = await interceptor.body.promise
   return await runPipelineEnd({
     interceptorsStack: interceptorsRest,
     result: nextResult,
   })
+}
+
+const racePromises = <$First, $Second>(
+  first: Promise<$First>,
+  second: Promise<$Second>,
+): Promise<$First | $Second> => {
+  const winner = Prom.createDeferred<$First | $Second>({ strict: false })
+  void first.then(winner.resolve, winner.reject)
+  void second.then(winner.resolve, winner.reject)
+  return winner.promise
 }

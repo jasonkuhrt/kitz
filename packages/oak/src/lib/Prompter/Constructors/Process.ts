@@ -14,7 +14,7 @@ export const createProcessPrompter = () => {
       KeyPress.readMany().pipe(
         Stream.filter((event): event is Exit.Exit<void> | KeyPressEvent<K> => {
           if (Exit.isExit(event)) return true
-          return params?.matching?.includes(event.name as any) ?? true
+          return params?.matching ? params.matching.some((name) => name === event.name) : true
         }),
       ),
     readLine: () =>

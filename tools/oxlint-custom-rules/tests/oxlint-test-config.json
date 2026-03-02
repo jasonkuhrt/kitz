@@ -1,0 +1,30 @@
+{
+  "$schema": "../../../node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "off",
+    "suspicious": "off",
+    "pedantic": "off",
+    "perf": "off",
+    "style": "off",
+    "restriction": "off",
+    "nursery": "off"
+  },
+  "jsPlugins": [
+    {
+      "name": "kitz",
+      "specifier": "../plugin.mjs"
+    }
+  ],
+  "rules": {
+    "kitz/no-json-parse": "warn",
+    "kitz/no-try-catch": "warn",
+    "kitz/no-native-promise-construction": "warn",
+    "kitz/no-type-assertion": "warn",
+    "kitz/no-native-map-set-in-effect-modules": "warn",
+    "kitz/no-throw": "warn",
+    "kitz/no-promise-then-chain": "warn",
+    "kitz/no-effect-run-in-library-code": "warn",
+    "kitz/require-typed-effect-errors": "warn",
+    "kitz/require-schema-decode-at-boundary": "warn"
+  }
+}

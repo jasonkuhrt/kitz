@@ -1,6 +1,6 @@
 import type { ContextualAggregateError } from './_errors.js'
 
-export type ResultFailure = ContextualAggregateError
+export type ResultFailure = Error | ContextualAggregateError
 
 export type Result<T = unknown> = ResultFailure | ResultSuccess<T>
 

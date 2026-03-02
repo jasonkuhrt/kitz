@@ -2,12 +2,14 @@ import { Lang, Prom } from '@kitz/core'
 import { ContextualError, partitionAndAggregateErrors } from '../_errors.js'
 import {
   createRetryingInterceptor,
+  type InterceptorGeneric,
   type InterceptorInput,
   type NonRetryingInterceptorInput,
 } from '../Interceptor/Interceptor.js'
 import type { Pipeline } from '../Pipeline/Pipeline.js'
 import type { PipelineDefinition } from '../PipelineDefinition/_.js'
-import { successfulResult } from '../Result.js'
+import { successfulResult, type Result } from '../Result.js'
+import type { ResultSuccess } from '../Result.js'
 import type { StepDefinition } from '../StepDefinition.js'
 import type { StepResultErrorExtension } from '../StepResult.js'
 import type { StepTriggerEnvelope } from '../StepTriggerEnvelope.js'
@@ -22,7 +24,7 @@ export interface Params<$Pipeline extends Pipeline = Pipeline> {
 
 export const createRunner =
   <$Pipeline extends Pipeline>(pipeline: $Pipeline) =>
-  async (params?: Params<$Pipeline>): Promise<$Pipeline['output']> => {
+  async (params?: Params<$Pipeline>): Promise<Result<$Pipeline['output']>> => {
     const { initialInput, interceptors = [], retryingInterceptor } = params ?? {}
 
     const interceptors_ = retryingInterceptor
@@ -37,41 +39,59 @@ export const createRunner =
       pipeline,
       stepsToProcess: pipeline.steps,
       originalInputOrResult: initialInput,
-      // todo fix any
-      interceptorsStack: initialHookStack as any,
+      interceptorsStack: initialHookStack,
       asyncErrorDeferred,
       previousStepsCompleted: {},
     })
-    if (result instanceof Error) return result as any
+    if (result instanceof Error) return result
 
-    return successfulResult(result.result) as any
+    return successfulResult(result.result)
   }
 
-const toInternalInterceptor = (pipeline: PipelineDefinition.Pipeline, interceptor: InterceptorInput) => {
-  const currentChunk = Prom.createDeferred<StepTriggerEnvelope>()
-  const body = Prom.createDeferred()
+const toInternalInterceptor = (
+  pipeline: PipelineDefinition.Pipeline,
+  interceptor: InterceptorInput,
+): InterceptorGeneric | Error => {
   const interceptorTrigger = typeof interceptor === `function` ? interceptor : interceptor.run
   const retrying = typeof interceptor === `function` ? false : interceptor.retrying
-  const applyBody = async (input: object) => {
-    try {
-      const result = await interceptorTrigger(input)
-      body.resolve(result)
-    } catch (error) {
-      body.reject(error)
-    }
+  const currentChunkNonRetrying = Prom.createDeferred<StepTriggerEnvelope | ResultSuccess>()
+  const currentChunkRetrying = Prom.createDeferred<StepTriggerEnvelope | Error | ResultSuccess>()
+  const currentChunk = retrying ? currentChunkRetrying : currentChunkNonRetrying
+  const body = Prom.createDeferred()
+
+  const applyBody = (input: object) => {
+    void Promise.resolve(Prom.maybeAsyncEnvelope(() => interceptorTrigger(input))).then((envelope) => {
+      if (envelope.fail) {
+        body.reject(envelope.value)
+      } else {
+        body.resolve(envelope.value)
+      }
+    })
   }
 
   const interceptorName = interceptorTrigger.name || `anonymous`
+  const defaultEntrypoint = pipeline.steps[0]?.name ?? ''
+  const createInternalInterceptor = (entrypoint: string): InterceptorGeneric =>
+    retrying
+      ? {
+        retrying: true,
+        name: interceptorName,
+        entrypoint,
+        body,
+        currentChunk: currentChunkRetrying,
+      }
+      : {
+        retrying: false,
+        name: interceptorName,
+        entrypoint,
+        body,
+        currentChunk: currentChunkNonRetrying,
+      }
 
   switch (pipeline.config.entrypointSelectionMode) {
     case `off`: {
       void currentChunk.promise.then(applyBody)
-      return {
-        name: interceptorName,
-        entrypoint: pipeline.steps[0]?.name,
-        body,
-        currentChunk,
-      }
+      return createInternalInterceptor(defaultEntrypoint)
     }
     case `optional`:
     case `required`: {
@@ -81,12 +101,7 @@ const toInternalInterceptor = (pipeline: PipelineDefinition.Pipeline, intercepto
           return entryStep
         } else {
           void currentChunk.promise.then(applyBody)
-          return {
-            name: interceptorName,
-            entrypoint: pipeline.steps[0]?.name,
-            body,
-            currentChunk,
-          }
+          return createInternalInterceptor(defaultEntrypoint)
         }
       }
 
@@ -103,23 +118,27 @@ const toInternalInterceptor = (pipeline: PipelineDefinition.Pipeline, intercepto
       }
       void currentChunkPromiseChain.then(applyBody)
 
-      return {
-        retrying,
-        name: interceptorName,
-        entryStep,
-        body,
-        currentChunk,
-      }
+      return createInternalInterceptor(entryStep.name)
     }
     default:
       throw Lang.neverCase(pipeline.config.entrypointSelectionMode)
   }
 }
 
-const createPassthrough = (hookName: string) => async (hookEnvelope: StepTriggerEnvelope) => {
+const createPassthrough = (hookName: string) => async (
+  hookEnvelope: StepTriggerEnvelope | ResultSuccess | Error,
+) => {
+  if (hookEnvelope instanceof Error || isResultSuccess(hookEnvelope)) {
+    return hookEnvelope
+  }
   const hook = hookEnvelope[hookName]
   if (!hook) {
     throw new ContextualError(`Hook not found in hook envelope`, { hookName })
   }
   return await hook({ input: hook.input })
 }
+
+const isResultSuccess = (value: unknown): value is ResultSuccess =>
+  typeof value === 'object'
+  && value !== null
+  && 'value' in value

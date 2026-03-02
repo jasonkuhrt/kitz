@@ -1,7 +1,7 @@
 import { FileSystem } from '@effect/platform'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
-import { Effect, Schema as S } from 'effect'
+import { Effect, Option, Schema as S } from 'effect'
 
 interface GlobalLocalCheckOptions {
   /**
@@ -27,11 +27,13 @@ interface GlobalLocalCheckOptions {
   }
 }
 
-interface PackageJson {
-  dependencies?: Record<string, string>
-  devDependencies?: Record<string, string>
-  peerDependencies?: Record<string, string>
-}
+const DependencyMapSchema = S.Record({ key: S.String, value: S.String })
+const PackageJsonSchema = S.Struct({
+  dependencies: S.optionalWith(DependencyMapSchema, { default: () => ({}) }),
+  devDependencies: S.optionalWith(DependencyMapSchema, { default: () => ({}) }),
+  peerDependencies: S.optionalWith(DependencyMapSchema, { default: () => ({}) }),
+})
+const decodePackageJson = S.decodeUnknownOption(S.parseJson(PackageJsonSchema))
 
 /**
  * Check if a package exists in any package.json from the current directory up to root
@@ -50,22 +52,22 @@ const findPackageInAncestors = (
 
     while (true) {
       const packageJsonPathString = packageJsonPath.toString()
+      const pkg = yield* fs.readFileString(packageJsonPathString).pipe(
+        Effect.option,
+        Effect.map(Option.flatMap(decodePackageJson)),
+      )
 
-      try {
-        const content = yield* fs.readFileString(packageJsonPathString)
-        const pkg: PackageJson = JSON.parse(content)
-
+      if (Option.isSome(pkg)) {
+        const packageJson = pkg.value
         if (
-          pkg.dependencies?.[packageName]
-          || pkg.devDependencies?.[packageName]
-          || pkg.peerDependencies?.[packageName]
+          packageJson.dependencies[packageName]
+          || packageJson.devDependencies[packageName]
+          || packageJson.peerDependencies[packageName]
         ) {
           // Return the directory containing this package.json
           const dir = Fs.Path.up(packageJsonPath)
           return dir.toString()
         }
-      } catch {
-        // No package.json at this path, continue
       }
 
       // Check if we're at root

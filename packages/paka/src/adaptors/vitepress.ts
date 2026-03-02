@@ -1,6 +1,6 @@
 import { Fs } from '@kitz/fs'
 import { Syn } from '@kitz/syn'
-import { Match } from 'effect'
+import { Either, Match } from 'effect'
 import { readFileSync, writeFileSync } from 'fs'
 import { mkdirSync } from 'fs'
 import { join } from 'path'
@@ -104,6 +104,36 @@ type Context = {
   groupByCategory?: boolean
 }
 
+type SidebarLink = {
+  text: string
+  link: string
+}
+
+type SidebarItem = SidebarLink & {
+  items?: SidebarLink[]
+  collapsed?: boolean
+}
+
+type SidebarSection = {
+  text: string
+  items: SidebarItem[]
+}
+
+const getEntrypointModuleName = (entrypoint: Entrypoint): string =>
+  entrypoint._tag === 'SimpleEntrypoint' ? entrypoint.moduleName : deriveModuleName(entrypoint.path)
+
+const getEntrypointKebabName = (entrypoint: Entrypoint): string =>
+  entrypoint._tag === 'SimpleEntrypoint' ? entrypoint.kebabName : Md.kebab(getEntrypointModuleName(entrypoint))
+
+const getEntrypointImportExamples = (
+  entrypoint: Entrypoint,
+  packageName: string,
+  breadcrumbs: string[],
+): ImportExample[] =>
+  entrypoint._tag === 'DrillableNamespaceEntrypoint'
+    ? entrypoint.getImportExamples(packageName, breadcrumbs)
+    : entrypoint.getImportExamples(packageName, entrypoint.path)
+
 /**
  * Generate VitePress documentation from interface model.
  *
@@ -165,9 +195,13 @@ const getDrillableModules = (model: InterfaceModel): Set<string> => {
   // Find the main entrypoint export file
   const mainExportPath = join(process.cwd(), 'build/exports/index.js')
 
-  try {
-    const content = readFileSync(mainExportPath, 'utf-8')
+  const contentResult = Either.try({
+    try: () => readFileSync(mainExportPath, 'utf-8'),
+    catch: () => undefined,
+  })
 
+  if (Either.isRight(contentResult)) {
+    const content = contentResult.right
     // Match export statements like: export * from '@kitz/core/arr'
     const exportPattern = /export\s+\*\s+from\s+['"]#([^'"]+)['"]/g
     let match
@@ -176,14 +210,14 @@ const getDrillableModules = (model: InterfaceModel): Set<string> => {
       const moduleName = match[1]!
       drillable.add(moduleName.toLowerCase())
     }
-  } catch (error) {
+  } else {
     // If file doesn't exist or can't be read, assume all modules are drillable
     // This is a safe default for development
     console.warn('Could not read main exports file, assuming all modules are drillable')
-    model.entrypoints.forEach((ep: any) => {
-      const moduleName = ep.path.replace(/^\.\//, '')
+    for (const entrypoint of model.entrypoints) {
+      const moduleName = entrypoint.path.replace(/^\.\//, '')
       drillable.add(moduleName.toLowerCase())
-    })
+    }
   }
 
   return drillable
@@ -199,32 +233,29 @@ const getDrillableModules = (model: InterfaceModel): Set<string> => {
 export const generateSidebar = (
   model: InterfaceModel,
   categoryOrder?: string[],
-): Array<{ text: string; items: Array<{ text: string; link?: string; items?: any[]; collapsed?: boolean }> }> => {
+): SidebarSection[] => {
   // Determine which modules are drillable from main
   const drillableModules = getDrillableModules(model)
 
   // Group entrypoints: drillable from main vs standalone-only
-  const mainEntrypoints: any[] = []
-  const standaloneEntrypoints: any[] = []
+  const mainEntrypoints: Entrypoint[] = []
+  const standaloneEntrypoints: Entrypoint[] = []
 
   for (const entrypoint of model.entrypoints) {
-    const ep = entrypoint as any
-    const moduleName = ep.path.replace(/^\.\//, '').toLowerCase()
+    const moduleName = entrypoint.path.replace(/^\.\//, '').toLowerCase()
 
     if (drillableModules.has(moduleName)) {
-      mainEntrypoints.push(ep)
+      mainEntrypoints.push(entrypoint)
     } else {
-      standaloneEntrypoints.push(ep)
+      standaloneEntrypoints.push(entrypoint)
     }
   }
 
-  const sidebar: Array<
-    { text: string; items: Array<{ text: string; link?: string; items?: any[]; collapsed?: boolean }> }
-  > = []
+  const sidebar: SidebarSection[] = []
 
   // Helper to create sidebar items for a set of entrypoints
-  const createSidebarItemsForEntrypoints = (entrypoints: any[]): any[] => {
-    const items: any[] = []
+  const createSidebarItemsForEntrypoints = (entrypoints: readonly Entrypoint[]): SidebarItem[] => {
+    const items: SidebarItem[] = []
 
     for (const ep of entrypoints) {
       const moduleName = ep.path.replace(/^\.\//, '')
@@ -235,7 +266,7 @@ export const generateSidebar = (
 
       // Find namespace exports with nested modules
       const namespaceExports = ep.module.namespaceExports
-        .map((exp: any) => {
+        .map((exp) => {
           // For pure wrappers, use '~' instead of namespace name
           const linkSegment = isPureWrapper ? '~' : exp.name.toLowerCase()
           return {
@@ -243,11 +274,11 @@ export const generateSidebar = (
             link: `/api/${moduleName}/${linkSegment}`,
           }
         })
-        .sort((a: any, b: any) => a.text.localeCompare(b.text))
+        .sort((a, b) => a.text.localeCompare(b.text))
 
       const hasExternalReadme = ep.module.hasExternalReadme
 
-      const item: { text: string; link: string; items?: any[]; collapsed?: boolean } = {
+      const item: SidebarItem = {
         text: displayName,
         link: `/api/${moduleName}`,
       }
@@ -300,21 +331,19 @@ export const generateSidebar = (
  */
 const generateApiIndex = (model: InterfaceModel): string => {
   const modules = model.entrypoints.map((entrypoint) => {
-    const ep = entrypoint as any
-    // Use instance getters for SimpleEntrypoint, fallback for DrillableNamespaceEntrypoint
-    const moduleName = ep._tag === 'SimpleEntrypoint' ? ep.moduleName : deriveModuleName(ep.path)
-    const url = `/api/${ep._tag === 'SimpleEntrypoint' ? ep.kebabName : Md.kebab(moduleName)}`
-    const description = ep.module.docs?.description
-      ? ep.module.docs.description.split('\n\n')[0]!.replace(/\n/g, ' ').trim()
+    const moduleName = getEntrypointModuleName(entrypoint)
+    const url = `/api/${getEntrypointKebabName(entrypoint)}`
+    const description = entrypoint.module.docs?.description
+      ? entrypoint.module.docs.description.split('\n\n')[0]!.replace(/\n/g, ' ').trim()
       : ''
 
     // Find namespace exports
-    const namespaceExports = ep.module.namespaceExports
-      .sort((a: any, b: any) => a.name.localeCompare(b.name))
+    const namespaceExports = entrypoint.module.namespaceExports
+      .sort((a, b) => a.name.localeCompare(b.name))
 
     // Build namespace list if any exist
     const namespaceList = namespaceExports.length > 0
-      ? '\n\n' + namespaceExports.map((ns: any) => {
+      ? '\n\n' + namespaceExports.map((ns) => {
         const nsUrl = `/api/${Md.kebab(moduleName)}/${ns.name.toLowerCase()}`
         const nsLink = Md.link(nsUrl, Md.code(ns.name))
         const nsDesc = ns.docs?.description ? ` - ${ns.docs.description}` : ''
@@ -341,11 +370,9 @@ const generatePages = (model: InterfaceModel): Page[] => {
   const pages: Page[] = []
 
   for (const entrypoint of model.entrypoints) {
-    const ep = entrypoint as any
-    // Use instance getters for SimpleEntrypoint, fallback for DrillableNamespaceEntrypoint
-    const moduleName = ep._tag === 'SimpleEntrypoint' ? ep.moduleName : deriveModuleName(ep.path)
-    const kebabName = ep._tag === 'SimpleEntrypoint' ? ep.kebabName : Md.kebab(moduleName)
-    const module = ep.module
+    const moduleName = getEntrypointModuleName(entrypoint)
+    const kebabName = getEntrypointKebabName(entrypoint)
+    const module = entrypoint.module
 
     // Check if module description came from external .md file
     if (module.hasExternalReadme) {
@@ -580,14 +607,7 @@ const renderImportSection = (
   packageName: string,
   breadcrumbs: string[],
 ): string => {
-  const ep = entrypoint as any
-  const importExamples = (() => {
-    if (ep._tag === 'DrillableNamespaceEntrypoint') {
-      return ep.getImportExamples(packageName, breadcrumbs)
-    } else {
-      return ep.getImportExamples(packageName, ep.path)
-    }
-  })()
+  const importExamples = getEntrypointImportExamples(entrypoint, packageName, breadcrumbs)
 
   if (importExamples.length === 0) return ''
 
@@ -614,8 +634,8 @@ const renderImportSection = (
 /**
  * Render namespaces section as a table.
  */
-const renderNamespacesSection = (namespaces: Export[], breadcrumbs: string[]): string => {
-  const rows = namespaces.map((ns: any) => {
+const renderNamespacesSection = (namespaces: ValueExport[], breadcrumbs: string[]): string => {
+  const rows = namespaces.map((ns) => {
     const nsPath = `/api/${[...breadcrumbs, ns.name].map(Md.kebab).join('/')}`
     const link = Md.link(nsPath, `**${Md.code(ns.name)}**`)
     const desc = ns.docs?.description || '—'
@@ -644,7 +664,7 @@ const renderExportsSection = (exports: Export[], context: Context): string => {
     const categorized = new Map<string, Export[]>()
 
     for (const exp of exports) {
-      const category = (exp as any).category ?? 'Other'
+      const category = exp.category ?? 'Other'
       const existing = categorized.get(category) ?? []
       categorized.set(category, [...existing, exp])
     }
@@ -1066,7 +1086,7 @@ const renderSignature = (sig: SignatureModel): string => {
 /**
  * Render a code example with Twoslash.
  */
-const renderExample = (example: any, exportName: string, context: Context): string => {
+const renderExample = (example: Example, exportName: string, context: Context): string => {
   // Don't wrap title in bold - it may already contain markdown formatting (e.g., headings)
   const title = example.title || ''
 

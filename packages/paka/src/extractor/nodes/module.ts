@@ -1,8 +1,14 @@
 import { Fs } from '@kitz/fs'
-import { Schema as S } from 'effect'
+import { Either, Schema as S } from 'effect'
 import { existsSync, readdirSync, readFileSync } from 'fs'
 import { basename, dirname, extname, join } from 'path'
-import { type ExportDeclaration, type ModuleDeclaration, Node, type SourceFile } from 'ts-morph'
+import {
+  type ExportDeclaration,
+  type ExportedDeclarations,
+  type ModuleDeclaration,
+  Node,
+  type SourceFile,
+} from 'ts-morph'
 import {
   Docs,
   DocsProvenance,
@@ -82,29 +88,31 @@ const findModuleReadme = (sourceFilePath: string): string | undefined => {
 const findNamespaceHomePagePath = (exportDeclFile: string): string | undefined => {
   const dir = dirname(exportDeclFile)
 
-  try {
-    const files = readdirSync(dir)
-    const homeFiles = files.filter((f: string) => f.endsWith('.home.md')).sort()
+  const filesResult = Either.try({
+    try: () => readdirSync(dir),
+    catch: () => undefined,
+  })
 
-    if (homeFiles.length === 0) return undefined
+  if (Either.isLeft(filesResult)) return undefined
 
-    const firstHomeFile = homeFiles[0]!
+  const files = filesResult.right
+  const homeFiles = files.filter((f: string) => f.endsWith('.home.md')).sort()
 
-    // Warn if multiple home page files found
-    if (homeFiles.length > 1) {
-      console.warn(
-        `Warning: Multiple .home.md files found in ${dir}:\n`
-          + homeFiles.map((f: string) => `  - ${f}`).join('\n')
-          + '\n'
-          + `Using first alphabetically: ${firstHomeFile}`,
-      )
-    }
+  if (homeFiles.length === 0) return undefined
 
-    return join(dir, firstHomeFile)
-  } catch {
-    // Directory read error - return undefined
-    return undefined
+  const firstHomeFile = homeFiles[0]!
+
+  // Warn if multiple home page files found
+  if (homeFiles.length > 1) {
+    console.warn(
+      `Warning: Multiple .home.md files found in ${dir}:\n`
+        + homeFiles.map((f: string) => `  - ${f}`).join('\n')
+        + '\n'
+        + `Using first alphabetically: ${firstHomeFile}`,
+    )
   }
+
+  return join(dir, firstHomeFile)
 }
 
 /**
@@ -131,32 +139,38 @@ const addHomePageIfExists = (
   const homePageMarkdown = findNamespaceHomePage(exportDeclFilePath)
   if (!homePageMarkdown) return nestedModule
 
-  try {
-    const homePagePath = findNamespaceHomePagePath(exportDeclFilePath)!
-    const home = parseHomePage(homePageMarkdown, homePagePath)
+  const homePagePath = findNamespaceHomePagePath(exportDeclFilePath)
+  if (!homePagePath) return nestedModule
 
-    // Update ModuleDocs with home
-    const existingDocs = nestedModule.docs
-    const updatedDocs = ModuleDocs.make({
-      description: existingDocs?.description,
-      guide: existingDocs?.guide,
-      home: home,
-    })
+  const parsedHome = Either.try({
+    try: () => parseHomePage(homePageMarkdown, homePagePath),
+    catch: (error) => error,
+  })
 
-    // Mutate docs field directly (we're still in extraction phase, not yet exposed)
-    // @ts-expect-error - Mutating during extraction phase before immutability contract applies
-    nestedModule.docs = updatedDocs
-
-    return nestedModule
-
-    // Note: No provenance needed for home - it can only come from *.home.md files
-  } catch (error) {
-    // Re-throw with context about which namespace failed
-    if (error instanceof Error) {
-      throw new Error(`Failed to parse home page for namespace '${nsName}':\n${error.message}`, { cause: error })
+  if (Either.isLeft(parsedHome)) {
+    const cause = parsedHome.left
+    if (cause instanceof Error) {
+      throw new Error(`Failed to parse home page for namespace '${nsName}':\n${cause.message}`, { cause })
     }
-    throw error
+    throw cause
   }
+
+  const home = parsedHome.right
+
+  // Update ModuleDocs with home
+  const existingDocs = nestedModule.docs
+  const updatedDocs = ModuleDocs.make({
+    description: existingDocs?.description,
+    guide: existingDocs?.guide,
+    home,
+  })
+
+  // Mutate docs field directly (we're still in extraction phase, not yet exposed)
+  // @ts-expect-error - Mutating during extraction phase before immutability contract applies
+  nestedModule.docs = updatedDocs
+
+  return nestedModule
+  // Note: No provenance needed for home - it can only come from *.home.md files
 }
 
 /**
@@ -563,7 +577,7 @@ export const extractModule = (
     }
 
     let exportName: string | undefined
-    let declNode: Node | undefined
+    let declNode: ExportedDeclarations | undefined
 
     if (Node.isFunctionDeclaration(statement)) {
       exportName = statement.getName()
@@ -593,7 +607,7 @@ export const extractModule = (
       // Check if this export should be filtered
       const jsdoc = parseJSDoc(declNode)
       if (!shouldFilterExport(exportName, jsdoc, options)) {
-        exports.push(extractExport(exportName, declNode as any))
+        exports.push(extractExport(exportName, declNode))
       }
     }
   }

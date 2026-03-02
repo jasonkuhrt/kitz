@@ -70,5 +70,8 @@ const helpParameter: ParameterBasicInput = {
   _tag: `Basic`,
   type: booleanSchema,
   nameExpression: `-h --help`,
-  prompt: false as any,
+  prompt: {
+    enabled: false,
+    when: null,
+  },
 }

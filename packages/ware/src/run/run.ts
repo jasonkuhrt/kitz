@@ -15,5 +15,5 @@ type Run = <
  */
 export const run: Run = async (pipeline, params) => {
   const runner = createRunner(pipeline)
-  return await runner(params as any) as any
+  return await runner(params)
 }

@@ -22,6 +22,42 @@ import { parseJSDoc } from './nodes/jsdoc.js'
 import { extractModuleFromFile } from './nodes/module.js'
 import { createBuildToSourcePath } from './path-utils.js'
 
+const JsonObjectSchema = S.Record({ key: S.String, value: S.Unknown })
+const JsonObjectFromStringSchema = S.parseJson(JsonObjectSchema)
+const decodeJsonObject = S.decodeUnknownSync(JsonObjectFromStringSchema)
+
+const parseJsonObject = (content: string | Uint8Array): Record<string, unknown> =>
+  decodeJsonObject(typeof content === 'string' ? content : new TextDecoder().decode(content))
+
+const getStringProperty = (record: Record<string, unknown>, key: string): string | undefined => {
+  const value = record[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+const toUnknownRecord = (value: unknown): Record<string, unknown> | undefined => {
+  if (!value || typeof value !== 'object') return undefined
+  const result: Record<string, unknown> = {}
+  for (const [entryKey, entryValue] of Object.entries(value)) {
+    result[entryKey] = entryValue
+  }
+  return result
+}
+
+const getStringRecordProperty = (
+  record: Record<string, unknown>,
+  key: string,
+): Record<string, string> | undefined => {
+  const value = record[key]
+  if (!value || typeof value !== 'object') return undefined
+
+  const result: Record<string, string> = {}
+  for (const [entryKey, entryValue] of Object.entries(value)) {
+    if (typeof entryValue !== 'string') return undefined
+    result[entryKey] = entryValue
+  }
+  return result
+}
+
 /**
  * Pure extraction function that processes files without I/O.
  * Takes all files as input and returns the extracted model.
@@ -63,9 +99,7 @@ export const extractFromFiles = (params: {
   if (!packageJsonContent) {
     throw new Error(`package.json not found at ${packageJsonPath}`)
   }
-  const packageJson = JSON.parse(
-    typeof packageJsonContent === 'string' ? packageJsonContent : new TextDecoder().decode(packageJsonContent),
-  )
+  const packageJson = parseJsonObject(packageJsonContent)
 
   // Create in-memory TypeScript project
   const project = new Project({
@@ -93,29 +127,33 @@ export const extractFromFiles = (params: {
 
   if (files[tsconfigBuildPath] || files[tsconfigPath]) {
     // Parse tsconfig from files (simple JSON parse - no extends resolution needed for tests)
-    const tsconfigContent = files[tsconfigBuildPath] || files[tsconfigPath]
-    const tsconfig = JSON.parse(
-      typeof tsconfigContent === 'string' ? tsconfigContent : new TextDecoder().decode(tsconfigContent),
-    )
+    const tsconfigContent = files[tsconfigBuildPath] ?? files[tsconfigPath]
+    if (!tsconfigContent) {
+      buildToSourcePath = createBuildToSourcePath()
+    } else {
+      const tsconfig = parseJsonObject(tsconfigContent)
+      const compilerOptions = tsconfig['compilerOptions']
+      const compilerOptionsRecord = toUnknownRecord(compilerOptions)
+      const outDir = compilerOptionsRecord ? getStringProperty(compilerOptionsRecord, 'outDir') : undefined
+      const rootDir = compilerOptionsRecord ? getStringProperty(compilerOptionsRecord, 'rootDir') : undefined
 
-    const { outDir, rootDir } = tsconfig.compilerOptions || {}
-
-    buildToSourcePath = createBuildToSourcePath(
-      outDir && rootDir
-        ? {
-          outDir: join(projectRoot, outDir),
-          rootDir: join(projectRoot, rootDir),
-          projectRoot,
-        }
-        : undefined,
-    )
+      buildToSourcePath = createBuildToSourcePath(
+        outDir && rootDir
+          ? {
+            outDir: join(projectRoot, outDir),
+            rootDir: join(projectRoot, rootDir),
+            projectRoot,
+          }
+          : undefined,
+      )
+    }
   } else {
     // No tsconfig - just extension transformation
     buildToSourcePath = createBuildToSourcePath()
   }
 
   // Determine which entrypoints to extract
-  const exportsField = packageJson.exports as Record<string, string> | undefined
+  const exportsField = getStringRecordProperty(packageJson, 'exports')
   if (!exportsField) {
     throw new Error('package.json missing "exports" field')
   }
@@ -328,8 +366,8 @@ export const extractFromFiles = (params: {
   }
 
   return Package.make({
-    name: packageJson.name,
-    version: packageJson.version,
+    name: getStringProperty(packageJson, 'name') ?? 'unknown',
+    version: getStringProperty(packageJson, 'version') ?? '0.0.0',
     entrypoints: extractedEntrypoints,
     metadata: PackageMetadata.make({
       extractedAt: new Date(),
@@ -374,7 +412,7 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
 
   // Load package.json
   const packageJsonPath = join(projectRoot, 'package.json')
-  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'))
+  const packageJson = parseJsonObject(readFileSync(packageJsonPath, 'utf-8'))
 
   // Detect tsconfig with preference for build config
   const resolvedTsconfigPath = tsconfigPath ?? (() => {
@@ -415,7 +453,7 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
   )
 
   // Determine which entrypoints to extract
-  const exportsField = packageJson.exports as Record<string, string> | undefined
+  const exportsField = getStringRecordProperty(packageJson, 'exports')
   if (!exportsField) {
     throw new Error('package.json missing "exports" field')
   }
@@ -641,8 +679,8 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
   }
 
   return Package.make({
-    name: packageJson.name,
-    version: packageJson.version,
+    name: getStringProperty(packageJson, 'name') ?? 'unknown',
+    version: getStringProperty(packageJson, 'version') ?? '0.0.0',
     entrypoints: extractedEntrypoints,
     metadata: PackageMetadata.make({
       extractedAt: new Date(),

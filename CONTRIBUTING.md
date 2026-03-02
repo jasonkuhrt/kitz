@@ -41,6 +41,17 @@ pnpm turbo run build --filter=@kitz/core   # Single package
 
 **Cross-package dependencies**: Use `workspace:*` and import by package name. Note that `#` imports are scoped per-package - cross-package `#` imports are not valid.
 
+## Linting (Effect-First Custom Rules)
+
+Custom Oxlint rules for Effect-first standards are implemented via the experimental JS plugin at `tools/oxlint-custom-rules/plugin.mjs`.
+
+```bash
+pnpm check:lint                        # Lint (custom rules enforced as errors)
+pnpm test:oxlint-custom-rules          # Fixture tests for custom rules
+```
+
+Rule details and migration guidance: `docs/oxlint-custom-rules.md`.
+
 ## Common Errors
 
 ### TS2742: Inferred Type Cannot Be Named
