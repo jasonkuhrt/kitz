@@ -1,6 +1,6 @@
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
-import { Effect } from 'effect'
+import { Effect, HashSet } from 'effect'
 import * as Precondition from '../models/precondition.js'
 import { RuleDefaults, RuleId } from '../models/rule-defaults.js'
 import * as RuntimeRule from '../models/runtime-rule.js'
@@ -27,7 +27,7 @@ export const rule = RuntimeRule.create<unknown, Metadata>({
 
     // Get existing tags
     const existingTags = yield* git.getTags()
-    const existingTagSet = new Set(existingTags)
+    const existingTagSet = HashSet.fromIterable(existingTags)
 
     // Format planned tags
     const plannedTags = plan.releases.map((r) =>
@@ -35,7 +35,7 @@ export const rule = RuntimeRule.create<unknown, Metadata>({
     )
 
     // Find conflicts
-    const conflictingTags = plannedTags.filter((tag) => existingTagSet.has(tag))
+    const conflictingTags = plannedTags.filter((tag) => HashSet.has(existingTagSet, tag))
 
     if (conflictingTags.length > 0) {
       return {

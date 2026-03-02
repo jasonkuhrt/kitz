@@ -10,7 +10,7 @@ import { FileSystem } from '@effect/platform'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
-import { Effect, Option } from 'effect'
+import { Effect, HashMap, HashSet, MutableHashSet, Option } from 'effect'
 import { buildDependencyGraph } from './cascade.js'
 import { Analysis } from './models/analysis.js'
 import { CascadeImpact } from './models/cascade-impact.js'
@@ -45,16 +45,16 @@ const findLastReleaseTag = (
   tags: readonly string[],
 ): Effect.Effect<string | undefined, Git.GitError | Git.GitParseError, Git.Git> =>
   Effect.gen(function*() {
-    const candidates = new Set<string>()
+    const candidates = MutableHashSet.empty<string>()
 
     for (const pkg of packages) {
       const version = findLatestTagVersion(pkg.name, tags as string[])
       if (Option.isSome(version)) {
-        candidates.add(Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version: version.value })))
+        MutableHashSet.add(candidates, Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version: version.value })))
       }
     }
 
-    if (candidates.size === 0) return undefined
+    if (MutableHashSet.size(candidates) === 0) return undefined
 
     const git = yield* Git.Git
     let closestTag: string | undefined
@@ -123,8 +123,8 @@ export const analyze = (
         const newerCommits = yield* git.getCommitsSince(until).pipe(
           Effect.catchAll(() => Effect.succeed([])),
         )
-        const newerHashes = new Set(newerCommits.map((commit) => commit.hash))
-        commits = commits.filter((commit) => !newerHashes.has(commit.hash))
+        const newerHashes = HashSet.fromIterable(newerCommits.map((commit) => commit.hash))
+        commits = commits.filter((commit) => !HashSet.has(newerHashes, commit.hash))
       }
     }
 
@@ -143,16 +143,16 @@ export const analyze = (
     const aggregated = aggregateByPackage(flatImpacts)
 
     // Pre-compute lookup maps (used for both impact extraction and cascade detection)
-    const scopeToPackage = new Map(packages.map((p) => [p.scope, p]))
-    const nameToPackage = new Map(packages.map((p) => [p.name.moniker, p]))
+    const scopeToPackage = HashMap.fromIterable(packages.map((p): [string, Package] => [p.scope, p]))
+    const nameToPackage = HashMap.fromIterable(packages.map((p): [string, Package] => [p.name.moniker, p]))
 
     // Build impacts and track changed scopes
     const impacts: Impact[] = []
-    const changedScopes = new Set<string>()
-    const impactedPackages = new Set<string>()
+    const changedScopes = MutableHashSet.empty<string>()
+    const impactedPackages = MutableHashSet.empty<string>()
 
     for (const [scope, { bump, commits: packageCommits }] of aggregated) {
-      const pkg = scopeToPackage.get(scope)
+      const pkg = Option.getOrUndefined(HashMap.get(scopeToPackage, scope))
       if (!pkg) continue
 
       // Apply filter if specified
@@ -163,8 +163,8 @@ export const analyze = (
       // Apply exclude if specified
       if (exclude?.includes(pkg.name.moniker)) continue
 
-      changedScopes.add(scope)
-      impactedPackages.add(pkg.name.moniker)
+      MutableHashSet.add(changedScopes, scope)
+      MutableHashSet.add(impactedPackages, pkg.name.moniker)
 
       // Find current version from tags
       const currentVersion = findLatestTagVersion(pkg.name, tags as string[])
@@ -182,18 +182,18 @@ export const analyze = (
 
     // BFS to find all packages that transitively depend on impacted packages.
     // Visited guard prevents infinite loops from circular dependencies.
-    const needsCascade = new Set<string>()
-    const visited = new Set<string>(impactedPackages)
-    const queue = [...impactedPackages]
+    const needsCascade = MutableHashSet.empty<string>()
+    const visited = MutableHashSet.fromIterable(impactedPackages)
+    const queue = Array.from(impactedPackages)
 
     while (queue.length > 0) {
       const pkgName = queue.shift()!
-      const dependents = dependencyGraph.get(pkgName) ?? []
+      const dependents = Option.getOrElse(HashMap.get(dependencyGraph, pkgName), (): readonly string[] => [])
 
       for (const dependent of dependents) {
-        if (visited.has(dependent)) continue
-        visited.add(dependent)
-        needsCascade.add(dependent)
+        if (MutableHashSet.has(visited, dependent)) continue
+        MutableHashSet.add(visited, dependent)
+        MutableHashSet.add(needsCascade, dependent)
         queue.push(dependent)
       }
     }
@@ -202,13 +202,16 @@ export const analyze = (
     const cascades: CascadeImpact[] = []
 
     for (const name of needsCascade) {
-      const pkg = nameToPackage.get(name)
+      const pkg = Option.getOrUndefined(HashMap.get(nameToPackage, name))
       if (!pkg) continue
 
       // Find which impacted packages triggered this cascade
       const triggeredBy: Package[] = []
       for (const impact of impacts) {
-        const impactDependents = dependencyGraph.get(impact.package.name.moniker) ?? []
+        const impactDependents = Option.getOrElse(
+          HashMap.get(dependencyGraph, impact.package.name.moniker),
+          (): readonly string[] => [],
+        )
         if (impactDependents.includes(name)) {
           triggeredBy.push(impact.package)
         }
@@ -229,7 +232,7 @@ export const analyze = (
         return false
       }
       if (exclude?.includes(p.name.moniker)) return false
-      return !changedScopes.has(p.scope) && !needsCascade.has(p.name.moniker)
+      return !MutableHashSet.has(changedScopes, p.scope) && !MutableHashSet.has(needsCascade, p.name.moniker)
     })
 
     return Analysis.make({

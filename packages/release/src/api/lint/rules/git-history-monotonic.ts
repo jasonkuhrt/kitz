@@ -1,6 +1,6 @@
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
-import { Effect, Option, Schema as S } from 'effect'
+import { Effect, MutableHashSet, Option, Schema as S } from 'effect'
 import { RuleId } from '../models/rule-defaults.js'
 import * as RuntimeRule from '../models/runtime-rule.js'
 import { GitHistory } from '../models/violation-location.js'
@@ -14,12 +14,12 @@ import * as Monotonic from '../ops/monotonic.js'
  */
 const extractPackageNames = (tags: string[]): string[] => {
   const decodeExactPin = S.decodeUnknownOption(Pkg.Pin.Exact.FromString)
-  const packageNames = new Set<string>()
+  const packageNames = MutableHashSet.empty<string>()
   for (const tag of tags) {
     const pin = decodeExactPin(tag)
-    if (Option.isSome(pin)) packageNames.add(pin.value.name.moniker)
+    if (Option.isSome(pin)) MutableHashSet.add(packageNames, pin.value.name.moniker)
   }
-  return [...packageNames]
+  return Array.from(packageNames)
 }
 
 /** Audits that version tags increase monotonically with commit ancestry. */

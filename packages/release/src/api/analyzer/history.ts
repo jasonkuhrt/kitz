@@ -2,7 +2,7 @@ import { Str } from '@kitz/core'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Data, Effect, Option, Schema as S } from 'effect'
+import { Data, Effect, MutableHashSet, Option, Schema as S } from 'effect'
 import {
   auditPackageHistory,
   type AuditResult,
@@ -190,11 +190,11 @@ export const audit = (
     const decodeExactPin = S.decodeUnknownOption(Pkg.Pin.Exact.FromString)
 
     // Find all packages with release tags
-    const packageNames = new Set<string>()
+    const packageNames = MutableHashSet.empty<string>()
     for (const tag of tags) {
       const pin = decodeExactPin(tag)
       if (Option.isSome(pin)) {
-        packageNames.add(pin.value.name.moniker)
+        MutableHashSet.add(packageNames, pin.value.name.moniker)
       }
     }
 

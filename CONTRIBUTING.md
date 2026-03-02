@@ -46,7 +46,8 @@ pnpm turbo run build --filter=@kitz/core   # Single package
 Custom Oxlint rules for Effect-first standards are implemented via the experimental JS plugin at `tools/oxlint-custom-rules/plugin.mjs`.
 
 ```bash
-pnpm check:lint                        # Lint (custom rules enforced as errors)
+pnpm check:lint                        # Lint (custom rules as warnings)
+pnpm check:lint:strict-custom-rules    # Lint (custom rules as errors)
 pnpm test:oxlint-custom-rules          # Fixture tests for custom rules
 ```
 

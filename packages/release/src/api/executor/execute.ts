@@ -7,7 +7,7 @@
 
 import { Flo } from '@kitz/flo'
 import { Fs } from '@kitz/fs'
-import { Effect, Match, Option, Schema, Stream } from 'effect'
+import { Effect, HashMap, Match, Option, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
 import type { ExecutorError } from './errors.js'
 import { makeRuntime, type RuntimeConfig } from './runtime.js'
@@ -36,7 +36,7 @@ export interface ObservableResult {
   /** Graph information for visualization */
   readonly graph: {
     readonly layers: readonly (readonly string[])[]
-    readonly nodes: ReadonlyMap<string, { dependencies: readonly string[] }>
+    readonly nodes: HashMap.HashMap<string, { dependencies: readonly string[] }>
   }
 }
 
@@ -172,7 +172,7 @@ export const executeObservable = (
     // Build edges for renderer
     const graphInfo = {
       layers,
-      nodes: new Map(typedNodes.entries()),
+      nodes: HashMap.fromIterable(typedNodes.entries()),
     }
 
     // Get observable execution

@@ -1,0 +1,21 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "extends": ["./.oxlintrc.json"],
+  "rules": {
+    "kitz/no-json-parse": "error",
+    "kitz/no-try-catch": "error",
+    "kitz/no-native-promise-construction": "error",
+    "kitz/no-type-assertion": "error",
+    "kitz/no-native-map-set-in-effect-modules": "error",
+    "kitz/no-throw": "error",
+    "kitz/no-promise-then-chain": "error",
+    "kitz/no-effect-run-in-library-code": "error",
+    "kitz/require-typed-effect-errors": "error",
+    "kitz/require-schema-decode-at-boundary": "error",
+    "kitz/no-process-env-outside-config-modules": "error",
+    "kitz/no-date-now-in-domain": "error",
+    "kitz/no-math-random-in-domain": "error",
+    "kitz/no-console-in-effect-modules": "error",
+    "kitz/require-tagged-error-types": "error"
+  }
+}

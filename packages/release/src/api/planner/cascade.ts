@@ -1,6 +1,6 @@
 import { FileSystem } from '@effect/platform'
 import { Resource } from '@kitz/resource'
-import { Effect, Option } from 'effect'
+import { Effect, HashMap, MutableHashSet, Option } from 'effect'
 import { buildDependencyGraph, type DependencyGraph } from '../analyzer/cascade.js'
 import { makeCascadeCommit, type ReleaseCommit } from '../analyzer/models/commit.js'
 import { findLatestTagVersion } from '../analyzer/version.js'
@@ -92,35 +92,35 @@ export const detect = (
   tags: string[],
 ): Official[] => {
   // Set of packages already getting released (use string form for Set/Map operations)
-  const releasing = new Set(primaryReleases.map((r) => r.package.name.moniker))
+  const releasing = MutableHashSet.fromIterable(primaryReleases.map((r) => r.package.name.moniker))
 
   // Set of packages that need cascade releases
-  const needsCascade = new Set<string>()
+  const needsCascade = MutableHashSet.empty<string>()
 
   // BFS traversal with visited guard to handle circular dependencies safely
-  const visited = new Set<string>(releasing)
-  const queue = [...releasing]
+  const visited = MutableHashSet.fromIterable(releasing)
+  const queue = Array.from(releasing)
 
   while (queue.length > 0) {
     const pkgName = queue.shift()!
-    const dependents = dependencyGraph.get(pkgName) ?? []
+    const dependents = Option.getOrElse(HashMap.get(dependencyGraph, pkgName), (): readonly string[] => [])
 
     for (const dependent of dependents) {
       // Skip if already visited (releasing, already queued for cascade, or in queue)
-      if (visited.has(dependent)) continue
+      if (MutableHashSet.has(visited, dependent)) continue
 
-      visited.add(dependent)
-      needsCascade.add(dependent)
+      MutableHashSet.add(visited, dependent)
+      MutableHashSet.add(needsCascade, dependent)
       queue.push(dependent) // Propagate cascades
     }
   }
 
   // Build cascade releases (use string keys for Map lookup)
-  const nameToPackage = new Map(packages.map((p) => [p.name.moniker, p]))
+  const nameToPackage = HashMap.fromIterable(packages.map((p): [string, Package] => [p.name.moniker, p]))
   const cascades: Official[] = []
 
   for (const name of needsCascade) {
-    const pkg = nameToPackage.get(name)
+    const pkg = Option.getOrUndefined(HashMap.get(nameToPackage, name))
     if (!pkg) continue
 
     const currentVersion = findLatestTagVersion(pkg.name, tags)
@@ -130,7 +130,10 @@ export const detect = (
     // Create synthetic commit entries for changelog generation
     const cascadeCommits: ReleaseCommit[] = []
     for (const primary of primaryReleases) {
-      const primaryDependents = dependencyGraph.get(primary.package.name.moniker) ?? []
+      const primaryDependents = Option.getOrElse(
+        HashMap.get(dependencyGraph, primary.package.name.moniker),
+        (): readonly string[] => [],
+      )
       if (primaryDependents.includes(name)) {
         cascadeCommits.push(
           makeCascadeCommit(

@@ -1,13 +1,13 @@
 import { FileSystem } from '@effect/platform'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
-import { Effect, Option } from 'effect'
+import { Effect, HashMap, HashSet, MutableHashMap, Option } from 'effect'
 import type { Package } from './workspace.js'
 
 /**
  * Dependency graph: package name -> list of packages that depend on it.
  */
-export type DependencyGraph = Map<string, string[]>
+export type DependencyGraph = HashMap.HashMap<string, readonly string[]>
 
 /**
  * Build a reverse dependency graph from package.json files.
@@ -19,13 +19,10 @@ export const buildDependencyGraph = (
   packages: Package[],
 ): Effect.Effect<DependencyGraph, Resource.ResourceError, FileSystem.FileSystem> =>
   Effect.gen(function*() {
-    const graph: DependencyGraph = new Map()
-    const packageNames = new Set(packages.map((p) => p.name.moniker))
-
-    // Initialize all packages with empty dependents
-    for (const name of packageNames) {
-      graph.set(name, [])
-    }
+    const graph = MutableHashMap.fromIterable(
+      packages.map((p): [string, string[]] => [p.name.moniker, []]),
+    )
+    const packageNames = HashSet.fromIterable(packages.map((p) => p.name.moniker))
 
     for (const pkg of packages) {
       // Read manifest using typed resource
@@ -43,13 +40,13 @@ export const buildDependencyGraph = (
 
       for (const depName of Object.keys(allDeps)) {
         // Only track workspace dependencies
-        if (!packageNames.has(depName)) continue
+        if (!HashSet.has(packageNames, depName)) continue
 
-        const dependents = graph.get(depName) ?? []
+        const dependents = Option.getOrElse(MutableHashMap.get(graph, depName), (): string[] => [])
         dependents.push(pkg.name.moniker)
-        graph.set(depName, dependents)
+        MutableHashMap.set(graph, depName, dependents)
       }
     }
 
-    return graph
+    return HashMap.fromIterable(graph)
   })

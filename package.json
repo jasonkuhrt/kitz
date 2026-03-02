@@ -12,6 +12,7 @@
     "format": "dprint fmt",
     "format:check": "dprint check",
     "check:lint": "oxlint --import-plugin packages",
+    "check:lint:strict-custom-rules": "oxlint --config .oxlintrc.custom-strict.json --import-plugin packages",
     "check:types": "turbo run check:types",
     "test:oxlint-custom-rules": "vitest run tools/oxlint-custom-rules/tests/custom-rules.test.ts",
     "check:api-model-style": "node tools/check-api-model-style.mjs",

@@ -5,10 +5,10 @@
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, Option } from 'effect'
+import { Effect, MutableHashSet, Option } from 'effect'
 import type { ReleaseCommit } from '../analyzer/models/commit.js'
-import type { Package } from '../analyzer/workspace.js'
 import { extractImpacts, findLatestTagVersion } from '../analyzer/version.js'
+import type { Package } from '../analyzer/workspace.js'
 import { calculateNextVersion } from '../version/calculate.js'
 import { type CommitEntry, format, type FormattedChangelog } from './format.js'
 
@@ -116,13 +116,13 @@ export const generate = (
       }
 
       let bump = impacts[0]!.bump
-      const seenCommits = new Set<string>()
+      const seenCommits = MutableHashSet.empty<string>()
       const packageCommits: ReleaseCommit[] = []
 
       for (const impact of impacts) {
         bump = Semver.maxBump(bump, impact.bump)
-        if (!seenCommits.has(impact.commit.hash)) {
-          seenCommits.add(impact.commit.hash)
+        if (!MutableHashSet.has(seenCommits, impact.commit.hash)) {
+          MutableHashSet.add(seenCommits, impact.commit.hash)
           packageCommits.push(impact.commit)
         }
       }

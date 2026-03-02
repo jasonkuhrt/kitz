@@ -19,6 +19,11 @@ const MESSAGE_IDS = {
   noEffectRunInLibraryCode: `noEffectRunInLibraryCode`,
   requireTypedEffectErrors: `requireTypedEffectErrors`,
   requireSchemaDecodeAtBoundary: `requireSchemaDecodeAtBoundary`,
+  noProcessEnvOutsideConfigModules: `noProcessEnvOutsideConfigModules`,
+  noDateNowInDomain: `noDateNowInDomain`,
+  noMathRandomInDomain: `noMathRandomInDomain`,
+  noConsoleInEffectModules: `noConsoleInEffectModules`,
+  requireTaggedErrorTypes: `requireTaggedErrorTypes`,
 }
 
 const MESSAGES = {
@@ -32,6 +37,11 @@ const MESSAGES = {
   [MESSAGE_IDS.noEffectRunInLibraryCode]: `Do not run Effects in library code; return Effects and run them in app/CLI entrypoints or tests.`,
   [MESSAGE_IDS.requireTypedEffectErrors]: `Use precise typed Effect error channels; avoid any/unknown in Effect error position.`,
   [MESSAGE_IDS.requireSchemaDecodeAtBoundary]: `Boundary modules that read env/http/file input must decode with Effect Schema.`,
+  [MESSAGE_IDS.noProcessEnvOutsideConfigModules]: `Read process.env only from typed config modules.`,
+  [MESSAGE_IDS.noDateNowInDomain]: `Use Effect Clock service instead of Date.now in domain/library code.`,
+  [MESSAGE_IDS.noMathRandomInDomain]: `Use Effect Random service instead of Math.random in domain/library code.`,
+  [MESSAGE_IDS.noConsoleInEffectModules]: `Use Effect.log* or structured logging adapters instead of console.* in Effect modules.`,
+  [MESSAGE_IDS.requireTaggedErrorTypes]: `Effect error channel types should be tagged (include _tag) for pattern matching.`,
 }
 
 /**
@@ -104,6 +114,46 @@ const isPromiseConstructorReference = (expression) => {
 }
 
 /**
+ * @param {Expression} expression
+ * @returns {boolean}
+ */
+const isDateConstructorReference = (expression) => {
+  if (isIdentifier(expression) && expression.name === `Date`) {
+    return true
+  }
+
+  if (!isMemberExpression(expression)) {
+    return false
+  }
+
+  if (!isIdentifier(expression.object) || expression.object.name !== `globalThis`) {
+    return false
+  }
+
+  return getPropertyName(expression) === `Date`
+}
+
+/**
+ * @param {Expression} expression
+ * @returns {boolean}
+ */
+const isMathObjectReference = (expression) => {
+  if (isIdentifier(expression) && expression.name === `Math`) {
+    return true
+  }
+
+  if (!isMemberExpression(expression)) {
+    return false
+  }
+
+  if (!isIdentifier(expression.object) || expression.object.name !== `globalThis`) {
+    return false
+  }
+
+  return getPropertyName(expression) === `Math`
+}
+
+/**
  * @param {TSTypeName} typeName
  * @returns {string | null}
  */
@@ -136,7 +186,7 @@ const getNormalizedRelativePath = (context) => normalizePath(path.relative(conte
  * @returns {boolean}
  */
 const isTestFilePath = (filePath) =>
-  filePath.includes(`/__tests__/`) || /(?:\.test|\.spec)\.[cm]?[jt]sx?$/.test(filePath)
+  filePath.includes(`/__tests__/`) || /(?:\.(?:test|spec)(?:-d)?|\.bench-d)\.[cm]?[jt]sx?$/.test(filePath)
 
 /**
  * @param {string} filePath
@@ -214,6 +264,20 @@ const isAnyOrUnknownType = (typeAnnotation) =>
   typeAnnotation.type === `TSAnyKeyword` || typeAnnotation.type === `TSUnknownKeyword`
 
 /**
+ * @param {string} filePath
+ * @returns {boolean}
+ */
+const isConfigModuleFile = (filePath) =>
+  filePath.includes(`/config/`) ||
+  filePath.includes(`/configuration/`) ||
+  filePath.includes(`/env/`) ||
+  filePath.endsWith(`/config.ts`) ||
+  filePath.endsWith(`/env.ts`) ||
+  filePath.endsWith(`.config.ts`) ||
+  filePath.endsWith(`.config.mts`) ||
+  filePath.endsWith(`.config.cts`)
+
+/**
  * @param {MemberExpression} memberExpression
  * @returns {boolean}
  */
@@ -223,6 +287,80 @@ const isProcessEnvMember = (memberExpression) => {
   }
 
   return isIdentifier(memberExpression.object) && memberExpression.object.name === `process`
+}
+
+/**
+ * @param {Expression} expression
+ * @returns {boolean}
+ */
+const isConsoleReference = (expression) => {
+  if (isIdentifier(expression) && expression.name === `console`) {
+    return true
+  }
+
+  if (!isMemberExpression(expression)) {
+    return false
+  }
+
+  if (!isIdentifier(expression.object) || expression.object.name !== `globalThis`) {
+    return false
+  }
+
+  return getPropertyName(expression) === `console`
+}
+
+/**
+ * @param {string} filePath
+ * @returns {boolean}
+ */
+const isEffectModuleFile = (filePath) =>
+  filePath.includes(`/packages/`) && filePath.includes(`/src/`) && !isTestFilePath(filePath)
+
+/**
+ * @param {import('oxlint').ESTree.TSPropertySignature} propertySignature
+ * @returns {boolean}
+ */
+const isTagProperty = (propertySignature) => {
+  if (propertySignature.key.type === `Identifier`) {
+    return propertySignature.key.name === `_tag`
+  }
+
+  return propertySignature.key.type === `Literal` && propertySignature.key.value === `_tag`
+}
+
+/**
+ * @param {TSType} typeAnnotation
+ * @returns {boolean}
+ */
+const isTaggedErrorType = (typeAnnotation) => {
+  if (typeAnnotation.type === `TSNeverKeyword`) {
+    return true
+  }
+
+  if (typeAnnotation.type === `TSParenthesizedType`) {
+    return isTaggedErrorType(typeAnnotation.typeAnnotation)
+  }
+
+  if (typeAnnotation.type === `TSIntersectionType`) {
+    return typeAnnotation.types.some(isTaggedErrorType)
+  }
+
+  if (typeAnnotation.type === `TSUnionType`) {
+    return typeAnnotation.types.every(isTaggedErrorType)
+  }
+
+  if (typeAnnotation.type === `TSTypeLiteral`) {
+    return typeAnnotation.members.some(
+      (member) => member.type === `TSPropertySignature` && isTagProperty(member),
+    )
+  }
+
+  if (typeAnnotation.type === `TSTypeReference`) {
+    const typeName = getTypeName(typeAnnotation.typeName)
+    return typeName !== null && (typeName.endsWith(`Error`) || typeName.endsWith(`Err`) || typeName.endsWith(`Failure`))
+  }
+
+  return false
 }
 
 /**
@@ -345,6 +483,10 @@ const noTryCatchRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
+    if (isTestFilePath(getNormalizedRelativePath(context))) {
+      return {}
+    }
+
     return {
       TryStatement(node) {
         context.report({
@@ -391,8 +533,36 @@ const noTypeAssertionRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
+    if (isTestFilePath(getNormalizedRelativePath(context))) {
+      return {}
+    }
+
+    const isAsConstType = (typeAnnotation) =>
+      (typeAnnotation.type === `TSTypeReference` &&
+        typeAnnotation.typeName?.type === `Identifier` &&
+        typeAnnotation.typeName.name === `const`) ||
+      typeAnnotation.type === `TSConstKeyword`
+
+    const isInsideFunction = (node) => {
+      let current = node.parent
+      while (current) {
+        if (
+          current.type === `FunctionDeclaration` ||
+          current.type === `FunctionExpression` ||
+          current.type === `ArrowFunctionExpression`
+        ) {
+          return true
+        }
+        current = current.parent
+      }
+      return false
+    }
+
     return {
       TSAsExpression(node) {
+        if (isAsConstType(node.typeAnnotation) && !isInsideFunction(node)) {
+          return
+        }
         context.report({
           node,
           messageId: MESSAGE_IDS.noTypeAssertion,
@@ -487,6 +657,10 @@ const noPromiseThenChainRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
+    if (isBoundaryAdapterFile(getNormalizedRelativePath(context))) {
+      return {}
+    }
+
     return {
       CallExpression(node) {
         if (!isMemberExpression(node.callee)) {
@@ -624,6 +798,194 @@ const requireSchemaDecodeAtBoundaryRule = defineRule({
   },
 })
 
+const noProcessEnvOutsideConfigModulesRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Disallow process.env usage outside config/env modules.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    const filePath = getNormalizedRelativePath(context)
+    if (isTestFilePath(filePath) || isConfigModuleFile(filePath)) {
+      return {}
+    }
+
+    return {
+      MemberExpression(node) {
+        if (!isProcessEnvMember(node)) {
+          return
+        }
+
+        context.report({
+          node,
+          messageId: MESSAGE_IDS.noProcessEnvOutsideConfigModules,
+        })
+      },
+    }
+  },
+})
+
+const noDateNowInDomainRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Disallow Date.now in domain/library code.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    if (isBoundaryAdapterFile(getNormalizedRelativePath(context))) {
+      return {}
+    }
+
+    return {
+      CallExpression(node) {
+        if (!isMemberExpression(node.callee)) {
+          return
+        }
+
+        if (getPropertyName(node.callee) !== `now`) {
+          return
+        }
+
+        if (!isDateConstructorReference(node.callee.object)) {
+          return
+        }
+
+        context.report({
+          node,
+          messageId: MESSAGE_IDS.noDateNowInDomain,
+        })
+      },
+    }
+  },
+})
+
+const noMathRandomInDomainRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Disallow Math.random in domain/library code.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    if (isBoundaryAdapterFile(getNormalizedRelativePath(context))) {
+      return {}
+    }
+
+    return {
+      CallExpression(node) {
+        if (!isMemberExpression(node.callee)) {
+          return
+        }
+
+        if (getPropertyName(node.callee) !== `random`) {
+          return
+        }
+
+        if (!isMathObjectReference(node.callee.object)) {
+          return
+        }
+
+        context.report({
+          node,
+          messageId: MESSAGE_IDS.noMathRandomInDomain,
+        })
+      },
+    }
+  },
+})
+
+const noConsoleInEffectModulesRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Disallow console usage in Effect modules.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    const filePath = getNormalizedRelativePath(context)
+    if (!isEffectModuleFile(filePath) || isBoundaryAdapterFile(filePath)) {
+      return {}
+    }
+
+    return {
+      CallExpression(node) {
+        if (!isMemberExpression(node.callee)) {
+          return
+        }
+
+        const methodName = getPropertyName(node.callee)
+        if (
+          methodName !== `log` &&
+          methodName !== `error` &&
+          methodName !== `warn` &&
+          methodName !== `info` &&
+          methodName !== `debug` &&
+          methodName !== `trace`
+        ) {
+          return
+        }
+
+        if (!isConsoleReference(node.callee.object)) {
+          return
+        }
+
+        context.report({
+          node,
+          messageId: MESSAGE_IDS.noConsoleInEffectModules,
+        })
+      },
+    }
+  },
+})
+
+const requireTaggedErrorTypesRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Require _tag in Effect error channel types for pattern matching.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    return {
+      TSTypeReference(node) {
+        if (!isEffectTypeName(node.typeName)) {
+          return
+        }
+
+        if (node.typeArguments === null || node.typeArguments.params.length < 2) {
+          return
+        }
+
+        const errorType = node.typeArguments.params[1]
+        if (!errorType || errorType.type === `TSAnyKeyword` || errorType.type === `TSUnknownKeyword`) {
+          return
+        }
+
+        if (isTaggedErrorType(errorType)) {
+          return
+        }
+
+        context.report({
+          node: errorType,
+          messageId: MESSAGE_IDS.requireTaggedErrorTypes,
+        })
+      },
+    }
+  },
+})
+
 export default definePlugin({
   meta: {
     name: `kitz`,
@@ -639,5 +1001,10 @@ export default definePlugin({
     'no-effect-run-in-library-code': noEffectRunInLibraryCodeRule,
     'require-typed-effect-errors': requireTypedEffectErrorsRule,
     'require-schema-decode-at-boundary': requireSchemaDecodeAtBoundaryRule,
+    'no-process-env-outside-config-modules': noProcessEnvOutsideConfigModulesRule,
+    'no-date-now-in-domain': noDateNowInDomainRule,
+    'no-math-random-in-domain': noMathRandomInDomainRule,
+    'no-console-in-effect-modules': noConsoleInEffectModulesRule,
+    'require-tagged-error-types': requireTaggedErrorTypesRule,
   },
 })

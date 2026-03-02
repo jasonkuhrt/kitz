@@ -1,0 +1,1 @@
+globalThis.console.error('boom')

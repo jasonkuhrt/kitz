@@ -65,7 +65,7 @@ const rules: ReadonlyArray<{
   {
     name: `no-try-catch`,
     failingFixtures: [`no-try-catch/fail-1.ts`, `no-try-catch/fail-2.ts`],
-    passingFixtures: [`no-try-catch/pass-1.ts`, `no-try-catch/pass-2.ts`],
+    passingFixtures: [`no-try-catch/pass-1.ts`, `no-try-catch/pass-2.ts`, `no-try-catch/pass-3.test.ts`],
   },
   {
     name: `no-native-promise-construction`,
@@ -80,8 +80,13 @@ const rules: ReadonlyArray<{
   },
   {
     name: `no-type-assertion`,
-    failingFixtures: [`no-type-assertion/fail-1.ts`, `no-type-assertion/fail-2.ts`],
-    passingFixtures: [`no-type-assertion/pass-1.ts`, `no-type-assertion/pass-2.ts`],
+    failingFixtures: [`no-type-assertion/fail-1.ts`, `no-type-assertion/fail-2.ts`, `no-type-assertion/fail-3.ts`],
+    passingFixtures: [
+      `no-type-assertion/pass-1.ts`,
+      `no-type-assertion/pass-2.ts`,
+      `no-type-assertion/pass-3.ts`,
+      `no-type-assertion/pass-4.test.ts`,
+    ],
   },
   {
     name: `no-native-map-set-in-effect-modules`,
@@ -102,7 +107,11 @@ const rules: ReadonlyArray<{
   {
     name: `no-promise-then-chain`,
     failingFixtures: [`no-promise-then-chain/fail-1.ts`, `no-promise-then-chain/fail-2.ts`],
-    passingFixtures: [`no-promise-then-chain/pass-1.ts`, `no-promise-then-chain/pass-2.ts`],
+    passingFixtures: [
+      `no-promise-then-chain/pass-1.ts`,
+      `no-promise-then-chain/pass-2.ts`,
+      `no-promise-then-chain/pass-3.test.ts`,
+    ],
   },
   {
     name: `no-effect-run-in-library-code`,
@@ -127,6 +136,43 @@ const rules: ReadonlyArray<{
       `require-schema-decode-at-boundary/packages/http/pass-1.ts`,
       `require-schema-decode-at-boundary/packages/env/pass-2.ts`,
     ],
+  },
+  {
+    name: `no-process-env-outside-config-modules`,
+    failingFixtures: [
+      `no-process-env-outside-config-modules/fail-1.ts`,
+      `no-process-env-outside-config-modules/fail-2.ts`,
+    ],
+    passingFixtures: [
+      `no-process-env-outside-config-modules/src/config/pass-1.ts`,
+      `no-process-env-outside-config-modules/pass-2.test.ts`,
+    ],
+  },
+  {
+    name: `no-date-now-in-domain`,
+    failingFixtures: [`no-date-now-in-domain/fail-1.ts`, `no-date-now-in-domain/fail-2.ts`],
+    passingFixtures: [`no-date-now-in-domain/src/cli/pass-1.ts`, `no-date-now-in-domain/pass-2.ts`],
+  },
+  {
+    name: `no-math-random-in-domain`,
+    failingFixtures: [`no-math-random-in-domain/fail-1.ts`, `no-math-random-in-domain/fail-2.ts`],
+    passingFixtures: [`no-math-random-in-domain/src/cli/pass-1.ts`, `no-math-random-in-domain/pass-2.ts`],
+  },
+  {
+    name: `no-console-in-effect-modules`,
+    failingFixtures: [
+      `no-console-in-effect-modules/packages/foo/src/fail-1.ts`,
+      `no-console-in-effect-modules/packages/foo/src/fail-2.ts`,
+    ],
+    passingFixtures: [
+      `no-console-in-effect-modules/packages/foo/src/cli/pass-1.ts`,
+      `no-console-in-effect-modules/packages/foo/src/pass-2.ts`,
+    ],
+  },
+  {
+    name: `require-tagged-error-types`,
+    failingFixtures: [`require-tagged-error-types/fail-1.ts`, `require-tagged-error-types/fail-2.ts`],
+    passingFixtures: [`require-tagged-error-types/pass-1.ts`, `require-tagged-error-types/pass-2.ts`],
   },
 ]
 

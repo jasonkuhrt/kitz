@@ -4,7 +4,8 @@ This repo uses Oxlint experimental JS plugins to enforce Effect-first convention
 
 - Plugin file: `tools/oxlint-custom-rules/plugin.mjs`
 - Plugin alias: `kitz`
-- Base severity: `error`
+- Base severity: `warn`
+- Strict custom-rule severity: `error` via `.oxlintrc.custom-strict.json`
 
 ## `kitz/no-json-parse`
 
@@ -241,11 +242,127 @@ Boundary input should be validated and typed as close to ingress as possible.
 ### Migration Guidance
 Define local boundary schemas and decode immediately after reading env/HTTP/file inputs.
 
+## `kitz/no-process-env-outside-config-modules`
+
+### Checks
+Flags `process.env` usage outside config/env modules.
+
+### Allowed
+- modules in `config/`, `configuration/`, or `env/`
+- files named like `*.config.ts`, `config.ts`, `env.ts`
+- tests
+
+### Fail
+```ts
+const token = process.env.KITZ_TOKEN
+```
+
+### Pass
+```ts
+// src/config/env.ts
+const token = process.env.KITZ_TOKEN
+```
+
+### Rationale
+Scattered env reads create implicit dependencies and bypass centralized schema validation.
+
+### Migration Guidance
+Read env once in typed config modules, decode there, and pass typed config values downstream.
+
+## `kitz/no-date-now-in-domain`
+
+### Checks
+Flags `Date.now()` and `globalThis.Date.now()` in non-boundary modules.
+
+### Fail
+```ts
+const now = Date.now()
+```
+
+### Pass
+```ts
+const now = yield* Clock.currentTimeMillis
+```
+
+### Rationale
+Direct wall-clock reads reduce determinism and testability in domain logic.
+
+### Migration Guidance
+Use Effect `Clock` service for time in libraries/domain modules; keep direct Date usage at boundaries only.
+
+## `kitz/no-math-random-in-domain`
+
+### Checks
+Flags `Math.random()` and `globalThis.Math.random()` in non-boundary modules.
+
+### Fail
+```ts
+const pick = Math.random()
+```
+
+### Pass
+```ts
+const value = yield* Random.next
+```
+
+### Rationale
+Global randomness is hard to control in tests and weakens reproducibility.
+
+### Migration Guidance
+Use Effect `Random` service (or injected deterministic randomness) for domain/library logic.
+
+## `kitz/no-console-in-effect-modules`
+
+### Checks
+In package source modules (`packages/*/src/**`, excluding tests/boundaries), flags `console.log/error/warn/info/debug/trace`.
+
+### Fail
+```ts
+console.log('debug payload', payload)
+```
+
+### Pass
+```ts
+yield* Effect.logInfo('debug payload')
+```
+
+### Rationale
+Console usage fragments observability and bypasses structured logging conventions.
+
+### Migration Guidance
+Prefer `Effect.log*` or explicit logging adapters/services.
+
+## `kitz/require-tagged-error-types`
+
+### Checks
+Flags `Effect` error-channel type arguments that are not tagged (missing `_tag` semantics).
+
+### Fail
+```ts
+type Program = Effect.Effect<string, { message: string }, never>
+```
+
+### Pass
+```ts
+type Program = Effect.Effect<string, { _tag: 'ParseError'; message: string }, never>
+```
+
+### Rationale
+Tagged errors improve narrowing, pattern matching, and explicit error algebra.
+
+### Migration Guidance
+Define error types with `_tag` discriminants (or named `*Error` types that follow tagged conventions).
+
 ## Running
 
-### Lint (custom rules as errors)
+### Lint (custom rules as warnings)
 ```bash
 pnpm check:lint
+```
+
+### Strict lint (custom rules as errors)
+```bash
+pnpm check:lint:strict-custom-rules
 ```
 
 ### Rule test suite

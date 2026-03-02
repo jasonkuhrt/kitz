@@ -1,7 +1,7 @@
 import { FileSystem } from '@effect/platform'
 import { Resource } from '@kitz/resource'
 import { Effect } from 'effect'
-import { buildDependencyGraph } from '../analyzer/cascade.js'
+import { buildDependencyGraph, type DependencyGraph } from '../analyzer/cascade.js'
 import type { Analysis } from '../analyzer/models/__.js'
 import { findLatestPreviewNumber } from '../analyzer/version.js'
 import type { Package } from '../analyzer/workspace.js'
@@ -20,7 +20,7 @@ import { type Options, passesFilter } from './options.js'
 const detectCascadesForCandidate = (
   packages: Package[],
   primaryReleases: Item[],
-  dependencyGraph: Map<string, string[]>,
+  dependencyGraph: DependencyGraph,
   tags: string[],
 ): Candidate[] => {
   // Get standard cascades (as official releases)

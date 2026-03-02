@@ -1,5 +1,5 @@
 import { ConventionalCommits } from '@kitz/conventional-commits'
-import { Effect } from 'effect'
+import { Effect, HashSet } from 'effect'
 import * as Precondition from '../models/precondition.js'
 import { RuleId } from '../models/rule-defaults.js'
 import * as RuntimeRule from '../models/runtime-rule.js'
@@ -29,11 +29,11 @@ export const rule = RuntimeRule.create({
     const pr = yield* PrService
     const diff = yield* DiffService
     const scopes = getScopes(pr.commit)
-    const affected = new Set(diff.affectedPackages)
+    const affected = HashSet.fromIterable(diff.affectedPackages)
 
     // Check if all scopes are in affected packages
     for (const scope of scopes) {
-      if (!affected.has(scope)) {
+      if (!HashSet.has(affected, scope)) {
         return Violation.make({
           location: PrTitle.make({ title: pr.title }),
         })

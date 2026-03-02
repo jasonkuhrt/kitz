@@ -25,6 +25,11 @@
     "kitz/no-promise-then-chain": "warn",
     "kitz/no-effect-run-in-library-code": "warn",
     "kitz/require-typed-effect-errors": "warn",
-    "kitz/require-schema-decode-at-boundary": "warn"
+    "kitz/require-schema-decode-at-boundary": "warn",
+    "kitz/no-process-env-outside-config-modules": "warn",
+    "kitz/no-date-now-in-domain": "warn",
+    "kitz/no-math-random-in-domain": "warn",
+    "kitz/no-console-in-effect-modules": "warn",
+    "kitz/require-tagged-error-types": "warn"
   }
 }

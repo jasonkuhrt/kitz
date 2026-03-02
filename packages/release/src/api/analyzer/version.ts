@@ -2,7 +2,7 @@ import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, Either, Option, Schema as S } from 'effect'
+import { Effect, Either, HashMap, MutableHashMap, Option, Schema as S } from 'effect'
 import { CandidateSchema } from '../version/models/candidate.js'
 import { EphemeralSchema } from '../version/models/ephemeral.js'
 import { ReleaseCommit } from './models/commit.js'
@@ -85,25 +85,25 @@ export const extractImpacts = (
  */
 export const aggregateByPackage = (
   impacts: CommitImpact[],
-): Map<string, { bump: Semver.BumpType; commits: ReleaseCommit[] }> => {
-  const result = new Map<string, { bump: Semver.BumpType; commits: ReleaseCommit[] }>()
+): HashMap.HashMap<string, { bump: Semver.BumpType; commits: ReleaseCommit[] }> => {
+  const result = MutableHashMap.empty<string, { bump: Semver.BumpType; commits: ReleaseCommit[] }>()
 
   for (const impact of impacts) {
-    const existing = result.get(impact.scope)
-    if (existing) {
-      result.set(impact.scope, {
-        bump: Semver.maxBump(existing.bump, impact.bump),
-        commits: [...existing.commits, impact.commit],
+    const existing = MutableHashMap.get(result, impact.scope)
+    if (Option.isSome(existing)) {
+      MutableHashMap.set(result, impact.scope, {
+        bump: Semver.maxBump(existing.value.bump, impact.bump),
+        commits: [...existing.value.commits, impact.commit],
       })
     } else {
-      result.set(impact.scope, {
+      MutableHashMap.set(result, impact.scope, {
         bump: impact.bump,
         commits: [impact.commit],
       })
     }
   }
 
-  return result
+  return HashMap.fromIterable(result)
 }
 
 /**

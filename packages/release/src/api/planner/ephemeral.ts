@@ -3,7 +3,7 @@ import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Resource } from '@kitz/resource'
 import { Effect } from 'effect'
-import { buildDependencyGraph } from '../analyzer/cascade.js'
+import { buildDependencyGraph, type DependencyGraph } from '../analyzer/cascade.js'
 import type { Analysis } from '../analyzer/models/__.js'
 import { findLatestPrNumber } from '../analyzer/version.js'
 import type { Package } from '../analyzer/workspace.js'
@@ -23,7 +23,7 @@ import { passesFilter, type PrOptions } from './options.js'
 const detectCascadesForEphemeral = (
   packages: Package[],
   primaryReleases: Item[],
-  dependencyGraph: Map<string, string[]>,
+  dependencyGraph: DependencyGraph,
   tags: string[],
   prNumber: number,
   sha: Git.Sha.Sha,

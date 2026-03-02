@@ -1,5 +1,5 @@
 import { ConventionalCommits } from '@kitz/conventional-commits'
-import { Effect } from 'effect'
+import { Effect, HashSet } from 'effect'
 import * as Precondition from '../models/precondition.js'
 import { RuleId } from '../models/rule-defaults.js'
 import * as RuntimeRule from '../models/runtime-rule.js'
@@ -25,11 +25,11 @@ export const rule = RuntimeRule.create({
     const pr = yield* PrService
     const monorepo = yield* MonorepoService
     const scopes = getScopes(pr.commit)
-    const validScopes = new Set(monorepo.validScopes)
+    const validScopes = HashSet.fromIterable(monorepo.validScopes)
 
     // Check if all scopes are valid package names
     for (const scope of scopes) {
-      if (!validScopes.has(scope)) {
+      if (!HashSet.has(validScopes, scope)) {
         return Violation.make({
           location: PrTitle.make({ title: pr.title }),
         })

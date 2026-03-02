@@ -1,5 +1,5 @@
 import { ConventionalCommits } from '@kitz/conventional-commits'
-import { Effect } from 'effect'
+import { Effect, HashSet } from 'effect'
 import * as Precondition from '../models/precondition.js'
 import { RuleId } from '../models/rule-defaults.js'
 import * as RuntimeRule from '../models/runtime-rule.js'
@@ -9,7 +9,7 @@ import { DiffService } from '../services/diff.js'
 import { PrService } from '../services/pr.js'
 
 /** Types that don't trigger releases. */
-const noReleaseTypes = new Set(['docs', 'style', 'test', 'ci', 'chore'])
+const noReleaseTypes = HashSet.make('docs', 'style', 'test', 'ci', 'chore')
 
 /** Verifies that release-triggering types (`feat`, `fix`, breaking) have actual file changes. */
 export const rule = RuntimeRule.create({
@@ -27,7 +27,7 @@ export const rule = RuntimeRule.create({
       : commit.targets[0]!.type.value // Multi: use first target's type
 
     // If it's a no-release type, check for src changes
-    if (noReleaseTypes.has(typeValue)) {
+    if (HashSet.has(noReleaseTypes, typeValue)) {
       const hasSrcChanges = diff.files.some((f) => f.path.includes('/src/'))
       if (hasSrcChanges) {
         return Violation.make({
