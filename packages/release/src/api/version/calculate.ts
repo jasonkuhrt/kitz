@@ -4,9 +4,20 @@ import { Option } from 'effect'
 /**
  * Calculate the next version given a current version and bump type.
  *
- * Applies phase-aware bump mapping:
- * - Initial phase (0.x.x): major/minor -> minor, patch -> patch
- * - Public phase (1.x.x+): standard semver semantics
+ * **Phase-aware bump mapping** prevents premature 1.0.0 releases:
+ *
+ * | Current Phase | Commit Impact | Effective Bump | Example               |
+ * | ------------- | ------------- | -------------- | --------------------- |
+ * | None (first)  | major/minor   | minor          | -> 0.1.0              |
+ * | None (first)  | patch         | patch          | -> 0.0.1              |
+ * | 0.x.x         | major         | minor          | 0.2.0 -> 0.3.0       |
+ * | 0.x.x         | minor         | minor          | 0.2.0 -> 0.3.0       |
+ * | 0.x.x         | patch         | patch          | 0.2.1 -> 0.2.2       |
+ * | 1.x.x+        | major         | major          | 1.2.3 -> 2.0.0       |
+ * | 1.x.x+        | minor         | minor          | 1.2.3 -> 1.3.0       |
+ * | 1.x.x+        | patch         | patch          | 1.2.3 -> 1.2.4       |
+ *
+ * The mapping is delegated to `Semver.mapBumpForPhase()`.
  */
 export const calculateNextVersion = (
   current: Option.Option<Semver.Semver>,

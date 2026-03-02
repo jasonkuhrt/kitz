@@ -56,6 +56,7 @@ export const renderTree = (forecast: Forecast, options?: { maxItems?: number }):
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Format a primary release line with dot-leader alignment, commit count, and latest commit info. */
 const formatPrimaryLine = (release: ForecastRelease): string => {
   const name = release.packageName
   const commitCount = release.commits.length
@@ -69,6 +70,7 @@ const formatPrimaryLine = (release: ForecastRelease): string => {
   return `${dotLeader(name, 24)} ${countLabel}${commitSuffix}`
 }
 
+/** Format a cascade release line with dot-leader alignment and trigger packages. */
 const formatCascadeLine = (cascade: ForecastCascade): string => {
   const name = cascade.packageName
   const viaLabel = cascade.triggeredBy.length > 0

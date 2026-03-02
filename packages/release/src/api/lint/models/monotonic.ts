@@ -12,8 +12,12 @@ export interface TagInfo {
 
 /**
  * A violation of monotonic versioning.
+ *
+ * Represents a case where a version is out of order relative to commit ancestry.
+ * The `relationship` field indicates whether the conflicting tag is on an
+ * ancestor or descendant commit.
  */
-export interface Violation {
+export interface MonotonicViolation {
   readonly existingVersion: Semver.Semver
   readonly existingSha: Git.Sha.Sha
   readonly relationship: 'ancestor' | 'descendant'
@@ -27,7 +31,7 @@ export interface ValidationResult {
   readonly valid: boolean
   readonly version: Semver.Semver
   readonly sha: Git.Sha.Sha
-  readonly violations: readonly Violation[]
+  readonly violations: readonly MonotonicViolation[]
 }
 
 /**

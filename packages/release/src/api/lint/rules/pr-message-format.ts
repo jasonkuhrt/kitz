@@ -3,6 +3,7 @@ import * as Precondition from '../models/precondition.js'
 import { RuleId } from '../models/rule-defaults.js'
 import * as RuntimeRule from '../models/runtime-rule.js'
 
+/** Placeholder: custom regex enforcement against PR title/body (not yet implemented). */
 export const rule = RuntimeRule.create({
   id: RuleId.make('pr.message.format'),
   description: 'Custom regex message enforcement',

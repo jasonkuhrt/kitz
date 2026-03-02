@@ -15,6 +15,7 @@ interface Metadata {
   readonly existingTags: readonly string[]
 }
 
+/** Verifies that planned release tags do not already exist in the git repository. */
 export const rule = RuntimeRule.create<unknown, Metadata>({
   id: RuleId.make('plan.tags-unique'),
   description: 'planned release tags do not already exist in git',

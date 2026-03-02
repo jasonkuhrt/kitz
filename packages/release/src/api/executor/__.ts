@@ -2,10 +2,10 @@ export * as Errors from './errors.js'
 export {
   execute,
   executeObservable,
+  type ExecutionResult,
   formatLifecycleEvent,
   type LifecycleEventLine,
   type ObservableResult,
-  type Result,
   toPayload,
 } from './execute.js'
 export * as Preflight from './preflight.js'

@@ -5,6 +5,7 @@ import * as RuntimeRule from '../models/runtime-rule.js'
 import { Environment } from '../models/violation-location.js'
 import { Violation } from '../models/violation.js'
 
+/** Verifies that the git working directory has no uncommitted changes before publishing. */
 export const rule = RuntimeRule.create({
   id: RuleId.make('env.git-clean'),
   description: 'git working directory has no uncommitted changes',
@@ -17,7 +18,8 @@ export const rule = RuntimeRule.create({
     if (!isClean) {
       return Violation.make({
         location: Environment.make({
-          message: 'Working directory has uncommitted changes',
+          message:
+            'Working directory has uncommitted changes. Commit or stash your changes before running release apply.',
         }),
       })
     }

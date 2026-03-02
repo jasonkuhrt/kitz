@@ -1,14 +1,20 @@
 import { Str } from '@kitz/core'
 import { Semver } from '@kitz/semver'
 import { Option } from 'effect'
-import type { RequestedCascadeAnalysis } from '../planner/cascade.js'
+import type { CascadeQueryResult } from '../planner/cascade.js'
 import type { Item } from '../planner/models/item.js'
 import type { Plan } from '../planner/models/plan.js'
 
 /**
  * Render a human-readable plan summary for CLI output.
+ *
+ * Returns a message indicating no releases if the plan is empty.
  */
 export const renderPlan = (plan: Plan): string => {
+  if (plan.releases.length === 0 && plan.cascades.length === 0) {
+    return 'No releases planned.'
+  }
+
   const output = Str.Builder()
   output`Releases:`
   output``
@@ -113,7 +119,7 @@ export const renderApplyDone = (releasedCount: number): string => {
 /**
  * Render cascade analysis for the `status` command.
  */
-export const renderCascadeAnalysis = (analyses: readonly RequestedCascadeAnalysis[]): string => {
+export const renderCascadeAnalysis = (analyses: readonly CascadeQueryResult[]): string => {
   const output = Str.Builder()
 
   for (const analysis of analyses) {
@@ -139,7 +145,7 @@ export const renderCascadeAnalysis = (analyses: readonly RequestedCascadeAnalysi
 /**
  * Render cascade details for a specific package.
  */
-export const renderCascadeForPackage = (analysis: RequestedCascadeAnalysis): string => {
+export const renderCascadeForPackage = (analysis: CascadeQueryResult): string => {
   const output = Str.Builder()
 
   if (!analysis.packageName) {

@@ -16,6 +16,7 @@ const getScopes = (commit: ConventionalCommits.Commit.Commit): readonly string[]
   return commit.targets.map((t) => t.scope)
 }
 
+/** Verifies that PR title scopes correspond to known packages in the monorepo. */
 export const rule = RuntimeRule.create({
   id: RuleId.make('pr.monorepo.scopes.match-known'),
   description: 'Scope(s) exist in package map',

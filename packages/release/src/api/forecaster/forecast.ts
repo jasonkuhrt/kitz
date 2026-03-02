@@ -48,6 +48,12 @@ export const forecast = (analysis: Analysis, recon: Recon): Forecast => {
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Convert raw release commits to display-friendly format for PR comments.
+ *
+ * Extracts scope-specific info (type, description, breaking flag) and
+ * builds GitHub commit URLs from the repository base URL.
+ */
 const buildCommitDisplays = (
   commits: readonly ReleaseCommit[],
   scope: string,

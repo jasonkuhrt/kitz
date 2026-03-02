@@ -16,3 +16,6 @@ export const ReleaseError = Err.TaggedContextualError('ReleaseError', baseTags, 
 })
 
 export type ReleaseError = InstanceType<typeof ReleaseError>
+
+/** Union of all planner errors. */
+export type All = ReleaseError

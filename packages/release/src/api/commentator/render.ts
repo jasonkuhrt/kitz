@@ -105,6 +105,7 @@ export const render = (
 // Sub-renderers
 // ---------------------------------------------------------------------------
 
+/** Render a single primary release as a checkbox list item with commits and version info. */
 const renderReleaseItem = (
   release: ForecastRelease,
   publishHistory: readonly PublishRecord[],
@@ -136,6 +137,7 @@ const renderReleaseItem = (
   return lines.join(Str.Char.newline)
 }
 
+/** Render a single cascade release as a checkbox list item with trigger info. */
 const renderCascadeItem = (
   cascade: ForecastCascade,
 ): string => {
@@ -155,6 +157,7 @@ const renderCascadeItem = (
 // Formatters
 // ---------------------------------------------------------------------------
 
+/** Render commit SHA links, truncating to `max` with a "+N" suffix. */
 const renderCommitShas = (commits: readonly CommitDisplay[], max: number): string => {
   const shown = commits.slice(0, max)
   const remaining = commits.length - shown.length
@@ -166,11 +169,13 @@ const renderCommitShas = (commits: readonly CommitDisplay[], max: number): strin
   return shas.join(' ')
 }
 
+/** Render the projected official version with bump type and current version. */
 const renderVersionLine = (release: ForecastRelease): string => {
   const officialStr = release.nextOfficialVersion.toString()
   return `**\`${officialStr}\`** ${release.bump} (from ${release.currentVersionDisplay})`
 }
 
+/** Render previously published versions as npm links, latest first and bold. */
 const renderPublishedVersions = (versions: readonly PublishRecord[], packageName: string): string => {
   // Sort by iteration descending (latest first)
   const sorted = [...versions].sort((a, b) => b.iteration - a.iteration)
@@ -199,6 +204,7 @@ const shortPrVersion = (version: string): string => {
 // Status banner
 // ---------------------------------------------------------------------------
 
+/** Render the publish status banner (publishing, published, failed, or empty for idle). */
 const renderStatusBanner = (state: PublishState, owner: string, repo: string): string => {
   switch (state) {
     case 'publishing':
@@ -216,6 +222,7 @@ const renderStatusBanner = (state: PublishState, owner: string, repo: string): s
 // Explainer
 // ---------------------------------------------------------------------------
 
+/** Render the collapsible "How release calculation works" explainer block. */
 const renderExplainer = (): string => {
   const lines = [
     '<details><summary>How release calculation works</summary>',

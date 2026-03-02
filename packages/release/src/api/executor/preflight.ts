@@ -1,12 +1,16 @@
 import { CommandExecutor } from '@effect/platform'
 import { Err } from '@kitz/core'
 import { Git } from '@kitz/git'
-import { Effect, Layer, Schema as S } from 'effect'
+import { Effect, Layer, Option, Schema as S } from 'effect'
 import * as Lint from '../lint/__.js'
 import { Finished } from '../lint/models/report.js'
 import type { ReleaseInfo } from './publish.js'
 
 const baseTags = ['kit', 'release', 'preflight'] as const
+const NpmAuthMetadataSchema = S.Struct({ username: S.String })
+const GitRemoteMetadataSchema = S.Struct({ url: S.String })
+const decodeNpmAuthMetadata = S.decodeUnknownOption(NpmAuthMetadataSchema)
+const decodeGitRemoteMetadata = S.decodeUnknownOption(GitRemoteMetadataSchema)
 
 /**
  * Error during preflight checks.
@@ -19,7 +23,9 @@ export const PreflightError = Err.TaggedContextualError(
       check: S.String,
       detail: S.String,
     }),
-    message: (ctx) => `Preflight check failed (${ctx.check}): ${ctx.detail}`,
+    message: (ctx) =>
+      `Preflight check '${ctx.check}' failed: ${ctx.detail}\n`
+      + `  Run 'release lint --only-rule "${ctx.check}"' to investigate.`,
   },
 )
 
@@ -131,10 +137,16 @@ export const run = (
 
       // Extract metadata from successful checks
       if (result.rule.id === 'env.npm-authenticated' && result.metadata) {
-        npmUser = (result.metadata as { username: string }).username
+        npmUser = decodeNpmAuthMetadata(result.metadata).pipe(
+          Option.map((metadata) => metadata.username),
+          Option.getOrElse(() => npmUser),
+        )
       }
       if (result.rule.id === 'env.git-remote' && result.metadata) {
-        gitRemote = (result.metadata as { url: string }).url
+        gitRemote = decodeGitRemoteMetadata(result.metadata).pipe(
+          Option.map((metadata) => metadata.url),
+          Option.getOrElse(() => gitRemote),
+        )
       }
 
       // Collect violations

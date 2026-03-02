@@ -1,3 +1,5 @@
+import { Option, Schema as S } from 'effect'
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -28,6 +30,24 @@ const HEAD_SHA_RE = /<!-- head-sha:(\S+) -->/
 const PUBLISH_STATE_RE = /<!-- publish-state:(\S+) -->/
 const PUBLISH_HISTORY_RE = /<!-- kitz-release-publish-history\n([\s\S]*?)\n-->/
 
+const PublishStateSchema = S.Literal('idle', 'publishing', 'published', 'failed')
+const PublishRecordSchema = S.Struct({
+  package: S.String,
+  version: S.String,
+  iteration: S.Number,
+  sha: S.String,
+  timestamp: S.String,
+  runId: S.String,
+})
+const PublishHistoryEnvelope = S.Struct({
+  publishes: S.Array(PublishRecordSchema),
+})
+const PublishHistoryJson = S.parseJson(PublishHistoryEnvelope)
+
+const decodePublishState = S.decodeUnknownOption(PublishStateSchema)
+const decodePublishHistory = S.decodeUnknownOption(PublishHistoryJson)
+const encodePublishHistory = S.encodeSync(PublishHistoryJson)
+
 // ---------------------------------------------------------------------------
 // Parse
 // ---------------------------------------------------------------------------
@@ -40,24 +60,16 @@ const PUBLISH_HISTORY_RE = /<!-- kitz-release-publish-history\n([\s\S]*?)\n-->/
 export const parseMetadata = (body: string): Metadata | null => {
   if (!body.includes(PLAN_MARKER)) return null
 
-  const shaMatch = body.match(HEAD_SHA_RE)
-  const stateMatch = body.match(PUBLISH_STATE_RE)
-  const historyMatch = body.match(PUBLISH_HISTORY_RE)
-
-  const headSha = shaMatch?.[1] ?? ''
-  const publishState = parsePublishState(stateMatch?.[1])
-
-  let publishHistory: PublishRecord[] = []
-  if (historyMatch?.[1]) {
-    try {
-      const parsed = JSON.parse(historyMatch[1])
-      if (parsed?.publishes && Array.isArray(parsed.publishes)) {
-        publishHistory = parsed.publishes
-      }
-    } catch {
-      // Malformed JSON — treat as empty history
-    }
-  }
+  const headSha = getCapture(HEAD_SHA_RE)(body).pipe(Option.getOrElse(() => ''))
+  const publishState = getCapture(PUBLISH_STATE_RE)(body).pipe(
+    Option.flatMap(decodePublishState),
+    Option.getOrElse((): PublishState => 'idle'),
+  )
+  const publishHistory = getCapture(PUBLISH_HISTORY_RE)(body).pipe(
+    Option.flatMap(decodePublishHistory),
+    Option.map((history) => history.publishes),
+    Option.getOrElse((): readonly PublishRecord[] => []),
+  )
 
   return { headSha, publishState, publishHistory }
 }
@@ -85,7 +97,7 @@ export const renderMetadataBlock = (metadata: Metadata): string => {
     `<!-- head-sha:${metadata.headSha} -->`,
     `<!-- publish-state:${metadata.publishState} -->`,
     `<!-- kitz-release-publish-history`,
-    JSON.stringify({ publishes: metadata.publishHistory }),
+    encodePublishHistory({ publishes: metadata.publishHistory }),
     `-->`,
   ]
   return lines.join('\n')
@@ -95,11 +107,5 @@ export const renderMetadataBlock = (metadata: Metadata): string => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const VALID_STATES: readonly PublishState[] = ['idle', 'publishing', 'published', 'failed']
-
-const parsePublishState = (value: string | undefined): PublishState => {
-  if (value && (VALID_STATES as readonly string[]).includes(value)) {
-    return value as PublishState
-  }
-  return 'idle'
-}
+const getCapture = (regex: RegExp) => (input: string): Option.Option<string> =>
+  Option.fromNullable(input.match(regex)?.[1])

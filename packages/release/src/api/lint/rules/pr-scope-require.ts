@@ -15,6 +15,7 @@ const getScopes = (commit: ConventionalCommits.Commit.Commit): readonly string[]
   return commit.targets.map((t) => t.scope)
 }
 
+/** Requires the PR title to include at least one scope. */
 export const rule = RuntimeRule.create({
   id: RuleId.make('pr.scope.require'),
   description: 'At least one scope required',

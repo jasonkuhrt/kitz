@@ -2,10 +2,10 @@ import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Option, Schema as S } from 'effect'
-import type { AuditResult, AuditViolation, TagInfo, ValidationResult, Violation } from '../models/monotonic.js'
+import type { AuditResult, AuditViolation, MonotonicViolation, TagInfo, ValidationResult } from '../models/monotonic.js'
 
 // Re-export types for single-source imports
-export type { AuditResult, AuditViolation, TagInfo, ValidationResult, Violation } from '../models/monotonic.js'
+export type { AuditResult, AuditViolation, MonotonicViolation, TagInfo, ValidationResult } from '../models/monotonic.js'
 
 /**
  * Parse release tags for a package and get their SHAs.
@@ -54,7 +54,7 @@ export const validateAdjacent = (
     const git = yield* Git.Git
     const tagInfos = yield* getPackageTagInfos(packageName, tags)
 
-    const violations: Violation[] = []
+    const violations: MonotonicViolation[] = []
 
     // Find all tags that are ancestors (came before) and descendants (came after)
     let highestAncestor: TagInfo | undefined

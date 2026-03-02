@@ -7,6 +7,7 @@ import { PrTitle } from '../models/violation-location.js'
 import { Violation } from '../models/violation.js'
 import { PrService } from '../services/pr.js'
 
+/** Verifies that the PR title's conventional commit type is in the allowed set. */
 export const rule = RuntimeRule.create({
   id: RuleId.make('pr.type.match-known'),
   description: 'Type in allowed set (standard or custom)',

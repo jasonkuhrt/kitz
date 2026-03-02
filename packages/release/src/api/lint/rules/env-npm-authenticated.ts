@@ -2,9 +2,9 @@ import { NpmRegistry } from '@kitz/npm-registry'
 import { Effect, Schema } from 'effect'
 import { RuleDefaults, RuleId } from '../models/rule-defaults.js'
 import * as RuntimeRule from '../models/runtime-rule.js'
-import { RuleOptionsService } from '../services/rule-options.js'
 import { Environment } from '../models/violation-location.js'
 import { Violation } from '../models/violation.js'
+import { RuleOptionsService } from '../services/rule-options.js'
 
 interface Options {
   readonly registry?: string
@@ -18,6 +18,7 @@ interface Metadata {
   readonly username: string
 }
 
+/** Verifies that npm CLI is authenticated (can run `npm whoami`). */
 export const rule = RuntimeRule.create<Options, Metadata>({
   id: RuleId.make('env.npm-authenticated'),
   description: 'npm auth is configured (npm whoami succeeds)',
@@ -34,7 +35,8 @@ export const rule = RuntimeRule.create<Options, Metadata>({
         Effect.succeed({
           violation: Violation.make({
             location: Environment.make({
-              message: error.context.detail ?? 'npm auth failed',
+              message: (error.context.detail ?? 'npm auth failed')
+                + '. Run `npm login` or set NPM_TOKEN in your environment.',
             }),
           }),
         })

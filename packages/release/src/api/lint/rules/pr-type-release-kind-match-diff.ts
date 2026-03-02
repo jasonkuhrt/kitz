@@ -11,6 +11,7 @@ import { PrService } from '../services/pr.js'
 /** Types that don't trigger releases. */
 const noReleaseTypes = new Set(['docs', 'style', 'test', 'ci', 'chore'])
 
+/** Verifies that release-triggering types (`feat`, `fix`, breaking) have actual file changes. */
 export const rule = RuntimeRule.create({
   id: RuleId.make('pr.type.release-kind-match-diff'),
   description: 'No-release type cannot have src changes',

@@ -9,7 +9,7 @@ import { OfficialIncrement } from '../version/models/official-increment.js'
 import { detect as detectCascades } from './cascade.js'
 import { Official } from './models/item-official.js'
 import { Plan } from './models/plan.js'
-import type { Options } from './options.js'
+import { type Options, passesFilter } from './options.js'
 
 /**
  * Context required for planning.
@@ -44,11 +44,7 @@ export const official = (
     const releases: Official[] = []
 
     for (const impact of analysis.impacts) {
-      // Apply exclude filter
-      if (options?.exclude?.includes(impact.package.name.moniker)) continue
-
-      // Apply include filter
-      if (options?.packages && !options.packages.includes(impact.package.name.moniker)) continue
+      if (!passesFilter(impact.package.name.moniker, options)) continue
 
       // Calculate next version from impact
       const nextVersion = calculateNextVersion(impact.currentVersion, impact.bump)

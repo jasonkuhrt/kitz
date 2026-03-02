@@ -1,7 +1,7 @@
 export * from './candidate.js'
 export * as Cascade from './cascade.js'
 export * from './ephemeral.js'
-export * from './errors.js'
+export * as Errors from './errors.js'
 export * from './models/__.js'
 export * from './official.js'
 export * from './options.js'

@@ -4,6 +4,12 @@ import { Severity } from './severity.js'
 /** Dot-notation identifier (e.g. 'pr.type.match-known'). */
 export const RuleId = Schema.String.pipe(
   Schema.pattern(/^[a-z]+(\.[a-z]+(-[a-z]+)*)+$/),
+  Schema.annotations({
+    description: 'Dot-notation rule identifier',
+    examples: ['pr.type.match-known', 'env.git-clean', 'repo.squash-only'],
+    message: () =>
+      `Expected a dot-notation rule ID (e.g. 'pr.type.match-known'). Must be lowercase segments separated by dots, with optional hyphens within segments.`,
+  }),
   Schema.brand('RuleId'),
 )
 export type RuleId = typeof RuleId.Type

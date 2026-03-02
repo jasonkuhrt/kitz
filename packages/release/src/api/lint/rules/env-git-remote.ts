@@ -18,6 +18,7 @@ interface Metadata {
   readonly url: string
 }
 
+/** Verifies that the git remote (default: origin) is configured and reachable. */
 export const rule = RuntimeRule.create<Options, Metadata>({
   id: RuleId.make('env.git-remote'),
   description: 'git remote is configured and reachable',

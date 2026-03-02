@@ -10,7 +10,8 @@ import * as Rules from '../rules/__.js'
 import { type EvaluatedPreconditions, EvaluatedPreconditionsService } from '../services/preconditions.js'
 import { RuleOptionsService } from '../services/rule-options.js'
 
-const allRules = Obj.values(Rules) as RuntimeRule.RuntimeRule[]
+/** Compute the list of all registered rules. Called per check invocation to pick up any dynamic changes. */
+const getAllRules = (): RuntimeRule.RuntimeRule[] => Obj.values(Rules) as RuntimeRule.RuntimeRule[]
 
 export interface CheckParams {
   config: ResolvedConfig
@@ -109,7 +110,8 @@ const evaluatePrecondition = (
   if (Precondition.HasGitHubAccess.is(precondition)) return evaluated.hasGitHubAccess
   if (Precondition.HasReleasePlan.is(precondition)) return evaluated.hasReleasePlan
   // Exhaustive check - if we add new preconditions, TypeScript will error here
-  return precondition satisfies never
+  const _: never = precondition
+  return _
 }
 
 /**
@@ -134,7 +136,7 @@ export const check = (
   EvaluatedPreconditionsService | Git.Git
 > => {
   const { config } = params
-  const { active } = resolveRulesToRun(allRules, config)
+  const { active } = resolveRulesToRun(getAllRules(), config)
 
   return Effect.gen(function*() {
     const preconditions = yield* EvaluatedPreconditionsService

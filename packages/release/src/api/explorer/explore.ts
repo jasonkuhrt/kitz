@@ -9,6 +9,12 @@ import type { CiContext, GitIdentity, Recon } from './models/__.js'
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Detect the PR number from environment variables.
+ *
+ * Checks (in order): `GITHUB_PR_NUMBER`, `PR_NUMBER`, `CI_PULL_REQUEST` (URL form).
+ * Returns `null` if no PR number can be determined.
+ */
 export const detectPrNumber = (vars: Record<string, string | undefined>): number | null => {
   if (vars['GITHUB_PR_NUMBER']) {
     const num = parseInt(vars['GITHUB_PR_NUMBER'], 10)
@@ -28,6 +34,7 @@ export const detectPrNumber = (vars: Record<string, string | undefined>): number
   return null
 }
 
+/** Detect CI provider and PR context from environment variables. */
 const detectExecutionContext = (vars: Record<string, string | undefined>): CiContext => {
   const prNumber = detectPrNumber(vars)
   if (vars['GITHUB_ACTIONS'] === 'true') {
@@ -39,6 +46,7 @@ const detectExecutionContext = (vars: Record<string, string | undefined>): CiCon
   return { detected: false, provider: null, prNumber }
 }
 
+/** Parse `GITHUB_REPOSITORY` env var format (`"owner/repo"`) into components. */
 const parseGitHubRepository = (value: string): { owner: string; repo: string } | null => {
   const trimmed = value.trim()
   const parts = trimmed.split('/')
@@ -49,6 +57,7 @@ const parseGitHubRepository = (value: string): { owner: string; repo: string } |
   return { owner, repo }
 }
 
+/** Parse a GitHub remote URL (HTTPS or SSH) into owner/repo components. */
 const parseGitHubRemote = (url: string): { owner: string; repo: string } | null => {
   const match = url.match(/github\.com[/:]([^/]+)\/([^/]+?)(?:\.git)?$/)
   if (!match) return null
@@ -111,6 +120,7 @@ export const resolveReleaseTarget = (
     } satisfies GitIdentity
   })
 
+/** Extract a non-empty GitHub token from environment variables. */
 const resolveGithubToken = (
   vars: Record<string, string | undefined>,
 ): string | null => {
@@ -145,6 +155,17 @@ export const explore = (): Effect.Effect<
     const branch = yield* git.getCurrentBranch()
     const headSha = yield* git.getHeadSha()
     const isClean = yield* git.isClean()
+
+    // Detect shallow clone (CI environments commonly use --depth=1)
+    const isShallow = vars['GIT_DEPTH'] === '1'
+      || vars['GITHUB_ACTIONS'] === 'true' && vars['GITHUB_EVENT_NAME'] === 'pull_request'
+    if (isShallow) {
+      yield* Effect.logWarning(
+        'Shallow git clone detected. Release analysis requires full history to find '
+          + 'release tags and compute version bumps. In GitHub Actions, add '
+          + '`fetch-depth: 0` to your actions/checkout step.',
+      )
+    }
 
     return {
       ci,

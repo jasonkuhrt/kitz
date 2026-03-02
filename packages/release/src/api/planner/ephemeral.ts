@@ -15,7 +15,7 @@ import { Ephemeral } from './models/item-ephemeral.js'
 import type { Item } from './models/item.js'
 import { Plan } from './models/plan.js'
 import type { Context } from './official.js'
-import type { PrOptions } from './options.js'
+import { passesFilter, type PrOptions } from './options.js'
 
 /**
  * Detect cascades for ephemeral releases with ephemeral version format.
@@ -91,11 +91,7 @@ export const ephemeral = (
     const releases: Ephemeral[] = []
 
     for (const impact of analysis.impacts) {
-      // Apply exclude filter
-      if (options?.exclude?.includes(impact.package.name.moniker)) continue
-
-      // Apply include filter
-      if (options?.packages && !options.packages.includes(impact.package.name.moniker)) continue
+      if (!passesFilter(impact.package.name.moniker, options)) continue
 
       // Find existing ephemeral releases for this PR
       const prReleaseNumber = findLatestPrNumber(impact.package.name, prNumber, [...analysis.tags])

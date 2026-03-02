@@ -25,14 +25,17 @@ export class Official extends S.TaggedClass<Official>()('Official', {
 }) {
   static is = S.is(Official)
 
+  /** The version this release will produce. Extracts `to` from increments, `version` from firsts. */
   get nextVersion(): Semver.Semver {
     return 'to' in this.version ? this.version.to : this.version.version
   }
 
+  /** The current version before this release, or `None` for first releases. */
   get currentVersion(): Option.Option<Semver.Semver> {
     return 'from' in this.version ? Option.some(this.version.from) : Option.none()
   }
 
+  /** The semver bump type. Defaults to `'minor'` for first releases (0.x convention). */
   get bumpType(): Semver.BumpType {
     return 'bump' in this.version ? this.version.bump : 'minor'
   }

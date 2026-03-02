@@ -6,6 +6,7 @@ import { RepoSettings } from '../models/violation-location.js'
 import { Violation } from '../models/violation.js'
 import { GitHubService } from '../services/github.js'
 
+/** Verifies that only squash merge is enabled on the GitHub repository. */
 export const rule = RuntimeRule.create({
   id: RuleId.make('repo.squash-only'),
   description: 'Only squash merge enabled',

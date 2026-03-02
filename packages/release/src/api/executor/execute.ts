@@ -7,16 +7,19 @@
 
 import { Flo } from '@kitz/flo'
 import { Fs } from '@kitz/fs'
-import { Effect, Match, Option, Stream } from 'effect'
+import { Effect, Match, Option, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
 import type { ExecutorError } from './errors.js'
 import { makeRuntime, type RuntimeConfig } from './runtime.js'
 import { ReleasePayload, type ReleasePayloadType, ReleaseWorkflow } from './workflow.js'
 
 /**
- * Result type for the workflow.
+ * Result of executing the release workflow.
+ *
+ * Contains the list of packages that were published, tags that were created,
+ * and GitHub releases that were created.
  */
-export interface Result {
+export interface ExecutionResult {
   releasedPackages: string[]
   createdTags: string[]
   createdGHReleases: string[]
@@ -29,7 +32,7 @@ export interface ObservableResult {
   /** Stream of activity lifecycle events */
   readonly events: Stream.Stream<Flo.LifecycleEvent>
   /** Effect that executes the workflow and returns the result (runtime layer pre-provided) */
-  readonly execute: Effect.Effect<Result, ExecutorError>
+  readonly execute: Effect.Effect<ExecutionResult, ExecutorError>
   /** Graph information for visualization */
   readonly graph: {
     readonly layers: readonly (readonly string[])[]
@@ -41,6 +44,27 @@ export interface LifecycleEventLine {
   readonly level: 'info' | 'error'
   readonly message: string
 }
+
+const WorkflowExecutionSchema = Schema.Struct({
+  publishes: Schema.Array(Schema.String),
+  createTags: Schema.Array(Schema.String),
+  createGHReleases: Schema.Array(Schema.String),
+})
+const decodeWorkflowExecution = Schema.decodeUnknownOption(WorkflowExecutionSchema)
+
+const normalizeWorkflowResult = (result: unknown): ExecutionResult =>
+  decodeWorkflowExecution(result).pipe(
+    Option.map((value) => ({
+      releasedPackages: [...value.publishes],
+      createdTags: [...value.createTags],
+      createdGHReleases: [...value.createGHReleases],
+    })),
+    Option.getOrElse((): ExecutionResult => ({
+      releasedPackages: [],
+      createdTags: [],
+      createdGHReleases: [],
+    })),
+  )
 
 /**
  * Convert workflow lifecycle events to printable log lines.
@@ -110,19 +134,10 @@ export const execute = (
     yield* Effect.log(`Starting release workflow for ${payload.releases.length} packages...`)
 
     const result = yield* ReleaseWorkflow.execute(payload)
+    const summary = normalizeWorkflowResult(result)
 
-    // Extract results from NodeHandle unwrapping
-    const releasedPackages = result.publishes as string[]
-    const createdTags = result.createTags as string[]
-    const createdGHReleases = result.createGHReleases as string[]
-
-    yield* Effect.log(`Workflow complete: ${releasedPackages.length} packages released`)
-
-    return {
-      releasedPackages,
-      createdTags,
-      createdGHReleases,
-    } satisfies Result
+    yield* Effect.log(`Workflow complete: ${summary.releasedPackages.length} packages released`)
+    return summary
   })
 
 /**
@@ -170,13 +185,9 @@ export const executeObservable = (
 
     // Wrap execute to extract results and provide workflow runtime
     const wrappedExecute = workflowExecute.pipe(
-      Effect.map((result: { publishes: string[]; createTags: string[]; createGHReleases: string[] }) => ({
-        releasedPackages: result.publishes as string[],
-        createdTags: result.createTags as string[],
-        createdGHReleases: result.createGHReleases as string[],
-      })),
+      Effect.map(normalizeWorkflowResult),
       Effect.provide(makeRuntime(runtimeConfig)),
-    ) as Effect.Effect<Result, ExecutorError>
+    ) as Effect.Effect<ExecutionResult, ExecutorError>
 
     return {
       events,

@@ -76,7 +76,9 @@ export const ExecutorGHReleaseError = Err.TaggedContextualError(
 export type ExecutorGHReleaseError = InstanceType<typeof ExecutorGHReleaseError>
 
 /**
- * Union of all executor errors.
+ * Schema union of all executor errors.
+ *
+ * Used by the workflow module to define the error channel of the release workflow.
  */
 export const ExecutorError = S.Union(
   ExecutorPublishError,

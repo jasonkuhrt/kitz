@@ -12,7 +12,7 @@ import { Candidate } from './models/item-candidate.js'
 import type { Item } from './models/item.js'
 import { Plan } from './models/plan.js'
 import type { Context } from './official.js'
-import type { Options } from './options.js'
+import { type Options, passesFilter } from './options.js'
 
 /**
  * Detect cascades for candidate releases with candidate version format.
@@ -70,11 +70,7 @@ export const candidate = (
     const releases: Candidate[] = []
 
     for (const impact of analysis.impacts) {
-      // Apply exclude filter
-      if (options?.exclude?.includes(impact.package.name.moniker)) continue
-
-      // Apply include filter
-      if (options?.packages && !options.packages.includes(impact.package.name.moniker)) continue
+      if (!passesFilter(impact.package.name.moniker, options)) continue
 
       // Calculate what the next official version would be
       const nextOfficialVersion = calculateNextVersion(impact.currentVersion, impact.bump)

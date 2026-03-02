@@ -67,8 +67,17 @@ const systemDefaults = ResolvedRuleDefaults.make({
 })
 
 /**
- * Normalize user config to resolved config.
- * Precedence: system defaults -> config.defaults -> per-rule config
+ * Normalize user config to fully resolved config.
+ *
+ * **Precedence** (later wins):
+ * 1. System defaults — `enabled: 'auto'`, `severity: Error`
+ * 2. `config.defaults` — global overrides from user config
+ * 3. Per-rule config — `config.rules[id]` overrides for individual rules
+ *
+ * Rule config supports three input forms:
+ * - `Severity` shorthand (just the severity, inherits enabled from defaults)
+ * - `[Severity, options]` tuple (severity + rule-specific options)
+ * - Full `RuleConfig` object (explicit overrides + options)
  */
 export const resolveConfig = (config: Partial<Config>): ResolvedConfig => {
   // Merge global defaults
@@ -93,10 +102,7 @@ export const resolveConfig = (config: Partial<Config>): ResolvedConfig => {
   })
 }
 
-const isSeverity = (input: RuleConfigInput): input is Severity => {
-  return typeof input === 'object' && input !== null && '_tag' in input
-    && (input._tag === 'SeverityError' || input._tag === 'SeverityWarn')
-}
+const isSeverity = (input: RuleConfigInput): input is Severity => Severity_.is(input)
 
 const normalizeRuleConfig = (input: RuleConfigInput, globalDefaults: ResolvedRuleDefaults): ResolvedRuleConfig => {
   // Severity shorthand
