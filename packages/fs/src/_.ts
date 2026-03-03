@@ -6,3 +6,8 @@
  * @module
  */
 export * as Fs from './__.js'
+
+/**
+ * Namespace anchor for {@link Fs}.
+ */
+export namespace Fs {}

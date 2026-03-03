@@ -41,17 +41,30 @@ pnpm turbo run build --filter=@kitz/core   # Single package
 
 **Cross-package dependencies**: Use `workspace:*` and import by package name. Note that `#` imports are scoped per-package - cross-package `#` imports are not valid.
 
-## Linting (Effect-First Custom Rules)
+## Linting (Custom Rules)
 
-Custom Oxlint rules for Effect-first standards are implemented via the experimental JS plugin at `tools/oxlint-custom-rules/plugin.mjs`.
+Custom Oxlint rules use two backends:
+- JS plugin rules for Effect-first standards and `_.ts` / `__.ts` conventions: `tools/oxlint-custom-rules/plugin.mjs`
+- Type-aware checker-backed rules in vendored `tsgolint`: `tools/tsgolint`
+
+`no-type-assertion` now lives in the type-aware backend by overriding `typescript/no-unsafe-type-assertion` in vendored `tsgolint` (legacy `kitz/no-type-assertion` is disabled).
 
 ```bash
+pnpm build:tsgolint                    # Build vendored type-aware backend
 pnpm check:lint                        # Lint (custom rules as warnings)
+pnpm check:lint:type-aware             # Lint with checker-backed rules enabled
 pnpm check:lint:strict-custom-rules    # Lint (custom rules as errors)
+pnpm check:lint:strict-custom-rules:type-aware
 pnpm test:oxlint-custom-rules          # Fixture tests for custom rules
 ```
 
 Rule details and migration guidance: `docs/oxlint-custom-rules.md`.
+
+Recent convention refinements:
+- `_.ts` namespace files now require a matching JSDoc `export namespace Name {}` declaration and may include type-only exports.
+- `packages/core/src/*/core/_.ts` namespace names are validated from `packages/core/package.json#imports` (`#*/core`).
+- `__.ts` files are strict barrels only when peer implementation files exist; otherwise shorthand implementation is allowed (default exports still forbidden).
+- Convention rules run without per-file allowlists or package-root exceptions; fix violations in source.
 
 ## Common Errors
 

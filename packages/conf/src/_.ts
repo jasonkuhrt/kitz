@@ -1,1 +1,6 @@
 export * as Conf from './__.js'
+
+/**
+ * Namespace anchor for {@link Conf}.
+ */
+export namespace Conf {}

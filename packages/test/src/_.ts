@@ -49,3 +49,8 @@
  * @category Utils
  */
 export * as Test from './__.js'
+
+/**
+ * Namespace anchor for {@link Test}.
+ */
+export namespace Test {}

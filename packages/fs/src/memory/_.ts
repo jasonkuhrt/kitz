@@ -9,3 +9,8 @@
  */
 
 export * as Memory from './__.js'
+
+/**
+ * Namespace anchor for {@link Memory}.
+ */
+export namespace Memory {}

@@ -1,4 +1,5 @@
 import { FileSystem } from '@effect/platform'
+import type { PlatformError } from '@effect/platform/Error'
 import { Err } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { NpmRegistry } from '@kitz/npm-registry'
@@ -45,7 +46,28 @@ export interface PublishOptions {
 }
 
 /**
+ * Rewrite imports string values from source paths to build paths for publishing.
+ *
+ * Transforms `./src/*.ts` to `./build/*.js` so published packages resolve
+ * correctly at runtime (source imports are used during development only).
+ */
+const rewriteImportsForPublish = (imports: Record<string, unknown>): Record<string, unknown> => {
+  const result: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(imports)) {
+    if (typeof value === 'string') {
+      result[key] = value.replace(/^\.\/src\//, './build/').replace(/\.ts$/, '.js')
+    } else {
+      result[key] = value // preserve conditional imports as-is
+    }
+  }
+  return result
+}
+
+/**
  * Publish a single package with version injection and restoration.
+ *
+ * Rewrites package.json `imports` from source paths (`./src/*.ts`) to
+ * build paths (`./build/*.js`) before publishing, then restores originals.
  *
  * Requires `NpmRegistry.NpmCli` service - provide `NpmRegistry.NpmCliLive`
  * for actual publishing or `NpmRegistry.NpmCliDryRun` for dry-run mode.
@@ -55,14 +77,21 @@ export const publishPackage = (
   options?: PublishOptions,
 ): Effect.Effect<
   void,
-  PublishError | Resource.ResourceError | NpmRegistry.NpmCliError,
+  PublishError | Resource.ResourceError | NpmRegistry.NpmCliError | PlatformError,
   FileSystem.FileSystem | NpmRegistry.NpmCli
 > =>
   Effect.gen(function*() {
     const pkgDir = release.package.path
     const cli = yield* NpmRegistry.NpmCli
+    const fs = yield* FileSystem.FileSystem
 
-    // 1. Inject the new version, capturing original for restore
+    // 1. Read raw package.json to access the imports field
+    const packageJsonPath = `${Fs.Path.toString(pkgDir)}package.json`
+    const rawJson = yield* fs.readFileString(packageJsonPath)
+    const rawPkg = JSON.parse(rawJson) as Record<string, unknown>
+    const originalImports = rawPkg['imports'] as Record<string, unknown> | undefined
+
+    // 2. Inject the new version, capturing original for restore
     const manifest = yield* Pkg.Manifest.resource.readOrEmpty(pkgDir)
     const originalVersion = manifest.version
     yield* Pkg.Manifest.resource.write(
@@ -70,7 +99,15 @@ export const publishPackage = (
       pkgDir,
     )
 
-    // 2. Publish (with guaranteed cleanup)
+    // 3. Rewrite imports for publish (source paths -> build paths)
+    if (originalImports) {
+      const rewrittenJson = yield* fs.readFileString(packageJsonPath)
+      const rewrittenPkg = JSON.parse(rewrittenJson) as Record<string, unknown>
+      rewrittenPkg['imports'] = rewriteImportsForPublish(originalImports)
+      yield* fs.writeFileString(packageJsonPath, JSON.stringify(rewrittenPkg, null, 2) + '\n')
+    }
+
+    // 4. Publish (with guaranteed cleanup)
     yield* Effect.ensuring(
       cli.publish({
         cwd: pkgDir,
@@ -78,10 +115,22 @@ export const publishPackage = (
         ...(options?.tag && { tag: options.tag }),
         ...(options?.registry && { registry: options.registry }),
       }),
-      // Always restore version, even on failure
-      Pkg.Manifest.resource.update(pkgDir, (m) => Pkg.Manifest.Manifest.make({ ...m, version: originalVersion })).pipe(
-        Effect.ignore,
-      ),
+      // Always restore version and imports, even on failure
+      Effect.gen(function*() {
+        // Restore version via typed manifest
+        yield* Pkg.Manifest.resource.update(
+          pkgDir,
+          (m) => Pkg.Manifest.Manifest.make({ ...m, version: originalVersion }),
+        )
+
+        // Restore original imports
+        if (originalImports) {
+          const currentJson = yield* fs.readFileString(packageJsonPath)
+          const currentPkg = JSON.parse(currentJson) as Record<string, unknown>
+          currentPkg['imports'] = originalImports
+          yield* fs.writeFileString(packageJsonPath, JSON.stringify(currentPkg, null, 2) + '\n')
+        }
+      }).pipe(Effect.ignore),
     )
   })
 
@@ -95,7 +144,7 @@ export const publishAll = (
   options?: PublishOptions,
 ): Effect.Effect<
   void,
-  PublishError | Resource.ResourceError | NpmRegistry.NpmCliError,
+  PublishError | Resource.ResourceError | NpmRegistry.NpmCliError | PlatformError,
   FileSystem.FileSystem | NpmRegistry.NpmCli
 > =>
   Effect.gen(function*() {

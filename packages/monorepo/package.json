@@ -4,8 +4,8 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#monorepo": "./build/_.js",
-    "#monorepo/*": "./build/*.js"
+    "#monorepo": "./src/_.ts",
+    "#monorepo/*": "./src/*.ts"
   },
   "exports": {
     ".": "./build/_.js",

@@ -4,8 +4,8 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#conventional-commits": "./build/_.js",
-    "#conventional-commits/*": "./build/*.js"
+    "#conventional-commits": "./src/_.ts",
+    "#conventional-commits/*": "./src/*.ts"
   },
   "exports": {
     ".": "./build/_.js",

@@ -1,6 +1,7 @@
 import type { Fn } from '@kitz/core'
-import type { AssertUnknownKind } from '../asserts.js'
 import { builder } from '../builder-singleton.js'
+import type { AssertUnknownKind } from '../asserts.js'
+
 
 /**
  * Unary relator - asserts type is `unknown`.

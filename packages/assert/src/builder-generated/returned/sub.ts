@@ -11,6 +11,7 @@ import { builder } from '../../builder-singleton.js'
  * Relation: subtype relation (extends)
  */
 
+
 /**
  * Base matcher accepting any expected type.
  * Extraction chain: (...args: any[]) => T → T
@@ -34,6 +35,7 @@ type of_<$Expected, $Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
                                                                          : never
 const of_ = builder.returned.sub.of
 
+
 /**
  * Pre-curried matcher for string.
  * Extraction chain: (...args: any[]) => T → T
@@ -53,6 +55,7 @@ type string_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [string, __actual__]>
                                                                          : never
 const string_ = builder.returned.sub.string
+
 
 /**
  * Pre-curried matcher for number.
@@ -74,6 +77,7 @@ type number_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
                                                                          : never
 const number_ = builder.returned.sub.number
 
+
 /**
  * Pre-curried matcher for bigint.
  * Extraction chain: (...args: any[]) => T → T
@@ -93,6 +97,7 @@ type bigint_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [bigint, __actual__]>
                                                                          : never
 const bigint_ = builder.returned.sub.bigint
+
 
 /**
  * Pre-curried matcher for boolean.
@@ -114,6 +119,7 @@ type boolean_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
                                                                          : never
 const boolean_ = builder.returned.sub.boolean
 
+
 /**
  * Pre-curried matcher for true.
  * Extraction chain: (...args: any[]) => T → T
@@ -133,6 +139,7 @@ type true_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [true, __actual__]>
                                                                          : never
 const true_ = builder.returned.sub.true
+
 
 /**
  * Pre-curried matcher for false.
@@ -154,6 +161,7 @@ type false_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
                                                                          : never
 const false_ = builder.returned.sub.false
 
+
 /**
  * Pre-curried matcher for undefined.
  * Extraction chain: (...args: any[]) => T → T
@@ -173,6 +181,7 @@ type undefined_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [undefined, __actual__]>
                                                                          : never
 const undefined_ = builder.returned.sub.undefined
+
 
 /**
  * Pre-curried matcher for null.
@@ -194,6 +203,7 @@ type null_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
                                                                          : never
 const null_ = builder.returned.sub.null
 
+
 /**
  * Pre-curried matcher for symbol.
  * Extraction chain: (...args: any[]) => T → T
@@ -213,6 +223,7 @@ type symbol_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [symbol, __actual__]>
                                                                          : never
 const symbol_ = builder.returned.sub.symbol
+
 
 /**
  * Pre-curried matcher for Date.
@@ -234,6 +245,7 @@ type Date_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
                                                                          : never
 const Date_ = builder.returned.sub.Date
 
+
 /**
  * Pre-curried matcher for RegExp.
  * Extraction chain: (...args: any[]) => T → T
@@ -253,6 +265,7 @@ type RegExp_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [RegExp, __actual__]>
                                                                          : never
 const RegExp_ = builder.returned.sub.RegExp
+
 
 /**
  * Pre-curried matcher for Error.
@@ -274,6 +287,7 @@ type Error_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
                                                                          : never
 const Error_ = builder.returned.sub.Error
 
+
 /**
  * Pre-curried matcher for unknown.
  * Extraction chain: (...args: any[]) => T → T
@@ -294,6 +308,7 @@ type unknown_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
                                                                          : never
 const unknown_ = builder.returned.sub.unknown
 
+
 /**
  * Pre-curried matcher for any.
  * Extraction chain: (...args: any[]) => T → T
@@ -313,6 +328,7 @@ type any_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [any, __actual__]>
                                                                          : never
 const any_ = builder.returned.sub.any
+
 
 /**
  * Pre-curried matcher for never.
@@ -352,23 +368,23 @@ const noExcess_ = builder.returned.sub.noExcess
 const noExcessAs_ = <$Type>() => builder.returned.sub.noExcessAs<$Type>()
 
 export {
-  any_ as any,
+  of_ as of,
+  string_ as string,
+  number_ as number,
   bigint_ as bigint,
   boolean_ as boolean,
-  Date_ as Date,
-  Error_ as Error,
+  true_ as true,
   false_ as false,
+  undefined_ as undefined,
+  null_ as null,
+  symbol_ as symbol,
+  Date_ as Date,
+  RegExp_ as RegExp,
+  Error_ as Error,
+  unknown_ as unknown,
+  any_ as any,
   never_ as never,
+  ofAs_ as ofAs,
   noExcess_ as noExcess,
   noExcessAs_ as noExcessAs,
-  null_ as null,
-  number_ as number,
-  of_ as of,
-  ofAs_ as ofAs,
-  RegExp_ as RegExp,
-  string_ as string,
-  symbol_ as symbol,
-  true_ as true,
-  undefined_ as undefined,
-  unknown_ as unknown,
 }

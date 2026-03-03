@@ -79,16 +79,6 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `no-type-assertion`,
-    failingFixtures: [`no-type-assertion/fail-1.ts`, `no-type-assertion/fail-2.ts`, `no-type-assertion/fail-3.ts`],
-    passingFixtures: [
-      `no-type-assertion/pass-1.ts`,
-      `no-type-assertion/pass-2.ts`,
-      `no-type-assertion/pass-3.ts`,
-      `no-type-assertion/pass-4.test.ts`,
-    ],
-  },
-  {
     name: `no-native-map-set-in-effect-modules`,
     failingFixtures: [
       `packages/release/src/no-native-map-set-in-effect-modules/fail-1.ts`,
@@ -97,6 +87,20 @@ const rules: ReadonlyArray<{
     passingFixtures: [
       `packages/release/src/no-native-map-set-in-effect-modules/pass-1.ts`,
       `packages/release/src/no-native-map-set-in-effect-modules/pass-2.ts`,
+    ],
+  },
+  {
+    name: `no-nodejs-builtin-imports`,
+    failingFixtures: [
+      `no-nodejs-builtin-imports/fail-node-not-covered/src/feature.ts`,
+      `no-nodejs-builtin-imports/fail-fs-extra-not-covered/src/feature.ts`,
+      `no-nodejs-builtin-imports/fail-pathe-not-covered/src/feature.ts`,
+      `no-nodejs-builtin-imports/fail-invalid-nearest-package/src/feature.ts`,
+      `no-nodejs-builtin-imports/fail-unreadable-nearest-package/src/feature.ts`,
+    ],
+    passingFixtures: [
+      `no-nodejs-builtin-imports/pass-node-covered-by-exports-node/src/feature.ts`,
+      `no-nodejs-builtin-imports/pass-node-covered-by-imports-bun/src/runtime.ts`,
     ],
   },
   {
@@ -119,6 +123,7 @@ const rules: ReadonlyArray<{
     passingFixtures: [
       `no-effect-run-in-library-code/src/cli/pass-1.ts`,
       `no-effect-run-in-library-code/pass-2.test.ts`,
+      `no-effect-run-in-library-code/scripts/pass-3.ts`,
     ],
   },
   {
@@ -173,6 +178,73 @@ const rules: ReadonlyArray<{
     name: `require-tagged-error-types`,
     failingFixtures: [`require-tagged-error-types/fail-1.ts`, `require-tagged-error-types/fail-2.ts`],
     passingFixtures: [`require-tagged-error-types/pass-1.ts`, `require-tagged-error-types/pass-2.ts`],
+  },
+  {
+    name: `namespace-file-conventions`,
+    failingFixtures: [
+      `namespace-file-conventions/packages/demo/src/foo/_.ts`,
+      `namespace-file-conventions/packages/demo/src/bar-baz/_.ts`,
+      `namespace-file-conventions/packages/core/src/fn/core/_.ts`,
+      `namespace-file-conventions/packages/demo/src/zed/_.ts`,
+    ],
+    passingFixtures: [
+      `namespace-file-conventions/packages/demo/src/_.ts`,
+      `namespace-file-conventions/packages/demo/src/qux/_.ts`,
+      `namespace-file-conventions/packages/core/src/err/core/_.ts`,
+      `namespace-file-conventions/packages/demo/src/zip/_.ts`,
+    ],
+  },
+  {
+    name: `barrel-file-conventions`,
+    failingFixtures: [
+      `barrel-file-conventions/packages/barrel/src/a/__.ts`,
+      `barrel-file-conventions/packages/barrel/src/b/__.ts`,
+      `barrel-file-conventions/packages/barrel/src/aggregate-fail/__.ts`,
+    ],
+    passingFixtures: [
+      `barrel-file-conventions/packages/barrel/src/c/__.ts`,
+      `barrel-file-conventions/packages/barrel/src/d/__.ts`,
+      `barrel-file-conventions/packages/barrel/src/aggregate-pass/__.ts`,
+      `barrel-file-conventions/packages/barrel/src/impl-only/__.ts`,
+    ],
+  },
+  {
+    name: `module-structure-conventions`,
+    failingFixtures: [
+      `module-structure-conventions/packages/missing-barrel/src/alpha/_.ts`,
+      `module-structure-conventions/packages/wrong-target/src/beta/_.ts`,
+      `module-structure-conventions/packages/root-missing/src/value.ts`,
+    ],
+    passingFixtures: [
+      `module-structure-conventions/packages/passpkg/src/gamma/_.ts`,
+      `module-structure-conventions/packages/passpkg/src/delta/_.ts`,
+    ],
+  },
+  {
+    name: `no-deep-imports-when-namespace-entrypoint-exists`,
+    failingFixtures: [
+      `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/fail-imports-scoped-impl.ts`,
+      `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/fail-imports-deep-nested.ts`,
+      `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/fail-reexports-scoped-impl.ts`,
+    ],
+    passingFixtures: [
+      `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/pass-imports-namespace.ts`,
+      `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/pass-imports-barrel.ts`,
+      `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/pass-imports-no-wall.ts`,
+      `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/pass-test.test.ts`,
+      `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/bar/__.ts`,
+      `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/bar/peer.ts`,
+    ],
+  },
+  {
+    name: `prefer-subpath-imports`,
+    failingFixtures: [
+      `prefer-subpath-imports/packages/has-imports/src/foo/fail-relative-door.ts`,
+    ],
+    passingFixtures: [
+      `prefer-subpath-imports/packages/no-imports/src/foo/pass-no-hash.ts`,
+      `prefer-subpath-imports/packages/has-imports/src/bar/sibling-pass.ts`,
+    ],
   },
 ]
 

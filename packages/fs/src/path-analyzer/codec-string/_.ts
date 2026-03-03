@@ -6,4 +6,9 @@
  *
  * @module
  */
-export * as Analyzer from './__.js'
+export * as CodecString from './__.js'
+
+/**
+ * Namespace anchor for {@link CodecString}.
+ */
+export namespace CodecString {}

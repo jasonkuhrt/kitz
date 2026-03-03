@@ -35,3 +35,8 @@
 export * as Path from './__.js'
 
 export type Path = typeof import('./Schema.js').Schema.Type
+
+/**
+ * Namespace anchor for {@link Path}.
+ */
+export namespace Path {}

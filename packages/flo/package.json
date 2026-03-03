@@ -4,8 +4,8 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#flo": "./build/_.js",
-    "#flo/*": "./build/*.js"
+    "#flo": "./src/_.ts",
+    "#flo/*": "./src/*.ts"
   },
   "exports": {
     ".": "./build/_.js",

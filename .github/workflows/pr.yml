@@ -171,17 +171,21 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup
         if: needs.check-type.outputs.skip-code-checks != 'true'
+      - name: Build vendored tsgolint
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+        run: pnpm run build:tsgolint
       - name: Lint packages (affected or all)
         if: needs.check-type.outputs.skip-code-checks != 'true'
         run: |
+          export OXLINT_TSGOLINT_PATH="$GITHUB_WORKSPACE/tools/tsgolint/bin/tsgolint"
           FILTER_ARGS=(--filter="...[origin/${{ github.event.pull_request.base.ref }}]" --filter="./packages/*")
           TASK_COUNT=$(pnpm turbo run check:lint "${FILTER_ARGS[@]}" --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
           if [[ "$TASK_COUNT" == "0" ]]; then
             echo "No affected packages found, running all packages"
-            pnpm turbo run check:lint --filter="./packages/*"
+            pnpm turbo run check:lint --filter="./packages/*" -- --type-aware
           else
             echo "Running $TASK_COUNT affected package(s)"
-            pnpm turbo run check:lint "${FILTER_ARGS[@]}"
+            pnpm turbo run check:lint "${FILTER_ARGS[@]}" -- --type-aware
           fi
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'

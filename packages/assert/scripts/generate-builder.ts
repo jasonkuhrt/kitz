@@ -14,9 +14,25 @@
  *   pnpm generate
  */
 
-import * as fs from 'node:fs'
-import * as path from 'node:path'
+import { FileSystem, Path as PlatformPath } from '@effect/platform'
+import { NodeFileSystem, NodePath } from '@effect/platform-node'
+import { Effect, Either, pipe } from 'effect'
 import { Project } from 'ts-morph'
+
+const pathApi = Effect.runSync(PlatformPath.Path.pipe(Effect.provide(NodePath.layer)))
+
+const basename = (targetPath: string): string => pathApi.basename(targetPath)
+const dirname = (targetPath: string): string => pathApi.dirname(targetPath)
+const join = (...parts: ReadonlyArray<string>): string => pathApi.join(...parts)
+const relative = (fromPath: string, toPath: string): string => pathApi.relative(fromPath, toPath)
+const pathExists = (targetPath: string) =>
+  Effect.flatMap(FileSystem.FileSystem, (fileSystem) => fileSystem.exists(targetPath))
+const ensureDirectory = (targetPath: string) =>
+  Effect.flatMap(FileSystem.FileSystem, (fileSystem) =>
+    fileSystem.makeDirectory(targetPath, { recursive: true }))
+const writeFileString = (targetPath: string, content: string) =>
+  Effect.flatMap(FileSystem.FileSystem, (fileSystem) =>
+    fileSystem.writeFileString(targetPath, content))
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Data Structures
 
@@ -49,6 +65,36 @@ interface Combination {
   outputPath: string
   isBarrel: boolean
 }
+
+type GenerateBuilderError =
+  | { _tag: 'RegistryFileNotFound'; registryFilePath: string }
+  | { _tag: 'LensRegistryInterfaceMissing'; registryFilePath: string }
+  | { _tag: 'ExtractorPropertyMissingTypeAnnotation'; extractorName: string }
+  | { _tag: 'MissingExtractorMetadata'; missingMetadata: readonly string[] }
+  | { _tag: 'ExtractorMissingMetadata'; extractorName: string }
+
+const formatGenerateBuilderError = (error: GenerateBuilderError): string => {
+  switch (error._tag) {
+    case 'RegistryFileNotFound':
+      return `Registry file not found: ${error.registryFilePath}`
+    case 'LensRegistryInterfaceMissing':
+      return `LensRegistry interface not found in registry file: ${error.registryFilePath}`
+    case 'ExtractorPropertyMissingTypeAnnotation':
+      return `Extractor property has no type annotation: ${error.extractorName}`
+    case 'MissingExtractorMetadata':
+      return (
+        `Extractors in registry missing metadata: ${error.missingMetadata.join(', ')}\n`
+        + `Add metadata for these extractors in EXTRACTOR_METADATA constant.`
+      )
+    case 'ExtractorMissingMetadata':
+      return `Extractor '${error.extractorName}' is in registry but has no metadata`
+  }
+}
+
+const fromEither = <A, E>(value: Either.Either<A, E>) =>
+  Either.isLeft(value)
+    ? Effect.fail(value.left)
+    : Effect.succeed(value.right)
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Constants
 
@@ -188,8 +234,8 @@ const UNARY_RELATORS: Record<string, UnaryRelator> = {
 
 // Monorepo paths - run from packages/assert
 const PACKAGE_DIR = process.cwd()
-const OUTPUT_DIR = path.join(PACKAGE_DIR, 'src/builder-generated')
-const CORE_PACKAGE_DIR = path.join(PACKAGE_DIR, '../core')
+const OUTPUT_DIR = join(PACKAGE_DIR, 'src/builder-generated')
+const CORE_PACKAGE_DIR = join(PACKAGE_DIR, '../core')
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Registry Loading
 
@@ -197,95 +243,101 @@ const CORE_PACKAGE_DIR = path.join(PACKAGE_DIR, '../core')
  * Load extractor registry from TypeScript source using ts-morph.
  * Returns a map of extractor names to their Kind interface names.
  */
-function loadExtractorRegistry(): Record<string, string> {
-  const project = new Project({
-    tsConfigFilePath: path.join(PACKAGE_DIR, 'tsconfig.json'),
-  })
-
-  // Registry is in @kitz/core package
-  const registryFilePath = path.join(CORE_PACKAGE_DIR, 'src/optic/registry.ts')
-  const sourceFile = project.addSourceFileAtPath(registryFilePath)
-
-  // Find the LensRegistry interface
-  const registryInterface = sourceFile.getInterface('LensRegistry')
-  if (!registryInterface) {
-    throw new Error('LensRegistry interface not found in registry.ts')
-  }
-
-  const registry: Record<string, string> = {}
-
-  // Extract each property: name → Kind interface name
-  for (const property of registryInterface.getProperties()) {
-    const extractorName = property.getName()
-    const typeNode = property.getTypeNode()
-
-    if (!typeNode) {
-      throw new Error(`Property ${extractorName} has no type annotation`)
+const loadExtractorRegistry = () =>
+  Effect.gen(function*() {
+    const registryFilePath = join(CORE_PACKAGE_DIR, 'src/optic/registry.ts')
+    const registryFileExists = yield* pathExists(registryFilePath)
+    if (!registryFileExists) {
+      return yield* Effect.fail({ _tag: 'RegistryFileNotFound', registryFilePath })
     }
 
-    const kindName = typeNode.getText()
-    registry[extractorName] = kindName
-  }
+    const project = new Project({
+      tsConfigFilePath: join(PACKAGE_DIR, 'tsconfig.json'),
+    })
+    const sourceFile = project.addSourceFileAtPath(registryFilePath)
 
-  return registry
-}
+    const registryInterface = sourceFile.getInterface('LensRegistry')
+    if (!registryInterface) {
+      return yield* Effect.fail({ _tag: 'LensRegistryInterfaceMissing', registryFilePath })
+    }
+
+    const registry: Record<string, string> = {}
+    for (const property of registryInterface.getProperties()) {
+      const extractorName = property.getName()
+      const typeNode = property.getTypeNode()
+
+      if (!typeNode) {
+        return yield* Effect.fail({ _tag: 'ExtractorPropertyMissingTypeAnnotation', extractorName })
+      }
+
+      registry[extractorName] = typeNode.getText()
+    }
+
+    return registry
+  })
 
 /**
  * Validate that extractor metadata covers all registry entries.
- * Throws error if metadata is missing for any registry entry.
+ * Returns Left if metadata is missing for any registry entry.
  */
-function validateExtractorMetadata(registry: Record<string, string>): void {
+function validateExtractorMetadata(
+  registry: Record<string, string>,
+): Either.Either<GenerateBuilderError, { readonly unusedMetadata: ReadonlyArray<string> }> {
   const registryNames = Object.keys(registry).sort()
   const metadataNames = Object.keys(EXTRACTOR_METADATA).sort()
 
-  // Check for missing metadata
   const missingMetadata = registryNames.filter((name) => !(name in EXTRACTOR_METADATA))
   if (missingMetadata.length > 0) {
-    throw new Error(
-      `Extractors in registry missing metadata: ${missingMetadata.join(', ')}\n`
-        + `Add metadata for these extractors in EXTRACTOR_METADATA constant.`,
-    )
+    return Either.left({ _tag: 'MissingExtractorMetadata', missingMetadata })
   }
 
-  // Warn about unused metadata (not in registry)
   const unusedMetadata = metadataNames.filter((name) => !(name in registry))
-  if (unusedMetadata.length > 0) {
-    console.warn('⚠️  Metadata exists but not in registry:', unusedMetadata)
-    console.warn('   These entries can be removed from EXTRACTOR_METADATA')
-  }
+  return Either.right({ unusedMetadata })
 }
-
-// Load and validate registry
-const REGISTRY = loadExtractorRegistry()
-validateExtractorMetadata(REGISTRY)
 
 /**
  * Build EXTRACTORS from registry + metadata.
  * This ensures the registry is the source of truth for which extractors exist.
  */
-const EXTRACTORS: Record<string, Extractor> = Object.fromEntries(
-  Object.entries(REGISTRY).map(([name, kindName]) => {
+function buildExtractors(
+  registry: Record<string, string>,
+): Either.Either<GenerateBuilderError, Record<string, Extractor>> {
+  const extractors: Record<string, Extractor> = {}
+  for (const [name, kindName] of Object.entries(registry)) {
     const metadata = EXTRACTOR_METADATA[name]
     if (!metadata) {
-      throw new Error(`Extractor '${name}' is in registry but has no metadata`)
+      return Either.left({ _tag: 'ExtractorMissingMetadata', extractorName: name })
     }
-    return [
+    extractors[name] = {
       name,
-      {
-        name,
-        kindName,
-        description: metadata.description,
-        inputDesc: metadata.inputDesc,
-        outputDesc: metadata.outputDesc,
-      },
-    ]
-  }),
+      kindName,
+      description: metadata.description,
+      inputDesc: metadata.inputDesc,
+      outputDesc: metadata.outputDesc,
+    }
+  }
+  return Either.right(extractors)
+}
+
+const setupExtractors = pipe(
+  loadExtractorRegistry(),
+  Effect.flatMap((registry) =>
+    pipe(
+      validateExtractorMetadata(registry),
+      fromEither,
+      Effect.tap(({ unusedMetadata }) =>
+        unusedMetadata.length > 0
+          ? Effect.logWarning(`Unused extractor metadata entries: ${unusedMetadata.join(', ')}`)
+          : Effect.void),
+      Effect.map(() => registry),
+    )),
+  Effect.flatMap((registry) => fromEither(buildExtractors(registry))),
 )
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Path Utilities
 
 function getRelativePath(from: string, to: string): string {
-  const rel = path.relative(path.dirname(from), to)
+  const rel = relative(dirname(from), to)
   // Ensure .js extension and proper ./ prefix
   return rel.startsWith('.') ? rel : `./${rel}`
 }
@@ -293,10 +345,10 @@ function getRelativePath(from: string, to: string): string {
 function calculateImportPaths(combo: Combination) {
   // Calculate proper relative paths from source to target files
   const sourceFile = combo.outputPath
-  const srcDir = path.join(PACKAGE_DIR, 'src')
+  const srcDir = join(PACKAGE_DIR, 'src')
 
-  const relatorsPath = getRelativePath(sourceFile, path.join(srcDir, 'asserts.js'))
-  const builderPath = getRelativePath(sourceFile, path.join(srcDir, 'builder-singleton.js'))
+  const relatorsPath = getRelativePath(sourceFile, join(srcDir, 'asserts.js'))
+  const builderPath = getRelativePath(sourceFile, join(srcDir, 'builder-singleton.js'))
 
   return { relatorsPath, builderPath }
 }
@@ -562,13 +614,17 @@ ${exports}
 `
 }
 
-function generateBarrelFile(dirPath: string, exports: string[]): string {
+function generateBarrelFile(
+  dirPath: string,
+  exports: string[],
+  extractorsByName: Readonly<Record<string, Extractor>>,
+): string {
   // Determine if each export is a file or a directory based on our data structures
   // Extractors are directories (have their own barrel files)
   // Relators are files
   // 'not' is a special directory
   const relPaths = exports.map((name) => {
-    if (name in EXTRACTORS) return `./${name}/__.js`
+    if (name in extractorsByName) return `./${name}/__.js`
     if (name === 'not') return `./${name}/__.js`
     return `./${name}.js`
   })
@@ -579,9 +635,9 @@ function generateBarrelFile(dirPath: string, exports: string[]): string {
     .join('\n')
 
   // Add type-level shorthand for relators (main barrel only has base relators, no extractors)
-  const srcDir = path.join(PACKAGE_DIR, 'src')
-  const relatorsPath = getRelativePath(dirPath, path.join(srcDir, 'asserts.js'))
-  const builderPath = getRelativePath(dirPath, path.join(srcDir, 'builder-singleton.js'))
+  const srcDir = join(PACKAGE_DIR, 'src')
+  const relatorsPath = getRelativePath(dirPath, join(srcDir, 'asserts.js'))
+  const builderPath = getRelativePath(dirPath, join(srcDir, 'builder-singleton.js'))
 
   const relatorKinds = Object.keys(RELATORS).map((r) => RELATORS[r]!.kindName).join(', ')
 
@@ -613,11 +669,15 @@ ${typeShorthands}
  * Generate a barrel file for an extractor subdirectory.
  * Exports relators (type+value), 'not' namespace, and other extractors (value-only via builder proxy).
  */
-function generateExtractorBarrelFile(extractorName: string, barrelPath: string): string {
+function generateExtractorBarrelFile(
+  extractorName: string,
+  barrelPath: string,
+  extractorsByName: Readonly<Record<string, Extractor>>,
+): string {
   // Calculate relative paths
-  const srcDir = path.join(PACKAGE_DIR, 'src')
-  const builderPath = getRelativePath(barrelPath, path.join(srcDir, 'builder-singleton.js'))
-  const relatorsPath = getRelativePath(barrelPath, path.join(srcDir, 'asserts.js'))
+  const srcDir = join(PACKAGE_DIR, 'src')
+  const builderPath = getRelativePath(barrelPath, join(srcDir, 'builder-singleton.js'))
+  const relatorsPath = getRelativePath(barrelPath, join(srcDir, 'asserts.js'))
 
   // Part 1: Export relators as dual namespaces (type+value)
   const relatorExports = Object.keys(RELATORS)
@@ -628,7 +688,7 @@ function generateExtractorBarrelFile(extractorName: string, barrelPath: string):
   const notExport = `export * as not from './not/__.js'`
 
   // Part 3: Export other extractors as value-only builder proxy references
-  const otherExtractors = Object.keys(EXTRACTORS).filter((name) => name !== extractorName)
+  const otherExtractors = Object.keys(extractorsByName).filter((name) => name !== extractorName)
   const extractorExports = otherExtractors.length > 0
     ? `\n// Value-level extractor chaining via builder proxy\n`
       + otherExtractors.map((name) => `export const ${name} = builder.${extractorName}.${name}`).join('\n')
@@ -643,7 +703,7 @@ export const never = builder.${extractorName}.never
 export const empty = builder.${extractorName}.empty`
 
   // Part 4: Add type-level shorthand for relators (allows omitting .of)
-  const extractor = EXTRACTORS[extractorName]!
+  const extractor = extractorsByName[extractorName]
   const relatorKinds = Object.keys(RELATORS).map((r) => RELATORS[r]!.kindName).join(', ')
 
   const imports = `import type { Fn } from '@kitz/core'
@@ -652,7 +712,9 @@ import { Optic } from '@kitz/core'
 import type { Either } from 'effect'
 import type { ${relatorKinds} } from '${relatorsPath}'`
 
-  const extractorChain = `Optic.${kindToDirectType(extractor.kindName)}<$Actual>`
+  const extractorChain = extractor === undefined
+    ? '$Actual'
+    : `Optic.${kindToDirectType(extractor.kindName)}<$Actual>`
 
   const typeShorthands = Object.keys(RELATORS).map((relatorName) => {
     const relator = RELATORS[relatorName]!
@@ -680,9 +742,9 @@ ${typeShorthands}
  */
 function generateNotBarrelFile(barrelPath: string, extractors: Extractor[]): string {
   // Calculate relative paths
-  const srcDir = path.join(PACKAGE_DIR, 'src')
-  const relatorsPath = getRelativePath(barrelPath, path.join(srcDir, 'asserts.js'))
-  const builderPath = getRelativePath(barrelPath, path.join(srcDir, 'builder-singleton.js'))
+  const srcDir = join(PACKAGE_DIR, 'src')
+  const relatorsPath = getRelativePath(barrelPath, join(srcDir, 'asserts.js'))
+  const builderPath = getRelativePath(barrelPath, join(srcDir, 'builder-singleton.js'))
 
   // Export relators as dual namespaces (type+value)
   const relatorExports = Object.keys(RELATORS)
@@ -743,13 +805,13 @@ ${typeShorthands}
  * These files provide both type-level and value-level assertions for edge types.
  */
 function generateUnaryRelatorFile(unaryRelator: UnaryRelator, negated: boolean): string {
-  const srcDir = path.join(PACKAGE_DIR, 'src')
+  const srcDir = join(PACKAGE_DIR, 'src')
   const outputPath = negated
-    ? path.join(OUTPUT_DIR, 'not', `${unaryRelator.name}.ts`)
-    : path.join(OUTPUT_DIR, `${unaryRelator.name}.ts`)
+    ? join(OUTPUT_DIR, 'not', `${unaryRelator.name}.ts`)
+    : join(OUTPUT_DIR, `${unaryRelator.name}.ts`)
 
-  const relatorsPath = getRelativePath(outputPath, path.join(srcDir, 'asserts.js'))
-  const builderPath = getRelativePath(outputPath, path.join(srcDir, 'builder-singleton.js'))
+  const relatorsPath = getRelativePath(outputPath, join(srcDir, 'asserts.js'))
+  const builderPath = getRelativePath(outputPath, join(srcDir, 'builder-singleton.js'))
 
   const imports = `import type { Fn } from '@kitz/core'
 import { builder } from '${builderPath}'
@@ -801,7 +863,7 @@ ${exportDef}
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Combination Generation
 
-function generateAllCombinations(): Combination[] {
+function generateAllCombinations(extractorsByName: Readonly<Record<string, Extractor>>): Combination[] {
   const combinations: Combination[] = []
 
   // Helper to add both normal and negated versions
@@ -814,7 +876,7 @@ function generateAllCombinations(): Combination[] {
       extractors,
       relator,
       negated: false,
-      outputPath: path.join(OUTPUT_DIR, basePath, `${relator.name}.ts`),
+      outputPath: join(OUTPUT_DIR, basePath, `${relator.name}.ts`),
       isBarrel: false,
     })
 
@@ -823,7 +885,7 @@ function generateAllCombinations(): Combination[] {
       extractors,
       relator,
       negated: true,
-      outputPath: path.join(OUTPUT_DIR, basePath, 'not', `${relator.name}.ts`),
+      outputPath: join(OUTPUT_DIR, basePath, 'not', `${relator.name}.ts`),
       isBarrel: false,
     })
   }
@@ -834,21 +896,24 @@ function generateAllCombinations(): Combination[] {
   }
 
   // Single extractors
-  for (const extractorName of Object.keys(EXTRACTORS)) {
+  for (const extractorName of Object.keys(extractorsByName)) {
     for (const relatorName of Object.keys(RELATORS)) {
-      addBothVariants([EXTRACTORS[extractorName]!], RELATORS[relatorName]!)
+      const extractor = extractorsByName[extractorName]
+      if (extractor !== undefined) {
+        addBothVariants([extractor], RELATORS[relatorName]!)
+      }
     }
   }
 
   // Chained extractors (2+ levels) - DISABLED to avoid combinatorial explosion
   // Type-level API limited to 1 extractor depth
   // Value-level API (via proxy) remains fully recursive
-  // const extractorNames = Object.keys(EXTRACTORS)
+  // const extractorNames = Object.keys(extractorsByName)
   // for (const first of extractorNames) {
   //   for (const second of extractorNames) {
   //     if (first === second) continue
   //     for (const relatorName of Object.keys(RELATORS)) {
-  //       addBothVariants([EXTRACTORS[first]!, EXTRACTORS[second]!], RELATORS[relatorName]!)
+  //       addBothVariants([extractorsByName[first]!, extractorsByName[second]!], RELATORS[relatorName]!)
   //     }
   //   }
   // }
@@ -858,134 +923,124 @@ function generateAllCombinations(): Combination[] {
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ File Writing
 
-function ensureDir(dirPath: string) {
-  if (!fs.existsSync(dirPath)) {
-    fs.mkdirSync(dirPath, { recursive: true })
-  }
-}
+const writeAndLogFile = (targetPath: string, content: string) =>
+  pipe(
+    ensureDirectory(dirname(targetPath)),
+    Effect.zipRight(writeFileString(targetPath, content)),
+    Effect.zipRight(Effect.log(`  ✓ ${relative(PACKAGE_DIR, targetPath)}`)),
+  )
 
-function writeGeneratedFiles() {
-  console.log('Generating type-level test namespace files...\n')
+const writeGeneratedFiles = (extractorsByName: Readonly<Record<string, Extractor>>) =>
+  Effect.gen(function*() {
+    yield* Effect.log(`Generating type-level test namespace files...\n`)
 
-  const combinations = generateAllCombinations()
-  let filesWritten = 0
+    const combinations = generateAllCombinations(extractorsByName)
+    let filesWritten = 0
 
-  // Generate matcher files
-  for (const combo of combinations) {
-    const content = generateMatcherFile(combo)
-    ensureDir(path.dirname(combo.outputPath))
-    fs.writeFileSync(combo.outputPath, content, 'utf-8')
-    filesWritten++
-    console.log(`  ✓ ${path.relative(PACKAGE_DIR, combo.outputPath)}`)
-  }
-
-  // Generate unary relator files (any, unknown, never, empty)
-  for (const unaryRelatorName of Object.keys(UNARY_RELATORS)) {
-    const unaryRelator = UNARY_RELATORS[unaryRelatorName]!
-
-    // Normal version
-    const normalPath = path.join(OUTPUT_DIR, `${unaryRelator.name}.ts`)
-    const normalContent = generateUnaryRelatorFile(unaryRelator, false)
-    ensureDir(path.dirname(normalPath))
-    fs.writeFileSync(normalPath, normalContent, 'utf-8')
-    filesWritten++
-    console.log(`  ✓ ${path.relative(PACKAGE_DIR, normalPath)}`)
-
-    // Negated version (in 'not' subdirectory)
-    const negatedPath = path.join(OUTPUT_DIR, 'not', `${unaryRelator.name}.ts`)
-    const negatedContent = generateUnaryRelatorFile(unaryRelator, true)
-    ensureDir(path.dirname(negatedPath))
-    fs.writeFileSync(negatedPath, negatedContent, 'utf-8')
-    filesWritten++
-    console.log(`  ✓ ${path.relative(PACKAGE_DIR, negatedPath)}`)
-  }
-
-  // Generate barrel files
-  const barrelFiles: Array<{ path: string; exports: string[] }> = [
-    // Main barrel
-    {
-      path: path.join(OUTPUT_DIR, '__.ts'),
-      exports: [
-        'exact',
-        'equiv',
-        'sub',
-        'not',
-        'awaited',
-        'returned',
-        'array',
-        'parameters',
-        'parameter1',
-        'parameter2',
-        'parameter3',
-        'parameter4',
-        'parameter5',
-      ],
-    },
-    // Not barrel (root level)
-    { path: path.join(OUTPUT_DIR, 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    // Single extractor barrels
-    { path: path.join(OUTPUT_DIR, 'awaited', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'returned', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'array', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'parameters', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'parameter1', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'parameter2', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'parameter3', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'parameter4', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'parameter5', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    // Not barrels (extractor level)
-    { path: path.join(OUTPUT_DIR, 'awaited', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'returned', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'array', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'parameters', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'parameter1', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'parameter2', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'parameter3', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'parameter4', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    { path: path.join(OUTPUT_DIR, 'parameter5', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
-    // Chained extractor barrels - DISABLED (no 2+ level extractors)
-  ]
-
-  for (const barrel of barrelFiles) {
-    const barrelDir = path.dirname(barrel.path)
-    const parentDir = path.dirname(barrelDir)
-    const dirName = path.basename(barrelDir)
-
-    let content: string
-
-    // Detect barrel type based on path structure
-    if (dirName === 'not') {
-      // This is a 'not' barrel - determine which extractors precede it
-      const isRootNot = parentDir === OUTPUT_DIR
-      const extractors: Extractor[] = []
-
-      if (!isRootNot) {
-        // Extract extractor name from parent directory
-        const extractorName = path.basename(parentDir)
-        if (extractorName in EXTRACTORS) {
-          extractors.push(EXTRACTORS[extractorName]!)
-        }
-      }
-
-      content = generateNotBarrelFile(barrel.path, extractors)
-    } else if (barrelDir !== OUTPUT_DIR) {
-      // This is an extractor barrel
-      const extractorName = dirName
-      content = generateExtractorBarrelFile(extractorName, barrel.path)
-    } else {
-      // Main barrel - use standard generation
-      content = generateBarrelFile(barrel.path, barrel.exports)
+    for (const combo of combinations) {
+      const content = generateMatcherFile(combo)
+      yield* writeAndLogFile(combo.outputPath, content)
+      filesWritten += 1
     }
 
-    ensureDir(path.dirname(barrel.path))
-    fs.writeFileSync(barrel.path, content, 'utf-8')
-    filesWritten++
-    console.log(`  ✓ ${path.relative(PACKAGE_DIR, barrel.path)}`)
-  }
+    for (const unaryRelatorName of Object.keys(UNARY_RELATORS)) {
+      const unaryRelator = UNARY_RELATORS[unaryRelatorName]
+      if (unaryRelator === undefined) {
+        continue
+      }
 
-  console.log(`\n✅ Generated ${filesWritten} files successfully!`)
-}
+      const normalPath = join(OUTPUT_DIR, `${unaryRelator.name}.ts`)
+      const normalContent = generateUnaryRelatorFile(unaryRelator, false)
+      yield* writeAndLogFile(normalPath, normalContent)
+      filesWritten += 1
+
+      const negatedPath = join(OUTPUT_DIR, 'not', `${unaryRelator.name}.ts`)
+      const negatedContent = generateUnaryRelatorFile(unaryRelator, true)
+      yield* writeAndLogFile(negatedPath, negatedContent)
+      filesWritten += 1
+    }
+
+    const barrelFiles: Array<{ path: string; exports: string[] }> = [
+      {
+        path: join(OUTPUT_DIR, '__.ts'),
+        exports: [
+          'exact',
+          'equiv',
+          'sub',
+          'not',
+          'awaited',
+          'returned',
+          'array',
+          'parameters',
+          'parameter1',
+          'parameter2',
+          'parameter3',
+          'parameter4',
+          'parameter5',
+        ],
+      },
+      { path: join(OUTPUT_DIR, 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'awaited', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'returned', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'array', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'parameters', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'parameter1', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'parameter2', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'parameter3', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'parameter4', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'parameter5', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'awaited', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'returned', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'array', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'parameters', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'parameter1', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'parameter2', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'parameter3', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'parameter4', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+      { path: join(OUTPUT_DIR, 'parameter5', 'not', '__.ts'), exports: ['exact', 'equiv', 'sub'] },
+    ]
+
+    for (const barrel of barrelFiles) {
+      const barrelDir = dirname(barrel.path)
+      const parentDir = dirname(barrelDir)
+      const dirName = basename(barrelDir)
+
+      let content: string
+      if (dirName === 'not') {
+        const isRootNot = parentDir === OUTPUT_DIR
+        const extractors: Extractor[] = []
+        if (!isRootNot) {
+          const extractorName = basename(parentDir)
+          const extractor = extractorsByName[extractorName]
+          if (extractor !== undefined) {
+            extractors.push(extractor)
+          }
+        }
+        content = generateNotBarrelFile(barrel.path, extractors)
+      } else if (barrelDir !== OUTPUT_DIR) {
+        content = generateExtractorBarrelFile(dirName, barrel.path, extractorsByName)
+      } else {
+        content = generateBarrelFile(barrel.path, barrel.exports, extractorsByName)
+      }
+
+      yield* writeAndLogFile(barrel.path, content)
+      filesWritten += 1
+    }
+
+    yield* Effect.log(`\nGenerated ${filesWritten} files successfully!`)
+  })
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Main
 
-writeGeneratedFiles()
+const program = pipe(
+  setupExtractors,
+  Effect.flatMap(writeGeneratedFiles),
+  Effect.catchAll((error) =>
+    pipe(
+      Effect.logError(`Failed to initialize extractor registry:\n${formatGenerateBuilderError(error)}`),
+      Effect.zipRight(Effect.fail(error)),
+    )),
+  Effect.provide(NodeFileSystem.layer),
+)
+
+await Effect.runPromise(program)

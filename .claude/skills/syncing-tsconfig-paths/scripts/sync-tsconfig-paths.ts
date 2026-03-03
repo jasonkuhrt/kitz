@@ -3,7 +3,7 @@
  * Syncs tsconfig.json paths from package.json imports across all packages.
  *
  * Transforms package.json imports to tsconfig paths:
- *   "#pkg": "./build/_.js"  →  "#pkg": ["./src/_.js"]
+ *   "#pkg": "./src/_.ts"  →  "#pkg": ["./src/_.js"]
  *
  * Run with: tsx .claude/skills/syncing-tsconfig-paths/scripts/sync-tsconfig-paths.ts
  */
@@ -49,9 +49,10 @@ const transformImportsToPaths = (
       continue
     }
 
-    // Transform ./build/ to ./src/ (keep .js - TS resolves to .ts with nodenext)
-    const srcPath = value.replace(/^\.\/build\//, './src/')
-    paths[key] = [srcPath]
+    // Package.json imports point at source (.ts), tsconfig paths need .js extension
+    // (TS resolves .js → .ts with nodenext module resolution)
+    const tsconfigPath = value.replace(/\.ts$/, '.js')
+    paths[key] = [tsconfigPath]
   }
 
   return paths
@@ -169,7 +170,7 @@ Options:
 
 Behavior:
   Transforms package.json imports to tsconfig paths:
-    "#pkg": "./build/_.js"  →  "#pkg": ["./src/_.js"]
+    "#pkg": "./src/_.ts"  →  "#pkg": ["./src/_.js"]
 
   Conditional imports (browser/default conditions) are skipped.`)
 }

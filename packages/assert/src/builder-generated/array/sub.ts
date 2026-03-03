@@ -11,6 +11,7 @@ import { builder } from '../../builder-singleton.js'
  * Relation: subtype relation (extends)
  */
 
+
 /**
  * Base matcher accepting any expected type.
  * Extraction chain: T[] → T
@@ -34,6 +35,7 @@ type of_<$Expected, $Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
                                                                          : never
 const of_ = builder.array.sub.of
 
+
 /**
  * Pre-curried matcher for string.
  * Extraction chain: T[] → T
@@ -53,6 +55,7 @@ type string_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [string, __actual__]>
                                                                          : never
 const string_ = builder.array.sub.string
+
 
 /**
  * Pre-curried matcher for number.
@@ -74,6 +77,7 @@ type number_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
                                                                          : never
 const number_ = builder.array.sub.number
 
+
 /**
  * Pre-curried matcher for bigint.
  * Extraction chain: T[] → T
@@ -93,6 +97,7 @@ type bigint_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [bigint, __actual__]>
                                                                          : never
 const bigint_ = builder.array.sub.bigint
+
 
 /**
  * Pre-curried matcher for boolean.
@@ -114,6 +119,7 @@ type boolean_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
                                                                          : never
 const boolean_ = builder.array.sub.boolean
 
+
 /**
  * Pre-curried matcher for true.
  * Extraction chain: T[] → T
@@ -133,6 +139,7 @@ type true_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [true, __actual__]>
                                                                          : never
 const true_ = builder.array.sub.true
+
 
 /**
  * Pre-curried matcher for false.
@@ -154,6 +161,7 @@ type false_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
                                                                          : never
 const false_ = builder.array.sub.false
 
+
 /**
  * Pre-curried matcher for undefined.
  * Extraction chain: T[] → T
@@ -173,6 +181,7 @@ type undefined_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [undefined, __actual__]>
                                                                          : never
 const undefined_ = builder.array.sub.undefined
+
 
 /**
  * Pre-curried matcher for null.
@@ -194,6 +203,7 @@ type null_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
                                                                          : never
 const null_ = builder.array.sub.null
 
+
 /**
  * Pre-curried matcher for symbol.
  * Extraction chain: T[] → T
@@ -213,6 +223,7 @@ type symbol_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [symbol, __actual__]>
                                                                          : never
 const symbol_ = builder.array.sub.symbol
+
 
 /**
  * Pre-curried matcher for Date.
@@ -234,6 +245,7 @@ type Date_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
                                                                          : never
 const Date_ = builder.array.sub.Date
 
+
 /**
  * Pre-curried matcher for RegExp.
  * Extraction chain: T[] → T
@@ -253,6 +265,7 @@ type RegExp_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [RegExp, __actual__]>
                                                                          : never
 const RegExp_ = builder.array.sub.RegExp
+
 
 /**
  * Pre-curried matcher for Error.
@@ -274,6 +287,7 @@ type Error_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
                                                                          : never
 const Error_ = builder.array.sub.Error
 
+
 /**
  * Pre-curried matcher for unknown.
  * Extraction chain: T[] → T
@@ -294,6 +308,7 @@ type unknown_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
                                                                          : never
 const unknown_ = builder.array.sub.unknown
 
+
 /**
  * Pre-curried matcher for any.
  * Extraction chain: T[] → T
@@ -313,6 +328,7 @@ type any_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [any, __actual__]>
                                                                          : never
 const any_ = builder.array.sub.any
+
 
 /**
  * Pre-curried matcher for never.
@@ -352,23 +368,23 @@ const noExcess_ = builder.array.sub.noExcess
 const noExcessAs_ = <$Type>() => builder.array.sub.noExcessAs<$Type>()
 
 export {
-  any_ as any,
+  of_ as of,
+  string_ as string,
+  number_ as number,
   bigint_ as bigint,
   boolean_ as boolean,
-  Date_ as Date,
-  Error_ as Error,
+  true_ as true,
   false_ as false,
+  undefined_ as undefined,
+  null_ as null,
+  symbol_ as symbol,
+  Date_ as Date,
+  RegExp_ as RegExp,
+  Error_ as Error,
+  unknown_ as unknown,
+  any_ as any,
   never_ as never,
+  ofAs_ as ofAs,
   noExcess_ as noExcess,
   noExcessAs_ as noExcessAs,
-  null_ as null,
-  number_ as number,
-  of_ as of,
-  ofAs_ as ofAs,
-  RegExp_ as RegExp,
-  string_ as string,
-  symbol_ as symbol,
-  true_ as true,
-  undefined_ as undefined,
-  unknown_ as unknown,
 }

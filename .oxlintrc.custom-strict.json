@@ -1,11 +1,19 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "extends": ["./.oxlintrc.json"],
+  "ignorePatterns": [
+    "**/build/**",
+    "**/node_modules/**",
+    "**/*.d.ts",
+    "**/__examples/**",
+    "tools/oxlint-custom-rules/tests/fixtures/**"
+  ],
   "rules": {
     "kitz/no-json-parse": "error",
     "kitz/no-try-catch": "error",
     "kitz/no-native-promise-construction": "error",
-    "kitz/no-type-assertion": "error",
+    "kitz/no-type-assertion": "off",
+    "typescript/no-unsafe-type-assertion": "error",
     "kitz/no-native-map-set-in-effect-modules": "error",
     "kitz/no-throw": "error",
     "kitz/no-promise-then-chain": "error",
@@ -16,6 +24,11 @@
     "kitz/no-date-now-in-domain": "error",
     "kitz/no-math-random-in-domain": "error",
     "kitz/no-console-in-effect-modules": "error",
-    "kitz/require-tagged-error-types": "error"
+    "kitz/require-tagged-error-types": "error",
+    "kitz/namespace-file-conventions": "error",
+    "kitz/barrel-file-conventions": "error",
+    "kitz/module-structure-conventions": "error",
+    "kitz/no-deep-imports-when-namespace-entrypoint-exists": "error",
+    "kitz/prefer-subpath-imports": "error"
   }
 }

@@ -4,8 +4,8 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#release": "./build/_.js",
-    "#release/*": "./build/*.js"
+    "#release": "./src/_.ts",
+    "#release/*": "./src/*.ts"
   },
   "exports": {
     ".": "./build/_.js",

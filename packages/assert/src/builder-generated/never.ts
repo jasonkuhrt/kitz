@@ -1,6 +1,7 @@
 import type { Fn } from '@kitz/core'
-import type { AssertNeverKind } from '../asserts.js'
 import { builder } from '../builder-singleton.js'
+import type { AssertNeverKind } from '../asserts.js'
+
 
 /**
  * Unary relator - asserts type is `never`.

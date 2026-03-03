@@ -4,11 +4,11 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#conf": "./build/_.js",
-    "#conf/*": "./build/*.js",
-    "#configurator": "./build/configurator.js",
-    "#file": "./build/file/__.js",
-    "#file/*": "./build/file/*.js"
+    "#conf": "./src/_.ts",
+    "#conf/*": "./src/*.ts",
+    "#configurator": "./src/configurator.ts",
+    "#file": "./src/file/__.ts",
+    "#file/*": "./src/file/*.ts"
   },
   "exports": {
     ".": "./build/_.js",

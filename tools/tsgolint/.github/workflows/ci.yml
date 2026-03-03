@@ -1,0 +1,106 @@
+name: CI
+
+permissions: {}
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
+
+jobs:
+  test-go:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0 # required for git am --3way to work properly
+          submodules: true
+          persist-credentials: false
+
+      - uses: oxc-project/setup-node@8958a8e040102244b619c4a94fccb657a44b1c21 # v1.0.6
+
+      - uses: ./.github/actions/setup
+
+      - name: Run go tests
+        run: go test ./internal/...
+
+  test-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0 # required for git am --3way to work properly
+          submodules: true
+          persist-credentials: false
+
+      - uses: oxc-project/setup-node@8958a8e040102244b619c4a94fccb657a44b1c21 # v1.0.6
+
+      - uses: ./.github/actions/setup
+
+      - name: Build
+        run: just build
+
+      - name: Run e2e tests
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run test
+        working-directory: e2e
+
+  test-windows:
+    if: ${{ github.ref_name == 'main' }}
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0 # required for git am --3way to work properly
+          submodules: true
+          persist-credentials: false
+
+      - uses: oxc-project/setup-node@8958a8e040102244b619c4a94fccb657a44b1c21 # v1.0.6
+
+      - uses: ./.github/actions/setup
+
+      - name: Build
+        run: go build -o tsgolint.exe ./cmd/tsgolint
+
+      - name: Run e2e tests
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run test
+        working-directory: e2e
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0 # required for git am --3way to work properly
+          submodules: true
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+        with:
+          version: latest
+
+  typos:
+    name: Typos
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: taiki-e/checkout-action@3ab630d442e198ebb0ca30872832406ca01c46eb # v1.4.0
+      - uses: crate-ci/typos@57b11c6b7e54c402ccd9cda953f1072ec4f78e33 # v1.43.5
+        with:
+          files: .

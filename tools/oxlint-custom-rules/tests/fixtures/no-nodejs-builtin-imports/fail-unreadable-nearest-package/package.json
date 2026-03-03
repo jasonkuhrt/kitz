@@ -1,0 +1,9 @@
+{
+  "name": "fixture-fail-unreadable-nearest-package",
+  "exports": {
+    ".": {
+      "node": "./build/feature.js",
+      "default": "./build/feature.js"
+    }
+  }
+}

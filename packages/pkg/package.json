@@ -5,14 +5,14 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#pkg": "./build/_.js",
-    "#pkg/*": "./build/*.js",
-    "#manifest": "./build/manifest/_.js",
-    "#manifest/*": "./build/manifest/*.js",
-    "#manager": "./build/manager/_.js",
-    "#manager/*": "./build/manager/*.js",
-    "#pin": "./build/pin/_.js",
-    "#pin/*": "./build/pin/*.js"
+    "#pkg": "./src/_.ts",
+    "#pkg/*": "./src/*.ts",
+    "#manifest": "./src/manifest/_.ts",
+    "#manifest/*": "./src/manifest/*.ts",
+    "#manager": "./src/manager/_.ts",
+    "#manager/*": "./src/manager/*.ts",
+    "#pin": "./src/pin/_.ts",
+    "#pin/*": "./src/pin/*.ts"
   },
   "exports": {
     ".": "./build/_.js",

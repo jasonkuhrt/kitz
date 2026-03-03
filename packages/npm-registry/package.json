@@ -4,8 +4,8 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#npm-registry": "./build/_.js",
-    "#npm-registry/*": "./build/*.js"
+    "#npm-registry": "./src/_.ts",
+    "#npm-registry/*": "./src/*.ts"
   },
   "exports": {
     ".": "./build/_.js",

@@ -4,8 +4,8 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#github": "./build/_.js",
-    "#github/*": "./build/*.js"
+    "#github": "./src/_.ts",
+    "#github/*": "./src/*.ts"
   },
   "exports": {
     ".": "./build/_.js",

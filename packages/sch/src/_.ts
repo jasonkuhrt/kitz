@@ -31,3 +31,8 @@
  * ```
  */
 export * as Sch from './__.js'
+
+/**
+ * Namespace anchor for {@link Sch}.
+ */
+export namespace Sch {}

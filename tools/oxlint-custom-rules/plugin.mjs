@@ -49,6 +49,8 @@ const MESSAGE_IDS = {
   moduleStructureConventionsMultiFileNamespaceTarget: `moduleStructureConventionsMultiFileNamespaceTarget`,
   moduleStructureConventionsSingleFileNamespaceTarget: `moduleStructureConventionsSingleFileNamespaceTarget`,
   moduleStructureConventionsRootEntrypoints: `moduleStructureConventionsRootEntrypoints`,
+  noDeepImportsWhenNamespaceEntrypointExists: `noDeepImportsWhenNamespaceEntrypointExists`,
+  preferSubpathImports: `preferSubpathImports`,
 }
 
 const MESSAGES = {
@@ -98,6 +100,10 @@ const MESSAGES = {
     `Namespace files for single-file elided modules must target './<implementation>.js'.`,
   [MESSAGE_IDS.moduleStructureConventionsRootEntrypoints]:
     `Regular packages must define both src/_.ts and src/__.ts root entrypoints.`,
+  [MESSAGE_IDS.noDeepImportsWhenNamespaceEntrypointExists]:
+    `Import bypasses a namespace boundary (_.ts exists in an ancestor directory). Use the _.ts or __.ts entrypoint instead.`,
+  [MESSAGE_IDS.preferSubpathImports]:
+    `A # subpath import exists for this module. Use the subpath import instead of a relative path.`,
 }
 
 /**
@@ -2455,6 +2461,295 @@ const moduleStructureConventionsRule = defineRule({
   },
 })
 
+// ---------------------------------------------------------------------------
+// Helpers: no-deep-imports-when-namespace-entrypoint-exists
+// ---------------------------------------------------------------------------
+
+/** @type {Map<string, boolean>} */
+const directoryHasNamespaceEntrypointCache = new Map()
+
+/**
+ * Check if a directory contains a `_.ts` file (namespace entrypoint).
+ * Result is cached for performance.
+ * @param {string} absoluteDir
+ * @returns {boolean}
+ */
+const directoryHasNamespaceEntrypoint = (absoluteDir) => {
+  const cached = directoryHasNamespaceEntrypointCache.get(absoluteDir)
+  if (cached !== undefined) return cached
+  const exists = fs.existsSync(path.join(absoluteDir, `_.ts`))
+  directoryHasNamespaceEntrypointCache.set(absoluteDir, exists)
+  return exists
+}
+
+/**
+ * Resolve a relative import specifier to an absolute file path.
+ * Maps `.js` → `.ts` for source resolution. Returns null if not resolvable.
+ * @param {string} importSpecifier - The import specifier (e.g. `./bar/impl.js`)
+ * @param {string} importerAbsolutePath - Absolute path of the importing file
+ * @returns {string | null} Absolute path to the resolved .ts file, or null
+ */
+const resolveRelativeImport = (importSpecifier, importerAbsolutePath) => {
+  if (!importSpecifier.startsWith(`.`)) return null
+  const importerDir = path.dirname(importerAbsolutePath)
+  const resolved = path.resolve(importerDir, importSpecifier)
+  // Map .js → .ts for source resolution
+  const tsPath = resolved.replace(/\.js$/, `.ts`)
+  if (fs.existsSync(tsPath)) return tsPath
+  // Also try the original path (e.g. .ts imports)
+  if (fs.existsSync(resolved)) return resolved
+  return null
+}
+
+/**
+ * Check if a relative import violates the namespace boundary rule.
+ * Walks upward from the target's directory to the importer's scope boundary,
+ * looking for any `_.ts` that creates a wall.
+ *
+ * @param {string} importSpecifier - The import specifier string
+ * @param {string} importerAbsolutePath - Absolute path of the importing file
+ * @param {string} packageSourceDir - Absolute path to the package src/ directory
+ * @returns {{ violatingDir: string } | null} - The directory with the wall, or null if no violation
+ */
+const getDeepImportViolation = (importSpecifier, importerAbsolutePath, packageSourceDir) => {
+  if (!importSpecifier.startsWith(`.`)) return null
+
+  const resolved = resolveRelativeImport(importSpecifier, importerAbsolutePath)
+  if (resolved === null) return null
+
+  const resolvedNormalized = normalizePath(resolved)
+  const targetBasename = path.basename(resolvedNormalized)
+
+  // If the target IS a _.ts or __.ts file, that's going "through the door" — allowed
+  if (targetBasename === `_.ts` || targetBasename === `__.ts`) return null
+
+  const importerDir = normalizePath(path.dirname(importerAbsolutePath))
+  const targetDir = normalizePath(path.dirname(resolved))
+
+  // If importer and target are in the same directory, they're peers — allowed
+  if (importerDir === targetDir) return null
+
+  // Walk upward from targetDir to importerDir (exclusive), checking for _.ts walls
+  // The importer's own directory is NOT checked (you don't need to go through your own door)
+  const normalizedPackageSourceDir = normalizePath(packageSourceDir)
+  let dir = targetDir
+
+  while (dir !== importerDir && dir.length >= normalizedPackageSourceDir.length) {
+    if (directoryHasNamespaceEntrypoint(dir)) {
+      // This directory has a _.ts wall.
+      // Exception: if the importer IS the __.ts barrel in this directory's parent,
+      // or if the importer is the _.ts in this directory — that's the door itself.
+      const importerBasename = path.basename(importerAbsolutePath)
+      const importerDirNormalized = normalizePath(path.dirname(importerAbsolutePath))
+
+      // If the importer is the __.ts file in the same directory as the _.ts wall — allowed
+      // (the barrel aggregates files within its own scope)
+      if (importerBasename === `__.ts` && importerDirNormalized === dir) return null
+
+      return { violatingDir: dir }
+    }
+    const parent = normalizePath(path.dirname(dir))
+    if (parent === dir) break // reached filesystem root
+    dir = parent
+  }
+
+  return null
+}
+
+// ---------------------------------------------------------------------------
+// Rule: no-deep-imports-when-namespace-entrypoint-exists
+// ---------------------------------------------------------------------------
+
+const noDeepImportsWhenNamespaceEntrypointExistsRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Forbid importing past a namespace boundary (_.ts) via relative paths.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    const filePath = getNormalizedRelativePath(context)
+
+    // Test files are exempt
+    if (isTestFilePath(filePath)) return {}
+
+    const details = getPackageSourcePathDetails(filePath)
+    if (details === null) return {}
+
+    const packageSourceDir = path.resolve(context.cwd, details.packageSourceDirectoryRelativePath)
+
+    /**
+     * Check an import/export source for deep import violation.
+     * @param {unknown} node - The AST node to report on
+     * @param {unknown} sourceNode - The source literal node
+     */
+    const checkImportSource = (node, sourceNode) => {
+      const specifier = getStringLiteralValue(sourceNode)
+      if (specifier === null || !specifier.startsWith(`.`)) return
+
+      const violation = getDeepImportViolation(specifier, context.filename, packageSourceDir)
+      if (violation !== null) {
+        context.report({
+          node,
+          messageId: MESSAGE_IDS.noDeepImportsWhenNamespaceEntrypointExists,
+        })
+      }
+    }
+
+    return {
+      ImportDeclaration(node) {
+        checkImportSource(node, node.source)
+      },
+      ExportNamedDeclaration(node) {
+        if (node.source) {
+          checkImportSource(node, node.source)
+        }
+      },
+      ExportAllDeclaration(node) {
+        checkImportSource(node, node.source)
+      },
+      ImportExpression(node) {
+        checkImportSource(node, node.source)
+      },
+    }
+  },
+})
+
+// ---------------------------------------------------------------------------
+// Helpers: prefer-subpath-imports
+// ---------------------------------------------------------------------------
+
+/** @type {Map<string, Map<string, string> | null>} */
+const subpathImportReverseMapCache = new Map()
+
+/**
+ * Build a reverse map from resolved import target paths to their # keys.
+ * Only string values are included (conditional imports are skipped).
+ * Returns null if no imports field exists.
+ *
+ * @param {string} packageDir - Absolute path to the package directory
+ * @returns {Map<string, string> | null}
+ */
+const getSubpathImportReverseMap = (packageDir) => {
+  const cached = subpathImportReverseMapCache.get(packageDir)
+  if (cached !== undefined) return cached
+
+  const packageJsonPath = path.join(packageDir, `package.json`)
+  if (!fs.existsSync(packageJsonPath)) {
+    subpathImportReverseMapCache.set(packageDir, null)
+    return null
+  }
+
+  try {
+    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, `utf8`))
+    if (!pkg.imports || typeof pkg.imports !== `object`) {
+      subpathImportReverseMapCache.set(packageDir, null)
+      return null
+    }
+
+    /** @type {Map<string, string>} */
+    const reverseMap = new Map()
+    for (const [key, value] of Object.entries(pkg.imports)) {
+      if (typeof value === `string`) {
+        // Normalize: resolve the value relative to packageDir to get absolute path
+        const absoluteTarget = normalizePath(path.resolve(packageDir, value))
+        reverseMap.set(absoluteTarget, key)
+      }
+    }
+
+    subpathImportReverseMapCache.set(packageDir, reverseMap)
+    return reverseMap
+  } catch {
+    subpathImportReverseMapCache.set(packageDir, null)
+    return null
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Rule: prefer-subpath-imports
+// ---------------------------------------------------------------------------
+
+const preferSubpathImportsRule = defineRule({
+  meta: {
+    type: `suggestion`,
+    docs: {
+      description: `Prefer # subpath imports over relative paths to _.ts/__.ts doors when a matching subpath exists.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    const filePath = getNormalizedRelativePath(context)
+
+    // Test files are exempt
+    if (isTestFilePath(filePath)) return {}
+
+    // Structural files (_.ts namespace entrypoints and __.ts barrels) are exempt —
+    // they define the module tree and must use relative imports
+    const basename = path.basename(context.filename)
+    if (basename === `_.ts` || basename === `__.ts`) return {}
+
+    const details = getPackageSourcePathDetails(filePath)
+    if (details === null) return {}
+
+    // Compute the package directory (parent of src/)
+    const packageDir = path.resolve(context.cwd, details.packageSourceDirectoryRelativePath, `..`)
+    const reverseMap = getSubpathImportReverseMap(packageDir)
+    if (reverseMap === null || reverseMap.size === 0) return {}
+
+    /**
+     * Check if a relative import to a door file has a # subpath alternative.
+     * @param {unknown} node
+     * @param {unknown} sourceNode
+     */
+    const checkForSubpathAlternative = (node, sourceNode) => {
+      const specifier = getStringLiteralValue(sourceNode)
+      if (specifier === null || !specifier.startsWith(`.`)) return
+
+      const resolved = resolveRelativeImport(specifier, context.filename)
+      if (resolved === null) return
+
+      const resolvedBasename = path.basename(resolved)
+      // Only check imports targeting door files (_.ts or __.ts)
+      if (resolvedBasename !== `_.ts` && resolvedBasename !== `__.ts`) return
+
+      // Skip same-directory imports — intra-module imports to own barrel/namespace are structural
+      const importerDir = normalizePath(path.dirname(context.filename))
+      const targetDir = normalizePath(path.dirname(resolved))
+      if (importerDir === targetDir) return
+
+      const normalizedResolved = normalizePath(resolved)
+
+      // Check if any subpath import maps to this resolved path
+      if (reverseMap.has(normalizedResolved)) {
+        context.report({
+          node,
+          messageId: MESSAGE_IDS.preferSubpathImports,
+        })
+      }
+    }
+
+    return {
+      ImportDeclaration(node) {
+        checkForSubpathAlternative(node, node.source)
+      },
+      ExportNamedDeclaration(node) {
+        if (node.source) {
+          checkForSubpathAlternative(node, node.source)
+        }
+      },
+      ExportAllDeclaration(node) {
+        checkForSubpathAlternative(node, node.source)
+      },
+      ImportExpression(node) {
+        checkForSubpathAlternative(node, node.source)
+      },
+    }
+  },
+})
+
 export default definePlugin({
   meta: {
     name: `kitz`,
@@ -2479,5 +2774,7 @@ export default definePlugin({
     'namespace-file-conventions': namespaceFileConventionsRule,
     'barrel-file-conventions': barrelFileConventionsRule,
     'module-structure-conventions': moduleStructureConventionsRule,
+    'no-deep-imports-when-namespace-entrypoint-exists': noDeepImportsWhenNamespaceEntrypointExistsRule,
+    'prefer-subpath-imports': preferSubpathImportsRule,
   },
 })

@@ -1,6 +1,7 @@
 import type { Fn } from '@kitz/core'
-import type { AssertEmptyKind } from '../../asserts.js'
 import { builder } from '../../builder-singleton.js'
+import type { AssertEmptyKind } from '../../asserts.js'
+
 
 /**
  * Unary relator (negated) - asserts type is NOT empty (`[]`, `''`, or `Record<PropertyKey, never>`).
