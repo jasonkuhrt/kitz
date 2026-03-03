@@ -1,5 +1,5 @@
-import { Lang } from '../lang/_.js'
-import { Obj } from '../obj/_.js'
+import { Lang } from '#lang'
+import { Obj } from '#obj'
 import type { GetDataType, Mask } from './mask.js'
 
 /**

@@ -1,5 +1,5 @@
-import { Lang } from '../lang/_.js'
-import { Ts } from '../ts/_.js'
+import { Lang } from '#lang'
+import { Ts } from '#ts'
 /**
  * Check if two values are the same reference using the === operator.
  *
