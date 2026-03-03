@@ -1,6 +1,6 @@
 import { ParseResult, Schema as S } from 'effect'
 import type { RefineSchemaId, TypeId } from 'effect/Schema'
-import { analyze, backPrefix, herePrefix, separator } from '../../path-analyzer/codec-string/analyzer.js'
+import { analyze, backPrefix, herePrefix, separator } from '../../path-analyzer/codec-string/__.js'
 import { Segments } from '../types/segments.js'
 
 type _ = RefineSchemaId

@@ -6,11 +6,6 @@ import { Help } from '../Help/_.js'
 import { getLowerCaseEnvironment, lowerCaseObjectKeys } from '../helpers.js'
 import { Prompter } from '../lib/Prompter/_.js'
 import { OpeningArgs } from '../OpeningArgs/_.js'
-import type {
-  ParseResultBasicError,
-  ParseResultExclusiveGroupError,
-  ParseResultExclusiveGroupSupplied,
-} from '../OpeningArgs/OpeningArgs.js'
 import type { ParameterBasic, ParameterBasicInput } from '../Parameter/basic.js'
 import type { ParameterExclusiveInput } from '../Parameter/exclusive.js'
 import { match } from '../Pattern/Pattern.js'
@@ -152,17 +147,17 @@ export const parse = (
    */
   const argumentErrors = [
     ...Obj.entries(parseProgressPostPromptAnnotation.basicParameters)
-      .map(([_, v]): null | ParseResultBasicError => {
+      .map(([_, v]): null | OpeningArgs.ParseResultBasicError => {
         return v.prompt.enabled === false && v.openingParseResult._tag === `error`
           ? v.openingParseResult
           : null
       })
-      .filter((_): _ is ParseResultBasicError => _ !== null),
+      .filter((_): _ is OpeningArgs.ParseResultBasicError => _ !== null),
     ...Obj.entries(parseProgressPostPromptAnnotation.mutuallyExclusiveParameters)
-      .map(([_, v]): null | ParseResultExclusiveGroupError => {
+      .map(([_, v]): null | OpeningArgs.ParseResultExclusiveGroupError => {
         return v._tag === `error` ? v : null
       })
-      .filter((_): _ is ParseResultExclusiveGroupError => _ !== null),
+      .filter((_): _ is OpeningArgs.ParseResultExclusiveGroupError => _ !== null),
   ]
 
   if (parseProgressPostPromptAnnotation.globalErrors.length > 0 || argumentErrors.length > 0) {
@@ -226,7 +221,7 @@ export const parse = (
       ),
       ...Object.fromEntries(
         Obj.values(parseProgressPostPrompts.mutuallyExclusiveParameters)
-          .filter((_): _ is ParseResultExclusiveGroupSupplied => _._tag === `supplied`)
+          .filter((_): _ is OpeningArgs.ParseResultExclusiveGroupSupplied => _._tag === `supplied`)
           .map((v) => [v.spec.label, v.value]),
       ),
     }

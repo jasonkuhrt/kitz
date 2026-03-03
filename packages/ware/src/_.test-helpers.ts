@@ -2,7 +2,7 @@ import { beforeEach, vi } from 'vitest'
 import { PipelineDefinition } from './__.js'
 import type { Interceptor, NonRetryingInterceptorInput } from './Interceptor/Interceptor.js'
 import { Pipeline } from './Pipeline/Pipeline.js'
-import type { Options } from './PipelineDefinition/Config.js'
+import type { Options } from './PipelineDefinition/__.js'
 import { StepDefinition } from './StepDefinition.js'
 
 export const initialInput = { x: 1 } as const

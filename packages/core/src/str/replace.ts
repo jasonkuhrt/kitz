@@ -1,7 +1,7 @@
 import { curry, flipCurried } from '#fn/fn'
 import { Ts } from '#ts'
 import type { Regex } from 'arkregex'
-import { spaceNoBreak, spaceRegular } from './char/char.js'
+import { Char } from './char/_.js'
 import type { RegexMatch } from './match.js'
 import { Empty } from './type.js'
 
@@ -605,7 +605,7 @@ export const strip = (pattern: string | string[] | RegExp) => replaceWith(patter
  * @param str - The string to process
  * @returns The string with surrounding spaces removed
  */
-export const removeSurroundingSpaceRegular = removeSurroundingWith(spaceRegular)
+export const removeSurroundingSpaceRegular = removeSurroundingWith(Char.spaceRegular)
 
 /**
  * Remove non-breaking spaces from the beginning and end of a string.
@@ -614,4 +614,4 @@ export const removeSurroundingSpaceRegular = removeSurroundingWith(spaceRegular)
  * @param str - The string to process
  * @returns The string with surrounding non-breaking spaces removed
  */
-export const removeSurroundingSpaceNoBreak = removeSurroundingWith(spaceNoBreak)
+export const removeSurroundingSpaceNoBreak = removeSurroundingWith(Char.spaceNoBreak)

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import { Either, Effect } from 'effect'
+import { Effect, Either } from 'effect'
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'fs'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
-import { generate } from './adaptors/vitepress.js'
-import { extract } from './extractor/extract.js'
+import { VitePress } from './adaptors/__.js'
+import { extract } from './extractor/__.js'
 import { addTwoslashAnnotations } from './transformers.js'
 
 /**
@@ -131,7 +131,7 @@ const generateDocs = async () => {
 
   // Generate VitePress markdown
   const docsDir = join(projectRoot, 'docs')
-  generate(model, {
+  VitePress.generate(model, {
     outputDir: docsDir,
     githubUrl: 'https://github.com/jasonkuhrt/kitz',
   })

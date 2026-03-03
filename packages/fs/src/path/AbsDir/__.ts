@@ -1,6 +1,6 @@
 import { ParseResult, Schema as S } from 'effect'
 import type { RefineSchemaId } from 'effect/Schema'
-import { analyze } from '../../path-analyzer/codec-string/analyzer.js'
+import { analyze } from '../../path-analyzer/codec-string/__.js'
 import { stringSeparator } from '../constants.js'
 import { Segments } from '../types/segments.js'
 

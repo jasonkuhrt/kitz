@@ -1,1 +1,1 @@
-export * as Errors from './pnpm/errors.js'
+export { Errors } from './pnpm/__.js'

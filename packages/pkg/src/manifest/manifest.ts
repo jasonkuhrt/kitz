@@ -3,7 +3,7 @@ import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
 import { Semver } from '@kitz/semver'
 import { Effect, Option, Schema as S } from 'effect'
-import * as Moniker from '../moniker/moniker.js'
+import { Moniker } from '../moniker/_.js'
 
 const Author = S.Struct({
   name: S.optional(S.String),

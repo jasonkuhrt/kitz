@@ -5,7 +5,7 @@ type IntersectionIgnoreNeverOrAny<$T> = Ts.Inhabitance.IsAny<$T> extends true ? 
   : $T
 import type { PipelineDefinition } from '../__.js'
 import type { Overload } from '../Overload/_.js'
-import type { Config } from '../PipelineDefinition/Config.js'
+import type { Config } from '../PipelineDefinition/__.js'
 import type { Step } from '../Step.js'
 import type { StepDefinition } from '../StepDefinition.js'
 import type { StepRunner } from '../StepRunner.js'

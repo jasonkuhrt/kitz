@@ -4,7 +4,7 @@ import type { EventPatternsInput, EventPatternsInputAtLeastOne } from '../eventP
 import { eventPatterns } from '../eventPatterns.js'
 import type { Values } from '../helpers.js'
 import { parseEnvironmentVariableBooleanOrThrow } from '../helpers.js'
-import { defaultParameterNamePrefixes } from '../OpeningArgs/Environment/Environment.js'
+import { Environment } from '../OpeningArgs/Environment/_.js'
 import type { OakSchema } from '../schema/oak-schema.js'
 
 /**
@@ -206,7 +206,7 @@ export const change = (
                 if (spec.prefix === false) {
                   spec_.prefix = []
                 } else if (spec.prefix === true) {
-                  spec_.prefix = defaultParameterNamePrefixes
+                  spec_.prefix = Environment.defaultParameterNamePrefixes
                 } else if (typeof spec.prefix === `string`) {
                   spec_.prefix = [Str.Case.snake(spec.prefix).toLowerCase()]
                 } else {
@@ -248,7 +248,7 @@ export const getDefaults = (lowercaseEnv: NodeJS.ProcessEnv): Output => {
       environment: {
         $default: {
           enabled: isEnvironmentEnabled(lowercaseEnv),
-          prefix: defaultParameterNamePrefixes,
+          prefix: Environment.defaultParameterNamePrefixes,
         },
       },
     },

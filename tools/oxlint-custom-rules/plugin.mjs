@@ -2529,22 +2529,26 @@ const getDeepImportViolation = (importSpecifier, importerAbsolutePath, packageSo
   // If importer and target are in the same directory, they're peers — allowed
   if (importerDir === targetDir) return null
 
-  // Walk upward from targetDir to importerDir (exclusive), checking for _.ts walls
-  // The importer's own directory is NOT checked (you don't need to go through your own door)
+  // Walk upward from targetDir checking for _.ts walls.
+  // A wall blocks access from OUTSIDE the namespace. Files that are descendants
+  // of the wall's directory are INSIDE the namespace (like lexical scope) and
+  // can import freely within it.
   const normalizedPackageSourceDir = normalizePath(packageSourceDir)
   let dir = targetDir
 
-  while (dir !== importerDir && dir.length >= normalizedPackageSourceDir.length) {
+  while (dir.length >= normalizedPackageSourceDir.length) {
     if (directoryHasNamespaceEntrypoint(dir)) {
       // This directory has a _.ts wall.
-      // Exception: if the importer IS the __.ts barrel in this directory's parent,
-      // or if the importer is the _.ts in this directory — that's the door itself.
       const importerBasename = path.basename(importerAbsolutePath)
       const importerDirNormalized = normalizePath(path.dirname(importerAbsolutePath))
 
       // If the importer is the __.ts file in the same directory as the _.ts wall — allowed
       // (the barrel aggregates files within its own scope)
       if (importerBasename === `__.ts` && importerDirNormalized === dir) return null
+
+      // If the importer is a descendant of the wall's directory, it's inside the
+      // namespace — allowed (like lexical scope: you can see what's above you)
+      if (importerDirNormalized.startsWith(dir + `/`) || importerDirNormalized === dir) return null
 
       return { violatingDir: dir }
     }
