@@ -6,6 +6,7 @@
  *
  * @module
  */
+// @ts-expect-error Duplicate identifier
 export * as CodecString from './__.js'
 
 /**

@@ -1,3 +1,4 @@
+// @ts-expect-error Duplicate identifier
 export * as Environment from './Environment.js'
 
 /**

@@ -32,6 +32,7 @@
  * const isRoot = Path.isRoot(somePath)
  * ```
  */
+// @ts-expect-error Duplicate identifier
 export * as Path from './__.js'
 
 export type Path = typeof import('./Schema.js').Schema.Type

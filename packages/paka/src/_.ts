@@ -1,4 +1,4 @@
-// @ts-expect-error
+// @ts-expect-error Duplicate identifier
 export * as Paka from './__.js'
 
 /**

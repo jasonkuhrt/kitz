@@ -12,8 +12,11 @@
  */
 
 // Re-export namespaces
+// @ts-expect-error Duplicate identifier
 export * as Comment from './comment.js'
+// @ts-expect-error Duplicate identifier
 export * as Reserved from './reserved.js'
+// @ts-expect-error Duplicate identifier
 export * as TermObject from './term-object.js'
 
 // Re-export all functions from ts.js (the main API)

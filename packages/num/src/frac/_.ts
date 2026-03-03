@@ -1,4 +1,5 @@
 // Export the namespace containing all Frac operations
+// @ts-expect-error Duplicate identifier
 export * as Frac from './__.js'
 
 /**

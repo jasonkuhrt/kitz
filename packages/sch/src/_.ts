@@ -30,6 +30,7 @@
  * // { name: 'Catalog', members: [...] }
  * ```
  */
+// @ts-expect-error Duplicate identifier
 export * as Sch from './__.js'
 
 /**

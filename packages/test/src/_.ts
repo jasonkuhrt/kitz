@@ -48,6 +48,7 @@
  *
  * @category Utils
  */
+// @ts-expect-error Duplicate identifier
 export * as Test from './__.js'
 
 /**

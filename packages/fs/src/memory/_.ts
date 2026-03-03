@@ -8,6 +8,7 @@
  * @module
  */
 
+// @ts-expect-error Duplicate identifier
 export * as Memory from './__.js'
 
 /**

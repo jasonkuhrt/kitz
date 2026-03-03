@@ -1,4 +1,5 @@
 // Export the namespace containing all Float operations
+// @ts-expect-error Duplicate identifier
 export * as Float from './__.js'
 
 /**
