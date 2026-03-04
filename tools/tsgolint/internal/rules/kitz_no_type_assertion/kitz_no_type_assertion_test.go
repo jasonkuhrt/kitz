@@ -25,35 +25,71 @@ func TestKitzNoTypeAssertionRule(t *testing.T) {
 	rule_tester.RunRuleTester(fixtures.GetRootDir(), "tsconfig.minimal.json", t, &KitzNoTypeAssertionRule, []rule_tester.ValidTestCase{
 		{Code: "const tuple = [1, 2, 3] as const"},
 		{Code: `
-function fromString(value: unknown) {
-  return value as any
+declare const coerce: <T>(value: T extends readonly string[] ? never : T) => T
+
+function fromString<const T extends readonly string[]>(
+  value: T,
+): T extends readonly [infer Head, ...infer Tail] ? Head : never {
+  return coerce<T>(value as any) as any
 }
 `},
 		{Code: `
-function bodyNarrow(value: unknown) {
-  const input = value as object
-  return input
+function parseRecord<const T extends Record<string, unknown>>(
+  value: T,
+): T extends Record<string, unknown> ? T : never {
+  const record = value as Record<string, number>
+  return record as any
 }
 `},
 		{Code: `
-function bodyRecord(value: unknown) {
-  const counts = value as Record<string, number>
-  return counts
+function withNested<const T extends readonly string[]>(
+  value: T,
+): T extends readonly [infer Head, ...infer Tail] ? Head : never {
+  const run = () => value as any
+  return run() as any
 }
 `},
 		{Code: `
-const fn = (value: unknown) => {
-  return value as string
+function angle<const T extends readonly string[]>(
+  value: T,
+): T extends readonly [infer Head, ...infer Tail] ? Head : never {
+  return <any>value
 }
 `},
 		{Code: `
 class Service {
-  parse(value: unknown) {
+  parse<const T extends readonly string[]>(
+    value: T,
+  ): T extends readonly [infer Head, ...infer Tail] ? Head : never {
     return value as Record<string, number>
   }
 }
 `},
 	}, []rule_tester.InvalidTestCase{
+		{
+			Code: `
+function simple(value: unknown) {
+  return value as any
+}
+`,
+			Errors: []rule_tester.InvalidTestCaseError{{MessageId: "noTypeAssertion"}},
+		},
+		{
+			Code: `
+function simpleObject(value: unknown) {
+  return value as object
+}
+`,
+			Errors: []rule_tester.InvalidTestCaseError{{MessageId: "noTypeAssertion"}},
+		},
+		{
+			Code: `
+function genericOnly<T>(value: T): T {
+  return value as any
+}
+`,
+			Errors: []rule_tester.InvalidTestCaseError{{MessageId: "noTypeAssertion"}},
+		},
 		{
 			Code: `
 const value = {} as any
@@ -62,35 +98,21 @@ const value = {} as any
 		},
 		{
 			Code: `
-const value = {} as object
-`,
-			Errors: []rule_tester.InvalidTestCaseError{{MessageId: "noTypeAssertion"}},
-		},
-		{
-			Code: `
-const value = {} as Record<string, number>
-`,
-			Errors: []rule_tester.InvalidTestCaseError{{MessageId: "noTypeAssertion"}},
-		},
-		{
-			Code: `
 const api = {
-  parse: value as any,
+  fromString: (<const T extends readonly string[]>(
+    value: T,
+  ): T extends readonly [infer Head, ...infer Tail] ? Head : never => {
+    return value as any
+  }) as any,
 }
 `,
 			Errors: []rule_tester.InvalidTestCaseError{{MessageId: "noTypeAssertion"}},
 		},
 		{
 			Code: `
-class C {
-  field = {} as any
-}
-`,
-			Errors: []rule_tester.InvalidTestCaseError{{MessageId: "noTypeAssertion"}},
-		},
-		{
-			Code: `
-function badConst(value: string) {
+function badConst<const T extends readonly string[]>(
+  value: T,
+): T extends readonly [infer Head, ...infer Tail] ? Head : never {
   return value as const
 }
 `,

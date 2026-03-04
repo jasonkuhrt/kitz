@@ -41,6 +41,73 @@ func isConstAssertionTypeNode(typeNode *ast.Node) bool {
 	return false
 }
 
+func isAdvancedTypeSyntaxNode(node *ast.Node) bool {
+	if node == nil {
+		return false
+	}
+	switch node.Kind {
+	case ast.KindConditionalType,
+		ast.KindInferType,
+		ast.KindMappedType,
+		ast.KindIndexedAccessType,
+		ast.KindTemplateLiteralType,
+		ast.KindImportType,
+		ast.KindTypeOperator:
+		return true
+	default:
+		return false
+	}
+}
+
+func hasAdvancedTypeSyntax(node *ast.Node) bool {
+	if node == nil {
+		return false
+	}
+	if isAdvancedTypeSyntaxNode(node) {
+		return true
+	}
+
+	found := false
+	node.ForEachChild(func(child *ast.Node) bool {
+		if hasAdvancedTypeSyntax(child) {
+			found = true
+		}
+		return false
+	})
+
+	return found
+}
+
+func signatureHasAdvancedType(functionNode *ast.Node) bool {
+	if functionNode == nil {
+		return false
+	}
+
+	for _, typeParameter := range functionNode.TypeParameters() {
+		if hasAdvancedTypeSyntax(typeParameter) {
+			return true
+		}
+	}
+
+	for _, parameter := range functionNode.Parameters() {
+		if hasAdvancedTypeSyntax(parameter.Type()) {
+			return true
+		}
+	}
+
+	return hasAdvancedTypeSyntax(functionNode.Type())
+}
+
+func isComplexSignature(functionNode *ast.Node) bool {
+	if functionNode == nil {
+		return false
+	}
+	if len(functionNode.TypeParameters()) == 0 {
+		return false
+	}
+	return signatureHasAdvancedType(functionNode)
+}
+
 var KitzNoTypeAssertionRule = rule.Rule{
 	Name: "no-unsafe-type-assertion",
 	Run: func(ctx rule.RuleContext, options any) rule.RuleListeners {
@@ -73,9 +140,20 @@ var KitzNoTypeAssertionRule = rule.Rule{
 			return false
 		}
 
+		isWithinComplexFunctionBody := func(node *ast.Node) bool {
+			for functionNode := getEnclosingFunction(node); functionNode != nil; functionNode = getEnclosingFunction(functionNode.Parent) {
+				if !isWithinFunctionBody(node, functionNode) {
+					continue
+				}
+				if isComplexSignature(functionNode) {
+					return true
+				}
+			}
+			return false
+		}
+
 		isAllowedImplementationAssertion := func(node *ast.Node) bool {
-			functionNode := getEnclosingFunction(node)
-			if !isWithinFunctionBody(node, functionNode) {
+			if !isWithinComplexFunctionBody(node) {
 				return false
 			}
 			return !isConstAssertionTypeNode(node.Type())

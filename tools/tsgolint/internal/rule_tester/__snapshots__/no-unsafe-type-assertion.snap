@@ -1,5 +1,32 @@
 
 [TestKitzNoTypeAssertionRule/invalid-0 - 1]
+Diagnostic 1: noTypeAssertion (3:10 - 3:21)
+Message: Remove assertion casts; use schema decode/typed constructors.
+   2 | function simple(value: unknown) {
+   3 |   return value as any
+     |          ~~~~~~~~~~~~
+   4 | }
+---
+
+[TestKitzNoTypeAssertionRule/invalid-1 - 1]
+Diagnostic 1: noTypeAssertion (3:10 - 3:24)
+Message: Remove assertion casts; use schema decode/typed constructors.
+   2 | function simpleObject(value: unknown) {
+   3 |   return value as object
+     |          ~~~~~~~~~~~~~~~
+   4 | }
+---
+
+[TestKitzNoTypeAssertionRule/invalid-2 - 1]
+Diagnostic 1: noTypeAssertion (3:10 - 3:21)
+Message: Remove assertion casts; use schema decode/typed constructors.
+   2 | function genericOnly<T>(value: T): T {
+   3 |   return value as any
+     |          ~~~~~~~~~~~~
+   4 | }
+---
+
+[TestKitzNoTypeAssertionRule/invalid-3 - 1]
 Diagnostic 1: noTypeAssertion (2:15 - 2:23)
 Message: Remove assertion casts; use schema decode/typed constructors.
    1 | 
@@ -8,49 +35,30 @@ Message: Remove assertion casts; use schema decode/typed constructors.
    3 | 
 ---
 
-[TestKitzNoTypeAssertionRule/invalid-1 - 1]
-Diagnostic 1: noTypeAssertion (2:15 - 2:26)
-Message: Remove assertion casts; use schema decode/typed constructors.
-   1 | 
-   2 | const value = {} as object
-     |               ~~~~~~~~~~~~
-   3 | 
----
-
-[TestKitzNoTypeAssertionRule/invalid-2 - 1]
-Diagnostic 1: noTypeAssertion (2:15 - 2:42)
-Message: Remove assertion casts; use schema decode/typed constructors.
-   1 | 
-   2 | const value = {} as Record<string, number>
-     |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-   3 | 
----
-
-[TestKitzNoTypeAssertionRule/invalid-3 - 1]
-Diagnostic 1: noTypeAssertion (3:10 - 3:21)
+[TestKitzNoTypeAssertionRule/invalid-4 - 1]
+Diagnostic 1: noTypeAssertion (3:15 - 7:11)
 Message: Remove assertion casts; use schema decode/typed constructors.
    2 | const api = {
-   3 |   parse: value as any,
-     |          ~~~~~~~~~~~~
-   4 | }
----
-
-[TestKitzNoTypeAssertionRule/invalid-4 - 1]
-Diagnostic 1: noTypeAssertion (3:11 - 3:19)
-Message: Remove assertion casts; use schema decode/typed constructors.
-   2 | class C {
-   3 |   field = {} as any
-     |           ~~~~~~~~~
-   4 | }
+   3 |   fromString: (<const T extends readonly string[]>(
+     |               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   4 |     value: T,
+     | ~~~~~~~~~~~~~
+   5 |   ): T extends readonly [infer Head, ...infer Tail] ? Head : never => {
+     | ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   6 |     return value as any
+     | ~~~~~~~~~~~~~~~~~~~~~~~
+   7 |   }) as any,
+     | ~~~~~~~~~~~
+   8 | }
 ---
 
 [TestKitzNoTypeAssertionRule/invalid-5 - 1]
-Diagnostic 1: noTypeAssertion (3:10 - 3:23)
+Diagnostic 1: noTypeAssertion (5:10 - 5:23)
 Message: Remove assertion casts; use schema decode/typed constructors.
-   2 | function badConst(value: string) {
-   3 |   return value as const
+   4 | ): T extends readonly [infer Head, ...infer Tail] ? Head : never {
+   5 |   return value as const
      |          ~~~~~~~~~~~~~~
-   4 | }
+   6 | }
 ---
 
 [TestNoUnsafeTypeAssertionRule_AnyAssertions/invalid-0 - 1]
