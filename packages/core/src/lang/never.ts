@@ -29,11 +29,11 @@ export const die = (message: string, cause?: unknown): never => {
  * switch (status) {
  *   case 'active': return handle()
  *   case 'inactive': return skip()
- *   default: absurd(status) // TS error if a case is missing
+ *   default: neverCase(status) // TS error if a case is missing
  * }
  * ```
  */
-export const absurd = (value: never): never => die(`Exhaustive check failed`, { value })
+export const neverCase = (value: never): never => die(`Exhaustive check failed`, { value })
 
 /**
  * Mark a code path as not yet implemented.
