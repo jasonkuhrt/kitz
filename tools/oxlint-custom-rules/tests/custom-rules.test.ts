@@ -256,6 +256,71 @@ const rules: ReadonlyArray<{
   },
 ]
 
+// ---------------------------------------------------------------------------
+// E2E: resolution chain — standalone mini-project with tsconfig + #imports
+// ---------------------------------------------------------------------------
+
+const E2E_PROJECT_ROOT = path.resolve(FIXTURES_ROOT, `e2e-module-boundaries/packages/demo`)
+const E2E_TSCONFIG = path.resolve(E2E_PROJECT_ROOT, `tsconfig.json`)
+const TSGO_BIN = path.resolve(TESTS_ROOT, `../../../node_modules/.bin/tsgo`)
+
+describe(`e2e: resolution chain`, () => {
+  test(`tsgo resolves #imports through tsconfig paths`, () => {
+    const result = spawnSync(TSGO_BIN, [`--noEmit`, `-p`, E2E_TSCONFIG], {
+      encoding: `utf8`,
+    })
+
+    if (result.status !== 0) {
+      const output = `${result.stdout}\n${result.stderr}`.trim()
+      throw new Error(`tsgo --noEmit failed (exit ${result.status}):\n${output}`)
+    }
+
+    expect(result.status).toBe(0)
+  })
+
+  test(`oxlint flags deep import in e2e project`, () => {
+    const output = runOxlint(
+      `no-deep-imports-when-namespace-entrypoint-exists`,
+      `e2e-module-boundaries/packages/demo/src/e2e-fail-deep-import.ts`,
+    )
+    expect(
+      countDiagnosticsForRule(output, `no-deep-imports-when-namespace-entrypoint-exists`),
+    ).toBeGreaterThan(0)
+  })
+
+  test(`oxlint flags prefer-subpath violation in e2e project`, () => {
+    const output = runOxlint(
+      `prefer-subpath-imports`,
+      `e2e-module-boundaries/packages/demo/src/e2e-fail-prefer-subpath.ts`,
+    )
+    expect(countDiagnosticsForRule(output, `prefer-subpath-imports`)).toBeGreaterThan(0)
+  })
+
+  test(`oxlint allows door import in e2e project`, () => {
+    const output = runOxlint(
+      `no-deep-imports-when-namespace-entrypoint-exists`,
+      `e2e-module-boundaries/packages/demo/src/e2e-pass-through-door.ts`,
+    )
+    expect(
+      countDiagnosticsForRule(output, `no-deep-imports-when-namespace-entrypoint-exists`),
+    ).toBe(0)
+  })
+
+  test(`consumer.ts using #imports produces no deep-import violations`, () => {
+    const output = runOxlint(
+      `no-deep-imports-when-namespace-entrypoint-exists`,
+      `e2e-module-boundaries/packages/demo/src/consumer.ts`,
+    )
+    expect(
+      countDiagnosticsForRule(output, `no-deep-imports-when-namespace-entrypoint-exists`),
+    ).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Per-rule fixture tests
+// ---------------------------------------------------------------------------
+
 for (const rule of rules) {
   describe(rule.name, () => {
     for (const fixtureFilePath of rule.failingFixtures) {
