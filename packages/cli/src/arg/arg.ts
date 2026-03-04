@@ -134,6 +134,10 @@ export interface AnalysisSeparator {
   original: '--'
 }
 
+const hasAtLeastTwoItems = <item>(items: readonly item[]): items is [item, item, ...item[]] => {
+  return items.length >= 2
+}
+
 // ============================================================================
 // Runtime Analyzer
 // ============================================================================
@@ -178,12 +182,13 @@ export interface AnalysisSeparator {
  * ```
  */
 export function analyze<const input extends string>(input: input): Arg.Analyze<input> {
-  return analyze_(input) as Arg.Analyze<input>
+  return analyze_(input)
 }
 
 /**
  * Internal runtime analyzer implementation.
  */
+export function analyze_<const input extends string>(input: input): Arg.Analyze<input>
 export function analyze_(input: string): Analysis {
   // Separator: exactly "--"
   if (input === '--') {
@@ -246,6 +251,13 @@ export function analyze_(input: string): Analysis {
     // Cluster expansion: multi-character short flag (e.g., "-abc")
     if (name.length > 1) {
       const chars = name.split('')
+      if (!hasAtLeastTwoItems(chars)) {
+        return {
+          _tag: 'positional',
+          value: input,
+          original: input,
+        }
+      }
       const flags: AnalysisShortFlag[] = chars.map((char, index) => {
         const isLast = index === chars.length - 1
         return {
@@ -255,10 +267,17 @@ export function analyze_(input: string): Analysis {
           original: isLast && value !== null ? `-${char}=${value}` : `-${char}`,
         }
       })
+      if (!hasAtLeastTwoItems(flags)) {
+        return {
+          _tag: 'positional',
+          value: input,
+          original: input,
+        }
+      }
 
       return {
         _tag: 'short-flag-cluster',
-        flags: flags as [AnalysisShortFlag, AnalysisShortFlag, ...AnalysisShortFlag[]],
+        flags,
         original: input,
       }
     }
