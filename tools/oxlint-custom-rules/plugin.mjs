@@ -1096,23 +1096,6 @@ const isNonEffectPackage = (filePath) => {
   return nonEffectPackages.some((pkg) => filePath.startsWith(pkg))
 }
 
-/**
- * Files that are the canonical location for defect-signaling throws.
- *
- * These files define utilities like `die()` and `absurd()` — the single
- * place where `throw` is allowed for defect signaling. All other code
- * should call these utilities instead of throwing directly.
- */
-const defectUtilFiles = [
-  `packages/core/src/lang/never.ts`,
-]
-
-/**
- * Check if a file is a defect utility file (allowed to throw).
- */
-const isDefectUtilFile = (filePath) => {
-  return defectUtilFiles.some((f) => filePath.endsWith(f))
-}
 
 /**
  * @param {string} filePath
@@ -1822,11 +1805,7 @@ const noThrowRule = defineRule({
   },
   create(context) {
     const filePath = getNormalizedRelativePath(context)
-    if (
-      isBoundaryAdapterFile(filePath) ||
-      isNonEffectPackage(filePath) ||
-      isDefectUtilFile(filePath)
-    ) {
+    if (isBoundaryAdapterFile(filePath) || isNonEffectPackage(filePath)) {
       return {}
     }
 

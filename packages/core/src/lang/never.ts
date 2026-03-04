@@ -1,3 +1,5 @@
+/* eslint-disable kitz/no-throw -- This file IS the centralized throw point for defects. */
+
 /**
  * Signal a defect — an impossible state that indicates a bug in the code.
  *
@@ -6,17 +8,21 @@
  * 1. Intent is explicit (defect, not domain error)
  * 2. The `no-throw` lint rule only needs to allowlist this one file
  *
+ * Uses `Error.captureStackTrace` to remove `panic` from the stack trace,
+ * so the top frame points to the actual call site rather than this utility.
+ *
  * @example
  * ```ts
- * // Generic defect
- * die('Unexpected null in pipeline')
- *
- * // With structured cause for debugging
- * die('Invalid state', { phase: 'init', value })
+ * panic('Unexpected null in pipeline')
+ * panic('Invalid state', { phase: 'init', value })
  * ```
  */
-export const die = (message: string, cause?: unknown): never => {
-  throw new Error(message, { cause })
+export const panic = (message: string, cause?: unknown): never => {
+  const error = new Error(message, { cause })
+  if (Error.captureStackTrace) {
+    Error.captureStackTrace(error, panic)
+  }
+  throw error
 }
 
 /**
@@ -33,7 +39,7 @@ export const die = (message: string, cause?: unknown): never => {
  * }
  * ```
  */
-export const neverCase = (value: never): never => die(`Exhaustive check failed`, { value })
+export const neverCase = (value: never): never => panic(`Exhaustive check failed`, { value })
 
 /**
  * Mark a code path as not yet implemented.
@@ -43,4 +49,4 @@ export const neverCase = (value: never): never => die(`Exhaustive check failed`,
  * const result = todo<string>('implement parser')
  * ```
  */
-export const todo = <type>(message?: string): type => die(`todo${message ? `: ${message}` : ''}`)
+export const todo = <type>(message?: string): type => panic(`todo${message ? `: ${message}` : ''}`)

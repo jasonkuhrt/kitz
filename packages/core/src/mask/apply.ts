@@ -128,5 +128,5 @@ const applyInternal = (data: any, mask: Mask<any>): any => {
       : Obj.omit(data, mask.properties as any)
   }
 
-  Lang.die('Unreachable: unknown mask mode')
+  Lang.panic('Unreachable: unknown mask mode')
 }
