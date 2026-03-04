@@ -1,4 +1,4 @@
-import { Err, Obj } from '@kitz/core'
+import { Err, Lang, Obj } from '@kitz/core'
 import { Group } from '@kitz/group'
 import { Alge } from 'alge'
 import { Either } from 'effect'
@@ -220,7 +220,7 @@ export const parse = ({
         const tag = group.optionality.tag
         const parameter = specs.find((_) => _.name.canonical === tag)
         if (!parameter) {
-          throw new Error(`Failed to find parameter for exclusive group default. This should be impossible.`)
+          Lang.panic(`Failed to find parameter for exclusive group default. This should be impossible.`)
         }
         // TODO handle error getting default?
         const defaultValue = group.optionality.getValue()

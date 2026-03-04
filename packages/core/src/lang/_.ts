@@ -1,6 +1,3 @@
-// @ts-expect-error Duplicate identifier
-export * as Lang from './__.js'
-
 /**
  * Language utilities for type inspection and formatting.
  *
@@ -9,4 +6,13 @@ export * as Lang from './__.js'
  *
  * @category Domains
  */
-export namespace Lang {}
+export * as Lang from './__.js'
+
+// Disabled: Merging a namespace declaration with `export * as` breaks
+// TypeScript's control flow analysis for never-returning functions
+// (panic, throw, neverCase, todo), preventing type narrowing after
+// guard checks like `if (x === null) Lang.panic(...)`.
+//
+// To re-enable, uncomment both lines below:
+// /* @ts-expect-error Duplicate identifier */
+// export namespace Lang {}

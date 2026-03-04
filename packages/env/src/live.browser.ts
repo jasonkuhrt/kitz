@@ -1,3 +1,4 @@
+import { Lang } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Layer } from 'effect'
 import { Env } from './env.js'
@@ -18,7 +19,7 @@ export const env = {
   os: 'linux' as const,
   arch: 'x64' as const,
   exit: (code?: number): never => {
-    throw new Error(`Env.exit(${code}) called in browser environment`)
+    Lang.panic(`Env.exit(${code}) called in browser environment`)
   },
 }
 

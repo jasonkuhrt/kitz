@@ -1,4 +1,4 @@
-import { Obj, Str } from '@kitz/core'
+import { Lang, Obj, Str } from '@kitz/core'
 import { Either } from 'effect'
 
 export const BooleanLookup = {
@@ -33,7 +33,7 @@ export const parseEnvironmentVariableBoolean = (serializedValue: string): Either
 export const parseEnvironmentVariableBooleanOrThrow = (value: string) => {
   const result = parseEnvironmentVariableBoolean(value)
   if (Either.isLeft(result)) {
-    throw result.left
+    Lang.throw(result.left)
   }
   return result.right
 }
@@ -50,8 +50,4 @@ export const stripeNegatePrefix = (name: string): null | string => {
 export const stripeNegatePrefixLoose = (name: string): string => {
   const result = stripeNegatePrefix(name)
   return result ? result : name
-}
-
-export const casesExhausted = (_: never): never => {
-  throw new Error(`Cases exhausted: ${_}`)
 }

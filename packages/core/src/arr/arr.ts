@@ -1,5 +1,6 @@
 import { Bool } from '#bool'
 import { CoreFn as Fn } from '#fn/core'
+import { Lang } from '#lang'
 import { Obj } from '#obj'
 import { Pat } from '#pat'
 import { is } from './is.js'
@@ -264,7 +265,7 @@ export const of = <$T extends readonly unknown[]>(...items: $T): Readonly<$T> =>
  */
 export function assert(value: unknown): asserts value is unknown[] {
   if (!Array.isArray(value)) {
-    throw new TypeError(`Expected array but got ${typeof value}`)
+    Lang.throw(new TypeError(`Expected array but got ${typeof value}`))
   }
 }
 

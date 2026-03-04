@@ -1,6 +1,7 @@
 import type { Arr } from '#arr'
 import type { Bool } from '#bool'
 import { Fn } from '#fn'
+import { Lang } from '#lang'
 import { Prom } from '#prom'
 import type { AwaitedUnion } from '#prom/prom'
 import type { Ts } from '#ts'
@@ -137,7 +138,7 @@ export function tryCatch<returned, thrown>(
       if (predicates.some((predicate) => predicate(error))) {
         return error
       }
-      throw error
+      Lang.throw(error)
     },
   }) as any
 }
@@ -411,8 +412,8 @@ export function tryOrRethrow<$Return>(
     {
       catch: (thrown, _isAsync) => {
         const cause = ensure(thrown)
-        if (typeof wrapper === 'function') throw wrapper(cause)
-        throw wrap(cause, wrapper)
+        if (typeof wrapper === 'function') Lang.throw(wrapper(cause))
+        Lang.throw(wrap(cause, wrapper))
       },
     },
   ) as any
@@ -479,13 +480,15 @@ export async function tryAllOrRethrow<
   })
 
   if (errors.length > 0) {
-    throw new AggregateError(
-      errors,
-      typeof wrapper === 'string'
-        ? wrapper
-        : typeof wrapper === 'object'
-        ? wrapper.message
-        : 'Multiple operations failed',
+    Lang.throw(
+      new AggregateError(
+        errors,
+        typeof wrapper === 'string'
+          ? wrapper
+          : typeof wrapper === 'object'
+          ? wrapper.message
+          : 'Multiple operations failed',
+      ),
     )
   }
 

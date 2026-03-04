@@ -1,3 +1,4 @@
+import { Lang } from '@kitz/core'
 import { Effect } from 'effect'
 import type { OakSchema } from '../../../schema/oak-schema.js'
 import type { InferOutput } from '../../../schema/standard-schema.js'
@@ -194,7 +195,7 @@ export const create = (channels: PromptEngine.Channels): Prompter => {
       }
 
       // Fallback for unknown types
-      throw new Error(`Prompting not implemented for schema type: ${(schema as any)._tag}`)
+      return Lang.todo(`Prompting for schema type: ${(schema as any)._tag}`)
     },
   }
 }

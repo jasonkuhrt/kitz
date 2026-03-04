@@ -1,4 +1,4 @@
-import { Obj } from '@kitz/core'
+import { Lang, Obj } from '@kitz/core'
 import { Effect } from 'effect'
 import type { RawArgInputs } from '../builders/command/types.js'
 import { createEvent } from '../eventPatterns.js'
@@ -112,7 +112,7 @@ export const parse = (
       if (!promptEnabled) continue
 
       const parseResult = openingArgsResult.basicParameters[spec.name.canonical]
-      if (!parseResult) throw new Error(`something went wrong, could not get arg parse result`)
+      if (!parseResult) Lang.panic(`something went wrong, could not get arg parse result`)
 
       const event = createEvent(parseResult)
       // We cannot prompt for this parameter

@@ -1,3 +1,4 @@
+import { Lang } from '@kitz/core'
 import { Semver } from '@kitz/semver'
 import { Schema as S } from 'effect'
 import { Operator } from './operator.js'
@@ -19,7 +20,7 @@ export class Comparator extends S.Class<Comparator>('PkgRangeComparator')({
     {
       strict: true,
       decode: () => {
-        throw new Error('Comparator.Schema decode not implemented - use Range.Schema')
+        return Lang.todo('Comparator.Schema decode')
       },
       encode: (c) => {
         const v = c.version

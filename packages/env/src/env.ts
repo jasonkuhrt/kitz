@@ -1,3 +1,4 @@
+import { Lang } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Context, Layer } from 'effect'
 import type { Arch, Os, Platform } from './types.js'
@@ -64,6 +65,6 @@ export const Test = (config: Partial<EnvService> = {}) =>
     os: config.os ?? 'linux',
     arch: config.arch ?? 'x64',
     exit: config.exit ?? ((code?: number) => {
-      throw new Error(`Env.exit(${code}) called in test environment`)
+      Lang.panic(`Env.exit(${code}) called in test environment`)
     }),
   })

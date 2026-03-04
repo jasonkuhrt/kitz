@@ -1,4 +1,5 @@
 import { Fn } from '#fn'
+import { Lang } from '#lang'
 import { Effect } from 'effect'
 import { inspect, type InspectOptions } from './inspect.js'
 
@@ -61,7 +62,7 @@ export const logUnsafe = (error: Error, options?: InspectOptions): void => {
  * @category Utilities
  */
 export const throwNull = <V>(value: V, message?: string): Exclude<V, null> => {
-  if (value === null) throw new Error(message ?? defaultThrowNullMessage)
+  if (value === null) Lang.throw(new Error(message ?? defaultThrowNullMessage))
 
   return value as any
 }

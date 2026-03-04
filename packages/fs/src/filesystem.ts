@@ -9,6 +9,7 @@
 
 import { FileSystem } from '@effect/platform'
 import type { PlatformError } from '@effect/platform/Error'
+import { Lang } from '@kitz/core'
 import type { Json } from '@kitz/json'
 import { Effect, Schema as S, Scope, Sink, Stream } from 'effect'
 import { Path } from './path/_.js'
@@ -619,8 +620,8 @@ export const write: {
       )
     }
 
-    // Exhaustive check - should never happen
-    throw new Error('Invalid location type')
+    // Exhaustive check
+    Lang.neverCase(loc as never)
   })) as any
 
 /**

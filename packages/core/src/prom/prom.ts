@@ -1,3 +1,4 @@
+import { Lang } from '#lang'
 // import { isShape as Obj_isShape } from '#obj/obj' // Temporarily disabled for migration
 
 /**
@@ -241,7 +242,7 @@ export function maybeAsync<T, R = T, E = unknown>(
         if (handlers.catch) {
           return handlers.catch(env.value, true)
         }
-        throw env.value
+        Lang.throw(env.value)
       }
       if (handlers.then) {
         return handlers.then(env.value as any)
@@ -255,7 +256,7 @@ export function maybeAsync<T, R = T, E = unknown>(
     if (handlers.catch) {
       return handlers.catch(envelope.value, false) as any
     }
-    throw envelope.value
+    Lang.throw(envelope.value)
   }
 
   if (handlers.then) {

@@ -1,3 +1,4 @@
+import { Lang } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Either, Schema as S } from 'effect'
 import { existsSync, readdirSync, readFileSync } from 'fs'
@@ -152,7 +153,7 @@ const addHomePageIfExists = (
     if (cause instanceof Error) {
       throw new Error(`Failed to parse home page for namespace '${nsName}':\n${cause.message}`, { cause })
     }
-    throw cause
+    Lang.throw(cause)
   }
 
   const home = parsedHome.right

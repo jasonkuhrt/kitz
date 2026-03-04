@@ -9,6 +9,7 @@
     "./__": "./build/__.js"
   },
   "dependencies": {
+    "@kitz/core": "workspace:*",
     "@kitz/fs": "workspace:*",
     "effect": "^3.0.0"
   },

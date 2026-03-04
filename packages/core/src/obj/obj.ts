@@ -1,4 +1,4 @@
-import type { Lang } from '#lang'
+import { Lang } from '#lang'
 import type { Writable } from 'type-fest'
 import { type IsEmpty } from './diff.js'
 import { entries } from './get.js'
@@ -25,7 +25,7 @@ import { type Any } from './type.js'
  */
 export function assert(value: unknown): asserts value is object {
   if (typeof value !== 'object' || value === null) {
-    throw new TypeError(`Expected object but got ${typeof value}`)
+    Lang.throw(new TypeError(`Expected object but got ${typeof value}`))
   }
 }
 

@@ -264,7 +264,7 @@ export const test = (patterns: readonly Parsed[], log: LogRecord): boolean => {
       } else if (!pattern.path.descendants) {
         isPass = logPath === pattern.path.value
       } else {
-        throw new Error(`this should never happen`)
+        Lang.panic(`this should never happen`)
       }
     }
 
@@ -272,7 +272,7 @@ export const test = (patterns: readonly Parsed[], log: LogRecord): boolean => {
   }
 
   if (yaynay === null) {
-    throw new Error(`Invariant violation: pattern processing did not convert into pass calculation`)
+    Lang.panic(`Invariant violation: pattern processing did not convert into pass calculation`)
   }
 
   return yaynay
@@ -294,7 +294,7 @@ const comp = (kind: Parsed['level']['comp'], a: number, b: number): boolean => {
  */
 export const parseUnsafe = (defaults: Defaults, pattern: string): Parsed[] => {
   return parse(defaults, pattern).map((value) => {
-    if (value instanceof Error) throw value
+    if (value instanceof Error) Lang.throw(value)
     return value
   })
 }
@@ -451,7 +451,7 @@ export const processLogFilterInput = (
   if (badOnes.length) {
     if (goodOnes.length) {
       patterns = goodOnes.map((value) => {
-        if (value instanceof Error) throw value
+        if (value instanceof Error) Lang.throw(value)
         return value
       })
     }
@@ -459,7 +459,7 @@ export const processLogFilterInput = (
     console.log(message)
   } else {
     patterns = goodOnes.map((value) => {
-      if (value instanceof Error) throw value
+      if (value instanceof Error) Lang.throw(value)
       return value
     })
   }
