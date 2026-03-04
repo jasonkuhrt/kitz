@@ -226,6 +226,8 @@ const rules: ReadonlyArray<{
       `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/fail-imports-scoped-impl.ts`,
       `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/fail-imports-deep-nested.ts`,
       `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/fail-reexports-scoped-impl.ts`,
+      // E2E: realistic package with subpath imports
+      `e2e-module-boundaries/packages/demo/src/e2e-fail-deep-import.ts`,
     ],
     passingFixtures: [
       `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/pass-imports-namespace.ts`,
@@ -234,16 +236,22 @@ const rules: ReadonlyArray<{
       `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/pass-test.test.ts`,
       `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/bar/__.ts`,
       `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/bar/peer.ts`,
+      // E2E: importing through the door is valid (no deep import violation)
+      `e2e-module-boundaries/packages/demo/src/e2e-pass-through-door.ts`,
     ],
   },
   {
     name: `prefer-subpath-imports`,
     failingFixtures: [
       `prefer-subpath-imports/packages/has-imports/src/foo/fail-relative-door.ts`,
+      // E2E: relative import to door when #alpha exists
+      `e2e-module-boundaries/packages/demo/src/e2e-fail-prefer-subpath.ts`,
     ],
     passingFixtures: [
       `prefer-subpath-imports/packages/no-imports/src/foo/pass-no-hash.ts`,
       `prefer-subpath-imports/packages/has-imports/src/bar/sibling-pass.ts`,
+      // E2E: using # subpath import (no relative path to flag)
+      `e2e-module-boundaries/packages/demo/src/e2e-pass-subpath-import.ts`,
     ],
   },
 ]
