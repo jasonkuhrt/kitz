@@ -2835,6 +2835,21 @@ const transformImportsToPaths = (forwardMap) => {
   return paths
 }
 
+/**
+ * Converts a simple glob pattern to a RegExp.
+ * Supports `*` (single path segment) and `**` (any path segments).
+ * @param {string} glob
+ * @returns {RegExp}
+ */
+const simpleGlobToRegex = (glob) => {
+  const escaped = glob
+    .replace(/[.+^${}()|[\]\\]/g, `\\$&`)
+    .replace(/\*\*/g, `\0DOUBLESTAR\0`)
+    .replace(/\*/g, `[^/]+`)
+    .replace(/\0DOUBLESTAR\0/g, `.*`)
+  return new RegExp(`^${escaped}$`)
+}
+
 /** @type {Set<string>} */
 const reportedSubpathImportsIntegrity = new Set()
 
@@ -2846,6 +2861,19 @@ const subpathImportsIntegrityRule = defineRule({
       recommended: true,
     },
     messages: MESSAGES,
+    schema: [
+      {
+        type: `object`,
+        properties: {
+          requiredEntryPatterns: {
+            type: `array`,
+            items: { type: `string` },
+            description: `Glob patterns (relative to package root) for _.ts files that must have corresponding # subpath import entries. Defaults to [] (no files checked).`,
+          },
+        },
+        additionalProperties: false,
+      },
+    ],
   },
   create(context) {
     const filePath = getNormalizedRelativePath(context)
@@ -2854,21 +2882,29 @@ const subpathImportsIntegrityRule = defineRule({
       return {}
     }
 
+    const options = /** @type {{ requiredEntryPatterns?: string[] }} */ (context.options[0] ?? {})
+    /** @type {RegExp[]} */
+    const requiredEntryPatterns = (options.requiredEntryPatterns ?? []).map(simpleGlobToRegex)
+
     return {
       Program(node) {
         const packageDir = path.resolve(context.cwd, packageSourcePathDetails.packageSourceDirectoryRelativePath, `..`)
         const packageKey = normalizePath(packageDir)
 
         // --- Per-file check: missing entry (Check 3) ---
-        // Only applies to _.ts files
-        if (filePath.endsWith(`/_.ts`)) {
-          const absolutePath = normalizePath(path.resolve(context.cwd, filePath))
-          const reverseMap = getSubpathImportReverseMap(packageDir)
-          if (reverseMap !== null && reverseMap.size > 0 && !reverseMap.has(absolutePath)) {
-            context.report({
-              node,
-              messageId: MESSAGE_IDS.subpathImportsIntegrityMissingEntry,
-            })
+        // Only applies to _.ts files that match configured requiredEntryPatterns.
+        // If no patterns are configured, this check is skipped entirely.
+        if (filePath.endsWith(`/_.ts`) && requiredEntryPatterns.length > 0) {
+          const relativeToPkg = normalizePath(path.relative(packageDir, path.resolve(context.cwd, filePath)))
+          if (requiredEntryPatterns.some(re => re.test(relativeToPkg))) {
+            const absolutePath = normalizePath(path.resolve(context.cwd, filePath))
+            const reverseMap = getSubpathImportReverseMap(packageDir)
+            if (reverseMap !== null && reverseMap.size > 0 && !reverseMap.has(absolutePath)) {
+              context.report({
+                node,
+                messageId: MESSAGE_IDS.subpathImportsIntegrityMissingEntry,
+              })
+            }
           }
         }
 

@@ -43,6 +43,12 @@
       "#fn/core": [
         "./src/fn/core/_.js"
       ],
+      "#mask": [
+        "./src/mask/_.js"
+      ],
+      "#mask/mask": [
+        "./src/mask/__.js"
+      ],
       "#lang": [
         "./src/lang/_.js"
       ],
@@ -79,6 +85,12 @@
       "#optic/*": [
         "./src/optic/*.js"
       ],
+      "#ref": [
+        "./src/ref/_.js"
+      ],
+      "#ref/ref": [
+        "./src/ref/__.js"
+      ],
       "#pat": [
         "./src/pat/_.js"
       ],
@@ -102,6 +114,12 @@
       ],
       "#ts/ts": [
         "./src/ts/__.js"
+      ],
+      "#value": [
+        "./src/value/_.js"
+      ],
+      "#value/value": [
+        "./src/value/__.js"
       ],
       "#tup": [
         "./src/tup/_.js"

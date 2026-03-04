@@ -13,6 +13,12 @@
       "#pkg/*": [
         "./src/*.js"
       ],
+      "#moniker": [
+        "./src/moniker/_.js"
+      ],
+      "#moniker/*": [
+        "./src/moniker/*.js"
+      ],
       "#manifest": [
         "./src/manifest/_.js"
       ],
@@ -30,6 +36,12 @@
       ],
       "#pin/*": [
         "./src/pin/*.js"
+      ],
+      "#range": [
+        "./src/range/_.js"
+      ],
+      "#range/*": [
+        "./src/range/*.js"
       ]
     }
   },

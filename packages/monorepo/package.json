@@ -5,7 +5,9 @@
   "sideEffects": false,
   "imports": {
     "#monorepo": "./src/_.ts",
-    "#monorepo/*": "./src/*.ts"
+    "#monorepo/*": "./src/*.ts",
+    "#pnpm": "./src/pnpm/_.ts",
+    "#pnpm/pnpm": "./src/pnpm/__.ts"
   },
   "exports": {
     ".": "./build/_.js",

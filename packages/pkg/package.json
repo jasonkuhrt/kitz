@@ -7,12 +7,16 @@
   "imports": {
     "#pkg": "./src/_.ts",
     "#pkg/*": "./src/*.ts",
+    "#moniker": "./src/moniker/_.ts",
+    "#moniker/*": "./src/moniker/*.ts",
     "#manifest": "./src/manifest/_.ts",
     "#manifest/*": "./src/manifest/*.ts",
     "#manager": "./src/manager/_.ts",
     "#manager/*": "./src/manager/*.ts",
     "#pin": "./src/pin/_.ts",
-    "#pin/*": "./src/pin/*.ts"
+    "#pin/*": "./src/pin/*.ts",
+    "#range": "./src/range/_.ts",
+    "#range/*": "./src/range/*.ts"
   },
   "exports": {
     ".": "./build/_.js",

@@ -1,9 +1,9 @@
+import { Moniker } from '#moniker'
 import { Ts } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
 import { Semver } from '@kitz/semver'
 import { Effect, Option, Schema as S } from 'effect'
-import { Moniker } from '../moniker/_.js'
 
 const Author = S.Struct({
   name: S.optional(S.String),

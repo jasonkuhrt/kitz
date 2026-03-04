@@ -1,7 +1,7 @@
+import { Moniker } from '#moniker'
+import { Range as SemverRange } from '#range'
 import { Semver } from '@kitz/semver'
 import { Match, Option, ParseResult, Schema as S } from 'effect'
-import { Moniker } from '../moniker/_.js'
-import { Range as SemverRange } from '../range/_.js'
 
 // ============================================================================
 // Type-Level Parsing
