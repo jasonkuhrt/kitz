@@ -57,6 +57,18 @@ function angle<const T extends readonly string[]>(
 }
 `},
 		{Code: `
+// @kitz-complex
+function forcedComplex(value: unknown) {
+  return value as any
+}
+`},
+		{Code: `
+// @kitz-complex
+const forcedArrow = (value: unknown) => {
+  return value as Record<string, number>
+}
+`},
+		{Code: `
 class Service {
   parse<const T extends readonly string[]>(
     value: T,
@@ -114,6 +126,16 @@ function badConst<const T extends readonly string[]>(
   value: T,
 ): T extends readonly [infer Head, ...infer Tail] ? Head : never {
   return value as const
+}
+`,
+			Errors: []rule_tester.InvalidTestCaseError{{MessageId: "noTypeAssertion"}},
+		},
+		{
+			Code: `
+// @kitz-complex
+
+function markerTooFar(value: unknown) {
+  return value as any
 }
 `,
 			Errors: []rule_tester.InvalidTestCaseError{{MessageId: "noTypeAssertion"}},

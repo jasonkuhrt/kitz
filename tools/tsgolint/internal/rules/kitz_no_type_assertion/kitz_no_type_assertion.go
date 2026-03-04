@@ -11,6 +11,8 @@ import (
 
 var testFilePattern = regexp.MustCompile(`(?:\.(?:test|spec)(?:-d)?|\.bench-d)\.[cm]?[jt]sx?$`)
 
+const complexPragma = "@kitz-complex"
+
 func buildNoTypeAssertionMessage() rule.RuleMessage {
 	return rule.RuleMessage{
 		Id:          "noTypeAssertion",
@@ -108,6 +110,63 @@ func isComplexSignature(functionNode *ast.Node) bool {
 	return signatureHasAdvancedType(functionNode)
 }
 
+func getPragmaAnchorNode(functionNode *ast.Node) *ast.Node {
+	if functionNode == nil {
+		return nil
+	}
+
+	anchor := functionNode
+	parent := functionNode.Parent
+	if parent == nil {
+		return anchor
+	}
+
+	if ast.IsVariableDeclaration(parent) && parent.Initializer() == functionNode {
+		declarationList := parent.Parent
+		if declarationList != nil && ast.IsVariableDeclarationList(declarationList) {
+			if variableStatement := declarationList.Parent; variableStatement != nil && ast.IsVariableStatement(variableStatement) {
+				return variableStatement
+			}
+		}
+		return parent
+	}
+
+	if ast.IsPropertyAssignment(parent) && parent.Initializer() == functionNode {
+		return parent
+	}
+
+	return anchor
+}
+
+func hasPragmaOnSameOrPreviousLine(sourceText string, start int) bool {
+	if start <= 0 || start > len(sourceText) {
+		return false
+	}
+
+	lineStart := strings.LastIndex(sourceText[:start], "\n") + 1
+	sameLinePrefix := strings.TrimSpace(sourceText[lineStart:start])
+	if strings.Contains(sameLinePrefix, complexPragma) {
+		return true
+	}
+
+	if lineStart == 0 {
+		return false
+	}
+
+	previousLineEnd := lineStart - 1
+	if previousLineEnd > 0 && sourceText[previousLineEnd-1] == '\r' {
+		previousLineEnd--
+	}
+
+	previousLineStart := strings.LastIndex(sourceText[:previousLineEnd], "\n") + 1
+	previousLine := strings.TrimSpace(sourceText[previousLineStart:previousLineEnd])
+	if previousLine == "" {
+		return false
+	}
+
+	return strings.Contains(previousLine, complexPragma)
+}
+
 var KitzNoTypeAssertionRule = rule.Rule{
 	Name: "no-unsafe-type-assertion",
 	Run: func(ctx rule.RuleContext, options any) rule.RuleListeners {
@@ -145,7 +204,10 @@ var KitzNoTypeAssertionRule = rule.Rule{
 				if !isWithinFunctionBody(node, functionNode) {
 					continue
 				}
-				if isComplexSignature(functionNode) {
+				pragmaAnchor := getPragmaAnchorNode(functionNode)
+				pragmaStart := utils.TrimNodeTextRange(ctx.SourceFile, pragmaAnchor).Pos()
+				hasComplexPragma := hasPragmaOnSameOrPreviousLine(ctx.SourceFile.Text(), pragmaStart)
+				if isComplexSignature(functionNode) || hasComplexPragma {
 					return true
 				}
 			}
