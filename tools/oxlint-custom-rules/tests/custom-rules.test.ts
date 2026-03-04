@@ -1,4 +1,6 @@
 import { spawnSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, test } from 'vitest'
 
@@ -254,6 +256,21 @@ const rules: ReadonlyArray<{
       `e2e-module-boundaries/packages/demo/src/e2e-pass-subpath-import.ts`,
     ],
   },
+  {
+    name: `subpath-imports-integrity`,
+    failingFixtures: [
+      `subpath-imports-integrity/fail-broken-ref/packages/broken/src/beta/_.ts`,
+      `subpath-imports-integrity/fail-wrong-format/packages/wrongfmt/src/gamma/_.ts`,
+      `subpath-imports-integrity/fail-missing-entry/packages/noentry/src/beta/_.ts`,
+      `subpath-imports-integrity/fail-condition-mismatch/packages/mismatch/src/foo/impl.ts`,
+    ],
+    passingFixtures: [
+      `subpath-imports-integrity/pass-valid/packages/good/src/alpha/_.ts`,
+      `subpath-imports-integrity/pass-no-imports/packages/noimports/src/value.ts`,
+      `subpath-imports-integrity/pass-conditional/packages/conditional/src/lang/impl.ts`,
+      `subpath-imports-integrity/fail-missing-entry/packages/noentry/src/alpha/_.ts`,
+    ],
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -314,6 +331,71 @@ describe(`e2e: resolution chain`, () => {
     expect(
       countDiagnosticsForRule(output, `no-deep-imports-when-namespace-entrypoint-exists`),
     ).toBe(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// E2E: subpath-imports-integrity tsconfig autofix
+// ---------------------------------------------------------------------------
+
+describe(`e2e: subpath-imports-integrity tsconfig autofix`, () => {
+  test(`detects drift and auto-fixes tsconfig.json`, () => {
+    // Copy the drift fixture to a temp dir so the autofix write doesn't pollute fixtures
+    const fixtureDir = path.resolve(
+      FIXTURES_ROOT,
+      `subpath-imports-integrity/fail-tsconfig-drift/packages/drifted`,
+    )
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `oxlint-tsconfig-drift-`))
+    const tmpPkgDir = path.join(tmpDir, `packages/drifted`)
+    fs.mkdirSync(path.join(tmpPkgDir, `src/alpha`), { recursive: true })
+
+    // Copy package.json, tsconfig.json, and source file
+    fs.copyFileSync(path.join(fixtureDir, `package.json`), path.join(tmpPkgDir, `package.json`))
+    fs.copyFileSync(path.join(fixtureDir, `tsconfig.json`), path.join(tmpPkgDir, `tsconfig.json`))
+    fs.copyFileSync(
+      path.join(fixtureDir, `src/alpha/_.ts`),
+      path.join(tmpPkgDir, `src/alpha/_.ts`),
+    )
+
+    // Verify tsconfig is drifted before running
+    const beforeTsconfig = JSON.parse(fs.readFileSync(path.join(tmpPkgDir, `tsconfig.json`), `utf8`))
+    expect(beforeTsconfig.compilerOptions.paths[`#alpha`]).toEqual([`./src/WRONG/_.js`])
+
+    // Run oxlint on a source file within the temp package
+    const result = spawnSync(
+      OXLINT_BIN,
+      [
+        `--config`,
+        CONFIG_PATH,
+        `--disable-nested-config`,
+        `--import-plugin`,
+        `--format`,
+        `json`,
+        `packages/drifted/src/alpha/_.ts`,
+      ],
+      {
+        cwd: tmpDir,
+        encoding: `utf8`,
+      },
+    )
+
+    if (result.error) {
+      throw result.error
+    }
+
+    // Parse diagnostics - expect the drift warning
+    const output = JSON.parse(result.stdout) as OxlintJsonOutput
+    expect(
+      countDiagnosticsForRule(output, `subpath-imports-integrity`),
+    ).toBeGreaterThan(0)
+
+    // Verify tsconfig was auto-fixed
+    const afterTsconfig = JSON.parse(fs.readFileSync(path.join(tmpPkgDir, `tsconfig.json`), `utf8`))
+    expect(afterTsconfig.compilerOptions.paths[`#alpha`]).toEqual([`./src/alpha/_.js`])
+    expect(afterTsconfig.compilerOptions.paths[`#alpha/*`]).toEqual([`./src/alpha/*.js`])
+
+    // Cleanup
+    fs.rmSync(tmpDir, { recursive: true, force: true })
   })
 })
 

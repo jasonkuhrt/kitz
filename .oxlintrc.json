@@ -48,6 +48,7 @@
     "kitz/module-structure-conventions": "warn",
     "kitz/no-deep-imports-when-namespace-entrypoint-exists": "warn",
     "kitz/prefer-subpath-imports": "warn",
+    "kitz/subpath-imports-integrity": "warn",
     "eslint/no-restricted-imports": [
       "error",
       {

@@ -1,0 +1,9 @@
+{
+  "name": "@kitz/good",
+  "imports": {
+    "#alpha": "./src/alpha/_.ts",
+    "#alpha/*": "./src/alpha/*.ts",
+    "#beta": "./src/beta/_.ts",
+    "#beta/*": "./src/beta/*.ts"
+  }
+}

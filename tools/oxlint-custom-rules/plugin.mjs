@@ -51,6 +51,11 @@ const MESSAGE_IDS = {
   moduleStructureConventionsRootEntrypoints: `moduleStructureConventionsRootEntrypoints`,
   noDeepImportsWhenNamespaceEntrypointExists: `noDeepImportsWhenNamespaceEntrypointExists`,
   preferSubpathImports: `preferSubpathImports`,
+  subpathImportsIntegrityBrokenRef: `subpathImportsIntegrityBrokenRef`,
+  subpathImportsIntegrityWrongFormat: `subpathImportsIntegrityWrongFormat`,
+  subpathImportsIntegrityMissingEntry: `subpathImportsIntegrityMissingEntry`,
+  subpathImportsIntegrityConditionMismatch: `subpathImportsIntegrityConditionMismatch`,
+  subpathImportsIntegrityTsconfigDrift: `subpathImportsIntegrityTsconfigDrift`,
 }
 
 const MESSAGES = {
@@ -104,6 +109,16 @@ const MESSAGES = {
     `Import bypasses a namespace boundary (_.ts exists in an ancestor directory). Use the _.ts or __.ts entrypoint instead.`,
   [MESSAGE_IDS.preferSubpathImports]:
     `A # subpath import exists for this module. Use the subpath import instead of a relative path.`,
+  [MESSAGE_IDS.subpathImportsIntegrityBrokenRef]:
+    `Subpath import target file does not exist.`,
+  [MESSAGE_IDS.subpathImportsIntegrityWrongFormat]:
+    `Subpath import target should use ./src/*.ts format, not ./build/*.js.`,
+  [MESSAGE_IDS.subpathImportsIntegrityMissingEntry]:
+    `Module has _.ts but no corresponding # subpath import entry in package.json.`,
+  [MESSAGE_IDS.subpathImportsIntegrityConditionMismatch]:
+    `Conditional import target filename does not match its condition key (e.g. browser condition should target *.browser.* file).`,
+  [MESSAGE_IDS.subpathImportsIntegrityTsconfigDrift]:
+    `tsconfig.json paths have drifted from package.json imports. Auto-fixing.`,
 }
 
 /**
@@ -2755,6 +2770,198 @@ const preferSubpathImportsRule = defineRule({
   },
 })
 
+// ---------------------------------------------------------------------------
+// subpath-imports-integrity
+// ---------------------------------------------------------------------------
+
+/** @type {Map<string, Map<string, string | object> | null>} */
+const subpathImportForwardMapCache = new Map()
+
+/**
+ * Returns a forward map of subpath import key → raw target value (string or object).
+ * Unlike the reverse map, this preserves the original target for format checking.
+ * @param {string} packageDir
+ * @returns {Map<string, string | object> | null}
+ */
+const getSubpathImportForwardMap = (packageDir) => {
+  const cached = subpathImportForwardMapCache.get(packageDir)
+  if (cached !== undefined) return cached
+
+  const packageJsonPath = path.join(packageDir, `package.json`)
+  if (!fs.existsSync(packageJsonPath)) {
+    subpathImportForwardMapCache.set(packageDir, null)
+    return null
+  }
+
+  try {
+    const pkg = JSON.parse(fs.readFileSync(packageJsonPath, `utf8`))
+    if (!pkg.imports || typeof pkg.imports !== `object`) {
+      subpathImportForwardMapCache.set(packageDir, null)
+      return null
+    }
+
+    /** @type {Map<string, string | object>} */
+    const forwardMap = new Map()
+    for (const [key, value] of Object.entries(pkg.imports)) {
+      forwardMap.set(key, value)
+    }
+
+    subpathImportForwardMapCache.set(packageDir, forwardMap)
+    return forwardMap
+  } catch {
+    subpathImportForwardMapCache.set(packageDir, null)
+    return null
+  }
+}
+
+/**
+ * Transforms package.json imports into tsconfig.json paths format.
+ * Skips #kitz/* entries (manually maintained) and conditional imports (object values).
+ * @param {Map<string, string | object>} forwardMap
+ * @returns {Record<string, string[]>}
+ */
+const transformImportsToPaths = (forwardMap) => {
+  /** @type {Record<string, string[]>} */
+  const paths = {}
+  for (const [key, value] of forwardMap) {
+    // Skip #kitz/* patterns — manually maintained for circular devDep workaround
+    if (key.startsWith(`#kitz/`)) continue
+    // Skip conditional imports (objects with browser/default/etc conditions)
+    if (typeof value !== `string`) continue
+    // Package.json imports point at source (.ts), tsconfig paths need .js extension
+    const tsconfigPath = value.replace(/\.ts$/, `.js`)
+    paths[key] = [tsconfigPath]
+  }
+  return paths
+}
+
+/** @type {Set<string>} */
+const reportedSubpathImportsIntegrity = new Set()
+
+const subpathImportsIntegrityRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Validate that package.json subpath import declarations are consistent with the filesystem and tsconfig.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    const filePath = getNormalizedRelativePath(context)
+    const packageSourcePathDetails = getPackageSourcePathDetails(filePath)
+    if (packageSourcePathDetails === null) {
+      return {}
+    }
+
+    return {
+      Program(node) {
+        const packageDir = path.resolve(context.cwd, packageSourcePathDetails.packageSourceDirectoryRelativePath, `..`)
+        const packageKey = normalizePath(packageDir)
+
+        // --- Per-file check: missing entry (Check 3) ---
+        // Only applies to _.ts files
+        if (filePath.endsWith(`/_.ts`)) {
+          const absolutePath = normalizePath(path.resolve(context.cwd, filePath))
+          const reverseMap = getSubpathImportReverseMap(packageDir)
+          if (reverseMap !== null && reverseMap.size > 0 && !reverseMap.has(absolutePath)) {
+            context.report({
+              node,
+              messageId: MESSAGE_IDS.subpathImportsIntegrityMissingEntry,
+            })
+          }
+        }
+
+        // --- Per-package checks (deduped): broken ref, wrong format, condition mismatch, tsconfig drift ---
+        if (reportedSubpathImportsIntegrity.has(packageKey)) {
+          return
+        }
+        reportedSubpathImportsIntegrity.add(packageKey)
+
+        const forwardMap = getSubpathImportForwardMap(packageDir)
+        if (forwardMap === null || forwardMap.size === 0) {
+          return
+        }
+
+        for (const [, value] of forwardMap) {
+          if (typeof value === `string`) {
+            // Check 2: Wrong format — string targets should use ./src/*.ts format
+            if (!value.startsWith(`./src/`)) {
+              context.report({
+                node,
+                messageId: MESSAGE_IDS.subpathImportsIntegrityWrongFormat,
+              })
+            }
+
+            // Check 1: Broken ref — non-wildcard string targets must resolve to existing files
+            if (!value.includes(`*`)) {
+              const absoluteTarget = path.resolve(packageDir, value)
+              if (!fs.existsSync(absoluteTarget)) {
+                context.report({
+                  node,
+                  messageId: MESSAGE_IDS.subpathImportsIntegrityBrokenRef,
+                })
+              }
+            }
+          } else if (typeof value === `object` && value !== null) {
+            // Check 4: Condition mismatch — condition keys should match target filenames
+            for (const [condition, target] of Object.entries(value)) {
+              // Skip 'default' — it's a catch-all keyword, not a runtime name
+              if (condition === `default`) continue
+              if (typeof target === `string` && !target.includes(`.${condition}.`)) {
+                context.report({
+                  node,
+                  messageId: MESSAGE_IDS.subpathImportsIntegrityConditionMismatch,
+                })
+              }
+            }
+          }
+        }
+
+        // Check 5: Tsconfig drift — compare tsconfig paths against expected from imports
+        const tsconfigPath = path.join(packageDir, `tsconfig.json`)
+        if (fs.existsSync(tsconfigPath)) {
+          try {
+            const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, `utf8`))
+            const expectedPaths = transformImportsToPaths(forwardMap)
+            const currentPaths = (tsconfig.compilerOptions?.paths ?? {})
+
+            // Preserve existing #kitz/* paths (manually maintained)
+            /** @type {Record<string, string[]>} */
+            const preservedKitzPaths = {}
+            for (const [k, v] of Object.entries(currentPaths)) {
+              if (k.startsWith(`#kitz/`)) {
+                preservedKitzPaths[k] = v
+              }
+            }
+
+            // Build merged expected (synced from imports + preserved #kitz/*)
+            const mergedExpected = { ...expectedPaths, ...preservedKitzPaths }
+
+            // Compare
+            const mergedJson = JSON.stringify(mergedExpected, null, 2)
+            const currentJson = JSON.stringify(currentPaths, null, 2)
+
+            if (mergedJson !== currentJson) {
+              context.report({
+                node,
+                messageId: MESSAGE_IDS.subpathImportsIntegrityTsconfigDrift,
+              })
+
+              // Auto-fix: write corrected tsconfig
+              tsconfig.compilerOptions = tsconfig.compilerOptions ?? {}
+              tsconfig.compilerOptions.paths = mergedExpected
+              fs.writeFileSync(tsconfigPath, JSON.stringify(tsconfig, null, 2) + `\n`)
+            }
+          } catch {
+            // Ignore malformed tsconfig
+          }
+        }
+      },
+    }
+  },
+})
+
 export default definePlugin({
   meta: {
     name: `kitz`,
@@ -2781,5 +2988,6 @@ export default definePlugin({
     'module-structure-conventions': moduleStructureConventionsRule,
     'no-deep-imports-when-namespace-entrypoint-exists': noDeepImportsWhenNamespaceEntrypointExistsRule,
     'prefer-subpath-imports': preferSubpathImportsRule,
+    'subpath-imports-integrity': subpathImportsIntegrityRule,
   },
 })
