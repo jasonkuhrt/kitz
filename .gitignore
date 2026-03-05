@@ -29,3 +29,7 @@ CLAUDE.local.md
 
 # Release CLI output
 .release/
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db
