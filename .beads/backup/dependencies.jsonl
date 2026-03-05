@@ -2,6 +2,7 @@
 {"created_at":"2026-03-04T09:52:26Z","created_by":"Jason Kuhrt","depends_on_id":"kitz-u6z","issue_id":"kitz-017","type":"blocks"}
 {"created_at":"2026-03-04T04:46:08Z","created_by":"Jason Kuhrt","depends_on_id":"kitz-pg0.1","issue_id":"kitz-044","type":"parent-child"}
 {"created_at":"2026-03-04T04:46:27Z","created_by":"Jason Kuhrt","depends_on_id":"kitz-pg0.3","issue_id":"kitz-1j9","type":"parent-child"}
+{"created_at":"2026-03-05T18:55:43Z","created_by":"Jason Kuhrt","depends_on_id":"kitz-78l","issue_id":"kitz-1pp","type":"discovered-from"}
 {"created_at":"2026-03-04T04:46:15Z","created_by":"Jason Kuhrt","depends_on_id":"kitz-pg0.2","issue_id":"kitz-1t9","type":"parent-child"}
 {"created_at":"2026-03-04T04:46:05Z","created_by":"Jason Kuhrt","depends_on_id":"kitz-pg0.1","issue_id":"kitz-2ab","type":"parent-child"}
 {"created_at":"2026-03-04T04:42:29Z","created_by":"Jason Kuhrt","depends_on_id":"kitz-3pz","issue_id":"kitz-2dy","type":"blocks"}
