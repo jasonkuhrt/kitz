@@ -1,6 +1,6 @@
 {
   "database": "dolt",
   "backend": "dolt",
-  "dolt_mode": "server",
-  "dolt_database": "kitz"
+  "dolt_database": "kitz",
+  "jsonl_export": "issues.jsonl"
 }
