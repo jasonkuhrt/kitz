@@ -16,8 +16,6 @@ patterns=(
   '*.cjs'
   '*.mts'
   '*.cts'
-  '*.json'
-  '*.toml'
 )
 
 is_ignored() {
