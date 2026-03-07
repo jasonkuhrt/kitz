@@ -7,12 +7,12 @@
  * Rules can be filtered with `--only-rule` and `--skip-rule` patterns.
  * Exits with code 1 if any violations are found.
  */
-import { NodeFileSystem } from '@effect/platform-node'
+import { NodeContext } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
-import { EffectSchema, Oak } from '@kitz/oak'
+import { Oak } from '@kitz/oak'
 import { Cause, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 import * as Preconditions from '../../api/lint/services/preconditions.js'
@@ -28,7 +28,7 @@ const isLintViolations = Schema.is(LintViolationsSchema)
  * Run lint rules and report violations.
  */
 const args = Oak.Command.create()
-  .use(EffectSchema)
+  .use(Oak.EffectSchema)
   .description('Run lint rules and report violations')
   .parameter(
     'only-rule',
@@ -50,7 +50,16 @@ const args = Oak.Command.create()
   )
   .parse()
 
-Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Preconditions.DefaultLayer, Git.GitLive), {
+Cli.run(
+  Layer.mergeAll(
+    Env.Live,
+    NodeContext.layer,
+    Preconditions.DefaultLayer,
+    Api.Lint.DefaultServicesLayer,
+    Api.Lint.ReleasePlan.DefaultReleasePlanLayer,
+    Git.GitLive,
+  ),
+  {
   onError: (cause) => {
     const error = Cause.squash(cause)
     // LintViolations already printed by relay, just exit
@@ -60,8 +69,9 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Preconditions.DefaultLaye
     Err.logUnsafe(Err.ensure(error))
     process.exit(1)
   },
-})(
-  Effect.gen(function*() {
+},
+)(
+  Effect.gen(function* () {
     const config = yield* Api.Config.load({
       lint: {
         onlyRules: args.onlyRule,

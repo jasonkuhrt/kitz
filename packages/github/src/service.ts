@@ -31,26 +31,52 @@ export interface UpdateReleaseParams {
  */
 export type GithubOperation = 'releaseExists' | 'createRelease' | 'updateRelease' | 'getRelease'
 
-const GithubOperationSchema = S.Literal('releaseExists', 'createRelease', 'updateRelease', 'getRelease')
+const GithubOperationSchema = S.Literal(
+  'releaseExists',
+  'createRelease',
+  'updateRelease',
+  'getRelease',
+)
+const ErrorCause = S.instanceOf(Error)
 
 // ============================================================================
 // Errors
 // ============================================================================
 
 const baseTags = ['kit', 'github'] as const
+const GithubErrorContext = S.Struct({
+  operation: GithubOperationSchema,
+  status: S.optional(S.Number),
+  detail: S.optional(S.String),
+})
+const GithubNotFoundErrorContext = S.Struct({
+  operation: GithubOperationSchema,
+  resource: S.String,
+})
+const GithubRateLimitErrorContext = S.Struct({
+  operation: GithubOperationSchema,
+  resetAt: S.Date,
+})
+const GithubAuthErrorContext = S.Struct({
+  operation: GithubOperationSchema,
+})
+const GithubConfigErrorContext = S.Struct({
+  detail: S.String,
+})
 
 /**
  * Generic GitHub API error.
  */
-export const GithubError = Err.TaggedContextualError('GithubError', baseTags, {
-  context: S.Struct({
-    operation: GithubOperationSchema,
-    status: S.optional(S.Number),
-    detail: S.optional(S.String),
-  }),
+export const GithubError: Err.TaggedContextualErrorClass<
+  'GithubError',
+  typeof baseTags,
+  typeof GithubErrorContext,
+  typeof ErrorCause
+> = Err.TaggedContextualError('GithubError', baseTags, {
+  context: GithubErrorContext,
   message: (ctx) =>
     `GitHub ${ctx.operation} failed${ctx.status ? ` (${ctx.status})` : ''}${ctx.detail ? `: ${ctx.detail}` : ''}`,
-  cause: S.instanceOf(Error),
+  cause: ErrorCause,
 })
 
 export type GithubError = InstanceType<typeof GithubError>
@@ -58,11 +84,13 @@ export type GithubError = InstanceType<typeof GithubError>
 /**
  * GitHub resource not found (404).
  */
-export const GithubNotFoundError = Err.TaggedContextualError('GithubNotFoundError', baseTags, {
-  context: S.Struct({
-    operation: GithubOperationSchema,
-    resource: S.String,
-  }),
+export const GithubNotFoundError: Err.TaggedContextualErrorClass<
+  'GithubNotFoundError',
+  typeof baseTags,
+  typeof GithubNotFoundErrorContext,
+  undefined
+> = Err.TaggedContextualError('GithubNotFoundError', baseTags, {
+  context: GithubNotFoundErrorContext,
   message: (ctx) => `GitHub ${ctx.operation}: ${ctx.resource} not found`,
 })
 
@@ -71,12 +99,15 @@ export type GithubNotFoundError = InstanceType<typeof GithubNotFoundError>
 /**
  * GitHub rate limit exceeded (403 with rate limit headers).
  */
-export const GithubRateLimitError = Err.TaggedContextualError('GithubRateLimitError', baseTags, {
-  context: S.Struct({
-    operation: GithubOperationSchema,
-    resetAt: S.Date,
-  }),
-  message: (ctx) => `GitHub ${ctx.operation}: rate limit exceeded, resets at ${ctx.resetAt.toISOString()}`,
+export const GithubRateLimitError: Err.TaggedContextualErrorClass<
+  'GithubRateLimitError',
+  typeof baseTags,
+  typeof GithubRateLimitErrorContext,
+  undefined
+> = Err.TaggedContextualError('GithubRateLimitError', baseTags, {
+  context: GithubRateLimitErrorContext,
+  message: (ctx) =>
+    `GitHub ${ctx.operation}: rate limit exceeded, resets at ${ctx.resetAt.toISOString()}`,
 })
 
 export type GithubRateLimitError = InstanceType<typeof GithubRateLimitError>
@@ -84,10 +115,13 @@ export type GithubRateLimitError = InstanceType<typeof GithubRateLimitError>
 /**
  * GitHub authentication error (401).
  */
-export const GithubAuthError = Err.TaggedContextualError('GithubAuthError', baseTags, {
-  context: S.Struct({
-    operation: GithubOperationSchema,
-  }),
+export const GithubAuthError: Err.TaggedContextualErrorClass<
+  'GithubAuthError',
+  typeof baseTags,
+  typeof GithubAuthErrorContext,
+  undefined
+> = Err.TaggedContextualError('GithubAuthError', baseTags, {
+  context: GithubAuthErrorContext,
   message: (ctx) => `GitHub ${ctx.operation}: authentication failed, check GITHUB_TOKEN`,
 })
 
@@ -96,10 +130,13 @@ export type GithubAuthError = InstanceType<typeof GithubAuthError>
 /**
  * Configuration error (missing token, invalid config).
  */
-export const GithubConfigError = Err.TaggedContextualError('GithubConfigError', baseTags, {
-  context: S.Struct({
-    detail: S.String,
-  }),
+export const GithubConfigError: Err.TaggedContextualErrorClass<
+  'GithubConfigError',
+  typeof baseTags,
+  typeof GithubConfigErrorContext,
+  undefined
+> = Err.TaggedContextualError('GithubConfigError', baseTags, {
+  context: GithubConfigErrorContext,
   message: (ctx) => `GitHub configuration error: ${ctx.detail}`,
 })
 
@@ -133,7 +170,10 @@ export interface GithubService {
   readonly updateRelease: (
     tag: string,
     params: UpdateReleaseParams,
-  ) => Effect.Effect<Release, GithubError | GithubNotFoundError | GithubAuthError | GithubRateLimitError>
+  ) => Effect.Effect<
+    Release,
+    GithubError | GithubNotFoundError | GithubAuthError | GithubRateLimitError
+  >
 }
 
 // ============================================================================

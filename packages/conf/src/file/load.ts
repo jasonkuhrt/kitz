@@ -31,7 +31,7 @@ const searchForConfig = (
 ): Effect.Effect<SearchResult, PlatformError | ParseResult.ParseError, FileSystem.FileSystem> => {
   const { name, extensions, json, packageJson } = definition
 
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
 
     // 1. Search for TS/JS module files
@@ -78,16 +78,20 @@ const searchForConfig = (
 const loadRawConfig = (
   result: Exclude<SearchResult, { _tag: 'NotFound' }>,
   definition: ConfigDefinition<Schema.Schema.AnyNoContext>,
-): Effect.Effect<unknown, Mod.ImportError | PlatformError | InvalidExportError | ParseResult.ParseError, FileSystem.FileSystem> => {
-  return Effect.gen(function*() {
+): Effect.Effect<
+  unknown,
+  Mod.ImportError | PlatformError | InvalidExportError | ParseResult.ParseError,
+  FileSystem.FileSystem
+> => {
+  return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
 
     switch (result._tag) {
       case 'Module': {
         const exported = definition.importFn
           ? yield* Mod.importDefault<unknown, Mod.DynamicImportFileOptions>(result.path, {
-            importFn: definition.importFn,
-          })
+              importFn: definition.importFn,
+            })
           : yield* Mod.importDefault<unknown>(result.path)
         if (exported === undefined || exported === null) {
           return yield* Effect.fail(
@@ -164,17 +168,17 @@ export type LoadError =
  * const config = yield* Conf.File.load(ReleaseConfig, '/path/to/project')
  * ```
  */
-export const load = <S extends Schema.Schema.AnyNoContext>(
+export function load<S extends Schema.Schema.AnyNoContext>(
   definition: ConfigDefinition<S>,
   cwd?: string,
-): Effect.Effect<Schema.Schema.Type<S>, LoadError, FileSystem.FileSystem> => {
-  return Effect.gen(function*() {
+): Effect.Effect<Schema.Schema.Type<S>, LoadError, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
     const cwdPath = cwd
       ? Fs.Path.AbsDir.fromString(cwd)
       : yield* pipe(
-        Effect.sync(() => process.cwd()),
-        Effect.map(Fs.Path.AbsDir.fromString),
-      )
+          Effect.sync(() => process.cwd()),
+          Effect.map(Fs.Path.AbsDir.fromString),
+        )
 
     const searchResult = yield* searchForConfig(definition, cwdPath)
 
@@ -205,10 +209,14 @@ export const load = <S extends Schema.Schema.AnyNoContext>(
  * Unlike {@link load}, this never fails with NotFoundError.
  * Other errors (parse, import, etc.) still propagate.
  */
-export const loadOptional = <S extends Schema.Schema.AnyNoContext>(
+export function loadOptional<S extends Schema.Schema.AnyNoContext>(
   definition: ConfigDefinition<S>,
   cwd?: string,
-): Effect.Effect<Option.Option<Schema.Schema.Type<S>>, Exclude<LoadError, NotFoundError>, FileSystem.FileSystem> => {
+): Effect.Effect<
+  Option.Option<Schema.Schema.Type<S>>,
+  Exclude<LoadError, NotFoundError>,
+  FileSystem.FileSystem
+> {
   return pipe(
     load(definition, cwd),
     Effect.map(Option.some),

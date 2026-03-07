@@ -1,6 +1,7 @@
 import { Semver } from '@kitz/semver'
 import { Range as VltRange, Version as VltVersion } from '@vltpkg/semver'
 import { Effect, ParseResult, Schema as S } from 'effect'
+import type { SemverValue } from '../semver-schema.js'
 import { Comparator } from './comparator.js'
 import type { Operator } from './operator.js'
 
@@ -29,10 +30,14 @@ export { Operator } from './operator.js'
  * @see {@link https://docs.npmjs.com/cli/v10/configuring-npm/package-json#dependencies | npm dependencies}
  * @see {@link https://github.com/npm/node-semver#ranges | node-semver ranges}
  */
-export const Range = S.NonEmptyArray(S.NonEmptyArray(Comparator))
-export type Range = typeof Range.Type
+export type Range = readonly [
+  readonly [Comparator, ...Comparator[]],
+  ...(readonly [Comparator, ...Comparator[]])[],
+]
 
-export const is = S.is(Range)
+export const Range: S.Schema<Range> = S.NonEmptyArray(S.NonEmptyArray(Comparator))
+
+export const is: (input: unknown) => input is Range = S.is(Range)
 
 /**
  * Construct a Range from comparator sets.
@@ -66,8 +71,13 @@ export const Schema: S.Schema<Range, string> = S.transformOrFail(
   },
 )
 
-export const fromString = S.decodeSync(Schema)
-export const toString = S.encodeSync(Schema)
+export function fromString(value: string): Range {
+  return S.decodeSync(Schema)(value)
+}
+
+export function toString(range: Range): string {
+  return S.encodeSync(Schema)(range)
+}
 
 /**
  * Check if a semver version satisfies a range.
@@ -79,7 +89,7 @@ export const toString = S.encodeSync(Schema)
  * satisfies(Semver.fromString('2.0.0'), range) // false
  * ```
  */
-export const satisfies = (version: Semver.Semver, range: Range): boolean => {
+export function satisfies(version: SemverValue, range: Range): boolean {
   const vltRange = new VltRange(toString(range))
   const vltVersion = VltVersion.parse(version.toString())
   return vltRange.test(vltVersion)

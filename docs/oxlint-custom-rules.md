@@ -511,8 +511,10 @@ For `packages/*/src/**/_.ts`:
 - requires exactly one value namespace export: `export * as Name from './...'`
 - permits additional type-only exports (`export type ...`, `export type * from ...`)
 - if a type is declared and exported directly in `_.ts`, its name must exactly match `Name`
-- requires one empty exported namespace declaration as a JSDoc target for the ESM namespace export:
-  `/** ... */ export namespace Name {}`
+- requires one exported JSDoc target for the ESM namespace export:
+  - `export namespace Name {}`
+  - or a matching in-file type target such as `export type Name = ...`
+    `/** ... */ export namespace Name {}`
 - requires `Name` to match:
   - PascalCase derivation from package/module path, or
   - explicit core anti-circular convention from `packages/core/package.json#imports` (`#*/core` → `Core*`)
@@ -560,9 +562,9 @@ Keeps namespace entrypoints uniform and predictable across packages/modules.
 
 ### Migration Guidance
 
-Use one namespace export, keep extra exports type-only, and add a JSDoc + empty namespace declaration with a matching name.
+Use one namespace export, keep extra exports type-only, and add a matching JSDoc target: either an empty namespace declaration or an in-file exported type with the same name.
 If defining a type directly in `_.ts`, use the same name as the namespace export; define or re-export other type names from sibling files.
-For `packages/core/src/*/core/_.ts`, align names with `packages/core/package.json#imports` (`#err/core` → `CoreErr`, etc.).
+For `packages/core/src/*/core/_.ts`, align names with `packages/core/package.json#imports` (`#err/core` → `CoreErr`, etc.). The rule reads the imports entry as source of truth whether it points at source targets like `./src/err/core/_.ts` or build targets like `./build/err/core/_.js`.
 
 ## `kitz/barrel-file-conventions`
 

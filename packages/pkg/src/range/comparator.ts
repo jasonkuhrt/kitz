@@ -1,6 +1,6 @@
 import { Lang } from '@kitz/core'
-import { Semver } from '@kitz/semver'
 import { Schema as S } from 'effect'
+import { SemverSelf } from '../semver-schema.js'
 import { Operator } from './operator.js'
 
 /**
@@ -8,15 +8,15 @@ import { Operator } from './operator.js'
  *
  * Represents one atomic comparison in a range expression.
  */
-export class Comparator extends S.Class<Comparator>('PkgRangeComparator')({
+class ComparatorClass extends S.Class<ComparatorClass>('PkgRangeComparator')({
   operator: Operator,
-  version: Semver.Semver,
+  version: SemverSelf,
 }) {
-  static is = S.is(Comparator)
+  static is = S.is(ComparatorClass)
 
-  static Schema: S.Schema<Comparator, string> = S.transform(
+  static Schema: S.Schema<ComparatorClass, string> = S.transform(
     S.String,
-    Comparator,
+    ComparatorClass,
     {
       strict: true,
       decode: () => {
@@ -31,9 +31,12 @@ export class Comparator extends S.Class<Comparator>('PkgRangeComparator')({
     },
   )
 
-  static override toString = S.encodeSync(Comparator.Schema)
+  static override toString = S.encodeSync(ComparatorClass.Schema)
 
   override toString(): string {
-    return Comparator.toString(this)
+    return ComparatorClass.toString(this)
   }
 }
+
+export const Comparator: typeof ComparatorClass = ComparatorClass
+export type Comparator = ComparatorClass

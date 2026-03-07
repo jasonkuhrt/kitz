@@ -7,11 +7,33 @@ import { Failed, Finished, Report, RuleCheckResult, Skipped } from '../models/re
 import * as RuntimeRule from '../models/runtime-rule.js'
 import { Violation } from '../models/violation.js'
 import * as Rules from '../rules/__.js'
-import { type EvaluatedPreconditions, EvaluatedPreconditionsService } from '../services/preconditions.js'
+import {
+  type EvaluatedPreconditions,
+  EvaluatedPreconditionsService,
+} from '../services/preconditions.js'
 import { RuleOptionsService } from '../services/rule-options.js'
 
 /** Compute the list of all registered rules. Called per check invocation to pick up any dynamic changes. */
-const getAllRules = (): RuntimeRule.RuntimeRule[] => Obj.values(Rules) as RuntimeRule.RuntimeRule[]
+type RegisteredRule = (typeof Rules)[keyof typeof Rules]
+type RegisteredRuleError = RegisteredRule extends RuntimeRule.RuntimeRule<
+  unknown,
+  unknown,
+  infer Error,
+  unknown
+>
+  ? Error
+  : never
+type RegisteredRuleContext = RegisteredRule extends RuntimeRule.RuntimeRule<
+  unknown,
+  unknown,
+  unknown,
+  infer Context
+>
+  ? Context
+  : never
+type RegisteredRuleContextWithoutOptions = Exclude<RegisteredRuleContext, RuleOptionsService>
+
+const getAllRules = (): RegisteredRule[] => Obj.values(Rules) as RegisteredRule[]
 
 export interface CheckParams {
   config: ResolvedConfig
@@ -19,7 +41,7 @@ export interface CheckParams {
 
 /** Rule with resolved metadata for execution. */
 interface ResolvedRule {
-  readonly rule: RuntimeRule.RuntimeRule
+  readonly rule: RegisteredRule
   /** Whether this rule was explicitly requested (true/onlyRules) vs auto. */
   readonly explicitlyRequested: boolean
 }
@@ -30,10 +52,10 @@ interface RulesToRun {
     /** Rules that will run. */
     readonly included: ResolvedRule[]
     /** Rules filtered out by onlyRules/skipRules. */
-    readonly excluded: RuntimeRule.RuntimeRule[]
+    readonly excluded: RegisteredRule[]
   }
   /** Disabled rules (not reported). */
-  readonly inactive: RuntimeRule.RuntimeRule[]
+  readonly inactive: RegisteredRule[]
 }
 
 /**
@@ -59,18 +81,20 @@ const matchesAnyFilter = (ruleId: string, filters: readonly string[]): boolean =
  * Resolve which rules to run based on enabled state and filters.
  */
 const resolveRulesToRun = (
-  rules: readonly RuntimeRule.RuntimeRule[],
+  rules: readonly RegisteredRule[],
   config: ResolvedConfig,
 ): RulesToRun => {
-  const active: { included: ResolvedRule[]; excluded: RuntimeRule.RuntimeRule[] } = { included: [], excluded: [] }
-  const inactive: RuntimeRule.RuntimeRule[] = []
+  const active: { included: ResolvedRule[]; excluded: RegisteredRule[] } = {
+    included: [],
+    excluded: [],
+  }
+  const inactive: RegisteredRule[] = []
 
   for (const rule of rules) {
     // Resolve enabled: per-rule config > rule defaults > global defaults
     const ruleConfig = config.rules[rule.data.id]
-    const enabled = ruleConfig?.overrides.enabled
-      ?? rule.data.defaults?.enabled
-      ?? config.defaults.enabled
+    const enabled =
+      ruleConfig?.overrides.enabled ?? rule.data.defaults?.enabled ?? config.defaults.enabled
 
     if (enabled === false) {
       inactive.push(rule)
@@ -80,8 +104,10 @@ const resolveRulesToRun = (
     // Check filters (with glob support)
     const hasOnlyFilter = config.onlyRules !== undefined && config.onlyRules.length > 0
     const matchesOnly = !hasOnlyFilter || matchesAnyFilter(rule.data.id, config.onlyRules!)
-    const matchesSkip = config.skipRules && config.skipRules.length > 0
-      && matchesAnyFilter(rule.data.id, config.skipRules)
+    const matchesSkip =
+      config.skipRules &&
+      config.skipRules.length > 0 &&
+      matchesAnyFilter(rule.data.id, config.skipRules)
 
     if (matchesOnly && !matchesSkip) {
       // Rule is explicitly requested if:
@@ -132,22 +158,24 @@ export const check = (
   params: CheckParams,
 ): Effect.Effect<
   Report,
-  ParseResult.ParseError | Git.GitError | Git.GitParseError,
-  EvaluatedPreconditionsService | Git.Git
+  ParseResult.ParseError | RegisteredRuleError,
+  EvaluatedPreconditionsService | RegisteredRuleContextWithoutOptions
 > => {
   const { config } = params
   const { active } = resolveRulesToRun(getAllRules(), config)
 
-  return Effect.gen(function*() {
+  return Effect.gen(function* () {
     const preconditions = yield* EvaluatedPreconditionsService
     const results: RuleCheckResult[] = []
 
     // Add skipped results for filtered-out rules
     for (const rule of active.excluded) {
-      results.push(Skipped.make({
-        rule: { id: rule.data.id, description: rule.data.description },
-        reason: 'filtered',
-      }))
+      results.push(
+        Skipped.make({
+          rule: { id: rule.data.id, description: rule.data.description },
+          reason: 'filtered',
+        }),
+      )
     }
 
     // Run included rules
@@ -161,12 +189,16 @@ export const check = (
 }
 
 const checkRule = (
-  rule: RuntimeRule.RuntimeRule,
+  rule: RegisteredRule,
   config: ResolvedConfig,
   explicitlyRequested: boolean,
   preconditions: EvaluatedPreconditions,
-): Effect.Effect<RuleCheckResult, ParseResult.ParseError | Git.GitError | Git.GitParseError, Git.Git> => {
-  return Effect.gen(function*() {
+): Effect.Effect<
+  RuleCheckResult,
+  ParseResult.ParseError | RegisteredRuleError,
+  RegisteredRuleContextWithoutOptions
+> => {
+  return Effect.gen(function* () {
     const ruleRef = { id: rule.data.id, description: rule.data.description }
 
     // Evaluate preconditions
@@ -201,9 +233,13 @@ const checkRule = (
     // Run the check with options provided
     const start = performance.now()
 
-    const result = yield* rule.check.pipe(
-      Effect.provideService(RuleOptionsService, options),
-    )
+    const checkEffect: Effect.Effect<
+      RuntimeRule.CheckResult,
+      RegisteredRuleError,
+      RegisteredRuleContext
+    > = rule.check
+
+    const result = yield* checkEffect.pipe(Effect.provideService(RuleOptionsService, options))
 
     const duration = performance.now() - start
 

@@ -21,7 +21,7 @@ describe('Lifecycle', () => {
   })
 
   test('invalid value fails', () => {
-    expect(() => Schema.decodeSync(LifecycleSchema)('invalid' as any)).toThrow()
+    expect(() => Schema.decodeUnknownSync(LifecycleSchema)('invalid')).toThrow(/./)
   })
 
   test('roundtrip encode/decode', () => {

@@ -16,12 +16,12 @@ interface Metadata {
 }
 
 /** Verifies that planned release tags do not already exist in the git repository. */
-export const rule = RuntimeRule.create<unknown, Metadata>({
+export const rule = RuntimeRule.create({
   id: RuleId.make('plan.tags-unique'),
   description: 'planned release tags do not already exist in git',
   defaults: RuleDefaults.make({ enabled: false }),
   preconditions: [Precondition.HasReleasePlan.make()],
-  check: Effect.gen(function*() {
+  check: Effect.gen(function* () {
     const plan = yield* ReleasePlanService
     const git = yield* Git.Git
 
@@ -31,7 +31,7 @@ export const rule = RuntimeRule.create<unknown, Metadata>({
 
     // Format planned tags
     const plannedTags = plan.releases.map((r) =>
-      Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: r.packageName, version: r.version }))
+      Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: r.packageName, version: r.version })),
     )
 
     // Find conflicts
@@ -41,9 +41,9 @@ export const rule = RuntimeRule.create<unknown, Metadata>({
       return {
         violation: Violation.make({
           location: Environment.make({
-            message: `Tags already exist: ${
-              conflictingTags.join(', ')
-            }. Use a different version or delete the existing tags.`,
+            message: `Tags already exist: ${conflictingTags.join(
+              ', ',
+            )}. Use a different version or delete the existing tags.`,
           }),
         }),
         metadata: { conflictingTags, existingTags },

@@ -4,6 +4,16 @@ import { Equal, Schema as S } from 'effect'
 import objectInspect from 'object-inspect'
 import { describe as vitestDescribe, expect } from 'vitest'
 
+type SnapshotSerializer = (value: any, context: any) => string
+type FormatSnapshotWithInput = (
+  input: any[],
+  result: Prom.Envelope,
+  runner?: Fn.AnyAny,
+  serializer?: SnapshotSerializer,
+  context?: any,
+  snapshotConfig?: { arguments?: boolean },
+) => string
+
 // ============================================================================
 // Assertion Utilities
 // ============================================================================
@@ -303,11 +313,11 @@ const buildBox = ({ width, parts }: {
  *
  * @category Snapshot Utilities
  */
-export const formatSnapshotWithInput = (
+export const formatSnapshotWithInput: FormatSnapshotWithInput = (
   input: any[],
   result: Prom.Envelope,
   runner?: Fn.AnyAny,
-  serializer: (value: any, context: any) => string = defaultSnapshotSerializer,
+  serializer: SnapshotSerializer = defaultSnapshotSerializer,
   context: any = {},
   snapshotConfig: { arguments?: boolean } = { arguments: true },
 ): string => {

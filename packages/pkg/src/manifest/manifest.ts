@@ -4,6 +4,9 @@ import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
 import { Semver } from '@kitz/semver'
 import { Effect, Option, Schema as S } from 'effect'
+import { SemverFromString, type SemverValue } from '../semver-schema.js'
+
+const zeroSemver: SemverValue = Semver.fromString('0.0.0') as SemverValue
 
 const Author = S.Struct({
   name: S.optional(S.String),
@@ -35,9 +38,9 @@ const Workspaces = S.Struct({
 /**
  * Class schema for package.json manifest
  */
-export class Manifest extends S.Class<Manifest>('Manifest')({
+class ManifestClass extends S.Class<ManifestClass>('Manifest')({
   name: S.optionalWith(Moniker.FromString, { default: () => new Moniker.Unscoped({ name: 'unnamed' }) }),
-  version: S.optionalWith(Semver.Schema, { default: () => Semver.zero }),
+  version: S.optionalWith(SemverFromString, { default: () => zeroSemver }),
   description: S.optional(S.String),
   main: S.optional(S.String),
   type: S.optional(S.Literal('module', 'commonjs')),
@@ -88,6 +91,9 @@ export class Manifest extends S.Class<Manifest>('Manifest')({
     return S.decodeUnknownSync(ManifestSchemaMutable)(this) as ManifestMutable
   }
 }
+
+export const Manifest: typeof ManifestClass = ManifestClass
+export type Manifest = ManifestClass
 
 /**
  * Mutable version of the manifest schema for runtime manipulation

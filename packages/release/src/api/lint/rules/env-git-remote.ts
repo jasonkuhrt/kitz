@@ -6,29 +6,26 @@ import { Environment } from '../models/violation-location.js'
 import { Violation } from '../models/violation.js'
 import { RuleOptionsService } from '../services/rule-options.js'
 
-interface Options {
-  readonly remote?: string
-}
-
 const OptionsSchema = Schema.Struct({
   remote: Schema.optional(Schema.String),
 })
+type Options = typeof OptionsSchema.Type
 
 interface Metadata {
   readonly url: string
 }
 
 /** Verifies that the git remote (default: origin) is configured and reachable. */
-export const rule = RuntimeRule.create<Options, Metadata>({
+export const rule = RuntimeRule.create({
   id: RuleId.make('env.git-remote'),
   description: 'git remote is configured and reachable',
   defaults: RuleDefaults.make({ enabled: false }),
   preconditions: [],
   optionsSchema: OptionsSchema,
-  check: Effect.gen(function*() {
-    const options = yield* RuleOptionsService
+  check: Effect.gen(function* () {
+    const options = (yield* RuleOptionsService) as Options
     const git = yield* Git.Git
-    const remote = (options as Options).remote ?? 'origin'
+    const remote = options.remote ?? 'origin'
 
     const result = yield* git.getRemoteUrl(remote).pipe(
       Effect.map((url) => ({ metadata: { url } })),
@@ -39,7 +36,7 @@ export const rule = RuntimeRule.create<Options, Metadata>({
               message: `Git remote '${remote}' not configured or unreachable: ${error.message}`,
             }),
           }),
-        })
+        }),
       ),
     )
 

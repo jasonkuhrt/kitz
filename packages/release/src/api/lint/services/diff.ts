@@ -1,4 +1,4 @@
-import { Context } from 'effect'
+import { Context, Layer } from 'effect'
 
 /** Changed file info. */
 export interface ChangedFile {
@@ -18,3 +18,9 @@ export interface Diff {
 
 /** Service providing diff context. */
 export class DiffService extends Context.Tag('DiffService')<DiffService, Diff>() {}
+
+/** Safe default diff context for runs where diff-dependent rules are skipped. */
+export const DefaultDiffLayer = Layer.succeed(DiffService, {
+  files: [],
+  affectedPackages: [],
+} satisfies Diff)

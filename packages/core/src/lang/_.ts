@@ -8,11 +8,5 @@
  */
 export * as Lang from './__.js'
 
-// Disabled: Merging a namespace declaration with `export * as` breaks
-// TypeScript's control flow analysis for never-returning functions
-// (panic, throw, neverCase, todo), preventing type narrowing after
-// guard checks like `if (x === null) Lang.panic(...)`.
-//
-// To re-enable, uncomment both lines below:
-// /* @ts-expect-error Duplicate identifier */
-// export namespace Lang {}
+/** JSDoc target for the Lang namespace export. */
+export type Lang = typeof import('./__.js')

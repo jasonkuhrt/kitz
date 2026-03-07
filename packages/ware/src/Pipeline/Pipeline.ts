@@ -4,7 +4,7 @@ type IntersectionIgnoreNeverOrAny<$T> = Ts.Inhabitance.IsAny<$T> extends true ? 
   : $T extends never ? unknown
   : $T
 import type { PipelineDefinition } from '../__.js'
-import type { Overload } from '../Overload/_.js'
+import type { Data as OverloadData } from '../Overload/_.js'
 import type { Config } from '../PipelineDefinition/__.js'
 import type { Step } from '../Step.js'
 import type { StepDefinition } from '../StepDefinition.js'
@@ -28,9 +28,9 @@ export const createStepsIndex = <$Steps extends Step[]>(steps: $Steps): StepsInd
 }
 
 export namespace Pipeline {
-  export const create = <$PipelineDef extends PipelineDefinition>(
+  export function create<$PipelineDef extends PipelineDefinition>(
     definition: $PipelineDef,
-  ): Ts.Simplify.Top<InferFromDefinition<$PipelineDef>> => {
+  ): Ts.Simplify.Top<InferFromDefinition<$PipelineDef>> {
     let steps = definition.steps as unknown as Step[]
     if (definition.overloads.length > 0) {
       steps = steps.map((step): Step => {
@@ -141,13 +141,13 @@ export namespace Pipeline {
 
   type InferStepSlots<
     $Step extends StepDefinition,
-    $Overloads extends readonly Overload.Data[],
+    $Overloads extends readonly OverloadData[],
   > =
     & $Step['slots']
     & InferStepSlots_<$Step, $Overloads>
   // todo try putting the helper type below into a type variable above
   // dprint-ignore
-  type InferStepSlots_<$Step extends StepDefinition, $Overloads extends readonly Overload.Data[]> =
+  type InferStepSlots_<$Step extends StepDefinition, $Overloads extends readonly OverloadData[]> =
     Tup.IntersectItems<{
       [$Index in keyof $Overloads]:
         Ts.Inhabitance.IsUnknown<$Overloads[$Index]['steps'][$Step['name']]> extends true
@@ -158,7 +158,7 @@ export namespace Pipeline {
   // dprint-ignore
   type InferStepOutputFromOverloads<
     $StepName extends Step['name'],
-    $Overload extends Overload.Data,
+    $Overload extends OverloadData,
   > =
     $Overload extends Ts.Union.__FORCE_DISTRIBUTION__ ?
 
@@ -176,7 +176,7 @@ export namespace Pipeline {
   type InferStepInputFromOverload<
     $StepIndex extends Tup.IndexKey,
     $StepName extends Step['name'],
-    $Overload extends Overload.Data,
+    $Overload extends OverloadData,
   > =
     $Overload extends Ts.Union.__FORCE_DISTRIBUTION__ ?
 

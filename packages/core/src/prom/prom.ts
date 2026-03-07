@@ -234,13 +234,14 @@ export function maybeAsync<T, R = T, E = unknown>(
   handlers: MaybeAsyncHandlers<T extends Promise<infer U> ? U : T, R, E> = {},
 ): T extends Promise<infer U> ? Promise<R | U | E> : R | T | E {
   const envelope = maybeAsyncEnvelope(fn)
+  const onCatch = handlers.catch
 
   if (isShape(envelope)) {
     // Async path
     return envelope.then((env) => {
       if (env.fail) {
-        if (handlers.catch) {
-          return handlers.catch(env.value, true)
+        if (onCatch) {
+          return onCatch(env.value, true)
         }
         Lang.throw(env.value)
       }
@@ -253,8 +254,8 @@ export function maybeAsync<T, R = T, E = unknown>(
 
   // Sync path
   if (envelope.fail) {
-    if (handlers.catch) {
-      return handlers.catch(envelope.value, false) as any
+    if (onCatch) {
+      return onCatch(envelope.value, false) as any
     }
     Lang.throw(envelope.value)
   }

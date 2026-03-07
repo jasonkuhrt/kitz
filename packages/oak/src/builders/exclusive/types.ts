@@ -8,20 +8,20 @@ export interface ExclusiveParameterConfiguration<$State extends BuilderCommandSt
 }
 
 interface Parameter<$State extends BuilderCommandState.Base, Label extends string> {
-  // TODO: Apply guard to configuration parameter (e.g., configuration: Configuration & { type: ApplyGuard<...> })
-  <NameExpression extends string, Configuration extends ExclusiveParameterConfiguration<$State>>(
-    name: BuilderCommandState.ValidateNameExpression<$State, NameExpression>,
-    configuration: Configuration,
-  ): BuilderExclusiveInitial<
-    BuilderCommandState.AddExclusiveParameter<$State, Label, NameExpression, Configuration>,
-    Label
-  >
-
   <NameExpression extends string, $Schema extends BuilderCommandState.Type<$State>>(
     name: BuilderCommandState.ValidateNameExpression<$State, NameExpression>,
     type: ApplyGuard<$State, $Schema>,
   ): BuilderExclusiveInitial<
     BuilderCommandState.AddExclusiveParameter<$State, Label, NameExpression, { type: $Schema }>,
+    Label
+  >
+
+  // Put configuration overload second because Zod v4 schemas have a public `.type` property.
+  <NameExpression extends string, Configuration extends ExclusiveParameterConfiguration<$State>>(
+    name: BuilderCommandState.ValidateNameExpression<$State, NameExpression>,
+    configuration: Configuration,
+  ): BuilderExclusiveInitial<
+    BuilderCommandState.AddExclusiveParameter<$State, Label, NameExpression, Configuration>,
     Label
   >
 }

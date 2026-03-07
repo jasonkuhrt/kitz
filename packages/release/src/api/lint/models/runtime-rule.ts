@@ -16,23 +16,32 @@ export type CheckResult<Metadata = unknown> =
   | { readonly violation?: Violation; readonly metadata?: Metadata }
 
 /** A rule with its runtime check function. */
-export interface RuntimeRule<Options = unknown, Metadata = unknown> {
+export interface RuntimeRule<
+  Options = unknown,
+  Metadata = unknown,
+  Error = never,
+  Context = never,
+> {
   readonly data: Rule
-  readonly optionsSchema?: Schema.Schema<Options>
-  readonly check: Effect.Effect<CheckResult<Metadata>>
+  readonly optionsSchema?: Schema.Schema.AnyNoContext
+  readonly check: Effect.Effect<CheckResult<Metadata>, Error, Context>
 }
 
 /** Params derived from Rule schema constructor + check field. */
-type CreateParams<Options, Metadata> = Parameters<typeof Rule.make>[0] & {
-  readonly optionsSchema?: Schema.Schema<Options>
-  readonly check: Effect.Effect<CheckResult<Metadata>>
+type CreateParams<Options, Metadata, Error, Context> = {
+  readonly id: Rule['id']
+  readonly description: Rule['description']
+  readonly preconditions: Rule['preconditions']
+  readonly defaults?: Rule['defaults']
+  readonly optionsSchema?: Schema.Schema.AnyNoContext
+  readonly check: Effect.Effect<CheckResult<Metadata>, Error, Context>
 }
 
 /** Create a runtime rule from schema data and check function. */
-export const create = <Options = unknown, Metadata = unknown>(
-  params: CreateParams<Options, Metadata>,
-): RuntimeRule<Options, Metadata> => ({
+export const create = <Options = unknown, Metadata = unknown, Error = never, Context = never>(
+  params: CreateParams<Options, Metadata, Error, Context>,
+): RuntimeRule<Options, Metadata, Error, Context> => ({
   data: Rule.make(params),
-  optionsSchema: params.optionsSchema,
+  ...(params.optionsSchema ? { optionsSchema: params.optionsSchema } : {}),
   check: params.check,
 })

@@ -9,25 +9,27 @@ import type { ReleaseInfo } from './publish.js'
 const baseTags = ['kit', 'release', 'preflight'] as const
 const NpmAuthMetadataSchema = S.Struct({ username: S.String })
 const GitRemoteMetadataSchema = S.Struct({ url: S.String })
+const PreflightErrorContext = S.Struct({
+  check: S.String,
+  detail: S.String,
+})
 const decodeNpmAuthMetadata = S.decodeUnknownOption(NpmAuthMetadataSchema)
 const decodeGitRemoteMetadata = S.decodeUnknownOption(GitRemoteMetadataSchema)
 
 /**
  * Error during preflight checks.
  */
-export const PreflightError = Err.TaggedContextualError(
+export const PreflightError: Err.TaggedContextualErrorClass<
   'PreflightError',
-  baseTags,
-  {
-    context: S.Struct({
-      check: S.String,
-      detail: S.String,
-    }),
-    message: (ctx) =>
-      `Preflight check '${ctx.check}' failed: ${ctx.detail}\n`
-      + `  Run 'release lint --only-rule "${ctx.check}"' to investigate.`,
-  },
-)
+  typeof baseTags,
+  typeof PreflightErrorContext,
+  undefined
+> = Err.TaggedContextualError('PreflightError', baseTags, {
+  context: PreflightErrorContext,
+  message: (ctx) =>
+    `Preflight check '${ctx.check}' failed: ${ctx.detail}\n` +
+    `  Run 'release lint --only-rule "${ctx.check}"' to investigate.`,
+})
 
 export type PreflightError = InstanceType<typeof PreflightError>
 
@@ -66,7 +68,7 @@ export const run = (
   releases: ReleaseInfo[],
   options?: PreflightOptions,
 ): Effect.Effect<PreflightResult, PreflightError, Git.Git | CommandExecutor.CommandExecutor> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     yield* Effect.log('Running preflight checks...')
 
     // Build skip rules based on options
@@ -114,7 +116,7 @@ export const run = (
 
     // Run lint check, mapping any errors to PreflightError
     const report = yield* Lint.check({ config }).pipe(
-      Effect.provide(Layer.merge(preconditionsLayer, releasePlanLayer)),
+      Effect.provide(Layer.mergeAll(Lint.DefaultServicesLayer, preconditionsLayer, releasePlanLayer)),
       Effect.catchAll((error) =>
         Effect.fail(
           new PreflightError({
@@ -123,7 +125,7 @@ export const run = (
               detail: error.message ?? String(error),
             },
           }),
-        )
+        ),
       ),
     )
 
@@ -151,9 +153,10 @@ export const run = (
 
       // Collect violations
       if (result.violation) {
-        const message = result.violation.location._tag === 'ViolationLocationEnvironment'
-          ? result.violation.location.message
-          : 'Check failed'
+        const message =
+          result.violation.location._tag === 'ViolationLocationEnvironment'
+            ? result.violation.location.message
+            : 'Check failed'
         violations.push({ ruleId: result.rule.id, message })
       }
     }

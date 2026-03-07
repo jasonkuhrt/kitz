@@ -6,26 +6,23 @@ import { Environment } from '../models/violation-location.js'
 import { Violation } from '../models/violation.js'
 import { RuleOptionsService } from '../services/rule-options.js'
 
-interface Options {
-  readonly registry?: string
-}
-
 const OptionsSchema = Schema.Struct({
   registry: Schema.optional(Schema.String),
 })
+type Options = typeof OptionsSchema.Type
 
 interface Metadata {
   readonly username: string
 }
 
 /** Verifies that npm CLI is authenticated (can run `npm whoami`). */
-export const rule = RuntimeRule.create<Options, Metadata>({
+export const rule = RuntimeRule.create({
   id: RuleId.make('env.npm-authenticated'),
   description: 'npm auth is configured (npm whoami succeeds)',
   defaults: RuleDefaults.make({ enabled: false }),
   preconditions: [],
   optionsSchema: OptionsSchema,
-  check: Effect.gen(function*() {
+  check: Effect.gen(function* () {
     const options = (yield* RuleOptionsService) as Options
     const whoamiOptions = options.registry ? { registry: options.registry } : undefined
 
@@ -35,11 +32,12 @@ export const rule = RuntimeRule.create<Options, Metadata>({
         Effect.succeed({
           violation: Violation.make({
             location: Environment.make({
-              message: (error.context.detail ?? 'npm auth failed')
-                + '. Run `npm login` or set NPM_TOKEN in your environment.',
+              message:
+                (error.context.detail ?? 'npm auth failed') +
+                '. Run `npm login` or set NPM_TOKEN in your environment.',
             }),
           }),
-        })
+        }),
       ),
     )
     return result

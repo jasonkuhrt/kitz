@@ -10,6 +10,11 @@ import { Effect, Schema as S, String as Str } from 'effect'
 const baseTags = ['kit', 'npm-registry', 'cli'] as const
 
 const NpmCliOperationSchema = S.Literal('whoami', 'publish')
+const ErrorCause = S.instanceOf(Error)
+const NpmCliErrorContext = S.Struct({
+  operation: NpmCliOperationSchema,
+  detail: S.optional(S.String),
+})
 
 /**
  * npm CLI operation names for structured error context.
@@ -19,18 +24,16 @@ export type NpmCliOperation = S.Schema.Type<typeof NpmCliOperationSchema>
 /**
  * npm CLI operation error.
  */
-export const NpmCliError = Err.TaggedContextualError(
+export const NpmCliError: Err.TaggedContextualErrorClass<
   'NpmCliError',
-  baseTags,
-  {
-    context: S.Struct({
-      operation: NpmCliOperationSchema,
-      detail: S.optional(S.String),
-    }),
-    message: (ctx) => `npm ${ctx.operation} failed${ctx.detail ? `: ${ctx.detail}` : ''}`,
-    cause: S.instanceOf(Error),
-  },
-)
+  typeof baseTags,
+  typeof NpmCliErrorContext,
+  typeof ErrorCause
+> = Err.TaggedContextualError('NpmCliError', baseTags, {
+  context: NpmCliErrorContext,
+  message: (ctx) => `npm ${ctx.operation} failed${ctx.detail ? `: ${ctx.detail}` : ''}`,
+  cause: ErrorCause,
+})
 
 export type NpmCliError = InstanceType<typeof NpmCliError>
 
@@ -75,10 +78,10 @@ export interface PublishOptions {
  * console.log(`Authenticated as ${username}`)
  * ```
  */
-export const whoami = (
+export function whoami(
   options?: WhoamiOptions,
-): Effect.Effect<string, NpmCliError, CommandExecutor.CommandExecutor> =>
-  Effect.gen(function*() {
+): Effect.Effect<string, NpmCliError, CommandExecutor.CommandExecutor> {
+  return Effect.gen(function* () {
     const args = ['whoami']
     if (options?.registry) {
       args.push('--registry', options.registry)
@@ -87,14 +90,15 @@ export const whoami = (
     const command = Command.make('npm', ...args)
 
     const result = yield* Command.string(command).pipe(
-      Effect.mapError((cause) =>
-        new NpmCliError({
-          context: {
-            operation: 'whoami',
-            detail: "npm auth failed. Run 'npm login' to authenticate.",
-          },
-          cause: cause instanceof Error ? cause : new Error(String(cause)),
-        })
+      Effect.mapError(
+        (cause) =>
+          new NpmCliError({
+            context: {
+              operation: 'whoami',
+              detail: "npm auth failed. Run 'npm login' to authenticate.",
+            },
+            cause: cause instanceof Error ? cause : new Error(String(cause)),
+          }),
       ),
     )
 
@@ -113,6 +117,7 @@ export const whoami = (
 
     return username
   })
+}
 
 /**
  * Run `npm publish` to publish a package.
@@ -127,10 +132,10 @@ export const whoami = (
  * )
  * ```
  */
-export const publish = (
+export function publish(
   options: PublishOptions,
-): Effect.Effect<void, NpmCliError, CommandExecutor.CommandExecutor> =>
-  Effect.gen(function*() {
+): Effect.Effect<void, NpmCliError, CommandExecutor.CommandExecutor> {
+  return Effect.gen(function* () {
     const args = ['publish']
 
     // Default to public access for scoped packages
@@ -171,3 +176,4 @@ export const publish = (
       }),
     )
   })
+}

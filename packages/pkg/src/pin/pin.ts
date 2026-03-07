@@ -2,6 +2,7 @@ import { Moniker } from '#moniker'
 import { Range as SemverRange } from '#range'
 import { Semver } from '@kitz/semver'
 import { Match, Option, ParseResult, Schema as S } from 'effect'
+import { SemverFromString, SemverSelf } from '../semver-schema.js'
 
 // ============================================================================
 // Type-Level Parsing
@@ -98,13 +99,14 @@ type ParsePin<$S extends string> =
  * @see {@link https://pnpm.io/workspaces#publishing-workspace-packages | pnpm workspace protocol}
  * @see {@link https://yarnpkg.com/features/workspaces#publishing-workspaces | yarn workspace protocol}
  */
-export const WorkspaceRange = S.Union(
+export type WorkspaceRange = '*' | '^' | '~' | SemverRange.Range
+
+export const WorkspaceRange: S.Schema<WorkspaceRange, string> = S.Union(
   S.Literal('*'),
   S.Literal('^'),
   S.Literal('~'),
   SemverRange.Schema,
 )
-export type WorkspaceRange = typeof WorkspaceRange.Type
 
 /**
  * npm dist-tag name.
@@ -128,11 +130,11 @@ export type DistTag = typeof DistTag.Type
  *
  * @see {@link https://docs.npmjs.com/cli/v10/configuring-npm/package-json#dependencies | npm dependencies}
  */
-export class Range extends S.TaggedClass<Range>()('PinRange', {
+class RangeClass extends S.TaggedClass<RangeClass>()('PinRange', {
   name: Moniker.FromString,
   range: SemverRange.Schema,
 }) {
-  static is = S.is(Range)
+  static is = S.is(RangeClass)
 
   /**
    * Parse a range pin from string.
@@ -143,14 +145,17 @@ export class Range extends S.TaggedClass<Range>()('PinRange', {
    * //    ^? Range
    * ```
    */
-  static fromString = (input: string): Range => {
+  static fromString = (input: string): RangeClass => {
     const { name, specifier } = splitNameSpecifier(input)
-    return Range.make({
+    return RangeClass.make({
       name: Moniker.parse(name),
       range: SemverRange.fromString(specifier),
     })
   }
 }
+
+export const Range: typeof RangeClass = RangeClass
+export type Range = RangeClass
 
 /**
  * Exact version dependency: `@scope/pkg@1.0.0`
@@ -164,11 +169,13 @@ export class Range extends S.TaggedClass<Range>()('PinRange', {
  *
  * @see {@link https://docs.npmjs.com/cli/v10/configuring-npm/package-json#dependencies | npm dependencies}
  */
-export class Exact extends S.TaggedClass<Exact>()('PinExact', {
+export type Exact = ExactClass
+
+class ExactClass extends S.TaggedClass<ExactClass>()('PinExact', {
   name: Moniker.FromString,
-  version: Semver.Semver,
+  version: SemverSelf,
 }) {
-  static is = S.is(Exact)
+  static is = S.is(ExactClass)
 
   /**
    * String codec for exact pins.
@@ -177,7 +184,7 @@ export class Exact extends S.TaggedClass<Exact>()('PinExact', {
    */
   static FromString: S.Schema<Exact, string> = S.transformOrFail(
     S.String,
-    Exact,
+    ExactClass,
     {
       strict: true,
       decode: (value, _, ast) => {
@@ -191,7 +198,7 @@ export class Exact extends S.TaggedClass<Exact>()('PinExact', {
           return ParseResult.fail(new ParseResult.Type(ast, value, `Invalid package name in exact pin`))
         }
 
-        const version = S.decodeUnknownOption(Semver.Schema)(value.slice(atIndex + 1))
+        const version = S.decodeUnknownOption(SemverFromString)(value.slice(atIndex + 1))
         if (Option.isNone(version)) {
           return ParseResult.fail(new ParseResult.Type(ast, value, `Invalid semver in exact pin`))
         }
@@ -215,8 +222,10 @@ export class Exact extends S.TaggedClass<Exact>()('PinExact', {
    * //    ^? Exact
    * ```
    */
-  static fromString = S.decodeSync(Exact.FromString)
+  static fromString = S.decodeSync(ExactClass.FromString)
 }
+
+export const Exact: typeof ExactClass = ExactClass
 
 /**
  * Dist-tag dependency: `lodash@latest`
@@ -259,11 +268,11 @@ export class Tag extends S.TaggedClass<Tag>()('PinTag', {
  * @see {@link https://pnpm.io/workspaces#publishing-workspace-packages | pnpm workspace protocol}
  * @see {@link https://yarnpkg.com/features/workspaces#publishing-workspaces | yarn workspace protocol}
  */
-export class Workspace extends S.TaggedClass<Workspace>()('PinWorkspace', {
+class WorkspaceClass extends S.TaggedClass<WorkspaceClass>()('PinWorkspace', {
   name: Moniker.FromString,
   range: WorkspaceRange,
 }) {
-  static is = S.is(Workspace)
+  static is = S.is(WorkspaceClass)
 
   /**
    * Parse a workspace pin from string.
@@ -274,15 +283,18 @@ export class Workspace extends S.TaggedClass<Workspace>()('PinWorkspace', {
    * //    ^? Workspace
    * ```
    */
-  static fromString = (input: string): Workspace => {
+  static fromString = (input: string): WorkspaceClass => {
     const { name, specifier } = splitNameSpecifier(input)
     const workspaceRange = specifier.replace(/^workspace:/, '')
-    return Workspace.make({
+    return WorkspaceClass.make({
       name: Moniker.parse(name),
       range: parseWorkspaceRange(workspaceRange),
     })
   }
 }
+
+export const Workspace: typeof WorkspaceClass = WorkspaceClass
+export type Workspace = WorkspaceClass
 
 /**
  * Git repository dependency: `pkg@git+https://github.com/org/repo#v1.0.0`
@@ -297,7 +309,7 @@ export class Workspace extends S.TaggedClass<Workspace>()('PinWorkspace', {
  *
  * @see {@link https://docs.npmjs.com/cli/v10/configuring-npm/package-json#git-urls-as-dependencies | npm git URLs}
  */
-export class Git extends S.TaggedClass<Git>()('PinGit', {
+class GitClass extends S.TaggedClass<GitClass>()('PinGit', {
   name: Moniker.FromString,
   /** Full git URL including protocol. */
   url: S.String,
@@ -306,7 +318,7 @@ export class Git extends S.TaggedClass<Git>()('PinGit', {
   /** Semver range for git tags (used with #semver: fragment). */
   semver: S.OptionFromUndefinedOr(SemverRange.Schema),
 }) {
-  static is = S.is(Git)
+  static is = S.is(GitClass)
 
   /**
    * Parse a git pin from string.
@@ -317,10 +329,10 @@ export class Git extends S.TaggedClass<Git>()('PinGit', {
    * //    ^? Git
    * ```
    */
-  static fromString = (input: string): Git => {
+  static fromString = (input: string): GitClass => {
     const { name, specifier } = splitNameSpecifier(input)
     const { url, ref, semver } = parseGitUrl(specifier)
-    return Git.make({
+    return GitClass.make({
       name: Moniker.parse(name),
       url,
       ref,
@@ -328,6 +340,9 @@ export class Git extends S.TaggedClass<Git>()('PinGit', {
     })
   }
 }
+
+export const Git: typeof GitClass = GitClass
+export type Git = GitClass
 
 /**
  * Local path dependency: `pkg@file:../local-pkg`
@@ -665,7 +680,7 @@ const hasRangeOperators = (specifier: string): boolean => {
 const isExactVersion = (specifier: string): boolean => {
   if (!/^\d/.test(specifier)) return false
   if (hasRangeOperators(specifier)) return false
-  return Option.isSome(S.decodeUnknownOption(Semver.Schema)(specifier))
+  return Option.isSome(S.decodeUnknownOption(SemverFromString)(specifier))
 }
 
 /**

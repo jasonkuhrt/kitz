@@ -1,4 +1,11 @@
-import { FetchHttpClient, Headers, HttpBody, HttpClient, HttpClientError, HttpClientResponse } from '@effect/platform'
+import {
+  FetchHttpClient,
+  Headers,
+  HttpBody,
+  HttpClient,
+  HttpClientError,
+  HttpClientResponse,
+} from '@effect/platform'
 import { Context, Effect, Layer, Option } from 'effect'
 import {
   Github,
@@ -13,6 +20,10 @@ import {
 } from './service.js'
 
 type HttpClientService = Context.Tag.Service<typeof HttpClient.HttpClient>
+type GithubLiveLayer = (
+  config: GithubConfig,
+) => Layer.Layer<Github, GithubConfigError, HttpClient.HttpClient>
+type GithubLiveFetchLayer = (config: GithubConfig) => Layer.Layer<Github, GithubConfigError>
 
 // ============================================================================
 // Config
@@ -94,7 +105,10 @@ const mapResponseError = (
 /**
  * Map HTTP request error to typed GitHub error.
  */
-const mapRequestError = (operation: GithubOperation, error: HttpClientError.RequestError): GithubError =>
+const mapRequestError = (
+  operation: GithubOperation,
+  error: HttpClientError.RequestError,
+): GithubError =>
   new GithubError({
     context: { operation, detail: error.message },
     cause: error,
@@ -134,8 +148,8 @@ const mapPostResponseError = (
 // ============================================================================
 
 const makeAuthHeaders = (token: string): Record<string, string> => ({
-  'Authorization': `Bearer ${token}`,
-  'Accept': 'application/vnd.github+json',
+  Authorization: `Bearer ${token}`,
+  Accept: 'application/vnd.github+json',
   'X-GitHub-Api-Version': '2022-11-28',
 })
 
@@ -159,52 +173,62 @@ const makeGithubService = (
   const headers = makeAuthHeaders(token)
   const encodeTag = (tag: string): string => encodeURIComponent(tag)
 
-  const httpGet = <$data>(path: string, operation: GithubOperation): Effect.Effect<$data, GithubErrors> =>
-    client
-      .get(`${BASE_URL}${path}`, { headers })
-      .pipe(
-        Effect.flatMap((response: HttpClientResponse.HttpClientResponse) => HttpClientResponse.filterStatusOk(response)),
-        Effect.flatMap((response) => response.json as Effect.Effect<$data, HttpClientError.ResponseError>),
-        Effect.mapError((error: HttpClientError.HttpClientError) =>
-          error._tag === 'ResponseError'
-            ? mapResponseError(operation, path, error)
-            : mapRequestError(operation, error as HttpClientError.RequestError)
-        ),
-      )
+  const httpGet = <$data>(
+    path: string,
+    operation: GithubOperation,
+  ): Effect.Effect<$data, GithubErrors> =>
+    client.get(`${BASE_URL}${path}`, { headers }).pipe(
+      Effect.flatMap((response: HttpClientResponse.HttpClientResponse) =>
+        HttpClientResponse.filterStatusOk(response),
+      ),
+      Effect.flatMap(
+        (response) => response.json as Effect.Effect<$data, HttpClientError.ResponseError>,
+      ),
+      Effect.mapError((error: HttpClientError.HttpClientError) =>
+        error._tag === 'ResponseError'
+          ? mapResponseError(operation, path, error)
+          : mapRequestError(operation, error as HttpClientError.RequestError),
+      ),
+    )
 
   const httpPost = <$data>(
     path: string,
     data: unknown,
     operation: GithubOperation,
   ): Effect.Effect<$data, PostErrors> =>
-    client
-      .post(`${BASE_URL}${path}`, { headers, body: jsonBody(data) })
-      .pipe(
-        Effect.flatMap((response: HttpClientResponse.HttpClientResponse) => HttpClientResponse.filterStatusOk(response)),
-        Effect.flatMap((response) => response.json as Effect.Effect<$data, HttpClientError.ResponseError>),
-        Effect.mapError((error: HttpClientError.HttpClientError): PostErrors =>
+    client.post(`${BASE_URL}${path}`, { headers, body: jsonBody(data) }).pipe(
+      Effect.flatMap((response: HttpClientResponse.HttpClientResponse) =>
+        HttpClientResponse.filterStatusOk(response),
+      ),
+      Effect.flatMap(
+        (response) => response.json as Effect.Effect<$data, HttpClientError.ResponseError>,
+      ),
+      Effect.mapError(
+        (error: HttpClientError.HttpClientError): PostErrors =>
           error._tag === 'ResponseError'
             ? mapPostResponseError(operation, path, error)
-            : mapRequestError(operation, error as HttpClientError.RequestError)
-        ),
-      )
+            : mapRequestError(operation, error as HttpClientError.RequestError),
+      ),
+    )
 
   const httpPatch = <$data>(
     path: string,
     data: unknown,
     operation: GithubOperation,
   ): Effect.Effect<$data, GithubErrors> =>
-    client
-      .patch(`${BASE_URL}${path}`, { headers, body: jsonBody(data) })
-      .pipe(
-        Effect.flatMap((response: HttpClientResponse.HttpClientResponse) => HttpClientResponse.filterStatusOk(response)),
-        Effect.flatMap((response) => response.json as Effect.Effect<$data, HttpClientError.ResponseError>),
-        Effect.mapError((error: HttpClientError.HttpClientError) =>
-          error._tag === 'ResponseError'
-            ? mapResponseError(operation, path, error)
-            : mapRequestError(operation, error as HttpClientError.RequestError)
-        ),
-      )
+    client.patch(`${BASE_URL}${path}`, { headers, body: jsonBody(data) }).pipe(
+      Effect.flatMap((response: HttpClientResponse.HttpClientResponse) =>
+        HttpClientResponse.filterStatusOk(response),
+      ),
+      Effect.flatMap(
+        (response) => response.json as Effect.Effect<$data, HttpClientError.ResponseError>,
+      ),
+      Effect.mapError((error: HttpClientError.HttpClientError) =>
+        error._tag === 'ResponseError'
+          ? mapResponseError(operation, path, error)
+          : mapRequestError(operation, error as HttpClientError.RequestError),
+      ),
+    )
 
   return {
     releaseExists: (tag) =>
@@ -232,7 +256,7 @@ const makeGithubService = (
             `${releasesPath}/${release.id}`,
             { body: params.body },
             'updateRelease',
-          )
+          ),
         ),
       ),
   }
@@ -261,12 +285,10 @@ const makeGithubService = (
  * )
  * ```
  */
-export const Live = (
-  config: GithubConfig,
-): Layer.Layer<Github, GithubConfigError, HttpClient.HttpClient> =>
+export const Live: GithubLiveLayer = (config) =>
   Layer.effect(
     Github,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const token = config.token ?? process.env['GITHUB_TOKEN']
 
       if (!token) {
@@ -297,6 +319,5 @@ export const Live = (
  * )
  * ```
  */
-export const LiveFetch = (
-  config: GithubConfig,
-): Layer.Layer<Github, GithubConfigError> => Live(config).pipe(Layer.provide(FetchHttpClient.layer))
+export const LiveFetch: GithubLiveFetchLayer = (config) =>
+  Live(config).pipe(Layer.provide(FetchHttpClient.layer))

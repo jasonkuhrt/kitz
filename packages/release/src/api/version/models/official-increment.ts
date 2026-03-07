@@ -3,12 +3,14 @@ import { Option, Schema as S } from 'effect'
 import { calculateNextVersion } from '../calculate.js'
 import type { OfficialFirst } from './official-first.js'
 
+const SemverSchema: S.Schema<Semver.Semver, Semver.Semver> = Semver.Semver
+
 /**
  * Increment from an existing version.
  */
 export class OfficialIncrement extends S.TaggedClass<OfficialIncrement>()('OfficialIncrement', {
-  from: Semver.Semver,
-  to: Semver.Semver,
+  from: SemverSchema,
+  to: SemverSchema,
   bump: Semver.BumpType,
 }) {
   static is = S.is(OfficialIncrement)

@@ -190,54 +190,64 @@ export const create = <T, R = never>(
     : undefined
 
   const decode = (content: string, filePath: Fs.Path.AbsFile) =>
-    Schema.decode(schema, parseOptions)(content).pipe(
-      Effect.mapError((error) =>
-        new ParseError({
-          context: {
-            path: filePath,
-            detail: ParseResult.TreeFormatter.formatErrorSync(error),
-          },
-        })
+    Schema.decode(
+      schema,
+      parseOptions,
+    )(content).pipe(
+      Effect.mapError(
+        (error) =>
+          new ParseError({
+            context: {
+              path: filePath,
+              detail: ParseResult.TreeFormatter.formatErrorSync(error),
+            },
+          }),
       ),
     )
 
   const encode = (value: T, filePath: Fs.Path.AbsFile) =>
-    Schema.encode(schema, parseOptions)(value).pipe(
-      Effect.mapError((error) =>
-        new EncodeError({
-          context: {
-            path: filePath,
-            detail: ParseResult.TreeFormatter.formatErrorSync(error),
-          },
-        })
+    Schema.encode(
+      schema,
+      parseOptions,
+    )(value).pipe(
+      Effect.mapError(
+        (error) =>
+          new EncodeError({
+            context: {
+              path: filePath,
+              detail: ParseResult.TreeFormatter.formatErrorSync(error),
+            },
+          }),
       ),
     )
 
   const read = (path: Fs.Path.$Abs) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const filePath = resolvePath(path, filename)
 
       const exists = yield* Fs.exists(filePath).pipe(
-        Effect.mapError((error: PlatformError) =>
-          new ReadError({
-            context: {
-              path: filePath,
-              detail: `check exists: ${error.message}`,
-            },
-          })
+        Effect.mapError(
+          (error: PlatformError) =>
+            new ReadError({
+              context: {
+                path: filePath,
+                detail: `check exists: ${error.message}`,
+              },
+            }),
         ),
       )
 
       if (!exists) return Option.none()
 
       const content = yield* Fs.readString(filePath).pipe(
-        Effect.mapError((error: PlatformError) =>
-          new ReadError({
-            context: {
-              path: filePath,
-              detail: error.message,
-            },
-          })
+        Effect.mapError(
+          (error: PlatformError) =>
+            new ReadError({
+              context: {
+                path: filePath,
+                detail: error.message,
+              },
+            }),
         ),
       )
 
@@ -246,7 +256,7 @@ export const create = <T, R = never>(
     })
 
   const readRequired = (path: Fs.Path.$Abs) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const result = yield* read(path)
       if (Option.isNone(result)) {
         const filePath = resolvePath(path, filename)
@@ -260,31 +270,32 @@ export const create = <T, R = never>(
     })
 
   const readOrEmpty = (path: Fs.Path.$Abs) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const result = yield* read(path)
       return Option.getOrElse(result, () => emptyValue)
     })
 
   const write = (value: T, path: Fs.Path.$Abs) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const filePath = resolvePath(path, filename)
       const content = yield* encode(value, filePath)
 
       // Fs.write auto-creates parent directories
       yield* Fs.write(filePath, content).pipe(
-        Effect.mapError((error: PlatformError) =>
-          new WriteError({
-            context: {
-              path: filePath,
-              detail: error.message,
-            },
-          })
+        Effect.mapError(
+          (error: PlatformError) =>
+            new WriteError({
+              context: {
+                path: filePath,
+                detail: error.message,
+              },
+            }),
         ),
       )
     })
 
   const update = (path: Fs.Path.$Abs, fn: (current: T) => T) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const current = yield* readOrEmpty(path)
       const updated = fn(current)
       yield* write(updated, path)
@@ -292,30 +303,32 @@ export const create = <T, R = never>(
     })
 
   const delete_ = (path: Fs.Path.$Abs) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const filePath = resolvePath(path, filename)
 
       const exists = yield* Fs.exists(filePath).pipe(
-        Effect.mapError((error: PlatformError) =>
-          new WriteError({
-            context: {
-              path: filePath,
-              detail: `check exists: ${error.message}`,
-            },
-          })
+        Effect.mapError(
+          (error: PlatformError) =>
+            new WriteError({
+              context: {
+                path: filePath,
+                detail: `check exists: ${error.message}`,
+              },
+            }),
         ),
       )
 
       if (!exists) return false
 
       yield* Fs.remove(filePath).pipe(
-        Effect.mapError((error: PlatformError) =>
-          new WriteError({
-            context: {
-              path: filePath,
-              detail: `delete: ${error.message}`,
-            },
-          })
+        Effect.mapError(
+          (error: PlatformError) =>
+            new WriteError({
+              context: {
+                path: filePath,
+                detail: `delete: ${error.message}`,
+              },
+            }),
         ),
       )
 
@@ -367,15 +380,30 @@ export const createJson = <A, I, R = never>(
 
 // ─── Type Guards ─────────────────────────────────────────────────────────────
 
-export const isReadError = (error: ResourceError): error is ReadError => error._tag === 'ResourceReadError'
+export function isReadError(error: ResourceError): error is ReadError {
+  return error._tag === 'ResourceReadError'
+}
 
-export const isWriteError = (error: ResourceError): error is WriteError => error._tag === 'ResourceWriteError'
+export function isWriteError(error: ResourceError): error is WriteError {
+  return error._tag === 'ResourceWriteError'
+}
 
-export const isParseError = (error: ResourceError): error is ParseError => error._tag === 'ResourceParseError'
+export function isParseError(error: ResourceError): error is ParseError {
+  return error._tag === 'ResourceParseError'
+}
 
-export const isEncodeError = (error: ResourceError): error is EncodeError => error._tag === 'ResourceEncodeError'
+export function isEncodeError(error: ResourceError): error is EncodeError {
+  return error._tag === 'ResourceEncodeError'
+}
 
-export const isResourceError = (u: unknown): u is ResourceError =>
-  typeof u === 'object' && u !== null && '_tag' in u
-  && (u._tag === 'ResourceReadError' || u._tag === 'ResourceWriteError'
-    || u._tag === 'ResourceParseError' || u._tag === 'ResourceEncodeError')
+export function isResourceError(u: unknown): u is ResourceError {
+  return (
+    typeof u === 'object' &&
+    u !== null &&
+    '_tag' in u &&
+    (u._tag === 'ResourceReadError' ||
+      u._tag === 'ResourceWriteError' ||
+      u._tag === 'ResourceParseError' ||
+      u._tag === 'ResourceEncodeError')
+  )
+}

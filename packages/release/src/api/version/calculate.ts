@@ -19,7 +19,10 @@ import { Option } from 'effect'
  *
  * The mapping is delegated to `Semver.mapBumpForPhase()`.
  */
-export const calculateNextVersion = (
+export const calculateNextVersion: (
+  current: Option.Option<Semver.Semver>,
+  bump: Semver.BumpType,
+) => Semver.Semver = (
   current: Option.Option<Semver.Semver>,
   bump: Semver.BumpType,
 ): Semver.Semver =>

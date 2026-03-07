@@ -19,22 +19,56 @@ export interface EsModule {
 // ============================================
 
 const baseTags = ['kit', 'mod', 'import'] as const
+const ErrorCause = S.instanceOf(Error)
+const SyntaxErrorCause = S.instanceOf(SyntaxError)
+const ImportErrorNotFoundContext = S.Struct({
+  /** The file path that was not found. */
+  path: Fs.Path.AbsFile.Schema,
+})
+const ImportErrorSyntaxContext = S.Struct({
+  /** The file path with syntax error. */
+  path: Fs.Path.AbsFile.Schema,
+})
+const ImportErrorPackageConfigContext = S.Struct({
+  /** The file path that triggered the error. */
+  path: Fs.Path.AbsFile.Schema,
+  /** The Node.js error code. */
+  code: S.String,
+})
+const ImportErrorPermissionDeniedContext = S.Struct({
+  /** The file path that permission was denied for. */
+  path: Fs.Path.AbsFile.Schema,
+})
+const ImportErrorUnsupportedFormatContext = S.Struct({
+  /** The file path with unsupported format. */
+  path: Fs.Path.AbsFile.Schema,
+  /** The file extension, if available. */
+  extension: S.optional(S.String),
+})
+const ImportErrorOtherContext = S.Struct({
+  /** The file path that failed to import. */
+  path: Fs.Path.AbsFile.Schema,
+  /** The Node.js error code, if available. */
+  code: S.optional(S.String),
+})
 
 /**
  * Module not found at the specified path.
  *
  * Triggered by Node.js codes: ERR_MODULE_NOT_FOUND, ENOENT
  */
-export const ImportErrorNotFound = Err.TaggedContextualError(
+export const ImportErrorNotFound: Err.TaggedContextualErrorClass<
+  'KitModImportErrorNotFound',
+  typeof baseTags,
+  typeof ImportErrorNotFoundContext,
+  typeof ErrorCause
+> = Err.TaggedContextualError(
   'KitModImportErrorNotFound',
   baseTags,
   {
-    context: S.Struct({
-      /** The file path that was not found. */
-      path: Fs.Path.AbsFile.Schema,
-    }),
+    context: ImportErrorNotFoundContext,
     message: (ctx) => `Module not found: ${Fs.Path.toString(ctx.path)}`,
-    cause: S.instanceOf(Error),
+    cause: ErrorCause,
   },
 )
 
@@ -48,18 +82,16 @@ export type ImportErrorNotFound = InstanceType<typeof ImportErrorNotFound>
  *
  * Triggered when parsing fails due to invalid JavaScript/TypeScript syntax.
  */
-export const ImportErrorSyntax = Err.TaggedContextualError(
+export const ImportErrorSyntax: Err.TaggedContextualErrorClass<
   'KitModImportErrorSyntax',
-  baseTags,
-  {
-    context: S.Struct({
-      /** The file path with syntax error. */
-      path: Fs.Path.AbsFile.Schema,
-    }),
-    message: (ctx) => `Syntax error in module: ${Fs.Path.toString(ctx.path)}`,
-    cause: S.instanceOf(SyntaxError),
-  },
-)
+  typeof baseTags,
+  typeof ImportErrorSyntaxContext,
+  typeof SyntaxErrorCause
+> = Err.TaggedContextualError('KitModImportErrorSyntax', baseTags, {
+  context: ImportErrorSyntaxContext,
+  message: (ctx) => `Syntax error in module: ${Fs.Path.toString(ctx.path)}`,
+  cause: SyntaxErrorCause,
+})
 
 /**
  * Instance type of {@link ImportErrorSyntax}.
@@ -71,18 +103,18 @@ export type ImportErrorSyntax = InstanceType<typeof ImportErrorSyntax>
  *
  * Triggered by Node.js codes: ERR_INVALID_PACKAGE_CONFIG, ERR_PACKAGE_PATH_NOT_EXPORTED, etc.
  */
-export const ImportErrorPackageConfig = Err.TaggedContextualError(
+export const ImportErrorPackageConfig: Err.TaggedContextualErrorClass<
+  'KitModImportErrorPackageConfig',
+  typeof baseTags,
+  typeof ImportErrorPackageConfigContext,
+  typeof ErrorCause
+> = Err.TaggedContextualError(
   'KitModImportErrorPackageConfig',
   baseTags,
   {
-    context: S.Struct({
-      /** The file path that triggered the error. */
-      path: Fs.Path.AbsFile.Schema,
-      /** The Node.js error code. */
-      code: S.String,
-    }),
+    context: ImportErrorPackageConfigContext,
     message: (ctx) => `Package config error for ${Fs.Path.toString(ctx.path)}: ${ctx.code}`,
-    cause: S.instanceOf(Error),
+    cause: ErrorCause,
   },
 )
 
@@ -96,16 +128,18 @@ export type ImportErrorPackageConfig = InstanceType<typeof ImportErrorPackageCon
  *
  * Triggered by Node.js code: EACCES
  */
-export const ImportErrorPermissionDenied = Err.TaggedContextualError(
+export const ImportErrorPermissionDenied: Err.TaggedContextualErrorClass<
+  'KitModImportErrorPermissionDenied',
+  typeof baseTags,
+  typeof ImportErrorPermissionDeniedContext,
+  typeof ErrorCause
+> = Err.TaggedContextualError(
   'KitModImportErrorPermissionDenied',
   baseTags,
   {
-    context: S.Struct({
-      /** The file path that permission was denied for. */
-      path: Fs.Path.AbsFile.Schema,
-    }),
+    context: ImportErrorPermissionDeniedContext,
     message: (ctx) => `Permission denied: ${Fs.Path.toString(ctx.path)}`,
-    cause: S.instanceOf(Error),
+    cause: ErrorCause,
   },
 )
 
@@ -119,18 +153,19 @@ export type ImportErrorPermissionDenied = InstanceType<typeof ImportErrorPermiss
  *
  * Triggered by Node.js code: ERR_UNKNOWN_FILE_EXTENSION
  */
-export const ImportErrorUnsupportedFormat = Err.TaggedContextualError(
+export const ImportErrorUnsupportedFormat: Err.TaggedContextualErrorClass<
+  'KitModImportErrorUnsupportedFormat',
+  typeof baseTags,
+  typeof ImportErrorUnsupportedFormatContext,
+  typeof ErrorCause
+> = Err.TaggedContextualError(
   'KitModImportErrorUnsupportedFormat',
   baseTags,
   {
-    context: S.Struct({
-      /** The file path with unsupported format. */
-      path: Fs.Path.AbsFile.Schema,
-      /** The file extension, if available. */
-      extension: S.optional(S.String),
-    }),
-    message: (ctx) => `Unsupported format: ${Fs.Path.toString(ctx.path)}${ctx.extension ? ` (${ctx.extension})` : ''}`,
-    cause: S.instanceOf(Error),
+    context: ImportErrorUnsupportedFormatContext,
+    message: (ctx) =>
+      `Unsupported format: ${Fs.Path.toString(ctx.path)}${ctx.extension ? ` (${ctx.extension})` : ''}`,
+    cause: ErrorCause,
   },
 )
 
@@ -142,20 +177,17 @@ export type ImportErrorUnsupportedFormat = InstanceType<typeof ImportErrorUnsupp
 /**
  * Catch-all for other import errors not covered by specific types.
  */
-export const ImportErrorOther = Err.TaggedContextualError(
+export const ImportErrorOther: Err.TaggedContextualErrorClass<
   'KitModImportErrorOther',
-  baseTags,
-  {
-    context: S.Struct({
-      /** The file path that failed to import. */
-      path: Fs.Path.AbsFile.Schema,
-      /** The Node.js error code, if available. */
-      code: S.optional(S.String),
-    }),
-    message: (ctx) => `Import failed: ${Fs.Path.toString(ctx.path)}${ctx.code ? ` (${ctx.code})` : ''}`,
-    cause: S.instanceOf(Error),
-  },
-)
+  typeof baseTags,
+  typeof ImportErrorOtherContext,
+  typeof ErrorCause
+> = Err.TaggedContextualError('KitModImportErrorOther', baseTags, {
+  context: ImportErrorOtherContext,
+  message: (ctx) =>
+    `Import failed: ${Fs.Path.toString(ctx.path)}${ctx.code ? ` (${ctx.code})` : ''}`,
+  cause: ErrorCause,
+})
 
 /**
  * Instance type of {@link ImportErrorOther}.
@@ -308,15 +340,16 @@ export const dynamicImportFile = <
 
   const doImport = Effect.tryPromise({
     try: performImport,
-    catch: (cause) => createImportError(path, cause instanceof Error ? cause : new Error(String(cause))),
+    catch: (cause) =>
+      createImportError(path, cause instanceof Error ? cause : new Error(String(cause))),
   }) as Effect.Effect<$Module, ImportError>
 
   if (options?.bustCache) {
-    return Effect.gen(function*() {
+    return Effect.gen(function* () {
       const info = yield* Fs.stat(path)
       const mtime = pipe(
         info.mtime,
-        Option.map(d => d.getTime()),
+        Option.map((d) => d.getTime()),
         Option.getOrElse(() => 0),
       )
       importUrl.searchParams.set('t', String(mtime))
@@ -333,7 +366,7 @@ export const dynamicImportFile = <
  * Always includes {@link ImportError} for import failures.
  * When `bustCache: true`, also requires FileSystem service and may fail with PlatformError.
  */
-// dprint-ignore
+// oxfmt-ignore
 export type DynamicImportFileResult<$Module, $Options> =
   $Options extends { bustCache: true } ? Effect.Effect<$Module, ImportError | PlatformError, FileSystem.FileSystem> :
                                          Effect.Effect<$Module, ImportError, never>
@@ -377,7 +410,7 @@ export const importDefault = <
  * Same error and requirement characteristics as {@link DynamicImportFileResult},
  * but returns the default export directly instead of the full module.
  */
-// dprint-ignore
+// oxfmt-ignore
 export type ImportDefaultResult<$Default, $Options> =
   $Options extends { bustCache: true } ? Effect.Effect<$Default, ImportError | PlatformError, FileSystem.FileSystem> :
                                          Effect.Effect<$Default, ImportError, never>

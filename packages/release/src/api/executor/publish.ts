@@ -10,6 +10,9 @@ import { Effect, Schema as S } from 'effect'
 import type { Package } from '../analyzer/workspace.js'
 
 const baseTags = ['kit', 'release', 'publish'] as const
+const PublishErrorContext = S.Struct({
+  package: Fs.Path.AbsDir.Schema,
+})
 
 /**
  * Minimal release info needed for publishing.
@@ -22,16 +25,15 @@ export interface ReleaseInfo {
 /**
  * Error during publish process.
  */
-export const PublishError = Err.TaggedContextualError(
+export const PublishError: Err.TaggedContextualErrorClass<
   'PublishError',
-  baseTags,
-  {
-    context: S.Struct({
-      package: Fs.Path.AbsDir.Schema,
-    }),
-    message: (ctx) => `Failed to publish package at ${Fs.Path.toString(ctx.package)}`,
-  },
-)
+  typeof baseTags,
+  typeof PublishErrorContext,
+  undefined
+> = Err.TaggedContextualError('PublishError', baseTags, {
+  context: PublishErrorContext,
+  message: (ctx) => `Failed to publish package at ${Fs.Path.toString(ctx.package)}`,
+})
 
 export type PublishError = InstanceType<typeof PublishError>
 
@@ -80,7 +82,12 @@ export const publishPackage = (
   PublishError | Resource.ResourceError | NpmRegistry.NpmCliError | PlatformError,
   FileSystem.FileSystem | NpmRegistry.NpmCli
 > =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
+    const remakeManifestWithVersion = (
+      manifest: Pkg.Manifest.Manifest,
+      version: Pkg.Manifest.Manifest[`version`],
+    ): Pkg.Manifest.Manifest => Pkg.Manifest.Manifest.make(Object.assign({}, manifest, { version }))
+
     const pkgDir = release.package.path
     const cli = yield* NpmRegistry.NpmCli
     const fs = yield* FileSystem.FileSystem
@@ -95,7 +102,7 @@ export const publishPackage = (
     const manifest = yield* Pkg.Manifest.resource.readOrEmpty(pkgDir)
     const originalVersion = manifest.version
     yield* Pkg.Manifest.resource.write(
-      Pkg.Manifest.Manifest.make({ ...manifest, version: release.nextVersion }),
+      remakeManifestWithVersion(manifest, release.nextVersion),
       pkgDir,
     )
 
@@ -116,11 +123,10 @@ export const publishPackage = (
         ...(options?.registry && { registry: options.registry }),
       }),
       // Always restore version and imports, even on failure
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         // Restore version via typed manifest
-        yield* Pkg.Manifest.resource.update(
-          pkgDir,
-          (m) => Pkg.Manifest.Manifest.make({ ...m, version: originalVersion }),
+        yield* Pkg.Manifest.resource.update(pkgDir, (m) =>
+          remakeManifestWithVersion(m, originalVersion),
         )
 
         // Restore original imports
@@ -147,7 +153,7 @@ export const publishAll = (
   PublishError | Resource.ResourceError | NpmRegistry.NpmCliError | PlatformError,
   FileSystem.FileSystem | NpmRegistry.NpmCli
 > =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     for (const release of releases) {
       yield* publishPackage(release, options)
     }

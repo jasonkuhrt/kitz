@@ -1,6 +1,10 @@
 import { Semver } from '@kitz/semver'
 import { Option, Schema as S } from 'effect'
 
+const OptionalSemverSchema: S.Schema<Option.Option<Semver.Semver>, string | null> =
+  S.OptionFromNullOr(Semver.Schema)
+const SemverSchema: S.Schema<Semver.Semver, Semver.Semver> = Semver.Semver
+
 /**
  * Commit attribution for display.
  */
@@ -21,8 +25,8 @@ export class ForecastRelease extends S.TaggedClass<ForecastRelease>()('ForecastR
   packageName: S.String,
   packageScope: S.String,
   bump: Semver.BumpType,
-  currentVersion: S.OptionFromNullOr(Semver.Schema),
-  nextOfficialVersion: Semver.Semver,
+  currentVersion: OptionalSemverSchema,
+  nextOfficialVersion: SemverSchema,
   commits: S.Array(CommitDisplay),
   sourceUrl: S.String,
 }) {
@@ -42,8 +46,8 @@ export class ForecastRelease extends S.TaggedClass<ForecastRelease>()('ForecastR
 export class ForecastCascade extends S.TaggedClass<ForecastCascade>()('ForecastCascade', {
   packageName: S.String,
   packageScope: S.String,
-  currentVersion: S.OptionFromNullOr(Semver.Schema),
-  nextOfficialVersion: Semver.Semver,
+  currentVersion: OptionalSemverSchema,
+  nextOfficialVersion: SemverSchema,
   triggeredBy: S.Array(S.String),
   sourceUrl: S.String,
 }) {

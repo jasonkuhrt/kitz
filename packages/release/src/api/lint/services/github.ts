@@ -1,4 +1,4 @@
-import { Context } from 'effect'
+import { Context, Layer } from 'effect'
 
 /** GitHub repository merge settings. */
 export interface GitHubMergeSettings {
@@ -18,3 +18,12 @@ export interface GitHub {
 
 /** Service providing GitHub API context. */
 export class GitHubService extends Context.Tag('GitHubService')<GitHubService, GitHub>() {}
+
+/** Safe default GitHub context for runs where GitHub-dependent rules are skipped. */
+export const DefaultGitHubLayer = Layer.succeed(GitHubService, {
+  settings: {
+    allowSquashMerge: false,
+    allowMergeCommit: false,
+    allowRebaseMerge: false,
+  },
+} satisfies GitHub)

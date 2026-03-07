@@ -1,7 +1,5 @@
 // @ts-expect-error Duplicate identifier
-export * as OpeningArgs from './OpeningArgs.js'
+export * as OpeningArgs from './__.js'
 
-/**
- * Namespace anchor for {@link OpeningArgs}.
- */
+/** JSDoc target for the OpeningArgs namespace export. */
 export namespace OpeningArgs {}

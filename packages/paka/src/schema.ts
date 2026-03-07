@@ -15,28 +15,24 @@ export type ExportLevel = typeof ExportLevel.Type
 /**
  * Value export types - exports that exist at runtime.
  */
-export const ValueExportType = S.Enums(
-  {
-    function: 'function',
-    const: 'const',
-    class: 'class',
-    namespace: 'namespace',
-  } as const,
-)
+export const ValueExportType = S.Enums({
+  function: 'function',
+  const: 'const',
+  class: 'class',
+  namespace: 'namespace',
+} as const)
 export type ValueExportType = typeof ValueExportType.Type
 
 /**
  * Type export types - exports that only exist in TypeScript's type system.
  */
-export const TypeExportType = S.Enums(
-  {
-    interface: 'interface',
-    'type-alias': 'type-alias',
-    enum: 'enum',
-    union: 'union',
-    intersection: 'intersection',
-  } as const,
-)
+export const TypeExportType = S.Enums({
+  interface: 'interface',
+  'type-alias': 'type-alias',
+  enum: 'enum',
+  union: 'union',
+  intersection: 'intersection',
+} as const)
 export type TypeExportType = typeof TypeExportType.Type
 
 /**
@@ -46,13 +42,11 @@ export type TypeExportType = typeof TypeExportType.Type
  * - `terminal` - Returns void (ends the builder chain)
  * - `transform` - Returns a different builder type (transforms to another builder)
  */
-export const BuilderMethodCategory = S.Enums(
-  {
-    chainable: 'chainable',
-    terminal: 'terminal',
-    transform: 'transform',
-  } as const,
-)
+export const BuilderMethodCategory = S.Enums({
+  chainable: 'chainable',
+  terminal: 'terminal',
+  transform: 'transform',
+} as const)
 export type BuilderMethodCategory = typeof BuilderMethodCategory.Type
 
 // ============================================================================
@@ -104,25 +98,19 @@ export class SourceLocation extends S.Class<SourceLocation>('SourceLocation')({
  * Provenance for JSDoc-sourced documentation.
  * Tracks whether it came from a shadow namespace or regular JSDoc.
  */
-export class JSDocProvenance extends S.TaggedClass<JSDocProvenance>()(
-  'jsdoc',
-  {
-    /** Whether description came from shadow namespace pattern */
-    shadowNamespace: S.Boolean,
-  },
-) {}
+export class JSDocProvenance extends S.TaggedClass<JSDocProvenance>()('jsdoc', {
+  /** Whether description came from shadow namespace pattern */
+  shadowNamespace: S.Boolean,
+}) {}
 
 /**
  * Provenance for markdown file-sourced documentation.
  * Includes file path for "Edit this page" links.
  */
-export class MdFileProvenance extends S.TaggedClass<MdFileProvenance>()(
-  'md-file',
-  {
-    /** Relative path to the source markdown file */
-    filePath: Fs.Path.RelFile.Schema,
-  },
-) {}
+export class MdFileProvenance extends S.TaggedClass<MdFileProvenance>()('md-file', {
+  /** Relative path to the source markdown file */
+  filePath: Fs.Path.RelFile.Schema,
+}) {}
 
 /**
  * Union of all possible documentation provenance types.
@@ -434,13 +422,10 @@ export class BuilderSignatureModel extends S.TaggedClass<BuilderSignatureModel>(
  *
  * Future: Could be expanded to structured form (properties, methods, etc).
  */
-export class TypeSignatureModel extends S.TaggedClass<TypeSignatureModel>()(
-  'TypeSignatureModel',
-  {
-    /** Full type text */
-    text: S.String,
-  },
-) {}
+export class TypeSignatureModel extends S.TaggedClass<TypeSignatureModel>()('TypeSignatureModel', {
+  /** Full type text */
+  text: S.String,
+}) {}
 
 /**
  * Value signature model (simple const values, primitives).
@@ -605,19 +590,7 @@ const BaseExportFields = {
   sourceLocation: SourceLocation,
 }
 
-/**
- * Module type interface for declaration merging.
- * Following the graphql-kit pattern for circular schemas with instance methods.
- */
-export interface Module {
-  readonly location: S.Schema.Type<typeof Fs.Path.RelFile>
-  readonly docs?: ModuleDocs | undefined
-  readonly docsProvenance?: DocsProvenance | undefined
-  readonly category?: string | undefined
-  readonly exports: Export[]
-}
-
-export interface ModuleEncoded {
+export type ModuleEncoded = {
   readonly location: S.Schema.Encoded<typeof Fs.Path.RelFile>
   readonly docs?: ModuleDocs | undefined
   readonly docsProvenance?: DocsProvenance | undefined
@@ -627,13 +600,6 @@ export interface ModuleEncoded {
 
 /**
  * Module schema implementation.
- *
- * NOTE: Circular dependency handled via declaration merging:
- * - Module interface declared above provides type structure
- * - Module class extends S.Class<Module> - same name enables declaration merging
- * - Module contains Export[] (through exports field)
- * - ValueExport (part of Export union) contains optional Module (through module field)
- * - This is intentional and handled correctly at runtime by Effect Schema via S.suspend()
  */
 export class Module extends S.Class<Module>('Module')({
   /**
@@ -655,7 +621,8 @@ export class Module extends S.Class<Module>('Module')({
    */
   get namespaceExports(): ValueExport[] {
     return this.exports.filter(
-      (exp): exp is ValueExport => exp._tag === 'value' && exp.type === 'namespace' && exp.module !== undefined,
+      (exp): exp is ValueExport =>
+        exp._tag === 'value' && exp.type === 'namespace' && exp.module !== undefined,
     )
   }
 
@@ -670,21 +637,27 @@ export class Module extends S.Class<Module>('Module')({
    * Get function exports.
    */
   get functionExports(): ValueExport[] {
-    return this.exports.filter((exp): exp is ValueExport => exp._tag === 'value' && exp.type === 'function')
+    return this.exports.filter(
+      (exp): exp is ValueExport => exp._tag === 'value' && exp.type === 'function',
+    )
   }
 
   /**
    * Get constant exports.
    */
   get constantExports(): ValueExport[] {
-    return this.exports.filter((exp): exp is ValueExport => exp._tag === 'value' && exp.type === 'const')
+    return this.exports.filter(
+      (exp): exp is ValueExport => exp._tag === 'value' && exp.type === 'const',
+    )
   }
 
   /**
    * Get class exports.
    */
   get classExports(): ValueExport[] {
-    return this.exports.filter((exp): exp is ValueExport => exp._tag === 'value' && exp.type === 'class')
+    return this.exports.filter(
+      (exp): exp is ValueExport => exp._tag === 'value' && exp.type === 'class',
+    )
   }
 
   /**
@@ -709,26 +682,7 @@ export class Module extends S.Class<Module>('Module')({
   }
 }
 
-/**
- * ValueExport type interface for declaration merging.
- */
-export interface ValueExport {
-  readonly name: string
-  readonly signature: SignatureModel
-  readonly signatureSimple?: SignatureModel | undefined
-  readonly docs?: Docs | undefined
-  readonly docsProvenance?: DocsProvenance | undefined
-  readonly examples: readonly Example[]
-  readonly deprecated?: string | undefined
-  readonly category?: string | undefined
-  readonly tags: Readonly<Record<string, string>>
-  readonly sourceLocation: SourceLocation
-  readonly _tag: 'value'
-  readonly type: S.Schema.Type<typeof ValueExportType>
-  readonly module?: Module | undefined
-}
-
-export interface ValueExportEncoded {
+export type ValueExportEncoded = {
   readonly _tag: 'value'
   readonly name: string
   readonly signature: SignatureModel
@@ -926,19 +880,16 @@ export class DrillableNamespaceEntrypoint extends S.TaggedClass<DrillableNamespa
 /**
  * Simple entrypoint without special import pattern.
  */
-export class SimpleEntrypoint extends S.TaggedClass<SimpleEntrypoint>()(
-  'SimpleEntrypoint',
-  {
-    /**
-     * Package export path (key from package.json "exports").
-     * Module specifier without extension.
-     * Example: './arr' or './str'
-     */
-    path: S.String,
-    /** The extracted module interface */
-    module: Module,
-  },
-) {
+export class SimpleEntrypoint extends S.TaggedClass<SimpleEntrypoint>()('SimpleEntrypoint', {
+  /**
+   * Package export path (key from package.json "exports").
+   * Module specifier without extension.
+   * Example: './arr' or './str'
+   */
+  path: S.String,
+  /** The extracted module interface */
+  module: Module,
+}) {
   /**
    * Derive PascalCase module name from path.
    * Handles kebab-case conversion properly.
@@ -991,10 +942,7 @@ export class SimpleEntrypoint extends S.TaggedClass<SimpleEntrypoint>()(
 /**
  * Entrypoint union - all patterns.
  */
-export const Entrypoint = S.Union(
-  DrillableNamespaceEntrypoint,
-  SimpleEntrypoint,
-)
+export const Entrypoint = S.Union(DrillableNamespaceEntrypoint, SimpleEntrypoint)
 export type Entrypoint = S.Schema.Type<typeof Entrypoint>
 
 /**

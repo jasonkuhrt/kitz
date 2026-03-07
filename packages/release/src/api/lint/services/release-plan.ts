@@ -24,10 +24,16 @@ export interface ReleasePlan {
 }
 
 /** Service providing release plan data. */
-export class ReleasePlanService extends Context.Tag('ReleasePlanService')<ReleasePlanService, ReleasePlan>() {}
+export class ReleasePlanService extends Context.Tag('ReleasePlanService')<
+  ReleasePlanService,
+  ReleasePlan
+>() {}
 
 /**
  * Create a layer with release plan data.
  */
 export const make = (releases: readonly PlannedRelease[]): Layer.Layer<ReleasePlanService> =>
   Layer.succeed(ReleasePlanService, { releases })
+
+/** Safe default release-plan context for runs with no active release plan. */
+export const DefaultReleasePlanLayer = make([])

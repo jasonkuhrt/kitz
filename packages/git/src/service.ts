@@ -51,17 +51,24 @@ const GitOperationSchema = S.Literal(
 )
 
 const baseTags = ['kit', 'git'] as const
+const ErrorCause = S.instanceOf(Error)
+const GitErrorContext = S.Struct({
+  operation: GitOperationSchema,
+  detail: S.optional(S.String),
+})
 
 /**
  * Git operation error.
  */
-export const GitError = Err.TaggedContextualError('GitError', baseTags, {
-  context: S.Struct({
-    operation: GitOperationSchema,
-    detail: S.optional(S.String),
-  }),
+export const GitError: Err.TaggedContextualErrorClass<
+  'GitError',
+  typeof baseTags,
+  typeof GitErrorContext,
+  typeof ErrorCause
+> = Err.TaggedContextualError('GitError', baseTags, {
+  context: GitErrorContext,
   message: (ctx) => `Git ${ctx.operation} failed${ctx.detail ? `: ${ctx.detail}` : ''}`,
-  cause: S.instanceOf(Error),
+  cause: ErrorCause,
 })
 
 export type GitError = InstanceType<typeof GitError>
@@ -69,13 +76,15 @@ export type GitError = InstanceType<typeof GitError>
 /**
  * Error parsing/transforming git output.
  */
-export const GitParseError = Err.TaggedContextualError('GitParseError', baseTags, {
-  context: S.Struct({
-    operation: GitOperationSchema,
-    detail: S.optional(S.String),
-  }),
+export const GitParseError: Err.TaggedContextualErrorClass<
+  'GitParseError',
+  typeof baseTags,
+  typeof GitErrorContext,
+  typeof ErrorCause
+> = Err.TaggedContextualError('GitParseError', baseTags, {
+  context: GitErrorContext,
   message: (ctx) => `Git ${ctx.operation} parse failed${ctx.detail ? `: ${ctx.detail}` : ''}`,
-  cause: S.instanceOf(Error),
+  cause: ErrorCause,
 })
 
 export type GitParseError = InstanceType<typeof GitParseError>
@@ -95,7 +104,9 @@ export interface GitService {
   readonly getCurrentBranch: () => Effect.Effect<string, GitError>
 
   /** Get commits since a tag (or all commits if tag is undefined) */
-  readonly getCommitsSince: (tag: string | undefined) => Effect.Effect<Commit[], GitError | GitParseError>
+  readonly getCommitsSince: (
+    tag: string | undefined,
+  ) => Effect.Effect<Commit[], GitError | GitParseError>
 
   /** Check if the working tree is clean */
   readonly isClean: () => Effect.Effect<boolean, GitError>
@@ -119,7 +130,11 @@ export interface GitService {
   readonly isAncestor: (sha1: string, sha2: string) => Effect.Effect<boolean, GitError>
 
   /** Create a tag at a specific commit SHA */
-  readonly createTagAt: (tag: string, sha: string, message?: string) => Effect.Effect<void, GitError>
+  readonly createTagAt: (
+    tag: string,
+    sha: string,
+    message?: string,
+  ) => Effect.Effect<void, GitError>
 
   /** Delete a tag locally */
   readonly deleteTag: (tag: string) => Effect.Effect<void, GitError>

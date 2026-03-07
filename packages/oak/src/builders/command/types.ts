@@ -56,7 +56,14 @@ export interface CommandBuilder<$State extends BuilderCommandState.Base = Builde
     }>
   >
   description(this: void, description: string): CommandBuilder<$State>
-  // TODO: Apply guard to configuration parameter (e.g., configuration: Configuration & { type: ApplyGuard<...> })
+  parameter<NameExpression extends string, $Schema extends BuilderCommandState.Type<$State>>(
+    this: void,
+    name: BuilderCommandState.ValidateNameExpression<$State, NameExpression>,
+    type: ApplyGuard<$State, $Schema>,
+  ): CommandBuilder<BuilderCommandState.AddParameter<$State, NameExpression, { type: $Schema }>>
+  // Put configuration overload second because Zod v4 schemas have a public `.type` property.
+  // If configuration comes first, raw schemas get inferred as configuration objects and their
+  // schema type collapses to string literals like `"boolean"` or `"enum"`.
   parameter<NameExpression extends string, const Configuration extends ParameterConfiguration<$State>>(
     this: void,
     name: BuilderCommandState.ValidateNameExpression<$State, NameExpression>,
@@ -68,11 +75,6 @@ export interface CommandBuilder<$State extends BuilderCommandState.Base = Builde
       Obj.Replace<Configuration, { type: Configuration['type'] }>
     >
   >
-  parameter<NameExpression extends string, $Schema extends BuilderCommandState.Type<$State>>(
-    this: void,
-    name: BuilderCommandState.ValidateNameExpression<$State, NameExpression>,
-    type: ApplyGuard<$State, $Schema>,
-  ): CommandBuilder<BuilderCommandState.AddParameter<$State, NameExpression, { type: $Schema }>>
   parametersExclusive<Label extends string, $BuilderExclusive extends BuilderExclusive<$State>>(
     this: void,
     label: Label,

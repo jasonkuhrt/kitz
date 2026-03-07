@@ -1,4 +1,4 @@
-import { Context } from 'effect'
+import { Context, Layer } from 'effect'
 
 /** Package info in a monorepo. */
 export interface Package {
@@ -18,3 +18,9 @@ export interface Monorepo {
 
 /** Service providing monorepo context. */
 export class MonorepoService extends Context.Tag('MonorepoService')<MonorepoService, Monorepo>() {}
+
+/** Safe default monorepo context for runs where monorepo rules are skipped. */
+export const DefaultMonorepoLayer = Layer.succeed(MonorepoService, {
+  packages: [],
+  validScopes: [],
+} satisfies Monorepo)

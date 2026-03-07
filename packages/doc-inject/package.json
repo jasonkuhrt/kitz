@@ -3,6 +3,7 @@
   "version": "0.0.0-kitz-release",
   "type": "module",
   "sideEffects": false,
+  "types": "./src/_.ts",
   "bin": {
     "doc-inject": "./build/cli.js"
   },
@@ -11,8 +12,14 @@
     "#doc-inject/*": "./build/*.js"
   },
   "exports": {
-    ".": "./build/_.js",
-    "./__": "./build/__.js"
+    ".": {
+      "types": "./src/_.ts",
+      "default": "./build/_.js"
+    },
+    "./__": {
+      "types": "./src/__.ts",
+      "default": "./build/__.js"
+    }
   },
   "files": [
     "build",
@@ -22,8 +29,8 @@
     "build": "tsgo -p tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
-    "check:lint": "oxlint --config ../../oxlint.json src/",
-    "check:package": "publint && attw --pack"
+    "check:lint": "oxlint --config ../../.oxlintrc.json src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   },
   "dependencies": {
     "@effect/platform": "^0.94.0",

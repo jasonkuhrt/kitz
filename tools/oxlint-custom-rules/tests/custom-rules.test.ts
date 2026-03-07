@@ -193,6 +193,7 @@ const rules: ReadonlyArray<{
       `namespace-file-conventions/packages/demo/src/_.ts`,
       `namespace-file-conventions/packages/demo/src/qux/_.ts`,
       `namespace-file-conventions/packages/core/src/err/core/_.ts`,
+      `namespace-file-conventions/packages/demo/src/type-target/_.ts`,
       `namespace-file-conventions/packages/demo/src/zip/_.ts`,
     ],
   },

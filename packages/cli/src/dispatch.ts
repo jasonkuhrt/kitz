@@ -13,19 +13,26 @@ import { type CommandTarget, getCommandTarget } from './commend-target.js'
 // ============================================
 
 const baseTags = ['kit', 'cli', 'dispatch'] as const
+const ErrorCause = S.instanceOf(Error)
+const DiscoverCommandsDirNotFoundErrorContext = S.Struct({
+  path: Fs.Path.AbsDir.Schema,
+})
 
 /**
  * Commands directory not found at the specified path.
  */
-export const DiscoverCommandsDirNotFoundError = Err.TaggedContextualError(
+export const DiscoverCommandsDirNotFoundError: Err.TaggedContextualErrorClass<
+  'KitCliDiscoverCommandsDirNotFoundError',
+  typeof baseTags,
+  typeof DiscoverCommandsDirNotFoundErrorContext,
+  typeof ErrorCause
+> = Err.TaggedContextualError(
   'KitCliDiscoverCommandsDirNotFoundError',
   baseTags,
   {
-    context: S.Struct({
-      path: Fs.Path.AbsDir.Schema,
-    }),
+    context: DiscoverCommandsDirNotFoundErrorContext,
     message: (ctx) => `Commands directory not found: ${Fs.Path.toString(ctx.path)}`,
-    cause: S.instanceOf(Error),
+    cause: ErrorCause,
   },
 )
 
@@ -64,36 +71,41 @@ export type DiscoverCommandsDirNotFoundError = InstanceType<typeof DiscoverComma
  * // If argv is ['node', 'cli.js', 'build'], imports and executes build.js
  * // If argv is ['node', 'cli.js'], imports and executes $default.js
  */
-export const dispatch = (
+export function dispatch(
   commandsDirPath: Fs.Path.AbsDir,
 ): Effect.Effect<
   void,
   DiscoverCommandsDirNotFoundError | PlatformError | ParseResult.ParseError | Mod.ImportError,
   Env.Env | FileSystem.FileSystem
-> =>
-  Effect.gen(function*() {
+> {
+  return Effect.gen(function* () {
     const env = yield* Env.Env
     const commandFiles = yield* discoverCommandPointers(commandsDirPath)
 
     const argv = yield* parseArgv(env.argv)
     const commandTarget = getCommandTarget(argv)
     const moduleTargetName = getModuleName(commandTarget)
-    const commandFile = commandFiles.find(file => Fs.Path.stem(file) === moduleTargetName)
+    const commandFile = commandFiles.find((file) => Fs.Path.stem(file) === moduleTargetName)
 
     if (!commandFile) {
-      const availableCommands = commandFiles.map(file => `${Str.Char.rightwardsArrow} ${Fs.Path.stem(file)}`).join(
-        Str.Char.newline,
-      )
+      const availableCommands = commandFiles
+        .map((file) => `${Str.Char.rightwardsArrow} ${Fs.Path.stem(file)}`)
+        .join(Str.Char.newline)
       if (moduleTargetName === `$default`) {
-        console.error(`Error: You must specify a command.\n\nAvailable commands:\n${availableCommands}`)
+        console.error(
+          `Error: You must specify a command.\n\nAvailable commands:\n${availableCommands}`,
+        )
       } else {
-        console.error(`Error: No such command "${moduleTargetName}".\n\nAvailable commands:\n${availableCommands}`)
+        console.error(
+          `Error: No such command "${moduleTargetName}".\n\nAvailable commands:\n${availableCommands}`,
+        )
       }
       return env.exit(1)
     }
 
     yield* Mod.dynamicImportFile(commandFile)
   })
+}
 
 const getModuleName = (commandTarget: CommandTarget): string => {
   const name = commandTarget.type === `sub` ? commandTarget.name : `$default`
@@ -116,10 +128,14 @@ const getModuleName = (commandTarget: CommandTarget): string => {
  * // Returns AbsFile[] - use Fs.Path.stem() to get command names
  * ```
  */
-export const discoverCommandPointers = (
+export function discoverCommandPointers(
   commandsDirPath: Fs.Path.AbsDir,
-): Effect.Effect<Fs.Path.AbsFile[], DiscoverCommandsDirNotFoundError | PlatformError, FileSystem.FileSystem> =>
-  Effect.gen(function*() {
+): Effect.Effect<
+  Fs.Path.AbsFile[],
+  DiscoverCommandsDirNotFoundError | PlatformError,
+  FileSystem.FileSystem
+> {
+  return Effect.gen(function* () {
     const entries = yield* Fs.read(commandsDirPath).pipe(
       Effect.catchTag('SystemError', (cause) =>
         Effect.fail(
@@ -127,13 +143,13 @@ export const discoverCommandPointers = (
             context: { path: commandsDirPath },
             cause,
           }),
-        )),
+        ),
+      ),
     )
 
-    return entries
-      .filter(Fs.Path.AbsFile.is)
-      .filter(file => {
-        const ext = Fs.Path.extension(file)
-        return !Fs.Path.Extension.Extensions.buildArtifacts.some(e => e === ext)
-      })
+    return entries.filter(Fs.Path.AbsFile.is).filter((file) => {
+      const ext = Fs.Path.extension(file)
+      return !Fs.Path.Extension.Extensions.buildArtifacts.some((e) => e === ext)
+    })
   })
+}

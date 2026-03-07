@@ -1,5 +1,6 @@
 import type { ConventionalCommits } from '@kitz/conventional-commits'
-import { Context } from 'effect'
+import { Option, Context, Layer } from 'effect'
+import { ConventionalCommits as CC } from '@kitz/conventional-commits'
 
 /** PR data available to lint rules. */
 export interface Pr {
@@ -15,3 +16,18 @@ export interface Pr {
 
 /** Service providing PR context. */
 export class PrService extends Context.Tag('PrService')<PrService, Pr>() {}
+
+/** Safe default PR context for runs where PR-dependent rules are skipped. */
+export const DefaultPrLayer = Layer.succeed(PrService, {
+  number: 0,
+  title: '',
+  body: '',
+  commit: CC.Commit.Single.make({
+    type: CC.Type.parse('chore'),
+    scopes: [],
+    breaking: false,
+    message: '',
+    body: Option.none(),
+    footers: [],
+  }),
+} satisfies Pr)

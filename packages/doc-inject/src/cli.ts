@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { NodeFileSystem } from '@effect/platform-node'
 import { NodeRuntime } from '@effect/platform-node'
 import { Console, Effect } from 'effect'
@@ -28,7 +29,7 @@ const parseArgs = (): { source: string; target: string } => {
 
 const { source, target } = parseArgs()
 
-const program = Effect.gen(function*() {
+const program = Effect.gen(function* () {
   const modified = yield* run({ source, target })
   if (modified.length === 0) {
     yield* Console.log('No files were modified.')
@@ -40,6 +41,4 @@ const program = Effect.gen(function*() {
   }
 })
 
-NodeRuntime.runMain(
-  program.pipe(Effect.provide(NodeFileSystem.layer)),
-)
+NodeRuntime.runMain(program.pipe(Effect.provide(NodeFileSystem.layer)))

@@ -1,8 +1,8 @@
 {
   "name": "@kitz/core",
   "imports": {
-    "#err/core": "./build/err/core/_.js",
-    "#fn/core": "./build/fn/core/_.js",
-    "#lang/core": "./build/lang/core/_.js"
+    "#err/core": "./src/err/core/_.ts",
+    "#fn/core": "./src/fn/core/_.ts",
+    "#lang/core": "./src/lang/core/_.ts"
   }
 }

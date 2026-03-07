@@ -10,4 +10,5 @@ import type * as __kind from '@kitz/core/_internal/fn/kind'
 export type __InternalFnResolution = __kind.Kind
 
 export * from './fn.js'
+export * as Kind from './kind.js'
 export * from './lazy.js'

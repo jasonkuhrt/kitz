@@ -16,6 +16,29 @@ const getTerminalWidth = (fallback: number): number => {
   return process.stdout?.columns ?? fallback
 }
 
+const withDefaultCrossMax = (
+  spanRange: BlockParameters['spanRange'],
+  defaultWidth: number,
+): NonNullable<BlockParameters['spanRange']> => {
+  return {
+    ...(spanRange?.main === undefined
+      ? {}
+      : {
+          main: {
+            min: spanRange.main.min,
+            max: spanRange.main.max,
+          },
+        }),
+    cross:
+      spanRange?.cross === undefined
+        ? { max: defaultWidth }
+        : {
+            min: spanRange.cross.min,
+            max: spanRange.cross.max ?? defaultWidth,
+          },
+  }
+}
+
 export const defaults = {
   /** @deprecated Use getTerminalWidth() for runtime evaluation */
   terminalWidth: 120,
@@ -41,13 +64,7 @@ export const createRootBuilder = (
   const defaultWidth = terminalWidth ?? getTerminalWidth(defaults.terminalWidth)
 
   builderInternal._.node.setParameters({
-    spanRange: {
-      ...spanRange,
-      cross: {
-        ...spanRange?.cross,
-        max: spanRange?.cross?.max ?? defaultWidth,
-      },
-    },
+    spanRange: withDefaultCrossMax(spanRange, defaultWidth),
     ...otherParameters,
   })
 
@@ -61,9 +78,8 @@ export const render = (builder: Builder): string => {
   const rootNode = internalBuilder._.node
 
   // Extract spanRange constraint from root block (if it has one)
-  const maxWidth = `spanRange` in rootNode.parameters
-    ? rootNode.parameters.spanRange?.cross?.max
-    : undefined
+  const maxWidth =
+    `spanRange` in rootNode.parameters ? rootNode.parameters.spanRange?.cross?.max : undefined
 
   const result = rootNode.render({
     maxWidth,
