@@ -17,9 +17,6 @@ patterns=(
   '*.mts'
   '*.cts'
   '*.json'
-  '*.md'
-  '*.yaml'
-  '*.yml'
   '*.toml'
 )
 
