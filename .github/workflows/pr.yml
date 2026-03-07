@@ -284,7 +284,7 @@ jobs:
         run: |
           node packages/release/build/cli/cli.js plan --json \
             --publish-history /tmp/publish-history.json \
-            > /tmp/enriched-plan.json
+            --json-file /tmp/enriched-plan.json
       - name: Render release plan comment
         env:
           CLI_PARAMETER_FORMAT: comment

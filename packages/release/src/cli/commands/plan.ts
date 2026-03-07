@@ -111,6 +111,14 @@ const args = Oak.Command.create()
       Schema.annotations({ description: 'Path to JSON file containing prior publish history' }),
     ),
   )
+  .parameter(
+    'json-file',
+    Schema.UndefinedOr(Schema.String).pipe(
+      Schema.annotations({
+        description: 'Write forecast JSON to a file instead of stdout (for CI pipelines)',
+      }),
+    ),
+  )
   .parse()
 
 Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
@@ -162,14 +170,20 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
       const recon = yield* Api.Explorer.explore()
       const publishHistory = yield* readPublishHistory(args.publishHistory)
       const forecast = Api.Forecaster.forecast(analysis, recon)
+      const output = encodeForecastEnvelope({
+        forecast,
+        publishState: 'idle',
+        publishHistory,
+      })
 
-      yield* Console.log(
-        encodeForecastEnvelope({
-          forecast,
-          publishState: 'idle',
-          publishHistory,
-        }),
-      )
+      const outputFile = args.jsonFile
+      if (outputFile) {
+        const fs = yield* FileSystem.FileSystem
+        yield* fs.writeFileString(outputFile, `${output}\n`)
+        return
+      }
+
+      yield* Console.log(output)
       return
     }
 
