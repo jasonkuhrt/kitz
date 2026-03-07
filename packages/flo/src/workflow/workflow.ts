@@ -35,7 +35,7 @@
 
 import { Activity } from '@effect/workflow'
 import { WorkflowEngine } from '@effect/workflow'
-import { Effect, Graph, Option, PubSub, Schema, Stream } from 'effect'
+import { Clock, Effect, Graph, Option, PubSub, Schema, Stream } from 'effect'
 import { Activity as ActivityModel, Workflow as WorkflowModel } from '../models/__.js'
 import { type LifecycleEvent, WorkflowEvents } from '../observable/__.js'
 
@@ -67,10 +67,10 @@ export interface NodeHandle<out A> {
  * Check if a value is a NodeHandle.
  */
 const isNodeHandle = (value: unknown): value is NodeHandle<unknown> =>
-  typeof value === 'object'
-  && value !== null
-  && NodeHandleTypeId in value
-  && value[NodeHandleTypeId] === NodeHandleTypeId
+  typeof value === 'object' &&
+  value !== null &&
+  NodeHandleTypeId in value &&
+  value[NodeHandleTypeId] === NodeHandleTypeId
 
 /**
  * Create a NodeHandle.
@@ -101,9 +101,9 @@ export interface NodeOptions {
 /**
  * Internal node definition collected by the graph builder.
  */
-interface NodeDef {
+interface NodeDef<Error> {
   readonly name: string
-  readonly execute: Effect.Effect<unknown, unknown, unknown>
+  readonly execute: Effect.Effect<unknown, Error, unknown>
   readonly dependencies: readonly string[]
   readonly retry?: { readonly times: number } | undefined
 }
@@ -111,8 +111,8 @@ interface NodeDef {
 /**
  * Internal graph builder state.
  */
-interface GraphBuilderState {
-  readonly nodes: Map<string, NodeDef>
+interface GraphBuilderState<Error> {
+  readonly nodes: Map<string, NodeDef<Error>>
 }
 
 /**
@@ -135,14 +135,14 @@ const isNodeHandleArray = (
 /**
  * Create a graph builder that collects node definitions.
  */
-const makeGraphBuilder = () => {
-  const state: GraphBuilderState = {
+const makeGraphBuilder = <Error>() => {
+  const state: GraphBuilderState<Error> = {
     nodes: new Map(),
   }
 
-  const node = <A, E, R>(
+  const node = <A, R>(
     name: string,
-    execute: Effect.Effect<A, E, R>,
+    execute: Effect.Effect<A, Error, R>,
     options?: NodeOptions,
   ): NodeHandle<A> => {
     const dependencies = normalizeDependencies(options?.after)
@@ -168,7 +168,9 @@ const makeGraphBuilder = () => {
 /**
  * Build an Effect.Graph from node definitions.
  */
-const buildEffectGraph = (nodes: Map<string, NodeDef>): Graph.DirectedGraph<string, void> =>
+const buildEffectGraph = <Error>(
+  nodes: Map<string, NodeDef<Error>>,
+): Graph.DirectedGraph<string, void> =>
   Graph.directed<string, void>((g) => {
     // Add all nodes first
     const nodeIndices = new Map<string, number>()
@@ -195,7 +197,7 @@ const buildEffectGraph = (nodes: Map<string, NodeDef>): Graph.DirectedGraph<stri
  * Nodes in the same layer have no dependencies on each other
  * and can execute concurrently.
  */
-const computeLayers = (nodes: Map<string, NodeDef>): string[][] => {
+const computeLayers = <Error>(nodes: Map<string, NodeDef<Error>>): string[][] => {
   const layers: string[][] = []
   const completed = new Set<string>()
   const remaining = new Set(nodes.keys())
@@ -258,10 +260,14 @@ const unwrapResult = <T>(value: T, results: Map<string, unknown>): UnwrapHandles
 /**
  * Type-level unwrapping of NodeHandles.
  */
-export type UnwrapHandles<T> = T extends NodeHandle<infer A> ? A
-  : T extends readonly (infer U)[] ? UnwrapHandles<U>[]
-  : T extends Record<string, unknown> ? { [K in keyof T]: UnwrapHandles<T[K]> }
-  : T
+export type UnwrapHandles<T> =
+  T extends NodeHandle<infer A>
+    ? A
+    : T extends readonly (infer U)[]
+      ? UnwrapHandles<U>[]
+      : T extends Record<string, unknown>
+        ? { [K in keyof T]: UnwrapHandles<T[K]> }
+        : T
 
 // ============================================================================
 // Workflow Definition
@@ -270,12 +276,7 @@ export type UnwrapHandles<T> = T extends NodeHandle<infer A> ? A
 /**
  * Configuration for defining a workflow.
  */
-export interface WorkflowConfig<
-  Name extends string,
-  Payload,
-  Result,
-  Error,
-> {
+export interface WorkflowConfig<Name extends string, Payload, Result, Error> {
   /** Unique name for the workflow */
   readonly name: Name
   /** Schema for the workflow payload */
@@ -292,9 +293,9 @@ export interface WorkflowConfig<
    */
   readonly graph: (
     payload: Payload,
-    node: <A, E, R>(
+    node: <A, R>(
       name: string,
-      execute: Effect.Effect<A, E, R>,
+      execute: Effect.Effect<A, Error, R>,
       options?: NodeOptions,
     ) => NodeHandle<A>,
   ) => Result
@@ -303,12 +304,7 @@ export interface WorkflowConfig<
 /**
  * A defined workflow that can be executed or visualized.
  */
-export interface WorkflowInstance<
-  Name extends string,
-  Payload,
-  Result,
-  Error,
-> {
+export interface WorkflowInstance<Name extends string, Payload, Result, Error> {
   /** Workflow name */
   readonly name: Name
 
@@ -319,7 +315,7 @@ export interface WorkflowInstance<
    */
   readonly toGraph: (payload: Payload) => {
     readonly graph: Graph.DirectedGraph<string, void>
-    readonly nodes: ReadonlyMap<string, NodeDef>
+    readonly nodes: ReadonlyMap<string, NodeDef<Error>>
     readonly layers: readonly (readonly string[])[]
   }
 
@@ -331,20 +327,14 @@ export interface WorkflowInstance<
    */
   readonly execute: (
     payload: Payload,
-  ) => Effect.Effect<
-    UnwrapHandles<Result>,
-    Error,
-    WorkflowEngine.WorkflowEngine
-  >
+  ) => Effect.Effect<UnwrapHandles<Result>, Error, WorkflowEngine.WorkflowEngine>
 
   /**
    * Execute the workflow with observable events.
    *
    * Returns a stream of activity events and the execution effect.
    */
-  readonly observable: (
-    payload: Payload,
-  ) => Effect.Effect<
+  readonly observable: (payload: Payload) => Effect.Effect<
     {
       readonly events: Stream.Stream<LifecycleEvent>
       readonly execute: Effect.Effect<UnwrapHandles<Result>, Error, WorkflowEngine.WorkflowEngine>
@@ -386,16 +376,11 @@ const RESUME_THRESHOLD_MS = 50
  * // result: { result: Step2Result }
  * ```
  */
-export const make = <
-  Name extends string,
-  Payload,
-  Result,
-  Error,
->(
+export const make = <Name extends string, Payload, Result, Error>(
   config: WorkflowConfig<Name, Payload, Result, Error>,
 ): WorkflowInstance<Name, Payload, Result, Error> => {
   const toGraph = (payload: Payload) => {
-    const builder = makeGraphBuilder()
+    const builder = makeGraphBuilder<Error>()
     config.graph(payload, builder.node)
 
     const graph = buildEffectGraph(builder.state.nodes)
@@ -412,9 +397,9 @@ export const make = <
     payload: Payload,
     emitEvents: boolean,
   ): Effect.Effect<UnwrapHandles<Result>, Error, WorkflowEngine.WorkflowEngine> =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       // Build graph
-      const builder = makeGraphBuilder()
+    const builder = makeGraphBuilder<Error>()
       const resultTemplate = config.graph(payload, builder.node)
       const layers = computeLayers(builder.state.nodes)
 
@@ -422,17 +407,15 @@ export const make = <
       const results = new Map<string, unknown>()
 
       // Get optional event pubsub
-      const maybePubsub = emitEvents
-        ? yield* Effect.serviceOption(WorkflowEvents)
-        : Option.none()
+      const maybePubsub = emitEvents ? yield* Effect.serviceOption(WorkflowEvents) : Option.none()
 
       // Execute layers sequentially, nodes within layer concurrently
       for (const layer of layers) {
         const layerEffects = layer.map((nodeName) => {
           const nodeDef = builder.state.nodes.get(nodeName)!
 
-          return Effect.gen(function*() {
-            const startTime = Date.now()
+          return Effect.gen(function* () {
+            const startTime = yield* Clock.currentTimeMillis
 
             // Emit start event
             if (Option.isSome(maybePubsub)) {
@@ -451,7 +434,7 @@ export const make = <
               name: nodeName,
               success: Schema.Unknown,
               error: Schema.Unknown,
-              execute: nodeDef.execute as Effect.Effect<unknown, unknown, unknown>,
+              execute: nodeDef.execute as Effect.Effect<unknown, Error, unknown>,
             })
 
             // Build the effect to run (with optional retry)
@@ -462,12 +445,12 @@ export const make = <
             return yield* activityEffect.pipe(
               Effect.matchEffect({
                 onSuccess: (result) =>
-                  Effect.gen(function*() {
+                  Effect.gen(function* () {
                     results.set(nodeName, result)
 
                     // Emit completion event
                     if (Option.isSome(maybePubsub)) {
-                      const durationMs = Date.now() - startTime
+                      const durationMs = (yield* Clock.currentTimeMillis) - startTime
                       yield* maybePubsub.value.publish(
                         ActivityModel.Completed.make({
                           activity: nodeName,
@@ -481,12 +464,10 @@ export const make = <
                     return result
                   }),
                 onFailure: (error) =>
-                  Effect.gen(function*() {
+                  Effect.gen(function* () {
                     // Emit failure event
                     if (Option.isSome(maybePubsub)) {
-                      const errorMessage = error instanceof Error
-                        ? error.message
-                        : String(error)
+                      const errorMessage = error instanceof Error ? error.message : String(error)
                       yield* maybePubsub.value.publish(
                         ActivityModel.Failed.make({
                           activity: nodeName,
@@ -513,7 +494,7 @@ export const make = <
   const execute = (payload: Payload) => executeInternal(payload, false)
 
   const observable = (payload: Payload) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const pubsub = yield* PubSub.unbounded<LifecycleEvent>()
       const events = Stream.fromPubSub(pubsub)
 
@@ -524,10 +505,10 @@ export const make = <
               timestamp: new Date(),
               durationMs: 0,
             }),
-          )
+          ),
         ),
         Effect.tapErrorCause((cause) =>
-          Effect.gen(function*() {
+          Effect.gen(function* () {
             yield* pubsub.publish(
               WorkflowModel.Failed.make({
                 timestamp: new Date(),
@@ -535,7 +516,7 @@ export const make = <
               }),
             )
             yield* PubSub.shutdown(pubsub)
-          })
+          }),
         ),
         Effect.ensuring(PubSub.shutdown(pubsub)),
         Effect.provideService(WorkflowEvents, pubsub),

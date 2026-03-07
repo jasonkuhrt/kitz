@@ -50,6 +50,8 @@ Use Effect Schema decode/codec APIs at IO boundaries (HTTP, file, env, CLI input
 
 Flags every `try {}` / `catch` / `finally` `TryStatement`.
 
+Core nuance: `packages/core/src/prom/**` is treated as the native Promise interoperability layer, so this rule does not apply there.
+
 ### Fail
 
 ```ts
@@ -82,6 +84,8 @@ Use `Effect.try`, `Effect.tryPromise`, `Either`, or `Option` depending on the fa
 ### Checks
 
 Flags `new Promise(...)` and `new globalThis.Promise(...)`.
+
+Core nuance: `packages/core/src/prom/**` is treated as the native Promise interoperability layer, so this rule does not apply there.
 
 ### Fail
 
@@ -221,6 +225,8 @@ Use Effect and `@kitz/*` abstractions instead of Node built-ins, `fs-extra`, and
 
 ## `kitz/no-throw`
 
+Repo status: the rule remains implemented and fixture-tested, but `.oxlintrc.json` and `.oxlintrc.custom-strict.json` temporarily disable it while existing throw sites are migrated.
+
 ### Checks
 
 Flags `throw` in non-boundary modules.
@@ -255,6 +261,8 @@ Model expected failures as typed `Effect.fail` / `Either` / `Option`; reserve `t
 ### Checks
 
 Flags `promise.then(...)`, `promise.catch(...)`, and `promise.finally(...)`.
+
+Core nuance: `packages/core/src/prom/**` is treated as the native Promise interoperability layer, so this rule does not apply there.
 
 ### Fail
 
@@ -487,11 +495,7 @@ type Program = Effect.Effect<string, { message: string }, never>
 ### Pass
 
 ```ts
-type Program = Effect.Effect<
-  string,
-  { _tag: 'ParseError'; message: string },
-  never
->
+type Program = Effect.Effect<string, { _tag: 'ParseError'; message: string }, never>
 ```
 
 ### Rationale

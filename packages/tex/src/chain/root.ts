@@ -4,17 +4,7 @@ import type { BlockBuilder } from './block.js'
 import { createBlockBuilder } from './block.js'
 import type { Builder, BuilderInternal } from './helpers.js'
 import { toInternalBuilder } from './helpers.js'
-
-/**
- * Get terminal width from environment.
- * Priority: COLUMNS env var > process.stdout.columns > fallback
- */
-const getTerminalWidth = (fallback: number): number => {
-  if (typeof process === `undefined`) return fallback
-  const envColumns = parseInt(process.env[`COLUMNS`] ?? ``, 10)
-  if (!Number.isNaN(envColumns) && envColumns > 0) return envColumns
-  return process.stdout?.columns ?? fallback
-}
+import { getTerminalWidth } from '../env.js'
 
 const withDefaultCrossMax = (
   spanRange: BlockParameters['spanRange'],

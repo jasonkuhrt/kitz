@@ -86,28 +86,35 @@ export const render = (
       const node = layer?.[row]
 
       if (node) {
-        const activityState = Option.getOrElse(MutableHashMap.get(state.activities, node), () => 'pending' as const)
+        const activityState = Option.getOrElse(
+          MutableHashMap.get(state.activities, node),
+          () => 'pending' as const,
+        )
         const style = Core.stateToStyler(activityState, useColors)
         const symbol = Core.stateToSymbol(activityState)
 
         // Center name in box using visual width
         const paddedName = Str.Visual.center(node, maxNameLen)
 
-        top(style(
-          `${Tex.Glyph.box.corner.topLeft}${
-            Tex.Glyph.box.edge.horizontal.repeat(boxWidth - 2)
-          }${Tex.Glyph.box.corner.topRight}`,
-        ))
-        mid(
-          `${style(Tex.Glyph.box.edge.vertical)}${symbol}${space}${paddedName}${space}${
-            style(Tex.Glyph.box.edge.vertical)
-          }`,
+        top(
+          style(
+            `${Tex.Glyph.box.corner.topLeft}${Tex.Glyph.box.edge.horizontal.repeat(
+              boxWidth - 2,
+            )}${Tex.Glyph.box.corner.topRight}`,
+          ),
         )
-        bot(style(
-          `${Tex.Glyph.box.corner.bottomLeft}${
-            Tex.Glyph.box.edge.horizontal.repeat(boxWidth - 2)
-          }${Tex.Glyph.box.corner.bottomRight}`,
-        ))
+        mid(
+          `${style(Tex.Glyph.box.edge.vertical)}${symbol}${space}${paddedName}${space}${style(
+            Tex.Glyph.box.edge.vertical,
+          )}`,
+        )
+        bot(
+          style(
+            `${Tex.Glyph.box.corner.bottomLeft}${Tex.Glyph.box.edge.horizontal.repeat(
+              boxWidth - 2,
+            )}${Tex.Glyph.box.corner.bottomRight}`,
+          ),
+        )
       } else {
         // Empty cell
         const emptyCell = space.repeat(boxWidth)
@@ -120,14 +127,16 @@ export const render = (
       if (col < layers.length - 1) {
         const hasEdgeToRight = node
           ? edges.some(([from, to]) => {
-            const toPos = Option.getOrNull(MutableHashMap.get(nodePositions, to))
-            return from === node && toPos?.layer === col + 1
-          })
+              const toPos = Option.getOrNull(MutableHashMap.get(nodePositions, to))
+              return from === node && toPos?.layer === col + 1
+            })
           : false
 
         if (hasEdgeToRight) {
           top(layerGap)
-          mid(`${Tex.Glyph.box.edge.horizontal}${Tex.Glyph.box.edge.horizontal}${Tex.Glyph.arrow.right}${space}`)
+          mid(
+            `${Tex.Glyph.box.edge.horizontal}${Tex.Glyph.box.edge.horizontal}${Tex.Glyph.arrow.right}${space}`,
+          )
           bot(layerGap)
         } else {
           top(layerGap)
@@ -147,13 +156,20 @@ export const render = (
         const nextNode = layers[col]?.[row + 1]
 
         // Check if there are edges that need vertical lines
-        const needsVertical = currentNode
-          && edges.some(([from]) =>
-            from === currentNode && Option.getOrNull(MutableHashMap.get(nodePositions, from))?.layer === col
+        const needsVertical =
+          currentNode &&
+          edges.some(
+            ([from]) =>
+              from === currentNode &&
+              Option.getOrNull(MutableHashMap.get(nodePositions, from))?.layer === col,
           )
 
         if (needsVertical || nextNode) {
-          connector(space.repeat(boxWidth / 2) + Tex.Glyph.box.edge.vertical + space.repeat(boxWidth / 2 - 1))
+          connector(
+            space.repeat(boxWidth / 2) +
+              Tex.Glyph.box.edge.vertical +
+              space.repeat(boxWidth / 2 - 1),
+          )
         } else {
           connector(space.repeat(boxWidth))
         }
@@ -169,7 +185,7 @@ export const render = (
   }
 
   // Add summary
-  const elapsed = Duration.format(Duration.millis(Date.now() - state.startTime.getTime()))
+  const elapsed = Duration.format(Duration.millis(Core.elapsedSince(state.startTime)))
   const summary = `${state.completedCount}/${state.totalCount} completed (${elapsed})`
   b('')
   b(useColors ? ansis.dim(summary) : summary)

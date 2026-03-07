@@ -44,10 +44,11 @@ pnpm turbo run build --filter=@kitz/core   # Single package
 ## Linting (Custom Rules)
 
 Custom Oxlint rules use two paths:
+
 - JS plugin rules for Effect-first standards and `_.ts` / `__.ts` conventions: `tools/oxlint-custom-rules/plugin.mjs`
 - Official Oxlint type-aware rules via the `oxlint-tsgolint` package
 
-`kitz/no-type-assertion` remains disabled. `typescript/no-unsafe-type-assertion` is also disabled for now because it is currently too noisy for this repo's function-body typing policy.
+`kitz/no-type-assertion` remains disabled. `typescript/no-unsafe-type-assertion` is also disabled for now because it is currently too noisy for this repo's function-body typing policy. `kitz/no-throw` is temporarily disabled in repo lint configs while the remaining throw sites are migrated back onto typed failure channels; keep the rule implementation and fixture coverage intact so it can be restored once that backlog is cleared.
 
 ```bash
 pnpm check:lint                        # Lint (custom rules as warnings)
@@ -60,6 +61,7 @@ pnpm test:oxlint-custom-rules          # Fixture tests for custom rules
 Rule details and migration guidance: `docs/oxlint-custom-rules.md`.
 
 Recent convention refinements:
+
 - `_.ts` namespace files now require a matching JSDoc `export namespace Name {}` declaration and may include type-only exports.
 - `packages/core/src/*/core/_.ts` namespace names are validated from `packages/core/package.json#imports` (`#*/core`).
 - `__.ts` files are strict barrels only when peer implementation files exist; otherwise shorthand implementation is allowed (default exports still forbidden).

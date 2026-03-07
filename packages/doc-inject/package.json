@@ -8,8 +8,8 @@
     "doc-inject": "./build/cli.js"
   },
   "imports": {
-    "#doc-inject": "./build/_.js",
-    "#doc-inject/*": "./build/*.js"
+    "#doc-inject": "./src/_.ts",
+    "#doc-inject/*": "./src/*.ts"
   },
   "exports": {
     ".": {

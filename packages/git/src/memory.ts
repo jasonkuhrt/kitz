@@ -64,9 +64,7 @@ export interface GitMemoryState {
 /**
  * Create the initial state from config.
  */
-export const makeState = (
-  config: GitMemoryConfig = {},
-): Effect.Effect<GitMemoryState> =>
+export const makeState = (config: GitMemoryConfig = {}): Effect.Effect<GitMemoryState> =>
   Effect.all({
     tags: Ref.make(config.tags ?? []),
     commits: Ref.make(config.commits ?? []),
@@ -92,7 +90,7 @@ const makeService = (state: GitMemoryState): GitService => ({
   getCurrentBranch: () => Ref.get(state.branch),
 
   getCommitsSince: (tag) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const commits = yield* Ref.get(state.commits)
       const tags = yield* Ref.get(state.tags)
 
@@ -125,9 +123,10 @@ const makeService = (state: GitMemoryState): GitService => ({
       const versionInTag = tag.slice(atIndex + 1)
 
       // Find commit index by matching version in message
-      const tagCommitIndex = commits.findIndex((c) =>
-        c.message.includes(`(${packageName.split('/').pop()})`)
-        && c.message.includes(versionInTag)
+      const tagCommitIndex = commits.findIndex(
+        (c) =>
+          c.message.includes(`(${packageName.split('/').pop()})`) &&
+          c.message.includes(versionInTag),
       )
 
       if (tagCommitIndex === -1) {
@@ -142,19 +141,20 @@ const makeService = (state: GitMemoryState): GitService => ({
   isClean: () => Ref.get(state.isClean),
 
   createTag: (tag, message) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       yield* Ref.update(state.tags, (tags) => [...tags, tag])
       yield* Ref.update(state.createdTags, (created) => [...created, { tag, message }])
     }),
 
-  pushTags: (remote = 'origin') => Ref.update(state.pushedTags, (pushed) => [...pushed, { remote }]),
+  pushTags: (remote = 'origin') =>
+    Ref.update(state.pushedTags, (pushed) => [...pushed, { remote }]),
 
   getRoot: () => Ref.get(state.root),
 
   getHeadSha: () => Ref.get(state.headSha),
 
   getTagSha: (tag) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const tagShas = yield* Ref.get(state.tagShas)
       const sha = tagShas[tag]
       if (!sha) {
@@ -170,7 +170,7 @@ const makeService = (state: GitMemoryState): GitService => ({
     }),
 
   isAncestor: (sha1, sha2) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const parents = yield* Ref.get(state.commitParents)
 
       // BFS to find if sha1 is reachable from sha2
@@ -188,14 +188,14 @@ const makeService = (state: GitMemoryState): GitService => ({
     }),
 
   createTagAt: (tag, sha, message) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       yield* Ref.update(state.tags, (tags) => [...tags, tag])
       yield* Ref.update(state.tagShas, (shas) => ({ ...shas, [tag]: Sha.make(sha) }))
       yield* Ref.update(state.createdTags, (created) => [...created, { tag, message }])
     }),
 
   deleteTag: (tag) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       yield* Ref.update(state.tags, (tags) => tags.filter((t) => t !== tag))
       yield* Ref.update(state.tagShas, (shas) => {
         const { [tag]: _, ...rest } = shas
@@ -205,7 +205,7 @@ const makeService = (state: GitMemoryState): GitService => ({
     }),
 
   commitExists: (sha) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const commits = yield* Ref.get(state.commits)
       const parents = yield* Ref.get(state.commitParents)
       return commits.some((c) => c.hash === sha || c.hash.startsWith(sha)) || sha in parents
@@ -238,7 +238,7 @@ const makeService = (state: GitMemoryState): GitService => ({
 export const make = (config: GitMemoryConfig = {}): Layer.Layer<Git> =>
   Layer.effect(
     Git,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const state = yield* makeState(config)
       return makeService(state)
     }),
@@ -264,7 +264,7 @@ export const make = (config: GitMemoryConfig = {}): Layer.Layer<Git> =>
 export const makeWithState = (
   config: GitMemoryConfig = {},
 ): Effect.Effect<{ layer: Layer.Layer<Git>; state: GitMemoryState }> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const state = yield* makeState(config)
     const layer = Layer.succeed(Git, makeService(state))
     return { layer, state }
@@ -273,22 +273,18 @@ export const makeWithState = (
 /**
  * Generate a random valid hex SHA.
  */
+let nextSyntheticSha = 0
+
 const randomSha = (): string => {
-  const hex = '0123456789abcdef'
-  let result = ''
-  for (let i = 0; i < 7; i++) {
-    result += hex[Math.floor(Math.random() * 16)]
-  }
-  return result
+  const current = nextSyntheticSha
+  nextSyntheticSha += 1
+  return current.toString(16).padStart(7, '0').slice(-7)
 }
 
 /**
  * Helper to create a commit.
  */
-export const commit = (
-  message: string,
-  overrides: Partial<Commit> = {},
-): Commit =>
+export const commit = (message: string, overrides: Partial<Commit> = {}): Commit =>
   Commit.make({
     hash: overrides.hash ?? Sha.make(randomSha()),
     message,

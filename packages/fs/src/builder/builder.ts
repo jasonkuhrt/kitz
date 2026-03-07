@@ -1,10 +1,7 @@
 import { FileSystem } from '@effect/platform'
 import type { PlatformError } from '@effect/platform/Error'
-import { Schema as S } from 'effect'
 import { Effect, Scope } from 'effect'
-import * as NodeOs from 'os'
-import * as NodePath from 'path'
-import { remove, write } from '../filesystem.js'
+import { makeTempDirectory, makeTempDirectoryScoped } from '../filesystem.js'
 import { Path } from '../path/_.js'
 
 /**
@@ -26,9 +23,7 @@ export interface Builder {
  * const builder = Fs.Builder.create('/project')
  * ```
  */
-export const create = (
-  base: Path.Input.AbsDir,
-): Builder => ({
+export const create = (base: Path.Input.AbsDir): Builder => ({
   base: Path.normalizeDynamicInput(Path.AbsDir.Schema)(base) as Path.AbsDir,
 })
 
@@ -48,23 +43,14 @@ export const create = (
  * )
  * ```
  */
-export const createTemp = (): Effect.Effect<Builder, PlatformError, Scope.Scope | FileSystem.FileSystem> =>
-  Effect.gen(function*() {
-    const tempBase = NodePath.join(
-      NodeOs.tmpdir(),
-      `kit-builder-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    )
-    const absDir = S.decodeSync(Path.AbsDir.Schema)(tempBase + '/')
-
-    // Create the directory
-    yield* write(absDir, { recursive: true })
-
-    const builder = create(absDir)
-
-    // Add cleanup finalizer
-    yield* Effect.addFinalizer(() => Effect.orDie(remove(absDir, { recursive: true, force: true })))
-
-    return builder
+export const createTemp = (): Effect.Effect<
+  Builder,
+  PlatformError,
+  Scope.Scope | FileSystem.FileSystem
+> =>
+  Effect.gen(function* () {
+    const absDir = yield* makeTempDirectoryScoped({ prefix: 'kit-builder-' })
+    return create(absDir)
   })
 
 /**
@@ -82,15 +68,7 @@ export const createTemp = (): Effect.Effect<Builder, PlatformError, Scope.Scope 
  * ```
  */
 export const createTempUnsafe = (): Effect.Effect<Builder, PlatformError, FileSystem.FileSystem> =>
-  Effect.gen(function*() {
-    const tempBase = NodePath.join(
-      NodeOs.tmpdir(),
-      `kit-builder-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    )
-    const absDir = S.decodeSync(Path.AbsDir.Schema)(tempBase + '/')
-
-    // Create the directory
-    yield* write(absDir, { recursive: true })
-
+  Effect.gen(function* () {
+    const absDir = yield* makeTempDirectory({ prefix: 'kit-builder-' })
     return create(absDir)
   })

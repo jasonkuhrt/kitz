@@ -1,6 +1,7 @@
 import { Date, Lang, Str } from '@kitz/core'
 import objectInspect from 'object-inspect'
 import * as Os from 'os'
+import { getCurrentTimeMillis } from './env.js'
 import * as Level from './level.js'
 import * as Logger from './logger.js'
 
@@ -9,10 +10,10 @@ import * as Logger from './logger.js'
  * invocation of `lap`.
  */
 const createStopWatch = () => {
-  let prev = globalThis.Date.now()
+  let prev = getCurrentTimeMillis()
   return {
     lap: (): number => {
-      const curr = globalThis.Date.now()
+      const curr = getCurrentTimeMillis()
       const elapsed = curr - prev
       prev = curr
       return elapsed
@@ -150,8 +151,8 @@ export const render = (opts: Options, logRecord: Logger.LogRecord): string => {
   // Factor in:
   // 1. the headers section
   // 2. the headers/context separator
-  const availableSinglelineContextColumns = terminalWidth - gutterWidth - preContextWidth
-    - separators.context.singleLine.symbol.length
+  const availableSinglelineContextColumns =
+    terminalWidth - gutterWidth - preContextWidth - separators.context.singleLine.symbol.length
   let contextColumnsConsumed = 0
 
   const contextEntries = logRecord.context ? Object.entries(logRecord.context) : []
@@ -184,32 +185,32 @@ export const render = (opts: Options, logRecord: Logger.LogRecord): string => {
   let contextRendered = ``
   if (contextEntries.length > 0) {
     if (contextFitsSingleLine) {
-      contextRendered = renderEl(separators.context.singleLine)
-        + contextEntriesRendered
+      contextRendered =
+        renderEl(separators.context.singleLine) +
+        contextEntriesRendered
           .map(
             ([key, value]) =>
               `${Lang.colorize('gray', key ?? '')}${renderEl(separators.contextKeyVal.singleLine)}${value ?? ''}`,
           )
           .join(separators.contextEntry.singleLine)
     } else {
-      const spineRendered = renderEl(separators.contextEntry.multiline(Str.repeat(` `, gutterWidth)))
-      contextRendered = renderEl(separators.context.multiline)
-        + `\n`
-        + spineRendered
-        + contextEntriesRendered
+      const spineRendered = renderEl(
+        separators.contextEntry.multiline(Str.repeat(` `, gutterWidth)),
+      )
+      contextRendered =
+        renderEl(separators.context.multiline) +
+        `\n` +
+        spineRendered +
+        contextEntriesRendered
           .map(
             ([key, value]) =>
-              `${Lang.colorize('gray', Str.Text.fit(key ?? '', widestKey, 'left'))}${
-                renderEl(
-                  separators.contextKeyVal.multiline,
-                )
-              }${
-                Str.Text.formatBlock(value ?? '', {
-                  prefix: spineRendered,
-                  excludeFirstLine: true,
-                  indent: widestKey + separators.contextKeyVal.multiline.symbol.length,
-                })
-              }`,
+              `${Lang.colorize('gray', Str.Text.fit(key ?? '', widestKey, 'left'))}${renderEl(
+                separators.contextKeyVal.multiline,
+              )}${Str.Text.formatBlock(value ?? '', {
+                prefix: spineRendered,
+                excludeFirstLine: true,
+                indent: widestKey + separators.contextKeyVal.multiline.symbol.length,
+              })}`,
           )
           .join(`\n` + spineRendered)
     }

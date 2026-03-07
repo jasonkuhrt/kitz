@@ -27,17 +27,12 @@ import * as WorkflowTypes from '../models/workflow.js'
 /**
  * Any workflow or activity lifecycle event.
  */
-export type LifecycleEvent =
-  | ActivityTypes.Event
-  | WorkflowTypes.Event
+export type LifecycleEvent = ActivityTypes.Event | WorkflowTypes.Event
 
 /**
  * Schema for all lifecycle events.
  */
-export const LifecycleEvent = Schema.Union(
-  ActivityTypes.Event,
-  WorkflowTypes.Event,
-)
+export const LifecycleEvent = Schema.Union(ActivityTypes.Event, WorkflowTypes.Event)
 
 // ─── Event PubSub Service ────────────────────────────────────────────────────
 
@@ -56,6 +51,8 @@ export class WorkflowEvents extends Context.Tag('@kitz/flo/WorkflowEvents')<
 
 /** Threshold - activities completing faster than this are considered resumed */
 const RESUME_THRESHOLD = Duration.millis(50)
+
+type ObservableActivityError<E extends Schema.Schema.All> = E['Type'] & { readonly _tag: string }
 
 /**
  * Observable drop-in replacement for `Activity.make()`.
@@ -99,18 +96,18 @@ export const ObservableActivity = {
   create: <R, E extends Schema.Schema.All = typeof Schema.Never>(config: {
     readonly name: string
     readonly error?: E | undefined
-    readonly execute: Effect.Effect<void, E['Type'], R>
+    readonly execute: Effect.Effect<void, ObservableActivityError<E>, R>
     readonly retry?: { times: number }
-  }): Effect.Effect<void, E['Type'], R> =>
-    Effect.gen(function*() {
+  }): Effect.Effect<void, ObservableActivityError<E>, R> =>
+    Effect.gen(function* () {
       const maybePubsub = yield* Effect.serviceOption(WorkflowEvents)
 
       // Create the underlying activity (with optional retry)
-      let activity: Effect.Effect<void, E['Type'], any> = Activity.make({
+      let activity = Activity.make({
         name: config.name,
         error: config.error,
         execute: config.execute,
-      })
+      }) as Effect.Effect<void, ObservableActivityError<E>, R>
       if (config.retry) {
         activity = activity.pipe(Activity.retry(config.retry))
       }
@@ -124,40 +121,47 @@ export const ObservableActivity = {
       const startTime = new Date()
 
       // Emit started
-      yield* pubsub.publish(
-        ActivityTypes.Started.make({
-          activity: config.name,
-          timestamp: startTime,
-          resumed: false,
-        }),
-      ).pipe(Effect.ignore)
+      yield* pubsub
+        .publish(
+          ActivityTypes.Started.make({
+            activity: config.name,
+            timestamp: startTime,
+            resumed: false,
+          }),
+        )
+        .pipe(Effect.ignore)
 
       // Run the actual activity with timing
       const [duration, result] = yield* activity.pipe(
         Effect.tapError((error) => {
-          const errorMessage = typeof error === 'object' && error !== null && 'message' in error
-            ? String((error as { message: unknown }).message)
-            : String(error)
-          return pubsub.publish(
-            ActivityTypes.Failed.make({
-              activity: config.name,
-              timestamp: new Date(),
-              error: errorMessage,
-            }),
-          ).pipe(Effect.ignore)
+          const errorMessage =
+            typeof error === 'object' && error !== null && 'message' in error
+              ? String((error as { message: unknown }).message)
+              : String(error)
+          return pubsub
+            .publish(
+              ActivityTypes.Failed.make({
+                activity: config.name,
+                timestamp: new Date(),
+                error: errorMessage,
+              }),
+            )
+            .pipe(Effect.ignore)
         }),
         Effect.timed,
       )
 
       // Emit completed
-      yield* pubsub.publish(
-        ActivityTypes.Completed.make({
-          activity: config.name,
-          timestamp: new Date(),
-          resumed: Duration.lessThan(duration, RESUME_THRESHOLD),
-          durationMs: Duration.toMillis(duration),
-        }),
-      ).pipe(Effect.ignore)
+      yield* pubsub
+        .publish(
+          ActivityTypes.Completed.make({
+            activity: config.name,
+            timestamp: new Date(),
+            resumed: Duration.lessThan(duration, RESUME_THRESHOLD),
+            durationMs: Duration.toMillis(duration),
+          }),
+        )
+        .pipe(Effect.ignore)
 
       return result
     }) as any, // Cast needed because serviceOption changes R

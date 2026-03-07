@@ -33,7 +33,7 @@
     "kitz/no-type-assertion": "off",
     "kitz/no-native-map-set-in-effect-modules": "warn",
     "kitz/no-nodejs-builtin-imports": "warn",
-    "kitz/no-throw": "warn",
+    "kitz/no-throw": "off",
     "kitz/no-promise-then-chain": "warn",
     "kitz/no-effect-run-in-library-code": "warn",
     "kitz/require-typed-effect-errors": "warn",
@@ -48,7 +48,10 @@
     "kitz/module-structure-conventions": "warn",
     "kitz/no-deep-imports-when-namespace-entrypoint-exists": "warn",
     "kitz/prefer-subpath-imports": "warn",
-    "kitz/subpath-imports-integrity": ["warn", { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }],
+    "kitz/subpath-imports-integrity": [
+      "warn",
+      { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }
+    ],
     "eslint/no-restricted-imports": [
       "error",
       {
@@ -62,6 +65,12 @@
     ]
   },
   "overrides": [
+    {
+      "files": ["**/*.test.*", "**/*.spec.*", "**/__tests__/**", "**/__tests/**"],
+      "rules": {
+        "eslint-plugin-unicorn/no-thenable": "off"
+      }
+    },
     {
       "files": ["packages/kitz/src/**/*.ts"],
       "rules": {

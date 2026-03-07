@@ -249,14 +249,13 @@ export const tryOrAsync = async <success, fallback>(
   fn: () => success,
   fallback: Fn.LazyMaybe<fallback>,
 ): Promise<Awaited<success> | Awaited<fallback>> => {
-  try {
-    return await fn()
-  } catch {
-    const fallbackValue: fallback = Fn.is(fallback)
-      ? (fallback as Fn.Lazy<fallback>)()
-      : fallback
-    return await fallbackValue
+  const envelope = await Prom.maybeAsyncEnvelope(fn)
+  if (!envelope.fail) {
+    return envelope.value as Awaited<success>
   }
+
+  const fallbackValue: fallback = Fn.is(fallback) ? (fallback as Fn.Lazy<fallback>)() : fallback
+  return await fallbackValue
 }
 
 /**
@@ -455,13 +454,12 @@ export async function tryAllOrRethrow<$Fns extends readonly [() => any, ...Array
 ): Promise<{
   [K in keyof $Fns]: Awaited<ReturnType<$Fns[K]>>
 }> {
-  const results = await Promise.allSettled(
-    fns.map((fn) => {
-      try {
-        return Promise.resolve(fn())
-      } catch (error) {
-        return Promise.reject(error)
-      }
+  const results = await Promise.all(
+    fns.map(async (fn) => {
+      const envelope = await Prom.maybeAsyncEnvelope(fn)
+      return envelope.fail
+        ? ({ status: 'rejected', reason: envelope.value } as const)
+        : ({ status: 'fulfilled', value: envelope.value } as const)
     }),
   )
 

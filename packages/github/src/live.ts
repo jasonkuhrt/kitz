@@ -7,6 +7,7 @@ import {
   HttpClientResponse,
 } from '@effect/platform'
 import { Context, Effect, Layer, Option } from 'effect'
+import { getGithubToken } from './env.js'
 import {
   Github,
   GithubAuthError,
@@ -47,6 +48,12 @@ export interface GithubConfig {
 
 const BASE_URL = 'https://api.github.com'
 
+const defaultRateLimitReset = (): Date => {
+  const resetAt = new Date()
+  resetAt.setTime(resetAt.getTime() + 60000)
+  return resetAt
+}
+
 /**
  * Parse rate limit reset time from response headers.
  */
@@ -58,7 +65,7 @@ const parseRateLimitReset = (headers: Headers.Headers): Date => {
       return new Date(resetSeconds * 1000)
     }
   }
-  return new Date(Date.now() + 60000) // Default: 1 minute from now
+  return defaultRateLimitReset()
 }
 
 /**
@@ -70,7 +77,7 @@ const isRateLimited = (response: HttpClientResponse.HttpClientResponse): boolean
   return Option.isSome(remaining) && remaining.value === '0'
 }
 
-type GithubErrors = GithubError | GithubNotFoundError | GithubAuthError | GithubRateLimitError
+type GithubApiError = GithubError | GithubNotFoundError | GithubAuthError | GithubRateLimitError
 
 /**
  * Map HTTP response error to typed GitHub error.
@@ -79,7 +86,7 @@ const mapResponseError = (
   operation: GithubOperation,
   resource: string,
   error: HttpClientError.ResponseError,
-): GithubErrors => {
+): GithubApiError => {
   const { status, headers } = error.response
 
   if (status === 401) {
@@ -114,7 +121,7 @@ const mapRequestError = (
     cause: error,
   })
 
-type PostErrors = GithubError | GithubAuthError | GithubRateLimitError
+type GithubPostError = GithubError | GithubAuthError | GithubRateLimitError
 
 /**
  * Map HTTP response error to typed GitHub error (for POST requests).
@@ -124,7 +131,7 @@ const mapPostResponseError = (
   operation: GithubOperation,
   resource: string,
   error: HttpClientError.ResponseError,
-): PostErrors => {
+): GithubPostError => {
   const { status, headers } = error.response
 
   if (status === 401) {
@@ -176,7 +183,7 @@ const makeGithubService = (
   const httpGet = <$data>(
     path: string,
     operation: GithubOperation,
-  ): Effect.Effect<$data, GithubErrors> =>
+  ): Effect.Effect<$data, GithubApiError> =>
     client.get(`${BASE_URL}${path}`, { headers }).pipe(
       Effect.flatMap((response: HttpClientResponse.HttpClientResponse) =>
         HttpClientResponse.filterStatusOk(response),
@@ -195,7 +202,7 @@ const makeGithubService = (
     path: string,
     data: unknown,
     operation: GithubOperation,
-  ): Effect.Effect<$data, PostErrors> =>
+  ): Effect.Effect<$data, GithubPostError> =>
     client.post(`${BASE_URL}${path}`, { headers, body: jsonBody(data) }).pipe(
       Effect.flatMap((response: HttpClientResponse.HttpClientResponse) =>
         HttpClientResponse.filterStatusOk(response),
@@ -204,7 +211,7 @@ const makeGithubService = (
         (response) => response.json as Effect.Effect<$data, HttpClientError.ResponseError>,
       ),
       Effect.mapError(
-        (error: HttpClientError.HttpClientError): PostErrors =>
+        (error: HttpClientError.HttpClientError): GithubPostError =>
           error._tag === 'ResponseError'
             ? mapPostResponseError(operation, path, error)
             : mapRequestError(operation, error as HttpClientError.RequestError),
@@ -215,7 +222,7 @@ const makeGithubService = (
     path: string,
     data: unknown,
     operation: GithubOperation,
-  ): Effect.Effect<$data, GithubErrors> =>
+  ): Effect.Effect<$data, GithubApiError> =>
     client.patch(`${BASE_URL}${path}`, { headers, body: jsonBody(data) }).pipe(
       Effect.flatMap((response: HttpClientResponse.HttpClientResponse) =>
         HttpClientResponse.filterStatusOk(response),
@@ -289,7 +296,7 @@ export const Live: GithubLiveLayer = (config) =>
   Layer.effect(
     Github,
     Effect.gen(function* () {
-      const token = config.token ?? process.env['GITHUB_TOKEN']
+      const token = getGithubToken(config.token)
 
       if (!token) {
         return yield* Effect.fail(

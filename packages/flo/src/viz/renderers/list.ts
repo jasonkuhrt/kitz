@@ -35,14 +35,17 @@ export const render = (
   const b = Str.Builder()
 
   for (const name of activities) {
-    const activityState = Option.getOrElse(MutableHashMap.get(state.activities, name), () => 'pending' as const)
+    const activityState = Option.getOrElse(
+      MutableHashMap.get(state.activities, name),
+      () => 'pending' as const,
+    )
     const style = Core.stateToStyler(activityState, useColors)
     const symbol = Core.stateToSymbol(activityState)
     b`${style(symbol)} ${name}`
   }
 
   // Summary line
-  const elapsed = Duration.format(Duration.millis(Date.now() - state.startTime.getTime()))
+  const elapsed = Duration.format(Duration.millis(Core.elapsedSince(state.startTime)))
   const summary = `${state.completedCount}/${state.totalCount} completed (${elapsed})`
   b``
   b(useColors ? ansis.dim(summary) : summary)

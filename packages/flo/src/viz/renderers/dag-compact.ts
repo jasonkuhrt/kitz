@@ -43,14 +43,20 @@ export const render = (
 
     if (layer.length === 1) {
       const node = layer[0]!
-      const activityState = Option.getOrElse(MutableHashMap.get(state.activities, node), () => 'pending' as const)
+      const activityState = Option.getOrElse(
+        MutableHashMap.get(state.activities, node),
+        () => 'pending' as const,
+      )
       const style = Core.stateToStyler(activityState, useColors)
       const symbol = Core.stateToSymbol(activityState)
       b`  ${layerLabel} ${style(`${symbol} ${node}`)}`
     } else {
       b`  ${layerLabel}`
       for (const node of layer) {
-        const activityState = Option.getOrElse(MutableHashMap.get(state.activities, node), () => 'pending' as const)
+        const activityState = Option.getOrElse(
+          MutableHashMap.get(state.activities, node),
+          () => 'pending' as const,
+        )
         const style = Core.stateToStyler(activityState, useColors)
         const symbol = Core.stateToSymbol(activityState)
         b`    ${style(`${symbol} ${node}`)}`
@@ -59,7 +65,7 @@ export const render = (
   }
 
   // Summary
-  const elapsed = Duration.format(Duration.millis(Date.now() - state.startTime.getTime()))
+  const elapsed = Duration.format(Duration.millis(Core.elapsedSince(state.startTime)))
   const summary = `${state.completedCount}/${state.totalCount} completed (${elapsed})`
   b``
   b(useColors ? ansis.dim(summary) : summary)

@@ -1,5 +1,6 @@
 import { cloneDeep, merge } from 'es-toolkit/compat'
 import * as OS from 'os'
+import { getCurrentTimeMillis } from './env.js'
 import * as Filter from './filter.js'
 import { validPathSegmentNameRegex } from './internal.js'
 import { LEVELS } from './level.js'
@@ -200,7 +201,7 @@ export const create = (
         logRec.pid = process.pid
       }
       if (rootState.settings?.data.time) {
-        logRec.time = Date.now()
+        logRec.time = getCurrentTimeMillis()
       }
       rootState.settings.output.write(logRec, rootState.settings)
     }

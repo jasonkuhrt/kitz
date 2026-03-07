@@ -63,73 +63,48 @@ const MESSAGES = {
   [MESSAGE_IDS.noTryCatch]: `Use Effect.try, Effect.tryPromise, Either, Option, typed error channels.`,
   [MESSAGE_IDS.noNativePromiseConstruction]: `Use Effect constructors/combinators.`,
   [MESSAGE_IDS.noTypeAssertion]: `Remove assertion casts; use schema decode/typed constructors.`,
-  [MESSAGE_IDS.noNativeMapSetInEffectModules]:
-    `Prefer Effect HashMap / HashSet (mutable variants only when justified).`,
-  [MESSAGE_IDS.noNodejsBuiltinImports]:
-    `Do not import Node.js built-ins, fs-extra, or pathe; use Effect/@kitz abstractions.`,
+  [MESSAGE_IDS.noNativeMapSetInEffectModules]: `Prefer Effect HashMap / HashSet (mutable variants only when justified).`,
+  [MESSAGE_IDS.noNodejsBuiltinImports]: `Do not import Node.js built-ins, fs-extra, or pathe; use Effect/@kitz abstractions.`,
   [MESSAGE_IDS.noThrow]: `Use typed Effect failures instead of throw (except approved boundary adapters).`,
   [MESSAGE_IDS.noPromiseThenChain]: `Prefer Effect combinators over Promise.then/catch/finally chains.`,
-  [MESSAGE_IDS.noEffectRunInLibraryCode]:
-    `Do not run Effects in library code; return Effects and run them in app/CLI entrypoints or tests.`,
-  [MESSAGE_IDS.requireTypedEffectErrors]:
-    `Use precise typed Effect error channels; avoid any/unknown in Effect error position.`,
-  [MESSAGE_IDS.requireSchemaDecodeAtBoundary]:
-    `Boundary modules that read env/http/file input must decode with Effect Schema.`,
+  [MESSAGE_IDS.noEffectRunInLibraryCode]: `Do not run Effects in library code; return Effects and run them in app/CLI entrypoints or tests.`,
+  [MESSAGE_IDS.requireTypedEffectErrors]: `Use precise typed Effect error channels; avoid any/unknown in Effect error position.`,
+  [MESSAGE_IDS.requireSchemaDecodeAtBoundary]: `Boundary modules that read env/http/file input must decode with Effect Schema.`,
   [MESSAGE_IDS.noProcessEnvOutsideConfigModules]: `Read process.env only from typed config modules.`,
   [MESSAGE_IDS.noDateNowInDomain]: `Use Effect Clock service instead of Date.now in domain/library code.`,
   [MESSAGE_IDS.noMathRandomInDomain]: `Use Effect Random service instead of Math.random in domain/library code.`,
-  [MESSAGE_IDS.noConsoleInEffectModules]:
-    `Use Effect.log* or structured logging adapters instead of console.* in Effect modules.`,
-  [MESSAGE_IDS.requireTaggedErrorTypes]:
-    `Effect error channel types should be tagged (include _tag) for pattern matching.`,
-  [MESSAGE_IDS.namespaceFileConventionsSingleStatement]:
-    `Namespace files (_.ts) may only contain: one namespace export, type-only exports, and one namespace declaration.`,
-  [MESSAGE_IDS.namespaceFileConventionsNamespaceExport]:
-    `Namespace files (_.ts) must include exactly one value namespace export using 'export * as Name from ...'.`,
-  [MESSAGE_IDS.namespaceFileConventionsNamespaceDeclaration]:
-    `Namespace files (_.ts) must include one exported JSDoc target with a matching name: 'export namespace Name {}' or 'export type Name = ...'.`,
-  [MESSAGE_IDS.namespaceFileConventionsNamespaceDeclarationName]:
-    `Namespace declaration name must match the namespace export name.`,
-  [MESSAGE_IDS.namespaceFileConventionsNamespaceDeclarationJsDoc]:
-    `Namespace declaration must be preceded by a JSDoc target comment for the namespace export.`,
-  [MESSAGE_IDS.namespaceFileConventionsTypeDeclarationName]:
-    `In _.ts, exported in-file type declarations must be named exactly the same as the namespace export name.`,
-  [MESSAGE_IDS.namespaceFileConventionsNamespaceName]:
-    `Namespace export name must match path conventions (including explicit Core* conventions from packages/core/package.json imports).`,
-  [MESSAGE_IDS.namespaceFileConventionsTarget]:
-    `Namespace export target must match path conventions ('./__.js' for explicit core patterns, otherwise './__.js' or './<module>.js').`,
+  [MESSAGE_IDS.noConsoleInEffectModules]: `Use Effect.log* or structured logging adapters instead of console.* in Effect modules.`,
+  [MESSAGE_IDS.requireTaggedErrorTypes]: `Effect error channel types should be tagged (include _tag) for pattern matching.`,
+  [MESSAGE_IDS.namespaceFileConventionsSingleStatement]: `Namespace files (_.ts) may only contain: one namespace export, type-only exports, and one namespace declaration.`,
+  [MESSAGE_IDS.namespaceFileConventionsNamespaceExport]: `Namespace files (_.ts) must include exactly one value namespace export using 'export * as Name from ...'.`,
+  [MESSAGE_IDS.namespaceFileConventionsNamespaceDeclaration]: `Namespace files (_.ts) must include one exported JSDoc target with a matching name: 'export namespace Name {}' or 'export type Name = ...'.`,
+  [MESSAGE_IDS.namespaceFileConventionsNamespaceDeclarationName]: `Namespace declaration name must match the namespace export name.`,
+  [MESSAGE_IDS.namespaceFileConventionsNamespaceDeclarationJsDoc]: `Namespace declaration must be preceded by a JSDoc target comment for the namespace export.`,
+  [MESSAGE_IDS.namespaceFileConventionsTypeDeclarationName]: `In _.ts, exported in-file type declarations must be named exactly the same as the namespace export name.`,
+  [MESSAGE_IDS.namespaceFileConventionsNamespaceName]: `Namespace export name must match path conventions (including explicit Core* conventions from packages/core/package.json imports).`,
+  [MESSAGE_IDS.namespaceFileConventionsTarget]: `Namespace export target must match path conventions ('./__.js' for explicit core patterns, otherwise './__.js' or './<module>.js').`,
   [MESSAGE_IDS.barrelFileConventionsMissingExport]: `Barrel files (__.ts) must export at least one symbol.`,
   [MESSAGE_IDS.barrelFileConventionsDefaultExport]: `Barrel files (__.ts) must not use default exports.`,
-  [MESSAGE_IDS.barrelFileConventionsOnlyImportExport]:
-    `Barrel files (__.ts) may only contain top-level import/export declarations.`,
-  [MESSAGE_IDS.moduleStructureConventionsMissingBarrel]:
-    `Module directories with multiple implementation files must include __.ts.`,
-  [MESSAGE_IDS.moduleStructureConventionsMultiFileNamespaceTarget]:
-    `Namespace files for multi-file modules must target './__.js'.`,
-  [MESSAGE_IDS.moduleStructureConventionsSingleFileNamespaceTarget]:
-    `Namespace files for single-file elided modules must target './<implementation>.js'.`,
-  [MESSAGE_IDS.moduleStructureConventionsRootEntrypoints]:
-    `Regular packages must define both src/_.ts and src/__.ts root entrypoints.`,
-  [MESSAGE_IDS.noDeepImportsWhenNamespaceEntrypointExists]:
-    `Import bypasses a namespace boundary (_.ts exists in an ancestor directory). Use the _.ts or __.ts entrypoint instead.`,
-  [MESSAGE_IDS.preferSubpathImports]:
-    `A # subpath import exists for this module. Use the subpath import instead of a relative path.`,
+  [MESSAGE_IDS.barrelFileConventionsOnlyImportExport]: `Barrel files (__.ts) may only contain top-level import/export declarations.`,
+  [MESSAGE_IDS.moduleStructureConventionsMissingBarrel]: `Module directories with multiple implementation files must include __.ts.`,
+  [MESSAGE_IDS.moduleStructureConventionsMultiFileNamespaceTarget]: `Namespace files for multi-file modules must target './__.js'.`,
+  [MESSAGE_IDS.moduleStructureConventionsSingleFileNamespaceTarget]: `Namespace files for single-file elided modules must target './<implementation>.js'.`,
+  [MESSAGE_IDS.moduleStructureConventionsRootEntrypoints]: `Regular packages must define both src/_.ts and src/__.ts root entrypoints.`,
+  [MESSAGE_IDS.noDeepImportsWhenNamespaceEntrypointExists]: `Import bypasses a namespace boundary (_.ts exists in an ancestor directory). Use the _.ts or __.ts entrypoint instead.`,
+  [MESSAGE_IDS.preferSubpathImports]: `A # subpath import exists for this module. Use the subpath import instead of a relative path.`,
   [MESSAGE_IDS.subpathImportsIntegrityBrokenRef]: `Subpath import target file does not exist.`,
-  [MESSAGE_IDS.subpathImportsIntegrityWrongFormat]:
-    `Subpath import target should use ./src/*.ts format, not ./build/*.js.`,
-  [MESSAGE_IDS.subpathImportsIntegrityMissingEntry]:
-    `Module has _.ts but no corresponding # subpath import entry in package.json.`,
-  [MESSAGE_IDS.subpathImportsIntegrityConditionMismatch]:
-    `Conditional import target filename does not match its condition key (e.g. browser condition should target *.browser.* file).`,
-  [MESSAGE_IDS.subpathImportsIntegrityTsconfigDrift]:
-    `tsconfig.json paths have drifted from package.json imports. Auto-fixing.`,
+  [MESSAGE_IDS.subpathImportsIntegrityWrongFormat]: `Subpath import target should use ./src/*.ts format, not ./build/*.js.`,
+  [MESSAGE_IDS.subpathImportsIntegrityMissingEntry]: `Module has _.ts but no corresponding # subpath import entry in package.json.`,
+  [MESSAGE_IDS.subpathImportsIntegrityConditionMismatch]: `Conditional import target filename does not match its condition key (e.g. browser condition should target *.browser.* file).`,
+  [MESSAGE_IDS.subpathImportsIntegrityTsconfigDrift]: `tsconfig.json paths have drifted from package.json imports. Auto-fixing.`,
 }
 
 /**
  * @param {unknown} node
  * @returns {node is { type: 'Identifier'; name: string }}
  */
-const isIdentifier = (node) => typeof node === `object` && node !== null && `type` in node && node.type === `Identifier`
+const isIdentifier = (node) =>
+  typeof node === `object` && node !== null && `type` in node && node.type === `Identifier`
 
 /**
  * @param {Expression} expression
@@ -146,7 +121,10 @@ const getPropertyName = (memberExpression) => {
     return isIdentifier(memberExpression.property) ? memberExpression.property.name : null
   }
 
-  if (memberExpression.property.type === `Literal` && typeof memberExpression.property.value === `string`) {
+  if (
+    memberExpression.property.type === `Literal` &&
+    typeof memberExpression.property.value === `string`
+  ) {
     return memberExpression.property.value
   }
 
@@ -234,7 +212,9 @@ const isMathObjectReference = (expression) => {
 }
 
 const NODE_BUILTIN_MODULES = new Set(
-  builtinModules.map((moduleName) => moduleName.startsWith(`node:`) ? moduleName.slice(`node:`.length) : moduleName),
+  builtinModules.map((moduleName) =>
+    moduleName.startsWith(`node:`) ? moduleName.slice(`node:`.length) : moduleName,
+  ),
 )
 const DISALLOWED_EFFECT_PLATFORM_ALTERNATIVES = [`fs-extra`, `pathe`]
 const NODE_COMPATIBLE_CONDITION_KEYS = new Set([`node`, `bun`])
@@ -246,10 +226,12 @@ const PackageConditionTargetSchema = Schema.suspend(() =>
     Schema.Null,
     Schema.Array(PackageConditionTargetSchema),
     Schema.Record({ key: Schema.String, value: PackageConditionTargetSchema }),
-  )
+  ),
 )
 
-const decodePackageJsonRecord = Schema.decodeUnknownOption(Schema.parseJson(PackageJsonRecordSchema))
+const decodePackageJsonRecord = Schema.decodeUnknownOption(
+  Schema.parseJson(PackageJsonRecordSchema),
+)
 const decodePackageConditionTarget = Schema.decodeUnknownOption(PackageConditionTargetSchema)
 
 /**
@@ -257,11 +239,11 @@ const decodePackageConditionTarget = Schema.decodeUnknownOption(PackageCondition
  * @returns {string | null}
  */
 const getStringLiteralValue = (literalNode) =>
-  typeof literalNode === `object`
-    && literalNode !== null
-    && `type` in literalNode
-    && literalNode.type === `Literal`
-    && typeof literalNode.value === `string`
+  typeof literalNode === `object` &&
+  literalNode !== null &&
+  `type` in literalNode &&
+  literalNode.type === `Literal` &&
+  typeof literalNode.value === `string`
     ? literalNode.value
     : null
 
@@ -293,8 +275,8 @@ const isNodeBuiltinImportPath = (importPath) => {
  * @returns {boolean}
  */
 const isDisallowedEffectPlatformAlternativePath = (importPath) =>
-  DISALLOWED_EFFECT_PLATFORM_ALTERNATIVES.some((packageName) =>
-    importPath === packageName || importPath.startsWith(`${packageName}/`)
+  DISALLOWED_EFFECT_PLATFORM_ALTERNATIVES.some(
+    (packageName) => importPath === packageName || importPath.startsWith(`${packageName}/`),
   )
 
 /**
@@ -336,9 +318,9 @@ const decodeRuntimeConditionPackageJson = (packageJsonContent) =>
                 onSome: (target) => target,
               }),
             })),
-          )
+          ),
         ),
-      )
+      ),
     ),
   )
 
@@ -481,7 +463,7 @@ const readNearestRuntimeConditionPackage = (sourceFilePath) =>
               })),
             ),
         }),
-      )
+      ),
     ),
   )
 
@@ -640,8 +622,8 @@ const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, `\\$&`)
 const matchesCoreNamespaceImportTarget = (moduleName, importTarget) => {
   const normalizedImportTarget = normalizePath(importTarget)
   return (
-    normalizedImportTarget === `./src/${moduleName}/core/_.ts`
-    || normalizedImportTarget === `./build/${moduleName}/core/_.js`
+    normalizedImportTarget === `./src/${moduleName}/core/_.ts` ||
+    normalizedImportTarget === `./build/${moduleName}/core/_.js`
   )
 }
 
@@ -668,7 +650,9 @@ const getPackageSourcePathDetails = (filePath) => {
     return null
   }
 
-  const packageSourceDirectoryRelativePath = pathSegments.slice(0, packagesSegmentIndex + 3).join(`/`)
+  const packageSourceDirectoryRelativePath = pathSegments
+    .slice(0, packagesSegmentIndex + 3)
+    .join(`/`)
   const sourceRelativePath = pathSegments.slice(packagesSegmentIndex + 3).join(`/`)
 
   return {
@@ -720,7 +704,7 @@ const getCoreNamespaceConventions = (cwd) => {
           Option.flatMap((packageJsonRecord) =>
             `imports` in packageJsonRecord && isRecord(packageJsonRecord.imports)
               ? Option.some(packageJsonRecord.imports)
-              : Option.none()
+              : Option.none(),
           ),
         ),
     }),
@@ -732,7 +716,11 @@ const getCoreNamespaceConventions = (cwd) => {
   }
 
   for (const [importAlias, importTarget] of Object.entries(corePackageImports.value)) {
-    if (!importAlias.startsWith(`#`) || !importAlias.endsWith(`/core`) || typeof importTarget !== `string`) {
+    if (
+      !importAlias.startsWith(`#`) ||
+      !importAlias.endsWith(`/core`) ||
+      typeof importTarget !== `string`
+    ) {
       continue
     }
 
@@ -762,11 +750,10 @@ const getCoreNamespaceConventions = (cwd) => {
  */
 const getNamespaceFileConvention = (filePath, cwd) => {
   const packageSourcePathDetails = getPackageSourcePathDetails(filePath)
-  if (
-    packageSourcePathDetails !== null
-    && packageSourcePathDetails.packageName === `core`
-  ) {
-    const coreModuleMatch = /^([^/]+)\/core\/_.ts$/.exec(packageSourcePathDetails.sourceRelativePath)
+  if (packageSourcePathDetails !== null && packageSourcePathDetails.packageName === `core`) {
+    const coreModuleMatch = /^([^/]+)\/core\/_.ts$/.exec(
+      packageSourcePathDetails.sourceRelativePath,
+    )
     if (coreModuleMatch !== null) {
       const [, moduleName] = coreModuleMatch
       const coreConvention = getCoreNamespaceConventions(cwd).get(moduleName)
@@ -794,7 +781,8 @@ const getNamespaceFileConvention = (filePath, cwd) => {
  * @param {string} sourcePath
  * @returns {boolean}
  */
-const isValidNamespaceTargetPath = (sourcePath) => sourcePath === `./__.js` || /^\.\/[^/]+\.js$/.test(sourcePath)
+const isValidNamespaceTargetPath = (sourcePath) =>
+  sourcePath === `./__.js` || /^\.\/[^/]+\.js$/.test(sourcePath)
 
 /**
  * @param {unknown} moduleExportName
@@ -806,9 +794,9 @@ const getModuleExportName = (moduleExportName) => {
   }
 
   if (
-    moduleExportName.type === `Identifier`
-    || moduleExportName.type === `IdentifierReference`
-    || moduleExportName.type === `IdentifierName`
+    moduleExportName.type === `Identifier` ||
+    moduleExportName.type === `IdentifierReference` ||
+    moduleExportName.type === `IdentifierName`
   ) {
     return typeof moduleExportName.name === `string` ? moduleExportName.name : null
   }
@@ -826,9 +814,9 @@ const getModuleExportName = (moduleExportName) => {
  */
 const getNamespaceExportFromStatement = (statement) => {
   if (
-    statement.type === `ExportAllDeclaration`
-    && statement.exported !== null
-    && statement.exportKind !== `type`
+    statement.type === `ExportAllDeclaration` &&
+    statement.exported !== null &&
+    statement.exportKind !== `type`
   ) {
     const namespaceName = getModuleExportName(statement.exported)
     const sourcePath = statement.source.value
@@ -843,10 +831,10 @@ const getNamespaceExportFromStatement = (statement) => {
   }
 
   if (
-    statement.type === `ExportNamedDeclaration`
-    && statement.exportKind !== `type`
-    && statement.source !== null
-    && statement.specifiers.length === 1
+    statement.type === `ExportNamedDeclaration` &&
+    statement.exportKind !== `type` &&
+    statement.source !== null &&
+    statement.specifiers.length === 1
   ) {
     const [specifier] = statement.specifiers
     if (!isRecord(specifier) || specifier.type === undefined) {
@@ -931,8 +919,8 @@ const isTypeOnlyExportStatement = (statement) => {
   }
 
   return (
-    statement.declaration.type === `TSInterfaceDeclaration`
-    || statement.declaration.type === `TSTypeAliasDeclaration`
+    statement.declaration.type === `TSInterfaceDeclaration` ||
+    statement.declaration.type === `TSTypeAliasDeclaration`
   )
 }
 
@@ -947,8 +935,8 @@ const getInFileExportedTypeDeclarations = (statement) => {
 
   const declaration = statement.declaration
   if (
-    declaration.type !== `TSInterfaceDeclaration`
-    && declaration.type !== `TSTypeAliasDeclaration`
+    declaration.type !== `TSInterfaceDeclaration` &&
+    declaration.type !== `TSTypeAliasDeclaration`
   ) {
     return []
   }
@@ -986,7 +974,11 @@ const getNamespaceDeclarationFromStatement = (statement) => {
   }
 
   const body = declaration.body
-  const isEmpty = isRecord(body) && body.type === `TSModuleBlock` && Array.isArray(body.body) && body.body.length === 0
+  const isEmpty =
+    isRecord(body) &&
+    body.type === `TSModuleBlock` &&
+    Array.isArray(body.body) &&
+    body.body.length === 0
 
   return {
     namespaceName,
@@ -1034,22 +1026,22 @@ const isTypeDefinitionFileName = (fileName) =>
  * @returns {boolean}
  */
 const isTestLikeFileName = (fileName) =>
-  fileName.includes(`.test.`)
-  || fileName.includes(`.spec.`)
-  || fileName.includes(`.bench.`)
-  || fileName.endsWith(`.test-d.ts`)
-  || fileName.endsWith(`.spec-d.ts`)
+  fileName.includes(`.test.`) ||
+  fileName.includes(`.spec.`) ||
+  fileName.includes(`.bench.`) ||
+  fileName.endsWith(`.test-d.ts`) ||
+  fileName.endsWith(`.spec-d.ts`)
 
 /**
  * @param {string} fileName
  * @returns {boolean}
  */
 const isImplementationSourceFileName = (fileName) =>
-  isTsSourceFileName(fileName)
-  && fileName !== `_.ts`
-  && fileName !== `__.ts`
-  && !isTypeDefinitionFileName(fileName)
-  && !isTestLikeFileName(fileName)
+  isTsSourceFileName(fileName) &&
+  fileName !== `_.ts` &&
+  fileName !== `__.ts` &&
+  !isTypeDefinitionFileName(fileName) &&
+  !isTestLikeFileName(fileName)
 
 /**
  * @param {string} directoryPath
@@ -1077,14 +1069,17 @@ const readModuleDirectoryState = (directoryPath) => {
  * @param {import('oxlint').Context} context
  * @returns {string}
  */
-const getNormalizedRelativePath = (context) => normalizePath(path.relative(context.cwd, context.filename))
+const getNormalizedRelativePath = (context) =>
+  normalizePath(path.relative(context.cwd, context.filename))
 
 /**
  * @param {string} filePath
  * @returns {boolean}
  */
 const isTestFilePath = (filePath) =>
-  filePath.includes(`/__tests__/`) || /(?:\.(?:test|spec)(?:-d)?|\.bench-d)\.[cm]?[jt]sx?$/.test(filePath)
+  filePath.includes(`/__tests__/`) ||
+  filePath.includes(`/__tests/`) ||
+  /(?:\.(?:test|spec)(?:-d)?|\.bench-d)\.[cm]?[jt]sx?$/.test(filePath)
 
 /**
  * @param {string} filePath
@@ -1103,17 +1098,20 @@ const isBoundaryAdapterFile = (filePath) => {
   }
 
   return (
-    filePath.includes(`/src/cli/`)
-    || filePath.includes(`/src/app/`)
-    || filePath.includes(`/src/entrypoint/`)
-    || filePath.includes(`/src/adapters/`)
-    || filePath.includes(`/src/adaptors/`)
-    || filePath.includes(`/src/live/`)
-    || filePath.includes(`/scripts/`)
-    || filePath.includes(`/bin/`)
-    || filePath.endsWith(`/cli.ts`)
-    || filePath.endsWith(`/main.ts`)
-    || filePath.endsWith(`/entrypoint.ts`)
+    filePath.startsWith(`packages/cli/src/`) ||
+    /\/live(?:\.[^/]+)?\.ts$/.test(filePath) ||
+    filePath.includes(`/src/cli/`) ||
+    filePath.includes(`/src/app/`) ||
+    filePath.includes(`/src/entrypoint/`) ||
+    filePath.includes(`/src/adapters/`) ||
+    filePath.includes(`/src/adaptors/`) ||
+    filePath.includes(`/src/executor/`) ||
+    filePath.includes(`/src/live/`) ||
+    filePath.includes(`/scripts/`) ||
+    filePath.includes(`/bin/`) ||
+    filePath.endsWith(`/cli.ts`) ||
+    filePath.endsWith(`/main.ts`) ||
+    filePath.endsWith(`/entrypoint.ts`)
   )
 }
 
@@ -1121,9 +1119,7 @@ const isBoundaryAdapterFile = (filePath) => {
  * Packages that intentionally do NOT use Effect and should be excluded
  * from Effect-first rules (no-throw, no-try-catch, no-promise-then-chain).
  */
-const nonEffectPackages = [
-  `packages/ware/`,
-]
+const nonEffectPackages = [`packages/ware/`]
 
 /**
  * Check if a file belongs to a non-Effect package.
@@ -1139,7 +1135,20 @@ const isNonEffectPackage = (filePath) => {
  * @param {string} filePath
  * @returns {boolean}
  */
-const isEffectRunAllowedFile = (filePath) => isBoundaryAdapterFile(filePath)
+const isPromiseInteropModuleFile = (filePath) => filePath.startsWith(`packages/core/src/prom/`)
+
+/**
+ * @param {string} filePath
+ * @returns {boolean}
+ */
+const isTestSupportPackageFile = (filePath) => filePath.startsWith(`packages/test/src/`)
+
+/**
+ * @param {string} filePath
+ * @returns {boolean}
+ */
+const isEffectRunAllowedFile = (filePath) =>
+  isBoundaryAdapterFile(filePath) || isTestSupportPackageFile(filePath)
 
 /**
  * @param {Expression} expression
@@ -1164,9 +1173,9 @@ const isEffectTypeName = (typeName) => {
 
   if (typeName.type === `TSQualifiedName`) {
     return (
-      typeName.right.name === `Effect`
-      && typeName.left.type === `Identifier`
-      && typeName.left.name === `Effect`
+      typeName.right.name === `Effect` &&
+      typeName.left.type === `Identifier` &&
+      typeName.left.name === `Effect`
     )
   }
 
@@ -1201,12 +1210,12 @@ const ADVANCED_SIGNATURE_TYPE_NODES = new Set([
  * @returns {node is FunctionLikeNode}
  */
 const isFunctionLikeNode = (node) =>
-  typeof node === `object`
-  && node !== null
-  && `type` in node
-  && (node.type === `FunctionDeclaration`
-    || node.type === `FunctionExpression`
-    || node.type === `ArrowFunctionExpression`)
+  typeof node === `object` &&
+  node !== null &&
+  `type` in node &&
+  (node.type === `FunctionDeclaration` ||
+    node.type === `FunctionExpression` ||
+    node.type === `ArrowFunctionExpression`)
 
 /**
  * @param {unknown} node
@@ -1224,9 +1233,9 @@ const nodeContainsAdvancedSignatureType = (node, visited = new Set()) => {
   visited.add(node)
 
   if (
-    `type` in node
-    && typeof node.type === `string`
-    && ADVANCED_SIGNATURE_TYPE_NODES.has(node.type)
+    `type` in node &&
+    typeof node.type === `string` &&
+    ADVANCED_SIGNATURE_TYPE_NODES.has(node.type)
   ) {
     return true
   }
@@ -1263,11 +1272,11 @@ const getParameterTypeAnnotation = (parameterNode) => {
   }
 
   if (
-    `typeAnnotation` in parameterNode
-    && typeof parameterNode.typeAnnotation === `object`
-    && parameterNode.typeAnnotation !== null
-    && `type` in parameterNode.typeAnnotation
-    && parameterNode.typeAnnotation.type === `TSTypeAnnotation`
+    `typeAnnotation` in parameterNode &&
+    typeof parameterNode.typeAnnotation === `object` &&
+    parameterNode.typeAnnotation !== null &&
+    `type` in parameterNode.typeAnnotation &&
+    parameterNode.typeAnnotation.type === `TSTypeAnnotation`
   ) {
     return parameterNode.typeAnnotation.typeAnnotation
   }
@@ -1307,9 +1316,9 @@ const signatureHasAdvancedType = (functionNode) => {
   }
 
   if (
-    functionNode.returnType !== null
-    && functionNode.returnType !== undefined
-    && nodeContainsAdvancedSignatureType(functionNode.returnType.typeAnnotation)
+    functionNode.returnType !== null &&
+    functionNode.returnType !== undefined &&
+    nodeContainsAdvancedSignatureType(functionNode.returnType.typeAnnotation)
   ) {
     return true
   }
@@ -1393,14 +1402,14 @@ const isAllowedComplexReturnAnyAssertion = (node) => {
  * @returns {boolean}
  */
 const isConfigModuleFile = (filePath) =>
-  filePath.includes(`/config/`)
-  || filePath.includes(`/configuration/`)
-  || filePath.includes(`/env/`)
-  || filePath.endsWith(`/config.ts`)
-  || filePath.endsWith(`/env.ts`)
-  || filePath.endsWith(`.config.ts`)
-  || filePath.endsWith(`.config.mts`)
-  || filePath.endsWith(`.config.cts`)
+  filePath.includes(`/config/`) ||
+  filePath.includes(`/configuration/`) ||
+  filePath.includes(`/env/`) ||
+  filePath.endsWith(`/config.ts`) ||
+  filePath.endsWith(`/env.ts`) ||
+  filePath.endsWith(`.config.ts`) ||
+  filePath.endsWith(`.config.mts`) ||
+  filePath.endsWith(`.config.cts`)
 
 /**
  * @param {MemberExpression} memberExpression
@@ -1482,7 +1491,10 @@ const isTaggedErrorType = (typeAnnotation) => {
 
   if (typeAnnotation.type === `TSTypeReference`) {
     const typeName = getTypeName(typeAnnotation.typeName)
-    return typeName !== null && (typeName.endsWith(`Error`) || typeName.endsWith(`Err`) || typeName.endsWith(`Failure`))
+    return (
+      typeName !== null &&
+      (typeName.endsWith(`Error`) || typeName.endsWith(`Err`) || typeName.endsWith(`Failure`))
+    )
   }
 
   return false
@@ -1494,7 +1506,9 @@ const isTaggedErrorType = (typeAnnotation) => {
  */
 const isBoundaryInputCall = (callExpression) => {
   if (isIdentifier(callExpression.callee)) {
-    return callExpression.callee.name === `readFile` || callExpression.callee.name === `readFileSync`
+    return (
+      callExpression.callee.name === `readFile` || callExpression.callee.name === `readFileSync`
+    )
   }
 
   if (!isMemberExpression(callExpression.callee)) {
@@ -1519,10 +1533,10 @@ const isBoundaryInputCall = (callExpression) => {
   }
 
   return (
-    callExpression.callee.object.name === `request`
-    || callExpression.callee.object.name === `req`
-    || callExpression.callee.object.name === `response`
-    || callExpression.callee.object.name === `res`
+    callExpression.callee.object.name === `request` ||
+    callExpression.callee.object.name === `req` ||
+    callExpression.callee.object.name === `response` ||
+    callExpression.callee.object.name === `res`
   )
 }
 
@@ -1540,7 +1554,10 @@ const isSchemaDecodeCall = (callExpression) => {
     return false
   }
 
-  return isIdentifier(callExpression.callee.object) && callExpression.callee.object.name === `Schema`
+  return (
+    isIdentifier(callExpression.callee.object) &&
+    (callExpression.callee.object.name === `Schema` || callExpression.callee.object.name === `S`)
+  )
 }
 
 /**
@@ -1553,15 +1570,15 @@ const isBoundaryModule = (filePath) => {
   }
 
   return (
-    filePath.includes(`/env/`)
-    || filePath.includes(`/http/`)
-    || filePath.includes(`/file/`)
-    || filePath.includes(`/fs/`)
-    || filePath.includes(`/cli/`)
-    || filePath.includes(`/request/`)
-    || filePath.includes(`/handler/`)
-    || filePath.includes(`/route/`)
-    || filePath.includes(`/server/`)
+    filePath.includes(`/env/`) ||
+    filePath.includes(`/http/`) ||
+    filePath.includes(`/file/`) ||
+    filePath.includes(`/fs/`) ||
+    filePath.includes(`/cli/`) ||
+    filePath.includes(`/request/`) ||
+    filePath.includes(`/handler/`) ||
+    filePath.includes(`/route/`) ||
+    filePath.includes(`/server/`)
   )
 }
 
@@ -1609,7 +1626,12 @@ const noTryCatchRule = defineRule({
   },
   create(context) {
     const filePath = getNormalizedRelativePath(context)
-    if (isTestFilePath(filePath) || isNonEffectPackage(filePath)) {
+    if (
+      isTestFilePath(filePath) ||
+      isTestSupportPackageFile(filePath) ||
+      isPromiseInteropModuleFile(filePath) ||
+      isNonEffectPackage(filePath)
+    ) {
       return {}
     }
 
@@ -1634,6 +1656,11 @@ const noNativePromiseConstructionRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
+    const filePath = getNormalizedRelativePath(context)
+    if (isTestFilePath(filePath) || isPromiseInteropModuleFile(filePath)) {
+      return {}
+    }
+
     return {
       NewExpression(node) {
         if (!isPromiseConstructorReference(node.callee)) {
@@ -1664,18 +1691,18 @@ const noTypeAssertionRule = defineRule({
     }
 
     const isAsConstType = (typeAnnotation) =>
-      (typeAnnotation.type === `TSTypeReference`
-        && typeAnnotation.typeName?.type === `Identifier`
-        && typeAnnotation.typeName.name === `const`)
-      || typeAnnotation.type === `TSConstKeyword`
+      (typeAnnotation.type === `TSTypeReference` &&
+        typeAnnotation.typeName?.type === `Identifier` &&
+        typeAnnotation.typeName.name === `const`) ||
+      typeAnnotation.type === `TSConstKeyword`
 
     const isInsideFunction = (node) => {
       let current = node.parent
       while (current) {
         if (
-          current.type === `FunctionDeclaration`
-          || current.type === `FunctionExpression`
-          || current.type === `ArrowFunctionExpression`
+          current.type === `FunctionDeclaration` ||
+          current.type === `FunctionExpression` ||
+          current.type === `ArrowFunctionExpression`
         ) {
           return true
         }
@@ -1843,7 +1870,11 @@ const noThrowRule = defineRule({
   },
   create(context) {
     const filePath = getNormalizedRelativePath(context)
-    if (isBoundaryAdapterFile(filePath) || isNonEffectPackage(filePath)) {
+    if (
+      isBoundaryAdapterFile(filePath) ||
+      isPromiseInteropModuleFile(filePath) ||
+      isNonEffectPackage(filePath)
+    ) {
       return {}
     }
 
@@ -1869,7 +1900,11 @@ const noPromiseThenChainRule = defineRule({
   },
   create(context) {
     const filePath = getNormalizedRelativePath(context)
-    if (isBoundaryAdapterFile(filePath) || isNonEffectPackage(filePath)) {
+    if (
+      isBoundaryAdapterFile(filePath) ||
+      isPromiseInteropModuleFile(filePath) ||
+      isNonEffectPackage(filePath)
+    ) {
       return {}
     }
 
@@ -1940,6 +1975,11 @@ const requireTypedEffectErrorsRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
+    const filePath = getNormalizedRelativePath(context)
+    if (isTestSupportPackageFile(filePath)) {
+      return {}
+    }
+
     return {
       TSTypeReference(node) {
         if (!isEffectTypeName(node.typeName)) {
@@ -2137,12 +2177,12 @@ const noConsoleInEffectModulesRule = defineRule({
 
         const methodName = getPropertyName(node.callee)
         if (
-          methodName !== `log`
-          && methodName !== `error`
-          && methodName !== `warn`
-          && methodName !== `info`
-          && methodName !== `debug`
-          && methodName !== `trace`
+          methodName !== `log` &&
+          methodName !== `error` &&
+          methodName !== `warn` &&
+          methodName !== `info` &&
+          methodName !== `debug` &&
+          methodName !== `trace`
         ) {
           return
         }
@@ -2170,6 +2210,15 @@ const requireTaggedErrorTypesRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
+    const filePath = getNormalizedRelativePath(context)
+    if (
+      isBoundaryAdapterFile(filePath) ||
+      isBoundaryModule(filePath) ||
+      isTestSupportPackageFile(filePath)
+    ) {
+      return {}
+    }
+
     return {
       TSTypeReference(node) {
         if (!isEffectTypeName(node.typeName)) {
@@ -2181,7 +2230,11 @@ const requireTaggedErrorTypesRule = defineRule({
         }
 
         const errorType = node.typeArguments.params[1]
-        if (!errorType || errorType.type === `TSAnyKeyword` || errorType.type === `TSUnknownKeyword`) {
+        if (
+          !errorType ||
+          errorType.type === `TSAnyKeyword` ||
+          errorType.type === `TSUnknownKeyword`
+        ) {
           return
         }
 
@@ -2272,7 +2325,10 @@ const namespaceFileConventionsRule = defineRule({
 
         const [namespaceExportStatement] = namespaceExports
         for (const inFileExportedTypeDeclaration of inFileExportedTypeDeclarations) {
-          if (inFileExportedTypeDeclaration.typeName === namespaceExportStatement.namespaceExport.namespaceName) {
+          if (
+            inFileExportedTypeDeclaration.typeName ===
+            namespaceExportStatement.namespaceExport.namespaceName
+          ) {
             continue
           }
 
@@ -2283,8 +2339,8 @@ const namespaceFileConventionsRule = defineRule({
         }
 
         if (
-          namespaceExportStatement.namespaceExport.namespaceName
-            !== namespaceFileConvention.expectedNamespaceName
+          namespaceExportStatement.namespaceExport.namespaceName !==
+          namespaceFileConvention.expectedNamespaceName
         ) {
           context.report({
             node: namespaceExportStatement.statement,
@@ -2295,8 +2351,8 @@ const namespaceFileConventionsRule = defineRule({
         const expectedTargetPath = namespaceFileConvention.expectedTargetPath
         const actualTargetPath = namespaceExportStatement.namespaceExport.sourcePath
         if (
-          (expectedTargetPath !== null && actualTargetPath !== expectedTargetPath)
-          || (expectedTargetPath === null && !isValidNamespaceTargetPath(actualTargetPath))
+          (expectedTargetPath !== null && actualTargetPath !== expectedTargetPath) ||
+          (expectedTargetPath === null && !isValidNamespaceTargetPath(actualTargetPath))
         ) {
           context.report({
             node: namespaceExportStatement.statement,
@@ -2306,7 +2362,8 @@ const namespaceFileConventionsRule = defineRule({
 
         const matchingTypeDeclarations = inFileExportedTypeDeclarations.filter(
           (inFileExportedTypeDeclaration) =>
-            inFileExportedTypeDeclaration.typeName === namespaceFileConvention.expectedNamespaceName,
+            inFileExportedTypeDeclaration.typeName ===
+            namespaceFileConvention.expectedNamespaceName,
         )
 
         if (namespaceDeclarations.length === 0 && matchingTypeDeclarations.length === 0) {
@@ -2317,8 +2374,9 @@ const namespaceFileConventionsRule = defineRule({
           return
         }
 
-        const matchingNamespaceDeclarations = namespaceDeclarations.filter((namespaceDeclaration) =>
-          namespaceDeclaration.namespaceName === namespaceFileConvention.expectedNamespaceName
+        const matchingNamespaceDeclarations = namespaceDeclarations.filter(
+          (namespaceDeclaration) =>
+            namespaceDeclaration.namespaceName === namespaceFileConvention.expectedNamespaceName,
         )
         if (namespaceDeclarations.length > 0 && matchingNamespaceDeclarations.length === 0) {
           context.report({
@@ -2340,9 +2398,17 @@ const namespaceFileConventionsRule = defineRule({
         }
 
         const sourceText = fs.readFileSync(context.filename, `utf8`)
-        if (!hasJsDocTargetForNamespaceExport(sourceText, namespaceFileConvention.expectedNamespaceName)) {
+        if (
+          !hasJsDocTargetForNamespaceExport(
+            sourceText,
+            namespaceFileConvention.expectedNamespaceName,
+          )
+        ) {
           context.report({
-            node: matchingNamespaceDeclarations[0]?.statement ?? matchingTypeDeclarations[0]?.node ?? node,
+            node:
+              matchingNamespaceDeclarations[0]?.statement ??
+              matchingTypeDeclarations[0]?.node ??
+              node,
             messageId: MESSAGE_IDS.namespaceFileConventionsNamespaceDeclarationJsDoc,
           })
         }
@@ -2367,7 +2433,8 @@ const barrelFileConventionsRule = defineRule({
     }
 
     const directoryState = readModuleDirectoryState(path.dirname(context.filename))
-    const hasPeerImplementationFiles = directoryState !== null && directoryState.implementationFiles.length > 0
+    const hasPeerImplementationFiles =
+      directoryState !== null && directoryState.implementationFiles.length > 0
 
     return {
       Program(node) {
@@ -2402,7 +2469,10 @@ const barrelFileConventionsRule = defineRule({
             continue
           }
 
-          if (statement.type === `ExportAllDeclaration` || statement.type === `ExportNamedDeclaration`) {
+          if (
+            statement.type === `ExportAllDeclaration` ||
+            statement.type === `ExportNamedDeclaration`
+          ) {
             hasAnyExport = true
             continue
           }
@@ -2443,9 +2513,9 @@ const moduleStructureConventionsRule = defineRule({
 
     return {
       Program(node) {
-        const packageRootIssueKey = `${
-          normalizePath(context.cwd)
-        }:${packageSourcePathDetails.packageSourceDirectoryRelativePath}`
+        const packageRootIssueKey = `${normalizePath(
+          context.cwd,
+        )}:${packageSourcePathDetails.packageSourceDirectoryRelativePath}`
         if (!reportedMissingRootEntrypoints.has(packageRootIssueKey)) {
           reportedMissingRootEntrypoints.add(packageRootIssueKey)
           const packageSourceDirectory = path.join(
@@ -2887,8 +2957,7 @@ const subpathImportsIntegrityRule = defineRule({
   meta: {
     type: `problem`,
     docs: {
-      description:
-        `Validate that package.json subpath import declarations are consistent with the filesystem and tsconfig.`,
+      description: `Validate that package.json subpath import declarations are consistent with the filesystem and tsconfig.`,
       recommended: true,
     },
     messages: MESSAGES,
@@ -2899,8 +2968,7 @@ const subpathImportsIntegrityRule = defineRule({
           requiredEntryPatterns: {
             type: `array`,
             items: { type: `string` },
-            description:
-              `Glob patterns (relative to package root) for _.ts files that must have corresponding # subpath import entries. Defaults to [] (no files checked).`,
+            description: `Glob patterns (relative to package root) for _.ts files that must have corresponding # subpath import entries. Defaults to [] (no files checked).`,
           },
         },
         additionalProperties: false,
@@ -2920,15 +2988,21 @@ const subpathImportsIntegrityRule = defineRule({
 
     return {
       Program(node) {
-        const packageDir = path.resolve(context.cwd, packageSourcePathDetails.packageSourceDirectoryRelativePath, `..`)
+        const packageDir = path.resolve(
+          context.cwd,
+          packageSourcePathDetails.packageSourceDirectoryRelativePath,
+          `..`,
+        )
         const packageKey = normalizePath(packageDir)
 
         // --- Per-file check: missing entry (Check 3) ---
         // Only applies to _.ts files that match configured requiredEntryPatterns.
         // If no patterns are configured, this check is skipped entirely.
         if (filePath.endsWith(`/_.ts`) && requiredEntryPatterns.length > 0) {
-          const relativeToPkg = normalizePath(path.relative(packageDir, path.resolve(context.cwd, filePath)))
-          if (requiredEntryPatterns.some(re => re.test(relativeToPkg))) {
+          const relativeToPkg = normalizePath(
+            path.relative(packageDir, path.resolve(context.cwd, filePath)),
+          )
+          if (requiredEntryPatterns.some((re) => re.test(relativeToPkg))) {
             const absolutePath = normalizePath(path.resolve(context.cwd, filePath))
             const reverseMap = getSubpathImportReverseMap(packageDir)
             if (reverseMap !== null && reverseMap.size > 0 && !reverseMap.has(absolutePath)) {
@@ -3054,7 +3128,8 @@ export default definePlugin({
     'namespace-file-conventions': namespaceFileConventionsRule,
     'barrel-file-conventions': barrelFileConventionsRule,
     'module-structure-conventions': moduleStructureConventionsRule,
-    'no-deep-imports-when-namespace-entrypoint-exists': noDeepImportsWhenNamespaceEntrypointExistsRule,
+    'no-deep-imports-when-namespace-entrypoint-exists':
+      noDeepImportsWhenNamespaceEntrypointExistsRule,
     'prefer-subpath-imports': preferSubpathImportsRule,
     'subpath-imports-integrity': subpathImportsIntegrityRule,
   },

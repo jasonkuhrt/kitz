@@ -13,6 +13,9 @@ const baseTags = ['kit', 'release', 'publish'] as const
 const PublishErrorContext = S.Struct({
   package: Fs.Path.AbsDir.Schema,
 })
+const JsonRecordSchema = S.Record({ key: S.String, value: S.Unknown })
+const JsonRecordFromStringSchema = S.parseJson(JsonRecordSchema)
+const decodeJsonRecord = S.decodeUnknown(JsonRecordFromStringSchema)
 
 /**
  * Minimal release info needed for publishing.
@@ -87,6 +90,15 @@ export const publishPackage = (
       manifest: Pkg.Manifest.Manifest,
       version: Pkg.Manifest.Manifest[`version`],
     ): Pkg.Manifest.Manifest => Pkg.Manifest.Manifest.make(Object.assign({}, manifest, { version }))
+    const decodeJsonRecordOrFail = (json: string) =>
+      decodeJsonRecord(json).pipe(
+        Effect.mapError(
+          () =>
+            new PublishError({
+              context: { package: release.package.path },
+            }),
+        ),
+      )
 
     const pkgDir = release.package.path
     const cli = yield* NpmRegistry.NpmCli
@@ -95,7 +107,7 @@ export const publishPackage = (
     // 1. Read raw package.json to access the imports field
     const packageJsonPath = `${Fs.Path.toString(pkgDir)}package.json`
     const rawJson = yield* fs.readFileString(packageJsonPath)
-    const rawPkg = JSON.parse(rawJson) as Record<string, unknown>
+    const rawPkg = yield* decodeJsonRecordOrFail(rawJson)
     const originalImports = rawPkg['imports'] as Record<string, unknown> | undefined
 
     // 2. Inject the new version, capturing original for restore
@@ -109,7 +121,7 @@ export const publishPackage = (
     // 3. Rewrite imports for publish (source paths -> build paths)
     if (originalImports) {
       const rewrittenJson = yield* fs.readFileString(packageJsonPath)
-      const rewrittenPkg = JSON.parse(rewrittenJson) as Record<string, unknown>
+      const rewrittenPkg = { ...(yield* decodeJsonRecordOrFail(rewrittenJson)) }
       rewrittenPkg['imports'] = rewriteImportsForPublish(originalImports)
       yield* fs.writeFileString(packageJsonPath, JSON.stringify(rewrittenPkg, null, 2) + '\n')
     }
@@ -132,7 +144,7 @@ export const publishPackage = (
         // Restore original imports
         if (originalImports) {
           const currentJson = yield* fs.readFileString(packageJsonPath)
-          const currentPkg = JSON.parse(currentJson) as Record<string, unknown>
+          const currentPkg = { ...(yield* decodeJsonRecordOrFail(currentJson)) }
           currentPkg['imports'] = originalImports
           yield* fs.writeFileString(packageJsonPath, JSON.stringify(currentPkg, null, 2) + '\n')
         }

@@ -1,6 +1,7 @@
 import { parse } from '../../executor/parse.js'
 import type { SomeExtension } from '../../extension.js'
-import { getLowerCaseEnvironment, lowerCaseObjectKeys } from '../../helpers.js'
+import { getLowerCaseEnvironment } from '../../env.js'
+import { lowerCaseObjectKeys } from '../../helpers.js'
 import type { ParameterBasicInput } from '../../Parameter/basic.js'
 import { Settings } from '../../Settings/_.js'
 import * as ExclusiveBuilder from '../exclusive/constructor.js'
@@ -47,12 +48,11 @@ const create_ = (state: BuilderCommandState): any => {
       // Check if this is a schema or a configuration object
       // - Standard Schema V1 schemas (like Zod v4) have a '~standard' property and are objects
       // - Effect Schemas have an 'ast' property and are functions (classes)
-      const isSchema = typeOrConfiguration
-        && (typeof typeOrConfiguration === `object` || typeof typeOrConfiguration === `function`)
-        && (`~standard` in typeOrConfiguration || `ast` in typeOrConfiguration)
-      const configuration = isSchema
-        ? { type: typeOrConfiguration }
-        : typeOrConfiguration
+      const isSchema =
+        typeOrConfiguration &&
+        (typeof typeOrConfiguration === `object` || typeof typeOrConfiguration === `function`) &&
+        (`~standard` in typeOrConfiguration || `ast` in typeOrConfiguration)
+      const configuration = isSchema ? { type: typeOrConfiguration } : typeOrConfiguration
       const prompt = configuration.prompt ?? null
 
       // Convert raw schema to OakSchema using extension
@@ -86,7 +86,9 @@ const create_ = (state: BuilderCommandState): any => {
       return create_(newState)
     },
     parametersExclusive: (label: string, builderContainer: any) => {
-      const exclusiveBuilderState = builderContainer(ExclusiveBuilder.create(label, state))[ExclusiveBuilderStateSymbol]
+      const exclusiveBuilderState = builderContainer(ExclusiveBuilder.create(label, state))[
+        ExclusiveBuilderStateSymbol
+      ]
       const newState = {
         ...state,
         parameterInputs: {
@@ -104,7 +106,7 @@ const create_ = (state: BuilderCommandState): any => {
         ...Settings.getDefaults(argInputsEnvironment),
       }
       state.newSettingsBuffer.forEach((newSettings) =>
-        Settings.change(state.settings!, newSettings, argInputsEnvironment)
+        Settings.change(state.settings!, newSettings, argInputsEnvironment),
       )
       return parse(state.settings, state.parameterInputs, argInputs as any)
     },

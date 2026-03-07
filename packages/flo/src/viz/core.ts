@@ -29,12 +29,17 @@ export interface RenderState {
  * Create initial render state for a list of activities.
  */
 export const createState = (activities: readonly string[]): RenderState => ({
-  activities: MutableHashMap.fromIterable(activities.map((a) => [a, ActivityStateSchema.enums.pending])),
+  activities: MutableHashMap.fromIterable(
+    activities.map((a) => [a, ActivityStateSchema.enums.pending]),
+  ),
   currentActivity: null,
   startTime: new Date(),
   completedCount: 0,
   totalCount: activities.length,
 })
+
+export const elapsedSince = (startTime: Date): number =>
+  new globalThis.Date().getTime() - startTime.getTime()
 
 // ─── Styling ─────────────────────────────────────────────────────────────────
 

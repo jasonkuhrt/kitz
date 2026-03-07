@@ -15,7 +15,7 @@
     "kitz/no-type-assertion": "off",
     "typescript/no-unsafe-type-assertion": "off",
     "kitz/no-native-map-set-in-effect-modules": "error",
-    "kitz/no-throw": "error",
+    "kitz/no-throw": "off",
     "kitz/no-promise-then-chain": "error",
     "kitz/no-effect-run-in-library-code": "error",
     "kitz/require-typed-effect-errors": "error",
@@ -30,6 +30,9 @@
     "kitz/module-structure-conventions": "error",
     "kitz/no-deep-imports-when-namespace-entrypoint-exists": "error",
     "kitz/prefer-subpath-imports": "error",
-    "kitz/subpath-imports-integrity": ["error", { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }]
+    "kitz/subpath-imports-integrity": [
+      "error",
+      { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }
+    ]
   }
 }

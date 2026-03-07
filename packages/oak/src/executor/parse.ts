@@ -1,9 +1,10 @@
 import { Lang, Obj } from '@kitz/core'
 import { Effect } from 'effect'
 import type { RawArgInputs } from '../builders/command/types.js'
+import { getLowerCaseEnvironment, isTestingOak } from '../env.js'
 import { createEvent } from '../eventPatterns.js'
 import { Help } from '../Help/_.js'
-import { getLowerCaseEnvironment, lowerCaseObjectKeys } from '../helpers.js'
+import { lowerCaseObjectKeys } from '../helpers.js'
 import { Prompter } from '../lib/Prompter/_.js'
 import { OpeningArgs } from '../OpeningArgs/_.js'
 import type { ParameterBasic, ParameterBasicInput } from '../Parameter/basic.js'
@@ -67,8 +68,9 @@ export const parse = (
   parameterInputs: Record<string, ParameterBasicInput | ParameterExclusiveInput>,
   argInputs: RawArgInputs,
 ) => {
-  const testDebuggingNoExit = process.env[`testing_oak`] === `true`
-  const argInputsPrompter = argInputs?.tty ?? (process.stdout.isTTY ? Prompter.createProcessPrompter() : null)
+  const testDebuggingNoExit = isTestingOak()
+  const argInputsPrompter =
+    argInputs?.tty ?? (process.stdout.isTTY ? Prompter.createProcessPrompter() : null)
   const argInputsLine = argInputs?.line ?? process.argv.slice(2)
   const argInputsEnvironment = argInputs?.environment
     ? lowerCaseObjectKeys(argInputs.environment)
@@ -92,27 +94,35 @@ export const parse = (
 
   const parseProgressPostPromptAnnotation = {
     ...openingArgsResult,
-    basicParameters: Obj.mapEntries(openingArgsResult.basicParameters, (parameterName, openingParseResult) => {
-      const data = {
-        openingParseResult,
-        spec: openingParseResult.parameter,
-        prompt: {
-          enabled: false,
-        },
-      }
-      return [parameterName, data] as const
-    }),
+    basicParameters: Obj.mapEntries(
+      openingArgsResult.basicParameters,
+      (parameterName, openingParseResult) => {
+        const data = {
+          openingParseResult,
+          spec: openingParseResult.parameter,
+          prompt: {
+            enabled: false,
+          },
+        }
+        return [parameterName, data] as const
+      },
+    ),
   }
 
   if (argInputsPrompter) {
-    const basicSpecs = parametersResult.parameters.filter((_): _ is ParameterBasic => _._tag === `Basic`)
+    const basicSpecs = parametersResult.parameters.filter(
+      (_): _ is ParameterBasic => _._tag === `Basic`,
+    )
     for (const spec of basicSpecs) {
-      const promptEnabled = (spec.prompt.when !== null && spec.prompt.enabled !== false)
-        || (spec.prompt.enabled ?? settings.prompt.enabled)
+      const promptEnabled =
+        (spec.prompt.when !== null && spec.prompt.enabled !== false) ||
+        (spec.prompt.enabled ?? settings.prompt.enabled)
       if (!promptEnabled) continue
 
       const parseResult = openingArgsResult.basicParameters[spec.name.canonical]
-      if (!parseResult) Lang.panic(`something went wrong, could not get arg parse result`)
+      if (!parseResult) {
+        return Lang.panic(`something went wrong, could not get arg parse result`)
+      }
 
       const event = createEvent(parseResult)
       // We cannot prompt for this parameter
@@ -122,16 +132,18 @@ export const parse = (
       const eventPatterns = Array.isArray(eventPatterns_) ? eventPatterns_ : [eventPatterns_]
       for (const pattern of eventPatterns) {
         if (match(event, pattern)) {
-          parseProgressPostPromptAnnotation.basicParameters[spec.name.canonical]!.prompt.enabled = true
+          parseProgressPostPromptAnnotation.basicParameters[spec.name.canonical]!.prompt.enabled =
+            true
           continue
         }
       }
     }
   }
 
-  const askedForHelp = `help` in openingArgsResult.basicParameters
-    && openingArgsResult.basicParameters[`help`]._tag === `supplied`
-    && openingArgsResult.basicParameters[`help`].value === true
+  const askedForHelp =
+    `help` in openingArgsResult.basicParameters &&
+    openingArgsResult.basicParameters[`help`]._tag === `supplied` &&
+    openingArgsResult.basicParameters[`help`].value === true
 
   if (askedForHelp) {
     settings.onOutput(Help.render(parametersResult.parameters, settings) + `\n`)
@@ -162,10 +174,11 @@ export const parse = (
 
   if (parseProgressPostPromptAnnotation.globalErrors.length > 0 || argumentErrors.length > 0) {
     if (settings.helpOnError) {
-      const message = `Cannot run command, you made some mistakes:\n\n`
-        + openingArgsResult.globalErrors.map((_) => _.message).join(`\nX `)
-        + argumentErrors.map((_) => _.errors.map((_) => _.message).join(`\nX `)).join(`\nX `)
-        + `\n\nHere are the docs for this command:\n`
+      const message =
+        `Cannot run command, you made some mistakes:\n\n` +
+        openingArgsResult.globalErrors.map((_) => _.message).join(`\nX `) +
+        argumentErrors.map((_) => _.errors.map((_) => _.message).join(`\nX `)).join(`\nX `) +
+        `\n\nHere are the docs for this command:\n`
       settings.onOutput(message + `\n`)
       settings.onOutput(Help.render(parametersResult.parameters, settings) + `\n`)
     }
@@ -176,7 +189,9 @@ export const parse = (
     }
     const allErrors = [
       ...openingArgsResult.globalErrors,
-      ...argumentErrors.map((_) => (_.errors.length > 1 ? new AggregateError(_.errors) : _.errors[0])),
+      ...argumentErrors.map((_) =>
+        _.errors.length > 1 ? new AggregateError(_.errors) : _.errors[0],
+      ),
     ]
     if (allErrors.length > 1) {
       throw new AggregateError(allErrors)
@@ -185,14 +200,17 @@ export const parse = (
     }
   }
 
-  const hasPrompt = Obj.values(parseProgressPostPromptAnnotation.basicParameters).some((_) => _.prompt.enabled)
-    && argInputsPrompter
+  const hasPrompt =
+    Obj.values(parseProgressPostPromptAnnotation.basicParameters).some((_) => _.prompt.enabled) &&
+    argInputsPrompter
 
   /**
    * Progress to the next parse stage wherein we will execute prompts.
    */
 
-  const tailProcess = (parseProgressPostPrompts: ParseProgressPostPrompt | ParseProgressPostPromptAnnotation) => {
+  const tailProcess = (
+    parseProgressPostPrompts: ParseProgressPostPrompt | ParseProgressPostPromptAnnotation,
+  ) => {
     const args = {
       ...Object.fromEntries(
         Obj.entries(parseProgressPostPrompts.basicParameters)
@@ -205,8 +223,9 @@ export const parse = (
               // Handle omitted parameters - use the omittedValue from optionality metadata
               const optionality = v.spec.type.metadata.optionality
               if (
-                optionality._tag === `optional` && `omittedValue` in optionality
-                && optionality.omittedValue !== undefined
+                optionality._tag === `optional` &&
+                `omittedValue` in optionality &&
+                optionality.omittedValue !== undefined
               ) {
                 // Only include the key if omittedValue is explicitly set to a non-undefined value (e.g., null for NullOr)
                 return [k, optionality.omittedValue]
@@ -240,9 +259,7 @@ export const parse = (
 
   return hasPrompt
     ? Effect.runPromise(
-      prompt(parseProgressPostPromptAnnotation, argInputsPrompter).pipe(
-        Effect.map(tailProcess),
-      ),
-    )
+        prompt(parseProgressPostPromptAnnotation, argInputsPrompter).pipe(Effect.map(tailProcess)),
+      )
     : tailProcess(parseProgressPostPromptAnnotation)
 }

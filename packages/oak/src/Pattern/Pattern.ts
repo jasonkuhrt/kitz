@@ -7,30 +7,56 @@ type SomeDataObject = object
 
 type SomeDataScalar = number | string | boolean | null
 
-export type Pattern<Data extends SomeData, DiscriminantProperty extends null | keyof Data = null> = Or<
-  Data extends SomeDataScalar ? Data
+export type Pattern<
+  Data extends SomeData,
+  DiscriminantProperty extends null | keyof Data = null,
+> = Or<
+  Data extends SomeDataScalar
+    ? Data
     : PatternForObject<Exclude<Data, SomeDataScalar>, DiscriminantProperty>
 >
 
-export type PatternForValue<Data extends SomeData> = Data extends SomeDataScalar ? Data
+export type PatternForValue<Data extends SomeData> = Data extends SomeDataScalar
+  ? Data
   : PatternForObject<Exclude<Data, SomeDataScalar>>
 
-export type PatternForObject<Data extends SomeDataObject, DiscriminantProperty extends null | keyof Data = null> =
-  & {
-    [K in Exclude<keyof Data, DiscriminantProperty>]?: Ts.Simplify.Top<
-      Data[K] extends Array<any> ? Or<PatternForValue<Data[K][number]>[]>
-        : Data[K] extends SomeDataObject ? Or<PatternForObject<Data[K]>>
+export type PatternForObject<
+  Data extends SomeDataObject,
+  DiscriminantProperty extends null | keyof Data = null,
+> = {
+  [K in Exclude<keyof Data, DiscriminantProperty>]?: Ts.Simplify.Top<
+    Data[K] extends Array<any>
+      ? Or<PatternForValue<Data[K][number]>[]>
+      : Data[K] extends SomeDataObject
+        ? Or<PatternForObject<Data[K]>>
         : Or<Data[K]>
-    >
-  }
-  & (
-    null extends DiscriminantProperty ? {}
-      : { [K in Exclude<DiscriminantProperty, null>]: Data[K] }
-  )
+  >
+} & (null extends DiscriminantProperty
+  ? {}
+  : { [K in Exclude<DiscriminantProperty, null>]: Data[K] })
 
 type Or<T> = T | T[]
 
-export const match = <D extends SomeData, P extends Pattern<D> | undefined>(data: D, pattern: P): boolean => {
+export const match = <D extends SomeData, P extends Pattern<D> | undefined>(
+  data: D,
+  pattern: P,
+): boolean => {
+  const renderDebugValue = (value: unknown): string => {
+    if (value === undefined) return `undefined`
+    if (value === null) return `null`
+    if (
+      typeof value === `string` ||
+      typeof value === `number` ||
+      typeof value === `boolean` ||
+      typeof value === `bigint` ||
+      typeof value === `symbol`
+    ) {
+      return String(value)
+    }
+
+    return Object.prototype.toString.call(value)
+  }
+
   if (pattern === _) {
     return true
   }
@@ -40,7 +66,9 @@ export const match = <D extends SomeData, P extends Pattern<D> | undefined>(data
    */
   if (Array.isArray(data)) {
     if (!Array.isArray(pattern)) {
-      throw new Error(`Invalid pattern for data.\nPattern: ${pattern?.toString()}\nData: ${data.toString()}`)
+      throw new Error(
+        `Invalid pattern for data.\nPattern: ${renderDebugValue(pattern)}\nData: ${renderDebugValue(data)}`,
+      )
     }
     const isOrKindPattern = pattern.filter((_) => Array.isArray(_)).length === pattern.length
     if (isOrKindPattern) {

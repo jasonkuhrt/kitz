@@ -9,12 +9,18 @@ import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Layer, Ref, Schema, Stream } from 'effect'
 import * as Analyzer from './analyzer/__.js'
-import { execute as executeWorkflow, executeObservable as executeWorkflowObservable } from './executor/execute.js'
+import {
+  execute as executeWorkflow,
+  executeObservable as executeWorkflowObservable,
+} from './executor/execute.js'
 import { makeTestRuntime as makeTestWorkflowRuntime } from './executor/runtime.js'
 import * as Planner from './planner/__.js'
 
 const corePackagePath = Fs.Path.AbsDir.fromString('/repo/packages/core/')
 const coreManifestPath = Fs.Path.AbsFile.fromString('/repo/packages/core/package.json')
+const JsonRecordSchema = Schema.Record({ key: Schema.String, value: Schema.Unknown })
+const JsonRecordFromStringSchema = Schema.parseJson(JsonRecordSchema)
+const decodeJsonRecordSync = Schema.decodeUnknownSync(JsonRecordFromStringSchema)
 
 const workspacePackages: ReadonlyArray<Planner.Context['packages'][number]> = [
   {
@@ -24,7 +30,8 @@ const workspacePackages: ReadonlyArray<Planner.Context['packages'][number]> = [
   },
 ]
 
-const makePackageJson = (name: string, version: string) => JSON.stringify({ name, version }, null, 2)
+const makePackageJson = (name: string, version: string) =>
+  JSON.stringify({ name, version }, null, 2)
 
 const tag = (name: Pkg.Moniker.Moniker, version: string) =>
   Pkg.Pin.toString(
@@ -39,7 +46,7 @@ const decodeSemverFromManifest = (value: unknown): Semver.Semver =>
     : Schema.decodeUnknownSync(Semver.Semver)(value)
 
 const planStable = (packages: readonly Analyzer.Workspace.Package[]) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
     const analysis = yield* Analyzer.analyze({ packages, tags })
@@ -47,18 +54,15 @@ const planStable = (packages: readonly Analyzer.Workspace.Package[]) =>
   })
 
 const planPreview = (packages: readonly Analyzer.Workspace.Package[]) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
     const analysis = yield* Analyzer.analyze({ packages, tags })
     return yield* Planner.candidate(analysis, { packages })
   })
 
-const planPr = (
-  packages: readonly Analyzer.Workspace.Package[],
-  options: Planner.PrOptions,
-) =>
-  Effect.gen(function*() {
+const planPr = (packages: readonly Analyzer.Workspace.Package[], options: Planner.PrOptions) =>
+  Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
     const analysis = yield* Analyzer.analyze({ packages, tags })
@@ -67,7 +71,11 @@ const planPr = (
 
 const makeMockCommandExecutorLayer = (whoamiUsername: string) => {
   const runString = (command: any) => {
-    if (command?._tag === 'StandardCommand' && command.command === 'npm' && command.args?.[0] === 'whoami') {
+    if (
+      command?._tag === 'StandardCommand' &&
+      command.command === 'npm' &&
+      command.args?.[0] === 'whoami'
+    ) {
       return Effect.succeed(`${whoamiUsername}\n`)
     }
     return Effect.die(`Unexpected command in mock executor: ${command?.command ?? 'unknown'}`)
@@ -80,7 +88,12 @@ const makeMockCommandExecutorLayer = (whoamiUsername: string) => {
     string: runString,
     lines: (command) =>
       runString(command).pipe(
-        Effect.map((output) => output.trim().split('\n').filter((line) => line.length > 0)),
+        Effect.map((output) =>
+          output
+            .trim()
+            .split('\n')
+            .filter((line) => line.length > 0),
+        ),
       ),
     stream: () => Stream.empty,
     streamLines: () => Stream.empty,
@@ -103,46 +116,45 @@ const makeHarness = (options: {
   readonly diskLayout: Fs.Memory.DiskLayout
   readonly failPublish?: boolean
 }): Effect.Effect<Harness> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const envLayer = Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') })
     const fsLayer = Fs.Memory.layer(options.diskLayout)
 
     const { layer: gitLayer, state: gitState } = yield* Git.Memory.makeWithState(options.git)
     const { layer: githubLayer, state: githubState } = yield* Github.Memory.makeWithState({})
 
-    const publishCalls = yield* Ref.make<Array<{ cwd: Fs.Path.AbsDir; tag?: string; registry?: string }>>([])
+    const publishCalls = yield* Ref.make<
+      Array<{ cwd: Fs.Path.AbsDir; tag?: string; registry?: string }>
+    >([])
     const publishAttempts = yield* Ref.make(0)
 
-    const npmLayer = Layer.succeed(
-      NpmRegistry.NpmCli,
-      {
-        whoami: () => Effect.succeed('mock-user'),
-        publish: (publishOptions) =>
-          Effect.gen(function*() {
-            yield* Ref.update(publishAttempts, (n) => n + 1)
-            yield* Ref.update(publishCalls, (calls) => [
-              ...calls,
-              {
-                cwd: publishOptions.cwd,
-                ...(publishOptions.tag && { tag: publishOptions.tag }),
-                ...(publishOptions.registry && { registry: publishOptions.registry }),
-              },
-            ])
+    const npmLayer = Layer.succeed(NpmRegistry.NpmCli, {
+      whoami: () => Effect.succeed('mock-user'),
+      publish: (publishOptions) =>
+        Effect.gen(function* () {
+          yield* Ref.update(publishAttempts, (n) => n + 1)
+          yield* Ref.update(publishCalls, (calls) => [
+            ...calls,
+            {
+              cwd: publishOptions.cwd,
+              ...(publishOptions.tag && { tag: publishOptions.tag }),
+              ...(publishOptions.registry && { registry: publishOptions.registry }),
+            },
+          ])
 
-            if (options.failPublish) {
-              return yield* Effect.fail(
-                new NpmRegistry.NpmCliError({
-                  context: {
-                    operation: 'publish',
-                    detail: 'mock publish failure',
-                  },
-                  cause: new Error('mock publish failure'),
-                }),
-              )
-            }
-          }),
-      } satisfies NpmRegistry.NpmCliService,
-    )
+          if (options.failPublish) {
+            return yield* Effect.fail(
+              new NpmRegistry.NpmCliError({
+                context: {
+                  operation: 'publish',
+                  detail: 'mock publish failure',
+                },
+                cause: new Error('mock publish failure'),
+              }),
+            )
+          }
+        }),
+    } satisfies NpmRegistry.NpmCliService)
 
     const commandLayer = makeMockCommandExecutorLayer('mock-user')
 
@@ -167,62 +179,63 @@ const makeHarness = (options: {
   })
 
 describe('Workflow integration', () => {
-  test.effect('runs non-dry-run stable workflow with mocked services and restores manifest semver', (_ctx) =>
-    Effect.gen(function*() {
-      const harness = yield* makeHarness({
-        git: {
-          tags: [tagCore('1.0.0')],
-          commits: [Git.Memory.commit('feat(core): new API')],
-          isClean: true,
-        },
-        diskLayout: {
-          '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
-        },
-      })
+  test.effect(
+    'runs non-dry-run stable workflow with mocked services and restores manifest semver',
+    (_ctx) =>
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+          },
+        })
 
-      const plan = yield* planStable(workspacePackages).pipe(
-        Effect.provide(harness.planLayer),
-      )
+        const plan = yield* planStable(workspacePackages).pipe(Effect.provide(harness.planLayer))
 
-      expect(plan.releases).toHaveLength(1)
+        expect(plan.releases).toHaveLength(1)
 
-      const result = yield* executeWorkflow(plan, { dryRun: false }).pipe(
-        Effect.provide(harness.workflowLayer),
-      )
+        const result = yield* executeWorkflow(plan, { dryRun: false }).pipe(
+          Effect.provide(harness.workflowLayer),
+        )
 
-      expect(result.releasedPackages).toEqual(['@kitz/core'])
-      expect(result.createdTags).toEqual([tagCore('1.1.0')])
-      expect(result.createdGHReleases).toEqual([tagCore('1.1.0')])
+        expect(result.releasedPackages).toEqual(['@kitz/core'])
+        expect(result.createdTags).toEqual([tagCore('1.1.0')])
+        expect(result.createdGHReleases).toEqual([tagCore('1.1.0')])
 
-      const createdTags = yield* Ref.get(harness.gitState.createdTags)
-      expect(createdTags.map((entry) => entry.tag)).toContain(tagCore('1.1.0'))
+        const createdTags = yield* Ref.get(harness.gitState.createdTags)
+        expect(createdTags.map((entry) => entry.tag)).toContain(tagCore('1.1.0'))
 
-      const pushedTags = yield* Ref.get(harness.gitState.pushedTags)
-      expect(pushedTags).toHaveLength(1)
+        const pushedTags = yield* Ref.get(harness.gitState.pushedTags)
+        expect(pushedTags).toHaveLength(1)
 
-      const publishCalls = yield* Ref.get(harness.publishCalls)
-      expect(publishCalls).toHaveLength(1)
-      expect(Fs.Path.toString(publishCalls[0]!.cwd)).toBe('/repo/packages/core/')
+        const publishCalls = yield* Ref.get(harness.publishCalls)
+        expect(publishCalls).toHaveLength(1)
+        expect(Fs.Path.toString(publishCalls[0]!.cwd)).toBe('/repo/packages/core/')
 
-      const createdReleases = yield* Ref.get(harness.githubState.createdReleases)
-      expect(createdReleases).toHaveLength(1)
-      expect(createdReleases[0]!.tag).toBe(tagCore('1.1.0'))
-      expect(createdReleases[0]!.title).toBe('@kitz/core v1.1.0')
+        const createdReleases = yield* Ref.get(harness.githubState.createdReleases)
+        expect(createdReleases).toHaveLength(1)
+        expect(createdReleases[0]!.tag).toBe(tagCore('1.1.0'))
+        expect(createdReleases[0]!.title).toBe('@kitz/core v1.1.0')
 
-      const manifestRaw = yield* Fs.readString(coreManifestPath).pipe(
-        Effect.provide(harness.workflowLayer),
-      )
-      const manifest = JSON.parse(manifestRaw)
-      expect(
-        Semver.equivalence(
-          decodeSemverFromManifest(manifest.version),
-          Semver.fromString('1.0.0'),
-        ),
-      ).toBe(true)
-    }))
+        const manifestRaw = yield* Fs.readString(coreManifestPath).pipe(
+          Effect.provide(harness.workflowLayer),
+        )
+        const manifest = decodeJsonRecordSync(manifestRaw)
+        expect(
+          Semver.equivalence(
+            decodeSemverFromManifest(manifest[`version`]),
+            Semver.fromString('1.0.0'),
+          ),
+        ).toBe(true)
+      }),
+  )
 
   test.effect('fails preflight on conflicting tag and does not publish', (_ctx) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const harness = yield* makeHarness({
         git: {
           tags: [tagCore('1.0.0')],
@@ -234,12 +247,13 @@ describe('Workflow integration', () => {
         },
       })
 
-      const plan = yield* planStable(workspacePackages).pipe(
-        Effect.provide(harness.planLayer),
-      )
+      const plan = yield* planStable(workspacePackages).pipe(Effect.provide(harness.planLayer))
       const plannedRelease = plan.releases[0]
       expect(plannedRelease).toBeDefined()
-      const conflictingTag = tag(plannedRelease!.package.name, Semver.toString(plannedRelease!.nextVersion))
+      const conflictingTag = tag(
+        plannedRelease!.package.name,
+        Semver.toString(plannedRelease!.nextVersion),
+      )
       yield* Ref.update(harness.gitState.tags, (tags) => [...tags, conflictingTag])
 
       const outcome = yield* executeWorkflow(plan, { dryRun: false }).pipe(
@@ -260,60 +274,62 @@ describe('Workflow integration', () => {
 
       const createdTags = yield* Ref.get(harness.gitState.createdTags)
       expect(createdTags).toHaveLength(0)
-    }))
+    }),
+  )
 
-  test.effect('maps publish failures to WorkflowPublishError and restores manifest after retries', (_ctx) =>
-    Effect.gen(function*() {
-      const harness = yield* makeHarness({
-        git: {
-          tags: [tagCore('1.0.0')],
-          commits: [Git.Memory.commit('feat(core): new API')],
-          isClean: true,
-        },
-        diskLayout: {
-          '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
-        },
-        failPublish: true,
-      })
+  test.effect(
+    'maps publish failures to WorkflowPublishError and restores manifest after retries',
+    (_ctx) =>
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+          },
+          failPublish: true,
+        })
 
-      const plan = yield* planStable(workspacePackages).pipe(
-        Effect.provide(harness.planLayer),
-      )
+        const plan = yield* planStable(workspacePackages).pipe(Effect.provide(harness.planLayer))
 
-      const outcome = yield* executeWorkflow(plan, { dryRun: false }).pipe(
-        Effect.provide(harness.workflowLayer),
-        Effect.either,
-      )
+        const outcome = yield* executeWorkflow(plan, { dryRun: false }).pipe(
+          Effect.provide(harness.workflowLayer),
+          Effect.either,
+        )
 
-      expect(outcome._tag).toBe('Left')
-      if (outcome._tag === 'Left') {
-        expect(outcome.left._tag).toBe('ExecutorPublishError')
-        if (outcome.left._tag === 'ExecutorPublishError') {
-          expect(outcome.left.context.packageName).toBe('@kitz/core')
-          expect(outcome.left.context.detail).toContain('mock publish failure')
+        expect(outcome._tag).toBe('Left')
+        if (outcome._tag === 'Left') {
+          expect(outcome.left._tag).toBe('ExecutorPublishError')
+          if (outcome.left._tag === 'ExecutorPublishError') {
+            expect(outcome.left.context.packageName).toBe('@kitz/core')
+            expect(outcome.left.context.detail).toContain('mock publish failure')
+          }
         }
-      }
 
-      const publishAttempts = yield* Ref.get(harness.publishAttempts)
-      expect(publishAttempts).toBe(3)
+        const publishAttempts = yield* Ref.get(harness.publishAttempts)
+        expect(publishAttempts).toBe(3)
 
-      const createdTags = yield* Ref.get(harness.gitState.createdTags)
-      expect(createdTags).toHaveLength(0)
+        const createdTags = yield* Ref.get(harness.gitState.createdTags)
+        expect(createdTags).toHaveLength(0)
 
-      const manifestRaw = yield* Fs.readString(coreManifestPath).pipe(
-        Effect.provide(harness.workflowLayer),
-      )
-      const manifest = JSON.parse(manifestRaw)
-      expect(
-        Semver.equivalence(
-          decodeSemverFromManifest(manifest.version),
-          Semver.fromString('1.0.0'),
-        ),
-      ).toBe(true)
-    }))
+        const manifestRaw = yield* Fs.readString(coreManifestPath).pipe(
+          Effect.provide(harness.workflowLayer),
+        )
+        const manifest = decodeJsonRecordSync(manifestRaw)
+        expect(
+          Semver.equivalence(
+            decodeSemverFromManifest(manifest[`version`]),
+            Semver.fromString('1.0.0'),
+          ),
+        ).toBe(true)
+      }),
+  )
 
   test.effect('updates existing GitHub preview release when tag option is next', (_ctx) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const harness = yield* makeHarness({
         git: {
           tags: [tagCore('1.0.0'), tagCore('1.1.0-next.1')],
@@ -325,15 +341,16 @@ describe('Workflow integration', () => {
         },
       })
 
-      const plan = yield* planPreview(workspacePackages).pipe(
-        Effect.provide(harness.planLayer),
-      )
+      const plan = yield* planPreview(workspacePackages).pipe(Effect.provide(harness.planLayer))
 
       const plannedRelease = plan.releases[0]
       expect(plannedRelease).toBeDefined()
-      const previewTag = tag(plannedRelease!.package.name, Semver.toString(plannedRelease!.nextVersion))
+      const previewTag = tag(
+        plannedRelease!.package.name,
+        Semver.toString(plannedRelease!.nextVersion),
+      )
 
-      yield* Effect.gen(function*() {
+      yield* Effect.gen(function* () {
         const gh = yield* Github.Github
         yield* gh.createRelease({
           tag: previewTag,
@@ -341,9 +358,7 @@ describe('Workflow integration', () => {
           body: 'existing',
           prerelease: true,
         })
-      }).pipe(
-        Effect.provide(harness.workflowLayer),
-      )
+      }).pipe(Effect.provide(harness.workflowLayer))
 
       const result = yield* executeWorkflow(plan, { dryRun: false, tag: 'next' }).pipe(
         Effect.provide(harness.workflowLayer),
@@ -356,10 +371,11 @@ describe('Workflow integration', () => {
 
       expect(createdReleases.filter((r) => r.tag === previewTag)).toHaveLength(1)
       expect(updatedReleases.filter((r) => r.tag === previewTag)).toHaveLength(1)
-    }))
+    }),
+  )
 
   test.effect('creates PR releases as GitHub prereleases without --tag next', (_ctx) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const harness = yield* makeHarness({
         git: {
           tags: [tagCore('1.0.0')],
@@ -386,10 +402,11 @@ describe('Workflow integration', () => {
       expect(createdReleases).toHaveLength(1)
       expect(createdReleases[0]!.tag).toContain('-pr.42.1.')
       expect(createdReleases[0]!.prerelease).toBe(true)
-    }))
+    }),
+  )
 
   test.effect('observable workflow exposes graph in dry-run mode', (_ctx) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const harness = yield* makeHarness({
         git: {
           tags: [tagCore('1.0.0')],
@@ -400,9 +417,7 @@ describe('Workflow integration', () => {
         },
       })
 
-      const plan = yield* planStable(workspacePackages).pipe(
-        Effect.provide(harness.planLayer),
-      )
+      const plan = yield* planStable(workspacePackages).pipe(Effect.provide(harness.planLayer))
 
       const dbPath = `/tmp/kitz-release-workflow-${Date.now()}-${Math.random().toString(16).slice(2)}.db`
       const observable = yield* executeWorkflowObservable(plan, {
@@ -415,5 +430,6 @@ describe('Workflow integration', () => {
       expect(allActivities).toContain(`CreateTag:${tagCore('1.1.0')}`)
       expect(allActivities).toContain(`PushTag:${tagCore('1.1.0')}`)
       expect(allActivities).toContain(`CreateGHRelease:${tagCore('1.1.0')}`)
-    }))
+    }),
+  )
 })

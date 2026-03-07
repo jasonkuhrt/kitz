@@ -31,7 +31,7 @@ export type Empty = readonly []
 /**
  * Non-empty readonly array with at least one element.
  */
-export type NonEmpty<$Type = any> = readonly [$Type, ...readonly $Type[]]
+export type NonEmpty<$Type = any> = readonly [$Type, ...(readonly $Type[])]
 
 // Sized tuple types (immutable)
 export type Any1 = readonly [any]
@@ -40,11 +40,11 @@ export type Any3 = readonly [any, any, any]
 export type Any4 = readonly [any, any, any, any]
 export type Any5 = readonly [any, any, any, any, any]
 
-export type Any1OrMore = readonly [any, ...readonly any[]]
-export type Any2OrMore = readonly [any, any, ...readonly any[]]
-export type Any3OrMore = readonly [any, any, any, ...readonly any[]]
-export type Any4OrMore = readonly [any, any, any, any, ...readonly any[]]
-export type Any5OrMore = readonly [any, any, any, any, any, ...readonly any[]]
+export type Any1OrMore = readonly [any, ...(readonly any[])]
+export type Any2OrMore = readonly [any, any, ...(readonly any[])]
+export type Any3OrMore = readonly [any, any, any, ...(readonly any[])]
+export type Any4OrMore = readonly [any, any, any, any, ...(readonly any[])]
+export type Any5OrMore = readonly [any, any, any, any, any, ...(readonly any[])]
 
 //
 //
@@ -136,10 +136,13 @@ export type Push<$T extends any[], $V> = [...$T, $V]
  * @category Type Utilities
  */
 export type FirstNonUnknownNever<$T extends any[]> = $T extends [infer __first__, ...infer __rest__]
-  ? unknown extends __first__ ? 0 extends 1 & __first__ ? FirstNonUnknownNever<__rest__> // is any
-    : FirstNonUnknownNever<__rest__> // is unknown
-  : __first__ extends never ? FirstNonUnknownNever<__rest__>
-  : __first__
+  ? unknown extends __first__
+    ? 0 extends 1 & __first__
+      ? FirstNonUnknownNever<__rest__> // is any
+      : FirstNonUnknownNever<__rest__> // is unknown
+    : __first__ extends never
+      ? FirstNonUnknownNever<__rest__>
+      : __first__
   : never
 
 /**
@@ -152,9 +155,13 @@ export type FirstNonUnknownNever<$T extends any[]> = $T extends [infer __first__
  * type T3 = Omit<['a', 'b', 'c'], number> // ['a', 'b', 'c']
  * ```
  */
-export type Omit<$Tuple extends readonly any[], $Exclude> = $Tuple extends readonly [infer First, ...infer Rest]
-  ? First extends $Exclude ? Omit<Rest, $Exclude>
-  : [First, ...Omit<Rest, $Exclude>]
+export type Omit<$Tuple extends readonly any[], $Exclude> = $Tuple extends readonly [
+  infer First,
+  ...infer Rest,
+]
+  ? First extends $Exclude
+    ? Omit<Rest, $Exclude>
+    : [First, ...Omit<Rest, $Exclude>]
   : []
 
 /**
@@ -162,13 +169,13 @@ export type Omit<$Tuple extends readonly any[], $Exclude> = $Tuple extends reado
  */
 export type Maybe<$Type> = $Type | $Type[]
 
-// dprint-ignore
+// oxfmt-ignore
 export type FlattenShallow<$Type> =
   $Type extends (infer __inner_type__)[]
     ? __inner_type__
     : $Type
 
-// dprint-ignore
+// oxfmt-ignore
 export type ReplaceInner<$Array extends AnyMut, $NewType> =
     $Array extends Any2Mut       ? [$NewType, $NewType]
   : $Array extends Any3Mut       ? [$NewType, $NewType, $NewType]
@@ -177,12 +184,12 @@ export type ReplaceInner<$Array extends AnyMut, $NewType> =
   : $Array extends NonEmptyMut      ? NonEmptyMut<$NewType>
                                  : $NewType[]
 
-export type JsMapper<
-  $Array extends AnyMut,
-  $NewType,
-> = (value: $Array[number], index: number) => $NewType
+export type JsMapper<$Array extends AnyMut, $NewType> = (
+  value: $Array[number],
+  index: number,
+) => $NewType
 
-// dprint-ignore
+// oxfmt-ignore
 export type ReduceWithIntersection<$Items extends Unknown> =
   $Items extends readonly [infer First, ...infer Rest]
     ? First & ReduceWithIntersection<Rest>
@@ -354,7 +361,7 @@ export const ensure = <$T>(value: $T | $T[]): $T[] => {
  * ```
  */
 export const sure = <value>(value: value): sure<value> => {
-  return is(value) ? value as any : [value] as any
+  return is(value) ? (value as any) : ([value] as any)
 }
 
 export type sure<$Type> = $Type extends AnyMut ? $Type : $Type[]
@@ -429,8 +436,16 @@ export const last = getLast
  * randomIndex([]) // undefined
  * ```
  */
-export const randomIndex = <const arr extends Any>(arr: arr): arr extends Any1OrMore ? number : undefined => {
-  return Math.floor(Math.random() * arr.length) as any
+export const randomIndex = <const arr extends Any>(
+  arr: arr,
+): arr extends Any1OrMore ? number : undefined => {
+  if (arr.length === 0) {
+    return undefined as arr extends Any1OrMore ? number : undefined
+  }
+
+  const bytes = new Uint32Array(1)
+  globalThis.crypto.getRandomValues(bytes)
+  return Math.floor((bytes[0]! / 0x1_0000_0000) * arr.length) as any
 }
 
 /**
@@ -498,7 +513,10 @@ export const includesUnknown = includes
  * find([1, 2, 3], x => x > 10) // undefined
  * ```
  */
-export const find = <value>(arr: value[], predicate: Bool.PredicateMaybe<value>): value | undefined => {
+export const find = <value>(
+  arr: value[],
+  predicate: Bool.PredicateMaybe<value>,
+): value | undefined => {
   const predicate_ = Bool.ensurePredicate(predicate)
   return arr.find((value) => {
     return predicate_(value as any)
@@ -516,7 +534,10 @@ export const find = <value>(arr: value[], predicate: Bool.PredicateMaybe<value>)
  * findFirstMatching(['hello', 'world'], /^w/) // 'world'
  * ```
  */
-export const findFirstMatching = <value>(arr: value[], pattern: Pat.Pattern<value>): value | undefined => {
+export const findFirstMatching = <value>(
+  arr: value[],
+  pattern: Pat.Pattern<value>,
+): value | undefined => {
   return arr.find(Pat.isMatchWith(pattern))
 }
 
@@ -587,7 +608,7 @@ export const map = <$array extends Any, newType>(
  * mapNumbers(x => x * 2) // [2, 4, 6]
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export const mapOn =
   <array extends Any>(array: array) =>
   <newType>(fn: (value: array[number], index: number) => newType): ReplaceInner<array & AnyMut, newType> => {
@@ -606,7 +627,7 @@ export const mapOn =
  * double([1, 2, 3]) // [2, 4, 6]
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export const mapWith =
   <$T, newType>(fn: (value: $T, index: number) => newType) =>
   <array extends readonly $T[]>(array: array): ReplaceInner<array & AnyMut, newType> => {
@@ -780,7 +801,9 @@ export const partitionOne = <item, itemSub extends item>(
  * // values: [1, 'hello'], errors: [Error('oops'), Error('fail')]
  * ```
  */
-export const partitionErrors = <T>(array: readonly T[]): [Exclude<T, Error>[], Extract<T, Error>[]] => {
+export const partitionErrors = <T>(
+  array: readonly T[],
+): [Exclude<T, Error>[], Extract<T, Error>[]] => {
   const errors: Extract<T, Error>[] = []
   const values: Exclude<T, Error>[] = []
   for (const item of array) {
@@ -901,7 +924,7 @@ import type { Display } from '#ts/ts'
 
 declare global {
   namespace KITZ.Traits.Display {
-    // dprint-ignore
+    // oxfmt-ignore
     interface Handlers<$Type> {
       // Array (mutable)
       _array: $Type extends (infer __element__)[] ? `Array<${Display<__element__>}>` : never
