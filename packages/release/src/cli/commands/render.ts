@@ -8,11 +8,10 @@
  * Used by CI workflows to generate PR comment content.
  */
 import { FileSystem } from '@effect/platform'
-import { NodeFileSystem } from '@effect/platform-node'
-import { Cli } from '@kitz/cli'
-import { Env } from '@kitz/env'
+import { Err } from '@kitz/core'
 import { Oak } from '@kitz/oak'
-import { Effect, Layer, Option, Schema } from 'effect'
+import { Effect, Option, Schema } from 'effect'
+import fs from 'node:fs/promises'
 import * as Api from '../../api/__.js'
 
 const PublishStateSchema = Schema.Literal('idle', 'publishing', 'published', 'failed')
@@ -60,43 +59,48 @@ const args = Oak.Command.create()
   )
   .parse()
 
-Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer))(
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
+const main = async (): Promise<void> => {
+  // Read JSON input from file or stdin.
+  const jsonStr = args.fromFile
+    ? await fs.readFile(args.fromFile, 'utf8')
+    : await Effect.runPromise(readStdin())
 
-    // Read JSON input from file or stdin
-    let jsonStr: string
-    if (args.fromFile) {
-      jsonStr = yield* fs.readFileString(args.fromFile)
-    } else {
-      // Read from stdin
-      jsonStr = yield* readStdin()
-    }
+  const json = await Effect.runPromise(decodeJsonText(jsonStr))
+  const envelope = parseEnvelope(json)
+  const fc = Option.isSome(envelope)
+    ? envelope.value.forecast
+    : await Effect.runPromise(decodeForecast(json))
 
-    const json = yield* decodeJsonText(jsonStr)
-    const envelope = parseEnvelope(json)
-    const fc = Option.isSome(envelope) ? envelope.value.forecast : yield* decodeForecast(json)
+  const rendered =
+    args.format === 'comment'
+      ? Option.match(envelope, {
+          onNone: () => Api.Commentator.render(fc),
+          onSome: (value) =>
+            Api.Commentator.render(fc, {
+              publishState: value.publishState,
+              publishHistory: value.publishHistory,
+            }),
+        })
+      : Api.Renderer.renderTree(fc)
 
-    // Render based on format
-    const rendered =
-      args.format === 'comment'
-        ? Option.match(envelope, {
-            onNone: () => Api.Commentator.render(fc),
-            onSome: (value) =>
-              Api.Commentator.render(fc, {
-                publishState: value.publishState,
-                publishHistory: value.publishHistory,
-              }),
-          })
-        : Api.Renderer.renderTree(fc)
+  await writeStdout(rendered)
+}
 
-    yield* writeStdout(rendered)
-  }),
-)
+void main().catch((error) => {
+  process.stderr.write(`${Err.inspect(Err.ensure(error))}\n`)
+  process.exit(1)
+})
 
-const writeStdout = (output: string): Effect.Effect<void> =>
-  Effect.sync(() => {
-    process.stdout.write(`${output}\n`)
+const writeStdout = (output: string): Promise<void> =>
+  new Promise((resolve, reject) => {
+    process.stdout.write(`${output}\n`, (error) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve()
+    })
   })
 
 const readStdin = (): Effect.Effect<string, Error> =>
