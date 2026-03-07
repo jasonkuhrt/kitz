@@ -2,7 +2,7 @@ import { NpmRegistry } from '@kitz/npm-registry'
 import { Effect, Schema } from 'effect'
 import { RuleDefaults, RuleId } from '../models/rule-defaults.js'
 import * as RuntimeRule from '../models/runtime-rule.js'
-import { DocLink, Hint, Violation } from '../models/violation.js'
+import { DocLink, FixStep, GuideFix, Hint, Violation } from '../models/violation.js'
 import { Environment } from '../models/violation-location.js'
 import { RuleOptionsService } from '../services/rule-options.js'
 
@@ -44,10 +44,43 @@ export const rule = RuntimeRule.create({
               'Manual and token-based release paths still rely on npm CLI auth. ' +
               'If `npm whoami` fails here, `npm publish` will fail later after release planning is already complete. ' +
               'Even after login, publish can still fail if the authenticated account lacks write access to the target package or scope, or if npm requires an additional write-time auth step.',
+            fix: GuideFix.make({
+              summary: 'Sign this machine into npm and re-run the auth check.',
+              steps: [
+                FixStep.make({
+                  description: 'Open the npm login docs to confirm the current CLI flow.',
+                }),
+                FixStep.make({
+                  description:
+                    'Run `npm login` in this shell and complete the browser or terminal prompts.',
+                }),
+                FixStep.make({
+                  description: 'Verify the session with `npm whoami`.',
+                }),
+                FixStep.make({
+                  description: 'Re-run `pnpm release doctor --onlyRule env.npm-authenticated`.',
+                }),
+                FixStep.make({
+                  description:
+                    'If `npm whoami` passes but publish still fails, verify scope ownership, package write access, and any write-time 2FA requirement on the npm account.',
+                }),
+              ],
+              docs: [
+                DocLink.make({
+                  label: 'npm login',
+                  url: 'https://docs.npmjs.com/cli/v11/commands/npm-login',
+                }),
+                DocLink.make({
+                  label: 'npm access',
+                  url: 'https://docs.npmjs.com/cli/v11/commands/npm-access',
+                }),
+                DocLink.make({
+                  label: 'npm two-factor authentication',
+                  url: 'https://docs.npmjs.com/configuring-two-factor-authentication/',
+                }),
+              ],
+            }),
             hints: [
-              Hint.make({
-                description: 'For local/manual releases, run `npm login` before `release apply`.',
-              }),
               Hint.make({
                 description:
                   'For CI, either export an npm token or switch the lifecycle to github-trusted publishing.',
@@ -61,10 +94,6 @@ export const rule = RuntimeRule.create({
               DocLink.make({
                 label: 'npm CI/CD auth guidance',
                 url: 'https://docs.npmjs.com/using-private-packages-in-a-ci-cd-workflow/',
-              }),
-              DocLink.make({
-                label: 'npm access',
-                url: 'https://docs.npmjs.com/cli/v11/commands/npm-access',
               }),
             ],
           }),

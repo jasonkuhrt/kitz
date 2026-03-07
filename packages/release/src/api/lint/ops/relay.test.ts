@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { Finished, Report } from '../models/report.js'
 import { RuleId } from '../models/rule-defaults.js'
 import * as Severity from '../models/severity.js'
-import { DocLink, Hint, Violation } from '../models/violation.js'
+import { DocLink, FixStep, GuideFix, Hint, Violation } from '../models/violation.js'
 import { Environment } from '../models/violation-location.js'
 import { formatReport } from './relay.js'
 
@@ -26,6 +26,18 @@ describe('formatReport', () => {
             location: Environment.make({ message: 'ACTIONS_ID_TOKEN_REQUEST_URL is missing.' }),
             summary: 'Trusted publishing is configured but OIDC is unavailable.',
             detail: 'The publish job cannot request an identity token from GitHub Actions.',
+            fix: GuideFix.make({
+              summary: 'Enable OIDC for the publish job.',
+              steps: [
+                FixStep.make({ description: 'Add `permissions.id-token: write` to the workflow.' }),
+              ],
+              docs: [
+                DocLink.make({
+                  label: 'npm trusted publishers',
+                  url: 'https://docs.npmjs.com/trusted-publishers/',
+                }),
+              ],
+            }),
             hints: [Hint.make({ description: 'Grant `id-token: write` to the job.' })],
             docs: [
               DocLink.make({
@@ -43,6 +55,11 @@ describe('formatReport', () => {
     expect(output).toContain('Doctor Report')
     expect(output).toContain('[error] env.publish-channel-ready')
     expect(output).toContain('Trusted publishing is configured but OIDC is unavailable.')
+    expect(output).toContain('fix: Enable OIDC for the publish job.')
+    expect(output).toContain('step 1: Add `permissions.id-token: write` to the workflow.')
+    expect(output).toContain(
+      'fix docs: npm trusted publishers https://docs.npmjs.com/trusted-publishers/',
+    )
     expect(output).toContain('hint: Grant `id-token: write` to the job.')
     expect(output).toContain(
       'docs: npm trusted publishers https://docs.npmjs.com/trusted-publishers/',

@@ -4,6 +4,7 @@ import { Console, Effect, Match } from 'effect'
 import { Failed, Finished, type Report, Skipped } from '../models/report.js'
 import * as Severity from '../models/severity.js'
 import * as ViolationLocation from '../models/violation-location.js'
+import { CommandFix, GuideFix } from '../models/violation.js'
 
 export type Destination =
   | { readonly _tag: 'stdout' }
@@ -54,6 +55,23 @@ export const formatReport = (report: Report, options?: FormatReportOptions): str
         if (location) lines.push(`      at ${location}`)
         if (result.violation.summary) lines.push(`      ${result.violation.summary}`)
         if (result.violation.detail) lines.push(`      ${result.violation.detail}`)
+        if (result.violation.fix) {
+          lines.push(`      fix: ${result.violation.fix.summary}`)
+
+          if (GuideFix.is(result.violation.fix)) {
+            for (const [index, step] of result.violation.fix.steps.entries()) {
+              lines.push(`      step ${String(index + 1)}: ${step.description}`)
+            }
+          }
+
+          if (CommandFix.is(result.violation.fix)) {
+            lines.push(`      command: ${result.violation.fix.command}`)
+          }
+
+          for (const doc of result.violation.fix.docs ?? []) {
+            lines.push(`      fix docs: ${doc.label} ${doc.url}`)
+          }
+        }
         for (const hint of result.violation.hints ?? []) {
           lines.push(`      hint: ${hint.description}`)
         }

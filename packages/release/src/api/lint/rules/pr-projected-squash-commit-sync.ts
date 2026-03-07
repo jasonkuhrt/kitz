@@ -4,7 +4,7 @@ import * as Precondition from '../models/precondition.js'
 import { RuleDefaults, RuleId } from '../models/rule-defaults.js'
 import * as Severity from '../models/severity.js'
 import * as RuntimeRule from '../models/runtime-rule.js'
-import { DocLink, Hint, Violation } from '../models/violation.js'
+import { CommandFix, DocLink, Hint, Violation } from '../models/violation.js'
 import { PrTitle } from '../models/violation-location.js'
 import { RuleOptionsService } from '../services/rule-options.js'
 import { PrService } from '../services/pr.js'
@@ -44,6 +44,16 @@ export const rule = RuntimeRule.create({
         location: PrTitle.make({ title: pr.title }),
         summary: 'PR title header is out of sync with the projected squash-merge header.',
         detail: `Expected header \`${options.projectedHeader}\`, but PR title header is \`${actualHeader}\`.`,
+        fix: CommandFix.make({
+          summary: 'Apply the canonical release header to the connected PR title.',
+          command: 'pnpm release pr title apply',
+          docs: [
+            DocLink.make({
+              label: 'GitHub squash merge defaults',
+              url: 'https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/configuring-commit-squashing-for-pull-requests',
+            }),
+          ],
+        }),
         hints: [
           Hint.make({
             description:

@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import * as ViolationLocation from './violation-location.js'
-import { DocLink, Hint, Violation } from './violation.js'
+import { CommandFix, DocLink, FixStep, GuideFix, Hint, Violation } from './violation.js'
 
 describe('Violation', () => {
   test('make with PrTitle location', () => {
@@ -24,6 +24,10 @@ describe('Violation', () => {
     const v = Violation.make({
       location: ViolationLocation.GitHistory.make({ sha: 'abc1234' }),
       summary: 'History is not monotonic',
+      fix: GuideFix.make({
+        summary: 'Rebase the branch and rerun doctor.',
+        steps: [FixStep.make({ description: 'Rebase onto trunk.' })],
+      }),
       hints: [Hint.make({ description: 'Rebase onto trunk before retrying.' })],
       docs: [DocLink.make({ label: 'Release docs', url: 'https://example.com/release' })],
     })
@@ -32,8 +36,40 @@ describe('Violation', () => {
     expect(decoded._tag).toBe('Violation')
     expect(decoded.location._tag).toBe('ViolationLocationGitHistory')
     expect(decoded.summary).toBe('History is not monotonic')
+    expect(decoded.fix?._tag).toBe('ViolationGuideFix')
     expect(decoded.hints).toHaveLength(1)
     expect(decoded.docs).toHaveLength(1)
+  })
+})
+
+describe('FixStep', () => {
+  test('make and is()', () => {
+    const step = FixStep.make({ description: 'Run npm login' })
+    expect(step._tag).toBe('ViolationFixStep')
+    expect(FixStep.is(step)).toBe(true)
+    expect(step.description).toBe('Run npm login')
+  })
+})
+
+describe('GuideFix', () => {
+  test('make and is()', () => {
+    const fix = GuideFix.make({
+      summary: 'Sign in locally.',
+      steps: [FixStep.make({ description: 'Run npm login' })],
+    })
+    expect(fix._tag).toBe('ViolationGuideFix')
+    expect(GuideFix.is(fix)).toBe(true)
+  })
+})
+
+describe('CommandFix', () => {
+  test('make and is()', () => {
+    const fix = CommandFix.make({
+      summary: 'Apply the canonical PR title header.',
+      command: 'pnpm release pr title apply',
+    })
+    expect(fix._tag).toBe('ViolationCommandFix')
+    expect(CommandFix.is(fix)).toBe(true)
   })
 })
 

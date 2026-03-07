@@ -2,7 +2,7 @@ import { Str } from '@kitz/core'
 import { Option, Schema } from 'effect'
 import { Failed, Finished, type Report, Skipped } from '../lint/models/report.js'
 import type { Severity } from '../lint/models/severity.js'
-import { Violation } from '../lint/models/violation.js'
+import { CommandFix, GuideFix, Violation } from '../lint/models/violation.js'
 import {
   PublishChannelReadyMetadataSchema,
   type PublishChannelReadyMetadata,
@@ -15,6 +15,17 @@ interface DoctorGuidance {
   readonly label: string
   readonly summary: string
   readonly detail?: string
+  readonly fix?:
+    | {
+        readonly summary: string
+        readonly steps: readonly string[]
+        readonly docs: ReadonlyArray<{ readonly label: string; readonly url: string }>
+      }
+    | {
+        readonly summary: string
+        readonly command: string
+        readonly docs: ReadonlyArray<{ readonly label: string; readonly url: string }>
+      }
   readonly hints: readonly string[]
   readonly docs: ReadonlyArray<{ readonly label: string; readonly url: string }>
 }
@@ -220,13 +231,40 @@ const renderPassNote = (
 const toDoctorStatus = (severity: Severity): DoctorStatus =>
   severity._tag === 'SeverityError' ? 'error' : 'warn'
 
-const toGuidance = (label: string, violation: Violation): DoctorGuidance => ({
-  label,
-  summary: violation.summary ?? 'Check failed.',
-  ...(violation.detail ? { detail: violation.detail } : {}),
-  hints: (violation.hints ?? []).map((hint) => hint.description),
-  docs: (violation.docs ?? []).map((doc) => ({ label: doc.label, url: doc.url })),
-})
+const toGuidanceFix = (violation: Violation): DoctorGuidance['fix'] | undefined => {
+  if (!violation.fix) return undefined
+
+  if (GuideFix.is(violation.fix)) {
+    return {
+      summary: violation.fix.summary,
+      steps: violation.fix.steps.map((step) => step.description),
+      docs: (violation.fix.docs ?? []).map((doc) => ({ label: doc.label, url: doc.url })),
+    }
+  }
+
+  if (CommandFix.is(violation.fix)) {
+    return {
+      summary: violation.fix.summary,
+      command: violation.fix.command,
+      docs: (violation.fix.docs ?? []).map((doc) => ({ label: doc.label, url: doc.url })),
+    }
+  }
+
+  return undefined
+}
+
+const toGuidance = (label: string, violation: Violation): DoctorGuidance => {
+  const fix = toGuidanceFix(violation)
+
+  return {
+    label,
+    summary: violation.summary ?? 'Check failed.',
+    ...(violation.detail ? { detail: violation.detail } : {}),
+    ...(fix ? { fix } : {}),
+    hints: (violation.hints ?? []).map((hint) => hint.description),
+    docs: (violation.docs ?? []).map((doc) => ({ label: doc.label, url: doc.url })),
+  }
+}
 
 export const createDoctorSummary = (
   report: Report,
@@ -315,6 +353,20 @@ export const renderDoctorSummary = (summary: DoctorSummary): string => {
     for (const item of summary.guidance) {
       lines.push(`- **${item.label}**: ${item.summary}`)
       if (item.detail) lines.push(`  ${item.detail}`)
+      if (item.fix) {
+        lines.push(`  Fix: ${item.fix.summary}`)
+        if ('steps' in item.fix) {
+          for (const [index, step] of item.fix.steps.entries()) {
+            lines.push(`  ${String(index + 1)}. ${step}`)
+          }
+        }
+        if ('command' in item.fix) {
+          lines.push(`  Command: \`${item.fix.command}\``)
+        }
+        for (const doc of item.fix.docs) {
+          lines.push(`  Fix docs: [${doc.label}](${doc.url})`)
+        }
+      }
       for (const hint of item.hints) {
         lines.push(`  Hint: ${hint}`)
       }

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 import { Finished, Report } from '../lint/models/report.js'
 import { RuleId } from '../lint/models/rule-defaults.js'
 import * as Severity from '../lint/models/severity.js'
-import { DocLink, Hint, Violation } from '../lint/models/violation.js'
+import { CommandFix, DocLink, Hint, Violation } from '../lint/models/violation.js'
 import { Environment } from '../lint/models/violation-location.js'
 import { createDoctorSummary, renderDoctorSummary } from './doctor.js'
 
@@ -56,6 +56,10 @@ describe('commentator doctor', () => {
             location: Environment.make({ message: 'repository mismatch' }),
             summary: 'Repository metadata should point at jasonkuhrt/kitz.',
             detail: 'Trusted publishing expects package manifests to point back to the same repo.',
+            fix: CommandFix.make({
+              summary: 'Apply the canonical PR title header.',
+              command: 'pnpm release pr title apply',
+            }),
             hints: [
               Hint.make({
                 description: 'Set repository.url to git+https://github.com/jasonkuhrt/kitz.git.',
@@ -99,6 +103,8 @@ describe('commentator doctor', () => {
     expect(rendered).toContain('Release header')
     expect(rendered).toContain('Guidance (1)')
     expect(rendered).toContain('Repository provenance')
+    expect(rendered).toContain('Fix: Apply the canonical PR title header.')
+    expect(rendered).toContain('Command: `pnpm release pr title apply`')
     expect(rendered).toContain('Manual Preview Runbook')
     expect(rendered).toContain('Could Still Go Wrong Locally')
   })
