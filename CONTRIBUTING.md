@@ -43,14 +43,13 @@ pnpm turbo run build --filter=@kitz/core   # Single package
 
 ## Linting (Custom Rules)
 
-Custom Oxlint rules use two backends:
+Custom Oxlint rules use two paths:
 - JS plugin rules for Effect-first standards and `_.ts` / `__.ts` conventions: `tools/oxlint-custom-rules/plugin.mjs`
-- Type-aware checker-backed rules in vendored `tsgolint`: `tools/tsgolint`
+- Official Oxlint type-aware rules via the `oxlint-tsgolint` package
 
-`no-type-assertion` now lives in the type-aware backend by overriding `typescript/no-unsafe-type-assertion` in vendored `tsgolint` (legacy `kitz/no-type-assertion` is disabled).
+`kitz/no-type-assertion` remains disabled. `typescript/no-unsafe-type-assertion` is also disabled for now because it is currently too noisy for this repo's function-body typing policy.
 
 ```bash
-pnpm build:tsgolint                    # Build vendored type-aware backend
 pnpm check:lint                        # Lint (custom rules as warnings)
 pnpm check:lint:type-aware             # Lint with checker-backed rules enabled
 pnpm check:lint:strict-custom-rules    # Lint (custom rules as errors)

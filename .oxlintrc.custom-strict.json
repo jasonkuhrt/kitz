@@ -13,7 +13,7 @@
     "kitz/no-try-catch": "error",
     "kitz/no-native-promise-construction": "error",
     "kitz/no-type-assertion": "off",
-    "typescript/no-unsafe-type-assertion": "error",
+    "typescript/no-unsafe-type-assertion": "off",
     "kitz/no-native-map-set-in-effect-modules": "error",
     "kitz/no-throw": "error",
     "kitz/no-promise-then-chain": "error",

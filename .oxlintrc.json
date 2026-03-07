@@ -17,7 +17,7 @@
     "eslint/no-unused-expressions": ["error", { "allowTaggedTemplates": true }],
     "eslint/no-control-regex": "off",
     "typescript/no-explicit-any": "warn",
-    "typescript/no-unsafe-type-assertion": "warn",
+    "typescript/no-unsafe-type-assertion": "off",
     "typescript/no-unnecessary-type-assertion": "warn",
     "eslint-plugin-jest/expect-expect": "off",
     "eslint-plugin-jest/no-standalone-expect": "off",

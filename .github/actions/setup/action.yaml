@@ -5,10 +5,6 @@ inputs:
     description: Version of Node to use.
     required: false
     default: 24.x
-  go-version:
-    description: Version of Go to use.
-    required: false
-    default: 1.24.x
   install-deps:
     description: Should deps be installed?
     required: false
@@ -20,10 +16,6 @@ runs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{inputs.node-version}}
-    - name: Use Go ${{inputs.go-version}}
-      uses: actions/setup-go@v5
-      with:
-        go-version: ${{inputs.go-version}}
     - name: Install pnpm
       uses: pnpm/action-setup@v4
       with:

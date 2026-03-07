@@ -3,19 +3,18 @@
 This repo uses two custom-rule paths:
 
 - Oxlint experimental JS plugin rules (`kitz/*`) for Effect-first conventions.
-- Oxlint type-aware rules (`typescript/*`) via vendored `tsgolint`.
+- Official Oxlint type-aware rules (`typescript/*`) via `oxlint-tsgolint`.
 
 - Plugin file: `tools/oxlint-custom-rules/plugin.mjs`
 - Plugin alias: `kitz`
-- Type-aware backend: `tools/tsgolint/bin/tsgolint`
+- Type-aware backend: `oxlint-tsgolint`
 - Base severity: `warn`
 - Strict custom-rule severity: `error` via `.oxlintrc.custom-strict.json`
 
-Use `OXLINT_TSGOLINT_PATH` with `--type-aware` to run checker-backed custom rules:
+Run type-aware rules with `--type-aware`:
 
 ```bash
-pnpm build:tsgolint
-OXLINT_TSGOLINT_PATH=$PWD/tools/tsgolint/bin/tsgolint pnpm exec oxlint --type-aware --import-plugin packages
+pnpm exec oxlint --type-aware --import-plugin packages
 ```
 
 ## `kitz/no-json-parse`
@@ -104,7 +103,7 @@ Manual Promise construction is untyped and does not compose with Effect interrup
 
 Use Effect constructors/combinators (`Effect.promise`, `Effect.async`, `Effect.tryPromise`, etc.).
 
-## `typescript/no-unsafe-type-assertion` (repo-overridden policy)
+## `typescript/no-unsafe-type-assertion`
 
 ### Checks
 
@@ -113,44 +112,21 @@ Flags TypeScript assertion syntax:
 - `value as T`
 - `<T>value`
 
-This rule is checker-backed and runs through Oxlint type-aware mode (`--type-aware`) using the vendored backend at `tools/tsgolint`.
-In this repo we override the upstream `no-unsafe-type-assertion` behavior with the custom Required+Complex policy.
+This rule is available through official Oxlint type-aware mode, but it is currently disabled in this repo because it produces false positives for the repo's allowed function-body typing patterns.
 
-Legacy JS plugin rule `kitz/no-type-assertion` is disabled.
+Legacy JS plugin rule `kitz/no-type-assertion` is also disabled.
 
-### Fail
+### Status
 
-```ts
-const user = input as User
-const name = <string> value
-```
-
-### Pass
-
-```ts
-const user = Schema.decodeUnknownSync(UserSchema)(input)
-```
-
-```ts
-function parse<const T extends string>(
-  value: T,
-): T extends `${infer H}-${infer R}` ? `${H}-${R}` : never {
-  return decode(value as any) as any
-}
-```
+Disabled until we have a rule with near-zero false positives for complex implementation bodies.
 
 ### Rationale
 
 Assertion casts hide unsound assumptions and skip validation.
 
-For `any` assertions only, this rule permits a narrow carveout in genuinely complex type contexts (generics + advanced TS constructs), specifically:
-
-- return-expression casts inside complex functions
-- checker-required bridge casts (call/property contexts where removing the cast breaks assignability)
-
 ### Migration Guidance
 
-Replace assertion casts with schema decode, parsing helpers, or explicit typed constructors.
+Prefer schema decode, parsing helpers, or explicit typed constructors where practical. For now, assertion cleanup is handled as targeted source work, not by an active blanket lint rule.
 
 ## `kitz/no-native-map-set-in-effect-modules`
 
