@@ -3,6 +3,7 @@ import {
   type CreateReleaseParams,
   Github,
   type GithubService,
+  type PullRequest,
   type Release,
   type UpdateReleaseParams,
 } from './service.js'
@@ -17,6 +18,8 @@ import {
 export interface GithubMemoryConfig {
   /** Initial releases in the repository (keyed by tag) */
   readonly releases?: Record<string, Release>
+  /** Open pull requests in the repository */
+  readonly pullRequests?: readonly PullRequest[]
 }
 
 // ============================================================================
@@ -34,6 +37,8 @@ export interface GithubMemoryConfig {
 export interface GithubMemoryState {
   /** All releases (keyed by tag) */
   readonly releases: Ref.Ref<Record<string, Release>>
+  /** Open pull requests */
+  readonly pullRequests: Ref.Ref<readonly PullRequest[]>
   /** Releases created (for verification) */
   readonly createdReleases: Ref.Ref<CreateReleaseParams[]>
   /** Releases updated (for verification) */
@@ -46,6 +51,7 @@ export interface GithubMemoryState {
 export const makeState = (config: GithubMemoryConfig = {}): Effect.Effect<GithubMemoryState> =>
   Effect.all({
     releases: Ref.make(config.releases ?? {}),
+    pullRequests: Ref.make(config.pullRequests ?? []),
     createdReleases: Ref.make<CreateReleaseParams[]>([]),
     updatedReleases: Ref.make<Array<{ tag: string; params: UpdateReleaseParams }>>([]),
   })
@@ -144,6 +150,8 @@ const makeService = (state: GithubMemoryState): GithubService => ({
       yield* Ref.update(state.updatedReleases, (updates) => [...updates, { tag, params }])
       return updated
     }),
+
+  listOpenPullRequests: () => Ref.get(state.pullRequests),
 })
 
 // ============================================================================

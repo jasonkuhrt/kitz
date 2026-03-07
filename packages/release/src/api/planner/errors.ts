@@ -16,9 +16,9 @@ const ReleaseErrorContext = S.Struct({
  *
  * **Common causes**:
  *
- * - **Ephemeral lifecycle without a PR number**: ephemeral versions require a PR number to construct the `0.0.0-pr.<N>` version. If no PR number can be detected from environment variables (`GITHUB_PR_NUMBER`, `PR_NUMBER`, `CI_PULL_REQUEST`) and none is passed explicitly, planning fails.
+ * - **Ephemeral lifecycle without a PR number**: ephemeral versions require a PR number to construct the `0.0.0-pr.<N>` version. If no PR number can be detected from environment variables or from an open pull request connected to the current branch, and none is passed explicitly, planning fails.
  *
- * **What to do**: set `PR_NUMBER` or `GITHUB_PR_NUMBER` in your environment, or pass `prNumber` directly to the ephemeral planner options.
+ * **What to do**: set `PR_NUMBER` or `GITHUB_PR_NUMBER` in your environment, or pass `prNumber` directly to the ephemeral planner options. If the branch maps to more than one open pull request, close the extras or set the PR number explicitly.
  *
  * {@include planner/errors/release-error}
  */

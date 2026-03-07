@@ -301,6 +301,40 @@ describe('Executor integration', () => {
     }),
   )
 
+  test.effect('fails preflight when official release is attempted off trunk', (_ctx) =>
+    Effect.gen(function* () {
+      const harness = yield* makeHarness({
+        git: {
+          branch: 'feat/release',
+          tags: [tagCore('1.0.0')],
+          commits: [Git.Memory.commit('feat(core): new API')],
+          isClean: true,
+        },
+        diskLayout: {
+          '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+        },
+      })
+
+      const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
+
+      const outcome = yield* execute(plan, { dryRun: false, trunk: 'main' }).pipe(
+        Effect.provide(harness.workflowLayer),
+        Effect.either,
+      )
+
+      expect(outcome._tag).toBe('Left')
+      if (outcome._tag === 'Left') {
+        expect(outcome.left._tag).toBe('ExecutorPreflightError')
+        if (outcome.left._tag === 'ExecutorPreflightError') {
+          expect(outcome.left.context.check).toBe('env.release-branch-allowed')
+        }
+      }
+
+      const publishAttempts = yield* Ref.get(harness.publishAttempts)
+      expect(publishAttempts).toBe(0)
+    }),
+  )
+
   test.effect(
     'maps publish failures to ExecutorPublishError and restores manifest after retries',
     (_ctx) =>

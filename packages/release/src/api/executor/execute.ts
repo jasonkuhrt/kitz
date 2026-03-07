@@ -96,7 +96,13 @@ export const formatLifecycleEvent = (event: Flo.LifecycleEvent): LifecycleEventL
  */
 export const toPayload = (
   plan: Plan,
-  options: { dryRun?: boolean; tag?: string; registry?: string; publishing?: Publishing } = {},
+  options: {
+    dryRun?: boolean
+    tag?: string
+    registry?: string
+    publishing?: Publishing
+    trunk?: string
+  } = {},
 ): ReleasePayloadType => ({
   releases: [...plan.releases, ...plan.cascades].map((r) => ({
     packageName: r.package.name.moniker,
@@ -120,6 +126,7 @@ export const toPayload = (
     ...(options.registry && { registry: options.registry }),
     lifecycle: plan.lifecycle,
     ...(options.publishing && { publishing: options.publishing }),
+    ...(options.trunk && { trunk: options.trunk }),
   },
 })
 
@@ -137,7 +144,13 @@ export const toPayload = (
  */
 export const execute = (
   plan: Plan,
-  options: { dryRun?: boolean; tag?: string; registry?: string; publishing?: Publishing } = {},
+  options: {
+    dryRun?: boolean
+    tag?: string
+    registry?: string
+    publishing?: Publishing
+    trunk?: string
+  } = {},
 ) =>
   Effect.gen(function* () {
     const payload = toPayload(plan, options)
@@ -170,6 +183,7 @@ export const executeObservable = (
     tag?: string
     registry?: string
     publishing?: Publishing
+    trunk?: string
     dbPath?: string
     github?: RuntimeConfig['github']
   } = {},

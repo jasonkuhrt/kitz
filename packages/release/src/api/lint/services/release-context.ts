@@ -11,6 +11,8 @@ import type { Lifecycle } from '../../version/models/lifecycle.js'
 export interface ReleaseContext {
   readonly lifecycle: Lifecycle | null
   readonly publishing: Publishing
+  readonly trunk: string | null
+  readonly currentBranch: string | null
 }
 
 export class ReleaseContextService extends Context.Tag('ReleaseContextService')<
@@ -22,6 +24,8 @@ export const make = (context: Partial<ReleaseContext>): Layer.Layer<ReleaseConte
   Layer.succeed(ReleaseContextService, {
     lifecycle: context.lifecycle ?? null,
     publishing: context.publishing ?? defaultPublishing(),
+    trunk: context.trunk ?? null,
+    currentBranch: context.currentBranch ?? null,
   })
 
 export const DefaultReleaseContextLayer = make({})

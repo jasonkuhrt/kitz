@@ -15,7 +15,8 @@ export interface Options {
  */
 export interface EphemeralOptions extends Options {
   /**
-   * PR number. If not provided, will attempt to detect from environment variables:
+   * PR number. If not provided, will attempt to detect from environment variables first,
+   * then fall back to resolving the current branch against open pull requests:
    * - GITHUB_PR_NUMBER (GitHub Actions)
    * - PR_NUMBER (generic CI)
    * - CI_PULL_REQUEST (CircleCI - extracts number from URL)

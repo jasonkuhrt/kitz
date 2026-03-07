@@ -59,6 +59,8 @@ export interface PreflightOptions {
   readonly lifecycle?: 'official' | 'candidate' | 'ephemeral'
   /** Declared release publishing system. */
   readonly publishing?: Publishing
+  /** Configured trunk branch for branch-policy checks. */
+  readonly trunk?: string
 }
 
 /**
@@ -82,6 +84,7 @@ export const run = (
 > =>
   Effect.gen(function* () {
     yield* Effect.log('Running preflight checks...')
+    const git = yield* Git.Git
 
     // Build skip rules based on options
     const skipRules: string[] = []
@@ -126,6 +129,18 @@ export const run = (
       packagePath: r.package.path,
       version: r.nextVersion,
     }))
+    const currentBranch = yield* git.getCurrentBranch().pipe(
+      Effect.catchAll((error) =>
+        Effect.fail(
+          new PreflightError({
+            context: {
+              check: 'env.release-branch-allowed',
+              detail: error.message ?? String(error),
+            },
+          }),
+        ),
+      ),
+    )
 
     const preconditionsLayer = Lint.Preconditions.make({
       hasReleasePlan: plannedReleases.length > 0,
@@ -135,6 +150,8 @@ export const run = (
     const releaseContextLayer = Lint.ReleaseContext.make({
       lifecycle: options?.lifecycle ?? null,
       publishing: options?.publishing ?? defaultPublishing(),
+      trunk: options?.trunk ?? null,
+      currentBranch,
     })
 
     // Run lint check, mapping any errors to PreflightError

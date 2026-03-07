@@ -73,6 +73,7 @@ export const ReleasePayload = Schema.Struct({
     registry: Schema.optional(Schema.String),
     lifecycle: Schema.optional(LifecycleSchema),
     publishing: Schema.optional(Publishing),
+    trunk: Schema.optional(Schema.String),
   }),
 })
 
@@ -126,6 +127,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
             ...(payload.options.registry && { registry: payload.options.registry }),
             ...(payload.options.lifecycle && { lifecycle: payload.options.lifecycle }),
             ...(payload.options.publishing && { publishing: payload.options.publishing }),
+            ...(payload.options.trunk && { trunk: payload.options.trunk }),
           }).pipe(
             Effect.mapError(
               (e: PreflightError) =>

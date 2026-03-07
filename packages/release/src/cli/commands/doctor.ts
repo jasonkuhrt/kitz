@@ -1,29 +1,33 @@
 /**
  * @module cli/commands/doctor
  *
- * Run release-specific doctor checks and report violations.
+ * Run release-specific doctor checks across one or more release lifecycles.
  *
- * Validates PR format, git state, publish-channel readiness, and plan correctness.
- * If `.release/plan.json` exists, doctor automatically evaluates plan-aware rules
- * against the active lifecycle and the packages that would be published.
- * Rules can be filtered with `--onlyRule` and `--skipRule` patterns.
- * Exits with code 1 only if error-severity violations are found.
+ * By default, doctor scopes to `.release/plan.json` when it exists so the
+ * command validates the exact plan you are about to apply. Without an active
+ * plan, doctor evaluates official and candidate release readiness from current
+ * repo state, adding ephemeral when PR context is available. Use `--all` to
+ * force every lifecycle, or `--lifecycle` to focus one.
+ *
+ * Rules can be filtered with `--onlyRule` and `--skipRule`.
+ * Exits with code 1 when required lifecycle checks cannot be evaluated or
+ * when any checked lifecycle reports error-severity violations.
  */
-import { NodeContext } from '@effect/platform-node'
+import { NodeContext, NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
-import { Cause, Effect, Layer, Option, Schema } from 'effect'
+import { Cause, Console, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
-import * as Preconditions from '../../api/lint/services/preconditions.js'
 
-const LintViolationsSchema = Schema.Struct({
-  _tag: Schema.Literal('LintViolations'),
+const DoctorFailuresSchema = Schema.Struct({
+  _tag: Schema.Literal('DoctorFailures'),
 })
-const isLintViolations = Schema.is(LintViolationsSchema)
+const isDoctorFailures = Schema.is(DoctorFailuresSchema)
+
 const parseCsvStrings = (value: string | undefined): readonly string[] | undefined => {
   if (value === undefined) return undefined
 
@@ -35,14 +39,30 @@ const parseCsvStrings = (value: string | undefined): readonly string[] | undefin
   return parts.length > 0 ? parts : undefined
 }
 
-/**
- * release doctor
- *
- * Run doctor checks and report violations.
- */
 const args = Oak.Command.create()
   .use(Oak.EffectSchema)
-  .description('Run doctor checks and report violations (plan-aware when .release/plan.json exists)')
+  .description(
+    'Run doctor checks (default: active plan if present, otherwise official and candidate; add ephemeral when PR context exists)',
+  )
+  .parameter(
+    'lifecycle l',
+    Schema.UndefinedOr(Schema.Literal('official', 'candidate', 'ephemeral')).pipe(
+      Schema.annotations({ description: 'Only evaluate a single release lifecycle' }),
+    ),
+  )
+  .parameter(
+    'all a',
+    Schema.transform(Schema.UndefinedOr(Schema.Boolean), Schema.Boolean, {
+      strict: true,
+      decode: (value) => value ?? false,
+      encode: (value) => value,
+    }).pipe(
+      Schema.annotations({
+        description: 'Force all lifecycles, including ephemeral without detected PR context',
+        default: false,
+      }),
+    ),
+  )
   .parameter(
     'only-rule',
     Schema.UndefinedOr(Schema.String).pipe(
@@ -67,7 +87,8 @@ Cli.run(
   Layer.mergeAll(
     Env.Live,
     NodeContext.layer,
-    Preconditions.DefaultLayer,
+    NodeFileSystem.layer,
+    Api.Lint.Preconditions.DefaultLayer,
     Api.Lint.DefaultServicesLayer,
     Api.Lint.ReleasePlan.DefaultReleasePlanLayer,
     Git.GitLive,
@@ -75,8 +96,7 @@ Cli.run(
   {
     onError: (cause) => {
       const error = Cause.squash(cause)
-      // LintViolations already printed by relay, just exit
-      if (isLintViolations(error)) {
+      if (isDoctorFailures(error)) {
         process.exit(1)
       }
       Err.logUnsafe(Err.ensure(error))
@@ -85,60 +105,126 @@ Cli.run(
   },
 )(
   Effect.gen(function* () {
+    const env = yield* Env.Env
+    const git = yield* Git.Git
+
+    if (args.lifecycle && args.all) {
+      yield* Console.error('Choose either --lifecycle or --all, not both.')
+      return yield* Effect.fail({ _tag: 'DoctorFailures' })
+    }
+
     const config = yield* Api.Config.load({
       lint: {
         onlyRules: parseCsvStrings(args.onlyRule),
         skipRules: parseCsvStrings(args.skipRule),
       },
     })
+    const packages = yield* Api.Analyzer.Workspace.resolvePackages(config.packages)
 
-    const env = yield* Env.Env
+    if (packages.length === 0) {
+      yield* Console.log(
+        'No packages found. Check release.config.ts `packages` field ' +
+          'or ensure pnpm-workspace.yaml defines workspace packages.',
+      )
+      return
+    }
+
     const planDir = Fs.Path.join(env.cwd, Api.Planner.PLAN_DIR)
-    const plan = yield* Api.Planner.resource.read(planDir)
-
-    const releasePlanLayer = Api.Lint.ReleasePlan.make(
-      plan.pipe(
-        Option.map((value) =>
-          [...value.releases, ...value.cascades].map((item) => ({
-            packageName: item.package.name,
-            packagePath: item.package.path,
-            version: item.nextVersion,
-          })),
-        ),
-        Option.getOrElse(() => []),
-      ),
-    )
-
-    const releaseContextLayer = Api.Lint.ReleaseContext.make({
-      lifecycle: plan.pipe(Option.map((value) => value.lifecycle), Option.getOrElse(() => null)),
-      publishing: config.publishing,
+    const activePlan = yield* Api.Planner.resource.read(planDir)
+    const needsSmartScope = !args.lifecycle && !args.all && activePlan._tag !== 'Some'
+    const prNumberAttempt = needsSmartScope
+      ? yield* Api.Explorer.resolvePrNumber().pipe(Effect.either)
+      : { _tag: 'Right' as const, right: null }
+    const hasPrContext = prNumberAttempt._tag === 'Right' && prNumberAttempt.right !== null
+    const scope = Api.Doctor.resolveScope({
+      ...(args.lifecycle ? { lifecycle: args.lifecycle } : {}),
+      ...(args.all ? { all: true } : {}),
+      ...(activePlan._tag === 'Some' ? { activePlan: activePlan.value } : {}),
+      hasPrContext,
     })
 
-    const preconditionsLayer = Preconditions.make({
-      hasReleasePlan: Option.isSome(plan),
-    })
+    const tags = yield* git.getTags()
+    const analysis = yield* Api.Analyzer.analyze({ packages, tags })
+    const currentBranch = yield* git.getCurrentBranch()
 
-    // Run check
-    const report = yield* Api.Lint.check({ config: config.lint }).pipe(
-      Effect.provide(Layer.mergeAll(preconditionsLayer, releasePlanLayer, releaseContextLayer)),
-    )
+    const reports: Api.Doctor.LifecycleReport[] = []
+    const evaluatePlan = (plan: Api.Planner.Plan, required: boolean) =>
+      Effect.gen(function* () {
+        const plannedItems = [...plan.releases, ...plan.cascades]
+        const report = yield* Api.Lint.check({ config: config.lint }).pipe(
+          Effect.provide(
+            Layer.mergeAll(
+              Api.Lint.DefaultServicesLayer,
+              Api.Lint.Preconditions.make({ hasReleasePlan: true }),
+              Api.Lint.ReleasePlan.make(
+                plannedItems.map((item) => ({
+                  packageName: item.package.name,
+                  packagePath: item.package.path,
+                  version: item.nextVersion,
+                })),
+              ),
+              Api.Lint.ReleaseContext.make({
+                lifecycle: plan.lifecycle,
+                publishing: config.publishing,
+                trunk: config.trunk,
+                currentBranch,
+              }),
+            ),
+          ),
+        )
 
-    // Relay results
-    yield* Api.Lint.relay({
-      report,
-      format: args.format,
-    })
+        reports.push({
+          _tag: 'CheckedLifecycleReport' as const,
+          lifecycle: plan.lifecycle,
+          required,
+          plannedPackages: plannedItems.length,
+          report,
+        })
+      })
+    if (scope._tag === 'ActivePlanScope') {
+      yield* evaluatePlan(scope.plan, true)
+    } else {
+      for (const target of scope.lifecycles) {
+        const planAttempt = yield* (
+          target.lifecycle === 'official'
+            ? Api.Planner.official(analysis, { packages })
+            : target.lifecycle === 'candidate'
+              ? Api.Planner.candidate(analysis, { packages })
+              : Api.Planner.ephemeral(analysis, { packages })
+        ).pipe(Effect.either)
 
-    // Fail if any violations
-    const hasViolations = report.results.some(
-      (r) =>
-        Api.Lint.Finished.is(r) &&
-        r.violation !== undefined &&
-        Api.Lint.Error.is(r.severity),
-    )
+        if (planAttempt._tag === 'Left') {
+          reports.push({
+            _tag: 'UnavailableLifecycleReport' as const,
+            lifecycle: target.lifecycle,
+            required: target.required,
+            reason: planAttempt.left.message,
+          })
+          continue
+        }
 
-    if (hasViolations) {
-      return yield* Effect.fail({ _tag: 'LintViolations' })
+        yield* evaluatePlan(planAttempt.right, target.required)
+      }
+    }
+
+    const evaluation = {
+      currentBranch,
+      trunk: config.trunk,
+      scope:
+        scope._tag === 'ActivePlanScope'
+          ? `active plan (${scope.plan.lifecycle})`
+          : 'computed lifecycle scenarios',
+      reports,
+    } satisfies Api.Doctor.DoctorEvaluation
+
+    if (args.format === 'json') {
+      yield* Console.log(JSON.stringify(evaluation, null, 2))
+    } else {
+      yield* Console.log(Api.Doctor.formatEvaluation(evaluation))
+    }
+
+    if (Api.Doctor.hasBlockingIssues(evaluation)) {
+      return yield* Effect.fail({ _tag: 'DoctorFailures' })
     }
   }),
 )

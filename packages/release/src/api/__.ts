@@ -45,6 +45,7 @@ export * as Renderer from './renderer/__.js'
 
 // Supporting modules
 export * as Config from './config.js'
+export * as Doctor from './doctor.js'
 export * as Lint from './lint/__.js'
 export * as Notes from './notes/__.js'
 export * as Publishing from './publishing.js'

@@ -1,8 +1,9 @@
 import { Git } from '@kitz/git'
+import { Github } from '@kitz/github'
 import { Test } from '@kitz/test'
 import { Effect, Either, Layer } from 'effect'
 import { describe, expect, test } from 'vitest'
-import { detectPrNumber, resolveReleaseTarget } from './explore.js'
+import { detectPrNumber, resolveReleaseTarget, selectConnectedPullRequestNumber } from './explore.js'
 
 // ── detectPrNumber ───────────────────────────────────────────────────
 
@@ -138,6 +139,58 @@ describe('resolveReleaseTarget', () => {
     if (Either.isLeft(result)) {
       expect(result.left._tag).toBe('ExplorerError')
       expect(result.left.context.detail).toContain('Could not resolve GitHub repository')
+    }
+  })
+})
+
+describe('selectConnectedPullRequestNumber', () => {
+  test('returns the matching pull request for the current branch', async () => {
+    const result = await Effect.runPromise(
+      selectConnectedPullRequestNumber('feat/release', [
+        {
+          number: 129,
+          html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
+          head: { ref: 'feat/release' },
+        },
+      ] satisfies readonly Github.PullRequest[]),
+    )
+
+    expect(result).toBe(129)
+  })
+
+  test('returns null when no open pull request matches the branch', async () => {
+    const result = await Effect.runPromise(
+      selectConnectedPullRequestNumber('feat/release', [
+        {
+          number: 128,
+          html_url: 'https://github.com/jasonkuhrt/kitz/pull/128',
+          head: { ref: 'feat/other' },
+        },
+      ] satisfies readonly Github.PullRequest[]),
+    )
+
+    expect(result).toBeNull()
+  })
+
+  test('fails when multiple open pull requests match the same branch', async () => {
+    const result = await Effect.runPromise(
+      selectConnectedPullRequestNumber('feat/release', [
+        {
+          number: 129,
+          html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
+          head: { ref: 'feat/release' },
+        },
+        {
+          number: 130,
+          html_url: 'https://github.com/jasonkuhrt/kitz/pull/130',
+          head: { ref: 'feat/release' },
+        },
+      ] satisfies readonly Github.PullRequest[]).pipe(Effect.either),
+    )
+
+    expect(Either.isLeft(result)).toBe(true)
+    if (Either.isLeft(result)) {
+      expect(result.left.context.detail).toContain('Multiple open pull requests match branch')
     }
   })
 })

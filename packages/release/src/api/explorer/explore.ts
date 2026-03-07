@@ -1,5 +1,6 @@
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
+import { Github } from '@kitz/github'
 import { Effect } from 'effect'
 import type { RuntimeConfig } from '../executor/runtime.js'
 import { ExplorerError } from './errors.js'
@@ -124,6 +125,56 @@ const resolveGithubToken = (vars: Record<string, string | undefined>): string | 
   if (!token || token.trim() === '') return null
   return token
 }
+
+export const selectConnectedPullRequestNumber = (
+  branch: string,
+  pullRequests: readonly Github.PullRequest[],
+): Effect.Effect<number | null, ExplorerError> =>
+  Effect.gen(function* () {
+    const matches = pullRequests.filter((pullRequest) => pullRequest.head.ref === branch)
+
+    if (matches.length === 0) return null
+    if (matches.length === 1) return matches[0]!.number
+
+    return yield* Effect.fail(
+      new ExplorerError({
+        context: {
+          detail:
+            `Multiple open pull requests match branch "${branch}": ` +
+            matches.map((pullRequest) => `#${String(pullRequest.number)}`).join(', ') +
+            '. Set PR_NUMBER explicitly or close the extra pull requests.',
+        },
+      }),
+    )
+  })
+
+export const resolvePrNumber = (): Effect.Effect<
+  number | null,
+  | ExplorerError
+  | Git.GitError
+  | Git.GitParseError
+  | Github.GithubError
+  | Github.GithubNotFoundError
+  | Github.GithubAuthError
+  | Github.GithubRateLimitError,
+  Env.Env | Git.Git
+> =>
+  Effect.gen(function* () {
+    const env = yield* Env.Env
+    const fromEnv = detectPrNumber(env.vars)
+    if (fromEnv !== null) return fromEnv
+
+    const target = yield* resolveReleaseTarget(env.vars)
+    const git = yield* Git.Git
+    const branch = yield* git.getCurrentBranch()
+    const token = resolveGithubToken(env.vars) ?? undefined
+    const pullRequests = yield* Github.Github.pipe(
+      Effect.flatMap((github) => github.listOpenPullRequests()),
+      Effect.provide(Github.LiveFetch({ owner: target.owner, repo: target.repo, ...(token ? { token } : {}) })),
+    )
+
+    return yield* selectConnectedPullRequestNumber(branch, pullRequests)
+  })
 
 // ---------------------------------------------------------------------------
 // Public API

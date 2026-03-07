@@ -20,19 +20,27 @@ export interface RelayParams {
   destination?: Destination
 }
 
+export interface FormatReportOptions {
+  readonly includeTitle?: boolean
+  readonly title?: string
+}
+
 /**
  * Format a doctor report as human-readable text.
  */
-export const formatReport = (report: Report): string => {
+export const formatReport = (report: Report, options?: FormatReportOptions): string => {
   const lines: string[] = []
+  const includeTitle = options?.includeTitle ?? true
 
   const passed = report.results.filter((r): r is Finished => Finished.is(r) && !r.violation)
   const violated = report.results.filter((r): r is Finished => Finished.is(r) && !!r.violation)
   const skipped = report.results.filter((r): r is Skipped => Skipped.is(r))
   const failed = report.results.filter((r): r is Failed => Failed.is(r))
 
-  lines.push(`Doctor Report`)
-  lines.push(`-----------`)
+  if (includeTitle) {
+    lines.push(options?.title ?? 'Doctor Report')
+    lines.push(`-----------`)
+  }
   lines.push(`${report.results.length} rules checked`)
   lines.push(``)
 

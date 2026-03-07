@@ -11,20 +11,18 @@ import { getGithubToken } from './env.js'
 import {
   Github,
   GithubAuthError,
-  GithubConfigError,
   GithubError,
   GithubNotFoundError,
   type GithubOperation,
   GithubRateLimitError,
   type GithubService,
+  type PullRequest,
   type Release,
 } from './service.js'
 
 type HttpClientService = Context.Tag.Service<typeof HttpClient.HttpClient>
-type GithubLiveLayer = (
-  config: GithubConfig,
-) => Layer.Layer<Github, GithubConfigError, HttpClient.HttpClient>
-type GithubLiveFetchLayer = (config: GithubConfig) => Layer.Layer<Github, GithubConfigError>
+type GithubLiveLayer = (config: GithubConfig) => Layer.Layer<Github, never, HttpClient.HttpClient>
+type GithubLiveFetchLayer = (config: GithubConfig) => Layer.Layer<Github>
 
 // ============================================================================
 // Config
@@ -154,10 +152,10 @@ const mapPostResponseError = (
 // HTTP Request Builders
 // ============================================================================
 
-const makeAuthHeaders = (token: string): Record<string, string> => ({
-  Authorization: `Bearer ${token}`,
+const makeAuthHeaders = (token: string | undefined): Record<string, string> => ({
   Accept: 'application/vnd.github+json',
   'X-GitHub-Api-Version': '2022-11-28',
+  ...(token ? { Authorization: `Bearer ${token}` } : {}),
 })
 
 const jsonBody = (data: unknown): HttpBody.HttpBody => {
@@ -173,10 +171,11 @@ const jsonBody = (data: unknown): HttpBody.HttpBody => {
 const makeGithubService = (
   client: HttpClientService,
   config: GithubConfig,
-  token: string,
+  token: string | undefined,
 ): GithubService => {
   const { owner, repo } = config
   const releasesPath = `/repos/${owner}/${repo}/releases`
+  const pullsPath = `/repos/${owner}/${repo}/pulls`
   const headers = makeAuthHeaders(token)
   const encodeTag = (tag: string): string => encodeURIComponent(tag)
 
@@ -266,6 +265,12 @@ const makeGithubService = (
           ),
         ),
       ),
+
+    listOpenPullRequests: () =>
+      httpGet<readonly PullRequest[]>(
+        `${pullsPath}?state=open&per_page=100`,
+        'listOpenPullRequests',
+      ),
   }
 }
 
@@ -297,15 +302,6 @@ export const Live: GithubLiveLayer = (config) =>
     Github,
     Effect.gen(function* () {
       const token = getGithubToken(config.token)
-
-      if (!token) {
-        return yield* Effect.fail(
-          new GithubConfigError({
-            context: { detail: 'GitHub token required: set GITHUB_TOKEN env or pass token option' },
-          }),
-        )
-      }
-
       const client = yield* HttpClient.HttpClient
       return makeGithubService(client, config, token)
     }),

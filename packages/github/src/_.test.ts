@@ -144,6 +144,33 @@ describe('Github', () => {
     expect(result.before).toBe(false)
     expect(result.after).toBe(true)
   })
+
+  test('listOpenPullRequests returns configured open PRs', async () => {
+    const layer = Github.Memory.make({
+      pullRequests: [
+        {
+          number: 129,
+          html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
+          head: { ref: 'feat/release' },
+        },
+      ],
+    })
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.listOpenPullRequests()
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result).toEqual([
+      {
+        number: 129,
+        html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
+        head: { ref: 'feat/release' },
+      },
+    ])
+  })
 })
 
 // ============================================================================

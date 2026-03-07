@@ -126,6 +126,7 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
       dryRun: args.dryRun,
       tag,
       publishing: config.publishing,
+      trunk: config.trunk,
       github: runtimeConfig.github,
     })
 

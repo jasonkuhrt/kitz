@@ -43,4 +43,21 @@ describe('formatReport', () => {
     expect(output).toContain('hint: Grant `id-token: write` to the job.')
     expect(output).toContain('docs: npm trusted publishers https://docs.npmjs.com/trusted-publishers/')
   })
+
+  test('can omit the default title for embedded report sections', () => {
+    const report = Report.make({
+      results: [
+        Finished.make({
+          rule: ruleRef('env.release-branch-allowed', 'active branch is allowed'),
+          duration: 1,
+          severity: Severity.Error.make(),
+        }),
+      ],
+    })
+
+    const output = formatReport(report, { includeTitle: false })
+
+    expect(output).not.toContain('Doctor Report')
+    expect(output).toContain('1 rules checked')
+  })
 })

@@ -9,6 +9,15 @@ import { Context, Effect, Schema as S } from 'effect'
 /** GitHub release from API response */
 export type Release = Endpoints['GET /repos/{owner}/{repo}/releases/tags/{tag}']['response']['data']
 
+/** Minimal pull request shape needed by release tooling. */
+export interface PullRequest {
+  readonly number: number
+  readonly html_url: string
+  readonly head: {
+    readonly ref: string
+  }
+}
+
 /** Parameters for creating a release */
 export interface CreateReleaseParams {
   readonly tag: string
@@ -29,13 +38,19 @@ export interface UpdateReleaseParams {
 /**
  * GitHub operation names for structured error context.
  */
-export type GithubOperation = 'releaseExists' | 'createRelease' | 'updateRelease' | 'getRelease'
+export type GithubOperation =
+  | 'releaseExists'
+  | 'createRelease'
+  | 'updateRelease'
+  | 'getRelease'
+  | 'listOpenPullRequests'
 
 const GithubOperationSchema = S.Literal(
   'releaseExists',
   'createRelease',
   'updateRelease',
   'getRelease',
+  'listOpenPullRequests',
 )
 const ErrorCause = S.instanceOf(Error)
 
@@ -172,6 +187,14 @@ export interface GithubService {
     params: UpdateReleaseParams,
   ) => Effect.Effect<
     Release,
+    GithubError | GithubNotFoundError | GithubAuthError | GithubRateLimitError
+  >
+
+  /**
+   * List open pull requests for the configured repository.
+   */
+  readonly listOpenPullRequests: () => Effect.Effect<
+    readonly PullRequest[],
     GithubError | GithubNotFoundError | GithubAuthError | GithubRateLimitError
   >
 }
