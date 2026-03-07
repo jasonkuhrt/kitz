@@ -13,6 +13,8 @@ export type Release = Endpoints['GET /repos/{owner}/{repo}/releases/tags/{tag}']
 export interface PullRequest {
   readonly number: number
   readonly html_url: string
+  readonly title: string
+  readonly body: string | null
   readonly head: {
     readonly ref: string
   }
@@ -31,6 +33,12 @@ export interface UpdateReleaseParams {
   readonly body: string
 }
 
+/** Parameters for updating a pull request */
+export interface UpdatePullRequestParams {
+  readonly title?: string
+  readonly body?: string | null
+}
+
 // ============================================================================
 // Operations
 // ============================================================================
@@ -44,6 +52,7 @@ export type GithubOperation =
   | 'updateRelease'
   | 'getRelease'
   | 'listOpenPullRequests'
+  | 'updatePullRequest'
 
 const GithubOperationSchema = S.Literal(
   'releaseExists',
@@ -51,6 +60,7 @@ const GithubOperationSchema = S.Literal(
   'updateRelease',
   'getRelease',
   'listOpenPullRequests',
+  'updatePullRequest',
 )
 const ErrorCause = S.instanceOf(Error)
 
@@ -195,6 +205,17 @@ export interface GithubService {
    */
   readonly listOpenPullRequests: () => Effect.Effect<
     readonly PullRequest[],
+    GithubError | GithubNotFoundError | GithubAuthError | GithubRateLimitError
+  >
+
+  /**
+   * Update an open pull request.
+   */
+  readonly updatePullRequest: (
+    number: number,
+    params: UpdatePullRequestParams,
+  ) => Effect.Effect<
+    PullRequest,
     GithubError | GithubNotFoundError | GithubAuthError | GithubRateLimitError
   >
 }

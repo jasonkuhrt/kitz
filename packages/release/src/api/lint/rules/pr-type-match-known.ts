@@ -5,23 +5,25 @@ import { RuleId } from '../models/rule-defaults.js'
 import * as RuntimeRule from '../models/runtime-rule.js'
 import { PrTitle } from '../models/violation-location.js'
 import { Violation } from '../models/violation.js'
+import { getInvalidTitleViolation, getParsedCommit } from './pr-helpers.js'
 import { PrService } from '../services/pr.js'
 
-/** Verifies that the PR title's conventional commit type is in the allowed set. */
+/** Verifies that every PR title type is a standard conventional-commit type. */
 export const rule = RuntimeRule.create({
   id: RuleId.make('pr.type.match-known'),
-  description: 'Type in allowed set (standard or custom)',
+  description: 'Type(s) use standard conventional-commit kinds',
   preconditions: [Precondition.HasOpenPR.make()],
   check: Effect.gen(function* () {
     const pr = yield* PrService
-    const commit = pr.commit
+    const invalidTitle = getInvalidTitleViolation(pr)
+    if (invalidTitle) return invalidTitle
+    const commit = getParsedCommit(pr)!
 
-    // Get type value based on commit kind
-    const typeValue = ConventionalCommits.Commit.Single.is(commit)
-      ? commit.type.value
-      : commit.targets[0]!.type.value // Multi: use first target's type
+    const hasUnknownType = ConventionalCommits.Commit.types(commit).some(
+      (type) => !ConventionalCommits.Type.Standard.is(type),
+    )
 
-    if (!(typeValue in ConventionalCommits.Type.StandardValue.enums)) {
+    if (hasUnknownType) {
       return Violation.make({
         location: PrTitle.make({ title: pr.title }),
       })

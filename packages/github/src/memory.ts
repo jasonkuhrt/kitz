@@ -5,6 +5,7 @@ import {
   type GithubService,
   type PullRequest,
   type Release,
+  type UpdatePullRequestParams,
   type UpdateReleaseParams,
 } from './service.js'
 
@@ -43,6 +44,8 @@ export interface GithubMemoryState {
   readonly createdReleases: Ref.Ref<CreateReleaseParams[]>
   /** Releases updated (for verification) */
   readonly updatedReleases: Ref.Ref<Array<{ tag: string; params: UpdateReleaseParams }>>
+  /** Pull requests updated (for verification) */
+  readonly updatedPullRequests: Ref.Ref<Array<{ number: number; params: UpdatePullRequestParams }>>
 }
 
 /**
@@ -54,6 +57,7 @@ export const makeState = (config: GithubMemoryConfig = {}): Effect.Effect<Github
     pullRequests: Ref.make(config.pullRequests ?? []),
     createdReleases: Ref.make<CreateReleaseParams[]>([]),
     updatedReleases: Ref.make<Array<{ tag: string; params: UpdateReleaseParams }>>([]),
+    updatedPullRequests: Ref.make<Array<{ number: number; params: UpdatePullRequestParams }>>([]),
   })
 
 // ============================================================================
@@ -152,6 +156,27 @@ const makeService = (state: GithubMemoryState): GithubService => ({
     }),
 
   listOpenPullRequests: () => Ref.get(state.pullRequests),
+
+  updatePullRequest: (number, params) =>
+    Effect.gen(function* () {
+      const pullRequests = yield* Ref.get(state.pullRequests)
+      const existing = pullRequests.find((pullRequest) => pullRequest.number === number)
+      if (!existing) {
+        throw new Error(`Pull request not found: #${String(number)}`)
+      }
+
+      const updated: PullRequest = {
+        ...existing,
+        ...(params.title !== undefined ? { title: params.title } : {}),
+        ...(params.body !== undefined ? { body: params.body } : {}),
+      }
+
+      yield* Ref.update(state.pullRequests, (current) =>
+        current.map((pullRequest) => (pullRequest.number === number ? updated : pullRequest)),
+      )
+      yield* Ref.update(state.updatedPullRequests, (updates) => [...updates, { number, params }])
+      return updated
+    }),
 })
 
 // ============================================================================

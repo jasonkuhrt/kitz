@@ -18,6 +18,7 @@ import {
   type GithubService,
   type PullRequest,
   type Release,
+  type UpdatePullRequestParams,
 } from './service.js'
 
 type HttpClientService = Context.Tag.Service<typeof HttpClient.HttpClient>
@@ -270,6 +271,16 @@ const makeGithubService = (
       httpGet<readonly PullRequest[]>(
         `${pullsPath}?state=open&per_page=100`,
         'listOpenPullRequests',
+      ),
+
+    updatePullRequest: (number, params) =>
+      httpPatch<PullRequest>(
+        `${pullsPath}/${String(number)}`,
+        {
+          ...(params.title !== undefined ? { title: params.title } : {}),
+          ...(params.body !== undefined ? { body: params.body } : {}),
+        } satisfies UpdatePullRequestParams,
+        'updatePullRequest',
       ),
   }
 }

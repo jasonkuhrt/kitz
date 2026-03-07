@@ -17,6 +17,8 @@ describe('Release workflow CLI contract', () => {
     expect(workflow).toContain(
       'pnpm release:forecast:comment -- --publish-history /tmp/publish-history.json > /tmp/release-plan-comment.md',
     )
+    expect(workflow).toContain('PR_TITLE: ${{ github.event.pull_request.title }}')
+    expect(workflow).toContain('PR_BODY: ${{ github.event.pull_request.body }}')
     expect(workflow).not.toContain('CLI_PARAMETER_TYPE')
     expect(workflow).not.toContain('just ')
     expect(workflow).not.toContain('node packages/release/build/cli/cli.js render')

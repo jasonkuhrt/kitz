@@ -47,6 +47,15 @@ const detectExecutionContext = (vars: Record<string, string | undefined>): CiCon
   return { detected: false, provider: null, prNumber }
 }
 
+const detectPrTitle = (vars: Record<string, string | undefined>): string | null => {
+  const title = vars['GITHUB_PR_TITLE'] ?? vars['PR_TITLE']
+  if (!title || title.trim() === '') return null
+  return title.trim()
+}
+
+const detectPrBody = (vars: Record<string, string | undefined>): string =>
+  vars['GITHUB_PR_BODY'] ?? vars['PR_BODY'] ?? ''
+
 /** Parse `GITHUB_REPOSITORY` env var format (`"owner/repo"`) into components. */
 const parseGitHubRepository = (value: string): { owner: string; repo: string } | null => {
   const trimmed = value.trim()
@@ -130,11 +139,19 @@ export const selectConnectedPullRequestNumber = (
   branch: string,
   pullRequests: readonly Github.PullRequest[],
 ): Effect.Effect<number | null, ExplorerError> =>
+  selectConnectedPullRequest(branch, pullRequests).pipe(
+    Effect.map((pullRequest) => pullRequest?.number ?? null),
+  )
+
+export const selectConnectedPullRequest = (
+  branch: string,
+  pullRequests: readonly Github.PullRequest[],
+): Effect.Effect<Github.PullRequest | null, ExplorerError> =>
   Effect.gen(function* () {
     const matches = pullRequests.filter((pullRequest) => pullRequest.head.ref === branch)
 
     if (matches.length === 0) return null
-    if (matches.length === 1) return matches[0]!.number
+    if (matches.length === 1) return matches[0]!
 
     return yield* Effect.fail(
       new ExplorerError({
@@ -148,8 +165,29 @@ export const selectConnectedPullRequestNumber = (
     )
   })
 
-export const resolvePrNumber = (): Effect.Effect<
-  number | null,
+export const selectPullRequestByNumber = (
+  prNumber: number,
+  pullRequests: readonly Github.PullRequest[],
+): Effect.Effect<Github.PullRequest | null, ExplorerError> =>
+  Effect.gen(function* () {
+    const matches = pullRequests.filter((pullRequest) => pullRequest.number === prNumber)
+
+    if (matches.length === 0) return null
+    if (matches.length === 1) return matches[0]!
+
+    return yield* Effect.fail(
+      new ExplorerError({
+        context: {
+          detail:
+            `Multiple open pull requests matched PR number #${String(prNumber)}. ` +
+            'Close the extra pull requests or provide a unique PR context.',
+        },
+      }),
+    )
+  })
+
+export const resolvePullRequest = (): Effect.Effect<
+  Github.PullRequest | null,
   | ExplorerError
   | Git.GitError
   | Git.GitParseError
@@ -161,20 +199,50 @@ export const resolvePrNumber = (): Effect.Effect<
 > =>
   Effect.gen(function* () {
     const env = yield* Env.Env
-    const fromEnv = detectPrNumber(env.vars)
-    if (fromEnv !== null) return fromEnv
-
-    const target = yield* resolveReleaseTarget(env.vars)
     const git = yield* Git.Git
+    const prNumber = detectPrNumber(env.vars)
+    const prTitle = detectPrTitle(env.vars)
+    const prBody = detectPrBody(env.vars)
     const branch = yield* git.getCurrentBranch()
+    const target = yield* resolveReleaseTarget(env.vars)
+
+    if (prNumber !== null && prTitle !== null) {
+      return {
+        number: prNumber,
+        html_url: `https://github.com/${target.owner}/${target.repo}/pull/${String(prNumber)}`,
+        title: prTitle,
+        body: prBody,
+        head: { ref: branch },
+      } satisfies Github.PullRequest
+    }
+
     const token = resolveGithubToken(env.vars) ?? undefined
     const pullRequests = yield* Github.Github.pipe(
       Effect.flatMap((github) => github.listOpenPullRequests()),
-      Effect.provide(Github.LiveFetch({ owner: target.owner, repo: target.repo, ...(token ? { token } : {}) })),
+      Effect.provide(
+        Github.LiveFetch({ owner: target.owner, repo: target.repo, ...(token ? { token } : {}) }),
+      ),
     )
 
-    return yield* selectConnectedPullRequestNumber(branch, pullRequests)
+    if (prNumber !== null) {
+      return yield* selectPullRequestByNumber(prNumber, pullRequests)
+    }
+
+    return yield* selectConnectedPullRequest(branch, pullRequests)
   })
+
+export const resolvePrNumber = (): Effect.Effect<
+  number | null,
+  | ExplorerError
+  | Git.GitError
+  | Git.GitParseError
+  | Github.GithubError
+  | Github.GithubNotFoundError
+  | Github.GithubAuthError
+  | Github.GithubRateLimitError,
+  Env.Env | Git.Git
+> =>
+  resolvePullRequest().pipe(Effect.map((pullRequest) => pullRequest?.number ?? null))
 
 // ---------------------------------------------------------------------------
 // Public API

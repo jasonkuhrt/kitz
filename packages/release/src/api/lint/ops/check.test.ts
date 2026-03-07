@@ -17,14 +17,17 @@ const prLayer = Layer.succeed(PrService, {
   number: 129,
   title: 'feat: missing scope',
   body: '',
-  commit: CC.Commit.Single.make({
-    type: CC.Type.parse('feat'),
-    scopes: [],
-    breaking: false,
-    message: 'missing scope',
-    body: Option.none(),
-    footers: [],
-  }),
+  commit: Option.some(
+    CC.Commit.Single.make({
+      type: CC.Type.parse('feat'),
+      scopes: [],
+      breaking: false,
+      message: 'missing scope',
+      body: Option.none(),
+      footers: [],
+    }),
+  ),
+  titleParseError: Option.none(),
 })
 
 describe('check', () => {

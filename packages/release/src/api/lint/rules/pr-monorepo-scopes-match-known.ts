@@ -1,4 +1,3 @@
-import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Effect, HashSet } from 'effect'
 import * as Precondition from '../models/precondition.js'
 import { RuleId } from '../models/rule-defaults.js'
@@ -7,14 +6,8 @@ import { PrTitle } from '../models/violation-location.js'
 import { Violation } from '../models/violation.js'
 import { MonorepoService } from '../services/monorepo.js'
 import { PrService } from '../services/pr.js'
-
-/** Get scopes from a commit (Single or Multi). */
-const getScopes = (commit: ConventionalCommits.Commit.Commit): readonly string[] => {
-  if (ConventionalCommits.Commit.Single.is(commit)) {
-    return commit.scopes
-  }
-  return commit.targets.map((t) => t.scope)
-}
+import { getInvalidTitleViolation, getParsedCommit } from './pr-helpers.js'
+import { ConventionalCommits } from '@kitz/conventional-commits'
 
 /** Verifies that PR title scopes correspond to known packages in the monorepo. */
 export const rule = RuntimeRule.create({
@@ -24,7 +17,9 @@ export const rule = RuntimeRule.create({
   check: Effect.gen(function* () {
     const pr = yield* PrService
     const monorepo = yield* MonorepoService
-    const scopes = getScopes(pr.commit)
+    const invalidTitle = getInvalidTitleViolation(pr)
+    if (invalidTitle) return invalidTitle
+    const scopes = ConventionalCommits.Commit.scopes(getParsedCommit(pr)!)
     const validScopes = HashSet.fromIterable(monorepo.validScopes)
 
     // Check if all scopes are valid package names

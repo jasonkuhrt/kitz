@@ -68,6 +68,9 @@ Cli.run(Layer.mergeAll(Env.Live, NodeContext.layer, NodeFileSystem.layer, Git.Gi
               publishState: input.publishState,
               publishHistory: input.publishHistory,
               interactiveChecklist: input.interactiveChecklist,
+              ...(input.projectedSquashCommit
+                ? { projectedSquashCommit: input.projectedSquashCommit }
+                : {}),
               ...(input.doctor ? { doctor: input.doctor } : {}),
             })
             : Api.Forecaster.encodeForecastEnvelope({
@@ -85,6 +88,7 @@ interface ForecastInput {
   readonly publishState: Api.Commentator.PublishState
   readonly publishHistory: readonly Api.Commentator.PublishRecord[]
   readonly doctor?: Api.Commentator.DoctorSummary
+  readonly projectedSquashCommit?: Api.ProjectedSquashCommit.Preview
   readonly interactiveChecklist: boolean
 }
 
@@ -136,17 +140,34 @@ const buildForecastInput = (options: {
     const tags = yield* git.getTags()
     const analysis = yield* Api.Analyzer.analyze({ packages, tags })
     const recon = yield* Api.Explorer.explore()
+    const forecast = Api.Forecaster.forecast(analysis, recon)
+    const pullRequest = yield* Api.Explorer.resolvePullRequest().pipe(
+      Effect.catchTag('ExplorerError', () => Effect.succeed(null)),
+      Effect.catchTag('GithubAuthError', () => Effect.succeed(null)),
+      Effect.catchTag('GithubError', () => Effect.succeed(null)),
+      Effect.catchTag('GithubNotFoundError', () => Effect.succeed(null)),
+      Effect.catchTag('GithubRateLimitError', () => Effect.succeed(null)),
+    )
+    const projectedSquashCommit = pullRequest
+      ? Api.ProjectedSquashCommit.preview({
+          actualTitle: pullRequest.title,
+          impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis),
+        })
+      : undefined
 
     return {
-      forecast: Api.Forecaster.forecast(analysis, recon),
+      forecast,
       publishState: 'idle' as const,
       publishHistory: yield* readPublishHistory(options.publishHistoryPath),
       interactiveChecklist: config.publishing.ephemeral.mode !== 'manual',
+      ...(projectedSquashCommit ? { projectedSquashCommit } : {}),
       doctor: options.includeDoctor
         ? yield* buildCommentDoctor({
             config,
             analysis,
             packages,
+            pullRequest,
+            ...(projectedSquashCommit ? { projectedSquashCommit } : {}),
           })
         : undefined,
     }
@@ -166,6 +187,7 @@ const loadForecastInputFromFile = (filePath: string) =>
         publishState: envelope.value.publishState,
         publishHistory: envelope.value.publishHistory,
         doctor: undefined,
+        projectedSquashCommit: undefined,
         interactiveChecklist: false,
       }
     }
@@ -175,6 +197,7 @@ const loadForecastInputFromFile = (filePath: string) =>
       publishState: 'idle' as const,
       publishHistory: [],
       doctor: undefined,
+      projectedSquashCommit: undefined,
       interactiveChecklist: false,
     }
   })
@@ -217,6 +240,8 @@ const buildCommentDoctor = (params: {
   readonly config: Api.Config.ResolvedConfig
   readonly analysis: Api.Analyzer.Models.Analysis
   readonly packages: readonly Api.Analyzer.Workspace.Package[]
+  readonly pullRequest: { readonly number: number; readonly title: string; readonly body: string | null } | null
+  readonly projectedSquashCommit?: Api.ProjectedSquashCommit.Preview
 }) =>
   Effect.gen(function* () {
     const planAttempt = yield* Api.Planner.ephemeral(params.analysis, {
@@ -246,6 +271,12 @@ const buildCommentDoctor = (params: {
       plan.lifecycle === 'ephemeral'
         ? plannedItems.find(Api.Planner.Ephemeral.is)?.prerelease.prNumber
         : undefined
+    const commentDoctorRules = [
+      ...commentDoctorRuleIds,
+      ...(params.pullRequest && params.projectedSquashCommit?.projectedHeader
+        ? (['pr.projected-squash-commit-sync'] as const)
+        : []),
+    ]
 
     const lintConfig = Api.Lint.resolveConfig({
       defaults: Api.Lint.RuleDefaults.make({
@@ -271,15 +302,47 @@ const buildCommentDoctor = (params: {
           'plan.packages-repository-match-canonical',
         ),
         'plan.tags-unique': enableRule(params.config, 'plan.tags-unique'),
+        ...(params.pullRequest
+          && params.projectedSquashCommit?.projectedHeader
+          ? {
+              'pr.projected-squash-commit-sync': enableRule(
+                params.config,
+                'pr.projected-squash-commit-sync',
+                {
+                  projectedHeader: params.projectedSquashCommit.projectedHeader,
+                },
+              ),
+            }
+          : {}),
       },
-      onlyRules: [...commentDoctorRuleIds],
+      onlyRules: [...commentDoctorRules],
     })
 
-    const report = yield* Api.Lint.check({ config: lintConfig }).pipe(
+    const monorepo = {
+      packages: params.packages.map((pkg) => ({
+        name: pkg.name.moniker,
+        path: pkg.path.toString(),
+      })),
+      validScopes: params.packages.map((pkg) => pkg.scope),
+    }
+    const prContext = params.pullRequest ? yield* Api.Lint.fromPullRequest(params.pullRequest) : null
+    const lintPrContext = prContext ?? {
+      number: 0,
+      title: '',
+      body: '',
+      commit: Option.none(),
+      titleParseError: Option.none(),
+    }
+    const baseReportEffect = Api.Lint.check({ config: lintConfig }).pipe(
       Effect.provide(
         Layer.mergeAll(
-          Api.Lint.DefaultServicesLayer,
-          Api.Lint.Preconditions.make({ hasReleasePlan: true }),
+          Api.Lint.DefaultDiffLayer,
+          Api.Lint.DefaultGitHubLayer,
+          Api.Lint.Preconditions.make({
+            hasOpenPR: params.pullRequest !== null,
+            hasReleasePlan: true,
+            isMonorepo: params.packages.length > 1,
+          }),
           Api.Lint.ReleasePlan.make(
             plannedItems.map((item) => ({
               packageName: item.package.name,
@@ -293,8 +356,10 @@ const buildCommentDoctor = (params: {
           }),
         ),
       ),
-      Effect.either,
+      Effect.provideService(Api.Lint.MonorepoService, monorepo),
+      Effect.provideService(Api.Lint.PrService, lintPrContext),
     )
+    const report = yield* baseReportEffect.pipe(Effect.either)
 
     if (Either.isLeft(report)) {
       return {

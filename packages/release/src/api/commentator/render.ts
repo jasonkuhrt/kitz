@@ -5,6 +5,7 @@ import type {
   ForecastCascade,
   ForecastRelease,
 } from '../forecaster/models.js'
+import type { Preview as ProjectedSquashCommitPreview } from '../projected-squash-commit.js'
 import { renderTree } from '../renderer/tree.js'
 import type { DoctorSummary } from './doctor.js'
 import { renderDoctorSummary } from './doctor.js'
@@ -19,6 +20,7 @@ export interface RenderOptions {
   readonly publishState?: PublishState
   readonly publishHistory?: readonly PublishRecord[]
   readonly doctor?: DoctorSummary
+  readonly projectedSquashCommit?: ProjectedSquashCommitPreview
   readonly interactiveChecklist?: boolean
 }
 
@@ -36,6 +38,7 @@ export const render = (forecast: Forecast, options?: RenderOptions): string => {
   const state = options?.publishState ?? 'idle'
   const publishHistory = options?.publishHistory ?? []
   const doctor = options?.doctor
+  const projectedSquashCommit = options?.projectedSquashCommit
   const interactiveChecklist = options?.interactiveChecklist ?? false
   const output = Str.Builder()
 
@@ -73,6 +76,11 @@ export const render = (forecast: Forecast, options?: RenderOptions): string => {
   // Explainer toggle
   output(renderExplainer())
   output``
+
+  if (projectedSquashCommit) {
+    output(renderProjectedSquashCommit(projectedSquashCommit))
+    output``
+  }
 
   if (doctor) {
     output(renderDoctorSummary(doctor))
@@ -193,6 +201,35 @@ const renderCommitShas = (commits: readonly CommitDisplay[], max: number): strin
 const renderVersionLine = (release: ForecastRelease): string => {
   const officialStr = release.nextOfficialVersion.toString()
   return `**\`${officialStr}\`** ${release.bump} (from ${release.currentVersionDisplay})`
+}
+
+const renderProjectedSquashCommit = (preview: ProjectedSquashCommitPreview): string => {
+  const lines = ['### Projected Release Header', '']
+
+  if (preview.projectedHeader) {
+    lines.push(`\`${preview.projectedHeader}\``)
+
+    if (preview.actualTitleError) {
+      lines.push('')
+      lines.push(`Current PR title is not a valid conventional commit title: ${preview.actualTitleError}`)
+      lines.push(`Current PR title: \`${preview.actualTitle}\``)
+      return lines.join(Str.Char.newline)
+    }
+
+    if (!preview.inSync) {
+      lines.push('')
+      if (preview.actualHeader) {
+        lines.push(`Current PR header: \`${preview.actualHeader}\``)
+      }
+      lines.push(`Current PR title: \`${preview.actualTitle}\``)
+    }
+    return lines.join(Str.Char.newline)
+  }
+
+  lines.push(`Unavailable: ${preview.reason ?? 'Could not project a release header.'}`)
+  lines.push('')
+  lines.push(`Current PR title: \`${preview.actualTitle}\``)
+  return lines.join(Str.Char.newline)
 }
 
 /** Render previously published versions as npm links, latest first and bold. */

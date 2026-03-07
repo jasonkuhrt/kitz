@@ -151,6 +151,8 @@ describe('Github', () => {
         {
           number: 129,
           html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
+          title: 'feat(release): improve doctor output',
+          body: 'body',
           head: { ref: 'feat/release' },
         },
       ],
@@ -167,7 +169,47 @@ describe('Github', () => {
       {
         number: 129,
         html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
+        title: 'feat(release): improve doctor output',
+        body: 'body',
         head: { ref: 'feat/release' },
+      },
+    ])
+  })
+
+  test('updatePullRequest updates and records changes', async () => {
+    const { layer, state } = await Effect.runPromise(
+      Github.Memory.makeWithState({
+        pullRequests: [
+          {
+            number: 129,
+            html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
+            title: 'feat(release): improve doctor output',
+            body: 'body',
+            head: { ref: 'feat/release' },
+          },
+        ],
+      }),
+    )
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.updatePullRequest(129, {
+          title: 'feat(cli, release): improve doctor output',
+        })
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.title).toBe('feat(cli, release): improve doctor output')
+
+    const pullRequests = await Effect.runPromise(Ref.get(state.pullRequests))
+    const updated = await Effect.runPromise(Ref.get(state.updatedPullRequests))
+
+    expect(pullRequests[0]?.title).toBe('feat(cli, release): improve doctor output')
+    expect(updated).toEqual([
+      {
+        number: 129,
+        params: { title: 'feat(cli, release): improve doctor output' },
       },
     ])
   })

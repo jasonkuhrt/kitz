@@ -3,7 +3,13 @@ import { Github } from '@kitz/github'
 import { Test } from '@kitz/test'
 import { Effect, Either, Layer } from 'effect'
 import { describe, expect, test } from 'vitest'
-import { detectPrNumber, resolveReleaseTarget, selectConnectedPullRequestNumber } from './explore.js'
+import {
+  detectPrNumber,
+  resolveReleaseTarget,
+  selectConnectedPullRequest,
+  selectConnectedPullRequestNumber,
+  selectPullRequestByNumber,
+} from './explore.js'
 
 // ── detectPrNumber ───────────────────────────────────────────────────
 
@@ -150,6 +156,8 @@ describe('selectConnectedPullRequestNumber', () => {
         {
           number: 129,
           html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
+          title: 'feat(release): improve doctor output',
+          body: '',
           head: { ref: 'feat/release' },
         },
       ] satisfies readonly Github.PullRequest[]),
@@ -164,6 +172,8 @@ describe('selectConnectedPullRequestNumber', () => {
         {
           number: 128,
           html_url: 'https://github.com/jasonkuhrt/kitz/pull/128',
+          title: 'feat(core): other change',
+          body: '',
           head: { ref: 'feat/other' },
         },
       ] satisfies readonly Github.PullRequest[]),
@@ -178,11 +188,15 @@ describe('selectConnectedPullRequestNumber', () => {
         {
           number: 129,
           html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
+          title: 'feat(release): improve doctor output',
+          body: '',
           head: { ref: 'feat/release' },
         },
         {
           number: 130,
           html_url: 'https://github.com/jasonkuhrt/kitz/pull/130',
+          title: 'feat(release): improve forecast output',
+          body: '',
           head: { ref: 'feat/release' },
         },
       ] satisfies readonly Github.PullRequest[]).pipe(Effect.either),
@@ -192,5 +206,41 @@ describe('selectConnectedPullRequestNumber', () => {
     if (Either.isLeft(result)) {
       expect(result.left.context.detail).toContain('Multiple open pull requests match branch')
     }
+  })
+})
+
+describe('selectConnectedPullRequest', () => {
+  test('returns the matching pull request object for the current branch', async () => {
+    const result = await Effect.runPromise(
+      selectConnectedPullRequest('feat/release', [
+        {
+          number: 129,
+          html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
+          title: 'feat(release): improve doctor output',
+          body: 'body',
+          head: { ref: 'feat/release' },
+        },
+      ] satisfies readonly Github.PullRequest[]),
+    )
+
+    expect(result?.title).toBe('feat(release): improve doctor output')
+  })
+})
+
+describe('selectPullRequestByNumber', () => {
+  test('returns the matching pull request object for the PR number', async () => {
+    const result = await Effect.runPromise(
+      selectPullRequestByNumber(129, [
+        {
+          number: 129,
+          html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
+          title: 'feat(release): improve doctor output',
+          body: 'body',
+          head: { ref: 'feat/release' },
+        },
+      ] satisfies readonly Github.PullRequest[]),
+    )
+
+    expect(result?.head.ref).toBe('feat/release')
   })
 })

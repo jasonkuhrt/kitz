@@ -16,6 +16,7 @@ import { Effect, Layer } from 'effect'
  * - forecast        - Render a release forecast
  * - plan            - Generate release plan (--lifecycle official|candidate|ephemeral)
  * - apply           - Execute release plan
+ * - pr title ...    - Suggest or apply the canonical PR title header
  * - notes [pkg]     - Output release notes
  * - init            - Initialize release in project
  */

@@ -20,7 +20,7 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
-import { Cause, Console, Effect, Layer, Schema } from 'effect'
+import { Cause, Console, Effect, Layer, Option, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 
 const DoctorFailuresSchema = Schema.Struct({
@@ -89,7 +89,6 @@ Cli.run(
     NodeContext.layer,
     NodeFileSystem.layer,
     Api.Lint.Preconditions.DefaultLayer,
-    Api.Lint.DefaultServicesLayer,
     Api.Lint.ReleasePlan.DefaultReleasePlanLayer,
     Git.GitLive,
   ),
@@ -132,10 +131,18 @@ Cli.run(
     const planDir = Fs.Path.join(env.cwd, Api.Planner.PLAN_DIR)
     const activePlan = yield* Api.Planner.resource.read(planDir)
     const needsSmartScope = !args.lifecycle && !args.all && activePlan._tag !== 'Some'
-    const prNumberAttempt = needsSmartScope
-      ? yield* Api.Explorer.resolvePrNumber().pipe(Effect.either)
-      : { _tag: 'Right' as const, right: null }
-    const hasPrContext = prNumberAttempt._tag === 'Right' && prNumberAttempt.right !== null
+    const needsPrContext =
+      needsSmartScope ||
+      args.all ||
+      args.lifecycle === 'ephemeral' ||
+      (activePlan._tag === 'Some' && activePlan.value.lifecycle === 'ephemeral')
+    const pullRequestAttempt =
+      needsPrContext
+        ? yield* Api.Explorer.resolvePullRequest().pipe(Effect.either)
+        : { _tag: 'Right' as const, right: null }
+    const pullRequest =
+      pullRequestAttempt._tag === 'Right' ? pullRequestAttempt.right : null
+    const hasPrContext = pullRequest !== null
     const scope = Api.Doctor.resolveScope({
       ...(args.lifecycle ? { lifecycle: args.lifecycle } : {}),
       ...(args.all ? { all: true } : {}),
@@ -146,16 +153,69 @@ Cli.run(
     const tags = yield* git.getTags()
     const analysis = yield* Api.Analyzer.analyze({ packages, tags })
     const currentBranch = yield* git.getCurrentBranch()
+    const monorepo = {
+      packages: packages.map((pkg) => ({
+        name: pkg.name.moniker,
+        path: pkg.path.toString(),
+      })),
+      validScopes: packages.map((pkg) => pkg.scope),
+    }
+    const prContext = pullRequest ? yield* Api.Lint.fromPullRequest(pullRequest) : null
+    const lintPrContext = prContext ?? {
+      number: 0,
+      title: '',
+      body: '',
+      commit: Option.none(),
+      titleParseError: Option.none(),
+    }
 
     const reports: Api.Doctor.LifecycleReport[] = []
     const evaluatePlan = (plan: Api.Planner.Plan, required: boolean) =>
       Effect.gen(function* () {
         const plannedItems = [...plan.releases, ...plan.cascades]
-        const report = yield* Api.Lint.check({ config: config.lint }).pipe(
+        const projectedSquashCommit =
+          pullRequest && plan.releases.length > 0
+            ? Api.ProjectedSquashCommit.preview({
+                actualTitle: pullRequest.title,
+                impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis, {
+                  scopes: plan.releases.map((item) => item.package.scope),
+                }),
+              })
+            : undefined
+        const lintConfig = Api.Lint.ResolvedConfig.make({
+          defaults: config.lint.defaults,
+          onlyRules: config.lint.onlyRules,
+          skipRules: config.lint.skipRules,
+          rules: {
+            ...config.lint.rules,
+            ...(projectedSquashCommit?.projectedHeader
+              ? {
+                  'pr.projected-squash-commit-sync': Api.Lint.ResolvedRuleConfig.make({
+                    overrides:
+                      config.lint.rules['pr.projected-squash-commit-sync']?.overrides ??
+                      Api.Lint.ResolvedRuleDefaults.make({
+                        enabled: 'auto',
+                        severity: Api.Lint.Warn.make(),
+                      }),
+                    options: {
+                      ...config.lint.rules['pr.projected-squash-commit-sync']?.options,
+                      projectedHeader: projectedSquashCommit.projectedHeader,
+                    },
+                  }),
+                }
+              : {}),
+          },
+        })
+        const baseReportEffect = Api.Lint.check({ config: lintConfig }).pipe(
           Effect.provide(
             Layer.mergeAll(
-              Api.Lint.DefaultServicesLayer,
-              Api.Lint.Preconditions.make({ hasReleasePlan: true }),
+              Api.Lint.DefaultDiffLayer,
+              Api.Lint.DefaultGitHubLayer,
+              Api.Lint.Preconditions.make({
+                hasOpenPR: pullRequest !== null,
+                hasReleasePlan: true,
+                isMonorepo: packages.length > 1,
+              }),
               Api.Lint.ReleasePlan.make(
                 plannedItems.map((item) => ({
                   packageName: item.package.name,
@@ -171,7 +231,10 @@ Cli.run(
               }),
             ),
           ),
+          Effect.provideService(Api.Lint.MonorepoService, monorepo),
+          Effect.provideService(Api.Lint.PrService, lintPrContext),
         )
+        const report = yield* baseReportEffect
 
         reports.push({
           _tag: 'CheckedLifecycleReport' as const,

@@ -11,14 +11,17 @@ const makePrLayer = (title: string, body: string) =>
     number: 129,
     title,
     body,
-    commit: CC.Commit.Single.make({
-      type: CC.Type.parse('feat'),
-      scopes: ['release'],
-      breaking: false,
-      message: 'release polish',
-      body: Option.none(),
-      footers: [],
-    }),
+    commit: Option.some(
+      CC.Commit.Single.make({
+        type: CC.Type.parse('feat'),
+        scopes: ['release'],
+        breaking: false,
+        message: 'release polish',
+        body: Option.none(),
+        footers: [],
+      }),
+    ),
+    titleParseError: Option.none(),
   })
 
 describe('pr.message.format', () => {

@@ -7,11 +7,17 @@ import { PrTitle } from '../models/violation-location.js'
 import { Violation } from '../models/violation.js'
 import { DiffService } from '../services/diff.js'
 import { PrService } from '../services/pr.js'
+import { getInvalidTitleViolation, getParsedCommit } from './pr-helpers.js'
 
 /** Types that don't trigger releases. */
 const noReleaseTypes = HashSet.make('docs', 'style', 'test', 'ci', 'chore')
 
-/** Verifies that release-triggering types (`feat`, `fix`, breaking) have actual file changes. */
+const isNoReleaseFacet = (facet: ConventionalCommits.Commit.Facet): boolean =>
+  !facet.breaking &&
+  ConventionalCommits.Type.Standard.is(facet.type) &&
+  HashSet.has(noReleaseTypes, facet.type.value)
+
+/** Verifies that no-release PR types are not used for source changes. */
 export const rule = RuntimeRule.create({
   id: RuleId.make('pr.type.release-kind-match-diff'),
   description: 'No-release type cannot have src changes',
@@ -19,22 +25,20 @@ export const rule = RuntimeRule.create({
   check: Effect.gen(function* () {
     const pr = yield* PrService
     const diff = yield* DiffService
-    const commit = pr.commit
+    const invalidTitle = getInvalidTitleViolation(pr)
+    if (invalidTitle) return invalidTitle
+    const commit = getParsedCommit(pr)!
 
-    // Get type value based on commit kind
-    const typeValue = ConventionalCommits.Commit.Single.is(commit)
-      ? commit.type.value
-      : commit.targets[0]!.type.value // Multi: use first target's type
+    const hasSrcChanges = diff.files.some((f) => f.path.includes('/src/'))
+    if (!hasSrcChanges) return undefined
 
-    // If it's a no-release type, check for src changes
-    if (HashSet.has(noReleaseTypes, typeValue)) {
-      const hasSrcChanges = diff.files.some((f) => f.path.includes('/src/'))
-      if (hasSrcChanges) {
-        return Violation.make({
-          location: PrTitle.make({ title: pr.title }),
-        })
-      }
+    const facets = ConventionalCommits.Commit.facets(commit)
+    if (facets.length > 0 && facets.every(isNoReleaseFacet)) {
+      return Violation.make({
+        location: PrTitle.make({ title: pr.title }),
+      })
     }
+
     return undefined
   }),
 })

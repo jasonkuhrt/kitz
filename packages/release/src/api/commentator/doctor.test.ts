@@ -31,6 +31,15 @@ describe('commentator doctor', () => {
           },
         }),
         Finished.make({
+          rule: ruleRef(
+            'pr.projected-squash-commit-sync',
+            'PR title header matches the canonical squash-merge header',
+          ),
+          duration: 1,
+          severity: Severity.Warn.make(),
+          metadata: { projectedHeader: 'feat(release)' },
+        }),
+        Finished.make({
           rule: ruleRef('plan.packages-license-present', 'planned packages declare a license'),
           duration: 1,
           severity: Severity.Warn.make(),
@@ -82,10 +91,12 @@ describe('commentator doctor', () => {
 
     expect(summary).toBeDefined()
     expect(summary?.rows[0]?.status).toBe('deferred')
+    expect(summary?.rows[1]?.notes).toContain('feat(release)')
 
     const rendered = renderDoctorSummary(summary!)
     expect(rendered).toContain('### Doctor')
     expect(rendered).toContain('publish-pr.yml')
+    expect(rendered).toContain('Release header')
     expect(rendered).toContain('Guidance (1)')
     expect(rendered).toContain('Repository provenance')
     expect(rendered).toContain('Manual Preview Runbook')

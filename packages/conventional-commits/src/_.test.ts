@@ -400,6 +400,47 @@ test('parseTitle > Commit.Multi > global breaking', async () => {
   }
 })
 
+test('Commit.facets > expands multi-scope single commits per scope', () => {
+  expect(ConventionalCommits.Commit.facets(fixtures.commitSingle.multiScope)).toEqual([
+    {
+      type: fixtures.type.standard.feat,
+      scope: 'core',
+      breaking: true,
+    },
+    {
+      type: fixtures.type.standard.feat,
+      scope: 'cli',
+      breaking: true,
+    },
+  ])
+})
+
+test('Commit.types > preserves unique type order across multi-target commits', () => {
+  expect(ConventionalCommits.Commit.types(fixtures.commitMulti.simple)).toEqual([
+    fixtures.type.standard.feat,
+    fixtures.type.standard.fix,
+  ])
+})
+
+test('Commit.renderHeader > renders canonical grouped header for multi-target commits', () => {
+  expect(ConventionalCommits.Commit.renderHeader(fixtures.commitMulti.simple)).toBe(
+    'feat(core)!, fix(cli)',
+  )
+})
+
+test('Title.rewriteHeader > preserves the original subject', async () => {
+  const result = await Effect.runPromise(
+    ConventionalCommits.Title.rewriteHeader(
+      'feat(release): add @kitz/release package for commit-driven releases',
+      'feat(core, release), fix(cli)',
+    ),
+  )
+
+  expect(result).toBe(
+    'feat(core, release), fix(cli): add @kitz/release package for commit-driven releases',
+  )
+})
+
 // ─── StandardImpact mapping ──────────────────────────────────────
 
 test('StandardImpact > all standard types have impact mappings', () => {

@@ -62,14 +62,21 @@ const TagsUniqueMetadataSchema = Schema.Struct({
   conflictingTags: Schema.Array(Schema.String),
   existingTags: Schema.Array(Schema.String),
 })
+const ProjectedSquashCommitMetadataSchema = Schema.Struct({
+  projectedHeader: Schema.String,
+})
 
 const decodePublishChannelMetadata = Schema.decodeUnknownOption(PublishChannelReadyMetadataSchema)
 const decodePackageCountMetadata = Schema.decodeUnknownOption(PackageCountMetadataSchema)
 const decodeRepositoryCanonicalMetadata = Schema.decodeUnknownOption(RepositoryCanonicalMetadataSchema)
 const decodeTagsUniqueMetadata = Schema.decodeUnknownOption(TagsUniqueMetadataSchema)
+const decodeProjectedSquashCommitMetadata = Schema.decodeUnknownOption(
+  ProjectedSquashCommitMetadataSchema,
+)
 
 const doctorRuleOrder = [
   'env.publish-channel-ready',
+  'pr.projected-squash-commit-sync',
   'plan.packages-not-private',
   'plan.packages-license-present',
   'plan.packages-repository-present',
@@ -79,6 +86,7 @@ const doctorRuleOrder = [
 
 const doctorRuleLabels: Record<(typeof doctorRuleOrder)[number], string> = {
   'env.publish-channel-ready': 'Publish channel',
+  'pr.projected-squash-commit-sync': 'Release header',
   'plan.packages-not-private': 'Package visibility',
   'plan.packages-license-present': 'License metadata',
   'plan.packages-repository-present': 'Repository metadata',
@@ -179,6 +187,15 @@ const renderPassNote = (
           value.conflictingTags.length === 0
             ? 'No planned release tags collide with existing git tags.'
             : 'Planned release tags are unique.',
+      }),
+    )
+  }
+
+  if (ruleId === 'pr.projected-squash-commit-sync') {
+    return decodeProjectedSquashCommitMetadata(metadata).pipe(
+      Option.match({
+        onNone: () => 'PR title header already matches the canonical release header.',
+        onSome: (value) => `Canonical release header is \`${value.projectedHeader}\`.`,
       }),
     )
   }

@@ -87,6 +87,17 @@ export const makeRuntime = (config: RuntimeConfig = {}) =>
                 cause: new Error('GitHub runtime is not configured'),
               }),
             ),
+          updatePullRequest: () =>
+            Effect.fail(
+              new Github.GithubError({
+                context: {
+                  operation: 'updatePullRequest',
+                  detail:
+                    'GitHub runtime is not configured. Resolve runtime with Api.Explorer.explore() and pass github config.',
+                },
+                cause: new Error('GitHub runtime is not configured'),
+              }),
+            ),
         }),
   ).pipe(Layer.provideMerge(SingleRunner.layer({ runnerStorage: 'sql' })))
 

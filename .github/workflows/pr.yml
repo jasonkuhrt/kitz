@@ -280,6 +280,10 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          GITHUB_PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          GITHUB_PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           pnpm release:forecast:comment -- --publish-history /tmp/publish-history.json > /tmp/release-plan-comment.md
       - name: Upsert PR release forecast comment

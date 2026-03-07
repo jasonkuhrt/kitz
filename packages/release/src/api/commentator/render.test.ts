@@ -35,6 +35,14 @@ describe('commentator render', () => {
   test('renders manual preview comments without misleading checkboxes', () => {
     const output = render(forecast, {
       interactiveChecklist: false,
+      projectedSquashCommit: {
+        actualTitle: 'feat(release, cli): polish',
+        actualHeader: 'feat(release, cli)',
+        actualTitleError: null,
+        projectedHeader: 'feat(cli, release)',
+        inSync: false,
+        reason: null,
+      },
       doctor: {
         lifecycle: 'ephemeral',
         rows: [
@@ -51,6 +59,8 @@ describe('commentator render', () => {
 
     expect(output).toContain('<!-- kitz-release-plan -->')
     expect(output).toContain('## Release Forecast')
+    expect(output).toContain('### Projected Release Header')
+    expect(output).toContain('feat(cli, release)')
     expect(output).toContain('### Doctor')
     expect(output).toContain('@kitz/core')
     expect(output).toContain('- [■]')
