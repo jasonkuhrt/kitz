@@ -30,7 +30,7 @@ export type AnyAnyParametersMin3 = (...args: [any, any, any, ...any[]]) => any
 /**
  * @category Type Guards
  */
-export const is = Lang.typeGuard<AnyAny>(value => typeof value === Lang.TypeofTypesEnum.function)
+export const is = Lang.typeGuard<AnyAny>((value) => typeof value === Lang.TypeofTypesEnum.function)
 
 /**
  * @category Type Utilities
@@ -47,7 +47,7 @@ export type AnyAnyAsync = (...args: any[]) => Prom.AnyAny
  * type T = GuardedType<typeof isString>  // string
  * ```
  */
-export type GuardedType<$T> = $T extends (x: any) => x is infer __u__ ? __u__ : never
+export type GuardedType<$T> = $T extends ((x: any) => x is infer __u__) ? __u__ : never
 
 /**
  * Modify function such that it only returns the given type.
@@ -69,7 +69,7 @@ export type GuardedType<$T> = $T extends (x: any) => x is infer __u__ ? __u__ : 
  * type Result2 = ReturnExtract<string, Fn2>  // (x: number) => Promise<string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type ReturnExtract<$Type, $Fn extends AnyAny> =
 	$Fn extends (...args: infer __args__) => infer __return__
 			? (...args: __args__) =>
@@ -81,7 +81,7 @@ export type ReturnExtract<$Type, $Fn extends AnyAny> =
 /**
  * @category Type Utilities
  */
-// dprint-ignore
+// oxfmt-ignore
 export type ReturnReplace<$Fn extends AnyAny, $Type> =
   $Fn extends (...args: infer __args__) => infer __return__
     ? (...args: __args__) => $Type
@@ -107,7 +107,7 @@ export type ReturnReplace<$Fn extends AnyAny, $Type> =
  * type Result2 = ReturnExclude<null, Fn2>  // (x: number) => Promise<string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type ReturnExclude<$Type, $Fn extends AnyAny> =
   $Fn extends (...args: infer __args__) => infer __return__
     ? (...args: __args__) => (
@@ -142,7 +142,7 @@ export type ReturnExcludeNull<$Fn extends AnyAny> = ReturnExclude<null, $Fn>
  * type Result2 = ReturnInclude<null, Fn2>  // (x: number) => Promise<string | null>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type ReturnInclude<$Type, $Fn extends AnyAny> =
   $Fn extends (...args: infer __args__) => infer __return__
     ? (...args: __args__) => (
@@ -158,10 +158,11 @@ export type ReturnInclude<$Type, $Fn extends AnyAny> =
  * @category Currying & Binding
  */
 export const bind = <fn extends AnyAny>(
-  fn: AnyAnyParametersMin1 extends fn ? fn
+  fn: AnyAnyParametersMin1 extends fn
+    ? fn
     : {
-      Error: 'Given function must have at least one parameter'
-    },
+        Error: 'Given function must have at least one parameter'
+      },
   arg: Parameters<fn>[0],
 ): bind<fn> => {
   const fn_ = fn as AnyAny
@@ -171,7 +172,7 @@ export const bind = <fn extends AnyAny>(
 /**
  * @category Currying & Binding
  */
-// dprint-ignore
+// oxfmt-ignore
 export type bind<$Fn extends AnyAnyParametersMin1> =
   $Fn extends (...args: [any, ...infer __args_tail__]) => infer __return__
     ? (...args: __args_tail__) => __return__
@@ -210,7 +211,7 @@ export const applySecond = <fn extends (...args: any[]) => (arg: any) => any, ar
  *
  * @category Currying & Binding
  */
-// dprint-ignore
+// oxfmt-ignore
 export type applySecond<$Fn, $Arg> =
   $Fn extends (...args: infer __args__) => (arg: $Arg) => infer __return__
     ? (...args: __args__) => __return__

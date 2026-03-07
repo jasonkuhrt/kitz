@@ -50,9 +50,8 @@ export interface WrapOptions {
  */
 export const wrap = (cause: unknown, messageOrOptions: string | WrapOptions): Error => {
   const ensuredCause = ensure(cause)
-  const options = typeof messageOrOptions === 'string'
-    ? { message: messageOrOptions }
-    : messageOrOptions
+  const options =
+    typeof messageOrOptions === 'string' ? { message: messageOrOptions } : messageOrOptions
 
   const error = new Error(options.message, { cause: ensuredCause })
 

@@ -12,7 +12,7 @@ export const rule = RuntimeRule.create({
   id: RuleId.make('pr.type.match-known'),
   description: 'Type in allowed set (standard or custom)',
   preconditions: [Precondition.HasOpenPR.make()],
-  check: Effect.gen(function*() {
+  check: Effect.gen(function* () {
     const pr = yield* PrService
     const commit = pr.commit
 

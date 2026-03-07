@@ -16,17 +16,19 @@ export const createParameters = (
   inputs: Record<string, ParameterBasicInput | ParameterExclusiveInput>,
   settings: Settings.Output,
 ): Parameter[] => {
-  const inputsWithHelp: Record<string, ParameterBasicInput | ParameterExclusiveInput> = settings.help
-    ? {
-      ...inputs,
-      '-h --help': helpParameter,
-    }
-    : inputs
-  const outputs = Obj.values(inputsWithHelp).flatMap((input): (ParameterBasic | ParameterExclusive)[] =>
-    Alge.match(input)
-      .Basic((input) => [parameterBasicCreate(input, settings)])
-      .Exclusive((input) => parameterExclusiveCreate(input, settings))
-      .done()
+  const inputsWithHelp: Record<string, ParameterBasicInput | ParameterExclusiveInput> =
+    settings.help
+      ? {
+          ...inputs,
+          '-h --help': helpParameter,
+        }
+      : inputs
+  const outputs = Obj.values(inputsWithHelp).flatMap(
+    (input): (ParameterBasic | ParameterExclusive)[] =>
+      Alge.match(input)
+        .Basic((input) => [parameterBasicCreate(input, settings)])
+        .Exclusive((input) => parameterExclusiveCreate(input, settings))
+        .done(),
   )
 
   // dump({ outputs })

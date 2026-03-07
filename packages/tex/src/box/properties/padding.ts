@@ -65,7 +65,7 @@ export const resolveValue = (
   if (typeof value === 'number') return value
   if (typeof value === 'string') return Str.Visual.width(value)
   if (typeof value === 'bigint') {
-    return Math.round(Number(value) / 100 * availableSpan)
+    return Math.round((Number(value) / 100) * availableSpan)
   }
   return 0
 }

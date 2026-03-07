@@ -95,11 +95,7 @@ Test.on(Str.Visual.pad)
 ```typescript
 Test.on(add)
   // dprint-ignore
-  .cases(
-    [[2, 3], 5],
-    [[0, 0], 0],
-    [[-1, 1], 0],
-  )
+  .cases([[2, 3], 5], [[0, 0], 0], [[-1, 1], 0])
   .test()
 ```
 
@@ -131,10 +127,7 @@ Test.describe('roundtrip')
 // Transform in .test() callback
 Test.describe('addPattern')
   .on(Gitignore.addPattern)
-  .casesInput(
-    [Gitignore.empty, 'node_modules/'],
-    [decode('foo/\n'), 'bar/'],
-  )
+  .casesInput([Gitignore.empty, 'node_modules/'], [decode('foo/\n'), 'bar/'])
   .test(({ result }) => encode(result))
 ```
 
@@ -142,13 +135,8 @@ Test.describe('addPattern')
 
 ```typescript
 Test.on(analyzeFunction)
-  .describe('parameters - named', [
-    [(a: number) => a],
-    [(a: number, b: string) => [a, b]],
-  ])
-  .describe('parameters - destructured', [
-    [({ a, b }: { a: number; b: string }) => [a, b]],
-  ])
+  .describe('parameters - named', [[(a: number) => a], [(a: number, b: string) => [a, b]]])
+  .describe('parameters - destructured', [[({ a, b }: { a: number; b: string }) => [a, b]]])
   .test()
 ```
 
@@ -166,20 +154,13 @@ Test.on(analyzeFunction)
 // Correct - alignment exists, comment preserves it
 Test.on(add)
   // dprint-ignore
-  .cases(
-    [[2, 3], 5],
-    [[0, 0], 0],
-    [[-1, 1], 0],
-  )
+  .cases([[2, 3], 5], [[0, 0], 0], [[-1, 1], 0])
   .test()
 
 // Wrong - comment but no alignment (pointless)
 Test.on(parse)
   // dprint-ignore
-  .casesInput(
-    '1.2.3',
-    '0.0.1',
-  )
+  .casesInput('1.2.3', '0.0.1')
   .test()
 ```
 

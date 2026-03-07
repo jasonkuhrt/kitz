@@ -9,16 +9,10 @@ export type Any = Configurator<
   Configuration,
   Configuration,
   Configuration,
-  InputResolverGeneric<
-    InputResolver.$Func<
-      Configuration,
-      Configuration,
-      Configuration
-    >
-  >
+  InputResolverGeneric<InputResolver.$Func<Configuration, Configuration, Configuration>>
 >
 
-// dprint-ignore
+// oxfmt-ignore
 export interface Configurator<
   $Input 			              extends Configuration =
                                     Configuration,
@@ -90,7 +84,7 @@ export const normalizeDataInput = <configuratorTypeInput extends DataInput>(
 }
 
 export const standardInputResolver_shallowMerge = createInputResolver(({ current, input }) =>
-  Obj.spreadShallow(current, input)
+  Obj.spreadShallow(current, input),
 )
 
 export const empty: States.Empty = {
@@ -107,9 +101,10 @@ const isBuilder = (value: unknown): value is Builder<Configurator> =>
 
 const BuilderTypeSymbol = Symbol(`Builder`)
 
-export type InferParameters<$Configurator extends Configurator> = HasRequiredKeys<$Configurator['input']> extends true
-  ? [configuration: $Configurator['input']]
-  : [configuration?: $Configurator['input']]
+export type InferParameters<$Configurator extends Configurator> =
+  HasRequiredKeys<$Configurator['input']> extends true
+    ? [configuration: $Configurator['input']]
+    : [configuration?: $Configurator['input']]
 
 export type DataInput<$Configurator extends Configurator = Configurator> =
   | $Configurator
@@ -133,7 +128,7 @@ export namespace States {
   export type BuilderEmpty = Builder<Empty>
 }
 
-// dprint-ignore
+// oxfmt-ignore
 export interface Builder<$Configurator extends Configurator> {
     [BuilderTypeSymbol]: true
     // [$.SymbolBuilderData]: $Configurator
@@ -185,10 +180,10 @@ export interface InputResolverTyped<
     Configuration
   >,
 > {
-  <
-    current extends Configuration,
-    input extends Configuration,
-  >(parameters: { current: current; input: input }): ApplyInputResolver$Func<$$Func, current, input>
+  <current extends Configuration, input extends Configuration>(parameters: {
+    current: current
+    input: input
+  }): ApplyInputResolver$Func<$$Func, current, input>
   [InputResolver$FuncSymbol]: $$Func
 }
 
@@ -205,7 +200,7 @@ export namespace InputResolver {
   }
 
   // todo use a prelude shallowMergeWithoutUndefined
-  // dprint-ignore
+  // oxfmt-ignore
   export type Standard_ShallowMerge<$Parameters extends Parameters> =
       & $Parameters['input']
       // Only keep current keys that are NOT in input.
@@ -222,7 +217,9 @@ export namespace InputResolver {
       $Normalized extends $Input,
       $Default extends Partial<$Normalized>,
       $InputResolver$Func extends $Func<$Input, $Normalized, $Default> = never,
-    >(inputResolver: Init<$Input, $Normalized, $Default>): InputResolverGeneric<$InputResolver$Func>
+    >(
+      inputResolver: Init<$Input, $Normalized, $Default>,
+    ): InputResolverGeneric<$InputResolver$Func>
   }
 
   export interface Init<
@@ -278,15 +275,12 @@ export type ApplyInputResolver$Func<
   $$Func extends InputResolver.$Func,
   $Current extends Configuration,
   $Input extends Configuration,
-  __ = (
-    & $$Func
-    & {
-      parameters: {
-        current: $Current
-        input: $Input
-      }
+  __ = ($$Func & {
+    parameters: {
+      current: $Current
+      input: $Input
     }
-  )['return'],
+  })['return'],
 > = __
 
 export type Incrementify<
@@ -299,15 +293,11 @@ export type Incrementify<
   __Guaranteed = {
     [k in keyof $Normalized as k extends keyof $Default ? k : never]: $Normalized[k]
   },
-  __ =
-    & __Optional
-    & __Guaranteed,
+  __ = __Optional & __Guaranteed,
 > = __
 
 export type Configuration = object
 
-export type Simplify<$Type> =
-  & {
-    [_ in keyof $Type]: $Type[_]
-  }
-  & {}
+export type Simplify<$Type> = {
+  [_ in keyof $Type]: $Type[_]
+} & {}

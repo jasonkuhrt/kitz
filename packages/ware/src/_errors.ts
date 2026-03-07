@@ -45,8 +45,9 @@ export const partitionAndAggregateErrors = <$Results>(
   results: $Results[],
 ): [Exclude<$Results, Error>[], null | ContextualAggregateError<Extract<$Results, Error>>] => {
   const [values, errors] = Arr.partitionErrors(results)
-  const error = errors.length > 0
-    ? new ContextualAggregateError(`One or more extensions are invalid.`, {}, errors)
-    : null
+  const error =
+    errors.length > 0
+      ? new ContextualAggregateError(`One or more extensions are invalid.`, {}, errors)
+      : null
   return [values, error]
 }

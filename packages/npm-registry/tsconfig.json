@@ -7,19 +7,10 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "paths": {
-      "#npm-registry": [
-        "./src/_.js"
-      ],
-      "#npm-registry/*": [
-        "./src/*.js"
-      ]
+      "#npm-registry": ["./src/_.js"],
+      "#npm-registry/*": ["./src/*.js"]
     }
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "build",
-    "node_modules"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["build", "node_modules"]
 }

@@ -6,12 +6,8 @@
     "declaration": true,
     "declarationMap": true,
     "paths": {
-      "#color": [
-        "./src/_.js"
-      ],
-      "#color/*": [
-        "./src/*.js"
-      ]
+      "#color": ["./src/_.js"],
+      "#color/*": ["./src/*.js"]
     }
   }
 }

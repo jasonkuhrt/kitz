@@ -68,7 +68,7 @@ function gitEffect<$raw, $value = $raw>(
               context: { operation, ...(detail ? { detail } : {}) },
               cause: Err.ensure(error),
             }),
-        })
+        }),
       ),
     )
   }
@@ -99,7 +99,7 @@ const makeGitService = (git: SimpleGit): GitService => ({
               email: entry.author_email,
             }),
             date: new Date(entry.date),
-          })
+          }),
         ),
     }),
 
@@ -118,7 +118,8 @@ const makeGitService = (git: SimpleGit): GitService => ({
       tag,
     ),
 
-  pushTags: (remote = 'origin') => gitEffect('pushTags', () => git.pushTags(remote), `to ${remote}`),
+  pushTags: (remote = 'origin') =>
+    gitEffect('pushTags', () => git.pushTags(remote), `to ${remote}`),
 
   getRoot: () => gitEffect('getRoot', async () => (await git.revparse(['--show-toplevel'])).trim()),
 
@@ -174,17 +175,27 @@ const makeGitService = (git: SimpleGit): GitService => ({
     gitEffect(
       'pushTag',
       async () => {
-        const args = force ? ['push', '--force', remote, `refs/tags/${tag}`] : ['push', remote, `refs/tags/${tag}`]
+        const args = force
+          ? ['push', '--force', remote, `refs/tags/${tag}`]
+          : ['push', remote, `refs/tags/${tag}`]
         await git.raw(args)
       },
       `${tag} to ${remote}${force ? ' (force)' : ''}`,
     ),
 
   deleteRemoteTag: (tag, remote = 'origin') =>
-    gitEffect('deleteRemoteTag', () => git.raw(['push', remote, `:refs/tags/${tag}`]), `${tag} from ${remote}`),
+    gitEffect(
+      'deleteRemoteTag',
+      () => git.raw(['push', remote, `:refs/tags/${tag}`]),
+      `${tag} from ${remote}`,
+    ),
 
   getRemoteUrl: (remote = 'origin') =>
-    gitEffect('getRemoteUrl', async () => (await git.raw(['ls-remote', '--get-url', remote])).trim(), remote),
+    gitEffect(
+      'getRemoteUrl',
+      async () => (await git.raw(['ls-remote', '--get-url', remote])).trim(),
+      remote,
+    ),
 })
 
 // ============================================================================

@@ -23,9 +23,11 @@ import type * as Level from './level.js'
 /**
  * Trim whitespace from string.
  */
-type Trim<S extends string> = S extends ` ${infer Rest}` ? Trim<Rest>
-  : S extends `${infer Rest} ` ? Trim<Rest>
-  : S
+type Trim<S extends string> = S extends ` ${infer Rest}`
+  ? Trim<Rest>
+  : S extends `${infer Rest} `
+    ? Trim<Rest>
+    : S
 
 // ============================================================================
 // Defaults
@@ -46,7 +48,8 @@ type DefaultLevel = {
 /**
  * Extract negation prefix.
  */
-type ExtractNegate<S extends string> = S extends `!${infer Rest}` ? { negate: true; rest: Rest }
+type ExtractNegate<S extends string> = S extends `!${infer Rest}`
+  ? { negate: true; rest: Rest }
   : { negate: false; rest: S }
 
 /**
@@ -62,13 +65,19 @@ type LevelName = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'fatal'
 /**
  * Map level numbers to names.
  */
-type LevelNumToName<N extends LevelNumString> = N extends '1' ? 'trace'
-  : N extends '2' ? 'debug'
-  : N extends '3' ? 'info'
-  : N extends '4' ? 'warn'
-  : N extends '5' ? 'error'
-  : N extends '6' ? 'fatal'
-  : never
+type LevelNumToName<N extends LevelNumString> = N extends '1'
+  ? 'trace'
+  : N extends '2'
+    ? 'debug'
+    : N extends '3'
+      ? 'info'
+      : N extends '4'
+        ? 'warn'
+        : N extends '5'
+          ? 'error'
+          : N extends '6'
+            ? 'fatal'
+            : never
 
 /**
  * Extract level specification from the end of a pattern.
@@ -76,65 +85,74 @@ type LevelNumToName<N extends LevelNumString> = N extends '1' ? 'trace'
  */
 type ExtractLevel<S extends string> =
   // @* - wildcard level
-  S extends `${infer Path}@*` ? {
-      path: Path
-      level: { value: '*'; comp: 'eq' }
-    }
-    // @<level>+ - level or higher
-    : S extends `${infer Path}@${infer L extends LevelName | LevelNumString}+` ? {
+  S extends `${infer Path}@*`
+    ? {
         path: Path
-        level: {
-          value: L extends LevelNumString ? LevelNumToName<L> : L
-          comp: 'gte'
-        }
+        level: { value: '*'; comp: 'eq' }
       }
-    // @<level>- - level or lower
-    : S extends `${infer Path}@${infer L extends LevelName | LevelNumString}-` ? {
-        path: Path
-        level: {
-          value: L extends LevelNumString ? LevelNumToName<L> : L
-          comp: 'lte'
+    : // @<level>+ - level or higher
+      S extends `${infer Path}@${infer L extends LevelName | LevelNumString}+`
+      ? {
+          path: Path
+          level: {
+            value: L extends LevelNumString ? LevelNumToName<L> : L
+            comp: 'gte'
+          }
         }
-      }
-    // @<level> - exact level
-    : S extends `${infer Path}@${infer L extends LevelName | LevelNumString}` ? {
-        path: Path
-        level: {
-          value: L extends LevelNumString ? LevelNumToName<L> : L
-          comp: 'eq'
-        }
-      }
-    // No level specified - use default
-    : {
-      path: S
-      level: DefaultLevel
-    }
+      : // @<level>- - level or lower
+        S extends `${infer Path}@${infer L extends LevelName | LevelNumString}-`
+        ? {
+            path: Path
+            level: {
+              value: L extends LevelNumString ? LevelNumToName<L> : L
+              comp: 'lte'
+            }
+          }
+        : // @<level> - exact level
+          S extends `${infer Path}@${infer L extends LevelName | LevelNumString}`
+          ? {
+              path: Path
+              level: {
+                value: L extends LevelNumString ? LevelNumToName<L> : L
+                comp: 'eq'
+              }
+            }
+          : // No level specified - use default
+            {
+              path: S
+              level: DefaultLevel
+            }
 
 /**
  * Parse path pattern with descendant wildcards.
  */
 type ParsePath<S extends string> =
   // Root with descendants: *
-  S extends '*' ? { value: '.'; descendants: { includeParent: true } }
-    // Root descendants only: :*
-    : S extends ':*' ? { value: '.'; descendants: { includeParent: false } }
-    // Path descendants only: <path>::* (check this BEFORE <path>:* to avoid greedy matching)
-    : S extends `${infer P}::*` ? {
-        value: P extends `.${string}` ? P : `.${P}`
-        descendants: { includeParent: false }
-      }
-    // Path with descendants: <path>:*
-    : S extends `${infer P}:*` ? {
-        value: P extends `.${string}` ? P : `.${P}`
-        descendants: { includeParent: true }
-      }
-    // Explicit root
-    : S extends '.' ? { value: '.'; descendants: false }
-    // Regular path
-    : {
-      value: S extends `.${string}` ? S : S extends '' ? '.' : `.${S}`
-      descendants: false
-    }
+  S extends '*'
+    ? { value: '.'; descendants: { includeParent: true } }
+    : // Root descendants only: :*
+      S extends ':*'
+      ? { value: '.'; descendants: { includeParent: false } }
+      : // Path descendants only: <path>::* (check this BEFORE <path>:* to avoid greedy matching)
+        S extends `${infer P}::*`
+        ? {
+            value: P extends `.${string}` ? P : `.${P}`
+            descendants: { includeParent: false }
+          }
+        : // Path with descendants: <path>:*
+          S extends `${infer P}:*`
+          ? {
+              value: P extends `.${string}` ? P : `.${P}`
+              descendants: { includeParent: true }
+            }
+          : // Explicit root
+            S extends '.'
+            ? { value: '.'; descendants: false }
+            : // Regular path
+              {
+                value: S extends `.${string}` ? S : S extends '' ? '.' : `.${S}`
+                descendants: false
+              }
 
 // ============================================================================
 // Main Parser
@@ -143,15 +161,17 @@ type ParsePath<S extends string> =
 /**
  * Parse a single filter pattern at the type level.
  */
-export type ParseOne<S extends string> = ExtractNegate<S> extends { negate: infer N; rest: infer R extends string }
-  ? ExtractLevel<R> extends { path: infer P extends string; level: infer L } ? {
-      originalInput: S
-      negate: N
-      path: ParsePath<P>
-      level: L
-    }
-  : never
-  : never
+export type ParseOne<S extends string> =
+  ExtractNegate<S> extends { negate: infer N; rest: infer R extends string }
+    ? ExtractLevel<R> extends { path: infer P extends string; level: infer L }
+      ? {
+          originalInput: S
+          negate: N
+          path: ParsePath<P>
+          level: L
+        }
+      : never
+    : never
 
 /**
  * Parse a comma-separated list of filter patterns.
@@ -165,6 +185,8 @@ export type ParseOne<S extends string> = ExtractNegate<S> extends { negate: infe
  * // ]
  * ```
  */
-export type Parse<S extends string> = string extends S ? Parsed[] // Non-literal string fallback
-  : Str.Split<S, ','> extends infer Parts extends readonly string[] ? { [K in keyof Parts]: ParseOne<Trim<Parts[K]>> }
-  : never
+export type Parse<S extends string> = string extends S
+  ? Parsed[] // Non-literal string fallback
+  : Str.Split<S, ','> extends infer Parts extends readonly string[]
+    ? { [K in keyof Parts]: ParseOne<Trim<Parts[K]>> }
+    : never

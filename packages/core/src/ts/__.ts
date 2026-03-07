@@ -12,13 +12,14 @@ import type * as __variancePhantom from '@kitz/core/_internal/ts/variance-phanto
  * in declaration output. Required for consumer type inference.
  * See: https://github.com/microsoft/TypeScript/issues/61700
  */
-export type __InternalTsResolution =
-  | __err.StaticError
-  | __simplify.Top<never>
-  | __simpleSignature.GetSignature<never>
-  | __inhabitance.IsNever<never>
-  | __union.ToTuple<never>
-  | __variancePhantom.Co<never>
+export interface __InternalTsResolution {
+  readonly staticError: __err.StaticError
+  readonly simplifyTop: __simplify.Top<never>
+  readonly getSignature: __simpleSignature.GetSignature<never>
+  readonly isNever: __inhabitance.IsNever<never>
+  readonly toTuple: __union.ToTuple<never>
+  readonly varianceCo: __variancePhantom.Co<never>
+}
 
 export * from './ts.js'
 

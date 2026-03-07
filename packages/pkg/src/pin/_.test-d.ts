@@ -4,36 +4,18 @@ import * as Pin from './pin.js'
 // fromString should infer specific types from literal strings
 
 // Range - semver patterns (^, ~, >=, etc., digits, *, x)
-type _range = Assert.exact.of<
-  ReturnType<typeof Pin.fromString<'@kitz/core@^1.0.0'>>,
-  Pin.Range
->
+type _range = Assert.exact.of<ReturnType<typeof Pin.fromString<'@kitz/core@^1.0.0'>>, Pin.Range>
 
-type _rangeTilde = Assert.exact.of<
-  ReturnType<typeof Pin.fromString<'lodash@~4.17.0'>>,
-  Pin.Range
->
+type _rangeTilde = Assert.exact.of<ReturnType<typeof Pin.fromString<'lodash@~4.17.0'>>, Pin.Range>
 
-type _rangeExact = Assert.exact.of<
-  ReturnType<typeof Pin.fromString<'express@4.18.0'>>,
-  Pin.Range
->
+type _rangeExact = Assert.exact.of<ReturnType<typeof Pin.fromString<'express@4.18.0'>>, Pin.Range>
 
-type _rangeWildcard = Assert.exact.of<
-  ReturnType<typeof Pin.fromString<'pkg@*'>>,
-  Pin.Range
->
+type _rangeWildcard = Assert.exact.of<ReturnType<typeof Pin.fromString<'pkg@*'>>, Pin.Range>
 
 // Tag - dist-tag names
-type _tagLatest = Assert.exact.of<
-  ReturnType<typeof Pin.fromString<'lodash@latest'>>,
-  Pin.Tag
->
+type _tagLatest = Assert.exact.of<ReturnType<typeof Pin.fromString<'lodash@latest'>>, Pin.Tag>
 
-type _tagNext = Assert.exact.of<
-  ReturnType<typeof Pin.fromString<'@kitz/core@next'>>,
-  Pin.Tag
->
+type _tagNext = Assert.exact.of<ReturnType<typeof Pin.fromString<'@kitz/core@next'>>, Pin.Tag>
 
 // Workspace - workspace: protocol
 type _workspace = Assert.exact.of<
@@ -63,10 +45,7 @@ type _gitHub = Assert.exact.of<
 >
 
 // Path - file: protocol
-type _path = Assert.exact.of<
-  ReturnType<typeof Pin.fromString<'my-pkg@file:../shared'>>,
-  Pin.Path
->
+type _path = Assert.exact.of<ReturnType<typeof Pin.fromString<'my-pkg@file:../shared'>>, Pin.Path>
 
 type _pathAbsolute = Assert.exact.of<
   ReturnType<typeof Pin.fromString<'@local/util@file:/absolute/path'>>,
@@ -96,10 +75,7 @@ type _aliasScoped = Assert.exact.of<
 >
 
 // Plain string should return Pin union
-type _plainString = Assert.exact.of<
-  ReturnType<typeof Pin.fromString<string>>,
-  Pin.Pin
->
+type _plainString = Assert.exact.of<ReturnType<typeof Pin.fromString<string>>, Pin.Pin>
 
 // fromLiteral should infer specific types from literal strings (path-style API)
 type _literalExact = Assert.exact.of<

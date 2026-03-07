@@ -34,17 +34,19 @@ export const analyzeRequested = (
   requestedPackages: readonly string[],
   tags: string[],
 ): Effect.Effect<readonly CascadeQueryResult[], Resource.ResourceError, FileSystem.FileSystem> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const dependencyGraph = yield* buildDependencyGraph(packages)
     const results: CascadeQueryResult[] = []
 
     for (const requestedPackage of requestedPackages) {
-      const pkg = packages.find((p) => p.name.moniker === requestedPackage || p.scope === requestedPackage)
+      const pkg = packages.find(
+        (p) => p.name.moniker === requestedPackage || p.scope === requestedPackage,
+      )
 
       if (!pkg) {
         yield* Effect.logWarning(
-          `Cascade analysis: requested package "${requestedPackage}" not found in workspace. `
-            + `Available packages: ${packages.map((p) => p.name.moniker).join(', ')}`,
+          `Cascade analysis: requested package "${requestedPackage}" not found in workspace. ` +
+            `Available packages: ${packages.map((p) => p.name.moniker).join(', ')}`,
         )
         results.push({
           requestedPackage,
@@ -54,7 +56,9 @@ export const analyzeRequested = (
         continue
       }
 
-      const pkgReleases = releases.filter((release) => release.package.name.moniker === pkg.name.moniker)
+      const pkgReleases = releases.filter(
+        (release) => release.package.name.moniker === pkg.name.moniker,
+      )
       const cascades = detect(packages, pkgReleases, dependencyGraph, tags)
 
       results.push({
@@ -103,7 +107,10 @@ export const detect = (
 
   while (queue.length > 0) {
     const pkgName = queue.shift()!
-    const dependents = Option.getOrElse(HashMap.get(dependencyGraph, pkgName), (): readonly string[] => [])
+    const dependents = Option.getOrElse(
+      HashMap.get(dependencyGraph, pkgName),
+      (): readonly string[] => [],
+    )
 
     for (const dependent of dependents) {
       // Skip if already visited (releasing, already queued for cascade, or in queue)
@@ -116,7 +123,9 @@ export const detect = (
   }
 
   // Build cascade releases (use string keys for Map lookup)
-  const nameToPackage = HashMap.fromIterable(packages.map((p): [string, Package] => [p.name.moniker, p]))
+  const nameToPackage = HashMap.fromIterable(
+    packages.map((p): [string, Package] => [p.name.moniker, p]),
+  )
   const cascades: Official[] = []
 
   for (const name of needsCascade) {
@@ -154,11 +163,13 @@ export const detect = (
       ? OfficialIncrement.make({ from: currentVersion.value, to: nextVersion, bump: 'patch' })
       : OfficialFirst.make({ version: nextVersion })
 
-    cascades.push(Official.make({
-      package: pkg,
-      version,
-      commits: cascadeCommits,
-    }))
+    cascades.push(
+      Official.make({
+        package: pkg,
+        version,
+        commits: cascadeCommits,
+      }),
+    )
   }
 
   return cascades

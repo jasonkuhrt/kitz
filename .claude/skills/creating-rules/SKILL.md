@@ -51,8 +51,8 @@ Location: `.claude/rules/<topic>.md`
 ```markdown
 ---
 paths:
-  - "packages/core/**/*"
-  - "packages/cli/**/*"
+  - 'packages/core/**/*'
+  - 'packages/cli/**/*'
 ---
 
 # <Topic>

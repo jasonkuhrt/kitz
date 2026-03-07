@@ -142,13 +142,16 @@ export const createBlockBuilder = (params?: { getSuperChain: () => any }): Block
     list: (...args: ListArgs) => {
       const parameters = args.length === 1 ? null : args[0]
       const childrenish = args.length === 1 ? args[0] : args[1]
-      const child = typeof childrenish === `function`
-        ? toInternalBuilder(childrenish(createListBuilder()))?._.node ?? null
-        : childrenish === null
-        ? null
-        : new List(
-          childrenish.map((_) => typeof _ === `string` ? (_ === null ? null : new Block(new Leaf(_))) : _),
-        )
+      const child =
+        typeof childrenish === `function`
+          ? (toInternalBuilder(childrenish(createListBuilder()))?._.node ?? null)
+          : childrenish === null
+            ? null
+            : new List(
+                childrenish.map((_) =>
+                  typeof _ === `string` ? (_ === null ? null : new Block(new Leaf(_))) : _,
+                ),
+              )
       if (child) {
         parentNode.addChild(child)
         if (parameters) {
@@ -202,10 +205,10 @@ export const resolveBlockMethodArgs = (
             _ === null
               ? null
               : _ instanceof Block
-              ? _
-              : typeof _ === `string`
-              ? new Leaf(_)
-              : toInternalBuilder(_)?._.node ?? null
+                ? _
+                : typeof _ === `string`
+                  ? new Leaf(_)
+                  : (toInternalBuilder(_)?._.node ?? null),
           )
           .filter((_): _ is Block => _ !== null),
       )

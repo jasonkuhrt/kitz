@@ -113,9 +113,7 @@ describe('Report', () => {
 
   test('schema roundtrip', () => {
     const report = Report.make({
-      results: [
-        Finished.make({ rule: ruleRef('env.git-clean'), duration: 10 }),
-      ],
+      results: [Finished.make({ rule: ruleRef('env.git-clean'), duration: 10 })],
     })
     const encoded = Schema.encodeSync(Report)(report)
     const decoded = Schema.decodeSync(Report)(encoded)

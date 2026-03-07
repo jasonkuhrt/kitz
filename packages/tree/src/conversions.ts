@@ -47,7 +47,7 @@ export const toList = <$Value>(tree: TreeType<$Value>): $Value[] => {
 
   const toListNode = (node: Node<$Value>): $Value[] => {
     const result: $Value[] = [node.value]
-    node.children.forEach(child => {
+    node.children.forEach((child) => {
       result.push(...toListNode(child))
     })
     return result
@@ -96,20 +96,20 @@ export const toList = <$Value>(tree: TreeType<$Value>): $Value[] => {
  * // [Tree(electronics -> [computers -> [laptops], phones])]
  * ```
  */
-export const manyFromList = <value extends { id: string; parentId?: string | undefined | null }>(
+export const manyFromList = <value extends { id: string; parentId?: string | null }>(
   values: value[],
-  rootId?: string | undefined,
+  rootId?: string,
 ): Forest<value> => {
   const roots: Node<value>[] = []
   const nodeMap = new Map<string, Node<value>>()
 
   // Create all nodes
-  values.forEach(item => {
+  values.forEach((item) => {
     nodeMap.set(item.id, Node(item))
   })
 
   // Build hierarchy
-  values.forEach(item => {
+  values.forEach((item) => {
     const itemNode = nodeMap.get(item.id)!
     if (item.parentId === rootId || !item.parentId) {
       // Items match the rootId OR have no parent (orphans) become roots
@@ -122,7 +122,7 @@ export const manyFromList = <value extends { id: string; parentId?: string | und
     }
   })
 
-  return roots.map(root => Tree(root))
+  return roots.map((root) => Tree(root))
 }
 
 /**
@@ -162,9 +162,9 @@ export const manyFromList = <value extends { id: string; parentId?: string | und
  * console.log(emptyTree.root) // null
  * ```
  */
-export const fromList = <value extends { id: string; parentId?: string | undefined | null }>(
+export const fromList = <value extends { id: string; parentId?: string | null }>(
   values: value[],
-  rootId?: string | undefined,
+  rootId?: string,
 ): Tree<value> => {
   const forest = manyFromList(values, rootId)
 

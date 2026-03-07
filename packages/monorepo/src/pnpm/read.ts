@@ -51,7 +51,7 @@ export interface ReadOptions {
 // Conditional return type
 // ============================================================================
 
-// dprint-ignore
+// oxfmt-ignore
 type ReadResult<O extends ReadOptions | undefined> =
   O extends { manifests: true }  ? DiscoveredConfig :
   O extends { expand: true }     ? ExpandedConfig :
@@ -71,13 +71,28 @@ type ReadError =
 
 const CONFIG_FILENAME = 'pnpm-workspace.yaml'
 
+const toExpandedConfig = (config: Config, packages: readonly Fs.Path.AbsDir[]): ExpandedConfig => ({
+  catalog: config.catalog,
+  catalogs: config.catalogs,
+  packages,
+})
+
+const toDiscoveredConfig = (
+  config: Config,
+  packages: readonly DiscoveredPackage[],
+): DiscoveredConfig => ({
+  catalog: config.catalog,
+  catalogs: config.catalogs,
+  packages,
+})
+
 /**
  * Walk up from a directory to find pnpm-workspace.yaml.
  */
 const locate = (
   startDir: Fs.Path.AbsDir,
 ): Effect.Effect<Option.Option<Fs.Path.AbsFile>, PlatformError, FileSystem.FileSystem> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     let current = startDir
 
@@ -107,7 +122,7 @@ const parseConfig = (
   content: string,
   path: Fs.Path.AbsFile,
 ): Effect.Effect<Config, YamlParseError | ConfigValidationError> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     // Parse YAML
     const parsed = yield* Effect.try({
       try: () => YAML.parse(content) as unknown,
@@ -145,7 +160,7 @@ const expandGlobs = (
   workspaceRoot: Fs.Path.AbsDir,
   options?: { includeRoot?: boolean },
 ): Effect.Effect<readonly Fs.Path.AbsDir[], GlobError> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const patterns = config.packages ?? []
     const results: Fs.Path.AbsDir[] = []
 
@@ -182,7 +197,7 @@ const expandGlobs = (
 const loadManifest = (
   path: Fs.Path.AbsDir,
 ): Effect.Effect<Option.Option<DiscoveredPackage>, Resource.ResourceError, FileSystem.FileSystem> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const manifest = yield* Pkg.Manifest.resource.read(path)
     return Option.map(manifest, (m) => ({ path, manifest: m }))
   })
@@ -217,54 +232,54 @@ const loadManifest = (
  */
 export const read: {
   (): Effect.Effect<Config, ReadError, FileSystem.FileSystem | Env.Env>
-  <O extends ReadOptions>(options: O): Effect.Effect<ReadResult<O>, ReadError, FileSystem.FileSystem | Env.Env>
-} =
-  (<O extends ReadOptions>(options?: O): Effect.Effect<ReadResult<O>, ReadError, FileSystem.FileSystem | Env.Env> =>
-    Effect.gen(function*() {
-      const env = yield* Env.Env
+  <O extends ReadOptions>(
+    options: O,
+  ): Effect.Effect<ReadResult<O>, ReadError, FileSystem.FileSystem | Env.Env>
+} = (<O extends ReadOptions>(
+  options?: O,
+): Effect.Effect<ReadResult<O>, ReadError, FileSystem.FileSystem | Env.Env> =>
+  Effect.gen(function* () {
+    const env = yield* Env.Env
 
-      // 1. Locate pnpm-workspace.yaml
-      const configPathOption = yield* locate(env.cwd)
-      if (Option.isNone(configPathOption)) {
-        return yield* Effect.fail(
-          new ConfigNotFoundError({
-            context: { searchPath: Fs.Path.toString(env.cwd) },
-          }),
-        )
-      }
-      const configPath = configPathOption.value
+    // 1. Locate pnpm-workspace.yaml
+    const configPathOption = yield* locate(env.cwd)
+    if (Option.isNone(configPathOption)) {
+      return yield* Effect.fail(
+        new ConfigNotFoundError({
+          context: { searchPath: Fs.Path.toString(env.cwd) },
+        }),
+      )
+    }
+    const configPath = configPathOption.value
 
-      // Get workspace root (directory containing the config)
-      const workspaceRoot = Fs.Path.toDir(configPath)
+    // Get workspace root (directory containing the config)
+    const workspaceRoot = Fs.Path.toDir(configPath)
 
-      // 2. Read and parse YAML
-      const content = yield* Fs.readString(configPath)
-      const config = yield* parseConfig(content, configPath)
+    // 2. Read and parse YAML
+    const content = yield* Fs.readString(configPath)
+    const config = yield* parseConfig(content, configPath)
 
-      // 3. If not expanding, return raw config
-      if (!options?.expand) {
-        return config as any
-      }
+    // 3. If not expanding, return raw config
+    if (!options?.expand) {
+      return config as ReadResult<O>
+    }
 
-      // 4. Expand globs to paths
-      const expandedPaths = yield* expandGlobs(config, workspaceRoot, options)
+    // 4. Expand globs to paths
+    const expandedPaths = yield* expandGlobs(config, workspaceRoot, options)
 
-      // 5. If not loading manifests, return expanded config
-      if (!options?.manifests) {
-        return {
-          ...config,
-          packages: expandedPaths,
-        } as any
-      }
+    // 5. If not loading manifests, return expanded config
+    if (!options?.manifests) {
+      return toExpandedConfig(config, expandedPaths) as ReadResult<O>
+    }
 
-      // 6. Load manifests for each package
-      const packageOptions = yield* Effect.all(expandedPaths.map((path) => loadManifest(path)), {
+    // 6. Load manifests for each package
+    const packageOptions = yield* Effect.all(
+      expandedPaths.map((path) => loadManifest(path)),
+      {
         concurrency: 'unbounded',
-      })
-      const packages = packageOptions.filter(Option.isSome).map((pkg) => pkg.value)
+      },
+    )
+    const packages = packageOptions.filter(Option.isSome).map((pkg) => pkg.value)
 
-      return {
-        ...config,
-        packages,
-      } as any
-    })) as any
+    return toDiscoveredConfig(config, packages) as ReadResult<O>
+  })) as any

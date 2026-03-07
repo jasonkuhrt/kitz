@@ -22,37 +22,29 @@ test('policyFilter preserves undefined values', () => {
 })
 
 Test.on((obj: Record<string, number>) => Obj.pick(obj, (_k, v: number) => v > 2))
-  .cases(
-    [[testObj], { c: 3, d: 4 }],
-  )
+  .cases([[testObj], { c: 3, d: 4 }])
   .test()
 
-Test.on((obj: Record<string, number>) => Obj.pick(obj, k => k === 'a' || k === 'c'))
-  .cases(
-    [[testObj], { a: 1, c: 3 }],
-  )
+Test.on((obj: Record<string, number>) => Obj.pick(obj, (k) => k === 'a' || k === 'c'))
+  .cases([[testObj], { a: 1, c: 3 }])
   .test()
 
 Test.on((obj: Record<string, number>) =>
   Obj.pick(obj, (_k, v: number, o?: Record<string, number>) => {
-    const avg = Object.values(o!).reduce((a: number, b: number) => a + b, 0) / Object.keys(o!).length
+    const avg =
+      Object.values(o!).reduce((a: number, b: number) => a + b, 0) / Object.keys(o!).length
     return v < avg
-  })
+  }),
 )
   .cases([[testObj], { a: 1, b: 2 }])
   .test()
 
 Test.on((obj: Record<string, number>) => Obj.pick(obj, () => false))
-  .cases(
-    [[testObj], {}],
-  )
+  .cases([[testObj], {}])
   .test()
 
 Test.on((obj: Record<string, number>) => Obj.pick(obj, () => true))
-  .cases(
-    [[testObj], { a: 1, b: 2, c: 3, d: 4 }],
-    [[{}], {}],
-  )
+  .cases([[testObj], { a: 1, b: 2, c: 3, d: 4 }], [[{}], {}])
   .test()
 
 Test.on((obj: Record<string, number>, keys: readonly string[]) => Obj.partition(obj, keys))
@@ -65,13 +57,11 @@ Test.on((obj: Record<string, number>, keys: readonly string[]) => Obj.partition(
 
 test('policyFilter allow/deny are complementary', () => {
   fc.assert(
-    fc.property(
-      fc.dictionary(fc.string(), fc.anything()),
-      fc.array(fc.string()),
-      (obj, keys) => {
-        // Filter out prototype pollution keys
-        const safeObj = Object.fromEntries(
-          Object.entries(obj).filter(([k]) =>
+    fc.property(fc.dictionary(fc.string(), fc.anything()), fc.array(fc.string()), (obj, keys) => {
+      // Filter out prototype pollution keys
+      const safeObj = Object.fromEntries(
+        Object.entries(obj).filter(
+          ([k]) =>
             ![
               '__proto__',
               'constructor',
@@ -82,10 +72,11 @@ test('policyFilter allow/deny are complementary', () => {
               'isPrototypeOf',
               'propertyIsEnumerable',
               'toLocaleString',
-            ].includes(k)
-          ),
-        )
-        const safeKeys = keys.filter(k =>
+            ].includes(k),
+        ),
+      )
+      const safeKeys = keys.filter(
+        (k) =>
           ![
             '__proto__',
             'constructor',
@@ -96,45 +87,41 @@ test('policyFilter allow/deny are complementary', () => {
             'isPrototypeOf',
             'propertyIsEnumerable',
             'toLocaleString',
-          ].includes(k)
-        )
+          ].includes(k),
+      )
 
-        const allowed = Obj.policyFilter('allow', safeObj, safeKeys)
-        const denied = Obj.policyFilter('deny', safeObj, safeKeys)
+      const allowed = Obj.policyFilter('allow', safeObj, safeKeys)
+      const denied = Obj.policyFilter('deny', safeObj, safeKeys)
 
-        // Every own key in obj is either in allowed or denied, never both
-        Object.keys(safeObj).forEach(key => {
-          const inAllowed = Object.prototype.hasOwnProperty.call(allowed, key)
-          const inDenied = Object.prototype.hasOwnProperty.call(denied, key)
-          expect(inAllowed).toBe(!inDenied)
-        })
+      // Every own key in obj is either in allowed or denied, never both
+      Object.keys(safeObj).forEach((key) => {
+        const inAllowed = Object.prototype.hasOwnProperty.call(allowed, key)
+        const inDenied = Object.prototype.hasOwnProperty.call(denied, key)
+        expect(inAllowed).toBe(!inDenied)
+      })
 
-        // Combined they reconstruct the original object
-        expect({ ...allowed, ...denied }).toEqual(safeObj)
-      },
-    ),
+      // Combined they reconstruct the original object
+      expect({ ...allowed, ...denied }).toEqual(safeObj)
+    }),
   )
 })
 
 test('pick with predicate preserves values unchanged', () => {
   fc.assert(
-    fc.property(
-      fc.dictionary(fc.string(), fc.anything()),
-      (obj) => {
-        // Filter out prototype pollution keys
-        const safeObj = Object.fromEntries(
-          Object.entries(obj).filter(([k]) => !['__proto__', 'constructor', 'prototype'].includes(k)),
-        )
+    fc.property(fc.dictionary(fc.string(), fc.anything()), (obj) => {
+      // Filter out prototype pollution keys
+      const safeObj = Object.fromEntries(
+        Object.entries(obj).filter(([k]) => !['__proto__', 'constructor', 'prototype'].includes(k)),
+      )
 
-        const filtered = Obj.pick(safeObj, () => true)
-        expect(filtered).toEqual(safeObj)
+      const filtered = Obj.pick(safeObj, () => true)
+      expect(filtered).toEqual(safeObj)
 
-        // Values are the same reference
-        Object.keys(filtered).forEach(key => {
-          expect(filtered[key]).toBe(safeObj[key])
-        })
-      },
-    ),
+      // Values are the same reference
+      Object.keys(filtered).forEach((key) => {
+        expect(filtered[key]).toBe(safeObj[key])
+      })
+    }),
   )
 })
 
@@ -155,12 +142,9 @@ test('policyFilter is immutable', () => {
 
 test('empty keys behavior', () => {
   fc.assert(
-    fc.property(
-      fc.dictionary(fc.string(), fc.anything()),
-      (obj) => {
-        expect(Obj.policyFilter('allow', obj, [])).toEqual({})
-        expect(Obj.policyFilter('deny', obj, [])).toEqual(obj)
-      },
-    ),
+    fc.property(fc.dictionary(fc.string(), fc.anything()), (obj) => {
+      expect(Obj.policyFilter('allow', obj, [])).toEqual({})
+      expect(Obj.policyFilter('deny', obj, [])).toEqual(obj)
+    }),
   )
 })

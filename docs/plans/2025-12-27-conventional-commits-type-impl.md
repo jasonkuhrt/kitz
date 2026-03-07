@@ -407,8 +407,7 @@ Expected: FAIL
 /**
  * Check if a Type is a standard type.
  */
-export const isStandard = (type: Type): type is Standard =>
-  type._tag === 'Standard'
+export const isStandard = (type: Type): type is Standard => type._tag === 'Standard'
 
 /**
  * Check if a Type is a custom type.
@@ -493,8 +492,7 @@ Expected: FAIL
 /**
  * Type-level narrowing: returns Standard for known types, Custom otherwise.
  */
-type From<$value extends string> = $value extends StandardValue ? Standard
-  : Custom
+type From<$value extends string> = $value extends StandardValue ? Standard : Custom
 
 /**
  * Create a Type from a raw string.
@@ -564,22 +562,20 @@ import { Schema } from 'effect'
 import { Footer } from './footer.js'
 import { Type } from './type.js'
 
-export class SingleTargetCommit
-  extends Schema.TaggedClass<SingleTargetCommit>()('SingleTarget', {
-    /** Commit type */
-    type: Type, // Changed from Schema.String
-    /** Package scopes (can be empty, one, or multiple—all get same treatment) */
-    scopes: Schema.Array(Schema.String),
-    /** Whether this is a breaking change (applies to ALL scopes) */
-    breaking: Schema.Boolean,
-    /** Commit message (first line after type/scope) */
-    message: Schema.String,
-    /** Optional commit body */
-    body: Schema.OptionFromNullOr(Schema.String),
-    /** Commit footers */
-    footers: Schema.Array(Footer),
-  })
-{}
+export class SingleTargetCommit extends Schema.TaggedClass<SingleTargetCommit>()('SingleTarget', {
+  /** Commit type */
+  type: Type, // Changed from Schema.String
+  /** Package scopes (can be empty, one, or multiple—all get same treatment) */
+  scopes: Schema.Array(Schema.String),
+  /** Whether this is a breaking change (applies to ALL scopes) */
+  breaking: Schema.Boolean,
+  /** Commit message (first line after type/scope) */
+  message: Schema.String,
+  /** Optional commit body */
+  body: Schema.OptionFromNullOr(Schema.String),
+  /** Commit footers */
+  footers: Schema.Array(Footer),
+}) {}
 ```
 
 **Step 3: Update existing tests to use Type**

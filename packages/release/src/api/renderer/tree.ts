@@ -73,9 +73,8 @@ const formatPrimaryLine = (release: ForecastRelease): string => {
 /** Format a cascade release line with dot-leader alignment and trigger packages. */
 const formatCascadeLine = (cascade: ForecastCascade): string => {
   const name = cascade.packageName
-  const viaLabel = cascade.triggeredBy.length > 0
-    ? `via ${cascade.triggeredBy.join(', ')}`
-    : 'cascade'
+  const viaLabel =
+    cascade.triggeredBy.length > 0 ? `via ${cascade.triggeredBy.join(', ')}` : 'cascade'
   return `${dotLeader(name, 24)} ${viaLabel}`
 }
 

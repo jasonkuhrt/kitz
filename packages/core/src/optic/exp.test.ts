@@ -34,21 +34,33 @@ describe('property access', () => {
     const result = compile('.user.address.city')
     expect(Either.isRight(result)).toBe(true)
     A.exact
-      .ofAs<Either.Right<never, readonly [Property.$Get<'user'>, Property.$Get<'address'>, Property.$Get<'city'>]>>()
+      .ofAs<
+        Either.Right<
+          never,
+          readonly [Property.$Get<'user'>, Property.$Get<'address'>, Property.$Get<'city'>]
+        >
+      >()
       .onAs<Compile<'.user.address.city'>>()
   })
 
   test("['weird.name']", () => {
     const result = compile("['weird.name']")
     expect(Either.isRight(result)).toBe(true)
-    A.exact.ofAs<Either.Right<never, readonly [Property.$Get<'weird.name'>]>>().onAs<Compile<"['weird.name']">>()
+    A.exact
+      .ofAs<Either.Right<never, readonly [Property.$Get<'weird.name'>]>>()
+      .onAs<Compile<"['weird.name']">>()
   })
 
   test(".user['my.key'].value", () => {
     const result = compile(".user['my.key'].value")
     expect(Either.isRight(result)).toBe(true)
     A.exact
-      .ofAs<Either.Right<never, readonly [Property.$Get<'user'>, Property.$Get<'my.key'>, Property.$Get<'value'>]>>()
+      .ofAs<
+        Either.Right<
+          never,
+          readonly [Property.$Get<'user'>, Property.$Get<'my.key'>, Property.$Get<'value'>]
+        >
+      >()
       .onAs<Compile<".user['my.key'].value">>()
   })
 })
@@ -84,7 +96,9 @@ describe('returned (>) - type-level only', () => {
   })
 
   test('># type-level compiles', () => {
-    A.exact.ofAs<Either.Right<never, readonly [Returned.$Get, Awaited.$Get]>>().onAs<Compile<'>#'>>()
+    A.exact
+      .ofAs<Either.Right<never, readonly [Returned.$Get, Awaited.$Get]>>()
+      .onAs<Compile<'>#'>>()
   })
 
   test('.handler># type-level compiles', () => {
@@ -113,7 +127,9 @@ describe('parameters - type-level only', () => {
   })
 
   test('>(0) type-level compiles', () => {
-    A.exact.ofAs<Either.Right<never, readonly [Returned.$Get, Parameter1.$Get]>>().onAs<Compile<'>(0)'>>()
+    A.exact
+      .ofAs<Either.Right<never, readonly [Returned.$Get, Parameter1.$Get]>>()
+      .onAs<Compile<'>(0)'>>()
   })
 
   test('() rejected at value-level', () => {
@@ -197,13 +213,20 @@ describe('indexed (:) - type-level only', () => {
 describe('complex compositions - type-level only', () => {
   test('.callbacks[0]># type-level compiles', () => {
     A.exact
-      .ofAs<Either.Right<never, readonly [Property.$Get<'callbacks'>, Tuple.$Get<0>, Returned.$Get, Awaited.$Get]>>()
+      .ofAs<
+        Either.Right<
+          never,
+          readonly [Property.$Get<'callbacks'>, Tuple.$Get<0>, Returned.$Get, Awaited.$Get]
+        >
+      >()
       .onAs<Compile<'.callbacks[0]>#'>>()
   })
 
   test('.users[].name type-level compiles', () => {
     A.exact
-      .ofAs<Either.Right<never, readonly [Property.$Get<'users'>, Array.$Get, Property.$Get<'name'>]>>()
+      .ofAs<
+        Either.Right<never, readonly [Property.$Get<'users'>, Array.$Get, Property.$Get<'name'>]>
+      >()
       .onAs<Compile<'.users[].name'>>()
   })
 })

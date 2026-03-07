@@ -11,6 +11,16 @@ import { Effect, Option, Schema as S } from 'effect'
 const baseTags = ['kit', 'npm-registry'] as const
 
 const NpmRegistryOperationSchema = S.Literal('getVersions', 'getLatestVersion')
+const ErrorCause = S.instanceOf(Error)
+const NpmRegistryErrorContext = S.Struct({
+  operation: NpmRegistryOperationSchema,
+  packageName: S.String,
+  detail: S.optional(S.String),
+})
+const SemverParseErrorContext = S.Struct({
+  version: S.String,
+  packageName: S.String,
+})
 
 /**
  * Npm registry operation names for structured error context.
@@ -20,38 +30,33 @@ export type NpmRegistryOperation = S.Schema.Type<typeof NpmRegistryOperationSche
 /**
  * Npm registry operation error.
  */
-export const NpmRegistryError = Err.TaggedContextualError(
+export const NpmRegistryError: Err.TaggedContextualErrorClass<
   'NpmRegistryError',
-  baseTags,
-  {
-    context: S.Struct({
-      operation: NpmRegistryOperationSchema,
-      packageName: S.String,
-      detail: S.optional(S.String),
-    }),
-    message: (ctx) =>
-      `npm registry ${ctx.operation} for ${ctx.packageName} failed${ctx.detail ? `: ${ctx.detail}` : ''}`,
-    cause: S.instanceOf(Error),
-  },
-)
+  typeof baseTags,
+  typeof NpmRegistryErrorContext,
+  typeof ErrorCause
+> = Err.TaggedContextualError('NpmRegistryError', baseTags, {
+  context: NpmRegistryErrorContext,
+  message: (ctx) =>
+    `npm registry ${ctx.operation} for ${ctx.packageName} failed${ctx.detail ? `: ${ctx.detail}` : ''}`,
+  cause: ErrorCause,
+})
 
 export type NpmRegistryError = InstanceType<typeof NpmRegistryError>
 
 /**
  * Error parsing a version string from the registry.
  */
-export const SemverParseError = Err.TaggedContextualError(
+export const SemverParseError: Err.TaggedContextualErrorClass<
   'SemverParseError',
-  baseTags,
-  {
-    context: S.Struct({
-      version: S.String,
-      packageName: S.String,
-    }),
-    message: (ctx) => `invalid semver "${ctx.version}" from package ${ctx.packageName}`,
-    cause: S.instanceOf(Error),
-  },
-)
+  typeof baseTags,
+  typeof SemverParseErrorContext,
+  typeof ErrorCause
+> = Err.TaggedContextualError('SemverParseError', baseTags, {
+  context: SemverParseErrorContext,
+  message: (ctx) => `invalid semver "${ctx.version}" from package ${ctx.packageName}`,
+  cause: ErrorCause,
+})
 
 export type SemverParseError = InstanceType<typeof SemverParseError>
 
@@ -93,7 +98,11 @@ const fetchPackageMetadata = <$data>(
       }
       return Effect.fail(
         new NpmRegistryError({
-          context: { operation, packageName: moniker.moniker, detail: `status ${error.response.status}` },
+          context: {
+            operation,
+            packageName: moniker.moniker,
+            detail: `status ${error.response.status}`,
+          },
           cause: error,
         }),
       )
@@ -104,14 +113,18 @@ const fetchPackageMetadata = <$data>(
           context: { operation, packageName: moniker.moniker },
           cause: error,
         }),
-      )),
+      ),
+    ),
   )
 }
 
 /**
  * Parse a version string, returning an Effect that fails with SemverParseError.
  */
-const parseVersion = (version: string, packageName: string): Effect.Effect<Semver.Semver, SemverParseError> =>
+const parseVersion = (
+  version: string,
+  packageName: string,
+): Effect.Effect<Semver.Semver, SemverParseError> =>
   Effect.try({
     try: () => Semver.fromString(version),
     catch: (cause) =>
@@ -136,13 +149,17 @@ const parseVersion = (version: string, packageName: string): Effect.Effect<Semve
  * // [Semver.Semver, Semver.Semver, ...]
  * ```
  */
-export const getVersions = (
+export function getVersions(
   packageName: string,
   options?: RegistryOptions,
-): Effect.Effect<Semver.Semver[], NpmRegistryError | SemverParseError, HttpClient.HttpClient> => {
+): Effect.Effect<Semver.Semver[], NpmRegistryError | SemverParseError, HttpClient.HttpClient> {
   const moniker = Pkg.Moniker.parse(packageName)
 
-  return fetchPackageMetadata<{ versions?: Record<string, unknown> }>(moniker, 'getVersions', options).pipe(
+  return fetchPackageMetadata<{ versions?: Record<string, unknown> }>(
+    moniker,
+    'getVersions',
+    options,
+  ).pipe(
     Effect.flatMap((dataOption) => {
       if (Option.isNone(dataOption)) return Effect.succeed([])
       const versionStrings = Object.keys(dataOption.value.versions ?? {})
@@ -162,13 +179,21 @@ export const getVersions = (
  * // Option.Option<Semver.Semver>
  * ```
  */
-export const getLatestVersion = (
+export function getLatestVersion(
   packageName: string,
   options?: RegistryOptions,
-): Effect.Effect<Option.Option<Semver.Semver>, NpmRegistryError | SemverParseError, HttpClient.HttpClient> => {
+): Effect.Effect<
+  Option.Option<Semver.Semver>,
+  NpmRegistryError | SemverParseError,
+  HttpClient.HttpClient
+> {
   const moniker = Pkg.Moniker.parse(packageName)
 
-  return fetchPackageMetadata<{ 'dist-tags'?: { latest?: string } }>(moniker, 'getLatestVersion', options).pipe(
+  return fetchPackageMetadata<{ 'dist-tags'?: { latest?: string } }>(
+    moniker,
+    'getLatestVersion',
+    options,
+  ).pipe(
     Effect.flatMap((dataOption) => {
       if (Option.isNone(dataOption)) return Effect.succeed(Option.none())
       const latest = dataOption.value['dist-tags']?.latest

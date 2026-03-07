@@ -1,5 +1,5 @@
 ---
-paths: "packages/**/*"
+paths: 'packages/**/*'
 ---
 
 # Error Conventions

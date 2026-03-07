@@ -16,10 +16,7 @@ export class Commit extends Schema.TaggedClass<Commit>()('Commit', {
 // Factory that reuses fields, replaces one field type
 export const ParsedCommit =
   <Self = never>(identifier?: string) =>
-  <Tag extends string, P extends Schema.Schema.Any>(
-    tag: Tag,
-    parsedSchema: P,
-  ) =>
+  <Tag extends string, P extends Schema.Schema.Any>(tag: Tag, parsedSchema: P) =>
     Schema.TaggedClass<Self>(identifier)(tag, {
       ...Commit.fields, // Spread base fields
       message: parsedSchema, // Override with different schema
@@ -167,10 +164,12 @@ Match.tagsExhaustive({
 Use `Schema.parseJson()` instead of raw `JSON.parse()`:
 
 ```typescript
-const PackageJson = Schema.parseJson(Schema.Struct({
-  name: Schema.String,
-  version: Schema.String,
-}))
+const PackageJson = Schema.parseJson(
+  Schema.Struct({
+    name: Schema.String,
+    version: Schema.String,
+  }),
+)
 
 const pkg = yield * Schema.decodeUnknown(PackageJson)(jsonString)
 ```

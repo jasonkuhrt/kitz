@@ -52,25 +52,22 @@ export type ScanError =
  * // [{ scope: 'core', name: '@kitz/core', path: AbsDir('/path/to/repo/packages/core/') }]
  * ```
  */
-export const scan: Effect.Effect<
-  Package[],
-  ScanError,
-  FileSystem.FileSystem | Env.Env
-> = Effect.gen(function*() {
-  const discovered = yield* Monorepo.Pnpm.read({ expand: true, manifests: true })
+export const scan: Effect.Effect<Package[], ScanError, FileSystem.FileSystem | Env.Env> =
+  Effect.gen(function* () {
+    const discovered = yield* Monorepo.Pnpm.read({ expand: true, manifests: true })
 
-  return discovered.packages
-    .filter((pkg) => {
-      // Exclude packages without a proper name
-      const name = pkg.manifest.name
-      return !(Pkg.Moniker.isUnscoped(name) && name.name === 'unnamed')
-    })
-    .map((pkg) => ({
-      scope: Fs.Path.name(pkg.path),
-      name: pkg.manifest.name,
-      path: pkg.path,
-    }))
-})
+    return discovered.packages
+      .filter((pkg) => {
+        // Exclude packages without a proper name
+        const name = pkg.manifest.name
+        return !(Pkg.Moniker.isUnscoped(name) && name.name === 'unnamed')
+      })
+      .map((pkg) => ({
+        scope: Fs.Path.name(pkg.path),
+        name: pkg.manifest.name,
+        path: pkg.path,
+      }))
+  })
 
 /**
  * Build a scope-to-package-name map from scanned packages.
@@ -98,7 +95,7 @@ export const toPackageMap = (packages: Package[]): PackageMap => {
 export const resolvePackages = (
   configPackages: PackageMap,
 ): Effect.Effect<Package[], ScanError, FileSystem.FileSystem | Env.Env> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     // If config explicitly provides packages, use those
     if (Object.keys(configPackages).length > 0) {
       const env = yield* Env.Env

@@ -13,9 +13,7 @@ interface AnalysisNonRoot extends AnalysisBase {
   isPathRelative: boolean
 }
 
-export type Analysis =
-  | AnalysisFile
-  | AnalysisDir
+export type Analysis = AnalysisFile | AnalysisDir
 
 export interface AnalysisFile extends AnalysisNonRoot {
   _tag: 'file'
@@ -112,7 +110,10 @@ export interface AnalyzerOptions {
   hint?: 'file' | 'directory'
 }
 
-export function analyze<const input extends string>(input: input, options?: AnalyzerOptions): Analyze<input> {
+export function analyze<const input extends string>(
+  input: input,
+  options?: AnalyzerOptions,
+): Analyze<input> {
   return analyze_(input, options) as Analyze<input>
 }
 
@@ -139,13 +140,17 @@ export function analyze_(input: string, options?: AnalyzerOptions): Analysis {
   let isDirectory: boolean
 
   if (
-    input === '' || input === hereSegment || input === herePrefix || input === backSegment || input === backPrefix
-    || input.endsWith(separator)
+    input === '' ||
+    input === hereSegment ||
+    input === herePrefix ||
+    input === backSegment ||
+    input === backPrefix ||
+    input.endsWith(separator)
   ) {
     isDirectory = true
   } else {
     // Check if last segment has an extension
-    const segments = input.split(separator).filter(s => s !== '')
+    const segments = input.split(separator).filter((s) => s !== '')
     const lastSegment = segments[segments.length - 1]
 
     if (lastSegment) {
@@ -197,9 +202,7 @@ export function analyze_(input: string, options?: AnalyzerOptions): Analysis {
   }
 
   // Extract all segments (may contain '..' for mid-path parent refs)
-  const rawSegments = normalized
-    ? normalized.split(separator).filter(s => s !== '')
-    : []
+  const rawSegments = normalized ? normalized.split(separator).filter((s) => s !== '') : []
 
   // Normalize: resolve all '..' references
   // For absolute paths, back is always 0 (can't go above root)

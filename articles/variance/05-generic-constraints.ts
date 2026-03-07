@@ -70,10 +70,7 @@ type GoodCompose<A, B, C> = {
   composed: (a: A) => C
 }
 
-function compose<A, B, C>(
-  f: (b: B) => C,
-  g: (a: A) => B,
-): (a: A) => C {
+function compose<A, B, C>(f: (b: B) => C, g: (a: A) => B): (a: A) => C {
   return (a: A) => f(g(a))
 }
 

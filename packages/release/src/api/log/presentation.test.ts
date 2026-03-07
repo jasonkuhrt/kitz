@@ -69,7 +69,16 @@ describe('renderMarkdownLogs', () => {
   })
 
   test('single log', () => {
-    const logs = [makeLog('@kitz/core', 'core', 'minor', '1.0.0', '1.1.0', '## @kitz/core v1.1.0\n\n### Features')]
+    const logs = [
+      makeLog(
+        '@kitz/core',
+        'core',
+        'minor',
+        '1.0.0',
+        '1.1.0',
+        '## @kitz/core v1.1.0\n\n### Features',
+      ),
+    ]
     const result = renderMarkdownLogs(logs)
     expect(result).toContain('## @kitz/core v1.1.0')
     expect(result).toContain('### Features')

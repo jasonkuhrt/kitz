@@ -52,24 +52,18 @@ export const make = (sets: Range): Range => sets
  * Uses @vltpkg/semver internally for battle-tested parsing,
  * then converts to clean Effect Schema types.
  */
-export const Schema: S.Schema<Range, string> = S.transformOrFail(
-  S.String,
-  Range,
-  {
-    strict: true,
-    decode: (value, _, ast) =>
-      Effect.try({
-        try: () => convertVltRange(new VltRange(value)),
-        catch: (error) => new ParseResult.Type(ast, value, `Invalid semver range: ${error}`),
-      }),
-    encode: (range) =>
-      Effect.succeed(
-        range
-          .map((set) => set.map((c) => Comparator.toString(c)).join(' '))
-          .join(' || '),
-      ),
-  },
-)
+export const Schema: S.Schema<Range, string> = S.transformOrFail(S.String, Range, {
+  strict: true,
+  decode: (value, _, ast) =>
+    Effect.try({
+      try: () => convertVltRange(new VltRange(value)),
+      catch: (error) => new ParseResult.Type(ast, value, `Invalid semver range: ${String(error)}`),
+    }),
+  encode: (range) =>
+    Effect.succeed(
+      range.map((set) => set.map((c) => Comparator.toString(c)).join(' ')).join(' || '),
+    ),
+})
 
 export function fromString(value: string): Range {
   return S.decodeSync(Schema)(value)
@@ -109,18 +103,22 @@ const convertVltRange = (vltRange: VltRange): Range => {
       if (!Array.isArray(tuple)) continue
 
       const [op, version] = tuple
-      comparators.push(Comparator.make({
-        operator: op as Operator,
-        version: Semver.fromString(version.toString()),
-      }))
+      comparators.push(
+        Comparator.make({
+          operator: op as Operator,
+          version: Semver.fromString(version.toString()),
+        }),
+      )
     }
 
     // Handle empty comparators (e.g., from "*" range)
     if (comparators.length === 0) {
-      comparators.push(Comparator.make({
-        operator: '>=',
-        version: Semver.fromString('0.0.0'),
-      }))
+      comparators.push(
+        Comparator.make({
+          operator: '>=',
+          version: Semver.fromString('0.0.0'),
+        }),
+      )
     }
 
     sets.push(comparators)
@@ -128,10 +126,12 @@ const convertVltRange = (vltRange: VltRange): Range => {
 
   // Handle empty sets (shouldn't happen, but defensive)
   if (sets.length === 0) {
-    sets.push([Comparator.make({
-      operator: '>=',
-      version: Semver.fromString('0.0.0'),
-    })])
+    sets.push([
+      Comparator.make({
+        operator: '>=',
+        version: Semver.fromString('0.0.0'),
+      }),
+    ])
   }
 
   return sets as unknown as Range

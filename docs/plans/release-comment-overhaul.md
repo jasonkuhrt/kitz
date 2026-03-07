@@ -272,10 +272,7 @@ interface CommentRenderOptions {
   readonly publishState?: 'idle' | 'publishing' | 'published' | 'failed'
 }
 
-const renderComment: (
-  data: CommentData,
-  options?: CommentRenderOptions,
-) => string
+const renderComment: (data: CommentData, options?: CommentRenderOptions) => string
 ```
 
 **Output structure:**

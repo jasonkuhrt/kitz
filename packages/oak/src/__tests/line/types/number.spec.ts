@@ -23,11 +23,15 @@ it(`casts the input as a number`, () => {
 // TODO: Remove skipIf once kit#41 is fixed
 describe.skipIf(process.env['CI'] === 'true')(`errors`, () => {
   it(`validates the  input`, () => {
-    $.parameter(`--age`, n.int()).settings({ onOutput }).parse({ line: [`--age`, `1.1`] })
+    $.parameter(`--age`, n.int())
+      .settings({ onOutput })
+      .parse({ line: [`--age`, `1.1`] })
     expect([[output.value]]).toMatchSnapshot()
   })
   it(`throws error when argument missing (last position)`, () => {
-    $.parameter(`--age`, n).settings({ onOutput }).parse({ line: [`--age`] })
+    $.parameter(`--age`, n)
+      .settings({ onOutput })
+      .parse({ line: [`--age`] })
     expect([[output.value]]).toMatchSnapshot()
   })
   it(`throws error when argument missing (non-last position)`, () => {

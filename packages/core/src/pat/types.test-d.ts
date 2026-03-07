@@ -141,21 +141,21 @@ const _invalidV1Pattern: ZodPattern = { invalid: 'test' }
 const _user = { name: 'Alice', age: 30 }
 const _patternFromValue = Pat.patternFor(_user)
 
-// dprint-ignore
+// oxfmt-ignore
 type _PatternForValueTest = A.Cases<
   A.exact.of<typeof _patternFromValue, Pat.PatternForValue<typeof _user>>
 >
 
 const _patternFromSchema = Pat.patternForSchema(UserSchema)
 
-// dprint-ignore
+// oxfmt-ignore
 type _PatternForSchemaTest = A.Cases<
   A.exact.of<typeof _patternFromSchema, Pat.PatternForSchema<typeof UserSchema>>
 >
 
 const _patternFromV1Schema = Pat.patternForV1Schema(zodSchema)
 
-// dprint-ignore
+// oxfmt-ignore
 type _PatternForV1SchemaTest = A.Cases<
   A.exact.of<typeof _patternFromV1Schema, Pat.PatternForV1Schema<typeof zodSchema>>
 >

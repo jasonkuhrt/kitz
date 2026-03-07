@@ -23,8 +23,9 @@ export interface TaggedContextualErrorLike {
  * ```
  */
 export type ErrorsWithTag<$Errors, $Tag extends string> = $Errors extends TaggedContextualErrorLike
-  ? $Tag extends $Errors['tags'][number] ? $Errors
-  : never
+  ? $Tag extends $Errors['tags'][number]
+    ? $Errors
+    : never
   : never
 
 /**
@@ -66,7 +67,8 @@ export interface TaggedContextualErrorInstance<
   $Tags extends readonly string[],
   $Context extends Record<string, unknown>,
   $Cause extends Error | undefined,
-> extends Cause.YieldableError {
+>
+  extends Cause.YieldableError {
   readonly _tag: $Tag
   readonly tags: $Tags
   readonly context: $Context
@@ -81,9 +83,9 @@ export interface TaggedContextualErrorClass<
   $Tags extends readonly string[],
   ContextSchema extends S.Schema.Any,
   CauseSchema extends S.Schema.Any | undefined,
-> extends
+>
   // eslint-disable-next-line import/namespace -- Effect Schema types expose nested members via namespace.
-  S.Schema<
+  extends S.Schema<
     TaggedContextualErrorInstance<
       $Tag,
       $Tags,
@@ -95,19 +97,18 @@ export interface TaggedContextualErrorClass<
       readonly context: S.Schema.Encoded<ContextSchema>
       readonly cause?: CauseSchema extends S.Schema.Any ? S.Schema.Encoded<CauseSchema> : unknown
     },
-    S.Schema.Context<ContextSchema> | (CauseSchema extends S.Schema.Any ? S.Schema.Context<CauseSchema> : never)
-  >
-{
+    | S.Schema.Context<ContextSchema>
+    | (CauseSchema extends S.Schema.Any ? S.Schema.Context<CauseSchema> : never)
+  > {
   readonly _tag: $Tag
   readonly tags: $Tags
 
-  new(
-    args:
-      & {
-        context: S.Schema.Type<ContextSchema>
-      }
-      & (CauseSchema extends S.Schema.Any ? { cause?: S.Schema.Type<CauseSchema> }
-        : { cause?: Error }),
+  new (
+    args: {
+      context: S.Schema.Type<ContextSchema>
+    } & (CauseSchema extends S.Schema.Any
+      ? { cause?: S.Schema.Type<CauseSchema> }
+      : { cause?: Error }),
   ): TaggedContextualErrorInstance<
     $Tag,
     $Tags,
@@ -202,10 +203,7 @@ export const TaggedContextualError = <
  * }
  * ```
  */
-export const hasTag = <
-  $Error extends TaggedContextualErrorLike,
-  $Tag extends string,
->(
+export const hasTag = <$Error extends TaggedContextualErrorLike, $Tag extends string>(
   error: $Error,
   tag: $Tag,
 ): error is ErrorsWithTag<$Error, $Tag> => {

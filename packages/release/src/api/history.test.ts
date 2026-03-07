@@ -26,9 +26,7 @@ describe('History.set', () => {
       }),
     )
 
-    await Effect.runPromise(
-      Ref.set(state.tagShas, { [tag]: oldSha }),
-    )
+    await Effect.runPromise(Ref.set(state.tagShas, { [tag]: oldSha }))
 
     const result = await Effect.runPromise(
       History.set({
@@ -37,9 +35,7 @@ describe('History.set', () => {
         ver: version,
         move: true,
         push: false,
-      }).pipe(
-        Effect.provide(layer),
-      ),
+      }).pipe(Effect.provide(layer)),
     )
 
     expect(result.action).toBe('moved')

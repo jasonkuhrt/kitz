@@ -1,4 +1,9 @@
-import { TSDocConfiguration, TSDocParser, TSDocTagDefinition, TSDocTagSyntaxKind } from '@microsoft/tsdoc'
+import {
+  TSDocConfiguration,
+  TSDocParser,
+  TSDocTagDefinition,
+  TSDocTagSyntaxKind,
+} from '@microsoft/tsdoc'
 import { JSDoc, Node } from 'ts-morph'
 import { Example } from '../../schema.js'
 
@@ -111,18 +116,21 @@ const parseExamplesFromTSDoc = (customBlocks: readonly any[]): Example[] => {
 
           // Check for twoslash disable
           const codeContent = node.code || ''
-          twoslashEnabled = !codeContent.includes('// twoslash-disable')
-            && !codeContent.includes('// @twoslash-disable')
+          twoslashEnabled =
+            !codeContent.includes('// twoslash-disable') &&
+            !codeContent.includes('// @twoslash-disable')
         }
       }
 
       if (code) {
-        examples.push(Example.make({
-          code: code.trim(),
-          title,
-          twoslashEnabled,
-          language,
-        }))
+        examples.push(
+          Example.make({
+            code: code.trim(),
+            title,
+            twoslashEnabled,
+            language,
+          }),
+        )
       }
     }
   }

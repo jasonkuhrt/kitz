@@ -23,7 +23,10 @@ type _s = A.Cases<
 // 'overlapping' cases - Objects share properties but neither is a subtype
 type _so = A.Cases<
   A.sub.of<'overlapping', Ts.Relation.GetRelation<{ a: 1; id: string }, { b: 2; id: string }>>,
-  A.sub.of<'overlapping', Ts.Relation.GetRelation<{ x: number; y: number }, { x: number; z: string }>>,
+  A.sub.of<
+    'overlapping',
+    Ts.Relation.GetRelation<{ x: number; y: number }, { x: number; z: string }>
+  >,
   A.sub.of<
     'overlapping',
     Ts.Relation.GetRelation<{ name: string; age: number }, { name: string; city: string }>

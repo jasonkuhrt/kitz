@@ -2,10 +2,22 @@ import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Option, Schema as S } from 'effect'
-import type { AuditResult, AuditViolation, MonotonicViolation, TagInfo, ValidationResult } from '../models/monotonic.js'
+import type {
+  AuditResult,
+  AuditViolation,
+  MonotonicViolation,
+  TagInfo,
+  ValidationResult,
+} from '../models/monotonic.js'
 
 // Re-export types for single-source imports
-export type { AuditResult, AuditViolation, MonotonicViolation, TagInfo, ValidationResult } from '../models/monotonic.js'
+export type {
+  AuditResult,
+  AuditViolation,
+  MonotonicViolation,
+  TagInfo,
+  ValidationResult,
+} from '../models/monotonic.js'
 
 /**
  * Parse release tags for a package and get their SHAs.
@@ -16,7 +28,7 @@ export const getPackageTagInfos = (
   packageName: string,
   tags: string[],
 ): Effect.Effect<TagInfo[], Git.GitError | Git.GitParseError, Git.Git> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const git = yield* Git.Git
     const tagInfos: TagInfo[] = []
     const decodeExactPin = S.decodeUnknownOption(Pkg.Pin.Exact.FromString)
@@ -50,7 +62,7 @@ export const validateAdjacent = (
   newVersion: Semver.Semver,
   tags: string[],
 ): Effect.Effect<ValidationResult, Git.GitError | Git.GitParseError, Git.Git> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const git = yield* Git.Git
     const tagInfos = yield* getPackageTagInfos(packageName, tags)
 
@@ -86,9 +98,10 @@ export const validateAdjacent = (
         existingVersion: highestAncestor.version,
         existingSha: highestAncestor.sha,
         relationship: 'ancestor',
-        message: `Version ${highestAncestor.version.toString()} at ${
-          highestAncestor.sha.slice(0, 7)
-        } is on an EARLIER commit but has version >= ${newVersion.toString()}`,
+        message: `Version ${highestAncestor.version.toString()} at ${highestAncestor.sha.slice(
+          0,
+          7,
+        )} is on an EARLIER commit but has version >= ${newVersion.toString()}`,
       })
     }
 
@@ -98,9 +111,10 @@ export const validateAdjacent = (
         existingVersion: lowestDescendant.version,
         existingSha: lowestDescendant.sha,
         relationship: 'descendant',
-        message: `Version ${lowestDescendant.version.toString()} at ${
-          lowestDescendant.sha.slice(0, 7)
-        } is on a LATER commit but has version <= ${newVersion.toString()}`,
+        message: `Version ${lowestDescendant.version.toString()} at ${lowestDescendant.sha.slice(
+          0,
+          7,
+        )} is on a LATER commit but has version <= ${newVersion.toString()}`,
       })
     }
 
@@ -121,7 +135,7 @@ export const auditPackageHistory = (
   packageName: string,
   tags: string[],
 ): Effect.Effect<AuditResult, Git.GitError | Git.GitParseError, Git.Git> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const git = yield* Git.Git
     const tagInfos = yield* getPackageTagInfos(packageName, tags)
     const violations: AuditViolation[] = []
@@ -143,9 +157,10 @@ export const auditPackageHistory = (
             violations.push({
               earlier: a,
               later: b,
-              message: `${a.version.toString()} at ${a.sha.slice(0, 7)} comes BEFORE ${b.version.toString()} at ${
-                b.sha.slice(0, 7)
-              }, but has higher/equal version`,
+              message: `${a.version.toString()} at ${a.sha.slice(0, 7)} comes BEFORE ${b.version.toString()} at ${b.sha.slice(
+                0,
+                7,
+              )}, but has higher/equal version`,
             })
           }
         } else if (bIsAncestorOfA) {
@@ -154,9 +169,10 @@ export const auditPackageHistory = (
             violations.push({
               earlier: b,
               later: a,
-              message: `${b.version.toString()} at ${b.sha.slice(0, 7)} comes BEFORE ${a.version.toString()} at ${
-                a.sha.slice(0, 7)
-              }, but has higher/equal version`,
+              message: `${b.version.toString()} at ${b.sha.slice(0, 7)} comes BEFORE ${a.version.toString()} at ${a.sha.slice(
+                0,
+                7,
+              )}, but has higher/equal version`,
             })
           }
         }

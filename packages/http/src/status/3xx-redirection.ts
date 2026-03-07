@@ -9,13 +9,19 @@ import type { Status } from './type.js'
  * The request has more than one possible response. The user agent or user should choose one of them.
  * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/300
  */
-export const MultipleChoices = { code: 300 as const, description: `Multiple Choices` } satisfies Status
+export const MultipleChoices = {
+  code: 300 as const,
+  description: `Multiple Choices`,
+} satisfies Status
 
 /**
  * The URL of the requested resource has been changed permanently. The new URL is given in the response.
  * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/301
  */
-export const MovedPermanently = { code: 301 as const, description: `Moved Permanently` } satisfies Status
+export const MovedPermanently = {
+  code: 301 as const,
+  description: `Moved Permanently`,
+} satisfies Status
 
 /**
  * This response code means that the URI of requested resource has been changed temporarily.
@@ -55,11 +61,17 @@ export const SwitchProxy = { code: 306 as const, description: `Switch Proxy` } s
  * with same method that was used in the prior request. This has the same semantics as the 302 Found HTTP response code.
  * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
  */
-export const TemporaryRedirect = { code: 307 as const, description: `Temporary Redirect` } satisfies Status
+export const TemporaryRedirect = {
+  code: 307 as const,
+  description: `Temporary Redirect`,
+} satisfies Status
 
 /**
  * This means that the resource is now permanently located at another URI, specified by the Location: HTTP Response header.
  * This has the same semantics as the 301 Moved Permanently HTTP response code.
  * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/308
  */
-export const PermanentRedirect = { code: 308 as const, description: `Permanent Redirect` } satisfies Status
+export const PermanentRedirect = {
+  code: 308 as const,
+  description: `Permanent Redirect`,
+} satisfies Status

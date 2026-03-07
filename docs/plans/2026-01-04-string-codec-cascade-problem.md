@@ -140,14 +140,12 @@ So there's no "child string" to pass to `Child.Schema`. The parent's codec handl
 
 ```typescript
 // OfficialRelease: "1.0.0" or "1.0.0+build"
-class OfficialRelease
-  extends S.TaggedClass<OfficialRelease>()('SemverOfficialRelease', {
-    major: S.Number.pipe(S.int(), S.nonNegative()),
-    minor: S.Number.pipe(S.int(), S.nonNegative()),
-    patch: S.Number.pipe(S.int(), S.nonNegative()),
-    build: S.optional(BuildIds),
-  })
-{
+class OfficialRelease extends S.TaggedClass<OfficialRelease>()('SemverOfficialRelease', {
+  major: S.Number.pipe(S.int(), S.nonNegative()),
+  minor: S.Number.pipe(S.int(), S.nonNegative()),
+  patch: S.Number.pipe(S.int(), S.nonNegative()),
+  build: S.optional(BuildIds),
+}) {
   static Schema = S.transform(S.String, OfficialRelease, {
     decode: (s) => {
       const parsed = parseSemver(s)

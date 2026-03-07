@@ -92,7 +92,7 @@ export const set = (
   HistoryError | TagExistsError | MonotonicViolationError | Git.GitError | Git.GitParseError,
   Git.Git
 > =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const git = yield* Git.Git
     const moniker = Pkg.Moniker.parse(options.pkg)
     const version = options.ver
@@ -105,7 +105,9 @@ export const set = (
     // Verify SHA exists in repository
     const shaExists = yield* git.commitExists(options.sha)
     if (!shaExists) {
-      return yield* Effect.fail(new HistoryError({ message: `Commit ${options.sha} does not exist in repository` }))
+      return yield* Effect.fail(
+        new HistoryError({ message: `Commit ${options.sha} does not exist in repository` }),
+      )
     }
 
     // Get all tags to check for conflicts and validate monotonicity
@@ -184,7 +186,7 @@ export interface AuditOptions {
 export const audit = (
   options: AuditOptions = {},
 ): Effect.Effect<AuditResult[], Git.GitError | Git.GitParseError, Git.Git> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
     const decodeExactPin = S.decodeUnknownOption(Pkg.Pin.Exact.FromString)
@@ -199,9 +201,7 @@ export const audit = (
     }
 
     // Filter to specific package if requested
-    const packagesToAudit = options.pkg
-      ? [options.pkg]
-      : Array.from(packageNames)
+    const packagesToAudit = options.pkg ? [options.pkg] : Array.from(packageNames)
 
     // Audit each package
     const results: AuditResult[] = []

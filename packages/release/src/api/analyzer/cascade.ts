@@ -18,7 +18,7 @@ export type DependencyGraph = HashMap.HashMap<string, readonly string[]>
 export const buildDependencyGraph = (
   packages: Package[],
 ): Effect.Effect<DependencyGraph, Resource.ResourceError, FileSystem.FileSystem> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const graph = MutableHashMap.fromIterable(
       packages.map((p): [string, string[]] => [p.name.moniker, []]),
     )

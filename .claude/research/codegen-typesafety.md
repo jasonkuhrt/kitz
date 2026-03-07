@@ -207,10 +207,7 @@ interface EffectHKT extends HKT3 {
 
 ```typescript
 interface Mappable<F extends HKT> {
-  readonly map: <R, E, A, B>(
-    self: Kind<F, R, E, A>,
-    f: (a: A) => B,
-  ) => Kind<F, R, E, B>
+  readonly map: <R, E, A, B>(self: Kind<F, R, E, A>, f: (a: A) => B) => Kind<F, R, E, B>
 }
 ```
 
@@ -272,11 +269,11 @@ Template literal types enable encoding value-level constraints at the type level
 
 ```typescript
 // Route parameters
-type Route<T extends string> = T extends
-  `${infer Start}:${infer Param}/${infer Rest}`
+type Route<T extends string> = T extends `${infer Start}:${infer Param}/${infer Rest}`
   ? { [K in Param]: string } & Route<Rest>
-  : T extends `${infer Start}:${infer Param}` ? { [K in Param]: string }
-  : {}
+  : T extends `${infer Start}:${infer Param}`
+    ? { [K in Param]: string }
+    : {}
 
 type Params = Route<'/users/:id/posts/:postId'>
 // { id: string } & { postId: string }
@@ -284,8 +281,7 @@ type Params = Route<'/users/:id/posts/:postId'>
 // Numeric ranges (pseudo-dependent types)
 type Digit = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
 type HexDigit = Digit | 'a' | 'b' | 'c' | 'd' | 'e' | 'f'
-type HexColor =
-  `#${HexDigit}${HexDigit}${HexDigit}${HexDigit}${HexDigit}${HexDigit}`
+type HexColor = `#${HexDigit}${HexDigit}${HexDigit}${HexDigit}${HexDigit}${HexDigit}`
 
 // CSS units
 type CSSLength = `${number}${'px' | 'em' | 'rem' | 'vh' | 'vw' | '%'}`
@@ -446,18 +442,12 @@ createRoute(['users', 'posts']) // readonly ["users", "posts"]
 
 ```typescript
 // Problem: TS infers T from both parameters, causing widening
-declare function createFSM<T extends string>(
-  initial: T,
-  states: T[],
-): void
+declare function createFSM<T extends string>(initial: T, states: T[]): void
 createFSM('idle', ['idle', 'loading', 'error'])
 // T = "idle" | "loading" | "error" -- OK, but fragile
 
 // Solution: NoInfer blocks inference from states
-declare function createFSM<T extends string>(
-  initial: T,
-  states: NoInfer<T>[],
-): void
+declare function createFSM<T extends string>(initial: T, states: NoInfer<T>[]): void
 createFSM('idle', ['idle', 'loading', 'error'])
 // T = "idle" -- inferred only from initial
 ```
@@ -766,9 +756,7 @@ export const transform = <T>(input: T): TransformResult<T> => /* ... */
 
 ```typescript
 // Slow: anonymous type re-computed every time
-type Result = T extends string ? Uppercase<T>
-  : T extends number ? `${T}`
-  : never
+type Result = T extends string ? Uppercase<T> : T extends number ? `${T}` : never
 
 // Fast: named alias is cached
 type StringCase<T> = T extends string ? Uppercase<T> : never
@@ -820,11 +808,8 @@ This is correct for kitz's use case. The conditional type is shallow (2 levels) 
 
 ```typescript
 // Tail-recursive tuple builder (common in kitz-style libraries)
-type BuildTuple<
-  N extends number,
-  T,
-  Acc extends T[] = [],
-> = Acc['length'] extends N ? Acc
+type BuildTuple<N extends number, T, Acc extends T[] = []> = Acc['length'] extends N
+  ? Acc
   : BuildTuple<N, T, [...Acc, T]>
 
 type FiveStrings = BuildTuple<5, string>
@@ -871,10 +856,13 @@ interface Ord<A> {
 }
 
 const numberOrd: Ord<number> = {
-  compare: (x, y) => x < y ? -1 : x > y ? 1 : 0,
+  compare: (x, y) => (x < y ? -1 : x > y ? 1 : 0),
 }
 
-const sort = <A>(ord: Ord<A>) => (arr: A[]): A[] => [...arr].sort(ord.compare)
+const sort =
+  <A>(ord: Ord<A>) =>
+  (arr: A[]): A[] =>
+    [...arr].sort(ord.compare)
 sort(numberOrd)([3, 1, 2]) // [1, 2, 3]
 
 // Pattern 2: Module-scoped instances (Effect style)

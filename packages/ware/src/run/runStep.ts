@@ -21,42 +21,40 @@ const createExecutableChunk = <$Extension extends InterceptorGeneric>(extension:
   >(),
 })
 
-export const runStep = async (
-  {
-    pipeline,
-    name,
-    done,
-    inputOriginalOrFromExtension,
-    previousStepsCompleted,
-    interceptorsStack,
-    nextInterceptorsStack,
-    asyncErrorDeferred,
-    customSlots,
-  }: {
-    pipeline: Pipeline
-    name: string
-    done: HookDoneResolver
-    inputOriginalOrFromExtension: object
-    /**
-     * Information about previous hook executions, like what their input was.
-     */
-    previousStepsCompleted: object
-    customSlots: StepDefinition.Slots
-    /**
-     * The extensions that are at this hook awaiting.
-     */
-    interceptorsStack: readonly InterceptorGeneric[]
-    /**
-     * The extensions that have advanced past this hook, to their next hook,
-     * and are now awaiting.
-     *
-     * @remarks every extension popped off the stack is added here (except those
-     * that short-circuit the pipeline or enter passthrough mode).
-     */
-    nextInterceptorsStack: readonly InterceptorGeneric[]
-    asyncErrorDeferred: StepResultErrorAsync
-  },
-) => {
+export const runStep = async ({
+  pipeline,
+  name,
+  done,
+  inputOriginalOrFromExtension,
+  previousStepsCompleted,
+  interceptorsStack,
+  nextInterceptorsStack,
+  asyncErrorDeferred,
+  customSlots,
+}: {
+  pipeline: Pipeline
+  name: string
+  done: HookDoneResolver
+  inputOriginalOrFromExtension: object
+  /**
+   * Information about previous hook executions, like what their input was.
+   */
+  previousStepsCompleted: object
+  customSlots: StepDefinition.Slots
+  /**
+   * The extensions that are at this hook awaiting.
+   */
+  interceptorsStack: readonly InterceptorGeneric[]
+  /**
+   * The extensions that have advanced past this hook, to their next hook,
+   * and are now awaiting.
+   *
+   * @remarks every extension popped off the stack is added here (except those
+   * that short-circuit the pipeline or enter passthrough mode).
+   */
+  nextInterceptorsStack: readonly InterceptorGeneric[]
+  asyncErrorDeferred: StepResultErrorAsync
+}) => {
   const debugHook = debug.child(`step_${name}`)
 
   debugHook.trace(`advance to next interceptor`)
@@ -69,7 +67,7 @@ export const runStep = async (
       source: `user`,
       extensionName: extension.name, // must be defined because is NOT last extension
       hookName: name,
-      // dprint-ignore
+      // oxfmt-ignore
       error: new ContextualError(`Only the last extension can retry hooks.`, { extensionsAfter: extensionsStackRest.map(_=>({ name: _.name })) }),
     })
   }
@@ -109,7 +107,7 @@ export const runStep = async (
             hookName: name,
             error: new ContextualError(`Only a retrying extension can retry hooks.`, {
               hookName: name,
-              extensionsAfter: extensionsStackRest.map(_ => ({ name: _.name })),
+              extensionsAfter: extensionsStackRest.map((_) => ({ name: _.name })),
             }),
           })
           return Prom.createDeferred().promise // [1]
@@ -170,7 +168,7 @@ export const runStep = async (
           customSlots: customSlotsResolved,
         })
 
-        return extensionWithNextChunk.currentChunk.promise.then(_ => {
+        return extensionWithNextChunk.currentChunk.promise.then((_) => {
           if (_ instanceof Error) {
             debugExtension.trace(`received hook error`)
             hookFailed = true
@@ -257,7 +255,9 @@ export const runStep = async (
 
     const implementation = pipeline.stepsIndex.get(name)
     if (!implementation) {
-      throw new ContextualError(`Implementation not found for step name ${name}`, { hookName: name })
+      throw new ContextualError(`Implementation not found for step name ${name}`, {
+        hookName: name,
+      })
     }
 
     const slotsResolved = {
@@ -265,11 +265,7 @@ export const runStep = async (
       ...customSlots,
     }
     const implementationEnvelope = await Prom.maybeAsyncEnvelope(() =>
-      implementation.run(
-        inputOriginalOrFromExtension,
-        slotsResolved,
-        previousStepsCompleted,
-      )
+      implementation.run(inputOriginalOrFromExtension, slotsResolved, previousStepsCompleted),
     )
     if (implementationEnvelope.fail) {
       debugHook.trace(`implementation error`)
@@ -278,7 +274,12 @@ export const runStep = async (
       if (lastExtension && lastExtension.retrying) {
         lastExtension.currentChunk.resolve(implementationError)
       } else {
-        done({ type: `error`, hookName: name, source: `implementation`, error: implementationError })
+        done({
+          type: `error`,
+          hookName: name,
+          source: `implementation`,
+          error: implementationError,
+        })
       }
       return
     }
@@ -307,6 +308,4 @@ const racePromises = <$First, $Second>(
 }
 
 const isResultSuccess = (value: unknown): value is ResultSuccess =>
-  typeof value === 'object'
-  && value !== null
-  && 'value' in value
+  typeof value === 'object' && value !== null && 'value' in value

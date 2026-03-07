@@ -6,12 +6,8 @@
     "declaration": true,
     "declarationMap": true,
     "paths": {
-      "#cli": [
-        "./src/_.js"
-      ],
-      "#cli/*": [
-        "./src/*.js"
-      ]
+      "#cli": ["./src/_.js"],
+      "#cli/*": ["./src/*.js"]
     }
   }
 }

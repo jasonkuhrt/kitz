@@ -24,7 +24,8 @@
 For static text (no loops, no conditionals), prefer `Str.Tpl.dedent`:
 
 ```typescript
-yield * Console.log(Str.Tpl.dedent`
+yield *
+  Console.log(Str.Tpl.dedent`
   Done! Release is ready.
 
   Next steps:
@@ -88,7 +89,8 @@ yield * Console.log(s.render())
 To:
 
 ```typescript
-yield * Console.log(Str.Tpl.dedent`
+yield *
+  Console.log(Str.Tpl.dedent`
 
   Done! Release is ready.
 

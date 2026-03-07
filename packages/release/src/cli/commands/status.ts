@@ -11,7 +11,7 @@ import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
-import { EffectSchema, Oak } from '@kitz/oak'
+import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 
@@ -21,7 +21,7 @@ import * as Api from '../../api/__.js'
  * Show unreleased changes. If packages specified, also shows cascade analysis.
  */
 const args = Oak.Command.create()
-  .use(EffectSchema)
+  .use(Oak.EffectSchema)
   .description('Show unreleased changes and cascade analysis')
   .parameter(
     'packages',
@@ -32,7 +32,7 @@ const args = Oak.Command.create()
   .parse()
 
 Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const git = yield* Git.Git
 
     // Load config and scan packages
@@ -41,8 +41,8 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
 
     if (packages.length === 0) {
       yield* Console.log(
-        'No packages found. Check release.config.ts `packages` field '
-          + 'or ensure pnpm-workspace.yaml defines workspace packages.',
+        'No packages found. Check release.config.ts `packages` field ' +
+          'or ensure pnpm-workspace.yaml defines workspace packages.',
       )
       return
     }

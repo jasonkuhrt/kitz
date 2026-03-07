@@ -18,24 +18,32 @@ Test.describe('hasRequiredFields')
     // Optional: Schema.optional (no default)
     [[S.Struct({ name: S.optional(S.String) })], false, { comment: 'optional field' }],
     // Optional: Schema.optionalWith with default
-    [[S.Struct({ port: S.optionalWith(S.Number, { default: () => 3000 }) })], false, {
-      comment: 'optionalWith default',
-    }],
+    [
+      [S.Struct({ port: S.optionalWith(S.Number, { default: () => 3000 }) })],
+      false,
+      {
+        comment: 'optionalWith default',
+      },
+    ],
     // Mixed: has both optional and required
     [
-      [S.Struct({
-        apiKey: S.String, // required
-        port: S.optionalWith(S.Number, { default: () => 3000 }), // optional
-      })],
+      [
+        S.Struct({
+          apiKey: S.String, // required
+          port: S.optionalWith(S.Number, { default: () => 3000 }), // optional
+        }),
+      ],
       true,
       { comment: 'mixed optional and required' },
     ],
     // All optional with defaults
     [
-      [S.Struct({
-        trunk: S.optionalWith(S.String, { default: () => 'main' }),
-        port: S.optionalWith(S.Number, { default: () => 8080 }),
-      })],
+      [
+        S.Struct({
+          trunk: S.optionalWith(S.String, { default: () => 'main' }),
+          port: S.optionalWith(S.Number, { default: () => 8080 }),
+        }),
+      ],
       false,
       { comment: 'all optionalWith defaults' },
     ],
@@ -43,17 +51,21 @@ Test.describe('hasRequiredFields')
     [[S.Struct({})], false, { comment: 'empty struct' }],
     // Optional with nullable
     [
-      [S.Struct({
-        name: S.optionalWith(S.String, { nullable: true }),
-      })],
+      [
+        S.Struct({
+          name: S.optionalWith(S.String, { nullable: true }),
+        }),
+      ],
       false,
       { comment: 'optional nullable' },
     ],
     // Optional with exact
     [
-      [S.Struct({
-        name: S.optionalWith(S.String, { exact: true }),
-      })],
+      [
+        S.Struct({
+          name: S.optionalWith(S.String, { exact: true }),
+        }),
+      ],
       false,
       { comment: 'optional exact' },
     ],
@@ -65,7 +77,11 @@ Test.describe('hasRequiredFields > Schema.Class')
   .on(hasRequiredFields)
   .cases(
     // Schema.Class with required field
-    [[class extends S.Class<any>('Config')({ apiKey: S.String }) {}], true, { comment: 'Class required' }],
+    [
+      [class extends S.Class<any>('Config')({ apiKey: S.String }) {}],
+      true,
+      { comment: 'Class required' },
+    ],
     // Schema.Class with all optional defaults
     [
       [
@@ -107,19 +123,18 @@ const _emptySchema = S.Struct({})
 type _empty = Assert.exact.of<HasRequiredFields<typeof _emptySchema>, false>
 
 // Type assertion for runtime values
-Test.describe('HasRequiredFields type')
-  .test(() => {
-    // Required
-    const reqSchema = S.Struct({ apiKey: S.String })
-    A<true>().on(hasRequiredFields(reqSchema) as HasRequiredFields<typeof reqSchema>)
+Test.describe('HasRequiredFields type').test(() => {
+  // Required
+  const reqSchema = S.Struct({ apiKey: S.String })
+  A<true>().on(hasRequiredFields(reqSchema) as HasRequiredFields<typeof reqSchema>)
 
-    // Optional with default
-    const optSchema = S.Struct({
-      port: S.optionalWith(S.Number, { default: () => 3000 }),
-    })
-    A<false>().on(hasRequiredFields(optSchema) as HasRequiredFields<typeof optSchema>)
-
-    // Empty
-    const emptySchema = S.Struct({})
-    A<false>().on(hasRequiredFields(emptySchema) as HasRequiredFields<typeof emptySchema>)
+  // Optional with default
+  const optSchema = S.Struct({
+    port: S.optionalWith(S.Number, { default: () => 3000 }),
   })
+  A<false>().on(hasRequiredFields(optSchema) as HasRequiredFields<typeof optSchema>)
+
+  // Empty
+  const emptySchema = S.Struct({})
+  A<false>().on(hasRequiredFields(emptySchema) as HasRequiredFields<typeof emptySchema>)
+})

@@ -29,7 +29,7 @@ const goodStore: GoodFunctionStore = {
   getLength: (s: string) => s.length, // ✅ Works
   toString: (n: number) => n.toString(), // ✅ Works
   add: (a: number, b: number) => a + b, // ✅ Works
-  greet: (name: string, formal: boolean) => formal ? `Good day, ${name}` : `Hi ${name}`, // ✅ Works
+  greet: (name: string, formal: boolean) => (formal ? `Good day, ${name}` : `Hi ${name}`), // ✅ Works
   noArgs: () => 'constant', // ✅ Works
 }
 
@@ -41,24 +41,16 @@ console.log(goodStore.add(3, 4)) // 7
 class TypedFunctionMap {
   private functions = new Map<string, Function>()
 
-  add<TArgs extends any[], TReturn>(
-    name: string,
-    fn: (...args: TArgs) => TReturn,
-  ): void {
+  add<TArgs extends any[], TReturn>(name: string, fn: (...args: TArgs) => TReturn): void {
     this.functions.set(name, fn)
   }
 
-  call<TArgs extends any[], TReturn>(
-    name: string,
-    ...args: TArgs
-  ): TReturn | undefined {
+  call<TArgs extends any[], TReturn>(name: string, ...args: TArgs): TReturn | undefined {
     const fn = this.functions.get(name)
     return fn ? fn(...args) : undefined
   }
 
-  get<TFunc extends (...args: any[]) => any>(
-    name: string,
-  ): TFunc | undefined {
+  get<TFunc extends (...args: any[]) => any>(name: string): TFunc | undefined {
     return this.functions.get(name) as TFunc | undefined
   }
 }
@@ -87,7 +79,7 @@ const handlers: {
 } = {
   add: (cmd) => cmd.a + cmd.b,
   multiply: (cmd) => cmd.a * cmd.b,
-  greet: (cmd) => cmd.formal ? `Hello, ${cmd.name}` : `Hi ${cmd.name}`,
+  greet: (cmd) => (cmd.formal ? `Hello, ${cmd.name}` : `Hi ${cmd.name}`),
   uppercase: (cmd) => cmd.text.toUpperCase(),
 }
 
@@ -115,11 +107,11 @@ class PluginSystem {
   }
 
   processAll(data: any): any[] {
-    return this.plugins.map(p => p.process(data))
+    return this.plugins.map((p) => p.process(data))
   }
 
   cleanup(): void {
-    this.plugins.forEach(p => p.cleanup?.())
+    this.plugins.forEach((p) => p.cleanup?.())
   }
 }
 
@@ -148,23 +140,17 @@ type FormData = { [key: string]: string }
 class TypedEventEmitter {
   private listeners: Map<string, Set<Function>> = new Map()
 
-  on<K extends keyof EventMap>(
-    event: K,
-    listener: (...args: EventMap[K]) => void,
-  ): void {
+  on<K extends keyof EventMap>(event: K, listener: (...args: EventMap[K]) => void): void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set())
     }
     this.listeners.get(event)!.add(listener)
   }
 
-  emit<K extends keyof EventMap>(
-    event: K,
-    ...args: EventMap[K]
-  ): void {
+  emit<K extends keyof EventMap>(event: K, ...args: EventMap[K]): void {
     const listeners = this.listeners.get(event)
     if (listeners) {
-      listeners.forEach(fn => fn(...args))
+      listeners.forEach((fn) => fn(...args))
     }
   }
 }

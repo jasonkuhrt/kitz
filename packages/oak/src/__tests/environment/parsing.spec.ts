@@ -81,11 +81,16 @@ it(`parses a value specified to be a number`, () => {
 })
 describe(`enum can be parsed`, () => {
   // TODO: Remove skipIf once kit#41 is fixed
-  it.skipIf(process.env['CI'] === 'true')(`throws an error if the value does not pass validation`, () => {
-    environmentManager.set(`cli_param_foo`, `d`)
-    $.parameter(`--foo`, z.enum([`a`, `b`, `c`])).settings({ onOutput }).parse({ line: [] })
-    expect([[output.value]]).toMatchSnapshot()
-  })
+  it.skipIf(process.env['CI'] === 'true')(
+    `throws an error if the value does not pass validation`,
+    () => {
+      environmentManager.set(`cli_param_foo`, `d`)
+      $.parameter(`--foo`, z.enum([`a`, `b`, `c`]))
+        .settings({ onOutput })
+        .parse({ line: [] })
+      expect([[output.value]]).toMatchSnapshot()
+    },
+  )
 })
 
 it(`ignores the letter casing of env name`, () => {

@@ -3,8 +3,7 @@ import { Pat } from '#pat'
 import * as S from 'effect/Schema'
 import { expect } from 'vitest'
 
-Test
-  .on(Pat.isMatch)
+Test.on(Pat.isMatch)
   .describe('Literals', [
     [[1, 1], true],
     [['a', 'a'], true],
@@ -62,8 +61,20 @@ Test
     [[{ x: { y: 1 } }, { x: { y: 2 } }], false],
     [[{ a: 'x' }, { a: /^x/ }], true],
     [[{ a: 1 }, { a: { $gte: 0 } }], true],
-    [[{ a: 'x', b: 1 }, { a: S.String, b: S.Number }], true],
-    [[{ a: 'x', b: '1' }, { a: S.String, b: S.Number }], false],
+    [
+      [
+        { a: 'x', b: 1 },
+        { a: S.String, b: S.Number },
+      ],
+      true,
+    ],
+    [
+      [
+        { a: 'x', b: '1' },
+        { a: S.String, b: S.Number },
+      ],
+      false,
+    ],
     [[{}, {}], true],
   ])
   .describe('Array Constraints', [
@@ -79,13 +90,55 @@ Test
     [[[2, 4, 6], { $some: { $gt: 5 }, $every: { $gte: 2 } }], true],
   ])
   .describe('Tuple Matching', [
-    [[[1, 'a'], [1, 'a']], true],
-    [[[1, 'b'], [1, 'a']], false],
-    [[[1, 'a'], [S.Number, S.String]], true],
-    [[[1, 2], [S.Number, S.String]], false],
-    [[[1, 'a'], [{ $gt: 0 }, /^a/]], true],
-    [[[-1, 'a'], [{ $gt: 0 }, /^a/]], false],
-    [[[1, 2, 3], [1, 2]], false],
+    [
+      [
+        [1, 'a'],
+        [1, 'a'],
+      ],
+      true,
+    ],
+    [
+      [
+        [1, 'b'],
+        [1, 'a'],
+      ],
+      false,
+    ],
+    [
+      [
+        [1, 'a'],
+        [S.Number, S.String],
+      ],
+      true,
+    ],
+    [
+      [
+        [1, 2],
+        [S.Number, S.String],
+      ],
+      false,
+    ],
+    [
+      [
+        [1, 'a'],
+        [{ $gt: 0 }, /^a/],
+      ],
+      true,
+    ],
+    [
+      [
+        [-1, 'a'],
+        [{ $gt: 0 }, /^a/],
+      ],
+      false,
+    ],
+    [
+      [
+        [1, 2, 3],
+        [1, 2],
+      ],
+      false,
+    ],
   ])
   .describe('Combinators > not', [
     [[1, { $not: S.String }], true],
@@ -122,14 +175,35 @@ Test
     [[{ a: { b: 'x' } }, { a: { b: { $not: /^y/ } } }], true],
   ])
   .describe('$ Prefix > Ambiguous Top-Level', [
-    [[{ $not: 'x', id: 1 }, { $not: 'x', id: 1 }], true],
-    [[{ $not: 'y', id: 1 }, { $not: 'x', id: 1 }], false],
+    [
+      [
+        { $not: 'x', id: 1 },
+        { $not: 'x', id: 1 },
+      ],
+      true,
+    ],
+    [
+      [
+        { $not: 'y', id: 1 },
+        { $not: 'x', id: 1 },
+      ],
+      false,
+    ],
   ])
   .describe('Complex Nested Patterns', [
-    [[
-      { items: [{ x: 1, y: 'a' }, { x: 2, y: 'b' }], meta: { ok: true } },
-      { items: { $every: { x: { $gt: 0 } } }, meta: { ok: true } },
-    ], true],
+    [
+      [
+        {
+          items: [
+            { x: 1, y: 'a' },
+            { x: 2, y: 'b' },
+          ],
+          meta: { ok: true },
+        },
+        { items: { $every: { x: { $gt: 0 } } }, meta: { ok: true } },
+      ],
+      true,
+    ],
   ])
   .test(({ input, output }) => {
     const [value, pattern] = input

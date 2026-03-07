@@ -113,7 +113,7 @@ export const Builder = (options?: {
       if (isEmptyInput) {
         state.lines.push(``)
       } else {
-        const lines = linesInput.filter(line => line !== null).map(removeSurroundingSpaceRegular)
+        const lines = linesInput.filter((line) => line !== null).map(removeSurroundingSpaceRegular)
         state.lines.push(...lines)
       }
     }
@@ -125,8 +125,8 @@ export const Builder = (options?: {
 
   builder.render = options?.join
     ? () => {
-      return state.lines.join(options.join)
-    }
+        return state.lines.join(options.join)
+      }
     : Fn.bind(defaultRender, state.lines)
 
   builder.toString = builder.render

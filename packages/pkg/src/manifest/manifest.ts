@@ -39,7 +39,9 @@ const Workspaces = S.Struct({
  * Class schema for package.json manifest
  */
 class ManifestClass extends S.Class<ManifestClass>('Manifest')({
-  name: S.optionalWith(Moniker.FromString, { default: () => new Moniker.Unscoped({ name: 'unnamed' }) }),
+  name: S.optionalWith(Moniker.FromString, {
+    default: () => new Moniker.Unscoped({ name: 'unnamed' }),
+  }),
   version: S.optionalWith(SemverFromString, { default: () => zeroSemver }),
   description: S.optional(S.String),
   main: S.optional(S.String),
@@ -49,37 +51,19 @@ class ManifestClass extends S.Class<ManifestClass>('Manifest')({
   devDependencies: S.optional(S.Record({ key: S.String, value: S.String })),
   peerDependencies: S.optional(S.Record({ key: S.String, value: S.String })),
   optionalDependencies: S.optional(S.Record({ key: S.String, value: S.String })),
-  bin: S.optional(S.Union(
-    S.String,
-    S.Record({ key: S.String, value: S.String }),
-  )),
+  bin: S.optional(S.Union(S.String, S.Record({ key: S.String, value: S.String }))),
   files: S.optional(S.Array(S.String)),
-  exports: S.optional(S.Union(
-    S.Record({ key: S.String, value: S.Unknown }),
-    S.String,
-  )),
+  exports: S.optional(S.Union(S.Record({ key: S.String, value: S.Unknown }), S.String)),
   imports: S.optional(S.Record({ key: S.String, value: S.Unknown })),
   engines: S.optional(Engines),
-  repository: S.optional(S.Union(
-    Repository,
-    S.String,
-  )),
+  repository: S.optional(S.Union(Repository, S.String)),
   keywords: S.optional(S.Array(S.String)),
-  author: S.optional(S.Union(
-    S.String,
-    Author,
-  )),
+  author: S.optional(S.Union(S.String, Author)),
   license: S.optional(S.String),
-  bugs: S.optional(S.Union(
-    Bugs,
-    S.String,
-  )),
+  bugs: S.optional(S.Union(Bugs, S.String)),
   homepage: S.optional(S.String),
   private: S.optional(S.Boolean),
-  workspaces: S.optional(S.Union(
-    S.Array(S.String),
-    Workspaces,
-  )),
+  workspaces: S.optional(S.Union(S.Array(S.String), Workspaces)),
   packageManager: S.optional(S.String),
   madge: S.optional(S.Unknown),
 }) {
@@ -147,29 +131,27 @@ export const resource: Resource.Resource<Manifest> = Resource.createJson(
  */
 export const resourceMutable: Resource.Resource<ManifestMutable> = {
   read: (path: Fs.Path.$Abs) =>
-    resource.read(path).pipe(
-      Effect.map(Option.map((m) => m.toMutable())),
-    ),
+    resource.read(path).pipe(Effect.map(Option.map((m) => m.toMutable()))),
   readRequired: (path: Fs.Path.$Abs) =>
-    resource.readRequired(path).pipe(
-      Effect.map((m) => m.toMutable()),
-    ),
+    resource.readRequired(path).pipe(Effect.map((m) => m.toMutable())),
   write: (value: ManifestMutable, path: Fs.Path.$Abs) => resource.write(Manifest.make(value), path),
   readOrEmpty: (path: Fs.Path.$Abs) =>
-    resource.readOrEmpty(path).pipe(
-      Effect.map((m) => m.toMutable()),
-    ),
+    resource.readOrEmpty(path).pipe(Effect.map((m) => m.toMutable())),
   update: (path: Fs.Path.$Abs, fn: (current: ManifestMutable) => ManifestMutable) =>
-    resource.update(path, (m) => Manifest.make(fn(m.toMutable()))).pipe(
-      Effect.map((m) => m.toMutable()),
-    ),
+    resource
+      .update(path, (m) => Manifest.make(fn(m.toMutable())))
+      .pipe(Effect.map((m) => m.toMutable())),
   delete: (path: Fs.Path.$Abs) => resource.delete(path),
 }
 
 /**
  * Overwrite a package script (mutates the manifest).
  */
-export const overwritePackageScript = (manifest: ManifestMutable, scriptName: string, script: string): void => {
+export const overwritePackageScript = (
+  manifest: ManifestMutable,
+  scriptName: string,
+  script: string,
+): void => {
   if (!manifest.scripts) {
     manifest.scripts = {}
   }
@@ -179,7 +161,11 @@ export const overwritePackageScript = (manifest: ManifestMutable, scriptName: st
 /**
  * Merge a script into an existing package script (mutates the manifest).
  */
-export const mergePackageScript = (manifest: ManifestMutable, scriptName: string, script: string): void => {
+export const mergePackageScript = (
+  manifest: ManifestMutable,
+  scriptName: string,
+  script: string,
+): void => {
   if (!manifest.scripts) {
     manifest.scripts = {}
   }
@@ -194,7 +180,11 @@ export const mergePackageScript = (manifest: ManifestMutable, scriptName: string
 /**
  * Remove a package script or part of a script (mutates the manifest).
  */
-export const removePackageScript = (manifest: ManifestMutable, scriptName: string, scriptPart?: string): void => {
+export const removePackageScript = (
+  manifest: ManifestMutable,
+  scriptName: string,
+  scriptPart?: string,
+): void => {
   if (!manifest.scripts || !manifest.scripts[scriptName]) {
     return
   }

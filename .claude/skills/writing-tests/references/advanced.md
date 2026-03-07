@@ -48,13 +48,8 @@ For complex child configuration or deep nesting:
 
 ```typescript
 Test.on(parse)
-  .describe('valid', (t) =>
-    t
-      .snapshots({ arguments: false })
-      .casesInput('1.2.3', '0.0.1'))
-  .describe('invalid', (t) =>
-    t
-      .casesInput('bad', 'worse'))
+  .describe('valid', (t) => t.snapshots({ arguments: false }).casesInput('1.2.3', '0.0.1'))
+  .describe('invalid', (t) => t.casesInput('bad', 'worse'))
   .test()
 ```
 
@@ -77,7 +72,8 @@ Test.on(parse)
   .describe('valid', (t) =>
     t
       .describe('basic', (t) => t.casesInput('1.2.3', '0.0.1'))
-      .describe('edge cases', (t) => t.casesInput('0.0.0', '999.999.999')))
+      .describe('edge cases', (t) => t.casesInput('0.0.0', '999.999.999')),
+  )
   .test()
 ```
 

@@ -11,7 +11,7 @@ export const rule = RuntimeRule.create({
   description: 'git working directory has no uncommitted changes',
   defaults: RuleDefaults.make({ enabled: false }),
   preconditions: [],
-  check: Effect.gen(function*() {
+  check: Effect.gen(function* () {
     const git = yield* Git.Git
     const isClean = yield* git.isClean()
 

@@ -18,7 +18,7 @@ export const normalizeTerminalOutput = (output: string | string[]): string => {
   // Remove trailing whitespace from each line but preserve structure
   normalized = normalized
     .split('\n')
-    .map(line => line.trimEnd())
+    .map((line) => line.trimEnd())
     .join('\n')
 
   // Remove trailing newlines at end of output

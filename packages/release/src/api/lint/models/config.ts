@@ -7,10 +7,7 @@ import type { Severity } from './severity.js'
 export type RuleConfigOptions = object
 
 /** User input format (supports shorthand). */
-export type RuleConfigInput =
-  | Severity
-  | readonly [Severity, RuleConfigOptions]
-  | RuleConfig
+export type RuleConfigInput = Severity | readonly [Severity, RuleConfigOptions] | RuleConfig
 
 /** Normalized form of rule config. */
 export class RuleConfig extends Schema.TaggedClass<RuleConfig>()('RuleConfig', {
@@ -33,18 +30,24 @@ export class Config extends Schema.TaggedClass<Config>()('Config', {
 }
 
 /** Resolved (normalized) rule defaults. */
-export class ResolvedRuleDefaults extends Schema.TaggedClass<ResolvedRuleDefaults>()('ResolvedRuleDefaults', {
-  enabled: Schema.Union(Schema.Boolean, Schema.Literal('auto')),
-  severity: Severity_.Severity,
-}) {
+export class ResolvedRuleDefaults extends Schema.TaggedClass<ResolvedRuleDefaults>()(
+  'ResolvedRuleDefaults',
+  {
+    enabled: Schema.Union(Schema.Boolean, Schema.Literal('auto')),
+    severity: Severity_.Severity,
+  },
+) {
   static is = Schema.is(ResolvedRuleDefaults)
 }
 
 /** Resolved (normalized) rule config. */
-export class ResolvedRuleConfig extends Schema.TaggedClass<ResolvedRuleConfig>()('ResolvedRuleConfig', {
-  overrides: ResolvedRuleDefaults,
-  options: Schema.Object,
-}) {
+export class ResolvedRuleConfig extends Schema.TaggedClass<ResolvedRuleConfig>()(
+  'ResolvedRuleConfig',
+  {
+    overrides: ResolvedRuleDefaults,
+    options: Schema.Object,
+  },
+) {
   static is = Schema.is(ResolvedRuleConfig)
 }
 
@@ -104,7 +107,10 @@ export const resolveConfig = (config: Partial<Config>): ResolvedConfig => {
 
 const isSeverity = (input: RuleConfigInput): input is Severity => Severity_.is(input)
 
-const normalizeRuleConfig = (input: RuleConfigInput, globalDefaults: ResolvedRuleDefaults): ResolvedRuleConfig => {
+const normalizeRuleConfig = (
+  input: RuleConfigInput,
+  globalDefaults: ResolvedRuleDefaults,
+): ResolvedRuleConfig => {
   // Severity shorthand
   if (isSeverity(input)) {
     return ResolvedRuleConfig.make({

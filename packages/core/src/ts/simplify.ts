@@ -45,7 +45,7 @@ import type * as Union from './union.js'
  *
  * @category Type Simplification
  */
-// dprint-ignore
+// oxfmt-ignore
 export type To<
   $DepthRemaining extends Num.Literal,
   $T,

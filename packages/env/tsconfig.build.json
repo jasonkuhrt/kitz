@@ -6,12 +6,8 @@
     "declaration": true,
     "declarationMap": true,
     "paths": {
-      "#env": [
-        "./src/_.js"
-      ],
-      "#env/*": [
-        "./src/*.js"
-      ]
+      "#env": ["./src/_.js"],
+      "#env/*": ["./src/*.js"]
     }
   }
 }

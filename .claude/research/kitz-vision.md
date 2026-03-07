@@ -169,8 +169,7 @@ export type Display<$Type> =
 declare global {
   namespace KITZ.Traits.Display {
     interface Handlers<$Type> {
-      Array: $Type extends readonly (infer E)[] ? `${Display<E>}[]`
-        : never
+      Array: $Type extends readonly (infer E)[] ? `${Display<E>}[]` : never
     }
   }
 }
@@ -265,15 +264,14 @@ declare global {
  */
 export type Eq<$A, $B> =
   // Identical types are always equal
-  [$A] extends [$B] ? [$B] extends [$A] ? true
-    : _CheckHandlers<$A, $B>
-    : _CheckHandlers<$A, $B>
+  [$A] extends [$B] ? ([$B] extends [$A] ? true : _CheckHandlers<$A, $B>) : _CheckHandlers<$A, $B>
 
-type _CheckHandlers<$A, $B> = [HandlersResult<$A, $B>] extends [never] ? false // No handler claims equality
+type _CheckHandlers<$A, $B> = [HandlersResult<$A, $B>] extends [never]
+  ? false // No handler claims equality
   : HandlersResult<$A, $B>
 
-type HandlersResult<$A, $B> = [keyof KITZ.Traits.Eq.Handlers<$A, $B>] extends
-  [never] ? never
+type HandlersResult<$A, $B> = [keyof KITZ.Traits.Eq.Handlers<$A, $B>] extends [never]
+  ? never
   : KITZ.Traits.Eq.Handlers<$A, $B>[keyof KITZ.Traits.Eq.Handlers<$A, $B>]
 ```
 
@@ -292,15 +290,23 @@ declare global {
  * Get a compile-time string name for any type.
  * Like Display but for machine consumption, not human display.
  */
-export type TypeName<$Type> = $Type extends string ? 'string'
-  : $Type extends number ? 'number'
-  : $Type extends boolean ? 'boolean'
-  : $Type extends null ? 'null'
-  : $Type extends undefined ? 'undefined'
-  : $Type extends symbol ? 'symbol'
-  : $Type extends bigint ? 'bigint'
-  : [TypeNameHandlersResult<$Type>] extends [never] ? 'unknown'
-  : TypeNameHandlersResult<$Type>
+export type TypeName<$Type> = $Type extends string
+  ? 'string'
+  : $Type extends number
+    ? 'number'
+    : $Type extends boolean
+      ? 'boolean'
+      : $Type extends null
+        ? 'null'
+        : $Type extends undefined
+          ? 'undefined'
+          : $Type extends symbol
+            ? 'symbol'
+            : $Type extends bigint
+              ? 'bigint'
+              : [TypeNameHandlersResult<$Type>] extends [never]
+                ? 'unknown'
+                : TypeNameHandlersResult<$Type>
 
 // Third-party extension
 declare global {
@@ -336,22 +342,24 @@ declare global {
  */
 export type Serializable<$Type> = $Type extends string | number | boolean | null
   ? $Type
-  : $Type extends undefined ? never // undefined is not JSON-serializable
-  : $Type extends Function ? never // functions are not JSON-serializable
-  : $Type extends symbol ? never // symbols are not JSON-serializable
-  : [SerializableHandlersResult<$Type>] extends [never]
-    ? $Type extends object ? { [K in keyof $Type]: Serializable<$Type[K]> }
-    : never
-  : SerializableHandlersResult<$Type>
+  : $Type extends undefined
+    ? never // undefined is not JSON-serializable
+    : $Type extends Function
+      ? never // functions are not JSON-serializable
+      : $Type extends symbol
+        ? never // symbols are not JSON-serializable
+        : [SerializableHandlersResult<$Type>] extends [never]
+          ? $Type extends object
+            ? { [K in keyof $Type]: Serializable<$Type[K]> }
+            : never
+          : SerializableHandlersResult<$Type>
 
 // Domain extension: Date serializes to string
 declare global {
   namespace KITZ.Traits.Serializable {
     interface Handlers<$Type> {
       Date: $Type extends Date ? string : never
-      Map: $Type extends Map<infer K, infer V>
-        ? Array<[Serializable<K>, Serializable<V>]>
-        : never
+      Map: $Type extends Map<infer K, infer V> ? Array<[Serializable<K>, Serializable<V>]> : never
     }
   }
 }
@@ -451,11 +459,7 @@ export interface Functor<F extends Kind> {
  * @typeclass
  */
 export interface Foldable<F extends Kind> {
-  readonly reduce: <A, B>(
-    self: Apply<F, [A]>,
-    initial: B,
-    f: (acc: B, a: A) => B,
-  ) => B
+  readonly reduce: <A, B>(self: Apply<F, [A]>, initial: B, f: (acc: B, a: A) => B) => B
 }
 ```
 
@@ -474,7 +478,7 @@ export const stringEq: Eq<string> = {
 /** @instance Ord<string> */
 export const stringOrd: Ord<string> = {
   ...stringEq,
-  compare: (self, that) => self < that ? -1 : self > that ? 1 : 0,
+  compare: (self, that) => (self < that ? -1 : self > that ? 1 : 0),
 }
 
 /** @instance Hash<string> */
@@ -504,7 +508,7 @@ export const numberEq: Eq<number> = {
 /** @instance Ord<number> */
 export const numberOrd: Ord<number> = {
   ...numberEq,
-  compare: (self, that) => self < that ? -1 : self > that ? 1 : 0,
+  compare: (self, that) => (self < that ? -1 : self > that ? 1 : 0),
 }
 
 // --- Array instances (parameterized by element instance) ---
@@ -516,8 +520,7 @@ export const numberOrd: Ord<number> = {
  */
 export const arrayEq = <A>(elemEq: Eq<A>): Eq<ReadonlyArray<A>> => ({
   equals: (self, that) =>
-    self.length === that.length
-    && self.every((a, i) => elemEq.equals(a, that[i]!)),
+    self.length === that.length && self.every((a, i) => elemEq.equals(a, that[i]!)),
 })
 
 /**
@@ -581,7 +584,8 @@ interface ArrayHKT extends Kind {
  * ```
  */
 export const sort =
-  <A>(ord: Ord<A>) => (self: ReadonlyArray<A>): ReadonlyArray<A> =>
+  <A>(ord: Ord<A>) =>
+  (self: ReadonlyArray<A>): ReadonlyArray<A> =>
     [...self].sort(ord.compare)
 
 /**
@@ -596,7 +600,8 @@ export const sort =
  * ```
  */
 export const nub =
-  <A>(eq: Eq<A>) => (self: ReadonlyArray<A>): ReadonlyArray<A> =>
+  <A>(eq: Eq<A>) =>
+  (self: ReadonlyArray<A>): ReadonlyArray<A> =>
     self.filter((a, i) => self.findIndex((b) => eq.equals(a, b)) === i)
 
 /**
@@ -609,23 +614,22 @@ export const nub =
  * group(numberEq)([1, 1, 2, 2, 2, 1]) // [[1, 1], [2, 2, 2], [1]]
  * ```
  */
-export const group = <A>(eq: Eq<A>) =>
-(
-  self: ReadonlyArray<A>,
-): ReadonlyArray<ReadonlyArray<A>> => {
-  if (self.length === 0) return []
-  const result: A[][] = [[self[0]!]]
-  for (let i = 1; i < self.length; i++) {
-    const current = self[i]!
-    const lastGroup = result[result.length - 1]!
-    if (eq.equals(lastGroup[0]!, current)) {
-      lastGroup.push(current)
-    } else {
-      result.push([current])
+export const group =
+  <A>(eq: Eq<A>) =>
+  (self: ReadonlyArray<A>): ReadonlyArray<ReadonlyArray<A>> => {
+    if (self.length === 0) return []
+    const result: A[][] = [[self[0]!]]
+    for (let i = 1; i < self.length; i++) {
+      const current = self[i]!
+      const lastGroup = result[result.length - 1]!
+      if (eq.equals(lastGroup[0]!, current)) {
+        lastGroup.push(current)
+      } else {
+        result.push([current])
+      }
     }
+    return result
   }
-  return result
-}
 
 /**
  * Map over a structure and collect the results.
@@ -686,16 +690,16 @@ Tier 3 is the ambitious tier. It uses build-time code generation to produce stat
  */
 export const instances = {
   Eq: {
-    string: () => import('./instances/string.js').then(m => m.stringEq),
-    number: () => import('./instances/number.js').then(m => m.numberEq),
-    boolean: () => import('./instances/boolean.js').then(m => m.booleanEq),
+    string: () => import('./instances/string.js').then((m) => m.stringEq),
+    number: () => import('./instances/number.js').then((m) => m.numberEq),
+    boolean: () => import('./instances/boolean.js').then((m) => m.booleanEq),
     // Parameterized instances use factory functions
     'Array<*>': (elemEq: Eq<unknown>) =>
-      import('./instances/array.js').then(m => m.arrayEq(elemEq)),
+      import('./instances/array.js').then((m) => m.arrayEq(elemEq)),
   },
   Ord: {
-    string: () => import('./instances/string.js').then(m => m.stringOrd),
-    number: () => import('./instances/number.js').then(m => m.numberOrd),
+    string: () => import('./instances/string.js').then((m) => m.stringOrd),
+    number: () => import('./instances/number.js').then((m) => m.numberOrd),
   },
 } as const
 ```
@@ -995,10 +999,9 @@ declare global {
 }
 
 type IsMonoid<$A> = [
-  KITZ.Traits.Monoid.Handlers<$A>[
-    keyof KITZ.Traits.Monoid.Handlers<$A>
-  ],
-] extends [never] ? false
+  KITZ.Traits.Monoid.Handlers<$A>[keyof KITZ.Traits.Monoid.Handlers<$A>],
+] extends [never]
+  ? false
   : true
 
 // ── Tier 2: Runtime Instances ───────────────────────────────
@@ -1043,8 +1046,10 @@ const arrayMonoid = <A>(): Monoid<ReadonlyArray<A>> => ({
 })
 
 // Polymorphic function using Monoid
-const fold = <A>(monoid: Monoid<A>) => (values: ReadonlyArray<A>): A =>
-  values.reduce(monoid.combine, monoid.empty)
+const fold =
+  <A>(monoid: Monoid<A>) =>
+  (values: ReadonlyArray<A>): A =>
+    values.reduce(monoid.combine, monoid.empty)
 
 // ── Tier 3: Codegen Dispatch ────────────────────────────────
 
@@ -1530,8 +1535,9 @@ const noFloatingEffectRule = {
       recommended: true,
     },
     messages: {
-      floatingEffect: 'Effect.{{ method }}() result is not consumed. '
-        + 'Await, assign, or return the result to ensure the Effect runs.',
+      floatingEffect:
+        'Effect.{{ method }}() result is not consumed. ' +
+        'Await, assign, or return the result to ensure the Effect runs.',
       floatingEffectSuggestion: 'Add await before Effect.{{ method }}()',
     },
     hasSuggestions: true,
@@ -1551,24 +1557,26 @@ const noFloatingEffectRule = {
         const expr = node.expression
         // Direct call: Effect.runPromise(...)
         if (
-          expr.type === 'CallExpression'
-          && expr.callee.type === 'MemberExpression'
-          && expr.callee.object.type === 'Identifier'
-          && expr.callee.object.name === 'Effect'
-          && expr.callee.property.type === 'Identifier'
-          && RUN_METHODS.has(expr.callee.property.name)
+          expr.type === 'CallExpression' &&
+          expr.callee.type === 'MemberExpression' &&
+          expr.callee.object.type === 'Identifier' &&
+          expr.callee.object.name === 'Effect' &&
+          expr.callee.property.type === 'Identifier' &&
+          RUN_METHODS.has(expr.callee.property.name)
         ) {
           context.report({
             node: expr,
             messageId: 'floatingEffect',
             data: { method: expr.callee.property.name },
-            suggest: [{
-              messageId: 'floatingEffectSuggestion',
-              data: { method: expr.callee.property.name },
-              fix(fixer) {
-                return fixer.insertTextBefore(expr, 'await ')
+            suggest: [
+              {
+                messageId: 'floatingEffectSuggestion',
+                data: { method: expr.callee.property.name },
+                fix(fixer) {
+                  return fixer.insertTextBefore(expr, 'await ')
+                },
               },
-            }],
+            ],
           })
         }
       },
@@ -1604,9 +1612,9 @@ const requireErrorTagRule = {
     },
     messages: {
       missingTag:
-        'Error class "{{ className }}" is missing a _tag discriminant. '
-        + 'Use Err.TaggedContextualError or Data.TaggedError to ensure '
-        + 'the error can be matched with Effect.catchTag.',
+        'Error class "{{ className }}" is missing a _tag discriminant. ' +
+        'Use Err.TaggedContextualError or Data.TaggedError to ensure ' +
+        'the error can be matched with Effect.catchTag.',
     },
     schema: [],
   },
@@ -1618,9 +1626,9 @@ const requireErrorTagRule = {
 
         const hasTag = node.body.body.some(
           (member) =>
-            member.type === 'PropertyDefinition'
-            && member.key.type === 'Identifier'
-            && member.key.name === '_tag',
+            member.type === 'PropertyDefinition' &&
+            member.key.type === 'Identifier' &&
+            member.key.name === '_tag',
         )
 
         const superProvidesTag = isTaggedSuperClass(node.superClass)
@@ -1640,8 +1648,7 @@ const requireErrorTagRule = {
 function isErrorSuperClass(node) {
   if (node.type === 'Identifier') return /Error$/.test(node.name)
   if (node.type === 'MemberExpression') {
-    return node.property.type === 'Identifier'
-      && /Error$/.test(node.property.name)
+    return node.property.type === 'Identifier' && /Error$/.test(node.property.name)
   }
   if (node.type === 'CallExpression') return isErrorSuperClass(node.callee)
   return false
@@ -1649,14 +1656,12 @@ function isErrorSuperClass(node) {
 
 function isTaggedSuperClass(node) {
   if (
-    node.type === 'CallExpression'
-    && node.callee.type === 'MemberExpression'
-    && node.callee.object.type === 'Identifier'
-    && ['Data', 'Err'].includes(node.callee.object.name)
-    && node.callee.property.type === 'Identifier'
-    && ['TaggedError', 'TaggedContextualError', 'TaggedClass'].includes(
-      node.callee.property.name,
-    )
+    node.type === 'CallExpression' &&
+    node.callee.type === 'MemberExpression' &&
+    node.callee.object.type === 'Identifier' &&
+    ['Data', 'Err'].includes(node.callee.object.name) &&
+    node.callee.property.type === 'Identifier' &&
+    ['TaggedError', 'TaggedContextualError', 'TaggedClass'].includes(node.callee.property.name)
   ) {
     return true
   }
@@ -1691,11 +1696,11 @@ const barrelConventionRule = {
     },
     messages: {
       publicBarrelMustNamespace:
-        'Public barrel (__.ts) must use namespace re-exports: '
-        + "export * as ModuleName from './_.js'",
+        'Public barrel (__.ts) must use namespace re-exports: ' +
+        "export * as ModuleName from './_.js'",
       internalBarrelPreferWildcard:
-        'Internal barrel (_.ts) should use wildcard re-exports: '
-        + "export * from './implementation.js'",
+        'Internal barrel (_.ts) should use wildcard re-exports: ' +
+        "export * from './implementation.js'",
     },
     schema: [],
   },
@@ -1796,8 +1801,8 @@ const jsdocQualityRule = {
 }
 
 function hasSummaryLine(text) {
-  const lines = text.split('\n').map(l => l.replace(/^\s*\*?\s?/, '').trim())
-  return lines.some(l => l.length > 0 && !l.startsWith('@'))
+  const lines = text.split('\n').map((l) => l.replace(/^\s*\*?\s?/, '').trim())
+  return lines.some((l) => l.length > 0 && !l.startsWith('@'))
 }
 ```
 
@@ -1940,23 +1945,21 @@ The standalone LSP:
 // Before (pipe style):
 const result = pipe(
   getUser(id),
-  Effect.flatMap(user =>
+  Effect.flatMap((user) =>
     pipe(
       getProfile(user.profileId),
-      Effect.map(profile => ({ user, profile })),
-    )
+      Effect.map((profile) => ({ user, profile })),
+    ),
   ),
   Effect.catchTag('NotFound', () => Effect.succeed(null)),
 )
 
 // After (gen style, produced by kitz:pipe-to-gen refactoring):
-const result = Effect.gen(function*() {
+const result = Effect.gen(function* () {
   const user = yield* getUser(id)
   const profile = yield* getProfile(user.profileId)
   return { user, profile }
-}).pipe(
-  Effect.catchTag('NotFound', () => Effect.succeed(null)),
-)
+}).pipe(Effect.catchTag('NotFound', () => Effect.succeed(null)))
 
 // The refactoring:
 // 1. Identifies the pipe chain
@@ -2021,10 +2024,7 @@ class KitzIntelligence extends Context.Tag('KitzIntelligence')<
     readonly getModuleApi: (pkg: string, mod: string) => Effect.Effect<ApiInfo>
 
     // JSDoc analysis
-    readonly getJSDoc: (
-      file: string,
-      symbol: string,
-    ) => Effect.Effect<JSDocInfo>
+    readonly getJSDoc: (file: string, symbol: string) => Effect.Effect<JSDocInfo>
     readonly getCustomTags: (file: string) => Effect.Effect<CustomTag[]>
 
     // Pattern detection
@@ -2032,17 +2032,11 @@ class KitzIntelligence extends Context.Tag('KitzIntelligence')<
     readonly detectServices: (file: string) => Effect.Effect<ServiceInfo[]>
 
     // Convention checking
-    readonly checkConventions: (
-      file: string,
-    ) => Effect.Effect<ConventionViolation[]>
+    readonly checkConventions: (file: string) => Effect.Effect<ConventionViolation[]>
 
     // Code generation
-    readonly scaffoldModule: (
-      opts: ScaffoldOpts,
-    ) => Effect.Effect<GeneratedFile[]>
-    readonly scaffoldService: (
-      opts: ServiceOpts,
-    ) => Effect.Effect<GeneratedFile[]>
+    readonly scaffoldModule: (opts: ScaffoldOpts) => Effect.Effect<GeneratedFile[]>
+    readonly scaffoldService: (opts: ServiceOpts) => Effect.Effect<GeneratedFile[]>
 
     // File system watching
     readonly watchWorkspace: () => Stream.Stream<FileChangeEvent>
@@ -2053,13 +2047,13 @@ class KitzIntelligence extends Context.Tag('KitzIntelligence')<
 // and JSDoc, with optional tsgo IPC integration for type information
 const KitzIntelligenceLive = Layer.succeed(KitzIntelligence, {
   getPackages: () =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       // Scan packages/ directory
       // Parse each package.json
       // Build PackageInfo[]
     }),
   getModules: (pkg) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       // Read package's src/ directory
       // Find __.ts files (public barrels)
       // Parse each for exported symbols
@@ -2254,23 +2248,29 @@ import { stringEq } from '../instances/string.js'
 
 describe('Eq<string>', () => {
   it('satisfies reflexivity', () => {
-    fc.assert(fc.property(fc.string(), (a) => {
-      expect(stringEq.equals(a, a)).toBe(true)
-    }))
+    fc.assert(
+      fc.property(fc.string(), (a) => {
+        expect(stringEq.equals(a, a)).toBe(true)
+      }),
+    )
   })
 
   it('satisfies symmetry', () => {
-    fc.assert(fc.property(fc.string(), fc.string(), (a, b) => {
-      expect(stringEq.equals(a, b)).toBe(stringEq.equals(b, a))
-    }))
+    fc.assert(
+      fc.property(fc.string(), fc.string(), (a, b) => {
+        expect(stringEq.equals(a, b)).toBe(stringEq.equals(b, a))
+      }),
+    )
   })
 
   it('satisfies transitivity', () => {
-    fc.assert(fc.property(fc.string(), fc.string(), fc.string(), (a, b, c) => {
-      if (stringEq.equals(a, b) && stringEq.equals(b, c)) {
-        expect(stringEq.equals(a, c)).toBe(true)
-      }
-    }))
+    fc.assert(
+      fc.property(fc.string(), fc.string(), fc.string(), (a, b, c) => {
+        if (stringEq.equals(a, b) && stringEq.equals(b, c)) {
+          expect(stringEq.equals(a, c)).toBe(true)
+        }
+      }),
+    )
   })
 })
 ```
@@ -2295,7 +2295,7 @@ export async function eqFor<A>(witness: TypeWitness<A>): Promise<Eq<A>> {
       return (await import('./instances/string.js')).stringEq as Eq<A>
     case 'MyCustomType':
       return (await import('./instances/custom.js')).customEq as Eq<A>
-      // ...
+    // ...
   }
 }
 ```
@@ -2429,8 +2429,7 @@ Every `@example` in kitz should be a runnable test. [doc-vitest](https://github.
  * expect(Str.split('abc', ',')).toEqual(['abc'])
  * ```
  */
-export const split = (value: string, separator: string): string[] =>
-  value.split(separator)
+export const split = (value: string, separator: string): string[] => value.split(separator)
 ````
 
 The `@import.meta.vitest` marker tells doc-vitest to extract this block as a test. The test runs in the same vitest environment as the rest of the test suite, with full access to imports and assertions.
@@ -2556,16 +2555,10 @@ Kitz should use `const` type parameters on any factory function where the input'
 ```typescript
 // Without NoInfer: T is inferred from both `initial` and `states`,
 // potentially widening the type
-const createFSM = <T extends string>(
-  initial: T,
-  states: T[],
-) => ({ initial, states })
+const createFSM = <T extends string>(initial: T, states: T[]) => ({ initial, states })
 
 // With NoInfer: T is inferred ONLY from `initial`, states are checked
-const createFSM = <T extends string>(
-  initial: T,
-  states: NoInfer<T>[],
-) => ({ initial, states })
+const createFSM = <T extends string>(initial: T, states: NoInfer<T>[]) => ({ initial, states })
 
 // Now this is a compile error:
 createFSM('idle', ['idle', 'loading', 'typo_state'])
@@ -2633,13 +2626,11 @@ Kitz's Kind module already follows this pattern: `Apply`, `Pipe`, `PipeRight` ar
 
 ```typescript
 // SLOW: non-tail recursive, hits depth limit at ~50
-type Reverse<T extends any[]> = T extends [infer H, ...infer Rest]
-  ? [...Reverse<Rest>, H]
-  : []
+type Reverse<T extends any[]> = T extends [infer H, ...infer Rest] ? [...Reverse<Rest>, H] : []
 
 // FAST: tail-recursive with accumulator, works to depth ~1000
-type Reverse<T extends any[], Acc extends any[] = []> = T extends
-  [infer H, ...infer Rest] ? Reverse<Rest, [H, ...Acc]>
+type Reverse<T extends any[], Acc extends any[] = []> = T extends [infer H, ...infer Rest]
+  ? Reverse<Rest, [H, ...Acc]>
   : Acc
 ```
 
@@ -2657,9 +2648,7 @@ type SortedPositiveInts = NonEmptyArray<PositiveInt> & Brand.Brand<'Sorted'>
 const median = (values: SortedPositiveInts): PositiveInt => {
   const mid = Math.floor(values.length / 2)
   if (values.length % 2 === 0) {
-    return PositiveInt(
-      (values[mid - 1]! + values[mid]!) / 2,
-    )
+    return PositiveInt((values[mid - 1]! + values[mid]!) / 2)
   }
   return values[mid]!
 }
@@ -2930,7 +2919,7 @@ Looking further ahead, the agentic-first approach opens possibilities that are i
 
 **Cross-project consistency.** With the MCP server, an agent working on project A can query the same conventions as an agent working on project B. Both produce code that follows kitz conventions identically. This creates emergent ecosystem consistency without any governance overhead.
 
-**Proactive quality improvement.** An agent with access to the full tooling constellation can proactively suggest improvements: "This module's JSDoc is missing @complexity tags. Based on the implementation, here are the complexities: filter O(n), map O(n), flatMap O(n*m). Would you like me to add them?" This turns quality from a review-time concern into a continuous, automated process.
+**Proactive quality improvement.** An agent with access to the full tooling constellation can proactively suggest improvements: "This module's JSDoc is missing @complexity tags. Based on the implementation, here are the complexities: filter O(n), map O(n), flatMap O(n\*m). Would you like me to add them?" This turns quality from a review-time concern into a continuous, automated process.
 
 ---
 
@@ -3085,9 +3074,7 @@ export interface DiagnosticOutput {
   readonly additionalDiagnostics: readonly SimpleDiagnostic[]
 }
 
-export function computeKitzDiagnostics(
-  input: DiagnosticInput,
-): DiagnosticOutput {
+export function computeKitzDiagnostics(input: DiagnosticInput): DiagnosticOutput {
   const diagnostics: SimpleDiagnostic[] = []
 
   // Check for floating effects
@@ -3097,9 +3084,7 @@ export function computeKitzDiagnostics(
   diagnostics.push(...detectMissingErrorTags(input.sourceText))
 
   // Check for convention violations
-  diagnostics.push(
-    ...detectConventionViolations(input.sourceText, input.fileName),
-  )
+  diagnostics.push(...detectConventionViolations(input.sourceText, input.fileName))
 
   return { additionalDiagnostics: diagnostics }
 }
@@ -3209,8 +3194,8 @@ function create(info: ts.server.PluginCreateInfo) {
 
   proxy.getSemanticDiagnostics = (fileName: string) => {
     const original = info.languageService.getSemanticDiagnostics(fileName)
-    const sourceText = info.languageService.getProgram()
-      ?.getSourceFile(fileName)?.getFullText() ?? ''
+    const sourceText =
+      info.languageService.getProgram()?.getSourceFile(fileName)?.getFullText() ?? ''
 
     // Same intelligence module used in both phases
     const kitzDiags = computeKitzDiagnostics({
@@ -3618,7 +3603,7 @@ An important aspect of the derivation: kitz itself is the first and most demandi
 
 - The Display trait has real handlers in real domain modules
 - The HKT system is used in real optic lenses and kind compositions
-- The module conventions (_.ts, __.ts) are followed by all 38 packages
+- The module conventions (\_.ts, \_\_.ts) are followed by all 38 packages
 - The JSDoc patterns are already partially established
 - The Claude Code skills already automate module creation and service scaffolding
 
@@ -3824,7 +3809,7 @@ function eqFor<A>(value: A): Eq<A> {
       return stringEq as Eq<A>
     case 'number':
       return numberEq as Eq<A>
-      // ...
+    // ...
   }
 }
 ```
@@ -3846,18 +3831,24 @@ Rejected because the tsgo API doesn't support plugins and may never support them
 **Alternative 3: Proxy-based lazy dispatch (TRAITOR v1 style)**
 
 ```typescript
-const TC = new Proxy({}, {
-  get(_, trait: string) {
-    return new Proxy({}, {
-      get(_, method: string) {
-        return (...args: any[]) => {
-          const domain = detectDomain(args[0])
-          return registry[trait][domain][method](...args)
-        }
-      },
-    })
+const TC = new Proxy(
+  {},
+  {
+    get(_, trait: string) {
+      return new Proxy(
+        {},
+        {
+          get(_, method: string) {
+            return (...args: any[]) => {
+              const domain = detectDomain(args[0])
+              return registry[trait][domain][method](...args)
+            }
+          },
+        },
+      )
+    },
   },
-})
+)
 
 TC.Eq.equals(a, b) // Runtime dispatch via proxy
 ```
@@ -3872,11 +3863,11 @@ type TypeWitness<A> =
   | { tag: 'number'; _phantom: A }
   | { tag: 'Array'; inner: TypeWitness<unknown>; _phantom: A }
   | {
-    tag: 'Record'
-    key: TypeWitness<unknown>
-    value: TypeWitness<unknown>
-    _phantom: A
-  }
+      tag: 'Record'
+      key: TypeWitness<unknown>
+      value: TypeWitness<unknown>
+      _phantom: A
+    }
 
 // Usage:
 const string_: TypeWitness<string> = {

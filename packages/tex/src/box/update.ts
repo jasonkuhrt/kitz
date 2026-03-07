@@ -27,7 +27,9 @@ import type * as PropSpan from './properties/span.js'
  * ```
  */
 export const content = (box: Box, newContent: string | Array<string | Box>): Box => {
-  return Box.make({ ...box, content: newContent })
+  const newBox = box.clone()
+  newBox.content$(newContent)
+  return newBox
 }
 
 /**
@@ -49,7 +51,7 @@ export const content = (box: Box, newContent: string | Array<string | Box>): Box
  * ```
  */
 export const pad = (box: Box, padding: PaddingInput): Box => {
-  const newBox = Box.make({ ...box })
+  const newBox = box.clone()
   newBox.pad$(padding)
   return newBox
 }
@@ -73,7 +75,7 @@ export const pad = (box: Box, padding: PaddingInput): Box => {
  * ```
  */
 export const margin = (box: Box, marginInput: MarginInput): Box => {
-  const newBox = Box.make({ ...box })
+  const newBox = box.clone()
   newBox.margin$(marginInput)
   return newBox
 }
@@ -95,7 +97,7 @@ export const margin = (box: Box, marginInput: MarginInput): Box => {
  * ```
  */
 export const border = (box: Box, borderInput: BorderInput): Box => {
-  const newBox = Box.make({ ...box })
+  const newBox = box.clone()
   newBox.border$(borderInput)
   return newBox
 }
@@ -123,7 +125,7 @@ export const border = (box: Box, borderInput: BorderInput): Box => {
  * ```
  */
 export const span = (box: Box, spanInput: PropSpan.Input): Box => {
-  const newBox = Box.make({ ...box })
+  const newBox = box.clone()
   newBox.span$(spanInput)
   return newBox
 }
@@ -145,7 +147,7 @@ export const span = (box: Box, spanInput: PropSpan.Input): Box => {
  * ```
  */
 export const spanRange = (box: Box, spanRangeInput: SpanRange): Box => {
-  const newBox = Box.make({ ...box })
+  const newBox = box.clone()
   newBox.spanRange$(spanRangeInput)
   return newBox
 }
@@ -171,7 +173,7 @@ export const spanRange = (box: Box, spanRangeInput: SpanRange): Box => {
  * ```
  */
 export const gap = (box: Box, gapInput: PropGap.Input): Box => {
-  const newBox = Box.make({ ...box })
+  const newBox = box.clone()
   newBox.gap$(gapInput)
   return newBox
 }

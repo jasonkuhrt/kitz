@@ -8,7 +8,7 @@ inputs:
   install-deps:
     description: Should deps be installed?
     required: false
-    default: "true"
+    default: 'true'
 runs:
   using: composite
   steps:

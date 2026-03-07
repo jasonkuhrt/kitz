@@ -176,11 +176,7 @@ const renderDagFull = (config: DagConfig): string => {
   return renderer.renderFull()
 }
 
-const boxLayers: readonly (readonly string[])[] = [
-  ['StepA'],
-  ['StepB', 'StepC'],
-  ['StepD'],
-]
+const boxLayers: readonly (readonly string[])[] = [['StepA'], ['StepB', 'StepC'], ['StepD']]
 
 const boxEdges: readonly (readonly [string, string])[] = [
   ['StepA', 'StepB'],

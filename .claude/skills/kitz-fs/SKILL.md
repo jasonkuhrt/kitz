@@ -33,7 +33,7 @@ Always use `@kitz/env` for cwd instead of `process.cwd()`:
 ```typescript
 import { Env } from '@kitz/env'
 
-const program = Effect.gen(function*() {
+const program = Effect.gen(function* () {
   const env = yield* Env.Env
   const configPath = Fs.Path.join(env.cwd, configRel) // env.cwd is already AbsDir
 })
@@ -191,11 +191,7 @@ Only `NodeFileSystem.layer` is needed - no `NodePath.layer`:
 
 ```typescript
 // GOOD
-const layer = Layer.mergeAll(
-  Env.Live,
-  NodeFileSystem.layer,
-  Git.GitLive,
-)
+const layer = Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive)
 
 // BAD - NodePath.layer is not needed
 const layer = Layer.mergeAll(
@@ -216,7 +212,7 @@ import { Effect, Layer } from 'effect'
 
 const CONFIG_FILE = Fs.Path.fromString('./config.json')
 
-const program = Effect.gen(function*() {
+const program = Effect.gen(function* () {
   const env = yield* Env.Env
   const configPath = Fs.Path.join(env.cwd, CONFIG_FILE)
 

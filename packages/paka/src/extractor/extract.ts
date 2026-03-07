@@ -43,6 +43,21 @@ const toUnknownRecord = (value: unknown): Record<string, unknown> | undefined =>
   return result
 }
 
+const remakeModule = (
+  module: Module,
+  overrides: Partial<
+    Pick<Module, 'location' | 'docs' | 'docsProvenance' | 'category' | 'exports'>
+  > = {},
+): Module =>
+  Module.make({
+    location: overrides.location ?? module.location,
+    docs: overrides.docs !== undefined ? overrides.docs : module.docs,
+    docsProvenance:
+      overrides.docsProvenance !== undefined ? overrides.docsProvenance : module.docsProvenance,
+    category: overrides.category !== undefined ? overrides.category : module.category,
+    exports: overrides.exports ?? module.exports,
+  })
+
 const getStringRecordProperty = (
   record: Record<string, unknown>,
   key: string,
@@ -75,7 +90,7 @@ const getStringRecordProperty = (
  * const model = extractFromFiles({ files: layout })
  * ```
  */
-export const extractFromFiles = (params: {
+export function extractFromFiles(params: {
   projectRoot?: string
   files: Fs.Builder.Layout
   entrypoints?: string[]
@@ -83,7 +98,7 @@ export const extractFromFiles = (params: {
   matching?: Pat.PatternForType<Export>
   /** @deprecated Use `matching` instead */
   filterUnderscoreExports?: boolean
-}): InterfaceModel => {
+}): InterfaceModel {
   const {
     projectRoot = '/',
     files,
@@ -134,16 +149,20 @@ export const extractFromFiles = (params: {
       const tsconfig = parseJsonObject(tsconfigContent)
       const compilerOptions = tsconfig['compilerOptions']
       const compilerOptionsRecord = toUnknownRecord(compilerOptions)
-      const outDir = compilerOptionsRecord ? getStringProperty(compilerOptionsRecord, 'outDir') : undefined
-      const rootDir = compilerOptionsRecord ? getStringProperty(compilerOptionsRecord, 'rootDir') : undefined
+      const outDir = compilerOptionsRecord
+        ? getStringProperty(compilerOptionsRecord, 'outDir')
+        : undefined
+      const rootDir = compilerOptionsRecord
+        ? getStringProperty(compilerOptionsRecord, 'rootDir')
+        : undefined
 
       buildToSourcePath = createBuildToSourcePath(
         outDir && rootDir
           ? {
-            outDir: join(projectRoot, outDir),
-            rootDir: join(projectRoot, rootDir),
-            projectRoot,
-          }
+              outDir: join(projectRoot, outDir),
+              rootDir: join(projectRoot, rootDir),
+              projectRoot,
+            }
           : undefined,
       )
     }
@@ -323,11 +342,8 @@ export const extractFromFiles = (params: {
 
     // Apply pattern matching filter if provided
     if (matching) {
-      const filteredExports = module.exports.filter(exp => Pat.isMatch(exp, matching))
-      module = Module.make({
-        ...module,
-        exports: filteredExports,
-      })
+      const filteredExports = module.exports.filter((exp) => Pat.isMatch(exp, matching))
+      module = remakeModule(module, { exports: filteredExports })
     }
 
     // Override module description and category with namespace export JSDoc if available
@@ -337,15 +353,15 @@ export const extractFromFiles = (params: {
         exports: module.exports,
         docs: namespaceDescription
           ? ModuleDocs.make({
-            description: namespaceDescription,
-            guide: module.docs?.guide,
-          })
+              description: namespaceDescription,
+              guide: module.docs?.guide,
+            })
           : module.docs,
         docsProvenance: namespaceDescription
           ? DocsProvenance.make({
-            description: JSDocProvenance.make({ shadowNamespace: true }),
-            guide: module.docsProvenance?.guide,
-          })
+              description: JSDocProvenance.make({ shadowNamespace: true }),
+              guide: module.docsProvenance?.guide,
+            })
           : module.docsProvenance,
         category: namespaceCategory ?? module.category,
       })
@@ -353,15 +369,19 @@ export const extractFromFiles = (params: {
 
     // Create appropriate entrypoint type
     if (isDrillableNamespace) {
-      extractedEntrypoints.push(DrillableNamespaceEntrypoint.make({
-        path: packagePath,
-        module,
-      }))
+      extractedEntrypoints.push(
+        DrillableNamespaceEntrypoint.make({
+          path: packagePath,
+          module,
+        }),
+      )
     } else {
-      extractedEntrypoints.push(SimpleEntrypoint.make({
-        path: packagePath,
-        module,
-      }))
+      extractedEntrypoints.push(
+        SimpleEntrypoint.make({
+          path: packagePath,
+          module,
+        }),
+      )
     }
   }
 
@@ -415,23 +435,25 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
   const packageJson = parseJsonObject(readFileSync(packageJsonPath, 'utf-8'))
 
   // Detect tsconfig with preference for build config
-  const resolvedTsconfigPath = tsconfigPath ?? (() => {
-    const buildConfigPath = join(projectRoot, 'tsconfig.build.json')
-    const regularConfigPath = join(projectRoot, 'tsconfig.json')
+  const resolvedTsconfigPath =
+    tsconfigPath ??
+    (() => {
+      const buildConfigPath = join(projectRoot, 'tsconfig.build.json')
+      const regularConfigPath = join(projectRoot, 'tsconfig.json')
 
-    // Prefer tsconfig.build.json (contains outDir/rootDir for builds)
-    if (existsSync(buildConfigPath)) {
-      return buildConfigPath
-    }
+      // Prefer tsconfig.build.json (contains outDir/rootDir for builds)
+      if (existsSync(buildConfigPath)) {
+        return buildConfigPath
+      }
 
-    // Fallback to tsconfig.json
-    if (existsSync(regularConfigPath)) {
+      // Fallback to tsconfig.json
+      if (existsSync(regularConfigPath)) {
+        return regularConfigPath
+      }
+
+      // Let ts-morph throw its native error for missing config
       return regularConfigPath
-    }
-
-    // Let ts-morph throw its native error for missing config
-    return regularConfigPath
-  })()
+    })()
 
   // Create TypeScript project
   const project = new Project({
@@ -445,10 +467,10 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
   const buildToSourcePath = createBuildToSourcePath(
     compilerOptions.outDir && compilerOptions.rootDir
       ? {
-        outDir: compilerOptions.outDir,
-        rootDir: compilerOptions.rootDir,
-        projectRoot,
-      }
+          outDir: compilerOptions.outDir,
+          rootDir: compilerOptions.rootDir,
+          projectRoot,
+        }
       : undefined, // No transformation, just extension change
   )
 
@@ -636,11 +658,8 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
 
     // Apply pattern matching filter if provided
     if (matching) {
-      const filteredExports = module.exports.filter(exp => Pat.isMatch(exp, matching))
-      module = Module.make({
-        ...module,
-        exports: filteredExports,
-      })
+      const filteredExports = module.exports.filter((exp) => Pat.isMatch(exp, matching))
+      module = remakeModule(module, { exports: filteredExports })
     }
 
     // Override module description and category with namespace export JSDoc if available
@@ -650,15 +669,15 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
         exports: module.exports,
         docs: namespaceDescription
           ? ModuleDocs.make({
-            description: namespaceDescription,
-            guide: module.docs?.guide,
-          })
+              description: namespaceDescription,
+              guide: module.docs?.guide,
+            })
           : module.docs,
         docsProvenance: namespaceDescription
           ? DocsProvenance.make({
-            description: JSDocProvenance.make({ shadowNamespace: true }),
-            guide: module.docsProvenance?.guide,
-          })
+              description: JSDocProvenance.make({ shadowNamespace: true }),
+              guide: module.docsProvenance?.guide,
+            })
           : module.docsProvenance,
         category: namespaceCategory ?? module.category,
       })
@@ -666,15 +685,19 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
 
     // Create appropriate entrypoint type
     if (isDrillableNamespace) {
-      extractedEntrypoints.push(DrillableNamespaceEntrypoint.make({
-        path: packagePath,
-        module,
-      }))
+      extractedEntrypoints.push(
+        DrillableNamespaceEntrypoint.make({
+          path: packagePath,
+          module,
+        }),
+      )
     } else {
-      extractedEntrypoints.push(SimpleEntrypoint.make({
-        path: packagePath,
-        module,
-      }))
+      extractedEntrypoints.push(
+        SimpleEntrypoint.make({
+          path: packagePath,
+          module,
+        }),
+      )
     }
   }
 

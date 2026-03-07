@@ -49,7 +49,10 @@ export const ResetContent = { code: 205 as const, description: `Reset Content` }
  * The server is delivering only part of the resource due to a range header sent by the client.
  * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/206
  */
-export const PartialContent = { code: 206 as const, description: `Partial Content` } satisfies Status
+export const PartialContent = {
+  code: 206 as const,
+  description: `Partial Content`,
+} satisfies Status
 
 /**
  * The message body that follows is an XML message and can contain a number of separate response codes,
@@ -63,7 +66,10 @@ export const MultiStatus = { code: 207 as const, description: `Multi-Status` } s
  * and are not being included again.
  * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/208
  */
-export const AlreadyReported = { code: 208 as const, description: `Already Reported` } satisfies Status
+export const AlreadyReported = {
+  code: 208 as const,
+  description: `Already Reported`,
+} satisfies Status
 
 /**
  * The server has fulfilled a GET request for the resource, and the response is a representation

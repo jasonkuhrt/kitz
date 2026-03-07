@@ -104,8 +104,8 @@ export type GetSignature<$fn> = $fn extends { [symbol]: infer $sig } ? $sig : $f
  * type Params2 = GetParameters<typeof partition>  // [obj: object, keys: string[]]
  * ```
  */
-export type GetParameters<$fn> = GetSignature<$fn> extends (...args: any) => any ? Parameters<GetSignature<$fn>>
-  : never
+export type GetParameters<$fn> =
+  GetSignature<$fn> extends (...args: any) => any ? Parameters<GetSignature<$fn>> : never
 
 /**
  * Extract return type from a function, using `__simpleSignature` if available.
@@ -124,8 +124,8 @@ export type GetParameters<$fn> = GetSignature<$fn> extends (...args: any) => any
  * type Return2 = GetReturnType<typeof partition>  // { picked: object; omitted: object }
  * ```
  */
-export type GetReturnType<$fn> = GetSignature<$fn> extends (...args: any) => any ? ReturnType<GetSignature<$fn>>
-  : never
+export type GetReturnType<$fn> =
+  GetSignature<$fn> extends (...args: any) => any ? ReturnType<GetSignature<$fn>> : never
 
 /**
  * Helper to implement a function with a simple signature for inference.

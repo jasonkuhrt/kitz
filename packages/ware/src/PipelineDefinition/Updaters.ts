@@ -4,10 +4,11 @@ import type { StepDefinition } from '../StepDefinition.js'
 import type { PipelineDefinition } from './_.js'
 
 export namespace Updaters {
-  export type SetInput<
-    $PipelineDef extends PipelineDefinition,
-    $Input extends object,
-  > = Obj.SetKey<$PipelineDef, 'input', $Input>
+  export type SetInput<$PipelineDef extends PipelineDefinition, $Input extends object> = Obj.SetKey<
+    $PipelineDef,
+    'input',
+    $Input
+  >
 
   export type AddStep<
     $PipelineDef extends PipelineDefinition,

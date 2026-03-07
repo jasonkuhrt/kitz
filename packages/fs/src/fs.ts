@@ -8,9 +8,11 @@ import { Path } from './path/_.js'
  * - If all paths are RelDir, returns AbsDir
  * - If mixed, returns union of AbsFile | AbsDir
  */
-type InferReturnType<T extends Path.$Rel> = T extends Path.RelFile ? Path.AbsFile
-  : T extends Path.RelDir ? Path.AbsDir
-  : Path.$Abs
+type InferReturnType<T extends Path.$Rel> = T extends Path.RelFile
+  ? Path.AbsFile
+  : T extends Path.RelDir
+    ? Path.AbsDir
+    : Path.$Abs
 
 /**
  * Find the first existing path under a directory.
@@ -37,36 +39,34 @@ type InferReturnType<T extends Path.$Rel> = T extends Path.RelFile ? Path.AbsFil
  * // result: Option<AbsFile> since all inputs are RelFile
  * ```
  */
-export const findFirstUnderDir = (
-  dir: Path.AbsDir,
-) =>
-<paths extends Path.$Rel>(
-  paths: readonly paths[],
-): Effect.Effect<
-  Option.Option<InferReturnType<paths>>,
-  Error,
-  FileSystem.FileSystem
-> =>
-  Effect.gen(function*() {
-    const fs = yield* FileSystem.FileSystem
+export const findFirstUnderDir =
+  (dir: Path.AbsDir) =>
+  <paths extends Path.$Rel>(
+    paths: readonly paths[],
+  ): Effect.Effect<Option.Option<InferReturnType<paths>>, Error, FileSystem.FileSystem> =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
 
-    // Check each path for existence, maintaining the index relationship
-    const checks = yield* Effect.all(
-      paths.map((relativePath) => {
-        // Join to get absolute path for checking
-        const absolutePath = Path.join(dir, relativePath as Path.$Rel)
-        const pathStr = absolutePath.toString()
-        return fs.exists(pathStr).pipe(
-          // Return the absolute path if it exists (this is what we want!)
-          Effect.map(exists => exists ? absolutePath : undefined),
-          Effect.mapError(error => new Error(`Failed to check path existence: ${pathStr} - ${error}`)),
-        )
-      }),
-    )
+      // Check each path for existence, maintaining the index relationship
+      const checks = yield* Effect.all(
+        paths.map((relativePath) => {
+          // Join to get absolute path for checking
+          const absolutePath = Path.join(dir, relativePath as Path.$Rel)
+          const pathStr = absolutePath.toString()
+          return fs.exists(pathStr).pipe(
+            // Return the absolute path if it exists (this is what we want!)
+            Effect.map((exists) => (exists ? absolutePath : undefined)),
+            Effect.mapError(
+              (error) =>
+                new Error(`Failed to check path existence: ${pathStr} - ${String(error)}`),
+            ),
+          )
+        }),
+      )
 
-    // Find the first existing path and wrap in Option
-    const firstExisting = checks.find(maybePath => maybePath !== undefined)
-    return firstExisting === undefined
-      ? Option.none()
-      : Option.some(firstExisting as InferReturnType<paths>)
-  })
+      // Find the first existing path and wrap in Option
+      const firstExisting = checks.find((maybePath) => maybePath !== undefined)
+      return firstExisting === undefined
+        ? Option.none()
+        : Option.some(firstExisting as InferReturnType<paths>)
+    })

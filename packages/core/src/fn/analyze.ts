@@ -53,15 +53,20 @@ export const analyzeFunction = (fn: (...args: [...any[]]) => unknown) => {
 
   if (groups[`parameters`]) {
     const results = [...groups[`parameters`].matchAll(functionParametersPattern)]
-    const resultParameters = results.map(result => {
-      const type = result.groups?.[`destructured`] ? `destructured` : result.groups?.[`name`] ? `name` : null
+    const resultParameters = results.map((result) => {
+      const type = result.groups?.[`destructured`]
+        ? `destructured`
+        : result.groups?.[`name`]
+          ? `name`
+          : null
 
       switch (type) {
         case `destructured`:
           const valueRaw = result.groups![`destructured`]!
-          const names = [...valueRaw.matchAll(destructuredPattern)].map(result => {
+          const names = [...valueRaw.matchAll(destructuredPattern)].map((result) => {
             const name = result.groups![`name`]
-            if (name === undefined) throw new Error(`Could not extract name from destructured parameter.`)
+            if (name === undefined)
+              throw new Error(`Could not extract name from destructured parameter.`)
             return name
           })
           return {

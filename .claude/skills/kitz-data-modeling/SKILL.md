@@ -65,13 +65,11 @@ export const is = Schema.is(Severity)
 **Use `as const` for literal types:**
 
 ```typescript
-export const StandardValue = Schema.Enums(
-  {
-    feat: 'feat',
-    fix: 'fix',
-    docs: 'docs',
-  } as const,
-)
+export const StandardValue = Schema.Enums({
+  feat: 'feat',
+  fix: 'fix',
+  docs: 'docs',
+} as const)
 
 StandardValue.enums.feat // 'feat'
 ```
@@ -107,11 +105,11 @@ import { Schema as S } from 'effect'
 export class MyType extends S.Class<MyType>('MyType')({
   value: S.String,
 }) {
-  static Schema: S.Schema<MyType, string> = S.transform(
-    S.String,
-    MyType,
-    { strict: true, decode: parse, encode: stringify },
-  )
+  static Schema: S.Schema<MyType, string> = S.transform(S.String, MyType, {
+    strict: true,
+    decode: parse,
+    encode: stringify,
+  })
 
   static fromString = S.decodeSync(MyType.Schema)
   static override toString = S.encodeSync(MyType.Schema)
@@ -212,12 +210,9 @@ const stateFromEvent = (event: Event): State => stateFromTag[event._tag]
 **Export at module level for unions with type narrowing:**
 
 ```typescript
-type FromString<$value extends string> = $value extends StandardValue ? Standard
-  : Custom
+type FromString<$value extends string> = $value extends StandardValue ? Standard : Custom
 
-export const fromString = <$value extends string>(
-  value: $value,
-): FromString<$value> => {
+export const fromString = <$value extends string>(value: $value): FromString<$value> => {
   if (value in StandardValue.enums) {
     return Standard.make({ value: value as StandardValue }) as any
   }

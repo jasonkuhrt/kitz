@@ -37,6 +37,7 @@ Use this skill when code needs to move from imperative style to Effect + kitz fu
 Refactor this module to Effect-first functional composition.
 
 Constraints:
+
 - Use pipeline-friendly, curried composition patterns.
 - Prefer Effect data structures (`HashMap`/`HashSet`; mutable variants only if necessary).
 - No `JSON.parse` (use Effect Schema decode/encode codecs).
@@ -45,6 +46,7 @@ Constraints:
 - No `any`, no assertion casts; rely on inference + schema at IO boundaries.
 
 Deliverables:
+
 1. Updated implementation.
 2. Updated tests proving behavior unchanged.
 3. Short notes listing removed anti-patterns and replacement patterns.

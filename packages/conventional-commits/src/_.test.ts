@@ -280,26 +280,17 @@ const isCommit = Schema.is(ConventionalCommits.Commit.Commit)
 
 Test.describe('Commit > union accepts')
   .on(isCommit)
-  .cases(
-    [[fixtures.commitSingle.simple], true],
-    [[fixtures.commitMulti.simple], true],
-  )
+  .cases([[fixtures.commitSingle.simple], true], [[fixtures.commitMulti.simple], true])
   .test()
 
 Test.describe('Commit.Single.is')
   .on(ConventionalCommits.Commit.Single.is)
-  .cases(
-    [[fixtures.commitSingle.simple], true],
-    [[fixtures.commitMulti.simple], false],
-  )
+  .cases([[fixtures.commitSingle.simple], true], [[fixtures.commitMulti.simple], false])
   .test()
 
 Test.describe('Commit.Multi.is')
   .on(ConventionalCommits.Commit.Multi.is)
-  .cases(
-    [[fixtures.commitSingle.simple], false],
-    [[fixtures.commitMulti.simple], true],
-  )
+  .cases([[fixtures.commitSingle.simple], false], [[fixtures.commitMulti.simple], true])
   .test()
 
 // ─── parseTitle ──────────────────────────────────────────────────
@@ -344,10 +335,7 @@ Test.describe('parseTitle > Commit.Single')
 
 Test.describe('parseTitle > errors')
   .on(parseTitleSync)
-  .cases(
-    [['not a valid commit'], null],
-    [['feat:'], null],
-  )
+  .cases([['not a valid commit'], null], [['feat:'], null])
   .test()
 
 // ─── parseTitle > Commit.Multi ────────────────────────────────────
@@ -358,7 +346,8 @@ test('parseTitle > Commit.Multi', async () => {
   )
   expect(Exit.isSuccess(result)).toBe(true)
   if (Exit.isSuccess(result) && ConventionalCommits.Commit.Multi.is(result.value)) {
-    expect(Schema.encodeSync(ConventionalCommits.Commit.Multi)(result.value)).toMatchInlineSnapshot(`
+    expect(Schema.encodeSync(ConventionalCommits.Commit.Multi)(result.value))
+      .toMatchInlineSnapshot(`
       {
         "_tag": "Multi",
         "message": "multi change",
@@ -415,6 +404,8 @@ test('parseTitle > Commit.Multi > global breaking', async () => {
 
 test('StandardImpact > all standard types have impact mappings', () => {
   for (const key of Object.keys(ConventionalCommits.Type.StandardValue.enums)) {
-    expect(ConventionalCommits.Type.StandardImpact[key as ConventionalCommits.Type.StandardValue]).toBeDefined()
+    expect(
+      ConventionalCommits.Type.StandardImpact[key as ConventionalCommits.Type.StandardValue],
+    ).toBeDefined()
   }
 })

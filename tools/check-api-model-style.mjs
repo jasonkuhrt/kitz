@@ -51,8 +51,8 @@ const addRegexViolations = (file, content, pattern, message) => {
   }
 }
 
-const releaseApiFiles = listFiles('packages/release/src/api').filter((file) =>
-  file.endsWith('.ts') && !file.endsWith('.test.ts') && !file.endsWith('.test-d.ts')
+const releaseApiFiles = listFiles('packages/release/src/api').filter(
+  (file) => file.endsWith('.ts') && !file.endsWith('.test.ts') && !file.endsWith('.test-d.ts'),
 )
 
 for (const file of releaseApiFiles) {
@@ -77,8 +77,8 @@ for (const file of releaseApiFiles) {
   )
 }
 
-const packageTsFiles = listFiles('packages').filter((file) =>
-  file.endsWith('.ts') && !file.endsWith('.test.ts') && !file.endsWith('.test-d.ts')
+const packageTsFiles = listFiles('packages').filter(
+  (file) => file.endsWith('.ts') && !file.endsWith('.test.ts') && !file.endsWith('.test-d.ts'),
 )
 
 for (const file of packageTsFiles) {
@@ -105,13 +105,16 @@ for (const file of packageTsFiles) {
   const hasClassLiteralAwareFromString = classLiteralAwareFromString.test(content)
 
   if (hasClassLiteralAwareFromString && !/static fromLiteral\s*=/.test(content)) {
-    const match = content.match(/static fromString\s*=\s*<const\s+[A-Za-z_$][\w$]*\s+extends\s+string>/)
+    const match = content.match(
+      /static fromString\s*=\s*<const\s+[A-Za-z_$][\w$]*\s+extends\s+string>/,
+    )
     const at = match?.index ?? 0
     const position = getLineAndColumn(content, at)
     violations.push({
       file,
       ...position,
-      message: 'Class literal-aware parser APIs must expose `static fromLiteral` as the canonical literal parser name.',
+      message:
+        'Class literal-aware parser APIs must expose `static fromLiteral` as the canonical literal parser name.',
     })
   }
 }

@@ -13,7 +13,7 @@ import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
-import { EffectSchema, Oak } from '@kitz/oak'
+import { Oak } from '@kitz/oak'
 import { Console, Effect, Fiber, Layer, Option, Schema, Stream } from 'effect'
 import * as Readline from 'node:readline/promises'
 import * as Api from '../../api/__.js'
@@ -24,33 +24,25 @@ import * as Api from '../../api/__.js'
  * Execute the release plan. Requires plan file from 'release plan'.
  */
 const args = Oak.Command.create()
-  .use(EffectSchema)
+  .use(Oak.EffectSchema)
   .description('Execute the release plan')
   .parameter(
     'yes y',
-    Schema.transform(
-      Schema.UndefinedOr(Schema.Boolean),
-      Schema.Boolean,
-      {
-        strict: true,
-        decode: (v) => v ?? false,
-        encode: (v) => v,
-      },
-    ).pipe(
+    Schema.transform(Schema.UndefinedOr(Schema.Boolean), Schema.Boolean, {
+      strict: true,
+      decode: (v) => v ?? false,
+      encode: (v) => v,
+    }).pipe(
       Schema.annotations({ description: 'Skip confirmation prompt (for CI)', default: false }),
     ),
   )
   .parameter(
     'dry-run d',
-    Schema.transform(
-      Schema.UndefinedOr(Schema.Boolean),
-      Schema.Boolean,
-      {
-        strict: true,
-        decode: (v) => v ?? false,
-        encode: (v) => v,
-      },
-    ).pipe(
+    Schema.transform(Schema.UndefinedOr(Schema.Boolean), Schema.Boolean, {
+      strict: true,
+      decode: (v) => v ?? false,
+      encode: (v) => v,
+    }).pipe(
       Schema.annotations({ description: 'Preview actions without executing', default: false }),
     ),
   )
@@ -68,7 +60,7 @@ const confirm = (message: string): Effect.Effect<boolean> =>
       Readline.createInterface({
         input: process.stdin,
         output: process.stdout,
-      })
+      }),
     ),
     (readline) =>
       Effect.tryPromise({
@@ -81,12 +73,10 @@ const confirm = (message: string): Effect.Effect<boolean> =>
         }),
       ),
     (readline) => Effect.sync(() => readline.close()),
-  ).pipe(
-    Effect.catchAll(() => Effect.succeed(false)),
-  )
+  ).pipe(Effect.catchAll(() => Effect.succeed(false)))
 
 Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const env = yield* Env.Env
 
     // Load plan file using schema-validated resource

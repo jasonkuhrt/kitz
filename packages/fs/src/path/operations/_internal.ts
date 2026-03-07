@@ -18,7 +18,12 @@ export const set = (
   options: { segments?: readonly string[]; fileName?: FileName | null; back?: number },
 ): Path => {
   const segments = options.segments ?? path.segments
-  const fileName = options.fileName !== undefined ? options.fileName : ('fileName' in path ? path.fileName : undefined)
+  const fileName =
+    options.fileName !== undefined
+      ? options.fileName
+      : 'fileName' in path
+        ? path.fileName
+        : undefined
   const back = options.back ?? ($Rel.is(path) ? path.back : 0)
 
   return Match.value(path).pipe(

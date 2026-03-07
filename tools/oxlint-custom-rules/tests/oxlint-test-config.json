@@ -37,6 +37,9 @@
     "kitz/module-structure-conventions": "warn",
     "kitz/no-deep-imports-when-namespace-entrypoint-exists": "warn",
     "kitz/prefer-subpath-imports": "warn",
-    "kitz/subpath-imports-integrity": ["warn", { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }]
+    "kitz/subpath-imports-integrity": [
+      "warn",
+      { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }
+    ]
   }
 }

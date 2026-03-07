@@ -12,9 +12,7 @@ import { toString } from './toString.js'
  * Type-level toRel operation.
  * Maps absolute location types to their relative counterparts.
  */
-export type toRel<A extends $Abs> = A extends AbsFile ? RelFile
-  : A extends AbsDir ? RelDir
-  : $Rel
+export type toRel<A extends $Abs> = A extends AbsFile ? RelFile : A extends AbsDir ? RelDir : $Rel
 
 /**
  * Convert an absolute location to a relative location.
@@ -33,10 +31,7 @@ export type toRel<A extends $Abs> = A extends AbsFile ? RelFile
  * const relFile = toRel(absFile, base) // ./src/index.ts
  * ```
  */
-export const toRel = <
-  $abs extends $Abs,
-  $base extends AbsDir,
->(
+export const toRel = <$abs extends $Abs, $base extends AbsDir>(
   abs: $abs,
   base: $base,
 ): toRel<$abs> => {

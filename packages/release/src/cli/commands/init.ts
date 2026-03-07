@@ -13,7 +13,7 @@ import { Str } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
-import { EffectSchema, Oak } from '@kitz/oak'
+import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Match, Schema as S } from 'effect'
 import * as Api from '../../api/__.js'
 
@@ -25,26 +25,20 @@ const RELEASE_DIR_PATTERN = '.release/'
  * Initialize release in a project.
  */
 const args = Oak.Command.create()
-  .use(EffectSchema)
+  .use(Oak.EffectSchema)
   .description('Initialize release configuration')
   .parameter(
     'force f',
-    S.transform(
-      S.UndefinedOr(S.Boolean),
-      S.Boolean,
-      {
-        strict: true,
-        decode: (v) => v ?? false,
-        encode: (v) => v,
-      },
-    ).pipe(
-      S.annotations({ description: 'Overwrite existing config', default: false }),
-    ),
+    S.transform(S.UndefinedOr(S.Boolean), S.Boolean, {
+      strict: true,
+      decode: (v) => v ?? false,
+      encode: (v) => v,
+    }).pipe(S.annotations({ description: 'Overwrite existing config', default: false })),
   )
   .parse()
 
 Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer))(
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const env = yield* Env.Env
 
     const header = Str.Builder()
@@ -71,9 +65,8 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer))(
       Effect.catchTag('SystemError', () => Effect.succeed('')),
     )
 
-    const gitignore = existingContent === ''
-      ? Git.Gitignore.empty
-      : Git.Gitignore.fromString(existingContent)
+    const gitignore =
+      existingContent === '' ? Git.Gitignore.empty : Git.Gitignore.fromString(existingContent)
 
     if (gitignore.hasPattern(RELEASE_DIR_PATTERN)) {
       yield* Console.log(`✓ ${RELEASE_DIR_PATTERN} already in .gitignore`)

@@ -38,12 +38,18 @@ Use `@effect/platform` Command module to call `gh` CLI:
 ```typescript
 import { Command } from '@effect/platform'
 
-const command = Command.make('gh', 'release', 'create', tag,
-  '--title', `${packageName} v${version}`,
-  '--notes', changelog,
+const command = Command.make(
+  'gh',
+  'release',
+  'create',
+  tag,
+  '--title',
+  `${packageName} v${version}`,
+  '--notes',
+  changelog,
 )
 
-yield* Command.exitCode(command)
+yield * Command.exitCode(command)
 ```
 
 **Rationale:**
@@ -74,48 +80,48 @@ Mutable `@next` releases that accumulate changes:
 ```typescript
 if (isPreview) {
   // Check if @next release exists
-  const exists = yield * Command.exitCode(
-    Command.make('gh', 'release', 'view', tag),
-  ).pipe(
-    Effect.map(code => code === 0),
-    Effect.catchAll(() => Effect.succeed(false)),
-  )
+  const exists =
+    yield *
+    Command.exitCode(Command.make('gh', 'release', 'view', tag)).pipe(
+      Effect.map((code) => code === 0),
+      Effect.catchAll(() => Effect.succeed(false)),
+    )
 
   if (exists) {
     // Update existing
-    yield * Command.exitCode(
-      Command.make('gh', 'release', 'edit', tag, '--notes', body),
-    )
+    yield * Command.exitCode(Command.make('gh', 'release', 'edit', tag, '--notes', body))
   } else {
     // Create new with --prerelease
-    yield * Command.exitCode(
+    yield *
+      Command.exitCode(
+        Command.make(
+          'gh',
+          'release',
+          'create',
+          tag,
+          '--title',
+          `${packageName} @next`,
+          '--notes',
+          body,
+          '--prerelease',
+        ),
+      )
+  }
+} else {
+  // Stable release
+  yield *
+    Command.exitCode(
       Command.make(
         'gh',
         'release',
         'create',
         tag,
         '--title',
-        `${packageName} @next`,
+        `${packageName} v${version}`,
         '--notes',
         body,
-        '--prerelease',
       ),
     )
-  }
-} else {
-  // Stable release
-  yield * Command.exitCode(
-    Command.make(
-      'gh',
-      'release',
-      'create',
-      tag,
-      '--title',
-      `${packageName} v${version}`,
-      '--notes',
-      body,
-    ),
-  )
 }
 ```
 
@@ -124,14 +130,12 @@ if (isPreview) {
 New error type:
 
 ```typescript
-export class WorkflowGHReleaseError
-  extends Schema.TaggedError<WorkflowGHReleaseError>(
-    'WorkflowGHReleaseError',
-  )('WorkflowGHReleaseError', {
-    tag: Schema.String,
-    message: Schema.String,
-  })
-{}
+export class WorkflowGHReleaseError extends Schema.TaggedError<WorkflowGHReleaseError>(
+  'WorkflowGHReleaseError',
+)('WorkflowGHReleaseError', {
+  tag: Schema.String,
+  message: Schema.String,
+}) {}
 ```
 
 Added to `ReleaseWorkflowError` union.

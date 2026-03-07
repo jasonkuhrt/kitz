@@ -11,7 +11,9 @@ export class Leaf extends Node {
   render(context: RenderContext) {
     // Apply column readability cap - text columns should never exceed MAX_COLUMN_WIDTH
     const effectiveMaxWidth = Math.min(context.maxWidth ?? MAX_COLUMN_WIDTH, MAX_COLUMN_WIDTH)
-    const lines = Str.Visual.wrap(this.value, effectiveMaxWidth, { strategy: 'break-word-hyphen-in' })
+    const lines = Str.Visual.wrap(this.value, effectiveMaxWidth, {
+      strategy: 'break-word-hyphen-in',
+    })
     const value = lines.join(Str.Char.newline)
     const intrinsicWidth = Math.max(...lines.map((_) => Str.Visual.width(_)))
     const intrinsicHeight = lines.length

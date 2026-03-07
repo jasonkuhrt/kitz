@@ -54,9 +54,11 @@ export const is = <A, B>(a: ValidateIsReference<A>, b: ValidateIsComparable<A, B
  * items.filter(Ref.isOn(obj)) // [obj, obj]
  * ```
  */
-export const isOn = <A>(a: ValidateIsReference<A>) => <B>(b: ValidateIsComparable<A, B>): boolean => {
-  return a === b
-}
+export const isOn =
+  <A>(a: ValidateIsReference<A>) =>
+  <B>(b: ValidateIsComparable<A, B>): boolean => {
+    return a === b
+  }
 
 /**
  * Check if two values are different references using the !== operator.
@@ -100,9 +102,11 @@ export const isnt = <A, B>(a: ValidateIsReference<A>, b: ValidateIsComparable<A,
  * items.filter(Ref.isntOn(target)) // [{ id: 2 }]
  * ```
  */
-export const isntOn = <A>(a: ValidateIsReference<A>) => <B>(b: ValidateIsComparable<A, B>): boolean => {
-  return a !== b
-}
+export const isntOn =
+  <A>(a: ValidateIsReference<A>) =>
+  <B>(b: ValidateIsComparable<A, B>): boolean => {
+    return a !== b
+  }
 
 /**
  * Check if a value can have different references for the same logical value.
@@ -165,56 +169,49 @@ export const isValueEquality = (value: Lang.Value): value is Lang.Primitive => {
 /**
  * Error type for when primitive types are used with Ref operations.
  */
-export interface ErrorPrimitiveType<T> extends
-  Ts.Err.StaticError<
-    ['ref', 'primitive-type'],
-    {
-      message: `Ref operations only work with reference types.`
-      ProvidedType: T
-      tip: `Use domain Eq traits for primitives (e.g., Str.Eq.is, Num.Eq.is).`
-    }
-  >
-{}
+export interface ErrorPrimitiveType<T> extends Ts.Err.StaticError<
+  ['ref', 'primitive-type'],
+  {
+    message: `Ref operations only work with reference types.`
+    ProvidedType: T
+    tip: `Use domain Eq traits for primitives (e.g., Str.Eq.is, Num.Eq.is).`
+  }
+> {}
 
 /**
  * Error type for comparing identical primitive literals.
  */
-export interface ErrorNotComparableSamePrimitive<T> extends
-  Ts.Err.StaticError<
-    ['ref', 'not-comparable-same-primitive'],
-    {
-      message: `Comparing ${Ts.ShowInTemplate<T>} to itself is meaningless.`
-      Type: T
-      tip: `This comparison would always return true.`
-    }
-  >
-{}
+export interface ErrorNotComparableSamePrimitive<T> extends Ts.Err.StaticError<
+  ['ref', 'not-comparable-same-primitive'],
+  {
+    message: `Comparing ${Ts.ShowInTemplate<T>} to itself is meaningless.`
+    Type: T
+    tip: `This comparison would always return true.`
+  }
+> {}
 
 /**
  * Error type for comparing types with no overlap.
  */
-export interface ErrorNotComparableOverlap<A, B> extends
-  Ts.Err.StaticError<
-    ['ref', 'not-comparable-overlap'],
-    {
-      message: `Cannot compare structurally different types ${Ts.ShowInTemplate<A>} and ${Ts.ShowInTemplate<B>}.`
-      TypeA: A
-      TypeB: B
-      tip:
-        `While rare, different types can refer to the same instance if an object has properties from both types. Use @ts-expect-error if this is intentional.`
-    }
-  >
-{}
+export interface ErrorNotComparableOverlap<A, B> extends Ts.Err.StaticError<
+  ['ref', 'not-comparable-overlap'],
+  {
+    message: `Cannot compare structurally different types ${Ts.ShowInTemplate<A>} and ${Ts.ShowInTemplate<B>}.`
+    TypeA: A
+    TypeB: B
+    tip: `While rare, different types can refer to the same instance if an object has properties from both types. Use @ts-expect-error if this is intentional.`
+  }
+> {}
 
 /**
  * Validate that a type is a reference type (not a primitive).
  */
-// dprint-ignore
+// oxfmt-ignore
 type ValidateIsReference<T> = T extends Lang.Primitive ?
   ErrorPrimitiveType<T>
   : T
 
-// dprint-ignore
+// oxfmt-ignore
 type ValidateIsComparable<A, B> =
     Ts.Relation.GetRelation<A, B> extends Ts.Relation.subtype | Ts.Relation.supertype | Ts.Relation.overlapping ? B
   : Ts.Relation.GetRelation<A, B> extends Ts.Relation.equivalent ?

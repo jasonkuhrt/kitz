@@ -6,12 +6,18 @@
     "declaration": true,
     "declarationMap": true,
     "paths": {
-      "#oak": [
-        "./src/_.js"
-      ],
-      "#oak/*": [
-        "./src/*.js"
-      ]
+      "#oak": ["./src/_.js"],
+      "#oak/*": ["./src/*.js"]
     }
-  }
+  },
+  "exclude": [
+    "build",
+    "node_modules",
+    "src/__tests",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/*.test-d.ts",
+    "**/*.spec-d.ts",
+    "**/*.bench-d.ts"
+  ]
 }

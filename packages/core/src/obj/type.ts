@@ -180,7 +180,7 @@ export const empty = (): Empty => Object.freeze({}) as Empty
  *
  * @see {@link NoExcessNonEmpty} for non-empty variant
  */
-// dprint-ignore
+// oxfmt-ignore
 export type NoExcess<$Value, $Constraint> =
   $Value extends Settings.GetPreservedTypes ? $Value :
   $Value extends object
@@ -211,8 +211,8 @@ export type NoExcess<$Value, $Constraint> =
  * type T3 = NoExcessNonEmpty<{ name: 'Bob', age: 30 }, User> // ✗ Fail - excess
  * ```
  */
-export type NoExcessNonEmpty<$Value, $Constraint> = IsEmpty<$Value> extends true ? never
-  : NoExcess<$Value, $Constraint>
+export type NoExcessNonEmpty<$Value, $Constraint> =
+  IsEmpty<$Value> extends true ? never : NoExcess<$Value, $Constraint>
 
 //
 //

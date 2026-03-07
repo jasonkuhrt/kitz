@@ -47,9 +47,7 @@ Test.on(Obj.mapValuesDeep)
     [{ err: new Error('test') }, errorToMessage],
     [{ str: 'short and long string' }, truncateLongStrings],
   ])
-  .describeInputs('mixed structures', [
-    [{ nums: [1, 2], nested: { nums: [3, 4] } }, doubleNumbers],
-  ])
+  .describeInputs('mixed structures', [[{ nums: [1, 2], nested: { nums: [3, 4] } }, doubleNumbers]])
   .describeInputs('early exit stops recursion', [
     [{ replace: true, nested: { untouched: 'data' } }, replaceSpecificObject],
   ])

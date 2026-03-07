@@ -60,19 +60,17 @@ Runtime domain detection mapped JavaScript values to domain names:
 ```typescript
 // src/utils/traitor/domain.ts (from commit 2b50962)
 const nativeToDomainMap = {
-  'null': 'Null',
-  'undefined': 'Undefined',
-  'boolean': 'Bool',
-  'number': 'Num',
-  'string': 'Str',
-  'array': 'Arr',
-  'object': 'Obj',
-  'function': 'Fn',
+  null: 'Null',
+  undefined: 'Undefined',
+  boolean: 'Bool',
+  number: 'Num',
+  string: 'Str',
+  array: 'Arr',
+  object: 'Obj',
+  function: 'Fn',
 } as const
 
-export const detectDomain = <value>(
-  value: value,
-): detectDomain<value> | null => {
+export const detectDomain = <value>(value: value): detectDomain<value> | null => {
   const type = typeof value
   if (type === 'object') {
     if (value === null) return nativeToDomainMap.null as any
@@ -88,14 +86,21 @@ export const detectDomain = <value>(
 There was also a corresponding type-level version:
 
 ```typescript
-export type detectDomain<$Value> = $Value extends null ? 'Null'
-  : $Value extends undefined ? 'Undefined'
-  : $Value extends boolean ? 'Bool'
-  : $Value extends number ? 'Num'
-  : $Value extends string ? 'Str'
-  : $Value extends readonly any[] ? 'Arr'
-  : $Value extends object ? 'Obj'
-  : never
+export type detectDomain<$Value> = $Value extends null
+  ? 'Null'
+  : $Value extends undefined
+    ? 'Undefined'
+    : $Value extends boolean
+      ? 'Bool'
+      : $Value extends number
+        ? 'Num'
+        : $Value extends string
+          ? 'Str'
+          : $Value extends readonly any[]
+            ? 'Arr'
+            : $Value extends object
+              ? 'Obj'
+              : never
 ```
 
 A domain was defined with a name and a "type witness" value (to capture the type parameter without partial type application):
@@ -164,9 +169,8 @@ export const createTraitProxy = <$Interface>(
   registry: Registry.Registry,
   traitName: TraitName,
 ): $Interface => {
-  return Prox.createCachedGetProxy<$Interface, {}>(
-    (propertyName: string) =>
-      createTraitDispatcher(registry, traitName)(propertyName as MethodName),
+  return Prox.createCachedGetProxy<$Interface, {}>((propertyName: string) =>
+    createTraitDispatcher(registry, traitName)(propertyName as MethodName),
   )
 }
 ```
@@ -191,9 +195,7 @@ export const dispatchMethodCall = <T>(
   }
 
   const traitConfigs = traitMethodConfigs.get(traitName)
-  const methodConfig = traitConfigs?.[methodName] as
-    | MethodConfig<any>
-    | undefined
+  const methodConfig = traitConfigs?.[methodName] as MethodConfig<any> | undefined
   const domainCheckStrategy = methodConfig?.domainCheck ?? defaultDomainCheck
 
   let domainName = resolveDomainInfer(args, domainCheckStrategy)
@@ -225,11 +227,9 @@ export type Definition<
   $Deps extends Deps = DepsDefault,
   $ExternalInternal extends Interface = Interface,
   $InternalInterface extends Interface = $ExternalInternal,
-> =
-  & $ExternalInternal
-  & {
-    [internalProperty]: Internal<$Name, $InternalInterface, $Deps>
-  }
+> = $ExternalInternal & {
+  [internalProperty]: Internal<$Name, $InternalInterface, $Deps>
+}
 ```
 
 Key design: **External vs Internal interfaces**. The external interface (what users see) used rich TypeScript features like conditional types and type guards. The internal interface (what domain implementors work with) was deliberately simple:
@@ -275,12 +275,7 @@ export const implement = <$Definition, $Domain, implementation>(
   registry = defaultRegistry,
 ): GetAppliedInterface<$Definition, $Domain> => {
   const trait$ = getInternal(trait)
-  const finalImplementation = finalizeDomainImplementation(
-    registry,
-    trait$,
-    domain,
-    implementation,
-  )
+  const finalImplementation = finalizeDomainImplementation(registry, trait$, domain, implementation)
   Registry.register(registry, trait$.name, domain.name, finalImplementation)
   return finalImplementation as any
 }
@@ -300,8 +295,9 @@ export interface Private {
   [PrivateKindParameters]: unknown
 }
 
-export type PrivateApply<$Kind extends Private, $Args> =
-  ($Kind & { [PrivateKindParameters]: $Args })[PrivateKindReturn]
+export type PrivateApply<$Kind extends Private, $Args> = ($Kind & {
+  [PrivateKindParameters]: $Args
+})[PrivateKindReturn]
 ```
 
 Traits used this pattern to be parameterized by domain type:
@@ -333,12 +329,8 @@ export interface MethodConfig<$Method extends Fn.AnyAny> {
   default?: $Method // Default implementation
 
   // Context-aware hooks (receive domain + trait references)
-  preWith?: (
-    context: { domain; trait },
-  ) => (...args) => ReturnType<$Method> | void
-  postWith?: (
-    context: { domain; trait },
-  ) => (result, ...args) => ReturnType<$Method>
+  preWith?: (context: { domain; trait }) => (...args) => ReturnType<$Method> | void
+  postWith?: (context: { domain; trait }) => (result, ...args) => ReturnType<$Method>
   defaultWith?: (context: { domain; trait }) => $Method
 
   laws?: Record<string, boolean> // Co-located law declarations
@@ -365,11 +357,16 @@ The Arb trait used `defaultWith` to provide default `sample()` and `samples()` m
 ```typescript
 export const Arb = Traitor.define<Arb>('Arb', {
   sample: {
-    defaultWith: ({ trait }) => () => fc.sample(trait.arbitrary, 1)[0],
+    defaultWith:
+      ({ trait }) =>
+      () =>
+        fc.sample(trait.arbitrary, 1)[0],
   },
   samples: {
-    defaultWith: ({ trait }) => (count = 10) =>
-      fc.sample(trait.arbitrary, count),
+    defaultWith:
+      ({ trait }) =>
+      (count = 10) =>
+        fc.sample(trait.arbitrary, count),
   },
 })
 ```
@@ -421,15 +418,16 @@ const generateCurriedVariants = <$Interface extends object>(
   // 'on' variant: curry first argument
   // Eq.isOn(a)(b) === Eq.is(a, b)
   if (curry.on !== false && arity >= 2) {
-    target[`${methodName}On`] = (firstArg: any) => (...restArgs: any[]) =>
-      method(firstArg, ...restArgs)
+    target[`${methodName}On`] =
+      (firstArg: any) =>
+      (...restArgs: any[]) =>
+        method(firstArg, ...restArgs)
   }
 
   // 'with' variant: curry second argument
   // Eq.isWith(b)(a) === Eq.is(a, b)
   if (curry.with !== false && arity >= 2) {
-    target[`${methodName}With`] = (secondArg: any) => (firstArg: any) =>
-      method(firstArg, secondArg)
+    target[`${methodName}With`] = (secondArg: any) => (firstArg: any) => method(firstArg, secondArg)
   }
 }
 ```
@@ -439,14 +437,11 @@ const generateCurriedVariants = <$Interface extends object>(
 The Eq trait included compile-time validation preventing comparison of disjoint types:
 
 ```typescript
-type ValidateComparable<A, B> = Lang.GetVariance<A, B> extends 'disjoint'
-  ? Ts.Simplify<ErrorDisjointTypes<A, B>>
-  : B
+type ValidateComparable<A, B> =
+  Lang.GetVariance<A, B> extends 'disjoint' ? Ts.Simplify<ErrorDisjointTypes<A, B>> : B
 
 type ErrorDisjointTypes<A, B> = Ts.StaticError<
-  `Cannot compare disjoint types ${Ts.ShowInTemplate<
-    A
-  >} and ${Ts.ShowInTemplate<B>}`,
+  `Cannot compare disjoint types ${Ts.ShowInTemplate<A>} and ${Ts.ShowInTemplate<B>}`,
   { TypeA: A; TypeB: B },
   `These types have no overlap. This comparison will always return false.`
 >
@@ -465,14 +460,12 @@ type ErrorDisjointTypes<A, B> = Ts.StaticError<
 The most fundamental trait -- runtime type checking with TypeScript type guard narrowing:
 
 ```typescript
-interface Type<$Value = any> extends
-  Traitor.Definition<
-    'Type',
-    [],
-    { is(value: unknown): value is $Value },
-    { is(value: unknown): boolean }
-  >
-{}
+interface Type<$Value = any> extends Traitor.Definition<
+  'Type',
+  [],
+  { is(value: unknown): value is $Value },
+  { is(value: unknown): boolean }
+> {}
 
 // Implementations:
 // Str.Type.is(value) -> typeof value === 'string'
@@ -486,14 +479,12 @@ interface Type<$Value = any> extends
 Structural equality with cross-trait dependency on Type:
 
 ```typescript
-interface Eq<$A = any> extends
-  Traitor.Definition<
-    'Eq',
-    [Type], // Depends on Type trait
-    { is<a extends $A, b = a>(a: a, b: ValidateComparable<a, b>): boolean },
-    { is: (value1: $A, value2: $A) => boolean }
-  >
-{}
+interface Eq<$A = any> extends Traitor.Definition<
+  'Eq',
+  [Type], // Depends on Type trait
+  { is<a extends $A, b = a>(a: a, b: ValidateComparable<a, b>): boolean },
+  { is: (value1: $A, value2: $A) => boolean }
+> {}
 
 // Implementations varied by domain:
 // Str.Eq.is -> a === b
@@ -510,22 +501,20 @@ interface Eq<$A = any> extends
 Arbitrary value generation for property-based testing (fast-check integration):
 
 ```typescript
-interface Arb<$Type = unknown> extends
-  Traitor.Definition<
-    'Arb',
-    [],
-    {
-      readonly arbitrary: fc.Arbitrary<$Type>
-      sample(): $Type
-      samples(count?: number): $Type[]
-    },
-    {
-      arbitrary: fc.Arbitrary<$Type>
-      sample?(): $Type // Optional -- has default via defaultWith
-      samples?(count?: number): $Type[] // Optional -- has default
-    }
-  >
-{}
+interface Arb<$Type = unknown> extends Traitor.Definition<
+  'Arb',
+  [],
+  {
+    readonly arbitrary: fc.Arbitrary<$Type>
+    sample(): $Type
+    samples(count?: number): $Type[]
+  },
+  {
+    arbitrary: fc.Arbitrary<$Type>
+    sample?(): $Type // Optional -- has default via defaultWith
+    samples?(count?: number): $Type[] // Optional -- has default
+  }
+> {}
 
 // Implementations:
 // Str.Arb.arbitrary -> fc.string()
@@ -538,35 +527,35 @@ interface Arb<$Type = unknown> extends
 
 Committed at `10a2216` (2025-06-22), these documents represent an exhaustive design process:
 
-| #  | Document                           | Key Topic                                                 |
-| -- | ---------------------------------- | --------------------------------------------------------- |
-| 00 | complete-trait-system-design       | Master design doc covering all concepts                   |
-| 01 | auto-augmentation-vs-registration  | Import side-effects vs explicit registration              |
-| 02 | namespace-categorization           | How to organize traits vs domains vs utils                |
-| 03 | global-type-pollution              | Whether global types are acceptable                       |
-| 04 | runtime-compatibility              | Multi-environment (Node, Browser, CF Workers)             |
-| 05 | performance-impact                 | Dispatch overhead analysis                                |
-| 06 | scoped-activation                  | AsyncContext-based scoping for isolated environments      |
-| 07 | advanced-language-features         | Proxy, WeakMap, Symbol-based protocols                    |
-| 08 | module-exports-vs-interfaces       | Namespace-as-interface pattern                            |
-| 09 | module-loading-order               | ESM side-effect timing                                    |
-| 10 | type-inference                     | Maintaining type safety through dispatch                  |
-| 11 | mixed-type-errors                  | Preventing cross-type comparison errors                   |
-| 12 | trait-laws-testing                 | Property-based testing for algebraic laws                 |
-| 13 | documentation-location             | Where to put trait docs                                   |
-| 14 | debugging-experience               | How to debug trait dispatch                               |
-| 15 | versioning-compatibility           | Maintaining trait compatibility across versions           |
-| 16 | extensibility-plugins              | Plugin architecture for third-party traits                |
-| 17 | dynamic-import-dispatch            | Dynamic import vs global registry (decided: global)       |
-| 18 | multi-modal-environments           | CF Workers, serverless, shared state                      |
-| 19 | namespace-as-interface             | Using TS namespace imports to satisfy trait interfaces    |
-| 20 | extensibility-what-vs-where        | Trait vs domain extensibility                             |
-| 21 | async-context-non-reliable-globals | Global state in serverless environments                   |
-| 22 | async-context-future-capabilities  | Debug tracing, performance monitoring via AsyncContext    |
-| 23 | next-steps-open-issues             | Remaining open questions and phases                       |
-| 24 | circular-dependencies-conclusion   | Proved no circular dependency issues with lazy evaluation |
-| 25 | tree-shaking-strategy              | Rollup plugin for trait-aware tree shaking                |
-| 26 | registration-complete-solution     | Final registration architecture using ESM side effects    |
+| #   | Document                           | Key Topic                                                 |
+| --- | ---------------------------------- | --------------------------------------------------------- |
+| 00  | complete-trait-system-design       | Master design doc covering all concepts                   |
+| 01  | auto-augmentation-vs-registration  | Import side-effects vs explicit registration              |
+| 02  | namespace-categorization           | How to organize traits vs domains vs utils                |
+| 03  | global-type-pollution              | Whether global types are acceptable                       |
+| 04  | runtime-compatibility              | Multi-environment (Node, Browser, CF Workers)             |
+| 05  | performance-impact                 | Dispatch overhead analysis                                |
+| 06  | scoped-activation                  | AsyncContext-based scoping for isolated environments      |
+| 07  | advanced-language-features         | Proxy, WeakMap, Symbol-based protocols                    |
+| 08  | module-exports-vs-interfaces       | Namespace-as-interface pattern                            |
+| 09  | module-loading-order               | ESM side-effect timing                                    |
+| 10  | type-inference                     | Maintaining type safety through dispatch                  |
+| 11  | mixed-type-errors                  | Preventing cross-type comparison errors                   |
+| 12  | trait-laws-testing                 | Property-based testing for algebraic laws                 |
+| 13  | documentation-location             | Where to put trait docs                                   |
+| 14  | debugging-experience               | How to debug trait dispatch                               |
+| 15  | versioning-compatibility           | Maintaining trait compatibility across versions           |
+| 16  | extensibility-plugins              | Plugin architecture for third-party traits                |
+| 17  | dynamic-import-dispatch            | Dynamic import vs global registry (decided: global)       |
+| 18  | multi-modal-environments           | CF Workers, serverless, shared state                      |
+| 19  | namespace-as-interface             | Using TS namespace imports to satisfy trait interfaces    |
+| 20  | extensibility-what-vs-where        | Trait vs domain extensibility                             |
+| 21  | async-context-non-reliable-globals | Global state in serverless environments                   |
+| 22  | async-context-future-capabilities  | Debug tracing, performance monitoring via AsyncContext    |
+| 23  | next-steps-open-issues             | Remaining open questions and phases                       |
+| 24  | circular-dependencies-conclusion   | Proved no circular dependency issues with lazy evaluation |
+| 25  | tree-shaking-strategy              | Rollup plugin for trait-aware tree shaking                |
+| 26  | registration-complete-solution     | Final registration architecture using ESM side effects    |
 
 ---
 

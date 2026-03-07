@@ -82,16 +82,10 @@ export interface RunOptions {
  * })(program)
  * ```
  */
-export const run = <R, E2>(
-  layer: Layer.Layer<R, E2, never>,
-  options?: RunOptions,
-) =>
-<A, E>(
-  program: Effect.Effect<A, E, R>,
-): void => {
-  NodeRuntime.runMain(
-    Effect.provide(program, layer),
-    {
+export const run =
+  <R, E2>(layer: Layer.Layer<R, E2, never>, options?: RunOptions) =>
+  <A, E>(program: Effect.Effect<A, E, R>): void => {
+    NodeRuntime.runMain(Effect.provide(program, layer), {
       disableErrorReporting: true,
       teardown: (exit, onExit) => {
         if (Exit.isFailure(exit)) {
@@ -100,9 +94,8 @@ export const run = <R, E2>(
         }
         onExit(Exit.isFailure(exit) ? 1 : 0)
       },
-    },
-  )
-}
+    })
+  }
 
 const defaultErrorHandler = (cause: Cause.Cause<unknown>): void => {
   Err.logUnsafe(Err.ensure(Cause.squash(cause)))

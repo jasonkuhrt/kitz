@@ -80,7 +80,9 @@
 - **Pattern it was using**:
   ```typescript
   export const Eq = Traitor.implement(EqTrait, domain, {
-    is(a, b) {/* implementation */},
+    is(a, b) {
+      /* implementation */
+    },
   })
   ```
 - **Why removed**: Complexity; could be replaced with simpler approaches

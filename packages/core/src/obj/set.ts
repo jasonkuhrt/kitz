@@ -18,13 +18,11 @@ export type SetKey<
   $Obj extends object,
   $PropertyName extends keyof $Obj,
   $Type extends $Obj[$PropertyName],
-> =
-  & {
-    [k in keyof $Obj as k extends $PropertyName ? never : k]: $Obj[k]
-  }
-  & {
-    [k in $PropertyName]: $Type
-  }
+> = {
+  [k in keyof $Obj as k extends $PropertyName ? never : k]: $Obj[k]
+} & {
+  [k in $PropertyName]: $Type
+}
 
 /**
  * Replace the type of a specific key in an object without type constraint.
@@ -40,17 +38,11 @@ export type SetKey<
  * // Result: { id: string; name: string }
  * ```
  */
-export type SetKeyUnsafe<
-  $Obj extends object,
-  $PropertyName extends keyof $Obj,
-  $Type,
-> =
-  & {
-    [k in keyof $Obj as k extends $PropertyName ? never : k]: $Obj[k]
-  }
-  & {
-    [k in $PropertyName]: $Type
-  }
+export type SetKeyUnsafe<$Obj extends object, $PropertyName extends keyof $Obj, $Type> = {
+  [k in keyof $Obj as k extends $PropertyName ? never : k]: $Obj[k]
+} & {
+  [k in $PropertyName]: $Type
+}
 
 /**
  * Set a value at a nested path in an object type.
@@ -68,7 +60,7 @@ export type SetKeyUnsafe<
  * // Result: { db: { host: string; port: number; ssl: boolean } }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type SetAtPath<
   $Object extends object,
   $Path extends readonly string[],
@@ -99,7 +91,7 @@ export type SetAtPath<
  * // Result: { user: { name: 'Alice' } }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type SetKeyAtPath<$Obj extends object, $Path extends readonly string[], $Value> =
   Ts.Simplify.Top<
     $Path extends []
@@ -109,7 +101,7 @@ export type SetKeyAtPath<$Obj extends object, $Path extends readonly string[], $
       : SetKeyAtPath_<$Obj, $Path, $Value>
   >
 
-// dprint-ignore
+// oxfmt-ignore
 type SetKeyAtPath_<$ObjOrValue, $Path extends readonly string[], $Value> =
   Ts.Simplify.Top<
     $Path extends [infer __p1__ extends string, ...infer __pn__ extends string[]]
@@ -134,7 +126,7 @@ type SetKeyAtPath_<$ObjOrValue, $Path extends readonly string[], $Value> =
  * ]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type SetMany<$Obj extends object, $Sets extends [readonly string[], any][]> =
   $Sets extends []
     ? $Obj
@@ -158,7 +150,7 @@ export type SetMany<$Obj extends object, $Sets extends [readonly string[], any][
  * // Note: age is unchanged because the update value is undefined
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type SetKeysOptional<
   $Obj extends object,
   $NewObjValues extends object,
@@ -183,4 +175,6 @@ export type SetKeysOptional<
  * type T2 = AppendOptional<[1, 2], undefined>  // [1, 2]
  * ```
  */
-export type AppendOptional<$Array extends any[], $Value> = $Value extends undefined ? $Array : [...$Array, $Value]
+export type AppendOptional<$Array extends any[], $Value> = $Value extends undefined
+  ? $Array
+  : [...$Array, $Value]

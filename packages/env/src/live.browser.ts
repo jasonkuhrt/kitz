@@ -19,7 +19,7 @@ export const env = {
   os: 'linux' as const,
   arch: 'x64' as const,
   exit: (code?: number): never => {
-    Lang.panic(`Env.exit(${code}) called in browser environment`)
+    return Lang.panic(`Env.exit(${code}) called in browser environment`)
   },
 }
 

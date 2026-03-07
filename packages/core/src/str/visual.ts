@@ -61,7 +61,7 @@ const segmenter = new Intl.Segmenter('en-US', { granularity: 'grapheme' })
  * Str.Visual.strip('plain text')  // 'plain text' (unchanged)
  * ```
  */
-export const strip = ansis.strip
+export const strip: typeof ansis.strip = (...args) => ansis.strip(...args)
 
 /**
  * Get the visual width of a string, ignoring ANSI escape codes and counting grapheme clusters.
@@ -598,7 +598,7 @@ export const wrap = (text: string, maxWidth: number, config: WrapConfig = {}): s
 
     // For hyphen-out strategy, add hyphen to all except last
     if (strategy === 'break-word-hyphen-out') {
-      return chars.map((char, i) => i < chars.length - 1 ? `${char}-` : char)
+      return chars.map((char, i) => (i < chars.length - 1 ? `${char}-` : char))
     }
 
     return chars

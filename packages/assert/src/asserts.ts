@@ -5,7 +5,7 @@ import type { StaticErrorAssertion } from './assertion-error.js'
 /**
  * Type safe assertion kind application.
  */
-// dprint-ignore
+// oxfmt-ignore
 export type KindApply<
   $Kind,
   $Params extends [$Expected: any, $Actual: any, $Negated: any],
@@ -25,11 +25,11 @@ export type KindApply<
  *
  * @internal
  */
-// dprint-ignore
+// oxfmt-ignore
 type MaybeWithDiff<
   $Expected,
   $Actual,
-  $Tip extends string | never,
+  $Tip extends string,
 > = Ts.Settings.GetShowDiff extends true
   ? [never] extends [$Tip]
     ? Obj.ComputeDiff<$Expected, $Actual>  // No tip, just diff
@@ -50,7 +50,7 @@ type MaybeWithDiff<
  * Extractors compose with this kind to transform inputs before checking.
  * When $Negated is true, the assertion is inverted.
  */
-// dprint-ignore
+// oxfmt-ignore
 export interface AssertExactKind extends AssertionKind {
   name: 'exact'
   expectationConstraint: unknown
@@ -58,7 +58,7 @@ export interface AssertExactKind extends AssertionKind {
   return: AssertExact<this['parameters'][0], this['parameters'][1], this['parameters'][2]>
 }
 
-// dprint-ignore
+// oxfmt-ignore
 export type AssertExact<$Expected, $Actual, $Negated extends boolean | undefined> = {
   pass: Pass
   fail_equivalent: StaticErrorAssertion<
@@ -121,7 +121,7 @@ export type AssertExact<$Expected, $Actual, $Negated extends boolean | undefined
  * Extractors compose with this kind to transform inputs before checking.
  * When $Negated is true, the assertion is inverted.
  */
-// dprint-ignore
+// oxfmt-ignore
 export interface AssertEquivKind extends AssertionKind {
   name: 'equiv'
   expectationConstraint: unknown
@@ -129,7 +129,7 @@ export interface AssertEquivKind extends AssertionKind {
   return: AssertEquiv<this['parameters'][0], this['parameters'][1], this['parameters'][2]>
 }
 
-// dprint-ignore
+// oxfmt-ignore
 export type AssertEquiv<$Expected, $Actual, $Negated extends boolean | undefined> = {
   pass: Pass
   fail_subtype: StaticErrorAssertion<'ACTUAL extends EXPECTED but not vice versa', $Expected, $Actual>
@@ -163,7 +163,7 @@ export type AssertEquiv<$Expected, $Actual, $Negated extends boolean | undefined
  * Extractors compose with this kind to transform inputs before checking.
  * When $Negated is true, the assertion is inverted.
  */
-// dprint-ignore
+// oxfmt-ignore
 export interface AssertSubKind extends AssertionKind {
   name: 'sub'
   expectationConstraint: unknown
@@ -171,18 +171,12 @@ export interface AssertSubKind extends AssertionKind {
   return: AssertSub<this['parameters'][0], this['parameters'][1], this['parameters'][2]>
 }
 
-export type AssertSub<
-  $Expected,
-  $Actual,
-  $Negated extends boolean | undefined,
-> = {
+export type AssertSub<$Expected, $Actual, $Negated extends boolean | undefined> = {
   pass: Pass
   fail: StaticErrorAssertion<'ACTUAL does not extend EXPECTED', $Expected, $Actual>
   negated_pass: StaticErrorAssertion<'ACTUAL extends EXPECTED but should not', $Expected, $Actual>
   negated_fail: Pass
-}[
-  `${NegatedInputToCaseKey<$Negated>}${$Actual extends $Expected ? 'pass' : 'fail'}`
-]
+}[`${NegatedInputToCaseKey<$Negated>}${$Actual extends $Expected ? 'pass' : 'fail'}`]
 
 /**
  * Sub + NoExcess kind - checks subtype relation AND no excess properties.
@@ -194,7 +188,7 @@ export type AssertSub<
  * 1. Actual extends Expected (subtype relation)
  * 2. Actual has no object keys beyond those in Expected
  */
-// dprint-ignore
+// oxfmt-ignore
 export interface AssertSubNoExcessKind extends AssertionKind {
   name: 'sub'
   expectationConstraint: unknown
@@ -202,7 +196,7 @@ export interface AssertSubNoExcessKind extends AssertionKind {
   return: AssertSubNoExcess<this['parameters'][0], this['parameters'][1], this['parameters'][2]>
 }
 
-// dprint-ignore
+// oxfmt-ignore
 export type AssertSubNoExcess<$Expected, $Actual, $Negated extends boolean | undefined> = {
   pass: Pass
   fail_not_subtype: StaticErrorAssertion<'ACTUAL does not extend EXPECTED', $Expected, $Actual>
@@ -228,7 +222,7 @@ export type AssertSubNoExcess<$Expected, $Actual, $Negated extends boolean | und
  * 1. Expected and Actual are mutually assignable (equivalent)
  * 2. Actual has no object keys beyond those in Expected
  */
-// dprint-ignore
+// oxfmt-ignore
 export interface AssertEquivNoExcessKind extends AssertionKind {
   name: 'equiv'
   expectationConstraint: unknown
@@ -236,7 +230,7 @@ export interface AssertEquivNoExcessKind extends AssertionKind {
   return: AssertEquivNoExcess<this['parameters'][0], this['parameters'][1], this['parameters'][2]>
 }
 
-// dprint-ignore
+// oxfmt-ignore
 export type AssertEquivNoExcess<$Expected, $Actual, $Negated extends boolean | undefined> = {
   pass: Pass
   fail_not_equivalent: StaticErrorAssertion<'EXPECTED and ACTUAL are not equivalent', $Expected, $Actual>
@@ -273,7 +267,7 @@ export type AssertEquivNoExcess<$Expected, $Actual, $Negated extends boolean | u
  * This is the base kind used by all `*.any()` assertions.
  * When $Negated is true, the assertion is inverted.
  */
-// dprint-ignore
+// oxfmt-ignore
 export interface AssertAnyKind extends AssertionKind {
   name: 'any'
   expectationConstraint: unknown
@@ -281,7 +275,7 @@ export interface AssertAnyKind extends AssertionKind {
   return: AssertAny<this['parameters'][0], this['parameters'][1]>
 }
 
-// dprint-ignore
+// oxfmt-ignore
 export type AssertAny<$Actual, $Negated extends boolean | undefined> = {
   pass: Pass
   fail: StaticErrorAssertion<'Type is not any', any, $Actual>
@@ -300,7 +294,7 @@ export type AssertAny<$Actual, $Negated extends boolean | undefined> = {
  * This is the base kind used by all `*.unknown()` assertions.
  * When $Negated is true, the assertion is inverted.
  */
-// dprint-ignore
+// oxfmt-ignore
 export interface AssertUnknownKind extends AssertionKind {
   name: 'unknown'
   expectationConstraint: unknown
@@ -308,7 +302,7 @@ export interface AssertUnknownKind extends AssertionKind {
   return: AssertUnknown<this['parameters'][0], this['parameters'][1]>
 }
 
-// dprint-ignore
+// oxfmt-ignore
 export type AssertUnknown<$Actual, $Negated extends boolean | undefined> = {
   pass: Pass
   fail: StaticErrorAssertion<'Type is not unknown', unknown, $Actual>
@@ -329,7 +323,7 @@ export type AssertUnknown<$Actual, $Negated extends boolean | undefined> = {
  * This is the base kind used by all `*.never()` assertions.
  * When $Negated is true, the assertion is inverted.
  */
-// dprint-ignore
+// oxfmt-ignore
 export interface AssertNeverKind extends AssertionKind {
   name: 'never'
   expectationConstraint: unknown
@@ -337,7 +331,7 @@ export interface AssertNeverKind extends AssertionKind {
   return: AssertNever<this['parameters'][0], this['parameters'][1]>
 }
 
-// dprint-ignore
+// oxfmt-ignore
 export type AssertNever<$Actual, $Negated extends boolean | undefined> = {
   pass: Pass
   fail: StaticErrorAssertion<'Type is not never', never, $Actual>
@@ -363,7 +357,7 @@ export type AssertNever<$Actual, $Negated extends boolean | undefined> = {
  * - Empty object: `keyof T extends never` (not `{}`!)
  * - Empty string: `''`
  */
-// dprint-ignore
+// oxfmt-ignore
 export interface AssertEmptyKind extends AssertionKind {
   name: 'empty'
   expectationConstraint: unknown
@@ -371,7 +365,7 @@ export interface AssertEmptyKind extends AssertionKind {
   return: AssertEmpty<this['parameters'][0], this['parameters'][1]>
 }
 
-// dprint-ignore
+// oxfmt-ignore
 export type AssertEmpty<$Actual, $Negated extends boolean | undefined> = {
   pass: Pass
   fail: StaticErrorAssertion<
@@ -406,4 +400,6 @@ interface AssertionKind extends Fn.Kind.Kind {}
  *
  * @internal
  */
-type NegatedInputToCaseKey<$Negated extends boolean | undefined> = [$Negated] extends [true] ? 'negated_' : ''
+type NegatedInputToCaseKey<$Negated extends boolean | undefined> = [$Negated] extends [true]
+  ? 'negated_'
+  : ''

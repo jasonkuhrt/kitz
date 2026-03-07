@@ -224,12 +224,9 @@ import type { Kind, Simplify } from 'kitz'
 
 interface EffectTraverser extends Kind.Kind {
   return: this['parameters'] extends [infer $T, infer $DN, infer $SN]
-    ? $T extends Effect.Effect<infer S, infer E, infer R> ? Effect.Effect<
-        Simplify.To<$DN, S, $SN>,
-        Simplify.To<$DN, E, $SN>,
-        Simplify.To<$DN, R, $SN>
-      >
-    : never
+    ? $T extends Effect.Effect<infer S, infer E, infer R>
+      ? Effect.Effect<Simplify.To<$DN, S, $SN>, Simplify.To<$DN, E, $SN>, Simplify.To<$DN, R, $SN>>
+      : never
     : never
 }
 

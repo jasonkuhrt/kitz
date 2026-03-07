@@ -3,7 +3,7 @@ import { describe, expect } from 'vitest'
 import { lines, normalizeLineEndings, stripIndent } from './text.js'
 
 describe('stripIndent', () => {
-  // dprint-ignore
+  // oxfmt-ignore
   Test.describe('basic dedenting')
     .on(stripIndent)
     .cases(
@@ -15,7 +15,7 @@ describe('stripIndent', () => {
     )
     .test()
 
-  // dprint-ignore
+  // oxfmt-ignore
   Test.describe('empty lines')
     .on(stripIndent)
     .cases(
@@ -27,7 +27,7 @@ describe('stripIndent', () => {
     )
     .test()
 
-  // dprint-ignore
+  // oxfmt-ignore
   Test.describe('edge cases')
     .on(stripIndent)
     .cases(
@@ -37,7 +37,7 @@ describe('stripIndent', () => {
     )
     .test()
 
-  // dprint-ignore
+  // oxfmt-ignore
   Test.describe('code block example')
     .on(stripIndent)
     .cases(
@@ -54,7 +54,7 @@ describe('stripIndent', () => {
 
 // ─── Line Endings ────────────────────────────────────────────────────────────
 
-// dprint-ignore
+// oxfmt-ignore
 Test.describe('lines > cross-platform')
   .on(lines)
   .cases(
@@ -67,7 +67,7 @@ Test.describe('lines > cross-platform')
   )
   .test()
 
-// dprint-ignore
+// oxfmt-ignore
 Test.describe('normalizeLineEndings')
   .on(normalizeLineEndings)
   .cases(

@@ -1,4 +1,4 @@
-import { Err } from '@kitz/core'
+import * as Err from '@kitz/core/err'
 import { Schema as S } from 'effect'
 import type { OpeningArgs } from '../OpeningArgs/_.js'
 import type { ParameterExclusive, ParameterExclusiveGroup } from '../Parameter/exclusive.js'
@@ -41,7 +41,8 @@ export const ErrorDuplicateLineArg = Err.TaggedContextualError(
       parameter: S.Unknown as S.Schema<Parameter>,
       flagName: S.String,
     }),
-    message: (ctx) => `The parameter "${ctx.flagName}" was passed an argument multiple times via flags.`,
+    message: (ctx) =>
+      `The parameter "${ctx.flagName}" was passed an argument multiple times via flags.`,
   },
 )
 
@@ -51,11 +52,13 @@ export const ErrorDuplicateEnvArg = Err.TaggedContextualError(
   {
     context: S.Struct({
       parameter: S.Unknown as S.Schema<Parameter>,
-      instances: S.Array(S.Struct({
-        value: S.String,
-        name: S.String,
-        prefix: S.NullOr(S.String),
-      })),
+      instances: S.Array(
+        S.Struct({
+          value: S.String,
+          name: S.String,
+          prefix: S.NullOr(S.String),
+        }),
+      ),
     }),
     message: (ctx) =>
       `The parameter "${ctx.parameter.name.canonical}" was passed an argument multiple times via different parameter aliases in the environment.`,
@@ -92,11 +95,9 @@ export const ErrorMissingArgumentForMutuallyExclusiveParameters = Err.TaggedCont
       group: S.Unknown as S.Schema<ParameterExclusiveGroup>,
     }),
     message: (ctx) =>
-      `Missing argument for one of the following parameters: ${
-        Object.values(ctx.group.parameters)
-          .map((_) => _.name.canonical)
-          .join(`, `)
-      }`,
+      `Missing argument for one of the following parameters: ${Object.values(ctx.group.parameters)
+        .map((_) => _.name.canonical)
+        .join(`, `)}`,
   },
 )
 
@@ -106,14 +107,14 @@ export const ErrorArgumentsToMutuallyExclusiveParameters = Err.TaggedContextualE
   {
     context: S.Struct({
       group: S.Unknown as unknown as S.Schema<ParameterExclusiveGroup>,
-      offenses: S.Array(S.Unknown) as unknown as S.Schema<{ spec: ParameterExclusive; arg: OpeningArgs.Argument }[]>,
+      offenses: S.Array(S.Unknown) as unknown as S.Schema<
+        { spec: ParameterExclusive; arg: OpeningArgs.Argument }[]
+      >,
     }),
     message: (ctx) =>
-      `Arguments given to multiple mutually exclusive parameters: ${
-        ctx.offenses
-          .map((_) => _.spec.name.canonical)
-          .join(`, `)
-      }`,
+      `Arguments given to multiple mutually exclusive parameters: ${ctx.offenses
+        .map((_) => _.spec.name.canonical)
+        .join(`, `)}`,
   },
 )
 
@@ -129,11 +130,11 @@ export const ErrorInvalidArgument = Err.TaggedContextualError(
     }),
     message: (ctx) =>
       ctx.environmentVariableName
-        ? `Invalid argument (via environment variable "${ctx.environmentVariableName}") for parameter: "${ctx.spec.name.canonical}". The error was:\n${
-          ctx.validationErrors.join(`\n`)
-        }`
-        : `Invalid argument for parameter: "${ctx.spec.name.canonical}". The error was:\n${
-          ctx.validationErrors.join(`\n`)
-        }`,
+        ? `Invalid argument (via environment variable "${ctx.environmentVariableName}") for parameter: "${ctx.spec.name.canonical}". The error was:\n${ctx.validationErrors.join(
+            `\n`,
+          )}`
+        : `Invalid argument for parameter: "${ctx.spec.name.canonical}". The error was:\n${ctx.validationErrors.join(
+            `\n`,
+          )}`,
   },
 )

@@ -22,27 +22,27 @@
  * - Does not handle promise chaining - use with synchronous functions
  * - For composing functions without an initial value, use {@link compose}
  */
-// dprint-ignore
+// oxfmt-ignore
 export function pipe<value>(value: value): value
-// dprint-ignore
+// oxfmt-ignore
 export function pipe<value, f1 extends (value: value) => any>(value: value, f1: f1): ReturnType<f1>
-// dprint-ignore
+// oxfmt-ignore
 export function pipe<value, f1 extends (value: value) => any, f2 extends (value: ReturnType<f1>) => any>(value: value, f1: f1, f2: f2): ReturnType<f2>
-// dprint-ignore
+// oxfmt-ignore
 export function pipe<value, f1 extends (value: value) => any, f2 extends (value: ReturnType<f1>) => any, f3 extends (value: ReturnType<f2>) => any>(value: value, f1: f1, f2: f2, f3: f3): ReturnType<f3>
-// dprint-ignore
+// oxfmt-ignore
 export function pipe<value, f1 extends (value: value) => any, f2 extends (value: ReturnType<f1>) => any, f3 extends (value: ReturnType<f2>) => any, f4 extends (value: ReturnType<f3>) => any>(value: value, f1: f1, f2: f2, f3: f3, f4: f4): ReturnType<f4>
-// dprint-ignore
+// oxfmt-ignore
 export function pipe<value, f1 extends (value: value) => any, f2 extends (value: ReturnType<f1>) => any, f3 extends (value: ReturnType<f2>) => any, f4 extends (value: ReturnType<f3>) => any, f5 extends (value: ReturnType<f4>) => any>(value: value, f1: f1, f2: f2, f3: f3, f4: f4, f5: f5): ReturnType<f5>
-// dprint-ignore
+// oxfmt-ignore
 export function pipe<value, f1 extends (value: value) => any, f2 extends (value: ReturnType<f1>) => any, f3 extends (value: ReturnType<f2>) => any, f4 extends (value: ReturnType<f3>) => any, f5 extends (value: ReturnType<f4>) => any, f6 extends (value: ReturnType<f5>) => any>(value: value, f1: f1, f2: f2, f3: f3, f4: f4, f5: f5, f6: f6): ReturnType<f6>
-// dprint-ignore
+// oxfmt-ignore
 export function pipe<value, f1 extends (value: value) => any, f2 extends (value: ReturnType<f1>) => any, f3 extends (value: ReturnType<f2>) => any, f4 extends (value: ReturnType<f3>) => any, f5 extends (value: ReturnType<f4>) => any, f6 extends (value: ReturnType<f5>) => any, f7 extends (value: ReturnType<f6>) => any>(value: value, f1: f1, f2: f2, f3: f3, f4: f4, f5: f5, f6: f6, f7: f7): ReturnType<f7>
-// dprint-ignore
+// oxfmt-ignore
 export function pipe<value, f1 extends (value: value) => any, f2 extends (value: ReturnType<f1>) => any, f3 extends (value: ReturnType<f2>) => any, f4 extends (value: ReturnType<f3>) => any, f5 extends (value: ReturnType<f4>) => any, f6 extends (value: ReturnType<f5>) => any, f7 extends (value: ReturnType<f6>) => any, f8 extends (value: ReturnType<f7>) => any>(value: value, f1: f1, f2: f2, f3: f3, f4: f4, f5: f5, f6: f6, f7: f7, f8: f8): ReturnType<f8>
-// dprint-ignore
+// oxfmt-ignore
 export function pipe<value, f1 extends (value: value) => any, f2 extends (value: ReturnType<f1>) => any, f3 extends (value: ReturnType<f2>) => any, f4 extends (value: ReturnType<f3>) => any, f5 extends (value: ReturnType<f4>) => any, f6 extends (value: ReturnType<f5>) => any, f7 extends (value: ReturnType<f6>) => any, f8 extends (value: ReturnType<f7>) => any, f9 extends (value: ReturnType<f8>) => any>(value: value, f1: f1, f2: f2, f3: f3, f4: f4, f5: f5, f6: f6, f7: f7, f8: f8, f9: f9): ReturnType<f9>
-// dprint-ignore
+// oxfmt-ignore
 export function pipe<value, f1 extends (value: value) => any, f2 extends (value: ReturnType<f1>) => any, f3 extends (value: ReturnType<f2>) => any, f4 extends (value: ReturnType<f3>) => any, f5 extends (value: ReturnType<f4>) => any, f6 extends (value: ReturnType<f5>) => any, f7 extends (value: ReturnType<f6>) => any, f8 extends (value: ReturnType<f7>) => any, f9 extends (value: ReturnType<f8>) => any, f10 extends (value: ReturnType<f9>) => any>(value: value, f1: f1, f2: f2, f3: f3, f4: f4, f5: f5, f6: f6, f7: f7, f8: f8, f9: f9, f10: f10): ReturnType<f10>
 
 export function pipe(value: any, ...fns: ((value: any) => any)[]) {

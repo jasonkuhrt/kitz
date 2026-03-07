@@ -29,10 +29,7 @@ type _IsEmpty = A.Cases<
   A.exact.of<Tup.IsEmpty<[1, 2, 3]>, false>
 >
 
-type Users = readonly [
-  { id: 'alice'; name: 'Alice' },
-  { id: 'bob'; name: 'Bob' },
-]
+type Users = readonly [{ id: 'alice'; name: 'Alice' }, { id: 'bob'; name: 'Bob' }]
 
 type _IndexBy = A.Cases<
   A.exact.of<Tup.IndexBy<Users, 'id'>['alice'], { id: 'alice'; name: 'Alice' }>,

@@ -34,12 +34,8 @@ export const official = (
   analysis: Analysis,
   ctx: Context,
   options?: Options,
-): Effect.Effect<
-  Plan,
-  Resource.ResourceError,
-  FileSystem.FileSystem
-> =>
-  Effect.gen(function*() {
+): Effect.Effect<Plan, Resource.ResourceError, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
     // 1. Transform analysis impacts to planned releases
     const releases: Official[] = []
 
@@ -51,19 +47,27 @@ export const official = (
 
       // Build version union
       const version: OfficialFirst | OfficialIncrement = Option.isSome(impact.currentVersion)
-        ? OfficialIncrement.make({ from: impact.currentVersion.value, to: nextVersion, bump: impact.bump })
+        ? OfficialIncrement.make({
+            from: impact.currentVersion.value,
+            to: nextVersion,
+            bump: impact.bump,
+          })
         : OfficialFirst.make({ version: nextVersion })
 
-      releases.push(Official.make({
-        package: impact.package,
-        version,
-        commits: impact.commits,
-      }))
+      releases.push(
+        Official.make({
+          package: impact.package,
+          version,
+          commits: impact.commits,
+        }),
+      )
     }
 
     // 2. Detect cascade releases (packages that depend on released packages)
     const dependencyGraph = yield* buildDependencyGraph([...ctx.packages])
-    const cascades = detectCascades([...ctx.packages], releases, dependencyGraph, [...analysis.tags])
+    const cascades = detectCascades([...ctx.packages], releases, dependencyGraph, [
+      ...analysis.tags,
+    ])
 
     return Plan.make({
       lifecycle: 'official',

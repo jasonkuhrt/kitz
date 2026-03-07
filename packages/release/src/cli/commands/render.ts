@@ -11,7 +11,7 @@ import { FileSystem } from '@effect/platform'
 import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
-import { EffectSchema, Oak } from '@kitz/oak'
+import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Option, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 
@@ -44,7 +44,7 @@ const decodePublishHistory = Schema.decodeUnknownOption(Schema.Array(PublishReco
  * - tree    - Text tree visualization
  */
 const args = Oak.Command.create()
-  .use(EffectSchema)
+  .use(Oak.EffectSchema)
   .description('Render forecast data')
   .parameter(
     'format',
@@ -61,7 +61,7 @@ const args = Oak.Command.create()
   .parse()
 
 Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer))(
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
 
     // Read JSON input from file or stdin
@@ -143,6 +143,7 @@ const parseEnvelope = (
             Option.getOrElse((): readonly Api.Commentator.PublishRecord[] => []),
           ),
         })),
-      )),
+      ),
+    ),
   )
 }

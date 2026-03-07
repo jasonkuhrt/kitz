@@ -18,15 +18,13 @@ const Text = Str.Text
  * Thick border for major section dividers.
  * Length: 98 characters (standard terminal width minus comment prefix)
  */
-export const borderThick =
-  `==================================================================================================`
+export const borderThick = `==================================================================================================`
 
 /**
  * Thin border for minor section dividers.
  * Length: 98 characters (standard terminal width minus comment prefix)
  */
-export const borderThin =
-  `--------------------------------------------------------------------------------------------------`
+export const borderThin = `--------------------------------------------------------------------------------------------------`
 
 // ============================================================================
 // Text Alignment

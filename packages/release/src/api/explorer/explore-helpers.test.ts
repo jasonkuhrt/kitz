@@ -60,16 +60,16 @@ describe('resolveReleaseTarget', () => {
     gitConfig: Parameters<typeof Git.Memory.make>[0] = {},
   ) =>
     Effect.runPromise(
-      resolveReleaseTarget(vars).pipe(
-        Effect.provide(Git.Memory.make(gitConfig)),
-        Effect.either,
-      ),
+      resolveReleaseTarget(vars).pipe(Effect.provide(Git.Memory.make(gitConfig)), Effect.either),
     )
 
   test('HTTPS remote URL', async () => {
-    const result = await run({}, {
-      remoteUrl: 'https://github.com/org/repo.git',
-    })
+    const result = await run(
+      {},
+      {
+        remoteUrl: 'https://github.com/org/repo.git',
+      },
+    )
     expect(Either.isRight(result)).toBe(true)
     if (Either.isRight(result)) {
       expect(result.right.owner).toBe('org')
@@ -79,9 +79,12 @@ describe('resolveReleaseTarget', () => {
   })
 
   test('SSH remote URL', async () => {
-    const result = await run({}, {
-      remoteUrl: 'git@github.com:my-org/my-repo.git',
-    })
+    const result = await run(
+      {},
+      {
+        remoteUrl: 'git@github.com:my-org/my-repo.git',
+      },
+    )
     expect(Either.isRight(result)).toBe(true)
     if (Either.isRight(result)) {
       expect(result.right.owner).toBe('my-org')
@@ -90,9 +93,12 @@ describe('resolveReleaseTarget', () => {
   })
 
   test('HTTPS remote URL without .git suffix', async () => {
-    const result = await run({}, {
-      remoteUrl: 'https://github.com/owner/project',
-    })
+    const result = await run(
+      {},
+      {
+        remoteUrl: 'https://github.com/owner/project',
+      },
+    )
     expect(Either.isRight(result)).toBe(true)
     if (Either.isRight(result)) {
       expect(result.right.owner).toBe('owner')
@@ -122,9 +128,12 @@ describe('resolveReleaseTarget', () => {
   })
 
   test('non-github remote fails', async () => {
-    const result = await run({}, {
-      remoteUrl: 'git@gitlab.com:org/repo.git',
-    })
+    const result = await run(
+      {},
+      {
+        remoteUrl: 'git@gitlab.com:org/repo.git',
+      },
+    )
     expect(Either.isLeft(result)).toBe(true)
     if (Either.isLeft(result)) {
       expect(result.left._tag).toBe('ExplorerError')

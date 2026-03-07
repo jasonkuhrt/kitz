@@ -26,7 +26,7 @@ export type Extension = typeof Extension.Type
  * @param ext - The extension string (must start with dot)
  * @returns A branded Extension
  */
-export const make = Extension.make
+export const make = (ext: string): Extension => Extension.make(ext)
 
 /**
  * Common file extensions as branded constants.
@@ -64,10 +64,7 @@ export const Extensions = {
   gql: make('.gql'),
 
   // Collections
-  buildArtifacts: [
-    make('.map'),
-    make('.d.ts'),
-  ],
+  buildArtifacts: [make('.map'), make('.d.ts')],
   executable: [
     make('.js'),
     make('.mjs'),

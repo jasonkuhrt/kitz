@@ -52,10 +52,12 @@ describe('merge', () => {
       user: { name: 'Alice', age: 31, city: 'NYC' },
       tags: ['c', 'd'], // Arrays replaced, not merged
     })
-    A.sub.ofAs<{
-      user: { name: string; age: number; city: string }
-      tags: string[]
-    }>().on(result)
+    A.sub
+      .ofAs<{
+        user: { name: string; age: number; city: string }
+        tags: string[]
+      }>()
+      .on(result)
   })
 
   test('replaces arrays rather than merging', () => {
@@ -252,15 +254,12 @@ describe('spreadShallow', () => {
 
   test('property-based: never includes undefined values', () => {
     fc.assert(
-      fc.property(
-        fc.array(fc.dictionary(fc.string(), fc.option(fc.anything()))),
-        (objects) => {
-          const result = Obj.spreadShallow(...objects)
-          Object.values(result).forEach(value => {
-            expect(value).not.toBe(undefined)
-          })
-        },
-      ),
+      fc.property(fc.array(fc.dictionary(fc.string(), fc.option(fc.anything()))), (objects) => {
+        const result = Obj.spreadShallow(...objects)
+        Object.values(result).forEach((value) => {
+          expect(value).not.toBe(undefined)
+        })
+      }),
     )
   })
 
@@ -269,8 +268,8 @@ describe('spreadShallow', () => {
       fc.property(
         fc.object(),
         fc.object(),
-        fc.string().filter(k => k !== '__proto__' && k !== 'constructor' && k !== 'prototype'),
-        fc.anything().filter(v => v !== undefined),
+        fc.string().filter((k) => k !== '__proto__' && k !== 'constructor' && k !== 'prototype'),
+        fc.anything().filter((v) => v !== undefined),
         (obj1, obj2, key, value) => {
           obj1[key] = 'first'
           obj2[key] = value
@@ -282,7 +281,7 @@ describe('spreadShallow', () => {
   })
 
   test('protects against prototype pollution', () => {
-    const maliciousObj = { '__proto__': { polluted: true } } as any
+    const maliciousObj = { __proto__: { polluted: true } } as any
     const normalObj = { safe: 'value' }
     const result = Obj.spreadShallow(normalObj, maliciousObj)
 

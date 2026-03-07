@@ -106,10 +106,10 @@ const findNamespaceHomePagePath = (exportDeclFile: string): string | undefined =
   // Warn if multiple home page files found
   if (homeFiles.length > 1) {
     console.warn(
-      `Warning: Multiple .home.md files found in ${dir}:\n`
-        + homeFiles.map((f: string) => `  - ${f}`).join('\n')
-        + '\n'
-        + `Using first alphabetically: ${firstHomeFile}`,
+      `Warning: Multiple .home.md files found in ${dir}:\n` +
+        homeFiles.map((f: string) => `  - ${f}`).join('\n') +
+        '\n' +
+        `Using first alphabetically: ${firstHomeFile}`,
     )
   }
 
@@ -151,9 +151,11 @@ const addHomePageIfExists = (
   if (Either.isLeft(parsedHome)) {
     const cause = parsedHome.left
     if (cause instanceof Error) {
-      throw new Error(`Failed to parse home page for namespace '${nsName}':\n${cause.message}`, { cause })
+      throw new Error(`Failed to parse home page for namespace '${nsName}':\n${cause.message}`, {
+        cause,
+      })
     }
-    Lang.throw(cause)
+    return Lang.throw(cause)
   }
 
   const home = parsedHome.right
@@ -217,16 +219,17 @@ const createNamespaceExport = (
     const guideProv = overrideJsdoc.guide
       ? isWrapperMarkdown
         ? MdFileProvenance.make({
-          filePath: S.decodeSync(Fs.Path.RelFile.Schema)(
-            absoluteToRelative(exportDecl.getSourceFile().getFilePath().replace(/\.ts$/, '.md')),
-          ),
-        })
+            filePath: S.decodeSync(Fs.Path.RelFile.Schema)(
+              absoluteToRelative(exportDecl.getSourceFile().getFilePath().replace(/\.ts$/, '.md')),
+            ),
+          })
         : JSDocProvenance.make({ shadowNamespace: true })
       : nestedModule.docsProvenance?.guide
 
-    docsProvenance = descriptionProv || guideProv
-      ? DocsProvenance.make({ description: descriptionProv, guide: guideProv })
-      : undefined
+    docsProvenance =
+      descriptionProv || guideProv
+        ? DocsProvenance.make({ description: descriptionProv, guide: guideProv })
+        : undefined
   } else {
     // No override - use nested module's docs
     docs = nestedModule.docs
@@ -286,7 +289,7 @@ const findNamespaceOverrideJSDoc = (
   const exportDecls = sourceFile.getExportDeclarations()
   const exports = sourceFile.getExportedDeclarations()
 
-  const namespaceExports = exportDecls.filter(d => d.getNamespaceExport())
+  const namespaceExports = exportDecls.filter((d) => d.getNamespaceExport())
   const isPureWrapper = namespaceExports.length === 1 && exports.size === 0
 
   if (isPureWrapper) {
@@ -327,7 +330,11 @@ export type ModuleExtractionOptions = {
 /**
  * Check if an export should be filtered based on JSDoc and naming conventions.
  */
-const shouldFilterExport = (exportName: string, jsdoc: JSDocInfo, options: ModuleExtractionOptions): boolean => {
+const shouldFilterExport = (
+  exportName: string,
+  jsdoc: JSDocInfo,
+  options: ModuleExtractionOptions,
+): boolean => {
   // Filter if marked as @internal
   if (options.filterInternal && jsdoc.internal) {
     return true
@@ -517,8 +524,8 @@ export const extractModuleFromFile = (
     // Warn if both exist
     if (jsdocGuide) {
       console.warn(
-        `Warning: Both @guide tag and ${markdownFilePath} found for module. Using .md file. `
-          + `Remove @guide tag or delete .md file.`,
+        `Warning: Both @guide tag and ${markdownFilePath} found for module. Using .md file. ` +
+          `Remove @guide tag or delete .md file.`,
       )
     }
   } else if (jsdocGuide) {
@@ -526,13 +533,15 @@ export const extractModuleFromFile = (
     docGuideProv = JSDocProvenance.make({ shadowNamespace: false })
   }
 
-  const docs = docDescription || docGuide
-    ? ModuleDocs.make({ description: docDescription, guide: docGuide })
-    : undefined
+  const docs =
+    docDescription || docGuide
+      ? ModuleDocs.make({ description: docDescription, guide: docGuide })
+      : undefined
 
-  const docsProvenance = docDescriptionProv || docGuideProv
-    ? DocsProvenance.make({ description: docDescriptionProv, guide: docGuideProv })
-    : undefined
+  const docsProvenance =
+    docDescriptionProv || docGuideProv
+      ? DocsProvenance.make({ description: docDescriptionProv, guide: docGuideProv })
+      : undefined
 
   const category = moduleJSDoc?.category
 
@@ -619,16 +628,15 @@ export const extractModule = (
   const guide = jsdoc.guide
   const category = jsdoc.category
 
-  const docs = description || guide
-    ? ModuleDocs.make({ description, guide })
-    : undefined
+  const docs = description || guide ? ModuleDocs.make({ description, guide }) : undefined
 
-  const docsProvenance = description || guide
-    ? DocsProvenance.make({
-      description: description ? JSDocProvenance.make({ shadowNamespace: true }) : undefined,
-      guide: guide ? JSDocProvenance.make({ shadowNamespace: true }) : undefined,
-    })
-    : undefined
+  const docsProvenance =
+    description || guide
+      ? DocsProvenance.make({
+          description: description ? JSDocProvenance.make({ shadowNamespace: true }) : undefined,
+          guide: guide ? JSDocProvenance.make({ shadowNamespace: true }) : undefined,
+        })
+      : undefined
 
   return Module.make({
     location,

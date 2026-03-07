@@ -26,12 +26,14 @@ interface BadRegistry {
 // Try to register specific handlers
 const badRegistry: BadRegistry = {
   // @ts-expect-error - Type '(user: User) => { id: string; name: string; }' is not assignable
-  user: { // Error! User is not unknown
+  user: {
+    // Error! User is not unknown
     process: (user: User) => ({ ...user, processed: true }),
     validate: (user: User) => user.id.length > 0,
   },
   // @ts-expect-error - Type '(product: Product) => { sku: string; price: number; }' is not assignable
-  product: { // Error! Product is not unknown
+  product: {
+    // Error! Product is not unknown
     process: (product: Product) => ({ ...product, tax: product.price * 0.1 }),
     validate: (product: Product) => product.price > 0,
   },
@@ -46,11 +48,13 @@ interface GoodRegistry {
 }
 
 const goodRegistry: GoodRegistry = {
-  user: { // ✅ Works!
+  user: {
+    // ✅ Works!
     process: (user: User) => ({ ...user, processed: true }),
     validate: (user: User) => user.id.length > 0,
   },
-  product: { // ✅ Works!
+  product: {
+    // ✅ Works!
     process: (product: Product) => ({ ...product, tax: product.price * 0.1 }),
     validate: (product: Product) => product.price > 0,
   },

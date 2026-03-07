@@ -120,7 +120,7 @@ export type Merge<$Union extends object> = {
  * type Keys = Obj.Union.Keys<Partial1 | Partial2>  // 'a' | 'b'
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Keys<
   $Union extends object,
 > =
@@ -202,7 +202,7 @@ $Union extends __FORCE_DISTRIBUTION__ ?
  * // number | string | undefined
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type ValueAt<
   $Union extends object,
   $Key extends PropertyKey,

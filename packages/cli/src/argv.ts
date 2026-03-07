@@ -16,9 +16,7 @@ const createProcessArgv = (
   scriptPath: null | string,
   args: readonly string[],
 ): ProcessArgv => {
-  return scriptPath === null
-    ? [execPath, ...args]
-    : [execPath, scriptPath, ...args]
+  return scriptPath === null ? [execPath, ...args] : [execPath, scriptPath, ...args]
 }
 
 /**

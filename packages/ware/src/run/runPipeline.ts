@@ -15,23 +15,21 @@ const debug = Log.create({})
 
 export const defaultFunctionName = `anonymous`
 
-export const runPipeline = async (
-  {
-    pipeline,
-    stepsToProcess,
-    originalInputOrResult,
-    interceptorsStack,
-    asyncErrorDeferred,
-    previousStepsCompleted,
-  }: {
-    pipeline: Pipeline
-    stepsToProcess: readonly Step[]
-    originalInputOrResult: unknown
-    interceptorsStack: readonly InterceptorGeneric[]
-    asyncErrorDeferred: StepResultErrorAsync
-    previousStepsCompleted: object
-  },
-): Promise<ResultEnvelop | Error> => {
+export const runPipeline = async ({
+  pipeline,
+  stepsToProcess,
+  originalInputOrResult,
+  interceptorsStack,
+  asyncErrorDeferred,
+  previousStepsCompleted,
+}: {
+  pipeline: Pipeline
+  stepsToProcess: readonly Step[]
+  originalInputOrResult: unknown
+  interceptorsStack: readonly InterceptorGeneric[]
+  asyncErrorDeferred: StepResultErrorAsync
+  previousStepsCompleted: object
+}): Promise<ResultEnvelop | Error> => {
   const [stepToProcess, ...stepsRestToProcess] = stepsToProcess
 
   if (!stepToProcess) {
@@ -91,7 +89,7 @@ export const runPipeline = async (
         return signal.error
       }
 
-      if (pipeline.config.passthroughErrorInstanceOf.some(_ => signal.error instanceof _)) {
+      if (pipeline.config.passthroughErrorInstanceOf.some((_) => signal.error instanceof _)) {
         return signal.error
       }
 
@@ -100,22 +98,31 @@ export const runPipeline = async (
       switch (signal.source) {
         case `extension`: {
           // todo test these 2 branches explicitly
-          const nameTip = signal.interceptorName === defaultFunctionName
-            ? ` (use named functions to improve this error message)`
-            : ``
+          const nameTip =
+            signal.interceptorName === defaultFunctionName
+              ? ` (use named functions to improve this error message)`
+              : ``
           const message = wasAsync
             ? `There was an error in the interceptor "${signal.interceptorName}"${nameTip}.`
             : `There was an error in the interceptor "${signal.interceptorName}"${nameTip} while running hook "${signal.hookName}".`
 
-          return new ContextualError(message, {
-            hookName: signal.hookName,
-            source: signal.source,
-            interceptorName: signal.interceptorName,
-          }, signal.error)
+          return new ContextualError(
+            message,
+            {
+              hookName: signal.hookName,
+              source: signal.source,
+              interceptorName: signal.interceptorName,
+            },
+            signal.error,
+          )
         }
         case `implementation`: {
           const message = `There was an error in the core implementation of hook "${signal.hookName}".`
-          return new ContextualError(message, { hookName: signal.hookName, source: signal.source }, signal.error)
+          return new ContextualError(
+            message,
+            { hookName: signal.hookName, source: signal.source },
+            signal.error,
+          )
         }
         case `user`: {
           return signal.error
@@ -132,7 +139,10 @@ export const runPipeline = async (
 const runPipelineEnd = async ({
   interceptorsStack,
   result,
-}: { result: unknown; interceptorsStack: readonly InterceptorGeneric[] }): Promise<unknown> => {
+}: {
+  result: unknown
+  interceptorsStack: readonly InterceptorGeneric[]
+}): Promise<unknown> => {
   const [interceptor, ...interceptorsRest] = interceptorsStack
   if (!interceptor) return result
 

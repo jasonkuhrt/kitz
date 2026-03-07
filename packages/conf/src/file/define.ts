@@ -72,7 +72,10 @@ const resolveJson = (name: string, json: boolean | string | string[] | undefined
 /**
  * Resolve packageJson option to array of field names.
  */
-const resolvePackageJson = (name: string, packageJson: boolean | string | string[] | undefined): string[] => {
+const resolvePackageJson = (
+  name: string,
+  packageJson: boolean | string | string[] | undefined,
+): string[] => {
   if (!packageJson) return []
   if (packageJson === true) return [name]
   if (typeof packageJson === 'string') return [packageJson]

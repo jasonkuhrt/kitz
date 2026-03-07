@@ -107,5 +107,7 @@ export const renderMetadataBlock = (metadata: Metadata): string => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const getCapture = (regex: RegExp) => (input: string): Option.Option<string> =>
-  Option.fromNullable(input.match(regex)?.[1])
+const getCapture =
+  (regex: RegExp) =>
+  (input: string): Option.Option<string> =>
+    Option.fromNullable(input.match(regex)?.[1])

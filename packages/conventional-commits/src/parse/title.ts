@@ -6,21 +6,23 @@ import { Target } from '../target.js'
 import { parse as parseType, Type } from '../type.js'
 
 const baseTags = ['kit', 'conventional-commits'] as const
+const ParseTitleErrorContext = S.Struct({
+  reason: S.String,
+  input: S.String,
+})
 
 /**
  * Error parsing a conventional commit title.
  */
-export const ParseTitleError = Err.TaggedContextualError(
+export const ParseTitleError: Err.TaggedContextualErrorClass<
   'ParseTitleError',
-  baseTags,
-  {
-    context: S.Struct({
-      reason: S.String,
-      input: S.String,
-    }),
-    message: (ctx) => `${ctx.reason}: "${ctx.input}"`,
-  },
-)
+  typeof baseTags,
+  typeof ParseTitleErrorContext,
+  undefined
+> = Err.TaggedContextualError('ParseTitleError', baseTags, {
+  context: ParseTitleErrorContext,
+  message: (ctx) => `${ctx.reason}: "${ctx.input}"`,
+})
 
 export type ParseTitleError = InstanceType<typeof ParseTitleError>
 
@@ -43,10 +45,8 @@ const TYPE_SCOPE_PATTERN = /^([a-z]+)(?:\(([^)]+)\))?(!)?$/
  * - Multiple comma-separated type(scope) groups
  * - OR same type but different breaking per scope
  */
-export const parse = (
-  title: string,
-): Effect.Effect<ParsedTitle, ParseTitleError> =>
-  Effect.gen(function*() {
+export function parse(title: string): Effect.Effect<ParsedTitle, ParseTitleError> {
+  return Effect.gen(function* () {
     const trimmed = title.trim()
 
     // Split on `: ` to get header and message
@@ -110,7 +110,9 @@ export const parse = (
       const parsed = parseTypeScopeGroup(group)
       if (!parsed) {
         return yield* Effect.fail(
-          new ParseTitleError({ context: { reason: `Invalid type-scope group: ${group}`, input: title } }),
+          new ParseTitleError({
+            context: { reason: `Invalid type-scope group: ${group}`, input: title },
+          }),
         )
       }
 
@@ -151,6 +153,7 @@ export const parse = (
       sections: {},
     })
   })
+}
 
 interface ParsedGroup {
   type: Type

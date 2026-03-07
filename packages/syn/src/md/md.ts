@@ -115,7 +115,9 @@ export const codeGroup = (
 ): string => {
   const blocks = tabs.map((tab) => {
     const lang = tab.language || 'typescript'
-    const fence = tab.modifiers ? `${lang} ${tab.modifiers} [${tab.label}]` : `${lang} [${tab.label}]`
+    const fence = tab.modifiers
+      ? `${lang} ${tab.modifiers} [${tab.label}]`
+      : `${lang} [${tab.label}]`
     return `\`\`\`${fence}\n${tab.code}\n\`\`\``
   })
 
@@ -125,7 +127,11 @@ export const codeGroup = (
 /**
  * Create a VitePress custom container (warning, tip, etc.).
  */
-export const container = (type: 'warning' | 'tip' | 'info' | 'danger', title: string, content: string): string => {
+export const container = (
+  type: 'warning' | 'tip' | 'info' | 'danger',
+  title: string,
+  content: string,
+): string => {
   return `:::${type} ${title}\n${content}\n:::`
 }
 
@@ -161,22 +167,27 @@ export const sub = (text: string): string => {
  * For Effect library references (String.*, Array.*, etc.), links to Effect documentation.
  */
 export const convertJSDocLinks = (text: string): string => {
-  return text.replace(/\{@link\s+([^\s}]+)(?:\s+([^}]+))?\}/g, (_, identifier: string, description?: string) => {
-    // Detect Effect library references (e.g., String.trim, Array.join)
-    let url: string | undefined
-    const effectMatch = identifier.match(/^(String|Array|Number|Boolean|Object|ReadonlyArray)\.([\w]+)$/)
-    if (effectMatch && effectMatch[1] && effectMatch[2]) {
-      const module = effectMatch[1]
-      const method = effectMatch[2]
-      // Link to Effect documentation
-      url = `https://effect.website/docs/reference/effect/${module}/#${method.toLowerCase()}`
-    }
+  return text.replace(
+    /\{@link\s+([^\s}]+)(?:\s+([^}]+))?\}/g,
+    (_, identifier: string, description?: string) => {
+      // Detect Effect library references (e.g., String.trim, Array.join)
+      let url: string | undefined
+      const effectMatch = identifier.match(
+        /^(String|Array|Number|Boolean|Object|ReadonlyArray)\.([\w]+)$/,
+      )
+      if (effectMatch && effectMatch[1] && effectMatch[2]) {
+        const module = effectMatch[1]
+        const method = effectMatch[2]
+        // Link to Effect documentation
+        url = `https://effect.website/docs/reference/effect/${module}/#${method.toLowerCase()}`
+      }
 
-    if (description) {
-      return url ? link(url, description) : `[${description}](${identifier})`
-    }
-    return url ? link(url, code(identifier)) : code(identifier)
-  })
+      if (description) {
+        return url ? link(url, description) : `[${description}](${identifier})`
+      }
+      return url ? link(url, code(identifier)) : code(identifier)
+    },
+  )
 }
 
 /**
@@ -211,9 +222,7 @@ export const sections = (...parts: (string | false | undefined | null)[]): strin
  * Convert string to kebab-case.
  */
 export const kebab = (str: string): string => {
-  return str
-    .replace(/([a-z])([A-Z])/g, '$1-$2')
-    .toLowerCase()
+  return str.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()
 }
 
 /**
@@ -373,7 +382,10 @@ export interface Builder {
    * Add a line to the markdown via tagged template.
    * Use empty template for blank lines: `doc\`\``
    */
-  (strings: TemplateStringsArray, ...values: Array<string | number | Raw | null | undefined>): Builder
+  (
+    strings: TemplateStringsArray,
+    ...values: Array<string | number | Raw | null | undefined>
+  ): Builder
 
   /**
    * Add content directly. Skips if null/undefined.
@@ -456,7 +468,9 @@ export interface Builder {
    * ])
    * ```
    */
-  codeGroup(tabs: Array<{ label: string; code: string; language?: string; modifiers?: string }>): Builder
+  codeGroup(
+    tabs: Array<{ label: string; code: string; language?: string; modifiers?: string }>,
+  ): Builder
 
   /**
    * Add a list item.
@@ -593,7 +607,11 @@ export const builder = (): Builder => {
     return builderFn
   }
 
-  builderFn.codeFence = (code: string | null | undefined, language = 'typescript', modifiers?: string) => {
+  builderFn.codeFence = (
+    code: string | null | undefined,
+    language = 'typescript',
+    modifiers?: string,
+  ) => {
     if (code !== null && code !== undefined && code.trim()) {
       const fence = modifiers ? `${language} ${modifiers}` : language
       addLine(`\`\`\`${fence}`)
@@ -603,16 +621,20 @@ export const builder = (): Builder => {
     return builderFn
   }
 
-  builderFn.codeGroup = (tabs: Array<{ label: string; code: string; language?: string; modifiers?: string }>) => {
+  builderFn.codeGroup = (
+    tabs: Array<{ label: string; code: string; language?: string; modifiers?: string }>,
+  ) => {
     const blocks = tabs.map((tab) => {
       const lang = tab.language || 'typescript'
-      const fence = tab.modifiers ? `${lang} ${tab.modifiers} [${tab.label}]` : `${lang} [${tab.label}]`
+      const fence = tab.modifiers
+        ? `${lang} ${tab.modifiers} [${tab.label}]`
+        : `${lang} [${tab.label}]`
       return `\`\`\`${fence}\n${tab.code}\n\`\`\``
     })
 
     addLine(`::: code-group`)
     addLine('')
-    blocks.forEach(block => addLine(block))
+    blocks.forEach((block) => addLine(block))
     addLine('')
     addLine(`:::`)
     return builderFn
@@ -625,26 +647,27 @@ export const builder = (): Builder => {
   }
 
   builderFn.table = (rows: Record<string, string | Raw | undefined | null>) => {
-    const entries = Object.entries(rows).filter(
-      (entry): entry is [string, string | Raw] => {
-        const value = entry[1]
-        return value !== undefined && value !== null
-      },
-    )
+    const entries = Object.entries(rows).filter((entry): entry is [string, string | Raw] => {
+      const value = entry[1]
+      return value !== undefined && value !== null
+    })
     if (entries.length === 0) return builderFn
 
     addLine(`| | |`)
     addLine(`| - | - |`)
     for (const [key, value] of entries) {
-      const valueStr = typeof value === 'object' && '__markdownFormatted' in value
-        ? value.content
-        : String(value)
+      const valueStr =
+        typeof value === 'object' && '__markdownFormatted' in value ? value.content : String(value)
       addLine(`| **${key}** | ${valueStr} |`)
     }
     return builderFn
   }
 
-  builderFn.container = (type: 'warning' | 'tip' | 'info' | 'danger', title: string, content: string) => {
+  builderFn.container = (
+    type: 'warning' | 'tip' | 'info' | 'danger',
+    title: string,
+    content: string,
+  ) => {
     addLine(`:::${type} ${title}`)
     addLine(content)
     addLine(`:::`)
@@ -703,7 +726,10 @@ export interface Template {
    * `
    * ```
    */
-  (strings: TemplateStringsArray, ...values: Array<string | number | Raw | null | undefined>): string
+  (
+    strings: TemplateStringsArray,
+    ...values: Array<string | number | Raw | null | undefined>
+  ): string
 
   /**
    * Create a new markdown builder for imperative construction.
@@ -725,7 +751,9 @@ export interface Template {
    * // Usage: getDoc('My Title', ['item1', 'item2']) -> string
    * ```
    */
-  factory: <$Args extends any[]>(fn: (doc: Builder, ...args: $Args) => void) => (...args: $Args) => string
+  factory: <$Args extends any[]>(
+    fn: (doc: Builder, ...args: $Args) => void,
+  ) => (...args: $Args) => string
 
   /**
    * Markdown element helpers for generating formatted elements.

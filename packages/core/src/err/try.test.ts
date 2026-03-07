@@ -23,20 +23,14 @@ const fnAsync = (throwValue?: unknown) => async () => {
 // Test sync variations
 Test.describe('sync tryCatch')
   .on(Err.tryCatch)
-  .cases(
-    [[fn(e)], e],
-    [[fn()], v],
-  )
+  .cases([[fn(e)], e], [[fn()], v])
   .test()
 
 // Test async variations
 Test.describe('async tryCatch')
   .inputType<() => Promise<any>>()
   .outputType<any>()
-  .cases(
-    [fnAsync(e), e],
-    [fnAsync(), v],
-  )
+  .cases([fnAsync(e), e], [fnAsync(), v])
   .test(async ({ input, output }) => {
     const result = await Err.tryCatch(input)
     expect(result).toBe(output)
@@ -186,17 +180,28 @@ Test.describe('async tryOrRethrow errors')
     }
   })
 
-Test
-  .describe('sync tryOr variations')
+Test.describe('sync tryOr variations')
   .on(tryOr)
   .cases(
     [[() => 42, 'fallback'], 42],
-    [[() => {
-      throw new Error('fail')
-    }, 'fallback'], 'fallback'],
-    [[() => {
-      throw new Error('fail')
-    }, () => 'lazy fallback'], 'lazy fallback'],
+    [
+      [
+        () => {
+          throw new Error('fail')
+        },
+        'fallback',
+      ],
+      'fallback',
+    ],
+    [
+      [
+        () => {
+          throw new Error('fail')
+        },
+        () => 'lazy fallback',
+      ],
+      'lazy fallback',
+    ],
   )
   .test()
 
@@ -208,31 +213,43 @@ Test.describe('async tryOr variations')
   }>()
   .outputType<any>()
   .cases(
-    [{
-      fn: async () => 42,
-      fallback: 'fallback',
-    }, 42],
-    [{
-      fn: async () => {
-        throw new Error('fail')
+    [
+      {
+        fn: async () => 42,
+        fallback: 'fallback',
       },
-      fallback: 'fallback',
-    }, 'fallback'],
-    [{
-      fn: async () => {
-        throw new Error('fail')
+      42,
+    ],
+    [
+      {
+        fn: async () => {
+          throw new Error('fail')
+        },
+        fallback: 'fallback',
       },
-      fallback: () => 'lazy fallback',
-    }, 'lazy fallback'],
-    [{
-      fn: async () => {
-        throw new Error('fail')
+      'fallback',
+    ],
+    [
+      {
+        fn: async () => {
+          throw new Error('fail')
+        },
+        fallback: () => 'lazy fallback',
       },
-      fallback: async () => {
-        await new Promise(resolve => setTimeout(resolve, 10))
-        return 'async fallback'
+      'lazy fallback',
+    ],
+    [
+      {
+        fn: async () => {
+          throw new Error('fail')
+        },
+        fallback: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 10))
+          return 'async fallback'
+        },
       },
-    }, 'async fallback'],
+      'async fallback',
+    ],
   )
   .test(async ({ input, output }) => {
     const result = await tryOr(input.fn, input.fallback)
@@ -248,7 +265,7 @@ describe('tryOrAsync', () => {
         throw new Error('fail')
       },
       async () => {
-        await new Promise(resolve => setTimeout(resolve, 10))
+        await new Promise((resolve) => setTimeout(resolve, 10))
         return 'async fallback from sync error'
       },
     )
@@ -281,11 +298,7 @@ describe('tryOrAsync', () => {
 describe('tryAllOrRethrow', () => {
   test('returns all results on success', async () => {
     const results = await tryAllOrRethrow(
-      [
-        () => 1,
-        async () => 2,
-        () => Promise.resolve(3),
-      ],
+      [() => 1, async () => 2, () => Promise.resolve(3)],
       'Should not throw',
     )
 
@@ -357,7 +370,7 @@ describe('tryAllOrRethrow', () => {
   })
 
   test('preserves result order', async () => {
-    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+    const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
     const results = await tryAllOrRethrow(
       [

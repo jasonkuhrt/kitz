@@ -15,7 +15,7 @@ Efficient patterns for CLI output in Effect-based applications using `@kitz/core
 import { Str } from '@kitz/core'
 import { Console, Effect } from 'effect'
 
-const program = Effect.gen(function*() {
+const program = Effect.gen(function* () {
   const b = Str.Builder()
 
   b`Applying release plan...`
@@ -37,7 +37,8 @@ const program = Effect.gen(function*() {
 For static text (no loops, no conditionals), prefer `Str.Tpl.dedent`:
 
 ```typescript
-yield * Console.log(Str.Tpl.dedent`
+yield *
+  Console.log(Str.Tpl.dedent`
   Done! Release is ready.
 
   Next steps:
@@ -143,22 +144,24 @@ When output must appear incrementally (progress, real-time events), individual `
 
 ```typescript
 // Real-time event stream - individual calls OK
-const eventFiber = yield * events.pipe(
-  Stream.tap((event) => {
-    switch (event._tag) {
-      case 'Started':
-        return Console.log(`  Starting: ${event.activity}`)
-      case 'Completed':
-        return Console.log(`Done: ${event.activity}`)
-      case 'Failed':
-        return Console.error(`Failed: ${event.activity}`)
-      default:
-        return Effect.void
-    }
-  }),
-  Stream.runDrain,
-  Effect.fork,
-)
+const eventFiber =
+  yield *
+  events.pipe(
+    Stream.tap((event) => {
+      switch (event._tag) {
+        case 'Started':
+          return Console.log(`  Starting: ${event.activity}`)
+        case 'Completed':
+          return Console.log(`Done: ${event.activity}`)
+        case 'Failed':
+          return Console.error(`Failed: ${event.activity}`)
+        default:
+          return Effect.void
+      }
+    }),
+    Stream.runDrain,
+    Effect.fork,
+  )
 ```
 
 ## Configuration

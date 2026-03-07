@@ -46,41 +46,35 @@ export const name = (instance: AbsDirClass): string => instance.segments.at(-1) 
  * })
  * ```
  */
-export const Schema: S.Schema<AbsDirClass, string> = S.transformOrFail(
-  S.String,
-  AbsDirClass,
-  {
-    strict: true,
-    encode: (decoded) => {
-      const pathString = decoded.segments.join(stringSeparator)
-      const string = decoded.segments.length === 0 ? '/' : `/${pathString}/`
-      return ParseResult.succeed(string)
-    },
-    decode: (input, options, ast) => {
-      // Analyze the input string with directory hint for ambiguous paths
-      const analysis = analyze(input, { hint: 'directory' })
-
-      // Validate it's an absolute directory
-      if (analysis._tag !== 'dir') {
-        return ParseResult.fail(
-          new ParseResult.Type(ast, input, 'Expected a directory path, got a file path'),
-        )
-      }
-      if (!analysis.isPathAbsolute) {
-        return ParseResult.fail(
-          new ParseResult.Type(ast, input, 'Absolute paths must start with /'),
-        )
-      }
-
-      // Valid - return as AbsDir
-      return ParseResult.succeed(
-        AbsDirClass.make({
-          segments: analysis.path,
-        }),
-      )
-    },
+export const Schema: S.Schema<AbsDirClass, string> = S.transformOrFail(S.String, AbsDirClass, {
+  strict: true,
+  encode: (decoded) => {
+    const pathString = decoded.segments.join(stringSeparator)
+    const string = decoded.segments.length === 0 ? '/' : `/${pathString}/`
+    return ParseResult.succeed(string)
   },
-)
+  decode: (input, options, ast) => {
+    // Analyze the input string with directory hint for ambiguous paths
+    const analysis = analyze(input, { hint: 'directory' })
+
+    // Validate it's an absolute directory
+    if (analysis._tag !== 'dir') {
+      return ParseResult.fail(
+        new ParseResult.Type(ast, input, 'Expected a directory path, got a file path'),
+      )
+    }
+    if (!analysis.isPathAbsolute) {
+      return ParseResult.fail(new ParseResult.Type(ast, input, 'Absolute paths must start with /'))
+    }
+
+    // Valid - return as AbsDir
+    return ParseResult.succeed(
+      AbsDirClass.make({
+        segments: analysis.path,
+      }),
+    )
+  },
+})
 
 /**
  * Type guard to check if a value is an AbsDir instance.

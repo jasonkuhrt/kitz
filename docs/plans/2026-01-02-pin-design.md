@@ -59,10 +59,7 @@ Pin is a tagged class union covering all npm dependency specifier forms:
  * @see {@link https://docs.npmjs.com/cli/v10/using-npm/scope | npm scope documentation}
  * @see {@link https://github.com/npm/validate-npm-package-name | validate-npm-package-name source}
  */
-const Scope = S.String.pipe(
-  S.pattern(/^[a-z0-9][a-z0-9-._]*$/),
-  S.brand('Scope'),
-)
+const Scope = S.String.pipe(S.pattern(/^[a-z0-9][a-z0-9-._]*$/), S.brand('Scope'))
 type Scope = typeof Scope.Type
 
 /**
@@ -78,10 +75,7 @@ type Scope = typeof Scope.Type
  * @see {@link https://docs.npmjs.com/cli/v10/configuring-npm/package-json#name | package.json name field}
  * @see {@link https://github.com/npm/validate-npm-package-name | validate-npm-package-name source}
  */
-const Name = S.String.pipe(
-  S.pattern(/^[a-z0-9][a-z0-9-._]*$/),
-  S.brand('Name'),
-)
+const Name = S.String.pipe(S.pattern(/^[a-z0-9][a-z0-9-._]*$/), S.brand('Name'))
 type Name = typeof Name.Type
 
 /**
@@ -123,9 +117,7 @@ const SemverRange = S.transformOrFail(
       try {
         return ParseResult.succeed(new VltRange(value))
       } catch (error) {
-        return ParseResult.fail(
-          new ParseResult.Type(ast, value, `Invalid semver range: ${error}`),
-        )
+        return ParseResult.fail(new ParseResult.Type(ast, value, `Invalid semver range: ${error}`))
       }
     },
     encode: (range) => ParseResult.succeed(range.toString()),
@@ -148,12 +140,7 @@ const SemverRange = S.transformOrFail(
  * @see {@link https://pnpm.io/workspaces#publishing-workspace-packages | pnpm workspace protocol}
  * @see {@link https://yarnpkg.com/features/workspaces#publishing-workspaces | yarn workspace protocol}
  */
-const WorkspaceRange = S.Union(
-  S.Literal('*'),
-  S.Literal('^'),
-  S.Literal('~'),
-  SemverRange,
-)
+const WorkspaceRange = S.Union(S.Literal('*'), S.Literal('^'), S.Literal('~'), SemverRange)
 
 /**
  * npm dist-tag name.
@@ -309,8 +296,8 @@ Like `Fs.Path.fromString`, `Pin.fromString` preserves literal types at compile t
  * "@scope/name" → { scope: "scope"; name: "name" }
  * "name"        → { scope: undefined; name: "name" }
  */
-type ParsePackageName<$S extends string> = $S extends
-  `@${infer $Scope}/${infer $Name}` ? { scope: $Scope; name: $Name }
+type ParsePackageName<$S extends string> = $S extends `@${infer $Scope}/${infer $Name}`
+  ? { scope: $Scope; name: $Name }
   : { scope: undefined; name: $S }
 
 // ============================================================================
@@ -321,30 +308,40 @@ type ParsePackageName<$S extends string> = $S extends
  * Detect if string looks like a semver range.
  * Matches: ^, ~, >=, <=, >, <, =, *, digits
  */
-type IsRangeLike<$S extends string> = $S extends `^${string}` ? true
-  : $S extends `~${string}` ? true
-  : $S extends `>${string}` ? true
-  : $S extends `<${string}` ? true
-  : $S extends `=${string}` ? true
-  : $S extends `*` ? true
-  : $S extends `${number}${string}` ? true
-  : false
+type IsRangeLike<$S extends string> = $S extends `^${string}`
+  ? true
+  : $S extends `~${string}`
+    ? true
+    : $S extends `>${string}`
+      ? true
+      : $S extends `<${string}`
+        ? true
+        : $S extends `=${string}`
+          ? true
+          : $S extends `*`
+            ? true
+            : $S extends `${number}${string}`
+              ? true
+              : false
 
 /**
  * Parse specifier to determine variant.
  */
 type ParseSpecifier<$S extends string> = $S extends `workspace:${infer $Range}`
   ? { _tag: 'PinWorkspace'; range: $Range }
-  : $S extends `git+${infer $Url}` ? { _tag: 'PinGit'; url: `git+${$Url}` }
-  : $S extends `file:${infer $Path}` ? { _tag: 'PinPath'; path: $Path }
-  : $S extends `https://${infer $Rest}`
-    ? { _tag: 'PinUrl'; url: `https://${$Rest}` }
-  : $S extends `http://${infer $Rest}`
-    ? { _tag: 'PinUrl'; url: `http://${$Rest}` }
-  : $S extends `npm:${infer $Target}@${infer $Spec}`
-    ? { _tag: 'PinAlias'; target: ParsePackageName<$Target>; specifier: $Spec }
-  : IsRangeLike<$S> extends true ? { _tag: 'PinRange'; range: $S }
-  : { _tag: 'PinTag'; tag: $S }
+  : $S extends `git+${infer $Url}`
+    ? { _tag: 'PinGit'; url: `git+${$Url}` }
+    : $S extends `file:${infer $Path}`
+      ? { _tag: 'PinPath'; path: $Path }
+      : $S extends `https://${infer $Rest}`
+        ? { _tag: 'PinUrl'; url: `https://${$Rest}` }
+        : $S extends `http://${infer $Rest}`
+          ? { _tag: 'PinUrl'; url: `http://${$Rest}` }
+          : $S extends `npm:${infer $Target}@${infer $Spec}`
+            ? { _tag: 'PinAlias'; target: ParsePackageName<$Target>; specifier: $Spec }
+            : IsRangeLike<$S> extends true
+              ? { _tag: 'PinRange'; range: $S }
+              : { _tag: 'PinTag'; tag: $S }
 
 // ============================================================================
 // Type-Level Pin Parser
@@ -360,17 +357,17 @@ type BuildPin<
   ? Range & { name: PackageName & $Name; range: $R }
   : $Spec extends { _tag: 'PinTag'; tag: infer $T extends string }
     ? Tag & { name: PackageName & $Name; tag: $T }
-  : $Spec extends { _tag: 'PinWorkspace'; range: infer $R extends string }
-    ? Workspace & { name: PackageName & $Name; range: $R }
-  : $Spec extends { _tag: 'PinGit'; url: infer $U extends string }
-    ? Git & { name: PackageName & $Name; url: $U }
-  : $Spec extends { _tag: 'PinPath'; path: infer $P extends string }
-    ? Path & { name: PackageName & $Name; path: $P }
-  : $Spec extends { _tag: 'PinUrl'; url: infer $U extends string }
-    ? Url & { name: PackageName & $Name; url: $U }
-  : $Spec extends { _tag: 'PinAlias'; target: infer $T; specifier: infer $S }
-    ? Alias & { name: PackageName & $Name; target: $T; specifier: $S }
-  : never
+    : $Spec extends { _tag: 'PinWorkspace'; range: infer $R extends string }
+      ? Workspace & { name: PackageName & $Name; range: $R }
+      : $Spec extends { _tag: 'PinGit'; url: infer $U extends string }
+        ? Git & { name: PackageName & $Name; url: $U }
+        : $Spec extends { _tag: 'PinPath'; path: infer $P extends string }
+          ? Path & { name: PackageName & $Name; path: $P }
+          : $Spec extends { _tag: 'PinUrl'; url: infer $U extends string }
+            ? Url & { name: PackageName & $Name; url: $U }
+            : $Spec extends { _tag: 'PinAlias'; target: infer $T; specifier: infer $S }
+              ? Alias & { name: PackageName & $Name; target: $T; specifier: $S }
+              : never
 
 /**
  * Full pin parser: "name@specifier" → typed Pin variant
@@ -379,10 +376,10 @@ type ParsePin<$S extends string> =
   // Scoped package: @scope/name@specifier
   $S extends `@${infer $Scope}/${infer $Name}@${infer $Spec}`
     ? BuildPin<ParseSpecifier<$Spec>, { scope: $Scope; name: $Name }>
-    // Unscoped package: name@specifier
-    : $S extends `${infer $Name}@${infer $Spec}`
+    : // Unscoped package: name@specifier
+      $S extends `${infer $Name}@${infer $Spec}`
       ? BuildPin<ParseSpecifier<$Spec>, { scope: undefined; name: $Name }>
-    : never
+      : never
 
 // ============================================================================
 // Per-Variant Constructors
@@ -393,7 +390,9 @@ type ParsePin<$S extends string> =
  * you already know the type. These are colocated with their schema class.
  */
 
-class Range extends S.TaggedClass<Range>()('PinRange', {/* ... */}) {
+class Range extends S.TaggedClass<Range>()('PinRange', {
+  /* ... */
+}) {
   static is = S.is(Range)
 
   /**
@@ -405,12 +404,12 @@ class Range extends S.TaggedClass<Range>()('PinRange', {/* ... */}) {
    * //    ^? Range & { name: { scope: "kitz"; name: "core" }; range: "^1.0.0" }
    * ```
    */
-  static fromString = <$S extends string>(
-    input: $S,
-  ): ParseRangePin<$S> => parseRange(input) as any
+  static fromString = <$S extends string>(input: $S): ParseRangePin<$S> => parseRange(input) as any
 }
 
-class Tag extends S.TaggedClass<Tag>()('PinTag', {/* ... */}) {
+class Tag extends S.TaggedClass<Tag>()('PinTag', {
+  /* ... */
+}) {
   static is = S.is(Tag)
 
   /**
@@ -422,9 +421,7 @@ class Tag extends S.TaggedClass<Tag>()('PinTag', {/* ... */}) {
    * //    ^? Tag & { name: { scope: undefined; name: "lodash" }; tag: "latest" }
    * ```
    */
-  static fromString = <$S extends string>(
-    input: $S,
-  ): ParseTagPin<$S> => parseTag(input) as any
+  static fromString = <$S extends string>(input: $S): ParseTagPin<$S> => parseTag(input) as any
 }
 
 // ... similar pattern for Workspace, Git, Path, Url, Alias

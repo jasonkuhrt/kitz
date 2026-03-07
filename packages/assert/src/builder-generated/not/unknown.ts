@@ -1,7 +1,6 @@
 import type { Fn } from '@kitz/core'
-import { builder } from '../../builder-singleton.js'
 import type { AssertUnknownKind } from '../../asserts.js'
-
+import { builder } from '../../builder-singleton.js'
 
 /**
  * Unary relator (negated) - asserts type is NOT `unknown`.
@@ -18,6 +17,6 @@ import type { AssertUnknownKind } from '../../asserts.js'
  * ```
  */
 type unknown_<$Actual> = Fn.Kind.Apply<AssertUnknownKind, [$Actual, true]>
-const unknown_ = builder.not.unknown
+const unknown_: typeof builder.not.unknown = builder.not.unknown
 
 export { unknown_ as unknown }

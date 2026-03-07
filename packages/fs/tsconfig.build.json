@@ -6,15 +6,9 @@
     "declaration": true,
     "declarationMap": true,
     "paths": {
-      "#fs": [
-        "./src/_.js"
-      ],
-      "#fs/__.js": [
-        "./src/__.js"
-      ],
-      "#fs/*": [
-        "./src/*.js"
-      ]
+      "#fs": ["./src/_.js"],
+      "#fs/__.js": ["./src/__.js"],
+      "#fs/*": ["./src/*.js"]
     }
   }
 }

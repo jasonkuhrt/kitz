@@ -17,26 +17,24 @@ export type OmitTag<$T> = Omit<$T, '_tag'>
 export type Filter<
   $TaggedStruct extends AnyTaggedStruct,
   $PickedKeys extends keyof ExtractFields<$TaggedStruct>,
-> = $TaggedStruct extends S.TaggedStruct<infer __tag__, infer __structFields__>
-  ? S.TaggedStruct<__tag__, Pick<__structFields__, $PickedKeys>>
-  : never
+> =
+  $TaggedStruct extends S.TaggedStruct<infer __tag__, infer __structFields__>
+    ? S.TaggedStruct<__tag__, Pick<__structFields__, $PickedKeys>>
+    : never
 
-export type ArgTag<$Schema extends AnySchema> = $Schema extends
-  S.TaggedStruct<infer __tag__ extends EAST.LiteralValue, any> ? __tag__
-  : never
+export type ArgTag<$Schema extends AnySchema> =
+  $Schema extends S.TaggedStruct<infer __tag__ extends EAST.LiteralValue, any> ? __tag__ : never
 
 export type ArgTagString<$Schema extends AnySchema> = StringOrNever<ArgTag<$Schema>>
 
-export type ArgFields<$Schema extends Any> = $Schema extends S.TaggedStruct<any, infer __fields__> ? __fields__
-  : never
+export type ArgFields<$Schema extends Any> =
+  $Schema extends S.TaggedStruct<any, infer __fields__> ? __fields__ : never
 
 /**
  * Extract the tag value from a tagged struct schema.
  * Handles transformations and other wrappers.
  */
-export const getTagOrThrow = <schema extends AnySchema>(
-  schema: schema,
-): ArgTagString<schema> => {
+export const getTagOrThrow = <schema extends AnySchema>(schema: schema): ArgTagString<schema> => {
   // Resolve non-structural wrappers
   let resolved = AST.resolve(schema.ast)
 
@@ -68,7 +66,9 @@ export const getTagOrThrow = <schema extends AnySchema>(
 
   // Ensure the literal is a string
   if (typeof tagType.literal !== 'string') {
-    throw new Error(`Expected tag to be a string literal, but got ${typeof tagType.literal}: ${tagType.literal}`)
+    throw new Error(
+      `Expected tag to be a string literal, but got ${typeof tagType.literal}: ${tagType.literal}`,
+    )
   }
 
   return tagType.literal as any
@@ -81,49 +81,66 @@ export const getTagOrThrow = <schema extends AnySchema>(
  * Returns never if not found.
  * NOTE: Cannot extract actual schemas from suspended types, only direct schemas.
  */
-export type ExtractByTag<
-  $TagName extends Tag,
-  $Union extends S.Schema.All,
-> = $Union extends S.Union<infer $Members extends readonly S.Schema.All[]>
-  ? ExtractTaggedStructFromArray<$TagName, $Members>
-  : $Union extends S.TaggedStruct<infer __tag__, any> ? $TagName extends __tag__ ? $Union
-    : never
-  : never
+export type ExtractByTag<$TagName extends Tag, $Union extends S.Schema.All> =
+  $Union extends S.Union<infer $Members extends readonly S.Schema.All[]>
+    ? ExtractTaggedStructFromArray<$TagName, $Members>
+    : $Union extends S.TaggedStruct<infer __tag__, any>
+      ? $TagName extends __tag__
+        ? $Union
+        : never
+      : never
 
 // Helper to extract from array of schemas
 type ExtractTaggedStructFromArray<
   $TagName extends Tag,
   $Schemas extends readonly S.Schema.All[],
-> = $Schemas extends readonly [infer $First extends S.Schema.All, ...infer $Rest extends readonly S.Schema.All[]]
-  ? $First extends S.TaggedStruct<infer __tag__, any> ? $TagName extends __tag__ ? $First
+> = $Schemas extends readonly [
+  infer $First extends S.Schema.All,
+  ...infer $Rest extends readonly S.Schema.All[],
+]
+  ? $First extends S.TaggedStruct<infer __tag__, any>
+    ? $TagName extends __tag__
+      ? $First
+      : ExtractTaggedStructFromArray<$TagName, $Rest>
     : ExtractTaggedStructFromArray<$TagName, $Rest>
-  : ExtractTaggedStructFromArray<$TagName, $Rest>
   : never
 
 /**
  * Predicate to check if a union contains a specific tag.
  * Can check suspended types by looking at their decoded type's _tag.
  */
-export type DoesTaggedUnionContainTag<
-  $TagName extends string,
-  $Union extends S.Schema.All,
-> = $Union extends S.Union<infer $Members extends readonly S.Schema.All[]> ? ContainsTagInArray<$TagName, $Members>
-  : $Union extends S.TaggedStruct<infer __tag__, any> ? $TagName extends __tag__ ? true : false
-  : $Union extends S.suspend<infer $Type, any, any>
-    ? $Type extends { readonly _tag: infer __tag__ } ? $TagName extends __tag__ ? true : false
-    : false
-  : false
+export type DoesTaggedUnionContainTag<$TagName extends string, $Union extends S.Schema.All> =
+  $Union extends S.Union<infer $Members extends readonly S.Schema.All[]>
+    ? ContainsTagInArray<$TagName, $Members>
+    : $Union extends S.TaggedStruct<infer __tag__, any>
+      ? $TagName extends __tag__
+        ? true
+        : false
+      : $Union extends S.suspend<infer $Type, any, any>
+        ? $Type extends { readonly _tag: infer __tag__ }
+          ? $TagName extends __tag__
+            ? true
+            : false
+          : false
+        : false
 
 // Helper to check if array contains tag
 type ContainsTagInArray<
   $TagName extends string,
   $Schemas extends readonly S.Schema.All[],
-> = $Schemas extends readonly [infer $First extends S.Schema.All, ...infer $Rest extends readonly S.Schema.All[]]
+> = $Schemas extends readonly [
+  infer $First extends S.Schema.All,
+  ...infer $Rest extends readonly S.Schema.All[],
+]
   ? $First extends S.TaggedStruct<infer __tag__, any>
-    ? $TagName extends __tag__ ? true : ContainsTagInArray<$TagName, $Rest>
-  : $First extends S.suspend<infer $Type, any, any>
-    ? $Type extends { readonly _tag: infer __tag__ }
-      ? $TagName extends __tag__ ? true : ContainsTagInArray<$TagName, $Rest>
-    : ContainsTagInArray<$TagName, $Rest>
-  : ContainsTagInArray<$TagName, $Rest>
+    ? $TagName extends __tag__
+      ? true
+      : ContainsTagInArray<$TagName, $Rest>
+    : $First extends S.suspend<infer $Type, any, any>
+      ? $Type extends { readonly _tag: infer __tag__ }
+        ? $TagName extends __tag__
+          ? true
+          : ContainsTagInArray<$TagName, $Rest>
+        : ContainsTagInArray<$TagName, $Rest>
+      : ContainsTagInArray<$TagName, $Rest>
   : false

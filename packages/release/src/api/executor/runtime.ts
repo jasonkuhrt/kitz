@@ -43,43 +43,41 @@ export const makeRuntime = (config: RuntimeConfig = {}) =>
     config.github
       ? Github.LiveFetch(config.github)
       : Layer.succeed(Github.Github, {
-        releaseExists: () =>
-          Effect.fail(
-            new Github.GithubError({
-              context: {
-                operation: 'releaseExists',
-                detail:
-                  'GitHub runtime is not configured. Resolve runtime with Api.Explorer.explore() and pass github config.',
-              },
-              cause: new Error('GitHub runtime is not configured'),
-            }),
-          ),
-        createRelease: () =>
-          Effect.fail(
-            new Github.GithubError({
-              context: {
-                operation: 'createRelease',
-                detail:
-                  'GitHub runtime is not configured. Resolve runtime with Api.Explorer.explore() and pass github config.',
-              },
-              cause: new Error('GitHub runtime is not configured'),
-            }),
-          ),
-        updateRelease: () =>
-          Effect.fail(
-            new Github.GithubError({
-              context: {
-                operation: 'updateRelease',
-                detail:
-                  'GitHub runtime is not configured. Resolve runtime with Api.Explorer.explore() and pass github config.',
-              },
-              cause: new Error('GitHub runtime is not configured'),
-            }),
-          ),
-      }),
-  ).pipe(
-    Layer.provideMerge(SingleRunner.layer({ runnerStorage: 'sql' })),
-  )
+          releaseExists: () =>
+            Effect.fail(
+              new Github.GithubError({
+                context: {
+                  operation: 'releaseExists',
+                  detail:
+                    'GitHub runtime is not configured. Resolve runtime with Api.Explorer.explore() and pass github config.',
+                },
+                cause: new Error('GitHub runtime is not configured'),
+              }),
+            ),
+          createRelease: () =>
+            Effect.fail(
+              new Github.GithubError({
+                context: {
+                  operation: 'createRelease',
+                  detail:
+                    'GitHub runtime is not configured. Resolve runtime with Api.Explorer.explore() and pass github config.',
+                },
+                cause: new Error('GitHub runtime is not configured'),
+              }),
+            ),
+          updateRelease: () =>
+            Effect.fail(
+              new Github.GithubError({
+                context: {
+                  operation: 'updateRelease',
+                  detail:
+                    'GitHub runtime is not configured. Resolve runtime with Api.Explorer.explore() and pass github config.',
+                },
+                cause: new Error('GitHub runtime is not configured'),
+              }),
+            ),
+        }),
+  ).pipe(Layer.provideMerge(SingleRunner.layer({ runnerStorage: 'sql' })))
 
 /**
  * A minimal workflow definition for test mocking.

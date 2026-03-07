@@ -9,9 +9,13 @@ Test.property('returns input unchanged for any value', fc.anything(), (value) =>
   expect(Fn.identity(value)).toBe(value)
 })
 
-Test.property('preserves object references', fc.oneof(fc.object(), fc.array(fc.anything())), (value) => {
-  expect(Fn.identity(value)).toBe(value)
-})
+Test.property(
+  'preserves object references',
+  fc.oneof(fc.object(), fc.array(fc.anything())),
+  (value) => {
+    expect(Fn.identity(value)).toBe(value)
+  },
+)
 
 test('type: preserves input types', () => {
   A.exact.ofAs<0>().on(Fn.identity(0))

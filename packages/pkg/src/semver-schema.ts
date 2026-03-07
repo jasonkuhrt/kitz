@@ -3,22 +3,22 @@ import { Effect, ParseResult, Schema as S } from 'effect'
 
 export type SemverValue =
   | {
-    readonly _tag: 'SemverOfficialRelease'
-    readonly major: number
-    readonly minor: number
-    readonly patch: number
-    readonly build?: ReadonlyArray<string> | undefined
-    toString(): string
-  }
+      readonly _tag: 'SemverOfficialRelease'
+      readonly major: number
+      readonly minor: number
+      readonly patch: number
+      readonly build?: ReadonlyArray<string> | undefined
+      toString(): string
+    }
   | {
-    readonly _tag: 'SemverPreRelease'
-    readonly major: number
-    readonly minor: number
-    readonly patch: number
-    readonly prerelease: readonly [string | number, ...(string | number)[]]
-    readonly build?: ReadonlyArray<string> | undefined
-    toString(): string
-  }
+      readonly _tag: 'SemverPreRelease'
+      readonly major: number
+      readonly minor: number
+      readonly patch: number
+      readonly prerelease: readonly [string | number, ...(string | number)[]]
+      readonly build?: ReadonlyArray<string> | undefined
+      toString(): string
+    }
 
 const isSemver = (input: unknown): input is SemverValue => Semver.is(input)
 

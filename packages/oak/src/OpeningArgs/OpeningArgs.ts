@@ -54,8 +54,9 @@ export const parse = ({
      */
 
     // todo, a strict mode where errors are NOT ignored from env parsing when line is present
-    const argReport = lineParseResult.reports[parameter.name.canonical]
-      ?? envParseResult.reports[parameter.name.canonical]
+    const argReport =
+      lineParseResult.reports[parameter.name.canonical] ??
+      envParseResult.reports[parameter.name.canonical]
 
     /**
      * An opening argument was given. Process it.
@@ -104,7 +105,9 @@ export const parse = ({
                 new Errors.ErrorInvalidArgument({
                   context: {
                     spec: parameter,
-                    validationErrors: [`Supported types are string, number, boolean, null, and undefined.`],
+                    validationErrors: [
+                      `Supported types are string, number, boolean, null, and undefined.`,
+                    ],
                     value: validationResult.right,
                   },
                 }),
@@ -133,7 +136,9 @@ export const parse = ({
      * No opening argument was given. Process this fact according to spec (e.g. ok b/c optional, apply default, ... etc.)
      */
 
-    result.basicParameters[parameter.name.canonical] = Alge.match(parameter.type.metadata.optionality)
+    result.basicParameters[parameter.name.canonical] = Alge.match(
+      parameter.type.metadata.optionality,
+    )
       .default((optionality) => {
         const defaultValueOrError = Err.tryCatch(() => optionality.getValue())
         if (defaultValueOrError instanceof Error) {
@@ -197,13 +202,19 @@ export const parse = ({
    * 4. If a group has more than one parameter with an arg then error
    * 5. If a group has exactly one parameter with an arg then OK
    */
-  const exclusiveGroupSpecsByGroupLabel = Group.byToMut(specsByVariant.Exclusive ?? [], (spec) => spec.group.label)
+  const exclusiveGroupSpecsByGroupLabel = Group.byToMut(
+    specsByVariant.Exclusive ?? [],
+    (spec) => spec.group.label,
+  )
 
   for (const specs of Obj.values(exclusiveGroupSpecsByGroupLabel)) {
     if (!specs) continue
     const group = specs[0]!.group
     const argsToGroup = specs
-      .map((_) => lineParseResult.reports[_.name.canonical] ?? envParseResult.reports[_.name.canonical])
+      .map(
+        (_) =>
+          lineParseResult.reports[_.name.canonical] ?? envParseResult.reports[_.name.canonical],
+      )
       .filter((_): _ is ArgumentReport<ParameterExclusive> => _ !== undefined)
 
     if (argsToGroup.length === 0) {
@@ -220,7 +231,9 @@ export const parse = ({
         const tag = group.optionality.tag
         const parameter = specs.find((_) => _.name.canonical === tag)
         if (!parameter) {
-          Lang.panic(`Failed to find parameter for exclusive group default. This should be impossible.`)
+          return Lang.panic(
+            `Failed to find parameter for exclusive group default. This should be impossible.`,
+          )
         }
         // TODO handle error getting default?
         const defaultValue = group.optionality.getValue()
@@ -294,8 +307,8 @@ export const parse = ({
 }
 
 const isArgumentValue = (value: unknown): value is undefined | null | string | number | boolean =>
-  value === undefined
-  || value === null
-  || typeof value === 'string'
-  || typeof value === 'number'
-  || typeof value === 'boolean'
+  value === undefined ||
+  value === null ||
+  typeof value === 'string' ||
+  typeof value === 'number' ||
+  typeof value === 'boolean'

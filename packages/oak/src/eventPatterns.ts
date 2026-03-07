@@ -7,7 +7,10 @@ import type { OakSchema } from './schema/oak-schema.js'
 
 // Event patterns are runtime-only, so we accept any schema type
 // At runtime, the actual OakSchema will be used for pattern matching
-export type EventPatternsInputAtLeastOne<$Schema = unknown> = Pattern<BasicParameterParseEvent, 'result'>
+export type EventPatternsInputAtLeastOne<$Schema = unknown> = Pattern<
+  BasicParameterParseEvent,
+  'result'
+>
 
 export type EventPatternsInput<$Schema = unknown> = Pattern<BasicParameterParseEvent, 'result'>
 
@@ -48,20 +51,23 @@ export const createEvent = (parseResult: OpeningArgs.ParseResultBasic) => {
   return parseResult._tag === `supplied`
     ? { result: `accepted`, spec: specData, value: parseResult.value }
     : parseResult._tag === `omitted`
-    ? { result: `omitted`, spec: specData }
-    : parseResult._tag === `error`
-        && parseResult.errors.length > 0
-        // If there are any other kinds of errors than the two named below then we do not, currently, support prompting for that case.
-        && parseResult.errors.filter(
-            (_) => [`OakErrorInvalidArgument`, `OakErrorMissingArgument`].includes(_._tag) === false,
+      ? { result: `omitted`, spec: specData }
+      : parseResult._tag === `error` &&
+          parseResult.errors.length > 0 &&
+          // If there are any other kinds of errors than the two named below then we do not, currently, support prompting for that case.
+          parseResult.errors.filter(
+            (_) =>
+              [`OakErrorInvalidArgument`, `OakErrorMissingArgument`].includes(_._tag) === false,
           ).length === 0
-    // It is not possible to have invalid argument and missing argument errors at once.
-    ? {
-      result: `rejected`,
-      spec: specData,
-      error: parseResult.errors[0]!._tag as `OakErrorInvalidArgument` | `OakErrorMissingArgument`,
-    }
-    : null
+        ? // It is not possible to have invalid argument and missing argument errors at once.
+          {
+            result: `rejected`,
+            spec: specData,
+            error: parseResult.errors[0]!._tag as
+              | `OakErrorInvalidArgument`
+              | `OakErrorMissingArgument`,
+          }
+        : null
 }
 
 export const eventPatterns = {

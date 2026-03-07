@@ -30,7 +30,7 @@ Test.on(Tpl.isCallInput)
   )
   .test()
 
-// dprint-ignore
+// oxfmt-ignore
 Test.describe(`passthrough`)
   .inputType<string>()
   .outputType<string>()
@@ -147,23 +147,22 @@ Test.describe(`highlight`)
 Test.describe(`dedent nested calls`)
   .inputType<string>()
   .outputType<string>()
-  .cases(
-    [
-      (() => {
-        const intro = () =>
-          Tpl.dedent`
+  .cases([
+    (() => {
+      const intro = () =>
+        Tpl.dedent`
         * intro line
       `
-        const body = Tpl.dedent`
+      const body = Tpl.dedent`
         * body line 1
         * body line 2
       `
-        const outro = () =>
-          Tpl.dedent`
+      const outro = () =>
+        Tpl.dedent`
         * outro line
       `
 
-        return Tpl.dedent`
+      return Tpl.dedent`
         /**
          ${intro()}
           *
@@ -172,8 +171,8 @@ Test.describe(`dedent nested calls`)
           ${outro()}
           */
       `
-      })(),
-      `/**
+    })(),
+    `/**
  * intro line
  *
  * body line 1
@@ -181,6 +180,5 @@ Test.describe(`dedent nested calls`)
  *
  * outro line
  */`,
-    ],
-  )
+  ])
   .test()

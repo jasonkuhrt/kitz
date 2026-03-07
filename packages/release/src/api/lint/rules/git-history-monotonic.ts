@@ -27,7 +27,7 @@ export const rule = RuntimeRule.create({
   id: RuleId.make('git.history.monotonic'),
   description: 'Versions increase with commit order (ancestry-based)',
   preconditions: [],
-  check: Effect.gen(function*() {
+  check: Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
     const packageNames = extractPackageNames(tags)

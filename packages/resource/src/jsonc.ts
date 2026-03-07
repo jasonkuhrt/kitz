@@ -89,42 +89,50 @@ export const createJsonc = <A, I, R = never>(
   const jsoncSchema = Schema.compose(Jsonc.parseJsonc(), schema)
 
   const decode = (content: string, filePath: Fs.Path.AbsFile) =>
-    Schema.decode(jsoncSchema, parseOptions)(content).pipe(
-      Effect.mapError((error) =>
-        new ParseError({
-          context: {
-            path: filePath,
-            detail: ParseResult.TreeFormatter.formatErrorSync(error),
-          },
-        })
+    Schema.decode(
+      jsoncSchema,
+      parseOptions,
+    )(content).pipe(
+      Effect.mapError(
+        (error) =>
+          new ParseError({
+            context: {
+              path: filePath,
+              detail: ParseResult.TreeFormatter.formatErrorSync(error),
+            },
+          }),
       ),
     )
 
-  const read = (path: Fs.Path.$Abs): Effect.Effect<Option.Option<A>, ResourceError, FileSystem.FileSystem | R> =>
-    Effect.gen(function*() {
+  const read = (
+    path: Fs.Path.$Abs,
+  ): Effect.Effect<Option.Option<A>, ResourceError, FileSystem.FileSystem | R> =>
+    Effect.gen(function* () {
       const filePath = resolvePath(path, filename)
 
       const exists = yield* Fs.exists(filePath).pipe(
-        Effect.mapError((error: PlatformError) =>
-          new ReadError({
-            context: {
-              path: filePath,
-              detail: `check exists: ${error.message}`,
-            },
-          })
+        Effect.mapError(
+          (error: PlatformError) =>
+            new ReadError({
+              context: {
+                path: filePath,
+                detail: `check exists: ${error.message}`,
+              },
+            }),
         ),
       )
 
       if (!exists) return Option.none()
 
       const content = yield* Fs.readString(filePath).pipe(
-        Effect.mapError((error: PlatformError) =>
-          new ReadError({
-            context: {
-              path: filePath,
-              detail: error.message,
-            },
-          })
+        Effect.mapError(
+          (error: PlatformError) =>
+            new ReadError({
+              context: {
+                path: filePath,
+                detail: error.message,
+              },
+            }),
         ),
       )
 
@@ -132,8 +140,10 @@ export const createJsonc = <A, I, R = never>(
       return Option.some(decoded)
     })
 
-  const readRequired = (path: Fs.Path.$Abs): Effect.Effect<A, ResourceError, FileSystem.FileSystem | R> =>
-    Effect.gen(function*() {
+  const readRequired = (
+    path: Fs.Path.$Abs,
+  ): Effect.Effect<A, ResourceError, FileSystem.FileSystem | R> =>
+    Effect.gen(function* () {
       const result = yield* read(path)
       if (Option.isNone(result)) {
         const filePath = resolvePath(path, filename)
@@ -146,8 +156,10 @@ export const createJsonc = <A, I, R = never>(
       return result.value
     })
 
-  const readOrEmpty = (path: Fs.Path.$Abs): Effect.Effect<A, ResourceError, FileSystem.FileSystem | R> =>
-    Effect.gen(function*() {
+  const readOrEmpty = (
+    path: Fs.Path.$Abs,
+  ): Effect.Effect<A, ResourceError, FileSystem.FileSystem | R> =>
+    Effect.gen(function* () {
       const result = yield* read(path)
       return Option.getOrElse(result, () => emptyValue)
     })

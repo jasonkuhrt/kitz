@@ -37,11 +37,9 @@ export const create: Create = (parameters) => {
 
 export type Create<$Pipeline extends PipelineDefinition = PipelineDefinition> = <
   const $DiscriminantSpec extends Data['discriminant'],
->(
-  parameters: {
-    discriminant: $DiscriminantSpec
-  },
-) => Builder<
+>(parameters: {
+  discriminant: $DiscriminantSpec
+}) => Builder<
   $Pipeline,
   Data<
     $DiscriminantSpec,
@@ -67,8 +65,7 @@ export interface Builder<
   ) => Builder<
     $Pipeline,
     {
-      [_ in keyof $Data]: _ extends 'configurator' ? $Configurator
-        : $Data[_]
+      [_ in keyof $Data]: _ extends 'configurator' ? $Configurator : $Data[_]
     }
   >
   /**
@@ -93,13 +90,12 @@ interface MethodStep<
   <
     $Name extends $Pipeline['steps'][number]['name'],
     $Slots extends undefined | StepDefinition.Slots = undefined,
-    $Input =
-      & InferStepInput<
-        $Data,
-        Extract<$Pipeline['steps'][number], { name: $Name }>,
-        Tup.PreviousItem<$Pipeline['steps'], { name: $Name }>
-      >
-      & $InputExtension,
+    $Input = InferStepInput<
+      $Data,
+      Extract<$Pipeline['steps'][number], { name: $Name }>,
+      Tup.PreviousItem<$Pipeline['steps'], { name: $Name }>
+    > &
+      $InputExtension,
     $Output = unknown,
   >(
     name: $Name,
@@ -110,9 +106,8 @@ interface MethodStep<
   ): Builder<
     $Pipeline,
     {
-      [_ in keyof $Data]: _ extends 'steps' ?
-          & $Data['steps']
-          & {
+      [_ in keyof $Data]: _ extends 'steps'
+        ? $Data['steps'] & {
             [_ in $Name]: {
               name: $Name
               input: $Input
@@ -125,7 +120,7 @@ interface MethodStep<
   >
 }
 
-// dprint-ignore
+// oxfmt-ignore
 type InferStepInput<
   $Data extends Data,
   $CurrentStep extends StepDefinition,

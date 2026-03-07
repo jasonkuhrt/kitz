@@ -14,22 +14,18 @@ class ComparatorClass extends S.Class<ComparatorClass>('PkgRangeComparator')({
 }) {
   static is = S.is(ComparatorClass)
 
-  static Schema: S.Schema<ComparatorClass, string> = S.transform(
-    S.String,
-    ComparatorClass,
-    {
-      strict: true,
-      decode: () => {
-        return Lang.todo('Comparator.Schema decode')
-      },
-      encode: (c) => {
-        const v = c.version
-        const prerelease = v._tag === 'SemverPreRelease' ? `-${v.prerelease.join('.')}` : ''
-        const build = v.build?.length ? `+${v.build.join('.')}` : ''
-        return `${c.operator}${v.major}.${v.minor}.${v.patch}${prerelease}${build}`
-      },
+  static Schema: S.Schema<ComparatorClass, string> = S.transform(S.String, ComparatorClass, {
+    strict: true,
+    decode: () => {
+      return Lang.todo('Comparator.Schema decode')
     },
-  )
+    encode: (c) => {
+      const v = c.version
+      const prerelease = v._tag === 'SemverPreRelease' ? `-${v.prerelease.join('.')}` : ''
+      const build = v.build?.length ? `+${v.build.join('.')}` : ''
+      return `${c.operator}${v.major}.${v.minor}.${v.patch}${prerelease}${build}`
+    },
+  })
 
   static override toString = S.encodeSync(ComparatorClass.Schema)
 

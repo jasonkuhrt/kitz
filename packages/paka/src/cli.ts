@@ -162,10 +162,7 @@ const generateDocs = async () => {
 
     // 2. Remove leading semicolons from TypeScript code blocks
     // dprint's ASI mode adds semicolons to parenthesized expressions
-    content = content.replace(
-      /(```typescript\n);(\s*[(<])/g,
-      '$1$2',
-    )
+    content = content.replace(/(```typescript\n);(\s*[(<])/g, '$1$2')
 
     // 3. Format TypeScript code blocks and add method name highlights
     content = content.replace(
@@ -180,7 +177,10 @@ const generateDocs = async () => {
           return `\`\`\`typescript${twoslash || ''}\n${processed}\`\`\``
         }
         // If AST parsing fails, render as vanilla TypeScript (remove twoslash)
-        console.warn('Warning: Failed to parse TypeScript code block, rendering as vanilla:', processedResult.left)
+        console.warn(
+          'Warning: Failed to parse TypeScript code block, rendering as vanilla:',
+          processedResult.left,
+        )
         return `\`\`\`typescript\n${code}\`\`\``
       },
     )

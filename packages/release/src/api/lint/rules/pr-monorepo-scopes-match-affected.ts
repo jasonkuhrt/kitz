@@ -25,7 +25,7 @@ export const rule = RuntimeRule.create({
     Precondition.IsMonorepo.make(),
     Precondition.HasDiff.make(),
   ],
-  check: Effect.gen(function*() {
+  check: Effect.gen(function* () {
     const pr = yield* PrService
     const diff = yield* DiffService
     const scopes = getScopes(pr.commit)

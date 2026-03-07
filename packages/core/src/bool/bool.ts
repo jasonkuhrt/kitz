@@ -106,7 +106,7 @@ export const ensurePredicate = <predicateMaybe extends PredicateMaybe<any>>(
  * If the input is already a Predicate, it returns the same type.
  * If the input is a value, it returns a Predicate that returns that value type.
  */
-// dprint-ignore
+// oxfmt-ignore
 export type ensurePredicate<$PredicateMaybe extends PredicateMaybe<any>> =
   $PredicateMaybe extends Predicate
     ? $PredicateMaybe

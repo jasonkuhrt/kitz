@@ -21,7 +21,7 @@ export const rule = RuntimeRule.create({
   description: 'At least one scope required',
   preconditions: [Precondition.HasOpenPR.make()],
   defaults: RuleDefaults.make({ enabled: false }),
-  check: Effect.gen(function*() {
+  check: Effect.gen(function* () {
     const pr = yield* PrService
     const scopes = getScopes(pr.commit)
     if (scopes.length === 0) {

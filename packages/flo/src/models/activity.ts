@@ -18,14 +18,12 @@ import { Schema } from 'effect'
  * - `completed`: Finished successfully
  * - `failed`: Finished with error
  */
-export const State = Schema.Enums(
-  {
-    pending: 'pending',
-    running: 'running',
-    completed: 'completed',
-    failed: 'failed',
-  } as const,
-)
+export const State = Schema.Enums({
+  pending: 'pending',
+  running: 'running',
+  completed: 'completed',
+  failed: 'failed',
+} as const)
 
 export type State = typeof State.Type
 

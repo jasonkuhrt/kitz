@@ -29,10 +29,12 @@ const pathExists = (targetPath: string) =>
   Effect.flatMap(FileSystem.FileSystem, (fileSystem) => fileSystem.exists(targetPath))
 const ensureDirectory = (targetPath: string) =>
   Effect.flatMap(FileSystem.FileSystem, (fileSystem) =>
-    fileSystem.makeDirectory(targetPath, { recursive: true }))
+    fileSystem.makeDirectory(targetPath, { recursive: true }),
+  )
 const writeFileString = (targetPath: string, content: string) =>
   Effect.flatMap(FileSystem.FileSystem, (fileSystem) =>
-    fileSystem.writeFileString(targetPath, content))
+    fileSystem.writeFileString(targetPath, content),
+  )
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Data Structures
 
@@ -83,8 +85,8 @@ const formatGenerateBuilderError = (error: GenerateBuilderError): string => {
       return `Extractor property has no type annotation: ${error.extractorName}`
     case 'MissingExtractorMetadata':
       return (
-        `Extractors in registry missing metadata: ${error.missingMetadata.join(', ')}\n`
-        + `Add metadata for these extractors in EXTRACTOR_METADATA constant.`
+        `Extractors in registry missing metadata: ${error.missingMetadata.join(', ')}\n` +
+        `Add metadata for these extractors in EXTRACTOR_METADATA constant.`
       )
     case 'ExtractorMissingMetadata':
       return `Extractor '${error.extractorName}' is in registry but has no metadata`
@@ -92,9 +94,7 @@ const formatGenerateBuilderError = (error: GenerateBuilderError): string => {
 }
 
 const fromEither = <A, E>(value: Either.Either<A, E>) =>
-  Either.isLeft(value)
-    ? Effect.fail(value.left)
-    : Effect.succeed(value.right)
+  Either.isLeft(value) ? Effect.fail(value.left) : Effect.succeed(value.right)
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Constants
 
@@ -121,7 +121,10 @@ const MATCHERS: Matcher[] = [
  * Extractor metadata (descriptions for JSDoc generation).
  * The list of extractors comes from the registry - this only provides documentation.
  */
-const EXTRACTOR_METADATA: Record<string, { description: string; inputDesc: string; outputDesc: string }> = {
+const EXTRACTOR_METADATA: Record<
+  string,
+  { description: string; inputDesc: string; outputDesc: string }
+> = {
   awaited: {
     description: 'extracts the resolved type from a Promise',
     inputDesc: 'Promise<T>',
@@ -244,7 +247,7 @@ const CORE_PACKAGE_DIR = join(PACKAGE_DIR, '../core')
  * Returns a map of extractor names to their Kind interface names.
  */
 const loadExtractorRegistry = () =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const registryFilePath = join(CORE_PACKAGE_DIR, 'src/optic/registry.ts')
     const registryFileExists = yield* pathExists(registryFilePath)
     if (!registryFileExists) {
@@ -328,9 +331,11 @@ const setupExtractors = pipe(
       Effect.tap(({ unusedMetadata }) =>
         unusedMetadata.length > 0
           ? Effect.logWarning(`Unused extractor metadata entries: ${unusedMetadata.join(', ')}`)
-          : Effect.void),
+          : Effect.void,
+      ),
       Effect.map(() => registry),
-    )),
+    ),
+  ),
   Effect.flatMap((registry) => fromEither(buildExtractors(registry))),
 )
 
@@ -358,13 +363,9 @@ function calculateImportPaths(combo: Combination) {
 function generateFileHeader(combo: Combination): string {
   const { relatorsPath, builderPath } = calculateImportPaths(combo)
 
-  const extractorImports = combo.extractors.length > 0
-    ? `import { Optic } from '@kitz/core'\n`
-    : ''
+  const extractorImports = combo.extractors.length > 0 ? `import { Optic } from '@kitz/core'\n` : ''
 
-  const eitherImport = combo.extractors.length > 0
-    ? `import type { Either } from 'effect'\n`
-    : ''
+  const eitherImport = combo.extractors.length > 0 ? `import type { Either } from 'effect'\n` : ''
 
   // Add noExcess kinds for sub/equiv
   const relatorKinds = [combo.relator.kindName]
@@ -381,13 +382,13 @@ import { builder } from '${builderPath}'
 }
 
 function generateFileLevelJSDoc(combo: Combination): string {
-  const extractorChain = combo.extractors.length > 0
-    ? combo.extractors.map((e) => e.description).join(', then ')
-    : 'no extraction'
+  const extractorChain =
+    combo.extractors.length > 0
+      ? combo.extractors.map((e) => e.description).join(', then ')
+      : 'no extraction'
 
-  const extractorNames = combo.extractors.length > 0
-    ? combo.extractors.map((e) => e.name).join(' + ')
-    : 'base'
+  const extractorNames =
+    combo.extractors.length > 0 ? combo.extractors.map((e) => e.name).join(' + ') : 'base'
 
   return `
 /**
@@ -420,10 +421,7 @@ function buildExtractorChain(extractors: Extractor[], actualType: string): strin
 
 function buildRuntimeChain(combo: Combination, matcherName: string): string {
   // Build the builder access chain: builder.${extractors}.${not?}.${relator}.${matcher}
-  const parts = [
-    'builder',
-    ...combo.extractors.map((e) => e.name),
-  ]
+  const parts = ['builder', ...combo.extractors.map((e) => e.name)]
 
   // Insert 'not' before relator if negated
   if (combo.negated) {
@@ -435,19 +433,27 @@ function buildRuntimeChain(combo: Combination, matcherName: string): string {
   return parts.join('.')
 }
 
-function generateMatcherJSDoc(matcher: Matcher, combo: Combination): string {
-  const extractorChain = combo.extractors.length > 0
-    ? `\n * Extraction chain: ${combo.extractors.map((e) => `${e.inputDesc} → ${e.outputDesc}`).join(' → ')}`
-    : ''
+function typedBuilderConst(name: string, runtimeChain: string, exported = false): string {
+  const declaration = exported ? 'export const' : 'const'
+  return `${declaration} ${name}: typeof ${runtimeChain} = ${runtimeChain}`
+}
 
-  const matcherDesc = matcher.name === 'of'
-    ? 'Base matcher accepting any expected type'
-    : `Pre-curried matcher for ${matcher.description}`
+function generateMatcherJSDoc(matcher: Matcher, combo: Combination): string {
+  const extractorChain =
+    combo.extractors.length > 0
+      ? `\n * Extraction chain: ${combo.extractors.map((e) => `${e.inputDesc} → ${e.outputDesc}`).join(' → ')}`
+      : ''
+
+  const matcherDesc =
+    matcher.name === 'of'
+      ? 'Base matcher accepting any expected type'
+      : `Pre-curried matcher for ${matcher.description}`
 
   // For 'of', add note about type-level shorthand
-  const typeShorthandNote = matcher.name === 'of'
-    ? `\n *\n * Note: This exists for symmetry with the value-level API.\n * At the type-level, you can omit \`.of\` for simpler syntax (e.g., \`${combo.relator.name}<E, A>\` instead of \`${combo.relator.name}.of<E, A>\`).`
-    : ''
+  const typeShorthandNote =
+    matcher.name === 'of'
+      ? `\n *\n * Note: This exists for symmetry with the value-level API.\n * At the type-level, you can omit \`.of\` for simpler syntax (e.g., \`${combo.relator.name}<E, A>\` instead of \`${combo.relator.name}.of<E, A>\`).`
+      : ''
 
   // Generate example type for this specific combination
   const exampleType = generateExampleType(matcher, combo)
@@ -513,25 +519,25 @@ function generateMatcherType(matcher: Matcher, combo: Combination): string {
   let typeDef: string
   if (combo.extractors.length > 0) {
     // Inline Either unwrapping with intermediate type parameter
-    const typeParams = matcher.name === 'of'
-      ? '<$Expected, $Actual, __$ActualExtracted = ' + extractorChain + '>'
-      : '<$Actual, __$ActualExtracted = ' + extractorChain + '>'
+    const typeParams =
+      matcher.name === 'of'
+        ? '<$Expected, $Actual, __$ActualExtracted = ' + extractorChain + '>'
+        : '<$Actual, __$ActualExtracted = ' + extractorChain + '>'
 
-    typeDef = `// dprint-ignore\ntype ${matcher.name}_${typeParams} =
+    typeDef = `// oxfmt-ignore\ntype ${matcher.name}_${typeParams} =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<${combo.relator.kindName}, [${expectedType}, __actual__${negatedParam}]>
                                                                          : never`
   } else {
     // No extractors - direct application
     const typeParams = matcher.name === 'of' ? '<$Expected, $Actual>' : '<$Actual>'
-    typeDef =
-      `type ${matcher.name}_${typeParams} = Fn.Kind.Apply<${combo.relator.kindName}, [${expectedType}, $Actual${negatedParam}]>`
+    typeDef = `type ${matcher.name}_${typeParams} = Fn.Kind.Apply<${combo.relator.kindName}, [${expectedType}, $Actual${negatedParam}]>`
   }
 
   // Pre-configured matchers are already functions in BuilderMatchers interface
   // No need to chain .on - they're accessed directly from builder
   const runtimeChain = buildRuntimeChain(combo, matcher.name)
-  const constDef = `const ${matcher.name}_ = ${runtimeChain}`
+  const constDef = typedBuilderConst(`${matcher.name}_`, runtimeChain)
 
   return `${typeDef}\n${constDef}`
 }
@@ -563,13 +569,14 @@ function generateMatcherFile(combo: Combination): string {
   }).join('\n\n')
 
   // Add ofAs const declaration - returns builder (not function, so no .on chain)
-  const ofAsConst = `const ofAs_ = <$Type>() => ${buildRuntimeChain(combo, 'ofAs')}<$Type>()`
+  const ofAsConst = typedBuilderConst('ofAs_', buildRuntimeChain(combo, 'ofAs'))
 
   // Add noExcess/noExcessAs for sub and equiv relators (not for exact, not for negated)
   let noExcessDecls = ''
   if (!combo.negated && (combo.relator.name === 'sub' || combo.relator.name === 'equiv')) {
     const extractorChain = buildExtractorChain(combo.extractors, '$Actual')
-    const noExcessKind = combo.relator.name === 'sub' ? 'AssertSubNoExcessKind' : 'AssertEquivNoExcessKind'
+    const noExcessKind =
+      combo.relator.name === 'sub' ? 'AssertSubNoExcessKind' : 'AssertEquivNoExcessKind'
 
     if (combo.extractors.length > 0) {
       noExcessDecls = `
@@ -577,7 +584,7 @@ function generateMatcherFile(combo: Combination): string {
  * No-excess variant of ${combo.relator.name} relation.
  * Checks that actual has no excess properties beyond expected.
  */
-// dprint-ignore
+// oxfmt-ignore
 type noExcess_<
   $Expected,
   $Actual,
@@ -586,8 +593,8 @@ type noExcess_<
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<${noExcessKind}, [$Expected, __actual__]>
                                                                          : never
-const noExcess_ = ${buildRuntimeChain(combo, 'noExcess')}
-const noExcessAs_ = <$Type>() => ${buildRuntimeChain(combo, 'noExcessAs')}<$Type>()`
+${typedBuilderConst('noExcess_', buildRuntimeChain(combo, 'noExcess'))}
+${typedBuilderConst('noExcessAs_', buildRuntimeChain(combo, 'noExcessAs'))}`
     } else {
       noExcessDecls = `
 /**
@@ -595,12 +602,12 @@ const noExcessAs_ = <$Type>() => ${buildRuntimeChain(combo, 'noExcessAs')}<$Type
  * Checks that actual has no excess properties beyond expected.
  */
 type noExcess_<$Expected, $Actual> = Fn.Kind.Apply<${noExcessKind}, [$Expected, $Actual]>
-const noExcess_ = ${buildRuntimeChain(combo, 'noExcess')}
-const noExcessAs_ = <$Type>() => ${buildRuntimeChain(combo, 'noExcessAs')}<$Type>()`
+${typedBuilderConst('noExcess_', buildRuntimeChain(combo, 'noExcess'))}
+${typedBuilderConst('noExcessAs_', buildRuntimeChain(combo, 'noExcessAs'))}`
     }
   } else if (combo.relator.name === 'exact') {
     // For exact, noExcess is never (just reference it from builder for completeness)
-    noExcessDecls = `\ntype noExcess_ = never\nconst noExcess_ = ${buildRuntimeChain(combo, 'noExcess')}`
+    noExcessDecls = `\ntype noExcess_ = never\n${typedBuilderConst('noExcess_', buildRuntimeChain(combo, 'noExcess'))}`
   }
 
   const exports = generateExports(MATCHERS, combo)
@@ -630,16 +637,16 @@ function generateBarrelFile(
   })
 
   // Use export * as to re-export dual namespaces from child modules
-  const reExports = exports
-    .map((name, i) => `export * as ${name} from '${relPaths[i]}'`)
-    .join('\n')
+  const reExports = exports.map((name, i) => `export * as ${name} from '${relPaths[i]}'`).join('\n')
 
   // Add type-level shorthand for relators (main barrel only has base relators, no extractors)
   const srcDir = join(PACKAGE_DIR, 'src')
   const relatorsPath = getRelativePath(dirPath, join(srcDir, 'asserts.js'))
   const builderPath = getRelativePath(dirPath, join(srcDir, 'builder-singleton.js'))
 
-  const relatorKinds = Object.keys(RELATORS).map((r) => RELATORS[r]!.kindName).join(', ')
+  const relatorKinds = Object.keys(RELATORS)
+    .map((r) => RELATORS[r]!.kindName)
+    .join(', ')
 
   const imports = `import type { Fn } from '@kitz/core'
 import { builder } from '${builderPath}'
@@ -648,15 +655,17 @@ import type { ${relatorKinds} } from '${relatorsPath}'`
   // Root-level unary relator exports
   const unaryRelatorExports = `
 // Unary relators
-export const any = builder.any
-export const unknown = builder.unknown
-export const never = builder.never
-export const empty = builder.empty`
+${typedBuilderConst('any', 'builder.any', true)}
+${typedBuilderConst('unknown', 'builder.unknown', true)}
+${typedBuilderConst('never', 'builder.never', true)}
+${typedBuilderConst('empty', 'builder.empty', true)}`
 
-  const typeShorthands = Object.keys(RELATORS).map((relatorName) => {
-    const relator = RELATORS[relatorName]!
-    return `export type ${relatorName}<$Expected, $Actual> = Fn.Kind.Apply<${relator.kindName}, [$Expected, $Actual]>`
-  }).join('\n')
+  const typeShorthands = Object.keys(RELATORS)
+    .map((relatorName) => {
+      const relator = RELATORS[relatorName]!
+      return `export type ${relatorName}<$Expected, $Actual> = Fn.Kind.Apply<${relator.kindName}, [$Expected, $Actual]>`
+    })
+    .join('\n')
 
   return `${imports}
 
@@ -689,22 +698,27 @@ function generateExtractorBarrelFile(
 
   // Part 3: Export other extractors as value-only builder proxy references
   const otherExtractors = Object.keys(extractorsByName).filter((name) => name !== extractorName)
-  const extractorExports = otherExtractors.length > 0
-    ? `\n// Value-level extractor chaining via builder proxy\n`
-      + otherExtractors.map((name) => `export const ${name} = builder.${extractorName}.${name}`).join('\n')
-    : ''
+  const extractorExports =
+    otherExtractors.length > 0
+      ? `\n// Value-level extractor chaining via builder proxy\n` +
+        otherExtractors
+          .map((name) => typedBuilderConst(name, `builder.${extractorName}.${name}`, true))
+          .join('\n')
+      : ''
 
   // Part 3.5: Export unary relators from builder singleton
   const unaryRelatorExports = `
 // Unary relators
-export const any = builder.${extractorName}.any
-export const unknown = builder.${extractorName}.unknown
-export const never = builder.${extractorName}.never
-export const empty = builder.${extractorName}.empty`
+${typedBuilderConst('any', `builder.${extractorName}.any`, true)}
+${typedBuilderConst('unknown', `builder.${extractorName}.unknown`, true)}
+${typedBuilderConst('never', `builder.${extractorName}.never`, true)}
+${typedBuilderConst('empty', `builder.${extractorName}.empty`, true)}`
 
   // Part 4: Add type-level shorthand for relators (allows omitting .of)
   const extractor = extractorsByName[extractorName]
-  const relatorKinds = Object.keys(RELATORS).map((r) => RELATORS[r]!.kindName).join(', ')
+  const relatorKinds = Object.keys(RELATORS)
+    .map((r) => RELATORS[r]!.kindName)
+    .join(', ')
 
   const imports = `import type { Fn } from '@kitz/core'
 import { builder } from '${builderPath}'
@@ -712,13 +726,13 @@ import { Optic } from '@kitz/core'
 import type { Either } from 'effect'
 import type { ${relatorKinds} } from '${relatorsPath}'`
 
-  const extractorChain = extractor === undefined
-    ? '$Actual'
-    : `Optic.${kindToDirectType(extractor.kindName)}<$Actual>`
+  const extractorChain =
+    extractor === undefined ? '$Actual' : `Optic.${kindToDirectType(extractor.kindName)}<$Actual>`
 
-  const typeShorthands = Object.keys(RELATORS).map((relatorName) => {
-    const relator = RELATORS[relatorName]!
-    return `// dprint-ignore\nexport type ${relatorName}<
+  const typeShorthands = Object.keys(RELATORS)
+    .map((relatorName) => {
+      const relator = RELATORS[relatorName]!
+      return `// oxfmt-ignore\nexport type ${relatorName}<
   $Expected,
   $Actual,
   __$ActualExtracted = ${extractorChain},
@@ -726,7 +740,8 @@ import type { ${relatorKinds} } from '${relatorsPath}'`
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<${relator.kindName}, [$Expected, __actual__]>
                                                                          : never`
-  }).join('\n\n')
+    })
+    .join('\n\n')
 
   return `${imports}
 
@@ -753,32 +768,38 @@ function generateNotBarrelFile(barrelPath: string, extractors: Extractor[]): str
 
   // Build the runtime chain for unary relators (builder.not.${extractor1}.${extractor2}.${unaryRelator})
   const extractorChainForRuntime = extractors.map((e) => e.name).join('.')
-  const builderPrefix = extractorChainForRuntime ? `builder.not.${extractorChainForRuntime}` : 'builder.not'
+  const builderPrefix = extractorChainForRuntime
+    ? `builder.not.${extractorChainForRuntime}`
+    : 'builder.not'
 
   // Export unary relators from builder singleton
   const unaryRelatorExports = `
 // Unary relators (negated)
-export const any = ${builderPrefix}.any
-export const unknown = ${builderPrefix}.unknown
-export const never = ${builderPrefix}.never
-export const empty = ${builderPrefix}.empty`
+${typedBuilderConst('any', `${builderPrefix}.any`, true)}
+${typedBuilderConst('unknown', `${builderPrefix}.unknown`, true)}
+${typedBuilderConst('never', `${builderPrefix}.never`, true)}
+${typedBuilderConst('empty', `${builderPrefix}.empty`, true)}`
 
   // Add type-level shorthand for negated relators
-  const extractorImports = extractors.length > 0
-    ? `import { Optic } from '@kitz/core'\nimport type { Either } from 'effect'\n`
-    : ''
-  const relatorKinds = Object.keys(RELATORS).map((r) => RELATORS[r]!.kindName).join(', ')
+  const extractorImports =
+    extractors.length > 0
+      ? `import { Optic } from '@kitz/core'\nimport type { Either } from 'effect'\n`
+      : ''
+  const relatorKinds = Object.keys(RELATORS)
+    .map((r) => RELATORS[r]!.kindName)
+    .join(', ')
 
   const imports = `import type { Fn } from '@kitz/core'
 import { builder } from '${builderPath}'
 ${extractorImports}import type { ${relatorKinds} } from '${relatorsPath}'`
 
-  const typeShorthands = Object.keys(RELATORS).map((relatorName) => {
-    const relator = RELATORS[relatorName]!
+  const typeShorthands = Object.keys(RELATORS)
+    .map((relatorName) => {
+      const relator = RELATORS[relatorName]!
 
-    if (extractors.length > 0) {
-      const extractorChain = buildExtractorChain(extractors, '$Actual')
-      return `// dprint-ignore\nexport type ${relatorName}<
+      if (extractors.length > 0) {
+        const extractorChain = buildExtractorChain(extractors, '$Actual')
+        return `// oxfmt-ignore\nexport type ${relatorName}<
   $Expected,
   $Actual,
   __$ActualExtracted = ${extractorChain},
@@ -786,11 +807,12 @@ ${extractorImports}import type { ${relatorKinds} } from '${relatorsPath}'`
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<${relator.kindName}, [$Expected, __actual__, true]>
                                                                          : never`
-    } else {
-      // No extractors
-      return `export type ${relatorName}<$Expected, $Actual> = Fn.Kind.Apply<${relator.kindName}, [$Expected, $Actual, true]>`
-    }
-  }).join('\n\n')
+      } else {
+        // No extractors
+        return `export type ${relatorName}<$Expected, $Actual> = Fn.Kind.Apply<${relator.kindName}, [$Expected, $Actual, true]>`
+      }
+    })
+    .join('\n\n')
 
   return `${imports}
 
@@ -846,9 +868,11 @@ import type { ${unaryRelator.kindName} } from '${relatorsPath}'`
  */`
 
   const negatedParam = negated ? ', true' : ''
-  const typeDef =
-    `type ${unaryRelator.name}_<$Actual> = Fn.Kind.Apply<${unaryRelator.kindName}, [$Actual${negatedParam}]>`
-  const constDef = `const ${unaryRelator.name}_ = builder${negated ? '.not' : ''}.${unaryRelator.name}`
+  const typeDef = `type ${unaryRelator.name}_<$Actual> = Fn.Kind.Apply<${unaryRelator.kindName}, [$Actual${negatedParam}]>`
+  const constDef = typedBuilderConst(
+    `${unaryRelator.name}_`,
+    `builder${negated ? '.not' : ''}.${unaryRelator.name}`,
+  )
   const exportDef = `export { ${unaryRelator.name}_ as ${unaryRelator.name} }`
 
   return `${imports}
@@ -863,7 +887,9 @@ ${exportDef}
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Combination Generation
 
-function generateAllCombinations(extractorsByName: Readonly<Record<string, Extractor>>): Combination[] {
+function generateAllCombinations(
+  extractorsByName: Readonly<Record<string, Extractor>>,
+): Combination[] {
   const combinations: Combination[] = []
 
   // Helper to add both normal and negated versions
@@ -931,7 +957,7 @@ const writeAndLogFile = (targetPath: string, content: string) =>
   )
 
 const writeGeneratedFiles = (extractorsByName: Readonly<Record<string, Extractor>>) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     yield* Effect.log(`Generating type-level test namespace files...\n`)
 
     const combinations = generateAllCombinations(extractorsByName)
@@ -1037,9 +1063,12 @@ const program = pipe(
   Effect.flatMap(writeGeneratedFiles),
   Effect.catchAll((error) =>
     pipe(
-      Effect.logError(`Failed to initialize extractor registry:\n${formatGenerateBuilderError(error)}`),
+      Effect.logError(
+        `Failed to initialize extractor registry:\n${formatGenerateBuilderError(error)}`,
+      ),
       Effect.zipRight(Effect.fail(error)),
-    )),
+    ),
+  ),
   Effect.provide(NodeFileSystem.layer),
 )
 

@@ -131,9 +131,11 @@ export const isMatch = <value>(value: value, pattern: Pattern<value>): boolean =
  * patterns.filter(matchesUser) // [{ role: 'admin' }, { name: /^J/ }]
  * ```
  */
-export const isMatchOn = <value>(value: value) => (pattern: Pattern<value>): boolean => {
-  return isMatch(value, pattern)
-}
+export const isMatchOn =
+  <value>(value: value) =>
+  (pattern: Pattern<value>): boolean => {
+    return isMatch(value, pattern)
+  }
 
 /**
  * Curried version of {@link isMatch} with pattern first.
@@ -166,9 +168,11 @@ export const isMatchOn = <value>(value: value) => (pattern: Pattern<value>): boo
  * [[1, 3], [200, 4], [1, 2]].filter(hasLargeNumbers) // [[200, 4]]
  * ```
  */
-export const isMatchWith = <value>(pattern: Pattern<value>) => (value: value): boolean => {
-  return isMatch(value, pattern)
-}
+export const isMatchWith =
+  <value>(pattern: Pattern<value>) =>
+  (value: value): boolean => {
+    return isMatch(value, pattern)
+  }
 
 //
 //

@@ -13,7 +13,7 @@ import type { BuilderCommandState } from './state.js'
  * Returns the schema unchanged if valid, or Ts.Err.StaticError if invalid.
  * Defaults to pass-through when no extension is configured.
  */
-// dprint-ignore
+// oxfmt-ignore
 export type ApplyGuard<$State extends BuilderCommandState.Base, $Schema> =
   $State['Extension'] extends null
     ? $Schema // No extension = pass through
@@ -32,28 +32,36 @@ export interface ParameterConfiguration<
 
 export type IsHasKey<Obj extends object, Key> = Key extends keyof Obj ? true : false
 
-export type IsPromptEnabledInParameterSettings<P extends ParameterConfiguration<any>> = IsHasKey<P, 'prompt'> extends
-  false ? false
-  : IsPromptEnabled<P['prompt']>
+export type IsPromptEnabledInParameterSettings<P extends ParameterConfiguration<any>> =
+  IsHasKey<P, 'prompt'> extends false ? false : IsPromptEnabled<P['prompt']>
 
-export type IsPromptEnabledInCommandSettings<P extends Settings.Input<any>> = IsHasKey<P, 'prompt'> extends false
+export type IsPromptEnabledInCommandSettings<P extends Settings.Input<any>> =
+  IsHasKey<P, 'prompt'> extends false ? false : IsPromptEnabled<P['prompt']>
+
+export type IsPromptEnabled<P extends Prompt<any> | undefined> = P extends undefined
   ? false
-  : IsPromptEnabled<P['prompt']>
+  : P extends false
+    ? false
+    : P extends true
+      ? true
+      : P extends null
+        ? false
+        : Exclude<P, undefined | boolean | null>['enabled'] extends false
+          ? false
+          : true
 
-export type IsPromptEnabled<P extends Prompt<any> | undefined> = P extends undefined ? false
-  : P extends false ? false
-  : P extends true ? true
-  : P extends null ? false
-  : Exclude<P, undefined | boolean | null>['enabled'] extends false ? false
-  : true
-
-export interface CommandBuilder<$State extends BuilderCommandState.Base = BuilderCommandState.BaseEmpty> {
+export interface CommandBuilder<
+  $State extends BuilderCommandState.Base = BuilderCommandState.BaseEmpty,
+> {
   use<$Extension extends SomeExtension>(
     extension: $Extension,
   ): CommandBuilder<
-    Obj.Replace<$State, {
-      Extension: $Extension
-    }>
+    Obj.Replace<
+      $State,
+      {
+        Extension: $Extension
+      }
+    >
   >
   description(this: void, description: string): CommandBuilder<$State>
   parameter<NameExpression extends string, $Schema extends BuilderCommandState.Type<$State>>(
@@ -64,7 +72,10 @@ export interface CommandBuilder<$State extends BuilderCommandState.Base = Builde
   // Put configuration overload second because Zod v4 schemas have a public `.type` property.
   // If configuration comes first, raw schemas get inferred as configuration objects and their
   // schema type collapses to string literals like `"boolean"` or `"enum"`.
-  parameter<NameExpression extends string, const Configuration extends ParameterConfiguration<$State>>(
+  parameter<
+    NameExpression extends string,
+    const Configuration extends ParameterConfiguration<$State>,
+  >(
     this: void,
     name: BuilderCommandState.ValidateNameExpression<$State, NameExpression>,
     configuration: Configuration,
@@ -78,15 +89,22 @@ export interface CommandBuilder<$State extends BuilderCommandState.Base = Builde
   parametersExclusive<Label extends string, $BuilderExclusive extends BuilderExclusive<$State>>(
     this: void,
     label: Label,
-    ExclusiveBuilderContainer: (builder: BuilderExclusiveInitial<$State, Label>) => $BuilderExclusive,
+    ExclusiveBuilderContainer: (
+      builder: BuilderExclusiveInitial<$State, Label>,
+    ) => $BuilderExclusive,
   ): CommandBuilder<$BuilderExclusive[ExclusiveBuilderStateSymbol]['commandBuilderState']>
   settings<S extends Settings.Input<$State>>(
     this: void,
     newSettings: S,
   ): CommandBuilder<
-    Obj.Replace<$State, {
-      IsPromptEnabled: $State['IsPromptEnabled'] extends true ? true : IsPromptEnabledInCommandSettings<S>
-    }>
+    Obj.Replace<
+      $State,
+      {
+        IsPromptEnabled: $State['IsPromptEnabled'] extends true
+          ? true
+          : IsPromptEnabledInCommandSettings<S>
+      }
+    >
   >
   parse(this: void, inputs?: RawArgInputs): BuilderCommandState.ToArgs<$State>
 }

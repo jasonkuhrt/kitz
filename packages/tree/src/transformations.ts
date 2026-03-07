@@ -28,7 +28,11 @@ import type { Predicate } from './predicate.js'
  * })
  * ```
  */
-export type Mapper<$FromValue, $ToValue> = (value: $FromValue, depth: number, path: $FromValue[]) => $ToValue
+export type Mapper<$FromValue, $ToValue> = (
+  value: $FromValue,
+  depth: number,
+  path: $FromValue[],
+) => $ToValue
 
 /**
  * Filter tree nodes based on a predicate.
@@ -79,7 +83,7 @@ export const filter = <$Value>(
 
     const newPath = [...path, node.value]
     const filteredChildren = node.children
-      .map(child => filterNode(child, depth + 1, newPath))
+      .map((child) => filterNode(child, depth + 1, newPath))
       .filter((child): child is Node<$Value> => child !== undefined)
 
     return {
@@ -140,7 +144,7 @@ export const filterPaths = <$Value>(
 
     // First, recursively filter children
     const filteredChildren = node.children
-      .map(child => filterNode(child, depth + 1, newPath))
+      .map((child) => filterNode(child, depth + 1, newPath))
       .filter((child): child is Node<$Value> => child !== undefined)
 
     // Keep node if it matches OR has matching descendants
@@ -195,7 +199,7 @@ export const sort = <$Value>(
   const sortNode = (node: Node<$Value>): Node<$Value> => ({
     value: node.value,
     children: node.children
-      .map(child => sortNode(child))
+      .map((child) => sortNode(child))
       .sort((a, b) => compareFn(a.value, b.value)),
   })
 
@@ -238,15 +242,11 @@ export const map = <$FromValue, $ToValue>(
 ): TreeType<$ToValue> => {
   if (tree.root === null) return Tree<$ToValue>(null)
 
-  const mapNode = (
-    node: Node<$FromValue>,
-    depth: number,
-    path: $FromValue[],
-  ): Node<$ToValue> => {
+  const mapNode = (node: Node<$FromValue>, depth: number, path: $FromValue[]): Node<$ToValue> => {
     const newPath = [...path, node.value]
     return {
       value: mapper(node.value, depth, path),
-      children: node.children.map(child => mapNode(child, depth + 1, newPath)),
+      children: node.children.map((child) => mapNode(child, depth + 1, newPath)),
     }
   }
 
@@ -292,10 +292,7 @@ export const updateAt = <$Value>(
 ): TreeType<$Value> => {
   if (tree.root === null) return tree
 
-  const updateNode = (
-    node: Node<$Value>,
-    remainingPath: number[],
-  ): Node<$Value> => {
+  const updateNode = (node: Node<$Value>, remainingPath: number[]): Node<$Value> => {
     if (remainingPath.length === 0) {
       return updater(node)
     }
@@ -358,13 +355,13 @@ export const updateAt = <$Value>(
  */
 export const prune = <$Value>(
   tree: TreeType<$Value>,
-  isEmpty: (node: Node<$Value>) => boolean = node => node.children.length === 0,
+  isEmpty: (node: Node<$Value>) => boolean = (node) => node.children.length === 0,
 ): TreeType<$Value> => {
   if (tree.root === null) return tree
 
   const pruneNode = (node: Node<$Value>): Node<$Value> | undefined => {
     const prunedChildren = node.children
-      .map(child => pruneNode(child))
+      .map((child) => pruneNode(child))
       .filter((child): child is Node<$Value> => child !== undefined)
 
     const prunedNode = { ...node, children: prunedChildren }
@@ -425,12 +422,7 @@ export const reduce = <$Value, $Result>(
 ): $Result => {
   if (tree.root === null) return initial
 
-  const reduceNode = (
-    node: Node<$Value>,
-    acc: $Result,
-    depth: number,
-    path: $Value[],
-  ): $Result => {
+  const reduceNode = (node: Node<$Value>, acc: $Result, depth: number, path: $Value[]): $Result => {
     const newAcc = reducer(acc, node.value, depth, path)
     const newPath = [...path, node.value]
     return node.children.reduce(
@@ -509,16 +501,13 @@ export const merge = <$Value>(
   if (tree1.root === null) return tree2
   if (tree2.root === null) return tree1
 
-  const mergeNode = (
-    node1: Node<$Value>,
-    node2: Node<$Value>,
-  ): Node<$Value> => {
+  const mergeNode = (node1: Node<$Value>, node2: Node<$Value>): Node<$Value> => {
     // Merge the values using the provided strategy
     const mergedValue = mergeValues(node1.value, node2.value)
 
     // Create a map of node2's children for efficient lookup
     const node2ChildMap = new Map<unknown, Node<$Value>>()
-    node2.children.forEach(child => {
+    node2.children.forEach((child) => {
       // Use value as key, or could use a key extractor function
       node2ChildMap.set(child.value, child)
     })
@@ -527,7 +516,7 @@ export const merge = <$Value>(
     const mergedChildren: Node<$Value>[] = []
 
     // Process node1's children
-    node1.children.forEach(child1 => {
+    node1.children.forEach((child1) => {
       const matchingChild2 = node2ChildMap.get(child1.value)
       if (matchingChild2) {
         mergedChildren.push(mergeNode(child1, matchingChild2))
@@ -538,7 +527,7 @@ export const merge = <$Value>(
     })
 
     // Add remaining children from node2
-    node2ChildMap.forEach(child2 => {
+    node2ChildMap.forEach((child2) => {
       mergedChildren.push(child2)
     })
 
@@ -584,7 +573,7 @@ export const merge = <$Value>(
  */
 export const clone = <$Value>(
   tree: TreeType<$Value>,
-  cloneValue: (value: $Value) => $Value = v => v,
+  cloneValue: (value: $Value) => $Value = (v) => v,
 ): TreeType<$Value> => {
   if (tree.root === null) return Tree(null)
 

@@ -66,7 +66,11 @@ export interface CallableConfig<
    * }
    * ```
    */
-  templateTag?: (state: $State, strings: TemplateStringsArray, ...values: unknown[]) => $State | void
+  templateTag?: (
+    state: $State,
+    strings: TemplateStringsArray,
+    ...values: unknown[]
+  ) => $State | void
 
   /**
    * Builder methods that update state and return a new builder.
@@ -109,26 +113,35 @@ export type InferCallableBuilder<
   $Terminal extends CallableTerminal<$State>,
 > =
   // Call signatures
-  & {
+  {
     /** Direct call signature. */
     (...args: $CallArgs): InferCallableBuilder<$State, $CallArgs, $Methods, $Terminal>
     /** Template literal tag signature. */
-    (strings: TemplateStringsArray, ...values: unknown[]): InferCallableBuilder<$State, $CallArgs, $Methods, $Terminal>
-  }
-  // State access
-  & { readonly [StateSymbol]: $State }
-  // Chainable methods
-  & {
-    readonly [K in keyof $Methods]: (
-      ...args: $Methods[K] extends (state: $State, ...args: infer __args__) => any ? __args__ : never
-    ) => InferCallableBuilder<$State, $CallArgs, $Methods, $Terminal>
-  }
-  // Terminal methods
-  & {
-    readonly [K in keyof $Terminal]: (
-      ...args: $Terminal[K] extends (state: $State, ...args: infer __args__) => any ? __args__ : never
-    ) => $Terminal[K] extends (state: $State, ...args: any[]) => infer __return__ ? __return__ : never
-  }
+    (
+      strings: TemplateStringsArray,
+      ...values: unknown[]
+    ): InferCallableBuilder<$State, $CallArgs, $Methods, $Terminal>
+  } &
+    // State access
+    { readonly [StateSymbol]: $State } &
+    // Chainable methods
+    {
+      readonly [K in keyof $Methods]: (
+        ...args: $Methods[K] extends (state: $State, ...args: infer __args__) => any
+          ? __args__
+          : never
+      ) => InferCallableBuilder<$State, $CallArgs, $Methods, $Terminal>
+    } &
+    // Terminal methods
+    {
+      readonly [K in keyof $Terminal]: (
+        ...args: $Terminal[K] extends (state: $State, ...args: infer __args__) => any
+          ? __args__
+          : never
+      ) => $Terminal[K] extends (state: $State, ...args: any[]) => infer __return__
+        ? __return__
+        : never
+    }
 
 /**
  * Create an immutable callable builder.
@@ -301,24 +314,25 @@ export type InferMutableCallableBuilder<
   $Terminal extends Record<string, (...args: any[]) => any>,
 > =
   // Call signatures
-  & {
+  {
     (...args: $CallArgs): InferMutableCallableBuilder<$Data, $CallArgs, $Builder, $Terminal>
     (
       strings: TemplateStringsArray,
       ...values: unknown[]
     ): InferMutableCallableBuilder<$Data, $CallArgs, $Builder, $Terminal>
-  }
-  // Data access
-  & { readonly data: $Data }
-  // Builder methods (void -> chain, else return value)
-  & {
-    readonly [K in keyof $Builder]: (
-      ...args: Parameters<$Builder[K]>
-    ) => ReturnType<$Builder[K]> extends void ? InferMutableCallableBuilder<$Data, $CallArgs, $Builder, $Terminal>
-      : ReturnType<$Builder[K]>
-  }
-  // Terminal methods
-  & { readonly [K in keyof $Terminal]: $Terminal[K] }
+  } &
+    // Data access
+    { readonly data: $Data } &
+    // Builder methods (void -> chain, else return value)
+    {
+      readonly [K in keyof $Builder]: (
+        ...args: Parameters<$Builder[K]>
+      ) => ReturnType<$Builder[K]> extends void
+        ? InferMutableCallableBuilder<$Data, $CallArgs, $Builder, $Terminal>
+        : ReturnType<$Builder[K]>
+    } &
+    // Terminal methods
+    { readonly [K in keyof $Terminal]: $Terminal[K] }
 
 /**
  * Create a mutable callable builder.
@@ -437,13 +451,29 @@ const createCallableMutableImpl = <
 // Helpers
 // =============================================================================
 
-const isTemplateStringsArray = (value: unknown): value is TemplateStringsArray => Array.isArray(value) && 'raw' in value
+const isTemplateStringsArray = (value: unknown): value is TemplateStringsArray =>
+  Array.isArray(value) && 'raw' in value
+
+const renderTemplateValue = (value: unknown): string => {
+  if (value === undefined || value === null) return ``
+  if (typeof value === `string`) return value
+  if (
+    typeof value === `number` ||
+    typeof value === `bigint` ||
+    typeof value === `boolean` ||
+    typeof value === `symbol`
+  ) {
+    return String(value)
+  }
+
+  return JSON.stringify(value)
+}
 
 const defaultTemplateHandler = <$State extends State, $CallArgs extends unknown[]>(
   call: (state: $State, ...args: $CallArgs) => $State | void,
 ) => {
   return (state: $State, strings: TemplateStringsArray, ...values: unknown[]) => {
-    const result = strings.reduce((acc, s, i) => acc + s + (values[i] ?? ''), '')
+    const result = strings.reduce((acc, s, i) => acc + s + renderTemplateValue(values[i]), ``)
     // Pass interpolated string to call handler (assumes call takes single string arg)
     return (call as any)(state, result)
   }
@@ -453,7 +483,7 @@ const defaultMutableTemplateHandler = <$CallArgs extends unknown[]>(
   call: (...args: $CallArgs) => void,
 ) => {
   return (strings: TemplateStringsArray, ...values: unknown[]) => {
-    const result = strings.reduce((acc, s, i) => acc + s + (values[i] ?? ''), '') // Pass interpolated string to call handler (assumes call takes single string arg)
+    const result = strings.reduce((acc, s, i) => acc + s + renderTemplateValue(values[i]), ``) // Pass interpolated string to call handler (assumes call takes single string arg)
     ;(call as any)(result)
   }
 }
@@ -468,16 +498,20 @@ const defaultMutableTemplateHandler = <$CallArgs extends unknown[]>(
  */
 type ExtractCallArgs<$Builder> =
   // Try to extract non-template call signature
-  $Builder extends { (...args: infer __args__): any } ? __args__ extends [TemplateStringsArray, ...unknown[]] ? never // This is template signature, skip
-    : __args__
+  $Builder extends { (...args: infer __args__): any }
+    ? __args__ extends [TemplateStringsArray, ...unknown[]]
+      ? never // This is template signature, skip
+      : __args__
     : never
 
 /**
  * Extract method keys that return void (chainable methods).
  */
 type ChainableMethodKeys<$Builder> = {
-  [K in keyof $Builder]: K extends string ? $Builder[K] extends (...args: any[]) => void ? K
-    : never
+  [K in keyof $Builder]: K extends string
+    ? $Builder[K] extends (...args: any[]) => void
+      ? K
+      : never
     : never
 }[keyof $Builder]
 
@@ -486,9 +520,11 @@ type ChainableMethodKeys<$Builder> = {
  */
 type TerminalMethodKeys<$Builder> = {
   [K in keyof $Builder]: K extends string
-    ? $Builder[K] extends (...args: any[]) => infer __r__ ? __r__ extends void ? never
-      : K
-    : never
+    ? $Builder[K] extends (...args: any[]) => infer __r__
+      ? __r__ extends void
+        ? never
+        : K
+      : never
     : never
 }[keyof $Builder]
 
@@ -496,34 +532,31 @@ type TerminalMethodKeys<$Builder> = {
  * The implementation object shape for fromInterface.
  * Flat structure: call + templateTag? + all methods.
  */
-type FromInterfaceImpl<$Data, $Builder> =
-  & {
-    /**
-     * Handler for direct calls.
-     */
-    call: (...args: ExtractCallArgs<$Builder>) => void
+type FromInterfaceImpl<$Data, $Builder> = {
+  /**
+   * Handler for direct calls.
+   */
+  call: (...args: ExtractCallArgs<$Builder>) => void
 
-    /**
-     * Optional handler for template literal calls.
-     */
-    templateTag?: (strings: TemplateStringsArray, ...values: unknown[]) => void
-  }
-  & {
-    /**
-     * Chainable methods (void return).
-     */
-    [K in ChainableMethodKeys<$Builder>]: $Builder[K] extends (...args: infer __args__) => void
-      ? (...args: __args__) => void
-      : never
-  }
-  & {
-    /**
-     * Terminal methods (non-void return).
-     */
-    [K in TerminalMethodKeys<$Builder>]: $Builder[K] extends (...args: infer __args__) => infer __r__
-      ? (...args: __args__) => __r__
-      : never
-  }
+  /**
+   * Optional handler for template literal calls.
+   */
+  templateTag?: (strings: TemplateStringsArray, ...values: unknown[]) => void
+} & {
+  /**
+   * Chainable methods (void return).
+   */
+  [K in ChainableMethodKeys<$Builder>]: $Builder[K] extends (...args: infer __args__) => void
+    ? (...args: __args__) => void
+    : never
+} & {
+  /**
+   * Terminal methods (non-void return).
+   */
+  [K in TerminalMethodKeys<$Builder>]: $Builder[K] extends (...args: infer __args__) => infer __r__
+    ? (...args: __args__) => __r__
+    : never
+}
 
 /**
  * Create a mutable callable builder factory from an interface definition.
@@ -571,7 +604,7 @@ export const fromInterface = <$Builder>() => {
   return <$Data extends object>(
     emptyData: $Data,
     impl: (data: $Data) => FromInterfaceImpl<$Data, $Builder>,
-  ): () => $Builder => {
+  ): (() => $Builder) => {
     // Return a factory that creates fresh builder instances
     return () => {
       // Copy emptyData for each instance
@@ -581,10 +614,15 @@ export const fromInterface = <$Builder>() => {
       // Create the callable function
       const callable = (...args: unknown[]) => {
         if (isTemplateStringsArray(args[0])) {
-          const handler = config.templateTag ?? ((strings: TemplateStringsArray, ...vals: unknown[]) => {
-            const result = strings.reduce((acc, s, i) => acc + s + (vals[i] ?? ''), '')
-            ;(config.call as any)(result)
-          })
+          const handler =
+            config.templateTag ??
+            ((strings: TemplateStringsArray, ...vals: unknown[]) => {
+              const result = strings.reduce(
+                (acc, s, i) => acc + s + renderTemplateValue(vals[i]),
+                ``,
+              )
+              ;(config.call as any)(result)
+            })
           handler(args[0] as TemplateStringsArray, ...args.slice(1))
         } else {
           ;(config.call as any)(...args)

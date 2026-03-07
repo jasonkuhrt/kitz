@@ -26,7 +26,11 @@ describe('explore', () => {
 
     expect(result._tag).toBe('Right')
     if (result._tag === 'Right') {
-      expect(result.right.ci).toEqual({ detected: true, provider: 'github-actions', prNumber: null })
+      expect(result.right.ci).toEqual({
+        detected: true,
+        provider: 'github-actions',
+        prNumber: null,
+      })
       expect(result.right.github.target).toEqual({
         owner: 'kitz-org',
         repo: 'kitz',
@@ -76,11 +80,9 @@ describe('explore', () => {
   })
 
   test('succeeds with null credentials when token is missing', async () => {
-    const result = await runExplore(
-      {
-        GITHUB_REPOSITORY: 'kitz-org/kitz',
-      },
-    )
+    const result = await runExplore({
+      GITHUB_REPOSITORY: 'kitz-org/kitz',
+    })
 
     expect(result._tag).toBe('Right')
     if (result._tag === 'Right') {
@@ -119,7 +121,9 @@ describe('explore', () => {
     expect(result._tag).toBe('Left')
     if (result._tag === 'Left') {
       expect(result.left._tag).toBe('ExplorerError')
-      expect(result.left.context.detail).toContain('Could not resolve GitHub repository from origin remote')
+      expect(result.left.context.detail).toContain(
+        'Could not resolve GitHub repository from origin remote',
+      )
     }
   })
 })

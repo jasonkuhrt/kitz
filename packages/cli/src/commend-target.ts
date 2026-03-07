@@ -1,14 +1,16 @@
 import type { Argv } from './argv.js'
 import { isNamedParameter } from './parameter.js'
 
-export type CommandTarget = {
-  type: `sub`
-  name: string
-  args: readonly string[]
-} | {
-  type: `default`
-  args: readonly string[]
-}
+export type CommandTarget =
+  | {
+      type: `sub`
+      name: string
+      args: readonly string[]
+    }
+  | {
+      type: `default`
+      args: readonly string[]
+    }
 
 /**
  * Determines the command target from parsed argv.
@@ -36,7 +38,9 @@ export type CommandTarget = {
  * // Returns: { type: 'default', args: [] }
  */
 export const getCommandTarget = (argv: Argv): CommandTarget => {
-  const { args: [maybeCommandName, ...args] } = argv
+  const {
+    args: [maybeCommandName, ...args],
+  } = argv
 
   const commandName = maybeCommandName?.trim()
   if (!commandName || isNamedParameter(commandName)) {

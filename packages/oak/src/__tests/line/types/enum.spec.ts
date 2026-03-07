@@ -16,17 +16,24 @@ beforeEach(() => {
 // TODO: Remove skipIf once kit#41 is fixed
 describe.skipIf(process.env['CI'] === 'true')(`errors`, () => {
   it(`when argument missing (last position)`, () => {
-    $.parameter(`--mode`, z.enum([`a`, `b`])).settings({ onOutput }).parse({ line: [`--mode`] })
+    $.parameter(`--mode`, z.enum([`a`, `b`]))
+      .settings({ onOutput })
+      .parse({ line: [`--mode`] })
     expect([[output.value]]).toMatchSnapshot()
   })
   it(`when argument missing (non-last position)`, () => {
-    $.parameter(`--name`, s).parameter(`--mode`, z.enum([`a`, `b`])).settings({ onOutput }).parse({
-      line: [` --mode`, `--name`, `joe`],
-    })
+    $.parameter(`--name`, s)
+      .parameter(`--mode`, z.enum([`a`, `b`]))
+      .settings({ onOutput })
+      .parse({
+        line: [` --mode`, `--name`, `joe`],
+      })
     expect([[output.value]]).toMatchSnapshot()
   })
   it(`is validated`, () => {
-    $.parameter(`--mode`, z.enum([`a`, `b`, `c`])).settings({ onOutput }).parse({ line: [`--mode`, `bad`] })
+    $.parameter(`--mode`, z.enum([`a`, `b`, `c`]))
+      .settings({ onOutput })
+      .parse({ line: [`--mode`, `bad`] })
     expect([[output.value]]).toMatchSnapshot()
   })
 })

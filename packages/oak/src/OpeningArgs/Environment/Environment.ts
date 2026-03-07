@@ -15,7 +15,9 @@ export type LocalParseErrors =
   | InstanceType<typeof Errors.ErrorDuplicateEnvArg>
   | InstanceType<typeof Errors.ErrorInvalidArgument>
 
-export type GlobalParseErrors = InstanceType<typeof Errors.Global.ErrorUnknownParameterViaEnvironment>
+export type GlobalParseErrors = InstanceType<
+  typeof Errors.Global.ErrorUnknownParameterViaEnvironment
+>
 
 export interface ParsedInputs {
   globalErrors: GlobalParseErrors[]
@@ -52,7 +54,7 @@ export const parse = (environment: RawInputs, specs: Parameter[]): ParsedInputs 
         }
         const e = report.errors.find((_) => _._tag === `OakErrorDuplicateEnvArg`)
         if (e) {
-          ;(e.context.instances as typeof instance[]).push(instance)
+          ;(e.context.instances as (typeof instance)[]).push(instance)
         } else {
           report.errors.push(
             new Errors.ErrorDuplicateEnvArg({
@@ -105,10 +107,11 @@ export const lookupEnvironmentVariableArgument = (
   parameterName: string,
 ): null | { name: string; value: string } => {
   const parameterNameSnakeCase = Str.Case.snake(parameterName)
-  const parameterNames = prefixes.length === 0
-    ? [parameterNameSnakeCase]
-    // TODO add test coverage for the snake case conversion of a parameter name
-    : prefixes.map((prefix) => `${prefix.toLowerCase()}_${parameterNameSnakeCase.toLowerCase()}`)
+  const parameterNames =
+    prefixes.length === 0
+      ? [parameterNameSnakeCase]
+      : // TODO add test coverage for the snake case conversion of a parameter name
+        prefixes.map((prefix) => `${prefix.toLowerCase()}_${parameterNameSnakeCase.toLowerCase()}`)
 
   const args = parameterNames
     .map((name) => ({ name, value: environment[name] }))
@@ -118,7 +121,7 @@ export const lookupEnvironmentVariableArgument = (
 
   if (args.length > 1) {
     throw new Error(
-      `Multiple environment variables found for same parameter "${parameterName}": ${args.join(`, `)}`,
+      `Multiple environment variables found for same parameter "${parameterName}": ${args.map((arg) => arg.name).join(`, `)}`,
     )
   }
 
@@ -203,7 +206,8 @@ const parseNegated = (string: string) => {
   }
 }
 
-const lowercaseFirst = (string: string) => string.length === 0 ? string : string[0]!.toLowerCase() + string.slice(1)
+const lowercaseFirst = (string: string) =>
+  string.length === 0 ? string : string[0]!.toLowerCase() + string.slice(1)
 
 interface Envar {
   name: {
@@ -219,12 +223,12 @@ const normalizeEnvironment = (environment: RawInputs): Envar[] => {
       value === undefined
         ? value
         : {
-          value,
-          name: {
-            raw: name,
-            camel: Str.Case.camel(name),
+            value,
+            name: {
+              raw: name,
+              camel: Str.Case.camel(name),
+            },
           },
-        }
     )
     .filter((envar): envar is Envar => envar !== undefined)
 }

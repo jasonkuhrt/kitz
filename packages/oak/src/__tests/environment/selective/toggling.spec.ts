@@ -70,12 +70,19 @@ describe(`when configuring parameters, environment becomes opt-in`, () => {
           },
         },
       })
-      .parse({ line: [], environment: { moo_foo: `foo_env`, moo_bar: `bar_env`, moo_qux: `qux_env` } })
+      .parse({
+        line: [],
+        environment: { moo_foo: `foo_env`, moo_bar: `bar_env`, moo_qux: `qux_env` },
+      })
     expect(args).toMatchObject({ foo: `foo_env`, bar: `bar`, qux: `qux` })
   })
   describe(`unless...`, () => {
     it(`default is shorthand true`, () => {
-      environmentManager.set({ moo_foo: `moo_foo_env`, cli_param_bar: `bar_env`, cli_param_qux: `qux_env` })
+      environmentManager.set({
+        moo_foo: `moo_foo_env`,
+        cli_param_bar: `bar_env`,
+        cli_param_qux: `qux_env`,
+      })
       const args = $.parameter(`--foo`, s.default(`foo`))
         .parameter(`--bar`, s.default(`bar`))
         .parameter(`--qux`, s.default(`qux`))
@@ -84,11 +91,17 @@ describe(`when configuring parameters, environment becomes opt-in`, () => {
       expect(args).toMatchObject({ foo: `moo_foo_env`, bar: `bar_env`, qux: `qux_env` })
     })
     it(`default is longhand true`, () => {
-      environmentManager.set({ moo_foo: `moo_foo_env`, cli_param_bar: `bar_env`, cli_param_qux: `qux_env` })
+      environmentManager.set({
+        moo_foo: `moo_foo_env`,
+        cli_param_bar: `bar_env`,
+        cli_param_qux: `qux_env`,
+      })
       const args = $.parameter(`--foo`, s.default(`foo`))
         .parameter(`--bar`, s.default(`bar`))
         .parameter(`--qux`, s.default(`qux`))
-        .settings({ parameters: { environment: { $default: { enabled: true }, foo: { prefix: `MOO` } } } })
+        .settings({
+          parameters: { environment: { $default: { enabled: true }, foo: { prefix: `MOO` } } },
+        })
         .parse({ line: [] })
       expect(args).toMatchObject({ foo: `moo_foo_env`, bar: `bar_env`, qux: `qux_env` })
     })

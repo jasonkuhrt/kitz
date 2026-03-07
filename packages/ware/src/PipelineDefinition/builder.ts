@@ -16,7 +16,7 @@ import { type Options, resolveOptions } from './Config.js'
  * - If the pipeline has no steps then the pipeline input itself.
  * - Otherwise the last step's output.
  */
-// dprint-ignore
+// oxfmt-ignore
 type GetNextStepParameterInput<$Context extends PipelineDefinition> =
   $Context['steps'] extends Tup.NonEmpty
     ? Awaited<Tup.GetLastValue<$Context['steps']>['output']>
@@ -32,9 +32,7 @@ export interface Builder<$PipelineDef extends PipelineDefinition = PipelineDefin
    */
   stepWithRunnerType: <$Runner extends StepRunner<any, any, any>>() => <
     const $Name extends string,
-    $Slots extends
-      | undefined
-      | StepDefinition.Slots = undefined,
+    $Slots extends undefined | StepDefinition.Slots = undefined,
   >(
     name: $Name,
     parameters?: {
@@ -42,13 +40,16 @@ export interface Builder<$PipelineDef extends PipelineDefinition = PipelineDefin
       run?: $Runner
     },
   ) => Builder<
-    PipelineDefinition.Updaters.AddStep<$PipelineDef, {
-      name: $Name
-      input: Parameters<$Runner>[0]
-      output: Obj.OrDefault<ReturnType<$Runner>, {}>
-      slots: Obj.OrDefault<$Slots, {}>
-      run: $Runner
-    }>
+    PipelineDefinition.Updaters.AddStep<
+      $PipelineDef,
+      {
+        name: $Name
+        input: Parameters<$Runner>[0]
+        output: Obj.OrDefault<ReturnType<$Runner>, {}>
+        slots: Obj.OrDefault<$Slots, {}>
+        run: $Runner
+      }
+    >
   >
   /**
    * TODO
@@ -59,9 +60,7 @@ export interface Builder<$PipelineDef extends PipelineDefinition = PipelineDefin
    */
   overload: <$OverloadBuilder extends Overload.Builder<$PipelineDef>>(
     overloadBuilder: Overload.BuilderCallback<$PipelineDef, $OverloadBuilder>,
-  ) => Builder<
-    PipelineDefinition.Updaters.AddOverload<$PipelineDef, $OverloadBuilder['data']>
-  >
+  ) => Builder<PipelineDefinition.Updaters.AddOverload<$PipelineDef, $OverloadBuilder['data']>>
   /**
    * TODO
    */
@@ -77,68 +76,74 @@ export interface Builder<$PipelineDef extends PipelineDefinition = PipelineDefin
 interface StepMethod<$Context extends PipelineDefinition> {
   <
     const $Name extends string,
-    $Slots extends
-      | undefined
-      | StepDefinition.Slots = undefined,
+    $Slots extends undefined | StepDefinition.Slots = undefined,
     $Input = GetNextStepParameterInput<$Context>,
     $Output = unknown,
   >(
     name: $Name,
     parameters?: {
       slots?: $Slots
-      run?: (input: $Input, slots: $Slots, previous: GetNextStepParameterPrevious<$Context>) => $Output
+      run?: (
+        input: $Input,
+        slots: $Slots,
+        previous: GetNextStepParameterPrevious<$Context>,
+      ) => $Output
     },
   ): Builder<
-    PipelineDefinition.Updaters.AddStep<$Context, {
-      name: $Name
-      input: $Input
-      output: Obj.OrDefault<$Output, {}>
-      slots: Obj.OrDefault<$Slots, {}>
-    }>
+    PipelineDefinition.Updaters.AddStep<
+      $Context,
+      {
+        name: $Name
+        input: $Input
+        output: Obj.OrDefault<$Output, {}>
+        slots: Obj.OrDefault<$Slots, {}>
+      }
+    >
   >
   <
     const $Name extends string,
-    $Slots extends
-      | undefined
-      | StepDefinition.Slots = undefined,
+    $Slots extends undefined | StepDefinition.Slots = undefined,
     $Input extends object = GetNextStepParameterInput<$Context>,
     $Output = unknown,
-  >(
-    parameters: {
-      name: $Name
-      slots?: $Slots
-      run?: (input: $Input, slots: $Slots, previous: GetNextStepParameterPrevious<$Context>) => $Output
-    },
-  ): Builder<
-    PipelineDefinition.Updaters.AddStep<$Context, {
-      name: $Name
-      input: $Input
-      output: Obj.OrDefault<$Output, {}>
-      slots: Obj.OrDefault<$Slots, {}>
-    }>
+  >(parameters: {
+    name: $Name
+    slots?: $Slots
+    run?: (
+      input: $Input,
+      slots: $Slots,
+      previous: GetNextStepParameterPrevious<$Context>,
+    ) => $Output
+  }): Builder<
+    PipelineDefinition.Updaters.AddStep<
+      $Context,
+      {
+        name: $Name
+        input: $Input
+        output: Obj.OrDefault<$Output, {}>
+        slots: Obj.OrDefault<$Slots, {}>
+      }
+    >
   >
 }
 
-// dprint-ignore
+// oxfmt-ignore
 export type GetNextStepParameterPrevious<$Context extends PipelineDefinition> =
   $Context['steps'] extends Tup.NonEmpty
     ? GetNextStepPrevious_<$Context['steps']>
     : undefined
 
-type GetNextStepPrevious_<$Steps extends readonly StepDefinition[]> = Tup.IntersectItems<
-  {
-    [$Index in keyof $Steps]: {
-      [$StepName in $Steps[$Index]['name']]: {
-        input: Awaited<$Steps[$Index]['input']>
-        output: Awaited<$Steps[$Index]['output']>
-      }
+type GetNextStepPrevious_<$Steps extends readonly StepDefinition[]> = Tup.IntersectItems<{
+  [$Index in keyof $Steps]: {
+    [$StepName in $Steps[$Index]['name']]: {
+      input: Awaited<$Steps[$Index]['input']>
+      output: Awaited<$Steps[$Index]['output']>
     }
   }
->
+}>
 
 export type InferPipeline<$Builder extends Builder> = InferPipelineFromContext<$Builder['type']>
 
-// dprint-ignore
+// oxfmt-ignore
 type InferPipelineFromContext<$Pipeline extends PipelineDefinition> =
   $Pipeline
 
@@ -154,49 +159,43 @@ export const create = (options?: Options): Builder<PipelineDefinition.States.Emp
   } as any as PipelineDefinition) as any
 }
 
-const recreate = <$Pipeline extends PipelineDefinition>(pipeline: $Pipeline): Builder<$Pipeline> => {
+const recreate = <$Pipeline extends PipelineDefinition>(
+  pipeline: $Pipeline,
+): Builder<$Pipeline> => {
   const builder: Builder<$Pipeline> = {
     type: pipeline,
     input: () => builder as any,
     done: () => Pipeline.create(pipeline),
     stepWithRunnerType: () => builder.step as any,
     step: (...args: any[]) => {
-      const step = typeof args[0] === `string`
-        ? {
-          name: args[0],
-          run: passthroughStep,
-          ...(args[1] as undefined | object),
-        }
-        : {
-          run: passthroughStep,
-          ...args[0],
-        }
+      const step =
+        typeof args[0] === `string`
+          ? {
+              name: args[0],
+              run: passthroughStep,
+              ...(args[1] as undefined | object),
+            }
+          : {
+              run: passthroughStep,
+              ...args[0],
+            }
 
       return recreate({
         ...pipeline,
-        steps: [
-          ...pipeline.steps,
-          step,
-        ],
+        steps: [...pipeline.steps, step],
       } as any)
     },
     use: (extension) => {
       return recreate({
         ...pipeline,
-        overloads: [
-          ...pipeline.overloads,
-          ...extension.type.overloads,
-        ],
+        overloads: [...pipeline.overloads, ...extension.type.overloads],
       } as any)
     },
     overload: (builderCallback) => {
       const overload = builderCallback({ create: Overload.create })
       return recreate({
         ...pipeline,
-        overloads: [
-          ...pipeline.overloads,
-          overload.data,
-        ],
+        overloads: [...pipeline.overloads, overload.data],
       } as any)
     },
   }

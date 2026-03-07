@@ -30,11 +30,19 @@ describe('calculateNextVersion', () => {
     .inputType<{ current: string; bump: Semver.BumpType }>()
     .outputType<string>()
     .cases(
-      { input: { current: '0.2.0', bump: 'major' }, output: '0.3.0', comment: 'major absorbed to minor' },
+      {
+        input: { current: '0.2.0', bump: 'major' },
+        output: '0.3.0',
+        comment: 'major absorbed to minor',
+      },
       { input: { current: '0.2.0', bump: 'minor' }, output: '0.3.0', comment: 'minor stays minor' },
       { input: { current: '0.2.1', bump: 'patch' }, output: '0.2.2', comment: 'patch stays patch' },
       { input: { current: '0.0.1', bump: 'minor' }, output: '0.1.0', comment: 'minor from 0.0.x' },
-      { input: { current: '0.0.1', bump: 'major' }, output: '0.1.0', comment: 'major from 0.0.x absorbed' },
+      {
+        input: { current: '0.0.1', bump: 'major' },
+        output: '0.1.0',
+        comment: 'major from 0.0.x absorbed',
+      },
     )
     .test(({ input, output }) => {
       const result = calculateNextVersion(some(v(input.current)), input.bump)
@@ -51,7 +59,11 @@ describe('calculateNextVersion', () => {
       { input: { current: '1.2.3', bump: 'minor' }, output: '1.3.0', comment: 'minor -> minor' },
       { input: { current: '1.2.3', bump: 'patch' }, output: '1.2.4', comment: 'patch -> patch' },
       { input: { current: '2.0.0', bump: 'patch' }, output: '2.0.1', comment: 'major version > 1' },
-      { input: { current: '3.5.2', bump: 'minor' }, output: '3.6.0', comment: 'higher major version' },
+      {
+        input: { current: '3.5.2', bump: 'minor' },
+        output: '3.6.0',
+        comment: 'higher major version',
+      },
     )
     .test(({ input, output }) => {
       const result = calculateNextVersion(some(v(input.current)), input.bump)

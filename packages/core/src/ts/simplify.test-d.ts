@@ -103,7 +103,7 @@ A.ofAs<'a' | 'b'>()                                       .onAs<Ts.Simplify.Top<
 
 // Edge cases
 
-A.ofAs<{}>()                                              .onAs<Simplify.All<{} & {}>>()
+A.ofAs<{}>()                                              .onAs<Simplify.All<{}>>()
 A.ofAs<SelfRef>()                                         .onAs<Simplify.All<SelfRef>>()
 
 type SelfRef = { self: SelfRef; data: string }

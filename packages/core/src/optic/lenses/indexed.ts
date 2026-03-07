@@ -21,7 +21,7 @@ export type LensErrorNoIndexSignature<$Actual> = Ts.Err.StaticError<
  * type T3 = Get<{ name: string }> // Either.Left<error>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Get<$T> =
   string extends keyof $T
     ? Either.Right<never, $T[string]>
@@ -35,7 +35,7 @@ export type Get<$T> =
  * type T = Set<Record<string, number>, string> // { [x: string]: string }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Set<$T, $New> =
   string extends keyof $T
     ? { [k in keyof $T]: $New }

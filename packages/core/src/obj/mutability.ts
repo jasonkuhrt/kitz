@@ -7,15 +7,12 @@ import type { Ts } from '#ts'
  *
  * @category Immutability
  */
-export interface ErrorMutableInputImmutableOutput extends
-  Ts.Err.StaticError<
-    ['forwardImmutability'],
-    {
-      message:
-        'Mutable input with immutable output is likely a bug - the caller expects a mutable result but provided a frozen output'
-    }
-  >
-{}
+export interface ErrorMutableInputImmutableOutput extends Ts.Err.StaticError<
+  ['forwardImmutability'],
+  {
+    message: 'Mutable input with immutable output is likely a bug - the caller expects a mutable result but provided a frozen output'
+  }
+> {}
 
 //
 //
@@ -201,7 +198,7 @@ export const inferImmutabilityMode = (...inputs: object[]): 'immutable' | 'mutab
   return inputs.some(isImmutable) ? 'immutable' : 'mutable'
 }
 
-// dprint-ignore
+// oxfmt-ignore
 type GuardForwardImmutabilityOutput<$input extends object, $output extends object> =
   isImmutable<$input> extends true ? $output :
   isMutable<$output> extends true  ? $output :

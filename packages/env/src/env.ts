@@ -64,7 +64,9 @@ export const Test = (config: Partial<EnvService> = {}) =>
     platform: config.platform ?? 'node',
     os: config.os ?? 'linux',
     arch: config.arch ?? 'x64',
-    exit: config.exit ?? ((code?: number) => {
-      Lang.panic(`Env.exit(${code}) called in test environment`)
-    }),
+    exit:
+      config.exit ??
+      ((code?: number) => {
+        return Lang.panic(`Env.exit(${code}) called in test environment`)
+      }),
   })

@@ -34,7 +34,6 @@ describe('Obj.entries', () => {
       type ExpectedEntries = (
         | [string, string] // name (optional, no undefined)
         | [string, number | undefined] // age (required, undefined preserved)
-        | [string, string] // city (required, no undefined)
         | [string, string[]] // hobbies (optional, no undefined)
       )[]
 
@@ -54,7 +53,6 @@ describe('Obj.entries', () => {
       type ExpectedEntries = (
         | [string, string] // name
         | [string, number] // age
-        | [string, string] // city
       )[]
 
       A.sub.ofAs<ExpectedEntries>().onAs<Entries>()
@@ -69,10 +67,7 @@ describe('Obj.entries', () => {
       type Entries = Obj.entries<AllRequiredUndefinedObj>
 
       // All values should preserve undefined since keys are required
-      type ExpectedEntries = (
-        | [string, string | undefined]
-        | [string, number | undefined]
-      )[]
+      type ExpectedEntries = ([string, string | undefined] | [string, number | undefined])[]
 
       A.sub.ofAs<ExpectedEntries>().onAs<Entries>()
     })

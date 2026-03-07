@@ -60,8 +60,7 @@ export type ToTuple<
   $Union,
   ___L = LastOf<$Union>,
   ___N = [$Union] extends [never] ? true : false,
-> = true extends ___N ? []
-  : [...ToTuple<Exclude<$Union, ___L>>, ___L]
+> = true extends ___N ? [] : [...ToTuple<Exclude<$Union, ___L>>, ___L]
 
 /**
  * Convert a union type to an intersection type.
@@ -72,7 +71,10 @@ export type ToTuple<
  * type I = Union.ToIntersection<U>  // { a: string } & { b: number }
  * ```
  */
-export type ToIntersection<$U> = ($U extends any ? (k: $U) => void : never) extends ((k: infer __i__) => void) ? __i__
+export type ToIntersection<$U> = ($U extends any ? (k: $U) => void : never) extends (
+  k: infer __i__,
+) => void
+  ? __i__
   : never
 
 /**
@@ -83,8 +85,8 @@ export type ToIntersection<$U> = ($U extends any ? (k: $U) => void : never) exte
  * type T = Union.LastOf<'a' | 'b' | 'c'>  // 'c'
  * ```
  */
-export type LastOf<$T> = ToIntersection<$T extends any ? () => $T : never> extends () => infer __r__ ? __r__
-  : never
+export type LastOf<$T> =
+  ToIntersection<$T extends any ? () => $T : never> extends () => infer __r__ ? __r__ : never
 
 /**
  * Force union distribution in conditional types.
@@ -110,7 +112,7 @@ export type IgnoreAnyOrUnknown<$T> = unknown extends $T ? never : $T
  * type T2 = Union.IsAnyMemberExtends<number | boolean, string>  // false
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type IsAnyMemberExtends<$Union, $Type> =
   (
     // [1] Force distribution
@@ -158,13 +160,13 @@ export type IsAnyMemberExtends<$Union, $Type> =
  * type R4 = MaybeAsync<string | number>           // false
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type IsHas<$Type, $LookingFor> =
   _IsHas<$Type, $LookingFor> extends false
     ? false
     : true
 
-// dprint-ignore
+// oxfmt-ignore
 type _IsHas<$Type, $LookingFor> =
   $Type extends $LookingFor
     ? true
@@ -180,11 +182,11 @@ type _IsHas<$Type, $LookingFor> =
  * ```
  */
 export type Merge<$U> = {
-  [
-    k in (
-      $U extends any ? keyof $U : never
-    )
-  ]: $U extends any ? (k extends keyof $U ? $U[k] : never) : never
+  [k in $U extends any ? keyof $U : never]: $U extends any
+    ? k extends keyof $U
+      ? $U[k]
+      : never
+    : never
 }
 
 /**
@@ -227,7 +229,7 @@ export type Merge<$U> = {
  * type R2 = ProcessType<string>           // 'single option'
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Is<$Type> =
   [$Type] extends [never]                   ? false :
   [$Type] extends [ToIntersection<$Type>]   ? false :

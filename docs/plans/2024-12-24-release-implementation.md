@@ -265,14 +265,12 @@ import { Footer } from './footer.js'
  * A per-package section in a MultiTargetCommit body.
  * Contains the body text and any footers (like BREAKING CHANGE) for that package.
  */
-export class TargetSection
-  extends Schema.TaggedClass<TargetSection>()('TargetSection', {
-    /** Section body text */
-    body: Schema.String,
-    /** Footers within this section (including BREAKING CHANGE) */
-    footers: Schema.Array(Footer),
-  })
-{}
+export class TargetSection extends Schema.TaggedClass<TargetSection>()('TargetSection', {
+  /** Section body text */
+  body: Schema.String,
+  /** Footers within this section (including BREAKING CHANGE) */
+  footers: Schema.Array(Footer),
+}) {}
 ```
 
 **Step 4: Run test to verify it passes**
@@ -333,9 +331,7 @@ describe('SingleTargetCommit', () => {
       breaking: true,
       message: 'breaking change across packages',
       body: Option.some('Detailed body'),
-      footers: [
-        Footer.make({ token: 'BREAKING CHANGE', value: 'removed API' }),
-      ],
+      footers: [Footer.make({ token: 'BREAKING CHANGE', value: 'removed API' })],
     })
     expect(commit.scopes).toEqual(['core', 'cli'])
     expect(commit.breaking).toBe(true)
@@ -381,22 +377,20 @@ import { Footer } from './footer.js'
  * - `feat(core, cli): add feature` (multiple scopes, same type/breaking for all)
  * - `feat(core)!: breaking change` (breaking applies to all scopes)
  */
-export class SingleTargetCommit
-  extends Schema.TaggedClass<SingleTargetCommit>()('SingleTarget', {
-    /** Commit type (e.g., "feat", "fix", "chore") */
-    type: Schema.String,
-    /** Package scopes (can be empty, one, or multiple—all get same treatment) */
-    scopes: Schema.Array(Schema.String),
-    /** Whether this is a breaking change (applies to ALL scopes) */
-    breaking: Schema.Boolean,
-    /** Commit message (first line after type/scope) */
-    message: Schema.String,
-    /** Optional commit body */
-    body: Schema.OptionFromNullOr(Schema.String),
-    /** Commit footers */
-    footers: Schema.Array(Footer),
-  })
-{}
+export class SingleTargetCommit extends Schema.TaggedClass<SingleTargetCommit>()('SingleTarget', {
+  /** Commit type (e.g., "feat", "fix", "chore") */
+  type: Schema.String,
+  /** Package scopes (can be empty, one, or multiple—all get same treatment) */
+  scopes: Schema.Array(Schema.String),
+  /** Whether this is a breaking change (applies to ALL scopes) */
+  breaking: Schema.Boolean,
+  /** Commit message (first line after type/scope) */
+  message: Schema.String,
+  /** Optional commit body */
+  body: Schema.OptionFromNullOr(Schema.String),
+  /** Commit footers */
+  footers: Schema.Array(Footer),
+}) {}
 ```
 
 **Step 4: Run test to verify it passes**
@@ -465,9 +459,7 @@ describe('MultiTargetCommit', () => {
       sections: {
         core: TargetSection.make({
           body: 'Core changes here.',
-          footers: [
-            Footer.make({ token: 'BREAKING CHANGE', value: 'removed X' }),
-          ],
+          footers: [Footer.make({ token: 'BREAKING CHANGE', value: 'removed X' })],
         }),
         arr: TargetSection.make({
           body: 'Arr changes here.',
@@ -522,18 +514,16 @@ import { Target } from './target.js'
  * Per-package body for arr.
  * ```
  */
-export class MultiTargetCommit
-  extends Schema.TaggedClass<MultiTargetCommit>()('MultiTarget', {
-    /** Targets with independent type/scope/breaking */
-    targets: Schema.NonEmptyArray(Target),
-    /** Commit message (first line after type-scope groups) */
-    message: Schema.String,
-    /** Optional summary text (before any ## heading) */
-    summary: Schema.OptionFromNullOr(Schema.String),
-    /** Per-package sections keyed by scope name */
-    sections: Schema.Record({ key: Schema.String, value: TargetSection }),
-  })
-{}
+export class MultiTargetCommit extends Schema.TaggedClass<MultiTargetCommit>()('MultiTarget', {
+  /** Targets with independent type/scope/breaking */
+  targets: Schema.NonEmptyArray(Target),
+  /** Commit message (first line after type-scope groups) */
+  message: Schema.String,
+  /** Optional summary text (before any ## heading) */
+  summary: Schema.OptionFromNullOr(Schema.String),
+  /** Per-package sections keyed by scope name */
+  sections: Schema.Record({ key: Schema.String, value: TargetSection }),
+}) {}
 ````
 
 **Step 4: Run test to verify it passes**
@@ -641,10 +631,7 @@ import { SingleTargetCommit } from './single-target-commit.js'
 /**
  * A conventional commit—either single-target (standard CC) or multi-target (extended for monorepos).
  */
-export const ConventionalCommit = Schema.Union(
-  SingleTargetCommit,
-  MultiTargetCommit,
-)
+export const ConventionalCommit = Schema.Union(SingleTargetCommit, MultiTargetCommit)
 
 /**
  * Type alias for the ConventionalCommit union.
@@ -654,16 +641,14 @@ export type ConventionalCommit = Schema.Schema.Type<typeof ConventionalCommit>
 /**
  * Type guard for SingleTargetCommit.
  */
-export const isSingleTarget = (
-  commit: ConventionalCommit,
-): commit is SingleTargetCommit => commit._tag === 'SingleTarget'
+export const isSingleTarget = (commit: ConventionalCommit): commit is SingleTargetCommit =>
+  commit._tag === 'SingleTarget'
 
 /**
  * Type guard for MultiTargetCommit.
  */
-export const isMultiTarget = (
-  commit: ConventionalCommit,
-): commit is MultiTargetCommit => commit._tag === 'MultiTarget'
+export const isMultiTarget = (commit: ConventionalCommit): commit is MultiTargetCommit =>
+  commit._tag === 'MultiTarget'
 ```
 
 **Step 4: Run test to verify it passes**
@@ -702,9 +687,7 @@ import { parseTitle } from './title.js'
 describe('parseTitle', () => {
   describe('SingleTarget parsing', () => {
     test('parses type only: "feat: message"', async () => {
-      const result = await Effect.runPromiseExit(
-        parseTitle('feat: add feature'),
-      )
+      const result = await Effect.runPromiseExit(parseTitle('feat: add feature'))
       expect(Exit.isSuccess(result)).toBe(true)
       if (Exit.isSuccess(result)) {
         expect(result.value._tag).toBe('SingleTarget')
@@ -718,9 +701,7 @@ describe('parseTitle', () => {
     })
 
     test('parses type with scope: "feat(core): message"', async () => {
-      const result = await Effect.runPromiseExit(
-        parseTitle('feat(core): add feature'),
-      )
+      const result = await Effect.runPromiseExit(parseTitle('feat(core): add feature'))
       expect(Exit.isSuccess(result)).toBe(true)
       if (Exit.isSuccess(result) && result.value._tag === 'SingleTarget') {
         expect(result.value.scopes).toEqual(['core'])
@@ -728,9 +709,7 @@ describe('parseTitle', () => {
     })
 
     test('parses multiple scopes: "feat(core, cli): message"', async () => {
-      const result = await Effect.runPromiseExit(
-        parseTitle('feat(core, cli): add feature'),
-      )
+      const result = await Effect.runPromiseExit(parseTitle('feat(core, cli): add feature'))
       expect(Exit.isSuccess(result)).toBe(true)
       if (Exit.isSuccess(result) && result.value._tag === 'SingleTarget') {
         expect(result.value.scopes).toEqual(['core', 'cli'])
@@ -738,9 +717,7 @@ describe('parseTitle', () => {
     })
 
     test('parses breaking with !: "feat(core)!: message"', async () => {
-      const result = await Effect.runPromiseExit(
-        parseTitle('feat(core)!: breaking change'),
-      )
+      const result = await Effect.runPromiseExit(parseTitle('feat(core)!: breaking change'))
       expect(Exit.isSuccess(result)).toBe(true)
       if (Exit.isSuccess(result) && result.value._tag === 'SingleTarget') {
         expect(result.value.breaking).toBe(true)
@@ -748,9 +725,7 @@ describe('parseTitle', () => {
     })
 
     test('parses breaking inside scope: "feat(core!): message"', async () => {
-      const result = await Effect.runPromiseExit(
-        parseTitle('feat(core!): breaking change'),
-      )
+      const result = await Effect.runPromiseExit(parseTitle('feat(core!): breaking change'))
       expect(Exit.isSuccess(result)).toBe(true)
       if (Exit.isSuccess(result) && result.value._tag === 'SingleTarget') {
         expect(result.value.breaking).toBe(true)
@@ -760,9 +735,7 @@ describe('parseTitle', () => {
 
   describe('MultiTarget parsing', () => {
     test('parses different types: "feat(core), fix(cli): message"', async () => {
-      const result = await Effect.runPromiseExit(
-        parseTitle('feat(core), fix(cli): multi change'),
-      )
+      const result = await Effect.runPromiseExit(parseTitle('feat(core), fix(cli): multi change'))
       expect(Exit.isSuccess(result)).toBe(true)
       if (Exit.isSuccess(result)) {
         expect(result.value._tag).toBe('MultiTarget')
@@ -777,9 +750,7 @@ describe('parseTitle', () => {
     })
 
     test('parses per-scope breaking: "feat(core!), fix(cli): message"', async () => {
-      const result = await Effect.runPromiseExit(
-        parseTitle('feat(core!), fix(cli): change'),
-      )
+      const result = await Effect.runPromiseExit(parseTitle('feat(core!), fix(cli): change'))
       expect(Exit.isSuccess(result)).toBe(true)
       if (Exit.isSuccess(result) && result.value._tag === 'MultiTarget') {
         expect(result.value.targets[0].breaking).toBe(true)
@@ -788,9 +759,7 @@ describe('parseTitle', () => {
     })
 
     test('parses global breaking: "feat(core), fix(cli)!: message"', async () => {
-      const result = await Effect.runPromiseExit(
-        parseTitle('feat(core), fix(cli)!: change'),
-      )
+      const result = await Effect.runPromiseExit(parseTitle('feat(core), fix(cli)!: change'))
       expect(Exit.isSuccess(result)).toBe(true)
       if (Exit.isSuccess(result) && result.value._tag === 'MultiTarget') {
         expect(result.value.targets[0].breaking).toBe(true)
@@ -801,9 +770,7 @@ describe('parseTitle', () => {
 
   describe('error cases', () => {
     test('rejects invalid format', async () => {
-      const result = await Effect.runPromiseExit(
-        parseTitle('not a valid commit'),
-      )
+      const result = await Effect.runPromiseExit(parseTitle('not a valid commit'))
       expect(Exit.isFailure(result)).toBe(true)
     })
 
@@ -860,10 +827,8 @@ const TYPE_SCOPE_PATTERN = /^([a-z]+)(?:\(([^)]+)\))?(!)?$/
  * - Multiple comma-separated type(scope) groups
  * - OR same type but different breaking per scope
  */
-export const parseTitle = (
-  title: string,
-): Effect.Effect<ParsedTitle, ParseTitleError> =>
-  Effect.gen(function*() {
+export const parseTitle = (title: string): Effect.Effect<ParsedTitle, ParseTitleError> =>
+  Effect.gen(function* () {
     const trimmed = title.trim()
 
     // Split on `: ` to get header and message
@@ -881,16 +846,12 @@ export const parseTitle = (
     const message = trimmed.slice(colonIndex + 1).trim()
 
     if (!message) {
-      return yield* Effect.fail(
-        new ParseTitleError({ message: 'Empty message', input: title }),
-      )
+      return yield* Effect.fail(new ParseTitleError({ message: 'Empty message', input: title }))
     }
 
     // Check for global breaking indicator (! before :)
     const globalBreaking = header.endsWith('!')
-    const headerWithoutGlobalBreaking = globalBreaking
-      ? header.slice(0, -1)
-      : header
+    const headerWithoutGlobalBreaking = globalBreaking ? header.slice(0, -1) : header
 
     // Split by `, ` to detect multiple type-scope groups
     const groups = headerWithoutGlobalBreaking.split(/,\s*/)
@@ -959,9 +920,7 @@ export const parseTitle = (
     }
 
     if (targets.length === 0) {
-      return yield* Effect.fail(
-        new ParseTitleError({ message: 'No targets found', input: title }),
-      )
+      return yield* Effect.fail(new ParseTitleError({ message: 'No targets found', input: title }))
     }
 
     return MultiTargetCommit.make({
@@ -1139,7 +1098,7 @@ describe('Git', () => {
 
   test('getTags returns array of tags', async () => {
     const tags = await runWithGit(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git
         return yield* git.getTags()
       }),
@@ -1149,7 +1108,7 @@ describe('Git', () => {
 
   test('getCurrentBranch returns branch name', async () => {
     const branch = await runWithGit(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git
         return yield* git.getCurrentBranch()
       }),
@@ -1160,7 +1119,7 @@ describe('Git', () => {
 
   test('getCommitsSince returns commits', async () => {
     const commits = await runWithGit(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git
         // Get commits since beginning (no tag)
         return yield* git.getCommitsSince(undefined)
@@ -1175,7 +1134,7 @@ describe('Git', () => {
 
   test('isClean returns boolean', async () => {
     const clean = await runWithGit(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git
         return yield* git.isClean()
       }),
@@ -1231,18 +1190,13 @@ export interface GitService {
   readonly getCurrentBranch: () => Effect.Effect<string, GitError>
 
   /** Get commits since a tag (or all commits if tag is undefined) */
-  readonly getCommitsSince: (
-    tag: string | undefined,
-  ) => Effect.Effect<Commit[], GitError>
+  readonly getCommitsSince: (tag: string | undefined) => Effect.Effect<Commit[], GitError>
 
   /** Check if the working tree is clean */
   readonly isClean: () => Effect.Effect<boolean, GitError>
 
   /** Create a new tag */
-  readonly createTag: (
-    tag: string,
-    message?: string,
-  ) => Effect.Effect<void, GitError>
+  readonly createTag: (tag: string, message?: string) => Effect.Effect<void, GitError>
 
   /** Get the repository root path */
   readonly getRoot: () => Effect.Effect<string, GitError>
@@ -1260,8 +1214,7 @@ const makeGitService = (git: SimpleGit): GitService => ({
         const result = await git.tags()
         return result.all
       },
-      catch: (error) =>
-        new GitError({ message: 'Failed to get tags', cause: error }),
+      catch: (error) => new GitError({ message: 'Failed to get tags', cause: error }),
     }),
 
   getCurrentBranch: () =>
@@ -1270,8 +1223,7 @@ const makeGitService = (git: SimpleGit): GitService => ({
         const result = await git.branch()
         return result.current
       },
-      catch: (error) =>
-        new GitError({ message: 'Failed to get current branch', cause: error }),
+      catch: (error) => new GitError({ message: 'Failed to get current branch', cause: error }),
     }),
 
   getCommitsSince: (tag) =>
@@ -1287,8 +1239,7 @@ const makeGitService = (git: SimpleGit): GitService => ({
           date: entry.date,
         }))
       },
-      catch: (error) =>
-        new GitError({ message: 'Failed to get commits', cause: error }),
+      catch: (error) => new GitError({ message: 'Failed to get commits', cause: error }),
     }),
 
   isClean: () =>
@@ -1297,8 +1248,7 @@ const makeGitService = (git: SimpleGit): GitService => ({
         const status = await git.status()
         return status.isClean()
       },
-      catch: (error) =>
-        new GitError({ message: 'Failed to check status', cause: error }),
+      catch: (error) => new GitError({ message: 'Failed to check status', cause: error }),
     }),
 
   createTag: (tag, message) =>
@@ -1310,8 +1260,7 @@ const makeGitService = (git: SimpleGit): GitService => ({
           await git.tag([tag])
         }
       },
-      catch: (error) =>
-        new GitError({ message: `Failed to create tag ${tag}`, cause: error }),
+      catch: (error) => new GitError({ message: `Failed to create tag ${tag}`, cause: error }),
     }),
 
   getRoot: () =>
@@ -1336,8 +1285,7 @@ export const GitLive = Layer.sync(Git, () => makeGitService(simpleGit()))
 /**
  * Create a Git service for a specific directory.
  */
-export const makeGitLive = (cwd: string) =>
-  Layer.sync(Git, () => makeGitService(simpleGit(cwd)))
+export const makeGitLive = (cwd: string) => Layer.sync(Git, () => makeGitService(simpleGit(cwd)))
 ```
 
 **Step 4: Run test to verify it passes**
@@ -1369,14 +1317,7 @@ git commit -m "feat(git): add Git service with tag and commit operations"
 Replace `packages/git/src/__.ts`:
 
 ```typescript
-export {
-  type Commit,
-  Git,
-  GitError,
-  GitLive,
-  type GitService,
-  makeGitLive,
-} from './git.js'
+export { type Commit, Git, GitError, GitLive, type GitService, makeGitLive } from './git.js'
 ```
 
 **Step 2: Update barrel file**
@@ -1442,10 +1383,7 @@ export interface Changelog {
 /**
  * Create a changelog from commits.
  */
-export const fromCommits = (
-  commits: CC.ConventionalCommitType[],
-  version: string,
-): Changelog => ({
+export const fromCommits = (commits: CC.ConventionalCommitType[], version: string): Changelog => ({
   entries: [
     {
       version,
@@ -1467,16 +1405,14 @@ export const toMarkdown = (changelog: Changelog): string => {
 
     const features = entry.commits.filter(
       (c) =>
-        (c._tag === 'SingleTarget' && c.type === 'feat')
-        || (c._tag === 'MultiTarget'
-          && c.targets.some((t) => t.type === 'feat')),
+        (c._tag === 'SingleTarget' && c.type === 'feat') ||
+        (c._tag === 'MultiTarget' && c.targets.some((t) => t.type === 'feat')),
     )
 
     const fixes = entry.commits.filter(
       (c) =>
-        (c._tag === 'SingleTarget' && c.type === 'fix')
-        || (c._tag === 'MultiTarget'
-          && c.targets.some((t) => t.type === 'fix')),
+        (c._tag === 'SingleTarget' && c.type === 'fix') ||
+        (c._tag === 'MultiTarget' && c.targets.some((t) => t.type === 'fix')),
     )
 
     if (features.length > 0) {
@@ -1507,12 +1443,7 @@ export const toMarkdown = (changelog: Changelog): string => {
 Replace `packages/changelog/src/__.ts`:
 
 ```typescript
-export {
-  type Changelog,
-  type ChangelogEntry,
-  fromCommits,
-  toMarkdown,
-} from './changelog.js'
+export { type Changelog, type ChangelogEntry, fromCommits, toMarkdown } from './changelog.js'
 ```
 
 Replace `packages/changelog/src/_.ts`:
@@ -1570,27 +1501,19 @@ export class NpmRegistryError extends Data.TaggedError('NpmRegistryError')<{
  */
 export interface NpmRegistryService {
   /** Get all versions of a package */
-  readonly getVersions: (
-    name: string,
-  ) => Effect.Effect<string[], NpmRegistryError>
+  readonly getVersions: (name: string) => Effect.Effect<string[], NpmRegistryError>
 
   /** Get the latest version of a package */
-  readonly getLatestVersion: (
-    name: string,
-  ) => Effect.Effect<string | undefined, NpmRegistryError>
+  readonly getLatestVersion: (name: string) => Effect.Effect<string | undefined, NpmRegistryError>
 
   /** Get dist-tags for a package */
-  readonly getDistTags: (
-    name: string,
-  ) => Effect.Effect<Record<string, string>, NpmRegistryError>
+  readonly getDistTags: (name: string) => Effect.Effect<Record<string, string>, NpmRegistryError>
 }
 
 /**
  * npm registry service tag.
  */
-export class NpmRegistry
-  extends Context.Tag('NpmRegistry')<NpmRegistry, NpmRegistryService>()
-{}
+export class NpmRegistry extends Context.Tag('NpmRegistry')<NpmRegistry, NpmRegistryService>() {}
 
 /**
  * Live implementation using @vltpkg/registry-client.
@@ -1604,7 +1527,7 @@ export const NpmRegistryLive = Layer.sync(NpmRegistry, () => ({
           if (response.status === 404) return []
           throw new Error(`HTTP ${response.status}`)
         }
-        const data = await response.json() as {
+        const data = (await response.json()) as {
           versions?: Record<string, unknown>
         }
         return Object.keys(data.versions ?? {})
@@ -1624,7 +1547,7 @@ export const NpmRegistryLive = Layer.sync(NpmRegistry, () => ({
           if (response.status === 404) return undefined
           throw new Error(`HTTP ${response.status}`)
         }
-        const data = await response.json() as {
+        const data = (await response.json()) as {
           'dist-tags'?: { latest?: string }
         }
         return data['dist-tags']?.latest
@@ -1644,7 +1567,7 @@ export const NpmRegistryLive = Layer.sync(NpmRegistry, () => ({
           if (response.status === 404) return {}
           throw new Error(`HTTP ${response.status}`)
         }
-        const data = await response.json() as {
+        const data = (await response.json()) as {
           'dist-tags'?: Record<string, string>
         }
         return data['dist-tags'] ?? {}
@@ -1781,22 +1704,18 @@ import { Schema } from 'effect'
 /**
  * Release configuration schema.
  */
-export class ReleaseConfig
-  extends Schema.Class<ReleaseConfig>('ReleaseConfig')({
-    /** Trunk branch name */
-    trunk: Schema.optionalWith(Schema.String, { default: () => 'main' }),
-    /** Default npm dist-tag for stable releases */
-    npmTag: Schema.optionalWith(Schema.String, { default: () => 'latest' }),
-    /** npm dist-tag for preview releases */
-    previewTag: Schema.optionalWith(Schema.String, { default: () => 'next' }),
-    /** Skip npm publish */
-    skipNpm: Schema.optionalWith(Schema.Boolean, { default: () => false }),
-    /** Scope to package name mapping (overrides auto-discovery) */
-    packages: Schema.optional(
-      Schema.Record({ key: Schema.String, value: Schema.String }),
-    ),
-  })
-{}
+export class ReleaseConfig extends Schema.Class<ReleaseConfig>('ReleaseConfig')({
+  /** Trunk branch name */
+  trunk: Schema.optionalWith(Schema.String, { default: () => 'main' }),
+  /** Default npm dist-tag for stable releases */
+  npmTag: Schema.optionalWith(Schema.String, { default: () => 'latest' }),
+  /** npm dist-tag for preview releases */
+  previewTag: Schema.optionalWith(Schema.String, { default: () => 'next' }),
+  /** Skip npm publish */
+  skipNpm: Schema.optionalWith(Schema.Boolean, { default: () => false }),
+  /** Scope to package name mapping (overrides auto-discovery) */
+  packages: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.String })),
+}) {}
 
 /**
  * Input type for defineConfig helper.
@@ -1806,8 +1725,7 @@ export type ReleaseConfigInput = Schema.Schema.Encoded<typeof ReleaseConfig>
 /**
  * Helper to define release configuration with type safety.
  */
-export const defineConfig = (config: ReleaseConfigInput): ReleaseConfigInput =>
-  config
+export const defineConfig = (config: ReleaseConfigInput): ReleaseConfigInput => config
 ```
 
 **Step 4: Run test to verify it passes**
@@ -1846,9 +1764,7 @@ import { discoverPackages, type PackageInfo } from './discover.js'
 describe('discoverPackages', () => {
   test('discovers packages in monorepo', async () => {
     // Test against the actual kitz monorepo
-    const packages = await Effect.runPromise(
-      discoverPackages(process.cwd()),
-    )
+    const packages = await Effect.runPromise(discoverPackages(process.cwd()))
 
     expect(Array.isArray(packages)).toBe(true)
     expect(packages.length).toBeGreaterThan(0)
@@ -1860,9 +1776,7 @@ describe('discoverPackages', () => {
   })
 
   test('package info has required fields', async () => {
-    const packages = await Effect.runPromise(
-      discoverPackages(process.cwd()),
-    )
+    const packages = await Effect.runPromise(discoverPackages(process.cwd()))
 
     for (const pkg of packages) {
       expect(pkg).toHaveProperty('name')
@@ -1923,10 +1837,8 @@ export interface PackageInfo {
  * 2. Directory name = scope
  * 3. package.json name = package name
  */
-export const discoverPackages = (
-  root: string,
-): Effect.Effect<PackageInfo[], DiscoverError> =>
-  Effect.gen(function*() {
+export const discoverPackages = (root: string): Effect.Effect<PackageInfo[], DiscoverError> =>
+  Effect.gen(function* () {
     const packagesDir = Path.join(root, 'packages')
 
     const entries = yield* Effect.tryPromise({
@@ -1987,9 +1899,7 @@ export const discoverPackages = (
 /**
  * Build a scope-to-package-name mapping from discovered packages.
  */
-export const buildScopeMap = (
-  packages: PackageInfo[],
-): Record<string, string> => {
+export const buildScopeMap = (packages: PackageInfo[]): Record<string, string> => {
   const map: Record<string, string> = {}
   for (const pkg of packages) {
     map[pkg.scope] = pkg.name
@@ -2027,17 +1937,8 @@ git commit -m "feat(release): add package discovery"
 Replace `packages/release/src/__.ts`:
 
 ```typescript
-export {
-  defineConfig,
-  ReleaseConfig,
-  type ReleaseConfigInput,
-} from './config.js'
-export {
-  buildScopeMap,
-  DiscoverError,
-  discoverPackages,
-  type PackageInfo,
-} from './discover.js'
+export { defineConfig, ReleaseConfig, type ReleaseConfigInput } from './config.js'
+export { buildScopeMap, DiscoverError, discoverPackages, type PackageInfo } from './discover.js'
 ```
 
 Replace `packages/release/src/_.ts`:

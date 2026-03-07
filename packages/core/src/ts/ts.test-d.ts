@@ -33,7 +33,10 @@ type _strip_readonly_deep_tuple_preservation = A.Cases<
 
 type _strip_readonly_deep_object = A.Cases<
   // Basic object
-  A.exact<Ts.StripReadonlyDeep<{ readonly x: number; readonly y: string }>, { x: number; y: string }>,
+  A.exact<
+    Ts.StripReadonlyDeep<{ readonly x: number; readonly y: string }>,
+    { x: number; y: string }
+  >,
   // Nested object
   A.exact<
     Ts.StripReadonlyDeep<{

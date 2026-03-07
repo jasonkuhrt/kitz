@@ -1,7 +1,6 @@
 import type { Fn } from '@kitz/core'
-import { builder } from '../../builder-singleton.js'
 import type { AssertEmptyKind } from '../../asserts.js'
-
+import { builder } from '../../builder-singleton.js'
 
 /**
  * Unary relator (negated) - asserts type is NOT empty (`[]`, `''`, or `Record<PropertyKey, never>`).
@@ -18,6 +17,6 @@ import type { AssertEmptyKind } from '../../asserts.js'
  * ```
  */
 type empty_<$Actual> = Fn.Kind.Apply<AssertEmptyKind, [$Actual, true]>
-const empty_ = builder.not.empty
+const empty_: typeof builder.not.empty = builder.not.empty
 
 export { empty_ as empty }

@@ -47,17 +47,15 @@ const GithubError = Err.TaggedContextualError('GithubError').constrain<{
   readonly status?: number
 }>()
 
-const GithubNotFoundError = Err.TaggedContextualError('GithubNotFoundError')
-  .constrain<{
-    readonly operation: GithubOperation
-    readonly resource: string
-  }>()
+const GithubNotFoundError = Err.TaggedContextualError('GithubNotFoundError').constrain<{
+  readonly operation: GithubOperation
+  readonly resource: string
+}>()
 
-const GithubRateLimitError = Err.TaggedContextualError('GithubRateLimitError')
-  .constrain<{
-    readonly operation: GithubOperation
-    readonly resetAt: Date
-  }>()
+const GithubRateLimitError = Err.TaggedContextualError('GithubRateLimitError').constrain<{
+  readonly operation: GithubOperation
+  readonly resetAt: Date
+}>()
 
 const GithubAuthError = Err.TaggedContextualError('GithubAuthError').constrain<{
   readonly operation: GithubOperation
@@ -76,12 +74,12 @@ interface GithubService {
     prerelease?: boolean
   }) => Effect<Release, GithubError | GithubAuthError | GithubRateLimitError>
 
-  readonly updateRelease: (tag: string, params: {
-    body: string
-  }) => Effect<
-    Release,
-    GithubError | GithubNotFoundError | GithubAuthError | GithubRateLimitError
-  >
+  readonly updateRelease: (
+    tag: string,
+    params: {
+      body: string
+    },
+  ) => Effect<Release, GithubError | GithubNotFoundError | GithubAuthError | GithubRateLimitError>
 }
 
 class Github extends Context.Tag('Github')<Github, GithubService>() {}
@@ -99,13 +97,12 @@ interface GithubConfig {
 const Live = (config: GithubConfig): Layer<Github, ConfigError> =>
   Layer.effect(
     Github,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const token = config.token ?? process.env.GITHUB_TOKEN
       if (!token) {
         return yield* Effect.fail(
           new ConfigError({
-            message:
-              'GitHub token required: set GITHUB_TOKEN or pass token option',
+            message: 'GitHub token required: set GITHUB_TOKEN or pass token option',
           }),
         )
       }
@@ -131,13 +128,9 @@ const Live = (config: GithubConfig): Layer<Github, ConfigError> =>
         updateRelease: (tag, params) =>
           httpGet(`/repos/${owner}/${repo}/releases/tags/${tag}`, token).pipe(
             Effect.flatMap((release) =>
-              httpPatch(
-                `/repos/${owner}/${repo}/releases/${release.id}`,
-                token,
-                {
-                  body: params.body,
-                },
-              )
+              httpPatch(`/repos/${owner}/${repo}/releases/${release.id}`, token, {
+                body: params.body,
+              }),
             ),
             Effect.map(parseRelease),
           ),
@@ -181,14 +174,15 @@ import { Github } from '@kitz/github'
 // Live
 const layer = Github.Live({ owner: 'jasonkuhrt', repo: 'kitz' })
 
-yield* Github.Github.pipe(
-  Effect.flatMap((gh) => gh.createRelease({ tag, title, body })),
-  Effect.provide(layer),
-)
+yield *
+  Github.Github.pipe(
+    Effect.flatMap((gh) => gh.createRelease({ tag, title, body })),
+    Effect.provide(layer),
+  )
 
 // Test
 const layer = Github.Memory.make({
-  releases: { '@kitz/core@1.0.0': { title: '...', body: '...', prerelease: false } }
+  releases: { '@kitz/core@1.0.0': { title: '...', body: '...', prerelease: false } },
 })
 ```
 
@@ -198,10 +192,12 @@ Current code:
 
 ```typescript
 const existsCmd = Command.make('gh', 'release', 'view', tag)
-const exists = yield * Command.exitCode(existsCmd).pipe(
-  Effect.map((code) => code === 0),
-  Effect.catchAll(() => Effect.succeed(false)),
-)
+const exists =
+  yield *
+  Command.exitCode(existsCmd).pipe(
+    Effect.map((code) => code === 0),
+    Effect.catchAll(() => Effect.succeed(false)),
+  )
 ```
 
 After:
@@ -213,8 +209,8 @@ const exists = yield * github.releaseExists(tag)
 if (exists) {
   yield * github.updateRelease(tag, { body: changelog.markdown })
 } else {
-  yield
-    * github.createRelease({
+  yield *
+    github.createRelease({
       tag,
       title,
       body: changelog.markdown,

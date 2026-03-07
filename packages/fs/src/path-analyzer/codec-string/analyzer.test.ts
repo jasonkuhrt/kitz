@@ -1,7 +1,8 @@
 import { Test } from '@kitz/test'
 import { analyze } from './analyzer.js'
 
-Test.describe('hint option').on(analyze)
+Test.describe('hint option')
+  .on(analyze)
   .casesInput(
     // Without hint: dotfiles without extensions default to directory
     ['./.gitignore'],

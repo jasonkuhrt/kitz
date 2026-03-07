@@ -15,8 +15,7 @@ export type Get<$T> = ValidateAndExtract<
   $T,
   ArrayConstraint,
   'array',
-  $T extends readonly (infer __element__)[] ? __element__
-    : LensErrorArrayExtract<$T>
+  $T extends readonly (infer __element__)[] ? __element__ : LensErrorArrayExtract<$T>
 >
 
 /**
@@ -28,7 +27,7 @@ export type Get<$T> = ValidateAndExtract<
  * type T2 = Set<readonly string[], number> // readonly number[]
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Set<$T, $New> =
   $T extends readonly any[]
     ? $T extends any[]

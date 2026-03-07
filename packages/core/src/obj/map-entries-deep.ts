@@ -131,11 +131,14 @@ export type DeepObject = { [key: string]: DeepObjectValue }
  */
 export const mapEntriesDeep = <$value extends DeepObjectValue>(
   value: $value,
-  visitor: (key: string, value: DeepObjectValue) => undefined | { key: string; value: DeepObjectValue },
+  visitor: (
+    key: string,
+    value: DeepObjectValue,
+  ) => undefined | { key: string; value: DeepObjectValue },
 ): $value => {
   const impl = (val: any, visited = new WeakSet()): any => {
     if (Array.isArray(val)) {
-      return val.map(item => impl(item, visited))
+      return val.map((item) => impl(item, visited))
     }
 
     // Only process plain objects, not Date, RegExp, Error, etc.

@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'vitest'
-import type { AuditResult, AuditViolation, MonotonicViolation, TagInfo, ValidationResult } from './monotonic.js'
+import type {
+  AuditResult,
+  AuditViolation,
+  MonotonicViolation,
+  TagInfo,
+  ValidationResult,
+} from './monotonic.js'
 
 /**
  * These are interface-only types, so we verify structural compatibility.

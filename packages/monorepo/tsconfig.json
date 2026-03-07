@@ -7,28 +7,12 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "paths": {
-      "#monorepo": [
-        "./src/_.js"
-      ],
-      "#monorepo/*": [
-        "./src/*.js"
-      ],
-      "#pnpm": [
-        "./src/pnpm/_.js"
-      ],
-      "#pnpm/pnpm": [
-        "./src/pnpm/__.js"
-      ]
+      "#monorepo": ["./src/_.js"],
+      "#monorepo/*": ["./src/*.js"],
+      "#pnpm": ["./src/pnpm/_.js"],
+      "#pnpm/pnpm": ["./src/pnpm/__.js"]
     }
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "build",
-    "node_modules",
-    "**/*.bench-d.ts",
-    "**/*.test.ts",
-    "**/*.test-d.ts"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["build", "node_modules", "**/*.bench-d.ts", "**/*.test.ts", "**/*.test-d.ts"]
 }

@@ -16,7 +16,7 @@ export const rule = RuntimeRule.create({
   id: RuleId.make('pr.type.release-kind-match-diff'),
   description: 'No-release type cannot have src changes',
   preconditions: [Precondition.HasOpenPR.make(), Precondition.HasDiff.make()],
-  check: Effect.gen(function*() {
+  check: Effect.gen(function* () {
     const pr = yield* PrService
     const diff = yield* DiffService
     const commit = pr.commit

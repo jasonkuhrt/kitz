@@ -56,7 +56,9 @@ describe('Official item', () => {
       commits: [commit('core')],
     })
     expect(Option.isSome(item.currentVersion)).toBe(true)
-    expect(Semver.equivalence(Option.getOrThrow(item.currentVersion), Semver.fromString('1.0.0'))).toBe(true)
+    expect(
+      Semver.equivalence(Option.getOrThrow(item.currentVersion), Semver.fromString('1.0.0')),
+    ).toBe(true)
   })
 
   test('currentVersion for first release is None', () => {
@@ -114,7 +116,9 @@ describe('Candidate item', () => {
       commits: [commit('core')],
     })
     expect(Option.isSome(item.currentVersion)).toBe(true)
-    expect(Semver.equivalence(Option.getOrThrow(item.currentVersion), Semver.fromString('1.1.0'))).toBe(true)
+    expect(
+      Semver.equivalence(Option.getOrThrow(item.currentVersion), Semver.fromString('1.1.0')),
+    ).toBe(true)
   })
 
   test('bumpType is undefined', () => {

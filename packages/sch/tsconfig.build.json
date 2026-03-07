@@ -6,12 +6,8 @@
     "declaration": true,
     "declarationMap": true,
     "paths": {
-      "#sch": [
-        "./src/_.js"
-      ],
-      "#sch/*": [
-        "./src/*.js"
-      ]
+      "#sch": ["./src/_.js"],
+      "#sch/*": ["./src/*.js"]
     }
   }
 }

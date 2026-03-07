@@ -6,8 +6,4 @@ export type StepRunner<
   $Slots extends undefined | object = undefined,
   $Previous extends undefined | object = undefined,
   $Output = any,
-> = (
-  input: $Input,
-  slots: $Slots,
-  previous: $Previous,
-) => $Output
+> = (input: $Input, slots: $Slots, previous: $Previous) => $Output

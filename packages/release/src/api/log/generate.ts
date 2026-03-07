@@ -83,7 +83,7 @@ const toReleaseTag = (pkg: Package, version: Semver.Semver): string =>
 export const generate = (
   options: GenerateOptions,
 ): Effect.Effect<GenerateResult, Git.GitError | Git.GitParseError, Git.Git> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const git = yield* Git.Git
     const { packages, tags, filter } = options
 
@@ -97,8 +97,9 @@ export const generate = (
       }
 
       const currentVersion = findLatestTagVersion(pkg.name, tags as string[])
-      const since = options.since
-        ?? Option.match(currentVersion, {
+      const since =
+        options.since ??
+        Option.match(currentVersion, {
           onNone: () => undefined,
           onSome: (version) => toReleaseTag(pkg, version),
         })

@@ -40,16 +40,14 @@ export interface StaticErrorAssertion<
   $Expected = unknown,
   $Actual = unknown,
   $MetaInput extends MetaInput = never,
-> extends
-  Ts.Err.StaticError<
-    ['assert'],
-    {
-      message: $Message
-      expected: $Expected
-      actual: $Actual
-    } & NormalizeMetaInput<$MetaInput>
-  >
-{}
+> extends Ts.Err.StaticError<
+  ['assert'],
+  {
+    message: $Message
+    expected: $Expected
+    actual: $Actual
+  } & NormalizeMetaInput<$MetaInput>
+> {}
 
 /**
  * Normalizes metadata input into a consistent object shape.
@@ -57,7 +55,7 @@ export interface StaticErrorAssertion<
  * @internal
  * @template $MetaInput - The metadata input (never, string, string[], or object)
  */
-// dprint-ignore
+// oxfmt-ignore
 export type NormalizeMetaInput<$MetaInput extends MetaInput = never> =
   [$MetaInput] extends [never]
     ? {}
@@ -90,6 +88,5 @@ export namespace StaticErrorAssertion {
    * type T3 = StaticErrorAssertion.Is<string>       // false
    * ```
    */
-  export type Is<$T> = $T extends Ts.Err.StaticError<['assert']> ? true
-    : false
+  export type Is<$T> = $T extends Ts.Err.StaticError<['assert']> ? true : false
 }

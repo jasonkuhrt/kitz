@@ -137,7 +137,7 @@ export interface State {
 export namespace State {
   export type InferMode = 'auto' | 'narrow' | 'wide'
 
-  // dprint-ignore
+  // oxfmt-ignore
   export type InputNextCase<$State extends State> = {
     true: {
       true: 'either'
@@ -165,10 +165,7 @@ export namespace State {
     matcher_allowNever: false
   }
 
-  export type SetActualType<
-    $State extends State,
-    $Type,
-  > = {
+  export type SetActualType<$State extends State, $Type> = {
     actual_type: $Type
     actual_extractors: $State['actual_extractors']
     expected_type: $State['expected_type']
@@ -181,10 +178,7 @@ export namespace State {
     matcher_allowNever: $State['matcher_allowNever']
   }
 
-  export type AddActualExtractor<
-    $State extends State,
-    $Extractor extends Fn.Kind.Kind,
-  > = {
+  export type AddActualExtractor<$State extends State, $Extractor extends Fn.Kind.Kind> = {
     actual_type: $State['actual_type']
     actual_extractors: [...$State['actual_extractors'], $Extractor]
     expected_type: $State['expected_type']
@@ -197,10 +191,7 @@ export namespace State {
     matcher_allowNever: $State['matcher_allowNever']
   }
 
-  export type SetExpectedType<
-    $State extends State,
-    $Type,
-  > = {
+  export type SetExpectedType<$State extends State, $Type> = {
     actual_type: $State['actual_type']
     actual_extractors: $State['actual_extractors']
     expected_type: $Type
@@ -213,10 +204,7 @@ export namespace State {
     matcher_allowNever: $State['matcher_allowNever']
   }
 
-  export type SetRelator<
-    $State extends State,
-    $Relator extends Fn.Kind.Kind,
-  > = {
+  export type SetRelator<$State extends State, $Relator extends Fn.Kind.Kind> = {
     actual_type: $State['actual_type']
     actual_extractors: $State['actual_extractors']
     expected_type: $State['expected_type']
@@ -229,9 +217,7 @@ export namespace State {
     matcher_allowNever: $State['matcher_allowNever']
   }
 
-  export type SetNegated<
-    $State extends State,
-  > = {
+  export type SetNegated<$State extends State> = {
     actual_type: $State['actual_type']
     actual_extractors: $State['actual_extractors']
     expected_type: $State['expected_type']
@@ -244,10 +230,7 @@ export namespace State {
     matcher_allowNever: $State['matcher_allowNever']
   }
 
-  export type SetInferMode<
-    $State extends State,
-    $Mode extends InferMode,
-  > = {
+  export type SetInferMode<$State extends State, $Mode extends InferMode> = {
     actual_type: $State['actual_type']
     actual_extractors: $State['actual_extractors']
     expected_type: $State['expected_type']

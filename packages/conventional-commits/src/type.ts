@@ -21,7 +21,11 @@ export type Type = typeof Type.Type
 /**
  * Type-level narrowing: returns Standard for known types, Custom otherwise.
  */
-type Parse<$value extends string> = $value extends StandardValue ? Standard : Custom
+type Parse<$value extends string> = $value extends StandardValue
+  ? Standard
+  : string extends $value
+    ? Type
+    : Custom
 
 /**
  * Create a Type from a raw string.

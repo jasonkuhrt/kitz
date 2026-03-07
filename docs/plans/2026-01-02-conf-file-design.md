@@ -153,12 +153,10 @@ class Config extends Schema.Class('Config')({
 ### Type-Level Adaptation
 
 ```typescript
-type LoadResult<S> = Sch.Struct.HasRequiredFields<S> extends true ? Effect<
-    Schema.Schema.Type<S>,
-    Error | NotFoundError | ParseError,
-    FileSystem
-  >
-  : Effect<Schema.Schema.Type<S>, Error | ParseError, FileSystem>
+type LoadResult<S> =
+  Sch.Struct.HasRequiredFields<S> extends true
+    ? Effect<Schema.Schema.Type<S>, Error | NotFoundError | ParseError, FileSystem>
+    : Effect<Schema.Schema.Type<S>, Error | ParseError, FileSystem>
 ```
 
 ## Errors
@@ -231,9 +229,7 @@ export type InvalidExportError = InstanceType<typeof InvalidExportError>
 /** Generate hint for invalid export errors */
 export const invalidExportHint = (error: InvalidExportError): string => {
   const { path, actualExport } = error.context
-  const exportType = actualExport === undefined
-    ? 'undefined (missing)'
-    : typeof actualExport
+  const exportType = actualExport === undefined ? 'undefined (missing)' : typeof actualExport
   return `Expected default export to be a config object, got ${exportType}.\n\nExample:\n  export default defineConfig({ ... })`
 }
 
@@ -323,10 +319,9 @@ class ReleaseConfigSchema extends Schema.Class('ReleaseConfig')({
   npmTag: Schema.optionalWith(Schema.String, { default: () => 'latest' }),
   previewTag: Schema.optionalWith(Schema.String, { default: () => 'next' }),
   skipNpm: Schema.optionalWith(Schema.Boolean, { default: () => false }),
-  packages: Schema.optionalWith(
-    Schema.Record({ key: Schema.String, value: Schema.String }),
-    { default: () => ({}) },
-  ),
+  packages: Schema.optionalWith(Schema.Record({ key: Schema.String, value: Schema.String }), {
+    default: () => ({}),
+  }),
 }) {}
 
 // Config definition - single source of truth
@@ -349,7 +344,7 @@ export type ReleaseConfig = typeof ReleaseConfigSchema.Type
 import { Conf } from '@kitz/conf'
 import { ReleaseConfig } from '../../api/config.js'
 
-const program = Effect.gen(function*() {
+const program = Effect.gen(function* () {
   const config = yield* Conf.File.load(ReleaseConfig)
   // config is typed as ReleaseConfig
 })

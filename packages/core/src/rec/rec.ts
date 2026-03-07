@@ -67,11 +67,11 @@ export type Value = {
 export const is = (value: unknown): value is Any => {
   const proto = Obj.is(value) ? Object.getPrototypeOf(value) : undefined
   return (
-    typeof value === 'object'
-    && value !== null
-    && !Array.isArray(value)
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
     // Allow plain objects (Object.prototype) and Object.create(null) objects, but reject class instances
-    && (proto === Object.prototype || proto === null)
+    (proto === Object.prototype || proto === null)
   )
 }
 

@@ -16,7 +16,10 @@ export const Continue = { code: 100 as const, description: `Continue` } satisfie
  * The server is switching protocols as requested by the client.
  * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/101
  */
-export const SwitchingProtocols = { code: 101 as const, description: `Switching Protocols` } satisfies Status
+export const SwitchingProtocols = {
+  code: 101 as const,
+  description: `Switching Protocols`,
+} satisfies Status
 
 /**
  * The server has received and is processing the request, but no response is available yet.

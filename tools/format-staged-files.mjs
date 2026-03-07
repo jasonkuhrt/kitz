@@ -51,7 +51,6 @@ const getIndexMode = (path) => {
 }
 
 const isIgnored = (path) =>
-  path.startsWith('.beads/') ||
   path.includes('/__snapshots__/') ||
   path.startsWith('tools/oxlint-custom-rules/tests/fixtures/') ||
   path === 'packages/core/src/obj/diff.test-d.ts' ||

@@ -61,7 +61,8 @@ export const formatReport = (report: Report): string => {
   if (failed.length > 0) {
     lines.push(`Errors (${failed.length}):`)
     for (const result of failed) {
-      const errorMessage = result.error instanceof Error ? result.error.message : String(result.error)
+      const errorMessage =
+        result.error instanceof Error ? result.error.message : String(result.error)
       lines.push(`  - ${result.rule.id}: ${errorMessage}`)
     }
     lines.push(``)
@@ -80,17 +81,20 @@ const formatOutput = (report: Report, format: 'text' | 'json'): string =>
 /**
  * Output a lint report to the specified destination.
  */
-export const relay = (params: RelayParams): Effect.Effect<void, PlatformError, FileSystem.FileSystem> => {
+export const relay = (
+  params: RelayParams,
+): Effect.Effect<void, PlatformError, FileSystem.FileSystem> => {
   const { report, format = 'text', destination = Destination.stdout } = params
   const output = formatOutput(report, format)
 
   return Match.value(destination).pipe(
     Match.when({ _tag: 'stdout' }, () => Console.log(output)),
     Match.when({ _tag: 'file' }, ({ path }) =>
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const fs = yield* FileSystem.FileSystem
         yield* fs.writeFileString(path, output)
-      })),
+      }),
+    ),
     Match.exhaustive,
   )
 }

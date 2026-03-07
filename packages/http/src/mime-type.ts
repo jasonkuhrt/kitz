@@ -59,8 +59,8 @@ export type applicationFormUrlEncoded = typeof applicationFormUrlEncoded
 /**
  * MIME type for multipart form data (alias).
  */
-export const applicationFormMultipart = `multipart/form-data`
-export type applicationFormMultipart = typeof applicationFormMultipart
+export const applicationFormMultipart = multipartFormData
+export type applicationFormMultipart = multipartFormData
 
 /**
  * MIME type for HTML documents.
@@ -193,14 +193,13 @@ export type imageXIcon = typeof imageXIcon
 /**
  * TODO
  */
-export const applicationGraphqlResponse = `application/graphql-response+json`
-export type applicationGraphqlResponse = typeof applicationGraphqlResponse
+export const applicationGraphqlResponse = applicationGraphqlResponseJson
+export type applicationGraphqlResponse = applicationGraphqlResponseJson
 
 /**
  * Union type of all supported MIME types.
  */
 export type Any =
-  | applicationGraphqlResponse
   | applicationJson
   | applicationGraphqlResponseJson
   | multipartFormData
@@ -210,7 +209,6 @@ export type Any =
   | applicationZip
   | applicationOctetStream
   | applicationFormUrlEncoded
-  | applicationFormMultipart
   | textHtml
   | textCss
   | textJavaScript

@@ -21,7 +21,7 @@ export type Factory = (path: string) => URL
  * ```
  */
 export const factory = (baseUrl: URL): Factory => {
-  return path => {
+  return (path) => {
     return new URL(path, baseUrl)
   }
 }

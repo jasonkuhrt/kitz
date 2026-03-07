@@ -7,7 +7,7 @@
  * @module
  */
 
-import * as TSDoc from '../tsdoc/_.js'
+import { Tsdoc as TSDoc } from '../tsdoc/_.js'
 
 // ============================================================================
 // Reserved Keyword Lists
@@ -162,18 +162,20 @@ export const escapeReserved = (name: string, options?: EscapeOptions): string =>
  * // 'export class MyClass {}'
  * ```
  */
-export const exportWithKeywordHandling = (isType: boolean = true) => (name: string, declaration: string): string => {
-  const isReserved = reservedNames.includes(name as any)
+export const exportWithKeywordHandling =
+  (isType: boolean = true) =>
+  (name: string, declaration: string): string => {
+    const isReserved = reservedNames.includes(name as any)
 
-  if (isReserved) {
-    const escapedName = escapeReserved(name)
-    const kindPrefix = isType ? 'type ' : ''
-    // Only export the alias, not the escaped declaration itself
-    return `${declaration}\nexport { ${kindPrefix}${escapedName} as ${name} }`
-  } else {
-    return `export ${declaration}`
+    if (isReserved) {
+      const escapedName = escapeReserved(name)
+      const kindPrefix = isType ? 'type ' : ''
+      // Only export the alias, not the escaped declaration itself
+      return `${declaration}\nexport { ${kindPrefix}${escapedName} as ${name} }`
+    } else {
+      return `export ${declaration}`
+    }
   }
-}
 
 /**
  * Export a type with keyword handling.

@@ -11,7 +11,6 @@ import { builder } from '../../builder-singleton.js'
  * Relation: mutual assignability (equivalent types)
  */
 
-
 /**
  * Base matcher accepting any expected type.
  * Extraction chain: Promise<T> → T
@@ -28,13 +27,12 @@ import { builder } from '../../builder-singleton.js'
  * type _ = Assert.awaited.equiv.of<string, Promise<number>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type of_<$Expected, $Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [$Expected, __actual__]>
                                                                          : never
-const of_ = builder.awaited.equiv.of
-
+const of_: typeof builder.awaited.equiv.of = builder.awaited.equiv.of
 
 /**
  * Pre-curried matcher for string.
@@ -49,13 +47,12 @@ const of_ = builder.awaited.equiv.of
  * type _ = Assert.awaited.equiv.string<Promise<number>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type string_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [string, __actual__]>
                                                                          : never
-const string_ = builder.awaited.equiv.string
-
+const string_: typeof builder.awaited.equiv.string = builder.awaited.equiv.string
 
 /**
  * Pre-curried matcher for number.
@@ -70,13 +67,12 @@ const string_ = builder.awaited.equiv.string
  * type _ = Assert.awaited.equiv.number<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type number_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [number, __actual__]>
                                                                          : never
-const number_ = builder.awaited.equiv.number
-
+const number_: typeof builder.awaited.equiv.number = builder.awaited.equiv.number
 
 /**
  * Pre-curried matcher for bigint.
@@ -91,13 +87,12 @@ const number_ = builder.awaited.equiv.number
  * type _ = Assert.awaited.equiv.bigint<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type bigint_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [bigint, __actual__]>
                                                                          : never
-const bigint_ = builder.awaited.equiv.bigint
-
+const bigint_: typeof builder.awaited.equiv.bigint = builder.awaited.equiv.bigint
 
 /**
  * Pre-curried matcher for boolean.
@@ -112,13 +107,12 @@ const bigint_ = builder.awaited.equiv.bigint
  * type _ = Assert.awaited.equiv.boolean<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type boolean_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [boolean, __actual__]>
                                                                          : never
-const boolean_ = builder.awaited.equiv.boolean
-
+const boolean_: typeof builder.awaited.equiv.boolean = builder.awaited.equiv.boolean
 
 /**
  * Pre-curried matcher for true.
@@ -133,13 +127,12 @@ const boolean_ = builder.awaited.equiv.boolean
  * type _ = Assert.awaited.equiv.true<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type true_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [true, __actual__]>
                                                                          : never
-const true_ = builder.awaited.equiv.true
-
+const true_: typeof builder.awaited.equiv.true = builder.awaited.equiv.true
 
 /**
  * Pre-curried matcher for false.
@@ -154,13 +147,12 @@ const true_ = builder.awaited.equiv.true
  * type _ = Assert.awaited.equiv.false<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type false_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [false, __actual__]>
                                                                          : never
-const false_ = builder.awaited.equiv.false
-
+const false_: typeof builder.awaited.equiv.false = builder.awaited.equiv.false
 
 /**
  * Pre-curried matcher for undefined.
@@ -175,13 +167,12 @@ const false_ = builder.awaited.equiv.false
  * type _ = Assert.awaited.equiv.undefined<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type undefined_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [undefined, __actual__]>
                                                                          : never
-const undefined_ = builder.awaited.equiv.undefined
-
+const undefined_: typeof builder.awaited.equiv.undefined = builder.awaited.equiv.undefined
 
 /**
  * Pre-curried matcher for null.
@@ -196,13 +187,12 @@ const undefined_ = builder.awaited.equiv.undefined
  * type _ = Assert.awaited.equiv.null<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type null_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [null, __actual__]>
                                                                          : never
-const null_ = builder.awaited.equiv.null
-
+const null_: typeof builder.awaited.equiv.null = builder.awaited.equiv.null
 
 /**
  * Pre-curried matcher for symbol.
@@ -217,13 +207,12 @@ const null_ = builder.awaited.equiv.null
  * type _ = Assert.awaited.equiv.symbol<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type symbol_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [symbol, __actual__]>
                                                                          : never
-const symbol_ = builder.awaited.equiv.symbol
-
+const symbol_: typeof builder.awaited.equiv.symbol = builder.awaited.equiv.symbol
 
 /**
  * Pre-curried matcher for Date.
@@ -238,13 +227,12 @@ const symbol_ = builder.awaited.equiv.symbol
  * type _ = Assert.awaited.equiv.Date<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type Date_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [Date, __actual__]>
                                                                          : never
-const Date_ = builder.awaited.equiv.Date
-
+const Date_: typeof builder.awaited.equiv.Date = builder.awaited.equiv.Date
 
 /**
  * Pre-curried matcher for RegExp.
@@ -259,13 +247,12 @@ const Date_ = builder.awaited.equiv.Date
  * type _ = Assert.awaited.equiv.RegExp<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type RegExp_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [RegExp, __actual__]>
                                                                          : never
-const RegExp_ = builder.awaited.equiv.RegExp
-
+const RegExp_: typeof builder.awaited.equiv.RegExp = builder.awaited.equiv.RegExp
 
 /**
  * Pre-curried matcher for Error.
@@ -280,13 +267,12 @@ const RegExp_ = builder.awaited.equiv.RegExp
  * type _ = Assert.awaited.equiv.Error<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type Error_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [Error, __actual__]>
                                                                          : never
-const Error_ = builder.awaited.equiv.Error
-
+const Error_: typeof builder.awaited.equiv.Error = builder.awaited.equiv.Error
 
 /**
  * Pre-curried matcher for unknown.
@@ -301,13 +287,12 @@ const Error_ = builder.awaited.equiv.Error
  * type _ = Assert.awaited.equiv.unknown<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type unknown_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [unknown, __actual__]>
                                                                          : never
-const unknown_ = builder.awaited.equiv.unknown
-
+const unknown_: typeof builder.awaited.equiv.unknown = builder.awaited.equiv.unknown
 
 /**
  * Pre-curried matcher for any.
@@ -322,13 +307,12 @@ const unknown_ = builder.awaited.equiv.unknown
  * type _ = Assert.awaited.equiv.any<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type any_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [any, __actual__]>
                                                                          : never
-const any_ = builder.awaited.equiv.any
-
+const any_: typeof builder.awaited.equiv.any = builder.awaited.equiv.any
 
 /**
  * Pre-curried matcher for never.
@@ -343,19 +327,19 @@ const any_ = builder.awaited.equiv.any
  * type _ = Assert.awaited.equiv.never<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type never_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [never, __actual__]>
                                                                          : never
-const never_ = builder.awaited.equiv.never
+const never_: typeof builder.awaited.equiv.never = builder.awaited.equiv.never
 
-const ofAs_ = <$Type>() => builder.awaited.equiv.ofAs<$Type>()
+const ofAs_: typeof builder.awaited.equiv.ofAs = builder.awaited.equiv.ofAs
 /**
  * No-excess variant of equiv relation.
  * Checks that actual has no excess properties beyond expected.
  */
-// dprint-ignore
+// oxfmt-ignore
 type noExcess_<
   $Expected,
   $Actual,
@@ -364,27 +348,27 @@ type noExcess_<
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivNoExcessKind, [$Expected, __actual__]>
                                                                          : never
-const noExcess_ = builder.awaited.equiv.noExcess
-const noExcessAs_ = <$Type>() => builder.awaited.equiv.noExcessAs<$Type>()
+const noExcess_: typeof builder.awaited.equiv.noExcess = builder.awaited.equiv.noExcess
+const noExcessAs_: typeof builder.awaited.equiv.noExcessAs = builder.awaited.equiv.noExcessAs
 
 export {
-  of_ as of,
-  string_ as string,
-  number_ as number,
+  any_ as any,
   bigint_ as bigint,
   boolean_ as boolean,
-  true_ as true,
-  false_ as false,
-  undefined_ as undefined,
-  null_ as null,
-  symbol_ as symbol,
   Date_ as Date,
-  RegExp_ as RegExp,
   Error_ as Error,
-  unknown_ as unknown,
-  any_ as any,
+  false_ as false,
   never_ as never,
-  ofAs_ as ofAs,
   noExcess_ as noExcess,
   noExcessAs_ as noExcessAs,
+  null_ as null,
+  number_ as number,
+  of_ as of,
+  ofAs_ as ofAs,
+  RegExp_ as RegExp,
+  string_ as string,
+  symbol_ as symbol,
+  true_ as true,
+  undefined_ as undefined,
+  unknown_ as unknown,
 }

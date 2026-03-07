@@ -34,15 +34,15 @@ export const getNames = (parameter: Parameter): readonly string[] => {
 
 type NameHit =
   | {
-    kind: 'long' | 'longAlias'
-    /**
-     * Was the given name in negated format? e.g. noFoo instead of foo
-     */
-    negated: boolean
-  }
+      kind: 'long' | 'longAlias'
+      /**
+       * Was the given name in negated format? e.g. noFoo instead of foo
+       */
+      negated: boolean
+    }
   | {
-    kind: 'short' | 'shortAlias'
-  }
+      kind: 'short' | 'shortAlias'
+    }
 
 /**
  * Is one of the parameter's names the given name?
@@ -96,11 +96,11 @@ const parameterSpecHasNameDo = (
   return parameter.name.long === name
     ? { kind: `long`, negated }
     : parameter.name.aliases.long.includes(name)
-    ? { kind: `longAlias`, negated }
-    // Short names cannot be negated currently so short circuit with the negated check.
-    : parameter.name.short === name
-    ? { kind: `short` }
-    : parameter.name.aliases.short.includes(name)
-    ? { kind: `shortAlias` }
-    : null
+      ? { kind: `longAlias`, negated }
+      : // Short names cannot be negated currently so short circuit with the negated check.
+        parameter.name.short === name
+        ? { kind: `short` }
+        : parameter.name.aliases.short.includes(name)
+          ? { kind: `shortAlias` }
+          : null
 }

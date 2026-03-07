@@ -1,18 +1,12 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "composite": true,
+    "composite": false,
     "noEmit": false,
     "allowImportingTsExtensions": false,
-    "declaration": true,
-    "declarationMap": true,
+    "declaration": false,
+    "declarationMap": false,
     "rewriteRelativeImportExtensions": true
   },
-  "exclude": [
-    "build",
-    "node_modules",
-    "**/*.test.ts",
-    "**/*.test-d.ts",
-    "**/*.bench-d.ts"
-  ]
+  "exclude": ["build", "node_modules", "**/*.test.ts", "**/*.test-d.ts", "**/*.bench-d.ts"]
 }

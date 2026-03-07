@@ -97,12 +97,15 @@ When adding `toString()` to a Schema class, whitelist it in lint config to allow
 // .oxlintrc.json (or eslint equivalent)
 {
   "rules": {
-    "typescript/restrict-template-expressions": ["error", {
-      "allow": [
-        { "from": "file", "name": ["Gitignore", "AbsDir", "Version"] },
-        { "from": "package", "name": "Gitignore", "package": "@kitz/git" }
-      ]
-    }]
+    "typescript/restrict-template-expressions": [
+      "error",
+      {
+        "allow": [
+          { "from": "file", "name": ["Gitignore", "AbsDir", "Version"] },
+          { "from": "package", "name": "Gitignore", "package": "@kitz/git" }
+        ]
+      }
+    ]
   }
 }
 ```
@@ -189,9 +192,7 @@ Parent's string format genuinely contains child's string as substring.
 
 ```typescript
 // Format: "config:child-string:options"
-class Parent
-  extends S.Class<Parent>('Parent')({ child: Child, options: S.String })
-{
+class Parent extends S.Class<Parent>('Parent')({ child: Child, options: S.String }) {
   static Schema = S.transform(S.String, Parent, {
     decode: (s) => {
       const [_, childStr, options] = s.split(':')

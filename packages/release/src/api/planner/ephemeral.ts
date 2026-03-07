@@ -65,7 +65,7 @@ export const ephemeral = (
   ReleaseError | Git.GitError | Git.GitParseError | Resource.ResourceError,
   Git.Git | FileSystem.FileSystem | Env.Env
 > =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const git = yield* Git.Git
     const env = yield* Env.Env
 
@@ -96,11 +96,13 @@ export const ephemeral = (
       // Find existing ephemeral releases for this PR
       const prReleaseNumber = findLatestPrNumber(impact.package.name, prNumber, [...analysis.tags])
 
-      releases.push(Ephemeral.make({
-        package: impact.package,
-        prerelease: Version.Ephemeral.make({ prNumber, iteration: prReleaseNumber + 1, sha }),
-        commits: impact.commits,
-      }))
+      releases.push(
+        Ephemeral.make({
+          package: impact.package,
+          prerelease: Version.Ephemeral.make({ prNumber, iteration: prReleaseNumber + 1, sha }),
+          commits: impact.commits,
+        }),
+      )
     }
 
     // 4. Detect cascade releases

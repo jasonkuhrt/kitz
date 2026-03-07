@@ -91,16 +91,14 @@ class Footer extends Schema.Class<Footer>('Footer')({
 // Example: "feat(core, utils): add helper functions"
 // All scopes treated uniformly — same type, same breaking indicator
 
-class SingleTargetCommit
-  extends Schema.TaggedClass<SingleTargetCommit>()('SingleTarget', {
-    type: Schema.String, // "feat", "fix", etc.
-    scopes: Schema.Array(Schema.String), // can be multiple, but uniform treatment
-    breaking: Schema.Boolean, // applies to ALL scopes
-    message: Schema.String,
-    body: Schema.OptionFromNullOr(Schema.String),
-    footers: Schema.Array(Footer),
-  })
-{}
+class SingleTargetCommit extends Schema.TaggedClass<SingleTargetCommit>()('SingleTarget', {
+  type: Schema.String, // "feat", "fix", etc.
+  scopes: Schema.Array(Schema.String), // can be multiple, but uniform treatment
+  breaking: Schema.Boolean, // applies to ALL scopes
+  message: Schema.String,
+  body: Schema.OptionFromNullOr(Schema.String),
+  footers: Schema.Array(Footer),
+}) {}
 
 // === Multi-Target Commit (extended CC for monorepos) ===
 // Example: "feat(core!), fix(arr): breaking core change with arr fix"
@@ -117,17 +115,16 @@ class TargetSection extends Schema.Class<TargetSection>('TargetSection')({
   footers: Schema.Array(Footer), // including BREAKING CHANGE
 }) {}
 
-class MultiTargetCommit
-  extends Schema.TaggedClass<MultiTargetCommit>()('MultiTarget', {
-    targets: Schema.NonEmptyArray(Target),
-    message: Schema.String,
-    summary: Schema.OptionFromNullOr(Schema.String), // text before any ## heading
-    sections: Schema.Record({ // keyed by scope name
-      key: Schema.String,
-      value: TargetSection,
-    }),
-  })
-{}
+class MultiTargetCommit extends Schema.TaggedClass<MultiTargetCommit>()('MultiTarget', {
+  targets: Schema.NonEmptyArray(Target),
+  message: Schema.String,
+  summary: Schema.OptionFromNullOr(Schema.String), // text before any ## heading
+  sections: Schema.Record({
+    // keyed by scope name
+    key: Schema.String,
+    value: TargetSection,
+  }),
+}) {}
 
 // === Union ===
 const ConventionalCommit = Schema.Union(SingleTargetCommit, MultiTargetCommit)

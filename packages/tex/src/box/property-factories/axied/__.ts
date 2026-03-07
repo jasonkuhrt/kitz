@@ -30,7 +30,8 @@ export type Logical<$value> = {
  * ```
  */
 export const Class =
-  <Self = never>(identifier: string) => <$valueSchema extends S.Schema.All>(valueSchema: $valueSchema) =>
+  <Self = never>(identifier: string) =>
+  <$valueSchema extends S.Schema.All>(valueSchema: $valueSchema) =>
     S.Class<Self>(identifier)({
       main: S.optional(valueSchema),
       cross: S.optional(valueSchema),
@@ -111,6 +112,7 @@ export const fromInput = <$valueSchema extends S.Schema.Any>(valueSchema: $value
     {
       strict: false,
       decode: (input) => ParseResult.succeed(parse(input as Input<S.Schema.Type<$valueSchema>>)),
-      encode: (value, _, ast) => ParseResult.fail(new ParseResult.Forbidden(ast, value, 'One-way transformation')),
+      encode: (value, _, ast) =>
+        ParseResult.fail(new ParseResult.Forbidden(ast, value, 'One-way transformation')),
     },
   )

@@ -6,7 +6,7 @@ export type PropertySignature = {
 }
 
 export namespace PropertySignature {
-  // dprint-ignore
+  // oxfmt-ignore
   export type ToProperty<$PropertySignature extends PropertySignature> =
     $PropertySignature['optional'] extends true
     ? {

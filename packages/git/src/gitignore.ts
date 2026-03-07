@@ -38,6 +38,12 @@ const modifyAt = <T>(arr: readonly T[], index: number, fn: (item: T) => T): T[] 
   return result
 }
 
+const remakeSection = (section: Section, entries: readonly Entry[]): Section =>
+  Section.make({
+    comments: section.comments,
+    entries: [...entries],
+  })
+
 // ─── Internal Schemas ─────────────────────────────────────────────────────────
 
 /**
@@ -125,10 +131,12 @@ const parse = (content: string): Gitignore => {
 
   const flushSection = () => {
     if (currentComments.length > 0 || currentEntries.length > 0) {
-      sections.push(Section.make({
-        comments: currentComments,
-        entries: currentEntries,
-      }))
+      sections.push(
+        Section.make({
+          comments: currentComments,
+          entries: currentEntries,
+        }),
+      )
       currentComments = []
       currentEntries = []
     }
@@ -244,15 +252,11 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
    * const output = Schema.encodeSync(Git.Gitignore.Schema)(gitignore)
    * ```
    */
-  static Schema: S.Schema<Gitignore, string> = S.transform(
-    S.String,
-    Gitignore,
-    {
-      strict: true,
-      decode: (content) => parse(content) as any,
-      encode: (gitignore) => toStringGitignore(gitignore as any),
-    },
-  ) as any
+  static Schema: S.Schema<Gitignore, string> = S.transform(S.String, Gitignore, {
+    strict: true,
+    decode: (content) => parse(content) as any,
+    encode: (gitignore) => toStringGitignore(gitignore as any),
+  }) as any
 
   // ─── Resource ──────────────────────────────────────────────────────────────
 
@@ -362,15 +366,15 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
     const newEntry = Entry.make({ pattern: normalized, negated })
 
     if (sectionHeader !== undefined) {
-      const sectionIndex = gitignore.sections.findIndex((s) => s.comments.some((c) => c.includes(sectionHeader)))
+      const sectionIndex = gitignore.sections.findIndex((s) =>
+        s.comments.some((c) => c.includes(sectionHeader)),
+      )
 
       if (sectionIndex >= 0) {
         return Gitignore.make({
           sections: modifyAt(gitignore.sections, sectionIndex, (section) =>
-            Section.make({
-              ...section,
-              entries: [...section.entries, newEntry],
-            })),
+            remakeSection(section, [...section.entries, newEntry]),
+          ),
         })
       } else {
         const newSection = Section.make({
@@ -392,10 +396,8 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
     const lastIndex = gitignore.sections.length - 1
     return Gitignore.make({
       sections: modifyAt(gitignore.sections, lastIndex, (section) =>
-        Section.make({
-          ...section,
-          entries: [...section.entries, newEntry],
-        })),
+        remakeSection(section, [...section.entries, newEntry]),
+      ),
     })
   }
 
@@ -411,12 +413,7 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
 
     return Gitignore.make({
       sections: gitignore.sections
-        .map((section) =>
-          Section.make({
-            ...section,
-            entries: section.entries.filter((e) => e.pattern !== normalized),
-          })
-        )
+        .map((section) => remakeSection(section, section.entries.filter((e) => e.pattern !== normalized)))
         .filter((s) => s.entries.length > 0 || s.comments.length > 0),
     })
   }

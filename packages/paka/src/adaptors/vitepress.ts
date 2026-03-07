@@ -48,7 +48,7 @@ const deriveModuleName = (path: string): string => {
   // Convert kebab-case to PascalCase
   return withoutLeadingDot
     .split('-')
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join('')
 }
 
@@ -123,7 +123,9 @@ const getEntrypointModuleName = (entrypoint: Entrypoint): string =>
   entrypoint._tag === 'SimpleEntrypoint' ? entrypoint.moduleName : deriveModuleName(entrypoint.path)
 
 const getEntrypointKebabName = (entrypoint: Entrypoint): string =>
-  entrypoint._tag === 'SimpleEntrypoint' ? entrypoint.kebabName : Md.kebab(getEntrypointModuleName(entrypoint))
+  entrypoint._tag === 'SimpleEntrypoint'
+    ? entrypoint.kebabName
+    : Md.kebab(getEntrypointModuleName(entrypoint))
 
 const getEntrypointImportExamples = (
   entrypoint: Entrypoint,
@@ -338,18 +340,23 @@ const generateApiIndex = (model: InterfaceModel): string => {
       : ''
 
     // Find namespace exports
-    const namespaceExports = entrypoint.module.namespaceExports
-      .sort((a, b) => a.name.localeCompare(b.name))
+    const namespaceExports = entrypoint.module.namespaceExports.sort((a, b) =>
+      a.name.localeCompare(b.name),
+    )
 
     // Build namespace list if any exist
-    const namespaceList = namespaceExports.length > 0
-      ? '\n\n' + namespaceExports.map((ns) => {
-        const nsUrl = `/api/${Md.kebab(moduleName)}/${ns.name.toLowerCase()}`
-        const nsLink = Md.link(nsUrl, Md.code(ns.name))
-        const nsDesc = ns.docs?.description ? ` - ${ns.docs.description}` : ''
-        return Md.listItem(`${nsLink}${nsDesc}`)
-      }).join('\n')
-      : ''
+    const namespaceList =
+      namespaceExports.length > 0
+        ? '\n\n' +
+          namespaceExports
+            .map((ns) => {
+              const nsUrl = `/api/${Md.kebab(moduleName)}/${ns.name.toLowerCase()}`
+              const nsLink = Md.link(nsUrl, Md.code(ns.name))
+              const nsDesc = ns.docs?.description ? ` - ${ns.docs.description}` : ''
+              return Md.listItem(`${nsLink}${nsDesc}`)
+            })
+            .join('\n')
+        : ''
 
     return `## ${Md.link(url, moduleName)}
 
@@ -421,7 +428,11 @@ const generatePages = (model: InterfaceModel): Page[] => {
 /**
  * Recursively generate pages for namespace exports.
  */
-const generateNamespacePages = (entrypoint: Entrypoint, module: Module, breadcrumbs: string[]): Page[] => {
+const generateNamespacePages = (
+  entrypoint: Entrypoint,
+  module: Module,
+  breadcrumbs: string[],
+): Page[] => {
   const pages: Page[] = []
 
   const namespaceExports = module.namespaceExports
@@ -485,10 +496,7 @@ const generatePageContent = (page: Page, context: Context): string => {
   if (pageType === 'overview') {
     const description = module.docs?.description || ''
     const guide = module.docs?.guide ? `\n\n${module.docs.guide}` : ''
-    return Md.sections(
-      Md.heading(1, breadcrumbs.join('.')),
-      description + guide,
-    )
+    return Md.sections(Md.heading(1, breadcrumbs.join('.')), description + guide)
   }
 
   // Handle exports pages (skip README)
@@ -554,24 +562,26 @@ const generateLandingPage = (page: Page, context: Context): string => {
   const heroText = home.hero?.text ?? ''
   const heroTagline = home.hero?.tagline ?? ''
 
-  const features = home.highlights?.map((h: Feature) => ({
-    title: h.title,
-    details: h.body,
-  })) ?? []
+  const features =
+    home.highlights?.map((h: Feature) => ({
+      title: h.title,
+      details: h.body,
+    })) ?? []
 
   // Build body content
   const regularExports = module.regularExports
   const contextWithBreadcrumbs = { ...context, breadcrumbs }
 
-  const bodyContent = home.body
-    ?.map((section: BodySection) => {
-      if (section._tag === 'exports') {
-        return renderExportsSection(regularExports, contextWithBreadcrumbs)
-      } else {
-        return `## ${section.title}\n\n${section.body}`
-      }
-    })
-    .join('\n\n') ?? ''
+  const bodyContent =
+    home.body
+      ?.map((section: BodySection) => {
+        if (section._tag === 'exports') {
+          return renderExportsSection(regularExports, contextWithBreadcrumbs)
+        } else {
+          return `## ${section.title}\n\n${section.body}`
+        }
+      })
+      .join('\n\n') ?? ''
 
   // Combine frontmatter + body
   const frontmatterYaml = [
@@ -585,18 +595,16 @@ const generateLandingPage = (page: Page, context: Context): string => {
     `  tagline: ${JSON.stringify(heroTagline)}`,
     '',
     'features:',
-    ...features.map((f: { title: string; details: string }) => [
-      `  - title: ${JSON.stringify(f.title)}`,
-      `    details: ${JSON.stringify(f.details)}`,
-    ]).flat(),
+    ...features
+      .map((f: { title: string; details: string }) => [
+        `  - title: ${JSON.stringify(f.title)}`,
+        `    details: ${JSON.stringify(f.details)}`,
+      ])
+      .flat(),
     '---',
   ].join('\n')
 
-  return [
-    frontmatterYaml,
-    '',
-    bodyContent,
-  ].join('\n')
+  return [frontmatterYaml, '', bodyContent].join('\n')
 }
 
 /**
@@ -613,10 +621,7 @@ const renderImportSection = (
 
   // Single import example - use code fence
   if (importExamples.length === 1) {
-    return Md.sections(
-      Md.heading(2, 'Import'),
-      Md.codeFence(importExamples[0]!.content),
-    )
+    return Md.sections(Md.heading(2, 'Import'), Md.codeFence(importExamples[0]!.content))
   }
 
   // Multiple import examples - use code group with tabs
@@ -643,11 +648,7 @@ const renderNamespacesSection = (namespaces: ValueExport[], breadcrumbs: string[
   })
 
   // Build complete table as single string (no blank lines within table)
-  const table = [
-    '| Namespace | Description |',
-    '|-----------|-------------|',
-    ...rows,
-  ].join('\n')
+  const table = ['| Namespace | Description |', '|-----------|-------------|', ...rows].join('\n')
 
   return Md.sections(Md.heading(2, 'Namespaces'), table)
 }
@@ -689,20 +690,33 @@ const renderExportsSection = (exports: Export[], context: Context): string => {
   }
 
   // Traditional type-based grouping
-  const functions = exports.filter((e): e is ValueExport => e._tag === 'value' && e.type === 'function')
-  const constants = exports.filter((e): e is ValueExport => e._tag === 'value' && e.type === 'const')
+  const functions = exports.filter(
+    (e): e is ValueExport => e._tag === 'value' && e.type === 'function',
+  )
+  const constants = exports.filter(
+    (e): e is ValueExport => e._tag === 'value' && e.type === 'const',
+  )
   const classes = exports.filter((e): e is ValueExport => e._tag === 'value' && e.type === 'class')
   const types = exports.filter((e): e is TypeExport => e._tag === 'type')
 
   return Md.sections(
     functions.length > 0
-      ? Md.sections(Md.heading(2, 'Functions'), functions.map((e) => renderExport(e, context)).join('\n\n'))
+      ? Md.sections(
+          Md.heading(2, 'Functions'),
+          functions.map((e) => renderExport(e, context)).join('\n\n'),
+        )
       : '',
     constants.length > 0
-      ? Md.sections(Md.heading(2, 'Constants'), constants.map((e) => renderExport(e, context)).join('\n\n'))
+      ? Md.sections(
+          Md.heading(2, 'Constants'),
+          constants.map((e) => renderExport(e, context)).join('\n\n'),
+        )
       : '',
     classes.length > 0
-      ? Md.sections(Md.heading(2, 'Classes'), classes.map((e) => renderExport(e, context)).join('\n\n'))
+      ? Md.sections(
+          Md.heading(2, 'Classes'),
+          classes.map((e) => renderExport(e, context)).join('\n\n'),
+        )
       : '',
     types.length > 0
       ? Md.sections(Md.heading(2, 'Types'), types.map((e) => renderExport(e, context)).join('\n\n'))
@@ -757,16 +771,18 @@ const renderExport = (exp: Export, context: Context): string => {
   const description = exp.docs?.description ? transformMarkdown(exp.docs.description) : ''
   const guide = exp.docs?.guide ? `\n\n${transformMarkdown(exp.docs.guide)}` : ''
 
-  const examples = exp.examples.length > 0
-    ? `**Examples:**\n\n${exp.examples.map((ex) => renderExample(ex, exp.name, context)).join('\n\n')}`
-    : ''
+  const examples =
+    exp.examples.length > 0
+      ? `**Examples:**\n\n${exp.examples.map((ex) => renderExample(ex, exp.name, context)).join('\n\n')}`
+      : ''
 
   // Build heading with type icon (using backticks for monospace)
   const typeIcon = exp.typeIcon
   // Source link inline with heading - icon-only, right-aligned
-  const sourceLink = context.githubUrl && exp.sourceLocation
-    ? `<SourceLink inline href="${context.githubUrl}/blob/main/${exp.sourceLocation.file}#L${exp.sourceLocation.line}" />`
-    : ''
+  const sourceLink =
+    context.githubUrl && exp.sourceLocation
+      ? `<SourceLink inline href="${context.githubUrl}/blob/main/${Fs.Path.toString(exp.sourceLocation.file)}#L${exp.sourceLocation.line}" />`
+      : ''
 
   // Normalize type icon for anchor ID (handles duplicate names with different types)
   const typeIconNormalized = typeIcon.toLowerCase().replace('∩', 'intersection')
@@ -777,9 +793,9 @@ const renderExport = (exp: Export, context: Context): string => {
 
   const heading = Md.heading(
     3,
-    `<span style="opacity: 0.6; font-weight: normal; font-size: 0.85em;">\`[${typeIcon}]\`</span> ${
-      Md.code(exp.name)
-    }${sourceLink} {#${anchorId}}`,
+    `<span style="opacity: 0.6; font-weight: normal; font-size: 0.85em;">\`[${typeIcon}]\`</span> ${Md.code(
+      exp.name,
+    )}${sourceLink} {#${anchorId}}`,
   )
 
   // Render signature - use simple signature if available, with full signature in toggle
@@ -943,15 +959,19 @@ const renderSignatureDetails = (sig: SignatureModel): string => {
 /**
  * Render type parameters to string (e.g., "<T, U extends string>").
  */
-const renderTypeParameters = (typeParams: readonly typeof import('../schema.js').TypeParameter.Type[]): string => {
+const renderTypeParameters = (
+  typeParams: readonly (typeof import('../schema.js').TypeParameter.Type)[],
+): string => {
   if (typeParams.length === 0) return ''
 
-  const rendered = typeParams.map((tp) => {
-    let text = tp.name
-    if (tp.constraint) text += ` extends ${tp.constraint}`
-    if (tp.default) text += ` = ${tp.default}`
-    return text
-  }).join(', ')
+  const rendered = typeParams
+    .map((tp) => {
+      let text = tp.name
+      if (tp.constraint) text += ` extends ${tp.constraint}`
+      if (tp.default) text += ` = ${tp.default}`
+      return text
+    })
+    .join(', ')
 
   return `<${rendered}>`
 }
@@ -959,16 +979,20 @@ const renderTypeParameters = (typeParams: readonly typeof import('../schema.js')
 /**
  * Render function parameters to string (e.g., "a: number, b?: string").
  */
-const renderParameters = (params: readonly typeof import('../schema.js').Parameter.Type[]): string => {
-  return params.map((param) => {
-    let text = ''
-    if (param.rest) text += '...'
-    text += param.name
-    if (param.optional) text += '?'
-    text += `: ${param.type}`
-    if (param.defaultValue) text += ` = ${param.defaultValue}`
-    return text
-  }).join(', ')
+const renderParameters = (
+  params: readonly (typeof import('../schema.js').Parameter.Type)[],
+): string => {
+  return params
+    .map((param) => {
+      let text = ''
+      if (param.rest) text += '...'
+      text += param.name
+      if (param.optional) text += '?'
+      text += `: ${param.type}`
+      if (param.defaultValue) text += ` = ${param.defaultValue}`
+      return text
+    })
+    .join(', ')
 }
 
 /**
@@ -979,11 +1003,13 @@ const renderSignature = (sig: SignatureModel): string => {
     Match.tags({
       FunctionSignatureModel: (fnSig) => {
         // Render all overloads
-        return fnSig.overloads.map((overload) => {
-          const typeParams = renderTypeParameters(overload.typeParameters)
-          const params = renderParameters(overload.parameters)
-          return `${typeParams}(${params}): ${overload.returnType}`
-        }).join('\n')
+        return fnSig.overloads
+          .map((overload) => {
+            const typeParams = renderTypeParameters(overload.typeParameters)
+            const params = renderParameters(overload.parameters)
+            return `${typeParams}(${params}): ${overload.returnType}`
+          })
+          .join('\n')
       },
       BuilderSignatureModel: (builderSig) => {
         // Render builder entry point

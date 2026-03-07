@@ -1,6 +1,13 @@
 import { Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
-import { HasDiff, HasGitHubAccess, HasOpenPR, HasReleasePlan, IsMonorepo, Precondition } from './precondition.js'
+import {
+  HasDiff,
+  HasGitHubAccess,
+  HasOpenPR,
+  HasReleasePlan,
+  IsMonorepo,
+  Precondition,
+} from './precondition.js'
 
 describe('Precondition variants', () => {
   test('HasOpenPR', () => {

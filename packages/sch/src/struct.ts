@@ -15,9 +15,7 @@ export type TaggedStruct = { [_ in TagPropertyName]: string }
 /**
  * Check if a value is a tagged struct.
  */
-export const isTagged = (
-  value: unknown,
-): value is TaggedStruct => {
+export const isTagged = (value: unknown): value is TaggedStruct => {
   return typeof value === 'object' && value !== null && tagPropertyName in value
 }
 
@@ -44,9 +42,7 @@ export const extractFields = <
   schema: S.Struct<$Fields> | S.TaggedStruct<any, $Fields>,
   keys: $Keys,
 ): Pick<$Fields, $Keys[number]> => {
-  const result = Object.fromEntries(
-    keys.map(key => [key, schema.fields[key]]),
-  )
+  const result = Object.fromEntries(keys.map((key) => [key, schema.fields[key]]))
 
   return result as Pick<$Fields, $Keys[number]>
 }
@@ -54,9 +50,8 @@ export const extractFields = <
 // Type utilities
 export type AnyStruct = S.Struct<any>
 
-export type ExtractFields<
-  $Struct extends S.Struct<any>,
-> = $Struct extends S.Struct<infer __fields__> ? __fields__ : never
+export type ExtractFields<$Struct extends S.Struct<any>> =
+  $Struct extends S.Struct<infer __fields__> ? __fields__ : never
 
 // Literal field utilities
 
@@ -74,7 +69,7 @@ export const pickLiteral1FieldsAsLiterals = <schema extends AnyStruct>(
   const picked = {}
   const ast = schema.ast
   if (isTypeLiteral(ast)) {
-    ast.propertySignatures.forEach(prop => {
+    ast.propertySignatures.forEach((prop) => {
       if (isLiteral(prop.type) && prop.name !== '_tag') {
         // @ts-expect-error - Extract the literal value, not the schema
         picked[prop.name] = prop.type.literal
@@ -90,7 +85,7 @@ export const pickLiteral1Fields = <schema extends AnyStruct>(
   const picked = {}
   const ast = schema.ast
   if (isTypeLiteral(ast)) {
-    ast.propertySignatures.forEach(prop => {
+    ast.propertySignatures.forEach((prop) => {
       if (isLiteral(prop.type)) {
         // @ts-expect-error
         picked[prop.name] = schema.fields[prop.name]
@@ -101,31 +96,33 @@ export const pickLiteral1Fields = <schema extends AnyStruct>(
 }
 
 export type PickLiteral1Fields<$Schema extends AnyStruct> = {
-  [k in keyof ExtractFields<$Schema>]: ExtractFields<$Schema>[k] extends S.Literal<infer __literals__ extends [string]>
+  [k in keyof ExtractFields<$Schema>]: ExtractFields<$Schema>[k] extends S.Literal<
+    infer __literals__ extends [string]
+  >
     ? ExtractFields<$Schema>[k]
     : never
 }
 
 export type OmitLiteral1Fields<$Schema extends AnyStruct> = {
-  [k in keyof ExtractFields<$Schema>]: ExtractFields<$Schema>[k] extends S.Literal<infer __literals__ extends [string]>
+  [k in keyof ExtractFields<$Schema>]: ExtractFields<$Schema>[k] extends S.Literal<
+    infer __literals__ extends [string]
+  >
     ? never
     : ExtractFields<$Schema>[k]
 }
 
 export type GetLiteral1FieldsNames<$Schema extends AnyStruct> = keyof PickLiteral1Fields<$Schema>
 
-export type ConstructorFieldsUsingOmitLiteral1Algo<$Schema extends AnyStruct> = $Schema extends
-  S.Struct<infer __fields__> ? S.Struct.Constructor<Omit<__fields__, GetLiteral1FieldsNames<$Schema>>>
-  : never
+export type ConstructorFieldsUsingOmitLiteral1Algo<$Schema extends AnyStruct> =
+  $Schema extends S.Struct<infer __fields__>
+    ? S.Struct.Constructor<Omit<__fields__, GetLiteral1FieldsNames<$Schema>>>
+    : never
 
 /**
  * Extract the literal value from a specific field in a schema.
  * Returns the exact literal type, not any.
  */
-export const getValueAtField = <
-  $Schema extends S.Schema.All,
-  $FieldName extends string,
->(
+export const getValueAtField = <$Schema extends S.Schema.All, $FieldName extends string>(
   schema: $Schema,
   fieldName: $FieldName,
 ): GetFieldLiteralType<$Schema, $FieldName> => {
@@ -139,7 +136,7 @@ export const getValueAtField = <
 
   // Find the field with the given name
   if (isTypeLiteral(resolved)) {
-    const field = resolved.propertySignatures.find(prop => prop.name === fieldName)
+    const field = resolved.propertySignatures.find((prop) => prop.name === fieldName)
     if (field && isLiteral(field.type)) {
       return field.type.literal as GetFieldLiteralType<$Schema, $FieldName>
     }
@@ -151,17 +148,18 @@ export const getValueAtField = <
 /**
  * Extract the type of a literal field from a schema.
  */
-export type GetFieldLiteralType<
-  $Schema extends S.Schema.All,
-  $FieldName extends string,
-> = $Schema extends S.TaggedStruct<any, infer $Fields>
-  ? $FieldName extends keyof $Fields
-    ? $Fields[$FieldName] extends S.PropertySignature<any, infer $Type, any, any, any, any, any> ? $Type
-    : $Fields[$FieldName] extends S.Literal<infer $Values> ? $Values extends readonly [infer $First, ...any[]] ? $First
+export type GetFieldLiteralType<$Schema extends S.Schema.All, $FieldName extends string> =
+  $Schema extends S.TaggedStruct<any, infer $Fields>
+    ? $FieldName extends keyof $Fields
+      ? $Fields[$FieldName] extends S.PropertySignature<any, infer $Type, any, any, any, any, any>
+        ? $Type
+        : $Fields[$FieldName] extends S.Literal<infer $Values>
+          ? $Values extends readonly [infer $First, ...any[]]
+            ? $First
+            : never
+          : never
       : never
     : never
-  : never
-  : never
 
 // ============================================================================
 // Required Fields Detection
@@ -249,7 +247,7 @@ export const hasRequiredFields = (schema: S.Schema.AnyNoContext): boolean => {
  * })>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type HasRequiredFields<$Schema extends S.Schema.AnyNoContext> =
   // Check if all keys of Encoded are optional by comparing with Partial
   {} extends S.Schema.Encoded<$Schema>

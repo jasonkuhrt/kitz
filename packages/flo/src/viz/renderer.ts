@@ -81,13 +81,15 @@ export const create = (config: Config): Renderer => {
   })
 
   // Determine renderers up-front based on config
-  const render = config.mode === 'dag'
-    ? () => Renderers.DagCompact.render(config.layers, config.edges ?? [], getState(), useColors)
-    : () => Renderers.List.render(config.activities, getState(), useColors)
+  const render =
+    config.mode === 'dag'
+      ? () => Renderers.DagCompact.render(config.layers, config.edges ?? [], getState(), useColors)
+      : () => Renderers.List.render(config.activities, getState(), useColors)
 
-  const renderFull = config.mode === 'dag'
-    ? () => Renderers.Dag.render(config.layers, config.edges ?? [], getState(), useColors)
-    : () => Renderers.List.render(config.activities, getState(), useColors)
+  const renderFull =
+    config.mode === 'dag'
+      ? () => Renderers.Dag.render(config.layers, config.edges ?? [], getState(), useColors)
+      : () => Renderers.List.render(config.activities, getState(), useColors)
 
   const update = (event: LifecycleEvent) =>
     Match.value(event).pipe(

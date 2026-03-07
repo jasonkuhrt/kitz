@@ -39,7 +39,9 @@ export const dateTime = (args: { precision: number | null; offset: boolean }) =>
       /**
        * @see https://regex101.com/r/MrD2xO/1
        */
-      return new RegExp(`^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(([+-]\\d{2}(:?\\d{2})?)|Z)$`)
+      return new RegExp(
+        `^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(([+-]\\d{2}(:?\\d{2})?)|Z)$`,
+      )
     } else {
       /**
        * @see https://regex101.com/r/2XwvdZ/1

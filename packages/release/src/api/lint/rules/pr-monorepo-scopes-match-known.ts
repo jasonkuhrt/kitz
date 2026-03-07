@@ -21,7 +21,7 @@ export const rule = RuntimeRule.create({
   id: RuleId.make('pr.monorepo.scopes.match-known'),
   description: 'Scope(s) exist in package map',
   preconditions: [Precondition.HasOpenPR.make(), Precondition.IsMonorepo.make()],
-  check: Effect.gen(function*() {
+  check: Effect.gen(function* () {
     const pr = yield* PrService
     const monorepo = yield* MonorepoService
     const scopes = getScopes(pr.commit)

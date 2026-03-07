@@ -1,5 +1,10 @@
 import { Str } from '@kitz/core'
-import type { CommitDisplay, Forecast, ForecastCascade, ForecastRelease } from '../forecaster/models.js'
+import type {
+  CommitDisplay,
+  Forecast,
+  ForecastCascade,
+  ForecastRelease,
+} from '../forecaster/models.js'
 import { renderTree } from '../renderer/tree.js'
 import type { PublishRecord, PublishState } from './metadata.js'
 import { renderMetadataBlock } from './metadata.js'
@@ -23,20 +28,19 @@ export interface RenderOptions {
  * Produces nested list format with checkboxes, commit SHA links,
  * official version projections, publish history, and embedded tree.
  */
-export const render = (
-  forecast: Forecast,
-  options?: RenderOptions,
-): string => {
+export const render = (forecast: Forecast, options?: RenderOptions): string => {
   const state = options?.publishState ?? 'idle'
   const publishHistory = options?.publishHistory ?? []
   const output = Str.Builder()
 
   // Metadata block (invisible HTML comments)
-  output(renderMetadataBlock({
-    headSha: forecast.headSha,
-    publishState: state,
-    publishHistory,
-  }))
+  output(
+    renderMetadataBlock({
+      headSha: forecast.headSha,
+      publishState: state,
+      publishHistory,
+    }),
+  )
   output``
 
   // Header
@@ -45,12 +49,13 @@ export const render = (
 
   // Summary line
   const totalPackages = forecast.releases.length + forecast.cascades.length
-  const headLink = `[\`${
-    forecast.headSha.slice(0, 7)
-  }\`](https://github.com/${forecast.owner}/${forecast.repo}/commit/${forecast.headSha})`
-  output`${String(totalPackages)} packages ${Str.Char.middleDot} ${
-    String(forecast.releases.length)
-  } primary ${Str.Char.middleDot} ${String(forecast.cascades.length)} cascades ${Str.Char.middleDot} head ${headLink}`
+  const headLink = `[\`${forecast.headSha.slice(
+    0,
+    7,
+  )}\`](https://github.com/${forecast.owner}/${forecast.repo}/commit/${forecast.headSha})`
+  output`${String(totalPackages)} packages ${Str.Char.middleDot} ${String(
+    forecast.releases.length,
+  )} primary ${Str.Char.middleDot} ${String(forecast.cascades.length)} cascades ${Str.Char.middleDot} head ${headLink}`
   output``
 
   // Status banner (if publishing/published/failed)
@@ -117,7 +122,9 @@ const renderReleaseItem = (
   const lines: string[] = []
 
   // Main line: checkbox + source link + package name + commit count
-  lines.push(`- [ ] ${sourceLink} **${name}** — ${commitCount} commit${commitCount === 1 ? '' : 's'}`)
+  lines.push(
+    `- [ ] ${sourceLink} **${name}** — ${commitCount} commit${commitCount === 1 ? '' : 's'}`,
+  )
 
   // Commit SHAs (indented)
   if (release.commits.length > 0) {
@@ -138,12 +145,11 @@ const renderReleaseItem = (
 }
 
 /** Render a single cascade release as a checkbox list item with trigger info. */
-const renderCascadeItem = (
-  cascade: ForecastCascade,
-): string => {
+const renderCascadeItem = (cascade: ForecastCascade): string => {
   const name = cascade.packageName
   const sourceLink = `[${Str.Char.blackSquare}](${cascade.sourceUrl})`
-  const viaStr = cascade.triggeredBy.length > 0 ? ` via \`${cascade.triggeredBy.join('`, `')}\`` : ''
+  const viaStr =
+    cascade.triggeredBy.length > 0 ? ` via \`${cascade.triggeredBy.join('`, `')}\`` : ''
   const versionStr = cascade.nextOfficialVersion.toString()
 
   const lines: string[] = []
@@ -176,19 +182,24 @@ const renderVersionLine = (release: ForecastRelease): string => {
 }
 
 /** Render previously published versions as npm links, latest first and bold. */
-const renderPublishedVersions = (versions: readonly PublishRecord[], packageName: string): string => {
+const renderPublishedVersions = (
+  versions: readonly PublishRecord[],
+  packageName: string,
+): string => {
   // Sort by iteration descending (latest first)
   const sorted = [...versions].sort((a, b) => b.iteration - a.iteration)
 
-  return sorted.map((v, i) => {
-    const npmUrl = `https://www.npmjs.com/package/${packageName}/v/${v.version}`
-    const label = shortPrVersion(v.version)
-    if (i === 0) {
-      // Latest version: bold
-      return `[**\`${label}\`**](${npmUrl})`
-    }
-    return `[\`${label}\`](${npmUrl})`
-  }).join(` ${Str.Char.middleDot} `)
+  return sorted
+    .map((v, i) => {
+      const npmUrl = `https://www.npmjs.com/package/${packageName}/v/${v.version}`
+      const label = shortPrVersion(v.version)
+      if (i === 0) {
+        // Latest version: bold
+        return `[**\`${label}\`**](${npmUrl})`
+      }
+      return `[\`${label}\`](${npmUrl})`
+    })
+    .join(` ${Str.Char.middleDot} `)
 }
 
 /**

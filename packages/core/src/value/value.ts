@@ -24,7 +24,10 @@ export type Lazy<$Value> = () => $Value
  *
  * @category Lazy Values
  */
-export const lazy = <const value>(value: value): Lazy<typeof value> => () => value
+export const lazy =
+  <const value>(value: value): Lazy<typeof value> =>
+  () =>
+    value
 
 /**
  * A value that may be either immediate or lazy.
@@ -41,7 +44,7 @@ export type LazyMaybe<$Value = unknown> = $Value | Lazy<$Value>
  *
  * @category Lazy Values
  */
-// dprint-ignore
+// oxfmt-ignore
 export type resolveLazy<$LazyMaybeValue extends LazyMaybe<any>> =
   $LazyMaybeValue extends Lazy<infer __value__> ? __value__ : $LazyMaybeValue
 
@@ -91,8 +94,10 @@ export const resolveLazy = <lazyMaybeValue extends LazyMaybe>(
  *
  * @category Lazy Values
  */
-export const resolveLazyFactory = <value>(lazyMaybeValue: LazyMaybe<value>) => (): value =>
-  resolveLazy(lazyMaybeValue) as any
+export const resolveLazyFactory =
+  <value>(lazyMaybeValue: LazyMaybe<value>) =>
+  (): value =>
+    resolveLazy(lazyMaybeValue) as any
 
 // Note: emptyArray and EmptyArray are exported from Arr module
 
@@ -110,9 +115,12 @@ export const resolveLazyFactory = <value>(lazyMaybeValue: LazyMaybe<value>) => (
  *
  * @category Utilities
  */
-export const identityProxy = new Proxy({}, {
-  get: () => identityProxy,
-})
+export const identityProxy = new Proxy(
+  {},
+  {
+    get: () => identityProxy,
+  },
+)
 
 /**
  * Type guard to check if a value is a symbol.

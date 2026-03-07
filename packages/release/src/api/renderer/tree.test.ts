@@ -50,6 +50,19 @@ const emptyForecast = Forecast.make({
   cascades: [],
 })
 
+const remakeForecast = (
+  forecast: Forecast,
+  overrides: Partial<Pick<Forecast, 'releases' | 'cascades'>>,
+): Forecast =>
+  Forecast.make({
+    owner: forecast.owner,
+    repo: forecast.repo,
+    branch: forecast.branch,
+    headSha: forecast.headSha,
+    releases: overrides.releases ?? forecast.releases,
+    cascades: overrides.cascades ?? forecast.cascades,
+  })
+
 // ── Tests ────────────────────────────────────────────────────────────
 
 describe('renderTree', () => {
@@ -60,8 +73,7 @@ describe('renderTree', () => {
   })
 
   test('single primary release', () => {
-    const f = Forecast.make({
-      ...emptyForecast,
+    const f = remakeForecast(emptyForecast, {
       releases: [makeRelease('@kitz/core', 'core', 'minor')],
     })
     const output = renderTree(f)
@@ -72,8 +84,7 @@ describe('renderTree', () => {
   })
 
   test('multiple primary releases sorted by commit count', () => {
-    const f = Forecast.make({
-      ...emptyForecast,
+    const f = remakeForecast(emptyForecast, {
       releases: [
         makeRelease('@kitz/core', 'core', 'minor', [makeCommit('aaa', 'feat', 'a')]),
         makeRelease('@kitz/cli', 'cli', 'patch', [
@@ -91,8 +102,7 @@ describe('renderTree', () => {
   })
 
   test('with cascades shows cascade section', () => {
-    const f = Forecast.make({
-      ...emptyForecast,
+    const f = remakeForecast(emptyForecast, {
       releases: [makeRelease('@kitz/core', 'core', 'minor')],
       cascades: [makeCascade('@kitz/cli', 'cli', ['@kitz/core'])],
     })
@@ -104,8 +114,7 @@ describe('renderTree', () => {
   })
 
   test('maxItems truncation', () => {
-    const f = Forecast.make({
-      ...emptyForecast,
+    const f = remakeForecast(emptyForecast, {
       releases: [
         makeRelease('@kitz/core', 'core', 'minor'),
         makeRelease('@kitz/cli', 'cli', 'patch'),
@@ -117,8 +126,7 @@ describe('renderTree', () => {
   })
 
   test('breaking commit shown with !', () => {
-    const f = Forecast.make({
-      ...emptyForecast,
+    const f = remakeForecast(emptyForecast, {
       releases: [
         makeRelease('@kitz/core', 'core', 'major', [
           makeCommit('abc1234', 'feat', 'remove old API', true),

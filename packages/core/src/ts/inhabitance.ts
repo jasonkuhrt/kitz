@@ -86,13 +86,13 @@ export type IsAnyOrUnknown<T> = unknown extends T ? true : false
  * >
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type IsAnyOrUnknownOrNever<T> =
   [T] extends [never] ? true /* never */ :
   unknown extends T   ? true /* any or unknown, we don't care which */
                       : false
 
-// dprint-ignore
+// oxfmt-ignore
 export type GetCase<T> =
     [T] extends [never]   ? Case.Never :
     unknown extends T     ? (
@@ -102,11 +102,7 @@ export type GetCase<T> =
                             )
                           : Case.Proper
 
-export type Case =
-  | Case.Any
-  | Case.Unknown
-  | Case.Never
-  | Case.Proper
+export type Case = Case.Any | Case.Unknown | Case.Never | Case.Proper
 
 export namespace Case {
   export type Any = 'any'
@@ -139,7 +135,7 @@ export namespace Case {
  * >
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type IsEmpty<$T> =
   $T extends readonly [] ? true :
   $T extends '' ? true :

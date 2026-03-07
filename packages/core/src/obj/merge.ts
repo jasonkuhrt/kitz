@@ -37,7 +37,7 @@ interface MergeOptions {
  * // Returns: { items: [1, 2, 3, 4] }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 /*@__NO_SIDE_EFFECTS__*/
 export const mergeWith =
 	(mergers?: MergeOptions) =>
@@ -77,7 +77,8 @@ export const mergeWith =
  * // Returns: { tags: ['c', 'd'] }
  * ```
  */
-export const merge: <obj1 extends Any, obj2 extends Any>(obj1: obj1, obj2: obj2) => obj1 & obj2 = mergeWith() as any
+export const merge: <obj1 extends Any, obj2 extends Any>(obj1: obj1, obj2: obj2) => obj1 & obj2 =
+  mergeWith() as any
 
 /**
  * Deep merge two objects with special handling for arrays.
@@ -171,10 +172,7 @@ export const mergeWithArrayPushDedupe = mergeWith({
  * // Returns: { port: 3000, host: 'localhost', debug: false }
  * ```
  */
-export const mergeDefaults: <
-  obj1 extends Any,
-  obj1Defaults extends Partial<obj1>,
->(
+export const mergeDefaults: <obj1 extends Any, obj1Defaults extends Partial<obj1>>(
   obj1: obj1,
   obj1Defaults: obj1Defaults,
 ) => Ts.Simplify.Top<obj1 & obj1Defaults> = mergeWith({ defaults: true }) as any
@@ -256,7 +254,7 @@ export const spreadShallow = <$Objects extends readonly (object | undefined)[]>(
   return result
 }
 
-// dprint-ignore
+// oxfmt-ignore
 export type MergeShallow<
   $Object1 extends Any,
   $Object2 extends Any,
@@ -282,7 +280,7 @@ export type MergeShallow<
  * // Result: { a: string; b: number; c: boolean }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type MergeAllShallow<$Objects extends readonly object[]> =
   $Objects extends readonly [infer $First extends object, ...infer $Rest extends object[]]
     ? $Rest extends readonly []
@@ -302,8 +300,11 @@ export type MergeAllShallow<$Objects extends readonly object[]> =
  * // Result: { a: string; b: number }
  * ```
  */
-export type MergeAll<$Objects extends object[]> = $Objects extends
-  [infer __first__ extends object, ...infer __rest__ extends object[]] ? __first__ & MergeAll<__rest__>
+export type MergeAll<$Objects extends object[]> = $Objects extends [
+  infer __first__ extends object,
+  ...infer __rest__ extends object[],
+]
+  ? __first__ & MergeAll<__rest__>
   : {}
 
 /**
@@ -318,11 +319,12 @@ export type MergeAll<$Objects extends object[]> = $Objects extends
  * // Result: { id: string; name: string; age: number }
  * ```
  */
-export type ReplaceProperty<$Obj extends object, $Key extends keyof $Obj, $NewType> =
-  & Omit<$Obj, $Key>
-  & {
-    [_ in $Key]: $NewType
-  }
+export type ReplaceProperty<$Obj extends object, $Key extends keyof $Obj, $NewType> = Omit<
+  $Obj,
+  $Key
+> & {
+  [_ in $Key]: $NewType
+}
 
 /**
  * Replace properties in an object type with new types.

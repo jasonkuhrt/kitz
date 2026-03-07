@@ -174,10 +174,9 @@ const compileArrayConstraint = (constraint: ArrayConstraint): S.Schema.Any => {
   if (constraint.$some !== undefined) {
     const elementSchema = toSchema(constraint.$some)
     schema = schema.pipe(
-      S.filter(
-        (arr: unknown[]) => arr.some((el) => S.is(elementSchema)(el)),
-        { message: () => `Array must have at least one element matching the pattern` },
-      ),
+      S.filter((arr: unknown[]) => arr.some((el) => S.is(elementSchema)(el)), {
+        message: () => `Array must have at least one element matching the pattern`,
+      }),
     )
   }
 
@@ -216,10 +215,9 @@ const compileCombinator = (combinator: Combinator): S.Schema.Any => {
   if (combinator.$not !== undefined) {
     const innerSchema = toSchema(combinator.$not)
     return S.Unknown.pipe(
-      S.filter(
-        (value) => !S.is(innerSchema)(value),
-        { message: () => `Value must not match the negated pattern` },
-      ),
+      S.filter((value) => !S.is(innerSchema)(value), {
+        message: () => `Value must not match the negated pattern`,
+      }),
     ) as any
   }
 
@@ -267,8 +265,11 @@ export const toSchema = (pattern: unknown): S.Schema.Any => {
 
   // Primitive literals
   if (
-    Str.is(pattern) || Num.is(pattern) || typeof pattern === 'boolean' || typeof pattern === 'bigint'
-    || pattern === null
+    Str.is(pattern) ||
+    Num.is(pattern) ||
+    typeof pattern === 'boolean' ||
+    typeof pattern === 'bigint' ||
+    pattern === null
   ) {
     return S.Literal(pattern as any)
   }

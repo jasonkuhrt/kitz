@@ -9,7 +9,7 @@
  * @module
  */
 
-import * as TSDoc from '../tsdoc/_.js'
+import { Tsdoc as TSDoc } from '../tsdoc/_.js'
 import * as Reserved from './reserved.js'
 import type { DirectiveField, TermObject, TermObjectLike } from './term-object.js'
 import * as TermObjectModule from './term-object.js'
@@ -151,7 +151,7 @@ export const objectField$ = (input: {
  * // 'false'
  * ```
  */
-export const boolean = (value: boolean): string => value ? `true` : `false`
+export const boolean = (value: boolean): string => (value ? `true` : `false`)
 
 /**
  * Generate a number literal.
@@ -271,13 +271,7 @@ export interface TypeAliasOptions {
  * ```
  */
 export const typeAliasWithOptions = (options: TypeAliasOptions): string => {
-  const {
-    name,
-    type,
-    tsDoc = null,
-    parameters = null,
-    export: shouldExport = true,
-  } = options
+  const { name, type, tsDoc = null, parameters = null, export: shouldExport = true } = options
 
   const tsDocFormatted = tsDoc ? TSDoc.format(tsDoc) + `\n` : ``
   const exportKeyword = shouldExport ? `export ` : ``
@@ -285,8 +279,8 @@ export const typeAliasWithOptions = (options: TypeAliasOptions): string => {
     ? typeof parameters === 'string'
       ? parameters
       : parameters.length > 0
-      ? `<${parameters.join(`, `)}>`
-      : ``
+        ? `<${parameters.join(`, `)}>`
+        : ``
     : ``
   const type_ = typeof type === 'string' ? type : TermObjectModule.termObject(type)
 
@@ -400,15 +394,15 @@ export const interfaceDecl = (options: InterfaceOptions): string => {
     ? typeof parameters === 'string'
       ? parameters
       : parameters.length > 0
-      ? `<${parameters.join(`, `)}>`
-      : ``
+        ? `<${parameters.join(`, `)}>`
+        : ``
     : ``
   const extendsStr = extendsClause
     ? typeof extendsClause === 'string'
       ? ` extends ${extendsClause}`
       : extendsClause.length > 0
-      ? ` extends ${extendsClause.join(`, `)}`
-      : ``
+        ? ` extends ${extendsClause.join(`, `)}`
+        : ``
     : ``
 
   let blockFormatted: string
@@ -474,7 +468,8 @@ export const union = (name: string, types: string[]): string =>
  * // 'string\n| number'
  * ```
  */
-export const unionItems = (types: (string | null)[]): string => types.filter(t => t !== null).join(`\n| `)
+export const unionItems = (types: (string | null)[]): string =>
+  types.filter((t) => t !== null).join(`\n| `)
 
 /**
  * Generate a tuple type.
@@ -518,8 +513,12 @@ export const intersection = (a: string, b: string): string => `${a} & ${b}`
  * // 'T extends string ? number : boolean'
  * ```
  */
-export const conditional = (check: string, extends_: string, trueType: string, falseType: string): string =>
-  `${check} extends ${extends_} ? ${trueType} : ${falseType}`
+export const conditional = (
+  check: string,
+  extends_: string,
+  trueType: string,
+  falseType: string,
+): string => `${check} extends ${extends_} ? ${trueType} : ${falseType}`
 
 /**
  * Generate a mapped type.
@@ -627,7 +626,8 @@ export const readonly = (type: string): string => `Readonly<${type}>`
  * // 'Pick<User, "id" | "name">'
  * ```
  */
-export const pick = (type: string, keys: string[]): string => `Pick<${type}, ${keys.map(k => `"${k}"`).join(` | `)}>`
+export const pick = (type: string, keys: string[]): string =>
+  `Pick<${type}, ${keys.map((k) => `"${k}"`).join(` | `)}>`
 
 /**
  * Generate an Omit utility type.
@@ -638,7 +638,8 @@ export const pick = (type: string, keys: string[]): string => `Pick<${type}, ${k
  * // 'Omit<User, "password">'
  * ```
  */
-export const omit = (type: string, keys: string[]): string => `Omit<${type}, ${keys.map(k => `"${k}"`).join(` | `)}>`
+export const omit = (type: string, keys: string[]): string =>
+  `Omit<${type}, ${keys.map((k) => `"${k}"`).join(` | `)}>`
 
 /**
  * Generate a Record utility type.
@@ -649,7 +650,8 @@ export const omit = (type: string, keys: string[]): string => `Omit<${type}, ${k
  * // 'Record<string, number>'
  * ```
  */
-export const record = (keyType: string, valueType: string): string => `Record<${keyType}, ${valueType}>`
+export const record = (keyType: string, valueType: string): string =>
+  `Record<${keyType}, ${valueType}>`
 
 // ============================================================================
 // Exports
@@ -680,10 +682,7 @@ export const exportDecl = (declaration: string): string => {
  * // 'export type * from './path''
  * ```
  */
-export const reexportAll = (input: {
-  from: string
-  type?: boolean
-}): string => {
+export const reexportAll = (input: { from: string; type?: boolean }): string => {
   const typePrefix = input.type ? 'type ' : ''
   return `export ${typePrefix}* from '${input.from}'`
 }
@@ -700,11 +699,7 @@ export const reexportAll = (input: {
  * // 'export type * as Name from './path''
  * ```
  */
-export const reexportNamespace = (input: {
-  as: string
-  from: string
-  type?: boolean
-}): string => {
+export const reexportNamespace = (input: { as: string; from: string; type?: boolean }): string => {
   const typePrefix = input.type ? 'type ' : ''
   return `export ${typePrefix}* as ${input.as} from '${input.from}'`
 }
@@ -935,7 +930,10 @@ export const functionDecl = (options: FunctionDeclOptions): string => {
  * ```
  */
 export const arrowFunction = (params: string[], body: string, returnType?: string): string => {
-  const paramsStr = params.length === 1 && params[0] && !params[0].includes(`:`) ? params[0] : `(${params.join(`, `)})`
+  const paramsStr =
+    params.length === 1 && params[0] && !params[0].includes(`:`)
+      ? params[0]
+      : `(${params.join(`, `)})`
   const returnTypeStr = returnType ? `: ${returnType}` : ``
   return `${paramsStr}${returnTypeStr} => ${body}`
 }
@@ -1018,9 +1016,10 @@ export const classDecl = (options: ClassDeclOptions): string => {
   const abstractKeyword = isAbstract ? `abstract ` : ``
   const typeParams = parameters && parameters.length > 0 ? `<${parameters.join(`, `)}>` : ``
   const extendsStr = extendsClause ? ` extends ${extendsClause}` : ``
-  const implementsStr = implementsClause && implementsClause.length > 0
-    ? ` implements ${implementsClause.join(`, `)}`
-    : ``
+  const implementsStr =
+    implementsClause && implementsClause.length > 0
+      ? ` implements ${implementsClause.join(`, `)}`
+      : ``
   const bodyStr = body ? ` {\n${body}\n}` : ` {}`
 
   return `${tsDocFormatted}${exportKeyword}${abstractKeyword}class ${name}${typeParams}${extendsStr}${implementsStr}${bodyStr}`
@@ -1138,11 +1137,7 @@ export interface FieldOptions {
  * // readonly value?: number
  * ```
  */
-export const field = (
-  name: string,
-  type: string | TermObject,
-  options?: FieldOptions,
-): string => {
+export const field = (name: string, type: string | TermObject, options?: FieldOptions): string => {
   const tsDocFormatted = options?.tsDoc ? TSDoc.format(options.tsDoc) + `\n` : ``
   const readonlyModifier = options?.readonly ? `readonly ` : ``
   const optionalModifier = options?.optional ? `?` : ``
@@ -1189,11 +1184,7 @@ export const objectFromFields = block
  * // 'import type * as Name from './path''
  * ```
  */
-export const importAll = (input: {
-  as: string
-  from: string
-  type?: boolean
-}): string => {
+export const importAll = (input: { as: string; from: string; type?: boolean }): string => {
   const typePrefix = input.type ? 'type ' : ''
   return `import ${typePrefix}* as ${input.as} from '${input.from}'`
 }
@@ -1279,9 +1270,7 @@ class UnionBuilder {
  * Builder for creating object type declarations with a fluent API.
  */
 class ObjectBuilder {
-  private constructor(
-    private fields_: string[] = [],
-  ) {}
+  private constructor(private fields_: string[] = []) {}
 
   /**
    * Add a field to the object.

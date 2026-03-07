@@ -67,7 +67,7 @@ const parseGitHubRemote = (url: string): { owner: string; repo: string } | null 
 export const resolveReleaseTarget = (
   vars: Record<string, string | undefined>,
 ): Effect.Effect<GitIdentity, ExplorerError, Git.Git> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const repository = vars['GITHUB_REPOSITORY']
     if (repository !== undefined) {
       const parsed = parseGitHubRepository(repository)
@@ -93,11 +93,10 @@ export const resolveReleaseTarget = (
         Effect.fail(
           new ExplorerError({
             context: {
-              detail:
-                `Could not read git remote "origin". Set GITHUB_REPOSITORY="<owner>/<repo>" or configure origin to github.com. (${error.message})`,
+              detail: `Could not read git remote "origin". Set GITHUB_REPOSITORY="<owner>/<repo>" or configure origin to github.com. (${error.message})`,
             },
           }),
-        )
+        ),
       ),
     )
 
@@ -106,8 +105,7 @@ export const resolveReleaseTarget = (
       return yield* Effect.fail(
         new ExplorerError({
           context: {
-            detail:
-              `Could not resolve GitHub repository from origin remote "${remoteUrl}". Set GITHUB_REPOSITORY="<owner>/<repo>" or configure origin to github.com.`,
+            detail: `Could not resolve GitHub repository from origin remote "${remoteUrl}". Set GITHUB_REPOSITORY="<owner>/<repo>" or configure origin to github.com.`,
           },
         }),
       )
@@ -121,9 +119,7 @@ export const resolveReleaseTarget = (
   })
 
 /** Extract a non-empty GitHub token from environment variables. */
-const resolveGithubToken = (
-  vars: Record<string, string | undefined>,
-): string | null => {
+const resolveGithubToken = (vars: Record<string, string | undefined>): string | null => {
   const token = vars['GITHUB_TOKEN']
   if (!token || token.trim() === '') return null
   return token
@@ -142,7 +138,7 @@ export const explore = (): Effect.Effect<
   ExplorerError | Git.GitError | Git.GitParseError,
   Env.Env | Git.Git
 > =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const env = yield* Env.Env
     const git = yield* Git.Git
     const vars = env.vars
@@ -157,13 +153,14 @@ export const explore = (): Effect.Effect<
     const isClean = yield* git.isClean()
 
     // Detect shallow clone (CI environments commonly use --depth=1)
-    const isShallow = vars['GIT_DEPTH'] === '1'
-      || vars['GITHUB_ACTIONS'] === 'true' && vars['GITHUB_EVENT_NAME'] === 'pull_request'
+    const isShallow =
+      vars['GIT_DEPTH'] === '1' ||
+      (vars['GITHUB_ACTIONS'] === 'true' && vars['GITHUB_EVENT_NAME'] === 'pull_request')
     if (isShallow) {
       yield* Effect.logWarning(
-        'Shallow git clone detected. Release analysis requires full history to find '
-          + 'release tags and compute version bumps. In GitHub Actions, add '
-          + '`fetch-depth: 0` to your actions/checkout step.',
+        'Shallow git clone detected. Release analysis requires full history to find ' +
+          'release tags and compute version bumps. In GitHub Actions, add ' +
+          '`fetch-depth: 0` to your actions/checkout step.',
       )
     }
 

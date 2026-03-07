@@ -70,7 +70,7 @@ export interface ComposeKind<$K1 extends Kind.Kind, $K2 extends Kind.Kind> exten
  *
  * @category Composition
  */
-// dprint-ignore
+// oxfmt-ignore
 export function compose<
   f1 extends Extractor,
   f2 extends Extractor
@@ -91,7 +91,7 @@ export function compose<
  *
  * @category Composition
  */
-// dprint-ignore
+// oxfmt-ignore
 export function compose<
   f1 extends (x: any) => any,
   f2 extends (x: any) => any

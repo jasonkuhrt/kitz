@@ -34,24 +34,24 @@ const CandidatePattern = /^next\.(\d+)$/
 /**
  * Schema that transforms between string format and structured Candidate.
  */
-export const CandidateSchema = S.transformOrFail(
-  CandidateEncoded,
-  Candidate,
-  {
-    strict: true,
-    decode: (value, _, ast) => {
-      const match = CandidatePattern.exec(value)
-      if (!match) {
-        return ParseResult.fail(
-          new ParseResult.Type(ast, value, `Invalid candidate prerelease format: expected 'next.<number>'`),
-        )
-      }
-      const iteration = parseInt(match[1]!, 10)
-      return ParseResult.succeed(Candidate.make({ iteration }))
-    },
-    encode: (candidate) => ParseResult.succeed(`next.${candidate.iteration}`),
+export const CandidateSchema = S.transformOrFail(CandidateEncoded, Candidate, {
+  strict: true,
+  decode: (value, _, ast) => {
+    const match = CandidatePattern.exec(value)
+    if (!match) {
+      return ParseResult.fail(
+        new ParseResult.Type(
+          ast,
+          value,
+          `Invalid candidate prerelease format: expected 'next.<number>'`,
+        ),
+      )
+    }
+    const iteration = parseInt(match[1]!, 10)
+    return ParseResult.succeed(Candidate.make({ iteration }))
   },
-)
+  encode: (candidate) => ParseResult.succeed(`next.${candidate.iteration}`),
+})
 
 // ============================================================================
 // Constructors
@@ -70,9 +70,11 @@ export const parseCandidate = (value: string): Candidate => S.decodeSync(Candida
 /**
  * Encode a Candidate to string.
  */
-export const encodeCandidate = (candidate: Candidate): string => S.encodeSync(CandidateSchema)(candidate)
+export const encodeCandidate = (candidate: Candidate): string =>
+  S.encodeSync(CandidateSchema)(candidate)
 
 /**
  * Calculate the next iteration for a candidate prerelease.
  */
-export const nextCandidate = (candidate: Candidate): Candidate => Candidate.make({ iteration: candidate.iteration + 1 })
+export const nextCandidate = (candidate: Candidate): Candidate =>
+  Candidate.make({ iteration: candidate.iteration + 1 })

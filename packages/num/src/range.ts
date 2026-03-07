@@ -58,11 +58,14 @@ export const range = (start: number, end: number, options?: RangeOptions): numbe
   const effectiveStep = shouldReverse ? -actualStep : actualStep
 
   // Adjust comparison based on direction
-  const comparison = effectiveStep > 0
-    ? inclusive ? (i: number) => i <= end : (i: number) => i < end
-    : inclusive
-    ? (i: number) => i >= end
-    : (i: number) => i > end
+  const comparison =
+    effectiveStep > 0
+      ? inclusive
+        ? (i: number) => i <= end
+        : (i: number) => i < end
+      : inclusive
+        ? (i: number) => i >= end
+        : (i: number) => i > end
 
   // Use index-based iteration to avoid floating point accumulation errors
   let index = 0
@@ -93,9 +96,11 @@ export const range = (start: number, end: number, options?: RangeOptions): numbe
  * const rangeFrom1 = rangeFrom(1)
  * rangeFrom1(5) // [1, 2, 3, 4]
  */
-export const rangeFrom = (start: number) => (end: number, options?: RangeOptions): number[] => {
-  return range(start, end, options)
-}
+export const rangeFrom =
+  (start: number) =>
+  (end: number, options?: RangeOptions): number[] => {
+    return range(start, end, options)
+  }
 
 /**
  * Create a function that generates a range to a specific end value.
@@ -114,9 +119,11 @@ export const rangeFrom = (start: number) => (end: number, options?: RangeOptions
  * const rangeTo5 = rangeTo(5)
  * rangeTo5(1) // [1, 2, 3, 4]
  */
-export const rangeTo = (end: number) => (start: number, options?: RangeOptions): number[] => {
-  return range(start, end, options)
-}
+export const rangeTo =
+  (end: number) =>
+  (start: number, options?: RangeOptions): number[] => {
+    return range(start, end, options)
+  }
 
 /**
  * Generate a range with a specific step.
@@ -154,9 +161,11 @@ export const rangeStep = (start: number, end: number, step: number): number[] =>
  * const rangeByHalves = rangeStepWith(0.5)
  * rangeByHalves(0, 2) // [0, 0.5, 1, 1.5]
  */
-export const rangeStepWith = (step: number) => (start: number, end: number): number[] => {
-  return rangeStep(start, end, step)
-}
+export const rangeStepWith =
+  (step: number) =>
+  (start: number, end: number): number[] => {
+    return rangeStep(start, end, step)
+  }
 
 /**
  * Create an inclusive range.
@@ -226,9 +235,11 @@ export const times = <T>(n: number, fn: (index: number) => T): T[] => {
  * const randomNumbers = timesWith(() => Math.random())
  * randomNumbers(3) // [0.123..., 0.456..., 0.789...]
  */
-export const timesWith = <T>(fn: (index: number) => T) => (n: number): T[] => {
-  return times(n, fn)
-}
+export const timesWith =
+  <T>(fn: (index: number) => T) =>
+  (n: number): T[] => {
+    return times(n, fn)
+  }
 
 /**
  * Linear interpolation between two values.
@@ -267,7 +278,7 @@ export const lerp = (start: number, end: number, t: number): number => {
       return NaN // Can't interpolate between different infinities
     }
     // One is infinite
-    return Number.isFinite(start) ? (t === 0 ? start : end) : (t === 1 ? end : start)
+    return Number.isFinite(start) ? (t === 0 ? start : end) : t === 1 ? end : start
   }
 
   // For t = 1, return end exactly to avoid floating point errors
@@ -306,9 +317,11 @@ export const lerp = (start: number, end: number, t: number): number => {
  * slidePosition(0.25) // 200
  * slidePosition(0.75) // 400
  */
-export const lerpBetween = (start: number, end: number) => (t: number): number => {
-  return lerp(start, end, t)
-}
+export const lerpBetween =
+  (start: number, end: number) =>
+  (t: number): number => {
+    return lerp(start, end, t)
+  }
 
 /**
  * Map a value from one range to another.
@@ -349,8 +362,11 @@ export const mapRange = (
 
   // Handle edge cases with infinite or very large numbers
   if (
-    !Number.isFinite(value) || !Number.isFinite(fromMin) || !Number.isFinite(fromMax)
-    || !Number.isFinite(toMin) || !Number.isFinite(toMax)
+    !Number.isFinite(value) ||
+    !Number.isFinite(fromMin) ||
+    !Number.isFinite(fromMax) ||
+    !Number.isFinite(toMin) ||
+    !Number.isFinite(toMax)
   ) {
     return toMin // Default to minimum of target range
   }
@@ -362,9 +378,9 @@ export const mapRange = (
   // Check for very large numbers that might cause precision issues
   const fromRange = fromMax - fromMin
   if (
-    Math.abs(fromMin) > Number.MAX_SAFE_INTEGER / 2
-    || Math.abs(fromMax) > Number.MAX_SAFE_INTEGER / 2
-    || Math.abs(fromRange) < Number.EPSILON
+    Math.abs(fromMin) > Number.MAX_SAFE_INTEGER / 2 ||
+    Math.abs(fromMax) > Number.MAX_SAFE_INTEGER / 2 ||
+    Math.abs(fromRange) < Number.EPSILON
   ) {
     // Fall back to simpler logic for extreme values
     return toMin
@@ -411,15 +427,11 @@ export const mapRange = (
  * normalizeSensor(0) // 0.5
  * normalizeSensor(100) // 1
  */
-export const mapRangeFrom = (
-  fromMin: number,
-  fromMax: number,
-  toMin: number,
-  toMax: number,
-) =>
-(value: number): number => {
-  return mapRange(value, fromMin, fromMax, toMin, toMax)
-}
+export const mapRangeFrom =
+  (fromMin: number, fromMax: number, toMin: number, toMax: number) =>
+  (value: number): number => {
+    return mapRange(value, fromMin, fromMax, toMin, toMax)
+  }
 
 /**
  * Generate a sequence of integers starting from 0.
@@ -487,9 +499,9 @@ export const wrap = (value: number, min: number, max: number): number => {
 
   // Check for very large numbers that might cause precision issues
   if (
-    Math.abs(value) > Number.MAX_SAFE_INTEGER
-    || Math.abs(min) > Number.MAX_SAFE_INTEGER
-    || Math.abs(max) > Number.MAX_SAFE_INTEGER
+    Math.abs(value) > Number.MAX_SAFE_INTEGER ||
+    Math.abs(min) > Number.MAX_SAFE_INTEGER ||
+    Math.abs(max) > Number.MAX_SAFE_INTEGER
   ) {
     return min
   }
@@ -531,6 +543,8 @@ export const wrap = (value: number, min: number, max: number): number => {
  * wrapHour(25) // 1
  * wrapHour(-3) // 21
  */
-export const wrapWithin = (min: number, max: number) => (value: number): number => {
-  return wrap(value, min, max)
-}
+export const wrapWithin =
+  (min: number, max: number) =>
+  (value: number): number => {
+    return wrap(value, min, max)
+  }

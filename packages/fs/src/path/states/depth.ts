@@ -74,4 +74,6 @@ export function isSub<T extends Path>(path: T): path is PathWithTwoOrMoreSegment
   return path.segments.length > 1
 }
 
-export type PathWithTwoOrMoreSegments<T extends Path> = T & { segments: readonly [string, string, ...string[]] }
+export type PathWithTwoOrMoreSegments<T extends Path> = T & {
+  segments: readonly [string, string, ...string[]]
+}

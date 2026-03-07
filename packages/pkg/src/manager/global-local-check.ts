@@ -41,7 +41,7 @@ const decodePackageJson = S.decodeUnknownOption(S.parseJson(PackageJsonSchema))
 const findPackageInAncestors = (
   packageName: string,
 ): Effect.Effect<string | null, Error, FileSystem.FileSystem | Env.Env> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const env = yield* Env.Env
     const currentDir = env.cwd
@@ -52,17 +52,16 @@ const findPackageInAncestors = (
 
     while (true) {
       const packageJsonPathString = packageJsonPath.toString()
-      const pkg = yield* fs.readFileString(packageJsonPathString).pipe(
-        Effect.option,
-        Effect.map(Option.flatMap(decodePackageJson)),
-      )
+      const pkg = yield* fs
+        .readFileString(packageJsonPathString)
+        .pipe(Effect.option, Effect.map(Option.flatMap(decodePackageJson)))
 
       if (Option.isSome(pkg)) {
         const packageJson = pkg.value
         if (
-          packageJson.dependencies[packageName]
-          || packageJson.devDependencies[packageName]
-          || packageJson.peerDependencies[packageName]
+          packageJson.dependencies[packageName] ||
+          packageJson.devDependencies[packageName] ||
+          packageJson.peerDependencies[packageName]
         ) {
           // Return the directory containing this package.json
           const dir = Fs.Path.up(packageJsonPath)
@@ -96,12 +95,15 @@ function createGlobalLocalConflictError(
     `./node_modules/.bin/${packageName} <command>`,
   ]
 
-  const title = template?.title || `Global ${packageName} running in project with local ${packageName}`
-  const explanation = template?.explanation
-    || `This project has ${packageName} in its package.json at ${projectDir}, but you're using a global ${packageName} installation. `
-      + `This can cause version mismatches and unexpected behavior.`
+  const title =
+    template?.title || `Global ${packageName} running in project with local ${packageName}`
+  const explanation =
+    template?.explanation ||
+    `This project has ${packageName} in its package.json at ${projectDir}, but you're using a global ${packageName} installation. ` +
+      `This can cause version mismatches and unexpected behavior.`
   const solutions = template?.solutions || defaultSolutions
-  const bypassInstructions = template?.bypassInstructions || `${packageName} <command> --allow-global`
+  const bypassInstructions =
+    template?.bypassInstructions || `${packageName} <command> --allow-global`
 
   const message = `
 ${title}
@@ -109,7 +111,7 @@ ${title}
 ${explanation}
 
 To use the project's ${packageName}:
-${solutions.map(s => `  • ${s}`).join('\n')}
+${solutions.map((s) => `  • ${s}`).join('\n')}
 
 To bypass this check:
   • ${bypassInstructions}
@@ -139,25 +141,22 @@ To bypass this check:
 export const checkGlobalVsLocal = (
   options: GlobalLocalCheckOptions,
 ): Effect.Effect<void, Error, FileSystem.FileSystem | Env.Env> =>
-  Effect.gen(function*() {
-    const {
-      packageName,
-      currentExecutablePath,
-      allowGlobalFlag = '--allow-global',
-    } = options
+  Effect.gen(function* () {
+    const { packageName, currentExecutablePath, allowGlobalFlag = '--allow-global' } = options
 
     // Check if running from global install
     // Common global installation patterns:
     // - pnpm: /Users/.../Library/pnpm/packagename
     // - npm: /usr/local/lib/node_modules/packagename
     // - yarn: /Users/.../config/yarn/global/node_modules/packagename
-    const isGlobalInstall = currentExecutablePath.includes('pnpm/global')
-      || currentExecutablePath.includes('.npm/global')
-      || currentExecutablePath.includes('yarn/global')
-      || currentExecutablePath.includes(`/Library/pnpm/${packageName}`)
-      || currentExecutablePath.includes('/usr/local/lib/node_modules/')
-      || currentExecutablePath.includes('/usr/lib/node_modules/')
-      || !currentExecutablePath.includes(`node_modules/${packageName}`)
+    const isGlobalInstall =
+      currentExecutablePath.includes('pnpm/global') ||
+      currentExecutablePath.includes('.npm/global') ||
+      currentExecutablePath.includes('yarn/global') ||
+      currentExecutablePath.includes(`/Library/pnpm/${packageName}`) ||
+      currentExecutablePath.includes('/usr/local/lib/node_modules/') ||
+      currentExecutablePath.includes('/usr/lib/node_modules/') ||
+      !currentExecutablePath.includes(`node_modules/${packageName}`)
 
     if (!isGlobalInstall) {
       // Running from local install, all good
@@ -173,7 +172,9 @@ export const checkGlobalVsLocal = (
     const projectDir = yield* findPackageInAncestors(packageName)
 
     if (projectDir) {
-      return yield* Effect.fail(createGlobalLocalConflictError(packageName, projectDir, options.errorMessageTemplate))
+      return yield* Effect.fail(
+        createGlobalLocalConflictError(packageName, projectDir, options.errorMessageTemplate),
+      )
     }
   })
 

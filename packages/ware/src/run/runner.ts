@@ -30,7 +30,9 @@ export const createRunner =
     const interceptors_ = retryingInterceptor
       ? [...interceptors, createRetryingInterceptor(retryingInterceptor)]
       : interceptors
-    const initialHookStackAndErrors = interceptors_.map(extension => toInternalInterceptor(pipeline, extension))
+    const initialHookStackAndErrors = interceptors_.map((extension) =>
+      toInternalInterceptor(pipeline, extension),
+    )
     const [initialHookStack, error] = partitionAndAggregateErrors(initialHookStackAndErrors)
     if (error) return error
 
@@ -60,13 +62,15 @@ const toInternalInterceptor = (
   const body = Prom.createDeferred()
 
   const applyBody = (input: object) => {
-    void Promise.resolve(Prom.maybeAsyncEnvelope(() => interceptorTrigger(input))).then((envelope) => {
-      if (envelope.fail) {
-        body.reject(envelope.value)
-      } else {
-        body.resolve(envelope.value)
-      }
-    })
+    void Promise.resolve(Prom.maybeAsyncEnvelope(() => interceptorTrigger(input))).then(
+      (envelope) => {
+        if (envelope.fail) {
+          body.reject(envelope.value)
+        } else {
+          body.resolve(envelope.value)
+        }
+      },
+    )
   }
 
   const interceptorName = interceptorTrigger.name || `anonymous`
@@ -74,19 +78,19 @@ const toInternalInterceptor = (
   const createInternalInterceptor = (entrypoint: string): InterceptorGeneric =>
     retrying
       ? {
-        retrying: true,
-        name: interceptorName,
-        entrypoint,
-        body,
-        currentChunk: currentChunkRetrying,
-      }
+          retrying: true,
+          name: interceptorName,
+          entrypoint,
+          body,
+          currentChunk: currentChunkRetrying,
+        }
       : {
-        retrying: false,
-        name: interceptorName,
-        entrypoint,
-        body,
-        currentChunk: currentChunkNonRetrying,
-      }
+          retrying: false,
+          name: interceptorName,
+          entrypoint,
+          body,
+          currentChunk: currentChunkNonRetrying,
+        }
 
   switch (pipeline.config.entrypointSelectionMode) {
     case `off`: {
@@ -125,20 +129,17 @@ const toInternalInterceptor = (
   }
 }
 
-const createPassthrough = (hookName: string) => async (
-  hookEnvelope: StepTriggerEnvelope | ResultSuccess | Error,
-) => {
-  if (hookEnvelope instanceof Error || isResultSuccess(hookEnvelope)) {
-    return hookEnvelope
+const createPassthrough =
+  (hookName: string) => async (hookEnvelope: StepTriggerEnvelope | ResultSuccess | Error) => {
+    if (hookEnvelope instanceof Error || isResultSuccess(hookEnvelope)) {
+      return hookEnvelope
+    }
+    const hook = hookEnvelope[hookName]
+    if (!hook) {
+      throw new ContextualError(`Hook not found in hook envelope`, { hookName })
+    }
+    return await hook({ input: hook.input })
   }
-  const hook = hookEnvelope[hookName]
-  if (!hook) {
-    throw new ContextualError(`Hook not found in hook envelope`, { hookName })
-  }
-  return await hook({ input: hook.input })
-}
 
 const isResultSuccess = (value: unknown): value is ResultSuccess =>
-  typeof value === 'object'
-  && value !== null
-  && 'value' in value
+  typeof value === 'object' && value !== null && 'value' in value

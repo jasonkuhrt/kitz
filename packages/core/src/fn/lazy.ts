@@ -16,7 +16,10 @@ export type Lazy<$Value> = () => $Value
  *
  * @category Lazy Values
  */
-export const lazy = <const value>(value: value): Lazy<typeof value> => () => value
+export const lazy =
+  <const value>(value: value): Lazy<typeof value> =>
+  () =>
+    value
 
 /**
  * A value that may be either immediate or lazy.
@@ -33,7 +36,7 @@ export type LazyMaybe<$Value = unknown> = $Value | Lazy<$Value>
  *
  * @category Lazy Values
  */
-// dprint-ignore
+// oxfmt-ignore
 export type resolveLazy<$LazyMaybeValue extends LazyMaybe<any>> =
   $LazyMaybeValue extends Lazy<infer __value__> ? __value__ : $LazyMaybeValue
 

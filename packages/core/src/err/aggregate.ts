@@ -37,11 +37,7 @@ export class ContextualAggregateError<
   context?: $Context
   cause?: $Errors
 }> {
-  constructor(options: {
-    errors: $Errors[]
-    message?: string
-    context?: $Context
-  }) {
+  constructor(options: { errors: $Errors[]; message?: string; context?: $Context }) {
     const props: any = {
       errors: options.errors,
     }

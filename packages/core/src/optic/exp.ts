@@ -44,7 +44,9 @@ export type CompileErrorEmpty = Ts.Err.StaticError<
 /**
  * Union of all compile errors.
  */
-export type CompileError<$Exp extends string = string> = CompileErrorInvalidSyntax<$Exp> | CompileErrorEmpty
+export type CompileError<$Exp extends string = string> =
+  | CompileErrorInvalidSyntax<$Exp>
+  | CompileErrorEmpty
 
 //
 //
@@ -74,7 +76,7 @@ export type CompileError<$Exp extends string = string> = CompileErrorInvalidSynt
  * // Either.Left<CompileErrorInvalidSyntax<'invalid'>, never>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Compile<$Exp extends string> =
   $Exp extends ''                                         ? Either.Left<CompileErrorEmpty, never> :
   [ParseExp<$Exp>] extends [never]                        ? Either.Left<CompileErrorInvalidSyntax<$Exp>, never> :
@@ -95,7 +97,7 @@ export type Compile<$Exp extends string> =
  * Parse an expression string into an HKT pipeline.
  * Returns a tuple of HKTs on success, or `never` on parse failure.
  */
-// dprint-ignore
+// oxfmt-ignore
 type ParseExp<$Exp extends string, $Acc extends readonly Fn.Kind.Kind[] = readonly []> =
   // Empty string - done parsing
   $Exp extends ''                                                     ? $Acc :
@@ -134,7 +136,7 @@ type ParseExp<$Exp extends string, $Acc extends readonly Fn.Kind.Kind[] = readon
  * Parse an identifier from the start of a string.
  * Returns [identifier, remaining] or never.
  */
-// dprint-ignore
+// oxfmt-ignore
 type ParseIdentifier<$Start extends string, $Rest extends string> =
   // Collect identifier characters
   CollectIdentifier<$Start, $Rest> extends [infer __id__ extends string, infer __remaining__ extends string]
@@ -144,7 +146,7 @@ type ParseIdentifier<$Start extends string, $Rest extends string> =
 /**
  * Collect identifier characters until a delimiter is reached.
  */
-// dprint-ignore
+// oxfmt-ignore
 type CollectIdentifier<$First extends string, $Rest extends string, $Acc extends string = ''> =
   // Check first character
   $First extends ''                       ? [`${$Acc}`, $Rest] :
@@ -162,7 +164,7 @@ type CollectIdentifier<$First extends string, $Rest extends string, $Acc extends
 /**
  * Parse bracket content: ['key'], [N], or []
  */
-// dprint-ignore
+// oxfmt-ignore
 type ParseBracket<$Content extends string> =
   // Array element type: ] (empty bracket)
   $Content extends `]${infer __rest__}`                               ? [Array_.$Get, __rest__] :
@@ -182,14 +184,14 @@ type ParseBracket<$Content extends string> =
 /**
  * Parse a number string into a number literal type.
  */
-// dprint-ignore
+// oxfmt-ignore
 type ParseNumber<$S extends string> =
   $S extends `${infer __num__ extends number}` ? __num__ : never
 
 /**
  * Parse parameter access: ) or N)
  */
-// dprint-ignore
+// oxfmt-ignore
 type ParseParameters<$Content extends string> =
   // All parameters: )
   $Content extends `)${infer __rest__}`                               ? [Parameters_.$Get, __rest__] :
@@ -249,7 +251,7 @@ export interface RuntimeCompileError {
  * }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type CompileResult<$Exp extends string> =
   Compile<$Exp> extends Either.Left<infer __error__, never>   ? Either.Left<__error__, never> :
   Compile<$Exp> extends Either.Right<never, infer _>          ? Either.Right<never, CompiledLens> :
@@ -371,7 +373,10 @@ const parseNextSegment = (exp: string): ParsedSegment | null => {
  * const city = Lens.get('.user.address.city', data)
  * ```
  */
-export const get = <$Exp extends string, $Data>(expression: $Exp, data: $Data): Get<$Exp, $Data> => {
+export const get = <$Exp extends string, $Data>(
+  expression: $Exp,
+  data: $Data,
+): Get<$Exp, $Data> => {
   const compiled = compile(expression)
   if (Either.isLeft(compiled)) {
     throw new Error(`Lens compile error: ${(compiled.left as RuntimeCompileError).message}`)

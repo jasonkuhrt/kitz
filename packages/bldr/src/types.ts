@@ -32,10 +32,10 @@ export type AddToArray<
   $State extends State,
   $Key extends keyof $State,
   $Item,
-> = $State[$Key] extends readonly (infer __element__)[] ? {
-    [K in keyof $State]: K extends $Key ? [...__element__[], $Item]
-      : $State[K]
-  }
+> = $State[$Key] extends readonly (infer __element__)[]
+  ? {
+      [K in keyof $State]: K extends $Key ? [...__element__[], $Item] : $State[K]
+    }
   : never
 
 /**

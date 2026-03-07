@@ -11,7 +11,7 @@ export type BumpType = Semver.BumpType
 /**
  * The 11 standard conventional commit types (Angular convention).
  */
-export const StandardValue = Schema.Enums({
+const standardValues = {
   feat: 'feat',
   fix: 'fix',
   docs: 'docs',
@@ -23,8 +23,10 @@ export const StandardValue = Schema.Enums({
   ci: 'ci',
   chore: 'chore',
   revert: 'revert',
-})
-export type StandardValue = typeof StandardValue.Type
+} as const
+
+export const StandardValue = Schema.Enums(standardValues)
+export type StandardValue = keyof typeof standardValues
 
 // ─── Standard Impact Mapping ────────────────────────────────────
 

@@ -16,7 +16,7 @@ export const prompt = (
   parseProgress: ParseProgressPostPromptAnnotation,
   prompter: null | Prompter.Prompter,
 ): Effect.Effect<ParseProgressPostPrompt> =>
-  Effect.gen(function*(_) {
+  Effect.gen(function* (_) {
     if (prompter === null) {
       return {
         ...parseProgress,
@@ -48,16 +48,17 @@ export const prompt = (
         .block({ padding: { mainEnd: 2 } }, `${Term.colors.dim(`${indexCurrent}/${indexTotal}`)}`)
         .block((__) =>
           __.block(
-            Term.colors.positive(parameter.name.canonical)
-              + `${
+            Term.colors.positive(parameter.name.canonical) +
+              `${
                 parameter.type.metadata.optionality._tag === `required`
                   ? ``
                   : ansis.dim(` optional (press esc to skip)`)
               }`,
-          )
-            .block(
-              (parameter.type.metadata.description && Term.colors.dim(parameter.type.metadata.description)) ?? null,
-            )
+          ).block(
+            (parameter.type.metadata.description &&
+              Term.colors.dim(parameter.type.metadata.description)) ??
+              null,
+          ),
         )
         .render()
       while (true) {
@@ -81,7 +82,9 @@ export const prompt = (
               `left`,
               gutterWidth,
               ` `,
-              Term.colors.alert(`Invalid value: expected string, number, boolean, null, or undefined`),
+              Term.colors.alert(
+                `Invalid value: expected string, number, boolean, null, or undefined`,
+              ),
             ),
           )
         } else {
@@ -113,8 +116,8 @@ export const prompt = (
   })
 
 const isArgumentValue = (value: unknown): value is ArgumentValue =>
-  value === undefined
-  || value === null
-  || typeof value === `string`
-  || typeof value === `number`
-  || typeof value === `boolean`
+  value === undefined ||
+  value === null ||
+  typeof value === `string` ||
+  typeof value === `number` ||
+  typeof value === `boolean`

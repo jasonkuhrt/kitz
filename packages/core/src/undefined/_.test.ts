@@ -17,8 +17,8 @@ property('is returns true only for undefined', fc.anything(), (value) => {
 })
 
 property('filters undefined', fc.array(fc.option(fc.anything())), (arr) => {
-  const withUndefined = arr.map(v => v === null ? undefined : v)
-  expect(withUndefined.filter(v => !Undefined.is(v)).every(v => v !== undefined)).toBe(true)
+  const withUndefined = arr.map((v) => (v === null ? undefined : v))
+  expect(withUndefined.filter((v) => !Undefined.is(v)).every((v) => v !== undefined)).toBe(true)
 })
 
 test('type narrowing', () => {

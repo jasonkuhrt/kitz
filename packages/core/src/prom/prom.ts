@@ -59,11 +59,11 @@ export type Maybe<$Type> = $Type | Promise<$Type>
  */
 export const isShape = (value: unknown): value is AnyAny => {
   return (
-    typeof value === 'object'
-    && value !== null
-    && typeof (value as any).then === 'function'
-    && typeof (value as any).catch === 'function'
-    && typeof (value as any).finally === 'function'
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as any).then === 'function' &&
+    typeof (value as any).catch === 'function' &&
+    typeof (value as any).finally === 'function'
   )
 }
 
@@ -83,7 +83,7 @@ export const isShape = (value: unknown): value is AnyAny => {
  *
  * @category Types
  */
-// dprint-ignore
+// oxfmt-ignore
 export type AwaitedUnion<$MaybePromise, $Additional> =
   $MaybePromise extends Promise<infer __promised__>
     ? Promise<Awaited<__promised__ | $Additional>>
@@ -144,7 +144,7 @@ export type Envelope<T = unknown> = {
  *
  * @category Utilities
  */
-// dprint-ignore
+// oxfmt-ignore
 export const maybeAsyncEnvelope = <$return>(fn: () => $return):
   $return extends Promise<infer __awaited__>
     ? Promise<Envelope<__awaited__>>

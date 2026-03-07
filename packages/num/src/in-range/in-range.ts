@@ -8,9 +8,8 @@ import type { Brand } from 'effect'
 /**
  * Range-constrained number.
  */
-export type InRange<Min extends number = number, Max extends number = number> =
-  & number
-  & Brand.Brand<`InRange<${Min},${Max}>`>
+export type InRange<Min extends number = number, Max extends number = number> = number &
+  Brand.Brand<`InRange<${Min},${Max}>`>
 
 /**
  * Type predicate to check if value is within a specific range.
@@ -71,34 +70,26 @@ export const clamp = <_T extends number, Min extends number, Max extends number>
   return Math.max(min, Math.min(max, value)) as Clamp<_T, Min, Max>
 }
 
-export const clampOn = <_T extends number>(value: _T) =>
-<Min extends number, Max extends number>(
-  min: Min,
-  max: Max,
-): Clamp<_T, Min, Max> => {
-  return clamp(value, min, max)
-}
+export const clampOn =
+  <_T extends number>(value: _T) =>
+  <Min extends number, Max extends number>(min: Min, max: Max): Clamp<_T, Min, Max> => {
+    return clamp(value, min, max)
+  }
 
-export const clampWith = <Min extends number, Max extends number>(
-  min: Min,
-  max: Max,
-) =>
-<_T extends number>(value: _T): Clamp<_T, Min, Max> => {
-  return clamp(value, min, max)
-}
+export const clampWith =
+  <Min extends number, Max extends number>(min: Min, max: Max) =>
+  <_T extends number>(value: _T): Clamp<_T, Min, Max> => {
+    return clamp(value, min, max)
+  }
 
-export const isOn = (value: unknown) =>
-<Min extends number, Max extends number>(
-  min: Min,
-  max: Max,
-): boolean => {
-  return is(value, min, max)
-}
+export const isOn =
+  (value: unknown) =>
+  <Min extends number, Max extends number>(min: Min, max: Max): boolean => {
+    return is(value, min, max)
+  }
 
-export const isWith = <Min extends number, Max extends number>(
-  min: Min,
-  max: Max,
-) =>
-(value: unknown): value is InRange<Min, Max> => {
-  return is(value, min, max)
-}
+export const isWith =
+  <Min extends number, Max extends number>(min: Min, max: Max) =>
+  (value: unknown): value is InRange<Min, Max> => {
+    return is(value, min, max)
+  }

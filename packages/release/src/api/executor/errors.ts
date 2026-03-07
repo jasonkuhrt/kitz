@@ -2,6 +2,30 @@ import { Err } from '@kitz/core'
 import { Schema as S } from 'effect'
 
 const baseTags = ['kit', 'release', 'executor'] as const
+const ExecutorPublishErrorContext = S.Struct({
+  /** Package that failed to publish */
+  packageName: S.String,
+  /** Details about the failure */
+  detail: S.String,
+})
+const ExecutorTagErrorContext = S.Struct({
+  /** Git tag that failed */
+  tag: S.String,
+  /** Details about the failure */
+  detail: S.String,
+})
+const ExecutorPreflightErrorContext = S.Struct({
+  /** Preflight check that failed */
+  check: S.String,
+  /** Details about the failure */
+  detail: S.String,
+})
+const ExecutorGHReleaseErrorContext = S.Struct({
+  /** Git tag for the release */
+  tag: S.String,
+  /** Details about the failure */
+  detail: S.String,
+})
 
 /**
  * #### `ExecutorPublishError`
@@ -16,19 +40,15 @@ const baseTags = ['kit', 'release', 'executor'] as const
  *
  * {@include executor/errors/publish-error}
  */
-export const ExecutorPublishError = Err.TaggedContextualError(
+export const ExecutorPublishError: Err.TaggedContextualErrorClass<
   'ExecutorPublishError',
-  baseTags,
-  {
-    context: S.Struct({
-      /** Package that failed to publish */
-      packageName: S.String,
-      /** Details about the failure */
-      detail: S.String,
-    }),
-    message: (ctx) => `Failed to publish ${ctx.packageName}: ${ctx.detail}`,
-  },
-)
+  typeof baseTags,
+  typeof ExecutorPublishErrorContext,
+  undefined
+> = Err.TaggedContextualError('ExecutorPublishError', baseTags, {
+  context: ExecutorPublishErrorContext,
+  message: (ctx) => `Failed to publish ${ctx.packageName}: ${ctx.detail}`,
+})
 
 export type ExecutorPublishError = InstanceType<typeof ExecutorPublishError>
 
@@ -45,13 +65,13 @@ export type ExecutorPublishError = InstanceType<typeof ExecutorPublishError>
  *
  * {@include executor/errors/tag-error}
  */
-export const ExecutorTagError = Err.TaggedContextualError('ExecutorTagError', baseTags, {
-  context: S.Struct({
-    /** Git tag that failed */
-    tag: S.String,
-    /** Details about the failure */
-    detail: S.String,
-  }),
+export const ExecutorTagError: Err.TaggedContextualErrorClass<
+  'ExecutorTagError',
+  typeof baseTags,
+  typeof ExecutorTagErrorContext,
+  undefined
+> = Err.TaggedContextualError('ExecutorTagError', baseTags, {
+  context: ExecutorTagErrorContext,
   message: (ctx) => `Failed to create/push tag ${ctx.tag}: ${ctx.detail}`,
 })
 
@@ -70,19 +90,15 @@ export type ExecutorTagError = InstanceType<typeof ExecutorTagError>
  *
  * {@include executor/errors/preflight-error}
  */
-export const ExecutorPreflightError = Err.TaggedContextualError(
+export const ExecutorPreflightError: Err.TaggedContextualErrorClass<
   'ExecutorPreflightError',
-  baseTags,
-  {
-    context: S.Struct({
-      /** Preflight check that failed */
-      check: S.String,
-      /** Details about the failure */
-      detail: S.String,
-    }),
-    message: (ctx) => `Preflight check '${ctx.check}' failed: ${ctx.detail}`,
-  },
-)
+  typeof baseTags,
+  typeof ExecutorPreflightErrorContext,
+  undefined
+> = Err.TaggedContextualError('ExecutorPreflightError', baseTags, {
+  context: ExecutorPreflightErrorContext,
+  message: (ctx) => `Preflight check '${ctx.check}' failed: ${ctx.detail}`,
+})
 
 export type ExecutorPreflightError = InstanceType<typeof ExecutorPreflightError>
 
@@ -99,19 +115,15 @@ export type ExecutorPreflightError = InstanceType<typeof ExecutorPreflightError>
  *
  * {@include executor/errors/gh-release-error}
  */
-export const ExecutorGHReleaseError = Err.TaggedContextualError(
+export const ExecutorGHReleaseError: Err.TaggedContextualErrorClass<
   'ExecutorGHReleaseError',
-  baseTags,
-  {
-    context: S.Struct({
-      /** Git tag for the release */
-      tag: S.String,
-      /** Details about the failure */
-      detail: S.String,
-    }),
-    message: (ctx) => `Failed to create GitHub release for ${ctx.tag}: ${ctx.detail}`,
-  },
-)
+  typeof baseTags,
+  typeof ExecutorGHReleaseErrorContext,
+  undefined
+> = Err.TaggedContextualError('ExecutorGHReleaseError', baseTags, {
+  context: ExecutorGHReleaseErrorContext,
+  message: (ctx) => `Failed to create GitHub release for ${ctx.tag}: ${ctx.detail}`,
+})
 
 export type ExecutorGHReleaseError = InstanceType<typeof ExecutorGHReleaseError>
 

@@ -1,28 +1,28 @@
 import type { Fn } from '@kitz/core'
-import { builder } from '../../builder-singleton.js'
 import { Optic } from '@kitz/core'
 import type { Either } from 'effect'
-import type { AssertExactKind, AssertEquivKind, AssertSubKind } from '../../asserts.js'
+import type { AssertEquivKind, AssertExactKind, AssertSubKind } from '../../asserts.js'
+import { builder } from '../../builder-singleton.js'
 
-export * as exact from './exact.js'
 export * as equiv from './equiv.js'
-export * as sub from './sub.js'
+export * as exact from './exact.js'
 export * as not from './not/__.js'
+export * as sub from './sub.js'
 // Value-level extractor chaining via builder proxy
-export const awaited = builder.parameter1.awaited
-export const returned = builder.parameter1.returned
-export const array = builder.parameter1.array
-export const parameters = builder.parameter1.parameters
-export const parameter2 = builder.parameter1.parameter2
-export const parameter3 = builder.parameter1.parameter3
-export const parameter4 = builder.parameter1.parameter4
-export const parameter5 = builder.parameter1.parameter5
+export const awaited: typeof builder.parameter1.awaited = builder.parameter1.awaited
+export const returned: typeof builder.parameter1.returned = builder.parameter1.returned
+export const array: typeof builder.parameter1.array = builder.parameter1.array
+export const parameters: typeof builder.parameter1.parameters = builder.parameter1.parameters
+export const parameter2: typeof builder.parameter1.parameter2 = builder.parameter1.parameter2
+export const parameter3: typeof builder.parameter1.parameter3 = builder.parameter1.parameter3
+export const parameter4: typeof builder.parameter1.parameter4 = builder.parameter1.parameter4
+export const parameter5: typeof builder.parameter1.parameter5 = builder.parameter1.parameter5
 // Unary relators
-export const any = builder.parameter1.any
-export const unknown = builder.parameter1.unknown
-export const never = builder.parameter1.never
-export const empty = builder.parameter1.empty
-// dprint-ignore
+export const any: typeof builder.parameter1.any = builder.parameter1.any
+export const unknown: typeof builder.parameter1.unknown = builder.parameter1.unknown
+export const never: typeof builder.parameter1.never = builder.parameter1.never
+export const empty: typeof builder.parameter1.empty = builder.parameter1.empty
+// oxfmt-ignore
 export type exact<
   $Expected,
   $Actual,
@@ -32,7 +32,7 @@ export type exact<
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [$Expected, __actual__]>
                                                                          : never
 
-// dprint-ignore
+// oxfmt-ignore
 export type equiv<
   $Expected,
   $Actual,
@@ -42,7 +42,7 @@ export type equiv<
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [$Expected, __actual__]>
                                                                          : never
 
-// dprint-ignore
+// oxfmt-ignore
 export type sub<
   $Expected,
   $Actual,

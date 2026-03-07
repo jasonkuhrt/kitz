@@ -37,30 +37,26 @@ const EphemeralPattern = /^pr\.(\d+)\.(\d+)\.([a-f0-9]{7,40})$/i
 /**
  * Schema that transforms between string format and structured Ephemeral.
  */
-export const EphemeralSchema = S.transformOrFail(
-  EphemeralEncoded,
-  Ephemeral,
-  {
-    strict: true,
-    decode: (value, _, ast) => {
-      const match = EphemeralPattern.exec(value)
-      if (!match) {
-        return ParseResult.fail(
-          new ParseResult.Type(
-            ast,
-            value,
-            `Invalid ephemeral prerelease format: expected 'pr.<number>.<number>.<sha>'`,
-          ),
-        )
-      }
-      const prNumber = parseInt(match[1]!, 10)
-      const iteration = parseInt(match[2]!, 10)
-      const sha = Git.Sha.make(match[3]!)
-      return ParseResult.succeed(Ephemeral.make({ prNumber, iteration, sha }))
-    },
-    encode: (eph) => ParseResult.succeed(`pr.${eph.prNumber}.${eph.iteration}.${eph.sha}`),
+export const EphemeralSchema = S.transformOrFail(EphemeralEncoded, Ephemeral, {
+  strict: true,
+  decode: (value, _, ast) => {
+    const match = EphemeralPattern.exec(value)
+    if (!match) {
+      return ParseResult.fail(
+        new ParseResult.Type(
+          ast,
+          value,
+          `Invalid ephemeral prerelease format: expected 'pr.<number>.<number>.<sha>'`,
+        ),
+      )
+    }
+    const prNumber = parseInt(match[1]!, 10)
+    const iteration = parseInt(match[2]!, 10)
+    const sha = Git.Sha.make(match[3]!)
+    return ParseResult.succeed(Ephemeral.make({ prNumber, iteration, sha }))
   },
-)
+  encode: (eph) => ParseResult.succeed(`pr.${eph.prNumber}.${eph.iteration}.${eph.sha}`),
+})
 
 // ============================================================================
 // Constructors

@@ -24,7 +24,9 @@ it(`all but one can have prefix disabled`, () => {
   const args = $.parameter(`--foo`, s)
     .parameter(`--bar`, s)
     .settings({
-      parameters: { environment: { $default: { enabled: true, prefix: false }, foo: { prefix: true } } },
+      parameters: {
+        environment: { $default: { enabled: true, prefix: false }, foo: { prefix: true } },
+      },
     })
     .parse({ line: [] })
   expect(args).toMatchObject({ foo: `cli_param_foo`, bar: `bar` })

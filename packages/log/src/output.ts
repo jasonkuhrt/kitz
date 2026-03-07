@@ -10,7 +10,9 @@ export type Output = {
 export const defaultOutput: Output = {
   write: (record: LogRecord, settings: SettingsData) => {
     process.stdout.write(
-      settings.pretty.enabled ? Renderer.render(settings.pretty, record) : JSON.stringify(record) + Os.EOL,
+      settings.pretty.enabled
+        ? Renderer.render(settings.pretty, record)
+        : JSON.stringify(record) + Os.EOL,
     )
   },
 }

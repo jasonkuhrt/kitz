@@ -12,7 +12,8 @@ const singleLinePattern = /^([ \t]*)\/\*\*\s*\{@include\s+([\w/.-]+)\}\s*\*\//gm
 //  *
 //  * {@include id}
 //  */
-const multiLinePattern = /^([ \t]*)(\/\*\*[\s\S]*?)([ \t]*\*[ \t]*\{@include\s+([\w/.-]+)\}[ \t]*\n)([ \t]*\*\/)/gm
+const multiLinePattern =
+  /^([ \t]*)(\/\*\*[\s\S]*?)([ \t]*\*[ \t]*\{@include\s+([\w/.-]+)\}[ \t]*\n)([ \t]*\*\/)/gm
 
 const formatAsJsDoc = (content: string, indent: string): string => {
   const lines = content.split('\n')
@@ -26,31 +27,35 @@ const formatAsJsDoc = (content: string, indent: string): string => {
  * Handles both single-line (`/** {@include id} *​/`) and multi-line JSDoc formats.
  * The injection preserves the `{@include}` marker for idempotency.
  */
-export const injectIntoString = (
+export function injectIntoString(
   source: string,
   fragments: FragmentMap,
   filePath: string,
-): Effect.Effect<string, FragmentNotFoundError> => {
+): Effect.Effect<string, FragmentNotFoundError> {
   const missingIds: Array<string> = []
 
   // First pass: expand single-line includes into multi-line JSDoc
-  let result = source.replace(
-    singleLinePattern,
-    (_match, indent: string, fragmentId: string) => {
-      const content = fragments.get(fragmentId)
-      if (content === undefined) {
-        missingIds.push(fragmentId)
-        return _match
-      }
-      const formattedContent = formatAsJsDoc(content, indent)
-      return `${indent}/**\n${formattedContent}\n${indent} *\n${indent} * {@include ${fragmentId}}\n${indent} */`
-    },
-  )
+  let result = source.replace(singleLinePattern, (_match, indent: string, fragmentId: string) => {
+    const content = fragments.get(fragmentId)
+    if (content === undefined) {
+      missingIds.push(fragmentId)
+      return _match
+    }
+    const formattedContent = formatAsJsDoc(content, indent)
+    return `${indent}/**\n${formattedContent}\n${indent} *\n${indent} * {@include ${fragmentId}}\n${indent} */`
+  })
 
   // Second pass: replace content in multi-line JSDoc (idempotent re-runs)
   result = result.replace(
     multiLinePattern,
-    (_match, indent: string, _existingContent: string, includeLine: string, fragmentId: string, closer: string) => {
+    (
+      _match,
+      indent: string,
+      _existingContent: string,
+      includeLine: string,
+      fragmentId: string,
+      closer: string,
+    ) => {
       const content = fragments.get(fragmentId)
       if (content === undefined) {
         missingIds.push(fragmentId)
@@ -79,11 +84,11 @@ export const injectIntoString = (
  * Inject fragments into a single TypeScript file.
  * Reads the file, performs injection, and writes it back only if content changed.
  */
-export const injectIntoFile = (
+export function injectIntoFile(
   filePath: string,
   fragments: FragmentMap,
-): Effect.Effect<boolean, FragmentNotFoundError | TargetFileError, FileSystem.FileSystem> =>
-  Effect.gen(function*() {
+): Effect.Effect<boolean, FragmentNotFoundError | TargetFileError, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const original = yield* fs.readFileString(filePath).pipe(
       Effect.mapError(
@@ -110,26 +115,27 @@ export const injectIntoFile = (
     )
     return true
   })
+}
 
 /**
  * Inject fragments into all `.ts` files found recursively under a directory.
  * Returns the list of file paths that were modified.
  */
-export const injectIntoDirectory = (
+export function injectIntoDirectory(
   dirPath: string,
   fragments: FragmentMap,
 ): Effect.Effect<
   ReadonlyArray<string>,
   FragmentNotFoundError | TargetFileError,
   FileSystem.FileSystem
-> =>
-  Effect.gen(function*() {
+> {
+  return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
 
     const allFiles = yield* fs.readDirectory(dirPath, { recursive: true }).pipe(
       Effect.map(Stream.fromIterable),
       Effect.flatMap(Stream.runCollect),
-      Effect.map(chunk => Array.from(chunk)),
+      Effect.map((chunk) => Array.from(chunk)),
       Effect.mapError(
         (error) =>
           new TargetFileError({
@@ -147,10 +153,11 @@ export const injectIntoDirectory = (
       tsFiles.map((filePath) =>
         injectIntoFile(filePath, fragments).pipe(
           Effect.map((modified) => (modified ? filePath : null)),
-        )
+        ),
       ),
       { concurrency: 10 },
     )
 
     return results.filter((r): r is string => r !== null)
   })
+}

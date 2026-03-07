@@ -7,7 +7,7 @@ inputs:
   marker:
     description: HTML comment marker to identify the comment.
     required: false
-    default: "<!-- kitz-release-plan -->"
+    default: '<!-- kitz-release-plan -->'
   github-token:
     description: GitHub token for API access.
     required: false

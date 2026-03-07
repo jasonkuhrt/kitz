@@ -41,9 +41,12 @@ const _assert_string: _result_without_codec = '' as string
  * Multi-parameter conditional type function
  */
 interface Transform extends Kind.Kind {
-  return: this['parameters'] extends [infer $T, infer $Mode] ? $Mode extends 'upper' ? Uppercase<Extract<$T, string>>
-    : $Mode extends 'lower' ? Lowercase<Extract<$T, string>>
-    : $T
+  return: this['parameters'] extends [infer $T, infer $Mode]
+    ? $Mode extends 'upper'
+      ? Uppercase<Extract<$T, string>>
+      : $Mode extends 'lower'
+        ? Lowercase<Extract<$T, string>>
+        : $T
     : never
 }
 
@@ -70,7 +73,8 @@ const _test_nested: _nested_result = 42
  * Union type narrowing in parameters
  */
 interface FilterType extends Kind.Kind {
-  return: this['parameters'] extends [infer $Union, infer $Filter] ? Extract<$Union, $Filter>
+  return: this['parameters'] extends [infer $Union, infer $Filter]
+    ? Extract<$Union, $Filter>
     : never
 }
 

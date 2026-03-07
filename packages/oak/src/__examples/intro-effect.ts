@@ -1,14 +1,12 @@
 import { Schema } from 'effect'
-import { Command } from '../_entrypoints/_.js'
+import { Command } from '../__.js'
 import { EffectSchema } from '../_entrypoints/extensions.js'
 
 const args = await Command.create()
   .use(EffectSchema)
   .parameter(
     `filePath`,
-    Schema.String.pipe(
-      Schema.annotations({ description: `Path to the file to convert.` }),
-    ),
+    Schema.String.pipe(Schema.annotations({ description: `Path to the file to convert.` })),
   )
   .parameter(
     `to`,
@@ -36,15 +34,11 @@ const args = await Command.create()
   )
   .parameter(
     `verbose v`,
-    Schema.transform(
-      Schema.UndefinedOr(Schema.Boolean),
-      Schema.Boolean,
-      {
-        strict: true,
-        decode: (value) => value ?? false,
-        encode: (value) => value,
-      },
-    ).pipe(
+    Schema.transform(Schema.UndefinedOr(Schema.Boolean), Schema.Boolean, {
+      strict: true,
+      decode: (value) => value ?? false,
+      encode: (value) => value,
+    }).pipe(
       Schema.annotations({
         description: `Log detailed progress as conversion executes.`,
         default: false,
@@ -53,15 +47,11 @@ const args = await Command.create()
   )
   .parameter(
     `move m`,
-    Schema.transform(
-      Schema.UndefinedOr(Schema.Boolean),
-      Schema.Boolean,
-      {
-        strict: true,
-        decode: (value) => value ?? false,
-        encode: (value) => value,
-      },
-    ).pipe(
+    Schema.transform(Schema.UndefinedOr(Schema.Boolean), Schema.Boolean, {
+      strict: true,
+      decode: (value) => value ?? false,
+      encode: (value) => value,
+    }).pipe(
       Schema.annotations({
         description: `Delete the original file after it has been converted.`,
         default: false,

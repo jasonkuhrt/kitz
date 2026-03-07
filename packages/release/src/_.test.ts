@@ -11,9 +11,21 @@ import { Analyzer, Planner } from './__.js'
 // ─── Test Helpers ───────────────────────────────────────────────────
 
 const mockPackages: Analyzer.Workspace.Package[] = [
-  { name: Pkg.Moniker.parse('@kitz/core'), scope: 'core', path: Fs.Path.AbsDir.fromString('/repo/packages/core/') },
-  { name: Pkg.Moniker.parse('@kitz/cli'), scope: 'cli', path: Fs.Path.AbsDir.fromString('/repo/packages/cli/') },
-  { name: Pkg.Moniker.parse('@kitz/utils'), scope: 'utils', path: Fs.Path.AbsDir.fromString('/repo/packages/utils/') },
+  {
+    name: Pkg.Moniker.parse('@kitz/core'),
+    scope: 'core',
+    path: Fs.Path.AbsDir.fromString('/repo/packages/core/'),
+  },
+  {
+    name: Pkg.Moniker.parse('@kitz/cli'),
+    scope: 'cli',
+    path: Fs.Path.AbsDir.fromString('/repo/packages/cli/'),
+  },
+  {
+    name: Pkg.Moniker.parse('@kitz/utils'),
+    scope: 'utils',
+    path: Fs.Path.AbsDir.fromString('/repo/packages/utils/'),
+  },
 ]
 
 const testEnv = Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') })
@@ -23,11 +35,8 @@ const makeTestLayer = (
   diskLayout: Fs.Memory.DiskLayout = {},
 ) => Layer.mergeAll(Git.Memory.make(gitConfig), Fs.Memory.layer(diskLayout), testEnv)
 
-const makePackageJson = (
-  name: string,
-  version: string,
-  dependencies?: Record<string, string>,
-) => JSON.stringify({ name, version, ...(dependencies && { dependencies }) }, null, 2)
+const makePackageJson = (name: string, version: string, dependencies?: Record<string, string>) =>
+  JSON.stringify({ name, version, ...(dependencies && { dependencies }) }, null, 2)
 
 /** Type-safe version assertion */
 const expectVersion = (actual: Semver.Semver | undefined, expected: string) => {
@@ -43,7 +52,7 @@ const analyzeAndPlanOfficial = (
   packages: readonly Analyzer.Workspace.Package[],
   options?: Planner.Options,
 ) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
     const analysis = yield* Analyzer.analyze({ packages, tags })
@@ -57,7 +66,7 @@ const analyzeAndPlanCandidate = (
   packages: readonly Analyzer.Workspace.Package[],
   options?: Planner.Options,
 ) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
     const analysis = yield* Analyzer.analyze({ packages, tags })
@@ -71,7 +80,7 @@ const analyzeAndPlanEphemeral = (
   packages: readonly Analyzer.Workspace.Package[],
   options?: Planner.PrOptions,
 ) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
     const analysis = yield* Analyzer.analyze({ packages, tags })
@@ -201,17 +210,11 @@ describe('Planner.official', () => {
   test('respects package filter', async () => {
     const layer = makeTestLayer({
       tags: [],
-      commits: [
-        Git.Memory.commit('feat(core): core'),
-        Git.Memory.commit('feat(cli): cli'),
-      ],
+      commits: [Git.Memory.commit('feat(core): core'), Git.Memory.commit('feat(cli): cli')],
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(
-        analyzeAndPlanOfficial(mockPackages, { packages: ['@kitz/core'] }),
-        layer,
-      ),
+      Effect.provide(analyzeAndPlanOfficial(mockPackages, { packages: ['@kitz/core'] }), layer),
     )
 
     expect(result.releases).toHaveLength(1)
@@ -262,10 +265,7 @@ describe('Planner.ephemeral', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(
-        analyzeAndPlanEphemeral(mockPackages, { prNumber: 42 }),
-        layer,
-      ),
+      Effect.provide(analyzeAndPlanEphemeral(mockPackages, { prNumber: 42 }), layer),
     )
 
     expect(result.releases).toHaveLength(1)
@@ -280,10 +280,7 @@ describe('Planner.ephemeral', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.provide(
-        analyzeAndPlanEphemeral(mockPackages, { prNumber: 42 }),
-        layer,
-      ),
+      Effect.provide(analyzeAndPlanEphemeral(mockPackages, { prNumber: 42 }), layer),
     )
 
     expect(result.releases).toHaveLength(1)
@@ -426,7 +423,7 @@ describe('Analyzer', () => {
 
     const analysis = await Effect.runPromise(
       Effect.provide(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const git = yield* Git.Git
           const tags = yield* git.getTags()
           return yield* Analyzer.analyze({ packages: mockPackages, tags })
@@ -453,7 +450,7 @@ describe('Analyzer', () => {
 
     const analysis = await Effect.runPromise(
       Effect.provide(
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const git = yield* Git.Git
           const tags = yield* git.getTags()
           return yield* Analyzer.analyze({
@@ -501,7 +498,9 @@ describe('PlannedRelease getters', () => {
     const release = result.releases[0]!
 
     expect(Option.isSome(release.currentVersion)).toBe(true)
-    expect(Semver.equivalence(Option.getOrThrow(release.currentVersion), Semver.fromString('1.0.0'))).toBe(true)
+    expect(
+      Semver.equivalence(Option.getOrThrow(release.currentVersion), Semver.fromString('1.0.0')),
+    ).toBe(true)
   })
 
   test('currentVersion returns None for first release', async () => {

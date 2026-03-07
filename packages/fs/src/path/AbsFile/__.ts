@@ -50,48 +50,44 @@ export const name = (instance: AbsFileClass): string =>
  * })
  * ```
  */
-export const Schema: S.Schema<AbsFileClass, string> = S.transformOrFail(
-  S.String,
-  AbsFileClass,
-  {
-    strict: true,
-    encode: (decoded) => {
-      // Source of truth for string conversion
-      const pathString = decoded.segments.join('/')
-      const fileString = decoded.fileName.extension
-        ? `${decoded.fileName.stem}${decoded.fileName.extension}`
-        : decoded.fileName.stem
-      return ParseResult.succeed(pathString.length > 0 ? `/${pathString}/${fileString}` : `/${fileString}`)
-    },
-    decode: (input, options, ast) => {
-      // Analyze the input string with file hint for ambiguous dotfiles
-      const analysis = analyze(input, { hint: 'file' })
-
-      // Validate it's an absolute file
-      if (analysis._tag !== 'file') {
-        return ParseResult.fail(
-          new ParseResult.Type(ast, input, 'Expected a file path, got a directory path'),
-        )
-      }
-      if (!analysis.isPathAbsolute) {
-        return ParseResult.fail(
-          new ParseResult.Type(ast, input, 'Absolute paths must start with /'),
-        )
-      }
-
-      // Valid - return as AbsFile
-      return ParseResult.succeed(
-        AbsFileClass.make({
-          segments: analysis.path,
-          fileName: FileName.make({
-            stem: analysis.file.stem,
-            extension: analysis.file.extension,
-          }),
-        }),
-      )
-    },
+export const Schema: S.Schema<AbsFileClass, string> = S.transformOrFail(S.String, AbsFileClass, {
+  strict: true,
+  encode: (decoded) => {
+    // Source of truth for string conversion
+    const pathString = decoded.segments.join('/')
+    const fileString = decoded.fileName.extension
+      ? `${decoded.fileName.stem}${decoded.fileName.extension}`
+      : decoded.fileName.stem
+    return ParseResult.succeed(
+      pathString.length > 0 ? `/${pathString}/${fileString}` : `/${fileString}`,
+    )
   },
-)
+  decode: (input, options, ast) => {
+    // Analyze the input string with file hint for ambiguous dotfiles
+    const analysis = analyze(input, { hint: 'file' })
+
+    // Validate it's an absolute file
+    if (analysis._tag !== 'file') {
+      return ParseResult.fail(
+        new ParseResult.Type(ast, input, 'Expected a file path, got a directory path'),
+      )
+    }
+    if (!analysis.isPathAbsolute) {
+      return ParseResult.fail(new ParseResult.Type(ast, input, 'Absolute paths must start with /'))
+    }
+
+    // Valid - return as AbsFile
+    return ParseResult.succeed(
+      AbsFileClass.make({
+        segments: analysis.path,
+        fileName: FileName.make({
+          stem: analysis.file.stem,
+          extension: analysis.file.extension,
+        }),
+      }),
+    )
+  },
+})
 
 /**
  * Type guard to check if a value is an AbsFile instance.

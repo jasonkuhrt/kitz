@@ -7,19 +7,10 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "paths": {
-      "#github": [
-        "./src/_.js"
-      ],
-      "#github/*": [
-        "./src/*.js"
-      ]
+      "#github": ["./src/_.js"],
+      "#github/*": ["./src/*.js"]
     }
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "build",
-    "node_modules"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["build", "node_modules"]
 }

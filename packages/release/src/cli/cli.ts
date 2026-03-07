@@ -23,4 +23,4 @@ const commandsDir = Fs.Path.AbsDir.fromString(new URL('./commands/', import.meta
 
 const layer = Layer.merge(Env.Live, NodeFileSystem.layer)
 
-Effect.runPromise(Effect.provide(Cli.dispatch(commandsDir), layer))
+void Effect.runPromise(Effect.provide(Cli.dispatch(commandsDir), layer))

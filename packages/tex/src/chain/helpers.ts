@@ -17,10 +17,16 @@ export interface BuilderInternal<N = Node> {
   }
 }
 
-export const toInternalBuilder = <Builder extends BlockBuilder<null> | TableBuilder | ListBuilder | null>(
+export const toInternalBuilder = <
+  Builder extends BlockBuilder<null> | TableBuilder | ListBuilder | null,
+>(
   builder: Builder,
-): Builder extends null ? null
-  : Builder extends BlockBuilder<null> ? Builder & BuilderInternal<Block>
-  : Builder extends TableBuilder ? Builder & BuilderInternal<Table>
-  : Builder extends ListBuilder ? Builder & BuilderInternal<List>
-  : never => builder as never
+): Builder extends null
+  ? null
+  : Builder extends BlockBuilder<null>
+    ? Builder & BuilderInternal<Block>
+    : Builder extends TableBuilder
+      ? Builder & BuilderInternal<Table>
+      : Builder extends ListBuilder
+        ? Builder & BuilderInternal<List>
+        : never => builder as never

@@ -122,8 +122,10 @@ export function create(state: State = defaultState): any {
   const parseCaseArgs = (args: any[]): any => {
     // If single argument and it's an object with 'input' or 'comment' property, it's object form
     if (
-      args.length === 1 && typeof args[0] === 'object' && args[0] !== null
-      && ('input' in args[0] || 'comment' in args[0])
+      args.length === 1 &&
+      typeof args[0] === 'object' &&
+      args[0] !== null &&
+      ('input' in args[0] || 'comment' in args[0])
     ) {
       return args[0] as CaseObject<any, any>
     }
@@ -206,14 +208,17 @@ export function create(state: State = defaultState): any {
      * - All other values: Use object-inspect (handles circular refs, special types, etc.)
      */
     const formatForTestName = (value: any, maxLength = 80): string => {
-      const str = typeof value === 'function'
-        ? value.toString().replace(/\s+/g, ' ').trim()
-        : objectInspect(value)
+      const str =
+        typeof value === 'function'
+          ? value.toString().replace(/\s+/g, ' ').trim()
+          : objectInspect(value)
 
       return str.length <= maxLength ? str : str.slice(0, maxLength) + '...'
     }
 
-    const parseCase = (caseData: any): {
+    const parseCase = (
+      caseData: any,
+    ): {
       name: string
       input: any[]
       output?: any
@@ -229,7 +234,7 @@ export function create(state: State = defaultState): any {
       const generateName = (input: any, output?: any): string => {
         const fnName = fn?.name || 'fn'
         const inputStr = Array.isArray(input)
-          ? input.map(p => formatForTestName(p)).join(', ')
+          ? input.map((p) => formatForTestName(p)).join(', ')
           : formatForTestName(input)
         return output !== undefined
           ? `${fnName}(${inputStr}) → ${formatForTestName(output)}`
@@ -254,9 +259,7 @@ export function create(state: State = defaultState): any {
         const { comment, input, output, skip, skipIf, only, todo, tags, ...context } = obj
 
         // Generate name from comment or auto-generate from input/output
-        const name = comment || (input !== undefined
-          ? generateName(input, output)
-          : 'test case')
+        const name = comment || (input !== undefined ? generateName(input, output) : 'test case')
 
         return {
           name,
@@ -287,9 +290,8 @@ export function create(state: State = defaultState): any {
       }
 
       // Extract comment from context if present
-      const { comment, ...context } = (contextObj && typeof contextObj === 'object' && !Array.isArray(contextObj))
-        ? contextObj
-        : {}
+      const { comment, ...context } =
+        contextObj && typeof contextObj === 'object' && !Array.isArray(contextObj) ? contextObj : {}
 
       return {
         name: comment || generateName(input, output),
@@ -322,9 +324,7 @@ export function create(state: State = defaultState): any {
             runner,
             isRunnerCase,
             ...testContext
-          } = parseCase(
-            caseData,
-          )
+          } = parseCase(caseData)
 
           // Add matrix to context
           const fullContext = {
@@ -333,13 +333,12 @@ export function create(state: State = defaultState): any {
           }
 
           // Generate test name with matrix info
-          const name = Object.keys(matrixCombo).length > 0
-            ? `${baseName} [matrix: ${
-              Object.entries(matrixCombo)
-                .map(([k, v]) => `${k}=${formatForTestName(v, 40)}`)
-                .join(', ')
-            }]`
-            : baseName
+          const name =
+            Object.keys(matrixCombo).length > 0
+              ? `${baseName} [matrix: ${Object.entries(matrixCombo)
+                  .map(([k, v]) => `${k}=${formatForTestName(v, 40)}`)
+                  .join(', ')}]`
+              : baseName
 
           // Validate that user context doesn't contain reserved keys
           validateContextKeys(fullContext, name)
@@ -376,11 +375,14 @@ export function create(state: State = defaultState): any {
                 // Resolve final envelope: if runner succeeded with undefined, try fallback
                 let finalEnvelope = runnerEnvelope
                 if (
-                  !runnerEnvelope.fail && runnerEnvelope.value === undefined
-                  && Option.isSome(state.defaultOutputProvider)
+                  !runnerEnvelope.fail &&
+                  runnerEnvelope.value === undefined &&
+                  Option.isSome(state.defaultOutputProvider)
                 ) {
                   const defaultProvider = Option.getOrUndefined(state.defaultOutputProvider)!
-                  const fallbackEnvelopeOrPromise = Prom.maybeAsyncEnvelope(() => defaultProvider(setupContext))
+                  const fallbackEnvelopeOrPromise = Prom.maybeAsyncEnvelope(() =>
+                    defaultProvider(setupContext),
+                  )
                   const fallbackEnvelope = await fallbackEnvelopeOrPromise
 
                   // Use fallback envelope if it succeeded
@@ -396,9 +398,16 @@ export function create(state: State = defaultState): any {
                 // Format and snapshot the result
                 const serializer = Option.getOrElse(
                   state.snapshotSerializer,
-                  () => (v: any, ctx: any) => defaultSnapshotSerializer(v, ctx, state.snapshotSchemas),
+                  () => (v: any, ctx: any) =>
+                    defaultSnapshotSerializer(v, ctx, state.snapshotSchemas),
                 )
-                const snapshotContext = { i: input, n: name, o: finalEnvelope.value, ...setupContext, ...fullContext }
+                const snapshotContext = {
+                  i: input,
+                  n: name,
+                  o: finalEnvelope.value,
+                  ...setupContext,
+                  ...fullContext,
+                }
                 const formattedSnapshot = formatSnapshotWithInput(
                   Array.isArray(input) ? input : [input],
                   finalEnvelope,
@@ -423,7 +432,9 @@ export function create(state: State = defaultState): any {
 
               // Apply output transform if configured
               const context = { i: input, n: name, o: resolvedOutput, ...fullContext }
-              const finalOutput = outputMapper ? outputMapper(resolvedOutput, context) : resolvedOutput
+              const finalOutput = outputMapper
+                ? outputMapper(resolvedOutput, context)
+                : resolvedOutput
 
               // Function mode: call the function and assert
               if (fn) {
@@ -463,7 +474,11 @@ export function create(state: State = defaultState): any {
             // Handle skip conditions
             if (skip || state.config.skip) {
               vitestContext.skip(
-                typeof skip === 'string' ? skip : typeof state.config.skip === 'string' ? state.config.skip : undefined,
+                typeof skip === 'string'
+                  ? skip
+                  : typeof state.config.skip === 'string'
+                    ? state.config.skip
+                    : undefined,
               )
               return
             }
@@ -481,7 +496,8 @@ export function create(state: State = defaultState): any {
                 const envelope = await Prom.maybeAsyncEnvelope(() => fn(...input))
                 const serializer = Option.getOrElse(
                   state.snapshotSerializer,
-                  () => (v: any, ctx: any) => defaultSnapshotSerializer(v, ctx, state.snapshotSchemas),
+                  () => (v: any, ctx: any) =>
+                    defaultSnapshotSerializer(v, ctx, state.snapshotSchemas),
                 )
                 const snapshotContext = { i: input, n: name, o: output, ...fullContext }
                 const formattedSnapshot = formatSnapshotWithInput(
@@ -518,9 +534,16 @@ export function create(state: State = defaultState): any {
                     const envelope = await Prom.maybeAsyncEnvelope(() => testResult)
                     const serializer = Option.getOrElse(
                       state.snapshotSerializer,
-                      () => (v: any, ctx: any) => defaultSnapshotSerializer(v, ctx, state.snapshotSchemas),
+                      () => (v: any, ctx: any) =>
+                        defaultSnapshotSerializer(v, ctx, state.snapshotSchemas),
                     )
-                    const snapshotContext = { i: input, n: name, o: output, ...setupContext, ...fullContext }
+                    const snapshotContext = {
+                      i: input,
+                      n: name,
+                      o: output,
+                      ...setupContext,
+                      ...fullContext,
+                    }
                     const formattedSnapshot = formatSnapshotWithInput(
                       input,
                       envelope,
@@ -562,7 +585,8 @@ export function create(state: State = defaultState): any {
                 const envelope = await Prom.maybeAsyncEnvelope(() => result)
                 const serializer = Option.getOrElse(
                   state.snapshotSerializer,
-                  () => (v: any, ctx: any) => defaultSnapshotSerializer(v, ctx, state.snapshotSchemas),
+                  () => (v: any, ctx: any) =>
+                    defaultSnapshotSerializer(v, ctx, state.snapshotSchemas),
                 )
                 const formattedSnapshot = formatSnapshotWithInput(
                   Array.isArray(input) ? input : [input],
@@ -670,7 +694,7 @@ export function create(state: State = defaultState): any {
     // Cases methods - always non-terminal, returns builder for chaining
     cases(...cases: any[]) {
       // Process cases - if a case is a function, call it with merged onSetup context
-      const processedCases = cases.map(caseItem => {
+      const processedCases = cases.map((caseItem) => {
         // Check if case is a function (function-based case pattern)
         if (typeof caseItem === 'function') {
           // Merge all onSetup factory results into a single context
@@ -731,13 +755,13 @@ export function create(state: State = defaultState): any {
 
     casesInput(...inputs: any[]) {
       // Wrap each input in snapshot tuple format [input]
-      const cases = inputs.map(input => [input])
+      const cases = inputs.map((input) => [input])
       return this.cases(...cases)
     },
 
     describeInputs(name: string, inputs: any[]) {
       // Wrap each input in snapshot tuple format [input]
-      const cases = inputs.map(input => [input])
+      const cases = inputs.map((input) => [input])
       return this.describe(name, cases)
     },
 
@@ -833,10 +857,7 @@ export function create(state: State = defaultState): any {
       const nestedGroup: Group = {
         describe: Option.some(name),
         cases: [...flushedChild.currentCases],
-        nestedGroups: [
-          ...flushedChild.accumulatedGroups,
-          ...flushedChild.nestedDescribeGroups,
-        ],
+        nestedGroups: [...flushedChild.accumulatedGroups, ...flushedChild.nestedDescribeGroups],
       }
 
       // Return builder with nested group added
@@ -882,8 +903,9 @@ export function create(state: State = defaultState): any {
       const hasFunctionName = Option.isSome(fnOption)
 
       // Check if any groups have describe names (nested describe blocks)
-      const hasDescribeGroups = finalState.accumulatedGroups.some(g => Option.isSome(g.describe))
-        || finalState.nestedDescribeGroups.length > 0
+      const hasDescribeGroups =
+        finalState.accumulatedGroups.some((g) => Option.isSome(g.describe)) ||
+        finalState.nestedDescribeGroups.length > 0
 
       const executeAll = () => {
         // Execute all accumulated groups (from .casesIn())
@@ -919,21 +941,22 @@ export function create(state: State = defaultState): any {
       const effectWrapper = (params: any) => {
         const { n, input, output, ...restCtx } = params
         const effect = fn({ input, output, n, ...restCtx })
-        const layer = layerType === 'static'
-          ? layerOrFactory
-          : (layerOrFactory as (testCase: any) => Layer.Layer<any>)({ input, output, ...params })
+        const layer =
+          layerType === 'static'
+            ? layerOrFactory
+            : (layerOrFactory as (testCase: any) => Layer.Layer<any>)({ input, output, ...params })
 
-        const effectWithLayer = Effect.provide(effect, layer as any) as Effect.Effect<any, any, never>
+        const effectWithLayer = Effect.provide(effect, layer as any) as Effect.Effect<
+          any,
+          any,
+          never
+        >
         return Effect.runPromise(effectWithLayer)
       }
 
       // Execute with Effect wrapper (from .casesIn())
       for (const group of finalState.accumulatedGroups) {
-        executeTests(
-          effectWrapper,
-          Option.getOrUndefined(group.describe),
-          group.cases,
-        )
+        executeTests(effectWrapper, Option.getOrUndefined(group.describe), group.cases)
       }
 
       // Execute nested describe groups (from .describe(name, callback))
@@ -951,7 +974,7 @@ export function create(state: State = defaultState): any {
           // Execute all accumulated groups with this callback
           for (const group of finalState.accumulatedGroups) {
             executeTests(
-              testFn as ((params: any) => any),
+              testFn as (params: any) => any,
               Option.getOrUndefined(group.describe),
               group.cases,
             )
@@ -959,7 +982,7 @@ export function create(state: State = defaultState): any {
 
           // Execute nested describe groups
           for (const nestedGroup of finalState.nestedDescribeGroups) {
-            executeNestedGroup(nestedGroup, testFn as ((params: any) => any))
+            executeNestedGroup(nestedGroup, testFn as (params: any) => any)
           }
         })
       }
@@ -977,21 +1000,26 @@ export function create(state: State = defaultState): any {
           const effectWrapper = (params: any) => {
             const { n, input, output, ...restCtx } = params
             const effect = testFn({ input, output, n, ...restCtx })
-            const layer = layerType === 'static'
-              ? layerOrFactory
-              : (layerOrFactory as (testCase: any) => Layer.Layer<any>)({ input, output, ...params })
+            const layer =
+              layerType === 'static'
+                ? layerOrFactory
+                : (layerOrFactory as (testCase: any) => Layer.Layer<any>)({
+                    input,
+                    output,
+                    ...params,
+                  })
 
-            const effectWithLayer = Effect.provide(effect, layer as any) as Effect.Effect<any, any, never>
+            const effectWithLayer = Effect.provide(effect, layer as any) as Effect.Effect<
+              any,
+              any,
+              never
+            >
             return Effect.runPromise(effectWithLayer)
           }
 
           // Execute all accumulated groups with Effect wrapper
           for (const group of finalState.accumulatedGroups) {
-            executeTests(
-              effectWrapper,
-              Option.getOrUndefined(group.describe),
-              group.cases,
-            )
+            executeTests(effectWrapper, Option.getOrUndefined(group.describe), group.cases)
           }
 
           // Execute nested describe groups

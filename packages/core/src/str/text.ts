@@ -133,8 +133,10 @@ export const unlines = joinWith(defaultLineSeparator)
  * indent('line1\nline2', 4) // '    line1\n    line2'
  * ```
  */
-export const indent = (text: string, size?: number | undefined) => {
-  const result = unlines(lines(text).map(prependWith(repeat(defaultIndentCharacter, size ?? defaultIndentSize))))
+export const indent = (text: string, size?: number) => {
+  const result = unlines(
+    lines(text).map(prependWith(repeat(defaultIndentCharacter, size ?? defaultIndentSize))),
+  )
   return result
 }
 
@@ -180,7 +182,10 @@ export const indentWith = Fn.flipCurried(indentOn)
  * // 'title\n  item'
  * ```
  */
-export const indentBy = (text: string, prefixOrFn: string | ((line: string, lineIndex: number) => string)): string => {
+export const indentBy = (
+  text: string,
+  prefixOrFn: string | ((line: string, lineIndex: number) => string),
+): string => {
   return unlines(
     lines(text).map((line, index) => {
       const prefix = typeof prefixOrFn === `string` ? prefixOrFn : prefixOrFn(line, index)
@@ -357,7 +362,11 @@ export const padLeftWith = Fn.flipCurried(padLeftOn)
  * padRight('hello', 2, '.') // 'hello..'
  * ```
  */
-export const padRight = (text: string, size: number, char: string = defaultPadCharacter): string => {
+export const padRight = (
+  text: string,
+  size: number,
+  char: string = defaultPadCharacter,
+): string => {
   return pad(text, size, `right`, char)
 }
 
@@ -634,14 +643,15 @@ export const formatBlock = (
   if (rest.length === 0) return first!
 
   const linesToProcess = opts.excludeFirstLine === true ? rest : (rest.unshift(first!), rest)
-  const prefixText = typeof opts.prefix === `string` ? opts.prefix : opts.prefix?.symbol ?? ``
+  const prefixText = typeof opts.prefix === `string` ? opts.prefix : (opts.prefix?.symbol ?? ``)
   const indentText = opts.indent !== undefined ? Char.spaceRegular.repeat(opts.indent) : ``
   const linesProcessed = opts.excludeFirstLine === true ? [first] : []
 
   for (const line of linesToProcess) {
-    const prefixRendered = typeof opts.prefix === `object`
-      ? opts.prefix?.color?.(prefixText) ?? prefixText
-      : prefixText
+    const prefixRendered =
+      typeof opts.prefix === `object`
+        ? (opts.prefix?.color?.(prefixText) ?? prefixText)
+        : prefixText
     linesProcessed.push(prefixRendered + indentText + line)
   }
 

@@ -33,39 +33,39 @@ export type GapInput =
   | GapValue // global: both axes same
   | [GapValue, GapValue] // [main, cross]
   | {
-    main?: GapValue
-    cross?: GapValue
-    /**
-     * Character to render at points where row and column separators meet.
-     *
-     * When tables have both row separators (`main`) and column separators (`cross`),
-     * intersections occur where they would overlap. By default, the row separator
-     * continues through these points unchanged. Setting `intersection` places a
-     * specific character at each column boundary within the row separator.
-     *
-     * Only accepts strings (not numbers) - this is a literal character, not a count.
-     * Only effective when both `main` and `cross` have non-empty values.
-     *
-     * @example
-     * ```typescript
-     * // Without intersection:
-     * // col1  | col2
-     * // ------------
-     * // row1  | row2
-     *
-     * // With intersection: '+':
-     * // col1  | col2
-     * // ------+------
-     * // row1  | row2
-     *
-     * // Box drawing:
-     * // col1  │ col2
-     * // ──────┼──────
-     * // row1  │ row2
-     * ```
-     */
-    intersection?: string
-  }
+      main?: GapValue
+      cross?: GapValue
+      /**
+       * Character to render at points where row and column separators meet.
+       *
+       * When tables have both row separators (`main`) and column separators (`cross`),
+       * intersections occur where they would overlap. By default, the row separator
+       * continues through these points unchanged. Setting `intersection` places a
+       * specific character at each column boundary within the row separator.
+       *
+       * Only accepts strings (not numbers) - this is a literal character, not a count.
+       * Only effective when both `main` and `cross` have non-empty values.
+       *
+       * @example
+       * ```typescript
+       * // Without intersection:
+       * // col1  | col2
+       * // ------------
+       * // row1  | row2
+       *
+       * // With intersection: '+':
+       * // col1  | col2
+       * // ------+------
+       * // row1  | row2
+       *
+       * // Box drawing:
+       * // col1  │ col2
+       * // ──────┼──────
+       * // row1  │ row2
+       * ```
+       */
+      intersection?: string
+    }
 
 /**
  * Resolved gap with string values for each axis.

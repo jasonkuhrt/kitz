@@ -23,10 +23,7 @@ export const AlphanumericPrereleaseId = S.String.pipe(
  *
  * Per semver spec: Non-negative integer without leading zeros.
  */
-export const NumericPrereleaseId = S.Number.pipe(
-  S.int(),
-  S.nonNegative(),
-).annotations({
+export const NumericPrereleaseId = S.Number.pipe(S.int(), S.nonNegative()).annotations({
   identifier: 'NumericPrereleaseId',
   description: 'Numeric prerelease identifier (non-negative integer)',
 })
@@ -61,10 +58,7 @@ export type PrereleaseIds = typeof PrereleaseIds.Type
  * Per semver spec: ASCII alphanumerics and hyphens [0-9A-Za-z-], non-empty.
  * Unlike prerelease, build identifiers are always strings (no special numeric handling).
  */
-export const BuildId = S.String.pipe(
-  S.pattern(/^[0-9A-Za-z-]+$/),
-  S.minLength(1),
-).annotations({
+export const BuildId = S.String.pipe(S.pattern(/^[0-9A-Za-z-]+$/), S.minLength(1)).annotations({
   identifier: 'BuildId',
   description: 'Build metadata identifier per semver spec',
 })

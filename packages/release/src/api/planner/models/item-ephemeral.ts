@@ -14,7 +14,12 @@ export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
   static is = S.is(Ephemeral)
 
   get nextVersion(): Semver.Semver {
-    return Semver.withPre(Semver.zero, ['pr', this.prerelease.prNumber, this.prerelease.iteration, this.prerelease.sha])
+    return Semver.withPre(Semver.zero, [
+      'pr',
+      this.prerelease.prNumber,
+      this.prerelease.iteration,
+      this.prerelease.sha,
+    ])
   }
 
   get currentVersion(): Option.Option<Semver.Semver> {

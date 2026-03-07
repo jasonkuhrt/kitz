@@ -13,7 +13,11 @@ describe('Sha', () => {
     .outputType<Git.Sha.Sha>()
     .cases(
       { input: 'abc1234', output: Git.Sha.make('abc1234'), comment: 'short form (7 chars)' },
-      { input: 'abcdef1234', output: Git.Sha.make('abcdef1234'), comment: 'medium form (10 chars)' },
+      {
+        input: 'abcdef1234',
+        output: Git.Sha.make('abcdef1234'),
+        comment: 'medium form (10 chars)',
+      },
       {
         input: 'abc1234567890abcdef1234567890abcdef12345',
         output: Git.Sha.make('abc1234567890abcdef1234567890abcdef12345'),
@@ -30,7 +34,11 @@ describe('Sha', () => {
     .outputType<string>()
     .cases(
       { input: 'abc123', output: 'too short', comment: '6 chars' },
-      { input: 'abc12345678901234567890123456789012345678901', output: 'too long', comment: '41 chars' },
+      {
+        input: 'abc12345678901234567890123456789012345678901',
+        output: 'too long',
+        comment: '41 chars',
+      },
       { input: 'abc123g', output: 'invalid hex', comment: 'non-hex character' },
       { input: '', output: 'empty', comment: 'empty string' },
     )
@@ -62,7 +70,7 @@ describe('Git', () => {
     const layer = Git.Memory.make({ tags })
 
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getTags()
       }).pipe(Effect.provide(layer)),
@@ -75,7 +83,7 @@ describe('Git', () => {
     const layer = Git.Memory.make({ branch: 'feat/test' })
 
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getCurrentBranch()
       }).pipe(Effect.provide(layer)),
@@ -88,7 +96,7 @@ describe('Git', () => {
     const layer = Git.Memory.make({ isClean: false })
 
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.isClean()
       }).pipe(Effect.provide(layer)),
@@ -101,7 +109,7 @@ describe('Git', () => {
     const layer = Git.Memory.make({ root: '/my/project' })
 
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getRoot()
       }).pipe(Effect.provide(layer)),
@@ -115,7 +123,7 @@ describe('Git', () => {
     const layer = Git.Memory.make({ headSha: sha })
 
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getHeadSha()
       }).pipe(Effect.provide(layer)),
@@ -132,7 +140,7 @@ describe('Git', () => {
     const layer = Git.Memory.make({ commits })
 
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getCommitsSince(undefined)
       }).pipe(Effect.provide(layer)),
@@ -146,13 +154,10 @@ describe('Git', () => {
     const layer = Git.Memory.make({ tags: [] })
 
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getCommitsSince('@kitz/core@1.0.0')
-      }).pipe(
-        Effect.provide(layer),
-        Effect.either,
-      ),
+      }).pipe(Effect.provide(layer), Effect.either),
     )
 
     expect(result._tag).toBe('Left')
@@ -166,13 +171,10 @@ describe('Git', () => {
     const layer = Git.Memory.make({ tags: [] })
 
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getTagSha('@kitz/core@1.0.0')
-      }).pipe(
-        Effect.provide(layer),
-        Effect.either,
-      ),
+      }).pipe(Effect.provide(layer), Effect.either),
     )
 
     expect(result._tag).toBe('Left')
@@ -186,7 +188,7 @@ describe('Git', () => {
     const { layer, state } = await Effect.runPromise(Git.Memory.makeWithState({}))
 
     await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         yield* git.createTag('@kitz/core@1.0.0', 'Release v1.0.0')
       }).pipe(Effect.provide(layer)),
@@ -203,7 +205,7 @@ describe('Git', () => {
     const { layer, state } = await Effect.runPromise(Git.Memory.makeWithState({}))
 
     await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         yield* git.pushTags('upstream')
       }).pipe(Effect.provide(layer)),
@@ -219,7 +221,7 @@ describe('Git', () => {
     )
 
     await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         yield* git.deleteTag('@kitz/core@1.0.0')
       }).pipe(Effect.provide(layer)),
@@ -275,16 +277,14 @@ describe('Memory utilities', () => {
   })
 
   test('makeWithState provides mutable state access', async () => {
-    const { layer, state } = await Effect.runPromise(
-      Git.Memory.makeWithState({ branch: 'main' }),
-    )
+    const { layer, state } = await Effect.runPromise(Git.Memory.makeWithState({ branch: 'main' }))
 
     // Modify state
     await Effect.runPromise(Ref.set(state.branch, 'develop'))
 
     // Verify service sees updated state
     const branch = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getCurrentBranch()
       }).pipe(Effect.provide(layer)),
@@ -301,7 +301,7 @@ describe('Memory utilities', () => {
 describe('GitLive', () => {
   test('getTags returns array', async () => {
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getTags()
       }).pipe(Effect.provide(Git.GitLive)),
@@ -312,7 +312,7 @@ describe('GitLive', () => {
 
   test('getCurrentBranch returns string', async () => {
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getCurrentBranch()
       }).pipe(Effect.provide(Git.GitLive)),
@@ -324,7 +324,7 @@ describe('GitLive', () => {
 
   test('isClean returns boolean', async () => {
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.isClean()
       }).pipe(Effect.provide(Git.GitLive)),
@@ -335,7 +335,7 @@ describe('GitLive', () => {
 
   test('getHeadSha returns valid SHA', async () => {
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getHeadSha()
       }).pipe(Effect.provide(Git.GitLive)),
@@ -346,7 +346,7 @@ describe('GitLive', () => {
 
   test('getCommitsSince returns commits with expected shape', async () => {
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getCommitsSince(undefined)
       }).pipe(Effect.provide(Git.GitLive)),
@@ -394,7 +394,7 @@ describe('Gitignore', () => {
 
   const gi = Gitignore.fromString('node_modules/\n!keep/\n')
 
-  // dprint-ignore
+  // oxfmt-ignore
   Test.describe('hasPattern')
     .on((pattern: string) => gi.hasPattern(pattern))
     .cases(
@@ -413,7 +413,7 @@ describe('Gitignore', () => {
 
   // ─── addPattern ────────────────────────────────────────────────────────────
 
-  // dprint-ignore
+  // oxfmt-ignore
   Test.describe('addPattern')
     .on((pattern: string) => Gitignore.addPattern(Gitignore.empty, pattern).patterns)
     .cases(
@@ -439,14 +439,16 @@ describe('Gitignore', () => {
         Gitignore.addPattern(Gitignore.fromString('# Dependencies\nnode_modules/\n'), 'vendor/', {
           section: 'Dependencies',
         }),
-      )
+      ),
     )
     .cases({ input: [] })
     .test()
 
   Test.describe('addPattern > new section')
     .on(() =>
-      Gitignore.toString(Gitignore.addPattern(Gitignore.fromString('foo/\n'), 'bar/', { section: 'New Section' }))
+      Gitignore.toString(
+        Gitignore.addPattern(Gitignore.fromString('foo/\n'), 'bar/', { section: 'New Section' }),
+      ),
     )
     .cases({ input: [] })
     .test()
@@ -458,7 +460,7 @@ describe('Gitignore', () => {
 
   // ─── removePattern ─────────────────────────────────────────────────────────
 
-  // dprint-ignore
+  // oxfmt-ignore
   Test.describe('removePattern')
     .on((pattern: string) => Gitignore.fromString('foo/\nbar/\n').removePattern(pattern).patterns)
     .cases(
@@ -471,7 +473,10 @@ describe('Gitignore', () => {
   // ─── empty ─────────────────────────────────────────────────────────────────
 
   Test.describe('empty')
-    .on(() => ({ patterns: Gitignore.empty.patterns, encoded: Gitignore.toString(Gitignore.empty) }))
+    .on(() => ({
+      patterns: Gitignore.empty.patterns,
+      encoded: Gitignore.toString(Gitignore.empty),
+    }))
     .cases([[], { patterns: [], encoded: '' }])
     .test()
 })

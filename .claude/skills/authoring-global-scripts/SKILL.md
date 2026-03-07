@@ -12,6 +12,7 @@ Manage package scripts that apply to all packages in the monorepo.
 ### Adding a Global Script
 
 1. Add script to root `package.json` with `_:` prefix:
+
    ```json
    {
      "scripts": {

@@ -117,9 +117,9 @@ describe('Candidate', () => {
   })
 
   test('invalid format fails decode', () => {
-    expect(() => parseCandidate('invalid')).toThrow()
-    expect(() => parseCandidate('next.')).toThrow()
-    expect(() => parseCandidate('pre.1')).toThrow()
+    expect(() => parseCandidate('invalid')).toThrow(/./)
+    expect(() => parseCandidate('next.')).toThrow(/./)
+    expect(() => parseCandidate('pre.1')).toThrow(/./)
   })
 })
 
@@ -171,8 +171,8 @@ describe('Ephemeral', () => {
   })
 
   test('invalid format fails decode', () => {
-    expect(() => parseEphemeral('invalid')).toThrow()
-    expect(() => parseEphemeral('pr.42.3')).toThrow()
-    expect(() => parseEphemeral('pr.abc.3.abc1234')).toThrow()
+    expect(() => parseEphemeral('invalid')).toThrow(/./)
+    expect(() => parseEphemeral('pr.42.3')).toThrow(/./)
+    expect(() => parseEphemeral('pr.abc.3.abc1234')).toThrow(/./)
   })
 })

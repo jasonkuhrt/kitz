@@ -11,7 +11,8 @@ import { PreRelease } from './pre-release.js'
  * Semver regex: MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
  * Allows optional leading v/= prefix (stripped)
  */
-const SEMVER_RE = /^[v=]?\s*(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9a-zA-Z_.-]+))?(?:\+([0-9a-zA-Z_.-]+))?$/
+const SEMVER_RE =
+  /^[v=]?\s*(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9a-zA-Z_.-]+))?(?:\+([0-9a-zA-Z_.-]+))?$/
 
 interface ParsedVersion {
   major: number
@@ -31,15 +32,19 @@ const parse = (input: string): ParsedVersion | undefined => {
   const minor = Number(minorStr)
   const patch = Number(patchStr)
 
-  if (!Number.isSafeInteger(major) || !Number.isSafeInteger(minor) || !Number.isSafeInteger(patch)) {
+  if (
+    !Number.isSafeInteger(major) ||
+    !Number.isSafeInteger(minor) ||
+    !Number.isSafeInteger(patch)
+  ) {
     return undefined
   }
 
   const prerelease = prereleaseStr
     ? prereleaseStr.split('.').map((id) => {
-      const num = Number(id)
-      return /^\d+$/.test(id) && Number.isSafeInteger(num) ? num : id
-    })
+        const num = Number(id)
+        return /^\d+$/.test(id) && Number.isSafeInteger(num) ? num : id
+      })
     : undefined
 
   const build = buildStr ? buildStr.split('.') : undefined
@@ -101,7 +106,10 @@ const comparePrerelease = (
  *
  * Use this when you want the structured type directly without string encoding.
  */
-export const Semver = S.Union(OfficialRelease, PreRelease).annotations({
+export const Semver: S.Schema<OfficialRelease | PreRelease> = S.Union(
+  OfficialRelease,
+  PreRelease,
+).annotations({
   identifier: 'Semver',
   title: 'Semantic Version',
   description: 'A semantic version following SemVer specification',
@@ -131,10 +139,12 @@ export const Schema: S.Schema<OfficialRelease | PreRelease, string> = S.transfor
       }
 
       if (parsed.prerelease && parsed.prerelease.length > 0) {
-        return ParseResult.succeed(PreRelease.make({
-          ...base,
-          prerelease: parsed.prerelease as [string | number, ...(string | number)[]],
-        }))
+        return ParseResult.succeed(
+          PreRelease.make({
+            ...base,
+            prerelease: parsed.prerelease as [string | number, ...(string | number)[]],
+          }),
+        )
       }
       return ParseResult.succeed(OfficialRelease.make(base))
     },
@@ -196,7 +206,9 @@ export const greaterThan = Order.greaterThan(order)
 // Equivalence
 // ============================================================================
 
-export const equivalence: Equivalence.Equivalence<Semver> = Equivalence.make((a, b) => order(a, b) === 0)
+export const equivalence: Equivalence.Equivalence<Semver> = Equivalence.make(
+  (a, b) => order(a, b) === 0,
+)
 
 // ============================================================================
 // Type Guard
@@ -254,13 +266,11 @@ export const one: Semver = make(1, 0, 0)
 /**
  * Version bump type for stable releases.
  */
-export const BumpType = S.Enums(
-  {
-    major: 'major',
-    minor: 'minor',
-    patch: 'patch',
-  } as const,
-)
+export const BumpType = S.Enums({
+  major: 'major',
+  minor: 'minor',
+  patch: 'patch',
+} as const)
 export type BumpType = typeof BumpType.Type
 
 /**
@@ -277,7 +287,8 @@ const bumpTypePriority: Record<BumpType, number> = { major: 3, minor: 2, patch: 
  * maxBump('major', 'patch') // 'major'
  * ```
  */
-export const maxBump = (a: BumpType, b: BumpType): BumpType => bumpTypePriority[a] >= bumpTypePriority[b] ? a : b
+export const maxBump = (a: BumpType, b: BumpType): BumpType =>
+  bumpTypePriority[a] >= bumpTypePriority[b] ? a : b
 
 /**
  * Get the prerelease identifiers (only available on pre-release versions)
@@ -352,18 +363,24 @@ export const increment = (version: Semver, bump: BumpType): Semver => {
     case 'minor':
       return OfficialRelease.make({ major: version.major, minor: version.minor + 1, patch: 0 })
     case 'patch':
-      return OfficialRelease.make({ major: version.major, minor: version.minor, patch: version.patch + 1 })
+      return OfficialRelease.make({
+        major: version.major,
+        minor: version.minor,
+        patch: version.patch + 1,
+      })
   }
 }
 
 /**
  * Pattern match on Semver variants
  */
-export const match = <$A>(
-  onOfficialRelease: (release: OfficialRelease) => $A,
-  onPreRelease: (preRelease: PreRelease) => $A,
-) =>
-(semver: Semver): $A => semver._tag === 'SemverOfficialRelease' ? onOfficialRelease(semver) : onPreRelease(semver)
+export const match =
+  <$A>(
+    onOfficialRelease: (release: OfficialRelease) => $A,
+    onPreRelease: (preRelease: PreRelease) => $A,
+  ) =>
+  (semver: Semver): $A =>
+    semver._tag === 'SemverOfficialRelease' ? onOfficialRelease(semver) : onPreRelease(semver)
 
 // ============================================================================
 // Phase Detection
@@ -391,10 +408,7 @@ export const isPhasePublic = (version: Semver): boolean => version.major >= one.
  * - Initial phase (0.x.x): major/minor → minor, patch → patch
  * - Public phase (1.x.x+): standard semver semantics
  */
-export const mapBumpForPhase = (
-  version: Semver,
-  bump: BumpType,
-): BumpType => {
+export const mapBumpForPhase = (version: Semver, bump: BumpType): BumpType => {
   if (isPhasePublic(version)) {
     return bump // Standard semantics
   }

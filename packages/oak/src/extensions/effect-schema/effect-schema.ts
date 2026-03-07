@@ -14,13 +14,13 @@ export type SupportedType = Schema.Schema.All
  */
 export interface EffectSchemaGuard extends Fn.Kind.Kind {
   // @ts-expect-error - Intentional HKT pattern
-  return: this['parameters'][0] extends Schema.NullOr<any> ? Ts.Err.StaticError<
-      ['schema', 'nullor-not-supported'],
-      {
-        message:
-          'Schema.NullOr() is not supported in CLI parameters. Use Schema.UndefinedOr() instead, as CLI users can only omit parameters (undefined), not pass literal null.'
-      }
-    >
+  return: this['parameters'][0] extends Schema.NullOr<any>
+    ? Ts.Err.StaticError<
+        ['schema', 'nullor-not-supported'],
+        {
+          message: 'Schema.NullOr() is not supported in CLI parameters. Use Schema.UndefinedOr() instead, as CLI users can only omit parameters (undefined), not pass literal null.'
+        }
+      >
     : never // Valid schema - return never so ApplyGuard passes through original
 }
 
@@ -51,7 +51,9 @@ export const EffectSchema = createExtension<SupportedType, EffectSchemaGuard>({
       })
 
       if (someType && someType._tag === `TypeLiteral`) {
-        const valueProp = (someType as SchemaAST.TypeLiteral).propertySignatures.find((p) => p.name === `value`)
+        const valueProp = (someType as SchemaAST.TypeLiteral).propertySignatures.find(
+          (p) => p.name === `value`,
+        )
         if (valueProp) {
           // Build inner schema from AST and wrap it to handle Option encoding
           const innerSchema = buildSchemaFromAST(valueProp.type)
@@ -60,8 +62,10 @@ export const EffectSchema = createExtension<SupportedType, EffectSchemaGuard>({
             effectSchema as any,
             {
               strict: true,
-              decode: (value) => (value === undefined ? { _tag: `None` as const } : { _tag: `Some` as const, value }),
-              encode: (optionValue: any) => (optionValue._tag === `None` ? undefined : optionValue.value),
+              decode: (value) =>
+                value === undefined ? { _tag: `None` as const } : { _tag: `Some` as const, value },
+              encode: (optionValue: any) =>
+                optionValue._tag === `None` ? undefined : optionValue.value,
             },
           )
           return Schema.standardSchemaV1(wrappedSchema as any)
@@ -75,7 +79,8 @@ export const EffectSchema = createExtension<SupportedType, EffectSchemaGuard>({
 
   extractMetadata: (schema: unknown) => {
     const effectSchema = schema as Schema.Schema.All
-    const { description, optionality, schemaType, helpHints } = extractEffectSchemaMetadata(effectSchema)
+    const { description, optionality, schemaType, helpHints } =
+      extractEffectSchemaMetadata(effectSchema)
 
     return {
       description,
@@ -92,12 +97,18 @@ export const EffectSchema = createExtension<SupportedType, EffectSchemaGuard>({
 const extractEffectSchemaMetadata = (
   effectSchema: Schema.Schema.All,
   previous?: { description?: string | undefined; optionality?: Optionality<any> },
-): { description?: string | undefined; optionality: Optionality<any>; schemaType: SchemaType; helpHints?: any } => {
+): {
+  description?: string | undefined
+  optionality: Optionality<any>
+  schemaType: SchemaType
+  helpHints?: any
+} => {
   const ast = effectSchema.ast
 
   // Extract description from annotations
   const descriptionOpt = SchemaAST.getDescriptionAnnotation(ast)
-  const description = previous?.description ?? (Option.isSome(descriptionOpt) ? descriptionOpt.value : undefined)
+  const description =
+    previous?.description ?? (Option.isSome(descriptionOpt) ? descriptionOpt.value : undefined)
 
   // Detect optionality by analyzing the AST structure
   let optionality: Optionality<any>
@@ -126,7 +137,9 @@ const extractEffectSchemaMetadata = (
       return (tagType as SchemaAST.Literal).literal === `Some`
     })
     if (someType && someType._tag === `TypeLiteral`) {
-      const valueProp = (someType as SchemaAST.TypeLiteral).propertySignatures.find((p) => p.name === `value`)
+      const valueProp = (someType as SchemaAST.TypeLiteral).propertySignatures.find(
+        (p) => p.name === `value`,
+      )
       if (valueProp) {
         unwrappedAst = valueProp.type
       } else {
@@ -143,7 +156,9 @@ const extractEffectSchemaMetadata = (
       // We can't extract the actual default value from the transformation function,
       // but we can detect the pattern and mark it as having a default
       const defaultAnnotationOpt = SchemaAST.getDefaultAnnotation(ast)
-      const defaultValue = Option.isSome(defaultAnnotationOpt) ? defaultAnnotationOpt.value : undefined
+      const defaultValue = Option.isSome(defaultAnnotationOpt)
+        ? defaultAnnotationOpt.value
+        : undefined
       optionality = { _tag: `default`, getValue: () => defaultValue }
       unwrappedAst = (ast as SchemaAST.Transformation).to
     } else {
@@ -158,11 +173,12 @@ const extractEffectSchemaMetadata = (
     if (hasUndefined || hasNull) {
       // Schema.UndefinedOr(T), Schema.NullOr(T), or Schema.NullishOr(T)
       // Determine what value to return when the parameter is omitted
-      const omittedValue = hasUndefined && !hasNull
-        ? undefined // UndefinedOr - return undefined
-        : !hasUndefined && hasNull
-        ? null // NullOr - return null
-        : undefined // NullishOr (both) - return undefined by convention
+      const omittedValue =
+        hasUndefined && !hasNull
+          ? undefined // UndefinedOr - return undefined
+          : !hasUndefined && hasNull
+            ? null // NullOr - return null
+            : undefined // NullishOr (both) - return undefined by convention
       optionality = { _tag: `optional`, omittedValue }
       // Remove both undefined and null members to get the underlying type
       unwrappedAst = removeNullishFromUnion(unionAst)
@@ -322,9 +338,9 @@ const extractUnionInfo = (
 
   if (allLiterals) {
     const values = ast.types.map((t) => (t as SchemaAST.Literal).literal)
-    const displayType = values.map((v) => Term.colors.secondary(typeof v === `string` ? `'${v}'` : String(v))).join(
-      Term.colors.dim(` | `),
-    )
+    const displayType = values
+      .map((v) => Term.colors.secondary(typeof v === `string` ? `'${v}'` : String(v)))
+      .join(Term.colors.dim(` | `))
 
     return {
       schemaType: { _tag: `enum`, values },
@@ -422,8 +438,10 @@ const hasNullMember = (ast: SchemaAST.Union): boolean => {
  * Handles Schema.UndefinedOr, Schema.NullOr, and Schema.NullishOr patterns.
  */
 const removeNullishFromUnion = (ast: SchemaAST.Union): SchemaAST.AST => {
-  const nonNullishTypes = ast.types.filter((t) =>
-    t._tag !== `UndefinedKeyword` && !(t._tag === `Literal` && (t as SchemaAST.Literal).literal === null)
+  const nonNullishTypes = ast.types.filter(
+    (t) =>
+      t._tag !== `UndefinedKeyword` &&
+      !(t._tag === `Literal` && (t as SchemaAST.Literal).literal === null),
   )
 
   // If no types remain (shouldn't happen), return the original

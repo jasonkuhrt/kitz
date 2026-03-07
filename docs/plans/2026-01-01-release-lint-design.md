@@ -53,7 +53,7 @@ A linting framework for release validation in trunk-based development workflows.
 | Name                | Description                                      |
 | ------------------- | ------------------------------------------------ |
 | **RuleId**          | Dot-notation identifier.                         |
-| **RuleTarget**      | Rule ID or namespace pattern (a.b.*).            |
+| **RuleTarget**      | Rule ID or namespace pattern (a.b.\*).           |
 | **RuleCheckResult** | Union of finished/failed/skipped check outcomes. |
 
 ## Entities
@@ -132,11 +132,7 @@ const rules: Rule[] = [
   {
     id: 'pr.monorepo.scopes.match-affected',
     description: 'Scope(s) match affected packages',
-    preconditions: [
-      Precondition.HasOpenPR,
-      Precondition.IsMonorepo,
-      Precondition.HasDiff,
-    ],
+    preconditions: [Precondition.HasOpenPR, Precondition.IsMonorepo, Precondition.HasDiff],
     correction: AddMissingScope,
   },
   /** Location: GitHubRepository */
@@ -348,10 +344,7 @@ interface Report {
   results: RuleCheckResult[]
 }
 
-type RuleCheckResult =
-  | RuleCheckResultFinished
-  | RuleCheckResultFailed
-  | RuleCheckResultSkipped
+type RuleCheckResult = RuleCheckResultFinished | RuleCheckResultFailed | RuleCheckResultSkipped
 
 /** Rule ran and produced a result (violation or clean). */
 interface RuleCheckResultFinished {

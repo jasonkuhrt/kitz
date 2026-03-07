@@ -4,10 +4,7 @@ import { Fs } from '../../_.js'
 // fromString should infer specific types from literal strings
 
 // RelDir - starts with ./, ends with /
-type _relDir = Assert.exact.of<
-  ReturnType<typeof Fs.Path.fromString<'./.release/'>>,
-  Fs.Path.RelDir
->
+type _relDir = Assert.exact.of<ReturnType<typeof Fs.Path.fromString<'./.release/'>>, Fs.Path.RelDir>
 
 // RelFile - starts with ./, has extension
 type _relFile = Assert.exact.of<
@@ -16,10 +13,7 @@ type _relFile = Assert.exact.of<
 >
 
 // AbsDir - starts with /, ends with /
-type _absDir = Assert.exact.of<
-  ReturnType<typeof Fs.Path.fromString<'/home/user/'>>,
-  Fs.Path.AbsDir
->
+type _absDir = Assert.exact.of<ReturnType<typeof Fs.Path.fromString<'/home/user/'>>, Fs.Path.AbsDir>
 
 // AbsFile - starts with /, has extension
 type _absFile = Assert.exact.of<
@@ -28,10 +22,7 @@ type _absFile = Assert.exact.of<
 >
 
 // Plain string should return Path union
-type _plainString = Assert.exact.of<
-  ReturnType<typeof Fs.Path.fromString<string>>,
-  Fs.Path
->
+type _plainString = Assert.exact.of<ReturnType<typeof Fs.Path.fromString<string>>, Fs.Path>
 
 // Dotfiles with extensions work correctly
 type _envLocal = Assert.exact.of<

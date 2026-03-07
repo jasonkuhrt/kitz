@@ -11,9 +11,7 @@ import { join } from './join.js'
  * Type-level toAbs operation.
  * Maps relative location types to their absolute counterparts.
  */
-export type toAbs<R extends $Rel> = R extends RelFile ? AbsFile
-  : R extends RelDir ? AbsDir
-  : $Abs
+export type toAbs<R extends $Rel> = R extends RelFile ? AbsFile : R extends RelDir ? AbsDir : $Abs
 
 /**
  * Convert a relative location to an absolute location.
@@ -34,10 +32,7 @@ export type toAbs<R extends $Rel> = R extends RelFile ? AbsFile
  * const absFile2 = toAbs(relFile, base) // /home/user/src/index.ts (resolves against base)
  * ```
  */
-export const toAbs = <
-  $rel extends $Rel,
-  $base extends AbsDir | undefined = undefined,
->(
+export const toAbs = <$rel extends $Rel, $base extends AbsDir | undefined = undefined>(
   rel: $rel,
   base?: $base,
 ): toAbs<$rel> => {

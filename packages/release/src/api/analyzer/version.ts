@@ -20,7 +20,10 @@ export interface CommitImpact {
 /**
  * Get bump type from CC type, returns null for no-impact types.
  */
-export const getBump = (type: ConventionalCommits.Type.Type, breaking: boolean): Semver.BumpType | null => {
+export const getBump = (
+  type: ConventionalCommits.Type.Type,
+  breaking: boolean,
+): Semver.BumpType | null => {
   if (breaking) return 'major'
   if (!ConventionalCommits.Type.Standard.is(type)) return 'patch'
   return Option.getOrNull(ConventionalCommits.Type.impact(type))
@@ -35,10 +38,8 @@ const decodeExactPin = S.decodeUnknownOption(Pkg.Pin.Exact.FromString)
  * which packages are affected and what bump type each needs.
  * Stores the full ReleaseCommit (not flattened per-scope).
  */
-export const extractImpacts = (
-  gitCommit: Git.Commit,
-): Effect.Effect<CommitImpact[], never> =>
-  Effect.gen(function*() {
+export const extractImpacts = (gitCommit: Git.Commit): Effect.Effect<CommitImpact[], never> =>
+  Effect.gen(function* () {
     // Parse the commit title (first line)
     const title = gitCommit.message.split('\n')[0] ?? gitCommit.message
     const parseResult = yield* Effect.either(ConventionalCommits.Title.parse(title))
@@ -150,7 +151,8 @@ export const findLatestPreviewNumber = (
     const parsed = decodeExactPin(tag)
     if (Option.isNone(parsed)) continue
     if (parsed.value.name.moniker !== packageName.moniker) continue
-    if (!Semver.equivalence(Semver.stripPre(parsed.value.version), Semver.stripPre(baseVersion))) continue
+    if (!Semver.equivalence(Semver.stripPre(parsed.value.version), Semver.stripPre(baseVersion)))
+      continue
 
     const prerelease = Semver.getPrerelease(parsed.value.version)
     if (!prerelease) continue
@@ -187,7 +189,11 @@ export const findLatestPrNumber = (
     if (!prerelease) continue
 
     const decoded = S.decodeUnknownOption(EphemeralSchema)(prerelease.join('.'))
-    if (Option.isSome(decoded) && decoded.value.prNumber === prNumber && decoded.value.iteration > highest) {
+    if (
+      Option.isSome(decoded) &&
+      decoded.value.prNumber === prNumber &&
+      decoded.value.iteration > highest
+    ) {
       highest = decoded.value.iteration
     }
   }

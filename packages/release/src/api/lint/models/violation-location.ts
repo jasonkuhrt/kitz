@@ -17,7 +17,10 @@ export class PrBody extends Schema.TaggedClass<PrBody>()('ViolationLocationPrBod
 }
 
 /** Location at repository settings level. */
-export class RepoSettings extends Schema.TaggedClass<RepoSettings>()('ViolationLocationRepoSettings', {}) {
+export class RepoSettings extends Schema.TaggedClass<RepoSettings>()(
+  'ViolationLocationRepoSettings',
+  {},
+) {
   static is = Schema.is(RepoSettings)
 }
 
@@ -50,4 +53,11 @@ export class Environment extends Schema.TaggedClass<Environment>()('ViolationLoc
 /** Where a lint violation occurred. */
 export type ViolationLocation = PrTitle | PrBody | RepoSettings | GitHistory | File | Environment
 
-export const ViolationLocation = Schema.Union(PrTitle, PrBody, RepoSettings, GitHistory, File, Environment)
+export const ViolationLocation = Schema.Union(
+  PrTitle,
+  PrBody,
+  RepoSettings,
+  GitHistory,
+  File,
+  Environment,
+)

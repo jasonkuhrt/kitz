@@ -6,12 +6,8 @@
     "declaration": true,
     "declarationMap": true,
     "paths": {
-      "#syn": [
-        "./src/_.js"
-      ],
-      "#syn/*": [
-        "./src/*.js"
-      ]
+      "#syn": ["./src/_.js"],
+      "#syn/*": ["./src/*.js"]
     }
   }
 }

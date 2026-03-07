@@ -9,9 +9,7 @@ import { RelFile } from '../RelFile/_.js'
 /**
  * Type-level toDir operation.
  */
-export type toDir<F extends $File> = F extends AbsFile ? AbsDir
-  : F extends RelFile ? RelDir
-  : $Dir
+export type toDir<F extends $File> = F extends AbsFile ? AbsDir : F extends RelFile ? RelDir : $Dir
 
 /**
  * Drop the file from a file location, returning just the parent directory location.

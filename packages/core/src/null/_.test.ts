@@ -17,7 +17,7 @@ property('is returns true only for null', fc.anything(), (value) => {
 })
 
 property('filters nulls', fc.array(fc.option(fc.anything())), (arr) => {
-  expect(arr.filter(v => !Null.is(v)).every(v => v !== null)).toBe(true)
+  expect(arr.filter((v) => !Null.is(v)).every((v) => v !== null)).toBe(true)
 })
 
 test('type narrowing', () => {

@@ -11,7 +11,7 @@ describe('Github', () => {
     const layer = Github.Memory.make({})
 
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const gh = yield* Github.Github
         return yield* gh.releaseExists('v1.0.0')
       }).pipe(Effect.provide(layer)),
@@ -31,7 +31,7 @@ describe('Github', () => {
     })
 
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const gh = yield* Github.Github
         return yield* gh.releaseExists('v1.0.0')
       }).pipe(Effect.provide(layer)),
@@ -41,12 +41,10 @@ describe('Github', () => {
   })
 
   test('createRelease creates and records release', async () => {
-    const { layer, state } = await Effect.runPromise(
-      Github.Memory.makeWithState({}),
-    )
+    const { layer, state } = await Effect.runPromise(Github.Memory.makeWithState({}))
 
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const gh = yield* Github.Github
         return yield* gh.createRelease({
           tag: 'v1.0.0',
@@ -76,7 +74,7 @@ describe('Github', () => {
     const layer = Github.Memory.make({})
 
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const gh = yield* Github.Github
         return yield* gh.createRelease({
           tag: 'v1.0.0-beta.1',
@@ -105,7 +103,7 @@ describe('Github', () => {
     )
 
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const gh = yield* Github.Github
         return yield* gh.updateRelease('v1.0.0', {
           body: 'Updated changelog',
@@ -130,7 +128,7 @@ describe('Github', () => {
     const layer = Github.Memory.make({})
 
     const result = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const gh = yield* Github.Github
         const before = yield* gh.releaseExists('v1.0.0')
         yield* gh.createRelease({
@@ -172,7 +170,7 @@ describe('Memory state', () => {
 
     // Verify service sees updated state
     const exists = await Effect.runPromise(
-      Effect.gen(function*() {
+      Effect.gen(function* () {
         const gh = yield* Github.Github
         return yield* gh.releaseExists('v2.0.0')
       }).pipe(Effect.provide(layer)),

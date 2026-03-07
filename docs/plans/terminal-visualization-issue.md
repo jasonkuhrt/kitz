@@ -37,7 +37,7 @@ import { Layer, PubSub } from 'effect'
 const makeObservableStorage = (baseStorage: MessageStorage) =>
   Layer.effect(
     MessageStorage,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const pubsub = yield* PubSub.unbounded<WorkflowEvent>()
 
       return {
@@ -49,7 +49,7 @@ const makeObservableStorage = (baseStorage: MessageStorage) =>
                 _tag: 'ActivityCompleted',
                 activity: envelope.activity,
                 // ...
-              })
+              }),
             ),
           ),
         // Subscribe to events

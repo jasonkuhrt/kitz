@@ -30,10 +30,10 @@ export const extractFromString = (source: string): FragmentMap => {
  * @param filePath - Absolute path to the markdown source file.
  * @returns Effect yielding a map of fragment ID to trimmed content.
  */
-export const extractFromFile = (
+export function extractFromFile(
   filePath: string,
-): Effect.Effect<FragmentMap, SourceReadError, FileSystem.FileSystem> =>
-  Effect.gen(function*() {
+): Effect.Effect<FragmentMap, SourceReadError, FileSystem.FileSystem> {
+  return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const content = yield* fs.readFileString(filePath).pipe(
       Effect.mapError(
@@ -45,3 +45,4 @@ export const extractFromFile = (
     )
     return extractFromString(content)
   })
+}

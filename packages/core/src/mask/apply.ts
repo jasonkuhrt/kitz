@@ -14,7 +14,7 @@ import type { GetDataType, Mask } from './mask.js'
  * - 'deny' mode returns Omit<Data, keys>
  * - Non-objects throw an error at runtime
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Apply<Data, M extends Mask<any>> =
     M extends { type: 'binary', show: boolean }
       ? M['show'] extends true
@@ -44,10 +44,10 @@ export type Apply<Data, M extends Mask<any>> =
  * const safeUser = apply(user, mask) // { name: 'John', email: 'john@example.com' }
  * ```
  */
-export const apply = <
-  data extends GetDataType<mask>,
-  mask extends Mask<any>,
->(data: data, mask: mask): Apply<data, mask> => {
+export const apply = <data extends GetDataType<mask>, mask extends Mask<any>>(
+  data: data,
+  mask: mask,
+): Apply<data, mask> => {
   return applyInternal(data, mask) as Apply<data, mask>
 }
 
@@ -68,10 +68,10 @@ export const apply = <
  * const result = applyPartial(partialUser, mask) // { name: 'John' }
  * ```
  */
-export const applyPartial = <
-  data extends Partial<GetDataType<mask>>,
-  mask extends Mask<any>,
->(data: data, mask: mask): Apply<data, mask> => {
+export const applyPartial = <data extends Partial<GetDataType<mask>>, mask extends Mask<any>>(
+  data: data,
+  mask: mask,
+): Apply<data, mask> => {
   return applyInternal(data, mask) as Apply<data, mask>
 }
 
@@ -99,10 +99,7 @@ export const applyPartial = <
  * const result2 = applyExact(userWithExtra, mask) // Type error!
  * ```
  */
-export const applyExact = <
-  data,
-  mask extends Mask<any>,
->(
+export const applyExact = <data, mask extends Mask<any>>(
   data: Obj.NoExcess<data, GetDataType<mask>>,
   mask: mask,
 ): Apply<data, mask> => {

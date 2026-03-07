@@ -86,13 +86,17 @@ export const MyServiceLive = Layer.sync(MyService, () => makeService(createDeps(
 import { Effect, Layer, Ref } from 'effect'
 import { MyService, type MyServiceImpl } from './service.js'
 
-export interface MyServiceMemoryConfig {/* initial state */}
-export interface MyServiceMemoryState {/* refs for verification */}
+export interface MyServiceMemoryConfig {
+  /* initial state */
+}
+export interface MyServiceMemoryState {
+  /* refs for verification */
+}
 
 export const make = (config?: MyServiceMemoryConfig): Layer.Layer<MyService> =>
   Layer.effect(
     MyService,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const state = yield* makeState(config)
       return makeService(state)
     }),

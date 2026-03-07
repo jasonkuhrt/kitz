@@ -15,9 +15,8 @@ import { Schema } from '../Schema.js'
  * const path2 = fromLiteral('./src/')               // RelDir
  * ```
  */
-export const fromLiteral = <const $input extends string>(
-  $input: $input,
-): normalize<$input> => S.decodeSync(Schema)($input) as any
+export const fromLiteral = <const $input extends string>($input: $input): normalize<$input> =>
+  S.decodeSync(Schema)($input) as any
 
 /**
  * Decode a string to the appropriate Path type.
@@ -40,6 +39,5 @@ export const fromLiteral = <const $input extends string>(
  * const path = fromString(someVariable)        // Path
  * ```
  */
-export const fromString = <const $input extends string>(
-  $input: $input,
-): normalize<$input> => S.decodeSync(Schema)($input) as any
+export const fromString = <const $input extends string>($input: $input): normalize<$input> =>
+  S.decodeSync(Schema)($input) as any

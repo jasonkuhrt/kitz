@@ -3,7 +3,7 @@ import type { Result } from '../Result.js'
 import type { PipelineDefinition } from './_.js'
 
 export namespace Utilities {
-  // dprint-ignore
+  // oxfmt-ignore
   export type InferOutput<$PipelineDef extends PipelineDefinition> =
 		Awaited<
 			$PipelineDef['steps'] extends Tup.NonEmpty
@@ -11,7 +11,7 @@ export namespace Utilities {
         : $PipelineDef['input']
     >
 
-  // dprint-ignore
+  // oxfmt-ignore
   export type InferResult<$PipelineDef extends PipelineDefinition> =
 		Result<InferOutput<$PipelineDef>>
 }

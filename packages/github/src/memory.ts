@@ -43,9 +43,7 @@ export interface GithubMemoryState {
 /**
  * Create the initial state from config.
  */
-export const makeState = (
-  config: GithubMemoryConfig = {},
-): Effect.Effect<GithubMemoryState> =>
+export const makeState = (config: GithubMemoryConfig = {}): Effect.Effect<GithubMemoryState> =>
   Effect.all({
     releases: Ref.make(config.releases ?? {}),
     createdReleases: Ref.make<CreateReleaseParams[]>([]),
@@ -110,13 +108,13 @@ const createMockRelease = (params: CreateReleaseParams): Release => ({
  */
 const makeService = (state: GithubMemoryState): GithubService => ({
   releaseExists: (tag) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const releases = yield* Ref.get(state.releases)
       return tag in releases
     }),
 
   createRelease: (params) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const release = createMockRelease(params)
       yield* Ref.update(state.releases, (releases) => ({
         ...releases,
@@ -127,7 +125,7 @@ const makeService = (state: GithubMemoryState): GithubService => ({
     }),
 
   updateRelease: (tag, params) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const releases = yield* Ref.get(state.releases)
       const existing = releases[tag]
       if (!existing) {
@@ -171,7 +169,7 @@ const makeService = (state: GithubMemoryState): GithubService => ({
 export const make = (config: GithubMemoryConfig = {}): Layer.Layer<Github> =>
   Layer.effect(
     Github,
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const state = yield* makeState(config)
       return makeService(state)
     }),
@@ -197,7 +195,7 @@ export const make = (config: GithubMemoryConfig = {}): Layer.Layer<Github> =>
 export const makeWithState = (
   config: GithubMemoryConfig = {},
 ): Effect.Effect<{ layer: Layer.Layer<Github>; state: GithubMemoryState }> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const state = yield* makeState(config)
     const layer = Layer.succeed(Github, makeService(state))
     return { layer, state }

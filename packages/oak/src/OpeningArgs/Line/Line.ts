@@ -167,7 +167,8 @@ const isFlag = (lineInput: string) => isLongFlag(lineInput) || isShortFlag(lineI
 
 const isLongFlag = (lineInput: string) => lineInput.trim().startsWith(`--`)
 
-const isShortFlag = (lineInput: string) => lineInput.trim().startsWith(`-`) && !lineInput.trim().startsWith(`--`)
+const isShortFlag = (lineInput: string) =>
+  lineInput.trim().startsWith(`-`) && !lineInput.trim().startsWith(`--`)
 
 const stripeShortFlagPrefixUnsafe = (lineInput: string) => lineInput.trim().slice(1)
 

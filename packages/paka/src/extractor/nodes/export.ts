@@ -40,23 +40,27 @@ export const extractExport = (name: string, decl: ExportedDeclarations): Export 
 
   // Get source location
   const sourceLocation = SourceLocation.make({
-    file: S.decodeSync(Fs.Path.RelFile.Schema)(absoluteToRelative(decl.getSourceFile().getFilePath())),
+    file: S.decodeSync(Fs.Path.RelFile.Schema)(
+      absoluteToRelative(decl.getSourceFile().getFilePath()),
+    ),
     line: decl.getStartLineNumber(),
   })
 
   // Base export properties
-  const docs = jsdoc.description || jsdoc.guide
-    ? Docs.make({ description: jsdoc.description, guide: jsdoc.guide })
-    : undefined
+  const docs =
+    jsdoc.description || jsdoc.guide
+      ? Docs.make({ description: jsdoc.description, guide: jsdoc.guide })
+      : undefined
 
-  const docsProvenance = jsdoc.description || jsdoc.guide
-    ? DocsProvenance.make({
-      description: jsdoc.description
-        ? JSDocProvenance.make({ shadowNamespace: false })
-        : undefined,
-      guide: jsdoc.guide ? JSDocProvenance.make({ shadowNamespace: false }) : undefined,
-    })
-    : undefined
+  const docsProvenance =
+    jsdoc.description || jsdoc.guide
+      ? DocsProvenance.make({
+          description: jsdoc.description
+            ? JSDocProvenance.make({ shadowNamespace: false })
+            : undefined,
+          guide: jsdoc.guide ? JSDocProvenance.make({ shadowNamespace: false }) : undefined,
+        })
+      : undefined
 
   const baseExport = {
     name,
@@ -106,13 +110,15 @@ export const extractExport = (name: string, decl: ExportedDeclarations): Export 
     Match.when('value', () =>
       ValueExport.make({
         ...baseExport,
-        type: type as typeof ValueExport.Type['type'],
-      })),
+        type: type as (typeof ValueExport.Type)['type'],
+      }),
+    ),
     Match.when('type', () =>
       TypeExport.make({
         ...baseExport,
-        type: type as typeof TypeExport.Type['type'],
-      })),
+        type: type as (typeof TypeExport.Type)['type'],
+      }),
+    ),
     Match.exhaustive,
   )
 }

@@ -6,9 +6,5 @@ export namespace Updaters {
   export type AddOverload<
     $Extension extends Extension,
     $Overload extends OverloadData,
-  > = Obj.UpdateKeyWithAppendOne<
-    $Extension,
-    'overloads',
-    $Overload
-  >
+  > = Obj.UpdateKeyWithAppendOne<$Extension, 'overloads', $Overload>
 }

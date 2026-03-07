@@ -45,7 +45,8 @@ type BadGeneric<F extends (arg: unknown) => any> = {
 }
 
 // @ts-expect-error - Type '(s: string) => void' is not assignable
-const badExample: BadGeneric<typeof processString> = { // Error!
+const badExample: BadGeneric<typeof processString> = {
+  // Error!
   fn: processString,
   name: 'string processor',
 }
@@ -56,7 +57,8 @@ type GoodGeneric<F extends (arg: any) => any> = {
   name: string
 }
 
-const goodExample: GoodGeneric<typeof processString> = { // Works!
+const goodExample: GoodGeneric<typeof processString> = {
+  // Works!
   fn: processString,
   name: 'string processor',
 }

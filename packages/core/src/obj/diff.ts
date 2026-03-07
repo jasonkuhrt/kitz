@@ -101,7 +101,7 @@ export type ExcludeKeys<$T, $Keys> = {
  * // }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Mismatched<$Expected extends object, $Actual extends object> = {
   [k in SharedKeys<$Expected, $Actual>]: k extends keyof $Expected
     ? k extends keyof $Actual
@@ -185,7 +185,11 @@ export type _ = { readonly __match__: unique symbol }
  * @category Diff
  * @internal
  */
-export type IsTuple<$T> = $T extends readonly unknown[] ? number extends $T['length'] ? false : true : false
+export type IsTuple<$T> = $T extends readonly unknown[]
+  ? number extends $T['length']
+    ? false
+    : true
+  : false
 
 /**
  * Extract numeric string keys from a tuple type (0, 1, 2, etc.).
@@ -202,9 +206,15 @@ export type TupleNumericKeys<$T extends readonly unknown[]> = Extract<keyof $T, 
  * @category Diff
  * @internal
  */
-type IsLonger<$A extends number, $B extends number, ___Acc extends unknown[] = []> = ___Acc['length'] extends $A ? false // Reached A first, so A <= B
-  : ___Acc['length'] extends $B ? true // Reached B first, so A > B
-  : IsLonger<$A, $B, [...___Acc, unknown]>
+type IsLonger<
+  $A extends number,
+  $B extends number,
+  ___Acc extends unknown[] = [],
+> = ___Acc['length'] extends $A
+  ? false // Reached A first, so A <= B
+  : ___Acc['length'] extends $B
+    ? true // Reached B first, so A > B
+    : IsLonger<$A, $B, [...___Acc, unknown]>
 
 /**
  * Transform tuple mismatch object to array format with [expected, actual] pairs and _ markers.
@@ -218,13 +228,13 @@ type IsLonger<$A extends number, $B extends number, ___Acc extends unknown[] = [
  * // Output: [[string, number], _, [boolean, symbol]]
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type TupleMismatchToArray<
   $Mismatch extends Record<string, any>,
   $Length extends number
 > = TupleMismatchToArrayHelper<$Mismatch, $Length, []>
 
-// dprint-ignore
+// oxfmt-ignore
 type TupleMismatchToArrayHelper<
   $Mismatch extends Record<string, any>,
   $Length extends number,
@@ -263,9 +273,15 @@ type TupleMismatchToArrayHelper<
  * type NonEmptyArray = Obj.Diff.IsEmpty<[1, 2]> // false
  * ```
  */
-export type IsEmpty<$T> = $T extends readonly unknown[] ? $T['length'] extends 0 ? true : false
-  : $T extends object ? keyof $T extends never ? true : false
-  : false
+export type IsEmpty<$T> = $T extends readonly unknown[]
+  ? $T['length'] extends 0
+    ? true
+    : false
+  : $T extends object
+    ? keyof $T extends never
+      ? true
+      : false
+    : false
 
 //
 //
@@ -322,7 +338,7 @@ export type IsEmpty<$T> = $T extends readonly unknown[] ? $T['length'] extends 0
  * // }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Compute<
   $Expected,
   $Actual,
@@ -340,13 +356,13 @@ export type Compute<
  * Alias for {@link Compute}.
  * @category Diff
  */
-export type ComputeDiff<
+export type ComputeDiff<$Expected, $Actual, $Prefix extends string = 'diff'> = Compute<
   $Expected,
   $Actual,
-  $Prefix extends string = 'diff',
-> = Compute<$Expected, $Actual, $Prefix>
+  $Prefix
+>
 
-// dprint-ignore
+// oxfmt-ignore
 type ComputeDiffFields<$Expected extends object, $Actual extends object> =
   IsTuple<$Expected> extends true
     ? IsTuple<$Actual> extends true
@@ -354,14 +370,14 @@ type ComputeDiffFields<$Expected extends object, $Actual extends object> =
       : ComputeDiffFieldsObject<$Expected, $Actual>
     : ComputeDiffFieldsObject<$Expected, $Actual>
 
-// dprint-ignore
+// oxfmt-ignore
 type ComputeDiffFieldsObject<$Expected extends object, $Actual extends object> = {
   missing__: Ts.Simplify.All<ExcludeKeys<$Expected, SharedKeys<$Expected, $Actual>>>
   excess___: Ts.Simplify.All<ExcludeKeys<$Actual, SharedKeys<$Expected, $Actual>>>
   mismatch_: Ts.Simplify.All<OmitNever<Mismatched<$Expected, $Actual>>>
 }
 
-// dprint-ignore
+// oxfmt-ignore
 type ComputeDiffFieldsTuple<
   $Expected extends readonly unknown[],
   $Actual extends readonly unknown[]
@@ -380,7 +396,7 @@ type ComputeDiffFieldsTuple<
     : []
 }
 
-// dprint-ignore
+// oxfmt-ignore
 type FilterTupleMismatch<$Mismatch extends object> = {
   [k in TupleNumericKeys<$Mismatch & readonly unknown[]>]: k extends keyof $Mismatch ? $Mismatch[k] : never
 }
@@ -394,9 +410,11 @@ type FilterTupleMismatch<$Mismatch extends object> = {
  */
 type HasAnyMismatch<$Filtered extends Record<string, any>> = {
   [k in keyof $Filtered]: $Filtered[k] extends never ? false : true
-}[keyof $Filtered] extends false ? false : true
+}[keyof $Filtered] extends false
+  ? false
+  : true
 
-// dprint-ignore
+// oxfmt-ignore
 type TupleMissingToArray<
   $Expected extends readonly unknown[],
   $Actual extends readonly unknown[]
@@ -411,7 +429,7 @@ type TupleMissingToArray<
         : []
       : []
 
-// dprint-ignore
+// oxfmt-ignore
 type TupleMissingToArrayHelper<
   $Expected extends readonly unknown[],
   $Actual extends readonly unknown[],
@@ -424,7 +442,7 @@ type TupleMissingToArrayHelper<
       ? TupleMissingToArrayHelper<$Expected, $Actual, $ActualLength, [...$Acc, _]>
       : TupleMissingToArrayHelper<$Expected, $Actual, $ActualLength, [...$Acc, $Expected[$Acc['length']]]>
 
-// dprint-ignore
+// oxfmt-ignore
 type TupleExcessToArray<
   $Expected extends readonly unknown[],
   $Actual extends readonly unknown[]
@@ -439,7 +457,7 @@ type TupleExcessToArray<
         : []
       : []
 
-// dprint-ignore
+// oxfmt-ignore
 type TupleExcessToArrayHelper<
   $Expected extends readonly unknown[],
   $Actual extends readonly unknown[],

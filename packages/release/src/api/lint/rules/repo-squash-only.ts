@@ -12,12 +12,13 @@ export const rule = RuntimeRule.create({
   description: 'Only squash merge enabled',
   preconditions: [Precondition.HasGitHubAccess.make()],
   defaults: RuleDefaults.make({ enabled: false }),
-  check: Effect.gen(function*() {
+  check: Effect.gen(function* () {
     const github = yield* GitHubService
     const { settings } = github
 
     // Squash-only means: squash allowed, others disabled
-    const isSquashOnly = settings.allowSquashMerge && !settings.allowMergeCommit && !settings.allowRebaseMerge
+    const isSquashOnly =
+      settings.allowSquashMerge && !settings.allowMergeCommit && !settings.allowRebaseMerge
 
     if (!isSquashOnly) {
       return Violation.make({

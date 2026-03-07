@@ -120,7 +120,7 @@ export const init = <S extends Schema.Schema.AnyNoContext>(
   definition: ConfigDefinition<S>,
   options: InitOptions,
 ): Effect.Effect<InitResult, PlatformError, FileSystem.FileSystem | Env.Env> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const env = yield* Env.Env
     const directory = options.directory ?? env.cwd
 

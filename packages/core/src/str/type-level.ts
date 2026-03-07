@@ -43,20 +43,26 @@ export type EndsWith<S extends string, T extends string> = S extends `${string}$
  * Check if a string starts with a specific prefix.
  * @category Type-Level Utilities
  */
-export type StartsWith<S extends string, T extends string> = S extends `${T}${string}` ? true : false
+export type StartsWith<S extends string, T extends string> = S extends `${T}${string}`
+  ? true
+  : false
 
 /**
  * Extract the last segment from a path-like string (after the last '/').
  * @category Type-Level Utilities
  */
-export type LastSegment<S extends string> = S extends `${string}/${infer Rest}` ? LastSegment<Rest>
+export type LastSegment<S extends string> = S extends `${string}/${infer Rest}`
+  ? LastSegment<Rest>
   : S
 
 /**
  * Remove trailing slash from a string.
  * @category Type-Level Utilities
  */
-export type RemoveTrailingSlash<S extends string> = S extends `${infer Rest}/` ? Rest extends '' ? '/' : Rest
+export type RemoveTrailingSlash<S extends string> = S extends `${infer Rest}/`
+  ? Rest extends ''
+    ? '/'
+    : Rest
   : S
 
 /**
@@ -64,32 +70,37 @@ export type RemoveTrailingSlash<S extends string> = S extends `${infer Rest}/` ?
  * This is useful for path-like strings.
  * @category Type-Level Utilities
  */
-export type Split<S extends string, D extends string, Acc extends string[] = []> = S extends '' ? Acc
-  : S extends `${infer Segment}${D}${infer Rest}` ? Segment extends '' ? Split<Rest, D, Acc>
-    : Segment extends '.' ? Split<Rest, D, Acc>
-    : Split<Rest, D, [...Acc, Segment]>
-  : S extends '.' ? Acc
-  : [...Acc, S]
+export type Split<S extends string, D extends string, Acc extends string[] = []> = S extends ''
+  ? Acc
+  : S extends `${infer Segment}${D}${infer Rest}`
+    ? Segment extends ''
+      ? Split<Rest, D, Acc>
+      : Segment extends '.'
+        ? Split<Rest, D, Acc>
+        : Split<Rest, D, [...Acc, Segment]>
+    : S extends '.'
+      ? Acc
+      : [...Acc, S]
 
 /**
  * Check if string contains a character.
  * @category Type-Level Utilities
  */
-export type Contains<S extends string, C extends string> = S extends `${string}${C}${string}` ? true : false
+export type Contains<S extends string, C extends string> = S extends `${string}${C}${string}`
+  ? true
+  : false
 
 /**
  * Error for when a string literal is required but a general string type was provided.
  */
-export interface ErrorNotLiteral<T, $ErrorMessage extends string> extends
-  Ts.Err.StaticError<
-    ['str', 'not-literal'],
-    {
-      message: $ErrorMessage
-      ReceivedType: T
-      tip: 'Use a string literal instead of string type'
-    }
-  >
-{}
+export interface ErrorNotLiteral<T, $ErrorMessage extends string> extends Ts.Err.StaticError<
+  ['str', 'not-literal'],
+  {
+    message: $ErrorMessage
+    ReceivedType: T
+    tip: 'Use a string literal instead of string type'
+  }
+> {}
 
 /**
  * Constraint that only accepts literal strings.
@@ -122,7 +133,7 @@ export type LiteralOnly<
  * type P3 = Str.PadEnd<'abc', 5, '0'> // 'abc00'
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type PadEnd<
   $S extends string,
   $TargetLen extends number,
@@ -152,7 +163,7 @@ export type PadEnd<
  * type P3 = Str.PadStart<'x', 3, ' '> // '  x'
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type PadStart<
   $S extends string,
   $TargetLen extends number,

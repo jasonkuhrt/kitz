@@ -8,22 +8,21 @@ import { NpmCli, type NpmCliService } from './service.js'
  *
  * Useful for testing release workflows without actually publishing.
  */
-export const NpmCliDryRun: Layer.Layer<NpmCli> = Layer.succeed(
-  NpmCli,
-  {
-    whoami: (_options?: WhoamiOptions) =>
-      Effect.gen(function*() {
-        yield* Effect.log('[dry-run] Would run: npm whoami')
-        return 'dry-run-user'
-      }),
+export const NpmCliDryRun: Layer.Layer<NpmCli> = Layer.succeed(NpmCli, {
+  whoami: (_options?: WhoamiOptions) =>
+    Effect.gen(function* () {
+      yield* Effect.log('[dry-run] Would run: npm whoami')
+      return 'dry-run-user'
+    }),
 
-    publish: (options: PublishOptions) =>
-      Effect.gen(function*() {
-        const args = ['publish', '--access', options.access ?? 'public']
-        if (options.tag) args.push('--tag', options.tag)
-        if (options.registry) args.push('--registry', options.registry)
+  publish: (options: PublishOptions) =>
+    Effect.gen(function* () {
+      const args = ['publish', '--access', options.access ?? 'public']
+      if (options.tag) args.push('--tag', options.tag)
+      if (options.registry) args.push('--registry', options.registry)
 
-        yield* Effect.log(`[dry-run] Would run: npm ${args.join(' ')} in ${Fs.Path.toString(options.cwd)}`)
-      }),
-  } satisfies NpmCliService,
-)
+      yield* Effect.log(
+        `[dry-run] Would run: npm ${args.join(' ')} in ${Fs.Path.toString(options.cwd)}`,
+      )
+    }),
+} satisfies NpmCliService)

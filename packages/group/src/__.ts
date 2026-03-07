@@ -23,7 +23,7 @@ export type UnknownMut = Record<PropertyKey, unknown[]>
  */
 export type AnyMut = Record<PropertyKey, any[]>
 
-// dprint-ignore
+// oxfmt-ignore
 export type by<
   $Type extends object,
   $Key extends keyof $Type,
@@ -52,7 +52,7 @@ export type by<
 /**
  * Result type for grouping objects using a function keyer.
  */
-// dprint-ignore
+// oxfmt-ignore
 export type byFn<
   $Type extends object,
   $Key extends PropertyKey,
@@ -66,7 +66,7 @@ export type byFn<
             [__group_name__ in $Key]?: readonly $Type[]
           }>
 
-// dprint-ignore
+// oxfmt-ignore
 export type byToMut<
   $Type extends object,
   $Key extends keyof $Type,
@@ -97,7 +97,7 @@ export type byToMut<
 /**
  * Result type for grouping objects using a function keyer (mutable).
  */
-// dprint-ignore
+// oxfmt-ignore
 export type byFnToMut<
   $Type extends object,
   $Key extends PropertyKey,
@@ -111,7 +111,7 @@ export type byFnToMut<
             [__group_name__ in $Key]?: $Type[]
           }
 
-// dprint-ignore
+// oxfmt-ignore
 export interface ErrorInvalidGroupKey<obj extends object, key extends keyof obj> extends Ts.Err.StaticError<
   readonly ['group', 'invalid-key'],
   {
@@ -128,11 +128,9 @@ export interface ErrorInvalidGroupKey<obj extends object, key extends keyof obj>
  *
  * @category Clone
  */
-export type toImmutable<$Group extends AnyMut> = Readonly<
-  {
-    [K in keyof $Group]: Readonly<$Group[K]>
-  }
->
+export type toImmutable<$Group extends AnyMut> = Readonly<{
+  [K in keyof $Group]: Readonly<$Group[K]>
+}>
 
 /**
  * Deep mutable type for a group set.
@@ -270,7 +268,7 @@ export const toImmutableMut = <$Group extends AnyMut>(group: $Group): toImmutabl
  */
 export function byToMut<$Obj extends object, $Key extends keyof $Obj>(
   array: $Obj[],
-  // dprint-ignore
+  // oxfmt-ignore
   key: ValidateIsGroupableKey<$Obj, $Key, ErrorInvalidGroupKey<$Obj, $Key>>,
 ): byToMut<$Obj, $Key>
 
@@ -303,14 +301,18 @@ export function byToMut<$Obj extends object>(
   array: $Obj[],
   keyOrKeyer: PropertyKey | ((item: $Obj) => PropertyKey),
 ): AnyMut {
-  const groupSet = array.reduce((index, item) => {
-    const indexKey = typeof keyOrKeyer === `function`
-      ? keyOrKeyer(item)
-      : (item as any)[keyOrKeyer] as PropertyKey
-    index[indexKey] ??= []
-    index[indexKey].push(item)
-    return index
-  }, {} as Record<PropertyKey, any[]>)
+  const groupSet = array.reduce(
+    (index, item) => {
+      const indexKey =
+        typeof keyOrKeyer === `function`
+          ? keyOrKeyer(item)
+          : ((item as any)[keyOrKeyer] as PropertyKey)
+      index[indexKey] ??= []
+      index[indexKey].push(item)
+      return index
+    },
+    {} as Record<PropertyKey, any[]>,
+  )
 
   return groupSet
 }
@@ -356,7 +358,7 @@ export function byToMut<$Obj extends object>(
  */
 export function by<$Obj extends object, $Key extends keyof $Obj>(
   array: $Obj[],
-  // dprint-ignore
+  // oxfmt-ignore
   key: ValidateIsGroupableKey<$Obj, $Key, ErrorInvalidGroupKey<$Obj, $Key>>,
 ): by<$Obj, $Key>
 
@@ -428,10 +430,7 @@ type ValidateIsGroupableKey<
  * @param group2 - The second group set to merge
  * @returns The merged group set (frozen if either input was frozen, otherwise group1)
  */
-export const merge = <$groupSet extends Any>(
-  group1: $groupSet,
-  group2: $groupSet,
-): $groupSet => {
+export const merge = <$groupSet extends Any>(group1: $groupSet, group2: $groupSet): $groupSet => {
   const mode = Obj.inferImmutabilityMode(group1, group2)
   const isMut = mode === 'mutable'
   const result: AnyMut = isMut ? (group1 as any) : {}
@@ -458,7 +457,9 @@ export const merge = <$groupSet extends Any>(
 }
 
 export type Mapper<$GroupSet extends Any> = {
-  [__group_name__ in keyof $GroupSet]: (value: Undefined.Exclude<$GroupSet[__group_name__]>) => unknown
+  [__group_name__ in keyof $GroupSet]: (
+    value: Undefined.Exclude<$GroupSet[__group_name__]>,
+  ) => unknown
 }
 
 export type map<$GroupSet extends Any, $Mapper extends Mapper<$GroupSet>> = {
@@ -481,10 +482,10 @@ export type map<$GroupSet extends Any, $Mapper extends Mapper<$GroupSet>> = {
  * @returns The transformed group set (frozen if input was frozen, otherwise the same mutable input)
  * @throws {Error} If a handler is not provided for a group key that exists in the group set
  */
-export const map = <
-  groupSet extends Any,
-  handlers extends Mapper<groupSet>,
->(groupSet: groupSet, handlers: handlers): Ts.Simplify.Top<map<groupSet, handlers>> => {
+export function map<groupSet extends Any, handlers extends Mapper<groupSet>>(
+  groupSet: groupSet,
+  handlers: handlers,
+): Ts.Simplify.Top<map<groupSet, handlers>> {
   const isMut = !Obj.isImmutable(groupSet)
   const result: AnyMut = isMut ? (groupSet as any) : {}
 

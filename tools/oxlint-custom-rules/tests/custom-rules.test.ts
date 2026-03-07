@@ -49,10 +49,8 @@ const runOxlint = (ruleName: string, fixtureFilePath: string): OxlintJsonOutput 
   return JSON.parse(result.stdout) as OxlintJsonOutput
 }
 
-const countDiagnosticsForRule = (
-  output: OxlintJsonOutput,
-  ruleName: string,
-): number => output.diagnostics.filter((diagnostic) => diagnostic.code.includes(ruleName)).length
+const countDiagnosticsForRule = (output: OxlintJsonOutput, ruleName: string): number =>
+  output.diagnostics.filter((diagnostic) => diagnostic.code.includes(ruleName)).length
 
 const rules: ReadonlyArray<{
   readonly name: string
@@ -67,7 +65,11 @@ const rules: ReadonlyArray<{
   {
     name: `no-try-catch`,
     failingFixtures: [`no-try-catch/fail-1.ts`, `no-try-catch/fail-2.ts`],
-    passingFixtures: [`no-try-catch/pass-1.ts`, `no-try-catch/pass-2.ts`, `no-try-catch/pass-3.test.ts`],
+    passingFixtures: [
+      `no-try-catch/pass-1.ts`,
+      `no-try-catch/pass-2.ts`,
+      `no-try-catch/pass-3.test.ts`,
+    ],
   },
   {
     name: `no-native-promise-construction`,
@@ -121,7 +123,10 @@ const rules: ReadonlyArray<{
   },
   {
     name: `no-effect-run-in-library-code`,
-    failingFixtures: [`no-effect-run-in-library-code/fail-1.ts`, `no-effect-run-in-library-code/fail-2.ts`],
+    failingFixtures: [
+      `no-effect-run-in-library-code/fail-1.ts`,
+      `no-effect-run-in-library-code/fail-2.ts`,
+    ],
     passingFixtures: [
       `no-effect-run-in-library-code/src/cli/pass-1.ts`,
       `no-effect-run-in-library-code/pass-2.test.ts`,
@@ -130,8 +135,14 @@ const rules: ReadonlyArray<{
   },
   {
     name: `require-typed-effect-errors`,
-    failingFixtures: [`require-typed-effect-errors/fail-1.ts`, `require-typed-effect-errors/fail-2.ts`],
-    passingFixtures: [`require-typed-effect-errors/pass-1.ts`, `require-typed-effect-errors/pass-2.ts`],
+    failingFixtures: [
+      `require-typed-effect-errors/fail-1.ts`,
+      `require-typed-effect-errors/fail-2.ts`,
+    ],
+    passingFixtures: [
+      `require-typed-effect-errors/pass-1.ts`,
+      `require-typed-effect-errors/pass-2.ts`,
+    ],
   },
   {
     name: `require-schema-decode-at-boundary`,
@@ -163,7 +174,10 @@ const rules: ReadonlyArray<{
   {
     name: `no-math-random-in-domain`,
     failingFixtures: [`no-math-random-in-domain/fail-1.ts`, `no-math-random-in-domain/fail-2.ts`],
-    passingFixtures: [`no-math-random-in-domain/src/cli/pass-1.ts`, `no-math-random-in-domain/pass-2.ts`],
+    passingFixtures: [
+      `no-math-random-in-domain/src/cli/pass-1.ts`,
+      `no-math-random-in-domain/pass-2.ts`,
+    ],
   },
   {
     name: `no-console-in-effect-modules`,
@@ -178,8 +192,14 @@ const rules: ReadonlyArray<{
   },
   {
     name: `require-tagged-error-types`,
-    failingFixtures: [`require-tagged-error-types/fail-1.ts`, `require-tagged-error-types/fail-2.ts`],
-    passingFixtures: [`require-tagged-error-types/pass-1.ts`, `require-tagged-error-types/pass-2.ts`],
+    failingFixtures: [
+      `require-tagged-error-types/fail-1.ts`,
+      `require-tagged-error-types/fail-2.ts`,
+    ],
+    passingFixtures: [
+      `require-tagged-error-types/pass-1.ts`,
+      `require-tagged-error-types/pass-2.ts`,
+    ],
   },
   {
     name: `namespace-file-conventions`,
@@ -353,13 +373,12 @@ describe(`e2e: subpath-imports-integrity tsconfig autofix`, () => {
     // Copy package.json, tsconfig.json, and source file
     fs.copyFileSync(path.join(fixtureDir, `package.json`), path.join(tmpPkgDir, `package.json`))
     fs.copyFileSync(path.join(fixtureDir, `tsconfig.json`), path.join(tmpPkgDir, `tsconfig.json`))
-    fs.copyFileSync(
-      path.join(fixtureDir, `src/alpha/_.ts`),
-      path.join(tmpPkgDir, `src/alpha/_.ts`),
-    )
+    fs.copyFileSync(path.join(fixtureDir, `src/alpha/_.ts`), path.join(tmpPkgDir, `src/alpha/_.ts`))
 
     // Verify tsconfig is drifted before running
-    const beforeTsconfig = JSON.parse(fs.readFileSync(path.join(tmpPkgDir, `tsconfig.json`), `utf8`))
+    const beforeTsconfig = JSON.parse(
+      fs.readFileSync(path.join(tmpPkgDir, `tsconfig.json`), `utf8`),
+    )
     expect(beforeTsconfig.compilerOptions.paths[`#alpha`]).toEqual([`./src/WRONG/_.js`])
 
     // Run oxlint on a source file within the temp package
@@ -386,9 +405,7 @@ describe(`e2e: subpath-imports-integrity tsconfig autofix`, () => {
 
     // Parse diagnostics - expect the drift warning
     const output = JSON.parse(result.stdout) as OxlintJsonOutput
-    expect(
-      countDiagnosticsForRule(output, `subpath-imports-integrity`),
-    ).toBeGreaterThan(0)
+    expect(countDiagnosticsForRule(output, `subpath-imports-integrity`)).toBeGreaterThan(0)
 
     // Verify tsconfig was auto-fixed
     const afterTsconfig = JSON.parse(fs.readFileSync(path.join(tmpPkgDir, `tsconfig.json`), `utf8`))

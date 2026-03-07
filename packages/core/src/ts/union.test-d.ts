@@ -1,7 +1,7 @@
 import type { Type as A } from '#kitz/assert/assert'
 import { Ts } from '#ts'
 
-// dprint-ignore
+// oxfmt-ignore
 type _IsAnyMemberExtends = A.Cases<
 A.exact.of<Ts.Union.IsAnyMemberExtends<string | number, string>,           true>,
 A.exact.of<Ts.Union.IsAnyMemberExtends<number | boolean, string>,          false>,

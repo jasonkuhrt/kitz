@@ -7,19 +7,10 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "paths": {
-      "#conventional-commits": [
-        "./src/_.js"
-      ],
-      "#conventional-commits/*": [
-        "./src/*.js"
-      ]
+      "#conventional-commits": ["./src/_.js"],
+      "#conventional-commits/*": ["./src/*.js"]
     }
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "build",
-    "node_modules"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["build", "node_modules"]
 }

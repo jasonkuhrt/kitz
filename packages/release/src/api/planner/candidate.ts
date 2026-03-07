@@ -60,12 +60,8 @@ export const candidate = (
   analysis: Analysis,
   ctx: Context,
   options?: Options,
-): Effect.Effect<
-  Plan,
-  Resource.ResourceError,
-  FileSystem.FileSystem
-> =>
-  Effect.gen(function*() {
+): Effect.Effect<Plan, Resource.ResourceError, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
     // 1. Transform analysis impacts to candidate planned releases
     const releases: Candidate[] = []
 
@@ -76,19 +72,25 @@ export const candidate = (
       const nextOfficialVersion = calculateNextVersion(impact.currentVersion, impact.bump)
 
       // Find existing candidate releases for this version
-      const candidateNumber = findLatestPreviewNumber(impact.package.name, nextOfficialVersion, [...analysis.tags])
+      const candidateNumber = findLatestPreviewNumber(impact.package.name, nextOfficialVersion, [
+        ...analysis.tags,
+      ])
 
-      releases.push(Candidate.make({
-        package: impact.package,
-        baseVersion: nextOfficialVersion,
-        prerelease: Version.Candidate.make({ iteration: candidateNumber + 1 }),
-        commits: impact.commits,
-      }))
+      releases.push(
+        Candidate.make({
+          package: impact.package,
+          baseVersion: nextOfficialVersion,
+          prerelease: Version.Candidate.make({ iteration: candidateNumber + 1 }),
+          commits: impact.commits,
+        }),
+      )
     }
 
     // 2. Detect cascade releases
     const dependencyGraph = yield* buildDependencyGraph([...ctx.packages])
-    const cascades = detectCascadesForCandidate([...ctx.packages], releases, dependencyGraph, [...analysis.tags])
+    const cascades = detectCascadesForCandidate([...ctx.packages], releases, dependencyGraph, [
+      ...analysis.tags,
+    ])
 
     return Plan.make({
       lifecycle: 'candidate',

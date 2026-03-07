@@ -12,7 +12,7 @@ import { SemverFromString, SemverSelf } from '../semver-schema.js'
  * Extract specifier from "name@specifier" string at type level.
  * Handles scoped (@scope/name@spec) and unscoped (name@spec) packages.
  */
-// dprint-ignore
+// oxfmt-ignore
 type ExtractSpecifier<$S extends string> =
   // Scoped: @scope/name@specifier
   $S extends `@${string}/${infer $Rest}`
@@ -24,7 +24,7 @@ type ExtractSpecifier<$S extends string> =
 /**
  * Detect if specifier has range operators (excludes exact versions).
  */
-// dprint-ignore
+// oxfmt-ignore
 type HasRangeOperators<$S extends string> =
   $S extends `^${string}`         ? true :
   $S extends `~${string}`         ? true :
@@ -44,7 +44,7 @@ type HasRangeOperators<$S extends string> =
  * Detect if specifier looks like an exact semver version.
  * Starts with digit, no range operators.
  */
-// dprint-ignore
+// oxfmt-ignore
 type IsExactVersion<$S extends string> =
   $S extends `${number}${string}`
     ? HasRangeOperators<$S> extends true ? false : true
@@ -62,7 +62,7 @@ type IsExactVersion<$S extends string> =
  * - Range-like (`^`, `~`, `>=`, `*`, `1.x`) → Range
  * - Otherwise → Tag
  */
-// dprint-ignore
+// oxfmt-ignore
 type ParsePin<$S extends string> =
   string extends $S ? Pin :
   ExtractSpecifier<$S> extends infer $Spec extends string
@@ -182,36 +182,36 @@ class ExactClass extends S.TaggedClass<ExactClass>()('PinExact', {
    *
    * Parses `<name>@<semver>` strings into {@link Exact}.
    */
-  static FromString: S.Schema<Exact, string> = S.transformOrFail(
-    S.String,
-    ExactClass,
-    {
-      strict: true,
-      decode: (value, _, ast) => {
-        const atIndex = value.lastIndexOf('@')
-        if (atIndex <= 0 || atIndex >= value.length - 1) {
-          return ParseResult.fail(new ParseResult.Type(ast, value, `Invalid exact pin: expected '<name>@<version>'`))
-        }
+  static FromString: S.Schema<Exact, string> = S.transformOrFail(S.String, ExactClass, {
+    strict: true,
+    decode: (value, _, ast) => {
+      const atIndex = value.lastIndexOf('@')
+      if (atIndex <= 0 || atIndex >= value.length - 1) {
+        return ParseResult.fail(
+          new ParseResult.Type(ast, value, `Invalid exact pin: expected '<name>@<version>'`),
+        )
+      }
 
-        const name = S.decodeUnknownOption(Moniker.FromString)(value.slice(0, atIndex))
-        if (Option.isNone(name)) {
-          return ParseResult.fail(new ParseResult.Type(ast, value, `Invalid package name in exact pin`))
-        }
+      const name = S.decodeUnknownOption(Moniker.FromString)(value.slice(0, atIndex))
+      if (Option.isNone(name)) {
+        return ParseResult.fail(
+          new ParseResult.Type(ast, value, `Invalid package name in exact pin`),
+        )
+      }
 
-        const version = S.decodeUnknownOption(SemverFromString)(value.slice(atIndex + 1))
-        if (Option.isNone(version)) {
-          return ParseResult.fail(new ParseResult.Type(ast, value, `Invalid semver in exact pin`))
-        }
+      const version = S.decodeUnknownOption(SemverFromString)(value.slice(atIndex + 1))
+      if (Option.isNone(version)) {
+        return ParseResult.fail(new ParseResult.Type(ast, value, `Invalid semver in exact pin`))
+      }
 
-        return ParseResult.succeed({
-          _tag: 'PinExact' as const,
-          name: name.value.moniker,
-          version: version.value,
-        })
-      },
-      encode: (pin) => ParseResult.succeed(`${pin.name}@${Semver.toString(pin.version)}`),
+      return ParseResult.succeed({
+        _tag: 'PinExact' as const,
+        name: name.value.moniker,
+        version: version.value,
+      })
     },
-  )
+    encode: (pin) => ParseResult.succeed(`${pin.name}@${Semver.toString(pin.version)}`),
+  })
 
   /**
    * Parse an exact pin from string.
@@ -610,7 +610,8 @@ export const toString = (pin: Pin): string =>
     },
     PinPath: (p) => `${monikerToString(p.name)}@file:${p.path}`,
     PinUrl: (p) => `${monikerToString(p.name)}@${p.url}`,
-    PinAlias: (p) => `${monikerToString(p.name)}@npm:${monikerToString(p.target)}@${p.targetSpecifier}`,
+    PinAlias: (p) =>
+      `${monikerToString(p.name)}@npm:${monikerToString(p.target)}@${p.targetSpecifier}`,
   })
 
 // ============================================================================
@@ -625,9 +626,7 @@ const monikerToString = (moniker: Moniker.Moniker): string => moniker.moniker
 /**
  * Split "name@specifier" into parts, handling scoped packages.
  */
-const splitNameSpecifier = (
-  input: string,
-): { name: string; specifier: string } => {
+const splitNameSpecifier = (input: string): { name: string; specifier: string } => {
   // Handle scoped packages: @scope/name@specifier
   if (input.startsWith('@')) {
     const slashIndex = input.indexOf('/')
@@ -660,16 +659,16 @@ const splitNameSpecifier = (
  */
 const hasRangeOperators = (specifier: string): boolean => {
   return (
-    specifier.startsWith('^')
-    || specifier.startsWith('~')
-    || specifier.startsWith('>')
-    || specifier.startsWith('<')
-    || specifier.startsWith('=')
-    || specifier === '*'
-    || specifier === 'x'
-    || specifier.includes(' ') // hyphen range or OR
-    || specifier.includes('||')
-    || /[xX*]/.test(specifier.slice(1)) // wildcards like 1.x, 1.X, 1.*
+    specifier.startsWith('^') ||
+    specifier.startsWith('~') ||
+    specifier.startsWith('>') ||
+    specifier.startsWith('<') ||
+    specifier.startsWith('=') ||
+    specifier === '*' ||
+    specifier === 'x' ||
+    specifier.includes(' ') || // hyphen range or OR
+    specifier.includes('||') ||
+    /[xX*]/.test(specifier.slice(1)) // wildcards like 1.x, 1.X, 1.*
   )
 }
 

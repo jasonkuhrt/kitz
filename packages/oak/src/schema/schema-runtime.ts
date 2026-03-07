@@ -29,7 +29,9 @@ export const validate = <___Input, ___Output>(
   }
 
   if (isFailure(result)) {
-    const errors = result.issues?.map((issue) => issue.message ?? `Validation failed`) ?? [`Validation failed`]
+    const errors = result.issues?.map((issue) => issue.message ?? `Validation failed`) ?? [
+      `Validation failed`,
+    ]
     return Ef.left({ value, errors })
   }
 
@@ -109,8 +111,9 @@ export const deserialize = <___Input, ___Output>(
   }
 
   if (isFailure(result)) {
-    const errors = result.issues?.map((issue) => issue.message ?? `Validation failed`).join(`, `)
-      ?? `Validation failed`
+    const errors =
+      result.issues?.map((issue) => issue.message ?? `Validation failed`).join(`, `) ??
+      `Validation failed`
     return Ef.left(new Error(`Deserialization failed: ${errors}`))
   }
 
@@ -127,7 +130,9 @@ export const display = <___Input, ___Output>(schema: OakSchema<___Input, ___Outp
 /**
  * Get the expanded display type string for help output.
  */
-export const displayExpanded = <___Input, ___Output>(schema: OakSchema<___Input, ___Output>): string => {
+export const displayExpanded = <___Input, ___Output>(
+  schema: OakSchema<___Input, ___Output>,
+): string => {
   return schema.metadata.helpHints?.displayTypeExpanded ?? display(schema)
 }
 

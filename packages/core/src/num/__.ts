@@ -68,9 +68,7 @@ export type PlusOne<$n extends Literal> = [
   19,
   20,
   never,
-][
-  $n
-]
+][$n]
 
 /**
  * Subtract one from a number literal type.
@@ -97,11 +95,9 @@ export type MinusOne<$n extends Literal> = [
   17,
   18,
   19,
-][
-  $n
-]
+][$n]
 
-// dprint-ignore
+// oxfmt-ignore
 export type NatDec<$N extends Literal> =
   $N extends LiteralInfinity          ? LiteralInfinity :
   $N extends LiteralZero              ? LiteralZero :

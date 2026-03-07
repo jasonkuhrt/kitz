@@ -23,11 +23,14 @@ type PATH_SEPARATOR = typeof PATH_SEPARATOR
  */
 type HasExtension<$segment extends string> =
   // Check for files starting with dot that have another dot
-  $segment extends `.${infer __rest__}` ? __rest__ extends `${string}.${string}` ? true // .env.local has extension
-    : false // .gitignore has no extension
-    // Normal files - any dot means extension
-    : $segment extends `${string}.${string}` ? true
-    : false
+  $segment extends `.${infer __rest__}`
+    ? __rest__ extends `${string}.${string}`
+      ? true // .env.local has extension
+      : false // .gitignore has no extension
+    : // Normal files - any dot means extension
+      $segment extends `${string}.${string}`
+      ? true
+      : false
 
 /**
  * Simple approach: take everything after last dot as extension.
@@ -35,22 +38,28 @@ type HasExtension<$segment extends string> =
  */
 type ExtractExtension<$segment extends string> =
   // Handle files starting with dot
-  $segment extends `.${infer __rest__}` ? __rest__ extends `${string}.${infer __ext__}` ? `.${__ext__}` // .env.local -> .local
-    : null // .gitignore -> null
-    // Handle normal files
-    : $segment extends `${string}.${infer __ext__}` ? `.${__ext__}` // file.txt -> .txt, file.test.ts -> .ts
-    : null
+  $segment extends `.${infer __rest__}`
+    ? __rest__ extends `${string}.${infer __ext__}`
+      ? `.${__ext__}` // .env.local -> .local
+      : null // .gitignore -> null
+    : // Handle normal files
+      $segment extends `${string}.${infer __ext__}`
+      ? `.${__ext__}` // file.txt -> .txt, file.test.ts -> .ts
+      : null
 
 /**
  * Extract the stem (name without extension) from a filename.
  */
 type ExtractName<$segment extends string> =
   // Handle files starting with dot
-  $segment extends `.${infer __rest__}` ? __rest__ extends `${infer __name__}.${string}` ? `.${__name__}` // .env.local -> .env
-    : $segment // .gitignore -> .gitignore
-    // Handle normal files - need to get everything before last dot
-    : $segment extends `${infer __name__}.${string}` ? __name__ // This will get "file" from "file.txt" or "file.test" from "file.test.ts"
-    : $segment
+  $segment extends `.${infer __rest__}`
+    ? __rest__ extends `${infer __name__}.${string}`
+      ? `.${__name__}` // .env.local -> .env
+      : $segment // .gitignore -> .gitignore
+    : // Handle normal files - need to get everything before last dot
+      $segment extends `${infer __name__}.${string}`
+      ? __name__ // This will get "file" from "file.txt" or "file.test" from "file.test.ts"
+      : $segment
 
 // ============================================================================
 // Directory detection
@@ -64,20 +73,28 @@ type ExtractName<$segment extends string> =
  * 3. Has extension = file
  * 4. Otherwise = directory
  */
-type IsDirectory<$path extends string> = $path extends '' ? true
-  : $path extends '.' ? true
-  : $path extends './' ? true
-  : $path extends '..' ? true
-  : $path extends '../' ? true
-  : Str.EndsWith<$path, PATH_SEPARATOR> extends true ? true
-  : HasExtension<Str.LastSegment<Str.RemoveTrailingSlash<$path>>> extends true ? false
-  : true // No extension = directory
+type IsDirectory<$path extends string> = $path extends ''
+  ? true
+  : $path extends '.'
+    ? true
+    : $path extends './'
+      ? true
+      : $path extends '..'
+        ? true
+        : $path extends '../'
+          ? true
+          : Str.EndsWith<$path, PATH_SEPARATOR> extends true
+            ? true
+            : HasExtension<Str.LastSegment<Str.RemoveTrailingSlash<$path>>> extends true
+              ? false
+              : true // No extension = directory
 
 // ============================================================================
 // Path type detection
 // ============================================================================
 
-type IsAbsolute<$path extends string> = Str.StartsWith<$path, PATH_SEPARATOR> extends true ? true : false
+type IsAbsolute<$path extends string> =
+  Str.StartsWith<$path, PATH_SEPARATOR> extends true ? true : false
 
 type IsRelative<$path extends string> = IsAbsolute<$path> extends true ? false : true
 
@@ -88,10 +105,12 @@ type IsRelative<$path extends string> = IsAbsolute<$path> extends true ? false :
 /**
  * Extract path segments (excluding filename for files).
  */
-type ExtractPathSegments<$path extends string> = IsDirectory<$path> extends true
-  ? Str.Split<Str.RemoveTrailingSlash<$path>, PATH_SEPARATOR>
-  : $path extends `${infer __dir__}${PATH_SEPARATOR}${infer __file__}` ? Str.Split<__dir__, PATH_SEPARATOR>
-  : []
+type ExtractPathSegments<$path extends string> =
+  IsDirectory<$path> extends true
+    ? Str.Split<Str.RemoveTrailingSlash<$path>, PATH_SEPARATOR>
+    : $path extends `${infer __dir__}${PATH_SEPARATOR}${infer __file__}`
+      ? Str.Split<__dir__, PATH_SEPARATOR>
+      : []
 
 // ============================================================================
 // Main Analysis types
@@ -136,9 +155,11 @@ export type AnalysisDir<$path extends string = string> = {
  * Determines if a path is a file or directory and extracts metadata.
  * Falls back to Analysis union when given non-literal string type.
  */
-export type Analyze<$path extends string> = string extends $path ? Analysis // Non-literal string fallback
-  : IsDirectory<$path> extends true ? AnalysisDir<$path>
-  : AnalysisFile<$path>
+export type Analyze<$path extends string> = string extends $path
+  ? Analysis // Non-literal string fallback
+  : IsDirectory<$path> extends true
+    ? AnalysisDir<$path>
+    : AnalysisFile<$path>
 
 // ============================================================================
 // Utility type exports

@@ -1,5 +1,5 @@
 ---
-paths: "packages/**/*"
+paths: 'packages/**/*'
 ---
 
 # Package Conventions

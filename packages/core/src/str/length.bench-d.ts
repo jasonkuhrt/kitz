@@ -60,9 +60,7 @@ bench('Length > Gate > 50 chars', () => {
 }).types([1150, 'instantiations'])
 
 bench('Length > Gate > 100 chars', () => {
-  return {} as Length<
-    '1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890'
-  >
+  return {} as Length<'1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890'>
 }).types([1150, 'instantiations'])
 
 //
@@ -106,10 +104,7 @@ bench('Length > Slow > 21 chars', () => {
 
 // 50 chars with local override
 bench('Length > Slow > 50 chars', () => {
-  return {} as Length<
-    '12345678901234567890123456789012345678901234567890',
-    true
-  >
+  return {} as Length<'12345678901234567890123456789012345678901234567890', true>
 }).types([449, 'instantiations'])
 
 // 100 chars with local override

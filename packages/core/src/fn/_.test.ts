@@ -7,7 +7,7 @@ property(
   'is detects functions',
   fc.oneof(
     fc.func(fc.anything()),
-    fc.anything().filter(v => typeof v !== 'function'),
+    fc.anything().filter((v) => typeof v !== 'function'),
   ),
   (value) => {
     expect(Fn.is(value)).toBe(typeof value === 'function')
@@ -48,8 +48,8 @@ test('uncurry returns function', () => {
 
 property(
   'flipCurried reverses argument order',
-  fc.integer().filter(x => x !== 0),
-  fc.integer().filter(x => x !== 0),
+  fc.integer().filter((x) => x !== 0),
+  fc.integer().filter((x) => x !== 0),
   (a, b) => {
     const divide = (x: number) => (y: number) => x / y
     const flipped = Fn.flipCurried(divide)
@@ -81,6 +81,11 @@ property(
 )
 
 test('pipe type transformations', () => {
-  const result = Fn.pipe(5, x => x + 1, x => x * 2, x => x.toString())
+  const result = Fn.pipe(
+    5,
+    (x) => x + 1,
+    (x) => x * 2,
+    (x) => x.toString(),
+  )
   expect(result).toBe('12')
 })

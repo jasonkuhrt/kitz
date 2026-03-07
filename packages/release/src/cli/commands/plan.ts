@@ -17,7 +17,7 @@ import { Str } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
-import { EffectSchema, Oak } from '@kitz/oak'
+import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Option, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 
@@ -47,14 +47,13 @@ const encodeForecastEnvelope = Schema.encodeSync(ForecastEnvelopeJsonSchema)
 const readPublishHistory = (
   filePath: string | undefined,
 ): Effect.Effect<readonly Api.Commentator.PublishRecord[], never, FileSystem.FileSystem> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     if (!filePath) return []
 
     const fs = yield* FileSystem.FileSystem
-    const parsed = yield* fs.readFileString(filePath).pipe(
-      Effect.option,
-      Effect.map(Option.flatMap(decodePublishHistory)),
-    )
+    const parsed = yield* fs
+      .readFileString(filePath)
+      .pipe(Effect.option, Effect.map(Option.flatMap(decodePublishHistory)))
 
     return parsed.pipe(
       Option.map((value) => value.publishes),
@@ -73,7 +72,7 @@ const readPublishHistory = (
  * - pr      - PR preview release
  */
 const args = Oak.Command.create()
-  .use(EffectSchema)
+  .use(Oak.EffectSchema)
   .description('Generate a release plan')
   .parameter(
     'type',
@@ -95,16 +94,15 @@ const args = Oak.Command.create()
   )
   .parameter(
     'json',
-    Schema.transform(
-      Schema.UndefinedOr(Schema.Boolean),
-      Schema.Boolean,
-      {
-        strict: true,
-        decode: (v) => v ?? false,
-        encode: (v) => v,
-      },
-    ).pipe(
-      Schema.annotations({ description: 'Output forecast JSON for render/comment workflows', default: false }),
+    Schema.transform(Schema.UndefinedOr(Schema.Boolean), Schema.Boolean, {
+      strict: true,
+      decode: (v) => v ?? false,
+      encode: (v) => v,
+    }).pipe(
+      Schema.annotations({
+        description: 'Output forecast JSON for render/comment workflows',
+        default: false,
+      }),
     ),
   )
   .parameter(
@@ -116,7 +114,7 @@ const args = Oak.Command.create()
   .parse()
 
 Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const git = yield* Git.Git
 
     // Load config and scan packages
@@ -125,8 +123,8 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
 
     if (packages.length === 0) {
       yield* Console.log(
-        'No packages found. Check release.config.ts `packages` field '
-          + 'or ensure pnpm-workspace.yaml defines workspace packages.',
+        'No packages found. Check release.config.ts `packages` field ' +
+          'or ensure pnpm-workspace.yaml defines workspace packages.',
       )
       return
     }
@@ -154,24 +152,24 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     })
     const ctx = { packages }
 
-    const plan = yield* (
-      args.type === 'stable'
-        ? Api.Planner.official(analysis, ctx, options)
-        : args.type === 'preview'
+    const plan = yield* args.type === 'stable'
+      ? Api.Planner.official(analysis, ctx, options)
+      : args.type === 'preview'
         ? Api.Planner.candidate(analysis, ctx, options)
         : Api.Planner.ephemeral(analysis, ctx, options)
-    )
 
     if (args.json) {
       const recon = yield* Api.Explorer.explore()
       const publishHistory = yield* readPublishHistory(args.publishHistory)
       const forecast = Api.Forecaster.forecast(analysis, recon)
 
-      yield* Console.log(encodeForecastEnvelope({
-        forecast,
-        publishState: 'idle',
-        publishHistory,
-      }))
+      yield* Console.log(
+        encodeForecastEnvelope({
+          forecast,
+          publishState: 'idle',
+          publishHistory,
+        }),
+      )
       return
     }
 

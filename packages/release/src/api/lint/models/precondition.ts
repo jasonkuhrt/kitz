@@ -16,16 +16,28 @@ export class IsMonorepo extends Schema.TaggedClass<IsMonorepo>()('PreconditionIs
 }
 
 /** GitHub API token available with repo read access. */
-export class HasGitHubAccess extends Schema.TaggedClass<HasGitHubAccess>()('PreconditionHasGitHubAccess', {}) {
+export class HasGitHubAccess extends Schema.TaggedClass<HasGitHubAccess>()(
+  'PreconditionHasGitHubAccess',
+  {},
+) {
   static is = Schema.is(HasGitHubAccess)
 }
 
 /** A release plan is available (computed versions and packages to publish). */
-export class HasReleasePlan extends Schema.TaggedClass<HasReleasePlan>()('PreconditionHasReleasePlan', {}) {
+export class HasReleasePlan extends Schema.TaggedClass<HasReleasePlan>()(
+  'PreconditionHasReleasePlan',
+  {},
+) {
   static is = Schema.is(HasReleasePlan)
 }
 
 /** Runtime applicability check for a lint rule. Not user-configurable. */
 export type Precondition = HasOpenPR | HasDiff | IsMonorepo | HasGitHubAccess | HasReleasePlan
 
-export const Precondition = Schema.Union(HasOpenPR, HasDiff, IsMonorepo, HasGitHubAccess, HasReleasePlan)
+export const Precondition = Schema.Union(
+  HasOpenPR,
+  HasDiff,
+  IsMonorepo,
+  HasGitHubAccess,
+  HasReleasePlan,
+)

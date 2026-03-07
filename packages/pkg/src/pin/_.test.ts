@@ -3,23 +3,12 @@ import * as Pin from './pin.js'
 
 Test.describe('Range')
   .on(Pin.Range.fromString)
-  .casesInput(
-    '@kitz/core@^1.0.0',
-    '@scope/pkg@~2.3.4',
-    'lodash@>=4.0.0',
-    'express@4.18.0',
-    'pkg@*',
-  )
+  .casesInput('@kitz/core@^1.0.0', '@scope/pkg@~2.3.4', 'lodash@>=4.0.0', 'express@4.18.0', 'pkg@*')
   .test()
 
 Test.describe('Tag')
   .on(Pin.Tag.fromString)
-  .casesInput(
-    'lodash@latest',
-    '@kitz/core@next',
-    'react@canary',
-    'pkg@beta',
-  )
+  .casesInput('lodash@latest', '@kitz/core@next', 'react@canary', 'pkg@beta')
   .test()
 
 Test.describe('Workspace')

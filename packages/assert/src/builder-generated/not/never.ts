@@ -1,7 +1,6 @@
 import type { Fn } from '@kitz/core'
-import { builder } from '../../builder-singleton.js'
 import type { AssertNeverKind } from '../../asserts.js'
-
+import { builder } from '../../builder-singleton.js'
 
 /**
  * Unary relator (negated) - asserts type is NOT `never`.
@@ -18,6 +17,6 @@ import type { AssertNeverKind } from '../../asserts.js'
  * ```
  */
 type never_<$Actual> = Fn.Kind.Apply<AssertNeverKind, [$Actual, true]>
-const never_ = builder.not.never
+const never_: typeof builder.not.never = builder.not.never
 
 export { never_ as never }

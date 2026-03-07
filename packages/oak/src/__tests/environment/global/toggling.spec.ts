@@ -51,8 +51,11 @@ it.skipIf(process.env['CI'] === 'true')(`environment supersedes settings`, () =>
       })
       .parse({
         line: [],
-        environment: { ClI_settings_READ_arguments_FROM_ENVIRONMENT: `false`, cli_param_foo: `bar` },
-      })
+        environment: {
+          ClI_settings_READ_arguments_FROM_ENVIRONMENT: `false`,
+          cli_param_foo: `bar`,
+        },
+      }),
   ).toThrowErrorMatchingSnapshot()
   // Skip ANSI snapshots in CI due to environment differences
   expect(output.value).toMatchSnapshot()

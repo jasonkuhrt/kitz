@@ -9,7 +9,9 @@ import { Status } from './status/_.js'
  * // returns a 404 response
  * ```
  */
-export const notFound: Response = new Response(Status.NotFound.description, { status: Status.NotFound.code })
+export const notFound: Response = new Response(Status.NotFound.description, {
+  status: Status.NotFound.code,
+})
 
 /**
  * Pre-configured 500 Internal Server Error response.

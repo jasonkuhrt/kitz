@@ -59,11 +59,13 @@ const normalizeWorkflowResult = (result: unknown): ExecutionResult =>
       createdTags: [...value.createTags],
       createdGHReleases: [...value.createGHReleases],
     })),
-    Option.getOrElse((): ExecutionResult => ({
-      releasedPackages: [],
-      createdTags: [],
-      createdGHReleases: [],
-    })),
+    Option.getOrElse(
+      (): ExecutionResult => ({
+        releasedPackages: [],
+        createdTags: [],
+        createdGHReleases: [],
+      }),
+    ),
   )
 
 /**
@@ -72,8 +74,14 @@ const normalizeWorkflowResult = (result: unknown): ExecutionResult =>
 export const formatLifecycleEvent = (event: Flo.LifecycleEvent): LifecycleEventLine | undefined =>
   Match.value(event).pipe(
     Match.tags({
-      ActivityStarted: (e): LifecycleEventLine => ({ level: 'info', message: `  Starting: ${e.activity}` }),
-      ActivityCompleted: (e): LifecycleEventLine => ({ level: 'info', message: `\u2713 Completed: ${e.activity}` }),
+      ActivityStarted: (e): LifecycleEventLine => ({
+        level: 'info',
+        message: `  Starting: ${e.activity}`,
+      }),
+      ActivityCompleted: (e): LifecycleEventLine => ({
+        level: 'info',
+        message: `\u2713 Completed: ${e.activity}`,
+      }),
       ActivityFailed: (e): LifecycleEventLine => ({
         level: 'error',
         message: `\u2717 Failed: ${e.activity} - ${e.error}`,
@@ -128,7 +136,7 @@ export const execute = (
   plan: Plan,
   options: { dryRun?: boolean; tag?: string; registry?: string } = {},
 ) =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const payload = toPayload(plan, options)
 
     yield* Effect.log(`Starting release workflow for ${payload.releases.length} packages...`)
@@ -162,7 +170,7 @@ export const executeObservable = (
     github?: RuntimeConfig['github']
   } = {},
 ): Effect.Effect<ObservableResult, never, never> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const payload = toPayload(plan, options)
 
     // Get graph structure for visualization

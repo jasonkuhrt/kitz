@@ -7,172 +7,61 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "paths": {
-      "#arr": [
-        "./src/arr/_.js"
-      ],
-      "#arr/*": [
-        "./src/arr/*.js"
-      ],
-      "#bool": [
-        "./src/bool/_.js"
-      ],
-      "#bool/*": [
-        "./src/bool/*.js"
-      ],
-      "#date": [
-        "./src/date/_.js"
-      ],
-      "#date/*": [
-        "./src/date/*.js"
-      ],
-      "#err": [
-        "./src/err/_.js"
-      ],
-      "#err/err": [
-        "./src/err/__.js"
-      ],
-      "#err/core": [
-        "./src/err/core/_.js"
-      ],
-      "#fn": [
-        "./src/fn/_.js"
-      ],
-      "#fn/fn": [
-        "./src/fn/__.js"
-      ],
-      "#fn/core": [
-        "./src/fn/core/_.js"
-      ],
-      "#mask": [
-        "./src/mask/_.js"
-      ],
-      "#mask/mask": [
-        "./src/mask/__.js"
-      ],
-      "#lang": [
-        "./src/lang/_.js"
-      ],
-      "#lang/lang": [
-        "./src/lang/__.js"
-      ],
-      "#lang/core": [
-        "./src/lang/core/_.js"
-      ],
-      "#lang/core/lang": [
-        "./src/lang/core/lang.js"
-      ],
-      "#null": [
-        "./src/null/_.js"
-      ],
-      "#null/*": [
-        "./src/null/*.js"
-      ],
-      "#num": [
-        "./src/num/_.js"
-      ],
-      "#num/*": [
-        "./src/num/*.js"
-      ],
-      "#obj": [
-        "./src/obj/_.js"
-      ],
-      "#obj/*": [
-        "./src/obj/*.js"
-      ],
-      "#optic": [
-        "./src/optic/_.js"
-      ],
-      "#optic/*": [
-        "./src/optic/*.js"
-      ],
-      "#ref": [
-        "./src/ref/_.js"
-      ],
-      "#ref/ref": [
-        "./src/ref/__.js"
-      ],
-      "#pat": [
-        "./src/pat/_.js"
-      ],
-      "#pat/*": [
-        "./src/pat/*.js"
-      ],
-      "#rec": [
-        "./src/rec/_.js"
-      ],
-      "#rec/*": [
-        "./src/rec/*.js"
-      ],
-      "#str": [
-        "./src/str/_.js"
-      ],
-      "#str/*": [
-        "./src/str/*.js"
-      ],
-      "#ts": [
-        "./src/ts/_.js"
-      ],
-      "#ts/ts": [
-        "./src/ts/__.js"
-      ],
-      "#value": [
-        "./src/value/_.js"
-      ],
-      "#value/value": [
-        "./src/value/__.js"
-      ],
-      "#tup": [
-        "./src/tup/_.js"
-      ],
-      "#tup/*": [
-        "./src/tup/*.js"
-      ],
-      "#undefined": [
-        "./src/undefined/_.js"
-      ],
-      "#undefined/*": [
-        "./src/undefined/*.js"
-      ],
-      "#prom": [
-        "./src/prom/_.js"
-      ],
-      "#prom/*": [
-        "./src/prom/*.js"
-      ],
-      "#prox": [
-        "./src/prox/_.js"
-      ],
-      "#prox/*": [
-        "./src/prox/*.js"
-      ],
-      "#deps/*": [
-        "./src/deps/*.js"
-      ],
-      "#kitz/test": [
-        "../test/src/_.ts"
-      ],
-      "#kitz/test/test": [
-        "../test/src/__.ts"
-      ],
-      "#kitz/test/*": [
-        "../test/src/*.ts"
-      ],
-      "#kitz/assert": [
-        "../assert/src/_.ts"
-      ],
-      "#kitz/assert/assert": [
-        "../assert/src/__.ts"
-      ],
-      "#kitz/assert/*": [
-        "../assert/src/*.ts"
-      ]
+      "#arr": ["./src/arr/_.js"],
+      "#arr/*": ["./src/arr/*.js"],
+      "#bool": ["./src/bool/_.js"],
+      "#bool/*": ["./src/bool/*.js"],
+      "#date": ["./src/date/_.js"],
+      "#date/*": ["./src/date/*.js"],
+      "#err": ["./src/err/_.js"],
+      "#err/err": ["./src/err/__.js"],
+      "#err/core": ["./src/err/core/_.js"],
+      "#fn": ["./src/fn/_.js"],
+      "#fn/fn": ["./src/fn/__.js"],
+      "#fn/core": ["./src/fn/core/_.js"],
+      "#mask": ["./src/mask/_.js"],
+      "#mask/mask": ["./src/mask/__.js"],
+      "#lang": ["./src/lang/_.js"],
+      "#lang/lang": ["./src/lang/__.js"],
+      "#lang/core": ["./src/lang/core/_.js"],
+      "#lang/core/lang": ["./src/lang/core/lang.js"],
+      "#null": ["./src/null/_.js"],
+      "#null/*": ["./src/null/*.js"],
+      "#num": ["./src/num/_.js"],
+      "#num/*": ["./src/num/*.js"],
+      "#obj": ["./src/obj/_.js"],
+      "#obj/*": ["./src/obj/*.js"],
+      "#optic": ["./src/optic/_.js"],
+      "#optic/*": ["./src/optic/*.js"],
+      "#ref": ["./src/ref/_.js"],
+      "#ref/ref": ["./src/ref/__.js"],
+      "#pat": ["./src/pat/_.js"],
+      "#pat/*": ["./src/pat/*.js"],
+      "#rec": ["./src/rec/_.js"],
+      "#rec/*": ["./src/rec/*.js"],
+      "#str": ["./src/str/_.js"],
+      "#str/*": ["./src/str/*.js"],
+      "#ts": ["./src/ts/_.js"],
+      "#ts/ts": ["./src/ts/__.js"],
+      "#value": ["./src/value/_.js"],
+      "#value/value": ["./src/value/__.js"],
+      "#tup": ["./src/tup/_.js"],
+      "#tup/*": ["./src/tup/*.js"],
+      "#undefined": ["./src/undefined/_.js"],
+      "#undefined/*": ["./src/undefined/*.js"],
+      "#prom": ["./src/prom/_.js"],
+      "#prom/*": ["./src/prom/*.js"],
+      "#prox": ["./src/prox/_.js"],
+      "#prox/*": ["./src/prox/*.js"],
+      "#deps/*": ["./src/deps/*.js"],
+      "#kitz/test": ["../test/src/_.ts"],
+      "#kitz/test/test": ["../test/src/__.ts"],
+      "#kitz/test/*": ["../test/src/*.ts"],
+      "#kitz/assert": ["../assert/src/_.ts"],
+      "#kitz/assert/assert": ["../assert/src/__.ts"],
+      "#kitz/assert/*": ["../assert/src/*.ts"]
     }
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "build",
-    "node_modules"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["build", "node_modules"]
 }

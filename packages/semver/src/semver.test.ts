@@ -56,16 +56,36 @@ Test.describe('mapBumpForPhase > public phase (1.x.x+)')
 // ─── Pre-release Combinators ───────────────────────────────────────
 
 Test.describe('officialToPre')
-  .on((version: Semver.OfficialRelease.OfficialRelease, prerelease: Semver.PreRelease.PreRelease['prerelease']) =>
-    Semver.officialToPre(version, { prerelease }).toString()
+  .on(
+    (
+      version: Semver.OfficialRelease.OfficialRelease,
+      prerelease: Semver.PreRelease.PreRelease['prerelease'],
+    ) => Semver.officialToPre(version, { prerelease }).toString(),
   )
   .cases(
-    [[Semver.OfficialRelease.OfficialRelease.make({ major: 1, minor: 2, patch: 3 }), pre('next', 1)], '1.2.3-next.1'],
-    [[
-      Semver.OfficialRelease.OfficialRelease.make({ major: 1, minor: 2, patch: 3, build: ['build', '7'] }),
-      pre('next', 2),
-    ], '1.2.3-next.2+build.7'],
-    [[Semver.stripPre(Semver.fromString('1.2.3-beta.1+build.7')), pre('rc', 1)], '1.2.3-rc.1+build.7'],
+    [
+      [
+        Semver.OfficialRelease.OfficialRelease.make({ major: 1, minor: 2, patch: 3 }),
+        pre('next', 1),
+      ],
+      '1.2.3-next.1',
+    ],
+    [
+      [
+        Semver.OfficialRelease.OfficialRelease.make({
+          major: 1,
+          minor: 2,
+          patch: 3,
+          build: ['build', '7'],
+        }),
+        pre('next', 2),
+      ],
+      '1.2.3-next.2+build.7',
+    ],
+    [
+      [Semver.stripPre(Semver.fromString('1.2.3-beta.1+build.7')), pre('rc', 1)],
+      '1.2.3-rc.1+build.7',
+    ],
   )
   .test()
 
@@ -79,11 +99,13 @@ Test.describe('stripPre')
   .test()
 
 Test.describe('withPre')
-  .on((
-    version: Semver.Semver,
-    prerelease: Semver.PreRelease.PreRelease['prerelease'],
-    build?: Semver.PreRelease.PreRelease['build'],
-  ) => Semver.withPre(version, prerelease, build).toString())
+  .on(
+    (
+      version: Semver.Semver,
+      prerelease: Semver.PreRelease.PreRelease['prerelease'],
+      build?: Semver.PreRelease.PreRelease['build'],
+    ) => Semver.withPre(version, prerelease, build).toString(),
+  )
   .cases(
     [[Semver.fromString('1.2.3'), pre('next', 1)], '1.2.3-next.1'],
     [[Semver.fromString('1.2.3-beta.1+build.7'), pre('rc', 1)], '1.2.3-rc.1+build.7'],

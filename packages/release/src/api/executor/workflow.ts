@@ -81,9 +81,7 @@ export type ReleasePayloadType = Schema.Schema.Type<typeof ReleasePayload>
 /**
  * Convert a workflow release payload to ReleaseInfo for publishing.
  */
-export const toReleaseInfo = (
-  release: ReleasePayloadType['releases'][number],
-): ReleaseInfo => ({
+export const toReleaseInfo = (release: ReleasePayloadType['releases'][number]): ReleaseInfo => ({
   package: {
     name: Pkg.Moniker.parse(release.packageName),
     path: Fs.Path.AbsDir.fromString(release.packagePath),
@@ -119,27 +117,28 @@ export const ReleaseWorkflow = Flo.Workflow.make({
     const preflight = payload.options.dryRun
       ? null
       : node(
-        'Preflight',
-        runPreflight(plannedReleases, {
-          ...(payload.options.registry && { registry: payload.options.registry }),
-        }).pipe(
-          Effect.mapError((e: PreflightError) =>
-            new ExecutorPreflightError({
-              context: {
-                check: e.context.check,
-                detail: e.message,
-              },
-            })
+          'Preflight',
+          runPreflight(plannedReleases, {
+            ...(payload.options.registry && { registry: payload.options.registry }),
+          }).pipe(
+            Effect.mapError(
+              (e: PreflightError) =>
+                new ExecutorPreflightError({
+                  context: {
+                    check: e.context.check,
+                    detail: e.message,
+                  },
+                }),
+            ),
+            Effect.asVoid,
           ),
-          Effect.asVoid,
-        ),
-      )
+        )
 
     // Layer 1: Publish each package (concurrent)
     const publishes = payload.releases.map((release) =>
       node(
         `Publish:${release.packageName}`,
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           const releaseInfo = toReleaseInfo(release)
 
           const tag = formatTag(releaseInfo.package.name, releaseInfo.nextVersion)
@@ -155,28 +154,32 @@ export const ReleaseWorkflow = Flo.Workflow.make({
 
           return release.packageName
         }).pipe(
-          Effect.mapError((e) =>
-            new ExecutorPublishError({
-              context: {
-                packageName: release.packageName,
-                detail: e instanceof Error ? e.message : String(e),
-              },
-            })
+          Effect.mapError(
+            (e) =>
+              new ExecutorPublishError({
+                context: {
+                  packageName: release.packageName,
+                  detail: e instanceof Error ? e.message : String(e),
+                },
+              }),
           ),
         ),
         {
           ...(preflight && { after: preflight }),
           retry: { times: 2 },
         },
-      )
+      ),
     )
 
     // Layer 2: Create git tags (each depends on its corresponding publish)
     const createTags = payload.releases.map((release, i) => {
-      const tag = formatTag(Pkg.Moniker.parse(release.packageName), Semver.fromString(release.nextVersion))
+      const tag = formatTag(
+        Pkg.Moniker.parse(release.packageName),
+        Semver.fromString(release.nextVersion),
+      )
       return node(
         `CreateTag:${tag}`,
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           if (payload.options.dryRun) {
             yield* Effect.log(`[dry-run] Would create tag: ${tag}`)
           } else {
@@ -186,13 +189,14 @@ export const ReleaseWorkflow = Flo.Workflow.make({
           }
           return tag
         }).pipe(
-          Effect.mapError((e) =>
-            new ExecutorTagError({
-              context: {
-                tag,
-                detail: e instanceof Error ? e.message : String(e),
-              },
-            })
+          Effect.mapError(
+            (e) =>
+              new ExecutorTagError({
+                context: {
+                  tag,
+                  detail: e instanceof Error ? e.message : String(e),
+                },
+              }),
           ),
         ),
         { after: publishes[i]! },
@@ -201,11 +205,14 @@ export const ReleaseWorkflow = Flo.Workflow.make({
 
     // Layer 3: Push each tag (each depends on its corresponding createTag)
     const pushTags = payload.releases.map((release, i) => {
-      const tag = formatTag(Pkg.Moniker.parse(release.packageName), Semver.fromString(release.nextVersion))
+      const tag = formatTag(
+        Pkg.Moniker.parse(release.packageName),
+        Semver.fromString(release.nextVersion),
+      )
       const isPreview = payload.options.tag === 'next' || tag.endsWith('@next')
       return node(
         `PushTag:${tag}`,
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           if (payload.options.dryRun) {
             yield* Effect.log(`[dry-run] Would push tag: ${tag}`)
           } else {
@@ -215,13 +222,14 @@ export const ReleaseWorkflow = Flo.Workflow.make({
           }
           return tag
         }).pipe(
-          Effect.mapError((e) =>
-            new ExecutorTagError({
-              context: {
-                tag,
-                detail: e instanceof Error ? e.message : String(e),
-              },
-            })
+          Effect.mapError(
+            (e) =>
+              new ExecutorTagError({
+                context: {
+                  tag,
+                  detail: e instanceof Error ? e.message : String(e),
+                },
+              }),
           ),
         ),
         {
@@ -239,7 +247,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
       const isPrerelease = Semver.getPrerelease(nextVersion) !== undefined
       return node(
         `CreateGHRelease:${tag}`,
-        Effect.gen(function*() {
+        Effect.gen(function* () {
           if (payload.options.dryRun) {
             yield* Effect.log(`[dry-run] Would create GH release: ${tag}`)
             return tag
@@ -285,13 +293,14 @@ export const ReleaseWorkflow = Flo.Workflow.make({
 
           return tag
         }).pipe(
-          Effect.mapError((e) =>
-            new ExecutorGHReleaseError({
-              context: {
-                tag,
-                detail: e instanceof Error ? e.message : String(e),
-              },
-            })
+          Effect.mapError(
+            (e) =>
+              new ExecutorGHReleaseError({
+                context: {
+                  tag,
+                  detail: e instanceof Error ? e.message : String(e),
+                },
+              }),
           ),
         ),
         {

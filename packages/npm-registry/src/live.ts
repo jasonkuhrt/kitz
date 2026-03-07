@@ -4,11 +4,11 @@ import { Effect, Layer, String as Str } from 'effect'
 import { NpmCliError, type PublishOptions, type WhoamiOptions } from './cli.js'
 import { NpmCli, type NpmCliService } from './service.js'
 
-const makeService = Effect.gen(function*() {
+const makeService = Effect.gen(function* () {
   const executor = yield* CommandExecutor.CommandExecutor
 
   const whoami: NpmCliService['whoami'] = (options?: WhoamiOptions) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const args = ['whoami']
       if (options?.registry) {
         args.push('--registry', options.registry)
@@ -17,14 +17,15 @@ const makeService = Effect.gen(function*() {
       const command = Command.make('npm', ...args)
 
       const result = yield* executor.string(command).pipe(
-        Effect.mapError((cause) =>
-          new NpmCliError({
-            context: {
-              operation: 'whoami',
-              detail: "npm auth failed. Run 'npm login' to authenticate.",
-            },
-            cause: cause instanceof Error ? cause : new Error(String(cause)),
-          })
+        Effect.mapError(
+          (cause) =>
+            new NpmCliError({
+              context: {
+                operation: 'whoami',
+                detail: "npm auth failed. Run 'npm login' to authenticate.",
+              },
+              cause: cause instanceof Error ? cause : new Error(String(cause)),
+            }),
         ),
       )
 
@@ -45,7 +46,7 @@ const makeService = Effect.gen(function*() {
     })
 
   const publish: NpmCliService['publish'] = (options: PublishOptions) =>
-    Effect.gen(function*() {
+    Effect.gen(function* () {
       const args = ['publish']
 
       // Default to public access for scoped packages

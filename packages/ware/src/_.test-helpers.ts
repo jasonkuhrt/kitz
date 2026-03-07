@@ -17,9 +17,18 @@ export const results = {
 } as const
 export type results = typeof results
 
-export const stepA = StepDefinition.createWithInput<initialInput>()({ name: `a`, run: () => results[`a`] })
-export const stepB = StepDefinition.createWithInput<results[`a`]>()({ name: `b`, run: () => results[`b`] })
-export const stepC = StepDefinition.createWithInput<results[`b`]>()({ name: `c`, run: () => results[`c`] })
+export const stepA = StepDefinition.createWithInput<initialInput>()({
+  name: `a`,
+  run: () => results[`a`],
+})
+export const stepB = StepDefinition.createWithInput<results[`a`]>()({
+  name: `b`,
+  run: () => results[`b`],
+})
+export const stepC = StepDefinition.createWithInput<results[`b`]>()({
+  name: `c`,
+  run: () => results[`c`],
+})
 
 export const slots = {
   m: () => Promise.resolve(`m` as const),
@@ -32,38 +41,41 @@ export const createPipelineDef = (options?: Options) => {
 
   type AppendExtra = () => string
 
-  const stepARunner = vi.fn<
-    (
-      input: { value: string },
-      slots: { append: (hookName: string) => string; appendExtra: (hookName: string) => string },
-      previous: undefined,
-    ) => { value: string }
-  >().mockImplementation((input, slots) => {
-    const extra = slots.appendExtra(`a`)
-    return {
-      value: input.value + `+` + slots.append(`a`) + extra,
-    }
-  })
+  const stepARunner = vi
+    .fn<
+      (
+        input: { value: string },
+        slots: { append: (hookName: string) => string; appendExtra: (hookName: string) => string },
+        previous: undefined,
+      ) => { value: string }
+    >()
+    .mockImplementation((input, slots) => {
+      const extra = slots.appendExtra(`a`)
+      return {
+        value: input.value + `+` + slots.append(`a`) + extra,
+      }
+    })
 
   type StepARunner = typeof stepARunner
 
-  const stepBRunner = vi.fn<
-    (
-      input: { value: string },
-      slots: { append: (hookName: string) => string; appendExtra: (hookName: string) => string },
-      previous: object,
-    ) => { value: string }
-  >().mockImplementation((input, slots) => {
-    const extra = slots.appendExtra(`b`)
-    return {
-      value: input.value + `+` + slots.append(`b`) + extra,
-    }
-  })
+  const stepBRunner = vi
+    .fn<
+      (
+        input: { value: string },
+        slots: { append: (hookName: string) => string; appendExtra: (hookName: string) => string },
+        previous: object,
+      ) => { value: string }
+    >()
+    .mockImplementation((input, slots) => {
+      const extra = slots.appendExtra(`b`)
+      return {
+        value: input.value + `+` + slots.append(`b`) + extra,
+      }
+    })
 
   type StepBRunner = typeof stepBRunner
 
-  return PipelineDefinition
-    .create(options)
+  return PipelineDefinition.create(options)
     .input<{ value: string }>()
     .stepWithRunnerType<StepARunner>()(`a`, {
       slots: {
@@ -77,16 +89,16 @@ export const createPipelineDef = (options?: Options) => {
       run: stepARunner,
     })
     .stepWithRunnerType<StepBRunner>()(`b`, {
-      slots: {
-        append: vi.fn<Append>().mockImplementation((hookName) => {
-          return hookName
-        }),
-        appendExtra: vi.fn<AppendExtra>().mockImplementation(() => {
-          return ``
-        }),
-      },
-      run: stepBRunner,
-    })
+    slots: {
+      append: vi.fn<Append>().mockImplementation((hookName) => {
+        return hookName
+      }),
+      appendExtra: vi.fn<AppendExtra>().mockImplementation(() => {
+        return ``
+      }),
+    },
+    run: stepBRunner,
+  })
 }
 
 type TestPipelineDef = ReturnType<typeof createPipelineDef>['type']

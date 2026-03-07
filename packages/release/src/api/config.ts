@@ -19,10 +19,9 @@ export class Config extends Schema.Class<Config>('Config')({
   /** Skip npm publish (dry run) */
   skipNpm: Schema.optionalWith(Schema.Boolean, { default: () => false }),
   /** Scope to package name mapping (auto-scanned if not provided) */
-  packages: Schema.optionalWith(
-    Schema.Record({ key: Schema.String, value: Schema.String }),
-    { default: () => ({}) },
-  ),
+  packages: Schema.optionalWith(Schema.Record({ key: Schema.String, value: Schema.String }), {
+    default: () => ({}),
+  }),
   /** Lint configuration */
   lint: Schema.optional(LintConfig.Config),
 }) {}
@@ -80,9 +79,9 @@ export type ConfigError = Conf.File.LoadError
  * CLI overrides for config loading.
  * Derived from schema types - any field can be overridden.
  */
-export type LoadOptions =
-  & Partial<Omit<typeof Config.Type, 'lint'>>
-  & { readonly lint?: Partial<typeof LintConfig.Config.Type> }
+export type LoadOptions = Partial<Omit<typeof Config.Type, 'lint'>> & {
+  readonly lint?: Partial<typeof LintConfig.Config.Type>
+}
 
 /**
  * Load and resolve configuration from release.config.ts.
@@ -94,12 +93,8 @@ export type LoadOptions =
  */
 export const load = (
   options?: LoadOptions,
-): Effect.Effect<
-  ResolvedConfig,
-  ConfigError,
-  FileSystem.FileSystem | Env.Env
-> =>
-  Effect.gen(function*() {
+): Effect.Effect<ResolvedConfig, ConfigError, FileSystem.FileSystem | Env.Env> =>
+  Effect.gen(function* () {
     const env = yield* Env.Env
     const fileConfig = yield* Conf.File.load(ConfigFile, Fs.Path.toString(env.cwd))
 

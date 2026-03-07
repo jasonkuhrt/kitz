@@ -136,13 +136,15 @@ describe('replace', () => {
   test('accepts callback with RegexMatch', () => {
     const p = pattern('\\d+')
     const result = replace('a1 b2', p, (m) => {
-      A.exact.ofAs<{
-        value: `${number}` // arkregex infers ${number} for \d+ pattern
-        offset: number
-        captures: []
-        groups: {}
-        input: string
-      }>().on(m)
+      A.exact
+        .ofAs<{
+          value: `${number}` // arkregex infers ${number} for \d+ pattern
+          offset: number
+          captures: []
+          groups: {}
+          input: string
+        }>()
+        .on(m)
       return `[${m.value}]`
     })
     A.exact.ofAs<string>().on(result)
@@ -167,13 +169,15 @@ describe('replaceAll', () => {
   test('accepts callback with RegexMatch', () => {
     const p = pattern('\\d+', 'g')
     const result = replaceAll('a1 b2 c3', p, (m) => {
-      A.exact.ofAs<{
-        value: `${number}` // arkregex infers ${number} for \d+ pattern
-        offset: number
-        captures: []
-        groups: {}
-        input: string
-      }>().on(m)
+      A.exact
+        .ofAs<{
+          value: `${number}` // arkregex infers ${number} for \d+ pattern
+          offset: number
+          captures: []
+          groups: {}
+          input: string
+        }>()
+        .on(m)
       return `[${m.value}]`
     })
     A.exact.ofAs<string>().on(result)

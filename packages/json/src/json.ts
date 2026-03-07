@@ -48,12 +48,7 @@ export { type Obj as Object }
  *
  * @category Schemas
  */
-export const PrimitiveSchema = S.Union(
-  S.String,
-  S.Number,
-  S.Boolean,
-  S.Null,
-)
+export const PrimitiveSchema = S.Union(S.String, S.Number, S.Boolean, S.Null)
 
 /**
  * JSON value schema.
@@ -63,11 +58,7 @@ export const PrimitiveSchema = S.Union(
  */
 // @ts-expect-error - Recursive type inference limitation
 export const ValueSchema: S.Schema<Value> = S.suspend(() =>
-  S.Union(
-    PrimitiveSchema,
-    S.Array(ValueSchema),
-    S.Record({ key: S.String, value: ValueSchema }),
-  )
+  S.Union(PrimitiveSchema, S.Array(ValueSchema), S.Record({ key: S.String, value: ValueSchema })),
 )
 
 /**

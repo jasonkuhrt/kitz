@@ -566,11 +566,7 @@ import * as Severity from './severity.js'
 export type RuleConfigOptions = Record<string, unknown>
 
 /** User input format (supports shorthand). */
-export type RuleConfigInput =
-  | 'error'
-  | 'warn'
-  | ['error' | 'warn', RuleConfigOptions]
-  | RuleConfig
+export type RuleConfigInput = 'error' | 'warn' | ['error' | 'warn', RuleConfigOptions] | RuleConfig
 
 export interface RuleConfig {
   readonly overrides?: {
@@ -811,11 +807,9 @@ export class Skipped extends Data.TaggedClass('Skipped')<{
 }> {}
 
 export const RuleCheckResult = {
-  Finished: (props: ConstructorParameters<typeof Finished>[0]) =>
-    new Finished(props),
+  Finished: (props: ConstructorParameters<typeof Finished>[0]) => new Finished(props),
   Failed: (props: ConstructorParameters<typeof Failed>[0]) => new Failed(props),
-  Skipped: (props: ConstructorParameters<typeof Skipped>[0]) =>
-    new Skipped(props),
+  Skipped: (props: ConstructorParameters<typeof Skipped>[0]) => new Skipped(props),
 }
 
 export class Report extends Data.Class<{
@@ -827,9 +821,7 @@ export class Report extends Data.Class<{
 }
 
 export const hasViolations = (report: Report): boolean =>
-  report.results.some(
-    (r) => r._tag === 'Finished' && r.violation !== undefined,
-  )
+  report.results.some((r) => r._tag === 'Finished' && r.violation !== undefined)
 
 export const hasErrors = (report: Report): boolean =>
   report.results.some((r) => r._tag === 'Failed')
@@ -894,16 +886,11 @@ export const rules: readonly Rule[] = [
   {
     id: 'pr.monorepo.scopes.match-affected',
     description: 'Scope(s) match affected packages',
-    preconditions: [
-      Precondition.HasOpenPR,
-      Precondition.IsMonorepo,
-      Precondition.HasDiff,
-    ],
+    preconditions: [Precondition.HasOpenPR, Precondition.IsMonorepo, Precondition.HasDiff],
   },
 ]
 
-export const findById = (id: string): Rule | undefined =>
-  rules.find((r) => r.id === id)
+export const findById = (id: string): Rule | undefined => rules.find((r) => r.id === id)
 
 export const filterByPattern = (pattern: string): readonly Rule[] => {
   if (pattern.endsWith('.*')) {
@@ -1018,9 +1005,7 @@ const getEffectiveDefaults = (
   const ruleConfig = config.rules[rule.id]
 
   // Precedence: system → rule.defaults → config.defaults → per-rule config
-  const enabled = ruleConfig?.overrides.enabled
-    ?? rule.defaults?.enabled
-    ?? config.defaults.enabled
+  const enabled = ruleConfig?.overrides.enabled ?? rule.defaults?.enabled ?? config.defaults.enabled
 
   return {
     enabled,
@@ -1029,7 +1014,7 @@ const getEffectiveDefaults = (
 }
 
 export const check = (params: CheckParams): Effect.Effect<Report.Report> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const rules = resolveRules(params.rules)
     const results: Report.RuleCheckResult[] = []
 
@@ -1053,9 +1038,7 @@ export const check = (params: CheckParams): Effect.Effect<Report.Report> =>
               rule,
               duration: 0,
               error: new Error(
-                `Precondition failed: ${
-                  rule.preconditions.map((p) => p._tag).join(', ')
-                }`,
+                `Precondition failed: ${rule.preconditions.map((p) => p._tag).join(', ')}`,
               ),
             }),
           )
@@ -1224,9 +1207,7 @@ const formatJson = (report: Report.Report): string => {
           status: r.violation ? 'failed' : 'passed',
           rule: r.rule.id,
           duration: r.duration,
-          violation: r.violation
-            ? { location: r.violation.location }
-            : undefined,
+          violation: r.violation ? { location: r.violation.location } : undefined,
         }
       case 'Failed':
         return {
@@ -1249,9 +1230,7 @@ const formatJson = (report: Report.Report): string => {
 export const relay = (params: RelayParams): Effect.Effect<string> =>
   Effect.sync(() => {
     const format = params.format ?? 'text'
-    return format === 'json'
-      ? formatJson(params.report)
-      : formatText(params.report)
+    return format === 'json' ? formatJson(params.report) : formatText(params.report)
   })
 ```
 
@@ -1393,7 +1372,7 @@ const args = await Oak.Command.create()
   )
   .parse()
 
-const program = Effect.gen(function*() {
+const program = Effect.gen(function* () {
   // 1. Load and resolve config
   const rawConfig = yield* Api.Config.load(process.cwd()).pipe(
     Effect.orElseSucceed(() => Api.Config.ReleaseConfig.make({})),

@@ -26,10 +26,15 @@ interface Parameter<$State extends BuilderCommandState.Base, Label extends strin
   >
 }
 
-export interface BuilderExclusiveInitial<$State extends BuilderCommandState.Base, Label extends string> {
+export interface BuilderExclusiveInitial<
+  $State extends BuilderCommandState.Base,
+  Label extends string,
+> {
   [ExclusiveBuilderStateSymbol]: BuilderParameterExclusiveState<$State>
   parameter: Parameter<$State, Label>
-  optional: () => BuilderExclusiveAfterOptional<BuilderCommandState.SetExclusiveOptional<$State, Label, true>>
+  optional: () => BuilderExclusiveAfterOptional<
+    BuilderCommandState.SetExclusiveOptional<$State, Label, true>
+  >
   default: <Tag extends keyof $State['ParametersExclusive'][Label]['Parameters']>(
     tag: Tag,
     value: InferOutput<$State['ParametersExclusive'][Label]['Parameters'][Tag]['Schema']>,

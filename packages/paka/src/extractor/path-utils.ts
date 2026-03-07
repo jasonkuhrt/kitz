@@ -52,9 +52,7 @@ export const createBuildToSourcePath = (config?: {
     const sourceDirRel = './' + relative(config.projectRoot, config.rootDir)
 
     return (buildPath: string): string => {
-      return buildPath
-        .replace(buildDirRel, sourceDirRel)
-        .replace(/\.js$/, '.ts')
+      return buildPath.replace(buildDirRel, sourceDirRel).replace(/\.js$/, '.ts')
     }
   }
 

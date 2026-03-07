@@ -12,7 +12,11 @@
  * // { A: 2, B: 4 }
  * ```
  */
-export const mapEntries = <$Obj extends Record<string, unknown>, $NewKey extends PropertyKey, $NewValue>(
+export const mapEntries = <
+  $Obj extends Record<string, unknown>,
+  $NewKey extends PropertyKey,
+  $NewValue,
+>(
   obj: $Obj,
   fn: (key: keyof $Obj & string, value: $Obj[keyof $Obj & string]) => readonly [$NewKey, $NewValue],
 ): Record<$NewKey, $NewValue> => {

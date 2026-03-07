@@ -8,7 +8,8 @@ import type * as Union from '../union.js'
  *
  * @internal
  */
-type HandlersResult<$Type> = [keyof KITZ.Traits.Display.Handlers<$Type>] extends [never] ? never
+type HandlersResult<$Type> = [keyof KITZ.Traits.Display.Handlers<$Type>] extends [never]
+  ? never
   : KITZ.Traits.Display.Handlers<$Type>[keyof KITZ.Traits.Display.Handlers<$Type>]
 
 /**
@@ -32,7 +33,7 @@ type HandlersResult<$Type> = [keyof KITZ.Traits.Display.Handlers<$Type>] extends
  *
  * @category Type Display
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Display<$Type, $Fallback extends string | undefined = undefined> =
   // Language base category types
     IsAny<$Type> extends true     ? 'any'
@@ -70,7 +71,7 @@ export type Display<$Type, $Fallback extends string | undefined = undefined> =
  * Helper type for displaying union types.
  * @internal
  */
-// dprint-ignore
+// oxfmt-ignore
 export type _DisplayUnion<$Type extends Arr.Any> =
     $Type extends readonly [infer __first__, ...infer __rest__ extends Arr.Any1OrMore]
       ? `${Display<__first__>} | ${_DisplayUnion<__rest__>}`

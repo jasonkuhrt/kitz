@@ -6,12 +6,8 @@
     "declaration": true,
     "declarationMap": true,
     "paths": {
-      "#ware": [
-        "./src/_.js"
-      ],
-      "#ware/*": [
-        "./src/*.js"
-      ]
+      "#ware": ["./src/_.js"],
+      "#ware/*": ["./src/*.js"]
     }
   }
 }

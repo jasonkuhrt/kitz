@@ -96,7 +96,7 @@ export interface Node<$Value> {
  * )
  * ```
  */
-export const Tree = <$Value>(root?: Node<$Value> | null | undefined): Tree<$Value> => ({
+export const Tree = <$Value>(root?: Node<$Value> | null): Tree<$Value> => ({
   root: root ?? null,
 })
 

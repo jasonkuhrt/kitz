@@ -43,7 +43,9 @@ export const DefaultLayer = Layer.succeed(EvaluatedPreconditionsService, {
 /**
  * Create a layer with custom precondition values.
  */
-export const make = (preconditions: Partial<EvaluatedPreconditions>): Layer.Layer<EvaluatedPreconditionsService> =>
+export const make = (
+  preconditions: Partial<EvaluatedPreconditions>,
+): Layer.Layer<EvaluatedPreconditionsService> =>
   Layer.succeed(EvaluatedPreconditionsService, {
     hasOpenPR: preconditions.hasOpenPR ?? false,
     hasDiff: preconditions.hasDiff ?? false,

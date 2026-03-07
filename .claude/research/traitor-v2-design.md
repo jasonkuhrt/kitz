@@ -81,8 +81,9 @@ declare global {
     interface Handlers<$Type> {
       _array: $Type extends (infer E)[] ? `Array<${Display<E>}>` : never
       _readonlyArray: $Type extends readonly (infer E)[]
-        ? $Type extends (infer _)[] ? never
-        : `ReadonlyArray<${Display<E>}>`
+        ? $Type extends (infer _)[]
+          ? never
+          : `ReadonlyArray<${Display<E>}>`
         : never
     }
   }
@@ -92,8 +93,7 @@ declare global {
 declare global {
   namespace KITZ.Traits.Display {
     interface Handlers<$Type> {
-      _promise: $Type extends Promise<infer V> ? `Promise<${Display<V>}>`
-        : never
+      _promise: $Type extends Promise<infer V> ? `Promise<${Display<V>}>` : never
     }
   }
 }
@@ -187,27 +187,34 @@ export interface Private {
   [PrivateKindParameters]: unknown
 }
 
-export type PrivateApply<$Kind extends Private, $Args> =
-  ($Kind & { [PrivateKindParameters]: $Args })[PrivateKindReturn]
+export type PrivateApply<$Kind extends Private, $Args> = ($Kind & {
+  [PrivateKindParameters]: $Args
+})[PrivateKindReturn]
 ```
 
 **Kind composition:**
 
 ```typescript
 // Left-to-right sequential application
-export type Pipe<$Kinds extends readonly Kind[], $Input> = $Kinds extends
-  readonly [infer F extends Kind, ...infer R extends readonly Kind[]]
+export type Pipe<$Kinds extends readonly Kind[], $Input> = $Kinds extends readonly [
+  infer F extends Kind,
+  ...infer R extends readonly Kind[],
+]
   ? Pipe<R, Apply<F, [$Input]>>
   : $Input
 
 // Short-circuiting composition with Either
-export type PipeRight<$Input, $Kinds extends readonly Kind[]> = $Kinds extends
-  readonly [infer F extends Kind, ...infer R extends readonly Kind[]]
+export type PipeRight<$Input, $Kinds extends readonly Kind[]> = $Kinds extends readonly [
+  infer F extends Kind,
+  ...infer R extends readonly Kind[],
+]
   ? Apply<F, [$Input]> extends infer Result
-    ? Result extends Either.Left<infer E, infer _> ? Either.Left<E, never>
-    : Result extends Either.Right<infer _, infer V> ? PipeRight<V, R>
+    ? Result extends Either.Left<infer E, infer _>
+      ? Either.Left<E, never>
+      : Result extends Either.Right<infer _, infer V>
+        ? PipeRight<V, R>
+        : never
     : never
-  : never
   : Either.Right<never, $Input>
 ```
 
@@ -247,8 +254,11 @@ export interface TypeLambda {
 }
 
 // Kind application for TypeLambdas
-export type KindOf<F extends TypeLambda, In, Out2, Out1> =
-  (F & { readonly In: In; readonly Out2: Out2; readonly Out1: Out1 })['Target']
+export type KindOf<F extends TypeLambda, In, Out2, Out1> = (F & {
+  readonly In: In
+  readonly Out2: Out2
+  readonly Out1: Out1
+})['Target']
 ```
 
 This is a thin layer over the existing `Apply` pattern -- same intersection trick, just with named fields instead of positional tuples.
@@ -379,7 +389,7 @@ let mem (type a) {E : Eq with type t = a} (x : a) (xs : a list) =
 // URI-based HKT encoding
 declare module './HKT' {
   interface URItoKind<A> {
-    readonly 'Array': Array<A>
+    readonly Array: Array<A>
   }
 }
 
@@ -394,8 +404,10 @@ const ArrayFunctor: Functor1<'Array'> = {
 }
 
 // Usage -- explicit instance passing
-const doubleAll = <F extends URIS>(F: Functor1<F>) => (fa: Kind<F, number>) =>
-  F.map(fa, n => n * 2)
+const doubleAll =
+  <F extends URIS>(F: Functor1<F>) =>
+  (fa: Kind<F, number>) =>
+    F.map(fa, (n) => n * 2)
 
 doubleAll(ArrayFunctor)([1, 2, 3]) // [2, 4, 6]
 ```
@@ -415,13 +427,8 @@ interface ArrayTypeLambda extends TypeLambda {
 // Typeclass definition
 interface Covariant<F extends TypeLambda> extends Invariant<F> {
   readonly map: {
-    <A, B>(f: (a: A) => B): <R, O, E>(
-      self: Kind<F, R, O, E, A>,
-    ) => Kind<F, R, O, E, B>
-    <R, O, E, A, B>(
-      self: Kind<F, R, O, E, A>,
-      f: (a: A) => B,
-    ): Kind<F, R, O, E, B>
+    <A, B>(f: (a: A) => B): <R, O, E>(self: Kind<F, R, O, E, A>) => Kind<F, R, O, E, B>
+    <R, O, E, A, B>(self: Kind<F, R, O, E, A>, f: (a: A) => B): Kind<F, R, O, E, B>
   }
 }
 
@@ -504,8 +511,8 @@ A Tier 1 typeclass is a global namespace with a `Handlers` interface:
  */
 
 // Helper: extract the first matching handler result
-type HandlersResult<$A, $B> = [keyof KITZ.Traits.Eq.Handlers<$A, $B>] extends
-  [never] ? never
+type HandlersResult<$A, $B> = [keyof KITZ.Traits.Eq.Handlers<$A, $B>] extends [never]
+  ? never
   : KITZ.Traits.Eq.Handlers<$A, $B>[keyof KITZ.Traits.Eq.Handlers<$A, $B>]
 
 /**
@@ -520,10 +527,12 @@ type HandlersResult<$A, $B> = [keyof KITZ.Traits.Eq.Handlers<$A, $B>] extends
  */
 export type Eq<$A, $B> =
   // Identical types (structural)
-  (<T>() => T extends $A ? 1 : 0) extends (<T>() => T extends $B ? 1 : 0) ? true
-    // Check registered handlers
-    : [HandlersResult<$A, $B>] extends [never] ? false
-    : HandlersResult<$A, $B>
+  (<T>() => T extends $A ? 1 : 0) extends <T>() => T extends $B ? 1 : 0
+    ? true
+    : // Check registered handlers
+      [HandlersResult<$A, $B>] extends [never]
+      ? false
+      : HandlersResult<$A, $B>
 
 declare global {
   namespace KITZ.Traits {
@@ -558,22 +567,26 @@ declare global {
         ? $B extends readonly (infer EB)[]
           ? $A['length'] extends $B['length']
             ? _TupleEq<Extract<$A, readonly any[]>, Extract<$B, readonly any[]>>
-          : false
-        : never
+            : false
+          : never
         : never
     }
   }
 }
 
 // Helper: element-wise tuple equality
-type _TupleEq<$A extends readonly any[], $B extends readonly any[]> = $A extends
-  readonly [infer HA, ...infer TA]
+type _TupleEq<$A extends readonly any[], $B extends readonly any[]> = $A extends readonly [
+  infer HA,
+  ...infer TA,
+]
   ? $B extends readonly [infer HB, ...infer TB]
-    ? Ts.Eq<HA, HB> extends true ? _TupleEq<TA, TB>
+    ? Ts.Eq<HA, HB> extends true
+      ? _TupleEq<TA, TB>
+      : false
     : false
-  : false
-  : $B extends readonly [] ? true
-  : false
+  : $B extends readonly []
+    ? true
+    : false
 ```
 
 ### 6.3 Using in Generic Code
@@ -584,17 +597,19 @@ Type-level typeclasses serve as constraints and computed types:
 /**
  * Assert that two types are equal, producing a compile error if not.
  */
-type AssertEq<$A, $B> = Ts.Eq<$A, $B> extends true ? $A : Ts.Err.StaticError<
-  `Type ${Ts.Display<$A>} is not equal to ${Ts.Display<$B>}`
->
+type AssertEq<$A, $B> =
+  Ts.Eq<$A, $B> extends true
+    ? $A
+    : Ts.Err.StaticError<`Type ${Ts.Display<$A>} is not equal to ${Ts.Display<$B>}`>
 
 /**
  * Type-level Map that preserves equality -- if input types are equal,
  * output types are proven equal.
  */
-type EqPreservingMap<$F extends Kind, $A, $B> = Ts.Eq<$A, $B> extends true
-  ? Kind.Apply<$F, [$A]> // Can safely return either since they're equal
-  : Kind.Apply<$F, [$A]> | Kind.Apply<$F, [$B]>
+type EqPreservingMap<$F extends Kind, $A, $B> =
+  Ts.Eq<$A, $B> extends true
+    ? Kind.Apply<$F, [$A]> // Can safely return either since they're equal
+    : Kind.Apply<$F, [$A]> | Kind.Apply<$F, [$B]>
 ```
 
 ### 6.4 Multi-Method Typeclasses
@@ -617,9 +632,11 @@ type Compare = -1 | 0 | 1
 
 export type Ord<$A, $B> =
   // Delegate to Eq for the = case first
-  Ts.Eq<$A, $B> extends true ? 0
-    : [OrdHandlersResult<$A, $B>] extends [never] ? never // No ordering defined
-    : OrdHandlersResult<$A, $B>
+  Ts.Eq<$A, $B> extends true
+    ? 0
+    : [OrdHandlersResult<$A, $B>] extends [never]
+      ? never // No ordering defined
+      : OrdHandlersResult<$A, $B>
 ```
 
 ### 6.5 The General Pattern
@@ -705,16 +722,14 @@ declare global {
 }
 
 // Type-level map: apply a type function to the inner type of a container
-export type Map<$FA, $Fn extends Kind> = [MappableResult<$FA, $Fn>] extends
-  [never] ? never // No Mappable instance for this type
+export type Map<$FA, $Fn extends Kind> = [MappableResult<$FA, $Fn>] extends [never]
+  ? never // No Mappable instance for this type
   : MappableResult<$FA, $Fn>
 
 type MappableResult<$FA, $Fn extends Kind> = KITZ.Traits.Mappable.Handlers<
   $FA,
   $Fn
->[
-  keyof KITZ.Traits.Mappable.Handlers<$FA, $Fn>
-]
+>[keyof KITZ.Traits.Mappable.Handlers<$FA, $Fn>]
 ```
 
 Registering Array as Mappable:
@@ -723,14 +738,13 @@ Registering Array as Mappable:
 declare global {
   namespace KITZ.Traits.Mappable {
     interface Handlers<$FA, $Fn extends Kind> {
-      _array: $FA extends (infer E)[] ? Kind.Apply<$Fn, [E]>[]
-        : never
+      _array: $FA extends (infer E)[] ? Kind.Apply<$Fn, [E]>[] : never
       _readonlyArray: $FA extends readonly (infer E)[]
-        ? $FA extends (infer _)[] ? never // Mutable array handled above
-        : readonly Kind.Apply<$Fn, [E]>[]
+        ? $FA extends (infer _)[]
+          ? never // Mutable array handled above
+          : readonly Kind.Apply<$Fn, [E]>[]
         : never
-      _promise: $FA extends Promise<infer V> ? Promise<Kind.Apply<$Fn, [V]>>
-        : never
+      _promise: $FA extends Promise<infer V> ? Promise<Kind.Apply<$Fn, [V]>> : never
     }
   }
 }
@@ -839,8 +853,7 @@ export const boolean: Eq<boolean> = {
  */
 export const array = <A>(eqA: Eq<A>): Eq<ReadonlyArray<A>> => ({
   equals: (self, that) =>
-    self.length === that.length
-    && self.every((a, i) => eqA.equals(a, that[i]!)),
+    self.length === that.length && self.every((a, i) => eqA.equals(a, that[i]!)),
 })
 
 /**
@@ -850,8 +863,7 @@ export const record = <A>(eqA: Eq<A>): Eq<Readonly<Record<string, A>>> => ({
   equals: (self, that) => {
     const ks = Object.keys(self)
     const kt = Object.keys(that)
-    return ks.length === kt.length
-      && ks.every(k => k in that && eqA.equals(self[k]!, that[k]!))
+    return ks.length === kt.length && ks.every((k) => k in that && eqA.equals(self[k]!, that[k]!))
   },
 })
 
@@ -895,14 +907,9 @@ import type { KindOf, TypeLambda } from '#fn/kind'
 export interface Covariant<F extends TypeLambda> {
   readonly map: {
     // Data-first
-    <In, Out2, A, B>(
-      self: KindOf<F, In, Out2, A>,
-      f: (a: A) => B,
-    ): KindOf<F, In, Out2, B>
+    <In, Out2, A, B>(self: KindOf<F, In, Out2, A>, f: (a: A) => B): KindOf<F, In, Out2, B>
     // Data-last (for pipe)
-    <A, B>(
-      f: (a: A) => B,
-    ): <In, Out2>(self: KindOf<F, In, Out2, A>) => KindOf<F, In, Out2, B>
+    <A, B>(f: (a: A) => B): <In, Out2>(self: KindOf<F, In, Out2, A>) => KindOf<F, In, Out2, B>
   }
 }
 ```
@@ -959,10 +966,7 @@ import type { ArrayTypeLambda } from './type-lambda.js'
  * ```
  */
 export const Covariant: Covariant<ArrayTypeLambda> = {
-  map: dual(
-    2,
-    <A, B>(self: Array<A>, f: (a: A) => B): Array<B> => self.map(f),
-  ),
+  map: dual(2, <A, B>(self: Array<A>, f: (a: A) => B): Array<B> => self.map(f)),
 }
 ````
 
@@ -993,9 +997,7 @@ export interface FlatMap<F extends TypeLambda> extends Covariant<F> {
   }
 }
 
-export interface Monad<F extends TypeLambda>
-  extends Applicative<F>, FlatMap<F>
-{}
+export interface Monad<F extends TypeLambda> extends Applicative<F>, FlatMap<F> {}
 ```
 
 ### 7.5 Default Methods
@@ -1028,16 +1030,14 @@ export namespace Ord {
    */
   export const withDefaults = <A>(base: Ord<A>) => ({
     ...base,
-    min: (self: A, that: A): A => base.compare(self, that) <= 0 ? self : that,
-    max: (self: A, that: A): A => base.compare(self, that) >= 0 ? self : that,
+    min: (self: A, that: A): A => (base.compare(self, that) <= 0 ? self : that),
+    max: (self: A, that: A): A => (base.compare(self, that) >= 0 ? self : that),
   })
 }
 
 // For Covariant, derive Invariant from Covariant
 export namespace Covariant {
-  export const toInvariant = <F extends TypeLambda>(
-    C: Covariant<F>,
-  ): Invariant<F> => ({
+  export const toInvariant = <F extends TypeLambda>(C: Covariant<F>): Invariant<F> => ({
     imap: dual(3, (self, to, _from) => C.map(self, to)),
   })
 }
@@ -1047,8 +1047,10 @@ export namespace Covariant {
 
 ```typescript
 // A generic sort that works with any Ord instance
-export const sortBy = <A>(ord: Ord<A>) => (xs: ReadonlyArray<A>): Array<A> =>
-  [...xs].sort((a, b) => ord.compare(a, b))
+export const sortBy =
+  <A>(ord: Ord<A>) =>
+  (xs: ReadonlyArray<A>): Array<A> =>
+    [...xs].sort((a, b) => ord.compare(a, b))
 
 // A generic traverse that works with any Applicative + Covariant
 export const traverse =
@@ -1061,7 +1063,10 @@ export const traverse =
     return xs.reduce(
       (acc, x) =>
         A.map(
-          A.ap(A.map(acc, (bs: B[]) => (b: B) => [...bs, b]), f(x)),
+          A.ap(
+            A.map(acc, (bs: B[]) => (b: B) => [...bs, b]),
+            f(x),
+          ),
           id,
         ),
       A.of([] as B[]) as KindOf<F, In, Out2, B[]>,
@@ -1113,7 +1118,7 @@ Eq.string.equals('a', 'b')
 
 // If a consumer uses Arr.Covariant.map:
 import { Arr } from '@kitz/core'
-Arr.Covariant.map([1, 2], n => n * 2)
+Arr.Covariant.map([1, 2], (n) => n * 2)
 
 // Bundler tree-shakes:
 // - Arr.Applicative (unused)
@@ -1137,9 +1142,7 @@ Tier 2 has one ergonomic weakness: explicit instance passing.
 
 ```typescript
 // Without Tier 3 -- the user must thread instances manually:
-const result = sortBy(Ord.number)(
-  filterWith(Eq.number)(xs, target),
-)
+const result = sortBy(Ord.number)(filterWith(Eq.number)(xs, target))
 
 // What the user wants to write:
 const result = sort(xs) // "just work" -- the instance is resolved
@@ -1204,8 +1207,7 @@ import { Eq as EqTrait } from '#traits/eq'
 // Tier 2: The actual runtime instance
 export const EqArray = <A>(eqA: EqTrait<A>): EqTrait<ReadonlyArray<A>> => ({
   equals: (self, that) =>
-    self.length === that.length
-    && self.every((a, i) => eqA.equals(a, that[i]!)),
+    self.length === that.length && self.every((a, i) => eqA.equals(a, that[i]!)),
 })
 
 // Tier 1: Type-level registration (co-located)
@@ -1278,8 +1280,7 @@ const resolveEq = (value: unknown): Eq<any> => {
  * Tree-shakeable: if you don't import `equals`, none of this code
  * is included in your bundle.
  */
-export const equals = <A>(self: A, that: A): boolean =>
-  resolveEq(self).equals(self, that)
+export const equals = <A>(self: A, that: A): boolean => resolveEq(self).equals(self, that)
 ```
 
 ### 8.5 Tree-Shaking Proof for Tier 3
@@ -1478,7 +1479,7 @@ declare global {
 
 ```yaml
 # traitor.config.yaml
-orphan-policy: warn  # or 'error' or 'allow'
+orphan-policy: warn # or 'error' or 'allow'
 ```
 
 ### 9.3 Superclasses
@@ -1505,12 +1506,12 @@ declare global {
 // The dispatch type enforces the superclass constraint
 export type Ord<$A, $B> =
   // First, check that Eq exists for these types
-  [keyof KITZ.Traits.Eq.Handlers<$A, $B>] extends [never] ? Ts.Err.StaticError<
-      `Ord requires Eq, but no Eq handler exists for ${Ts.Display<$A>}`
-    >
-    // Then check Ord handlers
-    : [OrdHandlersResult<$A, $B>] extends [never] ? never
-    : OrdHandlersResult<$A, $B>
+  [keyof KITZ.Traits.Eq.Handlers<$A, $B>] extends [never]
+    ? Ts.Err.StaticError<`Ord requires Eq, but no Eq handler exists for ${Ts.Display<$A>}`>
+    : // Then check Ord handlers
+      [OrdHandlersResult<$A, $B>] extends [never]
+      ? never
+      : OrdHandlersResult<$A, $B>
 ```
 
 **Tier 2: Interface extension.**
@@ -1524,13 +1525,11 @@ export interface Ord<A> extends Eq<A> {
 // Every Ord instance must also provide equals
 export const number: Ord<number> = {
   equals: (self, that) => Object.is(self, that),
-  compare: (self, that) => self < that ? -1 : self > that ? 1 : 0,
+  compare: (self, that) => (self < that ? -1 : self > that ? 1 : 0),
 }
 
 // Or derive equals from compare
-export const fromCompare = <A>(
-  compare: (self: A, that: A) => -1 | 0 | 1,
-): Ord<A> => ({
+export const fromCompare = <A>(compare: (self: A, that: A) => -1 | 0 | 1): Ord<A> => ({
   equals: (self, that) => compare(self, that) === 0,
   compare,
 })
@@ -1549,8 +1548,7 @@ declare global {
   namespace KITZ.Traits {
     namespace Mappable {
       interface Handlers<$FA, $Fn extends Kind> {
-        _array: $FA extends (infer E)[] ? Kind.Apply<$Fn, [E]>[]
-          : never
+        _array: $FA extends (infer E)[] ? Kind.Apply<$Fn, [E]>[] : never
       }
     }
   }
@@ -1583,14 +1581,15 @@ const ArrayCovariant: Covariant<ArrayTypeLambda> = {
 }
 
 // Generic code over any functor
-const lift2 = <F extends TypeLambda>(C: Covariant<F>) =>
-<In, Out2, A, B, C_>(
-  fa: KindOf<F, In, Out2, A>,
-  fb: KindOf<F, In, Out2, B>,
-  f: (a: A, b: B) => C_,
-): KindOf<F, In, Out2, C_> => {
-  // Implementation...
-}
+const lift2 =
+  <F extends TypeLambda>(C: Covariant<F>) =>
+  <In, Out2, A, B, C_>(
+    fa: KindOf<F, In, Out2, A>,
+    fb: KindOf<F, In, Out2, B>,
+    f: (a: A, b: B) => C_,
+  ): KindOf<F, In, Out2, C_> => {
+    // Implementation...
+  }
 ```
 
 **Tier 1+2 bridge:** Use Tier 1 for "does this type have a Functor?" checks and Tier 2 for actual generic functor code:
@@ -1608,8 +1607,7 @@ declare global {
   }
 }
 
-type HasCovariant<$F> = [keyof KITZ.Traits.Covariant.Handlers<$F>] extends
-  [never] ? false : true
+type HasCovariant<$F> = [keyof KITZ.Traits.Covariant.Handlers<$F>] extends [never] ? false : true
 
 // Tier 2: runtime functor
 const mapOver = <A, B>(value: A, f: (x: any) => any): B => {
@@ -1652,13 +1650,13 @@ export const ordWithDefaults = <A>(base: Ord<A>): OrdFull<A> => ({
   gt: (self, that) => base.compare(self, that) > 0,
   lte: (self, that) => base.compare(self, that) <= 0,
   gte: (self, that) => base.compare(self, that) >= 0,
-  min: (self, that) => base.compare(self, that) <= 0 ? self : that,
-  max: (self, that) => base.compare(self, that) >= 0 ? self : that,
+  min: (self, that) => (base.compare(self, that) <= 0 ? self : that),
+  max: (self, that) => (base.compare(self, that) >= 0 ? self : that),
 })
 
 // Instance author only implements compare:
 export const numberOrd = ordWithDefaults<number>({
-  compare: (self, that) => self < that ? -1 : self > that ? 1 : 0,
+  compare: (self, that) => (self < that ? -1 : self > that ? 1 : 0),
 })
 // numberOrd.lt(1, 2) === true  (derived automatically)
 ```
@@ -1671,12 +1669,9 @@ export const monadWithDefaults = <F extends TypeLambda>(
   base: Pick<Monad<F>, 'of' | 'flatMap'>,
 ): Monad<F> => ({
   ...base,
-  map: dual(2, (self, f) => base.flatMap(self, a => base.of(f(a)))),
-  ap: dual(
-    2,
-    (self, ff) => base.flatMap(ff, f => base.flatMap(self, a => base.of(f(a)))),
-  ),
-  flatten: (self) => base.flatMap(self, x => x),
+  map: dual(2, (self, f) => base.flatMap(self, (a) => base.of(f(a)))),
+  ap: dual(2, (self, ff) => base.flatMap(ff, (f) => base.flatMap(self, (a) => base.of(f(a))))),
+  flatten: (self) => base.flatMap(self, (x) => x),
 })
 ```
 
@@ -1688,13 +1683,11 @@ export const monadWithDefaults = <F extends TypeLambda>(
 
 ```typescript
 // Derive Eq for a product type from field Eqs
-export const struct = <A extends Record<string, unknown>>(
-  fields: { [K in keyof A]: Eq<A[K]> },
-): Eq<A> => ({
+export const struct = <A extends Record<string, unknown>>(fields: {
+  [K in keyof A]: Eq<A[K]>
+}): Eq<A> => ({
   equals: (self, that) =>
-    Object.keys(fields).every(k =>
-      (fields as any)[k].equals((self as any)[k], (that as any)[k])
-    ),
+    Object.keys(fields).every((k) => (fields as any)[k].equals((self as any)[k], (that as any)[k])),
 })
 
 // Usage
@@ -1899,11 +1892,9 @@ A full worked example of a Tier 1 trait from scratch.
  * Returns `true` if the type is hashable, `never` otherwise.
  */
 
-type HandlersResult<$Type> =
-  [keyof KITZ.Traits.Hashable.Handlers<$Type>] extends [never] ? never
-    : KITZ.Traits.Hashable.Handlers<
-      $Type
-    >[keyof KITZ.Traits.Hashable.Handlers<$Type>]
+type HandlersResult<$Type> = [keyof KITZ.Traits.Hashable.Handlers<$Type>] extends [never]
+  ? never
+  : KITZ.Traits.Hashable.Handlers<$Type>[keyof KITZ.Traits.Hashable.Handlers<$Type>]
 
 /**
  * Check if a type is hashable at the type level.
@@ -1922,19 +1913,18 @@ export type Hashable<$Type> =
   // Primitives are always hashable
   $Type extends string | number | boolean | bigint | null | undefined | symbol
     ? true
-    // Check handlers for objects
-    : [HandlersResult<$Type>] extends [never] ? never // Not hashable
-    : HandlersResult<$Type>
+    : // Check handlers for objects
+      [HandlersResult<$Type>] extends [never]
+      ? never // Not hashable
+      : HandlersResult<$Type>
 
 /**
  * Constraint type: require that T is Hashable.
  */
-export type RequireHashable<$Type> = Hashable<$Type> extends true ? $Type
-  : Ts.Err.StaticError<
-    `Type ${Ts.Display<
-      $Type
-    >} is not Hashable. Register a handler in KITZ.Traits.Hashable.Handlers.`
-  >
+export type RequireHashable<$Type> =
+  Hashable<$Type> extends true
+    ? $Type
+    : Ts.Err.StaticError<`Type ${Ts.Display<$Type>} is not Hashable. Register a handler in KITZ.Traits.Hashable.Handlers.`>
 
 declare global {
   namespace KITZ.Traits {
@@ -2046,16 +2036,13 @@ export const array = <A>(): Semigroup<ReadonlyArray<A>> => ({
   combine: (self, that) => [...self, ...that],
 })
 
-export const struct = <A extends Record<string, unknown>>(
-  fields: { [K in keyof A]: Semigroup<A[K]> },
-): Semigroup<A> => ({
+export const struct = <A extends Record<string, unknown>>(fields: {
+  [K in keyof A]: Semigroup<A[K]>
+}): Semigroup<A> => ({
   combine: (self, that) => {
     const result = {} as Record<string, unknown>
     for (const key of Object.keys(fields)) {
-      result[key] = (fields as any)[key].combine(
-        (self as any)[key],
-        (that as any)[key],
-      )
+      result[key] = (fields as any)[key].combine((self as any)[key], (that as any)[key])
     }
     return result as A
   },
@@ -2123,9 +2110,9 @@ export const array = <A>(): Monoid<ReadonlyArray<A>> => ({
   empty: [],
 })
 
-export const struct = <A extends Record<string, unknown>>(
-  fields: { [K in keyof A]: Monoid<A[K]> },
-): Monoid<A> => ({
+export const struct = <A extends Record<string, unknown>>(fields: {
+  [K in keyof A]: Monoid<A[K]>
+}): Monoid<A> => ({
   ...Semigroup.struct(fields),
   empty: Object.fromEntries(
     Object.entries(fields).map(([k, v]) => [k, (v as Monoid<unknown>).empty]),
@@ -2149,11 +2136,13 @@ interface Stats {
   label: string
 }
 
-const MonoidStats = Monoid.withDefaults(Monoid.struct<Stats>({
-  count: Monoid.numberSum,
-  total: Monoid.numberSum,
-  label: Monoid.string,
-}))
+const MonoidStats = Monoid.withDefaults(
+  Monoid.struct<Stats>({
+    count: Monoid.numberSum,
+    total: Monoid.numberSum,
+    label: Monoid.string,
+  }),
+)
 
 MonoidStats.combineAll([
   { count: 1, total: 10, label: 'a' },
@@ -2199,8 +2188,11 @@ export interface TypeLambda {
  * // R = Array<string>
  * ```
  */
-export type KindOf<F extends TypeLambda, In, Out2, Out1> =
-  (F & { readonly In: In; readonly Out2: Out2; readonly Out1: Out1 })['Target']
+export type KindOf<F extends TypeLambda, In, Out2, Out1> = (F & {
+  readonly In: In
+  readonly Out2: Out2
+  readonly Out1: Out1
+})['Target']
 ````
 
 ```typescript
@@ -2217,15 +2209,8 @@ import type { Covariant } from './covariant.js'
  */
 export interface Foldable<F extends TypeLambda> {
   readonly reduce: {
-    <In, Out2, A, B>(
-      self: KindOf<F, In, Out2, A>,
-      initial: B,
-      f: (acc: B, a: A) => B,
-    ): B
-    <A, B>(
-      initial: B,
-      f: (acc: B, a: A) => B,
-    ): <In, Out2>(self: KindOf<F, In, Out2, A>) => B
+    <In, Out2, A, B>(self: KindOf<F, In, Out2, A>, initial: B, f: (acc: B, a: A) => B): B
+    <A, B>(initial: B, f: (acc: B, a: A) => B): <In, Out2>(self: KindOf<F, In, Out2, A>) => B
   }
 }
 
@@ -2242,9 +2227,7 @@ export interface Foldable<F extends TypeLambda> {
  * - Composition: traverse(Compose(F, G))(fa, Compose(f, g)) ===
  *                Compose(traverse(F)(fa, f), traverse(G)(fa, g))
  */
-export interface Traversable<F extends TypeLambda>
-  extends Foldable<F>, Covariant<F>
-{
+export interface Traversable<F extends TypeLambda> extends Foldable<F>, Covariant<F> {
   readonly traverse: <G extends TypeLambda>(
     A: Applicative<G>,
   ) => {
@@ -2267,11 +2250,11 @@ export interface Traversable<F extends TypeLambda>
 }
 
 // Default sequence from traverse
-export const sequenceFromTraverse = <F extends TypeLambda>(
-  T: Pick<Traversable<F>, 'traverse'>,
-): Traversable<F>['sequence'] =>
-(A) =>
-(self) => T.traverse(A)(self, (x: any) => x)
+export const sequenceFromTraverse =
+  <F extends TypeLambda>(T: Pick<Traversable<F>, 'traverse'>): Traversable<F>['sequence'] =>
+  (A) =>
+  (self) =>
+    T.traverse(A)(self, (x: any) => x)
 ```
 
 Array instance:
@@ -2297,8 +2280,7 @@ export const CovariantArray: Covariant<ArrayTypeLambda> = {
 export const FoldableArray: Foldable<ArrayTypeLambda> = {
   reduce: dual(
     3,
-    <A, B>(self: Array<A>, initial: B, f: (acc: B, a: A) => B): B =>
-      self.reduce(f, initial),
+    <A, B>(self: Array<A>, initial: B, f: (acc: B, a: A) => B): B => self.reduce(f, initial),
   ),
 }
 
@@ -2306,20 +2288,23 @@ export const TraversableArray: Traversable<ArrayTypeLambda> = {
   ...CovariantArray,
   ...FoldableArray,
   traverse: <G extends TypeLambda>(A: Applicative<G>) =>
-    dual(2, <In1, Out21, A_, In2, Out22, B>(
-      self: KindOf<ArrayTypeLambda, In1, Out21, A_>,
-      f: (a: A_) => KindOf<G, In2, Out22, B>,
-    ): KindOf<G, In2, Out22, KindOf<ArrayTypeLambda, In1, Out21, B>> => {
-      const arr = self as A_[]
-      return arr.reduce(
-        (acc, a) =>
-          A.ap(
-            A.map(acc, (bs: B[]) => (b: B) => [...bs, b]),
-            f(a),
-          ),
-        A.of([] as B[]) as any,
-      )
-    }),
+    dual(
+      2,
+      <In1, Out21, A_, In2, Out22, B>(
+        self: KindOf<ArrayTypeLambda, In1, Out21, A_>,
+        f: (a: A_) => KindOf<G, In2, Out22, B>,
+      ): KindOf<G, In2, Out22, KindOf<ArrayTypeLambda, In1, Out21, B>> => {
+        const arr = self as A_[]
+        return arr.reduce(
+          (acc, a) =>
+            A.ap(
+              A.map(acc, (bs: B[]) => (b: B) => [...bs, b]),
+              f(a),
+            ),
+          A.of([] as B[]) as any,
+        )
+      },
+    ),
   sequence: (A) => (self) =>
     (self as any[]).reduce(
       (acc: any, ga: any) =>

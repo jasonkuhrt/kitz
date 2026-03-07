@@ -19,4 +19,6 @@ export type { InvalidExportError, NotFoundError } from './file/errors.js'
  * type HandleError = (error: Conf.Errors.All) => void
  * ```
  */
-export type All = import('./file/errors.js').NotFoundError | import('./file/errors.js').InvalidExportError
+export type All =
+  | import('./file/errors.js').NotFoundError
+  | import('./file/errors.js').InvalidExportError

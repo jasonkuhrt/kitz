@@ -67,14 +67,19 @@ export const extractSimpleSignature = (decl: ExportedDeclarations): SignatureMod
   // Look for the __simpleSignature property
   // TypeScript represents Symbol.for('__simpleSignature') with a special name
   const properties = type.getProperties()
-  const simpleSignatureProp = properties.find((prop) => prop.getName().includes('__simpleSignature'))
+  const simpleSignatureProp = properties.find((prop) =>
+    prop.getName().includes('__simpleSignature'),
+  )
 
   if (!simpleSignatureProp) {
     return undefined
   }
 
   // Get the type of the __simpleSignature property
-  const simpleSignatureType = decl.getType().getPropertyOrThrow(simpleSignatureProp.getName()).getTypeAtLocation(decl)
+  const simpleSignatureType = decl
+    .getType()
+    .getPropertyOrThrow(simpleSignatureProp.getName())
+    .getTypeAtLocation(decl)
 
   // The simple signature is a function type - extract its call signatures
   const callSignatures = simpleSignatureType.getCallSignatures()
@@ -84,12 +89,12 @@ export const extractSimpleSignature = (decl: ExportedDeclarations): SignatureMod
   }
 
   // Extract all call signatures as function overloads
-  const overloads: typeof FunctionSignature.Type[] = []
+  const overloads: (typeof FunctionSignature.Type)[] = []
 
   for (const callSig of callSignatures) {
     // Extract type parameters
     // Note: Signature type parameters are from the TypeScript compiler API, not ts-morph declarations
-    const typeParameters: typeof TypeParameter.Type[] = []
+    const typeParameters: (typeof TypeParameter.Type)[] = []
     for (const tp of callSig.getTypeParameters()) {
       const symbol = tp.getSymbol()
       const name = symbol ? symbol.getName() : tp.getText()
@@ -106,11 +111,13 @@ export const extractSimpleSignature = (decl: ExportedDeclarations): SignatureMod
     }
 
     // Extract parameters
-    const parameters: typeof Parameter.Type[] = []
+    const parameters: (typeof Parameter.Type)[] = []
     for (const param of callSig.getParameters()) {
       const paramDecl = param.getValueDeclaration()
-      const isOptional = paramDecl && Node.isParameterDeclaration(paramDecl) ? paramDecl.isOptional() : false
-      const isRest = paramDecl && Node.isParameterDeclaration(paramDecl) ? paramDecl.isRestParameter() : false
+      const isOptional =
+        paramDecl && Node.isParameterDeclaration(paramDecl) ? paramDecl.isOptional() : false
+      const isRest =
+        paramDecl && Node.isParameterDeclaration(paramDecl) ? paramDecl.isRestParameter() : false
 
       parameters.push(
         Parameter.make({
@@ -233,7 +240,7 @@ export const extractSignature = (decl: ExportedDeclarations): SignatureModel => 
 const extractFunctionSignature = (
   decl: Node & { getOverloads?: () => any[]; getImplementation?: () => any },
 ): FunctionSignatureModel => {
-  const overloads: typeof FunctionSignature.Type[] = []
+  const overloads: (typeof FunctionSignature.Type)[] = []
 
   // Get overload signatures (excluding implementation)
   if (typeof decl.getOverloads === 'function') {
@@ -296,7 +303,7 @@ const extractSingleFunctionSignature = (
   jsdoc?: ReturnType<typeof parseJSDoc>,
 ): typeof FunctionSignature.Type => {
   // Extract type parameters
-  const typeParameters: typeof TypeParameter.Type[] = []
+  const typeParameters: (typeof TypeParameter.Type)[] = []
   if (typeof fn.getTypeParameters === 'function') {
     for (const tp of fn.getTypeParameters()) {
       const constraint = tp.getConstraint()
@@ -313,7 +320,7 @@ const extractSingleFunctionSignature = (
   }
 
   // Extract parameters
-  const parameters: typeof Parameter.Type[] = []
+  const parameters: (typeof Parameter.Type)[] = []
   if (typeof fn.getParameters === 'function') {
     for (const param of fn.getParameters()) {
       const isOptional = param.isOptional()
@@ -381,9 +388,9 @@ const extractBuilderSignature = (
   const interfaceDecl = declarations[0]
 
   // Initialize method arrays
-  const chainableMethods: typeof BuilderMethod.Type[] = []
-  const terminalMethods: typeof BuilderMethod.Type[] = []
-  const transformMethods: typeof BuilderMethod.Type[] = []
+  const chainableMethods: (typeof BuilderMethod.Type)[] = []
+  const terminalMethods: (typeof BuilderMethod.Type)[] = []
+  const transformMethods: (typeof BuilderMethod.Type)[] = []
 
   // Crawl interface methods if available
   if (interfaceDecl && interfaceDecl.getKindName() === 'InterfaceDeclaration') {
@@ -403,7 +410,7 @@ const extractBuilderSignature = (
     // Process each method group
     for (const [name, overloads] of methodMap) {
       // Extract all overload signatures with JSDoc
-      const overloadSignatures: typeof FunctionSignature.Type[] = []
+      const overloadSignatures: (typeof FunctionSignature.Type)[] = []
       for (const overload of overloads) {
         const methodJsdoc = parseJSDoc(overload)
         overloadSignatures.push(extractSingleFunctionSignature(overload, methodJsdoc))
@@ -475,13 +482,16 @@ const extractClassSignature = (classDecl: any): ClassSignatureModel => {
     // Extract constructor signature (constructor has no return type, but we use class name)
     const ctorSig = extractSingleFunctionSignature(constructorDecl, jsdoc)
     ctor = FunctionSignature.make({
-      ...ctorSig,
+      typeParameters: ctorSig.typeParameters,
+      parameters: ctorSig.parameters,
       returnType: className, // Constructor "returns" the class instance
+      returnDoc: ctorSig.returnDoc,
+      throws: ctorSig.throws,
     })
   }
 
   // Extract properties
-  const properties: typeof ClassProperty.Type[] = []
+  const properties: (typeof ClassProperty.Type)[] = []
   for (const prop of classDecl.getProperties()) {
     const propName = prop.getName()
     const propType = simplifyTypeText(prop.getType().getText())
@@ -503,7 +513,7 @@ const extractClassSignature = (classDecl: any): ClassSignatureModel => {
   }
 
   // Extract methods
-  const methods: typeof ClassMethod.Type[] = []
+  const methods: (typeof ClassMethod.Type)[] = []
 
   // Group methods by name (handle overloads)
   const methodMap = new Map<string, any[]>()
@@ -520,7 +530,7 @@ const extractClassSignature = (classDecl: any): ClassSignatureModel => {
     const isStatic = overloads[0]?.isStatic() || false
 
     // Extract all overload signatures with JSDoc
-    const overloadSignatures: typeof FunctionSignature.Type[] = []
+    const overloadSignatures: (typeof FunctionSignature.Type)[] = []
     for (const overload of overloads) {
       const methodJsdoc = parseJSDoc(overload)
       overloadSignatures.push(extractSingleFunctionSignature(overload, methodJsdoc))
