@@ -12,7 +12,7 @@ import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Oak } from '@kitz/oak'
-import { Console, Effect, Layer, Option, Schema } from 'effect'
+import { Effect, Layer, Option, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 
 const PublishStateSchema = Schema.Literal('idle', 'publishing', 'published', 'failed')
@@ -78,22 +78,26 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer))(
     const fc = Option.isSome(envelope) ? envelope.value.forecast : yield* decodeForecast(json)
 
     // Render based on format
-    if (args.format === 'comment') {
-      yield* Console.log(
-        Option.match(envelope, {
-          onNone: () => Api.Commentator.render(fc),
-          onSome: (value) =>
-            Api.Commentator.render(fc, {
-              publishState: value.publishState,
-              publishHistory: value.publishHistory,
-            }),
-        }),
-      )
-    } else {
-      yield* Console.log(Api.Renderer.renderTree(fc))
-    }
+    const rendered =
+      args.format === 'comment'
+        ? Option.match(envelope, {
+            onNone: () => Api.Commentator.render(fc),
+            onSome: (value) =>
+              Api.Commentator.render(fc, {
+                publishState: value.publishState,
+                publishHistory: value.publishHistory,
+              }),
+          })
+        : Api.Renderer.renderTree(fc)
+
+    yield* writeStdout(rendered)
   }),
 )
+
+const writeStdout = (output: string): Effect.Effect<void> =>
+  Effect.sync(() => {
+    process.stdout.write(`${output}\n`)
+  })
 
 const readStdin = (): Effect.Effect<string, Error> =>
   Effect.async((resume) => {
