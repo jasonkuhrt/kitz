@@ -5,11 +5,18 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./build/_.js",
-    "./__": "./build/__.js"
+    ".": {
+      "types": "./src/_.ts",
+      "default": "./build/_.js"
+    },
+    "./__": {
+      "types": "./src/__.ts",
+      "default": "./build/__.js"
+    }
   },
   "files": [
-    "build"
+    "build",
+    "src"
   ],
   "scripts": {
     "build": "tsgo -p tsconfig.build.json",
@@ -20,5 +27,6 @@
   },
   "dependencies": {
     "@kitz/core": "workspace:*"
-  }
+  },
+  "types": "./src/_.ts"
 }

@@ -5,8 +5,14 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./build/_.js",
-    "./__": "./build/__.js"
+    ".": {
+      "types": "./src/_.ts",
+      "default": "./build/_.js"
+    },
+    "./__": {
+      "types": "./src/__.ts",
+      "default": "./build/__.js"
+    }
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
@@ -23,5 +29,10 @@
   },
   "devDependencies": {
     "@types/object-inspect": "^1.13.0"
-  }
+  },
+  "types": "./src/_.ts",
+  "files": [
+    "build",
+    "src"
+  ]
 }

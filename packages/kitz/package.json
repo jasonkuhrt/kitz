@@ -5,54 +5,198 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./build/index.js",
-    "./arr": "./build/arr.js",
-    "./bool": "./build/bool.js",
-    "./date": "./build/date.js",
-    "./err": "./build/err.js",
-    "./fn": "./build/fn.js",
-    "./lang": "./build/lang.js",
-    "./null": "./build/null.js",
-    "./num": "./build/num.js",
-    "./obj": "./build/obj.js",
-    "./optic": "./build/optic.js",
-    "./pat": "./build/pat.js",
-    "./prom": "./build/prom.js",
-    "./prox": "./build/prox.js",
-    "./rec": "./build/rec.js",
-    "./str": "./build/str.js",
-    "./ts": "./build/ts.js",
-    "./tup": "./build/tup.js",
-    "./undefined": "./build/undefined.js",
-    "./assert": "./build/assert.js",
-    "./bldr": "./build/bldr.js",
-    "./cli": "./build/cli.js",
-    "./color": "./build/color.js",
-    "./conf": "./build/conf.js",
-    "./env": "./build/env.js",
-    "./fs": "./build/fs.js",
-    "./group": "./build/group.js",
-    "./html": "./build/html.js",
-    "./http": "./build/http.js",
-    "./idx": "./build/idx.js",
-    "./json": "./build/json.js",
-    "./jsonc": "./build/jsonc.js",
-    "./log": "./build/log.js",
-    "./mod": "./build/mod.js",
-    "./name": "./build/name.js",
-    "./oak": "./build/oak.js",
-    "./pkg": "./build/pkg.js",
-    "./paka": "./build/paka.js",
-    "./resource": "./build/resource.js",
-    "./sch": "./build/sch.js",
-    "./semver": "./build/semver.js",
-    "./syn": "./build/syn.js",
-    "./test": "./build/test.js",
-    "./tex": "./build/tex.js",
-    "./tree": "./build/tree.js",
-    "./url": "./build/url.js",
-    "./ware": "./build/ware.js",
-    "./monorepo": "./build/monorepo.js"
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./build/index.js"
+    },
+    "./arr": {
+      "types": "./src/arr.ts",
+      "default": "./build/arr.js"
+    },
+    "./bool": {
+      "types": "./src/bool.ts",
+      "default": "./build/bool.js"
+    },
+    "./date": {
+      "types": "./src/date.ts",
+      "default": "./build/date.js"
+    },
+    "./err": {
+      "types": "./src/err.ts",
+      "default": "./build/err.js"
+    },
+    "./fn": {
+      "types": "./src/fn.ts",
+      "default": "./build/fn.js"
+    },
+    "./lang": {
+      "types": "./src/lang.ts",
+      "default": "./build/lang.js"
+    },
+    "./null": {
+      "types": "./src/null.ts",
+      "default": "./build/null.js"
+    },
+    "./num": {
+      "types": "./src/num.ts",
+      "default": "./build/num.js"
+    },
+    "./obj": {
+      "types": "./src/obj.ts",
+      "default": "./build/obj.js"
+    },
+    "./optic": {
+      "types": "./src/optic.ts",
+      "default": "./build/optic.js"
+    },
+    "./pat": {
+      "types": "./src/pat.ts",
+      "default": "./build/pat.js"
+    },
+    "./prom": {
+      "types": "./src/prom.ts",
+      "default": "./build/prom.js"
+    },
+    "./prox": {
+      "types": "./src/prox.ts",
+      "default": "./build/prox.js"
+    },
+    "./rec": {
+      "types": "./src/rec.ts",
+      "default": "./build/rec.js"
+    },
+    "./str": {
+      "types": "./src/str.ts",
+      "default": "./build/str.js"
+    },
+    "./ts": {
+      "types": "./src/ts.ts",
+      "default": "./build/ts.js"
+    },
+    "./tup": {
+      "types": "./src/tup.ts",
+      "default": "./build/tup.js"
+    },
+    "./undefined": {
+      "types": "./src/undefined.ts",
+      "default": "./build/undefined.js"
+    },
+    "./assert": {
+      "types": "./src/assert.ts",
+      "default": "./build/assert.js"
+    },
+    "./bldr": {
+      "types": "./src/bldr.ts",
+      "default": "./build/bldr.js"
+    },
+    "./cli": {
+      "types": "./src/cli.ts",
+      "default": "./build/cli.js"
+    },
+    "./color": {
+      "types": "./src/color.ts",
+      "default": "./build/color.js"
+    },
+    "./conf": {
+      "types": "./src/conf.ts",
+      "default": "./build/conf.js"
+    },
+    "./env": {
+      "types": "./src/env.ts",
+      "default": "./build/env.js"
+    },
+    "./fs": {
+      "types": "./src/fs.ts",
+      "default": "./build/fs.js"
+    },
+    "./group": {
+      "types": "./src/group.ts",
+      "default": "./build/group.js"
+    },
+    "./html": {
+      "types": "./src/html.ts",
+      "default": "./build/html.js"
+    },
+    "./http": {
+      "types": "./src/http.ts",
+      "default": "./build/http.js"
+    },
+    "./idx": {
+      "types": "./src/idx.ts",
+      "default": "./build/idx.js"
+    },
+    "./json": {
+      "types": "./src/json.ts",
+      "default": "./build/json.js"
+    },
+    "./jsonc": {
+      "types": "./src/jsonc.ts",
+      "default": "./build/jsonc.js"
+    },
+    "./log": {
+      "types": "./src/log.ts",
+      "default": "./build/log.js"
+    },
+    "./mod": {
+      "types": "./src/mod.ts",
+      "default": "./build/mod.js"
+    },
+    "./name": {
+      "types": "./src/name.ts",
+      "default": "./build/name.js"
+    },
+    "./oak": {
+      "types": "./src/oak.ts",
+      "default": "./build/oak.js"
+    },
+    "./pkg": {
+      "types": "./src/pkg.ts",
+      "default": "./build/pkg.js"
+    },
+    "./paka": {
+      "types": "./src/paka.ts",
+      "default": "./build/paka.js"
+    },
+    "./resource": {
+      "types": "./src/resource.ts",
+      "default": "./build/resource.js"
+    },
+    "./sch": {
+      "types": "./src/sch.ts",
+      "default": "./build/sch.js"
+    },
+    "./semver": {
+      "types": "./src/semver.ts",
+      "default": "./build/semver.js"
+    },
+    "./syn": {
+      "types": "./src/syn.ts",
+      "default": "./build/syn.js"
+    },
+    "./test": {
+      "types": "./src/test.ts",
+      "default": "./build/test.js"
+    },
+    "./tex": {
+      "types": "./src/tex.ts",
+      "default": "./build/tex.js"
+    },
+    "./tree": {
+      "types": "./src/tree.ts",
+      "default": "./build/tree.js"
+    },
+    "./url": {
+      "types": "./src/url.ts",
+      "default": "./build/url.js"
+    },
+    "./ware": {
+      "types": "./src/ware.ts",
+      "default": "./build/ware.js"
+    },
+    "./monorepo": {
+      "types": "./src/monorepo.ts",
+      "default": "./build/monorepo.js"
+    }
   },
   "files": [
     "build",
@@ -97,5 +241,6 @@
     "@kitz/tree": "workspace:*",
     "@kitz/url": "workspace:*",
     "@kitz/ware": "workspace:*"
-  }
+  },
+  "types": "./src/index.ts"
 }

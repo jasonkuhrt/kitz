@@ -5,9 +5,18 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./build/_.js",
-    "./__": "./build/__.js",
-    "./import": "./build/import.js"
+    ".": {
+      "types": "./src/_.ts",
+      "default": "./build/_.js"
+    },
+    "./__": {
+      "types": "./src/__.ts",
+      "default": "./build/__.js"
+    },
+    "./import": {
+      "types": "./src/import.ts",
+      "default": "./build/import.js"
+    }
   },
   "dependencies": {
     "@effect/platform": "^0.94.0",
@@ -21,5 +30,10 @@
     "check:types": "tsgo --noEmit",
     "check:lint": "oxlint src/",
     "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
-  }
+  },
+  "types": "./src/_.ts",
+  "files": [
+    "build",
+    "src"
+  ]
 }
