@@ -4,8 +4,14 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#release": "./src/_.ts",
-    "#release/*": "./src/*.ts"
+    "#release": {
+      "types": "./src/_.ts",
+      "default": "./build/_.js"
+    },
+    "#release/*": {
+      "types": "./src/*.ts",
+      "default": "./build/*.js"
+    }
   },
   "types": "./src/_.ts",
   "exports": {

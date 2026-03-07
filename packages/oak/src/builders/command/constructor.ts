@@ -3,6 +3,7 @@ import type { SomeExtension } from '../../extension.js'
 import { getLowerCaseEnvironment } from '../../env.js'
 import { lowerCaseObjectKeys } from '../../helpers.js'
 import type { ParameterBasicInput } from '../../Parameter/basic.js'
+import type { Prompt as ParameterPrompt } from '../../Parameter/types.js'
 import { Settings } from '../../Settings/_.js'
 import * as ExclusiveBuilder from '../exclusive/constructor.js'
 import { ExclusiveBuilderStateSymbol } from '../exclusive/state.js'
@@ -12,6 +13,29 @@ import type { CommandBuilder, RawArgInputs } from './types.js'
 
 export const create = (): CommandBuilder => {
   return create_(createState())
+}
+
+const normalizePrompt = (
+  prompt: ParameterPrompt<unknown> | undefined,
+): ParameterBasicInput['prompt'] => {
+  if (prompt === undefined || prompt === null) {
+    return {
+      enabled: null,
+      when: null,
+    }
+  }
+
+  if (typeof prompt === `boolean`) {
+    return {
+      enabled: prompt,
+      when: null,
+    }
+  }
+
+  return {
+    enabled: prompt.enabled ?? null,
+    when: prompt.when ?? null,
+  }
 }
 
 const create_ = (state: BuilderCommandState): any => {
@@ -53,7 +77,7 @@ const create_ = (state: BuilderCommandState): any => {
         (typeof typeOrConfiguration === `object` || typeof typeOrConfiguration === `function`) &&
         (`~standard` in typeOrConfiguration || `ast` in typeOrConfiguration)
       const configuration = isSchema ? { type: typeOrConfiguration } : typeOrConfiguration
-      const prompt = configuration.prompt ?? null
+      const prompt = normalizePrompt(configuration.prompt)
 
       // Convert raw schema to OakSchema using extension
       if (!state.extension) {

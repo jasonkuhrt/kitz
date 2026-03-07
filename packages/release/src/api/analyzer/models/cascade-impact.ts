@@ -2,8 +2,10 @@ import { Semver } from '@kitz/semver'
 import { Option, Schema as S } from 'effect'
 import { PackageSchema } from './package-schema.js'
 
-const CurrentVersionSchema: S.Schema<Option.Option<Semver.Semver>, string | null> =
-  S.OptionFromNullOr(Semver.Schema)
+const CurrentVersionSchema: S.Schema<
+  Option.Option<Semver.Semver>,
+  string | null
+> = S.OptionFromNullOr(Semver.Schema)
 
 /**
  * Transitive version bump — a package that needs bumping

@@ -116,7 +116,9 @@ export const run = (
 
     // Run lint check, mapping any errors to PreflightError
     const report = yield* Lint.check({ config }).pipe(
-      Effect.provide(Layer.mergeAll(Lint.DefaultServicesLayer, preconditionsLayer, releasePlanLayer)),
+      Effect.provide(
+        Layer.mergeAll(Lint.DefaultServicesLayer, preconditionsLayer, releasePlanLayer),
+      ),
       Effect.catchAll((error) =>
         Effect.fail(
           new PreflightError({

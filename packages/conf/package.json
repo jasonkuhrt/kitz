@@ -4,15 +4,37 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#conf": "./src/_.ts",
-    "#conf/*": "./src/*.ts",
-    "#configurator": "./src/configurator.ts",
-    "#file": "./src/file/__.ts",
-    "#file/*": "./src/file/*.ts"
+    "#conf": {
+      "types": "./src/_.ts",
+      "default": "./build/_.js"
+    },
+    "#conf/*": {
+      "types": "./src/*.ts",
+      "default": "./build/*.js"
+    },
+    "#configurator": {
+      "types": "./src/configurator.ts",
+      "default": "./build/configurator.js"
+    },
+    "#file": {
+      "types": "./src/file/__.ts",
+      "default": "./build/file/__.js"
+    },
+    "#file/*": {
+      "types": "./src/file/*.ts",
+      "default": "./build/file/*.js"
+    }
   },
+  "types": "./src/_.ts",
   "exports": {
-    ".": "./build/_.js",
-    "./__": "./build/__.js"
+    ".": {
+      "types": "./src/_.ts",
+      "default": "./build/_.js"
+    },
+    "./__": {
+      "types": "./src/__.ts",
+      "default": "./build/__.js"
+    }
   },
   "files": [
     "build",

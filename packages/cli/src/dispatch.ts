@@ -26,15 +26,11 @@ export const DiscoverCommandsDirNotFoundError: Err.TaggedContextualErrorClass<
   typeof baseTags,
   typeof DiscoverCommandsDirNotFoundErrorContext,
   typeof ErrorCause
-> = Err.TaggedContextualError(
-  'KitCliDiscoverCommandsDirNotFoundError',
-  baseTags,
-  {
-    context: DiscoverCommandsDirNotFoundErrorContext,
-    message: (ctx) => `Commands directory not found: ${Fs.Path.toString(ctx.path)}`,
-    cause: ErrorCause,
-  },
-)
+> = Err.TaggedContextualError('KitCliDiscoverCommandsDirNotFoundError', baseTags, {
+  context: DiscoverCommandsDirNotFoundErrorContext,
+  message: (ctx) => `Commands directory not found: ${Fs.Path.toString(ctx.path)}`,
+  cause: ErrorCause,
+})
 
 /**
  * Instance type of {@link DiscoverCommandsDirNotFoundError}.

@@ -399,7 +399,7 @@ export const make = <Name extends string, Payload, Result, Error>(
   ): Effect.Effect<UnwrapHandles<Result>, Error, WorkflowEngine.WorkflowEngine> =>
     Effect.gen(function* () {
       // Build graph
-    const builder = makeGraphBuilder<Error>()
+      const builder = makeGraphBuilder<Error>()
       const resultTemplate = config.graph(payload, builder.node)
       const layers = computeLayers(builder.state.nodes)
 

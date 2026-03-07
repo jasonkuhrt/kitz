@@ -1,7 +1,6 @@
 import { lowerCaseObjectKeys } from './helpers.js'
 
-export const getLowerCaseEnvironment = (): NodeJS.ProcessEnv =>
-  lowerCaseObjectKeys(process.env)
+export const getLowerCaseEnvironment = (): NodeJS.ProcessEnv => lowerCaseObjectKeys(process.env)
 
 export const getTerminalWidth = (fallback: number): number => {
   if (typeof process === `undefined`) return fallback

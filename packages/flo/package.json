@@ -4,12 +4,25 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#flo": "./src/_.ts",
-    "#flo/*": "./src/*.ts"
+    "#flo": {
+      "types": "./src/_.ts",
+      "default": "./build/_.js"
+    },
+    "#flo/*": {
+      "types": "./src/*.ts",
+      "default": "./build/*.js"
+    }
   },
+  "types": "./src/_.ts",
   "exports": {
-    ".": "./build/_.js",
-    "./__": "./build/__.js"
+    ".": {
+      "types": "./src/_.ts",
+      "default": "./build/_.js"
+    },
+    "./__": {
+      "types": "./src/__.ts",
+      "default": "./build/__.js"
+    }
   },
   "files": [
     "build",

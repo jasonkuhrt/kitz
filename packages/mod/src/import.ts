@@ -62,15 +62,11 @@ export const ImportErrorNotFound: Err.TaggedContextualErrorClass<
   typeof baseTags,
   typeof ImportErrorNotFoundContext,
   typeof ErrorCause
-> = Err.TaggedContextualError(
-  'KitModImportErrorNotFound',
-  baseTags,
-  {
-    context: ImportErrorNotFoundContext,
-    message: (ctx) => `Module not found: ${Fs.Path.toString(ctx.path)}`,
-    cause: ErrorCause,
-  },
-)
+> = Err.TaggedContextualError('KitModImportErrorNotFound', baseTags, {
+  context: ImportErrorNotFoundContext,
+  message: (ctx) => `Module not found: ${Fs.Path.toString(ctx.path)}`,
+  cause: ErrorCause,
+})
 
 /**
  * Instance type of {@link ImportErrorNotFound}.
@@ -108,15 +104,11 @@ export const ImportErrorPackageConfig: Err.TaggedContextualErrorClass<
   typeof baseTags,
   typeof ImportErrorPackageConfigContext,
   typeof ErrorCause
-> = Err.TaggedContextualError(
-  'KitModImportErrorPackageConfig',
-  baseTags,
-  {
-    context: ImportErrorPackageConfigContext,
-    message: (ctx) => `Package config error for ${Fs.Path.toString(ctx.path)}: ${ctx.code}`,
-    cause: ErrorCause,
-  },
-)
+> = Err.TaggedContextualError('KitModImportErrorPackageConfig', baseTags, {
+  context: ImportErrorPackageConfigContext,
+  message: (ctx) => `Package config error for ${Fs.Path.toString(ctx.path)}: ${ctx.code}`,
+  cause: ErrorCause,
+})
 
 /**
  * Instance type of {@link ImportErrorPackageConfig}.
@@ -133,15 +125,11 @@ export const ImportErrorPermissionDenied: Err.TaggedContextualErrorClass<
   typeof baseTags,
   typeof ImportErrorPermissionDeniedContext,
   typeof ErrorCause
-> = Err.TaggedContextualError(
-  'KitModImportErrorPermissionDenied',
-  baseTags,
-  {
-    context: ImportErrorPermissionDeniedContext,
-    message: (ctx) => `Permission denied: ${Fs.Path.toString(ctx.path)}`,
-    cause: ErrorCause,
-  },
-)
+> = Err.TaggedContextualError('KitModImportErrorPermissionDenied', baseTags, {
+  context: ImportErrorPermissionDeniedContext,
+  message: (ctx) => `Permission denied: ${Fs.Path.toString(ctx.path)}`,
+  cause: ErrorCause,
+})
 
 /**
  * Instance type of {@link ImportErrorPermissionDenied}.
@@ -158,16 +146,12 @@ export const ImportErrorUnsupportedFormat: Err.TaggedContextualErrorClass<
   typeof baseTags,
   typeof ImportErrorUnsupportedFormatContext,
   typeof ErrorCause
-> = Err.TaggedContextualError(
-  'KitModImportErrorUnsupportedFormat',
-  baseTags,
-  {
-    context: ImportErrorUnsupportedFormatContext,
-    message: (ctx) =>
-      `Unsupported format: ${Fs.Path.toString(ctx.path)}${ctx.extension ? ` (${ctx.extension})` : ''}`,
-    cause: ErrorCause,
-  },
-)
+> = Err.TaggedContextualError('KitModImportErrorUnsupportedFormat', baseTags, {
+  context: ImportErrorUnsupportedFormatContext,
+  message: (ctx) =>
+    `Unsupported format: ${Fs.Path.toString(ctx.path)}${ctx.extension ? ` (${ctx.extension})` : ''}`,
+  cause: ErrorCause,
+})
 
 /**
  * Instance type of {@link ImportErrorUnsupportedFormat}.

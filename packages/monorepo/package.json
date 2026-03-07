@@ -4,14 +4,33 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#monorepo": "./src/_.ts",
-    "#monorepo/*": "./src/*.ts",
-    "#pnpm": "./src/pnpm/_.ts",
-    "#pnpm/pnpm": "./src/pnpm/__.ts"
+    "#monorepo": {
+      "types": "./src/_.ts",
+      "default": "./build/_.js"
+    },
+    "#monorepo/*": {
+      "types": "./src/*.ts",
+      "default": "./build/*.js"
+    },
+    "#pnpm": {
+      "types": "./src/pnpm/_.ts",
+      "default": "./build/pnpm/_.js"
+    },
+    "#pnpm/pnpm": {
+      "types": "./src/pnpm/__.ts",
+      "default": "./build/pnpm/__.js"
+    }
   },
+  "types": "./src/_.ts",
   "exports": {
-    ".": "./build/_.js",
-    "./__": "./build/__.js"
+    ".": {
+      "types": "./src/_.ts",
+      "default": "./build/_.js"
+    },
+    "./__": {
+      "types": "./src/__.ts",
+      "default": "./build/__.js"
+    }
   },
   "files": [
     "build",

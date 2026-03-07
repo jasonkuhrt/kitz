@@ -57,8 +57,7 @@ export const findFirstUnderDir =
             // Return the absolute path if it exists (this is what we want!)
             Effect.map((exists) => (exists ? absolutePath : undefined)),
             Effect.mapError(
-              (error) =>
-                new Error(`Failed to check path existence: ${pathStr} - ${String(error)}`),
+              (error) => new Error(`Failed to check path existence: ${pathStr} - ${String(error)}`),
             ),
           )
         }),

@@ -57,14 +57,10 @@ export const InvalidExportError: Err.TaggedContextualErrorClass<
   typeof baseTags,
   typeof InvalidExportErrorContext,
   undefined
-> = Err.TaggedContextualError(
-  'KitConfFileInvalidExportError',
-  baseTags,
-  {
-    context: InvalidExportErrorContext,
-    message: (ctx) => `Invalid config export in ${ctx.path}`,
-  },
-)
+> = Err.TaggedContextualError('KitConfFileInvalidExportError', baseTags, {
+  context: InvalidExportErrorContext,
+  message: (ctx) => `Invalid config export in ${ctx.path}`,
+})
 
 export type InvalidExportError = InstanceType<typeof InvalidExportError>
 

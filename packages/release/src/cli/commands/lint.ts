@@ -60,16 +60,16 @@ Cli.run(
     Git.GitLive,
   ),
   {
-  onError: (cause) => {
-    const error = Cause.squash(cause)
-    // LintViolations already printed by relay, just exit
-    if (isLintViolations(error)) {
+    onError: (cause) => {
+      const error = Cause.squash(cause)
+      // LintViolations already printed by relay, just exit
+      if (isLintViolations(error)) {
+        process.exit(1)
+      }
+      Err.logUnsafe(Err.ensure(error))
       process.exit(1)
-    }
-    Err.logUnsafe(Err.ensure(error))
-    process.exit(1)
+    },
   },
-},
 )(
   Effect.gen(function* () {
     const config = yield* Api.Config.load({

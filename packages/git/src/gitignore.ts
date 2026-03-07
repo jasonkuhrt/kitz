@@ -413,7 +413,12 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
 
     return Gitignore.make({
       sections: gitignore.sections
-        .map((section) => remakeSection(section, section.entries.filter((e) => e.pattern !== normalized)))
+        .map((section) =>
+          remakeSection(
+            section,
+            section.entries.filter((e) => e.pattern !== normalized),
+          ),
+        )
         .filter((s) => s.entries.length > 0 || s.comments.length > 0),
     })
   }

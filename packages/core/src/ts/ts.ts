@@ -57,15 +57,7 @@ export const as = <$value>(value?: unknown): $value => value as any
  *
  * @category Type Utilities
  */
-export type Interpolatable =
-  | string
-  | number
-  | bigint
-  | boolean
-  | null
-  | undefined
-  | symbol
-  | object
+export type Interpolatable = string | number | bigint | boolean | null | undefined | symbol | object
 
 /**
  * Represents a type error that can be surfaced at the type level.

@@ -15,22 +15,14 @@ import { RuleOptionsService } from '../services/rule-options.js'
 
 /** Compute the list of all registered rules. Called per check invocation to pick up any dynamic changes. */
 type RegisteredRule = (typeof Rules)[keyof typeof Rules]
-type RegisteredRuleError = RegisteredRule extends RuntimeRule.RuntimeRule<
-  unknown,
-  unknown,
-  infer Error,
-  unknown
->
-  ? Error
-  : never
-type RegisteredRuleContext = RegisteredRule extends RuntimeRule.RuntimeRule<
-  unknown,
-  unknown,
-  unknown,
-  infer Context
->
-  ? Context
-  : never
+type RegisteredRuleError =
+  RegisteredRule extends RuntimeRule.RuntimeRule<unknown, unknown, infer Error, unknown>
+    ? Error
+    : never
+type RegisteredRuleContext =
+  RegisteredRule extends RuntimeRule.RuntimeRule<unknown, unknown, unknown, infer Context>
+    ? Context
+    : never
 type RegisteredRuleContextWithoutOptions = Exclude<RegisteredRuleContext, RuleOptionsService>
 
 const getAllRules = (): RegisteredRule[] => Obj.values(Rules) as RegisteredRule[]

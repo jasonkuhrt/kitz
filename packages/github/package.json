@@ -4,12 +4,25 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#github": "./src/_.ts",
-    "#github/*": "./src/*.ts"
+    "#github": {
+      "types": "./src/_.ts",
+      "default": "./build/_.js"
+    },
+    "#github/*": {
+      "types": "./src/*.ts",
+      "default": "./build/*.js"
+    }
   },
+  "types": "./src/_.ts",
   "exports": {
-    ".": "./build/_.js",
-    "./__": "./build/__.js"
+    ".": {
+      "types": "./src/_.ts",
+      "default": "./build/_.js"
+    },
+    "./__": {
+      "types": "./src/__.ts",
+      "default": "./build/__.js"
+    }
   },
   "files": [
     "build",

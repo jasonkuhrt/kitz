@@ -1,8 +1,10 @@
 import { Semver } from '@kitz/semver'
 import { Option, Schema as S } from 'effect'
 
-const OptionalSemverSchema: S.Schema<Option.Option<Semver.Semver>, string | null> =
-  S.OptionFromNullOr(Semver.Schema)
+const OptionalSemverSchema: S.Schema<
+  Option.Option<Semver.Semver>,
+  string | null
+> = S.OptionFromNullOr(Semver.Schema)
 const SemverSchema: S.Schema<Semver.Semver, Semver.Semver> = Semver.Semver
 
 /**

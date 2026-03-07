@@ -5,25 +5,77 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#pkg": "./src/_.ts",
-    "#pkg/*": "./src/*.ts",
-    "#moniker": "./src/moniker/_.ts",
-    "#moniker/*": "./src/moniker/*.ts",
-    "#manifest": "./src/manifest/_.ts",
-    "#manifest/*": "./src/manifest/*.ts",
-    "#manager": "./src/manager/_.ts",
-    "#manager/*": "./src/manager/*.ts",
-    "#pin": "./src/pin/_.ts",
-    "#pin/*": "./src/pin/*.ts",
-    "#range": "./src/range/_.ts",
-    "#range/*": "./src/range/*.ts"
+    "#pkg": {
+      "types": "./src/_.ts",
+      "default": "./build/_.js"
+    },
+    "#pkg/*": {
+      "types": "./src/*.ts",
+      "default": "./build/*.js"
+    },
+    "#moniker": {
+      "types": "./src/moniker/_.ts",
+      "default": "./build/moniker/_.js"
+    },
+    "#moniker/*": {
+      "types": "./src/moniker/*.ts",
+      "default": "./build/moniker/*.js"
+    },
+    "#manifest": {
+      "types": "./src/manifest/_.ts",
+      "default": "./build/manifest/_.js"
+    },
+    "#manifest/*": {
+      "types": "./src/manifest/*.ts",
+      "default": "./build/manifest/*.js"
+    },
+    "#manager": {
+      "types": "./src/manager/_.ts",
+      "default": "./build/manager/_.js"
+    },
+    "#manager/*": {
+      "types": "./src/manager/*.ts",
+      "default": "./build/manager/*.js"
+    },
+    "#pin": {
+      "types": "./src/pin/_.ts",
+      "default": "./build/pin/_.js"
+    },
+    "#pin/*": {
+      "types": "./src/pin/*.ts",
+      "default": "./build/pin/*.js"
+    },
+    "#range": {
+      "types": "./src/range/_.ts",
+      "default": "./build/range/_.js"
+    },
+    "#range/*": {
+      "types": "./src/range/*.ts",
+      "default": "./build/range/*.js"
+    }
   },
+  "types": "./src/_.ts",
   "exports": {
-    ".": "./build/_.js",
-    "./__": "./build/__.js",
-    "./manifest": "./build/manifest/__.js",
-    "./manager": "./build/manager/__.js",
-    "./pin": "./build/pin/_.js"
+    ".": {
+      "types": "./src/_.ts",
+      "default": "./build/_.js"
+    },
+    "./__": {
+      "types": "./src/__.ts",
+      "default": "./build/__.js"
+    },
+    "./manifest": {
+      "types": "./src/manifest/__.ts",
+      "default": "./build/manifest/__.js"
+    },
+    "./manager": {
+      "types": "./src/manager/__.ts",
+      "default": "./build/manager/__.js"
+    },
+    "./pin": {
+      "types": "./src/pin/_.ts",
+      "default": "./build/pin/_.js"
+    }
   },
   "files": [
     "build",

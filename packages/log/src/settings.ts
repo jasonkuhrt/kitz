@@ -1,12 +1,6 @@
 import { Lang, Obj } from '@kitz/core'
 import * as Filter from './filter.js'
-import {
-  getLogFilter,
-  getLogLevel,
-  getLogPretty,
-  getNodeEnv,
-  parseFromEnvironment,
-} from './env.js'
+import { getLogFilter, getLogLevel, getLogPretty, getNodeEnv, parseFromEnvironment } from './env.js'
 import * as Level from './level.js'
 import * as Output from './output.js'
 
