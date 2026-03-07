@@ -98,6 +98,7 @@ const commentDoctorRuleIds = [
   'plan.packages-license-present',
   'plan.packages-repository-present',
   'plan.packages-repository-match-canonical',
+  'plan.versions-unpublished',
   'plan.tags-unique',
 ] as const
 
@@ -301,6 +302,7 @@ const buildCommentDoctor = (params: {
           params.config,
           'plan.packages-repository-match-canonical',
         ),
+        'plan.versions-unpublished': enableRule(params.config, 'plan.versions-unpublished'),
         'plan.tags-unique': enableRule(params.config, 'plan.tags-unique'),
         ...(params.pullRequest
           && params.projectedSquashCommit?.projectedHeader

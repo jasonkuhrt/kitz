@@ -7,7 +7,7 @@ import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, Layer, Ref, Schema, Stream } from 'effect'
+import { Effect, Layer, Ref, Schema, Sink, Stream } from 'effect'
 import * as AnalyzerApi from '../analyzer/__.js'
 import * as PlanApi from '../planner/__.js'
 import { execute, executeObservable } from './execute.js'
@@ -18,6 +18,7 @@ const coreManifestPath = Fs.Path.AbsFile.fromString('/repo/packages/core/package
 const JsonRecordSchema = Schema.Record({ key: Schema.String, value: Schema.Unknown })
 const JsonRecordFromStringSchema = Schema.parseJson(JsonRecordSchema)
 const decodeJsonRecordSync = Schema.decodeUnknownSync(JsonRecordFromStringSchema)
+const textEncoder = new TextEncoder()
 
 const workspacePackages: ReadonlyArray<PlanApi.Context['packages'][number]> = [
   {
@@ -61,6 +62,17 @@ const decodeSemverFromManifest = (value: unknown): Semver.Semver =>
     : Schema.decodeUnknownSync(Semver.Semver)(value)
 
 const makeMockCommandExecutorLayer = (whoamiUsername: string) => {
+  const makeProcess = (stdout: string, exitCode: number): CommandExecutor.Process => ({
+    [CommandExecutor.ProcessTypeId]: CommandExecutor.ProcessTypeId,
+    pid: CommandExecutor.ProcessId(1),
+    exitCode: Effect.succeed(CommandExecutor.ExitCode(exitCode)),
+    isRunning: Effect.succeed(false),
+    kill: () => Effect.void,
+    stderr: Stream.empty,
+    stdin: Sink.drain,
+    stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
+  })
+
   const runString = (command: any) => {
     if (
       command?._tag === 'StandardCommand' &&
@@ -75,7 +87,36 @@ const makeMockCommandExecutorLayer = (whoamiUsername: string) => {
   const executor: CommandExecutor.CommandExecutor = {
     [CommandExecutor.TypeId]: CommandExecutor.TypeId,
     exitCode: () => Effect.succeed(CommandExecutor.ExitCode(0)),
-    start: () => Effect.die('start not implemented in mock command executor') as any,
+    start: (command) => {
+      if (
+        command?._tag === 'StandardCommand' &&
+        command.command === 'npm' &&
+        command.args?.[0] === '--silent' &&
+        command.args?.[1] === 'view'
+      ) {
+        const spec = command.args?.[2]
+        const version = spec?.split('@').at(-1)
+        return Effect.succeed(
+          version === '9.9.9'
+            ? makeProcess(`"${version}"\n`, 0)
+            : makeProcess(
+                JSON.stringify(
+                  {
+                    error: {
+                      code: 'E404',
+                      summary: `No match found for version ${version ?? 'unknown'}`,
+                    },
+                  },
+                  null,
+                  2,
+                ) + '\n',
+                1,
+              ),
+        ) as any
+      }
+
+      return Effect.die(`Unexpected command in mock executor: ${command?.command ?? 'unknown'}`) as any
+    },
     string: runString,
     lines: (command) =>
       runString(command).pipe(

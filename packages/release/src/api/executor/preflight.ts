@@ -72,6 +72,7 @@ export interface PreflightOptions {
  * - git working directory is clean (env.git-clean)
  * - git remote is reachable (env.git-remote)
  * - planned tags don't already exist (plan.tags-unique)
+ * - planned package versions are not already published (plan.versions-unpublished)
  * - planned package manifests are publishable (plan.packages-*)
  */
 export const run = (
@@ -117,6 +118,10 @@ export const run = (
           options: { remote: options?.remote ?? 'origin' },
         }),
         'plan.tags-unique': Lint.RuleConfig.make({
+          overrides: Lint.RuleDefaults.make({ enabled: true }),
+          options: {},
+        }),
+        'plan.versions-unpublished': Lint.RuleConfig.make({
           overrides: Lint.RuleDefaults.make({ enabled: true }),
           options: {},
         }),

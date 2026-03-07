@@ -42,7 +42,8 @@ export const rule = RuntimeRule.create({
             summary: 'npm CLI authentication is not configured for this runtime.',
             detail:
               'Manual and token-based release paths still rely on npm CLI auth. ' +
-              'If `npm whoami` fails here, `npm publish` will fail later after release planning is already complete.',
+              'If `npm whoami` fails here, `npm publish` will fail later after release planning is already complete. ' +
+              'Even after login, publish can still fail if the authenticated account lacks write access to the target package or scope, or if npm requires an additional write-time auth step.',
             hints: [
               Hint.make({
                 description: 'For local/manual releases, run `npm login` before `release apply`.',
@@ -51,11 +52,19 @@ export const rule = RuntimeRule.create({
                 description:
                   'For CI, either export an npm token or switch the lifecycle to github-trusted publishing.',
               }),
+              Hint.make({
+                description:
+                  'If `npm whoami` starts passing but publish still fails, check npm package ownership or org membership for the target scope and any write-time 2FA policy on the account.',
+              }),
             ],
             docs: [
               DocLink.make({
                 label: 'npm CI/CD auth guidance',
                 url: 'https://docs.npmjs.com/using-private-packages-in-a-ci-cd-workflow/',
+              }),
+              DocLink.make({
+                label: 'npm access',
+                url: 'https://docs.npmjs.com/cli/v11/commands/npm-access',
               }),
             ],
           }),

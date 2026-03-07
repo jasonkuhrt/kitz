@@ -161,6 +161,7 @@ Before any publishing begins, the Executor runs **preflight checks** using the d
 - **npm authentication** — for manual/token-based paths, can we publish to the registry?
 - **git cleanliness** — is the working directory clean?
 - **git remote** — is the remote reachable?
+- **version availability** — do any planned package versions already exist on npm?
 - **tag uniqueness** — do any of the planned tags already exist?
 - **package manifest blockers** — are planned packages accidentally marked private?
 
@@ -178,7 +179,7 @@ Raised when a preflight check fails before any publishing begins.
 
 **When it occurs**: at the start of execution, before any packages are published.
 
-**Common causes**: npm authentication is not configured, the git working directory has uncommitted changes, the git remote is unreachable, or a planned tag already exists.
+**Common causes**: npm authentication is not configured, the git working directory has uncommitted changes, the git remote is unreachable, a planned package version already exists on npm, or a planned tag already exists.
 
 **What to do**: the error's `check` field names the specific preflight rule that failed (e.g., `env.npm-authenticated`). Run `release doctor --onlyRule "<check>"` to investigate in isolation.
 
@@ -254,7 +255,7 @@ The doctor rule engine validates release-related invariants across four domains:
 
 - **Environment rules** (`env.*`): publish-channel readiness, npm authentication, git cleanliness, git remote reachability
 - **PR rules** (`pr.*`): commit message format, scope requirements, type validation, monorepo scope matching
-- **Plan rules** (`plan.*`): tag uniqueness, publish-safe package manifests
+- **Plan rules** (`plan.*`): version availability, tag uniqueness, publish-safe package manifests
 - **Git rules** (`git.*`): history monotonicity (no version regressions)
 
 Rules are composable and configurable. Each rule can be enabled, disabled, or have its severity adjusted. `release doctor` automatically loads `.release/plan.json` when present, so plan-aware rules can be run before `release apply`. Error-severity violations fail the command; warn-severity violations are reported but do not block release execution.

@@ -39,6 +39,24 @@ const parseCsvStrings = (value: string | undefined): readonly string[] | undefin
   return parts.length > 0 ? parts : undefined
 }
 
+const enableRule = (
+  config: Api.Config.ResolvedConfig,
+  ruleId: string,
+  ruleOptions: Record<string, unknown> = {},
+) => {
+  const existing = config.lint.rules[ruleId]
+  return Api.Lint.ResolvedRuleConfig.make({
+    overrides: Api.Lint.ResolvedRuleDefaults.make({
+      enabled: true,
+      severity: existing?.overrides.severity ?? config.lint.defaults.severity,
+    }),
+    options: {
+      ...(existing?.options ?? {}),
+      ...ruleOptions,
+    },
+  })
+}
+
 const args = Oak.Command.create()
   .use(Oak.EffectSchema)
   .description(
@@ -173,6 +191,7 @@ Cli.run(
     const evaluatePlan = (plan: Api.Planner.Plan, required: boolean) =>
       Effect.gen(function* () {
         const plannedItems = [...plan.releases, ...plan.cascades]
+        const channel = Api.Publishing.resolvePublishChannel(config.publishing, plan.lifecycle)
         const projectedSquashCommit =
           pullRequest && plan.releases.length > 0
             ? Api.ProjectedSquashCommit.preview({
@@ -188,6 +207,18 @@ Cli.run(
           skipRules: config.lint.skipRules,
           rules: {
             ...config.lint.rules,
+            'env.publish-channel-ready': enableRule(config, 'env.publish-channel-ready', {
+              surface: 'execution',
+            }),
+            'env.git-clean': enableRule(config, 'env.git-clean'),
+            'env.git-remote': enableRule(config, 'env.git-remote', { remote: 'origin' }),
+            'plan.tags-unique': enableRule(config, 'plan.tags-unique'),
+            'plan.versions-unpublished': enableRule(config, 'plan.versions-unpublished'),
+            ...(channel.mode !== 'github-trusted'
+              ? {
+                  'env.npm-authenticated': enableRule(config, 'env.npm-authenticated'),
+                }
+              : {}),
             ...(projectedSquashCommit?.projectedHeader
               ? {
                   'pr.projected-squash-commit-sync': Api.Lint.ResolvedRuleConfig.make({

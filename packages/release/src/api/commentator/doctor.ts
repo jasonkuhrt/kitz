@@ -81,6 +81,7 @@ const doctorRuleOrder = [
   'plan.packages-license-present',
   'plan.packages-repository-present',
   'plan.packages-repository-match-canonical',
+  'plan.versions-unpublished',
   'plan.tags-unique',
 ] as const
 
@@ -91,6 +92,7 @@ const doctorRuleLabels: Record<(typeof doctorRuleOrder)[number], string> = {
   'plan.packages-license-present': 'License metadata',
   'plan.packages-repository-present': 'Repository metadata',
   'plan.packages-repository-match-canonical': 'Repository provenance',
+  'plan.versions-unpublished': 'Version availability',
   'plan.tags-unique': 'Tag uniqueness',
 }
 
@@ -189,6 +191,16 @@ const renderPassNote = (
             : 'Planned release tags are unique.',
       }),
     )
+  }
+
+  if (ruleId === 'plan.versions-unpublished') {
+    const count = decodePackageCountMetadata(metadata).pipe(
+      Option.match({
+        onNone: () => plannedPackages,
+        onSome: (value) => value.packageCount,
+      }),
+    )
+    return `All ${String(count)} planned package versions are still unpublished on npm.`
   }
 
   if (ruleId === 'pr.projected-squash-commit-sync') {

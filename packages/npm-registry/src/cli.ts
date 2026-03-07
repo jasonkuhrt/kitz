@@ -1,7 +1,8 @@
 import { Command, CommandExecutor } from '@effect/platform'
+import type { PlatformError } from '@effect/platform/Error'
 import { Err } from '@kitz/core'
 import { Fs } from '@kitz/fs'
-import { Effect, Schema as S, String as Str } from 'effect'
+import { Effect, Option, Schema as S, Stream, String as Str } from 'effect'
 
 // ============================================================================
 // Errors
@@ -9,7 +10,7 @@ import { Effect, Schema as S, String as Str } from 'effect'
 
 const baseTags = ['kit', 'npm-registry', 'cli'] as const
 
-const NpmCliOperationSchema = S.Literal('whoami', 'publish')
+const NpmCliOperationSchema = S.Literal('whoami', 'publish', 'view')
 const ErrorCause = S.instanceOf(Error)
 const NpmCliErrorContext = S.Struct({
   operation: NpmCliOperationSchema,
@@ -62,6 +63,40 @@ export interface PublishOptions {
   /** npm access level (default: 'public') */
   readonly access?: 'public' | 'restricted'
 }
+
+/**
+ * Options for npm view command.
+ */
+export interface ViewOptions {
+  /** Registry URL (defaults to npm default) */
+  readonly registry?: string
+}
+
+const NpmViewErrorSchema = S.Struct({
+  error: S.Struct({
+    code: S.String,
+    summary: S.optional(S.String),
+    detail: S.optional(S.String),
+  }),
+})
+
+const decodeNpmViewError = S.decodeUnknownOption(S.parseJson(NpmViewErrorSchema))
+
+const readStreamString = (
+  stream: Stream.Stream<Uint8Array, PlatformError>,
+): Effect.Effect<string, PlatformError> =>
+  stream.pipe(
+    Stream.runCollect,
+    Effect.map((chunks) => {
+      const decoder = new TextDecoder()
+      let output = ''
+      for (const chunk of chunks) {
+        output += decoder.decode(chunk, { stream: true })
+      }
+      output += decoder.decode()
+      return output
+    }),
+  )
 
 // ============================================================================
 // Public API
@@ -178,4 +213,71 @@ export function publish(
       }),
     )
   })
+}
+
+/**
+ * Check whether an exact package version already exists in the registry.
+ *
+ * Returns `false` for npm `E404` (package or version not found), and fails for
+ * other npm view errors so callers can distinguish registry outages from a
+ * truly unpublished version.
+ */
+export function hasVersion(
+  packageName: string,
+  version: string,
+  options?: ViewOptions,
+): Effect.Effect<boolean, NpmCliError, CommandExecutor.CommandExecutor> {
+  return Effect.scoped(
+    Effect.gen(function* () {
+      const args = ['--silent', 'view', `${packageName}@${version}`, 'version', '--json']
+      if (options?.registry) {
+        args.push('--registry', options.registry)
+      }
+
+      const command = Command.make('npm', ...args)
+      const process = yield* Command.start(command)
+      const { stdout, stderr, exitCode } = yield* Effect.all(
+        {
+          stdout: readStreamString(process.stdout),
+          stderr: readStreamString(process.stderr),
+          exitCode: process.exitCode,
+        },
+        { concurrency: 'unbounded' },
+      )
+
+      if (Number(exitCode) === 0) {
+        return true
+      }
+
+      const stdoutText = Str.trim(stdout)
+      const stderrText = Str.trim(stderr)
+      const parsed = decodeNpmViewError(stdoutText).pipe(
+        Option.orElse(() => decodeNpmViewError(stderrText)),
+      )
+
+      if (Option.isSome(parsed) && parsed.value.error.code === 'E404') {
+        return false
+      }
+
+      const detail = Option.isSome(parsed)
+        ? parsed.value.error.summary ?? parsed.value.error.detail ?? 'npm view failed'
+        : stdoutText || stderrText || `npm view exited with code ${String(exitCode)}`
+
+      return yield* Effect.fail(new Error(detail))
+    }),
+  ).pipe(
+    Effect.mapError((cause) => {
+      if (cause instanceof NpmCliError) return cause
+      return new NpmCliError({
+        context: {
+          operation: 'view',
+          detail:
+            cause instanceof Error && cause.message
+              ? cause.message
+              : `npm view ${packageName}@${version} failed`,
+        },
+        cause: cause instanceof Error ? cause : new Error(String(cause)),
+      })
+    }),
+  )
 }
