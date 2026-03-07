@@ -255,10 +255,7 @@ const checkRule = (
   })
 }
 
-const resolveRuleSeverity = (
-  rule: RegisteredRule,
-  config: ResolvedConfig,
-): Severity => {
+const resolveRuleSeverity = (rule: RegisteredRule, config: ResolvedConfig): Severity => {
   const ruleConfig = config.rules[rule.data.id]
   return ruleConfig?.overrides.severity ?? rule.data.defaults?.severity ?? config.defaults.severity
 }

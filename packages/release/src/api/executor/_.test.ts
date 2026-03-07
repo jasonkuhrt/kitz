@@ -115,7 +115,9 @@ const makeMockCommandExecutorLayer = (whoamiUsername: string) => {
         ) as any
       }
 
-      return Effect.die(`Unexpected command in mock executor: ${command?.command ?? 'unknown'}`) as any
+      return Effect.die(
+        `Unexpected command in mock executor: ${command?.command ?? 'unknown'}`,
+      ) as any
     },
     string: runString,
     lines: (command) =>

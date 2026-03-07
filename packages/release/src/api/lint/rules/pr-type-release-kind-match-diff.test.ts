@@ -7,7 +7,9 @@ import { PrService } from '../services/pr.js'
 import { rule } from './pr-type-release-kind-match-diff.js'
 
 const diffWithSrcChanges = Layer.succeed(DiffService, {
-  files: [{ path: 'packages/release/src/api/projected-squash-commit.ts', status: 'modified' as const }],
+  files: [
+    { path: 'packages/release/src/api/projected-squash-commit.ts', status: 'modified' as const },
+  ],
   affectedPackages: ['release'],
 })
 

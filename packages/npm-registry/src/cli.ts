@@ -260,7 +260,7 @@ export function hasVersion(
       }
 
       const detail = Option.isSome(parsed)
-        ? parsed.value.error.summary ?? parsed.value.error.detail ?? 'npm view failed'
+        ? (parsed.value.error.summary ?? parsed.value.error.detail ?? 'npm view failed')
         : stdoutText || stderrText || `npm view exited with code ${String(exitCode)}`
 
       return yield* Effect.fail(new Error(detail))

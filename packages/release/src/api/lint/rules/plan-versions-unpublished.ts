@@ -75,7 +75,8 @@ export const rule = RuntimeRule.create({
         'If a planned version already exists, the release plan is stale or a prior publish attempt already succeeded.',
       hints: [
         Hint.make({
-          description: 'Regenerate the release plan after fetching the latest tags and published versions.',
+          description:
+            'Regenerate the release plan after fetching the latest tags and published versions.',
         }),
         Hint.make({
           description:

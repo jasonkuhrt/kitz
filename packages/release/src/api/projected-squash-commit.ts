@@ -56,15 +56,16 @@ const targetForImpact = (impact: ScopeImpact): ConventionalCommits.Target =>
     breaking: impact.bump === 'major',
   })
 
-export const renderHeader = (params: { readonly impacts: readonly ScopeImpact[] }): string | null => {
+export const renderHeader = (params: {
+  readonly impacts: readonly ScopeImpact[]
+}): string | null => {
   if (params.impacts.length === 0) return null
 
   const commit = ConventionalCommits.Commit.Multi.make({
     targets: [...params.impacts]
       .sort(
         (left, right) =>
-          orderByBump[left.bump] - orderByBump[right.bump] ||
-          left.scope.localeCompare(right.scope),
+          orderByBump[left.bump] - orderByBump[right.bump] || left.scope.localeCompare(right.scope),
       )
       .map(targetForImpact) as [ConventionalCommits.Target, ...ConventionalCommits.Target[]],
     message: 'projected release header',

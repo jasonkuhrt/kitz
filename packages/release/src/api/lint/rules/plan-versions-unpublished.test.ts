@@ -33,7 +33,9 @@ const makeCommandExecutorLayer = (exists: boolean) =>
         command.args?.[0] !== '--silent' ||
         command.args?.[1] !== 'view'
       ) {
-        return Effect.die(`Unexpected command in mock executor: ${command?.command ?? 'unknown'}`) as any
+        return Effect.die(
+          `Unexpected command in mock executor: ${command?.command ?? 'unknown'}`,
+        ) as any
       }
 
       const spec = command.args?.[2]

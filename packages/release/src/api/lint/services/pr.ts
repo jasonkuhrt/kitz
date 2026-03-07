@@ -27,13 +27,11 @@ const fallbackPr: Pr = {
   titleParseError: Option.none(),
 }
 
-export const fromPullRequest = (
-  pullRequest: {
-    readonly number: number
-    readonly title: string
-    readonly body: string | null
-  },
-): Effect.Effect<Pr> =>
+export const fromPullRequest = (pullRequest: {
+  readonly number: number
+  readonly title: string
+  readonly body: string | null
+}): Effect.Effect<Pr> =>
   CC.Title.parse(pullRequest.title).pipe(
     Effect.either,
     Effect.map((parsed) =>

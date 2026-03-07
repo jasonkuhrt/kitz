@@ -3,10 +3,7 @@ import { afterEach, describe, expect, test } from 'vitest'
 import { Violation } from '../models/violation.js'
 import { ReleaseContext } from '../services/__.js'
 import { RuleOptionsService } from '../services/rule-options.js'
-import {
-  type PublishChannelReadyMetadata,
-  rule,
-} from './env-publish-channel-ready.js'
+import { type PublishChannelReadyMetadata, rule } from './env-publish-channel-ready.js'
 
 const originalEnv = { ...process.env }
 
@@ -49,7 +46,8 @@ describe('env.publish-channel-ready', () => {
 
   test('defers to the publish workflow in preview mode when running on a non-publish workflow', async () => {
     process.env['GITHUB_ACTIONS'] = 'true'
-    process.env['GITHUB_WORKFLOW_REF'] = 'jasonkuhrt/kitz/.github/workflows/pr.yml@refs/pull/129/merge'
+    process.env['GITHUB_WORKFLOW_REF'] =
+      'jasonkuhrt/kitz/.github/workflows/pr.yml@refs/pull/129/merge'
 
     const layer = ReleaseContext.make({
       lifecycle: 'ephemeral',

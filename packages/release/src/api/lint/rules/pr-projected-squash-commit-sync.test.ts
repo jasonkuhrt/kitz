@@ -16,7 +16,9 @@ const makePrLayer = (title: string, parseError?: string) =>
       : Option.some(
           Effect.runSync(
             CC.Title.parse(title).pipe(
-              Effect.orElseFail(() => new Error(`expected valid conventional commit title: ${title}`)),
+              Effect.orElseFail(
+                () => new Error(`expected valid conventional commit title: ${title}`),
+              ),
             ),
           ),
         ),

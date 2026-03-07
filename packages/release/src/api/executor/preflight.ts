@@ -92,7 +92,10 @@ export const run = (
     if (options?.skipNpmAuth) skipRules.push('env.npm-authenticated')
     if (options?.skipGitClean) skipRules.push('env.git-clean')
     if (options?.lifecycle) {
-      const channel = resolvePublishChannel(options?.publishing ?? defaultPublishing(), options.lifecycle)
+      const channel = resolvePublishChannel(
+        options?.publishing ?? defaultPublishing(),
+        options.lifecycle,
+      )
       if (channel.mode === 'github-trusted') {
         skipRules.push('env.npm-authenticated')
       }

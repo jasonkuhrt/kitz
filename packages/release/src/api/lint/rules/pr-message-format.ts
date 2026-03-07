@@ -14,10 +14,7 @@ const OptionsSchema = Schema.Struct({
 
 type Options = typeof OptionsSchema.Type
 
-const compilePattern = (
-  pattern: string,
-  target: 'title' | 'body',
-): Effect.Effect<RegExp, Error> =>
+const compilePattern = (pattern: string, target: 'title' | 'body'): Effect.Effect<RegExp, Error> =>
   Effect.try({
     try: () => new RegExp(pattern, 'm'),
     catch: (error) =>

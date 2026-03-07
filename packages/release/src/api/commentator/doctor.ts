@@ -68,7 +68,9 @@ const ProjectedSquashCommitMetadataSchema = Schema.Struct({
 
 const decodePublishChannelMetadata = Schema.decodeUnknownOption(PublishChannelReadyMetadataSchema)
 const decodePackageCountMetadata = Schema.decodeUnknownOption(PackageCountMetadataSchema)
-const decodeRepositoryCanonicalMetadata = Schema.decodeUnknownOption(RepositoryCanonicalMetadataSchema)
+const decodeRepositoryCanonicalMetadata = Schema.decodeUnknownOption(
+  RepositoryCanonicalMetadataSchema,
+)
 const decodeTagsUniqueMetadata = Schema.decodeUnknownOption(TagsUniqueMetadataSchema)
 const decodeProjectedSquashCommitMetadata = Schema.decodeUnknownOption(
   ProjectedSquashCommitMetadataSchema,

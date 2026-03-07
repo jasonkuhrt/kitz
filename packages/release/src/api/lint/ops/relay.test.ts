@@ -16,7 +16,10 @@ describe('formatReport', () => {
     const report = Report.make({
       results: [
         Finished.make({
-          rule: ruleRef('env.publish-channel-ready', 'declared publish channel matches the active runtime'),
+          rule: ruleRef(
+            'env.publish-channel-ready',
+            'declared publish channel matches the active runtime',
+          ),
           duration: 4,
           severity: Severity.Error.make(),
           violation: Violation.make({
@@ -41,7 +44,9 @@ describe('formatReport', () => {
     expect(output).toContain('[error] env.publish-channel-ready')
     expect(output).toContain('Trusted publishing is configured but OIDC is unavailable.')
     expect(output).toContain('hint: Grant `id-token: write` to the job.')
-    expect(output).toContain('docs: npm trusted publishers https://docs.npmjs.com/trusted-publishers/')
+    expect(output).toContain(
+      'docs: npm trusted publishers https://docs.npmjs.com/trusted-publishers/',
+    )
   })
 
   test('can omit the default title for embedded report sections', () => {

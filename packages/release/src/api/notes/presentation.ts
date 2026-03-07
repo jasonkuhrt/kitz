@@ -13,7 +13,9 @@ export interface JsonPackageNotes {
 export const toJsonNotes = (notes: readonly PackageNotes[]): readonly JsonPackageNotes[] =>
   notes.map((note) => ({
     package: note.package.name.moniker,
-    currentVersion: Option.isSome(note.currentVersion) ? note.currentVersion.value.toString() : null,
+    currentVersion: Option.isSome(note.currentVersion)
+      ? note.currentVersion.value.toString()
+      : null,
     nextVersion: note.nextVersion.toString(),
     bump: note.bump,
     notes: note.notes.markdown,

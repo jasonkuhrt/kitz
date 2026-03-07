@@ -4,7 +4,12 @@ import { RuleId } from './lint/models/rule-defaults.js'
 import * as Severity from './lint/models/severity.js'
 import { Violation } from './lint/models/violation.js'
 import { Environment } from './lint/models/violation-location.js'
-import { formatEvaluation, hasBlockingIssues, resolveScope, selectRequestedLifecycles } from './doctor.js'
+import {
+  formatEvaluation,
+  hasBlockingIssues,
+  resolveScope,
+  selectRequestedLifecycles,
+} from './doctor.js'
 
 const ruleRef = (id: string, description = 'Test rule') => ({
   id: RuleId.make(id),
@@ -79,7 +84,8 @@ describe('doctor api', () => {
                 severity: Severity.Error.make(),
                 violation: Violation.make({
                   location: Environment.make({
-                    message: 'Current branch "feat/release" does not match configured trunk "main".',
+                    message:
+                      'Current branch "feat/release" does not match configured trunk "main".',
                   }),
                 }),
               }),

@@ -154,12 +154,10 @@ Cli.run(
       args.all ||
       args.lifecycle === 'ephemeral' ||
       (activePlan._tag === 'Some' && activePlan.value.lifecycle === 'ephemeral')
-    const pullRequestAttempt =
-      needsPrContext
-        ? yield* Api.Explorer.resolvePullRequest().pipe(Effect.either)
-        : { _tag: 'Right' as const, right: null }
-    const pullRequest =
-      pullRequestAttempt._tag === 'Right' ? pullRequestAttempt.right : null
+    const pullRequestAttempt = needsPrContext
+      ? yield* Api.Explorer.resolvePullRequest().pipe(Effect.either)
+      : { _tag: 'Right' as const, right: null }
+    const pullRequest = pullRequestAttempt._tag === 'Right' ? pullRequestAttempt.right : null
     const hasPrContext = pullRequest !== null
     const scope = Api.Doctor.resolveScope({
       ...(args.lifecycle ? { lifecycle: args.lifecycle } : {}),

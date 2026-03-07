@@ -88,10 +88,7 @@ const renderPlanSection = (title: string, items: readonly Item[]): string => {
   output`${title} (${String(items.length)})`
   output``
   output(
-    renderTableText([
-      ['Package', 'From', 'To', 'Bump', 'Commits'],
-      ...items.map(formatPlanRow),
-    ]),
+    renderTableText([['Package', 'From', 'To', 'Bump', 'Commits'], ...items.map(formatPlanRow)]),
   )
   return output.render()
 }

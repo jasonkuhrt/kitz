@@ -211,7 +211,9 @@ const renderProjectedSquashCommit = (preview: ProjectedSquashCommitPreview): str
 
     if (preview.actualTitleError) {
       lines.push('')
-      lines.push(`Current PR title is not a valid conventional commit title: ${preview.actualTitleError}`)
+      lines.push(
+        `Current PR title is not a valid conventional commit title: ${preview.actualTitleError}`,
+      )
       lines.push(`Current PR title: \`${preview.actualTitle}\``)
       return lines.join(Str.Char.newline)
     }

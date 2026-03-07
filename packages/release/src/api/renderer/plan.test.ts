@@ -7,12 +7,7 @@ import { Official } from '../planner/models/item-official.js'
 import { Plan } from '../planner/models/plan.js'
 import { OfficialFirst } from '../version/models/official-first.js'
 import { OfficialIncrement } from '../version/models/official-increment.js'
-import {
-  renderApplyConfirmation,
-  renderApplyDone,
-  renderApplyDryRun,
-  renderPlan,
-} from './plan.js'
+import { renderApplyConfirmation, renderApplyDone, renderApplyDryRun, renderPlan } from './plan.js'
 
 // ── Helpers ──────────────────────────────────────────────────────────
 

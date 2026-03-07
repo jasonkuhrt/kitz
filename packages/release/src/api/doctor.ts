@@ -104,7 +104,9 @@ const hasErrorViolations = (report: Report): boolean =>
 
 export const hasBlockingIssues = (evaluation: DoctorEvaluation): boolean =>
   evaluation.reports.some((report) =>
-    report._tag === 'UnavailableLifecycleReport' ? report.required : hasErrorViolations(report.report),
+    report._tag === 'UnavailableLifecycleReport'
+      ? report.required
+      : hasErrorViolations(report.report),
   )
 
 export const formatEvaluation = (evaluation: DoctorEvaluation): string => {

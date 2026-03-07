@@ -316,14 +316,14 @@ Programmatic callers can override file config per-field via `Config.load(options
 
 The `release` binary dispatches through file-based command routing:
 
-| Command               | Purpose                                           |
-| --------------------- | ------------------------------------------------- |
-| `release forecast`    | Show the current release forecast                 |
-| `release plan --lifecycle <official|candidate|ephemeral>` | Generate a release plan |
-| `release apply`       | Execute the release plan                          |
-| `release notes [pkg]` | Output unreleased release notes                   |
-| `release doctor`      | Run release doctor checks                         |
-| `release init`        | Initialize `release.config.ts` in the project     |
+| Command                             | Purpose                                       |
+| ----------------------------------- | --------------------------------------------- | ----------- | ----------------------- |
+| `release forecast`                  | Show the current release forecast             |
+| `release plan --lifecycle <official | candidate                                     | ephemeral>` | Generate a release plan |
+| `release apply`                     | Execute the release plan                      |
+| `release notes [pkg]`               | Output unreleased release notes               |
+| `release doctor`                    | Run release doctor checks                     |
+| `release init`                      | Initialize `release.config.ts` in the project |
 
 ## Architecture
 

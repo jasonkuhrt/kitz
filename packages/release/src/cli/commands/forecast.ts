@@ -63,16 +63,16 @@ Cli.run(Layer.mergeAll(Env.Live, NodeContext.layer, NodeFileSystem.layer, Git.Gi
         ? Api.Renderer.renderTable(input.forecast)
         : args.format === 'tree'
           ? Api.Renderer.renderTree(input.forecast)
-        : args.format === 'comment'
-          ? Api.Commentator.render(input.forecast, {
-              publishState: input.publishState,
-              publishHistory: input.publishHistory,
-              interactiveChecklist: input.interactiveChecklist,
-              ...(input.projectedSquashCommit
-                ? { projectedSquashCommit: input.projectedSquashCommit }
-                : {}),
-              ...(input.doctor ? { doctor: input.doctor } : {}),
-            })
+          : args.format === 'comment'
+            ? Api.Commentator.render(input.forecast, {
+                publishState: input.publishState,
+                publishHistory: input.publishHistory,
+                interactiveChecklist: input.interactiveChecklist,
+                ...(input.projectedSquashCommit
+                  ? { projectedSquashCommit: input.projectedSquashCommit }
+                  : {}),
+                ...(input.doctor ? { doctor: input.doctor } : {}),
+              })
             : Api.Forecaster.encodeForecastEnvelope({
                 forecast: input.forecast,
                 publishState: input.publishState,
@@ -178,9 +178,9 @@ const loadForecastInputFromFile = (filePath: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const jsonText = yield* fs.readFileString(filePath)
-    const envelope = yield* Schema.decodeUnknown(Api.Forecaster.ForecastEnvelopeJson)(jsonText).pipe(
-      Effect.option,
-    )
+    const envelope = yield* Schema.decodeUnknown(Api.Forecaster.ForecastEnvelopeJson)(
+      jsonText,
+    ).pipe(Effect.option)
 
     if (Option.isSome(envelope)) {
       return {
@@ -208,10 +208,12 @@ const readPublishHistory = (filePath: string | undefined) =>
     if (!filePath) return []
 
     const fs = yield* FileSystem.FileSystem
-    const parsed = yield* fs.readFileString(filePath).pipe(
-      Effect.option,
-      Effect.map(Option.flatMap(Schema.decodeUnknownOption(Api.Commentator.PublishHistoryJson))),
-    )
+    const parsed = yield* fs
+      .readFileString(filePath)
+      .pipe(
+        Effect.option,
+        Effect.map(Option.flatMap(Schema.decodeUnknownOption(Api.Commentator.PublishHistoryJson))),
+      )
 
     return parsed.pipe(
       Option.map((value) => value.publishes),
@@ -241,7 +243,11 @@ const buildCommentDoctor = (params: {
   readonly config: Api.Config.ResolvedConfig
   readonly analysis: Api.Analyzer.Models.Analysis
   readonly packages: readonly Api.Analyzer.Workspace.Package[]
-  readonly pullRequest: { readonly number: number; readonly title: string; readonly body: string | null } | null
+  readonly pullRequest: {
+    readonly number: number
+    readonly title: string
+    readonly body: string | null
+  } | null
   readonly projectedSquashCommit?: Api.ProjectedSquashCommit.Preview
 }) =>
   Effect.gen(function* () {
@@ -290,10 +296,7 @@ const buildCommentDoctor = (params: {
           surface: 'preview',
         }),
         'plan.packages-not-private': enableRule(params.config, 'plan.packages-not-private'),
-        'plan.packages-license-present': enableRule(
-          params.config,
-          'plan.packages-license-present',
-        ),
+        'plan.packages-license-present': enableRule(params.config, 'plan.packages-license-present'),
         'plan.packages-repository-present': enableRule(
           params.config,
           'plan.packages-repository-present',
@@ -304,8 +307,7 @@ const buildCommentDoctor = (params: {
         ),
         'plan.versions-unpublished': enableRule(params.config, 'plan.versions-unpublished'),
         'plan.tags-unique': enableRule(params.config, 'plan.tags-unique'),
-        ...(params.pullRequest
-          && params.projectedSquashCommit?.projectedHeader
+        ...(params.pullRequest && params.projectedSquashCommit?.projectedHeader
           ? {
               'pr.projected-squash-commit-sync': enableRule(
                 params.config,
@@ -327,7 +329,9 @@ const buildCommentDoctor = (params: {
       })),
       validScopes: params.packages.map((pkg) => pkg.scope),
     }
-    const prContext = params.pullRequest ? yield* Api.Lint.fromPullRequest(params.pullRequest) : null
+    const prContext = params.pullRequest
+      ? yield* Api.Lint.fromPullRequest(params.pullRequest)
+      : null
     const lintPrContext = prContext ?? {
       number: 0,
       title: '',
