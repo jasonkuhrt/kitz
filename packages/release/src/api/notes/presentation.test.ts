@@ -3,12 +3,12 @@ import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Option } from 'effect'
 import { describe, expect, test } from 'vitest'
-import type { PackageLog } from './generate.js'
-import { renderMarkdownLogs, toJsonLogs } from './presentation.js'
+import type { PackageNotes } from './generate.js'
+import { renderMarkdownNotes, toJsonNotes } from './presentation.js'
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-const makeLog = (
+const makeNotes = (
   name: string,
   scope: string,
   bump: Semver.BumpType,
@@ -16,7 +16,7 @@ const makeLog = (
   nextVersion: string,
   markdown: string,
   hasBreaking = false,
-): PackageLog => ({
+): PackageNotes => ({
   package: {
     name: Pkg.Moniker.parse(name),
     scope,
@@ -26,51 +26,51 @@ const makeLog = (
   bump,
   currentVersion: currentVersion ? Option.some(Semver.fromString(currentVersion)) : Option.none(),
   nextVersion: Semver.fromString(nextVersion),
-  changelog: { markdown, hasBreakingChanges: hasBreaking },
+  notes: { markdown, hasBreakingChanges: hasBreaking },
 })
 
-// ── toJsonLogs ───────────────────────────────────────────────────────
+// ── toJsonNotes ──────────────────────────────────────────────────────
 
-describe('toJsonLogs', () => {
+describe('toJsonNotes', () => {
   test('empty array', () => {
-    expect(toJsonLogs([])).toEqual([])
+    expect(toJsonNotes([])).toEqual([])
   })
 
-  test('converts log to JSON format', () => {
-    const logs = [makeLog('@kitz/core', 'core', 'minor', '1.0.0', '1.1.0', '## Changelog')]
-    const json = toJsonLogs(logs)
+  test('converts notes to JSON format', () => {
+    const notes = [makeNotes('@kitz/core', 'core', 'minor', '1.0.0', '1.1.0', '## Notes')]
+    const json = toJsonNotes(notes)
     expect(json).toHaveLength(1)
     expect(json[0]!.package).toBe('@kitz/core')
     expect(json[0]!.currentVersion).toBe('1.0.0')
     expect(json[0]!.nextVersion).toBe('1.1.0')
     expect(json[0]!.bump).toBe('minor')
-    expect(json[0]!.changelog).toBe('## Changelog')
+    expect(json[0]!.notes).toBe('## Notes')
     expect(json[0]!.hasBreakingChanges).toBe(false)
   })
 
   test('null currentVersion for first release', () => {
-    const logs = [makeLog('@kitz/core', 'core', 'minor', null, '0.1.0', '## Changelog')]
-    const json = toJsonLogs(logs)
+    const notes = [makeNotes('@kitz/core', 'core', 'minor', null, '0.1.0', '## Notes')]
+    const json = toJsonNotes(notes)
     expect(json[0]!.currentVersion).toBeNull()
   })
 
   test('preserves hasBreakingChanges', () => {
-    const logs = [makeLog('@kitz/core', 'core', 'major', '1.0.0', '2.0.0', '## Changelog', true)]
-    const json = toJsonLogs(logs)
+    const notes = [makeNotes('@kitz/core', 'core', 'major', '1.0.0', '2.0.0', '## Notes', true)]
+    const json = toJsonNotes(notes)
     expect(json[0]!.hasBreakingChanges).toBe(true)
   })
 })
 
-// ── renderMarkdownLogs ───────────────────────────────────────────────
+// ── renderMarkdownNotes ──────────────────────────────────────────────
 
-describe('renderMarkdownLogs', () => {
+describe('renderMarkdownNotes', () => {
   test('empty array', () => {
-    expect(renderMarkdownLogs([])).toBe('')
+    expect(renderMarkdownNotes([])).toBe('')
   })
 
-  test('single log', () => {
-    const logs = [
-      makeLog(
+  test('single notes block', () => {
+    const notes = [
+      makeNotes(
         '@kitz/core',
         'core',
         'minor',
@@ -79,17 +79,17 @@ describe('renderMarkdownLogs', () => {
         '## @kitz/core v1.1.0\n\n### Features',
       ),
     ]
-    const result = renderMarkdownLogs(logs)
+    const result = renderMarkdownNotes(notes)
     expect(result).toContain('## @kitz/core v1.1.0')
     expect(result).toContain('### Features')
   })
 
-  test('multiple logs separated by double newline', () => {
-    const logs = [
-      makeLog('@kitz/core', 'core', 'minor', '1.0.0', '1.1.0', '## core'),
-      makeLog('@kitz/cli', 'cli', 'patch', '2.0.0', '2.0.1', '## cli'),
+  test('multiple notes blocks separated by double newline', () => {
+    const notes = [
+      makeNotes('@kitz/core', 'core', 'minor', '1.0.0', '1.1.0', '## core'),
+      makeNotes('@kitz/cli', 'cli', 'patch', '2.0.0', '2.0.1', '## cli'),
     ]
-    const result = renderMarkdownLogs(logs)
+    const result = renderMarkdownNotes(notes)
     expect(result).toContain('## core')
     expect(result).toContain('## cli')
     expect(result).toContain('\n\n')

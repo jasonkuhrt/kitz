@@ -1,6 +1,11 @@
 {
   "name": "@kitz/core",
   "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
   "description": "Core data structures and utilities",
   "type": "module",
   "sideEffects": false,

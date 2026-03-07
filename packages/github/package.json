@@ -1,6 +1,11 @@
 {
   "name": "@kitz/github",
   "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
   "type": "module",
   "sideEffects": false,
   "imports": {

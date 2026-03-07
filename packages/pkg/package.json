@@ -1,6 +1,11 @@
 {
   "name": "@kitz/pkg",
   "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
   "description": "Package utilities (manifest schema, manager helpers)",
   "type": "module",
   "sideEffects": false,

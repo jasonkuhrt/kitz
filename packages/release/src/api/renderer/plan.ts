@@ -1,9 +1,9 @@
 import { Str } from '@kitz/core'
 import { Semver } from '@kitz/semver'
 import { Option } from 'effect'
-import type { CascadeQueryResult } from '../planner/cascade.js'
 import type { Item } from '../planner/models/item.js'
 import type { Plan } from '../planner/models/plan.js'
+import { renderTableText } from './table-core.js'
 
 /**
  * Render a human-readable plan summary for CLI output.
@@ -16,46 +16,18 @@ export const renderPlan = (plan: Plan): string => {
   }
 
   const output = Str.Builder()
-  output`Releases:`
-  output``
+  output`${formatLifecycle(plan.lifecycle)} release plan`
 
-  for (const release of plan.releases) {
-    const current = Option.match(release.currentVersion, {
-      onNone: () => 'new',
-      onSome: (v) => Semver.toString(v),
-    })
-    const bump = release.bumpType ? ` (${release.bumpType})` : ''
-    output`  ${release.package.name.moniker}: ${current} → ${Semver.toString(release.nextVersion)}${bump}`
-    output`    ${String(release.commits.length)} commit${release.commits.length === 1 ? '' : 's'}`
+  if (plan.releases.length > 0) {
+    output``
+    output(renderPlanSection('Releases', [...plan.releases].sort(comparePlanReleaseRows)))
   }
 
   if (plan.cascades.length > 0) {
     output``
-    output`Cascades:`
-    output``
-    for (const cascade of plan.cascades) {
-      output`  ${cascade.package.name.moniker}: ${Semver.toString(cascade.nextVersion)} (cascade)`
-    }
+    output(renderPlanSection('Cascades', [...plan.cascades].sort(comparePlanCascadeRows)))
   }
 
-  output``
-  return output.render()
-}
-
-/**
- * Render a status summary of releases for the `status` command.
- */
-export const renderStatus = (releases: readonly Item[]): string => {
-  const sortedReleases = [...releases].sort(compareStatusItems)
-  const output = Str.Builder()
-  output`Unreleased changes:`
-  output``
-  output`${renderTable([
-    ['Package', 'From', 'To', 'Bump', 'Commits'],
-    ...sortedReleases.map(formatStatusRow),
-  ])}`
-
-  output``
   return output.render()
 }
 
@@ -111,61 +83,20 @@ export const renderApplyDone = (releasedCount: number): string => {
   return output.render()
 }
 
-/**
- * Render cascade analysis for the `status` command.
- */
-export const renderCascadeAnalysis = (analyses: readonly CascadeQueryResult[]): string => {
+const renderPlanSection = (title: string, items: readonly Item[]): string => {
   const output = Str.Builder()
-
-  for (const analysis of analyses) {
-    if (!analysis.packageName) {
-      output`  ${analysis.requestedPackage}: not found`
-      continue
-    }
-
-    if (analysis.cascades.length === 0) {
-      output`  ${analysis.packageName}: no cascading releases`
-      continue
-    }
-
-    output`  ${analysis.packageName}:`
-    for (const cascade of analysis.cascades) {
-      output`    → ${cascade.package.name.moniker}@${cascade.nextVersion.toString()}`
-    }
-  }
-
+  output`${title} (${String(items.length)})`
+  output``
+  output(
+    renderTableText([
+      ['Package', 'From', 'To', 'Bump', 'Commits'],
+      ...items.map(formatPlanRow),
+    ]),
+  )
   return output.render()
 }
 
-/**
- * Render cascade details for a specific package.
- */
-export const renderCascadeForPackage = (analysis: CascadeQueryResult): string => {
-  const output = Str.Builder()
-
-  if (!analysis.packageName) {
-    output`Package "${analysis.requestedPackage}" not found in workspace`
-    return output.render()
-  }
-
-  if (analysis.cascades.length === 0) {
-    output`No cascading releases for ${analysis.packageName}`
-    return output.render()
-  }
-
-  output`Cascading releases for ${analysis.packageName}:`
-  for (const cascade of analysis.cascades) {
-    output`  → ${cascade.package.name.moniker}@${cascade.nextVersion.toString()}`
-  }
-
-  return output.render()
-}
-
-const renderTable = (table: string[][]): string => {
-  return Str.Text.unlines(Str.Text.lines(Str.Visual.Table.render(table)).map((line) => line.trimEnd()))
-}
-
-const formatStatusRow = (release: Item): string[] => {
+const formatPlanRow = (release: Item): string[] => {
   return [
     release.package.name.moniker,
     Option.match(release.currentVersion, {
@@ -178,9 +109,17 @@ const formatStatusRow = (release: Item): string[] => {
   ]
 }
 
-const compareStatusItems = (a: Item, b: Item): number => {
+const comparePlanReleaseRows = (a: Item, b: Item): number => {
   const commitDelta = b.commits.length - a.commits.length
   if (commitDelta !== 0) return commitDelta
 
   return a.package.name.moniker.localeCompare(b.package.name.moniker)
+}
+
+const comparePlanCascadeRows = (a: Item, b: Item): number => {
+  return a.package.name.moniker.localeCompare(b.package.name.moniker)
+}
+
+const formatLifecycle = (value: Plan['lifecycle']): string => {
+  return `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`
 }

@@ -72,7 +72,7 @@ Given a set of workspace packages and git tags, the Analyzer:
 3. **Aggregates by package** — multiple commits touching the same package collapse to the highest bump (a `feat` and a `fix` in the same package yields `minor`, not both)
 4. **Detects cascades** — if package A depends on package B, and B is getting a bump, then A needs a patch bump too, even if A had no direct commits
 
-The result is an `Analysis` containing direct impacts, cascade impacts, and unchanged packages. This structure is consumed by both the Planner (for version calculation) and the Forecaster (for PR comment previews).
+The result is an `Analysis` containing direct impacts, cascade impacts, and unchanged packages. This structure is consumed by both the Planner (for version calculation) and the Forecaster (for release forecasts).
 
 Impact extraction is pure computation — no I/O after the initial commit fetch. A malformed commit message produces zero impacts rather than aborting the pipeline, so one unconventional commit never blocks an entire release.
 
@@ -96,7 +96,7 @@ Version arithmetic depends on the **lifecycle** — the kind of release being pr
 
 - **Candidate** — pre-release for validation before an official release. Uses the _projected_ official version as a base, with a `-next.<N>` suffix that increments across successive candidate releases for the same base version. Published to the `next` dist-tag. Version format: `<base>-next.<iteration>`.
 
-- **Ephemeral** — PR preview release for integration testing. Uses a zero base version (`0.0.0`) with PR metadata embedded in the prerelease segment, so every PR gets its own isolated version namespace. Published to a per-PR dist-tag. Version format: `0.0.0-pr.<prNumber>.<iteration>.<sha>`.
+- **Ephemeral** — PR-scoped release for integration testing. Uses a zero base version (`0.0.0`) with PR metadata embedded in the prerelease segment, so every PR gets its own isolated version namespace. Published to a per-PR dist-tag. Version format: `0.0.0-pr.<prNumber>.<iteration>.<sha>`.
 
 <!-- /@doc -->
 
@@ -155,12 +155,14 @@ Both modes support **dry-run**, which logs what would happen without performing 
 
 <!-- @doc executor/preflight -->
 
-Before any publishing begins, the Executor runs **preflight checks** using the lint system. Preflight validates that the environment is actually ready to release:
+Before any publishing begins, the Executor runs **preflight checks** using the doctor rule engine. Preflight validates that the environment is actually ready to release:
 
-- **npm authentication** — can we publish to the registry?
+- **publish channel readiness** — does the active lifecycle's declared publish path match the runtime?
+- **npm authentication** — for manual/token-based paths, can we publish to the registry?
 - **git cleanliness** — is the working directory clean?
 - **git remote** — is the remote reachable?
 - **tag uniqueness** — do any of the planned tags already exist?
+- **package manifest blockers** — are planned packages accidentally marked private?
 
 Preflight failures abort the workflow before any side effects occur. This is deliberate: a failed npm auth check caught at preflight costs nothing, but a failed auth check discovered after three packages have already published leaves the repository in an inconsistent state.
 
@@ -178,7 +180,7 @@ Raised when a preflight check fails before any publishing begins.
 
 **Common causes**: npm authentication is not configured, the git working directory has uncommitted changes, the git remote is unreachable, or a planned tag already exists.
 
-**What to do**: the error's `check` field names the specific preflight rule that failed (e.g., `env.npm-authenticated`). Run `release lint --only-rule "<check>"` to investigate in isolation.
+**What to do**: the error's `check` field names the specific preflight rule that failed (e.g., `env.npm-authenticated`). Run `release doctor --onlyRule "<check>"` to investigate in isolation.
 
 <!-- /@doc -->
 
@@ -232,7 +234,7 @@ Three modules run parallel to the main pipeline, projecting the same data into d
 
 ### Forecaster
 
-The Forecaster computes **lifecycle-agnostic version projections** from an Analysis. Unlike the Planner, which commits to a specific lifecycle (official, candidate, ephemeral), the Forecaster always projects official versions — because those are the versions humans care about when reviewing a PR. The Forecast is consumed by the Commentator for PR comments.
+The Forecaster computes **lifecycle-agnostic version projections** from an Analysis. Unlike the Planner, which commits to a specific lifecycle (official, candidate, ephemeral), the Forecaster always projects official versions. The Forecast is consumed by both the Commentator and Renderer for read-only review surfaces.
 
 ### Commentator
 
@@ -240,22 +242,22 @@ The Commentator renders a Forecast into **GitHub PR comment markdown**. It produ
 
 ### Renderer
 
-The Renderer produces **CLI-facing output** from a Plan: plan summaries and tree visualizations. It formats the same Plan data that the Executor would consume, but for human inspection rather than machine execution.
+The Renderer produces **CLI-facing output** from Forecasts and Plans: forecast tables and trees for inspection, plus plan summaries for execution review.
 
 <!-- /@doc -->
 
-## Lint
+## Doctor Checks
 
 <!-- @doc lint/overview -->
 
-The lint system validates release-related invariants across three domains:
+The doctor rule engine validates release-related invariants across four domains:
 
-- **Environment rules** (`env.*`): npm authentication, git cleanliness, git remote reachability
+- **Environment rules** (`env.*`): publish-channel readiness, npm authentication, git cleanliness, git remote reachability
 - **PR rules** (`pr.*`): commit message format, scope requirements, type validation, monorepo scope matching
-- **Plan rules** (`plan.*`): tag uniqueness
+- **Plan rules** (`plan.*`): tag uniqueness, publish-safe package manifests
 - **Git rules** (`git.*`): history monotonicity (no version regressions)
 
-Rules are composable and configurable. Each rule can be enabled, disabled, or have its severity adjusted. The lint system is used both as a standalone CLI command (`release lint`) and internally by the Executor's preflight checks.
+Rules are composable and configurable. Each rule can be enabled, disabled, or have its severity adjusted. `release doctor` automatically loads `.release/plan.json` when present, so plan-aware rules can be run before `release apply`. Error-severity violations fail the command; warn-severity violations are reported but do not block release execution.
 
 <!-- /@doc -->
 
@@ -271,10 +273,10 @@ import { defineConfig } from '@kitz/release'
 export default defineConfig({
   // Main branch name (default: 'main')
   trunk: 'main',
-  // Dist-tag for stable releases (default: 'latest')
+  // Dist-tag for official releases (default: 'latest')
   npmTag: 'latest',
-  // Dist-tag for preview releases (default: 'next')
-  previewTag: 'next',
+  // Dist-tag for candidate releases (default: 'next')
+  candidateTag: 'next',
   // Skip npm publish (dry run mode)
   skipNpm: false,
   // Scope-to-package-name mapping (auto-scanned if omitted)
@@ -282,16 +284,30 @@ export default defineConfig({
     core: '@myorg/core',
     utils: '@myorg/utils',
   },
-  // Lint rule configuration
+  // Declare how each lifecycle is actually published
+  publishing: {
+    official: { mode: 'manual' },
+    candidate: { mode: 'manual' },
+    ephemeral: { mode: 'manual' },
+  },
+  // Doctor rule configuration
   lint: {
     rules: {
       'pr.scope.require': 'warn',
+      'plan.packages-license-present': 'warn',
+      'plan.packages-repository-present': 'warn',
     },
   },
 })
 ```
 
-CLI flags override file config per-field: `release plan --trunk develop` overrides the `trunk` setting for that invocation without modifying the config file.
+Programmatic callers can override file config per-field via `Config.load(options)` without modifying `release.config.ts`.
+
+`publishing` is lifecycle-aware:
+
+- `manual` — releases are run by a human from a shell
+- `github-token` — GitHub Actions publishes using an injected npm token
+- `github-trusted` — GitHub Actions publishes through npm trusted publishing (OIDC)
 
 <!-- /@doc -->
 
@@ -301,12 +317,11 @@ The `release` binary dispatches through file-based command routing:
 
 | Command               | Purpose                                           |
 | --------------------- | ------------------------------------------------- |
-| `release status`      | Show unreleased changes across packages           |
-| `release plan <type>` | Generate a release plan (official, candidate, pr) |
+| `release forecast`    | Show the current release forecast                 |
+| `release plan --lifecycle <official|candidate|ephemeral>` | Generate a release plan |
 | `release apply`       | Execute the release plan                          |
-| `release render`      | Render enriched plan data (PR comment, tree)      |
-| `release log`         | Output changelog for a package                    |
-| `release lint`        | Run release lint rules                            |
+| `release notes [pkg]` | Output unreleased release notes                   |
+| `release doctor`      | Run release doctor checks                         |
 | `release init`        | Initialize `release.config.ts` in the project     |
 
 ## Architecture
@@ -342,7 +357,7 @@ packages/release/src/
 │   │   ├── publish.ts      #   npm publish with version injection
 │   │   ├── runtime.ts      #   Runtime layer construction
 │   │   └── errors.ts       #   ExecutorPublishError, ExecutorTagError, etc.
-│   ├── forecaster/         # Projection: lifecycle-agnostic version preview
+│   ├── forecaster/         # Projection: lifecycle-agnostic release forecast
 │   ├── commentator/        # Projection: PR comment rendering
 │   ├── renderer/           # Projection: CLI output formatting
 │   ├── lint/               # Rule-based validation
@@ -350,7 +365,7 @@ packages/release/src/
 │   │   ├── models/         #   Rule, Violation, Report, Severity, Config
 │   │   ├── ops/            #   Check, relay, monotonic operations
 │   │   └── services/       #   Preconditions, PR, diff, monorepo contexts
-│   ├── log/                # Changelog generation
+│   ├── notes/              # Release notes generation
 │   └── version/            # Version calculation and lifecycle models
 └── cli/                    # CLI entry point and command modules
     ├── cli.ts

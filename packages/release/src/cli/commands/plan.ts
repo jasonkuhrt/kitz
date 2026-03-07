@@ -3,14 +3,13 @@
  *
  * Generate a release plan based on conventional commits since the last release.
  *
- * Supports three release types:
- * - `stable` — Standard semver release (official lifecycle)
- * - `preview` — Pre-release to the `@next` dist-tag (candidate lifecycle)
- * - `pr` — PR preview release for integration testing (ephemeral lifecycle)
+ * Supports three release lifecycles:
+ * - `official` — Standard semver release
+ * - `candidate` — Pre-release to the `next` dist-tag
+ * - `ephemeral` — Per-PR integration release
  *
  * The plan is written to `.release/plan.json` and can be executed with `release apply`.
  */
-import { FileSystem } from '@effect/platform'
 import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'
@@ -18,66 +17,23 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
-import { Console, Effect, Layer, Option, Schema } from 'effect'
+import { Console, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 
-const PublishStateSchema = Schema.Literal('idle', 'publishing', 'published', 'failed')
-const PublishRecordSchema = Schema.Struct({
-  package: Schema.String,
-  version: Schema.String,
-  iteration: Schema.Number,
-  sha: Schema.String,
-  timestamp: Schema.String,
-  runId: Schema.String,
-})
-const PublishHistoryEnvelopeSchema = Schema.Struct({
-  publishes: Schema.Array(PublishRecordSchema),
-})
-const PublishHistoryJsonSchema = Schema.parseJson(PublishHistoryEnvelopeSchema)
-const decodePublishHistory = Schema.decodeUnknownOption(PublishHistoryJsonSchema)
-
-const ForecastEnvelopeSchema = Schema.Struct({
-  forecast: Api.Forecaster.Forecast,
-  publishState: PublishStateSchema,
-  publishHistory: Schema.Array(PublishRecordSchema),
-})
-const ForecastEnvelopeJsonSchema = Schema.parseJson(ForecastEnvelopeSchema)
-const encodeForecastEnvelope = Schema.encodeSync(ForecastEnvelopeJsonSchema)
-
-const readPublishHistory = (
-  filePath: string | undefined,
-): Effect.Effect<readonly Api.Commentator.PublishRecord[], never, FileSystem.FileSystem> =>
-  Effect.gen(function* () {
-    if (!filePath) return []
-
-    const fs = yield* FileSystem.FileSystem
-    const parsed = yield* fs
-      .readFileString(filePath)
-      .pipe(Effect.option, Effect.map(Option.flatMap(decodePublishHistory)))
-
-    return parsed.pipe(
-      Option.map((value) => value.publishes),
-      Option.getOrElse((): readonly Api.Commentator.PublishRecord[] => []),
-    )
-  })
-
 /**
- * release plan <type>
+ * release plan --lifecycle <official|candidate|ephemeral>
  *
  * Generate a release plan. Writes to .release/plan.json.
- *
- * Types:
- * - stable  - Standard semver release
- * - preview - Pre-release to @next tag
- * - pr      - PR preview release
  */
 const args = Oak.Command.create()
   .use(Oak.EffectSchema)
   .description('Generate a release plan')
   .parameter(
-    'type',
-    Schema.Literal('stable', 'preview', 'pr').pipe(
-      Schema.annotations({ description: 'Release type: stable, preview, or pr' }),
+    'lifecycle l',
+    Schema.Literal('official', 'candidate', 'ephemeral').pipe(
+      Schema.annotations({
+        description: 'Release lifecycle: official, candidate, or ephemeral',
+      }),
     ),
   )
   .parameter(
@@ -90,33 +46,6 @@ const args = Oak.Command.create()
     'exclude x',
     Schema.UndefinedOr(Schema.Array(Schema.String)).pipe(
       Schema.annotations({ description: 'Exclude package(s)' }),
-    ),
-  )
-  .parameter(
-    'json',
-    Schema.transform(Schema.UndefinedOr(Schema.Boolean), Schema.Boolean, {
-      strict: true,
-      decode: (v) => v ?? false,
-      encode: (v) => v,
-    }).pipe(
-      Schema.annotations({
-        description: 'Output forecast JSON for render/comment workflows',
-        default: false,
-      }),
-    ),
-  )
-  .parameter(
-    'publish-history',
-    Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotations({ description: 'Path to JSON file containing prior publish history' }),
-    ),
-  )
-  .parameter(
-    'json-file',
-    Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotations({
-        description: 'Write forecast JSON to a file instead of stdout (for CI pipelines)',
-      }),
     ),
   )
   .parse()
@@ -144,12 +73,10 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     }
 
     // Generate plan based on type
-    if (!args.json) {
-      const header = Str.Builder()
-      header`Generating ${args.type} release plan...`
-      header``
-      yield* Console.log(header.render())
-    }
+    const header = Str.Builder()
+    header`Generating ${args.lifecycle} release plan...`
+    header``
+    yield* Console.log(header.render())
 
     const tags = yield* git.getTags()
     const analysis = yield* Api.Analyzer.analyze({
@@ -160,32 +87,11 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     })
     const ctx = { packages }
 
-    const plan = yield* args.type === 'stable'
+    const plan = yield* args.lifecycle === 'official'
       ? Api.Planner.official(analysis, ctx, options)
-      : args.type === 'preview'
+      : args.lifecycle === 'candidate'
         ? Api.Planner.candidate(analysis, ctx, options)
         : Api.Planner.ephemeral(analysis, ctx, options)
-
-    if (args.json) {
-      const recon = yield* Api.Explorer.explore()
-      const publishHistory = yield* readPublishHistory(args.publishHistory)
-      const forecast = Api.Forecaster.forecast(analysis, recon)
-      const output = encodeForecastEnvelope({
-        forecast,
-        publishState: 'idle',
-        publishHistory,
-      })
-
-      const outputFile = args.jsonFile
-      if (outputFile) {
-        const fs = yield* FileSystem.FileSystem
-        yield* fs.writeFileString(outputFile, `${output}\n`)
-        return
-      }
-
-      yield* Console.log(output)
-      return
-    }
 
     if (plan.releases.length === 0) {
       yield* Console.log('No releases planned - no unreleased changes found.')

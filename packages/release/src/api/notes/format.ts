@@ -1,5 +1,5 @@
 /**
- * Changelog formatting utilities.
+ * Release note formatting utilities.
  *
  * Pure formatters that convert structured commit data to markdown.
  */
@@ -7,7 +7,7 @@
 import { Effect } from 'effect'
 
 /**
- * A commit entry for changelog generation.
+ * A commit entry for release note generation.
  */
 export interface CommitEntry {
   readonly type: string
@@ -17,7 +17,7 @@ export interface CommitEntry {
 }
 
 /**
- * Options for formatting a changelog.
+ * Options for formatting release notes.
  */
 export interface FormatOptions {
   /** The package scope (e.g., "@kitz/core") */
@@ -31,26 +31,26 @@ export interface FormatOptions {
 }
 
 /**
- * Formatted changelog content.
+ * Formatted release note content.
  */
-export interface FormattedChangelog {
+export interface FormattedNotes {
   readonly markdown: string
   readonly hasBreakingChanges: boolean
 }
 
 /**
- * Format commits into a markdown changelog.
+ * Format commits into markdown release notes.
  *
  * @example
  * ```ts
- * const changelog = Effect.runSync(format({
+ * const notes = Effect.runSync(format({
  *   scope: '@kitz/core',
  *   commits: [{ type: 'feat', message: 'add new API', hash: 'abc123', breaking: false }],
  *   newVersion: '1.0.0',
  * }))
  * ```
  */
-export const format = (options: FormatOptions): Effect.Effect<FormattedChangelog> =>
+export const format = (options: FormatOptions): Effect.Effect<FormattedNotes> =>
   Effect.sync(() => {
     const { scope, commits, newVersion } = options
 

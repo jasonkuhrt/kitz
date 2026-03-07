@@ -1,11 +1,13 @@
 const rootCommands = [
   { usage: 'apply [options]', description: 'Execute the release plan' },
+  { usage: 'doctor [options]', description: 'Run release doctor checks and publishability audits' },
+  { usage: 'forecast [options]', description: 'Render a release forecast' },
   { usage: 'init [options]', description: 'Initialize release configuration' },
-  { usage: 'lint [options]', description: 'Run release lint rules' },
-  { usage: 'log [pkg] [options]', description: 'Show unreleased changes' },
-  { usage: 'plan <stable|preview|pr> [options]', description: 'Generate a release plan' },
-  { usage: 'render <comment|tree> [options]', description: 'Render forecast data' },
-  { usage: 'status [pkg...]', description: 'Show unreleased changes and cascades' },
+  { usage: 'notes [pkg] [options]', description: 'Show unreleased release notes' },
+  {
+    usage: 'plan --lifecycle <official|candidate|ephemeral> [options]',
+    description: 'Generate a release plan',
+  },
 ] as const
 
 const helpFlags = new Set(['-h', '--help'])

@@ -2,6 +2,8 @@ import { FileSystem } from '@effect/platform'
 import type { PlatformError } from '@effect/platform/Error'
 import { Console, Effect, Match } from 'effect'
 import { Failed, Finished, type Report, Skipped } from '../models/report.js'
+import * as Severity from '../models/severity.js'
+import * as ViolationLocation from '../models/violation-location.js'
 
 export type Destination =
   | { readonly _tag: 'stdout' }
@@ -19,7 +21,7 @@ export interface RelayParams {
 }
 
 /**
- * Format a lint report as human-readable text.
+ * Format a doctor report as human-readable text.
  */
 export const formatReport = (report: Report): string => {
   const lines: string[] = []
@@ -29,7 +31,7 @@ export const formatReport = (report: Report): string => {
   const skipped = report.results.filter((r): r is Skipped => Skipped.is(r))
   const failed = report.results.filter((r): r is Failed => Failed.is(r))
 
-  lines.push(`Lint Report`)
+  lines.push(`Doctor Report`)
   lines.push(`-----------`)
   lines.push(`${report.results.length} rules checked`)
   lines.push(``)
@@ -37,7 +39,20 @@ export const formatReport = (report: Report): string => {
   if (violated.length > 0) {
     lines.push(`Violations (${violated.length}):`)
     for (const result of violated) {
-      lines.push(`  - ${result.rule.id}: ${result.rule.description}`)
+      const level = Severity.Error.is(result.severity) ? 'error' : 'warn'
+      lines.push(`  - [${level}] ${result.rule.id}: ${result.rule.description}`)
+      if (result.violation) {
+        const location = formatLocation(result.violation.location)
+        if (location) lines.push(`      at ${location}`)
+        if (result.violation.summary) lines.push(`      ${result.violation.summary}`)
+        if (result.violation.detail) lines.push(`      ${result.violation.detail}`)
+        for (const hint of result.violation.hints ?? []) {
+          lines.push(`      hint: ${hint.description}`)
+        }
+        for (const doc of result.violation.docs ?? []) {
+          lines.push(`      docs: ${doc.label} ${doc.url}`)
+        }
+      }
     }
     lines.push(``)
   }
@@ -71,6 +86,28 @@ export const formatReport = (report: Report): string => {
   return lines.join('\n')
 }
 
+const formatLocation = (location: ViolationLocation.ViolationLocation): string | undefined => {
+  if (ViolationLocation.PrTitle.is(location)) {
+    return `PR title "${location.title}"`
+  }
+  if (ViolationLocation.PrBody.is(location)) {
+    return location.line ? `PR body line ${String(location.line)}` : 'PR body'
+  }
+  if (ViolationLocation.RepoSettings.is(location)) {
+    return 'repository settings'
+  }
+  if (ViolationLocation.GitHistory.is(location)) {
+    return `git history at ${location.sha}`
+  }
+  if (ViolationLocation.File.is(location)) {
+    return location.line ? `${location.path}:${String(location.line)}` : location.path
+  }
+  if (ViolationLocation.Environment.is(location)) {
+    return location.message
+  }
+  return undefined
+}
+
 const formatOutput = (report: Report, format: 'text' | 'json'): string =>
   Match.value(format).pipe(
     Match.when('json', () => JSON.stringify(report, null, 2)),
@@ -79,7 +116,7 @@ const formatOutput = (report: Report, format: 'text' | 'json'): string =>
   )
 
 /**
- * Output a lint report to the specified destination.
+ * Output a doctor report to the specified destination.
  */
 export const relay = (
   params: RelayParams,

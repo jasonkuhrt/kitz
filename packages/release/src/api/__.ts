@@ -20,11 +20,11 @@
  * - **Analyzer**: Fetches commits, extracts per-package impacts, detects cascades.
  * - **Planner**: Applies version arithmetic (official/candidate/ephemeral) to produce a Plan.
  * - **Executor**: Publishes packages, creates tags, pushes tags, creates GitHub releases.
- * - **Forecaster**: Projects official versions for PR comment previews (lifecycle-agnostic).
+ * - **Forecaster**: Projects official versions for release forecasts (lifecycle-agnostic).
  * - **Commentator**: Renders full PR comment markdown from a Forecast.
- * - **Renderer**: CLI-facing renderers (plan summary, tree visualization).
+ * - **Renderer**: CLI-facing renderers (forecast tables/trees, plan summaries).
  * - **Lint**: Rule-based validation of environment, PR, and plan state.
- * - **Log**: Changelog generation from commit history.
+ * - **Notes**: Release notes generation from commit history.
  * - **Config**: Configuration loading and resolution.
  * - **Version**: Version calculation and lifecycle models.
  */
@@ -46,5 +46,6 @@ export * as Renderer from './renderer/__.js'
 // Supporting modules
 export * as Config from './config.js'
 export * as Lint from './lint/__.js'
-export * as Log from './log/__.js'
+export * as Notes from './notes/__.js'
+export * as Publishing from './publishing.js'
 export * as Version from './version/__.js'

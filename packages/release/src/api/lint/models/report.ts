@@ -1,5 +1,6 @@
 import { Schema } from 'effect'
 import { RuleId } from './rule-defaults.js'
+import { Severity } from './severity.js'
 import { Violation } from './violation.js'
 
 /** Minimal rule reference for results. */
@@ -17,6 +18,7 @@ const RuleRefSchema = Schema.Struct({
 export class Finished extends Schema.TaggedClass<Finished>()('RuleCheckResultFinished', {
   rule: RuleRefSchema,
   duration: Schema.Number,
+  severity: Severity,
   violation: Schema.optional(Violation),
   /** Optional metadata returned by the rule (e.g., npm username, git remote URL). */
   metadata: Schema.optional(Schema.Unknown),

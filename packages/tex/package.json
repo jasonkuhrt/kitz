@@ -1,6 +1,11 @@
 {
   "name": "@kitz/tex",
   "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
   "description": "Text and box formatting utilities",
   "type": "module",
   "sideEffects": false,

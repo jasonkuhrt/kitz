@@ -12,6 +12,7 @@ import { RuleDefaults, RuleId } from './rule-defaults.js'
 export class Rule extends Schema.TaggedClass<Rule>()('Rule', {
   id: RuleId,
   description: Schema.String,
+  preventsDescriptions: Schema.optional(Schema.Array(Schema.String)),
   preconditions: Schema.Array(Precondition.Precondition),
   defaults: Schema.optional(RuleDefaults),
 }) {

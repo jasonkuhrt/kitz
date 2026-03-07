@@ -6,6 +6,8 @@ import type {
   ForecastRelease,
 } from '../forecaster/models.js'
 import { renderTree } from '../renderer/tree.js'
+import type { DoctorSummary } from './doctor.js'
+import { renderDoctorSummary } from './doctor.js'
 import type { PublishRecord, PublishState } from './metadata.js'
 import { renderMetadataBlock } from './metadata.js'
 
@@ -16,6 +18,8 @@ import { renderMetadataBlock } from './metadata.js'
 export interface RenderOptions {
   readonly publishState?: PublishState
   readonly publishHistory?: readonly PublishRecord[]
+  readonly doctor?: DoctorSummary
+  readonly interactiveChecklist?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -25,12 +29,14 @@ export interface RenderOptions {
 /**
  * Render the full PR comment markdown from a Forecast.
  *
- * Produces nested list format with checkboxes, commit SHA links,
+ * Produces nested list format with optional checklists, commit SHA links,
  * official version projections, publish history, and embedded tree.
  */
 export const render = (forecast: Forecast, options?: RenderOptions): string => {
   const state = options?.publishState ?? 'idle'
   const publishHistory = options?.publishHistory ?? []
+  const doctor = options?.doctor
+  const interactiveChecklist = options?.interactiveChecklist ?? false
   const output = Str.Builder()
 
   // Metadata block (invisible HTML comments)
@@ -44,7 +50,7 @@ export const render = (forecast: Forecast, options?: RenderOptions): string => {
   output``
 
   // Header
-  output`## Release Plan Preview`
+  output`## Release Forecast`
   output``
 
   // Summary line
@@ -60,13 +66,18 @@ export const render = (forecast: Forecast, options?: RenderOptions): string => {
 
   // Status banner (if publishing/published/failed)
   if (state !== 'idle') {
-    output(renderStatusBanner(state, forecast.owner, forecast.repo))
+    output(renderStatusBanner(state, forecast.owner, forecast.repo, interactiveChecklist))
     output``
   }
 
   // Explainer toggle
   output(renderExplainer())
   output``
+
+  if (doctor) {
+    output(renderDoctorSummary(doctor))
+    output``
+  }
 
   output`---`
   output``
@@ -78,7 +89,7 @@ export const render = (forecast: Forecast, options?: RenderOptions): string => {
 
     const sorted = [...forecast.releases].sort((a, b) => b.commits.length - a.commits.length)
     for (const release of sorted) {
-      output(renderReleaseItem(release, publishHistory))
+      output(renderReleaseItem(release, publishHistory, interactiveChecklist))
       output``
     }
   }
@@ -89,7 +100,7 @@ export const render = (forecast: Forecast, options?: RenderOptions): string => {
     output``
 
     for (const cascade of forecast.cascades) {
-      output(renderCascadeItem(cascade))
+      output(renderCascadeItem(cascade, interactiveChecklist))
       output``
     }
   }
@@ -110,20 +121,22 @@ export const render = (forecast: Forecast, options?: RenderOptions): string => {
 // Sub-renderers
 // ---------------------------------------------------------------------------
 
-/** Render a single primary release as a checkbox list item with commits and version info. */
+/** Render a single primary release as a list item with commits and version info. */
 const renderReleaseItem = (
   release: ForecastRelease,
   publishHistory: readonly PublishRecord[],
+  interactiveChecklist: boolean,
 ): string => {
   const name = release.packageName
   const commitCount = release.commits.length
   const sourceLink = `[${Str.Char.blackSquare}](${release.sourceUrl})`
+  const prefix = interactiveChecklist ? '- [ ]' : '-'
 
   const lines: string[] = []
 
-  // Main line: checkbox + source link + package name + commit count
+  // Main line: source link + package name + commit count
   lines.push(
-    `- [ ] ${sourceLink} **${name}** — ${commitCount} commit${commitCount === 1 ? '' : 's'}`,
+    `${prefix} ${sourceLink} **${name}** — ${commitCount} commit${commitCount === 1 ? '' : 's'}`,
   )
 
   // Commit SHAs (indented)
@@ -144,16 +157,17 @@ const renderReleaseItem = (
   return lines.join(Str.Char.newline)
 }
 
-/** Render a single cascade release as a checkbox list item with trigger info. */
-const renderCascadeItem = (cascade: ForecastCascade): string => {
+/** Render a single cascade release as a list item with trigger info. */
+const renderCascadeItem = (cascade: ForecastCascade, interactiveChecklist: boolean): string => {
   const name = cascade.packageName
   const sourceLink = `[${Str.Char.blackSquare}](${cascade.sourceUrl})`
   const viaStr =
     cascade.triggeredBy.length > 0 ? ` via \`${cascade.triggeredBy.join('`, `')}\`` : ''
   const versionStr = cascade.nextOfficialVersion.toString()
+  const prefix = interactiveChecklist ? '- [ ]' : '-'
 
   const lines: string[] = []
-  lines.push(`- [ ] ${sourceLink} **${name}**${viaStr}`)
+  lines.push(`${prefix} ${sourceLink} **${name}**${viaStr}`)
   lines.push(`  \`${versionStr}\``)
 
   return lines.join(Str.Char.newline)
@@ -216,14 +230,21 @@ const shortPrVersion = (version: string): string => {
 // ---------------------------------------------------------------------------
 
 /** Render the publish status banner (publishing, published, failed, or empty for idle). */
-const renderStatusBanner = (state: PublishState, owner: string, repo: string): string => {
+const renderStatusBanner = (
+  state: PublishState,
+  owner: string,
+  repo: string,
+  interactiveChecklist: boolean,
+): string => {
   switch (state) {
     case 'publishing':
       return '> **Publishing...** A publish workflow is currently running.'
     case 'published':
       return '> **Published.** All packages have been published to npm.'
     case 'failed':
-      return `> **Publish failed.** Check the [workflow run](https://github.com/${owner}/${repo}/actions) for details. Re-check a checkbox to retry.`
+      return interactiveChecklist
+        ? `> **Publish failed.** Check the [workflow run](https://github.com/${owner}/${repo}/actions) for details. Re-check a checkbox to retry.`
+        : `> **Publish failed.** Check the [workflow run](https://github.com/${owner}/${repo}/actions) for details.`
     case 'idle':
       return ''
   }

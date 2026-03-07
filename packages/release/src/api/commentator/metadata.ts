@@ -30,8 +30,8 @@ const HEAD_SHA_RE = /<!-- head-sha:(\S+) -->/
 const PUBLISH_STATE_RE = /<!-- publish-state:(\S+) -->/
 const PUBLISH_HISTORY_RE = /<!-- kitz-release-publish-history\n([\s\S]*?)\n-->/
 
-const PublishStateSchema = S.Literal('idle', 'publishing', 'published', 'failed')
-const PublishRecordSchema = S.Struct({
+export const PublishStateSchema = S.Literal('idle', 'publishing', 'published', 'failed')
+export const PublishRecordSchema = S.Struct({
   package: S.String,
   version: S.String,
   iteration: S.Number,
@@ -39,10 +39,10 @@ const PublishRecordSchema = S.Struct({
   timestamp: S.String,
   runId: S.String,
 })
-const PublishHistoryEnvelope = S.Struct({
+export const PublishHistoryEnvelope = S.Struct({
   publishes: S.Array(PublishRecordSchema),
 })
-const PublishHistoryJson = S.parseJson(PublishHistoryEnvelope)
+export const PublishHistoryJson = S.parseJson(PublishHistoryEnvelope)
 
 const decodePublishState = S.decodeUnknownOption(PublishStateSchema)
 const decodePublishHistory = S.decodeUnknownOption(PublishHistoryJson)

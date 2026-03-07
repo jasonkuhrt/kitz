@@ -5,7 +5,7 @@ import { Resource } from '@kitz/resource'
 import { Effect } from 'effect'
 import { buildDependencyGraph, type DependencyGraph } from '../analyzer/cascade.js'
 import type { Analysis } from '../analyzer/models/__.js'
-import { findLatestPrNumber } from '../analyzer/version.js'
+import { findLatestEphemeralNumber } from '../analyzer/version.js'
 import type { Package } from '../analyzer/workspace.js'
 import { detectPrNumber } from '../explorer/explore.js'
 import * as Version from '../version/__.js'
@@ -15,7 +15,7 @@ import { Ephemeral } from './models/item-ephemeral.js'
 import type { Item } from './models/item.js'
 import { Plan } from './models/plan.js'
 import type { Context } from './official.js'
-import { passesFilter, type PrOptions } from './options.js'
+import { passesFilter, type EphemeralOptions } from './options.js'
 
 /**
  * Detect cascades for ephemeral releases with ephemeral version format.
@@ -33,7 +33,7 @@ const detectCascadesForEphemeral = (
 
   // Convert to ephemeral releases
   return baseCascades.map((cascade) => {
-    const prReleaseNumber = findLatestPrNumber(cascade.package.name, prNumber, tags)
+    const prReleaseNumber = findLatestEphemeralNumber(cascade.package.name, prNumber, tags)
 
     return Ephemeral.make({
       package: cascade.package,
@@ -59,7 +59,7 @@ const detectCascadesForEphemeral = (
 export const ephemeral = (
   analysis: Analysis,
   ctx: Context,
-  options?: PrOptions,
+  options?: EphemeralOptions,
 ): Effect.Effect<
   Plan,
   ReleaseError | Git.GitError | Git.GitParseError | Resource.ResourceError,
@@ -94,7 +94,9 @@ export const ephemeral = (
       if (!passesFilter(impact.package.name.moniker, options)) continue
 
       // Find existing ephemeral releases for this PR
-      const prReleaseNumber = findLatestPrNumber(impact.package.name, prNumber, [...analysis.tags])
+      const prReleaseNumber = findLatestEphemeralNumber(impact.package.name, prNumber, [
+        ...analysis.tags,
+      ])
 
       releases.push(
         Ephemeral.make({

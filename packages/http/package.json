@@ -1,6 +1,11 @@
 {
   "name": "@kitz/http",
   "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
   "description": "HTTP utilities",
   "type": "module",
   "sideEffects": false,

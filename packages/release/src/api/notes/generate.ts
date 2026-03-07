@@ -1,5 +1,5 @@
 /**
- * Log generation - orchestrates commit fetching, impact extraction, and changelog formatting.
+ * Notes generation - orchestrates commit fetching, impact extraction, and release note formatting.
  */
 
 import { Git } from '@kitz/git'
@@ -10,13 +10,13 @@ import type { ReleaseCommit } from '../analyzer/models/commit.js'
 import { extractImpacts, findLatestTagVersion } from '../analyzer/version.js'
 import type { Package } from '../analyzer/workspace.js'
 import { calculateNextVersion } from '../version/calculate.js'
-import { type CommitEntry, format, type FormattedChangelog } from './format.js'
+import { type CommitEntry, format, type FormattedNotes } from './format.js'
 
 /**
- * Log entry for a single package.
+ * Release notes for a single package.
  */
-export interface PackageLog {
-  /** The package this log is for */
+export interface PackageNotes {
+  /** The package these release notes are for */
   readonly package: Package
   /** Commits affecting this package */
   readonly commits: readonly ReleaseCommit[]
@@ -26,15 +26,15 @@ export interface PackageLog {
   readonly currentVersion: Option.Option<Semver.Semver>
   /** Calculated next version */
   readonly nextVersion: Semver.Semver
-  /** Formatted changelog */
-  readonly changelog: FormattedChangelog
+  /** Formatted release notes */
+  readonly notes: FormattedNotes
 }
 
 /**
- * Options for generating package logs.
+ * Options for generating package release notes.
  */
 export interface GenerateOptions {
-  /** Packages to generate logs for */
+  /** Packages to generate release notes for */
   readonly packages: readonly Package[]
   /** All git tags (for finding last release) */
   readonly tags: readonly string[]
@@ -47,11 +47,11 @@ export interface GenerateOptions {
 }
 
 /**
- * Result of log generation.
+ * Result of note generation.
  */
 export interface GenerateResult {
-  /** Package logs (only packages with changes) */
-  readonly logs: readonly PackageLog[]
+  /** Package notes (only packages with changes) */
+  readonly notes: readonly PackageNotes[]
   /** Packages with no changes since last release */
   readonly unchanged: readonly Package[]
 }
@@ -63,20 +63,20 @@ const toReleaseTag = (pkg: Package, version: Semver.Semver): string =>
   Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version }))
 
 /**
- * Generate logs for packages with changes.
+ * Generate release notes for packages with changes.
  *
  * Fetches commits since last release, extracts impacts per package,
  * calculates next versions, and formats changelogs.
  *
  * @example
  * ```ts
- * const result = yield* Log.generate({
+ * const result = yield* Notes.generate({
  *   packages: await scanPackages(),
  *   tags: await git.getTags(),
  * })
  *
- * for (const log of result.logs) {
- *   console.log(log.changelog.markdown)
+ * for (const note of result.notes) {
+ *   console.log(note.notes.markdown)
  * }
  * ```
  */
@@ -87,8 +87,8 @@ export const generate = (
     const git = yield* Git.Git
     const { packages, tags, filter } = options
 
-    // Generate logs package-by-package so each package uses its own release boundary.
-    const logs: PackageLog[] = []
+    // Generate release notes package-by-package so each package uses its own release boundary.
+    const notes: PackageNotes[] = []
     const unchanged: Package[] = []
 
     for (const pkg of packages) {
@@ -139,7 +139,7 @@ export const generate = (
         }
       })
 
-      const changelog = yield* format({
+      const renderedNotes = yield* format({
         scope: pkg.name.moniker,
         commits: commitEntries,
         previousVersion: Option.isSome(currentVersion)
@@ -148,15 +148,15 @@ export const generate = (
         newVersion: nextVersion.toString(),
       })
 
-      logs.push({
+      notes.push({
         package: pkg,
         commits: packageCommits,
         bump,
         currentVersion,
         nextVersion,
-        changelog,
+        notes: renderedNotes,
       })
     }
 
-    return { logs, unchanged }
+    return { notes, unchanged }
   })

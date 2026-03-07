@@ -49,7 +49,7 @@ describe('calculateNextVersion', () => {
       expect(Semver.equivalence(result, v(output))).toBe(true)
     })
 
-  // ── Phase 1.x.x+ (stable) ─────────────────────────────────────────
+  // ── Phase 1.x.x+ (official semver) ────────────────────────────────
 
   Test.describe('1.x.x+ phase (standard semver)')
     .inputType<{ current: string; bump: Semver.BumpType }>()

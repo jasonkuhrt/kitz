@@ -1,6 +1,11 @@
 {
   "name": "@kitz/assert",
   "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
   "description": "Assertion utilities",
   "type": "module",
   "sideEffects": false,

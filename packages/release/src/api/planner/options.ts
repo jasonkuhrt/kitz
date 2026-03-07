@@ -11,9 +11,9 @@ export interface Options {
 }
 
 /**
- * Options for PR release planning.
+ * Options for ephemeral release planning.
  */
-export interface PrOptions extends Options {
+export interface EphemeralOptions extends Options {
   /**
    * PR number. If not provided, will attempt to detect from environment variables:
    * - GITHUB_PR_NUMBER (GitHub Actions)

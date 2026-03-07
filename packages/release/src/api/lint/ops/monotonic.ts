@@ -37,7 +37,7 @@ export const getPackageTagInfos = (
       const pin = decodeExactPin(tag)
       if (Option.isNone(pin)) continue
       if (pin.value.name.moniker !== packageName) continue
-      // Only consider stable versions (no prerelease)
+      // Only consider official versions (no prerelease)
       if (pin.value.version._tag !== 'SemverOfficialRelease') continue
 
       const sha = yield* git.getTagSha(tag)

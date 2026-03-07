@@ -1,6 +1,11 @@
 {
   "name": "@kitz/name",
   "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
   "description": "Naming convention utilities",
   "type": "module",
   "sideEffects": false,

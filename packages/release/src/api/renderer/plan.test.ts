@@ -11,9 +11,7 @@ import {
   renderApplyConfirmation,
   renderApplyDone,
   renderApplyDryRun,
-  renderCascadeAnalysis,
   renderPlan,
-  renderStatus,
 } from './plan.js'
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -71,12 +69,13 @@ describe('renderPlan', () => {
       cascades: [],
     })
     const output = renderPlan(plan)
+    expect(output).toContain('Official release plan')
     expect(output).toContain('@kitz/core')
     expect(output).toContain('1.0.0')
     expect(output).toContain('1.1.0')
     expect(output).toContain('minor')
-    expect(output).toContain('Releases:')
-    expect(output).not.toContain('Cascades:')
+    expect(output).toContain('Releases (1)')
+    expect(output).not.toContain('Cascades (')
   })
 
   test('multiple releases with cascades', () => {
@@ -87,11 +86,12 @@ describe('renderPlan', () => {
       cascades: [makeRelease('@kitz/cli', 'cli', '1.0.0', '1.0.1', 'patch')],
     })
     const output = renderPlan(plan)
-    expect(output).toContain('Releases:')
-    expect(output).toContain('Cascades:')
+    expect(output).toContain('Official release plan')
+    expect(output).toContain('Releases (1)')
+    expect(output).toContain('Cascades (1)')
     expect(output).toContain('@kitz/core')
     expect(output).toContain('@kitz/cli')
-    expect(output).toContain('cascade')
+    expect(output).toContain('patch')
   })
 
   test('first release shows "new" instead of current version', () => {
@@ -114,54 +114,41 @@ describe('renderPlan', () => {
       cascades: [],
     })
     const output = renderPlan(plan)
-    expect(output).toContain('1 commit')
+    expect(output).toContain('1')
   })
-})
 
-// ── renderStatus ─────────────────────────────────────────────────────
-
-describe('renderStatus', () => {
-  test('renders release status as one row per package sorted by commit count', () => {
-    const releases = [
-      Official.make({
-        package: pkg('@kitz/core', 'core'),
-        version: OfficialIncrement.make({
-          from: Semver.fromString('1.0.0'),
-          to: Semver.fromString('1.1.0'),
-          bump: 'minor',
+  test('sorts release rows by commit count descending', () => {
+    const plan = Plan.make({
+      lifecycle: 'official',
+      timestamp: '2026-01-01T00:00:00Z',
+      releases: [
+        Official.make({
+          package: pkg('@kitz/core', 'core'),
+          version: OfficialIncrement.make({
+            from: Semver.fromString('1.0.0'),
+            to: Semver.fromString('1.1.0'),
+            bump: 'minor',
+          }),
+          commits: [commit('core', 'feat(core): first')],
         }),
-        commits: [commit('core', 'feat(core): first'), commit('core', 'fix(core): second')],
-      }),
-      Official.make({
-        package: pkg('@kitz/cli', 'cli'),
-        version: OfficialIncrement.make({
-          from: Semver.fromString('1.0.0'),
-          to: Semver.fromString('1.1.0'),
-          bump: 'minor',
+        Official.make({
+          package: pkg('@kitz/cli', 'cli'),
+          version: OfficialIncrement.make({
+            from: Semver.fromString('1.0.0'),
+            to: Semver.fromString('1.1.0'),
+            bump: 'minor',
+          }),
+          commits: [
+            commit('cli', 'feat(cli): first'),
+            commit('cli', 'fix(cli): second'),
+            commit('cli', 'fix(cli): third'),
+          ],
         }),
-        commits: [
-          commit('cli', 'feat(cli): first'),
-          commit('cli', 'fix(cli): second'),
-          commit('cli', 'fix(cli): third'),
-        ],
-      }),
-    ]
-    const output = renderStatus(releases)
+      ],
+      cascades: [],
+    })
+    const output = renderPlan(plan)
 
-    expect(output).toContain('Unreleased changes:')
-    expect(output).toContain('Package')
-    expect(output).toContain('From')
-    expect(output).toContain('To')
-    expect(output).toContain('Bump')
-    expect(output).toContain('Commits')
-    expect(output).toContain('@kitz/core')
-    expect(output).toContain('@kitz/cli')
-    expect(output).toContain('1.0.0')
-    expect(output).toContain('1.1.0')
-    expect(output).toContain('minor')
-    expect(output).toContain('2')
-    expect(output).toContain('3')
-    expect(output).not.toContain('Planned release')
     expect(output.indexOf('@kitz/cli')).toBeLessThan(output.indexOf('@kitz/core'))
   })
 })
@@ -226,32 +213,5 @@ describe('renderApplyDone', () => {
 
   test('plural', () => {
     expect(renderApplyDone(3)).toContain('3 packages released')
-  })
-})
-
-// ── renderCascadeAnalysis ────────────────────────────────────────────
-
-describe('renderCascadeAnalysis', () => {
-  test('shows not found for unknown packages', () => {
-    const output = renderCascadeAnalysis([
-      { requestedPackage: 'unknown', packageName: null, cascades: [] },
-    ])
-    expect(output).toContain('unknown: not found')
-  })
-
-  test('shows no cascading releases', () => {
-    const output = renderCascadeAnalysis([
-      { requestedPackage: '@kitz/core', packageName: '@kitz/core', cascades: [] },
-    ])
-    expect(output).toContain('no cascading releases')
-  })
-
-  test('shows cascade details', () => {
-    const cascade = makeRelease('@kitz/cli', 'cli', '1.0.0', '1.0.1', 'patch')
-    const output = renderCascadeAnalysis([
-      { requestedPackage: '@kitz/core', packageName: '@kitz/core', cascades: [cascade] },
-    ])
-    expect(output).toContain('@kitz/core:')
-    expect(output).toContain('@kitz/cli')
   })
 })

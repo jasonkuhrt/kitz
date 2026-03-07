@@ -12,11 +12,11 @@ import { Effect, Layer } from 'effect'
  * Each command is a separate module that gets dynamically imported based on argv.
  *
  * Available commands:
- * - status [pkg...] - Show unreleased changes
- * - plan <type>     - Generate release plan (stable|preview|pr)
+ * - doctor          - Run release doctor checks and publishability audits
+ * - forecast        - Render a release forecast
+ * - plan            - Generate release plan (--lifecycle official|candidate|ephemeral)
  * - apply           - Execute release plan
- * - render <format> - Render enriched plan data (comment|tree)
- * - log [pkg]       - Output changelog
+ * - notes [pkg]     - Output release notes
  * - init            - Initialize release in project
  */
 const commandsDir = Fs.Path.AbsDir.fromString(new URL('./commands/', import.meta.url).pathname)

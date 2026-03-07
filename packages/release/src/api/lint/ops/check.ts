@@ -5,6 +5,7 @@ import type { ResolvedConfig } from '../models/config.js'
 import * as Precondition from '../models/precondition.js'
 import { Failed, Finished, Report, RuleCheckResult, Skipped } from '../models/report.js'
 import * as RuntimeRule from '../models/runtime-rule.js'
+import type { Severity } from '../models/severity.js'
 import { Violation } from '../models/violation.js'
 import * as Rules from '../rules/__.js'
 import {
@@ -83,6 +84,23 @@ const resolveRulesToRun = (
   const inactive: RegisteredRule[] = []
 
   for (const rule of rules) {
+    const hasOnlyFilter = config.onlyRules !== undefined && config.onlyRules.length > 0
+    const requestedByOnly = hasOnlyFilter && matchesAnyFilter(rule.data.id, config.onlyRules!)
+    const matchesSkip =
+      config.skipRules &&
+      config.skipRules.length > 0 &&
+      matchesAnyFilter(rule.data.id, config.skipRules)
+
+    // Explicit filters should be able to force-run rules even when defaults disable them.
+    if (requestedByOnly) {
+      if (!matchesSkip) {
+        active.included.push({ rule, explicitlyRequested: true })
+      } else {
+        active.excluded.push(rule)
+      }
+      continue
+    }
+
     // Resolve enabled: per-rule config > rule defaults > global defaults
     const ruleConfig = config.rules[rule.data.id]
     const enabled =
@@ -93,20 +111,8 @@ const resolveRulesToRun = (
       continue
     }
 
-    // Check filters (with glob support)
-    const hasOnlyFilter = config.onlyRules !== undefined && config.onlyRules.length > 0
-    const matchesOnly = !hasOnlyFilter || matchesAnyFilter(rule.data.id, config.onlyRules!)
-    const matchesSkip =
-      config.skipRules &&
-      config.skipRules.length > 0 &&
-      matchesAnyFilter(rule.data.id, config.skipRules)
-
-    if (matchesOnly && !matchesSkip) {
-      // Rule is explicitly requested if:
-      // 1. enabled is true (not 'auto'), OR
-      // 2. It's in onlyRules (user explicitly asked for this rule)
-      const explicitlyRequested = enabled === true || (hasOnlyFilter && matchesOnly)
-      active.included.push({ rule, explicitlyRequested })
+    if (!hasOnlyFilter && !matchesSkip) {
+      active.included.push({ rule, explicitlyRequested: enabled === true })
     } else {
       active.excluded.push(rule)
     }
@@ -192,6 +198,7 @@ const checkRule = (
 > => {
   return Effect.gen(function* () {
     const ruleRef = { id: rule.data.id, description: rule.data.description }
+    const severity = resolveRuleSeverity(rule, config)
 
     // Evaluate preconditions
     const failedPreconditions = evaluatePreconditions(rule.data.preconditions, preconditions)
@@ -241,10 +248,19 @@ const checkRule = (
     return Finished.make({
       rule: ruleRef,
       duration,
+      severity,
       violation,
       metadata,
     })
   })
+}
+
+const resolveRuleSeverity = (
+  rule: RegisteredRule,
+  config: ResolvedConfig,
+): Severity => {
+  const ruleConfig = config.rules[rule.data.id]
+  return ruleConfig?.overrides.severity ?? rule.data.defaults?.severity ?? config.defaults.severity
 }
 
 /**

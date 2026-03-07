@@ -5,6 +5,7 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Effect, Schema } from 'effect'
 import * as LintConfig from './lint/models/config.js'
+import { Publishing } from './publishing.js'
 
 /**
  * Release configuration schema (input from file).
@@ -12,16 +13,18 @@ import * as LintConfig from './lint/models/config.js'
 export class Config extends Schema.Class<Config>('Config')({
   /** Main branch name (default: 'main') */
   trunk: Schema.optionalWith(Schema.String, { default: () => 'main' }),
-  /** Dist-tag for stable releases (default: 'latest') */
+  /** Dist-tag for official releases (default: 'latest') */
   npmTag: Schema.optionalWith(Schema.String, { default: () => 'latest' }),
-  /** Dist-tag for preview releases (default: 'next') */
-  previewTag: Schema.optionalWith(Schema.String, { default: () => 'next' }),
+  /** Dist-tag for candidate releases (default: 'next') */
+  candidateTag: Schema.optionalWith(Schema.String, { default: () => 'next' }),
   /** Skip npm publish (dry run) */
   skipNpm: Schema.optionalWith(Schema.Boolean, { default: () => false }),
   /** Scope to package name mapping (auto-scanned if not provided) */
   packages: Schema.optionalWith(Schema.Record({ key: Schema.String, value: Schema.String }), {
     default: () => ({}),
   }),
+  /** Declares how each lifecycle is published. */
+  publishing: Schema.optionalWith(Publishing, { default: () => Publishing.make({}) }),
   /** Lint configuration */
   lint: Schema.optional(LintConfig.Config),
 }) {}
@@ -32,9 +35,10 @@ export class Config extends Schema.Class<Config>('Config')({
 export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig')({
   trunk: Schema.String,
   npmTag: Schema.String,
-  previewTag: Schema.String,
+  candidateTag: Schema.String,
   skipNpm: Schema.Boolean,
   packages: Schema.Record({ key: Schema.String, value: Schema.String }),
+  publishing: Publishing,
   lint: LintConfig.ResolvedConfig,
 }) {}
 
@@ -60,6 +64,11 @@ const ConfigFile = Conf.File.define({
  *     core: '@kitz/core',
  *     kitz: 'kitz',
  *   },
+ *   publishing: {
+ *     official: { mode: 'manual' },
+ *     candidate: { mode: 'manual' },
+ *     ephemeral: { mode: 'manual' },
+ *   },
  *   lint: {
  *     rules: {
  *       'pr.scope.require': Severity.Warn,
@@ -76,7 +85,7 @@ export const defineConfig = Conf.File.createDefineConfig(ConfigFile)
 export type ConfigError = Conf.File.LoadError
 
 /**
- * CLI overrides for config loading.
+ * Call-site overrides for config loading.
  * Derived from schema types - any field can be overridden.
  */
 export type LoadOptions = Partial<Omit<typeof Config.Type, 'lint'>> & {
@@ -86,10 +95,10 @@ export type LoadOptions = Partial<Omit<typeof Config.Type, 'lint'>> & {
 /**
  * Load and resolve configuration from release.config.ts.
  *
- * Loads file config, merges CLI overrides, and resolves all sections.
+ * Loads file config, merges call-site overrides, and resolves all sections.
  * Returns fully resolved config ready for use.
  *
- * @param options - Optional CLI overrides per field
+ * @param options - Optional call-site overrides per field
  */
 export const load = (
   options?: LoadOptions,
@@ -98,13 +107,14 @@ export const load = (
     const env = yield* Env.Env
     const fileConfig = yield* Conf.File.load(ConfigFile, Fs.Path.toString(env.cwd))
 
-    // Merge CLI overrides with file config (CLI replaces per-field)
+    // Merge call-site overrides with file config (overrides replace per-field)
     return ResolvedConfig.make({
       trunk: options?.trunk ?? fileConfig.trunk,
       npmTag: options?.npmTag ?? fileConfig.npmTag,
-      previewTag: options?.previewTag ?? fileConfig.previewTag,
+      candidateTag: options?.candidateTag ?? fileConfig.candidateTag,
       skipNpm: options?.skipNpm ?? fileConfig.skipNpm,
       packages: options?.packages ?? fileConfig.packages,
+      publishing: options?.publishing ?? fileConfig.publishing,
       lint: LintConfig.resolveConfig({
         defaults: options?.lint?.defaults ?? fileConfig.lint?.defaults,
         rules: options?.lint?.rules ?? fileConfig.lint?.rules,

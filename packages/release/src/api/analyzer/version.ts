@@ -135,12 +135,12 @@ export const findLatestTagVersion = (
 }
 
 /**
- * Find the highest preview release number for a package.
+ * Find the highest candidate release number for a package.
  *
- * Preview versions follow the pattern: `${base}-next.${n}`
- * Returns the highest `n` found, or 0 if no preview releases exist.
+ * Candidate versions follow the pattern: `${base}-next.${n}`
+ * Returns the highest `n` found, or 0 if no candidate releases exist.
  */
-export const findLatestPreviewNumber = (
+export const findLatestCandidateNumber = (
   packageName: Pkg.Moniker.Moniker,
   baseVersion: Semver.Semver,
   tags: string[],
@@ -167,12 +167,12 @@ export const findLatestPreviewNumber = (
 }
 
 /**
- * Find the highest PR release number for a package and PR.
+ * Find the highest ephemeral release number for a package and PR.
  *
- * PR versions follow the pattern: `0.0.0-pr.${prNum}.${n}.${sha}`
- * Returns the highest `n` found, or 0 if no PR releases exist.
+ * Ephemeral versions follow the pattern: `0.0.0-pr.${prNum}.${n}.${sha}`
+ * Returns the highest `n` found, or 0 if no ephemeral releases exist.
  */
-export const findLatestPrNumber = (
+export const findLatestEphemeralNumber = (
   packageName: Pkg.Moniker.Moniker,
   prNumber: number,
   tags: string[],

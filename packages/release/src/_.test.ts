@@ -78,7 +78,7 @@ const analyzeAndPlanCandidate = (
  */
 const analyzeAndPlanEphemeral = (
   packages: readonly Analyzer.Workspace.Package[],
-  options?: Planner.PrOptions,
+  options?: Planner.EphemeralOptions,
 ) =>
   Effect.gen(function* () {
     const git = yield* Git.Git

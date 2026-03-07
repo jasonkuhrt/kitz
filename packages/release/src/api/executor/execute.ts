@@ -9,6 +9,7 @@ import { Flo } from '@kitz/flo'
 import { Fs } from '@kitz/fs'
 import { Effect, HashMap, Match, Option, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
+import type { Publishing } from '../publishing.js'
 import type { ExecutorError } from './errors.js'
 import { makeRuntime, type RuntimeConfig } from './runtime.js'
 import { ReleasePayload, type ReleasePayloadType, ReleaseWorkflow } from './workflow.js'
@@ -95,7 +96,7 @@ export const formatLifecycleEvent = (event: Flo.LifecycleEvent): LifecycleEventL
  */
 export const toPayload = (
   plan: Plan,
-  options: { dryRun?: boolean; tag?: string; registry?: string } = {},
+  options: { dryRun?: boolean; tag?: string; registry?: string; publishing?: Publishing } = {},
 ): ReleasePayloadType => ({
   releases: [...plan.releases, ...plan.cascades].map((r) => ({
     packageName: r.package.name.moniker,
@@ -117,6 +118,8 @@ export const toPayload = (
     dryRun: options.dryRun ?? false,
     ...(options.tag && { tag: options.tag }),
     ...(options.registry && { registry: options.registry }),
+    lifecycle: plan.lifecycle,
+    ...(options.publishing && { publishing: options.publishing }),
   },
 })
 
@@ -134,7 +137,7 @@ export const toPayload = (
  */
 export const execute = (
   plan: Plan,
-  options: { dryRun?: boolean; tag?: string; registry?: string } = {},
+  options: { dryRun?: boolean; tag?: string; registry?: string; publishing?: Publishing } = {},
 ) =>
   Effect.gen(function* () {
     const payload = toPayload(plan, options)
@@ -166,6 +169,7 @@ export const executeObservable = (
     dryRun?: boolean
     tag?: string
     registry?: string
+    publishing?: Publishing
     dbPath?: string
     github?: RuntimeConfig['github']
   } = {},

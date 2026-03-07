@@ -1,7 +1,7 @@
 import { Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import * as ViolationLocation from './violation-location.js'
-import { Hint, Violation } from './violation.js'
+import { DocLink, Hint, Violation } from './violation.js'
 
 describe('Violation', () => {
   test('make with PrTitle location', () => {
@@ -23,11 +23,17 @@ describe('Violation', () => {
   test('schema roundtrip', () => {
     const v = Violation.make({
       location: ViolationLocation.GitHistory.make({ sha: 'abc1234' }),
+      summary: 'History is not monotonic',
+      hints: [Hint.make({ description: 'Rebase onto trunk before retrying.' })],
+      docs: [DocLink.make({ label: 'Release docs', url: 'https://example.com/release' })],
     })
     const encoded = Schema.encodeSync(Violation)(v)
     const decoded = Schema.decodeSync(Violation)(encoded)
     expect(decoded._tag).toBe('Violation')
     expect(decoded.location._tag).toBe('ViolationLocationGitHistory')
+    expect(decoded.summary).toBe('History is not monotonic')
+    expect(decoded.hints).toHaveLength(1)
+    expect(decoded.docs).toHaveLength(1)
   })
 })
 
@@ -44,6 +50,14 @@ describe('Hint', () => {
     const encoded = Schema.encodeSync(Hint)(h)
     const decoded = Schema.decodeSync(Hint)(encoded)
     expect(decoded.description).toBe('Consider adding a scope')
+  })
+})
+
+describe('DocLink', () => {
+  test('make and is()', () => {
+    const doc = DocLink.make({ label: 'npm docs', url: 'https://docs.npmjs.com/' })
+    expect(doc._tag).toBe('ViolationDocLink')
+    expect(DocLink.is(doc)).toBe(true)
   })
 })
 

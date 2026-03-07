@@ -84,9 +84,9 @@ export type ExecutorTagError = InstanceType<typeof ExecutorTagError>
  *
  * **When it occurs**: at the start of execution, before any packages are published.
  *
- * **Common causes**: npm authentication is not configured, the git working directory has uncommitted changes, the git remote is unreachable, or a planned tag already exists.
+ * **Common causes**: the declared publish channel does not match the runtime, npm authentication is not configured, the git working directory has uncommitted changes, the git remote is unreachable, a planned tag already exists, or a planned package is still marked private.
  *
- * **What to do**: the error's `check` field names the specific preflight rule that failed (e.g., `env.npm-authenticated`). Run `release lint --only-rule "<check>"` to investigate in isolation.
+ * **What to do**: the error's `check` field names the specific preflight rule that failed (e.g., `env.npm-authenticated`). Run `release doctor --onlyRule "<check>"` to investigate in isolation.
  *
  * {@include executor/errors/preflight-error}
  */

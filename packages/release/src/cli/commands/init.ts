@@ -84,8 +84,8 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer))(
 
       Next steps:
         1. Review release.config.ts
-        2. Run \`release status\` to see pending changes
-        3. Run \`release plan stable\` to generate a release plan
+        2. Run \`release forecast\` to inspect the current release forecast
+        3. Run \`release plan --lifecycle official\` to generate a release plan
     `)
   }),
 )

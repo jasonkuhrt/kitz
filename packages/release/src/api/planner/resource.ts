@@ -20,7 +20,7 @@ export const PLAN_FILE = Fs.Path.fromString('./.release/plan.json')
  * @example
  * ```ts
  * // Create and write a plan
- * const plan = Plan.make('stable', releases, cascades)
+ * const plan = Plan.make('official', releases, cascades)
  * yield* resource.write(plan, releaseDir)
  *
  * // Read a plan directly

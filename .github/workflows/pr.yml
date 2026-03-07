@@ -252,7 +252,7 @@ jobs:
           git fetch --tags --force
       - uses: ./.github/actions/setup
       - name: Build release package
-        run: pnpm turbo run build --filter=@kitz/release
+        run: pnpm release:build
       - name: Extract publish history from existing comment
         uses: actions/github-script@v7
         id: history
@@ -276,23 +276,13 @@ jobs:
             const history = match ? match[1] : '{"publishes":[]}'
             fs.writeFileSync('/tmp/publish-history.json', history)
             core.info(`Extracted publish history: ${history.length} bytes`)
-      - name: Generate enriched plan JSON
+      - name: Generate release forecast comment
         env:
-          CLI_PARAMETER_TYPE: pr
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          node packages/release/build/cli/cli.js plan --json \
-            --publish-history /tmp/publish-history.json \
-            --json-file /tmp/enriched-plan.json
-      - name: Render release plan comment
-        env:
-          CLI_PARAMETER_FORMAT: comment
-        run: |
-          node packages/release/build/cli/cli.js render \
-            --from-file /tmp/enriched-plan.json \
-            > /tmp/release-plan-comment.md
-      - name: Upsert PR release plan comment
+          pnpm release:forecast:comment -- --publish-history /tmp/publish-history.json > /tmp/release-plan-comment.md
+      - name: Upsert PR release forecast comment
         uses: ./.github/actions/upsert-pr-comment
         with:
           file: /tmp/release-plan-comment.md

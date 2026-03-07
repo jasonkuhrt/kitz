@@ -45,7 +45,7 @@ const decodeSemverFromManifest = (value: unknown): Semver.Semver =>
     ? Schema.decodeUnknownSync(Semver.Schema)(value)
     : Schema.decodeUnknownSync(Semver.Semver)(value)
 
-const planStable = (packages: readonly Analyzer.Workspace.Package[]) =>
+const planOfficial = (packages: readonly Analyzer.Workspace.Package[]) =>
   Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
@@ -53,7 +53,7 @@ const planStable = (packages: readonly Analyzer.Workspace.Package[]) =>
     return yield* Planner.official(analysis, { packages })
   })
 
-const planPreview = (packages: readonly Analyzer.Workspace.Package[]) =>
+const planCandidate = (packages: readonly Analyzer.Workspace.Package[]) =>
   Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
@@ -61,7 +61,10 @@ const planPreview = (packages: readonly Analyzer.Workspace.Package[]) =>
     return yield* Planner.candidate(analysis, { packages })
   })
 
-const planPr = (packages: readonly Analyzer.Workspace.Package[], options: Planner.PrOptions) =>
+const planEphemeral = (
+  packages: readonly Analyzer.Workspace.Package[],
+  options: Planner.EphemeralOptions,
+) =>
   Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
@@ -180,7 +183,7 @@ const makeHarness = (options: {
 
 describe('Workflow integration', () => {
   test.effect(
-    'runs non-dry-run stable workflow with mocked services and restores manifest semver',
+    'runs non-dry-run official workflow with mocked services and restores manifest semver',
     (_ctx) =>
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -194,7 +197,7 @@ describe('Workflow integration', () => {
           },
         })
 
-        const plan = yield* planStable(workspacePackages).pipe(Effect.provide(harness.planLayer))
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
 
         expect(plan.releases).toHaveLength(1)
 
@@ -247,7 +250,7 @@ describe('Workflow integration', () => {
         },
       })
 
-      const plan = yield* planStable(workspacePackages).pipe(Effect.provide(harness.planLayer))
+      const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
       const plannedRelease = plan.releases[0]
       expect(plannedRelease).toBeDefined()
       const conflictingTag = tag(
@@ -293,7 +296,7 @@ describe('Workflow integration', () => {
           failPublish: true,
         })
 
-        const plan = yield* planStable(workspacePackages).pipe(Effect.provide(harness.planLayer))
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
 
         const outcome = yield* executeWorkflow(plan, { dryRun: false }).pipe(
           Effect.provide(harness.workflowLayer),
@@ -328,7 +331,7 @@ describe('Workflow integration', () => {
       }),
   )
 
-  test.effect('updates existing GitHub preview release when tag option is next', (_ctx) =>
+  test.effect('updates existing GitHub candidate release when tag option is next', (_ctx) =>
     Effect.gen(function* () {
       const harness = yield* makeHarness({
         git: {
@@ -341,11 +344,11 @@ describe('Workflow integration', () => {
         },
       })
 
-      const plan = yield* planPreview(workspacePackages).pipe(Effect.provide(harness.planLayer))
+      const plan = yield* planCandidate(workspacePackages).pipe(Effect.provide(harness.planLayer))
 
       const plannedRelease = plan.releases[0]
       expect(plannedRelease).toBeDefined()
-      const previewTag = tag(
+      const candidateTag = tag(
         plannedRelease!.package.name,
         Semver.toString(plannedRelease!.nextVersion),
       )
@@ -353,7 +356,7 @@ describe('Workflow integration', () => {
       yield* Effect.gen(function* () {
         const gh = yield* Github.Github
         yield* gh.createRelease({
-          tag: previewTag,
+          tag: candidateTag,
           title: '@kitz/core @next',
           body: 'existing',
           prerelease: true,
@@ -364,13 +367,13 @@ describe('Workflow integration', () => {
         Effect.provide(harness.workflowLayer),
       )
 
-      expect(result.createdGHReleases).toContain(previewTag)
+      expect(result.createdGHReleases).toContain(candidateTag)
 
       const createdReleases = yield* Ref.get(harness.githubState.createdReleases)
       const updatedReleases = yield* Ref.get(harness.githubState.updatedReleases)
 
-      expect(createdReleases.filter((r) => r.tag === previewTag)).toHaveLength(1)
-      expect(updatedReleases.filter((r) => r.tag === previewTag)).toHaveLength(1)
+      expect(createdReleases.filter((r) => r.tag === candidateTag)).toHaveLength(1)
+      expect(updatedReleases.filter((r) => r.tag === candidateTag)).toHaveLength(1)
     }),
   )
 
@@ -388,7 +391,7 @@ describe('Workflow integration', () => {
         },
       })
 
-      const plan = yield* planPr(workspacePackages, { prNumber: 42 }).pipe(
+      const plan = yield* planEphemeral(workspacePackages, { prNumber: 42 }).pipe(
         Effect.provide(harness.planLayer),
       )
 
@@ -417,7 +420,7 @@ describe('Workflow integration', () => {
         },
       })
 
-      const plan = yield* planStable(workspacePackages).pipe(Effect.provide(harness.planLayer))
+      const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
 
       const dbPath = `/tmp/kitz-release-workflow-${Date.now()}-${Math.random().toString(16).slice(2)}.db`
       const observable = yield* executeWorkflowObservable(plan, {

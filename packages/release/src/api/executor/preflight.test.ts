@@ -12,7 +12,7 @@ describe('PreflightError', () => {
     expect(err._tag).toBe('PreflightError')
     expect(err.message).toContain('env.npm-authenticated')
     expect(err.message).toContain('Not logged in')
-    expect(err.message).toContain('release lint')
+    expect(err.message).toContain('release doctor')
   })
 
   test('is an Error instance', () => {
@@ -22,11 +22,11 @@ describe('PreflightError', () => {
     expect(err).toBeInstanceOf(Error)
   })
 
-  test('message includes lint investigation suggestion', () => {
+  test('message includes doctor investigation suggestion', () => {
     const err = new PreflightError({
       context: { check: 'plan.tags-unique', detail: 'tag exists' },
     })
-    expect(err.message).toContain('--only-rule')
+    expect(err.message).toContain('--onlyRule')
     expect(err.message).toContain('plan.tags-unique')
   })
 })

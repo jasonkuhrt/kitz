@@ -1,3 +1,4 @@
+import type { Fs } from '@kitz/fs'
 import type { Pkg } from '@kitz/pkg'
 import type { Semver } from '@kitz/semver'
 import { Context, Layer } from 'effect'
@@ -8,6 +9,8 @@ import { Context, Layer } from 'effect'
 export interface PlannedRelease {
   /** Package name. */
   readonly packageName: Pkg.Moniker.Moniker
+  /** Package directory on disk. */
+  readonly packagePath: Fs.Path.AbsDir
   /** Version to be released. */
   readonly version: Semver.Semver
 }

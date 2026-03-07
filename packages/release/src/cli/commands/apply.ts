@@ -5,7 +5,7 @@
  *
  * Reads the plan from `.release/plan.json`, runs preflight checks,
  * publishes packages, creates git tags, pushes tags, and creates
- * GitHub releases. Supports `--dry-run` for preview and `--yes`
+ * GitHub releases. Supports `--dry-run` for inspection and `--yes`
  * to skip the interactive confirmation prompt (for CI).
  */
 import { NodeFileSystem } from '@effect/platform-node'
@@ -85,7 +85,9 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
 
     if (Option.isNone(planFileOption)) {
       yield* Console.error(`No release plan found at ${Fs.Path.toString(Api.Planner.PLAN_FILE)}`)
-      yield* Console.error(`Run 'release plan <type>' first to generate a plan.`)
+      yield* Console.error(
+        `Run 'release plan --lifecycle <official|candidate|ephemeral>' first to generate a plan.`,
+      )
       return env.exit(1)
     }
 
@@ -94,7 +96,7 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
 
     // Plan file now stores rich PlannedRelease data directly - no conversion needed
     const plan = planFileOption.value
-    const tag = args.tag ?? (plan.lifecycle === 'official' ? config.npmTag : config.previewTag)
+    const tag = args.tag ?? (plan.lifecycle === 'official' ? config.npmTag : config.candidateTag)
 
     // Confirmation prompt (unless --yes)
     if (!args.yes && !args.dryRun) {
@@ -123,6 +125,7 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     const { events, execute } = yield* Api.Executor.executeObservable(plan, {
       dryRun: args.dryRun,
       tag,
+      publishing: config.publishing,
       github: runtimeConfig.github,
     })
 

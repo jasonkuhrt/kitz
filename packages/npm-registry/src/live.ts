@@ -38,6 +38,7 @@ const makeService = Effect.gen(function* () {
               operation: 'whoami',
               detail: 'npm whoami returned empty - check your npm authentication',
             },
+            cause: new Error('npm whoami returned empty output'),
           }),
         )
       }
@@ -73,6 +74,7 @@ const makeService = Effect.gen(function* () {
                   operation: 'publish',
                   detail: `npm publish exited with code ${code}`,
                 },
+                cause: new Error(`npm publish exited with code ${code}`),
               }),
             )
           }

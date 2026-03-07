@@ -1,7 +1,9 @@
-import { CommandExecutor } from '@effect/platform'
+import { CommandExecutor, FileSystem } from '@effect/platform'
 import { Err } from '@kitz/core'
+import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Effect, Layer, Option, Schema as S } from 'effect'
+import { defaultPublishing, resolvePublishChannel, type Publishing } from '../publishing.js'
 import * as Lint from '../lint/__.js'
 import { Finished } from '../lint/models/report.js'
 import type { ReleaseInfo } from './publish.js'
@@ -28,7 +30,7 @@ export const PreflightError: Err.TaggedContextualErrorClass<
   context: PreflightErrorContext,
   message: (ctx) =>
     `Preflight check '${ctx.check}' failed: ${ctx.detail}\n` +
-    `  Run 'release lint --only-rule "${ctx.check}"' to investigate.`,
+    `  Run 'release doctor --onlyRule "${ctx.check}"' to investigate.`,
 })
 
 export type PreflightError = InstanceType<typeof PreflightError>
@@ -53,21 +55,31 @@ export interface PreflightOptions {
   readonly skipNpmAuth?: boolean
   /** Skip git clean check */
   readonly skipGitClean?: boolean
+  /** Active lifecycle when preflighting a concrete plan. */
+  readonly lifecycle?: 'official' | 'candidate' | 'ephemeral'
+  /** Declared release publishing system. */
+  readonly publishing?: Publishing
 }
 
 /**
  * Run all preflight checks using the lint system.
  *
  * Validates that the environment is ready for a release:
+ * - the declared publish channel is usable in this runtime (env.publish-channel-ready)
  * - npm authentication works (env.npm-authenticated)
  * - git working directory is clean (env.git-clean)
  * - git remote is reachable (env.git-remote)
  * - planned tags don't already exist (plan.tags-unique)
+ * - planned package manifests are publishable (plan.packages-*)
  */
 export const run = (
   releases: ReleaseInfo[],
   options?: PreflightOptions,
-): Effect.Effect<PreflightResult, PreflightError, Git.Git | CommandExecutor.CommandExecutor> =>
+): Effect.Effect<
+  PreflightResult,
+  PreflightError,
+  Env.Env | Git.Git | CommandExecutor.CommandExecutor | FileSystem.FileSystem
+> =>
   Effect.gen(function* () {
     yield* Effect.log('Running preflight checks...')
 
@@ -75,6 +87,12 @@ export const run = (
     const skipRules: string[] = []
     if (options?.skipNpmAuth) skipRules.push('env.npm-authenticated')
     if (options?.skipGitClean) skipRules.push('env.git-clean')
+    if (options?.lifecycle) {
+      const channel = resolvePublishChannel(options?.publishing ?? defaultPublishing(), options.lifecycle)
+      if (channel.mode === 'github-trusted') {
+        skipRules.push('env.npm-authenticated')
+      }
+    }
 
     // Configure lint to run preflight-related rules
     const config = Lint.resolveConfig({
@@ -105,6 +123,7 @@ export const run = (
     // Prepare layers for lint
     const plannedReleases = releases.map((r) => ({
       packageName: r.package.name,
+      packagePath: r.package.path,
       version: r.nextVersion,
     }))
 
@@ -113,11 +132,20 @@ export const run = (
     })
 
     const releasePlanLayer = Lint.ReleasePlan.make(plannedReleases)
+    const releaseContextLayer = Lint.ReleaseContext.make({
+      lifecycle: options?.lifecycle ?? null,
+      publishing: options?.publishing ?? defaultPublishing(),
+    })
 
     // Run lint check, mapping any errors to PreflightError
     const report = yield* Lint.check({ config }).pipe(
       Effect.provide(
-        Layer.mergeAll(Lint.DefaultServicesLayer, preconditionsLayer, releasePlanLayer),
+        Layer.mergeAll(
+          Lint.DefaultServicesLayer,
+          preconditionsLayer,
+          releasePlanLayer,
+          releaseContextLayer,
+        ),
       ),
       Effect.catchAll((error) =>
         Effect.fail(
@@ -154,7 +182,7 @@ export const run = (
       }
 
       // Collect violations
-      if (result.violation) {
+      if (result.violation && Lint.Error.is(result.severity)) {
         const message =
           result.violation.location._tag === 'ViolationLocationEnvironment'
             ? result.violation.location.message

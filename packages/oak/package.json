@@ -1,6 +1,11 @@
 {
   "name": "@kitz/oak",
   "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
   "description": "CLI argument parsing",
   "type": "module",
   "sideEffects": false,

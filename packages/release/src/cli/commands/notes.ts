@@ -1,7 +1,7 @@
 /**
- * @module cli/commands/log
+ * @module cli/commands/notes
  *
- * Generate and display changelogs from unreleased commits.
+ * Generate and display release notes from unreleased commits.
  *
  * Fetches commits since the last release tag, extracts conventional
  * commit impacts, and formats them as markdown or JSON. Optionally
@@ -16,13 +16,13 @@ import { Console, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 
 /**
- * release log [pkg]
+ * release notes [pkg]
  *
- * Show unreleased changes since last release.
+ * Show unreleased release notes since the last release.
  */
 const args = Oak.Command.create()
   .use(Oak.EffectSchema)
-  .description('Show unreleased changes since last release')
+  .description('Show unreleased release notes since the last release')
   .parameter(
     'pkg p',
     Schema.UndefinedOr(Schema.String).pipe(
@@ -55,7 +55,6 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
   Effect.gen(function* () {
     const git = yield* Git.Git
 
-    // Load config and scan packages
     const _config = yield* Api.Config.load()
     const packages = yield* Api.Analyzer.Workspace.scan
 
@@ -67,28 +66,24 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
       return
     }
 
-    // Get all tags
     const tags = yield* git.getTags()
-
-    // Generate logs using the Log API
-    const result = yield* Api.Log.generate({
+    const result = yield* Api.Notes.generate({
       packages,
       tags,
       since: args.since,
       filter: args.pkg ? [args.pkg] : undefined,
     })
 
-    if (result.logs.length === 0) {
-      yield* Console.log('No unreleased changes found.')
+    if (result.notes.length === 0) {
+      yield* Console.log('No unreleased release notes found.')
       return
     }
 
-    // Output based on format
     if (args.format === 'json') {
-      const jsonOutput = Api.Log.toJsonLogs(result.logs)
-      yield* Console.log(JSON.stringify(jsonOutput, null, 2))
-    } else {
-      yield* Console.log(Api.Log.renderMarkdownLogs(result.logs))
+      yield* Console.log(JSON.stringify(Api.Notes.toJsonNotes(result.notes), null, 2))
+      return
     }
+
+    yield* Console.log(Api.Notes.renderMarkdownNotes(result.notes))
   }),
 )

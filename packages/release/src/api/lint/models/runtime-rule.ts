@@ -31,6 +31,7 @@ export interface RuntimeRule<
 type CreateParams<Options, Metadata, Error, Context> = {
   readonly id: Rule['id']
   readonly description: Rule['description']
+  readonly preventsDescriptions?: Rule['preventsDescriptions']
   readonly preconditions: Rule['preconditions']
   readonly defaults?: Rule['defaults']
   readonly optionsSchema?: Schema.Schema.AnyNoContext

@@ -14,7 +14,7 @@ import { Schema as S } from 'effect'
  *   Published to `next` dist-tag.
  *   Version format: `<base>-next.<iteration>`
  *
- * - **ephemeral** — PR preview release for integration testing.
+ * - **ephemeral** — PR-scoped release for integration testing.
  *   Uses a zero base version with PR metadata in the prerelease segment.
  *   Published to a per-PR dist-tag.
  *   Version format: `0.0.0-pr.<prNumber>.<iteration>.<sha>`

@@ -111,6 +111,7 @@ export function whoami(
             operation: 'whoami',
             detail: 'npm whoami returned empty - check your npm authentication',
           },
+          cause: new Error('npm whoami returned empty output'),
         }),
       )
     }
@@ -162,6 +163,7 @@ export function publish(
                 operation: 'publish',
                 detail: `npm publish exited with code ${code}`,
               },
+              cause: new Error(`npm publish exited with code ${code}`),
             }),
           )
         }

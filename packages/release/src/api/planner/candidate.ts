@@ -3,7 +3,7 @@ import { Resource } from '@kitz/resource'
 import { Effect } from 'effect'
 import { buildDependencyGraph, type DependencyGraph } from '../analyzer/cascade.js'
 import type { Analysis } from '../analyzer/models/__.js'
-import { findLatestPreviewNumber } from '../analyzer/version.js'
+import { findLatestCandidateNumber } from '../analyzer/version.js'
 import type { Package } from '../analyzer/workspace.js'
 import * as Version from '../version/__.js'
 import { calculateNextVersion } from '../version/calculate.js'
@@ -32,7 +32,7 @@ const detectCascadesForCandidate = (
     const baseVersion = cascade.nextVersion
 
     // Find existing candidate releases for this version
-    const candidateNumber = findLatestPreviewNumber(cascade.package.name, baseVersion, tags)
+    const candidateNumber = findLatestCandidateNumber(cascade.package.name, baseVersion, tags)
 
     return Candidate.make({
       package: cascade.package,
@@ -72,7 +72,7 @@ export const candidate = (
       const nextOfficialVersion = calculateNextVersion(impact.currentVersion, impact.bump)
 
       // Find existing candidate releases for this version
-      const candidateNumber = findLatestPreviewNumber(impact.package.name, nextOfficialVersion, [
+      const candidateNumber = findLatestCandidateNumber(impact.package.name, nextOfficialVersion, [
         ...analysis.tags,
       ])
 

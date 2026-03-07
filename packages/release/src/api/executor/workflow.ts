@@ -18,7 +18,9 @@ import { Github } from '@kitz/github'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Schema } from 'effect'
-import * as Log from '../log/__.js'
+import * as Notes from '../notes/__.js'
+import { Publishing } from '../publishing.js'
+import { LifecycleSchema } from '../version/models/lifecycle.js'
 import {
   ExecutorError as ExecutorErrorSchema,
   ExecutorGHReleaseError,
@@ -69,6 +71,8 @@ export const ReleasePayload = Schema.Struct({
     dryRun: Schema.Boolean,
     tag: Schema.optional(Schema.String),
     registry: Schema.optional(Schema.String),
+    lifecycle: Schema.optional(LifecycleSchema),
+    publishing: Schema.optional(Publishing),
   }),
 })
 
@@ -120,6 +124,8 @@ export const ReleaseWorkflow = Flo.Workflow.make({
           'Preflight',
           runPreflight(plannedReleases, {
             ...(payload.options.registry && { registry: payload.options.registry }),
+            ...(payload.options.lifecycle && { lifecycle: payload.options.lifecycle }),
+            ...(payload.options.publishing && { publishing: payload.options.publishing }),
           }).pipe(
             Effect.mapError(
               (e: PreflightError) =>
@@ -209,7 +215,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
         Pkg.Moniker.parse(release.packageName),
         Semver.fromString(release.nextVersion),
       )
-      const isPreview = payload.options.tag === 'next' || tag.endsWith('@next')
+      const isCandidate = payload.options.tag === 'next' || tag.endsWith('@next')
       return node(
         `PushTag:${tag}`,
         Effect.gen(function* () {
@@ -218,7 +224,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
           } else {
             yield* Effect.log(`Pushing tag: ${tag}`)
             const gitService = yield* Git.Git
-            yield* gitService.pushTag(tag, 'origin', isPreview)
+            yield* gitService.pushTag(tag, 'origin', isCandidate)
           }
           return tag
         }).pipe(
@@ -243,7 +249,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
     const createGHReleases = payload.releases.map((release, i) => {
       const nextVersion = Semver.fromString(release.nextVersion)
       const tag = formatTag(Pkg.Moniker.parse(release.packageName), nextVersion)
-      const isPreview = payload.options.tag === 'next' || tag.endsWith('@next')
+      const isCandidate = payload.options.tag === 'next' || tag.endsWith('@next')
       const isPrerelease = Semver.getPrerelease(nextVersion) !== undefined
       return node(
         `CreateGHRelease:${tag}`,
@@ -256,7 +262,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
           yield* Effect.log(`Creating GH release: ${tag}`)
 
           // Generate changelog for release body
-          const changelog = yield* Log.format({
+          const changelog = yield* Notes.format({
             scope: release.packageName,
             commits: release.commits,
             newVersion: release.nextVersion,
@@ -264,16 +270,16 @@ export const ReleaseWorkflow = Flo.Workflow.make({
 
           const gh = yield* Github.Github
 
-          // Check if preview release already exists
-          if (isPreview) {
+          // Check if candidate release already exists
+          if (isCandidate) {
             const exists = yield* gh.releaseExists(tag)
 
             if (exists) {
-              // Update existing preview release
-              yield* Effect.log(`Updating existing preview release: ${tag}`)
+              // Update existing candidate release
+              yield* Effect.log(`Updating existing candidate release: ${tag}`)
               yield* gh.updateRelease(tag, { body: changelog.markdown })
             } else {
-              // Create new preview release
+              // Create new candidate release
               yield* gh.createRelease({
                 tag,
                 title: `${release.packageName} @next`,
@@ -282,7 +288,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
               })
             }
           } else {
-            // Create stable release
+            // Create official release
             yield* gh.createRelease({
               tag,
               title: `${release.packageName} v${release.nextVersion}`,
