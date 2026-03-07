@@ -27,6 +27,8 @@ is_ignored() {
   local path="$1"
 
   case "$path" in
+    .claude/*) return 0 ;;
+    .serena/*) return 0 ;;
     */__snapshots__/*) return 0 ;;
     tools/oxlint-custom-rules/tests/fixtures/*) return 0 ;;
     packages/core/src/obj/diff.test-d.ts) return 0 ;;
