@@ -12,42 +12,5 @@ fi
 STAGED_FMT=$(git diff --cached --name-only --diff-filter=d -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs' '*.json' '*.jsonc')
 if [ -z "$STAGED_FMT" ]; then exit 0; fi
 
-STASHED=0
-STASH_BEFORE=$(git rev-parse -q --verify refs/stash 2>/dev/null || true)
-
-restore_unstaged_changes() {
-  if [ "$STASHED" -ne 1 ]; then
-    return 0
-  fi
-
-  if git stash pop --quiet; then
-    return 0
-  fi
-
-  echo "Failed to restore unstaged changes after pre-commit formatting. Resolve conflicts and re-apply the stash manually if needed." >&2
-  return 1
-}
-
-cleanup() {
-  STATUS=$?
-  trap - EXIT
-
-  if ! restore_unstaged_changes; then
-    exit 1
-  fi
-
-  exit "$STATUS"
-}
-
-trap cleanup EXIT
-
-if ! git diff --quiet --ignore-submodules -- || [ -n "$(git ls-files --others --exclude-standard)" ]; then
-  git stash push --keep-index --include-untracked --quiet --message "pre-commit-backup"
-  STASH_AFTER=$(git rev-parse -q --verify refs/stash 2>/dev/null || true)
-  if [ -n "$STASH_AFTER" ] && [ "$STASH_AFTER" != "$STASH_BEFORE" ]; then
-    STASHED=1
-  fi
-fi
-
-git diff --cached --name-only --diff-filter=d -z -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs' '*.json' '*.jsonc' | xargs -0 pnpm exec oxfmt --write
-git diff --cached --name-only --diff-filter=d -z -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs' '*.json' '*.jsonc' | xargs -0 git add --
+git diff --cached --name-only --diff-filter=d -z -- '*.ts' '*.tsx' '*.js' '*.jsx' '*.mjs' '*.cjs' '*.json' '*.jsonc' \
+  | node tools/format-staged-files.mjs
