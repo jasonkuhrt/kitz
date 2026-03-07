@@ -55,7 +55,7 @@ export const rule = RuntimeRule.create({
         hints: [
           Hint.make({
             description:
-              'Set `GITHUB_REPOSITORY=\"owner/repo\"` in CI or configure a GitHub `origin` remote locally.',
+              'Set `GITHUB_REPOSITORY="owner/repo"` in CI or configure a GitHub `origin` remote locally.',
           }),
         ],
         docs: [
