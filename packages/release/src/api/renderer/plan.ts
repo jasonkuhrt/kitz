@@ -46,12 +46,13 @@ export const renderPlan = (plan: Plan): string => {
  * Render a status summary of releases for the `status` command.
  */
 export const renderStatus = (releases: readonly Item[]): string => {
+  const sortedReleases = [...releases].sort(compareStatusItems)
   const output = Str.Builder()
   output`Unreleased changes:`
   output``
   output`${renderTable([
     ['Package', 'From', 'To', 'Bump', 'Commits'],
-    ...releases.map(formatStatusRow),
+    ...sortedReleases.map(formatStatusRow),
   ])}`
 
   output``
@@ -175,4 +176,11 @@ const formatStatusRow = (release: Item): string[] => {
     release.bumpType ?? '-',
     String(release.commits.length),
   ]
+}
+
+const compareStatusItems = (a: Item, b: Item): number => {
+  const commitDelta = b.commits.length - a.commits.length
+  if (commitDelta !== 0) return commitDelta
+
+  return a.package.name.moniker.localeCompare(b.package.name.moniker)
 }

@@ -121,7 +121,7 @@ describe('renderPlan', () => {
 // ── renderStatus ─────────────────────────────────────────────────────
 
 describe('renderStatus', () => {
-  test('renders release status as one row per package', () => {
+  test('renders release status as one row per package sorted by commit count', () => {
     const releases = [
       Official.make({
         package: pkg('@kitz/core', 'core'),
@@ -131,6 +131,19 @@ describe('renderStatus', () => {
           bump: 'minor',
         }),
         commits: [commit('core', 'feat(core): first'), commit('core', 'fix(core): second')],
+      }),
+      Official.make({
+        package: pkg('@kitz/cli', 'cli'),
+        version: OfficialIncrement.make({
+          from: Semver.fromString('1.0.0'),
+          to: Semver.fromString('1.1.0'),
+          bump: 'minor',
+        }),
+        commits: [
+          commit('cli', 'feat(cli): first'),
+          commit('cli', 'fix(cli): second'),
+          commit('cli', 'fix(cli): third'),
+        ],
       }),
     ]
     const output = renderStatus(releases)
@@ -142,11 +155,14 @@ describe('renderStatus', () => {
     expect(output).toContain('Bump')
     expect(output).toContain('Commits')
     expect(output).toContain('@kitz/core')
+    expect(output).toContain('@kitz/cli')
     expect(output).toContain('1.0.0')
     expect(output).toContain('1.1.0')
     expect(output).toContain('minor')
     expect(output).toContain('2')
+    expect(output).toContain('3')
     expect(output).not.toContain('Planned release')
+    expect(output.indexOf('@kitz/cli')).toBeLessThan(output.indexOf('@kitz/core'))
   })
 })
 
