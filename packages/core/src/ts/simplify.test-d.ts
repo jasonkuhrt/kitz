@@ -1,4 +1,4 @@
-// dprint-ignore-file
+// Intentionally excluded from oxfmt; column alignment is part of the test fixture.
 import type { Num } from '#num'
 import { Ts } from '#ts'
 import type { Fn } from '#fn'

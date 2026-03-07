@@ -1,0 +1,12 @@
+{
+  "singleQuote": true,
+  "semi": false,
+  "sortPackageJson": false,
+  "ignorePatterns": [
+    ".beads/**",
+    "**/__snapshots__/**",
+    "tools/oxlint-custom-rules/tests/fixtures/**",
+    "packages/core/src/obj/diff.test-d.ts",
+    "packages/core/src/ts/simplify.test-d.ts"
+  ]
+}

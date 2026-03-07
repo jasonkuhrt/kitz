@@ -1,4 +1,4 @@
-// dprint-ignore-file
+// Intentionally excluded from oxfmt; column alignment is part of the test fixture.
 import { Ts } from '#ts'
 import { Type as A } from '#kitz/assert/assert'
 import type * as Diff from './diff.js'
