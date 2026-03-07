@@ -31,17 +31,15 @@ const packagesRelDir = Fs.Path.RelDir.fromString('./packages/')
  * Error type for scan operation.
  */
 export type ScanError =
-  | Monorepo.Pnpm.Errors.ConfigNotFoundError
-  | Monorepo.Pnpm.Errors.YamlParseError
-  | Monorepo.Pnpm.Errors.ConfigValidationError
-  | Monorepo.Pnpm.Errors.GlobError
+  | Monorepo.Workspace.Errors.ConfigNotFoundError
+  | Monorepo.Workspace.Errors.GlobError
   | PlatformError
   | Resource.ResourceError
 
 /**
- * Scan packages in the monorepo using pnpm-workspace.yaml.
+ * Scan packages in the monorepo using the root package.json workspaces field.
  *
- * Uses {@link Monorepo.Pnpm.read} to discover packages from the workspace
+ * Uses {@link Monorepo.Workspace.read} to discover packages from the workspace
  * configuration and builds a scope-to-package mapping.
  *
  * @example
@@ -54,7 +52,7 @@ export type ScanError =
  */
 export const scan: Effect.Effect<Package[], ScanError, FileSystem.FileSystem | Env.Env> =
   Effect.gen(function* () {
-    const discovered = yield* Monorepo.Pnpm.read({ expand: true, manifests: true })
+    const discovered = yield* Monorepo.Workspace.read({ expand: true, manifests: true })
 
     return discovered.packages
       .filter((pkg) => {

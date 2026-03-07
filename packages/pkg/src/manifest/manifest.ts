@@ -25,6 +25,7 @@ const Bugs = S.Struct({
 })
 
 const Engines = S.Struct({
+  bun: S.optional(S.String),
   node: S.optional(S.String),
   npm: S.optional(S.String),
   pnpm: S.optional(S.String),
@@ -116,7 +117,7 @@ export const emptyManifest = Manifest.make()
  * Resource for reading/writing package.json with Schema validation.
  *
  * Uses `preserveExcessProperties: true` to ensure unknown fields in package.json
- * (like `turbo`, `publishConfig`, custom fields) survive round-trips.
+ * (like `publishConfig`, `trustedDependencies`, and other custom fields) survive round-trips.
  */
 export const resource: Resource.Resource<Manifest> = Resource.createJson(
   'package.json',

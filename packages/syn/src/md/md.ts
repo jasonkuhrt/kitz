@@ -106,7 +106,7 @@ export const codeFence = (code: string, language = 'typescript', modifiers?: str
  * ```ts
  * codeGroup([
  *   { label: 'npm', code: 'npm install foo', language: 'bash' },
- *   { label: 'pnpm', code: 'pnpm add foo', language: 'bash' }
+ *   { label: 'bun', code: 'bun add foo', language: 'bash' }
  * ])
  * ```
  */
@@ -464,7 +464,7 @@ export interface Builder {
    * ```ts
    * doc.codeGroup([
    *   { label: 'npm', code: 'npm install foo', language: 'bash' },
-   *   { label: 'pnpm', code: 'pnpm add foo', language: 'bash' }
+   *   { label: 'bun', code: 'bun add foo', language: 'bash' }
    * ])
    * ```
    */

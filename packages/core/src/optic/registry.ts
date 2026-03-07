@@ -16,7 +16,7 @@ import type * as Returned from './lenses/returned.js'
  * To add a new lens:
  * 1. Define the lens module in lenses/
  * 2. Add entry here: `lensName: LensModule.$Get`
- * 3. Run `pnpm generate:test-namespaces`
+ * 3. Run `bun run generate:test-namespaces`
  *
  * Everything else (builder API, generated files) derives automatically.
  */

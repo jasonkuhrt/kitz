@@ -58,7 +58,7 @@ describe('commentator doctor', () => {
             detail: 'Trusted publishing expects package manifests to point back to the same repo.',
             fix: CommandFix.make({
               summary: 'Apply the canonical PR title header.',
-              command: 'pnpm release pr title apply',
+              command: 'bun run release pr title apply',
             }),
             hints: [
               Hint.make({
@@ -81,14 +81,14 @@ describe('commentator doctor', () => {
       plannedPackages: 2,
       runbook: {
         title: 'Manual Preview Runbook',
-        commands: ['pnpm release:build', 'PR_NUMBER=129 pnpm release:plan:ephemeral'],
+        commands: ['bun run release:build', 'PR_NUMBER=129 bun run release:plan:ephemeral'],
       },
       deferredChecks: [
         {
           label: 'npm auth is configured (npm whoami succeeds)',
           ruleId: 'env.npm-authenticated',
           preventsDescriptions: ['npm publish failing because npm auth is missing'],
-          checkCommand: 'pnpm release doctor --onlyRule env.npm-authenticated',
+          checkCommand: 'bun run release doctor --onlyRule env.npm-authenticated',
         },
       ],
     })
@@ -104,7 +104,7 @@ describe('commentator doctor', () => {
     expect(rendered).toContain('Guidance (1)')
     expect(rendered).toContain('Repository provenance')
     expect(rendered).toContain('Fix: Apply the canonical PR title header.')
-    expect(rendered).toContain('Command: `pnpm release pr title apply`')
+    expect(rendered).toContain('Command: `bun run release pr title apply`')
     expect(rendered).toContain('Manual Preview Runbook')
     expect(rendered).toContain('Could Still Go Wrong Locally')
   })

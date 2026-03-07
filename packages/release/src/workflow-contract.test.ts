@@ -13,9 +13,9 @@ describe('Release workflow CLI contract', () => {
   test('pr workflow renders a forecast comment through npm scripts', () => {
     const workflow = readWorkflow('pr.yml')
 
-    expect(workflow).toContain('pnpm release:build')
+    expect(workflow).toContain('bun run release:build')
     expect(workflow).toContain(
-      'pnpm release:forecast:comment -- --publish-history /tmp/publish-history.json > /tmp/release-plan-comment.md',
+      'bun run release:forecast:comment -- --publish-history /tmp/publish-history.json > /tmp/release-plan-comment.md',
     )
     expect(workflow).toContain('PR_TITLE: ${{ github.event.pull_request.title }}')
     expect(workflow).toContain('PR_BODY: ${{ github.event.pull_request.body }}')

@@ -1,5 +1,5 @@
-import { CommandExecutor } from '@effect/platform'
-import { Effect, Layer, Option, Sink, Stream } from 'effect'
+import { Command, CommandExecutor } from '@effect/platform'
+import { Effect, Inspectable, Layer, Option, Sink, Stream } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
@@ -20,6 +20,10 @@ const makeProcess = (stdout: string, exitCode: number): CommandExecutor.Process 
   stderr: Stream.empty,
   stdin: Sink.drain,
   stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
+  toJSON: () => ({ _tag: 'MockProcess', pid: 1, exitCode }),
+  [Inspectable.NodeInspectSymbol]() {
+    return this.toJSON()
+  },
 })
 
 const makeCommandExecutorLayer = (exists: boolean) =>
@@ -27,18 +31,19 @@ const makeCommandExecutorLayer = (exists: boolean) =>
     [CommandExecutor.TypeId]: CommandExecutor.TypeId,
     exitCode: () => Effect.succeed(CommandExecutor.ExitCode(0)),
     start: (command) => {
+      const standard = Command.flatten(command)[0]
       if (
-        command?._tag !== 'StandardCommand' ||
-        command.command !== 'npm' ||
-        command.args?.[0] !== '--silent' ||
-        command.args?.[1] !== 'view'
+        !standard ||
+        standard.command !== 'npm' ||
+        standard.args?.[0] !== '--silent' ||
+        standard.args?.[1] !== 'view'
       ) {
         return Effect.die(
-          `Unexpected command in mock executor: ${command?.command ?? 'unknown'}`,
+          `Unexpected command in mock executor: ${standard?.command ?? 'unknown'}`,
         ) as any
       }
 
-      const spec = command.args?.[2]
+      const spec = standard.args?.[2]
       if (spec !== '@kitz/core@1.0.1') {
         return Effect.die(`Unexpected npm view spec: ${spec ?? 'unknown'}`) as any
       }

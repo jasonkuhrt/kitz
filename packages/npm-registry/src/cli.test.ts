@@ -1,5 +1,5 @@
-import { CommandExecutor } from '@effect/platform'
-import { Effect, Layer, Sink, Stream } from 'effect'
+import { Command, CommandExecutor } from '@effect/platform'
+import { Effect, Inspectable, Layer, Sink, Stream } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { NpmCliError, hasVersion } from './cli.js'
 
@@ -14,6 +14,10 @@ const makeProcess = (stdout: string, exitCode: number): CommandExecutor.Process 
   stderr: Stream.empty,
   stdin: Sink.drain,
   stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
+  toJSON: () => ({ _tag: 'MockProcess', pid: 1, exitCode }),
+  [Inspectable.NodeInspectSymbol]() {
+    return this.toJSON()
+  },
 })
 
 const makeCommandExecutorLayer = () => {
@@ -21,18 +25,19 @@ const makeCommandExecutorLayer = () => {
     [CommandExecutor.TypeId]: CommandExecutor.TypeId,
     exitCode: () => Effect.succeed(CommandExecutor.ExitCode(0)),
     start: (command) => {
+      const standard = Command.flatten(command)[0]
       if (
-        command?._tag !== 'StandardCommand' ||
-        command.command !== 'npm' ||
-        command.args?.[0] !== '--silent' ||
-        command.args?.[1] !== 'view'
+        !standard ||
+        standard.command !== 'npm' ||
+        standard.args?.[0] !== '--silent' ||
+        standard.args?.[1] !== 'view'
       ) {
         return Effect.die(
-          `Unexpected command in mock executor: ${command?.command ?? 'unknown'}`,
+          `Unexpected command in mock executor: ${standard?.command ?? 'unknown'}`,
         ) as any
       }
 
-      const spec = command.args?.[2]
+      const spec = standard.args?.[2]
 
       if (spec === 'react@19.2.0') {
         return Effect.succeed(makeProcess('"19.2.0"\n', 0)) as any

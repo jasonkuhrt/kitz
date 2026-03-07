@@ -12,7 +12,7 @@ export interface EvaluatedPreconditions {
   readonly hasOpenPR: boolean
   /** PR has file changes. */
   readonly hasDiff: boolean
-  /** Project is a pnpm workspace. */
+  /** Project declares monorepo workspaces in the root package.json. */
   readonly isMonorepo: boolean
   /** GitHub API token available with repo read access. */
   readonly hasGitHubAccess: boolean

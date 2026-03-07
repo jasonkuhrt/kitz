@@ -7,13 +7,8 @@ permissions:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-env:
-  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
 jobs:
-  # Determine what checks to run based on conventional commit type in PR title
-  # chore.docs: and ci: skip code checks (only format runs)
   check-type:
     runs-on: ubuntu-latest
     outputs:
@@ -23,8 +18,6 @@ jobs:
         id: check
         run: |
           TITLE="${{ github.event.pull_request.title }}"
-          # Skip code checks for ci: and chore.docs: (out-of-band docs)
-          # docs(pkg): runs full checks (JSDoc is code)
           if [[ "$TITLE" =~ ^ci(\(|:) ]]; then
             echo "skip-code-checks=true" >> $GITHUB_OUTPUT
             echo "Skipping code checks (ci): $TITLE"
@@ -41,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - run: pnpm format:check
+      - run: bun run format:check
 
   api-model-style:
     needs: check-type
@@ -53,12 +46,10 @@ jobs:
         if: needs.check-type.outputs.skip-code-checks != 'true'
       - name: Check API model style
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: pnpm check:api-model-style
+        run: bun run check:api-model-style
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
-  # Validate that "no-release" CC types don't have package src/ changes
-  # Bypass with "<!-- cc-bypass -->" in PR body for edge cases
   validate-cc:
     runs-on: ubuntu-latest
     steps:
@@ -74,17 +65,14 @@ jobs:
           BODY: ${{ github.event.pull_request.body }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          # Check for bypass comment
           if [[ "${BODY:-}" == *"<!-- cc-bypass -->"* ]]; then
             echo "CC validation bypassed via PR comment"
             exit 0
           fi
 
-          # No-release types: chore, style, refactor, test, build, ci, chore.docs
           NO_RELEASE_PATTERN="^(chore|style|refactor|test|build|ci|chore\.docs)(\(|:)"
 
           if [[ "$TITLE" =~ $NO_RELEASE_PATTERN ]]; then
-            # Check for src/ changes in packages (compare against PR base)
             SRC_CHANGES=$(git diff --name-only "origin/$BASE_REF"...HEAD | grep -E '^packages/[^/]+/src/' || true)
 
             if [[ -n "$SRC_CHANGES" ]]; then
@@ -106,58 +94,31 @@ jobs:
 
           echo "CC type validated: $TITLE"
 
-  # Package jobs use affected-only filtering to skip unchanged packages
-  # fetch-depth: 0 is required for Turborepo's git-based filtering
-  # Jobs skip actual work (but still pass) for chore.docs:/ci: PRs
-  # Fallback: if affected filter returns 0 packages, run all (handles new packages)
   packages-build:
     needs: check-type
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        with:
-          fetch-depth: 0
       - uses: ./.github/actions/setup
         if: needs.check-type.outputs.skip-code-checks != 'true'
-      - name: Build packages (affected or all)
+      - name: Build packages
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: |
-          FILTER_ARGS=(--filter="...[origin/${{ github.event.pull_request.base.ref }}]" --filter="./packages/*")
-          TASK_COUNT=$(pnpm turbo run build "${FILTER_ARGS[@]}" --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
-          if [[ "$TASK_COUNT" == "0" ]]; then
-            echo "No affected packages found, running all packages"
-            pnpm turbo run build --filter="./packages/*"
-          else
-            echo "Running $TASK_COUNT affected package(s)"
-            pnpm turbo run build "${FILTER_ARGS[@]}"
-          fi
+        run: bun run build:packages
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
-  # Turbo's dependsOn + Vercel Remote Cache handles build dependencies automatically
   packages-types:
     needs: check-type
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        with:
-          fetch-depth: 0
       - uses: ./.github/actions/setup
         if: needs.check-type.outputs.skip-code-checks != 'true'
-      - name: Type check packages (affected or all)
+      - name: Type check packages
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: |
-          FILTER_ARGS=(--filter="...[origin/${{ github.event.pull_request.base.ref }}]" --filter="./packages/*")
-          TASK_COUNT=$(pnpm turbo run check:types "${FILTER_ARGS[@]}" --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
-          if [[ "$TASK_COUNT" == "0" ]]; then
-            echo "No affected packages found, running all packages"
-            pnpm turbo run check:types --filter="./packages/*"
-          else
-            echo "Running $TASK_COUNT affected package(s)"
-            pnpm turbo run check:types "${FILTER_ARGS[@]}"
-          fi
+        run: bun run check:types:packages
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
@@ -167,22 +128,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        with:
-          fetch-depth: 0
       - uses: ./.github/actions/setup
         if: needs.check-type.outputs.skip-code-checks != 'true'
-      - name: Lint packages (affected or all)
+      - name: Lint packages
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: |
-          FILTER_ARGS=(--filter="...[origin/${{ github.event.pull_request.base.ref }}]" --filter="./packages/*")
-          TASK_COUNT=$(pnpm turbo run check:lint "${FILTER_ARGS[@]}" --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
-          if [[ "$TASK_COUNT" == "0" ]]; then
-            echo "No affected packages found, running all packages"
-            pnpm turbo run check:lint --filter="./packages/*" -- --type-aware
-          else
-            echo "Running $TASK_COUNT affected package(s)"
-            pnpm turbo run check:lint "${FILTER_ARGS[@]}" -- --type-aware
-          fi
+        run: bun run check:lint:packages:type-aware
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
@@ -192,22 +142,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        with:
-          fetch-depth: 0
       - uses: ./.github/actions/setup
         if: needs.check-type.outputs.skip-code-checks != 'true'
-      - name: Publint packages (affected or all)
+      - name: Check published package shapes
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: |
-          FILTER_ARGS=(--filter="...[origin/${{ github.event.pull_request.base.ref }}]" --filter="./packages/*")
-          TASK_COUNT=$(pnpm turbo run check:package "${FILTER_ARGS[@]}" --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
-          if [[ "$TASK_COUNT" == "0" ]]; then
-            echo "No affected packages found, running all packages"
-            pnpm turbo run check:package --filter="./packages/*"
-          else
-            echo "Running $TASK_COUNT affected package(s)"
-            pnpm turbo run check:package "${FILTER_ARGS[@]}"
-          fi
+        run: bun run check:package:packages
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
@@ -217,26 +156,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        with:
-          fetch-depth: 0
       - uses: ./.github/actions/setup
         if: needs.check-type.outputs.skip-code-checks != 'true'
-      - name: Test packages (affected or all)
+      - name: Test packages
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: |
-          FILTER_ARGS=(--filter="...[origin/${{ github.event.pull_request.base.ref }}]" --filter="./packages/*")
-          TASK_COUNT=$(pnpm turbo run test "${FILTER_ARGS[@]}" --dry-run 2>&1 | grep "Tasks:" | grep -oE '[0-9]+ total' | grep -oE '[0-9]+' || echo "0")
-          if [[ "$TASK_COUNT" == "0" ]]; then
-            echo "No affected packages found, running all packages"
-            pnpm turbo run test --filter="./packages/*"
-          else
-            echo "Running $TASK_COUNT affected package(s)"
-            pnpm turbo run test "${FILTER_ARGS[@]}"
-          fi
+        run: bun run test:packages
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
-  # Generate PR release plan and post/update a comment for reviewer visibility
   release-plan-comment:
     needs: check-type
     if: needs.check-type.outputs.skip-code-checks != 'true'
@@ -252,7 +179,7 @@ jobs:
           git fetch --tags --force
       - uses: ./.github/actions/setup
       - name: Build release package
-        run: pnpm release:build
+        run: bun run release:build
       - name: Extract publish history from existing comment
         uses: actions/github-script@v7
         id: history
@@ -285,7 +212,7 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           GITHUB_PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          pnpm release:forecast:comment -- --publish-history /tmp/publish-history.json > /tmp/release-plan-comment.md
+          bun run release:forecast:comment -- --publish-history /tmp/publish-history.json > /tmp/release-plan-comment.md
       - name: Upsert PR release forecast comment
         uses: ./.github/actions/upsert-pr-comment
         with:

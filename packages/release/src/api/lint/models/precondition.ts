@@ -10,7 +10,7 @@ export class HasDiff extends Schema.TaggedClass<HasDiff>()('PreconditionHasDiff'
   static is = Schema.is(HasDiff)
 }
 
-/** Project is a pnpm workspace. */
+/** Project declares monorepo workspaces in the root package.json. */
 export class IsMonorepo extends Schema.TaggedClass<IsMonorepo>()('PreconditionIsMonorepo', {}) {
   static is = Schema.is(IsMonorepo)
 }

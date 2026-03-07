@@ -24,9 +24,8 @@ CLAUDE.local.md
 .claude/worktrees/
 # Note: .claude/settings.local.json is committed for worktree permission sharing
 
-# Turborepo
-.turbo
 .worktrees/
+.turbo
 
 # Release CLI output
 .release/

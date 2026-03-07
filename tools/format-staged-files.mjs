@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 
 import { spawnSync } from 'node:child_process'
 import { existsSync, writeFileSync } from 'node:fs'
@@ -57,7 +57,7 @@ const isIgnored = (path) =>
   path === 'packages/core/src/ts/simplify.test-d.ts'
 
 const formatStagedBlob = (path, source) =>
-  run('pnpm', ['exec', 'oxfmt', '--stdin-filepath', path], { input: source })
+  run('bunx', ['oxfmt', '--stdin-filepath', path], { input: source })
 
 const updateIndex = (path, mode, contents) => {
   const blobId = run('git', ['hash-object', '-w', '--stdin'], { input: contents }).trim()

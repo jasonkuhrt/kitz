@@ -1,4 +1,4 @@
-import { CommandExecutor } from '@effect/platform'
+import { Command, CommandExecutor } from '@effect/platform'
 import { describe, expect, it as test } from '@effect/vitest'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
@@ -7,7 +7,7 @@ import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, Layer, Ref, Schema, Sink, Stream } from 'effect'
+import { Effect, Inspectable, Layer, Ref, Schema, Sink, Stream } from 'effect'
 import * as Analyzer from './analyzer/__.js'
 import {
   execute as executeWorkflow,
@@ -83,30 +83,31 @@ const makeMockCommandExecutorLayer = (whoamiUsername: string) => {
     stderr: Stream.empty,
     stdin: Sink.drain,
     stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
+    toJSON: () => ({ _tag: 'MockProcess', pid: 1, exitCode }),
+    [Inspectable.NodeInspectSymbol]() {
+      return this.toJSON()
+    },
   })
 
   const runString = (command: any) => {
-    if (
-      command?._tag === 'StandardCommand' &&
-      command.command === 'npm' &&
-      command.args?.[0] === 'whoami'
-    ) {
+    const standard = Command.flatten(command)[0]
+    if (standard?.command === 'npm' && standard.args?.[0] === 'whoami') {
       return Effect.succeed(`${whoamiUsername}\n`)
     }
-    return Effect.die(`Unexpected command in mock executor: ${command?.command ?? 'unknown'}`)
+    return Effect.die(`Unexpected command in mock executor: ${standard?.command ?? 'unknown'}`)
   }
 
   const executor: CommandExecutor.CommandExecutor = {
     [CommandExecutor.TypeId]: CommandExecutor.TypeId,
     exitCode: () => Effect.succeed(CommandExecutor.ExitCode(0)),
     start: (command) => {
+      const standard = Command.flatten(command)[0]
       if (
-        command?._tag === 'StandardCommand' &&
-        command.command === 'npm' &&
-        command.args?.[0] === '--silent' &&
-        command.args?.[1] === 'view'
+        standard?.command === 'npm' &&
+        standard.args?.[0] === '--silent' &&
+        standard.args?.[1] === 'view'
       ) {
-        const spec = command.args?.[2]
+        const spec = standard.args?.[2]
         const version = spec?.split('@').at(-1)
         return Effect.succeed(
           version === '9.9.9'
@@ -128,7 +129,7 @@ const makeMockCommandExecutorLayer = (whoamiUsername: string) => {
       }
 
       return Effect.die(
-        `Unexpected command in mock executor: ${command?.command ?? 'unknown'}`,
+        `Unexpected command in mock executor: ${standard?.command ?? 'unknown'}`,
       ) as any
     },
     string: runString,

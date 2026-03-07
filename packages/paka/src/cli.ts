@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import { Effect, Either } from 'effect'
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'fs'
 import { readFile } from 'fs/promises'

@@ -40,7 +40,7 @@ const args = Command.create()
     z
       .union([
         z.boolean().describe(`Use the system-detected package manager.`),
-        z.enum([`yarn`, `npm`, `pnpm`]).describe(`Force use of a specific package manager.`),
+        z.enum([`bun`, `yarn`, `npm`]).describe(`Force use of a specific package manager.`),
       ])
       .describe(`Run dependency install after setup.`)
       .default(false),

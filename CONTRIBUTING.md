@@ -6,7 +6,7 @@ This project is designed for Claude Code-assisted development. Common workflows 
 
 | Skill                      | Purpose                                        |
 | -------------------------- | ---------------------------------------------- |
-| `running-scripts`          | Turbo commands, caching, and test execution    |
+| `running-scripts`          | Bun workspace commands and test execution      |
 | `creating-packages`        | Create new packages with full scaffolding      |
 | `creating-modules`         | Add modules to existing packages               |
 | `creating-rules`           | Add conventions with correct scoping           |
@@ -30,13 +30,13 @@ Some packages have their own conventions in `packages/<name>/.claude/CONVENTIONS
 
 ## Architecture
 
-Kitz is a pnpm workspace monorepo with packages under `packages/`. All packages are scoped under `@kitz/` except the `kitz` aggregator-package.
+Kitz is a Bun workspace monorepo with packages under `packages/`. All packages are scoped under `@kitz/` except the `kitz` aggregator-package.
 
-**Build system**: Turbo + tsgo (TypeScript Go port)
+**Build system**: Bun workspaces + tsgo (TypeScript Go port)
 
 ```bash
-pnpm turbo run build                        # All packages
-pnpm turbo run build --filter=@kitz/core   # Single package
+bun run build:packages                       # All packages
+bun run --filter @kitz/core build            # Single package
 ```
 
 **Cross-package dependencies**: Use `workspace:*` and import by package name. Note that `#` imports are scoped per-package - cross-package `#` imports are not valid.
@@ -51,11 +51,11 @@ Custom Oxlint rules use two paths:
 `kitz/no-type-assertion` remains disabled. `typescript/no-unsafe-type-assertion` is also disabled for now because it is currently too noisy for this repo's function-body typing policy. `typescript/no-explicit-any` and `eslint-plugin-promise/prefer-await-to-then` are also temporarily disabled while the warning backlog is reduced. `kitz/no-throw` is temporarily disabled in repo lint configs while the remaining throw sites are migrated back onto typed failure channels; keep the rule implementation and fixture coverage intact so it can be restored once that backlog is cleared.
 
 ```bash
-pnpm check:lint                        # Lint (custom rules as warnings)
-pnpm check:lint:type-aware             # Lint with checker-backed rules enabled
-pnpm check:lint:strict-custom-rules    # Lint (custom rules as errors)
-pnpm check:lint:strict-custom-rules:type-aware
-pnpm test:oxlint-custom-rules          # Fixture tests for custom rules
+bun run check:lint                        # Lint (custom rules as warnings)
+bun run check:lint:type-aware             # Lint with checker-backed rules enabled
+bun run check:lint:strict-custom-rules    # Lint (custom rules as errors)
+bun run check:lint:strict-custom-rules:type-aware
+bun run test:oxlint-custom-rules          # Fixture tests for custom rules
 ```
 
 Rule details and migration guidance: `docs/oxlint-custom-rules.md`.

@@ -96,8 +96,8 @@ type ParsePin<$S extends string> =
  * Note: `^` and `~` alone are NOT valid semver ranges. They are
  * workspace-specific resolution tokens that get expanded at publish time.
  *
- * @see {@link https://pnpm.io/workspaces#publishing-workspace-packages | pnpm workspace protocol}
- * @see {@link https://yarnpkg.com/features/workspaces#publishing-workspaces | yarn workspace protocol}
+ * @see {@link https://bun.sh/docs/install/workspaces | Bun workspaces}
+ * @see {@link https://yarnpkg.com/features/workspaces#publishing-workspaces | Yarn workspace protocol}
  */
 export type WorkspaceRange = '*' | '^' | '~' | SemverRange.Range
 
@@ -265,8 +265,8 @@ export class Tag extends S.TaggedClass<Tag>()('PinTag', {
  * References a package in the same monorepo workspace.
  * The specifier is resolved at publish time to an actual version.
  *
- * @see {@link https://pnpm.io/workspaces#publishing-workspace-packages | pnpm workspace protocol}
- * @see {@link https://yarnpkg.com/features/workspaces#publishing-workspaces | yarn workspace protocol}
+ * @see {@link https://bun.sh/docs/install/workspaces | Bun workspaces}
+ * @see {@link https://yarnpkg.com/features/workspaces#publishing-workspaces | Yarn workspace protocol}
  */
 class WorkspaceClass extends S.TaggedClass<WorkspaceClass>()('PinWorkspace', {
   name: Moniker.FromString,

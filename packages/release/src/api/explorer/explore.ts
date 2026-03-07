@@ -241,7 +241,14 @@ export const resolvePrNumber = (): Effect.Effect<
   | Github.GithubAuthError
   | Github.GithubRateLimitError,
   Env.Env | Git.Git
-> => resolvePullRequest().pipe(Effect.map((pullRequest) => pullRequest?.number ?? null))
+> =>
+  Effect.gen(function* () {
+    const env = yield* Env.Env
+    const detected = detectPrNumber(env.vars)
+    if (detected !== null) return detected
+    const pullRequest = yield* resolvePullRequest()
+    return pullRequest?.number ?? null
+  })
 
 // ---------------------------------------------------------------------------
 // Public API

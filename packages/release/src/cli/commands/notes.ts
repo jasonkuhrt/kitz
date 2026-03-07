@@ -61,7 +61,7 @@ Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
     if (packages.length === 0) {
       yield* Console.log(
         'No packages found. Check release.config.ts `packages` field ' +
-          'or ensure pnpm-workspace.yaml defines workspace packages.',
+          'or ensure the root package.json defines workspace packages.',
       )
       return
     }

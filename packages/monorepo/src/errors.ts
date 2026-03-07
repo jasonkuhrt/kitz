@@ -1,1 +1,1 @@
-export { Errors } from '#pnpm/pnpm'
+export { Errors } from './workspace/__.js'

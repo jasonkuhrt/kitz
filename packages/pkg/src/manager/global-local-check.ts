@@ -90,8 +90,7 @@ function createGlobalLocalConflictError(
   template?: GlobalLocalCheckOptions['errorMessageTemplate'],
 ): Error {
   const defaultSolutions = [
-    `pnpm exec ${packageName} <command>`,
-    `npx ${packageName} <command>`,
+    `bunx ${packageName} <command>`,
     `./node_modules/.bin/${packageName} <command>`,
   ]
 
@@ -146,10 +145,11 @@ export const checkGlobalVsLocal = (
 
     // Check if running from global install
     // Common global installation patterns:
-    // - pnpm: /Users/.../Library/pnpm/packagename
+    // - bun: /Users/.../.bun/bin/packagename
     // - npm: /usr/local/lib/node_modules/packagename
     // - yarn: /Users/.../config/yarn/global/node_modules/packagename
     const isGlobalInstall =
+      currentExecutablePath.includes('/.bun/bin/') ||
       currentExecutablePath.includes('pnpm/global') ||
       currentExecutablePath.includes('.npm/global') ||
       currentExecutablePath.includes('yarn/global') ||

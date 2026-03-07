@@ -58,7 +58,7 @@ export const rule = RuntimeRule.create({
                   description: 'Verify the session with `npm whoami`.',
                 }),
                 FixStep.make({
-                  description: 'Re-run `pnpm release doctor --onlyRule env.npm-authenticated`.',
+                  description: 'Re-run `bun run release doctor --onlyRule env.npm-authenticated`.',
                 }),
                 FixStep.make({
                   description:

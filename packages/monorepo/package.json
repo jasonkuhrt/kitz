@@ -12,18 +12,6 @@
     "#monorepo": {
       "types": "./src/_.ts",
       "default": "./build/_.js"
-    },
-    "#monorepo/*": {
-      "types": "./src/*.ts",
-      "default": "./build/*.js"
-    },
-    "#pnpm": {
-      "types": "./src/pnpm/_.ts",
-      "default": "./build/pnpm/_.js"
-    },
-    "#pnpm/pnpm": {
-      "types": "./src/pnpm/__.ts",
-      "default": "./build/pnpm/__.js"
     }
   },
   "types": "./src/_.ts",
@@ -55,7 +43,6 @@
     "@kitz/fs": "workspace:*",
     "@kitz/pkg": "workspace:*",
     "@kitz/resource": "workspace:*",
-    "effect": "^3.19.5",
-    "yaml": "^2.7.1"
+    "effect": "^3.19.5"
   }
 }

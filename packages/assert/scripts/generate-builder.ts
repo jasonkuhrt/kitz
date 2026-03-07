@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env bun
 /**
  * Generate type-level test namespace files with ESM exports.
  *
@@ -11,7 +11,7 @@
  * 3. Maintainability (single source of truth)
  *
  * Run from packages/assert directory:
- *   pnpm generate
+ *   bun run generate
  */
 
 import { FileSystem, Path as PlatformPath } from '@effect/platform'

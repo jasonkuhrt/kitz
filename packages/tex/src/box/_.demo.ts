@@ -2,7 +2,7 @@
  * Demo of Box color features.
  *
  * This file demonstrates the various ways to use colors and styles in Box.
- * Run with: tsx src/domains/str/box/color-demo.ts
+ * Run with: bun src/box/_.demo.ts
  */
 
 import { Box } from './_.js'

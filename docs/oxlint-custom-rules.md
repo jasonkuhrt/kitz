@@ -14,7 +14,7 @@ This repo uses two custom-rule paths:
 Run type-aware rules with `--type-aware`:
 
 ```bash
-pnpm exec oxlint --type-aware --import-plugin packages
+bunx oxlint --type-aware --import-plugin packages
 ```
 
 ## `kitz/no-json-parse`
@@ -734,17 +734,17 @@ Replace relative imports to `_.ts`/`__.ts` with the corresponding `#` subpath im
 ### Lint (custom rules as warnings)
 
 ```bash
-pnpm check:lint
+bun run check:lint
 ```
 
 ### Strict lint (custom rules as errors)
 
 ```bash
-pnpm check:lint:strict-custom-rules
+bun run check:lint:strict-custom-rules
 ```
 
 ### Rule test suite
 
 ```bash
-pnpm test:oxlint-custom-rules
+bun run test:oxlint-custom-rules
 ```

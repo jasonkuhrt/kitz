@@ -120,7 +120,7 @@ const buildForecastInput = (options: {
     if (packages.length === 0) {
       yield* Console.log(
         'No packages found. Check release.config.ts `packages` field ' +
-          'or ensure pnpm-workspace.yaml defines workspace packages.',
+          'or ensure the root package.json defines workspace packages.',
       )
       return {
         forecast: Api.Forecaster.Forecast.make({
@@ -390,10 +390,10 @@ const buildCommentDoctor = (params: {
             runbook: {
               title: 'Manual Preview Runbook',
               commands: [
-                'pnpm release:build',
-                `PR_NUMBER=${String(ephemeralPrNumber ?? '<pr-number>')} pnpm release:plan:ephemeral`,
-                'pnpm release doctor',
-                'pnpm release:apply:ephemeral',
+                'bun run release:build',
+                `PR_NUMBER=${String(ephemeralPrNumber ?? '<pr-number>')} bun run release:plan:ephemeral`,
+                'bun run release doctor',
+                'bun run release:apply:ephemeral',
               ],
               note:
                 'Step 2 writes the exact ephemeral publish plan to `.release/plan.json`. ' +
@@ -406,7 +406,7 @@ const buildCommentDoctor = (params: {
                       label: rule.data.description,
                       ruleId: rule.data.id,
                       preventsDescriptions: rule.data.preventsDescriptions,
-                      checkCommand: `pnpm release doctor --onlyRule ${rule.data.id}`,
+                      checkCommand: `bun run release doctor --onlyRule ${rule.data.id}`,
                     },
                   ]
                 : [],
