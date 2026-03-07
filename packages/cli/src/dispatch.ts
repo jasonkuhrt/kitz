@@ -82,11 +82,9 @@ export function dispatch(
     const commandTarget = getCommandTarget(argv)
     const moduleTargetName = getModuleName(commandTarget)
     const commandFile = commandFiles.find((file) => Fs.Path.stem(file) === moduleTargetName)
+    const availableCommands = formatAvailableCommands(commandFiles)
 
     if (!commandFile) {
-      const availableCommands = commandFiles
-        .map((file) => `${Str.Char.rightwardsArrow} ${Fs.Path.stem(file)}`)
-        .join(Str.Char.newline)
       if (moduleTargetName === `$default`) {
         console.error(
           `Error: You must specify a command.\n\nAvailable commands:\n${availableCommands}`,
@@ -143,9 +141,35 @@ export function discoverCommandPointers(
       ),
     )
 
-    return entries.filter(Fs.Path.AbsFile.is).filter((file) => {
-      const ext = Fs.Path.extension(file)
-      return !Fs.Path.Extension.Extensions.buildArtifacts.some((e) => e === ext)
-    })
+    return entries
+      .filter(Fs.Path.AbsFile.is)
+      .filter(isRuntimeCommandModule)
+      .sort((a, b) => Fs.Path.toString(a).localeCompare(Fs.Path.toString(b)))
   })
+}
+
+const isRuntimeCommandModule = (file: Fs.Path.AbsFile): boolean => {
+  const path = Fs.Path.toString(file)
+  if (path.endsWith('.map')) return false
+  if (path.endsWith('.d.ts')) return false
+  if (path.endsWith('.d.mts')) return false
+  if (path.endsWith('.d.cts')) return false
+
+  const extension = Fs.Path.extension(file)
+  return (
+    extension === '.js' ||
+    extension === '.mjs' ||
+    extension === '.cjs' ||
+    extension === '.ts' ||
+    extension === '.mts' ||
+    extension === '.cts'
+  )
+}
+
+const formatAvailableCommands = (commandFiles: readonly Fs.Path.AbsFile[]): string => {
+  return commandFiles
+    .map((file) => Fs.Path.stem(file))
+    .filter((name) => name !== `$default`)
+    .map((name) => `${Str.Char.rightwardsArrow} ${name}`)
+    .join(Str.Char.newline)
 }

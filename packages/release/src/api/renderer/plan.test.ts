@@ -121,14 +121,32 @@ describe('renderPlan', () => {
 // ── renderStatus ─────────────────────────────────────────────────────
 
 describe('renderStatus', () => {
-  test('renders release status', () => {
-    const releases = [makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')]
+  test('renders release status as one row per package', () => {
+    const releases = [
+      Official.make({
+        package: pkg('@kitz/core', 'core'),
+        version: OfficialIncrement.make({
+          from: Semver.fromString('1.0.0'),
+          to: Semver.fromString('1.1.0'),
+          bump: 'minor',
+        }),
+        commits: [commit('core', 'feat(core): first'), commit('core', 'fix(core): second')],
+      }),
+    ]
     const output = renderStatus(releases)
+
     expect(output).toContain('Unreleased changes:')
+    expect(output).toContain('Package')
+    expect(output).toContain('From')
+    expect(output).toContain('To')
+    expect(output).toContain('Bump')
+    expect(output).toContain('Commits')
     expect(output).toContain('@kitz/core')
     expect(output).toContain('1.0.0')
     expect(output).toContain('1.1.0')
     expect(output).toContain('minor')
+    expect(output).toContain('2')
+    expect(output).not.toContain('Planned release')
   })
 })
 

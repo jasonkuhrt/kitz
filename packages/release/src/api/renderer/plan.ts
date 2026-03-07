@@ -49,16 +49,10 @@ export const renderStatus = (releases: readonly Item[]): string => {
   const output = Str.Builder()
   output`Unreleased changes:`
   output``
-
-  for (const release of releases) {
-    const current = Option.match(release.currentVersion, {
-      onNone: () => 'new',
-      onSome: (v) => Semver.toString(v),
-    })
-    const bump = release.bumpType ? ` (${release.bumpType})` : ''
-    output`  ${release.package.name.moniker}: ${current} → ${Semver.toString(release.nextVersion)}${bump}`
-    output`    ${String(release.commits.length)} commit${release.commits.length === 1 ? '' : 's'}`
-  }
+  output`${renderTable([
+    ['Package', 'From', 'To', 'Bump', 'Commits'],
+    ...releases.map(formatStatusRow),
+  ])}`
 
   output``
   return output.render()
@@ -164,4 +158,21 @@ export const renderCascadeForPackage = (analysis: CascadeQueryResult): string =>
   }
 
   return output.render()
+}
+
+const renderTable = (table: string[][]): string => {
+  return Str.Text.unlines(Str.Text.lines(Str.Visual.Table.render(table)).map((line) => line.trimEnd()))
+}
+
+const formatStatusRow = (release: Item): string[] => {
+  return [
+    release.package.name.moniker,
+    Option.match(release.currentVersion, {
+      onNone: () => 'new',
+      onSome: (version) => Semver.toString(version),
+    }),
+    Semver.toString(release.nextVersion),
+    release.bumpType ?? '-',
+    String(release.commits.length),
+  ]
 }
