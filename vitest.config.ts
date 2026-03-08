@@ -3,6 +3,13 @@ import path from 'node:path'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import { defineConfig } from 'vitest/config'
 
+const ssrResolveConditions = [
+  'module',
+  'node',
+  'development|production',
+  ...('bun' in process.versions ? ['bun'] : []),
+]
+
 // Run attest type checking only when explicitly requested via ATTEST env var
 if (process.env[`ATTEST`] === `true`) {
   setup()
@@ -23,5 +30,10 @@ export default defineConfig({
   test: {
     globals: false,
     globalSetup: ['./vitest.global-setup.ts'],
+  },
+  ssr: {
+    resolve: {
+      conditions: ssrResolveConditions,
+    },
   },
 })
