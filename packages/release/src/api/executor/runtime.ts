@@ -11,7 +11,7 @@ import {
   SingleRunner,
 } from '@effect/cluster'
 import { NodeFileSystem, NodePath } from '@effect/platform-node'
-import { SqliteClient } from '@effect/sql-sqlite-node'
+import { SqliteClient } from '#platform:executor/sqlite-client'
 import { WorkflowEngine } from '@effect/workflow'
 import { Github } from '@kitz/github'
 import { Effect, Layer } from 'effect'

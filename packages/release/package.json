@@ -16,6 +16,11 @@
     "#release/*": {
       "types": "./src/*.ts",
       "default": "./src/*.ts"
+    },
+    "#platform:executor/sqlite-client": {
+      "types": "./src/api/executor/sqlite-client.node.ts",
+      "bun": "./src/api/executor/sqlite-client.bun.ts",
+      "default": "./src/api/executor/sqlite-client.node.ts"
     }
   },
   "types": "./src/_.ts",
@@ -51,6 +56,7 @@
     "@effect/platform-node": "^0.104.0",
     "@effect/rpc": "^0.73.0",
     "@effect/sql": "^0.49.0",
+    "@effect/sql-sqlite-bun": "0.50.0",
     "@effect/sql-sqlite-node": "^0.50.0",
     "@effect/workflow": "^0.16.0",
     "@kitz/cli": "workspace:*",
