@@ -252,7 +252,7 @@ export const termObjectFields = (object: TermObject | DirectiveTermObject): stri
       }
       // oxfmt-ignore
       if (Str.is(value) || typeof value === `number` || typeof value === `boolean`) return [key, {$VALUE: String(value), $OPTIONAL: false, $TS_DOC: null}]
-      return [key, { $VALUE: termObject(value as any), $OPTIONAL: false, $TS_DOC: null }]
+      return [key, { $VALUE: termObject(value), $OPTIONAL: false, $TS_DOC: null }]
     })
     .map(([key, field]: [string, DirectiveField]) => {
       return fromDirectiveField(key, field)

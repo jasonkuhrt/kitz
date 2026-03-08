@@ -22,6 +22,7 @@ import { Oak } from '@kitz/oak'
 import { Cause, Console, Effect, Layer, Option, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 import { CommandExecutorLayer, ContextLayer, FileSystemLayer } from '../../platform.js'
+import { loadPullRequestDiff } from '../pr-preview.js'
 
 const DoctorFailuresSchema = Schema.Struct({
   _tag: Schema.Literal('DoctorFailures'),
@@ -172,6 +173,13 @@ Cli.run(
     const tags = yield* git.getTags()
     const analysis = yield* Api.Analyzer.analyze({ packages, tags })
     const currentBranch = yield* git.getCurrentBranch()
+    const diff = pullRequest
+      ? yield* loadPullRequestDiff({
+          pullRequest,
+          packages,
+          required: false,
+        })
+      : null
     const monorepo = {
       packages: packages.map((pkg) => ({
         name: pkg.name.moniker,
@@ -187,6 +195,8 @@ Cli.run(
       commit: Option.none(),
       titleParseError: Option.none(),
     }
+    const hasDiff = diff !== null && diff.files.length > 0
+    const diffLayer = diff ? Layer.succeed(Api.Lint.DiffService, diff) : Api.Lint.DefaultDiffLayer
 
     const reports: Api.Doctor.LifecycleReport[] = []
     const evaluatePlan = (plan: Api.Planner.Plan, required: boolean) =>
@@ -236,15 +246,24 @@ Cli.run(
                   }),
                 }
               : {}),
+            ...(pullRequest && hasDiff
+              ? {
+                  'pr.type.release-kind-match-diff': enableRule(
+                    config,
+                    'pr.type.release-kind-match-diff',
+                  ),
+                }
+              : {}),
           },
         })
         const baseReportEffect = Api.Lint.check({ config: lintConfig }).pipe(
           Effect.provide(
             Layer.mergeAll(
-              Api.Lint.DefaultDiffLayer,
+              diffLayer,
               Api.Lint.DefaultGitHubLayer,
               Api.Lint.Preconditions.make({
                 hasOpenPR: pullRequest !== null,
+                hasDiff,
                 hasReleasePlan: true,
                 isMonorepo: packages.length > 1,
               }),

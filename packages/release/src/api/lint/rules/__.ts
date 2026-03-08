@@ -12,7 +12,6 @@ export { rule as PlanPackagesRepositoryPresent } from './plan-packages-repositor
 export { rule as PlanPackagesRuntimeTargetsSourceOriented } from './plan-packages-runtime-targets-source-oriented.js'
 export { rule as PlanTagsUnique } from './plan-tags-unique.js'
 export { rule as PlanVersionsUnpublished } from './plan-versions-unpublished.js'
-export { rule as PrMessageFormat } from './pr-message-format.js'
 export { rule as PrMonorepoScopesMatchAffected } from './pr-monorepo-scopes-match-affected.js'
 export { rule as PrMonorepoScopesMatchKnown } from './pr-monorepo-scopes-match-known.js'
 export { rule as PrProjectedSquashCommitSync } from './pr-projected-squash-commit-sync.js'

@@ -6,7 +6,7 @@
 
 import { Fn } from '@kitz/core'
 import { Tex } from '@kitz/tex'
-import ansis from 'ansis'
+import * as ansis from 'ansis'
 import { MutableHashMap } from 'effect'
 import { type State as ActivityState, State as ActivityStateSchema } from '../models/activity.js'
 

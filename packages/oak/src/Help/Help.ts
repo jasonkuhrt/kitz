@@ -1,7 +1,7 @@
 import { Err, Obj, Str } from '@kitz/core'
 import { Group } from '@kitz/group'
 import { Tex } from '@kitz/tex'
-import ansis from 'ansis'
+import * as ansis from 'ansis'
 import { Text } from '../lib/Text/_.js'
 import type { Parameter } from '../Parameter/types.js'
 import * as SchemaRuntime from '../schema/schema-runtime.js'
@@ -68,7 +68,7 @@ export const render = (
 
   const parametersExclusiveGroups = Obj.values(
     Group.byToMut(parametersByTag.Exclusive ?? [], (_) => _.group.label),
-  ).map((_) => _![0]!.group)
+  ).map((_) => _[0]!.group)
 
   const noteItems: (Tex.Block | string | null)[] = []
 
@@ -120,7 +120,7 @@ export const render = (
                 [
                   Tex.block(
                     { border: { edges: { left: Term.colors.dim(`┌`) } } },
-                    Term.colors.dim(`─${parametersExclusive.label} ${`(2)`}`),
+                    Term.colors.dim(`─${parametersExclusive.label} (2)`),
                   ),
                   '',
                   defaultRendered,

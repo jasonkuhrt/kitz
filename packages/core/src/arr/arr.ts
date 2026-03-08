@@ -217,7 +217,7 @@ export type ReduceWithIntersection<$Items extends Unknown> =
  * const arr = items ?? Arr.empty
  * ```
  */
-export const empty: Empty = Object.freeze([]) as Empty
+export const empty: Empty = Object.freeze([])
 
 /**
  * Type for the empty array constant.

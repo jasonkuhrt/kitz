@@ -85,7 +85,8 @@ const resolveRulesToRun = (
 
   for (const rule of rules) {
     const hasOnlyFilter = config.onlyRules !== undefined && config.onlyRules.length > 0
-    const requestedByOnly = hasOnlyFilter && matchesAnyFilter(rule.data.id, config.onlyRules!)
+    const onlyRules = config.onlyRules ?? []
+    const requestedByOnly = hasOnlyFilter && matchesAnyFilter(rule.data.id, onlyRules)
     const matchesSkip =
       config.skipRules &&
       config.skipRules.length > 0 &&

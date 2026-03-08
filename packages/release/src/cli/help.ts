@@ -5,8 +5,8 @@ const rootCommands = [
   { usage: 'init [options]', description: 'Initialize release configuration' },
   { usage: 'notes [pkg] [options]', description: 'Show unreleased release notes' },
   {
-    usage: 'pr title <suggest|apply>',
-    description: 'Suggest or apply the canonical PR title header',
+    usage: 'pr <preview|title <suggest|apply>>',
+    description: 'Update the PR preview comment or manage the canonical PR title header',
   },
   {
     usage: 'plan --lifecycle <official|candidate|ephemeral> [options]',

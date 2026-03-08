@@ -90,6 +90,7 @@ const decodeProjectedSquashCommitMetadata = Schema.decodeUnknownOption(
 const doctorRuleOrder = [
   'env.publish-channel-ready',
   'pr.projected-squash-commit-sync',
+  'pr.type.release-kind-match-diff',
   'plan.packages-not-private',
   'plan.packages-license-present',
   'plan.packages-repository-present',
@@ -101,6 +102,7 @@ const doctorRuleOrder = [
 const doctorRuleLabels: Record<(typeof doctorRuleOrder)[number], string> = {
   'env.publish-channel-ready': 'Publish channel',
   'pr.projected-squash-commit-sync': 'Release header',
+  'pr.type.release-kind-match-diff': 'Release kind',
   'plan.packages-not-private': 'Package visibility',
   'plan.packages-license-present': 'License metadata',
   'plan.packages-repository-present': 'Repository metadata',
@@ -223,6 +225,10 @@ const renderPassNote = (
         onSome: (value) => `Canonical release header is \`${value.projectedHeader}\`.`,
       }),
     )
+  }
+
+  if (ruleId === 'pr.type.release-kind-match-diff') {
+    return 'PR title kind matches the changed source files.'
   }
 
   return 'Check passed.'

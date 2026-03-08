@@ -6,14 +6,14 @@ import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, Inspectable, Layer, Ref, Schema, Sink, Stream } from 'effect'
+import { Effect, Inspectable, Layer, Option, Ref, Schema, Sink, Stream } from 'effect'
 import * as Analyzer from '../analyzer/__.js'
 import * as Planner from '../planner/__.js'
 import { makeTestRuntime } from './runtime.js'
 
 const JsonRecordSchema = Schema.Record({ key: Schema.String, value: Schema.Unknown })
 const JsonRecordFromStringSchema = Schema.parseJson(JsonRecordSchema)
-const decodeJsonRecord = Schema.decodeUnknown(JsonRecordFromStringSchema)
+export const decodeJsonRecord = Schema.decodeUnknown(JsonRecordFromStringSchema)
 const textEncoder = new TextEncoder()
 
 export const decodeJsonRecordSync = Schema.decodeUnknownSync(JsonRecordFromStringSchema)
@@ -69,7 +69,13 @@ export const makeMockCommandExecutorLayer = (whoamiUsername: string) => {
         standard.args?.[1] === 'view'
       ) {
         const spec = standard.args?.[2]
-        const version = spec?.split('@').at(-1)
+        const version =
+          typeof spec === 'string'
+            ? Schema.decodeUnknownOption(Pkg.Pin.Exact.FromString)(spec).pipe(
+                Option.map((pin) => Semver.toString(pin.version)),
+                Option.getOrUndefined,
+              )
+            : undefined
         return Effect.succeed(
           version === '9.9.9'
             ? makeProcess(`"${version}"\n`, 0)

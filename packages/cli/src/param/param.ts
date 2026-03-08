@@ -117,7 +117,7 @@ export function analyze<const $input extends string>($input: $input) {
   const shorts = names.filter((name): name is string => name.length === 1)
   const short = (shorts.shift() ?? null)!
   const long = (longs.shift() ?? null)!
-  const canonical = (long ?? short)!
+  const canonical = long ?? short
 
   return {
     expression: $input,
@@ -339,7 +339,7 @@ export class Param extends S.Class<Param>('Param')({
   static fromLiteral = <const $input extends string>(
     $input: Param.Analyze<$input> extends string ? ErrorParamParse<Param.Analyze<$input>> : $input,
   ) => {
-    return Param.fromString($input as any) as any
+    return Param.fromString($input as any)
   }
 
   /**

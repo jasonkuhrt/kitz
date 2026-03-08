@@ -111,6 +111,61 @@ const makeGithubRuntime = (github?: RuntimeConfig['github']) =>
               cause: new Error('GitHub runtime is not configured'),
             }),
           ),
+        listIssueComments: () =>
+          Effect.fail(
+            new Github.GithubError({
+              context: {
+                operation: 'listIssueComments',
+                detail:
+                  'GitHub runtime is not configured. Resolve runtime with Api.Explorer.explore() and pass github config.',
+              },
+              cause: new Error('GitHub runtime is not configured'),
+            }),
+          ),
+        findIssueCommentByMarker: () =>
+          Effect.fail(
+            new Github.GithubError({
+              context: {
+                operation: 'listIssueComments',
+                detail:
+                  'GitHub runtime is not configured. Resolve runtime with Api.Explorer.explore() and pass github config.',
+              },
+              cause: new Error('GitHub runtime is not configured'),
+            }),
+          ),
+        createIssueComment: () =>
+          Effect.fail(
+            new Github.GithubError({
+              context: {
+                operation: 'createIssueComment',
+                detail:
+                  'GitHub runtime is not configured. Resolve runtime with Api.Explorer.explore() and pass github config.',
+              },
+              cause: new Error('GitHub runtime is not configured'),
+            }),
+          ),
+        updateIssueComment: () =>
+          Effect.fail(
+            new Github.GithubError({
+              context: {
+                operation: 'updateIssueComment',
+                detail:
+                  'GitHub runtime is not configured. Resolve runtime with Api.Explorer.explore() and pass github config.',
+              },
+              cause: new Error('GitHub runtime is not configured'),
+            }),
+          ),
+        upsertIssueComment: () =>
+          Effect.fail(
+            new Github.GithubError({
+              context: {
+                operation: 'createIssueComment',
+                detail:
+                  'GitHub runtime is not configured. Resolve runtime with Api.Explorer.explore() and pass github config.',
+              },
+              cause: new Error('GitHub runtime is not configured'),
+            }),
+          ),
       })
 
 /**

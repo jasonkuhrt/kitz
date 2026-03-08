@@ -1,7 +1,0 @@
-#!/usr/bin/env sh
-
-# Auto-fix what we can
-pnpm fix
-
-# Then run checks
-pnpm check

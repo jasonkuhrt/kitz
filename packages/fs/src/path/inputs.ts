@@ -110,7 +110,7 @@ export namespace Input {
   /**
    * Input that accepts any Path type.
    */
-  export type Any = Input<Path>
+  export type Any = Input
 }
 
 /**

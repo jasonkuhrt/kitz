@@ -261,8 +261,8 @@ const extractFunctionSignature = (
 
   if (signatureSource) {
     // Implementation signature gets JSDoc from the implementation (or main declaration)
-    const jsdoc = parseJSDoc(signatureSource as any)
-    overloads.push(extractSingleFunctionSignature(signatureSource as any, jsdoc))
+    const jsdoc = parseJSDoc(signatureSource)
+    overloads.push(extractSingleFunctionSignature(signatureSource, jsdoc))
   }
 
   return FunctionSignatureModel.make({
@@ -394,7 +394,7 @@ const extractBuilderSignature = (
 
   // Crawl interface methods if available
   if (interfaceDecl && interfaceDecl.getKindName() === 'InterfaceDeclaration') {
-    const iface = interfaceDecl as any
+    const iface = interfaceDecl
     const methods = iface.getMethods() as any[]
 
     // Group methods by name (handle overloads)

@@ -38,7 +38,7 @@ const decodeExactPin = S.decodeUnknownOption(Pkg.Pin.Exact.FromString)
  * which packages are affected and what bump type each needs.
  * Stores the full ReleaseCommit (not flattened per-scope).
  */
-export const extractImpacts = (gitCommit: Git.Commit): Effect.Effect<CommitImpact[], never> =>
+export const extractImpacts = (gitCommit: Git.Commit): Effect.Effect<CommitImpact[]> =>
   Effect.gen(function* () {
     // Parse the commit title (first line)
     const title = gitCommit.message.split('\n')[0] ?? gitCommit.message

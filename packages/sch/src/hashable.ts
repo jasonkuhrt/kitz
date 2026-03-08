@@ -258,7 +258,7 @@ const reconstructPropertySignature = (
   }
 
   // PropertySignatureTransformation - handle optionalWith options
-  const trans = psAST as PropertySignatureTransformation
+  const trans = psAST
 
   // Build options object preserving detected options
   const options: {
@@ -322,7 +322,7 @@ const reconstructFieldFromTransform = (
   if (!Obj.isEmpty(options)) {
     const result = S.optionalWith(processedSchema, options as any)
     return trans.to.annotations && !Obj.isEmpty(trans.to.annotations)
-      ? result.annotations(trans.to.annotations as any)
+      ? result.annotations(trans.to.annotations)
       : result
   }
 
@@ -398,7 +398,7 @@ export const ensureHashableSchema = <$S extends S.Schema.Any>(
   // Collect all struct schemas with .fields before processing
   const collectOriginalSchemas = (s: S.Schema.Any): void => {
     if (hasDirectFields(s)) {
-      originalSchemas.set(s.ast, s as S.Struct<S.Struct.Fields>)
+      originalSchemas.set(s.ast, s)
       // Recurse into nested structs from PropertySignatures
       for (const field of Object.values(s.fields)) {
         if (isPropertySignature(field)) {

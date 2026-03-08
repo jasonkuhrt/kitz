@@ -18,4 +18,4 @@ export {
   BunTerminal as Terminal,
   BunWorker as Worker,
   BunWorkerRunner as WorkerRunner,
-} from "@effect/platform-bun";
+} from '@effect/platform-bun'

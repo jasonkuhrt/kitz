@@ -16,6 +16,7 @@
     "typescript/no-unsafe-type-assertion": "off",
     "kitz/no-native-map-set-in-effect-modules": "error",
     "kitz/resolver-platform-dispatch": "error",
+    "kitz/schema-parsing-contract": "error",
     "kitz/no-throw": "off",
     "kitz/no-promise-then-chain": "error",
     "kitz/no-effect-run-in-library-code": "error",

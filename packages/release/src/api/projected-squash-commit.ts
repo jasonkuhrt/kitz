@@ -1,7 +1,7 @@
 import type { Analysis } from './analyzer/models/analysis.js'
 import { ConventionalCommits } from '@kitz/conventional-commits'
 import type { Semver } from '@kitz/semver'
-import { Effect, Either, Option } from 'effect'
+import { Either, Option } from 'effect'
 
 export interface ScopeImpact {
   readonly scope: string
@@ -82,7 +82,7 @@ const getActualHeader = (
   readonly header: string | null
   readonly error: string | null
 } => {
-  const parsed = Effect.runSync(ConventionalCommits.Title.parse(title.trim()).pipe(Effect.either))
+  const parsed = ConventionalCommits.Title.parseEither(title.trim())
 
   if (Either.isLeft(parsed)) {
     return {

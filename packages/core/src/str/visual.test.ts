@@ -57,9 +57,7 @@ Test.on(Str.Visual.pad)
     ['\x1b[31mOK\x1b[0m', 5, 'right'], // ANSI codes
   )
   .test(({ result, input }) => {
-    expect(Str.Visual.width(result)).toBe(
-      Math.max(Str.Visual.width(input[0] as string), input[1] as number),
-    )
+    expect(Str.Visual.width(result)).toBe(Math.max(Str.Visual.width(input[0]), input[1]))
     return result
   })
 
@@ -83,7 +81,7 @@ Test.on(Str.Visual.take)
     ['👋 hello', 2], // Emoji
   )
   .test(({ result, input }) => {
-    expect(Str.Visual.width(result)).toBeLessThanOrEqual(input[1] as number)
+    expect(Str.Visual.width(result)).toBeLessThanOrEqual(input[1])
     return result
   })
 

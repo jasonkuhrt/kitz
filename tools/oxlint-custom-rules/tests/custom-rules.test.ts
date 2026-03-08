@@ -129,6 +129,23 @@ const rules: ReadonlyArray<{
     ],
   },
   {
+    name: `schema-parsing-contract`,
+    failingFixtures: [
+      `schema-parsing-contract/packages/release/src/api/fail-exact-release-tag.ts`,
+      `schema-parsing-contract/packages/release/src/api/fail-release-tag-split.ts`,
+      `schema-parsing-contract/packages/release/src/api/fail-template-literal-semver.ts`,
+      `schema-parsing-contract/packages/demo/src/fail-missing-from-literal.ts`,
+      `schema-parsing-contract/packages/demo/src/fail-missing-static-from-literal.ts`,
+      `schema-parsing-contract/pin-fail/packages/pkg/src/pin/pin.ts`,
+    ],
+    passingFixtures: [
+      `schema-parsing-contract/packages/release/src/api/pass-release-tag-codec.ts`,
+      `schema-parsing-contract/packages/demo/src/pass-from-literal.ts`,
+      `schema-parsing-contract/packages/demo/src/pass-static-from-literal.ts`,
+      `schema-parsing-contract/pin-pass/packages/pkg/src/pin/pin.ts`,
+    ],
+  },
+  {
     name: `no-throw`,
     failingFixtures: [`no-throw/fail-1.ts`, `no-throw/fail-2.ts`],
     passingFixtures: [`no-throw/pass-1.test.ts`, `no-throw/pass-2.ts`],

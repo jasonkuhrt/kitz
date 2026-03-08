@@ -1,3 +1,4 @@
+import { Env } from '@kitz/env'
 import { Effect, Schema } from 'effect'
 import { resolvePublishChannel } from '../../publishing.js'
 import * as Precondition from '../models/precondition.js'
@@ -37,7 +38,7 @@ export const rule = RuntimeRule.create<
   Options,
   PublishChannelReadyMetadata,
   never,
-  ReleaseContextService | RuleOptionsService
+  Env.Env | ReleaseContextService | RuleOptionsService
 >({
   id: RuleId.make('env.publish-channel-ready'),
   description: 'declared publish channel matches the active runtime',
@@ -46,6 +47,8 @@ export const rule = RuntimeRule.create<
   check: Effect.gen(function* () {
     const context = yield* ReleaseContextService
     const options = (yield* RuleOptionsService) as Options
+    const env = yield* Env.Env
+    const vars = env.vars
 
     if (!context.lifecycle) return undefined
 
@@ -59,7 +62,7 @@ export const rule = RuntimeRule.create<
       }
     }
 
-    if (process.env['GITHUB_ACTIONS'] !== 'true') {
+    if (vars['GITHUB_ACTIONS'] !== 'true') {
       return {
         metadata: {
           status: 'deferred' as const,
@@ -70,7 +73,7 @@ export const rule = RuntimeRule.create<
       }
     }
 
-    const workflowFile = parseWorkflowFilename(process.env['GITHUB_WORKFLOW_REF'])
+    const workflowFile = parseWorkflowFilename(vars['GITHUB_WORKFLOW_REF'])
     if (workflowFile && workflowFile !== channel.workflow) {
       if (options.surface === 'preview') {
         return {
@@ -111,7 +114,7 @@ export const rule = RuntimeRule.create<
     }
 
     if (channel.mode === 'github-token') {
-      const token = process.env[channel.tokenEnv]
+      const token = vars[channel.tokenEnv]
       if (!token || token.trim() === '') {
         return Violation.make({
           location: Environment.make({
@@ -149,8 +152,8 @@ export const rule = RuntimeRule.create<
       }
     }
 
-    const idTokenUrl = process.env['ACTIONS_ID_TOKEN_REQUEST_URL']
-    const idTokenRequestToken = process.env['ACTIONS_ID_TOKEN_REQUEST_TOKEN']
+    const idTokenUrl = vars['ACTIONS_ID_TOKEN_REQUEST_URL']
+    const idTokenRequestToken = vars['ACTIONS_ID_TOKEN_REQUEST_TOKEN']
     if (!idTokenUrl || !idTokenRequestToken) {
       return Violation.make({
         location: Environment.make({

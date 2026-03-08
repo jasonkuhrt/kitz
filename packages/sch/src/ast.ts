@@ -48,7 +48,7 @@ export const extractTag = (ast: EAST.TypeLiteral): string | null => {
 export const getFieldSchema = (
   schema: S.Schema<any, any, any>,
   fieldName: string,
-): S.Schema<any, any, never> | undefined => {
+): S.Schema<any, any> | undefined => {
   const ast = schema.ast
 
   // Handle TypeLiteral (structs)

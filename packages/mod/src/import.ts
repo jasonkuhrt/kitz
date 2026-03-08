@@ -353,7 +353,7 @@ export const dynamicImportFile = <
 // oxfmt-ignore
 export type DynamicImportFileResult<$Module, $Options> =
   $Options extends { bustCache: true } ? Effect.Effect<$Module, ImportError | PlatformError, FileSystem.FileSystem> :
-                                         Effect.Effect<$Module, ImportError, never>
+                                         Effect.Effect<$Module, ImportError>
 
 /**
  * Dynamically import a file and extract its default export.
@@ -397,4 +397,4 @@ export const importDefault = <
 // oxfmt-ignore
 export type ImportDefaultResult<$Default, $Options> =
   $Options extends { bustCache: true } ? Effect.Effect<$Default, ImportError | PlatformError, FileSystem.FileSystem> :
-                                         Effect.Effect<$Default, ImportError, never>
+                                         Effect.Effect<$Default, ImportError>

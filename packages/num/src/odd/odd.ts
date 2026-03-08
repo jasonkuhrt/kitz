@@ -19,7 +19,7 @@ export type Odd = number & Brand.Brand<'Odd'>
  * Returns Odd & Int when the value is an odd integer.
  */
 export const is = (value: unknown): value is Odd & Int => {
-  return isInt(value) && (value as Int) % 2 !== 0
+  return isInt(value) && value % 2 !== 0
 }
 
 /**

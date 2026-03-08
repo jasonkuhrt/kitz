@@ -1,6 +1,5 @@
 import type { Json } from '@kitz/json'
 import { Schema as S } from 'effect'
-import { join } from 'path'
 import type { InferFileContent } from '../filesystem.js'
 import { Path } from '../path/_.js'
 
@@ -277,7 +276,7 @@ export const toLayout = (spec: SpecBuilder): Layout => {
   const processOp = (basePath: string, op: Operation): void => {
     switch (op.type) {
       case 'file': {
-        const fullPath = join(basePath, op.path.toString())
+        const fullPath = Path.toString(Path.join(Path.AbsDir.fromString(basePath), op.path))
         // Auto-stringify JSON objects for .json files
         if (
           typeof op.content === 'object' &&
@@ -292,7 +291,7 @@ export const toLayout = (spec: SpecBuilder): Layout => {
         break
       }
       case 'dir': {
-        const dirPath = join(basePath, op.path.toString())
+        const dirPath = Path.toString(Path.join(Path.AbsDir.fromString(basePath), op.path))
         op.operations.forEach((subOp) => processOp(dirPath, subOp))
         break
       }
@@ -318,7 +317,7 @@ export const toLayout = (spec: SpecBuilder): Layout => {
  * ```
  */
 export const spec = (base: Path.Input.AbsDir): SpecBuilder => {
-  const absBase = Path.normalizeDynamicInput(Path.AbsDir.Schema)(base) as Path.AbsDir
+  const absBase = Path.normalizeDynamicInput(Path.AbsDir.Schema)(base)
   const operations: Operation[] = []
 
   const createSpec = (baseDir: Path.AbsDir, ops: Operation[]): SpecBuilder => {
@@ -373,9 +372,7 @@ export const spec = (base: Path.Input.AbsDir): SpecBuilder => {
       remove(path) {
         const fsPath = typeof path === 'string' ? (Path.fromString(path) as Path.$Rel) : path
         // Determine if it's a file or directory for the operation
-        const operationPath = Path.$File.is(fsPath)
-          ? (fsPath as Path.RelFile)
-          : (fsPath as Path.RelDir)
+        const operationPath = Path.$File.is(fsPath) ? fsPath : (fsPath as Path.RelDir)
         const newOps = [...ops, { type: 'remove' as const, path: operationPath }]
         return createSpec(baseDir, newOps)
       },
@@ -527,7 +524,7 @@ export const spec = (base: Path.Input.AbsDir): SpecBuilder => {
       },
 
       withBase(newBase: Path.Input.AbsDir): SpecBuilder {
-        const absNewBase = Path.normalizeDynamicInput(Path.AbsDir.Schema)(newBase) as Path.AbsDir
+        const absNewBase = Path.normalizeDynamicInput(Path.AbsDir.Schema)(newBase)
         return createSpec(absNewBase, ops)
       },
 

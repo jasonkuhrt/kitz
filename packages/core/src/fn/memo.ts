@@ -110,8 +110,8 @@ export const memo = <$fn extends (...args: any[]) => unknown>(
   const memoizedFn = ((...args: Parameters<$fn>) => {
     const cacheKey = createKey(args)
 
-    if (cache.has(cacheKey as any)) {
-      const envelope = cache.get(cacheKey as any) as CacheEnvelope<unknown>
+    if (cache.has(cacheKey)) {
+      const envelope = cache.get(cacheKey) as CacheEnvelope<unknown>
       return envelope.value
     }
 
@@ -119,7 +119,7 @@ export const memo = <$fn extends (...args: any[]) => unknown>(
     const handlers: Prom.MaybeAsyncHandlers<unknown, unknown> = {}
     Reflect.set(handlers, `then`, (resolved: unknown) => {
       if (!CoreErr.is(resolved) || cacheErrors) {
-        cache.set(cacheKey as any, { value: resolved })
+        cache.set(cacheKey, { value: resolved })
       }
       return resolved
     })

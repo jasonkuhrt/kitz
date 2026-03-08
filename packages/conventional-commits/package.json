@@ -10,22 +10,22 @@
   "sideEffects": false,
   "imports": {
     "#conventional-commits": {
-      "types": "./build/_.js",
+      "types": "./src/_.ts",
       "default": "./src/_.ts"
     },
     "#conventional-commits/*": {
-      "types": "./build/*.js",
+      "types": "./src/*.ts",
       "default": "./src/*.ts"
     }
   },
   "types": "./src/_.ts",
   "exports": {
     ".": {
-      "types": "./build/_.js",
+      "types": "./src/_.ts",
       "default": "./src/_.ts"
     },
     "./__": {
-      "types": "./build/__.js",
+      "types": "./src/__.ts",
       "default": "./src/__.ts"
     }
   },

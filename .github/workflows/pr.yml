@@ -50,50 +50,6 @@ jobs:
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
-  validate-cc:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha }}
-      - name: Fetch base branch
-        run: git fetch origin ${{ github.event.pull_request.base.ref }}
-      - name: Validate CC type matches diff
-        env:
-          TITLE: ${{ github.event.pull_request.title }}
-          BODY: ${{ github.event.pull_request.body }}
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-        run: |
-          if [[ "${BODY:-}" == *"<!-- cc-bypass -->"* ]]; then
-            echo "CC validation bypassed via PR comment"
-            exit 0
-          fi
-
-          NO_RELEASE_PATTERN="^(chore|style|refactor|test|build|ci|chore\.docs)(\(|:)"
-
-          if [[ "$TITLE" =~ $NO_RELEASE_PATTERN ]]; then
-            SRC_CHANGES=$(git diff --name-only "origin/$BASE_REF"...HEAD | grep -E '^packages/[^/]+/src/' || true)
-
-            if [[ -n "$SRC_CHANGES" ]]; then
-              echo "::error::CC type mismatch: '$TITLE' won't trigger a release, but src/ files changed"
-              echo ""
-              echo "Changed files:"
-              echo "$SRC_CHANGES" | sed 's/^/  /'
-              echo ""
-              echo "Fix: Change PR title to a release type (feat:/fix:/perf:/docs:)"
-              echo ""
-              echo "Bypass: If intentional (e.g., true refactor with no behavior change),"
-              echo "add this HTML comment anywhere in the PR body:"
-              echo ""
-              echo "  <!-- cc-bypass -->"
-              echo ""
-              exit 1
-            fi
-          fi
-
-          echo "CC type validated: $TITLE"
-
   packages-build:
     needs: check-type
     runs-on: ubuntu-latest
@@ -164,9 +120,8 @@ jobs:
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
-  release-plan-comment:
+  release-preview:
     needs: check-type
-    if: needs.check-type.outputs.skip-code-checks != 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -178,43 +133,14 @@ jobs:
           git fetch origin ${{ github.event.pull_request.base.ref }}
           git fetch --tags --force
       - uses: ./.github/actions/setup
-      - name: Build release package
-        run: bun run release:build
-      - name: Extract publish history from existing comment
-        uses: actions/github-script@v7
-        id: history
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('node:fs')
-            const marker = '<!-- kitz-release-plan -->'
-            const { owner, repo } = context.repo
-            const issue_number = context.issue.number
-
-            const comments = await github.paginate(github.rest.issues.listComments, {
-              owner, repo, issue_number, per_page: 100,
-            })
-            const existing = comments.find(c =>
-              c.user?.type === 'Bot' && c.body?.includes(marker)
-            )
-
-            const historyRe = /<!-- kitz-release-publish-history\n([\s\S]*?)\n-->/
-            const match = existing?.body?.match(historyRe)
-            const history = match ? match[1] : '{"publishes":[]}'
-            fs.writeFileSync('/tmp/publish-history.json', history)
-            core.info(`Extracted publish history: ${history.length} bytes`)
-      - name: Generate release forecast comment
+      - name: Run release preview
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-          GITHUB_PR_TITLE: ${{ github.event.pull_request.title }}
-          PR_BODY: ${{ github.event.pull_request.body }}
-          GITHUB_PR_BODY: ${{ github.event.pull_request.body }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SKIP_CODE_CHECKS: ${{ needs.check-type.outputs.skip-code-checks }}
         run: |
-          bun run release:forecast:comment -- --publish-history /tmp/publish-history.json > /tmp/release-plan-comment.md
-      - name: Upsert PR release forecast comment
-        uses: ./.github/actions/upsert-pr-comment
-        with:
-          file: /tmp/release-plan-comment.md
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          if [[ "${SKIP_CODE_CHECKS}" == "true" ]]; then
+            bun run release pr preview --check-only
+          else
+            bun run release pr preview
+          fi

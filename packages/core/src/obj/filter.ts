@@ -307,7 +307,7 @@ export const partition = Ts.SimpleSignature.implement<partition>((obj, pickedKey
   return pickedKeys.reduce((acc, key) => {
     if (key in acc.omitted) {
       delete acc.omitted[key]
-      ;(acc.picked as any)[key] = (obj as any)[key]
+      ;(acc.picked)[key] = (obj as any)[key]
     }
     return acc
   }, {

@@ -184,7 +184,7 @@ export const omit = <$Data extends object = object>(
  * @returns The data type the mask is designed for
  */
 // oxfmt-ignore
-export type GetDataType<$Mask extends Mask<any>> =
+export type GetDataType<$Mask extends Mask> =
   $Mask extends BinaryMask<infer $Data>     ? $Data :
   $Mask extends PropertiesMask<infer $Data> ? $Data
                                             : never

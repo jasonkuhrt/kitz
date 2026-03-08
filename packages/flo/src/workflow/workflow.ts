@@ -280,9 +280,9 @@ export interface WorkflowConfig<Name extends string, Payload, Result, Error> {
   /** Unique name for the workflow */
   readonly name: Name
   /** Schema for the workflow payload */
-  readonly payload: Schema.Schema<Payload, any, never>
+  readonly payload: Schema.Schema<Payload, any>
   /** Schema for workflow errors */
-  readonly error?: Schema.Schema<Error, any, never> | undefined
+  readonly error?: Schema.Schema<Error, any> | undefined
   /** Compute idempotency key from payload (for durability) */
   readonly idempotencyKey?: ((payload: Payload) => string) | undefined
   /**
@@ -348,14 +348,10 @@ export interface WorkflowInstance<Name extends string, Payload, Result, Error> {
    *
    * Returns a stream of activity events and the execution effect.
    */
-  readonly observable: (payload: Payload) => Effect.Effect<
-    {
-      readonly events: Stream.Stream<LifecycleEvent>
-      readonly execute: Effect.Effect<UnwrapHandles<Result>, Error, WorkflowEngine.WorkflowEngine>
-    },
-    never,
-    never
-  >
+  readonly observable: (payload: Payload) => Effect.Effect<{
+    readonly events: Stream.Stream<LifecycleEvent>
+    readonly execute: Effect.Effect<UnwrapHandles<Result>, Error, WorkflowEngine.WorkflowEngine>
+  }>
 }
 
 // ============================================================================
@@ -458,7 +454,7 @@ export const make = <Name extends string, Payload, Result, Error>(
               name: nodeName,
               success: Schema.Unknown,
               error: Schema.Unknown,
-              execute: nodeDef.execute as Effect.Effect<unknown, Error, unknown>,
+              execute: nodeDef.execute,
             })
 
             // Build the effect to run (with optional retry)

@@ -58,6 +58,13 @@ const MESSAGE_IDS = {
   subpathImportsIntegrityTsconfigDrift: `subpathImportsIntegrityTsconfigDrift`,
   resolverPlatformDispatchRuntimeProbe: `resolverPlatformDispatchRuntimeProbe`,
   resolverPlatformDispatchDirectImport: `resolverPlatformDispatchDirectImport`,
+  schemaParsingContractReleaseTagCodec: `schemaParsingContractReleaseTagCodec`,
+  schemaParsingContractReleaseTagSplit: `schemaParsingContractReleaseTagSplit`,
+  schemaParsingContractTemplateLiteralSemver: `schemaParsingContractTemplateLiteralSemver`,
+  schemaParsingContractFromLiteral: `schemaParsingContractFromLiteral`,
+  schemaParsingContractStaticFromLiteral: `schemaParsingContractStaticFromLiteral`,
+  schemaParsingContractPinExactFromString: `schemaParsingContractPinExactFromString`,
+  schemaParsingContractPinFromLiteral: `schemaParsingContractPinFromLiteral`,
 }
 
 const MESSAGES = {
@@ -101,6 +108,13 @@ const MESSAGES = {
   [MESSAGE_IDS.subpathImportsIntegrityTsconfigDrift]: `tsconfig.json paths have drifted from package.json imports. Auto-fixing.`,
   [MESSAGE_IDS.resolverPlatformDispatchRuntimeProbe]: `Move platform selection to package imports/resolver dispatch via a stable #platform:* alias instead of runtime probing.`,
   [MESSAGE_IDS.resolverPlatformDispatchDirectImport]: `Move platform selection to package imports/resolver dispatch via a stable #platform:* alias instead of direct platform-specific imports.`,
+  [MESSAGE_IDS.schemaParsingContractReleaseTagCodec]: `Exact release tags must decode through Pkg.Pin.Exact.FromString, not ad hoc parseExactReleaseTag/decodeExactReleaseTag helpers.`,
+  [MESSAGE_IDS.schemaParsingContractReleaseTagSplit]: `Do not parse release tags by splitting on '@'; decode them through Pkg.Pin.Exact.FromString.`,
+  [MESSAGE_IDS.schemaParsingContractTemplateLiteralSemver]: `Avoid Semver.fromString on template literals; compose Semver from structured data.`,
+  [MESSAGE_IDS.schemaParsingContractFromLiteral]: `Literal-aware parser APIs must expose fromLiteral alongside fromString.`,
+  [MESSAGE_IDS.schemaParsingContractStaticFromLiteral]: `Class literal-aware parser APIs must expose static fromLiteral alongside static fromString.`,
+  [MESSAGE_IDS.schemaParsingContractPinExactFromString]: `packages/pkg/src/pin/pin.ts must expose Pin.Exact.FromString as the exact release-tag codec.`,
+  [MESSAGE_IDS.schemaParsingContractPinFromLiteral]: `packages/pkg/src/pin/pin.ts must expose fromLiteral as the canonical literal parser entrypoint.`,
 }
 
 /**
@@ -1495,6 +1509,17 @@ const isPlatformImplementationFile = (filePath) =>
  */
 const isKitzPlatformPackageFile = (filePath) => isWithinPackagePath(filePath, `packages/platform/`)
 
+const isReleaseApiModuleFile = (filePath) =>
+  isWithinPackagePath(filePath, `packages/release/src/api/`) && !isTestFilePath(filePath)
+
+const isPinExactContractFile = (filePath) =>
+  filePath === `packages/pkg/src/pin/pin.ts` || filePath.endsWith(`/packages/pkg/src/pin/pin.ts`)
+
+const topLevelLiteralAwareFromStringPattern =
+  /export const fromString\s*=\s*<const\s+([A-Za-z_$][\w$]*)\s+extends\s+string>\s*\([\s\S]{0,300}?\)\s*:\s*([^=\n]+?)=>/g
+const classLiteralAwareFromStringPattern =
+  /static fromString\s*=\s*<const\s+([A-Za-z_$][\w$]*)\s+extends\s+string>\s*\([\s\S]{0,300}?Analyze<\1>[\s\S]{0,300}?=>/
+
 /**
  * @param {string} importPath
  * @returns {string | null}
@@ -2164,7 +2189,10 @@ const resolverPlatformDispatchRule = defineRule({
       }
 
       if (isConcreteEffectPlatformImportPath(importPath)) {
-        if (isKitzPlatformPackageFile(filePath) || absoluteFilePath.includes(`/packages/platform/`)) {
+        if (
+          isKitzPlatformPackageFile(filePath) ||
+          absoluteFilePath.includes(`/packages/platform/`)
+        ) {
           return
         }
 
@@ -2264,6 +2292,100 @@ const resolverPlatformDispatchRule = defineRule({
       },
       SwitchStatement(node) {
         maybeReportRuntimePlatformDispatch(node, node.discriminant, node.cases)
+      },
+    }
+  },
+})
+
+const schemaParsingContractRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Enforce the schema parsing contract: exact release tags decode through Pin.Exact, literal-aware parsers expose fromLiteral, and pin.ts keeps its canonical codecs.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    const filePath = getNormalizedRelativePath(context)
+
+    if (isTestFilePath(filePath) || !/\.[cm]?[jt]sx?$/.test(filePath)) {
+      return {}
+    }
+
+    return {
+      Program(node) {
+        const sourceText = fs.readFileSync(context.filename, `utf8`)
+
+        if (isReleaseApiModuleFile(filePath)) {
+          if (/\b(?:parse|decode)ExactReleaseTag\b/.test(sourceText)) {
+            context.report({
+              node,
+              messageId: MESSAGE_IDS.schemaParsingContractReleaseTagCodec,
+            })
+          }
+
+          if (/(?:lastIndexOf|split)\((['"`])@\1\)/.test(sourceText)) {
+            context.report({
+              node,
+              messageId: MESSAGE_IDS.schemaParsingContractReleaseTagSplit,
+            })
+          }
+
+          if (/Semver\.fromString\(\s*`/.test(sourceText)) {
+            context.report({
+              node,
+              messageId: MESSAGE_IDS.schemaParsingContractTemplateLiteralSemver,
+            })
+          }
+        }
+
+        let missingFromLiteral = false
+        for (const match of sourceText.matchAll(topLevelLiteralAwareFromStringPattern)) {
+          const genericName = match[1]
+          const returnType = match[2] ?? ``
+          if (!genericName || !returnType.includes(`<${genericName}>`)) {
+            continue
+          }
+          if (/export const fromLiteral\s*=/.test(sourceText)) {
+            break
+          }
+          missingFromLiteral = true
+          break
+        }
+
+        if (missingFromLiteral) {
+          context.report({
+            node,
+            messageId: MESSAGE_IDS.schemaParsingContractFromLiteral,
+          })
+        }
+
+        if (
+          classLiteralAwareFromStringPattern.test(sourceText) &&
+          !/static fromLiteral\s*=/.test(sourceText)
+        ) {
+          context.report({
+            node,
+            messageId: MESSAGE_IDS.schemaParsingContractStaticFromLiteral,
+          })
+        }
+
+        if (isPinExactContractFile(filePath)) {
+          if (!sourceText.includes(`static FromString: S.Schema<Exact, string>`)) {
+            context.report({
+              node,
+              messageId: MESSAGE_IDS.schemaParsingContractPinExactFromString,
+            })
+          }
+
+          if (!/export const fromLiteral[\s\S]*fromString\(input\)/m.test(sourceText)) {
+            context.report({
+              node,
+              messageId: MESSAGE_IDS.schemaParsingContractPinFromLiteral,
+            })
+          }
+        }
       },
     }
   },
@@ -3559,6 +3681,7 @@ export default definePlugin({
     'no-native-map-set-in-effect-modules': noNativeMapSetInEffectModulesRule,
     'no-nodejs-builtin-imports': noNodejsBuiltinImportsRule,
     'resolver-platform-dispatch': resolverPlatformDispatchRule,
+    'schema-parsing-contract': schemaParsingContractRule,
     'no-throw': noThrowRule,
     'no-promise-then-chain': noPromiseThenChainRule,
     'no-effect-run-in-library-code': noEffectRunInLibraryCodeRule,

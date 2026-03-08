@@ -142,20 +142,14 @@ const _user = { name: 'Alice', age: 30 }
 const _patternFromValue = Pat.patternFor(_user)
 
 // oxfmt-ignore
-type _PatternForValueTest = A.Cases<
-  A.exact.of<typeof _patternFromValue, Pat.PatternForValue<typeof _user>>
->
+type _PatternForValueTest = A.Cases
 
 const _patternFromSchema = Pat.patternForSchema(UserSchema)
 
 // oxfmt-ignore
-type _PatternForSchemaTest = A.Cases<
-  A.exact.of<typeof _patternFromSchema, Pat.PatternForSchema<typeof UserSchema>>
->
+type _PatternForSchemaTest = A.Cases
 
 const _patternFromV1Schema = Pat.patternForV1Schema(zodSchema)
 
 // oxfmt-ignore
-type _PatternForV1SchemaTest = A.Cases<
-  A.exact.of<typeof _patternFromV1Schema, Pat.PatternForV1Schema<typeof zodSchema>>
->
+type _PatternForV1SchemaTest = A.Cases

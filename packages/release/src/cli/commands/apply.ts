@@ -68,14 +68,7 @@ const commandLayer = CommandExecutorLayer
 const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(commandLayer))
 
 Cli.run(
-  Layer.mergeAll(
-    Env.Live,
-    FileSystemLayer,
-    TerminalLayer,
-    Git.GitLive,
-    commandLayer,
-    npmLayer,
-  ),
+  Layer.mergeAll(Env.Live, FileSystemLayer, TerminalLayer, Git.GitLive, commandLayer, npmLayer),
 )(
   Effect.gen(function* () {
     const env = yield* Env.Env

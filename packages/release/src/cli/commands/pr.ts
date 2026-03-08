@@ -3,6 +3,12 @@
  *
  * Manage pull-request metadata from release semantics.
  *
+ * `release pr preview` updates the PR release preview comment, preserving
+ * publish history and failing the job when blocking preview checks remain.
+ *
+ * `release pr preview --check-only` runs the same release preview checks without
+ * creating or updating the PR comment surface.
+ *
  * `release pr title suggest` shows the canonical release header for the connected PR
  * and, when possible, the exact title produced by preserving the current subject.
  *
@@ -16,25 +22,39 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Console, Effect, Layer } from 'effect'
 import * as Api from '../../api/__.js'
-import { FileSystemLayer } from '../../platform.js'
+import { CommandExecutorLayer, FileSystemLayer } from '../../platform.js'
+import { PreviewBlockingError, runPrPreview } from '../pr-preview.js'
 
 const helpFlags = new Set(['-h', '--help'])
 
 const formatHelp = (): string =>
   [
-    'Usage: release pr title <suggest|apply>',
+    'Usage: release pr <preview|title <suggest|apply>>',
     '',
     'Commands:',
+    '  preview         Update the release preview comment and fail on blocking preview checks',
+    '                  Pass `--check-only` to run checks without updating the comment',
     '  title suggest   Show the canonical release header and suggested PR title',
     '  title apply     Update the connected PR title by replacing only its header',
   ].join('\n')
 
-type Action = 'suggest' | 'apply'
+type ParsedAction =
+  | { readonly _tag: 'preview'; readonly checkOnly: boolean }
+  | { readonly _tag: 'title'; readonly action: 'suggest' | 'apply' }
 
-const parseAction = (args: readonly string[]): Action | null => {
-  if (args.length < 2) return null
-  if (args[0] !== 'title') return null
-  if (args[1] === 'suggest' || args[1] === 'apply') return args[1]
+const parseAction = (args: readonly string[]): ParsedAction | null => {
+  if (args[0] === 'preview') {
+    const previewArgs = args.slice(1)
+    const checkOnly = previewArgs.includes('--check-only')
+    const unknownPreviewArgs = previewArgs.filter((arg) => arg !== '--check-only')
+    if (unknownPreviewArgs.length === 0) {
+      return { _tag: 'preview', checkOnly }
+    }
+  }
+  if (args.length < 2 || args[0] !== 'title') return null
+  if (args[1] === 'suggest' || args[1] === 'apply') {
+    return { _tag: 'title', action: args[1] }
+  }
   return null
 }
 
@@ -103,7 +123,7 @@ const preparePrTitle = Effect.gen(function* () {
   } satisfies PreparedPrTitle
 })
 
-Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
+Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, CommandExecutorLayer))(
   Effect.gen(function* () {
     const env = yield* Env.Env
     const argv = yield* Cli.parseArgv(env.argv)
@@ -116,16 +136,50 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
 
     const action = parseAction(args)
     if (!action) {
-      yield* Console.error('Error: Expected `release pr title <suggest|apply>`.')
+      yield* Console.error(
+        'Error: Expected `release pr preview` or `release pr title <suggest|apply>`.',
+      )
       yield* Console.error('')
       yield* Console.error(formatHelp())
       return env.exit(1)
     }
 
+    if (action._tag === 'preview') {
+      const previewResult = yield* runPrPreview({
+        ...(action.checkOnly ? { checkOnly: true } : {}),
+      }).pipe(Effect.either)
+
+      if (previewResult._tag === 'Left') {
+        if (previewResult.left instanceof PreviewBlockingError) {
+          if (previewResult.left.commentUrl) {
+            yield* Console.log(
+              `Updated release preview comment for PR #${String(previewResult.left.issueNumber)}.`,
+            )
+            yield* Console.log(`Comment: ${previewResult.left.commentUrl}`)
+          }
+          yield* Console.error('Blocking release preview issues remain.')
+          return env.exit(1)
+        }
+
+        return yield* Effect.fail(previewResult.left)
+      }
+
+      if (previewResult.right._tag === 'checked') {
+        yield* Console.log(
+          `Release preview checks passed for PR #${String(previewResult.right.issueNumber)}.`,
+        )
+        return
+      }
+
+      yield* Console.log('Updated release preview comment.')
+      yield* Console.log(`Comment: ${previewResult.right.issueComment.html_url}`)
+      return
+    }
+
     const prepared = yield* preparePrTitle
     if (!prepared) return
 
-    if (action === 'suggest') {
+    if (action.action === 'suggest') {
       yield* Console.log(`Projected release header: \`${prepared.projectedHeader}\``)
 
       if (prepared.suggestedTitle) {

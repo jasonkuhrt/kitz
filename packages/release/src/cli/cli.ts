@@ -16,7 +16,7 @@ import { FileSystemLayer } from '../platform.js'
  * - forecast        - Render a release forecast
  * - plan            - Generate release plan (--lifecycle official|candidate|ephemeral)
  * - apply           - Execute release plan
- * - pr title ...    - Suggest or apply the canonical PR title header
+ * - pr ...          - Maintain the release preview comment or canonical PR title
  * - notes [pkg]     - Output release notes
  * - init            - Initialize release in project
  */

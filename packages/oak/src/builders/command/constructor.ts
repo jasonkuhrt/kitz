@@ -15,9 +15,7 @@ export const create = (): CommandBuilder => {
   return create_(createState())
 }
 
-const normalizePrompt = (
-  prompt: ParameterPrompt<unknown> | undefined,
-): ParameterBasicInput['prompt'] => {
+const normalizePrompt = (prompt: ParameterPrompt | undefined): ParameterBasicInput['prompt'] => {
   if (prompt === undefined || prompt === null) {
     return {
       enabled: null,

@@ -3,6 +3,14 @@
 @issue.md
 @../CONTRIBUTING.md
 
+## Workflow
+
+- Drive meaningful repo workflows through project-defined Bun scripts.
+- Do not invoke Vitest directly via `vitest`, `./node_modules/.bin/vitest`, `bunx vitest`, `pnpm vitest`, or similar ad hoc entrypoints.
+- Run tests through `bun run <script>` or `bun run --cwd <package> <script>`.
+- If a focused test workflow does not exist yet, add an appropriate Bun script first and then run that script.
+- Prefer canonical repo or package scripts over one-off shell commands when the workflow matters.
+
 ## Backwards Compatibility
 
 **Default stance: Breaking changes are acceptable.**

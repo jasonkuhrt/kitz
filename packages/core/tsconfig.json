@@ -7,31 +7,14 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "paths": {
-      "#kitz/test": [
-        "../test/src/_.ts"
-      ],
-      "#kitz/test/test": [
-        "../test/src/__.ts"
-      ],
-      "#kitz/test/*": [
-        "../test/src/*.ts"
-      ],
-      "#kitz/assert": [
-        "../assert/src/_.ts"
-      ],
-      "#kitz/assert/assert": [
-        "../assert/src/__.ts"
-      ],
-      "#kitz/assert/*": [
-        "../assert/src/*.ts"
-      ]
+      "#kitz/test": ["../test/src/_.ts"],
+      "#kitz/test/test": ["../test/src/__.ts"],
+      "#kitz/test/*": ["../test/src/*.ts"],
+      "#kitz/assert": ["../assert/src/_.ts"],
+      "#kitz/assert/assert": ["../assert/src/__.ts"],
+      "#kitz/assert/*": ["../assert/src/*.ts"]
     }
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "build",
-    "node_modules"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["build", "node_modules"]
 }

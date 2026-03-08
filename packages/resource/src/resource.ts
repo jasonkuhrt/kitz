@@ -375,7 +375,7 @@ export const createJson = <A, I, R = never>(
 ): Resource<A, FileSystem.FileSystem | R> => {
   // Compose with parseJson to get Schema<A, string>
   const jsonSchema = Schema.compose(Schema.parseJson(), schema)
-  return create(filename, jsonSchema, emptyValue, options) as Resource<A, FileSystem.FileSystem | R>
+  return create(filename, jsonSchema, emptyValue, options)
 }
 
 // ─── Type Guards ─────────────────────────────────────────────────────────────

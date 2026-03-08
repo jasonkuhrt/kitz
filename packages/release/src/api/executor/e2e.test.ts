@@ -1,5 +1,4 @@
 import { Command, CommandExecutor, FileSystem } from '@effect/platform'
-import { NodeCommandExecutor, NodeFileSystem } from '@effect/platform-node'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
@@ -7,13 +6,11 @@ import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { describe, expect, it as test } from '@effect/vitest'
-import { Effect, Inspectable, Layer, LogLevel, Logger, Ref, Sink, Stream } from 'effect'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { Effect, Inspectable, Layer, LogLevel, Logger, Ref, Scope, Sink, Stream } from 'effect'
+import { CommandExecutorLayer, FileSystemLayer } from '../../platform.js'
 import { execute } from './execute.js'
 import { makeWorkflowRuntime } from './runtime.js'
-import { planOfficial, tag } from './test-support.js'
+import { decodeJsonRecord, planOfficial, tag } from './test-support.js'
 
 interface FixturePackage {
   readonly name: string
@@ -28,11 +25,11 @@ interface RealHarnessOptions {
 }
 
 interface RealHarness {
-  readonly rootDir: string
+  readonly rootDir: Fs.Path.AbsDir
   readonly workspacePackages: Parameters<typeof planOfficial>[0]
-  readonly packageJsonPaths: Readonly<Record<string, string>>
-  readonly planLayer: Layer.Layer<any>
-  readonly workflowLayer: Layer.Layer<any>
+  readonly packageJsonPaths: Readonly<Record<string, Fs.Path.AbsFile>>
+  readonly planLayer: Layer.Layer<any, never, any>
+  readonly workflowLayer: Layer.Layer<any, any, any>
   readonly gitState: Git.Memory.GitMemoryState
   readonly githubState: Github.Memory.GithubMemoryState
   readonly packCalls: Ref.Ref<readonly string[]>
@@ -62,6 +59,9 @@ const slugPackageName = (packageName: string): string =>
 
 const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(Logger.withMinimumLogLevel(LogLevel.None))
+
+const withFileSystem = <A, E, R>(effect: Effect.Effect<A, E, R | FileSystem.FileSystem>) =>
+  effect.pipe(Effect.provide(FileSystemLayer))
 
 const makeRuntimeTargets = (scope: string) => ({
   imports: {
@@ -94,40 +94,60 @@ const makePackageJson = (pkg: FixturePackage) =>
     2,
   ) + '\n'
 
-const writeFixtureWorkspace = (rootDir: string, packages: readonly FixturePackage[]) => {
-  writeFileSync(
-    join(rootDir, 'package.json'),
-    JSON.stringify(
-      {
-        name: '@fixture/workspace',
-        private: true,
-        workspaces: ['packages/*'],
-      },
-      null,
-      2,
-    ) + '\n',
-  )
+const writeFixtureWorkspace = (
+  rootDir: Fs.Path.AbsDir,
+  packages: readonly FixturePackage[],
+): Effect.Effect<Readonly<Record<string, Fs.Path.AbsFile>>, never, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const rootDirString = Fs.Path.toString(rootDir)
+    const packageJsonPaths: Record<string, Fs.Path.AbsFile> = {}
 
-  const packageJsonPaths: Record<string, string> = {}
+    yield* Fs.write(
+      Fs.Path.AbsFile.fromString(`${rootDirString}package.json`),
+      JSON.stringify(
+        {
+          name: '@fixture/workspace',
+          private: true,
+          workspaces: ['packages/*'],
+        },
+        null,
+        2,
+      ) + '\n',
+    ).pipe(Effect.orDie)
 
-  for (const pkg of packages) {
-    const scope = pkg.name.split('/').at(-1)!
-    const packageDir = join(rootDir, 'packages', scope)
-    mkdirSync(join(packageDir, 'src'), { recursive: true })
-    mkdirSync(join(packageDir, 'build'), { recursive: true })
-    writeFileSync(join(packageDir, 'src', '_.ts'), `export const ${scope} = '${scope}'\n`)
-    writeFileSync(join(packageDir, 'build', '_.js'), `export const ${scope} = '${scope}'\n`)
-    writeFileSync(join(packageDir, 'build', '_.d.ts'), `export declare const ${scope}: string\n`)
-    const packageJsonPath = join(packageDir, 'package.json')
-    writeFileSync(packageJsonPath, makePackageJson(pkg))
-    packageJsonPaths[pkg.name] = packageJsonPath
-  }
+    for (const pkg of packages) {
+      const scope = pkg.name.split('/').at(-1)!
+      const packageDir = Fs.Path.AbsDir.fromString(`${rootDirString}packages/${scope}/`)
+      const srcDir = Fs.Path.AbsDir.fromString(`${Fs.Path.toString(packageDir)}src/`)
+      const buildDir = Fs.Path.AbsDir.fromString(`${Fs.Path.toString(packageDir)}build/`)
 
-  return packageJsonPaths
-}
+      yield* Fs.write(srcDir, { recursive: true }).pipe(Effect.orDie)
+      yield* Fs.write(buildDir, { recursive: true }).pipe(Effect.orDie)
+      yield* Fs.write(
+        Fs.Path.AbsFile.fromString(`${Fs.Path.toString(srcDir)}_.ts`),
+        `export const ${scope} = '${scope}'\n`,
+      ).pipe(Effect.orDie)
+      yield* Fs.write(
+        Fs.Path.AbsFile.fromString(`${Fs.Path.toString(buildDir)}_.js`),
+        `export const ${scope} = '${scope}'\n`,
+      ).pipe(Effect.orDie)
+      yield* Fs.write(
+        Fs.Path.AbsFile.fromString(`${Fs.Path.toString(buildDir)}_.d.ts`),
+        `export declare const ${scope}: string\n`,
+      ).pipe(Effect.orDie)
+
+      const packageJsonPath = Fs.Path.AbsFile.fromString(
+        `${Fs.Path.toString(packageDir)}package.json`,
+      )
+      yield* Fs.write(packageJsonPath, makePackageJson(pkg)).pipe(Effect.orDie)
+      packageJsonPaths[pkg.name] = packageJsonPath
+    }
+
+    return packageJsonPaths
+  })
 
 const makeCommandLayer = () => {
-  const baseLayer = NodeCommandExecutor.layer.pipe(Layer.provide(NodeFileSystem.layer))
+  const baseLayer = CommandExecutorLayer
 
   return Layer.effect(
     CommandExecutor.CommandExecutor,
@@ -194,15 +214,18 @@ const makeNpmLayer = (params: {
       const fs = yield* FileSystem.FileSystem
       const executor = yield* CommandExecutor.CommandExecutor
 
-      const packageNameFromCwd = (cwd: Fs.Path.AbsDir) =>
+      const packageNameFromCwd = (cwd: Fs.Path.AbsDir): Effect.Effect<string> =>
         Effect.gen(function* () {
           const packageJsonPath = Fs.Path.join(cwd, Fs.Path.RelFile.fromString('./package.json'))
-          const manifestRaw = yield* fs.readFileString(Fs.Path.toString(packageJsonPath))
-          const manifest = JSON.parse(manifestRaw) as { name?: string }
-          if (typeof manifest.name !== 'string') {
+          const manifestRaw = yield* fs
+            .readFileString(Fs.Path.toString(packageJsonPath))
+            .pipe(Effect.orDie)
+          const manifest = yield* decodeJsonRecord(manifestRaw).pipe(Effect.orDie)
+          const packageName = manifest['name']
+          if (typeof packageName !== 'string') {
             return yield* Effect.die(new Error('fixture package.json missing name'))
           }
-          return manifest.name
+          return packageName
         })
 
       const packageNameFromTarball = (tarball: Fs.Path.AbsFile) => {
@@ -213,15 +236,15 @@ const makeNpmLayer = (params: {
 
       return {
         whoami: () => Effect.succeed('fixture-user'),
-        pack: (options) =>
+        pack: ((options) =>
           Effect.gen(function* () {
             const packageName = yield* packageNameFromCwd(options.cwd)
             yield* Ref.update(params.packCalls, (calls) => [...calls, packageName])
             return yield* NpmRegistry.Cli.pack(options).pipe(
               Effect.provideService(CommandExecutor.CommandExecutor, executor),
             )
-          }),
-        publish: (options) =>
+          })) satisfies NpmRegistry.NpmCliService['pack'],
+        publish: ((options) =>
           Effect.gen(function* () {
             const packageName = packageNameFromTarball(options.tarball)
             if (packageName === undefined) {
@@ -242,30 +265,38 @@ const makeNpmLayer = (params: {
                 }),
               )
             }
-          }),
+          })) satisfies NpmRegistry.NpmCliService['publish'],
       } satisfies NpmRegistry.NpmCliService
     }),
   )
 
-const makeRealHarness = (options: RealHarnessOptions): Effect.Effect<RealHarness> =>
+const makeRealHarness = (
+  options: RealHarnessOptions,
+): Effect.Effect<RealHarness, never, Scope.Scope> =>
   Effect.acquireRelease(
     Effect.gen(function* () {
-      const rootDir = mkdtempSync(join(tmpdir(), 'kitz-release-e2e-'))
-      mkdirSync(join(rootDir, '.release'), { recursive: true })
-      const packageJsonPaths = writeFixtureWorkspace(rootDir, options.packages)
+      const rootDir = Fs.Path.AbsDir.fromString(`/tmp/kitz-release-e2e-${crypto.randomUUID()}/`)
+      yield* withFileSystem(
+        Fs.write(Fs.Path.AbsDir.fromString(`${Fs.Path.toString(rootDir)}.release/`), {
+          recursive: true,
+        }),
+      ).pipe(Effect.orDie)
+      const packageJsonPaths = yield* withFileSystem(
+        writeFixtureWorkspace(rootDir, options.packages),
+      )
 
       const workspacePackages = options.packages.map((pkg) => {
         const scope = pkg.name.split('/').at(-1)!
         return {
           name: Pkg.Moniker.parse(pkg.name),
           scope,
-          path: Fs.Path.AbsDir.fromString(`${join(rootDir, 'packages', scope)}/`),
+          path: Fs.Path.AbsDir.fromString(`${Fs.Path.toString(rootDir)}packages/${scope}/`),
         }
       }) satisfies Parameters<typeof planOfficial>[0]
 
       const tags = options.packages.map((pkg) => tag(Pkg.Moniker.parse(pkg.name), '1.0.0'))
 
-      const envLayer = Env.Test({ cwd: Fs.Path.AbsDir.fromString(`${rootDir}/`) })
+      const envLayer = Env.Test({ cwd: rootDir })
       const { layer: gitLayer, state: gitState } = yield* Git.Memory.makeWithState({
         branch: 'main',
         tags,
@@ -279,21 +310,21 @@ const makeRealHarness = (options: RealHarnessOptions): Effect.Effect<RealHarness
         new Set(options.failPublishPackages ?? []),
       )
 
-      const planLayer = Layer.mergeAll(envLayer, NodeFileSystem.layer, gitLayer)
+      const planLayer = Layer.mergeAll(envLayer, FileSystemLayer, gitLayer)
       const commandLayer = makeCommandLayer()
       const npmLayer = makeNpmLayer({
         packages: options.packages,
         packCalls,
         publishCalls,
         failPublishPackages,
-      }).pipe(Layer.provide(Layer.mergeAll(NodeFileSystem.layer, commandLayer)))
+      }).pipe(Layer.provide(Layer.mergeAll(FileSystemLayer, commandLayer)))
 
       const workflowLayer = Layer.mergeAll(
         planLayer,
         githubLayer,
         commandLayer,
         npmLayer,
-        makeWorkflowRuntime({ dbPath: join(rootDir, '.release', 'workflow.db') }),
+        makeWorkflowRuntime({ dbPath: `${Fs.Path.toString(rootDir)}.release/workflow.db` }),
       )
 
       return {
@@ -310,9 +341,9 @@ const makeRealHarness = (options: RealHarnessOptions): Effect.Effect<RealHarness
       }
     }),
     (harness) =>
-      Effect.sync(() => {
-        rmSync(harness.rootDir, { recursive: true, force: true })
-      }),
+      withFileSystem(Fs.remove(harness.rootDir, { recursive: true, force: true })).pipe(
+        Effect.orDie,
+      ),
   )
 
 const alphaPackages: readonly FixturePackage[] = [
@@ -392,7 +423,7 @@ const assertGraphPlan = (plan: GraphPlanLike) => {
   ])
 }
 
-const assertGraphTarballsExist = (rootDir: string) =>
+const assertGraphTarballsExist = (rootDir: Fs.Path.AbsDir) =>
   Effect.gen(function* () {
     for (const [packageName, version] of [
       ['@kitz/a', '1.1.0'],
@@ -402,13 +433,10 @@ const assertGraphTarballsExist = (rootDir: string) =>
       ['@kitz/e', '1.0.1'],
       ['@kitz/f', '1.0.1'],
     ] as const) {
-      const tarballPath = join(
-        rootDir,
-        '.release',
-        'artifacts',
-        `${slugPackageName(packageName)}-${version}.tgz`,
+      const tarballPath = Fs.Path.AbsFile.fromString(
+        `${Fs.Path.toString(rootDir)}.release/artifacts/${slugPackageName(packageName)}-${version}.tgz`,
       )
-      expect(yield* Effect.sync(() => existsSync(tarballPath))).toBe(true)
+      expect(yield* withFileSystem(Fs.exists(tarballPath))).toBe(true)
     }
   })
 
@@ -489,6 +517,8 @@ const publishFailureScenarios: readonly PublishFailureScenario[] = [
   },
 ]
 
+const E2E_TEST_TIMEOUT_MS = 30_000
+
 describe('Executor e2e', () => {
   test.scopedLive(
     'resumes after a real prepack failure without re-packing completed packages',
@@ -534,14 +564,14 @@ describe('Executor e2e', () => {
           expect(yield* Ref.get(harness.publishCalls)).toEqual([])
 
           const failingPackageJsonPath = harness.packageJsonPaths['@kitz/c']!
-          yield* Effect.sync(() =>
-            writeFileSync(
+          yield* withFileSystem(
+            Fs.write(
               failingPackageJsonPath,
               makePackageJson({
                 name: '@kitz/c',
               }),
             ),
-          )
+          ).pipe(Effect.orDie)
 
           const secondRun = yield* execute(plan, { dryRun: false }).pipe(
             Effect.provide(harness.workflowLayer),
@@ -562,101 +592,108 @@ describe('Executor e2e', () => {
           expect(yield* Ref.get(harness.publishCalls)).toEqual(['@kitz/a', '@kitz/b', '@kitz/c'])
         }),
       ),
+    E2E_TEST_TIMEOUT_MS,
   )
 
   for (const scenario of hookFailureScenarios) {
-    test.scopedLive(scenario.name, () =>
-      quiet(
-        Effect.gen(function* () {
-          const packages = withScripts(graphPackages, scenario.packageName, scenario.scripts)
-          const harness = yield* makeRealHarness({
-            packages,
-            commits: graphCommits,
-          })
+    test.scopedLive(
+      scenario.name,
+      () =>
+        quiet(
+          Effect.gen(function* () {
+            const packages = withScripts(graphPackages, scenario.packageName, scenario.scripts)
+            const harness = yield* makeRealHarness({
+              packages,
+              commits: graphCommits,
+            })
 
-          const plan = yield* planOfficial(harness.workspacePackages).pipe(
-            Effect.provide(harness.planLayer),
-          )
+            const plan = yield* planOfficial(harness.workspacePackages).pipe(
+              Effect.provide(harness.planLayer),
+            )
 
-          assertGraphPlan(plan)
+            assertGraphPlan(plan)
 
-          const firstRun = yield* execute(plan, { dryRun: false }).pipe(
-            Effect.provide(harness.workflowLayer),
-            Effect.either,
-          )
+            const firstRun = yield* execute(plan, { dryRun: false }).pipe(
+              Effect.provide(harness.workflowLayer),
+              Effect.either,
+            )
 
-          expect(firstRun._tag).toBe('Left')
-          expect(yield* Ref.get(harness.packCalls)).toEqual(scenario.firstPackCalls)
-          expect(yield* Ref.get(harness.publishCalls)).toEqual([])
+            expect(firstRun._tag).toBe('Left')
+            expect(yield* Ref.get(harness.packCalls)).toEqual(scenario.firstPackCalls)
+            expect(yield* Ref.get(harness.publishCalls)).toEqual([])
 
-          const fixedPackage = fixtureByName(graphPackages, scenario.packageName)
-          yield* Effect.sync(() =>
-            writeFileSync(
-              harness.packageJsonPaths[scenario.packageName]!,
-              makePackageJson(fixedPackage),
-            ),
-          )
+            const fixedPackage = fixtureByName(graphPackages, scenario.packageName)
+            yield* withFileSystem(
+              Fs.write(
+                harness.packageJsonPaths[scenario.packageName]!,
+                makePackageJson(fixedPackage),
+              ),
+            ).pipe(Effect.orDie)
 
-          const secondRun = yield* execute(plan, { dryRun: false }).pipe(
-            Effect.provide(harness.workflowLayer),
-            Effect.either,
-          )
+            const secondRun = yield* execute(plan, { dryRun: false }).pipe(
+              Effect.provide(harness.workflowLayer),
+              Effect.either,
+            )
 
-          expect(secondRun._tag).toBe('Right')
-          if (secondRun._tag === 'Right') {
-            expect(secondRun.right).toEqual(graphResult)
-          }
+            expect(secondRun._tag).toBe('Right')
+            if (secondRun._tag === 'Right') {
+              expect(secondRun.right).toEqual(graphResult)
+            }
 
-          expect(yield* Ref.get(harness.packCalls)).toEqual(scenario.finalPackCalls)
-          expect(yield* Ref.get(harness.publishCalls)).toEqual(graphResult.releasedPackages)
-        }),
-      ),
+            expect(yield* Ref.get(harness.packCalls)).toEqual(scenario.finalPackCalls)
+            expect(yield* Ref.get(harness.publishCalls)).toEqual(graphResult.releasedPackages)
+          }),
+        ),
+      E2E_TEST_TIMEOUT_MS,
     )
   }
 
   for (const scenario of publishFailureScenarios) {
-    test.scopedLive(scenario.name, () =>
-      quiet(
-        Effect.gen(function* () {
-          const harness = yield* makeRealHarness({
-            packages: graphPackages,
-            commits: graphCommits,
-            failPublishPackages: [scenario.packageName],
-          })
+    test.scopedLive(
+      scenario.name,
+      () =>
+        quiet(
+          Effect.gen(function* () {
+            const harness = yield* makeRealHarness({
+              packages: graphPackages,
+              commits: graphCommits,
+              failPublishPackages: [scenario.packageName],
+            })
 
-          const plan = yield* planOfficial(harness.workspacePackages).pipe(
-            Effect.provide(harness.planLayer),
-          )
+            const plan = yield* planOfficial(harness.workspacePackages).pipe(
+              Effect.provide(harness.planLayer),
+            )
 
-          assertGraphPlan(plan)
+            assertGraphPlan(plan)
 
-          const firstRun = yield* execute(plan, { dryRun: false }).pipe(
-            Effect.provide(harness.workflowLayer),
-            Effect.either,
-          )
+            const firstRun = yield* execute(plan, { dryRun: false }).pipe(
+              Effect.provide(harness.workflowLayer),
+              Effect.either,
+            )
 
-          expect(firstRun._tag).toBe('Left')
-          expect(yield* Ref.get(harness.packCalls)).toEqual(graphResult.releasedPackages)
-          expect(yield* Ref.get(harness.publishCalls)).toEqual(scenario.firstPublishCalls)
-          expect(yield* Ref.get(harness.gitState.createdTags)).toEqual([])
-          yield* assertGraphTarballsExist(harness.rootDir)
+            expect(firstRun._tag).toBe('Left')
+            expect(yield* Ref.get(harness.packCalls)).toEqual(graphResult.releasedPackages)
+            expect(yield* Ref.get(harness.publishCalls)).toEqual(scenario.firstPublishCalls)
+            expect(yield* Ref.get(harness.gitState.createdTags)).toEqual([])
+            yield* assertGraphTarballsExist(harness.rootDir)
 
-          yield* Ref.set(harness.failPublishPackages, new Set())
+            yield* Ref.set(harness.failPublishPackages, new Set())
 
-          const secondRun = yield* execute(plan, { dryRun: false }).pipe(
-            Effect.provide(harness.workflowLayer),
-            Effect.either,
-          )
+            const secondRun = yield* execute(plan, { dryRun: false }).pipe(
+              Effect.provide(harness.workflowLayer),
+              Effect.either,
+            )
 
-          expect(secondRun._tag).toBe('Right')
-          if (secondRun._tag === 'Right') {
-            expect(secondRun.right).toEqual(graphResult)
-          }
+            expect(secondRun._tag).toBe('Right')
+            if (secondRun._tag === 'Right') {
+              expect(secondRun.right).toEqual(graphResult)
+            }
 
-          expect(yield* Ref.get(harness.packCalls)).toEqual(graphResult.releasedPackages)
-          expect(yield* Ref.get(harness.publishCalls)).toEqual(scenario.finalPublishCalls)
-        }),
-      ),
+            expect(yield* Ref.get(harness.packCalls)).toEqual(graphResult.releasedPackages)
+            expect(yield* Ref.get(harness.publishCalls)).toEqual(scenario.finalPublishCalls)
+          }),
+        ),
+      E2E_TEST_TIMEOUT_MS,
     )
   }
 })

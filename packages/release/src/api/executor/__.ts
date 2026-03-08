@@ -4,7 +4,9 @@ export {
   executeObservable,
   type ExecutionResult,
   formatLifecycleEvent,
+  type ObservableExecutionError,
   type LifecycleEventLine,
+  type ObservableExecutionRequirements,
   type ObservableResult,
   toPayload,
 } from './execute.js'

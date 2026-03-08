@@ -235,7 +235,7 @@ const createCallableInternal = <
     // Detect template tag call: first arg is TemplateStringsArray
     if (isTemplateStringsArray(args[0])) {
       const handler = config.templateTag ?? defaultTemplateHandler(config.call)
-      const result = handler(state, args[0] as TemplateStringsArray, ...args.slice(1))
+      const result = handler(state, args[0], ...args.slice(1))
       return createCallableInternal(config, result ?? state)
     }
     // Regular call
@@ -415,7 +415,7 @@ const createCallableMutableImpl = <
   const callable = (...args: unknown[]) => {
     if (isTemplateStringsArray(args[0])) {
       const handler = config.templateTag ?? defaultMutableTemplateHandler(config.call)
-      handler(args[0] as TemplateStringsArray, ...args.slice(1))
+      handler(args[0], ...args.slice(1))
     } else {
       config.call(...(args as $CallArgs))
     }
@@ -623,7 +623,7 @@ export const fromInterface = <$Builder>() => {
               )
               ;(config.call as any)(result)
             })
-          handler(args[0] as TemplateStringsArray, ...args.slice(1))
+          handler(args[0], ...args.slice(1))
         } else {
           ;(config.call as any)(...args)
         }

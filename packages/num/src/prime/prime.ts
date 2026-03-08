@@ -78,7 +78,7 @@ export const from = (value: Natural): Prime => {
     }
     throw new Error(`Value must be prime, ${value} is not prime`)
   }
-  return value as Prime
+  return value
 }
 
 /**
@@ -122,7 +122,7 @@ export const next = (value: number): Prime => {
     candidate += 2
   }
 
-  return candidate as Prime
+  return candidate
 }
 
 /**
@@ -183,7 +183,7 @@ export const nth = (n: Natural): Prime => {
   while (count < n) {
     if (is(candidate)) {
       count++
-      if (count === n) return candidate as Prime
+      if (count === n) return candidate
     }
     candidate += 2
   }

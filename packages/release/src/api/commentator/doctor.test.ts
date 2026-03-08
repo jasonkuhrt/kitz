@@ -40,6 +40,14 @@ describe('commentator doctor', () => {
           metadata: { projectedHeader: 'feat(release)' },
         }),
         Finished.make({
+          rule: ruleRef(
+            'pr.type.release-kind-match-diff',
+            'No-release type cannot have src changes',
+          ),
+          duration: 1,
+          severity: Severity.Warn.make(),
+        }),
+        Finished.make({
           rule: ruleRef('plan.packages-license-present', 'planned packages declare a license'),
           duration: 1,
           severity: Severity.Warn.make(),
@@ -104,6 +112,7 @@ describe('commentator doctor', () => {
     expect(rendered).toContain('### Doctor')
     expect(rendered).toContain('publish-pr.yml')
     expect(rendered).toContain('Release header')
+    expect(rendered).toContain('Release kind')
     expect(rendered).toContain('Guidance (1)')
     expect(rendered).toContain('Repository provenance')
     expect(rendered).toContain('Fix: Apply the canonical PR title header.')

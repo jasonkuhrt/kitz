@@ -56,8 +56,7 @@ export const createEvent = (parseResult: OpeningArgs.ParseResultBasic) => {
           parseResult.errors.length > 0 &&
           // If there are any other kinds of errors than the two named below then we do not, currently, support prompting for that case.
           parseResult.errors.filter(
-            (_) =>
-              [`OakErrorInvalidArgument`, `OakErrorMissingArgument`].includes(_._tag) === false,
+            (_) => ![`OakErrorInvalidArgument`, `OakErrorMissingArgument`].includes(_._tag),
           ).length === 0
         ? // It is not possible to have invalid argument and missing argument errors at once.
           {

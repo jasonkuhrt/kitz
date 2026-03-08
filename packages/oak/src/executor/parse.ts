@@ -160,7 +160,7 @@ export const parse = (
   const argumentErrors = [
     ...Obj.entries(parseProgressPostPromptAnnotation.basicParameters)
       .map(([_, v]): null | OpeningArgs.ParseResultBasicError => {
-        return v.prompt.enabled === false && v.openingParseResult._tag === `error`
+        return !v.prompt.enabled && v.openingParseResult._tag === `error`
           ? v.openingParseResult
           : null
       })

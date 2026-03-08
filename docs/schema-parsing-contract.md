@@ -24,7 +24,7 @@ Keep parsing and serialization behavior consistent across packages:
 
 ## Enforced Checks
 
-`tools/check-api-model-style.mjs` enforces:
+The custom oxlint rule `kitz/schema-parsing-contract` enforces:
 
 - No ad-hoc exact release-tag parsers in `packages/release/src/api`.
 - No manual `@`-split parsing for release tags in `packages/release/src/api`.

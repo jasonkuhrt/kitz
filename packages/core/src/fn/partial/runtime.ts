@@ -61,7 +61,7 @@ export const partial = <$Fn extends Fn.AnyAny, const $Args extends readonly unkn
 
   if (holeCount === 0) {
     // No holes - execute immediately
-    return fn(...args) as any
+    return fn(...args)
   }
 
   // Return a function that accepts the remaining arguments

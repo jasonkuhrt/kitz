@@ -41,25 +41,25 @@ describe('Pkg.Manifest publish rewrite', () => {
       },
     )
 
-    expect(result.version).toBe('1.4.0')
-    expect(result.imports).toEqual({
+    expect(result['version']).toBe('1.4.0')
+    expect(result['imports']).toEqual({
       '#release': {
         types: './build/_.d.ts',
         default: './build/_.js',
       },
     })
-    expect(result.exports).toEqual({
+    expect(result['exports']).toEqual({
       '.': {
         types: './build/__.d.ts',
         default: './build/__.js',
       },
     })
-    expect(result.dependencies).toEqual({
+    expect(result['dependencies']).toEqual({
       '@kitz/core': '1.0.0',
       '@kitz/fs': '^2.0.0',
       effect: '^3.19.13',
     })
-    expect(result.peerDependencies).toEqual({
+    expect(result['peerDependencies']).toEqual({
       '@kitz/env': '~3.0.0',
       '@kitz/git': '^1.0.0',
     })

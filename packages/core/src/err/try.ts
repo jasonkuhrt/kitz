@@ -140,7 +140,7 @@ export function tryCatch<returned, thrown>(
       }
       Lang.throw(error)
     },
-  }) as any
+  })
 }
 
 /**
@@ -254,7 +254,7 @@ export const tryOrAsync = async <success, fallback>(
     return envelope.value as Awaited<success>
   }
 
-  const fallbackValue: fallback = Fn.is(fallback) ? (fallback as Fn.Lazy<fallback>)() : fallback
+  const fallbackValue: fallback = Fn.is(fallback) ? fallback() : fallback
   return await fallbackValue
 }
 

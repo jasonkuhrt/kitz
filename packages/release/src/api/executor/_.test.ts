@@ -424,4 +424,34 @@ describe('Executor integration', () => {
       }),
     ),
   )
+
+  test.scopedLive('observable execution uses caller-provided runtime services', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+          },
+        })
+
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
+
+        const observable = yield* executeObservable(plan, {
+          dryRun: false,
+          dbPath: `/tmp/kitz-release-workflow-${Date.now()}-${Math.random().toString(16).slice(2)}.db`,
+        }).pipe(Effect.provide(harness.planLayer))
+
+        const result = yield* observable.execute.pipe(Effect.provide(harness.workflowLayer))
+
+        expect(result.releasedPackages).toEqual(['@kitz/core'])
+        expect(result.createdTags).toEqual([tagCore('1.1.0')])
+        expect(result.createdGHReleases).toEqual([tagCore('1.1.0')])
+      }),
+    ),
+  )
 })

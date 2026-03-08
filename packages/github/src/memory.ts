@@ -1,10 +1,13 @@
 import { Effect, Layer, Ref } from 'effect'
 import {
+  type CreateIssueCommentParams,
   type CreateReleaseParams,
   Github,
   type GithubService,
+  type IssueComment,
   type PullRequest,
   type Release,
+  type UpdateIssueCommentParams,
   type UpdatePullRequestParams,
   type UpdateReleaseParams,
 } from './service.js'
@@ -21,6 +24,11 @@ export interface GithubMemoryConfig {
   readonly releases?: Record<string, Release>
   /** Open pull requests in the repository */
   readonly pullRequests?: readonly PullRequest[]
+  /** Issue comments grouped by PR issue number */
+  readonly issueComments?: ReadonlyArray<{
+    readonly issueNumber: number
+    readonly comment: IssueComment
+  }>
 }
 
 // ============================================================================
@@ -40,12 +48,25 @@ export interface GithubMemoryState {
   readonly releases: Ref.Ref<Record<string, Release>>
   /** Open pull requests */
   readonly pullRequests: Ref.Ref<readonly PullRequest[]>
+  /** PR issue comments keyed by issue number */
+  readonly issueComments: Ref.Ref<
+    ReadonlyArray<{
+      readonly issueNumber: number
+      readonly comment: IssueComment
+    }>
+  >
   /** Releases created (for verification) */
   readonly createdReleases: Ref.Ref<CreateReleaseParams[]>
   /** Releases updated (for verification) */
   readonly updatedReleases: Ref.Ref<Array<{ tag: string; params: UpdateReleaseParams }>>
   /** Pull requests updated (for verification) */
   readonly updatedPullRequests: Ref.Ref<Array<{ number: number; params: UpdatePullRequestParams }>>
+  /** Issue comments created (for verification) */
+  readonly createdIssueComments: Ref.Ref<CreateIssueCommentParams[]>
+  /** Issue comments updated (for verification) */
+  readonly updatedIssueComments: Ref.Ref<
+    Array<{ commentId: number; params: UpdateIssueCommentParams }>
+  >
 }
 
 /**
@@ -55,9 +76,14 @@ export const makeState = (config: GithubMemoryConfig = {}): Effect.Effect<Github
   Effect.all({
     releases: Ref.make(config.releases ?? {}),
     pullRequests: Ref.make(config.pullRequests ?? []),
+    issueComments: Ref.make(config.issueComments ?? []),
     createdReleases: Ref.make<CreateReleaseParams[]>([]),
     updatedReleases: Ref.make<Array<{ tag: string; params: UpdateReleaseParams }>>([]),
     updatedPullRequests: Ref.make<Array<{ number: number; params: UpdatePullRequestParams }>>([]),
+    createdIssueComments: Ref.make<CreateIssueCommentParams[]>([]),
+    updatedIssueComments: Ref.make<Array<{ commentId: number; params: UpdateIssueCommentParams }>>(
+      [],
+    ),
   })
 
 // ============================================================================
@@ -65,6 +91,7 @@ export const makeState = (config: GithubMemoryConfig = {}): Effect.Effect<Github
 // ============================================================================
 
 let releaseIdCounter = 1
+let issueCommentIdCounter = 1
 
 /**
  * Create a mock Release object from params.
@@ -108,6 +135,31 @@ const createMockRelease = (params: CreateReleaseParams): Release => ({
   },
   assets: [],
 })
+
+const createMockIssueComment = (params: CreateIssueCommentParams): IssueComment => ({
+  id: issueCommentIdCounter,
+  body: params.body,
+  html_url: `https://github.com/owner/repo/pull/${String(params.issueNumber)}#issuecomment-${String(issueCommentIdCounter++)}`,
+  user: {
+    type: 'Bot',
+  },
+})
+
+const findIssueCommentByMarkerInState = (
+  issueComments: ReadonlyArray<{
+    readonly issueNumber: number
+    readonly comment: IssueComment
+  }>,
+  issueNumber: number,
+  marker: string,
+): IssueComment | null =>
+  issueComments.find(
+    (entry) =>
+      entry.issueNumber === issueNumber &&
+      entry.comment.user?.type === 'Bot' &&
+      typeof entry.comment.body === 'string' &&
+      entry.comment.body.includes(marker),
+  )?.comment ?? null
 
 // ============================================================================
 // Service Implementation
@@ -176,6 +228,75 @@ const makeService = (state: GithubMemoryState): GithubService => ({
       )
       yield* Ref.update(state.updatedPullRequests, (updates) => [...updates, { number, params }])
       return updated
+    }),
+
+  listIssueComments: (issueNumber) =>
+    Effect.gen(function* () {
+      const issueComments = yield* Ref.get(state.issueComments)
+      return issueComments
+        .filter((entry) => entry.issueNumber === issueNumber)
+        .map((entry) => entry.comment)
+    }),
+
+  findIssueCommentByMarker: (issueNumber, marker) =>
+    Effect.gen(function* () {
+      const issueComments = yield* Ref.get(state.issueComments)
+      return findIssueCommentByMarkerInState(issueComments, issueNumber, marker)
+    }),
+
+  createIssueComment: (params) =>
+    Effect.gen(function* () {
+      const comment = createMockIssueComment(params)
+      yield* Ref.update(state.issueComments, (comments) => [
+        ...comments,
+        { issueNumber: params.issueNumber, comment },
+      ])
+      yield* Ref.update(state.createdIssueComments, (created) => [...created, params])
+      return comment
+    }),
+
+  updateIssueComment: (commentId, params) =>
+    Effect.gen(function* () {
+      const issueComments = yield* Ref.get(state.issueComments)
+      const existing = issueComments.find((entry) => entry.comment.id === commentId)
+      if (!existing) {
+        throw new Error(`Issue comment not found: ${String(commentId)}`)
+      }
+
+      const updated: IssueComment = {
+        ...existing.comment,
+        body: params.body,
+      }
+
+      yield* Ref.update(state.issueComments, (comments) =>
+        comments.map((entry) =>
+          entry.comment.id === commentId ? { ...entry, comment: updated } : entry,
+        ),
+      )
+      yield* Ref.update(state.updatedIssueComments, (updates) => [
+        ...updates,
+        { commentId, params },
+      ])
+      return updated
+    }),
+
+  upsertIssueComment: (params) =>
+    Effect.gen(function* () {
+      const issueComments = yield* Ref.get(state.issueComments)
+      const existing =
+        params.existingComment ??
+        findIssueCommentByMarkerInState(issueComments, params.issueNumber, params.marker)
+
+      if (existing) {
+        return yield* makeService(state).updateIssueComment(existing.id, {
+          body: params.body,
+        })
+      }
+
+      return yield* makeService(state).createIssueComment({
+        issueNumber: params.issueNumber,
+        body: params.body,
+      })
     }),
 })
 

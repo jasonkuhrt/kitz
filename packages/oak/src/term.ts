@@ -1,4 +1,4 @@
-import ansis from 'ansis'
+import * as ansis from 'ansis'
 
 export namespace Term {
   export const colors = {

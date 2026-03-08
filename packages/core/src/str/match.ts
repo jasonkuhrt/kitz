@@ -108,7 +108,7 @@ interface PatternFunction {
   }
 } // Implement .as() method
 
-;(pattern as PatternFunction).as = ((srcOrRegexp: string | RegExp, flags?: Flags): Regex => {
+pattern.as = ((srcOrRegexp: string | RegExp, flags?: Flags): Regex => {
   if (typeof srcOrRegexp === 'string') {
     return regex.as(srcOrRegexp, flags) as any
   }

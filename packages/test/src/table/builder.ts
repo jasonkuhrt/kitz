@@ -254,7 +254,7 @@ export function create(state: State = defaultState): any {
 
       // Object form
       if (!Array.isArray(caseData)) {
-        const obj = caseData as any // CaseObject type is complex, use any for destructuring
+        const obj = caseData // CaseObject type is complex, use any for destructuring
         // Extract known properties and preserve the rest as context
         const { comment, input, output, skip, skipIf, only, todo, tags, ...context } = obj
 
@@ -272,7 +272,7 @@ export function create(state: State = defaultState): any {
           todo: todo as boolean | string | undefined,
           tags: tags as string[] | undefined,
           ...context, // Preserve any additional properties like 'data'
-        } as any
+        }
       }
 
       // Tuple form - [input, output?, context?]
@@ -714,7 +714,7 @@ export function create(state: State = defaultState): any {
       }
       // Always return builder for chaining - execution happens in .test()
       // Cast to proper type for type inference
-      return create(flushCases(newState)) as any
+      return create(flushCases(newState))
     },
 
     case(...args: any[]) {
@@ -946,11 +946,7 @@ export function create(state: State = defaultState): any {
             ? layerOrFactory
             : (layerOrFactory as (testCase: any) => Layer.Layer<any>)({ input, output, ...params })
 
-        const effectWithLayer = Effect.provide(effect, layer as any) as Effect.Effect<
-          any,
-          any,
-          never
-        >
+        const effectWithLayer = Effect.provide(effect, layer as any) as Effect.Effect<any, any>
         return Effect.runPromise(effectWithLayer)
       }
 
@@ -1009,11 +1005,7 @@ export function create(state: State = defaultState): any {
                     ...params,
                   })
 
-            const effectWithLayer = Effect.provide(effect, layer as any) as Effect.Effect<
-              any,
-              any,
-              never
-            >
+            const effectWithLayer = Effect.provide(effect, layer as any) as Effect.Effect<any, any>
             return Effect.runPromise(effectWithLayer)
           }
 

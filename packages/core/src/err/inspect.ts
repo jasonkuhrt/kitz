@@ -112,7 +112,7 @@ const optionSpecs = define([
     envVarNamePrefix: 'errorDisplay',
     description: 'Should output be colored for easier reading',
     default: true,
-    parse: (envVarValue) => (envVarValue === '0' || envVarValue === 'false' ? false : true),
+    parse: (envVarValue) => envVarValue !== '0' && envVarValue !== 'false',
   },
   {
     name: 'stackTraceColumns',
@@ -140,7 +140,7 @@ const optionSpecs = define([
     envVarNamePrefix: 'errorDisplay',
     description: 'Show environment variable help section',
     default: true,
-    parse: (envVarValue) => (envVarValue === '0' || envVarValue === 'false' ? false : true),
+    parse: (envVarValue) => envVarValue !== '0' && envVarValue !== 'false',
   },
 ])
 
@@ -335,7 +335,7 @@ const formatStackFrames = (stackLines: string[]): string[] => {
     if (match[2]) {
       // Has function name and location
       const funcName = match[1]!.trim().replace('Object.', '')
-      const location = match[2]!.trim()
+      const location = match[2].trim()
       return { funcName, location, original: cleaned }
     } else {
       // Only location
@@ -434,7 +434,7 @@ const _inspectResursively = (
 
     // If this nested error is itself an AggregateError, show its children
     if (isAggregateError) {
-      const aggregateError = error as AggregateError
+      const aggregateError = error
       if (aggregateError.errors.length > 0) {
         // Add a visual separator
         lines.push(`${childIndent}${config.color.value ? dim('↓') : '↓'}`)
@@ -553,7 +553,7 @@ const _inspectResursively = (
 
   // Aggregate errors
   if (isAggregateError) {
-    const aggregateError = error as AggregateError
+    const aggregateError = error
     if (aggregateError.errors.length > 0) {
       // Visual separator - indented by 4 spaces to align with tree continuation
       const separator1 = config.color.value ? dim('    ↓') : '    ↓'
@@ -581,7 +581,7 @@ const _inspectResursively = (
 
       // Add closing tree character aligned with tree structure
       const closingLine = config.color.value ? dim('    └') : '    └'
-      lines.push(`${closingLine}`)
+      lines.push(closingLine)
     }
   }
 

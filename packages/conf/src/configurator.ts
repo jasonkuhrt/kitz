@@ -21,7 +21,7 @@ export interface Configurator<
   $Default 		              extends Partial<$Normalized> =
                                     Partial<$Normalized>,
 	$InputResolver            extends InputResolverGeneric<InputResolver.$Func<$Input, $Normalized, $Default>> =
-                                    InputResolverGeneric<InputResolver.Standard_ShallowMerge$Func<$Input, $Normalized, $Default>>
+                                    InputResolverGeneric
   // $InputResolver            extends Configurator.InputResolverTyped<Configurator.InputResolver.$Func<$Input, $Normalized, $Default>> =
                                     // Configurator.InputResolverTyped<Configurator.InputResolver.Standard_ShallowMerge$Func<$Input, $Normalized, $Default>>
 
@@ -135,11 +135,11 @@ export interface Builder<$Configurator extends Configurator> {
 
     input:
 			<$Input extends Configuration>(
-			) => Builder<Configurator<$Input, Required<$Input>, {}>>
+			) => Builder<Configurator<$Input, Required<$Input>>>
 
     normalized:
 			<$Normalized extends $Configurator['input']>(
-			) => Builder<Configurator<$Configurator['input'], $Normalized, {}>>
+			) => Builder<Configurator<$Configurator['input'], $Normalized>>
 
     default:
 			<const $Default extends Partial<$Configurator['normalized']>>(

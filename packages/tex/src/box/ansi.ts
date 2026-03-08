@@ -10,7 +10,7 @@
  */
 
 import { Color } from '@kitz/color'
-import ansis from 'ansis'
+import * as ansis from 'ansis'
 import type { Style } from './style.js'
 
 /**

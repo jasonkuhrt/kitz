@@ -213,11 +213,11 @@ export const test = (patterns: readonly Parsed[], log: LogRecord): boolean => {
   let yaynay: null | boolean = null
   for (const pattern of patterns) {
     // if log already passed then we can skip rest except negations
-    if (yaynay === true && pattern.negate !== true) continue
+    if (yaynay === true && !pattern.negate) continue
     // If log was already filtered out and pattern is a negate, then we can skip
     // This is because negate as a first pattern means simply to inverse the result,
     // while as an nth pattern it means to remove things previously included
-    if (yaynay === false && pattern.negate === true) continue
+    if (yaynay === false && pattern.negate) continue
 
     const logPath = log.path ? [`.`, ...log.path].join(symbols.pathDelim) : `.`
     let isPass = false
@@ -424,7 +424,7 @@ export function renderSyntaxError(input: {
   const multipleInputs = input.errPatterns.length > 1
   const multipleErrors = badOnes.length > 1
   const allBad = badOnes.length === input.errPatterns.length
-  const foundIn = `${input.foundIn ? ` found in ${input.foundIn}` : ``}`
+  const foundIn = input.foundIn ? ` found in ${input.foundIn}` : ``
   let message
 
   if (!multipleInputs) {

@@ -18,4 +18,4 @@ export {
   NodeTerminal as Terminal,
   NodeWorker as Worker,
   NodeWorkerRunner as WorkerRunner,
-} from "@effect/platform-node";
+} from '@effect/platform-node'

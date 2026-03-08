@@ -71,7 +71,7 @@ export const parse = <$value>(input: Value<$value>): Object<$value> => {
 
   // Single value (not array)
   if (!Array.isArray(input)) {
-    const value = input as $value
+    const value = input
     return { top: value, right: value, bottom: value, left: value }
   }
 

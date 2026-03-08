@@ -177,7 +177,7 @@ export const builder = Bldr.fromInterface<Builder>()(dataEmpty, (data) => ({
 
   templateTag: (strings, ...values) => {
     const result = strings.reduce((acc, str, i) => {
-      return acc + str + (i < values.length ? String(expand(values[i]!)) : '')
+      return acc + str + (i < values.length ? String(expand(values[i])) : '')
     }, '')
     data.lines.push(result)
   },
@@ -242,7 +242,7 @@ export const builder = Bldr.fromInterface<Builder>()(dataEmpty, (data) => ({
  */
 export const template = (strings: TemplateStringsArray, ...values: unknown[]): string => {
   return strings.reduce((acc, str, i) => {
-    return acc + str + (i < values.length ? expand(values[i]!) : '')
+    return acc + str + (i < values.length ? expand(values[i]) : '')
   }, '')
 }
 

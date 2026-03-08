@@ -1,3 +1,4 @@
+/* oxlint-disable typescript-eslint(no-unnecessary-type-assertion) -- branded filesystem helpers need explicit assertions to preserve generic location types across Effect/platform boundaries. */
 /**
  * Type-safe filesystem operations using FsLoc types.
  *

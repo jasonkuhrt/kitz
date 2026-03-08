@@ -60,14 +60,14 @@ const executeOperation = (builder: Builder, op: Operation): Effect.Effect<void, 
         break
       }
       case 'move-file': {
-        const fromPath = Path.join(builder.base, op.from) as Path.AbsFile
-        const toPath = Path.join(builder.base, op.to) as Path.AbsFile
+        const fromPath = Path.join(builder.base, op.from)
+        const toPath = Path.join(builder.base, op.to)
         yield* rename(fromPath, toPath)
         break
       }
       case 'move-dir': {
-        const fromPath = Path.join(builder.base, op.from) as Path.AbsDir
-        const toPath = Path.join(builder.base, op.to) as Path.AbsDir
+        const fromPath = Path.join(builder.base, op.from)
+        const toPath = Path.join(builder.base, op.to)
         yield* rename(fromPath, toPath)
         break
       }

@@ -98,11 +98,7 @@ interface Environment {
   [name: string]: string | undefined
 }
 
-export const change = (
-  current: Output,
-  input: Input<BuilderCommandState.BaseEmpty>,
-  environment: Environment,
-): void => {
+export const change = (current: Output, input: Input, environment: Environment): void => {
   if (input.prompt !== undefined) {
     if (typeof input.prompt === `boolean`) {
       current.prompt.enabled = input.prompt
@@ -212,7 +208,7 @@ export const change = (
 const isEnvironmentEnabled = (lowercaseEnv: NodeJS.ProcessEnv) => {
   return lowercaseEnv[`cli_settings_read_arguments_from_environment`]
     ? parseEnvironmentVariableBooleanOrThrow(
-        lowercaseEnv[`cli_settings_read_arguments_from_environment`]!,
+        lowercaseEnv[`cli_settings_read_arguments_from_environment`],
       )
     : true
 }

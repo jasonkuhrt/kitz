@@ -69,6 +69,7 @@ const toInternalInterceptor = (
         } else {
           body.resolve(envelope.value)
         }
+        return undefined
       },
     )
   }

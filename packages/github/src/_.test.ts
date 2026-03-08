@@ -153,6 +153,7 @@ describe('Github', () => {
           html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
           title: 'feat(release): improve doctor output',
           body: 'body',
+          base: { ref: 'main' },
           head: { ref: 'feat/release' },
         },
       ],
@@ -171,6 +172,7 @@ describe('Github', () => {
         html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
         title: 'feat(release): improve doctor output',
         body: 'body',
+        base: { ref: 'main' },
         head: { ref: 'feat/release' },
       },
     ])
@@ -185,6 +187,7 @@ describe('Github', () => {
             html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
             title: 'feat(release): improve doctor output',
             body: 'body',
+            base: { ref: 'main' },
             head: { ref: 'feat/release' },
           },
         ],
@@ -210,6 +213,202 @@ describe('Github', () => {
       {
         number: 129,
         params: { title: 'feat(cli, release): improve doctor output' },
+      },
+    ])
+  })
+
+  test('createIssueComment creates and records a bot comment', async () => {
+    const { layer, state } = await Effect.runPromise(Github.Memory.makeWithState({}))
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.createIssueComment({
+          issueNumber: 129,
+          body: '<!-- kitz-release-plan -->\ncomment body',
+        })
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.body).toContain('comment body')
+    expect(result.user?.type).toBe('Bot')
+
+    const issueComments = await Effect.runPromise(Ref.get(state.issueComments))
+    const created = await Effect.runPromise(Ref.get(state.createdIssueComments))
+
+    expect(issueComments).toHaveLength(1)
+    expect(issueComments[0]?.issueNumber).toBe(129)
+    expect(created).toEqual([
+      {
+        issueNumber: 129,
+        body: '<!-- kitz-release-plan -->\ncomment body',
+      },
+    ])
+  })
+
+  test('findIssueCommentByMarker returns the matching bot comment for the issue', async () => {
+    const layer = Github.Memory.make({
+      issueComments: [
+        {
+          issueNumber: 129,
+          comment: {
+            id: 7,
+            body: 'unrelated user comment',
+            html_url: 'https://github.com/jasonkuhrt/kitz/pull/129#issuecomment-7',
+            user: { type: 'User' },
+          },
+        },
+        {
+          issueNumber: 129,
+          comment: {
+            id: 41,
+            body: '<!-- kitz-release-plan -->\npreview body',
+            html_url: 'https://github.com/jasonkuhrt/kitz/pull/129#issuecomment-41',
+            user: { type: 'Bot' },
+          },
+        },
+      ],
+    })
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.findIssueCommentByMarker(129, '<!-- kitz-release-plan -->')
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result?.id).toBe(41)
+    expect(result?.body).toContain('preview body')
+  })
+
+  test('upsertIssueComment updates the existing marker comment for the same issue', async () => {
+    const { layer, state } = await Effect.runPromise(
+      Github.Memory.makeWithState({
+        issueComments: [
+          {
+            issueNumber: 129,
+            comment: {
+              id: 41,
+              body: '<!-- kitz-release-plan -->\nold body',
+              html_url: 'https://github.com/jasonkuhrt/kitz/pull/129#issuecomment-41',
+              user: { type: 'Bot' },
+            },
+          },
+        ],
+      }),
+    )
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.upsertIssueComment({
+          issueNumber: 129,
+          marker: '<!-- kitz-release-plan -->',
+          body: '<!-- kitz-release-plan -->\nnew body',
+        })
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.id).toBe(41)
+    expect(result.body).toContain('new body')
+
+    const updated = await Effect.runPromise(Ref.get(state.updatedIssueComments))
+    expect(updated).toEqual([
+      {
+        commentId: 41,
+        params: {
+          body: '<!-- kitz-release-plan -->\nnew body',
+        },
+      },
+    ])
+  })
+
+  test('upsertIssueComment updates a provided existing comment when it is already known', async () => {
+    const { layer, state } = await Effect.runPromise(
+      Github.Memory.makeWithState({
+        issueComments: [
+          {
+            issueNumber: 129,
+            comment: {
+              id: 41,
+              body: '<!-- kitz-release-plan -->\nold body',
+              html_url: 'https://github.com/jasonkuhrt/kitz/pull/129#issuecomment-41',
+              user: { type: 'Bot' },
+            },
+          },
+        ],
+      }),
+    )
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.upsertIssueComment({
+          issueNumber: 129,
+          marker: '<!-- kitz-release-plan -->',
+          body: '<!-- kitz-release-plan -->\nnew body',
+          existingComment: {
+            id: 41,
+            body: '<!-- kitz-release-plan -->\nold body',
+            html_url: 'https://github.com/jasonkuhrt/kitz/pull/129#issuecomment-41',
+            user: { type: 'Bot' },
+          },
+        })
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.id).toBe(41)
+
+    const created = await Effect.runPromise(Ref.get(state.createdIssueComments))
+    const updated = await Effect.runPromise(Ref.get(state.updatedIssueComments))
+
+    expect(created).toEqual([])
+    expect(updated).toEqual([
+      {
+        commentId: 41,
+        params: {
+          body: '<!-- kitz-release-plan -->\nnew body',
+        },
+      },
+    ])
+  })
+
+  test('upsertIssueComment creates a new marker comment when none exists', async () => {
+    const { layer, state } = await Effect.runPromise(
+      Github.Memory.makeWithState({
+        issueComments: [
+          {
+            issueNumber: 129,
+            comment: {
+              id: 7,
+              body: 'unrelated comment',
+              html_url: 'https://github.com/jasonkuhrt/kitz/pull/129#issuecomment-7',
+              user: { type: 'User' },
+            },
+          },
+        ],
+      }),
+    )
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.upsertIssueComment({
+          issueNumber: 129,
+          marker: '<!-- kitz-release-plan -->',
+          body: '<!-- kitz-release-plan -->\npreview body',
+        })
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.body).toContain('preview body')
+    expect(result.id).not.toBe(7)
+
+    const created = await Effect.runPromise(Ref.get(state.createdIssueComments))
+    expect(created).toEqual([
+      {
+        issueNumber: 129,
+        body: '<!-- kitz-release-plan -->\npreview body',
       },
     ])
   })

@@ -23,10 +23,7 @@ export interface RewriteManifestForPackOptions extends RewriteDependencyOptions 
 const isJsonRecord = (value: unknown): value is JsonRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-const rewriteDependencyField = (
-  field: unknown,
-  options: RewriteDependencyOptions,
-): unknown => {
+const rewriteDependencyField = (field: unknown, options: RewriteDependencyOptions): unknown => {
   if (!isJsonRecord(field)) return field
 
   return Object.fromEntries(

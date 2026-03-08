@@ -129,7 +129,7 @@ export const parse = <$value>(input: Input<$value>): Partial<Logical<$value>> =>
 
   // Binary axis: [[main...], [cross...]] or [[main...]]
   const mainAxis = firstElement as AxisValue<$value>
-  const crossAxis = secondElement as AxisValue<$value> | undefined
+  const crossAxis = secondElement
 
   return {
     ...parseAxis(`main`, mainAxis),

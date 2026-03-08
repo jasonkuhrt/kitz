@@ -1,6 +1,6 @@
 import { Obj } from '@kitz/core'
 import { Tex } from '@kitz/tex'
-import ansis from 'ansis'
+import * as ansis from 'ansis'
 import { Effect } from 'effect'
 import type { Prompter } from '../lib/Prompter/_.js'
 import { Text } from '../lib/Text/_.js'
@@ -44,17 +44,15 @@ export const prompt = (
     for (const parameter of parameters) {
       // Explicitly set terminal width for deterministic rendering (kit 0.87.0+)
       const PROMPT_TERMINAL_WIDTH = 120
+      const positionLabel = Term.colors.dim(`${indexCurrent}/${indexTotal}`)
+      const optionalLabel =
+        parameter.type.metadata.optionality._tag === `required`
+          ? ``
+          : ansis.dim(` optional (press esc to skip)`)
       const question = Tex.Tex({ orientation: `horizontal`, terminalWidth: PROMPT_TERMINAL_WIDTH })
-        .block({ padding: { mainEnd: 2 } }, `${Term.colors.dim(`${indexCurrent}/${indexTotal}`)}`)
+        .block({ padding: { mainEnd: 2 } }, positionLabel)
         .block((__) =>
-          __.block(
-            Term.colors.positive(parameter.name.canonical) +
-              `${
-                parameter.type.metadata.optionality._tag === `required`
-                  ? ``
-                  : ansis.dim(` optional (press esc to skip)`)
-              }`,
-          ).block(
+          __.block(Term.colors.positive(parameter.name.canonical) + optionalLabel).block(
             (parameter.type.metadata.description &&
               Term.colors.dim(parameter.type.metadata.description)) ??
               null,

@@ -159,7 +159,7 @@ export function on<$fn extends Fn.AnyAny>(
     ...Builder.defaultState,
     fn: Option.some($fn),
   }
-  return Builder.create(initialState) as any
+  return Builder.create(initialState)
 }
 
 /**

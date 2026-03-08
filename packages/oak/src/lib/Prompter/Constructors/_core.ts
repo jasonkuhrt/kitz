@@ -171,7 +171,7 @@ export const create = (channels: PromptEngine.Channels): Prompter => {
 
           // Second prompt: prompt for the selected type
           const selectedSchema = schema.members[typeResult.index]!
-          const prompter = create(channels) as Prompter
+          const prompter = create(channels)
           return yield* _(
             prompter.ask({
               ...params,

@@ -126,7 +126,7 @@ export function compose(...fns: Function[]): any {
 
   // If all inputs are Extractors, compose their .kind metadata
   if (fns.every(isExtractor)) {
-    const extractors = fns as Extractor[]
+    const extractors = fns
 
     // Compose kinds right-to-left (matching function application order)
     const composedKind = extractors.reduce((acc, extractor) => {

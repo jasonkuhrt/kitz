@@ -15,9 +15,22 @@ export interface PullRequest {
   readonly html_url: string
   readonly title: string
   readonly body: string | null
+  readonly base: {
+    readonly ref: string
+  }
   readonly head: {
     readonly ref: string
   }
+}
+
+/** Minimal GitHub issue comment shape needed by release tooling. */
+export interface IssueComment {
+  readonly id: number
+  readonly body: string | null
+  readonly html_url: string
+  readonly user?: {
+    readonly type?: string
+  } | null
 }
 
 /** Parameters for creating a release */
@@ -39,6 +52,26 @@ export interface UpdatePullRequestParams {
   readonly body?: string | null
 }
 
+/** Parameters for creating a pull-request issue comment. */
+export interface CreateIssueCommentParams {
+  readonly issueNumber: number
+  readonly body: string
+}
+
+/** Parameters for updating an issue comment. */
+export interface UpdateIssueCommentParams {
+  readonly body: string
+}
+
+/** Parameters for upserting a pull-request issue comment by marker. */
+export interface UpsertIssueCommentParams {
+  readonly issueNumber: number
+  readonly body: string
+  readonly marker: string
+  /** Optional known marker comment to update without re-scanning comments. */
+  readonly existingComment?: IssueComment | null
+}
+
 // ============================================================================
 // Operations
 // ============================================================================
@@ -53,6 +86,9 @@ export type GithubOperation =
   | 'getRelease'
   | 'listOpenPullRequests'
   | 'updatePullRequest'
+  | 'listIssueComments'
+  | 'createIssueComment'
+  | 'updateIssueComment'
 
 const GithubOperationSchema = S.Literal(
   'releaseExists',
@@ -61,6 +97,9 @@ const GithubOperationSchema = S.Literal(
   'getRelease',
   'listOpenPullRequests',
   'updatePullRequest',
+  'listIssueComments',
+  'createIssueComment',
+  'updateIssueComment',
 )
 const ErrorCause = S.instanceOf(Error)
 
@@ -216,6 +255,55 @@ export interface GithubService {
     params: UpdatePullRequestParams,
   ) => Effect.Effect<
     PullRequest,
+    GithubError | GithubNotFoundError | GithubAuthError | GithubRateLimitError
+  >
+
+  /**
+   * List comments for a pull request issue.
+   */
+  readonly listIssueComments: (
+    issueNumber: number,
+  ) => Effect.Effect<
+    readonly IssueComment[],
+    GithubError | GithubNotFoundError | GithubAuthError | GithubRateLimitError
+  >
+
+  /**
+   * Find the first bot-owned marker comment on a pull request issue.
+   */
+  readonly findIssueCommentByMarker: (
+    issueNumber: number,
+    marker: string,
+  ) => Effect.Effect<
+    IssueComment | null,
+    GithubError | GithubNotFoundError | GithubAuthError | GithubRateLimitError
+  >
+
+  /**
+   * Create a comment on a pull request issue.
+   */
+  readonly createIssueComment: (
+    params: CreateIssueCommentParams,
+  ) => Effect.Effect<IssueComment, GithubError | GithubAuthError | GithubRateLimitError>
+
+  /**
+   * Update an existing issue comment.
+   */
+  readonly updateIssueComment: (
+    commentId: number,
+    params: UpdateIssueCommentParams,
+  ) => Effect.Effect<
+    IssueComment,
+    GithubError | GithubNotFoundError | GithubAuthError | GithubRateLimitError
+  >
+
+  /**
+   * Update the existing marker comment or create a new one.
+   */
+  readonly upsertIssueComment: (
+    params: UpsertIssueCommentParams,
+  ) => Effect.Effect<
+    IssueComment,
     GithubError | GithubNotFoundError | GithubAuthError | GithubRateLimitError
   >
 }

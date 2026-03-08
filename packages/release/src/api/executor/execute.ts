@@ -5,10 +5,14 @@
  * Provides both synchronous and observable execution modes.
  */
 
-import { FileSystem } from '@effect/platform'
+import { CommandExecutor, FileSystem } from '@effect/platform'
+import { Env } from '@kitz/env'
 import { Flo } from '@kitz/flo'
 import { Fs } from '@kitz/fs'
+import { Git } from '@kitz/git'
+import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
+import type * as ConfigError from 'effect/ConfigError'
 import { Effect, HashMap, Match, Option, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
 import type { Publishing } from '../publishing.js'
@@ -37,17 +41,31 @@ export interface ExecutionResult {
 /**
  * Result of observable workflow execution.
  */
-export interface ObservableResult {
+export interface ObservableResult<R = never> {
   /** Stream of activity lifecycle events */
   readonly events: Stream.Stream<Flo.LifecycleEvent>
-  /** Effect that executes the workflow and returns the result (runtime layer pre-provided) */
-  readonly execute: Effect.Effect<ExecutionResult, ExecutorError>
+  /**
+   * Effect that executes the workflow and returns the result.
+   *
+   * Workflow runtime services are pre-provided, but caller-owned environment
+   * services still come from the runtime boundary that invokes this effect.
+   */
+  readonly execute: Effect.Effect<ExecutionResult, ObservableExecutionError, R>
   /** Graph information for visualization */
   readonly graph: {
     readonly layers: readonly (readonly string[])[]
     readonly nodes: HashMap.HashMap<string, { dependencies: readonly string[] }>
   }
 }
+
+export type ObservableExecutionRequirements =
+  | CommandExecutor.CommandExecutor
+  | Env.Env
+  | FileSystem.FileSystem
+  | Git.Git
+  | NpmRegistry.NpmCli
+
+export type ObservableExecutionError = ConfigError.ConfigError | ExecutorError
 
 export interface LifecycleEventLine {
   readonly level: 'info' | 'error'
@@ -290,7 +308,7 @@ export const executeObservable = (
     dbPath?: string
     github?: RuntimeConfig['github']
   } = {},
-): Effect.Effect<ObservableResult, never, FileSystem.FileSystem> =>
+): Effect.Effect<ObservableResult<ObservableExecutionRequirements>, never, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const payload = yield* toPayload(plan, options)
 
@@ -317,10 +335,7 @@ export const executeObservable = (
       yield* runFreshPreflight(payload)
       const result = yield* workflowExecute
       return normalizeWorkflowResult(result)
-    }).pipe(Effect.provide(makeRuntime(runtimeConfig))) as Effect.Effect<
-      ExecutionResult,
-      ExecutorError
-    >
+    }).pipe(Effect.provide(makeRuntime(runtimeConfig)))
 
     return {
       events,

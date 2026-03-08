@@ -519,7 +519,7 @@ export class Box extends S.Class<Box>('Box')({
         if (typeof value === 'function') {
           // Store hook
           if (!this.paddingHooks[key]) this.paddingHooks[key] = []
-          this.paddingHooks[key]!.push(value)
+          this.paddingHooks[key].push(value)
         } else {
           // Store static value
           staticValues[key] = value
@@ -566,7 +566,7 @@ export class Box extends S.Class<Box>('Box')({
         if (typeof value === 'function') {
           // Store hook
           if (!this.marginHooks[key]) this.marginHooks[key] = []
-          this.marginHooks[key]!.push(value)
+          this.marginHooks[key].push(value)
         } else {
           // Store static value
           staticValues[key] = value
@@ -649,7 +649,7 @@ export class Box extends S.Class<Box>('Box')({
             if (typeof value === 'function') {
               // Store hook
               if (!this.borderEdgeHooks[key]) this.borderEdgeHooks[key] = []
-              this.borderEdgeHooks[key]!.push(value)
+              this.borderEdgeHooks[key].push(value)
             } else {
               // Extract char and style (handles both string and CharStyle)
               const char = extractChar(value)
@@ -698,7 +698,7 @@ export class Box extends S.Class<Box>('Box')({
             if (typeof value === 'function') {
               // Store hook
               if (!this.borderCornerHooks[key]) this.borderCornerHooks[key] = []
-              this.borderCornerHooks[key]!.push(value)
+              this.borderCornerHooks[key].push(value)
             } else {
               // Extract char and style (handles both string and CharStyle)
               const char = extractChar(value)

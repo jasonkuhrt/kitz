@@ -421,7 +421,7 @@ export const interfaceDecl = (options: InterfaceOptions): string => {
 
   const interfaceDeclaration = `interface ${escapedName}${typeParams}${extendsStr} ${blockFormatted}`
 
-  if (shouldExport === false) {
+  if (!shouldExport) {
     return tsDocFormatted + interfaceDeclaration
   }
 

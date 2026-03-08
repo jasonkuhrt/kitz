@@ -49,4 +49,4 @@ export const parse = <$value extends string>(value: $value): Parse<$value> => {
  *
  * For Custom types, use release config lookup instead.
  */
-export const impact = (type: Standard): Option.Option<BumpType> => StandardImpact[type.value]!
+export const impact = (type: Standard): Option.Option<BumpType> => StandardImpact[type.value]

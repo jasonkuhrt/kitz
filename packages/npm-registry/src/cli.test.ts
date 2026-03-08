@@ -91,7 +91,7 @@ const makeCommandExecutorLayer = () => {
     string: (command) => {
       const standard = Command.flatten(command)[0]
       if (standard?.command === 'npm' && standard.args?.[0] === 'pack') {
-        return Effect.succeed('[{\"filename\":\"react-19.2.0.tgz\"}]\n') as any
+        return Effect.succeed('[{"filename":"react-19.2.0.tgz"}]\n') as any
       }
       return Effect.die('string not implemented in mock command executor') as any
     },

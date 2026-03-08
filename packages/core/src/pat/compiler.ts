@@ -223,15 +223,15 @@ const compileCombinator = (combinator: Combinator): S.Schema.Any => {
 
   // Handle '$or' (union)
   if (combinator.$or !== undefined && Arr.is(combinator.$or)) {
-    const schemas = combinator.$or.map(toSchema) as S.Schema.Any[]
+    const schemas = combinator.$or.map(toSchema)
     return S.Union(...(schemas as [S.Schema.Any, S.Schema.Any, ...S.Schema.Any[]]))
   }
 
   // Handle '$and' (intersection)
   if (combinator.$and !== undefined && Arr.is(combinator.$and)) {
-    const schemas = combinator.$and.map(toSchema) as S.Schema.Any[]
+    const schemas = combinator.$and.map(toSchema)
     // Use extend for merging schemas (struct intersection)
-    return schemas.reduce((acc, schema) => S.extend(acc, schema)) as S.Schema.Any
+    return schemas.reduce((acc, schema) => S.extend(acc, schema))
   }
 
   return S.Unknown
@@ -312,7 +312,7 @@ export const toSchema = (pattern: unknown): S.Schema.Any => {
   // Arrays - check if it's an array value (not a constraint object)
   if (Arr.is(pattern)) {
     // Array literal means tuple matching
-    const schemas = pattern.map(toSchema) as S.Schema.Any[]
+    const schemas = pattern.map(toSchema)
     return S.Tuple(...(schemas as [S.Schema.Any, ...S.Schema.Any[]]))
   }
 

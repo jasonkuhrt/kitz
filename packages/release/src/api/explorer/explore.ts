@@ -47,15 +47,6 @@ const detectExecutionContext = (vars: Record<string, string | undefined>): CiCon
   return { detected: false, provider: null, prNumber }
 }
 
-const detectPrTitle = (vars: Record<string, string | undefined>): string | null => {
-  const title = vars['GITHUB_PR_TITLE'] ?? vars['PR_TITLE']
-  if (!title || title.trim() === '') return null
-  return title.trim()
-}
-
-const detectPrBody = (vars: Record<string, string | undefined>): string =>
-  vars['GITHUB_PR_BODY'] ?? vars['PR_BODY'] ?? ''
-
 /** Parse `GITHUB_REPOSITORY` env var format (`"owner/repo"`) into components. */
 const parseGitHubRepository = (value: string): { owner: string; repo: string } | null => {
   const trimmed = value.trim()
@@ -201,20 +192,8 @@ export const resolvePullRequest = (): Effect.Effect<
     const env = yield* Env.Env
     const git = yield* Git.Git
     const prNumber = detectPrNumber(env.vars)
-    const prTitle = detectPrTitle(env.vars)
-    const prBody = detectPrBody(env.vars)
     const branch = yield* git.getCurrentBranch()
     const target = yield* resolveReleaseTarget(env.vars)
-
-    if (prNumber !== null && prTitle !== null) {
-      return {
-        number: prNumber,
-        html_url: `https://github.com/${target.owner}/${target.repo}/pull/${String(prNumber)}`,
-        title: prTitle,
-        body: prBody,
-        head: { ref: branch },
-      } satisfies Github.PullRequest
-    }
 
     const token = resolveGithubToken(env.vars) ?? undefined
     const pullRequests = yield* Github.Github.pipe(

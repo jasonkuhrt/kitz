@@ -1,3 +1,4 @@
+/* oxlint-disable typescript-eslint(no-unnecessary-type-assertion) -- branded conditional path return types require explicit assertions; oxlint misidentifies them as redundant. */
 import { Array, Equivalence, Match, Option } from 'effect'
 import type { $Abs } from '../$Abs/_.js'
 import type { $Dir } from '../$Dir/_.js'

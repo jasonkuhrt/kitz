@@ -1,9 +1,11 @@
+import { Env } from '@kitz/env'
+import { Fs } from '@kitz/fs'
 import { Effect } from 'effect'
 import { afterEach, describe, expect, test } from 'vitest'
 import { Violation } from '../models/violation.js'
 import { ReleaseContext } from '../services/__.js'
 import { RuleOptionsService } from '../services/rule-options.js'
-import { type PublishChannelReadyMetadata, rule } from './env-publish-channel-ready.js'
+import { rule } from './env-publish-channel-ready.js'
 
 const originalEnv = { ...process.env }
 
@@ -36,6 +38,7 @@ describe('env.publish-channel-ready', () => {
     const result = await Effect.runPromise(
       rule.check.pipe(
         Effect.provide(layer),
+        Effect.provide(Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/'), vars: process.env })),
         Effect.provideService(RuleOptionsService, { surface: 'execution' }),
       ),
     )
@@ -61,6 +64,7 @@ describe('env.publish-channel-ready', () => {
     const result = await Effect.runPromise(
       rule.check.pipe(
         Effect.provide(layer),
+        Effect.provide(Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/'), vars: process.env })),
         Effect.provideService(RuleOptionsService, { surface: 'preview' }),
       ),
     )
@@ -70,7 +74,7 @@ describe('env.publish-channel-ready', () => {
       throw new Error('expected preview metadata')
     }
 
-    const metadata = result.metadata as PublishChannelReadyMetadata
+    const metadata = result.metadata
     expect(metadata.status).toBe('deferred')
     expect(metadata.workflow).toBe('publish-pr.yml')
     expect(metadata.activeWorkflow).toBe('pr.yml')

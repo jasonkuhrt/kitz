@@ -16,8 +16,10 @@ import {
   type GithubOperation,
   GithubRateLimitError,
   type GithubService,
+  type IssueComment,
   type PullRequest,
   type Release,
+  type UpdateIssueCommentParams,
   type UpdatePullRequestParams,
 } from './service.js'
 
@@ -46,6 +48,7 @@ export interface GithubConfig {
 // ============================================================================
 
 const BASE_URL = 'https://api.github.com'
+const ISSUE_COMMENT_PAGE_SIZE = 100
 
 const defaultRateLimitReset = (): Date => {
   const resetAt = new Date()
@@ -177,8 +180,11 @@ const makeGithubService = (
   const { owner, repo } = config
   const releasesPath = `/repos/${owner}/${repo}/releases`
   const pullsPath = `/repos/${owner}/${repo}/pulls`
+  const issuesPath = `/repos/${owner}/${repo}/issues`
   const headers = makeAuthHeaders(token)
   const encodeTag = (tag: string): string => encodeURIComponent(tag)
+  const issueCommentsPath = (issueNumber: number, page: number): string =>
+    `${issuesPath}/${String(issueNumber)}/comments?per_page=${String(ISSUE_COMMENT_PAGE_SIZE)}&page=${String(page)}`
 
   const httpGet = <$data>(
     path: string,
@@ -194,7 +200,7 @@ const makeGithubService = (
       Effect.mapError((error: HttpClientError.HttpClientError) =>
         error._tag === 'ResponseError'
           ? mapResponseError(operation, path, error)
-          : mapRequestError(operation, error as HttpClientError.RequestError),
+          : mapRequestError(operation, error),
       ),
     )
 
@@ -214,7 +220,7 @@ const makeGithubService = (
         (error: HttpClientError.HttpClientError): GithubPostError =>
           error._tag === 'ResponseError'
             ? mapPostResponseError(operation, path, error)
-            : mapRequestError(operation, error as HttpClientError.RequestError),
+            : mapRequestError(operation, error),
       ),
     )
 
@@ -233,8 +239,47 @@ const makeGithubService = (
       Effect.mapError((error: HttpClientError.HttpClientError) =>
         error._tag === 'ResponseError'
           ? mapResponseError(operation, path, error)
-          : mapRequestError(operation, error as HttpClientError.RequestError),
+          : mapRequestError(operation, error),
       ),
+    )
+
+  const listIssueCommentsPage = (issueNumber: number, page: number) =>
+    httpGet<readonly IssueComment[]>(issueCommentsPath(issueNumber, page), 'listIssueComments')
+
+  const listAllIssueComments = (
+    issueNumber: number,
+    page = 1,
+    collected: readonly IssueComment[] = [],
+  ): Effect.Effect<readonly IssueComment[], GithubApiError> =>
+    listIssueCommentsPage(issueNumber, page).pipe(
+      Effect.flatMap((comments) => {
+        const next = [...collected, ...comments]
+        return comments.length < ISSUE_COMMENT_PAGE_SIZE
+          ? Effect.succeed(next)
+          : listAllIssueComments(issueNumber, page + 1, next)
+      }),
+    )
+
+  const findIssueCommentByMarker = (
+    issueNumber: number,
+    marker: string,
+    page = 1,
+  ): Effect.Effect<IssueComment | null, GithubApiError> =>
+    listIssueCommentsPage(issueNumber, page).pipe(
+      Effect.flatMap((comments) => {
+        const existing = comments.find(
+          (comment) =>
+            comment.user?.type === `Bot` &&
+            typeof comment.body === `string` &&
+            comment.body.includes(marker),
+        )
+
+        if (existing) return Effect.succeed(existing)
+
+        return comments.length < ISSUE_COMMENT_PAGE_SIZE
+          ? Effect.succeed(null)
+          : findIssueCommentByMarker(issueNumber, marker, page + 1)
+      }),
     )
 
   return {
@@ -281,6 +326,45 @@ const makeGithubService = (
           ...(params.body !== undefined ? { body: params.body } : {}),
         } satisfies UpdatePullRequestParams,
         'updatePullRequest',
+      ),
+
+    listIssueComments: (issueNumber) => listAllIssueComments(issueNumber),
+
+    findIssueCommentByMarker: (issueNumber, marker) =>
+      findIssueCommentByMarker(issueNumber, marker),
+
+    createIssueComment: (params) =>
+      httpPost<IssueComment>(
+        `${issuesPath}/${String(params.issueNumber)}/comments`,
+        { body: params.body },
+        'createIssueComment',
+      ),
+
+    updateIssueComment: (commentId, params) =>
+      httpPatch<IssueComment>(
+        `${issuesPath}/comments/${String(commentId)}`,
+        { body: params.body } satisfies UpdateIssueCommentParams,
+        'updateIssueComment',
+      ),
+
+    upsertIssueComment: (params) =>
+      (params.existingComment
+        ? Effect.succeed(params.existingComment)
+        : findIssueCommentByMarker(params.issueNumber, params.marker)
+      ).pipe(
+        Effect.flatMap((existing) =>
+          existing
+            ? httpPatch<IssueComment>(
+                `${issuesPath}/comments/${String(existing.id)}`,
+                { body: params.body } satisfies UpdateIssueCommentParams,
+                'updateIssueComment',
+              )
+            : httpPost<IssueComment>(
+                `${issuesPath}/${String(params.issueNumber)}/comments`,
+                { body: params.body },
+                'createIssueComment',
+              ),
+        ),
       ),
   }
 }

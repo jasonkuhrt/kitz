@@ -76,7 +76,7 @@ export const responseCacheControl = (input: {
   const maxAge = input.maxAge ? `max-age=${input.maxAge}` : ``
   const immutable = input.immutable ? `immutable` : ``
   const sMaxAge = input.sMaxAge ? `s-maxage=${input.sMaxAge}` : ``
-  const visibility = input.visibility ? `${input.visibility}` : ``
+  const visibility = input.visibility ?? ``
   const staleWhileRevalidate = input.staleWhileRevalidate
     ? `stale-while-revalidate=${input.staleWhileRevalidate}`
     : ``

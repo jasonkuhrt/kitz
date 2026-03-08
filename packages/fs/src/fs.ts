@@ -51,7 +51,7 @@ export const findFirstUnderDir =
       const checks = yield* Effect.all(
         paths.map((relativePath) => {
           // Join to get absolute path for checking
-          const absolutePath = Path.join(dir, relativePath as Path.$Rel)
+          const absolutePath = Path.join(dir, relativePath)
           const pathStr = absolutePath.toString()
           return fs.exists(pathStr).pipe(
             // Return the absolute path if it exists (this is what we want!)

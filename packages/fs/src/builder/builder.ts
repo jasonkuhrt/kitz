@@ -24,7 +24,7 @@ export interface Builder {
  * ```
  */
 export const create = (base: Path.Input.AbsDir): Builder => ({
-  base: Path.normalizeDynamicInput(Path.AbsDir.Schema)(base) as Path.AbsDir,
+  base: Path.normalizeDynamicInput(Path.AbsDir.Schema)(base),
 })
 
 /**

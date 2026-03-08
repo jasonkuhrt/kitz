@@ -17,7 +17,7 @@
 
 import { Str } from '@kitz/core'
 import { Tex } from '@kitz/tex'
-import ansis from 'ansis'
+import * as ansis from 'ansis'
 import { Duration, MutableHashMap, Option } from 'effect'
 import * as Core from '../core.js'
 

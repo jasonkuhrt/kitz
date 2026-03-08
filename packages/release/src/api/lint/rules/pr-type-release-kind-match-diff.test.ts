@@ -97,5 +97,8 @@ describe('pr.type.release-kind-match-diff', () => {
     }
 
     expect(PrTitle.is(result.location)).toBe(true)
+    expect(result.summary).toContain('no-release kind')
+    expect(result.detail).toContain('packages/release/src/api/projected-squash-commit.ts')
+    expect(result.fix?._tag).toBe('ViolationCommandFix')
   })
 })

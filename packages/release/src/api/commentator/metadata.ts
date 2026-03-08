@@ -25,7 +25,7 @@ export interface Metadata {
 // Markers
 // ---------------------------------------------------------------------------
 
-const PLAN_MARKER = '<!-- kitz-release-plan -->'
+export const PLAN_MARKER = '<!-- kitz-release-plan -->'
 const HEAD_SHA_RE = /<!-- head-sha:(\S+) -->/
 const PUBLISH_STATE_RE = /<!-- publish-state:(\S+) -->/
 const PUBLISH_HISTORY_RE = /<!-- kitz-release-publish-history\n([\s\S]*?)\n-->/

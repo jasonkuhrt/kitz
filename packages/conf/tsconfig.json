@@ -8,11 +8,6 @@
     "noEmit": true,
     "paths": {}
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "build",
-    "node_modules"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["build", "node_modules"]
 }

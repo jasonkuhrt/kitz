@@ -15,7 +15,7 @@ import type { GetDataType, Mask } from './mask.js'
  * - Non-objects throw an error at runtime
  */
 // oxfmt-ignore
-export type Apply<Data, M extends Mask<any>> =
+export type Apply<Data, M extends Mask> =
     M extends { type: 'binary', show: boolean }
       ? M['show'] extends true
         ? Data
@@ -44,7 +44,7 @@ export type Apply<Data, M extends Mask<any>> =
  * const safeUser = apply(user, mask) // { name: 'John', email: 'john@example.com' }
  * ```
  */
-export const apply = <data extends GetDataType<mask>, mask extends Mask<any>>(
+export const apply = <data extends GetDataType<mask>, mask extends Mask>(
   data: data,
   mask: mask,
 ): Apply<data, mask> => {
@@ -68,7 +68,7 @@ export const apply = <data extends GetDataType<mask>, mask extends Mask<any>>(
  * const result = applyPartial(partialUser, mask) // { name: 'John' }
  * ```
  */
-export const applyPartial = <data extends Partial<GetDataType<mask>>, mask extends Mask<any>>(
+export const applyPartial = <data extends Partial<GetDataType<mask>>, mask extends Mask>(
   data: data,
   mask: mask,
 ): Apply<data, mask> => {
@@ -99,7 +99,7 @@ export const applyPartial = <data extends Partial<GetDataType<mask>>, mask exten
  * const result2 = applyExact(userWithExtra, mask) // Type error!
  * ```
  */
-export const applyExact = <data, mask extends Mask<any>>(
+export const applyExact = <data, mask extends Mask>(
   data: Obj.NoExcess<data, GetDataType<mask>>,
   mask: mask,
 ): Apply<data, mask> => {
@@ -107,7 +107,7 @@ export const applyExact = <data, mask extends Mask<any>>(
 }
 
 // Internal implementation
-const applyInternal = (data: any, mask: Mask<any>): any => {
+const applyInternal = (data: any, mask: Mask): any => {
   // Handle binary mask
   if (mask.type === 'binary') {
     return mask.show ? data : undefined

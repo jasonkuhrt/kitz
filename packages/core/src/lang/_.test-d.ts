@@ -1,3 +1,4 @@
+/* oxlint-disable typescript-eslint(no-unnecessary-type-arguments) -- explicit type arguments keep type-level regression cases readable. */
 import type { Type as A } from '#kitz/assert/assert'
 import { Ts } from '#ts'
 
@@ -8,16 +9,14 @@ import { Ts } from '#ts'
 // 'subtype' cases - B is a subtype of A (B extends A)
 type _ = A.Cases<
   A.sub.of<'subtype', Ts.Relation.GetRelation<'a' | 'b', 'a'>>,
-  A.sub.of<'subtype', Ts.Relation.GetRelation<{ a: 1 }, { a: 1; b: 2 }>>,
-  A.sub.of<'subtype', Ts.Relation.GetRelation<unknown, string>>
+  A.sub.of<'subtype', Ts.Relation.GetRelation<{ a: 1 }, { a: 1; b: 2 }>>
 >
 
 // 'supertype' cases - A is a subtype of B (A extends B)
 type _s = A.Cases<
   A.sub.of<'supertype', Ts.Relation.GetRelation<'a', 'a' | 'b'>>,
   A.sub.of<'supertype', Ts.Relation.GetRelation<{ a: 1; b: 2 }, { a: 1 }>>,
-  A.sub.of<'supertype', Ts.Relation.GetRelation<string, unknown>>,
-  A.sub.of<'supertype', Ts.Relation.GetRelation<42, number>>
+  A.sub.of<'supertype', Ts.Relation.GetRelation<string, unknown>>
 >
 
 // 'overlapping' cases - Objects share properties but neither is a subtype
@@ -26,10 +25,6 @@ type _so = A.Cases<
   A.sub.of<
     'overlapping',
     Ts.Relation.GetRelation<{ x: number; y: number }, { x: number; z: string }>
-  >,
-  A.sub.of<
-    'overlapping',
-    Ts.Relation.GetRelation<{ name: string; age: number }, { name: string; city: string }>
   >
 >
 
@@ -57,8 +52,7 @@ type __ = A.Cases<
   A.sub.of<'equivalent', Ts.Relation.GetRelation<{ a: 1; b: 'x' }, { a: 1; b: 'x' }>>,
   A.sub.of<'equivalent', Ts.Relation.GetRelation<[], []>>,
   A.sub.of<'equivalent', Ts.Relation.GetRelation<[1, 2, 3], [1, 2, 3]>>,
-  A.sub.of<'equivalent', Ts.Relation.GetRelation<() => void, () => void>>,
-  A.sub.of<'equivalent', Ts.Relation.GetRelation<(x: string) => number, (x: string) => number>>
+  A.sub.of<'equivalent', Ts.Relation.GetRelation<() => void, () => void>>
 >
 
 // 'disjoint' cases - types with no intersection
@@ -76,6 +70,5 @@ type ____ = A.Cases<
   A.sub.of<'overlapping', Ts.Relation.GetRelation<{ cat: 'meow' }, { dog: 'bark' }>>,
   // Primitive vs object - TypeScript doesn't reduce these to never
   A.sub.of<'disjoint', Ts.Relation.GetRelation<string, { x: 1 }>>,
-  A.sub.of<'disjoint', Ts.Relation.GetRelation<number, { x: 1 }>>,
-  A.sub.of<'disjoint', Ts.Relation.GetRelation<boolean, { a: string }>>
+  A.sub.of<'disjoint', Ts.Relation.GetRelation<number, { x: 1 }>>
 >

@@ -1,5 +1,5 @@
 import { Err } from '@kitz/core'
-import { Effect, Option, Schema as S } from 'effect'
+import { Effect, Either, Option, Schema as S } from 'effect'
 import { Multi } from '../commit-multi.js'
 import { Single } from '../commit-single.js'
 import { Target } from '../target.js'
@@ -45,114 +45,119 @@ const TYPE_SCOPE_PATTERN = /^([a-z]+)(?:\(([^)]+)\))?(!)?$/
  * - Multiple comma-separated type(scope) groups
  * - OR same type but different breaking per scope
  */
-export function parse(title: string): Effect.Effect<ParsedTitle, ParseTitleError> {
-  return Effect.gen(function* () {
-    const trimmed = title.trim()
+export function parseEither(title: string): Either.Either<ParsedTitle, ParseTitleError> {
+  const trimmed = title.trim()
 
-    // Split on `: ` to get header and message
-    const colonIndex = trimmed.indexOf(':')
-    if (colonIndex === -1) {
-      return yield* Effect.fail(
-        new ParseTitleError({ context: { reason: 'Missing colon separator', input: title } }),
+  // Split on `: ` to get header and message
+  const colonIndex = trimmed.indexOf(':')
+  if (colonIndex === -1) {
+    return Either.left(
+      new ParseTitleError({ context: { reason: 'Missing colon separator', input: title } }),
+    )
+  }
+
+  const header = trimmed.slice(0, colonIndex).trim()
+  const message = trimmed.slice(colonIndex + 1).trim()
+
+  if (!message) {
+    return Either.left(new ParseTitleError({ context: { reason: 'Empty message', input: title } }))
+  }
+
+  // Check for global breaking indicator (! before :)
+  const globalBreaking = header.endsWith('!')
+  const headerWithoutGlobalBreaking = globalBreaking ? header.slice(0, -1) : header
+
+  // Split by `, ` to detect multiple type-scope groups
+  // But be careful: "feat(core, cli)" has comma inside parens, "feat(core), fix(cli)" has comma outside
+  const groups = splitTypeScopeGroups(headerWithoutGlobalBreaking)
+
+  if (groups.length === 1) {
+    // Potentially CommitSingle
+    const firstGroup = groups[0]
+    if (!firstGroup) {
+      return Either.left(
+        new ParseTitleError({ context: { reason: 'Invalid type-scope format', input: title } }),
+      )
+    }
+    const parsed = parseTypeScopeGroup(firstGroup)
+    if (!parsed) {
+      return Either.left(
+        new ParseTitleError({ context: { reason: 'Invalid type-scope format', input: title } }),
       )
     }
 
-    const header = trimmed.slice(0, colonIndex).trim()
-    const message = trimmed.slice(colonIndex + 1).trim()
+    const { type, scopes, perScopeBreaking } = parsed
+    const breaking = globalBreaking || perScopeBreaking.some(Boolean)
 
-    if (!message) {
-      return yield* Effect.fail(
-        new ParseTitleError({ context: { reason: 'Empty message', input: title } }),
-      )
-    }
-
-    // Check for global breaking indicator (! before :)
-    const globalBreaking = header.endsWith('!')
-    const headerWithoutGlobalBreaking = globalBreaking ? header.slice(0, -1) : header
-
-    // Split by `, ` to detect multiple type-scope groups
-    // But be careful: "feat(core, cli)" has comma inside parens, "feat(core), fix(cli)" has comma outside
-    const groups = splitTypeScopeGroups(headerWithoutGlobalBreaking)
-
-    if (groups.length === 1) {
-      // Potentially CommitSingle
-      const firstGroup = groups[0]
-      if (!firstGroup) {
-        return yield* Effect.fail(
-          new ParseTitleError({ context: { reason: 'Invalid type-scope format', input: title } }),
-        )
-      }
-      const parsed = parseTypeScopeGroup(firstGroup)
-      if (!parsed) {
-        return yield* Effect.fail(
-          new ParseTitleError({ context: { reason: 'Invalid type-scope format', input: title } }),
-        )
-      }
-
-      const { type, scopes, perScopeBreaking } = parsed
-      const breaking = globalBreaking || perScopeBreaking.some(Boolean)
-
-      // If we have per-scope breaking markers on individual scopes, it's still CommitSingle
-      // because they all share the same type
-      return Single.make({
+    // If we have per-scope breaking markers on individual scopes, it's still CommitSingle
+    // because they all share the same type
+    return Either.right(
+      Single.make({
         type,
         scopes,
         breaking,
         message,
         body: Option.none(),
         footers: [],
-      })
-    }
+      }),
+    )
+  }
 
-    // Multiple groups = CommitMulti
-    const targets: Target[] = []
-    for (const group of groups) {
-      const parsed = parseTypeScopeGroup(group)
-      if (!parsed) {
-        return yield* Effect.fail(
-          new ParseTitleError({
-            context: { reason: `Invalid type-scope group: ${group}`, input: title },
-          }),
-        )
-      }
-
-      const { type, scopes, perScopeBreaking } = parsed
-
-      // Each scope in the group becomes a Target
-      if (scopes.length === 0) {
-        return yield* Effect.fail(
-          new ParseTitleError({
-            context: { reason: 'CommitMulti commits require scopes', input: title },
-          }),
-        )
-      }
-
-      for (let i = 0; i < scopes.length; i++) {
-        const scope = scopes[i]
-        if (!scope) continue
-        targets.push(
-          Target.make({
-            type,
-            scope,
-            breaking: globalBreaking || perScopeBreaking[i] || false,
-          }),
-        )
-      }
-    }
-
-    if (targets.length === 0) {
-      return yield* Effect.fail(
-        new ParseTitleError({ context: { reason: 'No targets found', input: title } }),
+  // Multiple groups = CommitMulti
+  const targets: Target[] = []
+  for (const group of groups) {
+    const parsed = parseTypeScopeGroup(group)
+    if (!parsed) {
+      return Either.left(
+        new ParseTitleError({
+          context: { reason: `Invalid type-scope group: ${group}`, input: title },
+        }),
       )
     }
 
-    return Multi.make({
+    const { type, scopes, perScopeBreaking } = parsed
+
+    // Each scope in the group becomes a Target
+    if (scopes.length === 0) {
+      return Either.left(
+        new ParseTitleError({
+          context: { reason: 'CommitMulti commits require scopes', input: title },
+        }),
+      )
+    }
+
+    for (let i = 0; i < scopes.length; i++) {
+      const scope = scopes[i]
+      if (!scope) continue
+      targets.push(
+        Target.make({
+          type,
+          scope,
+          breaking: globalBreaking || perScopeBreaking[i] || false,
+        }),
+      )
+    }
+  }
+
+  if (targets.length === 0) {
+    return Either.left(
+      new ParseTitleError({ context: { reason: 'No targets found', input: title } }),
+    )
+  }
+
+  return Either.right(
+    Multi.make({
       targets: targets as [Target, ...Target[]],
       message,
       summary: Option.none(),
       sections: {},
-    })
-  })
+    }),
+  )
+}
+
+export function parse(title: string): Effect.Effect<ParsedTitle, ParseTitleError> {
+  const parsed = parseEither(title)
+  return Either.isLeft(parsed) ? Effect.fail(parsed.left) : Effect.succeed(parsed.right)
 }
 
 interface ParsedGroup {
