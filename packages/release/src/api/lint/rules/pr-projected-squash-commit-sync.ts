@@ -46,7 +46,7 @@ export const rule = RuntimeRule.create({
         detail: `Expected header \`${options.projectedHeader}\`, but PR title header is \`${actualHeader}\`.`,
         fix: CommandFix.make({
           summary: 'Apply the canonical release header to the connected PR title.',
-          command: 'bun run release pr title apply',
+          command: 'release pr title apply',
           docs: [
             DocLink.make({
               label: 'GitHub squash merge defaults',

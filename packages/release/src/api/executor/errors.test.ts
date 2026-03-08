@@ -11,11 +11,12 @@ import {
 describe('ExecutorPublishError', () => {
   test('constructs with message', () => {
     const err = new ExecutorPublishError({
-      context: { packageName: '@kitz/core', detail: 'npm 403' },
+      context: { packageName: '@kitz/core', detail: 'npm 403. Manifest cleanup restored.' },
     })
     expect(err._tag).toBe('ExecutorPublishError')
     expect(err.message).toContain('@kitz/core')
     expect(err.message).toContain('npm 403')
+    expect(err.message).toContain('Manifest cleanup restored')
   })
 })
 

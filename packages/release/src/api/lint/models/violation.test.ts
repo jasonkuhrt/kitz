@@ -66,7 +66,7 @@ describe('CommandFix', () => {
   test('make and is()', () => {
     const fix = CommandFix.make({
       summary: 'Apply the canonical PR title header.',
-      command: 'bun run release pr title apply',
+      command: 'release pr title apply',
     })
     expect(fix._tag).toBe('ViolationCommandFix')
     expect(CommandFix.is(fix)).toBe(true)

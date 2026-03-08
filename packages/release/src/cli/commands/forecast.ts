@@ -108,6 +108,9 @@ const manualPreviewDeferredRules = [
   Api.Lint.Rules.EnvGitRemote,
 ] as const
 
+const appendReleaseCommand = (releaseCommand: string, suffix: string): string =>
+  `${releaseCommand} ${suffix}`
+
 const buildForecastInput = (options: {
   readonly publishHistoryPath: string | undefined
   readonly includeDoctor: boolean
@@ -390,10 +393,10 @@ const buildCommentDoctor = (params: {
             runbook: {
               title: 'Manual Preview Runbook',
               commands: [
-                'bun run release:build',
-                `PR_NUMBER=${String(ephemeralPrNumber ?? '<pr-number>')} bun run release:plan:ephemeral`,
-                'bun run release doctor',
-                'bun run release:apply:ephemeral',
+                ...params.config.operator.prepareCommands,
+                `PR_NUMBER=${String(ephemeralPrNumber ?? '<pr-number>')} ${appendReleaseCommand(params.config.operator.releaseCommand, 'plan --lifecycle ephemeral')}`,
+                appendReleaseCommand(params.config.operator.releaseCommand, 'doctor'),
+                appendReleaseCommand(params.config.operator.releaseCommand, 'apply --yes --tag pr'),
               ],
               note:
                 'Step 2 writes the exact ephemeral publish plan to `.release/plan.json`. ' +
@@ -406,7 +409,10 @@ const buildCommentDoctor = (params: {
                       label: rule.data.description,
                       ruleId: rule.data.id,
                       preventsDescriptions: rule.data.preventsDescriptions,
-                      checkCommand: `bun run release doctor --onlyRule ${rule.data.id}`,
+                      checkCommand: appendReleaseCommand(
+                        params.config.operator.releaseCommand,
+                        `doctor --onlyRule ${rule.data.id}`,
+                      ),
                     },
                   ]
                 : [],

@@ -1,0 +1,12 @@
+{
+  "name": "@kitz/exportwrong",
+  "imports": {
+    "#alpha": "./src/alpha/_.ts"
+  },
+  "exports": {
+    ".": {
+      "types": "./src/alpha/_.ts",
+      "default": "./build/alpha/_.js"
+    }
+  }
+}

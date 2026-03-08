@@ -11,12 +11,12 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./src/__.ts",
-      "default": "./build/__.js"
+      "types": "./build/__.js",
+      "default": "./src/__.ts"
     },
     "./__": {
-      "types": "./src/__.ts",
-      "default": "./build/__.js"
+      "types": "./build/__.js",
+      "default": "./src/__.ts"
     }
   },
   "dependencies": {

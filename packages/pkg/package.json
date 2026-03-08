@@ -11,75 +11,75 @@
   "sideEffects": false,
   "imports": {
     "#pkg": {
-      "types": "./src/_.ts",
-      "default": "./build/_.js"
+      "types": "./build/_.js",
+      "default": "./src/_.ts"
     },
     "#pkg/*": {
-      "types": "./src/*.ts",
-      "default": "./build/*.js"
+      "types": "./build/*.js",
+      "default": "./src/*.ts"
     },
     "#moniker": {
-      "types": "./src/moniker/_.ts",
-      "default": "./build/moniker/_.js"
+      "types": "./build/moniker/_.js",
+      "default": "./src/moniker/_.ts"
     },
     "#moniker/*": {
-      "types": "./src/moniker/*.ts",
-      "default": "./build/moniker/*.js"
+      "types": "./build/moniker/*.js",
+      "default": "./src/moniker/*.ts"
     },
     "#manifest": {
-      "types": "./src/manifest/_.ts",
-      "default": "./build/manifest/_.js"
+      "types": "./build/manifest/_.js",
+      "default": "./src/manifest/_.ts"
     },
     "#manifest/*": {
-      "types": "./src/manifest/*.ts",
-      "default": "./build/manifest/*.js"
+      "types": "./build/manifest/*.js",
+      "default": "./src/manifest/*.ts"
     },
     "#manager": {
-      "types": "./src/manager/_.ts",
-      "default": "./build/manager/_.js"
+      "types": "./build/manager/_.js",
+      "default": "./src/manager/_.ts"
     },
     "#manager/*": {
-      "types": "./src/manager/*.ts",
-      "default": "./build/manager/*.js"
+      "types": "./build/manager/*.js",
+      "default": "./src/manager/*.ts"
     },
     "#pin": {
-      "types": "./src/pin/_.ts",
-      "default": "./build/pin/_.js"
+      "types": "./build/pin/_.js",
+      "default": "./src/pin/_.ts"
     },
     "#pin/*": {
-      "types": "./src/pin/*.ts",
-      "default": "./build/pin/*.js"
+      "types": "./build/pin/*.js",
+      "default": "./src/pin/*.ts"
     },
     "#range": {
-      "types": "./src/range/_.ts",
-      "default": "./build/range/_.js"
+      "types": "./build/range/_.js",
+      "default": "./src/range/_.ts"
     },
     "#range/*": {
-      "types": "./src/range/*.ts",
-      "default": "./build/range/*.js"
+      "types": "./build/range/*.js",
+      "default": "./src/range/*.ts"
     }
   },
   "types": "./src/_.ts",
   "exports": {
     ".": {
-      "types": "./src/_.ts",
-      "default": "./build/_.js"
+      "types": "./build/_.js",
+      "default": "./src/_.ts"
     },
     "./__": {
-      "types": "./src/__.ts",
-      "default": "./build/__.js"
+      "types": "./build/__.js",
+      "default": "./src/__.ts"
     },
     "./manifest": {
-      "types": "./src/manifest/__.ts",
-      "default": "./build/manifest/__.js"
+      "types": "./build/manifest/__.js",
+      "default": "./src/manifest/__.ts"
     },
     "./manager": {
-      "types": "./src/manager/__.ts",
-      "default": "./build/manager/__.js"
+      "types": "./build/manager/__.js",
+      "default": "./src/manager/__.ts"
     },
     "./pin": {
-      "types": "./src/pin/_.ts",
-      "default": "./build/pin/_.js"
+      "types": "./build/pin/_.js",
+      "default": "./src/pin/_.ts"
     }
   },
   "files": [

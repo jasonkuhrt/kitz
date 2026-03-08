@@ -28,8 +28,8 @@ const workspacePackages: ReadonlyArray<PlanApi.Context['packages'][number]> = [
   },
 ]
 
-const makePackageJson = (name: string, version: string) =>
-  JSON.stringify({ name, version }, null, 2)
+const makePackageJson = (name: string, version: string, extra?: Record<string, unknown>) =>
+  JSON.stringify({ name, version, ...(extra ?? {}) }, null, 2)
 
 const tag = (name: Pkg.Moniker.Moniker, version: string) =>
   Pkg.Pin.toString(
@@ -427,6 +427,82 @@ describe('Executor integration', () => {
             Semver.fromString('1.0.0'),
           ),
         ).toBe(true)
+      }),
+  )
+
+  test.effect(
+    'warns about publish-hook opacity and confirms manifest cleanup after publish failure',
+    (_ctx) =>
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
+              imports: {
+                '#core': {
+                  types: './build/_.d.ts',
+                  default: './src/_.ts',
+                },
+              },
+              exports: {
+                '.': {
+                  types: './build/_.d.ts',
+                  default: './src/_.ts',
+                },
+              },
+              scripts: {
+                prepack: 'echo preparing',
+              },
+            }),
+          },
+          failPublish: true,
+        })
+
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
+
+        const outcome = yield* execute(plan, { dryRun: false }).pipe(
+          Effect.provide(harness.workflowLayer),
+          Effect.either,
+        )
+
+        expect(outcome._tag).toBe('Left')
+        if (outcome._tag === 'Left') {
+          expect(outcome.left._tag).toBe('ExecutorPublishError')
+          if (outcome.left._tag === 'ExecutorPublishError') {
+            expect(outcome.left.context.detail).toContain('Manifest cleanup restored version')
+            expect(outcome.left.context.detail).toContain('Publish hooks detected (prepack)')
+            expect(outcome.left.context.detail).toContain(
+              'plan.packages-runtime-targets-source-oriented',
+            )
+          }
+        }
+
+        const manifestRaw = yield* Fs.readString(coreManifestPath).pipe(
+          Effect.provide(harness.workflowLayer),
+        )
+        const manifest = decodeJsonRecordSync(manifestRaw)
+        expect(
+          Semver.equivalence(
+            decodeSemverFromManifest(manifest[`version`]),
+            Semver.fromString('1.0.0'),
+          ),
+        ).toBe(true)
+        expect(manifest['imports']).toEqual({
+          '#core': {
+            types: './build/_.d.ts',
+            default: './src/_.ts',
+          },
+        })
+        expect(manifest['exports']).toEqual({
+          '.': {
+            types: './build/_.d.ts',
+            default: './src/_.ts',
+          },
+        })
       }),
   )
 

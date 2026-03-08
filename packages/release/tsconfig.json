@@ -9,11 +9,13 @@
     "composite": false,
     "declaration": false,
     "declarationMap": false,
-    "paths": {
-      "#release": ["./src/_.js"],
-      "#release/*": ["./src/*.js"]
-    }
+    "paths": {}
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["build", "node_modules"]
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "build",
+    "node_modules"
+  ]
 }

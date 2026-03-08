@@ -10,19 +10,47 @@
   "sideEffects": false,
   "imports": {
     "#monorepo": {
-      "types": "./src/_.ts",
-      "default": "./build/_.js"
+      "types": "./build/_.js",
+      "default": "./src/_.ts"
+    },
+    "#monorepo/*": {
+      "types": "./build/*.js",
+      "default": "./src/*.ts"
+    },
+    "#workspace": {
+      "types": "./build/workspace/_.js",
+      "default": "./src/workspace/_.ts"
+    },
+    "#workspace/*": {
+      "types": "./build/workspace/*.js",
+      "default": "./src/workspace/*.ts"
+    },
+    "#pnpm": {
+      "types": "./build/pnpm/_.js",
+      "default": "./src/pnpm/_.ts"
+    },
+    "#pnpm/*": {
+      "types": "./build/pnpm/*.js",
+      "default": "./src/pnpm/*.ts"
     }
   },
   "types": "./src/_.ts",
   "exports": {
     ".": {
-      "types": "./src/_.ts",
-      "default": "./build/_.js"
+      "types": "./build/_.js",
+      "default": "./src/_.ts"
     },
     "./__": {
-      "types": "./src/__.ts",
-      "default": "./build/__.js"
+      "types": "./build/__.js",
+      "default": "./src/__.ts"
+    },
+    "./workspace": {
+      "types": "./build/workspace/__.js",
+      "default": "./src/workspace/__.ts"
+    },
+    "./pnpm": {
+      "types": "./build/pnpm/__.js",
+      "default": "./src/pnpm/__.ts"
     }
   },
   "files": [
@@ -43,6 +71,7 @@
     "@kitz/fs": "workspace:*",
     "@kitz/pkg": "workspace:*",
     "@kitz/resource": "workspace:*",
-    "effect": "^3.19.5"
+    "effect": "^3.19.5",
+    "yaml": "^2.7.1"
   }
 }

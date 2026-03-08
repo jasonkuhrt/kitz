@@ -6,11 +6,16 @@
     "tsBuildInfoFile": "./node_modules/.cache/.tsbuildinfo",
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "paths": {
-      "#doc-inject": ["./src/_.js"],
-      "#doc-inject/*": ["./src/*.js"]
-    }
+    "paths": {}
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["build", "node_modules", "**/*.bench-d.ts", "**/*.test.ts", "**/*.test-d.ts"]
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "build",
+    "node_modules",
+    "**/*.bench-d.ts",
+    "**/*.test.ts",
+    "**/*.test-d.ts"
+  ]
 }

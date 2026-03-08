@@ -32,11 +32,12 @@ const ExecutorGHReleaseErrorContext = S.Struct({
  *
  * Raised when `npm publish` fails for a specific package.
  *
- * **When it occurs**: during the Publish activity for a single package. Other packages may publish successfully even if one fails.
+ * **When it occurs**: during the Publish activity for a single package, including manifest
+ * cleanup immediately after publish. Other packages may publish successfully even if one fails.
  *
  * **Common causes**: the package version already exists on the registry, the npm token lacks publish permissions for this scope, or a network error interrupted the publish.
  *
- * **What to do**: check the error's `packageName` and `detail` fields. If the version already exists, this may indicate a duplicate release attempt — verify that the planned version does not collide with an existing published version. The Executor retries publish failures twice before surfacing the error.
+ * **What to do**: check the error's `packageName` and `detail` fields. If the version already exists, this may indicate a duplicate release attempt — verify that the planned version does not collide with an existing published version. If the detail mentions manifest cleanup or publish hooks, inspect the package.json before retrying and run `release doctor --onlyRule plan.packages-runtime-targets-source-oriented`. The Executor retries publish failures twice before surfacing the error.
  *
  * {@include executor/errors/publish-error}
  */

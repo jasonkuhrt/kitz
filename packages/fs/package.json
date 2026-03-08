@@ -11,16 +11,16 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./src/_.ts",
-      "default": "./build/_.js"
+      "types": "./build/_.js",
+      "default": "./src/_.ts"
     },
     "./__": {
-      "types": "./src/__.ts",
-      "default": "./build/__.js"
+      "types": "./build/__.js",
+      "default": "./src/__.ts"
     },
     "./path/types/fileName": {
-      "types": "./src/path/types/fileName.ts",
-      "default": "./build/path/types/fileName.js"
+      "types": "./build/path/types/fileName.js",
+      "default": "./src/path/types/fileName.ts"
     }
   },
   "dependencies": {

@@ -6,16 +6,25 @@ import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
 import { Semver } from '@kitz/semver'
-import { Effect, Schema as S } from 'effect'
+import { Effect, Either, Schema as S } from 'effect'
 import type { Package } from '../analyzer/workspace.js'
 
 const baseTags = ['kit', 'release', 'publish'] as const
 const PublishErrorContext = S.Struct({
   package: Fs.Path.AbsDir.Schema,
+  detail: S.optional(S.String),
 })
 const JsonRecordSchema = S.Record({ key: S.String, value: S.Unknown })
 const JsonRecordFromStringSchema = S.parseJson(JsonRecordSchema)
 const decodeJsonRecord = S.decodeUnknown(JsonRecordFromStringSchema)
+const publishHookNames = [
+  'prepack',
+  'postpack',
+  'prepublish',
+  'prepublishOnly',
+  'publish',
+  'postpublish',
+] as const
 
 /**
  * Minimal release info needed for publishing.
@@ -35,7 +44,9 @@ export const PublishError: Err.TaggedContextualErrorClass<
   undefined
 > = Err.TaggedContextualError('PublishError', baseTags, {
   context: PublishErrorContext,
-  message: (ctx) => `Failed to publish package at ${Fs.Path.toString(ctx.package)}`,
+  message: (ctx) =>
+    `Failed to publish package at ${Fs.Path.toString(ctx.package)}` +
+    (ctx.detail ? `: ${ctx.detail}` : ''),
 })
 
 export type PublishError = InstanceType<typeof PublishError>
@@ -50,29 +61,56 @@ export interface PublishOptions {
   readonly registry?: string
 }
 
-/**
- * Rewrite imports string values from source paths to build paths for publishing.
- *
- * Transforms `./src/*.ts` to `./build/*.js` so published packages resolve
- * correctly at runtime (source imports are used during development only).
- */
-const rewriteImportsForPublish = (imports: Record<string, unknown>): Record<string, unknown> => {
-  const result: Record<string, unknown> = {}
-  for (const [key, value] of Object.entries(imports)) {
-    if (typeof value === 'string') {
-      result[key] = value.replace(/^\.\/src\//, './build/').replace(/\.ts$/, '.js')
-    } else {
-      result[key] = value // preserve conditional imports as-is
-    }
-  }
-  return result
+const formatUnknownError = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error)
+
+const findPublishHooks = (manifest: Pkg.Manifest.Manifest): readonly string[] => {
+  const scripts = manifest.scripts ?? {}
+  return publishHookNames.filter((name) => name in scripts)
 }
+
+const renderHookDisclaimer = (hooks: readonly string[]): string | undefined =>
+  hooks.length === 0
+    ? undefined
+    : `Publish hooks detected (${hooks.join(', ')}). Release cannot prove whether those scripts left additional cleanup behind.`
+
+const renderCleanupReminder = (): string =>
+  'Re-run `release doctor --onlyRule plan.packages-runtime-targets-source-oriented` before retrying.'
+
+const renderPublishFailureDetail = (params: {
+  readonly publishError: unknown
+  readonly cleanupError: unknown | null
+  readonly publishHooks: readonly string[]
+}): string =>
+  [
+    formatUnknownError(params.publishError),
+    params.cleanupError === null
+      ? 'Manifest cleanup restored version and runtime targets.'
+      : `Manifest cleanup failed: ${formatUnknownError(params.cleanupError)}. Inspect package.json runtime targets before retrying.`,
+    renderHookDisclaimer(params.publishHooks),
+    renderCleanupReminder(),
+  ]
+    .filter((part) => part !== undefined)
+    .join(' ')
+
+const renderCleanupFailureDetail = (params: {
+  readonly cleanupError: unknown
+  readonly publishHooks: readonly string[]
+}): string =>
+  [
+    `Package was published, but manifest cleanup failed: ${formatUnknownError(params.cleanupError)}.`,
+    'Inspect package.json and restore runtime targets under `imports` and `exports` back to `./src/*.ts` before continuing.',
+    renderHookDisclaimer(params.publishHooks),
+    renderCleanupReminder(),
+  ]
+    .filter((part) => part !== undefined)
+    .join(' ')
 
 /**
  * Publish a single package with version injection and restoration.
  *
- * Rewrites package.json `imports` from source paths (`./src/*.ts`) to
- * build paths (`./build/*.js`) before publishing, then restores originals.
+ * Rewrites package.json `imports` and `exports` from source paths (`./src/*.ts`)
+ * to build paths (`./build/*.js`) before publishing, then restores originals.
  *
  * Requires `NpmRegistry.NpmCli` service - provide `NpmRegistry.NpmCliLive`
  * for actual publishing or `NpmRegistry.NpmCliDryRun` for dry-run mode.
@@ -82,7 +120,7 @@ export const publishPackage = (
   options?: PublishOptions,
 ): Effect.Effect<
   void,
-  PublishError | Resource.ResourceError | NpmRegistry.NpmCliError | PlatformError,
+  PublishError | Resource.ResourceError | PlatformError,
   FileSystem.FileSystem | NpmRegistry.NpmCli
 > =>
   Effect.gen(function* () {
@@ -109,47 +147,88 @@ export const publishPackage = (
     const rawJson = yield* fs.readFileString(packageJsonPath)
     const rawPkg = yield* decodeJsonRecordOrFail(rawJson)
     const originalImports = rawPkg['imports'] as Record<string, unknown> | undefined
+    const originalExports = rawPkg['exports'] as Record<string, unknown> | undefined
 
     // 2. Inject the new version, capturing original for restore
     const manifest = yield* Pkg.Manifest.resource.readOrEmpty(pkgDir)
+    const publishHooks = findPublishHooks(manifest)
     const originalVersion = manifest.version
     yield* Pkg.Manifest.resource.write(
       remakeManifestWithVersion(manifest, release.nextVersion),
       pkgDir,
     )
 
-    // 3. Rewrite imports for publish (source paths -> build paths)
-    if (originalImports) {
+    // 3. Rewrite imports/exports for publish (source paths -> build paths)
+    if (originalImports || originalExports) {
       const rewrittenJson = yield* fs.readFileString(packageJsonPath)
       const rewrittenPkg = { ...(yield* decodeJsonRecordOrFail(rewrittenJson)) }
-      rewrittenPkg['imports'] = rewriteImportsForPublish(originalImports)
+      if (originalImports) {
+        rewrittenPkg['imports'] = Pkg.Manifest.rewriteRuntimeTargetsToBuild(originalImports)
+      }
+      if (originalExports) {
+        rewrittenPkg['exports'] = Pkg.Manifest.rewriteRuntimeTargetsToBuild(originalExports)
+      }
       yield* fs.writeFileString(packageJsonPath, JSON.stringify(rewrittenPkg, null, 2) + '\n')
     }
 
-    // 4. Publish (with guaranteed cleanup)
-    yield* Effect.ensuring(
-      cli.publish({
+    // 4. Publish with guaranteed manifest restoration.
+    const publishResult = yield* cli
+      .publish({
         cwd: pkgDir,
         access: 'public',
         ...(options?.tag && { tag: options.tag }),
         ...(options?.registry && { registry: options.registry }),
-      }),
-      // Always restore version and imports, even on failure
-      Effect.gen(function* () {
-        // Restore version via typed manifest
-        yield* Pkg.Manifest.resource.update(pkgDir, (m) =>
-          remakeManifestWithVersion(m, originalVersion),
-        )
+      })
+      .pipe(Effect.either)
 
-        // Restore original imports
+    const restoreResult = yield* Effect.gen(function* () {
+      // Restore version via typed manifest
+      yield* Pkg.Manifest.resource.update(pkgDir, (m) =>
+        remakeManifestWithVersion(m, originalVersion),
+      )
+
+      // Restore original imports/exports
+      if (originalImports || originalExports) {
+        const currentJson = yield* fs.readFileString(packageJsonPath)
+        const currentPkg = { ...(yield* decodeJsonRecordOrFail(currentJson)) }
         if (originalImports) {
-          const currentJson = yield* fs.readFileString(packageJsonPath)
-          const currentPkg = { ...(yield* decodeJsonRecordOrFail(currentJson)) }
           currentPkg['imports'] = originalImports
-          yield* fs.writeFileString(packageJsonPath, JSON.stringify(currentPkg, null, 2) + '\n')
         }
-      }).pipe(Effect.ignore),
-    )
+        if (originalExports) {
+          currentPkg['exports'] = originalExports
+        }
+        yield* fs.writeFileString(packageJsonPath, JSON.stringify(currentPkg, null, 2) + '\n')
+      }
+    }).pipe(Effect.either)
+
+    if (Either.isLeft(publishResult)) {
+      return yield* Effect.fail(
+        new PublishError({
+          context: {
+            package: release.package.path,
+            detail: renderPublishFailureDetail({
+              publishError: publishResult.left,
+              cleanupError: Either.isLeft(restoreResult) ? restoreResult.left : null,
+              publishHooks,
+            }),
+          },
+        }),
+      )
+    }
+
+    if (Either.isLeft(restoreResult)) {
+      return yield* Effect.fail(
+        new PublishError({
+          context: {
+            package: release.package.path,
+            detail: renderCleanupFailureDetail({
+              cleanupError: restoreResult.left,
+              publishHooks,
+            }),
+          },
+        }),
+      )
+    }
   })
 
 /**
@@ -162,7 +241,7 @@ export const publishAll = (
   options?: PublishOptions,
 ): Effect.Effect<
   void,
-  PublishError | Resource.ResourceError | NpmRegistry.NpmCliError | PlatformError,
+  PublishError | Resource.ResourceError | PlatformError,
   FileSystem.FileSystem | NpmRegistry.NpmCli
 > =>
   Effect.gen(function* () {

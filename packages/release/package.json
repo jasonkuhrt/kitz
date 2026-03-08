@@ -11,22 +11,22 @@
   "imports": {
     "#release": {
       "types": "./src/_.ts",
-      "default": "./build/_.js"
+      "default": "./src/_.ts"
     },
     "#release/*": {
       "types": "./src/*.ts",
-      "default": "./build/*.js"
+      "default": "./src/*.ts"
     }
   },
   "types": "./src/_.ts",
   "exports": {
     ".": {
       "types": "./src/_.ts",
-      "default": "./build/_.js"
+      "default": "./src/_.ts"
     },
     "./__": {
       "types": "./src/__.ts",
-      "default": "./build/__.js"
+      "default": "./src/__.ts"
     }
   },
   "files": [

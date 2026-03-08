@@ -58,7 +58,7 @@ describe('commentator doctor', () => {
             detail: 'Trusted publishing expects package manifests to point back to the same repo.',
             fix: CommandFix.make({
               summary: 'Apply the canonical PR title header.',
-              command: 'bun run release pr title apply',
+              command: 'release pr title apply',
             }),
             hints: [
               Hint.make({
@@ -81,7 +81,10 @@ describe('commentator doctor', () => {
       plannedPackages: 2,
       runbook: {
         title: 'Manual Preview Runbook',
-        commands: ['bun run release:build', 'PR_NUMBER=129 bun run release:plan:ephemeral'],
+        commands: [
+          'bun run release:build',
+          'PR_NUMBER=129 bun run release plan --lifecycle ephemeral',
+        ],
       },
       deferredChecks: [
         {
@@ -104,7 +107,7 @@ describe('commentator doctor', () => {
     expect(rendered).toContain('Guidance (1)')
     expect(rendered).toContain('Repository provenance')
     expect(rendered).toContain('Fix: Apply the canonical PR title header.')
-    expect(rendered).toContain('Command: `bun run release pr title apply`')
+    expect(rendered).toContain('Command: `release pr title apply`')
     expect(rendered).toContain('Manual Preview Runbook')
     expect(rendered).toContain('Could Still Go Wrong Locally')
   })

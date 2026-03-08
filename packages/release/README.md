@@ -291,6 +291,11 @@ export default defineConfig({
     candidate: { mode: 'manual' },
     ephemeral: { mode: 'manual' },
   },
+  // Operator-facing command surface used in guidance and runbooks
+  operator: {
+    releaseScript: 'release',
+    prepareScripts: [],
+  },
   // Doctor rule configuration
   lint: {
     rules: {
@@ -304,6 +309,10 @@ export default defineConfig({
 
 Programmatic callers can override file config per-field via `Config.load(options)` without modifying `release.config.ts`.
 
+The `operator` block declares script names, not hardcoded package-manager commands. `@kitz/release`
+detects the active package manager from the current environment and renders guidance accordingly
+(`bun run ...`, `pnpm ...`, `npm run ...`, etc).
+
 `publishing` is lifecycle-aware:
 
 - `manual` — releases are run by a human from a shell
@@ -316,14 +325,14 @@ Programmatic callers can override file config per-field via `Config.load(options
 
 The `release` binary dispatches through file-based command routing:
 
-| Command                             | Purpose                                       |
-| ----------------------------------- | --------------------------------------------- | ----------- | ----------------------- |
-| `release forecast`                  | Show the current release forecast             |
-| `release plan --lifecycle <official | candidate                                     | ephemeral>` | Generate a release plan |
-| `release apply`                     | Execute the release plan                      |
-| `release notes [pkg]`               | Output unreleased release notes               |
-| `release doctor`                    | Run release doctor checks                     |
-| `release init`                      | Initialize `release.config.ts` in the project |
+| Command | Purpose |
+| --- | --- |
+| `release forecast` | Show the current release forecast |
+| `release plan --lifecycle <official|candidate|ephemeral>` | Generate a release plan |
+| `release apply` | Execute the release plan |
+| `release notes [pkg]` | Output unreleased release notes |
+| `release doctor` | Run release doctor checks |
+| `release init` | Initialize `release.config.ts` in the project |
 
 ## Architecture
 

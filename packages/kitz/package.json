@@ -11,196 +11,196 @@
   "sideEffects": false,
   "exports": {
     ".": {
-      "types": "./src/index.ts",
-      "default": "./build/index.js"
+      "types": "./build/index.js",
+      "default": "./src/index.ts"
     },
     "./arr": {
-      "types": "./src/arr.ts",
-      "default": "./build/arr.js"
+      "types": "./build/arr.js",
+      "default": "./src/arr.ts"
     },
     "./bool": {
-      "types": "./src/bool.ts",
-      "default": "./build/bool.js"
+      "types": "./build/bool.js",
+      "default": "./src/bool.ts"
     },
     "./date": {
-      "types": "./src/date.ts",
-      "default": "./build/date.js"
+      "types": "./build/date.js",
+      "default": "./src/date.ts"
     },
     "./err": {
-      "types": "./src/err.ts",
-      "default": "./build/err.js"
+      "types": "./build/err.js",
+      "default": "./src/err.ts"
     },
     "./fn": {
-      "types": "./src/fn.ts",
-      "default": "./build/fn.js"
+      "types": "./build/fn.js",
+      "default": "./src/fn.ts"
     },
     "./lang": {
-      "types": "./src/lang.ts",
-      "default": "./build/lang.js"
+      "types": "./build/lang.js",
+      "default": "./src/lang.ts"
     },
     "./null": {
-      "types": "./src/null.ts",
-      "default": "./build/null.js"
+      "types": "./build/null.js",
+      "default": "./src/null.ts"
     },
     "./num": {
-      "types": "./src/num.ts",
-      "default": "./build/num.js"
+      "types": "./build/num.js",
+      "default": "./src/num.ts"
     },
     "./obj": {
-      "types": "./src/obj.ts",
-      "default": "./build/obj.js"
+      "types": "./build/obj.js",
+      "default": "./src/obj.ts"
     },
     "./optic": {
-      "types": "./src/optic.ts",
-      "default": "./build/optic.js"
+      "types": "./build/optic.js",
+      "default": "./src/optic.ts"
     },
     "./pat": {
-      "types": "./src/pat.ts",
-      "default": "./build/pat.js"
+      "types": "./build/pat.js",
+      "default": "./src/pat.ts"
     },
     "./prom": {
-      "types": "./src/prom.ts",
-      "default": "./build/prom.js"
+      "types": "./build/prom.js",
+      "default": "./src/prom.ts"
     },
     "./prox": {
-      "types": "./src/prox.ts",
-      "default": "./build/prox.js"
+      "types": "./build/prox.js",
+      "default": "./src/prox.ts"
     },
     "./rec": {
-      "types": "./src/rec.ts",
-      "default": "./build/rec.js"
+      "types": "./build/rec.js",
+      "default": "./src/rec.ts"
     },
     "./str": {
-      "types": "./src/str.ts",
-      "default": "./build/str.js"
+      "types": "./build/str.js",
+      "default": "./src/str.ts"
     },
     "./ts": {
-      "types": "./src/ts.ts",
-      "default": "./build/ts.js"
+      "types": "./build/ts.js",
+      "default": "./src/ts.ts"
     },
     "./tup": {
-      "types": "./src/tup.ts",
-      "default": "./build/tup.js"
+      "types": "./build/tup.js",
+      "default": "./src/tup.ts"
     },
     "./undefined": {
-      "types": "./src/undefined.ts",
-      "default": "./build/undefined.js"
+      "types": "./build/undefined.js",
+      "default": "./src/undefined.ts"
     },
     "./assert": {
-      "types": "./src/assert.ts",
-      "default": "./build/assert.js"
+      "types": "./build/assert.js",
+      "default": "./src/assert.ts"
     },
     "./bldr": {
-      "types": "./src/bldr.ts",
-      "default": "./build/bldr.js"
+      "types": "./build/bldr.js",
+      "default": "./src/bldr.ts"
     },
     "./cli": {
-      "types": "./src/cli.ts",
-      "default": "./build/cli.js"
+      "types": "./build/cli.js",
+      "default": "./src/cli.ts"
     },
     "./color": {
-      "types": "./src/color.ts",
-      "default": "./build/color.js"
+      "types": "./build/color.js",
+      "default": "./src/color.ts"
     },
     "./conf": {
-      "types": "./src/conf.ts",
-      "default": "./build/conf.js"
+      "types": "./build/conf.js",
+      "default": "./src/conf.ts"
     },
     "./env": {
-      "types": "./src/env.ts",
-      "default": "./build/env.js"
+      "types": "./build/env.js",
+      "default": "./src/env.ts"
     },
     "./fs": {
-      "types": "./src/fs.ts",
-      "default": "./build/fs.js"
+      "types": "./build/fs.js",
+      "default": "./src/fs.ts"
     },
     "./group": {
-      "types": "./src/group.ts",
-      "default": "./build/group.js"
+      "types": "./build/group.js",
+      "default": "./src/group.ts"
     },
     "./html": {
-      "types": "./src/html.ts",
-      "default": "./build/html.js"
+      "types": "./build/html.js",
+      "default": "./src/html.ts"
     },
     "./http": {
-      "types": "./src/http.ts",
-      "default": "./build/http.js"
+      "types": "./build/http.js",
+      "default": "./src/http.ts"
     },
     "./idx": {
-      "types": "./src/idx.ts",
-      "default": "./build/idx.js"
+      "types": "./build/idx.js",
+      "default": "./src/idx.ts"
     },
     "./json": {
-      "types": "./src/json.ts",
-      "default": "./build/json.js"
+      "types": "./build/json.js",
+      "default": "./src/json.ts"
     },
     "./jsonc": {
-      "types": "./src/jsonc.ts",
-      "default": "./build/jsonc.js"
+      "types": "./build/jsonc.js",
+      "default": "./src/jsonc.ts"
     },
     "./log": {
-      "types": "./src/log.ts",
-      "default": "./build/log.js"
+      "types": "./build/log.js",
+      "default": "./src/log.ts"
     },
     "./mod": {
-      "types": "./src/mod.ts",
-      "default": "./build/mod.js"
+      "types": "./build/mod.js",
+      "default": "./src/mod.ts"
     },
     "./name": {
-      "types": "./src/name.ts",
-      "default": "./build/name.js"
+      "types": "./build/name.js",
+      "default": "./src/name.ts"
     },
     "./oak": {
-      "types": "./src/oak.ts",
-      "default": "./build/oak.js"
+      "types": "./build/oak.js",
+      "default": "./src/oak.ts"
     },
     "./pkg": {
-      "types": "./src/pkg.ts",
-      "default": "./build/pkg.js"
+      "types": "./build/pkg.js",
+      "default": "./src/pkg.ts"
     },
     "./paka": {
-      "types": "./src/paka.ts",
-      "default": "./build/paka.js"
+      "types": "./build/paka.js",
+      "default": "./src/paka.ts"
     },
     "./resource": {
-      "types": "./src/resource.ts",
-      "default": "./build/resource.js"
+      "types": "./build/resource.js",
+      "default": "./src/resource.ts"
     },
     "./sch": {
-      "types": "./src/sch.ts",
-      "default": "./build/sch.js"
+      "types": "./build/sch.js",
+      "default": "./src/sch.ts"
     },
     "./semver": {
-      "types": "./src/semver.ts",
-      "default": "./build/semver.js"
+      "types": "./build/semver.js",
+      "default": "./src/semver.ts"
     },
     "./syn": {
-      "types": "./src/syn.ts",
-      "default": "./build/syn.js"
+      "types": "./build/syn.js",
+      "default": "./src/syn.ts"
     },
     "./test": {
-      "types": "./src/test.ts",
-      "default": "./build/test.js"
+      "types": "./build/test.js",
+      "default": "./src/test.ts"
     },
     "./tex": {
-      "types": "./src/tex.ts",
-      "default": "./build/tex.js"
+      "types": "./build/tex.js",
+      "default": "./src/tex.ts"
     },
     "./tree": {
-      "types": "./src/tree.ts",
-      "default": "./build/tree.js"
+      "types": "./build/tree.js",
+      "default": "./src/tree.ts"
     },
     "./url": {
-      "types": "./src/url.ts",
-      "default": "./build/url.js"
+      "types": "./build/url.js",
+      "default": "./src/url.ts"
     },
     "./ware": {
-      "types": "./src/ware.ts",
-      "default": "./build/ware.js"
+      "types": "./build/ware.js",
+      "default": "./src/ware.ts"
     },
     "./monorepo": {
-      "types": "./src/monorepo.ts",
-      "default": "./build/monorepo.js"
+      "types": "./build/monorepo.js",
+      "default": "./src/monorepo.ts"
     }
   },
   "files": [

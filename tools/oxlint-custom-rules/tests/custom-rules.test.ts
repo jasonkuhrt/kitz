@@ -282,6 +282,7 @@ const rules: ReadonlyArray<{
     failingFixtures: [
       `subpath-imports-integrity/fail-broken-ref/packages/broken/src/beta/_.ts`,
       `subpath-imports-integrity/fail-wrong-format/packages/wrongfmt/src/gamma/_.ts`,
+      `subpath-imports-integrity/fail-export-wrong-format/packages/exportwrong/src/alpha/_.ts`,
       `subpath-imports-integrity/fail-missing-entry/packages/noentry/src/beta/_.ts`,
       `subpath-imports-integrity/fail-condition-mismatch/packages/mismatch/src/foo/impl.ts`,
     ],

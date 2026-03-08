@@ -5,6 +5,13 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Effect, Schema } from 'effect'
 import * as LintConfig from './lint/models/config.js'
+import {
+  defaultOperator,
+  Operator,
+  type ResolveError as OperatorResolveError,
+  ResolvedOperator,
+  resolve as resolveOperator,
+} from './operator.js'
 import { Publishing } from './publishing.js'
 
 /**
@@ -25,6 +32,8 @@ export class Config extends Schema.Class<Config>('Config')({
   }),
   /** Declares how each lifecycle is published. */
   publishing: Schema.optionalWith(Publishing, { default: () => Publishing.make({}) }),
+  /** Operator-facing command surface for local guidance and runbooks. */
+  operator: Schema.optionalWith(Operator, { default: defaultOperator }),
   /** Lint configuration */
   lint: Schema.optional(LintConfig.Config),
 }) {}
@@ -39,6 +48,7 @@ export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig
   skipNpm: Schema.Boolean,
   packages: Schema.Record({ key: Schema.String, value: Schema.String }),
   publishing: Publishing,
+  operator: ResolvedOperator,
   lint: LintConfig.ResolvedConfig,
 }) {}
 
@@ -69,6 +79,10 @@ const ConfigFile = Conf.File.define({
  *     candidate: { mode: 'manual' },
  *     ephemeral: { mode: 'manual' },
  *   },
+ *   operator: {
+ *     releaseScript: 'release',
+ *     prepareScripts: [],
+ *   },
  *   lint: {
  *     rules: {
  *       'pr.scope.require': Severity.Warn,
@@ -82,7 +96,7 @@ export const defineConfig = Conf.File.createDefineConfig(ConfigFile)
 /**
  * Error types from config loading.
  */
-export type ConfigError = Conf.File.LoadError
+export type ConfigError = Conf.File.LoadError | OperatorResolveError
 
 /**
  * Call-site overrides for config loading.
@@ -108,6 +122,8 @@ export const load = (
     const fileConfig = yield* Conf.File.load(ConfigFile, Fs.Path.toString(env.cwd))
 
     // Merge call-site overrides with file config (overrides replace per-field)
+    const operator = yield* resolveOperator(options?.operator ?? fileConfig.operator)
+
     return ResolvedConfig.make({
       trunk: options?.trunk ?? fileConfig.trunk,
       npmTag: options?.npmTag ?? fileConfig.npmTag,
@@ -115,6 +131,7 @@ export const load = (
       skipNpm: options?.skipNpm ?? fileConfig.skipNpm,
       packages: options?.packages ?? fileConfig.packages,
       publishing: options?.publishing ?? fileConfig.publishing,
+      operator,
       lint: LintConfig.resolveConfig({
         defaults: options?.lint?.defaults ?? fileConfig.lint?.defaults,
         rules: options?.lint?.rules ?? fileConfig.lint?.rules,

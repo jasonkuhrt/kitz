@@ -303,6 +303,7 @@
         "@kitz/pkg": "workspace:*",
         "@kitz/resource": "workspace:*",
         "effect": "^3.19.5",
+        "yaml": "^2.7.1",
       },
     },
     "packages/name": {

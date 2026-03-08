@@ -2,8 +2,8 @@
   "name": "@kitz/conditional",
   "imports": {
     "#platform:lang/*": {
-      "browser": "./build/lang/*.browser.js",
-      "default": "./build/lang/*.node.js"
+      "browser": "./src/lang/*.browser.ts",
+      "default": "./src/lang/*.node.ts"
     }
   }
 }
