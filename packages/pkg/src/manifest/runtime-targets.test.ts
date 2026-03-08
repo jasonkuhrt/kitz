@@ -57,10 +57,7 @@ describe('Pkg.Manifest runtime targets', () => {
       },
     }
 
-    expect(findBuildRuntimeTargets(runtimeTargets)).toEqual([
-      './build/_.js',
-      './build/*.node.js',
-    ])
+    expect(findBuildRuntimeTargets(runtimeTargets)).toEqual(['./build/_.js', './build/*.node.js'])
     expect(isRuntimeTargetSourceOriented(runtimeTargets)).toBe(false)
     expect(
       isRuntimeTargetSourceOriented({

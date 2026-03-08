@@ -133,9 +133,9 @@ const locateFromManifestOrLockfile = (
  * Detect the active package manager from runtime environment, package.json,
  * and common lockfiles.
  */
-export const detect = (
-  options?: { readonly startDir?: Fs.Path.AbsDir },
-): Effect.Effect<DetectedPackageManager, DetectError, FileSystem.FileSystem | Env.Env> =>
+export const detect = (options?: {
+  readonly startDir?: Fs.Path.AbsDir
+}): Effect.Effect<DetectedPackageManager, DetectError, FileSystem.FileSystem | Env.Env> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
 

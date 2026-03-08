@@ -79,14 +79,14 @@ const renderCleanupReminder = (): string =>
 
 const renderPublishFailureDetail = (params: {
   readonly publishError: unknown
-  readonly cleanupError: unknown | null
+  readonly cleanupFailureDetail?: string
   readonly publishHooks: readonly string[]
 }): string =>
   [
     formatUnknownError(params.publishError),
-    params.cleanupError === null
+    params.cleanupFailureDetail === undefined
       ? 'Manifest cleanup restored version and runtime targets.'
-      : `Manifest cleanup failed: ${formatUnknownError(params.cleanupError)}. Inspect package.json runtime targets before retrying.`,
+      : `Manifest cleanup failed: ${params.cleanupFailureDetail}. Inspect package.json runtime targets before retrying.`,
     renderHookDisclaimer(params.publishHooks),
     renderCleanupReminder(),
   ]
@@ -202,15 +202,25 @@ export const publishPackage = (
     }).pipe(Effect.either)
 
     if (Either.isLeft(publishResult)) {
+      const cleanupFailureDetail = Either.isLeft(restoreResult)
+        ? formatUnknownError(restoreResult.left)
+        : undefined
       return yield* Effect.fail(
         new PublishError({
           context: {
             package: release.package.path,
-            detail: renderPublishFailureDetail({
-              publishError: publishResult.left,
-              cleanupError: Either.isLeft(restoreResult) ? restoreResult.left : null,
-              publishHooks,
-            }),
+            detail: renderPublishFailureDetail(
+              cleanupFailureDetail === undefined
+                ? {
+                    publishError: publishResult.left,
+                    publishHooks,
+                  }
+                : {
+                    publishError: publishResult.left,
+                    cleanupFailureDetail,
+                    publishHooks,
+                  },
+            ),
           },
         }),
       )

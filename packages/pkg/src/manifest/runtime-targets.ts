@@ -4,10 +4,7 @@ const rewriteBuildPathToSourcePath = (value: string): string =>
 const rewriteSourcePathToBuildPath = (value: string): string =>
   value.replace(/^\.\/src\//, './build/').replace(/\.ts$/u, '.js')
 
-const rewriteJsonTreeStrings = (
-  value: unknown,
-  rewriter: (value: string) => string,
-): unknown => {
+const rewriteJsonTreeStrings = (value: unknown, rewriter: (value: string) => string): unknown => {
   if (typeof value === 'string') return rewriter(value)
 
   if (Array.isArray(value)) {

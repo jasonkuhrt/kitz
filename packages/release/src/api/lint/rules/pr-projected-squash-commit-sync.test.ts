@@ -61,7 +61,10 @@ describe('pr.projected-squash-commit-sync', () => {
     expect(PrTitle.is(result.location)).toBe(true)
     expect(result.summary).toContain('out of sync')
     expect(result.fix?._tag).toBe('ViolationCommandFix')
-    expect(result.fix?.command).toBe('release pr title apply')
+    if (result.fix?._tag !== 'ViolationCommandFix') {
+      throw new Error('expected a command fix')
+    }
+    expect(result.fix.command).toBe('release pr title apply')
   })
 
   test('returns the invalid-title violation when the PR title is not parseable', async () => {
