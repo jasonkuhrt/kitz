@@ -9,7 +9,6 @@
  * `release pr title apply` updates the connected PR title on GitHub by replacing
  * only the conventional-commit header and preserving the current subject verbatim.
  */
-import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Env } from '@kitz/env'
@@ -17,6 +16,7 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Console, Effect, Layer } from 'effect'
 import * as Api from '../../api/__.js'
+import { FileSystemLayer } from '../../platform.js'
 
 const helpFlags = new Set(['-h', '--help'])
 
@@ -103,7 +103,7 @@ const preparePrTitle = Effect.gen(function* () {
   } satisfies PreparedPrTitle
 })
 
-Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
+Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
   Effect.gen(function* () {
     const env = yield* Env.Env
     const argv = yield* Cli.parseArgv(env.argv)

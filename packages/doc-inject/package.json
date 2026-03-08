@@ -45,8 +45,8 @@
   },
   "dependencies": {
     "@effect/platform": "^0.94.0",
-    "@effect/platform-node": "^0.104.0",
     "@kitz/core": "workspace:*",
+    "@kitz/platform": "workspace:*",
     "effect": "^3.19.13"
   }
 }

@@ -7,7 +7,6 @@
  * the workspace for packages, and adds `.release/` to `.gitignore`.
  * Safe to run multiple times (idempotent).
  */
-import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'
 import { Env } from '@kitz/env'
@@ -16,6 +15,7 @@ import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Match, Schema as S } from 'effect'
 import * as Api from '../../api/__.js'
+import { FileSystemLayer } from '../../platform.js'
 
 const RELEASE_DIR_PATTERN = '.release/'
 
@@ -37,7 +37,7 @@ const args = Oak.Command.create()
   )
   .parse()
 
-Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer))(
+Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer))(
   Effect.gen(function* () {
     const env = yield* Env.Env
 

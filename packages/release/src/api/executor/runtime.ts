@@ -2,7 +2,7 @@
  * @module executor/runtime
  *
  * Effect layer composition for workflow execution.
- * Provides SQLite persistence, filesystem, and GitHub service layers.
+ * Shared runtime composition stays platform-neutral.
  */
 
 import {
@@ -10,7 +10,6 @@ import {
   ShardingConfig as ClusterShardingConfig,
   SingleRunner,
 } from '@effect/cluster'
-import { NodeFileSystem, NodePath } from '@effect/platform-node'
 import { SqliteClient } from '#platform:executor/sqlite-client'
 import { WorkflowEngine } from '@effect/workflow'
 import { Github } from '@kitz/github'
@@ -115,12 +114,13 @@ const makeGithubRuntime = (github?: RuntimeConfig['github']) =>
       })
 
 /**
- * Create the full workflow runtime layer with SQLite persistence.
+ * Create the shared workflow runtime layers.
+ *
+ * Filesystem and other platform services stay abstract and must be provided
+ * by the runtime boundary that executes the workflow.
  */
 export const makeRuntime = (config: RuntimeConfig = {}) =>
   Layer.mergeAll(
-    NodeFileSystem.layer,
-    NodePath.layer,
     makeWorkflowRuntime({
       ...(config.dbPath && { dbPath: config.dbPath }),
       ...(config.shardingConfig && { shardingConfig: config.shardingConfig }),

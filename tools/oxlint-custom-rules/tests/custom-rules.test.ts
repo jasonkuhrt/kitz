@@ -108,6 +108,27 @@ const rules: ReadonlyArray<{
     ],
   },
   {
+    name: `resolver-platform-dispatch`,
+    failingFixtures: [
+      `resolver-platform-dispatch/packages/demo/src/fail-globalthis-bun-dispatch.ts`,
+      `resolver-platform-dispatch/packages/demo/src/fail-process-versions-bun-dispatch.ts`,
+      `resolver-platform-dispatch/packages/demo/src/fail-direct-node-file-import.ts`,
+      `resolver-platform-dispatch/packages/demo/src/fail-direct-node-package-import.ts`,
+      `resolver-platform-dispatch/packages/demo/src/fail-direct-effect-node-package-import.ts`,
+      `resolver-platform-dispatch/packages/demo/src/fail-direct-effect-bun-package-import.ts`,
+      `resolver-platform-dispatch/packages/demo/src/fail-direct-effect-node-subpath-import.ts`,
+      `resolver-platform-dispatch/packages/demo/src/lang/colorize.deno.ts`,
+    ],
+    passingFixtures: [
+      `resolver-platform-dispatch/packages/demo/src/pass-kitz-platform-root-import.ts`,
+      `resolver-platform-dispatch/packages/platform/src/pass-direct-effect-node-package-import.ts`,
+      `resolver-platform-dispatch/packages/demo/src/lang/__.ts`,
+      `resolver-platform-dispatch/packages/demo/src/lang/colorize.node.ts`,
+      `resolver-platform-dispatch/packages/demo/src/lang/colorize.bun.ts`,
+      `resolver-platform-dispatch/packages/demo/src/pass-feature-detection.ts`,
+    ],
+  },
+  {
     name: `no-throw`,
     failingFixtures: [`no-throw/fail-1.ts`, `no-throw/fail-2.ts`],
     passingFixtures: [`no-throw/pass-1.test.ts`, `no-throw/pass-2.ts`],

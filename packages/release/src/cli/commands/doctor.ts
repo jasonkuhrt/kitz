@@ -13,7 +13,6 @@
  * Exits with code 1 when required lifecycle checks cannot be evaluated or
  * when any checked lifecycle reports error-severity violations.
  */
-import { NodeContext, NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
@@ -22,6 +21,7 @@ import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
 import { Cause, Console, Effect, Layer, Option, Schema } from 'effect'
 import * as Api from '../../api/__.js'
+import { CommandExecutorLayer, ContextLayer, FileSystemLayer } from '../../platform.js'
 
 const DoctorFailuresSchema = Schema.Struct({
   _tag: Schema.Literal('DoctorFailures'),
@@ -101,11 +101,14 @@ const args = Oak.Command.create()
   )
   .parse()
 
+const commandLayer = CommandExecutorLayer
+
 Cli.run(
   Layer.mergeAll(
     Env.Live,
-    NodeContext.layer,
-    NodeFileSystem.layer,
+    ContextLayer,
+    FileSystemLayer,
+    commandLayer,
     Api.Lint.Preconditions.DefaultLayer,
     Api.Lint.ReleasePlan.DefaultReleasePlanLayer,
     Git.GitLive,

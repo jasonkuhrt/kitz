@@ -15,11 +15,11 @@
  */
 
 import { FileSystem, Path as PlatformPath } from '@effect/platform'
-import { NodeFileSystem, NodePath } from '@effect/platform-node'
+import { Platform } from '@kitz/platform'
 import { Effect, Either, pipe } from 'effect'
 import { Project } from 'ts-morph'
 
-const pathApi = Effect.runSync(PlatformPath.Path.pipe(Effect.provide(NodePath.layer)))
+const pathApi = Effect.runSync(PlatformPath.Path.pipe(Effect.provide(Platform.Path.layer)))
 
 const basename = (targetPath: string): string => pathApi.basename(targetPath)
 const dirname = (targetPath: string): string => pathApi.dirname(targetPath)
@@ -1069,7 +1069,7 @@ const program = pipe(
       Effect.zipRight(Effect.fail(error)),
     ),
   ),
-  Effect.provide(NodeFileSystem.layer),
+  Effect.provide(Platform.FileSystem.layer),
 )
 
 await Effect.runPromise(program)

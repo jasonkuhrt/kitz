@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
-import { NodeFileSystem } from '@effect/platform-node'
-import { NodeRuntime } from '@effect/platform-node'
+import { Platform } from '@kitz/platform'
 import { Console, Effect } from 'effect'
 import { run } from './run.js'
 
@@ -41,4 +40,4 @@ const program = Effect.gen(function* () {
   }
 })
 
-NodeRuntime.runMain(program.pipe(Effect.provide(NodeFileSystem.layer)))
+Platform.Runtime.runMain(program.pipe(Effect.provide(Platform.FileSystem.layer)))

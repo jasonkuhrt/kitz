@@ -1,5 +1,5 @@
-import { NodeRuntime } from '@effect/platform-node'
 import { Err } from '@kitz/core'
+import { Platform } from '@kitz/platform'
 import { Cause, Effect, Exit, Layer } from 'effect'
 
 /**
@@ -83,9 +83,9 @@ export interface RunOptions {
  * ```
  */
 export const run =
-  <R, E2>(layer: Layer.Layer<R, E2, never>, options?: RunOptions) =>
+  <R, E2>(layer: Layer.Layer<R, E2>, options?: RunOptions) =>
   <A, E>(program: Effect.Effect<A, E, R>): void => {
-    NodeRuntime.runMain(Effect.provide(program, layer), {
+    Platform.Runtime.runMain(Effect.provide(program, layer), {
       disableErrorReporting: true,
       teardown: (exit, onExit) => {
         if (Exit.isFailure(exit)) {

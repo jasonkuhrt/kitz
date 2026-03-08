@@ -56,6 +56,8 @@ const MESSAGE_IDS = {
   subpathImportsIntegrityMissingEntry: `subpathImportsIntegrityMissingEntry`,
   subpathImportsIntegrityConditionMismatch: `subpathImportsIntegrityConditionMismatch`,
   subpathImportsIntegrityTsconfigDrift: `subpathImportsIntegrityTsconfigDrift`,
+  resolverPlatformDispatchRuntimeProbe: `resolverPlatformDispatchRuntimeProbe`,
+  resolverPlatformDispatchDirectImport: `resolverPlatformDispatchDirectImport`,
 }
 
 const MESSAGES = {
@@ -97,6 +99,8 @@ const MESSAGES = {
   [MESSAGE_IDS.subpathImportsIntegrityMissingEntry]: `Module has _.ts but no corresponding # subpath import entry in package.json.`,
   [MESSAGE_IDS.subpathImportsIntegrityConditionMismatch]: `Conditional import target filename does not match its condition key (e.g. browser condition should target *.browser.* file).`,
   [MESSAGE_IDS.subpathImportsIntegrityTsconfigDrift]: `tsconfig.json paths have drifted from package.json imports. Auto-fixing.`,
+  [MESSAGE_IDS.resolverPlatformDispatchRuntimeProbe]: `Move platform selection to package imports/resolver dispatch via a stable #platform:* alias instead of runtime probing.`,
+  [MESSAGE_IDS.resolverPlatformDispatchDirectImport]: `Move platform selection to package imports/resolver dispatch via a stable #platform:* alias instead of direct platform-specific imports.`,
 }
 
 /**
@@ -218,6 +222,22 @@ const NODE_BUILTIN_MODULES = new Set(
 )
 const DISALLOWED_EFFECT_PLATFORM_ALTERNATIVES = [`fs-extra`, `pathe`]
 const NODE_COMPATIBLE_CONDITION_KEYS = new Set([`node`, `bun`])
+const PLATFORM_SPECIFIC_PACKAGE_SUFFIXES = [`-node`, `-bun`, `-browser`, `-deno`]
+const CONCRETE_EFFECT_PLATFORM_PACKAGES = new Set([
+  `@effect/platform-node`,
+  `@effect/platform-bun`,
+  `@effect/platform-browser`,
+])
+const PLATFORM_RUNTIME_GLOBAL_NAMES = new Set([`Bun`, `Deno`, `window`])
+const PLATFORM_PROBE_MEMBER_PATHS = new Set([
+  `process.versions.bun`,
+  `process.release.name`,
+  `process.platform`,
+  `navigator.userAgent`,
+  `globalThis.navigator.userAgent`,
+  `globalThis.Bun`,
+  `globalThis.Deno`,
+])
 
 const PackageJsonRecordSchema = Schema.Record({ key: Schema.String, value: Schema.Unknown })
 const PackageConditionTargetSchema = Schema.suspend(() =>
@@ -1073,6 +1093,20 @@ const getNormalizedRelativePath = (context) =>
   normalizePath(path.relative(context.cwd, context.filename))
 
 /**
+ * @param {import('oxlint').Context} context
+ * @returns {string}
+ */
+const getNormalizedAbsolutePath = (context) => normalizePath(context.filename)
+
+/**
+ * @param {string} filePath
+ * @param {string} packagePath
+ * @returns {boolean}
+ */
+const isWithinPackagePath = (filePath, packagePath) =>
+  filePath.startsWith(packagePath) || filePath.includes(`/${packagePath}`)
+
+/**
  * @param {string} filePath
  * @returns {boolean}
  */
@@ -1098,7 +1132,11 @@ const isBoundaryAdapterFile = (filePath) => {
   }
 
   return (
-    filePath.startsWith(`packages/cli/src/`) ||
+    isWithinPackagePath(filePath, `packages/cli/src/`) ||
+    isWithinPackagePath(filePath, `packages/log/src/`) ||
+    isWithinPackagePath(filePath, `packages/oak/src/lib/KeyPress/`) ||
+    isWithinPackagePath(filePath, `packages/oak/src/lib/Prompter/`) ||
+    isWithinPackagePath(filePath, `packages/paka/src/`) ||
     /\/live(?:\.[^/]+)?\.ts$/.test(filePath) ||
     filePath.includes(`/src/cli/`) ||
     filePath.includes(`/src/app/`) ||
@@ -1128,20 +1166,21 @@ const nonEffectPackages = [`packages/ware/`]
  * standard patterns — Effect-first lint rules don't apply there.
  */
 const isNonEffectPackage = (filePath) => {
-  return nonEffectPackages.some((pkg) => filePath.startsWith(pkg))
+  return nonEffectPackages.some((pkg) => isWithinPackagePath(filePath, pkg))
 }
 
 /**
  * @param {string} filePath
  * @returns {boolean}
  */
-const isPromiseInteropModuleFile = (filePath) => filePath.startsWith(`packages/core/src/prom/`)
+const isPromiseInteropModuleFile = (filePath) =>
+  isWithinPackagePath(filePath, `packages/core/src/prom/`)
 
 /**
  * @param {string} filePath
  * @returns {boolean}
  */
-const isTestSupportPackageFile = (filePath) => filePath.startsWith(`packages/test/src/`)
+const isTestSupportPackageFile = (filePath) => isWithinPackagePath(filePath, `packages/test/src/`)
 
 /**
  * @param {string} filePath
@@ -1447,6 +1486,235 @@ const isConsoleReference = (expression) => {
  * @param {string} filePath
  * @returns {boolean}
  */
+const isPlatformImplementationFile = (filePath) =>
+  /\.(?:node|bun|browser)\.[cm]?[jt]sx?$/.test(filePath)
+
+/**
+ * @param {string} filePath
+ * @returns {boolean}
+ */
+const isKitzPlatformPackageFile = (filePath) => isWithinPackagePath(filePath, `packages/platform/`)
+
+/**
+ * @param {string} importPath
+ * @returns {string | null}
+ */
+const getBarePackageSpecifier = (importPath) => {
+  if (
+    importPath.startsWith(`.`) ||
+    importPath.startsWith(`/`) ||
+    importPath.startsWith(`#`) ||
+    importPath.startsWith(`node:`)
+  ) {
+    return null
+  }
+
+  const parts = importPath.split(`/`)
+  if (importPath.startsWith(`@`)) {
+    return parts.length >= 2 ? `${parts[0]}/${parts[1]}` : null
+  }
+
+  return parts[0] ?? null
+}
+
+/**
+ * @param {string} importPath
+ * @returns {boolean}
+ */
+const isPlatformSpecificImportPath = (importPath) => {
+  if (importPath.startsWith(`#platform:`)) {
+    return false
+  }
+
+  if (/\.(?:node|bun|browser|deno)\.[^/]+$/.test(importPath)) {
+    return true
+  }
+
+  const barePackageSpecifier = getBarePackageSpecifier(importPath)
+  return (
+    barePackageSpecifier !== null &&
+    PLATFORM_SPECIFIC_PACKAGE_SUFFIXES.some((suffix) => barePackageSpecifier.endsWith(suffix))
+  )
+}
+
+/**
+ * @param {string} importPath
+ * @returns {boolean}
+ */
+const isConcreteEffectPlatformImportPath = (importPath) => {
+  const barePackageSpecifier = getBarePackageSpecifier(importPath)
+  return (
+    barePackageSpecifier !== null && CONCRETE_EFFECT_PLATFORM_PACKAGES.has(barePackageSpecifier)
+  )
+}
+
+/**
+ * @param {Expression} expression
+ * @returns {string[] | null}
+ */
+const getMemberExpressionPath = (expression) => {
+  if (isIdentifier(expression)) {
+    return [expression.name]
+  }
+
+  if (!isMemberExpression(expression)) {
+    return null
+  }
+
+  const objectPath = getMemberExpressionPath(expression.object)
+  const propertyName = getPropertyName(expression)
+  if (objectPath === null || propertyName === null) {
+    return null
+  }
+
+  return [...objectPath, propertyName]
+}
+
+/**
+ * @param {Expression} expression
+ * @returns {boolean}
+ */
+const isRuntimeGlobalReference = (expression) => {
+  if (isIdentifier(expression)) {
+    return PLATFORM_RUNTIME_GLOBAL_NAMES.has(expression.name)
+  }
+
+  const memberExpressionPath = getMemberExpressionPath(expression)
+  return (
+    memberExpressionPath !== null &&
+    memberExpressionPath.length === 2 &&
+    memberExpressionPath[0] === `globalThis` &&
+    PLATFORM_RUNTIME_GLOBAL_NAMES.has(memberExpressionPath[1])
+  )
+}
+
+/**
+ * @param {Expression} expression
+ * @returns {boolean}
+ */
+const isPlatformProbeBinaryExpression = (expression) => {
+  if (expression.type !== `BinaryExpression`) {
+    return false
+  }
+
+  if (
+    expression.operator === `in` &&
+    getMemberExpressionPath(expression.right)?.join(`.`) === `globalThis`
+  ) {
+    const runtimeName = getStringLiteralValue(expression.left)
+    return runtimeName !== null && PLATFORM_RUNTIME_GLOBAL_NAMES.has(runtimeName)
+  }
+
+  if (
+    expression.operator !== `===` &&
+    expression.operator !== `!==` &&
+    expression.operator !== `==` &&
+    expression.operator !== `!=`
+  ) {
+    return false
+  }
+
+  const matchesTypeofUndefinedCheck = (left, right) =>
+    left.type === `UnaryExpression` &&
+    left.operator === `typeof` &&
+    isRuntimeGlobalReference(left.argument) &&
+    getStringLiteralValue(right) === `undefined`
+
+  return (
+    matchesTypeofUndefinedCheck(expression.left, expression.right) ||
+    matchesTypeofUndefinedCheck(expression.right, expression.left)
+  )
+}
+
+/**
+ * @param {unknown} node
+ * @param {(value: unknown) => boolean} matcher
+ * @returns {boolean}
+ */
+const nodeTreeSome = (node, matcher) => {
+  if (matcher(node)) {
+    return true
+  }
+
+  if (node === null || typeof node !== `object`) {
+    return false
+  }
+
+  if (Array.isArray(node)) {
+    return node.some((value) => nodeTreeSome(value, matcher))
+  }
+
+  for (const [key, value] of Object.entries(node)) {
+    if (key === `parent`) {
+      continue
+    }
+
+    if (nodeTreeSome(value, matcher)) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/**
+ * @param {unknown} node
+ * @returns {boolean}
+ */
+const containsPlatformProbe = (node) =>
+  nodeTreeSome(node, (candidate) => {
+    if (!isRecord(candidate) || typeof candidate.type !== `string`) {
+      return false
+    }
+
+    if (candidate.type === `BinaryExpression`) {
+      return isPlatformProbeBinaryExpression(candidate)
+    }
+
+    if (candidate.type !== `MemberExpression`) {
+      return false
+    }
+
+    const memberExpressionPath = getMemberExpressionPath(candidate)
+    return (
+      memberExpressionPath !== null &&
+      PLATFORM_PROBE_MEMBER_PATHS.has(memberExpressionPath.join(`.`))
+    )
+  })
+
+/**
+ * @param {unknown} node
+ * @returns {boolean}
+ */
+const containsPlatformModuleDispatchCandidate = (node) =>
+  nodeTreeSome(node, (candidate) => {
+    if (!isRecord(candidate) || typeof candidate.type !== `string`) {
+      return false
+    }
+
+    if (candidate.type === `ImportExpression`) {
+      return true
+    }
+
+    if (
+      candidate.type === `CallExpression` &&
+      isIdentifier(candidate.callee) &&
+      candidate.callee.name === `require`
+    ) {
+      return true
+    }
+
+    return (
+      candidate.type === `Literal` &&
+      typeof candidate.value === `string` &&
+      isPlatformSpecificImportPath(candidate.value)
+    )
+  })
+
+/**
+ * @param {string} filePath
+ * @returns {boolean}
+ */
 const isEffectModuleFile = (filePath) =>
   filePath.includes(`/packages/`) && filePath.includes(`/src/`) && !isTestFilePath(filePath)
 
@@ -1625,7 +1893,7 @@ const noTryCatchRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
-    const filePath = getNormalizedRelativePath(context)
+    const filePath = getNormalizedAbsolutePath(context)
     if (
       isTestFilePath(filePath) ||
       isTestSupportPackageFile(filePath) ||
@@ -1656,7 +1924,7 @@ const noNativePromiseConstructionRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
-    const filePath = getNormalizedRelativePath(context)
+    const filePath = getNormalizedAbsolutePath(context)
     if (isTestFilePath(filePath) || isPromiseInteropModuleFile(filePath)) {
       return {}
     }
@@ -1791,14 +2059,27 @@ const noNodejsBuiltinImportsRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
+    const filePath = getNormalizedAbsolutePath(context)
     const nodeBuiltinImportsAllowed = isNodeBuiltinImportAllowedInFile(context.filename)
 
     const maybeReport = (specifierNode, importPath) => {
+      if (
+        importPath.startsWith(`node:`) &&
+        specifierNode.parent?.type === `ImportDeclaration` &&
+        specifierNode.parent.importKind === `type`
+      ) {
+        return
+      }
+
       if (isDisallowedEffectPlatformAlternativePath(importPath)) {
         context.report({
           node: specifierNode,
           messageId: MESSAGE_IDS.noNodejsBuiltinImports,
         })
+        return
+      }
+
+      if (isBoundaryAdapterFile(filePath)) {
         return
       }
 
@@ -1859,6 +2140,135 @@ const noNodejsBuiltinImportsRule = defineRule({
   },
 })
 
+const resolverPlatformDispatchRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Require resolver-level platform dispatch via #platform:* aliases instead of runtime probing or direct platform-specific imports.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    const filePath = getNormalizedRelativePath(context)
+    const absoluteFilePath = getNormalizedAbsolutePath(context)
+
+    /**
+     * @param {unknown} sourceNode
+     * @returns {void}
+     */
+    const maybeReportDirectPlatformImport = (sourceNode) => {
+      const importPath = getStringLiteralValue(sourceNode)
+      if (importPath === null) {
+        return
+      }
+
+      if (isConcreteEffectPlatformImportPath(importPath)) {
+        if (isKitzPlatformPackageFile(filePath) || absoluteFilePath.includes(`/packages/platform/`)) {
+          return
+        }
+
+        context.report({
+          node: sourceNode,
+          messageId: MESSAGE_IDS.resolverPlatformDispatchDirectImport,
+        })
+        return
+      }
+
+      if (
+        isTestFilePath(filePath) ||
+        isPlatformImplementationFile(filePath) ||
+        !isPlatformSpecificImportPath(importPath)
+      ) {
+        return
+      }
+
+      context.report({
+        node: sourceNode,
+        messageId: MESSAGE_IDS.resolverPlatformDispatchDirectImport,
+      })
+    }
+
+    /**
+     * @param {unknown} node
+     * @param {Expression} test
+     * @param {ReadonlyArray<unknown>} branches
+     * @returns {void}
+     */
+    const maybeReportRuntimePlatformDispatch = (node, test, branches) => {
+      if (isTestFilePath(filePath) || isPlatformImplementationFile(filePath)) {
+        return
+      }
+
+      if (!containsPlatformProbe(test)) {
+        return
+      }
+
+      if (!branches.some((branch) => containsPlatformModuleDispatchCandidate(branch))) {
+        return
+      }
+
+      context.report({
+        node,
+        messageId: MESSAGE_IDS.resolverPlatformDispatchRuntimeProbe,
+      })
+    }
+
+    return {
+      ImportDeclaration(node) {
+        maybeReportDirectPlatformImport(node.source)
+      },
+      ExportNamedDeclaration(node) {
+        if (node.source !== null) {
+          maybeReportDirectPlatformImport(node.source)
+        }
+      },
+      ExportAllDeclaration(node) {
+        maybeReportDirectPlatformImport(node.source)
+      },
+      ImportExpression(node) {
+        maybeReportDirectPlatformImport(node.source)
+      },
+      CallExpression(node) {
+        if (
+          isIdentifier(node.callee) &&
+          node.callee.name === `require` &&
+          node.arguments.length > 0
+        ) {
+          maybeReportDirectPlatformImport(node.arguments[0])
+        }
+      },
+      IfStatement(node) {
+        const branches =
+          node.alternate === null ? [node.consequent] : [node.consequent, node.alternate]
+        maybeReportRuntimePlatformDispatch(node, node.test, branches)
+      },
+      ConditionalExpression(node) {
+        maybeReportRuntimePlatformDispatch(node, node.test, [node.consequent, node.alternate])
+      },
+      LogicalExpression(node) {
+        if (node.operator !== `&&` && node.operator !== `||`) {
+          return
+        }
+
+        if (
+          (containsPlatformProbe(node.left) &&
+            containsPlatformModuleDispatchCandidate(node.right)) ||
+          (containsPlatformProbe(node.right) && containsPlatformModuleDispatchCandidate(node.left))
+        ) {
+          context.report({
+            node,
+            messageId: MESSAGE_IDS.resolverPlatformDispatchRuntimeProbe,
+          })
+        }
+      },
+      SwitchStatement(node) {
+        maybeReportRuntimePlatformDispatch(node, node.discriminant, node.cases)
+      },
+    }
+  },
+})
+
 const noThrowRule = defineRule({
   meta: {
     type: `problem`,
@@ -1869,7 +2279,7 @@ const noThrowRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
-    const filePath = getNormalizedRelativePath(context)
+    const filePath = getNormalizedAbsolutePath(context)
     if (
       isBoundaryAdapterFile(filePath) ||
       isPromiseInteropModuleFile(filePath) ||
@@ -1899,7 +2309,7 @@ const noPromiseThenChainRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
-    const filePath = getNormalizedRelativePath(context)
+    const filePath = getNormalizedAbsolutePath(context)
     if (
       isBoundaryAdapterFile(filePath) ||
       isPromiseInteropModuleFile(filePath) ||
@@ -1938,7 +2348,7 @@ const noEffectRunInLibraryCodeRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
-    if (isEffectRunAllowedFile(getNormalizedRelativePath(context))) {
+    if (isEffectRunAllowedFile(getNormalizedAbsolutePath(context))) {
       return {}
     }
 
@@ -1975,7 +2385,7 @@ const requireTypedEffectErrorsRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
-    const filePath = getNormalizedRelativePath(context)
+    const filePath = getNormalizedAbsolutePath(context)
     if (isTestSupportPackageFile(filePath)) {
       return {}
     }
@@ -2060,7 +2470,7 @@ const noProcessEnvOutsideConfigModulesRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
-    const filePath = getNormalizedRelativePath(context)
+    const filePath = getNormalizedAbsolutePath(context)
     if (isTestFilePath(filePath) || isConfigModuleFile(filePath)) {
       return {}
     }
@@ -2210,7 +2620,7 @@ const requireTaggedErrorTypesRule = defineRule({
     messages: MESSAGES,
   },
   create(context) {
-    const filePath = getNormalizedRelativePath(context)
+    const filePath = getNormalizedAbsolutePath(context)
     if (
       isBoundaryAdapterFile(filePath) ||
       isBoundaryModule(filePath) ||
@@ -3148,6 +3558,7 @@ export default definePlugin({
     'no-type-assertion': noTypeAssertionRule,
     'no-native-map-set-in-effect-modules': noNativeMapSetInEffectModulesRule,
     'no-nodejs-builtin-imports': noNodejsBuiltinImportsRule,
+    'resolver-platform-dispatch': resolverPlatformDispatchRule,
     'no-throw': noThrowRule,
     'no-promise-then-chain': noPromiseThenChainRule,
     'no-effect-run-in-library-code': noEffectRunInLibraryCodeRule,

@@ -8,15 +8,16 @@
  * GitHub releases. Supports `--dry-run` for inspection and `--yes`
  * to skip the interactive confirmation prompt (for CI).
  */
-import { NodeFileSystem } from '@effect/platform-node'
+import { Terminal } from '@effect/platform'
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
+import { NpmRegistry } from '@kitz/npm-registry'
 import { Oak } from '@kitz/oak'
 import { Console, Effect, Fiber, Layer, Option, Schema, Stream } from 'effect'
-import * as Readline from 'node:readline/promises'
 import * as Api from '../../api/__.js'
+import { CommandExecutorLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
 
 /**
  * release apply
@@ -54,28 +55,28 @@ const args = Oak.Command.create()
   )
   .parse()
 
-const confirm = (message: string): Effect.Effect<boolean> =>
-  Effect.acquireUseRelease(
-    Effect.sync(() =>
-      Readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-      }),
-    ),
-    (readline) =>
-      Effect.tryPromise({
-        try: () => readline.question(message),
-        catch: (cause) => new Error(`Failed to read confirmation input: ${String(cause)}`),
-      }).pipe(
-        Effect.map((answer) => {
-          const normalized = answer.trim().toLowerCase()
-          return normalized === 'y' || normalized === 'yes'
-        }),
-      ),
-    (readline) => Effect.sync(() => readline.close()),
-  ).pipe(Effect.catchAll(() => Effect.succeed(false)))
+const confirm = (message: string) =>
+  Effect.gen(function* () {
+    const terminal = yield* Terminal.Terminal
+    yield* terminal.display(message)
+    const answer = yield* terminal.readLine.pipe(Effect.catchAll(() => Effect.succeed('')))
+    const normalized = answer.trim().toLowerCase()
+    return normalized === 'y' || normalized === 'yes'
+  })
 
-Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
+const commandLayer = CommandExecutorLayer
+const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(commandLayer))
+
+Cli.run(
+  Layer.mergeAll(
+    Env.Live,
+    FileSystemLayer,
+    TerminalLayer,
+    Git.GitLive,
+    commandLayer,
+    npmLayer,
+  ),
+)(
   Effect.gen(function* () {
     const env = yield* Env.Env
 

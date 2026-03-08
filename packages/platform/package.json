@@ -1,0 +1,45 @@
+{
+  "name": "@kitz/platform",
+  "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
+  "description": "Effect platform runtime passthrough",
+  "type": "module",
+  "sideEffects": false,
+  "imports": {
+    "#platform:effect-platform": {
+      "bun": "./src/effect-platform.bun.ts",
+      "default": "./src/effect-platform.node.ts"
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./build/_.js",
+      "default": "./src/_.ts"
+    }
+  },
+  "dependencies": {
+    "@effect/cluster": "^0.56.0",
+    "@effect/platform": "^0.94.0",
+    "@effect/platform-bun": "^0.87.0",
+    "@effect/platform-node": "^0.104.0",
+    "@effect/rpc": "^0.73.0",
+    "@effect/sql": "^0.49.0",
+    "effect": "^3.19.13"
+  },
+  "scripts": {
+    "build": "tsgo -p tsconfig.build.json",
+    "dev": "tsgo -p tsconfig.build.json --watch",
+    "check:types": "tsgo --noEmit",
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
+  },
+  "types": "./src/_.ts",
+  "files": [
+    "build",
+    "src"
+  ]
+}

@@ -8,13 +8,13 @@
  * (`comment`), and machine exchange (`json`).
  */
 import { FileSystem } from '@effect/platform'
-import { NodeContext, NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
 import { Console, Effect, Either, Layer, Option, Schema } from 'effect'
 import * as Api from '../../api/__.js'
+import { CommandExecutorLayer, ContextLayer, FileSystemLayer } from '../../platform.js'
 
 const args = Oak.Command.create()
   .use(Oak.EffectSchema)
@@ -49,7 +49,9 @@ const args = Oak.Command.create()
   )
   .parse()
 
-Cli.run(Layer.mergeAll(Env.Live, NodeContext.layer, NodeFileSystem.layer, Git.GitLive))(
+const commandLayer = CommandExecutorLayer
+
+Cli.run(Layer.mergeAll(Env.Live, ContextLayer, FileSystemLayer, Git.GitLive, commandLayer))(
   Effect.gen(function* () {
     const input = yield* args.fromFile
       ? loadForecastInputFromFile(args.fromFile)

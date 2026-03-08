@@ -10,7 +10,6 @@
  *
  * The plan is written to `.release/plan.json` and can be executed with `release apply`.
  */
-import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'
 import { Env } from '@kitz/env'
@@ -19,6 +18,7 @@ import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
+import { FileSystemLayer } from '../../platform.js'
 
 /**
  * release plan --lifecycle <official|candidate|ephemeral>
@@ -50,7 +50,7 @@ const args = Oak.Command.create()
   )
   .parse()
 
-Cli.run(Layer.mergeAll(Env.Live, NodeFileSystem.layer, Git.GitLive))(
+Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
   Effect.gen(function* () {
     const git = yield* Git.Git
 

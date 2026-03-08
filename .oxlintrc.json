@@ -33,6 +33,7 @@
     "kitz/no-type-assertion": "off",
     "kitz/no-native-map-set-in-effect-modules": "warn",
     "kitz/no-nodejs-builtin-imports": "warn",
+    "kitz/resolver-platform-dispatch": "warn",
     "kitz/no-throw": "off",
     "kitz/no-promise-then-chain": "warn",
     "kitz/no-effect-run-in-library-code": "warn",

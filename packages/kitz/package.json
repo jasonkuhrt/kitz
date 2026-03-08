@@ -162,6 +162,10 @@
       "types": "./build/paka.js",
       "default": "./src/paka.ts"
     },
+    "./platform": {
+      "types": "./build/platform.js",
+      "default": "./src/platform.ts"
+    },
     "./resource": {
       "types": "./build/resource.js",
       "default": "./src/resource.ts"
@@ -235,6 +239,7 @@
     "@kitz/name": "workspace:*",
     "@kitz/num": "workspace:*",
     "@kitz/oak": "workspace:*",
+    "@kitz/platform": "workspace:*",
     "@kitz/pkg": "workspace:*",
     "@kitz/paka": "workspace:*",
     "@kitz/resource": "workspace:*",

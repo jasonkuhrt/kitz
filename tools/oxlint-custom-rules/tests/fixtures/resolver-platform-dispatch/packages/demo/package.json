@@ -1,0 +1,10 @@
+{
+  "name": "fixture-resolver-platform-dispatch-demo",
+  "type": "module",
+  "imports": {
+    "#platform:lang/*": {
+      "browser": "./src/lang/*.browser.ts",
+      "default": "./src/lang/*.node.ts"
+    }
+  }
+}

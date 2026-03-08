@@ -21,11 +21,11 @@
   },
   "dependencies": {
     "@effect/platform": "^0.94.0",
-    "@effect/platform-node": "^0.104.0",
     "@kitz/core": "workspace:*",
     "@kitz/env": "workspace:*",
     "@kitz/fs": "workspace:*",
     "@kitz/mod": "workspace:*",
+    "@kitz/platform": "workspace:*",
     "effect": "^3.19.11"
   },
   "scripts": {

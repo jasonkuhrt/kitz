@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import { NodeFileSystem } from '@effect/platform-node'
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Effect, Layer } from 'effect'
+import { FileSystemLayer } from '../platform.js'
 
 /**
  * Release CLI entry point.
@@ -22,6 +22,6 @@ import { Effect, Layer } from 'effect'
  */
 const commandsDir = Fs.Path.AbsDir.fromString(new URL('./commands/', import.meta.url).pathname)
 
-const layer = Layer.merge(Env.Live, NodeFileSystem.layer)
+const layer = Layer.merge(Env.Live, FileSystemLayer)
 
 void Effect.runPromise(Effect.provide(Cli.dispatch(commandsDir), layer))
