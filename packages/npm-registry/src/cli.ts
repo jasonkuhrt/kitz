@@ -10,7 +10,7 @@ import { Effect, Option, Schema as S, Stream, String as Str } from 'effect'
 
 const baseTags = ['kit', 'npm-registry', 'cli'] as const
 
-const NpmCliOperationSchema = S.Literal('whoami', 'publish', 'view')
+const NpmCliOperationSchema = S.Literal('whoami', 'pack', 'publish', 'view')
 const ErrorCause = S.instanceOf(Error)
 const NpmCliErrorContext = S.Struct({
   operation: NpmCliOperationSchema,
@@ -54,14 +54,36 @@ export interface WhoamiOptions {
  * Options for npm publish command.
  */
 export interface PublishOptions {
-  /** Package directory to publish from */
-  readonly cwd: Fs.Path.AbsDir
+  /** Prepared tarball to publish */
+  readonly tarball: Fs.Path.AbsFile
   /** npm dist-tag (default: 'latest') */
   readonly tag?: string
   /** Registry URL */
   readonly registry?: string
   /** npm access level (default: 'public') */
   readonly access?: 'public' | 'restricted'
+  /** Disable lifecycle scripts during tarball publish (default: true) */
+  readonly ignoreScripts?: boolean
+}
+
+/**
+ * Options for npm pack command.
+ */
+export interface PackOptions {
+  /** Package directory to pack from */
+  readonly cwd: Fs.Path.AbsDir
+  /** Destination directory for the generated tarball */
+  readonly packDestination: Fs.Path.AbsDir
+}
+
+/**
+ * Result of `npm pack --json`.
+ */
+export interface PackResult {
+  /** Full path to the tarball */
+  readonly tarball: Fs.Path.AbsFile
+  /** Filename reported by npm */
+  readonly filename: string
 }
 
 /**
@@ -81,6 +103,14 @@ const NpmViewErrorSchema = S.Struct({
 })
 
 const decodeNpmViewError = S.decodeUnknownOption(S.parseJson(NpmViewErrorSchema))
+const NpmPackOutputSchema = S.parseJson(
+  S.Array(
+    S.Struct({
+      filename: S.String,
+    }),
+  ),
+)
+const decodeNpmPackOutput = S.decodeUnknown(NpmPackOutputSchema)
 
 const readStreamString = (
   stream: Stream.Stream<Uint8Array, PlatformError>,
@@ -156,13 +186,75 @@ export function whoami(
 }
 
 /**
- * Run `npm publish` to publish a package.
+ * Run `npm pack` to create a publishable tarball.
+ */
+export function pack(
+  options: PackOptions,
+): Effect.Effect<PackResult, NpmCliError, CommandExecutor.CommandExecutor> {
+  return Effect.gen(function* () {
+    const args = ['pack', '--json', '--pack-destination', Fs.Path.toString(options.packDestination)]
+
+    const command = Command.make('npm', ...args).pipe(
+      Command.workingDirectory(Fs.Path.toString(options.cwd)),
+    )
+
+    const output = yield* Command.string(command).pipe(
+      Effect.mapError(
+        (cause) =>
+          new NpmCliError({
+            context: {
+              operation: 'pack',
+              detail: 'npm pack failed while preparing a release artifact.',
+            },
+            cause: cause instanceof Error ? cause : new Error(String(cause)),
+          }),
+      ),
+    )
+
+    const packEntries = yield* decodeNpmPackOutput(output).pipe(
+      Effect.mapError(
+        (cause) =>
+          new NpmCliError({
+            context: {
+              operation: 'pack',
+              detail: 'npm pack returned unexpected JSON output',
+            },
+            cause: cause instanceof Error ? cause : new Error(String(cause)),
+          }),
+      ),
+    )
+
+    const entry = packEntries.at(-1)
+    if (entry === undefined) {
+      return yield* Effect.fail(
+        new NpmCliError({
+          context: {
+            operation: 'pack',
+            detail: 'npm pack returned no tarball metadata',
+          },
+          cause: new Error('npm pack returned no tarball metadata'),
+        }),
+      )
+    }
+
+    return {
+      filename: entry.filename,
+      tarball: Fs.Path.join(
+        options.packDestination,
+        Fs.Path.RelFile.fromString(`./${entry.filename}`),
+      ),
+    }
+  })
+}
+
+/**
+ * Run `npm publish` to publish a prepared tarball.
  *
  * @example
  * ```ts
  * await Effect.runPromise(
  *   publish({
- *     cwd: Fs.Path.AbsDir.fromString('/path/to/package'),
+ *     tarball: Fs.Path.AbsFile.fromString('/tmp/pkg-1.0.0.tgz'),
  *     tag: 'next',
  *   }).pipe(Effect.provide(CommandExecutor.layer))
  * )
@@ -172,10 +264,14 @@ export function publish(
   options: PublishOptions,
 ): Effect.Effect<void, NpmCliError, CommandExecutor.CommandExecutor> {
   return Effect.gen(function* () {
-    const args = ['publish']
+    const args = ['publish', Fs.Path.toString(options.tarball)]
 
     // Default to public access for scoped packages
     args.push('--access', options.access ?? 'public')
+
+    if (options.ignoreScripts ?? true) {
+      args.push('--ignore-scripts')
+    }
 
     if (options.tag) {
       args.push('--tag', options.tag)
@@ -185,9 +281,7 @@ export function publish(
       args.push('--registry', options.registry)
     }
 
-    const command = Command.make('npm', ...args).pipe(
-      Command.workingDirectory(Fs.Path.toString(options.cwd)),
-    )
+    const command = Command.make('npm', ...args)
 
     yield* Command.exitCode(command).pipe(
       Effect.flatMap((code) => {

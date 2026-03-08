@@ -135,12 +135,14 @@ The Executor is the only phase with side effects. It takes a Plan and makes it r
 Execution is structured as a **declarative DAG** (directed acyclic graph) using `@kitz/flo`. The graph encodes the natural dependencies between release activities:
 
 ```
-Preflight --> Publish:A --> CreateTag:A --> PushTag:A --> CreateGHRelease:A
-          |-> Publish:B --> CreateTag:B --> PushTag:B --> CreateGHRelease:B
-          `-> Publish:C --> CreateTag:C --> PushTag:C --> CreateGHRelease:C
+Prepare:A ---+--> Publish:A --> CreateTag:A --> PushTag:A --> CreateGHRelease:A
+Prepare:B ---+--> Publish:B --> CreateTag:B --> PushTag:B --> CreateGHRelease:B
+Prepare:C ---+--> Publish:C --> CreateTag:C --> PushTag:C --> CreateGHRelease:C
 ```
 
-All package publishes run **concurrently** after preflight. Each subsequent step (tag creation, tag push, GitHub release) depends only on its own package's prior step, so packages progress through the pipeline independently. A slow publish of package A does not block tag creation for package B.
+Fresh-run **preflight** runs before the durable workflow starts. Once preflight passes, the workflow prepares publishable tarballs for every planned package, then publishes those tarballs in dependency order. This front-loads build and manifest-rewrite failures before any network publish begins.
+
+The release DAG is executed **single-flight within each layer**. That means release still respects the full dependency graph, but it only runs one activity at a time so a failed prepare or publish can suspend cleanly and be resumed without interrupting sibling work. Publish still starts only after every package has been prepared successfully, and local package dependency edges are respected during publish. A dependent package will not publish until the package it consumes has already published.
 
 The Executor supports two modes:
 
@@ -155,7 +157,7 @@ Both modes support **dry-run**, which logs what would happen without performing 
 
 <!-- @doc executor/preflight -->
 
-Before any publishing begins, the Executor runs **preflight checks** using the doctor rule engine. Preflight validates that the environment is actually ready to release:
+Before any durable workflow begins, the Executor runs **preflight checks** using the doctor rule engine for fresh executions. Preflight validates that the environment is actually ready to release:
 
 - **publish channel readiness** — does the active lifecycle's declared publish path match the runtime?
 - **npm authentication** — for manual/token-based paths, can we publish to the registry?
@@ -165,7 +167,7 @@ Before any publishing begins, the Executor runs **preflight checks** using the d
 - **tag uniqueness** — do any of the planned tags already exist?
 - **package manifest blockers** — are planned packages accidentally marked private?
 
-Preflight failures abort the workflow before any side effects occur. This is deliberate: a failed npm auth check caught at preflight costs nothing, but a failed auth check discovered after three packages have already published leaves the repository in an inconsistent state.
+Preflight failures abort the release before any side effects occur. This is deliberate: a failed npm auth check caught before artifact preparation costs nothing, but a failed auth check discovered after packages have already published leaves the repository in an inconsistent state.
 
 <!-- /@doc -->
 
@@ -191,11 +193,11 @@ Raised when a preflight check fails before any publishing begins.
 
 Raised when `npm publish` fails for a specific package.
 
-**When it occurs**: during the Publish activity for a single package. Other packages may publish successfully even if one fails.
+**When it occurs**: during artifact preparation or tarball publish for a single package. Other packages may prepare or publish successfully even if one fails.
 
-**Common causes**: the package version already exists on the registry, the npm token lacks publish permissions for this scope, or a network error interrupted the publish.
+**Common causes**: `npm pack` or a pack hook failed during artifact preparation, the package version already exists on the registry, the npm token lacks publish permissions for this scope, or a network error interrupted tarball publish.
 
-**What to do**: check the error's `packageName` and `detail` fields. If the version already exists, this may indicate a duplicate release attempt — verify that the planned version does not collide with an existing published version. The Executor retries publish failures twice before surfacing the error.
+**What to do**: check the error's `packageName` and `detail` fields. If the detail mentions manifest cleanup or pack hooks, inspect `package.json` before retrying and run `release doctor --onlyRule "plan.packages-runtime-targets-source-oriented"`. If the version already exists, verify that the planned version does not collide with an existing published version. Fix the cause, then rerun release with the same plan so the durable workflow can resume from the failed activity.
 
 <!-- /@doc -->
 
@@ -209,7 +211,7 @@ Raised when git tag creation or tag pushing fails.
 
 **Common causes**: the tag already exists locally or on the remote, or the git push is rejected (e.g., branch protection rules, insufficient permissions).
 
-**What to do**: check the error's `tag` field to identify which tag failed. If the tag exists, delete it locally (`git tag -d <tag>`) and remotely (`git push origin :refs/tags/<tag>`) before retrying. Tag push failures are retried twice.
+**What to do**: check the error's `tag` field to identify which tag failed. If the tag exists, delete it locally (`git tag -d <tag>`) and remotely (`git push origin :refs/tags/<tag>`) before retrying. Fix the cause, then rerun release with the same plan so the durable workflow can resume from the failed tag step.
 
 <!-- /@doc -->
 
@@ -223,7 +225,7 @@ Raised when creating a GitHub release fails.
 
 **Common causes**: the GitHub token lacks permission to create releases, or the GitHub API is unavailable.
 
-**What to do**: verify that `GITHUB_TOKEN` has `contents: write` permission. GitHub release creation is retried twice. If the release still fails, you can create it manually from the tag — the package is already published.
+**What to do**: verify that `GITHUB_TOKEN` has `contents: write` permission. Fix the cause, then rerun release with the same plan so the durable workflow can resume from the failed GitHub release step. If needed, you can also create the release manually from the tag because the package is already published.
 
 <!-- /@doc -->
 
@@ -325,14 +327,14 @@ detects the active package manager from the current environment and renders guid
 
 The `release` binary dispatches through file-based command routing:
 
-| Command | Purpose |
-| --- | --- |
-| `release forecast` | Show the current release forecast |
-| `release plan --lifecycle <official|candidate|ephemeral>` | Generate a release plan |
-| `release apply` | Execute the release plan |
-| `release notes [pkg]` | Output unreleased release notes |
-| `release doctor` | Run release doctor checks |
-| `release init` | Initialize `release.config.ts` in the project |
+| Command                             | Purpose                                       |
+| ----------------------------------- | --------------------------------------------- | ----------- | ----------------------- |
+| `release forecast`                  | Show the current release forecast             |
+| `release plan --lifecycle <official | candidate                                     | ephemeral>` | Generate a release plan |
+| `release apply`                     | Execute the release plan                      |
+| `release notes [pkg]`               | Output unreleased release notes               |
+| `release doctor`                    | Run release doctor checks                     |
+| `release init`                      | Initialize `release.config.ts` in the project |
 
 ## Architecture
 

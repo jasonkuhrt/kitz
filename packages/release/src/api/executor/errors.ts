@@ -30,14 +30,13 @@ const ExecutorGHReleaseErrorContext = S.Struct({
 /**
  * #### `ExecutorPublishError`
  *
- * Raised when `npm publish` fails for a specific package.
+ * Raised when artifact preparation or tarball publish fails for a specific package.
  *
- * **When it occurs**: during the Publish activity for a single package, including manifest
- * cleanup immediately after publish. Other packages may publish successfully even if one fails.
+ * **When it occurs**: during the Prepare or Publish activity for a single package. Other packages may prepare or publish successfully even if one fails.
  *
- * **Common causes**: the package version already exists on the registry, the npm token lacks publish permissions for this scope, or a network error interrupted the publish.
+ * **Common causes**: `npm pack` failed, a pack hook mutated local files unexpectedly, the package version already exists on the registry, the npm token lacks publish permissions for this scope, or a network error interrupted tarball publish.
  *
- * **What to do**: check the error's `packageName` and `detail` fields. If the version already exists, this may indicate a duplicate release attempt — verify that the planned version does not collide with an existing published version. If the detail mentions manifest cleanup or publish hooks, inspect the package.json before retrying and run `release doctor --onlyRule plan.packages-runtime-targets-source-oriented`. The Executor retries publish failures twice before surfacing the error.
+ * **What to do**: check the error's `packageName` and `detail` fields. If the detail mentions manifest cleanup or pack hooks, inspect the package.json before retrying and run `release doctor --onlyRule plan.packages-runtime-targets-source-oriented`. If the version already exists, verify that the planned version does not collide with an existing published version. Fix the cause, then rerun release with the same plan so the durable workflow can resume from the failed activity.
  *
  * {@include executor/errors/publish-error}
  */
@@ -62,7 +61,7 @@ export type ExecutorPublishError = InstanceType<typeof ExecutorPublishError>
  *
  * **Common causes**: the tag already exists locally or on the remote, or the git push is rejected (e.g., branch protection rules, insufficient permissions).
  *
- * **What to do**: check the error's `tag` field to identify which tag failed. If the tag exists, delete it locally (`git tag -d <tag>`) and remotely (`git push origin :refs/tags/<tag>`) before retrying. Tag push failures are retried twice.
+ * **What to do**: check the error's `tag` field to identify which tag failed. If the tag exists, delete it locally (`git tag -d <tag>`) and remotely (`git push origin :refs/tags/<tag>`) before retrying. Fix the cause, then rerun release with the same plan so the durable workflow can resume from the failed tag step.
  *
  * {@include executor/errors/tag-error}
  */
@@ -112,7 +111,7 @@ export type ExecutorPreflightError = InstanceType<typeof ExecutorPreflightError>
  *
  * **Common causes**: the GitHub token lacks permission to create releases, or the GitHub API is unavailable.
  *
- * **What to do**: verify that `GITHUB_TOKEN` has `contents: write` permission. GitHub release creation is retried twice. If the release still fails, you can create it manually from the tag — the package is already published.
+ * **What to do**: verify that `GITHUB_TOKEN` has `contents: write` permission. Fix the cause, then rerun release with the same plan so the durable workflow can resume from the failed GitHub release step. If needed, you can also create the release manually from the tag because the package is already published.
  *
  * {@include executor/errors/gh-release-error}
  */

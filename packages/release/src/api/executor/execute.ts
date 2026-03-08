@@ -5,14 +5,22 @@
  * Provides both synchronous and observable execution modes.
  */
 
+import { FileSystem } from '@effect/platform'
 import { Flo } from '@kitz/flo'
 import { Fs } from '@kitz/fs'
+import { Pkg } from '@kitz/pkg'
 import { Effect, HashMap, Match, Option, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
 import type { Publishing } from '../publishing.js'
-import type { ExecutorError } from './errors.js'
+import { ExecutorPreflightError, type ExecutorError } from './errors.js'
+import { type PreflightError, run as runPreflight } from './preflight.js'
 import { makeRuntime, type RuntimeConfig } from './runtime.js'
-import { ReleasePayload, type ReleasePayloadType, ReleaseWorkflow } from './workflow.js'
+import {
+  ReleasePayload,
+  type ReleasePayloadType,
+  ReleaseWorkflow,
+  toReleaseInfo,
+} from './workflow.js'
 
 /**
  * Result of executing the release workflow.
@@ -92,7 +100,52 @@ export const formatLifecycleEvent = (event: Flo.LifecycleEvent): LifecycleEventL
   )
 
 /**
- * Convert a Plan to workflow payload.
+ * Order releases so publish dependencies always appear before their dependents.
+ * Cycles are broken deterministically by package name.
+ */
+const orderReleaseEntries = (
+  entries: ReadonlyArray<ReleasePayloadType['releases'][number]>,
+): ReleasePayloadType['releases'] => {
+  const dependencies = new Map(
+    entries.map((entry) => [
+      entry.packageName,
+      new Set(entry.dependsOn.filter((name) => name !== entry.packageName)),
+    ]),
+  )
+  const remaining = new Map(entries.map((entry) => [entry.packageName, entry]))
+  const ordered: Array<ReleasePayloadType['releases'][number]> = []
+  const resolved = new Set<string>()
+
+  while (remaining.size > 0) {
+    const ready = [...remaining.values()]
+      .filter((entry) =>
+        [...(dependencies.get(entry.packageName) ?? new Set<string>())].every((name) =>
+          resolved.has(name),
+        ),
+      )
+      .sort((a, b) => a.packageName.localeCompare(b.packageName))
+
+    const next =
+      ready[0] ??
+      [...remaining.values()].sort((a, b) => a.packageName.localeCompare(b.packageName))[0]
+    if (next === undefined) break
+
+    ordered.push({
+      ...next,
+      dependsOn: next.dependsOn
+        .filter((name) => resolved.has(name))
+        .sort((a, b) => a.localeCompare(b)),
+    })
+    remaining.delete(next.packageName)
+    resolved.add(next.packageName)
+  }
+
+  return ordered
+}
+
+/**
+ * Convert a Plan to workflow payload, including local dependency edges between
+ * the planned packages.
  */
 export const toPayload = (
   plan: Plan,
@@ -103,41 +156,88 @@ export const toPayload = (
     publishing?: Publishing
     trunk?: string
   } = {},
-): ReleasePayloadType => ({
-  releases: [...plan.releases, ...plan.cascades].map((r) => ({
-    packageName: r.package.name.moniker,
-    packagePath: Fs.Path.toString(r.package.path),
-    currentVersion: r.currentVersion.pipe(Option.map((v) => v.toString())),
-    nextVersion: r.nextVersion.toString(),
-    bump: r.bumpType,
-    commits: r.commits.map((c) => {
-      const info = c.forScope(r.package.scope)
-      return {
-        type: info.type,
-        message: info.description,
-        hash: info.hash,
-        breaking: info.breaking,
-      }
-    }),
-  })),
-  options: {
-    dryRun: options.dryRun ?? false,
-    ...(options.tag && { tag: options.tag }),
-    ...(options.registry && { registry: options.registry }),
-    lifecycle: plan.lifecycle,
-    ...(options.publishing && { publishing: options.publishing }),
-    ...(options.trunk && { trunk: options.trunk }),
-  },
-})
+): Effect.Effect<ReleasePayloadType, never, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const planItems = [...plan.releases, ...plan.cascades]
+    const localPackageNames = new Set(planItems.map((item) => item.package.name.moniker))
+    const releaseEntries = yield* Effect.all(
+      planItems.map((item) =>
+        Effect.gen(function* () {
+          const manifest = yield* Pkg.Manifest.resource
+            .readOrEmpty(item.package.path)
+            .pipe(Effect.orDie)
+          return {
+            packageName: item.package.name.moniker,
+            packagePath: Fs.Path.toString(item.package.path),
+            currentVersion: item.currentVersion.pipe(Option.map((v) => v.toString())),
+            nextVersion: item.nextVersion.toString(),
+            bump: item.bumpType,
+            commits: item.commits.map((c) => {
+              const info = c.forScope(item.package.scope)
+              return {
+                type: info.type,
+                message: info.description,
+                hash: info.hash,
+                breaking: info.breaking,
+              }
+            }),
+            dependsOn: Pkg.Manifest.findLocalDependencyNames(manifest, localPackageNames),
+          }
+        }),
+      ),
+    )
+
+    return {
+      releases: orderReleaseEntries(releaseEntries),
+      options: {
+        dryRun: options.dryRun ?? false,
+        ...(options.tag && { tag: options.tag }),
+        ...(options.registry && { registry: options.registry }),
+        lifecycle: plan.lifecycle,
+        ...(options.publishing && { publishing: options.publishing }),
+        ...(options.trunk && { trunk: options.trunk }),
+      },
+    }
+  })
+
+const runFreshPreflight = (payload: ReleasePayloadType) =>
+  Effect.gen(function* () {
+    const hasExistingExecution = yield* ReleaseWorkflow.exists(payload)
+
+    if (payload.options.dryRun || hasExistingExecution) {
+      return
+    }
+
+    const plannedReleases = payload.releases.map(toReleaseInfo)
+    yield* runPreflight(plannedReleases, {
+      ...(payload.options.registry && { registry: payload.options.registry }),
+      ...(payload.options.lifecycle && { lifecycle: payload.options.lifecycle }),
+      ...(payload.options.publishing && { publishing: payload.options.publishing }),
+      ...(payload.options.trunk && { trunk: payload.options.trunk }),
+    }).pipe(
+      Effect.mapError(
+        (e: PreflightError) =>
+          new ExecutorPreflightError({
+            context: {
+              check: e.context.check,
+              detail: e.message,
+            },
+          }),
+      ),
+    )
+  })
 
 /**
  * Execute the release workflow.
  *
- * The workflow is durable - if it fails partway through, calling execute
- * again with the same payload will resume from where it left off.
+ * Workflow identity is deterministic - the same payload resolves to the same
+ * persisted workflow execution, and fresh-run preflight is skipped once that
+ * execution already exists.
  *
- * Activities execute concurrently where dependencies allow:
- * - All package publishes run in parallel
+ * Activities execute in dependency order with single-flight layer execution:
+ * - Fresh-run preflight runs before the durable workflow starts
+ * - All package artifacts are prepared before publish begins
+ * - Publish ordering follows local package dependency edges
  * - Each tag creation runs after its package publishes
  * - Each tag push runs after its tag is created
  * - Each GitHub release runs after its tag is pushed
@@ -153,9 +253,10 @@ export const execute = (
   } = {},
 ) =>
   Effect.gen(function* () {
-    const payload = toPayload(plan, options)
+    const payload = yield* toPayload(plan, options)
 
     yield* Effect.log(`Starting release workflow for ${payload.releases.length} packages...`)
+    yield* runFreshPreflight(payload)
 
     const result = yield* ReleaseWorkflow.execute(payload)
     const summary = normalizeWorkflowResult(result)
@@ -170,8 +271,10 @@ export const execute = (
  * Returns a Stream of activity events, the execution Effect, and graph structure
  * for visualization. The stream emits events as activities start, complete, or fail.
  *
- * **Concurrent execution**: Activities in the same layer run in parallel.
- * Use `graph.layers` to show the execution structure in the UI.
+ * **Execution model**: The graph reflects the durable prepare/publish/tag/release
+ * workflow, and release runs one activity at a time within each layer so a
+ * failed step can suspend cleanly for resume. Fresh-run preflight happens
+ * before this graph starts.
  *
  * **Resume handling**: When resuming from a checkpoint, already-completed
  * activities emit events with very short `durationMs` values.
@@ -187,9 +290,9 @@ export const executeObservable = (
     dbPath?: string
     github?: RuntimeConfig['github']
   } = {},
-): Effect.Effect<ObservableResult, never, never> =>
+): Effect.Effect<ObservableResult, never, FileSystem.FileSystem> =>
   Effect.gen(function* () {
-    const payload = toPayload(plan, options)
+    const payload = yield* toPayload(plan, options)
 
     // Get graph structure for visualization
     const { layers, nodes } = ReleaseWorkflow.toGraph(payload)
@@ -210,10 +313,14 @@ export const executeObservable = (
     }
 
     // Wrap execute to extract results and provide workflow runtime
-    const wrappedExecute = workflowExecute.pipe(
-      Effect.map(normalizeWorkflowResult),
-      Effect.provide(makeRuntime(runtimeConfig)),
-    ) as Effect.Effect<ExecutionResult, ExecutorError>
+    const wrappedExecute = Effect.gen(function* () {
+      yield* runFreshPreflight(payload)
+      const result = yield* workflowExecute
+      return normalizeWorkflowResult(result)
+    }).pipe(Effect.provide(makeRuntime(runtimeConfig))) as Effect.Effect<
+      ExecutionResult,
+      ExecutorError
+    >
 
     return {
       events,

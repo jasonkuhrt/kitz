@@ -1,5 +1,5 @@
 import { Context, Effect } from 'effect'
-import type { NpmCliError, PublishOptions, WhoamiOptions } from './cli.js'
+import type { NpmCliError, PackOptions, PackResult, PublishOptions, WhoamiOptions } from './cli.js'
 
 /**
  * Service interface for npm CLI operations.
@@ -11,7 +11,12 @@ export interface NpmCliService {
   readonly whoami: (options?: WhoamiOptions) => Effect.Effect<string, NpmCliError>
 
   /**
-   * Run `npm publish` to publish a package.
+   * Run `npm pack` to create a publishable tarball.
+   */
+  readonly pack: (options: PackOptions) => Effect.Effect<PackResult, NpmCliError>
+
+  /**
+   * Run `npm publish` to publish a prepared tarball.
    */
   readonly publish: (options: PublishOptions) => Effect.Effect<void, NpmCliError>
 }
@@ -27,7 +32,8 @@ export interface NpmCliService {
  *
  * const program = Effect.gen(function*() {
  *   const cli = yield* NpmRegistry.NpmCli
- *   yield* cli.publish({ cwd: pkgDir, access: 'public' })
+ *   const packed = yield* cli.pack({ cwd: pkgDir, packDestination: artifactDir })
+ *   yield* cli.publish({ tarball: packed.tarball, access: 'public' })
  * })
  *
  * // Production: actually runs npm

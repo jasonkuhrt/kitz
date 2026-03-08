@@ -1,4 +1,5 @@
 import { Effect } from 'effect'
+import { Pkg } from '@kitz/pkg'
 import * as Severity from '../models/severity.js'
 import * as Precondition from '../models/precondition.js'
 import { RuleDefaults, RuleId } from '../models/rule-defaults.js'
@@ -11,15 +12,6 @@ import {
   summarizePackages,
 } from './package-manifest-shared.js'
 
-const publishHookNames = [
-  'prepack',
-  'postpack',
-  'prepublish',
-  'prepublishOnly',
-  'publish',
-  'postpublish',
-] as const
-
 interface Offender {
   readonly packageName: string
   readonly packageJsonPath: string
@@ -28,8 +20,7 @@ interface Offender {
 
 const findPublishHooks = (manifests: readonly PlannedManifest[]): readonly Offender[] =>
   manifests.flatMap((entry) => {
-    const scripts = entry.manifest.scripts ?? {}
-    const hooks = publishHookNames.filter((name) => name in scripts)
+    const hooks = Pkg.Manifest.findPackHooks(entry.manifest.scripts)
 
     return hooks.length === 0
       ? []
@@ -45,9 +36,9 @@ const findPublishHooks = (manifests: readonly PlannedManifest[]): readonly Offen
 /** Warns when planned packages define opaque npm publish hooks. */
 export const rule = RuntimeRule.create({
   id: RuleId.make('plan.packages-publish-hooks-present'),
-  description: 'planned packages do not define opaque npm publish hooks',
+  description: 'planned packages do not define opaque npm pack hooks',
   preventsDescriptions: [
-    'surprising publish-time side effects that release cannot semantically inspect',
+    'surprising artifact-preparation side effects that release cannot semantically inspect',
   ],
   defaults: RuleDefaults.make({ severity: Severity.Warn.make() }),
   preconditions: [Precondition.HasReleasePlan.make()],
@@ -67,23 +58,23 @@ export const rule = RuntimeRule.create({
             ? File.make({ path: example.packageJsonPath })
             : Environment.make({
                 message:
-                  `${String(offenders.length)} planned packages define publish hooks. ` +
+                  `${String(offenders.length)} planned packages define pack hooks. ` +
                   `Example hooks: ${example.hooks.join(', ')}.`,
               }),
         summary:
-          `Release detected npm publish hooks on ${summarizePackages(names)}, ` +
-          'but those scripts are opaque shell commands to the release engine.',
+          `Release detected npm pack hooks on ${summarizePackages(names)}, ` +
+          'and those scripts will run while release prepares tarballs.',
         detail:
-          'Release can detect that publish-time scripts exist, but it cannot prove what they mutate ' +
-          'or whether an interrupted publish left additional cleanup behind. Review these hooks before a manual release.',
+          'Release prepares tarballs before any network publish begins, so these hooks run in the artifact-preparation phase. ' +
+          'That is safer than publish-time hooks, but release still cannot semantically inspect what the scripts mutate locally.',
         hints: [
           Hint.make({
             description:
-              'If a publish fails, re-run doctor immediately and inspect package.json files before retrying.',
+              'If artifact preparation or cleanup fails, inspect package.json files before retrying publish.',
           }),
           Hint.make({
             description:
-              'Keep publish hooks minimal and deterministic so their side effects are obvious to operators.',
+              'Keep pack hooks minimal and deterministic so their side effects are obvious to operators.',
           }),
         ],
       })

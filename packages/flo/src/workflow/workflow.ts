@@ -33,9 +33,9 @@
  * ```
  */
 
-import { Activity } from '@effect/workflow'
+import { Activity, Workflow as EffectWorkflow } from '@effect/workflow'
 import { WorkflowEngine } from '@effect/workflow'
-import { Clock, Effect, Graph, Option, PubSub, Schema, Stream } from 'effect'
+import { Cause, Clock, Effect, Exit, Graph, Option, PubSub, Schema, Stream } from 'effect'
 import { Activity as ActivityModel, Workflow as WorkflowModel } from '../models/__.js'
 import { type LifecycleEvent, WorkflowEvents } from '../observable/__.js'
 
@@ -192,10 +192,10 @@ const buildEffectGraph = <Error>(
   })
 
 /**
- * Compute topological layers for concurrent execution.
+ * Compute topological layers for dependency-aware execution.
  *
- * Nodes in the same layer have no dependencies on each other
- * and can execute concurrently.
+ * Nodes in the same layer have no dependencies on each other and may execute
+ * concurrently if the workflow's configured layer concurrency allows it.
  */
 const computeLayers = <Error>(nodes: Map<string, NodeDef<Error>>): string[][] => {
   const layers: string[][] = []
@@ -286,6 +286,12 @@ export interface WorkflowConfig<Name extends string, Payload, Result, Error> {
   /** Compute idempotency key from payload (for durability) */
   readonly idempotencyKey?: ((payload: Payload) => string) | undefined
   /**
+   * Maximum concurrency for nodes in the same topological layer.
+   *
+   * Defaults to `unbounded`.
+   */
+  readonly layerConcurrency?: number | 'unbounded' | undefined
+  /**
    * Define the workflow graph.
    *
    * Use the `node` function to register activities and their dependencies.
@@ -308,6 +314,14 @@ export interface WorkflowInstance<Name extends string, Payload, Result, Error> {
   /** Workflow name */
   readonly name: Name
 
+  /** Deterministic execution identity for a payload. */
+  readonly executionId: (payload: Payload) => Effect.Effect<string>
+
+  /** True when this payload already has persisted workflow state. */
+  readonly exists: (
+    payload: Payload,
+  ) => Effect.Effect<boolean, never, WorkflowEngine.WorkflowEngine>
+
   /**
    * Build the graph structure from a payload (without executing).
    *
@@ -322,8 +336,8 @@ export interface WorkflowInstance<Name extends string, Payload, Result, Error> {
   /**
    * Execute the workflow with durability.
    *
-   * Activities run concurrently where dependencies allow.
-   * Completed activities are persisted and skipped on resume.
+   * Activities run in dependency order, with configurable within-layer
+   * concurrency. Completed activities are persisted and skipped on resume.
    */
   readonly execute: (
     payload: Payload,
@@ -351,12 +365,14 @@ export interface WorkflowInstance<Name extends string, Payload, Result, Error> {
 /** Threshold in ms - activities completing faster than this are considered resumed */
 const RESUME_THRESHOLD_MS = 50
 
+const defaultIdempotencyKey = (payload: unknown): string => JSON.stringify(payload)
+
 /**
  * Create a declarative workflow definition.
  *
  * The workflow graph is built from the `graph` function, which uses `node()`
- * to register activities and their dependencies. Nodes execute concurrently
- * when their dependencies are satisfied.
+ * to register activities and their dependencies. Nodes execute in dependency
+ * order, with configurable within-layer concurrency.
  *
  * @example
  * ```ts
@@ -379,6 +395,14 @@ const RESUME_THRESHOLD_MS = 50
 export const make = <Name extends string, Payload, Result, Error>(
   config: WorkflowConfig<Name, Payload, Result, Error>,
 ): WorkflowInstance<Name, Payload, Result, Error> => {
+  const workflow = EffectWorkflow.make({
+    name: config.name,
+    payload: config.payload as any,
+    success: Schema.Unknown,
+    error: (config.error ?? Schema.Never) as any,
+    idempotencyKey: (config.idempotencyKey ?? defaultIdempotencyKey) as any,
+  }).annotate(EffectWorkflow.SuspendOnFailure, true)
+
   const toGraph = (payload: Payload) => {
     const builder = makeGraphBuilder<Error>()
     config.graph(payload, builder.node)
@@ -409,7 +433,7 @@ export const make = <Name extends string, Payload, Result, Error>(
       // Get optional event pubsub
       const maybePubsub = emitEvents ? yield* Effect.serviceOption(WorkflowEvents) : Option.none()
 
-      // Execute layers sequentially, nodes within layer concurrently
+      // Execute layers sequentially, with configurable within-layer concurrency.
       for (const layer of layers) {
         const layerEffects = layer.map((nodeName) => {
           const nodeDef = builder.state.nodes.get(nodeName)!
@@ -483,22 +507,86 @@ export const make = <Name extends string, Payload, Result, Error>(
           })
         })
 
-        // Execute layer concurrently
-        yield* Effect.all(layerEffects, { concurrency: 'unbounded' })
+        // Execute the current layer using the workflow's configured concurrency.
+        yield* Effect.all(layerEffects, {
+          concurrency: config.layerConcurrency ?? 'unbounded',
+        })
       }
 
       // Unwrap NodeHandles in result template
       return unwrapResult(resultTemplate, results)
     }) as any
 
-  const execute = (payload: Payload) => executeInternal(payload, false)
+  const startOrResume = (
+    payload: Payload,
+  ): Effect.Effect<UnwrapHandles<Result>, Error, WorkflowEngine.WorkflowEngine> =>
+    Effect.gen(function* () {
+      const executionId = yield* workflow.executionId(payload as any)
+      const existing = yield* workflow.poll(executionId)
+      const fromExit = <A, E>(exit: Exit.Exit<A, E>) =>
+        Exit.isSuccess(exit) ? Effect.succeed(exit.value) : Effect.failCause(exit.cause)
+      const fromSuspended = (result: { readonly cause?: Cause.Cause<never> | undefined }) =>
+        result.cause
+          ? Effect.fail(Cause.squash(result.cause) as Error extends never ? never : Error)
+          : Effect.dieMessage(`${config.name} suspended without a failure cause`)
+      const waitForTerminalResult = () =>
+        Effect.gen(function* () {
+          while (true) {
+            const result = yield* workflow.poll(executionId)
+            if (result === undefined) {
+              yield* Effect.sleep(50)
+              continue
+            }
+
+            if (result._tag === 'Complete') {
+              return yield* fromExit(result.exit)
+            }
+
+            return yield* fromSuspended(result)
+          }
+        }) as Effect.Effect<UnwrapHandles<Result>, Error, WorkflowEngine.WorkflowEngine>
+
+      if (existing === undefined) {
+        yield* workflow.execute(payload as any, { discard: true })
+        return yield* waitForTerminalResult()
+      }
+
+      if (existing._tag === 'Complete' && Exit.isSuccess(existing.exit)) {
+        return yield* fromExit(existing.exit)
+      }
+
+      yield* workflow.resume(executionId)
+      return yield* waitForTerminalResult()
+    }) as Effect.Effect<UnwrapHandles<Result>, Error, WorkflowEngine.WorkflowEngine>
+
+  const executionId = (payload: Payload) => workflow.executionId(payload as any)
+
+  const exists = (payload: Payload) =>
+    Effect.gen(function* () {
+      const id = yield* executionId(payload)
+      return (yield* workflow.poll(id)) !== undefined
+    })
+
+  const execute = (payload: Payload) =>
+    startOrResume(payload).pipe(
+      Effect.provide(
+        workflow.toLayer((registeredPayload) => executeInternal(registeredPayload, false)),
+      ),
+    ) as Effect.Effect<UnwrapHandles<Result>, Error, WorkflowEngine.WorkflowEngine>
 
   const observable = (payload: Payload) =>
     Effect.gen(function* () {
       const pubsub = yield* PubSub.unbounded<LifecycleEvent>()
       const events = Stream.fromPubSub(pubsub)
 
-      const executeEffect = executeInternal(payload, true).pipe(
+      const executeEffect = startOrResume(payload).pipe(
+        Effect.provide(
+          workflow.toLayer((registeredPayload) =>
+            executeInternal(registeredPayload, true).pipe(
+              Effect.provideService(WorkflowEvents, pubsub),
+            ),
+          ),
+        ),
         Effect.tap(() =>
           pubsub.publish(
             WorkflowModel.Completed.make({
@@ -519,14 +607,15 @@ export const make = <Name extends string, Payload, Result, Error>(
           }),
         ),
         Effect.ensuring(PubSub.shutdown(pubsub)),
-        Effect.provideService(WorkflowEvents, pubsub),
-      )
+      ) as Effect.Effect<UnwrapHandles<Result>, Error, WorkflowEngine.WorkflowEngine>
 
       return { events, execute: executeEffect }
     })
 
   return {
     name: config.name,
+    executionId,
+    exists,
     toGraph,
     execute,
     observable,

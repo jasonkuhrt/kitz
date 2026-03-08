@@ -1,7 +1,12 @@
 import { Command, CommandExecutor } from '@effect/platform'
-import { Fs } from '@kitz/fs'
 import { Effect, Layer, String as Str } from 'effect'
-import { NpmCliError, type PublishOptions, type WhoamiOptions } from './cli.js'
+import {
+  NpmCliError,
+  pack as packCli,
+  publish as publishCli,
+  type PublishOptions,
+  type WhoamiOptions,
+} from './cli.js'
 import { NpmCli, type NpmCliService } from './service.js'
 
 const makeService = Effect.gen(function* () {
@@ -46,51 +51,13 @@ const makeService = Effect.gen(function* () {
       return username
     })
 
+  const pack: NpmCliService['pack'] = (options) =>
+    packCli(options).pipe(Effect.provideService(CommandExecutor.CommandExecutor, executor))
+
   const publish: NpmCliService['publish'] = (options: PublishOptions) =>
-    Effect.gen(function* () {
-      const args = ['publish']
+    publishCli(options).pipe(Effect.provideService(CommandExecutor.CommandExecutor, executor))
 
-      // Default to public access for scoped packages
-      args.push('--access', options.access ?? 'public')
-
-      if (options.tag) {
-        args.push('--tag', options.tag)
-      }
-
-      if (options.registry) {
-        args.push('--registry', options.registry)
-      }
-
-      const command = Command.make('npm', ...args).pipe(
-        Command.workingDirectory(Fs.Path.toString(options.cwd)),
-      )
-
-      yield* executor.exitCode(command).pipe(
-        Effect.flatMap((code) => {
-          if (code !== 0) {
-            return Effect.fail(
-              new NpmCliError({
-                context: {
-                  operation: 'publish',
-                  detail: `npm publish exited with code ${code}`,
-                },
-                cause: new Error(`npm publish exited with code ${code}`),
-              }),
-            )
-          }
-          return Effect.void
-        }),
-        Effect.mapError((cause) => {
-          if (cause instanceof NpmCliError) return cause
-          return new NpmCliError({
-            context: { operation: 'publish' },
-            cause: cause instanceof Error ? cause : new Error(String(cause)),
-          })
-        }),
-      )
-    })
-
-  return { whoami, publish } satisfies NpmCliService
+  return { whoami, pack, publish } satisfies NpmCliService
 })
 
 /**

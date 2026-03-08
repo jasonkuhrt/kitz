@@ -614,6 +614,31 @@ export const toString = (pin: Pin): string =>
       `${monikerToString(p.name)}@npm:${monikerToString(p.target)}@${p.targetSpecifier}`,
   })
 
+/**
+ * Render a raw workspace protocol dependency specifier into the form that
+ * should appear in a published package manifest.
+ *
+ * The workspace parser is still used to validate that the specifier is really
+ * a workspace pin for the given package, but the original raw range text is
+ * preserved so explicit ranges keep their authored spelling.
+ */
+export function workspaceSpecifierToPublished(
+  packageName: string,
+  specifier: string,
+  version: Semver.Semver,
+): string {
+  const pin = fromString(`${packageName}@${specifier}`)
+  if (!Workspace.is(pin)) {
+    throw new Error(`Expected workspace protocol dependency for ${packageName}, got ${specifier}`)
+  }
+
+  const rawRange = specifier.replace(/^workspace:/u, '')
+  if (rawRange === '*') return Semver.toString(version)
+  if (rawRange === '^') return `^${Semver.toString(version)}`
+  if (rawRange === '~') return `~${Semver.toString(version)}`
+  return rawRange
+}
+
 // ============================================================================
 // Internal Helpers
 // ============================================================================

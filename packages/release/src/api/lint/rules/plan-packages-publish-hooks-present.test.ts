@@ -17,7 +17,12 @@ const releasePlanLayer = ReleasePlan.make([
 ])
 
 describe('plan.packages-publish-hooks-present', () => {
-  test('warns when planned packages define publish-time npm hooks', async () => {
+  test.each([
+    [{ prepack: 'tsgo -p tsconfig.build.json' }],
+    [{ prepare: 'tsgo -p tsconfig.build.json' }],
+    [{ postpack: 'echo done' }],
+    [{ prepack: 'tsgo -p tsconfig.build.json', postpack: 'echo done' }],
+  ])('warns when planned packages define pack-time npm hooks: %j', async (scripts) => {
     const layer = Layer.mergeAll(
       Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') }),
       Fs.Memory.layer({
@@ -26,8 +31,8 @@ describe('plan.packages-publish-hooks-present', () => {
             name: '@kitz/core',
             version: '1.0.0',
             scripts: {
-              prepack: 'tsgo -p tsconfig.build.json',
-              postpublish: 'echo done',
+              ...scripts,
+              publish: 'echo publish',
             },
           },
           null,
@@ -40,7 +45,8 @@ describe('plan.packages-publish-hooks-present', () => {
     const result = await Effect.runPromise(rule.check.pipe(Effect.provide(layer)))
 
     expect(Violation.is(result)).toBe(true)
-    expect(Violation.is(result) ? result.summary : undefined).toContain('opaque')
+    expect(Violation.is(result) ? result.summary : undefined).toContain('tarballs')
+    expect(Violation.is(result) ? result.detail : undefined).toContain('artifact-preparation phase')
   })
 
   test('passes when no publish hooks are present', async () => {

@@ -1,4 +1,6 @@
 import { Test } from '@kitz/test'
+import { Semver } from '@kitz/semver'
+import { describe, expect, test } from 'vitest'
 import * as Pin from './pin.js'
 
 Test.describe('Range')
@@ -79,3 +81,21 @@ Test.describe('toString > roundtrip')
     'my-pkg@file:../shared',
   )
   .test()
+
+describe('workspaceSpecifierToPublished', () => {
+  test('resolves workspace protocol shortcuts against the package version', () => {
+    const version = Semver.fromString('1.2.3')
+
+    expect(Pin.workspaceSpecifierToPublished('@kitz/core', 'workspace:*', version)).toBe('1.2.3')
+    expect(Pin.workspaceSpecifierToPublished('@kitz/core', 'workspace:^', version)).toBe('^1.2.3')
+    expect(Pin.workspaceSpecifierToPublished('@kitz/core', 'workspace:~', version)).toBe('~1.2.3')
+  })
+
+  test('preserves explicit workspace semver ranges', () => {
+    const version = Semver.fromString('1.2.3')
+
+    expect(Pin.workspaceSpecifierToPublished('@kitz/core', 'workspace:^1.0.0', version)).toBe(
+      '^1.0.0',
+    )
+  })
+})

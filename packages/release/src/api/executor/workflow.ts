@@ -5,13 +5,14 @@
  *
  * Graph structure:
  * ```
- * Preflight --> Publish:A --> CreateTag:A --> PushTag:A --> CreateGHRelease:A
- *          |--> Publish:B --> CreateTag:B --> PushTag:B --> CreateGHRelease:B
- *          `--> Publish:C --> CreateTag:C --> PushTag:C --> CreateGHRelease:C
+ * Prepare:A ---+--> Publish:A --> CreateTag:A --> PushTag:A --> CreateGHRelease:A
+ * Prepare:B ---+--> Publish:B --> CreateTag:B --> PushTag:B --> CreateGHRelease:B
+ * Prepare:C ---+--> Publish:C --> CreateTag:C --> PushTag:C --> CreateGHRelease:C
  * ```
  */
 
 import { Flo } from '@kitz/flo'
+import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
@@ -24,13 +25,16 @@ import { LifecycleSchema } from '../version/models/lifecycle.js'
 import {
   ExecutorError as ExecutorErrorSchema,
   ExecutorGHReleaseError,
-  ExecutorPreflightError,
   ExecutorPublishError,
   ExecutorTagError,
 } from './errors.js'
 import type { ExecutorError } from './errors.js'
-import { type PreflightError, run as runPreflight } from './preflight.js'
-import { publishPackage, type ReleaseInfo } from './publish.js'
+import {
+  artifactPathFor,
+  preparePackageArtifact,
+  publishPreparedArtifact,
+  type ReleaseInfo,
+} from './publish.js'
 
 /** Format a release tag from package name and version. */
 export const formatTag = (name: Pkg.Moniker.Moniker, version: Semver.Semver): string =>
@@ -60,6 +64,7 @@ export const ReleaseSchema = Schema.Struct({
   nextVersion: Schema.String,
   bump: Schema.UndefinedOr(Schema.Literal('major', 'minor', 'patch')),
   commits: Schema.Array(CommitEntrySchema),
+  dependsOn: Schema.Array(Schema.String),
 })
 
 /**
@@ -78,6 +83,31 @@ export const ReleasePayload = Schema.Struct({
 })
 
 export type ReleasePayloadType = Schema.Schema.Type<typeof ReleasePayload>
+
+const releaseWorkflowIdempotencyKey = (payload: ReleasePayloadType): string =>
+  JSON.stringify({
+    options: {
+      dryRun: payload.options.dryRun,
+      tag: payload.options.tag ?? null,
+      registry: payload.options.registry ?? null,
+      lifecycle: payload.options.lifecycle ?? null,
+      trunk: payload.options.trunk ?? null,
+    },
+    releases: [...payload.releases]
+      .sort((a, b) => a.packageName.localeCompare(b.packageName))
+      .map((release) => ({
+        packageName: release.packageName,
+        nextVersion: release.nextVersion,
+        currentVersion: release.currentVersion,
+        bump: release.bump,
+        dependsOn: [...release.dependsOn].sort(),
+        commits: release.commits.map((commit) => ({
+          hash: commit.hash,
+          type: commit.type,
+          breaking: commit.breaking,
+        })),
+      })),
+  })
 
 // ============================================================================
 // Activity Helpers
@@ -104,8 +134,10 @@ export const toReleaseInfo = (release: ReleasePayloadType['releases'][number]): 
 /**
  * The main release workflow using declarative DAG execution.
  *
- * - Preflight runs first (if not dry-run)
- * - All Publish activities run concurrently after Preflight
+ * - Fresh-run preflight happens outside the durable workflow
+ * - The DAG is executed single-flight within each layer for clean suspension/resume
+ * - Publish starts only after every Prepare completes successfully
+ * - Publish ordering respects local package dependency edges from the payload
  * - Each CreateTag runs after its corresponding Publish
  * - Each PushTag runs after its corresponding CreateTag
  * - Each CreateGHRelease runs after its corresponding PushTag
@@ -114,50 +146,24 @@ export const ReleaseWorkflow = Flo.Workflow.make({
   name: 'ReleaseWorkflow',
   payload: ReleasePayload,
   error: ExecutorErrorSchema,
+  idempotencyKey: releaseWorkflowIdempotencyKey,
+  layerConcurrency: 1,
 
   graph: (payload, node) => {
     const plannedReleases = payload.releases.map(toReleaseInfo)
 
-    // Layer 0: Preflight checks (skip in dry-run mode)
-    const preflight = payload.options.dryRun
-      ? null
-      : node(
-          'Preflight',
-          runPreflight(plannedReleases, {
-            ...(payload.options.registry && { registry: payload.options.registry }),
-            ...(payload.options.lifecycle && { lifecycle: payload.options.lifecycle }),
-            ...(payload.options.publishing && { publishing: payload.options.publishing }),
-            ...(payload.options.trunk && { trunk: payload.options.trunk }),
-          }).pipe(
-            Effect.mapError(
-              (e: PreflightError) =>
-                new ExecutorPreflightError({
-                  context: {
-                    check: e.context.check,
-                    detail: e.message,
-                  },
-                }),
-            ),
-            Effect.asVoid,
-          ),
-        )
-
-    // Layer 1: Publish each package (concurrent)
-    const publishes = payload.releases.map((release) =>
+    const prepares = payload.releases.map((release) =>
       node(
-        `Publish:${release.packageName}`,
+        `Prepare:${release.packageName}`,
         Effect.gen(function* () {
           const releaseInfo = toReleaseInfo(release)
 
           const tag = formatTag(releaseInfo.package.name, releaseInfo.nextVersion)
           if (payload.options.dryRun) {
-            yield* Effect.log(`[dry-run] Would publish ${tag}`)
+            yield* Effect.log(`[dry-run] Would prepare ${tag}`)
           } else {
-            yield* Effect.log(`Publishing ${tag}...`)
-            yield* publishPackage(releaseInfo, {
-              ...(payload.options.tag && { tag: payload.options.tag }),
-              ...(payload.options.registry && { registry: payload.options.registry }),
-            })
+            yield* Effect.log(`Preparing ${tag}...`)
+            yield* preparePackageArtifact(releaseInfo, plannedReleases)
           }
 
           return release.packageName
@@ -172,12 +178,62 @@ export const ReleaseWorkflow = Flo.Workflow.make({
               }),
           ),
         ),
-        {
-          ...(preflight && { after: preflight }),
-          retry: { times: 2 },
-        },
+        {},
       ),
     )
+
+    const publishHandles = new Map<string, Flo.Workflow.NodeHandle<string>>()
+
+    // Layer 1: Publish prepared tarballs after all preparation succeeds.
+    const publishes = payload.releases.map((release) => {
+      const dependencies = release.dependsOn
+        .map((dependencyName) => publishHandles.get(dependencyName))
+        .filter(
+          (dependency): dependency is Flo.Workflow.NodeHandle<string> => dependency !== undefined,
+        )
+      const after = [...prepares, ...dependencies]
+
+      const handle = node(
+        `Publish:${release.packageName}`,
+        Effect.gen(function* () {
+          const releaseInfo = toReleaseInfo(release)
+          const tag = formatTag(releaseInfo.package.name, releaseInfo.nextVersion)
+
+          if (payload.options.dryRun) {
+            yield* Effect.log(`[dry-run] Would publish ${tag}`)
+          } else {
+            const env = yield* Env.Env
+            yield* Effect.log(`Publishing ${tag}...`)
+            yield* publishPreparedArtifact(
+              {
+                ...releaseInfo,
+                tarball: artifactPathFor(env.cwd, releaseInfo),
+              },
+              {
+                ...(payload.options.tag && { tag: payload.options.tag }),
+                ...(payload.options.registry && { registry: payload.options.registry }),
+              },
+            )
+          }
+
+          return release.packageName
+        }).pipe(
+          Effect.mapError(
+            (e) =>
+              new ExecutorPublishError({
+                context: {
+                  packageName: release.packageName,
+                  detail: e instanceof Error ? e.message : String(e),
+                },
+              }),
+          ),
+        ),
+        after.length > 0 ? { after } : undefined,
+      )
+
+      publishHandles.set(release.packageName, handle)
+      return handle
+    })
 
     // Layer 2: Create git tags (each depends on its corresponding publish)
     const createTags = payload.releases.map((release, i) => {
@@ -240,10 +296,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
               }),
           ),
         ),
-        {
-          after: createTags[i]!,
-          retry: { times: 2 },
-        },
+        { after: createTags[i]! },
       )
     })
 
@@ -311,10 +364,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
               }),
           ),
         ),
-        {
-          after: pushTags[i]!,
-          retry: { times: 2 },
-        },
+        { after: pushTags[i]! },
       )
     })
 
