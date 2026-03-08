@@ -4,7 +4,7 @@ import { toString } from './toString.js'
 /**
  * Convert an absolute path (file or dir) to a file:// URL.
  *
- * Uses standard URL constructor for platform portability (Node, Deno, Bun, browsers).
+ * Uses the standard URL constructor for platform portability (Node, Bun, browsers).
  * Node.js's `pathToFileURL` handles additional cases we don't need since kit paths are Unix-only:
  * Windows backslashes, drive letters, UNC paths, path resolution.
  *

@@ -168,7 +168,7 @@ Packages fall into two groups: library packages re-exported through the metapack
 | [`@kitz/color`](./packages/color)       | `Color`      | Color parsing, conversion, and named-color lookup                                      |
 | [`@kitz/conf`](./packages/conf)         | `Conf`       | Configuration file discovery, loading, and validation                                  |
 | [`@kitz/core`](./packages/core)         | _(multiple)_ | Fundamental data-structure namespaces (see Core Namespace Index below)                 |
-| [`@kitz/env`](./packages/env)           | `Env`        | Cross-runtime environment variable access (Node, Bun, Deno, browser)                   |
+| [`@kitz/env`](./packages/env)           | `Env`        | Cross-runtime environment variable access (Node, Bun, browser)                         |
 | [`@kitz/fs`](./packages/fs)             | `Fs`         | Filesystem operations, glob matching, and path analysis                                |
 | [`@kitz/group`](./packages/group)       | `Group`      | Partition collections into named groups                                                |
 | [`@kitz/html`](./packages/html)         | `Html`       | HTML string construction                                                               |
