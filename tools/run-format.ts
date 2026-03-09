@@ -3,7 +3,7 @@
 // oxlint-disable-next-line kitz/no-nodejs-builtin-imports
 import { spawnSync } from 'node:child_process'
 // oxlint-disable-next-line kitz/no-nodejs-builtin-imports
-import { extname, join } from 'node:path'
+import { join } from 'node:path'
 
 const repoRoot = process.cwd()
 const oxfmtBin = join(repoRoot, 'node_modules', '.bin', 'oxfmt')
@@ -14,46 +14,8 @@ const MAX_EXPLICIT_TARGETS_PER_BATCH = 25
 // oxlint-disable-next-line kitz/no-process-env-outside-config-modules
 const env = process.env
 
-const FORMATTABLE_EXTENSIONS = new Set([
-  '.js',
-  '.jsx',
-  '.ts',
-  '.tsx',
-  '.mjs',
-  '.cjs',
-  '.mts',
-  '.cts',
-  '.json',
-  '.md',
-])
-
-const listTrackedPaths = (prefix: string): string[] => {
-  const result = spawnSync('git', ['ls-files', '--', prefix], {
-    cwd: repoRoot,
-    encoding: 'utf8',
-    env,
-  })
-
-  if ((result.status ?? 1) !== 0) {
-    process.exit(result.status ?? 1)
-  }
-
-  return (result.stdout ?? '')
-    .split('\n')
-    .map((path) => path.trim())
-    .filter((path) => path.length > 0)
-}
-
 const getDefaultGroups = (): string[][] => {
-  const trackedClaudePaths = listTrackedPaths('.claude').filter((path) =>
-    FORMATTABLE_EXTENSIONS.has(extname(path)),
-  )
-  const trackedSerenaPaths = listTrackedPaths('.serena').filter((path) =>
-    FORMATTABLE_EXTENSIONS.has(extname(path)),
-  )
-
   return [
-    [...trackedClaudePaths, ...trackedSerenaPaths],
     [
       '.github',
       'README.md',
