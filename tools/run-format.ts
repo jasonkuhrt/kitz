@@ -58,8 +58,7 @@ const isIgnoredPath = (path: string): boolean =>
 
 const isPathModeFile = (path: string): boolean => PATH_MODE_EXTENSIONS.has(extname(path))
 const isStdinModeFile = (path: string): boolean => STDIN_MODE_EXTENSIONS.has(extname(path))
-const isFormattableFile = (path: string): boolean =>
-  !isIgnoredPath(path) && (isPathModeFile(path) || isStdinModeFile(path))
+const isFormattableFile = (path: string): boolean => !isIgnoredPath(path) && isPathModeFile(path)
 
 const isGitRepo = (): boolean => {
   const result = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], {
