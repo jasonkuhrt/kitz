@@ -1,0 +1,9 @@
+{
+  "name": "fixture-fail-pathe-not-covered",
+  "exports": {
+    ".": {
+      "bun": "./build/feature.js",
+      "default": "./build/feature.js"
+    }
+  }
+}

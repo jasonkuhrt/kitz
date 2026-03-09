@@ -1,19 +1,19 @@
 import type { Fn } from '@kitz/core'
-import { builder } from '../../../builder-singleton.js'
 import { Optic } from '@kitz/core'
 import type { Either } from 'effect'
-import type { AssertExactKind, AssertEquivKind, AssertSubKind } from '../../../asserts.js'
+import type { AssertEquivKind, AssertExactKind, AssertSubKind } from '../../../asserts.js'
+import { builder } from '../../../builder-singleton.js'
 
-export * as exact from './exact.js'
 export * as equiv from './equiv.js'
+export * as exact from './exact.js'
 export * as sub from './sub.js'
 
 // Unary relators (negated)
-export const any = builder.not.parameters.any
-export const unknown = builder.not.parameters.unknown
-export const never = builder.not.parameters.never
-export const empty = builder.not.parameters.empty
-// dprint-ignore
+export const any: typeof builder.not.parameters.any = builder.not.parameters.any
+export const unknown: typeof builder.not.parameters.unknown = builder.not.parameters.unknown
+export const never: typeof builder.not.parameters.never = builder.not.parameters.never
+export const empty: typeof builder.not.parameters.empty = builder.not.parameters.empty
+// oxfmt-ignore
 export type exact<
   $Expected,
   $Actual,
@@ -23,7 +23,7 @@ export type exact<
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [$Expected, __actual__, true]>
                                                                          : never
 
-// dprint-ignore
+// oxfmt-ignore
 export type equiv<
   $Expected,
   $Actual,
@@ -33,7 +33,7 @@ export type equiv<
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [$Expected, __actual__, true]>
                                                                          : never
 
-// dprint-ignore
+// oxfmt-ignore
 export type sub<
   $Expected,
   $Actual,

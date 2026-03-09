@@ -27,9 +27,10 @@ export class Table extends Node {
   }
   render(context: RenderContext) {
     // Parse gap input, defaulting to box-drawing characters
-    const gap = this.parameters.gap !== undefined
-      ? parseGap(this.parameters.gap)
-      : { main: `─`, cross: ` │ `, intersection: `─┼─` }
+    const gap =
+      this.parameters.gap !== undefined
+        ? parseGap(this.parameters.gap)
+        : { main: `─`, cross: ` │ `, intersection: `─┼─` }
 
     // Row gap: if it's a non-empty string, repeat across width; otherwise just newline
     // When intersection is set and we have column widths, build segment by segment
@@ -46,10 +47,7 @@ export class Table extends Node {
       return `${Str.Char.newline}${gap.main.repeat(width)}${Str.Char.newline}`
     }
 
-    const numColumns = Math.max(
-      this.headers.length,
-      ...this.rows.map((r) => r.length),
-    )
+    const numColumns = Math.max(this.headers.length, ...this.rows.map((r) => r.length))
 
     // Helper to render cells with a given maxWidth
     const renderCells = (maxWidth: number) => {
@@ -73,9 +71,10 @@ export class Table extends Node {
 
     // Phase 1: Measure intrinsic widths (render with column readability cap)
     const { rows: intrinsicRows, headers: intrinsicHeaders } = renderCells(MAX_COLUMN_WIDTH)
-    const intrinsicRowsAndHeaders = intrinsicHeaders.length > 0 ? [intrinsicHeaders, ...intrinsicRows] : intrinsicRows
+    const intrinsicRowsAndHeaders =
+      intrinsicHeaders.length > 0 ? [intrinsicHeaders, ...intrinsicRows] : intrinsicRows
     const intrinsicWidths = Arr.transpose(intrinsicRowsAndHeaders).map((col) =>
-      Math.max(...col.flatMap(Str.Text.lines).map((_) => Str.Visual.width(_)))
+      Math.max(...col.flatMap(Str.Text.lines).map((_) => Str.Visual.width(_))),
     )
 
     // Phase 2: Calculate available width and distribute budget
@@ -111,17 +110,20 @@ export class Table extends Node {
           }).value
         })
       })
-      headers = this.headers.map((cell, index) =>
-        cell.render({ ...context, maxWidth: columnWidths[index] ?? MAX_COLUMN_WIDTH }).value
+      headers = this.headers.map(
+        (cell, index) =>
+          cell.render({ ...context, maxWidth: columnWidths[index] ?? MAX_COLUMN_WIDTH }).value,
       )
     }
 
     const rowsAndHeaders = headers.length > 0 ? [headers, ...rows] : rows
     const maxWidthOfEachColumn = Arr.transpose(rowsAndHeaders).map((col) =>
-      Math.max(...col.flatMap(Str.Text.lines).map((_) => Str.Visual.width(_)))
+      Math.max(...col.flatMap(Str.Text.lines).map((_) => Str.Visual.width(_))),
     )
     const rowsWithCellWidthsNormalized = rowsAndHeaders.map((row) => {
-      const maxNumberOfLinesAmongColumns = Math.max(...row.map(Str.Text.lines).map((lines) => lines.length))
+      const maxNumberOfLinesAmongColumns = Math.max(
+        ...row.map(Str.Text.lines).map((lines) => lines.length),
+      )
       const row_ = row.map((col) => {
         const numberOfLines = Str.Text.lines(col).length
         if (numberOfLines < maxNumberOfLinesAmongColumns) {
@@ -130,14 +132,21 @@ export class Table extends Node {
         return col
       })
       const row__ = row_.map((col, i) =>
-        Str.Text.mapLines(col, (line) => Str.Visual.pad(line, maxWidthOfEachColumn[i] ?? 0, `right`))
+        Str.Text.mapLines(col, (line) =>
+          Str.Visual.pad(line, maxWidthOfEachColumn[i] ?? 0, `right`),
+        ),
       )
       return row__
     })
     const rowsWithCellsJoined = rowsWithCellWidthsNormalized.map((r) =>
-      Str.Visual.Table.render(Arr.transpose(r.map(Str.Text.lines)), { separator: gap.cross, align: `left` })
+      Str.Visual.Table.render(Arr.transpose(r.map(Str.Text.lines)), {
+        separator: gap.cross,
+        align: `left`,
+      }),
     )
-    const width = Math.max(...rowsWithCellsJoined.flatMap(Str.Text.lines).map((_) => Str.Visual.width(_)))
+    const width = Math.max(
+      ...rowsWithCellsJoined.flatMap(Str.Text.lines).map((_) => Str.Visual.width(_)),
+    )
     const value = rowsWithCellsJoined.join(rowGap(width, maxWidthOfEachColumn))
 
     return {

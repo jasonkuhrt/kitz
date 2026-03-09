@@ -1,6 +1,6 @@
-import type { Path } from '../_.js'
 import { Match } from 'effect'
 import { $Rel } from '../$Rel/_.js'
+import type { Path } from '../_.js'
 import { AbsDir } from '../AbsDir/_.js'
 import { AbsFile } from '../AbsFile/_.js'
 import { RelDir } from '../RelDir/_.js'
@@ -18,7 +18,12 @@ export const set = (
   options: { segments?: readonly string[]; fileName?: FileName | null; back?: number },
 ): Path => {
   const segments = options.segments ?? path.segments
-  const fileName = options.fileName !== undefined ? options.fileName : ('fileName' in path ? path.fileName : undefined)
+  const fileName =
+    options.fileName !== undefined
+      ? options.fileName
+      : 'fileName' in path
+        ? path.fileName
+        : undefined
   const back = options.back ?? ($Rel.is(path) ? path.back : 0)
 
   return Match.value(path).pipe(

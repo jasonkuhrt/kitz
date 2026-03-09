@@ -4,12 +4,10 @@ import { ParseResult, Schema as S } from 'effect'
 /**
  * Error for CLI parameter parsing failures.
  */
-export interface ErrorParamParse<$message extends string> extends
-  Ts.Err.StaticError<
-    ['cli', 'param', 'parse'],
-    { message: $message }
-  >
-{}
+export interface ErrorParamParse<$message extends string> extends Ts.Err.StaticError<
+  ['cli', 'param', 'parse'],
+  { message: $message }
+> {}
 
 // ============================================================================
 // Type-Level Utilities (Internal)
@@ -39,9 +37,11 @@ type Length<$S extends string, $Acc extends any[] = []> = $S extends `${infer _F
  * type C = CamelCase<'fooBar'>   // 'fooBar'
  * ```
  */
-type CamelCase<$S extends string> = $S extends `${infer First}-${infer Rest}` ? `${First}${Capitalize<CamelCase<Rest>>}`
-  : $S extends `${infer First}_${infer Rest}` ? `${First}${Capitalize<CamelCase<Rest>>}`
-  : $S
+type CamelCase<$S extends string> = $S extends `${infer First}-${infer Rest}`
+  ? `${First}${Capitalize<CamelCase<Rest>>}`
+  : $S extends `${infer First}_${infer Rest}`
+    ? `${First}${Capitalize<CamelCase<Rest>>}`
+    : $S
 
 /**
  * Update a nested object property by path.
@@ -54,13 +54,15 @@ type CamelCase<$S extends string> = $S extends `${infer First}-${infer Rest}` ? 
  */
 type Update<$Obj, $Path extends string, $Value> = $Path extends `${infer Key}.${infer Rest}`
   ? $Obj extends Record<any, any>
-    ? Key extends keyof $Obj ? Ts.Simplify.Top<Omit<$Obj, Key> & { [k in Key]: Update<$Obj[k], Rest, $Value> }>
+    ? Key extends keyof $Obj
+      ? Ts.Simplify.Top<Omit<$Obj, Key> & { [k in Key]: Update<$Obj[k], Rest, $Value> }>
+      : $Obj
     : $Obj
-  : $Obj
   : $Obj extends Record<any, any>
-    ? $Path extends keyof $Obj ? Ts.Simplify.Top<Omit<$Obj, $Path> & { [k in $Path]: $Value }>
+    ? $Path extends keyof $Obj
+      ? Ts.Simplify.Top<Omit<$Obj, $Path> & { [k in $Path]: $Value }>
+      : $Obj
     : $Obj
-  : $Obj
 
 /**
  * Append an element to a tuple type.
@@ -115,7 +117,7 @@ export function analyze<const $input extends string>($input: $input) {
   const shorts = names.filter((name): name is string => name.length === 1)
   const short = (shorts.shift() ?? null)!
   const long = (longs.shift() ?? null)!
-  const canonical = (long ?? short)!
+  const canonical = long ?? short
 
   return {
     expression: $input,
@@ -214,82 +216,84 @@ export class Param extends S.Class<Param>('Param')({
    * })
    * ```
    */
-  static String = S.transformOrFail(
-    S.String,
-    Param,
-    {
-      strict: true,
-      decode: (input, options, ast) => {
-        // Validate input BEFORE analyzer (to catch prefix-based errors)
-        const trimmed = input.trim()
+  static String = S.transformOrFail(S.String, Param, {
+    strict: true,
+    decode: (input, options, ast) => {
+      // Validate input BEFORE analyzer (to catch prefix-based errors)
+      const trimmed = input.trim()
 
-        // Validate: Empty check
-        if (!trimmed) {
-          return ParseResult.fail(
-            new ParseResult.Type(ast, input, 'You must specify at least one name for your flag.'),
-          )
-        }
+      // Validate: Empty check
+      if (!trimmed) {
+        return ParseResult.fail(
+          new ParseResult.Type(ast, input, 'You must specify at least one name for your flag.'),
+        )
+      }
 
-        // Validate: Check each flag in the expression
-        const flags = trimmed.split(/\s+/)
-        for (const flag of flags) {
-          // Short flag with too many characters: -vv
-          if (flag.startsWith('-') && !flag.startsWith('--')) {
-            const name = flag.slice(1)
-            if (name.length !== 1) {
-              return ParseResult.fail(
-                new ParseResult.Type(ast, input, `Short flag must be exactly one character: '${flag}'`),
-              )
-            }
-          }
-          // Long flag with too few characters: --v
-          if (flag.startsWith('--')) {
-            const name = flag.slice(2)
-            if (name.length < 2) {
-              return ParseResult.fail(
-                new ParseResult.Type(ast, input, `Long flag must be two or more characters: '${flag}'`),
-              )
-            }
-          }
-        }
-
-        // Use runtime analyzer to parse the parameter expression
-        const analysis = analyze(input)
-
-        // Validate: No duplicates (check after camelCase normalization)
-        const allNames = [
-          analysis.short,
-          analysis.long,
-          ...analysis.aliases.short,
-          ...analysis.aliases.long,
-        ].filter((name): name is string => name !== null)
-        const seen = new Set<string>()
-        for (const name of allNames) {
-          if (seen.has(name)) {
+      // Validate: Check each flag in the expression
+      const flags = trimmed.split(/\s+/)
+      for (const flag of flags) {
+        // Short flag with too many characters: -vv
+        if (flag.startsWith('-') && !flag.startsWith('--')) {
+          const name = flag.slice(1)
+          if (name.length !== 1) {
             return ParseResult.fail(
-              new ParseResult.Type(ast, input, `Duplicate alias: "${name}"`),
+              new ParseResult.Type(
+                ast,
+                input,
+                `Short flag must be exactly one character: '${flag}'`,
+              ),
             )
           }
-          seen.add(name)
         }
+        // Long flag with too few characters: --v
+        if (flag.startsWith('--')) {
+          const name = flag.slice(2)
+          if (name.length < 2) {
+            return ParseResult.fail(
+              new ParseResult.Type(
+                ast,
+                input,
+                `Long flag must be two or more characters: '${flag}'`,
+              ),
+            )
+          }
+        }
+      }
 
-        // Create Param instance from analysis
-        return ParseResult.succeed(
-          new Param({
-            canonical: analysis.canonical,
-            short: analysis.short,
-            long: analysis.long,
-            aliases: analysis.aliases,
-            expression: analysis.expression,
-          }),
-        )
-      },
-      encode: (decoded) => {
-        // Encode back to original expression string
-        return ParseResult.succeed(decoded.expression)
-      },
+      // Use runtime analyzer to parse the parameter expression
+      const analysis = analyze(input)
+
+      // Validate: No duplicates (check after camelCase normalization)
+      const allNames = [
+        analysis.short,
+        analysis.long,
+        ...analysis.aliases.short,
+        ...analysis.aliases.long,
+      ].filter((name): name is string => name !== null)
+      const seen = new Set<string>()
+      for (const name of allNames) {
+        if (seen.has(name)) {
+          return ParseResult.fail(new ParseResult.Type(ast, input, `Duplicate alias: "${name}"`))
+        }
+        seen.add(name)
+      }
+
+      // Create Param instance from analysis
+      return ParseResult.succeed(
+        new Param({
+          canonical: analysis.canonical,
+          short: analysis.short,
+          long: analysis.long,
+          aliases: analysis.aliases,
+          expression: analysis.expression,
+        }),
+      )
     },
-  )
+    encode: (decoded) => {
+      // Encode back to original expression string
+      return ParseResult.succeed(decoded.expression)
+    },
+  })
 
   /**
    * Create a typed Param from a literal string with compile-time validation.
@@ -322,10 +326,20 @@ export class Param extends S.Class<Param>('Param')({
    * ```
    */
   static fromString = <const $input extends string>(
-    $input: Param.Analyze<$input> extends string ? ErrorParamParse<Param.Analyze<$input>>
-      : $input,
+    $input: Param.Analyze<$input> extends string ? ErrorParamParse<Param.Analyze<$input>> : $input,
   ) => {
     return S.decodeSync(Param.String)($input as any) as any
+  }
+
+  /**
+   * Create a typed Param from a literal string.
+   *
+   * Canonical literal-parser naming across the monorepo.
+   */
+  static fromLiteral = <const $input extends string>(
+    $input: Param.Analyze<$input> extends string ? ErrorParamParse<Param.Analyze<$input>> : $input,
+  ) => {
+    return Param.fromString($input as any)
   }
 
   /**
@@ -391,29 +405,23 @@ export namespace Param {
    * Parser error types.
    */
   export namespace Errors {
-    export interface TrailingPipe extends
-      Ts.Err.StaticError<
-        ['cli', 'param', 'trailing-pipe'],
-        {
-          message: 'Trailing pipe in parameter expression'
-          tip: 'Pipes are for adding aliases. Add more names after your pipe or remove it'
-        }
-      >
-    {}
+    export interface TrailingPipe extends Ts.Err.StaticError<
+      ['cli', 'param', 'trailing-pipe'],
+      {
+        message: 'Trailing pipe in parameter expression'
+        tip: 'Pipes are for adding aliases. Add more names after your pipe or remove it'
+      }
+    > {}
 
-    export interface Empty extends
-      Ts.Err.StaticError<
-        ['cli', 'param', 'empty'],
-        { message: 'You must specify at least one name for your parameter' }
-      >
-    {}
+    export interface Empty extends Ts.Err.StaticError<
+      ['cli', 'param', 'empty'],
+      { message: 'You must specify at least one name for your parameter' }
+    > {}
 
-    export interface Unknown extends
-      Ts.Err.StaticError<
-        ['cli', 'param', 'unknown'],
-        { message: 'Cannot parse your parameter expression' }
-      >
-    {}
+    export interface Unknown extends Ts.Err.StaticError<
+      ['cli', 'param', 'unknown'],
+      { message: 'Cannot parse your parameter expression' }
+    > {}
   }
 
   // ==========================================================================
@@ -428,57 +436,47 @@ export namespace Param {
      * Error message types for parameter name validation failures.
      */
     export namespace Messages {
-      export interface LongTooShort<$Variant extends string> extends
-        Ts.Err.StaticError<
-          readonly ['cli', 'param', 'check', 'long-too-short'],
-          {
-            message: 'Long flag must be two or more characters'
-            variant: $Variant
-            received: `--${$Variant}`
-          }
-        >
-      {}
+      export interface LongTooShort<$Variant extends string> extends Ts.Err.StaticError<
+        readonly ['cli', 'param', 'check', 'long-too-short'],
+        {
+          message: 'Long flag must be two or more characters'
+          variant: $Variant
+          received: `--${$Variant}`
+        }
+      > {}
 
-      export interface AliasDuplicate<$Variant extends string> extends
-        Ts.Err.StaticError<
-          readonly ['cli', 'param', 'check', 'alias-duplicate'],
-          {
-            message: 'Duplicate alias'
-            variant: $Variant
-          }
-        >
-      {}
+      export interface AliasDuplicate<$Variant extends string> extends Ts.Err.StaticError<
+        readonly ['cli', 'param', 'check', 'alias-duplicate'],
+        {
+          message: 'Duplicate alias'
+          variant: $Variant
+        }
+      > {}
 
-      export interface ShortTooLong<$Variant extends string> extends
-        Ts.Err.StaticError<
-          readonly ['cli', 'param', 'check', 'short-too-long'],
-          {
-            message: 'Short flag must be exactly one character'
-            variant: $Variant
-            received: `-${$Variant}`
-          }
-        >
-      {}
+      export interface ShortTooLong<$Variant extends string> extends Ts.Err.StaticError<
+        readonly ['cli', 'param', 'check', 'short-too-long'],
+        {
+          message: 'Short flag must be exactly one character'
+          variant: $Variant
+          received: `-${$Variant}`
+        }
+      > {}
 
-      export interface AlreadyTaken<$Variant extends string> extends
-        Ts.Err.StaticError<
-          readonly ['cli', 'param', 'check', 'already-taken'],
-          {
-            message: 'Name already used for another parameter'
-            variant: $Variant
-          }
-        >
-      {}
+      export interface AlreadyTaken<$Variant extends string> extends Ts.Err.StaticError<
+        readonly ['cli', 'param', 'check', 'already-taken'],
+        {
+          message: 'Name already used for another parameter'
+          variant: $Variant
+        }
+      > {}
 
-      export interface Reserved<$Variant extends string> extends
-        Ts.Err.StaticError<
-          readonly ['cli', 'param', 'check', 'reserved'],
-          {
-            message: 'Name is reserved'
-            variant: $Variant
-          }
-        >
-      {}
+      export interface Reserved<$Variant extends string> extends Ts.Err.StaticError<
+        readonly ['cli', 'param', 'check', 'reserved'],
+        {
+          message: 'Name is reserved'
+          variant: $Variant
+        }
+      > {}
     }
 
     /**
@@ -502,16 +500,20 @@ export namespace Param {
       }
 
       export type AlreadyTaken<$Limits extends SomeLimits, $Variant extends string> = {
-        predicate: $Limits['usedNames'] extends undefined ? false
-          : CamelCase<$Variant> extends CamelCase<Exclude<$Limits['usedNames'], undefined>> ? true
-          : false
+        predicate: $Limits['usedNames'] extends undefined
+          ? false
+          : CamelCase<$Variant> extends CamelCase<Exclude<$Limits['usedNames'], undefined>>
+            ? true
+            : false
         message: Messages.AlreadyTaken<$Variant>
       }
 
       export type Reserved<$Limits extends SomeLimits, $Variant extends string> = {
-        predicate: $Limits['reservedNames'] extends undefined ? false
-          : CamelCase<$Variant> extends CamelCase<Exclude<$Limits['reservedNames'], undefined>> ? true
-          : false
+        predicate: $Limits['reservedNames'] extends undefined
+          ? false
+          : CamelCase<$Variant> extends CamelCase<Exclude<$Limits['reservedNames'], undefined>>
+            ? true
+            : false
         message: Messages.Reserved<$Variant>
       }
     }
@@ -566,18 +568,25 @@ export namespace Param {
      * Return the first validation failure message.
      * Since messages are now structured Ts.Err.StaticError objects, we return the first one.
      */
-    export type ReportFailures<$Results extends [...Result[]]> = $Results extends
-      [infer Head extends Result, ...infer Tail extends Result[]] ? Head['predicate'] extends true ? Head['message']
-      : ReportFailures<Tail>
+    export type ReportFailures<$Results extends [...Result[]]> = $Results extends [
+      infer Head extends Result,
+      ...infer Tail extends Result[],
+    ]
+      ? Head['predicate'] extends true
+        ? Head['message']
+        : ReportFailures<Tail>
       : never
 
     /**
      * Filter a list of validation checks down to only the failures (predicate = true).
      */
-    type FilterFailures<$Results extends [...Result[]], $Accumulator extends Result[] = []> = $Results extends
-      [infer Head extends Result, ...infer Tail extends Result[]]
-      ? Head['predicate'] extends true ? FilterFailures<Tail, [...$Accumulator, Head]>
-      : FilterFailures<Tail, $Accumulator>
+    type FilterFailures<
+      $Results extends [...Result[]],
+      $Accumulator extends Result[] = [],
+    > = $Results extends [infer Head extends Result, ...infer Tail extends Result[]]
+      ? Head['predicate'] extends true
+        ? FilterFailures<Tail, [...$Accumulator, Head]>
+        : FilterFailures<Tail, $Accumulator>
       : $Accumulator
   }
 
@@ -597,11 +606,15 @@ export namespace Param {
     $Kind extends 'short' | 'long',
     $Name extends Name,
     $Variant extends string,
-  > = $Kind extends 'short' ? $Name['short'] extends null ? AddShort<$Name, $Variant>
-    : AddAliasShort<$Name, $Variant>
-    : $Kind extends 'long' ? $Name['long'] extends null ? AddLong<$Name, $Variant>
-      : AddAliasLong<$Name, $Variant>
-    : never
+  > = $Kind extends 'short'
+    ? $Name['short'] extends null
+      ? AddShort<$Name, $Variant>
+      : AddAliasShort<$Name, $Variant>
+    : $Kind extends 'long'
+      ? $Name['long'] extends null
+        ? AddLong<$Name, $Variant>
+        : AddAliasLong<$Name, $Variant>
+      : never
 
   /**
    * Add a long alias to an existing Name (long already set).
@@ -624,7 +637,11 @@ export namespace Param {
   /**
    * Set the primary long name (first long encountered).
    */
-  type AddLong<$Name extends Name, $Variant extends string> = Update<$Name, 'long', CamelCase<$Variant>>
+  type AddLong<$Name extends Name, $Variant extends string> = Update<
+    $Name,
+    'long',
+    CamelCase<$Variant>
+  >
 
   /**
    * Set the primary short name (first short encountered).
@@ -637,9 +654,11 @@ export namespace Param {
   type addCanonical<$Name extends Name> = Update<
     $Name,
     'canonical',
-    $Name['long'] extends string ? $Name['long']
-      : $Name['short'] extends string ? $Name['short']
-      : never // A valid flag always has either a long or short name
+    $Name['long'] extends string
+      ? $Name['long']
+      : $Name['short'] extends string
+        ? $Name['short']
+        : never // A valid flag always has either a long or short name
   >
 
   /**
@@ -674,41 +693,54 @@ export namespace Param {
 
   export type _Analyze<$E extends string, $Limits extends SomeLimits, $Name extends Name> =
     // Done!
-    $E extends `` ? NameEmpty extends $Name ? Errors.Empty : addCanonical<$Name>
-      // Trim leading and trailing whitespace
-      : $E extends ` ${infer tail}` ? _Analyze<tail, $Limits, $Name>
-      : $E extends `${infer initial} ` ? _Analyze<initial, $Limits, $Name>
-      // Capture a long flag & continue
-      : $E extends `--${infer v} ${infer tail}`
-        ? Checks.LongChecks<v, $Limits, $Name> extends Checks.SomeFailures
-          ? Checks.ReportFailures<Checks.LongChecks<v, $Limits, $Name>>
-        : _Analyze<tail, $Limits, Add<'long', $Name, v>>
-      // Capture a long name & Done!
-      : $E extends `--${infer v}`
-        ? Checks.LongChecks<v, $Limits, $Name> extends Checks.SomeFailures
-          ? Checks.ReportFailures<Checks.LongChecks<v, $Limits, $Name>>
-        : _Analyze<'', $Limits, Add<'long', $Name, v>>
-      // Capture a short flag & continue
-      : $E extends `-${infer v} ${infer tail}`
-        ? Checks.ShortChecks<v, $Limits, $Name> extends Checks.SomeFailures
-          ? Checks.ReportFailures<Checks.ShortChecks<v, $Limits, $Name>>
-        : _Analyze<tail, $Limits, Add<'short', $Name, v>>
-      // Capture a short name & Done!
-      : $E extends `-${infer v}`
-        ? Checks.ShortChecks<v, $Limits, $Name> extends Checks.SomeFailures
-          ? Checks.ReportFailures<Checks.ShortChecks<v, $Limits, $Name>>
-        : _Analyze<'', $Limits, Add<'short', $Name, v>>
-      // Capture a long flag & continue (no prefix, inferred by length)
-      : $E extends `${infer v} ${infer tail}`
-        ? Checks.BaseChecks<v, $Limits, $Name> extends Checks.SomeFailures
-          ? Checks.ReportFailures<Checks.BaseChecks<v, $Limits, $Name>>
-        : _Analyze<tail, $Limits, Add<Length<v> extends 1 ? 'short' : 'long', $Name, v>>
-      // Capture final name (no prefix, inferred by length)
-      : $E extends `${infer v}`
-        ? Checks.BaseChecks<v, $Limits, $Name> extends Checks.SomeFailures
-          ? Checks.ReportFailures<Checks.BaseChecks<v, $Limits, $Name>>
-        : _Analyze<'', $Limits, Add<Length<v> extends 1 ? 'short' : 'long', $Name, v>>
-      : Errors.Unknown
+    $E extends ``
+      ? NameEmpty extends $Name
+        ? Errors.Empty
+        : addCanonical<$Name>
+      : // Trim leading and trailing whitespace
+        $E extends ` ${infer tail}`
+        ? _Analyze<tail, $Limits, $Name>
+        : $E extends `${infer initial} `
+          ? _Analyze<initial, $Limits, $Name>
+          : // Capture a long flag & continue
+            $E extends `--${infer v} ${infer tail}`
+            ? Checks.LongChecks<v, $Limits, $Name> extends Checks.SomeFailures
+              ? Checks.ReportFailures<Checks.LongChecks<v, $Limits, $Name>>
+              : _Analyze<tail, $Limits, Add<'long', $Name, v>>
+            : // Capture a long name & Done!
+              $E extends `--${infer v}`
+              ? Checks.LongChecks<v, $Limits, $Name> extends Checks.SomeFailures
+                ? Checks.ReportFailures<Checks.LongChecks<v, $Limits, $Name>>
+                : _Analyze<'', $Limits, Add<'long', $Name, v>>
+              : // Capture a short flag & continue
+                $E extends `-${infer v} ${infer tail}`
+                ? Checks.ShortChecks<v, $Limits, $Name> extends Checks.SomeFailures
+                  ? Checks.ReportFailures<Checks.ShortChecks<v, $Limits, $Name>>
+                  : _Analyze<tail, $Limits, Add<'short', $Name, v>>
+                : // Capture a short name & Done!
+                  $E extends `-${infer v}`
+                  ? Checks.ShortChecks<v, $Limits, $Name> extends Checks.SomeFailures
+                    ? Checks.ReportFailures<Checks.ShortChecks<v, $Limits, $Name>>
+                    : _Analyze<'', $Limits, Add<'short', $Name, v>>
+                  : // Capture a long flag & continue (no prefix, inferred by length)
+                    $E extends `${infer v} ${infer tail}`
+                    ? Checks.BaseChecks<v, $Limits, $Name> extends Checks.SomeFailures
+                      ? Checks.ReportFailures<Checks.BaseChecks<v, $Limits, $Name>>
+                      : _Analyze<
+                          tail,
+                          $Limits,
+                          Add<Length<v> extends 1 ? 'short' : 'long', $Name, v>
+                        >
+                    : // Capture final name (no prefix, inferred by length)
+                      $E extends `${infer v}`
+                      ? Checks.BaseChecks<v, $Limits, $Name> extends Checks.SomeFailures
+                        ? Checks.ReportFailures<Checks.BaseChecks<v, $Limits, $Name>>
+                        : _Analyze<
+                            '',
+                            $Limits,
+                            Add<Length<v> extends 1 ? 'short' : 'long', $Name, v>
+                          >
+                      : Errors.Unknown
 
   // ==========================================================================
   // Result Extraction Utilities
@@ -736,9 +768,8 @@ export namespace Param {
    * type Error = GetCanonicalNameOrError<Analyze<'--v'>>             // Ts.Err.StaticError<...>
    * ```
    */
-  export type GetCanonicalNameOrError<$result> = Ts.Err.Is<$result> extends true ? $result
-    : $result extends Name ? $result['canonical']
-    : never
+  export type GetCanonicalNameOrError<$result> =
+    Ts.Err.Is<$result> extends true ? $result : $result extends Name ? $result['canonical'] : never
 
   /**
    * Extract all possible parameter names as a union type from a successful parse.
@@ -760,10 +791,11 @@ export namespace Param {
    * // never
    * ```
    */
-  export type GetNames<$result> = $result extends Param ?
-      | ($result['long'] extends string ? $result['long'] : never)
-      | ($result['short'] extends string ? $result['short'] : never)
-      | $result['aliases']['long'][number]
-      | $result['aliases']['short'][number]
+  export type GetNames<$result> = $result extends Param
+    ?
+        | ($result['long'] extends string ? $result['long'] : never)
+        | ($result['short'] extends string ? $result['short'] : never)
+        | $result['aliases']['long'][number]
+        | $result['aliases']['short'][number]
     : never
 }

@@ -1,3 +1,4 @@
+/* oxlint-disable typescript-eslint(no-unnecessary-type-assertion) -- branded conditional path return types require explicit assertions; oxlint misidentifies them as redundant. */
 import { Match } from 'effect'
 import type { $Dir } from '../$Dir/_.js'
 import type { $Rel } from '../$Rel/_.js'
@@ -10,20 +11,19 @@ import { RelFile } from '../RelFile/_.js'
  * Type-level join operation.
  * Maps base and path types to their result type.
  */
-export type join<
-  Base extends $Dir,
-  Path extends $Rel,
-> = Base extends AbsDir ? (
-    Path extends RelFile ? AbsFile
-      : Path extends RelDir ? AbsDir
+export type join<Base extends $Dir, Path extends $Rel> = Base extends AbsDir
+  ? Path extends RelFile
+    ? AbsFile
+    : Path extends RelDir
+      ? AbsDir
       : never
-  )
-  : Base extends RelDir ? (
-      Path extends RelFile ? RelFile
-        : Path extends RelDir ? RelDir
+  : Base extends RelDir
+    ? Path extends RelFile
+      ? RelFile
+      : Path extends RelDir
+        ? RelDir
         : never
-    )
-  : never
+    : never
 
 /**
  * Join path segments into a file location.
@@ -49,10 +49,7 @@ export type join<
  * // AbsFile with segments: ['home', 'user', 'src'], fileName: 'index.ts'
  * ```
  */
-export const join = <
-  $dir extends $Dir,
-  $rel extends $Rel,
->(
+export const join = <$dir extends $Dir, $rel extends $Rel>(
   dir: $dir,
   rel: $rel,
 ): join<$dir, $rel> => {

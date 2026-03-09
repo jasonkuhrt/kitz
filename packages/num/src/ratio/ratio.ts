@@ -46,15 +46,15 @@ export type Ratio = {
  */
 export const is = (value: unknown): value is Ratio => {
   return (
-    typeof value === 'object'
-    && value !== null
-    && 'numerator' in value
-    && 'denominator' in value
-    && typeof value.numerator === 'number'
-    && Number.isInteger(value.numerator)
-    && typeof value.denominator === 'number'
-    && Number.isInteger(value.denominator)
-    && value.denominator !== 0
+    typeof value === 'object' &&
+    value !== null &&
+    'numerator' in value &&
+    'denominator' in value &&
+    typeof value.numerator === 'number' &&
+    Number.isInteger(value.numerator) &&
+    typeof value.denominator === 'number' &&
+    Number.isInteger(value.denominator) &&
+    value.denominator !== 0
   )
 }
 

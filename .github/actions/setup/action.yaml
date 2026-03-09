@@ -1,43 +1,22 @@
 name: Setup
 description: Boilerplate steps needed by most jobs.
 inputs:
-  node-version:
-    description: Version of Node to use.
+  bun-version:
+    description: Version of Bun to use.
     required: false
-    default: 24.x
+    default: 1.3.6
   install-deps:
     description: Should deps be installed?
     required: false
-    default: "true"
+    default: 'true'
 runs:
   using: composite
   steps:
-    - name: Use Node.js ${{inputs.node-version}}
-      uses: actions/setup-node@v4
+    - name: Use Bun ${{inputs.bun-version}}
+      uses: oven-sh/setup-bun@v2
       with:
-        node-version: ${{inputs.node-version}}
-    - name: Install pnpm
-      uses: pnpm/action-setup@v4
-      with:
-        run_install: false
-    - name: Get Current Month
-      id: date-month
-      shell: bash
-      run: |
-        DATE=$(date +'%Y-%m')
-        echo "$DATE"
-        echo "date_month=$DATE" >> $GITHUB_OUTPUT
-    - name: Get pnpm store directory
-      id: pnpm-cache
-      shell: bash
-      run: echo "pnpm_cache_dir=$(pnpm store path)" >> $GITHUB_OUTPUT
-    - uses: actions/cache@v4
-      name: Setup pnpm cache
-      with:
-        path: ${{ steps.pnpm-cache.outputs.pnpm_cache_dir }}
-        key: ${{ runner.os }}-pnpm-store-${{steps.date-month.outputs.date_month}}-${{ hashFiles('**/pnpm-lock.yaml') }}
-        restore-keys: ${{ runner.os }}-pnpm-store-${{steps.date-month.outputs.date_month}}
+        bun-version: ${{inputs.bun-version}}
     - name: Install Dependencies
-      run: pnpm install --frozen-lockfile
+      run: bun install --frozen-lockfile
       shell: bash
       if: ${{inputs.install-deps}} == 'true'

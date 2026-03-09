@@ -1,11 +1,10 @@
 import { Ts, Tup, Undefined } from '@kitz/core'
 // Utility type from Graffle prelude
-type IntersectionIgnoreNeverOrAny<$T> = Ts.Inhabitance.IsAny<$T> extends true ? unknown
-  : $T extends never ? unknown
-  : $T
+type IntersectionIgnoreNeverOrAny<$T> =
+  Ts.Inhabitance.IsAny<$T> extends true ? unknown : $T extends never ? unknown : $T
 import type { PipelineDefinition } from '../__.js'
-import type { Overload } from '../Overload/_.js'
-import type { Config } from '../PipelineDefinition/Config.js'
+import type { Data as OverloadData } from '../Overload/_.js'
+import type { Config } from '../PipelineDefinition/__.js'
 import type { Step } from '../Step.js'
 import type { StepDefinition } from '../StepDefinition.js'
 import type { StepRunner } from '../StepRunner.js'
@@ -24,18 +23,18 @@ export type StepsIndex<
 > = Map<$Name, $ExecutableStep>
 
 export const createStepsIndex = <$Steps extends Step[]>(steps: $Steps): StepsIndex => {
-  return new Map(steps.map(step => [step.name, step]))
+  return new Map(steps.map((step) => [step.name, step]))
 }
 
 export namespace Pipeline {
-  export const create = <$PipelineDef extends PipelineDefinition>(
+  export function create<$PipelineDef extends PipelineDefinition>(
     definition: $PipelineDef,
-  ): Ts.Simplify.Top<InferFromDefinition<$PipelineDef>> => {
+  ): Ts.Simplify.Top<InferFromDefinition<$PipelineDef>> {
     let steps = definition.steps as unknown as Step[]
     if (definition.overloads.length > 0) {
       steps = steps.map((step): Step => {
         const stepOverloads = definition.overloads
-          .map(overload => {
+          .map((overload) => {
             const stepOverload = overload.steps[step.name]
             if (!stepOverload) return null
             return {
@@ -43,13 +42,13 @@ export namespace Pipeline {
               discriminant: overload.discriminant,
             }
           })
-          .filter(_ => _ !== null)
+          .filter((_) => _ !== null)
 
         const stepWithOverloads = {
           name: step.name,
           run: (...args: Parameters<StepRunner>) => {
             const input = args[0] as Record<string, unknown>
-            const stepOverload = stepOverloads.find(stepOverload => {
+            const stepOverload = stepOverloads.find((stepOverload) => {
               return input[stepOverload.discriminant.name] === stepOverload.discriminant.value
             })
             if (stepOverload) return stepOverload.run(...args)
@@ -79,7 +78,7 @@ export namespace Pipeline {
     } as any
   }
 
-  // dprint-ignore
+  // oxfmt-ignore
   export type InferFromDefinition<
     $PipelineDef extends PipelineDefinition,
     VAR_Steps extends readonly Step[] = InferSteps<$PipelineDef>
@@ -99,7 +98,7 @@ export namespace Pipeline {
         : $PipelineDef['input']
   }
 
-  // dprint-ignore
+  // oxfmt-ignore
   type InferSteps<
     $PipelineDef extends PipelineDefinition,
     VAR_StepDefs extends readonly StepDefinition[] = $PipelineDef['steps'],
@@ -141,13 +140,11 @@ export namespace Pipeline {
 
   type InferStepSlots<
     $Step extends StepDefinition,
-    $Overloads extends readonly Overload.Data[],
-  > =
-    & $Step['slots']
-    & InferStepSlots_<$Step, $Overloads>
+    $Overloads extends readonly OverloadData[],
+  > = $Step['slots'] & InferStepSlots_<$Step, $Overloads>
   // todo try putting the helper type below into a type variable above
-  // dprint-ignore
-  type InferStepSlots_<$Step extends StepDefinition, $Overloads extends readonly Overload.Data[]> =
+  // oxfmt-ignore
+  type InferStepSlots_<$Step extends StepDefinition, $Overloads extends readonly OverloadData[]> =
     Tup.IntersectItems<{
       [$Index in keyof $Overloads]:
         Ts.Inhabitance.IsUnknown<$Overloads[$Index]['steps'][$Step['name']]> extends true
@@ -155,10 +152,10 @@ export namespace Pipeline {
           : $Overloads[$Index]['steps'][$Step['name']]['slots']
     }>
 
-  // dprint-ignore
+  // oxfmt-ignore
   type InferStepOutputFromOverloads<
     $StepName extends Step['name'],
-    $Overload extends Overload.Data,
+    $Overload extends OverloadData,
   > =
     $Overload extends Ts.Union.__FORCE_DISTRIBUTION__ ?
 
@@ -172,11 +169,11 @@ export namespace Pipeline {
 
     : never
 
-  // dprint-ignore
+  // oxfmt-ignore
   type InferStepInputFromOverload<
     $StepIndex extends Tup.IndexKey,
     $StepName extends Step['name'],
-    $Overload extends Overload.Data,
+    $Overload extends OverloadData,
   > =
     $Overload extends Ts.Union.__FORCE_DISTRIBUTION__ ?
 

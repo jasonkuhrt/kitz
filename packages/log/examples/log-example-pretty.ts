@@ -1,6 +1,6 @@
 /**
  * Example showing pretty terminal output mode.
- * Run with: LOG_PRETTY=true node --import tsx examples/log-example-pretty.ts
+ * Run with: LOG_PRETTY=true bun examples/log-example-pretty.ts
  */
 
 import { Log } from '../src/log/_.js'

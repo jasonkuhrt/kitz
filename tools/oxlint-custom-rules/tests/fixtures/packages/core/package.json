@@ -1,0 +1,14 @@
+{
+  "name": "@kitz/core",
+  "imports": {
+    "#err/core": {
+      "default": "./src/err/core/_.ts"
+    },
+    "#fn/core": {
+      "default": "./src/fn/core/_.ts"
+    },
+    "#lang/core": {
+      "default": "./src/lang/core/_.ts"
+    }
+  }
+}

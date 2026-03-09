@@ -6,4 +6,10 @@
  *
  * @module
  */
-export * as Analyzer from './__.js'
+// @ts-expect-error Duplicate identifier
+export * as CodecString from './__.js'
+
+/**
+ * Namespace anchor for {@link CodecString}.
+ */
+export namespace CodecString {}

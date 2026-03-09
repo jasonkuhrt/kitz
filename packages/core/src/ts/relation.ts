@@ -55,7 +55,8 @@ export namespace Relation {
    * type T5 = Relation.IsExact<{ a: 1 }, { a: 1 }> // true
    * ```
    */
-  export type IsExact<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+  export type IsExact<A, B> =
+    (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false
 
   /**
    * Check if types are mutually assignable (equivalent).
@@ -72,7 +73,7 @@ export namespace Relation {
    * type T4 = Relation.IsEquivalent<string, number> // false
    * ```
    */
-  export type IsEquivalent<A, B> = [A] extends [B] ? [B] extends [A] ? true : false : false
+  export type IsEquivalent<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
 
   /**
    * Check if B is a subtype of A (B extends A, B is narrower than A).
@@ -165,7 +166,7 @@ export namespace Relation {
    * type T8 = Relation.GetRelation<'a', 'a' | 'b'> // Relation.supertype ('a' | 'b' is wider than 'a')
    * ```
    */
-  // dprint-ignore
+  // oxfmt-ignore
   export type GetRelation<A, B> =
     // First check: Are types equivalent (mutually assignable)?
     // Using [A] extends [B] with brackets prevents union distribution - we want to check

@@ -1,8 +1,9 @@
 import { Fs } from '@kitz/fs'
-import { Layer } from 'effect'
-import process from 'node:process'
+import { Layer, Schema as S } from 'effect'
 import { Env } from './env.js'
 import type { Arch, Os } from './types.js'
+
+const EnvironmentVarsSchema = S.Record({ key: S.String, value: S.UndefinedOr(S.String) })
 
 /**
  * Pure environment object for Node.js runtime.
@@ -15,7 +16,7 @@ import type { Arch, Os } from './types.js'
 export const env = {
   cwd: Fs.Path.AbsDir.fromString(process.cwd()),
   argv: process.argv,
-  vars: process.env as Record<string, string | undefined>,
+  vars: S.decodeUnknownSync(EnvironmentVarsSchema)(process.env),
   platform: 'node' as const,
   os: process.platform as Os,
   arch: process.arch as Arch,

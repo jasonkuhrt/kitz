@@ -1,5 +1,5 @@
-import type { Path } from '../_.js'
 import { Match } from 'effect'
+import type { Path } from '../_.js'
 import { AbsDir } from '../AbsDir/_.js'
 import { AbsFile } from '../AbsFile/_.js'
 import type { Guard, Input, normalize } from '../inputs.js'
@@ -79,5 +79,5 @@ export function up<$input extends Input>($input: $input): normalize<$input> {
         })
       },
     }),
-  ) as any
+  )
 }

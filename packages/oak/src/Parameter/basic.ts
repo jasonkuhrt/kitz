@@ -28,22 +28,13 @@ export const parameterBasicCreate = (
 ): ParameterBasic => {
   const name = S.decodeSync(Cli.Param.String)(input.nameExpression)
   const environment = processEnvironment(settings, name)
-  const prompt = input.prompt as boolean | null | { enabled?: boolean; when?: object }
-  const promptEnabled = prompt === true
-    ? true
-    : prompt === false
-    ? false
-    : prompt === null
-    ? null
-    : prompt.enabled ?? null
-  const promptEnabledWhen = prompt === null ? null : typeof prompt === `object` ? prompt.when ?? null : null
   return {
     _tag: `Basic`,
     environment,
     name,
     prompt: {
-      enabled: promptEnabled,
-      when: promptEnabledWhen as any,
+      enabled: input.prompt.enabled,
+      when: input.prompt.when,
     },
     type: input.type,
   }

@@ -11,7 +11,6 @@ import { builder } from '../../builder-singleton.js'
  * Relation: mutual assignability (equivalent types)
  */
 
-
 /**
  * Base matcher accepting any expected type.
  * Extraction chain: (...args: any[]) => T → Parameters<Function>
@@ -28,13 +27,12 @@ import { builder } from '../../builder-singleton.js'
  * type _ = Assert.parameters.equiv.of<string, (...args: any[]) => number>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type of_<$Expected, $Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [$Expected, __actual__]>
                                                                          : never
-const of_ = builder.parameters.equiv.of
-
+const of_: typeof builder.parameters.equiv.of = builder.parameters.equiv.of
 
 /**
  * Pre-curried matcher for string.
@@ -49,13 +47,12 @@ const of_ = builder.parameters.equiv.of
  * type _ = Assert.parameters.equiv.string<(...args: any[]) => number>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type string_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [string, __actual__]>
                                                                          : never
-const string_ = builder.parameters.equiv.string
-
+const string_: typeof builder.parameters.equiv.string = builder.parameters.equiv.string
 
 /**
  * Pre-curried matcher for number.
@@ -70,13 +67,12 @@ const string_ = builder.parameters.equiv.string
  * type _ = Assert.parameters.equiv.number<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type number_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [number, __actual__]>
                                                                          : never
-const number_ = builder.parameters.equiv.number
-
+const number_: typeof builder.parameters.equiv.number = builder.parameters.equiv.number
 
 /**
  * Pre-curried matcher for bigint.
@@ -91,13 +87,12 @@ const number_ = builder.parameters.equiv.number
  * type _ = Assert.parameters.equiv.bigint<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type bigint_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [bigint, __actual__]>
                                                                          : never
-const bigint_ = builder.parameters.equiv.bigint
-
+const bigint_: typeof builder.parameters.equiv.bigint = builder.parameters.equiv.bigint
 
 /**
  * Pre-curried matcher for boolean.
@@ -112,13 +107,12 @@ const bigint_ = builder.parameters.equiv.bigint
  * type _ = Assert.parameters.equiv.boolean<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type boolean_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [boolean, __actual__]>
                                                                          : never
-const boolean_ = builder.parameters.equiv.boolean
-
+const boolean_: typeof builder.parameters.equiv.boolean = builder.parameters.equiv.boolean
 
 /**
  * Pre-curried matcher for true.
@@ -133,13 +127,12 @@ const boolean_ = builder.parameters.equiv.boolean
  * type _ = Assert.parameters.equiv.true<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type true_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [true, __actual__]>
                                                                          : never
-const true_ = builder.parameters.equiv.true
-
+const true_: typeof builder.parameters.equiv.true = builder.parameters.equiv.true
 
 /**
  * Pre-curried matcher for false.
@@ -154,13 +147,12 @@ const true_ = builder.parameters.equiv.true
  * type _ = Assert.parameters.equiv.false<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type false_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [false, __actual__]>
                                                                          : never
-const false_ = builder.parameters.equiv.false
-
+const false_: typeof builder.parameters.equiv.false = builder.parameters.equiv.false
 
 /**
  * Pre-curried matcher for undefined.
@@ -175,13 +167,12 @@ const false_ = builder.parameters.equiv.false
  * type _ = Assert.parameters.equiv.undefined<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type undefined_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [undefined, __actual__]>
                                                                          : never
-const undefined_ = builder.parameters.equiv.undefined
-
+const undefined_: typeof builder.parameters.equiv.undefined = builder.parameters.equiv.undefined
 
 /**
  * Pre-curried matcher for null.
@@ -196,13 +187,12 @@ const undefined_ = builder.parameters.equiv.undefined
  * type _ = Assert.parameters.equiv.null<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type null_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [null, __actual__]>
                                                                          : never
-const null_ = builder.parameters.equiv.null
-
+const null_: typeof builder.parameters.equiv.null = builder.parameters.equiv.null
 
 /**
  * Pre-curried matcher for symbol.
@@ -217,13 +207,12 @@ const null_ = builder.parameters.equiv.null
  * type _ = Assert.parameters.equiv.symbol<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type symbol_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [symbol, __actual__]>
                                                                          : never
-const symbol_ = builder.parameters.equiv.symbol
-
+const symbol_: typeof builder.parameters.equiv.symbol = builder.parameters.equiv.symbol
 
 /**
  * Pre-curried matcher for Date.
@@ -238,13 +227,12 @@ const symbol_ = builder.parameters.equiv.symbol
  * type _ = Assert.parameters.equiv.Date<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type Date_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [Date, __actual__]>
                                                                          : never
-const Date_ = builder.parameters.equiv.Date
-
+const Date_: typeof builder.parameters.equiv.Date = builder.parameters.equiv.Date
 
 /**
  * Pre-curried matcher for RegExp.
@@ -259,13 +247,12 @@ const Date_ = builder.parameters.equiv.Date
  * type _ = Assert.parameters.equiv.RegExp<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type RegExp_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [RegExp, __actual__]>
                                                                          : never
-const RegExp_ = builder.parameters.equiv.RegExp
-
+const RegExp_: typeof builder.parameters.equiv.RegExp = builder.parameters.equiv.RegExp
 
 /**
  * Pre-curried matcher for Error.
@@ -280,13 +267,12 @@ const RegExp_ = builder.parameters.equiv.RegExp
  * type _ = Assert.parameters.equiv.Error<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type Error_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [Error, __actual__]>
                                                                          : never
-const Error_ = builder.parameters.equiv.Error
-
+const Error_: typeof builder.parameters.equiv.Error = builder.parameters.equiv.Error
 
 /**
  * Pre-curried matcher for unknown.
@@ -301,13 +287,12 @@ const Error_ = builder.parameters.equiv.Error
  * type _ = Assert.parameters.equiv.unknown<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type unknown_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [unknown, __actual__]>
                                                                          : never
-const unknown_ = builder.parameters.equiv.unknown
-
+const unknown_: typeof builder.parameters.equiv.unknown = builder.parameters.equiv.unknown
 
 /**
  * Pre-curried matcher for any.
@@ -322,13 +307,12 @@ const unknown_ = builder.parameters.equiv.unknown
  * type _ = Assert.parameters.equiv.any<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type any_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [any, __actual__]>
                                                                          : never
-const any_ = builder.parameters.equiv.any
-
+const any_: typeof builder.parameters.equiv.any = builder.parameters.equiv.any
 
 /**
  * Pre-curried matcher for never.
@@ -343,19 +327,19 @@ const any_ = builder.parameters.equiv.any
  * type _ = Assert.parameters.equiv.never<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type never_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [never, __actual__]>
                                                                          : never
-const never_ = builder.parameters.equiv.never
+const never_: typeof builder.parameters.equiv.never = builder.parameters.equiv.never
 
-const ofAs_ = <$Type>() => builder.parameters.equiv.ofAs<$Type>()
+const ofAs_: typeof builder.parameters.equiv.ofAs = builder.parameters.equiv.ofAs
 /**
  * No-excess variant of equiv relation.
  * Checks that actual has no excess properties beyond expected.
  */
-// dprint-ignore
+// oxfmt-ignore
 type noExcess_<
   $Expected,
   $Actual,
@@ -364,27 +348,27 @@ type noExcess_<
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivNoExcessKind, [$Expected, __actual__]>
                                                                          : never
-const noExcess_ = builder.parameters.equiv.noExcess
-const noExcessAs_ = <$Type>() => builder.parameters.equiv.noExcessAs<$Type>()
+const noExcess_: typeof builder.parameters.equiv.noExcess = builder.parameters.equiv.noExcess
+const noExcessAs_: typeof builder.parameters.equiv.noExcessAs = builder.parameters.equiv.noExcessAs
 
 export {
-  of_ as of,
-  string_ as string,
-  number_ as number,
+  any_ as any,
   bigint_ as bigint,
   boolean_ as boolean,
-  true_ as true,
-  false_ as false,
-  undefined_ as undefined,
-  null_ as null,
-  symbol_ as symbol,
   Date_ as Date,
-  RegExp_ as RegExp,
   Error_ as Error,
-  unknown_ as unknown,
-  any_ as any,
+  false_ as false,
   never_ as never,
-  ofAs_ as ofAs,
   noExcess_ as noExcess,
   noExcessAs_ as noExcessAs,
+  null_ as null,
+  number_ as number,
+  of_ as of,
+  ofAs_ as ofAs,
+  RegExp_ as RegExp,
+  string_ as string,
+  symbol_ as symbol,
+  true_ as true,
+  undefined_ as undefined,
+  unknown_ as unknown,
 }

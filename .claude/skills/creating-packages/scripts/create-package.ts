@@ -38,7 +38,7 @@ const createPackage = (name: string) => {
   // package.json
   const packageJson = {
     name: `@kitz/${name}`,
-    version: '0.0.0',
+    version: '0.0.0-kitz-release',
     type: 'module',
     sideEffects: false,
     imports: {
@@ -51,8 +51,8 @@ const createPackage = (name: string) => {
     },
     files: ['build', 'src'],
     scripts: {
-      'build': 'tsgo -p tsconfig.build.json',
-      'dev': 'tsgo -p tsconfig.build.json --watch',
+      build: 'tsgo -p tsconfig.build.json',
+      dev: 'tsgo -p tsconfig.build.json --watch',
       'check:types': 'tsgo --noEmit',
       'check:lint': 'oxlint --config ../../oxlint.json src/',
       'check:package': 'publint && attw --pack',
@@ -83,10 +83,7 @@ const createPackage = (name: string) => {
     include: ['src/**/*.ts'],
     exclude: ['build', 'node_modules', '**/*.bench-d.ts', '**/*.test.ts', '**/*.test-d.ts'],
   }
-  fs.writeFileSync(
-    path.join(packageDir, 'tsconfig.json'),
-    JSON.stringify(tsconfig, null, 2) + '\n',
-  )
+  fs.writeFileSync(path.join(packageDir, 'tsconfig.json'), JSON.stringify(tsconfig, null, 2) + '\n')
 
   // tsconfig.build.json
   const tsconfigBuild = {
@@ -107,16 +104,10 @@ const createPackage = (name: string) => {
   )
 
   // src/_.ts (namespace file)
-  fs.writeFileSync(
-    path.join(srcDir, '_.ts'),
-    `export * as ${pascalName} from './__.js'\n`,
-  )
+  fs.writeFileSync(path.join(srcDir, '_.ts'), `export * as ${pascalName} from './__.js'\n`)
 
   // src/__.ts (barrel file)
-  fs.writeFileSync(
-    path.join(srcDir, '__.ts'),
-    `// Export functions and types here\n`,
-  )
+  fs.writeFileSync(path.join(srcDir, '__.ts'), `// Export functions and types here\n`)
 
   console.log(`Created @kitz/${name}`)
   console.log(`\nNext steps:`)
@@ -164,7 +155,9 @@ const main = () => {
   const name = arg
 
   if (!/^[a-z][a-z0-9-]*$/.test(name)) {
-    console.error('Error: Package name must be lowercase, start with a letter, and contain only letters, numbers, and hyphens')
+    console.error(
+      'Error: Package name must be lowercase, start with a letter, and contain only letters, numbers, and hyphens',
+    )
     process.exit(1)
   }
 

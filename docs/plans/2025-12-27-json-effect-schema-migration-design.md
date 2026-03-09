@@ -26,11 +26,7 @@ export { type Obj as Object }
 export const PrimitiveSchema = S.Union(S.String, S.Number, S.Boolean, S.Null)
 
 export const ValueSchema: S.Schema<Value> = S.suspend(() =>
-  S.Union(
-    PrimitiveSchema,
-    S.Array(ValueSchema),
-    S.Record({ key: S.String, value: ValueSchema }),
-  )
+  S.Union(PrimitiveSchema, S.Array(ValueSchema), S.Record({ key: S.String, value: ValueSchema })),
 )
 
 export const ObjectSchema = S.Record({ key: S.String, value: ValueSchema })

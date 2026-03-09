@@ -25,12 +25,12 @@ I will focus on JSDoc before writing here.
 
 ```sh
 # Main package (includes all modules)
-pnpm add kitz
+bun add kitz
 
 # Or install individual packages
-pnpm add @kitz/core
-pnpm add @kitz/fs
-pnpm add @kitz/cli
+bun add @kitz/core
+bun add @kitz/fs
+bun add @kitz/cli
 # ... etc
 ```
 
@@ -224,12 +224,9 @@ import type { Kind, Simplify } from 'kitz'
 
 interface EffectTraverser extends Kind.Kind {
   return: this['parameters'] extends [infer $T, infer $DN, infer $SN]
-    ? $T extends Effect.Effect<infer S, infer E, infer R> ? Effect.Effect<
-        Simplify.To<$DN, S, $SN>,
-        Simplify.To<$DN, E, $SN>,
-        Simplify.To<$DN, R, $SN>
-      >
-    : never
+    ? $T extends Effect.Effect<infer S, infer E, infer R>
+      ? Effect.Effect<Simplify.To<$DN, S, $SN>, Simplify.To<$DN, E, $SN>, Simplify.To<$DN, R, $SN>>
+      : never
     : never
 }
 

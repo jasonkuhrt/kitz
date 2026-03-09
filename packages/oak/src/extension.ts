@@ -10,10 +10,7 @@ export type SomeExtension = Extension
  * Extensions convert library-specific schemas to Standard Schema V1
  * and extract metadata for better CLI help generation.
  */
-export interface Extension<
-  $Type = any,
-  $Guard extends Fn.Kind.Kind = Fn.Kind.Identity,
-> {
+export interface Extension<$Type = any, $Guard extends Fn.Kind.Kind = Fn.Kind.Identity> {
   /**
    * Extension name (e.g., "Zod", "Effect").
    */
@@ -69,9 +66,8 @@ export interface Extension<
 /**
  * Create an extension with the given configuration.
  */
-export const createExtension = <
-  $Type,
-  $Guard extends Fn.Kind.Kind = Fn.Kind.Identity,
->(
+export function createExtension<$Type, $Guard extends Fn.Kind.Kind = Fn.Kind.Identity>(
   config: Extension<$Type, $Guard>,
-): Extension<$Type, $Guard> => config
+): Extension<$Type, $Guard> {
+  return config
+}

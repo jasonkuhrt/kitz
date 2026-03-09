@@ -16,8 +16,7 @@ export type Get<$T, $Index extends number> = ValidateAndExtract<
   $T,
   TupleConstraint,
   'tuple',
-  $T extends readonly any[] ? $T[$Index]
-    : LensErrorTupleExtract<$T>
+  $T extends readonly any[] ? $T[$Index] : LensErrorTupleExtract<$T>
 >
 
 /**
@@ -28,7 +27,8 @@ export type Get<$T, $Index extends number> = ValidateAndExtract<
  * type T = Set<[string, number, boolean], 1, symbol> // [string, symbol, boolean]
  * ```
  */
-export type Set<$T, $Index extends number, $New> = $T extends readonly any[] ? ReplaceAt<$T, $Index, $New>
+export type Set<$T, $Index extends number, $New> = $T extends readonly any[]
+  ? ReplaceAt<$T, $Index, $New>
   : never
 
 /**

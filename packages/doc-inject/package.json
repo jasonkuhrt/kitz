@@ -1,0 +1,39 @@
+{
+  "name": "@kitz/doc-inject",
+  "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "bin": {
+    "doc-inject": "./build/cli.js"
+  },
+  "imports": {
+    "#doc-inject": "./src/_.ts",
+    "#doc-inject/*": "./src/*.ts"
+  },
+  "exports": {
+    ".": "./src/_.ts",
+    "./__": "./src/__.ts"
+  },
+  "files": [
+    "build",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
+    "dev": "tsgo -p tsconfig.build.json --watch",
+    "check:types": "tsgo --noEmit",
+    "check:lint": "oxlint --config ../../.oxlintrc.json src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
+  },
+  "dependencies": {
+    "@effect/platform": "^0.94.0",
+    "@kitz/core": "workspace:*",
+    "@kitz/platform": "workspace:*",
+    "effect": "^3.19.13"
+  }
+}

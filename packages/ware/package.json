@@ -1,12 +1,17 @@
 {
   "name": "@kitz/ware",
-  "version": "0.0.0",
+  "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
   "description": "Middleware utilities",
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./build/_.js",
-    "./__": "./build/__.js"
+    ".": "./src/_.ts",
+    "./__": "./src/__.ts"
   },
   "dependencies": {
     "@kitz/bldr": "workspace:*",
@@ -16,10 +21,14 @@
     "type-fest": "^5.3.1"
   },
   "scripts": {
-    "build": "tsgo -p tsconfig.build.json",
+    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
-    "check:lint": "oxlint --config ../../oxlint.json src/",
-    "check:package": "publint && attw --pack"
-  }
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
+  },
+  "files": [
+    "build",
+    "src"
+  ]
 }

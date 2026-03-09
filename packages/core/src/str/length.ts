@@ -21,17 +21,15 @@ import type { GetKindCase } from './type-level.js'
 /**
  * Error for when string length exceeds the fast path limit and slow mode is not enabled.
  */
-export interface ErrorLengthExceedsLimit<$S extends string> extends
-  Ts.Err.StaticError<
-    ['str', 'length', 'exceeds-limit'],
-    {
-      message: 'String length exceeds fast path limit (20 chars)'
-      hint: 'Pass true as second parameter or set KITZ.Perf.Settings.allowSlow to true'
-      limit: '0-20 chars (fast) | 21-4000 chars (slow, opt-in)'
-      received: $S
-    }
-  >
-{}
+export interface ErrorLengthExceedsLimit<$S extends string> extends Ts.Err.StaticError<
+  ['str', 'length', 'exceeds-limit'],
+  {
+    message: 'String length exceeds fast path limit (20 chars)'
+    hint: 'Pass true as second parameter or set KITZ.Perf.Settings.allowSlow to true'
+    limit: '0-20 chars (fast) | 21-4000 chars (slow, opt-in)'
+    received: $S
+  }
+> {}
 
 /**
  * Fast path for string length (0-20 characters).
@@ -42,7 +40,7 @@ export interface ErrorLengthExceedsLimit<$S extends string> extends
  * @template $S - The string to measure
  * @returns The length (0-20), `number` for template literals, or `never` if string exceeds 20 characters
  */
-// dprint-ignore
+// oxfmt-ignore
 type LengthFast<$S extends string> =
   $S extends ''                           ? 0 :
   $S extends `${infer _1}${infer __r1__}` ? (
@@ -142,7 +140,7 @@ type NormalizeAllowSlow<$Value> = boolean extends $Value ? false : $Value
  * @template $Acc - Accumulator tuple for counting (internal, powers of 4)
  * @returns The computed length or `number` for template literals
  */
-// dprint-ignore
+// oxfmt-ignore
 type LengthSlow<$S extends string, $Acc extends 0[] = []> =
   $S extends `${string}${string}${string}${string}${infer __r__}`
     ? string extends __r__
@@ -217,7 +215,7 @@ type LengthSlow<$S extends string, $Acc extends 0[] = []> =
  * type L7 = Str.Length<'this string is over 20 chars long'> // 38 (works, slower compilation)
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Length<
   $S extends string,
   $AllowSlow extends boolean = KITZ.Perf.Settings['allowSlow']

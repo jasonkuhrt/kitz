@@ -1,0 +1,9 @@
+{
+  "name": "@kitz/mismatch",
+  "imports": {
+    "#platform:foo/*": {
+      "browser": "./build/foo/*.node.js",
+      "default": "./build/foo/*.node.js"
+    }
+  }
+}

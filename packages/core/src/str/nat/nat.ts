@@ -2,10 +2,11 @@ import pluralizeLib from 'pluralize-esm'
 
 // Re-export pluralize-esm functions
 export const pluralize = pluralizeLib
-export const plural = pluralizeLib.plural
-export const singular = pluralizeLib.singular
-export const isPlural = pluralizeLib.isPlural
-export const isSingular = pluralizeLib.isSingular
+export const plural: typeof pluralizeLib.plural = (...args) => pluralizeLib.plural(...args)
+export const singular: typeof pluralizeLib.singular = (...args) => pluralizeLib.singular(...args)
+export const isPlural: typeof pluralizeLib.isPlural = (...args) => pluralizeLib.isPlural(...args)
+export const isSingular: typeof pluralizeLib.isSingular = (...args) =>
+  pluralizeLib.isSingular(...args)
 
 /**
  * Format an array as an English list with commas and "or".

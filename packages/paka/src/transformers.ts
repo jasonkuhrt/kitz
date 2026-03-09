@@ -64,7 +64,8 @@ export const addMethodNameHighlights = (
 
     // Only highlight if this looks like a namespace call (has an identifier before the dot)
     const expression = propAccess.getExpression()
-    const isNamespaceCall = Node.isPropertyAccessExpression(expression) || Node.isIdentifier(expression)
+    const isNamespaceCall =
+      Node.isPropertyAccessExpression(expression) || Node.isIdentifier(expression)
 
     if (isNamespaceCall && methodName) {
       const startLine = propAccess.getStartLineNumber() - 1 // 0-indexed
@@ -83,11 +84,11 @@ export const addMethodNameHighlights = (
   for (const [lineNum, highlights] of highlightsByLine.entries()) {
     const lineText = lines[lineNum] || ''
     // Check if previous line doesn't already have word highlight markers
-    const prevLine = lineNum > 0 ? lines[lineNum - 1] ?? '' : ''
+    const prevLine = lineNum > 0 ? (lines[lineNum - 1] ?? '') : ''
     if (!prevLine.includes('[!code word:')) {
       // Insert annotation lines BEFORE the target line
       // Each highlight annotation applies to :1 line (the next line)
-      const annotations = highlights.map(h => `// [!code word:${h}:1]`)
+      const annotations = highlights.map((h) => `// [!code word:${h}:1]`)
       modifications.push({
         line: lineNum,
         text: annotations.join('\n'),

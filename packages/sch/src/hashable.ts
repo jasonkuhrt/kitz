@@ -34,7 +34,7 @@ import {
  * Types not in this union (RegExp, Error, URL, TypedArray, etc.) will
  * cause a compile-time error.
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Coercible =
   | null
   | undefined
@@ -74,7 +74,7 @@ export type Coercible =
  * // = { id: string, data: HashMap.HashMap<string, number> }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type EnsureHashableType<$Type> =
   // Map → HashMap (recurse into key and value)
   $Type extends ReadonlyMap<infer __key__, infer __value__> ? HashMap.HashMap<EnsureHashableType<__key__>, EnsureHashableType<__value__>> :
@@ -146,7 +146,8 @@ const isHashableAST = (ast: AST.AST): ast is HashableAST => {
  * ```
  */
 export const isSchemaProducingHashableData = (schema: S.Schema.Any): boolean => {
-  if (AST.isUnion(schema.ast)) return schema.ast.types.every((memberAST) => isHashableAST(memberAST))
+  if (AST.isUnion(schema.ast))
+    return schema.ast.types.every((memberAST) => isHashableAST(memberAST))
   return isHashableAST(schema.ast)
 }
 
@@ -205,7 +206,7 @@ const processField = (
  * Wrap a default value with appropriate Data wrapper (struct for objects, array for arrays).
  * Checks if the value already implements Hash to avoid double-wrapping.
  */
-const wrapDefaultValue = (originalDefault: () => unknown): () => unknown => {
+const wrapDefaultValue = (originalDefault: () => unknown): (() => unknown) => {
   return () => {
     const value = originalDefault()
     // Already hashable - return unchanged to avoid double-wrapping
@@ -241,11 +242,15 @@ const reconstructPropertySignature = (
         // optionalWith with default - wrap the default value to return Data
         const wrappedDefault = wrapDefaultValue(psAST.defaultValue)
         const result = S.optionalWith(processedInner, { default: wrappedDefault })
-        return Obj.isEmpty(psAST.annotations) ? result : result.annotations(psAST.annotations as any)
+        return Obj.isEmpty(psAST.annotations)
+          ? result
+          : result.annotations(psAST.annotations as any)
       } else {
         // Simple optional
         const result = S.optional(processedInner)
-        return Obj.isEmpty(psAST.annotations) ? result : result.annotations(psAST.annotations as any)
+        return Obj.isEmpty(psAST.annotations)
+          ? result
+          : result.annotations(psAST.annotations as any)
       }
     }
     // Required field but wrapped in PropertySignature - shouldn't happen often
@@ -253,7 +258,7 @@ const reconstructPropertySignature = (
   }
 
   // PropertySignatureTransformation - handle optionalWith options
-  const trans = psAST as PropertySignatureTransformation
+  const trans = psAST
 
   // Build options object preserving detected options
   const options: {
@@ -308,14 +313,16 @@ const reconstructFieldFromTransform = (
 
   // Check for nullable (Union with null in `from.type`)
   if (AST.isUnion(trans.from.type)) {
-    const hasNull = trans.from.type.types.some((t: AST.AST) => AST.isLiteral(t) && t.literal === null)
+    const hasNull = trans.from.type.types.some(
+      (t: AST.AST) => AST.isLiteral(t) && t.literal === null,
+    )
     if (hasNull) options.nullable = true
   }
 
   if (!Obj.isEmpty(options)) {
     const result = S.optionalWith(processedSchema, options as any)
     return trans.to.annotations && !Obj.isEmpty(trans.to.annotations)
-      ? result.annotations(trans.to.annotations as any)
+      ? result.annotations(trans.to.annotations)
       : result
   }
 
@@ -391,7 +398,7 @@ export const ensureHashableSchema = <$S extends S.Schema.Any>(
   // Collect all struct schemas with .fields before processing
   const collectOriginalSchemas = (s: S.Schema.Any): void => {
     if (hasDirectFields(s)) {
-      originalSchemas.set(s.ast, s as S.Struct<S.Struct.Fields>)
+      originalSchemas.set(s.ast, s)
       // Recurse into nested structs from PropertySignatures
       for (const field of Object.values(s.fields)) {
         if (isPropertySignature(field)) {
@@ -492,7 +499,9 @@ export const ensureHashableSchema = <$S extends S.Schema.Any>(
 
       if (originalSchema) {
         // Use the original schema's .fields to process with full PropertySignature info
-        const processedFields = Obj.mapValues(originalSchema.fields, (field) => processField(field, getOrProcess))
+        const processedFields = Obj.mapValues(originalSchema.fields, (field) =>
+          processField(field, getOrProcess),
+        )
         const newStruct = S.Struct(processedFields as S.Struct.Fields)
         return S.Data(copyAnnotations(newStruct, annotations))
       }
@@ -555,7 +564,9 @@ export const ensureHashableSchema = <$S extends S.Schema.Any>(
         const elementSchema = S.make(element.type)
         const processedElementSchema = getOrProcess(elementSchema)
         // Preserve optional status using S.optionalElement
-        return element.isOptional ? S.optionalElement(processedElementSchema) : processedElementSchema
+        return element.isOptional
+          ? S.optionalElement(processedElementSchema)
+          : processedElementSchema
       })
       const newTuple = S.Tuple(...processedElements)
       return S.Data(copyAnnotations(newTuple, annotations))

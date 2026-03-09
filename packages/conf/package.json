@@ -1,30 +1,43 @@
 {
   "name": "@kitz/conf",
-  "version": "0.0.0",
+  "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#conf": "./build/_.js",
-    "#conf/*": "./build/*.js",
-    "#configurator": "./build/configurator.js"
+    "#conf": "./src/_.ts",
+    "#conf/*": "./src/*.ts",
+    "#configurator": "./src/configurator.ts",
+    "#file": "./src/file/__.ts",
+    "#file/*": "./src/file/*.ts"
   },
   "exports": {
-    ".": "./build/_.js",
-    "./__": "./build/__.js"
+    ".": "./src/_.ts",
+    "./__": "./src/__.ts"
   },
   "files": [
     "build",
     "src"
   ],
   "scripts": {
-    "build": "tsgo -p tsconfig.build.json",
+    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
-    "check:lint": "oxlint --config ../../oxlint.json src/",
-    "check:package": "publint && attw --pack"
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   },
   "dependencies": {
+    "@effect/platform": "*",
     "@kitz/core": "workspace:*",
+    "@kitz/env": "workspace:*",
+    "@kitz/fs": "workspace:*",
+    "@kitz/mod": "workspace:*",
+    "@kitz/sch": "workspace:*",
+    "effect": "*",
     "type-fest": "*"
   }
 }

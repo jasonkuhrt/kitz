@@ -13,9 +13,7 @@ interface AnalysisNonRoot extends AnalysisBase {
   isPathRelative: boolean
 }
 
-export type Analysis =
-  | AnalysisFile
-  | AnalysisDir
+export type Analysis = AnalysisFile | AnalysisDir
 
 export interface AnalysisFile extends AnalysisNonRoot {
   _tag: 'file'
@@ -96,11 +94,30 @@ const normalizeWithBack = (
   return { back, segments }
 }
 
-export function analyze<const input extends string>(input: input): Analyze<input> {
-  return analyze_(input) as Analyze<input>
+/**
+ * Optional hints to influence analyzer heuristics for ambiguous cases.
+ *
+ * The analyzer uses extension presence to distinguish files from directories,
+ * but dotfiles like `.gitignore` are ambiguous. Hints allow explicit constructors
+ * to express their intent for these edge cases.
+ */
+export interface AnalyzerOptions {
+  /**
+   * Hint for ambiguous cases (dotfiles without extensions).
+   * - 'file': Treat ambiguous paths as files
+   * - 'directory': Treat ambiguous paths as directories (default)
+   */
+  hint?: 'file' | 'directory'
 }
 
-export function analyze_(input: string): Analysis {
+export function analyze<const input extends string>(
+  input: input,
+  options?: AnalyzerOptions,
+): Analyze<input> {
+  return analyze_(input, options) as Analyze<input>
+}
+
+export function analyze_(input: string, options?: AnalyzerOptions): Analysis {
   const isAbsolute = input.startsWith(separator)
 
   // Handle root case as an absolute directory with empty path
@@ -123,22 +140,36 @@ export function analyze_(input: string): Analysis {
   let isDirectory: boolean
 
   if (
-    input === '' || input === hereSegment || input === herePrefix || input === backSegment || input === backPrefix
-    || input.endsWith(separator)
+    input === '' ||
+    input === hereSegment ||
+    input === herePrefix ||
+    input === backSegment ||
+    input === backPrefix ||
+    input.endsWith(separator)
   ) {
     isDirectory = true
   } else {
     // Check if last segment has an extension
-    const segments = input.split(separator).filter(s => s !== '')
+    const segments = input.split(separator).filter((s) => s !== '')
     const lastSegment = segments[segments.length - 1]
 
     if (lastSegment) {
       // Has extension if there's a dot that's not at the beginning
-      // .gitignore -> no extension (hidden file)
-      // file.txt -> has extension
+      // .gitignore -> no extension (ambiguous - use hint or default to directory)
+      // file.txt -> has extension (clearly a file)
       const dotIndex = lastSegment.lastIndexOf('.')
       const hasExtension = dotIndex > 0
-      isDirectory = !hasExtension
+
+      if (hasExtension) {
+        // Clear extension = definitely a file
+        isDirectory = false
+      } else if (options?.hint) {
+        // Ambiguous case: use hint from explicit constructor
+        isDirectory = options.hint === 'directory'
+      } else {
+        // Ambiguous case: default to directory (conservative)
+        isDirectory = true
+      }
     } else {
       // No last segment, treat as directory
       isDirectory = true
@@ -171,9 +202,7 @@ export function analyze_(input: string): Analysis {
   }
 
   // Extract all segments (may contain '..' for mid-path parent refs)
-  const rawSegments = normalized
-    ? normalized.split(separator).filter(s => s !== '')
-    : []
+  const rawSegments = normalized ? normalized.split(separator).filter((s) => s !== '') : []
 
   // Normalize: resolve all '..' references
   // For absolute paths, back is always 0 (can't go above root)

@@ -445,7 +445,9 @@ export type GetErrorSetting<K extends keyof KITZ.Ts.Error> = KITZ.Ts.Error[K]
  *
  * @internal
  */
-export type GetRenderErrors<$Value = GetErrorSetting<'renderErrors'>> = boolean extends $Value ? true : $Value
+export type GetRenderErrors<$Value = GetErrorSetting<'renderErrors'>> = boolean extends $Value
+  ? true
+  : $Value
 
 /**
  * Get the showDiff setting with proper default handling.
@@ -466,7 +468,7 @@ export type GetShowDiff<$Value = KITZ.Assert['showDiff']> = boolean extends $Val
  *
  * @internal
  */
-// dprint-ignore
+// oxfmt-ignore
 export type GetPreservedTypes =
   [keyof KITZ.Ts.PreserveTypes] extends [never]
     ? never

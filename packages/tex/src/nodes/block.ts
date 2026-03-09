@@ -203,23 +203,25 @@ export class Block extends Node {
 
     // Extract spanRange constraint and merge with parent maxWidth
     const ownMaxWidth = this.parameters.spanRange?.cross?.max
-    const effectiveMaxWidth = ownMaxWidth !== undefined && context.maxWidth !== undefined
-      ? Math.min(ownMaxWidth, context.maxWidth)
-      : ownMaxWidth ?? context.maxWidth
+    const effectiveMaxWidth =
+      ownMaxWidth !== undefined && context.maxWidth !== undefined
+        ? Math.min(ownMaxWidth, context.maxWidth)
+        : (ownMaxWidth ?? context.maxWidth)
 
     // Calculate horizontal overhead to subtract from child maxWidth
     // Padding and margin are applied AFTER children render, so children must account for them
-    const padding = this.parameters.padding
-      ? Box.Padding.parse(this.parameters.padding)
-      : null
-    const margin = this.parameters.margin
-      ? Box.Margin.parse(this.parameters.margin)
-      : null
-    const horizontalPadding = padding ? Box.getWidth(padding.crossStart) + Box.getWidth(padding.crossEnd) : 0
-    const horizontalMargin = margin ? Box.getWidth(margin.crossStart) + Box.getWidth(margin.crossEnd) : 0
-    const childMaxWidth = effectiveMaxWidth !== undefined
-      ? effectiveMaxWidth - horizontalPadding - horizontalMargin
-      : undefined
+    const padding = this.parameters.padding ? Box.Padding.parse(this.parameters.padding) : null
+    const margin = this.parameters.margin ? Box.Margin.parse(this.parameters.margin) : null
+    const horizontalPadding = padding
+      ? Box.getWidth(padding.crossStart) + Box.getWidth(padding.crossEnd)
+      : 0
+    const horizontalMargin = margin
+      ? Box.getWidth(margin.crossStart) + Box.getWidth(margin.crossEnd)
+      : 0
+    const childMaxWidth =
+      effectiveMaxWidth !== undefined
+        ? effectiveMaxWidth - horizontalPadding - horizontalMargin
+        : undefined
 
     // Render all children first
     const renderedChildren: string[] = []
@@ -240,11 +242,12 @@ export class Block extends Node {
 
     // Create Box with rendered children
     this.box = Box.Box.make({
-      content: renderedChildren.length === 0
-        ? ``
-        : renderedChildren.length === 1
-        ? renderedChildren[0]!
-        : renderedChildren,
+      content:
+        renderedChildren.length === 0
+          ? ``
+          : renderedChildren.length === 1
+            ? renderedChildren[0]!
+            : renderedChildren,
       orientation,
     })
 
@@ -265,7 +268,9 @@ export class Block extends Node {
     if (this.parameters.spanRange) {
       const spanRangeForBox = {
         main: this.parameters.spanRange.main,
-        cross: this.parameters.spanRange.cross ? { min: this.parameters.spanRange.cross.min } : undefined,
+        cross: this.parameters.spanRange.cross
+          ? { min: this.parameters.spanRange.cross.min }
+          : undefined,
       }
       // Only apply if there are constraints besides cross.max
       if (spanRangeForBox.main || spanRangeForBox.cross?.min) {

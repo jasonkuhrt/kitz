@@ -21,12 +21,10 @@ interface Box<T> {
 }
 
 interface BoxTraverser extends Fn.Kind.Kind {
-  return: this['parameters'] extends [
-    infer $T,
-    infer $DN extends Num.Literal,
-    infer $SN,
-  ] ? $T extends Box<infer V> ? Box<Simplify.To<$DN, V, $SN>>
-    : never
+  return: this['parameters'] extends [infer $T, infer $DN extends Num.Literal, infer $SN]
+    ? $T extends Box<infer V>
+      ? Box<Simplify.To<$DN, V, $SN>>
+      : never
     : never
 }
 

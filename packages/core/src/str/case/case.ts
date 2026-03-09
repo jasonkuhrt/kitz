@@ -73,9 +73,7 @@ export const constant = (name: string): string => snakeCase(name).toUpperCase()
  * ```
  */
 export const title = (str: string) => {
-  return str
-    .replaceAll(/[-_]/g, ' ')
-    .replace(/\b\w/g, l => l.toUpperCase())
+  return str.replaceAll(/[-_]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())
 }
 
 /**

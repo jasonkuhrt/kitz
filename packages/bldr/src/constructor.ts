@@ -60,7 +60,10 @@ export interface Config<
  *
  * @category Builder Types
  */
-export type Methods<$State extends State> = Record<string, (state: $State, ...args: any[]) => $State | void>
+export type Methods<$State extends State> = Record<
+  string,
+  (state: $State, ...args: any[]) => $State | void
+>
 
 /**
  * Terminal methods type - functions that receive state and optional args, return any result.
@@ -78,25 +81,20 @@ export type InferBuilder<
   $State extends State,
   $Methods extends Methods<$State>,
   $Terminal extends Terminal<$State>,
-> =
-  & {
-    /**
-     * Symbol property exposing internal state (for nested builders).
-     */
-    [StateSymbol]: $State
-  }
-  & {
-    [K in keyof $Methods]: (
-      ...args: $Methods[K] extends (state: $State, ...args: infer Args) => any ? Args
-        : never
-    ) => InferBuilder<$State, $Methods, $Terminal>
-  }
-  & {
-    [K in keyof $Terminal]: (
-      ...args: $Terminal[K] extends (state: $State, ...args: infer Args) => any ? Args
-        : never
-    ) => $Terminal[K] extends (state: $State, ...args: any[]) => infer Return ? Return : never
-  }
+> = {
+  /**
+   * Symbol property exposing internal state (for nested builders).
+   */
+  [StateSymbol]: $State
+} & {
+  [K in keyof $Methods]: (
+    ...args: $Methods[K] extends (state: $State, ...args: infer Args) => any ? Args : never
+  ) => InferBuilder<$State, $Methods, $Terminal>
+} & {
+  [K in keyof $Terminal]: (
+    ...args: $Terminal[K] extends (state: $State, ...args: infer Args) => any ? Args : never
+  ) => $Terminal[K] extends (state: $State, ...args: any[]) => infer Return ? Return : never
+}
 
 /**
  * Create an immutable fluent builder.

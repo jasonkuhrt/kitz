@@ -66,8 +66,10 @@ export type HasRequiredKeys<$Obj extends object> = RequiredKeys<$Obj> extends ne
  * type T2 = HasOptionalKey<{ a: string }, 'a'>  // false
  * ```
  */
-export type HasOptionalKey<$Object extends object, $Key extends keyof $Object> = undefined extends $Object[$Key] ? true
-  : false
+export type HasOptionalKey<
+  $Object extends object,
+  $Key extends keyof $Object,
+> = undefined extends $Object[$Key] ? true : false
 
 /**
  * Check if a key is optional in an object.
@@ -81,9 +83,10 @@ export type HasOptionalKey<$Object extends object, $Key extends keyof $Object> =
  * type T3 = IsKeyOptional<{ a: string }, 'b'>  // false
  * ```
  */
-export type IsKeyOptional<$T extends Undefined.Maybe<object>, $K extends string> = $K extends keyof $T
-  ? ({} extends Pick<$T, $K> ? true : false)
-  : false
+export type IsKeyOptional<
+  $T extends Undefined.Maybe<object>,
+  $K extends string,
+> = $K extends keyof $T ? ({} extends Pick<$T, $K> ? true : false) : false
 
 /**
  * Check if a key exists in an object.

@@ -1,0 +1,295 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`hint option > analyze('./.env') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+./.env
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+{
+  _tag: 'dir',
+  pathType: 'relative',
+  isPathAbsolute: false,
+  isPathRelative: true,
+  back: 0,
+  path: [ '.env' ],
+  original: './.env'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`hint option > analyze('./.env', { hint: 'file' }) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+./.env
+....................................................
+{
+  hint: 'file'
+}
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+{
+  _tag: 'file',
+  pathType: 'relative',
+  isPathAbsolute: false,
+  isPathRelative: true,
+  back: 0,
+  path: [],
+  file: {
+    stem: '.env',
+    extension: null
+  },
+  original: './.env'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`hint option > analyze('./.env.local') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+./.env.local
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+{
+  _tag: 'file',
+  pathType: 'relative',
+  isPathAbsolute: false,
+  isPathRelative: true,
+  back: 0,
+  path: [],
+  file: {
+    stem: '.env',
+    extension: '.local'
+  },
+  original: './.env.local'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`hint option > analyze('./.gitignore') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+./.gitignore
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+{
+  _tag: 'dir',
+  pathType: 'relative',
+  isPathAbsolute: false,
+  isPathRelative: true,
+  back: 0,
+  path: [ '.gitignore' ],
+  original: './.gitignore'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`hint option > analyze('./.gitignore', { hint: 'directory' }) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+./.gitignore
+....................................................
+{
+  hint: 'directory'
+}
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+{
+  _tag: 'dir',
+  pathType: 'relative',
+  isPathAbsolute: false,
+  isPathRelative: true,
+  back: 0,
+  path: [ '.gitignore' ],
+  original: './.gitignore'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`hint option > analyze('./.gitignore', { hint: 'file' }) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+./.gitignore
+....................................................
+{
+  hint: 'file'
+}
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+{
+  _tag: 'file',
+  pathType: 'relative',
+  isPathAbsolute: false,
+  isPathRelative: true,
+  back: 0,
+  path: [],
+  file: {
+    stem: '.gitignore',
+    extension: null
+  },
+  original: './.gitignore'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`hint option > analyze('./config.json') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+./config.json
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+{
+  _tag: 'file',
+  pathType: 'relative',
+  isPathAbsolute: false,
+  isPathRelative: true,
+  back: 0,
+  path: [],
+  file: {
+    stem: 'config',
+    extension: '.json'
+  },
+  original: './config.json'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`hint option > analyze('./config.json', { hint: 'directory' }) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+./config.json
+....................................................
+{
+  hint: 'directory'
+}
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+{
+  _tag: 'file',
+  pathType: 'relative',
+  isPathAbsolute: false,
+  isPathRelative: true,
+  back: 0,
+  path: [],
+  file: {
+    stem: 'config',
+    extension: '.json'
+  },
+  original: './config.json'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`hint option > analyze('./readme') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+./readme
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+{
+  _tag: 'dir',
+  pathType: 'relative',
+  isPathAbsolute: false,
+  isPathRelative: true,
+  back: 0,
+  path: [ 'readme' ],
+  original: './readme'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`hint option > analyze('./readme', { hint: 'file' }) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+./readme
+....................................................
+{
+  hint: 'file'
+}
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+{
+  _tag: 'file',
+  pathType: 'relative',
+  isPathAbsolute: false,
+  isPathRelative: true,
+  back: 0,
+  path: [],
+  file: {
+    stem: 'readme',
+    extension: null
+  },
+  original: './readme'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`hint option > analyze('./src/') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+./src/
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+{
+  _tag: 'dir',
+  pathType: 'relative',
+  isPathAbsolute: false,
+  isPathRelative: true,
+  back: 0,
+  path: [ 'src' ],
+  original: './src/'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`hint option > analyze('./src/', { hint: 'file' }) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+./src/
+....................................................
+{
+  hint: 'file'
+}
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+{
+  _tag: 'dir',
+  pathType: 'relative',
+  isPathAbsolute: false,
+  isPathRelative: true,
+  back: 0,
+  path: [ 'src' ],
+  original: './src/'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`hint option > analyze('/etc/hosts') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+/etc/hosts
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+{
+  _tag: 'dir',
+  pathType: 'absolute',
+  isPathAbsolute: true,
+  isPathRelative: false,
+  back: 0,
+  path: [ 'etc', 'hosts' ],
+  original: '/etc/hosts'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`hint option > analyze('/etc/hosts', { hint: 'file' }) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+/etc/hosts
+....................................................
+{
+  hint: 'file'
+}
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+{
+  _tag: 'file',
+  pathType: 'absolute',
+  isPathAbsolute: true,
+  isPathRelative: false,
+  back: 0,
+  path: [ 'etc' ],
+  file: {
+    stem: 'hosts',
+    extension: null
+  },
+  original: '/etc/hosts'
+}
+╚══════════════════════════════════════════════════╝"
+`;

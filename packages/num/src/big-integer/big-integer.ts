@@ -417,7 +417,7 @@ export const powerWith = Fn.flipCurried(Fn.curry(power))
  * BigInteger.abs(BigInteger.ZERO) // 0n
  */
 export const abs = (value: BigInteger): BigInteger => {
-  return (value < ZERO ? -value : value) as BigInteger
+  return value < ZERO ? subtract(ZERO, value) : value
 }
 
 /**

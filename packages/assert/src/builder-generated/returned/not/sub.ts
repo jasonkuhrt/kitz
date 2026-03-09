@@ -11,7 +11,6 @@ import { builder } from '../../../builder-singleton.js'
  * Relation: subtype relation (extends)
  */
 
-
 /**
  * Base matcher accepting any expected type.
  * Extraction chain: (...args: any[]) => T → T
@@ -28,13 +27,12 @@ import { builder } from '../../../builder-singleton.js'
  * type _ = Assert.returned.sub.of<string, () => number>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type of_<$Expected, $Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [$Expected, __actual__, true]>
                                                                          : never
-const of_ = builder.returned.not.sub.of
-
+const of_: typeof builder.returned.not.sub.of = builder.returned.not.sub.of
 
 /**
  * Pre-curried matcher for string.
@@ -49,13 +47,12 @@ const of_ = builder.returned.not.sub.of
  * type _ = Assert.returned.sub.string<() => number>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type string_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [string, __actual__, true]>
                                                                          : never
-const string_ = builder.returned.not.sub.string
-
+const string_: typeof builder.returned.not.sub.string = builder.returned.not.sub.string
 
 /**
  * Pre-curried matcher for number.
@@ -70,13 +67,12 @@ const string_ = builder.returned.not.sub.string
  * type _ = Assert.returned.sub.number<() => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type number_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [number, __actual__, true]>
                                                                          : never
-const number_ = builder.returned.not.sub.number
-
+const number_: typeof builder.returned.not.sub.number = builder.returned.not.sub.number
 
 /**
  * Pre-curried matcher for bigint.
@@ -91,13 +87,12 @@ const number_ = builder.returned.not.sub.number
  * type _ = Assert.returned.sub.bigint<() => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type bigint_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [bigint, __actual__, true]>
                                                                          : never
-const bigint_ = builder.returned.not.sub.bigint
-
+const bigint_: typeof builder.returned.not.sub.bigint = builder.returned.not.sub.bigint
 
 /**
  * Pre-curried matcher for boolean.
@@ -112,13 +107,12 @@ const bigint_ = builder.returned.not.sub.bigint
  * type _ = Assert.returned.sub.boolean<() => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type boolean_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [boolean, __actual__, true]>
                                                                          : never
-const boolean_ = builder.returned.not.sub.boolean
-
+const boolean_: typeof builder.returned.not.sub.boolean = builder.returned.not.sub.boolean
 
 /**
  * Pre-curried matcher for true.
@@ -133,13 +127,12 @@ const boolean_ = builder.returned.not.sub.boolean
  * type _ = Assert.returned.sub.true<() => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type true_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [true, __actual__, true]>
                                                                          : never
-const true_ = builder.returned.not.sub.true
-
+const true_: typeof builder.returned.not.sub.true = builder.returned.not.sub.true
 
 /**
  * Pre-curried matcher for false.
@@ -154,13 +147,12 @@ const true_ = builder.returned.not.sub.true
  * type _ = Assert.returned.sub.false<() => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type false_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [false, __actual__, true]>
                                                                          : never
-const false_ = builder.returned.not.sub.false
-
+const false_: typeof builder.returned.not.sub.false = builder.returned.not.sub.false
 
 /**
  * Pre-curried matcher for undefined.
@@ -175,13 +167,12 @@ const false_ = builder.returned.not.sub.false
  * type _ = Assert.returned.sub.undefined<() => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type undefined_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [undefined, __actual__, true]>
                                                                          : never
-const undefined_ = builder.returned.not.sub.undefined
-
+const undefined_: typeof builder.returned.not.sub.undefined = builder.returned.not.sub.undefined
 
 /**
  * Pre-curried matcher for null.
@@ -196,13 +187,12 @@ const undefined_ = builder.returned.not.sub.undefined
  * type _ = Assert.returned.sub.null<() => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type null_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [null, __actual__, true]>
                                                                          : never
-const null_ = builder.returned.not.sub.null
-
+const null_: typeof builder.returned.not.sub.null = builder.returned.not.sub.null
 
 /**
  * Pre-curried matcher for symbol.
@@ -217,13 +207,12 @@ const null_ = builder.returned.not.sub.null
  * type _ = Assert.returned.sub.symbol<() => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type symbol_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [symbol, __actual__, true]>
                                                                          : never
-const symbol_ = builder.returned.not.sub.symbol
-
+const symbol_: typeof builder.returned.not.sub.symbol = builder.returned.not.sub.symbol
 
 /**
  * Pre-curried matcher for Date.
@@ -238,13 +227,12 @@ const symbol_ = builder.returned.not.sub.symbol
  * type _ = Assert.returned.sub.Date<() => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type Date_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [Date, __actual__, true]>
                                                                          : never
-const Date_ = builder.returned.not.sub.Date
-
+const Date_: typeof builder.returned.not.sub.Date = builder.returned.not.sub.Date
 
 /**
  * Pre-curried matcher for RegExp.
@@ -259,13 +247,12 @@ const Date_ = builder.returned.not.sub.Date
  * type _ = Assert.returned.sub.RegExp<() => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type RegExp_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [RegExp, __actual__, true]>
                                                                          : never
-const RegExp_ = builder.returned.not.sub.RegExp
-
+const RegExp_: typeof builder.returned.not.sub.RegExp = builder.returned.not.sub.RegExp
 
 /**
  * Pre-curried matcher for Error.
@@ -280,13 +267,12 @@ const RegExp_ = builder.returned.not.sub.RegExp
  * type _ = Assert.returned.sub.Error<() => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type Error_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [Error, __actual__, true]>
                                                                          : never
-const Error_ = builder.returned.not.sub.Error
-
+const Error_: typeof builder.returned.not.sub.Error = builder.returned.not.sub.Error
 
 /**
  * Pre-curried matcher for unknown.
@@ -301,13 +287,12 @@ const Error_ = builder.returned.not.sub.Error
  * type _ = Assert.returned.sub.unknown<() => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type unknown_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [unknown, __actual__, true]>
                                                                          : never
-const unknown_ = builder.returned.not.sub.unknown
-
+const unknown_: typeof builder.returned.not.sub.unknown = builder.returned.not.sub.unknown
 
 /**
  * Pre-curried matcher for any.
@@ -322,13 +307,12 @@ const unknown_ = builder.returned.not.sub.unknown
  * type _ = Assert.returned.sub.any<() => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type any_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [any, __actual__, true]>
                                                                          : never
-const any_ = builder.returned.not.sub.any
-
+const any_: typeof builder.returned.not.sub.any = builder.returned.not.sub.any
 
 /**
  * Pre-curried matcher for never.
@@ -343,31 +327,31 @@ const any_ = builder.returned.not.sub.any
  * type _ = Assert.returned.sub.never<() => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type never_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [never, __actual__, true]>
                                                                          : never
-const never_ = builder.returned.not.sub.never
+const never_: typeof builder.returned.not.sub.never = builder.returned.not.sub.never
 
-const ofAs_ = <$Type>() => builder.returned.not.sub.ofAs<$Type>()
+const ofAs_: typeof builder.returned.not.sub.ofAs = builder.returned.not.sub.ofAs
 
 export {
-  of_ as of,
-  string_ as string,
-  number_ as number,
+  any_ as any,
   bigint_ as bigint,
   boolean_ as boolean,
-  true_ as true,
-  false_ as false,
-  undefined_ as undefined,
-  null_ as null,
-  symbol_ as symbol,
   Date_ as Date,
-  RegExp_ as RegExp,
   Error_ as Error,
-  unknown_ as unknown,
-  any_ as any,
+  false_ as false,
   never_ as never,
+  null_ as null,
+  number_ as number,
+  of_ as of,
   ofAs_ as ofAs,
+  RegExp_ as RegExp,
+  string_ as string,
+  symbol_ as symbol,
+  true_ as true,
+  undefined_ as undefined,
+  unknown_ as unknown,
 }

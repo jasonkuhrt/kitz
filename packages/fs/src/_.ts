@@ -5,4 +5,10 @@
  *
  * @module
  */
+// @ts-expect-error Duplicate identifier
 export * as Fs from './__.js'
+
+/**
+ * Namespace anchor for {@link Fs}.
+ */
+export namespace Fs {}

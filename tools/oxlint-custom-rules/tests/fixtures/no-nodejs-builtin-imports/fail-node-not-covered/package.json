@@ -1,0 +1,6 @@
+{
+  "name": "fixture-fail-node-not-covered",
+  "exports": {
+    ".": "./build/feature.js"
+  }
+}

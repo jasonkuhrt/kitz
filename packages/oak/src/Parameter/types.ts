@@ -9,6 +9,6 @@ export type Prompt<$Schema = unknown> =
   | null
   | boolean
   | {
-    enabled?: boolean
-    when?: EventPatternsInput<$Schema>
-  }
+      enabled?: boolean
+      when?: EventPatternsInput<$Schema>
+    }

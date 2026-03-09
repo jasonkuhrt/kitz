@@ -28,12 +28,12 @@ interface Point {
 
 function isPoint(value: unknown): value is Point {
   return (
-    typeof value === 'object'
-    && value !== null
-    && 'x' in value
-    && 'y' in value
-    && typeof (value as any).x === 'number'
-    && typeof (value as any).y === 'number'
+    typeof value === 'object' &&
+    value !== null &&
+    'x' in value &&
+    'y' in value &&
+    typeof (value as any).x === 'number' &&
+    typeof (value as any).y === 'number'
   )
 }
 
@@ -43,9 +43,7 @@ if (isPoint(data3)) {
 }
 
 // Force handling of different cases
-type Result<T> =
-  | { success: true; value: T }
-  | { success: false; error: string }
+type Result<T> = { success: true; value: T } | { success: false; error: string }
 
 function tryParse(input: string): Result<unknown> {
   try {
@@ -93,12 +91,12 @@ const UserSchema: Schema<User> = {
 
   is(value: unknown): value is User {
     return (
-      typeof value === 'object'
-      && value !== null
-      && 'id' in value
-      && 'name' in value
-      && typeof (value as any).id === 'string'
-      && typeof (value as any).name === 'string'
+      typeof value === 'object' &&
+      value !== null &&
+      'id' in value &&
+      'name' in value &&
+      typeof (value as any).id === 'string' &&
+      typeof (value as any).name === 'string'
     )
   },
 }

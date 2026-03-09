@@ -9,7 +9,6 @@ import { builder } from '../builder-singleton.js'
  * Relation: subtype relation (extends)
  */
 
-
 /**
  * Base matcher accepting any expected type.
  *
@@ -26,8 +25,7 @@ import { builder } from '../builder-singleton.js'
  * ```
  */
 type of_<$Expected, $Actual> = Fn.Kind.Apply<AssertSubKind, [$Expected, $Actual]>
-const of_ = builder.sub.of
-
+const of_: typeof builder.sub.of = builder.sub.of
 
 /**
  * Pre-curried matcher for string.
@@ -42,8 +40,7 @@ const of_ = builder.sub.of
  * ```
  */
 type string_<$Actual> = Fn.Kind.Apply<AssertSubKind, [string, $Actual]>
-const string_ = builder.sub.string
-
+const string_: typeof builder.sub.string = builder.sub.string
 
 /**
  * Pre-curried matcher for number.
@@ -58,8 +55,7 @@ const string_ = builder.sub.string
  * ```
  */
 type number_<$Actual> = Fn.Kind.Apply<AssertSubKind, [number, $Actual]>
-const number_ = builder.sub.number
-
+const number_: typeof builder.sub.number = builder.sub.number
 
 /**
  * Pre-curried matcher for bigint.
@@ -74,8 +70,7 @@ const number_ = builder.sub.number
  * ```
  */
 type bigint_<$Actual> = Fn.Kind.Apply<AssertSubKind, [bigint, $Actual]>
-const bigint_ = builder.sub.bigint
-
+const bigint_: typeof builder.sub.bigint = builder.sub.bigint
 
 /**
  * Pre-curried matcher for boolean.
@@ -90,8 +85,7 @@ const bigint_ = builder.sub.bigint
  * ```
  */
 type boolean_<$Actual> = Fn.Kind.Apply<AssertSubKind, [boolean, $Actual]>
-const boolean_ = builder.sub.boolean
-
+const boolean_: typeof builder.sub.boolean = builder.sub.boolean
 
 /**
  * Pre-curried matcher for true.
@@ -106,8 +100,7 @@ const boolean_ = builder.sub.boolean
  * ```
  */
 type true_<$Actual> = Fn.Kind.Apply<AssertSubKind, [true, $Actual]>
-const true_ = builder.sub.true
-
+const true_: typeof builder.sub.true = builder.sub.true
 
 /**
  * Pre-curried matcher for false.
@@ -122,8 +115,7 @@ const true_ = builder.sub.true
  * ```
  */
 type false_<$Actual> = Fn.Kind.Apply<AssertSubKind, [false, $Actual]>
-const false_ = builder.sub.false
-
+const false_: typeof builder.sub.false = builder.sub.false
 
 /**
  * Pre-curried matcher for undefined.
@@ -138,8 +130,7 @@ const false_ = builder.sub.false
  * ```
  */
 type undefined_<$Actual> = Fn.Kind.Apply<AssertSubKind, [undefined, $Actual]>
-const undefined_ = builder.sub.undefined
-
+const undefined_: typeof builder.sub.undefined = builder.sub.undefined
 
 /**
  * Pre-curried matcher for null.
@@ -154,8 +145,7 @@ const undefined_ = builder.sub.undefined
  * ```
  */
 type null_<$Actual> = Fn.Kind.Apply<AssertSubKind, [null, $Actual]>
-const null_ = builder.sub.null
-
+const null_: typeof builder.sub.null = builder.sub.null
 
 /**
  * Pre-curried matcher for symbol.
@@ -170,8 +160,7 @@ const null_ = builder.sub.null
  * ```
  */
 type symbol_<$Actual> = Fn.Kind.Apply<AssertSubKind, [symbol, $Actual]>
-const symbol_ = builder.sub.symbol
-
+const symbol_: typeof builder.sub.symbol = builder.sub.symbol
 
 /**
  * Pre-curried matcher for Date.
@@ -186,8 +175,7 @@ const symbol_ = builder.sub.symbol
  * ```
  */
 type Date_<$Actual> = Fn.Kind.Apply<AssertSubKind, [Date, $Actual]>
-const Date_ = builder.sub.Date
-
+const Date_: typeof builder.sub.Date = builder.sub.Date
 
 /**
  * Pre-curried matcher for RegExp.
@@ -202,8 +190,7 @@ const Date_ = builder.sub.Date
  * ```
  */
 type RegExp_<$Actual> = Fn.Kind.Apply<AssertSubKind, [RegExp, $Actual]>
-const RegExp_ = builder.sub.RegExp
-
+const RegExp_: typeof builder.sub.RegExp = builder.sub.RegExp
 
 /**
  * Pre-curried matcher for Error.
@@ -218,8 +205,7 @@ const RegExp_ = builder.sub.RegExp
  * ```
  */
 type Error_<$Actual> = Fn.Kind.Apply<AssertSubKind, [Error, $Actual]>
-const Error_ = builder.sub.Error
-
+const Error_: typeof builder.sub.Error = builder.sub.Error
 
 /**
  * Pre-curried matcher for unknown.
@@ -234,8 +220,7 @@ const Error_ = builder.sub.Error
  * ```
  */
 type unknown_<$Actual> = Fn.Kind.Apply<AssertSubKind, [unknown, $Actual]>
-const unknown_ = builder.sub.unknown
-
+const unknown_: typeof builder.sub.unknown = builder.sub.unknown
 
 /**
  * Pre-curried matcher for any.
@@ -250,8 +235,7 @@ const unknown_ = builder.sub.unknown
  * ```
  */
 type any_<$Actual> = Fn.Kind.Apply<AssertSubKind, [any, $Actual]>
-const any_ = builder.sub.any
-
+const any_: typeof builder.sub.any = builder.sub.any
 
 /**
  * Pre-curried matcher for never.
@@ -266,35 +250,35 @@ const any_ = builder.sub.any
  * ```
  */
 type never_<$Actual> = Fn.Kind.Apply<AssertSubKind, [never, $Actual]>
-const never_ = builder.sub.never
+const never_: typeof builder.sub.never = builder.sub.never
 
-const ofAs_ = <$Type>() => builder.sub.ofAs<$Type>()
+const ofAs_: typeof builder.sub.ofAs = builder.sub.ofAs
 /**
  * No-excess variant of sub relation.
  * Checks that actual has no excess properties beyond expected.
  */
 type noExcess_<$Expected, $Actual> = Fn.Kind.Apply<AssertSubNoExcessKind, [$Expected, $Actual]>
-const noExcess_ = builder.sub.noExcess
-const noExcessAs_ = <$Type>() => builder.sub.noExcessAs<$Type>()
+const noExcess_: typeof builder.sub.noExcess = builder.sub.noExcess
+const noExcessAs_: typeof builder.sub.noExcessAs = builder.sub.noExcessAs
 
 export {
-  of_ as of,
-  string_ as string,
-  number_ as number,
+  any_ as any,
   bigint_ as bigint,
   boolean_ as boolean,
-  true_ as true,
-  false_ as false,
-  undefined_ as undefined,
-  null_ as null,
-  symbol_ as symbol,
   Date_ as Date,
-  RegExp_ as RegExp,
   Error_ as Error,
-  unknown_ as unknown,
-  any_ as any,
+  false_ as false,
   never_ as never,
-  ofAs_ as ofAs,
   noExcess_ as noExcess,
   noExcessAs_ as noExcessAs,
+  null_ as null,
+  number_ as number,
+  of_ as of,
+  ofAs_ as ofAs,
+  RegExp_ as RegExp,
+  string_ as string,
+  symbol_ as symbol,
+  true_ as true,
+  undefined_ as undefined,
+  unknown_ as unknown,
 }

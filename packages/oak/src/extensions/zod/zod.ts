@@ -4,7 +4,16 @@ import type { z } from 'zod/v4'
 import { createExtension } from '../../extension.js'
 import type { Optionality, SchemaType } from '../../schema/oak-schema.js'
 import { Term } from '../../term.js'
-import { isBoolean, isDefault, isEnum, isLiteral, isNumber, isOptional, isString, isUnion } from './guards.js'
+import {
+  isBoolean,
+  isDefault,
+  isEnum,
+  isLiteral,
+  isNumber,
+  isOptional,
+  isString,
+  isUnion,
+} from './guards.js'
 
 // Supported Zod schema types for CLI parameters
 // Explicitly excludes ZodUnknown and other types that don't make sense for CLI
@@ -21,14 +30,14 @@ export type SupportedZodType =
 
 export interface ZodGuard extends Fn.Kind.Kind {
   // @ts-expect-error - Intentional HKT pattern
-  return: this['parameters'][0] extends SupportedZodType ? never
+  return: this['parameters'][0] extends SupportedZodType
+    ? never
     : Ts.Err.StaticError<
-      ['schema', 'unsupported-zod-type'],
-      {
-        message:
-          'Unsupported Zod schema type. Supported types: string, number, boolean, enum, literal, union, optional, default. Not supported: nullable, nullish, unknown.'
-      }
-    >
+        ['schema', 'unsupported-zod-type'],
+        {
+          message: 'Unsupported Zod schema type. Supported types: string, number, boolean, enum, literal, union, optional, default. Not supported: nullable, nullish, unknown.'
+        }
+      >
 }
 
 export const Zod = createExtension<SupportedZodType, ZodGuard>({
@@ -71,7 +80,12 @@ export const Zod = createExtension<SupportedZodType, ZodGuard>({
 const extractZodMetadata = (
   zodSchema: z.ZodType,
   previous?: { description?: string; optionality?: Optionality<any> },
-): { description?: string; optionality: Optionality<any>; schemaType: SchemaType; helpHints?: any } => {
+): {
+  description?: string
+  optionality: Optionality<any>
+  schemaType: SchemaType
+  helpHints?: any
+} => {
   const schema = zodSchema as any
   const description = previous?.description ?? schema.description
 
@@ -121,7 +135,7 @@ const extractZodMetadata = (
       schemaType = { _tag: `enum`, values: members }
     } else {
       // Regular enum
-      const members = schema._def?.values as string[] ?? []
+      const members = (schema._def?.values as string[]) ?? []
       displayType = members.map((m) => Term.colors.secondary(`'${m}'`)).join(Term.colors.dim(` | `))
       priority = 4
       schemaType = { _tag: `enum`, values: members }
@@ -138,9 +152,9 @@ const extractZodMetadata = (
   } else if (isUnion(zodSchema)) {
     const options = (schema._def?.options as z.ZodType[]) ?? []
     const membersMetadata = options.map((opt) => extractZodMetadata(opt))
-    displayType = membersMetadata.map((m) => m.helpHints?.displayType ?? Term.colors.secondary(`unknown`)).join(
-      Term.colors.dim(` | `),
-    )
+    displayType = membersMetadata
+      .map((m) => m.helpHints?.displayType ?? Term.colors.secondary(`unknown`))
+      .join(Term.colors.dim(` | `))
     priority = 0
     schemaType = { _tag: `union`, members: membersMetadata.map((m) => m.schemaType) }
 

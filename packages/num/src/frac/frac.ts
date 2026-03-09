@@ -47,10 +47,10 @@ export type Frac = Ratio & Brand.Brand<'Frac'>
  */
 export const is = (value: unknown): value is Frac => {
   return (
-    Ratio_.is(value)
-    && value.numerator > 0
-    && value.denominator > 0
-    && value.numerator < value.denominator
+    Ratio_.is(value) &&
+    value.numerator > 0 &&
+    value.denominator > 0 &&
+    value.numerator < value.denominator
   )
 }
 

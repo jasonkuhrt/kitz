@@ -31,9 +31,11 @@ export type IsDisjoint<$T, $Constraint> = [Extract<$T, $Constraint>] extends [ne
  */
 export type FormatConstraint<$Constraint> = $Constraint extends readonly any[]
   ? 'Type must extend array (readonly any[])'
-  : $Constraint extends PromiseLike<any> ? 'Type must extend PromiseLike<any>'
-  : $Constraint extends (...args: any) => any ? 'Type must extend function ((...args: any) => any)'
-  : Ts.ShowInTemplate<$Constraint>
+  : $Constraint extends PromiseLike<any>
+    ? 'Type must extend PromiseLike<any>'
+    : $Constraint extends (...args: any) => any
+      ? 'Type must extend function ((...args: any) => any)'
+      : Ts.ShowInTemplate<$Constraint>
 
 /**
  * Validates an input type against a constraint and returns extraction result or error.
@@ -44,24 +46,21 @@ export type FormatConstraint<$Constraint> = $Constraint extends readonly any[]
  * @param $LensName - Human-readable name of the lens
  * @param $ExtractionLogic - The extraction logic to apply if validation passes
  */
-export type ValidateAndExtract<
-  $Actual,
-  $Constraint,
-  $LensName extends string,
-  $ExtractionLogic,
-> = IsDisjoint<$Actual, $Constraint> extends true ? Either.Left<
-    Ts.Err.StaticError<
-      ['lens', 'incompatible'],
-      {
-        message: `Cannot extract ${$LensName} from incompatible type`
-        expected: FormatConstraint<$Constraint>
-        actual: $Actual
-        attempted: `${$LensName} lens`
-      }
-    >,
-    never
-  >
-  : Either.Right<never, $ExtractionLogic>
+export type ValidateAndExtract<$Actual, $Constraint, $LensName extends string, $ExtractionLogic> =
+  IsDisjoint<$Actual, $Constraint> extends true
+    ? Either.Left<
+        Ts.Err.StaticError<
+          ['lens', 'incompatible'],
+          {
+            message: `Cannot extract ${$LensName} from incompatible type`
+            expected: FormatConstraint<$Constraint>
+            actual: $Actual
+            attempted: `${$LensName} lens`
+          }
+        >,
+        never
+      >
+    : Either.Right<never, $ExtractionLogic>
 
 //
 //
@@ -86,7 +85,11 @@ export type LensErrorKeyNotFound<$Key, $Actual> = Ts.Err.StaticError<
  */
 export type LensErrorArrayExtract<$Actual> = Ts.Err.StaticError<
   ['lens', 'array-extract'],
-  { message: 'Failed to extract array element from type'; expected: readonly any[]; actual: $Actual }
+  {
+    message: 'Failed to extract array element from type'
+    expected: readonly any[]
+    actual: $Actual
+  }
 >
 
 /**
@@ -94,7 +97,11 @@ export type LensErrorArrayExtract<$Actual> = Ts.Err.StaticError<
  */
 export type LensErrorTupleExtract<$Actual> = Ts.Err.StaticError<
   ['lens', 'tuple-extract'],
-  { message: 'Failed to extract tuple element from type'; expected: readonly any[]; actual: $Actual }
+  {
+    message: 'Failed to extract tuple element from type'
+    expected: readonly any[]
+    actual: $Actual
+  }
 >
 
 //
@@ -128,7 +135,7 @@ export type LensErrorTupleExtract<$Actual> = Ts.Err.StaticError<
  * type T3 = Get<Awaited.$Get, Promise<string>> // Either.Right<never, string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Get<$First, $Second> =
   // Expression mode: string → compile, apply pipeline, unwrap result
   $First extends string
@@ -161,9 +168,12 @@ export type Set<$Lens extends Fn.Kind.Kind, $T, $New> = Fn.Kind.Apply<$Lens, [$T
  * Used by generated type-level assertion shortcuts to unwrap lens results
  * before passing to relators.
  */
-export type UnwrapEither<$Result> = $Result extends Either.Left<infer __error__, infer _> ? __error__
-  : $Result extends Either.Right<infer _, infer __value__> ? __value__
-  : never
+export type UnwrapEither<$Result> =
+  $Result extends Either.Left<infer __error__, infer _>
+    ? __error__
+    : $Result extends Either.Right<infer _, infer __value__>
+      ? __value__
+      : never
 
 //
 //
@@ -199,7 +209,7 @@ export type UnwrapEither<$Result> = $Result extends Either.Left<infer __error__,
  * // { array: true }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type GetApplicableLenses<$T> =
   // Check Promise first (outermost layer)
   $T extends Promise<any>

@@ -22,17 +22,21 @@ Sections are marked with HTML comments:
 
 ```markdown
 <!-- PACKAGES_TABLE_START -->
-| Package | Description |
-| ------- | ----------- |
+
+| Package                         | Description    |
+| ------------------------------- | -------------- |
 | [`@kitz/core`](./packages/core) | Core utilities |
-...
+| ...                             |                |
+
 <!-- PACKAGES_TABLE_END -->
 
 <!-- CORE_NAMESPACE_INDEX_START -->
-| Module | Description |
-| ------ | ----------- |
-| `Arr` | Array utilities |
-...
+
+| Module | Description     |
+| ------ | --------------- |
+| `Arr`  | Array utilities |
+| ...    |                 |
+
 <!-- CORE_NAMESPACE_INDEX_END -->
 ```
 

@@ -4,12 +4,10 @@ import { createCachedGetProxy } from './prox.js'
 describe('createCachedGetProxy', () => {
   test('creates a proxy that caches function results', () => {
     let callCount = 0
-    const proxy = createCachedGetProxy<{ foo: () => string }, {}>(
-      (propertyName: string) => {
-        callCount++
-        return () => `${propertyName}-result`
-      },
-    )
+    const proxy = createCachedGetProxy<{ foo: () => string }, {}>((propertyName: string) => {
+      callCount++
+      return () => `${propertyName}-result`
+    })
 
     // First access
     const foo1 = proxy.foo

@@ -5,7 +5,11 @@
  * allowing type-safe access to AST properties without manual casting.
  */
 import { Option, Schema as S } from 'effect'
-import { PropertySignatureDeclaration, PropertySignatureTransformation, PropertySignatureTypeId } from 'effect/Schema'
+import {
+  PropertySignatureDeclaration,
+  PropertySignatureTransformation,
+  PropertySignatureTypeId,
+} from 'effect/Schema'
 import * as AST from 'effect/SchemaAST'
 
 // ============================================================================
@@ -77,22 +81,26 @@ export type ArraySchema = TupleSchema & {
 /**
  * Check if a schema has a TypeLiteral AST (structs, records).
  */
-export const isTypeLiteralSchema = (schema: S.Schema.Any): schema is TypeLiteralSchema => AST.isTypeLiteral(schema.ast)
+export const isTypeLiteralSchema = (schema: S.Schema.Any): schema is TypeLiteralSchema =>
+  AST.isTypeLiteral(schema.ast)
 
 /**
  * Check if a schema has a TupleType AST (arrays, tuples).
  */
-export const isTupleSchema = (schema: S.Schema.Any): schema is TupleSchema => AST.isTupleType(schema.ast)
+export const isTupleSchema = (schema: S.Schema.Any): schema is TupleSchema =>
+  AST.isTupleType(schema.ast)
 
 /**
  * Check if a schema has a Transformation AST.
  */
-export const isTransformSchema = (schema: S.Schema.Any): schema is TransformSchema => AST.isTransformation(schema.ast)
+export const isTransformSchema = (schema: S.Schema.Any): schema is TransformSchema =>
+  AST.isTransformation(schema.ast)
 
 /**
  * Check if a schema has a Union AST.
  */
-export const isUnionSchema = (schema: S.Schema.Any): schema is UnionSchema => AST.isUnion(schema.ast)
+export const isUnionSchema = (schema: S.Schema.Any): schema is UnionSchema =>
+  AST.isUnion(schema.ast)
 
 // ============================================================================
 // Collection Predicates
@@ -115,14 +123,16 @@ const isCollectionByPrefix = (schema: S.Schema.Any, prefix: 'Map<' | 'Set<'): bo
  *
  * Detection: Transformation → Declaration with "Map<" description prefix.
  */
-export const isMapSchema = (schema: S.Schema.Any): schema is MapSchema => isCollectionByPrefix(schema, 'Map<')
+export const isMapSchema = (schema: S.Schema.Any): schema is MapSchema =>
+  isCollectionByPrefix(schema, 'Map<')
 
 /**
  * Check if schema is an S.Set schema.
  *
  * Detection: Transformation → Declaration with "Set<" description prefix.
  */
-export const isSetSchema = (schema: S.Schema.Any): schema is SetSchema => isCollectionByPrefix(schema, 'Set<')
+export const isSetSchema = (schema: S.Schema.Any): schema is SetSchema =>
+  isCollectionByPrefix(schema, 'Set<')
 
 /**
  * Check if schema is an S.Record schema.
@@ -246,7 +256,9 @@ export const getArrayElement = (schema: ArraySchema): S.Schema.Any => {
 /**
  * Extract key and value schemas from a Record schema.
  */
-export const getRecordKeyValue = (schema: RecordSchema): { key: S.Schema.Any; value: S.Schema.Any } => {
+export const getRecordKeyValue = (
+  schema: RecordSchema,
+): { key: S.Schema.Any; value: S.Schema.Any } => {
   const indexSig = schema.ast.indexSignatures[0]
   return {
     key: S.make(indexSig.parameter),

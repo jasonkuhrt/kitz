@@ -1,0 +1,76 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Gitignore > addPattern > new section > fn() 1`] = `
+"
+╔══════════════════════════════════════════════════╗ OUTPUTS RETURN STRING
+foo/
+
+# New Section
+bar/
+
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Gitignore > addPattern > section > fn() 1`] = `
+"
+╔══════════════════════════════════════════════════╗ OUTPUTS RETURN STRING
+# Dependencies
+node_modules/
+vendor/
+
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Gitignore > round-trip > fn('# Dependencies\\nnode_modules/\\n\\n# Build\\ndist/\\n') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+# Dependencies
+node_modules/
+
+# Build
+dist/
+
+╠══════════════════════════════════════════════════╣ THEN RETURNS STRING
+# Dependencies
+node_modules/
+
+# Build
+dist/
+
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Gitignore > round-trip > fn('') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+
+╠══════════════════════════════════════════════════╣ THEN RETURNS STRING
+
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Gitignore > round-trip > fn('*.log\\n!important.log\\n') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+*.log
+!important.log
+
+╠══════════════════════════════════════════════════╣ THEN RETURNS STRING
+*.log
+!important.log
+
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Gitignore > round-trip > fn('node_modules/\\n*.log\\n') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+node_modules/
+*.log
+
+╠══════════════════════════════════════════════════╣ THEN RETURNS STRING
+node_modules/
+*.log
+
+╚══════════════════════════════════════════════════╝"
+`;

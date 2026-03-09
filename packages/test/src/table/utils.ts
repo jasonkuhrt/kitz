@@ -4,6 +4,16 @@ import { Equal, Schema as S } from 'effect'
 import objectInspect from 'object-inspect'
 import { describe as vitestDescribe, expect } from 'vitest'
 
+type SnapshotSerializer = (value: any, context: any) => string
+type FormatSnapshotWithInput = (
+  input: any[],
+  result: Prom.Envelope,
+  runner?: Fn.AnyAny,
+  serializer?: SnapshotSerializer,
+  context?: any,
+  snapshotConfig?: { arguments?: boolean },
+) => string
+
 // ============================================================================
 // Assertion Utilities
 // ============================================================================
@@ -39,9 +49,9 @@ export const validateContextKeys = (context: object, caseName: string): void => 
 
   if (conflicts.length > 0) {
     throw new Error(
-      `Test case "${caseName}" contains reserved context keys: ${conflicts.join(', ')}. `
-        + `Reserved keys are: ${reservedKeys.join(', ')}. `
-        + `Please rename these properties in your test context.`,
+      `Test case "${caseName}" contains reserved context keys: ${conflicts.join(', ')}. ` +
+        `Reserved keys are: ${reservedKeys.join(', ')}. ` +
+        `Please rename these properties in your test context.`,
     )
   }
 }
@@ -60,7 +70,7 @@ export const validateContextKeys = (context: object, caseName: string): void => 
  * ```
  */
 export const createNestedDescribe = (description: string, callback: () => void): void => {
-  const parts = description.split(' > ').map(part => part.trim())
+  const parts = description.split(' > ').map((part) => part.trim())
 
   if (parts.length === 1) {
     vitestDescribe(description, callback)
@@ -154,16 +164,17 @@ export const defaultSnapshotSerializer = (
   schemas: Array<S.Schema<any, any>> = [],
 ): string => {
   // Phase 1: Transform schema instances to encoded values
-  const transformed = schemas.length > 0
-    ? Obj.mapValuesDeep(value, (v) => {
-      for (const schema of schemas) {
-        if (S.is(schema)(v)) {
-          return S.encodeSync(schema)(v)
-        }
-      }
-      // Return undefined to continue recursing
-    })
-    : value
+  const transformed =
+    schemas.length > 0
+      ? Obj.mapValuesDeep(value, (v) => {
+          for (const schema of schemas) {
+            if (S.is(schema)(v)) {
+              return S.encodeSync(schema)(v)
+            }
+          }
+          // Return undefined to continue recursing
+        })
+      : value
 
   // Phase 2: Format (existing logic)
   if (typeof transformed === 'string') return transformed
@@ -172,7 +183,8 @@ export const defaultSnapshotSerializer = (
   if (typeof transformed === 'symbol') return transformed.toString()
   if (typeof transformed === 'bigint') return transformed.toString() + 'n'
   if (transformed instanceof RegExp) return transformed.toString()
-  if (Err.is(transformed)) return Err.inspect(transformed, { maxFrames: 0, showHelp: false, color: false })
+  if (Err.is(transformed))
+    return Err.inspect(transformed, { maxFrames: 0, showHelp: false, color: false })
   return objectInspect(transformed, { indent: 2, depth: Infinity })
 }
 
@@ -211,10 +223,7 @@ type BoxPart =
   | { _tag: 'section'; label: string; body?: string }
   | { _tag: 'division'; body: string }
 
-const buildBox = ({ width, parts }: {
-  width: number
-  parts: BoxPart[]
-}) => {
+const buildBox = ({ width, parts }: { width: number; parts: BoxPart[] }) => {
   const b = Str.Builder()
   b('') // Leading newline
 
@@ -303,11 +312,11 @@ const buildBox = ({ width, parts }: {
  *
  * @category Snapshot Utilities
  */
-export const formatSnapshotWithInput = (
+export const formatSnapshotWithInput: FormatSnapshotWithInput = (
   input: any[],
   result: Prom.Envelope,
   runner?: Fn.AnyAny,
-  serializer: (value: any, context: any) => string = defaultSnapshotSerializer,
+  serializer: SnapshotSerializer = defaultSnapshotSerializer,
   context: any = {},
   snapshotConfig: { arguments?: boolean } = { arguments: true },
 ): string => {
@@ -328,11 +337,15 @@ export const formatSnapshotWithInput = (
     // Include arguments section if enabled
     if (snapshotConfig.arguments !== false) {
       parts.push({ _tag: 'section', label: ' GIVEN ARGUMENTS' })
-      parts.push(...formattedInputs.map(body => ({ _tag: 'division' as const, body })))
+      parts.push(...formattedInputs.map((body) => ({ _tag: 'division' as const, body })))
     }
 
     // Always include output section
-    parts.push({ _tag: 'section', label: buildOutputLabel(result, 'function', value), body: valueSerialized })
+    parts.push({
+      _tag: 'section',
+      label: buildOutputLabel(result, 'function', value),
+      body: valueSerialized,
+    })
 
     return buildBox({ width, parts })
   }
@@ -345,7 +358,11 @@ export const formatSnapshotWithInput = (
       width,
       parts: [
         { _tag: 'section', label: ' RUNNER', body: analyzed.body },
-        { _tag: 'section', label: buildOutputLabel(result, 'runner', value), body: valueSerialized },
+        {
+          _tag: 'section',
+          label: buildOutputLabel(result, 'runner', value),
+          body: valueSerialized,
+        },
       ],
     })
   }
@@ -359,7 +376,11 @@ export const formatSnapshotWithInput = (
   })
 }
 
-const buildOutputLabel = (result: Prom.Envelope, mode: 'function' | 'runner', valueToUse: any): string => {
+const buildOutputLabel = (
+  result: Prom.Envelope,
+  mode: 'function' | 'runner',
+  valueToUse: any,
+): string => {
   const isFail = result.fail
   const isAsync = result.async
   const typeLabel = getTypeLabel(valueToUse)

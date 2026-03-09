@@ -1,7 +1,7 @@
 import { curry, flipCurried } from '#fn/fn'
 import { Ts } from '#ts'
 import type { Regex } from 'arkregex'
-import { spaceNoBreak, spaceRegular } from './char/char.js'
+import { Char } from './char/_.js'
 import type { RegexMatch } from './match.js'
 import { Empty } from './type.js'
 
@@ -13,17 +13,13 @@ import { Empty } from './type.js'
  * Replacement input for typed Regex patterns.
  * @category Replacement
  */
-export type ReplacementInput<$Regex extends Regex = Regex> =
-  | string
-  | ReplacementCallback<$Regex>
+export type ReplacementInput<$Regex extends Regex = Regex> = string | ReplacementCallback<$Regex>
 
 /**
  * Replacement input for untyped RegExp patterns.
  * @category Replacement
  */
-export type ReplacementInputUntyped =
-  | string
-  | ReplacementCallbackUntyped
+export type ReplacementInputUntyped = string | ReplacementCallbackUntyped
 
 /**
  * Typed callback for Regex patterns - receives {@link RegexMatch} with typed captures.
@@ -43,7 +39,7 @@ export type ReplacementCallbackUntyped = (match: string, ...args: any[]) => stri
  * Conditional replacement type based on pattern type.
  * @internal
  */
-// dprint-ignore
+// oxfmt-ignore
 export type ReplacementFor<$P> =
   $P extends Regex ? ReplacementInput<$P> :
   $P extends RegExp ? ReplacementInputUntyped :
@@ -54,7 +50,7 @@ export type ReplacementFor<$P> =
  * Returns StaticError for Regex without 'g' flag.
  * @internal
  */
-// dprint-ignore
+// oxfmt-ignore
 export type ValidatePatternAll<$P> =
   $P extends Regex
     ? $P['flags'] extends `${string}g${string}`
@@ -118,9 +114,12 @@ export const replaceLeading = (replacement: string, matcher: string, value: stri
  * @param replacement - The string to replace the matcher with
  * @returns Function that takes matcher, then value
  */
-export const replaceLeadingWith = (replacement: string) => (matcher: string) => (value: string): string => {
-  return replaceLeading(replacement, matcher, value)
-}
+export const replaceLeadingWith =
+  (replacement: string) =>
+  (matcher: string) =>
+  (value: string): string => {
+    return replaceLeading(replacement, matcher, value)
+  }
 
 /**
  * Curried version of {@link replaceLeading} with value first.
@@ -128,9 +127,12 @@ export const replaceLeadingWith = (replacement: string) => (matcher: string) => 
  * @param value - The string to operate on
  * @returns Function that takes replacement, then matcher
  */
-export const replaceLeadingOn = (value: string) => (replacement: string) => (matcher: string): string => {
-  return replaceLeading(replacement, matcher, value)
-}
+export const replaceLeadingOn =
+  (value: string) =>
+  (replacement: string) =>
+  (matcher: string): string => {
+    return replaceLeading(replacement, matcher, value)
+  }
 
 /**
  * Remove the leading occurrence of a matcher string.
@@ -232,13 +234,11 @@ export const replaceOn = curry(replace)
  * Curried version of {@link replace} with pattern and replacement first.
  * @category Transformation
  */
-export const replaceWith = <$P extends string | string[] | RegExp | Regex>(
-  pattern: $P,
-  replacement: ReplacementFor<$P>,
-) =>
-(value: string): string => {
-  return replace(value, pattern as any, replacement as any)
-}
+export const replaceWith =
+  <$P extends string | string[] | RegExp | Regex>(pattern: $P, replacement: ReplacementFor<$P>) =>
+  (value: string): string => {
+    return replace(value, pattern as any, replacement as any)
+  }
 
 //
 //
@@ -329,13 +329,14 @@ export const replaceAllOn = curry(replaceAll)
  * Curried version of {@link replaceAll} with pattern and replacement first.
  * @category Transformation
  */
-export const replaceAllWith = <$P extends string | string[] | RegExp | Regex>(
-  pattern: ValidatePatternAll<$P>,
-  replacement: ReplacementFor<$P>,
-) =>
-(value: string): string => {
-  return replaceAll(value, pattern as any, replacement as any)
-}
+export const replaceAllWith =
+  <$P extends string | string[] | RegExp | Regex>(
+    pattern: ValidatePatternAll<$P>,
+    replacement: ReplacementFor<$P>,
+  ) =>
+  (value: string): string => {
+    return replaceAll(value, pattern as any, replacement as any)
+  }
 
 //
 //
@@ -605,7 +606,7 @@ export const strip = (pattern: string | string[] | RegExp) => replaceWith(patter
  * @param str - The string to process
  * @returns The string with surrounding spaces removed
  */
-export const removeSurroundingSpaceRegular = removeSurroundingWith(spaceRegular)
+export const removeSurroundingSpaceRegular = removeSurroundingWith(Char.spaceRegular)
 
 /**
  * Remove non-breaking spaces from the beginning and end of a string.
@@ -614,4 +615,4 @@ export const removeSurroundingSpaceRegular = removeSurroundingWith(spaceRegular)
  * @param str - The string to process
  * @returns The string with surrounding non-breaking spaces removed
  */
-export const removeSurroundingSpaceNoBreak = removeSurroundingWith(spaceNoBreak)
+export const removeSurroundingSpaceNoBreak = removeSurroundingWith(Char.spaceNoBreak)

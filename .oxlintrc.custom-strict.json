@@ -1,0 +1,40 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "extends": ["./.oxlintrc.json"],
+  "ignorePatterns": [
+    "**/build/**",
+    "**/node_modules/**",
+    "**/*.d.ts",
+    "**/__examples/**",
+    "tools/oxlint-custom-rules/tests/fixtures/**"
+  ],
+  "rules": {
+    "kitz/no-json-parse": "error",
+    "kitz/no-try-catch": "off",
+    "kitz/no-native-promise-construction": "error",
+    "kitz/no-type-assertion": "off",
+    "typescript/no-unsafe-type-assertion": "off",
+    "kitz/no-native-map-set-in-effect-modules": "error",
+    "kitz/resolver-platform-dispatch": "error",
+    "kitz/schema-parsing-contract": "error",
+    "kitz/no-throw": "off",
+    "kitz/no-promise-then-chain": "error",
+    "kitz/no-effect-run-in-library-code": "error",
+    "kitz/require-typed-effect-errors": "error",
+    "kitz/require-schema-decode-at-boundary": "error",
+    "kitz/no-process-env-outside-config-modules": "error",
+    "kitz/no-date-now-in-domain": "error",
+    "kitz/no-math-random-in-domain": "error",
+    "kitz/no-console-in-effect-modules": "error",
+    "kitz/require-tagged-error-types": "error",
+    "kitz/namespace-file-conventions": "error",
+    "kitz/barrel-file-conventions": "error",
+    "kitz/module-structure-conventions": "error",
+    "kitz/no-deep-imports-when-namespace-entrypoint-exists": "error",
+    "kitz/prefer-subpath-imports": "error",
+    "kitz/subpath-imports-integrity": [
+      "error",
+      { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }
+    ]
+  }
+}

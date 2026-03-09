@@ -121,7 +121,8 @@ export const createListBuilder = (): ListBuilder => {
       return $
     },
     items: (...args) => {
-      const childrenish = args.length === 1 && Array.isArray(args[0]) ? (args[0] as Childrenish) : args
+      const childrenish =
+        args.length === 1 && Array.isArray(args[0]) ? (args[0] as Childrenish) : args
 
       if (childrenish === null) return $
 

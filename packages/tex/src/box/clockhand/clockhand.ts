@@ -24,12 +24,7 @@ export type Input<$value> =
   | $value // Single value for all sides
   | readonly [$value, $value] // [vertical, horizontal]
   | readonly [$value, $value, $value] // [top, horizontal, bottom]
-  | readonly [
-    $value | undefined,
-    $value | undefined,
-    $value | undefined,
-    $value | undefined,
-  ] // [top, right, bottom, left] (can be sparse)
+  | readonly [$value | undefined, $value | undefined, $value | undefined, $value | undefined] // [top, right, bottom, left] (can be sparse)
 
 /**
  * Normalized 4-sided object with CSS property names.
@@ -76,7 +71,7 @@ export const parse = <$value>(input: Value<$value>): Object<$value> => {
 
   // Single value (not array)
   if (!Array.isArray(input)) {
-    const value = input as $value
+    const value = input
     return { top: value, right: value, bottom: value, left: value }
   }
 

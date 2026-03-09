@@ -9,12 +9,7 @@ import type { ValidateAndExtract } from '../core.js'
  * type T = Get<Promise<string>> // string
  * ```
  */
-export type Get<$T> = ValidateAndExtract<
-  $T,
-  PromiseLike<any>,
-  'awaited',
-  Awaited<$T>
->
+export type Get<$T> = ValidateAndExtract<$T, PromiseLike<any>, 'awaited', Awaited<$T>>
 
 /**
  * Set the awaited type of a Promise.

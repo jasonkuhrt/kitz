@@ -20,10 +20,10 @@ If issues are found, run the corresponding skill to fix them.
 
 ### What Gets Checked
 
-| Check | Detects |
-|-------|---------|
+| Check           | Detects                                                |
+| --------------- | ------------------------------------------------------ |
 | Package scripts | Scripts out of sync with `_:*` template, extra scripts |
-| TSConfig paths | Paths not matching package.json imports |
+| TSConfig paths  | Paths not matching package.json imports                |
 
 ### When to Use
 

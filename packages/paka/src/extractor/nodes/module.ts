@@ -1,8 +1,15 @@
+import { Lang } from '@kitz/core'
 import { Fs } from '@kitz/fs'
-import { Schema as S } from 'effect'
-import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { basename, dirname, extname, join } from 'node:path'
-import { type ExportDeclaration, type ModuleDeclaration, Node, type SourceFile } from 'ts-morph'
+import { Either, Schema as S } from 'effect'
+import { existsSync, readdirSync, readFileSync } from 'fs'
+import { basename, dirname, extname, join } from 'path'
+import {
+  type ExportDeclaration,
+  type ExportedDeclarations,
+  type ModuleDeclaration,
+  Node,
+  type SourceFile,
+} from 'ts-morph'
 import {
   Docs,
   DocsProvenance,
@@ -82,29 +89,31 @@ const findModuleReadme = (sourceFilePath: string): string | undefined => {
 const findNamespaceHomePagePath = (exportDeclFile: string): string | undefined => {
   const dir = dirname(exportDeclFile)
 
-  try {
-    const files = readdirSync(dir)
-    const homeFiles = files.filter((f: string) => f.endsWith('.home.md')).sort()
+  const filesResult = Either.try({
+    try: () => readdirSync(dir),
+    catch: () => undefined,
+  })
 
-    if (homeFiles.length === 0) return undefined
+  if (Either.isLeft(filesResult)) return undefined
 
-    const firstHomeFile = homeFiles[0]!
+  const files = filesResult.right
+  const homeFiles = files.filter((f: string) => f.endsWith('.home.md')).sort()
 
-    // Warn if multiple home page files found
-    if (homeFiles.length > 1) {
-      console.warn(
-        `Warning: Multiple .home.md files found in ${dir}:\n`
-          + homeFiles.map((f: string) => `  - ${f}`).join('\n')
-          + '\n'
-          + `Using first alphabetically: ${firstHomeFile}`,
-      )
-    }
+  if (homeFiles.length === 0) return undefined
 
-    return join(dir, firstHomeFile)
-  } catch {
-    // Directory read error - return undefined
-    return undefined
+  const firstHomeFile = homeFiles[0]!
+
+  // Warn if multiple home page files found
+  if (homeFiles.length > 1) {
+    console.warn(
+      `Warning: Multiple .home.md files found in ${dir}:\n` +
+        homeFiles.map((f: string) => `  - ${f}`).join('\n') +
+        '\n' +
+        `Using first alphabetically: ${firstHomeFile}`,
+    )
   }
+
+  return join(dir, firstHomeFile)
 }
 
 /**
@@ -131,32 +140,40 @@ const addHomePageIfExists = (
   const homePageMarkdown = findNamespaceHomePage(exportDeclFilePath)
   if (!homePageMarkdown) return nestedModule
 
-  try {
-    const homePagePath = findNamespaceHomePagePath(exportDeclFilePath)!
-    const home = parseHomePage(homePageMarkdown, homePagePath)
+  const homePagePath = findNamespaceHomePagePath(exportDeclFilePath)
+  if (!homePagePath) return nestedModule
 
-    // Update ModuleDocs with home
-    const existingDocs = nestedModule.docs
-    const updatedDocs = ModuleDocs.make({
-      description: existingDocs?.description,
-      guide: existingDocs?.guide,
-      home: home,
-    })
+  const parsedHome = Either.try({
+    try: () => parseHomePage(homePageMarkdown, homePagePath),
+    catch: (error) => error,
+  })
 
-    // Mutate docs field directly (we're still in extraction phase, not yet exposed)
-    // @ts-expect-error - Mutating during extraction phase before immutability contract applies
-    nestedModule.docs = updatedDocs
-
-    return nestedModule
-
-    // Note: No provenance needed for home - it can only come from *.home.md files
-  } catch (error) {
-    // Re-throw with context about which namespace failed
-    if (error instanceof Error) {
-      throw new Error(`Failed to parse home page for namespace '${nsName}':\n${error.message}`, { cause: error })
+  if (Either.isLeft(parsedHome)) {
+    const cause = parsedHome.left
+    if (cause instanceof Error) {
+      throw new Error(`Failed to parse home page for namespace '${nsName}':\n${cause.message}`, {
+        cause,
+      })
     }
-    throw error
+    return Lang.throw(cause)
   }
+
+  const home = parsedHome.right
+
+  // Update ModuleDocs with home
+  const existingDocs = nestedModule.docs
+  const updatedDocs = ModuleDocs.make({
+    description: existingDocs?.description,
+    guide: existingDocs?.guide,
+    home,
+  })
+
+  // Mutate docs field directly (we're still in extraction phase, not yet exposed)
+  // @ts-expect-error - Mutating during extraction phase before immutability contract applies
+  nestedModule.docs = updatedDocs
+
+  return nestedModule
+  // Note: No provenance needed for home - it can only come from *.home.md files
 }
 
 /**
@@ -202,16 +219,17 @@ const createNamespaceExport = (
     const guideProv = overrideJsdoc.guide
       ? isWrapperMarkdown
         ? MdFileProvenance.make({
-          filePath: S.decodeSync(Fs.Path.RelFile.Schema)(
-            absoluteToRelative(exportDecl.getSourceFile().getFilePath().replace(/\.ts$/, '.md')),
-          ),
-        })
+            filePath: S.decodeSync(Fs.Path.RelFile.Schema)(
+              absoluteToRelative(exportDecl.getSourceFile().getFilePath().replace(/\.ts$/, '.md')),
+            ),
+          })
         : JSDocProvenance.make({ shadowNamespace: true })
       : nestedModule.docsProvenance?.guide
 
-    docsProvenance = descriptionProv || guideProv
-      ? DocsProvenance.make({ description: descriptionProv, guide: guideProv })
-      : undefined
+    docsProvenance =
+      descriptionProv || guideProv
+        ? DocsProvenance.make({ description: descriptionProv, guide: guideProv })
+        : undefined
   } else {
     // No override - use nested module's docs
     docs = nestedModule.docs
@@ -271,7 +289,7 @@ const findNamespaceOverrideJSDoc = (
   const exportDecls = sourceFile.getExportDeclarations()
   const exports = sourceFile.getExportedDeclarations()
 
-  const namespaceExports = exportDecls.filter(d => d.getNamespaceExport())
+  const namespaceExports = exportDecls.filter((d) => d.getNamespaceExport())
   const isPureWrapper = namespaceExports.length === 1 && exports.size === 0
 
   if (isPureWrapper) {
@@ -312,7 +330,11 @@ export type ModuleExtractionOptions = {
 /**
  * Check if an export should be filtered based on JSDoc and naming conventions.
  */
-const shouldFilterExport = (exportName: string, jsdoc: JSDocInfo, options: ModuleExtractionOptions): boolean => {
+const shouldFilterExport = (
+  exportName: string,
+  jsdoc: JSDocInfo,
+  options: ModuleExtractionOptions,
+): boolean => {
   // Filter if marked as @internal
   if (options.filterInternal && jsdoc.internal) {
     return true
@@ -502,8 +524,8 @@ export const extractModuleFromFile = (
     // Warn if both exist
     if (jsdocGuide) {
       console.warn(
-        `Warning: Both @guide tag and ${markdownFilePath} found for module. Using .md file. `
-          + `Remove @guide tag or delete .md file.`,
+        `Warning: Both @guide tag and ${markdownFilePath} found for module. Using .md file. ` +
+          `Remove @guide tag or delete .md file.`,
       )
     }
   } else if (jsdocGuide) {
@@ -511,13 +533,15 @@ export const extractModuleFromFile = (
     docGuideProv = JSDocProvenance.make({ shadowNamespace: false })
   }
 
-  const docs = docDescription || docGuide
-    ? ModuleDocs.make({ description: docDescription, guide: docGuide })
-    : undefined
+  const docs =
+    docDescription || docGuide
+      ? ModuleDocs.make({ description: docDescription, guide: docGuide })
+      : undefined
 
-  const docsProvenance = docDescriptionProv || docGuideProv
-    ? DocsProvenance.make({ description: docDescriptionProv, guide: docGuideProv })
-    : undefined
+  const docsProvenance =
+    docDescriptionProv || docGuideProv
+      ? DocsProvenance.make({ description: docDescriptionProv, guide: docGuideProv })
+      : undefined
 
   const category = moduleJSDoc?.category
 
@@ -563,7 +587,7 @@ export const extractModule = (
     }
 
     let exportName: string | undefined
-    let declNode: Node | undefined
+    let declNode: ExportedDeclarations | undefined
 
     if (Node.isFunctionDeclaration(statement)) {
       exportName = statement.getName()
@@ -593,7 +617,7 @@ export const extractModule = (
       // Check if this export should be filtered
       const jsdoc = parseJSDoc(declNode)
       if (!shouldFilterExport(exportName, jsdoc, options)) {
-        exports.push(extractExport(exportName, declNode as any))
+        exports.push(extractExport(exportName, declNode))
       }
     }
   }
@@ -604,16 +628,15 @@ export const extractModule = (
   const guide = jsdoc.guide
   const category = jsdoc.category
 
-  const docs = description || guide
-    ? ModuleDocs.make({ description, guide })
-    : undefined
+  const docs = description || guide ? ModuleDocs.make({ description, guide }) : undefined
 
-  const docsProvenance = description || guide
-    ? DocsProvenance.make({
-      description: description ? JSDocProvenance.make({ shadowNamespace: true }) : undefined,
-      guide: guide ? JSDocProvenance.make({ shadowNamespace: true }) : undefined,
-    })
-    : undefined
+  const docsProvenance =
+    description || guide
+      ? DocsProvenance.make({
+          description: description ? JSDocProvenance.make({ shadowNamespace: true }) : undefined,
+          guide: guide ? JSDocProvenance.make({ shadowNamespace: true }) : undefined,
+        })
+      : undefined
 
   return Module.make({
     location,

@@ -1,0 +1,91 @@
+/**
+ * @module cli/commands/init
+ *
+ * Initialize release configuration in a project.
+ *
+ * Creates a `release.config.ts` file with sensible defaults, scans
+ * the workspace for packages, and adds `.release/` to `.gitignore`.
+ * Safe to run multiple times (idempotent).
+ */
+import { Cli } from '@kitz/cli'
+import { Str } from '@kitz/core'
+import { Env } from '@kitz/env'
+import { Fs } from '@kitz/fs'
+import { Git } from '@kitz/git'
+import { Oak } from '@kitz/oak'
+import { Console, Effect, Layer, Match, Schema as S } from 'effect'
+import * as Api from '../../api/__.js'
+import { FileSystemLayer } from '../../platform.js'
+
+const RELEASE_DIR_PATTERN = '.release/'
+
+/**
+ * release init
+ *
+ * Initialize release in a project.
+ */
+const args = Oak.Command.create()
+  .use(Oak.EffectSchema)
+  .description('Initialize release configuration')
+  .parameter(
+    'force f',
+    S.transform(S.UndefinedOr(S.Boolean), S.Boolean, {
+      strict: true,
+      decode: (v) => v ?? false,
+      encode: (v) => v,
+    }).pipe(S.annotations({ description: 'Overwrite existing config', default: false })),
+  )
+  .parse()
+
+Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer))(
+  Effect.gen(function* () {
+    const env = yield* Env.Env
+
+    const header = Str.Builder()
+    header`Initializing release...`
+    header``
+    yield* Console.log(header.render())
+
+    // Initialize config file
+    const configResult = yield* Api.Config.init({ force: args.force })
+    yield* Match.value(configResult).pipe(
+      Match.tagsExhaustive({
+        Created: (r) => Console.log(`✓ Created ${r.path.name}`),
+        AlreadyExists: () => Console.log(`✓ Config already exists`),
+      }),
+    )
+
+    // Scan packages
+    const packages = yield* Api.Analyzer.Workspace.scan
+    yield* Console.log(`✓ Detected ${packages.length} package${packages.length === 1 ? '' : 's'}`)
+
+    // Add .release/ to .gitignore
+    const gitignorePath = Fs.Path.join(env.cwd, Git.Paths.GITIGNORE)
+    const existingContent = yield* Fs.readString(gitignorePath).pipe(
+      Effect.catchTag('SystemError', () => Effect.succeed('')),
+    )
+
+    const gitignore =
+      existingContent === '' ? Git.Gitignore.empty : Git.Gitignore.fromString(existingContent)
+
+    if (gitignore.hasPattern(RELEASE_DIR_PATTERN)) {
+      yield* Console.log(`✓ ${RELEASE_DIR_PATTERN} already in .gitignore`)
+    } else {
+      const updated = gitignore.addPattern(RELEASE_DIR_PATTERN)
+      yield* Fs.write(gitignorePath, Git.Gitignore.toString(updated))
+
+      const action = existingContent === '' ? 'Created .gitignore with' : 'Added'
+      yield* Console.log(`✓ ${action} ${RELEASE_DIR_PATTERN} to .gitignore`)
+    }
+
+    yield* Console.log(Str.Tpl.dedent`
+
+      Done! Release is ready.
+
+      Next steps:
+        1. Review release.config.ts
+        2. Run \`release forecast\` to inspect the current release forecast
+        3. Run \`release plan --lifecycle official\` to generate a release plan
+    `)
+  }),
+)

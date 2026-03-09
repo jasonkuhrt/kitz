@@ -1,7 +1,7 @@
 /**
  * Runtime platform identifier.
  */
-export type Platform = 'node' | 'bun' | 'deno' | 'browser' | 'unknown'
+export type Platform = 'node' | 'bun' | 'browser' | 'unknown'
 
 /**
  * Operating system identifier.

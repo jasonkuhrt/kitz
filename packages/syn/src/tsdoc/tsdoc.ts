@@ -39,15 +39,17 @@ const joinLines = Str.Text.unlines
 export const escape = (content: string | null | undefined): string | null => {
   if (content === null || content === undefined) return null
 
-  return content
-    // Escape */ to prevent closing the JSDoc comment
-    .replace(/\*\//g, '* /')
-    // Escape @ at line start to prevent unintended JSDoc tags
-    // Only escape if followed by common tag names
-    .replace(
-      /^@(param|returns|deprecated|see|example|link|remarks|throws|since|alpha|beta|public|private|internal)/gm,
-      '\\@$1',
-    )
+  return (
+    content
+      // Escape */ to prevent closing the JSDoc comment
+      .replace(/\*\//g, '* /')
+      // Escape @ at line start to prevent unintended JSDoc tags
+      // Only escape if followed by common tag names
+      .replace(
+        /^@(param|returns|deprecated|see|example|link|remarks|throws|since|alpha|beta|public|private|internal)/gm,
+        '\\@$1',
+      )
+  )
 }
 
 /**
@@ -78,8 +80,8 @@ export const format = (content: string | null): string => {
   if (content === null) return ``
 
   const contentLines = splitIntoLines(content)
-  const trimmedLines = contentLines.map(line => line.trim())
-  const prefixedLines = trimmedLines.map(line => line ? `* ${line}` : `*`)
+  const trimmedLines = contentLines.map((line) => line.trim())
+  const prefixedLines = trimmedLines.map((line) => (line ? `* ${line}` : `*`))
   const commentContent = joinLines(prefixedLines) || `*`
 
   return `/**\n${commentContent}\n*/`
@@ -276,7 +278,10 @@ export interface Builder {
    * Add a line to the JSDoc. Automatically escapes user content.
    * Use empty template for blank lines: `doc\`\``
    */
-  (strings: TemplateStringsArray, ...values: Array<string | number | Raw | null | undefined>): Builder
+  (
+    strings: TemplateStringsArray,
+    ...values: Array<string | number | Raw | null | undefined>
+  ): Builder
 
   /**
    * Add content with auto-escaping. Skips if null/undefined.
@@ -375,7 +380,10 @@ export interface Builder {
    * doc.$example('Basic usage', 'ts', code)
    * ```
    */
-  $example(label?: string, lang?: string): (strings: TemplateStringsArray, ...values: any[]) => Builder
+  $example(
+    label?: string,
+    lang?: string,
+  ): (strings: TemplateStringsArray, ...values: any[]) => Builder
   $example(label: string | undefined, lang: string, code: string): Builder
 
   /**
@@ -488,12 +496,16 @@ export const builder = (): Builder => {
     return builderFn
   }
 
-  builderFn.table = (rows: Record<string, string | Raw | Array<string | Raw> | undefined | null>) => {
+  builderFn.table = (
+    rows: Record<string, string | Raw | Array<string | Raw> | undefined | null>,
+  ) => {
     const entries = Object.entries(rows).filter(
       (entry): entry is [string, string | Raw | Array<string | Raw>] => {
         const value = entry[1]
         // Filter out undefined, null, and empty arrays
-        return value !== undefined && value !== null && !(Array.isArray(value) && value.length === 0)
+        return (
+          value !== undefined && value !== null && !(Array.isArray(value) && value.length === 0)
+        )
       },
     )
     if (entries.length === 0) return builderFn
@@ -505,13 +517,15 @@ export const builder = (): Builder => {
 
       if (Array.isArray(value)) {
         // Handle array: process each item and join with comma-space
-        valueStr = value.map(item => {
-          if (typeof item === 'object' && '__jsDocSafe' in item) {
-            return item.content
-          } else {
-            return escape(item) ?? ''
-          }
-        }).join(', ')
+        valueStr = value
+          .map((item) => {
+            if (typeof item === 'object' && '__jsDocSafe' in item) {
+              return item.content
+            } else {
+              return escape(item) ?? ''
+            }
+          })
+          .join(', ')
       } else if (typeof value === 'object' && '__jsDocSafe' in value) {
         // Handle Raw: use content directly (already safe)
         valueStr = value.content
@@ -547,7 +561,7 @@ export const builder = (): Builder => {
     if (code !== undefined && typeof code === 'string') {
       addLine(label ? `@example ${label}` : `@example`)
       addLine(`\`\`\`${lang ?? 'ts'}`)
-      code.split('\n').forEach(line => addLine(line))
+      code.split('\n').forEach((line) => addLine(line))
       addLine(`\`\`\``)
       return builderFn
     }
@@ -557,7 +571,7 @@ export const builder = (): Builder => {
       const codeContent = processTemplate(strings as any, values)
       addLine(label ? `@example ${label}` : `@example`)
       addLine(`\`\`\`${lang ?? 'ts'}`)
-      codeContent.split('\n').forEach(line => addLine(line))
+      codeContent.split('\n').forEach((line) => addLine(line))
       addLine(`\`\`\``)
       return builderFn
     }
@@ -642,7 +656,10 @@ export interface Template {
    * \`
    * ```
    */
-  (strings: TemplateStringsArray, ...values: Array<string | number | Raw | null | undefined>): string
+  (
+    strings: TemplateStringsArray,
+    ...values: Array<string | number | Raw | null | undefined>
+  ): string
 
   /**
    * Create a new JSDoc builder for imperative construction.
@@ -669,7 +686,9 @@ export interface Template {
    * // Usage: getFieldDoc(field, parentType) -> string
    * ```
    */
-  factory: <$Args extends any[]>(fn: (doc: Builder, ...args: $Args) => void) => (...args: $Args) => string
+  factory: <$Args extends any[]>(
+    fn: (doc: Builder, ...args: $Args) => void,
+  ) => (...args: $Args) => string
 
   /**
    * JSDoc tag helpers for generating properly formatted tags.

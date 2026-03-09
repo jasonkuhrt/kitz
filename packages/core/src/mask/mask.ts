@@ -2,7 +2,9 @@
  * A mask that can either hide/show data entirely (BinaryMask) or
  * selectively hide/show object properties (PropertiesMask).
  */
-export type Mask<$Data = any> = BinaryMask<$Data> | PropertiesMask<$Data extends object ? $Data : object>
+export type Mask<$Data = any> =
+  | BinaryMask<$Data>
+  | PropertiesMask<$Data extends object ? $Data : object>
 
 /**
  * Create a mask based on the provided options.
@@ -31,9 +33,7 @@ export type Mask<$Data = any> = BinaryMask<$Data> | PropertiesMask<$Data extends
  * })
  * ```
  */
-export const create = <$Data = unknown>(
-  options: InferOptions<$Data>,
-): Mask<$Data> => {
+export const create = <$Data = unknown>(options: InferOptions<$Data>): Mask<$Data> => {
   if (typeof options === 'boolean') {
     return createBinary(options) as any
   }
@@ -46,13 +46,9 @@ export const create = <$Data = unknown>(
   // Object input -> PropertiesMask based on true/false values
   const entries = Object.entries(options)
 
-  const allowedKeys = entries
-    .filter(([_, include]) => include === true)
-    .map(([key]) => key)
+  const allowedKeys = entries.filter(([_, include]) => include === true).map(([key]) => key)
 
-  const deniedKeys = entries
-    .filter(([_, include]) => include === false)
-    .map(([key]) => key)
+  const deniedKeys = entries.filter(([_, include]) => include === false).map(([key]) => key)
 
   // If we have denied keys, use deny mode
   if (deniedKeys.length > 0 && allowedKeys.length === 0) {
@@ -66,17 +62,16 @@ export const create = <$Data = unknown>(
 /**
  * Valid options for creating a mask for the given data type.
  */
-export type InferOptions<$Data> = unknown extends $Data ? boolean | string[] | Record<string, boolean>
-  : $Data extends object ? (
-      | boolean
-      | (keyof $Data)[]
-      | Partial<
-        {
-          [K in keyof $Data]: boolean
-        }
-      >
-    )
-  : boolean
+export type InferOptions<$Data> = unknown extends $Data
+  ? boolean | string[] | Record<string, boolean>
+  : $Data extends object
+    ?
+        | boolean
+        | (keyof $Data)[]
+        | Partial<{
+            [K in keyof $Data]: boolean
+          }>
+    : boolean
 
 /**
  * A mask that selectively shows or hides object properties.
@@ -188,8 +183,8 @@ export const omit = <$Data extends object = object>(
  *
  * @returns The data type the mask is designed for
  */
-// dprint-ignore
-export type GetDataType<$Mask extends Mask<any>> =
+// oxfmt-ignore
+export type GetDataType<$Mask extends Mask> =
   $Mask extends BinaryMask<infer $Data>     ? $Data :
   $Mask extends PropertiesMask<infer $Data> ? $Data
                                             : never

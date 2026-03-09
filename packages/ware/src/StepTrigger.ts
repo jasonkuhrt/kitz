@@ -14,15 +14,13 @@ export namespace StepTrigger {
     return fn
   }
 
-  export interface Properties<
-    $OriginalInput extends Step.Input = Step.Input,
-  > {
+  export interface Properties<$OriginalInput extends Step.Input = Step.Input> {
     // todo: readonly properties
     [stepTriggerSymbol]: StepTriggerSymbol
     input: $OriginalInput
   }
 
-  // dprint-ignore
+  // oxfmt-ignore
   export interface Infer<
     $Step extends Step,
     $NextSteps extends readonly Step[],

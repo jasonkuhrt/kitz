@@ -21,7 +21,10 @@ export interface StepResultCompleted {
   nextExtensionsStack: readonly InterceptorGeneric[]
 }
 
-export type StepResultError = StepResultErrorExtension | StepResultErrorImplementation | StepResultErrorUser
+export type StepResultError =
+  | StepResultErrorExtension
+  | StepResultErrorImplementation
+  | StepResultErrorUser
 
 export interface StepResultErrorUser {
   type: 'error'

@@ -1,6 +1,3 @@
-// @ts-expect-error Duplicate identifier
-export * as Lang from './__.js'
-
 /**
  * Language utilities for type inspection and formatting.
  *
@@ -9,4 +6,7 @@ export * as Lang from './__.js'
  *
  * @category Domains
  */
-export namespace Lang {}
+export * as Lang from './__.js'
+
+/** JSDoc target for the Lang namespace export. */
+export type Lang = typeof import('./__.js')

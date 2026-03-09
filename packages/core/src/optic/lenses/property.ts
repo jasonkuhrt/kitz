@@ -39,7 +39,7 @@ export type LensErrorPropertyNotFound<$Key extends PropertyKey, $Actual> = Ts.Er
  * type E = Get<'foo', { name: string }> // Either.Left<error, never>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Get<$Key extends PropertyKey, $T> =
   $Key extends keyof $T
     ? Either.Right<never, $T[$Key]>
@@ -53,7 +53,7 @@ export type Get<$Key extends PropertyKey, $T> =
  * type T = Set<'name', { name: string }, number> // { name: number }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Set<$Key extends PropertyKey, $T, $New> =
   $Key extends keyof $T
     ? { [k in keyof $T]: k extends $Key ? $New : $T[k] }
@@ -110,5 +110,7 @@ export interface $Set<$Key extends PropertyKey> extends Fn.Kind.Kind {
  * getName({ name: 'Alice' }) // 'Alice'
  * ```
  */
-export const get = <$Key extends PropertyKey>(key: $Key) => <$T extends Record<$Key, unknown>>(obj: $T): $T[$Key] =>
-  obj[key]
+export const get =
+  <$Key extends PropertyKey>(key: $Key) =>
+  <$T extends Record<$Key, unknown>>(obj: $T): $T[$Key] =>
+    obj[key]

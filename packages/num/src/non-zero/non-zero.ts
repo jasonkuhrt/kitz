@@ -134,9 +134,11 @@ export const safeDiv = (dividend: number, divisor: number): number | null => {
  * divide10By(0) // null
  * divide10By(-5) // -2
  */
-export const safeDivOn = (dividend: number) => (divisor: number): number | null => {
-  return safeDiv(dividend, divisor)
-}
+export const safeDivOn =
+  (dividend: number) =>
+  (divisor: number): number | null => {
+    return safeDiv(dividend, divisor)
+  }
 
 /**
  * Create a function that safely divides any dividend by a fixed divisor.
@@ -152,6 +154,8 @@ export const safeDivOn = (dividend: number) => (divisor: number): number | null 
  * const divideByZero = safeDivWith(0)
  * divideByZero(10) // null (always null for zero divisor)
  */
-export const safeDivWith = (divisor: number) => (dividend: number): number | null => {
-  return safeDiv(dividend, divisor)
-}
+export const safeDivWith =
+  (divisor: number) =>
+  (dividend: number): number | null => {
+    return safeDiv(dividend, divisor)
+  }

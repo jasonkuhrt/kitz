@@ -28,11 +28,15 @@ export const isNaN = (value: unknown): value is number => {
  * Type-level absolute value transformation.
  * Maps number types to their absolute value types.
  */
-export type Abs<T extends number> = T extends Positive ? Positive
-  : T extends Negative ? Positive
-  : T extends NonPositive ? NonNegative
-  : T extends Zero ? Zero
-  : NonNegative
+export type Abs<T extends number> = T extends Positive
+  ? Positive
+  : T extends Negative
+    ? Positive
+    : T extends NonPositive
+      ? NonNegative
+      : T extends Zero
+        ? Zero
+        : NonNegative
 
 /**
  * Get absolute value.
@@ -55,10 +59,13 @@ export const abs = <T extends number>(value: T): Abs<T> => {
  * Type-level sign transformation.
  * Maps number types to their sign (-1, 0, 1).
  */
-export type Sign<T extends number> = T extends Positive ? 1
-  : T extends Negative ? -1
-  : T extends Zero ? 0
-  : -1 | 0 | 1
+export type Sign<T extends number> = T extends Positive
+  ? 1
+  : T extends Negative
+    ? -1
+    : T extends Zero
+      ? 0
+      : -1 | 0 | 1
 
 /**
  * Get sign of number (-1, 0, 1).
@@ -138,9 +145,11 @@ export const mod = <T extends number, U extends NonZero>(dividend: T, divisor: U
  * mod7(nonZero(3)) // 1
  * mod7(nonZero(5)) // 2
  */
-export const modOn = <T extends number>(dividend: T) => <U extends NonZero>(divisor: U): Mod<T, U> => {
-  return mod(dividend, divisor)
-}
+export const modOn =
+  <T extends number>(dividend: T) =>
+  <U extends NonZero>(divisor: U): Mod<T, U> => {
+    return mod(dividend, divisor)
+  }
 
 /**
  * Create a function that calculates modulo with a fixed divisor.
@@ -159,9 +168,11 @@ export const modOn = <T extends number>(dividend: T) => <U extends NonZero>(divi
  * const wrapAngle = modWith(nonZero(360)) // For degrees
  * wrapAngle(380) // 20 (380° = 20°)
  */
-export const modWith = <U extends NonZero>(divisor: U) => <T extends number>(dividend: T): Mod<T, U> => {
-  return mod(dividend, divisor)
-}
+export const modWith =
+  <U extends NonZero>(divisor: U) =>
+  <T extends number>(dividend: T): Mod<T, U> => {
+    return mod(dividend, divisor)
+  }
 
 /**
  * Number literal type.
@@ -219,9 +230,7 @@ export type PlusOne<$n extends Literal> = [
   19,
   20,
   never,
-][
-  $n
-]
+][$n]
 
 /**
  * Subtract one from a number literal type.
@@ -248,11 +257,9 @@ export type MinusOne<$n extends Literal> = [
   17,
   18,
   19,
-][
-  $n
-]
+][$n]
 
-// dprint-ignore
+// oxfmt-ignore
 export type NatDec<$N extends Literal> =
   $N extends LiteralInfinity          ? LiteralInfinity :
   $N extends LiteralZero              ? LiteralZero :

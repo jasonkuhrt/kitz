@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import { Command } from '../_entrypoints/_.js'
+import { Command } from '../__.js'
 import { EffectSchema } from '../_entrypoints/extensions.js'
 
 const args = Command.create()
@@ -9,21 +9,19 @@ const args = Command.create()
   // Optional number - returns undefined when omitted
   .parameter(`age`, Schema.UndefinedOr(Schema.Number))
   // Optional with pipe - returns undefined when omitted
-  .parameter(`email`, Schema.UndefinedOr(Schema.String).pipe(Schema.annotations({ description: 'Email address' })))
+  .parameter(
+    `email`,
+    Schema.UndefinedOr(Schema.String).pipe(Schema.annotations({ description: 'Email address' })),
+  )
   // Transform with default - returns default when omitted
   .parameter(
     `verbose v`,
-    Schema.transform(
-      Schema.UndefinedOr(Schema.Boolean),
-      Schema.Boolean,
-      { strict: true, decode: (v) => v ?? false, encode: (v) => v },
-    ).pipe(Schema.annotations({ default: false })),
+    Schema.transform(Schema.UndefinedOr(Schema.Boolean), Schema.Boolean, {
+      strict: true,
+      decode: (v) => v ?? false,
+      encode: (v) => v,
+    }).pipe(Schema.annotations({ default: false })),
   )
   .parse()
 
-console.log(
-  args.age,
-  args.email,
-  args.name,
-  args.verbose,
-)
+console.log(args.age, args.email, args.name, args.verbose)

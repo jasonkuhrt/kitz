@@ -184,7 +184,7 @@ describe('inspect', () => {
 
   // Table-driven tests for comprehensive scenarios
   describe('comprehensive error scenarios', () => {
-    // dprint-ignore
+    // oxfmt-ignore
     const cases: {
       name: string
       createError: () => Error
@@ -318,11 +318,7 @@ describe('inspect', () => {
     })
 
     test('shows proper indentation for aggregate errors', () => {
-      const errors = [
-        new Error('First'),
-        new Error('Second'),
-        new Error('Third'),
-      ]
+      const errors = [new Error('First'), new Error('Second'), new Error('Third')]
       errors[0]!.stack = `Error: First\n    at first (/app/first.ts:1:1)`
       errors[1]!.stack = `Error: Second\n    at second (/app/second.ts:2:2)`
       errors[2]!.stack = `Error: Third\n    at third (/app/third.ts:3:3)`

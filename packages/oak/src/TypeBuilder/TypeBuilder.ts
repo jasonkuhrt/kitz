@@ -15,3 +15,5 @@
 // export const $use: TypeBuilderBase<{}>['$use'] = (extension) => {
 //   // todo
 // }
+
+export {}

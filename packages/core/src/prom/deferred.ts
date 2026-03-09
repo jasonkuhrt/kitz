@@ -1,3 +1,5 @@
+import { Lang } from '#lang'
+
 /**
  * A deferred promise with exposed resolve and reject functions.
  *
@@ -96,7 +98,7 @@ export const createDeferred = <$T>(options?: { strict?: boolean }): Deferred<$T>
 
   const strictGuard = (fn: () => void) => {
     if (options?.strict && (resolved || rejected)) {
-      throw new Error('Deferred promise already settled')
+      Lang.throw(new Error('Deferred promise already settled'))
     }
     fn()
   }

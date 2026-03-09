@@ -174,10 +174,9 @@ const compileArrayConstraint = (constraint: ArrayConstraint): S.Schema.Any => {
   if (constraint.$some !== undefined) {
     const elementSchema = toSchema(constraint.$some)
     schema = schema.pipe(
-      S.filter(
-        (arr: unknown[]) => arr.some((el) => S.is(elementSchema)(el)),
-        { message: () => `Array must have at least one element matching the pattern` },
-      ),
+      S.filter((arr: unknown[]) => arr.some((el) => S.is(elementSchema)(el)), {
+        message: () => `Array must have at least one element matching the pattern`,
+      }),
     )
   }
 
@@ -216,24 +215,23 @@ const compileCombinator = (combinator: Combinator): S.Schema.Any => {
   if (combinator.$not !== undefined) {
     const innerSchema = toSchema(combinator.$not)
     return S.Unknown.pipe(
-      S.filter(
-        (value) => !S.is(innerSchema)(value),
-        { message: () => `Value must not match the negated pattern` },
-      ),
+      S.filter((value) => !S.is(innerSchema)(value), {
+        message: () => `Value must not match the negated pattern`,
+      }),
     ) as any
   }
 
   // Handle '$or' (union)
   if (combinator.$or !== undefined && Arr.is(combinator.$or)) {
-    const schemas = combinator.$or.map(toSchema) as S.Schema.Any[]
+    const schemas = combinator.$or.map(toSchema)
     return S.Union(...(schemas as [S.Schema.Any, S.Schema.Any, ...S.Schema.Any[]]))
   }
 
   // Handle '$and' (intersection)
   if (combinator.$and !== undefined && Arr.is(combinator.$and)) {
-    const schemas = combinator.$and.map(toSchema) as S.Schema.Any[]
+    const schemas = combinator.$and.map(toSchema)
     // Use extend for merging schemas (struct intersection)
-    return schemas.reduce((acc, schema) => S.extend(acc, schema)) as S.Schema.Any
+    return schemas.reduce((acc, schema) => S.extend(acc, schema))
   }
 
   return S.Unknown
@@ -267,8 +265,11 @@ export const toSchema = (pattern: unknown): S.Schema.Any => {
 
   // Primitive literals
   if (
-    Str.is(pattern) || Num.is(pattern) || typeof pattern === 'boolean' || typeof pattern === 'bigint'
-    || pattern === null
+    Str.is(pattern) ||
+    Num.is(pattern) ||
+    typeof pattern === 'boolean' ||
+    typeof pattern === 'bigint' ||
+    pattern === null
   ) {
     return S.Literal(pattern as any)
   }
@@ -311,7 +312,7 @@ export const toSchema = (pattern: unknown): S.Schema.Any => {
   // Arrays - check if it's an array value (not a constraint object)
   if (Arr.is(pattern)) {
     // Array literal means tuple matching
-    const schemas = pattern.map(toSchema) as S.Schema.Any[]
+    const schemas = pattern.map(toSchema)
     return S.Tuple(...(schemas as [S.Schema.Any, ...S.Schema.Any[]]))
   }
 

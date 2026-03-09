@@ -7,25 +7,13 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "paths": {
-      "#conf": [
-        "./src/_.js"
-      ],
-      "#conf/*": [
-        "./src/*.js"
-      ],
-      "#configurator": [
-        "./src/configurator.js"
-      ]
+      "#conf": ["./src/_.js"],
+      "#conf/*": ["./src/*.js"],
+      "#configurator": ["./src/configurator.js"],
+      "#file": ["./src/file/__.js"],
+      "#file/*": ["./src/file/*.js"]
     }
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "build",
-    "node_modules",
-    "**/*.bench-d.ts",
-    "**/*.test.ts",
-    "**/*.test-d.ts"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["build", "node_modules"]
 }

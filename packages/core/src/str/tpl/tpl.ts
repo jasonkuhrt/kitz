@@ -122,13 +122,15 @@ export const normalizeCall = (callInput: CallInput): Call => {
  * const renderPrefixed = renderWith(v => `[${v}]`)
  * ```
  */
-export const renderWith = (mapper: (value: unknown) => string) => (callInput: CallInput): string => {
-  const call = normalizeCall(callInput)
-  return call.template.reduce(
-    (result, part, i) => `${result}${part}${i in call.args ? mapper(call.args[i]) : ``}`,
-    ``,
-  )
-}
+export const renderWith =
+  (mapper: (value: unknown) => string) =>
+  (callInput: CallInput): string => {
+    const call = normalizeCall(callInput)
+    return call.template.reduce(
+      (result, part, i) => `${result}${part}${i in call.args ? mapper(call.args[i]) : ``}`,
+      ``,
+    )
+  }
 
 /**
  * Render tagged template literal arguments to a string.
@@ -227,9 +229,7 @@ export const dedent = (strings: TemplateStringsArray, ...values: unknown[]): str
 
         // Add value with indented continuation lines
         const valueLines = value.split(`\n`)
-        result += valueLines
-          .map((line, index) => (index === 0 ? line : indent + line))
-          .join(`\n`)
+        result += valueLines.map((line, index) => (index === 0 ? line : indent + line)).join(`\n`)
       } else {
         result += value
       }

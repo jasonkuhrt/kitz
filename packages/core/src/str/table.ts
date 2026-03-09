@@ -40,15 +40,17 @@ export const table = (input: {
 
   const entries = Object.entries(input.data)
   const keyMaxLength = Math.max(...entries.map(([key]) => key.length))
-  return entries.map(([key, value]) => {
-    const paddingSize = keyMaxLength - key.length
+  return entries
+    .map(([key, value]) => {
+      const paddingSize = keyMaxLength - key.length
 
-    const gap = separatorAlignment
-      ? `${padding(paddingSize)}${separator}`
-      : `${separator}${padding(paddingSize)}`
+      const gap = separatorAlignment
+        ? `${padding(paddingSize)}${separator}`
+        : `${separator}${padding(paddingSize)}`
 
-    return `${key}${gap}${value}`
-  }).join(`\n`)
+      return `${key}${gap}${value}`
+    })
+    .join(`\n`)
 }
 
 // const isOdd = (value: number) => value % 2 !== 0

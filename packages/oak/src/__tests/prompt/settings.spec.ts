@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { Settings } from '../../_entrypoints/_.js'
 import type { OakSchema } from '../../schema/oak-schema.js'
+import type { Settings } from '../../Settings/_.js'
 import { $, s, tryCatch } from '../_/helpers.js'
 import { memoryPrompter } from '../_/mocks/tty.js'
 import { normalizeTerminalOutput } from '../_/snapshotSerializer.js'
@@ -19,7 +19,7 @@ describe(`parameter level`, () => {
     const args = await tryCatch(() =>
       $.parameter(`a`, { type: s, prompt: { enabled: true } })
         .settings({ onError: `throw`, helpOnError: false })
-        .parse({ line: [], tty: memoryPrompter })
+        .parse({ line: [], tty: memoryPrompter }),
     )
     expect(args).toMatchSnapshot(`args`)
     expect(normalizeTerminalOutput(memoryPrompter.history.all)).toMatchSnapshot(`tty output`)
@@ -42,7 +42,7 @@ it(`prompt is disabled by default`, () => {
   const args = tryCatch(() =>
     $.parameter(`a`, { type: s })
       .settings({ onError: `throw`, helpOnError: false })
-      .parse({ line: [], tty: memoryPrompter })
+      .parse({ line: [], tty: memoryPrompter }),
   )
   expect(args).toMatchSnapshot(`args`)
   expect(normalizeTerminalOutput(memoryPrompter.history.all)).toMatchSnapshot(`tty output`)
@@ -53,7 +53,7 @@ it(`prompt can be enabled by default`, async () => {
   const args = await tryCatch(() =>
     $.parameter(`a`, { type: s })
       .settings({ onError: `throw`, helpOnError: false, prompt: { enabled: true } })
-      .parse({ line: [], tty: memoryPrompter })
+      .parse({ line: [], tty: memoryPrompter }),
   )
   expect(args).toMatchSnapshot(`args`)
   expect(normalizeTerminalOutput(memoryPrompter.history.all)).toMatchSnapshot(`tty output`)
@@ -63,7 +63,7 @@ it(`parameter settings overrides default settings`, () => {
   const args = tryCatch(() =>
     $.parameter(`a`, { type: s, prompt: false })
       .settings({ onError: `throw`, helpOnError: false, prompt: { enabled: true } })
-      .parse({ line: [], tty: memoryPrompter })
+      .parse({ line: [], tty: memoryPrompter }),
   )
   expect(args).toMatchSnapshot(`args`)
   expect(normalizeTerminalOutput(memoryPrompter.history.all)).toMatchSnapshot(`tty output`)
@@ -73,14 +73,18 @@ describe(`prompt can be toggled by check on error`, () => {
   describe(`toggle to enabled`, () => {
     const settings = S({
       enabled: true,
-      when: { result: `rejected`, error: `OakErrorMissingArgument`, spec: { name: { canonical: `a` } } },
+      when: {
+        result: `rejected`,
+        error: `OakErrorMissingArgument`,
+        spec: { name: { canonical: `a` } },
+      },
     })
     it(`check does match`, async () => {
       memoryPrompter.script.keyPress.push(...foo)
-      const args = await tryCatch(() =>
+      const args = tryCatch(() =>
         $.parameter(`a`, { type: s })
           .settings({ onError: `throw`, helpOnError: false, prompt: settings })
-          .parse({ line: [], tty: memoryPrompter })
+          .parse({ line: [], tty: memoryPrompter }),
       )
       expect(args).toMatchSnapshot(`args`)
       expect(normalizeTerminalOutput(memoryPrompter.history.all)).toMatchSnapshot(`tty output`)
@@ -89,7 +93,7 @@ describe(`prompt can be toggled by check on error`, () => {
       const args = tryCatch(() =>
         $.parameter(`b`, { type: s })
           .settings({ onError: `throw`, helpOnError: false, prompt: settings })
-          .parse({ line: [], tty: memoryPrompter })
+          .parse({ line: [], tty: memoryPrompter }),
       )
       expect(args).toMatchSnapshot(`args`)
       expect(normalizeTerminalOutput(memoryPrompter.history.all)).toMatchSnapshot(`tty output`)
@@ -112,7 +116,7 @@ it(`parameter defaults to custom settings`, async () => {
           },
         },
       })
-      .parse({ line: [], tty: memoryPrompter })
+      .parse({ line: [], tty: memoryPrompter }),
   )
   expect(args).toMatchSnapshot(`args`)
   expect(normalizeTerminalOutput(memoryPrompter.history.all)).toMatchSnapshot(`tty output`)
@@ -134,10 +138,10 @@ it(`can be stack of conditional prompts`, async () => {
     ],
   })
   memoryPrompter.script.keyPress.push(...foo)
-  const args = await tryCatch(() =>
+  const args = tryCatch(() =>
     $.parameter(`a`, { type: s.optional() })
       .settings({ onError: `throw`, helpOnError: false, prompt: settings })
-      .parse({ line: [`-a`, `1`], tty: memoryPrompter })
+      .parse({ line: [`-a`, `1`], tty: memoryPrompter }),
   )
   expect(args).toMatchSnapshot(`args`)
   expect(normalizeTerminalOutput(memoryPrompter.history.all)).toMatchSnapshot(`tty output`)

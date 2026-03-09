@@ -47,7 +47,7 @@ export type IsMultiple<$T> = $T extends [unknown, unknown, ...unknown[]] ? true 
  * type T3 = Tup.Flatten<[]>                         // []
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Flatten<$T extends readonly (readonly any[])[]> =
   $T extends readonly [infer __head__ extends readonly any[], ...infer __tail__ extends readonly (readonly any[])[]]
     ? readonly [...__head__, ...Flatten<__tail__>]
@@ -70,7 +70,7 @@ export type Flatten<$T extends readonly (readonly any[])[]> =
  * // { a: { id: 'a', data: 1 }, b: { id: 'b', data: 2 } }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type IndexByDepth2<
   $Arr extends any[],
   $Key1 extends keyof $Arr[number],
@@ -95,7 +95,7 @@ export type IndexByDepth2<
  * // { alice: { id: 'alice', name: 'Alice' }, bob: { id: 'bob', name: 'Bob' } }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type IndexBy<
   $Arr extends readonly any[],
   $Key extends keyof $Arr[number],
@@ -121,7 +121,7 @@ export type IndexBy<
  * // { a: 100, b: 200 }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type IndexByToValueDepth2<
   $Arr extends readonly any[],
   $Key extends keyof $Arr[number],
@@ -170,7 +170,7 @@ export type IsEmpty<$T> = $T extends Empty ? true : false
  * type T4 = Tup.PreviousItem<['a', 'b', 'c'], 'd'>  // undefined (not found)
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type PreviousItem<$Items extends readonly any[], $OfItem> =
   $Items extends [infer $Next, ...infer $Rest]
     ? $Next extends $OfItem
@@ -178,7 +178,7 @@ export type PreviousItem<$Items extends readonly any[], $OfItem> =
       : PreviousItem_<$OfItem, $Next, $Rest>
     : undefined // empty tuple
 
-// dprint-ignore
+// oxfmt-ignore
 type PreviousItem_<$OfItem, $PreviousItem extends $Items[number], $Items extends readonly any[]> =
   $Items extends [infer $NextItem, ...infer $Rest]
     ? $NextItem extends $OfItem
@@ -189,7 +189,7 @@ type PreviousItem_<$OfItem, $PreviousItem extends $Items[number], $Items extends
 /**
  * Non-empty readonly tuple type.
  */
-export type NonEmpty = readonly [any, ...readonly any[]]
+export type NonEmpty = readonly [any, ...(readonly any[])]
 
 /**
  * Intersect all items in a tuple into a single type.
@@ -203,7 +203,7 @@ export type NonEmpty = readonly [any, ...readonly any[]]
  * type T3 = Tup.IntersectItems<[]>                    // {}
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type IntersectItems<$Items extends readonly any[]> =
   $Items extends [infer $First, ...infer $Rest extends any[]]
     ? $First & IntersectItems<$Rest>
@@ -225,7 +225,7 @@ export type IntersectItems<$Items extends readonly any[]> =
  * // { user1: { id: 'user1', name: 'Alice' }, user2: { id: 'user2', name: 'Bob' } }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type ToIndexByObjectKey<$Items extends readonly object[], $Key extends keyof $Items[number]> =
   IntersectItems<{
     [$Index in keyof $Items]:
@@ -250,7 +250,7 @@ export type ToIndexByObjectKey<$Items extends readonly object[], $Key extends ke
  * type T3 = Tup.GetAtNextIndex<Items, 2>  // undefined (no next)
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type GetAtNextIndex<$Items extends readonly any[], $Index extends Num.Literal> =
   $Items[Num.PlusOne<$Index>]
 
@@ -268,7 +268,7 @@ export type GetAtNextIndex<$Items extends readonly any[], $Index extends Num.Lit
  * type T2 = Tup.GetNextIndexOr<Items, 2, 'default'>  // 'default'
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type GetNextIndexOr<$Items extends readonly any[], $Index extends Num.Literal, $Or> =
   OrDefault<GetAtNextIndex<$Items, $Index>, $Or>
 
@@ -287,7 +287,7 @@ export type GetNextIndexOr<$Items extends readonly any[], $Index extends Num.Lit
  * type T4 = Tup.Tail<Items, 3>  // ['d', 'e']
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Tail<$Tuple extends readonly unknown[], $N extends number> =
   $Tuple extends readonly []                                        ? [] :
   $N extends 0                                                      ? $Tuple :
@@ -311,7 +311,7 @@ export type Tail<$Tuple extends readonly unknown[], $N extends number> =
  * type T3 = Tup.DropUntilIndex<Items, 2>  // ['c', 'd']
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type DropUntilIndex<$Items extends readonly any[], $Index extends Num.Literal> =
   $Index extends 0                                  ? $Items :
   $Items extends readonly [infer _, ...infer $Rest] ? DropUntilIndex<$Rest, Num.MinusOne<$Index>> :
@@ -335,7 +335,7 @@ export type IndexPlusOne<$Index extends Num.Literal> = Num.PlusOne<$Index>
  * type T2 = Tup.GetLastValue<['a']>      // 'a'
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type GetLastValue<$T extends readonly [any, ...any[]]> =
   $T['length'] extends Num.Literal
     ? $T[Num.MinusOne<$T['length']>]
@@ -353,8 +353,8 @@ export type GetLastValue<$T extends readonly [any, ...any[]]> =
  * type T2 = Tup.IsLastValue<2, [1, 2, 3]>  // false
  * ```
  */
-export type IsLastValue<$Value, $List extends readonly [any, ...any[]]> = $Value extends GetLastValue<$List> ? true
-  : false
+export type IsLastValue<$Value, $List extends readonly [any, ...any[]]> =
+  $Value extends GetLastValue<$List> ? true : false
 
 /**
  * Find the index of a value in a non-empty tuple.
@@ -368,11 +368,11 @@ export type IsLastValue<$Value, $List extends readonly [any, ...any[]]> = $Value
  * type T2 = Tup.FindIndexForValue<'a', ['a', 'b', 'c']>  // 0
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type FindIndexForValue<$Value, $List extends NonEmpty> =
   FindIndexForValue_<$Value, $List, 0>
 
-// dprint-ignore
+// oxfmt-ignore
 type FindIndexForValue_<$Value, $List extends NonEmpty, $i extends Num.Literal> =
   $Value extends $List[$i]
     ? $i
@@ -391,8 +391,10 @@ type FindIndexForValue_<$Value, $List extends NonEmpty, $i extends Num.Literal> 
  * type T3 = Tup.FindValueAfter<'c', ['a', 'b', 'c']>  // undefined (last item)
  * ```
  */
-export type FindValueAfter<$Value, $List extends NonEmpty> =
-  $List[Num.PlusOne<FindIndexForValue<$Value, $List>> & number]
+export type FindValueAfter<$Value, $List extends NonEmpty> = $List[Num.PlusOne<
+  FindIndexForValue<$Value, $List>
+> &
+  number]
 
 /**
  * Take all values before a given value in a tuple.
@@ -407,7 +409,7 @@ export type FindValueAfter<$Value, $List extends NonEmpty> =
  * type T3 = Tup.TakeValuesBefore<'x', ['a', 'b', 'c']>       // []
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type TakeValuesBefore<$Value, $List extends readonly any[]> =
   $List extends readonly [infer $ListFirst, ...infer $ListRest]
     ? $Value extends $ListFirst
@@ -444,7 +446,7 @@ export type FindValueAfterOr<$Value, $List extends readonly [any, ...any[]], $Or
  * type T2 = Tup.ReduceObjectsMergeShallow<[{ a: 1 }, { a: 2, b: 3 }]>  // { a: 2, b: 3 }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type ReduceObjectsMergeShallow<$Objects extends readonly object[]> =
   $Objects extends readonly [infer __first__ extends object, ...infer __rest__ extends readonly object[]]
     ? __rest__ extends readonly []

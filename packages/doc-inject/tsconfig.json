@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./build",
+    "tsBuildInfoFile": "./node_modules/.cache/.tsbuildinfo",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "paths": {
+      "#doc-inject": ["./src/_.js"],
+      "#doc-inject/*": ["./src/*.js"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["build", "node_modules", "**/*.bench-d.ts", "**/*.test.ts", "**/*.test-d.ts"]
+}

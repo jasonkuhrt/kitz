@@ -32,13 +32,9 @@ export const stem = <$input extends Input>(path: $input): string => {
       FsPathAbsFile: (file) => file.fileName.stem,
       FsPathRelFile: (file) => file.fileName.stem,
       FsPathAbsDir: (dir) =>
-        dir.segments.length > 0
-          ? dir.segments[dir.segments.length - 1]!
-          : '',
+        dir.segments.length > 0 ? dir.segments[dir.segments.length - 1]! : '',
       FsPathRelDir: (dir) =>
-        dir.segments.length > 0
-          ? dir.segments[dir.segments.length - 1]!
-          : '',
+        dir.segments.length > 0 ? dir.segments[dir.segments.length - 1]! : '',
     }),
   )
 }

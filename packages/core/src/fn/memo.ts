@@ -102,33 +102,29 @@ export const memo = <$fn extends (...args: any[]) => unknown>(
 ): Memoized<$fn> => {
   const { key, cacheErrors = false, weak = false } = options ?? {}
 
-  const cache: Map<unknown, unknown> | WeakMap<object, unknown> = options?.cache
-    ?? (weak ? new WeakMap<object, unknown>() : new Map<unknown, unknown>())
+  const cache: Map<unknown, unknown> | WeakMap<object, unknown> =
+    options?.cache ?? (weak ? new WeakMap<object, unknown>() : new Map<unknown, unknown>())
 
-  const createKey = key === null
-    ? (args: Parameters<$fn>) => args[0]
-    : key ?? JSON.stringify
+  const createKey = key === null ? (args: Parameters<$fn>) => args[0] : (key ?? JSON.stringify)
 
   const memoizedFn = ((...args: Parameters<$fn>) => {
     const cacheKey = createKey(args)
 
-    if (cache.has(cacheKey as any)) {
-      const envelope = cache.get(cacheKey as any) as CacheEnvelope<unknown>
+    if (cache.has(cacheKey)) {
+      const envelope = cache.get(cacheKey) as CacheEnvelope<unknown>
       return envelope.value
     }
 
     // Handle both sync and async results uniformly
-    return Prom.maybeAsync(
-      () => fn(...args),
-      {
-        then: (resolved) => {
-          if (!CoreErr.is(resolved) || cacheErrors) {
-            cache.set(cacheKey as any, { value: resolved })
-          }
-          return resolved
-        },
-      },
-    ) as ReturnType<$fn>
+    const handlers: Prom.MaybeAsyncHandlers<unknown, unknown> = {}
+    Reflect.set(handlers, `then`, (resolved: unknown) => {
+      if (!CoreErr.is(resolved) || cacheErrors) {
+        cache.set(cacheKey, { value: resolved })
+      }
+      return resolved
+    })
+
+    return Prom.maybeAsync(() => fn(...args), handlers) as ReturnType<$fn>
   }) as Memoized<$fn>
 
   memoizedFn.cache = cache

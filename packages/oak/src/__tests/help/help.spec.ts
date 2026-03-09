@@ -20,18 +20,24 @@ beforeEach(() => {
 })
 
 test(`exits 0`, () => {
-  $.parameter(`a`, s.optional()).settings({ onOutput }).parse({ line: [`-h`] })
+  $.parameter(`a`, s.optional())
+    .settings({ onOutput })
+    .parse({ line: [`-h`] })
   expect(exitSpy).toHaveBeenCalledWith(0)
 })
 
 test(`can be triggered by -h`, () => {
-  $.parameter(`a`, s.optional()).settings({ onOutput }).parse({ line: [`-h`] })
+  $.parameter(`a`, s.optional())
+    .settings({ onOutput })
+    .parse({ line: [`-h`] })
   expect(exitSpy).toHaveBeenCalledWith(0)
   expect(output.value).toMatch(/parameters/i)
 })
 
 test(`can be triggered by --help`, () => {
-  $.parameter(`a`, s.optional()).settings({ onOutput }).parse({ line: [`-h`] })
+  $.parameter(`a`, s.optional())
+    .settings({ onOutput })
+    .parse({ line: [`-h`] })
   expect(exitSpy).toHaveBeenCalledWith(0)
   expect(output.value).toMatch(/parameters/i)
 })

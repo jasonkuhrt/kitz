@@ -89,7 +89,7 @@ export const from = (value: number): Natural & Int & Positive => {
  * tryFrom(3.14) // null
  */
 export const tryFrom = (value: number): (Natural & Int & Positive) | null => {
-  return is(value) ? (value as Natural & Int & Positive) : null
+  return is(value) ? value : null
 }
 
 /**
@@ -115,7 +115,7 @@ export const parseAsNatural = (value: string): (Natural & Int & Positive) | null
   if (!is(parsed) || parsed.toString() !== value.trim()) {
     return null
   }
-  return parsed as Natural & Int & Positive
+  return parsed
 }
 
 /**

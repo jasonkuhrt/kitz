@@ -11,7 +11,6 @@ import { builder } from '../../../builder-singleton.js'
  * Relation: subtype relation (extends)
  */
 
-
 /**
  * Base matcher accepting any expected type.
  * Extraction chain: (...args: any[]) => T → Parameters<Function>
@@ -28,13 +27,12 @@ import { builder } from '../../../builder-singleton.js'
  * type _ = Assert.parameters.sub.of<string, (...args: any[]) => number>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type of_<$Expected, $Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [$Expected, __actual__, true]>
                                                                          : never
-const of_ = builder.parameters.not.sub.of
-
+const of_: typeof builder.parameters.not.sub.of = builder.parameters.not.sub.of
 
 /**
  * Pre-curried matcher for string.
@@ -49,13 +47,12 @@ const of_ = builder.parameters.not.sub.of
  * type _ = Assert.parameters.sub.string<(...args: any[]) => number>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type string_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [string, __actual__, true]>
                                                                          : never
-const string_ = builder.parameters.not.sub.string
-
+const string_: typeof builder.parameters.not.sub.string = builder.parameters.not.sub.string
 
 /**
  * Pre-curried matcher for number.
@@ -70,13 +67,12 @@ const string_ = builder.parameters.not.sub.string
  * type _ = Assert.parameters.sub.number<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type number_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [number, __actual__, true]>
                                                                          : never
-const number_ = builder.parameters.not.sub.number
-
+const number_: typeof builder.parameters.not.sub.number = builder.parameters.not.sub.number
 
 /**
  * Pre-curried matcher for bigint.
@@ -91,13 +87,12 @@ const number_ = builder.parameters.not.sub.number
  * type _ = Assert.parameters.sub.bigint<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type bigint_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [bigint, __actual__, true]>
                                                                          : never
-const bigint_ = builder.parameters.not.sub.bigint
-
+const bigint_: typeof builder.parameters.not.sub.bigint = builder.parameters.not.sub.bigint
 
 /**
  * Pre-curried matcher for boolean.
@@ -112,13 +107,12 @@ const bigint_ = builder.parameters.not.sub.bigint
  * type _ = Assert.parameters.sub.boolean<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type boolean_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [boolean, __actual__, true]>
                                                                          : never
-const boolean_ = builder.parameters.not.sub.boolean
-
+const boolean_: typeof builder.parameters.not.sub.boolean = builder.parameters.not.sub.boolean
 
 /**
  * Pre-curried matcher for true.
@@ -133,13 +127,12 @@ const boolean_ = builder.parameters.not.sub.boolean
  * type _ = Assert.parameters.sub.true<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type true_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [true, __actual__, true]>
                                                                          : never
-const true_ = builder.parameters.not.sub.true
-
+const true_: typeof builder.parameters.not.sub.true = builder.parameters.not.sub.true
 
 /**
  * Pre-curried matcher for false.
@@ -154,13 +147,12 @@ const true_ = builder.parameters.not.sub.true
  * type _ = Assert.parameters.sub.false<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type false_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [false, __actual__, true]>
                                                                          : never
-const false_ = builder.parameters.not.sub.false
-
+const false_: typeof builder.parameters.not.sub.false = builder.parameters.not.sub.false
 
 /**
  * Pre-curried matcher for undefined.
@@ -175,13 +167,12 @@ const false_ = builder.parameters.not.sub.false
  * type _ = Assert.parameters.sub.undefined<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type undefined_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [undefined, __actual__, true]>
                                                                          : never
-const undefined_ = builder.parameters.not.sub.undefined
-
+const undefined_: typeof builder.parameters.not.sub.undefined = builder.parameters.not.sub.undefined
 
 /**
  * Pre-curried matcher for null.
@@ -196,13 +187,12 @@ const undefined_ = builder.parameters.not.sub.undefined
  * type _ = Assert.parameters.sub.null<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type null_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [null, __actual__, true]>
                                                                          : never
-const null_ = builder.parameters.not.sub.null
-
+const null_: typeof builder.parameters.not.sub.null = builder.parameters.not.sub.null
 
 /**
  * Pre-curried matcher for symbol.
@@ -217,13 +207,12 @@ const null_ = builder.parameters.not.sub.null
  * type _ = Assert.parameters.sub.symbol<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type symbol_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [symbol, __actual__, true]>
                                                                          : never
-const symbol_ = builder.parameters.not.sub.symbol
-
+const symbol_: typeof builder.parameters.not.sub.symbol = builder.parameters.not.sub.symbol
 
 /**
  * Pre-curried matcher for Date.
@@ -238,13 +227,12 @@ const symbol_ = builder.parameters.not.sub.symbol
  * type _ = Assert.parameters.sub.Date<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type Date_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [Date, __actual__, true]>
                                                                          : never
-const Date_ = builder.parameters.not.sub.Date
-
+const Date_: typeof builder.parameters.not.sub.Date = builder.parameters.not.sub.Date
 
 /**
  * Pre-curried matcher for RegExp.
@@ -259,13 +247,12 @@ const Date_ = builder.parameters.not.sub.Date
  * type _ = Assert.parameters.sub.RegExp<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type RegExp_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [RegExp, __actual__, true]>
                                                                          : never
-const RegExp_ = builder.parameters.not.sub.RegExp
-
+const RegExp_: typeof builder.parameters.not.sub.RegExp = builder.parameters.not.sub.RegExp
 
 /**
  * Pre-curried matcher for Error.
@@ -280,13 +267,12 @@ const RegExp_ = builder.parameters.not.sub.RegExp
  * type _ = Assert.parameters.sub.Error<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type Error_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [Error, __actual__, true]>
                                                                          : never
-const Error_ = builder.parameters.not.sub.Error
-
+const Error_: typeof builder.parameters.not.sub.Error = builder.parameters.not.sub.Error
 
 /**
  * Pre-curried matcher for unknown.
@@ -301,13 +287,12 @@ const Error_ = builder.parameters.not.sub.Error
  * type _ = Assert.parameters.sub.unknown<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type unknown_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [unknown, __actual__, true]>
                                                                          : never
-const unknown_ = builder.parameters.not.sub.unknown
-
+const unknown_: typeof builder.parameters.not.sub.unknown = builder.parameters.not.sub.unknown
 
 /**
  * Pre-curried matcher for any.
@@ -322,13 +307,12 @@ const unknown_ = builder.parameters.not.sub.unknown
  * type _ = Assert.parameters.sub.any<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type any_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [any, __actual__, true]>
                                                                          : never
-const any_ = builder.parameters.not.sub.any
-
+const any_: typeof builder.parameters.not.sub.any = builder.parameters.not.sub.any
 
 /**
  * Pre-curried matcher for never.
@@ -343,31 +327,31 @@ const any_ = builder.parameters.not.sub.any
  * type _ = Assert.parameters.sub.never<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type never_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [never, __actual__, true]>
                                                                          : never
-const never_ = builder.parameters.not.sub.never
+const never_: typeof builder.parameters.not.sub.never = builder.parameters.not.sub.never
 
-const ofAs_ = <$Type>() => builder.parameters.not.sub.ofAs<$Type>()
+const ofAs_: typeof builder.parameters.not.sub.ofAs = builder.parameters.not.sub.ofAs
 
 export {
-  of_ as of,
-  string_ as string,
-  number_ as number,
+  any_ as any,
   bigint_ as bigint,
   boolean_ as boolean,
-  true_ as true,
-  false_ as false,
-  undefined_ as undefined,
-  null_ as null,
-  symbol_ as symbol,
   Date_ as Date,
-  RegExp_ as RegExp,
   Error_ as Error,
-  unknown_ as unknown,
-  any_ as any,
+  false_ as false,
   never_ as never,
+  null_ as null,
+  number_ as number,
+  of_ as of,
   ofAs_ as ofAs,
+  RegExp_ as RegExp,
+  string_ as string,
+  symbol_ as symbol,
+  true_ as true,
+  undefined_ as undefined,
+  unknown_ as unknown,
 }

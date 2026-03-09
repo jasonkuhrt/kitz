@@ -123,9 +123,7 @@ export interface Options<$Item = any, $Key = any> {
    *
    * @default 'auto'
    */
-  mode?:
-    | undefined
-    | InferModeOptions<$Key>
+  mode?: undefined | InferModeOptions<$Key>
 }
 
 export const Mode = {
@@ -134,7 +132,7 @@ export const Mode = {
   auto: 'auto',
 } as const
 
-export type Mode = typeof Mode[keyof typeof Mode]
+export type Mode = (typeof Mode)[keyof typeof Mode]
 
 export namespace Mode {
   export type strong = typeof Mode.strong
@@ -148,7 +146,7 @@ export namespace ModeFor {
   export type Unknown = Mode.strong | Mode.auto | Mode.weak
 }
 
-// dprint-ignore
+// oxfmt-ignore
 export type InferModeOptions<$Key> =
   IsAny<$Key> extends true                                  ? ModeFor.Unknown :
   Ts.Union.IsHas<$Key, Lang.Primitive> extends true       ? ModeFor.PrimitiveKey :
@@ -182,20 +180,20 @@ export type InferModeOptions<$Key> =
  * })
  */
 export const create = <item, key>(options?: Options<item, key>): Idx<item, key> => {
-  const array = Arr.create<item>()
+  const array = Arr.create<item | undefined>()
   const deletedIndices = new Set<number>()
   let lowestDeletedIndex: number | null = null
   // For now, just use a simple memoization until Effect migration is complete
   const keyCache = new Map<item, key>()
   const itemToKey = options?.key
     ? (item: item): key => {
-      if (keyCache.has(item)) {
-        return keyCache.get(item)!
+        if (keyCache.has(item)) {
+          return keyCache.get(item)!
+        }
+        const result = options.key!(item)
+        keyCache.set(item, result)
+        return result
       }
-      const result = options.key!(item)
-      keyCache.set(item, result)
-      return result
-    }
     : null
 
   type MapAsMap = Map<key, { item: item; index: number }>
@@ -257,7 +255,7 @@ export const create = <item, key>(options?: Options<item, key>): Idx<item, key> 
       const entry = map.get(key)
       if (!entry) return false
 
-      delete array[entry.index]
+      array[entry.index] = undefined
       deletedIndices.add(entry.index)
 
       // Track lowest deleted index
@@ -271,10 +269,10 @@ export const create = <item, key>(options?: Options<item, key>): Idx<item, key> 
     toArray() {
       // Only compact if there were deletions
       const isNeedsCompaction = deletedIndices.size > 0
-      if (!isNeedsCompaction) return array
+      if (!isNeedsCompaction) return array as item[]
 
       // Start with intact prefix up to first deletion
-      const compactedArray: item[] = array.slice(0, lowestDeletedIndex ?? 0)
+      const compactedArray = array.slice(0, lowestDeletedIndex ?? 0) as item[]
       const sparseToCompacted = new Map<number, number>()
 
       // Map all indices in the intact prefix
@@ -328,7 +326,7 @@ export const create = <item, key>(options?: Options<item, key>): Idx<item, key> 
           }
         }
       } else {
-        for (const [key, { item }] of (map as MapAsMap)) {
+        for (const [key, { item }] of map as MapAsMap) {
           dataMap.set(key, item)
         }
       }

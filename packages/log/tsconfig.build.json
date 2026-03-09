@@ -6,12 +6,8 @@
     "declaration": true,
     "declarationMap": true,
     "paths": {
-      "#log": [
-        "./src/_.js"
-      ],
-      "#log/*": [
-        "./src/*.js"
-      ]
+      "#log": ["./src/_.js"],
+      "#log/*": ["./src/*.js"]
     }
   }
 }

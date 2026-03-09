@@ -9,7 +9,7 @@ export type Context = object
 /**
  * An error that includes additional context information.
  *
- * @deprecated Use {@link ContextualError} instead for better type safety.
+ * @deprecated Use {@link TaggedContextualError} factory instead for better type safety.
  * @category Types
  */
 export interface ErrorWithContext extends Error {

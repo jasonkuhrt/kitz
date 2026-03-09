@@ -11,7 +11,6 @@ import { builder } from '../../../builder-singleton.js'
  * Relation: exact structural equality
  */
 
-
 /**
  * Base matcher accepting any expected type.
  * Extraction chain: (...args: any[]) => T → Parameters<Function>
@@ -28,13 +27,12 @@ import { builder } from '../../../builder-singleton.js'
  * type _ = Assert.parameters.exact.of<string, (...args: any[]) => number>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type of_<$Expected, $Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [$Expected, __actual__, true]>
                                                                          : never
-const of_ = builder.parameters.not.exact.of
-
+const of_: typeof builder.parameters.not.exact.of = builder.parameters.not.exact.of
 
 /**
  * Pre-curried matcher for string.
@@ -49,13 +47,12 @@ const of_ = builder.parameters.not.exact.of
  * type _ = Assert.parameters.exact.string<(...args: any[]) => number>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type string_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [string, __actual__, true]>
                                                                          : never
-const string_ = builder.parameters.not.exact.string
-
+const string_: typeof builder.parameters.not.exact.string = builder.parameters.not.exact.string
 
 /**
  * Pre-curried matcher for number.
@@ -70,13 +67,12 @@ const string_ = builder.parameters.not.exact.string
  * type _ = Assert.parameters.exact.number<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type number_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [number, __actual__, true]>
                                                                          : never
-const number_ = builder.parameters.not.exact.number
-
+const number_: typeof builder.parameters.not.exact.number = builder.parameters.not.exact.number
 
 /**
  * Pre-curried matcher for bigint.
@@ -91,13 +87,12 @@ const number_ = builder.parameters.not.exact.number
  * type _ = Assert.parameters.exact.bigint<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type bigint_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [bigint, __actual__, true]>
                                                                          : never
-const bigint_ = builder.parameters.not.exact.bigint
-
+const bigint_: typeof builder.parameters.not.exact.bigint = builder.parameters.not.exact.bigint
 
 /**
  * Pre-curried matcher for boolean.
@@ -112,13 +107,12 @@ const bigint_ = builder.parameters.not.exact.bigint
  * type _ = Assert.parameters.exact.boolean<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type boolean_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [boolean, __actual__, true]>
                                                                          : never
-const boolean_ = builder.parameters.not.exact.boolean
-
+const boolean_: typeof builder.parameters.not.exact.boolean = builder.parameters.not.exact.boolean
 
 /**
  * Pre-curried matcher for true.
@@ -133,13 +127,12 @@ const boolean_ = builder.parameters.not.exact.boolean
  * type _ = Assert.parameters.exact.true<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type true_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [true, __actual__, true]>
                                                                          : never
-const true_ = builder.parameters.not.exact.true
-
+const true_: typeof builder.parameters.not.exact.true = builder.parameters.not.exact.true
 
 /**
  * Pre-curried matcher for false.
@@ -154,13 +147,12 @@ const true_ = builder.parameters.not.exact.true
  * type _ = Assert.parameters.exact.false<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type false_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [false, __actual__, true]>
                                                                          : never
-const false_ = builder.parameters.not.exact.false
-
+const false_: typeof builder.parameters.not.exact.false = builder.parameters.not.exact.false
 
 /**
  * Pre-curried matcher for undefined.
@@ -175,13 +167,13 @@ const false_ = builder.parameters.not.exact.false
  * type _ = Assert.parameters.exact.undefined<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type undefined_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [undefined, __actual__, true]>
                                                                          : never
-const undefined_ = builder.parameters.not.exact.undefined
-
+const undefined_: typeof builder.parameters.not.exact.undefined =
+  builder.parameters.not.exact.undefined
 
 /**
  * Pre-curried matcher for null.
@@ -196,13 +188,12 @@ const undefined_ = builder.parameters.not.exact.undefined
  * type _ = Assert.parameters.exact.null<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type null_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [null, __actual__, true]>
                                                                          : never
-const null_ = builder.parameters.not.exact.null
-
+const null_: typeof builder.parameters.not.exact.null = builder.parameters.not.exact.null
 
 /**
  * Pre-curried matcher for symbol.
@@ -217,13 +208,12 @@ const null_ = builder.parameters.not.exact.null
  * type _ = Assert.parameters.exact.symbol<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type symbol_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [symbol, __actual__, true]>
                                                                          : never
-const symbol_ = builder.parameters.not.exact.symbol
-
+const symbol_: typeof builder.parameters.not.exact.symbol = builder.parameters.not.exact.symbol
 
 /**
  * Pre-curried matcher for Date.
@@ -238,13 +228,12 @@ const symbol_ = builder.parameters.not.exact.symbol
  * type _ = Assert.parameters.exact.Date<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type Date_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [Date, __actual__, true]>
                                                                          : never
-const Date_ = builder.parameters.not.exact.Date
-
+const Date_: typeof builder.parameters.not.exact.Date = builder.parameters.not.exact.Date
 
 /**
  * Pre-curried matcher for RegExp.
@@ -259,13 +248,12 @@ const Date_ = builder.parameters.not.exact.Date
  * type _ = Assert.parameters.exact.RegExp<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type RegExp_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [RegExp, __actual__, true]>
                                                                          : never
-const RegExp_ = builder.parameters.not.exact.RegExp
-
+const RegExp_: typeof builder.parameters.not.exact.RegExp = builder.parameters.not.exact.RegExp
 
 /**
  * Pre-curried matcher for Error.
@@ -280,13 +268,12 @@ const RegExp_ = builder.parameters.not.exact.RegExp
  * type _ = Assert.parameters.exact.Error<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type Error_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [Error, __actual__, true]>
                                                                          : never
-const Error_ = builder.parameters.not.exact.Error
-
+const Error_: typeof builder.parameters.not.exact.Error = builder.parameters.not.exact.Error
 
 /**
  * Pre-curried matcher for unknown.
@@ -301,13 +288,12 @@ const Error_ = builder.parameters.not.exact.Error
  * type _ = Assert.parameters.exact.unknown<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type unknown_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [unknown, __actual__, true]>
                                                                          : never
-const unknown_ = builder.parameters.not.exact.unknown
-
+const unknown_: typeof builder.parameters.not.exact.unknown = builder.parameters.not.exact.unknown
 
 /**
  * Pre-curried matcher for any.
@@ -322,13 +308,12 @@ const unknown_ = builder.parameters.not.exact.unknown
  * type _ = Assert.parameters.exact.any<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type any_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [any, __actual__, true]>
                                                                          : never
-const any_ = builder.parameters.not.exact.any
-
+const any_: typeof builder.parameters.not.exact.any = builder.parameters.not.exact.any
 
 /**
  * Pre-curried matcher for never.
@@ -343,34 +328,35 @@ const any_ = builder.parameters.not.exact.any
  * type _ = Assert.parameters.exact.never<(...args: any[]) => string>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type never_<$Actual, __$ActualExtracted = Optic.Parameters.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [never, __actual__, true]>
                                                                          : never
-const never_ = builder.parameters.not.exact.never
+const never_: typeof builder.parameters.not.exact.never = builder.parameters.not.exact.never
 
-const ofAs_ = <$Type>() => builder.parameters.not.exact.ofAs<$Type>()
+const ofAs_: typeof builder.parameters.not.exact.ofAs = builder.parameters.not.exact.ofAs
 type noExcess_ = never
-const noExcess_ = builder.parameters.not.exact.noExcess
+const noExcess_: typeof builder.parameters.not.exact.noExcess =
+  builder.parameters.not.exact.noExcess
 
 export {
-  of_ as of,
-  string_ as string,
-  number_ as number,
+  any_ as any,
   bigint_ as bigint,
   boolean_ as boolean,
-  true_ as true,
-  false_ as false,
-  undefined_ as undefined,
-  null_ as null,
-  symbol_ as symbol,
   Date_ as Date,
-  RegExp_ as RegExp,
   Error_ as Error,
-  unknown_ as unknown,
-  any_ as any,
+  false_ as false,
   never_ as never,
-  ofAs_ as ofAs,
   noExcess_ as noExcess,
+  null_ as null,
+  number_ as number,
+  of_ as of,
+  ofAs_ as ofAs,
+  RegExp_ as RegExp,
+  string_ as string,
+  symbol_ as symbol,
+  true_ as true,
+  undefined_ as undefined,
+  unknown_ as unknown,
 }

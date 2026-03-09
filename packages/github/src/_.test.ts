@@ -1,0 +1,505 @@
+import { Effect, Ref } from 'effect'
+import { describe, expect, test } from 'vitest'
+import { Github } from './_.js'
+
+// ============================================================================
+// Memory Layer Tests
+// ============================================================================
+
+describe('Github', () => {
+  test('releaseExists returns false for missing release', async () => {
+    const layer = Github.Memory.make({})
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.releaseExists('v1.0.0')
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result).toBe(false)
+  })
+
+  test('releaseExists returns true for existing release', async () => {
+    const mockRelease = {
+      id: 1,
+      tag_name: 'v1.0.0',
+    } as Github.Release
+
+    const layer = Github.Memory.make({
+      releases: { 'v1.0.0': mockRelease },
+    })
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.releaseExists('v1.0.0')
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result).toBe(true)
+  })
+
+  test('createRelease creates and records release', async () => {
+    const { layer, state } = await Effect.runPromise(Github.Memory.makeWithState({}))
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.createRelease({
+          tag: 'v1.0.0',
+          title: 'Release v1.0.0',
+          body: '## Changelog\n\n- Initial release',
+        })
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.tag_name).toBe('v1.0.0')
+    expect(result.name).toBe('Release v1.0.0')
+    expect(result.body).toBe('## Changelog\n\n- Initial release')
+
+    const releases = await Effect.runPromise(Ref.get(state.releases))
+    const created = await Effect.runPromise(Ref.get(state.createdReleases))
+
+    expect(releases['v1.0.0']).toBeDefined()
+    expect(created).toHaveLength(1)
+    expect(created[0]).toEqual({
+      tag: 'v1.0.0',
+      title: 'Release v1.0.0',
+      body: '## Changelog\n\n- Initial release',
+    })
+  })
+
+  test('createRelease with prerelease flag', async () => {
+    const layer = Github.Memory.make({})
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.createRelease({
+          tag: 'v1.0.0-beta.1',
+          title: 'Beta Release',
+          body: 'Beta notes',
+          prerelease: true,
+        })
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.prerelease).toBe(true)
+  })
+
+  test('updateRelease updates and records changes', async () => {
+    const mockRelease = {
+      id: 123,
+      tag_name: 'v1.0.0',
+      name: 'Original Title',
+      body: 'Original body',
+    } as Github.Release
+
+    const { layer, state } = await Effect.runPromise(
+      Github.Memory.makeWithState({
+        releases: { 'v1.0.0': mockRelease },
+      }),
+    )
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.updateRelease('v1.0.0', {
+          body: 'Updated changelog',
+        })
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.body).toBe('Updated changelog')
+
+    const releases = await Effect.runPromise(Ref.get(state.releases))
+    const updated = await Effect.runPromise(Ref.get(state.updatedReleases))
+
+    expect(releases['v1.0.0']!.body).toBe('Updated changelog')
+    expect(updated).toHaveLength(1)
+    expect(updated[0]).toEqual({
+      tag: 'v1.0.0',
+      params: { body: 'Updated changelog' },
+    })
+  })
+
+  test('releaseExists reflects created releases', async () => {
+    const layer = Github.Memory.make({})
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        const before = yield* gh.releaseExists('v1.0.0')
+        yield* gh.createRelease({
+          tag: 'v1.0.0',
+          title: 'Test',
+          body: 'Test body',
+        })
+        const after = yield* gh.releaseExists('v1.0.0')
+        return { before, after }
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.before).toBe(false)
+    expect(result.after).toBe(true)
+  })
+
+  test('listOpenPullRequests returns configured open PRs', async () => {
+    const layer = Github.Memory.make({
+      pullRequests: [
+        {
+          number: 129,
+          html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
+          title: 'feat(release): improve doctor output',
+          body: 'body',
+          base: { ref: 'main' },
+          head: { ref: 'feat/release' },
+        },
+      ],
+    })
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.listOpenPullRequests()
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result).toEqual([
+      {
+        number: 129,
+        html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
+        title: 'feat(release): improve doctor output',
+        body: 'body',
+        base: { ref: 'main' },
+        head: { ref: 'feat/release' },
+      },
+    ])
+  })
+
+  test('updatePullRequest updates and records changes', async () => {
+    const { layer, state } = await Effect.runPromise(
+      Github.Memory.makeWithState({
+        pullRequests: [
+          {
+            number: 129,
+            html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
+            title: 'feat(release): improve doctor output',
+            body: 'body',
+            base: { ref: 'main' },
+            head: { ref: 'feat/release' },
+          },
+        ],
+      }),
+    )
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.updatePullRequest(129, {
+          title: 'feat(cli, release): improve doctor output',
+        })
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.title).toBe('feat(cli, release): improve doctor output')
+
+    const pullRequests = await Effect.runPromise(Ref.get(state.pullRequests))
+    const updated = await Effect.runPromise(Ref.get(state.updatedPullRequests))
+
+    expect(pullRequests[0]?.title).toBe('feat(cli, release): improve doctor output')
+    expect(updated).toEqual([
+      {
+        number: 129,
+        params: { title: 'feat(cli, release): improve doctor output' },
+      },
+    ])
+  })
+
+  test('createIssueComment creates and records a bot comment', async () => {
+    const { layer, state } = await Effect.runPromise(Github.Memory.makeWithState({}))
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.createIssueComment({
+          issueNumber: 129,
+          body: '<!-- kitz-release-plan -->\ncomment body',
+        })
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.body).toContain('comment body')
+    expect(result.user?.type).toBe('Bot')
+
+    const issueComments = await Effect.runPromise(Ref.get(state.issueComments))
+    const created = await Effect.runPromise(Ref.get(state.createdIssueComments))
+
+    expect(issueComments).toHaveLength(1)
+    expect(issueComments[0]?.issueNumber).toBe(129)
+    expect(created).toEqual([
+      {
+        issueNumber: 129,
+        body: '<!-- kitz-release-plan -->\ncomment body',
+      },
+    ])
+  })
+
+  test('findIssueCommentByMarker returns the matching bot comment for the issue', async () => {
+    const layer = Github.Memory.make({
+      issueComments: [
+        {
+          issueNumber: 129,
+          comment: {
+            id: 7,
+            body: 'unrelated user comment',
+            html_url: 'https://github.com/jasonkuhrt/kitz/pull/129#issuecomment-7',
+            user: { type: 'User' },
+          },
+        },
+        {
+          issueNumber: 129,
+          comment: {
+            id: 41,
+            body: '<!-- kitz-release-plan -->\npreview body',
+            html_url: 'https://github.com/jasonkuhrt/kitz/pull/129#issuecomment-41',
+            user: { type: 'Bot' },
+          },
+        },
+      ],
+    })
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.findIssueCommentByMarker(129, '<!-- kitz-release-plan -->')
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result?.id).toBe(41)
+    expect(result?.body).toContain('preview body')
+  })
+
+  test('upsertIssueComment updates the existing marker comment for the same issue', async () => {
+    const { layer, state } = await Effect.runPromise(
+      Github.Memory.makeWithState({
+        issueComments: [
+          {
+            issueNumber: 129,
+            comment: {
+              id: 41,
+              body: '<!-- kitz-release-plan -->\nold body',
+              html_url: 'https://github.com/jasonkuhrt/kitz/pull/129#issuecomment-41',
+              user: { type: 'Bot' },
+            },
+          },
+        ],
+      }),
+    )
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.upsertIssueComment({
+          issueNumber: 129,
+          marker: '<!-- kitz-release-plan -->',
+          body: '<!-- kitz-release-plan -->\nnew body',
+        })
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.id).toBe(41)
+    expect(result.body).toContain('new body')
+
+    const updated = await Effect.runPromise(Ref.get(state.updatedIssueComments))
+    expect(updated).toEqual([
+      {
+        commentId: 41,
+        params: {
+          body: '<!-- kitz-release-plan -->\nnew body',
+        },
+      },
+    ])
+  })
+
+  test('upsertIssueComment updates a provided existing comment when it is already known', async () => {
+    const { layer, state } = await Effect.runPromise(
+      Github.Memory.makeWithState({
+        issueComments: [
+          {
+            issueNumber: 129,
+            comment: {
+              id: 41,
+              body: '<!-- kitz-release-plan -->\nold body',
+              html_url: 'https://github.com/jasonkuhrt/kitz/pull/129#issuecomment-41',
+              user: { type: 'Bot' },
+            },
+          },
+        ],
+      }),
+    )
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.upsertIssueComment({
+          issueNumber: 129,
+          marker: '<!-- kitz-release-plan -->',
+          body: '<!-- kitz-release-plan -->\nnew body',
+          existingComment: {
+            id: 41,
+            body: '<!-- kitz-release-plan -->\nold body',
+            html_url: 'https://github.com/jasonkuhrt/kitz/pull/129#issuecomment-41',
+            user: { type: 'Bot' },
+          },
+        })
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.id).toBe(41)
+
+    const created = await Effect.runPromise(Ref.get(state.createdIssueComments))
+    const updated = await Effect.runPromise(Ref.get(state.updatedIssueComments))
+
+    expect(created).toEqual([])
+    expect(updated).toEqual([
+      {
+        commentId: 41,
+        params: {
+          body: '<!-- kitz-release-plan -->\nnew body',
+        },
+      },
+    ])
+  })
+
+  test('upsertIssueComment creates a new marker comment when none exists', async () => {
+    const { layer, state } = await Effect.runPromise(
+      Github.Memory.makeWithState({
+        issueComments: [
+          {
+            issueNumber: 129,
+            comment: {
+              id: 7,
+              body: 'unrelated comment',
+              html_url: 'https://github.com/jasonkuhrt/kitz/pull/129#issuecomment-7',
+              user: { type: 'User' },
+            },
+          },
+        ],
+      }),
+    )
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.upsertIssueComment({
+          issueNumber: 129,
+          marker: '<!-- kitz-release-plan -->',
+          body: '<!-- kitz-release-plan -->\npreview body',
+        })
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.body).toContain('preview body')
+    expect(result.id).not.toBe(7)
+
+    const created = await Effect.runPromise(Ref.get(state.createdIssueComments))
+    expect(created).toEqual([
+      {
+        issueNumber: 129,
+        body: '<!-- kitz-release-plan -->\npreview body',
+      },
+    ])
+  })
+})
+
+// ============================================================================
+// Memory State Tests
+// ============================================================================
+
+describe('Memory state', () => {
+  test('makeWithState provides mutable state access', async () => {
+    const mockRelease = { id: 1, tag_name: 'v1.0.0' } as Github.Release
+
+    const { layer, state } = await Effect.runPromise(
+      Github.Memory.makeWithState({
+        releases: { 'v1.0.0': mockRelease },
+      }),
+    )
+
+    // Add a release to state directly
+    await Effect.runPromise(
+      Ref.update(state.releases, (releases) => ({
+        ...releases,
+        'v2.0.0': { ...mockRelease, id: 2, tag_name: 'v2.0.0' } as Github.Release,
+      })),
+    )
+
+    // Verify service sees updated state
+    const exists = await Effect.runPromise(
+      Effect.gen(function* () {
+        const gh = yield* Github.Github
+        return yield* gh.releaseExists('v2.0.0')
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(exists).toBe(true)
+  })
+})
+
+// ============================================================================
+// Error Types
+// ============================================================================
+
+describe('Error types', () => {
+  test('GithubError has correct tag', () => {
+    const error = new Github.GithubError({
+      context: { operation: 'createRelease', status: 500, detail: 'Server error' },
+      cause: new Error('Underlying API error'),
+    })
+
+    expect(error._tag).toBe('GithubError')
+    expect(error.message).toContain('createRelease')
+    expect(error.message).toContain('500')
+  })
+
+  test('GithubNotFoundError has correct tag', () => {
+    const error = new Github.GithubNotFoundError({
+      context: { operation: 'getRelease', resource: '/repos/owner/repo/releases/tags/v1.0.0' },
+    })
+
+    expect(error._tag).toBe('GithubNotFoundError')
+    expect(error.message).toContain('not found')
+  })
+
+  test('GithubAuthError has correct tag', () => {
+    const error = new Github.GithubAuthError({
+      context: { operation: 'createRelease' },
+    })
+
+    expect(error._tag).toBe('GithubAuthError')
+    expect(error.message).toContain('authentication failed')
+  })
+
+  test('GithubRateLimitError has correct tag', () => {
+    const resetAt = new Date('2024-01-15T12:00:00Z')
+    const error = new Github.GithubRateLimitError({
+      context: { operation: 'getRelease', resetAt },
+    })
+
+    expect(error._tag).toBe('GithubRateLimitError')
+    expect(error.message).toContain('rate limit')
+    expect(error.message).toContain('2024-01-15')
+  })
+
+  test('GithubConfigError has correct tag', () => {
+    const error = new Github.GithubConfigError({
+      context: { detail: 'Missing token' },
+    })
+
+    expect(error._tag).toBe('GithubConfigError')
+    expect(error.message).toContain('configuration error')
+    expect(error.message).toContain('Missing token')
+  })
+})

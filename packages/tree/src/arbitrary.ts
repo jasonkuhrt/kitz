@@ -87,18 +87,20 @@ export const arbitrary = <$Value>(
   const generateTree = (currentDepth: number): fc.Arbitrary<Node<$Value>> => {
     if (currentDepth >= opts.maxDepth) {
       // Force leaf node at max depth
-      return valueArb.map(value => Node(value))
+      return valueArb.map((value) => Node(value))
     }
 
     return fc.oneof(
-      { weight: opts.leafWeight, arbitrary: valueArb.map(value => Node(value)) },
+      { weight: opts.leafWeight, arbitrary: valueArb.map((value) => Node(value)) },
       {
         weight: 1,
-        arbitrary: valueArb.chain(value =>
-          fc.array(generateTree(currentDepth + 1), {
-            minLength: opts.minChildren,
-            maxLength: opts.maxChildren,
-          }).map(children => Node(value, children))
+        arbitrary: valueArb.chain((value) =>
+          fc
+            .array(generateTree(currentDepth + 1), {
+              minLength: opts.minChildren,
+              maxLength: opts.maxChildren,
+            })
+            .map((children) => Node(value, children)),
         ),
       },
     )
@@ -107,7 +109,7 @@ export const arbitrary = <$Value>(
   // Generate a tree with a single root, or occasionally an empty tree
   return fc.oneof(
     { weight: 1, arbitrary: fc.constant(Tree<$Value>(null)) }, // empty tree
-    { weight: 9, arbitrary: generateTree(0).map(root => Tree(root)) }, // tree with root
+    { weight: 9, arbitrary: generateTree(0).map((root) => Tree(root)) }, // tree with root
   )
 }
 
@@ -129,7 +131,8 @@ export const arbitraryShapes = {
    * // Always generates: { value: "...", children: [] }
    * ```
    */
-  leaf: <$Value>(valueArb: fc.Arbitrary<$Value>): fc.Arbitrary<Node<$Value>> => valueArb.map(value => Node(value)),
+  leaf: <$Value>(valueArb: fc.Arbitrary<$Value>): fc.Arbitrary<Node<$Value>> =>
+    valueArb.map((value) => Node(value)),
 
   /**
    * Generate a tree with exact depth.
@@ -145,14 +148,16 @@ export const arbitraryShapes = {
    * // Generates trees where all leaves are exactly 2 levels deep
    * ```
    */
-  withDepth: <$Value>(valueArb: fc.Arbitrary<$Value>, depth: number): fc.Arbitrary<Node<$Value>> => {
+  withDepth: <$Value>(
+    valueArb: fc.Arbitrary<$Value>,
+    depth: number,
+  ): fc.Arbitrary<Node<$Value>> => {
     if (depth <= 0) return arbitraryShapes.leaf(valueArb)
 
-    return valueArb.chain(value =>
-      fc.array(
-        arbitraryShapes.withDepth(valueArb, depth - 1),
-        { minLength: 1, maxLength: 3 },
-      ).map(children => Node(value, children))
+    return valueArb.chain((value) =>
+      fc
+        .array(arbitraryShapes.withDepth(valueArb, depth - 1), { minLength: 1, maxLength: 3 })
+        .map((children) => Node(value, children)),
     )
   },
 
@@ -173,9 +178,8 @@ export const arbitraryShapes = {
   linear: <$Value>(valueArb: fc.Arbitrary<$Value>, length: number): fc.Arbitrary<Node<$Value>> => {
     if (length <= 1) return arbitraryShapes.leaf(valueArb)
 
-    return valueArb.chain(value =>
-      arbitraryShapes.linear(valueArb, length - 1)
-        .map(child => Node(value, [child]))
+    return valueArb.chain((value) =>
+      arbitraryShapes.linear(valueArb, length - 1).map((child) => Node(value, [child])),
     )
   },
 
@@ -204,11 +208,13 @@ export const arbitraryShapes = {
   ): fc.Arbitrary<Node<$Value>> => {
     if (depth <= 0) return arbitraryShapes.leaf(valueArb)
 
-    return valueArb.chain(value =>
-      fc.array(
-        arbitraryShapes.balanced(valueArb, depth - 1, childrenPerNode),
-        { minLength: childrenPerNode, maxLength: childrenPerNode },
-      ).map(children => Node(value, children))
+    return valueArb.chain((value) =>
+      fc
+        .array(arbitraryShapes.balanced(valueArb, depth - 1, childrenPerNode), {
+          minLength: childrenPerNode,
+          maxLength: childrenPerNode,
+        })
+        .map((children) => Node(value, children)),
     )
   },
 
@@ -230,14 +236,20 @@ export const arbitraryShapes = {
    * const veryWide = arbitraryShapes.wide(fc.integer(), 20, 1)
    * ```
    */
-  wide: <$Value>(valueArb: fc.Arbitrary<$Value>, width: number, depth = 2): fc.Arbitrary<Node<$Value>> => {
+  wide: <$Value>(
+    valueArb: fc.Arbitrary<$Value>,
+    width: number,
+    depth = 2,
+  ): fc.Arbitrary<Node<$Value>> => {
     if (depth <= 0) return arbitraryShapes.leaf(valueArb)
 
-    return valueArb.chain(value =>
-      fc.array(
-        arbitraryShapes.wide(valueArb, width, depth - 1),
-        { minLength: Math.floor(width / 2), maxLength: width },
-      ).map(children => Node(value, children))
+    return valueArb.chain((value) =>
+      fc
+        .array(arbitraryShapes.wide(valueArb, width, depth - 1), {
+          minLength: Math.floor(width / 2),
+          maxLength: width,
+        })
+        .map((children) => Node(value, children)),
     )
   },
 }

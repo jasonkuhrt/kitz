@@ -31,7 +31,7 @@ export type Segment = typeof Segment.Type
  * @param segment - The segment string (must not contain / or be empty)
  * @returns A branded Segment
  */
-export const make = Segment.make
+export const make = (segment: string): Segment => Segment.make(segment)
 
 export const encodeSync = S.encodeSync(Segment)
 

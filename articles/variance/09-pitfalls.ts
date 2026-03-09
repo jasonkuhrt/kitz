@@ -111,11 +111,13 @@ type GoodResult = GoodExtract<(s: string) => void> // string
 class Registry {
   private items: Record<string, any> = {} // ✅ Correct
 
-  register(key: string, value: any): void { // ✅ Correct
+  register(key: string, value: any): void {
+    // ✅ Correct
     this.items[key] = value
   }
 
-  get(key: string): unknown { // ✅ Return unknown for safety
+  get(key: string): unknown {
+    // ✅ Return unknown for safety
     return this.items[key]
   }
 }

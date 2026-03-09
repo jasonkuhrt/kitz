@@ -153,9 +153,11 @@ export interface Private {
  * type BoxOfString = PrivateKindApply<BoxKind, [string]> // Box<string>
  * ```
  */
-export type PrivateApply<$Kind extends Private, $Args> = ($Kind & { [PrivateKindParameters]: $Args })[PrivateKindReturn]
+export type PrivateApply<$Kind extends Private, $Args> = ($Kind & {
+  [PrivateKindParameters]: $Args
+})[PrivateKindReturn]
 
-// dprint-ignore
+// oxfmt-ignore
 export type MaybePrivateApplyOr<$MaybeKind, $Args, $Or> =
   $MaybeKind extends Private
     ? PrivateApply<$MaybeKind, $Args>
@@ -216,7 +218,7 @@ export type IsPrivateKind<T> = T extends Private ? true : false
  * // Result2: number
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Pipe<$Kinds extends readonly Kind[], $Input> =
   $Kinds extends readonly [infer __first__ extends Kind, ...infer __rest__ extends readonly Kind[]]
     ? Pipe<__rest__, Apply<__first__, [$Input]>>
@@ -249,7 +251,7 @@ export type Pipe<$Kinds extends readonly Kind[], $Input> =
  * // On error: Either.Left<SomeError, never>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type PipeRight<$Input, $Kinds extends readonly Kind[]> =
   $Kinds extends readonly [infer __first__ extends Kind, ...infer __rest__ extends readonly Kind[]]
     ? Apply<__first__, [$Input]> extends infer ___result___

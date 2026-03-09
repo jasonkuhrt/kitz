@@ -16,10 +16,11 @@ import type * as StatusesClientError from './4xx-client-error.js'
 import type * as StatusesServerError from './5xx-server-error.js'
 
 export namespace Code {
-  export type Informational = typeof StatusesInformational[keyof typeof StatusesInformational]['code']
-  export type Successful = typeof StatusesSuccessful[keyof typeof StatusesSuccessful]['code']
-  export type Redirection = typeof StatusesRedirection[keyof typeof StatusesRedirection]['code']
-  export type ClientError = typeof StatusesClientError[keyof typeof StatusesClientError]['code']
-  export type ServerError = typeof StatusesServerError[keyof typeof StatusesServerError]['code']
+  export type Informational =
+    (typeof StatusesInformational)[keyof typeof StatusesInformational]['code']
+  export type Successful = (typeof StatusesSuccessful)[keyof typeof StatusesSuccessful]['code']
+  export type Redirection = (typeof StatusesRedirection)[keyof typeof StatusesRedirection]['code']
+  export type ClientError = (typeof StatusesClientError)[keyof typeof StatusesClientError]['code']
+  export type ServerError = (typeof StatusesServerError)[keyof typeof StatusesServerError]['code']
   export type All = Informational | Successful | Redirection | ClientError | ServerError
 }

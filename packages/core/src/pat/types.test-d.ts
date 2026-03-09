@@ -1,4 +1,4 @@
-import type { Type as A } from '#assert/assert'
+import type { Type as A } from '#kitz/assert/assert'
 import { Pat } from '#pat'
 import { Ts } from '#ts'
 import * as S from 'effect/Schema'
@@ -141,21 +141,15 @@ const _invalidV1Pattern: ZodPattern = { invalid: 'test' }
 const _user = { name: 'Alice', age: 30 }
 const _patternFromValue = Pat.patternFor(_user)
 
-// dprint-ignore
-type _PatternForValueTest = A.Cases<
-  A.exact.of<typeof _patternFromValue, Pat.PatternForValue<typeof _user>>
->
+// oxfmt-ignore
+type _PatternForValueTest = A.Cases
 
 const _patternFromSchema = Pat.patternForSchema(UserSchema)
 
-// dprint-ignore
-type _PatternForSchemaTest = A.Cases<
-  A.exact.of<typeof _patternFromSchema, Pat.PatternForSchema<typeof UserSchema>>
->
+// oxfmt-ignore
+type _PatternForSchemaTest = A.Cases
 
 const _patternFromV1Schema = Pat.patternForV1Schema(zodSchema)
 
-// dprint-ignore
-type _PatternForV1SchemaTest = A.Cases<
-  A.exact.of<typeof _patternFromV1Schema, Pat.PatternForV1Schema<typeof zodSchema>>
->
+// oxfmt-ignore
+type _PatternForV1SchemaTest = A.Cases

@@ -1,3 +1,4 @@
+import { Lang } from '@kitz/core'
 import { Effect } from 'effect'
 import type { OakSchema } from '../../../schema/oak-schema.js'
 import type { InferOutput } from '../../../schema/standard-schema.js'
@@ -42,7 +43,7 @@ export const create = (channels: PromptEngine.Channels): Prompter => {
       // String and Number types - use key press input to build string
       if (schema._tag === `string` || schema._tag === `number`) {
         const isOptional = params.parameter.type.metadata.optionality._tag !== `required`
-        return Effect.gen(function*(_) {
+        return Effect.gen(function* (_) {
           const result = yield* _(
             PromptEngine.create({
               channels,
@@ -83,7 +84,7 @@ export const create = (channels: PromptEngine.Channels): Prompter => {
 
       // Boolean type - toggle between yes/no
       if (schema._tag === `boolean`) {
-        return Effect.gen(function*(_) {
+        return Effect.gen(function* (_) {
           const result = yield* _(
             PromptEngine.create({
               channels,
@@ -108,7 +109,7 @@ export const create = (channels: PromptEngine.Channels): Prompter => {
 
       // Enum type - select from values
       if (schema._tag === `enum`) {
-        return Effect.gen(function*(_) {
+        return Effect.gen(function* (_) {
           const values = schema.values
           const result = yield* _(
             PromptEngine.create({
@@ -139,7 +140,7 @@ export const create = (channels: PromptEngine.Channels): Prompter => {
 
       // Union type - first select type, then prompt for value
       if (schema._tag === `union`) {
-        return Effect.gen(function*(_) {
+        return Effect.gen(function* (_) {
           // First prompt: select which union member type to use
           const typeNames = schema.members.map((m) => m._tag)
           const typeResult = yield* _(
@@ -159,7 +160,9 @@ export const create = (channels: PromptEngine.Channels): Prompter => {
                 },
                 {
                   match: [{ name: `tab`, shift: true }, `left`],
-                  run: (state) => ({ index: (state.index - 1 + typeNames.length) % typeNames.length }),
+                  run: (state) => ({
+                    index: (state.index - 1 + typeNames.length) % typeNames.length,
+                  }),
                 },
               ],
             }),
@@ -168,7 +171,7 @@ export const create = (channels: PromptEngine.Channels): Prompter => {
 
           // Second prompt: prompt for the selected type
           const selectedSchema = schema.members[typeResult.index]!
-          const prompter = create(channels) as Prompter
+          const prompter = create(channels)
           return yield* _(
             prompter.ask({
               ...params,
@@ -189,12 +192,12 @@ export const create = (channels: PromptEngine.Channels): Prompter => {
 
       // Literal type - just return the literal value
       if (schema._tag === `literal`) {
-        channels.output(Text.pad(`left`, marginLeft, ` `, `${params.prompt}${schema.value}`))
+        channels.output(Text.pad(`left`, marginLeft, ` `, params.prompt + String(schema.value)))
         return Effect.succeed(schema.value as any)
       }
 
       // Fallback for unknown types
-      throw new Error(`Prompting not implemented for schema type: ${(schema as any)._tag}`)
+      return Lang.todo(`Prompting for schema type: ${(schema as any)._tag}`)
     },
   }
 }

@@ -17,7 +17,7 @@ describe('is', () => {
   test('returns false for any non-Error value', () => {
     fc.assert(
       fc.property(
-        fc.anything().filter(v => !(v instanceof Error)),
+        fc.anything().filter((v) => !(v instanceof Error)),
         (value) => {
           expect(is(value)).toBe(false)
         },
@@ -29,17 +29,13 @@ describe('is', () => {
 describe('isAggregateError', () => {
   test('returns true only for AggregateError instances', () => {
     fc.assert(
-      fc.property(
-        fc.array(fc.string()),
-        fc.string(),
-        (errors, message) => {
-          const aggregateError = new AggregateError(
-            errors.map(e => new Error(e)),
-            message,
-          )
-          expect(isAggregateError(aggregateError)).toBe(true)
-        },
-      ),
+      fc.property(fc.array(fc.string()), fc.string(), (errors, message) => {
+        const aggregateError = new AggregateError(
+          errors.map((e) => new Error(e)),
+          message,
+        )
+        expect(isAggregateError(aggregateError)).toBe(true)
+      }),
     )
   })
 
@@ -56,7 +52,7 @@ describe('isAggregateError', () => {
   test('returns false for non-Error values', () => {
     fc.assert(
       fc.property(
-        fc.anything().filter(v => !(v instanceof Error)),
+        fc.anything().filter((v) => !(v instanceof Error)),
         (value) => {
           expect(isAggregateError(value)).toBe(false)
         },
@@ -81,7 +77,7 @@ describe('ensure', () => {
   test('converts any non-Error value to Error', () => {
     fc.assert(
       fc.property(
-        fc.anything().filter(v => !(v instanceof Error)),
+        fc.anything().filter((v) => !(v instanceof Error)),
         (value) => {
           const result = ensure(value)
           expect(result).toBeInstanceOf(Error)

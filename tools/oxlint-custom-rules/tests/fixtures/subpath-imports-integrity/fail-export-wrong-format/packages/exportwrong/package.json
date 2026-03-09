@@ -1,0 +1,9 @@
+{
+  "name": "@kitz/exportwrong",
+  "imports": {
+    "#alpha": "./src/alpha/_.ts"
+  },
+  "exports": {
+    ".": "./build/alpha/_.js"
+  }
+}

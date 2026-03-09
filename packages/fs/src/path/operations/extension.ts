@@ -1,6 +1,6 @@
-import type { Path } from '../_.js'
 import { Match } from 'effect'
 import type { $File } from '../$File/_.js'
+import type { Path } from '../_.js'
 import type { Guard, Input } from '../inputs.js'
 import { normalizeDynamic } from '../inputs.js'
 import { Schema } from '../Schema.js'

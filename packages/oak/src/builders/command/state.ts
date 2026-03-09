@@ -1,5 +1,5 @@
-import { Obj, Ts } from '@kitz/core'
 import type { Cli } from '@kitz/cli'
+import { Obj, Ts } from '@kitz/core'
 import type { StandardSchemaV1 } from '@standard-schema/spec'
 import type { SomeExtension } from '../../extension.js'
 import type { Values } from '../../helpers.js'
@@ -28,7 +28,9 @@ export interface BuilderCommandState {
 }
 
 export namespace BuilderCommandState {
-  export type Type<$State extends Base> = $State['Extension'] extends { type: infer $Type } ? $Type : unknown
+  export type Type<$State extends Base> = $State['Extension'] extends { type: infer $Type }
+    ? $Type
+    : unknown
 
   export interface BaseEmpty extends Base {
     IsPromptEnabled: false
@@ -65,11 +67,18 @@ export namespace BuilderCommandState {
 
   type ReservedParameterNames = 'help' | 'h'
 
-  export type ValidateNameExpression<State extends Base, NameExpression extends string> = Cli.Param.IsParseError<
-    Cli.Param.Analyze<NameExpression, { usedNames: GetUsedNames<State>; reservedNames: ReservedParameterNames }>
-  > extends true
-    ? Cli.Param.Analyze<NameExpression, { usedNames: GetUsedNames<State>; reservedNames: ReservedParameterNames }>
-    : NameExpression
+  export type ValidateNameExpression<State extends Base, NameExpression extends string> =
+    Cli.Param.IsParseError<
+      Cli.Param.Analyze<
+        NameExpression,
+        { usedNames: GetUsedNames<State>; reservedNames: ReservedParameterNames }
+      >
+    > extends true
+      ? Cli.Param.Analyze<
+          NameExpression,
+          { usedNames: GetUsedNames<State>; reservedNames: ReservedParameterNames }
+        >
+      : NameExpression
 
   export type GetUsedNames<State extends Base> = Values<State['Parameters']>['NameUnion']
 
@@ -91,43 +100,50 @@ export namespace BuilderCommandState {
     $State extends Base,
     Label extends string,
     Value extends boolean,
-  > = Obj.Replace<$State, {
-    ParametersExclusive:
-      & $State['ParametersExclusive']
-      & {
+  > = Obj.Replace<
+    $State,
+    {
+      ParametersExclusive: $State['ParametersExclusive'] & {
         [_ in Label]: {
           Optional: Value
           Parameters: $State['ParametersExclusive'][_]['Parameters']
         }
       }
-  }>
+    }
+  >
 
-  export type SetIsPromptEnabled<$State extends Base, value extends boolean> = Obj.Replace<$State, {
-    IsPromptEnabled: $State['IsPromptEnabled'] extends true ? true : value
-  }>
+  export type SetIsPromptEnabled<$State extends Base, value extends boolean> = Obj.Replace<
+    $State,
+    {
+      IsPromptEnabled: $State['IsPromptEnabled'] extends true ? true : value
+    }
+  >
 
   export type AddParameter<
     $State extends Base,
     NameExpression extends string,
     Configuration extends ParameterConfiguration<$State>,
-  > = Obj.Replace<$State, {
-    Parameters:
-      & $State['Parameters']
-      & {
+  > = Obj.Replace<
+    $State,
+    {
+      Parameters: $State['Parameters'] & {
         [_ in NameExpression]: CreateParameter<$State, NameExpression, Configuration>
       }
-    IsPromptEnabled: $State['IsPromptEnabled'] extends true ? true : IsPromptEnabledInParameterSettings<Configuration>
-  }>
+      IsPromptEnabled: $State['IsPromptEnabled'] extends true
+        ? true
+        : IsPromptEnabledInParameterSettings<Configuration>
+    }
+  >
 
   export type AddExclusiveParameter<
     $State extends Base,
     Label extends string,
     NameExpression extends string,
     Configuration extends ExclusiveParameterConfiguration<$State>,
-  > = Obj.Replace<$State, {
-    ParametersExclusive:
-      & $State['ParametersExclusive']
-      & {
+  > = Obj.Replace<
+    $State,
+    {
+      ParametersExclusive: $State['ParametersExclusive'] & {
         [_ in Label]: {
           Optional: $State['ParametersExclusive'][_]['Optional']
           Parameters: {
@@ -148,7 +164,8 @@ export namespace BuilderCommandState {
           }
         }
       }
-  }>
+    }
+  >
 
   export type CreateParameter<
     $State extends Base,
@@ -163,36 +180,41 @@ export namespace BuilderCommandState {
       { usedNames: GetUsedNames<$State>; reservedNames: ReservedParameterNames }
     >
     NameUnion: Cli.Param.GetNames<
-      Cli.Param.Analyze<NameExpression, { usedNames: GetUsedNames<$State>; reservedNames: ReservedParameterNames }>
+      Cli.Param.Analyze<
+        NameExpression,
+        { usedNames: GetUsedNames<$State>; reservedNames: ReservedParameterNames }
+      >
     >
   }
 
-  export type ToArgs<$State extends Base> = $State['IsPromptEnabled'] extends true ? Promise<ToArgs_<$State>>
+  export type ToArgs<$State extends Base> = $State['IsPromptEnabled'] extends true
+    ? Promise<ToArgs_<$State>>
     : ToArgs_<$State>
 
   type ToArgs_<$State extends Base> = Ts.Simplify.Top<
-    & {
-      [Name in keyof $State['Parameters'] & string as $State['Parameters'][Name]['NameParsed']['canonical']]:
-        InferOutput<$State['Parameters'][Name]['Schema']>
-    }
-    & {
+    {
+      [Name in keyof $State['Parameters'] &
+        string as $State['Parameters'][Name]['NameParsed']['canonical']]: InferOutput<
+        $State['Parameters'][Name]['Schema']
+      >
+    } & {
       [Label in keyof $State['ParametersExclusive'] & string]:
         | Ts.Simplify.Top<
-          Values<
-            {
+            Values<{
               [Name in keyof $State['ParametersExclusive'][Label]['Parameters']]: {
                 _tag: $State['ParametersExclusive'][Label]['Parameters'][Name]['NameParsed']['canonical']
-                value: InferOutput<$State['ParametersExclusive'][Label]['Parameters'][Name]['Schema']>
+                value: InferOutput<
+                  $State['ParametersExclusive'][Label]['Parameters'][Name]['Schema']
+                >
               }
-            }
+            }>
           >
-        >
         | ($State['ParametersExclusive'][Label]['Optional'] extends true ? undefined : never)
     }
   >
 
   export type ToTypes<$State extends BuilderCommandState.Base> = {
-    [K in keyof $State['Parameters'] & string as $State['Parameters'][K]['NameParsed']['canonical']]:
-      $State['Parameters'][K]['Schema']
+    [K in keyof $State['Parameters'] &
+      string as $State['Parameters'][K]['NameParsed']['canonical']]: $State['Parameters'][K]['Schema']
   }
 }

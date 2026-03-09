@@ -5,7 +5,8 @@ describe('partial', () => {
   // Test functions
   const add = (a: number, b: number) => a + b
   const add3 = (a: number, b: number, c: number) => a + b + c
-  const greet = (greeting: string, name: string, punctuation: string) => `${greeting}, ${name}${punctuation}`
+  const greet = (greeting: string, name: string, punctuation: string) =>
+    `${greeting}, ${name}${punctuation}`
 
   describe('hole symbol', () => {
     test('isHole identifies holes correctly', () => {

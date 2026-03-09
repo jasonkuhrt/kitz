@@ -1,6 +1,7 @@
 import type { Arr } from '#arr'
 import type { Bool } from '#bool'
 import { Fn } from '#fn'
+import { Lang } from '#lang'
 import { Prom } from '#prom'
 import type { AwaitedUnion } from '#prom/prom'
 import type { Ts } from '#ts'
@@ -17,7 +18,7 @@ import { wrap, type WrapOptions } from './wrap.js'
  * we must check for it explicitly before checking for Promise. When the return type is `never`,
  * the function always throws, so the result type is just the fallback.
  */
-// dprint-ignore
+// oxfmt-ignore
 type TryOrReturn<$Main, $Fallback> =
   Ts.IsNever<$Main> extends true
     ? Fn.resolveLazy<$Fallback>  // Function always throws -> just return fallback type
@@ -58,7 +59,7 @@ export type TryCatchDefaultPredicateTypes = Error
  *
  * @category Try-Catch
  */
-// dprint-ignore
+// oxfmt-ignore
 export const tryCatchify = <fn extends Fn.AnyAny, thrown>(
   fn: fn,
   predicates: readonly [Bool.TypePredicate<thrown>, ...readonly Bool.TypePredicate<thrown>[]] = [is as Bool.TypePredicate<thrown>],
@@ -104,14 +105,14 @@ export const tryCatchify = <fn extends Fn.AnyAny, thrown>(
  * @category Try-Catch
  */
 // Overload for promise input
-// dprint-ignore
+// oxfmt-ignore
 export function tryCatch<returned, thrown>(
   promise: Promise<returned>,
   predicates?: readonly [Bool.TypePredicate<thrown>, ...readonly Bool.TypePredicate<thrown>[]],
 ): Promise<returned | (IsUnknown<thrown> extends true ? TryCatchDefaultPredicateTypes : thrown)>
 
 // Overload for function input
-// dprint-ignore
+// oxfmt-ignore
 export function tryCatch<returned, thrown>(
   fn: () => returned,
   predicates?: Arr.NonEmpty<Bool.TypePredicate<thrown>>,
@@ -124,7 +125,7 @@ export function tryCatch<returned, thrown>(
 // Implementation
 export function tryCatch<returned, thrown>(
   fnOrPromise: Promise<any> | (() => returned),
-  predicates: readonly [Bool.TypePredicate<thrown>, ...readonly Bool.TypePredicate<thrown>[]] = [
+  predicates: readonly [Bool.TypePredicate<thrown>, ...(readonly Bool.TypePredicate<thrown>[])] = [
     is as Bool.TypePredicate<thrown>,
   ],
 ): any {
@@ -137,9 +138,9 @@ export function tryCatch<returned, thrown>(
       if (predicates.some((predicate) => predicate(error))) {
         return error
       }
-      throw error
+      Lang.throw(error)
     },
-  }) as any
+  })
 }
 
 /**
@@ -248,12 +249,13 @@ export const tryOrAsync = async <success, fallback>(
   fn: () => success,
   fallback: Fn.LazyMaybe<fallback>,
 ): Promise<Awaited<success> | Awaited<fallback>> => {
-  try {
-    return await fn()
-  } catch {
-    const fallbackValue = Fn.resolveLazy(fallback)
-    return await fallbackValue as Awaited<fallback>
+  const envelope = await Prom.maybeAsyncEnvelope(fn)
+  if (!envelope.fail) {
+    return envelope.value as Awaited<success>
   }
+
+  const fallbackValue: fallback = Fn.is(fallback) ? fallback() : fallback
+  return await fallbackValue
 }
 
 /**
@@ -268,7 +270,7 @@ export const tryOrAsync = async <success, fallback>(
  *
  * @category Try-Or
  */
-// dprint-ignore
+// oxfmt-ignore
 export const tryOrAsyncOn =
   <success>(fn: () => success) =>
     async <fallback>(fallback: Fn.LazyMaybe<fallback>): Promise<Awaited<success> | Awaited<fallback>> =>
@@ -287,7 +289,7 @@ export const tryOrAsyncOn =
  *
  * @category Try-Or
  */
-// dprint-ignore
+// oxfmt-ignore
 export const tryOrAsyncWith =
   <fallback>(fallback: Fn.LazyMaybe<fallback>) =>
     async <success>(fn: () => success): Promise<Awaited<success> | Awaited<fallback>> =>
@@ -307,7 +309,7 @@ export const tryOrAsyncWith =
  *
  * @category Try-Or
  */
-// dprint-ignore
+// oxfmt-ignore
 export const tryOrOn =
   <success>(fn: () => success) =>
     <fallback>(fallback: Fn.LazyMaybe<fallback>): TryOrReturn<success, fallback> =>
@@ -329,7 +331,7 @@ export const tryOrOn =
  *
  * @category Try-Or
  */
-// dprint-ignore
+// oxfmt-ignore
 export const tryOrWith =
   <fallback>(fallback: Fn.LazyMaybe<fallback>) =>
     <success>(fn: () => success): TryOrReturn<success, fallback> =>
@@ -401,7 +403,7 @@ export const tryOrNull = tryOrWith(null)
  *
  * @category Try-Or
  */
-// dprint-ignore
+// oxfmt-ignore
 export function tryOrRethrow<$Return>(
   fn: () => $Return,
   wrapper: string | WrapOptions | ((cause: Error) => Error)
@@ -411,8 +413,11 @@ export function tryOrRethrow<$Return>(
     {
       catch: (thrown, _isAsync) => {
         const cause = ensure(thrown)
-        if (typeof wrapper === 'function') throw wrapper(cause)
-        throw wrap(cause, wrapper)
+        if (typeof wrapper === 'function') {
+          return Lang.throw(wrapper(cause))
+        }
+
+        return Lang.throw(wrap(cause, wrapper))
       },
     },
   ) as any
@@ -443,23 +448,18 @@ export function tryOrRethrow<$Return>(
  *
  * @category Try-Or
  */
-export async function tryAllOrRethrow<
-  $Fns extends readonly [() => any, ...Array<() => any>],
->(
+export async function tryAllOrRethrow<$Fns extends readonly [() => any, ...Array<() => any>]>(
   fns: $Fns,
   wrapper: string | WrapOptions | ((cause: Error) => Error),
-): Promise<
-  {
-    [K in keyof $Fns]: Awaited<ReturnType<$Fns[K]>>
-  }
-> {
-  const results = await Promise.allSettled(
-    fns.map(fn => {
-      try {
-        return Promise.resolve(fn())
-      } catch (error) {
-        return Promise.reject(error)
-      }
+): Promise<{
+  [K in keyof $Fns]: Awaited<ReturnType<$Fns[K]>>
+}> {
+  const results = await Promise.all(
+    fns.map(async (fn) => {
+      const envelope = await Prom.maybeAsyncEnvelope(fn)
+      return envelope.fail
+        ? ({ status: 'rejected', reason: envelope.value } as const)
+        : ({ status: 'fulfilled', value: envelope.value } as const)
     }),
   )
 
@@ -469,9 +469,8 @@ export async function tryAllOrRethrow<
   results.forEach((result) => {
     if (result.status === 'rejected') {
       const cause = ensure(result.reason)
-      const wrapFn = typeof wrapper === 'function'
-        ? wrapper
-        : (error: Error) => wrap(error, wrapper)
+      const wrapFn =
+        typeof wrapper === 'function' ? wrapper : (error: Error) => wrap(error, wrapper)
       errors.push(wrapFn(cause))
     } else {
       values.push(result.value)
@@ -479,13 +478,15 @@ export async function tryAllOrRethrow<
   })
 
   if (errors.length > 0) {
-    throw new AggregateError(
-      errors,
-      typeof wrapper === 'string'
-        ? wrapper
-        : typeof wrapper === 'object'
-        ? wrapper.message
-        : 'Multiple operations failed',
+    Lang.throw(
+      new AggregateError(
+        errors,
+        typeof wrapper === 'string'
+          ? wrapper
+          : typeof wrapper === 'object'
+            ? wrapper.message
+            : 'Multiple operations failed',
+      ),
     )
   }
 

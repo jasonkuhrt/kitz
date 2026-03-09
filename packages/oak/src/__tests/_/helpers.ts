@@ -1,10 +1,22 @@
 import { Prom } from '@kitz/core'
+import type { Obj } from '@kitz/core'
 import { z } from 'zod/v4'
 import * as Command from '../../_entrypoints/__.js'
+import type { BuilderCommandState } from '../../builders/command/state.js'
+import type { CommandBuilder } from '../../builders/command/types.js'
 import { Zod } from '../../extensions/__.js'
 
+type TestCommandBuilder = CommandBuilder<
+  Obj.Replace<
+    BuilderCommandState.BaseEmpty,
+    {
+      Extension: typeof Zod
+    }
+  >
+>
+
 // todo enable throw on all tests
-export const $ = Command.create().use(Zod) // .settings({ onError: `throw` })
+export const $: TestCommandBuilder = Command.create().use(Zod) // .settings({ onError: `throw` })
 
 export const assertAssignable = <T>(_: T): [T] => 0 as any
 export const as = <T>(): T => undefined as any
@@ -36,15 +48,35 @@ export const tryCatch = <T, E extends Error = Error>(
 export const errorFromMaybeError = (maybeError: unknown): Error => {
   if (maybeError instanceof Error) return maybeError
 
+  const renderMaybeError = (value: unknown): string => {
+    if (
+      typeof value === `string` ||
+      typeof value === `number` ||
+      typeof value === `boolean` ||
+      typeof value === `bigint` ||
+      typeof value === `symbol` ||
+      value === null ||
+      value === undefined
+    ) {
+      return String(value)
+    }
+
+    try {
+      return JSON.stringify(value)
+    } catch {
+      return Object.prototype.toString.call(value)
+    }
+  }
+
   if (typeof maybeError === `object` && maybeError !== null) {
     try {
       // todo use isomorphic util inspect
       // maybe https://www.npmjs.com/package/object-inspect?
-      return new Error(String(maybeError))
+      return new Error(renderMaybeError(maybeError))
     } catch {
       // silently ignore
     }
   }
 
-  return new Error(String(maybeError))
+  return new Error(renderMaybeError(maybeError))
 }

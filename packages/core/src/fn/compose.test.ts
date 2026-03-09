@@ -1,5 +1,5 @@
+import { Test } from '#kitz/test'
 import type { Optic } from '#optic'
-import { Test } from '#test'
 import { describe, expect, test } from 'vitest'
 import { compose, compose2 } from './compose.js'
 import type { Extractor } from './extractor.js'
@@ -35,15 +35,13 @@ test('compose > empty throws', () => {
 // Extractor composition
 describe('compose > extractors', () => {
   test('composes extractors and preserves .kind metadata', () => {
-    const extractor1: Extractor<number, string> = Object.assign(
-      (x: number) => x.toString(),
-      { kind: {} as Optic.Returned.$Get },
-    )
+    const extractor1: Extractor<number, string> = Object.assign((x: number) => x.toString(), {
+      kind: {} as Optic.Returned.$Get,
+    })
 
-    const extractor2: Extractor<boolean, number> = Object.assign(
-      (x: boolean) => (x ? 1 : 0),
-      { kind: {} as Optic.Awaited.$Get },
-    )
+    const extractor2: Extractor<boolean, number> = Object.assign((x: boolean) => (x ? 1 : 0), {
+      kind: {} as Optic.Awaited.$Get,
+    })
 
     const composed = compose(extractor1, extractor2)
 
@@ -53,9 +51,15 @@ describe('compose > extractors', () => {
   })
 
   test('composes multiple extractors', () => {
-    const ext1: Extractor<number, number> = Object.assign((x: number) => x * 2, { kind: {} as Optic.Returned.$Get })
-    const ext2: Extractor<number, number> = Object.assign((x: number) => x + 1, { kind: {} as Optic.Awaited.$Get })
-    const ext3: Extractor<number, number> = Object.assign((x: number) => x - 3, { kind: {} as Optic.Array.$Get })
+    const ext1: Extractor<number, number> = Object.assign((x: number) => x * 2, {
+      kind: {} as Optic.Returned.$Get,
+    })
+    const ext2: Extractor<number, number> = Object.assign((x: number) => x + 1, {
+      kind: {} as Optic.Awaited.$Get,
+    })
+    const ext3: Extractor<number, number> = Object.assign((x: number) => x - 3, {
+      kind: {} as Optic.Array.$Get,
+    })
 
     const composed = compose(ext1, ext2, ext3)
 
@@ -74,15 +78,13 @@ Test.describe('compose2 > functions')
 
 describe('compose2 > extractors', () => {
   test('composes two extractors with .kind metadata', () => {
-    const ext1: Extractor<number, string> = Object.assign(
-      (x: number) => x.toString(),
-      { kind: {} as Optic.Returned.$Get },
-    )
+    const ext1: Extractor<number, string> = Object.assign((x: number) => x.toString(), {
+      kind: {} as Optic.Returned.$Get,
+    })
 
-    const ext2: Extractor<boolean, number> = Object.assign(
-      (x: boolean) => (x ? 1 : 0),
-      { kind: {} as Optic.Awaited.$Get },
-    )
+    const ext2: Extractor<boolean, number> = Object.assign((x: boolean) => (x ? 1 : 0), {
+      kind: {} as Optic.Awaited.$Get,
+    })
 
     const composed = compose2(ext1, ext2)
 

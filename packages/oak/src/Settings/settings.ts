@@ -1,31 +1,21 @@
 import { Obj, Str } from '@kitz/core'
 import type { BuilderCommandState } from '../builders/command/state.js'
+import { getTerminalWidth } from '../env.js'
 import type { EventPatternsInput, EventPatternsInputAtLeastOne } from '../eventPatterns.js'
 import { eventPatterns } from '../eventPatterns.js'
 import type { Values } from '../helpers.js'
 import { parseEnvironmentVariableBooleanOrThrow } from '../helpers.js'
-import { defaultParameterNamePrefixes } from '../OpeningArgs/Environment/Environment.js'
+import { Environment } from '../OpeningArgs/Environment/_.js'
 import type { OakSchema } from '../schema/oak-schema.js'
-
-/**
- * Get terminal width from environment.
- * Priority: COLUMNS env var > process.stdout.columns > fallback
- */
-const getTerminalWidth = (fallback: number): number => {
-  if (typeof process === `undefined`) return fallback
-  const envColumns = parseInt(process.env[`COLUMNS`] ?? ``, 10)
-  if (!Number.isNaN(envColumns) && envColumns > 0) return envColumns
-  return process.stdout?.columns ?? fallback
-}
 
 export type OnErrorReaction = 'exit' | 'throw'
 
 export type PromptInput<$Schema = unknown> =
   | boolean
   | {
-    enabled?: boolean
-    when?: EventPatternsInputAtLeastOne<$Schema>
-  }
+      enabled?: boolean
+      when?: EventPatternsInputAtLeastOne<$Schema>
+    }
 
 export interface Input<$State extends BuilderCommandState.Base = BuilderCommandState.BaseEmpty> {
   description?: string
@@ -50,17 +40,13 @@ export interface Input<$State extends BuilderCommandState.Base = BuilderCommandS
   parameters?: {
     environment?:
       | boolean
-      | (
-        & {
-          [
-            NameExpression
-              in keyof $State['Parameters'] as $State['Parameters'][NameExpression]['NameParsed']['canonical']
-          ]?: boolean | SettingInputEnvironmentParameter
-        }
-        & {
+      | ({
+          [NameExpression in keyof $State['Parameters'] as $State['Parameters'][NameExpression]['NameParsed']['canonical']]?:
+            | boolean
+            | SettingInputEnvironmentParameter
+        } & {
           $default?: boolean | SettingInputEnvironmentParameter
-        }
-      )
+        })
   }
 }
 
@@ -112,11 +98,7 @@ interface Environment {
   [name: string]: string | undefined
 }
 
-export const change = (
-  current: Output,
-  input: Input<BuilderCommandState.BaseEmpty>,
-  environment: Environment,
-): void => {
+export const change = (current: Output, input: Input, environment: Environment): void => {
   if (input.prompt !== undefined) {
     if (typeof input.prompt === `boolean`) {
       current.prompt.enabled = input.prompt
@@ -149,8 +131,8 @@ export const change = (
 
   current.onOutput = input.onOutput
     ? (_) => {
-      input.onOutput!(_, process.stdout.write.bind(process.stdout))
-    }
+        input.onOutput!(_, process.stdout.write.bind(process.stdout))
+      }
     : current.onOutput
 
   if (input.parameters !== undefined) {
@@ -161,7 +143,9 @@ export const change = (
     // Handle environment
     if (input.parameters.environment !== undefined) {
       const explicitGlobalToggle = environment.cli_settings_read_arguments_from_environment
-        ? parseEnvironmentVariableBooleanOrThrow(environment.cli_settings_read_arguments_from_environment)
+        ? parseEnvironmentVariableBooleanOrThrow(
+            environment.cli_settings_read_arguments_from_environment,
+          )
         : null
 
       if (explicitGlobalToggle === false) {
@@ -174,12 +158,12 @@ export const change = (
           // AND there is NO explicit default toggle setting, then we disable all the rest by default.
 
           if (
-            input.parameters.environment.$default === undefined
-            || typeof input.parameters.environment.$default !== `boolean`
-              && input.parameters.environment.$default.enabled === undefined
+            input.parameters.environment.$default === undefined ||
+            (typeof input.parameters.environment.$default !== `boolean` &&
+              input.parameters.environment.$default.enabled === undefined)
           ) {
-            const parameterEnvironmentSpecs = Obj.keysStrict(input.parameters.environment).filter((k) =>
-              k !== `$default`
+            const parameterEnvironmentSpecs = Obj.keysStrict(input.parameters.environment).filter(
+              (k) => k !== `$default`,
             )
             current.parameters.environment.$default.enabled = parameterEnvironmentSpecs.length === 0
           }
@@ -206,7 +190,7 @@ export const change = (
                 if (spec.prefix === false) {
                   spec_.prefix = []
                 } else if (spec.prefix === true) {
-                  spec_.prefix = defaultParameterNamePrefixes
+                  spec_.prefix = Environment.defaultParameterNamePrefixes
                 } else if (typeof spec.prefix === `string`) {
                   spec_.prefix = [Str.Case.snake(spec.prefix).toLowerCase()]
                 } else {
@@ -223,7 +207,9 @@ export const change = (
 
 const isEnvironmentEnabled = (lowercaseEnv: NodeJS.ProcessEnv) => {
   return lowercaseEnv[`cli_settings_read_arguments_from_environment`]
-    ? parseEnvironmentVariableBooleanOrThrow(lowercaseEnv[`cli_settings_read_arguments_from_environment`]!)
+    ? parseEnvironmentVariableBooleanOrThrow(
+        lowercaseEnv[`cli_settings_read_arguments_from_environment`],
+      )
     : true
 }
 
@@ -248,7 +234,7 @@ export const getDefaults = (lowercaseEnv: NodeJS.ProcessEnv): Output => {
       environment: {
         $default: {
           enabled: isEnvironmentEnabled(lowercaseEnv),
-          prefix: defaultParameterNamePrefixes,
+          prefix: Environment.defaultParameterNamePrefixes,
         },
       },
     },

@@ -1,4 +1,5 @@
 import type { Bool } from '#bool'
+import { Lang } from '#lang'
 import type { Ts } from '#ts'
 
 /**
@@ -6,15 +7,12 @@ import type { Ts } from '#ts'
  *
  * @category Immutability
  */
-export interface ErrorMutableInputImmutableOutput extends
-  Ts.Err.StaticError<
-    ['forwardImmutability'],
-    {
-      message:
-        'Mutable input with immutable output is likely a bug - the caller expects a mutable result but provided a frozen output'
-    }
-  >
-{}
+export interface ErrorMutableInputImmutableOutput extends Ts.Err.StaticError<
+  ['forwardImmutability'],
+  {
+    message: 'Mutable input with immutable output is likely a bug - the caller expects a mutable result but provided a frozen output'
+  }
+> {}
 
 //
 //
@@ -200,7 +198,7 @@ export const inferImmutabilityMode = (...inputs: object[]): 'immutable' | 'mutab
   return inputs.some(isImmutable) ? 'immutable' : 'mutable'
 }
 
-// dprint-ignore
+// oxfmt-ignore
 type GuardForwardImmutabilityOutput<$input extends object, $output extends object> =
   isImmutable<$input> extends true ? $output :
   isMutable<$output> extends true  ? $output :
@@ -236,7 +234,7 @@ export const forwardImmutability = <$input extends object, $output extends objec
   output: GuardForwardImmutabilityOutput<$input, $output>,
 ): $input => {
   if (!Object.isFrozen(input) && Object.isFrozen(output)) {
-    throw new Error('forwardImmutability: mutable input with immutable output is likely a bug')
+    Lang.panic('forwardImmutability: mutable input with immutable output is likely a bug')
   }
   return (Object.isFrozen(input) ? toImmutableMut(output as object) : output) as $input
 }

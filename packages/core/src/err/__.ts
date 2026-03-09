@@ -1,4 +1,6 @@
 import { Fn } from '#fn'
+import { Lang } from '#lang'
+import { Effect } from 'effect'
 import { inspect, type InspectOptions } from './inspect.js'
 
 export * from './contextual.js'
@@ -22,9 +24,26 @@ export * from './wrap.js'
 /**
  * Log an error to console with nice formatting.
  *
+ * Effect-native version that returns an Effect for composition in pipelines.
+ *
+ * @see {@link logUnsafe} for immediate execution outside Effect context
+ *
  * @category Inspection
  */
-export const log = (error: Error, options?: InspectOptions): void => {
+export const log = (error: Error, options?: InspectOptions): Effect.Effect<void> =>
+  Effect.sync(() => console.log(inspect(error, options)))
+
+/**
+ * Log an error to console with nice formatting.
+ *
+ * Immediate execution version for use outside Effect context (CLI scripts, etc).
+ * "Unsafe" means it bypasses Effect's supervision - the side effect runs immediately.
+ *
+ * @see {@link log} for Effect-native version
+ *
+ * @category Inspection
+ */
+export const logUnsafe = (error: Error, options?: InspectOptions): void => {
   console.log(inspect(error, options))
 }
 
@@ -43,7 +62,7 @@ export const log = (error: Error, options?: InspectOptions): void => {
  * @category Utilities
  */
 export const throwNull = <V>(value: V, message?: string): Exclude<V, null> => {
-  if (value === null) throw new Error(message ?? defaultThrowNullMessage)
+  if (value === null) Lang.throw(new Error(message ?? defaultThrowNullMessage))
 
   return value as any
 }

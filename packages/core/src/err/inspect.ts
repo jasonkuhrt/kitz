@@ -5,6 +5,7 @@ import { Str } from '#str'
 import type { Ts } from '#ts'
 import { dim, red } from 'ansis'
 import objectInspect from 'object-inspect'
+import { getEnvironmentValue } from './env.js'
 import { cleanStackWithStats } from './stack.js'
 import { is } from './type.js'
 import type { Context } from './types.js'
@@ -18,9 +19,7 @@ interface EnvironmentConfigurableOptionSpec<$Name extends string = string, $Type
 }
 
 const makeEnvVarName = (spec: EnvironmentConfigurableOptionSpec) => {
-  return Str.Case.capAll(
-    Str.Case.snake(`${spec.envVarNamePrefix}_${spec.name}`),
-  )
+  return Str.Case.capAll(Str.Case.snake(`${spec.envVarNamePrefix}_${spec.name}`))
 }
 
 /**
@@ -30,17 +29,23 @@ const makeEnvVarName = (spec: EnvironmentConfigurableOptionSpec) => {
  * @template $EnvironmentConfigurableOptions - Array of option specifications
  * @internal
  */
-export type InferOptions<$EnvironmentConfigurableOptions extends EnvironmentConfigurableOptionSpec[]> = Ts.Simplify.Top<
-  Arr.ReduceWithIntersection<_InferOptions<$EnvironmentConfigurableOptions>>
->
+export type InferOptions<
+  $EnvironmentConfigurableOptions extends EnvironmentConfigurableOptionSpec[],
+> = Ts.Simplify.Top<Arr.ReduceWithIntersection<_InferOptions<$EnvironmentConfigurableOptions>>>
 
-export type _InferOptions<$EnvironmentConfigurableOptions extends EnvironmentConfigurableOptionSpec[]> = {
+export type _InferOptions<
+  $EnvironmentConfigurableOptions extends EnvironmentConfigurableOptionSpec[],
+> = {
   [i in keyof $EnvironmentConfigurableOptions]: {
-    [_ in $EnvironmentConfigurableOptions[i]['name']]?: ReturnType<$EnvironmentConfigurableOptions[i]['parse']>
+    [_ in $EnvironmentConfigurableOptions[i]['name']]?: ReturnType<
+      $EnvironmentConfigurableOptions[i]['parse']
+    >
   }
 }
 
-const define = <const options extends EnvironmentConfigurableOptionSpec[]>(options: options): options => {
+const define = <const options extends EnvironmentConfigurableOptionSpec[]>(
+  options: options,
+): options => {
   return options
 }
 
@@ -72,7 +77,7 @@ const resolve = <const specs extends EnvironmentConfigurableOptionSpec[]>(
   const input$ = input as Record<string, any>
 
   for (const spec of specs) {
-    const envValue = process.env[makeEnvVarName(spec)]
+    const envValue = getEnvironmentValue(makeEnvVarName(spec))
     if (envValue !== undefined) {
       config[spec.name] = {
         spec,
@@ -107,7 +112,7 @@ const optionSpecs = define([
     envVarNamePrefix: 'errorDisplay',
     description: 'Should output be colored for easier reading',
     default: true,
-    parse: (envVarValue) => envVarValue === '0' || envVarValue === 'false' ? false : true,
+    parse: (envVarValue) => envVarValue !== '0' && envVarValue !== 'false',
   },
   {
     name: 'stackTraceColumns',
@@ -135,7 +140,7 @@ const optionSpecs = define([
     envVarNamePrefix: 'errorDisplay',
     description: 'Show environment variable help section',
     default: true,
-    parse: (envVarValue) => envVarValue === '0' || envVarValue === 'false' ? false : true,
+    parse: (envVarValue) => envVarValue !== '0' && envVarValue !== 'false',
   },
 ])
 
@@ -252,9 +257,8 @@ export const inspect = (error: Error, options?: InspectOptions): string => {
 
     for (const [_, state] of Obj.entries(config)) {
       const envVar = makeEnvVarName(state.spec)
-      const status = state.source === 'environment'
-        ? `= ${state.value}`
-        : `(default: ${state.value})`
+      const status =
+        state.source === 'environment' ? `= ${state.value}` : `(default: ${state.value})`
 
       const line = `  ${envVar} ${status}`
       inspection += config.color.value ? dim(line) : line
@@ -306,11 +310,7 @@ const formatContext = (context: any): string => {
  * Format a line with indentation.
  * @internal
  */
-const formatLine = (
-  content: string,
-  indent: string,
-  config: InspectConfig,
-): string => {
+const formatLine = (content: string, indent: string, config: InspectConfig): string => {
   return `${indent}${content}`
 }
 
@@ -320,7 +320,7 @@ const formatLine = (
  */
 const formatStackFrames = (stackLines: string[]): string[] => {
   // Parse stack frames to extract function names and locations
-  const frames = stackLines.map(line => {
+  const frames = stackLines.map((line) => {
     const trimmed = line.trim()
 
     // Replace <anonymous> with <?>
@@ -335,7 +335,7 @@ const formatStackFrames = (stackLines: string[]): string[] => {
     if (match[2]) {
       // Has function name and location
       const funcName = match[1]!.trim().replace('Object.', '')
-      const location = match[2]!.trim()
+      const location = match[2].trim()
       return { funcName, location, original: cleaned }
     } else {
       // Only location
@@ -352,7 +352,7 @@ const formatStackFrames = (stackLines: string[]): string[] => {
   }
 
   // Format with alignment
-  return frames.map(frame => {
+  return frames.map((frame) => {
     if (typeof frame === 'string') return frame
 
     if (frame.funcName) {
@@ -391,7 +391,9 @@ const _inspectResursively = (
       contentIndent = parentIndent // Keep full indent for content alignment
     }
 
-    const indexPrefix = config.color.value ? dim(`${context.index} ${treeChar}`) : `${context.index} ${treeChar}`
+    const indexPrefix = config.color.value
+      ? dim(`${context.index} ${treeChar}`)
+      : `${context.index} ${treeChar}`
     const errorName = config.color.value ? red(error.name) : error.name
     const errorLine = error.message ? `${errorName}: ${error.message}` : errorName
     lines.push(`${numberIndent}${indexPrefix} ${errorLine}`)
@@ -432,7 +434,7 @@ const _inspectResursively = (
 
     // If this nested error is itself an AggregateError, show its children
     if (isAggregateError) {
-      const aggregateError = error as AggregateError
+      const aggregateError = error
       if (aggregateError.errors.length > 0) {
         // Add a visual separator
         lines.push(`${childIndent}${config.color.value ? dim('↓') : '↓'}`)
@@ -466,7 +468,9 @@ const _inspectResursively = (
 
           // If this is also an AggregateError, show indicator
           if (err instanceof AggregateError && err.errors.length > 0) {
-            lines.push(`${nestedIndent}[contains ${err.errors.length} error${err.errors.length > 1 ? 's' : ''}]`)
+            lines.push(
+              `${nestedIndent}[contains ${err.errors.length} error${err.errors.length > 1 ? 's' : ''}]`,
+            )
           }
         })
       }
@@ -520,7 +524,11 @@ const _inspectResursively = (
         // Format like a stack frame with padding to align with file paths
         const paddedFunc = '...'.padEnd(maxFuncLength)
         lines.push(
-          formatLine(`@ ${paddedFunc} elided ${cleanResult.stats.filteredFrames} ${frameWord}`, parentIndent, config),
+          formatLine(
+            `@ ${paddedFunc} elided ${cleanResult.stats.filteredFrames} ${frameWord}`,
+            parentIndent,
+            config,
+          ),
         )
       }
     }
@@ -545,7 +553,7 @@ const _inspectResursively = (
 
   // Aggregate errors
   if (isAggregateError) {
-    const aggregateError = error as AggregateError
+    const aggregateError = error
     if (aggregateError.errors.length > 0) {
       // Visual separator - indented by 4 spaces to align with tree continuation
       const separator1 = config.color.value ? dim('    ↓') : '    ↓'
@@ -557,11 +565,13 @@ const _inspectResursively = (
       const childIndent = parentIndent + '    ' // 4 spaces for child indentation
       aggregateError.errors.forEach((err, index) => {
         const isLastError = index === aggregateError.errors.length - 1
-        lines.push(_inspectResursively(err, childIndent, config, {
-          isRoot: false,
-          isLast: isLastError,
-          index,
-        }))
+        lines.push(
+          _inspectResursively(err, childIndent, config, {
+            isRoot: false,
+            isLast: isLastError,
+            index,
+          }),
+        )
         if (!isLastError) {
           // Separator aligns with the content, not the dedented number
           const separator = config.color.value ? dim('│') : '│'
@@ -571,7 +581,7 @@ const _inspectResursively = (
 
       // Add closing tree character aligned with tree structure
       const closingLine = config.color.value ? dim('    └') : '    └'
-      lines.push(`${closingLine}`)
+      lines.push(closingLine)
     }
   }
 

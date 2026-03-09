@@ -1,28 +1,28 @@
 import type { Fn } from '@kitz/core'
-import { builder } from '../../builder-singleton.js'
 import { Optic } from '@kitz/core'
 import type { Either } from 'effect'
-import type { AssertExactKind, AssertEquivKind, AssertSubKind } from '../../asserts.js'
+import type { AssertEquivKind, AssertExactKind, AssertSubKind } from '../../asserts.js'
+import { builder } from '../../builder-singleton.js'
 
-export * as exact from './exact.js'
 export * as equiv from './equiv.js'
-export * as sub from './sub.js'
+export * as exact from './exact.js'
 export * as not from './not/__.js'
+export * as sub from './sub.js'
 // Value-level extractor chaining via builder proxy
-export const returned = builder.awaited.returned
-export const array = builder.awaited.array
-export const parameters = builder.awaited.parameters
-export const parameter1 = builder.awaited.parameter1
-export const parameter2 = builder.awaited.parameter2
-export const parameter3 = builder.awaited.parameter3
-export const parameter4 = builder.awaited.parameter4
-export const parameter5 = builder.awaited.parameter5
+export const returned: typeof builder.awaited.returned = builder.awaited.returned
+export const array: typeof builder.awaited.array = builder.awaited.array
+export const parameters: typeof builder.awaited.parameters = builder.awaited.parameters
+export const parameter1: typeof builder.awaited.parameter1 = builder.awaited.parameter1
+export const parameter2: typeof builder.awaited.parameter2 = builder.awaited.parameter2
+export const parameter3: typeof builder.awaited.parameter3 = builder.awaited.parameter3
+export const parameter4: typeof builder.awaited.parameter4 = builder.awaited.parameter4
+export const parameter5: typeof builder.awaited.parameter5 = builder.awaited.parameter5
 // Unary relators
-export const any = builder.awaited.any
-export const unknown = builder.awaited.unknown
-export const never = builder.awaited.never
-export const empty = builder.awaited.empty
-// dprint-ignore
+export const any: typeof builder.awaited.any = builder.awaited.any
+export const unknown: typeof builder.awaited.unknown = builder.awaited.unknown
+export const never: typeof builder.awaited.never = builder.awaited.never
+export const empty: typeof builder.awaited.empty = builder.awaited.empty
+// oxfmt-ignore
 export type exact<
   $Expected,
   $Actual,
@@ -32,7 +32,7 @@ export type exact<
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [$Expected, __actual__]>
                                                                          : never
 
-// dprint-ignore
+// oxfmt-ignore
 export type equiv<
   $Expected,
   $Actual,
@@ -42,7 +42,7 @@ export type equiv<
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [$Expected, __actual__]>
                                                                          : never
 
-// dprint-ignore
+// oxfmt-ignore
 export type sub<
   $Expected,
   $Actual,

@@ -21,7 +21,7 @@ export type Factory = (path: string) => URL
  * ```
  */
 export const factory = (baseUrl: URL): Factory => {
-  return path => {
+  return (path) => {
     return new URL(path, baseUrl)
   }
 }
@@ -54,11 +54,10 @@ export const pathSeparator = '/'
  * ```
  */
 export const parse = (url: string): URL | Error => {
-  try {
-    return new URL(url)
-  } catch (error) {
-    return error instanceof Error ? error : new Error(String(error))
+  if (!URL.canParse(url)) {
+    return new Error(`Invalid URL: ${url}`)
   }
+  return new URL(url)
 }
 
 // export const fileURLToPath

@@ -12,6 +12,7 @@ Manage package scripts that apply to all packages in the monorepo.
 ### Adding a Global Script
 
 1. Add script to root `package.json` with `_:` prefix:
+
    ```json
    {
      "scripts": {
@@ -26,6 +27,7 @@ Manage package scripts that apply to all packages in the monorepo.
 ### Auditing for Inconsistencies
 
 Run with `--check` flag to verify all packages are in sync without modifying:
+
 ```
 tsx .claude/skills/authoring-global-scripts/scripts/sync-package-scripts.ts --check
 ```
@@ -34,12 +36,13 @@ tsx .claude/skills/authoring-global-scripts/scripts/sync-package-scripts.ts --ch
 
 ### Convention
 
-| Location | Format | Example |
-|----------|--------|---------|
-| Root package.json | `_:script-name` | `"_:build": "tsgo -p tsconfig.build.json"` |
-| Package package.json | `script-name` | `"build": "tsgo -p tsconfig.build.json"` |
+| Location             | Format          | Example                                    |
+| -------------------- | --------------- | ------------------------------------------ |
+| Root package.json    | `_:script-name` | `"_:build": "tsgo -p tsconfig.build.json"` |
+| Package package.json | `script-name`   | `"build": "tsgo -p tsconfig.build.json"`   |
 
 The `_:` prefix marks scripts as "global templates". The sync script:
+
 - Strips the prefix when copying to packages
 - Replaces all package scripts (packages should not have custom scripts)
 - Warns about extra scripts in packages that aren't in the template

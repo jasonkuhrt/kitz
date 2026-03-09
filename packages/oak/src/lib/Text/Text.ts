@@ -39,7 +39,12 @@ export const minSpan = (alignContent: 'left' | 'right', width: number, content: 
   )
 }
 
-export const padWithin = (side: 'left' | 'right', size: number, char: string, text: string): string => {
+export const padWithin = (
+  side: 'left' | 'right',
+  size: number,
+  char: string,
+  text: string,
+): string => {
   const padSize = size - getLength(text)
   if (padSize <= 0) return text
   return pad(side, padSize, char, text)
@@ -74,7 +79,8 @@ export const row = (columns: ColSpec[]): string => {
   const columnsSized = columns.map((_) => {
     return {
       lines: _.lines,
-      width: _.width ?? _.lines.reduce((widthSoFar, line) => Math.max(widthSoFar, getLength(line)), 0),
+      width:
+        _.width ?? _.lines.reduce((widthSoFar, line) => Math.max(widthSoFar, getLength(line)), 0),
       separator: _.separator ?? defaultColumnSeparator,
     }
   })
@@ -88,7 +94,8 @@ export const row = (columns: ColSpec[]): string => {
         separator: col.separator,
       }))
       .reduce(
-        (line, col, currentLine) => (currentLine === 0 ? col.content : line + col.separator + col.content),
+        (line, col, currentLine) =>
+          currentLine === 0 ? col.content : line + col.separator + col.content,
         ``,
       )
     lines.push(line)
@@ -153,15 +160,22 @@ export const indentColumn = (
 ): Column => {
   return column.map(
     (line, index) =>
-      (typeof symbolOrSymbolMaker === `string` ? symbolOrSymbolMaker : symbolOrSymbolMaker(index)) + line,
+      (typeof symbolOrSymbolMaker === `string` ? symbolOrSymbolMaker : symbolOrSymbolMaker(index)) +
+      line,
   )
 }
 
-export const indentBlockWith = (text: string, indenter: (line: Line, index: number) => Line): string => {
+export const indentBlockWith = (
+  text: string,
+  indenter: (line: Line, index: number) => Line,
+): string => {
   return indentColumnWith(text.split(chars.newline), indenter).join(chars.newline)
 }
 
-export const indentColumnWith = (column: Column, indenter: (line: Line, index: number) => Line): Column => {
+export const indentColumnWith = (
+  column: Column,
+  indenter: (line: Line, index: number) => Line,
+): Column => {
   return column.map((line, index) => indenter(line, index) + line)
 }
 
@@ -192,7 +206,10 @@ export const measure = (string: string) => {
   }
 }
 
-export const visualStringTakeWords = (string: string, size: number): { taken: string; remaining: string } => {
+export const visualStringTakeWords = (
+  string: string,
+  size: number,
+): { taken: string; remaining: string } => {
   const words = splitWords(string)
   let taken = ``
 

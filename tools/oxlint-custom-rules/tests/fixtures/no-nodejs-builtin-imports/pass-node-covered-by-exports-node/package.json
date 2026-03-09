@@ -1,0 +1,9 @@
+{
+  "name": "fixture-pass-node-covered-by-exports-node",
+  "exports": {
+    ".": {
+      "node": "./build/feature.js",
+      "default": "./build/feature.js"
+    }
+  }
+}

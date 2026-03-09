@@ -4,16 +4,29 @@ import type { BlockBuilder } from './block.js'
 import { createBlockBuilder } from './block.js'
 import type { Builder, BuilderInternal } from './helpers.js'
 import { toInternalBuilder } from './helpers.js'
+import { getTerminalWidth } from '../env.js'
 
-/**
- * Get terminal width from environment.
- * Priority: COLUMNS env var > process.stdout.columns > fallback
- */
-const getTerminalWidth = (fallback: number): number => {
-  if (typeof process === `undefined`) return fallback
-  const envColumns = parseInt(process.env[`COLUMNS`] ?? ``, 10)
-  if (!Number.isNaN(envColumns) && envColumns > 0) return envColumns
-  return process.stdout?.columns ?? fallback
+const withDefaultCrossMax = (
+  spanRange: BlockParameters['spanRange'],
+  defaultWidth: number,
+): NonNullable<BlockParameters['spanRange']> => {
+  return {
+    ...(spanRange?.main === undefined
+      ? {}
+      : {
+          main: {
+            min: spanRange.main.min,
+            max: spanRange.main.max,
+          },
+        }),
+    cross:
+      spanRange?.cross === undefined
+        ? { max: defaultWidth }
+        : {
+            min: spanRange.cross.min,
+            max: spanRange.cross.max ?? defaultWidth,
+          },
+  }
 }
 
 export const defaults = {
@@ -41,13 +54,7 @@ export const createRootBuilder = (
   const defaultWidth = terminalWidth ?? getTerminalWidth(defaults.terminalWidth)
 
   builderInternal._.node.setParameters({
-    spanRange: {
-      ...spanRange,
-      cross: {
-        ...spanRange?.cross,
-        max: spanRange?.cross?.max ?? defaultWidth,
-      },
-    },
+    spanRange: withDefaultCrossMax(spanRange, defaultWidth),
     ...otherParameters,
   })
 
@@ -61,9 +68,8 @@ export const render = (builder: Builder): string => {
   const rootNode = internalBuilder._.node
 
   // Extract spanRange constraint from root block (if it has one)
-  const maxWidth = `spanRange` in rootNode.parameters
-    ? rootNode.parameters.spanRange?.cross?.max
-    : undefined
+  const maxWidth =
+    `spanRange` in rootNode.parameters ? rootNode.parameters.spanRange?.cross?.max : undefined
 
   const result = rootNode.render({
     maxWidth,

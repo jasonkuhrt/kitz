@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "#alpha": ["./src/alpha/_.js"],
+      "#alpha/*": ["./src/alpha/*.js"],
+      "#beta": ["./src/beta/_.js"],
+      "#beta/*": ["./src/beta/*.js"]
+    }
+  }
+}

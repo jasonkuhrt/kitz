@@ -44,9 +44,11 @@ import type * as Simplify from './simplify.js'
  * @internal
  */
 // todo use Tup.ensure helper for this
-type NormalizeHierarchyInput<$H> = $H extends readonly string[] ? $H
-  : $H extends string ? [$H]
-  : readonly string[]
+type NormalizeHierarchyInput<$H> = $H extends readonly string[]
+  ? $H
+  : $H extends string
+    ? [$H]
+    : readonly string[]
 
 export interface StaticError<
   // todo with readonly
@@ -58,15 +60,16 @@ export interface StaticError<
   CONTEXT_____: $Context
 }
 
-export interface StaticErrorMessage<
-  $Message extends string,
-> extends StaticError<[], { message: $Message }> {}
+export interface StaticErrorMessage<$Message extends string> extends StaticError<
+  [],
+  { message: $Message }
+> {}
 
 /**
  * Pad a key to 14 characters with underscores - optimized with zero recursion.
  * @internal
  */
-// dprint-ignore
+// oxfmt-ignore
 type PadKeyTo14<$Key extends string> =
   Str.Length<$Key> extends infer __len extends number
     ? __len extends 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13
@@ -123,9 +126,13 @@ export type Is<$T> = $T extends StaticError ? true : false
  * Convert hierarchy array to dot-separated path string.
  * @internal
  */
-type HierarchyToPath<$Hierarchy extends readonly string[]> = $Hierarchy extends
-  readonly [infer __first__ extends string, ...infer __rest__ extends string[]] ? __rest__ extends [] ? `.${__first__}`
-  : `.${__first__}${HierarchyToPath<__rest__>}`
+type HierarchyToPath<$Hierarchy extends readonly string[]> = $Hierarchy extends readonly [
+  infer __first__ extends string,
+  ...infer __rest__ extends string[],
+]
+  ? __rest__ extends []
+    ? `.${__first__}`
+    : `.${__first__}${HierarchyToPath<__rest__>}`
   : ''
 
 /**
@@ -133,9 +140,7 @@ type HierarchyToPath<$Hierarchy extends readonly string[]> = $Hierarchy extends
  * Extracts from the ERROR field directly to get the normalized hierarchy.
  * @internal
  */
-type ExtractHierarchy<
-  $Error extends StaticError,
-> = HierarchyToPath<$Error['ERROR_______']>
+type ExtractHierarchy<$Error extends StaticError> = HierarchyToPath<$Error['ERROR_______']>
 
 /**
  * Display an error with formatted hierarchy and context.
@@ -163,7 +168,7 @@ type ExtractHierarchy<
  *
  * @category Error Utilities
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Show<
   $Error extends StaticError,
   ___$Context extends object = object extends $Error['CONTEXT_____'] ? {} : $Error['CONTEXT_____'],
@@ -206,7 +211,7 @@ export type ShowOrPassthrogh<$T> = $T extends StaticError ? Show<$T> : $T
  *
  * @category Error Display
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Render<$Error extends StaticError> =
   KITZ.Ts.Error['renderErrors'] extends false
     ? $Error['CONTEXT_____'] extends { message: infer __message__ extends string }

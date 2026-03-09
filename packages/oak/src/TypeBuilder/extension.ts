@@ -19,3 +19,5 @@
 //   namespace: $Namespace
 //   builder: $Builder
 // }): $Extension => extension as any as $Extension
+
+export {}

@@ -61,7 +61,7 @@ const segmenter = new Intl.Segmenter('en-US', { granularity: 'grapheme' })
  * Str.Visual.strip('plain text')  // 'plain text' (unchanged)
  * ```
  */
-export const strip = ansis.strip
+export const strip: typeof ansis.strip = (...args) => ansis.strip(...args)
 
 /**
  * Get the visual width of a string, ignoring ANSI escape codes and counting grapheme clusters.
@@ -215,6 +215,75 @@ export const spanOn = Fn.curry(span)
  * ```
  */
 export const spanWith = Fn.flipCurried(spanOn)
+
+/**
+ * Center text within a specified visual width by adding padding on both sides.
+ *
+ * If the total padding is odd, the extra character goes on the right side.
+ * If the text is already wider than the target width, it is returned unchanged.
+ *
+ * @category Text Formatting
+ * @param text - The text to center
+ * @param targetWidth - Target visual width
+ * @param char - Character to use for padding (default: space)
+ * @returns The centered text
+ *
+ * @example
+ * ```typescript
+ * // Basic centering
+ * Str.Visual.center('hi', 6)       // '  hi  '
+ * Str.Visual.center('hello', 9)    // '  hello  '
+ *
+ * // Odd padding - extra char on right
+ * Str.Visual.center('hi', 5)       // ' hi  '
+ *
+ * // Text already at or exceeds width
+ * Str.Visual.center('hello', 5)    // 'hello'
+ * Str.Visual.center('hello', 3)    // 'hello'
+ *
+ * // With ANSI codes
+ * const colored = '\x1b[32mOK\x1b[0m'
+ * Str.Visual.center(colored, 6)    // Visual: "  OK  "
+ *
+ * // Custom padding character
+ * Str.Visual.center('hi', 6, '-')  // '--hi--'
+ * ```
+ */
+export const center = (
+  text: string,
+  targetWidth: number,
+  char: string = defaultPadCharacter,
+): string => {
+  const textWidth = width(text)
+  const totalPadding = targetWidth - textWidth
+  if (totalPadding <= 0) return text
+  const leftPadding = Math.floor(totalPadding / 2)
+  const rightPadding = totalPadding - leftPadding
+  return char.repeat(leftPadding) + text + char.repeat(rightPadding)
+}
+
+/**
+ * Curried version of {@link center} with text first.
+ * @category Text Formatting
+ * @param text - The text to center
+ * @returns Function that takes targetWidth and char
+ */
+export const centerOn = Fn.curry(center)
+
+/**
+ * Curried version of {@link center} with targetWidth first.
+ * @category Text Formatting
+ * @param targetWidth - Target visual width
+ * @returns Function that takes text and char
+ *
+ * @example
+ * ```typescript
+ * const center10 = Str.Visual.centerWith(10)
+ * center10('hi')      // '    hi    '
+ * center10('hello')   // '  hello   '
+ * ```
+ */
+export const centerWith = Fn.flipCurried(centerOn)
 
 /**
  * Constrain text to exact visual width by cropping and/or padding.
@@ -529,7 +598,7 @@ export const wrap = (text: string, maxWidth: number, config: WrapConfig = {}): s
 
     // For hyphen-out strategy, add hyphen to all except last
     if (strategy === 'break-word-hyphen-out') {
-      return chars.map((char, i) => i < chars.length - 1 ? `${char}-` : char)
+      return chars.map((char, i) => (i < chars.length - 1 ? `${char}-` : char))
     }
 
     return chars

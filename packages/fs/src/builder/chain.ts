@@ -22,9 +22,11 @@ export interface DirChain extends SpecBuilder {
   // Override return types to return DirChain instead of DirSpec
   file<path extends Path.RelFile | string>(
     path: Path.Guard.RelFile<path>,
-    content: path extends Path.RelFile ? InferFileContent<path>
-      : path extends string ? string | Uint8Array | Json.Object
-      : never,
+    content: path extends Path.RelFile
+      ? InferFileContent<path>
+      : path extends string
+        ? string | Uint8Array | Json.Object
+        : never,
   ): DirChain
 
   dir<path extends Path.RelDir | string>(
@@ -32,45 +34,31 @@ export interface DirChain extends SpecBuilder {
     builder?: (_: DirChain) => DirChain,
   ): DirChain
 
-  when(
-    condition: boolean,
-    builder: (_: DirChain) => DirChain,
-  ): DirChain
+  when(condition: boolean, builder: (_: DirChain) => DirChain): DirChain
 
-  unless(
-    condition: boolean,
-    builder: (_: DirChain) => DirChain,
-  ): DirChain
+  unless(condition: boolean, builder: (_: DirChain) => DirChain): DirChain
 
-  remove<path extends Path.$Rel | string>(
-    path: Path.Guard.Rel<path>,
-  ): DirChain
+  remove<path extends Path.$Rel | string>(path: Path.Guard.Rel<path>): DirChain
 
-  clear<path extends Path.RelDir | string>(
-    path: Path.Guard.RelDir<path>,
-  ): DirChain
+  clear<path extends Path.RelDir | string>(path: Path.Guard.RelDir<path>): DirChain
 
-  move<
-    from extends Path.RelFile | string,
-    to extends Path.RelFile | string,
-  >(
+  move<from extends Path.RelFile | string, to extends Path.RelFile | string>(
     from: Path.Guard.RelFile<from>,
     to: Path.Guard.RelFile<to>,
   ): DirChain
 
-  move<
-    from extends Path.RelDir | string,
-    to extends Path.RelDir | string,
-  >(
+  move<from extends Path.RelDir | string, to extends Path.RelDir | string>(
     from: Path.Guard.RelDir<from>,
     to: Path.Guard.RelDir<to>,
   ): DirChain
 
   add<path extends Path.RelFile | string>(
     path: Path.Guard.RelFile<path>,
-    content: path extends Path.RelFile ? InferFileContent<path>
-      : path extends string ? string | Uint8Array | Json.Object
-      : never,
+    content: path extends Path.RelFile
+      ? InferFileContent<path>
+      : path extends string
+        ? string | Uint8Array | Json.Object
+        : never,
   ): DirChain
 
   add<path extends Path.RelDir | string>(
@@ -121,9 +109,16 @@ export const chain = (builder: Builder): DirChain => {
 
         // Special handling for builder methods that need to return DirChain
         if (
-          prop === 'file' || prop === 'dir' || prop === 'when' || prop === 'unless'
-          || prop === 'remove' || prop === 'clear' || prop === 'move' || prop === 'add'
-          || prop === 'withBase' || prop === 'merge'
+          prop === 'file' ||
+          prop === 'dir' ||
+          prop === 'when' ||
+          prop === 'unless' ||
+          prop === 'remove' ||
+          prop === 'clear' ||
+          prop === 'move' ||
+          prop === 'add' ||
+          prop === 'withBase' ||
+          prop === 'merge'
         ) {
           return (...args: any[]) => {
             // Call the underlying spec method

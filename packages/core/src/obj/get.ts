@@ -29,7 +29,7 @@ export const entries = <obj extends Any>(obj: obj): Ts.Simplify.Top<entries<obj>
   return Object.entries(obj) as any
 }
 
-// dprint-ignore
+// oxfmt-ignore
 export type entries<obj extends Any> = {
   [K in keyof obj]-?: // Regarding "-?": we don't care about keys being undefined when we're trying to list out all the possible entries
     undefined extends obj[K]
@@ -52,7 +52,9 @@ export type entries<obj extends Any> = {
  * stringKeyEntries(obj)  // [['a', 1], ['b', 2]]
  * ```
  */
-export const stringKeyEntries = <$T extends object>(obj: $T): [string & keyof $T, $T[keyof $T]][] => {
+export const stringKeyEntries = <$T extends object>(
+  obj: $T,
+): [string & keyof $T, $T[keyof $T]][] => {
   return Object.entries(obj).map(([k, v]) => [k as string & keyof $T, v])
 }
 
@@ -110,7 +112,9 @@ export const keysStrict = <$T extends object>(obj: $T): (keyof $T)[] => {
  * getRandomly({}) // Returns undefined
  * ```
  */
-export const getRandomly = <obj extends Any>(obj: obj): keyof obj extends never ? undefined : obj[keyof obj] => {
+export const getRandomly = <obj extends Any>(
+  obj: obj,
+): keyof obj extends never ? undefined : obj[keyof obj] => {
   const keys = toKeys(obj)
 
   if (Arr.isntEmpty(keys)) {
@@ -213,11 +217,13 @@ export type GetKeyOr<$T, $Key, $Or> = $Key extends keyof $T ? $T[$Key] : $Or
  * type T2 = GetOrNever<{ a: string }, 'b'>  // never
  * ```
  */
-export type GetOrNever<$O extends object, $P extends string> = $P extends keyof $O ? $O[$P]
+export type GetOrNever<$O extends object, $P extends string> = $P extends keyof $O
+  ? $O[$P]
   : $P extends `${infer __head__}.${infer __tail__}`
-    ? __head__ extends keyof $O ? GetOrNever<$O[__head__] & object, __tail__>
+    ? __head__ extends keyof $O
+      ? GetOrNever<$O[__head__] & object, __tail__>
+      : never
     : never
-  : never
 
 /**
  * Get the union of all value types from an object, or return fallback if no keys.
@@ -230,7 +236,9 @@ export type GetOrNever<$O extends object, $P extends string> = $P extends keyof 
  * type T2 = keyofOr<{}, 'fallback'>  // 'fallback'
  * ```
  */
-export type keyofOr<$Obj extends object, $Or> = [keyof $Obj] extends [never] ? $Or : $Obj[keyof $Obj]
+export type keyofOr<$Obj extends object, $Or> = [keyof $Obj] extends [never]
+  ? $Or
+  : $Obj[keyof $Obj]
 
 /**
  * Create an array type containing the keys of an object.
@@ -293,9 +301,11 @@ export type StringKeyof<$T> = keyof $T & string
  * ```
  */
 export type PrimitiveFieldKeys<$T> = {
-  [K in keyof $T]: $T[K] extends string | number | boolean | bigint | null | undefined ? K
-    : $T[K] extends Date ? K
-    : never
+  [K in keyof $T]: $T[K] extends string | number | boolean | bigint | null | undefined
+    ? K
+    : $T[K] extends Date
+      ? K
+      : never
 }[keyof $T]
 
 /**
@@ -312,7 +322,7 @@ export type PrimitiveFieldKeys<$T> = {
  * type Deep = GetAtPath<User, ['profile']>  // { name: string; age: number }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type GetAtPath<$Value, $Path extends readonly string[]> =
   $Value extends undefined                                              ? undefined :
   $Path extends [infer __p1__ extends string, ...infer __pn__ extends string[]] ? $Value extends object
@@ -336,7 +346,7 @@ export type GetAtPath<$Value, $Path extends readonly string[]> =
  * // If path doesn't exist: 'anonymous'
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type GetAtPathOrDefault<$Obj, $Path extends readonly string[], $Default> =
   OrDefault<GetAtPath<$Obj, $Path>, $Default>
 
@@ -353,7 +363,7 @@ export type GetAtPathOrDefault<$Obj, $Path extends readonly string[], $Default> 
  * type T3 = OrDefault<string | undefined, 'fallback'>  // 'fallback'
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type OrDefault<$Value, $Default> =
   // When no value has been passed in because the property is optional,
   // then the inferred type is unknown.

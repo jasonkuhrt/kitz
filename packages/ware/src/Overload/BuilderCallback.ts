@@ -5,8 +5,4 @@ import type { Builder } from './Builder.js'
 export type BuilderCallback<
   $Pipeline extends PipelineDefinition,
   $OverloadBuilder extends Builder<$Pipeline>,
-> = (
-  OverloadBuilder: {
-    create: Create<$Pipeline>
-  },
-) => $OverloadBuilder
+> = (OverloadBuilder: { create: Create<$Pipeline> }) => $OverloadBuilder

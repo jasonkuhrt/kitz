@@ -4,16 +4,18 @@ import type { ParameterBasic } from '../Parameter/basic.js'
 import type { ParameterExclusive, ParameterExclusiveGroup } from '../Parameter/exclusive.js'
 import type { Parameter } from '../Parameter/types.js'
 import type { Environment } from './Environment/_.js'
-import type { LocalParseErrors } from './Line/Line.js'
+import type { Line } from './Line/_.js'
 
-export interface EnvironmentArgumentReport<$Parameter extends Parameter = Parameter> extends Argument {
+export interface EnvironmentArgumentReport<
+  $Parameter extends Parameter = Parameter,
+> extends Argument {
   parameter: $Parameter
   errors: Environment.LocalParseErrors[]
 }
 
 export interface ArgumentReport<$Parameter extends Parameter = Parameter> extends Argument {
   parameter: $Parameter
-  errors: LocalParseErrors[]
+  errors: Line.LocalParseErrors[]
 }
 
 export interface Argument {
@@ -60,7 +62,7 @@ export type ParseError =
   | ParseErrorBasic
   | ParseErrorExclusiveGroup
   | InstanceType<typeof Errors.ErrorDuplicateEnvArg>
-  | LocalParseErrors
+  | Line.LocalParseErrors
 
 export type ParseResultBasicSupplied = {
   _tag: 'supplied'
@@ -78,7 +80,10 @@ export type ParseResultBasicOmitted = {
   parameter: ParameterBasic
 }
 
-export type ParseResultBasic = ParseResultBasicSupplied | ParseResultBasicError | ParseResultBasicOmitted
+export type ParseResultBasic =
+  | ParseResultBasicSupplied
+  | ParseResultBasicError
+  | ParseResultBasicOmitted
 
 export type ParseResultExclusiveGroupSupplied = {
   _tag: 'supplied'
@@ -96,9 +101,9 @@ export type ParseResultExclusiveGroupError = {
 export type ParseResultExclusiveGroup =
   | ParseResultExclusiveGroupSupplied
   | {
-    _tag: 'omitted'
-    parameter: ParameterExclusiveGroup
-  }
+      _tag: 'omitted'
+      parameter: ParameterExclusiveGroup
+    }
   | ParseResultExclusiveGroupError
 
 export type ParseResult = {

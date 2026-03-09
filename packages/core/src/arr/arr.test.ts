@@ -1,12 +1,44 @@
-import { Test } from '#test'
+import { Test } from '#kitz/test'
 import { describe, expect, test } from 'vitest'
 import { Arr } from './_.js'
 
 Test.on(Arr.transpose<number>)
   .cases(
-    [[[[1, 2, 3], [4, 5, 6]]], [[1, 4], [2, 5], [3, 6]]],
-    [[[[1, 2], [3, 4], [5, 6]]], [[1, 3, 5], [2, 4, 6]]],
-    [[[[1, 2, 3], [4, 5]]], [[1, 4], [2, 5], [3]]],
+    [
+      [
+        [
+          [1, 2, 3],
+          [4, 5, 6],
+        ],
+      ],
+      [
+        [1, 4],
+        [2, 5],
+        [3, 6],
+      ],
+    ],
+    [
+      [
+        [
+          [1, 2],
+          [3, 4],
+          [5, 6],
+        ],
+      ],
+      [
+        [1, 3, 5],
+        [2, 4, 6],
+      ],
+    ],
+    [
+      [
+        [
+          [1, 2, 3],
+          [4, 5],
+        ],
+      ],
+      [[1, 4], [2, 5], [3]],
+    ],
     [[[[]]], []],
   )
   .test()
@@ -44,6 +76,15 @@ describe('polymorphic dispatch preserves frozen status', () => {
     const [c, d] = Arr.partition(frozen([1, 'x']), isNum)
     expect(isFrozen(c)).toBe(true)
     expect(isFrozen(d)).toBe(true)
+  })
+
+  test('partition (boolean predicate)', () => {
+    const [odds, evens] = Arr.partition([1, 2, 3, 4], (n) => n % 2 === 0)
+    expect(odds).toEqual([1, 3])
+    expect(evens).toEqual([2, 4])
+    const [frozenOdds, frozenEvens] = Arr.partition(frozen([1, 2, 3, 4]), (n) => n % 2 === 0)
+    expect(isFrozen(frozenOdds)).toBe(true)
+    expect(isFrozen(frozenEvens)).toBe(true)
   })
 
   test('partitionErrors', () => {

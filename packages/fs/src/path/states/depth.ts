@@ -1,5 +1,5 @@
-import type { Path } from '../_.js'
 import { $Rel } from '../$Rel/_.js'
+import type { Path } from '../_.js'
 import type { Input } from '../inputs.js'
 import { normalizeDynamic } from '../inputs.js'
 import { Schema } from '../Schema.js'
@@ -74,4 +74,6 @@ export function isSub<T extends Path>(path: T): path is PathWithTwoOrMoreSegment
   return path.segments.length > 1
 }
 
-export type PathWithTwoOrMoreSegments<T extends Path> = T & { segments: readonly [string, string, ...string[]] }
+export type PathWithTwoOrMoreSegments<T extends Path> = T & {
+  segments: readonly [string, string, ...string[]]
+}

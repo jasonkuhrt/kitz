@@ -1,5 +1,5 @@
 import type { Str } from '#str'
-import type { GetPreservedTypes } from '../ts/global-settings.js'
+import type { Settings } from '#ts/ts'
 import { type IsEmpty } from './diff.js'
 
 // todo: Arr.Any/Unknown, Prom.Any/Unknown, etc. -- but this has no generics, we need a new term pattern here, e.g.: "Some", "Data", "Datum", "Item", "Element", "Value", "$", ... ?
@@ -180,9 +180,9 @@ export const empty = (): Empty => Object.freeze({}) as Empty
  *
  * @see {@link NoExcessNonEmpty} for non-empty variant
  */
-// dprint-ignore
+// oxfmt-ignore
 export type NoExcess<$Value, $Constraint> =
-  $Value extends GetPreservedTypes ? $Value :
+  $Value extends Settings.GetPreservedTypes ? $Value :
   $Value extends object
     ? $Constraint extends object
       ? { [k in keyof $Value]:
@@ -211,8 +211,8 @@ export type NoExcess<$Value, $Constraint> =
  * type T3 = NoExcessNonEmpty<{ name: 'Bob', age: 30 }, User> // ✗ Fail - excess
  * ```
  */
-export type NoExcessNonEmpty<$Value, $Constraint> = IsEmpty<$Value> extends true ? never
-  : NoExcess<$Value, $Constraint>
+export type NoExcessNonEmpty<$Value, $Constraint> =
+  IsEmpty<$Value> extends true ? never : NoExcess<$Value, $Constraint>
 
 //
 //

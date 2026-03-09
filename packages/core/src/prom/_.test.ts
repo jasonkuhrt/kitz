@@ -1,5 +1,5 @@
-import { Test } from '#test'
-import { property } from '#test/test'
+import { Test } from '#kitz/test'
+import { property } from '#kitz/test/test'
 import fc from 'fast-check'
 import { describe, expect, test } from 'vitest'
 import { Prom } from './_.js'
@@ -14,8 +14,7 @@ describe('isShape', () => {
   //   // eslint-disable-next-line unicorn/no-thenable
   //   expect(Prom.isShape({ then: 'not a function', catch: () => {}, finally: () => {} })).toBe(false)
   // })
-  Test
-    .on(Prom.isShape)
+  Test.on(Prom.isShape)
     .describe('true', [
       [[Promise.resolve(42)], true],
       [[{ then() {}, catch() {}, finally() {} }], true],
@@ -28,7 +27,14 @@ describe('isShape', () => {
 
   property(
     'rejects non-promise values',
-    fc.oneof(fc.integer(), fc.string(), fc.boolean(), fc.constant(null), fc.constant(undefined), fc.object()),
+    fc.oneof(
+      fc.integer(),
+      fc.string(),
+      fc.boolean(),
+      fc.constant(null),
+      fc.constant(undefined),
+      fc.object(),
+    ),
     (value) => {
       expect(Prom.isShape(value)).toBe(false)
     },
@@ -36,8 +42,7 @@ describe('isShape', () => {
 })
 
 describe('createDeferred', () => {
-  Test
-    .describe('state tracking')
+  Test.describe('state tracking')
     .onSetup(() => ({
       d: Prom.createDeferred<number>(),
     }))
@@ -52,8 +57,7 @@ describe('createDeferred', () => {
     })
     .test()
 
-  Test
-    .describe('strict')
+  Test.describe('strict')
     .onSetup(() => ({
       d: Prom.createDeferred<number>({ strict: true }),
     }))
@@ -77,6 +81,10 @@ describe('createDeferred', () => {
   test('destructuring', () => {
     const d = Prom.createDeferred<number>()
     const { isResolved, isRejected, isSettled } = d
-    expect({ isResolved, isRejected, isSettled }).toEqual({ isResolved: false, isRejected: false, isSettled: false })
+    expect({ isResolved, isRejected, isSettled }).toEqual({
+      isResolved: false,
+      isRejected: false,
+      isSettled: false,
+    })
   })
 })

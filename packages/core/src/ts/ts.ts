@@ -57,18 +57,7 @@ export const as = <$value>(value?: unknown): $value => value as any
  *
  * @category Type Utilities
  */
-export type Interpolatable =
-  | string
-  | number
-  | bigint
-  | boolean
-  | null
-  | undefined
-  | symbol
-  | object
-  | unknown
-  | any
-  | never
+export type Interpolatable = string | number | bigint | boolean | null | undefined | symbol | object
 
 /**
  * Represents a type error that can be surfaced at the type level.
@@ -149,10 +138,9 @@ export type Interpolatable =
  * @category Type Utilities
  */
 export type TupleToLettered<$Values extends readonly string[], $Prefix extends string = 'tip'> = {
-  [
-    i in keyof $Values as i extends `${infer __n__ extends number}` ? `${$Prefix}_${Str.Char.LettersLower[__n__]}`
-      : never
-  ]: $Values[i]
+  [i in keyof $Values as i extends `${infer __n__ extends number}`
+    ? `${$Prefix}_${Str.Char.LettersLower[__n__]}`
+    : never]: $Values[i]
 }
 
 /**
@@ -250,7 +238,7 @@ export type ShowInTemplate<$Type> = `'${Display<$Type>}'`
  * updateUser({ name: 'Bob', age: 25, extra: true })  // Type error
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type ExtendsExact<$Input, $Constraint> =
   $Input extends $Constraint
     ? $Constraint extends $Input
@@ -332,7 +320,7 @@ export type NotExtends<$A, $B> = [$A] extends [$B] ? false : true
  *
  * @category Type Utilities
  */
-// dprint-ignore
+// oxfmt-ignore
 export type AssertExtends<$Type, $Constraint> =
   $Type extends $Constraint
     ? $Type
@@ -355,7 +343,7 @@ export type AssertExtends<$Type, $Constraint> =
  *
  * @category Type Utilities
  */
-// dprint-ignore
+// oxfmt-ignore
 export type AssertExtendsObject<$Type> = AssertExtends<$Type, object>
 
 /**
@@ -489,7 +477,7 @@ export type PrimitiveBrandLike = { readonly [Brand.BrandTypeId]: any }
  *
  * @category Type Utilities
  */
-// dprint-ignore
+// oxfmt-ignore
 export type WritableDeep<$T> =
   // Built-ins checked FIRST - handles branded types like `number & { [Brand]: true }`
   $T extends Primitive | void | Date | RegExp ? $T
@@ -538,7 +526,7 @@ export type WritableDeep<$T> =
  *
  * @category Type Utilities
  */
-// dprint-ignore
+// oxfmt-ignore
 export type StripReadonlyDeep<$T> =
   $T extends Function ? $T
   // TUPLE HANDLING: Must come before Array AND before GetPreservedTypes to preserve structure
@@ -550,8 +538,7 @@ export type StripReadonlyDeep<$T> =
   // Preserve types from settings AFTER array/tuple handling (branded primitives, built-ins, user-registered)
   : $T extends GetPreservedTypes ? $T
   : $T extends object
-    ? & { -readonly [k in keyof $T]: StripReadonlyDeep<$T[k]> }
-      & unknown
+    ? { -readonly [k in keyof $T]: StripReadonlyDeep<$T[k]> }
     : $T
 
 /**
@@ -612,12 +599,14 @@ export type BooleanCase<$T extends boolean> = $T extends true ? 'true' : 'false'
 /**
  * Intersection that ignores never and any.
  */
-export type IntersectionIgnoreNeverOrAny<$T> = IsAny<$T> extends true ? unknown : $T extends never ? unknown : $T
+export type IntersectionIgnoreNeverOrAny<$T> =
+  IsAny<$T> extends true ? unknown : $T extends never ? unknown : $T
 
 /**
  * Convert never or any to unknown.
  */
-export type NeverOrAnyToUnknown<$T> = IsAny<$T> extends true ? unknown : $T extends never ? unknown : $T
+export type NeverOrAnyToUnknown<$T> =
+  IsAny<$T> extends true ? unknown : $T extends never ? unknown : $T
 
 /**
  * Any narrowable primitive type.
@@ -627,7 +616,8 @@ export type Narrowable = string | number | bigint | boolean | []
 /**
  * Convert any and unknown to never.
  */
-export type AnyAndUnknownToNever<$T> = IsAny<$T> extends true ? never : IsUnknown<$T> extends true ? never : $T
+export type AnyAndUnknownToNever<$T> =
+  IsAny<$T> extends true ? never : IsUnknown<$T> extends true ? never : $T
 
 /**
  * Sentinel type for detecting whether an optional type parameter was provided.
@@ -716,9 +706,11 @@ export namespace SENTINEL {
    * type T3 = SENTINEL.IsNeverOrAny<string> // false
    * ```
    */
-  export type IsNeverOrAny<T> = [IsNever<T>] extends [true] ? true
-    : [IsAny<T>] extends [true] ? true
-    : false
+  export type IsNeverOrAny<T> = [IsNever<T>] extends [true]
+    ? true
+    : [IsAny<T>] extends [true]
+      ? true
+      : false
 
   /**
    * Check if a type is the Empty sentinel.
@@ -736,9 +728,11 @@ export namespace SENTINEL {
    * type T5 = SENTINEL.IsEmpty<any>             // false (any is a real type)
    * ```
    */
-  export type IsEmpty<T> = [IsNeverOrAny<T>] extends [true] ? false // never/any are NOT empty
-    : [T] extends [Empty] ? true // Only Empty is empty
-    : false
+  export type IsEmpty<T> = [IsNeverOrAny<T>] extends [true]
+    ? false // never/any are NOT empty
+    : [T] extends [Empty]
+      ? true // Only Empty is empty
+      : false
 
   /**
    * Convert SENTINEL.Is check to 'true' or 'false' string literal.

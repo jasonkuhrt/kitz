@@ -87,7 +87,7 @@ export const from = (value: number): Whole & Int & NonNegative => {
  * tryFrom(3.14) // null
  */
 export const tryFrom = (value: number): (Whole & Int & NonNegative) | null => {
-  return is(value) ? (value as Whole & Int & NonNegative) : null
+  return is(value) ? value : null
 }
 
 /**
@@ -107,7 +107,7 @@ export const tryFrom = (value: number): (Whole & Int & NonNegative) | null => {
 export const parseAsWhole = (value: string): (Whole & Int & NonNegative) | null => {
   const parsed = parseInt(value, 10)
   // Check if the string represents exactly the parsed integer
-  return is(parsed) && parsed.toString() === value ? (parsed as Whole & Int & NonNegative) : null
+  return is(parsed) && parsed.toString() === value ? parsed : null
 }
 
 /**

@@ -8,15 +8,6 @@ export interface ExclusiveParameterConfiguration<$State extends BuilderCommandSt
 }
 
 interface Parameter<$State extends BuilderCommandState.Base, Label extends string> {
-  // TODO: Apply guard to configuration parameter (e.g., configuration: Configuration & { type: ApplyGuard<...> })
-  <NameExpression extends string, Configuration extends ExclusiveParameterConfiguration<$State>>(
-    name: BuilderCommandState.ValidateNameExpression<$State, NameExpression>,
-    configuration: Configuration,
-  ): BuilderExclusiveInitial<
-    BuilderCommandState.AddExclusiveParameter<$State, Label, NameExpression, Configuration>,
-    Label
-  >
-
   <NameExpression extends string, $Schema extends BuilderCommandState.Type<$State>>(
     name: BuilderCommandState.ValidateNameExpression<$State, NameExpression>,
     type: ApplyGuard<$State, $Schema>,
@@ -24,12 +15,26 @@ interface Parameter<$State extends BuilderCommandState.Base, Label extends strin
     BuilderCommandState.AddExclusiveParameter<$State, Label, NameExpression, { type: $Schema }>,
     Label
   >
+
+  // Put configuration overload second because Zod v4 schemas have a public `.type` property.
+  <NameExpression extends string, Configuration extends ExclusiveParameterConfiguration<$State>>(
+    name: BuilderCommandState.ValidateNameExpression<$State, NameExpression>,
+    configuration: Configuration,
+  ): BuilderExclusiveInitial<
+    BuilderCommandState.AddExclusiveParameter<$State, Label, NameExpression, Configuration>,
+    Label
+  >
 }
 
-export interface BuilderExclusiveInitial<$State extends BuilderCommandState.Base, Label extends string> {
+export interface BuilderExclusiveInitial<
+  $State extends BuilderCommandState.Base,
+  Label extends string,
+> {
   [ExclusiveBuilderStateSymbol]: BuilderParameterExclusiveState<$State>
   parameter: Parameter<$State, Label>
-  optional: () => BuilderExclusiveAfterOptional<BuilderCommandState.SetExclusiveOptional<$State, Label, true>>
+  optional: () => BuilderExclusiveAfterOptional<
+    BuilderCommandState.SetExclusiveOptional<$State, Label, true>
+  >
   default: <Tag extends keyof $State['ParametersExclusive'][Label]['Parameters']>(
     tag: Tag,
     value: InferOutput<$State['ParametersExclusive'][Label]['Parameters'][Tag]['Schema']>,

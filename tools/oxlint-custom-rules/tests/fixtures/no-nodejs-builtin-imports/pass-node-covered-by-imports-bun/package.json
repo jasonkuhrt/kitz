@@ -1,0 +1,9 @@
+{
+  "name": "fixture-pass-node-covered-by-imports-bun",
+  "imports": {
+    "#runtime": {
+      "bun": "./build/runtime.js",
+      "default": "./build/runtime.js"
+    }
+  }
+}

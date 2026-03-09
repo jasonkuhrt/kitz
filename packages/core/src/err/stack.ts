@@ -148,7 +148,7 @@ const isInternalFrame = (file: string): boolean => {
     '/fn/curry.', // Our curry utilities used by wrapWith
   ]
 
-  return internalPatterns.some(pattern => file.includes(pattern))
+  return internalPatterns.some((pattern) => file.includes(pattern))
 }
 
 /**
@@ -264,7 +264,7 @@ export const cleanStackWithStats = (stack: string, options?: StackOptions): Clea
   // Remove internal frames
   if (opts.removeInternal) {
     const beforeCount = filteredFrames.length
-    filteredFrames = filteredFrames.filter(frame => !frame.isInternal)
+    filteredFrames = filteredFrames.filter((frame) => !frame.isInternal)
     const removedCount = beforeCount - filteredFrames.length
     stats.internalFrames += removedCount
     stats.filteredFrames += removedCount
@@ -273,8 +273,8 @@ export const cleanStackWithStats = (stack: string, options?: StackOptions): Clea
   // Apply custom filters
   if (opts.filterPatterns.length > 0) {
     const beforeCount = filteredFrames.length
-    filteredFrames = filteredFrames.filter(frame => {
-      const shouldFilter = opts.filterPatterns.some(pattern => frame.file.includes(pattern))
+    filteredFrames = filteredFrames.filter((frame) => {
+      const shouldFilter = opts.filterPatterns.some((pattern) => frame.file.includes(pattern))
       if (shouldFilter && frame.file.includes('node_modules')) {
         stats.nodeModulesFrames++
       }
@@ -294,7 +294,7 @@ export const cleanStackWithStats = (stack: string, options?: StackOptions): Clea
   stats.shownFrames = filteredFrames.length
 
   // Reconstruct stack trace
-  const cleanedLines = filteredFrames.map(frame => frame.raw)
+  const cleanedLines = filteredFrames.map((frame) => frame.raw)
 
   // Get the error message (first line)
   const firstLine = Str.Text.lines(stack)[0] || 'Error'
@@ -347,7 +347,10 @@ export class CleanError extends Error {
    */
   context?: Context
 
-  constructor(message: string, options?: ErrorOptions & { context?: Context; stackOptions?: StackOptions }) {
+  constructor(
+    message: string,
+    options?: ErrorOptions & { context?: Context; stackOptions?: StackOptions },
+  ) {
     super(message, options)
     this.name = this.constructor.name
 
@@ -381,19 +384,18 @@ export const mergeStacks = (wrapper: Error, cause: Error): string => {
   const causeFrames = parseStack(cause.stack)
 
   // Find where the wrapper's stack ends (usually at our wrap functions)
-  const wrapperEndIndex = wrapperFrames.findIndex(frame => frame.isInternal)
+  const wrapperEndIndex = wrapperFrames.findIndex((frame) => frame.isInternal)
 
   // Take wrapper frames up to the internal boundary
-  const relevantWrapperFrames = wrapperEndIndex >= 0
-    ? wrapperFrames.slice(0, wrapperEndIndex)
-    : wrapperFrames
+  const relevantWrapperFrames =
+    wrapperEndIndex >= 0 ? wrapperFrames.slice(0, wrapperEndIndex) : wrapperFrames
 
   // Combine: wrapper's user frames + all cause frames
   const combined = [...relevantWrapperFrames, ...causeFrames]
 
   // Remove duplicates (same file:line:col)
   const seen = new Set<string>()
-  const unique = combined.filter(frame => {
+  const unique = combined.filter((frame) => {
     const key = `${frame.file}:${frame.line}:${frame.column}`
     if (seen.has(key)) return false
     seen.add(key)
@@ -405,15 +407,9 @@ export const mergeStacks = (wrapper: Error, cause: Error): string => {
   const causeMessage = Str.Text.lines(cause.stack)[0]!
 
   // Build merged stack
-  const frames = unique.map(frame => frame.raw)
+  const frames = unique.map((frame) => frame.raw)
 
-  return [
-    wrapperMessage,
-    ...frames,
-    '',
-    'Caused by:',
-    causeMessage,
-  ].join('\n')
+  return [wrapperMessage, ...frames, '', 'Caused by:', causeMessage].join('\n')
 }
 
 /**

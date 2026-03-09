@@ -15,7 +15,9 @@ type SomeBasicType =
 
 type SomeUnionType = SomeUnionTypeScalar | z.ZodOptional<any> | z.ZodDefault<any>
 
-type SomeUnionTypeScalar = z.ZodUnion<[SomeBasicTypeScalar, SomeBasicTypeScalar, ...SomeBasicTypeScalar[]]>
+type SomeUnionTypeScalar = z.ZodUnion<
+  [SomeBasicTypeScalar, SomeBasicTypeScalar, ...SomeBasicTypeScalar[]]
+>
 
 type SomeBasicTypeScalar =
   | z.ZodString

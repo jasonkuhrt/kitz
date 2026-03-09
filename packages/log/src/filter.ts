@@ -1,4 +1,5 @@
 import { Arr, Err, Lang, Str } from '@kitz/core'
+import { Schema as S } from 'effect'
 import type * as FilterTypes from './filter.types.js'
 import { validPathSegmentNameRegex } from './internal.js'
 import * as Level from './level.js'
@@ -30,8 +31,8 @@ export type Parsed = {
     descendants:
       | false
       | {
-        includeParent: boolean
-      }
+          includeParent: boolean
+        }
   }
 }
 
@@ -60,7 +61,10 @@ export type Defaults = {
  * // Type: FilterTypes.Parse<"app,!nexus@warn">
  * ```
  */
-export function parse<const pattern extends string>(defaults: Defaults, pattern: pattern): FilterTypes.Parse<pattern>
+export function parse<const pattern extends string>(
+  defaults: Defaults,
+  pattern: pattern,
+): FilterTypes.Parse<pattern>
 export function parse(defaults: Defaults, pattern: string): (ParseError | Parsed)[]
 export function parse(defaults: Defaults, pattern: string): (ParseError | Parsed)[] {
   // Allow sloppy lists so long as there is at least one pattern given
@@ -152,8 +156,8 @@ export function parseOne(criteriaDefaults: Defaults, pattern: string): ParseErro
   const levelm = levelWildCard
     ? ({ type: `wildcard` } as const)
     : levelValue
-    ? ({ type: `value`, value: levelValue, dir: levelDir } as const)
-    : undefined
+      ? ({ type: `value`, value: levelValue, dir: levelDir } as const)
+      : undefined
 
   if (levelm) {
     if (levelm.type === `wildcard`) {
@@ -209,11 +213,11 @@ export const test = (patterns: readonly Parsed[], log: LogRecord): boolean => {
   let yaynay: null | boolean = null
   for (const pattern of patterns) {
     // if log already passed then we can skip rest except negations
-    if (yaynay === true && pattern.negate !== true) continue
+    if (yaynay === true && !pattern.negate) continue
     // If log was already filtered out and pattern is a negate, then we can skip
     // This is because negate as a first pattern means simply to inverse the result,
     // while as an nth pattern it means to remove things previously included
-    if (yaynay === false && pattern.negate === true) continue
+    if (yaynay === false && pattern.negate) continue
 
     const logPath = log.path ? [`.`, ...log.path].join(symbols.pathDelim) : `.`
     let isPass = false
@@ -231,7 +235,11 @@ export const test = (patterns: readonly Parsed[], log: LogRecord): boolean => {
     // path
 
     if (isPass) {
-      if (pattern.path.descendants && !pattern.path.descendants.includeParent && pattern.path.value === `.`) {
+      if (
+        pattern.path.descendants &&
+        !pattern.path.descendants.includeParent &&
+        pattern.path.value === `.`
+      ) {
         // case of :*
         if (logPath === `.`) {
           // log from root logger
@@ -240,30 +248,32 @@ export const test = (patterns: readonly Parsed[], log: LogRecord): boolean => {
           isPass = true
         }
       } else if (
-        pattern.path.descendants
-        && pattern.path.descendants.includeParent
-        && pattern.path.value === `.`
+        pattern.path.descendants &&
+        pattern.path.descendants.includeParent &&
+        pattern.path.value === `.`
       ) {
         // case of *
         isPass = true
       } else if (
-        pattern.path.descendants
-        && pattern.path.descendants.includeParent
-        && pattern.path.value !== `.`
+        pattern.path.descendants &&
+        pattern.path.descendants.includeParent &&
+        pattern.path.value !== `.`
       ) {
         // case of <path>:*
         isPass = logPath ? logPath.startsWith(pattern.path.value) : false
       } else if (
-        pattern.path.descendants
-        && !pattern.path.descendants.includeParent
-        && pattern.path.value !== `.`
+        pattern.path.descendants &&
+        !pattern.path.descendants.includeParent &&
+        pattern.path.value !== `.`
       ) {
         // case of <path>::*
-        isPass = logPath ? logPath !== pattern.path.value && logPath.startsWith(pattern.path.value) : false
+        isPass = logPath
+          ? logPath !== pattern.path.value && logPath.startsWith(pattern.path.value)
+          : false
       } else if (!pattern.path.descendants) {
         isPass = logPath === pattern.path.value
       } else {
-        throw new Error(`this should never happen`)
+        Lang.panic(`this should never happen`)
       }
     }
 
@@ -271,7 +281,9 @@ export const test = (patterns: readonly Parsed[], log: LogRecord): boolean => {
   }
 
   if (yaynay === null) {
-    throw new Error(`Invariant violation: pattern processing did not convert into pass calculation`)
+    return Lang.panic(
+      `Invariant violation: pattern processing did not convert into pass calculation`,
+    )
   }
 
   return yaynay
@@ -293,16 +305,32 @@ const comp = (kind: Parsed['level']['comp'], a: number, b: number): boolean => {
  */
 export const parseUnsafe = (defaults: Defaults, pattern: string): Parsed[] => {
   return parse(defaults, pattern).map((value) => {
-    if (value instanceof Error) throw value
+    if (value instanceof Error) Lang.throw(value)
     return value
   })
 }
 
-type ParseError = Err.ContextualError<{ pattern: string; hint: string | undefined }>
+const baseTags = ['kit', 'log', 'filter'] as const
+
+const ParseErrorContext = S.Struct({
+  pattern: S.String,
+  hint: S.optional(S.String),
+})
+
+export const ParseError: Err.TaggedContextualErrorClass<
+  'LogFilterParseError',
+  typeof baseTags,
+  typeof ParseErrorContext,
+  undefined
+> = Err.TaggedContextualError('LogFilterParseError', baseTags, {
+  context: ParseErrorContext,
+  message: (ctx) => `Invalid filter pattern: "${ctx.pattern}${ctx.hint ? `. ${ctx.hint}` : ``}"`,
+})
+
+type ParseError = InstanceType<typeof ParseError>
 
 const createInvalidPattern = (pattern: string, hint?: string): ParseError => {
-  return new Err.ContextualError({
-    message: `Invalid filter pattern: "${pattern}${hint ? `. ${hint}` : ``}"`,
+  return new ParseError({
     context: {
       pattern,
       hint,
@@ -387,32 +415,34 @@ const getError = <$T>(value: unknown): null | $T => {
   return null
 }
 
-export const renderSyntaxError = (input: {
+export function renderSyntaxError(input: {
   errPatterns: (ParseError | Parsed)[]
   foundIn: string | undefined
   some: boolean | undefined
-}): string => {
+}): string {
   const badOnes = input.errPatterns.filter(isParseError)
   const multipleInputs = input.errPatterns.length > 1
   const multipleErrors = badOnes.length > 1
   const allBad = badOnes.length === input.errPatterns.length
-  const foundIn = `${input.foundIn ? ` found in ${input.foundIn}` : ``}`
+  const foundIn = input.foundIn ? ` found in ${input.foundIn}` : ``
   let message
 
   if (!multipleInputs) {
     const e = getError<ParseError>(badOnes[0]!)
     const pattern = e?.context.pattern
     const hint = e?.context.hint ? `. ${e.context.hint}` : ``
-    message = `Your log filter's pattern${foundIn} was invalid: "${
-      Lang.colorize('red', pattern ?? '')
-    }${hint}"\n\n${renderSyntaxManual()}`
+    message = `Your log filter's pattern${foundIn} was invalid: "${Lang.colorize(
+      'red',
+      pattern ?? '',
+    )}${hint}"\n\n${renderSyntaxManual()}`
   } else if (!multipleErrors) {
     const e = getError<ParseError>(badOnes[0]!)
     const pattern = e?.context.pattern
     const hint = e?.context.hint ? `. ${e.context.hint}` : ``
-    message = `One of the patterns in your log filter${foundIn} was invalid: "${
-      Lang.colorize('red', pattern ?? '')
-    }"${hint}\n\n${renderSyntaxManual()}`
+    message = `One of the patterns in your log filter${foundIn} was invalid: "${Lang.colorize(
+      'red',
+      pattern ?? '',
+    )}"${hint}\n\n${renderSyntaxManual()}`
   } else {
     const patterns = badOnes
       .map((e) => {
@@ -441,7 +471,7 @@ export const processLogFilterInput = (
   if (badOnes.length) {
     if (goodOnes.length) {
       patterns = goodOnes.map((value) => {
-        if (value instanceof Error) throw value
+        if (value instanceof Error) Lang.throw(value)
         return value
       })
     }
@@ -449,7 +479,7 @@ export const processLogFilterInput = (
     console.log(message)
   } else {
     patterns = goodOnes.map((value) => {
-      if (value instanceof Error) throw value
+      if (value instanceof Error) Lang.throw(value)
       return value
     })
   }

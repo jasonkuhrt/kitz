@@ -53,9 +53,10 @@ export const property = <Ts extends [unknown, ...unknown[]]>(
 
     if (result.failed) {
       // Extract just the useful parts from the fast-check error
-      const counterexample = result.counterexample?.map((x: unknown) =>
-        typeof x === 'string' ? `"${x}"` : JSON.stringify(x)
-      ).join(', ') || ''
+      const counterexample =
+        result.counterexample
+          ?.map((x: unknown) => (typeof x === 'string' ? `"${x}"` : JSON.stringify(x)))
+          .join(', ') || ''
 
       // Get the original error if available
       let assertionError = ''
@@ -71,7 +72,9 @@ export const property = <Ts extends [unknown, ...unknown[]]>(
         `Counterexample: [${counterexample}]`,
         assertionError && `\n${assertionError}`,
         `(seed: ${result.seed})`,
-      ].filter(Boolean).join('\n')
+      ]
+        .filter(Boolean)
+        .join('\n')
 
       throw new Error(message)
     }

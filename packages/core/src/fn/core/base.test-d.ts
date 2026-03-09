@@ -1,4 +1,4 @@
-import { Assert } from '#assert'
+import { Assert } from '#kitz/assert'
 import { describe, test } from 'vitest'
 import { _, fn1p, fn2p } from './_test.js'
 import { bind } from './base.js'

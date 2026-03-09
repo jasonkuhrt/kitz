@@ -8,7 +8,6 @@ declare const Bun: {
 
 import { Fs } from '@kitz/fs'
 import { Layer } from 'effect'
-import process from 'node:process'
 import { Env } from './env.js'
 import type { Arch, Os } from './types.js'
 
@@ -29,7 +28,7 @@ import type { Arch, Os } from './types.js'
 export const env = {
   cwd: Fs.Path.AbsDir.fromString(process.cwd()),
   argv: process.argv,
-  vars: Bun.env as Record<string, string | undefined>,
+  vars: Bun.env,
   platform: 'bun' as const,
   os: process.platform as Os,
   arch: process.arch as Arch,

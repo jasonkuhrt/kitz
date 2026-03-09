@@ -1,4 +1,4 @@
-// @ts-expect-error - Duplicate identifier for JSDoc
+// @ts-expect-error Duplicate identifier
 export * as Ref from './__.js'
 
 /**

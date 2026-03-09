@@ -1,4 +1,4 @@
-import { Obj, Str } from '@kitz/core'
+import { Lang, Obj, Str } from '@kitz/core'
 import { Either } from 'effect'
 
 export const BooleanLookup = {
@@ -18,12 +18,12 @@ export const stripeDashPrefix = (flagNameInput: string): string => {
 
 export type Values<T> = T[keyof T]
 
-export const getLowerCaseEnvironment = (): NodeJS.ProcessEnv => lowerCaseObjectKeys(process.env)
-
 export const lowerCaseObjectKeys = <$Obj extends Record<string, unknown>>(obj: $Obj): $Obj =>
   Obj.mapKeys(obj, (k) => k.toLowerCase()) as $Obj
 
-export const parseEnvironmentVariableBoolean = (serializedValue: string): Either.Either<boolean, Error> => {
+export const parseEnvironmentVariableBoolean = (
+  serializedValue: string,
+): Either.Either<boolean, Error> => {
   // @ts-expect-error ignore
   const value = environmentVariableBooleanLookup[serializedValue]
   if (value === undefined) return Either.left(new Error(`Invalid boolean value: ${value}`))
@@ -32,10 +32,11 @@ export const parseEnvironmentVariableBoolean = (serializedValue: string): Either
 
 export const parseEnvironmentVariableBooleanOrThrow = (value: string) => {
   const result = parseEnvironmentVariableBoolean(value)
-  if (Either.isLeft(result)) {
-    throw result.left
+  if (Either.isRight(result)) {
+    return result.right
   }
-  return result.right
+
+  return Lang.throw(result.left)
 }
 
 export const negateNamePattern = /^no([A-Z].+)/
@@ -50,8 +51,4 @@ export const stripeNegatePrefix = (name: string): null | string => {
 export const stripeNegatePrefixLoose = (name: string): string => {
   const result = stripeNegatePrefix(name)
   return result ? result : name
-}
-
-export const casesExhausted = (_: never): never => {
-  throw new Error(`Cases exhausted: ${_}`)
 }

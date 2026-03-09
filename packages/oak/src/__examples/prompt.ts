@@ -1,5 +1,5 @@
 import { z } from 'zod/v4'
-import { Command } from '../_entrypoints/_.js'
+import { Command } from '../__.js'
 import { Zod } from '../_entrypoints/extensions.js'
 
 const args = await Command.create()

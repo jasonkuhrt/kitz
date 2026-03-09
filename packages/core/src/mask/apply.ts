@@ -1,5 +1,5 @@
-import { Lang } from '../lang/_.js'
-import { Obj } from '../obj/_.js'
+import { Lang } from '#lang'
+import { Obj } from '#obj'
 import type { GetDataType, Mask } from './mask.js'
 
 /**
@@ -14,8 +14,8 @@ import type { GetDataType, Mask } from './mask.js'
  * - 'deny' mode returns Omit<Data, keys>
  * - Non-objects throw an error at runtime
  */
-// dprint-ignore
-export type Apply<Data, M extends Mask<any>> =
+// oxfmt-ignore
+export type Apply<Data, M extends Mask> =
     M extends { type: 'binary', show: boolean }
       ? M['show'] extends true
         ? Data
@@ -44,10 +44,10 @@ export type Apply<Data, M extends Mask<any>> =
  * const safeUser = apply(user, mask) // { name: 'John', email: 'john@example.com' }
  * ```
  */
-export const apply = <
-  data extends GetDataType<mask>,
-  mask extends Mask<any>,
->(data: data, mask: mask): Apply<data, mask> => {
+export const apply = <data extends GetDataType<mask>, mask extends Mask>(
+  data: data,
+  mask: mask,
+): Apply<data, mask> => {
   return applyInternal(data, mask) as Apply<data, mask>
 }
 
@@ -68,10 +68,10 @@ export const apply = <
  * const result = applyPartial(partialUser, mask) // { name: 'John' }
  * ```
  */
-export const applyPartial = <
-  data extends Partial<GetDataType<mask>>,
-  mask extends Mask<any>,
->(data: data, mask: mask): Apply<data, mask> => {
+export const applyPartial = <data extends Partial<GetDataType<mask>>, mask extends Mask>(
+  data: data,
+  mask: mask,
+): Apply<data, mask> => {
   return applyInternal(data, mask) as Apply<data, mask>
 }
 
@@ -99,10 +99,7 @@ export const applyPartial = <
  * const result2 = applyExact(userWithExtra, mask) // Type error!
  * ```
  */
-export const applyExact = <
-  data,
-  mask extends Mask<any>,
->(
+export const applyExact = <data, mask extends Mask>(
   data: Obj.NoExcess<data, GetDataType<mask>>,
   mask: mask,
 ): Apply<data, mask> => {
@@ -110,7 +107,7 @@ export const applyExact = <
 }
 
 // Internal implementation
-const applyInternal = (data: any, mask: Mask<any>): any => {
+const applyInternal = (data: any, mask: Mask): any => {
   // Handle binary mask
   if (mask.type === 'binary') {
     return mask.show ? data : undefined
@@ -128,5 +125,5 @@ const applyInternal = (data: any, mask: Mask<any>): any => {
       : Obj.omit(data, mask.properties as any)
   }
 
-  Lang.never()
+  Lang.panic('Unreachable: unknown mask mode')
 }

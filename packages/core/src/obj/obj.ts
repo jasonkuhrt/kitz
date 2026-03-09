@@ -1,4 +1,4 @@
-import type { Lang } from '#lang'
+import { Lang } from '#lang'
 import type { Writable } from 'type-fest'
 import { type IsEmpty } from './diff.js'
 import { entries } from './get.js'
@@ -25,7 +25,7 @@ import { type Any } from './type.js'
  */
 export function assert(value: unknown): asserts value is object {
   if (typeof value !== 'object' || value === null) {
-    throw new TypeError(`Expected object but got ${typeof value}`)
+    Lang.throw(new TypeError(`Expected object but got ${typeof value}`))
   }
 }
 
@@ -62,14 +62,16 @@ export function assert(value: unknown): asserts value is object {
  * })
  * ```
  */
-export const isShape = <type>(spec: Record<PropertyKey, Lang.TypeofTypes>) => (value: unknown): value is type => {
-  if (!isObj(value)) return false
-  const obj_ = value as Record<PropertyKey, unknown>
+export const isShape =
+  <type>(spec: Record<PropertyKey, Lang.TypeofTypes>) =>
+  (value: unknown): value is type => {
+    if (!isObj(value)) return false
+    const obj_ = value as Record<PropertyKey, unknown>
 
-  return entries(spec).every(([key, typeofType]) => {
-    return typeof obj_[key] === typeofType
-  })
-}
+    return entries(spec).every(([key, typeofType]) => {
+      return typeof obj_[key] === typeofType
+    })
+  }
 
 // Note: IsEmpty, Empty, empty, isEmpty, isEmpty$ moved to type.ts
 
@@ -169,7 +171,7 @@ export const getPrivateState = <state extends Any>(obj: Any): state => {
  * ```
  */
 export const hasNonUndefinedKeys = (object: object): boolean => {
-  return Object.values(object).some(value => value !== undefined)
+  return Object.values(object).some((value) => value !== undefined)
 }
 
 /**
@@ -266,11 +268,13 @@ export const hasSymbolLike = (value: unknown, symbol: symbol, expectedValue: unk
  * // Result: [{ [Kind]: 'user' }, { [Kind]: 'user' }]
  * ```
  */
-export const hasSymbolLikeWith = (symbol: symbol, expectedValue: unknown) => (value: unknown): boolean => {
-  return hasSymbolLike(value, symbol, expectedValue)
-}
+export const hasSymbolLikeWith =
+  (symbol: symbol, expectedValue: unknown) =>
+  (value: unknown): boolean => {
+    return hasSymbolLike(value, symbol, expectedValue)
+  }
 
-// dprint-ignore
+// oxfmt-ignore
 export type PartialDeep<$Type> =
   $Type extends Array<infer __inner__>                  ? Array<PartialDeep<__inner__>> :
   $Type extends ReadonlyArray<infer __inner__>          ? ReadonlyArray<PartialDeep<__inner__>> :
@@ -302,7 +306,7 @@ export type PartialDeep<$Type> =
  *
  * @category Type Utilities
  */
-// dprint-ignore
+// oxfmt-ignore
 export type FromEntries<$Entries extends readonly (readonly [PropertyKey, unknown])[]> = {
   [k in $Entries[number] as k[0]]: k[1]
 }
@@ -376,7 +380,7 @@ export const asWritable = <$obj extends object>(obj: $obj): Writeable<$obj> => o
  *
  * @category Type Utilities
  */
-// dprint-ignore
+// oxfmt-ignore
 export type ToParameters<$Params extends object | undefined> =
   undefined extends $Params ? [params?: $Params] :
   $Params extends undefined ? [params?: $Params] :
@@ -387,20 +391,19 @@ export type ToParameters<$Params extends object | undefined> =
  *
  * @category Type Utilities
  */
-export type ToParametersExact<
-  $Input extends object,
-  $Params extends object | undefined,
-> = IsEmpty<$Input> extends true ? []
-  : ToParameters<$Params>
+export type ToParametersExact<$Input extends object, $Params extends object | undefined> =
+  IsEmpty<$Input> extends true ? [] : ToParameters<$Params>
 
 /**
  * Convert PropertyKey to string if possible.
  *
  * @category Type Utilities
  */
-export type PropertyKeyToString<$Key extends PropertyKey> = $Key extends string ? $Key
-  : $Key extends number ? `${$Key}`
-  : never
+export type PropertyKeyToString<$Key extends PropertyKey> = $Key extends string
+  ? $Key
+  : $Key extends number
+    ? `${$Key}`
+    : never
 
 /**
  * Display handler for symbol type.

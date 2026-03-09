@@ -39,28 +39,25 @@ export namespace StepDefinition {
   /**
    * todo
    */
-  export const createWithInput = <
-    $Input extends Input = Input,
-  >() =>
-  <
-    const $Name extends string,
-    $Run extends StepRunner<$Input>,
-    $Slots extends undefined | StepDefinition.Slots,
-  >(
-    parameters: {
+  export const createWithInput =
+    <$Input extends Input = Input>() =>
+    <
+      const $Name extends string,
+      $Run extends StepRunner<$Input>,
+      $Slots extends undefined | StepDefinition.Slots,
+    >(parameters: {
       name: $Name
       slots?: $Slots
       run: $Run
-    },
-  ): {
-    name: $Name
-    run: $Run
-    input: $Input
-    output: ReturnType<$Run>
-    slots: undefined extends $Slots ? undefined : $Slots
-  } => {
-    return parameters as any
-  }
+    }): {
+      name: $Name
+      run: $Run
+      input: $Input
+      output: ReturnType<$Run>
+      slots: undefined extends $Slots ? undefined : $Slots
+    } => {
+      return parameters as any
+    }
 
   export type Input = object
 

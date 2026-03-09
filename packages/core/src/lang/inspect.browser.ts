@@ -1,6 +1,4 @@
-import type { inspect as nodeInspect } from 'node:util'
-
-type InspectParameters = Parameters<typeof nodeInspect>
+type InspectParameters = [unknown, unknown?]
 
 export const inspect = (...args: InspectParameters) => {
   // Browser-safe version - basic JSON stringify

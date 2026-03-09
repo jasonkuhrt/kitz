@@ -1,11 +1,11 @@
 import { Ts } from '@kitz/core'
-import type { Path } from './_.js'
 import { Schema as S } from 'effect'
-import type { Analyzer } from '../path-analyzer/codec-string/_.js'
+import type { CodecString as Analyzer } from '../path-analyzer/codec-string/_.js'
 import type { $Abs } from './$Abs/_.js'
 import type { $Dir } from './$Dir/_.js'
 import type { $File } from './$File/_.js'
 import type { $Rel } from './$Rel/_.js'
+import type { Path } from './_.js'
 import { AbsDir } from './AbsDir/_.js'
 import { AbsFile } from './AbsFile/_.js'
 import { RelDir } from './RelDir/_.js'
@@ -14,39 +14,33 @@ import { RelFile } from './RelFile/_.js'
 /**
  * Error for when a string must be a literal to be statically parsed.
  */
-export interface ErrorStringNotLiteral extends
-  Ts.Err.StaticError<
-    ['fs', 'path', 'string-not-literal'],
-    { message: 'When giving a string, it must be a literal so that it can be statically parsed.' }
-  >
-{}
+export interface ErrorStringNotLiteral extends Ts.Err.StaticError<
+  ['fs', 'path', 'string-not-literal'],
+  { message: 'When giving a string, it must be a literal so that it can be statically parsed.' }
+> {}
 
 /**
  * Error for when path validation fails.
  */
-export interface ErrorPathValidation<$tag, $input> extends
-  Ts.Err.StaticError<
-    ['fs', 'path', 'validation'],
-    {
-      message: GetValidationError<$tag>['message']
-      received: $input
-      tip: GetValidationError<$tag>['hint']
-    }
-  >
-{}
+export interface ErrorPathValidation<$tag, $input> extends Ts.Err.StaticError<
+  ['fs', 'path', 'validation'],
+  {
+    message: GetValidationError<$tag>['message']
+    received: $input
+    tip: GetValidationError<$tag>['hint']
+  }
+> {}
 
 /**
  * Error for when input must be a Path type or string.
  */
-export interface ErrorMustBePathOrString<$input> extends
-  Ts.Err.StaticError<
-    ['fs', 'path', 'must-be-path-or-string'],
-    {
-      message: 'Must be a Path type or string'
-      received: $input
-    }
-  >
-{}
+export interface ErrorMustBePathOrString<$input> extends Ts.Err.StaticError<
+  ['fs', 'path', 'must-be-path-or-string'],
+  {
+    message: 'Must be a Path type or string'
+    received: $input
+  }
+> {}
 
 /**
  * Input type for Path APIs that accepts either a Path type or a string.
@@ -116,7 +110,7 @@ export namespace Input {
   /**
    * Input that accepts any Path type.
    */
-  export type Any = Input<Path>
+  export type Any = Input
 }
 
 /**
@@ -146,7 +140,7 @@ export type InputOrError<$path extends Path = Path> = Input<$path> | Ts.Err.Stat
  * // Result: StaticError<'Must be an absolute file path', ...>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type Guard<
   $input extends Input,
   $targetPath extends Path,
@@ -159,14 +153,20 @@ export type Guard<
   // else
     ErrorPathValidation<$targetPath['_tag'], $input>
 
-export type FromAnalysis<$analysis extends Analyzer.Analysis> = $analysis extends { _tag: 'file'; pathType: 'absolute' }
+export type FromAnalysis<$analysis extends Analyzer.Analysis> = $analysis extends {
+  _tag: 'file'
+  pathType: 'absolute'
+}
   ? AbsFile
-  : $analysis extends { _tag: 'file'; pathType: 'relative' } ? RelFile
-  : $analysis extends { _tag: 'dir'; pathType: 'absolute' } ? AbsDir
-  : $analysis extends { _tag: 'dir'; pathType: 'relative' } ? RelDir
-  : never
+  : $analysis extends { _tag: 'file'; pathType: 'relative' }
+    ? RelFile
+    : $analysis extends { _tag: 'dir'; pathType: 'absolute' }
+      ? AbsDir
+      : $analysis extends { _tag: 'dir'; pathType: 'relative' }
+        ? RelDir
+        : never
 
-// dprint-ignore
+// oxfmt-ignore
 type GetValidationError<$tag> =
     $tag extends 'FsPathRelFile'                                    ? { message: 'Must be a relative file path'; hint: 'Relative files must not start with / and must have an extension' }
   : $tag extends 'FsPathRelDir'                                     ? { message: 'Must be a relative directory path'; hint: 'Relative directories must not start with / and should end with / or have no extension' }
@@ -230,12 +230,14 @@ export namespace Guard {
   /**
    * Accept any Path type OR any string without validation.
    */
-  export type Any<$input> = $input extends Path ? $input
-    : $input extends string ? $input
-    : ErrorMustBePathOrString<$input>
+  export type Any<$input> = $input extends Path
+    ? $input
+    : $input extends string
+      ? $input
+      : ErrorMustBePathOrString<$input>
 }
 
-// dprint-ignore
+// oxfmt-ignore
 export type normalize<$input extends InputOrError> =
   $input extends Ts.Err.StaticError         ? never :
   $input extends string                     ? FromAnalysis<Analyzer.Analyze<$input>> :
@@ -257,9 +259,7 @@ export const normalize = <$schema extends S.Schema.All>($schema: $schema) => {
 export const normalizeDynamic = <$schema extends S.Schema.All>($schema: $schema) => {
   const decodeSync = S.decodeSync($schema as any)
 
-  return <const $input extends InputOrError<$schema['Type']>>(
-    input: $input,
-  ): normalize<$input> => {
+  return <const $input extends InputOrError<$schema['Type']>>(input: $input): normalize<$input> => {
     if (typeof input === 'string') {
       return decodeSync(input) as any
     }

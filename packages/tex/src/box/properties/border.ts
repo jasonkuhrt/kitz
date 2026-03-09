@@ -226,12 +226,9 @@ const parseCornerInput = (
  *
  * Accepts shorthand inputs and normalizes to { topLeft?, topRight?, bottomRight?, bottomLeft? }.
  */
-export const fromCornerInput = S.transformOrFail(
-  CornerInputSchema,
-  BorderCorners,
-  {
-    strict: false,
-    decode: (input) => ParseResult.succeed(parseCornerInput(input)),
-    encode: (value, _, ast) => ParseResult.fail(new ParseResult.Forbidden(ast, value, 'One-way transformation')),
-  },
-)
+export const fromCornerInput = S.transformOrFail(CornerInputSchema, BorderCorners, {
+  strict: false,
+  decode: (input) => ParseResult.succeed(parseCornerInput(input)),
+  encode: (value, _, ast) =>
+    ParseResult.fail(new ParseResult.Forbidden(ast, value, 'One-way transformation')),
+})

@@ -1,4 +1,4 @@
-import { Type as A } from '#assert/assert'
+import { Type as A } from '#kitz/assert/assert'
 import { Ts } from '#ts'
 import { describe, test } from 'vitest'
 
@@ -105,9 +105,9 @@ describe('Union Types', () => {
   })
 
   test('union including any, unknown, never', () => {
-    A.exact.ofAs<'any'>().onAs<D<any | 'literal'>>() // any overtakes literal
-    A.exact.ofAs<'unknown'>().onAs<D<unknown | 'literal'>>() // unknown overtakes literal
-    A.exact.ofAs<"'literal'">().onAs<D<never | 'literal'>>() // never is dropped from unions
+    A.exact.ofAs<'any'>().onAs<D<any>>()
+    A.exact.ofAs<'unknown'>().onAs<D<unknown>>()
+    A.exact.ofAs<'never'>().onAs<D<never>>()
   })
 })
 

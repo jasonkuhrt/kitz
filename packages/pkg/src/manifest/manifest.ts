@@ -1,8 +1,12 @@
+import { Moniker } from '#moniker'
 import { Ts } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
 import { Semver } from '@kitz/semver'
 import { Effect, Option, Schema as S } from 'effect'
+import { SemverFromString, type SemverValue } from '../semver-schema.js'
+
+const zeroSemver: SemverValue = Semver.fromString('0.0.0') as SemverValue
 
 const Author = S.Struct({
   name: S.optional(S.String),
@@ -21,6 +25,7 @@ const Bugs = S.Struct({
 })
 
 const Engines = S.Struct({
+  bun: S.optional(S.String),
   node: S.optional(S.String),
   npm: S.optional(S.String),
   pnpm: S.optional(S.String),
@@ -34,9 +39,11 @@ const Workspaces = S.Struct({
 /**
  * Class schema for package.json manifest
  */
-export class Manifest extends S.Class<Manifest>('Manifest')({
-  name: S.optionalWith(S.String, { default: () => 'unnamed' }),
-  version: S.optionalWith(Semver.Semver, { default: () => Semver.make(0, 0, 0) }),
+class ManifestClass extends S.Class<ManifestClass>('Manifest')({
+  name: S.optionalWith(Moniker.FromString, {
+    default: () => new Moniker.Unscoped({ name: 'unnamed' }),
+  }),
+  version: S.optionalWith(SemverFromString, { default: () => zeroSemver }),
   description: S.optional(S.String),
   main: S.optional(S.String),
   type: S.optional(S.Literal('module', 'commonjs')),
@@ -45,37 +52,19 @@ export class Manifest extends S.Class<Manifest>('Manifest')({
   devDependencies: S.optional(S.Record({ key: S.String, value: S.String })),
   peerDependencies: S.optional(S.Record({ key: S.String, value: S.String })),
   optionalDependencies: S.optional(S.Record({ key: S.String, value: S.String })),
-  bin: S.optional(S.Union(
-    S.String,
-    S.Record({ key: S.String, value: S.String }),
-  )),
+  bin: S.optional(S.Union(S.String, S.Record({ key: S.String, value: S.String }))),
   files: S.optional(S.Array(S.String)),
-  exports: S.optional(S.Union(
-    S.Record({ key: S.String, value: S.Unknown }),
-    S.String,
-  )),
+  exports: S.optional(S.Union(S.Record({ key: S.String, value: S.Unknown }), S.String)),
   imports: S.optional(S.Record({ key: S.String, value: S.Unknown })),
   engines: S.optional(Engines),
-  repository: S.optional(S.Union(
-    Repository,
-    S.String,
-  )),
+  repository: S.optional(S.Union(Repository, S.String)),
   keywords: S.optional(S.Array(S.String)),
-  author: S.optional(S.Union(
-    S.String,
-    Author,
-  )),
+  author: S.optional(S.Union(S.String, Author)),
   license: S.optional(S.String),
-  bugs: S.optional(S.Union(
-    Bugs,
-    S.String,
-  )),
+  bugs: S.optional(S.Union(Bugs, S.String)),
   homepage: S.optional(S.String),
   private: S.optional(S.Boolean),
-  workspaces: S.optional(S.Union(
-    S.Array(S.String),
-    Workspaces,
-  )),
+  workspaces: S.optional(S.Union(S.Array(S.String), Workspaces)),
   packageManager: S.optional(S.String),
   madge: S.optional(S.Unknown),
 }) {
@@ -87,6 +76,9 @@ export class Manifest extends S.Class<Manifest>('Manifest')({
     return S.decodeUnknownSync(ManifestSchemaMutable)(this) as ManifestMutable
   }
 }
+
+export const Manifest: typeof ManifestClass = ManifestClass
+export type Manifest = ManifestClass
 
 /**
  * Mutable version of the manifest schema for runtime manipulation
@@ -122,49 +114,45 @@ export const make = Manifest.make.bind(Manifest)
 export const emptyManifest = Manifest.make()
 
 /**
- * Resource for reading/writing package.json with Schema validation
+ * Resource for reading/writing package.json with Schema validation.
+ *
+ * Uses `preserveExcessProperties: true` to ensure unknown fields in package.json
+ * (like `publishConfig`, `trustedDependencies`, and other custom fields) survive round-trips.
  */
-export const resource: Resource.Resource<Manifest> = {
-  read: (dirPath: Fs.Path.AbsDir) =>
-    Resource.createSchemaResource(
-      'package.json',
-      Manifest,
-      emptyManifest,
-    ).read(dirPath),
-  write: (value: Manifest, dirPath: Fs.Path.AbsDir) =>
-    Resource.createSchemaResource(
-      'package.json',
-      Manifest,
-      emptyManifest,
-    ).write(value, dirPath),
-  readOrEmpty: (dirPath: Fs.Path.AbsDir) =>
-    Resource.createSchemaResource(
-      'package.json',
-      Manifest,
-      emptyManifest,
-    ).readOrEmpty(dirPath),
-}
+export const resource: Resource.Resource<Manifest> = Resource.createJson(
+  'package.json',
+  Manifest,
+  emptyManifest,
+  { preserveExcessProperties: true },
+)
 
 /**
  * Mutable resource for backward compatibility
  * @deprecated Use resource instead and call toMutable() on the result if needed
  */
 export const resourceMutable: Resource.Resource<ManifestMutable> = {
-  read: (dirPath: Fs.Path.AbsDir) =>
-    resource.read(dirPath).pipe(
-      Effect.map(Option.map((m) => m.toMutable())),
-    ),
-  write: (value: ManifestMutable, dirPath: Fs.Path.AbsDir) => resource.write(Manifest.make(value), dirPath),
-  readOrEmpty: (dirPath: Fs.Path.AbsDir) =>
-    resource.readOrEmpty(dirPath).pipe(
-      Effect.map((m) => m.toMutable()),
-    ),
+  read: (path: Fs.Path.$Abs) =>
+    resource.read(path).pipe(Effect.map(Option.map((m) => m.toMutable()))),
+  readRequired: (path: Fs.Path.$Abs) =>
+    resource.readRequired(path).pipe(Effect.map((m) => m.toMutable())),
+  write: (value: ManifestMutable, path: Fs.Path.$Abs) => resource.write(Manifest.make(value), path),
+  readOrEmpty: (path: Fs.Path.$Abs) =>
+    resource.readOrEmpty(path).pipe(Effect.map((m) => m.toMutable())),
+  update: (path: Fs.Path.$Abs, fn: (current: ManifestMutable) => ManifestMutable) =>
+    resource
+      .update(path, (m) => Manifest.make(fn(m.toMutable())))
+      .pipe(Effect.map((m) => m.toMutable())),
+  delete: (path: Fs.Path.$Abs) => resource.delete(path),
 }
 
 /**
  * Overwrite a package script (mutates the manifest).
  */
-export const overwritePackageScript = (manifest: ManifestMutable, scriptName: string, script: string): void => {
+export const overwritePackageScript = (
+  manifest: ManifestMutable,
+  scriptName: string,
+  script: string,
+): void => {
   if (!manifest.scripts) {
     manifest.scripts = {}
   }
@@ -174,7 +162,11 @@ export const overwritePackageScript = (manifest: ManifestMutable, scriptName: st
 /**
  * Merge a script into an existing package script (mutates the manifest).
  */
-export const mergePackageScript = (manifest: ManifestMutable, scriptName: string, script: string): void => {
+export const mergePackageScript = (
+  manifest: ManifestMutable,
+  scriptName: string,
+  script: string,
+): void => {
   if (!manifest.scripts) {
     manifest.scripts = {}
   }
@@ -189,7 +181,11 @@ export const mergePackageScript = (manifest: ManifestMutable, scriptName: string
 /**
  * Remove a package script or part of a script (mutates the manifest).
  */
-export const removePackageScript = (manifest: ManifestMutable, scriptName: string, scriptPart?: string): void => {
+export const removePackageScript = (
+  manifest: ManifestMutable,
+  scriptName: string,
+  scriptPart?: string,
+): void => {
   if (!manifest.scripts || !manifest.scripts[scriptName]) {
     return
   }

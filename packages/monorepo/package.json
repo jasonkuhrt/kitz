@@ -1,0 +1,46 @@
+{
+  "name": "@kitz/monorepo",
+  "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "imports": {
+    "#monorepo": "./src/_.ts",
+    "#monorepo/*": "./src/*.ts",
+    "#workspace": "./src/workspace/_.ts",
+    "#workspace/*": "./src/workspace/*.ts",
+    "#pnpm": "./src/pnpm/_.ts",
+    "#pnpm/*": "./src/pnpm/*.ts"
+  },
+  "exports": {
+    ".": "./src/_.ts",
+    "./__": "./src/__.ts",
+    "./workspace": "./src/workspace/__.ts",
+    "./pnpm": "./src/pnpm/__.ts"
+  },
+  "files": [
+    "build",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
+    "dev": "tsgo -p tsconfig.build.json --watch",
+    "check:types": "tsgo --noEmit",
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
+  },
+  "dependencies": {
+    "@effect/platform": "^0.94.0",
+    "@kitz/core": "workspace:*",
+    "@kitz/env": "workspace:*",
+    "@kitz/fs": "workspace:*",
+    "@kitz/pkg": "workspace:*",
+    "@kitz/resource": "workspace:*",
+    "effect": "^3.19.5",
+    "yaml": "^2.7.1"
+  }
+}

@@ -1,6 +1,7 @@
-import { Err, Obj } from '@kitz/core'
+import { Err, Lang, Obj } from '@kitz/core'
 import { Group } from '@kitz/group'
 import { Alge } from 'alge'
+import { Either } from 'effect'
 import { Errors } from '../Errors/_.js'
 import type { ParameterExclusive } from '../Parameter/exclusive.js'
 import type { Parameter } from '../Parameter/types.js'
@@ -53,8 +54,9 @@ export const parse = ({
      */
 
     // todo, a strict mode where errors are NOT ignored from env parsing when line is present
-    const argReport = lineParseResult.reports[parameter.name.canonical]
-      ?? envParseResult.reports[parameter.name.canonical]
+    const argReport =
+      lineParseResult.reports[parameter.name.canonical] ??
+      envParseResult.reports[parameter.name.canonical]
 
     /**
      * An opening argument was given. Process it.
@@ -87,30 +89,45 @@ export const parse = ({
         .else((argReportValue) => {
           // Note: OakSchema doesn't have transform, we just validate directly
           const validationResult = SchemaRuntime.validate(parameter.type, argReportValue.value)
-          return Alge.match(validationResult)
-            .Right((result) => {
+          if (Either.isRight(validationResult)) {
+            if (isArgumentValue(validationResult.right)) {
               return {
                 _tag: `supplied` as const,
-                parameter: parameter,
-                value: result.right as any, // Cast validated value to ArgumentValue
-              }
-            })
-            .Left((result) => {
-              return {
-                _tag: `error` as const,
                 parameter,
-                errors: [
-                  new Errors.ErrorInvalidArgument({
-                    context: {
-                      spec: parameter,
-                      validationErrors: result.left.errors,
-                      value: result.left.value,
-                    },
-                  }),
-                ],
+                value: validationResult.right,
               }
-            })
-            .done()
+            }
+
+            return {
+              _tag: `error` as const,
+              parameter,
+              errors: [
+                new Errors.ErrorInvalidArgument({
+                  context: {
+                    spec: parameter,
+                    validationErrors: [
+                      `Supported types are string, number, boolean, null, and undefined.`,
+                    ],
+                    value: validationResult.right,
+                  },
+                }),
+              ],
+            }
+          }
+
+          return {
+            _tag: `error` as const,
+            parameter,
+            errors: [
+              new Errors.ErrorInvalidArgument({
+                context: {
+                  spec: parameter,
+                  validationErrors: validationResult.left.errors,
+                  value: validationResult.left.value,
+                },
+              }),
+            ],
+          }
         })
       continue
     }
@@ -119,27 +136,40 @@ export const parse = ({
      * No opening argument was given. Process this fact according to spec (e.g. ok b/c optional, apply default, ... etc.)
      */
 
-    result.basicParameters[parameter.name.canonical] = Alge.match(parameter.type.metadata.optionality)
+    result.basicParameters[parameter.name.canonical] = Alge.match(
+      parameter.type.metadata.optionality,
+    )
       .default((optionality) => {
-        let defaultValue
-        try {
-          defaultValue = optionality.getValue()
-        } catch (someError) {
+        const defaultValueOrError = Err.tryCatch(() => optionality.getValue())
+        if (defaultValueOrError instanceof Error) {
           return {
             _tag: `error` as const,
             parameter,
             errors: [
               new Errors.ErrorFailedToGetDefaultArgument({
                 context: { spec: parameter },
-                cause: Err.ensure(someError),
+                cause: defaultValueOrError,
               }),
             ],
           }
         }
+        if (!isArgumentValue(defaultValueOrError)) {
+          return {
+            _tag: `error` as const,
+            parameter,
+            errors: [
+              new Errors.ErrorFailedToGetDefaultArgument({
+                context: { spec: parameter },
+                cause: new Error(`Unsupported default argument type.`),
+              }),
+            ],
+          }
+        }
+
         return {
           _tag: `supplied` as const,
           parameter,
-          value: defaultValue as any, // Cast default value to ArgumentValue
+          value: defaultValueOrError,
         }
       })
       .required(() => {
@@ -172,13 +202,19 @@ export const parse = ({
    * 4. If a group has more than one parameter with an arg then error
    * 5. If a group has exactly one parameter with an arg then OK
    */
-  const exclusiveGroupSpecsByGroupLabel = Group.byToMut(specsByVariant.Exclusive ?? [], (spec) => spec.group.label)
+  const exclusiveGroupSpecsByGroupLabel = Group.byToMut(
+    specsByVariant.Exclusive ?? [],
+    (spec) => spec.group.label,
+  )
 
   for (const specs of Obj.values(exclusiveGroupSpecsByGroupLabel)) {
     if (!specs) continue
     const group = specs[0]!.group
     const argsToGroup = specs
-      .map((_) => lineParseResult.reports[_.name.canonical] ?? envParseResult.reports[_.name.canonical])
+      .map(
+        (_) =>
+          lineParseResult.reports[_.name.canonical] ?? envParseResult.reports[_.name.canonical],
+      )
       .filter((_): _ is ArgumentReport<ParameterExclusive> => _ !== undefined)
 
     if (argsToGroup.length === 0) {
@@ -195,7 +231,9 @@ export const parse = ({
         const tag = group.optionality.tag
         const parameter = specs.find((_) => _.name.canonical === tag)
         if (!parameter) {
-          throw new Error(`Failed to find parameter for exclusive group default. This should be impossible.`)
+          return Lang.panic(
+            `Failed to find parameter for exclusive group default. This should be impossible.`,
+          )
         }
         // TODO handle error getting default?
         const defaultValue = group.optionality.getValue()
@@ -267,3 +305,10 @@ export const parse = ({
 
   return result
 }
+
+const isArgumentValue = (value: unknown): value is undefined | null | string | number | boolean =>
+  value === undefined ||
+  value === null ||
+  typeof value === 'string' ||
+  typeof value === 'number' ||
+  typeof value === 'boolean'

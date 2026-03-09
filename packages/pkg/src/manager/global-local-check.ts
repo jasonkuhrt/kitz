@@ -1,7 +1,7 @@
 import { FileSystem } from '@effect/platform'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
-import { Effect, Schema as S } from 'effect'
+import { Effect, Option, Schema as S } from 'effect'
 
 interface GlobalLocalCheckOptions {
   /**
@@ -27,11 +27,13 @@ interface GlobalLocalCheckOptions {
   }
 }
 
-interface PackageJson {
-  dependencies?: Record<string, string>
-  devDependencies?: Record<string, string>
-  peerDependencies?: Record<string, string>
-}
+const DependencyMapSchema = S.Record({ key: S.String, value: S.String })
+const PackageJsonSchema = S.Struct({
+  dependencies: S.optionalWith(DependencyMapSchema, { default: () => ({}) }),
+  devDependencies: S.optionalWith(DependencyMapSchema, { default: () => ({}) }),
+  peerDependencies: S.optionalWith(DependencyMapSchema, { default: () => ({}) }),
+})
+const decodePackageJson = S.decodeUnknownOption(S.parseJson(PackageJsonSchema))
 
 /**
  * Check if a package exists in any package.json from the current directory up to root
@@ -39,7 +41,7 @@ interface PackageJson {
 const findPackageInAncestors = (
   packageName: string,
 ): Effect.Effect<string | null, Error, FileSystem.FileSystem | Env.Env> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const env = yield* Env.Env
     const currentDir = env.cwd
@@ -50,22 +52,21 @@ const findPackageInAncestors = (
 
     while (true) {
       const packageJsonPathString = packageJsonPath.toString()
+      const pkg = yield* fs
+        .readFileString(packageJsonPathString)
+        .pipe(Effect.option, Effect.map(Option.flatMap(decodePackageJson)))
 
-      try {
-        const content = yield* fs.readFileString(packageJsonPathString)
-        const pkg: PackageJson = JSON.parse(content)
-
+      if (Option.isSome(pkg)) {
+        const packageJson = pkg.value
         if (
-          pkg.dependencies?.[packageName]
-          || pkg.devDependencies?.[packageName]
-          || pkg.peerDependencies?.[packageName]
+          packageJson.dependencies[packageName] ||
+          packageJson.devDependencies[packageName] ||
+          packageJson.peerDependencies[packageName]
         ) {
           // Return the directory containing this package.json
           const dir = Fs.Path.up(packageJsonPath)
           return dir.toString()
         }
-      } catch {
-        // No package.json at this path, continue
       }
 
       // Check if we're at root
@@ -89,17 +90,19 @@ function createGlobalLocalConflictError(
   template?: GlobalLocalCheckOptions['errorMessageTemplate'],
 ): Error {
   const defaultSolutions = [
-    `pnpm exec ${packageName} <command>`,
-    `npx ${packageName} <command>`,
+    `bunx ${packageName} <command>`,
     `./node_modules/.bin/${packageName} <command>`,
   ]
 
-  const title = template?.title || `Global ${packageName} running in project with local ${packageName}`
-  const explanation = template?.explanation
-    || `This project has ${packageName} in its package.json at ${projectDir}, but you're using a global ${packageName} installation. `
-      + `This can cause version mismatches and unexpected behavior.`
+  const title =
+    template?.title || `Global ${packageName} running in project with local ${packageName}`
+  const explanation =
+    template?.explanation ||
+    `This project has ${packageName} in its package.json at ${projectDir}, but you're using a global ${packageName} installation. ` +
+      `This can cause version mismatches and unexpected behavior.`
   const solutions = template?.solutions || defaultSolutions
-  const bypassInstructions = template?.bypassInstructions || `${packageName} <command> --allow-global`
+  const bypassInstructions =
+    template?.bypassInstructions || `${packageName} <command> --allow-global`
 
   const message = `
 ${title}
@@ -107,7 +110,7 @@ ${title}
 ${explanation}
 
 To use the project's ${packageName}:
-${solutions.map(s => `  • ${s}`).join('\n')}
+${solutions.map((s) => `  • ${s}`).join('\n')}
 
 To bypass this check:
   • ${bypassInstructions}
@@ -137,25 +140,23 @@ To bypass this check:
 export const checkGlobalVsLocal = (
   options: GlobalLocalCheckOptions,
 ): Effect.Effect<void, Error, FileSystem.FileSystem | Env.Env> =>
-  Effect.gen(function*() {
-    const {
-      packageName,
-      currentExecutablePath,
-      allowGlobalFlag = '--allow-global',
-    } = options
+  Effect.gen(function* () {
+    const { packageName, currentExecutablePath, allowGlobalFlag = '--allow-global' } = options
 
     // Check if running from global install
     // Common global installation patterns:
-    // - pnpm: /Users/.../Library/pnpm/packagename
+    // - bun: /Users/.../.bun/bin/packagename
     // - npm: /usr/local/lib/node_modules/packagename
     // - yarn: /Users/.../config/yarn/global/node_modules/packagename
-    const isGlobalInstall = currentExecutablePath.includes('pnpm/global')
-      || currentExecutablePath.includes('.npm/global')
-      || currentExecutablePath.includes('yarn/global')
-      || currentExecutablePath.includes(`/Library/pnpm/${packageName}`)
-      || currentExecutablePath.includes('/usr/local/lib/node_modules/')
-      || currentExecutablePath.includes('/usr/lib/node_modules/')
-      || !currentExecutablePath.includes(`node_modules/${packageName}`)
+    const isGlobalInstall =
+      currentExecutablePath.includes('/.bun/bin/') ||
+      currentExecutablePath.includes('pnpm/global') ||
+      currentExecutablePath.includes('.npm/global') ||
+      currentExecutablePath.includes('yarn/global') ||
+      currentExecutablePath.includes(`/Library/pnpm/${packageName}`) ||
+      currentExecutablePath.includes('/usr/local/lib/node_modules/') ||
+      currentExecutablePath.includes('/usr/lib/node_modules/') ||
+      !currentExecutablePath.includes(`node_modules/${packageName}`)
 
     if (!isGlobalInstall) {
       // Running from local install, all good
@@ -171,7 +172,9 @@ export const checkGlobalVsLocal = (
     const projectDir = yield* findPackageInAncestors(packageName)
 
     if (projectDir) {
-      return yield* Effect.fail(createGlobalLocalConflictError(packageName, projectDir, options.errorMessageTemplate))
+      return yield* Effect.fail(
+        createGlobalLocalConflictError(packageName, projectDir, options.errorMessageTemplate),
+      )
     }
   })
 

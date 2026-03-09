@@ -51,8 +51,8 @@ Optic.set(items, '.[].active', true) // → set all to active
 Modify the focused value(s) with a function:
 
 ```typescript
-Optic.update(user, Optic.at('age'), n => n + 1)
-Optic.update(players, '.[].score', n => n * 2)
+Optic.update(user, Optic.at('age'), (n) => n + 1)
+Optic.update(players, '.[].score', (n) => n * 2)
 ```
 
 ### reduce
@@ -71,15 +71,9 @@ Optic.reduce(posts, '.[].tags.[]', (acc, t) => [...acc, t], []) // → all tags
 Compose optics left-to-right:
 
 ```typescript
-const addressCity = Optic.flow(
-  Optic.at('address'),
-  Optic.at('city'),
-)
+const addressCity = Optic.flow(Optic.at('address'), Optic.at('city'))
 
-const firstUserName = Optic.flow(
-  Optic.ix(0),
-  Optic.at('name'),
-)
+const firstUserName = Optic.flow(Optic.ix(0), Optic.at('name'))
 
 // Composition determines the resulting optic type:
 // Lens + Lens = Lens
@@ -103,20 +97,11 @@ Optic.set(user, lens, 'LA') // → updated user
 Fluent API with data:
 
 ```typescript
-Optic.on(user)
-  .at('address')
-  .at('city')
-  .get() // → 'NYC'
+Optic.on(user).at('address').at('city').get() // → 'NYC'
 
-Optic.on(user)
-  .at('address')
-  .at('city')
-  .set('LA') // → updated user
+Optic.on(user).at('address').at('city').set('LA') // → updated user
 
-Optic.on(users)
-  .each()
-  .at('name')
-  .get() // → ['Alice', 'Bob']
+Optic.on(users).each().at('name').get() // → ['Alice', 'Bob']
 ```
 
 ## Constructors
@@ -148,7 +133,7 @@ Optic.entries // object ↔ entries
 
 // Traversal (Iterable)
 Optic.each // all elements
-Optic.filter(x => x.active) // elements matching predicate
+Optic.filter((x) => x.active) // elements matching predicate
 
 // Traversal (Entried)
 Optic.values // all values

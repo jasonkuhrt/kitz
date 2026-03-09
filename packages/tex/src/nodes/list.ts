@@ -47,7 +47,9 @@ export class List extends Node {
     const bullets = ` `
       .repeat(this.items.length)
       .split(` `)
-      .map((_, index) => (typeof bullet.graphic === `function` ? bullet.graphic(index) : bullet.graphic))
+      .map((_, index) =>
+        typeof bullet.graphic === `function` ? bullet.graphic(index) : bullet.graphic,
+      )
     const gutterWidth = Math.max(...bullets.map((_) => Str.Visual.width(_)))
     const gutterWidthWithSpacing = gutterWidth + 1
     const context_ = {
@@ -67,7 +69,10 @@ export class List extends Node {
         const contentLines = Str.Text.lines(_)
         // Create bullet column with empty strings for continuation lines
         const bulletColumn = [alignedBullet, ...Array(contentLines.length - 1).fill('')]
-        return Str.Visual.Table.render(Arr.transpose([bulletColumn, contentLines]), { separator: ` `, align: 'left' })
+        return Str.Visual.Table.render(Arr.transpose([bulletColumn, contentLines]), {
+          separator: ` `,
+          align: 'left',
+        })
       })
       .join(separator)
 

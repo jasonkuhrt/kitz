@@ -1,6 +1,6 @@
-import { Assert } from '#assert'
+import { Assert } from '#kitz/assert'
+import { property } from '#kitz/test/test'
 import { Null } from '#null'
-import { property } from '#test/test'
 import fc from 'fast-check'
 import { expect, test } from 'vitest'
 
@@ -17,7 +17,7 @@ property('is returns true only for null', fc.anything(), (value) => {
 })
 
 property('filters nulls', fc.array(fc.option(fc.anything())), (arr) => {
-  expect(arr.filter(v => !Null.is(v)).every(v => v !== null)).toBe(true)
+  expect(arr.filter((v) => !Null.is(v)).every((v) => v !== null)).toBe(true)
 })
 
 test('type narrowing', () => {

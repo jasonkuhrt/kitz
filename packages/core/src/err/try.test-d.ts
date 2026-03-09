@@ -6,7 +6,7 @@ import { test } from 'vitest'
  * of sync/async functions and fallbacks.
  */
 
-import { Type as A } from '#assert/assert'
+import { Type as A } from '#kitz/assert/assert'
 import { Ts } from '#ts'
 import { tryOr, tryOrAsync, tryOrAsyncWith, tryOrNull, tryOrUndefined, tryOrWith } from './try.js'
 
@@ -20,7 +20,10 @@ test('sync function with sync fallback', () => {
 
 // Sync function with lazy sync fallback
 test('sync function with lazy sync fallback', () => {
-  const result = tryOr(() => 42, () => 'fallback')
+  const result = tryOr(
+    () => 42,
+    () => 'fallback',
+  )
   A.sub.ofAs<number | string>().on(result)
 })
 
@@ -31,7 +34,10 @@ test('sync function with async fallback requires tryOrAsync', () => {
   // const _errorCase = tryOr(() => 42, async () => 'fallback')
 
   // Use tryOrAsync instead
-  const result = tryOrAsync(() => 42, async () => 'fallback')
+  const result = tryOrAsync(
+    () => 42,
+    async () => 'fallback',
+  )
   A.sub.ofAs<Promise<number | string>>().on(result)
 })
 
@@ -43,13 +49,19 @@ test('async function with sync fallback', () => {
 
 // Async function with lazy sync fallback
 test('async function with lazy sync fallback', () => {
-  const result = tryOr(async () => 42, () => 'fallback')
+  const result = tryOr(
+    async () => 42,
+    () => 'fallback',
+  )
   A.sub.ofAs<Promise<number | string>>().on(result)
 })
 
 // Async function with async fallback
 test('async function with async fallback', () => {
-  const result = tryOr(async () => 42, async () => 'fallback')
+  const result = tryOr(
+    async () => 42,
+    async () => 'fallback',
+  )
   A.sub.ofAs<Promise<number | string>>().on(result)
 })
 
@@ -66,10 +78,10 @@ test('complex types', () => {
   }
 
   // Sync with object fallback
-  const r1 = tryOr(
-    (): User => ({ id: '1', name: 'John' }),
-    { error: true, message: 'Failed' } as ErrorResult,
-  )
+  const r1 = tryOr((): User => ({ id: '1', name: 'John' }), {
+    error: true,
+    message: 'Failed',
+  } as ErrorResult)
   A.sub.ofAs<User | ErrorResult>().on(r1)
 
   // Async with async fallback returning different type
@@ -165,7 +177,7 @@ test('never type', () => {
 
 // Union types
 test('union types', () => {
-  const fn = (): string | number => Math.random() > 0.5 ? 'text' : 42
+  const fn = (): string | number => (Math.random() > 0.5 ? 'text' : 42)
 
   const r1 = tryOr(fn, false)
   A.sub.ofAs<string | number | boolean>().on(r1)

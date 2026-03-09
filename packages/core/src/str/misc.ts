@@ -1,4 +1,4 @@
-import { title } from './case/case.js'
+import { Case } from './case/_.js'
 
 /** URL path separator regex */
 const pathSeparator = /\//g
@@ -17,7 +17,7 @@ const pathSeparator = /\//g
  * ```
  */
 export const titlizeSlug = (str: string) => {
-  return title(str.replace(pathSeparator, ' '))
+  return Case.title(str.replace(pathSeparator, ' '))
 }
 
 /**

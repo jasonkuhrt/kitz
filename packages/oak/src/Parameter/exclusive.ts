@@ -49,24 +49,6 @@ export const parameterExclusiveCreate = (
   input: ParameterExclusiveInput,
   settings: Settings.Output,
 ): ParameterExclusive[] => {
-  const parameters: ParameterExclusive[] = input.parameters.map((_) => {
-    const name = S.decodeSync(Cli.Param.String)(_.nameExpression)
-    const environment = processEnvironment(settings, name)
-    return {
-      _tag: `Exclusive`,
-      description: _.type.metadata.description ?? null,
-      type: _.type,
-      environment,
-      name,
-      // See comment/code below: (1)
-      group: null as any,
-    }
-  })
-
-  /**
-   * (1) Link up the group to each value and vice versa. Cannot do this in the above constructor since
-   * it would create a copy of group for each value.
-   */
   const group: ParameterExclusiveGroup = {
     label: input.label,
     // Input exclusive default allows default to be value or thunk,
@@ -83,8 +65,20 @@ export const parameterExclusiveCreate = (
     parameters: {},
   }
 
+  const parameters: ParameterExclusive[] = input.parameters.map((_) => {
+    const name = S.decodeSync(Cli.Param.String)(_.nameExpression)
+    const environment = processEnvironment(settings, name)
+    return {
+      _tag: `Exclusive`,
+      description: _.type.metadata.description ?? null,
+      type: _.type,
+      environment,
+      name,
+      group,
+    }
+  })
+
   parameters.forEach((_) => {
-    _.group = group
     group.parameters[_.name.canonical] = _
   })
 

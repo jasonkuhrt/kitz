@@ -36,17 +36,17 @@ export type RenderContext = {
 const getLogicalMapping = (orientation: PropOrientation.Orientation) => {
   return orientation === 'vertical'
     ? {
-      newlinesBefore: 'mainStart' as const,
-      newlinesAfter: 'mainEnd' as const,
-      spacesBeforeLines: 'crossStart' as const,
-      spacesAfterLines: 'crossEnd' as const,
-    }
+        newlinesBefore: 'mainStart' as const,
+        newlinesAfter: 'mainEnd' as const,
+        spacesBeforeLines: 'crossStart' as const,
+        spacesAfterLines: 'crossEnd' as const,
+      }
     : {
-      newlinesBefore: 'crossStart' as const,
-      newlinesAfter: 'crossEnd' as const,
-      spacesBeforeLines: 'mainStart' as const,
-      spacesAfterLines: 'mainEnd' as const,
-    }
+        newlinesBefore: 'crossStart' as const,
+        newlinesAfter: 'crossEnd' as const,
+        spacesBeforeLines: 'mainStart' as const,
+        spacesAfterLines: 'mainEnd' as const,
+      }
 }
 
 /**
@@ -118,6 +118,30 @@ const resolveGap = (
   return undefined
 }
 
+const toMutableBorderEdges = (
+  edges?: PropBorder.BorderEdges | Partial<S.SimplifyMutable<PropBorder.BorderEdges>>,
+): Partial<S.SimplifyMutable<PropBorder.BorderEdges>> => {
+  if (edges === undefined) return {}
+  return {
+    top: edges.top,
+    right: edges.right,
+    bottom: edges.bottom,
+    left: edges.left,
+  }
+}
+
+const toMutableBorderCorners = (
+  corners?: PropBorder.BorderCorners | Partial<S.SimplifyMutable<PropBorder.BorderCorners>>,
+): Partial<S.SimplifyMutable<PropBorder.BorderCorners>> => {
+  if (corners === undefined) return {}
+  return {
+    topLeft: corners.topLeft,
+    topRight: corners.topRight,
+    bottomRight: corners.bottomRight,
+    bottomLeft: corners.bottomLeft,
+  }
+}
+
 /**
  * Enforce span constraints on text content.
  * Applies exact spans and min/max range constraints.
@@ -144,14 +168,20 @@ const enforceSpan = (
 
   // Resolve desired spans, then subtract border/padding for border-box model
   // The span specifies total size including border/padding, so content area is smaller
-  const resolvedMainSpan = box.span ? resolveSpanValue(box.span.main, context.availableMainSpan) : undefined
-  const resolvedCrossSpan = box.span ? resolveSpanValue(box.span.cross, context.availableCrossSpan) : undefined
-  const desiredMainSpan = resolvedMainSpan !== undefined
-    ? Math.max(0, resolvedMainSpan - borderMainConsumption - paddingMainConsumption)
+  const resolvedMainSpan = box.span
+    ? resolveSpanValue(box.span.main, context.availableMainSpan)
     : undefined
-  const desiredCrossSpan = resolvedCrossSpan !== undefined
-    ? Math.max(0, resolvedCrossSpan - borderCrossConsumption - paddingCrossConsumption)
+  const resolvedCrossSpan = box.span
+    ? resolveSpanValue(box.span.cross, context.availableCrossSpan)
     : undefined
+  const desiredMainSpan =
+    resolvedMainSpan !== undefined
+      ? Math.max(0, resolvedMainSpan - borderMainConsumption - paddingMainConsumption)
+      : undefined
+  const desiredCrossSpan =
+    resolvedCrossSpan !== undefined
+      ? Math.max(0, resolvedCrossSpan - borderCrossConsumption - paddingCrossConsumption)
+      : undefined
 
   // Get spanRange constraints
   const minMainSpan = box.spanRange?.main?.min
@@ -162,7 +192,8 @@ const enforceSpan = (
   // Calculate final target spans (priority: exact span → range constraints)
   const textLines = Str.Text.lines(result)
   const intrinsicMainSpan = textLines.length
-  const intrinsicCrossSpan = textLines.length === 0 ? 0 : Math.max(...textLines.map((line) => line.length))
+  const intrinsicCrossSpan =
+    textLines.length === 0 ? 0 : Math.max(...textLines.map((line) => line.length))
 
   // Main span (height in vertical, width in horizontal)
   let targetMainSpan = desiredMainSpan ?? intrinsicMainSpan
@@ -225,7 +256,10 @@ const renderPadding = (
   const mapping = getLogicalMapping(orientation)
 
   // Convert a padding value to its string representation with context-aware % resolution
-  const toStr = (value: number | string | bigint | undefined, key: keyof PropPadding.Padding): string => {
+  const toStr = (
+    value: number | string | bigint | undefined,
+    key: keyof PropPadding.Padding,
+  ): string => {
     const isMainAxis = key === 'mainStart' || key === 'mainEnd'
     const availableSpan = isMainAxis ? context.availableMainSpan : context.availableCrossSpan
     return resolveSidedToString(value, availableSpan)
@@ -240,14 +274,18 @@ const renderPadding = (
     const hooks = (box as any).paddingHooks[key]
     if (!hooks || hooks.length === 0) return staticValue
 
-    const ctx = key === 'mainStart' || key === 'mainEnd'
-      ? { lineIndex: lineIndex ?? 0, totalLines: textLines.length }
-      : {}
+    const ctx =
+      key === 'mainStart' || key === 'mainEnd'
+        ? { lineIndex: lineIndex ?? 0, totalLines: textLines.length }
+        : {}
 
     let value = staticValue
     for (const hook of hooks) {
       const hookResult = hook(ctx)
-      value = typeof hookResult === 'function' ? hookResult(typeof value === `number` ? value : 0) : hookResult
+      value =
+        typeof hookResult === 'function'
+          ? hookResult(typeof value === `number` ? value : 0)
+          : hookResult
     }
     return value
   }
@@ -329,7 +367,10 @@ const renderMargin = (
   const mapping = getLogicalMapping(orientation)
 
   // Convert a margin value to its string representation with context-aware % resolution
-  const toStr = (value: number | string | bigint | undefined, key: keyof PropMargin.Margin): string => {
+  const toStr = (
+    value: number | string | bigint | undefined,
+    key: keyof PropMargin.Margin,
+  ): string => {
     const isMainAxis = key === 'mainStart' || key === 'mainEnd'
     const availableSpan = isMainAxis ? context.availableMainSpan : context.availableCrossSpan
     return resolveSidedToString(value, availableSpan)
@@ -344,14 +385,18 @@ const renderMargin = (
     const hooks = (box as any).marginHooks[key]
     if (!hooks || hooks.length === 0) return staticValue
 
-    const ctx = key === 'mainStart' || key === 'mainEnd'
-      ? { lineIndex: lineIndex ?? 0, totalLines: textLines.length }
-      : {}
+    const ctx =
+      key === 'mainStart' || key === 'mainEnd'
+        ? { lineIndex: lineIndex ?? 0, totalLines: textLines.length }
+        : {}
 
     let value = staticValue
     for (const hook of hooks) {
       const hookResult = hook(ctx)
-      value = typeof hookResult === 'function' ? hookResult(typeof value === `number` ? value : 0) : hookResult
+      value =
+        typeof hookResult === 'function'
+          ? hookResult(typeof value === `number` ? value : 0)
+          : hookResult
     }
     return value
   }
@@ -423,18 +468,18 @@ const renderBorder = (text: string, border: PropBorder.Border, box: Box): string
 
   // 1. Start with style if provided (gives all edges and corners)
   if (border.style) {
-    edges = { ...PropBorder.styles[border.style].edges }
-    corners = { ...PropBorder.styles[border.style].corners }
+    edges = toMutableBorderEdges(PropBorder.styles[border.style].edges)
+    corners = toMutableBorderCorners(PropBorder.styles[border.style].corners)
   }
 
   // 2. Apply edges override if provided
   if (border.edges) {
-    edges = { ...edges, ...border.edges }
+    edges = { ...edges, ...toMutableBorderEdges(border.edges) }
   }
 
   // 3. Apply corners override if provided
   if (border.corners) {
-    corners = { ...corners, ...border.corners }
+    corners = { ...corners, ...toMutableBorderCorners(border.corners) }
   }
 
   const textLines = Str.Text.lines(text)
@@ -490,9 +535,15 @@ const renderBorder = (text: string, border: PropBorder.Border, box: Box): string
 
   // Apply corner hooks
   corners.topLeft = evaluateCornerHook('topLeft', corners.topLeft, { char: corners.topLeft ?? '' })
-  corners.topRight = evaluateCornerHook('topRight', corners.topRight, { char: corners.topRight ?? '' })
-  corners.bottomLeft = evaluateCornerHook('bottomLeft', corners.bottomLeft, { char: corners.bottomLeft ?? '' })
-  corners.bottomRight = evaluateCornerHook('bottomRight', corners.bottomRight, { char: corners.bottomRight ?? '' })
+  corners.topRight = evaluateCornerHook('topRight', corners.topRight, {
+    char: corners.topRight ?? '',
+  })
+  corners.bottomLeft = evaluateCornerHook('bottomLeft', corners.bottomLeft, {
+    char: corners.bottomLeft ?? '',
+  })
+  corners.bottomRight = evaluateCornerHook('bottomRight', corners.bottomRight, {
+    char: corners.bottomRight ?? '',
+  })
 
   // Determine which sides have borders
   const hasTop = edges.top !== undefined
@@ -537,68 +588,72 @@ const renderBorder = (text: string, border: PropBorder.Border, box: Box): string
   })
 
   // Build top border with hooks (character may change per column)
-  const topBorder = hasTop || (box as any).borderEdgeHooks?.top
-    ? (() => {
-      let line = ''
-      // Left corner
-      if ((hasLeft || (box as any).borderEdgeHooks?.left) && corners.topLeft) {
-        const topLeftStyle = (box as any).borderCornerStyles?.topLeft
-        const styledTopLeft = applyStyle(corners.topLeft, topLeftStyle)
-        line += styledTopLeft
-      }
-      // Top chars (may be different per column if hooks exist)
-      const topStyle = (box as any).borderEdgeStyles?.top
-      for (let colIndex = 0; colIndex < maxWidth; colIndex++) {
-        const topChar = evaluateEdgeHook('top', edges.top, {
-          colIndex,
-          totalCols: maxWidth,
-          char: edges.top ?? '',
-        })
-        const styledTopChar = applyStyle(topChar ?? '', topStyle)
-        line += styledTopChar
-      }
-      // Right corner
-      if ((hasRight || (box as any).borderEdgeHooks?.right) && corners.topRight) {
-        const topRightStyle = (box as any).borderCornerStyles?.topRight
-        const styledTopRight = applyStyle(corners.topRight, topRightStyle)
-        line += styledTopRight
-      }
-      return line || null
-    })()
-    : null
+  const topBorder =
+    hasTop || (box as any).borderEdgeHooks?.top
+      ? (() => {
+          let line = ''
+          // Left corner
+          if ((hasLeft || (box as any).borderEdgeHooks?.left) && corners.topLeft) {
+            const topLeftStyle = (box as any).borderCornerStyles?.topLeft
+            const styledTopLeft = applyStyle(corners.topLeft, topLeftStyle)
+            line += styledTopLeft
+          }
+          // Top chars (may be different per column if hooks exist)
+          const topStyle = (box as any).borderEdgeStyles?.top
+          for (let colIndex = 0; colIndex < maxWidth; colIndex++) {
+            const topChar = evaluateEdgeHook('top', edges.top, {
+              colIndex,
+              totalCols: maxWidth,
+              char: edges.top ?? '',
+            })
+            const styledTopChar = applyStyle(topChar ?? '', topStyle)
+            line += styledTopChar
+          }
+          // Right corner
+          if ((hasRight || (box as any).borderEdgeHooks?.right) && corners.topRight) {
+            const topRightStyle = (box as any).borderCornerStyles?.topRight
+            const styledTopRight = applyStyle(corners.topRight, topRightStyle)
+            line += styledTopRight
+          }
+          return line || null
+        })()
+      : null
 
   // Build bottom border with hooks (character may change per column)
-  const bottomBorder = hasBottom || (box as any).borderEdgeHooks?.bottom
-    ? (() => {
-      let line = ''
-      // Left corner
-      if ((hasLeft || (box as any).borderEdgeHooks?.left) && corners.bottomLeft) {
-        const bottomLeftStyle = (box as any).borderCornerStyles?.bottomLeft
-        const styledBottomLeft = applyStyle(corners.bottomLeft, bottomLeftStyle)
-        line += styledBottomLeft
-      }
-      // Bottom chars (may be different per column if hooks exist)
-      const bottomStyle = (box as any).borderEdgeStyles?.bottom
-      for (let colIndex = 0; colIndex < maxWidth; colIndex++) {
-        const bottomChar = evaluateEdgeHook('bottom', edges.bottom, {
-          colIndex,
-          totalCols: maxWidth,
-          char: edges.bottom ?? '',
-        })
-        const styledBottomChar = applyStyle(bottomChar ?? '', bottomStyle)
-        line += styledBottomChar
-      }
-      // Right corner
-      if ((hasRight || (box as any).borderEdgeHooks?.right) && corners.bottomRight) {
-        const bottomRightStyle = (box as any).borderCornerStyles?.bottomRight
-        const styledBottomRight = applyStyle(corners.bottomRight, bottomRightStyle)
-        line += styledBottomRight
-      }
-      return line || null
-    })()
-    : null
+  const bottomBorder =
+    hasBottom || (box as any).borderEdgeHooks?.bottom
+      ? (() => {
+          let line = ''
+          // Left corner
+          if ((hasLeft || (box as any).borderEdgeHooks?.left) && corners.bottomLeft) {
+            const bottomLeftStyle = (box as any).borderCornerStyles?.bottomLeft
+            const styledBottomLeft = applyStyle(corners.bottomLeft, bottomLeftStyle)
+            line += styledBottomLeft
+          }
+          // Bottom chars (may be different per column if hooks exist)
+          const bottomStyle = (box as any).borderEdgeStyles?.bottom
+          for (let colIndex = 0; colIndex < maxWidth; colIndex++) {
+            const bottomChar = evaluateEdgeHook('bottom', edges.bottom, {
+              colIndex,
+              totalCols: maxWidth,
+              char: edges.bottom ?? '',
+            })
+            const styledBottomChar = applyStyle(bottomChar ?? '', bottomStyle)
+            line += styledBottomChar
+          }
+          // Right corner
+          if ((hasRight || (box as any).borderEdgeHooks?.right) && corners.bottomRight) {
+            const bottomRightStyle = (box as any).borderCornerStyles?.bottomRight
+            const styledBottomRight = applyStyle(corners.bottomRight, bottomRightStyle)
+            line += styledBottomRight
+          }
+          return line || null
+        })()
+      : null
 
-  return [topBorder, ...contentLines, bottomBorder].filter((line) => line !== null).join(Str.Char.newline)
+  return [topBorder, ...contentLines, bottomBorder]
+    .filter((line) => line !== null)
+    .join(Str.Char.newline)
 }
 
 /**
@@ -751,13 +806,19 @@ const renderWithContext = (box: Box, context: RenderContext): string => {
   if (childContext.availableMainSpan !== undefined) {
     childContext.availableMainSpan = Math.max(
       0,
-      childContext.availableMainSpan - borderMainConsumption - paddingMainConsumption - marginMainConsumption,
+      childContext.availableMainSpan -
+        borderMainConsumption -
+        paddingMainConsumption -
+        marginMainConsumption,
     )
   }
   if (childContext.availableCrossSpan !== undefined) {
     childContext.availableCrossSpan = Math.max(
       0,
-      childContext.availableCrossSpan - borderCrossConsumption - paddingCrossConsumption - marginCrossConsumption,
+      childContext.availableCrossSpan -
+        borderCrossConsumption -
+        paddingCrossConsumption -
+        marginCrossConsumption,
     )
   }
 

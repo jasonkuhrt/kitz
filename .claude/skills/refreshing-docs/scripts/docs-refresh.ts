@@ -23,9 +23,10 @@ interface PackageInfo {
 }
 
 const getPackages = (): PackageInfo[] => {
-  const dirs = fs.readdirSync(packagesDir, { withFileTypes: true })
-    .filter(d => d.isDirectory())
-    .map(d => d.name)
+  const dirs = fs
+    .readdirSync(packagesDir, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
     .sort()
 
   const packages: PackageInfo[] = []
@@ -34,6 +35,7 @@ const getPackages = (): PackageInfo[] => {
     const pkgJsonPath = path.join(packagesDir, dirName, 'package.json')
     if (!fs.existsSync(pkgJsonPath)) continue
 
+    // oxlint-disable-next-line kitz/no-json-parse
     const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8'))
     packages.push({
       name: pkgJson.name ?? dirName,
@@ -46,10 +48,7 @@ const getPackages = (): PackageInfo[] => {
 }
 
 const generatePackagesTable = (packages: PackageInfo[]): string => {
-  const lines: string[] = [
-    '| Package | Description |',
-    '| ------- | ----------- |',
-  ]
+  const lines: string[] = ['| Package | Description |', '| ------- | ----------- |']
 
   for (const pkg of packages) {
     const link = `[\`${pkg.name}\`](./packages/${pkg.dirName})`
@@ -120,17 +119,14 @@ const getModuleDescription = (dirName: string): string => {
 const extractFirstJsDocLine = (jsdocBody: string): string => {
   const lines = jsdocBody
     .split('\n')
-    .map(line => line.replace(/^\s*\*\s?/, '').trim())
-    .filter(line => line.length > 0 && !line.startsWith('@'))
+    .map((line) => line.replace(/^\s*\*\s?/, '').trim())
+    .filter((line) => line.length > 0 && !line.startsWith('@'))
 
   return lines[0] ?? ''
 }
 
 const generateCoreNamespaceTable = (modules: ModuleInfo[]): string => {
-  const lines: string[] = [
-    '| Module | Description |',
-    '| ------ | ----------- |',
-  ]
+  const lines: string[] = ['| Module | Description |', '| ------ | ----------- |']
 
   for (const mod of modules) {
     const desc = mod.description || '_No description_'

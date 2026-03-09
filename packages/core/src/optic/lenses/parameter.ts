@@ -27,7 +27,9 @@ export type Get<$T, $Index extends number> = ValidateAndExtract<
  * type T = Set<(a: string, b: number) => void, 0, boolean> // (a: boolean, b: number) => void
  * ```
  */
-export type Set<$T, $Index extends number, $New> = $T extends (...args: infer __args__) => infer __return__
+export type Set<$T, $Index extends number, $New> = $T extends (
+  ...args: infer __args__
+) => infer __return__
   ? (...args: ReplaceAt<__args__, $Index, $New>) => __return__
   : never
 

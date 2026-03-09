@@ -42,7 +42,7 @@ export type Even = number & Brand.Brand<'Even'>
  * is('4') // false (not a number)
  */
 export const is = (value: unknown): value is Even & Int => {
-  return IntNs.is(value) && (value as Int) % 2 === 0
+  return IntNs.is(value) && value % 2 === 0
 }
 
 /**

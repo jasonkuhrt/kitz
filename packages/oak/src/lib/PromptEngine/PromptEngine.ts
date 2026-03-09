@@ -38,11 +38,14 @@ interface KeyPressPatternExpressionObject {
   shift?: boolean
 }
 
-const isKeyPressMatchPattern = (event: KeyPress.KeyPressEvent, keyPressMatchSpec: KeyPressPattern) => {
+const isKeyPressMatchPattern = (
+  event: KeyPress.KeyPressEvent,
+  keyPressMatchSpec: KeyPressPattern,
+) => {
   return (
-    keyPressMatchSpec.name === undefined
-    || (keyPressMatchSpec.name.includes(event.name)
-      && (keyPressMatchSpec.shift === undefined || keyPressMatchSpec.shift === event.shift))
+    keyPressMatchSpec.name === undefined ||
+    (keyPressMatchSpec.name.includes(event.name) &&
+      (keyPressMatchSpec.shift === undefined || keyPressMatchSpec.shift === event.shift))
   )
 }
 
@@ -65,7 +68,7 @@ export namespace PromptEngine {
   export const create = <State extends object, Skippable extends boolean>(
     params: Params<State, Skippable>,
   ): Effect.Effect<Skippable extends true ? null | State : State> =>
-    Effect.gen(function*(_) {
+    Effect.gen(function* (_) {
       type Ret = Skippable extends true ? null | State : State
 
       const args = {
@@ -79,9 +82,9 @@ export namespace PromptEngine {
           match: (Array.isArray(match) ? match : [match]).map((_) =>
             typeof _ === `string`
               ? {
-                name: _,
-              }
-              : _
+                  name: _,
+                }
+              : _,
           ),
           run,
         }
@@ -114,7 +117,9 @@ export namespace PromptEngine {
       return yield* _(
         pipe(
           channels.readKeyPresses(),
-          Stream.takeUntil((value) => !Exit.isExit(value) && args.skippable && value.name === `escape`),
+          Stream.takeUntil(
+            (value) => !Exit.isExit(value) && args.skippable && value.name === `escape`,
+          ),
           Stream.takeUntil((value) => !Exit.isExit(value) && value.name === `return`),
           Stream.runFold(initialState as Ret, (state, value): Ret => {
             // todo do higher in the stack
@@ -125,7 +130,7 @@ export namespace PromptEngine {
             if (args.skippable && value.name === `escape`) return null as Ret
             if (value.name === `return`) return state
             const matcher = matchers.find((matcher) =>
-              matcher.match.some((match) => isKeyPressMatchPattern(value, match ?? {}))
+              matcher.match.some((match) => isKeyPressMatchPattern(value, match ?? {})),
             )
             const newState = matcher?.run(state, value) ?? state
             refresh(newState)

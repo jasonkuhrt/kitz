@@ -88,7 +88,7 @@
  */
 export const mapValuesDeep = (
   value: any,
-  visitor: (value: any) => any | undefined,
+  visitor: (value: any) => unknown,
   visited = new WeakSet(),
 ): any => {
   // Primitives pass through
@@ -107,7 +107,7 @@ export const mapValuesDeep = (
 
   // No transformation - recurse into structure
   if (Array.isArray(value)) {
-    return value.map(item => mapValuesDeep(item, visitor, visited))
+    return value.map((item) => mapValuesDeep(item, visitor, visited))
   }
 
   // Any object - recurse into all properties

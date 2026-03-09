@@ -98,33 +98,29 @@ export class Color extends S.TaggedClass<Color>()('Color', {
    *
    * @see https://www.w3.org/TR/css-color-4/#color-syntax - CSS Color syntax specification
    */
-  static String = S.transformOrFail(
-    S.String,
-    Color,
-    {
-      strict: true,
-      encode: (decoded) => {
-        // Encode to hex format
-        const r = decoded.r.toString(16).padStart(2, '0')
-        const g = decoded.g.toString(16).padStart(2, '0')
-        const b = decoded.b.toString(16).padStart(2, '0')
-        return ParseResult.succeed(`#${r}${g}${b}`.toUpperCase())
-      },
-      decode: (input, _options, ast) => {
-        const result = parse(input)
-        if (result === null) {
-          return ParseResult.fail(
-            new ParseResult.Type(
-              ast,
-              input,
-              `Invalid color format. Expected hex (#FF5733), RGB (rgb 255 87 51 or rgb(255, 87, 51)), HSL (hsl 120 100 50 or hsl(120, 100, 50)), or named color (red, blue, etc.)`,
-            ),
-          )
-        }
-        return ParseResult.succeed(new Color(result))
-      },
+  static String = S.transformOrFail(S.String, Color, {
+    strict: true,
+    encode: (decoded) => {
+      // Encode to hex format
+      const r = decoded.r.toString(16).padStart(2, '0')
+      const g = decoded.g.toString(16).padStart(2, '0')
+      const b = decoded.b.toString(16).padStart(2, '0')
+      return ParseResult.succeed(`#${r}${g}${b}`.toUpperCase())
     },
-  )
+    decode: (input, _options, ast) => {
+      const result = parse(input)
+      if (result === null) {
+        return ParseResult.fail(
+          new ParseResult.Type(
+            ast,
+            input,
+            `Invalid color format. Expected hex (#FF5733), RGB (rgb 255 87 51 or rgb(255, 87, 51)), HSL (hsl 120 100 50 or hsl(120, 100, 50)), or named color (red, blue, etc.)`,
+          ),
+        )
+      }
+      return ParseResult.succeed(new Color(result))
+    },
+  })
 
   /**
    * Parse a color string to a Color instance.
@@ -190,5 +186,7 @@ export const ColorInput = S.Union(
     r: S.Number.pipe(S.int(), S.between(0, 255)),
     g: S.Number.pipe(S.int(), S.between(0, 255)),
     b: S.Number.pipe(S.int(), S.between(0, 255)),
-  }).pipe(S.transform(Color, { decode: Color.fromRgb, encode: (c) => ({ r: c.r, g: c.g, b: c.b }) })),
+  }).pipe(
+    S.transform(Color, { decode: Color.fromRgb, encode: (c) => ({ r: c.r, g: c.g, b: c.b }) }),
+  ),
 )

@@ -1,18 +1,22 @@
-import { Assert } from '#assert'
 import { Fn } from '#fn'
-import { Test } from '#test'
+import { Assert } from '#kitz/assert'
+import { Test } from '#kitz/test'
 import fc from 'fast-check'
 import { expect, test } from 'vitest'
 
 const A = Assert.Type.exact.ofAs
 
-Test.property('returns a function that always returns the initial value', fc.anything(), (value) => {
-  const constantFn = Fn.constant(value)
-  // Call multiple times to ensure consistency
-  expect(constantFn()).toBe(value)
-  expect(constantFn()).toBe(value)
-  expect(constantFn()).toBe(value)
-})
+Test.property(
+  'returns a function that always returns the initial value',
+  fc.anything(),
+  (value) => {
+    const constantFn = Fn.constant(value)
+    // Call multiple times to ensure consistency
+    expect(constantFn()).toBe(value)
+    expect(constantFn()).toBe(value)
+    expect(constantFn()).toBe(value)
+  },
+)
 
 Test.property(
   'preserves reference equality for objects',
@@ -33,7 +37,7 @@ Test.property(
   (value, args) => {
     const constantFn = Fn.constant(value)
     // Even if we pass arguments, the result should be the same
-    args.forEach(arg => {
+    args.forEach((arg) => {
       expect((constantFn as any)(arg)).toBe(value)
     })
   },

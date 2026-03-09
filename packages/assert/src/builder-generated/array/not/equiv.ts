@@ -11,7 +11,6 @@ import { builder } from '../../../builder-singleton.js'
  * Relation: mutual assignability (equivalent types)
  */
 
-
 /**
  * Base matcher accepting any expected type.
  * Extraction chain: T[] → T
@@ -28,13 +27,12 @@ import { builder } from '../../../builder-singleton.js'
  * type _ = Assert.array.equiv.of<string, number[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type of_<$Expected, $Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [$Expected, __actual__, true]>
                                                                          : never
-const of_ = builder.array.not.equiv.of
-
+const of_: typeof builder.array.not.equiv.of = builder.array.not.equiv.of
 
 /**
  * Pre-curried matcher for string.
@@ -49,13 +47,12 @@ const of_ = builder.array.not.equiv.of
  * type _ = Assert.array.equiv.string<number[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type string_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [string, __actual__, true]>
                                                                          : never
-const string_ = builder.array.not.equiv.string
-
+const string_: typeof builder.array.not.equiv.string = builder.array.not.equiv.string
 
 /**
  * Pre-curried matcher for number.
@@ -70,13 +67,12 @@ const string_ = builder.array.not.equiv.string
  * type _ = Assert.array.equiv.number<string[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type number_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [number, __actual__, true]>
                                                                          : never
-const number_ = builder.array.not.equiv.number
-
+const number_: typeof builder.array.not.equiv.number = builder.array.not.equiv.number
 
 /**
  * Pre-curried matcher for bigint.
@@ -91,13 +87,12 @@ const number_ = builder.array.not.equiv.number
  * type _ = Assert.array.equiv.bigint<string[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type bigint_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [bigint, __actual__, true]>
                                                                          : never
-const bigint_ = builder.array.not.equiv.bigint
-
+const bigint_: typeof builder.array.not.equiv.bigint = builder.array.not.equiv.bigint
 
 /**
  * Pre-curried matcher for boolean.
@@ -112,13 +107,12 @@ const bigint_ = builder.array.not.equiv.bigint
  * type _ = Assert.array.equiv.boolean<string[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type boolean_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [boolean, __actual__, true]>
                                                                          : never
-const boolean_ = builder.array.not.equiv.boolean
-
+const boolean_: typeof builder.array.not.equiv.boolean = builder.array.not.equiv.boolean
 
 /**
  * Pre-curried matcher for true.
@@ -133,13 +127,12 @@ const boolean_ = builder.array.not.equiv.boolean
  * type _ = Assert.array.equiv.true<string[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type true_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [true, __actual__, true]>
                                                                          : never
-const true_ = builder.array.not.equiv.true
-
+const true_: typeof builder.array.not.equiv.true = builder.array.not.equiv.true
 
 /**
  * Pre-curried matcher for false.
@@ -154,13 +147,12 @@ const true_ = builder.array.not.equiv.true
  * type _ = Assert.array.equiv.false<string[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type false_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [false, __actual__, true]>
                                                                          : never
-const false_ = builder.array.not.equiv.false
-
+const false_: typeof builder.array.not.equiv.false = builder.array.not.equiv.false
 
 /**
  * Pre-curried matcher for undefined.
@@ -175,13 +167,12 @@ const false_ = builder.array.not.equiv.false
  * type _ = Assert.array.equiv.undefined<string[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type undefined_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [undefined, __actual__, true]>
                                                                          : never
-const undefined_ = builder.array.not.equiv.undefined
-
+const undefined_: typeof builder.array.not.equiv.undefined = builder.array.not.equiv.undefined
 
 /**
  * Pre-curried matcher for null.
@@ -196,13 +187,12 @@ const undefined_ = builder.array.not.equiv.undefined
  * type _ = Assert.array.equiv.null<string[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type null_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [null, __actual__, true]>
                                                                          : never
-const null_ = builder.array.not.equiv.null
-
+const null_: typeof builder.array.not.equiv.null = builder.array.not.equiv.null
 
 /**
  * Pre-curried matcher for symbol.
@@ -217,13 +207,12 @@ const null_ = builder.array.not.equiv.null
  * type _ = Assert.array.equiv.symbol<string[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type symbol_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [symbol, __actual__, true]>
                                                                          : never
-const symbol_ = builder.array.not.equiv.symbol
-
+const symbol_: typeof builder.array.not.equiv.symbol = builder.array.not.equiv.symbol
 
 /**
  * Pre-curried matcher for Date.
@@ -238,13 +227,12 @@ const symbol_ = builder.array.not.equiv.symbol
  * type _ = Assert.array.equiv.Date<string[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type Date_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [Date, __actual__, true]>
                                                                          : never
-const Date_ = builder.array.not.equiv.Date
-
+const Date_: typeof builder.array.not.equiv.Date = builder.array.not.equiv.Date
 
 /**
  * Pre-curried matcher for RegExp.
@@ -259,13 +247,12 @@ const Date_ = builder.array.not.equiv.Date
  * type _ = Assert.array.equiv.RegExp<string[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type RegExp_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [RegExp, __actual__, true]>
                                                                          : never
-const RegExp_ = builder.array.not.equiv.RegExp
-
+const RegExp_: typeof builder.array.not.equiv.RegExp = builder.array.not.equiv.RegExp
 
 /**
  * Pre-curried matcher for Error.
@@ -280,13 +267,12 @@ const RegExp_ = builder.array.not.equiv.RegExp
  * type _ = Assert.array.equiv.Error<string[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type Error_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [Error, __actual__, true]>
                                                                          : never
-const Error_ = builder.array.not.equiv.Error
-
+const Error_: typeof builder.array.not.equiv.Error = builder.array.not.equiv.Error
 
 /**
  * Pre-curried matcher for unknown.
@@ -301,13 +287,12 @@ const Error_ = builder.array.not.equiv.Error
  * type _ = Assert.array.equiv.unknown<string[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type unknown_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [unknown, __actual__, true]>
                                                                          : never
-const unknown_ = builder.array.not.equiv.unknown
-
+const unknown_: typeof builder.array.not.equiv.unknown = builder.array.not.equiv.unknown
 
 /**
  * Pre-curried matcher for any.
@@ -322,13 +307,12 @@ const unknown_ = builder.array.not.equiv.unknown
  * type _ = Assert.array.equiv.any<string[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type any_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [any, __actual__, true]>
                                                                          : never
-const any_ = builder.array.not.equiv.any
-
+const any_: typeof builder.array.not.equiv.any = builder.array.not.equiv.any
 
 /**
  * Pre-curried matcher for never.
@@ -343,31 +327,31 @@ const any_ = builder.array.not.equiv.any
  * type _ = Assert.array.equiv.never<string[]>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type never_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [never, __actual__, true]>
                                                                          : never
-const never_ = builder.array.not.equiv.never
+const never_: typeof builder.array.not.equiv.never = builder.array.not.equiv.never
 
-const ofAs_ = <$Type>() => builder.array.not.equiv.ofAs<$Type>()
+const ofAs_: typeof builder.array.not.equiv.ofAs = builder.array.not.equiv.ofAs
 
 export {
-  of_ as of,
-  string_ as string,
-  number_ as number,
+  any_ as any,
   bigint_ as bigint,
   boolean_ as boolean,
-  true_ as true,
-  false_ as false,
-  undefined_ as undefined,
-  null_ as null,
-  symbol_ as symbol,
   Date_ as Date,
-  RegExp_ as RegExp,
   Error_ as Error,
-  unknown_ as unknown,
-  any_ as any,
+  false_ as false,
   never_ as never,
+  null_ as null,
+  number_ as number,
+  of_ as of,
   ofAs_ as ofAs,
+  RegExp_ as RegExp,
+  string_ as string,
+  symbol_ as symbol,
+  true_ as true,
+  undefined_ as undefined,
+  unknown_ as unknown,
 }

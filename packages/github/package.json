@@ -1,0 +1,41 @@
+{
+  "name": "@kitz/github",
+  "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "imports": {
+    "#github": "./src/_.ts",
+    "#github/*": "./src/*.ts"
+  },
+  "exports": {
+    ".": "./src/_.ts",
+    "./__": "./src/__.ts"
+  },
+  "files": [
+    "build",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
+    "dev": "tsgo -p tsconfig.build.json --watch",
+    "check:types": "tsgo --noEmit",
+    "check:lint": "oxlint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error",
+    "test": "vitest run --root ../.. packages/github/src"
+  },
+  "dependencies": {
+    "@kitz/core": "workspace:*",
+    "@effect/platform": "^0.81.0",
+    "@octokit/types": "^13.10.0",
+    "effect": "^3.19.13"
+  },
+  "devDependencies": {
+    "@effect/vitest": "^0.27.0",
+    "@kitz/test": "workspace:*"
+  }
+}

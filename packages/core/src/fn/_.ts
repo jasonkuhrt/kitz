@@ -11,6 +11,3 @@ export * as Fn from './__.js'
  * @category Domains
  */
 export namespace Fn {}
-
-// Re-export Kind at top level for easier access
-export * as Kind from './kind.js'

@@ -47,7 +47,7 @@ const animalGetters: GetAnimal[] = [
 ]
 
 // All return Animals (or subtypes of Animal)
-animalGetters.forEach(getter => {
+animalGetters.forEach((getter) => {
   const animal = getter()
   console.log(animal.name) // Safe - all Animals have name
 })

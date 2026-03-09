@@ -1,9 +1,9 @@
 import { Fs } from '@kitz/fs'
 import { Syn } from '@kitz/syn'
-import { Match } from 'effect'
-import { readFileSync, writeFileSync } from 'node:fs'
-import { mkdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { Either, Match } from 'effect'
+import { readFileSync, writeFileSync } from 'fs'
+import { mkdirSync } from 'fs'
+import { join } from 'path'
 import type {
   BodySection,
   Entrypoint,
@@ -48,7 +48,7 @@ const deriveModuleName = (path: string): string => {
   // Convert kebab-case to PascalCase
   return withoutLeadingDot
     .split('-')
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join('')
 }
 
@@ -103,6 +103,38 @@ type Context = {
   breadcrumbs?: string[]
   groupByCategory?: boolean
 }
+
+type SidebarLink = {
+  text: string
+  link: string
+}
+
+type SidebarItem = SidebarLink & {
+  items?: SidebarLink[]
+  collapsed?: boolean
+}
+
+type SidebarSection = {
+  text: string
+  items: SidebarItem[]
+}
+
+const getEntrypointModuleName = (entrypoint: Entrypoint): string =>
+  entrypoint._tag === 'SimpleEntrypoint' ? entrypoint.moduleName : deriveModuleName(entrypoint.path)
+
+const getEntrypointKebabName = (entrypoint: Entrypoint): string =>
+  entrypoint._tag === 'SimpleEntrypoint'
+    ? entrypoint.kebabName
+    : Md.kebab(getEntrypointModuleName(entrypoint))
+
+const getEntrypointImportExamples = (
+  entrypoint: Entrypoint,
+  packageName: string,
+  breadcrumbs: string[],
+): ImportExample[] =>
+  entrypoint._tag === 'DrillableNamespaceEntrypoint'
+    ? entrypoint.getImportExamples(packageName, breadcrumbs)
+    : entrypoint.getImportExamples(packageName, entrypoint.path)
 
 /**
  * Generate VitePress documentation from interface model.
@@ -165,9 +197,13 @@ const getDrillableModules = (model: InterfaceModel): Set<string> => {
   // Find the main entrypoint export file
   const mainExportPath = join(process.cwd(), 'build/exports/index.js')
 
-  try {
-    const content = readFileSync(mainExportPath, 'utf-8')
+  const contentResult = Either.try({
+    try: () => readFileSync(mainExportPath, 'utf-8'),
+    catch: () => undefined,
+  })
 
+  if (Either.isRight(contentResult)) {
+    const content = contentResult.right
     // Match export statements like: export * from '@kitz/core/arr'
     const exportPattern = /export\s+\*\s+from\s+['"]#([^'"]+)['"]/g
     let match
@@ -176,14 +212,14 @@ const getDrillableModules = (model: InterfaceModel): Set<string> => {
       const moduleName = match[1]!
       drillable.add(moduleName.toLowerCase())
     }
-  } catch (error) {
+  } else {
     // If file doesn't exist or can't be read, assume all modules are drillable
     // This is a safe default for development
     console.warn('Could not read main exports file, assuming all modules are drillable')
-    model.entrypoints.forEach((ep: any) => {
-      const moduleName = ep.path.replace(/^\.\//, '')
+    for (const entrypoint of model.entrypoints) {
+      const moduleName = entrypoint.path.replace(/^\.\//, '')
       drillable.add(moduleName.toLowerCase())
-    })
+    }
   }
 
   return drillable
@@ -199,32 +235,29 @@ const getDrillableModules = (model: InterfaceModel): Set<string> => {
 export const generateSidebar = (
   model: InterfaceModel,
   categoryOrder?: string[],
-): Array<{ text: string; items: Array<{ text: string; link?: string; items?: any[]; collapsed?: boolean }> }> => {
+): SidebarSection[] => {
   // Determine which modules are drillable from main
   const drillableModules = getDrillableModules(model)
 
   // Group entrypoints: drillable from main vs standalone-only
-  const mainEntrypoints: any[] = []
-  const standaloneEntrypoints: any[] = []
+  const mainEntrypoints: Entrypoint[] = []
+  const standaloneEntrypoints: Entrypoint[] = []
 
   for (const entrypoint of model.entrypoints) {
-    const ep = entrypoint as any
-    const moduleName = ep.path.replace(/^\.\//, '').toLowerCase()
+    const moduleName = entrypoint.path.replace(/^\.\//, '').toLowerCase()
 
     if (drillableModules.has(moduleName)) {
-      mainEntrypoints.push(ep)
+      mainEntrypoints.push(entrypoint)
     } else {
-      standaloneEntrypoints.push(ep)
+      standaloneEntrypoints.push(entrypoint)
     }
   }
 
-  const sidebar: Array<
-    { text: string; items: Array<{ text: string; link?: string; items?: any[]; collapsed?: boolean }> }
-  > = []
+  const sidebar: SidebarSection[] = []
 
   // Helper to create sidebar items for a set of entrypoints
-  const createSidebarItemsForEntrypoints = (entrypoints: any[]): any[] => {
-    const items: any[] = []
+  const createSidebarItemsForEntrypoints = (entrypoints: readonly Entrypoint[]): SidebarItem[] => {
+    const items: SidebarItem[] = []
 
     for (const ep of entrypoints) {
       const moduleName = ep.path.replace(/^\.\//, '')
@@ -235,7 +268,7 @@ export const generateSidebar = (
 
       // Find namespace exports with nested modules
       const namespaceExports = ep.module.namespaceExports
-        .map((exp: any) => {
+        .map((exp) => {
           // For pure wrappers, use '~' instead of namespace name
           const linkSegment = isPureWrapper ? '~' : exp.name.toLowerCase()
           return {
@@ -243,11 +276,11 @@ export const generateSidebar = (
             link: `/api/${moduleName}/${linkSegment}`,
           }
         })
-        .sort((a: any, b: any) => a.text.localeCompare(b.text))
+        .sort((a, b) => a.text.localeCompare(b.text))
 
       const hasExternalReadme = ep.module.hasExternalReadme
 
-      const item: { text: string; link: string; items?: any[]; collapsed?: boolean } = {
+      const item: SidebarItem = {
         text: displayName,
         link: `/api/${moduleName}`,
       }
@@ -300,27 +333,30 @@ export const generateSidebar = (
  */
 const generateApiIndex = (model: InterfaceModel): string => {
   const modules = model.entrypoints.map((entrypoint) => {
-    const ep = entrypoint as any
-    // Use instance getters for SimpleEntrypoint, fallback for DrillableNamespaceEntrypoint
-    const moduleName = ep._tag === 'SimpleEntrypoint' ? ep.moduleName : deriveModuleName(ep.path)
-    const url = `/api/${ep._tag === 'SimpleEntrypoint' ? ep.kebabName : Md.kebab(moduleName)}`
-    const description = ep.module.docs?.description
-      ? ep.module.docs.description.split('\n\n')[0]!.replace(/\n/g, ' ').trim()
+    const moduleName = getEntrypointModuleName(entrypoint)
+    const url = `/api/${getEntrypointKebabName(entrypoint)}`
+    const description = entrypoint.module.docs?.description
+      ? entrypoint.module.docs.description.split('\n\n')[0]!.replace(/\n/g, ' ').trim()
       : ''
 
     // Find namespace exports
-    const namespaceExports = ep.module.namespaceExports
-      .sort((a: any, b: any) => a.name.localeCompare(b.name))
+    const namespaceExports = entrypoint.module.namespaceExports.sort((a, b) =>
+      a.name.localeCompare(b.name),
+    )
 
     // Build namespace list if any exist
-    const namespaceList = namespaceExports.length > 0
-      ? '\n\n' + namespaceExports.map((ns: any) => {
-        const nsUrl = `/api/${Md.kebab(moduleName)}/${ns.name.toLowerCase()}`
-        const nsLink = Md.link(nsUrl, Md.code(ns.name))
-        const nsDesc = ns.docs?.description ? ` - ${ns.docs.description}` : ''
-        return Md.listItem(`${nsLink}${nsDesc}`)
-      }).join('\n')
-      : ''
+    const namespaceList =
+      namespaceExports.length > 0
+        ? '\n\n' +
+          namespaceExports
+            .map((ns) => {
+              const nsUrl = `/api/${Md.kebab(moduleName)}/${ns.name.toLowerCase()}`
+              const nsLink = Md.link(nsUrl, Md.code(ns.name))
+              const nsDesc = ns.docs?.description ? ` - ${ns.docs.description}` : ''
+              return Md.listItem(`${nsLink}${nsDesc}`)
+            })
+            .join('\n')
+        : ''
 
     return `## ${Md.link(url, moduleName)}
 
@@ -341,11 +377,9 @@ const generatePages = (model: InterfaceModel): Page[] => {
   const pages: Page[] = []
 
   for (const entrypoint of model.entrypoints) {
-    const ep = entrypoint as any
-    // Use instance getters for SimpleEntrypoint, fallback for DrillableNamespaceEntrypoint
-    const moduleName = ep._tag === 'SimpleEntrypoint' ? ep.moduleName : deriveModuleName(ep.path)
-    const kebabName = ep._tag === 'SimpleEntrypoint' ? ep.kebabName : Md.kebab(moduleName)
-    const module = ep.module
+    const moduleName = getEntrypointModuleName(entrypoint)
+    const kebabName = getEntrypointKebabName(entrypoint)
+    const module = entrypoint.module
 
     // Check if module description came from external .md file
     if (module.hasExternalReadme) {
@@ -394,7 +428,11 @@ const generatePages = (model: InterfaceModel): Page[] => {
 /**
  * Recursively generate pages for namespace exports.
  */
-const generateNamespacePages = (entrypoint: Entrypoint, module: Module, breadcrumbs: string[]): Page[] => {
+const generateNamespacePages = (
+  entrypoint: Entrypoint,
+  module: Module,
+  breadcrumbs: string[],
+): Page[] => {
   const pages: Page[] = []
 
   const namespaceExports = module.namespaceExports
@@ -458,10 +496,7 @@ const generatePageContent = (page: Page, context: Context): string => {
   if (pageType === 'overview') {
     const description = module.docs?.description || ''
     const guide = module.docs?.guide ? `\n\n${module.docs.guide}` : ''
-    return Md.sections(
-      Md.heading(1, breadcrumbs.join('.')),
-      description + guide,
-    )
+    return Md.sections(Md.heading(1, breadcrumbs.join('.')), description + guide)
   }
 
   // Handle exports pages (skip README)
@@ -527,24 +562,26 @@ const generateLandingPage = (page: Page, context: Context): string => {
   const heroText = home.hero?.text ?? ''
   const heroTagline = home.hero?.tagline ?? ''
 
-  const features = home.highlights?.map((h: Feature) => ({
-    title: h.title,
-    details: h.body,
-  })) ?? []
+  const features =
+    home.highlights?.map((h: Feature) => ({
+      title: h.title,
+      details: h.body,
+    })) ?? []
 
   // Build body content
   const regularExports = module.regularExports
   const contextWithBreadcrumbs = { ...context, breadcrumbs }
 
-  const bodyContent = home.body
-    ?.map((section: BodySection) => {
-      if (section._tag === 'exports') {
-        return renderExportsSection(regularExports, contextWithBreadcrumbs)
-      } else {
-        return `## ${section.title}\n\n${section.body}`
-      }
-    })
-    .join('\n\n') ?? ''
+  const bodyContent =
+    home.body
+      ?.map((section: BodySection) => {
+        if (section._tag === 'exports') {
+          return renderExportsSection(regularExports, contextWithBreadcrumbs)
+        } else {
+          return `## ${section.title}\n\n${section.body}`
+        }
+      })
+      .join('\n\n') ?? ''
 
   // Combine frontmatter + body
   const frontmatterYaml = [
@@ -558,18 +595,16 @@ const generateLandingPage = (page: Page, context: Context): string => {
     `  tagline: ${JSON.stringify(heroTagline)}`,
     '',
     'features:',
-    ...features.map((f: { title: string; details: string }) => [
-      `  - title: ${JSON.stringify(f.title)}`,
-      `    details: ${JSON.stringify(f.details)}`,
-    ]).flat(),
+    ...features
+      .map((f: { title: string; details: string }) => [
+        `  - title: ${JSON.stringify(f.title)}`,
+        `    details: ${JSON.stringify(f.details)}`,
+      ])
+      .flat(),
     '---',
   ].join('\n')
 
-  return [
-    frontmatterYaml,
-    '',
-    bodyContent,
-  ].join('\n')
+  return [frontmatterYaml, '', bodyContent].join('\n')
 }
 
 /**
@@ -580,23 +615,13 @@ const renderImportSection = (
   packageName: string,
   breadcrumbs: string[],
 ): string => {
-  const ep = entrypoint as any
-  const importExamples = (() => {
-    if (ep._tag === 'DrillableNamespaceEntrypoint') {
-      return ep.getImportExamples(packageName, breadcrumbs)
-    } else {
-      return ep.getImportExamples(packageName, ep.path)
-    }
-  })()
+  const importExamples = getEntrypointImportExamples(entrypoint, packageName, breadcrumbs)
 
   if (importExamples.length === 0) return ''
 
   // Single import example - use code fence
   if (importExamples.length === 1) {
-    return Md.sections(
-      Md.heading(2, 'Import'),
-      Md.codeFence(importExamples[0]!.content),
-    )
+    return Md.sections(Md.heading(2, 'Import'), Md.codeFence(importExamples[0]!.content))
   }
 
   // Multiple import examples - use code group with tabs
@@ -614,8 +639,8 @@ const renderImportSection = (
 /**
  * Render namespaces section as a table.
  */
-const renderNamespacesSection = (namespaces: Export[], breadcrumbs: string[]): string => {
-  const rows = namespaces.map((ns: any) => {
+const renderNamespacesSection = (namespaces: ValueExport[], breadcrumbs: string[]): string => {
+  const rows = namespaces.map((ns) => {
     const nsPath = `/api/${[...breadcrumbs, ns.name].map(Md.kebab).join('/')}`
     const link = Md.link(nsPath, `**${Md.code(ns.name)}**`)
     const desc = ns.docs?.description || '—'
@@ -623,11 +648,7 @@ const renderNamespacesSection = (namespaces: Export[], breadcrumbs: string[]): s
   })
 
   // Build complete table as single string (no blank lines within table)
-  const table = [
-    '| Namespace | Description |',
-    '|-----------|-------------|',
-    ...rows,
-  ].join('\n')
+  const table = ['| Namespace | Description |', '|-----------|-------------|', ...rows].join('\n')
 
   return Md.sections(Md.heading(2, 'Namespaces'), table)
 }
@@ -644,7 +665,7 @@ const renderExportsSection = (exports: Export[], context: Context): string => {
     const categorized = new Map<string, Export[]>()
 
     for (const exp of exports) {
-      const category = (exp as any).category ?? 'Other'
+      const category = exp.category ?? 'Other'
       const existing = categorized.get(category) ?? []
       categorized.set(category, [...existing, exp])
     }
@@ -669,20 +690,33 @@ const renderExportsSection = (exports: Export[], context: Context): string => {
   }
 
   // Traditional type-based grouping
-  const functions = exports.filter((e): e is ValueExport => e._tag === 'value' && e.type === 'function')
-  const constants = exports.filter((e): e is ValueExport => e._tag === 'value' && e.type === 'const')
+  const functions = exports.filter(
+    (e): e is ValueExport => e._tag === 'value' && e.type === 'function',
+  )
+  const constants = exports.filter(
+    (e): e is ValueExport => e._tag === 'value' && e.type === 'const',
+  )
   const classes = exports.filter((e): e is ValueExport => e._tag === 'value' && e.type === 'class')
   const types = exports.filter((e): e is TypeExport => e._tag === 'type')
 
   return Md.sections(
     functions.length > 0
-      ? Md.sections(Md.heading(2, 'Functions'), functions.map((e) => renderExport(e, context)).join('\n\n'))
+      ? Md.sections(
+          Md.heading(2, 'Functions'),
+          functions.map((e) => renderExport(e, context)).join('\n\n'),
+        )
       : '',
     constants.length > 0
-      ? Md.sections(Md.heading(2, 'Constants'), constants.map((e) => renderExport(e, context)).join('\n\n'))
+      ? Md.sections(
+          Md.heading(2, 'Constants'),
+          constants.map((e) => renderExport(e, context)).join('\n\n'),
+        )
       : '',
     classes.length > 0
-      ? Md.sections(Md.heading(2, 'Classes'), classes.map((e) => renderExport(e, context)).join('\n\n'))
+      ? Md.sections(
+          Md.heading(2, 'Classes'),
+          classes.map((e) => renderExport(e, context)).join('\n\n'),
+        )
       : '',
     types.length > 0
       ? Md.sections(Md.heading(2, 'Types'), types.map((e) => renderExport(e, context)).join('\n\n'))
@@ -737,16 +771,18 @@ const renderExport = (exp: Export, context: Context): string => {
   const description = exp.docs?.description ? transformMarkdown(exp.docs.description) : ''
   const guide = exp.docs?.guide ? `\n\n${transformMarkdown(exp.docs.guide)}` : ''
 
-  const examples = exp.examples.length > 0
-    ? `**Examples:**\n\n${exp.examples.map((ex) => renderExample(ex, exp.name, context)).join('\n\n')}`
-    : ''
+  const examples =
+    exp.examples.length > 0
+      ? `**Examples:**\n\n${exp.examples.map((ex) => renderExample(ex, exp.name, context)).join('\n\n')}`
+      : ''
 
   // Build heading with type icon (using backticks for monospace)
   const typeIcon = exp.typeIcon
   // Source link inline with heading - icon-only, right-aligned
-  const sourceLink = context.githubUrl && exp.sourceLocation
-    ? `<SourceLink inline href="${context.githubUrl}/blob/main/${exp.sourceLocation.file}#L${exp.sourceLocation.line}" />`
-    : ''
+  const sourceLink =
+    context.githubUrl && exp.sourceLocation
+      ? `<SourceLink inline href="${context.githubUrl}/blob/main/${Fs.Path.toString(exp.sourceLocation.file)}#L${exp.sourceLocation.line}" />`
+      : ''
 
   // Normalize type icon for anchor ID (handles duplicate names with different types)
   const typeIconNormalized = typeIcon.toLowerCase().replace('∩', 'intersection')
@@ -757,9 +793,9 @@ const renderExport = (exp: Export, context: Context): string => {
 
   const heading = Md.heading(
     3,
-    `<span style="opacity: 0.6; font-weight: normal; font-size: 0.85em;">\`[${typeIcon}]\`</span> ${
-      Md.code(exp.name)
-    }${sourceLink} {#${anchorId}}`,
+    `<span style="opacity: 0.6; font-weight: normal; font-size: 0.85em;">\`[${typeIcon}]\`</span> ${Md.code(
+      exp.name,
+    )}${sourceLink} {#${anchorId}}`,
   )
 
   // Render signature - use simple signature if available, with full signature in toggle
@@ -923,15 +959,19 @@ const renderSignatureDetails = (sig: SignatureModel): string => {
 /**
  * Render type parameters to string (e.g., "<T, U extends string>").
  */
-const renderTypeParameters = (typeParams: readonly typeof import('../schema.js').TypeParameter.Type[]): string => {
+const renderTypeParameters = (
+  typeParams: readonly (typeof import('../schema.js').TypeParameter.Type)[],
+): string => {
   if (typeParams.length === 0) return ''
 
-  const rendered = typeParams.map((tp) => {
-    let text = tp.name
-    if (tp.constraint) text += ` extends ${tp.constraint}`
-    if (tp.default) text += ` = ${tp.default}`
-    return text
-  }).join(', ')
+  const rendered = typeParams
+    .map((tp) => {
+      let text = tp.name
+      if (tp.constraint) text += ` extends ${tp.constraint}`
+      if (tp.default) text += ` = ${tp.default}`
+      return text
+    })
+    .join(', ')
 
   return `<${rendered}>`
 }
@@ -939,16 +979,20 @@ const renderTypeParameters = (typeParams: readonly typeof import('../schema.js')
 /**
  * Render function parameters to string (e.g., "a: number, b?: string").
  */
-const renderParameters = (params: readonly typeof import('../schema.js').Parameter.Type[]): string => {
-  return params.map((param) => {
-    let text = ''
-    if (param.rest) text += '...'
-    text += param.name
-    if (param.optional) text += '?'
-    text += `: ${param.type}`
-    if (param.defaultValue) text += ` = ${param.defaultValue}`
-    return text
-  }).join(', ')
+const renderParameters = (
+  params: readonly (typeof import('../schema.js').Parameter.Type)[],
+): string => {
+  return params
+    .map((param) => {
+      let text = ''
+      if (param.rest) text += '...'
+      text += param.name
+      if (param.optional) text += '?'
+      text += `: ${param.type}`
+      if (param.defaultValue) text += ` = ${param.defaultValue}`
+      return text
+    })
+    .join(', ')
 }
 
 /**
@@ -959,11 +1003,13 @@ const renderSignature = (sig: SignatureModel): string => {
     Match.tags({
       FunctionSignatureModel: (fnSig) => {
         // Render all overloads
-        return fnSig.overloads.map((overload) => {
-          const typeParams = renderTypeParameters(overload.typeParameters)
-          const params = renderParameters(overload.parameters)
-          return `${typeParams}(${params}): ${overload.returnType}`
-        }).join('\n')
+        return fnSig.overloads
+          .map((overload) => {
+            const typeParams = renderTypeParameters(overload.typeParameters)
+            const params = renderParameters(overload.parameters)
+            return `${typeParams}(${params}): ${overload.returnType}`
+          })
+          .join('\n')
       },
       BuilderSignatureModel: (builderSig) => {
         // Render builder entry point
@@ -1066,7 +1112,7 @@ const renderSignature = (sig: SignatureModel): string => {
 /**
  * Render a code example with Twoslash.
  */
-const renderExample = (example: any, exportName: string, context: Context): string => {
+const renderExample = (example: Example, exportName: string, context: Context): string => {
   // Don't wrap title in bold - it may already contain markdown formatting (e.g., headings)
   const title = example.title || ''
 

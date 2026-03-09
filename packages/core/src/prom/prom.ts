@@ -1,3 +1,4 @@
+import { Lang } from '#lang'
 // import { isShape as Obj_isShape } from '#obj/obj' // Temporarily disabled for migration
 
 /**
@@ -58,11 +59,11 @@ export type Maybe<$Type> = $Type | Promise<$Type>
  */
 export const isShape = (value: unknown): value is AnyAny => {
   return (
-    typeof value === 'object'
-    && value !== null
-    && typeof (value as any).then === 'function'
-    && typeof (value as any).catch === 'function'
-    && typeof (value as any).finally === 'function'
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as any).then === 'function' &&
+    typeof (value as any).catch === 'function' &&
+    typeof (value as any).finally === 'function'
   )
 }
 
@@ -82,7 +83,7 @@ export const isShape = (value: unknown): value is AnyAny => {
  *
  * @category Types
  */
-// dprint-ignore
+// oxfmt-ignore
 export type AwaitedUnion<$MaybePromise, $Additional> =
   $MaybePromise extends Promise<infer __promised__>
     ? Promise<Awaited<__promised__ | $Additional>>
@@ -143,7 +144,7 @@ export type Envelope<T = unknown> = {
  *
  * @category Utilities
  */
-// dprint-ignore
+// oxfmt-ignore
 export const maybeAsyncEnvelope = <$return>(fn: () => $return):
   $return extends Promise<infer __awaited__>
     ? Promise<Envelope<__awaited__>>
@@ -233,15 +234,16 @@ export function maybeAsync<T, R = T, E = unknown>(
   handlers: MaybeAsyncHandlers<T extends Promise<infer U> ? U : T, R, E> = {},
 ): T extends Promise<infer U> ? Promise<R | U | E> : R | T | E {
   const envelope = maybeAsyncEnvelope(fn)
+  const onCatch = handlers.catch
 
   if (isShape(envelope)) {
     // Async path
     return envelope.then((env) => {
       if (env.fail) {
-        if (handlers.catch) {
-          return handlers.catch(env.value, true)
+        if (onCatch) {
+          return onCatch(env.value, true)
         }
-        throw env.value
+        Lang.throw(env.value)
       }
       if (handlers.then) {
         return handlers.then(env.value as any)
@@ -252,10 +254,10 @@ export function maybeAsync<T, R = T, E = unknown>(
 
   // Sync path
   if (envelope.fail) {
-    if (handlers.catch) {
-      return handlers.catch(envelope.value, false) as any
+    if (onCatch) {
+      return onCatch(envelope.value, false) as any
     }
-    throw envelope.value
+    Lang.throw(envelope.value)
   }
 
   if (handlers.then) {

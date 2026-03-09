@@ -27,7 +27,8 @@ export type Logical<$value> = {
  * ```
  */
 export const Class =
-  <Self = never>(identifier: string) => <$valueSchema extends S.Schema.All>(valueSchema: $valueSchema) =>
+  <Self = never>(identifier: string) =>
+  <$valueSchema extends S.Schema.All>(valueSchema: $valueSchema) =>
     S.Class<Self>(identifier)({
       mainStart: S.optional(valueSchema),
       mainEnd: S.optional(valueSchema),
@@ -114,7 +115,8 @@ export const parse = <$value>(input: Input<$value>): Partial<Logical<$value>> =>
   const secondElement = input[1]
 
   // Detect if this is [main, cross] shorthands (both are primitive values)
-  const isPrimitive = (v: unknown) => typeof v === `number` || typeof v === `bigint` || typeof v === `string`
+  const isPrimitive = (v: unknown) =>
+    typeof v === `number` || typeof v === `bigint` || typeof v === `string`
   if (input.length === 2 && isPrimitive(firstElement) && isPrimitive(secondElement)) {
     // [main, cross] shorthands
     return {
@@ -127,7 +129,7 @@ export const parse = <$value>(input: Input<$value>): Partial<Logical<$value>> =>
 
   // Binary axis: [[main...], [cross...]] or [[main...]]
   const mainAxis = firstElement as AxisValue<$value>
-  const crossAxis = secondElement as AxisValue<$value> | undefined
+  const crossAxis = secondElement
 
   return {
     ...parseAxis(`main`, mainAxis),
@@ -235,6 +237,7 @@ export const fromInput = <$valueSchema extends S.Schema.Any>(valueSchema: $value
     {
       strict: false,
       decode: (input) => ParseResult.succeed(parse(input as Input<S.Schema.Type<$valueSchema>>)),
-      encode: (value, _, ast) => ParseResult.fail(new ParseResult.Forbidden(ast, value, 'One-way transformation')),
+      encode: (value, _, ast) =>
+        ParseResult.fail(new ParseResult.Forbidden(ast, value, 'One-way transformation')),
     },
   )

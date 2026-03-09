@@ -11,7 +11,6 @@ import { builder } from '../../builder-singleton.js'
  * Relation: subtype relation (extends)
  */
 
-
 /**
  * Base matcher accepting any expected type.
  * Extraction chain: Promise<T> → T
@@ -28,13 +27,12 @@ import { builder } from '../../builder-singleton.js'
  * type _ = Assert.awaited.sub.of<string, Promise<number>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type of_<$Expected, $Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [$Expected, __actual__]>
                                                                          : never
-const of_ = builder.awaited.sub.of
-
+const of_: typeof builder.awaited.sub.of = builder.awaited.sub.of
 
 /**
  * Pre-curried matcher for string.
@@ -49,13 +47,12 @@ const of_ = builder.awaited.sub.of
  * type _ = Assert.awaited.sub.string<Promise<number>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type string_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [string, __actual__]>
                                                                          : never
-const string_ = builder.awaited.sub.string
-
+const string_: typeof builder.awaited.sub.string = builder.awaited.sub.string
 
 /**
  * Pre-curried matcher for number.
@@ -70,13 +67,12 @@ const string_ = builder.awaited.sub.string
  * type _ = Assert.awaited.sub.number<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type number_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [number, __actual__]>
                                                                          : never
-const number_ = builder.awaited.sub.number
-
+const number_: typeof builder.awaited.sub.number = builder.awaited.sub.number
 
 /**
  * Pre-curried matcher for bigint.
@@ -91,13 +87,12 @@ const number_ = builder.awaited.sub.number
  * type _ = Assert.awaited.sub.bigint<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type bigint_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [bigint, __actual__]>
                                                                          : never
-const bigint_ = builder.awaited.sub.bigint
-
+const bigint_: typeof builder.awaited.sub.bigint = builder.awaited.sub.bigint
 
 /**
  * Pre-curried matcher for boolean.
@@ -112,13 +107,12 @@ const bigint_ = builder.awaited.sub.bigint
  * type _ = Assert.awaited.sub.boolean<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type boolean_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [boolean, __actual__]>
                                                                          : never
-const boolean_ = builder.awaited.sub.boolean
-
+const boolean_: typeof builder.awaited.sub.boolean = builder.awaited.sub.boolean
 
 /**
  * Pre-curried matcher for true.
@@ -133,13 +127,12 @@ const boolean_ = builder.awaited.sub.boolean
  * type _ = Assert.awaited.sub.true<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type true_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [true, __actual__]>
                                                                          : never
-const true_ = builder.awaited.sub.true
-
+const true_: typeof builder.awaited.sub.true = builder.awaited.sub.true
 
 /**
  * Pre-curried matcher for false.
@@ -154,13 +147,12 @@ const true_ = builder.awaited.sub.true
  * type _ = Assert.awaited.sub.false<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type false_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [false, __actual__]>
                                                                          : never
-const false_ = builder.awaited.sub.false
-
+const false_: typeof builder.awaited.sub.false = builder.awaited.sub.false
 
 /**
  * Pre-curried matcher for undefined.
@@ -175,13 +167,12 @@ const false_ = builder.awaited.sub.false
  * type _ = Assert.awaited.sub.undefined<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type undefined_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [undefined, __actual__]>
                                                                          : never
-const undefined_ = builder.awaited.sub.undefined
-
+const undefined_: typeof builder.awaited.sub.undefined = builder.awaited.sub.undefined
 
 /**
  * Pre-curried matcher for null.
@@ -196,13 +187,12 @@ const undefined_ = builder.awaited.sub.undefined
  * type _ = Assert.awaited.sub.null<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type null_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [null, __actual__]>
                                                                          : never
-const null_ = builder.awaited.sub.null
-
+const null_: typeof builder.awaited.sub.null = builder.awaited.sub.null
 
 /**
  * Pre-curried matcher for symbol.
@@ -217,13 +207,12 @@ const null_ = builder.awaited.sub.null
  * type _ = Assert.awaited.sub.symbol<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type symbol_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [symbol, __actual__]>
                                                                          : never
-const symbol_ = builder.awaited.sub.symbol
-
+const symbol_: typeof builder.awaited.sub.symbol = builder.awaited.sub.symbol
 
 /**
  * Pre-curried matcher for Date.
@@ -238,13 +227,12 @@ const symbol_ = builder.awaited.sub.symbol
  * type _ = Assert.awaited.sub.Date<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type Date_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [Date, __actual__]>
                                                                          : never
-const Date_ = builder.awaited.sub.Date
-
+const Date_: typeof builder.awaited.sub.Date = builder.awaited.sub.Date
 
 /**
  * Pre-curried matcher for RegExp.
@@ -259,13 +247,12 @@ const Date_ = builder.awaited.sub.Date
  * type _ = Assert.awaited.sub.RegExp<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type RegExp_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [RegExp, __actual__]>
                                                                          : never
-const RegExp_ = builder.awaited.sub.RegExp
-
+const RegExp_: typeof builder.awaited.sub.RegExp = builder.awaited.sub.RegExp
 
 /**
  * Pre-curried matcher for Error.
@@ -280,13 +267,12 @@ const RegExp_ = builder.awaited.sub.RegExp
  * type _ = Assert.awaited.sub.Error<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type Error_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [Error, __actual__]>
                                                                          : never
-const Error_ = builder.awaited.sub.Error
-
+const Error_: typeof builder.awaited.sub.Error = builder.awaited.sub.Error
 
 /**
  * Pre-curried matcher for unknown.
@@ -301,13 +287,12 @@ const Error_ = builder.awaited.sub.Error
  * type _ = Assert.awaited.sub.unknown<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type unknown_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [unknown, __actual__]>
                                                                          : never
-const unknown_ = builder.awaited.sub.unknown
-
+const unknown_: typeof builder.awaited.sub.unknown = builder.awaited.sub.unknown
 
 /**
  * Pre-curried matcher for any.
@@ -322,13 +307,12 @@ const unknown_ = builder.awaited.sub.unknown
  * type _ = Assert.awaited.sub.any<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type any_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [any, __actual__]>
                                                                          : never
-const any_ = builder.awaited.sub.any
-
+const any_: typeof builder.awaited.sub.any = builder.awaited.sub.any
 
 /**
  * Pre-curried matcher for never.
@@ -343,19 +327,19 @@ const any_ = builder.awaited.sub.any
  * type _ = Assert.awaited.sub.never<Promise<string>>
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 type never_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [never, __actual__]>
                                                                          : never
-const never_ = builder.awaited.sub.never
+const never_: typeof builder.awaited.sub.never = builder.awaited.sub.never
 
-const ofAs_ = <$Type>() => builder.awaited.sub.ofAs<$Type>()
+const ofAs_: typeof builder.awaited.sub.ofAs = builder.awaited.sub.ofAs
 /**
  * No-excess variant of sub relation.
  * Checks that actual has no excess properties beyond expected.
  */
-// dprint-ignore
+// oxfmt-ignore
 type noExcess_<
   $Expected,
   $Actual,
@@ -364,27 +348,27 @@ type noExcess_<
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubNoExcessKind, [$Expected, __actual__]>
                                                                          : never
-const noExcess_ = builder.awaited.sub.noExcess
-const noExcessAs_ = <$Type>() => builder.awaited.sub.noExcessAs<$Type>()
+const noExcess_: typeof builder.awaited.sub.noExcess = builder.awaited.sub.noExcess
+const noExcessAs_: typeof builder.awaited.sub.noExcessAs = builder.awaited.sub.noExcessAs
 
 export {
-  of_ as of,
-  string_ as string,
-  number_ as number,
+  any_ as any,
   bigint_ as bigint,
   boolean_ as boolean,
-  true_ as true,
-  false_ as false,
-  undefined_ as undefined,
-  null_ as null,
-  symbol_ as symbol,
   Date_ as Date,
-  RegExp_ as RegExp,
   Error_ as Error,
-  unknown_ as unknown,
-  any_ as any,
+  false_ as false,
   never_ as never,
-  ofAs_ as ofAs,
   noExcess_ as noExcess,
   noExcessAs_ as noExcessAs,
+  null_ as null,
+  number_ as number,
+  of_ as of,
+  ofAs_ as ofAs,
+  RegExp_ as RegExp,
+  string_ as string,
+  symbol_ as symbol,
+  true_ as true,
+  undefined_ as undefined,
+  unknown_ as unknown,
 }

@@ -30,9 +30,10 @@ import { Obj } from '@kitz/core'
  *   .return()
  * ```
  */
-export const createMutable = (
-  parameters: { data: object; builder: Record<string, (...args: any[]) => any> },
-) => {
+export const createMutable = (parameters: {
+  data: object
+  builder: Record<string, (...args: any[]) => any>
+}) => {
   const builderInputWrapped = Obj.mapValues(parameters.builder, (method) => {
     return (...args: any[]) => {
       const result = method(...args)

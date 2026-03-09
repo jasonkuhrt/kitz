@@ -24,7 +24,7 @@ import type { State } from './state.js'
  * This enables auto mode to ignore readonly modifiers when comparing types,
  * while wide/narrow modes respect them.
  */
-// dprint-ignore
+// oxfmt-ignore
 type NormalizeForComparison<$T, $State extends State> = {
   'auto': Ts.StripReadonlyDeep<$T>
   'narrow': $T
@@ -44,20 +44,22 @@ type NormalizeForComparison<$T, $State extends State> = {
 export type AssertActual<
   $actual,
   $State extends State,
-> = $State['matcher_relator'] extends Fn.Kind.Kind ? Assert<$State['expected_type'], $actual, $State>
+> = $State['matcher_relator'] extends Fn.Kind.Kind
+  ? Assert<$State['expected_type'], $actual, $State>
   : Ts.Err.StaticErrorMessage<'No relator set'>
 
 export type AssertExpected<
   $expected,
   $State extends State,
-> = $State['matcher_relator'] extends Fn.Kind.Kind ? Assert<$expected, $State['actual_type'], $State>
+> = $State['matcher_relator'] extends Fn.Kind.Kind
+  ? Assert<$expected, $State['actual_type'], $State>
   : Ts.Err.StaticErrorMessage<'No relator set'>
 
 /**
  * Pure validation - returns Error | never.
  * Handles extraction, extraction errors, and relation validation.
  */
-// dprint-ignore
+// oxfmt-ignore
 type Assert<
   $Expected,
   $RawActual,
@@ -103,7 +105,7 @@ type AssertsKindApply<
  * Uses Inhabitance.GetCase to determine the type case, then dispatches to
  * ValidateEdgeType for proper edge types. Returns never for proper types.
  */
-// dprint-ignore
+// oxfmt-ignore
 export type AssertEdgeType<
   $Value,
   $State extends State,
@@ -122,7 +124,7 @@ export type AssertEdgeType<
  *
  * Dimensions: allowFlag (true/false) × negated (true/false)
  */
-// dprint-ignore
+// oxfmt-ignore
 type AssertEdgeType_<
   $TypeName extends 'never' | 'any',
   $State extends State,
@@ -155,10 +157,12 @@ export type AssertUnaryRelator<
   $State extends State,
   $Kind extends Fn.Kind.Kind,
   ___$ExtractionResult = Fn.Kind.PipeRight<$actual, $State['actual_extractors']>,
-> = ___$ExtractionResult extends Either.Left<infer __error__, infer _> ? __error__ // Extraction failed - propagate error
-  : ___$ExtractionResult extends Either.Right<infer _, infer __value__>
-    ? Fn.Kind.Apply<$Kind, [__value__, $State['matcher_negated']]>
-  : never
+> =
+  ___$ExtractionResult extends Either.Left<infer __error__, infer _>
+    ? __error__ // Extraction failed - propagate error
+    : ___$ExtractionResult extends Either.Right<infer _, infer __value__>
+      ? Fn.Kind.Apply<$Kind, [__value__, $State['matcher_negated']]>
+      : never
 
 /**
  * Unary relator assertion on an already-extracted value.
@@ -180,7 +184,7 @@ export type AssertUnaryRelatorValue<
 //
 //
 
-// dprint-ignore
+// oxfmt-ignore
 export type OnlyAssertionErrorsAndShow<$Results extends readonly any[]> =
   $Results extends [infer __first__, ...infer __rest__]
     ? Ts.IsNever<__first__> extends true                         ? OnlyAssertionErrorsAndShow<__rest__>

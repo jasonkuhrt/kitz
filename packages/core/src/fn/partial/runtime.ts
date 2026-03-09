@@ -61,7 +61,7 @@ export const partial = <$Fn extends Fn.AnyAny, const $Args extends readonly unkn
 
   if (holeCount === 0) {
     // No holes - execute immediately
-    return fn(...args) as any
+    return fn(...args)
   }
 
   // Return a function that accepts the remaining arguments
@@ -118,7 +118,7 @@ export const apply = partial
 export const defer = <$Fn extends Fn.AnyAny>(
   fn: $Fn,
   ...args: Parameters<$Fn>
-): () => ReturnType<$Fn> => {
+): (() => ReturnType<$Fn>) => {
   return () => fn(...args)
 }
 
@@ -128,4 +128,4 @@ export const defer = <$Fn extends Fn.AnyAny>(
  *
  * @category Partial Application
  */
-export const isPartialArg = (_value: unknown): _value is unknown | _ => true
+export const isPartialArg = (_value: unknown): boolean => true

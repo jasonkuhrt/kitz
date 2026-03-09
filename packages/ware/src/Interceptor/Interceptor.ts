@@ -10,7 +10,7 @@ export type InterceptorOptions = {
 }
 
 export namespace Interceptor {
-  // dprint-ignore
+  // oxfmt-ignore
   export interface InferFromPipeline<
     $Pipeline extends Pipeline = Pipeline,
   > // $Options extends InterceptorOptions = InterceptorOptions,
@@ -22,7 +22,7 @@ export namespace Interceptor {
       >
   }
 
-  // dprint-ignore
+  // oxfmt-ignore
   type InferStepTriggerParameters<
     $Pipeline extends Pipeline,
     __Steps extends readonly Step[] = $Pipeline['steps'],
@@ -59,7 +59,9 @@ export interface RetryingInterceptor {
   currentChunk: Prom.Deferred<StepTriggerEnvelope | Error | ResultSuccess>
 }
 
-export const createRetryingInterceptor = (interceptor: NonRetryingInterceptorInput): RetryingInterceptorInput => {
+export const createRetryingInterceptor = (
+  interceptor: NonRetryingInterceptorInput,
+): RetryingInterceptorInput => {
   return {
     retrying: true,
     run: interceptor,

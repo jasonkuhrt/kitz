@@ -1,6 +1,6 @@
 import { Lang, Obj } from '@kitz/core'
 import * as Filter from './filter.js'
-import { parseFromEnvironment } from './internal.js'
+import { getLogFilter, getLogLevel, getLogPretty, getNodeEnv, parseFromEnvironment } from './env.js'
 import * as Level from './level.js'
 import * as Output from './output.js'
 
@@ -84,63 +84,63 @@ export type Input = {
   filter?:
     | string
     | {
-      /**
-       * Filter logs by path and/or level.
-       *
-       * @defaultValue '*'
-       *
-       * @example
-       *
-       * Logs from foo logger
-       *
-       * foo
-       *
-       * Logs from foo _or_ bar logger
-       *
-       * foo,bar
-       *
-       * Logs from _not_ foo logger
-       *
-       * !foo
-       *
-       * Logs from foo logger at level 3 (info) or higher
-       *
-       * foo&#64;3+
-       *
-       * Logs from any logger at level 3 (info) or higher
-       *
-       * foo&#64;info+
-       *
-       * Logs from foo logger at level 3 (info) or lower
-       *
-       * foo&#64;3-
-       *
-       * Logs from foo:sub logger
-       *
-       * foo:sub
-       *
-       * Logs from any descendants of foo:sub logger
-       *
-       * foo:sub:*
-       *
-       * Logs from any descendants of foo:sub logger _or_ foo:sub logger itself
-       *
-       * foo:sub*
-       */
-      pattern?: string
-      /**
-       * Set the minimum level a log must be at for it to be written to output.
-       *
-       * @defaultValue
-       *
-       * Takes the first value found, searching in the following order:
-       *
-       *  1. LOG_LEVEL envar if set
-       *  2. 'info' if NODE_ENV envar set to 'production'
-       *  3. 'debug'
-       */
-      level?: Level.Name
-    }
+        /**
+         * Filter logs by path and/or level.
+         *
+         * @defaultValue '*'
+         *
+         * @example
+         *
+         * Logs from foo logger
+         *
+         * foo
+         *
+         * Logs from foo _or_ bar logger
+         *
+         * foo,bar
+         *
+         * Logs from _not_ foo logger
+         *
+         * !foo
+         *
+         * Logs from foo logger at level 3 (info) or higher
+         *
+         * foo&#64;3+
+         *
+         * Logs from any logger at level 3 (info) or higher
+         *
+         * foo&#64;info+
+         *
+         * Logs from foo logger at level 3 (info) or lower
+         *
+         * foo&#64;3-
+         *
+         * Logs from foo:sub logger
+         *
+         * foo:sub
+         *
+         * Logs from any descendants of foo:sub logger
+         *
+         * foo:sub:*
+         *
+         * Logs from any descendants of foo:sub logger _or_ foo:sub logger itself
+         *
+         * foo:sub*
+         */
+        pattern?: string
+        /**
+         * Set the minimum level a log must be at for it to be written to output.
+         *
+         * @defaultValue
+         *
+         * Takes the first value found, searching in the following order:
+         *
+         *  1. LOG_LEVEL envar if set
+         *  2. 'info' if NODE_ENV envar set to 'production'
+         *  3. 'debug'
+         */
+        level?: Level.Name
+      }
   /**
    * Control pretty mode.
    *
@@ -157,42 +157,42 @@ export type Input = {
   pretty?:
     | boolean
     | {
-      /**
-       * Disable or enable pretty mode.
-       *
-       * When `undefined` pretty takes the first value found, in order:
-       *
-       *  1. `process.env.LOG_PRETTY` (admits case insensitive: `true` | `false`)
-       *  2. `process.stdout.isTTY`
-       */
-      enabled?: boolean
-      /**
-       * Should logs be colored?
-       *
-       * @defaultValue `true`
-       *
-       * Disabling can be useful when pretty logs are going to a destination that
-       * does not support rendering ANSI color codes (consequence being very
-       * difficult to read content).
-       */
-      color?: boolean
-      /**
-       * Should logs include the level label?
-       *
-       * @defaultValue `false`
-       *
-       * Enable this if understanding the level of a log is important to you
-       * and the icon+color system is insufficient for you to do so. Can be
-       * helpful for newcomers or a matter of taste for some.
-       */
-      levelLabel?: boolean
-      /**
-       * Should the logs include the time between it and previous log?
-       *
-       * @defaultValue `true`
-       */
-      timeDiff?: boolean
-    }
+        /**
+         * Disable or enable pretty mode.
+         *
+         * When `undefined` pretty takes the first value found, in order:
+         *
+         *  1. `process.env.LOG_PRETTY` (admits case insensitive: `true` | `false`)
+         *  2. `process.stdout.isTTY`
+         */
+        enabled?: boolean
+        /**
+         * Should logs be colored?
+         *
+         * @defaultValue `true`
+         *
+         * Disabling can be useful when pretty logs are going to a destination that
+         * does not support rendering ANSI color codes (consequence being very
+         * difficult to read content).
+         */
+        color?: boolean
+        /**
+         * Should logs include the level label?
+         *
+         * @defaultValue `false`
+         *
+         * Enable this if understanding the level of a log is important to you
+         * and the icon+color system is insufficient for you to do so. Can be
+         * helpful for newcomers or a matter of taste for some.
+         */
+        levelLabel?: boolean
+        /**
+         * Should the logs include the time between it and previous log?
+         *
+         * @defaultValue `true`
+         */
+        timeDiff?: boolean
+      }
   /**
    * Toggle pieces of data that should or should not be logged.
    */
@@ -241,7 +241,7 @@ export const processSettingInputData = (
 }
 
 const defaultSettingData = (): Data['data'] => {
-  if (process.env?.[`NODE_ENV`] === `production`) {
+  if (getNodeEnv() === `production`) {
     return {
       hostname: true,
       pid: true,
@@ -265,17 +265,20 @@ export const processSettingInputPretty = (
 ): Data['pretty'] => {
   const color = (typeof pretty === `object` ? pretty.color : undefined) ?? previous?.color ?? true
 
-  const enabled = (typeof pretty === `object` ? pretty.enabled : undefined)
-    ?? previous?.enabled
-    ?? (process.env?.[`LOG_PRETTY`]?.toLowerCase() === `true`
+  const enabled =
+    (typeof pretty === `object` ? pretty.enabled : undefined) ??
+    previous?.enabled ??
+    (getLogPretty()?.toLowerCase() === `true`
       ? true
-      : process.env?.[`LOG_PRETTY`]?.toLowerCase() === `false`
-      ? false
-      : process.stdout?.isTTY)
+      : getLogPretty()?.toLowerCase() === `false`
+        ? false
+        : process.stdout?.isTTY)
 
-  const levelLabel = (typeof pretty === `object` ? pretty.levelLabel : undefined) ?? previous?.levelLabel ?? false
+  const levelLabel =
+    (typeof pretty === `object` ? pretty.levelLabel : undefined) ?? previous?.levelLabel ?? false
 
-  const timeDiff = (typeof pretty === `object` ? pretty.timeDiff : undefined) ?? previous?.timeDiff ?? true
+  const timeDiff =
+    (typeof pretty === `object` ? pretty.timeDiff : undefined) ?? previous?.timeDiff ?? true
 
   if (pretty === undefined) {
     return { enabled, color, levelLabel, timeDiff }
@@ -299,9 +302,10 @@ export const processSettingInputPretty = (
 export const create = (opts?: Input): Manager => {
   const state: Data = {
     pretty: processSettingInputPretty(opts?.pretty, null),
-    filter: !opts || !opts.filter || opts.filter === `` || Object.keys(opts).length === 0
-      ? defaultFilterSetting()
-      : processSettingInputFilter(opts.filter, null),
+    filter:
+      !opts || !opts.filter || opts.filter === `` || Object.keys(opts).length === 0
+        ? defaultFilterSetting()
+        : processSettingInputFilter(opts.filter, null),
     output: opts?.output ?? Output.defaultOutput,
     data: processSettingInputData(opts?.data ?? {}, null),
   }
@@ -334,13 +338,15 @@ export const processSettingInputFilter = (
   prev: null | Data['filter'],
 ): Data['filter'] => {
   if (!prev) prev = defaultFilterSetting()
-  newSettingsFilter = typeof newSettingsFilter === `string` ? { pattern: newSettingsFilter } : newSettingsFilter
+  newSettingsFilter =
+    typeof newSettingsFilter === `string` ? { pattern: newSettingsFilter } : newSettingsFilter
   const pattern = newSettingsFilter.pattern ?? prev.originalInput
   const defaults = newSettingsFilter?.level
     ? ({ level: { value: newSettingsFilter.level, comp: `gte` } } as const)
     : prev.defaults
 
-  const patterns = Filter.processLogFilterInput(defaults, pattern) || Filter.parseUnsafe(defaults, `*`)
+  const patterns =
+    Filter.processLogFilterInput(defaults, pattern) || Filter.parseUnsafe(defaults, `*`)
 
   return {
     defaults,
@@ -351,18 +357,20 @@ export const processSettingInputFilter = (
 
 export const defaultFilterSetting = (): Data['filter'] => {
   let level: Level.Name
-  if (process.env?.[`LOG_LEVEL`]) {
+  const logLevel = getLogLevel()
+  if (logLevel) {
     level = parseFromEnvironment<Level.Name>(`LOG_LEVEL`, Level.parser)
   } else {
-    level = process.env?.[`NODE_ENV`] === `production` ? Level.LEVELS.info.label : Level.LEVELS.debug.label
+    level = getNodeEnv() === `production` ? Level.LEVELS.info.label : Level.LEVELS.debug.label
   }
   let originalInput: string
   let patterns
 
-  if (process.env?.[`LOG_FILTER`]) {
+  const logFilter = getLogFilter()
+  if (logFilter) {
     patterns = Filter.processLogFilterInput(
       { level: { value: level, comp: `gte` } },
-      process.env?.[`LOG_FILTER`],
+      logFilter,
       `environment variable LOG_FILTER.`,
     )
   }

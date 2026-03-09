@@ -11,16 +11,20 @@ export class SpanRange extends S.Class<SpanRange>('SpanRange')({
   /**
    * Constraints for main axis span.
    */
-  main: S.optional(S.Struct({
-    min: S.optional(S.Number),
-    max: S.optional(S.Number),
-  })),
+  main: S.optional(
+    S.Struct({
+      min: S.optional(S.Number),
+      max: S.optional(S.Number),
+    }),
+  ),
 
   /**
    * Constraints for cross axis span.
    */
-  cross: S.optional(S.Struct({
-    min: S.optional(S.Number),
-    max: S.optional(S.Number),
-  })),
+  cross: S.optional(
+    S.Struct({
+      min: S.optional(S.Number),
+      max: S.optional(S.Number),
+    }),
+  ),
 }) {}

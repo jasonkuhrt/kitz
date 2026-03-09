@@ -10,11 +10,7 @@ import type { ArrayConstraint, Combinator, NumberConstraint, StringConstraint } 
  * - String constraints (`$length`, `$format`)
  * - Effect Schemas
  */
-export type StringPattern =
-  | string
-  | RegExp
-  | StringConstraint
-  | S.Schema.Any
+export type StringPattern = string | RegExp | StringConstraint | S.Schema.Any
 
 /**
  * Number pattern - matches number values.
@@ -24,10 +20,7 @@ export type StringPattern =
  * - Number constraints (`$gt`, `$gte`, `$lt`, `$lte`, `$eq`)
  * - Effect Schemas
  */
-export type NumberPattern =
-  | number
-  | NumberConstraint
-  | S.Schema.Any
+export type NumberPattern = number | NumberConstraint | S.Schema.Any
 
 /**
  * Boolean pattern - matches boolean values.
@@ -36,9 +29,7 @@ export type NumberPattern =
  * - Literal booleans
  * - Effect Schemas
  */
-export type BooleanPattern =
-  | boolean
-  | S.Schema.Any
+export type BooleanPattern = boolean | S.Schema.Any
 
 /**
  * BigInt pattern - matches bigint values.
@@ -47,9 +38,7 @@ export type BooleanPattern =
  * - Literal bigints
  * - Effect Schemas
  */
-export type BigIntPattern =
-  | bigint
-  | S.Schema.Any
+export type BigIntPattern = bigint | S.Schema.Any
 
 /**
  * Date pattern - matches Date values.
@@ -58,9 +47,7 @@ export type BigIntPattern =
  * - Literal dates
  * - Effect Schemas
  */
-export type DatePattern =
-  | Date
-  | S.Schema.Any
+export type DatePattern = Date | S.Schema.Any
 
 /**
  * Array pattern - matches array values.
@@ -106,23 +93,29 @@ export type ObjectPattern<$T extends object> = {
  * // Allows: { name: /^J/, age: { $gte: 18 } }
  * ```
  */
-export type PatternForType<$T> =
-  | PatternForTypeValue<$T>
-  | Combinator // Always allow $not, $or, $and
+export type PatternForType<$T> = PatternForTypeValue<$T> | Combinator // Always allow $not, $or, $and
 
 type PatternForTypeValue<$T> =
   // Primitives
-  $T extends string ? StringPattern
-    : $T extends number ? NumberPattern
-    : $T extends boolean ? BooleanPattern
-    : $T extends bigint ? BigIntPattern
-    : $T extends Date ? DatePattern
-    : $T extends null ? null
-    // Collections
-    : $T extends Array<infer __element__> ? ArrayPattern<__element__>
-    : $T extends object ? ObjectPattern<$T>
-    // Fallback - literal
-    : $T
+  $T extends string
+    ? StringPattern
+    : $T extends number
+      ? NumberPattern
+      : $T extends boolean
+        ? BooleanPattern
+        : $T extends bigint
+          ? BigIntPattern
+          : $T extends Date
+            ? DatePattern
+            : $T extends null
+              ? null
+              : // Collections
+                $T extends Array<infer __element__>
+                ? ArrayPattern<__element__>
+                : $T extends object
+                  ? ObjectPattern<$T>
+                  : // Fallback - literal
+                    $T
 
 /**
  * Pattern type for a runtime value.
@@ -170,4 +163,6 @@ export type PatternForSchema<$Schema extends S.Schema.Any> = PatternForType<S.Sc
  * type UserPattern = PatternForV1Schema<typeof UserSchema>
  * ```
  */
-export type PatternForV1Schema<$Schema extends { _output: any }> = PatternForType<$Schema['_output']>
+export type PatternForV1Schema<$Schema extends { _output: any }> = PatternForType<
+  $Schema['_output']
+>

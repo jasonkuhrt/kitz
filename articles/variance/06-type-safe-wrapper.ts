@@ -18,10 +18,7 @@ class FlexibleStore {
   }
 
   // Type-safe retrieval with runtime check
-  getAs<T>(
-    key: string,
-    validator: (value: unknown) => value is T,
-  ): T | undefined {
+  getAs<T>(key: string, validator: (value: unknown) => value is T): T | undefined {
     const value = this.items[key]
     return validator(value) ? value : undefined
   }
@@ -48,12 +45,12 @@ interface User {
 
 function isUser(value: unknown): value is User {
   return (
-    typeof value === 'object'
-    && value !== null
-    && 'id' in value
-    && 'name' in value
-    && typeof (value as any).id === 'string'
-    && typeof (value as any).name === 'string'
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    'name' in value &&
+    typeof (value as any).id === 'string' &&
+    typeof (value as any).name === 'string'
   )
 }
 

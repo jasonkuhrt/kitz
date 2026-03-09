@@ -1,6 +1,6 @@
-// dprint-ignore-file
+// Intentionally excluded from oxfmt; column alignment is part of the test fixture.
 import { Ts } from '#ts'
-import { Type as A } from '#assert/assert'
+import { Type as A } from '#kitz/assert/assert'
 import type * as Diff from './diff.js'
 
 A.onAs<Diff.Compute<[1], [0]>>()                                          .exact.of(Ts.as<{ diff_mismatch_: [[1, 0]] }>())

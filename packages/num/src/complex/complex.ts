@@ -51,14 +51,14 @@ export type Complex = {
  */
 export const is = (value: unknown): value is Complex => {
   return (
-    typeof value === 'object'
-    && value !== null
-    && 'real' in value
-    && 'imaginary' in value
-    && typeof value.real === 'number'
-    && typeof value.imaginary === 'number'
-    && Number.isFinite(value.real)
-    && Number.isFinite(value.imaginary)
+    typeof value === 'object' &&
+    value !== null &&
+    'real' in value &&
+    'imaginary' in value &&
+    typeof value.real === 'number' &&
+    typeof value.imaginary === 'number' &&
+    Number.isFinite(value.real) &&
+    Number.isFinite(value.imaginary)
   )
 }
 
@@ -605,10 +605,7 @@ export const fromPolar = (magnitude: number, angle: number): Complex => {
     throw new Error('Magnitude must be non-negative')
   }
 
-  return from(
-    magnitude * Math.cos(angle),
-    magnitude * Math.sin(angle),
-  )
+  return from(magnitude * Math.cos(angle), magnitude * Math.sin(angle))
 }
 
 /**
@@ -863,10 +860,7 @@ export const log = (z: Complex): Complex => {
  */
 
 export const equals = (a: Complex, b: Complex, tolerance: number = 1e-9): boolean => {
-  return (
-    Math.abs(a.real - b.real) < tolerance
-    && Math.abs(a.imaginary - b.imaginary) < tolerance
-  )
+  return Math.abs(a.real - b.real) < tolerance && Math.abs(a.imaginary - b.imaginary) < tolerance
 }
 
 /**
@@ -984,9 +978,7 @@ export const toString = (z: Complex, precision: number = 6): string => {
     return `${imagPart}i`
   }
 
-  const imagString = Math.abs(imagPart) === 1
-    ? 'i'
-    : `${Math.abs(imagPart)}i`
+  const imagString = Math.abs(imagPart) === 1 ? 'i' : `${Math.abs(imagPart)}i`
 
   const sign = imagPart >= 0 ? ' + ' : ' - '
   return `${realPart}${sign}${imagString}`

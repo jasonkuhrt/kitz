@@ -1,7 +1,14 @@
-import { Test } from '#test'
+import { Test } from '#kitz/test'
+import { Schema as S } from 'effect'
 import { expect } from 'vitest'
 import { ContextualAggregateError, partitionAndAggregateErrors } from './aggregate.js'
-import { ContextualError } from './contextual.js'
+import { TaggedContextualError } from './contextual.js'
+
+// Test error using new schema-based API
+const TestError = TaggedContextualError('TestError', ['test'], {
+  context: S.Struct({ key: S.String }),
+  message: (ctx) => `Test error: ${ctx.key}`,
+})
 
 Test.describe('ContextualAggregateError > creation')
   .inputType<{
@@ -48,18 +55,12 @@ Test.describe('partitionAndAggregateErrors > partitioning')
       { values: [1, 2, 3], hasError: true, errorCount: 2 },
     ],
     // All values, no errors
-    [
-      { results: [1, 2, 3] },
-      { values: [1, 2, 3], hasError: false },
-    ],
+    [{ results: [1, 2, 3] }, { values: [1, 2, 3], hasError: false }],
     // All errors
+    [{ results: [new Error('a'), new Error('b')] }, { values: [], hasError: true, errorCount: 2 }],
+    // With TaggedContextualError
     [
-      { results: [new Error('a'), new Error('b')] },
-      { values: [], hasError: true, errorCount: 2 },
-    ],
-    // With ContextualError
-    [
-      { results: [1, new ContextualError({ context: { key: 'value' } }), 2] },
+      { results: [1, new TestError({ context: { key: 'value' } }), 2] },
       { values: [1, 2], hasError: true, errorCount: 1 },
     ],
   )

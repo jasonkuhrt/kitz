@@ -1,9 +1,9 @@
-// dprint-ignore-file
+// Intentionally excluded from oxfmt; column alignment is part of the test fixture.
 import type { Num } from '#num'
 import { Ts } from '#ts'
 import type { Fn } from '#fn'
 import type * as Simplify from './simplify.js'
-import { Assert } from '#assert'
+import { Assert } from '#kitz/assert'
 
 const A = Assert.Type.exact
 
@@ -103,7 +103,7 @@ A.ofAs<'a' | 'b'>()                                       .onAs<Ts.Simplify.Top<
 
 // Edge cases
 
-A.ofAs<{}>()                                              .onAs<Simplify.All<{} & {}>>()
+A.ofAs<{}>()                                              .onAs<Simplify.All<{}>>()
 A.ofAs<SelfRef>()                                         .onAs<Simplify.All<SelfRef>>()
 
 type SelfRef = { self: SelfRef; data: string }

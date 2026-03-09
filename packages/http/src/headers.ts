@@ -76,8 +76,10 @@ export const responseCacheControl = (input: {
   const maxAge = input.maxAge ? `max-age=${input.maxAge}` : ``
   const immutable = input.immutable ? `immutable` : ``
   const sMaxAge = input.sMaxAge ? `s-maxage=${input.sMaxAge}` : ``
-  const visibility = input.visibility ? `${input.visibility}` : ``
-  const staleWhileRevalidate = input.staleWhileRevalidate ? `stale-while-revalidate=${input.staleWhileRevalidate}` : ``
+  const visibility = input.visibility ?? ``
+  const staleWhileRevalidate = input.staleWhileRevalidate
+    ? `stale-while-revalidate=${input.staleWhileRevalidate}`
+    : ``
   const staleIfError = input.staleIfError ? `stale-if-error=${input.staleIfError}` : ``
   const noCache = input.noCache ? `no-cache` : ``
   const noStore = input.noStore ? `no-store` : ``
@@ -172,7 +174,10 @@ export const toRec = (headers: Headers): Record<string, string> => {
   return result
 }
 
-export const mergeInitWithStrategySet = (baseHeaders?: HeadersInit, additionalHeaders?: HeadersInit) => {
+export const mergeInitWithStrategySet = (
+  baseHeaders?: HeadersInit,
+  additionalHeaders?: HeadersInit,
+) => {
   const base = new Headers(baseHeaders)
   const additional = new Headers(additionalHeaders)
   for (const [key, value] of additional) {
@@ -190,7 +195,10 @@ export const UnsetValue = ``
 /**
  * Merges two sets of headers, with the second set taking precedence for duplicate keys
  */
-export function mergeInitWithStrategyMerge(base?: HeadersInit, additional?: HeadersInit): Headers | undefined {
+export function mergeInitWithStrategyMerge(
+  base?: HeadersInit,
+  additional?: HeadersInit,
+): Headers | undefined {
   if (!additional) return base instanceof Headers ? base : base ? new Headers(base) : undefined
   if (!base) return new Headers(additional)
 

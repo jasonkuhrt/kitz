@@ -46,7 +46,7 @@ export const mapValues = <rec extends Record<PropertyKey, any>, newValue>(
  * // Result: { steps: ['init', 'validate'] }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type UpdateKeyWithAppendOne<
   $Obj extends object,
   $Prop extends keyof $Obj,
@@ -72,7 +72,7 @@ export type UpdateKeyWithAppendOne<
  * // Result: { steps: ['init', 'validate', 'execute'] }
  * ```
  */
-// dprint-ignore
+// oxfmt-ignore
 export type UpdateKeyWithAppendMany<
   $Obj extends object,
   $Prop extends keyof $Obj,
@@ -102,8 +102,6 @@ export type UpdateKeyWithIntersection<
   $Obj extends object,
   $PropertyName extends keyof $Obj,
   $Type extends object,
-> =
-  & $Obj
-  & {
-    [k in $PropertyName]: $Type
-  }
+> = $Obj & {
+  [k in $PropertyName]: $Type
+}

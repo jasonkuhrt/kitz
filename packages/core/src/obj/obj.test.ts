@@ -1,6 +1,6 @@
-import { Assert } from '#assert'
-import { Test } from '#test'
-import { expect } from 'vitest'
+import { Assert } from '#kitz/assert'
+import { Test } from '#kitz/test'
+import { describe, expect, test } from 'vitest'
 import { type FromEntries, fromEntries, hasSymbolLike, hasSymbolLikeWith } from './obj.js'
 
 const sym = (name: string, val: unknown) => {
@@ -76,41 +76,62 @@ Test.describe('fromEntries')
   .outputType<object>()
   .cases(
     // Basic string keys
-    [[['a', 1], ['b', 2]] as const, { a: 1, b: 2 }],
+    [
+      [
+        ['a', 1],
+        ['b', 2],
+      ] as const,
+      { a: 1, b: 2 },
+    ],
     // Mixed value types
-    [[['x', 'hello'], ['y', 42]] as const, { x: 'hello', y: 42 }],
+    [
+      [
+        ['x', 'hello'],
+        ['y', 42],
+      ] as const,
+      { x: 'hello', y: 42 },
+    ],
     // Empty entries
     [[] as const, {}],
     // Number keys (converted to string at runtime)
-    [[[1, 'one'], [2, 'two']] as const, { 1: 'one', 2: 'two' }],
+    [
+      [
+        [1, 'one'],
+        [2, 'two'],
+      ] as const,
+      { 1: 'one', 2: 'two' },
+    ],
   )
   .test(({ input, output }) => {
     expect(fromEntries(input)).toEqual(output)
   })
 
-Test.describe('FromEntries > type-level')
-  .inputType<void>()
-  .outputType<void>()
-  .cases([undefined, undefined])
-  .test(() => {
+describe('FromEntries type-level', () => {
+  test('preserves keys and values', () => {
     // Basic key preservation
-    Assert.Type.exact.ofAs<{ a: 1; b: 2 }>().onAs<FromEntries<readonly [readonly ['a', 1], readonly ['b', 2]]>>()
+    Assert.Type.exact
+      .ofAs<{ a: 1; b: 2 }>()
+      .onAs<FromEntries<readonly [readonly ['a', 1], readonly ['b', 2]]>>()
 
     // Mixed value types preserved
-    Assert.Type.exact.ofAs<{ x: 'hello'; y: 42 }>().onAs<
-      FromEntries<readonly [readonly ['x', 'hello'], readonly ['y', 42]]>
-    >()
+    Assert.Type.exact
+      .ofAs<{ x: 'hello'; y: 42 }>()
+      .onAs<FromEntries<readonly [readonly ['x', 'hello'], readonly ['y', 42]]>>()
 
     // Empty entries produces empty object
     Assert.Type.exact.ofAs<{}>().onAs<FromEntries<readonly []>>()
 
     // Number keys work
-    Assert.Type.exact.ofAs<{ 1: 'one'; 2: 'two' }>().onAs<
-      FromEntries<readonly [readonly [1, 'one'], readonly [2, 'two']]>
-    >()
+    Assert.Type.exact
+      .ofAs<{ 1: 'one'; 2: 'two' }>()
+      .onAs<FromEntries<readonly [readonly [1, 'one'], readonly [2, 'two']]>>()
 
     // Runtime value type inference
-    const entries = [['a', 1], ['b', 'hello']] as const
+    const entries = [
+      ['a', 1],
+      ['b', 'hello'],
+    ] as const
     const result = fromEntries(entries)
     Assert.Type.exact.ofAs<{ a: 1; b: 'hello' }>().on(result)
   })
+})

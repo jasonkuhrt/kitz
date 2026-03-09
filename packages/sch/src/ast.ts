@@ -23,9 +23,7 @@ export const resolve = (ast: EAST.AST): EAST.AST => {
  * Extract the tag value from a TypeLiteral AST with _tag field.
  */
 export const extractTag = (ast: EAST.TypeLiteral): string | null => {
-  const tagProp = ast.propertySignatures.find(
-    (p: any) => p.name === '_tag' && isLiteral(p.type),
-  )
+  const tagProp = ast.propertySignatures.find((p: any) => p.name === '_tag' && isLiteral(p.type))
 
   if (!tagProp || !isLiteral(tagProp.type)) {
     return null
@@ -50,7 +48,7 @@ export const extractTag = (ast: EAST.TypeLiteral): string | null => {
 export const getFieldSchema = (
   schema: S.Schema<any, any, any>,
   fieldName: string,
-): S.Schema<any, any, never> | undefined => {
+): S.Schema<any, any> | undefined => {
   const ast = schema.ast
 
   // Handle TypeLiteral (structs)
@@ -78,8 +76,8 @@ export const getFieldSchema = (
  */
 export const extractPropertyKeys = (ast: EAST.TypeLiteral): string[] => {
   return ast.propertySignatures
-    .map(p => p.name as string)
-    .filter(name => typeof name === 'string')
+    .map((p) => p.name as string)
+    .filter((name) => typeof name === 'string')
 }
 
 /**
@@ -93,7 +91,7 @@ export const getPropertySignature = (
   ast: EAST.TypeLiteral,
   propertyName: string | symbol,
 ): EAST.PropertySignature | undefined => {
-  return ast.propertySignatures.find(p => p.name === propertyName)
+  return ast.propertySignatures.find((p) => p.name === propertyName)
 }
 
 /**
@@ -103,10 +101,7 @@ export const getPropertySignature = (
  * @param propertyName - The name of the property to check
  * @returns True if the property exists, false otherwise
  */
-export const hasProperty = (
-  ast: EAST.TypeLiteral,
-  propertyName: string | symbol,
-): boolean => {
+export const hasProperty = (ast: EAST.TypeLiteral, propertyName: string | symbol): boolean => {
   return getPropertySignature(ast, propertyName) !== undefined
 }
 
@@ -169,5 +164,7 @@ export const extractTagsFromUnion = (ast: EAST.Union): string[] => {
  * Returns the original schema unchanged if annotations object is empty,
  * avoiding unnecessary wrapping.
  */
-export const copyAnnotations = (schema: S.Schema.Any, annotations: EAST.Annotations): S.Schema.Any =>
-  Obj.isEmpty(annotations) ? schema : schema.annotations(annotations as any)
+export const copyAnnotations = (
+  schema: S.Schema.Any,
+  annotations: EAST.Annotations,
+): S.Schema.Any => (Obj.isEmpty(annotations) ? schema : schema.annotations(annotations as any))

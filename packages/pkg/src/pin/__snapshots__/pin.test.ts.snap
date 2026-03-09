@@ -1,0 +1,765 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Alias > fromString('@my/react@npm:react@^18.0.0') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+@my/react@npm:react@^18.0.0
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Alias {
+  name: Scoped {
+    scope: 'my',
+    name: 'react',
+    _tag: 'Scoped'
+  },
+  target: Unscoped {
+    name: 'react',
+    _tag: 'Unscoped'
+  },
+  targetSpecifier: '^18.0.0',
+  _tag: 'PinAlias'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Alias > fromString('custom@npm:@scope/pkg@latest') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+custom@npm:@scope/pkg@latest
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Alias {
+  name: Unscoped {
+    name: 'custom',
+    _tag: 'Unscoped'
+  },
+  target: Scoped {
+    scope: 'scope',
+    name: 'pkg',
+    _tag: 'Scoped'
+  },
+  targetSpecifier: 'latest',
+  _tag: 'PinAlias'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Alias > fromString('my-lodash@npm:lodash@^4.0.0') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+my-lodash@npm:lodash@^4.0.0
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Alias {
+  name: Unscoped {
+    name: 'my-lodash',
+    _tag: 'Unscoped'
+  },
+  target: Unscoped {
+    name: 'lodash',
+    _tag: 'Unscoped'
+  },
+  targetSpecifier: '^4.0.0',
+  _tag: 'PinAlias'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Git > fromString('my-pkg@git+https://github.com/org/repo#semver:^1.0.0') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+my-pkg@git+https://github.com/org/repo#semver:^1.0.0
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Git {
+  name: Unscoped {
+    name: 'my-pkg',
+    _tag: 'Unscoped'
+  },
+  url: 'git+https://github.com/org/repo',
+  ref: { _id: 'Option', _tag: 'None' },
+  semver: {
+  _id: 'Option',
+  _tag: 'Some',
+  value: Range {
+    sets: [
+      [
+        Comparator {
+          operator: '>=',
+          version: OfficialRelease {
+            major: 1,
+            minor: 0,
+            patch: 0,
+            build: undefined,
+            _tag: 'SemverOfficialRelease'
+          }
+        },
+        Comparator {
+          operator: '<',
+          version: PreRelease {
+            major: 2,
+            minor: 0,
+            patch: 0,
+            prerelease: [ 0 ],
+            build: undefined,
+            _tag: 'SemverPreRelease'
+          }
+        }
+      ]
+    ]
+  }
+},
+  _tag: 'PinGit'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Git > fromString('my-pkg@git+https://github.com/org/repo#v1.0.0') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+my-pkg@git+https://github.com/org/repo#v1.0.0
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Git {
+  name: Unscoped {
+    name: 'my-pkg',
+    _tag: 'Unscoped'
+  },
+  url: 'git+https://github.com/org/repo',
+  ref: { _id: 'Option', _tag: 'Some', value: 'v1.0.0' },
+  semver: { _id: 'Option', _tag: 'None' },
+  _tag: 'PinGit'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Git > fromString('my-pkg@git+https://github.com/org/repo') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+my-pkg@git+https://github.com/org/repo
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Git {
+  name: Unscoped {
+    name: 'my-pkg',
+    _tag: 'Unscoped'
+  },
+  url: 'git+https://github.com/org/repo',
+  ref: { _id: 'Option', _tag: 'None' },
+  semver: { _id: 'Option', _tag: 'None' },
+  _tag: 'PinGit'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Git > fromString('my-pkg@github:user/repo') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+my-pkg@github:user/repo
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Git {
+  name: Unscoped {
+    name: 'my-pkg',
+    _tag: 'Unscoped'
+  },
+  url: 'github:user/repo',
+  ref: { _id: 'Option', _tag: 'None' },
+  semver: { _id: 'Option', _tag: 'None' },
+  _tag: 'PinGit'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Path > fromString('@local/util@file:./packages/util') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+@local/util@file:./packages/util
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Path {
+  name: Scoped {
+    scope: 'local',
+    name: 'util',
+    _tag: 'Scoped'
+  },
+  path: './packages/util',
+  _tag: 'PinPath'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Path > fromString('my-pkg@file:../shared') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+my-pkg@file:../shared
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Path {
+  name: Unscoped {
+    name: 'my-pkg',
+    _tag: 'Unscoped'
+  },
+  path: '../shared',
+  _tag: 'PinPath'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Path > fromString('pkg@file:/absolute/path') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+pkg@file:/absolute/path
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Path {
+  name: Unscoped {
+    name: 'pkg',
+    _tag: 'Unscoped'
+  },
+  path: '/absolute/path',
+  _tag: 'PinPath'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Range > fromString('@kitz/core@^1.0.0') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+@kitz/core@^1.0.0
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Range {
+  name: Scoped {
+    scope: 'kitz',
+    name: 'core',
+    _tag: 'Scoped'
+  },
+  range: Range {
+    sets: [
+      [
+        Comparator {
+          operator: '>=',
+          version: OfficialRelease {
+            major: 1,
+            minor: 0,
+            patch: 0,
+            build: undefined,
+            _tag: 'SemverOfficialRelease'
+          }
+        },
+        Comparator {
+          operator: '<',
+          version: PreRelease {
+            major: 2,
+            minor: 0,
+            patch: 0,
+            prerelease: [ 0 ],
+            build: undefined,
+            _tag: 'SemverPreRelease'
+          }
+        }
+      ]
+    ]
+  },
+  _tag: 'PinRange'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Range > fromString('@scope/pkg@~2.3.4') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+@scope/pkg@~2.3.4
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Range {
+  name: Scoped {
+    scope: 'scope',
+    name: 'pkg',
+    _tag: 'Scoped'
+  },
+  range: Range {
+    sets: [
+      [
+        Comparator {
+          operator: '>=',
+          version: OfficialRelease {
+            major: 2,
+            minor: 3,
+            patch: 4,
+            build: undefined,
+            _tag: 'SemverOfficialRelease'
+          }
+        },
+        Comparator {
+          operator: '<',
+          version: PreRelease {
+            major: 2,
+            minor: 4,
+            patch: 0,
+            prerelease: [ 0 ],
+            build: undefined,
+            _tag: 'SemverPreRelease'
+          }
+        }
+      ]
+    ]
+  },
+  _tag: 'PinRange'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Range > fromString('express@4.18.0') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+express@4.18.0
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Range {
+  name: Unscoped {
+    name: 'express',
+    _tag: 'Unscoped'
+  },
+  range: Range {
+    sets: [
+      [
+        Comparator {
+          operator: '',
+          version: OfficialRelease {
+            major: 4,
+            minor: 18,
+            patch: 0,
+            build: undefined,
+            _tag: 'SemverOfficialRelease'
+          }
+        }
+      ]
+    ]
+  },
+  _tag: 'PinRange'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Range > fromString('lodash@>=4.0.0') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+lodash@>=4.0.0
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Range {
+  name: Unscoped {
+    name: 'lodash',
+    _tag: 'Unscoped'
+  },
+  range: Range {
+    sets: [
+      [
+        Comparator {
+          operator: '>=',
+          version: OfficialRelease {
+            major: 4,
+            minor: 0,
+            patch: 0,
+            build: undefined,
+            _tag: 'SemverOfficialRelease'
+          }
+        }
+      ]
+    ]
+  },
+  _tag: 'PinRange'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Range > fromString('pkg@*') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+pkg@*
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Range {
+  name: Unscoped {
+    name: 'pkg',
+    _tag: 'Unscoped'
+  },
+  range: Range {
+    sets: [
+      [
+        Comparator {
+          operator: '>=',
+          version: OfficialRelease {
+            major: 0,
+            minor: 0,
+            patch: 0,
+            build: undefined,
+            _tag: 'SemverOfficialRelease'
+          }
+        }
+      ]
+    ]
+  },
+  _tag: 'PinRange'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Tag > fromString('@kitz/core@next') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+@kitz/core@next
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Tag {
+  name: Scoped {
+    scope: 'kitz',
+    name: 'core',
+    _tag: 'Scoped'
+  },
+  tag: 'next',
+  _tag: 'PinTag'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Tag > fromString('lodash@latest') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+lodash@latest
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Tag {
+  name: Unscoped {
+    name: 'lodash',
+    _tag: 'Unscoped'
+  },
+  tag: 'latest',
+  _tag: 'PinTag'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Tag > fromString('pkg@beta') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+pkg@beta
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Tag {
+  name: Unscoped {
+    name: 'pkg',
+    _tag: 'Unscoped'
+  },
+  tag: 'beta',
+  _tag: 'PinTag'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Tag > fromString('react@canary') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+react@canary
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Tag {
+  name: Unscoped {
+    name: 'react',
+    _tag: 'Unscoped'
+  },
+  tag: 'canary',
+  _tag: 'PinTag'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Url > fromString('custom@http://registry.internal/custom.tar.gz') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+custom@http://registry.internal/custom.tar.gz
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Url {
+  name: Unscoped {
+    name: 'custom',
+    _tag: 'Unscoped'
+  },
+  url: 'http://registry.internal/custom.tar.gz',
+  _tag: 'PinUrl'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Url > fromString('my-pkg@https://example.com/pkg-1.0.0.tgz') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+my-pkg@https://example.com/pkg-1.0.0.tgz
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Url {
+  name: Unscoped {
+    name: 'my-pkg',
+    _tag: 'Unscoped'
+  },
+  url: 'https://example.com/pkg-1.0.0.tgz',
+  _tag: 'PinUrl'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Workspace > fromString('@internal/util@workspace:*') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+@internal/util@workspace:*
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Workspace {
+  name: Scoped {
+    scope: 'internal',
+    name: 'util',
+    _tag: 'Scoped'
+  },
+  range: '*',
+  _tag: 'PinWorkspace'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Workspace > fromString('@kitz/core@workspace:^') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+@kitz/core@workspace:^
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Workspace {
+  name: Scoped {
+    scope: 'kitz',
+    name: 'core',
+    _tag: 'Scoped'
+  },
+  range: '^',
+  _tag: 'PinWorkspace'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Workspace > fromString('@scope/pkg@workspace:^1.0.0') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+@scope/pkg@workspace:^1.0.0
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Workspace {
+  name: Scoped {
+    scope: 'scope',
+    name: 'pkg',
+    _tag: 'Scoped'
+  },
+  range: Range {
+    sets: [
+      [
+        Comparator {
+          operator: '>=',
+          version: OfficialRelease {
+            major: 1,
+            minor: 0,
+            patch: 0,
+            build: undefined,
+            _tag: 'SemverOfficialRelease'
+          }
+        },
+        Comparator {
+          operator: '<',
+          version: PreRelease {
+            major: 2,
+            minor: 0,
+            patch: 0,
+            prerelease: [ 0 ],
+            build: undefined,
+            _tag: 'SemverPreRelease'
+          }
+        }
+      ]
+    ]
+  },
+  _tag: 'PinWorkspace'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Workspace > fromString('local-pkg@workspace:~') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+local-pkg@workspace:~
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Workspace {
+  name: Unscoped {
+    name: 'local-pkg',
+    _tag: 'Unscoped'
+  },
+  range: '~',
+  _tag: 'PinWorkspace'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`fromString > auto-detection > fromString('@internal/util@workspace:*') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+@internal/util@workspace:*
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Workspace {
+  name: Scoped {
+    scope: 'internal',
+    name: 'util',
+    _tag: 'Scoped'
+  },
+  range: '*',
+  _tag: 'PinWorkspace'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`fromString > auto-detection > fromString('@kitz/core@^1.0.0') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+@kitz/core@^1.0.0
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Range {
+  name: Scoped {
+    scope: 'kitz',
+    name: 'core',
+    _tag: 'Scoped'
+  },
+  range: Range {
+    sets: [
+      [
+        Comparator {
+          operator: '>=',
+          version: OfficialRelease {
+            major: 1,
+            minor: 0,
+            patch: 0,
+            build: undefined,
+            _tag: 'SemverOfficialRelease'
+          }
+        },
+        Comparator {
+          operator: '<',
+          version: PreRelease {
+            major: 2,
+            minor: 0,
+            patch: 0,
+            prerelease: [ 0 ],
+            build: undefined,
+            _tag: 'SemverPreRelease'
+          }
+        }
+      ]
+    ]
+  },
+  _tag: 'PinRange'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`fromString > auto-detection > fromString('lodash@latest') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+lodash@latest
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Tag {
+  name: Unscoped {
+    name: 'lodash',
+    _tag: 'Unscoped'
+  },
+  tag: 'latest',
+  _tag: 'PinTag'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`fromString > auto-detection > fromString('my-lodash@npm:lodash@^4.0.0') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+my-lodash@npm:lodash@^4.0.0
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Alias {
+  name: Unscoped {
+    name: 'my-lodash',
+    _tag: 'Unscoped'
+  },
+  target: Unscoped {
+    name: 'lodash',
+    _tag: 'Unscoped'
+  },
+  targetSpecifier: '^4.0.0',
+  _tag: 'PinAlias'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`fromString > auto-detection > fromString('my-pkg@file:../shared') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+my-pkg@file:../shared
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Path {
+  name: Unscoped {
+    name: 'my-pkg',
+    _tag: 'Unscoped'
+  },
+  path: '../shared',
+  _tag: 'PinPath'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`fromString > auto-detection > fromString('my-pkg@git+https://github.com/org/repo#v1.0.0') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+my-pkg@git+https://github.com/org/repo#v1.0.0
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Git {
+  name: Unscoped {
+    name: 'my-pkg',
+    _tag: 'Unscoped'
+  },
+  url: 'git+https://github.com/org/repo',
+  ref: { _id: 'Option', _tag: 'Some', value: 'v1.0.0' },
+  semver: { _id: 'Option', _tag: 'None' },
+  _tag: 'PinGit'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`fromString > auto-detection > fromString('my-pkg@https://example.com/pkg.tgz') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+my-pkg@https://example.com/pkg.tgz
+╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+Url {
+  name: Unscoped {
+    name: 'my-pkg',
+    _tag: 'Unscoped'
+  },
+  url: 'https://example.com/pkg.tgz',
+  _tag: 'PinUrl'
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`toString > roundtrip > fn('@internal/util@workspace:*') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+@internal/util@workspace:*
+╠══════════════════════════════════════════════════╣ THEN RETURNS STRING
+@internal/util@workspace:*
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`toString > roundtrip > fn('@kitz/core@^1.0.0') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+@kitz/core@^1.0.0
+╠══════════════════════════════════════════════════╣ THEN RETURNS STRING
+@kitz/core@>=1.0.0 <2.0.0-0
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`toString > roundtrip > fn('lodash@latest') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+lodash@latest
+╠══════════════════════════════════════════════════╣ THEN RETURNS STRING
+lodash@latest
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`toString > roundtrip > fn('my-pkg@file:../shared') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+my-pkg@file:../shared
+╠══════════════════════════════════════════════════╣ THEN RETURNS STRING
+my-pkg@file:../shared
+╚══════════════════════════════════════════════════╝"
+`;

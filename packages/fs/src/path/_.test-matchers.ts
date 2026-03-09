@@ -78,9 +78,7 @@ expect.extend({
     return {
       pass,
       message: () =>
-        pass
-          ? `Expected ${receivedStr} not to be a file`
-          : `Expected ${receivedStr} to be a file`,
+        pass ? `Expected ${receivedStr} not to be a file` : `Expected ${receivedStr} to be a file`,
     }
   },
 
@@ -120,8 +118,9 @@ expect.extend({
     const receivedSegments = received.segments
     const parentSegments = parent.segments
 
-    const pass = parentSegments.every((seg, i) => receivedSegments[i] === seg)
-      && receivedSegments.length > parentSegments.length
+    const pass =
+      parentSegments.every((seg, i) => receivedSegments[i] === seg) &&
+      receivedSegments.length > parentSegments.length
 
     return {
       pass,

@@ -49,10 +49,7 @@ export const isAggregateError = (value: unknown): value is AggregateError => {
  */
 export const isAbortError = (error: any): error is DOMException & { name: 'AbortError' } => {
   return (
-    error instanceof Error
-    && error.name === 'AbortError'
-    && 'code' in error
-    && error.code === 20
+    error instanceof Error && error.name === 'AbortError' && 'code' in error && error.code === 20
   )
 }
 
@@ -65,10 +62,17 @@ export const isAbortError = (error: any): error is DOMException & { name: 'Abort
 export const ensure = (value: unknown): Error => {
   if (value instanceof Error) return value
 
-  try {
+  if (
+    typeof value === `string` ||
+    typeof value === `number` ||
+    typeof value === `boolean` ||
+    typeof value === `bigint` ||
+    typeof value === `symbol` ||
+    value === null ||
+    value === undefined
+  ) {
     return new Error(String(value))
-  } catch {
-    // Handle cases where String() fails (e.g., objects with toString: null)
-    return new Error('[Unrepresentable value]')
   }
+
+  return new Error(Object.prototype.toString.call(value))
 }

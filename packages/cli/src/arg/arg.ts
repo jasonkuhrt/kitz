@@ -4,12 +4,10 @@ import { ParseResult, Schema as S } from 'effect'
 /**
  * Error for CLI argument parsing failures.
  */
-export interface ErrorArgParse<$message extends string> extends
-  Ts.Err.StaticError<
-    ['cli', 'arg', 'parse'],
-    { message: $message }
-  >
-{}
+export interface ErrorArgParse<$message extends string> extends Ts.Err.StaticError<
+  ['cli', 'arg', 'parse'],
+  { message: $message }
+> {}
 
 // ============================================================================
 // Analysis Result Types
@@ -134,6 +132,10 @@ export interface AnalysisSeparator {
   original: '--'
 }
 
+const hasAtLeastTwoItems = <item>(items: readonly item[]): items is [item, item, ...item[]] => {
+  return items.length >= 2
+}
+
 // ============================================================================
 // Runtime Analyzer
 // ============================================================================
@@ -178,12 +180,13 @@ export interface AnalysisSeparator {
  * ```
  */
 export function analyze<const input extends string>(input: input): Arg.Analyze<input> {
-  return analyze_(input) as Arg.Analyze<input>
+  return analyze_(input)
 }
 
 /**
  * Internal runtime analyzer implementation.
  */
+export function analyze_<const input extends string>(input: input): Arg.Analyze<input>
 export function analyze_(input: string): Analysis {
   // Separator: exactly "--"
   if (input === '--') {
@@ -246,6 +249,13 @@ export function analyze_(input: string): Analysis {
     // Cluster expansion: multi-character short flag (e.g., "-abc")
     if (name.length > 1) {
       const chars = name.split('')
+      if (!hasAtLeastTwoItems(chars)) {
+        return {
+          _tag: 'positional',
+          value: input,
+          original: input,
+        }
+      }
       const flags: AnalysisShortFlag[] = chars.map((char, index) => {
         const isLast = index === chars.length - 1
         return {
@@ -255,10 +265,17 @@ export function analyze_(input: string): Analysis {
           original: isLast && value !== null ? `-${char}=${value}` : `-${char}`,
         }
       })
+      if (!hasAtLeastTwoItems(flags)) {
+        return {
+          _tag: 'positional',
+          value: input,
+          original: input,
+        }
+      }
 
       return {
         _tag: 'short-flag-cluster',
-        flags: flags as [AnalysisShortFlag, AnalysisShortFlag, ...AnalysisShortFlag[]],
+        flags,
         original: input,
       }
     }
@@ -329,7 +346,13 @@ class ArgSeparator extends S.TaggedClass<ArgSeparator>()('separator', {
   original: S.Literal('--'),
 }) {}
 
-const _ArgSchema = S.Union(ArgLongFlag, ArgShortFlag, ArgShortFlagCluster, ArgPositional, ArgSeparator)
+const _ArgSchema = S.Union(
+  ArgLongFlag,
+  ArgShortFlag,
+  ArgShortFlagCluster,
+  ArgPositional,
+  ArgSeparator,
+)
 
 const ArgNamespace = {
   /**
@@ -343,74 +366,70 @@ const ArgNamespace = {
    * })
    * ```
    */
-  String: S.transformOrFail(
-    S.String,
-    _ArgSchema,
-    {
-      strict: true,
-      decode: (input, _options, _ast) => {
-        // Use runtime analyzer to parse the argument
-        const analysis = analyze_(input)
+  String: S.transformOrFail(S.String, _ArgSchema, {
+    strict: true,
+    decode: (input, _options, _ast) => {
+      // Use runtime analyzer to parse the argument
+      const analysis = analyze_(input)
 
-        // Transform analysis result into Arg format
-        switch (analysis._tag) {
-          case 'long-flag':
-            return ParseResult.succeed(
-              new ArgLongFlag({
-                name: analysis.name,
-                negated: analysis.negated,
-                value: analysis.value,
-                original: analysis.original,
-              }),
-            )
+      // Transform analysis result into Arg format
+      switch (analysis._tag) {
+        case 'long-flag':
+          return ParseResult.succeed(
+            new ArgLongFlag({
+              name: analysis.name,
+              negated: analysis.negated,
+              value: analysis.value,
+              original: analysis.original,
+            }),
+          )
 
-          case 'short-flag':
-            return ParseResult.succeed(
-              new ArgShortFlag({
-                name: analysis.name,
-                value: analysis.value,
-                original: analysis.original,
-              }),
-            )
+        case 'short-flag':
+          return ParseResult.succeed(
+            new ArgShortFlag({
+              name: analysis.name,
+              value: analysis.value,
+              original: analysis.original,
+            }),
+          )
 
-          case 'short-flag-cluster':
-            return ParseResult.succeed(
-              new ArgShortFlagCluster({
-                flags: analysis.flags.map(
-                  (f) =>
-                    new ArgShortFlag({
-                      name: f.name,
-                      value: f.value,
-                      original: f.original,
-                    }),
-                ),
-                original: analysis.original,
-              }),
-            )
+        case 'short-flag-cluster':
+          return ParseResult.succeed(
+            new ArgShortFlagCluster({
+              flags: analysis.flags.map(
+                (f) =>
+                  new ArgShortFlag({
+                    name: f.name,
+                    value: f.value,
+                    original: f.original,
+                  }),
+              ),
+              original: analysis.original,
+            }),
+          )
 
-          case 'positional':
-            return ParseResult.succeed(
-              new ArgPositional({
-                value: analysis.value,
-                original: analysis.original,
-              }),
-            )
+        case 'positional':
+          return ParseResult.succeed(
+            new ArgPositional({
+              value: analysis.value,
+              original: analysis.original,
+            }),
+          )
 
-          case 'separator':
-            return ParseResult.succeed(
-              new ArgSeparator({
-                value: null,
-                original: analysis.original,
-              }),
-            )
-        }
-      },
-      encode: (decoded) => {
-        // Encode back to original string
-        return ParseResult.succeed(decoded.original)
-      },
+        case 'separator':
+          return ParseResult.succeed(
+            new ArgSeparator({
+              value: null,
+              original: analysis.original,
+            }),
+          )
+      }
     },
-  ) as any,
+    encode: (decoded) => {
+      // Encode back to original string
+      return ParseResult.succeed(decoded.original)
+    },
+  }),
 
   /**
    * Create a typed Arg from a literal string with compile-time analysis.
@@ -445,8 +464,7 @@ const ArgNamespace = {
    * ```
    */
   fromString: (<const $input extends string>(
-    $input: Arg.Analyze<$input> extends string ? ErrorArgParse<Arg.Analyze<$input>>
-      : $input,
+    $input: Arg.Analyze<$input> extends string ? ErrorArgParse<Arg.Analyze<$input>> : $input,
   ) => {
     return S.decodeSync(ArgNamespace.String)($input as any) as any
   }) as any,
@@ -514,14 +532,16 @@ export namespace Arg {
    */
   type CamelCase<$S extends string> = $S extends `${infer __first__}-${infer __rest__}`
     ? `${__first__}${Capitalize<CamelCase<__rest__>>}`
-    : $S extends `${infer __first__}_${infer __rest__}` ? `${__first__}${Capitalize<CamelCase<__rest__>>}`
-    : $S
+    : $S extends `${infer __first__}_${infer __rest__}`
+      ? `${__first__}${Capitalize<CamelCase<__rest__>>}`
+      : $S
 
   /**
    * Split a string on "=" and extract name and value.
    * Returns tuple: [name, value | null]
    */
-  type SplitOnEquals<$S extends string> = $S extends `${infer __name__}=${infer __value__}` ? [__name__, __value__]
+  type SplitOnEquals<$S extends string> = $S extends `${infer __name__}=${infer __value__}`
+    ? [__name__, __value__]
     : [$S, null]
 
   /**
@@ -547,8 +567,9 @@ export namespace Arg {
    * ```
    */
   type DetectNegation<$Name extends string> = $Name extends `no${infer __rest__}`
-    ? FirstChar<__rest__> extends Uppercase<FirstChar<__rest__>> ? { negated: true; baseName: Uncapitalize<__rest__> }
-    : { negated: false; baseName: $Name }
+    ? FirstChar<__rest__> extends Uppercase<FirstChar<__rest__>>
+      ? { negated: true; baseName: Uncapitalize<__rest__> }
+      : { negated: false; baseName: $Name }
     : { negated: false; baseName: $Name }
 
   /**
@@ -591,17 +612,18 @@ export namespace Arg {
     $chars extends string[],
     $value extends string | null,
     $original extends string,
-  > = $chars extends [infer __first__ extends string, ...infer __rest__ extends string[]] ? __rest__['length'] extends 0 // Last flag - attach value
+  > = $chars extends [infer __first__ extends string, ...infer __rest__ extends string[]]
+    ? __rest__['length'] extends 0 // Last flag - attach value
       ? [
-        AnalysisShortFlag<
-          $value extends null ? __first__ : `${__first__}=${$value}`,
-          $value extends null ? `-${__first__}` : `-${__first__}=${$value}`
-        >,
-      ]
-    : [
-      AnalysisShortFlag<__first__, `-${__first__}`>,
-      ...MapToShortFlags<__rest__, $value, $original>,
-    ]
+          AnalysisShortFlag<
+            $value extends null ? __first__ : `${__first__}=${$value}`,
+            $value extends null ? `-${__first__}` : `-${__first__}=${$value}`
+          >,
+        ]
+      : [
+          AnalysisShortFlag<__first__, `-${__first__}`>,
+          ...MapToShortFlags<__rest__, $value, $original>,
+        ]
     : []
 
   // ==========================================================================
@@ -667,7 +689,11 @@ export namespace Arg {
     $original extends string = $stripped,
   > = {
     _tag: 'short-flag-cluster'
-    flags: MapToShortFlags<SplitChars<SplitOnEquals<$stripped>[0]>, SplitOnEquals<$stripped>[1], $original>
+    flags: MapToShortFlags<
+      SplitChars<SplitOnEquals<$stripped>[0]>,
+      SplitOnEquals<$stripped>[1],
+      $original
+    >
     original: $original
   }
 
@@ -724,19 +750,25 @@ export namespace Arg {
    */
   export type Analyze<$S extends string> =
     // Non-literal string fallback
-    string extends $S ? Analysis
-      // Separator: exactly "--"
-      : $S extends '--' ? AnalysisSeparator
-      // Long flag: starts with "--" (but not "---")
-      : $S extends `--${infer __rest__}` ? __rest__ extends `-${string}` ? AnalysisPositional<$S> // Malformed: "---something"
-        : AnalysisLongFlag<__rest__, $S>
-      // Short flag or cluster: starts with "-" (but not "--")
-      : $S extends `-${infer __rest__}` ? __rest__ extends `-${string}` ? AnalysisPositional<$S> // Malformed: "---something"
-        : SplitOnEquals<__rest__>[0] extends `${string}${string}${infer ___}` // Multi-char (2+)
-          ? AnalysisShortFlagCluster<__rest__, $S>
-        : AnalysisShortFlag<__rest__, $S>
-      // Positional: doesn't match any flag pattern
-      : AnalysisPositional<$S>
+    string extends $S
+      ? Analysis
+      : // Separator: exactly "--"
+        $S extends '--'
+        ? AnalysisSeparator
+        : // Long flag: starts with "--" (but not "---")
+          $S extends `--${infer __rest__}`
+          ? __rest__ extends `-${string}`
+            ? AnalysisPositional<$S> // Malformed: "---something"
+            : AnalysisLongFlag<__rest__, $S>
+          : // Short flag or cluster: starts with "-" (but not "--")
+            $S extends `-${infer __rest__}`
+            ? __rest__ extends `-${string}`
+              ? AnalysisPositional<$S> // Malformed: "---something"
+              : SplitOnEquals<__rest__>[0] extends `${string}${string}${infer ___}` // Multi-char (2+)
+                ? AnalysisShortFlagCluster<__rest__, $S>
+                : AnalysisShortFlag<__rest__, $S>
+            : // Positional: doesn't match any flag pattern
+              AnalysisPositional<$S>
 
   // ==========================================================================
   // Utility Type Exports
@@ -770,5 +802,6 @@ export namespace Arg {
   /**
    * Check if argument would be analyzed as any kind of flag (long or short).
    */
-  export type IsFlag<$S extends string> = AnalyzeTag<$S> extends 'long-flag' | 'short-flag' ? true : false
+  export type IsFlag<$S extends string> =
+    AnalyzeTag<$S> extends 'long-flag' | 'short-flag' ? true : false
 }

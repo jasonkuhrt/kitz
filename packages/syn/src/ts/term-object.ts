@@ -12,7 +12,7 @@
  */
 
 import { Obj, Str } from '@kitz/core'
-import * as TSDoc from '../tsdoc/_.js'
+import { Tsdoc as TSDoc } from '../tsdoc/_.js'
 import * as TS from './ts.js'
 
 // ============================================================================
@@ -103,7 +103,9 @@ export type TermObjectLike = TermObject | DirectiveTermObject | TermFieldTuple[]
 /**
  * Directive-like object with optional fields constraint.
  */
-export type DirectiveTermObjectLike<$Fields extends null | TermObject | DirectiveTermObject = null> = {
+export type DirectiveTermObjectLike<
+  $Fields extends null | TermObject | DirectiveTermObject = null,
+> = {
   $spread?: string[]
   $literal?: string
 } & ($Fields extends null ? { $fields?: TermObject | DirectiveTermObject } : { $fields: $Fields })
@@ -114,7 +116,9 @@ export type DirectiveTermObjectLike<$Fields extends null | TermObject | Directiv
 
 const isDirectiveTermObject = (value: unknown): value is DirectiveTermObject => {
   if (typeof value !== `object` || value === null) return false
-  return Object.keys(value).some(key => key === `$spread` || key === `$fields` || key === `$fieldsMerge`)
+  return Object.keys(value).some(
+    (key) => key === `$spread` || key === `$fields` || key === `$fieldsMerge`,
+  )
 }
 
 const isFieldPrimitive = (value: unknown): value is TermPrimitive => {
@@ -187,12 +191,12 @@ export const objectField$ = (input: {
  * ```
  */
 export const directiveTermObject = (objectWith: DirectiveTermObject): string => {
-  const spreads = (objectWith.$spread ?? []).map(spread => `...${spread},`)
+  const spreads = (objectWith.$spread ?? []).map((spread) => `...${spread},`)
   return TS.block(
-    spreads.join(`\n`)
-      + `\n`
-      + termObjectFields(objectWith.$fields ?? {})
-      + (objectWith.$literal ? `\n${objectWith.$literal}` : ``),
+    spreads.join(`\n`) +
+      `\n` +
+      termObjectFields(objectWith.$fields ?? {}) +
+      (objectWith.$literal ? `\n${objectWith.$literal}` : ``),
   )
 }
 
@@ -246,9 +250,9 @@ export const termObjectFields = (object: TermObject | DirectiveTermObject): stri
       if (isDirectiveField(value)) {
         return [key, value]
       }
-      // dprint-ignore
+      // oxfmt-ignore
       if (Str.is(value) || typeof value === `number` || typeof value === `boolean`) return [key, {$VALUE: String(value), $OPTIONAL: false, $TS_DOC: null}]
-      return [key, { $VALUE: termObject(value as any), $OPTIONAL: false, $TS_DOC: null }]
+      return [key, { $VALUE: termObject(value), $OPTIONAL: false, $TS_DOC: null }]
     })
     .map(([key, field]: [string, DirectiveField]) => {
       return fromDirectiveField(key, field)
@@ -311,8 +315,9 @@ export const termList = (value: string[]) => `[${value.join(`, `)}]`
  * // '/**\n * User name\n *\/\nname: string,'
  * ```
  */
-export const termFieldFromTuple = (tuple: readonly [k: string, v: string | null, tsDoc?: string | null]) =>
-  termField(tuple[0], tuple[1], { tsDoc: tuple[2] ?? null })
+export const termFieldFromTuple = (
+  tuple: readonly [k: string, v: string | null, tsDoc?: string | null],
+) => termField(tuple[0], tuple[1], { tsDoc: tuple[2] ?? null })
 
 /**
  * Render a TypeScript object field.

@@ -5,7 +5,7 @@
  * These utilities handle the conversions between these different path formats.
  */
 
-import { relative } from 'node:path'
+import { relative } from 'path'
 
 /**
  * Create a build path to source path transformer.
@@ -52,9 +52,7 @@ export const createBuildToSourcePath = (config?: {
     const sourceDirRel = './' + relative(config.projectRoot, config.rootDir)
 
     return (buildPath: string): string => {
-      return buildPath
-        .replace(buildDirRel, sourceDirRel)
-        .replace(/\.js$/, '.ts')
+      return buildPath.replace(buildDirRel, sourceDirRel).replace(/\.js$/, '.ts')
     }
   }
 

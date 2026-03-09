@@ -37,36 +37,46 @@ type NamedColor = keyof typeof namedColors
  */
 type IsHexFormat<$str extends string> =
   // With # prefix
-  $str extends `#${string}` ? true
-    // Without # prefix - check for exactly 6 characters
-    : $str extends
-      `${infer __c1__}${infer __c2__}${infer __c3__}${infer __c4__}${infer __c5__}${infer __c6__}${infer __rest__}`
-      ? __rest__ extends `` ? true : false
-    : false
+  $str extends `#${string}`
+    ? true
+    : // Without # prefix - check for exactly 6 characters
+      $str extends `${infer __c1__}${infer __c2__}${infer __c3__}${infer __c4__}${infer __c5__}${infer __c6__}${infer __rest__}`
+      ? __rest__ extends ``
+        ? true
+        : false
+      : false
 
 /**
  * Check if a string is an RGB space-separated format.
  * Example: 'rgb 255 87 51'
  */
-type IsRgbSpaceFormat<$str extends string> = $str extends `rgb ${number} ${number} ${number}` ? true : false
+type IsRgbSpaceFormat<$str extends string> = $str extends `rgb ${number} ${number} ${number}`
+  ? true
+  : false
 
 /**
  * Check if a string is an RGB CSS function format.
  * Example: 'rgb(255, 87, 51)'
  */
-type IsRgbFuncFormat<$str extends string> = $str extends `rgb(${number}, ${number}, ${number})` ? true : false
+type IsRgbFuncFormat<$str extends string> = $str extends `rgb(${number}, ${number}, ${number})`
+  ? true
+  : false
 
 /**
  * Check if a string is an HSL space-separated format.
  * Example: 'hsl 120 100 50'
  */
-type IsHslSpaceFormat<$str extends string> = $str extends `hsl ${number} ${number} ${number}` ? true : false
+type IsHslSpaceFormat<$str extends string> = $str extends `hsl ${number} ${number} ${number}`
+  ? true
+  : false
 
 /**
  * Check if a string is an HSL CSS function format.
  * Example: 'hsl(120, 100, 50)'
  */
-type IsHslFuncFormat<$str extends string> = $str extends `hsl(${number}, ${number}, ${number})` ? true : false
+type IsHslFuncFormat<$str extends string> = $str extends `hsl(${number}, ${number}, ${number})`
+  ? true
+  : false
 
 /**
  * Check if a string is a named color.
@@ -104,16 +114,17 @@ export type ColorFormat =
  * ```
  */
 export type DetectFormat<$input> = $input extends string
-  // dprint-ignore
-  ? IsHexFormat<$input> extends true      ? 'hex'
+  ? // oxfmt-ignore
+    IsHexFormat<$input> extends true      ? 'hex'
     : IsRgbSpaceFormat<$input> extends true ? 'rgb-space'
     : IsRgbFuncFormat<$input> extends true  ? 'rgb-func'
     : IsHslSpaceFormat<$input> extends true ? 'hsl-space'
     : IsHslFuncFormat<$input> extends true  ? 'hsl-func'
     : IsNamedColor<$input> extends true     ? 'named'
     : 'unknown'
-  : $input extends { r: number; g: number; b: number } ? 'object'
-  : 'unknown'
+  : $input extends { r: number; g: number; b: number }
+    ? 'object'
+    : 'unknown'
 
 /**
  * Check if a color input is valid at the type level.

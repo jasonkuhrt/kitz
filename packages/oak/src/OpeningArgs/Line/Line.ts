@@ -1,4 +1,5 @@
 import { Str } from '@kitz/core'
+import { Either } from 'effect'
 import { Errors } from '../../Errors/_.js'
 import { stripeNegatePrefixLoose } from '../../helpers.js'
 import type { Index } from '../../lib/prelude.js'
@@ -45,29 +46,30 @@ export const parse = (rawLineInputs: RawInputs, parameters: Parameter[]): Parsed
 
   const reports: Index<ArgumentReport> = {}
 
-  let currentReport: null | ArgumentReport = null
+  let currentReport: null | { report: ArgumentReport; pending: boolean } = null
 
-  const finishPendingReport = (pendingReport: ArgumentReport) => {
-    if (pendingReport.value === PENDING_VALUE) {
+  const finishPendingReport = (pendingReport: { report: ArgumentReport; pending: boolean }) => {
+    if (pendingReport.pending) {
       /**
        * We have gotten something like this: --foo --bar.
        * We are parsing "foo". Its spec could be a union containing a boolean or just a straight up boolean, or something else.
        * If union with boolean or boolean then we interpret foo argument as being a boolean.
        * Otherwise it is an error.
        */
-      if (isOrHasType(pendingReport.parameter, `TypeBoolean`)) {
-        pendingReport.value = {
+      if (isOrHasType(pendingReport.report.parameter, `TypeBoolean`)) {
+        pendingReport.report.value = {
           value: true,
           _tag: `boolean`,
-          negated: isNegated(Str.Case.camel(pendingReport.source.name)),
+          negated: isNegated(Str.Case.camel(pendingReport.report.source.name)),
         }
       } else {
-        pendingReport.errors.push(
+        pendingReport.report.errors.push(
           new Errors.ErrorMissingArgument({
-            context: { parameter: pendingReport.parameter },
+            context: { parameter: pendingReport.report.parameter },
           }),
         )
       }
+      pendingReport.pending = false
     }
   }
 
@@ -107,40 +109,42 @@ export const parse = (rawLineInputs: RawInputs, parameters: Parameter[]): Parsed
       }
 
       currentReport = {
-        parameter,
-        errors: [],
-        value: PENDING_VALUE,
-        source: {
-          _tag: `line`,
-          name: flagNameNoDashPrefix,
+        pending: true,
+        report: {
+          parameter,
+          errors: [],
+          value: { _tag: `undefined`, value: undefined },
+          source: {
+            _tag: `line`,
+            name: flagNameNoDashPrefix,
+          },
         },
       }
 
-      reports[parameter.name.canonical] = currentReport
+      reports[parameter.name.canonical] = currentReport.report
 
       continue
     } else if (currentReport) {
-      try {
-        currentReport.value = parseSerializedValue(
-          currentReport.parameter.name.canonical,
-          rawLineInput,
-          currentReport.parameter,
-        )
-      } catch (error) {
-        // Validation errors during deserialization are captured here and wrapped in ErrorInvalidArgument
-        const errorMessage = error instanceof Error
-          ? error.message.replace(/^Deserialization failed: /, ``)
-          : String(error)
-        currentReport.errors.push(
+      const parsed = parseSerializedValue(
+        currentReport.report.parameter.name.canonical,
+        rawLineInput,
+        currentReport.report.parameter,
+      )
+      if (Either.isRight(parsed)) {
+        currentReport.report.value = parsed.right
+      } else {
+        const errorMessage = parsed.left.message.replace(/^Deserialization failed: /, ``)
+        currentReport.report.errors.push(
           new Errors.ErrorInvalidArgument({
             context: {
-              spec: currentReport.parameter,
+              spec: currentReport.report.parameter,
               validationErrors: [errorMessage],
               value: rawLineInput,
             },
           }),
         )
       }
+      currentReport.pending = false
       currentReport = null
       continue
     } else {
@@ -163,10 +167,9 @@ const isFlag = (lineInput: string) => isLongFlag(lineInput) || isShortFlag(lineI
 
 const isLongFlag = (lineInput: string) => lineInput.trim().startsWith(`--`)
 
-const isShortFlag = (lineInput: string) => lineInput.trim().startsWith(`-`) && !lineInput.trim().startsWith(`--`)
+const isShortFlag = (lineInput: string) =>
+  lineInput.trim().startsWith(`-`) && !lineInput.trim().startsWith(`--`)
 
 const stripeShortFlagPrefixUnsafe = (lineInput: string) => lineInput.trim().slice(1)
 
 const addShortFlagPrefix = (lineInput: string) => `-${lineInput}`
-
-const PENDING_VALUE = `__PENDING__` as any

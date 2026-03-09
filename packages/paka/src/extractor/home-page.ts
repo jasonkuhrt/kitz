@@ -1,6 +1,12 @@
 import type { Content } from 'mdast'
 import { BodySection, Feature, Home } from '../schema.js'
-import { extractH1Sections, extractH2Subsections, parseMarkdown, toMarkdown, toPlainText } from './markdown.js'
+import {
+  extractH1Sections,
+  extractH2Subsections,
+  parseMarkdown,
+  toMarkdown,
+  toPlainText,
+} from './markdown.js'
 
 /**
  * Parse home page markdown into structured Home object.
@@ -19,7 +25,9 @@ export const parseHomePage = (markdown: string, filePath: string): Home => {
 
   // Parse each section
   const hero = sections.has('Hero') ? parseHeroSection(sections.get('Hero')!, filePath) : undefined
-  const highlights = sections.has('Highlights') ? parseHighlightsSection(sections.get('Highlights')!) : undefined
+  const highlights = sections.has('Highlights')
+    ? parseHighlightsSection(sections.get('Highlights')!)
+    : undefined
   const body = sections.has('Body') ? parseBodySection(sections.get('Body')!) : undefined
 
   return Home.make({ hero, highlights, body })
@@ -36,18 +44,18 @@ const validateSections = (sections: Map<string, Content[]>, filePath: string): v
   const unknownH1s = foundH1s.filter((h1) => !allowedH1s.includes(h1))
   if (unknownH1s.length > 0) {
     throw new Error(
-      `Invalid heading${unknownH1s.length > 1 ? 's' : ''} in file '${filePath}':\n`
-        + unknownH1s.map((h) => `  # ${h}`).join('\n')
-        + '\n'
-        + `Allowed top-level headings: ${allowedH1s.map((h) => `# ${h}`).join(', ')}`,
+      `Invalid heading${unknownH1s.length > 1 ? 's' : ''} in file '${filePath}':\n` +
+        unknownH1s.map((h) => `  # ${h}`).join('\n') +
+        '\n' +
+        `Allowed top-level headings: ${allowedH1s.map((h) => `# ${h}`).join(', ')}`,
     )
   }
 
   // Check for at least one section
   if (foundH1s.length === 0) {
     throw new Error(
-      `No valid sections found in file '${filePath}'\n`
-        + `At least one of the following sections is required: ${allowedH1s.map((h) => `# ${h}`).join(', ')}`,
+      `No valid sections found in file '${filePath}'\n` +
+        `At least one of the following sections is required: ${allowedH1s.map((h) => `# ${h}`).join(', ')}`,
     )
   }
 }
@@ -65,10 +73,10 @@ const parseHeroSection = (sectionContent: Content[], filePath: string): Home['he
 
   if (invalidH2s.length > 0) {
     throw new Error(
-      `Invalid subheading${invalidH2s.length > 1 ? 's' : ''} under '# Hero' in file '${filePath}':\n`
-        + invalidH2s.map((h) => `  ## ${h}`).join('\n')
-        + '\n'
-        + `Allowed subheadings: ${allowedH2s.map((h) => `## ${h}`).join(', ')}`,
+      `Invalid subheading${invalidH2s.length > 1 ? 's' : ''} under '# Hero' in file '${filePath}':\n` +
+        invalidH2s.map((h) => `  ## ${h}`).join('\n') +
+        '\n' +
+        `Allowed subheadings: ${allowedH2s.map((h) => `## ${h}`).join(', ')}`,
     )
   }
 
@@ -94,7 +102,7 @@ const parseHighlightsSection = (sectionContent: Content[]): Feature[] => {
     Feature.make({
       title: heading,
       body: toMarkdown(content),
-    })
+    }),
   )
 }
 

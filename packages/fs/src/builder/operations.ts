@@ -19,7 +19,7 @@ export const executeOperations = (
   builder: Builder,
   operations: Operation[],
 ): Effect.Effect<void, FSError, FS> =>
-  Effect.gen(function*() {
+  Effect.gen(function* () {
     for (const op of operations) {
       yield* executeOperation(builder, op)
     }
@@ -28,11 +28,8 @@ export const executeOperations = (
 /**
  * Execute a single operation.
  */
-const executeOperation = (
-  builder: Builder,
-  op: Operation,
-): Effect.Effect<void, FSError, FS> =>
-  Effect.gen(function*() {
+const executeOperation = (builder: Builder, op: Operation): Effect.Effect<void, FSError, FS> =>
+  Effect.gen(function* () {
     switch (op.type) {
       case 'file': {
         const absPath = Path.join(builder.base, op.path)
@@ -63,14 +60,14 @@ const executeOperation = (
         break
       }
       case 'move-file': {
-        const fromPath = Path.join(builder.base, op.from) as Path.AbsFile
-        const toPath = Path.join(builder.base, op.to) as Path.AbsFile
+        const fromPath = Path.join(builder.base, op.from)
+        const toPath = Path.join(builder.base, op.to)
         yield* rename(fromPath, toPath)
         break
       }
       case 'move-dir': {
-        const fromPath = Path.join(builder.base, op.from) as Path.AbsDir
-        const toPath = Path.join(builder.base, op.to) as Path.AbsDir
+        const fromPath = Path.join(builder.base, op.from)
+        const toPath = Path.join(builder.base, op.to)
         yield* rename(fromPath, toPath)
         break
       }

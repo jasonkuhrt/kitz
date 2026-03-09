@@ -63,7 +63,8 @@ export const raw = (code: string): Raw => ({ __raw: true, code })
  *
  * @internal
  */
-export const isRaw = (value: unknown): value is Raw => typeof value === 'object' && value !== null && '__raw' in value
+export const isRaw = (value: unknown): value is Raw =>
+  typeof value === 'object' && value !== null && '__raw' in value
 
 // ============================================================================
 // Builder
@@ -132,7 +133,12 @@ export interface Builder {
   /**
    * Add a typed const declaration.
    */
-  constTyped(name: string, type: string, value: string | TermObject, options?: { export?: boolean }): void
+  constTyped(
+    name: string,
+    type: string,
+    value: string | TermObject,
+    options?: { export?: boolean },
+  ): void
 
   /**
    * Add a function declaration.
@@ -142,7 +148,11 @@ export interface Builder {
   /**
    * Add a namespace declaration with nested builder.
    */
-  namespace(name: string, callback: (builder: Builder) => void, options?: { export?: boolean }): void
+  namespace(
+    name: string,
+    callback: (builder: Builder) => void,
+    options?: { export?: boolean },
+  ): void
 
   /**
    * Build and return the final code string.
@@ -167,7 +177,7 @@ export const builder = Bldr.fromInterface<Builder>()(dataEmpty, (data) => ({
 
   templateTag: (strings, ...values) => {
     const result = strings.reduce((acc, str, i) => {
-      return acc + str + (i < values.length ? String(expand(values[i]!)) : '')
+      return acc + str + (i < values.length ? String(expand(values[i])) : '')
     }, '')
     data.lines.push(result)
   },
@@ -199,7 +209,9 @@ export const builder = Bldr.fromInterface<Builder>()(dataEmpty, (data) => ({
   namespace: (name, callback, options) => {
     const nested = builder()
     callback(nested)
-    data.lines.push(TS.namespace(name, nested.build(), options?.export ? { export: options.export } : undefined))
+    data.lines.push(
+      TS.namespace(name, nested.build(), options?.export ? { export: options.export } : undefined),
+    )
   },
 
   build: () => data.lines.join('\n'),
@@ -230,7 +242,7 @@ export const builder = Bldr.fromInterface<Builder>()(dataEmpty, (data) => ({
  */
 export const template = (strings: TemplateStringsArray, ...values: unknown[]): string => {
   return strings.reduce((acc, str, i) => {
-    return acc + str + (i < values.length ? expand(values[i]!) : '')
+    return acc + str + (i < values.length ? expand(values[i]) : '')
   }, '')
 }
 
@@ -261,7 +273,7 @@ export const template = (strings: TemplateStringsArray, ...values: unknown[]): s
  */
 export const factory = <$Args extends unknown[]>(
   fn: (builder: Builder, ...args: $Args) => void,
-): (...args: $Args) => string => {
+): ((...args: $Args) => string) => {
   return (...args: $Args) => {
     const b = builder()
     fn(b, ...args)
@@ -281,7 +293,12 @@ export const factory = <$Args extends unknown[]>(
 export const expand = (value: unknown): string => {
   if (typeof value === 'string') return value
   if (isRaw(value)) return value.code
-  if (typeof value === 'object' && value !== null && 'build' in value && typeof value.build === 'function') {
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'build' in value &&
+    typeof value.build === 'function'
+  ) {
     return (value as Builder).build()
   }
   // Assume it's a TermObject

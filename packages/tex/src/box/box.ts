@@ -190,11 +190,11 @@ export type BorderEdgesInput =
   | Clockhand.Value<string | CharStyle>
   | WithHooks<PropBorder.BorderEdges, 'border.edges'>
   | {
-    [K in keyof PropBorder.BorderEdges]?:
-      | string
-      | CharStyle
-      | WithHook<string | undefined, StyleCategoryMap[`border.edges.${K & string}`]>
-  }
+      [K in keyof PropBorder.BorderEdges]?:
+        | string
+        | CharStyle
+        | WithHook<string | undefined, StyleCategoryMap[`border.edges.${K & string}`]>
+    }
 
 /**
  * Border corner input supporting Clockhand notation, CharStyle, and hook functions.
@@ -213,11 +213,11 @@ export type BorderCornersInput =
   | Clockhand.Value<string | CharStyle>
   | WithHooks<PropBorder.BorderCorners, 'border.corners'>
   | {
-    [K in keyof PropBorder.BorderCorners]?:
-      | string
-      | CharStyle
-      | WithHook<string | undefined, StyleCategoryMap[`border.corners.${K & string}`]>
-  }
+      [K in keyof PropBorder.BorderCorners]?:
+        | string
+        | CharStyle
+        | WithHook<string | undefined, StyleCategoryMap[`border.corners.${K & string}`]>
+    }
 
 /**
  * Border character configuration input with nested edges/corners.
@@ -264,10 +264,7 @@ export type BorderInput = {
 export type BoxContent = string | StyledText | readonly (string | StyledText | Box)[]
 
 // Schema for color input (string like 'red', '#FF0000', or rgb object) - validation only, no transform
-const ColorInputSchema = S.Union(
-  S.String,
-  S.Struct({ r: S.Number, g: S.Number, b: S.Number }),
-)
+const ColorInputSchema = S.Union(S.String, S.Struct({ r: S.Number, g: S.Number, b: S.Number }))
 
 // Schema for ColorTargets (foreground, background, underlineColor)
 const ColorTargetsSchema = S.Struct({
@@ -295,11 +292,13 @@ const StyledTextSchema = S.Struct({
 const BoxContentSchema = S.Union(
   S.String,
   StyledTextSchema,
-  S.Array(S.Union(
-    S.String,
-    StyledTextSchema,
-    S.suspend((): S.Schema<Box> => Box as any),
-  )),
+  S.Array(
+    S.Union(
+      S.String,
+      StyledTextSchema,
+      S.suspend((): S.Schema<Box> => Box as any),
+    ),
+  ),
 )
 
 /**
@@ -393,6 +392,55 @@ export class Box extends S.Class<Box>('Box')({
     return render(this)
   }
 
+  clone(): Box {
+    const box = Box.make({
+      content: Array.isArray(this.content) ? [...this.content] : this.content,
+      orientation: this.orientation,
+      padding: this.padding,
+      border: this.border,
+      margin: this.margin,
+      span: this.span,
+      spanRange: this.spanRange,
+      gap: this.gap,
+    })
+
+    for (const key of ['mainStart', 'mainEnd', 'crossStart', 'crossEnd'] as const) {
+      const paddingHooks = this.paddingHooks[key]
+      if (paddingHooks !== undefined) box.paddingHooks[key] = [...paddingHooks]
+
+      const marginHooks = this.marginHooks[key]
+      if (marginHooks !== undefined) box.marginHooks[key] = [...marginHooks]
+    }
+
+    for (const key of ['top', 'right', 'bottom', 'left'] as const) {
+      const edgeHooks = this.borderEdgeHooks[key]
+      if (edgeHooks !== undefined) box.borderEdgeHooks[key] = [...edgeHooks]
+
+      const edgeStyle = this.borderEdgeStyles[key]
+      if (edgeStyle !== undefined) {
+        box.borderEdgeStyles[key] =
+          edgeStyle.color === undefined
+            ? { ...edgeStyle }
+            : { ...edgeStyle, color: { ...edgeStyle.color } }
+      }
+    }
+
+    for (const key of ['topLeft', 'topRight', 'bottomRight', 'bottomLeft'] as const) {
+      const cornerHooks = this.borderCornerHooks[key]
+      if (cornerHooks !== undefined) box.borderCornerHooks[key] = [...cornerHooks]
+
+      const cornerStyle = this.borderCornerStyles[key]
+      if (cornerStyle !== undefined) {
+        box.borderCornerStyles[key] =
+          cornerStyle.color === undefined
+            ? { ...cornerStyle }
+            : { ...cornerStyle, color: { ...cornerStyle.color } }
+      }
+    }
+
+    return box
+  }
+
   //
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Instance Methods (Mutable)
   //
@@ -471,7 +519,7 @@ export class Box extends S.Class<Box>('Box')({
         if (typeof value === 'function') {
           // Store hook
           if (!this.paddingHooks[key]) this.paddingHooks[key] = []
-          this.paddingHooks[key]!.push(value)
+          this.paddingHooks[key].push(value)
         } else {
           // Store static value
           staticValues[key] = value
@@ -518,7 +566,7 @@ export class Box extends S.Class<Box>('Box')({
         if (typeof value === 'function') {
           // Store hook
           if (!this.marginHooks[key]) this.marginHooks[key] = []
-          this.marginHooks[key]!.push(value)
+          this.marginHooks[key].push(value)
         } else {
           // Store static value
           staticValues[key] = value
@@ -601,7 +649,7 @@ export class Box extends S.Class<Box>('Box')({
             if (typeof value === 'function') {
               // Store hook
               if (!this.borderEdgeHooks[key]) this.borderEdgeHooks[key] = []
-              this.borderEdgeHooks[key]!.push(value)
+              this.borderEdgeHooks[key].push(value)
             } else {
               // Extract char and style (handles both string and CharStyle)
               const char = extractChar(value)
@@ -650,7 +698,7 @@ export class Box extends S.Class<Box>('Box')({
             if (typeof value === 'function') {
               // Store hook
               if (!this.borderCornerHooks[key]) this.borderCornerHooks[key] = []
-              this.borderCornerHooks[key]!.push(value)
+              this.borderCornerHooks[key].push(value)
             } else {
               // Extract char and style (handles both string and CharStyle)
               const char = extractChar(value)
@@ -790,22 +838,18 @@ export const encode = (box: Box): string => {
  * S.decodeSync(String)('...')  // Error!
  * ```
  */
-export const String = S.transformOrFail(
-  Box,
-  S.String,
-  {
-    strict: true,
-    decode: (box) => ParseResult.succeed(render(box as any)),
-    encode: (_input, _options, ast) =>
-      ParseResult.fail(
-        new ParseResult.Forbidden(
-          ast,
-          _input,
-          'Cannot encode string back to Box - decoding is one-way only',
-        ),
+export const String = S.transformOrFail(Box, S.String, {
+  strict: true,
+  decode: (box) => ParseResult.succeed(render(box as any)),
+  encode: (_input, _options, ast) =>
+    ParseResult.fail(
+      new ParseResult.Forbidden(
+        ast,
+        _input,
+        'Cannot encode string back to Box - decoding is one-way only',
       ),
-  },
-)
+    ),
+})
 
 export const makeFromEncoded = S.decodeSync(Box)
 

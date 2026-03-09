@@ -108,15 +108,13 @@ interface PatternFunction {
   }
 } // Implement .as() method
 
-;(pattern as PatternFunction).as = (
-  (srcOrRegexp: string | RegExp, flags?: Flags): Regex => {
-    if (typeof srcOrRegexp === 'string') {
-      return regex.as(srcOrRegexp, flags) as any
-    }
-    // For RegExp input, cast to Regex with manual type assertion
-    return srcOrRegexp as any
+pattern.as = ((srcOrRegexp: string | RegExp, flags?: Flags): Regex => {
+  if (typeof srcOrRegexp === 'string') {
+    return regex.as(srcOrRegexp, flags) as any
   }
-) as any
+  // For RegExp input, cast to Regex with manual type assertion
+  return srcOrRegexp as any
+}) as any
 
 /**
  * Curried version of {@link pattern} with flags first.
@@ -133,7 +131,8 @@ interface PatternFunction {
  * ```
  */
 export const patternWith =
-  <$flags extends Flags>(flags: $flags) => <$src extends string>(src: $src): Regex<$src, { flags: $flags }> => {
+  <$flags extends Flags>(flags: $flags) =>
+  <$src extends string>(src: $src): Regex<$src, { flags: $flags }> => {
     return pattern(src, flags) as any
   }
 
@@ -224,7 +223,7 @@ export const matchWith = Fn.flipCurried(matchOn)
  * Type-level guard that ensures a Regex has the global flag.
  * Returns a static error if the flag is missing.
  */
-// dprint-ignore
+// oxfmt-ignore
 export type GuardGlobalFlag<$R extends Regex> =
   $R['flags'] extends `${string}g${string}`
     ? $R
@@ -254,7 +253,10 @@ export type GuardGlobalFlag<$R extends Regex> =
  * matchAll("a1 b2", nonGlobal) // ❌ Type error: missing 'g' flag
  * ```
  */
-export const matchAll = <$pattern extends string = string, $ctx extends RegexContext = RegexContext>(
+export const matchAll = <
+  $pattern extends string = string,
+  $ctx extends RegexContext = RegexContext,
+>(
   string: string,
   pattern: GuardGlobalFlag<Regex<$pattern, $ctx>>,
 ): IterableIterator<RegExpExecArray> => {
@@ -321,9 +323,11 @@ export const isMatchWith = Fn.flipCurried(isMatchOn)
  *
  * @category Predicates
  */
-export const isntMatch = (pattern: PatternInput) => (value: string): boolean => {
-  return !isMatch(value, pattern)
-}
+export const isntMatch =
+  (pattern: PatternInput) =>
+  (value: string): boolean => {
+    return !isMatch(value, pattern)
+  }
 
 /**
  * Curried version of {@link isntMatch} with value first.
@@ -385,9 +389,11 @@ export const isMatchAnyWith = Fn.flipCurried(isMatchAnyOn)
  *
  * @category Predicates
  */
-export const isNotMatchAny = (patternOrPatterns: PatternsInput) => (value: string): boolean => {
-  return !isMatchAny(value, patternOrPatterns)
-}
+export const isNotMatchAny =
+  (patternOrPatterns: PatternsInput) =>
+  (value: string): boolean => {
+    return !isMatchAny(value, patternOrPatterns)
+  }
 
 /**
  * Curried version of {@link isNotMatchAny} with value first.

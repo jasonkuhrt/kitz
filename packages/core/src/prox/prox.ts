@@ -3,7 +3,9 @@ export interface GetProxyOptions {
 }
 
 export const createCachedGetProxy = <type, options extends GetProxyOptions>(
-  createValue: (propertyName: options['symbols'] extends true ? symbol | string : string) => Function,
+  createValue: (
+    propertyName: options['symbols'] extends true ? symbol | string : string,
+  ) => Function,
   options?: options,
 ): type => {
   const cache = new Map<symbol | string, any>()

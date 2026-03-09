@@ -1,3 +1,4 @@
+/* oxlint-disable typescript-eslint(no-unnecessary-type-assertion) -- branded conditional path return types require explicit assertions; oxlint misidentifies them as redundant. */
 import { Match } from 'effect'
 import type { $Dir } from '../$Dir/_.js'
 import type { $File } from '../$File/_.js'
@@ -9,9 +10,7 @@ import { RelFile } from '../RelFile/_.js'
 /**
  * Type-level toDir operation.
  */
-export type toDir<F extends $File> = F extends AbsFile ? AbsDir
-  : F extends RelFile ? RelDir
-  : $Dir
+export type toDir<F extends $File> = F extends AbsFile ? AbsDir : F extends RelFile ? RelDir : $Dir
 
 /**
  * Drop the file from a file location, returning just the parent directory location.

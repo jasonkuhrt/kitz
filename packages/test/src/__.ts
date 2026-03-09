@@ -3,7 +3,7 @@
  *
  * @category Assertions
  */
-export * as Matchers from './matchers/__.js'
+export { Matchers } from './matchers/_.js'
 
 export * from './property.js'
 export * from './table/__.js'

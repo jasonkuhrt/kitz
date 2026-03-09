@@ -1,0 +1,7 @@
+{
+  "name": "@e2e/demo",
+  "imports": {
+    "#alpha": "./src/alpha/_.ts",
+    "#beta": "./src/beta/_.ts"
+  }
+}

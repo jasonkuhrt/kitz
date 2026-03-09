@@ -3,6 +3,7 @@ import { Log } from '@kitz/log'
 import { ContextualError } from '../_errors.js'
 import type { InterceptorGeneric } from '../Interceptor/Interceptor.js'
 import type { Pipeline } from '../Pipeline/Pipeline.js'
+import { successfulResult } from '../Result.js'
 import type { Step } from '../Step.js'
 import type { StepResult, StepResultErrorAsync } from '../StepResult.js'
 import { createResultEnvelope } from './resultEnvelope.js'
@@ -14,23 +15,21 @@ const debug = Log.create({})
 
 export const defaultFunctionName = `anonymous`
 
-export const runPipeline = async (
-  {
-    pipeline,
-    stepsToProcess,
-    originalInputOrResult,
-    interceptorsStack,
-    asyncErrorDeferred,
-    previousStepsCompleted,
-  }: {
-    pipeline: Pipeline
-    stepsToProcess: readonly Step[]
-    originalInputOrResult: unknown
-    interceptorsStack: readonly InterceptorGeneric[]
-    asyncErrorDeferred: StepResultErrorAsync
-    previousStepsCompleted: object
-  },
-): Promise<ResultEnvelop | ContextualError> => {
+export const runPipeline = async ({
+  pipeline,
+  stepsToProcess,
+  originalInputOrResult,
+  interceptorsStack,
+  asyncErrorDeferred,
+  previousStepsCompleted,
+}: {
+  pipeline: Pipeline
+  stepsToProcess: readonly Step[]
+  originalInputOrResult: unknown
+  interceptorsStack: readonly InterceptorGeneric[]
+  asyncErrorDeferred: StepResultErrorAsync
+  previousStepsCompleted: object
+}): Promise<ResultEnvelop | Error> => {
   const [stepToProcess, ...stepsRestToProcess] = stepsToProcess
 
   if (!stepToProcess) {
@@ -58,9 +57,7 @@ export const runPipeline = async (
     nextInterceptorsStack: [],
   })
 
-  const signal = await Promise.race(
-    [done.promise, asyncErrorDeferred.promise],
-  )
+  const signal = await racePromises(done.promise, asyncErrorDeferred.promise)
 
   switch (signal.type) {
     case `completed`: {
@@ -89,11 +86,11 @@ export const runPipeline = async (
       debug.trace(`signal: error`)
 
       if (pipeline.config.passthroughErrorWith?.(signal)) {
-        return signal.error as any // todo change return type to be unknown since this function could permit anything?
+        return signal.error
       }
 
-      if (pipeline.config.passthroughErrorInstanceOf.some(_ => signal.error instanceof _)) {
-        return signal.error as any // todo change return type to include object... given this instanceof permits that?
+      if (pipeline.config.passthroughErrorInstanceOf.some((_) => signal.error instanceof _)) {
+        return signal.error
       }
 
       const wasAsync = asyncErrorDeferred.isResolved
@@ -101,22 +98,31 @@ export const runPipeline = async (
       switch (signal.source) {
         case `extension`: {
           // todo test these 2 branches explicitly
-          const nameTip = signal.interceptorName === defaultFunctionName
-            ? ` (use named functions to improve this error message)`
-            : ``
+          const nameTip =
+            signal.interceptorName === defaultFunctionName
+              ? ` (use named functions to improve this error message)`
+              : ``
           const message = wasAsync
             ? `There was an error in the interceptor "${signal.interceptorName}"${nameTip}.`
             : `There was an error in the interceptor "${signal.interceptorName}"${nameTip} while running hook "${signal.hookName}".`
 
-          return new ContextualError(message, {
-            hookName: signal.hookName,
-            source: signal.source,
-            interceptorName: signal.interceptorName,
-          }, signal.error)
+          return new ContextualError(
+            message,
+            {
+              hookName: signal.hookName,
+              source: signal.source,
+              interceptorName: signal.interceptorName,
+            },
+            signal.error,
+          )
         }
         case `implementation`: {
           const message = `There was an error in the core implementation of hook "${signal.hookName}".`
-          return new ContextualError(message, { hookName: signal.hookName, source: signal.source }, signal.error)
+          return new ContextualError(
+            message,
+            { hookName: signal.hookName, source: signal.source },
+            signal.error,
+          )
         }
         case `user`: {
           return signal.error
@@ -133,15 +139,28 @@ export const runPipeline = async (
 const runPipelineEnd = async ({
   interceptorsStack,
   result,
-}: { result: unknown; interceptorsStack: readonly InterceptorGeneric[] }): Promise<unknown> => {
+}: {
+  result: unknown
+  interceptorsStack: readonly InterceptorGeneric[]
+}): Promise<unknown> => {
   const [interceptor, ...interceptorsRest] = interceptorsStack
   if (!interceptor) return result
 
   debug.trace(`interceptor ${interceptor.name}: end`)
-  interceptor.currentChunk.resolve(result as any)
+  interceptor.currentChunk.resolve(successfulResult(result))
   const nextResult = await interceptor.body.promise
   return await runPipelineEnd({
     interceptorsStack: interceptorsRest,
     result: nextResult,
   })
+}
+
+const racePromises = <$First, $Second>(
+  first: Promise<$First>,
+  second: Promise<$Second>,
+): Promise<$First | $Second> => {
+  const winner = Prom.createDeferred<$First | $Second>({ strict: false })
+  void first.then(winner.resolve, winner.reject)
+  void second.then(winner.resolve, winner.reject)
+  return winner.promise
 }

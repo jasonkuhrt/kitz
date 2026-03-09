@@ -174,9 +174,11 @@ export const divide = (dividend: number, divisor: NonZero): number => {
  * const average = divideWith(nonZero(3))
  * average(15) // 5 (average when split 3 ways)
  */
-export const divideWith = (divisor: NonZero) => (dividend: number): number => {
-  return divide(dividend, divisor)
-}
+export const divideWith =
+  (divisor: NonZero) =>
+  (dividend: number): number => {
+    return divide(dividend, divisor)
+  }
 
 /**
  * Raise a number to a power (exponentiation).
@@ -396,9 +398,11 @@ export const trunc = <T extends Finite>(value: T): Trunc<T> => {
  * Square root of non-negative returns non-negative.
  * Square root of positive returns positive (except for 0).
  */
-export type Sqrt<T extends number> = T extends Positive ? Positive
-  : T extends NonNegative ? NonNegative
-  : number
+export type Sqrt<T extends number> = T extends Positive
+  ? Positive
+  : T extends NonNegative
+    ? NonNegative
+    : number
 
 /**
  * Calculate the square root of a non-negative number.

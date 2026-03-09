@@ -1,3 +1,3 @@
 export * from './env.js'
-export * from './live.node.js'
+export * from '#platform:env/live'
 export * from './types.js'

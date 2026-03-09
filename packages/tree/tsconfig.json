@@ -7,14 +7,6 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "build",
-    "node_modules",
-    "**/*.bench-d.ts",
-    "**/*.test.ts",
-    "**/*.test-d.ts"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["build", "node_modules"]
 }

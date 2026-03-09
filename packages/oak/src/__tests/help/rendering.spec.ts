@@ -117,10 +117,10 @@ describe(`Help rendering`, () => {
         `y`,
         `z`,
       ]),
-    ).parameter(
-      `bar`,
-      s.optional(),
-    ).settings({ onOutput, terminalWidth: TERMINAL_WIDTH }).parse({ line: [`-h`] })
+    )
+      .parameter(`bar`, s.optional())
+      .settings({ onOutput, terminalWidth: TERMINAL_WIDTH })
+      .parse({ line: [`-h`] })
     expect(ansis.strip(output.value)).toMatchSnapshot(`monochrome`)
   })
 
@@ -234,7 +234,10 @@ describe(`Help rendering`, () => {
         // Use wider terminal (200) to expose column alignment issues
         // Include a basic param with long enum to widen the Type column
         // which exposes the exclusive header row alignment bug
-        $.parameter(`option`, z.enum([`apple`, `banana`, `cherry`, `dragonfruit`, `elderberry`]).optional())
+        $.parameter(
+          `option`,
+          z.enum([`apple`, `banana`, `cherry`, `dragonfruit`, `elderberry`]).optional(),
+        )
           .parametersExclusive(`foo`, (_) => _.parameter(`b bar`, s).parameter(`z baz`, s))
           .settings({ onOutput, terminalWidth: 200, parameters: { environment: true } })
           .parse({
@@ -245,7 +248,9 @@ describe(`Help rendering`, () => {
     })
     describe(`optional`, () => {
       it(`shows exclusive parameters as a group`, () => {
-        $.parametersExclusive(`foo`, (_) => _.parameter(`b bar`, s).parameter(`z baz`, s).optional())
+        $.parametersExclusive(`foo`, (_) =>
+          _.parameter(`b bar`, s).parameter(`z baz`, s).optional(),
+        )
           .settings({ onOutput, terminalWidth: TERMINAL_WIDTH })
           .parse({
             line: [`-h`],
@@ -255,7 +260,9 @@ describe(`Help rendering`, () => {
     })
     describe(`default`, () => {
       it(`shows the group default`, () => {
-        $.parametersExclusive(`foo`, (_) => _.parameter(`b bar`, s).parameter(`z baz`, s).default(`bar`, `bar_default`))
+        $.parametersExclusive(`foo`, (_) =>
+          _.parameter(`b bar`, s).parameter(`z baz`, s).default(`bar`, `bar_default`),
+        )
           .settings({ onOutput, terminalWidth: TERMINAL_WIDTH })
           .parse({
             line: [`-h`],
@@ -265,9 +272,10 @@ describe(`Help rendering`, () => {
     })
     describe(`default with long value`, () => {
       it(`shows the group default`, () => {
-        $.parametersExclusive(
-          `foo`,
-          (_) => _.parameter(`b bar`, s).parameter(`z baz`, s).default(`bar`, `bar_defaulttttttttttttttttttttt`),
+        $.parametersExclusive(`foo`, (_) =>
+          _.parameter(`b bar`, s)
+            .parameter(`z baz`, s)
+            .default(`bar`, `bar_defaulttttttttttttttttttttt`),
         )
           .settings({ onOutput, terminalWidth: TERMINAL_WIDTH })
           .parse({
@@ -278,7 +286,9 @@ describe(`Help rendering`, () => {
     })
     describe(`with environment disabled`, () => {
       it(`shows the group default`, () => {
-        $.parametersExclusive(`foo`, (_) => _.parameter(`b bar`, s).parameter(`z baz`, s).default(`bar`, `bar_default`))
+        $.parametersExclusive(`foo`, (_) =>
+          _.parameter(`b bar`, s).parameter(`z baz`, s).default(`bar`, `bar_default`),
+        )
           .settings({ onOutput, terminalWidth: TERMINAL_WIDTH, parameters: { environment: false } })
           .parse({
             line: [`-h`],
@@ -310,7 +320,11 @@ describe(`Help rendering`, () => {
     describe(`expanded style`, () => {
       it(`can be forced via settings`, () => {
         $.parameter(`b bar`, z.union([z.string(), z.number()]))
-          .settings({ onOutput, terminalWidth: TERMINAL_WIDTH, helpRendering: { union: { mode: `expandAlways` } } })
+          .settings({
+            onOutput,
+            terminalWidth: TERMINAL_WIDTH,
+            helpRendering: { union: { mode: `expandAlways` } },
+          })
           .parse({ line: [`-h`] })
         expect(ansis.strip(output.value)).toMatchSnapshot(`monochrome`)
       })
@@ -357,7 +371,10 @@ describe(`Help rendering`, () => {
       $.parameter(
         `b bar`,
         z
-          .union([z.string().describe(`Blah blah blah string.`), z.number().describe(`Blah blah blah number.`)])
+          .union([
+            z.string().describe(`Blah blah blah string.`),
+            z.number().describe(`Blah blah blah number.`),
+          ])
           .default(1)
           .describe(`Blah blah blah overall.`),
       )
@@ -371,7 +388,10 @@ describe(`Help rendering`, () => {
       $.parameter(
         `b bar`,
         z
-          .union([z.string().describe(`Blah blah blah string.`), z.number().describe(`Blah blah blah number.`)])
+          .union([
+            z.string().describe(`Blah blah blah string.`),
+            z.number().describe(`Blah blah blah number.`),
+          ])
           .optional()
           .describe(`Blah blah blah overall.`),
       )

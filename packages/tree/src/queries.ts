@@ -29,7 +29,11 @@ import type { Predicate } from './predicate.js'
  * }
  * ```
  */
-export type Visitor<$Value, $Result = void> = (node: Node<$Value>, depth: number, path: $Value[]) => $Result
+export type Visitor<$Value, $Result = void> = (
+  node: Node<$Value>,
+  depth: number,
+  path: $Value[],
+) => $Result
 
 /**
  * Find the first node in the tree that matches the given predicate.
@@ -116,16 +120,12 @@ export const findAll = <$Value>(
 
   const results: Node<$Value>[] = []
 
-  const findAllNodes = (
-    node: Node<$Value>,
-    depth: number,
-    path: $Value[],
-  ): void => {
+  const findAllNodes = (node: Node<$Value>, depth: number, path: $Value[]): void => {
     if (predicate(node.value, depth, path)) {
       results.push(node)
     }
     const newPath = [...path, node.value]
-    node.children.forEach(child => findAllNodes(child, depth + 1, newPath))
+    node.children.forEach((child) => findAllNodes(child, depth + 1, newPath))
   }
 
   findAllNodes(tree.root, 0, [])
@@ -279,20 +279,13 @@ export const leaves = <$Value>(tree: Tree<$Value>): Node<$Value>[] => {
  * console.log(depth2Values) // ['D', 'E']
  * ```
  */
-export const visit = <$Value>(
-  tree: Tree<$Value>,
-  visitor: Visitor<$Value>,
-): void => {
+export const visit = <$Value>(tree: Tree<$Value>, visitor: Visitor<$Value>): void => {
   if (tree.root === null) return
 
-  const visitNode = (
-    node: Node<$Value>,
-    depth: number,
-    path: $Value[],
-  ): void => {
+  const visitNode = (node: Node<$Value>, depth: number, path: $Value[]): void => {
     visitor(node, depth, path)
     const newPath = [...path, node.value]
-    node.children.forEach(child => visitNode(child, depth + 1, newPath))
+    node.children.forEach((child) => visitNode(child, depth + 1, newPath))
   }
 
   visitNode(tree.root, 0, [])
@@ -326,20 +319,13 @@ export const visit = <$Value>(
  * console.log(every(numberTree, (value, depth) => depth <= 2)) // true
  * ```
  */
-export const every = <$Value>(
-  tree: Tree<$Value>,
-  predicate: Predicate<$Value>,
-): boolean => {
+export const every = <$Value>(tree: Tree<$Value>, predicate: Predicate<$Value>): boolean => {
   if (tree.root === null) return true // vacuous truth for empty tree
 
-  const everyNode = (
-    node: Node<$Value>,
-    depth: number,
-    path: $Value[],
-  ): boolean => {
+  const everyNode = (node: Node<$Value>, depth: number, path: $Value[]): boolean => {
     if (!predicate(node.value, depth, path)) return false
     const newPath = [...path, node.value]
-    return node.children.every(child => everyNode(child, depth + 1, newPath))
+    return node.children.every((child) => everyNode(child, depth + 1, newPath))
   }
 
   return everyNode(tree.root, 0, [])
@@ -372,20 +358,13 @@ export const every = <$Value>(
  * )) // true (for 'red')
  * ```
  */
-export const some = <$Value>(
-  tree: Tree<$Value>,
-  predicate: Predicate<$Value>,
-): boolean => {
+export const some = <$Value>(tree: Tree<$Value>, predicate: Predicate<$Value>): boolean => {
   if (tree.root === null) return false
 
-  const someNode = (
-    node: Node<$Value>,
-    depth: number,
-    path: $Value[],
-  ): boolean => {
+  const someNode = (node: Node<$Value>, depth: number, path: $Value[]): boolean => {
     if (predicate(node.value, depth, path)) return true
     const newPath = [...path, node.value]
-    return node.children.some(child => someNode(child, depth + 1, newPath))
+    return node.children.some((child) => someNode(child, depth + 1, newPath))
   }
 
   return someNode(tree.root, 0, [])

@@ -21,7 +21,7 @@ export const isTypeWith = <reference>(reference: reference) => {
   return <valueGiven>(
     value: ValidateIsSupertype<reference, valueGiven>,
   ): value is reference extends valueGiven ? reference : never => {
-    return value === reference as any
+    return value === (reference as any)
   }
 }
 
@@ -44,23 +44,27 @@ export const isntTypeWith = <reference>(reference: reference) => {
   return <valueGiven>(
     value: ValidateIsSupertype<reference, valueGiven>,
   ): value is reference extends valueGiven ? Exclude<valueGiven, reference> : never => {
-    return value !== reference as any
+    return value !== (reference as any)
   }
 }
 
 type ValidateIsSupertype<$Reference, $Value> =
-  // dprint-ignore
+  // oxfmt-ignore
   $Reference extends $Value
     ? $Value
     : Simplify.Top<StaticErrorGuardNotSubtype<$Reference, $Value>>
 
-interface StaticErrorGuardNotSubtype<$Reference, $Value> extends
-  // dprint-ignore
-  StaticError<
+interface StaticErrorGuardNotSubtype<$Reference, $Value>
+  // oxfmt-ignore
+  extends StaticError<
     ['type-guard', 'not-subtype'],
-    { message: `This type guard for ${ShowInTemplate<$Reference>} cannot be used against the given value ${ShowInTemplate<$Value>} because it is not a supertype.`; guard: $Reference; value: $Value; tip: `Since your value type has no overlap with ${Show<$Reference>} this will always return false.` }
-  >
-{}
+    {
+      message: `This type guard for ${ShowInTemplate<$Reference>} cannot be used against the given value ${ShowInTemplate<$Value>} because it is not a supertype.`
+      guard: $Reference
+      value: $Value
+      tip: `Since your value type has no overlap with ${Show<$Reference>} this will always return false.`
+    }
+  > {}
 
 /**
  * Extract the guarded type from a type guard function.
@@ -102,4 +106,4 @@ interface StaticErrorGuardNotSubtype<$Reference, $Value> extends
  *
  * @category Type Utilities
  */
-export type GuardedType<$T> = $T extends (x: any) => x is infer __u__ ? __u__ : never
+export type GuardedType<$T> = $T extends ((x: any) => x is infer __u__) ? __u__ : never

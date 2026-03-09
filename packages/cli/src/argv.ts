@@ -11,6 +11,14 @@ import { Schema as S } from 'effect'
  */
 export type ProcessArgv = readonly [string, ...string[]]
 
+const createProcessArgv = (
+  execPath: string,
+  scriptPath: null | string,
+  args: readonly string[],
+): ProcessArgv => {
+  return scriptPath === null ? [execPath, ...args] : [execPath, scriptPath, ...args]
+}
+
 /**
  * Schema for process argv - a non-empty array of strings.
  */
@@ -77,8 +85,7 @@ export const ArgvSchema: S.Schema<Argv, ProcessArgv> = S.transform(
       scriptPath,
       args,
     }),
-    encode: ({ execPath, scriptPath, args }) =>
-      [execPath, ...(scriptPath ? [scriptPath] : []), ...args] as [string, ...string[]],
+    encode: ({ execPath, scriptPath, args }) => createProcessArgv(execPath, scriptPath, args),
   },
 )
 

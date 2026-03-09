@@ -1,0 +1,47 @@
+{
+  "$schema": "../../../node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "off",
+    "suspicious": "off",
+    "pedantic": "off",
+    "perf": "off",
+    "style": "off",
+    "restriction": "off",
+    "nursery": "off"
+  },
+  "jsPlugins": [
+    {
+      "name": "kitz",
+      "specifier": "../plugin.mjs"
+    }
+  ],
+  "rules": {
+    "kitz/no-json-parse": "warn",
+    "kitz/no-try-catch": "warn",
+    "kitz/no-native-promise-construction": "warn",
+    "kitz/no-type-assertion": "warn",
+    "kitz/no-native-map-set-in-effect-modules": "warn",
+    "kitz/no-nodejs-builtin-imports": "warn",
+    "kitz/resolver-platform-dispatch": "warn",
+    "kitz/schema-parsing-contract": "warn",
+    "kitz/no-throw": "warn",
+    "kitz/no-promise-then-chain": "warn",
+    "kitz/no-effect-run-in-library-code": "warn",
+    "kitz/require-typed-effect-errors": "warn",
+    "kitz/require-schema-decode-at-boundary": "warn",
+    "kitz/no-process-env-outside-config-modules": "warn",
+    "kitz/no-date-now-in-domain": "warn",
+    "kitz/no-math-random-in-domain": "warn",
+    "kitz/no-console-in-effect-modules": "warn",
+    "kitz/require-tagged-error-types": "warn",
+    "kitz/namespace-file-conventions": "warn",
+    "kitz/barrel-file-conventions": "warn",
+    "kitz/module-structure-conventions": "warn",
+    "kitz/no-deep-imports-when-namespace-entrypoint-exists": "warn",
+    "kitz/prefer-subpath-imports": "warn",
+    "kitz/subpath-imports-integrity": [
+      "warn",
+      { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }
+    ]
+  }
+}

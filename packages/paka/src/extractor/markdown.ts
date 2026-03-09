@@ -9,10 +9,7 @@ import { unified } from 'unified'
  * Parse markdown string to AST.
  */
 export const parseMarkdown = (markdown: string): Root => {
-  return unified()
-    .use(remarkParse)
-    .use(remarkGfm)
-    .parse(markdown)
+  return unified().use(remarkParse).use(remarkGfm).parse(markdown)
 }
 
 /**
@@ -20,11 +17,7 @@ export const parseMarkdown = (markdown: string): Root => {
  */
 export const toMarkdown = (nodes: Content[]): string => {
   const tree: Root = { type: 'root', children: nodes }
-  return unified()
-    .use(remarkStringify)
-    .use(remarkGfm)
-    .stringify(tree)
-    .trim()
+  return unified().use(remarkStringify).use(remarkGfm).stringify(tree).trim()
 }
 
 /**

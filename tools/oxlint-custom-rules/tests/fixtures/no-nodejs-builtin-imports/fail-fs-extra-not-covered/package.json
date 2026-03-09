@@ -1,0 +1,9 @@
+{
+  "name": "fixture-fail-fs-extra-not-covered",
+  "exports": {
+    ".": {
+      "node": "./build/feature.js",
+      "default": "./build/feature.js"
+    }
+  }
+}

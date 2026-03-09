@@ -1,0 +1,6 @@
+{
+  "name": "@kitz/wrongfmt",
+  "imports": {
+    "#gamma": "./build/gamma/_.js"
+  }
+}

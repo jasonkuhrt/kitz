@@ -23,16 +23,25 @@ export type GlobOptions = Omit<TinyGlobby.GlobOptions, 'patterns' | 'cwd'> & {
  * - If absolute is true, returns absolute locations
  * - Otherwise returns relative locations
  */
-type InferGlobReturn<O extends GlobOptions | undefined> = O extends undefined ? Path.RelFile // Explicit undefined type param
-  : O extends { onlyDirectories: true; absolute: true } ? Path.AbsDir
-  : O extends { onlyDirectories: true } ? Path.RelDir
-  : O extends { onlyFiles: false; absolute: true } ? Path.$Abs
-  : O extends { onlyFiles: false } ? Path.$Rel
-  : O extends { onlyFiles: true; absolute: true } ? Path.AbsFile
-  : O extends { onlyFiles: true } ? Path.RelFile
-  : O extends { absolute: true } ? Path.AbsFile // onlyFiles defaults to true
-  : O extends GlobOptions ? Path.RelFile // Default case for bare GlobOptions/{}
-  : never // Should never reach here
+type InferGlobReturn<O extends GlobOptions | undefined> = O extends undefined
+  ? Path.RelFile // Explicit undefined type param
+  : O extends { onlyDirectories: true; absolute: true }
+    ? Path.AbsDir
+    : O extends { onlyDirectories: true }
+      ? Path.RelDir
+      : O extends { onlyFiles: false; absolute: true }
+        ? Path.$Abs
+        : O extends { onlyFiles: false }
+          ? Path.$Rel
+          : O extends { onlyFiles: true; absolute: true }
+            ? Path.AbsFile
+            : O extends { onlyFiles: true }
+              ? Path.RelFile
+              : O extends { absolute: true }
+                ? Path.AbsFile // onlyFiles defaults to true
+                : O extends GlobOptions
+                  ? Path.RelFile // Default case for bare GlobOptions/{}
+                  : never // Should never reach here
 
 /**
  * Effect-based wrapper for globbing file patterns.
@@ -82,9 +91,10 @@ export const glob = <O extends GlobOptions | undefined = undefined>(
   Effect.tryPromise({
     try: () => {
       // Convert Path.AbsDir to string for TinyGlobby
-      const tinyGlobbyOptions = options && options.cwd && Path.AbsDir.is(options.cwd)
-        ? { ...options, cwd: S.encodeSync(Path.AbsDir.Schema)(options.cwd) }
-        : options
+      const tinyGlobbyOptions =
+        options && options.cwd && Path.AbsDir.is(options.cwd)
+          ? { ...options, cwd: S.encodeSync(Path.AbsDir.Schema)(options.cwd) }
+          : options
       return TinyGlobby.glob(pattern, tinyGlobbyOptions as TinyGlobby.GlobOptions)
     },
     catch: (error) => new Error(`Failed to glob pattern: ${String(error)}`),
@@ -92,15 +102,16 @@ export const glob = <O extends GlobOptions | undefined = undefined>(
     Effect.flatMap((paths) =>
       Effect.try({
         try: () =>
-          paths.map(path => {
+          paths.map((path) => {
             // Normalize relative paths to start with ./
-            const normalizedPath = path.startsWith('/') || path.startsWith('./') || path.startsWith('../')
-              ? path
-              : `./${path}`
+            const normalizedPath =
+              path.startsWith('/') || path.startsWith('./') || path.startsWith('../')
+                ? path
+                : `./${path}`
             return Path.fromString(normalizedPath) as InferGlobReturn<O>
           }),
         catch: (error) => new Error(`Failed to decode glob results: ${String(error)}`),
-      })
+      }),
     ),
   )
 
@@ -146,24 +157,26 @@ export const globSync = <O extends GlobOptions | undefined = undefined>(
   Effect.try({
     try: () => {
       // Convert Path.AbsDir to string for TinyGlobby
-      const tinyGlobbyOptions = options && options.cwd && Path.AbsDir.is(options.cwd)
-        ? { ...options, cwd: S.encodeSync(Path.AbsDir.Schema)(options.cwd) }
-        : options
+      const tinyGlobbyOptions =
+        options && options.cwd && Path.AbsDir.is(options.cwd)
+          ? { ...options, cwd: S.encodeSync(Path.AbsDir.Schema)(options.cwd) }
+          : options
       return TinyGlobby.globSync(pattern, tinyGlobbyOptions as TinyGlobby.GlobOptions)
     },
-    catch: (error) => error instanceof Error ? error : new Error(String(error)),
+    catch: (error) => (error instanceof Error ? error : new Error(String(error))),
   }).pipe(
     Effect.flatMap((paths) =>
       Effect.try({
         try: () =>
-          paths.map(path => {
+          paths.map((path) => {
             // Normalize relative paths to start with ./
-            const normalizedPath = path.startsWith('/') || path.startsWith('./') || path.startsWith('../')
-              ? path
-              : `./${path}`
+            const normalizedPath =
+              path.startsWith('/') || path.startsWith('./') || path.startsWith('../')
+                ? path
+                : `./${path}`
             return Path.fromString(normalizedPath) as InferGlobReturn<O>
           }),
         catch: (error) => new Error(`Failed to decode glob results: ${String(error)}`),
-      })
+      }),
     ),
   )

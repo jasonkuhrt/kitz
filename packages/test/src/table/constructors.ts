@@ -159,7 +159,7 @@ export function on<$fn extends Fn.AnyAny>(
     ...Builder.defaultState,
     fn: Option.some($fn),
   }
-  return Builder.create(initialState) as any
+  return Builder.create(initialState)
 }
 
 /**
@@ -179,7 +179,7 @@ export function on<$fn extends Fn.AnyAny>(
  * - Test cases specify function arguments and expected return values
  * - Default assertion compares actual vs expected using Effect's equality
  *
- * **Generic Mode** - Define custom types with `.i<T>` and `.o<T>`:
+ * **Generic Mode** - Define custom types with `.inputType<T>()` and `.outputType<U>()`:
  * - Explicitly specify input and output types
  * - Provide custom test logic to validate cases
  * - Useful for testing complex behaviors beyond simple function calls

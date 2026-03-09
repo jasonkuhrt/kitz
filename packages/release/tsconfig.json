@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./build",
+    "tsBuildInfoFile": "./node_modules/.cache/.tsbuildinfo",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "paths": {
+      "#release": ["./src/_.js"],
+      "#release/*": ["./src/*.js"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["build", "node_modules"]
+}

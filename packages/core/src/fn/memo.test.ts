@@ -141,10 +141,7 @@ describe('memo', () => {
   })
 
   test('weak: true uses WeakMap', () => {
-    const fn = Fn.memo(
-      (obj: object) => obj,
-      { weak: true, key: null },
-    )
+    const fn = Fn.memo((obj: object) => obj, { weak: true, key: null })
 
     expect(fn.cache).toBeInstanceOf(WeakMap)
   })

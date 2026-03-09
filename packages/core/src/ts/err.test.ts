@@ -3,12 +3,10 @@ import { test } from 'vitest'
 import type * as Err from './err.js'
 
 test('Show - formats error with padded keys', () => {
-  interface E extends
-    Err.StaticError<
-      ['parse', 'param'],
-      { message: 'Invalid param'; input: string }
-    >
-  {}
+  interface E extends Err.StaticError<
+    ['parse', 'param'],
+    { message: 'Invalid param'; input: string }
+  > {}
   attest({} as Err.Show<E>).type.toString.snap(`{
   ERROR_________: ".parse.param"
   message_______: "Invalid param"

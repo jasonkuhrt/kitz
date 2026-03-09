@@ -18,8 +18,8 @@ export const onAs = builder.onAs
 export const inferNarrow = builder.inferNarrow
 export const inferWide = builder.inferWide
 export const inferAuto = builder.inferAuto
-export const setInfer = builder.setInfer
-export const extract: typeof builder.extract = builder.extract
+export const setInfer: typeof builder.setInfer = (...args) => builder.setInfer(...args)
+export const extract: typeof builder.extract = (...args) => builder.extract(...args)
 
 // Note: Binary relators (exact, sub, equiv, not), extractors (awaited, returned, etc.)
 // and their matchers are all exported via builder-generated/$$.js

@@ -7,34 +7,20 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "paths": {
-      "#pkg": [
-        "./src/_.js"
-      ],
-      "#pkg/*": [
-        "./src/*.js"
-      ],
-      "#manifest": [
-        "./src/manifest/_.js"
-      ],
-      "#manifest/*": [
-        "./src/manifest/*.js"
-      ],
-      "#manager": [
-        "./src/manager/_.js"
-      ],
-      "#manager/*": [
-        "./src/manager/*.js"
-      ]
+      "#pkg": ["./src/_.js"],
+      "#pkg/*": ["./src/*.js"],
+      "#moniker": ["./src/moniker/_.js"],
+      "#moniker/*": ["./src/moniker/*.js"],
+      "#manifest": ["./src/manifest/_.js"],
+      "#manifest/*": ["./src/manifest/*.js"],
+      "#manager": ["./src/manager/_.js"],
+      "#manager/*": ["./src/manager/*.js"],
+      "#pin": ["./src/pin/_.js"],
+      "#pin/*": ["./src/pin/*.js"],
+      "#range": ["./src/range/_.js"],
+      "#range/*": ["./src/range/*.js"]
     }
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "build",
-    "node_modules",
-    "**/*.bench-d.ts",
-    "**/*.test.ts",
-    "**/*.test-d.ts"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["build", "node_modules"]
 }

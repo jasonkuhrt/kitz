@@ -26,7 +26,8 @@ export type Get<$T> = ValidateAndExtract<
  * type T = Set<() => string, number> // () => number
  * ```
  */
-export type Set<$T, $New> = $T extends (...args: infer __args__) => any ? (...args: __args__) => $New
+export type Set<$T, $New> = $T extends (...args: infer __args__) => any
+  ? (...args: __args__) => $New
   : never
 
 /**

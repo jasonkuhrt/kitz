@@ -31,7 +31,9 @@ export type NegatedTypeGuard<$Type> = (value: unknown) => value is Exclude<typeo
  * const isNotString = negatedTypeGuard<string>(value => typeof value === 'string')
  * ```
  */
-export const negatedTypeGuard = <type>(typeGuard: TypeGuardImplementation): NegatedTypeGuard<type> => {
+export const negatedTypeGuard = <type>(
+  typeGuard: TypeGuardImplementation,
+): NegatedTypeGuard<type> => {
   if (typeof typeGuard === TypeofTypesEnum.function) return typeGuard as any
   return (value): value is Exclude<typeof value, type> => value !== typeGuard
 }
@@ -112,7 +114,7 @@ export const isSymbol = (value: unknown): value is symbol => {
  * type Narrowed = ExtractPredicateType<Guard> // string
  * ```
  */
-export type ExtractPredicateType<T> = T extends (x: any) => x is infer U ? U : never
+export type ExtractPredicateType<T> = T extends ((x: any) => x is infer U) ? U : never
 
 // Testing utilities
 

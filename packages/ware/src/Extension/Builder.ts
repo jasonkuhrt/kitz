@@ -14,10 +14,7 @@ export interface Builder<
    */
   overload: <$OverloadBuilder extends Overload.Builder<$Pipeline>>(
     overloadBuilderCallback: Overload.BuilderCallback<$Pipeline, $OverloadBuilder>,
-  ) => Builder<
-    $Pipeline,
-    Extension.Updaters.AddOverload<$Extension, $OverloadBuilder['data']>
-  >
+  ) => Builder<$Pipeline, Extension.Updaters.AddOverload<$Extension, $OverloadBuilder['data']>>
 }
 
 export namespace Builder {
