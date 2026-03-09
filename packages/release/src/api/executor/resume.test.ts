@@ -51,16 +51,10 @@ describe('Executor workflow state', () => {
             diskLayout: {
               '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
                 imports: {
-                  '#core': {
-                    types: './build/_.d.ts',
-                    default: './src/_.ts',
-                  },
+                  '#core': './src/_.ts',
                 },
                 exports: {
-                  '.': {
-                    types: './build/_.d.ts',
-                    default: './src/_.ts',
-                  },
+                  '.': './src/_.ts',
                 },
               }),
               '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
@@ -68,16 +62,10 @@ describe('Executor workflow state', () => {
                   '@kitz/core': 'workspace:^',
                 },
                 imports: {
-                  '#cli': {
-                    types: './build/_.d.ts',
-                    default: './src/_.ts',
-                  },
+                  '#cli': './src/_.ts',
                 },
                 exports: {
-                  '.': {
-                    types: './build/_.d.ts',
-                    default: './src/_.ts',
-                  },
+                  '.': './src/_.ts',
                 },
               }),
             },
@@ -124,16 +112,10 @@ describe('Executor workflow state', () => {
             '@kitz/core': '^1.1.0',
           })
           expect(packByPackage['@kitz/cli']!.manifestSnapshot['imports']).toEqual({
-            '#cli': {
-              types: './build/_.d.ts',
-              default: './build/_.js',
-            },
+            '#cli': './build/_.js',
           })
           expect(packByPackage['@kitz/cli']!.manifestSnapshot['exports']).toEqual({
-            '.': {
-              types: './build/_.d.ts',
-              default: './build/_.js',
-            },
+            '.': './build/_.js',
           })
 
           const firstPublishCalls = yield* Ref.get(harness.publishCalls)
@@ -168,7 +150,7 @@ describe('Executor workflow state', () => {
             '@kitz/core': 'workspace:^',
           })
 
-          yield* Ref.set(harness.failPublishPackages, new Set())
+          yield* Ref.set(harness.failPublishPackages, [])
 
           const secondRun = yield* execute(plan, { dryRun: false }).pipe(
             Effect.provide(workflowContext),

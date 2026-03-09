@@ -8,36 +8,23 @@
   },
   "type": "module",
   "sideEffects": false,
-  "types": "./src/_.ts",
   "bin": {
     "doc-inject": "./build/cli.js"
   },
   "imports": {
-    "#doc-inject": {
-      "types": "./build/_.js",
-      "default": "./src/_.ts"
-    },
-    "#doc-inject/*": {
-      "types": "./build/*.js",
-      "default": "./src/*.ts"
-    }
+    "#doc-inject": "./src/_.ts",
+    "#doc-inject/*": "./src/*.ts"
   },
   "exports": {
-    ".": {
-      "types": "./build/_.js",
-      "default": "./src/_.ts"
-    },
-    "./__": {
-      "types": "./build/__.js",
-      "default": "./src/__.ts"
-    }
+    ".": "./src/_.ts",
+    "./__": "./src/__.ts"
   },
   "files": [
     "build",
     "src"
   ],
   "scripts": {
-    "build": "tsgo -p tsconfig.build.json",
+    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
     "check:lint": "oxlint --config ../../.oxlintrc.json src/",

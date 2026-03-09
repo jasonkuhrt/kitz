@@ -14,10 +14,10 @@ const rootCommands = [
   },
 ] as const
 
-const helpFlags = new Set(['-h', '--help'])
+const helpFlags = ['-h', '--help'] as const
 
 export const isRootHelpRequest = (args: readonly string[]): boolean => {
-  return args.length === 0 || args.some((arg) => helpFlags.has(arg))
+  return args.length === 0 || args.some((arg) => helpFlags.includes(arg as '-h' | '--help'))
 }
 
 export const formatRootHelp = (): string => {

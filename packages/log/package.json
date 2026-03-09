@@ -10,14 +10,8 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./build/_.js",
-      "default": "./src/_.ts"
-    },
-    "./__": {
-      "types": "./build/__.js",
-      "default": "./src/__.ts"
-    }
+    ".": "./src/_.ts",
+    "./__": "./src/__.ts"
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
@@ -26,7 +20,7 @@
     "object-inspect": "^1.13.4"
   },
   "scripts": {
-    "build": "tsgo -p tsconfig.build.json",
+    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
     "check:lint": "oxlint src/",
@@ -35,7 +29,6 @@
   "devDependencies": {
     "@types/object-inspect": "^1.13.0"
   },
-  "types": "./src/_.ts",
   "files": [
     "build",
     "src"

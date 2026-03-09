@@ -10,26 +10,19 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./build/__.js",
-      "default": "./src/__.ts"
-    },
-    "./__": {
-      "types": "./build/__.js",
-      "default": "./src/__.ts"
-    }
+    ".": "./src/__.ts",
+    "./__": "./src/__.ts"
   },
   "dependencies": {
     "effect": "^3.0.0"
   },
   "scripts": {
-    "build": "tsgo -p tsconfig.build.json",
+    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
     "check:lint": "oxlint src/",
     "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   },
-  "types": "./src/__.ts",
   "files": [
     "build",
     "src"

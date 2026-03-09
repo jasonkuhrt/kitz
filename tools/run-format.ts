@@ -5,7 +5,10 @@ import { join } from 'node:path'
 
 const repoRoot = process.cwd()
 const oxfmtBin = join(repoRoot, 'node_modules', '.bin', 'oxfmt')
-const mode = process.argv.includes('--check') ? '--check' : '--write'
+const args = process.argv.slice(2)
+const mode = args.includes('--check') ? '--check' : '--write'
+const explicitTargets = args.filter((arg) => arg !== '--check')
+const MAX_EXPLICIT_TARGETS_PER_BATCH = 25
 
 const groups = [
   ['.claude', '.serena'],
@@ -25,7 +28,22 @@ const groups = [
   ['tools'],
 ] as const
 
-for (const group of groups) {
+const chunk = <T>(items: readonly T[], size: number): T[][] => {
+  const chunks: T[][] = []
+
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size))
+  }
+
+  return chunks
+}
+
+const targetGroups =
+  explicitTargets.length > 0
+    ? chunk(explicitTargets, MAX_EXPLICIT_TARGETS_PER_BATCH)
+    : groups.map((group) => [...group])
+
+for (const group of targetGroups) {
   const command = [oxfmtBin, mode, ...group]
     .map((part) => `"${part.replaceAll('"', '\\"')}"`)
     .join(' ')

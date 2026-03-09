@@ -1,7 +1,7 @@
 import { Command, CommandExecutor } from '@effect/platform'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
-import { Data, Effect, Layer } from 'effect'
+import { Data, Effect, HashSet, Layer, MutableHashSet } from 'effect'
 import * as Api from '../api/__.js'
 
 const previewDoctorRuleIds = [
@@ -36,7 +36,7 @@ const enableRule = (
       severity: options?.severity ?? existing?.overrides.severity ?? config.lint.defaults.severity,
     }),
     options: {
-      ...(existing?.options ?? {}),
+      ...existing?.options,
       ...ruleOptions,
     },
   })
@@ -77,17 +77,17 @@ const toAffectedPackages = (
   files: readonly Api.Lint.ChangedFile[],
   packages: readonly Api.Analyzer.Workspace.Package[],
 ): readonly string[] => {
-  const scopes = new Set(packages.map((pkg) => pkg.scope))
-  const affected = new Set<string>()
+  const scopes = HashSet.fromIterable(packages.map((pkg) => pkg.scope))
+  const affected = MutableHashSet.empty<string>()
 
   for (const file of files) {
     const [root, scope] = file.path.split('/')
-    if (root === 'packages' && scope && scopes.has(scope)) {
-      affected.add(scope)
+    if (root === 'packages' && scope && HashSet.has(scopes, scope)) {
+      MutableHashSet.add(affected, scope)
     }
   }
 
-  return [...affected].sort((left, right) => left.localeCompare(right))
+  return Array.from(affected).toSorted((left, right) => left.localeCompare(right))
 }
 
 const hasBlockingViolations = (report: Api.Lint.Report): boolean =>

@@ -1,0 +1,10 @@
+{
+  "name": "@kitz/typed",
+  "types": "./src/alpha/_.ts",
+  "imports": {
+    "#alpha": {
+      "types": "./src/alpha/_.ts",
+      "default": "./src/alpha/_.ts"
+    }
+  }
+}

@@ -93,14 +93,14 @@ const releaseWorkflowIdempotencyKey = (payload: ReleasePayloadType): string =>
       lifecycle: payload.options.lifecycle ?? null,
       trunk: payload.options.trunk ?? null,
     },
-    releases: [...payload.releases]
-      .sort((a, b) => a.packageName.localeCompare(b.packageName))
+    releases: payload.releases
+      .toSorted((a, b) => a.packageName.localeCompare(b.packageName))
       .map((release) => ({
         packageName: release.packageName,
         nextVersion: release.nextVersion,
         currentVersion: release.currentVersion,
         bump: release.bump,
-        dependsOn: [...release.dependsOn].sort(),
+        dependsOn: release.dependsOn.toSorted(),
         commits: release.commits.map((commit) => ({
           hash: commit.hash,
           type: commit.type,
@@ -182,12 +182,18 @@ export const ReleaseWorkflow = Flo.Workflow.make({
       ),
     )
 
-    const publishHandles = new Map<string, Flo.Workflow.NodeHandle<string>>()
+    const publishHandles: Array<{
+      readonly packageName: string
+      readonly handle: Flo.Workflow.NodeHandle<string>
+    }> = []
 
     // Layer 1: Publish prepared tarballs after all preparation succeeds.
     const publishes = payload.releases.map((release) => {
       const dependencies = release.dependsOn
-        .map((dependencyName) => publishHandles.get(dependencyName))
+        .map(
+          (dependencyName) =>
+            publishHandles.find((entry) => entry.packageName === dependencyName)?.handle,
+        )
         .filter(
           (dependency): dependency is Flo.Workflow.NodeHandle<string> => dependency !== undefined,
         )
@@ -231,7 +237,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
         after.length > 0 ? { after } : undefined,
       )
 
-      publishHandles.set(release.packageName, handle)
+      publishHandles.push({ packageName: release.packageName, handle })
       return handle
     })
 

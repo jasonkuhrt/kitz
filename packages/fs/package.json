@@ -10,18 +10,9 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./build/_.js",
-      "default": "./src/_.ts"
-    },
-    "./__": {
-      "types": "./build/__.js",
-      "default": "./src/__.ts"
-    },
-    "./path/types/fileName": {
-      "types": "./build/path/types/fileName.js",
-      "default": "./src/path/types/fileName.ts"
-    }
+    ".": "./src/_.ts",
+    "./__": "./src/__.ts",
+    "./path/types/fileName": "./src/path/types/fileName.ts"
   },
   "dependencies": {
     "@effect/platform": "^0.94.0",
@@ -35,13 +26,12 @@
     "@kitz/test": "workspace:*"
   },
   "scripts": {
-    "build": "tsgo -p tsconfig.build.json",
+    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
     "check:lint": "oxlint src/",
     "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   },
-  "types": "./src/_.ts",
   "files": [
     "build",
     "src"

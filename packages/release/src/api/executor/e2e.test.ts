@@ -34,7 +34,7 @@ interface RealHarness {
   readonly githubState: Github.Memory.GithubMemoryState
   readonly packCalls: Ref.Ref<readonly string[]>
   readonly publishCalls: Ref.Ref<readonly string[]>
-  readonly failPublishPackages: Ref.Ref<ReadonlySet<string>>
+  readonly failPublishPackages: Ref.Ref<readonly string[]>
 }
 
 const textEncoder = new TextEncoder()
@@ -65,16 +65,10 @@ const withFileSystem = <A, E, R>(effect: Effect.Effect<A, E, R | FileSystem.File
 
 const makeRuntimeTargets = (scope: string) => ({
   imports: {
-    [`#${scope}`]: {
-      types: './src/_.ts',
-      default: './src/_.ts',
-    },
+    [`#${scope}`]: './src/_.ts',
   },
   exports: {
-    '.': {
-      types: './src/_.ts',
-      default: './src/_.ts',
-    },
+    '.': './src/_.ts',
   },
 })
 
@@ -206,7 +200,7 @@ const makeNpmLayer = (params: {
   readonly packages: readonly FixturePackage[]
   readonly packCalls: Ref.Ref<readonly string[]>
   readonly publishCalls: Ref.Ref<readonly string[]>
-  readonly failPublishPackages: Ref.Ref<ReadonlySet<string>>
+  readonly failPublishPackages: Ref.Ref<readonly string[]>
 }) =>
   Layer.effect(
     NpmRegistry.NpmCli,
@@ -254,7 +248,7 @@ const makeNpmLayer = (params: {
             yield* Ref.update(params.publishCalls, (calls) => [...calls, packageName])
 
             const blocked = yield* Ref.get(params.failPublishPackages)
-            if (blocked.has(packageName)) {
+            if (blocked.includes(packageName)) {
               return yield* Effect.fail(
                 new NpmRegistry.NpmCliError({
                   context: {
@@ -306,8 +300,8 @@ const makeRealHarness = (
       const { layer: githubLayer, state: githubState } = yield* Github.Memory.makeWithState({})
       const packCalls = yield* Ref.make<readonly string[]>([])
       const publishCalls = yield* Ref.make<readonly string[]>([])
-      const failPublishPackages = yield* Ref.make<ReadonlySet<string>>(
-        new Set(options.failPublishPackages ?? []),
+      const failPublishPackages = yield* Ref.make<readonly string[]>(
+        options.failPublishPackages ?? [],
       )
 
       const planLayer = Layer.mergeAll(envLayer, FileSystemLayer, gitLayer)
@@ -411,12 +405,12 @@ interface GraphPlanLike {
 }
 
 const assertGraphPlan = (plan: GraphPlanLike) => {
-  expect([...plan.releases.map((item) => item.package.name.moniker)].sort()).toEqual([
+  expect(plan.releases.map((item) => item.package.name.moniker).toSorted()).toEqual([
     '@kitz/a',
     '@kitz/b',
     '@kitz/c',
   ])
-  expect([...plan.cascades.map((item) => item.package.name.moniker)].sort()).toEqual([
+  expect(plan.cascades.map((item) => item.package.name.moniker).toSorted()).toEqual([
     '@kitz/d',
     '@kitz/e',
     '@kitz/f',
@@ -548,7 +542,7 @@ describe('Executor e2e', () => {
             Effect.provide(harness.planLayer),
           )
 
-          expect([...plan.releases.map((item) => item.package.name.moniker)].sort()).toEqual([
+          expect(plan.releases.map((item) => item.package.name.moniker).toSorted()).toEqual([
             '@kitz/a',
             '@kitz/b',
             '@kitz/c',
@@ -677,7 +671,7 @@ describe('Executor e2e', () => {
             expect(yield* Ref.get(harness.gitState.createdTags)).toEqual([])
             yield* assertGraphTarballsExist(harness.rootDir)
 
-            yield* Ref.set(harness.failPublishPackages, new Set())
+            yield* Ref.set(harness.failPublishPackages, [])
 
             const secondRun = yield* execute(plan, { dryRun: false }).pipe(
               Effect.provide(harness.workflowLayer),

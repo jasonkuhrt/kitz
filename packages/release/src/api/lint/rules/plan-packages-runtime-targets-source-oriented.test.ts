@@ -26,10 +26,7 @@ describe('plan.packages-runtime-targets-source-oriented', () => {
             name: '@kitz/core',
             version: '1.0.0',
             imports: {
-              '#core': {
-                types: './build/_.d.ts',
-                default: './build/_.js',
-              },
+              '#core': './build/_.js',
             },
           },
           null,
@@ -54,16 +51,10 @@ describe('plan.packages-runtime-targets-source-oriented', () => {
             name: '@kitz/core',
             version: '1.0.0',
             imports: {
-              '#core': {
-                types: './build/_.d.ts',
-                default: './src/_.ts',
-              },
+              '#core': './src/_.ts',
             },
             exports: {
-              '.': {
-                types: './build/_.d.ts',
-                default: './src/_.ts',
-              },
+              '.': './src/_.ts',
             },
           },
           null,

@@ -24,7 +24,7 @@ export const decodeSemverFromManifest = (value: unknown): Semver.Semver =>
     : Schema.decodeUnknownSync(Semver.Semver)(value)
 
 export const makePackageJson = (name: string, version: string, extra?: Record<string, unknown>) =>
-  JSON.stringify({ name, version, ...(extra ?? {}) }, null, 2)
+  JSON.stringify({ name, version, ...extra }, null, 2)
 
 export const tag = (name: Pkg.Moniker.Moniker, version: string) =>
   Pkg.Pin.toString(
@@ -139,8 +139,8 @@ export interface Harness {
   readonly packCalls: Ref.Ref<PackCall[]>
   readonly publishCalls: Ref.Ref<PublishCall[]>
   readonly publishAttempts: Ref.Ref<number>
-  readonly failPackPackages: Ref.Ref<ReadonlySet<string>>
-  readonly failPublishPackages: Ref.Ref<ReadonlySet<string>>
+  readonly failPackPackages: Ref.Ref<readonly string[]>
+  readonly failPublishPackages: Ref.Ref<readonly string[]>
 }
 
 export const makeHarness = (options: {
@@ -160,11 +160,9 @@ export const makeHarness = (options: {
     const packCalls = yield* Ref.make<PackCall[]>([])
     const publishCalls = yield* Ref.make<PublishCall[]>([])
     const publishAttempts = yield* Ref.make(0)
-    const failPackPackages = yield* Ref.make<ReadonlySet<string>>(
-      new Set(options.failPackPackages ?? []),
-    )
-    const failPublishPackages = yield* Ref.make<ReadonlySet<string>>(
-      new Set(options.failPublishPackages ?? []),
+    const failPackPackages = yield* Ref.make<readonly string[]>(options.failPackPackages ?? [])
+    const failPublishPackages = yield* Ref.make<readonly string[]>(
+      options.failPublishPackages ?? [],
     )
 
     const npmLayerBase = Layer.effect(
@@ -194,7 +192,7 @@ export const makeHarness = (options: {
               }
 
               const blockedPackages = yield* Ref.get(failPackPackages)
-              if (blockedPackages.has(packageName)) {
+              if (blockedPackages.includes(packageName)) {
                 return yield* Effect.fail(
                   new NpmRegistry.NpmCliError({
                     context: {
@@ -248,7 +246,7 @@ export const makeHarness = (options: {
 
               const blockedPackages = yield* Ref.get(failPublishPackages)
               const tarballPath = Fs.Path.toString(publishOptions.tarball)
-              const shouldFail = [...blockedPackages].some((packageName) =>
+              const shouldFail = blockedPackages.some((packageName) =>
                 tarballPath.includes(`${slugPackageName(packageName)}-`),
               )
 

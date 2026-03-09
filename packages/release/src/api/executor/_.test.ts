@@ -281,16 +281,10 @@ describe('Executor integration', () => {
           diskLayout: {
             '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
               imports: {
-                '#core': {
-                  types: './build/_.d.ts',
-                  default: './src/_.ts',
-                },
+                '#core': './src/_.ts',
               },
               exports: {
-                '.': {
-                  types: './build/_.d.ts',
-                  default: './src/_.ts',
-                },
+                '.': './src/_.ts',
               },
               scripts: {
                 prepack: 'echo preparing',
@@ -331,16 +325,10 @@ describe('Executor integration', () => {
           ),
         ).toBe(true)
         expect(manifest['imports']).toEqual({
-          '#core': {
-            types: './build/_.d.ts',
-            default: './src/_.ts',
-          },
+          '#core': './src/_.ts',
         })
         expect(manifest['exports']).toEqual({
-          '.': {
-            types: './build/_.d.ts',
-            default: './src/_.ts',
-          },
+          '.': './src/_.ts',
         })
       }),
     ),

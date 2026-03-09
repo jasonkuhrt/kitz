@@ -9,16 +9,14 @@ describe('Pkg.Manifest publish rewrite', () => {
         name: '@kitz/release',
         version: '0.0.0-kitz-release',
         imports: {
-          '#release': {
-            types: './build/_.d.ts',
-            default: './src/_.ts',
+          '#release': './src/_.ts',
+          '#platform:release/*': {
+            browser: './src/*.browser.ts',
+            default: './src/*.node.ts',
           },
         },
         exports: {
-          '.': {
-            types: './build/__.d.ts',
-            default: './src/__.ts',
-          },
+          '.': './src/__.ts',
         },
         dependencies: {
           '@kitz/core': 'workspace:*',
@@ -43,16 +41,14 @@ describe('Pkg.Manifest publish rewrite', () => {
 
     expect(result['version']).toBe('1.4.0')
     expect(result['imports']).toEqual({
-      '#release': {
-        types: './build/_.d.ts',
-        default: './build/_.js',
+      '#release': './build/_.js',
+      '#platform:release/*': {
+        browser: './build/*.browser.js',
+        default: './build/*.node.js',
       },
     })
     expect(result['exports']).toEqual({
-      '.': {
-        types: './build/__.d.ts',
-        default: './build/__.js',
-      },
+      '.': './build/__.js',
     })
     expect(result['dependencies']).toEqual({
       '@kitz/core': '1.0.0',
@@ -98,7 +94,7 @@ describe('Pkg.Manifest publish rewrite', () => {
             '@kitz/core': 'workspace:*',
           },
         },
-        new Set(['@kitz/core', '@kitz/fs', '@kitz/git']),
+        ['@kitz/core', '@kitz/fs', '@kitz/git'],
       ),
     ).toEqual(['@kitz/core', '@kitz/fs'])
   })

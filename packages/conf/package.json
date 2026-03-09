@@ -9,44 +9,22 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#conf": {
-      "types": "./build/_.js",
-      "default": "./src/_.ts"
-    },
-    "#conf/*": {
-      "types": "./build/*.js",
-      "default": "./src/*.ts"
-    },
-    "#configurator": {
-      "types": "./build/configurator.js",
-      "default": "./src/configurator.ts"
-    },
-    "#file": {
-      "types": "./build/file/__.js",
-      "default": "./src/file/__.ts"
-    },
-    "#file/*": {
-      "types": "./build/file/*.js",
-      "default": "./src/file/*.ts"
-    }
+    "#conf": "./src/_.ts",
+    "#conf/*": "./src/*.ts",
+    "#configurator": "./src/configurator.ts",
+    "#file": "./src/file/__.ts",
+    "#file/*": "./src/file/*.ts"
   },
-  "types": "./src/_.ts",
   "exports": {
-    ".": {
-      "types": "./build/_.js",
-      "default": "./src/_.ts"
-    },
-    "./__": {
-      "types": "./build/__.js",
-      "default": "./src/__.ts"
-    }
+    ".": "./src/_.ts",
+    "./__": "./src/__.ts"
   },
   "files": [
     "build",
     "src"
   ],
   "scripts": {
-    "build": "tsgo -p tsconfig.build.json",
+    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
     "check:lint": "oxlint src/",

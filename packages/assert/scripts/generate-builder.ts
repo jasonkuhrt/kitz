@@ -196,6 +196,8 @@ const RELATORS: Record<string, Relator> = {
   },
 }
 
+const RELATOR_VALUES = Object.values(RELATORS)
+
 interface UnaryRelator {
   name: string
   kindName: string
@@ -644,9 +646,7 @@ function generateBarrelFile(
   const relatorsPath = getRelativePath(dirPath, join(srcDir, 'asserts.js'))
   const builderPath = getRelativePath(dirPath, join(srcDir, 'builder-singleton.js'))
 
-  const relatorKinds = Object.keys(RELATORS)
-    .map((r) => RELATORS[r]!.kindName)
-    .join(', ')
+  const relatorKinds = RELATOR_VALUES.map((relator) => relator.kindName).join(', ')
 
   const imports = `import type { Fn } from '@kitz/core'
 import { builder } from '${builderPath}'
@@ -660,12 +660,9 @@ ${typedBuilderConst('unknown', 'builder.unknown', true)}
 ${typedBuilderConst('never', 'builder.never', true)}
 ${typedBuilderConst('empty', 'builder.empty', true)}`
 
-  const typeShorthands = Object.keys(RELATORS)
-    .map((relatorName) => {
-      const relator = RELATORS[relatorName]!
-      return `export type ${relatorName}<$Expected, $Actual> = Fn.Kind.Apply<${relator.kindName}, [$Expected, $Actual]>`
-    })
-    .join('\n')
+  const typeShorthands = RELATOR_VALUES.map((relator) => {
+    return `export type ${relator.name}<$Expected, $Actual> = Fn.Kind.Apply<${relator.kindName}, [$Expected, $Actual]>`
+  }).join('\n')
 
   return `${imports}
 
@@ -689,9 +686,9 @@ function generateExtractorBarrelFile(
   const relatorsPath = getRelativePath(barrelPath, join(srcDir, 'asserts.js'))
 
   // Part 1: Export relators as dual namespaces (type+value)
-  const relatorExports = Object.keys(RELATORS)
-    .map((relator) => `export * as ${relator} from './${relator}.js'`)
-    .join('\n')
+  const relatorExports = RELATOR_VALUES.map(
+    (relator) => `export * as ${relator.name} from './${relator.name}.js'`,
+  ).join('\n')
 
   // Part 2: Export 'not' namespace (type+value)
   const notExport = `export * as not from './not/__.js'`
@@ -716,9 +713,7 @@ ${typedBuilderConst('empty', `builder.${extractorName}.empty`, true)}`
 
   // Part 4: Add type-level shorthand for relators (allows omitting .of)
   const extractor = extractorsByName[extractorName]
-  const relatorKinds = Object.keys(RELATORS)
-    .map((r) => RELATORS[r]!.kindName)
-    .join(', ')
+  const relatorKinds = RELATOR_VALUES.map((relator) => relator.kindName).join(', ')
 
   const imports = `import type { Fn } from '@kitz/core'
 import { builder } from '${builderPath}'
@@ -729,10 +724,8 @@ import type { ${relatorKinds} } from '${relatorsPath}'`
   const extractorChain =
     extractor === undefined ? '$Actual' : `Optic.${kindToDirectType(extractor.kindName)}<$Actual>`
 
-  const typeShorthands = Object.keys(RELATORS)
-    .map((relatorName) => {
-      const relator = RELATORS[relatorName]!
-      return `// oxfmt-ignore\nexport type ${relatorName}<
+  const typeShorthands = RELATOR_VALUES.map((relator) => {
+    return `// oxfmt-ignore\nexport type ${relator.name}<
   $Expected,
   $Actual,
   __$ActualExtracted = ${extractorChain},
@@ -740,8 +733,7 @@ import type { ${relatorKinds} } from '${relatorsPath}'`
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<${relator.kindName}, [$Expected, __actual__]>
                                                                          : never`
-    })
-    .join('\n\n')
+  }).join('\n\n')
 
   return `${imports}
 
@@ -762,9 +754,9 @@ function generateNotBarrelFile(barrelPath: string, extractors: Extractor[]): str
   const builderPath = getRelativePath(barrelPath, join(srcDir, 'builder-singleton.js'))
 
   // Export relators as dual namespaces (type+value)
-  const relatorExports = Object.keys(RELATORS)
-    .map((relator) => `export * as ${relator} from './${relator}.js'`)
-    .join('\n')
+  const relatorExports = RELATOR_VALUES.map(
+    (relator) => `export * as ${relator.name} from './${relator.name}.js'`,
+  ).join('\n')
 
   // Build the runtime chain for unary relators (builder.not.${extractor1}.${extractor2}.${unaryRelator})
   const extractorChainForRuntime = extractors.map((e) => e.name).join('.')
@@ -785,21 +777,16 @@ ${typedBuilderConst('empty', `${builderPrefix}.empty`, true)}`
     extractors.length > 0
       ? `import { Optic } from '@kitz/core'\nimport type { Either } from 'effect'\n`
       : ''
-  const relatorKinds = Object.keys(RELATORS)
-    .map((r) => RELATORS[r]!.kindName)
-    .join(', ')
+  const relatorKinds = RELATOR_VALUES.map((relator) => relator.kindName).join(', ')
 
   const imports = `import type { Fn } from '@kitz/core'
 import { builder } from '${builderPath}'
 ${extractorImports}import type { ${relatorKinds} } from '${relatorsPath}'`
 
-  const typeShorthands = Object.keys(RELATORS)
-    .map((relatorName) => {
-      const relator = RELATORS[relatorName]!
-
-      if (extractors.length > 0) {
-        const extractorChain = buildExtractorChain(extractors, '$Actual')
-        return `// oxfmt-ignore\nexport type ${relatorName}<
+  const typeShorthands = RELATOR_VALUES.map((relator) => {
+    if (extractors.length > 0) {
+      const extractorChain = buildExtractorChain(extractors, '$Actual')
+      return `// oxfmt-ignore\nexport type ${relator.name}<
   $Expected,
   $Actual,
   __$ActualExtracted = ${extractorChain},
@@ -807,12 +794,11 @@ ${extractorImports}import type { ${relatorKinds} } from '${relatorsPath}'`
   __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
   __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<${relator.kindName}, [$Expected, __actual__, true]>
                                                                          : never`
-      } else {
-        // No extractors
-        return `export type ${relatorName}<$Expected, $Actual> = Fn.Kind.Apply<${relator.kindName}, [$Expected, $Actual, true]>`
-      }
-    })
-    .join('\n\n')
+    } else {
+      // No extractors
+      return `export type ${relator.name}<$Expected, $Actual> = Fn.Kind.Apply<${relator.kindName}, [$Expected, $Actual, true]>`
+    }
+  }).join('\n\n')
 
   return `${imports}
 
@@ -917,16 +903,16 @@ function generateAllCombinations(
   }
 
   // Base relators (no extractors)
-  for (const relatorName of Object.keys(RELATORS)) {
-    addBothVariants([], RELATORS[relatorName]!)
+  for (const relator of RELATOR_VALUES) {
+    addBothVariants([], relator)
   }
 
   // Single extractors
   for (const extractorName of Object.keys(extractorsByName)) {
-    for (const relatorName of Object.keys(RELATORS)) {
+    for (const relator of RELATOR_VALUES) {
       const extractor = extractorsByName[extractorName]
       if (extractor !== undefined) {
-        addBothVariants([extractor], RELATORS[relatorName]!)
+        addBothVariants([extractor], relator)
       }
     }
   }

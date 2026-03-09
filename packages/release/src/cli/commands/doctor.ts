@@ -52,7 +52,7 @@ const enableRule = (
       severity: existing?.overrides.severity ?? config.lint.defaults.severity,
     }),
     options: {
-      ...(existing?.options ?? {}),
+      ...existing?.options,
       ...ruleOptions,
     },
   })

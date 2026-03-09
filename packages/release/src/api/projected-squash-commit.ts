@@ -21,9 +21,9 @@ export const collectScopeImpacts = (
   analysis: Pick<Analysis, 'impacts'>,
   options?: { readonly scopes?: readonly string[] },
 ): readonly ScopeImpact[] => {
-  const allowedScopes = options?.scopes ? new Set(options.scopes) : null
+  const allowedScopes = options?.scopes ?? null
   const impacts = analysis.impacts
-    .filter((impact) => (allowedScopes ? allowedScopes.has(impact.package.scope) : true))
+    .filter((impact) => (allowedScopes ? allowedScopes.includes(impact.package.scope) : true))
     .map((impact) => ({
       scope: impact.package.scope,
       bump: impact.bump,
@@ -41,7 +41,9 @@ export const collectScopeImpacts = (
 }
 
 const normalizeScopes = (scopes: readonly string[]): readonly string[] =>
-  [...new Set(scopes)].sort((left, right) => left.localeCompare(right))
+  scopes
+    .filter((scope, index) => scopes.indexOf(scope) === index)
+    .toSorted((left, right) => left.localeCompare(right))
 
 const orderByBump: Readonly<Record<Semver.BumpType, number>> = {
   major: 0,
@@ -62,8 +64,8 @@ export const renderHeader = (params: {
   if (params.impacts.length === 0) return null
 
   const commit = ConventionalCommits.Commit.Multi.make({
-    targets: [...params.impacts]
-      .sort(
+    targets: params.impacts
+      .toSorted(
         (left, right) =>
           orderByBump[left.bump] - orderByBump[right.bump] || left.scope.localeCompare(right.scope),
       )

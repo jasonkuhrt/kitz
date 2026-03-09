@@ -105,6 +105,7 @@ const rules: ReadonlyArray<{
     passingFixtures: [
       `no-nodejs-builtin-imports/pass-node-covered-by-exports-node/src/feature.ts`,
       `no-nodejs-builtin-imports/pass-node-covered-by-imports-bun/src/runtime.ts`,
+      `no-nodejs-builtin-imports/pass-platform-implementation.node.ts`,
     ],
   },
   {
@@ -323,6 +324,7 @@ const rules: ReadonlyArray<{
       `subpath-imports-integrity/fail-export-wrong-format/packages/exportwrong/src/alpha/_.ts`,
       `subpath-imports-integrity/fail-missing-entry/packages/noentry/src/beta/_.ts`,
       `subpath-imports-integrity/fail-condition-mismatch/packages/mismatch/src/foo/impl.ts`,
+      `subpath-imports-integrity/fail-types-field/packages/typed/src/alpha/_.ts`,
     ],
     passingFixtures: [
       `subpath-imports-integrity/pass-valid/packages/good/src/alpha/_.ts`,

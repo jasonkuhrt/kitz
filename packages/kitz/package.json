@@ -10,209 +10,62 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./build/index.js",
-      "default": "./src/index.ts"
-    },
-    "./arr": {
-      "types": "./build/arr.js",
-      "default": "./src/arr.ts"
-    },
-    "./bool": {
-      "types": "./build/bool.js",
-      "default": "./src/bool.ts"
-    },
-    "./date": {
-      "types": "./build/date.js",
-      "default": "./src/date.ts"
-    },
-    "./err": {
-      "types": "./build/err.js",
-      "default": "./src/err.ts"
-    },
-    "./fn": {
-      "types": "./build/fn.js",
-      "default": "./src/fn.ts"
-    },
-    "./lang": {
-      "types": "./build/lang.js",
-      "default": "./src/lang.ts"
-    },
-    "./null": {
-      "types": "./build/null.js",
-      "default": "./src/null.ts"
-    },
-    "./num": {
-      "types": "./build/num.js",
-      "default": "./src/num.ts"
-    },
-    "./obj": {
-      "types": "./build/obj.js",
-      "default": "./src/obj.ts"
-    },
-    "./optic": {
-      "types": "./build/optic.js",
-      "default": "./src/optic.ts"
-    },
-    "./pat": {
-      "types": "./build/pat.js",
-      "default": "./src/pat.ts"
-    },
-    "./prom": {
-      "types": "./build/prom.js",
-      "default": "./src/prom.ts"
-    },
-    "./prox": {
-      "types": "./build/prox.js",
-      "default": "./src/prox.ts"
-    },
-    "./rec": {
-      "types": "./build/rec.js",
-      "default": "./src/rec.ts"
-    },
-    "./str": {
-      "types": "./build/str.js",
-      "default": "./src/str.ts"
-    },
-    "./ts": {
-      "types": "./build/ts.js",
-      "default": "./src/ts.ts"
-    },
-    "./tup": {
-      "types": "./build/tup.js",
-      "default": "./src/tup.ts"
-    },
-    "./undefined": {
-      "types": "./build/undefined.js",
-      "default": "./src/undefined.ts"
-    },
-    "./assert": {
-      "types": "./build/assert.js",
-      "default": "./src/assert.ts"
-    },
-    "./bldr": {
-      "types": "./build/bldr.js",
-      "default": "./src/bldr.ts"
-    },
-    "./cli": {
-      "types": "./build/cli.js",
-      "default": "./src/cli.ts"
-    },
-    "./color": {
-      "types": "./build/color.js",
-      "default": "./src/color.ts"
-    },
-    "./conf": {
-      "types": "./build/conf.js",
-      "default": "./src/conf.ts"
-    },
-    "./env": {
-      "types": "./build/env.js",
-      "default": "./src/env.ts"
-    },
-    "./fs": {
-      "types": "./build/fs.js",
-      "default": "./src/fs.ts"
-    },
-    "./group": {
-      "types": "./build/group.js",
-      "default": "./src/group.ts"
-    },
-    "./html": {
-      "types": "./build/html.js",
-      "default": "./src/html.ts"
-    },
-    "./http": {
-      "types": "./build/http.js",
-      "default": "./src/http.ts"
-    },
-    "./idx": {
-      "types": "./build/idx.js",
-      "default": "./src/idx.ts"
-    },
-    "./json": {
-      "types": "./build/json.js",
-      "default": "./src/json.ts"
-    },
-    "./jsonc": {
-      "types": "./build/jsonc.js",
-      "default": "./src/jsonc.ts"
-    },
-    "./log": {
-      "types": "./build/log.js",
-      "default": "./src/log.ts"
-    },
-    "./mod": {
-      "types": "./build/mod.js",
-      "default": "./src/mod.ts"
-    },
-    "./name": {
-      "types": "./build/name.js",
-      "default": "./src/name.ts"
-    },
-    "./oak": {
-      "types": "./build/oak.js",
-      "default": "./src/oak.ts"
-    },
-    "./pkg": {
-      "types": "./build/pkg.js",
-      "default": "./src/pkg.ts"
-    },
-    "./paka": {
-      "types": "./build/paka.js",
-      "default": "./src/paka.ts"
-    },
-    "./platform": {
-      "types": "./build/platform.js",
-      "default": "./src/platform.ts"
-    },
-    "./resource": {
-      "types": "./build/resource.js",
-      "default": "./src/resource.ts"
-    },
-    "./sch": {
-      "types": "./build/sch.js",
-      "default": "./src/sch.ts"
-    },
-    "./semver": {
-      "types": "./build/semver.js",
-      "default": "./src/semver.ts"
-    },
-    "./syn": {
-      "types": "./build/syn.js",
-      "default": "./src/syn.ts"
-    },
-    "./test": {
-      "types": "./build/test.js",
-      "default": "./src/test.ts"
-    },
-    "./tex": {
-      "types": "./build/tex.js",
-      "default": "./src/tex.ts"
-    },
-    "./tree": {
-      "types": "./build/tree.js",
-      "default": "./src/tree.ts"
-    },
-    "./url": {
-      "types": "./build/url.js",
-      "default": "./src/url.ts"
-    },
-    "./ware": {
-      "types": "./build/ware.js",
-      "default": "./src/ware.ts"
-    },
-    "./monorepo": {
-      "types": "./build/monorepo.js",
-      "default": "./src/monorepo.ts"
-    }
+    ".": "./src/index.ts",
+    "./arr": "./src/arr.ts",
+    "./bool": "./src/bool.ts",
+    "./date": "./src/date.ts",
+    "./err": "./src/err.ts",
+    "./fn": "./src/fn.ts",
+    "./lang": "./src/lang.ts",
+    "./null": "./src/null.ts",
+    "./num": "./src/num.ts",
+    "./obj": "./src/obj.ts",
+    "./optic": "./src/optic.ts",
+    "./pat": "./src/pat.ts",
+    "./prom": "./src/prom.ts",
+    "./prox": "./src/prox.ts",
+    "./rec": "./src/rec.ts",
+    "./str": "./src/str.ts",
+    "./ts": "./src/ts.ts",
+    "./tup": "./src/tup.ts",
+    "./undefined": "./src/undefined.ts",
+    "./assert": "./src/assert.ts",
+    "./bldr": "./src/bldr.ts",
+    "./cli": "./src/cli.ts",
+    "./color": "./src/color.ts",
+    "./conf": "./src/conf.ts",
+    "./env": "./src/env.ts",
+    "./fs": "./src/fs.ts",
+    "./group": "./src/group.ts",
+    "./html": "./src/html.ts",
+    "./http": "./src/http.ts",
+    "./idx": "./src/idx.ts",
+    "./json": "./src/json.ts",
+    "./jsonc": "./src/jsonc.ts",
+    "./log": "./src/log.ts",
+    "./mod": "./src/mod.ts",
+    "./name": "./src/name.ts",
+    "./oak": "./src/oak.ts",
+    "./pkg": "./src/pkg.ts",
+    "./paka": "./src/paka.ts",
+    "./platform": "./src/platform.ts",
+    "./resource": "./src/resource.ts",
+    "./sch": "./src/sch.ts",
+    "./semver": "./src/semver.ts",
+    "./syn": "./src/syn.ts",
+    "./test": "./src/test.ts",
+    "./tex": "./src/tex.ts",
+    "./tree": "./src/tree.ts",
+    "./url": "./src/url.ts",
+    "./ware": "./src/ware.ts",
+    "./monorepo": "./src/monorepo.ts"
   },
   "files": [
     "build",
     "src"
   ],
   "scripts": {
-    "build": "tsgo -p tsconfig.build.json",
+    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
     "check:lint": "oxlint src/",
@@ -251,6 +104,5 @@
     "@kitz/tree": "workspace:*",
     "@kitz/url": "workspace:*",
     "@kitz/ware": "workspace:*"
-  },
-  "types": "./src/index.ts"
+  }
 }

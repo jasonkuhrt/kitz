@@ -6,7 +6,10 @@
     "tsBuildInfoFile": "./node_modules/.cache/.tsbuildinfo",
     "allowImportingTsExtensions": true,
     "noEmit": true,
-    "paths": {}
+    "paths": {
+      "#npm-registry": ["./src/_.js"],
+      "#npm-registry/*": ["./src/*.js"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["build", "node_modules"]

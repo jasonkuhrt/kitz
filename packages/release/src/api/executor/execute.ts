@@ -124,38 +124,37 @@ export const formatLifecycleEvent = (event: Flo.LifecycleEvent): LifecycleEventL
 const orderReleaseEntries = (
   entries: ReadonlyArray<ReleasePayloadType['releases'][number]>,
 ): ReleasePayloadType['releases'] => {
-  const dependencies = new Map(
+  const dependencies = Object.fromEntries(
     entries.map((entry) => [
       entry.packageName,
-      new Set(entry.dependsOn.filter((name) => name !== entry.packageName)),
+      entry.dependsOn.filter((name) => name !== entry.packageName),
     ]),
-  )
-  const remaining = new Map(entries.map((entry) => [entry.packageName, entry]))
+  ) as Record<string, readonly string[]>
+  let remaining = [...entries]
   const ordered: Array<ReleasePayloadType['releases'][number]> = []
-  const resolved = new Set<string>()
+  const resolved: string[] = []
 
-  while (remaining.size > 0) {
-    const ready = [...remaining.values()]
+  while (remaining.length > 0) {
+    const ready = remaining
       .filter((entry) =>
-        [...(dependencies.get(entry.packageName) ?? new Set<string>())].every((name) =>
-          resolved.has(name),
-        ),
+        (dependencies[entry.packageName] ?? []).every((name) => resolved.includes(name)),
       )
-      .sort((a, b) => a.packageName.localeCompare(b.packageName))
+      .toSorted((a, b) => a.packageName.localeCompare(b.packageName))
 
     const next =
-      ready[0] ??
-      [...remaining.values()].sort((a, b) => a.packageName.localeCompare(b.packageName))[0]
+      ready[0] ?? remaining.toSorted((a, b) => a.packageName.localeCompare(b.packageName))[0]
     if (next === undefined) break
 
     ordered.push({
       ...next,
       dependsOn: next.dependsOn
-        .filter((name) => resolved.has(name))
-        .sort((a, b) => a.localeCompare(b)),
+        .filter((name) => resolved.includes(name))
+        .toSorted((a, b) => a.localeCompare(b)),
     })
-    remaining.delete(next.packageName)
-    resolved.add(next.packageName)
+    remaining = remaining.filter((entry) => entry.packageName !== next.packageName)
+    if (!resolved.includes(next.packageName)) {
+      resolved.push(next.packageName)
+    }
   }
 
   return ordered
@@ -177,7 +176,7 @@ export const toPayload = (
 ): Effect.Effect<ReleasePayloadType, never, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const planItems = [...plan.releases, ...plan.cascades]
-    const localPackageNames = new Set(planItems.map((item) => item.package.name.moniker))
+    const localPackageNames = planItems.map((item) => item.package.name.moniker)
     const releaseEntries = yield* Effect.all(
       planItems.map((item) =>
         Effect.gen(function* () {

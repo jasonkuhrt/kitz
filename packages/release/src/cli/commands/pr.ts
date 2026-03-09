@@ -25,7 +25,7 @@ import * as Api from '../../api/__.js'
 import { CommandExecutorLayer, FileSystemLayer } from '../../platform.js'
 import { PreviewBlockingError, runPrPreview } from '../pr-preview.js'
 
-const helpFlags = new Set(['-h', '--help'])
+const helpFlags = ['-h', '--help'] as const
 
 const formatHelp = (): string =>
   [
@@ -129,7 +129,7 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, CommandExecutorLa
     const argv = yield* Cli.parseArgv(env.argv)
     const args = argv.args.slice(1)
 
-    if (args.length === 0 || args.some((arg) => helpFlags.has(arg))) {
+    if (args.length === 0 || args.some((arg) => helpFlags.includes(arg as '-h' | '--help'))) {
       yield* Console.log(formatHelp())
       return
     }
@@ -145,9 +145,9 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, CommandExecutorLa
     }
 
     if (action._tag === 'preview') {
-      const previewResult = yield* runPrPreview({
-        ...(action.checkOnly ? { checkOnly: true } : {}),
-      }).pipe(Effect.either)
+      const previewResult = yield* runPrPreview(
+        action.checkOnly ? { checkOnly: true } : undefined,
+      ).pipe(Effect.either)
 
       if (previewResult._tag === 'Left') {
         if (previewResult.left instanceof PreviewBlockingError) {

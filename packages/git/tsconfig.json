@@ -7,6 +7,8 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "paths": {
+      "#git": ["./src/_.js"],
+      "#git/*": ["./src/*.js"],
       "#kitz/test": ["../test/src/_.ts"],
       "#kitz/test/test": ["../test/src/__.ts"],
       "#kitz/test/*": ["../test/src/*.ts"]

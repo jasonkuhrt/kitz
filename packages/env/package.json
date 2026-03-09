@@ -16,14 +16,8 @@
     }
   },
   "exports": {
-    ".": {
-      "types": "./src/_.ts",
-      "default": "./src/_.ts"
-    },
-    "./__": {
-      "types": "./src/__.ts",
-      "default": "./src/__.ts"
-    }
+    ".": "./src/_.ts",
+    "./__": "./src/__.ts"
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
@@ -31,13 +25,12 @@
     "effect": "^3.0.0"
   },
   "scripts": {
-    "build": "tsgo -p tsconfig.build.json",
+    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
     "check:lint": "oxlint src/",
     "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   },
-  "types": "./src/_.ts",
   "files": [
     "build",
     "src"

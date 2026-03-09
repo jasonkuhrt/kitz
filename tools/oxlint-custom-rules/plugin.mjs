@@ -54,6 +54,7 @@ const MESSAGE_IDS = {
   subpathImportsIntegrityBrokenRef: `subpathImportsIntegrityBrokenRef`,
   subpathImportsIntegrityWrongFormat: `subpathImportsIntegrityWrongFormat`,
   subpathImportsIntegrityMissingEntry: `subpathImportsIntegrityMissingEntry`,
+  subpathImportsIntegrityNoTypesField: `subpathImportsIntegrityNoTypesField`,
   subpathImportsIntegrityConditionMismatch: `subpathImportsIntegrityConditionMismatch`,
   subpathImportsIntegrityTsconfigDrift: `subpathImportsIntegrityTsconfigDrift`,
   resolverPlatformDispatchRuntimeProbe: `resolverPlatformDispatchRuntimeProbe`,
@@ -104,6 +105,7 @@ const MESSAGES = {
   [MESSAGE_IDS.subpathImportsIntegrityBrokenRef]: `Subpath import target file does not exist.`,
   [MESSAGE_IDS.subpathImportsIntegrityWrongFormat]: `Subpath import/export target should use ./src/*.ts format, not ./build/*.js.`,
   [MESSAGE_IDS.subpathImportsIntegrityMissingEntry]: `Module has _.ts but no corresponding # subpath import entry in package.json.`,
+  [MESSAGE_IDS.subpathImportsIntegrityNoTypesField]: `Do not declare package.json types metadata; rely on colocated .d.ts resolution from published build output.`,
   [MESSAGE_IDS.subpathImportsIntegrityConditionMismatch]: `Conditional import target filename does not match its condition key (e.g. browser condition should target *.browser.* file).`,
   [MESSAGE_IDS.subpathImportsIntegrityTsconfigDrift]: `tsconfig.json paths have drifted from package.json imports. Auto-fixing.`,
   [MESSAGE_IDS.resolverPlatformDispatchRuntimeProbe]: `Move platform selection to package imports/resolver dispatch via a stable #platform:* alias instead of runtime probing.`,
@@ -267,6 +269,22 @@ const decodePackageJsonRecord = Schema.decodeUnknownOption(
   Schema.parseJson(PackageJsonRecordSchema),
 )
 const decodePackageConditionTarget = Schema.decodeUnknownOption(PackageConditionTargetSchema)
+
+/**
+ * @param {string} packageJsonPath
+ * @returns {Option.Option<Record<string, unknown>>}
+ */
+const readPackageJsonRecord = (packageJsonPath) =>
+  pipe(
+    Either.try({
+      try: () => fs.readFileSync(packageJsonPath, `utf8`),
+      catch: () => null,
+    }),
+    Either.match({
+      onLeft: () => Option.none(),
+      onRight: decodePackageJsonRecord,
+    }),
+  )
 
 /**
  * @param {unknown} literalNode
@@ -662,6 +680,37 @@ const matchesCoreNamespaceImportTarget = (moduleName, importTarget) => {
 }
 
 /**
+ * @param {unknown} target
+ * @param {(target: string) => void} visitor
+ * @returns {void}
+ */
+const visitPackageConditionTargetStrings = (target, visitor) => {
+  if (typeof target === `string`) {
+    visitor(target)
+    return
+  }
+
+  if (target === null || target === undefined) {
+    return
+  }
+
+  if (Array.isArray(target)) {
+    for (const entry of target) {
+      visitPackageConditionTargetStrings(entry, visitor)
+    }
+    return
+  }
+
+  if (!isRecord(target)) {
+    return
+  }
+
+  for (const nestedTarget of Object.values(target)) {
+    visitPackageConditionTargetStrings(nestedTarget, visitor)
+  }
+}
+
+/**
  * @param {string} filePath
  * @returns {{
  *   packageName: string,
@@ -726,22 +775,12 @@ const getCoreNamespaceConventions = (cwd) => {
   const conventions = new Map()
   const corePackageJsonPath = path.join(cwd, `packages/core/package.json`)
   const corePackageImports = pipe(
-    Either.try({
-      try: () => fs.readFileSync(corePackageJsonPath, `utf8`),
-      catch: () => null,
-    }),
-    Either.match({
-      onLeft: () => Option.none(),
-      onRight: (packageJsonContent) =>
-        pipe(
-          decodePackageJsonRecord(packageJsonContent),
-          Option.flatMap((packageJsonRecord) =>
-            `imports` in packageJsonRecord && isRecord(packageJsonRecord.imports)
-              ? Option.some(packageJsonRecord.imports)
-              : Option.none(),
-          ),
-        ),
-    }),
+    readPackageJsonRecord(corePackageJsonPath),
+    Option.flatMap((packageJsonRecord) =>
+      `imports` in packageJsonRecord && isRecord(packageJsonRecord.imports)
+        ? Option.some(packageJsonRecord.imports)
+        : Option.none(),
+    ),
   )
 
   if (Option.isNone(corePackageImports)) {
@@ -750,11 +789,7 @@ const getCoreNamespaceConventions = (cwd) => {
   }
 
   for (const [importAlias, importTarget] of Object.entries(corePackageImports.value)) {
-    if (
-      !importAlias.startsWith(`#`) ||
-      !importAlias.endsWith(`/core`) ||
-      typeof importTarget !== `string`
-    ) {
+    if (!importAlias.startsWith(`#`) || !importAlias.endsWith(`/core`)) {
       continue
     }
 
@@ -763,7 +798,14 @@ const getCoreNamespaceConventions = (cwd) => {
       continue
     }
 
-    if (!matchesCoreNamespaceImportTarget(moduleName, importTarget)) {
+    let matchesNamespaceTarget = false
+    visitPackageConditionTargetStrings(importTarget, (target) => {
+      if (matchesCoreNamespaceImportTarget(moduleName, target)) {
+        matchesNamespaceTarget = true
+      }
+    })
+
+    if (!matchesNamespaceTarget) {
       continue
     }
 
@@ -2104,7 +2146,7 @@ const noNodejsBuiltinImportsRule = defineRule({
         return
       }
 
-      if (isBoundaryAdapterFile(filePath)) {
+      if (isBoundaryAdapterFile(filePath) || isPlatformImplementationFile(filePath)) {
         return
       }
 
@@ -3552,6 +3594,8 @@ const subpathImportsIntegrityRule = defineRule({
           `..`,
         )
         const packageKey = normalizePath(packageDir)
+        const packageJsonPath = path.join(packageDir, `package.json`)
+        const packageJsonRecord = readPackageJsonRecord(packageJsonPath)
 
         // --- Per-file check: missing entry (Check 3) ---
         // Only applies to _.ts files that match configured requiredEntryPatterns.
@@ -3578,12 +3622,26 @@ const subpathImportsIntegrityRule = defineRule({
         }
         reportedSubpathImportsIntegrity.add(packageKey)
 
+        if (Option.isSome(packageJsonRecord) && `types` in packageJsonRecord.value) {
+          context.report({
+            node,
+            messageId: MESSAGE_IDS.subpathImportsIntegrityNoTypesField,
+          })
+        }
+
         const checkForwardMap = (forwardMap) => {
           if (forwardMap === null || forwardMap.size === 0) {
             return
           }
 
           for (const [, value] of forwardMap) {
+            if (typeof value === `object` && value !== null && `types` in value) {
+              context.report({
+                node,
+                messageId: MESSAGE_IDS.subpathImportsIntegrityNoTypesField,
+              })
+            }
+
             visitSubpathTargets(value, (target) => {
               // Check 2: Wrong format — string targets should use ./src/*.ts format
               if (!target.startsWith(`./src/`)) {

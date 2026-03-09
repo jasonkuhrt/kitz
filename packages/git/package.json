@@ -9,32 +9,19 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#git": {
-      "types": "./build/_.js",
-      "default": "./src/_.ts"
-    },
-    "#git/*": {
-      "types": "./build/*.js",
-      "default": "./src/*.ts"
-    }
+    "#git": "./src/_.ts",
+    "#git/*": "./src/*.ts"
   },
-  "types": "./src/_.ts",
   "exports": {
-    ".": {
-      "types": "./build/_.js",
-      "default": "./src/_.ts"
-    },
-    "./__": {
-      "types": "./build/__.js",
-      "default": "./src/__.ts"
-    }
+    ".": "./src/_.ts",
+    "./__": "./src/__.ts"
   },
   "files": [
     "build",
     "src"
   ],
   "scripts": {
-    "build": "tsgo -p tsconfig.build.json",
+    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
     "check:lint": "oxlint src/",

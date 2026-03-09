@@ -10,84 +10,32 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#pkg": {
-      "types": "./build/_.js",
-      "default": "./src/_.ts"
-    },
-    "#pkg/*": {
-      "types": "./build/*.js",
-      "default": "./src/*.ts"
-    },
-    "#moniker": {
-      "types": "./build/moniker/_.js",
-      "default": "./src/moniker/_.ts"
-    },
-    "#moniker/*": {
-      "types": "./build/moniker/*.js",
-      "default": "./src/moniker/*.ts"
-    },
-    "#manifest": {
-      "types": "./build/manifest/_.js",
-      "default": "./src/manifest/_.ts"
-    },
-    "#manifest/*": {
-      "types": "./build/manifest/*.js",
-      "default": "./src/manifest/*.ts"
-    },
-    "#manager": {
-      "types": "./build/manager/_.js",
-      "default": "./src/manager/_.ts"
-    },
-    "#manager/*": {
-      "types": "./build/manager/*.js",
-      "default": "./src/manager/*.ts"
-    },
-    "#pin": {
-      "types": "./build/pin/_.js",
-      "default": "./src/pin/_.ts"
-    },
-    "#pin/*": {
-      "types": "./build/pin/*.js",
-      "default": "./src/pin/*.ts"
-    },
-    "#range": {
-      "types": "./build/range/_.js",
-      "default": "./src/range/_.ts"
-    },
-    "#range/*": {
-      "types": "./build/range/*.js",
-      "default": "./src/range/*.ts"
-    }
+    "#pkg": "./src/_.ts",
+    "#pkg/*": "./src/*.ts",
+    "#moniker": "./src/moniker/_.ts",
+    "#moniker/*": "./src/moniker/*.ts",
+    "#manifest": "./src/manifest/_.ts",
+    "#manifest/*": "./src/manifest/*.ts",
+    "#manager": "./src/manager/_.ts",
+    "#manager/*": "./src/manager/*.ts",
+    "#pin": "./src/pin/_.ts",
+    "#pin/*": "./src/pin/*.ts",
+    "#range": "./src/range/_.ts",
+    "#range/*": "./src/range/*.ts"
   },
-  "types": "./src/_.ts",
   "exports": {
-    ".": {
-      "types": "./build/_.js",
-      "default": "./src/_.ts"
-    },
-    "./__": {
-      "types": "./build/__.js",
-      "default": "./src/__.ts"
-    },
-    "./manifest": {
-      "types": "./build/manifest/__.js",
-      "default": "./src/manifest/__.ts"
-    },
-    "./manager": {
-      "types": "./build/manager/__.js",
-      "default": "./src/manager/__.ts"
-    },
-    "./pin": {
-      "types": "./build/pin/_.js",
-      "default": "./src/pin/_.ts"
-    }
+    ".": "./src/_.ts",
+    "./__": "./src/__.ts",
+    "./manifest": "./src/manifest/__.ts",
+    "./manager": "./src/manager/__.ts",
+    "./pin": "./src/pin/_.ts"
   },
   "files": [
     "build",
     "src"
   ],
   "scripts": {
-    "build": "tsgo -p tsconfig.build.json",
+    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
     "check:lint": "oxlint src/",

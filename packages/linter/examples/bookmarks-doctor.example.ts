@@ -48,6 +48,8 @@ const discoverTargets = (): Effect.Effect<readonly Target[]> =>
 const checkFullDiskAccess = (): Effect.Effect<boolean> => Effect.succeed(true)
 const checkBrowserRunning = (_name: string): Effect.Effect<boolean> => Effect.succeed(false)
 const targetExists = (_path: string): Effect.Effect<boolean> => Effect.succeed(true)
+const uniqueStrings = (values: readonly string[]): readonly string[] =>
+  values.filter((value, index) => values.indexOf(value) === index)
 
 export const BookmarksDoctor = Linter.create('bookmarks')
   .service('cwd', Schema.String)
@@ -164,23 +166,24 @@ export const BookmarksDoctor = Linter.create('bookmarks')
       .describe('target browsers are closed before sync')
       .run(({ facts }) =>
         Effect.forEach(
-          [...new Set(facts.targets.map((target) => target.browserProcessName))],
+          uniqueStrings(facts.targets.map((target) => target.browserProcessName)),
           (browserName) =>
             Effect.gen(function* () {
+              const browserLabel = String(browserName)
               const running = yield* checkBrowserRunning(browserName)
               return running
                 ? Finding.fail({
                     code: 'targets.browser-not-running',
-                    message: `${browserName} is currently running.`,
+                    message: `${browserLabel} is currently running.`,
                     fix: {
                       kind: 'guide',
-                      summary: `Close ${browserName} before syncing.`,
-                      steps: [`Quit ${browserName}`],
+                      summary: `Close ${browserLabel} before syncing.`,
+                      steps: [`Quit ${browserLabel}`],
                     },
                   })
                 : Finding.pass({
                     code: 'targets.browser-not-running',
-                    message: `${browserName} is not running.`,
+                    message: `${browserLabel} is not running.`,
                   })
             }),
         ),

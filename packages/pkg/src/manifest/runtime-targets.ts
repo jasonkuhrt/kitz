@@ -13,10 +13,7 @@ const rewriteJsonTreeStrings = (value: unknown, rewriter: (value: string) => str
 
   if (value && typeof value === 'object') {
     return Object.fromEntries(
-      Object.entries(value).map(([key, nested]) => [
-        key,
-        key === 'types' ? nested : rewriteJsonTreeStrings(nested, rewriter),
-      ]),
+      Object.entries(value).map(([key, nested]) => [key, rewriteJsonTreeStrings(nested, rewriter)]),
     )
   }
 
@@ -31,9 +28,7 @@ const collectJsonTreeStrings = (value: unknown): readonly string[] => {
   }
 
   if (value && typeof value === 'object') {
-    return Object.entries(value).flatMap(([key, nested]) =>
-      key === 'types' ? [] : collectJsonTreeStrings(nested),
-    )
+    return Object.values(value).flatMap((nested) => collectJsonTreeStrings(nested))
   }
 
   return []
@@ -54,7 +49,6 @@ export const rewriteRuntimeTargetsToSource = <T>(value: T): T =>
 /**
  * Returns runtime target strings that still point at build output instead of source files.
  *
- * Ignores `types` declarations because those intentionally remain declaration-oriented.
  */
 export const findBuildRuntimeTargets = (value: unknown): readonly string[] =>
   collectJsonTreeStrings(value).filter((target) => /^\.\/build\/.*\.js$/u.test(target))

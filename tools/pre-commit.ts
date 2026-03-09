@@ -19,6 +19,7 @@ const FORMATTABLE_EXTENSIONS = new Set([
 ])
 
 const LINTABLE_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.mts', '.cts'])
+const LINTABLE_PATH_PREFIXES = ['packages/'] as const
 
 const MAX_BUFFER = 16 * 1024 * 1024
 
@@ -88,7 +89,6 @@ const runBufferOrThrow = (
 }
 
 const repoRoot = runOrThrow('git', ['rev-parse', '--show-toplevel']).trim()
-const oxfmtBin = join(repoRoot, 'node_modules', '.bin', 'oxfmt')
 const oxlintBin = join(repoRoot, 'node_modules', '.bin', 'oxlint')
 
 const lintArgs = ['--import-plugin', '--deny-warnings']
@@ -160,7 +160,17 @@ const syncWorkingTreeIfSafe = (
 }
 
 const isFormattable = (path: string): boolean => FORMATTABLE_EXTENSIONS.has(extname(path))
-const isLintable = (path: string): boolean => LINTABLE_EXTENSIONS.has(extname(path))
+const isLintable = (path: string): boolean =>
+  LINTABLE_EXTENSIONS.has(extname(path)) &&
+  LINTABLE_PATH_PREFIXES.some((prefix) => path.startsWith(prefix))
+
+const runFormat = (
+  snapshotRoot: string,
+  paths: readonly string[],
+  mode: '--write' | '--check',
+): CommandResult => {
+  return run('bun', ['tools/run-format.ts', mode, ...paths], { cwd: snapshotRoot })
+}
 
 const materializeIndexSnapshot = (): string => {
   const tempDir = mkdtempSync(join(tmpdir(), 'kitz-pre-commit-'))
@@ -211,7 +221,7 @@ const main = (): void => {
 
   try {
     if (formattablePaths.length > 0) {
-      run(oxfmtBin, ['--write', ...formattablePaths], { cwd: snapshotRoot })
+      runFormat(snapshotRoot, formattablePaths, '--write')
     }
 
     if (lintablePaths.length > 0) {
@@ -219,13 +229,13 @@ const main = (): void => {
     }
 
     if (formattablePaths.length > 0) {
-      run(oxfmtBin, ['--write', ...formattablePaths], { cwd: snapshotRoot })
+      runFormat(snapshotRoot, formattablePaths, '--write')
     }
 
     syncSnapshotBackToIndex(snapshotRoot, managedPaths)
 
     if (formattablePaths.length > 0) {
-      const formatCheck = run(oxfmtBin, ['--check', ...formattablePaths], { cwd: snapshotRoot })
+      const formatCheck = runFormat(snapshotRoot, formattablePaths, '--check')
       if (formatCheck.status !== 0) {
         logFailure('Formatting check', formatCheck)
         process.exit(1)

@@ -80,10 +80,6 @@ export const rule = RuntimeRule.create({
             }),
             FixStep.make({
               description:
-                'Leave `types` declarations pointing at declaration output; only restore runtime entries.',
-            }),
-            FixStep.make({
-              description:
                 'Re-run `release doctor --onlyRule plan.packages-runtime-targets-source-oriented` before retrying publish.',
             }),
           ],

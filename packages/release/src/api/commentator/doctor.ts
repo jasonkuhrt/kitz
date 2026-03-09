@@ -276,14 +276,11 @@ export const createDoctorSummary = (
   report: Report,
   options: CreateDoctorSummaryOptions,
 ): DoctorSummary | undefined => {
-  const byRule = new Map<string, (typeof report.results)[number]>(
-    report.results.map((result) => [result.rule.id, result]),
-  )
   const rows: DoctorRow[] = []
   const guidance: DoctorGuidance[] = []
 
   for (const ruleId of doctorRuleOrder) {
-    const result = byRule.get(ruleId)
+    const result = report.results.find((entry) => entry.rule.id === ruleId)
     if (!result || Skipped.is(result)) continue
 
     const label = doctorRuleLabels[ruleId]

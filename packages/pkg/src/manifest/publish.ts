@@ -1,5 +1,5 @@
 import { Semver } from '@kitz/semver'
-import * as Pin from '../pin/pin.js'
+import { Pin } from '#pin'
 import { rewriteRuntimeTargetsToBuild } from './runtime-targets.js'
 
 const dependencyFieldNames = [
@@ -97,22 +97,22 @@ export const findLocalDependencyNames = (
     readonly peerDependencies?: Readonly<Record<string, string>> | undefined
     readonly optionalDependencies?: Readonly<Record<string, string>> | undefined
   },
-  localPackageNames: ReadonlySet<string>,
+  localPackageNames: readonly string[],
 ): readonly string[] => {
-  const names = new Set<string>()
+  const names: string[] = []
 
   for (const fieldName of dependencyFieldNames) {
     const field = manifest[fieldName]
     if (field === undefined) continue
 
     for (const dependencyName of Object.keys(field)) {
-      if (localPackageNames.has(dependencyName)) {
-        names.add(dependencyName)
+      if (localPackageNames.includes(dependencyName) && !names.includes(dependencyName)) {
+        names.push(dependencyName)
       }
     }
   }
 
-  return [...names]
+  return names
 }
 
 export type DependencyField = DependencyFieldName

@@ -7,12 +7,9 @@ import {
 } from './runtime-targets.js'
 
 describe('Pkg.Manifest runtime targets', () => {
-  test('rewrites runtime targets between source and build paths without touching types', () => {
+  test('rewrites runtime targets between source and build paths', () => {
     const source = {
-      '.': {
-        types: './build/_.d.ts',
-        default: './src/_.ts',
-      },
+      '.': './src/_.ts',
       './feature': {
         browser: './src/feature.browser.ts',
         default: './src/feature.node.ts',
@@ -20,10 +17,7 @@ describe('Pkg.Manifest runtime targets', () => {
     }
 
     expect(rewriteRuntimeTargetsToBuild(source)).toEqual({
-      '.': {
-        types: './build/_.d.ts',
-        default: './build/_.js',
-      },
+      '.': './build/_.js',
       './feature': {
         browser: './build/feature.browser.js',
         default: './build/feature.node.js',
@@ -32,25 +26,14 @@ describe('Pkg.Manifest runtime targets', () => {
 
     expect(
       rewriteRuntimeTargetsToSource({
-        '.': {
-          types: './build/_.d.ts',
-          default: './build/_.js',
-        },
+        '.': './build/_.js',
       }),
-    ).toEqual({
-      '.': {
-        types: './build/_.d.ts',
-        default: './src/_.ts',
-      },
-    })
+    ).toEqual({ '.': './src/_.ts' })
   })
 
-  test('detects build-oriented runtime targets while ignoring types declarations', () => {
+  test('detects build-oriented runtime targets', () => {
     const runtimeTargets = {
-      '#pkg': {
-        types: './build/_.d.ts',
-        default: './build/_.js',
-      },
+      '#pkg': './build/_.js',
       '#pkg/*': {
         browser: './src/*.browser.ts',
         default: './build/*.node.js',
@@ -59,13 +42,6 @@ describe('Pkg.Manifest runtime targets', () => {
 
     expect(findBuildRuntimeTargets(runtimeTargets)).toEqual(['./build/_.js', './build/*.node.js'])
     expect(isRuntimeTargetSourceOriented(runtimeTargets)).toBe(false)
-    expect(
-      isRuntimeTargetSourceOriented({
-        '#pkg': {
-          types: './build/_.d.ts',
-          default: './src/_.ts',
-        },
-      }),
-    ).toBe(true)
+    expect(isRuntimeTargetSourceOriented({ '#pkg': './src/_.ts' })).toBe(true)
   })
 })
