@@ -51,7 +51,7 @@ const targetGroups =
 for (const group of targetGroups) {
   if (group.length === 0) continue
 
-  const command = [oxfmtBin, mode, ...group]
+  const command = [oxfmtBin, '--threads=1', mode, ...group]
     .map((part) => `"${part.replaceAll('"', '\\"')}"`)
     .join(' ')
 
