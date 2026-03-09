@@ -6,7 +6,18 @@ import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { describe, expect, it as test } from '@effect/vitest'
-import { Effect, Inspectable, Layer, LogLevel, Logger, Ref, Scope, Sink, Stream } from 'effect'
+import {
+  Duration,
+  Effect,
+  Inspectable,
+  Layer,
+  LogLevel,
+  Logger,
+  Ref,
+  Scope,
+  Sink,
+  Stream,
+} from 'effect'
 import { CommandExecutorLayer, FileSystemLayer } from '../../platform.js'
 import { execute } from './execute.js'
 import { makeWorkflowRuntime } from './runtime.js'
@@ -361,7 +372,10 @@ const makeRealHarness = (
         githubLayer,
         commandLayer,
         npmLayer,
-        makeWorkflowRuntime({ dbPath: `${Fs.Path.toString(rootDir)}.release/workflow.db` }),
+        makeWorkflowRuntime({
+          dbPath: `${Fs.Path.toString(rootDir)}.release/workflow.db`,
+          shardingConfig: testShardingConfig,
+        }),
       )
 
       return {
@@ -553,6 +567,14 @@ const publishFailureScenarios: readonly PublishFailureScenario[] = [
     ],
   },
 ]
+
+const testShardingConfig = {
+  entityMessagePollInterval: Duration.millis(10),
+  entityReplyPollInterval: Duration.millis(10),
+  refreshAssignmentsInterval: Duration.millis(10),
+  shardLockRefreshInterval: Duration.millis(25),
+  shardLockExpiration: Duration.seconds(1),
+} as const
 
 // These scenarios run real pack/publish-style workflow steps and need CI headroom.
 const E2E_TEST_TIMEOUT_MS = 90_000
