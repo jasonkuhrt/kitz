@@ -206,15 +206,19 @@ const makeNpmLayer = (params: {
     NpmRegistry.NpmCli,
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
-      const executor = yield* CommandExecutor.CommandExecutor
 
-      const packageNameFromCwd = (cwd: Fs.Path.AbsDir): Effect.Effect<string> =>
+      const manifestFromCwd = (cwd: Fs.Path.AbsDir): Effect.Effect<Record<string, unknown>> =>
         Effect.gen(function* () {
           const packageJsonPath = Fs.Path.join(cwd, Fs.Path.RelFile.fromString('./package.json'))
           const manifestRaw = yield* fs
             .readFileString(Fs.Path.toString(packageJsonPath))
             .pipe(Effect.orDie)
-          const manifest = yield* decodeJsonRecord(manifestRaw).pipe(Effect.orDie)
+          return yield* decodeJsonRecord(manifestRaw).pipe(Effect.orDie)
+        })
+
+      const packageNameFromCwd = (cwd: Fs.Path.AbsDir): Effect.Effect<string> =>
+        Effect.gen(function* () {
+          const manifest = yield* manifestFromCwd(cwd)
           const packageName = manifest['name']
           if (typeof packageName !== 'string') {
             return yield* Effect.die(new Error('fixture package.json missing name'))
@@ -232,11 +236,50 @@ const makeNpmLayer = (params: {
         whoami: () => Effect.succeed('fixture-user'),
         pack: ((options) =>
           Effect.gen(function* () {
+            const manifest = yield* manifestFromCwd(options.cwd)
             const packageName = yield* packageNameFromCwd(options.cwd)
             yield* Ref.update(params.packCalls, (calls) => [...calls, packageName])
-            return yield* NpmRegistry.Cli.pack(options).pipe(
-              Effect.provideService(CommandExecutor.CommandExecutor, executor),
+
+            const version = manifest['version']
+            if (typeof version !== 'string') {
+              return yield* Effect.die(new Error('fixture package.json missing version'))
+            }
+
+            const scripts = manifest['scripts']
+            const failingPackHook =
+              typeof scripts === 'object' &&
+              scripts !== null &&
+              [`prepack`, `postpack`].some((hookName) => {
+                const script = Reflect.get(scripts, hookName)
+                return typeof script === 'string' && script.includes(`exit 23`)
+              })
+
+            if (failingPackHook) {
+              return yield* Effect.fail(
+                new NpmRegistry.NpmCliError({
+                  context: {
+                    operation: 'pack',
+                    detail: 'fixture pack hook failure',
+                  },
+                  cause: new Error('fixture pack hook failure'),
+                }),
+              )
+            }
+
+            const filename = `${slugPackageName(packageName)}-${version}.tgz`
+            const tarball = Fs.Path.join(
+              options.packDestination,
+              Fs.Path.RelFile.fromString(`./${filename}`),
             )
+
+            yield* fs
+              .writeFileString(Fs.Path.toString(tarball), `packed:${packageName}@${version}`)
+              .pipe(Effect.orDie)
+
+            return {
+              tarball,
+              filename,
+            }
           })) satisfies NpmRegistry.NpmCliService['pack'],
         publish: ((options) =>
           Effect.gen(function* () {
@@ -516,7 +559,7 @@ const E2E_TEST_TIMEOUT_MS = 90_000
 
 describe('Executor e2e', () => {
   test.scopedLive(
-    'resumes after a real prepack failure without re-packing completed packages',
+    'resumes after a prepack failure without re-packing completed packages',
     () =>
       quiet(
         Effect.gen(function* () {
