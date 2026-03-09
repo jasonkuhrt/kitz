@@ -511,7 +511,8 @@ const publishFailureScenarios: readonly PublishFailureScenario[] = [
   },
 ]
 
-const E2E_TEST_TIMEOUT_MS = 30_000
+// These scenarios run real pack/publish-style workflow steps and need CI headroom.
+const E2E_TEST_TIMEOUT_MS = 90_000
 
 describe('Executor e2e', () => {
   test.scopedLive(
