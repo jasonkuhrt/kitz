@@ -1,3 +1,4 @@
+import { ClusterWorkflowEngine, SingleRunner } from '@effect/cluster'
 import { Command, CommandExecutor, FileSystem } from '@effect/platform'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
@@ -5,6 +6,7 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
+import { SqliteClient } from '#platform:executor/sqlite-client'
 import { describe, expect, it as test } from '@effect/vitest'
 import {
   Duration,
@@ -20,7 +22,6 @@ import {
 } from 'effect'
 import { CommandExecutorLayer, FileSystemLayer } from '../../platform.js'
 import { execute } from './execute.js'
-import { makeWorkflowRuntime } from './runtime.js'
 import { decodeJsonRecord, planOfficial, tag } from './test-support.js'
 
 interface FixturePackage {
@@ -372,10 +373,7 @@ const makeRealHarness = (
         githubLayer,
         commandLayer,
         npmLayer,
-        makeWorkflowRuntime({
-          dbPath: `${Fs.Path.toString(rootDir)}.release/workflow.db`,
-          shardingConfig: testShardingConfig,
-        }),
+        makeWorkflowTestRuntime(`${Fs.Path.toString(rootDir)}.release/workflow.db`),
       )
 
       return {
@@ -575,6 +573,17 @@ const testShardingConfig = {
   shardLockRefreshInterval: Duration.millis(25),
   shardLockExpiration: Duration.seconds(1),
 } as const
+
+const makeWorkflowTestRuntime = (dbPath: string) =>
+  ClusterWorkflowEngine.layer.pipe(
+    Layer.provide(
+      SingleRunner.layer({
+        runnerStorage: 'memory',
+        shardingConfig: testShardingConfig,
+      }),
+    ),
+    Layer.provideMerge(SqliteClient.layer({ filename: dbPath })),
+  )
 
 // These scenarios run real pack/publish-style workflow steps and need CI headroom.
 const E2E_TEST_TIMEOUT_MS = 90_000
