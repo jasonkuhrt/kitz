@@ -35,7 +35,7 @@
 
 import { Activity, Workflow as EffectWorkflow } from '@effect/workflow'
 import { WorkflowEngine } from '@effect/workflow'
-import { Cause, Clock, Effect, Exit, Graph, Option, PubSub, Schema, Stream } from 'effect'
+import { Cause, Clock, Effect, Exit, Fiber, Graph, Option, PubSub, Schema, Stream } from 'effect'
 import { Activity as ActivityModel, Workflow as WorkflowModel } from '../models/__.js'
 import { type LifecycleEvent, WorkflowEvents } from '../observable/__.js'
 
@@ -543,8 +543,8 @@ export const make = <Name extends string, Payload, Result, Error>(
         }) as Effect.Effect<UnwrapHandles<Result>, Error, WorkflowEngine.WorkflowEngine>
 
       if (existing === undefined) {
-        yield* workflow.execute(payload as any, { discard: true })
-        return yield* waitForTerminalResult()
+        const launchFiber = yield* workflow.execute(payload as any).pipe(Effect.either, Effect.fork)
+        return yield* waitForTerminalResult().pipe(Effect.ensuring(Fiber.interrupt(launchFiber)))
       }
 
       if (existing._tag === 'Complete' && Exit.isSuccess(existing.exit)) {
