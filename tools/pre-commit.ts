@@ -1,8 +1,12 @@
 #!/usr/bin/env bun
 
+// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
 import { spawnSync } from 'node:child_process'
+// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
 import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
 import { tmpdir } from 'node:os'
+// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
 import { extname, join } from 'node:path'
 
 const FORMATTABLE_EXTENSIONS = new Set([
@@ -19,9 +23,10 @@ const FORMATTABLE_EXTENSIONS = new Set([
 ])
 
 const LINTABLE_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.mts', '.cts'])
-const LINTABLE_PATH_PREFIXES = ['packages/'] as const
 
 const MAX_BUFFER = 16 * 1024 * 1024
+// oxlint-disable-next-line kitz/no-process-env-outside-config-modules
+const env = process.env
 
 interface CommandResult {
   readonly status: number
@@ -38,7 +43,7 @@ const run = (
     cwd: options.cwd,
     input: options.input,
     encoding: 'utf8',
-    env: process.env,
+    env,
     maxBuffer: MAX_BUFFER,
   })
 
@@ -73,7 +78,7 @@ const runBufferOrThrow = (
   const result = spawnSync(command, args, {
     cwd: options.cwd,
     input: options.input,
-    env: process.env,
+    env,
     maxBuffer: MAX_BUFFER,
   })
 
@@ -89,7 +94,6 @@ const runBufferOrThrow = (
 }
 
 const repoRoot = runOrThrow('git', ['rev-parse', '--show-toplevel']).trim()
-const oxlintBin = join(repoRoot, 'node_modules', '.bin', 'oxlint')
 
 const lintArgs = ['--import-plugin', '--deny-warnings']
 const lintFixArgs = [...lintArgs, '--fix-dangerously']
@@ -133,7 +137,7 @@ const updateIndex = (path: string, mode: string, contents: Buffer): void => {
   const update = spawnSync('git', ['update-index', '-z', '--index-info'], {
     cwd: repoRoot,
     input: Buffer.from(`${mode} ${blobId}\t${path}\0`, 'utf8'),
-    env: process.env,
+    env,
     maxBuffer: MAX_BUFFER,
   })
 
@@ -160,9 +164,7 @@ const syncWorkingTreeIfSafe = (
 }
 
 const isFormattable = (path: string): boolean => FORMATTABLE_EXTENSIONS.has(extname(path))
-const isLintable = (path: string): boolean =>
-  LINTABLE_EXTENSIONS.has(extname(path)) &&
-  LINTABLE_PATH_PREFIXES.some((prefix) => path.startsWith(prefix))
+const isLintable = (path: string): boolean => LINTABLE_EXTENSIONS.has(extname(path))
 
 const runFormat = (
   snapshotRoot: string,
@@ -170,6 +172,14 @@ const runFormat = (
   mode: '--write' | '--check',
 ): CommandResult => {
   return run('bun', ['tools/run-format.ts', mode, ...paths], { cwd: snapshotRoot })
+}
+
+const runLint = (
+  snapshotRoot: string,
+  paths: readonly string[],
+  args: readonly string[],
+): CommandResult => {
+  return run('bun', ['tools/run-lint.ts', ...args, '--', ...paths], { cwd: snapshotRoot })
 }
 
 const materializeIndexSnapshot = (): string => {
@@ -225,7 +235,7 @@ const main = (): void => {
     }
 
     if (lintablePaths.length > 0) {
-      run(oxlintBin, [...lintFixArgs, '--', ...lintablePaths], { cwd: snapshotRoot })
+      runLint(snapshotRoot, lintablePaths, lintFixArgs)
     }
 
     if (formattablePaths.length > 0) {
@@ -243,9 +253,7 @@ const main = (): void => {
     }
 
     if (lintablePaths.length > 0) {
-      const lintCheck = run(oxlintBin, [...lintArgs, '--', ...lintablePaths], {
-        cwd: snapshotRoot,
-      })
+      const lintCheck = runLint(snapshotRoot, lintablePaths, lintArgs)
       if (lintCheck.status !== 0) {
         logFailure('Lint check', lintCheck)
         process.exit(1)

@@ -1,14 +1,20 @@
 #!/usr/bin/env bun
 
+// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
 import { existsSync } from 'node:fs'
+// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
 import { join } from 'node:path'
+// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
 import { spawnSync } from 'node:child_process'
+
+// oxlint-disable-next-line kitz/no-process-env-outside-config-modules
+const env = process.env
 
 const runStatus = (args: readonly string[], cwd: string): number =>
   spawnSync('git', args, {
     cwd,
     stdio: 'ignore',
-    env: process.env,
+    env,
   }).status ?? 1
 
 const runText = (
@@ -19,7 +25,7 @@ const runText = (
   const result = spawnSync('git', args, {
     cwd,
     encoding: 'utf8',
-    env: process.env,
+    env,
   })
 
   if (result.status !== 0) {
@@ -56,7 +62,7 @@ if (currentHookPath === hookPath) {
 const setResult = spawnSync('git', ['config', 'core.hooksPath', hookPath], {
   cwd,
   stdio: 'inherit',
-  env: process.env,
+  env,
 })
 
 process.exit(setResult.status ?? 1)

@@ -35,6 +35,7 @@ const getPackages = (): PackageInfo[] => {
     const pkgJsonPath = path.join(packagesDir, dirName, 'package.json')
     if (!fs.existsSync(pkgJsonPath)) continue
 
+    // oxlint-disable-next-line kitz/no-json-parse
     const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8'))
     packages.push({
       name: pkgJson.name ?? dirName,

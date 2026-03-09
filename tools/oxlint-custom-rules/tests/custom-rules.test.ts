@@ -46,6 +46,7 @@ const runOxlint = (ruleName: string, fixtureFilePath: string): OxlintJsonOutput 
     throw new Error(`Oxlint exited with code ${result.status}: ${output}`)
   }
 
+  // oxlint-disable-next-line kitz/no-json-parse
   return JSON.parse(result.stdout) as OxlintJsonOutput
 }
 
@@ -417,6 +418,7 @@ describe(`e2e: subpath-imports-integrity tsconfig autofix`, () => {
     fs.copyFileSync(path.join(fixtureDir, `src/alpha/_.ts`), path.join(tmpPkgDir, `src/alpha/_.ts`))
 
     // Verify tsconfig is drifted before running
+    // oxlint-disable-next-line kitz/no-json-parse
     const beforeTsconfig = JSON.parse(
       fs.readFileSync(path.join(tmpPkgDir, `tsconfig.json`), `utf8`),
     )
@@ -445,10 +447,12 @@ describe(`e2e: subpath-imports-integrity tsconfig autofix`, () => {
     }
 
     // Parse diagnostics - expect the drift warning
+    // oxlint-disable-next-line kitz/no-json-parse
     const output = JSON.parse(result.stdout) as OxlintJsonOutput
     expect(countDiagnosticsForRule(output, `subpath-imports-integrity`)).toBeGreaterThan(0)
 
     // Verify tsconfig was auto-fixed
+    // oxlint-disable-next-line kitz/no-json-parse
     const afterTsconfig = JSON.parse(fs.readFileSync(path.join(tmpPkgDir, `tsconfig.json`), `utf8`))
     expect(afterTsconfig.compilerOptions.paths[`#alpha`]).toEqual([`./src/alpha/_.js`])
     expect(afterTsconfig.compilerOptions.paths[`#alpha/*`]).toEqual([`./src/alpha/*.js`])

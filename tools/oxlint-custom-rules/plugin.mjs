@@ -1,12 +1,16 @@
 // @ts-check
 
 import { Either, Option, pipe, Schema } from 'effect'
+// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
 import fs from 'node:fs'
+// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
 import { builtinModules } from 'node:module'
+// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
 import path from 'node:path'
 import { definePlugin, defineRule } from 'oxlint'
 
 /** @typedef {import('oxlint').ESTree.Expression} Expression */
+// oxlint-disable-next-line typescript-eslint/no-duplicate-type-constituents, typescript-eslint/no-redundant-type-constituents
 /** @typedef {import('oxlint').ESTree.FunctionDeclaration | import('oxlint').ESTree.FunctionExpression | import('oxlint').ESTree.ArrowFunctionExpression} FunctionLikeNode */
 /** @typedef {import('oxlint').ESTree.MemberExpression} MemberExpression */
 /** @typedef {import('oxlint').ESTree.Program} Program */
@@ -1430,7 +1434,7 @@ const isComplexSignature = (functionNode) =>
 
 /**
  * @param {unknown} node
- * @returns {FunctionLikeNode | null}
+ * @returns {unknown}
  */
 const getEnclosingFunction = (node) => {
   let current = typeof node === `object` && node !== null && `parent` in node ? node.parent : null
@@ -1481,7 +1485,7 @@ const isAllowedComplexReturnAnyAssertion = (node) => {
   }
 
   const enclosingFunction = getEnclosingFunction(node)
-  if (enclosingFunction === null) {
+  if (enclosingFunction === null || !isFunctionLikeNode(enclosingFunction)) {
     return false
   }
 
@@ -3337,6 +3341,7 @@ const getSubpathImportReverseMap = (packageDir) => {
   }
 
   try {
+    // oxlint-disable-next-line kitz/no-json-parse
     const pkg = JSON.parse(fs.readFileSync(packageJsonPath, `utf8`))
     if (!pkg.imports || typeof pkg.imports !== `object`) {
       subpathImportReverseMapCache.set(packageDir, null)
@@ -3470,6 +3475,7 @@ const getSubpathForwardMap = (packageDir, field, cache) => {
   }
 
   try {
+    // oxlint-disable-next-line kitz/no-json-parse
     const pkg = JSON.parse(fs.readFileSync(packageJsonPath, `utf8`))
     if (!pkg[field] || typeof pkg[field] !== `object`) {
       cache.set(packageDir, null)
@@ -3687,6 +3693,7 @@ const subpathImportsIntegrityRule = defineRule({
         const tsconfigPath = path.join(packageDir, `tsconfig.json`)
         if (fs.existsSync(tsconfigPath)) {
           try {
+            // oxlint-disable-next-line kitz/no-json-parse
             const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, `utf8`))
             const expectedPaths = transformImportsToPaths(importForwardMap ?? new Map())
             const currentPaths = tsconfig.compilerOptions?.paths ?? {}

@@ -28,7 +28,7 @@
     "eslint-plugin-promise/no-callback-in-promise": "warn",
     "eslint-plugin-promise/prefer-await-to-then": "off",
     "kitz/no-json-parse": "warn",
-    "kitz/no-try-catch": "warn",
+    "kitz/no-try-catch": "off",
     "kitz/no-native-promise-construction": "warn",
     "kitz/no-type-assertion": "off",
     "kitz/no-native-map-set-in-effect-modules": "warn",

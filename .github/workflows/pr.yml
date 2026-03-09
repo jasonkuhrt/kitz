@@ -86,9 +86,9 @@ jobs:
         if: needs.check-type.outputs.skip-code-checks != 'true'
       - uses: ./.github/actions/setup
         if: needs.check-type.outputs.skip-code-checks != 'true'
-      - name: Lint packages
+      - name: Lint codebase
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: bun run check:lint:packages:type-aware
+        run: bun run check:lint:type-aware
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 

@@ -5,11 +5,14 @@ const drain = async (
   if (!stream) return
 
   const reader = stream.getReader()
-  while (true) {
+  const pump = async (): Promise<void> => {
     const { done, value } = await reader.read()
     if (done) return
     if (value) writer.write(Buffer.from(value))
+    return pump()
   }
+
+  await pump()
 }
 
 const child = Bun.spawn(

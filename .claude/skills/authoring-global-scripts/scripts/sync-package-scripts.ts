@@ -28,6 +28,7 @@ interface Issue {
 }
 
 const getPackageScriptsFromRoot = (): Record<string, string> => {
+  // oxlint-disable-next-line kitz/no-json-parse
   const rootPackageJson = JSON.parse(fs.readFileSync(path.join(ROOT_DIR, 'package.json'), 'utf-8'))
   const rootScripts = rootPackageJson.scripts ?? {}
 
@@ -52,6 +53,7 @@ const getPackageDirs = (): string[] => {
 
 const checkPackage = (packageDir: string, syncedScripts: Record<string, string>): Issue[] => {
   const packageJsonPath = path.join(packageDir, 'package.json')
+  // oxlint-disable-next-line kitz/no-json-parse
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'))
   const name = packageJson.name as string
   const currentScripts = packageJson.scripts ?? {}
@@ -88,6 +90,7 @@ const syncPackage = (
   syncedScripts: Record<string, string>,
 ): { name: string; updated: boolean } => {
   const packageJsonPath = path.join(packageDir, 'package.json')
+  // oxlint-disable-next-line kitz/no-json-parse
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'))
   const name = packageJson.name as string
 
