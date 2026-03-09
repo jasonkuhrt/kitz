@@ -1,4 +1,3 @@
-import { ClusterWorkflowEngine, SingleRunner } from '@effect/cluster'
 import { Command, CommandExecutor, FileSystem } from '@effect/platform'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
@@ -6,22 +5,11 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
-import { SqliteClient } from '#platform:executor/sqlite-client'
 import { describe, expect, it as test } from '@effect/vitest'
-import {
-  Duration,
-  Effect,
-  Inspectable,
-  Layer,
-  LogLevel,
-  Logger,
-  Ref,
-  Scope,
-  Sink,
-  Stream,
-} from 'effect'
+import { Effect, Inspectable, Layer, LogLevel, Logger, Ref, Scope, Sink, Stream } from 'effect'
 import { CommandExecutorLayer, FileSystemLayer } from '../../platform.js'
 import { execute } from './execute.js'
+import { makeTestRuntime } from './runtime.js'
 import { decodeJsonRecord, planOfficial, tag } from './test-support.js'
 
 interface FixturePackage {
@@ -373,7 +361,7 @@ const makeRealHarness = (
         githubLayer,
         commandLayer,
         npmLayer,
-        makeWorkflowTestRuntime(`${Fs.Path.toString(rootDir)}.release/workflow.db`),
+        makeWorkflowTestRuntime(),
       )
 
       return {
@@ -566,24 +554,7 @@ const publishFailureScenarios: readonly PublishFailureScenario[] = [
   },
 ]
 
-const testShardingConfig = {
-  entityMessagePollInterval: Duration.millis(10),
-  entityReplyPollInterval: Duration.millis(10),
-  refreshAssignmentsInterval: Duration.millis(10),
-  shardLockRefreshInterval: Duration.millis(25),
-  shardLockExpiration: Duration.seconds(1),
-} as const
-
-const makeWorkflowTestRuntime = (dbPath: string) =>
-  ClusterWorkflowEngine.layer.pipe(
-    Layer.provide(
-      SingleRunner.layer({
-        runnerStorage: 'memory',
-        shardingConfig: testShardingConfig,
-      }),
-    ),
-    Layer.provideMerge(SqliteClient.layer({ filename: dbPath })),
-  )
+const makeWorkflowTestRuntime = () => makeTestRuntime()
 
 // These scenarios run real pack/publish-style workflow steps and need CI headroom.
 const E2E_TEST_TIMEOUT_MS = 90_000
@@ -623,8 +594,10 @@ describe('Executor e2e', () => {
             '@kitz/c',
           ])
 
+          const workflowContext = yield* Layer.build(harness.workflowLayer)
+
           const firstRun = yield* execute(plan, { dryRun: false }).pipe(
-            Effect.provide(harness.workflowLayer),
+            Effect.provide(workflowContext),
             Effect.either,
           )
 
@@ -643,7 +616,7 @@ describe('Executor e2e', () => {
           ).pipe(Effect.orDie)
 
           const secondRun = yield* execute(plan, { dryRun: false }).pipe(
-            Effect.provide(harness.workflowLayer),
+            Effect.provide(workflowContext),
             Effect.either,
           )
 
@@ -682,8 +655,10 @@ describe('Executor e2e', () => {
 
             assertGraphPlan(plan)
 
+            const workflowContext = yield* Layer.build(harness.workflowLayer)
+
             const firstRun = yield* execute(plan, { dryRun: false }).pipe(
-              Effect.provide(harness.workflowLayer),
+              Effect.provide(workflowContext),
               Effect.either,
             )
 
@@ -700,7 +675,7 @@ describe('Executor e2e', () => {
             ).pipe(Effect.orDie)
 
             const secondRun = yield* execute(plan, { dryRun: false }).pipe(
-              Effect.provide(harness.workflowLayer),
+              Effect.provide(workflowContext),
               Effect.either,
             )
 
@@ -735,8 +710,10 @@ describe('Executor e2e', () => {
 
             assertGraphPlan(plan)
 
+            const workflowContext = yield* Layer.build(harness.workflowLayer)
+
             const firstRun = yield* execute(plan, { dryRun: false }).pipe(
-              Effect.provide(harness.workflowLayer),
+              Effect.provide(workflowContext),
               Effect.either,
             )
 
@@ -749,7 +726,7 @@ describe('Executor e2e', () => {
             yield* Ref.set(harness.failPublishPackages, [])
 
             const secondRun = yield* execute(plan, { dryRun: false }).pipe(
-              Effect.provide(harness.workflowLayer),
+              Effect.provide(workflowContext),
               Effect.either,
             )
 
