@@ -53,7 +53,8 @@ const normalizePath = (path: string): string => path.replaceAll('\\', '/')
 const isIgnoredPath = (path: string): boolean =>
   IGNORED_PATHS.includes(path) ||
   IGNORED_PATH_PREFIXES.some((prefix) => path.startsWith(prefix)) ||
-  ((path.startsWith('.claude/') || path.startsWith('.serena/')) && extname(path) === '.md')
+  path.startsWith('.claude/') ||
+  path.startsWith('.serena/')
 
 const isPathModeFile = (path: string): boolean => PATH_MODE_EXTENSIONS.has(extname(path))
 const isStdinModeFile = (path: string): boolean => STDIN_MODE_EXTENSIONS.has(extname(path))
