@@ -36,7 +36,8 @@ const DEFAULT_TARGETS = [
   'tools',
 ] as const
 
-const IGNORED_PREFIXES = ['tools/oxlint-custom-rules/tests/fixtures/'] as const
+const IGNORED_PATH_PREFIXES = ['tools/oxlint-custom-rules/tests/fixtures/'] as const
+const IGNORED_PATHS = ['.claude/claude.md'] as const
 
 const chunk = <T>(items: readonly T[], size: number): T[][] => {
   const chunks: T[][] = []
@@ -50,7 +51,7 @@ const chunk = <T>(items: readonly T[], size: number): T[][] => {
 
 const normalizePath = (path: string): string => path.replaceAll('\\', '/')
 const isIgnoredPath = (path: string): boolean =>
-  IGNORED_PREFIXES.some((prefix) => path.startsWith(prefix))
+  IGNORED_PATHS.includes(path) || IGNORED_PATH_PREFIXES.some((prefix) => path.startsWith(prefix))
 
 const isPathModeFile = (path: string): boolean => PATH_MODE_EXTENSIONS.has(extname(path))
 const isStdinModeFile = (path: string): boolean => STDIN_MODE_EXTENSIONS.has(extname(path))
