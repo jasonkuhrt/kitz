@@ -47,7 +47,7 @@ Custom Oxlint rules use two paths:
 - JS plugin rules for Effect-first standards and `_.ts` / `__.ts` conventions: `tools/oxlint-custom-rules/plugin.mjs`
 - Official Oxlint type-aware rules via the `oxlint-tsgolint` package
 
-`kitz/no-type-assertion` remains disabled. `typescript/no-unsafe-type-assertion` is also disabled for now because it is currently too noisy for this repo's function-body typing policy. `typescript/no-explicit-any` and `eslint-plugin-promise/prefer-await-to-then` are also temporarily disabled while the warning backlog is reduced. `kitz/no-throw` is temporarily disabled in repo lint configs while the remaining throw sites are migrated back onto typed failure channels; keep the rule implementation and fixture coverage intact so it can be restored once that backlog is cleared.
+`kitz/ts/no-type-assertion` remains disabled. `typescript/no-unsafe-type-assertion` is also disabled for now because it is currently too noisy for this repo's function-body typing policy. `typescript/no-explicit-any` and `eslint-plugin-promise/prefer-await-to-then` are also temporarily disabled while the warning backlog is reduced. `kitz/error/no-throw` is temporarily disabled in repo lint configs while the remaining throw sites are migrated back onto typed failure channels; keep the rule implementation and fixture coverage intact so it can be restored once that backlog is cleared.
 
 ```bash
 bun run check:lint                        # Lint (custom rules as warnings)

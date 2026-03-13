@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "declaration": true,
+    "declarationMap": true,
+    "rewriteRelativeImportExtensions": true
+  },
+  "exclude": ["build", "node_modules", "**/*.test.ts", "**/*.test-d.ts", "**/*.bench-d.ts"]
+}

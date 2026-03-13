@@ -12,11 +12,11 @@
   "jsPlugins": [
     {
       "name": "kitz",
-      "specifier": "./tools/oxlint-custom-rules/plugin.mjs"
+      "specifier": "./packages/oxlint-rules/plugin.mjs"
     }
   ],
   "rules": {
-    "kitz/schema-parsing-contract": "error"
+    "kitz/schema/schema-parsing-contract": "error"
   },
   "ignorePatterns": [
     "**/build/**",

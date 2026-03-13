@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { spawnSync } from 'node:child_process'
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { Dirent, existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { extname, join } from 'node:path'
 
 const repoRoot = process.cwd()
@@ -13,7 +13,7 @@ const args = process.argv.slice(2)
 const mode = args.includes('--check') ? '--check' : '--write'
 const explicitTargets = args.filter((arg) => arg !== '--check')
 const MAX_PATH_MODE_TARGETS_PER_BATCH = 50
-// oxlint-disable-next-line kitz/no-process-env-outside-config-modules
+// oxlint-disable-next-line kitz/domain/no-process-env
 const env = process.env
 
 const PATH_MODE_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.mts', '.cts'])
