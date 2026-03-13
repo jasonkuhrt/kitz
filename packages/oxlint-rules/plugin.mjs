@@ -2425,7 +2425,10 @@ const schemaParsingContractRule = defineRule({
         }
 
         if (isPinExactContractFile(filePath)) {
-          if (!sourceText.includes(`static FromString: S.Schema<Exact, string>`)) {
+          if (
+            !sourceText.includes(`static FromString: S.Schema<Exact, string>`) &&
+            !sourceText.includes(`static FromString: S.Codec<Exact, string>`)
+          ) {
             context.report({
               node,
               messageId: MESSAGE_IDS.schemaParsingContractPinExactFromString,
