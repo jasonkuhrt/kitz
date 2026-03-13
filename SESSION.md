@@ -36,34 +36,27 @@ cd /Users/jasonkuhrt/projects/jasonkuhrt/kitz-effect-v4
 bash tools/verify-no-new-schema-classes.sh
 ```
 
+## CI Status — ALL GREEN
+
+Commit `861876ce` — all 9/9 jobs pass:
+
+| Job | Status |
+|-----|--------|
+| check-type | PASS |
+| format | PASS |
+| packages-types | PASS |
+| packages-build | PASS |
+| packages-test | PASS |
+| packages-lint | PASS |
+| api-model-style | PASS |
+| publint | PASS |
+| release-preview | PASS |
+
 ## Other changes in this session
 
 - **`sch/union.ts`**: Changed `memberSchema.make()` to `memberSchema.makeUnsafe()` (generic schema call, not class construction)
 - **GitHub Issue #131**: Created for follow-up migration to v4 native `TaggedUnion`/`toTaggedUnion`
 - **Migration memory updated**: `project_effect_v4_migration.md` reflects current state
 - **Merged main**: Picked up `packages/oxlint-rules` (PR #132), fixed v4 compat (Either→Result, Record, Union, parseJson→fromJsonString)
-
-## Validation
-
-| Check | Status |
-|-------|--------|
-| `bun run check:types` | All 30 packages pass |
-| `bun run test:packages` | All tests pass (347 release + 19 github + 3 oxlint-rules) |
-| `bun run check:lint:type-aware` | 0 errors, 25 warnings |
-| `verify-no-new-schema-classes.sh` | PASS |
-
-### CI Status (commit `2f50b07e`)
-
-| Job | Status | Notes |
-|-----|--------|-------|
-| check-type | PASS | |
-| format | PASS | |
-| packages-types | PASS | |
-| packages-build | PASS | |
-| packages-test | PASS | |
-| publint | PASS | |
-| api-model-style | FAIL | Pre-existing: `kitz/schema/schema-parsing-contract` in `pin.ts` from PR #132 merge |
-| packages-lint | FAIL | Same pre-existing rule + possible CI timeout on type-aware lint |
-| release-preview | FAIL | Unrelated to .make() changes |
-
-The 3 failing jobs are all caused by pre-existing lint findings from `packages/oxlint-rules` (PR #132) which introduced new rules that flag existing code in `packages/pkg/src/pin/pin.ts`. Not related to the `.make()` restoration.
+- **oxlint-rules**: Updated `schema-parsing-contract` rule to accept `S.Codec` (v4) alongside `S.Schema` (v3)
+- **PR title**: Updated to include `oxlint-rules` scope after main merge
