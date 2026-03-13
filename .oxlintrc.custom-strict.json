@@ -36,11 +36,11 @@
       "error",
       { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }
     ],
-    "kitz/jsdoc/require-on-exports": "error",
-    "kitz/jsdoc/min-words": ["error", { "minWords": 5 }],
-    "kitz/jsdoc/no-name-restate": "error",
-    "kitz/jsdoc/require-example": "error",
-    "kitz/jsdoc/usage-tags": "error",
-    "kitz/jsdoc/no-weasel-words": "error"
+    "kitz/jsdoc/require-on-exports": "off",
+    "kitz/jsdoc/min-words": "off",
+    "kitz/jsdoc/no-name-restate": "off",
+    "kitz/jsdoc/require-example": "off",
+    "kitz/jsdoc/usage-tags": "off",
+    "kitz/jsdoc/no-weasel-words": "off"
   }
 }

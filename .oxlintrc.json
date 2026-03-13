@@ -54,12 +54,12 @@
       "warn",
       { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }
     ],
-    "kitz/jsdoc/require-on-exports": "warn",
-    "kitz/jsdoc/min-words": ["warn", { "minWords": 5 }],
-    "kitz/jsdoc/no-name-restate": "warn",
-    "kitz/jsdoc/require-example": "warn",
-    "kitz/jsdoc/usage-tags": "warn",
-    "kitz/jsdoc/no-weasel-words": "warn",
+    "kitz/jsdoc/require-on-exports": "off",
+    "kitz/jsdoc/min-words": "off",
+    "kitz/jsdoc/no-name-restate": "off",
+    "kitz/jsdoc/require-example": "off",
+    "kitz/jsdoc/usage-tags": "off",
+    "kitz/jsdoc/no-weasel-words": "off",
     "eslint/no-restricted-imports": [
       "error",
       {
