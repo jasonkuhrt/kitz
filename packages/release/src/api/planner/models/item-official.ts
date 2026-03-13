@@ -13,7 +13,7 @@ import { OfficialIncrement } from '../../version/models/official-increment.js'
  */
 export const ItemBaseFields = {
   package: PackageSchema,
-  commits: S.Array(ReleaseCommit as any),
+  commits: S.Array(ReleaseCommit),
 }
 
 /**

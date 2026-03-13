@@ -35,15 +35,15 @@ export type LensErrorPropertyNotFound<$Key extends PropertyKey, $Actual> = Ts.Er
  *
  * @example
  * ```ts
- * type T = Get<'name', { name: string; age: number }> // Result.Success<never, string>
- * type E = Get<'foo', { name: string }> // Result.Failure<error, never>
+ * type T = Get<'name', { name: string; age: number }> // Result.Success<string, never>
+ * type E = Get<'foo', { name: string }> // Result.Failure<never, error>
  * ```
  */
 // oxfmt-ignore
 export type Get<$Key extends PropertyKey, $T> =
   $Key extends keyof $T
-    ? Result.Success<never, $T[$Key]>
-    : Result.Failure<LensErrorPropertyNotFound<$Key, $T>, never>
+    ? Result.Success<$T[$Key], never>
+    : Result.Failure<never, LensErrorPropertyNotFound<$Key, $T>>
 
 /**
  * Set a property value in an object type.

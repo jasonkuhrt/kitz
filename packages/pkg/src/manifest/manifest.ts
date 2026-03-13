@@ -127,7 +127,7 @@ export const resource: Resource.Resource<Manifest> = Resource.createJson(
   Manifest as any,
   emptyManifest,
   { preserveExcessProperties: true },
-) as Resource.Resource<Manifest>
+)
 
 /**
  * Mutable resource for backward compatibility

@@ -83,4 +83,4 @@ export const encodeEphemeral = (eph: Ephemeral): string =>
  * Calculate the next iteration for an ephemeral prerelease.
  */
 export const nextEphemeral = (eph: Ephemeral, sha: Git.Sha.Sha): Ephemeral =>
-  new Ephemeral({ prNumber: eph.prNumber as number, iteration: (eph.iteration as number) + 1, sha })
+  new Ephemeral({ prNumber: eph.prNumber, iteration: eph.iteration + 1, sha })

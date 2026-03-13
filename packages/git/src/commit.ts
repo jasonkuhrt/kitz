@@ -58,6 +58,8 @@ export const ParsedCommit =
   <Self = never>(identifier?: string) =>
   <Tag extends string, P extends Schema.Top>(tag: Tag, parsedSchema: P) =>
     Schema.TaggedClass<Self>(identifier)(tag, {
-      ...baseFields,
+      hash: baseFields.hash,
+      author: baseFields.author,
+      date: baseFields.date,
       message: parsedSchema,
-    } as any) as any
+    })

@@ -527,8 +527,8 @@ function generateMatcherType(matcher: Matcher, combo: Combination): string {
         : '<$Actual, __$ActualExtracted = ' + extractorChain + '>'
 
     typeDef = `// oxfmt-ignore\ntype ${matcher.name}_${typeParams} =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<${combo.relator.kindName}, [${expectedType}, __actual__${negatedParam}]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<${combo.relator.kindName}, [${expectedType}, __actual__${negatedParam}]>
                                                                          : never`
   } else {
     // No extractors - direct application
@@ -592,8 +592,8 @@ type noExcess_<
   $Actual,
   __$ActualExtracted = ${extractorChain},
 > =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<${noExcessKind}, [$Expected, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<${noExcessKind}, [$Expected, __actual__]>
                                                                          : never
 ${typedBuilderConst('noExcess_', buildRuntimeChain(combo, 'noExcess'))}
 ${typedBuilderConst('noExcessAs_', buildRuntimeChain(combo, 'noExcessAs'))}`
@@ -730,8 +730,8 @@ import type { ${relatorKinds} } from '${relatorsPath}'`
   $Actual,
   __$ActualExtracted = ${extractorChain},
 > =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<${relator.kindName}, [$Expected, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<${relator.kindName}, [$Expected, __actual__]>
                                                                          : never`
   }).join('\n\n')
 
@@ -791,8 +791,8 @@ ${extractorImports}import type { ${relatorKinds} } from '${relatorsPath}'`
   $Actual,
   __$ActualExtracted = ${extractorChain},
 > =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<${relator.kindName}, [$Expected, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<${relator.kindName}, [$Expected, __actual__, true]>
                                                                          : never`
     } else {
       // No extractors

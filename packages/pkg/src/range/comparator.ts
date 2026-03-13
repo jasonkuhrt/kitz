@@ -21,7 +21,7 @@ class ComparatorClass extends S.Class<ComparatorClass>('PkgRangeComparator')({
         return Lang.todo('Comparator.Schema decode')
       }),
       encode: SchemaGetter.transform((c) => {
-        const v = c.version as SemverValue
+        const v = c.version
         const prerelease = v._tag === 'SemverPreRelease' ? `-${v.prerelease.join('.')}` : ''
         const build = v.build?.length ? `+${v.build.join('.')}` : ''
         return `${c.operator}${v.major}.${v.minor}.${v.patch}${prerelease}${build}`

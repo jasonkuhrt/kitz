@@ -29,8 +29,8 @@ import { builder } from '../../../builder-singleton.js'
  */
 // oxfmt-ignore
 type of_<$Expected, $Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [$Expected, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [$Expected, __actual__, true]>
                                                                          : never
 const of_: typeof builder.array.not.exact.of = builder.array.not.exact.of
 
@@ -49,8 +49,8 @@ const of_: typeof builder.array.not.exact.of = builder.array.not.exact.of
  */
 // oxfmt-ignore
 type string_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [string, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [string, __actual__, true]>
                                                                          : never
 const string_: typeof builder.array.not.exact.string = builder.array.not.exact.string
 
@@ -69,8 +69,8 @@ const string_: typeof builder.array.not.exact.string = builder.array.not.exact.s
  */
 // oxfmt-ignore
 type number_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [number, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [number, __actual__, true]>
                                                                          : never
 const number_: typeof builder.array.not.exact.number = builder.array.not.exact.number
 
@@ -89,8 +89,8 @@ const number_: typeof builder.array.not.exact.number = builder.array.not.exact.n
  */
 // oxfmt-ignore
 type bigint_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [bigint, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [bigint, __actual__, true]>
                                                                          : never
 const bigint_: typeof builder.array.not.exact.bigint = builder.array.not.exact.bigint
 
@@ -109,8 +109,8 @@ const bigint_: typeof builder.array.not.exact.bigint = builder.array.not.exact.b
  */
 // oxfmt-ignore
 type boolean_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [boolean, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [boolean, __actual__, true]>
                                                                          : never
 const boolean_: typeof builder.array.not.exact.boolean = builder.array.not.exact.boolean
 
@@ -129,8 +129,8 @@ const boolean_: typeof builder.array.not.exact.boolean = builder.array.not.exact
  */
 // oxfmt-ignore
 type true_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [true, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [true, __actual__, true]>
                                                                          : never
 const true_: typeof builder.array.not.exact.true = builder.array.not.exact.true
 
@@ -149,8 +149,8 @@ const true_: typeof builder.array.not.exact.true = builder.array.not.exact.true
  */
 // oxfmt-ignore
 type false_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [false, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [false, __actual__, true]>
                                                                          : never
 const false_: typeof builder.array.not.exact.false = builder.array.not.exact.false
 
@@ -169,8 +169,8 @@ const false_: typeof builder.array.not.exact.false = builder.array.not.exact.fal
  */
 // oxfmt-ignore
 type undefined_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [undefined, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [undefined, __actual__, true]>
                                                                          : never
 const undefined_: typeof builder.array.not.exact.undefined = builder.array.not.exact.undefined
 
@@ -189,8 +189,8 @@ const undefined_: typeof builder.array.not.exact.undefined = builder.array.not.e
  */
 // oxfmt-ignore
 type null_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [null, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [null, __actual__, true]>
                                                                          : never
 const null_: typeof builder.array.not.exact.null = builder.array.not.exact.null
 
@@ -209,8 +209,8 @@ const null_: typeof builder.array.not.exact.null = builder.array.not.exact.null
  */
 // oxfmt-ignore
 type symbol_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [symbol, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [symbol, __actual__, true]>
                                                                          : never
 const symbol_: typeof builder.array.not.exact.symbol = builder.array.not.exact.symbol
 
@@ -229,8 +229,8 @@ const symbol_: typeof builder.array.not.exact.symbol = builder.array.not.exact.s
  */
 // oxfmt-ignore
 type Date_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [Date, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [Date, __actual__, true]>
                                                                          : never
 const Date_: typeof builder.array.not.exact.Date = builder.array.not.exact.Date
 
@@ -249,8 +249,8 @@ const Date_: typeof builder.array.not.exact.Date = builder.array.not.exact.Date
  */
 // oxfmt-ignore
 type RegExp_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [RegExp, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [RegExp, __actual__, true]>
                                                                          : never
 const RegExp_: typeof builder.array.not.exact.RegExp = builder.array.not.exact.RegExp
 
@@ -269,8 +269,8 @@ const RegExp_: typeof builder.array.not.exact.RegExp = builder.array.not.exact.R
  */
 // oxfmt-ignore
 type Error_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [Error, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [Error, __actual__, true]>
                                                                          : never
 const Error_: typeof builder.array.not.exact.Error = builder.array.not.exact.Error
 
@@ -289,8 +289,8 @@ const Error_: typeof builder.array.not.exact.Error = builder.array.not.exact.Err
  */
 // oxfmt-ignore
 type unknown_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [unknown, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [unknown, __actual__, true]>
                                                                          : never
 const unknown_: typeof builder.array.not.exact.unknown = builder.array.not.exact.unknown
 
@@ -309,8 +309,8 @@ const unknown_: typeof builder.array.not.exact.unknown = builder.array.not.exact
  */
 // oxfmt-ignore
 type any_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [any, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [any, __actual__, true]>
                                                                          : never
 const any_: typeof builder.array.not.exact.any = builder.array.not.exact.any
 
@@ -329,8 +329,8 @@ const any_: typeof builder.array.not.exact.any = builder.array.not.exact.any
  */
 // oxfmt-ignore
 type never_<$Actual, __$ActualExtracted = Optic.Array.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [never, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertExactKind, [never, __actual__, true]>
                                                                          : never
 const never_: typeof builder.array.not.exact.never = builder.array.not.exact.never
 

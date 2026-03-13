@@ -29,8 +29,8 @@ import { builder } from '../../../builder-singleton.js'
  */
 // oxfmt-ignore
 type of_<$Expected, $Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [$Expected, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [$Expected, __actual__, true]>
                                                                          : never
 const of_: typeof builder.returned.not.equiv.of = builder.returned.not.equiv.of
 
@@ -49,8 +49,8 @@ const of_: typeof builder.returned.not.equiv.of = builder.returned.not.equiv.of
  */
 // oxfmt-ignore
 type string_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [string, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [string, __actual__, true]>
                                                                          : never
 const string_: typeof builder.returned.not.equiv.string = builder.returned.not.equiv.string
 
@@ -69,8 +69,8 @@ const string_: typeof builder.returned.not.equiv.string = builder.returned.not.e
  */
 // oxfmt-ignore
 type number_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [number, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [number, __actual__, true]>
                                                                          : never
 const number_: typeof builder.returned.not.equiv.number = builder.returned.not.equiv.number
 
@@ -89,8 +89,8 @@ const number_: typeof builder.returned.not.equiv.number = builder.returned.not.e
  */
 // oxfmt-ignore
 type bigint_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [bigint, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [bigint, __actual__, true]>
                                                                          : never
 const bigint_: typeof builder.returned.not.equiv.bigint = builder.returned.not.equiv.bigint
 
@@ -109,8 +109,8 @@ const bigint_: typeof builder.returned.not.equiv.bigint = builder.returned.not.e
  */
 // oxfmt-ignore
 type boolean_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [boolean, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [boolean, __actual__, true]>
                                                                          : never
 const boolean_: typeof builder.returned.not.equiv.boolean = builder.returned.not.equiv.boolean
 
@@ -129,8 +129,8 @@ const boolean_: typeof builder.returned.not.equiv.boolean = builder.returned.not
  */
 // oxfmt-ignore
 type true_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [true, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [true, __actual__, true]>
                                                                          : never
 const true_: typeof builder.returned.not.equiv.true = builder.returned.not.equiv.true
 
@@ -149,8 +149,8 @@ const true_: typeof builder.returned.not.equiv.true = builder.returned.not.equiv
  */
 // oxfmt-ignore
 type false_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [false, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [false, __actual__, true]>
                                                                          : never
 const false_: typeof builder.returned.not.equiv.false = builder.returned.not.equiv.false
 
@@ -169,8 +169,8 @@ const false_: typeof builder.returned.not.equiv.false = builder.returned.not.equ
  */
 // oxfmt-ignore
 type undefined_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [undefined, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [undefined, __actual__, true]>
                                                                          : never
 const undefined_: typeof builder.returned.not.equiv.undefined = builder.returned.not.equiv.undefined
 
@@ -189,8 +189,8 @@ const undefined_: typeof builder.returned.not.equiv.undefined = builder.returned
  */
 // oxfmt-ignore
 type null_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [null, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [null, __actual__, true]>
                                                                          : never
 const null_: typeof builder.returned.not.equiv.null = builder.returned.not.equiv.null
 
@@ -209,8 +209,8 @@ const null_: typeof builder.returned.not.equiv.null = builder.returned.not.equiv
  */
 // oxfmt-ignore
 type symbol_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [symbol, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [symbol, __actual__, true]>
                                                                          : never
 const symbol_: typeof builder.returned.not.equiv.symbol = builder.returned.not.equiv.symbol
 
@@ -229,8 +229,8 @@ const symbol_: typeof builder.returned.not.equiv.symbol = builder.returned.not.e
  */
 // oxfmt-ignore
 type Date_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [Date, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [Date, __actual__, true]>
                                                                          : never
 const Date_: typeof builder.returned.not.equiv.Date = builder.returned.not.equiv.Date
 
@@ -249,8 +249,8 @@ const Date_: typeof builder.returned.not.equiv.Date = builder.returned.not.equiv
  */
 // oxfmt-ignore
 type RegExp_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [RegExp, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [RegExp, __actual__, true]>
                                                                          : never
 const RegExp_: typeof builder.returned.not.equiv.RegExp = builder.returned.not.equiv.RegExp
 
@@ -269,8 +269,8 @@ const RegExp_: typeof builder.returned.not.equiv.RegExp = builder.returned.not.e
  */
 // oxfmt-ignore
 type Error_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [Error, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [Error, __actual__, true]>
                                                                          : never
 const Error_: typeof builder.returned.not.equiv.Error = builder.returned.not.equiv.Error
 
@@ -289,8 +289,8 @@ const Error_: typeof builder.returned.not.equiv.Error = builder.returned.not.equ
  */
 // oxfmt-ignore
 type unknown_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [unknown, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [unknown, __actual__, true]>
                                                                          : never
 const unknown_: typeof builder.returned.not.equiv.unknown = builder.returned.not.equiv.unknown
 
@@ -309,8 +309,8 @@ const unknown_: typeof builder.returned.not.equiv.unknown = builder.returned.not
  */
 // oxfmt-ignore
 type any_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [any, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [any, __actual__, true]>
                                                                          : never
 const any_: typeof builder.returned.not.equiv.any = builder.returned.not.equiv.any
 
@@ -329,8 +329,8 @@ const any_: typeof builder.returned.not.equiv.any = builder.returned.not.equiv.a
  */
 // oxfmt-ignore
 type never_<$Actual, __$ActualExtracted = Optic.Returned.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertEquivKind, [never, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertEquivKind, [never, __actual__, true]>
                                                                          : never
 const never_: typeof builder.returned.not.equiv.never = builder.returned.not.equiv.never
 

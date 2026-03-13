@@ -24,8 +24,8 @@ export type LensErrorNoIndexSignature<$Actual> = Ts.Err.StaticError<
 // oxfmt-ignore
 export type Get<$T> =
   string extends keyof $T
-    ? Result.Success<never, $T[string]>
-    : Result.Failure<LensErrorNoIndexSignature<$T>, never>
+    ? Result.Success<$T[string], never>
+    : Result.Failure<never, LensErrorNoIndexSignature<$T>>
 
 /**
  * Set the value type of a type's string index signature.

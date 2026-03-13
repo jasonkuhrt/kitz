@@ -248,7 +248,7 @@ export const normalize = <$schema extends S.Top>($schema: $schema) => {
 
   return <const $input extends Input>(input: Guard<$input, any>): normalize<$input> => {
     if (typeof input === 'string') {
-      return decodeSync(input) as any
+      return decodeSync(input)
     }
     return input as any
   }
@@ -259,7 +259,7 @@ export const normalizeDynamic = <$schema extends S.Top>($schema: $schema) => {
 
   return <const $input extends InputOrError>(input: $input): normalize<$input> => {
     if (typeof input === 'string') {
-      return decodeSync(input) as any
+      return decodeSync(input)
     }
     return input as any
   }

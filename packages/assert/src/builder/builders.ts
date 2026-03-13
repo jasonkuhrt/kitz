@@ -113,9 +113,9 @@ export type ExecuteUnaryRelator<
   $Kind extends Fn.Kind.Kind,
   ___ExtractionResult = Fn.Kind.PipeRight<$State['actual_type'], $State['actual_extractors']>,
 > =
-  ___ExtractionResult extends Result.Failure<infer ERROR, infer _>
+  ___ExtractionResult extends Result.Failure<infer _, infer ERROR>
     ? (...params: OnlyAssertionErrorsAndShow<[ERROR]>) => void // Extraction failed - propagate error
-    : ___ExtractionResult extends Result.Success<infer _, infer VALUE>
+    : ___ExtractionResult extends Result.Success<infer VALUE, infer _>
       ? (
           ...params: OnlyAssertionErrorsAndShow<[AssertUnaryRelatorValue<VALUE, $State, $Kind>]>
         ) => void // Extraction succeeded
@@ -171,7 +171,7 @@ export type BuilderExtractorsConstant<$State extends S> = {
  * Used to determine what extractors are applicable to the transformed type.
  */
 type UnwrapExtractionResult<$Result> =
-  $Result extends Result.Success<infer _, infer __value__> ? __value__ : $Result // If Left, extraction failed - shouldn't happen in conditional context
+  $Result extends Result.Success<infer __value__, infer _> ? __value__ : $Result // If Left, extraction failed - shouldn't happen in conditional context
 
 export type BuilderExtractorsConditionalMaybe<
   $State extends S,

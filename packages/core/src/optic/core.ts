@@ -49,6 +49,7 @@ export type FormatConstraint<$Constraint> = $Constraint extends readonly any[]
 export type ValidateAndExtract<$Actual, $Constraint, $LensName extends string, $ExtractionLogic> =
   IsDisjoint<$Actual, $Constraint> extends true
     ? Result.Failure<
+        never,
         Ts.Err.StaticError<
           ['lens', 'incompatible'],
           {
@@ -57,10 +58,9 @@ export type ValidateAndExtract<$Actual, $Constraint, $LensName extends string, $
             actual: $Actual
             attempted: `${$LensName} lens`
           }
-        >,
-        never
+        >
       >
-    : Result.Success<never, $ExtractionLogic>
+    : Result.Success<$ExtractionLogic, never>
 
 //
 //
@@ -132,7 +132,7 @@ export type LensErrorTupleExtract<$Actual> = Ts.Err.StaticError<
  * type T2 = Get<'.handler>#', { handler: () => Promise<number> }> // number
  *
  * // HKT mode (existing behavior)
- * type T3 = Get<Awaited.$Get, Promise<string>> // Result.Success<never, string>
+ * type T3 = Get<Awaited.$Get, Promise<string>> // Result.Success<string, never>
  * ```
  */
 // oxfmt-ignore

@@ -1,11 +1,8 @@
 import { Semver } from '@kitz/semver'
 import { Option, Schema as S } from 'effect'
 
-const OptionalSemverSchema: S.Codec<
-  Option.Option<Semver.Semver>,
-  string | null
-> = S.OptionFromNullOr(Semver.Schema)
-const SemverSchema: S.Schema<Semver.Semver> = Semver.Semver
+const OptionalSemverSchema = S.OptionFromNullOr(Semver.Schema)
+const SemverSchema = Semver.Semver
 
 /**
  * Commit attribution for display.

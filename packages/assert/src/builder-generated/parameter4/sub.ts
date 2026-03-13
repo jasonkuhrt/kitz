@@ -29,8 +29,8 @@ import { builder } from '../../builder-singleton.js'
  */
 // oxfmt-ignore
 type of_<$Expected, $Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [$Expected, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [$Expected, __actual__]>
                                                                          : never
 const of_: typeof builder.parameter4.sub.of = builder.parameter4.sub.of
 
@@ -49,8 +49,8 @@ const of_: typeof builder.parameter4.sub.of = builder.parameter4.sub.of
  */
 // oxfmt-ignore
 type string_<$Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [string, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [string, __actual__]>
                                                                          : never
 const string_: typeof builder.parameter4.sub.string = builder.parameter4.sub.string
 
@@ -69,8 +69,8 @@ const string_: typeof builder.parameter4.sub.string = builder.parameter4.sub.str
  */
 // oxfmt-ignore
 type number_<$Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [number, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [number, __actual__]>
                                                                          : never
 const number_: typeof builder.parameter4.sub.number = builder.parameter4.sub.number
 
@@ -89,8 +89,8 @@ const number_: typeof builder.parameter4.sub.number = builder.parameter4.sub.num
  */
 // oxfmt-ignore
 type bigint_<$Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [bigint, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [bigint, __actual__]>
                                                                          : never
 const bigint_: typeof builder.parameter4.sub.bigint = builder.parameter4.sub.bigint
 
@@ -109,8 +109,8 @@ const bigint_: typeof builder.parameter4.sub.bigint = builder.parameter4.sub.big
  */
 // oxfmt-ignore
 type boolean_<$Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [boolean, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [boolean, __actual__]>
                                                                          : never
 const boolean_: typeof builder.parameter4.sub.boolean = builder.parameter4.sub.boolean
 
@@ -129,8 +129,8 @@ const boolean_: typeof builder.parameter4.sub.boolean = builder.parameter4.sub.b
  */
 // oxfmt-ignore
 type true_<$Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [true, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [true, __actual__]>
                                                                          : never
 const true_: typeof builder.parameter4.sub.true = builder.parameter4.sub.true
 
@@ -149,8 +149,8 @@ const true_: typeof builder.parameter4.sub.true = builder.parameter4.sub.true
  */
 // oxfmt-ignore
 type false_<$Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [false, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [false, __actual__]>
                                                                          : never
 const false_: typeof builder.parameter4.sub.false = builder.parameter4.sub.false
 
@@ -169,8 +169,8 @@ const false_: typeof builder.parameter4.sub.false = builder.parameter4.sub.false
  */
 // oxfmt-ignore
 type undefined_<$Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [undefined, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [undefined, __actual__]>
                                                                          : never
 const undefined_: typeof builder.parameter4.sub.undefined = builder.parameter4.sub.undefined
 
@@ -189,8 +189,8 @@ const undefined_: typeof builder.parameter4.sub.undefined = builder.parameter4.s
  */
 // oxfmt-ignore
 type null_<$Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [null, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [null, __actual__]>
                                                                          : never
 const null_: typeof builder.parameter4.sub.null = builder.parameter4.sub.null
 
@@ -209,8 +209,8 @@ const null_: typeof builder.parameter4.sub.null = builder.parameter4.sub.null
  */
 // oxfmt-ignore
 type symbol_<$Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [symbol, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [symbol, __actual__]>
                                                                          : never
 const symbol_: typeof builder.parameter4.sub.symbol = builder.parameter4.sub.symbol
 
@@ -229,8 +229,8 @@ const symbol_: typeof builder.parameter4.sub.symbol = builder.parameter4.sub.sym
  */
 // oxfmt-ignore
 type Date_<$Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [Date, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [Date, __actual__]>
                                                                          : never
 const Date_: typeof builder.parameter4.sub.Date = builder.parameter4.sub.Date
 
@@ -249,8 +249,8 @@ const Date_: typeof builder.parameter4.sub.Date = builder.parameter4.sub.Date
  */
 // oxfmt-ignore
 type RegExp_<$Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [RegExp, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [RegExp, __actual__]>
                                                                          : never
 const RegExp_: typeof builder.parameter4.sub.RegExp = builder.parameter4.sub.RegExp
 
@@ -269,8 +269,8 @@ const RegExp_: typeof builder.parameter4.sub.RegExp = builder.parameter4.sub.Reg
  */
 // oxfmt-ignore
 type Error_<$Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [Error, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [Error, __actual__]>
                                                                          : never
 const Error_: typeof builder.parameter4.sub.Error = builder.parameter4.sub.Error
 
@@ -289,8 +289,8 @@ const Error_: typeof builder.parameter4.sub.Error = builder.parameter4.sub.Error
  */
 // oxfmt-ignore
 type unknown_<$Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [unknown, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [unknown, __actual__]>
                                                                          : never
 const unknown_: typeof builder.parameter4.sub.unknown = builder.parameter4.sub.unknown
 
@@ -309,8 +309,8 @@ const unknown_: typeof builder.parameter4.sub.unknown = builder.parameter4.sub.u
  */
 // oxfmt-ignore
 type any_<$Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [any, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [any, __actual__]>
                                                                          : never
 const any_: typeof builder.parameter4.sub.any = builder.parameter4.sub.any
 
@@ -329,8 +329,8 @@ const any_: typeof builder.parameter4.sub.any = builder.parameter4.sub.any
  */
 // oxfmt-ignore
 type never_<$Actual, __$ActualExtracted = Optic.Parameter4.Get<$Actual>> =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [never, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubKind, [never, __actual__]>
                                                                          : never
 const never_: typeof builder.parameter4.sub.never = builder.parameter4.sub.never
 
@@ -345,8 +345,8 @@ type noExcess_<
   $Actual,
   __$ActualExtracted = Optic.Parameter4.Get<$Actual>,
 > =
-  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubNoExcessKind, [$Expected, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<AssertSubNoExcessKind, [$Expected, __actual__]>
                                                                          : never
 const noExcess_: typeof builder.parameter4.sub.noExcess = builder.parameter4.sub.noExcess
 const noExcessAs_: typeof builder.parameter4.sub.noExcessAs = builder.parameter4.sub.noExcessAs

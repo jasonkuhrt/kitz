@@ -327,7 +327,7 @@ export const getTransformParts = (
     encode: (input: unknown, options: unknown, ast: unknown) => unknown
   }
 } => {
-  const encoding = schema.ast.encoding!
+  const encoding = schema.ast.encoding
   const link = encoding[0]
   return {
     from: { ast: link.to } as unknown as S.Top,

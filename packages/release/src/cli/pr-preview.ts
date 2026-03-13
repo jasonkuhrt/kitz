@@ -234,7 +234,7 @@ export const loadPullRequestDiff = (params: {
 
         if (!params.required) {
           return Effect.logWarning(
-            `Skipping diff-aware release checks because git diff against origin/${baseRef} could not be computed: ${String(result.failure)}`,
+            `Skipping diff-aware release checks because git diff against origin/${baseRef} could not be computed: ${result.failure instanceof Error ? result.failure.message : JSON.stringify(result.failure)}`,
           ).pipe(Effect.as(''))
         }
 

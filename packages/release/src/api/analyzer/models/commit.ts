@@ -37,8 +37,8 @@ export class ReleaseCommit extends Git.ParsedCommit<ReleaseCommit>()(
    * For Multi commits: finds the target for the given scope.
    */
   static forScope(commit: ReleaseCommit, scope: string): ScopedCommitInfo {
-    const parsed = commit['message'] as ConventionalCommits.Commit.Commit
-    const hash = commit['hash'] as Git.Sha.Sha
+    const parsed = commit['message']
+    const hash = commit['hash']
 
     if (ConventionalCommits.Commit.Single.is(parsed)) {
       return {

@@ -39,7 +39,10 @@ export function extractFromFile(
       Effect.mapError(
         (error) =>
           new SourceReadError({
-            context: { filePath, detail: String(error) },
+            context: {
+              filePath,
+              detail: error instanceof Error ? error.message : JSON.stringify(error),
+            },
           }),
       ),
     )

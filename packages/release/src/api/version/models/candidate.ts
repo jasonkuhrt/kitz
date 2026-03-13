@@ -77,4 +77,4 @@ export const encodeCandidate = (candidate: Candidate): string =>
  * Calculate the next iteration for a candidate prerelease.
  */
 export const nextCandidate = (candidate: Candidate): Candidate =>
-  new Candidate({ iteration: (candidate.iteration as number) + 1 })
+  new Candidate({ iteration: candidate.iteration + 1 })

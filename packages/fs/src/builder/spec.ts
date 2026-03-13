@@ -373,9 +373,7 @@ export const spec = (base: Path.Input.AbsDir): SpecBuilder => {
         const fsPath =
           typeof path === 'string' ? (Path.fromString(path) as Path.$Rel) : (path as Path.$Rel)
         // Determine if it's a file or directory for the operation
-        const operationPath: Path.RelFile | Path.RelDir = Path.$File.is(fsPath)
-          ? (fsPath as Path.RelFile)
-          : (fsPath as Path.RelDir)
+        const operationPath: Path.RelFile | Path.RelDir = Path.$File.is(fsPath) ? fsPath : fsPath
         const newOps = [...ops, { type: 'remove' as const, path: operationPath }]
         return createSpec(baseDir, newOps)
       },

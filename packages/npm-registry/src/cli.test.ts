@@ -89,7 +89,7 @@ const makeSpawnerLayer = () => {
     return Effect.die(`Unexpected command in mock spawner: ${standard.command}`)
   })
 
-  return Layer.succeed(ChildProcessSpawner, spawner)
+  return Layer.succeed(ChildProcessSpawner.ChildProcessSpawner, spawner)
 }
 
 describe('npm-registry cli', () => {

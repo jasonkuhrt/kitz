@@ -162,8 +162,8 @@ export const findLatestCandidateNumber = (
     const decoded = S.decodeUnknownOption(CandidateSchema as any)(
       prerelease.join('.'),
     ) as Option.Option<Candidate>
-    if (Option.isSome(decoded) && (decoded.value.iteration as number) > highest) {
-      highest = decoded.value.iteration as number
+    if (Option.isSome(decoded) && decoded.value.iteration > highest) {
+      highest = decoded.value.iteration
     }
   }
 
@@ -197,10 +197,10 @@ export const findLatestEphemeralNumber = (
     ) as Option.Option<Ephemeral>
     if (
       Option.isSome(decoded) &&
-      (decoded.value.prNumber as number) === prNumber &&
-      (decoded.value.iteration as number) > highest
+      decoded.value.prNumber === prNumber &&
+      decoded.value.iteration > highest
     ) {
-      highest = decoded.value.iteration as number
+      highest = decoded.value.iteration
     }
   }
 

@@ -67,8 +67,8 @@ type Assert<
   ___$ExtractionResult = Fn.Kind.PipeRight<$RawActual, $State['actual_extractors']>,
 > =
   // Check if extraction failed
-  ___$ExtractionResult extends Result.Failure<infer __error__, infer _>  ? __error__ :
-  ___$ExtractionResult extends Result.Success<infer _, infer __value__> ?
+  ___$ExtractionResult extends Result.Failure<infer _, infer __error__>  ? __error__ :
+  ___$ExtractionResult extends Result.Success<infer __value__, infer _> ?
     (
       Ts.IsUnknown<__value__> extends true
         ? $State['matcher_allowUnknown'] extends true
@@ -158,9 +158,9 @@ export type AssertUnaryRelator<
   $Kind extends Fn.Kind.Kind,
   ___$ExtractionResult = Fn.Kind.PipeRight<$actual, $State['actual_extractors']>,
 > =
-  ___$ExtractionResult extends Result.Failure<infer __error__, infer _>
+  ___$ExtractionResult extends Result.Failure<infer _, infer __error__>
     ? __error__ // Extraction failed - propagate error
-    : ___$ExtractionResult extends Result.Success<infer _, infer __value__>
+    : ___$ExtractionResult extends Result.Success<infer __value__, infer _>
       ? Fn.Kind.Apply<$Kind, [__value__, $State['matcher_negated']]>
       : never
 

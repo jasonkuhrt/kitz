@@ -27,8 +27,8 @@ Test.on(Pat.isMatch)
     [[1, S.Boolean], false],
     [[1n, S.BigInt], true],
     [[1, S.BigInt], false],
-    [[new Date('2024-01-01'), S.DateFromSelf], true],
-    [['2024-01-01', S.DateFromSelf], false],
+    [[new Date('2024-01-01'), S.Date], true],
+    [['2024-01-01', S.Date], false],
   ])
   .describe('String Constraints', [
     [['abc', { $length: 3 }], true],

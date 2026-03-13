@@ -133,10 +133,7 @@ export const ObservableActivity = {
       // Run the actual activity with timing
       const [duration, result] = yield* activity.pipe(
         Effect.tapError((error) => {
-          const errorMessage =
-            typeof error === 'object' && error !== null && 'message' in error
-              ? String((error as { message: unknown }).message)
-              : String(error)
+          const errorMessage = error instanceof Error ? error.message : JSON.stringify(error)
           return PubSub.publish(
             pubsub,
             new ActivityTypes.Failed({

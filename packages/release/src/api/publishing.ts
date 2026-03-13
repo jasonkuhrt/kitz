@@ -10,7 +10,7 @@ export const PublishChannelManual = Schema.Struct({
 export const PublishChannelGitHubToken = Schema.Struct({
   mode: Schema.Literal('github-token'),
   workflow: Schema.String,
-  tokenEnv: Schema.String.pipe(Schema.optionalKey, Schema.withDecodingDefaultKey(defaultTokenEnv)),
+  tokenEnv: Schema.String.pipe(Schema.withDecodingDefaultKey(defaultTokenEnv)),
 })
 
 export const PublishChannelGitHubTrusted = Schema.Struct({
@@ -38,18 +38,9 @@ const defaultManualChannel = (): PublishChannel => ({
  * are relevant and what operator guidance should be shown.
  */
 export class Publishing extends Schema.Class<Publishing>('Publishing')({
-  official: PublishChannel.pipe(
-    Schema.optionalKey,
-    Schema.withDecodingDefaultKey(defaultManualChannel),
-  ),
-  candidate: PublishChannel.pipe(
-    Schema.optionalKey,
-    Schema.withDecodingDefaultKey(defaultManualChannel),
-  ),
-  ephemeral: PublishChannel.pipe(
-    Schema.optionalKey,
-    Schema.withDecodingDefaultKey(defaultManualChannel),
-  ),
+  official: PublishChannel.pipe(Schema.withDecodingDefaultKey(defaultManualChannel)),
+  candidate: PublishChannel.pipe(Schema.withDecodingDefaultKey(defaultManualChannel)),
+  ephemeral: PublishChannel.pipe(Schema.withDecodingDefaultKey(defaultManualChannel)),
 }) {}
 
 export const defaultPublishing = (): Publishing => Schema.decodeSync(Publishing)({})

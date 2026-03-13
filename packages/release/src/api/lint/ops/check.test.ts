@@ -36,7 +36,7 @@ const prLayer = Layer.succeed(PrService, {
 })
 
 const spawnerLayer = Layer.succeed(
-  ChildProcessSpawner,
+  ChildProcessSpawner.ChildProcessSpawner,
   ChildProcessSpawner.make(() => Effect.die('command execution not expected in this test') as any),
 )
 

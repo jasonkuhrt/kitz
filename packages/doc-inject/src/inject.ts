@@ -94,7 +94,10 @@ export function injectIntoFile(
       Effect.mapError(
         (error) =>
           new TargetFileError({
-            context: { filePath, detail: String(error) },
+            context: {
+              filePath,
+              detail: error instanceof Error ? error.message : JSON.stringify(error),
+            },
           }),
       ),
     )
@@ -109,7 +112,10 @@ export function injectIntoFile(
       Effect.mapError(
         (error) =>
           new TargetFileError({
-            context: { filePath, detail: String(error) },
+            context: {
+              filePath,
+              detail: error instanceof Error ? error.message : JSON.stringify(error),
+            },
           }),
       ),
     )
@@ -139,7 +145,10 @@ export function injectIntoDirectory(
       Effect.mapError(
         (error) =>
           new TargetFileError({
-            context: { filePath: dirPath, detail: String(error) },
+            context: {
+              filePath: dirPath,
+              detail: error instanceof Error ? error.message : JSON.stringify(error),
+            },
           }),
       ),
     )

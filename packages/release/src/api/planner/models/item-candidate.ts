@@ -3,7 +3,7 @@ import { Option, Schema as S } from 'effect'
 import * as Version from '../../version/__.js'
 import { ItemBaseFields } from './item-official.js'
 
-const SemverSchema: S.Schema<Semver.Semver> = Semver.Semver
+const SemverSchema = Semver.Semver
 
 /**
  * A candidate release plan item.
@@ -17,7 +17,7 @@ export class Candidate extends S.TaggedClass<Candidate>()('Candidate', {
   static is = S.is(Candidate as any) as (u: unknown) => u is Candidate
 
   get nextVersion(): Semver.Semver {
-    return Semver.withPre(this.baseVersion, ['next', this.prerelease.iteration as number])
+    return Semver.withPre(this.baseVersion, ['next', this.prerelease.iteration])
   }
 
   get currentVersion(): Option.Option<Semver.Semver> {

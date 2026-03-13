@@ -308,7 +308,7 @@ const extractUnionInfo = (
   const allLiterals = ast.types.every((t) => t._tag === `Literal`)
 
   if (allLiterals) {
-    const values = ast.types.map((t) => (t as SchemaAST.Literal).literal)
+    const values = ast.types.map((t) => t.literal)
     const displayType = values
       .map((v) => Term.colors.secondary(typeof v === `string` ? `'${v}'` : String(v)))
       .join(Term.colors.dim(` | `))
