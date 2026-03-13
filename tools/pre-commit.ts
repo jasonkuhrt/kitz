@@ -1,12 +1,12 @@
 #!/usr/bin/env bun
 
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { spawnSync } from 'node:child_process'
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { tmpdir } from 'node:os'
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { extname, join } from 'node:path'
 
 const FORMATTABLE_EXTENSIONS = new Set([
@@ -25,7 +25,7 @@ const FORMATTABLE_EXTENSIONS = new Set([
 const LINTABLE_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.mts', '.cts'])
 
 const MAX_BUFFER = 16 * 1024 * 1024
-// oxlint-disable-next-line kitz/no-process-env-outside-config-modules
+// oxlint-disable-next-line kitz/domain/no-process-env
 const env = process.env
 
 interface CommandResult {

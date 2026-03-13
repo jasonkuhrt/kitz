@@ -4,7 +4,7 @@
   "jsPlugins": [
     {
       "name": "kitz",
-      "specifier": "./packages/oxlint-rules/plugin.mjs"
+      "specifier": "../plugin.mjs"
     }
   ],
   "categories": {
@@ -19,10 +19,6 @@
     "typescript/no-explicit-any": "off",
     "typescript/no-unsafe-type-assertion": "off",
     "typescript/no-unnecessary-type-assertion": "warn",
-    "eslint-plugin-jest/expect-expect": "off",
-    "eslint-plugin-jest/no-standalone-expect": "off",
-    "eslint-plugin-jest/no-conditional-expect": "off",
-    "eslint-plugin-jest/valid-title": "off",
     "eslint-plugin-import/no-unassigned-import": "off",
     "eslint-plugin-promise/no-new-statics": "warn",
     "eslint-plugin-promise/no-callback-in-promise": "warn",
@@ -53,44 +49,7 @@
     "kitz/module/subpath-imports-integrity": [
       "warn",
       { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }
-    ],
-    "kitz/jsdoc/require-on-exports": "warn",
-    "kitz/jsdoc/min-words": ["warn", { "minWords": 5 }],
-    "kitz/jsdoc/no-name-restate": "warn",
-    "kitz/jsdoc/require-example": "warn",
-    "kitz/jsdoc/usage-tags": "warn",
-    "kitz/jsdoc/no-weasel-words": "warn",
-    "eslint/no-restricted-imports": [
-      "error",
-      {
-        "patterns": [
-          {
-            "group": ["@kitz/*/__"],
-            "message": "Use namespace import from root (e.g., '@kitz/git' not '@kitz/git/__'). See CLAUDE.md for import conventions."
-          }
-        ]
-      }
     ]
   },
-  "overrides": [
-    {
-      "files": ["**/*.test.*", "**/*.spec.*", "**/__tests__/**", "**/__tests/**"],
-      "rules": {
-        "eslint-plugin-unicorn/no-thenable": "off"
-      }
-    },
-    {
-      "files": ["packages/kitz/src/**/*.ts"],
-      "rules": {
-        "eslint/no-restricted-imports": "off"
-      }
-    }
-  ],
-  "ignorePatterns": [
-    "**/build/**",
-    "**/node_modules/**",
-    "**/*.d.ts",
-    "**/__examples/**",
-    "tools/oxlint-custom-rules/tests/fixtures/**"
-  ]
+  "ignorePatterns": ["**/build/**", "**/node_modules/**", "**/*.d.ts", "**/__examples__/**"]
 }

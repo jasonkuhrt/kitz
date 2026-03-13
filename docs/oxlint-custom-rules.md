@@ -17,7 +17,7 @@ Run type-aware rules with `--type-aware`:
 bunx oxlint --type-aware --import-plugin packages
 ```
 
-## `kitz/no-json-parse`
+## `kitz/schema/no-json-parse`
 
 ### Checks
 
@@ -44,7 +44,7 @@ const user = decode(input)
 
 Use Effect Schema decode/codec APIs at IO boundaries (HTTP, file, env, CLI input).
 
-## `kitz/no-try-catch`
+## `kitz/error/no-try-catch`
 
 ### Checks
 
@@ -79,7 +79,7 @@ Native exceptions are untyped and bypass Effect error channels.
 
 Use `Effect.try`, `Effect.tryPromise`, `Either`, or `Option` depending on the failure model.
 
-## `kitz/no-native-promise-construction`
+## `kitz/effect/no-native-promise-construction`
 
 ### Checks
 
@@ -118,7 +118,7 @@ Flags TypeScript assertion syntax:
 
 This rule is available through official Oxlint type-aware mode, but it is currently disabled in this repo because it produces false positives for the repo's allowed function-body typing patterns.
 
-Legacy JS plugin rule `kitz/no-type-assertion` is also disabled.
+Legacy JS plugin rule `kitz/ts/no-type-assertion` is also disabled.
 
 ### Status
 
@@ -132,7 +132,7 @@ Assertion casts hide unsound assumptions and skip validation.
 
 Prefer schema decode, parsing helpers, or explicit typed constructors where practical. For now, assertion cleanup is handled as targeted source work, not by an active blanket lint rule.
 
-## `kitz/no-native-map-set-in-effect-modules`
+## `kitz/domain/no-native-map-set`
 
 ### Checks
 
@@ -163,7 +163,7 @@ Release module data structures should default to Effect collection primitives fo
 
 Prefer `HashMap` / `HashSet`; only use mutable variants when there is a measured and documented justification.
 
-## `kitz/no-nodejs-builtin-imports`
+## `kitz/module/no-nodejs-builtins`
 
 ### Checks
 
@@ -223,7 +223,7 @@ Use Effect and `@kitz/*` abstractions instead of Node built-ins, `fs-extra`, and
 - Removed: manual per-file allowlists.
 - Replaced with: package condition-derived allow-set from `exports`/`imports`.
 
-## `kitz/no-throw`
+## `kitz/error/no-throw`
 
 Repo status: the rule remains implemented and fixture-tested, but `.oxlintrc.json` and `.oxlintrc.custom-strict.json` temporarily disable it while existing throw sites are migrated.
 
@@ -256,7 +256,7 @@ Thrown exceptions bypass typed failure channels and make composition less explic
 
 Model expected failures as typed `Effect.fail` / `Either` / `Option`; reserve `throw` for explicit adapter boundaries.
 
-## `kitz/no-promise-then-chain`
+## `kitz/effect/no-promise-then-chain`
 
 ### Checks
 
@@ -284,7 +284,7 @@ Promise chain APIs encourage mixed async styles and reduce consistency in Effect
 
 Use Effect combinators for composition. If you must stay in async/await locally, avoid chain-style Promise operators.
 
-## `kitz/no-effect-run-in-library-code`
+## `kitz/effect/no-effect-run-in-library-code`
 
 ### Checks
 
@@ -293,7 +293,7 @@ Flags `Effect.run*` calls in library modules.
 ### Allowed
 
 - tests
-- app/CLI entrypoint paths (same allow-list as `kitz/no-throw`)
+- app/CLI entrypoint paths (same allow-list as `kitz/error/no-throw`)
 
 ### Fail
 
@@ -315,7 +315,7 @@ Library code should return Effects; runtime execution belongs at process boundar
 
 Return `Effect` values from libraries and run them only at app/CLI edges.
 
-## `kitz/require-typed-effect-errors`
+## `kitz/error/require-typed-effect-errors`
 
 ### Checks
 
@@ -341,7 +341,7 @@ type Program = Effect.Effect<string, DomainError, never>
 
 Define explicit domain error types (single class/union/tagged type) for Effect error channels.
 
-## `kitz/require-schema-decode-at-boundary`
+## `kitz/schema/require-schema-decode`
 
 ### Checks
 
@@ -369,7 +369,7 @@ Boundary input should be validated and typed as close to ingress as possible.
 
 Define local boundary schemas and decode immediately after reading env/HTTP/file inputs.
 
-## `kitz/no-process-env-outside-config-modules`
+## `kitz/domain/no-process-env`
 
 ### Checks
 
@@ -402,7 +402,7 @@ Scattered env reads create implicit dependencies and bypass centralized schema v
 
 Read env once in typed config modules, decode there, and pass typed config values downstream.
 
-## `kitz/no-date-now-in-domain`
+## `kitz/domain/no-date-now`
 
 ### Checks
 
@@ -428,7 +428,7 @@ Direct wall-clock reads reduce determinism and testability in domain logic.
 
 Use Effect `Clock` service for time in libraries/domain modules; keep direct Date usage at boundaries only.
 
-## `kitz/no-math-random-in-domain`
+## `kitz/domain/no-math-random`
 
 ### Checks
 
@@ -454,7 +454,7 @@ Global randomness is hard to control in tests and weakens reproducibility.
 
 Use Effect `Random` service (or injected deterministic randomness) for domain/library logic.
 
-## `kitz/no-console-in-effect-modules`
+## `kitz/domain/no-console`
 
 ### Checks
 
@@ -480,7 +480,7 @@ Console usage fragments observability and bypasses structured logging convention
 
 Prefer `Effect.log*` or explicit logging adapters/services.
 
-## `kitz/require-tagged-error-types`
+## `kitz/error/require-tagged-error-types`
 
 ### Checks
 
@@ -506,7 +506,7 @@ Tagged errors improve narrowing, pattern matching, and explicit error algebra.
 
 Define error types with `_tag` discriminants (or named `*Error` types that follow tagged conventions).
 
-## `kitz/namespace-file-conventions`
+## `kitz/module/namespace-file-conventions`
 
 ### Checks
 
@@ -570,7 +570,7 @@ Use one namespace export, keep extra exports type-only, and add a matching JSDoc
 If defining a type directly in `_.ts`, use the same name as the namespace export; define or re-export other type names from sibling files.
 For `packages/core/src/*/core/_.ts`, align names with `packages/core/package.json#imports` (`#err/core` → `CoreErr`, etc.). The rule reads the imports entry as source of truth whether it points at source targets like `./src/err/core/_.ts` or build targets like `./build/err/core/_.js`.
 
-## `kitz/barrel-file-conventions`
+## `kitz/module/barrel-file-conventions`
 
 ### Checks
 
@@ -614,7 +614,7 @@ Prevents barrels from accumulating executable logic and keeps them focused on co
 
 Use strict import/export-only barrels when aggregating peers. If a directory has no peer implementation files, `__.ts` can hold implementation logic (still no default export).
 
-## `kitz/module-structure-conventions`
+## `kitz/module/module-structure-conventions`
 
 ### Checks
 
@@ -650,7 +650,7 @@ Codifies `_.ts`/`__.ts` elision conventions and prevents module layout drift.
 
 Add `__.ts` for multi-file modules, point multi-file namespace entrypoints to it, and ensure regular packages keep both root entrypoints.
 
-## `kitz/no-deep-imports-when-namespace-entrypoint-exists`
+## `kitz/module/no-deep-imports`
 
 ### Checks
 
@@ -691,7 +691,7 @@ Enforces that namespace boundaries are respected by consumers. The definition-si
 
 Replace deep imports with imports through the namespace entrypoint (`_.ts` or `__.ts`). If the target is not re-exported, add it to the barrel.
 
-## `kitz/prefer-subpath-imports`
+## `kitz/module/prefer-subpath-imports`
 
 ### Checks
 
