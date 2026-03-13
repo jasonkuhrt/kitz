@@ -10,4 +10,6 @@ export class Config extends S.Class<Config>('PnpmWorkspaceConfig')({
   catalog: S.optional(S.Record(S.String, S.String)),
   /** Named catalogs for different dependency sets (pnpm 9+). */
   catalogs: S.optional(S.Record(S.String, S.Record(S.String, S.String))),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}

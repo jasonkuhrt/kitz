@@ -42,7 +42,7 @@ type CreateParams<Options, Metadata, Error, Context> = {
 export const create = <Options = unknown, Metadata = unknown, Error = never, Context = never>(
   params: CreateParams<Options, Metadata, Error, Context>,
 ): RuntimeRule<Options, Metadata, Error, Context> => ({
-  data: new Rule(params),
+  data: Rule.make(params),
   ...(params.optionsSchema ? { optionsSchema: params.optionsSchema } : {}),
   check: params.check,
 })

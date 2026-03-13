@@ -25,8 +25,8 @@ export const rule = RuntimeRule.create({
     // Check if all scopes are valid package names
     for (const scope of scopes) {
       if (!HashSet.has(validScopes, scope)) {
-        return new Violation({
-          location: new PrTitle({ title: pr.title }),
+        return Violation.make({
+          location: PrTitle.make({ title: pr.title }),
         })
       }
     }

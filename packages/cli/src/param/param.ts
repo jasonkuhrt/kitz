@@ -205,6 +205,7 @@ export class Param extends S.Class<Param>('Param')({
    */
   expression: S.String,
 }) {
+  static make = this.makeUnsafe
   /**
    * Schema for parsing from/encoding to string representation.
    * Use this when you need to accept string parameter expressions.
@@ -282,7 +283,7 @@ export class Param extends S.Class<Param>('Param')({
 
         // Create Param instance from analysis
         return Effect.succeed(
-          new Param({
+          Param.make({
             canonical: analysis.canonical,
             short: analysis.short,
             long: analysis.long,

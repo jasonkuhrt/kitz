@@ -38,8 +38,8 @@ export const rule = RuntimeRule.create({
 
       if (!result.valid && result.violations.length > 0) {
         const firstViolation = result.violations[0]!
-        return new Violation({
-          location: new GitHistory({ sha: firstViolation.later.sha }),
+        return Violation.make({
+          location: GitHistory.make({ sha: firstViolation.later.sha }),
         })
       }
     }

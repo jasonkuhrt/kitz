@@ -52,7 +52,9 @@ export class Config extends Schema.Class<Config>('Config')({
   operator: Operator.pipe(Schema.optionalKey, Schema.withDecodingDefaultKey(defaultOperator)),
   /** Lint configuration */
   lint: Schema.optional(LintConfig.Config),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Resolved release configuration schema (after merging and resolution).
@@ -66,7 +68,9 @@ export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig
   publishing: Publishing,
   operator: ResolvedOperator,
   lint: LintConfig.ResolvedConfig,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Config file definition for @kitz/release.
@@ -142,7 +146,7 @@ export const load = (
       options?.operator ?? fileConfig.operator ?? defaultOperator(),
     )
 
-    return new ResolvedConfig({
+    return ResolvedConfig.make({
       trunk: options?.trunk ?? fileConfig.trunk ?? 'main',
       npmTag: options?.npmTag ?? fileConfig.npmTag ?? 'latest',
       candidateTag: options?.candidateTag ?? fileConfig.candidateTag ?? 'next',

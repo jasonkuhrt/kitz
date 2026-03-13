@@ -32,4 +32,6 @@ export class DetectedPackageManager extends Schema.Class<DetectedPackageManager>
 )({
   name: PackageManager,
   source: DetectionSource,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}

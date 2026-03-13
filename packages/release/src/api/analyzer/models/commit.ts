@@ -23,6 +23,7 @@ export class ReleaseCommit extends Git.ParsedCommit<ReleaseCommit>()(
   'ReleaseCommit',
   ConventionalCommits.Commit.Commit,
 ) {
+  static make = this.makeUnsafe
   /**
    * Instance sugar for {@link ReleaseCommit.forScope}.
    */
@@ -82,7 +83,7 @@ export const makeCascadeCommit = (scope: string, description: string): ReleaseCo
     hash: SYNTHETIC_SHA,
     author: SYNTHETIC_AUTHOR,
     date: new Date(),
-    message: new ConventionalCommits.Commit.Single({
+    message: ConventionalCommits.Commit.Single.make({
       type: ConventionalCommits.Type.parse('chore'),
       scopes: [scope],
       breaking: false,

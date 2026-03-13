@@ -40,8 +40,8 @@ export type join<Base extends $Dir, Path extends $Rel> = Base extends AbsDir
  *
  * @example
  * ```ts
- * const absDir = new Path.AbsDir({ segments: ['home', 'user'] })
- * const relFile = new Path.RelFile({
+ * const absDir = Path.AbsDir.make({ segments: ['home', 'user'] })
+ * const relFile = Path.RelFile.make({
  *   segments: ['src'],
  *   fileName: { stem: 'index', extension: '.ts' }
  * })

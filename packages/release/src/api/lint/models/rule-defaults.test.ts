@@ -48,33 +48,33 @@ describe('RuleId', () => {
 
 describe('RuleDefaults', () => {
   test('make with no fields', () => {
-    const d = new RuleDefaults({})
+    const d = RuleDefaults.make({})
     expect(d._tag).toBe('RuleDefaults')
     expect(RuleDefaults.is(d)).toBe(true)
   })
 
   test('make with enabled=true', () => {
-    const d = new RuleDefaults({ enabled: true })
+    const d = RuleDefaults.make({ enabled: true })
     expect(d.enabled).toBe(true)
   })
 
   test('make with enabled=false', () => {
-    const d = new RuleDefaults({ enabled: false })
+    const d = RuleDefaults.make({ enabled: false })
     expect(d.enabled).toBe(false)
   })
 
   test('make with enabled=auto', () => {
-    const d = new RuleDefaults({ enabled: 'auto' })
+    const d = RuleDefaults.make({ enabled: 'auto' })
     expect(d.enabled).toBe('auto')
   })
 
   test('make with severity', () => {
-    const d = new RuleDefaults({ severity: new Severity.Warn({}) })
+    const d = RuleDefaults.make({ severity: Severity.Warn.make({}) })
     expect(d.severity!._tag).toBe('SeverityWarn')
   })
 
   test('schema roundtrip', () => {
-    const d = new RuleDefaults({ enabled: true, severity: new Severity.Error({}) })
+    const d = RuleDefaults.make({ enabled: true, severity: Severity.Error.make({}) })
     const encoded = Schema.encodeSync(RuleDefaults)(d)
     const decoded = Schema.decodeSync(RuleDefaults)(encoded)
     expect(decoded.enabled).toBe(true)

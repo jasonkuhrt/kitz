@@ -24,9 +24,9 @@ const commit = (scope: string) => makeCascadeCommit(scope, 'test commit')
 
 describe('Official item', () => {
   test('nextVersion for increment', () => {
-    const item = new Official({
+    const item = Official.make({
       package: pkg('@kitz/core', 'core'),
-      version: new OfficialIncrement({
+      version: OfficialIncrement.make({
         from: Semver.fromString('1.0.0'),
         to: Semver.fromString('1.1.0'),
         bump: 'minor',
@@ -37,18 +37,18 @@ describe('Official item', () => {
   })
 
   test('nextVersion for first release', () => {
-    const item = new Official({
+    const item = Official.make({
       package: pkg('@kitz/core', 'core'),
-      version: new OfficialFirst({ version: Semver.fromString('0.1.0') }),
+      version: OfficialFirst.make({ version: Semver.fromString('0.1.0') }),
       commits: [commit('core')],
     })
     expect(Semver.equivalence(item.nextVersion, Semver.fromString('0.1.0'))).toBe(true)
   })
 
   test('currentVersion for increment', () => {
-    const item = new Official({
+    const item = Official.make({
       package: pkg('@kitz/core', 'core'),
-      version: new OfficialIncrement({
+      version: OfficialIncrement.make({
         from: Semver.fromString('1.0.0'),
         to: Semver.fromString('1.1.0'),
         bump: 'minor',
@@ -62,18 +62,18 @@ describe('Official item', () => {
   })
 
   test('currentVersion for first release is None', () => {
-    const item = new Official({
+    const item = Official.make({
       package: pkg('@kitz/core', 'core'),
-      version: new OfficialFirst({ version: Semver.fromString('0.1.0') }),
+      version: OfficialFirst.make({ version: Semver.fromString('0.1.0') }),
       commits: [commit('core')],
     })
     expect(Option.isNone(item.currentVersion)).toBe(true)
   })
 
   test('bumpType for increment', () => {
-    const item = new Official({
+    const item = Official.make({
       package: pkg('@kitz/core', 'core'),
-      version: new OfficialIncrement({
+      version: OfficialIncrement.make({
         from: Semver.fromString('1.0.0'),
         to: Semver.fromString('2.0.0'),
         bump: 'major',
@@ -84,9 +84,9 @@ describe('Official item', () => {
   })
 
   test('bumpType for first release is minor', () => {
-    const item = new Official({
+    const item = Official.make({
       package: pkg('@kitz/core', 'core'),
-      version: new OfficialFirst({ version: Semver.fromString('0.1.0') }),
+      version: OfficialFirst.make({ version: Semver.fromString('0.1.0') }),
       commits: [commit('core')],
     })
     expect(item.bumpType).toBe('minor')
@@ -97,10 +97,10 @@ describe('Official item', () => {
 
 describe('Candidate item', () => {
   test('nextVersion includes prerelease', () => {
-    const item = new Candidate({
+    const item = Candidate.make({
       package: pkg('@kitz/core', 'core'),
       baseVersion: Semver.fromString('1.1.0'),
-      prerelease: new Version.Candidate({ iteration: 3 }),
+      prerelease: Version.Candidate.make({ iteration: 3 }),
       commits: [commit('core')],
     })
     const version = Semver.toString(item.nextVersion)
@@ -109,10 +109,10 @@ describe('Candidate item', () => {
   })
 
   test('currentVersion is base version', () => {
-    const item = new Candidate({
+    const item = Candidate.make({
       package: pkg('@kitz/core', 'core'),
       baseVersion: Semver.fromString('1.1.0'),
-      prerelease: new Version.Candidate({ iteration: 1 }),
+      prerelease: Version.Candidate.make({ iteration: 1 }),
       commits: [commit('core')],
     })
     expect(Option.isSome(item.currentVersion)).toBe(true)
@@ -122,10 +122,10 @@ describe('Candidate item', () => {
   })
 
   test('bumpType is undefined', () => {
-    const item = new Candidate({
+    const item = Candidate.make({
       package: pkg('@kitz/core', 'core'),
       baseVersion: Semver.fromString('1.1.0'),
-      prerelease: new Version.Candidate({ iteration: 1 }),
+      prerelease: Version.Candidate.make({ iteration: 1 }),
       commits: [commit('core')],
     })
     expect(item.bumpType).toBeUndefined()
@@ -138,9 +138,9 @@ describe('Ephemeral item', () => {
   const sha = Git.Sha.make('abc1234')
 
   test('nextVersion includes PR metadata', () => {
-    const item = new Ephemeral({
+    const item = Ephemeral.make({
       package: pkg('@kitz/core', 'core'),
-      prerelease: new Version.Ephemeral({ prNumber: 42, iteration: 1, sha }),
+      prerelease: Version.Ephemeral.make({ prNumber: 42, iteration: 1, sha }),
       commits: [commit('core')],
     })
     const version = Semver.toString(item.nextVersion)
@@ -150,18 +150,18 @@ describe('Ephemeral item', () => {
   })
 
   test('currentVersion is always None', () => {
-    const item = new Ephemeral({
+    const item = Ephemeral.make({
       package: pkg('@kitz/core', 'core'),
-      prerelease: new Version.Ephemeral({ prNumber: 42, iteration: 1, sha }),
+      prerelease: Version.Ephemeral.make({ prNumber: 42, iteration: 1, sha }),
       commits: [commit('core')],
     })
     expect(Option.isNone(item.currentVersion)).toBe(true)
   })
 
   test('bumpType is undefined', () => {
-    const item = new Ephemeral({
+    const item = Ephemeral.make({
       package: pkg('@kitz/core', 'core'),
-      prerelease: new Version.Ephemeral({ prNumber: 42, iteration: 1, sha }),
+      prerelease: Version.Ephemeral.make({ prNumber: 42, iteration: 1, sha }),
       commits: [commit('core')],
     })
     expect(item.bumpType).toBeUndefined()

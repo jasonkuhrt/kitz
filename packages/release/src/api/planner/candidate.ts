@@ -34,10 +34,10 @@ const detectCascadesForCandidate = (
     // Find existing candidate releases for this version
     const candidateNumber = findLatestCandidateNumber(cascade.package.name, baseVersion, tags)
 
-    return new Candidate({
+    return Candidate.make({
       package: cascade.package,
       baseVersion,
-      prerelease: new Version.Candidate({ iteration: candidateNumber + 1 }),
+      prerelease: Version.Candidate.make({ iteration: candidateNumber + 1 }),
       commits: cascade.commits,
     })
   })
@@ -77,10 +77,10 @@ export const candidate = (
       ])
 
       releases.push(
-        new Candidate({
+        Candidate.make({
           package: impact.package,
           baseVersion: nextOfficialVersion,
-          prerelease: new Version.Candidate({ iteration: candidateNumber + 1 }),
+          prerelease: Version.Candidate.make({ iteration: candidateNumber + 1 }),
           commits: impact.commits,
         }),
       )
@@ -92,7 +92,7 @@ export const candidate = (
       ...analysis.tags,
     ])
 
-    return new Plan({
+    return Plan.make({
       lifecycle: 'candidate',
       timestamp: new Date().toISOString(),
       releases,

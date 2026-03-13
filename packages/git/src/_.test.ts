@@ -241,10 +241,10 @@ describe('Git', () => {
 
 describe('Commit', () => {
   test('creates valid commit with all fields', () => {
-    const commit = new Git.Commit({
+    const commit = Git.Commit.make({
       hash: Git.Sha.make('abc1234'),
       message: 'feat(core): add feature\n\nDetailed description',
-      author: new Git.Author({ name: 'Jane Doe', email: 'jane@example.com' }),
+      author: Git.Author.make({ name: 'Jane Doe', email: 'jane@example.com' }),
       date: new Date('2024-01-15'),
     })
 

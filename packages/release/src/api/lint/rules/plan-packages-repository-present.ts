@@ -11,7 +11,7 @@ import { loadPlannedManifests, summarizePackages } from './package-manifest-shar
 export const rule = RuntimeRule.create({
   id: RuleId.makeUnsafe('plan.packages-repository-present'),
   description: 'planned packages declare repository metadata',
-  defaults: new RuleDefaults({ severity: new Severity.Warn() }),
+  defaults: RuleDefaults.make({ severity: Severity.Warn.make({}) }),
   preconditions: [new Precondition.HasReleasePlan()],
   check: loadPlannedManifests.pipe(
     Effect.map((manifests) => {
@@ -23,24 +23,24 @@ export const rule = RuntimeRule.create({
       const names = offenders.map((entry) => entry.packageName)
       const example = offenders[0]!
 
-      return new Violation({
+      return Violation.make({
         location:
           offenders.length === 1
-            ? new File({ path: example.packageJsonPath })
-            : new Environment({
+            ? File.make({ path: example.packageJsonPath })
+            : Environment.make({
                 message: `${String(offenders.length)} planned packages are missing repository metadata.`,
               }),
         summary: `Repository metadata is missing for ${summarizePackages(names)}.`,
         detail:
           'npm can publish without `repository`, but source links, provenance surfaces, and downstream tooling become weaker when packages do not point back to their canonical repo.',
         hints: [
-          new Hint({
+          Hint.make({
             description:
               'Add a `repository` field so npm and GitHub can link releases back to source.',
           }),
         ],
         docs: [
-          new DocLink({
+          DocLink.make({
             label: 'npm package.json repository field',
             url: 'https://docs.npmjs.com/cli/v11/configuring-npm/package-json',
           }),

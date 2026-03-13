@@ -60,7 +60,7 @@ export interface GenerateResult {
  * Build a package-specific release tag from package name and version.
  */
 const toReleaseTag = (pkg: Package, version: Semver.Semver): string =>
-  Pkg.Pin.toString(new Pkg.Pin.Exact({ name: pkg.name, version }))
+  Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version }))
 
 /**
  * Generate release notes for packages with changes.

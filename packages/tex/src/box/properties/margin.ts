@@ -29,14 +29,16 @@ export const ValueSchema = S.Union([S.Number, S.String, S.BigInt])
  *
  * @category Text Formatting
  */
-export class Margin extends Sided.Class<Margin>('Margin')(ValueSchema) {}
+export class Margin extends Sided.Class<Margin>('Margin')(ValueSchema) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Parse margin input into a Margin instance.
  *
  * @category Text Formatting
  */
-export const parse = (input: Input): Margin => new Margin(Sided.parse(input) as any)
+export const parse = (input: Input): Margin => Margin.make(Sided.parse(input) as any)
 
 /**
  * One-way transformation schema: Input → Margin.

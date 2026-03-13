@@ -24,8 +24,8 @@ export const rule = RuntimeRule.create({
     if (!context.trunk || !context.currentBranch) return undefined
     if (context.currentBranch === context.trunk) return undefined
 
-    return new Violation({
-      location: new Environment({
+    return Violation.make({
+      location: Environment.make({
         message: `Current branch "${context.currentBranch}" does not match configured trunk "${context.trunk}".`,
       }),
       summary: `${context.lifecycle} releases must run from trunk.`,
@@ -33,16 +33,16 @@ export const rule = RuntimeRule.create({
         'Official and candidate releases should describe code that already exists on trunk. ' +
         'Planning or applying them from a feature branch can publish versions that do not match merge history.',
       hints: [
-        new Hint({
+        Hint.make({
           description: `Checkout ${context.trunk} before running ${context.lifecycle} release plan or apply.`,
         }),
-        new Hint({
+        Hint.make({
           description:
             'If your primary release branch has a different name, update `trunk` in release.config.ts.',
         }),
       ],
       docs: [
-        new DocLink({
+        DocLink.make({
           label: 'Git branch management',
           url: 'https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell',
         }),

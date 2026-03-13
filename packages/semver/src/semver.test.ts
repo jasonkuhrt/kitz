@@ -65,14 +65,14 @@ Test.describe('officialToPre')
   .cases(
     [
       [
-        new Semver.OfficialRelease.OfficialRelease({ major: 1, minor: 2, patch: 3 }),
+        Semver.OfficialRelease.OfficialRelease.make({ major: 1, minor: 2, patch: 3 }),
         pre('next', 1),
       ],
       '1.2.3-next.1',
     ],
     [
       [
-        new Semver.OfficialRelease.OfficialRelease({
+        Semver.OfficialRelease.OfficialRelease.make({
           major: 1,
           minor: 2,
           patch: 3,

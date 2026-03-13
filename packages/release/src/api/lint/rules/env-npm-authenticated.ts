@@ -22,7 +22,7 @@ export const rule = RuntimeRule.create({
   preventsDescriptions: [
     'npm publish failing because your npm session or token is missing, expired, or scoped incorrectly',
   ],
-  defaults: new RuleDefaults({ enabled: false }),
+  defaults: RuleDefaults.make({ enabled: false }),
   preconditions: [],
   optionsSchema: OptionsSchema,
   check: Effect.gen(function* () {
@@ -33,8 +33,8 @@ export const rule = RuntimeRule.create({
       Effect.map((username) => ({ metadata: { username } })),
       Effect.catch((error: any) =>
         Effect.succeed({
-          violation: new Violation({
-            location: new Environment({
+          violation: Violation.make({
+            location: Environment.make({
               message:
                 (error.context.detail ?? 'npm auth failed') +
                 '. Run `npm login` or set NPM_TOKEN in your environment.',
@@ -44,54 +44,54 @@ export const rule = RuntimeRule.create({
               'Manual and token-based release paths still rely on npm CLI auth. ' +
               'If `npm whoami` fails here, `npm publish` will fail later after release planning is already complete. ' +
               'Even after login, publish can still fail if the authenticated account lacks write access to the target package or scope, or if npm requires an additional write-time auth step.',
-            fix: new GuideFix({
+            fix: GuideFix.make({
               summary: 'Sign this machine into npm and re-run the auth check.',
               steps: [
-                new FixStep({
+                FixStep.make({
                   description: 'Open the npm login docs to confirm the current CLI flow.',
                 }),
-                new FixStep({
+                FixStep.make({
                   description:
                     'Run `npm login` in this shell and complete the browser or terminal prompts.',
                 }),
-                new FixStep({
+                FixStep.make({
                   description: 'Verify the session with `npm whoami`.',
                 }),
-                new FixStep({
+                FixStep.make({
                   description: 'Re-run `release doctor --onlyRule env.npm-authenticated`.',
                 }),
-                new FixStep({
+                FixStep.make({
                   description:
                     'If `npm whoami` passes but publish still fails, verify scope ownership, package write access, and any write-time 2FA requirement on the npm account.',
                 }),
               ],
               docs: [
-                new DocLink({
+                DocLink.make({
                   label: 'npm login',
                   url: 'https://docs.npmjs.com/cli/v11/commands/npm-login',
                 }),
-                new DocLink({
+                DocLink.make({
                   label: 'npm access',
                   url: 'https://docs.npmjs.com/cli/v11/commands/npm-access',
                 }),
-                new DocLink({
+                DocLink.make({
                   label: 'npm two-factor authentication',
                   url: 'https://docs.npmjs.com/configuring-two-factor-authentication/',
                 }),
               ],
             }),
             hints: [
-              new Hint({
+              Hint.make({
                 description:
                   'For CI, either export an npm token or switch the lifecycle to github-trusted publishing.',
               }),
-              new Hint({
+              Hint.make({
                 description:
                   'If `npm whoami` starts passing but publish still fails, check npm package ownership or org membership for the target scope and any write-time 2FA policy on the account.',
               }),
             ],
             docs: [
-              new DocLink({
+              DocLink.make({
                 label: 'npm CI/CD auth guidance',
                 url: 'https://docs.npmjs.com/using-private-packages-in-a-ci-cd-workflow/',
               }),

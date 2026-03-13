@@ -65,8 +65,8 @@ export type MatchingTypeGroupForDir<$a extends $Dir> = {
  *
  * @example
  * ```ts
- * const parent = new FsLoc.Path.Abs({ segments: ['home', 'user'] })
- * const child = new FsLoc.Path.Abs({ segments: ['home', 'user', 'docs'] })
+ * const parent = FsLoc.Path.Abs.make({ segments: ['home', 'user'] })
+ * const child = FsLoc.Path.Abs.make({ segments: ['home', 'user', 'docs'] })
  * isDescendantOf(child, parent) // true
  * ```
  */
@@ -200,8 +200,8 @@ export function isSameSegments<$a extends Path>(a: $a, b: MatchingTypeGroup<$a>)
  *
  * @example
  * ```ts
- * const parent = new FsLoc.Path.Abs({ segments: ['home', 'user'] })
- * const child = new FsLoc.Path.Abs({ segments: ['home', 'user', 'docs', 'readme'] })
+ * const parent = FsLoc.Path.Abs.make({ segments: ['home', 'user'] })
+ * const child = FsLoc.Path.Abs.make({ segments: ['home', 'user', 'docs', 'readme'] })
  * getRelativeSegments(child, parent) // ['docs', 'readme']
  * ```
  */
@@ -227,8 +227,8 @@ export function getRelativeSegments<$a extends Path>(
  *
  * @example
  * ```ts
- * const a = new FsLoc.Path.Abs({ segments: ['home', 'user', 'docs'] })
- * const b = new FsLoc.Path.Abs({ segments: ['home', 'user', 'pictures'] })
+ * const a = FsLoc.Path.Abs.make({ segments: ['home', 'user', 'docs'] })
+ * const b = FsLoc.Path.Abs.make({ segments: ['home', 'user', 'pictures'] })
  * getSharedBase(a, b) // Option.some(AbsDir with segments ['home', 'user'])
  * ```
  */

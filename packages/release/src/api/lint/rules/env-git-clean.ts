@@ -12,15 +12,15 @@ export const rule = RuntimeRule.create({
   preventsDescriptions: [
     'publishing from a dirty working tree and tagging code that does not match committed source',
   ],
-  defaults: new RuleDefaults({ enabled: false }),
+  defaults: RuleDefaults.make({ enabled: false }),
   preconditions: [],
   check: Effect.gen(function* () {
     const git = yield* Git.Git
     const isClean = yield* git.isClean()
 
     if (!isClean) {
-      return new Violation({
-        location: new Environment({
+      return Violation.make({
+        location: Environment.make({
           message:
             'Working directory has uncommitted changes. Commit or stash your changes before running release apply.',
         }),
@@ -28,16 +28,16 @@ export const rule = RuntimeRule.create({
         detail:
           'Publishing from dirty local state can produce tags and npm packages that do not correspond to committed source, which makes the release hard to reproduce or roll back safely.',
         hints: [
-          new Hint({
+          Hint.make({
             description: 'Commit or stash local changes before running `release apply`.',
           }),
-          new Hint({
+          Hint.make({
             description:
               'Regenerate the release plan after switching branches or changing package manifests.',
           }),
         ],
         docs: [
-          new DocLink({
+          DocLink.make({
             label: 'Git stash basics',
             url: 'https://git-scm.com/book/en/v2/Git-Tools-Stashing-and-Cleaning',
           }),

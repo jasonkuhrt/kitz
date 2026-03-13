@@ -27,9 +27,9 @@ export const rule = RuntimeRule.create({
     'GitHub using a squash-merge title whose conventional-commit header drifts from the canonical release header.',
   ],
   preconditions: [new Precondition.HasOpenPR()],
-  defaults: new RuleDefaults({
+  defaults: RuleDefaults.make({
     enabled: 'auto',
-    severity: new Severity.Warn(),
+    severity: Severity.Warn.make({}),
   }),
   optionsSchema: OptionsSchema,
   check: Effect.gen(function* () {
@@ -40,28 +40,28 @@ export const rule = RuntimeRule.create({
     const actualHeader = ConventionalCommits.Commit.renderHeader(getParsedCommit(pr)!)
 
     if (actualHeader !== options.projectedHeader) {
-      return new Violation({
-        location: new PrTitle({ title: pr.title }),
+      return Violation.make({
+        location: PrTitle.make({ title: pr.title }),
         summary: 'PR title header is out of sync with the projected squash-merge header.',
         detail: `Expected header \`${options.projectedHeader}\`, but PR title header is \`${actualHeader}\`.`,
-        fix: new CommandFix({
+        fix: CommandFix.make({
           summary: 'Apply the canonical release header to the connected PR title.',
           command: 'release pr title apply',
           docs: [
-            new DocLink({
+            DocLink.make({
               label: 'GitHub squash merge defaults',
               url: 'https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/configuring-commit-squashing-for-pull-requests',
             }),
           ],
         }),
         hints: [
-          new Hint({
+          Hint.make({
             description:
               'Rename the PR title header so GitHub’s default squash-merge title starts with the computed release header.',
           }),
         ],
         docs: [
-          new DocLink({
+          DocLink.make({
             label: 'GitHub squash merge defaults',
             url: 'https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/configuring-commit-squashing-for-pull-requests',
           }),

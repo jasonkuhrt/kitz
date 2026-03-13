@@ -10,6 +10,7 @@ import { Segments } from '../types/segments.js'
 class AbsDirClass extends S.TaggedClass<AbsDirClass>()('FsPathAbsDir', {
   segments: Segments,
 }) {
+  static make = this.makeUnsafe
   override toString() {
     return S.encodeSync(Schema)(this)
   }
@@ -72,7 +73,7 @@ export const Schema: S.Codec<AbsDirClass, string> = S.String.pipe(
 
       // Valid - return as AbsDir
       return Effect.succeed(
-        new AbsDirClass({
+        AbsDirClass.make({
           segments: analysis.path,
         }),
       )

@@ -112,7 +112,7 @@ const convertVltRange = (vltRange: VltRange): Range => {
 
       const [op, version] = tuple
       comparators.push(
-        new Comparator({
+        Comparator.make({
           operator: op as Operator,
           version: Semver.fromString(version.toString()),
         }),
@@ -122,7 +122,7 @@ const convertVltRange = (vltRange: VltRange): Range => {
     // Handle empty comparators (e.g., from "*" range)
     if (comparators.length === 0) {
       comparators.push(
-        new Comparator({
+        Comparator.make({
           operator: '>=',
           version: Semver.fromString('0.0.0'),
         }),
@@ -135,7 +135,7 @@ const convertVltRange = (vltRange: VltRange): Range => {
   // Handle empty sets (shouldn't happen, but defensive)
   if (sets.length === 0) {
     sets.push([
-      new Comparator({
+      Comparator.make({
         operator: '>=',
         version: Semver.fromString('0.0.0'),
       }),

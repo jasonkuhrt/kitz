@@ -11,6 +11,7 @@ class AbsFileClass extends S.TaggedClass<AbsFileClass>()('FsPathAbsFile', {
   segments: Segments,
   fileName: FileName,
 }) {
+  static make = this.makeUnsafe
   override toString() {
     return S.encodeSync(Schema)(this)
   }
@@ -79,9 +80,9 @@ export const Schema: S.Codec<AbsFileClass, string> = S.String.pipe(
 
       // Valid - return as AbsFile
       return Effect.succeed(
-        new AbsFileClass({
+        AbsFileClass.make({
           segments: analysis.path,
-          fileName: new FileName({
+          fileName: FileName.make({
             stem: analysis.file.stem,
             extension: analysis.file.extension,
           }),

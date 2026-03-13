@@ -10,4 +10,6 @@ export class TargetSection extends Schema.TaggedClass<TargetSection>()('TargetSe
   body: Schema.String,
   /** Footers within this section (including BREAKING CHANGE) */
   footers: Schema.Array(Footer),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}

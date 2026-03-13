@@ -46,8 +46,8 @@ const enableRule = (
   ruleOptions: Record<string, unknown> = {},
 ) => {
   const existing = config.lint.rules[ruleId]
-  return new Api.Lint.ResolvedRuleConfig({
-    overrides: new Api.Lint.ResolvedRuleDefaults({
+  return Api.Lint.ResolvedRuleConfig.make({
+    overrides: Api.Lint.ResolvedRuleDefaults.make({
       enabled: true,
       severity: existing?.['overrides'].severity ?? config.lint.defaults.severity,
     }),
@@ -215,7 +215,7 @@ Cli.run(
                 }),
               })
             : undefined
-        const lintConfig = new Api.Lint.ResolvedConfig({
+        const lintConfig = Api.Lint.ResolvedConfig.make({
           defaults: config.lint.defaults,
           onlyRules: config.lint.onlyRules,
           skipRules: config.lint.skipRules,
@@ -235,12 +235,12 @@ Cli.run(
               : {}),
             ...(projectedSquashCommit?.projectedHeader
               ? {
-                  'pr.projected-squash-commit-sync': new Api.Lint.ResolvedRuleConfig({
+                  'pr.projected-squash-commit-sync': Api.Lint.ResolvedRuleConfig.make({
                     overrides:
                       config.lint.rules['pr.projected-squash-commit-sync']?.['overrides'] ??
-                      new Api.Lint.ResolvedRuleDefaults({
+                      Api.Lint.ResolvedRuleDefaults.make({
                         enabled: 'auto',
-                        severity: new Api.Lint.Warn(),
+                        severity: Api.Lint.Warn.make({}),
                       }),
                     options: {
                       ...config.lint.rules['pr.projected-squash-commit-sync']?.['options'],

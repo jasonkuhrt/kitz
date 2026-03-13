@@ -15,12 +15,13 @@ export class Plan extends S.TaggedClass<Plan>()('Plan', {
   releases: S.Array(ItemSchema),
   cascades: S.Array(ItemSchema),
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Plan as any) as (u: unknown) => u is Plan
 
   /**
    * Empty plan for resource initialization.
    */
-  static empty = new Plan({
+  static empty = Plan.make({
     lifecycle: 'official',
     timestamp: '',
     releases: [],
@@ -36,7 +37,7 @@ export const make = (
   releases: Plan['releases'],
   cascades: Plan['cascades'],
 ): Plan =>
-  new Plan({
+  Plan.make({
     lifecycle,
     timestamp: new Date().toISOString(),
     releases: [...releases],

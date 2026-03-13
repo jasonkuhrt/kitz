@@ -11,7 +11,7 @@ import { loadPlannedManifests, summarizePackages } from './package-manifest-shar
 export const rule = RuntimeRule.create({
   id: RuleId.makeUnsafe('plan.packages-license-present'),
   description: 'planned packages declare a license',
-  defaults: new RuleDefaults({ severity: new Severity.Warn() }),
+  defaults: RuleDefaults.make({ severity: Severity.Warn.make({}) }),
   preconditions: [new Precondition.HasReleasePlan()],
   check: loadPlannedManifests.pipe(
     Effect.map((manifests) => {
@@ -23,23 +23,23 @@ export const rule = RuntimeRule.create({
       const names = offenders.map((entry) => entry.packageName)
       const example = offenders[0]!
 
-      return new Violation({
+      return Violation.make({
         location:
           offenders.length === 1
-            ? new File({ path: example.packageJsonPath })
-            : new Environment({
+            ? File.make({ path: example.packageJsonPath })
+            : Environment.make({
                 message: `${String(offenders.length)} planned packages are missing a license field.`,
               }),
         summary: `License metadata is missing for ${summarizePackages(names)}.`,
         detail:
           'npm can still publish these packages, but consumers and provenance tooling expect license metadata to be present and accurate.',
         hints: [
-          new Hint({
+          Hint.make({
             description: 'Add a `license` field to each publishable package manifest.',
           }),
         ],
         docs: [
-          new DocLink({
+          DocLink.make({
             label: 'npm package.json license field',
             url: 'https://docs.npmjs.com/cli/v11/configuring-npm/package-json',
           }),

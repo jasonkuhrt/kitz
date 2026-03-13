@@ -10,7 +10,7 @@
  *
  * @example
  * ```ts
- * const MyWorkflow = new Flo.Workflow({
+ * const MyWorkflow = Flo.Workflow.make({
  *   name: 'MyWorkflow',
  *   payload: PayloadSchema,
  *   error: ErrorSchema,
@@ -372,7 +372,7 @@ const defaultIdempotencyKey = (payload: unknown): string => JSON.stringify(paylo
  *
  * @example
  * ```ts
- * const MyWorkflow = new Workflow({
+ * const MyWorkflow = Workflow.make({
  *   name: 'MyWorkflow',
  *   payload: Schema.Struct({ input: Schema.String }),
  *   error: MyError,
@@ -441,7 +441,7 @@ export const make = <Name extends string, Payload, Result, Error>(
             if (Option.isSome(maybePubsub)) {
               yield* PubSub.publish(
                 maybePubsub.value,
-                new ActivityModel.Started({
+                ActivityModel.Started.make({
                   activity: nodeName,
                   timestamp: new Date(),
                   resumed: false,
@@ -474,7 +474,7 @@ export const make = <Name extends string, Payload, Result, Error>(
                       const durationMs = (yield* Clock.currentTimeMillis) - startTime
                       yield* PubSub.publish(
                         maybePubsub.value,
-                        new ActivityModel.Completed({
+                        ActivityModel.Completed.make({
                           activity: nodeName,
                           timestamp: new Date(),
                           durationMs,
@@ -492,7 +492,7 @@ export const make = <Name extends string, Payload, Result, Error>(
                       const errorMessage = error instanceof Error ? error.message : String(error)
                       yield* PubSub.publish(
                         maybePubsub.value,
-                        new ActivityModel.Failed({
+                        ActivityModel.Failed.make({
                           activity: nodeName,
                           timestamp: new Date(),
                           error: errorMessage,
@@ -591,7 +591,7 @@ export const make = <Name extends string, Payload, Result, Error>(
         Effect.tap(() =>
           PubSub.publish(
             pubsub,
-            new WorkflowModel.Completed({
+            WorkflowModel.Completed.make({
               timestamp: new Date(),
               durationMs: 0,
             }),
@@ -601,7 +601,7 @@ export const make = <Name extends string, Payload, Result, Error>(
           Effect.gen(function* () {
             yield* PubSub.publish(
               pubsub,
-              new WorkflowModel.Failed({
+              WorkflowModel.Failed.make({
                 timestamp: new Date(),
                 error: String(cause),
               }),

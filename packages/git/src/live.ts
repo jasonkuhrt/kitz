@@ -89,18 +89,17 @@ const makeGitService = (git: SimpleGit): GitService => ({
     gitEffect('getCommitsSince', () => git.log(tag ? { from: tag, to: 'HEAD' } : undefined), {
       detail: tag ? `since ${tag}` : undefined,
       map: (log) =>
-        log.all.map(
-          (entry) =>
-            new Commit({
-              hash: Sha.make(entry.hash),
-              // Combine subject + body into single message
-              message: entry.body ? `${entry.message}\n\n${entry.body}` : entry.message,
-              author: new Author({
-                name: entry.author_name,
-                email: entry.author_email,
-              }),
-              date: new Date(entry.date),
+        log.all.map((entry) =>
+          Commit.make({
+            hash: Sha.make(entry.hash),
+            // Combine subject + body into single message
+            message: entry.body ? `${entry.message}\n\n${entry.body}` : entry.message,
+            author: Author.make({
+              name: entry.author_name,
+              email: entry.author_email,
             }),
+            date: new Date(entry.date),
+          }),
         ),
     }),
 

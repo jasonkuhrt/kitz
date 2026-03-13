@@ -14,6 +14,7 @@ export class Candidate extends S.TaggedClass<Candidate>()('Candidate', {
   baseVersion: SemverSchema,
   prerelease: Version.Candidate,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Candidate as any) as (u: unknown) => u is Candidate
 
   get nextVersion(): Semver.Semver {

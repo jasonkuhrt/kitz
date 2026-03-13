@@ -10,8 +10,7 @@ import { Schema } from 'effect'
  * ```ts
  * import { Git } from '@kitz/git'
  *
- * const sha = new Git.Sha('abc1234')
- * const full = new Git.Sha('abc1234567890abcdef1234567890abcdef123456')
+ * const full = Git.Sha.make('abc1234567890abcdef1234567890abcdef123456')
  * ```
  */
 export const Sha = Schema.String.pipe(

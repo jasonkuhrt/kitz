@@ -44,6 +44,7 @@ export class Color extends S.TaggedClass<Color>()('Color', {
   g: S.Number.pipe(S.check(S.isInt(), S.isBetween({ minimum: 0, maximum: 255 }))),
   b: S.Number.pipe(S.check(S.isInt(), S.isBetween({ minimum: 0, maximum: 255 }))),
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Color)
 
   override toString() {
@@ -109,7 +110,7 @@ export class Color extends S.TaggedClass<Color>()('Color', {
             }),
           )
         }
-        return Effect.succeed(new Color(result))
+        return Effect.succeed(Color.make(result))
       }),
       encode: SchemaGetter.transform((decoded) => {
         // Encode to hex format
@@ -151,7 +152,7 @@ export class Color extends S.TaggedClass<Color>()('Color', {
    * ```
    */
   static fromRgb = (rgb: ColorRgb): Color => {
-    return new Color(rgb)
+    return Color.make(rgb)
   }
 }
 

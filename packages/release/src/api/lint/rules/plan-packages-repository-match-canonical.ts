@@ -36,7 +36,7 @@ const extractRepositoryTarget = (repository: unknown): string | null => {
 export const rule = RuntimeRule.create({
   id: RuleId.makeUnsafe('plan.packages-repository-match-canonical'),
   description: 'planned package repository metadata points at the canonical GitHub repo',
-  defaults: new RuleDefaults({ severity: new Severity.Warn() }),
+  defaults: RuleDefaults.make({ severity: Severity.Warn.make({}) }),
   preconditions: [new Precondition.HasReleasePlan()],
   check: Effect.gen(function* () {
     const env = yield* Env.Env
@@ -44,8 +44,8 @@ export const rule = RuntimeRule.create({
     const target = yield* resolveReleaseTarget(env.vars).pipe(Effect.result)
 
     if (target._tag === 'Failure') {
-      return new Violation({
-        location: new Environment({
+      return Violation.make({
+        location: Environment.make({
           message: target.failure.message,
         }),
         summary: 'Canonical GitHub repo could not be resolved for repository provenance checks.',
@@ -53,13 +53,13 @@ export const rule = RuntimeRule.create({
           'This check compares planned package manifests against the GitHub repo that owns the release workflow. ' +
           'Without a resolvable canonical repo, source links and trusted-publishing guidance are guesswork.',
         hints: [
-          new Hint({
+          Hint.make({
             description:
               'Set `GITHUB_REPOSITORY="owner/repo"` in CI or configure a GitHub `origin` remote locally.',
           }),
         ],
         docs: [
-          new DocLink({
+          DocLink.make({
             label: 'npm trusted publishers',
             url: 'https://docs.npmjs.com/trusted-publishers/',
           }),
@@ -86,34 +86,34 @@ export const rule = RuntimeRule.create({
     const names = offenders.map((entry) => entry.packageName)
     const repositoryTarget = extractRepositoryTarget(example.manifest.repository)
 
-    return new Violation({
+    return Violation.make({
       location:
         offenders.length === 1
-          ? new File({ path: example.packageJsonPath })
-          : new Environment({
+          ? File.make({ path: example.packageJsonPath })
+          : Environment.make({
               message: `${String(offenders.length)} planned packages point at a different repository.`,
             }),
       summary: `Repository metadata should point at ${canonicalRepo}, but ${summarizePackages(names)} ${names.length === 1 ? 'does' : 'do'} not.`,
       detail:
         'Publish provenance, source links, and trusted-publisher setup all assume package manifests point back to the same canonical GitHub repository that owns the release workflow.',
       hints: [
-        new Hint({
+        Hint.make({
           description: `Set \`repository.url\` to \`git+https://github.com/${canonicalRepo}.git\`.`,
         }),
         ...(repositoryTarget
           ? [
-              new Hint({
+              Hint.make({
                 description: `The current repository target resolves to \`${repositoryTarget}\`.`,
               }),
             ]
           : []),
       ],
       docs: [
-        new DocLink({
+        DocLink.make({
           label: 'npm package.json repository field',
           url: 'https://docs.npmjs.com/cli/v11/configuring-npm/package-json',
         }),
-        new DocLink({
+        DocLink.make({
           label: 'npm trusted publishers',
           url: 'https://docs.npmjs.com/trusted-publishers/',
         }),

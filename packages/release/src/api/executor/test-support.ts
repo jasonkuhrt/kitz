@@ -29,7 +29,7 @@ export const makePackageJson = (name: string, version: string, extra?: Record<st
 
 export const tag = (name: Pkg.Moniker.Moniker, version: string) =>
   Pkg.Pin.toString(
-    new Pkg.Pin.Exact({ name, version: Schema.decodeUnknownSync(Semver.Schema)(version) }),
+    Pkg.Pin.Exact.make({ name, version: Schema.decodeUnknownSync(Semver.Schema)(version) }),
   )
 
 const slugPackageName = (packageName: string): string =>

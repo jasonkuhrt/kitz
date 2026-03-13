@@ -55,11 +55,11 @@ export const rule = RuntimeRule.create({
       const example = offenders[0]!
       const exampleTargets = example.targets.slice(0, 3).join(', ')
 
-      return new Violation({
+      return Violation.make({
         location:
           offenders.length === 1
-            ? new File({ path: example.packageJsonPath })
-            : new Environment({
+            ? File.make({ path: example.packageJsonPath })
+            : Environment.make({
                 message:
                   `${String(offenders.length)} planned packages still point runtime entries at build output. ` +
                   `Example targets: ${exampleTargets}.`,
@@ -71,27 +71,27 @@ export const rule = RuntimeRule.create({
           'This repo expects local `imports` and `exports` runtime targets to stay on `./src/*.ts`, ' +
           'with publish temporarily rewriting them to `./build/*.js` and then restoring them. ' +
           'When this rule fails, the usual cause is an interrupted or failed publish cleanup.',
-        fix: new GuideFix({
+        fix: GuideFix.make({
           summary: 'Restore local runtime targets to source paths before the next release attempt.',
           steps: [
-            new FixStep({
+            FixStep.make({
               description:
                 'Edit affected package.json files so runtime targets under `imports` and `exports` point back to `./src/*.ts`.',
             }),
-            new FixStep({
+            FixStep.make({
               description:
                 'Re-run `release doctor --onlyRule plan.packages-runtime-targets-source-oriented` before retrying publish.',
             }),
           ],
           docs: [
-            new DocLink({
+            DocLink.make({
               label: 'Node package exports',
               url: 'https://nodejs.org/api/packages.html#exports',
             }),
           ],
         }),
         hints: [
-          new Hint({
+          Hint.make({
             description:
               'If this appeared right after a failed publish, inspect the affected package manifests before attempting another release.',
           }),

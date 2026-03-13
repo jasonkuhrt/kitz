@@ -19,6 +19,7 @@ import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 export class Candidate extends S.TaggedClass<Candidate>()('Candidate', {
   iteration: S.Number.pipe(S.check(S.isGreaterThan(0), S.isInt())),
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Candidate as any) as (u: unknown) => u is Candidate
 
   /** Compute candidate version: baseVersion-next.N */
@@ -46,7 +47,7 @@ export const CandidateSchema = CandidateEncoded.pipe(
         )
       }
       const iteration = parseInt(match[1]!, 10)
-      return Effect.succeed(new Candidate({ iteration }))
+      return Effect.succeed(Candidate.make({ iteration }))
     }),
     encode: SchemaGetter.transform((candidate) => `next.${candidate.iteration}`),
   }),
@@ -59,7 +60,7 @@ export const CandidateSchema = CandidateEncoded.pipe(
 /**
  * Create a Candidate from iteration number.
  */
-export const makeCandidate = (iteration: number): Candidate => new Candidate({ iteration })
+export const makeCandidate = (iteration: number): Candidate => Candidate.make({ iteration })
 
 /**
  * Parse a candidate prerelease string.
@@ -77,4 +78,4 @@ export const encodeCandidate = (candidate: Candidate): string =>
  * Calculate the next iteration for a candidate prerelease.
  */
 export const nextCandidate = (candidate: Candidate): Candidate =>
-  new Candidate({ iteration: candidate.iteration + 1 })
+  Candidate.make({ iteration: candidate.iteration + 1 })

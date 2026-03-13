@@ -22,6 +22,7 @@ export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
   iteration: S.Number.pipe(S.check(S.isGreaterThan(0), S.isInt())),
   sha: Git.Sha.Sha,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Ephemeral as any) as (u: unknown) => u is Ephemeral
 
   /** Compute ephemeral version: 0.0.0-pr.N.iter.sha */
@@ -51,7 +52,7 @@ export const EphemeralSchema = EphemeralEncoded.pipe(
       const prNumber = parseInt(match[1]!, 10)
       const iteration = parseInt(match[2]!, 10)
       const sha = Git.Sha.make(match[3]!)
-      return Effect.succeed(new Ephemeral({ prNumber, iteration, sha }))
+      return Effect.succeed(Ephemeral.make({ prNumber, iteration, sha }))
     }),
     encode: SchemaGetter.transform((eph) => `pr.${eph.prNumber}.${eph.iteration}.${eph.sha}`),
   }),
@@ -65,7 +66,7 @@ export const EphemeralSchema = EphemeralEncoded.pipe(
  * Create an Ephemeral from parts.
  */
 export const makeEphemeral = (prNumber: number, iteration: number, sha: Git.Sha.Sha): Ephemeral =>
-  new Ephemeral({ prNumber, iteration, sha })
+  Ephemeral.make({ prNumber, iteration, sha })
 
 /**
  * Parse an ephemeral prerelease string.
@@ -83,4 +84,4 @@ export const encodeEphemeral = (eph: Ephemeral): string =>
  * Calculate the next iteration for an ephemeral prerelease.
  */
 export const nextEphemeral = (eph: Ephemeral, sha: Git.Sha.Sha): Ephemeral =>
-  new Ephemeral({ prNumber: eph.prNumber, iteration: eph.iteration + 1, sha })
+  Ephemeral.make({ prNumber: eph.prNumber, iteration: eph.iteration + 1, sha })

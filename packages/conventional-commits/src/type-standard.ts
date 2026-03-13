@@ -57,6 +57,7 @@ export const StandardImpact: Record<StandardValue, Option.Option<BumpType>> = {
 export class Standard extends Schema.TaggedClass<Standard>()('Standard', {
   value: StandardValue,
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Standard)
-  static parse = (value: StandardValue) => new Standard({ value })
+  static parse = (value: StandardValue) => Standard.make({ value })
 }

@@ -124,7 +124,7 @@ const parseExamplesFromTSDoc = (customBlocks: readonly any[]): Example[] => {
 
       if (code) {
         examples.push(
-          new Example({
+          Example.make({
             code: code.trim(),
             title,
             twoslashEnabled,

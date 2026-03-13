@@ -134,6 +134,7 @@ class RangeClass extends S.TaggedClass<RangeClass>()('PinRange', {
   name: Moniker.FromString,
   range: SemverRange.Schema,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(RangeClass)
 
   /**
@@ -147,7 +148,7 @@ class RangeClass extends S.TaggedClass<RangeClass>()('PinRange', {
    */
   static fromString = (input: string): RangeClass => {
     const { name, specifier } = splitNameSpecifier(input)
-    return new RangeClass({
+    return RangeClass.make({
       name: Moniker.parse(name),
       range: SemverRange.fromString(specifier),
     })
@@ -175,6 +176,7 @@ class ExactClass extends S.TaggedClass<ExactClass>()('PinExact', {
   name: Moniker.FromString,
   version: SemverSelf,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(ExactClass)
 
   /**
@@ -248,6 +250,7 @@ export class Tag extends S.TaggedClass<Tag>()('PinTag', {
   name: Moniker.FromString,
   tag: DistTag,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Tag)
 
   /**
@@ -261,7 +264,7 @@ export class Tag extends S.TaggedClass<Tag>()('PinTag', {
    */
   static fromString = (input: string): Tag => {
     const { name, specifier } = splitNameSpecifier(input)
-    return new Tag({
+    return Tag.make({
       name: Moniker.parse(name),
       tag: S.decodeSync(DistTag)(specifier),
     })
@@ -281,6 +284,7 @@ class WorkspaceClass extends S.TaggedClass<WorkspaceClass>()('PinWorkspace', {
   name: Moniker.FromString,
   range: WorkspaceRange,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(WorkspaceClass)
 
   /**
@@ -295,7 +299,7 @@ class WorkspaceClass extends S.TaggedClass<WorkspaceClass>()('PinWorkspace', {
   static fromString = (input: string): WorkspaceClass => {
     const { name, specifier } = splitNameSpecifier(input)
     const workspaceRange = specifier.replace(/^workspace:/, '')
-    return new WorkspaceClass({
+    return WorkspaceClass.make({
       name: Moniker.parse(name),
       range: parseWorkspaceRange(workspaceRange),
     })
@@ -327,6 +331,7 @@ class GitClass extends S.TaggedClass<GitClass>()('PinGit', {
   /** Semver range for git tags (used with #semver: fragment). */
   semver: S.OptionFromUndefinedOr(SemverRange.Schema),
 }) {
+  static make = this.makeUnsafe
   static is = S.is(GitClass)
 
   /**
@@ -341,7 +346,7 @@ class GitClass extends S.TaggedClass<GitClass>()('PinGit', {
   static fromString = (input: string): GitClass => {
     const { name, specifier } = splitNameSpecifier(input)
     const { url, ref, semver } = parseGitUrl(specifier)
-    return new GitClass({
+    return GitClass.make({
       name: Moniker.parse(name),
       url,
       ref,
@@ -366,6 +371,7 @@ export class Path extends S.TaggedClass<Path>()('PinPath', {
   /** Relative or absolute filesystem path. */
   path: S.String,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Path)
 
   /**
@@ -379,7 +385,7 @@ export class Path extends S.TaggedClass<Path>()('PinPath', {
    */
   static fromString = (input: string): Path => {
     const { name, specifier } = splitNameSpecifier(input)
-    return new Path({
+    return Path.make({
       name: Moniker.parse(name),
       path: specifier.replace(/^file:/, ''),
     })
@@ -399,6 +405,7 @@ export class Url extends S.TaggedClass<Url>()('PinUrl', {
   /** Full URL to the tarball. */
   url: S.String,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Url)
 
   /**
@@ -412,7 +419,7 @@ export class Url extends S.TaggedClass<Url>()('PinUrl', {
    */
   static fromString = (input: string): Url => {
     const { name, specifier } = splitNameSpecifier(input)
-    return new Url({
+    return Url.make({
       name: Moniker.parse(name),
       url: specifier,
     })
@@ -437,6 +444,7 @@ export class Alias extends S.TaggedClass<Alias>()('PinAlias', {
   /** Version specifier for the target package (range or tag). */
   targetSpecifier: S.String,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Alias)
 
   /**
@@ -453,7 +461,7 @@ export class Alias extends S.TaggedClass<Alias>()('PinAlias', {
     // specifier is like "npm:lodash@^4.0.0" or "npm:@scope/pkg@^1.0.0"
     const npmPart = specifier.replace(/^npm:/, '')
     const { name: targetName, specifier: targetSpec } = splitNameSpecifier(npmPart)
-    return new Alias({
+    return Alias.make({
       name: Moniker.parse(name),
       target: Moniker.parse(targetName),
       targetSpecifier: targetSpec,

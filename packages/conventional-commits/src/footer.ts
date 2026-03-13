@@ -21,6 +21,7 @@ export class Standard extends Schema.TaggedClass<Standard>()('Standard', {
   token: StandardToken,
   value: Schema.String,
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Standard)
 }
 
@@ -33,6 +34,7 @@ export class Custom extends Schema.TaggedClass<Custom>()('Custom', {
   token: Schema.String,
   value: Schema.String,
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Custom)
 }
 

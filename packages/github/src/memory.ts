@@ -309,7 +309,7 @@ const makeService = (state: GithubMemoryState): GithubService => ({
  *
  * @example
  * ```ts
- * const memoryGithub = new Memory({
+ * const memoryGithub = Memory.make({
  *   releases: {
  *     'v1.0.0': mockRelease
  *   }

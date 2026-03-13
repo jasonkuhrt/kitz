@@ -22,6 +22,7 @@ class RelFileClass extends S.TaggedClass<RelFileClass>()('FsPathRelFile', {
   segments: Segments,
   fileName: FileName,
 }) {
+  static make = this.makeUnsafe
   override toString() {
     return S.encodeSync(Schema)(this)
   }
@@ -100,10 +101,10 @@ export const Schema: S.Codec<RelFileClass, string> = S.String.pipe(
 
       // Valid - return as RelFile
       return Effect.succeed(
-        new RelFileClass({
+        RelFileClass.make({
           back: analysis.back,
           segments: analysis.path,
-          fileName: new FileName({
+          fileName: FileName.make({
             stem: analysis.file.stem,
             extension: analysis.file.extension,
           }),

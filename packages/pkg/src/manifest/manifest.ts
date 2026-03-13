@@ -66,6 +66,7 @@ class ManifestClass extends S.Class<ManifestClass>('Manifest')({
   packageManager: S.optional(S.String),
   madge: S.optional(S.Unknown),
 }) {
+  static make = this.makeUnsafe
   /**
    * Create a mutable copy of this manifest.
    * Useful when you need to perform multiple mutations efficiently.
@@ -107,7 +108,7 @@ export type PropertyExports = Record<string, unknown> | string
 
 /**
  * Create a new Manifest with validation and defaults
- * @deprecated Use new Manifest() instead
+ * @deprecated Use Manifest.create() or Manifest.make() instead
  */
 export const make = (args: ConstructorParameters<typeof Manifest>[0]) => new Manifest(args)
 
@@ -138,12 +139,12 @@ export const resourceMutable: Resource.Resource<ManifestMutable> = {
     resource.read(path).pipe(Effect.map(Option.map((m) => m.toMutable()))),
   readRequired: (path: Fs.Path.$Abs) =>
     resource.readRequired(path).pipe(Effect.map((m) => m.toMutable())),
-  write: (value: ManifestMutable, path: Fs.Path.$Abs) => resource.write(new Manifest(value), path),
+  write: (value: ManifestMutable, path: Fs.Path.$Abs) => resource.write(Manifest.make(value), path),
   readOrEmpty: (path: Fs.Path.$Abs) =>
     resource.readOrEmpty(path).pipe(Effect.map((m) => m.toMutable())),
   update: (path: Fs.Path.$Abs, fn: (current: ManifestMutable) => ManifestMutable) =>
     resource
-      .update(path, (m) => new Manifest(fn(m.toMutable())))
+      .update(path, (m) => Manifest.make(fn(m.toMutable())))
       .pipe(Effect.map((m) => m.toMutable())),
   delete: (path: Fs.Path.$Abs) => resource.delete(path),
 }

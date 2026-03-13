@@ -91,8 +91,8 @@ export const rule = RuntimeRule.create<
         }
       }
 
-      return new Violation({
-        location: new Environment({
+      return Violation.make({
+        location: Environment.make({
           message: `GitHub Actions is running workflow "${workflowFile}", but ${context.lifecycle} publishing is declared on "${channel.workflow}".`,
         }),
         summary: `The active workflow does not match the declared ${context.lifecycle} publish channel.`,
@@ -100,16 +100,16 @@ export const rule = RuntimeRule.create<
           'Trusted-publishing and token-based release wiring are attached to a specific workflow file. ' +
           'If the wrong workflow is running, the release checks may pass in the wrong place and fail in the real publish path.',
         hints: [
-          new Hint({
+          Hint.make({
             description: `Run ${context.lifecycle} publishing from .github/workflows/${channel.workflow}.`,
           }),
-          new Hint({
+          Hint.make({
             description:
               'Keep one canonical workflow per lifecycle so CI preview, lint, and npm publisher settings all point at the same file.',
           }),
         ],
         docs: [
-          new DocLink({
+          DocLink.make({
             label: 'npm trusted publishers',
             url: 'https://docs.npmjs.com/trusted-publishers/',
           }),
@@ -121,8 +121,8 @@ export const rule = RuntimeRule.create<
       const tokenEnv = resolvedTokenEnv!
       const token = vars[tokenEnv]
       if (!token || token.trim() === '') {
-        return new Violation({
-          location: new Environment({
+        return Violation.make({
+          location: Environment.make({
             message: `${tokenEnv} is not set in this GitHub Actions job.`,
           }),
           summary: `The ${context.lifecycle} publish channel expects an npm token, but ${tokenEnv} is missing.`,
@@ -130,16 +130,16 @@ export const rule = RuntimeRule.create<
             'This workflow is declared to publish through a GitHub Actions secret-backed npm token. ' +
             'Without that environment variable, npm publish will fail when the publish step starts.',
           hints: [
-            new Hint({
+            Hint.make({
               description: `Add ${tokenEnv} as a GitHub Actions secret and export it in ${channel.workflow}.`,
             }),
-            new Hint({
+            Hint.make({
               description:
                 'Prefer github-trusted where possible; npm no longer recommends long-lived automation tokens for CI publishing.',
             }),
           ],
           docs: [
-            new DocLink({
+            DocLink.make({
               label: 'npm CI/CD auth guidance',
               url: 'https://docs.npmjs.com/using-private-packages-in-a-ci-cd-workflow/',
             }),
@@ -160,8 +160,8 @@ export const rule = RuntimeRule.create<
     const idTokenUrl = vars['ACTIONS_ID_TOKEN_REQUEST_URL']
     const idTokenRequestToken = vars['ACTIONS_ID_TOKEN_REQUEST_TOKEN']
     if (!idTokenUrl || !idTokenRequestToken) {
-      return new Violation({
-        location: new Environment({
+      return Violation.make({
+        location: Environment.make({
           message: 'GitHub Actions OIDC token request environment is not available in this job.',
         }),
         summary: `The ${context.lifecycle} publish channel is declared as github-trusted, but this job cannot request an OIDC token.`,
@@ -169,16 +169,16 @@ export const rule = RuntimeRule.create<
           'npm trusted publishing on GitHub Actions depends on the job having id-token permission and running on a supported hosted runner. ' +
           'Without those OIDC request variables, trusted publishing cannot authenticate to npm.',
         hints: [
-          new Hint({
+          Hint.make({
             description: `Grant \`id-token: write\` to the ${channel.workflow} workflow job that performs npm publish.`,
           }),
-          new Hint({
+          Hint.make({
             description:
               'Ensure the publish job runs on GitHub-hosted runners and that npm trusted publishing is configured for this repo/workflow pair.',
           }),
         ],
         docs: [
-          new DocLink({
+          DocLink.make({
             label: 'npm trusted publishers',
             url: 'https://docs.npmjs.com/trusted-publishers/',
           }),

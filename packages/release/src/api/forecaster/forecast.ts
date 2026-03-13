@@ -18,7 +18,7 @@ export const forecast = (analysis: Analysis, recon: Recon): Forecast => {
 
   const releases = analysis.impacts.map((impact) => {
     const nextOfficialVersion = calculateNextVersion(impact.currentVersion, impact.bump)
-    return new ForecastRelease({
+    return ForecastRelease.make({
       packageName: impact.package.name.moniker,
       packageScope: impact.package.scope,
       bump: impact.bump,
@@ -35,7 +35,7 @@ export const forecast = (analysis: Analysis, recon: Recon): Forecast => {
 
   const cascades = analysis.cascades.map((cascade) => {
     const nextOfficialVersion = calculateNextVersion(cascade.currentVersion, 'patch')
-    return new ForecastCascade({
+    return ForecastCascade.make({
       packageName: cascade.package.name.moniker,
       packageScope: cascade.package.scope,
       currentVersion: cascade.currentVersion,
@@ -45,7 +45,7 @@ export const forecast = (analysis: Analysis, recon: Recon): Forecast => {
     })
   })
 
-  return new Forecast({ owner, repo, branch, headSha, releases, cascades })
+  return Forecast.make({ owner, repo, branch, headSha, releases, cascades })
 }
 
 // ---------------------------------------------------------------------------
@@ -65,7 +65,7 @@ const buildCommitDisplays = (
 ): CommitDisplay[] =>
   commits.map((commit) => {
     const scoped = commit.forScope(scope)
-    return new CommitDisplay({
+    return CommitDisplay.make({
       shortSha: scoped.hash.slice(0, 7),
       subject: scoped.description,
       type: scoped.type,

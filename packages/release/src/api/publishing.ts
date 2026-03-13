@@ -41,7 +41,9 @@ export class Publishing extends Schema.Class<Publishing>('Publishing')({
   official: PublishChannel.pipe(Schema.withDecodingDefaultKey(defaultManualChannel)),
   candidate: PublishChannel.pipe(Schema.withDecodingDefaultKey(defaultManualChannel)),
   ephemeral: PublishChannel.pipe(Schema.withDecodingDefaultKey(defaultManualChannel)),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 export const defaultPublishing = (): Publishing => Schema.decodeSync(Publishing)({})
 

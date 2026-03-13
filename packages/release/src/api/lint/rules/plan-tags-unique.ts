@@ -19,7 +19,7 @@ interface Metadata {
 export const rule = RuntimeRule.create({
   id: RuleId.makeUnsafe('plan.tags-unique'),
   description: 'planned release tags do not already exist in git',
-  defaults: new RuleDefaults({ enabled: false }),
+  defaults: RuleDefaults.make({ enabled: false }),
   preconditions: [new Precondition.HasReleasePlan()],
   check: Effect.gen(function* () {
     const plan = yield* ReleasePlanService
@@ -31,7 +31,7 @@ export const rule = RuntimeRule.create({
 
     // Format planned tags
     const plannedTags = plan.releases.map((r) =>
-      Pkg.Pin.toString(new Pkg.Pin.Exact({ name: r.packageName, version: r.version })),
+      Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: r.packageName, version: r.version })),
     )
 
     // Find conflicts
@@ -39,8 +39,8 @@ export const rule = RuntimeRule.create({
 
     if (conflictingTags.length > 0) {
       return {
-        violation: new Violation({
-          location: new Environment({
+        violation: Violation.make({
+          location: Environment.make({
             message: `Tags already exist: ${conflictingTags.join(
               ', ',
             )}. Use a different version or delete the existing tags.`,
@@ -49,16 +49,16 @@ export const rule = RuntimeRule.create({
           detail:
             'Publishing would collide with an existing git tag, which usually means the plan is stale or the same release has already been attempted.',
           hints: [
-            new Hint({
+            Hint.make({
               description: 'Regenerate the release plan after fetching tags from origin.',
             }),
-            new Hint({
+            Hint.make({
               description:
                 'If the tag truly should not exist, delete it locally and remotely before retrying.',
             }),
           ],
           docs: [
-            new DocLink({
+            DocLink.make({
               label: 'Git tag basics',
               url: 'https://git-scm.com/book/en/v2/Git-Basics-Tagging',
             }),

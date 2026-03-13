@@ -102,7 +102,7 @@ export const extractSimpleSignature = (decl: ExportedDeclarations): SignatureMod
       const defaultType = tp.getDefault()
 
       typeParameters.push(
-        new TypeParameter({
+        TypeParameter.make({
           name,
           constraint: constraint ? simplifyTypeText(constraint.getText()) : undefined,
           default: defaultType ? simplifyTypeText(defaultType.getText()) : undefined,
@@ -120,7 +120,7 @@ export const extractSimpleSignature = (decl: ExportedDeclarations): SignatureMod
         paramDecl && Node.isParameterDeclaration(paramDecl) ? paramDecl.isRestParameter() : false
 
       parameters.push(
-        new Parameter({
+        Parameter.make({
           name: param.getName(),
           type: simplifyTypeText(param.getTypeAtLocation(decl).getText()),
           optional: isOptional,
@@ -135,7 +135,7 @@ export const extractSimpleSignature = (decl: ExportedDeclarations): SignatureMod
     const returnType = simplifyTypeText(callSig.getReturnType().getText())
 
     overloads.push(
-      new FunctionSignature({
+      FunctionSignature.make({
         typeParameters,
         parameters,
         returnType,
@@ -145,7 +145,7 @@ export const extractSimpleSignature = (decl: ExportedDeclarations): SignatureMod
     )
   }
 
-  return new FunctionSignatureModel({
+  return FunctionSignatureModel.make({
     overloads,
   })
 }
@@ -161,21 +161,21 @@ export const extractSimpleSignature = (decl: ExportedDeclarations): SignatureMod
 export const extractSignature = (decl: ExportedDeclarations): SignatureModel => {
   // Type aliases - keep as text
   if (Node.isTypeAliasDeclaration(decl)) {
-    return new TypeSignatureModel({
+    return TypeSignatureModel.make({
       text: decl.getText().replace(/^export\s+/, ''),
     })
   }
 
   // Interfaces - keep as text
   if (Node.isInterfaceDeclaration(decl)) {
-    return new TypeSignatureModel({
+    return TypeSignatureModel.make({
       text: decl.getText().replace(/^export\s+/, ''),
     })
   }
 
   // Enums - keep as text
   if (Node.isEnumDeclaration(decl)) {
-    return new TypeSignatureModel({
+    return TypeSignatureModel.make({
       text: decl.getText(),
     })
   }
@@ -206,7 +206,7 @@ export const extractSignature = (decl: ExportedDeclarations): SignatureModel => 
     const type = decl.getType()
     const typeText = simplifyTypeText(type.getText())
 
-    return new ValueSignatureModel({
+    return ValueSignatureModel.make({
       type: typeText,
     })
   }
@@ -218,13 +218,13 @@ export const extractSignature = (decl: ExportedDeclarations): SignatureModel => 
 
   // Namespace/module declarations - keep as text
   if (Node.isModuleDeclaration(decl)) {
-    return new TypeSignatureModel({
+    return TypeSignatureModel.make({
       text: decl.getText(),
     })
   }
 
   // Fallback - get full text as type signature
-  return new TypeSignatureModel({
+  return TypeSignatureModel.make({
     text: decl.getText(),
   })
 }
@@ -265,7 +265,7 @@ const extractFunctionSignature = (
     overloads.push(extractSingleFunctionSignature(signatureSource, jsdoc))
   }
 
-  return new FunctionSignatureModel({
+  return FunctionSignatureModel.make({
     overloads,
   })
 }
@@ -283,7 +283,7 @@ const extractFunctionExpressionSignature = (
   jsdoc?: ReturnType<typeof parseJSDoc>,
 ): FunctionSignatureModel => {
   const signature = extractSingleFunctionSignature(expr, jsdoc)
-  return new FunctionSignatureModel({
+  return FunctionSignatureModel.make({
     overloads: [signature],
   })
 }
@@ -310,7 +310,7 @@ const extractSingleFunctionSignature = (
       const defaultType = tp.getDefault()
 
       typeParameters.push(
-        new TypeParameter({
+        TypeParameter.make({
           name: tp.getName(),
           constraint: constraint ? simplifyTypeText(constraint.getText()) : undefined,
           default: defaultType ? simplifyTypeText(defaultType.getText()) : undefined,
@@ -329,7 +329,7 @@ const extractSingleFunctionSignature = (
       const paramName = param.getName()
 
       parameters.push(
-        new Parameter({
+        Parameter.make({
           name: paramName,
           type: simplifyTypeText(param.getType().getText()),
           optional: isOptional,
@@ -347,7 +347,7 @@ const extractSingleFunctionSignature = (
     returnType = simplifyTypeText(fn.getReturnType().getText())
   }
 
-  return new FunctionSignature({
+  return FunctionSignature.make({
     typeParameters,
     parameters,
     returnType,
@@ -438,7 +438,7 @@ const extractBuilderSignature = (
       }
 
       // Create BuilderMethod
-      const builderMethod = new BuilderMethod({
+      const builderMethod = BuilderMethod.make({
         name,
         overloads: overloadSignatures,
         category,
@@ -456,7 +456,7 @@ const extractBuilderSignature = (
     }
   }
 
-  return new BuilderSignatureModel({
+  return BuilderSignatureModel.make({
     typeName: builderTypeName,
     entryPoint,
     chainableMethods,
@@ -481,7 +481,7 @@ const extractClassSignature = (classDecl: any): ClassSignatureModel => {
 
     // Extract constructor signature (constructor has no return type, but we use class name)
     const ctorSig = extractSingleFunctionSignature(constructorDecl, jsdoc)
-    ctor = new FunctionSignature({
+    ctor = FunctionSignature.make({
       typeParameters: ctorSig.typeParameters,
       parameters: ctorSig.parameters,
       returnType: className, // Constructor "returns" the class instance
@@ -501,7 +501,7 @@ const extractClassSignature = (classDecl: any): ClassSignatureModel => {
     const jsdoc = parseJSDoc(prop)
 
     properties.push(
-      new ClassProperty({
+      ClassProperty.make({
         name: propName,
         type: propType,
         optional: isOptional,
@@ -537,7 +537,7 @@ const extractClassSignature = (classDecl: any): ClassSignatureModel => {
     }
 
     methods.push(
-      new ClassMethod({
+      ClassMethod.make({
         name,
         overloads: overloadSignatures,
         static: isStatic,
@@ -545,7 +545,7 @@ const extractClassSignature = (classDecl: any): ClassSignatureModel => {
     )
   }
 
-  return new ClassSignatureModel({
+  return ClassSignatureModel.make({
     ctor,
     properties,
     methods,

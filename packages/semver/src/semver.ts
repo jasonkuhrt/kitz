@@ -138,13 +138,13 @@ export const Schema = S.String.pipe(
 
         if (parsed.prerelease && parsed.prerelease.length > 0) {
           return Effect.succeed(
-            new PreRelease({
+            PreRelease.make({
               ...base,
               prerelease: parsed.prerelease as [string | number, ...(string | number)[]],
             }),
           )
         }
-        return Effect.succeed(new OfficialRelease(base))
+        return Effect.succeed(OfficialRelease.make(base))
       },
     ),
     encode: SchemaGetter.transform((semver: OfficialRelease | PreRelease) => formatSemver(semver)),
@@ -317,7 +317,7 @@ export const officialToPre = (
   version: OfficialRelease,
   options: OfficialToPreOptions,
 ): PreRelease =>
-  new PreRelease({
+  PreRelease.make({
     major: version.major,
     minor: version.minor,
     patch: version.patch,
@@ -331,7 +331,7 @@ export const officialToPre = (
  * Preserves major/minor/patch and build metadata.
  */
 export const stripPre = (version: Semver): OfficialRelease =>
-  new OfficialRelease({
+  OfficialRelease.make({
     major: version.major,
     minor: version.minor,
     patch: version.patch,
@@ -358,11 +358,11 @@ export const withPre = (
 export const increment = (version: Semver, bump: BumpType): Semver => {
   switch (bump) {
     case 'major':
-      return new OfficialRelease({ major: version.major + 1, minor: 0, patch: 0 })
+      return OfficialRelease.make({ major: version.major + 1, minor: 0, patch: 0 })
     case 'minor':
-      return new OfficialRelease({ major: version.major, minor: version.minor + 1, patch: 0 })
+      return OfficialRelease.make({ major: version.major, minor: version.minor + 1, patch: 0 })
     case 'patch':
-      return new OfficialRelease({
+      return OfficialRelease.make({
         major: version.major,
         minor: version.minor,
         patch: version.patch + 1,

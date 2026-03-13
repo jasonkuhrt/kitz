@@ -14,6 +14,7 @@ export class RuleConfig extends Schema.TaggedClass<RuleConfig>()('RuleConfig', {
   overrides: RuleDefaults,
   options: Schema.Record(Schema.String, Schema.Unknown),
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(RuleConfig as any) as (u: unknown) => u is RuleConfig
 }
 
@@ -26,6 +27,7 @@ export class Config extends Schema.TaggedClass<Config>()('Config', {
   /** Skip rules matching these IDs. */
   skipRules: Schema.optional(Schema.Array(Schema.String)),
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Config)
 }
 
@@ -37,6 +39,7 @@ export class ResolvedRuleDefaults extends Schema.TaggedClass<ResolvedRuleDefault
     severity: Severity_.Severity,
   },
 ) {
+  static make = this.makeUnsafe
   static is = Schema.is(ResolvedRuleDefaults as any) as (u: unknown) => u is ResolvedRuleDefaults
 }
 
@@ -48,6 +51,7 @@ export class ResolvedRuleConfig extends Schema.TaggedClass<ResolvedRuleConfig>()
     options: Schema.Record(Schema.String, Schema.Unknown),
   },
 ) {
+  static make = this.makeUnsafe
   static is = Schema.is(ResolvedRuleConfig as any) as (u: unknown) => u is ResolvedRuleConfig
 }
 
@@ -60,13 +64,14 @@ export class ResolvedConfig extends Schema.TaggedClass<ResolvedConfig>()('Resolv
   /** Skip rules matching these IDs. */
   skipRules: Schema.optional(Schema.Array(Schema.String)),
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(ResolvedConfig as any) as (u: unknown) => u is ResolvedConfig
 }
 
 /** System defaults. */
-const systemDefaults = new ResolvedRuleDefaults({
+const systemDefaults = ResolvedRuleDefaults.make({
   enabled: 'auto',
-  severity: new Severity_.Error(),
+  severity: Severity_.Error.make({}),
 })
 
 /**
@@ -84,7 +89,7 @@ const systemDefaults = new ResolvedRuleDefaults({
  */
 export const resolveConfig = (config: Partial<Config>): ResolvedConfig => {
   // Merge global defaults
-  const defaults = new ResolvedRuleDefaults({
+  const defaults = ResolvedRuleDefaults.make({
     enabled: config.defaults?.enabled ?? systemDefaults.enabled,
     severity: config.defaults?.severity ?? systemDefaults.severity,
   })
@@ -97,7 +102,7 @@ export const resolveConfig = (config: Partial<Config>): ResolvedConfig => {
     }
   }
 
-  return new ResolvedConfig({
+  return ResolvedConfig.make({
     defaults,
     rules,
     onlyRules: config.onlyRules,
@@ -113,8 +118,8 @@ const normalizeRuleConfig = (
 ): ResolvedRuleConfig => {
   // Severity shorthand
   if (isSeverity(input)) {
-    return new ResolvedRuleConfig({
-      overrides: new ResolvedRuleDefaults({
+    return ResolvedRuleConfig.make({
+      overrides: ResolvedRuleDefaults.make({
         enabled: globalDefaults.enabled,
         severity: input,
       }),
@@ -125,8 +130,8 @@ const normalizeRuleConfig = (
   // Tuple shorthand [Severity, options]
   if (Array.isArray(input)) {
     const [severity, options] = input
-    return new ResolvedRuleConfig({
-      overrides: new ResolvedRuleDefaults({
+    return ResolvedRuleConfig.make({
+      overrides: ResolvedRuleDefaults.make({
         enabled: globalDefaults.enabled,
         severity,
       }),
@@ -136,8 +141,8 @@ const normalizeRuleConfig = (
 
   // Full RuleConfig object
   const ruleConfig = input as RuleConfig
-  return new ResolvedRuleConfig({
-    overrides: new ResolvedRuleDefaults({
+  return ResolvedRuleConfig.make({
+    overrides: ResolvedRuleDefaults.make({
       enabled: ruleConfig['overrides'].enabled ?? globalDefaults.enabled,
       severity: ruleConfig['overrides'].severity ?? globalDefaults.severity,
     }),

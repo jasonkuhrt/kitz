@@ -38,7 +38,7 @@ import {
 
 /** Format a release tag from package name and version. */
 export const formatTag = (name: Pkg.Moniker.Moniker, version: Semver.Semver): string =>
-  Pkg.Pin.toString(new Pkg.Pin.Exact({ name, version }))
+  Pkg.Pin.toString(Pkg.Pin.Exact.make({ name, version }))
 
 // ============================================================================
 // Payload Schema

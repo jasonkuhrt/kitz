@@ -162,7 +162,7 @@ const addHomePageIfExists = (
 
   // Update ModuleDocs with home
   const existingDocs = nestedModule.docs
-  const updatedDocs = new ModuleDocs({
+  const updatedDocs = ModuleDocs.make({
     description: existingDocs?.description,
     guide: existingDocs?.guide,
     home,
@@ -209,26 +209,26 @@ const createNamespaceExport = (
     const description = overrideJsdoc.description || nestedModule.docs?.description
     const guide = overrideJsdoc.guide || nestedModule.docs?.guide
 
-    docs = description || guide ? new ModuleDocs({ description, guide }) : undefined
+    docs = description || guide ? ModuleDocs.make({ description, guide }) : undefined
 
     // Track provenance
     const descriptionProv = overrideJsdoc.description
-      ? new JSDocProvenance({ shadowNamespace: true })
+      ? JSDocProvenance.make({ shadowNamespace: true })
       : nestedModule.docsProvenance?.description
 
     const guideProv = overrideJsdoc.guide
       ? isWrapperMarkdown
-        ? new MdFileProvenance({
+        ? MdFileProvenance.make({
             filePath: S.decodeSync(Fs.Path.RelFile.Schema)(
               absoluteToRelative(exportDecl.getSourceFile().getFilePath().replace(/\.ts$/, '.md')),
             ),
           })
-        : new JSDocProvenance({ shadowNamespace: true })
+        : JSDocProvenance.make({ shadowNamespace: true })
       : nestedModule.docsProvenance?.guide
 
     docsProvenance =
       descriptionProv || guideProv
-        ? new DocsProvenance({ description: descriptionProv, guide: guideProv })
+        ? DocsProvenance.make({ description: descriptionProv, guide: guideProv })
         : undefined
   } else {
     // No override - use nested module's docs
@@ -236,10 +236,10 @@ const createNamespaceExport = (
     docsProvenance = nestedModule.docsProvenance
   }
 
-  return new ValueExport({
+  return ValueExport.make({
     name: nsName,
     type: 'namespace',
-    signature: new TypeSignatureModel({
+    signature: TypeSignatureModel.make({
       text: `export * as ${nsName}`,
     }),
     ...(docs ? { docs } : {}),
@@ -248,7 +248,7 @@ const createNamespaceExport = (
     deprecated: jsdoc.deprecated,
     category: jsdoc.category,
     tags: jsdoc.tags,
-    sourceLocation: new SourceLocation({
+    sourceLocation: SourceLocation.make({
       file: S.decodeSync(Fs.Path.RelFile.Schema)(
         absoluteToRelative(exportDecl.getSourceFile().getFilePath()),
       ),
@@ -505,7 +505,7 @@ export const extractModuleFromFile = (
 
   const docDescription = moduleJSDoc?.description
   const docDescriptionProv = docDescription
-    ? new JSDocProvenance({ shadowNamespace: false })
+    ? JSDocProvenance.make({ shadowNamespace: false })
     : undefined
 
   let docGuide: string | undefined
@@ -517,7 +517,7 @@ export const extractModuleFromFile = (
   // Markdown file takes precedence over @guide tag
   if (markdownFilePath) {
     docGuide = readFileSync(markdownFilePath, 'utf-8')
-    docGuideProv = new MdFileProvenance({
+    docGuideProv = MdFileProvenance.make({
       filePath: S.decodeSync(Fs.Path.RelFile.Schema)(absoluteToRelative(markdownFilePath)),
     })
 
@@ -530,22 +530,22 @@ export const extractModuleFromFile = (
     }
   } else if (jsdocGuide) {
     docGuide = jsdocGuide
-    docGuideProv = new JSDocProvenance({ shadowNamespace: false })
+    docGuideProv = JSDocProvenance.make({ shadowNamespace: false })
   }
 
   const docs =
     docDescription || docGuide
-      ? new ModuleDocs({ description: docDescription, guide: docGuide })
+      ? ModuleDocs.make({ description: docDescription, guide: docGuide })
       : undefined
 
   const docsProvenance =
     docDescriptionProv || docGuideProv
-      ? new DocsProvenance({ description: docDescriptionProv, guide: docGuideProv })
+      ? DocsProvenance.make({ description: docDescriptionProv, guide: docGuideProv })
       : undefined
 
   const category = moduleJSDoc?.category
 
-  return new Module({
+  return Module.make({
     location,
     docs,
     docsProvenance,
@@ -570,7 +570,7 @@ export const extractModule = (
   const body = moduleDecl.getBody()
 
   if (!body || !Node.isModuleBlock(body)) {
-    return new Module({
+    return Module.make({
       location,
       exports: [],
     })
@@ -628,17 +628,17 @@ export const extractModule = (
   const guide = jsdoc.guide
   const category = jsdoc.category
 
-  const docs = description || guide ? new ModuleDocs({ description, guide }) : undefined
+  const docs = description || guide ? ModuleDocs.make({ description, guide }) : undefined
 
   const docsProvenance =
     description || guide
-      ? new DocsProvenance({
-          description: description ? new JSDocProvenance({ shadowNamespace: true }) : undefined,
-          guide: guide ? new JSDocProvenance({ shadowNamespace: true }) : undefined,
+      ? DocsProvenance.make({
+          description: description ? JSDocProvenance.make({ shadowNamespace: true }) : undefined,
+          guide: guide ? JSDocProvenance.make({ shadowNamespace: true }) : undefined,
         })
       : undefined
 
-  return new Module({
+  return Module.make({
     location,
     docs,
     docsProvenance,

@@ -23,6 +23,7 @@ export class OfficialRelease extends S.TaggedClass<OfficialRelease>()(
     description: 'A semantic version that is an official release (no pre-release identifiers)',
   },
 ) {
+  static make = this.makeUnsafe
   static is = S.is(OfficialRelease)
   static override toString = (version: OfficialRelease): string => formatOfficialRelease(version)
 

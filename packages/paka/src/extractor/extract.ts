@@ -49,7 +49,7 @@ const remakeModule = (
     Pick<Module, 'location' | 'docs' | 'docsProvenance' | 'category' | 'exports'>
   > = {},
 ): Module =>
-  new Module({
+  Module.make({
     location: overrides.location ?? module.location,
     docs: overrides.docs !== undefined ? overrides.docs : module.docs,
     docsProvenance:
@@ -348,18 +348,18 @@ export function extractFromFiles(params: {
 
     // Override module description and category with namespace export JSDoc if available
     if (namespaceDescription || namespaceCategory) {
-      module = new Module({
+      module = Module.make({
         location: module.location,
         exports: module.exports,
         docs: namespaceDescription
-          ? new ModuleDocs({
+          ? ModuleDocs.make({
               description: namespaceDescription,
               guide: module.docs?.guide,
             })
           : module.docs,
         docsProvenance: namespaceDescription
-          ? new DocsProvenance({
-              description: new JSDocProvenance({ shadowNamespace: true }),
+          ? DocsProvenance.make({
+              description: JSDocProvenance.make({ shadowNamespace: true }),
               guide: module.docsProvenance?.guide,
             })
           : module.docsProvenance,
@@ -370,14 +370,14 @@ export function extractFromFiles(params: {
     // Create appropriate entrypoint type
     if (isDrillableNamespace) {
       extractedEntrypoints.push(
-        new DrillableNamespaceEntrypoint({
+        DrillableNamespaceEntrypoint.make({
           path: packagePath,
           module,
         }),
       )
     } else {
       extractedEntrypoints.push(
-        new SimpleEntrypoint({
+        SimpleEntrypoint.make({
           path: packagePath,
           module,
         }),
@@ -385,11 +385,11 @@ export function extractFromFiles(params: {
     }
   }
 
-  return new Package({
+  return Package.make({
     name: getStringProperty(packageJson, 'name') ?? 'unknown',
     version: getStringProperty(packageJson, 'version') ?? '0.0.0',
     entrypoints: extractedEntrypoints,
-    metadata: new PackageMetadata({
+    metadata: PackageMetadata.make({
       extractedAt: new Date(),
       extractorVersion,
     }),
@@ -664,18 +664,18 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
 
     // Override module description and category with namespace export JSDoc if available
     if (namespaceDescription || namespaceCategory) {
-      module = new Module({
+      module = Module.make({
         location: module.location,
         exports: module.exports,
         docs: namespaceDescription
-          ? new ModuleDocs({
+          ? ModuleDocs.make({
               description: namespaceDescription,
               guide: module.docs?.guide,
             })
           : module.docs,
         docsProvenance: namespaceDescription
-          ? new DocsProvenance({
-              description: new JSDocProvenance({ shadowNamespace: true }),
+          ? DocsProvenance.make({
+              description: JSDocProvenance.make({ shadowNamespace: true }),
               guide: module.docsProvenance?.guide,
             })
           : module.docsProvenance,
@@ -686,14 +686,14 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
     // Create appropriate entrypoint type
     if (isDrillableNamespace) {
       extractedEntrypoints.push(
-        new DrillableNamespaceEntrypoint({
+        DrillableNamespaceEntrypoint.make({
           path: packagePath,
           module,
         }),
       )
     } else {
       extractedEntrypoints.push(
-        new SimpleEntrypoint({
+        SimpleEntrypoint.make({
           path: packagePath,
           module,
         }),
@@ -701,11 +701,11 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
     }
   }
 
-  return new Package({
+  return Package.make({
     name: getStringProperty(packageJson, 'name') ?? 'unknown',
     version: getStringProperty(packageJson, 'version') ?? '0.0.0',
     entrypoints: extractedEntrypoints,
-    metadata: new PackageMetadata({
+    metadata: PackageMetadata.make({
       extractedAt: new Date(),
       extractorVersion,
     }),

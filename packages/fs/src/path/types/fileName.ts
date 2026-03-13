@@ -10,6 +10,7 @@ export class FileName extends S.TaggedClass<FileName>()('FileName', {
   stem: S.String,
   extension: S.NullOr(Extension.Extension),
 }) {
+  static make = this.makeUnsafe
   static is = S.is(FileName)
 
   /**
@@ -45,14 +46,14 @@ export class FileName extends S.TaggedClass<FileName>()('FileName', {
                   )
                 }
                 return Effect.succeed(
-                  new FileName({
+                  FileName.make({
                     stem: file.file.stem,
                     extension: extResult.value,
                   }),
                 )
               } else {
                 return Effect.succeed(
-                  new FileName({
+                  FileName.make({
                     stem: file.file.stem,
                     extension: null,
                   }),

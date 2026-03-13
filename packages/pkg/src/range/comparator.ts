@@ -13,6 +13,7 @@ class ComparatorClass extends S.Class<ComparatorClass>('PkgRangeComparator')({
   operator: Operator,
   version: SemverSelf,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(ComparatorClass as any) as (value: unknown) => value is ComparatorClass
 
   static Schema = S.String.pipe(

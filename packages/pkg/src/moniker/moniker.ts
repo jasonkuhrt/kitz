@@ -11,6 +11,7 @@ export class Scoped extends S.TaggedClass<Scoped>()('Scoped', {
   scope: S.String,
   name: S.String,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Scoped)
 
   /**
@@ -53,6 +54,7 @@ export const ScopedFromString: S.Codec<Scoped, string> = S.String.pipe(
 export class Unscoped extends S.TaggedClass<Unscoped>()('Unscoped', {
   name: S.String,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Unscoped)
 
   /**

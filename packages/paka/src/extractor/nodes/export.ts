@@ -39,7 +39,7 @@ export const extractExport = (name: string, decl: ExportedDeclarations): Export 
   const jsdoc = parseJSDoc(decl)
 
   // Get source location
-  const sourceLocation = new SourceLocation({
+  const sourceLocation = SourceLocation.make({
     file: S.decodeSync(Fs.Path.RelFile.Schema)(
       absoluteToRelative(decl.getSourceFile().getFilePath()),
     ),
@@ -49,16 +49,16 @@ export const extractExport = (name: string, decl: ExportedDeclarations): Export 
   // Base export properties
   const docs =
     jsdoc.description || jsdoc.guide
-      ? new Docs({ description: jsdoc.description, guide: jsdoc.guide })
+      ? Docs.make({ description: jsdoc.description, guide: jsdoc.guide })
       : undefined
 
   const docsProvenance =
     jsdoc.description || jsdoc.guide
-      ? new DocsProvenance({
+      ? DocsProvenance.make({
           description: jsdoc.description
-            ? new JSDocProvenance({ shadowNamespace: false })
+            ? JSDocProvenance.make({ shadowNamespace: false })
             : undefined,
-          guide: jsdoc.guide ? new JSDocProvenance({ shadowNamespace: false }) : undefined,
+          guide: jsdoc.guide ? JSDocProvenance.make({ shadowNamespace: false }) : undefined,
         })
       : undefined
 
@@ -81,10 +81,10 @@ export const extractExport = (name: string, decl: ExportedDeclarations): Export 
     const location = S.decodeSync(Fs.Path.RelFile.Schema)(
       absoluteToRelative(decl.getSourceFile().getFilePath()),
     )
-    return new ValueExport({
+    return ValueExport.make({
       ...baseExport,
       type: 'namespace',
-      module: new Module({
+      module: Module.make({
         location,
         exports: [],
       }),
@@ -98,7 +98,7 @@ export const extractExport = (name: string, decl: ExportedDeclarations): Export 
     )
     const nestedModule = extractModule(decl, location)
 
-    return new ValueExport({
+    return ValueExport.make({
       ...baseExport,
       type: 'namespace',
       module: nestedModule,
@@ -107,21 +107,17 @@ export const extractExport = (name: string, decl: ExportedDeclarations): Export 
 
   // Use Match to type-safely create the appropriate export based on level
   return Match.value(level).pipe(
-    Match.when(
-      'value',
-      () =>
-        new ValueExport({
-          ...baseExport,
-          type: type as (typeof ValueExport.Type)['type'],
-        }),
+    Match.when('value', () =>
+      ValueExport.make({
+        ...baseExport,
+        type: type as (typeof ValueExport.Type)['type'],
+      }),
     ),
-    Match.when(
-      'type',
-      () =>
-        new TypeExport({
-          ...baseExport,
-          type: type as (typeof TypeExport.Type)['type'],
-        }),
+    Match.when('type', () =>
+      TypeExport.make({
+        ...baseExport,
+        type: type as (typeof TypeExport.Type)['type'],
+      }),
     ),
     Match.exhaustive,
   )

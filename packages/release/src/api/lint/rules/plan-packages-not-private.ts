@@ -21,11 +21,11 @@ export const rule = RuntimeRule.create({
       const names = offenders.map((entry) => entry.packageName)
       const example = offenders[0]!
 
-      return new Violation({
+      return Violation.make({
         location:
           offenders.length === 1
-            ? new File({ path: example.packageJsonPath })
-            : new Environment({
+            ? File.make({ path: example.packageJsonPath })
+            : Environment.make({
                 message: `${String(offenders.length)} planned packages are marked private.`,
               }),
         summary: `Publishing is blocked because ${summarizePackages(names)} ${names.length === 1 ? 'is' : 'are'} marked \`private: true\`.`,
@@ -33,17 +33,17 @@ export const rule = RuntimeRule.create({
           'npm refuses to publish packages whose package.json sets `private: true`. ' +
           'This commonly happens for new workspace packages that were bootstrapped as private and never flipped for publishing.',
         hints: [
-          new Hint({
+          Hint.make({
             description:
               'Remove `private: true` from package manifests that are meant to be published.',
           }),
-          new Hint({
+          Hint.make({
             description:
               'Keep the workspace root private if needed, but do not leave publishable leaf packages marked private.',
           }),
         ],
         docs: [
-          new DocLink({
+          DocLink.make({
             label: 'npm package.json fields',
             url: 'https://docs.npmjs.com/cli/v11/configuring-npm/package-json',
           }),

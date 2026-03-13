@@ -49,19 +49,19 @@ export const getWidth = (value: number | string | bigint | undefined): number =>
  * import { Tex } from '@wollybeard/kit'
  *
  * // Mutable API (instance methods with $)
- * const box = new Tex.Box({ content: 'Hello' })
+ * const box = Tex.Box.make({ content: 'Hello' })
  * box.pad$({ top: 1, left: 2 })
  * box.border$({ style: 'single' })
  * console.log(box.toString())
  *
  * // Immutable API (static methods)
- * const box2 = new Tex.Box({ content: 'Hello' })
+ * const box2 = Tex.Box.make({ content: 'Hello' })
  * const padded = Tex.Box.pad(box2, { top: 1, left: 2 })
  * const bordered = Tex.Box.border(padded, { style: 'single' })
  * console.log(bordered.toString())
  *
  * // Reuse styling with different content
- * const styledBox = new Tex.Box({ content: '' })
+ * const styledBox = Tex.Box.make({ content: '' })
  *   .pad$({ left: 2 })
  *   .border$({ style: 'double' })
  *
@@ -260,7 +260,7 @@ export type BorderInput = {
  * Supports:
  * - Plain strings: `'Hello'`
  * - Styled text: `{ text: 'Hello', color: { foreground: 'red' }, bold: true }`
- * - Arrays: `['Header', { text: 'Body', color: { foreground: 'green' } }, new Box(...)]`
+ * - Arrays: `['Header', { text: 'Body', color: { foreground: 'green' } }, Box.make(...)]`
  *
  * @category Text Formatting
  */
@@ -363,6 +363,7 @@ export class Box extends S.Class<Box>('Box')({
    */
   gap: S.optional(PropGap.Gap),
 }) {
+  static make = this.makeUnsafe
   // Hook storage (private, not part of schema)
   private paddingHooks: Partial<
     Record<keyof PropPadding.Padding, Array<(ctx: any) => number | ((v: number) => number)>>
@@ -390,7 +391,7 @@ export class Box extends S.Class<Box>('Box')({
   }
 
   clone(): Box {
-    const box = new Box({
+    const box = Box.make({
       content: Array.isArray(this.content) ? [...this.content] : this.content,
       orientation: this.orientation,
       padding: this.padding,
@@ -452,7 +453,7 @@ export class Box extends S.Class<Box>('Box')({
    *
    * @example
    * ```typescript
-   * const box = new Box({ content: '' })
+   * const box = Box.make({ content: '' })
    *   .pad$({ left: 2 })
    *   .border$({ style: 'single' })
    *
@@ -466,7 +467,7 @@ export class Box extends S.Class<Box>('Box')({
    * // Use nested boxes
    * box.content$([
    *   'Header',
-   *   new Box({ content: 'Body' }).pad$([1, 2]),
+   *   Box.make({ content: 'Body' }).pad$([1, 2]),
    *   'Footer'
    * ])
    * console.log(box.toString())
@@ -495,7 +496,7 @@ export class Box extends S.Class<Box>('Box')({
    *
    * @example
    * ```typescript
-   * const box = new Box({ content: 'Hello' })
+   * const box = Box.make({ content: 'Hello' })
    * box.pad$([2, 4])  // AxisProperty shorthand: [main, cross]
    * box.pad$({ mainStart: (ctx) => ctx.lineIndex + 1 })  // Dynamic
    * console.log(box.toString())
@@ -524,7 +525,7 @@ export class Box extends S.Class<Box>('Box')({
       }
     }
 
-    Obj.asWritable(this).padding = new PropPadding.Padding(staticValues)
+    Obj.asWritable(this).padding = PropPadding.Padding.make(staticValues)
     return this
   }
 
@@ -541,7 +542,7 @@ export class Box extends S.Class<Box>('Box')({
    *
    * @example
    * ```typescript
-   * const box = new Box({ content: 'Hello' })
+   * const box = Box.make({ content: 'Hello' })
    *   .border$({ style: 'single' })
    *   .margin$([2, 4])  // AxisProperty shorthand: [main, cross]
    *   .margin$({ mainStart: (ctx) => 3 })  // Dynamic margin
@@ -571,7 +572,7 @@ export class Box extends S.Class<Box>('Box')({
       }
     }
 
-    Obj.asWritable(this).margin = new PropMargin.Margin(staticValues)
+    Obj.asWritable(this).margin = PropMargin.Margin.make(staticValues)
     return this
   }
 
@@ -585,7 +586,7 @@ export class Box extends S.Class<Box>('Box')({
    *
    * @example
    * ```typescript
-   * const box = new Box({ content: 'Hello' })
+   * const box = Box.make({ content: 'Hello' })
    *
    * // Use a preset style
    * box.border$({ style: 'single' })
@@ -731,7 +732,7 @@ export class Box extends S.Class<Box>('Box')({
    *
    * @example
    * ```typescript
-   * const box = new Box({ content: 'Hello' })
+   * const box = Box.make({ content: 'Hello' })
    * box.span$([50n, 80])  // main: 50% of parent, cross: 80 chars
    * console.log(box.toString())
    * ```
@@ -752,13 +753,13 @@ export class Box extends S.Class<Box>('Box')({
    *
    * @example
    * ```typescript
-   * const box = new Box({ content: 'Hello' })
+   * const box = Box.make({ content: 'Hello' })
    * box.spanRange$({ main: { max: 10 }, cross: { min: 5, max: 20 } })
    * console.log(box.toString())
    * ```
    */
   spanRange$(spanRange: PropSpanRange.SpanRange): this {
-    Obj.asWritable(this).spanRange = new PropSpanRange.SpanRange(spanRange)
+    Obj.asWritable(this).spanRange = PropSpanRange.SpanRange.make(spanRange)
     return this
   }
 
@@ -776,7 +777,7 @@ export class Box extends S.Class<Box>('Box')({
    *
    * @example
    * ```typescript
-   * const box = new Box({
+   * const box = Box.make({
    *   content: ['Item 1', 'Item 2', 'Item 3']
    * })
    * box.gap$(2)  // 2 newlines between items (vertical)
@@ -802,7 +803,7 @@ export class Box extends S.Class<Box>('Box')({
  *
  * @example
  * ```typescript
- * const box = new Box({ content: 'Hello' })
+ * const box = Box.make({ content: 'Hello' })
  *   .pad$({ top: 1, left: 2 })
  *   .border$({ style: 'single' })
  *
@@ -826,7 +827,7 @@ export const encode = (box: Box): string => {
  *
  * @example
  * ```typescript
- * const box = new Box({ content: 'Hello' }).pad$({ left: 2 })
+ * const box = Box.make({ content: 'Hello' }).pad$({ left: 2 })
  *
  * // Encode to string
  * const str = S.encodeSync(String)(box)

@@ -35,5 +35,6 @@ export class Multi extends Schema.TaggedClass<Multi>()('Multi', {
   /** Per-package sections keyed by scope name */
   sections: Schema.Record(Schema.String, TargetSection),
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Multi)
 }

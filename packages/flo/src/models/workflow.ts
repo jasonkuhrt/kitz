@@ -13,6 +13,7 @@ export class Completed extends Schema.TaggedClass<Completed>()('WorkflowComplete
   timestamp: Schema.Date,
   durationMs: Schema.Number,
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Completed)
 }
 
@@ -23,6 +24,7 @@ export class Failed extends Schema.TaggedClass<Failed>()('WorkflowFailed', {
   timestamp: Schema.Date,
   error: Schema.String,
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Failed)
 }
 

@@ -37,9 +37,9 @@ const detectCascadesForEphemeral = (
   return baseCascades.map((cascade) => {
     const prReleaseNumber = findLatestEphemeralNumber(cascade.package.name, prNumber, tags)
 
-    return new Ephemeral({
+    return Ephemeral.make({
       package: cascade.package,
-      prerelease: new Version.Ephemeral({ prNumber, iteration: prReleaseNumber + 1, sha }),
+      prerelease: Version.Ephemeral.make({ prNumber, iteration: prReleaseNumber + 1, sha }),
       commits: cascade.commits,
     })
   })
@@ -109,9 +109,9 @@ export const ephemeral = (
       ])
 
       releases.push(
-        new Ephemeral({
+        Ephemeral.make({
           package: impact.package,
-          prerelease: new Version.Ephemeral({ prNumber, iteration: prReleaseNumber + 1, sha }),
+          prerelease: Version.Ephemeral.make({ prNumber, iteration: prReleaseNumber + 1, sha }),
           commits: impact.commits,
         }),
       )
@@ -128,7 +128,7 @@ export const ephemeral = (
       sha,
     )
 
-    return new Plan({
+    return Plan.make({
       lifecycle: 'ephemeral',
       timestamp: new Date().toISOString(),
       releases,

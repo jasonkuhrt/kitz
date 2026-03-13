@@ -24,8 +24,8 @@ export const rule = RuntimeRule.create({
     )
 
     if (hasUnknownType) {
-      return new Violation({
-        location: new PrTitle({ title: pr.title }),
+      return Violation.make({
+        location: PrTitle.make({ title: pr.title }),
       })
     }
     return undefined

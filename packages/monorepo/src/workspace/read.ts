@@ -64,11 +64,11 @@ const toConfig = (workspaces: Pkg.Manifest.Manifest['workspaces']): Option.Optio
   if (!workspaces) return Option.none()
 
   if (Array.isArray(workspaces)) {
-    return Option.some(new Config({ packages: workspaces }))
+    return Option.some(Config.make({ packages: workspaces }))
   }
 
   if ('packages' in workspaces && workspaces.packages) {
-    return Option.some(new Config({ packages: workspaces.packages }))
+    return Option.some(Config.make({ packages: workspaces.packages }))
   }
 
   return Option.none()

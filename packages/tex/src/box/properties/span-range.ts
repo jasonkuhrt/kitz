@@ -27,4 +27,6 @@ export class SpanRange extends S.Class<SpanRange>('SpanRange')({
       max: S.optional(S.Number),
     }),
   ),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}

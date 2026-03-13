@@ -39,7 +39,9 @@ export class BorderEdges extends S.Class<BorderEdges>('BorderEdges')({
    * Left edge character.
    */
   left: S.optional(S.String),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Border corner characters (physical coordinates).
@@ -66,7 +68,9 @@ export class BorderCorners extends S.Class<BorderCorners>('BorderCorners')({
    * Bottom-left corner character.
    */
   bottomLeft: S.optional(S.String),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Border configuration.
@@ -93,7 +97,9 @@ export class Border extends S.Class<Border>('Border')({
    * Overrides corners from style if both are provided.
    */
   corners: S.optional(BorderCorners),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 export const makeFromEncoded = S.decodeSync(Border)
 

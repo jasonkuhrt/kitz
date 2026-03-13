@@ -65,7 +65,9 @@ export class Example extends S.Class<Example>('Example')({
   twoslashEnabled: S.Boolean,
   /** Programming language for syntax highlighting */
   language: S.String,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Import example for documentation UI.
@@ -78,7 +80,9 @@ export class ImportExample extends S.Class<ImportExample>('ImportExample')({
   label: S.String,
   /** Import code snippet */
   content: S.String,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Source location for "View source" links.
@@ -88,7 +92,9 @@ export class SourceLocation extends S.Class<SourceLocation>('SourceLocation')({
   file: Fs.Path.RelFile.Schema,
   /** Line number where the export is defined */
   line: S.Number,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 // ============================================================================
 // Documentation Provenance
@@ -101,7 +107,9 @@ export class SourceLocation extends S.Class<SourceLocation>('SourceLocation')({
 export class JSDocProvenance extends S.TaggedClass<JSDocProvenance>()('jsdoc', {
   /** Whether description came from shadow namespace pattern */
   shadowNamespace: S.Boolean,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Provenance for markdown file-sourced documentation.
@@ -110,7 +118,9 @@ export class JSDocProvenance extends S.TaggedClass<JSDocProvenance>()('jsdoc', {
 export class MdFileProvenance extends S.TaggedClass<MdFileProvenance>()('md-file', {
   /** Relative path to the source markdown file */
   filePath: Fs.Path.RelFile.Schema,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Union of all possible documentation provenance types.
@@ -127,7 +137,9 @@ export class Docs extends S.Class<Docs>('Docs')({
   description: S.optional(S.String),
   /** Long-form guide/tutorial content (narrative style) - from .md files or @guide tag */
   guide: S.optional(S.String),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Landing page feature card.
@@ -137,7 +149,9 @@ export class Feature extends S.Class<Feature>('Feature')({
   title: S.String,
   /** Feature description (markdown content) */
   body: S.String,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Landing page body section (content or exports marker).
@@ -171,7 +185,9 @@ export class Home extends S.Class<Home>('Home')({
   highlights: S.optional(S.Array(Feature)),
   /** Body sections with exports insertion points (optional) */
   body: S.optional(S.Array(BodySection)),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Module-specific documentation with landing page support.
@@ -183,7 +199,9 @@ export class ModuleDocs extends S.Class<ModuleDocs>('ModuleDocs')({
   guide: S.optional(S.String),
   /** Landing page content (triggers hero layout) */
   home: S.optional(Home),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Provenance tracking for documentation sources.
@@ -195,7 +213,9 @@ export class DocsProvenance extends S.Class<DocsProvenance>('DocsProvenance')({
   description: S.optional(Provenance),
   /** Provenance for the guide field */
   guide: S.optional(Provenance),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 // ============================================================================
 // Signature Models
@@ -218,7 +238,9 @@ export class TypeParameter extends S.Class<TypeParameter>('TypeParameter')({
   constraint: S.optional(S.String),
   /** Optional default value (e.g., '= unknown') */
   default: S.optional(S.String),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Function/method parameter.
@@ -247,7 +269,9 @@ export class Parameter extends S.Class<Parameter>('Parameter')({
   defaultValue: S.optional(S.String),
   /** Parameter description from @param JSDoc tag */
   description: S.optional(S.String),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Single function signature (one overload).
@@ -277,7 +301,9 @@ export class FunctionSignature extends S.Class<FunctionSignature>('FunctionSigna
   returnDoc: S.optional(S.String),
   /** Error descriptions from @throws JSDoc tags */
   throws: S.Array(S.String),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Function signature model supporting multiple overloads.
@@ -304,7 +330,9 @@ export class FunctionSignatureModel extends S.TaggedClass<FunctionSignatureModel
     /** Function overloads (multiple signatures for same function) */
     overloads: S.Array(FunctionSignature),
   },
-) {}
+) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Builder method on a builder interface.
@@ -348,7 +376,9 @@ export class BuilderMethod extends S.Class<BuilderMethod>('BuilderMethod')({
   category: BuilderMethodCategory,
   /** For transform methods, the name of the returned builder type */
   transformsTo: S.optional(S.String),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Builder signature model for fluent/builder pattern APIs.
@@ -412,7 +442,9 @@ export class BuilderSignatureModel extends S.TaggedClass<BuilderSignatureModel>(
     /** Methods that transform to a different builder type */
     transformMethods: S.Array(BuilderMethod),
   },
-) {}
+) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Type signature model (interfaces, type aliases, etc).
@@ -425,7 +457,9 @@ export class BuilderSignatureModel extends S.TaggedClass<BuilderSignatureModel>(
 export class TypeSignatureModel extends S.TaggedClass<TypeSignatureModel>()('TypeSignatureModel', {
   /** Full type text */
   text: S.String,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Value signature model (simple const values, primitives).
@@ -445,7 +479,9 @@ export class ValueSignatureModel extends S.TaggedClass<ValueSignatureModel>()(
     /** Inferred type of the value */
     type: S.String,
   },
-) {}
+) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Class property.
@@ -478,7 +514,9 @@ export class ClassProperty extends S.Class<ClassProperty>('ClassProperty')({
   static: S.Boolean,
   /** Property description from JSDoc */
   description: S.optional(S.String),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Class method.
@@ -503,7 +541,9 @@ export class ClassMethod extends S.Class<ClassMethod>('ClassMethod')({
   overloads: S.Array(FunctionSignature),
   /** Whether method is static */
   static: S.Boolean,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Class signature model with structured class information.
@@ -543,7 +583,9 @@ export class ClassSignatureModel extends S.TaggedClass<ClassSignatureModel>()(
     /** Class methods */
     methods: S.Array(ClassMethod),
   },
-) {}
+) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Signature model - tagged union of all signature types.
@@ -616,6 +658,7 @@ export class Module extends S.Class<Module>('Module')({
   /** All exports in this module */
   exports: S.Array(S.suspend((): S.Codec<Export, ExportEncoded> => Export as any)),
 }) {
+  static make = this.makeUnsafe
   /**
    * Get namespace exports (value exports with type='namespace' and nested module).
    */
@@ -707,6 +750,7 @@ export class ValueExport extends S.TaggedClass<ValueExport>('ValueExport')('valu
   /** Nested module for namespace exports */
   module: S.optional(S.suspend((): S.Codec<Module, ModuleEncoded> => Module as any)),
 }) {
+  static make = this.makeUnsafe
   static is = S.is(ValueExport)
 
   /**
@@ -735,6 +779,7 @@ export class TypeExport extends S.TaggedClass<TypeExport>('TypeExport')('type', 
   ...BaseExportFields,
   type: TypeExportType,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(TypeExport)
 
   /**
@@ -827,6 +872,7 @@ export class DrillableNamespaceEntrypoint extends S.TaggedClass<DrillableNamespa
     module: Module,
   },
 ) {
+  static make = this.makeUnsafe
   /**
    * Generate import examples for this entrypoint.
    *
@@ -849,11 +895,11 @@ export class DrillableNamespaceEntrypoint extends S.TaggedClass<DrillableNamespa
     // Top-level: both Namespace and Barrel tabs
     if (breadcrumbs.length === 1) {
       return [
-        new ImportExample({
+        ImportExample.make({
           label: 'Namespace',
           content: `import { ${moduleName} } from '${packageName}'`,
         }),
-        new ImportExample({
+        ImportExample.make({
           label: 'Barrel',
           content: `import * as ${moduleName} from '${subpath}'`,
         }),
@@ -865,11 +911,11 @@ export class DrillableNamespaceEntrypoint extends S.TaggedClass<DrillableNamespa
     const namespacePath = breadcrumbs.join('.')
 
     return [
-      new ImportExample({
+      ImportExample.make({
         label: 'Namespace',
         content: `import { ${moduleName} } from '${packageName}'\n\n// Access via namespace\n${namespacePath}`,
       }),
-      new ImportExample({
+      ImportExample.make({
         label: 'Barrel',
         content: `import { ${childNamespace} } from '${subpath}'`,
       }),
@@ -890,6 +936,7 @@ export class SimpleEntrypoint extends S.TaggedClass<SimpleEntrypoint>()('SimpleE
   /** The extracted module interface */
   module: Module,
 }) {
+  static make = this.makeUnsafe
   /**
    * Derive PascalCase module name from path.
    * Handles kebab-case conversion properly.
@@ -931,7 +978,7 @@ export class SimpleEntrypoint extends S.TaggedClass<SimpleEntrypoint>()('SimpleE
     const subpath = packageName + path.replace('.', '')
 
     return [
-      new ImportExample({
+      ImportExample.make({
         label: 'Import',
         content: `import * as ${moduleName} from '${subpath}'`,
       }),
@@ -953,7 +1000,9 @@ export class PackageMetadata extends S.Class<PackageMetadata>('PackageMetadata')
   extractedAt: S.Date,
   /** Version of the extractor tool */
   extractorVersion: S.String,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Package represents the complete extracted documentation model.
@@ -967,7 +1016,9 @@ export class Package extends S.Class<Package>('Package')({
   entrypoints: S.Array(Entrypoint),
   /** Extraction metadata */
   metadata: PackageMetadata,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * The complete interface model output.

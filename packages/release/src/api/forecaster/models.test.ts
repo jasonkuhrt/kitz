@@ -5,7 +5,7 @@ import { CommitDisplay, Forecast, ForecastCascade, ForecastRelease } from './mod
 
 describe('CommitDisplay', () => {
   test('make and is()', () => {
-    const c = new CommitDisplay({
+    const c = CommitDisplay.make({
       shortSha: 'abc1234',
       subject: 'add feature',
       type: 'feat',
@@ -17,7 +17,7 @@ describe('CommitDisplay', () => {
   })
 
   test('schema roundtrip', () => {
-    const c = new CommitDisplay({
+    const c = CommitDisplay.make({
       shortSha: 'abc1234',
       subject: 'breaking change',
       type: 'feat',
@@ -33,14 +33,14 @@ describe('CommitDisplay', () => {
 
 describe('ForecastRelease', () => {
   const makeRelease = () =>
-    new ForecastRelease({
+    ForecastRelease.make({
       packageName: '@kitz/core',
       packageScope: 'core',
       bump: 'minor',
       currentVersion: Option.some(Semver.fromString('1.0.0')),
       nextOfficialVersion: Semver.fromString('1.1.0'),
       commits: [
-        new CommitDisplay({
+        CommitDisplay.make({
           shortSha: 'abc1234',
           subject: 'add feature',
           type: 'feat',
@@ -63,7 +63,7 @@ describe('ForecastRelease', () => {
   })
 
   test('currentVersionDisplay for new package', () => {
-    const r = new ForecastRelease({
+    const r = ForecastRelease.make({
       packageName: '@kitz/core',
       packageScope: 'core',
       bump: 'minor',
@@ -86,7 +86,7 @@ describe('ForecastRelease', () => {
 
 describe('ForecastCascade', () => {
   test('make and is()', () => {
-    const c = new ForecastCascade({
+    const c = ForecastCascade.make({
       packageName: '@kitz/cli',
       packageScope: 'cli',
       currentVersion: Option.some(Semver.fromString('2.0.0')),
@@ -99,7 +99,7 @@ describe('ForecastCascade', () => {
   })
 
   test('schema roundtrip', () => {
-    const c = new ForecastCascade({
+    const c = ForecastCascade.make({
       packageName: '@kitz/cli',
       packageScope: 'cli',
       currentVersion: Option.none(),
@@ -115,7 +115,7 @@ describe('ForecastCascade', () => {
 
 describe('Forecast', () => {
   test('make and is()', () => {
-    const f = new Forecast({
+    const f = Forecast.make({
       owner: 'org',
       repo: 'repo',
       branch: 'main',
@@ -128,13 +128,13 @@ describe('Forecast', () => {
   })
 
   test('schema roundtrip with releases and cascades', () => {
-    const f = new Forecast({
+    const f = Forecast.make({
       owner: 'org',
       repo: 'repo',
       branch: 'main',
       headSha: 'abc1234',
       releases: [
-        new ForecastRelease({
+        ForecastRelease.make({
           packageName: '@kitz/core',
           packageScope: 'core',
           bump: 'patch',
@@ -145,7 +145,7 @@ describe('Forecast', () => {
         }),
       ],
       cascades: [
-        new ForecastCascade({
+        ForecastCascade.make({
           packageName: '@kitz/cli',
           packageScope: 'cli',
           currentVersion: Option.some(Semver.fromString('1.0.0')),

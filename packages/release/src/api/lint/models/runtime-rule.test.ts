@@ -18,8 +18,8 @@ describe('RuntimeRule', () => {
   })
 
   test('create with violation check', () => {
-    const violation = new Violation({
-      location: new Environment({ message: 'Dirty working directory' }),
+    const violation = Violation.make({
+      location: Environment.make({ message: 'Dirty working directory' }),
     })
     const rule = create({
       id: RuleId.makeUnsafe('env.git-clean'),
@@ -68,7 +68,7 @@ describe('RuntimeRule', () => {
       id: RuleId.makeUnsafe('env.git-clean'),
       description: 'test',
       preconditions: [],
-      defaults: new RuleDefaults({ enabled: true }),
+      defaults: RuleDefaults.make({ enabled: true }),
       check: Effect.succeed(undefined),
     })
     expect(rule.data.defaults).toBeDefined()

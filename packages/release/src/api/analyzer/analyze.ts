@@ -52,7 +52,7 @@ const findLastReleaseTag = (
       if (Option.isSome(version)) {
         MutableHashSet.add(
           candidates,
-          Pkg.Pin.toString(new Pkg.Pin.Exact({ name: pkg.name, version: version.value })),
+          Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version: version.value })),
         )
       }
     }
@@ -180,7 +180,7 @@ export const analyze = (
       const currentVersion = findLatestTagVersion(pkg.name, tags as string[])
 
       impacts.push(
-        new Impact({
+        Impact.make({
           package: pkg,
           bump,
           commits: packageCommits,
@@ -235,7 +235,7 @@ export const analyze = (
       const currentVersion = findLatestTagVersion(pkg.name, tags as string[])
 
       cascades.push(
-        new CascadeImpact({
+        CascadeImpact.make({
           package: pkg,
           triggeredBy,
           currentVersion,
@@ -255,7 +255,7 @@ export const analyze = (
       )
     })
 
-    return new Analysis({
+    return Analysis.make({
       impacts,
       cascades,
       unchanged: [...unchanged],

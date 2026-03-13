@@ -39,7 +39,7 @@ const modifyAt = <T>(arr: readonly T[], index: number, fn: (item: T) => T): T[] 
 }
 
 const remakeSection = (section: Section, entries: readonly Entry[]): Section =>
-  new Section({
+  Section.make({
     comments: section.comments,
     entries: [...entries],
   })
@@ -103,7 +103,9 @@ class Entry extends S.Class<Entry>('GitignoreEntry')({
   pattern: Pattern,
   /** Whether negated with ! prefix */
   negated: S.Boolean,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * A section of entries, optionally preceded by a comment header.
@@ -117,7 +119,9 @@ class Section extends S.Class<Section>('GitignoreSection')({
   comments: S.Array(S.String),
   /** Entries in this section */
   entries: S.Array(Entry),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 // ─── Internal Parse/Stringify ─────────────────────────────────────────────────
 
@@ -134,7 +138,7 @@ const parse = (content: string): Gitignore => {
   const flushSection = () => {
     if (currentComments.length > 0 || currentEntries.length > 0) {
       sections.push(
-        new Section({
+        Section.make({
           comments: currentComments,
           entries: currentEntries,
         }),
@@ -167,13 +171,13 @@ const parse = (content: string): Gitignore => {
     const pattern = decodePattern(rawPattern)
 
     if (pattern !== '') {
-      currentEntries.push(new Entry({ pattern, negated }))
+      currentEntries.push(Entry.make({ pattern, negated }))
     }
   }
 
   flushSection()
 
-  return new Gitignore({ sections })
+  return Gitignore.make({ sections })
 }
 
 /**
@@ -223,6 +227,7 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
   /** Sections (patterns grouped by preceding comments) */
   sections: S.Array(Section),
 }) {
+  static make = this.makeUnsafe
   // ─── Internal Types (exposed for advanced use) ─────────────────────────────
 
   /** A single gitignore entry (pattern line). */
@@ -237,7 +242,7 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
   // ─── Constants ─────────────────────────────────────────────────────────────
 
   /** Empty gitignore (for new files). */
-  static empty: Gitignore = new Gitignore({ sections: [] })
+  static empty: Gitignore = Gitignore.make({ sections: [] })
 
   // ─── Schema Codec ──────────────────────────────────────────────────────────
 
@@ -366,7 +371,7 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
       return gitignore
     }
 
-    const newEntry = new Entry({ pattern: normalized, negated })
+    const newEntry = Entry.make({ pattern: normalized, negated })
 
     if (sectionHeader !== undefined) {
       const sectionIndex = gitignore.sections.findIndex((s) =>
@@ -374,30 +379,30 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
       )
 
       if (sectionIndex >= 0) {
-        return new Gitignore({
+        return Gitignore.make({
           sections: modifyAt(gitignore.sections, sectionIndex, (section) =>
             remakeSection(section, [...section.entries, newEntry]),
           ),
         })
       } else {
-        const newSection = new Section({
+        const newSection = Section.make({
           comments: [`# ${sectionHeader}`],
           entries: [newEntry],
         })
-        return new Gitignore({
+        return Gitignore.make({
           sections: [...gitignore.sections, newSection],
         })
       }
     }
 
     if (gitignore.sections.length === 0) {
-      return new Gitignore({
-        sections: [new Section({ comments: [], entries: [newEntry] })],
+      return Gitignore.make({
+        sections: [Section.make({ comments: [], entries: [newEntry] })],
       })
     }
 
     const lastIndex = gitignore.sections.length - 1
-    return new Gitignore({
+    return Gitignore.make({
       sections: modifyAt(gitignore.sections, lastIndex, (section) =>
         remakeSection(section, [...section.entries, newEntry]),
       ),
@@ -414,7 +419,7 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
   static removePattern = (gitignore: Gitignore, pattern: string): Gitignore => {
     const normalized = decodePattern(pattern)
 
-    return new Gitignore({
+    return Gitignore.make({
       sections: gitignore.sections
         .map((section) =>
           remakeSection(

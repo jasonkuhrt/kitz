@@ -48,7 +48,7 @@ export class Env extends ServiceMap.Service<Env, EnvService>()('Env') {}
  * @example
  * ```ts
  * const testEnv = Test({
- *   cwd: new Fs.Path.AbsDir({ segments: ['test'] }),
+ *   cwd: Fs.Path.AbsDir.make({ segments: ['test'] }),
  *   argv: ['node', 'test.js', '--verbose'],
  *   vars: { NODE_ENV: 'test' },
  * })

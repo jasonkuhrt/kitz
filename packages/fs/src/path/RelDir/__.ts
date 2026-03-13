@@ -20,6 +20,7 @@ class RelDirClass extends S.TaggedClass<RelDirClass>()('FsPathRelDir', {
   back: Back,
   segments: Segments,
 }) {
+  static make = this.makeUnsafe
   override toString() {
     return S.encodeSync(Schema)(this)
   }
@@ -88,7 +89,7 @@ export const Schema: S.Codec<RelDirClass, string> = S.String.pipe(
 
       // Valid - return as RelDir
       return Effect.succeed(
-        new RelDirClass({
+        RelDirClass.make({
           back: analysis.back,
           segments: analysis.path,
         }),

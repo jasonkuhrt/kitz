@@ -52,7 +52,7 @@ const orderByBump: Readonly<Record<Semver.BumpType, number>> = {
 }
 
 const targetForImpact = (impact: ScopeImpact): ConventionalCommits.Target =>
-  new ConventionalCommits.Target({
+  ConventionalCommits.Target.make({
     type: ConventionalCommits.Type.parse(impact.bump === 'patch' ? 'fix' : 'feat'),
     scope: impact.scope,
     breaking: impact.bump === 'major',
@@ -63,7 +63,7 @@ export const renderHeader = (params: {
 }): string | null => {
   if (params.impacts.length === 0) return null
 
-  const commit = new ConventionalCommits.Commit.Multi({
+  const commit = ConventionalCommits.Commit.Multi.make({
     targets: params.impacts
       .toSorted(
         (left, right) =>

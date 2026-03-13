@@ -21,16 +21,16 @@ const normalizer = normalizeDynamic(Schema)
  *
  * @example
  * ```ts
- * const absPath = new Path.Abs({ segments: ['home', 'user', 'docs'] })
+ * const absPath = Path.Abs.make({ segments: ['home', 'user', 'docs'] })
  * const parent = up(absPath) // segments: ['home', 'user']
  *
- * const relPath = new Path.Rel({ segments: ['src', 'lib'] })
+ * const relPath = Path.Rel.make({ segments: ['src', 'lib'] })
  * const parent2 = up(relPath) // back: 0, segments: ['src']
  *
- * const relCurrent = new Path.Rel({ segments: [] }) // ./
+ * const relCurrent = Path.Rel.make({ segments: [] }) // ./
  * const parent3 = up(relCurrent) // back: 1, segments: [] (becomes ../)
  *
- * const rootPath = new Path.Abs({ segments: [] })
+ * const rootPath = Path.Abs.make({ segments: [] })
  * const stillRoot = up(rootPath) // segments: [] (stays at root)
  * ```
  */

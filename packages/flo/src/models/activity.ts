@@ -38,6 +38,7 @@ export class Started extends Schema.TaggedClass<Started>()('ActivityStarted', {
   /** True if this activity was already completed (resumed from checkpoint) */
   resumed: Schema.Boolean,
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Started)
 }
 
@@ -52,6 +53,7 @@ export class Completed extends Schema.TaggedClass<Completed>()('ActivityComplete
   /** Duration in milliseconds (very short if resumed) */
   durationMs: Schema.Number,
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Completed)
 }
 
@@ -63,6 +65,7 @@ export class Failed extends Schema.TaggedClass<Failed>()('ActivityFailed', {
   timestamp: Schema.Date,
   error: Schema.String,
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Failed)
 }
 

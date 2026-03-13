@@ -160,11 +160,11 @@ export const detect = (
 
     // Build version union
     const version: OfficialFirst | OfficialIncrement = Option.isSome(currentVersion)
-      ? new OfficialIncrement({ from: currentVersion.value, to: nextVersion, bump: 'patch' })
-      : new OfficialFirst({ version: nextVersion })
+      ? OfficialIncrement.make({ from: currentVersion.value, to: nextVersion, bump: 'patch' })
+      : OfficialFirst.make({ version: nextVersion })
 
     cascades.push(
-      new Official({
+      Official.make({
         package: pkg,
         version,
         commits: cascadeCommits,

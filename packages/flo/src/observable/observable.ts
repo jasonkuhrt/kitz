@@ -3,7 +3,7 @@
  *
  * Generic observable workflow infrastructure for activity lifecycle tracking.
  *
- * Provides {@link ObservableActivity} - a drop-in replacement for `new Activity()`
+ * Provides {@link ObservableActivity} - a drop-in replacement for `Activity.make()`
  * that emits lifecycle events when {@link WorkflowEvents} service is available.
  *
  * @example
@@ -55,14 +55,14 @@ const RESUME_THRESHOLD = Duration.millis(50)
 type ObservableActivityError<E extends Schema.Top> = E['Type'] & { readonly _tag: string }
 
 /**
- * Observable drop-in replacement for `new Activity()`.
+ * Observable drop-in replacement for `Activity.make()`.
  *
  * When {@link WorkflowEvents} service is provided, emits lifecycle events:
  * - `ActivityStarted` when activity begins
  * - `ActivityCompleted` when activity succeeds
  * - `ActivityFailed` when activity fails
  *
- * When WorkflowEvents is not provided, behaves exactly like `new Activity()`.
+ * When WorkflowEvents is not provided, behaves exactly like `Activity.make()`.
  *
  * **Resume detection**: Activities completing in <50ms are flagged with `resumed: true`,
  * indicating they were replayed from a checkpoint rather than freshly executed.
@@ -89,7 +89,7 @@ export const ObservableActivity = {
   /**
    * Create an observable activity.
    *
-   * Same API as `new Activity()` but emits lifecycle events.
+   * Same API as `Activity.make()` but emits lifecycle events.
    *
    * @param config.retry - Optional retry configuration (mirrors Activity.retry)
    */
@@ -123,7 +123,7 @@ export const ObservableActivity = {
       // Emit started
       yield* PubSub.publish(
         pubsub,
-        new ActivityTypes.Started({
+        ActivityTypes.Started.make({
           activity: config.name,
           timestamp: startTime,
           resumed: false,
@@ -136,7 +136,7 @@ export const ObservableActivity = {
           const errorMessage = error instanceof Error ? error.message : JSON.stringify(error)
           return PubSub.publish(
             pubsub,
-            new ActivityTypes.Failed({
+            ActivityTypes.Failed.make({
               activity: config.name,
               timestamp: new Date(),
               error: errorMessage,
@@ -149,7 +149,7 @@ export const ObservableActivity = {
       // Emit completed
       yield* PubSub.publish(
         pubsub,
-        new ActivityTypes.Completed({
+        ActivityTypes.Completed.make({
           activity: config.name,
           timestamp: new Date(),
           resumed: Duration.isLessThan(duration, RESUME_THRESHOLD),

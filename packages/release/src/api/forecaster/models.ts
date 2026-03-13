@@ -14,6 +14,7 @@ export class CommitDisplay extends S.TaggedClass<CommitDisplay>()('CommitDisplay
   breaking: S.Boolean,
   commitUrl: S.String,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(CommitDisplay as any) as (u: unknown) => u is CommitDisplay
 }
 
@@ -29,6 +30,7 @@ export class ForecastRelease extends S.TaggedClass<ForecastRelease>()('ForecastR
   commits: S.Array(CommitDisplay),
   sourceUrl: S.String,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(ForecastRelease as any) as (u: unknown) => u is ForecastRelease
 
   get currentVersionDisplay(): string {
@@ -50,6 +52,7 @@ export class ForecastCascade extends S.TaggedClass<ForecastCascade>()('ForecastC
   triggeredBy: S.Array(S.String),
   sourceUrl: S.String,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(ForecastCascade as any) as (u: unknown) => u is ForecastCascade
 }
 
@@ -68,5 +71,6 @@ export class Forecast extends S.TaggedClass<Forecast>()('Forecast', {
   releases: S.Array(ForecastRelease),
   cascades: S.Array(ForecastCascade),
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Forecast as any) as (u: unknown) => u is Forecast
 }

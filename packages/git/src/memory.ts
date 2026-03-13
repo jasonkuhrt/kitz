@@ -225,7 +225,7 @@ const makeService = (state: GitMemoryState): GitService => ({
  *
  * @example
  * ```ts
- * const memoryGit = new Memory({
+ * const memoryGit = Memory.make({
  *   tags: ['@kitz/core@1.0.0'],
  *   commits: [...]
  * })
@@ -285,9 +285,9 @@ const randomSha = (): string => {
  * Helper to create a commit.
  */
 export const commit = (message: string, overrides: Partial<Commit> = {}): Commit =>
-  new Commit({
+  Commit.make({
     hash: overrides.hash ?? Sha.make(randomSha()),
     message,
-    author: overrides.author ?? new Author({ name: 'Test Author', email: 'test@example.com' }),
+    author: overrides.author ?? Author.make({ name: 'Test Author', email: 'test@example.com' }),
     date: overrides.date ?? new Date(),
   })

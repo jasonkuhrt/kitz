@@ -8,6 +8,7 @@ import { Schema } from 'effect'
 export class Custom extends Schema.TaggedClass<Custom>()('Custom', {
   value: Schema.String,
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Custom)
-  static parse = (value: string) => new Custom({ value })
+  static parse = (value: string) => Custom.make({ value })
 }

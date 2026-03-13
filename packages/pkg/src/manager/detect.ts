@@ -57,7 +57,7 @@ const detectFromEnvironment = Effect.gen(function* () {
   const byUserAgent = parseUserAgent(env.vars['npm_config_user_agent'])
   if (Option.isSome(byUserAgent)) {
     return Option.some(
-      new DetectedPackageManager({
+      DetectedPackageManager.make({
         name: byUserAgent.value,
         source: 'user-agent',
       }),
@@ -67,7 +67,7 @@ const detectFromEnvironment = Effect.gen(function* () {
   const byExecPath = parseExecPath(env.vars['npm_execpath'])
   if (Option.isSome(byExecPath)) {
     return Option.some(
-      new DetectedPackageManager({
+      DetectedPackageManager.make({
         name: byExecPath.value,
         source: 'exec-path',
       }),
@@ -91,7 +91,7 @@ const locateFromManifestOrLockfile = (
         const manifestManager = parsePackageManagerName(manifest.value.packageManager)
         if (Option.isSome(manifestManager)) {
           return Option.some(
-            new DetectedPackageManager({
+            DetectedPackageManager.make({
               name: manifestManager.value,
               source: 'manifest',
             }),
@@ -104,7 +104,7 @@ const locateFromManifestOrLockfile = (
         const exists = yield* fs.exists(Fs.Path.toString(lockfile))
         if (exists) {
           return Option.some(
-            new DetectedPackageManager({
+            DetectedPackageManager.make({
               name: manager,
               source: 'lockfile',
             }),
@@ -146,13 +146,13 @@ export const detect = (options?: {
     if (Option.isSome(fromProject)) return fromProject.value
 
     if (env.platform === 'bun') {
-      return new DetectedPackageManager({
+      return DetectedPackageManager.make({
         name: 'bun',
         source: 'runtime',
       })
     }
 
-    return new DetectedPackageManager({
+    return DetectedPackageManager.make({
       name: 'unknown',
       source: 'unknown',
     })

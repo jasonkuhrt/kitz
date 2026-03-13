@@ -34,11 +34,11 @@ export type ensureAbsolute<$P extends Path> = $P extends $Abs
  *
  * @example
  * ```ts
- * const relPath = new Path.RelFile({
+ * const relPath = Path.RelFile.make({
  *   segments: ['foo'],
  *   fileName: { stem: 'bar', extension: '.ts' }
  * })
- * const cwd = new Path.AbsDir({ segments: ['home', 'user'] })
+ * const cwd = Path.AbsDir.make({ segments: ['home', 'user'] })
  * const absPath = ensureAbsolute(relPath, cwd) // AbsFile /home/user/foo/bar.ts
  * ```
  */
@@ -100,7 +100,7 @@ export type ensureOptionalAbsolute<L extends Path | undefined> = L extends undef
  *
  * @example
  * ```ts
- * const base = new Path.AbsDir({ segments: ['home', 'user'] })
+ * const base = Path.AbsDir.make({ segments: ['home', 'user'] })
  * const path: Path.RelFile | undefined = undefined
  * const result = ensureOptionalAbsolute(path, base) // undefined
  * ```

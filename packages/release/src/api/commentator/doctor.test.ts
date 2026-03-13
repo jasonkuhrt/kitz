@@ -13,15 +13,15 @@ const ruleRef = (id: string, description: string) => ({
 
 describe('commentator doctor', () => {
   test('renders a doctor table and guidance from lint results', () => {
-    const report = new Report({
+    const report = Report.make({
       results: [
-        new Finished({
+        Finished.make({
           rule: ruleRef(
             'env.publish-channel-ready',
             'declared publish channel matches the active runtime',
           ),
           duration: 1,
-          severity: new Severity.Error(),
+          severity: Severity.Error.make({}),
           metadata: {
             status: 'deferred',
             mode: 'github-token',
@@ -30,51 +30,51 @@ describe('commentator doctor', () => {
             tokenEnv: 'NPM_TOKEN',
           },
         }),
-        new Finished({
+        Finished.make({
           rule: ruleRef(
             'pr.projected-squash-commit-sync',
             'PR title header matches the canonical squash-merge header',
           ),
           duration: 1,
-          severity: new Severity.Warn(),
+          severity: Severity.Warn.make({}),
           metadata: { projectedHeader: 'feat(release)' },
         }),
-        new Finished({
+        Finished.make({
           rule: ruleRef(
             'pr.type.release-kind-match-diff',
             'No-release type cannot have src changes',
           ),
           duration: 1,
-          severity: new Severity.Warn(),
+          severity: Severity.Warn.make({}),
         }),
-        new Finished({
+        Finished.make({
           rule: ruleRef('plan.packages-license-present', 'planned packages declare a license'),
           duration: 1,
-          severity: new Severity.Warn(),
+          severity: Severity.Warn.make({}),
           metadata: { packageCount: 2 },
         }),
-        new Finished({
+        Finished.make({
           rule: ruleRef(
             'plan.packages-repository-match-canonical',
             'planned package repository metadata points at the canonical GitHub repo',
           ),
           duration: 1,
-          severity: new Severity.Warn(),
-          violation: new Violation({
-            location: new Environment({ message: 'repository mismatch' }),
+          severity: Severity.Warn.make({}),
+          violation: Violation.make({
+            location: Environment.make({ message: 'repository mismatch' }),
             summary: 'Repository metadata should point at jasonkuhrt/kitz.',
             detail: 'Trusted publishing expects package manifests to point back to the same repo.',
-            fix: new CommandFix({
+            fix: CommandFix.make({
               summary: 'Apply the canonical PR title header.',
               command: 'release pr title apply',
             }),
             hints: [
-              new Hint({
+              Hint.make({
                 description: 'Set repository.url to git+https://github.com/jasonkuhrt/kitz.git.',
               }),
             ],
             docs: [
-              new DocLink({
+              DocLink.make({
                 label: 'npm trusted publishers',
                 url: 'https://docs.npmjs.com/trusted-publishers/',
               }),

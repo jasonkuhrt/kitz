@@ -23,13 +23,13 @@ export type toAbs<R extends $Rel> = R extends RelFile ? AbsFile : R extends RelD
  *
  * @example
  * ```ts
- * const relFile = new Path.RelFile({
+ * const relFile = Path.RelFile.make({
  *   segments: ['src'],
  *   fileName: { stem: 'index', extension: '.ts' }
  * })
  * const absFile = toAbs(relFile) // /src/index.ts (just re-tags)
  *
- * const base = new Path.AbsDir({ segments: ['home', 'user'] })
+ * const base = Path.AbsDir.make({ segments: ['home', 'user'] })
  * const absFile2 = toAbs(relFile, base) // /home/user/src/index.ts (resolves against base)
  * ```
  */

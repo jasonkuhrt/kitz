@@ -31,14 +31,16 @@ export const Value = S.Union([S.Number, S.String, S.BigInt])
  *
  * @category Text Formatting
  */
-export class Padding extends Sided.Class<Padding>('Padding')(Value) {}
+export class Padding extends Sided.Class<Padding>('Padding')(Value) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Parse padding input into a Padding instance.
  *
  * @category Text Formatting
  */
-export const parse = (input: Input): Padding => new Padding(Sided.parse(input) as any)
+export const parse = (input: Input): Padding => Padding.make(Sided.parse(input) as any)
 
 /**
  * One-way transformation schema: Input → Padding.

@@ -5,7 +5,7 @@ import { CommandFix, DocLink, FixStep, GuideFix, Hint, Violation } from './viola
 
 describe('Violation', () => {
   test('make with PrTitle location', () => {
-    const v = new Violation({
+    const v = Violation.make({
       location: new ViolationLocation.PrTitle({ title: 'bad title' }),
     })
     expect(v._tag).toBe('Violation')
@@ -14,22 +14,22 @@ describe('Violation', () => {
   })
 
   test('make with Environment location', () => {
-    const v = new Violation({
+    const v = Violation.make({
       location: new ViolationLocation.Environment({ message: 'not authenticated' }),
     })
     expect(v.location._tag).toBe('ViolationLocationEnvironment')
   })
 
   test('schema roundtrip', () => {
-    const v = new Violation({
+    const v = Violation.make({
       location: new ViolationLocation.GitHistory({ sha: 'abc1234' }),
       summary: 'History is not monotonic',
-      fix: new GuideFix({
+      fix: GuideFix.make({
         summary: 'Rebase the branch and rerun doctor.',
-        steps: [new FixStep({ description: 'Rebase onto trunk.' })],
+        steps: [FixStep.make({ description: 'Rebase onto trunk.' })],
       }),
-      hints: [new Hint({ description: 'Rebase onto trunk before retrying.' })],
-      docs: [new DocLink({ label: 'Release docs', url: 'https://example.com/release' })],
+      hints: [Hint.make({ description: 'Rebase onto trunk before retrying.' })],
+      docs: [DocLink.make({ label: 'Release docs', url: 'https://example.com/release' })],
     })
     const encoded = Schema.encodeSync(Violation)(v)
     const decoded = Schema.decodeSync(Violation)(encoded)
@@ -44,7 +44,7 @@ describe('Violation', () => {
 
 describe('FixStep', () => {
   test('make and is()', () => {
-    const step = new FixStep({ description: 'Run npm login' })
+    const step = FixStep.make({ description: 'Run npm login' })
     expect(step._tag).toBe('ViolationFixStep')
     expect(FixStep.is(step)).toBe(true)
     expect(step.description).toBe('Run npm login')
@@ -53,9 +53,9 @@ describe('FixStep', () => {
 
 describe('GuideFix', () => {
   test('make and is()', () => {
-    const fix = new GuideFix({
+    const fix = GuideFix.make({
       summary: 'Sign in locally.',
-      steps: [new FixStep({ description: 'Run npm login' })],
+      steps: [FixStep.make({ description: 'Run npm login' })],
     })
     expect(fix._tag).toBe('ViolationGuideFix')
     expect(GuideFix.is(fix)).toBe(true)
@@ -64,7 +64,7 @@ describe('GuideFix', () => {
 
 describe('CommandFix', () => {
   test('make and is()', () => {
-    const fix = new CommandFix({
+    const fix = CommandFix.make({
       summary: 'Apply the canonical PR title header.',
       command: 'release pr title apply',
     })
@@ -75,14 +75,14 @@ describe('CommandFix', () => {
 
 describe('Hint', () => {
   test('make and is()', () => {
-    const h = new Hint({ description: 'Try running npm login' })
+    const h = Hint.make({ description: 'Try running npm login' })
     expect(h._tag).toBe('Hint')
     expect(Hint.is(h)).toBe(true)
     expect(h.description).toBe('Try running npm login')
   })
 
   test('schema roundtrip', () => {
-    const h = new Hint({ description: 'Consider adding a scope' })
+    const h = Hint.make({ description: 'Consider adding a scope' })
     const encoded = Schema.encodeSync(Hint)(h)
     const decoded = Schema.decodeSync(Hint)(encoded)
     expect(decoded.description).toBe('Consider adding a scope')
@@ -91,7 +91,7 @@ describe('Hint', () => {
 
 describe('DocLink', () => {
   test('make and is()', () => {
-    const doc = new DocLink({ label: 'npm docs', url: 'https://docs.npmjs.com/' })
+    const doc = DocLink.make({ label: 'npm docs', url: 'https://docs.npmjs.com/' })
     expect(doc._tag).toBe('ViolationDocLink')
     expect(DocLink.is(doc)).toBe(true)
   })

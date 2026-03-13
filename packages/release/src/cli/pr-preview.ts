@@ -30,8 +30,8 @@ const enableRule = (
   options?: { readonly severity?: Api.Lint.Severity },
 ) => {
   const existing = config.lint.rules[ruleId]
-  return new Api.Lint.RuleConfig({
-    overrides: new Api.Lint.RuleDefaults({
+  return Api.Lint.RuleConfig.make({
+    overrides: Api.Lint.RuleDefaults.make({
       enabled: true,
       severity: options?.severity ?? existing?.overrides.severity ?? config.lint.defaults.severity,
     }),
@@ -313,10 +313,10 @@ export const buildPreviewDoctorSummary = (params: {
     ]
 
     const titleSeverity = params.blockingTitleChecks
-      ? new Api.Lint.Error()
+      ? Api.Lint.Error.make({})
       : params.config.lint.defaults.severity
     const lintConfig = Api.Lint.resolveConfig({
-      defaults: new Api.Lint.RuleDefaults({
+      defaults: Api.Lint.RuleDefaults.make({
         enabled: params.config.lint.defaults.enabled,
         severity: params.config.lint.defaults.severity,
       }),

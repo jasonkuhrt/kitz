@@ -40,7 +40,7 @@ export const rule = RuntimeRule.create({
   preventsDescriptions: [
     'surprising artifact-preparation side effects that release cannot semantically inspect',
   ],
-  defaults: new RuleDefaults({ severity: new Severity.Warn() }),
+  defaults: RuleDefaults.make({ severity: Severity.Warn.make({}) }),
   preconditions: [new Precondition.HasReleasePlan()],
   check: loadPlannedManifests.pipe(
     Effect.map((manifests) => {
@@ -52,11 +52,11 @@ export const rule = RuntimeRule.create({
       const names = offenders.map((entry) => entry.packageName)
       const example = offenders[0]!
 
-      return new Violation({
+      return Violation.make({
         location:
           offenders.length === 1
-            ? new File({ path: example.packageJsonPath })
-            : new Environment({
+            ? File.make({ path: example.packageJsonPath })
+            : Environment.make({
                 message:
                   `${String(offenders.length)} planned packages define pack hooks. ` +
                   `Example hooks: ${example.hooks.join(', ')}.`,
@@ -68,11 +68,11 @@ export const rule = RuntimeRule.create({
           'Release prepares tarballs before any network publish begins, so these hooks run in the artifact-preparation phase. ' +
           'That is safer than publish-time hooks, but release still cannot semantically inspect what the scripts mutate locally.',
         hints: [
-          new Hint({
+          Hint.make({
             description:
               'If artifact preparation or cleanup fails, inspect package.json files before retrying publish.',
           }),
-          new Hint({
+          Hint.make({
             description:
               'Keep pack hooks minimal and deterministic so their side effects are obvious to operators.',
           }),

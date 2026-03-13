@@ -73,17 +73,17 @@ describe('doctor api', () => {
           lifecycle: 'official' as const,
           required: true,
           plannedPackages: 3,
-          report: new Report({
+          report: Report.make({
             results: [
-              new Finished({
+              Finished.make({
                 rule: ruleRef(
                   'env.release-branch-allowed',
                   'active branch is allowed for the planned release lifecycle',
                 ),
                 duration: 2,
-                severity: new Severity.Error(),
-                violation: new Violation({
-                  location: new Environment({
+                severity: Severity.Error.make({}),
+                violation: Violation.make({
+                  location: Environment.make({
                     message:
                       'Current branch "feat/release" does not match configured trunk "main".',
                   }),

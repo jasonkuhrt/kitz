@@ -92,7 +92,7 @@ export function parseEither(title: string): Result.Result<ParsedTitle, ParseTitl
     // If we have per-scope breaking markers on individual scopes, it's still CommitSingle
     // because they all share the same type
     return Result.succeed(
-      new Single({
+      Single.make({
         type,
         scopes,
         breaking,
@@ -130,7 +130,7 @@ export function parseEither(title: string): Result.Result<ParsedTitle, ParseTitl
       const scope = scopes[i]
       if (!scope) continue
       targets.push(
-        new Target({
+        Target.make({
           type,
           scope,
           breaking: globalBreaking || perScopeBreaking[i] || false,
@@ -146,7 +146,7 @@ export function parseEither(title: string): Result.Result<ParsedTitle, ParseTitl
   }
 
   return Result.succeed(
-    new Multi({
+    Multi.make({
       targets: targets as [Target, ...Target[]],
       message,
       summary: Option.none(),

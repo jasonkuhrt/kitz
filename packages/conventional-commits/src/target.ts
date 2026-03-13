@@ -12,4 +12,6 @@ export class Target extends Schema.TaggedClass<Target>()('Target', {
   scope: Schema.String,
   /** Whether this target represents a breaking change */
   breaking: Schema.Boolean,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}

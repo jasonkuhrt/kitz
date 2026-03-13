@@ -17,5 +17,6 @@ export class Impact extends S.TaggedClass<Impact>()('Impact', {
   commits: S.Array(ReleaseCommit as any),
   currentVersion: CurrentVersionSchema,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Impact as any) as (u: unknown) => u is Impact
 }

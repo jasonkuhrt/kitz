@@ -11,7 +11,7 @@ export const rule = RuntimeRule.create({
   id: RuleId.makeUnsafe('repo.squash-only'),
   description: 'Only squash merge enabled',
   preconditions: [new Precondition.HasGitHubAccess()],
-  defaults: new RuleDefaults({ enabled: false }),
+  defaults: RuleDefaults.make({ enabled: false }),
   check: Effect.gen(function* () {
     const github = yield* GitHubService
     const { settings } = github
@@ -21,8 +21,8 @@ export const rule = RuntimeRule.create({
       settings.allowSquashMerge && !settings.allowMergeCommit && !settings.allowRebaseMerge
 
     if (!isSquashOnly) {
-      return new Violation({
-        location: new RepoSettings(),
+      return Violation.make({
+        location: RepoSettings.make({}),
       })
     }
     return undefined

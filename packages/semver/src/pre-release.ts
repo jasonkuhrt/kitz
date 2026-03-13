@@ -25,6 +25,7 @@ export class PreRelease extends S.TaggedClass<PreRelease>()(
     description: 'A semantic version with pre-release identifiers',
   },
 ) {
+  static make = this.makeUnsafe
   static is = S.is(PreRelease)
   static override toString = (version: PreRelease): string => formatPreRelease(version)
 

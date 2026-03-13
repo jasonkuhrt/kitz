@@ -241,7 +241,7 @@ export class Block extends Node {
     }
 
     // Create Box with rendered children
-    this.box = new Box.Box({
+    this.box = Box.Box.make({
       content:
         renderedChildren.length === 0
           ? ``

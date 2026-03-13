@@ -22,7 +22,9 @@ export class Operator extends Schema.Class<Operator>('Operator')({
     Schema.optionalKey,
     Schema.withDecodingDefaultKey(defaultPrepareScripts as () => readonly string[]),
   ),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Resolved operator command surface after package-manager detection.
@@ -31,9 +33,11 @@ export class ResolvedOperator extends Schema.Class<ResolvedOperator>('ResolvedOp
   manager: Pkg.Manager.DetectedPackageManager,
   releaseCommand: Schema.String,
   prepareCommands: Schema.Array(Schema.String),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
-export const defaultOperator = (): Operator => new Operator({})
+export const defaultOperator = (): Operator => Operator.make({})
 
 export type ResolveError = PlatformError | Resource.ResourceError
 
@@ -43,7 +47,7 @@ export const resolve = (
   Effect.gen(function* () {
     const manager = yield* Pkg.Manager.detect()
 
-    return new ResolvedOperator({
+    return ResolvedOperator.make({
       manager,
       releaseCommand: Pkg.Manager.renderScriptCommand(
         manager.name,

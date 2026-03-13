@@ -7,7 +7,7 @@ import * as Severity from './severity.js'
 
 describe('Rule', () => {
   test('make minimal rule', () => {
-    const rule = new Rule({
+    const rule = Rule.make({
       id: RuleId.makeUnsafe('env.git-clean'),
       description: 'Working directory must be clean',
       preconditions: [],
@@ -19,21 +19,21 @@ describe('Rule', () => {
   })
 
   test('make with preconditions', () => {
-    const rule = new Rule({
+    const rule = Rule.make({
       id: RuleId.makeUnsafe('pr.type.match-known'),
       description: 'PR type must be a known conventional commit type',
-      preconditions: [new HasOpenPR({})],
+      preconditions: [HasOpenPR.make({})],
     })
     expect(rule.preconditions).toHaveLength(1)
     expect(rule.preconditions[0]!._tag).toBe('PreconditionHasOpenPR')
   })
 
   test('make with defaults', () => {
-    const rule = new Rule({
+    const rule = Rule.make({
       id: RuleId.makeUnsafe('plan.tags-unique'),
       description: 'Planned tags must not already exist',
-      preconditions: [new HasReleasePlan({})],
-      defaults: new RuleDefaults({ enabled: true, severity: new Severity.Warn({}) }),
+      preconditions: [HasReleasePlan.make({})],
+      defaults: RuleDefaults.make({ enabled: true, severity: Severity.Warn.make({}) }),
     })
     expect(rule.defaults).toBeDefined()
     expect(rule.defaults!.enabled).toBe(true)
@@ -41,11 +41,11 @@ describe('Rule', () => {
   })
 
   test('schema roundtrip', () => {
-    const rule = new Rule({
+    const rule = Rule.make({
       id: RuleId.makeUnsafe('env.npm-authenticated'),
       description: 'npm must be authenticated',
-      preconditions: [new HasReleasePlan({})],
-      defaults: new RuleDefaults({ enabled: 'auto' }),
+      preconditions: [HasReleasePlan.make({})],
+      defaults: RuleDefaults.make({ enabled: 'auto' }),
     })
     const encoded = Schema.encodeSync(Rule)(rule)
     const decoded = Schema.decodeSync(Rule)(encoded)

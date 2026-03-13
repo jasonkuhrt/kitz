@@ -26,14 +26,16 @@ export type Input = Axied.Input<Value>
  *
  * @category Text Formatting
  */
-export class Span extends Axied.Class<Span>('Span')(ValueSchema) {}
+export class Span extends Axied.Class<Span>('Span')(ValueSchema) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Parse span input into a Span instance.
  *
  * @category Text Formatting
  */
-export const parse = (input: Input): Span => new Span(Axied.parse(input) as any)
+export const parse = (input: Input): Span => Span.make(Axied.parse(input) as any)
 
 /**
  * One-way transformation schema: Input → Span.

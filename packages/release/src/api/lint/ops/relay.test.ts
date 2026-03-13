@@ -13,34 +13,34 @@ const ruleRef = (id: string, description = 'Test rule') => ({
 
 describe('formatReport', () => {
   test('renders severity, guidance, and docs for violations', () => {
-    const report = new Report({
+    const report = Report.make({
       results: [
-        new Finished({
+        Finished.make({
           rule: ruleRef(
             'env.publish-channel-ready',
             'declared publish channel matches the active runtime',
           ),
           duration: 4,
-          severity: new Severity.Error(),
-          violation: new Violation({
-            location: new Environment({ message: 'ACTIONS_ID_TOKEN_REQUEST_URL is missing.' }),
+          severity: Severity.Error.make({}),
+          violation: Violation.make({
+            location: Environment.make({ message: 'ACTIONS_ID_TOKEN_REQUEST_URL is missing.' }),
             summary: 'Trusted publishing is configured but OIDC is unavailable.',
             detail: 'The publish job cannot request an identity token from GitHub Actions.',
-            fix: new GuideFix({
+            fix: GuideFix.make({
               summary: 'Enable OIDC for the publish job.',
               steps: [
-                new FixStep({ description: 'Add `permissions.id-token: write` to the workflow.' }),
+                FixStep.make({ description: 'Add `permissions.id-token: write` to the workflow.' }),
               ],
               docs: [
-                new DocLink({
+                DocLink.make({
                   label: 'npm trusted publishers',
                   url: 'https://docs.npmjs.com/trusted-publishers/',
                 }),
               ],
             }),
-            hints: [new Hint({ description: 'Grant `id-token: write` to the job.' })],
+            hints: [Hint.make({ description: 'Grant `id-token: write` to the job.' })],
             docs: [
-              new DocLink({
+              DocLink.make({
                 label: 'npm trusted publishers',
                 url: 'https://docs.npmjs.com/trusted-publishers/',
               }),
@@ -67,12 +67,12 @@ describe('formatReport', () => {
   })
 
   test('can omit the default title for embedded report sections', () => {
-    const report = new Report({
+    const report = Report.make({
       results: [
-        new Finished({
+        Finished.make({
           rule: ruleRef('env.release-branch-allowed', 'active branch is allowed'),
           duration: 1,
-          severity: new Severity.Error(),
+          severity: Severity.Error.make({}),
         }),
       ],
     })

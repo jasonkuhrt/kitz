@@ -47,15 +47,15 @@ export const official = (
 
       // Build version union
       const version: OfficialFirst | OfficialIncrement = Option.isSome(impact.currentVersion)
-        ? new OfficialIncrement({
+        ? OfficialIncrement.make({
             from: impact.currentVersion.value,
             to: nextVersion,
             bump: impact.bump,
           })
-        : new OfficialFirst({ version: nextVersion })
+        : OfficialFirst.make({ version: nextVersion })
 
       releases.push(
-        new Official({
+        Official.make({
           package: impact.package,
           version,
           commits: impact.commits,
@@ -69,7 +69,7 @@ export const official = (
       ...analysis.tags,
     ])
 
-    return new Plan({
+    return Plan.make({
       lifecycle: 'official',
       timestamp: new Date().toISOString(),
       releases,

@@ -42,7 +42,7 @@ export function isRoot<$input extends Input>($input: $input): boolean {
  *
  * @example
  * ```ts
- * const absPath = new FsLoc.Path.Abs({ segments: ['docs'] })
+ * const absPath = FsLoc.Path.Abs.make({ segments: ['docs'] })
  * if (isTop(absPath)) {
  *   // TypeScript knows: absPath.segments is readonly [string]
  *   const [segment] = absPath.segments // Safe!
@@ -64,7 +64,7 @@ export type PathWithOneSegment<T extends Path> = T & { segments: readonly [strin
  *
  * @example
  * ```ts
- * const absPath = new FsLoc.Path.Abs({ segments: ['docs', 'guides', 'intro'] })
+ * const absPath = FsLoc.Path.Abs.make({ segments: ['docs', 'guides', 'intro'] })
  * if (isSub(absPath)) {
  *   // TypeScript knows: absPath.segments is readonly [string, string, ...string[]]
  * }

@@ -28,19 +28,19 @@ const fixtures = {
     },
   },
   target: {
-    featCore: new ConventionalCommits.Target({
+    featCore: ConventionalCommits.Target.make({
       type: ConventionalCommits.Type.Standard.parse('feat'),
       scope: 'core',
       breaking: false,
     }),
-    fixCliBreaking: new ConventionalCommits.Target({
+    fixCliBreaking: ConventionalCommits.Target.make({
       type: ConventionalCommits.Type.Standard.parse('fix'),
       scope: 'cli',
       breaking: true,
     }),
   },
   commitSingle: {
-    simple: new ConventionalCommits.Commit.Single({
+    simple: ConventionalCommits.Commit.Single.make({
       type: ConventionalCommits.Type.Standard.parse('feat'),
       scopes: [],
       breaking: false,
@@ -48,7 +48,7 @@ const fixtures = {
       body: Option.none(),
       footers: [],
     }),
-    withScope: new ConventionalCommits.Commit.Single({
+    withScope: ConventionalCommits.Commit.Single.make({
       type: ConventionalCommits.Type.Standard.parse('feat'),
       scopes: ['core'],
       breaking: false,
@@ -56,7 +56,7 @@ const fixtures = {
       body: Option.none(),
       footers: [],
     }),
-    multiScope: new ConventionalCommits.Commit.Single({
+    multiScope: ConventionalCommits.Commit.Single.make({
       type: ConventionalCommits.Type.Standard.parse('feat'),
       scopes: ['core', 'cli'],
       breaking: true,
@@ -66,14 +66,14 @@ const fixtures = {
     }),
   },
   commitMulti: {
-    simple: new ConventionalCommits.Commit.Multi({
+    simple: ConventionalCommits.Commit.Multi.make({
       targets: [
-        new ConventionalCommits.Target({
+        ConventionalCommits.Target.make({
           type: ConventionalCommits.Type.Standard.parse('feat'),
           scope: 'core',
           breaking: true,
         }),
-        new ConventionalCommits.Target({
+        ConventionalCommits.Target.make({
           type: ConventionalCommits.Type.Standard.parse('fix'),
           scope: 'cli',
           breaking: false,
@@ -310,7 +310,7 @@ Test.describe('parseTitle > Commit.Single')
     [['feat(core): add feature'], fixtures.commitSingle.withScope],
     [
       ['feat(core, cli): breaking change'],
-      new ConventionalCommits.Commit.Single({
+      ConventionalCommits.Commit.Single.make({
         type: ConventionalCommits.Type.parse('feat'),
         scopes: ['core', 'cli'],
         breaking: false,
@@ -321,7 +321,7 @@ Test.describe('parseTitle > Commit.Single')
     ],
     [
       ['feat(core)!: breaking change'],
-      new ConventionalCommits.Commit.Single({
+      ConventionalCommits.Commit.Single.make({
         type: ConventionalCommits.Type.parse('feat'),
         scopes: ['core'],
         breaking: true,

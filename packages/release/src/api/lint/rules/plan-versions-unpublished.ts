@@ -27,7 +27,7 @@ export const rule = RuntimeRule.create({
   preventsDescriptions: [
     'npm publish failing because the exact version is already present in the registry',
   ],
-  defaults: new RuleDefaults({ enabled: false }),
+  defaults: RuleDefaults.make({ enabled: false }),
   preconditions: [new Precondition.HasReleasePlan()],
   optionsSchema: OptionsSchema,
   check: Effect.gen(function* () {
@@ -62,11 +62,11 @@ export const rule = RuntimeRule.create({
     const names = conflicts.map((entry) => `${entry.packageName}@${entry.version}`)
     const example = conflicts[0]!
 
-    return new Violation({
+    return Violation.make({
       location:
         conflicts.length === 1
-          ? new File({ path: example.packageJsonPath })
-          : new Environment({
+          ? File.make({ path: example.packageJsonPath })
+          : Environment.make({
               message: `${String(conflicts.length)} planned package versions already exist on npm.`,
             }),
       summary: `Publishing would collide because ${summarizePackages(names)} ${names.length === 1 ? 'already exists' : 'already exist'} on npm.`,
@@ -74,17 +74,17 @@ export const rule = RuntimeRule.create({
         'npm does not allow the same package version to be published twice. ' +
         'If a planned version already exists, the release plan is stale or a prior publish attempt already succeeded.',
       hints: [
-        new Hint({
+        Hint.make({
           description:
             'Regenerate the release plan after fetching the latest tags and published versions.',
         }),
-        new Hint({
+        Hint.make({
           description:
             'If a prior publish partially succeeded, inspect the published version and bump forward instead of retrying the same version.',
         }),
       ],
       docs: [
-        new DocLink({
+        DocLink.make({
           label: 'npm publish',
           url: 'https://docs.npmjs.com/cli/v11/commands/npm-publish',
         }),

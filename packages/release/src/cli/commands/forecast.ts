@@ -81,7 +81,7 @@ const buildForecastInput = () =>
           'or ensure the root package.json defines workspace packages.',
       )
       return {
-        forecast: new Api.Forecaster.Forecast({
+        forecast: Api.Forecaster.Forecast.make({
           owner: '',
           repo: '',
           branch: '',

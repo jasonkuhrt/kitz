@@ -5,7 +5,7 @@ import { CommitDisplay, Forecast, ForecastCascade, ForecastRelease } from '../fo
 import { renderTable } from './table.js'
 
 const makeCommit = (sha: string, type: string, subject: string, breaking = false) =>
-  new CommitDisplay({
+  CommitDisplay.make({
     shortSha: sha,
     subject,
     type,
@@ -19,7 +19,7 @@ const makeRelease = (
   bump: Semver.BumpType,
   commits: CommitDisplay[] = [makeCommit('abc1234', 'feat', 'add feature')],
 ) =>
-  new ForecastRelease({
+  ForecastRelease.make({
     packageName: name,
     packageScope: scope,
     bump,
@@ -30,7 +30,7 @@ const makeRelease = (
   })
 
 const makeCascade = (name: string, scope: string, triggeredBy: string[]) =>
-  new ForecastCascade({
+  ForecastCascade.make({
     packageName: name,
     packageScope: scope,
     currentVersion: Option.some(Semver.fromString('1.0.0')),
@@ -39,7 +39,7 @@ const makeCascade = (name: string, scope: string, triggeredBy: string[]) =>
     sourceUrl: `https://github.com/org/repo/tree/main/packages/${scope}`,
   })
 
-const emptyForecast = new Forecast({
+const emptyForecast = Forecast.make({
   owner: 'org',
   repo: 'repo',
   branch: 'main',
@@ -52,7 +52,7 @@ const remakeForecast = (
   forecast: Forecast,
   overrides: Partial<Pick<Forecast, 'releases' | 'cascades'>>,
 ): Forecast =>
-  new Forecast({
+  Forecast.make({
     owner: forecast.owner,
     repo: forecast.repo,
     branch: forecast.branch,

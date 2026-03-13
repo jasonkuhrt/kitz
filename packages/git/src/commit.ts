@@ -14,7 +14,9 @@ export class Commit extends Schema.TaggedClass<Commit>()('Commit', {
   message: Schema.String,
   author: Author,
   date: Schema.Date,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Fields type for ParsedCommit with the message field replaced by a parsed schema.

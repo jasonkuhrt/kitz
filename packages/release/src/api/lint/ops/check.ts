@@ -170,7 +170,7 @@ export const check = (
     // Add skipped results for filtered-out rules
     for (const rule of active.excluded) {
       results.push(
-        new Skipped({
+        Skipped.make({
           rule: { id: rule.data.id, description: rule.data.description },
           reason: 'filtered',
         }),
@@ -183,7 +183,7 @@ export const check = (
       results.push(result)
     }
 
-    return new Report({ results })
+    return Report.make({ results })
   })
 }
 
@@ -208,14 +208,14 @@ const checkRule = (
       if (explicitlyRequested) {
         // Explicitly requested but preconditions not met → Error
         const failedNames = failedPreconditions.map((p) => p._tag.replace('Precondition', ''))
-        return new Failed({
+        return Failed.make({
           rule: ruleRef,
           duration: 0,
           error: new Error(`Preconditions not met: ${failedNames.join(', ')}`),
         })
       } else {
         // Auto-enabled and preconditions not met → Skip silently
-        return new Skipped({
+        return Skipped.make({
           rule: ruleRef,
           reason: 'preconditions-not-met',
         })
@@ -246,7 +246,7 @@ const checkRule = (
     // Normalize result: can be undefined, Violation, or { violation?, metadata? }
     const { violation, metadata } = normalizeCheckResult(result)
 
-    return new Finished({
+    return Finished.make({
       rule: ruleRef,
       duration,
       severity,
