@@ -98,8 +98,8 @@ export const makeMake = <union extends S.Union<any>>(union: union): FnMake<union
     if (!memberSchema) {
       throw new Error(`Unknown tag: ${tag}`)
     }
-    // Use the member's make function with the tag added
-    return memberSchema.make({ _tag: tag, ...fields })
+    // Use the member's makeUnsafe function with the tag added
+    return memberSchema.makeUnsafe({ _tag: tag, ...fields })
   }) as any
 }
 
