@@ -21,10 +21,10 @@ describe('pr.type.match-known', () => {
         Effect.provide(
           makePrLayer(
             'feat(core), fix(cli): polish release flow',
-            CC.Commit.Multi.make({
+            new CC.Commit.Multi({
               targets: [
-                CC.Target.make({ type: CC.Type.parse('feat'), scope: 'core', breaking: false }),
-                CC.Target.make({ type: CC.Type.parse('fix'), scope: 'cli', breaking: false }),
+                new CC.Target({ type: CC.Type.parse('feat'), scope: 'core', breaking: false }),
+                new CC.Target({ type: CC.Type.parse('fix'), scope: 'cli', breaking: false }),
               ],
               message: 'polish release flow',
               summary: Option.none(),
@@ -44,10 +44,10 @@ describe('pr.type.match-known', () => {
         Effect.provide(
           makePrLayer(
             'feat(core), wip(cli): polish release flow',
-            CC.Commit.Multi.make({
+            new CC.Commit.Multi({
               targets: [
-                CC.Target.make({ type: CC.Type.parse('feat'), scope: 'core', breaking: false }),
-                CC.Target.make({ type: CC.Type.parse('wip'), scope: 'cli', breaking: false }),
+                new CC.Target({ type: CC.Type.parse('feat'), scope: 'core', breaking: false }),
+                new CC.Target({ type: CC.Type.parse('wip'), scope: 'cli', breaking: false }),
               ],
               message: 'polish release flow',
               summary: Option.none(),

@@ -8,16 +8,16 @@
  * GitHub releases. Supports `--dry-run` for inspection and `--yes`
  * to skip the interactive confirmation prompt (for CI).
  */
-import { Terminal } from '@effect/platform'
+import { Terminal } from 'effect'
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Oak } from '@kitz/oak'
-import { Console, Effect, Fiber, Layer, Option, Schema, Stream } from 'effect'
+import { Console, Effect, Fiber, Layer, Option, Schema, SchemaGetter, Stream } from 'effect'
 import * as Api from '../../api/__.js'
-import { CommandExecutorLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
+import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
 
 /**
  * release apply
@@ -29,28 +29,30 @@ const args = Oak.Command.create()
   .description('Execute the release plan')
   .parameter(
     'yes y',
-    Schema.transform(Schema.UndefinedOr(Schema.Boolean), Schema.Boolean, {
-      strict: true,
-      decode: (v) => v ?? false,
-      encode: (v) => v,
-    }).pipe(
-      Schema.annotations({ description: 'Skip confirmation prompt (for CI)', default: false }),
-    ),
+    Schema.UndefinedOr(Schema.Boolean)
+      .pipe(
+        Schema.decodeTo(Schema.Boolean, {
+          decode: SchemaGetter.transform((v) => v ?? false),
+          encode: SchemaGetter.transform((v) => v),
+        }),
+      )
+      .pipe(Schema.annotate({ description: 'Skip confirmation prompt (for CI)', default: false })),
   )
   .parameter(
     'dry-run d',
-    Schema.transform(Schema.UndefinedOr(Schema.Boolean), Schema.Boolean, {
-      strict: true,
-      decode: (v) => v ?? false,
-      encode: (v) => v,
-    }).pipe(
-      Schema.annotations({ description: 'Preview actions without executing', default: false }),
-    ),
+    Schema.UndefinedOr(Schema.Boolean)
+      .pipe(
+        Schema.decodeTo(Schema.Boolean, {
+          decode: SchemaGetter.transform((v) => v ?? false),
+          encode: SchemaGetter.transform((v) => v),
+        }),
+      )
+      .pipe(Schema.annotate({ description: 'Preview actions without executing', default: false })),
   )
   .parameter(
     'tag t',
     Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotations({ description: 'npm dist-tag (default: latest)' }),
+      Schema.annotate({ description: 'npm dist-tag (default: latest)' }),
     ),
   )
   .parse()
@@ -59,12 +61,12 @@ const confirm = (message: string) =>
   Effect.gen(function* () {
     const terminal = yield* Terminal.Terminal
     yield* terminal.display(message)
-    const answer = yield* terminal.readLine.pipe(Effect.catchAll(() => Effect.succeed('')))
+    const answer = yield* terminal.readLine.pipe(Effect.catch(() => Effect.succeed('')))
     const normalized = answer.trim().toLowerCase()
     return normalized === 'y' || normalized === 'yes'
   })
 
-const commandLayer = CommandExecutorLayer
+const commandLayer = ChildProcessSpawnerLayer
 const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(commandLayer))
 
 Cli.run(
@@ -132,7 +134,7 @@ Cli.run(
         return line.level === 'error' ? Console.error(line.message) : Console.log(line.message)
       }),
       Stream.runDrain,
-      Effect.fork,
+      Effect.forkChild,
     )
 
     // Run workflow

@@ -19,9 +19,9 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
-import { Cause, Console, Effect, Layer, Option, Schema } from 'effect'
+import { Cause, Console, Effect, Layer, Option, Schema, SchemaGetter } from 'effect'
 import * as Api from '../../api/__.js'
-import { CommandExecutorLayer, ContextLayer, FileSystemLayer } from '../../platform.js'
+import { ChildProcessSpawnerLayer, ServicesLayer, FileSystemLayer } from '../../platform.js'
 import { loadPullRequestDiff } from '../pr-preview.js'
 
 const DoctorFailuresSchema = Schema.Struct({
@@ -46,13 +46,13 @@ const enableRule = (
   ruleOptions: Record<string, unknown> = {},
 ) => {
   const existing = config.lint.rules[ruleId]
-  return Api.Lint.ResolvedRuleConfig.make({
-    overrides: Api.Lint.ResolvedRuleDefaults.make({
+  return new Api.Lint.ResolvedRuleConfig({
+    overrides: new Api.Lint.ResolvedRuleDefaults({
       enabled: true,
-      severity: existing?.overrides.severity ?? config.lint.defaults.severity,
+      severity: existing?.['overrides'].severity ?? config.lint.defaults.severity,
     }),
     options: {
-      ...existing?.options,
+      ...existing?.['options'],
       ...ruleOptions,
     },
   })
@@ -65,51 +65,54 @@ const args = Oak.Command.create()
   )
   .parameter(
     'lifecycle l',
-    Schema.UndefinedOr(Schema.Literal('official', 'candidate', 'ephemeral')).pipe(
-      Schema.annotations({ description: 'Only evaluate a single release lifecycle' }),
+    Schema.UndefinedOr(Schema.Literals(['official', 'candidate', 'ephemeral'])).pipe(
+      Schema.annotate({ description: 'Only evaluate a single release lifecycle' }),
     ),
   )
   .parameter(
     'all a',
-    Schema.transform(Schema.UndefinedOr(Schema.Boolean), Schema.Boolean, {
-      strict: true,
-      decode: (value) => value ?? false,
-      encode: (value) => value,
-    }).pipe(
-      Schema.annotations({
-        description: 'Force all lifecycles, including ephemeral without detected PR context',
-        default: false,
-      }),
-    ),
+    Schema.UndefinedOr(Schema.Boolean)
+      .pipe(
+        Schema.decodeTo(Schema.Boolean, {
+          decode: SchemaGetter.transform((value) => value ?? false),
+          encode: SchemaGetter.transform((value) => value),
+        }),
+      )
+      .pipe(
+        Schema.annotate({
+          description: 'Force all lifecycles, including ephemeral without detected PR context',
+          default: false,
+        }),
+      ),
   )
   .parameter(
     'only-rule',
     Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotations({ description: 'Only run matching rules (comma-separated patterns)' }),
+      Schema.annotate({ description: 'Only run matching rules (comma-separated patterns)' }),
     ),
   )
   .parameter(
     'skip-rule',
     Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotations({ description: 'Skip matching rules (comma-separated patterns)' }),
+      Schema.annotate({ description: 'Skip matching rules (comma-separated patterns)' }),
     ),
   )
   .parameter(
     'format f',
-    Schema.UndefinedOr(Schema.Literal('text', 'json')).pipe(
-      Schema.annotations({ description: 'Output format (text or json)' }),
+    Schema.UndefinedOr(Schema.Literals(['text', 'json'])).pipe(
+      Schema.annotate({ description: 'Output format (text or json)' }),
     ),
   )
   .parse()
 
-const commandLayer = CommandExecutorLayer
+const spawnerLayer = ChildProcessSpawnerLayer
 
 Cli.run(
   Layer.mergeAll(
     Env.Live,
-    ContextLayer,
+    ServicesLayer,
     FileSystemLayer,
-    commandLayer,
+    spawnerLayer,
     Api.Lint.Preconditions.DefaultLayer,
     Api.Lint.ReleasePlan.DefaultReleasePlanLayer,
     Git.GitLive,
@@ -159,9 +162,9 @@ Cli.run(
       args.lifecycle === 'ephemeral' ||
       (activePlan._tag === 'Some' && activePlan.value.lifecycle === 'ephemeral')
     const pullRequestAttempt = needsPrContext
-      ? yield* Api.Explorer.resolvePullRequest().pipe(Effect.either)
-      : { _tag: 'Right' as const, right: null }
-    const pullRequest = pullRequestAttempt._tag === 'Right' ? pullRequestAttempt.right : null
+      ? yield* Api.Explorer.resolvePullRequest().pipe(Effect.result)
+      : { _tag: 'Success' as const, success: null }
+    const pullRequest = pullRequestAttempt._tag === 'Success' ? pullRequestAttempt.success : null
     const hasPrContext = pullRequest !== null
     const scope = Api.Doctor.resolveScope({
       ...(args.lifecycle ? { lifecycle: args.lifecycle } : {}),
@@ -212,7 +215,7 @@ Cli.run(
                 }),
               })
             : undefined
-        const lintConfig = Api.Lint.ResolvedConfig.make({
+        const lintConfig = new Api.Lint.ResolvedConfig({
           defaults: config.lint.defaults,
           onlyRules: config.lint.onlyRules,
           skipRules: config.lint.skipRules,
@@ -232,15 +235,15 @@ Cli.run(
               : {}),
             ...(projectedSquashCommit?.projectedHeader
               ? {
-                  'pr.projected-squash-commit-sync': Api.Lint.ResolvedRuleConfig.make({
+                  'pr.projected-squash-commit-sync': new Api.Lint.ResolvedRuleConfig({
                     overrides:
-                      config.lint.rules['pr.projected-squash-commit-sync']?.overrides ??
-                      Api.Lint.ResolvedRuleDefaults.make({
+                      config.lint.rules['pr.projected-squash-commit-sync']?.['overrides'] ??
+                      new Api.Lint.ResolvedRuleDefaults({
                         enabled: 'auto',
-                        severity: Api.Lint.Warn.make(),
+                        severity: new Api.Lint.Warn(),
                       }),
                     options: {
-                      ...config.lint.rules['pr.projected-squash-commit-sync']?.options,
+                      ...config.lint.rules['pr.projected-squash-commit-sync']?.['options'],
                       projectedHeader: projectedSquashCommit.projectedHeader,
                     },
                   }),
@@ -305,19 +308,19 @@ Cli.run(
             : target.lifecycle === 'candidate'
               ? Api.Planner.candidate(analysis, { packages })
               : Api.Planner.ephemeral(analysis, { packages })
-        ).pipe(Effect.either)
+        ).pipe(Effect.result)
 
-        if (planAttempt._tag === 'Left') {
+        if (planAttempt._tag === 'Failure') {
           reports.push({
             _tag: 'UnavailableLifecycleReport' as const,
             lifecycle: target.lifecycle,
             required: target.required,
-            reason: planAttempt.left.message,
+            reason: planAttempt.failure.message,
           })
           continue
         }
 
-        yield* evaluatePlan(planAttempt.right, target.required)
+        yield* evaluatePlan(planAttempt.success, target.required)
       }
     }
 

@@ -4,20 +4,20 @@ import { describe, expect, test } from 'vitest'
 import { CommitDisplay, Forecast, ForecastRelease } from '../forecaster/models.js'
 import { render } from './render.js'
 
-const forecast = Forecast.make({
+const forecast = new Forecast({
   owner: 'org',
   repo: 'repo',
   branch: 'main',
   headSha: 'abc1234',
   releases: [
-    ForecastRelease.make({
+    new ForecastRelease({
       packageName: '@kitz/core',
       packageScope: 'core',
       bump: 'minor',
       currentVersion: Option.some(Semver.fromString('1.0.0')),
       nextOfficialVersion: Semver.fromString('1.1.0'),
       commits: [
-        CommitDisplay.make({
+        new CommitDisplay({
           shortSha: 'abc1234',
           subject: 'new api',
           type: 'feat',

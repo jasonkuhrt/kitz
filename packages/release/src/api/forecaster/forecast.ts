@@ -18,20 +18,24 @@ export const forecast = (analysis: Analysis, recon: Recon): Forecast => {
 
   const releases = analysis.impacts.map((impact) => {
     const nextOfficialVersion = calculateNextVersion(impact.currentVersion, impact.bump)
-    return ForecastRelease.make({
+    return new ForecastRelease({
       packageName: impact.package.name.moniker,
       packageScope: impact.package.scope,
       bump: impact.bump,
       currentVersion: impact.currentVersion,
       nextOfficialVersion,
-      commits: buildCommitDisplays(impact.commits, impact.package.scope, baseUrl),
+      commits: buildCommitDisplays(
+        impact.commits as unknown as readonly ReleaseCommit[],
+        impact.package.scope,
+        baseUrl,
+      ),
       sourceUrl: `${baseUrl}/tree/${branch}/packages/${impact.package.scope}`,
     })
   })
 
   const cascades = analysis.cascades.map((cascade) => {
     const nextOfficialVersion = calculateNextVersion(cascade.currentVersion, 'patch')
-    return ForecastCascade.make({
+    return new ForecastCascade({
       packageName: cascade.package.name.moniker,
       packageScope: cascade.package.scope,
       currentVersion: cascade.currentVersion,
@@ -41,7 +45,7 @@ export const forecast = (analysis: Analysis, recon: Recon): Forecast => {
     })
   })
 
-  return Forecast.make({ owner, repo, branch, headSha, releases, cascades })
+  return new Forecast({ owner, repo, branch, headSha, releases, cascades })
 }
 
 // ---------------------------------------------------------------------------
@@ -61,7 +65,7 @@ const buildCommitDisplays = (
 ): CommitDisplay[] =>
   commits.map((commit) => {
     const scoped = commit.forScope(scope)
-    return CommitDisplay.make({
+    return new CommitDisplay({
       shortSha: scoped.hash.slice(0, 7),
       subject: scoped.description,
       type: scoped.type,

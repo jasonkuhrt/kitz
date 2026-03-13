@@ -3,7 +3,7 @@ import { Layer, Schema as S } from 'effect'
 import { Env } from './env.js'
 import type { Arch, Os } from './types.js'
 
-const EnvironmentVarsSchema = S.Record({ key: S.String, value: S.UndefinedOr(S.String) })
+const EnvironmentVarsSchema = S.Record(S.String, S.UndefinedOr(S.String))
 
 /**
  * Pure environment object for Node.js runtime.
@@ -28,4 +28,4 @@ export const env = {
  *
  * @see https://nodejs.org/api/process.html
  */
-export const Live = Layer.succeed(Env, env)
+export const Live = Layer.succeed(Env)(env)

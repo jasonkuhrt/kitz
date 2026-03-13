@@ -1,5 +1,5 @@
-import { FileSystem } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { FileSystem } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
@@ -114,7 +114,7 @@ const parseConfig = (
 
     const data = parsed ?? {}
 
-    return yield* S.decodeUnknown(Config)(data).pipe(
+    return yield* S.decodeUnknownEffect(Config)(data).pipe(
       Effect.mapError(
         (error) =>
           new ConfigValidationError({

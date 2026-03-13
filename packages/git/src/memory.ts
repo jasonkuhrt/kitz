@@ -225,7 +225,7 @@ const makeService = (state: GitMemoryState): GitService => ({
  *
  * @example
  * ```ts
- * const memoryGit = Memory.make({
+ * const memoryGit = new Memory({
  *   tags: ['@kitz/core@1.0.0'],
  *   commits: [...]
  * })
@@ -266,7 +266,7 @@ export const makeWithState = (
 ): Effect.Effect<{ layer: Layer.Layer<Git>; state: GitMemoryState }> =>
   Effect.gen(function* () {
     const state = yield* makeState(config)
-    const layer = Layer.succeed(Git, makeService(state))
+    const layer = Layer.succeed(Git)(makeService(state))
     return { layer, state }
   })
 
@@ -285,9 +285,9 @@ const randomSha = (): string => {
  * Helper to create a commit.
  */
 export const commit = (message: string, overrides: Partial<Commit> = {}): Commit =>
-  Commit.make({
+  new Commit({
     hash: overrides.hash ?? Sha.make(randomSha()),
     message,
-    author: overrides.author ?? Author.make({ name: 'Test Author', email: 'test@example.com' }),
+    author: overrides.author ?? new Author({ name: 'Test Author', email: 'test@example.com' }),
     date: overrides.date ?? new Date(),
   })

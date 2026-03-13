@@ -34,32 +34,32 @@ const extractRepositoryTarget = (repository: unknown): string | null => {
 
 /** Advises when planned packages point at a repo other than the canonical GitHub release target. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('plan.packages-repository-match-canonical'),
+  id: RuleId.makeUnsafe('plan.packages-repository-match-canonical'),
   description: 'planned package repository metadata points at the canonical GitHub repo',
-  defaults: RuleDefaults.make({ severity: Severity.Warn.make() }),
-  preconditions: [Precondition.HasReleasePlan.make()],
+  defaults: new RuleDefaults({ severity: new Severity.Warn() }),
+  preconditions: [new Precondition.HasReleasePlan()],
   check: Effect.gen(function* () {
     const env = yield* Env.Env
     const manifests = yield* loadPlannedManifests
-    const target = yield* resolveReleaseTarget(env.vars).pipe(Effect.either)
+    const target = yield* resolveReleaseTarget(env.vars).pipe(Effect.result)
 
-    if (target._tag === 'Left') {
-      return Violation.make({
-        location: Environment.make({
-          message: target.left.message,
+    if (target._tag === 'Failure') {
+      return new Violation({
+        location: new Environment({
+          message: target.failure.message,
         }),
         summary: 'Canonical GitHub repo could not be resolved for repository provenance checks.',
         detail:
           'This check compares planned package manifests against the GitHub repo that owns the release workflow. ' +
           'Without a resolvable canonical repo, source links and trusted-publishing guidance are guesswork.',
         hints: [
-          Hint.make({
+          new Hint({
             description:
               'Set `GITHUB_REPOSITORY="owner/repo"` in CI or configure a GitHub `origin` remote locally.',
           }),
         ],
         docs: [
-          DocLink.make({
+          new DocLink({
             label: 'npm trusted publishers',
             url: 'https://docs.npmjs.com/trusted-publishers/',
           }),
@@ -67,7 +67,7 @@ export const rule = RuntimeRule.create({
       })
     }
 
-    const canonicalRepo = `${target.right.owner}/${target.right.repo}`
+    const canonicalRepo = `${target.success.owner}/${target.success.repo}`
     const offenders = manifests.filter((entry) => {
       const repositoryTarget = extractRepositoryTarget(entry.manifest.repository)
       return repositoryTarget !== null && repositoryTarget !== canonicalRepo
@@ -86,34 +86,34 @@ export const rule = RuntimeRule.create({
     const names = offenders.map((entry) => entry.packageName)
     const repositoryTarget = extractRepositoryTarget(example.manifest.repository)
 
-    return Violation.make({
+    return new Violation({
       location:
         offenders.length === 1
-          ? File.make({ path: example.packageJsonPath })
-          : Environment.make({
+          ? new File({ path: example.packageJsonPath })
+          : new Environment({
               message: `${String(offenders.length)} planned packages point at a different repository.`,
             }),
       summary: `Repository metadata should point at ${canonicalRepo}, but ${summarizePackages(names)} ${names.length === 1 ? 'does' : 'do'} not.`,
       detail:
         'Publish provenance, source links, and trusted-publisher setup all assume package manifests point back to the same canonical GitHub repository that owns the release workflow.',
       hints: [
-        Hint.make({
+        new Hint({
           description: `Set \`repository.url\` to \`git+https://github.com/${canonicalRepo}.git\`.`,
         }),
         ...(repositoryTarget
           ? [
-              Hint.make({
+              new Hint({
                 description: `The current repository target resolves to \`${repositoryTarget}\`.`,
               }),
             ]
           : []),
       ],
       docs: [
-        DocLink.make({
+        new DocLink({
           label: 'npm package.json repository field',
           url: 'https://docs.npmjs.com/cli/v11/configuring-npm/package-json',
         }),
-        DocLink.make({
+        new DocLink({
           label: 'npm trusted publishers',
           url: 'https://docs.npmjs.com/trusted-publishers/',
         }),

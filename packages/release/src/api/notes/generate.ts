@@ -60,7 +60,7 @@ export interface GenerateResult {
  * Build a package-specific release tag from package name and version.
  */
 const toReleaseTag = (pkg: Package, version: Semver.Semver): string =>
-  Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version }))
+  Pkg.Pin.toString(new Pkg.Pin.Exact({ name: pkg.name, version }))
 
 /**
  * Generate release notes for packages with changes.
@@ -122,8 +122,9 @@ export const generate = (
 
       for (const impact of impacts) {
         bump = Semver.maxBump(bump, impact.bump)
-        if (!MutableHashSet.has(seenCommits, impact.commit.hash)) {
-          MutableHashSet.add(seenCommits, impact.commit.hash)
+        const commitHash = impact.commit['hash'] as Git.Sha.Sha
+        if (!MutableHashSet.has(seenCommits, commitHash)) {
+          MutableHashSet.add(seenCommits, commitHash)
           packageCommits.push(impact.commit)
         }
       }

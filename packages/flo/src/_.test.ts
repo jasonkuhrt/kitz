@@ -12,13 +12,13 @@ type Event =
   | Flo.WorkflowEvent.Completed
 
 const started = (activity: string): Flo.Activity.Started =>
-  Flo.Activity.Started.make({ activity, timestamp: new Date(), resumed: false })
+  new Flo.Activity.Started({ activity, timestamp: new Date(), resumed: false })
 
 const completed = (activity: string): Flo.Activity.Completed =>
-  Flo.Activity.Completed.make({ activity, timestamp: new Date(), durationMs: 100, resumed: false })
+  new Flo.Activity.Completed({ activity, timestamp: new Date(), durationMs: 100, resumed: false })
 
 const failed = (activity: string, error: string): Flo.Activity.Failed =>
-  Flo.Activity.Failed.make({ activity, timestamp: new Date(), error })
+  new Flo.Activity.Failed({ activity, timestamp: new Date(), error })
 
 // ─── List Mode ─────────────────────────────────────────────────
 
@@ -278,7 +278,7 @@ describe('Renderer state', () => {
     renderer.update(started('A'))
     expect(renderer.getState().currentActivity).toBe('A')
 
-    renderer.update(Flo.WorkflowEvent.Completed.make({ timestamp: new Date(), durationMs: 1000 }))
+    renderer.update(new Flo.WorkflowEvent.Completed({ timestamp: new Date(), durationMs: 1000 }))
     expect(renderer.getState().currentActivity).toBeNull()
   })
 })

@@ -1,5 +1,5 @@
-import { FileSystem } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { FileSystem } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import { Conf } from '@kitz/conf'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
@@ -12,28 +12,44 @@ import {
   ResolvedOperator,
   resolve as resolveOperator,
 } from './operator.js'
-import { Publishing } from './publishing.js'
+import { defaultPublishing, Publishing } from './publishing.js'
 
 /**
  * Release configuration schema (input from file).
  */
 export class Config extends Schema.Class<Config>('Config')({
   /** Main branch name (default: 'main') */
-  trunk: Schema.optionalWith(Schema.String, { default: () => 'main' }),
+  trunk: Schema.String.pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(() => 'main'),
+  ),
   /** Dist-tag for official releases (default: 'latest') */
-  npmTag: Schema.optionalWith(Schema.String, { default: () => 'latest' }),
+  npmTag: Schema.String.pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(() => 'latest'),
+  ),
   /** Dist-tag for candidate releases (default: 'next') */
-  candidateTag: Schema.optionalWith(Schema.String, { default: () => 'next' }),
+  candidateTag: Schema.String.pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(() => 'next'),
+  ),
   /** Skip npm publish (dry run) */
-  skipNpm: Schema.optionalWith(Schema.Boolean, { default: () => false }),
+  skipNpm: Schema.Boolean.pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(() => false),
+  ),
   /** Scope to package name mapping (auto-scanned if not provided) */
-  packages: Schema.optionalWith(Schema.Record({ key: Schema.String, value: Schema.String }), {
-    default: () => ({}),
-  }),
+  packages: Schema.Record(Schema.String, Schema.String).pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(() => ({}) as Record<string, string>),
+  ),
   /** Declares how each lifecycle is published. */
-  publishing: Schema.optionalWith(Publishing, { default: () => Publishing.make({}) }),
+  publishing: Publishing.pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(() => defaultPublishing() as any),
+  ),
   /** Operator-facing command surface for local guidance and runbooks. */
-  operator: Schema.optionalWith(Operator, { default: defaultOperator }),
+  operator: Operator.pipe(Schema.optionalKey, Schema.withDecodingDefaultKey(defaultOperator)),
   /** Lint configuration */
   lint: Schema.optional(LintConfig.Config),
 }) {}
@@ -46,7 +62,7 @@ export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig
   npmTag: Schema.String,
   candidateTag: Schema.String,
   skipNpm: Schema.Boolean,
-  packages: Schema.Record({ key: Schema.String, value: Schema.String }),
+  packages: Schema.Record(Schema.String, Schema.String),
   publishing: Publishing,
   operator: ResolvedOperator,
   lint: LintConfig.ResolvedConfig,
@@ -122,15 +138,17 @@ export const load = (
     const fileConfig = yield* Conf.File.load(ConfigFile, Fs.Path.toString(env.cwd))
 
     // Merge call-site overrides with file config (overrides replace per-field)
-    const operator = yield* resolveOperator(options?.operator ?? fileConfig.operator)
+    const operator = yield* resolveOperator(
+      options?.operator ?? fileConfig.operator ?? defaultOperator(),
+    )
 
-    return ResolvedConfig.make({
-      trunk: options?.trunk ?? fileConfig.trunk,
-      npmTag: options?.npmTag ?? fileConfig.npmTag,
-      candidateTag: options?.candidateTag ?? fileConfig.candidateTag,
-      skipNpm: options?.skipNpm ?? fileConfig.skipNpm,
-      packages: options?.packages ?? fileConfig.packages,
-      publishing: options?.publishing ?? fileConfig.publishing,
+    return new ResolvedConfig({
+      trunk: options?.trunk ?? fileConfig.trunk ?? 'main',
+      npmTag: options?.npmTag ?? fileConfig.npmTag ?? 'latest',
+      candidateTag: options?.candidateTag ?? fileConfig.candidateTag ?? 'next',
+      skipNpm: options?.skipNpm ?? fileConfig.skipNpm ?? false,
+      packages: options?.packages ?? fileConfig.packages ?? {},
+      publishing: options?.publishing ?? fileConfig.publishing ?? defaultPublishing(),
       operator,
       lint: LintConfig.resolveConfig({
         defaults: options?.lint?.defaults ?? fileConfig.lint?.defaults,

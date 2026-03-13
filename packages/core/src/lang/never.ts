@@ -84,7 +84,7 @@ export const todo: <type>(message?: string) => type = (message) => {
  *
  * @example
  * ```ts
- * Lang.throw(result.left)
+ * Lang.throw(result.failure)
  * Lang.throw(new TypeError('Expected array'))
  * ```
  */

@@ -206,7 +206,7 @@ const ReleaseLint = Linter.create('release')
       .settings(Schema.Struct({}))
       .input(
         Schema.Struct({
-          surface: Schema.Literal('preview', 'execution'),
+          surface: Schema.Literals(['preview', 'execution']),
         }),
       )
       .needs('releasePlan', 'releaseContext')

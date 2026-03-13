@@ -26,9 +26,9 @@ const makeRelease = (
   to: string,
   bump: Semver.BumpType,
 ) =>
-  Official.make({
+  new Official({
     package: pkg(name, scope),
-    version: OfficialIncrement.make({
+    version: new OfficialIncrement({
       from: Semver.fromString(from),
       to: Semver.fromString(to),
       bump,
@@ -37,9 +37,9 @@ const makeRelease = (
   })
 
 const makeFirstRelease = (name: string, scope: string, version: string) =>
-  Official.make({
+  new Official({
     package: pkg(name, scope),
-    version: OfficialFirst.make({ version: Semver.fromString(version) }),
+    version: new OfficialFirst({ version: Semver.fromString(version) }),
     commits: [commit(scope, 'initial commit')],
   })
 
@@ -47,7 +47,7 @@ const makeFirstRelease = (name: string, scope: string, version: string) =>
 
 describe('renderPlan', () => {
   test('empty plan returns no releases message', () => {
-    const plan = Plan.make({
+    const plan = new Plan({
       lifecycle: 'official',
       timestamp: '2026-01-01T00:00:00Z',
       releases: [],
@@ -57,7 +57,7 @@ describe('renderPlan', () => {
   })
 
   test('single release without cascades', () => {
-    const plan = Plan.make({
+    const plan = new Plan({
       lifecycle: 'official',
       timestamp: '2026-01-01T00:00:00Z',
       releases: [makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')],
@@ -74,7 +74,7 @@ describe('renderPlan', () => {
   })
 
   test('multiple releases with cascades', () => {
-    const plan = Plan.make({
+    const plan = new Plan({
       lifecycle: 'official',
       timestamp: '2026-01-01T00:00:00Z',
       releases: [makeRelease('@kitz/core', 'core', '1.0.0', '2.0.0', 'major')],
@@ -90,7 +90,7 @@ describe('renderPlan', () => {
   })
 
   test('first release shows "new" instead of current version', () => {
-    const plan = Plan.make({
+    const plan = new Plan({
       lifecycle: 'official',
       timestamp: '2026-01-01T00:00:00Z',
       releases: [makeFirstRelease('@kitz/core', 'core', '0.1.0')],
@@ -102,7 +102,7 @@ describe('renderPlan', () => {
   })
 
   test('shows commit count', () => {
-    const plan = Plan.make({
+    const plan = new Plan({
       lifecycle: 'official',
       timestamp: '2026-01-01T00:00:00Z',
       releases: [makeRelease('@kitz/core', 'core', '1.0.0', '1.0.1', 'patch')],
@@ -113,22 +113,22 @@ describe('renderPlan', () => {
   })
 
   test('sorts release rows by commit count descending', () => {
-    const plan = Plan.make({
+    const plan = new Plan({
       lifecycle: 'official',
       timestamp: '2026-01-01T00:00:00Z',
       releases: [
-        Official.make({
+        new Official({
           package: pkg('@kitz/core', 'core'),
-          version: OfficialIncrement.make({
+          version: new OfficialIncrement({
             from: Semver.fromString('1.0.0'),
             to: Semver.fromString('1.1.0'),
             bump: 'minor',
           }),
           commits: [commit('core', 'feat(core): first')],
         }),
-        Official.make({
+        new Official({
           package: pkg('@kitz/cli', 'cli'),
-          version: OfficialIncrement.make({
+          version: new OfficialIncrement({
             from: Semver.fromString('1.0.0'),
             to: Semver.fromString('1.1.0'),
             bump: 'minor',
@@ -152,7 +152,7 @@ describe('renderPlan', () => {
 
 describe('renderApplyConfirmation', () => {
   test('shows release count and steps', () => {
-    const plan = Plan.make({
+    const plan = new Plan({
       lifecycle: 'official',
       timestamp: '2026-01-01T00:00:00Z',
       releases: [makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')],
@@ -167,7 +167,7 @@ describe('renderApplyConfirmation', () => {
   })
 
   test('pluralizes for multiple packages', () => {
-    const plan = Plan.make({
+    const plan = new Plan({
       lifecycle: 'official',
       timestamp: '2026-01-01T00:00:00Z',
       releases: [
@@ -185,7 +185,7 @@ describe('renderApplyConfirmation', () => {
 
 describe('renderApplyDryRun', () => {
   test('shows DRY RUN prefix and actions', () => {
-    const plan = Plan.make({
+    const plan = new Plan({
       lifecycle: 'official',
       timestamp: '2026-01-01T00:00:00Z',
       releases: [makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')],

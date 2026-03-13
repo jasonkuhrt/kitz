@@ -96,7 +96,7 @@ export type Pattern<$Value = unknown> = PatternForType<$Value>
  */
 export const isMatch = <value>(value: value, pattern: Pattern<value>): boolean => {
   const schema = toSchema(pattern)
-  return S.is(schema)(value)
+  return S.is(schema as any)(value)
 }
 
 /**

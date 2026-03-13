@@ -4,7 +4,7 @@ import { Github } from '@kitz/github'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { describe, expect, it as test } from '@effect/vitest'
-import { Effect, LogLevel, Logger, Ref } from 'effect'
+import { Effect, Ref } from 'effect'
 import {
   execute as executeWorkflow,
   executeObservable as executeWorkflowObservable,
@@ -31,11 +31,10 @@ const workspacePackages: Parameters<typeof planOfficial>[0] = [
 ]
 
 const tagCore = (version: string) => tag(Pkg.Moniker.parse('@kitz/core'), version)
-const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  effect.pipe(Logger.withMinimumLogLevel(LogLevel.None))
+const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect
 
 describe('Workflow integration', () => {
-  test.scopedLive(
+  test.live(
     'runs non-dry-run official workflow with mocked services and restores manifest semver',
     () =>
       quiet(
@@ -101,7 +100,7 @@ describe('Workflow integration', () => {
       ),
   )
 
-  test.scopedLive('fails preflight on conflicting tag and does not publish', () =>
+  test.live('fails preflight on conflicting tag and does not publish', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -126,14 +125,14 @@ describe('Workflow integration', () => {
 
         const outcome = yield* executeWorkflow(plan, { dryRun: false }).pipe(
           Effect.provide(harness.workflowLayer),
-          Effect.either,
+          Effect.result,
         )
 
-        expect(outcome._tag).toBe('Left')
-        if (outcome._tag === 'Left') {
-          expect(outcome.left._tag).toBe('ExecutorPreflightError')
-          if (outcome.left._tag === 'ExecutorPreflightError') {
-            expect(outcome.left.context.check).toBe('plan.tags-unique')
+        expect(outcome._tag).toBe('Failure')
+        if (outcome._tag === 'Failure') {
+          expect(outcome.failure._tag).toBe('ExecutorPreflightError')
+          if (outcome.failure._tag === 'ExecutorPreflightError') {
+            expect(outcome.failure.context.check).toBe('plan.tags-unique')
           }
         }
 
@@ -146,7 +145,7 @@ describe('Workflow integration', () => {
     ),
   )
 
-  test.scopedLive(
+  test.live(
     'maps publish failures to WorkflowPublishError and restores manifest after retries',
     () =>
       quiet(
@@ -169,15 +168,15 @@ describe('Workflow integration', () => {
 
           const outcome = yield* executeWorkflow(plan, { dryRun: false }).pipe(
             Effect.provide(harness.workflowLayer),
-            Effect.either,
+            Effect.result,
           )
 
-          expect(outcome._tag).toBe('Left')
-          if (outcome._tag === 'Left') {
-            expect(outcome.left._tag).toBe('ExecutorPublishError')
-            if (outcome.left._tag === 'ExecutorPublishError') {
-              expect(outcome.left.context.packageName).toBe('@kitz/core')
-              expect(outcome.left.context.detail).toContain('mock publish failure')
+          expect(outcome._tag).toBe('Failure')
+          if (outcome._tag === 'Failure') {
+            expect(outcome.failure._tag).toBe('ExecutorPublishError')
+            if (outcome.failure._tag === 'ExecutorPublishError') {
+              expect(outcome.failure.context.packageName).toBe('@kitz/core')
+              expect(outcome.failure.context.detail).toContain('mock publish failure')
             }
           }
 
@@ -201,76 +200,72 @@ describe('Workflow integration', () => {
       ),
   )
 
-  test.scopedLive(
-    'surfaces cleanup guidance when pack hooks exist and artifact preparation fails',
-    () =>
-      quiet(
-        Effect.gen(function* () {
-          const harness = yield* makeHarness({
-            git: {
-              tags: [tagCore('1.0.0')],
-              commits: [Git.Memory.commit('feat(core): new API')],
-              isClean: true,
-            },
-            diskLayout: {
-              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
-                imports: {
-                  '#core': './src/_.ts',
-                },
-                exports: {
-                  '.': './src/_.ts',
-                },
-                scripts: {
-                  prepack: 'echo preparing',
-                },
-              }),
-            },
-            failPackPackages: ['@kitz/core'],
-          })
+  test.live('surfaces cleanup guidance when pack hooks exist and artifact preparation fails', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
+              imports: {
+                '#core': './src/_.ts',
+              },
+              exports: {
+                '.': './src/_.ts',
+              },
+              scripts: {
+                prepack: 'echo preparing',
+              },
+            }),
+          },
+          failPackPackages: ['@kitz/core'],
+        })
 
-          const plan = yield* planOfficial(workspacePackages).pipe(
-            Effect.provide(harness.planLayer),
-          )
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
 
-          const outcome = yield* executeWorkflow(plan, { dryRun: false }).pipe(
-            Effect.provide(harness.workflowLayer),
-            Effect.either,
-          )
+        const outcome = yield* executeWorkflow(plan, { dryRun: false }).pipe(
+          Effect.provide(harness.workflowLayer),
+          Effect.result,
+        )
 
-          expect(outcome._tag).toBe('Left')
-          if (outcome._tag === 'Left') {
-            expect(outcome.left._tag).toBe('ExecutorPublishError')
-            if (outcome.left._tag === 'ExecutorPublishError') {
-              expect(outcome.left.context.detail).toContain('mock pack failure')
-              expect(outcome.left.context.detail).toContain('Manifest cleanup restored version')
-              expect(outcome.left.context.detail).toContain('Pack hooks detected (prepack)')
-              expect(outcome.left.context.detail).toContain(
-                'plan.packages-runtime-targets-source-oriented',
-              )
-            }
+        expect(outcome._tag).toBe('Failure')
+        if (outcome._tag === 'Failure') {
+          expect(outcome.failure._tag).toBe('ExecutorPublishError')
+          if (outcome.failure._tag === 'ExecutorPublishError') {
+            expect(outcome.failure.context.detail).toContain('mock pack failure')
+            expect(outcome.failure.context.detail).toContain('Manifest cleanup restored version')
+            expect(outcome.failure.context.detail).toContain('Pack hooks detected (prepack)')
+            expect(outcome.failure.context.detail).toContain(
+              'plan.packages-runtime-targets-source-oriented',
+            )
           }
+        }
 
-          const manifestRaw = yield* Fs.readString(coreManifestPath).pipe(
-            Effect.provide(harness.workflowLayer),
-          )
-          const manifest = decodeJsonRecordSync(manifestRaw)
-          expect(
-            Semver.equivalence(
-              decodeSemverFromManifest(manifest[`version`]),
-              Semver.fromString('1.0.0'),
-            ),
-          ).toBe(true)
-          expect(manifest['imports']).toEqual({
-            '#core': './src/_.ts',
-          })
-          expect(manifest['exports']).toEqual({
-            '.': './src/_.ts',
-          })
-        }),
-      ),
+        const manifestRaw = yield* Fs.readString(coreManifestPath).pipe(
+          Effect.provide(harness.workflowLayer),
+        )
+        const manifest = decodeJsonRecordSync(manifestRaw)
+        expect(
+          Semver.equivalence(
+            decodeSemverFromManifest(manifest[`version`]),
+            Semver.fromString('1.0.0'),
+          ),
+        ).toBe(true)
+        expect(manifest['imports']).toEqual({
+          '#core': './src/_.ts',
+        })
+        expect(manifest['exports']).toEqual({
+          '.': './src/_.ts',
+        })
+      }),
+    ),
   )
 
-  test.scopedLive('updates existing GitHub candidate release when tag option is next', () =>
+  test.live('updates existing GitHub candidate release when tag option is next', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -318,7 +313,7 @@ describe('Workflow integration', () => {
     ),
   )
 
-  test.scopedLive('creates PR releases as GitHub prereleases without --tag next', () =>
+  test.live('creates PR releases as GitHub prereleases without --tag next', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -351,7 +346,7 @@ describe('Workflow integration', () => {
     ),
   )
 
-  test.scopedLive('observable workflow exposes graph in dry-run mode', () =>
+  test.live('observable workflow exposes graph in dry-run mode', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({

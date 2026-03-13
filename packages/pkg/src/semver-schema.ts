@@ -1,5 +1,5 @@
 import { Semver } from '@kitz/semver'
-import { Effect, ParseResult, Schema as S } from 'effect'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 
 export type SemverValue =
   | {
@@ -22,21 +22,20 @@ export type SemverValue =
 
 const isSemver = (input: unknown): input is SemverValue => Semver.is(input)
 
-export const SemverSelf: S.Schema<SemverValue> = S.declare<SemverValue>(isSemver, {
+export const SemverSelf = S.declare<SemverValue>(isSemver, {
   identifier: 'PkgSemverSelf',
   title: 'Semver',
 })
 
-export const SemverFromString: S.Schema<SemverValue, string> = S.transformOrFail(
-  S.String,
-  SemverSelf,
-  {
-    strict: true,
-    decode: (value, _, ast) =>
+export const SemverFromString = S.String.pipe(
+  S.decodeTo(SemverSelf, {
+    decode: SchemaGetter.transformOrFail((value) =>
       Effect.try({
         try: () => Semver.fromString(value) as SemverValue,
-        catch: () => new ParseResult.Type(ast, value, 'Invalid semver format'),
+        catch: () =>
+          new SchemaIssue.InvalidValue(Option.some(value), { message: 'Invalid semver format' }),
       }),
-    encode: (value) => ParseResult.succeed(Semver.toString(value as never)),
-  },
+    ),
+    encode: SchemaGetter.transform((value) => Semver.toString(value as never)),
+  }),
 )

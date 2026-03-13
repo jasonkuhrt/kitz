@@ -5,15 +5,15 @@
  * Provides both synchronous and observable execution modes.
  */
 
-import { CommandExecutor, FileSystem } from '@effect/platform'
+import { ChildProcessSpawner } from 'effect/unstable/process'
+import { FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Flo } from '@kitz/flo'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
-import type * as ConfigError from 'effect/ConfigError'
-import { Effect, HashMap, Match, Option, Schema, Stream } from 'effect'
+import { Config, Effect, HashMap, Match, Option, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
 import type { Publishing } from '../publishing.js'
 import { ExecutorPreflightError, type ExecutorError } from './errors.js'
@@ -59,13 +59,13 @@ export interface ObservableResult<R = never> {
 }
 
 export type ObservableExecutionRequirements =
-  | CommandExecutor.CommandExecutor
+  | ChildProcessSpawner.ChildProcessSpawner
   | Env.Env
   | FileSystem.FileSystem
   | Git.Git
   | NpmRegistry.NpmCli
 
-export type ObservableExecutionError = ConfigError.ConfigError | ExecutorError
+export type ObservableExecutionError = Config.ConfigError | ExecutorError
 
 export interface LifecycleEventLine {
   readonly level: 'info' | 'error'
@@ -189,7 +189,9 @@ export const toPayload = (
             currentVersion: item.currentVersion.pipe(Option.map((v) => v.toString())),
             nextVersion: item.nextVersion.toString(),
             bump: item.bumpType,
-            commits: item.commits.map((c) => {
+            commits: (
+              item.commits as unknown as import('../analyzer/models/commit.js').ReleaseCommit[]
+            ).map((c) => {
               const info = c.forScope(item.package.scope)
               return {
                 type: info.type,

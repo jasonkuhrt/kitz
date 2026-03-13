@@ -1,19 +1,16 @@
-import { ParseResult, Schema as S } from 'effect'
-import type { RefineSchemaId, TypeId } from 'effect/Schema'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { analyze, backPrefix, herePrefix, separator } from '../../path-analyzer/codec-string/__.js'
 import { FileName } from '../types/fileName.js'
 import { Segments } from '../types/segments.js'
 
-type _ = RefineSchemaId
-
 /**
- * Property signature for back field with default 0.
+ * Back field with default 0.
  * Represents the count of unresolved parent directory traversals (..).
+ * Required in the Type, optional in the constructor (defaults to 0).
  */
 const Back = S.Int.pipe(
-  S.nonNegative(),
-  S.propertySignature,
-  S.withConstructorDefault(() => 0),
+  S.check(S.isGreaterThanOrEqualTo(0)),
+  S.withConstructorDefault(() => Option.some(0)),
 )
 
 /**
@@ -61,65 +58,60 @@ export const name = (instance: RelFileClass): string =>
  * })
  * ```
  */
-export const Schema: S.Schema<RelFileClass, string> = S.transformOrFail(S.String, RelFileClass, {
-  strict: true,
-  encode: (decoded) => {
-    // Build the path string from back count and segments
-    const backPrefixStr = backPrefix.repeat(decoded.back)
-    const pathString = decoded.segments.join(separator)
-    const fileString = decoded.fileName.extension
-      ? `${decoded.fileName.stem}${decoded.fileName.extension}`
-      : decoded.fileName.stem
+export const Schema: S.Codec<RelFileClass, string> = S.String.pipe(
+  S.decodeTo(RelFileClass, {
+    encode: SchemaGetter.transform((decoded) => {
+      // Build the path string from back count and segments
+      const backPrefixStr = backPrefix.repeat(decoded.back)
+      const pathString = decoded.segments.join(separator)
+      const fileString = decoded.fileName.extension
+        ? `${decoded.fileName.stem}${decoded.fileName.extension}`
+        : decoded.fileName.stem
 
-    // Determine the prefix: use back traversal or current directory marker
-    if (decoded.back > 0) {
-      // Back traversal: "../" repeated, then segments, then file
-      // e.g., back=2, segments=['lib'], file='utils.ts' -> '../../lib/utils.ts'
-      // e.g., back=1, segments=[], file='file.ts' -> '../file.ts'
-      return ParseResult.succeed(
-        pathString.length > 0
+      // Determine the prefix: use back traversal or current directory marker
+      if (decoded.back > 0) {
+        return pathString.length > 0
           ? `${backPrefixStr}${pathString}${separator}${fileString}`
-          : `${backPrefixStr}${fileString}`,
-      )
-    }
-    // Forward path: "./" prefix, then segments, then file
-    // e.g., back=0, segments=['src'], file='index.ts' -> './src/index.ts'
-    // e.g., back=0, segments=[], file='file.ts' -> './file.ts'
-    return ParseResult.succeed(
-      pathString.length > 0
+          : `${backPrefixStr}${fileString}`
+      }
+      return pathString.length > 0
         ? `${herePrefix}${pathString}${separator}${fileString}`
-        : `${herePrefix}${fileString}`,
-    )
-  },
-  decode: (input, options, ast) => {
-    // Analyze the input string with file hint for ambiguous dotfiles
-    const analysis = analyze(input, { hint: 'file' })
+        : `${herePrefix}${fileString}`
+    }),
+    decode: SchemaGetter.transformOrFail((input) => {
+      // Analyze the input string with file hint for ambiguous dotfiles
+      const analysis = analyze(input, { hint: 'file' })
 
-    // Validate it's a relative file
-    if (analysis._tag !== 'file') {
-      return ParseResult.fail(
-        new ParseResult.Type(ast, input, 'Expected a file path, got a directory path'),
-      )
-    }
-    if (analysis.isPathAbsolute) {
-      return ParseResult.fail(
-        new ParseResult.Type(ast, input, 'Relative paths must not start with /'),
-      )
-    }
+      // Validate it's a relative file
+      if (analysis._tag !== 'file') {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(input), {
+            message: 'Expected a file path, got a directory path',
+          }),
+        )
+      }
+      if (analysis.isPathAbsolute) {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(input), {
+            message: 'Relative paths must not start with /',
+          }),
+        )
+      }
 
-    // Valid - return as RelFile
-    return ParseResult.succeed(
-      RelFileClass.make({
-        back: analysis.back,
-        segments: analysis.path,
-        fileName: FileName.make({
-          stem: analysis.file.stem,
-          extension: analysis.file.extension,
+      // Valid - return as RelFile
+      return Effect.succeed(
+        new RelFileClass({
+          back: analysis.back,
+          segments: analysis.path,
+          fileName: new FileName({
+            stem: analysis.file.stem,
+            extension: analysis.file.extension,
+          }),
         }),
-      }),
-    )
-  },
-})
+      )
+    }),
+  }),
+)
 
 /**
  * Type guard to check if a value is a RelFile instance.
@@ -130,7 +122,7 @@ export const is = S.is(Schema)
  * Direct constructor for RelFile from structured data.
  * Bypasses string parsing for efficient internal operations.
  */
-export const make = RelFileClass.make.bind(RelFileClass)
+export const make = (args: ConstructorParameters<typeof RelFileClass>[0]) => new RelFileClass(args)
 
 /**
  * Decode from string to RelFile instance.

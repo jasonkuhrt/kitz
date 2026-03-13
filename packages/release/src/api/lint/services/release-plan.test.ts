@@ -7,7 +7,11 @@ import { make, ReleasePlanService } from './release-plan.js'
 
 describe('ReleasePlan service', () => {
   test('make with empty releases', async () => {
-    const result = await Effect.runPromise(ReleasePlanService.pipe(Effect.provide(make([]))))
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        return yield* ReleasePlanService
+      }).pipe(Effect.provide(make([]))),
+    )
     expect(result.releases).toHaveLength(0)
   })
 
@@ -24,7 +28,11 @@ describe('ReleasePlan service', () => {
         version: Semver.fromString('2.0.0'),
       },
     ]
-    const result = await Effect.runPromise(ReleasePlanService.pipe(Effect.provide(make(releases))))
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        return yield* ReleasePlanService
+      }).pipe(Effect.provide(make(releases))),
+    )
     expect(result.releases).toHaveLength(2)
     expect(result.releases[0]!.packageName.moniker).toBe('@kitz/core')
     expect(result.releases[0]!.packagePath.toString()).toContain('/repo/packages/core/')

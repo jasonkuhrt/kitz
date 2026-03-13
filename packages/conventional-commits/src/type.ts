@@ -13,7 +13,7 @@ export { Standard, StandardImpact, StandardValue } from './type-standard.js'
 /**
  * Commit type: either a standard type or a custom extension.
  */
-export const Type = Schema.Union(Standard, Custom)
+export const Type = Schema.Union([Standard, Custom])
 export type Type = typeof Type.Type
 
 // ─── Parse ──────────────────────────────────────────────────────
@@ -34,9 +34,9 @@ type Parse<$value extends string> = $value extends StandardValue
  */
 export const parse = <$value extends string>(value: $value): Parse<$value> => {
   if (value in StandardValue.enums) {
-    return Standard.make({ value: value as StandardValue }) as Parse<$value>
+    return new Standard({ value: value as StandardValue }) as Parse<$value>
   }
-  return Custom.make({ value }) as Parse<$value>
+  return new Custom({ value }) as Parse<$value>
 }
 
 // ─── Accessors ──────────────────────────────────────────────────

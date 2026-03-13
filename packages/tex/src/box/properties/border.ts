@@ -1,11 +1,11 @@
-import { ParseResult, Schema as S } from 'effect'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 
 /**
  * Border style presets.
  *
  * @category Text Formatting
  */
-export const BorderStyleSchema = S.Literal('single', 'double', 'rounded', 'bold', 'ascii')
+export const BorderStyleSchema = S.Literals(['single', 'double', 'rounded', 'bold', 'ascii'])
 
 /**
  * Border style preset type.
@@ -182,7 +182,7 @@ export const cornerStyles = {
   rounded: { topLeft: '╭', topRight: '╮', bottomRight: '╯', bottomLeft: '╰' },
   bold: { topLeft: '┏', topRight: '┓', bottomRight: '┛', bottomLeft: '┗' },
   ascii: { topLeft: '+', topRight: '+', bottomRight: '+', bottomLeft: '+' },
-} satisfies Record<BorderStyle, S.SimplifyMutable<BorderCorners>>
+} satisfies Record<BorderStyle, BorderCorners>
 
 /**
  * Input schema for corner shorthand.
@@ -193,16 +193,14 @@ export const cornerStyles = {
  * - Clockwise tuple: `['┌', '┐', '┘', '└']`
  * - Full object: `{ topLeft: '┌', topRight: '┐', bottomRight: '┘', bottomLeft: '└' }`
  */
-const CornerInputSchema = S.Union(
+const CornerInputSchema = S.Union([
   BorderStyleSchema,
   S.String,
-  S.Tuple(S.String, S.String, S.String, S.String),
+  S.Tuple([S.String, S.String, S.String, S.String]),
   BorderCorners,
-)
+])
 
-const parseCornerInput = (
-  input: typeof CornerInputSchema.Type,
-): S.SimplifyMutable<BorderCorners> => {
+const parseCornerInput = (input: typeof CornerInputSchema.Type): BorderCorners => {
   if (typeof input === 'string') {
     if (input in cornerStyles) return cornerStyles[input as BorderStyle]
     return { topLeft: input, topRight: input, bottomRight: input, bottomLeft: input }
@@ -226,9 +224,13 @@ const parseCornerInput = (
  *
  * Accepts shorthand inputs and normalizes to { topLeft?, topRight?, bottomRight?, bottomLeft? }.
  */
-export const fromCornerInput = S.transformOrFail(CornerInputSchema, BorderCorners, {
-  strict: false,
-  decode: (input) => ParseResult.succeed(parseCornerInput(input)),
-  encode: (value, _, ast) =>
-    ParseResult.fail(new ParseResult.Forbidden(ast, value, 'One-way transformation')),
-})
+export const fromCornerInput = CornerInputSchema.pipe(
+  S.decodeTo(BorderCorners, {
+    decode: SchemaGetter.transform((input) => parseCornerInput(input)),
+    encode: SchemaGetter.transformOrFail((value) =>
+      Effect.fail(
+        new SchemaIssue.Forbidden(Option.some(value), { message: 'One-way transformation' }),
+      ),
+    ),
+  }),
+)

@@ -1,6 +1,6 @@
 import type { Fn } from '@kitz/core'
 import { Optic } from '@kitz/core'
-import type { Either } from 'effect'
+import type { Result } from 'effect'
 import type { AssertSubKind } from '../../../asserts.js'
 import { builder } from '../../../builder-singleton.js'
 
@@ -29,8 +29,8 @@ import { builder } from '../../../builder-singleton.js'
  */
 // oxfmt-ignore
 type of_<$Expected, $Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [$Expected, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [$Expected, __actual__, true]>
                                                                          : never
 const of_: typeof builder.awaited.not.sub.of = builder.awaited.not.sub.of
 
@@ -49,8 +49,8 @@ const of_: typeof builder.awaited.not.sub.of = builder.awaited.not.sub.of
  */
 // oxfmt-ignore
 type string_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [string, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [string, __actual__, true]>
                                                                          : never
 const string_: typeof builder.awaited.not.sub.string = builder.awaited.not.sub.string
 
@@ -69,8 +69,8 @@ const string_: typeof builder.awaited.not.sub.string = builder.awaited.not.sub.s
  */
 // oxfmt-ignore
 type number_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [number, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [number, __actual__, true]>
                                                                          : never
 const number_: typeof builder.awaited.not.sub.number = builder.awaited.not.sub.number
 
@@ -89,8 +89,8 @@ const number_: typeof builder.awaited.not.sub.number = builder.awaited.not.sub.n
  */
 // oxfmt-ignore
 type bigint_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [bigint, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [bigint, __actual__, true]>
                                                                          : never
 const bigint_: typeof builder.awaited.not.sub.bigint = builder.awaited.not.sub.bigint
 
@@ -109,8 +109,8 @@ const bigint_: typeof builder.awaited.not.sub.bigint = builder.awaited.not.sub.b
  */
 // oxfmt-ignore
 type boolean_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [boolean, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [boolean, __actual__, true]>
                                                                          : never
 const boolean_: typeof builder.awaited.not.sub.boolean = builder.awaited.not.sub.boolean
 
@@ -129,8 +129,8 @@ const boolean_: typeof builder.awaited.not.sub.boolean = builder.awaited.not.sub
  */
 // oxfmt-ignore
 type true_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [true, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [true, __actual__, true]>
                                                                          : never
 const true_: typeof builder.awaited.not.sub.true = builder.awaited.not.sub.true
 
@@ -149,8 +149,8 @@ const true_: typeof builder.awaited.not.sub.true = builder.awaited.not.sub.true
  */
 // oxfmt-ignore
 type false_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [false, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [false, __actual__, true]>
                                                                          : never
 const false_: typeof builder.awaited.not.sub.false = builder.awaited.not.sub.false
 
@@ -169,8 +169,8 @@ const false_: typeof builder.awaited.not.sub.false = builder.awaited.not.sub.fal
  */
 // oxfmt-ignore
 type undefined_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [undefined, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [undefined, __actual__, true]>
                                                                          : never
 const undefined_: typeof builder.awaited.not.sub.undefined = builder.awaited.not.sub.undefined
 
@@ -189,8 +189,8 @@ const undefined_: typeof builder.awaited.not.sub.undefined = builder.awaited.not
  */
 // oxfmt-ignore
 type null_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [null, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [null, __actual__, true]>
                                                                          : never
 const null_: typeof builder.awaited.not.sub.null = builder.awaited.not.sub.null
 
@@ -209,8 +209,8 @@ const null_: typeof builder.awaited.not.sub.null = builder.awaited.not.sub.null
  */
 // oxfmt-ignore
 type symbol_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [symbol, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [symbol, __actual__, true]>
                                                                          : never
 const symbol_: typeof builder.awaited.not.sub.symbol = builder.awaited.not.sub.symbol
 
@@ -229,8 +229,8 @@ const symbol_: typeof builder.awaited.not.sub.symbol = builder.awaited.not.sub.s
  */
 // oxfmt-ignore
 type Date_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [Date, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [Date, __actual__, true]>
                                                                          : never
 const Date_: typeof builder.awaited.not.sub.Date = builder.awaited.not.sub.Date
 
@@ -249,8 +249,8 @@ const Date_: typeof builder.awaited.not.sub.Date = builder.awaited.not.sub.Date
  */
 // oxfmt-ignore
 type RegExp_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [RegExp, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [RegExp, __actual__, true]>
                                                                          : never
 const RegExp_: typeof builder.awaited.not.sub.RegExp = builder.awaited.not.sub.RegExp
 
@@ -269,8 +269,8 @@ const RegExp_: typeof builder.awaited.not.sub.RegExp = builder.awaited.not.sub.R
  */
 // oxfmt-ignore
 type Error_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [Error, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [Error, __actual__, true]>
                                                                          : never
 const Error_: typeof builder.awaited.not.sub.Error = builder.awaited.not.sub.Error
 
@@ -289,8 +289,8 @@ const Error_: typeof builder.awaited.not.sub.Error = builder.awaited.not.sub.Err
  */
 // oxfmt-ignore
 type unknown_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [unknown, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [unknown, __actual__, true]>
                                                                          : never
 const unknown_: typeof builder.awaited.not.sub.unknown = builder.awaited.not.sub.unknown
 
@@ -309,8 +309,8 @@ const unknown_: typeof builder.awaited.not.sub.unknown = builder.awaited.not.sub
  */
 // oxfmt-ignore
 type any_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [any, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [any, __actual__, true]>
                                                                          : never
 const any_: typeof builder.awaited.not.sub.any = builder.awaited.not.sub.any
 
@@ -329,8 +329,8 @@ const any_: typeof builder.awaited.not.sub.any = builder.awaited.not.sub.any
  */
 // oxfmt-ignore
 type never_<$Actual, __$ActualExtracted = Optic.Awaited.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [never, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertSubKind, [never, __actual__, true]>
                                                                          : never
 const never_: typeof builder.awaited.not.sub.never = builder.awaited.not.sub.never
 

@@ -21,15 +21,15 @@ const OptionsSchema = Schema.Struct({
 type Options = typeof OptionsSchema.Type
 
 export const rule = RuntimeRule.create({
-  id: RuleId.make('pr.projected-squash-commit-sync'),
+  id: RuleId.makeUnsafe('pr.projected-squash-commit-sync'),
   description: 'PR title header matches the canonical squash-merge header',
   preventsDescriptions: [
     'GitHub using a squash-merge title whose conventional-commit header drifts from the canonical release header.',
   ],
-  preconditions: [Precondition.HasOpenPR.make()],
-  defaults: RuleDefaults.make({
+  preconditions: [new Precondition.HasOpenPR()],
+  defaults: new RuleDefaults({
     enabled: 'auto',
-    severity: Severity.Warn.make(),
+    severity: new Severity.Warn(),
   }),
   optionsSchema: OptionsSchema,
   check: Effect.gen(function* () {
@@ -40,28 +40,28 @@ export const rule = RuntimeRule.create({
     const actualHeader = ConventionalCommits.Commit.renderHeader(getParsedCommit(pr)!)
 
     if (actualHeader !== options.projectedHeader) {
-      return Violation.make({
-        location: PrTitle.make({ title: pr.title }),
+      return new Violation({
+        location: new PrTitle({ title: pr.title }),
         summary: 'PR title header is out of sync with the projected squash-merge header.',
         detail: `Expected header \`${options.projectedHeader}\`, but PR title header is \`${actualHeader}\`.`,
-        fix: CommandFix.make({
+        fix: new CommandFix({
           summary: 'Apply the canonical release header to the connected PR title.',
           command: 'release pr title apply',
           docs: [
-            DocLink.make({
+            new DocLink({
               label: 'GitHub squash merge defaults',
               url: 'https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/configuring-commit-squashing-for-pull-requests',
             }),
           ],
         }),
         hints: [
-          Hint.make({
+          new Hint({
             description:
               'Rename the PR title header so GitHub’s default squash-merge title starts with the computed release header.',
           }),
         ],
         docs: [
-          DocLink.make({
+          new DocLink({
             label: 'GitHub squash merge defaults',
             url: 'https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/configuring-pull-request-merges/configuring-commit-squashing-for-pull-requests',
           }),

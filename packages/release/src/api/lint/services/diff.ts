@@ -1,4 +1,4 @@
-import { Context, Layer } from 'effect'
+import { Layer, ServiceMap } from 'effect'
 
 /** Changed file info. */
 export interface ChangedFile {
@@ -17,7 +17,7 @@ export interface Diff {
 }
 
 /** Service providing diff context. */
-export class DiffService extends Context.Tag('DiffService')<DiffService, Diff>() {}
+export class DiffService extends ServiceMap.Service<DiffService, Diff>()('DiffService') {}
 
 /** Safe default diff context for runs where diff-dependent rules are skipped. */
 export const DefaultDiffLayer = Layer.succeed(DiffService, {

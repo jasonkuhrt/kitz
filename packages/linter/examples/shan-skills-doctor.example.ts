@@ -2,7 +2,7 @@ import { Effect, Schema } from 'effect'
 import { Finding, Linter } from '@kitz/linter'
 
 const DoctorInput = Schema.Struct({
-  scope: Schema.Literal('project', 'user'),
+  scope: Schema.Literals(['project', 'user']),
 })
 
 const SkillState = Schema.Struct({

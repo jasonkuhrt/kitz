@@ -1,4 +1,5 @@
-import { CommandExecutor, FileSystem } from '@effect/platform'
+import { ChildProcessSpawner } from 'effect/unstable/process'
+import { FileSystem } from 'effect'
 import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
@@ -81,7 +82,7 @@ export const run = (
 ): Effect.Effect<
   PreflightResult,
   PreflightError,
-  Env.Env | Git.Git | CommandExecutor.CommandExecutor | FileSystem.FileSystem
+  Env.Env | Git.Git | ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
     yield* Effect.log('Running preflight checks...')
@@ -106,26 +107,26 @@ export const run = (
       onlyRules: ['env.*', 'plan.*'],
       skipRules: skipRules.length > 0 ? skipRules : undefined,
       rules: {
-        'env.npm-authenticated': Lint.RuleConfig.make({
-          overrides: Lint.RuleDefaults.make({ enabled: true }),
+        'env.npm-authenticated': new Lint.RuleConfig({
+          overrides: new Lint.RuleDefaults({ enabled: true }),
           options: {
             ...(options?.registry && { registry: options.registry }),
           },
         }),
-        'env.git-clean': Lint.RuleConfig.make({
-          overrides: Lint.RuleDefaults.make({ enabled: true }),
+        'env.git-clean': new Lint.RuleConfig({
+          overrides: new Lint.RuleDefaults({ enabled: true }),
           options: {},
         }),
-        'env.git-remote': Lint.RuleConfig.make({
-          overrides: Lint.RuleDefaults.make({ enabled: true }),
+        'env.git-remote': new Lint.RuleConfig({
+          overrides: new Lint.RuleDefaults({ enabled: true }),
           options: { remote: options?.remote ?? 'origin' },
         }),
-        'plan.tags-unique': Lint.RuleConfig.make({
-          overrides: Lint.RuleDefaults.make({ enabled: true }),
+        'plan.tags-unique': new Lint.RuleConfig({
+          overrides: new Lint.RuleDefaults({ enabled: true }),
           options: {},
         }),
-        'plan.versions-unpublished': Lint.RuleConfig.make({
-          overrides: Lint.RuleDefaults.make({ enabled: true }),
+        'plan.versions-unpublished': new Lint.RuleConfig({
+          overrides: new Lint.RuleDefaults({ enabled: true }),
           options: {},
         }),
       },
@@ -138,7 +139,7 @@ export const run = (
       version: r.nextVersion,
     }))
     const currentBranch = yield* git.getCurrentBranch().pipe(
-      Effect.catchAll((error) =>
+      Effect.catch((error: any) =>
         Effect.fail(
           new PreflightError({
             context: {
@@ -172,7 +173,7 @@ export const run = (
           releaseContextLayer,
         ),
       ),
-      Effect.catchAll((error) =>
+      Effect.catch((error: any) =>
         Effect.fail(
           new PreflightError({
             context: {

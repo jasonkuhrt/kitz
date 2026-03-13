@@ -1,5 +1,5 @@
 import { Str, Ts } from '@kitz/core'
-import { ParseResult, Schema as S } from 'effect'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 
 /**
  * Error for CLI parameter parsing failures.
@@ -216,84 +216,87 @@ export class Param extends S.Class<Param>('Param')({
    * })
    * ```
    */
-  static String = S.transformOrFail(S.String, Param, {
-    strict: true,
-    decode: (input, options, ast) => {
-      // Validate input BEFORE analyzer (to catch prefix-based errors)
-      const trimmed = input.trim()
+  static String = S.String.pipe(
+    S.decodeTo(Param, {
+      decode: SchemaGetter.transformOrFail((input) => {
+        // Validate input BEFORE analyzer (to catch prefix-based errors)
+        const trimmed = input.trim()
 
-      // Validate: Empty check
-      if (!trimmed) {
-        return ParseResult.fail(
-          new ParseResult.Type(ast, input, 'You must specify at least one name for your flag.'),
+        // Validate: Empty check
+        if (!trimmed) {
+          return Effect.fail(
+            new SchemaIssue.InvalidValue(Option.some(input), {
+              message: 'You must specify at least one name for your flag.',
+            }),
+          )
+        }
+
+        // Validate: Check each flag in the expression
+        const flags = trimmed.split(/\s+/)
+        for (const flag of flags) {
+          // Short flag with too many characters: -vv
+          if (flag.startsWith('-') && !flag.startsWith('--')) {
+            const name = flag.slice(1)
+            if (name.length !== 1) {
+              return Effect.fail(
+                new SchemaIssue.InvalidValue(Option.some(input), {
+                  message: `Short flag must be exactly one character: '${flag}'`,
+                }),
+              )
+            }
+          }
+          // Long flag with too few characters: --v
+          if (flag.startsWith('--')) {
+            const name = flag.slice(2)
+            if (name.length < 2) {
+              return Effect.fail(
+                new SchemaIssue.InvalidValue(Option.some(input), {
+                  message: `Long flag must be two or more characters: '${flag}'`,
+                }),
+              )
+            }
+          }
+        }
+
+        // Use runtime analyzer to parse the parameter expression
+        const analysis = analyze(input)
+
+        // Validate: No duplicates (check after camelCase normalization)
+        const allNames = [
+          analysis.short,
+          analysis.long,
+          ...analysis.aliases.short,
+          ...analysis.aliases.long,
+        ].filter((name): name is string => name !== null)
+        const seen = new Set<string>()
+        for (const name of allNames) {
+          if (seen.has(name)) {
+            return Effect.fail(
+              new SchemaIssue.InvalidValue(Option.some(input), {
+                message: `Duplicate alias: "${name}"`,
+              }),
+            )
+          }
+          seen.add(name)
+        }
+
+        // Create Param instance from analysis
+        return Effect.succeed(
+          new Param({
+            canonical: analysis.canonical,
+            short: analysis.short,
+            long: analysis.long,
+            aliases: analysis.aliases,
+            expression: analysis.expression,
+          }),
         )
-      }
-
-      // Validate: Check each flag in the expression
-      const flags = trimmed.split(/\s+/)
-      for (const flag of flags) {
-        // Short flag with too many characters: -vv
-        if (flag.startsWith('-') && !flag.startsWith('--')) {
-          const name = flag.slice(1)
-          if (name.length !== 1) {
-            return ParseResult.fail(
-              new ParseResult.Type(
-                ast,
-                input,
-                `Short flag must be exactly one character: '${flag}'`,
-              ),
-            )
-          }
-        }
-        // Long flag with too few characters: --v
-        if (flag.startsWith('--')) {
-          const name = flag.slice(2)
-          if (name.length < 2) {
-            return ParseResult.fail(
-              new ParseResult.Type(
-                ast,
-                input,
-                `Long flag must be two or more characters: '${flag}'`,
-              ),
-            )
-          }
-        }
-      }
-
-      // Use runtime analyzer to parse the parameter expression
-      const analysis = analyze(input)
-
-      // Validate: No duplicates (check after camelCase normalization)
-      const allNames = [
-        analysis.short,
-        analysis.long,
-        ...analysis.aliases.short,
-        ...analysis.aliases.long,
-      ].filter((name): name is string => name !== null)
-      const seen = new Set<string>()
-      for (const name of allNames) {
-        if (seen.has(name)) {
-          return ParseResult.fail(new ParseResult.Type(ast, input, `Duplicate alias: "${name}"`))
-        }
-        seen.add(name)
-      }
-
-      // Create Param instance from analysis
-      return ParseResult.succeed(
-        new Param({
-          canonical: analysis.canonical,
-          short: analysis.short,
-          long: analysis.long,
-          aliases: analysis.aliases,
-          expression: analysis.expression,
-        }),
-      )
-    },
-    encode: (decoded) => {
-      // Encode back to original expression string
-      return ParseResult.succeed(decoded.expression)
-    },
-  })
+      }),
+      encode: SchemaGetter.transform((decoded) => {
+        // Encode back to original expression string
+        return decoded.expression
+      }),
+    }),
+  )
 
   /**
    * Create a typed Param from a literal string with compile-time validation.

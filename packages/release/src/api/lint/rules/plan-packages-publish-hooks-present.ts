@@ -35,13 +35,13 @@ const findPublishHooks = (manifests: readonly PlannedManifest[]): readonly Offen
 
 /** Warns when planned packages define opaque npm publish hooks. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('plan.packages-publish-hooks-present'),
+  id: RuleId.makeUnsafe('plan.packages-publish-hooks-present'),
   description: 'planned packages do not define opaque npm pack hooks',
   preventsDescriptions: [
     'surprising artifact-preparation side effects that release cannot semantically inspect',
   ],
-  defaults: RuleDefaults.make({ severity: Severity.Warn.make() }),
-  preconditions: [Precondition.HasReleasePlan.make()],
+  defaults: new RuleDefaults({ severity: new Severity.Warn() }),
+  preconditions: [new Precondition.HasReleasePlan()],
   check: loadPlannedManifests.pipe(
     Effect.map((manifests) => {
       const offenders = findPublishHooks(manifests)
@@ -52,11 +52,11 @@ export const rule = RuntimeRule.create({
       const names = offenders.map((entry) => entry.packageName)
       const example = offenders[0]!
 
-      return Violation.make({
+      return new Violation({
         location:
           offenders.length === 1
-            ? File.make({ path: example.packageJsonPath })
-            : Environment.make({
+            ? new File({ path: example.packageJsonPath })
+            : new Environment({
                 message:
                   `${String(offenders.length)} planned packages define pack hooks. ` +
                   `Example hooks: ${example.hooks.join(', ')}.`,
@@ -68,11 +68,11 @@ export const rule = RuntimeRule.create({
           'Release prepares tarballs before any network publish begins, so these hooks run in the artifact-preparation phase. ' +
           'That is safer than publish-time hooks, but release still cannot semantically inspect what the scripts mutate locally.',
         hints: [
-          Hint.make({
+          new Hint({
             description:
               'If artifact preparation or cleanup fails, inspect package.json files before retrying publish.',
           }),
-          Hint.make({
+          new Hint({
             description:
               'Keep pack hooks minimal and deterministic so their side effects are obvious to operators.',
           }),

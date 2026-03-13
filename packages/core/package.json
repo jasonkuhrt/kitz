@@ -122,7 +122,7 @@
     "zod": "^4.2.1"
   },
   "peerDependencies": {
-    "effect": "^3.17.0"
+    "effect": "4.0.0-beta.31"
   },
   "peerDependenciesMeta": {
     "effect": {

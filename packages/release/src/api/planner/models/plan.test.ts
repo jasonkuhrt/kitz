@@ -27,13 +27,13 @@ describe('Plan', () => {
   })
 
   test('make with releases', () => {
-    const plan = Plan.make({
+    const plan = new Plan({
       lifecycle: 'official',
       timestamp: '2026-01-01T00:00:00Z',
       releases: [
-        Official.make({
+        new Official({
           package: pkg('@kitz/core', 'core'),
-          version: OfficialFirst.make({ version: Semver.fromString('0.1.0') }),
+          version: new OfficialFirst({ version: Semver.fromString('0.1.0') }),
           commits: [commit('core')],
         }),
       ],
@@ -44,14 +44,14 @@ describe('Plan', () => {
   })
 
   test('make with cascades', () => {
-    const plan = Plan.make({
+    const plan = new Plan({
       lifecycle: 'official',
       timestamp: '2026-01-01T00:00:00Z',
       releases: [],
       cascades: [
-        Official.make({
+        new Official({
           package: pkg('@kitz/cli', 'cli'),
-          version: OfficialIncrement.make({
+          version: new OfficialIncrement({
             from: Semver.fromString('1.0.0'),
             to: Semver.fromString('1.0.1'),
             bump: 'patch',
@@ -65,7 +65,7 @@ describe('Plan', () => {
 
   test('lifecycle variants', () => {
     for (const lifecycle of ['official', 'candidate', 'ephemeral'] as const) {
-      const plan = Plan.make({
+      const plan = new Plan({
         lifecycle,
         timestamp: '2026-01-01T00:00:00Z',
         releases: [],
@@ -76,13 +76,13 @@ describe('Plan', () => {
   })
 
   test('schema roundtrip with official releases', () => {
-    const plan = Plan.make({
+    const plan = new Plan({
       lifecycle: 'official',
       timestamp: '2026-01-01T00:00:00Z',
       releases: [
-        Official.make({
+        new Official({
           package: pkg('@kitz/core', 'core'),
-          version: OfficialIncrement.make({
+          version: new OfficialIncrement({
             from: Semver.fromString('1.0.0'),
             to: Semver.fromString('1.1.0'),
             bump: 'minor',

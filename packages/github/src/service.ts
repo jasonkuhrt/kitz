@@ -1,6 +1,6 @@
 import { Err } from '@kitz/core'
 import type { Endpoints } from '@octokit/types'
-import { Context, Effect, Schema as S } from 'effect'
+import { Effect, Schema as S, ServiceMap } from 'effect'
 
 // ============================================================================
 // Types from @octokit/types
@@ -90,7 +90,7 @@ export type GithubOperation =
   | 'createIssueComment'
   | 'updateIssueComment'
 
-const GithubOperationSchema = S.Literal(
+const GithubOperationSchema = S.Literals([
   'releaseExists',
   'createRelease',
   'updateRelease',
@@ -100,7 +100,7 @@ const GithubOperationSchema = S.Literal(
   'listIssueComments',
   'createIssueComment',
   'updateIssueComment',
-)
+])
 const ErrorCause = S.instanceOf(Error)
 
 // ============================================================================
@@ -315,4 +315,4 @@ export interface GithubService {
 /**
  * GitHub service tag.
  */
-export class Github extends Context.Tag('Github')<Github, GithubService>() {}
+export class Github extends ServiceMap.Service<Github, GithubService>()('Github') {}

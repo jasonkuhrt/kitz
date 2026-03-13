@@ -1,5 +1,5 @@
 import { Arr, Str } from '@kitz/core'
-import { Schema as S } from 'effect'
+import { SchemaGetter, Schema as S } from 'effect'
 
 // ============================================
 // Process Argv
@@ -71,22 +71,24 @@ export interface Argv {
  * // { execPath: 'node', scriptPath: 'script.js', args: ['--verbose'] }
  * ```
  */
-export const ArgvSchema: S.Schema<Argv, ProcessArgv> = S.transform(
-  ProcessArgvSchema,
-  S.Struct({
-    execPath: S.String,
-    scriptPath: S.NullOr(S.String),
-    args: S.Array(S.String),
-  }),
-  {
-    strict: true,
-    decode: ([execPath, scriptPath = null, ...args]) => ({
-      execPath,
-      scriptPath,
-      args,
+export const ArgvSchema: S.Codec<Argv, ProcessArgv> = ProcessArgvSchema.pipe(
+  S.decodeTo(
+    S.Struct({
+      execPath: S.String,
+      scriptPath: S.NullOr(S.String),
+      args: S.Array(S.String),
     }),
-    encode: ({ execPath, scriptPath, args }) => createProcessArgv(execPath, scriptPath, args),
-  },
+    {
+      decode: SchemaGetter.transform(([execPath, scriptPath = null, ...args]) => ({
+        execPath,
+        scriptPath,
+        args,
+      })),
+      encode: SchemaGetter.transform(({ execPath, scriptPath, args }) =>
+        createProcessArgv(execPath, scriptPath, args),
+      ),
+    },
+  ),
 )
 
 /**
@@ -120,4 +122,4 @@ export const ArgvSchema: S.Schema<Argv, ProcessArgv> = S.transform(
  * // { execPath: 'node', scriptPath: null, args: [] }
  * ```
  */
-export const parseArgv = S.decodeUnknown(ArgvSchema)
+export const parseArgv = S.decodeUnknownEffect(ArgvSchema)

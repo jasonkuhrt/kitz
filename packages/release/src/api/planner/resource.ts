@@ -20,7 +20,7 @@ export const PLAN_FILE = Fs.Path.fromString('./.release/plan.json')
  * @example
  * ```ts
  * // Create and write a plan
- * const plan = Plan.make('official', releases, cascades)
+ * const plan = new Plan('official', releases, cascades)
  * yield* resource.write(plan, releaseDir)
  *
  * // Read a plan directly
@@ -31,4 +31,4 @@ export const PLAN_FILE = Fs.Path.fromString('./.release/plan.json')
  * }
  * ```
  */
-export const resource = Resource.createJson('plan.json', Plan, Plan.empty)
+export const resource = Resource.createJson('plan.json', Plan as any, Plan.empty)

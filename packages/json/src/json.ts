@@ -48,7 +48,7 @@ export { type Obj as Object }
  *
  * @category Schemas
  */
-export const PrimitiveSchema = S.Union(S.String, S.Number, S.Boolean, S.Null)
+export const PrimitiveSchema = S.Union([S.String, S.Number, S.Boolean, S.Null])
 
 /**
  * JSON value schema.
@@ -58,7 +58,7 @@ export const PrimitiveSchema = S.Union(S.String, S.Number, S.Boolean, S.Null)
  */
 // @ts-expect-error - Recursive type inference limitation
 export const ValueSchema: S.Schema<Value> = S.suspend(() =>
-  S.Union(PrimitiveSchema, S.Array(ValueSchema), S.Record({ key: S.String, value: ValueSchema })),
+  S.Union([PrimitiveSchema, S.Array(ValueSchema), S.Record(S.String, ValueSchema)]),
 )
 
 /**
@@ -67,7 +67,7 @@ export const ValueSchema: S.Schema<Value> = S.suspend(() =>
  *
  * @category Schemas
  */
-export const ObjectSchema = S.Record({ key: S.String, value: ValueSchema })
+export const ObjectSchema = S.Record(S.String, ValueSchema)
 
 /**
  * Primary schema for JSON string parsing/serialization.
@@ -85,7 +85,7 @@ export const ObjectSchema = S.Record({ key: S.String, value: ValueSchema })
  *
  * @category Schemas
  */
-export const Schema = S.parseJson(ValueSchema, { space: 2 }).annotations({
+export const Schema = S.fromJsonString(ValueSchema).annotate({
   identifier: 'Json',
   title: 'JSON Value',
   description: 'A valid JSON value parsed from/serialized to a string',
@@ -104,7 +104,7 @@ export const Schema = S.parseJson(ValueSchema, { space: 2 }).annotations({
  *
  * @category Type Guards
  */
-export const is = S.is(ValueSchema)
+export const is = S.is(ValueSchema as any) as (value: unknown) => value is Value
 
 /**
  * Type guard to check if a value is a JSON primitive.
@@ -118,7 +118,7 @@ export const isPrimitive = S.is(PrimitiveSchema)
  *
  * @category Type Guards
  */
-export const isObject = S.is(ObjectSchema)
+export const isObject = S.is(ObjectSchema as any) as (value: unknown) => value is Obj
 
 //
 //
@@ -134,11 +134,11 @@ export const isObject = S.is(ObjectSchema)
  *
  * @category Parsing
  */
-export const fromString = S.decodeSync(Schema)
+export const fromString = S.decodeSync(Schema as any) as (value: string) => Value
 
 /**
  * Serialize a JSON value to a pretty-printed string.
  *
  * @category Serialization
  */
-export const toString = S.encodeSync(Schema)
+export const toString = S.encodeSync(Schema as any) as (value: Value) => string

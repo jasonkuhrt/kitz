@@ -1,6 +1,6 @@
 // @ts-check
 
-import { Either, Option, pipe, Schema } from 'effect'
+import { Option, pipe, Result, Schema } from 'effect'
 // oxlint-disable-next-line kitz/no-nodejs-builtin-imports
 import fs from 'node:fs'
 // oxlint-disable-next-line kitz/no-nodejs-builtin-imports
@@ -74,7 +74,7 @@ const MESSAGE_IDS = {
 
 const MESSAGES = {
   [MESSAGE_IDS.noJsonParse]: `Use Effect Schema JSON codec/decode at IO boundaries.`,
-  [MESSAGE_IDS.noTryCatch]: `Use Effect.try, Effect.tryPromise, Either, Option, typed error channels.`,
+  [MESSAGE_IDS.noTryCatch]: `Use Effect.try, Effect.tryPromise, Result, Option, typed error channels.`,
   [MESSAGE_IDS.noNativePromiseConstruction]: `Use Effect constructors/combinators.`,
   [MESSAGE_IDS.noTypeAssertion]: `Remove assertion casts; use schema decode/typed constructors.`,
   [MESSAGE_IDS.noNativeMapSetInEffectModules]: `Prefer Effect HashMap / HashSet (mutable variants only when justified).`,
@@ -259,18 +259,18 @@ const PLATFORM_PROBE_MEMBER_PATHS = new Set([
   `globalThis.Deno`,
 ])
 
-const PackageJsonRecordSchema = Schema.Record({ key: Schema.String, value: Schema.Unknown })
+const PackageJsonRecordSchema = Schema.Record(Schema.String, Schema.Unknown)
 const PackageConditionTargetSchema = Schema.suspend(() =>
-  Schema.Union(
+  Schema.Union([
     Schema.String,
     Schema.Null,
     Schema.Array(PackageConditionTargetSchema),
-    Schema.Record({ key: Schema.String, value: PackageConditionTargetSchema }),
-  ),
+    Schema.Record(Schema.String, PackageConditionTargetSchema),
+  ]),
 )
 
 const decodePackageJsonRecord = Schema.decodeUnknownOption(
-  Schema.parseJson(PackageJsonRecordSchema),
+  Schema.fromJsonString(PackageJsonRecordSchema),
 )
 const decodePackageConditionTarget = Schema.decodeUnknownOption(PackageConditionTargetSchema)
 
@@ -280,13 +280,13 @@ const decodePackageConditionTarget = Schema.decodeUnknownOption(PackageCondition
  */
 const readPackageJsonRecord = (packageJsonPath) =>
   pipe(
-    Either.try({
+    Result.try({
       try: () => fs.readFileSync(packageJsonPath, `utf8`),
       catch: () => null,
     }),
-    Either.match({
-      onLeft: () => Option.none(),
-      onRight: decodePackageJsonRecord,
+    Result.match({
+      onFailure: () => Option.none(),
+      onSuccess: decodePackageJsonRecord,
     }),
   )
 
@@ -504,13 +504,13 @@ const readNearestRuntimeConditionPackage = (sourceFilePath) =>
     findNearestPackageJsonPath(sourceFilePath),
     Option.flatMap((packageJsonPath) =>
       pipe(
-        Either.try({
+        Result.try({
           try: () => fs.readFileSync(packageJsonPath, `utf8`),
           catch: () => null,
         }),
-        Either.match({
-          onLeft: () => Option.none(),
-          onRight: (packageJsonContent) =>
+        Result.match({
+          onFailure: () => Option.none(),
+          onSuccess: (packageJsonContent) =>
             pipe(
               decodeRuntimeConditionPackageJson(packageJsonContent),
               Option.map((runtimeConditions) => ({
@@ -2418,7 +2418,10 @@ const schemaParsingContractRule = defineRule({
         }
 
         if (isPinExactContractFile(filePath)) {
-          if (!sourceText.includes(`static FromString: S.Schema<Exact, string>`)) {
+          if (
+            !sourceText.includes(`static FromString: S.Schema<Exact, string>`) &&
+            !sourceText.includes(`static FromString: S.Codec<Exact, string>`)
+          ) {
             context.report({
               node,
               messageId: MESSAGE_IDS.schemaParsingContractPinExactFromString,
@@ -2494,6 +2497,11 @@ const noPromiseThenChainRule = defineRule({
 
         const propertyName = getPropertyName(node.callee)
         if (propertyName !== `then` && propertyName !== `catch` && propertyName !== `finally`) {
+          return
+        }
+
+        // Effect.catch/Effect.finally are Effect combinators, not Promise chains
+        if (isIdentifier(node.callee.object) && node.callee.object.name === `Effect`) {
           return
         }
 

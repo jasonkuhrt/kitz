@@ -53,11 +53,11 @@ export class Environment extends Schema.TaggedClass<Environment>()('ViolationLoc
 /** Where a lint violation occurred. */
 export type ViolationLocation = PrTitle | PrBody | RepoSettings | GitHistory | File | Environment
 
-export const ViolationLocation = Schema.Union(
+export const ViolationLocation = Schema.Union([
   PrTitle,
   PrBody,
   RepoSettings,
   GitHistory,
   File,
   Environment,
-)
+])

@@ -1,8 +1,8 @@
-import { FileSystem } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { FileSystem } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import { Fs } from '@kitz/fs'
 import { Mod } from '@kitz/mod'
-import { Effect, Option, ParseResult, pipe, Schema } from 'effect'
+import { Effect, Option, SchemaIssue, pipe, Schema } from 'effect'
 import type { ConfigDefinition } from './define.js'
 import { InvalidExportError, NotFoundError } from './errors.js'
 
@@ -15,20 +15,20 @@ type SearchResult =
   | { readonly _tag: 'PackageJson'; readonly path: Fs.Path.AbsFile; readonly field: string }
   | { readonly _tag: 'NotFound' }
 
-const JsonUnknownSchema = Schema.parseJson()
-const JsonObjectSchema = Schema.Record({ key: Schema.String, value: Schema.Unknown })
-const JsonObjectFromStringSchema = Schema.parseJson(JsonObjectSchema)
+const JsonUnknownSchema = Schema.fromJsonString(Schema.Unknown)
+const JsonObjectSchema = Schema.Record(Schema.String, Schema.Unknown)
+const JsonObjectFromStringSchema = Schema.fromJsonString(JsonObjectSchema)
 
-const decodeJsonUnknown = Schema.decodeUnknown(JsonUnknownSchema)
-const decodeJsonObject = Schema.decodeUnknown(JsonObjectFromStringSchema)
+const decodeJsonUnknown = Schema.decodeUnknownEffect(JsonUnknownSchema)
+const decodeJsonObject = Schema.decodeUnknownEffect(JsonObjectFromStringSchema)
 
 /**
  * Search for a config file in the given directory.
  */
 const searchForConfig = (
-  definition: ConfigDefinition<Schema.Schema.AnyNoContext>,
+  definition: ConfigDefinition<Schema.Top>,
   cwd: Fs.Path.AbsDir,
-): Effect.Effect<SearchResult, PlatformError | ParseResult.ParseError, FileSystem.FileSystem> => {
+): Effect.Effect<SearchResult, PlatformError | Schema.SchemaError, FileSystem.FileSystem> => {
   const { name, extensions, json, packageJson } = definition
 
   return Effect.gen(function* () {
@@ -77,10 +77,10 @@ const searchForConfig = (
  */
 const loadRawConfig = (
   result: Exclude<SearchResult, { _tag: 'NotFound' }>,
-  definition: ConfigDefinition<Schema.Schema.AnyNoContext>,
+  definition: ConfigDefinition<Schema.Top>,
 ): Effect.Effect<
   unknown,
-  Mod.ImportError | PlatformError | InvalidExportError | ParseResult.ParseError,
+  Mod.ImportError | PlatformError | InvalidExportError | Schema.SchemaError,
   FileSystem.FileSystem
 > => {
   return Effect.gen(function* () {
@@ -121,7 +121,7 @@ const loadRawConfig = (
 /**
  * Generate the list of file patterns that would be searched.
  */
-const getSearchPatterns = (definition: ConfigDefinition<Schema.Schema.AnyNoContext>): string[] => {
+const getSearchPatterns = (definition: ConfigDefinition<Schema.Top>): string[] => {
   const patterns: string[] = []
   for (const ext of definition.extensions) {
     patterns.push(`${definition.name}.config${ext}`)
@@ -143,7 +143,7 @@ export type LoadError =
   | InvalidExportError
   | Mod.ImportError
   | PlatformError
-  | ParseResult.ParseError
+  | Schema.SchemaError
 
 /**
  * Load a config file based on the definition.
@@ -168,10 +168,10 @@ export type LoadError =
  * const config = yield* Conf.File.load(ReleaseConfig, '/path/to/project')
  * ```
  */
-export function load<S extends Schema.Schema.AnyNoContext>(
+export function load<S extends Schema.Top>(
   definition: ConfigDefinition<S>,
   cwd?: string,
-): Effect.Effect<Schema.Schema.Type<S>, LoadError, FileSystem.FileSystem> {
+): Effect.Effect<S['Type'], LoadError, FileSystem.FileSystem | S['DecodingServices']> {
   return Effect.gen(function* () {
     const cwdPath = cwd
       ? Fs.Path.AbsDir.fromString(cwd)
@@ -195,11 +195,11 @@ export function load<S extends Schema.Schema.AnyNoContext>(
         )
       }
       // Schema has no required fields, decode empty object
-      return yield* Schema.decode(definition.schema)({})
+      return yield* Schema.decodeEffect(definition.schema)({})
     }
 
     const rawConfig = yield* loadRawConfig(searchResult, definition)
-    return yield* Schema.decode(definition.schema)(rawConfig)
+    return yield* Schema.decodeEffect(definition.schema)(rawConfig)
   })
 }
 
@@ -209,13 +209,13 @@ export function load<S extends Schema.Schema.AnyNoContext>(
  * Unlike {@link load}, this never fails with NotFoundError.
  * Other errors (parse, import, etc.) still propagate.
  */
-export function loadOptional<S extends Schema.Schema.AnyNoContext>(
+export function loadOptional<S extends Schema.Top>(
   definition: ConfigDefinition<S>,
   cwd?: string,
 ): Effect.Effect<
-  Option.Option<Schema.Schema.Type<S>>,
+  Option.Option<S['Type']>,
   Exclude<LoadError, NotFoundError>,
-  FileSystem.FileSystem
+  FileSystem.FileSystem | S['DecodingServices']
 > {
   return pipe(
     load(definition, cwd),

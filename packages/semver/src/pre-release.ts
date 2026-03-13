@@ -13,9 +13,9 @@ const formatPreRelease = (version: PreRelease): string => {
 export class PreRelease extends S.TaggedClass<PreRelease>()(
   'SemverPreRelease',
   {
-    major: S.Number.pipe(S.int(), S.nonNegative()),
-    minor: S.Number.pipe(S.int(), S.nonNegative()),
-    patch: S.Number.pipe(S.int(), S.nonNegative()),
+    major: S.Number.pipe(S.check(S.isInt(), S.isGreaterThanOrEqualTo(0))),
+    minor: S.Number.pipe(S.check(S.isInt(), S.isGreaterThanOrEqualTo(0))),
+    patch: S.Number.pipe(S.check(S.isInt(), S.isGreaterThanOrEqualTo(0))),
     prerelease: PrereleaseIds,
     build: S.optional(BuildIds),
   },

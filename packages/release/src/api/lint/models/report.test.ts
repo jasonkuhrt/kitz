@@ -7,16 +7,16 @@ import { Environment } from './violation-location.js'
 import { Violation } from './violation.js'
 
 const ruleRef = (id: string) => ({
-  id: RuleId.make(id),
+  id: RuleId.makeUnsafe(id),
   description: 'Test rule',
 })
 
 describe('Finished', () => {
   test('clean result (no violation)', () => {
-    const r = Finished.make({
+    const r = new Finished({
       rule: ruleRef('env.git-clean'),
       duration: 42,
-      severity: Severity.Error.make(),
+      severity: new Severity.Error(),
     })
     expect(r._tag).toBe('RuleCheckResultFinished')
     expect(Finished.is(r)).toBe(true)
@@ -24,12 +24,12 @@ describe('Finished', () => {
   })
 
   test('with violation', () => {
-    const r = Finished.make({
+    const r = new Finished({
       rule: ruleRef('env.npm-authenticated'),
       duration: 100,
-      severity: Severity.Error.make(),
-      violation: Violation.make({
-        location: Environment.make({ message: 'Not logged in to npm.' }),
+      severity: new Severity.Error(),
+      violation: new Violation({
+        location: new Environment({ message: 'Not logged in to npm.' }),
       }),
     })
     expect(r.violation).toBeDefined()
@@ -37,10 +37,10 @@ describe('Finished', () => {
   })
 
   test('with metadata', () => {
-    const r = Finished.make({
+    const r = new Finished({
       rule: ruleRef('env.npm-authenticated'),
       duration: 50,
-      severity: Severity.Warn.make(),
+      severity: new Severity.Warn(),
       metadata: { username: 'testuser' },
     })
     expect(r.metadata).toEqual({ username: 'testuser' })
@@ -50,7 +50,7 @@ describe('Finished', () => {
 
 describe('Failed', () => {
   test('captures error', () => {
-    const r = Failed.make({
+    const r = new Failed({
       rule: ruleRef('env.git-remote'),
       duration: 10,
       error: new Error('connection refused'),
@@ -62,7 +62,7 @@ describe('Failed', () => {
 
 describe('Skipped', () => {
   test('filtered reason', () => {
-    const r = Skipped.make({
+    const r = new Skipped({
       rule: ruleRef('pr.scope.require'),
       reason: 'filtered',
     })
@@ -72,7 +72,7 @@ describe('Skipped', () => {
   })
 
   test('preconditions-not-met reason', () => {
-    const r = Skipped.make({
+    const r = new Skipped({
       rule: ruleRef('pr.type.match-known'),
       reason: 'preconditions-not-met',
     })
@@ -82,10 +82,10 @@ describe('Skipped', () => {
 
 describe('RuleCheckResult union', () => {
   test('schema roundtrip for Finished', () => {
-    const r = Finished.make({
+    const r = new Finished({
       rule: ruleRef('env.git-clean'),
       duration: 42,
-      severity: Severity.Error.make(),
+      severity: new Severity.Error(),
     })
     const encoded = Schema.encodeSync(RuleCheckResult)(r)
     const decoded = Schema.decodeSync(RuleCheckResult)(encoded)
@@ -93,14 +93,14 @@ describe('RuleCheckResult union', () => {
   })
 
   test('schema roundtrip for Failed', () => {
-    const r = Failed.make({ rule: ruleRef('env.git-remote'), duration: 10, error: 'boom' })
+    const r = new Failed({ rule: ruleRef('env.git-remote'), duration: 10, error: 'boom' })
     const encoded = Schema.encodeSync(RuleCheckResult)(r)
     const decoded = Schema.decodeSync(RuleCheckResult)(encoded)
     expect(decoded._tag).toBe('RuleCheckResultFailed')
   })
 
   test('schema roundtrip for Skipped', () => {
-    const r = Skipped.make({ rule: ruleRef('pr.scope.require'), reason: 'filtered' })
+    const r = new Skipped({ rule: ruleRef('pr.scope.require'), reason: 'filtered' })
     const encoded = Schema.encodeSync(RuleCheckResult)(r)
     const decoded = Schema.decodeSync(RuleCheckResult)(encoded)
     expect(decoded._tag).toBe('RuleCheckResultSkipped')
@@ -109,15 +109,15 @@ describe('RuleCheckResult union', () => {
 
 describe('Report', () => {
   test('make with mixed results', () => {
-    const report = Report.make({
+    const report = new Report({
       results: [
-        Finished.make({
+        new Finished({
           rule: ruleRef('env.git-clean'),
           duration: 10,
-          severity: Severity.Error.make(),
+          severity: new Severity.Error(),
         }),
-        Failed.make({ rule: ruleRef('env.git-remote'), duration: 5, error: 'fail' }),
-        Skipped.make({ rule: ruleRef('pr.scope.require'), reason: 'filtered' }),
+        new Failed({ rule: ruleRef('env.git-remote'), duration: 5, error: 'fail' }),
+        new Skipped({ rule: ruleRef('pr.scope.require'), reason: 'filtered' }),
       ],
     })
     expect(Report.is(report)).toBe(true)
@@ -125,12 +125,12 @@ describe('Report', () => {
   })
 
   test('schema roundtrip', () => {
-    const report = Report.make({
+    const report = new Report({
       results: [
-        Finished.make({
+        new Finished({
           rule: ruleRef('env.git-clean'),
           duration: 10,
-          severity: Severity.Error.make(),
+          severity: new Severity.Error(),
         }),
       ],
     })

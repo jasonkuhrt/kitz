@@ -1,11 +1,11 @@
 import { Semver } from '@kitz/semver'
 import { Option, Schema as S } from 'effect'
 
-const OptionalSemverSchema: S.Schema<
+const OptionalSemverSchema: S.Codec<
   Option.Option<Semver.Semver>,
   string | null
 > = S.OptionFromNullOr(Semver.Schema)
-const SemverSchema: S.Schema<Semver.Semver, Semver.Semver> = Semver.Semver
+const SemverSchema: S.Schema<Semver.Semver> = Semver.Semver
 
 /**
  * Commit attribution for display.
@@ -17,7 +17,7 @@ export class CommitDisplay extends S.TaggedClass<CommitDisplay>()('CommitDisplay
   breaking: S.Boolean,
   commitUrl: S.String,
 }) {
-  static is = S.is(CommitDisplay)
+  static is = S.is(CommitDisplay as any) as (u: unknown) => u is CommitDisplay
 }
 
 /**
@@ -32,7 +32,7 @@ export class ForecastRelease extends S.TaggedClass<ForecastRelease>()('ForecastR
   commits: S.Array(CommitDisplay),
   sourceUrl: S.String,
 }) {
-  static is = S.is(ForecastRelease)
+  static is = S.is(ForecastRelease as any) as (u: unknown) => u is ForecastRelease
 
   get currentVersionDisplay(): string {
     return Option.match(this.currentVersion, {
@@ -53,7 +53,7 @@ export class ForecastCascade extends S.TaggedClass<ForecastCascade>()('ForecastC
   triggeredBy: S.Array(S.String),
   sourceUrl: S.String,
 }) {
-  static is = S.is(ForecastCascade)
+  static is = S.is(ForecastCascade as any) as (u: unknown) => u is ForecastCascade
 }
 
 /**
@@ -71,5 +71,5 @@ export class Forecast extends S.TaggedClass<Forecast>()('Forecast', {
   releases: S.Array(ForecastRelease),
   cascades: S.Array(ForecastCascade),
 }) {
-  static is = S.is(Forecast)
+  static is = S.is(Forecast as any) as (u: unknown) => u is Forecast
 }

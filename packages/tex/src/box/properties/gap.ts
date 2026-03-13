@@ -12,7 +12,7 @@ export type Value = number | string | bigint
 /**
  * Gap value schema.
  */
-export const ValueSchema = S.Union(S.Number, S.String, S.BigIntFromSelf)
+export const ValueSchema = S.Union([S.Number, S.String, S.BigInt])
 
 /**
  * Axied input type for gap values.
@@ -37,7 +37,7 @@ export class Gap extends Axied.Class<Gap>('Gap')(ValueSchema) {}
  *
  * @category Text Formatting
  */
-export const parse = (input: Input): Gap => Gap.make(Axied.parse(input) as any)
+export const parse = (input: Input): Gap => new Gap(Axied.parse(input) as any)
 
 /**
  * One-way transformation schema: Input → Gap.

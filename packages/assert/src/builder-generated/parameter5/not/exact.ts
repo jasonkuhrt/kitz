@@ -1,6 +1,6 @@
 import type { Fn } from '@kitz/core'
 import { Optic } from '@kitz/core'
-import type { Either } from 'effect'
+import type { Result } from 'effect'
 import type { AssertExactKind } from '../../../asserts.js'
 import { builder } from '../../../builder-singleton.js'
 
@@ -29,8 +29,8 @@ import { builder } from '../../../builder-singleton.js'
  */
 // oxfmt-ignore
 type of_<$Expected, $Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [$Expected, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [$Expected, __actual__, true]>
                                                                          : never
 const of_: typeof builder.parameter5.not.exact.of = builder.parameter5.not.exact.of
 
@@ -49,8 +49,8 @@ const of_: typeof builder.parameter5.not.exact.of = builder.parameter5.not.exact
  */
 // oxfmt-ignore
 type string_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [string, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [string, __actual__, true]>
                                                                          : never
 const string_: typeof builder.parameter5.not.exact.string = builder.parameter5.not.exact.string
 
@@ -69,8 +69,8 @@ const string_: typeof builder.parameter5.not.exact.string = builder.parameter5.n
  */
 // oxfmt-ignore
 type number_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [number, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [number, __actual__, true]>
                                                                          : never
 const number_: typeof builder.parameter5.not.exact.number = builder.parameter5.not.exact.number
 
@@ -89,8 +89,8 @@ const number_: typeof builder.parameter5.not.exact.number = builder.parameter5.n
  */
 // oxfmt-ignore
 type bigint_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [bigint, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [bigint, __actual__, true]>
                                                                          : never
 const bigint_: typeof builder.parameter5.not.exact.bigint = builder.parameter5.not.exact.bigint
 
@@ -109,8 +109,8 @@ const bigint_: typeof builder.parameter5.not.exact.bigint = builder.parameter5.n
  */
 // oxfmt-ignore
 type boolean_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [boolean, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [boolean, __actual__, true]>
                                                                          : never
 const boolean_: typeof builder.parameter5.not.exact.boolean = builder.parameter5.not.exact.boolean
 
@@ -129,8 +129,8 @@ const boolean_: typeof builder.parameter5.not.exact.boolean = builder.parameter5
  */
 // oxfmt-ignore
 type true_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [true, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [true, __actual__, true]>
                                                                          : never
 const true_: typeof builder.parameter5.not.exact.true = builder.parameter5.not.exact.true
 
@@ -149,8 +149,8 @@ const true_: typeof builder.parameter5.not.exact.true = builder.parameter5.not.e
  */
 // oxfmt-ignore
 type false_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [false, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [false, __actual__, true]>
                                                                          : never
 const false_: typeof builder.parameter5.not.exact.false = builder.parameter5.not.exact.false
 
@@ -169,8 +169,8 @@ const false_: typeof builder.parameter5.not.exact.false = builder.parameter5.not
  */
 // oxfmt-ignore
 type undefined_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [undefined, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [undefined, __actual__, true]>
                                                                          : never
 const undefined_: typeof builder.parameter5.not.exact.undefined =
   builder.parameter5.not.exact.undefined
@@ -190,8 +190,8 @@ const undefined_: typeof builder.parameter5.not.exact.undefined =
  */
 // oxfmt-ignore
 type null_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [null, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [null, __actual__, true]>
                                                                          : never
 const null_: typeof builder.parameter5.not.exact.null = builder.parameter5.not.exact.null
 
@@ -210,8 +210,8 @@ const null_: typeof builder.parameter5.not.exact.null = builder.parameter5.not.e
  */
 // oxfmt-ignore
 type symbol_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [symbol, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [symbol, __actual__, true]>
                                                                          : never
 const symbol_: typeof builder.parameter5.not.exact.symbol = builder.parameter5.not.exact.symbol
 
@@ -230,8 +230,8 @@ const symbol_: typeof builder.parameter5.not.exact.symbol = builder.parameter5.n
  */
 // oxfmt-ignore
 type Date_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [Date, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [Date, __actual__, true]>
                                                                          : never
 const Date_: typeof builder.parameter5.not.exact.Date = builder.parameter5.not.exact.Date
 
@@ -250,8 +250,8 @@ const Date_: typeof builder.parameter5.not.exact.Date = builder.parameter5.not.e
  */
 // oxfmt-ignore
 type RegExp_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [RegExp, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [RegExp, __actual__, true]>
                                                                          : never
 const RegExp_: typeof builder.parameter5.not.exact.RegExp = builder.parameter5.not.exact.RegExp
 
@@ -270,8 +270,8 @@ const RegExp_: typeof builder.parameter5.not.exact.RegExp = builder.parameter5.n
  */
 // oxfmt-ignore
 type Error_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [Error, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [Error, __actual__, true]>
                                                                          : never
 const Error_: typeof builder.parameter5.not.exact.Error = builder.parameter5.not.exact.Error
 
@@ -290,8 +290,8 @@ const Error_: typeof builder.parameter5.not.exact.Error = builder.parameter5.not
  */
 // oxfmt-ignore
 type unknown_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [unknown, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [unknown, __actual__, true]>
                                                                          : never
 const unknown_: typeof builder.parameter5.not.exact.unknown = builder.parameter5.not.exact.unknown
 
@@ -310,8 +310,8 @@ const unknown_: typeof builder.parameter5.not.exact.unknown = builder.parameter5
  */
 // oxfmt-ignore
 type any_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [any, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [any, __actual__, true]>
                                                                          : never
 const any_: typeof builder.parameter5.not.exact.any = builder.parameter5.not.exact.any
 
@@ -330,8 +330,8 @@ const any_: typeof builder.parameter5.not.exact.any = builder.parameter5.not.exa
  */
 // oxfmt-ignore
 type never_<$Actual, __$ActualExtracted = Optic.Parameter5.Get<$Actual>> =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [never, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer __error__, infer _>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer _, infer __actual__>    ? Fn.Kind.Apply<AssertExactKind, [never, __actual__, true]>
                                                                          : never
 const never_: typeof builder.parameter5.not.exact.never = builder.parameter5.not.exact.never
 

@@ -20,7 +20,7 @@ export type toDir<F extends $File> = F extends AbsFile ? AbsDir : F extends RelF
  *
  * @example
  * ```ts
- * const file = Path.AbsFile.make({
+ * const file = new Path.AbsFile({
  *   segments: ['home', 'user'],
  *   fileName: { stem: 'file', extension: '.txt' }
  * })

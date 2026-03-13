@@ -687,11 +687,11 @@ export interface TestBuilder<State extends BuilderTypeState> {
    * ```ts
    * const data = {
    *   users: [
-   *     { name: 'Alice', location: FsLoc.RelFile.make(['src', 'alice.ts']) },
-   *     { name: 'Bob', location: FsLoc.RelFile.make(['src', 'bob.ts']) }
+   *     { name: 'Alice', location: new FsLoc.RelFile(['src', 'alice.ts']) },
+   *     { name: 'Bob', location: new FsLoc.RelFile(['src', 'bob.ts']) }
    *   ],
    *   config: {
-   *     rootDir: FsLoc.AbsDir.make(['Users', 'project'])
+   *     rootDir: new FsLoc.AbsDir(['Users', 'project'])
    *   }
    * }
    *

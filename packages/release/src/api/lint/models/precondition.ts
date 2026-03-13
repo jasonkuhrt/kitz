@@ -34,10 +34,10 @@ export class HasReleasePlan extends Schema.TaggedClass<HasReleasePlan>()(
 /** Runtime applicability check for a lint rule. Not user-configurable. */
 export type Precondition = HasOpenPR | HasDiff | IsMonorepo | HasGitHubAccess | HasReleasePlan
 
-export const Precondition = Schema.Union(
+export const Precondition = Schema.Union([
   HasOpenPR,
   HasDiff,
   IsMonorepo,
   HasGitHubAccess,
   HasReleasePlan,
-)
+])

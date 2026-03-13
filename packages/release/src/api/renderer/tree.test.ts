@@ -7,7 +7,7 @@ import { renderTree } from './tree.js'
 // ── Helpers ──────────────────────────────────────────────────────────
 
 const makeCommit = (sha: string, type: string, subject: string, breaking = false) =>
-  CommitDisplay.make({
+  new CommitDisplay({
     shortSha: sha,
     subject,
     type,
@@ -21,7 +21,7 @@ const makeRelease = (
   bump: Semver.BumpType,
   commits: CommitDisplay[] = [makeCommit('abc1234', 'feat', 'add feature')],
 ) =>
-  ForecastRelease.make({
+  new ForecastRelease({
     packageName: name,
     packageScope: scope,
     bump,
@@ -32,7 +32,7 @@ const makeRelease = (
   })
 
 const makeCascade = (name: string, scope: string, triggeredBy: string[]) =>
-  ForecastCascade.make({
+  new ForecastCascade({
     packageName: name,
     packageScope: scope,
     currentVersion: Option.some(Semver.fromString('1.0.0')),
@@ -41,7 +41,7 @@ const makeCascade = (name: string, scope: string, triggeredBy: string[]) =>
     sourceUrl: `https://github.com/org/repo/tree/main/packages/${scope}`,
   })
 
-const emptyForecast = Forecast.make({
+const emptyForecast = new Forecast({
   owner: 'org',
   repo: 'repo',
   branch: 'main',
@@ -54,7 +54,7 @@ const remakeForecast = (
   forecast: Forecast,
   overrides: Partial<Pick<Forecast, 'releases' | 'cascades'>>,
 ): Forecast =>
-  Forecast.make({
+  new Forecast({
     owner: forecast.owner,
     repo: forecast.repo,
     branch: forecast.branch,

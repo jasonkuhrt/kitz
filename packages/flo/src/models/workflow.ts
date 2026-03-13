@@ -34,4 +34,4 @@ export type Event = Completed | Failed
 /**
  * Schema for workflow lifecycle events.
  */
-export const Event = Schema.Union(Completed, Failed)
+export const Event = Schema.Union([Completed, Failed])

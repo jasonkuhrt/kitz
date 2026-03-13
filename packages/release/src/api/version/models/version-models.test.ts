@@ -26,13 +26,13 @@ import { OfficialIncrement } from './official-increment.js'
 
 describe('OfficialFirst', () => {
   test('make and is()', () => {
-    const v = OfficialFirst.make({ version: Semver.fromString('0.1.0') })
+    const v = new OfficialFirst({ version: Semver.fromString('0.1.0') })
     expect(v._tag).toBe('OfficialFirst')
     expect(OfficialFirst.is(v)).toBe(true)
   })
 
   test('schema roundtrip', () => {
-    const v = OfficialFirst.make({ version: Semver.fromString('1.0.0') })
+    const v = new OfficialFirst({ version: Semver.fromString('1.0.0') })
     const encoded = Schema.encodeSync(OfficialFirst)(v)
     const decoded = Schema.decodeSync(OfficialFirst)(encoded)
     expect(Semver.equivalence(decoded.version, Semver.fromString('1.0.0'))).toBe(true)
@@ -43,7 +43,7 @@ describe('OfficialFirst', () => {
 
 describe('OfficialIncrement', () => {
   test('make and is()', () => {
-    const v = OfficialIncrement.make({
+    const v = new OfficialIncrement({
       from: Semver.fromString('1.0.0'),
       to: Semver.fromString('1.1.0'),
       bump: 'minor',
@@ -60,7 +60,7 @@ describe('OfficialIncrement', () => {
   })
 
   test('schema roundtrip', () => {
-    const v = OfficialIncrement.make({
+    const v = new OfficialIncrement({
       from: Semver.fromString('2.0.0'),
       to: Semver.fromString('3.0.0'),
       bump: 'major',
@@ -75,7 +75,7 @@ describe('OfficialIncrement', () => {
 
 describe('Candidate', () => {
   test('make and is()', () => {
-    const c = Candidate.make({ iteration: 3 })
+    const c = new Candidate({ iteration: 3 })
     expect(c._tag).toBe('Candidate')
     expect(Candidate.is(c)).toBe(true)
     expect(c.iteration).toBe(3)
@@ -129,7 +129,7 @@ describe('Ephemeral', () => {
   const sha = Git.Sha.make('abc1234')
 
   test('make and is()', () => {
-    const e = Ephemeral.make({ prNumber: 42, iteration: 1, sha })
+    const e = new Ephemeral({ prNumber: 42, iteration: 1, sha })
     expect(e._tag).toBe('Ephemeral')
     expect(Ephemeral.is(e)).toBe(true)
     expect(e.prNumber).toBe(42)

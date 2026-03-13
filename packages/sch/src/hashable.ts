@@ -1,6 +1,5 @@
 import { Obj } from '@kitz/core'
-import { Data, DateTime, Hash, HashMap, HashSet, Option, Schema as S } from 'effect'
-import { PropertySignatureTransformation } from 'effect/Schema'
+import { DateTime, Hash, HashMap, HashSet, Schema as S } from 'effect'
 import * as AST from 'effect/SchemaAST'
 import { copyAnnotations } from './ast.js'
 import {
@@ -10,12 +9,9 @@ import {
   getSetElement,
   getTransformParts,
   hasDirectFields,
-  hasNullableOption,
   isArraySchema,
   isMapSchema,
   isNonHashableTransform,
-  isPropertySignature,
-  isPropertySignatureDeclaration,
   isRecordSchema,
   isSetSchema,
   isStructSchema,
@@ -45,7 +41,7 @@ export type Coercible =
   | symbol
   | Date                                    // → DateTime
   | Hash.Hash                               // Already hashable
-  | readonly Coercible[]                    // → Data.array
+  | readonly Coercible[]                    // arrays
   | ReadonlyMap<Coercible, Coercible>       // → HashMap
   | ReadonlySet<Coercible>                  // → HashSet
   | { readonly [key: string]: Coercible }
@@ -60,12 +56,8 @@ export type Coercible =
  * This type maps input types to their hashable equivalents:
  * - `Map<K, V>` → `HashMap.HashMap<K', V'>` (with recursive key/value processing)
  * - `Set<E>` → `HashSet.HashSet<E'>` (with recursive element processing)
- * - Objects/arrays → unchanged (Effect's S.Data doesn't change type signature)
+ * - Objects/arrays → unchanged (v4's Equal handles plain objects structurally)
  * - Primitives → unchanged
- *
- * Note: While S.Data wraps structs/arrays at RUNTIME for Hash/Equal support,
- * it doesn't change the TYPE signature. Only Map→HashMap and Set→HashSet
- * produce different types.
  *
  * @example
  * ```ts
@@ -92,36 +84,23 @@ export type EnsureHashableType<$Type> =
 // ============================================================================
 
 /**
- * A hashable AST is a Transformation with a Declaration target that has
- * either an identifier (Class) or "Data<" description prefix.
+ * Check if an AST represents a hashable type.
+ *
+ * In v4, hashable types are:
+ * - Declarations with identifier annotation (Schema.Class, TaggedClass)
+ * - Declarations with "Data<" description prefix
  */
-type HashableAST = AST.Transformation & { readonly to: AST.Declaration }
+const isHashableAST = (ast: AST.AST): boolean => {
+  if (!AST.isDeclaration(ast)) return false
 
-/**
- * Check if an AST represents a hashable type (Transformation → Declaration with identifier or Data<...>).
- *
- * Detection strategy:
- * - **Schema.Class**: Has `IdentifierAnnotationId` (e.g., "Person")
- * - **Schema.Data**: Has `DescriptionAnnotationId` starting with "Data<" (e.g., "Data<{ readonly a: string }>")
- *
- * The "Data<" prefix is stable because it's part of Effect's public-facing error messages and
- * JSON serialization output. A change would require a major Effect version bump.
- */
-const isHashableAST = (ast: AST.AST): ast is HashableAST => {
-  // Only Transformations can produce Data or Class instances
-  if (!AST.isTransformation(ast)) return false
-  // Only Declarations can be Data or Class schemas
-  if (!AST.isDeclaration(ast.to)) return false
-  // Schema.Class and TaggedClass: have identifier annotation (non-empty string)
-  if (Option.isSome(AST.getIdentifierAnnotation(ast.to))) {
-    return true
-  }
-  // Schema.Data: has description annotation starting with "Data<"
-  // This prefix is stable - it's part of Effect's public error message format
-  const description = AST.getDescriptionAnnotation(ast.to)
-  if (Option.isSome(description) && description.value.startsWith('Data<')) {
-    return true
-  }
+  // Schema.Class and TaggedClass: have identifier annotation
+  const identifier = AST.resolveIdentifier(ast)
+  if (identifier !== undefined) return true
+
+  // Schema.Data: has description starting with "Data<"
+  const description = AST.resolveDescription(ast)
+  if (description !== undefined && description.startsWith('Data<')) return true
+
   return false
 }
 
@@ -130,7 +109,6 @@ const isHashableAST = (ast: AST.AST): ast is HashableAST => {
  *
  * Returns true for:
  * - Schema.Class instances
- * - Schema.Data-wrapped schemas
  * - Union of hashable schemas (all members are hashable)
  *
  * @example
@@ -138,14 +116,11 @@ const isHashableAST = (ast: AST.AST): ast is HashableAST => {
  * import { Schema } from 'effect'
  * import { Sch } from '@wollybeard/kit'
  *
- * const DataSchema = Schema.Data(Schema.Struct({ id: Schema.String }))
- * Sch.Hashable.isSchemaProducingHashableData(DataSchema) // true
- *
  * const PlainSchema = Schema.Struct({ id: Schema.String })
  * Sch.Hashable.isSchemaProducingHashableData(PlainSchema) // false
  * ```
  */
-export const isSchemaProducingHashableData = (schema: S.Schema.Any): boolean => {
+export const isSchemaProducingHashableData = (schema: S.Top): boolean => {
   if (AST.isUnion(schema.ast))
     return schema.ast.types.every((memberAST) => isHashableAST(memberAST))
   return isHashableAST(schema.ast)
@@ -156,213 +131,55 @@ export const isSchemaProducingHashableData = (schema: S.Schema.Any): boolean => 
 // ============================================================================
 
 /**
- * Check if AST is an internal struct transform (struct with optionalWith fields).
+ * Check if AST is an internal struct transform (Objects with encoding chain).
  *
- * When a struct has optionalWith fields with defaults/nullable, Effect represents
- * it as a Transformation with TypeLiteralTransformation (not FinalTransformation).
- * This is different from user transforms (S.transform) which use FinalTransformation.
- *
- * When we extract such a struct from a PropertySignatureTransformation via S.make(),
- * we get a schema whose AST is this Transformation - NOT a plain TypeLiteral.
- * So isStructSchema() returns false and we need this separate check.
+ * In v4, structs with optionalWith/default fields have encoding chains
+ * on their Objects AST nodes.
  */
 const isInternalStructTransform = (
   ast: AST.AST,
-): ast is AST.Transformation & {
-  from: AST.TypeLiteral
-  transformation: AST.TypeLiteralTransformation & {
-    propertySignatureTransformations: readonly AST.PropertySignatureTransformation[]
-  }
-} => {
-  if (!AST.isTransformation(ast)) return false
-  if (!AST.isTypeLiteralTransformation(ast.transformation)) return false
-  return AST.isTypeLiteral(ast.from)
+): ast is AST.Objects & { readonly encoding: AST.Encoding } => {
+  if (!AST.isObjects(ast)) return false
+  return ast.encoding !== undefined
 }
 
 /**
- * Process a struct field (either a Schema or PropertySignature) recursively.
- */
-const processField = (
-  field: S.Struct.Field,
-  getOrProcess: (s: S.Schema.Any) => S.Schema.Any,
-): S.Struct.Field => {
-  // Plain schema - recurse directly
-  if (!isPropertySignature(field)) {
-    return getOrProcess(field as S.Schema.Any)
-  }
-
-  // PropertySignature - use .from to get inner schema directly (preserves .fields and correct AST)
-  const innerSchema = (field as any).from as S.Schema.Any
-  const processedInner = getOrProcess(innerSchema)
-
-  // If inner didn't change, return original PropertySignature
-  if (processedInner.ast === innerSchema.ast) return field
-
-  // Reconstruct PropertySignature with processed inner schema
-  return reconstructPropertySignature(field, processedInner)
-}
-
-/**
- * Wrap a default value with appropriate Data wrapper (struct for objects, array for arrays).
- * Checks if the value already implements Hash to avoid double-wrapping.
- */
-const wrapDefaultValue = (originalDefault: () => unknown): (() => unknown) => {
-  return () => {
-    const value = originalDefault()
-    // Already hashable - return unchanged to avoid double-wrapping
-    if (value !== null && typeof value === 'object' && Hash.isHash(value)) {
-      return value
-    }
-    if (Array.isArray(value)) {
-      return Data.array(value)
-    }
-    if (typeof value === 'object' && value !== null) {
-      return Data.struct(value as Record<string, unknown>)
-    }
-    // Primitives can't be wrapped - return as-is
-    return value
-  }
-}
-
-/**
- * Reconstruct a PropertySignature with a new inner schema.
- * Preserves optional, default, readonly, and annotations.
- */
-const reconstructPropertySignature = (
-  original: S.PropertySignature.All,
-  processedInner: S.Schema.Any,
-): S.PropertySignature.All => {
-  const psAST = original.ast
-
-  // PropertySignatureDeclaration - simple optional fields
-  if (isPropertySignatureDeclaration(psAST)) {
-    // Reconstruct based on optional/default status
-    if (psAST.isOptional) {
-      if (psAST.defaultValue !== undefined) {
-        // optionalWith with default - wrap the default value to return Data
-        const wrappedDefault = wrapDefaultValue(psAST.defaultValue)
-        const result = S.optionalWith(processedInner, { default: wrappedDefault })
-        return Obj.isEmpty(psAST.annotations)
-          ? result
-          : result.annotations(psAST.annotations as any)
-      } else {
-        // Simple optional
-        const result = S.optional(processedInner)
-        return Obj.isEmpty(psAST.annotations)
-          ? result
-          : result.annotations(psAST.annotations as any)
-      }
-    }
-    // Required field but wrapped in PropertySignature - shouldn't happen often
-    return S.propertySignature(processedInner).annotations(psAST.annotations as any)
-  }
-
-  // PropertySignatureTransformation - handle optionalWith options
-  const trans = psAST
-
-  // Build options object preserving detected options
-  const options: {
-    default?: () => unknown
-    nullable?: boolean
-  } = {}
-
-  if (trans.to.defaultValue !== undefined) {
-    options.default = wrapDefaultValue(trans.to.defaultValue)
-  }
-
-  if (hasNullableOption(trans)) {
-    options.nullable = true
-  }
-
-  const annotations = trans.to.annotations
-  const copyPSAnnotations = (ps: S.PropertySignature.All): S.PropertySignature.All =>
-    annotations && !Obj.isEmpty(annotations) ? ps.annotations(annotations as any) : ps
-
-  // If we have any options to preserve, reconstruct with them
-  if (!Obj.isEmpty(options)) {
-    return copyPSAnnotations(S.optionalWith(processedInner, options as any))
-  }
-
-  // Fallback: use simple optional (inner was processed, options not detected)
-  return copyPSAnnotations(S.optional(processedInner))
-}
-
-/**
- * Reconstruct a PropertySignature from a PropertySignatureTransformation AST.
+ * Process a struct field recursively.
  *
- * This is used when processing internal struct transforms - structs with optionalWith
- * fields that were extracted via S.make() from an AST. The AST contains
- * PropertySignatureTransformation nodes with default/nullable info we need to preserve.
- *
- * @param processedSchema - The inner schema after recursive processing
- * @param transform - The PropertySignatureTransformation AST node
- * @returns A Struct.Field preserving defaults and nullable options
+ * In v4, fields are just schemas (Top). There's no separate
+ * PropertySignature wrapper type.
  */
-const reconstructFieldFromTransform = (
-  processedSchema: S.Schema.Any,
-  transform: PropertySignatureTransformation,
-): S.Struct.Field => {
-  const options: { default?: () => unknown; nullable?: boolean } = {}
-  // Cast to access internal AST structure
-  const trans = transform as any
-
-  // Extract default from the `to` side (decoded side)
-  if (trans.to.defaultValue !== undefined) {
-    options.default = wrapDefaultValue(trans.to.defaultValue)
-  }
-
-  // Check for nullable (Union with null in `from.type`)
-  if (AST.isUnion(trans.from.type)) {
-    const hasNull = trans.from.type.types.some(
-      (t: AST.AST) => AST.isLiteral(t) && t.literal === null,
-    )
-    if (hasNull) options.nullable = true
-  }
-
-  if (!Obj.isEmpty(options)) {
-    const result = S.optionalWith(processedSchema, options as any)
-    return trans.to.annotations && !Obj.isEmpty(trans.to.annotations)
-      ? result.annotations(trans.to.annotations)
-      : result
-  }
-
-  // Fallback to simple optional
-  return S.optional(processedSchema)
+const processField = (field: S.Top, getOrProcess: (s: S.Top) => S.Top): S.Top => {
+  return getOrProcess(field)
 }
 
 /**
- * Recursively wrap a schema and its nested fields with {@link S.Data} for deep hashability.
+ * Recursively process a schema and its nested fields for deep hashability.
  *
- * Unlike a shallow wrapper, this function traverses the schema tree and wraps
- * nested struct fields, ensuring {@link Equal.equals} works at ALL nesting levels.
+ * In Effect v4, Equal.equals already handles structural comparison for
+ * plain objects, arrays, Maps, Sets, and Dates natively. This function's
+ * primary remaining purpose is:
+ * - Converting Map schemas to HashMap schemas
+ * - Converting Set schemas to HashSet schemas
+ * - Recursing into nested structures to apply these conversions
  *
  * **Recursive behavior:**
- * - Struct fields that are themselves structs → recursively processed, then wrapped
- * - Array elements that are structs → recursively processed, then wrapped
+ * - Struct fields → recursively processed
+ * - Array elements → recursively processed
  * - Union members → each member recursively processed
  * - {@link S.Map} → converted to {@link S.HashMap} (with recursive key/value processing)
  * - {@link S.Set} → converted to {@link S.HashSet} (with recursive element processing)
- * - {@link S.Record} → value schema recursively processed, then wrapped
- * - {@link S.transform} → output schema recursively processed for deep hashability
+ * - {@link S.Record} → value schema recursively processed
  * - {@link S.suspend} → creates new suspend with lazy lookup for recursive schemas
- * - Already hashable (Class, Data, TaggedClass) → returned unchanged
- * - Primitives → returned unchanged (can't wrap with Data)
- *
- * **Use cases:**
- * - Ensure decoded values work as {@link HashMap} keys or {@link HashSet} elements
- * - Enable deep {@link Equal.equals} comparison on nested structures
- * - Prepare complex schemas for caching/deduplication systems
- *
- * **Constraints:**
- * - Only structs/arrays can be wrapped ({@link S.Data} constraint)
- * - Primitives and already-hashable schemas pass through unchanged
+ * - Already hashable (Class, TaggedClass) → returned unchanged
+ * - Primitives → returned unchanged
  *
  * @example
  * ```ts
  * import { Schema, Equal } from 'effect'
  * import { Sch } from '@wollybeard/kit'
  *
- * // Nested struct - both levels become hashable
+ * // Nested struct - v4 handles structural equality natively
  * const NestedSchema = Schema.Struct({
  *   id: Schema.String,
  *   address: Schema.Struct({
@@ -372,49 +189,17 @@ const reconstructFieldFromTransform = (
  * })
  *
  * const HashableSchema = Sch.Hashable.ensureHashableSchema(NestedSchema)
- * const decode = Schema.decodeSync(HashableSchema)
- *
- * const a = decode({ id: '1', address: { city: 'NYC', zip: '10001' } })
- * const b = decode({ id: '1', address: { city: 'NYC', zip: '10001' } })
- *
- * Equal.equals(a, b)         // true - top level
- * Equal.equals(a.address, b.address) // true - nested level too!
  * ```
  *
  * @see {@link isSchemaProducingHashableData} to check without wrapping
  */
-export const ensureHashableSchema = <$S extends S.Schema.Any>(
+export const ensureHashableSchema = <$S extends S.Top>(
   schema: $S,
-): S.Schema<EnsureHashableType<S.Schema.Type<$S>>, S.Schema.Encoded<$S>, S.Schema.Context<$S>> => {
+): S.Codec<EnsureHashableType<$S['Type']>, $S['Encoded'], $S['DecodingServices']> => {
   // Memoization map: AST → processed schema
-  // Keyed by AST (not Schema) because S.make() creates new Schema objects for the same AST.
-  // This ensures suspend closures can find cached results when evaluated during decoding.
-  const processed = new Map<AST.AST, S.Schema.Any>()
+  const processed = new Map<AST.AST, S.Top>()
 
-  // Map AST → original schema with .fields for PropertySignature access
-  // This allows us to recover field defaults when processing internal struct transforms
-  const originalSchemas = new Map<AST.AST, S.Struct<S.Struct.Fields>>()
-
-  // Collect all struct schemas with .fields before processing
-  const collectOriginalSchemas = (s: S.Schema.Any): void => {
-    if (hasDirectFields(s)) {
-      originalSchemas.set(s.ast, s)
-      // Recurse into nested structs from PropertySignatures
-      for (const field of Object.values(s.fields)) {
-        if (isPropertySignature(field)) {
-          // PropertySignature.from IS the original inner schema with .fields
-          const innerSchema = (field as any).from as S.Schema.Any
-          collectOriginalSchemas(innerSchema)
-        } else {
-          collectOriginalSchemas(field as S.Schema.Any)
-        }
-      }
-    }
-  }
-
-  collectOriginalSchemas(schema)
-
-  const getOrProcess = (s: S.Schema.Any): S.Schema.Any => {
+  const getOrProcess = (s: S.Top): S.Top => {
     const cached = processed.get(s.ast)
     if (cached !== undefined) return cached
     const result = processSchema(s)
@@ -422,15 +207,15 @@ export const ensureHashableSchema = <$S extends S.Schema.Any>(
     return result
   }
 
-  const processSchema = (schema: S.Schema.Any): S.Schema.Any => {
+  const processSchema = (schema: S.Top): S.Top => {
     const ast = schema.ast
-    const annotations = ast.annotations
+    const annotations = AST.resolve(ast)
 
     // S.suspend - create new suspend with lazy lookup for recursive schemas
     // The suspend's function is evaluated during DECODING, not during schema construction.
     // By decode time, the memoization map is fully populated.
     if (AST.isSuspend(ast)) {
-      const original = S.make(ast.f())
+      const original = { ast: ast.thunk() } as unknown as S.Top
       const newSuspend = S.suspend(() => getOrProcess(original))
       return copyAnnotations(newSuspend, annotations)
     }
@@ -440,7 +225,7 @@ export const ensureHashableSchema = <$S extends S.Schema.Any>(
       const { key, value } = getMapKeyValue(schema)
       const processedKey = getOrProcess(key)
       const processedValue = getOrProcess(value)
-      return S.HashMap({ key: processedKey, value: processedValue })
+      return S.HashMap(processedKey, processedValue)
     }
 
     // S.Set → S.HashSet (produces HashSet with Hash/Equal support)
@@ -455,8 +240,8 @@ export const ensureHashableSchema = <$S extends S.Schema.Any>(
       return schema
     }
 
-    // Non-hashable transform - process `to` schema recursively, rebuild transform
-    // This handles S.transform(from, struct, { decode, encode }) cases
+    // Non-hashable transform - process the schema recursively
+    // In v4, transforms are stored in the encoding chain
     if (isNonHashableTransform(schema)) {
       const { from, to, transformation } = getTransformParts(schema)
       const processedTo = getOrProcess(to)
@@ -466,80 +251,58 @@ export const ensureHashableSchema = <$S extends S.Schema.Any>(
         return schema
       }
 
-      // Rebuild transform with processed to schema
-      const rebuilt = S.transformOrFail(from, processedTo, {
+      // Rebuild transform with processed to schema using decodeTo
+      const rebuilt = S.decodeTo(processedTo, {
         decode: transformation.decode as any,
         encode: transformation.encode as any,
-        strict: false,
-      })
+      })(from)
       return copyAnnotations(rebuilt, annotations)
     }
 
-    // S.Record - recurse into value schema, then wrap
-    // Note: Key schema not processed - Record keys are typically primitives (strings)
-    // that don't need hashability wrapping. If complex key types are needed,
-    // consider using S.HashMap instead.
-    // Must check before Struct since both are TypeLiteral
+    // S.Record - recurse into value schema
     if (isRecordSchema(schema)) {
       const { key, value } = getRecordKeyValue(schema)
       const processedValue = getOrProcess(value)
-      const newRecord = S.Record({ key, value: processedValue })
-      return S.Data(copyAnnotations(newRecord, annotations))
+      const newRecord = S.Record(key as S.Record.Key, processedValue)
+      return copyAnnotations(newRecord, annotations)
     }
 
-    // Internal struct transform (struct with optionalWith fields, created via S.make())
-    // These have TypeLiteralTransformation - we need to look up the original schema
-    // to access the PropertySignatures with their defaults.
-    // Must check BEFORE isStructSchema since these have Transformation AST, not TypeLiteral.
-    // IMPORTANT: Only use this for S.make() schemas that lack .fields - top-level structs with
-    // .fields should use the isStructSchema path which uses processField for better handling.
+    // Internal struct transform (Objects with encoding chain for defaults)
     if (isInternalStructTransform(ast) && !hasDirectFields(schema)) {
-      // Try to find the original schema with .fields
-      const originalSchema = originalSchemas.get(ast)
-
-      if (originalSchema) {
-        // Use the original schema's .fields to process with full PropertySignature info
-        const processedFields = Obj.mapValues(originalSchema.fields, (field) =>
-          processField(field, getOrProcess),
-        )
-        const newStruct = S.Struct(processedFields as S.Struct.Fields)
-        return S.Data(copyAnnotations(newStruct, annotations))
-      }
-
-      // Fallback: process from AST (this loses defaults but shouldn't happen normally)
-      const fromLiteral = ast.from
       const processedFields = Object.fromEntries(
-        fromLiteral.propertySignatures.map((prop) => {
-          const fieldSchema = S.make(prop.type)
+        ast.propertySignatures.map((prop: AST.PropertySignature) => {
+          const fieldSchema = { ast: prop.type } as unknown as S.Top
           const processedSchema = getOrProcess(fieldSchema)
-          if (prop.isOptional) {
-            return [prop.name as string, S.optional(processedSchema)]
+          if (AST.isOptional(prop.type)) {
+            return [prop.name as string, S.optionalKey(processedSchema)]
           }
           return [prop.name as string, processedSchema]
         }),
       )
 
       const newStruct = S.Struct(processedFields as S.Struct.Fields)
-      return S.Data(copyAnnotations(newStruct, annotations))
+      return copyAnnotations(newStruct, annotations)
     }
 
-    // Struct - recurse into fields, then wrap
+    // Struct - recurse into fields
     if (isStructSchema(schema)) {
-      let processedFields: Record<string, S.Struct.Field>
+      let processedFields: Record<string, S.Top>
 
       if (hasDirectFields(schema)) {
-        // Direct Struct schema - use processField to handle PropertySignatures
-        processedFields = Obj.mapValues(schema.fields, (field) => processField(field, getOrProcess))
+        // Direct Struct schema - process each field
+        processedFields = Obj.mapValues(schema.fields as Record<string, S.Top>, (field) =>
+          processField(field, getOrProcess),
+        )
       } else {
-        // Schema from S.make() - extract fields from AST and process
-        const typeLiteral = ast as AST.TypeLiteral
+        // Schema with Objects AST - extract fields from AST and process
+        const objectsAST = ast as AST.Objects
         processedFields = Object.fromEntries(
-          typeLiteral.propertySignatures.map((prop) => {
-            const fieldSchema = S.make(prop.type)
+          objectsAST.propertySignatures.map((prop: AST.PropertySignature) => {
+            const fieldSchema = { ast: prop.type } as unknown as S.Top
             const processedSchema = getOrProcess(fieldSchema)
-            // Preserve optional status from AST
-            if (prop.isOptional) {
-              return [prop.name as string, S.optional(processedSchema)]
+            // Preserve optional status from AST context
+            if (AST.isOptional(prop.type)) {
+              return [prop.name as string, S.optionalKey(processedSchema)]
             }
             return [prop.name as string, processedSchema]
           }),
@@ -547,44 +310,43 @@ export const ensureHashableSchema = <$S extends S.Schema.Any>(
       }
 
       const newStruct = S.Struct(processedFields as S.Struct.Fields)
-      return S.Data(copyAnnotations(newStruct, annotations))
+      return copyAnnotations(newStruct, annotations)
     }
 
-    // Array - recurse into element, then wrap
+    // Array - recurse into element
     if (isArraySchema(schema)) {
       const processedElement = getOrProcess(getArrayElement(schema))
       const newArray = S.Array(processedElement)
-      return S.Data(copyAnnotations(newArray, annotations))
+      return copyAnnotations(newArray, annotations)
     }
 
-    // Tuple - recurse into elements, preserving optionality, then wrap
+    // Tuple - recurse into elements, preserving optionality
     if (isTupleSchema(schema)) {
-      const tupleAST = schema.ast
-      const processedElements = tupleAST.elements.map((element) => {
-        const elementSchema = S.make(element.type)
+      const arraysAST = ast as AST.Arrays
+      const processedElements = arraysAST.elements.map((elementAST: AST.AST) => {
+        const elementSchema = { ast: elementAST } as unknown as S.Top
         const processedElementSchema = getOrProcess(elementSchema)
-        // Preserve optional status using S.optionalElement
-        return element.isOptional
-          ? S.optionalElement(processedElementSchema)
+        // Preserve optional status using optionalKey
+        return AST.isOptional(elementAST)
+          ? S.optionalKey(processedElementSchema)
           : processedElementSchema
       })
-      const newTuple = S.Tuple(...processedElements)
-      return S.Data(copyAnnotations(newTuple, annotations))
+      const newTuple = S.Tuple(processedElements)
+      return copyAnnotations(newTuple, annotations)
     }
 
     // Union - recurse into each member
     if (isUnionSchema(schema)) {
-      const unionAST = schema.ast
-      const processedMembers = unionAST.types.map((memberAST) => {
-        const memberSchema = S.make(memberAST)
+      const unionAST = ast as AST.Union
+      const processedMembers = unionAST.types.map((memberAST: AST.AST) => {
+        const memberSchema = { ast: memberAST } as unknown as S.Top
         return getOrProcess(memberSchema)
       })
-      const newUnion = S.Union(...processedMembers)
+      const newUnion = S.Union(processedMembers)
       return copyAnnotations(newUnion, annotations)
     }
 
     // Primitives and other unsupported types - return unchanged
-    // S.Data only works with structs/arrays, so we can't wrap primitives
     return schema
   }
 
@@ -596,18 +358,16 @@ export const ensureHashableSchema = <$S extends S.Schema.Any>(
 // ============================================================================
 
 /**
- * Recursively convert a value to use Effect's Data types for stable hashing.
+ * Recursively convert a value to use Effect's hashable equivalents.
  *
- * Transforms:
- * - Primitives → pass through unchanged
- * - Objects already implementing Hash → pass through unchanged
- * - Date → DateTime (lossless: same epoch milliseconds)
- * - Map → HashMap (lossless: preserves all entries, recurses into keys and values)
- * - Set → HashSet (lossless: preserves all elements, recurses into elements)
- * - Arrays → Data.array (with recursive processing of elements)
- * - Plain objects → Data.struct (with recursive processing of values)
+ * In Effect v4, Hash.hash and Equal.equals already handle plain objects,
+ * arrays, Maps, Sets, and Dates structurally. This function is primarily
+ * useful for converting:
+ * - Map → HashMap
+ * - Set → HashSet
+ * - Date → DateTime
  *
- * Types not in {@link Hashable} (RegExp, Error, URL, TypedArray, etc.) will
+ * Types not in {@link Coercible} (RegExp, Error, URL, TypedArray, etc.) will
  * cause a compile-time error.
  *
  * @example
@@ -636,7 +396,7 @@ export const ensureHashable = <$T extends Coercible>(data: $T): $T => {
 
   // Date → DateTime (lossless: same epoch milliseconds)
   if (data instanceof Date) {
-    return DateTime.unsafeMake(data) as any
+    return DateTime.fromDateUnsafe(data) as any
   }
 
   // Map → HashMap (lossless: preserves all entries) + recurse into keys AND values
@@ -653,12 +413,14 @@ export const ensureHashable = <$T extends Coercible>(data: $T): $T => {
     return HashSet.fromIterable(elements) as any
   }
 
-  // Arrays need recursive processing of all elements
+  // Arrays - in v4, plain arrays are already structurally comparable
+  // but we still recurse to handle nested Maps/Sets/Dates
   if (Array.isArray(data)) {
     const processedItems = data.map((item) => ensureHashable(item as Coercible))
-    return Data.array(processedItems) as $T
+    return processedItems as unknown as $T
   }
 
-  // Plain objects need recursive processing of all values
-  return Data.struct(Obj.mapValues(data as Record<string, Coercible>, ensureHashable)) as $T
+  // Plain objects - in v4, already structurally comparable
+  // but we still recurse to handle nested Maps/Sets/Dates
+  return Obj.mapValues(data as Record<string, Coercible>, ensureHashable) as $T
 }

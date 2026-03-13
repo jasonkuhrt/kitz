@@ -1,4 +1,4 @@
-import { Context, Effect } from 'effect'
+import { Effect, ServiceMap } from 'effect'
 import type { NpmCliError, PackOptions, PackResult, PublishOptions, WhoamiOptions } from './cli.js'
 
 /**
@@ -43,4 +43,4 @@ export interface NpmCliService {
  * program.pipe(Effect.provide(NpmRegistry.NpmCliDryRun))
  * ```
  */
-export class NpmCli extends Context.Tag('NpmCli')<NpmCli, NpmCliService>() {}
+export class NpmCli extends ServiceMap.Service<NpmCli, NpmCliService>()('NpmCli') {}

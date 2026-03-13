@@ -6,7 +6,7 @@
  * by Planner (for version projection) and Commentator (for PR comments).
  */
 
-import { FileSystem } from '@effect/platform'
+import { FileSystem } from 'effect'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
@@ -52,7 +52,7 @@ const findLastReleaseTag = (
       if (Option.isSome(version)) {
         MutableHashSet.add(
           candidates,
-          Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version: version.value })),
+          Pkg.Pin.toString(new Pkg.Pin.Exact({ name: pkg.name, version: version.value })),
         )
       }
     }
@@ -126,8 +126,10 @@ export const analyze = (
       } else if (tags.includes(until)) {
         const newerCommits = yield* git
           .getCommitsSince(until)
-          .pipe(Effect.catchAll(() => Effect.succeed([])))
-        const newerHashes = HashSet.fromIterable(newerCommits.map((commit) => commit.hash))
+          .pipe(Effect.catch(() => Effect.succeed([] as { hash: string }[])))
+        const newerHashes = HashSet.fromIterable(
+          newerCommits.map((commit: { hash: string }) => commit.hash),
+        )
         commits = commits.filter((commit) => !HashSet.has(newerHashes, commit.hash))
       }
     }
@@ -178,7 +180,7 @@ export const analyze = (
       const currentVersion = findLatestTagVersion(pkg.name, tags as string[])
 
       impacts.push(
-        Impact.make({
+        new Impact({
           package: pkg,
           bump,
           commits: packageCommits,
@@ -233,7 +235,7 @@ export const analyze = (
       const currentVersion = findLatestTagVersion(pkg.name, tags as string[])
 
       cascades.push(
-        CascadeImpact.make({
+        new CascadeImpact({
           package: pkg,
           triggeredBy,
           currentVersion,
@@ -253,7 +255,7 @@ export const analyze = (
       )
     })
 
-    return Analysis.make({
+    return new Analysis({
       impacts,
       cascades,
       unchanged: [...unchanged],

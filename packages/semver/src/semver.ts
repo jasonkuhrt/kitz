@@ -1,5 +1,5 @@
 import { Schema as S } from 'effect'
-import { Equivalence, Order, ParseResult } from 'effect'
+import { Effect, Equivalence, Option, Order, SchemaGetter, SchemaIssue } from 'effect'
 import { OfficialRelease } from './official-release.js'
 import { PreRelease } from './pre-release.js'
 
@@ -106,10 +106,7 @@ const comparePrerelease = (
  *
  * Use this when you want the structured type directly without string encoding.
  */
-export const Semver: S.Schema<OfficialRelease | PreRelease> = S.Union(
-  OfficialRelease,
-  PreRelease,
-).annotations({
+export const Semver = S.Union([OfficialRelease, PreRelease]).annotate({
   identifier: 'Semver',
   title: 'Semantic Version',
   description: 'A semantic version following SemVer specification',
@@ -120,36 +117,38 @@ export const Semver: S.Schema<OfficialRelease | PreRelease> = S.Union(
  *
  * Transforms `"1.0.0"` or `"1.0.0-alpha.1"` ↔ Semver
  */
-export const Schema: S.Schema<OfficialRelease | PreRelease, string> = S.transformOrFail(
-  S.String,
-  Semver,
-  {
-    strict: true,
-    decode: (value, _, ast) => {
-      const parsed = parse(value)
-      if (!parsed) {
-        return ParseResult.fail(new ParseResult.Type(ast, value, 'Invalid semver format'))
-      }
+export const Schema = S.String.pipe(
+  S.decodeTo(Semver, {
+    decode: SchemaGetter.transformOrFail(
+      // oxlint-disable-next-line kitz/require-tagged-error-types -- SchemaIssue.Issue is tagged at runtime
+      (value: string): Effect.Effect<OfficialRelease | PreRelease, SchemaIssue.Issue> => {
+        const parsed = parse(value)
+        if (!parsed) {
+          return Effect.fail(
+            new SchemaIssue.InvalidValue(Option.some(value), { message: 'Invalid semver format' }),
+          )
+        }
 
-      const base = {
-        major: parsed.major,
-        minor: parsed.minor,
-        patch: parsed.patch,
-        build: parsed.build,
-      }
+        const base = {
+          major: parsed.major,
+          minor: parsed.minor,
+          patch: parsed.patch,
+          build: parsed.build,
+        }
 
-      if (parsed.prerelease && parsed.prerelease.length > 0) {
-        return ParseResult.succeed(
-          PreRelease.make({
-            ...base,
-            prerelease: parsed.prerelease as [string | number, ...(string | number)[]],
-          }),
-        )
-      }
-      return ParseResult.succeed(OfficialRelease.make(base))
-    },
-    encode: (semver) => ParseResult.succeed(formatSemver(semver)),
-  },
+        if (parsed.prerelease && parsed.prerelease.length > 0) {
+          return Effect.succeed(
+            new PreRelease({
+              ...base,
+              prerelease: parsed.prerelease as [string | number, ...(string | number)[]],
+            }),
+          )
+        }
+        return Effect.succeed(new OfficialRelease(base))
+      },
+    ),
+    encode: SchemaGetter.transform((semver: OfficialRelease | PreRelease) => formatSemver(semver)),
+  }),
 )
 
 // ============================================================================
@@ -187,9 +186,9 @@ const getPrereleaseIds = (v: Semver): readonly (string | number)[] | undefined =
 
 export const order: Order.Order<Semver> = Order.make((a, b) => {
   // Compare major/minor/patch
-  if (a.major !== b.major) return Order.number(a.major, b.major)
-  if (a.minor !== b.minor) return Order.number(a.minor, b.minor)
-  if (a.patch !== b.patch) return Order.number(a.patch, b.patch)
+  if (a.major !== b.major) return Order.Number(a.major, b.major)
+  if (a.minor !== b.minor) return Order.Number(a.minor, b.minor)
+  if (a.patch !== b.patch) return Order.Number(a.patch, b.patch)
   // Compare prerelease
   return comparePrerelease(getPrereleaseIds(a), getPrereleaseIds(b))
 })
@@ -198,9 +197,9 @@ export const min = Order.min(order)
 
 export const max = Order.max(order)
 
-export const lessThan = Order.lessThan(order)
+export const lessThan = Order.isLessThan(order)
 
-export const greaterThan = Order.greaterThan(order)
+export const greaterThan = Order.isGreaterThan(order)
 
 // ============================================================================
 // Equivalence
@@ -266,7 +265,7 @@ export const one: Semver = make(1, 0, 0)
 /**
  * Version bump type for stable releases.
  */
-export const BumpType = S.Enums({
+export const BumpType = S.Enum({
   major: 'major',
   minor: 'minor',
   patch: 'patch',
@@ -318,7 +317,7 @@ export const officialToPre = (
   version: OfficialRelease,
   options: OfficialToPreOptions,
 ): PreRelease =>
-  PreRelease.make({
+  new PreRelease({
     major: version.major,
     minor: version.minor,
     patch: version.patch,
@@ -332,7 +331,7 @@ export const officialToPre = (
  * Preserves major/minor/patch and build metadata.
  */
 export const stripPre = (version: Semver): OfficialRelease =>
-  OfficialRelease.make({
+  new OfficialRelease({
     major: version.major,
     minor: version.minor,
     patch: version.patch,
@@ -359,11 +358,11 @@ export const withPre = (
 export const increment = (version: Semver, bump: BumpType): Semver => {
   switch (bump) {
     case 'major':
-      return OfficialRelease.make({ major: version.major + 1, minor: 0, patch: 0 })
+      return new OfficialRelease({ major: version.major + 1, minor: 0, patch: 0 })
     case 'minor':
-      return OfficialRelease.make({ major: version.major, minor: version.minor + 1, patch: 0 })
+      return new OfficialRelease({ major: version.major, minor: version.minor + 1, patch: 0 })
     case 'patch':
-      return OfficialRelease.make({
+      return new OfficialRelease({
         major: version.major,
         minor: version.minor,
         patch: version.patch + 1,

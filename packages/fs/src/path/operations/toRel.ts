@@ -21,11 +21,11 @@ export type toRel<A extends $Abs> = A extends AbsFile ? RelFile : A extends AbsD
  *
  * @example
  * ```ts
- * const absFile = Path.AbsFile.make({
+ * const absFile = new Path.AbsFile({
  *   segments: ['home', 'user', 'src'],
  *   fileName: { stem: 'index', extension: '.ts' }
  * })
- * const base = Path.AbsDir.make({ segments: ['home', 'user'] })
+ * const base = new Path.AbsDir({ segments: ['home', 'user'] })
  * const relFile = toRel(absFile, base) // ./src/index.ts
  * ```
  */

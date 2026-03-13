@@ -8,10 +8,10 @@ import { GitHubService } from '../services/github.js'
 
 /** Verifies that only squash merge is enabled on the GitHub repository. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('repo.squash-only'),
+  id: RuleId.makeUnsafe('repo.squash-only'),
   description: 'Only squash merge enabled',
-  preconditions: [Precondition.HasGitHubAccess.make()],
-  defaults: RuleDefaults.make({ enabled: false }),
+  preconditions: [new Precondition.HasGitHubAccess()],
+  defaults: new RuleDefaults({ enabled: false }),
   check: Effect.gen(function* () {
     const github = yield* GitHubService
     const { settings } = github
@@ -21,8 +21,8 @@ export const rule = RuntimeRule.create({
       settings.allowSquashMerge && !settings.allowMergeCommit && !settings.allowRebaseMerge
 
     if (!isSquashOnly) {
-      return Violation.make({
-        location: RepoSettings.make(),
+      return new Violation({
+        location: new RepoSettings(),
       })
     }
     return undefined

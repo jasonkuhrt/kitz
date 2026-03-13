@@ -30,8 +30,8 @@ const args = Oak.Command.create()
   .description('Generate a release plan')
   .parameter(
     'lifecycle l',
-    Schema.Literal('official', 'candidate', 'ephemeral').pipe(
-      Schema.annotations({
+    Schema.Literals(['official', 'candidate', 'ephemeral']).pipe(
+      Schema.annotate({
         description: 'Release lifecycle: official, candidate, or ephemeral',
       }),
     ),
@@ -39,13 +39,13 @@ const args = Oak.Command.create()
   .parameter(
     'pkg p',
     Schema.UndefinedOr(Schema.Array(Schema.String)).pipe(
-      Schema.annotations({ description: 'Only include specific package(s)' }),
+      Schema.annotate({ description: 'Only include specific package(s)' }),
     ),
   )
   .parameter(
     'exclude x',
     Schema.UndefinedOr(Schema.Array(Schema.String)).pipe(
-      Schema.annotations({ description: 'Exclude package(s)' }),
+      Schema.annotate({ description: 'Exclude package(s)' }),
     ),
   )
   .parse()

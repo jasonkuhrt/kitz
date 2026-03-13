@@ -19,7 +19,7 @@ export class Commit extends Schema.TaggedClass<Commit>()('Commit', {
 /**
  * Fields type for ParsedCommit with the message field replaced by a parsed schema.
  */
-type ParsedCommitFields<P extends Schema.Schema.Any> = Omit<
+type ParsedCommitFields<P extends Schema.Top> = Omit<
   (typeof Commit)['fields'],
   '_tag' | 'message'
 > & {
@@ -56,11 +56,8 @@ const baseFields = {
  */
 export const ParsedCommit =
   <Self = never>(identifier?: string) =>
-  <Tag extends string, P extends Schema.Schema.Any>(
-    tag: Tag,
-    parsedSchema: P,
-  ): Schema.TaggedClass<Self, Tag, { readonly _tag: Schema.tag<Tag> } & ParsedCommitFields<P>> =>
+  <Tag extends string, P extends Schema.Top>(tag: Tag, parsedSchema: P) =>
     Schema.TaggedClass<Self>(identifier)(tag, {
       ...baseFields,
       message: parsedSchema,
-    }) as any
+    } as any) as any

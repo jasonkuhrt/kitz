@@ -21,7 +21,7 @@
  * type AnyPath = typeof Path.Any.Type
  *
  * // Data - Individual members
- * const file = Path.AbsFile.make({ path, file })
+ * const file = new Path.AbsFile({ path, file })
  *
  * // Data - Groupings
  * type AbsPath = typeof Path.$Abs.Type  // AbsFile | AbsDir

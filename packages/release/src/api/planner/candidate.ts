@@ -1,4 +1,4 @@
-import { FileSystem } from '@effect/platform'
+import { FileSystem } from 'effect'
 import { Resource } from '@kitz/resource'
 import { Effect } from 'effect'
 import { buildDependencyGraph, type DependencyGraph } from '../analyzer/cascade.js'
@@ -34,10 +34,10 @@ const detectCascadesForCandidate = (
     // Find existing candidate releases for this version
     const candidateNumber = findLatestCandidateNumber(cascade.package.name, baseVersion, tags)
 
-    return Candidate.make({
+    return new Candidate({
       package: cascade.package,
       baseVersion,
-      prerelease: Version.Candidate.make({ iteration: candidateNumber + 1 }),
+      prerelease: new Version.Candidate({ iteration: candidateNumber + 1 }),
       commits: cascade.commits,
     })
   })
@@ -77,10 +77,10 @@ export const candidate = (
       ])
 
       releases.push(
-        Candidate.make({
+        new Candidate({
           package: impact.package,
           baseVersion: nextOfficialVersion,
-          prerelease: Version.Candidate.make({ iteration: candidateNumber + 1 }),
+          prerelease: new Version.Candidate({ iteration: candidateNumber + 1 }),
           commits: impact.commits,
         }),
       )
@@ -92,7 +92,7 @@ export const candidate = (
       ...analysis.tags,
     ])
 
-    return Plan.make({
+    return new Plan({
       lifecycle: 'candidate',
       timestamp: new Date().toISOString(),
       releases,

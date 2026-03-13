@@ -3,12 +3,11 @@ import { Severity } from './severity.js'
 
 /** Dot-notation identifier (e.g. 'pr.type.match-known'). */
 export const RuleId = Schema.String.pipe(
-  Schema.pattern(/^[a-z]+(\.[a-z]+(-[a-z]+)*)+$/),
-  Schema.annotations({
+  Schema.check(Schema.isPattern(/^[a-z]+(\.[a-z]+(-[a-z]+)*)+$/)),
+  Schema.annotate({
     description: 'Dot-notation rule identifier',
     examples: ['pr.type.match-known', 'env.git-clean', 'repo.squash-only'],
-    message: () =>
-      `Expected a dot-notation rule ID (e.g. 'pr.type.match-known'). Must be lowercase segments separated by dots, with optional hyphens within segments.`,
+    message: `Expected a dot-notation rule ID (e.g. 'pr.type.match-known'). Must be lowercase segments separated by dots, with optional hyphens within segments.`,
   }),
   Schema.brand('RuleId'),
 )
@@ -24,7 +23,7 @@ export class RuleDefaults extends Schema.TaggedClass<RuleDefaults>()('RuleDefaul
    * 'auto': enabled if all preconditions pass, silently skipped otherwise.
    * @default 'auto'
    */
-  enabled: Schema.optional(Schema.Union(Schema.Boolean, Schema.Literal('auto'))),
+  enabled: Schema.optional(Schema.Union([Schema.Boolean, Schema.Literal('auto')])),
   /**
    * Severity level when rule produces violations.
    * @default Severity.Error

@@ -1,4 +1,4 @@
-import { FileSystem } from '@effect/platform'
+import { FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
@@ -37,9 +37,9 @@ const detectCascadesForEphemeral = (
   return baseCascades.map((cascade) => {
     const prReleaseNumber = findLatestEphemeralNumber(cascade.package.name, prNumber, tags)
 
-    return Ephemeral.make({
+    return new Ephemeral({
       package: cascade.package,
-      prerelease: Version.Ephemeral.make({ prNumber, iteration: prReleaseNumber + 1, sha }),
+      prerelease: new Version.Ephemeral({ prNumber, iteration: prReleaseNumber + 1, sha }),
       commits: cascade.commits,
     })
   })
@@ -109,9 +109,9 @@ export const ephemeral = (
       ])
 
       releases.push(
-        Ephemeral.make({
+        new Ephemeral({
           package: impact.package,
-          prerelease: Version.Ephemeral.make({ prNumber, iteration: prReleaseNumber + 1, sha }),
+          prerelease: new Version.Ephemeral({ prNumber, iteration: prReleaseNumber + 1, sha }),
           commits: impact.commits,
         }),
       )
@@ -128,7 +128,7 @@ export const ephemeral = (
       sha,
     )
 
-    return Plan.make({
+    return new Plan({
       lifecycle: 'ephemeral',
       timestamp: new Date().toISOString(),
       releases,

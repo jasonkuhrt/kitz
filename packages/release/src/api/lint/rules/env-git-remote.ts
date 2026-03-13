@@ -17,12 +17,12 @@ interface Metadata {
 
 /** Verifies that the git remote (default: origin) is configured and reachable. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('env.git-remote'),
+  id: RuleId.makeUnsafe('env.git-remote'),
   description: 'git remote is configured and reachable',
   preventsDescriptions: [
     'tag push failures because the release remote is missing, misnamed, or unreachable',
   ],
-  defaults: RuleDefaults.make({ enabled: false }),
+  defaults: new RuleDefaults({ enabled: false }),
   preconditions: [],
   optionsSchema: OptionsSchema,
   check: Effect.gen(function* () {
@@ -32,26 +32,26 @@ export const rule = RuntimeRule.create({
 
     const result = yield* git.getRemoteUrl(remote).pipe(
       Effect.map((url) => ({ metadata: { url } })),
-      Effect.catchAll((error) =>
+      Effect.catch((error: any) =>
         Effect.succeed({
-          violation: Violation.make({
-            location: Environment.make({
+          violation: new Violation({
+            location: new Environment({
               message: `Git remote '${remote}' not configured or unreachable: ${error.message}`,
             }),
             summary: `Release tags cannot be pushed because git remote "${remote}" is unavailable.`,
             detail:
               'Release apply publishes packages and then pushes tags. If the configured remote cannot be resolved or reached, the publish can succeed while the git release markers fail to leave your machine.',
             hints: [
-              Hint.make({
+              new Hint({
                 description: `Ensure \`${remote}\` points at the canonical repo and is reachable from this machine.`,
               }),
-              Hint.make({
+              new Hint({
                 description:
                   'If you publish from a fork or alternate remote name, rerun the check with the matching remote option.',
               }),
             ],
             docs: [
-              DocLink.make({
+              new DocLink({
                 label: 'Git remotes',
                 url: 'https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes',
               }),

@@ -1,5 +1,5 @@
-import { FileSystem } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { FileSystem } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
@@ -64,11 +64,11 @@ const toConfig = (workspaces: Pkg.Manifest.Manifest['workspaces']): Option.Optio
   if (!workspaces) return Option.none()
 
   if (Array.isArray(workspaces)) {
-    return Option.some(Config.make({ packages: workspaces }))
+    return Option.some(new Config({ packages: workspaces }))
   }
 
   if ('packages' in workspaces && workspaces.packages) {
-    return Option.some(Config.make({ packages: workspaces.packages }))
+    return Option.some(new Config({ packages: workspaces.packages }))
   }
 
   return Option.none()

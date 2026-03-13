@@ -7,7 +7,7 @@ import type { z } from 'zod/v4'
  *
  * This works with:
  * - Zod schemas (via Standard Schema V1 type parameters)
- * - Effect schemas (via Schema.Schema<A, I, R> where A is the output type)
+ * - Effect schemas (via Schema.Codec<A, I, RD, RE> where A is the output type)
  * - Standard Schema V1 compliant schemas (extracts Output type parameter)
  * - OakSchema (extracts from nested standardSchema)
  *
@@ -21,8 +21,8 @@ export type InferOutput<$Schema> =
     : // Standard Schema V1 (including converted Effect schemas at runtime)
       $Schema extends StandardSchemaV1<any, infer ___Output>
       ? ___Output
-      : // Effect Schema - Schema.Schema<A, I, R> where A is output type
-        $Schema extends Schema.Schema<infer __a__, any, any>
+      : // Effect Schema - Schema.Schema<A> where A is output type
+        $Schema extends Schema.Schema<infer __a__>
         ? __a__
         : never
 

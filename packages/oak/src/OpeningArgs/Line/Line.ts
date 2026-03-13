@@ -1,5 +1,5 @@
 import { Str } from '@kitz/core'
-import { Either } from 'effect'
+import { Result } from 'effect'
 import { Errors } from '../../Errors/_.js'
 import { stripeNegatePrefixLoose } from '../../helpers.js'
 import type { Index } from '../../lib/prelude.js'
@@ -130,10 +130,10 @@ export const parse = (rawLineInputs: RawInputs, parameters: Parameter[]): Parsed
         rawLineInput,
         currentReport.report.parameter,
       )
-      if (Either.isRight(parsed)) {
-        currentReport.report.value = parsed.right
+      if (Result.isSuccess(parsed)) {
+        currentReport.report.value = parsed.success
       } else {
-        const errorMessage = parsed.left.message.replace(/^Deserialization failed: /, ``)
+        const errorMessage = parsed.failure.message.replace(/^Deserialization failed: /, ``)
         currentReport.report.errors.push(
           new Errors.ErrorInvalidArgument({
             context: {

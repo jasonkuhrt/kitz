@@ -9,12 +9,12 @@ import { ReleasePlanService } from '../services/release-plan.js'
 
 /** Verifies that official and candidate releases are only run from the configured trunk branch. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('env.release-branch-allowed'),
+  id: RuleId.makeUnsafe('env.release-branch-allowed'),
   description: 'active branch is allowed for the planned release lifecycle',
   preventsDescriptions: [
     'publishing official or candidate releases from non-trunk branches and tagging code that has not landed on trunk',
   ],
-  preconditions: [Precondition.HasReleasePlan.make()],
+  preconditions: [new Precondition.HasReleasePlan()],
   check: Effect.gen(function* () {
     const context = yield* ReleaseContextService
     const plan = yield* ReleasePlanService
@@ -24,8 +24,8 @@ export const rule = RuntimeRule.create({
     if (!context.trunk || !context.currentBranch) return undefined
     if (context.currentBranch === context.trunk) return undefined
 
-    return Violation.make({
-      location: Environment.make({
+    return new Violation({
+      location: new Environment({
         message: `Current branch "${context.currentBranch}" does not match configured trunk "${context.trunk}".`,
       }),
       summary: `${context.lifecycle} releases must run from trunk.`,
@@ -33,16 +33,16 @@ export const rule = RuntimeRule.create({
         'Official and candidate releases should describe code that already exists on trunk. ' +
         'Planning or applying them from a feature branch can publish versions that do not match merge history.',
       hints: [
-        Hint.make({
+        new Hint({
           description: `Checkout ${context.trunk} before running ${context.lifecycle} release plan or apply.`,
         }),
-        Hint.make({
+        new Hint({
           description:
             'If your primary release branch has a different name, update `trunk` in release.config.ts.',
         }),
       ],
       docs: [
-        DocLink.make({
+        new DocLink({
           label: 'Git branch management',
           url: 'https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell',
         }),

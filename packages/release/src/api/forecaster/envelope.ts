@@ -15,6 +15,8 @@ export const ForecastEnvelope = Schema.Struct({
   publishHistory: Schema.Array(PublishRecordSchema),
 })
 
-export const ForecastEnvelopeJson = Schema.parseJson(ForecastEnvelope)
+export const ForecastEnvelopeJson = Schema.fromJsonString(ForecastEnvelope as any)
 
-export const encodeForecastEnvelope = Schema.encodeSync(ForecastEnvelopeJson)
+export const encodeForecastEnvelope = Schema.encodeSync(ForecastEnvelopeJson as any) as (
+  input: ForecastEnvelope,
+) => string

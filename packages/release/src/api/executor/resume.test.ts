@@ -2,7 +2,7 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { describe, expect, it as test } from '@effect/vitest'
-import { Effect, Layer, LogLevel, Logger, Ref } from 'effect'
+import { Effect, Layer, Ref } from 'effect'
 import { execute, toPayload } from './execute.js'
 import { ReleaseWorkflow } from './workflow.js'
 import {
@@ -33,11 +33,10 @@ const workspacePackages: Parameters<typeof planOfficial>[0] = [
 
 const tagCore = (version: string) => tag(Pkg.Moniker.parse('@kitz/core'), version)
 const tagCli = (version: string) => tag(Pkg.Moniker.parse('@kitz/cli'), version)
-const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  effect.pipe(Logger.withMinimumLogLevel(LogLevel.None))
+const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect
 
 describe('Executor workflow state', () => {
-  test.scopedLive(
+  test.live(
     'persists deterministic workflow identity after a partial multi-package publish failure',
     () =>
       quiet(
@@ -87,15 +86,15 @@ describe('Executor workflow state', () => {
 
           const firstRun = yield* execute(plan, { dryRun: false }).pipe(
             Effect.provide(workflowContext),
-            Effect.either,
+            Effect.result,
           )
 
-          expect(firstRun._tag).toBe('Left')
-          if (firstRun._tag === 'Left') {
-            expect(firstRun.left._tag).toBe('ExecutorPublishError')
-            if (firstRun.left._tag === 'ExecutorPublishError') {
-              expect(firstRun.left.context.packageName).toBe('@kitz/cli')
-              expect(firstRun.left.context.detail).toContain('mock publish failure')
+          expect(firstRun._tag).toBe('Failure')
+          if (firstRun._tag === 'Failure') {
+            expect(firstRun.failure._tag).toBe('ExecutorPublishError')
+            if (firstRun.failure._tag === 'ExecutorPublishError') {
+              expect(firstRun.failure.context.packageName).toBe('@kitz/cli')
+              expect(firstRun.failure.context.detail).toContain('mock publish failure')
             }
           }
 
@@ -154,12 +153,12 @@ describe('Executor workflow state', () => {
 
           const secondRun = yield* execute(plan, { dryRun: false }).pipe(
             Effect.provide(workflowContext),
-            Effect.either,
+            Effect.result,
           )
 
-          expect(secondRun._tag).toBe('Right')
-          if (secondRun._tag === 'Right') {
-            expect(secondRun.right).toEqual({
+          expect(secondRun._tag).toBe('Success')
+          if (secondRun._tag === 'Success') {
+            expect(secondRun.success).toEqual({
               releasedPackages: ['@kitz/core', '@kitz/cli'],
               createdTags: [tagCore('1.1.0'), tagCli('1.0.1')],
               createdGHReleases: [tagCore('1.1.0'), tagCli('1.0.1')],

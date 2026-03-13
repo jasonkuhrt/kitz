@@ -8,7 +8,7 @@ import { AbsDir } from '../AbsDir/_.js'
 import { RelDir } from '../RelDir/_.js'
 
 // Create an equivalence for string arrays
-const segmentsEquivalence = Array.getEquivalence(Equivalence.string)
+const segmentsEquivalence = Array.makeEquivalence(Equivalence.String)
 
 // ============================================================================
 // Type utilities
@@ -65,8 +65,8 @@ export type MatchingTypeGroupForDir<$a extends $Dir> = {
  *
  * @example
  * ```ts
- * const parent = FsLoc.Path.Abs.make({ segments: ['home', 'user'] })
- * const child = FsLoc.Path.Abs.make({ segments: ['home', 'user', 'docs'] })
+ * const parent = new FsLoc.Path.Abs({ segments: ['home', 'user'] })
+ * const child = new FsLoc.Path.Abs({ segments: ['home', 'user', 'docs'] })
  * isDescendantOf(child, parent) // true
  * ```
  */
@@ -200,8 +200,8 @@ export function isSameSegments<$a extends Path>(a: $a, b: MatchingTypeGroup<$a>)
  *
  * @example
  * ```ts
- * const parent = FsLoc.Path.Abs.make({ segments: ['home', 'user'] })
- * const child = FsLoc.Path.Abs.make({ segments: ['home', 'user', 'docs', 'readme'] })
+ * const parent = new FsLoc.Path.Abs({ segments: ['home', 'user'] })
+ * const child = new FsLoc.Path.Abs({ segments: ['home', 'user', 'docs', 'readme'] })
  * getRelativeSegments(child, parent) // ['docs', 'readme']
  * ```
  */
@@ -227,8 +227,8 @@ export function getRelativeSegments<$a extends Path>(
  *
  * @example
  * ```ts
- * const a = FsLoc.Path.Abs.make({ segments: ['home', 'user', 'docs'] })
- * const b = FsLoc.Path.Abs.make({ segments: ['home', 'user', 'pictures'] })
+ * const a = new FsLoc.Path.Abs({ segments: ['home', 'user', 'docs'] })
+ * const b = new FsLoc.Path.Abs({ segments: ['home', 'user', 'pictures'] })
  * getSharedBase(a, b) // Option.some(AbsDir with segments ['home', 'user'])
  * ```
  */

@@ -13,7 +13,7 @@ import { OfficialIncrement } from '../../version/models/official-increment.js'
  */
 export const ItemBaseFields = {
   package: PackageSchema,
-  commits: S.Array(ReleaseCommit),
+  commits: S.Array(ReleaseCommit as any),
 }
 
 /**
@@ -21,9 +21,9 @@ export const ItemBaseFields = {
  */
 export class Official extends S.TaggedClass<Official>()('Official', {
   ...ItemBaseFields,
-  version: S.Union(OfficialFirst, OfficialIncrement),
+  version: S.Union([OfficialFirst, OfficialIncrement]),
 }) {
-  static is = S.is(Official)
+  static is = S.is(Official as any) as (u: unknown) => u is Official
 
   /** The version this release will produce. Extracts `to` from increments, `version` from firsts. */
   get nextVersion(): Semver.Semver {

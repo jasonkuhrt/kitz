@@ -27,7 +27,7 @@
 
 import { Str } from '@kitz/core'
 import { Resource } from '@kitz/resource'
-import { Schema as S } from 'effect'
+import { SchemaGetter, Schema as S } from 'effect'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -39,7 +39,7 @@ const modifyAt = <T>(arr: readonly T[], index: number, fn: (item: T) => T): T[] 
 }
 
 const remakeSection = (section: Section, entries: readonly Entry[]): Section =>
-  Section.make({
+  new Section({
     comments: section.comments,
     entries: [...entries],
   })
@@ -68,27 +68,29 @@ const remakeSection = (section: Section, entries: readonly Entry[]): Section =>
  * Schema.decodeSync(Git.Gitignore.Pattern)('')  // throws (empty after trim)
  * ```
  */
-const Pattern = S.transform(
-  S.String,
-  S.String.pipe(
-    S.nonEmptyString(),
-    S.pattern(/^[^\x00]*$/, { message: () => 'Pattern cannot contain null bytes' }),
-    S.brand('GitignorePattern'),
-  ),
-  {
-    strict: true,
-    decode: (s) => {
-      let normalized = s.trim()
-      while (normalized.startsWith('./')) {
-        normalized = normalized.slice(2)
-      }
-      return normalized
+const Pattern = S.String.pipe(
+  S.decodeTo(
+    S.String.pipe(
+      S.check(
+        S.isMinLength(1),
+        S.isPattern(/^[^\x00]*$/, { message: 'Pattern cannot contain null bytes' }),
+      ),
+      S.brand('GitignorePattern'),
+    ),
+    {
+      decode: SchemaGetter.transform((s) => {
+        let normalized = s.trim()
+        while (normalized.startsWith('./')) {
+          normalized = normalized.slice(2)
+        }
+        return normalized
+      }),
+      encode: SchemaGetter.transform((p) => p),
     },
-    encode: (p) => p,
-  },
+  ),
 )
 
-type Pattern = S.Schema.Type<typeof Pattern>
+type Pattern = typeof Pattern.Type
 
 /** Decode a string to a normalized Pattern (convenience). */
 const decodePattern = S.decodeSync(Pattern)
@@ -132,7 +134,7 @@ const parse = (content: string): Gitignore => {
   const flushSection = () => {
     if (currentComments.length > 0 || currentEntries.length > 0) {
       sections.push(
-        Section.make({
+        new Section({
           comments: currentComments,
           entries: currentEntries,
         }),
@@ -165,13 +167,13 @@ const parse = (content: string): Gitignore => {
     const pattern = decodePattern(rawPattern)
 
     if (pattern !== '') {
-      currentEntries.push(Entry.make({ pattern, negated }))
+      currentEntries.push(new Entry({ pattern, negated }))
     }
   }
 
   flushSection()
 
-  return Gitignore.make({ sections })
+  return new Gitignore({ sections })
 }
 
 /**
@@ -235,7 +237,7 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
   // ─── Constants ─────────────────────────────────────────────────────────────
 
   /** Empty gitignore (for new files). */
-  static empty: Gitignore = Gitignore.make({ sections: [] })
+  static empty: Gitignore = new Gitignore({ sections: [] })
 
   // ─── Schema Codec ──────────────────────────────────────────────────────────
 
@@ -252,11 +254,12 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
    * const output = Schema.encodeSync(Git.Gitignore.Schema)(gitignore)
    * ```
    */
-  static Schema: S.Schema<Gitignore, string> = S.transform(S.String, Gitignore, {
-    strict: true,
-    decode: (content) => parse(content) as any,
-    encode: (gitignore) => toStringGitignore(gitignore as any),
-  }) as any
+  static Schema: S.Codec<Gitignore, string> = S.String.pipe(
+    S.decodeTo(Gitignore, {
+      decode: SchemaGetter.transform((content) => parse(content) as any),
+      encode: SchemaGetter.transform((gitignore) => toStringGitignore(gitignore as any)),
+    }),
+  ) as any
 
   // ─── Resource ──────────────────────────────────────────────────────────────
 
@@ -363,7 +366,7 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
       return gitignore
     }
 
-    const newEntry = Entry.make({ pattern: normalized, negated })
+    const newEntry = new Entry({ pattern: normalized, negated })
 
     if (sectionHeader !== undefined) {
       const sectionIndex = gitignore.sections.findIndex((s) =>
@@ -371,30 +374,30 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
       )
 
       if (sectionIndex >= 0) {
-        return Gitignore.make({
+        return new Gitignore({
           sections: modifyAt(gitignore.sections, sectionIndex, (section) =>
             remakeSection(section, [...section.entries, newEntry]),
           ),
         })
       } else {
-        const newSection = Section.make({
+        const newSection = new Section({
           comments: [`# ${sectionHeader}`],
           entries: [newEntry],
         })
-        return Gitignore.make({
+        return new Gitignore({
           sections: [...gitignore.sections, newSection],
         })
       }
     }
 
     if (gitignore.sections.length === 0) {
-      return Gitignore.make({
-        sections: [Section.make({ comments: [], entries: [newEntry] })],
+      return new Gitignore({
+        sections: [new Section({ comments: [], entries: [newEntry] })],
       })
     }
 
     const lastIndex = gitignore.sections.length - 1
-    return Gitignore.make({
+    return new Gitignore({
       sections: modifyAt(gitignore.sections, lastIndex, (section) =>
         remakeSection(section, [...section.entries, newEntry]),
       ),
@@ -411,7 +414,7 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
   static removePattern = (gitignore: Gitignore, pattern: string): Gitignore => {
     const normalized = decodePattern(pattern)
 
-    return Gitignore.make({
+    return new Gitignore({
       sections: gitignore.sections
         .map((section) =>
           remakeSection(

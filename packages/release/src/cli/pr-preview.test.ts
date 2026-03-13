@@ -6,20 +6,20 @@ import * as Api from '../api/__.js'
 import { CommitDisplay, Forecast, ForecastRelease } from '../api/forecaster/models.js'
 import { PreviewBlockingError, upsertPullRequestPreviewComment } from './pr-preview.js'
 
-const forecast = Forecast.make({
+const forecast = new Forecast({
   owner: 'org',
   repo: 'repo',
   branch: 'main',
   headSha: 'abc1234',
   releases: [
-    ForecastRelease.make({
+    new ForecastRelease({
       packageName: '@kitz/core',
       packageScope: 'core',
       bump: 'minor',
       currentVersion: Option.some(Semver.fromString('1.0.0')),
       nextOfficialVersion: Semver.fromString('1.1.0'),
       commits: [
-        CommitDisplay.make({
+        new CommitDisplay({
           shortSha: 'abc1234',
           subject: 'new api',
           type: 'feat',
@@ -159,15 +159,15 @@ describe('pr preview comment sync', () => {
         forecast,
         doctor: blockingDoctor,
         interactiveChecklist: false,
-      }).pipe(Effect.provide(layer), Effect.either),
+      }).pipe(Effect.provide(layer), Effect.result),
     )
 
-    expect(result._tag).toBe('Left')
-    if (result._tag !== 'Left') {
+    expect(result._tag).toBe('Failure')
+    if (result._tag !== 'Failure') {
       throw new Error('expected preview update to fail')
     }
 
-    expect(result.left).toBeInstanceOf(PreviewBlockingError)
+    expect(result.failure).toBeInstanceOf(PreviewBlockingError)
 
     const created = await Effect.runPromise(Ref.get(state.createdIssueComments))
     expect(created).toHaveLength(1)

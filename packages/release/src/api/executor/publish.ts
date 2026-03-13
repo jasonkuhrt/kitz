@@ -1,5 +1,5 @@
-import { FileSystem } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { FileSystem } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
@@ -7,7 +7,7 @@ import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
 import { Semver } from '@kitz/semver'
-import { Effect, Either, Schema as S } from 'effect'
+import { Effect, Result, Schema as S } from 'effect'
 import type { Package } from '../analyzer/workspace.js'
 
 const baseTags = ['kit', 'release', 'publish'] as const
@@ -15,9 +15,9 @@ const PublishErrorContext = S.Struct({
   package: Fs.Path.AbsDir.Schema,
   detail: S.optional(S.String),
 })
-const JsonRecordSchema = S.Record({ key: S.String, value: S.Unknown })
-const JsonRecordFromStringSchema = S.parseJson(JsonRecordSchema)
-const decodeJsonRecord = S.decodeUnknown(JsonRecordFromStringSchema)
+const JsonRecordSchema = S.Record(S.String, S.Unknown)
+const JsonRecordFromStringSchema = S.fromJsonString(JsonRecordSchema)
+const decodeJsonRecord = S.decodeUnknownEffect(JsonRecordFromStringSchema)
 const artifactRelDir = Fs.Path.RelDir.fromString('./.release/artifacts/')
 
 /**
@@ -175,29 +175,29 @@ export const preparePackageArtifact = (
     yield* fs.makeDirectory(Fs.Path.toString(artifactDir), { recursive: true })
     yield* fs
       .remove(Fs.Path.toString(artifactPath), { force: true })
-      .pipe(Effect.catchAll(() => Effect.void))
+      .pipe(Effect.catch(() => Effect.void))
 
     const packResult = yield* cli
       .pack({
         cwd: release.package.path,
         packDestination: artifactDir,
       })
-      .pipe(Effect.either)
+      .pipe(Effect.result)
 
     const restoreResult = yield* fs
       .writeFileString(packageJsonPathString, originalJson)
-      .pipe(Effect.either)
+      .pipe(Effect.result)
 
-    if (Either.isLeft(packResult)) {
-      const cleanupFailureDetail = Either.isLeft(restoreResult)
-        ? formatUnknownError(restoreResult.left)
+    if (Result.isFailure(packResult)) {
+      const cleanupFailureDetail = Result.isFailure(restoreResult)
+        ? formatUnknownError(restoreResult.failure)
         : undefined
       return yield* Effect.fail(
         new PublishError({
           context: {
             package: release.package.path,
             detail: renderPrepareFailureDetail({
-              prepareError: packResult.left,
+              prepareError: packResult.failure,
               ...(cleanupFailureDetail === undefined ? {} : { cleanupFailureDetail }),
               packHooks,
             }),
@@ -206,14 +206,14 @@ export const preparePackageArtifact = (
       )
     }
 
-    if (Fs.Path.toString(packResult.right.tarball) !== Fs.Path.toString(artifactPath)) {
-      yield* fs.rename(Fs.Path.toString(packResult.right.tarball), Fs.Path.toString(artifactPath))
+    if (Fs.Path.toString(packResult.success.tarball) !== Fs.Path.toString(artifactPath)) {
+      yield* fs.rename(Fs.Path.toString(packResult.success.tarball), Fs.Path.toString(artifactPath))
     }
 
-    if (Either.isLeft(restoreResult)) {
+    if (Result.isFailure(restoreResult)) {
       yield* Effect.logWarning(
         `[release] ${release.package.name.moniker}: ${renderCleanupWarning({
-          cleanupError: restoreResult.left,
+          cleanupError: restoreResult.failure,
           packHooks,
         })}`,
       )
@@ -243,14 +243,14 @@ export const publishPreparedArtifact = (
         ...(options?.tag && { tag: options.tag }),
         ...(options?.registry && { registry: options.registry }),
       })
-      .pipe(Effect.either)
+      .pipe(Effect.result)
 
-    if (Either.isLeft(publishResult)) {
+    if (Result.isFailure(publishResult)) {
       return yield* Effect.fail(
         new PublishError({
           context: {
             package: artifact.package.path,
-            detail: renderPublishFailureDetail(publishResult.left),
+            detail: renderPublishFailureDetail(publishResult.failure),
           },
         }),
       )

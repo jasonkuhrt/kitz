@@ -1,5 +1,5 @@
 import { Str, Ts } from '@kitz/core'
-import { ParseResult, Schema as S } from 'effect'
+import { Effect, SchemaGetter, Schema as S } from 'effect'
 
 /**
  * Error for CLI argument parsing failures.
@@ -326,7 +326,7 @@ class ArgShortFlag extends S.TaggedClass<ArgShortFlag>()('short-flag', {
  * Represents a multi-character short flag that expands into individual flags.
  */
 class ArgShortFlagCluster extends S.TaggedClass<ArgShortFlagCluster>()('short-flag-cluster', {
-  flags: S.Array(ArgShortFlag).pipe(S.minItems(2)),
+  flags: S.Array(ArgShortFlag).pipe(S.check(S.isMinLength(2))),
   original: S.String,
 }) {}
 
@@ -346,13 +346,13 @@ class ArgSeparator extends S.TaggedClass<ArgSeparator>()('separator', {
   original: S.Literal('--'),
 }) {}
 
-const _ArgSchema = S.Union(
+const _ArgSchema = S.Union([
   ArgLongFlag,
   ArgShortFlag,
   ArgShortFlagCluster,
   ArgPositional,
   ArgSeparator,
-)
+])
 
 const ArgNamespace = {
   /**
@@ -366,36 +366,31 @@ const ArgNamespace = {
    * })
    * ```
    */
-  String: S.transformOrFail(S.String, _ArgSchema, {
-    strict: true,
-    decode: (input, _options, _ast) => {
-      // Use runtime analyzer to parse the argument
-      const analysis = analyze_(input)
+  String: S.String.pipe(
+    S.decodeTo(_ArgSchema, {
+      decode: SchemaGetter.transform((input) => {
+        // Use runtime analyzer to parse the argument
+        const analysis = analyze_(input)
 
-      // Transform analysis result into Arg format
-      switch (analysis._tag) {
-        case 'long-flag':
-          return ParseResult.succeed(
-            new ArgLongFlag({
+        // Transform analysis result into Arg format
+        switch (analysis._tag) {
+          case 'long-flag':
+            return new ArgLongFlag({
               name: analysis.name,
               negated: analysis.negated,
               value: analysis.value,
               original: analysis.original,
-            }),
-          )
+            })
 
-        case 'short-flag':
-          return ParseResult.succeed(
-            new ArgShortFlag({
+          case 'short-flag':
+            return new ArgShortFlag({
               name: analysis.name,
               value: analysis.value,
               original: analysis.original,
-            }),
-          )
+            })
 
-        case 'short-flag-cluster':
-          return ParseResult.succeed(
-            new ArgShortFlagCluster({
+          case 'short-flag-cluster':
+            return new ArgShortFlagCluster({
               flags: analysis.flags.map(
                 (f) =>
                   new ArgShortFlag({
@@ -405,31 +400,27 @@ const ArgNamespace = {
                   }),
               ),
               original: analysis.original,
-            }),
-          )
+            })
 
-        case 'positional':
-          return ParseResult.succeed(
-            new ArgPositional({
+          case 'positional':
+            return new ArgPositional({
               value: analysis.value,
               original: analysis.original,
-            }),
-          )
+            })
 
-        case 'separator':
-          return ParseResult.succeed(
-            new ArgSeparator({
+          case 'separator':
+            return new ArgSeparator({
               value: null,
               original: analysis.original,
-            }),
-          )
-      }
-    },
-    encode: (decoded) => {
-      // Encode back to original string
-      return ParseResult.succeed(decoded.original)
-    },
-  }),
+            })
+        }
+      }),
+      encode: SchemaGetter.transform((decoded) => {
+        // Encode back to original string
+        return decoded.original
+      }),
+    }),
+  ),
 
   /**
    * Create a typed Arg from a literal string with compile-time analysis.

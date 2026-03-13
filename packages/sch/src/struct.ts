@@ -1,6 +1,6 @@
 import { Schema as S } from 'effect'
-import type * as EAST from 'effect/SchemaAST'
-import { isLiteral, isTransformation, isTypeLiteral } from 'effect/SchemaAST'
+import * as EAST from 'effect/SchemaAST'
+import { isLiteral, isObjects } from 'effect/SchemaAST'
 import * as AST from './ast.js'
 
 /**
@@ -57,18 +57,18 @@ export type ExtractFields<$Struct extends S.Struct<any>> =
 
 export type Constructor<$Schema extends AnyStruct, $InputFields> = (
   fields: $InputFields,
-) => S.Schema.Type<$Schema>
+) => $Schema['Type']
 
 export type ConstructorUsingOmitLiteral1Algo<$Schema extends AnyStruct> = (
   fields: ConstructorFieldsUsingOmitLiteral1Algo<$Schema>,
-) => S.Schema.Type<$Schema>
+) => $Schema['Type']
 
 export const pickLiteral1FieldsAsLiterals = <schema extends AnyStruct>(
   schema: schema,
-): { [k in keyof PickLiteral1Fields<schema>]: S.Schema.Type<PickLiteral1Fields<schema>[k]> } => {
+): { [k in keyof PickLiteral1Fields<schema>]: PickLiteral1Fields<schema>[k]['Type'] } => {
   const picked = {}
   const ast = schema.ast
-  if (isTypeLiteral(ast)) {
+  if (isObjects(ast)) {
     ast.propertySignatures.forEach((prop) => {
       if (isLiteral(prop.type) && prop.name !== '_tag') {
         // @ts-expect-error - Extract the literal value, not the schema
@@ -84,7 +84,7 @@ export const pickLiteral1Fields = <schema extends AnyStruct>(
 ): PickLiteral1Fields<schema> => {
   const picked = {}
   const ast = schema.ast
-  if (isTypeLiteral(ast)) {
+  if (isObjects(ast)) {
     ast.propertySignatures.forEach((prop) => {
       if (isLiteral(prop.type)) {
         // @ts-expect-error
@@ -97,7 +97,7 @@ export const pickLiteral1Fields = <schema extends AnyStruct>(
 
 export type PickLiteral1Fields<$Schema extends AnyStruct> = {
   [k in keyof ExtractFields<$Schema>]: ExtractFields<$Schema>[k] extends S.Literal<
-    infer __literals__ extends [string]
+    infer __literal__ extends string
   >
     ? ExtractFields<$Schema>[k]
     : never
@@ -105,7 +105,7 @@ export type PickLiteral1Fields<$Schema extends AnyStruct> = {
 
 export type OmitLiteral1Fields<$Schema extends AnyStruct> = {
   [k in keyof ExtractFields<$Schema>]: ExtractFields<$Schema>[k] extends S.Literal<
-    infer __literals__ extends [string]
+    infer __literal__ extends string
   >
     ? never
     : ExtractFields<$Schema>[k]
@@ -115,27 +115,29 @@ export type GetLiteral1FieldsNames<$Schema extends AnyStruct> = keyof PickLitera
 
 export type ConstructorFieldsUsingOmitLiteral1Algo<$Schema extends AnyStruct> =
   $Schema extends S.Struct<infer __fields__>
-    ? S.Struct.Constructor<Omit<__fields__, GetLiteral1FieldsNames<$Schema>>>
+    ? S.Struct.MakeIn<Omit<__fields__, GetLiteral1FieldsNames<$Schema>>>
     : never
 
 /**
  * Extract the literal value from a specific field in a schema.
  * Returns the exact literal type, not any.
  */
-export const getValueAtField = <$Schema extends S.Schema.All, $FieldName extends string>(
+export const getValueAtField = <$Schema extends S.Top, $FieldName extends string>(
   schema: $Schema,
   fieldName: $FieldName,
 ): GetFieldLiteralType<$Schema, $FieldName> => {
   const ast = schema.ast
 
   // Resolve any transformations to get to the struct
+  // In v4, transformations are in encoding chain, resolve through toEncoded
   let resolved = AST.resolve(ast)
-  if (isTransformation(ast)) {
-    resolved = AST.resolve(ast.to)
+  if (ast.encoding !== undefined) {
+    const encoded = EAST.toEncoded(ast)
+    resolved = AST.resolve(encoded)
   }
 
   // Find the field with the given name
-  if (isTypeLiteral(resolved)) {
+  if (isObjects(resolved)) {
     const field = resolved.propertySignatures.find((prop) => prop.name === fieldName)
     if (field && isLiteral(field.type)) {
       return field.type.literal as GetFieldLiteralType<$Schema, $FieldName>
@@ -148,16 +150,12 @@ export const getValueAtField = <$Schema extends S.Schema.All, $FieldName extends
 /**
  * Extract the type of a literal field from a schema.
  */
-export type GetFieldLiteralType<$Schema extends S.Schema.All, $FieldName extends string> =
+export type GetFieldLiteralType<$Schema extends S.Top, $FieldName extends string> =
   $Schema extends S.TaggedStruct<any, infer $Fields>
     ? $FieldName extends keyof $Fields
-      ? $Fields[$FieldName] extends S.PropertySignature<any, infer $Type, any, any, any, any, any>
-        ? $Type
-        : $Fields[$FieldName] extends S.Literal<infer $Values>
-          ? $Values extends readonly [infer $First, ...any[]]
-            ? $First
-            : never
-          : never
+      ? $Fields[$FieldName] extends S.Literal<infer $Value>
+        ? $Value
+        : never
       : never
     : never
 
@@ -166,21 +164,22 @@ export type GetFieldLiteralType<$Schema extends S.Schema.All, $FieldName extends
 // ============================================================================
 
 /**
- * Get the underlying TypeLiteral AST from a schema, handling transformations.
+ * Get the underlying Objects AST from a schema, handling encoding chains.
  *
- * Schema.Class creates a Transformation where:
- * - `from` is the encoded TypeLiteral (what user provides)
- * - `to` is the decoded Declaration (the class instance)
- *
- * For config loading, we care about the encoded side (what user provides in file).
+ * In v4, Schema.Class schemas have encoding chains. The encoded form
+ * (the input shape) is obtained via toEncoded. For config loading,
+ * we care about the encoded side (what user provides in file).
  */
-const getTypeLiteralAst = (ast: EAST.AST): EAST.TypeLiteral | null => {
-  if (isTypeLiteral(ast)) {
+const getObjectsAst = (ast: EAST.AST): EAST.Objects | null => {
+  if (isObjects(ast)) {
     return ast
   }
-  if (isTransformation(ast)) {
-    // For Schema.Class, `from` is the TypeLiteral representing the input shape
-    return getTypeLiteralAst(ast.from)
+  // If there's an encoding chain, check the encoded form
+  if (ast.encoding !== undefined) {
+    const encoded = EAST.toEncoded(ast)
+    if (isObjects(encoded)) {
+      return encoded
+    }
   }
   return null
 }
@@ -203,7 +202,7 @@ const getTypeLiteralAst = (ast: EAST.AST): EAST.TypeLiteral | null => {
  *
  * // No required fields (all optional with defaults)
  * const Config2 = S.Struct({
- *   port: S.optionalWith(S.Number, { default: () => 3000 })
+ *   port: S.optional(S.Number, { default: () => 3000 })
  * })
  * hasRequiredFields(Config2) // false
  *
@@ -214,15 +213,15 @@ const getTypeLiteralAst = (ast: EAST.AST): EAST.TypeLiteral | null => {
  * hasRequiredFields(Config3) // true
  * ```
  */
-export const hasRequiredFields = (schema: S.Schema.AnyNoContext): boolean => {
-  const typeLiteral = getTypeLiteralAst(schema.ast)
-  if (!typeLiteral) {
+export const hasRequiredFields = (schema: S.Top): boolean => {
+  const objectsAst = getObjectsAst(schema.ast)
+  if (!objectsAst) {
     // Not a struct-like schema
     return false
   }
 
-  for (const prop of typeLiteral.propertySignatures) {
-    if (!prop.isOptional) {
+  for (const prop of objectsAst.propertySignatures) {
+    if (!EAST.isOptional(prop.type)) {
       return true
     }
   }
@@ -243,16 +242,16 @@ export const hasRequiredFields = (schema: S.Schema.AnyNoContext): boolean => {
  *
  * // false - all fields optional
  * type B = HasRequiredFields<typeof S.Struct({
- *   port: S.optionalWith(S.Number, { default: () => 3000 })
+ *   port: S.optional(S.Number, { default: () => 3000 })
  * })>
  * ```
  */
 // oxfmt-ignore
-export type HasRequiredFields<$Schema extends S.Schema.AnyNoContext> =
+export type HasRequiredFields<$Schema extends S.Top> =
   // Check if all keys of Encoded are optional by comparing with Partial
-  {} extends S.Schema.Encoded<$Schema>
+  {} extends $Schema["Encoded"]
     ? false
-    : RequiredKeysOf<S.Schema.Encoded<$Schema>> extends never
+    : RequiredKeysOf<$Schema["Encoded"]> extends never
       ? false
       : true
 

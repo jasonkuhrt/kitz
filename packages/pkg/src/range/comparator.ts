@@ -1,5 +1,6 @@
 import { Lang } from '@kitz/core'
-import { Schema as S } from 'effect'
+import { SchemaGetter, Schema as S } from 'effect'
+import type { SemverValue } from '../semver-schema.js'
 import { SemverSelf } from '../semver-schema.js'
 import { Operator } from './operator.js'
 
@@ -12,20 +13,21 @@ class ComparatorClass extends S.Class<ComparatorClass>('PkgRangeComparator')({
   operator: Operator,
   version: SemverSelf,
 }) {
-  static is = S.is(ComparatorClass)
+  static is = S.is(ComparatorClass as any) as (value: unknown) => value is ComparatorClass
 
-  static Schema: S.Schema<ComparatorClass, string> = S.transform(S.String, ComparatorClass, {
-    strict: true,
-    decode: () => {
-      return Lang.todo('Comparator.Schema decode')
-    },
-    encode: (c) => {
-      const v = c.version
-      const prerelease = v._tag === 'SemverPreRelease' ? `-${v.prerelease.join('.')}` : ''
-      const build = v.build?.length ? `+${v.build.join('.')}` : ''
-      return `${c.operator}${v.major}.${v.minor}.${v.patch}${prerelease}${build}`
-    },
-  })
+  static Schema = S.String.pipe(
+    S.decodeTo(ComparatorClass, {
+      decode: SchemaGetter.transform(() => {
+        return Lang.todo('Comparator.Schema decode')
+      }),
+      encode: SchemaGetter.transform((c) => {
+        const v = c.version as SemverValue
+        const prerelease = v._tag === 'SemverPreRelease' ? `-${v.prerelease.join('.')}` : ''
+        const build = v.build?.length ? `+${v.build.join('.')}` : ''
+        return `${c.operator}${v.major}.${v.minor}.${v.patch}${prerelease}${build}`
+      }),
+    }),
+  )
 
   static override toString = S.encodeSync(ComparatorClass.Schema)
 

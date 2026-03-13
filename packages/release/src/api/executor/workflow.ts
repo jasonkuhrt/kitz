@@ -38,7 +38,7 @@ import {
 
 /** Format a release tag from package name and version. */
 export const formatTag = (name: Pkg.Moniker.Moniker, version: Semver.Semver): string =>
-  Pkg.Pin.toString(Pkg.Pin.Exact.make({ name, version }))
+  Pkg.Pin.toString(new Pkg.Pin.Exact({ name, version }))
 
 // ============================================================================
 // Payload Schema
@@ -62,7 +62,7 @@ export const ReleaseSchema = Schema.Struct({
   packagePath: Schema.String,
   currentVersion: Schema.OptionFromNullOr(Schema.String),
   nextVersion: Schema.String,
-  bump: Schema.UndefinedOr(Schema.Literal('major', 'minor', 'patch')),
+  bump: Schema.UndefinedOr(Schema.Literals(['major', 'minor', 'patch'])),
   commits: Schema.Array(CommitEntrySchema),
   dependsOn: Schema.Array(Schema.String),
 })
@@ -82,7 +82,7 @@ export const ReleasePayload = Schema.Struct({
   }),
 })
 
-export type ReleasePayloadType = Schema.Schema.Type<typeof ReleasePayload>
+export type ReleasePayloadType = typeof ReleasePayload.Type
 
 const releaseWorkflowIdempotencyKey = (payload: ReleasePayloadType): string =>
   JSON.stringify({

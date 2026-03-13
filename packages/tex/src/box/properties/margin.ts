@@ -20,7 +20,7 @@ export type Input = Sided.Input<Value>
 /**
  * Margin value schema.
  */
-export const ValueSchema = S.Union(S.Number, S.String, S.BigIntFromSelf)
+export const ValueSchema = S.Union([S.Number, S.String, S.BigInt])
 
 /**
  * Margin configuration using logical properties.
@@ -36,7 +36,7 @@ export class Margin extends Sided.Class<Margin>('Margin')(ValueSchema) {}
  *
  * @category Text Formatting
  */
-export const parse = (input: Input): Margin => Margin.make(Sided.parse(input) as any)
+export const parse = (input: Input): Margin => new Margin(Sided.parse(input) as any)
 
 /**
  * One-way transformation schema: Input → Margin.

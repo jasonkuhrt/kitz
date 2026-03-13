@@ -13,8 +13,8 @@
  *
  * // Define config schema
  * const ConfigSchema = S.Struct({
- *   port: S.optionalWith(S.Number, { default: () => 3000 }),
- *   host: S.optionalWith(S.String, { default: () => 'localhost' }),
+ *   port: S.optional(S.Number, { default: () => 3000 }),
+ *   host: S.optional(S.String, { default: () => 'localhost' }),
  * })
  *
  * // Define config file specification

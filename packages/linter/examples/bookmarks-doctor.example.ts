@@ -6,7 +6,7 @@ const DoctorInput = Schema.Struct({
 })
 
 const Target = Schema.Struct({
-  browser: Schema.Literal('safari', 'chrome'),
+  browser: Schema.Literals(['safari', 'chrome']),
   displayName: Schema.String,
   path: Schema.String,
   requiresFullDiskAccess: Schema.Boolean,

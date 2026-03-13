@@ -1,5 +1,5 @@
 import { Test } from '@kitz/test'
-import { Schema } from 'effect'
+import { Exit, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { RuleDefaults, RuleId } from './rule-defaults.js'
 import * as Severity from './severity.js'
@@ -18,8 +18,8 @@ describe('RuleId', () => {
       { input: 'plan.tags-unique', output: true, comment: 'plan category' },
     )
     .test(({ input, output }) => {
-      const result = Schema.decodeEither(RuleId)(input)
-      expect(result._tag === 'Right').toBe(output)
+      const result = Schema.decodeUnknownExit(RuleId)(input)
+      expect(Exit.isSuccess(result)).toBe(output)
     })
 
   Test.describe('invalid patterns')
@@ -34,12 +34,12 @@ describe('RuleId', () => {
       { input: '', output: false, comment: 'empty string' },
     )
     .test(({ input, output }) => {
-      const result = Schema.decodeEither(RuleId)(input)
-      expect(result._tag === 'Right').toBe(output)
+      const result = Schema.decodeUnknownExit(RuleId)(input)
+      expect(Exit.isSuccess(result)).toBe(output)
     })
 
   test('RuleId.make creates branded value', () => {
-    const id = RuleId.make('env.git-clean')
+    const id = RuleId.makeUnsafe('env.git-clean')
     expect(id).toBe('env.git-clean')
   })
 })
@@ -48,33 +48,33 @@ describe('RuleId', () => {
 
 describe('RuleDefaults', () => {
   test('make with no fields', () => {
-    const d = RuleDefaults.make({})
+    const d = new RuleDefaults({})
     expect(d._tag).toBe('RuleDefaults')
     expect(RuleDefaults.is(d)).toBe(true)
   })
 
   test('make with enabled=true', () => {
-    const d = RuleDefaults.make({ enabled: true })
+    const d = new RuleDefaults({ enabled: true })
     expect(d.enabled).toBe(true)
   })
 
   test('make with enabled=false', () => {
-    const d = RuleDefaults.make({ enabled: false })
+    const d = new RuleDefaults({ enabled: false })
     expect(d.enabled).toBe(false)
   })
 
   test('make with enabled=auto', () => {
-    const d = RuleDefaults.make({ enabled: 'auto' })
+    const d = new RuleDefaults({ enabled: 'auto' })
     expect(d.enabled).toBe('auto')
   })
 
   test('make with severity', () => {
-    const d = RuleDefaults.make({ severity: Severity.Warn.make({}) })
+    const d = new RuleDefaults({ severity: new Severity.Warn({}) })
     expect(d.severity!._tag).toBe('SeverityWarn')
   })
 
   test('schema roundtrip', () => {
-    const d = RuleDefaults.make({ enabled: true, severity: Severity.Error.make({}) })
+    const d = new RuleDefaults({ enabled: true, severity: new Severity.Error({}) })
     const encoded = Schema.encodeSync(RuleDefaults)(d)
     const decoded = Schema.decodeSync(RuleDefaults)(encoded)
     expect(decoded.enabled).toBe(true)

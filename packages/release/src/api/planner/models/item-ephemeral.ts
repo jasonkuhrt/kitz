@@ -11,14 +11,14 @@ export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
   ...ItemBaseFields,
   prerelease: Version.Ephemeral,
 }) {
-  static is = S.is(Ephemeral)
+  static is = S.is(Ephemeral as any) as (u: unknown) => u is Ephemeral
 
   get nextVersion(): Semver.Semver {
     return Semver.withPre(Semver.zero, [
       'pr',
-      this.prerelease.prNumber,
-      this.prerelease.iteration,
-      this.prerelease.sha,
+      this.prerelease.prNumber as number,
+      this.prerelease.iteration as number,
+      this.prerelease.sha as string,
     ])
   }
 

@@ -1,6 +1,6 @@
 import { Lang } from '@kitz/core'
 import { Fs } from '@kitz/fs'
-import { Either, Schema as S } from 'effect'
+import { Result, Schema as S } from 'effect'
 import { existsSync, readdirSync, readFileSync } from 'fs'
 import { basename, dirname, extname, join } from 'path'
 import {
@@ -89,14 +89,14 @@ const findModuleReadme = (sourceFilePath: string): string | undefined => {
 const findNamespaceHomePagePath = (exportDeclFile: string): string | undefined => {
   const dir = dirname(exportDeclFile)
 
-  const filesResult = Either.try({
+  const filesResult = Result.try({
     try: () => readdirSync(dir),
     catch: () => undefined,
   })
 
-  if (Either.isLeft(filesResult)) return undefined
+  if (Result.isFailure(filesResult)) return undefined
 
-  const files = filesResult.right
+  const files = filesResult.success
   const homeFiles = files.filter((f: string) => f.endsWith('.home.md')).sort()
 
   if (homeFiles.length === 0) return undefined
@@ -143,13 +143,13 @@ const addHomePageIfExists = (
   const homePagePath = findNamespaceHomePagePath(exportDeclFilePath)
   if (!homePagePath) return nestedModule
 
-  const parsedHome = Either.try({
+  const parsedHome = Result.try({
     try: () => parseHomePage(homePageMarkdown, homePagePath),
     catch: (error) => error,
   })
 
-  if (Either.isLeft(parsedHome)) {
-    const cause = parsedHome.left
+  if (Result.isFailure(parsedHome)) {
+    const cause = parsedHome.failure
     if (cause instanceof Error) {
       throw new Error(`Failed to parse home page for namespace '${nsName}':\n${cause.message}`, {
         cause,
@@ -158,11 +158,11 @@ const addHomePageIfExists = (
     return Lang.throw(cause)
   }
 
-  const home = parsedHome.right
+  const home = parsedHome.success
 
   // Update ModuleDocs with home
   const existingDocs = nestedModule.docs
-  const updatedDocs = ModuleDocs.make({
+  const updatedDocs = new ModuleDocs({
     description: existingDocs?.description,
     guide: existingDocs?.guide,
     home,
@@ -209,26 +209,26 @@ const createNamespaceExport = (
     const description = overrideJsdoc.description || nestedModule.docs?.description
     const guide = overrideJsdoc.guide || nestedModule.docs?.guide
 
-    docs = description || guide ? ModuleDocs.make({ description, guide }) : undefined
+    docs = description || guide ? new ModuleDocs({ description, guide }) : undefined
 
     // Track provenance
     const descriptionProv = overrideJsdoc.description
-      ? JSDocProvenance.make({ shadowNamespace: true })
+      ? new JSDocProvenance({ shadowNamespace: true })
       : nestedModule.docsProvenance?.description
 
     const guideProv = overrideJsdoc.guide
       ? isWrapperMarkdown
-        ? MdFileProvenance.make({
+        ? new MdFileProvenance({
             filePath: S.decodeSync(Fs.Path.RelFile.Schema)(
               absoluteToRelative(exportDecl.getSourceFile().getFilePath().replace(/\.ts$/, '.md')),
             ),
           })
-        : JSDocProvenance.make({ shadowNamespace: true })
+        : new JSDocProvenance({ shadowNamespace: true })
       : nestedModule.docsProvenance?.guide
 
     docsProvenance =
       descriptionProv || guideProv
-        ? DocsProvenance.make({ description: descriptionProv, guide: guideProv })
+        ? new DocsProvenance({ description: descriptionProv, guide: guideProv })
         : undefined
   } else {
     // No override - use nested module's docs
@@ -236,10 +236,10 @@ const createNamespaceExport = (
     docsProvenance = nestedModule.docsProvenance
   }
 
-  return ValueExport.make({
+  return new ValueExport({
     name: nsName,
     type: 'namespace',
-    signature: TypeSignatureModel.make({
+    signature: new TypeSignatureModel({
       text: `export * as ${nsName}`,
     }),
     ...(docs ? { docs } : {}),
@@ -248,7 +248,7 @@ const createNamespaceExport = (
     deprecated: jsdoc.deprecated,
     category: jsdoc.category,
     tags: jsdoc.tags,
-    sourceLocation: SourceLocation.make({
+    sourceLocation: new SourceLocation({
       file: S.decodeSync(Fs.Path.RelFile.Schema)(
         absoluteToRelative(exportDecl.getSourceFile().getFilePath()),
       ),
@@ -505,7 +505,7 @@ export const extractModuleFromFile = (
 
   const docDescription = moduleJSDoc?.description
   const docDescriptionProv = docDescription
-    ? JSDocProvenance.make({ shadowNamespace: false })
+    ? new JSDocProvenance({ shadowNamespace: false })
     : undefined
 
   let docGuide: string | undefined
@@ -517,7 +517,7 @@ export const extractModuleFromFile = (
   // Markdown file takes precedence over @guide tag
   if (markdownFilePath) {
     docGuide = readFileSync(markdownFilePath, 'utf-8')
-    docGuideProv = MdFileProvenance.make({
+    docGuideProv = new MdFileProvenance({
       filePath: S.decodeSync(Fs.Path.RelFile.Schema)(absoluteToRelative(markdownFilePath)),
     })
 
@@ -530,22 +530,22 @@ export const extractModuleFromFile = (
     }
   } else if (jsdocGuide) {
     docGuide = jsdocGuide
-    docGuideProv = JSDocProvenance.make({ shadowNamespace: false })
+    docGuideProv = new JSDocProvenance({ shadowNamespace: false })
   }
 
   const docs =
     docDescription || docGuide
-      ? ModuleDocs.make({ description: docDescription, guide: docGuide })
+      ? new ModuleDocs({ description: docDescription, guide: docGuide })
       : undefined
 
   const docsProvenance =
     docDescriptionProv || docGuideProv
-      ? DocsProvenance.make({ description: docDescriptionProv, guide: docGuideProv })
+      ? new DocsProvenance({ description: docDescriptionProv, guide: docGuideProv })
       : undefined
 
   const category = moduleJSDoc?.category
 
-  return Module.make({
+  return new Module({
     location,
     docs,
     docsProvenance,
@@ -570,7 +570,7 @@ export const extractModule = (
   const body = moduleDecl.getBody()
 
   if (!body || !Node.isModuleBlock(body)) {
-    return Module.make({
+    return new Module({
       location,
       exports: [],
     })
@@ -628,17 +628,17 @@ export const extractModule = (
   const guide = jsdoc.guide
   const category = jsdoc.category
 
-  const docs = description || guide ? ModuleDocs.make({ description, guide }) : undefined
+  const docs = description || guide ? new ModuleDocs({ description, guide }) : undefined
 
   const docsProvenance =
     description || guide
-      ? DocsProvenance.make({
-          description: description ? JSDocProvenance.make({ shadowNamespace: true }) : undefined,
-          guide: guide ? JSDocProvenance.make({ shadowNamespace: true }) : undefined,
+      ? new DocsProvenance({
+          description: description ? new JSDocProvenance({ shadowNamespace: true }) : undefined,
+          guide: guide ? new JSDocProvenance({ shadowNamespace: true }) : undefined,
         })
       : undefined
 
-  return Module.make({
+  return new Module({
     location,
     docs,
     docsProvenance,

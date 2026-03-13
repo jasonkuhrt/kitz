@@ -12,21 +12,21 @@ describe('Sha', () => {
     .inputType<string>()
     .outputType<Git.Sha.Sha>()
     .cases(
-      { input: 'abc1234', output: Git.Sha.make('abc1234'), comment: 'short form (7 chars)' },
+      { input: 'abc1234', output: new Git.Sha('abc1234'), comment: 'short form (7 chars)' },
       {
         input: 'abcdef1234',
-        output: Git.Sha.make('abcdef1234'),
+        output: new Git.Sha('abcdef1234'),
         comment: 'medium form (10 chars)',
       },
       {
         input: 'abc1234567890abcdef1234567890abcdef12345',
-        output: Git.Sha.make('abc1234567890abcdef1234567890abcdef12345'),
+        output: new Git.Sha('abc1234567890abcdef1234567890abcdef12345'),
         comment: 'full form (40 chars)',
       },
-      { input: 'ABCDEF1', output: Git.Sha.make('ABCDEF1'), comment: 'uppercase hex' },
+      { input: 'ABCDEF1', output: new Git.Sha('ABCDEF1'), comment: 'uppercase hex' },
     )
     .test(({ input, output }) => {
-      expect(Git.Sha.make(input)).toBe(output)
+      expect(new Git.Sha(input)).toBe(output)
     })
 
   Test.describe('Sha.make > invalid')
@@ -43,14 +43,14 @@ describe('Sha', () => {
       { input: '', output: 'empty', comment: 'empty string' },
     )
     .test(({ input }) => {
-      expect(() => Git.Sha.make(input)).toThrow(/Sha/)
+      expect(() => new Git.Sha(input)).toThrow(/Sha/)
     })
 
   Test.describe('Sha.is')
     .inputType<unknown>()
     .outputType<boolean>()
     .cases(
-      { input: Git.Sha.make('abc1234'), output: true, comment: 'branded SHA' },
+      { input: new Git.Sha('abc1234'), output: true, comment: 'branded SHA' },
       { input: 'abc1234', output: true, comment: 'valid pattern string' },
       { input: 'abc123g', output: false, comment: 'invalid hex char' },
       { input: 123, output: false, comment: 'number' },
@@ -67,7 +67,7 @@ describe('Sha', () => {
 describe('Git', () => {
   test('getTags returns configured tags', async () => {
     const tags = ['@kitz/core@1.0.0', '@kitz/cli@1.0.0']
-    const layer = Git.Memory.make({ tags })
+    const layer = new Git.Memory({ tags })
 
     const result = await Effect.runPromise(
       Effect.gen(function* () {
@@ -80,7 +80,7 @@ describe('Git', () => {
   })
 
   test('getCurrentBranch returns configured branch', async () => {
-    const layer = Git.Memory.make({ branch: 'feat/test' })
+    const layer = new Git.Memory({ branch: 'feat/test' })
 
     const result = await Effect.runPromise(
       Effect.gen(function* () {
@@ -93,7 +93,7 @@ describe('Git', () => {
   })
 
   test('isClean returns configured status', async () => {
-    const layer = Git.Memory.make({ isClean: false })
+    const layer = new Git.Memory({ isClean: false })
 
     const result = await Effect.runPromise(
       Effect.gen(function* () {
@@ -106,7 +106,7 @@ describe('Git', () => {
   })
 
   test('getRoot returns configured path', async () => {
-    const layer = Git.Memory.make({ root: '/my/project' })
+    const layer = new Git.Memory({ root: '/my/project' })
 
     const result = await Effect.runPromise(
       Effect.gen(function* () {
@@ -119,8 +119,8 @@ describe('Git', () => {
   })
 
   test('getHeadSha returns configured SHA', async () => {
-    const sha = Git.Sha.make('def4567')
-    const layer = Git.Memory.make({ headSha: sha })
+    const sha = new Git.Sha('def4567')
+    const layer = new Git.Memory({ headSha: sha })
 
     const result = await Effect.runPromise(
       Effect.gen(function* () {
@@ -137,7 +137,7 @@ describe('Git', () => {
       Git.Memory.commit('feat(core): feature 1'),
       Git.Memory.commit('fix(core): bug fix'),
     ]
-    const layer = Git.Memory.make({ commits })
+    const layer = new Git.Memory({ commits })
 
     const result = await Effect.runPromise(
       Effect.gen(function* () {
@@ -151,36 +151,36 @@ describe('Git', () => {
   })
 
   test('getCommitsSince fails when tag is missing', async () => {
-    const layer = Git.Memory.make({ tags: [] })
+    const layer = new Git.Memory({ tags: [] })
 
     const result = await Effect.runPromise(
       Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getCommitsSince('@kitz/core@1.0.0')
-      }).pipe(Effect.provide(layer), Effect.either),
+      }).pipe(Effect.provide(layer), Effect.result),
     )
 
-    expect(result._tag).toBe('Left')
-    if (result._tag === 'Left') {
-      expect(result.left._tag).toBe('GitError')
-      expect(result.left.context.operation).toBe('getCommitsSince')
+    expect(result._tag).toBe('Failure')
+    if (result._tag === 'Failure') {
+      expect(result.failure._tag).toBe('GitError')
+      expect(result.failure.context.operation).toBe('getCommitsSince')
     }
   })
 
   test('getTagSha fails when tag is missing', async () => {
-    const layer = Git.Memory.make({ tags: [] })
+    const layer = new Git.Memory({ tags: [] })
 
     const result = await Effect.runPromise(
       Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getTagSha('@kitz/core@1.0.0')
-      }).pipe(Effect.provide(layer), Effect.either),
+      }).pipe(Effect.provide(layer), Effect.result),
     )
 
-    expect(result._tag).toBe('Left')
-    if (result._tag === 'Left') {
-      expect(result.left._tag).toBe('GitError')
-      expect(result.left.context.operation).toBe('getTagSha')
+    expect(result._tag).toBe('Failure')
+    if (result._tag === 'Failure') {
+      expect(result.failure._tag).toBe('GitError')
+      expect(result.failure.context.operation).toBe('getTagSha')
     }
   })
 
@@ -241,10 +241,10 @@ describe('Git', () => {
 
 describe('Commit', () => {
   test('creates valid commit with all fields', () => {
-    const commit = Git.Commit.make({
-      hash: Git.Sha.make('abc1234'),
+    const commit = new Git.Commit({
+      hash: new Git.Sha('abc1234'),
       message: 'feat(core): add feature\n\nDetailed description',
-      author: Git.Author.make({ name: 'Jane Doe', email: 'jane@example.com' }),
+      author: new Git.Author({ name: 'Jane Doe', email: 'jane@example.com' }),
       date: new Date('2024-01-15'),
     })
 
@@ -269,7 +269,7 @@ describe('Memory utilities', () => {
   })
 
   test('commit helper accepts overrides', () => {
-    const sha = Git.Sha.make('abcd1234')
+    const sha = new Git.Sha('abcd1234')
     const commit = Git.Memory.commit('feat: new\n\nCustom body', { hash: sha })
 
     expect(commit.hash).toBe(sha)

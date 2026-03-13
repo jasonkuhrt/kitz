@@ -13,7 +13,7 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
-import { Console, Effect, Layer, Match, Schema as S } from 'effect'
+import { Console, Effect, Layer, Match, SchemaGetter, Schema as S } from 'effect'
 import * as Api from '../../api/__.js'
 import { FileSystemLayer } from '../../platform.js'
 
@@ -29,11 +29,14 @@ const args = Oak.Command.create()
   .description('Initialize release configuration')
   .parameter(
     'force f',
-    S.transform(S.UndefinedOr(S.Boolean), S.Boolean, {
-      strict: true,
-      decode: (v) => v ?? false,
-      encode: (v) => v,
-    }).pipe(S.annotations({ description: 'Overwrite existing config', default: false })),
+    S.UndefinedOr(S.Boolean)
+      .pipe(
+        S.decodeTo(S.Boolean, {
+          decode: SchemaGetter.transform((v) => v ?? false),
+          encode: SchemaGetter.transform((v) => v),
+        }),
+      )
+      .pipe(S.annotate({ description: 'Overwrite existing config', default: false })),
   )
   .parse()
 
@@ -62,7 +65,7 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer))(
     // Add .release/ to .gitignore
     const gitignorePath = Fs.Path.join(env.cwd, Git.Paths.GITIGNORE)
     const existingContent = yield* Fs.readString(gitignorePath).pipe(
-      Effect.catchTag('SystemError', () => Effect.succeed('')),
+      Effect.catchTag('PlatformError', () => Effect.succeed('')),
     )
 
     const gitignore =

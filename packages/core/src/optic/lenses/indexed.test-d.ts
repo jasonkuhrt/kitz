@@ -1,5 +1,5 @@
 import { Assert } from '#kitz/assert'
-import type { Either } from 'effect'
+import type { Result } from 'effect'
 import type * as Indexed from './indexed.js'
 
 //
@@ -7,24 +7,24 @@ import type * as Indexed from './indexed.js'
 //
 
 // Record<string, T> → T
-Assert.exact.ofAs<Either.Right<never, number>>().onAs<Indexed.Get<Record<string, number>>>()
+Assert.exact.ofAs<Result.Success<never, number>>().onAs<Indexed.Get<Record<string, number>>>()
 
 // { [k: string]: T } → T
-Assert.exact.ofAs<Either.Right<never, string>>().onAs<Indexed.Get<{ [k: string]: string }>>()
+Assert.exact.ofAs<Result.Success<never, string>>().onAs<Indexed.Get<{ [k: string]: string }>>()
 
 // Mixed: explicit props + index signature → union
 Assert.exact
-  .ofAs<Either.Right<never, number | string>>()
+  .ofAs<Result.Success<never, number | string>>()
   .onAs<Indexed.Get<{ name: string; [k: string]: number | string }>>()
 
 // Error: no index signature
 Assert.exact
-  .ofAs<Either.Left<Indexed.LensErrorNoIndexSignature<{ name: string }>, never>>()
+  .ofAs<Result.Failure<Indexed.LensErrorNoIndexSignature<{ name: string }>, never>>()
   .onAs<Indexed.Get<{ name: string }>>()
 
 // Error: empty object (no index signature)
 Assert.exact
-  .ofAs<Either.Left<Indexed.LensErrorNoIndexSignature<object>, never>>()
+  .ofAs<Result.Failure<Indexed.LensErrorNoIndexSignature<object>, never>>()
   .onAs<Indexed.Get<object>>()
 
 //

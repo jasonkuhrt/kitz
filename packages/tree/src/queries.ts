@@ -375,7 +375,7 @@ export const some = <$Value>(tree: Tree<$Value>, predicate: Predicate<$Value>): 
  * The path includes all nodes from root to target (inclusive).
  *
  * @param tree - The tree to search
- * @param target - Either a specific node reference or a predicate function to find the target
+ * @param target - Result a specific node reference or a predicate function to find the target
  * @returns Array of nodes from root to target, or undefined if target not found
  *
  * @example

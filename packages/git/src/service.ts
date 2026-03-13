@@ -1,5 +1,5 @@
 import { Err } from '@kitz/core'
-import { Context, Effect, Schema as S } from 'effect'
+import { Effect, Schema as S, ServiceMap } from 'effect'
 import { Commit } from './commit.js'
 import * as Sha from './sha.js'
 
@@ -31,7 +31,7 @@ export type GitOperation =
   | 'deleteRemoteTag'
   | 'getRemoteUrl'
 
-const GitOperationSchema = S.Literal(
+const GitOperationSchema = S.Literals([
   'getTags',
   'getCurrentBranch',
   'getCommitsSince',
@@ -48,7 +48,7 @@ const GitOperationSchema = S.Literal(
   'pushTag',
   'deleteRemoteTag',
   'getRemoteUrl',
-)
+])
 
 const baseTags = ['kit', 'git'] as const
 const ErrorCause = S.instanceOf(Error)
@@ -159,4 +159,4 @@ export interface GitService {
 /**
  * Git service tag.
  */
-export class Git extends Context.Tag('Git')<Git, GitService>() {}
+export class Git extends ServiceMap.Service<Git, GitService>()('Git') {}

@@ -1,15 +1,16 @@
 /**
  * Schema type predicates with branded types for type-safe AST access.
  *
- * These predicates narrow `S.Schema.Any` to specific schema categories,
+ * These predicates narrow `S.Top` to specific schema categories,
  * allowing type-safe access to AST properties without manual casting.
+ *
+ * In Effect v4, AST has changed significantly:
+ * - `TypeLiteral` → `Objects`
+ * - `TupleType` → `Arrays`
+ * - `Transformation` AST node is gone; encoding is stored in `encoding` property
+ * - `PropertySignatureDeclaration/Transformation` are gone; optionality is in `Context`
  */
-import { Option, Schema as S } from 'effect'
-import {
-  PropertySignatureDeclaration,
-  PropertySignatureTransformation,
-  PropertySignatureTypeId,
-} from 'effect/Schema'
+import { Schema as S } from 'effect'
 import * as AST from 'effect/SchemaAST'
 
 // ============================================================================
@@ -17,60 +18,54 @@ import * as AST from 'effect/SchemaAST'
 // ============================================================================
 
 /**
- * A schema with a TypeLiteral AST (structs, records).
+ * A schema with an Objects AST (structs, records).
  */
-export type TypeLiteralSchema = S.Schema.Any & { readonly ast: AST.TypeLiteral }
+export type ObjectsSchema = S.Top & { readonly ast: AST.Objects }
 
 /**
- * A schema with a TupleType AST (arrays, tuples).
+ * A schema with an Arrays AST (arrays, tuples).
  */
-export type TupleSchema = S.Schema.Any & { readonly ast: AST.TupleType }
+export type ArraysSchema = S.Top & { readonly ast: AST.Arrays }
 
 /**
- * A schema with a Transformation AST.
+ * A schema with an encoding chain (transformation).
  */
-export type TransformSchema = S.Schema.Any & { readonly ast: AST.Transformation }
+export type EncodedSchema = S.Top & { readonly ast: AST.AST & { readonly encoding: AST.Encoding } }
 
 /**
  * A schema with a Union AST.
  */
-export type UnionSchema = S.Schema.Any & { readonly ast: AST.Union }
+export type UnionSchema = S.Top & { readonly ast: AST.Union }
 
 /**
- * A Map schema (Transformation with specific structure).
+ * A Map schema (Declaration with encoding from Arrays).
  */
-export type MapSchema = TransformSchema & {
-  readonly ast: AST.Transformation & {
-    readonly from: AST.TupleType
-    readonly to: AST.Declaration
-  }
+export type MapSchema = S.Top & {
+  readonly ast: AST.Declaration
 }
 
 /**
- * A Set schema (Transformation with specific structure).
+ * A Set schema (Declaration with encoding from Arrays).
  */
-export type SetSchema = TransformSchema & {
-  readonly ast: AST.Transformation & {
-    readonly from: AST.TupleType
-    readonly to: AST.Declaration
-  }
+export type SetSchema = S.Top & {
+  readonly ast: AST.Declaration
 }
 
 /**
- * A Record schema (TypeLiteral with indexSignatures).
+ * A Record schema (Objects with indexSignatures).
  */
-export type RecordSchema = TypeLiteralSchema & {
-  readonly ast: AST.TypeLiteral & {
+export type RecordSchema = ObjectsSchema & {
+  readonly ast: AST.Objects & {
     readonly indexSignatures: readonly [AST.IndexSignature, ...AST.IndexSignature[]]
   }
 }
 
 /**
- * A variable-length Array schema (TupleType with rest elements).
+ * A variable-length Array schema (Arrays with rest elements).
  */
-export type ArraySchema = TupleSchema & {
-  readonly ast: AST.TupleType & {
-    readonly rest: readonly [AST.Type, ...AST.Type[]]
+export type ArraySchema = ArraysSchema & {
+  readonly ast: AST.Arrays & {
+    readonly rest: readonly [AST.AST, ...AST.AST[]]
   }
 }
 
@@ -79,28 +74,25 @@ export type ArraySchema = TupleSchema & {
 // ============================================================================
 
 /**
- * Check if a schema has a TypeLiteral AST (structs, records).
+ * Check if a schema has an Objects AST (structs, records).
  */
-export const isTypeLiteralSchema = (schema: S.Schema.Any): schema is TypeLiteralSchema =>
-  AST.isTypeLiteral(schema.ast)
+export const isObjectsSchema = (schema: S.Top): schema is ObjectsSchema => AST.isObjects(schema.ast)
 
 /**
- * Check if a schema has a TupleType AST (arrays, tuples).
+ * Check if a schema has an Arrays AST (arrays, tuples).
  */
-export const isTupleSchema = (schema: S.Schema.Any): schema is TupleSchema =>
-  AST.isTupleType(schema.ast)
+export const isArraysSchema = (schema: S.Top): schema is ArraysSchema => AST.isArrays(schema.ast)
 
 /**
- * Check if a schema has a Transformation AST.
+ * Check if a schema has an encoding chain (transformation).
  */
-export const isTransformSchema = (schema: S.Schema.Any): schema is TransformSchema =>
-  AST.isTransformation(schema.ast)
+export const isEncodedSchema = (schema: S.Top): schema is EncodedSchema =>
+  schema.ast.encoding !== undefined
 
 /**
  * Check if a schema has a Union AST.
  */
-export const isUnionSchema = (schema: S.Schema.Any): schema is UnionSchema =>
-  AST.isUnion(schema.ast)
+export const isUnionSchema = (schema: S.Top): schema is UnionSchema => AST.isUnion(schema.ast)
 
 // ============================================================================
 // Collection Predicates
@@ -109,38 +101,52 @@ export const isUnionSchema = (schema: S.Schema.Any): schema is UnionSchema =>
 /**
  * Check if schema is a collection type (Map or Set) by description prefix.
  * Internal helper for isMapSchema and isSetSchema.
+ *
+ * In v4, Map/Set schemas are Declarations with encoding chains.
+ * The description annotation identifies them.
  */
-const isCollectionByPrefix = (schema: S.Schema.Any, prefix: 'Map<' | 'Set<'): boolean => {
-  if (!AST.isTransformation(schema.ast)) return false
-  if (!AST.isDeclaration(schema.ast.to)) return false
-
-  const description = AST.getDescriptionAnnotation(schema.ast.to)
-  return Option.isSome(description) && description.value.startsWith(prefix)
+const isCollectionByPrefix = (
+  schema: S.Top,
+  prefix: 'Map<' | 'Set<' | 'HashMap<' | 'HashSet<',
+): boolean => {
+  if (!AST.isDeclaration(schema.ast)) return false
+  const description = AST.resolveDescription(schema.ast)
+  return description !== undefined && description.startsWith(prefix)
 }
 
 /**
  * Check if schema is an S.Map schema.
  *
- * Detection: Transformation → Declaration with "Map<" description prefix.
+ * Detection: Declaration with "Map<" description prefix.
  */
-export const isMapSchema = (schema: S.Schema.Any): schema is MapSchema =>
+export const isMapSchema = (schema: S.Top): schema is MapSchema =>
   isCollectionByPrefix(schema, 'Map<')
 
 /**
  * Check if schema is an S.Set schema.
  *
- * Detection: Transformation → Declaration with "Set<" description prefix.
+ * Detection: Declaration with "Set<" description prefix.
  */
-export const isSetSchema = (schema: S.Schema.Any): schema is SetSchema =>
+export const isSetSchema = (schema: S.Top): schema is SetSchema =>
   isCollectionByPrefix(schema, 'Set<')
+
+/**
+ * Check if schema is an S.HashMap schema.
+ */
+export const isHashMapSchema = (schema: S.Top): boolean => isCollectionByPrefix(schema, 'HashMap<')
+
+/**
+ * Check if schema is an S.HashSet schema.
+ */
+export const isHashSetSchema = (schema: S.Top): boolean => isCollectionByPrefix(schema, 'HashSet<')
 
 /**
  * Check if schema is an S.Record schema.
  *
- * Detection: TypeLiteral with indexSignatures and no propertySignatures.
+ * Detection: Objects with indexSignatures and no propertySignatures.
  */
-export const isRecordSchema = (schema: S.Schema.Any): schema is RecordSchema => {
-  if (!AST.isTypeLiteral(schema.ast)) return false
+export const isRecordSchema = (schema: S.Top): schema is RecordSchema => {
+  if (!AST.isObjects(schema.ast)) return false
   return schema.ast.indexSignatures.length > 0 && schema.ast.propertySignatures.length === 0
 }
 
@@ -151,7 +157,7 @@ export const isRecordSchema = (schema: S.Schema.Any): schema is RecordSchema => 
 /**
  * Check if a schema has direct `.fields` property (original Struct schema).
  */
-export const hasDirectFields = (schema: S.Schema.Any): schema is S.Struct<S.Struct.Fields> =>
+export const hasDirectFields = (schema: S.Top): schema is S.Struct<S.Struct.Fields> =>
   'fields' in schema && typeof schema.fields === 'object' && schema.fields !== null
 
 /**
@@ -159,86 +165,102 @@ export const hasDirectFields = (schema: S.Schema.Any): schema is S.Struct<S.Stru
  *
  * Detects both:
  * - Direct Schema.Struct (has `.fields` property)
- * - Schema from S.make() with TypeLiteral AST
+ * - Schema with Objects AST
  */
-export const isStructSchema = (schema: S.Schema.Any): schema is TypeLiteralSchema =>
-  hasDirectFields(schema) || AST.isTypeLiteral(schema.ast)
+export const isStructSchema = (schema: S.Top): schema is ObjectsSchema =>
+  hasDirectFields(schema) || AST.isObjects(schema.ast)
 
 /**
- * Check if schema is a variable-length array (TupleType with rest element).
+ * Check if schema is a variable-length array (Arrays with rest element).
  */
-export const isArraySchema = (schema: S.Schema.Any): schema is ArraySchema =>
-  AST.isTupleType(schema.ast) && schema.ast.rest.length > 0
+export const isArraySchema = (schema: S.Top): schema is ArraySchema =>
+  AST.isArrays(schema.ast) && schema.ast.rest.length > 0
 
 /**
- * Check if schema is a fixed-length tuple (TupleType without rest element).
+ * Check if schema is a fixed-length tuple (Arrays without rest element).
  */
-export const isTupleOnlySchema = (schema: S.Schema.Any): schema is TupleSchema =>
-  AST.isTupleType(schema.ast) && schema.ast.rest.length === 0
+export const isTupleOnlySchema = (schema: S.Top): schema is ArraysSchema =>
+  AST.isArrays(schema.ast) && schema.ast.rest.length === 0
+
+/**
+ * Check if schema is a tuple (Arrays AST).
+ */
+export const isTupleSchema = (schema: S.Top): schema is ArraysSchema => AST.isArrays(schema.ast)
 
 // ============================================================================
 // Transform Predicates
 // ============================================================================
 
 /**
+ * Check if schema has an encoding transformation.
+ *
+ * In v4, transformations are stored in `encoding` property on AST nodes.
+ * This replaces the old `isTransformation` check.
+ */
+export const hasEncodingTransform = (schema: S.Top): boolean => schema.ast.encoding !== undefined
+
+/**
  * Check if schema is a non-hashable user-defined transform.
  *
- * Key distinction:
- * - User transforms (S.transform): use FinalTransformation
- * - Internal transforms (optionalWith, struct with defaults): use TypeLiteralTransformation
+ * In v4, this means a schema whose AST has an encoding chain
+ * where the final encoded form is an Objects or Arrays node,
+ * and the schema is NOT a Declaration (which would be Data/Class/Map/Set).
  *
  * Excludes:
- * - S.Data: `to` is a Declaration
- * - S.Class: `to` is a Declaration with identifier
- * - S.Map/S.Set: already handled by specific checks
+ * - S.Class: Declaration
+ * - S.Map/S.Set: Declaration
+ * - S.HashMap/S.HashSet: Declaration
  */
-export const isNonHashableTransform = (schema: S.Schema.Any): schema is TransformSchema => {
-  if (!AST.isTransformation(schema.ast)) return false
-  if (!AST.isFinalTransformation(schema.ast.transformation)) return false
-  if (AST.isDeclaration(schema.ast.to)) return false
-  return AST.isTypeLiteral(schema.ast.to) || AST.isTupleType(schema.ast.to)
+export const isNonHashableTransform = (schema: S.Top): schema is EncodedSchema => {
+  const ast = schema.ast
+  if (ast.encoding === undefined) return false
+  if (AST.isDeclaration(ast)) return false
+  // The encoded form is the other end of the encoding chain
+  const encodedAST = AST.toEncoded(ast)
+  return AST.isObjects(encodedAST) || AST.isArrays(encodedAST)
 }
 
 // ============================================================================
-// PropertySignature Predicates
+// PropertySignature Predicates (v4)
 // ============================================================================
 
 /**
- * Check if a struct field is a PropertySignature (S.optional, S.optionalWith, etc.).
+ * Check if a struct field value represents an optional key.
  *
- * PropertySignatures wrap schemas with additional metadata like optionality,
- * default values, and transformations between encoded/decoded forms.
+ * In v4, optionality is determined by the AST's context property.
  */
-export const isPropertySignature = (field: unknown): field is S.PropertySignature.All =>
-  typeof field === 'object' && field !== null && PropertySignatureTypeId in field
+export const isOptionalField = (field: S.Top): boolean => AST.isOptional(field.ast)
+
+/**
+ * Check if a struct field is a PropertySignature wrapper (like optionalKey, optional, etc).
+ *
+ * In v4, there's no separate PropertySignature type. Fields are just schemas
+ * with context metadata. We check for the presence of optionality context.
+ */
+export const isPropertySignature = (field: unknown): boolean => {
+  if (typeof field !== 'object' || field === null) return false
+  if (!('ast' in field)) return false
+  const ast = (field as S.Top).ast
+  return ast.context !== undefined && ast.context.isOptional
+}
 
 /**
  * Check if a PropertySignature AST is a simple Declaration (no transformation).
  *
- * Declaration: Simple optional with no default/transformation (S.optional)
- * Transformation: Has encode/decode logic (S.optionalWith, withDefault, etc.)
+ * In v4, there's no PropertySignatureDeclaration. Optionality is in Context.
+ * A "simple" optional field has no encoding chain.
  */
-export const isPropertySignatureDeclaration = (
-  ast: S.PropertySignature.AST,
-): ast is PropertySignatureDeclaration => ast._tag === 'PropertySignatureDeclaration'
+export const isPropertySignatureDeclaration = (ast: AST.AST): boolean =>
+  ast.context?.isOptional === true && ast.encoding === undefined
 
 /**
- * Check if a PropertySignature AST is a Transformation (has encode/decode).
- */
-export const isPropertySignatureTransformation = (
-  ast: S.PropertySignature.AST,
-): ast is PropertySignatureTransformation => ast._tag === 'PropertySignatureTransformation'
-
-/**
- * Detect if a PropertySignatureTransformation has nullable option.
+ * Detect if an optional field has a nullable option.
  *
- * Nullable creates a Union in `from.type` that includes a null Literal.
- * This is how `S.optionalWith(schema, { nullable: true })` is represented in the AST.
+ * In v4, nullable creates a Union that includes null/undefined.
  */
-export const hasNullableOption = (trans: PropertySignatureTransformation): boolean => {
-  const fromType = trans.from.type
-  if (!AST.isUnion(fromType)) return false
-  return fromType.types.some((t) => AST.isLiteral(t) && t.literal === null)
+export const hasNullableOption = (ast: AST.AST): boolean => {
+  if (!AST.isUnion(ast)) return false
+  return ast.types.some((t) => AST.isNull(t))
 }
 
 // ============================================================================
@@ -248,60 +270,68 @@ export const hasNullableOption = (trans: PropertySignatureTransformation): boole
 /**
  * Extract element schema from an Array schema.
  */
-export const getArrayElement = (schema: ArraySchema): S.Schema.Any => {
+export const getArrayElement = (schema: ArraySchema): S.Top => {
   const restElement = schema.ast.rest[0]
-  return S.make(restElement.type)
+  // In v4, rest elements are just AST nodes directly
+  return { ast: restElement } as unknown as S.Top
 }
 
 /**
  * Extract key and value schemas from a Record schema.
  */
-export const getRecordKeyValue = (
-  schema: RecordSchema,
-): { key: S.Schema.Any; value: S.Schema.Any } => {
+export const getRecordKeyValue = (schema: RecordSchema): { key: S.Top; value: S.Top } => {
   const indexSig = schema.ast.indexSignatures[0]
   return {
-    key: S.make(indexSig.parameter),
-    value: S.make(indexSig.type),
+    key: { ast: indexSig.parameter } as unknown as S.Top,
+    value: { ast: indexSig.type } as unknown as S.Top,
   }
 }
 
 /**
  * Extract key and value schemas from a Map schema.
+ *
+ * In v4, Map schemas are Declarations. The type parameters hold
+ * the key and value schemas.
  */
-export const getMapKeyValue = (schema: MapSchema): { key: S.Schema.Any; value: S.Schema.Any } => {
-  const fromAST = schema.ast.from
-  // S.Map structure: Array<[Key, Value]> - rest[0] is the [Key, Value] tuple
-  const tupleElement = fromAST.rest[0]!.type as AST.TupleType
+export const getMapKeyValue = (schema: MapSchema): { key: S.Top; value: S.Top } => {
+  const typeParams = schema.ast.typeParameters
   return {
-    key: S.make(tupleElement.elements[0]!.type),
-    value: S.make(tupleElement.elements[1]!.type),
+    key: { ast: typeParams[0] } as unknown as S.Top,
+    value: { ast: typeParams[1] } as unknown as S.Top,
   }
 }
 
 /**
  * Extract element schema from a Set schema.
+ *
+ * In v4, Set schemas are Declarations. The type parameter holds
+ * the element schema.
  */
-export const getSetElement = (schema: SetSchema): S.Schema.Any => {
-  const fromAST = schema.ast.from
-  // S.Set structure: Array<Element> - rest[0] is the element type
-  return S.make(fromAST.rest[0]!.type)
+export const getSetElement = (schema: SetSchema): S.Top => {
+  const typeParams = schema.ast.typeParameters
+  return { ast: typeParams[0] } as unknown as S.Top
 }
 
 /**
- * Extract from/to schemas and transformation functions from a transform schema.
+ * Extract from/to schemas and transformation functions from a schema with encoding.
+ *
+ * In v4, the encoding chain holds Link objects with `to` and `transformation`.
  */
 export const getTransformParts = (
-  schema: TransformSchema,
+  schema: EncodedSchema,
 ): {
-  from: S.Schema.Any
-  to: S.Schema.Any
+  from: S.Top
+  to: S.Top
   transformation: {
     decode: (input: unknown, options: unknown, ast: unknown) => unknown
     encode: (input: unknown, options: unknown, ast: unknown) => unknown
   }
-} => ({
-  from: S.make(schema.ast.from),
-  to: S.make(schema.ast.to),
-  transformation: schema.ast.transformation as any,
-})
+} => {
+  const encoding = schema.ast.encoding!
+  const link = encoding[0]
+  return {
+    from: { ast: link.to } as unknown as S.Top,
+    to: { ast: schema.ast } as unknown as S.Top,
+    transformation: link.transformation as any,
+  }
+}

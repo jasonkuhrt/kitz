@@ -1,29 +1,48 @@
-import { CommandExecutor } from '@effect/platform'
+import { ChildProcessSpawner } from 'effect/unstable/process'
+import * as PlatformError from 'effect/PlatformError'
 import { Effect, Layer, Stream } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { Violation } from '../models/violation.js'
 import { RuleOptionsService } from '../services/rule-options.js'
 import { rule } from './env-npm-authenticated.js'
 
-const makeCommandExecutorLayer = (mode: 'success' | 'failure') =>
-  Layer.succeed(CommandExecutor.CommandExecutor, {
-    [CommandExecutor.TypeId]: CommandExecutor.TypeId,
-    exitCode: () => Effect.succeed(CommandExecutor.ExitCode(0)),
-    start: () => Effect.die('start not implemented in mock command executor') as any,
-    string: () =>
-      mode === 'success'
-        ? Effect.succeed('jasonkuhrt\n')
-        : (Effect.fail(new Error('ENEEDAUTH')) as any),
-    lines: () => Effect.die('lines not implemented in mock command executor') as any,
-    stream: () => Stream.empty,
-    streamLines: () => Stream.empty,
-  } satisfies CommandExecutor.CommandExecutor)
+const textEncoder = new TextEncoder()
+
+const makeSpawnerLayer = (mode: 'success' | 'failure') =>
+  Layer.succeed(
+    ChildProcessSpawner.ChildProcessSpawner,
+    ChildProcessSpawner.make(() => {
+      if (mode === 'failure') {
+        return Effect.fail(
+          new PlatformError.SystemError({
+            _tag: 'Unknown',
+            module: 'ChildProcess',
+            method: 'spawn',
+          }),
+        ) as any
+      }
+      return Effect.succeed(
+        ChildProcessSpawner.makeHandle({
+          pid: ChildProcessSpawner.ProcessId(1),
+          exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(0)),
+          isRunning: Effect.succeed(false),
+          kill: () => Effect.void,
+          stderr: Stream.empty,
+          stdin: Effect.void as any,
+          stdout: Stream.fromIterable([textEncoder.encode('jasonkuhrt\n')]),
+          all: Stream.fromIterable([textEncoder.encode('jasonkuhrt\n')]),
+          getInputFd: () => Effect.void as any,
+          getOutputFd: () => Stream.empty,
+        }),
+      )
+    }),
+  )
 
 describe('env.npm-authenticated', () => {
   test('returns a guided fix when npm whoami fails', async () => {
     const result = await Effect.runPromise(
       rule.check.pipe(
-        Effect.provide(makeCommandExecutorLayer('failure')),
+        Effect.provide(makeSpawnerLayer('failure')),
         Effect.provideService(RuleOptionsService, {}),
       ),
     )
@@ -54,7 +73,7 @@ describe('env.npm-authenticated', () => {
   test('passes when npm whoami succeeds', async () => {
     const result = await Effect.runPromise(
       rule.check.pipe(
-        Effect.provide(makeCommandExecutorLayer('success')),
+        Effect.provide(makeSpawnerLayer('success')),
         Effect.provideService(RuleOptionsService, {}),
       ),
     )

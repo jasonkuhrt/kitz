@@ -3,7 +3,7 @@ import { Schema } from 'effect'
 /**
  * Package-manager command surface recognized by kitz tooling.
  */
-export const PackageManager = Schema.Enums({
+export const PackageManager = Schema.Enum({
   bun: 'bun',
   pnpm: 'pnpm',
   npm: 'npm',
@@ -11,12 +11,12 @@ export const PackageManager = Schema.Enums({
   unknown: 'unknown',
 } as const)
 
-export type PackageManager = Schema.Schema.Type<typeof PackageManager>
+export type PackageManager = typeof PackageManager.Type
 
 /**
  * How the package manager was inferred.
  */
-export const DetectionSource = Schema.Enums({
+export const DetectionSource = Schema.Enum({
   userAgent: 'user-agent',
   execPath: 'exec-path',
   manifest: 'manifest',
@@ -25,7 +25,7 @@ export const DetectionSource = Schema.Enums({
   unknown: 'unknown',
 } as const)
 
-export type DetectionSource = Schema.Schema.Type<typeof DetectionSource>
+export type DetectionSource = typeof DetectionSource.Type
 
 export class DetectedPackageManager extends Schema.Class<DetectedPackageManager>(
   'DetectedPackageManager',

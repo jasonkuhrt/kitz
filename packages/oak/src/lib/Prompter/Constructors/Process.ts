@@ -17,11 +17,11 @@ export const createProcessPrompter = () => {
         }),
       ),
     readLine: () =>
-      Effect.async((resume) => {
+      Effect.callback<string>((resume) => {
         const lineReader = Readline.createInterface({
           input: process.stdin,
         })
-        lineReader.once(`line`, (value) => {
+        lineReader.once(`line`, (value: string) => {
           lineReader.close()
           resume(Effect.succeed(value))
         })

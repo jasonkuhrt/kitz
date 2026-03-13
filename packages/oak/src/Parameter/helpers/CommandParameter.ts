@@ -1,4 +1,4 @@
-import { Either } from 'effect'
+import { Result } from 'effect'
 import { stripeNegatePrefix } from '../../helpers.js'
 import * as SchemaRuntime from '../../schema/schema-runtime.js'
 import type { Parameter } from '../types.js'
@@ -7,7 +7,7 @@ export const validate = (parameter: Parameter, value: unknown) => {
   if (parameter.type.metadata.optionality._tag === `optional` && value === undefined) {
     // Use the omittedValue if specified (e.g., null for NullOr schemas)
     const result = parameter.type.metadata.optionality.omittedValue ?? value
-    return Either.right(result)
+    return Result.succeed(result)
   }
   return SchemaRuntime.validate(parameter.type, value)
 }

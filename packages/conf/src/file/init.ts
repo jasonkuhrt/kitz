@@ -1,5 +1,5 @@
-import { FileSystem } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { FileSystem } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Data, Effect, type Schema } from 'effect'
@@ -77,7 +77,7 @@ export interface InitOptions {
  * type errors in the user's IDE, prompting them to fill in the required values.
  */
 export const template = (
-  definition: ConfigDefinition<Schema.Schema.AnyNoContext>,
+  definition: ConfigDefinition<Schema.Top>,
   options: InitOptions,
 ): string => {
   const { namedExport, specifier } = options.defineConfigImport
@@ -116,7 +116,7 @@ export default ${namedExport}({})
  * }
  * ```
  */
-export const init = <S extends Schema.Schema.AnyNoContext>(
+export const init = <S extends Schema.Top>(
   definition: ConfigDefinition<S>,
   options: InitOptions,
 ): Effect.Effect<InitResult, PlatformError, FileSystem.FileSystem | Env.Env> =>

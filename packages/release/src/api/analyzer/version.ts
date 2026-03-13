@@ -2,8 +2,10 @@ import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, Either, HashMap, MutableHashMap, Option, Schema as S } from 'effect'
+import { Effect, Result, HashMap, MutableHashMap, Option, Schema as S } from 'effect'
+import type { Candidate } from '../version/models/candidate.js'
 import { CandidateSchema } from '../version/models/candidate.js'
+import type { Ephemeral } from '../version/models/ephemeral.js'
 import { EphemeralSchema } from '../version/models/ephemeral.js'
 import { ReleaseCommit } from './models/commit.js'
 
@@ -42,20 +44,20 @@ export const extractImpacts = (gitCommit: Git.Commit): Effect.Effect<CommitImpac
   Effect.gen(function* () {
     // Parse the commit title (first line)
     const title = gitCommit.message.split('\n')[0] ?? gitCommit.message
-    const parseResult = yield* Effect.either(ConventionalCommits.Title.parse(title))
+    const parseResult = yield* Effect.result(ConventionalCommits.Title.parse(title))
 
-    if (Either.isLeft(parseResult)) {
+    if (Result.isFailure(parseResult)) {
       // Not a conventional commit - no impacts
       return []
     }
 
-    const parsedCC = parseResult.right
-    const releaseCommit = ReleaseCommit.make({
+    const parsedCC = parseResult.success
+    const releaseCommit = new (ReleaseCommit as any)({
       hash: gitCommit.hash,
       author: gitCommit.author,
       date: gitCommit.date,
       message: parsedCC,
-    })
+    }) as ReleaseCommit
     const impacts: CommitImpact[] = []
 
     if (ConventionalCommits.Commit.Single.is(parsedCC)) {
@@ -157,9 +159,11 @@ export const findLatestCandidateNumber = (
     const prerelease = Semver.getPrerelease(parsed.value.version)
     if (!prerelease) continue
 
-    const decoded = S.decodeUnknownOption(CandidateSchema)(prerelease.join('.'))
-    if (Option.isSome(decoded) && decoded.value.iteration > highest) {
-      highest = decoded.value.iteration
+    const decoded = S.decodeUnknownOption(CandidateSchema as any)(
+      prerelease.join('.'),
+    ) as Option.Option<Candidate>
+    if (Option.isSome(decoded) && (decoded.value.iteration as number) > highest) {
+      highest = decoded.value.iteration as number
     }
   }
 
@@ -188,13 +192,15 @@ export const findLatestEphemeralNumber = (
     const prerelease = Semver.getPrerelease(parsed.value.version)
     if (!prerelease) continue
 
-    const decoded = S.decodeUnknownOption(EphemeralSchema)(prerelease.join('.'))
+    const decoded = S.decodeUnknownOption(EphemeralSchema as any)(
+      prerelease.join('.'),
+    ) as Option.Option<Ephemeral>
     if (
       Option.isSome(decoded) &&
-      decoded.value.prNumber === prNumber &&
-      decoded.value.iteration > highest
+      (decoded.value.prNumber as number) === prNumber &&
+      (decoded.value.iteration as number) > highest
     ) {
-      highest = decoded.value.iteration
+      highest = decoded.value.iteration as number
     }
   }
 

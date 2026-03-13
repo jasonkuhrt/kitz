@@ -8,8 +8,8 @@
  * @module
  */
 
-import { FileSystem } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { FileSystem } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import { Lang } from '@kitz/core'
 import type { Json } from '@kitz/json'
 import { Effect, Schema as S, Scope, Sink, Stream } from 'effect'
@@ -43,22 +43,57 @@ type InferContentFromExtension<Ext> =
    : Ext extends null                                                                              ? string | Uint8Array | Json.Object  // No extension
    :                                                                                                 string | Uint8Array | Json.Object // Unknown/dynamic extension
 
-// Re-export types from FileSystem for convenience
-export type {
-  AccessFileOptions,
-  CopyOptions,
-  MakeDirectoryOptions,
-  MakeTempDirectoryOptions,
-  MakeTempFileOptions,
-  OpenFileOptions,
-  ReadDirectoryOptions,
-  RemoveOptions,
-  SinkOptions,
-  StreamOptions,
-  WatchOptions,
-  WriteFileOptions,
-  WriteFileStringOptions,
-} from '@effect/platform/FileSystem'
+// In Effect v4, FileSystem option types are inlined. Define them here for backwards compat.
+export type AccessFileOptions = {
+  readonly ok?: boolean | undefined
+  readonly readable?: boolean | undefined
+  readonly writable?: boolean | undefined
+}
+export type CopyOptions = {
+  readonly overwrite?: boolean | undefined
+  readonly preserveTimestamps?: boolean | undefined
+}
+export type MakeDirectoryOptions = {
+  readonly recursive?: boolean | undefined
+  readonly mode?: number | undefined
+}
+export type MakeTempDirectoryOptions = {
+  readonly directory?: string | undefined
+  readonly prefix?: string | undefined
+}
+export type MakeTempFileOptions = {
+  readonly directory?: string | undefined
+  readonly prefix?: string | undefined
+  readonly suffix?: string | undefined
+}
+export type OpenFileOptions = {
+  readonly flag?: FileSystem.OpenFlag | undefined
+  readonly mode?: number | undefined
+}
+export type ReadDirectoryOptions = {
+  readonly recursive?: boolean | undefined
+}
+export type RemoveOptions = {
+  readonly recursive?: boolean | undefined
+  readonly force?: boolean | undefined
+}
+export type SinkOptions = {
+  readonly flag?: FileSystem.OpenFlag | undefined
+  readonly mode?: number | undefined
+}
+export type StreamOptions = {
+  readonly bytesToRead?: FileSystem.SizeInput | undefined
+  readonly chunkSize?: FileSystem.SizeInput | undefined
+  readonly offset?: FileSystem.SizeInput | undefined
+}
+export type WriteFileOptions = {
+  readonly flag?: FileSystem.OpenFlag | undefined
+  readonly mode?: number | undefined
+}
+export type WriteFileStringOptions = {
+  readonly flag?: FileSystem.OpenFlag | undefined
+  readonly mode?: number | undefined
+}
 
 // ============================================================================
 // Single-path operations
@@ -84,7 +119,7 @@ export const exists = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.exists(Path.toString(fsLoc))
+    return yield* fs.exists(Path.toString(fsLoc) as string)
   })
 
 /**
@@ -97,12 +132,12 @@ export const exists = <loc extends Path.Input.Any>(
  */
 export const access = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
-  options?: FileSystem.AccessFileOptions,
+  options?: AccessFileOptions,
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.access(Path.toString(fsLoc), options)
+    return yield* fs.access(Path.toString(fsLoc) as string, options)
   })
 
 /**
@@ -120,7 +155,7 @@ export const chmod = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.chmod(Path.toString(fsLoc), mode)
+    return yield* fs.chmod(Path.toString(fsLoc) as string, mode)
   })
 
 /**
@@ -140,7 +175,7 @@ export const chown = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.chown(Path.toString(fsLoc), uid, gid)
+    return yield* fs.chown(Path.toString(fsLoc) as string, uid, gid)
   })
 
 /**
@@ -153,12 +188,12 @@ export const chown = <loc extends Path.Input.Any>(
  */
 export const open = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
-  options?: FileSystem.OpenFileOptions,
+  options?: OpenFileOptions,
 ): Effect.Effect<FileSystem.File, PlatformError, FileSystem.FileSystem | Scope.Scope> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.open(Path.toString(fsLoc), options)
+    return yield* fs.open(Path.toString(fsLoc) as string, options)
   })
 
 /**
@@ -191,7 +226,7 @@ export const read: {
 
   <L extends Path.$Dir | string>(
     loc: Path.Guard.Dir<L>,
-    options?: FileSystem.ReadDirectoryOptions,
+    options?: ReadDirectoryOptions,
   ): Effect.Effect<
     readonly (L extends Path.AbsDir ? Path.$Abs : L extends string ? Path : Path.$Rel)[],
     PlatformError,
@@ -201,9 +236,9 @@ export const read: {
   <L extends Path | string>(
     loc: Path.Guard.Any<L>,
     options?: L extends Path.$Dir
-      ? FileSystem.ReadDirectoryOptions
+      ? ReadDirectoryOptions
       : L extends string
-        ? FileSystem.ReadDirectoryOptions
+        ? ReadDirectoryOptions
         : never,
   ): Effect.Effect<
     L extends Path.$File
@@ -218,16 +253,16 @@ export const read: {
   >
 } = (
   loc: any,
-  options?: FileSystem.ReadDirectoryOptions,
+  options?: ReadDirectoryOptions,
 ): Effect.Effect<any, PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
 
     if (Path.$File.is(fsLoc)) {
-      return yield* fs.readFile(Path.toString(fsLoc))
+      return yield* fs.readFile(Path.toString(fsLoc) as string)
     } else {
-      const dirPath = Path.toString(fsLoc)
+      const dirPath = Path.toString(fsLoc) as string
       const entries = yield* options
         ? fs.readDirectory(dirPath, options)
         : fs.readDirectory(dirPath)
@@ -289,7 +324,7 @@ export const readString = <loc extends Path.Input.File>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.readFileString(Path.toString(fsLoc), encoding)
+    return yield* fs.readFileString(Path.toString(fsLoc) as string, encoding)
   })
 
 /**
@@ -307,7 +342,7 @@ export const readLink = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    const target = yield* fs.readLink(Path.toString(fsLoc))
+    const target = yield* fs.readLink(Path.toString(fsLoc) as string)
     return Path.fromString(target)
   })
 
@@ -326,7 +361,7 @@ export const realPath = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    const real = yield* fs.realPath(Path.toString(fsLoc))
+    const real = yield* fs.realPath(Path.toString(fsLoc) as string)
     // We can't easily determine if it's a file or directory without stat
     // So we return FsLocLoose which can be either
     return Path.fromString(real)
@@ -354,7 +389,7 @@ export const clear = <loc extends Path.Input.Dir>(
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    const dirPath = Path.toString(fsLoc)
+    const dirPath = Path.toString(fsLoc) as string
 
     // Ensure the directory exists
     yield* fs.makeDirectory(dirPath, { recursive: true })
@@ -386,12 +421,12 @@ export const clear = <loc extends Path.Input.Dir>(
  */
 export const remove = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
-  options: FileSystem.RemoveOptions = { recursive: false },
+  options: RemoveOptions = { recursive: false },
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.remove(Path.toString(fsLoc), options)
+    return yield* fs.remove(Path.toString(fsLoc) as string, options)
   })
 
 /**
@@ -404,13 +439,13 @@ export const remove = <loc extends Path.Input.Any>(
  */
 export const sink = <loc extends Path.Input.File>(
   loc: Path.Guard.File<loc>,
-  options: FileSystem.SinkOptions = {},
+  options: SinkOptions = {},
 ): Sink.Sink<void, Uint8Array, never, PlatformError, FileSystem.FileSystem> => {
-  return Sink.unwrapScoped(
+  return Sink.unwrap(
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-      return fs.sink(Path.toString(fsLoc), options)
+      return fs.sink(Path.toString(fsLoc) as string, options)
     }),
   )
 }
@@ -428,7 +463,7 @@ export const stat = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.stat(Path.toString(fsLoc))
+    return yield* fs.stat(Path.toString(fsLoc) as string)
   })
 
 /**
@@ -441,13 +476,13 @@ export const stat = <loc extends Path.Input.Any>(
  */
 export const stream = <loc extends Path.Input.File>(
   loc: Path.Guard.File<loc>,
-  options: FileSystem.StreamOptions = {},
+  options: StreamOptions = {},
 ): Stream.Stream<Uint8Array, PlatformError, FileSystem.FileSystem> => {
   return Stream.unwrap(
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-      return fs.stream(Path.toString(fsLoc), options)
+      return fs.stream(Path.toString(fsLoc) as string, options)
     }),
   )
 }
@@ -467,7 +502,7 @@ export const truncate = <loc extends Path.Input.File>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.truncate(Path.toString(fsLoc), length)
+    return yield* fs.truncate(Path.toString(fsLoc) as string, length)
   })
 
 /**
@@ -487,7 +522,7 @@ export const utimes = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.utimes(Path.toString(fsLoc), atime, mtime)
+    return yield* fs.utimes(Path.toString(fsLoc) as string, atime, mtime)
   })
 
 /**
@@ -500,13 +535,12 @@ export const utimes = <loc extends Path.Input.Any>(
  */
 export const watch = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
-  options?: FileSystem.WatchOptions,
 ): Stream.Stream<FileSystem.WatchEvent, PlatformError, FileSystem.FileSystem> => {
   return Stream.unwrap(
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-      return fs.watch(Path.toString(fsLoc), options)
+      return fs.watch(Path.toString(fsLoc) as string)
     }),
   )
 }
@@ -514,10 +548,10 @@ export const watch = <loc extends Path.Input.Any>(
 type WriteFileParameters = [
   loc: Path.$File,
   content: string | Uint8Array | Json.Object,
-  options?: FileSystem.WriteFileOptions | FileSystem.WriteFileStringOptions,
+  options?: WriteFileOptions | WriteFileStringOptions,
 ]
 
-type WriteDirectoryParameters = [loc: Path.$Dir, options?: FileSystem.MakeDirectoryOptions]
+type WriteDirectoryParameters = [loc: Path.$Dir, options?: MakeDirectoryOptions]
 
 type WriteParametersInternal = WriteFileParameters | WriteDirectoryParameters
 
@@ -562,11 +596,11 @@ export const write: {
       : loc extends string
         ? string | Uint8Array | Json.Object // Dynamic path, allow all content types
         : never,
-    options?: FileSystem.WriteFileOptions | FileSystem.WriteFileStringOptions,
+    options?: WriteFileOptions | WriteFileStringOptions,
   ): Effect.Effect<void, PlatformError, FileSystem.FileSystem>
   <loc extends Path.$Dir | string>(
     loc: Path.Guard.Dir<loc>,
-    options?: FileSystem.MakeDirectoryOptions,
+    options?: MakeDirectoryOptions,
   ): Effect.Effect<void, PlatformError, FileSystem.FileSystem>
 } = ((
   ...params: WriteParametersInternal
@@ -575,24 +609,27 @@ export const write: {
     const fs = yield* FileSystem.FileSystem
 
     // Normalize the input to FsLoc type
-    const loc = typeof params[0] === 'string' ? Path.fromString(params[0]) : params[0]
+    const loc = (typeof params[0] === 'string' ? Path.fromString(params[0]) : params[0]) as
+      | Path.$File
+      | Path.$Dir
 
     if (Path.$File.is(loc)) {
+      const fileLoc: { segments: string[]; fileName: { extension: string | null } } = loc as any
       const [, content, options] = params
-      const filePath = Path.toString(loc)
+      const filePath = Path.toString(loc) as string
 
       // Ensure parent directory exists
       // Construct the parent directory from the file's path segments
-      if (loc.segments.length > 0) {
+      if (fileLoc.segments.length > 0) {
         const parentDir = Path.$Abs.is(loc)
-          ? S.decodeSync(Path.AbsDir.Schema)('/' + loc.segments.join('/') + '/')
-          : S.decodeSync(Path.RelDir.Schema)(loc.segments.join('/') + '/')
-        const parentPath = Path.toString(parentDir)
+          ? S.decodeSync(Path.AbsDir.Schema)('/' + fileLoc.segments.join('/') + '/')
+          : S.decodeSync(Path.RelDir.Schema)(fileLoc.segments.join('/') + '/')
+        const parentPath = Path.toString(parentDir) as string
         yield* fs.makeDirectory(parentPath, { recursive: true })
       }
 
       // Get the file extension
-      const ext = 'fileName' in loc ? loc.fileName.extension : null
+      const ext = fileLoc.fileName.extension
 
       // Determine how to write based on content type and extension
       if (
@@ -606,29 +643,21 @@ export const write: {
         return yield* fs.writeFileString(
           filePath,
           jsonString,
-          (options as FileSystem.WriteFileStringOptions) || {},
+          (options as WriteFileStringOptions) || {},
         )
       } else if (content instanceof Uint8Array) {
         // Binary content
-        return yield* fs.writeFile(
-          filePath,
-          content,
-          (options as FileSystem.WriteFileOptions) || {},
-        )
+        return yield* fs.writeFile(filePath, content, (options as WriteFileOptions) || {})
       } else if (typeof content === 'string') {
         // String content
         return yield* fs.writeFileString(
           filePath,
           content,
-          (options as FileSystem.WriteFileStringOptions) || {},
+          (options as WriteFileStringOptions) || {},
         )
       } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(content)) {
         // Node.js Buffer
-        return yield* fs.writeFile(
-          filePath,
-          content as any,
-          (options as FileSystem.WriteFileOptions) || {},
-        )
+        return yield* fs.writeFile(filePath, content as any, (options as WriteFileOptions) || {})
       } else {
         // Fallback: stringify anything else
         const stringContent =
@@ -636,14 +665,14 @@ export const write: {
         return yield* fs.writeFileString(
           filePath,
           stringContent,
-          (options as FileSystem.WriteFileStringOptions) || {},
+          (options as WriteFileStringOptions) || {},
         )
       }
     }
 
     if (Path.$Dir.is(loc)) {
       const [, options] = params as WriteDirectoryParameters
-      return yield* fs.makeDirectory(Path.toString(loc), options || { recursive: false })
+      return yield* fs.makeDirectory(Path.toString(loc) as string, options || { recursive: false })
     }
 
     // Exhaustive check
@@ -673,12 +702,12 @@ export const write: {
 export const writeString = <loc extends Path.Input.File>(
   loc: Path.Guard.File<loc>,
   data: string,
-  options: FileSystem.WriteFileStringOptions = {},
+  options: WriteFileStringOptions = {},
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.writeFileString(Path.toString(fsLoc), data, options)
+    return yield* fs.writeFileString(Path.toString(fsLoc) as string, data, options)
   })
 
 // ============================================================================
@@ -712,7 +741,7 @@ export const writeString = <loc extends Path.Input.File>(
 export const copy = <from extends Path.Input.Any, to extends Path.Input.Any>(
   from: Path.Guard.Any<from>,
   to: Path.Guard.Any<to>,
-  options: FileSystem.CopyOptions = {},
+  options: CopyOptions = {},
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
@@ -721,11 +750,11 @@ export const copy = <from extends Path.Input.Any, to extends Path.Input.Any>(
 
     // If both source and destination are files, use the optimized copyFile
     if (Path.$File.is(fromLoc) && Path.$File.is(toLoc)) {
-      return yield* fs.copyFile(Path.toString(fromLoc), Path.toString(toLoc))
+      return yield* fs.copyFile(Path.toString(fromLoc) as string, Path.toString(toLoc) as string)
     }
 
     // Otherwise use the general copy (for directories or mixed types)
-    return yield* fs.copy(Path.toString(fromLoc), Path.toString(toLoc), options)
+    return yield* fs.copy(Path.toString(fromLoc) as string, Path.toString(toLoc) as string, options)
   })
 
 /**
@@ -744,7 +773,7 @@ export const link = <from extends Path.Input.Any, to extends Path.Input.Any>(
     const fs = yield* FileSystem.FileSystem
     const fromLoc = Path.normalizeDynamicInput(Path.Schema)(from)
     const toLoc = Path.normalizeDynamicInput(Path.Schema)(to)
-    return yield* fs.link(Path.toString(fromLoc), Path.toString(toLoc))
+    return yield* fs.link(Path.toString(fromLoc) as string, Path.toString(toLoc) as string)
   })
 
 /**
@@ -783,7 +812,7 @@ export const rename: {
     const fs = yield* FileSystem.FileSystem
     const oldLoc = Path.normalizeDynamicInput(Path.Schema)(oldPath)
     const newLoc = Path.normalizeDynamicInput(Path.Schema)(newPath)
-    return yield* fs.rename(Path.toString(oldLoc), Path.toString(newLoc))
+    return yield* fs.rename(Path.toString(oldLoc) as string, Path.toString(newLoc) as string)
   })
 
 /**
@@ -802,7 +831,7 @@ export const symlink = <from extends Path.Input.Any, to extends Path.Input.Any>(
     const fs = yield* FileSystem.FileSystem
     const fromLoc = Path.normalizeDynamicInput(Path.Schema)(from)
     const toLoc = Path.normalizeDynamicInput(Path.Schema)(to)
-    return yield* fs.symlink(Path.toString(fromLoc), Path.toString(toLoc))
+    return yield* fs.symlink(Path.toString(fromLoc) as string, Path.toString(toLoc) as string)
   })
 
 // ============================================================================
@@ -860,7 +889,7 @@ export type MakeTempOptions = TempFileOptions | TempDirectoryOptions
  * ```
  */
 export const makeTempDirectory = (
-  options: FileSystem.MakeTempDirectoryOptions = {},
+  options: MakeTempDirectoryOptions = {},
 ): Effect.Effect<Path.AbsDir, PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
@@ -895,7 +924,7 @@ export const makeTempDirectory = (
  * ```
  */
 export const makeTempDirectoryScoped = (
-  options: FileSystem.MakeTempDirectoryOptions = {},
+  options: MakeTempDirectoryOptions = {},
 ): Effect.Effect<Path.AbsDir, PlatformError, FileSystem.FileSystem | Scope.Scope> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
@@ -933,7 +962,7 @@ export const makeTemp = <T extends MakeTempOptions>(
     const fs = yield* FileSystem.FileSystem
 
     if (options.type === 'file') {
-      const fileOpts: FileSystem.MakeTempFileOptions = {
+      const fileOpts: MakeTempFileOptions = {
         ...(options.directory !== undefined && { directory: options.directory }),
         ...(options.prefix !== undefined && { prefix: options.prefix }),
         ...((options as TempFileOptions).suffix !== undefined && {
@@ -943,7 +972,7 @@ export const makeTemp = <T extends MakeTempOptions>(
       const path = yield* fs.makeTempFile(fileOpts)
       return S.decodeSync(Path.AbsFile.Schema)(path) as any
     } else {
-      const dirOpts: FileSystem.MakeTempDirectoryOptions = {
+      const dirOpts: MakeTempDirectoryOptions = {
         ...(options.directory !== undefined && { directory: options.directory }),
         ...(options.prefix !== undefined && { prefix: options.prefix }),
       }
@@ -979,7 +1008,7 @@ export const makeTempScoped = <T extends MakeTempOptions>(
     const fs = yield* FileSystem.FileSystem
 
     if (options.type === 'file') {
-      const fileOpts: FileSystem.MakeTempFileOptions = {
+      const fileOpts: MakeTempFileOptions = {
         ...(options.directory !== undefined && { directory: options.directory }),
         ...(options.prefix !== undefined && { prefix: options.prefix }),
         ...((options as TempFileOptions).suffix !== undefined && {
@@ -989,7 +1018,7 @@ export const makeTempScoped = <T extends MakeTempOptions>(
       const path = yield* fs.makeTempFileScoped(fileOpts)
       return S.decodeSync(Path.AbsFile.Schema)(path) as any
     } else {
-      const dirOpts: FileSystem.MakeTempDirectoryOptions = {
+      const dirOpts: MakeTempDirectoryOptions = {
         ...(options.directory !== undefined && { directory: options.directory }),
         ...(options.prefix !== undefined && { prefix: options.prefix }),
       }

@@ -15,5 +15,5 @@ export class Analysis extends S.TaggedClass<Analysis>()('Analysis', {
   unchanged: S.Array(PackageSchema),
   tags: S.Array(S.String),
 }) {
-  static is = S.is(Analysis)
+  static is = S.is(Analysis as any) as (u: unknown) => u is Analysis
 }

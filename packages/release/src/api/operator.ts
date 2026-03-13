@@ -1,5 +1,5 @@
-import { FileSystem } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { FileSystem } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import { Env } from '@kitz/env'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
@@ -13,11 +13,15 @@ const defaultPrepareScripts = (): readonly string[] => []
  */
 export class Operator extends Schema.Class<Operator>('Operator')({
   /** Script used to invoke the release CLI locally. */
-  releaseScript: Schema.optionalWith(Schema.String, { default: defaultReleaseScript }),
+  releaseScript: Schema.String.pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(defaultReleaseScript),
+  ),
   /** Optional repo-specific preparation scripts to run before release steps. */
-  prepareScripts: Schema.optionalWith(Schema.Array(Schema.String), {
-    default: defaultPrepareScripts,
-  }),
+  prepareScripts: Schema.Array(Schema.String).pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(defaultPrepareScripts as () => readonly string[]),
+  ),
 }) {}
 
 /**
@@ -29,7 +33,7 @@ export class ResolvedOperator extends Schema.Class<ResolvedOperator>('ResolvedOp
   prepareCommands: Schema.Array(Schema.String),
 }) {}
 
-export const defaultOperator = (): Operator => Operator.make({})
+export const defaultOperator = (): Operator => new Operator({})
 
 export type ResolveError = PlatformError | Resource.ResourceError
 
@@ -39,10 +43,13 @@ export const resolve = (
   Effect.gen(function* () {
     const manager = yield* Pkg.Manager.detect()
 
-    return ResolvedOperator.make({
+    return new ResolvedOperator({
       manager,
-      releaseCommand: Pkg.Manager.renderScriptCommand(manager.name, operator.releaseScript),
-      prepareCommands: operator.prepareScripts.map((script) =>
+      releaseCommand: Pkg.Manager.renderScriptCommand(
+        manager.name,
+        operator.releaseScript ?? 'release',
+      ),
+      prepareCommands: (operator.prepareScripts ?? []).map((script: string) =>
         Pkg.Manager.renderScriptCommand(manager.name, script),
       ),
     })

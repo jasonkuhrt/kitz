@@ -36,10 +36,10 @@ export class Failed extends Schema.TaggedClass<Failed>()('RuleCheckResultFailed'
 }
 
 /** Why a rule was skipped. */
-export const SkipReason = Schema.Union(
+export const SkipReason = Schema.Union([
   Schema.Literal('filtered'),
   Schema.Literal('preconditions-not-met'),
-)
+])
 export type SkipReason = typeof SkipReason.Type
 
 /** Rule was skipped (filtered or preconditions not met with auto-enable). */
@@ -53,7 +53,7 @@ export class Skipped extends Schema.TaggedClass<Skipped>()('RuleCheckResultSkipp
 /** Outcome of checking a single rule. */
 export type RuleCheckResult = Finished | Failed | Skipped
 
-export const RuleCheckResult = Schema.Union(Finished, Failed, Skipped)
+export const RuleCheckResult = Schema.Union([Finished, Failed, Skipped])
 
 /** Aggregation of violations from a lint run. */
 export class Report extends Schema.TaggedClass<Report>()('Report', {

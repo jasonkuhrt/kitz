@@ -19,5 +19,5 @@ import { Schema as S } from 'effect'
  *   Published to a per-PR dist-tag.
  *   Version format: `0.0.0-pr.<prNumber>.<iteration>.<sha>`
  */
-export const LifecycleSchema = S.Literal('official', 'candidate', 'ephemeral')
+export const LifecycleSchema = S.Literals(['official', 'candidate', 'ephemeral'])
 export type Lifecycle = typeof LifecycleSchema.Type

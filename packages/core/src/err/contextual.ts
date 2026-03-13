@@ -1,4 +1,4 @@
-import { Cause, Schema as S } from 'effect'
+import { Schema as S } from 'effect'
 
 // =============================================================================
 // Types
@@ -32,8 +32,8 @@ export type ErrorsWithTag<$Errors, $Tag extends string> = $Errors extends Tagged
  * Configuration for creating a contextual error.
  */
 export interface TaggedContextualErrorConfig<
-  ContextSchema extends S.Schema.Any,
-  CauseSchema extends S.Schema.Any | undefined = undefined,
+  ContextSchema extends S.Top,
+  CauseSchema extends S.Top | undefined = undefined,
 > {
   /**
    * Schema defining the context structure.
@@ -52,7 +52,7 @@ export interface TaggedContextualErrorConfig<
    * Function to derive the error message from context.
    * The context type is inferred from the schema.
    */
-  message: (context: S.Schema.Type<ContextSchema>) => string
+  message: (context: ContextSchema['Type']) => string
   /**
    * Optional schema for constraining the cause type.
    */
@@ -65,10 +65,10 @@ export interface TaggedContextualErrorConfig<
 export interface TaggedContextualErrorInstance<
   $Tag extends string,
   $Tags extends readonly string[],
-  $Context extends Record<string, unknown>,
+  $Context,
   $Cause extends Error | undefined,
 >
-  extends Cause.YieldableError {
+  extends globalThis.Error {
   readonly _tag: $Tag
   readonly tags: $Tags
   readonly context: $Context
@@ -81,39 +81,37 @@ export interface TaggedContextualErrorInstance<
 export interface TaggedContextualErrorClass<
   $Tag extends string,
   $Tags extends readonly string[],
-  ContextSchema extends S.Schema.Any,
-  CauseSchema extends S.Schema.Any | undefined,
+  ContextSchema extends S.Top,
+  CauseSchema extends S.Top | undefined,
 >
   // eslint-disable-next-line import/namespace -- Effect Schema types expose nested members via namespace.
-  extends S.Schema<
+  extends S.Codec<
     TaggedContextualErrorInstance<
       $Tag,
       $Tags,
-      S.Schema.Type<ContextSchema>,
-      CauseSchema extends S.Schema.Any ? S.Schema.Type<CauseSchema> : Error | undefined
+      ContextSchema['Type'],
+      CauseSchema extends S.Top ? CauseSchema['Type'] & (Error | undefined) : Error | undefined
     >,
     {
       readonly _tag: $Tag
-      readonly context: S.Schema.Encoded<ContextSchema>
-      readonly cause?: CauseSchema extends S.Schema.Any ? S.Schema.Encoded<CauseSchema> : unknown
+      readonly context: ContextSchema['Encoded']
+      readonly cause?: CauseSchema extends S.Top ? CauseSchema['Encoded'] : unknown
     },
-    | S.Schema.Context<ContextSchema>
-    | (CauseSchema extends S.Schema.Any ? S.Schema.Context<CauseSchema> : never)
+    | ContextSchema['DecodingServices']
+    | (CauseSchema extends S.Top ? CauseSchema['DecodingServices'] : never)
   > {
   readonly _tag: $Tag
   readonly tags: $Tags
 
   new (
     args: {
-      context: S.Schema.Type<ContextSchema>
-    } & (CauseSchema extends S.Schema.Any
-      ? { cause?: S.Schema.Type<CauseSchema> }
-      : { cause?: Error }),
+      context: ContextSchema['Type']
+    } & (CauseSchema extends S.Top ? { cause?: CauseSchema['Type'] } : { cause?: Error }),
   ): TaggedContextualErrorInstance<
     $Tag,
     $Tags,
-    S.Schema.Type<ContextSchema>,
-    CauseSchema extends S.Schema.Any ? S.Schema.Type<CauseSchema> : Error | undefined
+    ContextSchema['Type'],
+    CauseSchema extends S.Top ? CauseSchema['Type'] & (Error | undefined) : Error | undefined
   >
 }
 
@@ -150,7 +148,7 @@ export interface TaggedContextualErrorClass<
  * })
  *
  * // Works in Schema.Union for workflow error handling
- * const WorkflowError = S.Union(FileNotFound, OtherError)
+ * const WorkflowError = S.Union([FileNotFound, OtherError])
  * ```
  *
  * @example
@@ -166,15 +164,15 @@ export interface TaggedContextualErrorClass<
 export const TaggedContextualError = <
   const $Tag extends string,
   const $Tags extends readonly string[],
-  ContextSchema extends S.Schema.Any,
-  CauseSchema extends S.Schema.Any | undefined = undefined,
+  ContextSchema extends S.Top,
+  CauseSchema extends S.Top | undefined = undefined,
 >(
   tag: $Tag,
   tags: $Tags,
   config: TaggedContextualErrorConfig<ContextSchema, CauseSchema>,
 ): TaggedContextualErrorClass<$Tag, $Tags, ContextSchema, CauseSchema> => {
   // Cast to any so class extension works (same pattern as Effect's makeClass)
-  const Base = S.TaggedError<any>()(tag, {
+  const Base = S.TaggedErrorClass<any>()(tag, {
     context: config.context,
     cause: config.cause ?? S.optional(S.Unknown),
   }) as any

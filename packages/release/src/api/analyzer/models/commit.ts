@@ -37,11 +37,12 @@ export class ReleaseCommit extends Git.ParsedCommit<ReleaseCommit>()(
    * For Multi commits: finds the target for the given scope.
    */
   static forScope(commit: ReleaseCommit, scope: string): ScopedCommitInfo {
-    const parsed = commit.message
+    const parsed = commit['message'] as ConventionalCommits.Commit.Commit
+    const hash = commit['hash'] as Git.Sha.Sha
 
     if (ConventionalCommits.Commit.Single.is(parsed)) {
       return {
-        hash: commit.hash,
+        hash,
         type: parsed.type.value,
         description: parsed.message,
         breaking: parsed.breaking,
@@ -49,10 +50,10 @@ export class ReleaseCommit extends Git.ParsedCommit<ReleaseCommit>()(
     }
 
     // Multi commit - find the target for this scope
-    const target = parsed.targets.find((t) => t.scope === scope)
+    const target = parsed.targets.find((t: any) => t.scope === scope)
 
     return {
-      hash: commit.hash,
+      hash,
       type: target?.type.value ?? 'chore',
       description: parsed.message,
       breaking: target?.breaking ?? false,
@@ -68,7 +69,7 @@ const SYNTHETIC_SHA = Git.Sha.make('0000000')
 /**
  * Synthetic author for synthetic commits.
  */
-const SYNTHETIC_AUTHOR = Git.Author.make({ name: 'Release', email: 'release@local' })
+const SYNTHETIC_AUTHOR = new Git.Author({ name: 'Release', email: 'release@local' })
 
 /**
  * Create a synthetic ReleaseCommit for cascade releases.
@@ -77,11 +78,11 @@ const SYNTHETIC_AUTHOR = Git.Author.make({ name: 'Release', email: 'release@loca
  * not direct commit changes.
  */
 export const makeCascadeCommit = (scope: string, description: string): ReleaseCommit =>
-  ReleaseCommit.make({
+  new (ReleaseCommit as any)({
     hash: SYNTHETIC_SHA,
     author: SYNTHETIC_AUTHOR,
     date: new Date(),
-    message: ConventionalCommits.Commit.Single.make({
+    message: new ConventionalCommits.Commit.Single({
       type: ConventionalCommits.Type.parse('chore'),
       scopes: [scope],
       breaking: false,
@@ -89,4 +90,4 @@ export const makeCascadeCommit = (scope: string, description: string): ReleaseCo
       body: Option.none(),
       footers: [],
     }),
-  })
+  }) as ReleaseCommit

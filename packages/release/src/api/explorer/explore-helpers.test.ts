@@ -1,7 +1,7 @@
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Test } from '@kitz/test'
-import { Effect, Either, Layer } from 'effect'
+import { Effect, Result, Layer } from 'effect'
 import { describe, expect, test } from 'vitest'
 import {
   detectPrNumber,
@@ -67,7 +67,7 @@ describe('resolveReleaseTarget', () => {
     gitConfig: Parameters<typeof Git.Memory.make>[0] = {},
   ) =>
     Effect.runPromise(
-      resolveReleaseTarget(vars).pipe(Effect.provide(Git.Memory.make(gitConfig)), Effect.either),
+      resolveReleaseTarget(vars).pipe(Effect.provide(Git.Memory.make(gitConfig)), Effect.result),
     )
 
   test('HTTPS remote URL', async () => {
@@ -77,11 +77,11 @@ describe('resolveReleaseTarget', () => {
         remoteUrl: 'https://github.com/org/repo.git',
       },
     )
-    expect(Either.isRight(result)).toBe(true)
-    if (Either.isRight(result)) {
-      expect(result.right.owner).toBe('org')
-      expect(result.right.repo).toBe('repo')
-      expect(result.right.source).toBe('git:origin')
+    expect(Result.isSuccess(result)).toBe(true)
+    if (Result.isSuccess(result)) {
+      expect(result.success.owner).toBe('org')
+      expect(result.success.repo).toBe('repo')
+      expect(result.success.source).toBe('git:origin')
     }
   })
 
@@ -92,10 +92,10 @@ describe('resolveReleaseTarget', () => {
         remoteUrl: 'git@github.com:my-org/my-repo.git',
       },
     )
-    expect(Either.isRight(result)).toBe(true)
-    if (Either.isRight(result)) {
-      expect(result.right.owner).toBe('my-org')
-      expect(result.right.repo).toBe('my-repo')
+    expect(Result.isSuccess(result)).toBe(true)
+    if (Result.isSuccess(result)) {
+      expect(result.success.owner).toBe('my-org')
+      expect(result.success.repo).toBe('my-repo')
     }
   })
 
@@ -106,10 +106,10 @@ describe('resolveReleaseTarget', () => {
         remoteUrl: 'https://github.com/owner/project',
       },
     )
-    expect(Either.isRight(result)).toBe(true)
-    if (Either.isRight(result)) {
-      expect(result.right.owner).toBe('owner')
-      expect(result.right.repo).toBe('project')
+    expect(Result.isSuccess(result)).toBe(true)
+    if (Result.isSuccess(result)) {
+      expect(result.success.owner).toBe('owner')
+      expect(result.success.repo).toBe('project')
     }
   })
 
@@ -118,19 +118,19 @@ describe('resolveReleaseTarget', () => {
       { GITHUB_REPOSITORY: 'env-org/env-repo' },
       { remoteUrl: 'git@github.com:git-org/git-repo.git' },
     )
-    expect(Either.isRight(result)).toBe(true)
-    if (Either.isRight(result)) {
-      expect(result.right.owner).toBe('env-org')
-      expect(result.right.repo).toBe('env-repo')
-      expect(result.right.source).toBe('env:GITHUB_REPOSITORY')
+    expect(Result.isSuccess(result)).toBe(true)
+    if (Result.isSuccess(result)) {
+      expect(result.success.owner).toBe('env-org')
+      expect(result.success.repo).toBe('env-repo')
+      expect(result.success.source).toBe('env:GITHUB_REPOSITORY')
     }
   })
 
   test('invalid GITHUB_REPOSITORY format fails', async () => {
     const result = await run({ GITHUB_REPOSITORY: 'no-slash' })
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect(result.left._tag).toBe('ExplorerError')
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect(result.failure._tag).toBe('ExplorerError')
     }
   })
 
@@ -141,10 +141,10 @@ describe('resolveReleaseTarget', () => {
         remoteUrl: 'git@gitlab.com:org/repo.git',
       },
     )
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect(result.left._tag).toBe('ExplorerError')
-      expect(result.left.context.detail).toContain('Could not resolve GitHub repository')
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect(result.failure._tag).toBe('ExplorerError')
+      expect(result.failure.context.detail).toContain('Could not resolve GitHub repository')
     }
   })
 })
@@ -203,12 +203,12 @@ describe('selectConnectedPullRequestNumber', () => {
           base: { ref: 'main' },
           head: { ref: 'feat/release' },
         },
-      ] satisfies readonly Github.PullRequest[]).pipe(Effect.either),
+      ] satisfies readonly Github.PullRequest[]).pipe(Effect.result),
     )
 
-    expect(Either.isLeft(result)).toBe(true)
-    if (Either.isLeft(result)) {
-      expect(result.left.context.detail).toContain('Multiple open pull requests match branch')
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect(result.failure.context.detail).toContain('Multiple open pull requests match branch')
     }
   })
 })

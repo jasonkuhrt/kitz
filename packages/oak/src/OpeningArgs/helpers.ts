@@ -1,5 +1,5 @@
 import { Str } from '@kitz/core'
-import { Either } from 'effect'
+import { Result } from 'effect'
 import { negateNamePattern, stripeDashPrefix } from '../helpers.js'
 import type { Parameter } from '../Parameter/types.js'
 import * as SchemaRuntime from '../schema/schema-runtime.js'
@@ -11,22 +11,22 @@ export const parseSerializedValue = (
   name: string,
   serializedValue: string,
   spec: Parameter,
-): Either.Either<Value, Error> => {
+): Result.Result<Value, Error> => {
   const either = SchemaRuntime.deserialize(spec.type, serializedValue)
 
-  if (Either.isLeft(either)) {
-    return Either.left(either.left)
+  if (Result.isFailure(either)) {
+    return Result.fail(either.failure)
   }
 
-  const value = either.right
-  if (typeof value === `string`) return Either.right({ _tag: `string`, value })
-  if (typeof value === `number`) return Either.right({ _tag: `number`, value })
-  if (value === undefined) return Either.right({ _tag: `undefined`, value: undefined })
+  const value = either.success
+  if (typeof value === `string`) return Result.succeed({ _tag: `string`, value })
+  if (typeof value === `number`) return Result.succeed({ _tag: `number`, value })
+  if (value === undefined) return Result.succeed({ _tag: `undefined`, value: undefined })
   if (typeof value === `boolean`) {
-    return Either.right({ _tag: `boolean`, value, negated: isEnvarNegated(name, spec) })
+    return Result.succeed({ _tag: `boolean`, value, negated: isEnvarNegated(name, spec) })
   }
 
-  return Either.left(new Error(`Unsupported type ${typeof value}.`))
+  return Result.fail(new Error(`Unsupported type ${typeof value}.`))
 }
 
 /**

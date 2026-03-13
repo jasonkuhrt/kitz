@@ -22,6 +22,6 @@ export class Warn extends Schema.TaggedClass<Warn>()('SeverityWarn', {}) {
  */
 export type Severity = Error | Warn
 
-export const Severity = Schema.Union(Error, Warn)
+export const Severity = Schema.Union([Error, Warn])
 
 export const is = Schema.is(Severity)

@@ -10,10 +10,10 @@ import { PrService } from '../services/pr.js'
 
 /** Requires the PR title to include at least one scope. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('pr.scope.require'),
+  id: RuleId.makeUnsafe('pr.scope.require'),
   description: 'At least one scope required',
-  preconditions: [Precondition.HasOpenPR.make()],
-  defaults: RuleDefaults.make({ enabled: false }),
+  preconditions: [new Precondition.HasOpenPR()],
+  defaults: new RuleDefaults({ enabled: false }),
   check: Effect.gen(function* () {
     const pr = yield* PrService
     const invalidTitle = getInvalidTitleViolation(pr)
@@ -21,8 +21,8 @@ export const rule = RuntimeRule.create({
     const commit = getParsedCommit(pr)!
     const scopes = ConventionalCommits.Commit.scopes(commit)
     if (scopes.length === 0) {
-      return Violation.make({
-        location: PrTitle.make({ title: pr.title }),
+      return new Violation({
+        location: new PrTitle({ title: pr.title }),
       })
     }
     return undefined

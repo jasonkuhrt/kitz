@@ -40,31 +40,29 @@ const Workspaces = S.Struct({
  * Class schema for package.json manifest
  */
 class ManifestClass extends S.Class<ManifestClass>('Manifest')({
-  name: S.optionalWith(Moniker.FromString, {
-    default: () => new Moniker.Unscoped({ name: 'unnamed' }),
-  }),
-  version: S.optionalWith(SemverFromString, { default: () => zeroSemver }),
+  name: Moniker.FromString.pipe(S.withDecodingDefaultKey(() => 'unnamed')),
+  version: SemverFromString.pipe(S.withDecodingDefaultKey(() => '0.0.0')),
   description: S.optional(S.String),
   main: S.optional(S.String),
-  type: S.optional(S.Literal('module', 'commonjs')),
-  scripts: S.optional(S.Record({ key: S.String, value: S.String })),
-  dependencies: S.optional(S.Record({ key: S.String, value: S.String })),
-  devDependencies: S.optional(S.Record({ key: S.String, value: S.String })),
-  peerDependencies: S.optional(S.Record({ key: S.String, value: S.String })),
-  optionalDependencies: S.optional(S.Record({ key: S.String, value: S.String })),
-  bin: S.optional(S.Union(S.String, S.Record({ key: S.String, value: S.String }))),
+  type: S.optional(S.Literals(['module', 'commonjs'])),
+  scripts: S.optional(S.Record(S.String, S.String)),
+  dependencies: S.optional(S.Record(S.String, S.String)),
+  devDependencies: S.optional(S.Record(S.String, S.String)),
+  peerDependencies: S.optional(S.Record(S.String, S.String)),
+  optionalDependencies: S.optional(S.Record(S.String, S.String)),
+  bin: S.optional(S.Union([S.String, S.Record(S.String, S.String)])),
   files: S.optional(S.Array(S.String)),
-  exports: S.optional(S.Union(S.Record({ key: S.String, value: S.Unknown }), S.String)),
-  imports: S.optional(S.Record({ key: S.String, value: S.Unknown })),
+  exports: S.optional(S.Union([S.Record(S.String, S.Unknown), S.String])),
+  imports: S.optional(S.Record(S.String, S.Unknown)),
   engines: S.optional(Engines),
-  repository: S.optional(S.Union(Repository, S.String)),
+  repository: S.optional(S.Union([Repository, S.String])),
   keywords: S.optional(S.Array(S.String)),
-  author: S.optional(S.Union(S.String, Author)),
+  author: S.optional(S.Union([S.String, Author])),
   license: S.optional(S.String),
-  bugs: S.optional(S.Union(Bugs, S.String)),
+  bugs: S.optional(S.Union([Bugs, S.String])),
   homepage: S.optional(S.String),
   private: S.optional(S.Boolean),
-  workspaces: S.optional(S.Union(S.Array(S.String), Workspaces)),
+  workspaces: S.optional(S.Union([S.Array(S.String), Workspaces])),
   packageManager: S.optional(S.String),
   madge: S.optional(S.Unknown),
 }) {
@@ -73,7 +71,8 @@ class ManifestClass extends S.Class<ManifestClass>('Manifest')({
    * Useful when you need to perform multiple mutations efficiently.
    */
   toMutable(): ManifestMutable {
-    return S.decodeUnknownSync(ManifestSchemaMutable)(this) as ManifestMutable
+    // oxlint-disable-next-line kitz/no-json-parse -- deep clone, not IO parsing
+    return JSON.parse(JSON.stringify(this)) as ManifestMutable
   }
 }
 
@@ -81,9 +80,13 @@ export const Manifest: typeof ManifestClass = ManifestClass
 export type Manifest = ManifestClass
 
 /**
- * Mutable version of the manifest schema for runtime manipulation
+ * Mutable version of the manifest schema for runtime manipulation.
+ *
+ * NOTE: `S.mutable` is broken in Effect v4 (elements.findIndex crash in SchemaAST),
+ * so we skip creating a dedicated mutable schema. The `toMutable()` method on
+ * ManifestClass uses JSON round-trip instead.
  */
-export const ManifestSchemaMutable = S.mutable(Manifest)
+// export const ManifestSchemaMutable = S.mutable(Manifest as any)
 
 export const ManifestSchemaImmutable = Manifest
 
@@ -104,14 +107,14 @@ export type PropertyExports = Record<string, unknown> | string
 
 /**
  * Create a new Manifest with validation and defaults
- * @deprecated Use Manifest.create() or Manifest.make() instead
+ * @deprecated Use new Manifest() instead
  */
-export const make = Manifest.make.bind(Manifest)
+export const make = (args: ConstructorParameters<typeof Manifest>[0]) => new Manifest(args)
 
 /**
  * Empty manifest with minimal required fields
  */
-export const emptyManifest = Manifest.make()
+export const emptyManifest = S.decodeSync(Manifest)({})
 
 /**
  * Resource for reading/writing package.json with Schema validation.
@@ -121,10 +124,10 @@ export const emptyManifest = Manifest.make()
  */
 export const resource: Resource.Resource<Manifest> = Resource.createJson(
   'package.json',
-  Manifest,
+  Manifest as any,
   emptyManifest,
   { preserveExcessProperties: true },
-)
+) as Resource.Resource<Manifest>
 
 /**
  * Mutable resource for backward compatibility
@@ -135,12 +138,12 @@ export const resourceMutable: Resource.Resource<ManifestMutable> = {
     resource.read(path).pipe(Effect.map(Option.map((m) => m.toMutable()))),
   readRequired: (path: Fs.Path.$Abs) =>
     resource.readRequired(path).pipe(Effect.map((m) => m.toMutable())),
-  write: (value: ManifestMutable, path: Fs.Path.$Abs) => resource.write(Manifest.make(value), path),
+  write: (value: ManifestMutable, path: Fs.Path.$Abs) => resource.write(new Manifest(value), path),
   readOrEmpty: (path: Fs.Path.$Abs) =>
     resource.readOrEmpty(path).pipe(Effect.map((m) => m.toMutable())),
   update: (path: Fs.Path.$Abs, fn: (current: ManifestMutable) => ManifestMutable) =>
     resource
-      .update(path, (m) => Manifest.make(fn(m.toMutable())))
+      .update(path, (m) => new Manifest(fn(m.toMutable())))
       .pipe(Effect.map((m) => m.toMutable())),
   delete: (path: Fs.Path.$Abs) => resource.delete(path),
 }

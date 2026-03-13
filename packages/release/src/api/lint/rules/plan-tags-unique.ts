@@ -17,10 +17,10 @@ interface Metadata {
 
 /** Verifies that planned release tags do not already exist in the git repository. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('plan.tags-unique'),
+  id: RuleId.makeUnsafe('plan.tags-unique'),
   description: 'planned release tags do not already exist in git',
-  defaults: RuleDefaults.make({ enabled: false }),
-  preconditions: [Precondition.HasReleasePlan.make()],
+  defaults: new RuleDefaults({ enabled: false }),
+  preconditions: [new Precondition.HasReleasePlan()],
   check: Effect.gen(function* () {
     const plan = yield* ReleasePlanService
     const git = yield* Git.Git
@@ -31,7 +31,7 @@ export const rule = RuntimeRule.create({
 
     // Format planned tags
     const plannedTags = plan.releases.map((r) =>
-      Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: r.packageName, version: r.version })),
+      Pkg.Pin.toString(new Pkg.Pin.Exact({ name: r.packageName, version: r.version })),
     )
 
     // Find conflicts
@@ -39,8 +39,8 @@ export const rule = RuntimeRule.create({
 
     if (conflictingTags.length > 0) {
       return {
-        violation: Violation.make({
-          location: Environment.make({
+        violation: new Violation({
+          location: new Environment({
             message: `Tags already exist: ${conflictingTags.join(
               ', ',
             )}. Use a different version or delete the existing tags.`,
@@ -49,16 +49,16 @@ export const rule = RuntimeRule.create({
           detail:
             'Publishing would collide with an existing git tag, which usually means the plan is stale or the same release has already been attempted.',
           hints: [
-            Hint.make({
+            new Hint({
               description: 'Regenerate the release plan after fetching tags from origin.',
             }),
-            Hint.make({
+            new Hint({
               description:
                 'If the tag truly should not exist, delete it locally and remotely before retrying.',
             }),
           ],
           docs: [
-            DocLink.make({
+            new DocLink({
               label: 'Git tag basics',
               url: 'https://git-scm.com/book/en/v2/Git-Basics-Tagging',
             }),

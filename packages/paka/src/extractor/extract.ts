@@ -22,8 +22,8 @@ import { parseJSDoc } from './nodes/jsdoc.js'
 import { extractModuleFromFile } from './nodes/module.js'
 import { createBuildToSourcePath } from './path-utils.js'
 
-const JsonObjectSchema = S.Record({ key: S.String, value: S.Unknown })
-const JsonObjectFromStringSchema = S.parseJson(JsonObjectSchema)
+const JsonObjectSchema = S.Record(S.String, S.Unknown)
+const JsonObjectFromStringSchema = S.fromJsonString(JsonObjectSchema)
 const decodeJsonObject = S.decodeUnknownSync(JsonObjectFromStringSchema)
 
 const parseJsonObject = (content: string | Uint8Array): Record<string, unknown> =>
@@ -49,7 +49,7 @@ const remakeModule = (
     Pick<Module, 'location' | 'docs' | 'docsProvenance' | 'category' | 'exports'>
   > = {},
 ): Module =>
-  Module.make({
+  new Module({
     location: overrides.location ?? module.location,
     docs: overrides.docs !== undefined ? overrides.docs : module.docs,
     docsProvenance:
@@ -348,18 +348,18 @@ export function extractFromFiles(params: {
 
     // Override module description and category with namespace export JSDoc if available
     if (namespaceDescription || namespaceCategory) {
-      module = Module.make({
+      module = new Module({
         location: module.location,
         exports: module.exports,
         docs: namespaceDescription
-          ? ModuleDocs.make({
+          ? new ModuleDocs({
               description: namespaceDescription,
               guide: module.docs?.guide,
             })
           : module.docs,
         docsProvenance: namespaceDescription
-          ? DocsProvenance.make({
-              description: JSDocProvenance.make({ shadowNamespace: true }),
+          ? new DocsProvenance({
+              description: new JSDocProvenance({ shadowNamespace: true }),
               guide: module.docsProvenance?.guide,
             })
           : module.docsProvenance,
@@ -370,14 +370,14 @@ export function extractFromFiles(params: {
     // Create appropriate entrypoint type
     if (isDrillableNamespace) {
       extractedEntrypoints.push(
-        DrillableNamespaceEntrypoint.make({
+        new DrillableNamespaceEntrypoint({
           path: packagePath,
           module,
         }),
       )
     } else {
       extractedEntrypoints.push(
-        SimpleEntrypoint.make({
+        new SimpleEntrypoint({
           path: packagePath,
           module,
         }),
@@ -385,11 +385,11 @@ export function extractFromFiles(params: {
     }
   }
 
-  return Package.make({
+  return new Package({
     name: getStringProperty(packageJson, 'name') ?? 'unknown',
     version: getStringProperty(packageJson, 'version') ?? '0.0.0',
     entrypoints: extractedEntrypoints,
-    metadata: PackageMetadata.make({
+    metadata: new PackageMetadata({
       extractedAt: new Date(),
       extractorVersion,
     }),
@@ -664,18 +664,18 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
 
     // Override module description and category with namespace export JSDoc if available
     if (namespaceDescription || namespaceCategory) {
-      module = Module.make({
+      module = new Module({
         location: module.location,
         exports: module.exports,
         docs: namespaceDescription
-          ? ModuleDocs.make({
+          ? new ModuleDocs({
               description: namespaceDescription,
               guide: module.docs?.guide,
             })
           : module.docs,
         docsProvenance: namespaceDescription
-          ? DocsProvenance.make({
-              description: JSDocProvenance.make({ shadowNamespace: true }),
+          ? new DocsProvenance({
+              description: new JSDocProvenance({ shadowNamespace: true }),
               guide: module.docsProvenance?.guide,
             })
           : module.docsProvenance,
@@ -686,14 +686,14 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
     // Create appropriate entrypoint type
     if (isDrillableNamespace) {
       extractedEntrypoints.push(
-        DrillableNamespaceEntrypoint.make({
+        new DrillableNamespaceEntrypoint({
           path: packagePath,
           module,
         }),
       )
     } else {
       extractedEntrypoints.push(
-        SimpleEntrypoint.make({
+        new SimpleEntrypoint({
           path: packagePath,
           module,
         }),
@@ -701,11 +701,11 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
     }
   }
 
-  return Package.make({
+  return new Package({
     name: getStringProperty(packageJson, 'name') ?? 'unknown',
     version: getStringProperty(packageJson, 'version') ?? '0.0.0',
     entrypoints: extractedEntrypoints,
-    metadata: PackageMetadata.make({
+    metadata: new PackageMetadata({
       extractedAt: new Date(),
       extractorVersion,
     }),

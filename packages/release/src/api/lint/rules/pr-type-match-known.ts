@@ -10,9 +10,9 @@ import { PrService } from '../services/pr.js'
 
 /** Verifies that every PR title type is a standard conventional-commit type. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('pr.type.match-known'),
+  id: RuleId.makeUnsafe('pr.type.match-known'),
   description: 'Type(s) use standard conventional-commit kinds',
-  preconditions: [Precondition.HasOpenPR.make()],
+  preconditions: [new Precondition.HasOpenPR()],
   check: Effect.gen(function* () {
     const pr = yield* PrService
     const invalidTitle = getInvalidTitleViolation(pr)
@@ -24,8 +24,8 @@ export const rule = RuntimeRule.create({
     )
 
     if (hasUnknownType) {
-      return Violation.make({
-        location: PrTitle.make({ title: pr.title }),
+      return new Violation({
+        location: new PrTitle({ title: pr.title }),
       })
     }
     return undefined

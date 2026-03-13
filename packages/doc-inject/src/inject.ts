@@ -1,4 +1,4 @@
-import { FileSystem } from '@effect/platform'
+import { FileSystem } from 'effect'
 import { Array as A, Effect, Stream } from 'effect'
 import { FragmentNotFoundError, TargetFileError } from './errors.js'
 import type { FragmentMap } from './extract.js'
@@ -66,7 +66,7 @@ export function injectIntoString(
     },
   )
 
-  if (A.isNonEmptyArray(missingIds)) {
+  if (A.isArrayNonEmpty(missingIds)) {
     return Effect.fail(
       new FragmentNotFoundError({
         context: {

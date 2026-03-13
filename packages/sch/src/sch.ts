@@ -13,4 +13,4 @@ export { Schema, Schema as S } from 'effect'
 /**
  * Any schema type alias for convenience.
  */
-export type AnySchema = Schema.Schema<any, any, any>
+export type AnySchema = Schema.Top

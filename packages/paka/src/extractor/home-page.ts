@@ -30,7 +30,7 @@ export const parseHomePage = (markdown: string, filePath: string): Home => {
     : undefined
   const body = sections.has('Body') ? parseBodySection(sections.get('Body')!) : undefined
 
-  return Home.make({ hero, highlights, body })
+  return new Home({ hero, highlights, body })
 }
 
 /**
@@ -98,11 +98,12 @@ const parseHeroSection = (sectionContent: Content[], filePath: string): Home['he
 const parseHighlightsSection = (sectionContent: Content[]): Feature[] => {
   const subsections = extractH2Subsections(sectionContent)
 
-  return subsections.map(({ heading, content }) =>
-    Feature.make({
-      title: heading,
-      body: toMarkdown(content),
-    }),
+  return subsections.map(
+    ({ heading, content }) =>
+      new Feature({
+        title: heading,
+        body: toMarkdown(content),
+      }),
   )
 }
 

@@ -1,4 +1,4 @@
-import { FileSystem } from '@effect/platform'
+import { FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Effect, Option, Schema as S } from 'effect'
@@ -27,13 +27,13 @@ interface GlobalLocalCheckOptions {
   }
 }
 
-const DependencyMapSchema = S.Record({ key: S.String, value: S.String })
+const DependencyMapSchema = S.Record(S.String, S.String)
 const PackageJsonSchema = S.Struct({
-  dependencies: S.optionalWith(DependencyMapSchema, { default: () => ({}) }),
-  devDependencies: S.optionalWith(DependencyMapSchema, { default: () => ({}) }),
-  peerDependencies: S.optionalWith(DependencyMapSchema, { default: () => ({}) }),
+  dependencies: DependencyMapSchema.pipe(S.withDecodingDefaultKey(() => ({}))),
+  devDependencies: DependencyMapSchema.pipe(S.withDecodingDefaultKey(() => ({}))),
+  peerDependencies: DependencyMapSchema.pipe(S.withDecodingDefaultKey(() => ({}))),
 })
-const decodePackageJson = S.decodeUnknownOption(S.parseJson(PackageJsonSchema))
+const decodePackageJson = S.decodeUnknownOption(S.fromJsonString(PackageJsonSchema))
 
 /**
  * Check if a package exists in any package.json from the current directory up to root

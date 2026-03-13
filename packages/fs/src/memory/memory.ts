@@ -1,18 +1,18 @@
-import { SystemError } from '@effect/platform/Error'
-import { FileSystem } from '@effect/platform/FileSystem'
+import { PlatformError, systemError } from 'effect/PlatformError'
+import { FileSystem, make as makeFileSystem } from 'effect/FileSystem'
 import { Effect, Layer } from 'effect'
 
 const createUnsupportedError = (method: string, operation: string) =>
-  new SystemError({
-    reason: 'PermissionDenied',
+  systemError({
+    _tag: 'PermissionDenied',
     module: 'FileSystem',
     method,
     description: `${operation} not supported in memory filesystem`,
   })
 
 const createNotFoundError = (method: string, path: string, operation: string) =>
-  new SystemError({
-    reason: 'NotFound',
+  systemError({
+    _tag: 'NotFound',
     module: 'FileSystem',
     method,
     pathOrDescriptor: path,
@@ -53,7 +53,7 @@ export interface DiskLayout {
  * @example
  * ```ts
  * import { Fs } from '@wollybeard/kit'
- * import { FileSystem } from '@effect/platform'
+ * import { FileSystem } from 'effect'
  * import { Effect } from 'effect'
  *
  * const diskLayout = {
@@ -76,36 +76,7 @@ export const layer = (initialDiskLayout: DiskLayout) => {
   // Create mutable copy of disk layout for write operations
   const diskLayout: DiskLayout = { ...initialDiskLayout }
 
-  return Layer.succeed(FileSystem, {
-    // File existence check
-    exists: (path: string) => {
-      // Check if path exists directly
-      if (path in diskLayout) return Effect.succeed(true)
-
-      // Check if it's a directory with marker
-      const dirPath = path.endsWith('/') ? path : path + '/'
-      if (`${dirPath}.dir_marker` in diskLayout) return Effect.succeed(true)
-
-      // Check if it's a directory with files under it
-      const normalizedPath = path.endsWith('/') ? path : path + '/'
-      const hasChildren = Object.keys(diskLayout).some(
-        (key) => key.startsWith(normalizedPath) && key !== path,
-      )
-
-      return Effect.succeed(hasChildren)
-    },
-
-    // Read file as string
-    readFileString: (path: string) => {
-      const content = diskLayout[path]
-      if (content !== undefined) {
-        return Effect.succeed(
-          typeof content === 'string' ? content : new TextDecoder().decode(content),
-        )
-      }
-      return failNotFound('readFileString', path, 'open')
-    },
-
+  const impl = makeFileSystem({
     // Read directory contents
     readDirectory: (path: string) => {
       const normalizedPath = path.endsWith('/') ? path : path + '/'
@@ -166,11 +137,6 @@ export const layer = (initialDiskLayout: DiskLayout) => {
     },
 
     // Write operations
-    writeFileString: (path: string, content: string) => {
-      diskLayout[path] = content
-      return Effect.void
-    },
-
     writeFile: (path: string, content: Uint8Array) => {
       diskLayout[path] = content
       return Effect.void
@@ -184,7 +150,10 @@ export const layer = (initialDiskLayout: DiskLayout) => {
       return failNotFound('truncate', path, 'truncate')
     },
 
-    remove: (path: string, options?: { recursive?: boolean }) => {
+    remove: (
+      path: string,
+      options?: { readonly recursive?: boolean | undefined; readonly force?: boolean | undefined },
+    ) => {
       if (options?.recursive) {
         // Remove all files under this path
         const normalizedPath = path.endsWith('/') ? path : path + '/'
@@ -199,7 +168,10 @@ export const layer = (initialDiskLayout: DiskLayout) => {
       return Effect.void
     },
 
-    makeDirectory: (path: string, options?: { recursive?: boolean }) => {
+    makeDirectory: (
+      path: string,
+      options?: { readonly recursive?: boolean | undefined; readonly mode?: number | undefined },
+    ) => {
       // Track empty directories by adding a marker
       // This allows exists() to find them
       if (!path.endsWith('/')) {
@@ -262,7 +234,7 @@ export const layer = (initialDiskLayout: DiskLayout) => {
       return Effect.void
     },
     utimes: () => Effect.void,
-    watch: () => failUnsupported('watch', 'Watch operations'),
+    watch: () => failUnsupported('watch', 'Watch operations') as any,
 
     // Rename/move files
     rename: (oldPath: string, newPath: string) => {
@@ -274,13 +246,9 @@ export const layer = (initialDiskLayout: DiskLayout) => {
       }
       return failNotFound('rename', oldPath, 'rename')
     },
-
-    // Create writable sink (not implemented for memory filesystem)
-    sink: () => failUnsupported('sink', 'Stream operations'),
-
-    // Create readable stream (not implemented for memory filesystem)
-    stream: () => failUnsupported('stream', 'Stream operations'),
   })
+
+  return Layer.succeed(FileSystem, impl)
 }
 
 /**

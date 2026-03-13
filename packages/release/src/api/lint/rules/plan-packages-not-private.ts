@@ -8,9 +8,9 @@ import { loadPlannedManifests, summarizePackages } from './package-manifest-shar
 
 /** Verifies that planned releases are not blocked by `private: true`. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('plan.packages-not-private'),
+  id: RuleId.makeUnsafe('plan.packages-not-private'),
   description: 'planned packages are not marked private',
-  preconditions: [Precondition.HasReleasePlan.make()],
+  preconditions: [new Precondition.HasReleasePlan()],
   check: loadPlannedManifests.pipe(
     Effect.map((manifests) => {
       const offenders = manifests.filter((entry) => entry.manifest.private === true)
@@ -21,11 +21,11 @@ export const rule = RuntimeRule.create({
       const names = offenders.map((entry) => entry.packageName)
       const example = offenders[0]!
 
-      return Violation.make({
+      return new Violation({
         location:
           offenders.length === 1
-            ? File.make({ path: example.packageJsonPath })
-            : Environment.make({
+            ? new File({ path: example.packageJsonPath })
+            : new Environment({
                 message: `${String(offenders.length)} planned packages are marked private.`,
               }),
         summary: `Publishing is blocked because ${summarizePackages(names)} ${names.length === 1 ? 'is' : 'are'} marked \`private: true\`.`,
@@ -33,17 +33,17 @@ export const rule = RuntimeRule.create({
           'npm refuses to publish packages whose package.json sets `private: true`. ' +
           'This commonly happens for new workspace packages that were bootstrapped as private and never flipped for publishing.',
         hints: [
-          Hint.make({
+          new Hint({
             description:
               'Remove `private: true` from package manifests that are meant to be published.',
           }),
-          Hint.make({
+          new Hint({
             description:
               'Keep the workspace root private if needed, but do not leave publishable leaf packages marked private.',
           }),
         ],
         docs: [
-          DocLink.make({
+          new DocLink({
             label: 'npm package.json fields',
             url: 'https://docs.npmjs.com/cli/v11/configuring-npm/package-json',
           }),

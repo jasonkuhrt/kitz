@@ -1,6 +1,6 @@
 import { Fn } from '#fn'
 import type { Ts } from '#ts'
-import { Either } from 'effect'
+import { Result } from 'effect'
 import type { Get } from './core.js'
 import type * as Array_ from './lenses/array.js'
 import type * as Awaited_ from './lenses/awaited.js'
@@ -61,27 +61,27 @@ export type CompileError<$Exp extends string = string> =
 /**
  * Compile a lens expression string into an HKT pipeline.
  *
- * Returns `Either.Right<never, [...HKTs]>` on success,
- * or `Either.Left<CompileError, never>` on failure.
+ * Returns `Result.Success<[...HKTs], never>` on success,
+ * or `Result.Failure<never, CompileError>` on failure.
  *
  * @example
  * ```ts
  * type T1 = Compile<'.user.name'>
- * // Either.Right<never, [Property.$Get<'user'>, Property.$Get<'name'>]>
+ * // Result.Success<[Property.$Get<'user'>, Property.$Get<'name'>], never>
  *
  * type T2 = Compile<'#'>
- * // Either.Right<never, [Awaited.$Get]>
+ * // Result.Success<[Awaited.$Get], never>
  *
  * type T3 = Compile<'invalid'>
- * // Either.Left<CompileErrorInvalidSyntax<'invalid'>, never>
+ * // Result.Failure<never, CompileErrorInvalidSyntax<'invalid'>>
  * ```
  */
 // oxfmt-ignore
 export type Compile<$Exp extends string> =
-  $Exp extends ''                                         ? Either.Left<CompileErrorEmpty, never> :
-  [ParseExp<$Exp>] extends [never]                        ? Either.Left<CompileErrorInvalidSyntax<$Exp>, never> :
-  ParseExp<$Exp> extends readonly Fn.Kind.Kind[]          ? Either.Right<never, ParseExp<$Exp>> :
-                                                            Either.Left<CompileErrorInvalidSyntax<$Exp>, never>
+  $Exp extends ''                                         ? Result.Failure<never, CompileErrorEmpty> :
+  [ParseExp<$Exp>] extends [never]                        ? Result.Failure<never, CompileErrorInvalidSyntax<$Exp>> :
+  ParseExp<$Exp> extends readonly Fn.Kind.Kind[]          ? Result.Success<ParseExp<$Exp>, never> :
+                                                            Result.Failure<never, CompileErrorInvalidSyntax<$Exp>>
 
 //
 //
@@ -239,29 +239,29 @@ export interface RuntimeCompileError {
 /**
  * Compile a lens expression string into a runtime lens function.
  *
- * Returns `Either.Right` with a compiled lens on success,
- * or `Either.Left` with an error on failure.
+ * Returns `Result.Success` with a compiled lens on success,
+ * or `Result.Failure` with an error on failure.
  *
  * @example
  * ```ts
  * const result = compile('.user.name')
- * if (Either.isRight(result)) {
- *   const lens = result.right
+ * if (Result.isSuccess(result)) {
+ *   const lens = result.success
  *   lens.get({ user: { name: 'Alice' } }) // 'Alice'
  * }
  * ```
  */
 // oxfmt-ignore
 export type CompileResult<$Exp extends string> =
-  Compile<$Exp> extends Either.Left<infer __error__, never>   ? Either.Left<__error__, never> :
-  Compile<$Exp> extends Either.Right<never, infer _>          ? Either.Right<never, CompiledLens> :
+  Compile<$Exp> extends Result.Failure<infer _, infer __error__> ? Result.Failure<never, __error__> :
+  Compile<$Exp> extends Result.Success<infer _, never>           ? Result.Success<CompiledLens, never> :
                                                                 never
 
 export const compile = <$expression extends string>(
   expression: $expression,
 ): CompileResult<$expression> => {
   if (expression === '') {
-    return Either.left({
+    return Result.fail({
       _tag: 'CompileError',
       message: 'Lens expression cannot be empty',
       expression,
@@ -274,7 +274,7 @@ export const compile = <$expression extends string>(
   while (remaining.length > 0) {
     const parsed = parseNextSegment(remaining)
     if (parsed === null) {
-      return Either.left({
+      return Result.fail({
         _tag: 'CompileError',
         message: `Invalid lens expression syntax at: ${remaining}`,
         expression,
@@ -292,7 +292,7 @@ export const compile = <$expression extends string>(
     return result
   }
 
-  return Either.right({ get: composedGet }) as any
+  return Result.succeed({ get: composedGet }) as any
 }
 
 type ParsedSegment = { getter: (v: unknown) => unknown; remaining: string }
@@ -378,10 +378,10 @@ export const get = <$Exp extends string, $Data>(
   data: $Data,
 ): Get<$Exp, $Data> => {
   const compiled = compile(expression)
-  if (Either.isLeft(compiled)) {
-    throw new Error(`Lens compile error: ${(compiled.left as RuntimeCompileError).message}`)
+  if (Result.isFailure(compiled)) {
+    throw new Error(`Lens compile error: ${(compiled.failure as RuntimeCompileError).message}`)
   }
-  return compiled.right.get(data) as any
+  return compiled.success.get(data) as any
 }
 
 /**

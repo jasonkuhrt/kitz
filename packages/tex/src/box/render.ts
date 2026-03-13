@@ -118,9 +118,16 @@ const resolveGap = (
   return undefined
 }
 
+type MutableBorderEdges = {
+  -readonly [K in keyof PropBorder.BorderEdges]?: PropBorder.BorderEdges[K]
+}
+type MutableBorderCorners = {
+  -readonly [K in keyof PropBorder.BorderCorners]?: PropBorder.BorderCorners[K]
+}
+
 const toMutableBorderEdges = (
-  edges?: PropBorder.BorderEdges | Partial<S.SimplifyMutable<PropBorder.BorderEdges>>,
-): Partial<S.SimplifyMutable<PropBorder.BorderEdges>> => {
+  edges?: PropBorder.BorderEdges | Partial<PropBorder.BorderEdges>,
+): MutableBorderEdges => {
   if (edges === undefined) return {}
   return {
     top: edges.top,
@@ -131,8 +138,8 @@ const toMutableBorderEdges = (
 }
 
 const toMutableBorderCorners = (
-  corners?: PropBorder.BorderCorners | Partial<S.SimplifyMutable<PropBorder.BorderCorners>>,
-): Partial<S.SimplifyMutable<PropBorder.BorderCorners>> => {
+  corners?: PropBorder.BorderCorners | Partial<PropBorder.BorderCorners>,
+): MutableBorderCorners => {
   if (corners === undefined) return {}
   return {
     topLeft: corners.topLeft,
@@ -463,8 +470,8 @@ const renderMargin = (
  */
 const renderBorder = (text: string, border: PropBorder.Border, box: Box): string => {
   // Resolve chars with priority: style → edges/corners override
-  let edges: Partial<S.SimplifyMutable<PropBorder.BorderEdges>> = {}
-  let corners: Partial<S.SimplifyMutable<PropBorder.BorderCorners>> = {}
+  let edges: MutableBorderEdges = {}
+  let corners: MutableBorderCorners = {}
 
   // 1. Start with style if provided (gives all edges and corners)
   if (border.style) {

@@ -7,20 +7,20 @@ import { Environment } from '../models/violation-location.js'
 
 /** Verifies that the git working directory has no uncommitted changes before publishing. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('env.git-clean'),
+  id: RuleId.makeUnsafe('env.git-clean'),
   description: 'git working directory has no uncommitted changes',
   preventsDescriptions: [
     'publishing from a dirty working tree and tagging code that does not match committed source',
   ],
-  defaults: RuleDefaults.make({ enabled: false }),
+  defaults: new RuleDefaults({ enabled: false }),
   preconditions: [],
   check: Effect.gen(function* () {
     const git = yield* Git.Git
     const isClean = yield* git.isClean()
 
     if (!isClean) {
-      return Violation.make({
-        location: Environment.make({
+      return new Violation({
+        location: new Environment({
           message:
             'Working directory has uncommitted changes. Commit or stash your changes before running release apply.',
         }),
@@ -28,16 +28,16 @@ export const rule = RuntimeRule.create({
         detail:
           'Publishing from dirty local state can produce tags and npm packages that do not correspond to committed source, which makes the release hard to reproduce or roll back safely.',
         hints: [
-          Hint.make({
+          new Hint({
             description: 'Commit or stash local changes before running `release apply`.',
           }),
-          Hint.make({
+          new Hint({
             description:
               'Regenerate the release plan after switching branches or changing package manifests.',
           }),
         ],
         docs: [
-          DocLink.make({
+          new DocLink({
             label: 'Git stash basics',
             url: 'https://git-scm.com/book/en/v2/Git-Tools-Stashing-and-Cleaning',
           }),

@@ -33,7 +33,7 @@ export class Multi extends Schema.TaggedClass<Multi>()('Multi', {
   /** Optional summary text (before any ## heading) */
   summary: Schema.OptionFromNullOr(Schema.String),
   /** Per-package sections keyed by scope name */
-  sections: Schema.Record({ key: Schema.String, value: TargetSection }),
+  sections: Schema.Record(Schema.String, TargetSection),
 }) {
   static is = Schema.is(Multi)
 }

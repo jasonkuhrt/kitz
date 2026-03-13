@@ -1,4 +1,4 @@
-import { Schema as S } from 'effect'
+import { SchemaGetter, Schema as S } from 'effect'
 
 // ============================================================================
 // Scoped Package
@@ -31,17 +31,16 @@ export class Scoped extends S.TaggedClass<Scoped>()('Scoped', {
 /**
  * Schema that parses "\@scope/name" strings into Scoped instances.
  */
-export const ScopedFromString: S.Schema<Scoped, string> = S.transform(
-  S.String.pipe(S.pattern(/^@[^/]+\/.+$/)),
-  Scoped,
-  {
-    strict: true,
-    decode: (s) => {
+export const ScopedFromString: S.Codec<Scoped, string> = S.String.pipe(
+  S.check(S.isPattern(/^@[^/]+\/.+$/)),
+).pipe(
+  S.decodeTo(Scoped, {
+    decode: SchemaGetter.transform((s) => {
       const match = s.match(/^@([^/]+)\/(.+)$/)!
       return new Scoped({ scope: match[1]!, name: match[2]! })
-    },
-    encode: (scoped) => `@${scoped.scope}/${scoped.name}`,
-  },
+    }),
+    encode: SchemaGetter.transform((scoped) => `@${scoped.scope}/${scoped.name}`),
+  }),
 )
 
 // ============================================================================
@@ -74,14 +73,13 @@ export class Unscoped extends S.TaggedClass<Unscoped>()('Unscoped', {
 /**
  * Schema that parses unscoped package name strings into Unscoped instances.
  */
-export const UnscopedFromString: S.Schema<Unscoped, string> = S.transform(
-  S.String.pipe(S.pattern(/^[^@/][^/]*$/)),
-  Unscoped,
-  {
-    strict: true,
-    decode: (s) => new Unscoped({ name: s }),
-    encode: (unscoped) => unscoped.name,
-  },
+export const UnscopedFromString: S.Codec<Unscoped, string> = S.String.pipe(
+  S.check(S.isPattern(/^[^@/][^/]*$/)),
+).pipe(
+  S.decodeTo(Unscoped, {
+    decode: SchemaGetter.transform((s) => new Unscoped({ name: s })),
+    encode: SchemaGetter.transform((unscoped) => unscoped.name),
+  }),
 )
 
 // ============================================================================
@@ -108,7 +106,7 @@ export type Moniker = Scoped | Unscoped
  * // Unscoped { name: 'lodash' }
  * ```
  */
-export const FromString: S.Schema<Moniker, string> = S.Union(ScopedFromString, UnscopedFromString)
+export const FromString: S.Codec<Moniker, string> = S.Union([ScopedFromString, UnscopedFromString])
 
 /**
  * Decode a package name string into a Moniker, throwing on invalid input.

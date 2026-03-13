@@ -7,40 +7,40 @@ import { Environment } from '../models/violation-location.js'
 import { formatReport } from './relay.js'
 
 const ruleRef = (id: string, description = 'Test rule') => ({
-  id: RuleId.make(id),
+  id: RuleId.makeUnsafe(id),
   description,
 })
 
 describe('formatReport', () => {
   test('renders severity, guidance, and docs for violations', () => {
-    const report = Report.make({
+    const report = new Report({
       results: [
-        Finished.make({
+        new Finished({
           rule: ruleRef(
             'env.publish-channel-ready',
             'declared publish channel matches the active runtime',
           ),
           duration: 4,
-          severity: Severity.Error.make(),
-          violation: Violation.make({
-            location: Environment.make({ message: 'ACTIONS_ID_TOKEN_REQUEST_URL is missing.' }),
+          severity: new Severity.Error(),
+          violation: new Violation({
+            location: new Environment({ message: 'ACTIONS_ID_TOKEN_REQUEST_URL is missing.' }),
             summary: 'Trusted publishing is configured but OIDC is unavailable.',
             detail: 'The publish job cannot request an identity token from GitHub Actions.',
-            fix: GuideFix.make({
+            fix: new GuideFix({
               summary: 'Enable OIDC for the publish job.',
               steps: [
-                FixStep.make({ description: 'Add `permissions.id-token: write` to the workflow.' }),
+                new FixStep({ description: 'Add `permissions.id-token: write` to the workflow.' }),
               ],
               docs: [
-                DocLink.make({
+                new DocLink({
                   label: 'npm trusted publishers',
                   url: 'https://docs.npmjs.com/trusted-publishers/',
                 }),
               ],
             }),
-            hints: [Hint.make({ description: 'Grant `id-token: write` to the job.' })],
+            hints: [new Hint({ description: 'Grant `id-token: write` to the job.' })],
             docs: [
-              DocLink.make({
+              new DocLink({
                 label: 'npm trusted publishers',
                 url: 'https://docs.npmjs.com/trusted-publishers/',
               }),
@@ -67,12 +67,12 @@ describe('formatReport', () => {
   })
 
   test('can omit the default title for embedded report sections', () => {
-    const report = Report.make({
+    const report = new Report({
       results: [
-        Finished.make({
+        new Finished({
           rule: ruleRef('env.release-branch-allowed', 'active branch is allowed'),
           duration: 1,
-          severity: Severity.Error.make(),
+          severity: new Severity.Error(),
         }),
       ],
     })

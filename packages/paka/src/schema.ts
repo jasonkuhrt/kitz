@@ -9,13 +9,13 @@ import { Schema as S } from 'effect'
 /**
  * Export level distinguishes between runtime values and type-only exports.
  */
-export const ExportLevel = S.Enums({ value: 'value', type: 'type' } as const)
+export const ExportLevel = S.Enum({ value: 'value', type: 'type' } as const)
 export type ExportLevel = typeof ExportLevel.Type
 
 /**
  * Value export types - exports that exist at runtime.
  */
-export const ValueExportType = S.Enums({
+export const ValueExportType = S.Enum({
   function: 'function',
   const: 'const',
   class: 'class',
@@ -26,7 +26,7 @@ export type ValueExportType = typeof ValueExportType.Type
 /**
  * Type export types - exports that only exist in TypeScript's type system.
  */
-export const TypeExportType = S.Enums({
+export const TypeExportType = S.Enum({
   interface: 'interface',
   'type-alias': 'type-alias',
   enum: 'enum',
@@ -42,7 +42,7 @@ export type TypeExportType = typeof TypeExportType.Type
  * - `terminal` - Returns void (ends the builder chain)
  * - `transform` - Returns a different builder type (transforms to another builder)
  */
-export const BuilderMethodCategory = S.Enums({
+export const BuilderMethodCategory = S.Enum({
   chainable: 'chainable',
   terminal: 'terminal',
   transform: 'transform',
@@ -115,7 +115,7 @@ export class MdFileProvenance extends S.TaggedClass<MdFileProvenance>()('md-file
 /**
  * Union of all possible documentation provenance types.
  */
-export const Provenance = S.Union(JSDocProvenance, MdFileProvenance)
+export const Provenance = S.Union([JSDocProvenance, MdFileProvenance])
 export type Provenance = typeof Provenance.Type
 
 /**
@@ -142,7 +142,7 @@ export class Feature extends S.Class<Feature>('Feature')({
 /**
  * Landing page body section (content or exports marker).
  */
-export const BodySection = S.Union(
+export const BodySection = S.Union([
   S.Struct({
     _tag: S.Literal('exports'),
   }),
@@ -151,8 +151,8 @@ export const BodySection = S.Union(
     title: S.String,
     body: S.String,
   }),
-)
-export type BodySection = S.Schema.Type<typeof BodySection>
+])
+export type BodySection = typeof BodySection.Type
 
 /**
  * Landing page structured content.
@@ -555,14 +555,14 @@ export class ClassSignatureModel extends S.TaggedClass<ClassSignatureModel>()(
  * - `TypeSignatureModel` - Types, interfaces, type aliases (text)
  * - `ValueSignatureModel` - Const values (type as text)
  */
-export const SignatureModel = S.Union(
+export const SignatureModel = S.Union([
   FunctionSignatureModel,
   BuilderSignatureModel,
   ClassSignatureModel,
   TypeSignatureModel,
   ValueSignatureModel,
-)
-export type SignatureModel = S.Schema.Type<typeof SignatureModel>
+])
+export type SignatureModel = typeof SignatureModel.Type
 
 /**
  * Base properties shared by all exports.
@@ -585,13 +585,13 @@ const BaseExportFields = {
   /** Category from @category tag for grouping in documentation */
   category: S.optional(S.String),
   /** All other JSDoc tags */
-  tags: S.Record({ key: S.String, value: S.String }),
+  tags: S.Record(S.String, S.String),
   /** Source code location */
   sourceLocation: SourceLocation,
 }
 
 export type ModuleEncoded = {
-  readonly location: S.Schema.Encoded<typeof Fs.Path.RelFile>
+  readonly location: string
   readonly docs?: ModuleDocs | undefined
   readonly docsProvenance?: DocsProvenance | undefined
   readonly category?: string | undefined
@@ -614,7 +614,7 @@ export class Module extends S.Class<Module>('Module')({
   /** Category from @category tag for grouping in sidebar */
   category: S.optional(S.String),
   /** All exports in this module */
-  exports: S.Array(S.suspend((): S.Schema<Export, ExportEncoded> => Export as any)),
+  exports: S.Array(S.suspend((): S.Codec<Export, ExportEncoded> => Export as any)),
 }) {
   /**
    * Get namespace exports (value exports with type='namespace' and nested module).
@@ -694,7 +694,7 @@ export type ValueExportEncoded = {
   readonly category?: string | undefined
   readonly tags: Readonly<Record<string, string>>
   readonly sourceLocation: SourceLocation
-  readonly type: S.Schema.Encoded<typeof ValueExportType>
+  readonly type: typeof ValueExportType.Encoded
   readonly module?: ModuleEncoded | undefined
 }
 
@@ -705,7 +705,7 @@ export class ValueExport extends S.TaggedClass<ValueExport>('ValueExport')('valu
   ...BaseExportFields,
   type: ValueExportType,
   /** Nested module for namespace exports */
-  module: S.optional(S.suspend((): S.Schema<Module, ModuleEncoded> => Module as any)),
+  module: S.optional(S.suspend((): S.Codec<Module, ModuleEncoded> => Module as any)),
 }) {
   static is = S.is(ValueExport)
 
@@ -761,9 +761,9 @@ export class TypeExport extends S.TaggedClass<TypeExport>('TypeExport')('type', 
 /**
  * Export is a tagged union of value and type exports.
  */
-export const Export = S.Union(ValueExport, TypeExport)
-export type Export = S.Schema.Type<typeof Export>
-export type ExportEncoded = ValueExportEncoded | S.Schema.Encoded<typeof TypeExport>
+export const Export = S.Union([ValueExport, TypeExport])
+export type Export = typeof Export.Type
+export type ExportEncoded = ValueExportEncoded | typeof TypeExport.Encoded
 
 /**
  * Drillable Namespace Pattern entrypoint.
@@ -849,11 +849,11 @@ export class DrillableNamespaceEntrypoint extends S.TaggedClass<DrillableNamespa
     // Top-level: both Namespace and Barrel tabs
     if (breadcrumbs.length === 1) {
       return [
-        ImportExample.make({
+        new ImportExample({
           label: 'Namespace',
           content: `import { ${moduleName} } from '${packageName}'`,
         }),
-        ImportExample.make({
+        new ImportExample({
           label: 'Barrel',
           content: `import * as ${moduleName} from '${subpath}'`,
         }),
@@ -865,11 +865,11 @@ export class DrillableNamespaceEntrypoint extends S.TaggedClass<DrillableNamespa
     const namespacePath = breadcrumbs.join('.')
 
     return [
-      ImportExample.make({
+      new ImportExample({
         label: 'Namespace',
         content: `import { ${moduleName} } from '${packageName}'\n\n// Access via namespace\n${namespacePath}`,
       }),
-      ImportExample.make({
+      new ImportExample({
         label: 'Barrel',
         content: `import { ${childNamespace} } from '${subpath}'`,
       }),
@@ -931,7 +931,7 @@ export class SimpleEntrypoint extends S.TaggedClass<SimpleEntrypoint>()('SimpleE
     const subpath = packageName + path.replace('.', '')
 
     return [
-      ImportExample.make({
+      new ImportExample({
         label: 'Import',
         content: `import * as ${moduleName} from '${subpath}'`,
       }),
@@ -942,8 +942,8 @@ export class SimpleEntrypoint extends S.TaggedClass<SimpleEntrypoint>()('SimpleE
 /**
  * Entrypoint union - all patterns.
  */
-export const Entrypoint = S.Union(DrillableNamespaceEntrypoint, SimpleEntrypoint)
-export type Entrypoint = S.Schema.Type<typeof Entrypoint>
+export const Entrypoint = S.Union([DrillableNamespaceEntrypoint, SimpleEntrypoint])
+export type Entrypoint = typeof Entrypoint.Type
 
 /**
  * Package metadata.
@@ -973,4 +973,4 @@ export class Package extends S.Class<Package>('Package')({
  * The complete interface model output.
  */
 export const InterfaceModel = Package
-export type InterfaceModel = S.Schema.Type<typeof InterfaceModel>
+export type InterfaceModel = typeof InterfaceModel.Type

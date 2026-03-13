@@ -30,10 +30,10 @@ describe('pr.type.release-kind-match-diff', () => {
         Effect.provide(
           makePrLayer(
             'docs(core), feat(release): polish release flow',
-            CC.Commit.Multi.make({
+            new CC.Commit.Multi({
               targets: [
-                CC.Target.make({ type: CC.Type.parse('docs'), scope: 'core', breaking: false }),
-                CC.Target.make({ type: CC.Type.parse('feat'), scope: 'release', breaking: false }),
+                new CC.Target({ type: CC.Type.parse('docs'), scope: 'core', breaking: false }),
+                new CC.Target({ type: CC.Type.parse('feat'), scope: 'release', breaking: false }),
               ],
               message: 'polish release flow',
               summary: Option.none(),
@@ -54,7 +54,7 @@ describe('pr.type.release-kind-match-diff', () => {
         Effect.provide(
           makePrLayer(
             'docs(release)!: document release architecture',
-            CC.Commit.Single.make({
+            new CC.Commit.Single({
               type: CC.Type.parse('docs'),
               scopes: ['release'],
               breaking: true,
@@ -77,10 +77,10 @@ describe('pr.type.release-kind-match-diff', () => {
         Effect.provide(
           makePrLayer(
             'docs(core), chore(release): polish release docs',
-            CC.Commit.Multi.make({
+            new CC.Commit.Multi({
               targets: [
-                CC.Target.make({ type: CC.Type.parse('docs'), scope: 'core', breaking: false }),
-                CC.Target.make({ type: CC.Type.parse('chore'), scope: 'release', breaking: false }),
+                new CC.Target({ type: CC.Type.parse('docs'), scope: 'core', breaking: false }),
+                new CC.Target({ type: CC.Type.parse('chore'), scope: 'release', breaking: false }),
               ],
               message: 'polish release docs',
               summary: Option.none(),

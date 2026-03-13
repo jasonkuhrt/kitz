@@ -18,7 +18,7 @@ import { Schema } from 'effect'
  * - `completed`: Finished successfully
  * - `failed`: Finished with error
  */
-export const State = Schema.Enums({
+export const State = Schema.Enum({
   pending: 'pending',
   running: 'running',
   completed: 'completed',
@@ -74,7 +74,7 @@ export type Event = Started | Completed | Failed
 /**
  * Schema for activity lifecycle events.
  */
-export const Event = Schema.Union(Started, Completed, Failed)
+export const Event = Schema.Union([Started, Completed, Failed])
 
 // ─── Lookup Tables ──────────────────────────────────────────────────────────
 

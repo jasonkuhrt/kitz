@@ -1,15 +1,18 @@
 import { Effect, Schema } from 'effect'
 import { Finding, Linter } from '@kitz/linter'
 
-const Lifecycle = Schema.Literal('official', 'candidate', 'ephemeral')
-const Surface = Schema.Literal('preview', 'execution')
+const Lifecycle = Schema.Literals(['official', 'candidate', 'ephemeral'])
+const Surface = Schema.Literals(['preview', 'execution'])
 const DoctorInput = Schema.Struct({
   lifecycle: Schema.optional(Lifecycle),
-  all: Schema.optionalWith(Schema.Boolean, { default: () => false }),
+  all: Schema.Boolean.pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(() => false),
+  ),
 })
 
 const PublishChannel = Schema.Struct({
-  mode: Schema.Literal('manual', 'github-token', 'github-trusted'),
+  mode: Schema.Literals(['manual', 'github-token', 'github-trusted']),
   workflow: Schema.optional(Schema.String),
   tokenEnv: Schema.optional(Schema.String),
 })

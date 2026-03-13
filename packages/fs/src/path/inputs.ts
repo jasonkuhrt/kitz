@@ -243,12 +243,10 @@ export type normalize<$input extends InputOrError> =
   $input extends string                     ? FromAnalysis<Analyzer.Analyze<$input>> :
                                               $input
 
-export const normalize = <$schema extends S.Schema.All>($schema: $schema) => {
+export const normalize = <$schema extends S.Top>($schema: $schema) => {
   const decodeSync = S.decodeSync($schema as any)
 
-  return <const $input extends Input<$schema['Type']>>(
-    input: Guard<$input, $schema['Type']>,
-  ): normalize<$input> => {
+  return <const $input extends Input>(input: Guard<$input, any>): normalize<$input> => {
     if (typeof input === 'string') {
       return decodeSync(input) as any
     }
@@ -256,10 +254,10 @@ export const normalize = <$schema extends S.Schema.All>($schema: $schema) => {
   }
 }
 
-export const normalizeDynamic = <$schema extends S.Schema.All>($schema: $schema) => {
+export const normalizeDynamic = <$schema extends S.Top>($schema: $schema) => {
   const decodeSync = S.decodeSync($schema as any)
 
-  return <const $input extends InputOrError<$schema['Type']>>(input: $input): normalize<$input> => {
+  return <const $input extends InputOrError>(input: $input): normalize<$input> => {
     if (typeof input === 'string') {
       return decodeSync(input) as any
     }

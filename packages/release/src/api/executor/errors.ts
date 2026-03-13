@@ -132,12 +132,12 @@ export type ExecutorGHReleaseError = InstanceType<typeof ExecutorGHReleaseError>
  *
  * Used by the workflow module to define the error channel of the release workflow.
  */
-export const ExecutorError = S.Union(
+export const ExecutorError = S.Union([
   ExecutorPublishError,
   ExecutorTagError,
   ExecutorPreflightError,
   ExecutorGHReleaseError,
-)
+])
 
 export type ExecutorError =
   | ExecutorPublishError

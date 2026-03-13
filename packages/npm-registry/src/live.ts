@@ -1,4 +1,4 @@
-import { Command, CommandExecutor } from '@effect/platform'
+import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
 import { Effect, Layer, String as Str } from 'effect'
 import {
   NpmCliError,
@@ -10,7 +10,7 @@ import {
 import { NpmCli, type NpmCliService } from './service.js'
 
 const makeService = Effect.gen(function* () {
-  const executor = yield* CommandExecutor.CommandExecutor
+  const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
 
   const whoami: NpmCliService['whoami'] = (options?: WhoamiOptions) =>
     Effect.gen(function* () {
@@ -19,9 +19,9 @@ const makeService = Effect.gen(function* () {
         args.push('--registry', options.registry)
       }
 
-      const command = Command.make('npm', ...args)
+      const command = ChildProcess.make('npm', args)
 
-      const result = yield* executor.string(command).pipe(
+      const result = yield* spawner.string(command).pipe(
         Effect.mapError(
           (cause) =>
             new NpmCliError({
@@ -52,10 +52,12 @@ const makeService = Effect.gen(function* () {
     })
 
   const pack: NpmCliService['pack'] = (options) =>
-    packCli(options).pipe(Effect.provideService(CommandExecutor.CommandExecutor, executor))
+    packCli(options).pipe(Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner))
 
   const publish: NpmCliService['publish'] = (options: PublishOptions) =>
-    publishCli(options).pipe(Effect.provideService(CommandExecutor.CommandExecutor, executor))
+    publishCli(options).pipe(
+      Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawner),
+    )
 
   return { whoami, pack, publish } satisfies NpmCliService
 })
@@ -63,9 +65,7 @@ const makeService = Effect.gen(function* () {
 /**
  * Live implementation of NpmCli that executes actual npm commands.
  *
- * Requires `CommandExecutor` from `@effect/platform`.
+ * Requires `ChildProcessSpawner` from `effect/unstable/process`.
  */
-export const NpmCliLive: Layer.Layer<NpmCli, never, CommandExecutor.CommandExecutor> = Layer.effect(
-  NpmCli,
-  makeService,
-)
+export const NpmCliLive: Layer.Layer<NpmCli, never, ChildProcessSpawner.ChildProcessSpawner> =
+  Layer.effect(NpmCli, makeService)

@@ -1,6 +1,6 @@
 import type { Fn } from '#fn'
 import type { Ts } from '#ts'
-import type { Either } from 'effect'
+import type { Result } from 'effect'
 import type { Compile, CompileError } from './exp.js'
 
 //
@@ -48,7 +48,7 @@ export type FormatConstraint<$Constraint> = $Constraint extends readonly any[]
  */
 export type ValidateAndExtract<$Actual, $Constraint, $LensName extends string, $ExtractionLogic> =
   IsDisjoint<$Actual, $Constraint> extends true
-    ? Either.Left<
+    ? Result.Failure<
         Ts.Err.StaticError<
           ['lens', 'incompatible'],
           {
@@ -60,7 +60,7 @@ export type ValidateAndExtract<$Actual, $Constraint, $LensName extends string, $
         >,
         never
       >
-    : Either.Right<never, $ExtractionLogic>
+    : Result.Success<never, $ExtractionLogic>
 
 //
 //
@@ -122,7 +122,7 @@ export type LensErrorTupleExtract<$Actual> = Ts.Err.StaticError<
  * 1. **Expression mode**: `Get<'.user.name', Data>` - Compile and apply lens expression
  * 2. **HKT mode**: `Get<Awaited.$Get, Promise<string>>` - Apply HKT directly
  *
- * Returns the extracted value type directly (unwrapped from Either).
+ * Returns the extracted value type directly (unwrapped from Result).
  * On error, returns the error type directly.
  *
  * @example
@@ -132,19 +132,19 @@ export type LensErrorTupleExtract<$Actual> = Ts.Err.StaticError<
  * type T2 = Get<'.handler>#', { handler: () => Promise<number> }> // number
  *
  * // HKT mode (existing behavior)
- * type T3 = Get<Awaited.$Get, Promise<string>> // Either.Right<never, string>
+ * type T3 = Get<Awaited.$Get, Promise<string>> // Result.Success<never, string>
  * ```
  */
 // oxfmt-ignore
 export type Get<$First, $Second> =
   // Expression mode: string → compile, apply pipeline, unwrap result
   $First extends string
-    ? Compile<$First> extends Either.Left<infer __error__, infer _>
+    ? Compile<$First> extends Result.Failure<infer _, infer __error__>
       ? __error__
-      : Compile<$First> extends Either.Right<infer _, infer __pipeline__ extends readonly Fn.Kind.Kind[]>
+      : Compile<$First> extends Result.Success<infer __pipeline__ extends readonly Fn.Kind.Kind[], infer _>
         ? UnwrapEither<Fn.Kind.PipeRight<$Second, __pipeline__>>
         : never
-    // HKT mode: apply directly (returns Either-wrapped result)
+    // HKT mode: apply directly (returns Result-wrapped result)
     : $First extends Fn.Kind.Kind
       ? Fn.Kind.Apply<$First, [$Second]>
       : never
@@ -160,18 +160,18 @@ export type Get<$First, $Second> =
 export type Set<$Lens extends Fn.Kind.Kind, $T, $New> = Fn.Kind.Apply<$Lens, [$T, $New]>
 
 /**
- * Unwrap Either to get the value or error for type-level shortcuts.
+ * Unwrap Result to get the value or error for type-level shortcuts.
  *
- * - Left<E, never> → E (propagate error)
- * - Right<never, V> → V (extract value)
+ * - Failure<never, E> → E (propagate error)
+ * - Success<V, never> → V (extract value)
  *
  * Used by generated type-level assertion shortcuts to unwrap lens results
  * before passing to relators.
  */
 export type UnwrapEither<$Result> =
-  $Result extends Either.Left<infer __error__, infer _>
+  $Result extends Result.Failure<infer _, infer __error__>
     ? __error__
-    : $Result extends Either.Right<infer _, infer __value__>
+    : $Result extends Result.Success<infer __value__, infer _>
       ? __value__
       : never
 

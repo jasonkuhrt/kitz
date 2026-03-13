@@ -99,20 +99,20 @@ const isCombinator = (value: unknown): value is Combinator => {
 /**
  * Compile a number constraint object to an Effect Schema.
  */
-const compileNumberConstraint = (constraint: NumberConstraint): S.Schema.Any => {
-  let schema: S.Schema.Any = S.Number
+const compileNumberConstraint = (constraint: NumberConstraint): S.Top => {
+  let schema: any = S.Number
 
   if (constraint.$gt !== undefined) {
-    schema = schema.pipe(S.greaterThan(constraint.$gt))
+    schema = schema.pipe(S.check(S.isGreaterThan(constraint.$gt) as any))
   }
   if (constraint.$gte !== undefined) {
-    schema = schema.pipe(S.greaterThanOrEqualTo(constraint.$gte))
+    schema = schema.pipe(S.check(S.isGreaterThanOrEqualTo(constraint.$gte) as any))
   }
   if (constraint.$lt !== undefined) {
-    schema = schema.pipe(S.lessThan(constraint.$lt))
+    schema = schema.pipe(S.check(S.isLessThan(constraint.$lt) as any))
   }
   if (constraint.$lte !== undefined) {
-    schema = schema.pipe(S.lessThanOrEqualTo(constraint.$lte))
+    schema = schema.pipe(S.check(S.isLessThanOrEqualTo(constraint.$lte) as any))
   }
   if (constraint.$eq !== undefined) {
     schema = S.Literal(constraint.$eq)
@@ -124,35 +124,35 @@ const compileNumberConstraint = (constraint: NumberConstraint): S.Schema.Any => 
 /**
  * Compile a string constraint object to an Effect Schema.
  */
-const compileStringConstraint = (constraint: StringConstraint): S.Schema.Any => {
-  let schema: S.Schema.Any = S.String
+const compileStringConstraint = (constraint: StringConstraint): S.Top => {
+  let schema: any = S.String
 
   if (constraint.$length !== undefined) {
     if (Num.is(constraint.$length)) {
-      schema = schema.pipe(S.length(constraint.$length))
+      schema = schema.pipe(S.check(S.isMinLength(constraint.$length) as any))
     } else {
       // Nested number constraint
       const numConstraint = constraint.$length
       if (numConstraint.$gte !== undefined) {
-        schema = schema.pipe(S.minLength(numConstraint.$gte))
+        schema = schema.pipe(S.check(S.isMinLength(numConstraint.$gte) as any))
       }
       if (numConstraint.$gt !== undefined) {
-        schema = schema.pipe(S.minLength(numConstraint.$gt + 1))
+        schema = schema.pipe(S.check(S.isMinLength(numConstraint.$gt + 1) as any))
       }
       if (numConstraint.$lte !== undefined) {
-        schema = schema.pipe(S.maxLength(numConstraint.$lte))
+        schema = schema.pipe(S.check(S.isMaxLength(numConstraint.$lte) as any))
       }
       if (numConstraint.$lt !== undefined) {
-        schema = schema.pipe(S.maxLength(numConstraint.$lt - 1))
+        schema = schema.pipe(S.check(S.isMaxLength(numConstraint.$lt - 1) as any))
       }
       if (numConstraint.$eq !== undefined) {
-        schema = schema.pipe(S.length(numConstraint.$eq))
+        schema = schema.pipe(S.check(S.isMinLength(numConstraint.$eq) as any))
       }
     }
   }
 
   if (constraint.$format !== undefined) {
-    schema = schema.pipe(S.pattern(constraint.$format))
+    schema = schema.pipe(S.check(S.isPattern(constraint.$format) as any))
   }
 
   return schema
@@ -161,8 +161,8 @@ const compileStringConstraint = (constraint: StringConstraint): S.Schema.Any => 
 /**
  * Compile an array constraint object to an Effect Schema.
  */
-const compileArrayConstraint = (constraint: ArrayConstraint): S.Schema.Any => {
-  let schema: S.Schema.Any = S.Array(S.Unknown)
+const compileArrayConstraint = (constraint: ArrayConstraint): S.Top => {
+  let schema: any = S.Array(S.Unknown)
 
   // Handle '$every' - all elements must match
   if (constraint.$every !== undefined) {
@@ -174,32 +174,40 @@ const compileArrayConstraint = (constraint: ArrayConstraint): S.Schema.Any => {
   if (constraint.$some !== undefined) {
     const elementSchema = toSchema(constraint.$some)
     schema = schema.pipe(
-      S.filter((arr: unknown[]) => arr.some((el) => S.is(elementSchema)(el)), {
-        message: () => `Array must have at least one element matching the pattern`,
-      }),
+      S.check(
+        S.makeFilter(
+          (arr: unknown[]) =>
+            arr.some((el) => S.is(elementSchema as any)(el)) ||
+            `Array must have at least one element matching the pattern`,
+        ) as any,
+      ),
     )
   }
 
   // Handle length constraint
   if (constraint.$length !== undefined) {
     if (Num.is(constraint.$length)) {
-      schema = schema.pipe(S.minItems(constraint.$length), S.maxItems(constraint.$length))
+      schema = schema.pipe(
+        S.check(S.isMinLength(constraint.$length) as any, S.isMaxLength(constraint.$length) as any),
+      )
     } else {
       const numConstraint = constraint.$length
       if (numConstraint.$gte !== undefined) {
-        schema = schema.pipe(S.minItems(numConstraint.$gte))
+        schema = schema.pipe(S.check(S.isMinLength(numConstraint.$gte) as any))
       }
       if (numConstraint.$gt !== undefined) {
-        schema = schema.pipe(S.minItems(numConstraint.$gt + 1))
+        schema = schema.pipe(S.check(S.isMinLength(numConstraint.$gt + 1) as any))
       }
       if (numConstraint.$lte !== undefined) {
-        schema = schema.pipe(S.maxItems(numConstraint.$lte))
+        schema = schema.pipe(S.check(S.isMaxLength(numConstraint.$lte) as any))
       }
       if (numConstraint.$lt !== undefined) {
-        schema = schema.pipe(S.maxItems(numConstraint.$lt - 1))
+        schema = schema.pipe(S.check(S.isMaxLength(numConstraint.$lt - 1) as any))
       }
       if (numConstraint.$eq !== undefined) {
-        schema = schema.pipe(S.minItems(numConstraint.$eq), S.maxItems(numConstraint.$eq))
+        schema = schema.pipe(
+          S.check(S.isMinLength(numConstraint.$eq) as any, S.isMaxLength(numConstraint.$eq) as any),
+        )
       }
     }
   }
@@ -210,28 +218,36 @@ const compileArrayConstraint = (constraint: ArrayConstraint): S.Schema.Any => {
 /**
  * Compile a combinator object to an Effect Schema.
  */
-const compileCombinator = (combinator: Combinator): S.Schema.Any => {
+const compileCombinator = (combinator: Combinator): S.Top => {
   // Handle '$not'
   if (combinator.$not !== undefined) {
     const innerSchema = toSchema(combinator.$not)
     return S.Unknown.pipe(
-      S.filter((value) => !S.is(innerSchema)(value), {
-        message: () => `Value must not match the negated pattern`,
-      }),
+      S.check(
+        S.makeFilter(
+          (value) => !S.is(innerSchema as any)(value) || `Value must not match the negated pattern`,
+        ) as any,
+      ),
     ) as any
   }
 
   // Handle '$or' (union)
   if (combinator.$or !== undefined && Arr.is(combinator.$or)) {
     const schemas = combinator.$or.map(toSchema)
-    return S.Union(...(schemas as [S.Schema.Any, S.Schema.Any, ...S.Schema.Any[]]))
+    return S.Union(schemas)
   }
 
   // Handle '$and' (intersection)
   if (combinator.$and !== undefined && Arr.is(combinator.$and)) {
     const schemas = combinator.$and.map(toSchema)
-    // Use extend for merging schemas (struct intersection)
-    return schemas.reduce((acc, schema) => S.extend(acc, schema))
+    // Validate against all schemas using a filter
+    return S.Unknown.pipe(
+      S.check(
+        S.makeFilter((value) => schemas.every((schema) => S.is(schema as any)(value)), {
+          message: `Value must match all patterns in $and`,
+        }) as any,
+      ),
+    ) as any
   }
 
   return S.Unknown
@@ -242,7 +258,7 @@ const compileCombinator = (combinator: Combinator): S.Schema.Any => {
  *
  * Converts various pattern types to executable Effect Schemas:
  * - Literals → `S.Literal(value)`
- * - Regex → `S.String.pipe(S.pattern(regex))`
+ * - Regex → `S.String.pipe(S.check(S.isPattern(regex) as any))`
  * - Schemas → pass through
  * - Constraint objects → compiled to schema pipelines
  * - Combinators → compiled to schema combinators
@@ -252,7 +268,7 @@ const compileCombinator = (combinator: Combinator): S.Schema.Any => {
  * @param pattern - The pattern to compile
  * @returns An Effect Schema that validates the pattern
  */
-export const toSchema = (pattern: unknown): S.Schema.Any => {
+export const toSchema = (pattern: unknown): S.Top => {
   // Already a schema - pass through
   if (S.isSchema(pattern)) {
     return pattern
@@ -260,7 +276,7 @@ export const toSchema = (pattern: unknown): S.Schema.Any => {
 
   // Regex → String with pattern
   if (pattern instanceof RegExp) {
-    return S.String.pipe(S.pattern(pattern))
+    return S.String.pipe(S.check(S.isPattern(pattern) as any))
   }
 
   // Primitive literals
@@ -282,12 +298,14 @@ export const toSchema = (pattern: unknown): S.Schema.Any => {
       const lengthValue = (pattern as any).$length
       // Generate schemas for both string and array interpretations
       const stringSchema = Num.is(lengthValue)
-        ? S.String.pipe(S.length(lengthValue))
+        ? S.String.pipe(S.check(S.isMinLength(lengthValue) as any))
         : compileStringConstraint({ $length: lengthValue })
       const arraySchema = Num.is(lengthValue)
-        ? S.Array(S.Unknown).pipe(S.minItems(lengthValue), S.maxItems(lengthValue))
+        ? S.Array(S.Unknown).pipe(
+            S.check(S.isMinLength(lengthValue) as any, S.isMaxLength(lengthValue) as any),
+          )
         : compileArrayConstraint({ $length: lengthValue })
-      return S.Union(stringSchema, arraySchema) as any
+      return S.Union([stringSchema, arraySchema]) as any
     }
   }
 
@@ -313,13 +331,13 @@ export const toSchema = (pattern: unknown): S.Schema.Any => {
   if (Arr.is(pattern)) {
     // Array literal means tuple matching
     const schemas = pattern.map(toSchema)
-    return S.Tuple(...(schemas as [S.Schema.Any, ...S.Schema.Any[]]))
+    return S.Tuple(schemas)
   }
 
   // Objects - partial struct matching
   if (Rec.is(pattern)) {
     // All operators now have $ prefix, so we can treat everything as data fields
-    const fields: Record<string, S.Schema.Any> = {}
+    const fields: Record<string, S.Top> = {}
     for (const [key, value] of Object.entries(pattern)) {
       fields[key] = toSchema(value)
     }

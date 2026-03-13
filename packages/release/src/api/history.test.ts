@@ -8,7 +8,7 @@ import * as History from './analyzer/history.js'
 const packageName = '@kitz/core'
 const version = Semver.fromString('1.0.0')
 const tag = Pkg.Pin.toString(
-  Pkg.Pin.Exact.make({
+  new Pkg.Pin.Exact({
     name: Pkg.Moniker.parse(packageName),
     version,
   }),

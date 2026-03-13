@@ -7,7 +7,7 @@
  * @module
  */
 
-import type { Either } from 'effect'
+import type { Result } from 'effect'
 
 /**
  * Apply arguments to a kind (higher-kinded type function).
@@ -225,38 +225,38 @@ export type Pipe<$Kinds extends readonly Kind[], $Input> =
     : $Input
 
 /**
- * Apply a tuple of Kinds sequentially with Either short-circuiting.
+ * Apply a tuple of Kinds sequentially with Result short-circuiting.
  *
- * Like {@link Pipe}, but each Kind is expected to return `Either<E, A>`.
- * On `Right`, unwraps the value and continues to the next Kind.
- * On `Left`, short-circuits and returns the error immediately.
+ * Like {@link Pipe}, but each Kind is expected to return `Result<A, E>`.
+ * On `Success`, unwraps the value and continues to the next Kind.
+ * On `Failure`, short-circuits and returns the error immediately.
  *
- * This is the type-level equivalent of chaining `mapRight` operations.
+ * This is the type-level equivalent of chaining `mapSuccess` operations.
  *
  * @template $Input - The initial type to transform
- * @template $Kinds - Tuple of Kind functions that return Either
+ * @template $Kinds - Tuple of Kind functions that return Result
  *
  * @example
  * ```ts
- * import type { Either } from 'effect'
+ * import type { Result } from 'effect'
  *
- * // Kinds that return Either for validation/extraction
+ * // Kinds that return Result for validation/extraction
  * interface AwaitedKind extends Kind {
- *   return: Either.Right<never, Awaited<this['parameters'][0]>>
+ *   return: Result.Success<Awaited<this['parameters'][0]>, never>
  * }
  *
  * // Compose with short-circuit semantics
  * type Result = PipeRight<Promise<string[]>, [AwaitedKind, ArrayKind]>
- * // On success: Either.Right<never, string>
- * // On error: Either.Left<SomeError, never>
+ * // On success: Result.Success<string, never>
+ * // On error: Result.Failure<never, SomeError>
  * ```
  */
 // oxfmt-ignore
 export type PipeRight<$Input, $Kinds extends readonly Kind[]> =
   $Kinds extends readonly [infer __first__ extends Kind, ...infer __rest__ extends readonly Kind[]]
     ? Apply<__first__, [$Input]> extends infer ___result___
-      ? ___result___ extends Either.Left<infer __error__, infer _> ? Either.Left<__error__, never>
-      : ___result___ extends Either.Right<infer _, infer __value__> ? PipeRight<__value__, __rest__>
+      ? ___result___ extends Result.Failure<infer _, infer __error__> ? Result.Failure<never, __error__>
+      : ___result___ extends Result.Success<infer __value__, infer _> ? PipeRight<__value__, __rest__>
       : never
     : never
-  : Either.Right<never, $Input>
+  : Result.Success<$Input, never>

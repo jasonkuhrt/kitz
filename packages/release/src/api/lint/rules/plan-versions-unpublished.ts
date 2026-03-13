@@ -22,13 +22,13 @@ interface Metadata {
 
 /** Verifies that planned package versions are not already published to npm. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('plan.versions-unpublished'),
+  id: RuleId.makeUnsafe('plan.versions-unpublished'),
   description: 'planned package versions are not already published to npm',
   preventsDescriptions: [
     'npm publish failing because the exact version is already present in the registry',
   ],
-  defaults: RuleDefaults.make({ enabled: false }),
-  preconditions: [Precondition.HasReleasePlan.make()],
+  defaults: new RuleDefaults({ enabled: false }),
+  preconditions: [new Precondition.HasReleasePlan()],
   optionsSchema: OptionsSchema,
   check: Effect.gen(function* () {
     const plan = yield* ReleasePlanService
@@ -62,11 +62,11 @@ export const rule = RuntimeRule.create({
     const names = conflicts.map((entry) => `${entry.packageName}@${entry.version}`)
     const example = conflicts[0]!
 
-    return Violation.make({
+    return new Violation({
       location:
         conflicts.length === 1
-          ? File.make({ path: example.packageJsonPath })
-          : Environment.make({
+          ? new File({ path: example.packageJsonPath })
+          : new Environment({
               message: `${String(conflicts.length)} planned package versions already exist on npm.`,
             }),
       summary: `Publishing would collide because ${summarizePackages(names)} ${names.length === 1 ? 'already exists' : 'already exist'} on npm.`,
@@ -74,17 +74,17 @@ export const rule = RuntimeRule.create({
         'npm does not allow the same package version to be published twice. ' +
         'If a planned version already exists, the release plan is stale or a prior publish attempt already succeeded.',
       hints: [
-        Hint.make({
+        new Hint({
           description:
             'Regenerate the release plan after fetching the latest tags and published versions.',
         }),
-        Hint.make({
+        new Hint({
           description:
             'If a prior publish partially succeeded, inspect the published version and bump forward instead of retrying the same version.',
         }),
       ],
       docs: [
-        DocLink.make({
+        new DocLink({
           label: 'npm publish',
           url: 'https://docs.npmjs.com/cli/v11/commands/npm-publish',
         }),

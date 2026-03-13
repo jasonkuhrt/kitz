@@ -37,13 +37,13 @@ const findOffenders = (manifests: readonly PlannedManifest[]) =>
 
 /** Verifies that planned package manifests remain source-oriented in the repo. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('plan.packages-runtime-targets-source-oriented'),
+  id: RuleId.makeUnsafe('plan.packages-runtime-targets-source-oriented'),
   description: 'planned package manifests keep runtime targets source-oriented in the repo',
   preventsDescriptions: [
     'stale publish-time manifest rewrites leaving package.json runtime entries pointed at build output',
     'local source-first development accidentally depending on prior build artifacts',
   ],
-  preconditions: [Precondition.HasReleasePlan.make()],
+  preconditions: [new Precondition.HasReleasePlan()],
   check: loadPlannedManifests.pipe(
     Effect.map((manifests) => {
       const offenders = findOffenders(manifests)
@@ -55,11 +55,11 @@ export const rule = RuntimeRule.create({
       const example = offenders[0]!
       const exampleTargets = example.targets.slice(0, 3).join(', ')
 
-      return Violation.make({
+      return new Violation({
         location:
           offenders.length === 1
-            ? File.make({ path: example.packageJsonPath })
-            : Environment.make({
+            ? new File({ path: example.packageJsonPath })
+            : new Environment({
                 message:
                   `${String(offenders.length)} planned packages still point runtime entries at build output. ` +
                   `Example targets: ${exampleTargets}.`,
@@ -71,27 +71,27 @@ export const rule = RuntimeRule.create({
           'This repo expects local `imports` and `exports` runtime targets to stay on `./src/*.ts`, ' +
           'with publish temporarily rewriting them to `./build/*.js` and then restoring them. ' +
           'When this rule fails, the usual cause is an interrupted or failed publish cleanup.',
-        fix: GuideFix.make({
+        fix: new GuideFix({
           summary: 'Restore local runtime targets to source paths before the next release attempt.',
           steps: [
-            FixStep.make({
+            new FixStep({
               description:
                 'Edit affected package.json files so runtime targets under `imports` and `exports` point back to `./src/*.ts`.',
             }),
-            FixStep.make({
+            new FixStep({
               description:
                 'Re-run `release doctor --onlyRule plan.packages-runtime-targets-source-oriented` before retrying publish.',
             }),
           ],
           docs: [
-            DocLink.make({
+            new DocLink({
               label: 'Node package exports',
               url: 'https://nodejs.org/api/packages.html#exports',
             }),
           ],
         }),
         hints: [
-          Hint.make({
+          new Hint({
             description:
               'If this appeared right after a failed publish, inspect the affected package manifests before attempting another release.',
           }),

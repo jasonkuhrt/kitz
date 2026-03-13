@@ -1,58 +1,45 @@
-import { Command, CommandExecutor } from '@effect/platform'
+import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
 import { Fs } from '@kitz/fs'
-import { Effect, Inspectable, Layer, Sink, Stream } from 'effect'
+import { Effect, Layer, Stream } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { NpmCliError, hasVersion, pack, publish } from './cli.js'
 
 const textEncoder = new TextEncoder()
 
-const makeProcess = (stdout: string, exitCode: number): CommandExecutor.Process => ({
-  [CommandExecutor.ProcessTypeId]: CommandExecutor.ProcessTypeId,
-  pid: CommandExecutor.ProcessId(1),
-  exitCode: Effect.succeed(CommandExecutor.ExitCode(exitCode)),
-  isRunning: Effect.succeed(false),
-  kill: () => Effect.void,
-  stderr: Stream.empty,
-  stdin: Sink.drain,
-  stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
-  toJSON: () => ({ _tag: 'MockProcess', pid: 1, exitCode }),
-  [Inspectable.NodeInspectSymbol]() {
-    return this.toJSON()
-  },
-})
+const makeHandle = (stdout: string, exitCode: number): ChildProcessSpawner.ChildProcessHandle =>
+  ChildProcessSpawner.makeHandle({
+    pid: ChildProcessSpawner.ProcessId(1),
+    exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(exitCode)),
+    isRunning: Effect.succeed(false),
+    kill: () => Effect.void,
+    stderr: Stream.empty,
+    stdin: Effect.void as any,
+    stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
+    all: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
+    getInputFd: () => Effect.void as any,
+    getOutputFd: () => Stream.empty,
+  })
 
-const makeCommandExecutorLayer = () => {
-  const executor: CommandExecutor.CommandExecutor = {
-    [CommandExecutor.TypeId]: CommandExecutor.TypeId,
-    exitCode: (command) => {
-      const standard = Command.flatten(command)[0]
-      if (standard?.command === 'npm' && standard.args?.[0] === 'publish') {
-        return Effect.succeed(CommandExecutor.ExitCode(0))
-      }
-      return Effect.succeed(CommandExecutor.ExitCode(0))
-    },
-    start: (command) => {
-      const standard = Command.flatten(command)[0]
-      if (
-        !standard ||
-        standard.command !== 'npm' ||
-        standard.args?.[0] !== '--silent' ||
-        standard.args?.[1] !== 'view'
-      ) {
-        return Effect.die(
-          `Unexpected command in mock executor: ${standard?.command ?? 'unknown'}`,
-        ) as any
-      }
+const makeSpawnerLayer = () => {
+  const spawner = ChildProcessSpawner.make((command) => {
+    const standard = ChildProcess.isStandardCommand(command) ? command : undefined
+    if (!standard) {
+      return Effect.die('Unexpected piped command in mock spawner') as any
+    }
 
-      const spec = standard.args?.[2]
+    const args = standard.args
+
+    // npm view
+    if (args?.[0] === '--silent' && args?.[1] === 'view') {
+      const spec = args?.[2]
 
       if (spec === 'react@19.2.0') {
-        return Effect.succeed(makeProcess('"19.2.0"\n', 0)) as any
+        return Effect.succeed(makeHandle('"19.2.0"\n', 0))
       }
 
       if (spec === 'react@0.0.0-nope') {
         return Effect.succeed(
-          makeProcess(
+          makeHandle(
             JSON.stringify(
               {
                 error: {
@@ -65,12 +52,12 @@ const makeCommandExecutorLayer = () => {
             ) + '\n',
             1,
           ),
-        ) as any
+        )
       }
 
       if (spec === 'react@18.3.1') {
         return Effect.succeed(
-          makeProcess(
+          makeHandle(
             JSON.stringify(
               {
                 error: {
@@ -83,24 +70,26 @@ const makeCommandExecutorLayer = () => {
             ) + '\n',
             1,
           ),
-        ) as any
+        )
       }
 
-      return Effect.die(`Unexpected npm view spec: ${spec ?? 'unknown'}`) as any
-    },
-    string: (command) => {
-      const standard = Command.flatten(command)[0]
-      if (standard?.command === 'npm' && standard.args?.[0] === 'pack') {
-        return Effect.succeed('[{"filename":"react-19.2.0.tgz"}]\n') as any
-      }
-      return Effect.die('string not implemented in mock command executor') as any
-    },
-    lines: () => Effect.die('lines not implemented in mock command executor') as any,
-    stream: () => Stream.empty,
-    streamLines: () => Stream.empty,
-  }
+      return Effect.die(`Unexpected npm view spec: ${spec ?? 'unknown'}`)
+    }
 
-  return Layer.succeed(CommandExecutor.CommandExecutor, executor)
+    // npm pack
+    if (args?.[0] === 'pack') {
+      return Effect.succeed(makeHandle('[{"filename":"react-19.2.0.tgz"}]\n', 0))
+    }
+
+    // npm publish
+    if (args?.[0] === 'publish') {
+      return Effect.succeed(makeHandle('', 0))
+    }
+
+    return Effect.die(`Unexpected command in mock spawner: ${standard.command}`)
+  })
+
+  return Layer.succeed(ChildProcessSpawner, spawner)
 }
 
 describe('npm-registry cli', () => {
@@ -109,7 +98,7 @@ describe('npm-registry cli', () => {
       pack({
         cwd: Fs.Path.AbsDir.fromString('/repo/packages/react/'),
         packDestination: Fs.Path.AbsDir.fromString('/repo/.release/artifacts/'),
-      }).pipe(Effect.provide(makeCommandExecutorLayer())),
+      }).pipe(Effect.provide(makeSpawnerLayer())),
     )
 
     expect(Fs.Path.toString(result.tarball)).toBe('/repo/.release/artifacts/react-19.2.0.tgz')
@@ -121,13 +110,13 @@ describe('npm-registry cli', () => {
       publish({
         tarball: Fs.Path.AbsFile.fromString('/repo/.release/artifacts/react-19.2.0.tgz'),
         access: 'public',
-      }).pipe(Effect.provide(makeCommandExecutorLayer())),
+      }).pipe(Effect.provide(makeSpawnerLayer())),
     )
   })
 
   test('hasVersion returns true when npm view finds the exact version', async () => {
     const result = await Effect.runPromise(
-      hasVersion('react', '19.2.0').pipe(Effect.provide(makeCommandExecutorLayer())),
+      hasVersion('react', '19.2.0').pipe(Effect.provide(makeSpawnerLayer())),
     )
 
     expect(result).toBe(true)
@@ -135,7 +124,7 @@ describe('npm-registry cli', () => {
 
   test('hasVersion returns false for npm E404 responses', async () => {
     const result = await Effect.runPromise(
-      hasVersion('react', '0.0.0-nope').pipe(Effect.provide(makeCommandExecutorLayer())),
+      hasVersion('react', '0.0.0-nope').pipe(Effect.provide(makeSpawnerLayer())),
     )
 
     expect(result).toBe(false)
@@ -143,7 +132,7 @@ describe('npm-registry cli', () => {
 
   test('hasVersion fails for non-404 npm view errors', async () => {
     const result = await Effect.runPromise(
-      hasVersion('react', '18.3.1').pipe(Effect.flip, Effect.provide(makeCommandExecutorLayer())),
+      hasVersion('react', '18.3.1').pipe(Effect.flip, Effect.provide(makeSpawnerLayer())),
     )
 
     expect(result).toBeInstanceOf(NpmCliError)

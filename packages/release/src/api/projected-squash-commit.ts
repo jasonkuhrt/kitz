@@ -1,7 +1,7 @@
 import type { Analysis } from './analyzer/models/analysis.js'
 import { ConventionalCommits } from '@kitz/conventional-commits'
 import type { Semver } from '@kitz/semver'
-import { Either, Option } from 'effect'
+import { Result, Option } from 'effect'
 
 export interface ScopeImpact {
   readonly scope: string
@@ -52,7 +52,7 @@ const orderByBump: Readonly<Record<Semver.BumpType, number>> = {
 }
 
 const targetForImpact = (impact: ScopeImpact): ConventionalCommits.Target =>
-  ConventionalCommits.Target.make({
+  new ConventionalCommits.Target({
     type: ConventionalCommits.Type.parse(impact.bump === 'patch' ? 'fix' : 'feat'),
     scope: impact.scope,
     breaking: impact.bump === 'major',
@@ -63,7 +63,7 @@ export const renderHeader = (params: {
 }): string | null => {
   if (params.impacts.length === 0) return null
 
-  const commit = ConventionalCommits.Commit.Multi.make({
+  const commit = new ConventionalCommits.Commit.Multi({
     targets: params.impacts
       .toSorted(
         (left, right) =>
@@ -86,15 +86,15 @@ const getActualHeader = (
 } => {
   const parsed = ConventionalCommits.Title.parseEither(title.trim())
 
-  if (Either.isLeft(parsed)) {
+  if (Result.isFailure(parsed)) {
     return {
       header: null,
-      error: parsed.left.message,
+      error: parsed.failure.message,
     }
   }
 
   return {
-    header: ConventionalCommits.Commit.renderHeader(parsed.right),
+    header: ConventionalCommits.Commit.renderHeader(parsed.success),
     error: null,
   }
 }

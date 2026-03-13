@@ -1,5 +1,5 @@
 import { Semver } from '@kitz/semver'
-import { ParseResult, Schema as S } from 'effect'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 
 /**
  * Structured representation of a candidate prerelease identifier.
@@ -17,9 +17,9 @@ import { ParseResult, Schema as S } from 'effect'
  * ```
  */
 export class Candidate extends S.TaggedClass<Candidate>()('Candidate', {
-  iteration: S.Number.pipe(S.positive(), S.int()),
+  iteration: S.Number.pipe(S.check(S.isGreaterThan(0), S.isInt())),
 }) {
-  static is = S.is(Candidate)
+  static is = S.is(Candidate as any) as (u: unknown) => u is Candidate
 
   /** Compute candidate version: baseVersion-next.N */
   static calculateVersion(base: Semver.Semver, iteration: number): Semver.Semver {
@@ -34,24 +34,23 @@ const CandidatePattern = /^next\.(\d+)$/
 /**
  * Schema that transforms between string format and structured Candidate.
  */
-export const CandidateSchema = S.transformOrFail(CandidateEncoded, Candidate, {
-  strict: true,
-  decode: (value, _, ast) => {
-    const match = CandidatePattern.exec(value)
-    if (!match) {
-      return ParseResult.fail(
-        new ParseResult.Type(
-          ast,
-          value,
-          `Invalid candidate prerelease format: expected 'next.<number>'`,
-        ),
-      )
-    }
-    const iteration = parseInt(match[1]!, 10)
-    return ParseResult.succeed(Candidate.make({ iteration }))
-  },
-  encode: (candidate) => ParseResult.succeed(`next.${candidate.iteration}`),
-})
+export const CandidateSchema = CandidateEncoded.pipe(
+  S.decodeTo(Candidate, {
+    decode: SchemaGetter.transformOrFail((value) => {
+      const match = CandidatePattern.exec(value)
+      if (!match) {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(value), {
+            message: `Invalid candidate prerelease format: expected 'next.<number>'`,
+          }),
+        )
+      }
+      const iteration = parseInt(match[1]!, 10)
+      return Effect.succeed(new Candidate({ iteration }))
+    }),
+    encode: SchemaGetter.transform((candidate) => `next.${candidate.iteration}`),
+  }),
+)
 
 // ============================================================================
 // Constructors
@@ -60,21 +59,22 @@ export const CandidateSchema = S.transformOrFail(CandidateEncoded, Candidate, {
 /**
  * Create a Candidate from iteration number.
  */
-export const makeCandidate = (iteration: number): Candidate => Candidate.make({ iteration })
+export const makeCandidate = (iteration: number): Candidate => new Candidate({ iteration })
 
 /**
  * Parse a candidate prerelease string.
  */
-export const parseCandidate = (value: string): Candidate => S.decodeSync(CandidateSchema)(value)
+export const parseCandidate = (value: string): Candidate =>
+  S.decodeSync(CandidateSchema as any)(value) as Candidate
 
 /**
  * Encode a Candidate to string.
  */
 export const encodeCandidate = (candidate: Candidate): string =>
-  S.encodeSync(CandidateSchema)(candidate)
+  S.encodeSync(CandidateSchema as any)(candidate) as string
 
 /**
  * Calculate the next iteration for a candidate prerelease.
  */
 export const nextCandidate = (candidate: Candidate): Candidate =>
-  Candidate.make({ iteration: candidate.iteration + 1 })
+  new Candidate({ iteration: (candidate.iteration as number) + 1 })

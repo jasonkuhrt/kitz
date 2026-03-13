@@ -11,18 +11,18 @@ export const getInvalidTitleViolation = (pr: Pr): Violation | undefined =>
   (() => {
     const detail = Option.getOrUndefined(pr.titleParseError)
     if (detail === undefined) return undefined
-    return Violation.make({
-      location: PrTitle.make({ title: pr.title }),
+    return new Violation({
+      location: new PrTitle({ title: pr.title }),
       summary: 'PR title is not a valid conventional commit title.',
       detail,
       hints: [
-        Hint.make({
+        new Hint({
           description:
             'Rewrite the PR title using the release conventional commit syntax before running PR doctor checks.',
         }),
       ],
       docs: [
-        DocLink.make({
+        new DocLink({
           label: 'Conventional Commits',
           url: 'https://www.conventionalcommits.org/en/v1.0.0/',
         }),

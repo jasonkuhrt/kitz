@@ -5,7 +5,7 @@ import type { AnyStruct } from './struct.js'
 import { getTagOrThrow } from './tagged.js'
 import type { AnyTaggedStruct, OmitTag } from './tagged.js'
 
-export type AnyUnion = S.Union<S.Schema.All[]>
+export type AnyUnion = S.Union<S.Top[]>
 export type AnyUnionOfStructs = S.Union<AnyStruct[]>
 export type AnyUnionAdt = S.Union<AnyTaggedStruct[]>
 
@@ -34,7 +34,7 @@ export interface ADTMember {
  * Extract all tag values from a union of tagged structs.
  */
 export type GetTags<$Union extends AnyUnionAdt> = StringOrNever<
-  S.Schema.Type<$Union['members'][number]['fields']['_tag']>
+  $Union['members'][number]['fields']['_tag']['Type']
 >
 
 /**
@@ -43,7 +43,7 @@ export type GetTags<$Union extends AnyUnionAdt> = StringOrNever<
 export type ExtractMemberByTag<$Union extends S.Union<any>, $Tag extends GetTags<$Union>> =
   Arg.MembersAsUnion<$Union> extends infer __member__
     ? __member__ extends S.TaggedStruct<$Tag, any>
-      ? S.Schema.Type<__member__>
+      ? __member__['Type']
       : never
     : never
 
@@ -318,7 +318,7 @@ type CountADTMembers<$ADTName extends string, $Union> = [
 /**
  * Check if a tag is an ADT member within a schema.
  */
-export type IsHasMemberTag<$Tag extends string, $S extends S.Schema.All> =
+export type IsHasMemberTag<$Tag extends string, $S extends S.Top> =
   $S extends S.Schema<infer __union__>
     ? ParseTag<$Tag> extends { adtName: infer __adt__ extends string }
       ? CountADTMembers<__adt__, __union__> extends 0
@@ -332,7 +332,7 @@ export type IsHasMemberTag<$Tag extends string, $S extends S.Schema.All> =
 /**
  * Get ADT info from a tag within a schema.
  */
-export type GetMemberInfo<$Tag extends string, $S extends S.Schema.All> =
+export type GetMemberInfo<$Tag extends string, $S extends S.Top> =
   $S extends S.Schema<infer __union__>
     ? ParseTag<$Tag> extends {
         adtName: infer __adt__ extends string

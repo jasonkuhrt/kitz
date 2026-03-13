@@ -64,7 +64,7 @@ export const patternFor = <value>(_value: value): PatternForValue<value> => {
  * }
  * ```
  */
-export const patternForSchema = <$Schema extends S.Schema.Any>(
+export const patternForSchema = <$Schema extends S.Top>(
   _schema: $Schema,
 ): PatternForSchema<$Schema> => {
   return {} as any

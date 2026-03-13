@@ -14,14 +14,14 @@ import type * as PropSpan from './properties/span.js'
  *
  * @example
  * ```typescript
- * const box = Box.make({ content: 'Hello' })
+ * const box = new Box({ content: 'Hello' })
  * const box2 = content(box, 'Goodbye')
  * // box is unchanged, box2 has new content
  *
  * // Use nested boxes
  * const box3 = content(box, [
  *   'Header',
- *   Box.make({ content: 'Body' }).pad$([1, 2]),
+ *   new Box({ content: 'Body' }).pad$([1, 2]),
  *   'Footer'
  * ])
  * ```
@@ -45,7 +45,7 @@ export const content = (box: Box, newContent: string | Array<string | Box>): Box
  *
  * @example
  * ```typescript
- * const box = Box.make({ content: 'Hello' })
+ * const box = new Box({ content: 'Hello' })
  * const padded = pad(box, [2, 4])
  * // box is unchanged, padded has padding
  * ```
@@ -69,7 +69,7 @@ export const pad = (box: Box, padding: PaddingInput): Box => {
  *
  * @example
  * ```typescript
- * const box = Box.make({ content: 'Hello' })
+ * const box = new Box({ content: 'Hello' })
  * const margined = margin(box, [2, 4])
  * // box is unchanged, margined has margin
  * ```
@@ -91,7 +91,7 @@ export const margin = (box: Box, marginInput: MarginInput): Box => {
  *
  * @example
  * ```typescript
- * const box = Box.make({ content: 'Hello' })
+ * const box = new Box({ content: 'Hello' })
  * const bordered = border(box, { style: 'single' })
  * // box is unchanged, bordered has border
  * ```
@@ -119,7 +119,7 @@ export const border = (box: Box, borderInput: BorderInput): Box => {
  *
  * @example
  * ```typescript
- * const box = Box.make({ content: 'Hello' })
+ * const box = new Box({ content: 'Hello' })
  * const sized = span(box, [50n, 80])  // main: 50% of parent, cross: 80 chars
  * // box is unchanged, sized has span
  * ```
@@ -141,7 +141,7 @@ export const span = (box: Box, spanInput: PropSpan.Input): Box => {
  *
  * @example
  * ```typescript
- * const box = Box.make({ content: 'Hello' })
+ * const box = new Box({ content: 'Hello' })
  * const constrained = spanRange(box, { main: { max: 10 }, cross: { min: 5, max: 20 } })
  * // box is unchanged, constrained has span range
  * ```
@@ -167,7 +167,7 @@ export const spanRange = (box: Box, spanRangeInput: SpanRange): Box => {
  *
  * @example
  * ```typescript
- * const box = Box.make({ content: ['Item 1', 'Item 2', 'Item 3'] })
+ * const box = new Box({ content: ['Item 1', 'Item 2', 'Item 3'] })
  * const spaced = gap(box, 2)  // 2 newlines between items (vertical)
  * // box is unchanged, spaced has gap
  * ```

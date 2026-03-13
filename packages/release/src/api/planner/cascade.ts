@@ -1,4 +1,4 @@
-import { FileSystem } from '@effect/platform'
+import { FileSystem } from 'effect'
 import { Resource } from '@kitz/resource'
 import { Effect, HashMap, MutableHashSet, Option } from 'effect'
 import { buildDependencyGraph, type DependencyGraph } from '../analyzer/cascade.js'
@@ -160,11 +160,11 @@ export const detect = (
 
     // Build version union
     const version: OfficialFirst | OfficialIncrement = Option.isSome(currentVersion)
-      ? OfficialIncrement.make({ from: currentVersion.value, to: nextVersion, bump: 'patch' })
-      : OfficialFirst.make({ version: nextVersion })
+      ? new OfficialIncrement({ from: currentVersion.value, to: nextVersion, bump: 'patch' })
+      : new OfficialFirst({ version: nextVersion })
 
     cascades.push(
-      Official.make({
+      new Official({
         package: pkg,
         version,
         commits: cascadeCommits,

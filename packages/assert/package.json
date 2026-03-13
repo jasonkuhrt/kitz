@@ -16,10 +16,9 @@
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
-    "effect": "^3.19.11"
+    "effect": "4.0.0-beta.31"
   },
   "devDependencies": {
-    "@effect/platform": "^0.94.0",
     "@kitz/platform": "workspace:*",
     "ts-morph": "^25.0.1"
   },

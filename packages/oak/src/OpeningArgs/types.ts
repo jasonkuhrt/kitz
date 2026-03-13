@@ -106,7 +106,7 @@ export type ParseResultExclusiveGroup =
     }
   | ParseResultExclusiveGroupError
 
-export type ParseResult = {
+export type SchemaIssue = {
   globalErrors: ParseErrorGlobal[]
   basicParameters: Record<string, ParseResultBasic>
   mutuallyExclusiveParameters: Record<string, ParseResultExclusiveGroup>

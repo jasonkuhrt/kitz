@@ -1,4 +1,4 @@
-import { Context, Layer } from 'effect'
+import { Layer, ServiceMap } from 'effect'
 
 /**
  * Evaluated precondition states for the current context.
@@ -21,10 +21,10 @@ export interface EvaluatedPreconditions {
 }
 
 /** Service providing evaluated precondition states. */
-export class EvaluatedPreconditionsService extends Context.Tag('EvaluatedPreconditionsService')<
+export class EvaluatedPreconditionsService extends ServiceMap.Service<
   EvaluatedPreconditionsService,
   EvaluatedPreconditions
->() {}
+>()('EvaluatedPreconditionsService') {}
 
 /**
  * Default layer with all preconditions false.

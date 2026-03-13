@@ -15,10 +15,9 @@
     "./import": "./src/import.ts"
   },
   "dependencies": {
-    "@effect/platform": "^0.94.0",
     "@kitz/core": "workspace:*",
     "@kitz/fs": "workspace:*",
-    "effect": "^3.19.11"
+    "effect": "4.0.0-beta.31"
   },
   "scripts": {
     "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",

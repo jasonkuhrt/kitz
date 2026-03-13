@@ -22,7 +22,7 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Console, Effect, Layer } from 'effect'
 import * as Api from '../../api/__.js'
-import { CommandExecutorLayer, FileSystemLayer } from '../../platform.js'
+import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
 import { PreviewBlockingError, runPrPreview } from '../pr-preview.js'
 
 const helpFlags = ['-h', '--help'] as const
@@ -113,17 +113,17 @@ const preparePrTitle = Effect.gen(function* () {
   const rewriteAttempt = yield* ConventionalCommits.Title.rewriteHeader(
     pullRequest.title,
     projectedHeader,
-  ).pipe(Effect.either)
+  ).pipe(Effect.result)
 
   return {
     pullRequest,
     projectedHeader,
-    suggestedTitle: rewriteAttempt._tag === 'Right' ? rewriteAttempt.right : null,
-    titleRewriteError: rewriteAttempt._tag === 'Left' ? rewriteAttempt.left.message : null,
+    suggestedTitle: rewriteAttempt._tag === 'Success' ? rewriteAttempt.success : null,
+    titleRewriteError: rewriteAttempt._tag === 'Failure' ? rewriteAttempt.failure.message : null,
   } satisfies PreparedPrTitle
 })
 
-Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, CommandExecutorLayer))(
+Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, ChildProcessSpawnerLayer))(
   Effect.gen(function* () {
     const env = yield* Env.Env
     const argv = yield* Cli.parseArgv(env.argv)
@@ -147,32 +147,32 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, CommandExecutorLa
     if (action._tag === 'preview') {
       const previewResult = yield* runPrPreview(
         action.checkOnly ? { checkOnly: true } : undefined,
-      ).pipe(Effect.either)
+      ).pipe(Effect.result)
 
-      if (previewResult._tag === 'Left') {
-        if (previewResult.left instanceof PreviewBlockingError) {
-          if (previewResult.left.commentUrl) {
+      if (previewResult._tag === 'Failure') {
+        if (previewResult.failure instanceof PreviewBlockingError) {
+          if (previewResult.failure.commentUrl) {
             yield* Console.log(
-              `Updated release preview comment for PR #${String(previewResult.left.issueNumber)}.`,
+              `Updated release preview comment for PR #${String(previewResult.failure.issueNumber)}.`,
             )
-            yield* Console.log(`Comment: ${previewResult.left.commentUrl}`)
+            yield* Console.log(`Comment: ${previewResult.failure.commentUrl}`)
           }
           yield* Console.error('Blocking release preview issues remain.')
           return env.exit(1)
         }
 
-        return yield* Effect.fail(previewResult.left)
+        return yield* Effect.fail(previewResult.failure)
       }
 
-      if (previewResult.right._tag === 'checked') {
+      if (previewResult.success._tag === 'checked') {
         yield* Console.log(
-          `Release preview checks passed for PR #${String(previewResult.right.issueNumber)}.`,
+          `Release preview checks passed for PR #${String(previewResult.success.issueNumber)}.`,
         )
         return
       }
 
       yield* Console.log('Updated release preview comment.')
-      yield* Console.log(`Comment: ${previewResult.right.issueComment.html_url}`)
+      yield* Console.log(`Comment: ${previewResult.success.issueComment.html_url}`)
       return
     }
 
@@ -215,14 +215,12 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, CommandExecutorLa
     }
 
     const target = yield* Api.Explorer.resolveReleaseTarget(env.vars)
-    const updated = yield* Github.Github.pipe(
-      Effect.flatMap((github) =>
-        github.updatePullRequest(prepared.pullRequest.number, {
-          title: nextTitle,
-        }),
-      ),
-      Effect.provide(Github.LiveFetch({ owner: target.owner, repo: target.repo, token })),
-    )
+    const updated = yield* Effect.gen(function* () {
+      const github = yield* Github.Github
+      return yield* github.updatePullRequest(prepared.pullRequest.number, {
+        title: nextTitle,
+      })
+    }).pipe(Effect.provide(Github.LiveFetch({ owner: target.owner, repo: target.repo, token })))
 
     yield* Console.log(`Updated PR #${String(updated.number)} title.`)
     yield* Console.log(`Before: \`${prepared.pullRequest.title}\``)

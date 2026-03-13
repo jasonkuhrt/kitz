@@ -11,31 +11,31 @@ import {
 
 describe('Precondition variants', () => {
   test('HasOpenPR', () => {
-    const p = HasOpenPR.make({})
+    const p = new HasOpenPR({})
     expect(p._tag).toBe('PreconditionHasOpenPR')
     expect(HasOpenPR.is(p)).toBe(true)
   })
 
   test('HasDiff', () => {
-    const p = HasDiff.make({})
+    const p = new HasDiff({})
     expect(p._tag).toBe('PreconditionHasDiff')
     expect(HasDiff.is(p)).toBe(true)
   })
 
   test('IsMonorepo', () => {
-    const p = IsMonorepo.make({})
+    const p = new IsMonorepo({})
     expect(p._tag).toBe('PreconditionIsMonorepo')
     expect(IsMonorepo.is(p)).toBe(true)
   })
 
   test('HasGitHubAccess', () => {
-    const p = HasGitHubAccess.make({})
+    const p = new HasGitHubAccess({})
     expect(p._tag).toBe('PreconditionHasGitHubAccess')
     expect(HasGitHubAccess.is(p)).toBe(true)
   })
 
   test('HasReleasePlan', () => {
-    const p = HasReleasePlan.make({})
+    const p = new HasReleasePlan({})
     expect(p._tag).toBe('PreconditionHasReleasePlan')
     expect(HasReleasePlan.is(p)).toBe(true)
   })
@@ -44,11 +44,11 @@ describe('Precondition variants', () => {
 describe('Precondition union', () => {
   test('schema roundtrip for each variant', () => {
     const variants = [
-      HasOpenPR.make({}),
-      HasDiff.make({}),
-      IsMonorepo.make({}),
-      HasGitHubAccess.make({}),
-      HasReleasePlan.make({}),
+      new HasOpenPR({}),
+      new HasDiff({}),
+      new IsMonorepo({}),
+      new HasGitHubAccess({}),
+      new HasReleasePlan({}),
     ]
 
     for (const v of variants) {

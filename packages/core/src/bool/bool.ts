@@ -75,7 +75,7 @@ export type PredicateMaybe<$Value> = $Value | Predicate<$Value>
  * If the input is already a function, it is returned as-is.
  * If the input is a value, a predicate that always returns that value is created.
  *
- * @param predicateMaybe - Either a predicate function or a constant value.
+ * @param predicateMaybe - Result a predicate function or a constant value.
  * @returns A predicate function.
  *
  * @example

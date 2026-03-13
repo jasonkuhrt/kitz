@@ -6,7 +6,7 @@ import { Schema as S } from 'effect'
  * Note: `''` means exact match (no operator).
  * Complex operators like `^` and `~` are expanded to simple forms during parsing.
  */
-export const Operator = S.Enums({
+export const Operator = S.Enum({
   /** Exact match (no operator) */
   eq: '',
   /** Less than */

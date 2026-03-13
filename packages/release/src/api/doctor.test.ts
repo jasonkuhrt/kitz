@@ -12,7 +12,7 @@ import {
 } from './doctor.js'
 
 const ruleRef = (id: string, description = 'Test rule') => ({
-  id: RuleId.make(id),
+  id: RuleId.makeUnsafe(id),
   description,
 })
 
@@ -73,17 +73,17 @@ describe('doctor api', () => {
           lifecycle: 'official' as const,
           required: true,
           plannedPackages: 3,
-          report: Report.make({
+          report: new Report({
             results: [
-              Finished.make({
+              new Finished({
                 rule: ruleRef(
                   'env.release-branch-allowed',
                   'active branch is allowed for the planned release lifecycle',
                 ),
                 duration: 2,
-                severity: Severity.Error.make(),
-                violation: Violation.make({
-                  location: Environment.make({
+                severity: new Severity.Error(),
+                violation: new Violation({
+                  location: new Environment({
                     message:
                       'Current branch "feat/release" does not match configured trunk "main".',
                   }),

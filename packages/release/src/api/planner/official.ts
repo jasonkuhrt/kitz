@@ -1,4 +1,4 @@
-import { FileSystem } from '@effect/platform'
+import { FileSystem } from 'effect'
 import { Resource } from '@kitz/resource'
 import { Effect, Option } from 'effect'
 import { buildDependencyGraph } from '../analyzer/cascade.js'
@@ -47,15 +47,15 @@ export const official = (
 
       // Build version union
       const version: OfficialFirst | OfficialIncrement = Option.isSome(impact.currentVersion)
-        ? OfficialIncrement.make({
+        ? new OfficialIncrement({
             from: impact.currentVersion.value,
             to: nextVersion,
             bump: impact.bump,
           })
-        : OfficialFirst.make({ version: nextVersion })
+        : new OfficialFirst({ version: nextVersion })
 
       releases.push(
-        Official.make({
+        new Official({
           package: impact.package,
           version,
           commits: impact.commits,
@@ -69,7 +69,7 @@ export const official = (
       ...analysis.tags,
     ])
 
-    return Plan.make({
+    return new Plan({
       lifecycle: 'official',
       timestamp: new Date().toISOString(),
       releases,

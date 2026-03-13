@@ -1,4 +1,5 @@
-import { Command, CommandExecutor, FileSystem } from '@effect/platform'
+import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
+import { FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
@@ -6,14 +7,14 @@ import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, Inspectable, Layer, Option, Ref, Schema, Sink, Stream } from 'effect'
+import { Effect, Layer, Option, Ref, Schema, Stream } from 'effect'
 import * as Analyzer from '../analyzer/__.js'
 import * as Planner from '../planner/__.js'
 import { makeTestRuntime } from './runtime.js'
 
-const JsonRecordSchema = Schema.Record({ key: Schema.String, value: Schema.Unknown })
-const JsonRecordFromStringSchema = Schema.parseJson(JsonRecordSchema)
-export const decodeJsonRecord = Schema.decodeUnknown(JsonRecordFromStringSchema)
+const JsonRecordSchema = Schema.Record(Schema.String, Schema.Unknown)
+const JsonRecordFromStringSchema = Schema.fromJsonString(JsonRecordSchema)
+export const decodeJsonRecord = Schema.decodeUnknownEffect(JsonRecordFromStringSchema)
 const textEncoder = new TextEncoder()
 
 export const decodeJsonRecordSync = Schema.decodeUnknownSync(JsonRecordFromStringSchema)
@@ -28,92 +29,73 @@ export const makePackageJson = (name: string, version: string, extra?: Record<st
 
 export const tag = (name: Pkg.Moniker.Moniker, version: string) =>
   Pkg.Pin.toString(
-    Pkg.Pin.Exact.make({ name, version: Schema.decodeUnknownSync(Semver.Schema)(version) }),
+    new Pkg.Pin.Exact({ name, version: Schema.decodeUnknownSync(Semver.Schema)(version) }),
   )
 
 const slugPackageName = (packageName: string): string =>
   packageName.replace(/^@/u, '').replace(/\//gu, '-')
 
-const makeProcess = (stdout: string, exitCode: number): CommandExecutor.Process => ({
-  [CommandExecutor.ProcessTypeId]: CommandExecutor.ProcessTypeId,
-  pid: CommandExecutor.ProcessId(1),
-  exitCode: Effect.succeed(CommandExecutor.ExitCode(exitCode)),
-  isRunning: Effect.succeed(false),
-  kill: () => Effect.void,
-  stderr: Stream.empty,
-  stdin: Sink.drain,
-  stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
-  toJSON: () => ({ _tag: 'MockProcess', pid: 1, exitCode }),
-  [Inspectable.NodeInspectSymbol]() {
-    return this.toJSON()
-  },
-})
+const makeHandle = (stdout: string, exitCode: number): ChildProcessSpawner.ChildProcessHandle =>
+  ChildProcessSpawner.makeHandle({
+    pid: ChildProcessSpawner.ProcessId(1),
+    exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(exitCode)),
+    isRunning: Effect.succeed(false),
+    kill: () => Effect.void,
+    stderr: Stream.empty,
+    stdin: Effect.void as any,
+    stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
+    all: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
+    getInputFd: () => Effect.void as any,
+    getOutputFd: () => Stream.empty,
+  })
 
-export const makeMockCommandExecutorLayer = (whoamiUsername: string) => {
-  const runString = (command: Command.Command) => {
-    const standard = Command.flatten(command)[0]
-    if (standard?.command === 'npm' && standard.args?.[0] === 'whoami') {
-      return Effect.succeed(`${whoamiUsername}\n`)
+export const makeMockSpawnerLayer = (whoamiUsername: string) => {
+  const spawner = ChildProcessSpawner.make((command) => {
+    const standard = ChildProcess.isStandardCommand(command) ? command : undefined
+    if (!standard) {
+      return Effect.die('Unexpected piped command in mock spawner') as any
     }
-    return Effect.die(`Unexpected command in mock executor: ${standard?.command ?? 'unknown'}`)
-  }
 
-  const executor: CommandExecutor.CommandExecutor = {
-    [CommandExecutor.TypeId]: CommandExecutor.TypeId,
-    exitCode: () => Effect.succeed(CommandExecutor.ExitCode(0)),
-    start: (command) => {
-      const standard = Command.flatten(command)[0]
-      if (
-        standard?.command === 'npm' &&
-        standard.args?.[0] === '--silent' &&
-        standard.args?.[1] === 'view'
-      ) {
-        const spec = standard.args?.[2]
-        const version =
-          typeof spec === 'string'
-            ? Schema.decodeUnknownOption(Pkg.Pin.Exact.FromString)(spec).pipe(
-                Option.map((pin) => Semver.toString(pin.version)),
-                Option.getOrUndefined,
-              )
-            : undefined
-        return Effect.succeed(
-          version === '9.9.9'
-            ? makeProcess(`"${version}"\n`, 0)
-            : makeProcess(
-                JSON.stringify(
-                  {
-                    error: {
-                      code: 'E404',
-                      summary: `No match found for version ${version ?? 'unknown'}`,
-                    },
+    const args = standard.args
+
+    // npm whoami
+    if (standard.command === 'npm' && args?.[0] === 'whoami') {
+      return Effect.succeed(makeHandle(`${whoamiUsername}\n`, 0))
+    }
+
+    // npm view
+    if (standard.command === 'npm' && args?.[0] === '--silent' && args?.[1] === 'view') {
+      const spec = args?.[2]
+      const version =
+        typeof spec === 'string'
+          ? Schema.decodeUnknownOption(Pkg.Pin.Exact.FromString)(spec).pipe(
+              Option.map((pin) => Semver.toString(pin.version)),
+              Option.getOrUndefined,
+            )
+          : undefined
+      return Effect.succeed(
+        version === '9.9.9'
+          ? makeHandle(`"${version}"\n`, 0)
+          : makeHandle(
+              JSON.stringify(
+                {
+                  error: {
+                    code: 'E404',
+                    summary: `No match found for version ${version ?? 'unknown'}`,
                   },
-                  null,
-                  2,
-                ) + '\n',
-                1,
-              ),
-        ) as any
-      }
+                },
+                null,
+                2,
+              ) + '\n',
+              1,
+            ),
+      )
+    }
 
-      return Effect.die(
-        `Unexpected command in mock executor: ${standard?.command ?? 'unknown'}`,
-      ) as any
-    },
-    string: runString,
-    lines: (command) =>
-      runString(command).pipe(
-        Effect.map((output) =>
-          output
-            .trim()
-            .split('\n')
-            .filter((line) => line.length > 0),
-        ),
-      ),
-    stream: () => Stream.empty,
-    streamLines: () => Stream.empty,
-  }
+    return Effect.die(`Unexpected command in mock spawner: ${standard.command}`) as any
+  })
 
-  return Layer.succeed(CommandExecutor.CommandExecutor, executor)
+  return Layer.succeed(ChildProcessSpawner.ChildProcessSpawner, spawner)
 }
 
 export interface PackCall {
@@ -266,7 +248,7 @@ export const makeHarness = (options: {
       }),
     ).pipe(Layer.provide(planLayer))
 
-    const commandLayer = makeMockCommandExecutorLayer(options.whoamiUsername ?? 'mock-user')
+    const commandLayer = makeMockSpawnerLayer(options.whoamiUsername ?? 'mock-user')
     const runtimeLayer = options.runtimeLayer ?? makeTestRuntime()
 
     const workflowLayer = Layer.mergeAll(

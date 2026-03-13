@@ -1,5 +1,5 @@
-import { FileSystem } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { FileSystem } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
@@ -57,7 +57,7 @@ const detectFromEnvironment = Effect.gen(function* () {
   const byUserAgent = parseUserAgent(env.vars['npm_config_user_agent'])
   if (Option.isSome(byUserAgent)) {
     return Option.some(
-      DetectedPackageManager.make({
+      new DetectedPackageManager({
         name: byUserAgent.value,
         source: 'user-agent',
       }),
@@ -67,7 +67,7 @@ const detectFromEnvironment = Effect.gen(function* () {
   const byExecPath = parseExecPath(env.vars['npm_execpath'])
   if (Option.isSome(byExecPath)) {
     return Option.some(
-      DetectedPackageManager.make({
+      new DetectedPackageManager({
         name: byExecPath.value,
         source: 'exec-path',
       }),
@@ -91,7 +91,7 @@ const locateFromManifestOrLockfile = (
         const manifestManager = parsePackageManagerName(manifest.value.packageManager)
         if (Option.isSome(manifestManager)) {
           return Option.some(
-            DetectedPackageManager.make({
+            new DetectedPackageManager({
               name: manifestManager.value,
               source: 'manifest',
             }),
@@ -104,7 +104,7 @@ const locateFromManifestOrLockfile = (
         const exists = yield* fs.exists(Fs.Path.toString(lockfile))
         if (exists) {
           return Option.some(
-            DetectedPackageManager.make({
+            new DetectedPackageManager({
               name: manager,
               source: 'lockfile',
             }),
@@ -146,13 +146,13 @@ export const detect = (options?: {
     if (Option.isSome(fromProject)) return fromProject.value
 
     if (env.platform === 'bun') {
-      return DetectedPackageManager.make({
+      return new DetectedPackageManager({
         name: 'bun',
         source: 'runtime',
       })
     }
 
-    return DetectedPackageManager.make({
+    return new DetectedPackageManager({
       name: 'unknown',
       source: 'unknown',
     })

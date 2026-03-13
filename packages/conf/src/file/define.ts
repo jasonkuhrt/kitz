@@ -4,7 +4,7 @@ import type { Schema } from 'effect'
 /**
  * Options for defining a config file.
  */
-export interface DefineOptions<S extends Schema.Schema.AnyNoContext> {
+export interface DefineOptions<S extends Schema.Top> {
   /** Name of the config (e.g., 'release'). Used to derive file patterns. */
   name: string
   /** Schema for validating the config. */
@@ -40,7 +40,7 @@ export interface DefineOptions<S extends Schema.Schema.AnyNoContext> {
 /**
  * Resolved config definition with all options normalized.
  */
-export interface ConfigDefinition<S extends Schema.Schema.AnyNoContext> {
+export interface ConfigDefinition<S extends Schema.Top> {
   /** Name of the config. */
   readonly name: string
   /** Schema for validating the config. */
@@ -98,9 +98,7 @@ const resolvePackageJson = (
  * })
  * ```
  */
-export const define = <S extends Schema.Schema.AnyNoContext>(
-  options: DefineOptions<S>,
-): ConfigDefinition<S> => {
+export const define = <S extends Schema.Top>(options: DefineOptions<S>): ConfigDefinition<S> => {
   const { name, schema, extensions = DEFAULT_EXTENSIONS, importFn } = options
 
   return {

@@ -19,9 +19,9 @@ const isNoReleaseFacet = (facet: ConventionalCommits.Commit.Facet): boolean =>
 
 /** Verifies that no-release PR types are not used for source changes. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('pr.type.release-kind-match-diff'),
+  id: RuleId.makeUnsafe('pr.type.release-kind-match-diff'),
   description: 'No-release type cannot have src changes',
-  preconditions: [Precondition.HasOpenPR.make(), Precondition.HasDiff.make()],
+  preconditions: [new Precondition.HasOpenPR(), new Precondition.HasDiff()],
   check: Effect.gen(function* () {
     const pr = yield* PrService
     const diff = yield* DiffService
@@ -44,35 +44,35 @@ export const rule = RuntimeRule.create({
           ? `${changedPaths}, and ${String(srcChanges.length - 3)} more`
           : changedPaths
 
-      return Violation.make({
-        location: PrTitle.make({ title: pr.title }),
+      return new Violation({
+        location: new PrTitle({ title: pr.title }),
         summary:
           'PR title uses a no-release kind, but src changes require a release-triggering header.',
         detail:
           `This PR changes source files (${changedSummary}), so squash merge should use a release-triggering header ` +
           'such as `feat`, `fix`, or a breaking change. As written, the PR title advertises that no release should happen.',
-        fix: CommandFix.make({
+        fix: new CommandFix({
           summary: 'Rewrite the PR title header to the canonical release header.',
           command: 'release pr title apply',
           docs: [
-            DocLink.make({
+            new DocLink({
               label: 'Conventional Commits',
               url: 'https://www.conventionalcommits.org/en/v1.0.0/',
             }),
           ],
         }),
         hints: [
-          Hint.make({
+          new Hint({
             description:
               'If the source changes are intentional and release-worthy, use `release pr title apply` to align the PR title with the computed release header.',
           }),
-          Hint.make({
+          new Hint({
             description:
               'If these changes truly should not release, move the non-release edits out of `src/` or split the work into separate PRs.',
           }),
         ],
         docs: [
-          DocLink.make({
+          new DocLink({
             label: 'Conventional Commits',
             url: 'https://www.conventionalcommits.org/en/v1.0.0/',
           }),

@@ -21,7 +21,7 @@ import { RelFile } from '../RelFile/_.js'
  * })
  * ```
  */
-export const Schema = S.Union(AbsFile.Schema, RelFile.Schema).annotations({
+export const Schema = S.Union([AbsFile.Schema, RelFile.Schema]).annotate({
   identifier: '$File',
 })
 

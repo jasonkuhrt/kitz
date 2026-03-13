@@ -17,12 +17,12 @@ interface Metadata {
 
 /** Verifies that npm CLI is authenticated (can run `npm whoami`). */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('env.npm-authenticated'),
+  id: RuleId.makeUnsafe('env.npm-authenticated'),
   description: 'npm auth is configured (npm whoami succeeds)',
   preventsDescriptions: [
     'npm publish failing because your npm session or token is missing, expired, or scoped incorrectly',
   ],
-  defaults: RuleDefaults.make({ enabled: false }),
+  defaults: new RuleDefaults({ enabled: false }),
   preconditions: [],
   optionsSchema: OptionsSchema,
   check: Effect.gen(function* () {
@@ -31,10 +31,10 @@ export const rule = RuntimeRule.create({
 
     const result = yield* NpmRegistry.Cli.whoami(whoamiOptions).pipe(
       Effect.map((username) => ({ metadata: { username } })),
-      Effect.catchAll((error) =>
+      Effect.catch((error: any) =>
         Effect.succeed({
-          violation: Violation.make({
-            location: Environment.make({
+          violation: new Violation({
+            location: new Environment({
               message:
                 (error.context.detail ?? 'npm auth failed') +
                 '. Run `npm login` or set NPM_TOKEN in your environment.',
@@ -44,54 +44,54 @@ export const rule = RuntimeRule.create({
               'Manual and token-based release paths still rely on npm CLI auth. ' +
               'If `npm whoami` fails here, `npm publish` will fail later after release planning is already complete. ' +
               'Even after login, publish can still fail if the authenticated account lacks write access to the target package or scope, or if npm requires an additional write-time auth step.',
-            fix: GuideFix.make({
+            fix: new GuideFix({
               summary: 'Sign this machine into npm and re-run the auth check.',
               steps: [
-                FixStep.make({
+                new FixStep({
                   description: 'Open the npm login docs to confirm the current CLI flow.',
                 }),
-                FixStep.make({
+                new FixStep({
                   description:
                     'Run `npm login` in this shell and complete the browser or terminal prompts.',
                 }),
-                FixStep.make({
+                new FixStep({
                   description: 'Verify the session with `npm whoami`.',
                 }),
-                FixStep.make({
+                new FixStep({
                   description: 'Re-run `release doctor --onlyRule env.npm-authenticated`.',
                 }),
-                FixStep.make({
+                new FixStep({
                   description:
                     'If `npm whoami` passes but publish still fails, verify scope ownership, package write access, and any write-time 2FA requirement on the npm account.',
                 }),
               ],
               docs: [
-                DocLink.make({
+                new DocLink({
                   label: 'npm login',
                   url: 'https://docs.npmjs.com/cli/v11/commands/npm-login',
                 }),
-                DocLink.make({
+                new DocLink({
                   label: 'npm access',
                   url: 'https://docs.npmjs.com/cli/v11/commands/npm-access',
                 }),
-                DocLink.make({
+                new DocLink({
                   label: 'npm two-factor authentication',
                   url: 'https://docs.npmjs.com/configuring-two-factor-authentication/',
                 }),
               ],
             }),
             hints: [
-              Hint.make({
+              new Hint({
                 description:
                   'For CI, either export an npm token or switch the lifecycle to github-trusted publishing.',
               }),
-              Hint.make({
+              new Hint({
                 description:
                   'If `npm whoami` starts passing but publish still fails, check npm package ownership or org membership for the target scope and any write-time 2FA policy on the account.',
               }),
             ],
             docs: [
-              DocLink.make({
+              new DocLink({
                 label: 'npm CI/CD auth guidance',
                 url: 'https://docs.npmjs.com/using-private-packages-in-a-ci-cd-workflow/',
               }),
