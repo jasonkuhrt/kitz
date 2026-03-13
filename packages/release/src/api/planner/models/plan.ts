@@ -16,7 +16,7 @@ export class Plan extends S.TaggedClass<Plan>()('Plan', {
   cascades: S.Array(ItemSchema),
 }) {
   static make = this.makeUnsafe
-  static is = S.is(Plan as any) as (u: unknown) => u is Plan
+  static is = S.is(Plan)
 
   /**
    * Empty plan for resource initialization.

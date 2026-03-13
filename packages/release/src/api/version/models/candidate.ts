@@ -20,7 +20,7 @@ export class Candidate extends S.TaggedClass<Candidate>()('Candidate', {
   iteration: S.Number.pipe(S.check(S.isGreaterThan(0), S.isInt())),
 }) {
   static make = this.makeUnsafe
-  static is = S.is(Candidate as any) as (u: unknown) => u is Candidate
+  static is = S.is(Candidate)
 
   /** Compute candidate version: baseVersion-next.N */
   static calculateVersion(base: Semver.Semver, iteration: number): Semver.Semver {
@@ -65,14 +65,13 @@ export const makeCandidate = (iteration: number): Candidate => Candidate.make({ 
 /**
  * Parse a candidate prerelease string.
  */
-export const parseCandidate = (value: string): Candidate =>
-  S.decodeSync(CandidateSchema as any)(value) as Candidate
+export const parseCandidate = (value: string): Candidate => S.decodeSync(CandidateSchema)(value)
 
 /**
  * Encode a Candidate to string.
  */
 export const encodeCandidate = (candidate: Candidate): string =>
-  S.encodeSync(CandidateSchema as any)(candidate) as string
+  S.encodeSync(CandidateSchema)(candidate)
 
 /**
  * Calculate the next iteration for a candidate prerelease.

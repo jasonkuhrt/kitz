@@ -70,7 +70,7 @@ const SYNTHETIC_SHA = Git.Sha.make('0000000')
 /**
  * Synthetic author for synthetic commits.
  */
-const SYNTHETIC_AUTHOR = new Git.Author({ name: 'Release', email: 'release@local' })
+const SYNTHETIC_AUTHOR = Git.Author.make({ name: 'Release', email: 'release@local' })
 
 /**
  * Create a synthetic ReleaseCommit for cascade releases.
@@ -79,7 +79,7 @@ const SYNTHETIC_AUTHOR = new Git.Author({ name: 'Release', email: 'release@local
  * not direct commit changes.
  */
 export const makeCascadeCommit = (scope: string, description: string): ReleaseCommit =>
-  new (ReleaseCommit as any)({
+  ReleaseCommit.make({
     hash: SYNTHETIC_SHA,
     author: SYNTHETIC_AUTHOR,
     date: new Date(),
@@ -91,4 +91,4 @@ export const makeCascadeCommit = (scope: string, description: string): ReleaseCo
       body: Option.none(),
       footers: [],
     }),
-  }) as ReleaseCommit
+  })

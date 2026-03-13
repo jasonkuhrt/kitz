@@ -10,5 +10,5 @@ export class OfficialFirst extends S.TaggedClass<OfficialFirst>()('OfficialFirst
   version: SemverSchema,
 }) {
   static make = this.makeUnsafe
-  static is = S.is(OfficialFirst as any) as (u: unknown) => u is OfficialFirst
+  static is = S.is(OfficialFirst)
 }

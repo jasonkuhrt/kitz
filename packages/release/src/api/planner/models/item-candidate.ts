@@ -15,7 +15,7 @@ export class Candidate extends S.TaggedClass<Candidate>()('Candidate', {
   prerelease: Version.Candidate,
 }) {
   static make = this.makeUnsafe
-  static is = S.is(Candidate as any) as (u: unknown) => u is Candidate
+  static is = S.is(Candidate)
 
   get nextVersion(): Semver.Semver {
     return Semver.withPre(this.baseVersion, ['next', this.prerelease.iteration])

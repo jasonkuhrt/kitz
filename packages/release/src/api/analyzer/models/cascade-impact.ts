@@ -17,5 +17,5 @@ export class CascadeImpact extends S.TaggedClass<CascadeImpact>()('CascadeImpact
   currentVersion: CurrentVersionSchema,
 }) {
   static make = this.makeUnsafe
-  static is = S.is(CascadeImpact as any) as (u: unknown) => u is CascadeImpact
+  static is = S.is(CascadeImpact)
 }

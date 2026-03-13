@@ -52,12 +52,12 @@ export const extractImpacts = (gitCommit: Git.Commit): Effect.Effect<CommitImpac
     }
 
     const parsedCC = parseResult.success
-    const releaseCommit = new (ReleaseCommit as any)({
+    const releaseCommit = ReleaseCommit.make({
       hash: gitCommit.hash,
       author: gitCommit.author,
       date: gitCommit.date,
       message: parsedCC,
-    }) as ReleaseCommit
+    })
     const impacts: CommitImpact[] = []
 
     if (ConventionalCommits.Commit.Single.is(parsedCC)) {
@@ -159,9 +159,7 @@ export const findLatestCandidateNumber = (
     const prerelease = Semver.getPrerelease(parsed.value.version)
     if (!prerelease) continue
 
-    const decoded = S.decodeUnknownOption(CandidateSchema as any)(
-      prerelease.join('.'),
-    ) as Option.Option<Candidate>
+    const decoded = S.decodeUnknownOption(CandidateSchema)(prerelease.join('.'))
     if (Option.isSome(decoded) && decoded.value.iteration > highest) {
       highest = decoded.value.iteration
     }
@@ -192,9 +190,7 @@ export const findLatestEphemeralNumber = (
     const prerelease = Semver.getPrerelease(parsed.value.version)
     if (!prerelease) continue
 
-    const decoded = S.decodeUnknownOption(EphemeralSchema as any)(
-      prerelease.join('.'),
-    ) as Option.Option<Ephemeral>
+    const decoded = S.decodeUnknownOption(EphemeralSchema)(prerelease.join('.'))
     if (
       Option.isSome(decoded) &&
       decoded.value.prNumber === prNumber &&

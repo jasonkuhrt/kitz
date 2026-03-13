@@ -14,7 +14,7 @@ export class OfficialIncrement extends S.TaggedClass<OfficialIncrement>()('Offic
   bump: Semver.BumpType,
 }) {
   static make = this.makeUnsafe
-  static is = S.is(OfficialIncrement as any) as (u: unknown) => u is OfficialIncrement
+  static is = S.is(OfficialIncrement)
 
   static fromImpact(current: Semver.Semver, bump: Semver.BumpType): OfficialIncrement {
     return OfficialIncrement.make({

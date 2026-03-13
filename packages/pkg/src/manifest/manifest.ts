@@ -72,7 +72,7 @@ class ManifestClass extends S.Class<ManifestClass>('Manifest')({
    * Useful when you need to perform multiple mutations efficiently.
    */
   toMutable(): ManifestMutable {
-    // oxlint-disable-next-line kitz/no-json-parse -- deep clone, not IO parsing
+    // oxlint-disable-next-line kitz/schema/no-json-parse -- deep clone, not IO parsing
     return JSON.parse(JSON.stringify(this)) as ManifestMutable
   }
 }
@@ -87,8 +87,6 @@ export type Manifest = ManifestClass
  * so we skip creating a dedicated mutable schema. The `toMutable()` method on
  * ManifestClass uses JSON round-trip instead.
  */
-// export const ManifestSchemaMutable = S.mutable(Manifest as any)
-
 export const ManifestSchemaImmutable = Manifest
 
 /**
@@ -125,7 +123,7 @@ export const emptyManifest = S.decodeSync(Manifest)({})
  */
 export const resource: Resource.Resource<Manifest> = Resource.createJson(
   'package.json',
-  Manifest as any,
+  Manifest,
   emptyManifest,
   { preserveExcessProperties: true },
 )

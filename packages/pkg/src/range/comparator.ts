@@ -14,7 +14,7 @@ class ComparatorClass extends S.Class<ComparatorClass>('PkgRangeComparator')({
   version: SemverSelf,
 }) {
   static make = this.makeUnsafe
-  static is = S.is(ComparatorClass as any) as (value: unknown) => value is ComparatorClass
+  static is = S.is(ComparatorClass)
 
   static Schema = S.String.pipe(
     S.decodeTo(ComparatorClass, {

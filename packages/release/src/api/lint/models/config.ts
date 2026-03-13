@@ -15,7 +15,7 @@ export class RuleConfig extends Schema.TaggedClass<RuleConfig>()('RuleConfig', {
   options: Schema.Record(Schema.String, Schema.Unknown),
 }) {
   static make = this.makeUnsafe
-  static is = Schema.is(RuleConfig as any) as (u: unknown) => u is RuleConfig
+  static is = Schema.is(RuleConfig)
 }
 
 /** User configuration for lint. */
@@ -40,7 +40,7 @@ export class ResolvedRuleDefaults extends Schema.TaggedClass<ResolvedRuleDefault
   },
 ) {
   static make = this.makeUnsafe
-  static is = Schema.is(ResolvedRuleDefaults as any) as (u: unknown) => u is ResolvedRuleDefaults
+  static is = Schema.is(ResolvedRuleDefaults)
 }
 
 /** Resolved (normalized) rule config. */
@@ -52,7 +52,7 @@ export class ResolvedRuleConfig extends Schema.TaggedClass<ResolvedRuleConfig>()
   },
 ) {
   static make = this.makeUnsafe
-  static is = Schema.is(ResolvedRuleConfig as any) as (u: unknown) => u is ResolvedRuleConfig
+  static is = Schema.is(ResolvedRuleConfig)
 }
 
 /** Resolved (normalized) configuration. */
@@ -65,7 +65,7 @@ export class ResolvedConfig extends Schema.TaggedClass<ResolvedConfig>()('Resolv
   skipRules: Schema.optional(Schema.Array(Schema.String)),
 }) {
   static make = this.makeUnsafe
-  static is = Schema.is(ResolvedConfig as any) as (u: unknown) => u is ResolvedConfig
+  static is = Schema.is(ResolvedConfig)
 }
 
 /** System defaults. */

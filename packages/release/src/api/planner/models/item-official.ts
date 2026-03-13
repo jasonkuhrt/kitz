@@ -24,7 +24,7 @@ export class Official extends S.TaggedClass<Official>()('Official', {
   version: S.Union([OfficialFirst, OfficialIncrement]),
 }) {
   static make = this.makeUnsafe
-  static is = S.is(Official as any) as (u: unknown) => u is Official
+  static is = S.is(Official)
 
   /** The version this release will produce. Extracts `to` from increments, `version` from firsts. */
   get nextVersion(): Semver.Semver {

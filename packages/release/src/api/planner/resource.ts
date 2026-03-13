@@ -31,4 +31,4 @@ export const PLAN_FILE = Fs.Path.fromString('./.release/plan.json')
  * }
  * ```
  */
-export const resource = Resource.createJson('plan.json', Plan as any, Plan.empty)
+export const resource = Resource.createJson('plan.json', Plan, Plan.empty)

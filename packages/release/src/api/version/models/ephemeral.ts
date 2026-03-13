@@ -23,7 +23,7 @@ export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
   sha: Git.Sha.Sha,
 }) {
   static make = this.makeUnsafe
-  static is = S.is(Ephemeral as any) as (u: unknown) => u is Ephemeral
+  static is = S.is(Ephemeral)
 
   /** Compute ephemeral version: 0.0.0-pr.N.iter.sha */
   static calculateVersion(prNumber: number, iteration: number, sha: Git.Sha.Sha): Semver.Semver {
@@ -71,14 +71,12 @@ export const makeEphemeral = (prNumber: number, iteration: number, sha: Git.Sha.
 /**
  * Parse an ephemeral prerelease string.
  */
-export const parseEphemeral = (value: string): Ephemeral =>
-  S.decodeSync(EphemeralSchema as any)(value) as Ephemeral
+export const parseEphemeral = (value: string): Ephemeral => S.decodeSync(EphemeralSchema)(value)
 
 /**
  * Encode an Ephemeral to string.
  */
-export const encodeEphemeral = (eph: Ephemeral): string =>
-  S.encodeSync(EphemeralSchema as any)(eph) as string
+export const encodeEphemeral = (eph: Ephemeral): string => S.encodeSync(EphemeralSchema)(eph)
 
 /**
  * Calculate the next iteration for an ephemeral prerelease.

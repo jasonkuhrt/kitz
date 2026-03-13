@@ -46,7 +46,7 @@ export class Config extends Schema.Class<Config>('Config')({
   /** Declares how each lifecycle is published. */
   publishing: Publishing.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => defaultPublishing() as any),
+    Schema.withDecodingDefaultKey(() => ({})),
   ),
   /** Operator-facing command surface for local guidance and runbooks. */
   operator: Operator.pipe(Schema.optionalKey, Schema.withDecodingDefaultKey(defaultOperator)),

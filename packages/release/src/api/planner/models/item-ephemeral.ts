@@ -12,7 +12,7 @@ export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
   prerelease: Version.Ephemeral,
 }) {
   static make = this.makeUnsafe
-  static is = S.is(Ephemeral as any) as (u: unknown) => u is Ephemeral
+  static is = S.is(Ephemeral)
 
   get nextVersion(): Semver.Semver {
     return Semver.withPre(Semver.zero, [
