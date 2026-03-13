@@ -350,6 +350,16 @@
         "zod": "^4.2.1",
       },
     },
+    "packages/oxlint-rules": {
+      "name": "@kitz/oxlint-rules",
+      "version": "0.0.0-kitz-release",
+      "dependencies": {
+        "effect": "^3.19.13",
+      },
+      "peerDependencies": {
+        "oxlint": "^1.34.0",
+      },
+    },
     "packages/paka": {
       "name": "@kitz/paka",
       "version": "0.0.0-kitz-release",
@@ -693,6 +703,8 @@
     "@kitz/num": ["@kitz/num@workspace:packages/num"],
 
     "@kitz/oak": ["@kitz/oak@workspace:packages/oak"],
+
+    "@kitz/oxlint-rules": ["@kitz/oxlint-rules@workspace:packages/oxlint-rules"],
 
     "@kitz/paka": ["@kitz/paka@workspace:packages/paka"],
 

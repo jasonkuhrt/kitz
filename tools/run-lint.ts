@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { existsSync } from 'node:fs'
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { extname, join } from 'node:path'
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { spawnSync } from 'node:child_process'
 
 const repoRoot = process.cwd()
@@ -26,7 +26,7 @@ const chunk = <T>(items: readonly T[], size: number): T[][] => {
   return chunks
 }
 
-// oxlint-disable-next-line kitz/no-process-env-outside-config-modules
+// oxlint-disable-next-line kitz/domain/no-process-env
 const env = process.env
 
 const LINTABLE_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.mts', '.cts'])

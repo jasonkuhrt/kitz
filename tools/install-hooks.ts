@@ -1,13 +1,13 @@
 #!/usr/bin/env bun
 
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { existsSync } from 'node:fs'
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { join } from 'node:path'
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { spawnSync } from 'node:child_process'
 
-// oxlint-disable-next-line kitz/no-process-env-outside-config-modules
+// oxlint-disable-next-line kitz/domain/no-process-env
 const env = process.env
 
 const runStatus = (args: readonly string[], cwd: string): number =>

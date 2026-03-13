@@ -1,0 +1,43 @@
+{
+  "name": "@kitz/oxlint-rules",
+  "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
+  "description": "Kitz Oxlint presets and custom rules for agent engineering",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/_.ts",
+    "./__": "./src/__.ts",
+    "./plugin": "./plugin.mjs",
+    "./configs/recommended": "./configs/recommended.json",
+    "./configs/strict": "./configs/strict.json",
+    "./configs/agent-engineering": "./configs/recommended.json",
+    "./configs/agent-engineering-strict": "./configs/strict.json"
+  },
+  "files": [
+    "build",
+    "src",
+    "plugin.mjs",
+    "lib",
+    "rules",
+    "configs"
+  ],
+  "scripts": {
+    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
+    "dev": "tsgo -p tsconfig.build.json --watch",
+    "check:types": "tsgo --noEmit",
+    "check:lint": "oxlint src/ plugin.mjs",
+    "check:package": "publint",
+    "test": "vitest run --root ../.. packages/oxlint-rules/src"
+  },
+  "dependencies": {
+    "effect": "^3.19.13"
+  },
+  "peerDependencies": {
+    "oxlint": "^1.34.0"
+  }
+}

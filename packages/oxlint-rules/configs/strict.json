@@ -1,23 +1,13 @@
 {
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "extends": ["./.oxlintrc.json"],
-  "ignorePatterns": [
-    "**/build/**",
-    "**/node_modules/**",
-    "**/*.d.ts",
-    "**/__examples/**",
-    "tools/oxlint-custom-rules/tests/fixtures/**"
-  ],
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/refs/heads/main/npm/oxlint/configuration_schema.json",
+  "extends": ["./recommended.json"],
   "rules": {
     "kitz/schema/no-json-parse": "error",
-    "kitz/error/no-try-catch": "off",
     "kitz/effect/no-native-promise-construction": "error",
-    "kitz/ts/no-type-assertion": "off",
-    "typescript/no-unsafe-type-assertion": "off",
     "kitz/domain/no-native-map-set": "error",
+    "kitz/module/no-nodejs-builtins": "error",
     "kitz/module/resolver-platform-dispatch": "error",
     "kitz/schema/schema-parsing-contract": "error",
-    "kitz/error/no-throw": "off",
     "kitz/effect/no-promise-then-chain": "error",
     "kitz/effect/no-effect-run-in-library-code": "error",
     "kitz/error/require-typed-effect-errors": "error",
@@ -35,12 +25,6 @@
     "kitz/module/subpath-imports-integrity": [
       "error",
       { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }
-    ],
-    "kitz/jsdoc/require-on-exports": "off",
-    "kitz/jsdoc/min-words": "off",
-    "kitz/jsdoc/no-name-restate": "off",
-    "kitz/jsdoc/require-example": "off",
-    "kitz/jsdoc/usage-tags": "off",
-    "kitz/jsdoc/no-weasel-words": "off"
+    ]
   }
 }
