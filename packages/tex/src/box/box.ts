@@ -1,6 +1,9 @@
 import { Obj, Str } from '@kitz/core'
-import { ParseResult, Schema as S } from 'effect'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { extractChar, extractStyle } from './ansi.js'
+
+// Mutable versions of Schema.Class types for builder patterns
+type Mutable<T> = { -readonly [K in keyof T]: T[K] }
 import { Clockhand } from './clockhand/_.js'
 import * as PropBorder from './properties/border.js'
 import * as PropGap from './properties/gap.js'
@@ -264,42 +267,36 @@ export type BorderInput = {
 export type BoxContent = string | StyledText | readonly (string | StyledText | Box)[]
 
 // Schema for color input (string like 'red', '#FF0000', or rgb object) - validation only, no transform
-const ColorInputSchema = S.Union(S.String, S.Struct({ r: S.Number, g: S.Number, b: S.Number }))
+const ColorInputSchema = S.Union([S.String, S.Struct({ r: S.Number, g: S.Number, b: S.Number })])
 
 // Schema for ColorTargets (foreground, background, underlineColor)
 const ColorTargetsSchema = S.Struct({
-  foreground: S.optionalWith(ColorInputSchema, { exact: true }),
-  background: S.optionalWith(ColorInputSchema, { exact: true }),
-  underlineColor: S.optionalWith(ColorInputSchema, { exact: true }),
+  foreground: S.optionalKey(ColorInputSchema),
+  background: S.optionalKey(ColorInputSchema),
+  underlineColor: S.optionalKey(ColorInputSchema),
 })
 
 // Schema for StyledText (text + style properties)
 const StyledTextSchema = S.Struct({
   text: S.String,
-  color: S.optionalWith(ColorTargetsSchema, { exact: true }),
-  bold: S.optionalWith(S.Boolean, { exact: true }),
-  dim: S.optionalWith(S.Boolean, { exact: true }),
-  italic: S.optionalWith(S.Boolean, { exact: true }),
-  underline: S.optionalWith(S.Boolean, { exact: true }),
-  strikethrough: S.optionalWith(S.Boolean, { exact: true }),
-  blink: S.optionalWith(S.Boolean, { exact: true }),
-  inverse: S.optionalWith(S.Boolean, { exact: true }),
-  hidden: S.optionalWith(S.Boolean, { exact: true }),
+  color: S.optionalKey(ColorTargetsSchema),
+  bold: S.optionalKey(S.Boolean),
+  dim: S.optionalKey(S.Boolean),
+  italic: S.optionalKey(S.Boolean),
+  underline: S.optionalKey(S.Boolean),
+  strikethrough: S.optionalKey(S.Boolean),
+  blink: S.optionalKey(S.Boolean),
+  inverse: S.optionalKey(S.Boolean),
+  hidden: S.optionalKey(S.Boolean),
 })
 
 // Schema for BoxContent - uses S.suspend() for recursive Box reference
 // Type annotation removed to avoid exactOptionalPropertyTypes conflicts
-const BoxContentSchema = S.Union(
+const BoxContentSchema = S.Union([
   S.String,
   StyledTextSchema,
-  S.Array(
-    S.Union(
-      S.String,
-      StyledTextSchema,
-      S.suspend((): S.Schema<Box> => Box as any),
-    ),
-  ),
-)
+  S.Array(S.Union([S.String, StyledTextSchema, S.suspend((): S.Schema<Box> => Box as any)])),
+])
 
 /**
  * Box structure with content and optional styling.
@@ -311,7 +308,7 @@ export class Box extends S.Class<Box>('Box')({
    * Content of the box - can be a string, styled text, or array of strings/boxes.
    * Defaults to empty string if not provided or undefined.
    */
-  content: S.optionalWith(BoxContentSchema, { default: () => '' }),
+  content: BoxContentSchema.pipe(S.withDecodingDefaultKey(() => '')),
 
   /**
    * Flow direction of the box.
@@ -366,6 +363,7 @@ export class Box extends S.Class<Box>('Box')({
    */
   gap: S.optional(PropGap.Gap),
 }) {
+  static make = this.makeUnsafe
   // Hook storage (private, not part of schema)
   private paddingHooks: Partial<
     Record<keyof PropPadding.Padding, Array<(ctx: any) => number | ((v: number) => number)>>
@@ -512,7 +510,7 @@ export class Box extends S.Class<Box>('Box')({
     }
 
     // Handle object form with possible hooks
-    const staticValues: Partial<S.SimplifyMutable<PropPadding.Padding>> = {}
+    const staticValues: Mutable<Partial<PropPadding.Padding>> = {}
     for (const key of ['mainStart', 'mainEnd', 'crossStart', 'crossEnd'] as const) {
       const value = (padding as any)[key]
       if (value !== undefined) {
@@ -559,7 +557,7 @@ export class Box extends S.Class<Box>('Box')({
     }
 
     // Handle object form with possible hooks
-    const staticValues: Partial<S.SimplifyMutable<PropMargin.Margin>> = {}
+    const staticValues: Mutable<Partial<PropMargin.Margin>> = {}
     for (const key of ['mainStart', 'mainEnd', 'crossStart', 'crossEnd'] as const) {
       const value = (margin as any)[key]
       if (value !== undefined) {
@@ -616,7 +614,7 @@ export class Box extends S.Class<Box>('Box')({
    * ```
    */
   border$(border: BorderInput): this {
-    const staticBorder: S.SimplifyMutable<PropBorder.Border> = {}
+    const staticBorder: Mutable<Partial<PropBorder.Border>> = {}
 
     // Handle style (always static)
     if (border.style) {
@@ -629,7 +627,7 @@ export class Box extends S.Class<Box>('Box')({
       if (typeof border.edges === 'string' || Array.isArray(border.edges)) {
         // Clockhand returns strings or CharStyle - need to extract
         const parsed = Clockhand.parse(border.edges)
-        const staticEdges: Partial<S.SimplifyMutable<PropBorder.BorderEdges>> = {}
+        const staticEdges: Mutable<Partial<PropBorder.BorderEdges>> = {}
         for (const key of ['top', 'right', 'bottom', 'left'] as const) {
           const value = parsed[key]
           if (value !== undefined) {
@@ -642,7 +640,7 @@ export class Box extends S.Class<Box>('Box')({
         staticBorder.edges = staticEdges
       } else {
         // Handle object form with possible hooks or CharStyle
-        const staticEdges: Partial<S.SimplifyMutable<PropBorder.BorderEdges>> = {}
+        const staticEdges: Mutable<Partial<PropBorder.BorderEdges>> = {}
         for (const key of ['top', 'right', 'bottom', 'left'] as const) {
           const value = (border.edges as any)[key]
           if (value !== undefined) {
@@ -672,7 +670,7 @@ export class Box extends S.Class<Box>('Box')({
         // Parse with Clockhand (gives top/right/bottom/left), then remap to corner names
         // Clockwise corners: topLeft, topRight, bottomRight, bottomLeft
         const parsed = Clockhand.parse(border.corners)
-        const staticCorners: Partial<S.SimplifyMutable<PropBorder.BorderCorners>> = {}
+        const staticCorners: Mutable<Partial<PropBorder.BorderCorners>> = {}
         const cornerMap = {
           top: 'topLeft' as const,
           right: 'topRight' as const,
@@ -691,7 +689,7 @@ export class Box extends S.Class<Box>('Box')({
         staticBorder.corners = staticCorners
       } else {
         // Handle object form with possible hooks or CharStyle
-        const staticCorners: Partial<S.SimplifyMutable<PropBorder.BorderCorners>> = {}
+        const staticCorners: Mutable<Partial<PropBorder.BorderCorners>> = {}
         for (const key of ['topLeft', 'topRight', 'bottomRight', 'bottomLeft'] as const) {
           const value = (border.corners as any)[key]
           if (value !== undefined) {
@@ -838,20 +836,24 @@ export const encode = (box: Box): string => {
  * S.decodeSync(String)('...')  // Error!
  * ```
  */
-export const String = S.transformOrFail(Box, S.String, {
-  strict: true,
-  decode: (box) => ParseResult.succeed(render(box as any)),
-  encode: (_input, _options, ast) =>
-    ParseResult.fail(
-      new ParseResult.Forbidden(
-        ast,
-        _input,
-        'Cannot encode string back to Box - decoding is one-way only',
+export const String = Box.pipe(
+  S.decodeTo(S.String, {
+    decode: SchemaGetter.transform((box) => render(box as any)),
+    encode: SchemaGetter.transformOrFail((_input) =>
+      Effect.fail(
+        new SchemaIssue.Forbidden(Option.some(_input), {
+          message: 'Cannot encode string back to Box - decoding is one-way only',
+        }),
       ),
     ),
-})
+  }),
+)
 
-export const makeFromEncoded = S.decodeSync(Box)
+// Box is service-free at runtime; DecodingServices: unknown comes only from
+// the recursive S.suspend(() => Box) type annotation, not real services.
+export const makeFromEncoded = S.decodeSync(
+  Box as unknown as S.Top & { readonly DecodingServices: never },
+) as (input: typeof Box.Encoded) => Box
 
 export type Encoded = typeof Box.Encoded
 
@@ -867,18 +869,15 @@ export type Encoded = typeof Box.Encoded
  * - `corners: '*'` → single char for all corners
  * - `corners: ['a', 'b', 'c', 'd']` → clockwise tuple
  */
-const BorderInput = S.transform(
-  S.Struct({
-    style: S.optional(PropBorder.BorderStyleSchema),
-    edges: S.optional(PropBorder.BorderEdges),
-    corners: S.optional(PropBorder.fromCornerInput),
+const BorderInput = S.Struct({
+  style: S.optional(PropBorder.BorderStyleSchema),
+  edges: S.optional(PropBorder.BorderEdges),
+  corners: S.optional(PropBorder.fromCornerInput),
+}).pipe(
+  S.decodeTo(PropBorder.Border, {
+    decode: SchemaGetter.transform((input) => input as any),
+    encode: SchemaGetter.transform((border) => border as any),
   }),
-  PropBorder.Border,
-  {
-    strict: false,
-    decode: (input) => input as any,
-    encode: (border) => border as any,
-  },
 )
 
 /**
@@ -890,23 +889,20 @@ const BorderInput = S.transform(
  *
  * Encoding is forbidden (one-way transformation).
  */
-const BoxFromInput = S.transform(
-  S.Struct({
-    content: S.optionalWith(BoxContentSchema, { default: () => '' }),
-    orientation: S.optional(PropOrientation.Orientation),
-    span: S.optional(PropSpan.fromInput),
-    spanRange: S.optional(PropSpanRange.SpanRange),
-    padding: S.optional(PropPadding.fromInput),
-    margin: S.optional(PropMargin.fromInput),
-    border: S.optional(BorderInput),
-    gap: S.optional(PropGap.fromInput),
+const BoxFromInput = S.Struct({
+  content: BoxContentSchema.pipe(S.withDecodingDefaultKey(() => '')),
+  orientation: S.optional(PropOrientation.Orientation),
+  span: S.optional(PropSpan.fromInput),
+  spanRange: S.optional(PropSpanRange.SpanRange),
+  padding: S.optional(PropPadding.fromInput),
+  margin: S.optional(PropMargin.fromInput),
+  border: S.optional(BorderInput),
+  gap: S.optional(PropGap.fromInput),
+}).pipe(
+  S.decodeTo(Box, {
+    decode: SchemaGetter.transform((input) => input as any),
+    encode: SchemaGetter.transform((box) => box as any),
   }),
-  Box,
-  {
-    strict: false,
-    decode: (input) => input as any,
-    encode: (box) => box as any,
-  },
 )
 
 /**
@@ -928,7 +924,11 @@ const BoxFromInput = S.transform(
  * })
  * ```
  */
-export const makeFromInput = S.decodeSync(BoxFromInput)
+// BoxFromInput is service-free at runtime; DecodingServices: unknown comes only
+// from the recursive S.suspend(() => Box) type annotation in BoxContentSchema.
+export const makeFromInput = S.decodeSync(
+  BoxFromInput as unknown as S.Top & { readonly DecodingServices: never },
+)
 
 /**
  * Input type for makeFromInput - accepts shorthand forms.

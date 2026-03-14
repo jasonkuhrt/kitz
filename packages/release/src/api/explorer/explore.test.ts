@@ -11,7 +11,7 @@ const runExplore = (
   Effect.runPromise(
     explore().pipe(
       Effect.provide(Layer.mergeAll(Env.Test({ vars }), Git.Memory.make(gitConfig))),
-      Effect.either,
+      Effect.result,
     ),
   )
 
@@ -24,14 +24,14 @@ describe('explore', () => {
       GITHUB_TOKEN: 'token-123',
     })
 
-    expect(result._tag).toBe('Right')
-    if (result._tag === 'Right') {
-      expect(result.right.ci).toEqual({
+    expect(result._tag).toBe('Success')
+    if (result._tag === 'Success') {
+      expect(result.success.ci).toEqual({
         detected: true,
         provider: 'github-actions',
         prNumber: null,
       })
-      expect(result.right.github.target).toEqual({
+      expect(result.success.github.target).toEqual({
         owner: 'kitz-org',
         repo: 'kitz',
         source: 'env:GITHUB_REPOSITORY',
@@ -49,10 +49,10 @@ describe('explore', () => {
       },
     )
 
-    expect(result._tag).toBe('Right')
-    if (result._tag === 'Right') {
-      expect(result.right.ci).toEqual({ detected: false, provider: null, prNumber: null })
-      expect(result.right.github.target).toEqual({
+    expect(result._tag).toBe('Success')
+    if (result._tag === 'Success') {
+      expect(result.success.ci).toEqual({ detected: false, provider: null, prNumber: null })
+      expect(result.success.github.target).toEqual({
         owner: 'jasonkuhrt',
         repo: 'kitz',
         source: 'git:origin',
@@ -71,11 +71,11 @@ describe('explore', () => {
       },
     )
 
-    expect(result._tag).toBe('Right')
-    if (result._tag === 'Right') {
-      expect(result.right.github.target!.source).toBe('env:GITHUB_REPOSITORY')
-      expect(result.right.github.target!.owner).toBe('kitz-org')
-      expect(result.right.github.target!.repo).toBe('kitz')
+    expect(result._tag).toBe('Success')
+    if (result._tag === 'Success') {
+      expect(result.success.github.target!.source).toBe('env:GITHUB_REPOSITORY')
+      expect(result.success.github.target!.owner).toBe('kitz-org')
+      expect(result.success.github.target!.repo).toBe('kitz')
     }
   })
 
@@ -84,14 +84,14 @@ describe('explore', () => {
       GITHUB_REPOSITORY: 'kitz-org/kitz',
     })
 
-    expect(result._tag).toBe('Right')
-    if (result._tag === 'Right') {
-      expect(result.right.github.target).toEqual({
+    expect(result._tag).toBe('Success')
+    if (result._tag === 'Success') {
+      expect(result.success.github.target).toEqual({
         owner: 'kitz-org',
         repo: 'kitz',
         source: 'env:GITHUB_REPOSITORY',
       })
-      expect(result.right.github.credentials).toBeNull()
+      expect(result.success.github.credentials).toBeNull()
     }
   })
 
@@ -101,10 +101,10 @@ describe('explore', () => {
       GITHUB_TOKEN: 'token-123',
     })
 
-    expect(result._tag).toBe('Left')
-    if (result._tag === 'Left') {
-      expect(result.left._tag).toBe('ExplorerError')
-      expect(result.left.context.detail).toContain('Invalid GITHUB_REPOSITORY format')
+    expect(result._tag).toBe('Failure')
+    if (result._tag === 'Failure') {
+      expect(result.failure._tag).toBe('ExplorerError')
+      expect(result.failure.context.detail).toContain('Invalid GITHUB_REPOSITORY format')
     }
   })
 
@@ -118,10 +118,10 @@ describe('explore', () => {
       },
     )
 
-    expect(result._tag).toBe('Left')
-    if (result._tag === 'Left') {
-      expect(result.left._tag).toBe('ExplorerError')
-      expect(result.left.context.detail).toContain(
+    expect(result._tag).toBe('Failure')
+    if (result._tag === 'Failure') {
+      expect(result.failure._tag).toBe('ExplorerError')
+      expect(result.failure.context.detail).toContain(
         'Could not resolve GitHub repository from origin remote',
       )
     }

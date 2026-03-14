@@ -33,8 +33,8 @@
  * ```
  */
 
-import { Activity, Workflow as EffectWorkflow } from '@effect/workflow'
-import { WorkflowEngine } from '@effect/workflow'
+import { Activity, Workflow as EffectWorkflow } from 'effect/unstable/workflow'
+import { WorkflowEngine } from 'effect/unstable/workflow'
 import { Cause, Clock, Effect, Exit, Fiber, Graph, Option, PubSub, Schema, Stream } from 'effect'
 import { Activity as ActivityModel, Workflow as WorkflowModel } from '../models/__.js'
 import { type LifecycleEvent, WorkflowEvents } from '../observable/__.js'
@@ -280,9 +280,9 @@ export interface WorkflowConfig<Name extends string, Payload, Result, Error> {
   /** Unique name for the workflow */
   readonly name: Name
   /** Schema for the workflow payload */
-  readonly payload: Schema.Schema<Payload, any>
+  readonly payload: Schema.Codec<Payload, any>
   /** Schema for workflow errors */
-  readonly error?: Schema.Schema<Error, any> | undefined
+  readonly error?: Schema.Codec<Error, any> | undefined
   /** Compute idempotency key from payload (for durability) */
   readonly idempotencyKey?: ((payload: Payload) => string) | undefined
   /**
@@ -439,7 +439,8 @@ export const make = <Name extends string, Payload, Result, Error>(
 
             // Emit start event
             if (Option.isSome(maybePubsub)) {
-              yield* maybePubsub.value.publish(
+              yield* PubSub.publish(
+                maybePubsub.value,
                 ActivityModel.Started.make({
                   activity: nodeName,
                   timestamp: new Date(),
@@ -459,8 +460,8 @@ export const make = <Name extends string, Payload, Result, Error>(
 
             // Build the effect to run (with optional retry)
             const activityEffect = nodeDef.retry
-              ? activity.pipe(Activity.retry({ times: nodeDef.retry.times }))
-              : activity
+              ? activity.asEffect().pipe(Activity.retry({ times: nodeDef.retry.times }))
+              : activity.asEffect()
 
             return yield* activityEffect.pipe(
               Effect.matchEffect({
@@ -471,7 +472,8 @@ export const make = <Name extends string, Payload, Result, Error>(
                     // Emit completion event
                     if (Option.isSome(maybePubsub)) {
                       const durationMs = (yield* Clock.currentTimeMillis) - startTime
-                      yield* maybePubsub.value.publish(
+                      yield* PubSub.publish(
+                        maybePubsub.value,
                         ActivityModel.Completed.make({
                           activity: nodeName,
                           timestamp: new Date(),
@@ -488,7 +490,8 @@ export const make = <Name extends string, Payload, Result, Error>(
                     // Emit failure event
                     if (Option.isSome(maybePubsub)) {
                       const errorMessage = error instanceof Error ? error.message : String(error)
-                      yield* maybePubsub.value.publish(
+                      yield* PubSub.publish(
+                        maybePubsub.value,
                         ActivityModel.Failed.make({
                           activity: nodeName,
                           timestamp: new Date(),
@@ -524,7 +527,7 @@ export const make = <Name extends string, Payload, Result, Error>(
       const fromSuspended = (result: { readonly cause?: Cause.Cause<never> | undefined }) =>
         result.cause
           ? Effect.fail(Cause.squash(result.cause) as Error extends never ? never : Error)
-          : Effect.dieMessage(`${config.name} suspended without a failure cause`)
+          : Effect.die(`${config.name} suspended without a failure cause`)
       const waitForTerminalResult = () =>
         Effect.gen(function* () {
           while (true) {
@@ -543,7 +546,9 @@ export const make = <Name extends string, Payload, Result, Error>(
         }) as Effect.Effect<UnwrapHandles<Result>, Error, WorkflowEngine.WorkflowEngine>
 
       if (existing === undefined) {
-        const launchFiber = yield* workflow.execute(payload as any).pipe(Effect.either, Effect.fork)
+        const launchFiber = yield* workflow
+          .execute(payload as any)
+          .pipe(Effect.result, Effect.forkChild)
         return yield* waitForTerminalResult().pipe(Effect.ensuring(Fiber.interrupt(launchFiber)))
       }
 
@@ -584,16 +589,18 @@ export const make = <Name extends string, Payload, Result, Error>(
           ),
         ),
         Effect.tap(() =>
-          pubsub.publish(
+          PubSub.publish(
+            pubsub,
             WorkflowModel.Completed.make({
               timestamp: new Date(),
               durationMs: 0,
             }),
           ),
         ),
-        Effect.tapErrorCause((cause) =>
+        Effect.tapCause((cause: Cause.Cause<unknown>) =>
           Effect.gen(function* () {
-            yield* pubsub.publish(
+            yield* PubSub.publish(
+              pubsub,
               WorkflowModel.Failed.make({
                 timestamp: new Date(),
                 error: String(cause),

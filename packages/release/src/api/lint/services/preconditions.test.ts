@@ -5,7 +5,9 @@ import { DefaultLayer, EvaluatedPreconditionsService, make } from './preconditio
 describe('Preconditions service', () => {
   test('default layer has all false', async () => {
     const result = await Effect.runPromise(
-      EvaluatedPreconditionsService.pipe(Effect.provide(DefaultLayer)),
+      Effect.gen(function* () {
+        return yield* EvaluatedPreconditionsService
+      }).pipe(Effect.provide(DefaultLayer)),
     )
     expect(result.hasOpenPR).toBe(false)
     expect(result.hasDiff).toBe(false)
@@ -16,9 +18,9 @@ describe('Preconditions service', () => {
 
   test('make with partial overrides', async () => {
     const result = await Effect.runPromise(
-      EvaluatedPreconditionsService.pipe(
-        Effect.provide(make({ hasOpenPR: true, isMonorepo: true })),
-      ),
+      Effect.gen(function* () {
+        return yield* EvaluatedPreconditionsService
+      }).pipe(Effect.provide(make({ hasOpenPR: true, isMonorepo: true }))),
     )
     expect(result.hasOpenPR).toBe(true)
     expect(result.hasDiff).toBe(false)
@@ -29,7 +31,9 @@ describe('Preconditions service', () => {
 
   test('make with all overrides', async () => {
     const result = await Effect.runPromise(
-      EvaluatedPreconditionsService.pipe(
+      Effect.gen(function* () {
+        return yield* EvaluatedPreconditionsService
+      }).pipe(
         Effect.provide(
           make({
             hasOpenPR: true,

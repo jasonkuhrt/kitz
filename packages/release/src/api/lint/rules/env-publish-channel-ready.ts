@@ -12,15 +12,16 @@ import { RuleOptionsService } from '../services/rule-options.js'
 const githubWorkflowRefRe = /\.github\/workflows\/([^@/]+)@/
 
 const OptionsSchema = Schema.Struct({
-  surface: Schema.optionalWith(Schema.Literal('execution', 'preview'), {
-    default: () => 'execution' as const,
-  }),
+  surface: Schema.Literals(['execution', 'preview']).pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(() => 'execution' as const),
+  ),
 })
 type Options = typeof OptionsSchema.Type
 
 export const PublishChannelReadyMetadataSchema = Schema.Struct({
-  status: Schema.Literal('manual', 'ready', 'deferred'),
-  mode: Schema.Literal('manual', 'github-token', 'github-trusted'),
+  status: Schema.Literals(['manual', 'ready', 'deferred']),
+  mode: Schema.Literals(['manual', 'github-token', 'github-trusted']),
   workflow: Schema.optional(Schema.String),
   activeWorkflow: Schema.optional(Schema.String),
   tokenEnv: Schema.optional(Schema.String),
@@ -40,9 +41,9 @@ export const rule = RuntimeRule.create<
   never,
   Env.Env | ReleaseContextService | RuleOptionsService
 >({
-  id: RuleId.make('env.publish-channel-ready'),
+  id: RuleId.makeUnsafe('env.publish-channel-ready'),
   description: 'declared publish channel matches the active runtime',
-  preconditions: [Precondition.HasReleasePlan.make()],
+  preconditions: [new Precondition.HasReleasePlan()],
   optionsSchema: OptionsSchema,
   check: Effect.gen(function* () {
     const context = yield* ReleaseContextService
@@ -62,13 +63,16 @@ export const rule = RuntimeRule.create<
       }
     }
 
+    const resolvedTokenEnv =
+      channel.mode === 'github-token' ? (channel.tokenEnv ?? 'NPM_TOKEN') : undefined
+
     if (vars['GITHUB_ACTIONS'] !== 'true') {
       return {
         metadata: {
           status: 'deferred' as const,
           mode: channel.mode,
           workflow: channel.workflow,
-          ...(channel.mode === 'github-token' ? { tokenEnv: channel.tokenEnv } : {}),
+          ...(resolvedTokenEnv ? { tokenEnv: resolvedTokenEnv } : {}),
         },
       }
     }
@@ -82,7 +86,7 @@ export const rule = RuntimeRule.create<
             mode: channel.mode,
             workflow: channel.workflow,
             activeWorkflow: workflowFile,
-            ...(channel.mode === 'github-token' ? { tokenEnv: channel.tokenEnv } : {}),
+            ...(resolvedTokenEnv ? { tokenEnv: resolvedTokenEnv } : {}),
           },
         }
       }
@@ -114,19 +118,20 @@ export const rule = RuntimeRule.create<
     }
 
     if (channel.mode === 'github-token') {
-      const token = vars[channel.tokenEnv]
+      const tokenEnv = resolvedTokenEnv!
+      const token = vars[tokenEnv]
       if (!token || token.trim() === '') {
         return Violation.make({
           location: Environment.make({
-            message: `${channel.tokenEnv} is not set in this GitHub Actions job.`,
+            message: `${tokenEnv} is not set in this GitHub Actions job.`,
           }),
-          summary: `The ${context.lifecycle} publish channel expects an npm token, but ${channel.tokenEnv} is missing.`,
+          summary: `The ${context.lifecycle} publish channel expects an npm token, but ${tokenEnv} is missing.`,
           detail:
             'This workflow is declared to publish through a GitHub Actions secret-backed npm token. ' +
             'Without that environment variable, npm publish will fail when the publish step starts.',
           hints: [
             Hint.make({
-              description: `Add ${channel.tokenEnv} as a GitHub Actions secret and export it in ${channel.workflow}.`,
+              description: `Add ${tokenEnv} as a GitHub Actions secret and export it in ${channel.workflow}.`,
             }),
             Hint.make({
               description:
@@ -147,7 +152,7 @@ export const rule = RuntimeRule.create<
           status: 'ready' as const,
           mode: 'github-token' as const,
           workflow: channel.workflow,
-          tokenEnv: channel.tokenEnv,
+          tokenEnv: tokenEnv,
         },
       }
     }

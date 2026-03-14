@@ -1,4 +1,4 @@
-import { ParseResult, Schema as S } from 'effect'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 
 /**
  * Logical properties shape for axied property classes.
@@ -22,7 +22,7 @@ export type Logical<$value> = {
  * import { Axied } from './property-factories/axied/_.js'
  *
  * // Create a Span class with number | bigint values
- * const SpanValueSchema = S.Union(S.Number, S.BigIntFromSelf)
+ * const SpanValueSchema = S.Union([S.Number, S.BigInt])
  * export class Span extends Axied.Class<Span>('Span')(SpanValueSchema) {}
  *
  * // Create a Gap class with number values
@@ -31,7 +31,7 @@ export type Logical<$value> = {
  */
 export const Class =
   <Self = never>(identifier: string) =>
-  <$valueSchema extends S.Schema.All>(valueSchema: $valueSchema) =>
+  <$valueSchema extends S.Top>(valueSchema: $valueSchema) =>
     S.Class<Self>(identifier)({
       main: S.optional(valueSchema),
       cross: S.optional(valueSchema),
@@ -89,15 +89,15 @@ export const parse = <$value>(input: Input<$value>): Partial<Logical<$value>> =>
  *
  * Accepts: value | [main, cross] | [main] | [, cross] | { main?, cross? }
  */
-export const InputSchema = <$valueSchema extends S.Schema.Any>(valueSchema: $valueSchema) =>
-  S.Union(
+export const InputSchema = <$valueSchema extends S.Top>(valueSchema: $valueSchema) =>
+  S.Union([
     valueSchema,
-    S.Tuple(valueSchema, valueSchema),
-    S.Tuple(valueSchema),
-    S.Tuple(S.Undefined, valueSchema),
-    S.Tuple(valueSchema, S.Undefined),
+    S.Tuple([valueSchema, valueSchema]),
+    S.Tuple([valueSchema]),
+    S.Tuple([S.Undefined, valueSchema]),
+    S.Tuple([valueSchema, S.Undefined]),
     S.Struct({ main: S.optional(valueSchema), cross: S.optional(valueSchema) }),
-  )
+  ])
 
 /**
  * One-way transformation: Input → Logical form.
@@ -105,14 +105,14 @@ export const InputSchema = <$valueSchema extends S.Schema.Any>(valueSchema: $val
  * Accepts shorthand inputs (value, tuple, or object) and normalizes to { main?, cross? }.
  * Encoding is forbidden (one-way transformation).
  */
-export const fromInput = <$valueSchema extends S.Schema.Any>(valueSchema: $valueSchema) =>
-  S.transformOrFail(
-    InputSchema(valueSchema),
-    S.Struct({ main: S.optional(valueSchema), cross: S.optional(valueSchema) }),
-    {
-      strict: false,
-      decode: (input) => ParseResult.succeed(parse(input as Input<S.Schema.Type<$valueSchema>>)),
-      encode: (value, _, ast) =>
-        ParseResult.fail(new ParseResult.Forbidden(ast, value, 'One-way transformation')),
-    },
+export const fromInput = <$valueSchema extends S.Top>(valueSchema: $valueSchema) =>
+  InputSchema(valueSchema).pipe(
+    S.decodeTo(S.Struct({ main: S.optional(valueSchema), cross: S.optional(valueSchema) }), {
+      decode: SchemaGetter.transform((input) => parse(input as Input<$valueSchema['Type']>)),
+      encode: SchemaGetter.transformOrFail((value) =>
+        Effect.fail(
+          new SchemaIssue.Forbidden(Option.some(value), { message: 'One-way transformation' }),
+        ),
+      ),
+    }),
   )

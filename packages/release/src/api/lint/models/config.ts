@@ -12,20 +12,22 @@ export type RuleConfigInput = Severity | readonly [Severity, RuleConfigOptions] 
 /** Normalized form of rule config. */
 export class RuleConfig extends Schema.TaggedClass<RuleConfig>()('RuleConfig', {
   overrides: RuleDefaults,
-  options: Schema.Object,
+  options: Schema.Record(Schema.String, Schema.Unknown),
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(RuleConfig)
 }
 
 /** User configuration for lint. */
 export class Config extends Schema.TaggedClass<Config>()('Config', {
   defaults: Schema.optional(RuleDefaults),
-  rules: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+  rules: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
   /** Only run rules matching these IDs. */
   onlyRules: Schema.optional(Schema.Array(Schema.String)),
   /** Skip rules matching these IDs. */
   skipRules: Schema.optional(Schema.Array(Schema.String)),
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Config)
 }
 
@@ -33,10 +35,11 @@ export class Config extends Schema.TaggedClass<Config>()('Config', {
 export class ResolvedRuleDefaults extends Schema.TaggedClass<ResolvedRuleDefaults>()(
   'ResolvedRuleDefaults',
   {
-    enabled: Schema.Union(Schema.Boolean, Schema.Literal('auto')),
+    enabled: Schema.Union([Schema.Boolean, Schema.Literal('auto')]),
     severity: Severity_.Severity,
   },
 ) {
+  static make = this.makeUnsafe
   static is = Schema.is(ResolvedRuleDefaults)
 }
 
@@ -45,28 +48,30 @@ export class ResolvedRuleConfig extends Schema.TaggedClass<ResolvedRuleConfig>()
   'ResolvedRuleConfig',
   {
     overrides: ResolvedRuleDefaults,
-    options: Schema.Object,
+    options: Schema.Record(Schema.String, Schema.Unknown),
   },
 ) {
+  static make = this.makeUnsafe
   static is = Schema.is(ResolvedRuleConfig)
 }
 
 /** Resolved (normalized) configuration. */
 export class ResolvedConfig extends Schema.TaggedClass<ResolvedConfig>()('ResolvedConfig', {
   defaults: ResolvedRuleDefaults,
-  rules: Schema.Record({ key: Schema.String, value: ResolvedRuleConfig }),
+  rules: Schema.Record(Schema.String, ResolvedRuleConfig),
   /** Only run rules matching these IDs. */
   onlyRules: Schema.optional(Schema.Array(Schema.String)),
   /** Skip rules matching these IDs. */
   skipRules: Schema.optional(Schema.Array(Schema.String)),
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(ResolvedConfig)
 }
 
 /** System defaults. */
 const systemDefaults = ResolvedRuleDefaults.make({
   enabled: 'auto',
-  severity: Severity_.Error.make(),
+  severity: Severity_.Error.make({}),
 })
 
 /**
@@ -138,9 +143,9 @@ const normalizeRuleConfig = (
   const ruleConfig = input as RuleConfig
   return ResolvedRuleConfig.make({
     overrides: ResolvedRuleDefaults.make({
-      enabled: ruleConfig.overrides.enabled ?? globalDefaults.enabled,
-      severity: ruleConfig.overrides.severity ?? globalDefaults.severity,
+      enabled: ruleConfig['overrides'].enabled ?? globalDefaults.enabled,
+      severity: ruleConfig['overrides'].severity ?? globalDefaults.severity,
     }),
-    options: ruleConfig.options,
+    options: ruleConfig['options'],
   })
 }

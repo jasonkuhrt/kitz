@@ -1,7 +1,7 @@
 import { Moniker } from '#moniker'
 import { Range as SemverRange } from '#range'
 import { Semver } from '@kitz/semver'
-import { Match, Option, ParseResult, Schema as S } from 'effect'
+import { Effect, Match, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { SemverFromString, SemverSelf } from '../semver-schema.js'
 
 // ============================================================================
@@ -101,12 +101,12 @@ type ParsePin<$S extends string> =
  */
 export type WorkspaceRange = '*' | '^' | '~' | SemverRange.Range
 
-export const WorkspaceRange: S.Schema<WorkspaceRange, string> = S.Union(
+export const WorkspaceRange: S.Codec<WorkspaceRange, string> = S.Union([
   S.Literal('*'),
   S.Literal('^'),
   S.Literal('~'),
   SemverRange.Schema,
-)
+])
 
 /**
  * npm dist-tag name.
@@ -134,6 +134,7 @@ class RangeClass extends S.TaggedClass<RangeClass>()('PinRange', {
   name: Moniker.FromString,
   range: SemverRange.Schema,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(RangeClass)
 
   /**
@@ -175,6 +176,7 @@ class ExactClass extends S.TaggedClass<ExactClass>()('PinExact', {
   name: Moniker.FromString,
   version: SemverSelf,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(ExactClass)
 
   /**
@@ -182,36 +184,45 @@ class ExactClass extends S.TaggedClass<ExactClass>()('PinExact', {
    *
    * Parses `<name>@<semver>` strings into {@link Exact}.
    */
-  static FromString: S.Schema<Exact, string> = S.transformOrFail(S.String, ExactClass, {
-    strict: true,
-    decode: (value, _, ast) => {
-      const atIndex = value.lastIndexOf('@')
-      if (atIndex <= 0 || atIndex >= value.length - 1) {
-        return ParseResult.fail(
-          new ParseResult.Type(ast, value, `Invalid exact pin: expected '<name>@<version>'`),
-        )
-      }
+  static FromString: S.Codec<Exact, string> = S.String.pipe(
+    S.decodeTo(ExactClass, {
+      decode: SchemaGetter.transformOrFail((value) => {
+        const atIndex = value.lastIndexOf('@')
+        if (atIndex <= 0 || atIndex >= value.length - 1) {
+          return Effect.fail(
+            new SchemaIssue.InvalidValue(Option.some(value), {
+              message: `Invalid exact pin: expected '<name>@<version>'`,
+            }),
+          )
+        }
 
-      const name = S.decodeUnknownOption(Moniker.FromString)(value.slice(0, atIndex))
-      if (Option.isNone(name)) {
-        return ParseResult.fail(
-          new ParseResult.Type(ast, value, `Invalid package name in exact pin`),
-        )
-      }
+        const name = S.decodeUnknownOption(Moniker.FromString)(value.slice(0, atIndex))
+        if (Option.isNone(name)) {
+          return Effect.fail(
+            new SchemaIssue.InvalidValue(Option.some(value), {
+              message: `Invalid package name in exact pin`,
+            }),
+          )
+        }
 
-      const version = S.decodeUnknownOption(SemverFromString)(value.slice(atIndex + 1))
-      if (Option.isNone(version)) {
-        return ParseResult.fail(new ParseResult.Type(ast, value, `Invalid semver in exact pin`))
-      }
+        const version = S.decodeUnknownOption(SemverFromString)(value.slice(atIndex + 1))
+        if (Option.isNone(version)) {
+          return Effect.fail(
+            new SchemaIssue.InvalidValue(Option.some(value), {
+              message: `Invalid semver in exact pin`,
+            }),
+          )
+        }
 
-      return ParseResult.succeed({
-        _tag: 'PinExact' as const,
-        name: name.value.moniker,
-        version: version.value,
-      })
-    },
-    encode: (pin) => ParseResult.succeed(`${pin.name}@${Semver.toString(pin.version)}`),
-  })
+        return Effect.succeed({
+          _tag: 'PinExact' as const,
+          name: name.value.moniker,
+          version: version.value,
+        })
+      }),
+      encode: SchemaGetter.transform((pin) => `${pin.name}@${Semver.toString(pin.version)}`),
+    }),
+  )
 
   /**
    * Parse an exact pin from string.
@@ -239,6 +250,7 @@ export class Tag extends S.TaggedClass<Tag>()('PinTag', {
   name: Moniker.FromString,
   tag: DistTag,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Tag)
 
   /**
@@ -272,6 +284,7 @@ class WorkspaceClass extends S.TaggedClass<WorkspaceClass>()('PinWorkspace', {
   name: Moniker.FromString,
   range: WorkspaceRange,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(WorkspaceClass)
 
   /**
@@ -318,6 +331,7 @@ class GitClass extends S.TaggedClass<GitClass>()('PinGit', {
   /** Semver range for git tags (used with #semver: fragment). */
   semver: S.OptionFromUndefinedOr(SemverRange.Schema),
 }) {
+  static make = this.makeUnsafe
   static is = S.is(GitClass)
 
   /**
@@ -357,6 +371,7 @@ export class Path extends S.TaggedClass<Path>()('PinPath', {
   /** Relative or absolute filesystem path. */
   path: S.String,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Path)
 
   /**
@@ -390,6 +405,7 @@ export class Url extends S.TaggedClass<Url>()('PinUrl', {
   /** Full URL to the tarball. */
   url: S.String,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Url)
 
   /**
@@ -428,6 +444,7 @@ export class Alias extends S.TaggedClass<Alias>()('PinAlias', {
   /** Version specifier for the target package (range or tag). */
   targetSpecifier: S.String,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Alias)
 
   /**
@@ -464,7 +481,7 @@ export class Alias extends S.TaggedClass<Alias>()('PinAlias', {
  *
  * @see {@link https://docs.npmjs.com/cli/v10/configuring-npm/package-json#dependencies | npm dependencies}
  */
-export const Pin = S.Union(Range, Exact, Tag, Workspace, Git, Path, Url, Alias)
+export const Pin = S.Union([Range, Exact, Tag, Workspace, Git, Path, Url, Alias])
 export type Pin = typeof Pin.Type
 
 /**

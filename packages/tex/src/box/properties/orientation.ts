@@ -8,7 +8,7 @@ import { Schema as S } from 'effect'
  *
  * @category Text Formatting
  */
-export const Orientation = S.Literal('vertical', 'horizontal')
+export const Orientation = S.Literals(['vertical', 'horizontal'])
 
 /**
  * Orientation type.

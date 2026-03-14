@@ -7,7 +7,7 @@ import { Environment } from '../lint/models/violation-location.js'
 import { createDoctorSummary, renderDoctorSummary } from './doctor.js'
 
 const ruleRef = (id: string, description: string) => ({
-  id: RuleId.make(id),
+  id: RuleId.makeUnsafe(id),
   description,
 })
 
@@ -21,7 +21,7 @@ describe('commentator doctor', () => {
             'declared publish channel matches the active runtime',
           ),
           duration: 1,
-          severity: Severity.Error.make(),
+          severity: Severity.Error.make({}),
           metadata: {
             status: 'deferred',
             mode: 'github-token',
@@ -36,7 +36,7 @@ describe('commentator doctor', () => {
             'PR title header matches the canonical squash-merge header',
           ),
           duration: 1,
-          severity: Severity.Warn.make(),
+          severity: Severity.Warn.make({}),
           metadata: { projectedHeader: 'feat(release)' },
         }),
         Finished.make({
@@ -45,12 +45,12 @@ describe('commentator doctor', () => {
             'No-release type cannot have src changes',
           ),
           duration: 1,
-          severity: Severity.Warn.make(),
+          severity: Severity.Warn.make({}),
         }),
         Finished.make({
           rule: ruleRef('plan.packages-license-present', 'planned packages declare a license'),
           duration: 1,
-          severity: Severity.Warn.make(),
+          severity: Severity.Warn.make({}),
           metadata: { packageCount: 2 },
         }),
         Finished.make({
@@ -59,7 +59,7 @@ describe('commentator doctor', () => {
             'planned package repository metadata points at the canonical GitHub repo',
           ),
           duration: 1,
-          severity: Severity.Warn.make(),
+          severity: Severity.Warn.make({}),
           violation: Violation.make({
             location: Environment.make({ message: 'repository mismatch' }),
             summary: 'Repository metadata should point at jasonkuhrt/kitz.',

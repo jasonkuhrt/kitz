@@ -22,8 +22,8 @@ import { parseJSDoc } from './nodes/jsdoc.js'
 import { extractModuleFromFile } from './nodes/module.js'
 import { createBuildToSourcePath } from './path-utils.js'
 
-const JsonObjectSchema = S.Record({ key: S.String, value: S.Unknown })
-const JsonObjectFromStringSchema = S.parseJson(JsonObjectSchema)
+const JsonObjectSchema = S.Record(S.String, S.Unknown)
+const JsonObjectFromStringSchema = S.fromJsonString(JsonObjectSchema)
 const decodeJsonObject = S.decodeUnknownSync(JsonObjectFromStringSchema)
 
 const parseJsonObject = (content: string | Uint8Array): Record<string, unknown> =>

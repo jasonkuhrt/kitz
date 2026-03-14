@@ -40,4 +40,4 @@ export const env = {
  *
  * @see https://bun.sh/reference/bun/env - Bun.env
  */
-export const Live = Layer.succeed(Env, env)
+export const Live = Layer.succeed(Env)(env)

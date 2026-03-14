@@ -122,8 +122,9 @@ export const generate = (
 
       for (const impact of impacts) {
         bump = Semver.maxBump(bump, impact.bump)
-        if (!MutableHashSet.has(seenCommits, impact.commit.hash)) {
-          MutableHashSet.add(seenCommits, impact.commit.hash)
+        const commitHash = impact.commit['hash']
+        if (!MutableHashSet.has(seenCommits, commitHash)) {
+          MutableHashSet.add(seenCommits, commitHash)
           packageCommits.push(impact.commit)
         }
       }

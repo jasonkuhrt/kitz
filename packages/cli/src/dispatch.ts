@@ -1,10 +1,10 @@
-import { FileSystem } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { FileSystem } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import { Err, Str } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Mod } from '@kitz/mod'
-import { Effect, ParseResult, Schema as S } from 'effect'
+import { Effect, SchemaIssue, Schema as S } from 'effect'
 import { parseArgv } from './argv.js'
 import { type CommandTarget, getCommandTarget } from './commend-target.js'
 
@@ -71,7 +71,7 @@ export function dispatch(
   commandsDirPath: Fs.Path.AbsDir,
 ): Effect.Effect<
   void,
-  DiscoverCommandsDirNotFoundError | PlatformError | ParseResult.ParseError | Mod.ImportError,
+  DiscoverCommandsDirNotFoundError | PlatformError | S.SchemaError | Mod.ImportError,
   Env.Env | FileSystem.FileSystem
 > {
   return Effect.gen(function* () {
@@ -131,7 +131,7 @@ export function discoverCommandPointers(
 > {
   return Effect.gen(function* () {
     const entries = yield* Fs.read(commandsDirPath).pipe(
-      Effect.catchTag('SystemError', (cause) =>
+      Effect.catchTag('PlatformError', (cause) =>
         Effect.fail(
           new DiscoverCommandsDirNotFoundError({
             context: { path: commandsDirPath },

@@ -9,7 +9,7 @@ export { Single } from './commit-single.js'
 /**
  * A conventional commit—either single (standard CC) or multi (extended for monorepos).
  */
-export const Commit = Schema.Union(Single, Multi)
+export const Commit = Schema.Union([Single, Multi])
 
 /**
  * Type alias for the Commit union.

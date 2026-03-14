@@ -9,9 +9,9 @@ import {
   ClusterWorkflowEngine,
   ShardingConfig as ClusterShardingConfig,
   SingleRunner,
-} from '@effect/cluster'
+} from 'effect/unstable/cluster'
 import { SqliteClient } from '#platform:executor/sqlite-client'
-import { WorkflowEngine } from '@effect/workflow'
+import { WorkflowEngine } from 'effect/unstable/workflow'
 import { Github } from '@kitz/github'
 import { Effect, Layer } from 'effect'
 
@@ -27,7 +27,7 @@ export interface RuntimeConfig {
   /** Path to SQLite database file */
   readonly dbPath?: string
   /** Optional sharding overrides for faster local/testing runners */
-  readonly shardingConfig?: Partial<ClusterShardingConfig.ShardingConfig['Type']>
+  readonly shardingConfig?: Partial<typeof ClusterShardingConfig.defaults>
   /** GitHub configuration for release creation */
   readonly github?: {
     readonly owner: string

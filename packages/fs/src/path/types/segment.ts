@@ -6,13 +6,11 @@ import { Schema as S } from 'effect'
  * Also excludes empty strings which would create // in paths.
  */
 export const Segment = S.String.pipe(
-  S.filter((s) => s.length > 0, {
-    message: () => 'Path segment cannot be empty',
-  }),
-  S.pattern(/^[^/\0]+$/, {
-    message: () => 'Path segment cannot contain / or null bytes',
-  }),
-  S.annotations({
+  S.check(
+    S.makeFilter((s) => s.length > 0, { message: 'Path segment cannot be empty' }),
+    S.isPattern(/^[^/\0]+$/, { message: 'Path segment cannot contain / or null bytes' }),
+  ),
+  S.annotate({
     identifier: 'Segment',
     description: 'A valid path segment (POSIX-compliant)',
   }),
@@ -31,17 +29,17 @@ export type Segment = typeof Segment.Type
  * @param segment - The segment string (must not contain / or be empty)
  * @returns A branded Segment
  */
-export const make = (segment: string): Segment => Segment.make(segment)
+export const make = (segment: string): Segment => S.decodeSync(Segment)(segment)
 
 export const encodeSync = S.encodeSync(Segment)
 
-export const encode = S.encode(Segment)
+export const encode = S.encodeEffect(Segment)
 
-export const decode = S.decode(Segment)
+export const decode = S.decodeEffect(Segment)
 
 export const decodeSync = S.decodeSync(Segment)
 
-export const decodeEither = S.decodeEither(Segment)
+export const decodeExit = S.decodeUnknownExit(Segment)
 
 /**
  * Check if a value is a valid segment.

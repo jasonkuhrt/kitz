@@ -19,9 +19,9 @@ const isNoReleaseFacet = (facet: ConventionalCommits.Commit.Facet): boolean =>
 
 /** Verifies that no-release PR types are not used for source changes. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('pr.type.release-kind-match-diff'),
+  id: RuleId.makeUnsafe('pr.type.release-kind-match-diff'),
   description: 'No-release type cannot have src changes',
-  preconditions: [Precondition.HasOpenPR.make(), Precondition.HasDiff.make()],
+  preconditions: [new Precondition.HasOpenPR(), new Precondition.HasDiff()],
   check: Effect.gen(function* () {
     const pr = yield* PrService
     const diff = yield* DiffService

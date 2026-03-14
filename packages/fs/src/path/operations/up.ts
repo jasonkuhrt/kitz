@@ -52,14 +52,14 @@ export function up<$input extends Input>($input: $input): normalize<$input> {
         if (file.segments.length > 0) {
           // Has segments: pop one
           return RelFile.make({
-            back: file.back,
+            back: file.back ?? 0,
             segments: file.segments.slice(0, -1),
             fileName: file.fileName,
           })
         }
         // No segments: increment back
         return RelFile.make({
-          back: file.back + 1,
+          back: (file.back ?? 0) + 1,
           segments: [],
           fileName: file.fileName,
         })
@@ -68,16 +68,16 @@ export function up<$input extends Input>($input: $input): normalize<$input> {
         if (dir.segments.length > 0) {
           // Has segments: pop one
           return RelDir.make({
-            back: dir.back,
+            back: dir.back ?? 0,
             segments: dir.segments.slice(0, -1),
           })
         }
         // No segments: increment back
         return RelDir.make({
-          back: dir.back + 1,
+          back: (dir.back ?? 0) + 1,
           segments: [],
         })
       },
     }),
-  )
+  ) as normalize<$input>
 }

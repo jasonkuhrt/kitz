@@ -1,11 +1,8 @@
 import { Semver } from '@kitz/semver'
 import { Option, Schema as S } from 'effect'
 
-const OptionalSemverSchema: S.Schema<
-  Option.Option<Semver.Semver>,
-  string | null
-> = S.OptionFromNullOr(Semver.Schema)
-const SemverSchema: S.Schema<Semver.Semver, Semver.Semver> = Semver.Semver
+const OptionalSemverSchema = S.OptionFromNullOr(Semver.Schema)
+const SemverSchema = Semver.Semver
 
 /**
  * Commit attribution for display.
@@ -17,6 +14,7 @@ export class CommitDisplay extends S.TaggedClass<CommitDisplay>()('CommitDisplay
   breaking: S.Boolean,
   commitUrl: S.String,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(CommitDisplay)
 }
 
@@ -32,6 +30,7 @@ export class ForecastRelease extends S.TaggedClass<ForecastRelease>()('ForecastR
   commits: S.Array(CommitDisplay),
   sourceUrl: S.String,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(ForecastRelease)
 
   get currentVersionDisplay(): string {
@@ -53,6 +52,7 @@ export class ForecastCascade extends S.TaggedClass<ForecastCascade>()('ForecastC
   triggeredBy: S.Array(S.String),
   sourceUrl: S.String,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(ForecastCascade)
 }
 
@@ -71,5 +71,6 @@ export class Forecast extends S.TaggedClass<Forecast>()('Forecast', {
   releases: S.Array(ForecastRelease),
   cascades: S.Array(ForecastCascade),
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Forecast)
 }

@@ -1,7 +1,7 @@
 // @ts-check
 // oxlint-disable kitz/jsdoc/require-on-exports, kitz/jsdoc/usage-tags, kitz/jsdoc/require-example, kitz/jsdoc/min-words, kitz/jsdoc/no-name-restate
 
-import { Either, Option, pipe, Schema } from 'effect'
+import { Result, Option, pipe, Schema } from 'effect'
 import { requireJsdocOnExportsRule } from './rules/require-jsdoc-on-exports.mjs'
 import { jsdocMinWordsRule } from './rules/jsdoc-min-words.mjs'
 import { jsdocNoNameRestateRule } from './rules/jsdoc-no-name-restate.mjs'
@@ -266,18 +266,18 @@ const PLATFORM_PROBE_MEMBER_PATHS = new Set([
   `globalThis.Deno`,
 ])
 
-const PackageJsonRecordSchema = Schema.Record({ key: Schema.String, value: Schema.Unknown })
+const PackageJsonRecordSchema = Schema.Record(Schema.String, Schema.Unknown)
 const PackageConditionTargetSchema = Schema.suspend(() =>
-  Schema.Union(
+  Schema.Union([
     Schema.String,
     Schema.Null,
     Schema.Array(PackageConditionTargetSchema),
-    Schema.Record({ key: Schema.String, value: PackageConditionTargetSchema }),
-  ),
+    Schema.Record(Schema.String, PackageConditionTargetSchema),
+  ]),
 )
 
 const decodePackageJsonRecord = Schema.decodeUnknownOption(
-  Schema.parseJson(PackageJsonRecordSchema),
+  Schema.fromJsonString(PackageJsonRecordSchema),
 )
 const decodePackageConditionTarget = Schema.decodeUnknownOption(PackageConditionTargetSchema)
 
@@ -287,13 +287,13 @@ const decodePackageConditionTarget = Schema.decodeUnknownOption(PackageCondition
  */
 const readPackageJsonRecord = (packageJsonPath) =>
   pipe(
-    Either.try({
+    Result.try({
       try: () => fs.readFileSync(packageJsonPath, `utf8`),
       catch: () => null,
     }),
-    Either.match({
-      onLeft: () => Option.none(),
-      onRight: decodePackageJsonRecord,
+    Result.match({
+      onFailure: () => Option.none(),
+      onSuccess: decodePackageJsonRecord,
     }),
   )
 
@@ -511,13 +511,13 @@ const readNearestRuntimeConditionPackage = (sourceFilePath) =>
     findNearestPackageJsonPath(sourceFilePath),
     Option.flatMap((packageJsonPath) =>
       pipe(
-        Either.try({
+        Result.try({
           try: () => fs.readFileSync(packageJsonPath, `utf8`),
           catch: () => null,
         }),
-        Either.match({
-          onLeft: () => Option.none(),
-          onRight: (packageJsonContent) =>
+        Result.match({
+          onFailure: () => Option.none(),
+          onSuccess: (packageJsonContent) =>
             pipe(
               decodeRuntimeConditionPackageJson(packageJsonContent),
               Option.map((runtimeConditions) => ({
@@ -2425,7 +2425,10 @@ const schemaParsingContractRule = defineRule({
         }
 
         if (isPinExactContractFile(filePath)) {
-          if (!sourceText.includes(`static FromString: S.Schema<Exact, string>`)) {
+          if (
+            !sourceText.includes(`static FromString: S.Schema<Exact, string>`) &&
+            !sourceText.includes(`static FromString: S.Codec<Exact, string>`)
+          ) {
             context.report({
               node,
               messageId: MESSAGE_IDS.schemaParsingContractPinExactFromString,

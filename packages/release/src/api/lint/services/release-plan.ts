@@ -1,7 +1,7 @@
 import type { Fs } from '@kitz/fs'
 import type { Pkg } from '@kitz/pkg'
 import type { Semver } from '@kitz/semver'
-import { Context, Layer } from 'effect'
+import { Layer, ServiceMap } from 'effect'
 
 /**
  * Planned release for a package.
@@ -27,10 +27,9 @@ export interface ReleasePlan {
 }
 
 /** Service providing release plan data. */
-export class ReleasePlanService extends Context.Tag('ReleasePlanService')<
-  ReleasePlanService,
-  ReleasePlan
->() {}
+export class ReleasePlanService extends ServiceMap.Service<ReleasePlanService, ReleasePlan>()(
+  'ReleasePlanService',
+) {}
 
 /**
  * Create a layer with release plan data.

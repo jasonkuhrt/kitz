@@ -15,6 +15,7 @@ export class Plan extends S.TaggedClass<Plan>()('Plan', {
   releases: S.Array(ItemSchema),
   cascades: S.Array(ItemSchema),
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Plan)
 
   /**

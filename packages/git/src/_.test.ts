@@ -157,13 +157,13 @@ describe('Git', () => {
       Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getCommitsSince('@kitz/core@1.0.0')
-      }).pipe(Effect.provide(layer), Effect.either),
+      }).pipe(Effect.provide(layer), Effect.result),
     )
 
-    expect(result._tag).toBe('Left')
-    if (result._tag === 'Left') {
-      expect(result.left._tag).toBe('GitError')
-      expect(result.left.context.operation).toBe('getCommitsSince')
+    expect(result._tag).toBe('Failure')
+    if (result._tag === 'Failure') {
+      expect(result.failure._tag).toBe('GitError')
+      expect(result.failure.context.operation).toBe('getCommitsSince')
     }
   })
 
@@ -174,13 +174,13 @@ describe('Git', () => {
       Effect.gen(function* () {
         const git = yield* Git.Git
         return yield* git.getTagSha('@kitz/core@1.0.0')
-      }).pipe(Effect.provide(layer), Effect.either),
+      }).pipe(Effect.provide(layer), Effect.result),
     )
 
-    expect(result._tag).toBe('Left')
-    if (result._tag === 'Left') {
-      expect(result.left._tag).toBe('GitError')
-      expect(result.left.context.operation).toBe('getTagSha')
+    expect(result._tag).toBe('Failure')
+    if (result._tag === 'Failure') {
+      expect(result.failure._tag).toBe('GitError')
+      expect(result.failure.context.operation).toBe('getTagSha')
     }
   })
 

@@ -4,6 +4,7 @@ import { Schema } from 'effect'
  * Represents a rule violation with error severity that causes non-zero exit (exit 1).
  */
 export class Error extends Schema.TaggedClass<Error>()('SeverityError', {}) {
+  static make = this.makeUnsafe
   static is = Schema.is(Error)
 }
 
@@ -11,6 +12,7 @@ export class Error extends Schema.TaggedClass<Error>()('SeverityError', {}) {
  * Represents a rule violation with warn severity that is shown but does not affect exit status (exit 0).
  */
 export class Warn extends Schema.TaggedClass<Warn>()('SeverityWarn', {}) {
+  static make = this.makeUnsafe
   static is = Schema.is(Warn)
 }
 
@@ -22,6 +24,6 @@ export class Warn extends Schema.TaggedClass<Warn>()('SeverityWarn', {}) {
  */
 export type Severity = Error | Warn
 
-export const Severity = Schema.Union(Error, Warn)
+export const Severity = Schema.Union([Error, Warn])
 
 export const is = Schema.is(Severity)

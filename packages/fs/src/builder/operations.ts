@@ -1,4 +1,4 @@
-import { Error as PlatformError, FileSystem } from '@effect/platform'
+import { PlatformError, FileSystem } from 'effect'
 import { Effect } from 'effect'
 import { clear, remove, rename, write } from '../filesystem.js'
 import { Path } from '../path/_.js'

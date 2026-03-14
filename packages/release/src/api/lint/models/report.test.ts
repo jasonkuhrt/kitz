@@ -7,7 +7,7 @@ import { Environment } from './violation-location.js'
 import { Violation } from './violation.js'
 
 const ruleRef = (id: string) => ({
-  id: RuleId.make(id),
+  id: RuleId.makeUnsafe(id),
   description: 'Test rule',
 })
 
@@ -16,7 +16,7 @@ describe('Finished', () => {
     const r = Finished.make({
       rule: ruleRef('env.git-clean'),
       duration: 42,
-      severity: Severity.Error.make(),
+      severity: Severity.Error.make({}),
     })
     expect(r._tag).toBe('RuleCheckResultFinished')
     expect(Finished.is(r)).toBe(true)
@@ -27,7 +27,7 @@ describe('Finished', () => {
     const r = Finished.make({
       rule: ruleRef('env.npm-authenticated'),
       duration: 100,
-      severity: Severity.Error.make(),
+      severity: Severity.Error.make({}),
       violation: Violation.make({
         location: Environment.make({ message: 'Not logged in to npm.' }),
       }),
@@ -40,7 +40,7 @@ describe('Finished', () => {
     const r = Finished.make({
       rule: ruleRef('env.npm-authenticated'),
       duration: 50,
-      severity: Severity.Warn.make(),
+      severity: Severity.Warn.make({}),
       metadata: { username: 'testuser' },
     })
     expect(r.metadata).toEqual({ username: 'testuser' })
@@ -85,7 +85,7 @@ describe('RuleCheckResult union', () => {
     const r = Finished.make({
       rule: ruleRef('env.git-clean'),
       duration: 42,
-      severity: Severity.Error.make(),
+      severity: Severity.Error.make({}),
     })
     const encoded = Schema.encodeSync(RuleCheckResult)(r)
     const decoded = Schema.decodeSync(RuleCheckResult)(encoded)
@@ -114,7 +114,7 @@ describe('Report', () => {
         Finished.make({
           rule: ruleRef('env.git-clean'),
           duration: 10,
-          severity: Severity.Error.make(),
+          severity: Severity.Error.make({}),
         }),
         Failed.make({ rule: ruleRef('env.git-remote'), duration: 5, error: 'fail' }),
         Skipped.make({ rule: ruleRef('pr.scope.require'), reason: 'filtered' }),
@@ -130,7 +130,7 @@ describe('Report', () => {
         Finished.make({
           rule: ruleRef('env.git-clean'),
           duration: 10,
-          severity: Severity.Error.make(),
+          severity: Severity.Error.make({}),
         }),
       ],
     })

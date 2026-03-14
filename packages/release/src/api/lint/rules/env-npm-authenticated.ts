@@ -17,7 +17,7 @@ interface Metadata {
 
 /** Verifies that npm CLI is authenticated (can run `npm whoami`). */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('env.npm-authenticated'),
+  id: RuleId.makeUnsafe('env.npm-authenticated'),
   description: 'npm auth is configured (npm whoami succeeds)',
   preventsDescriptions: [
     'npm publish failing because your npm session or token is missing, expired, or scoped incorrectly',
@@ -31,7 +31,7 @@ export const rule = RuntimeRule.create({
 
     const result = yield* NpmRegistry.Cli.whoami(whoamiOptions).pipe(
       Effect.map((username) => ({ metadata: { username } })),
-      Effect.catchAll((error) =>
+      Effect.catch((error: any) =>
         Effect.succeed({
           violation: Violation.make({
             location: Environment.make({

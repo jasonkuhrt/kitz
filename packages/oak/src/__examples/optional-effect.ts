@@ -1,4 +1,4 @@
-import { Schema } from 'effect'
+import { Schema, SchemaGetter } from 'effect'
 import { Command } from '../__.js'
 import { EffectSchema } from '../_entrypoints/extensions.js'
 
@@ -11,16 +11,19 @@ const args = Command.create()
   // Optional with pipe - returns undefined when omitted
   .parameter(
     `email`,
-    Schema.UndefinedOr(Schema.String).pipe(Schema.annotations({ description: 'Email address' })),
+    Schema.UndefinedOr(Schema.String).pipe(Schema.annotate({ description: 'Email address' })),
   )
   // Transform with default - returns default when omitted
   .parameter(
     `verbose v`,
-    Schema.transform(Schema.UndefinedOr(Schema.Boolean), Schema.Boolean, {
-      strict: true,
-      decode: (v) => v ?? false,
-      encode: (v) => v,
-    }).pipe(Schema.annotations({ default: false })),
+    Schema.UndefinedOr(Schema.Boolean)
+      .pipe(
+        Schema.decodeTo(Schema.Boolean, {
+          decode: SchemaGetter.transform((v) => v ?? false),
+          encode: SchemaGetter.transform((v) => v),
+        }),
+      )
+      .pipe(Schema.annotate({ default: false })),
   )
   .parse()
 

@@ -19,18 +19,18 @@ describe('resolveConfig', () => {
   })
 
   test('normalizes severity shorthand', () => {
-    const ruleId = RuleId.make('pr.type.match-known')
+    const ruleId = RuleId.makeUnsafe('pr.type.match-known')
     const resolved = resolveConfig({
-      rules: { [ruleId]: Severity.Warn.make() },
+      rules: { [ruleId]: Severity.Warn.make({}) },
     })
     const rule = resolved.rules[ruleId]!
     expect(rule.overrides.severity._tag).toBe('SeverityWarn')
   })
 
   test('normalizes tuple shorthand', () => {
-    const ruleId = RuleId.make('pr.scope.require')
+    const ruleId = RuleId.makeUnsafe('pr.scope.require')
     const resolved = resolveConfig({
-      rules: { [ruleId]: [Severity.Error.make(), { min: 1 }] },
+      rules: { [ruleId]: [Severity.Error.make({}), { min: 1 }] },
     })
     const rule = resolved.rules[ruleId]!
     expect(rule.overrides.severity._tag).toBe('SeverityError')

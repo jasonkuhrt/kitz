@@ -1,5 +1,5 @@
-import { Command, CommandExecutor } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
+import type { PlatformError } from 'effect/PlatformError'
 import { Err } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Effect, Option, Schema as S, Stream, String as Str } from 'effect'
@@ -10,7 +10,7 @@ import { Effect, Option, Schema as S, Stream, String as Str } from 'effect'
 
 const baseTags = ['kit', 'npm-registry', 'cli'] as const
 
-const NpmCliOperationSchema = S.Literal('whoami', 'pack', 'publish', 'view')
+const NpmCliOperationSchema = S.Literals(['whoami', 'pack', 'publish', 'view'])
 const ErrorCause = S.instanceOf(Error)
 const NpmCliErrorContext = S.Struct({
   operation: NpmCliOperationSchema,
@@ -20,7 +20,7 @@ const NpmCliErrorContext = S.Struct({
 /**
  * npm CLI operation names for structured error context.
  */
-export type NpmCliOperation = S.Schema.Type<typeof NpmCliOperationSchema>
+export type NpmCliOperation = typeof NpmCliOperationSchema.Type
 
 /**
  * npm CLI operation error.
@@ -102,15 +102,15 @@ const NpmViewErrorSchema = S.Struct({
   }),
 })
 
-const decodeNpmViewError = S.decodeUnknownOption(S.parseJson(NpmViewErrorSchema))
-const NpmPackOutputSchema = S.parseJson(
+const decodeNpmViewError = S.decodeUnknownOption(S.fromJsonString(NpmViewErrorSchema))
+const NpmPackOutputSchema = S.fromJsonString(
   S.Array(
     S.Struct({
       filename: S.String,
     }),
   ),
 )
-const decodeNpmPackOutput = S.decodeUnknown(NpmPackOutputSchema)
+const decodeNpmPackOutput = S.decodeUnknownEffect(NpmPackOutputSchema)
 
 const readStreamString = (
   stream: Stream.Stream<Uint8Array, PlatformError>,
@@ -138,23 +138,24 @@ const readStreamString = (
  * @example
  * ```ts
  * const username = await Effect.runPromise(
- *   whoami().pipe(Effect.provide(CommandExecutor.layer))
+ *   whoami().pipe(Effect.provide(ChildProcessSpawner.Default))
  * )
  * console.log(`Authenticated as ${username}`)
  * ```
  */
 export function whoami(
   options?: WhoamiOptions,
-): Effect.Effect<string, NpmCliError, CommandExecutor.CommandExecutor> {
+): Effect.Effect<string, NpmCliError, ChildProcessSpawner.ChildProcessSpawner> {
   return Effect.gen(function* () {
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
     const args = ['whoami']
     if (options?.registry) {
       args.push('--registry', options.registry)
     }
 
-    const command = Command.make('npm', ...args)
+    const command = ChildProcess.make('npm', args)
 
-    const result = yield* Command.string(command).pipe(
+    const result = yield* spawner.string(command).pipe(
       Effect.mapError(
         (cause) =>
           new NpmCliError({
@@ -190,15 +191,16 @@ export function whoami(
  */
 export function pack(
   options: PackOptions,
-): Effect.Effect<PackResult, NpmCliError, CommandExecutor.CommandExecutor> {
+): Effect.Effect<PackResult, NpmCliError, ChildProcessSpawner.ChildProcessSpawner> {
   return Effect.gen(function* () {
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
     const args = ['pack', '--json', '--pack-destination', Fs.Path.toString(options.packDestination)]
 
-    const command = Command.make('npm', ...args).pipe(
-      Command.workingDirectory(Fs.Path.toString(options.cwd)),
-    )
+    const command = ChildProcess.make('npm', args, {
+      cwd: Fs.Path.toString(options.cwd),
+    })
 
-    const output = yield* Command.string(command).pipe(
+    const output = yield* spawner.string(command).pipe(
       Effect.mapError(
         (cause) =>
           new NpmCliError({
@@ -256,14 +258,15 @@ export function pack(
  *   publish({
  *     tarball: Fs.Path.AbsFile.fromString('/tmp/pkg-1.0.0.tgz'),
  *     tag: 'next',
- *   }).pipe(Effect.provide(CommandExecutor.layer))
+ *   }).pipe(Effect.provide(ChildProcessSpawner.Default))
  * )
  * ```
  */
 export function publish(
   options: PublishOptions,
-): Effect.Effect<void, NpmCliError, CommandExecutor.CommandExecutor> {
+): Effect.Effect<void, NpmCliError, ChildProcessSpawner.ChildProcessSpawner> {
   return Effect.gen(function* () {
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
     const args = ['publish', Fs.Path.toString(options.tarball)]
 
     // Default to public access for scoped packages
@@ -281,9 +284,9 @@ export function publish(
       args.push('--registry', options.registry)
     }
 
-    const command = Command.make('npm', ...args)
+    const command = ChildProcess.make('npm', args)
 
-    yield* Command.exitCode(command).pipe(
+    yield* spawner.exitCode(command).pipe(
       Effect.flatMap((code) => {
         if (code !== 0) {
           return Effect.fail(
@@ -320,7 +323,7 @@ export function hasVersion(
   packageName: string,
   version: string,
   options?: ViewOptions,
-): Effect.Effect<boolean, NpmCliError, CommandExecutor.CommandExecutor> {
+): Effect.Effect<boolean, NpmCliError, ChildProcessSpawner.ChildProcessSpawner> {
   return Effect.scoped(
     Effect.gen(function* () {
       const args = ['--silent', 'view', `${packageName}@${version}`, 'version', '--json']
@@ -328,8 +331,8 @@ export function hasVersion(
         args.push('--registry', options.registry)
       }
 
-      const command = Command.make('npm', ...args)
-      const process = yield* Command.start(command)
+      const command = ChildProcess.make('npm', args)
+      const process = yield* command
       const { stdout, stderr, exitCode } = yield* Effect.all(
         {
           stdout: readStreamString(process.stdout),

@@ -1,4 +1,4 @@
-import { Command, CommandExecutor } from '@effect/platform'
+import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Data, Effect, HashSet, Layer, MutableHashSet } from 'effect'
@@ -219,17 +219,22 @@ export const loadPullRequestDiff = (params: {
         : null
     }
 
-    const command = Command.make('git', 'diff', '--name-status', `origin/${baseRef}...HEAD`).pipe(
-      Command.workingDirectory(root),
+    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+    const command = ChildProcess.make(
+      'git',
+      ['diff', '--name-status', `origin/${baseRef}...HEAD`],
+      {
+        cwd: root,
+      },
     )
-    const output = yield* Command.string(command).pipe(
-      Effect.either,
+    const output = yield* spawner.string(command).pipe(
+      Effect.result,
       Effect.flatMap((result) => {
-        if (result._tag === 'Right') return Effect.succeed(result.right)
+        if (result._tag === 'Success') return Effect.succeed(result.success)
 
         if (!params.required) {
           return Effect.logWarning(
-            `Skipping diff-aware release checks because git diff against origin/${baseRef} could not be computed: ${String(result.left)}`,
+            `Skipping diff-aware release checks because git diff against origin/${baseRef} could not be computed: ${result.failure instanceof Error ? result.failure.message : JSON.stringify(result.failure)}`,
           ).pipe(Effect.as(''))
         }
 
@@ -247,10 +252,10 @@ export const loadPullRequestDiff = (params: {
 
     const files = output
       .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
+      .map((line: string) => line.trim())
+      .filter((line: string) => line.length > 0)
       .map(parseDiffLine)
-      .filter((entry): entry is Api.Lint.ChangedFile => entry !== null)
+      .filter((entry: any): entry is Api.Lint.ChangedFile => entry !== null)
 
     return {
       files,
@@ -270,9 +275,9 @@ export const buildPreviewDoctorSummary = (params: {
   Effect.gen(function* () {
     const planAttempt = yield* Api.Planner.ephemeral(params.analysis, {
       packages: params.packages,
-    }).pipe(Effect.either)
+    }).pipe(Effect.result)
 
-    if (planAttempt._tag === 'Left') {
+    if (planAttempt._tag === 'Failure') {
       return {
         summary: {
           lifecycle: 'ephemeral',
@@ -280,7 +285,7 @@ export const buildPreviewDoctorSummary = (params: {
             {
               label: 'Ephemeral plan',
               status: 'warn',
-              notes: planAttempt.left.message,
+              notes: planAttempt.failure.message,
             },
           ],
           guidance: [],
@@ -290,7 +295,7 @@ export const buildPreviewDoctorSummary = (params: {
       }
     }
 
-    const plan = planAttempt.right
+    const plan = planAttempt.success
     const plannedItems = [...plan.releases, ...plan.cascades]
     if (plannedItems.length === 0) {
       return {
@@ -308,7 +313,7 @@ export const buildPreviewDoctorSummary = (params: {
     ]
 
     const titleSeverity = params.blockingTitleChecks
-      ? Api.Lint.Error.make()
+      ? Api.Lint.Error.make({})
       : params.config.lint.defaults.severity
     const lintConfig = Api.Lint.resolveConfig({
       defaults: Api.Lint.RuleDefaults.make({
@@ -526,7 +531,8 @@ export const runPrPreview = (options: RunPrPreviewOptions = {}) =>
       forecast,
       ...(doctor.summary ? { doctor: doctor.summary } : {}),
       ...(projectedSquashCommit ? { projectedSquashCommit } : {}),
-      interactiveChecklist: config.publishing.ephemeral.mode !== 'manual',
+      interactiveChecklist:
+        (config.publishing.ephemeral ?? { mode: 'manual' as const }).mode !== 'manual',
     }).pipe(
       Effect.provide(
         Github.LiveFetch({

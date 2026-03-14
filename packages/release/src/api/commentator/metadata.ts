@@ -30,7 +30,7 @@ const HEAD_SHA_RE = /<!-- head-sha:(\S+) -->/
 const PUBLISH_STATE_RE = /<!-- publish-state:(\S+) -->/
 const PUBLISH_HISTORY_RE = /<!-- kitz-release-publish-history\n([\s\S]*?)\n-->/
 
-export const PublishStateSchema = S.Literal('idle', 'publishing', 'published', 'failed')
+export const PublishStateSchema = S.Literals(['idle', 'publishing', 'published', 'failed'])
 export const PublishRecordSchema = S.Struct({
   package: S.String,
   version: S.String,
@@ -42,7 +42,7 @@ export const PublishRecordSchema = S.Struct({
 export const PublishHistoryEnvelope = S.Struct({
   publishes: S.Array(PublishRecordSchema),
 })
-export const PublishHistoryJson = S.parseJson(PublishHistoryEnvelope)
+export const PublishHistoryJson = S.fromJsonString(PublishHistoryEnvelope)
 
 const decodePublishState = S.decodeUnknownOption(PublishStateSchema)
 const decodePublishHistory = S.decodeUnknownOption(PublishHistoryJson)
@@ -110,4 +110,4 @@ export const renderMetadataBlock = (metadata: Metadata): string => {
 const getCapture =
   (regex: RegExp) =>
   (input: string): Option.Option<string> =>
-    Option.fromNullable(input.match(regex)?.[1])
+    Option.fromNullishOr(input.match(regex)?.[1])

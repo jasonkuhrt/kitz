@@ -14,9 +14,9 @@
  *   bun run generate
  */
 
-import { FileSystem, Path as PlatformPath } from '@effect/platform'
+import { FileSystem, Path as PlatformPath } from 'effect'
 import { Platform } from '@kitz/platform'
-import { Effect, Either, pipe } from 'effect'
+import { Effect, Result, pipe } from 'effect'
 import { Project } from 'ts-morph'
 
 const pathApi = Effect.runSync(PlatformPath.Path.pipe(Effect.provide(Platform.Path.layer)))
@@ -93,8 +93,8 @@ const formatGenerateBuilderError = (error: GenerateBuilderError): string => {
   }
 }
 
-const fromEither = <A, E>(value: Either.Either<A, E>) =>
-  Either.isLeft(value) ? Effect.fail(value.left) : Effect.succeed(value.right)
+const fromEither = <A, E>(value: Result.Result<A, E>) =>
+  Result.isFailure(value) ? Effect.fail(value.failure) : Effect.succeed(value.success)
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Constants
 
@@ -287,17 +287,17 @@ const loadExtractorRegistry = () =>
  */
 function validateExtractorMetadata(
   registry: Record<string, string>,
-): Either.Either<GenerateBuilderError, { readonly unusedMetadata: ReadonlyArray<string> }> {
+): Result.Result<{ readonly unusedMetadata: ReadonlyArray<string> }, GenerateBuilderError> {
   const registryNames = Object.keys(registry).sort()
   const metadataNames = Object.keys(EXTRACTOR_METADATA).sort()
 
   const missingMetadata = registryNames.filter((name) => !(name in EXTRACTOR_METADATA))
   if (missingMetadata.length > 0) {
-    return Either.left({ _tag: 'MissingExtractorMetadata', missingMetadata })
+    return Result.fail({ _tag: 'MissingExtractorMetadata', missingMetadata })
   }
 
   const unusedMetadata = metadataNames.filter((name) => !(name in registry))
-  return Either.right({ unusedMetadata })
+  return Result.succeed({ unusedMetadata })
 }
 
 /**
@@ -306,12 +306,12 @@ function validateExtractorMetadata(
  */
 function buildExtractors(
   registry: Record<string, string>,
-): Either.Either<GenerateBuilderError, Record<string, Extractor>> {
+): Result.Result<Record<string, Extractor>, GenerateBuilderError> {
   const extractors: Record<string, Extractor> = {}
   for (const [name, kindName] of Object.entries(registry)) {
     const metadata = EXTRACTOR_METADATA[name]
     if (!metadata) {
-      return Either.left({ _tag: 'ExtractorMissingMetadata', extractorName: name })
+      return Result.fail({ _tag: 'ExtractorMissingMetadata', extractorName: name })
     }
     extractors[name] = {
       name,
@@ -321,7 +321,7 @@ function buildExtractors(
       outputDesc: metadata.outputDesc,
     }
   }
-  return Either.right(extractors)
+  return Result.succeed(extractors)
 }
 
 const setupExtractors = pipe(
@@ -367,7 +367,7 @@ function generateFileHeader(combo: Combination): string {
 
   const extractorImports = combo.extractors.length > 0 ? `import { Optic } from '@kitz/core'\n` : ''
 
-  const eitherImport = combo.extractors.length > 0 ? `import type { Either } from 'effect'\n` : ''
+  const eitherImport = combo.extractors.length > 0 ? `import type { Result } from 'effect'\n` : ''
 
   // Add noExcess kinds for sub/equiv
   const relatorKinds = [combo.relator.kindName]
@@ -520,15 +520,15 @@ function generateMatcherType(matcher: Matcher, combo: Combination): string {
 
   let typeDef: string
   if (combo.extractors.length > 0) {
-    // Inline Either unwrapping with intermediate type parameter
+    // Inline Result unwrapping with intermediate type parameter
     const typeParams =
       matcher.name === 'of'
         ? '<$Expected, $Actual, __$ActualExtracted = ' + extractorChain + '>'
         : '<$Actual, __$ActualExtracted = ' + extractorChain + '>'
 
     typeDef = `// oxfmt-ignore\ntype ${matcher.name}_${typeParams} =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<${combo.relator.kindName}, [${expectedType}, __actual__${negatedParam}]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<${combo.relator.kindName}, [${expectedType}, __actual__${negatedParam}]>
                                                                          : never`
   } else {
     // No extractors - direct application
@@ -592,8 +592,8 @@ type noExcess_<
   $Actual,
   __$ActualExtracted = ${extractorChain},
 > =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<${noExcessKind}, [$Expected, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<${noExcessKind}, [$Expected, __actual__]>
                                                                          : never
 ${typedBuilderConst('noExcess_', buildRuntimeChain(combo, 'noExcess'))}
 ${typedBuilderConst('noExcessAs_', buildRuntimeChain(combo, 'noExcessAs'))}`
@@ -718,7 +718,7 @@ ${typedBuilderConst('empty', `builder.${extractorName}.empty`, true)}`
   const imports = `import type { Fn } from '@kitz/core'
 import { builder } from '${builderPath}'
 import { Optic } from '@kitz/core'
-import type { Either } from 'effect'
+import type { Result } from 'effect'
 import type { ${relatorKinds} } from '${relatorsPath}'`
 
   const extractorChain =
@@ -730,8 +730,8 @@ import type { ${relatorKinds} } from '${relatorsPath}'`
   $Actual,
   __$ActualExtracted = ${extractorChain},
 > =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<${relator.kindName}, [$Expected, __actual__]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<${relator.kindName}, [$Expected, __actual__]>
                                                                          : never`
   }).join('\n\n')
 
@@ -775,7 +775,7 @@ ${typedBuilderConst('empty', `${builderPrefix}.empty`, true)}`
   // Add type-level shorthand for negated relators
   const extractorImports =
     extractors.length > 0
-      ? `import { Optic } from '@kitz/core'\nimport type { Either } from 'effect'\n`
+      ? `import { Optic } from '@kitz/core'\nimport type { Result } from 'effect'\n`
       : ''
   const relatorKinds = RELATOR_VALUES.map((relator) => relator.kindName).join(', ')
 
@@ -791,8 +791,8 @@ ${extractorImports}import type { ${relatorKinds} } from '${relatorsPath}'`
   $Actual,
   __$ActualExtracted = ${extractorChain},
 > =
-  __$ActualExtracted extends Either.Left<infer __error__, infer _>      ? __error__ :
-  __$ActualExtracted extends Either.Right<infer _, infer __actual__>    ? Fn.Kind.Apply<${relator.kindName}, [$Expected, __actual__, true]>
+  __$ActualExtracted extends Result.Failure<infer _, infer __error__>      ? __error__ :
+  __$ActualExtracted extends Result.Success<infer __actual__, infer _>    ? Fn.Kind.Apply<${relator.kindName}, [$Expected, __actual__, true]>
                                                                          : never`
     } else {
       // No extractors
@@ -938,8 +938,8 @@ function generateAllCombinations(
 const writeAndLogFile = (targetPath: string, content: string) =>
   pipe(
     ensureDirectory(dirname(targetPath)),
-    Effect.zipRight(writeFileString(targetPath, content)),
-    Effect.zipRight(Effect.log(`  ✓ ${relative(PACKAGE_DIR, targetPath)}`)),
+    Effect.andThen(writeFileString(targetPath, content)),
+    Effect.andThen(Effect.log(`  ✓ ${relative(PACKAGE_DIR, targetPath)}`)),
   )
 
 const writeGeneratedFiles = (extractorsByName: Readonly<Record<string, Extractor>>) =>
@@ -1047,12 +1047,12 @@ const writeGeneratedFiles = (extractorsByName: Readonly<Record<string, Extractor
 const program = pipe(
   setupExtractors,
   Effect.flatMap(writeGeneratedFiles),
-  Effect.catchAll((error) =>
+  Effect.catch((error) =>
     pipe(
       Effect.logError(
         `Failed to initialize extractor registry:\n${formatGenerateBuilderError(error)}`,
       ),
-      Effect.zipRight(Effect.fail(error)),
+      Effect.andThen(Effect.fail(error)),
     ),
   ),
   Effect.provide(Platform.FileSystem.layer),

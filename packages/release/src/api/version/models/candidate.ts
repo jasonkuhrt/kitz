@@ -1,5 +1,5 @@
 import { Semver } from '@kitz/semver'
-import { ParseResult, Schema as S } from 'effect'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 
 /**
  * Structured representation of a candidate prerelease identifier.
@@ -17,8 +17,9 @@ import { ParseResult, Schema as S } from 'effect'
  * ```
  */
 export class Candidate extends S.TaggedClass<Candidate>()('Candidate', {
-  iteration: S.Number.pipe(S.positive(), S.int()),
+  iteration: S.Number.pipe(S.check(S.isGreaterThan(0), S.isInt())),
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Candidate)
 
   /** Compute candidate version: baseVersion-next.N */
@@ -34,24 +35,23 @@ const CandidatePattern = /^next\.(\d+)$/
 /**
  * Schema that transforms between string format and structured Candidate.
  */
-export const CandidateSchema = S.transformOrFail(CandidateEncoded, Candidate, {
-  strict: true,
-  decode: (value, _, ast) => {
-    const match = CandidatePattern.exec(value)
-    if (!match) {
-      return ParseResult.fail(
-        new ParseResult.Type(
-          ast,
-          value,
-          `Invalid candidate prerelease format: expected 'next.<number>'`,
-        ),
-      )
-    }
-    const iteration = parseInt(match[1]!, 10)
-    return ParseResult.succeed(Candidate.make({ iteration }))
-  },
-  encode: (candidate) => ParseResult.succeed(`next.${candidate.iteration}`),
-})
+export const CandidateSchema = CandidateEncoded.pipe(
+  S.decodeTo(Candidate, {
+    decode: SchemaGetter.transformOrFail((value) => {
+      const match = CandidatePattern.exec(value)
+      if (!match) {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(value), {
+            message: `Invalid candidate prerelease format: expected 'next.<number>'`,
+          }),
+        )
+      }
+      const iteration = parseInt(match[1]!, 10)
+      return Effect.succeed(Candidate.make({ iteration }))
+    }),
+    encode: SchemaGetter.transform((candidate) => `next.${candidate.iteration}`),
+  }),
+)
 
 // ============================================================================
 // Constructors

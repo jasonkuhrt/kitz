@@ -2,8 +2,11 @@ import { Effect, Schema } from 'effect'
 import { Finding, Linter } from '@kitz/linter'
 
 const DoctorInput = Schema.Struct({
-  showPass: Schema.optionalWith(Schema.Boolean, { default: () => false }),
-  render: Schema.optional(Schema.Literal('focus', 'sectioned', 'compact', 'table', 'tree')),
+  showPass: Schema.Boolean.pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(() => false),
+  ),
+  render: Schema.optional(Schema.Literals(['focus', 'sectioned', 'compact', 'table', 'tree'])),
 })
 
 const ManifestState = Schema.Struct({

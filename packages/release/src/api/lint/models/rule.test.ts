@@ -8,7 +8,7 @@ import * as Severity from './severity.js'
 describe('Rule', () => {
   test('make minimal rule', () => {
     const rule = Rule.make({
-      id: RuleId.make('env.git-clean'),
+      id: RuleId.makeUnsafe('env.git-clean'),
       description: 'Working directory must be clean',
       preconditions: [],
     })
@@ -20,7 +20,7 @@ describe('Rule', () => {
 
   test('make with preconditions', () => {
     const rule = Rule.make({
-      id: RuleId.make('pr.type.match-known'),
+      id: RuleId.makeUnsafe('pr.type.match-known'),
       description: 'PR type must be a known conventional commit type',
       preconditions: [HasOpenPR.make({})],
     })
@@ -30,7 +30,7 @@ describe('Rule', () => {
 
   test('make with defaults', () => {
     const rule = Rule.make({
-      id: RuleId.make('plan.tags-unique'),
+      id: RuleId.makeUnsafe('plan.tags-unique'),
       description: 'Planned tags must not already exist',
       preconditions: [HasReleasePlan.make({})],
       defaults: RuleDefaults.make({ enabled: true, severity: Severity.Warn.make({}) }),
@@ -42,7 +42,7 @@ describe('Rule', () => {
 
   test('schema roundtrip', () => {
     const rule = Rule.make({
-      id: RuleId.make('env.npm-authenticated'),
+      id: RuleId.makeUnsafe('env.npm-authenticated'),
       description: 'npm must be authenticated',
       preconditions: [HasReleasePlan.make({})],
       defaults: RuleDefaults.make({ enabled: 'auto' }),

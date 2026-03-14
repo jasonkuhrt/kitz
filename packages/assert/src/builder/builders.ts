@@ -1,5 +1,5 @@
 import { Fn, Optic, Ts } from '@kitz/core'
-import type { Either } from 'effect'
+import type { Result } from 'effect'
 import type {
   AssertAnyKind,
   AssertEmptyKind,
@@ -113,9 +113,9 @@ export type ExecuteUnaryRelator<
   $Kind extends Fn.Kind.Kind,
   ___ExtractionResult = Fn.Kind.PipeRight<$State['actual_type'], $State['actual_extractors']>,
 > =
-  ___ExtractionResult extends Either.Left<infer ERROR, infer _>
+  ___ExtractionResult extends Result.Failure<infer _, infer ERROR>
     ? (...params: OnlyAssertionErrorsAndShow<[ERROR]>) => void // Extraction failed - propagate error
-    : ___ExtractionResult extends Either.Right<infer _, infer VALUE>
+    : ___ExtractionResult extends Result.Success<infer VALUE, infer _>
       ? (
           ...params: OnlyAssertionErrorsAndShow<[AssertUnaryRelatorValue<VALUE, $State, $Kind>]>
         ) => void // Extraction succeeded
@@ -167,11 +167,11 @@ export type BuilderExtractorsConstant<$State extends S> = {
 }
 
 /**
- * Unwrap Either.Right to get the success value after extraction.
+ * Unwrap Result.Success to get the success value after extraction.
  * Used to determine what extractors are applicable to the transformed type.
  */
 type UnwrapExtractionResult<$Result> =
-  $Result extends Either.Right<infer _, infer __value__> ? __value__ : $Result // If Left, extraction failed - shouldn't happen in conditional context
+  $Result extends Result.Success<infer __value__, infer _> ? __value__ : $Result // If Left, extraction failed - shouldn't happen in conditional context
 
 export type BuilderExtractorsConditionalMaybe<
   $State extends S,

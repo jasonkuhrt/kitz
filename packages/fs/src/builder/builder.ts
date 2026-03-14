@@ -1,5 +1,5 @@
-import { FileSystem } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { FileSystem } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import { Effect, Scope } from 'effect'
 import { makeTempDirectory, makeTempDirectoryScoped } from '../filesystem.js'
 import { Path } from '../path/_.js'

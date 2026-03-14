@@ -159,15 +159,15 @@ describe('pr preview comment sync', () => {
         forecast,
         doctor: blockingDoctor,
         interactiveChecklist: false,
-      }).pipe(Effect.provide(layer), Effect.either),
+      }).pipe(Effect.provide(layer), Effect.result),
     )
 
-    expect(result._tag).toBe('Left')
-    if (result._tag !== 'Left') {
+    expect(result._tag).toBe('Failure')
+    if (result._tag !== 'Failure') {
       throw new Error('expected preview update to fail')
     }
 
-    expect(result.left).toBeInstanceOf(PreviewBlockingError)
+    expect(result.failure).toBeInstanceOf(PreviewBlockingError)
 
     const created = await Effect.runPromise(Ref.get(state.createdIssueComments))
     expect(created).toHaveLength(1)

@@ -436,7 +436,7 @@ export type Primitive = null | undefined | string | number | boolean | symbol | 
  * @category Type Utilities
  * @see {@link KITZ.Ts.PreserveTypes}
  */
-export type PrimitiveBrandLike = { readonly [Brand.BrandTypeId]: any }
+export type PrimitiveBrandLike = Brand.Brand<any>
 
 /**
  * Recursively make all properties writable (removes readonly modifiers deeply).

@@ -161,7 +161,7 @@ export const generateMatrixCombinations = (
 export const defaultSnapshotSerializer = (
   value: any,
   _context: any,
-  schemas: Array<S.Schema<any, any>> = [],
+  schemas: Array<S.Codec<any, any>> = [],
 ): string => {
   // Phase 1: Transform schema instances to encoded values
   const transformed =

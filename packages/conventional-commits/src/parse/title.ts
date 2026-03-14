@@ -1,5 +1,5 @@
 import { Err } from '@kitz/core'
-import { Effect, Either, Option, Schema as S } from 'effect'
+import { Effect, Result, Option, Schema as S } from 'effect'
 import { Multi } from '../commit-multi.js'
 import { Single } from '../commit-single.js'
 import { Target } from '../target.js'
@@ -45,13 +45,13 @@ const TYPE_SCOPE_PATTERN = /^([a-z]+)(?:\(([^)]+)\))?(!)?$/
  * - Multiple comma-separated type(scope) groups
  * - OR same type but different breaking per scope
  */
-export function parseEither(title: string): Either.Either<ParsedTitle, ParseTitleError> {
+export function parseEither(title: string): Result.Result<ParsedTitle, ParseTitleError> {
   const trimmed = title.trim()
 
   // Split on `: ` to get header and message
   const colonIndex = trimmed.indexOf(':')
   if (colonIndex === -1) {
-    return Either.left(
+    return Result.fail(
       new ParseTitleError({ context: { reason: 'Missing colon separator', input: title } }),
     )
   }
@@ -60,7 +60,7 @@ export function parseEither(title: string): Either.Either<ParsedTitle, ParseTitl
   const message = trimmed.slice(colonIndex + 1).trim()
 
   if (!message) {
-    return Either.left(new ParseTitleError({ context: { reason: 'Empty message', input: title } }))
+    return Result.fail(new ParseTitleError({ context: { reason: 'Empty message', input: title } }))
   }
 
   // Check for global breaking indicator (! before :)
@@ -75,13 +75,13 @@ export function parseEither(title: string): Either.Either<ParsedTitle, ParseTitl
     // Potentially CommitSingle
     const firstGroup = groups[0]
     if (!firstGroup) {
-      return Either.left(
+      return Result.fail(
         new ParseTitleError({ context: { reason: 'Invalid type-scope format', input: title } }),
       )
     }
     const parsed = parseTypeScopeGroup(firstGroup)
     if (!parsed) {
-      return Either.left(
+      return Result.fail(
         new ParseTitleError({ context: { reason: 'Invalid type-scope format', input: title } }),
       )
     }
@@ -91,7 +91,7 @@ export function parseEither(title: string): Either.Either<ParsedTitle, ParseTitl
 
     // If we have per-scope breaking markers on individual scopes, it's still CommitSingle
     // because they all share the same type
-    return Either.right(
+    return Result.succeed(
       Single.make({
         type,
         scopes,
@@ -108,7 +108,7 @@ export function parseEither(title: string): Either.Either<ParsedTitle, ParseTitl
   for (const group of groups) {
     const parsed = parseTypeScopeGroup(group)
     if (!parsed) {
-      return Either.left(
+      return Result.fail(
         new ParseTitleError({
           context: { reason: `Invalid type-scope group: ${group}`, input: title },
         }),
@@ -119,7 +119,7 @@ export function parseEither(title: string): Either.Either<ParsedTitle, ParseTitl
 
     // Each scope in the group becomes a Target
     if (scopes.length === 0) {
-      return Either.left(
+      return Result.fail(
         new ParseTitleError({
           context: { reason: 'CommitMulti commits require scopes', input: title },
         }),
@@ -140,12 +140,12 @@ export function parseEither(title: string): Either.Either<ParsedTitle, ParseTitl
   }
 
   if (targets.length === 0) {
-    return Either.left(
+    return Result.fail(
       new ParseTitleError({ context: { reason: 'No targets found', input: title } }),
     )
   }
 
-  return Either.right(
+  return Result.succeed(
     Multi.make({
       targets: targets as [Target, ...Target[]],
       message,
@@ -157,7 +157,7 @@ export function parseEither(title: string): Either.Either<ParsedTitle, ParseTitl
 
 export function parse(title: string): Effect.Effect<ParsedTitle, ParseTitleError> {
   const parsed = parseEither(title)
-  return Either.isLeft(parsed) ? Effect.fail(parsed.left) : Effect.succeed(parsed.right)
+  return Result.isFailure(parsed) ? Effect.fail(parsed.failure) : Effect.succeed(parsed.success)
 }
 
 interface ParsedGroup {

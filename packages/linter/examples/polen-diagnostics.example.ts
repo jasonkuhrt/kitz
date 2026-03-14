@@ -5,13 +5,13 @@ import { Finding, Linter } from '@kitz/linter'
 
 const DoctorInput = Schema.Struct({
   projectDir: Schema.String,
-  phase: Schema.Literal('dev', 'build'),
+  phase: Schema.Literals(['dev', 'build']),
 })
 
 const Diagnostic = Schema.Struct({
   source: Schema.String,
   name: Schema.String,
-  severity: Schema.Literal('info', 'warning', 'error'),
+  severity: Schema.Literals(['info', 'warning', 'error']),
   message: Schema.String,
 })
 

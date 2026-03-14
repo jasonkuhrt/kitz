@@ -1,9 +1,9 @@
 import { ConventionalCommits as CC } from '@kitz/conventional-commits'
-import { CommandExecutor } from '@effect/platform'
+import { ChildProcessSpawner } from 'effect/unstable/process'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
-import { Effect, Layer, Option, Stream } from 'effect'
+import { Effect, Layer, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { resolveConfig } from '../models/config.js'
 import { Finished } from '../models/report.js'
@@ -23,7 +23,7 @@ const prLayer = Layer.succeed(PrService, {
   title: 'feat: missing scope',
   body: '',
   commit: Option.some(
-    CC.Commit.Single.make({
+    new CC.Commit.Single({
       type: CC.Type.parse('feat'),
       scopes: [],
       breaking: false,
@@ -35,15 +35,10 @@ const prLayer = Layer.succeed(PrService, {
   titleParseError: Option.none(),
 })
 
-const commandLayer = Layer.succeed(CommandExecutor.CommandExecutor, {
-  [CommandExecutor.TypeId]: CommandExecutor.TypeId,
-  exitCode: () => Effect.die('command execution not expected in this test') as any,
-  start: () => Effect.die('command execution not expected in this test') as any,
-  string: () => Effect.die('command execution not expected in this test') as any,
-  lines: () => Effect.die('command execution not expected in this test') as any,
-  stream: () => Stream.empty,
-  streamLines: () => Stream.empty,
-} satisfies CommandExecutor.CommandExecutor)
+const spawnerLayer = Layer.succeed(
+  ChildProcessSpawner.ChildProcessSpawner,
+  ChildProcessSpawner.make(() => Effect.die('command execution not expected in this test') as any),
+)
 
 const envLayer = Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') })
 const fsLayer = Fs.Memory.layer({})
@@ -66,7 +61,7 @@ describe('check', () => {
             ReleasePlan.DefaultReleasePlanLayer,
             Preconditions.make({ hasOpenPR: true }),
             prLayer,
-            commandLayer,
+            spawnerLayer,
             envLayer,
             fsLayer,
             gitLayer,

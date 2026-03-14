@@ -18,7 +18,7 @@ interface CustomMatchers<R = unknown> {
    * expect(person1).toBeEquivalent(person2, Person)
    * ```
    */
-  toBeEquivalent<A, I = A, R = never>(expected: A, schema: S.Schema<A, I, R>): R
+  toBeEquivalent<A, I = A, R = never>(expected: A, schema: S.Codec<A, I, R>): R
 
   /**
    * Check if two values are equivalent using a provided equivalence function.
@@ -41,8 +41,8 @@ declare module 'vitest' {
 }
 
 expect.extend({
-  toBeEquivalent<A, I = A, R = never>(received: A, expected: A, schema: S.Schema<A, I, R>) {
-    const equivalence = S.equivalence(schema)
+  toBeEquivalent<A, I = A, R = never>(received: A, expected: A, schema: S.Codec<A, I, R>) {
+    const equivalence = S.toEquivalence(schema)
     const pass = equivalence(received, expected)
 
     // Try to get a string representation if the schema has an encoder
@@ -50,7 +50,7 @@ expect.extend({
     let expectedStr: string
 
     try {
-      const encode = S.encodeSync(schema as S.Schema<A, I>)
+      const encode = S.encodeSync(schema as S.Codec<A, I>)
       receivedStr = JSON.stringify(encode(received))
       expectedStr = JSON.stringify(encode(expected))
     } catch {

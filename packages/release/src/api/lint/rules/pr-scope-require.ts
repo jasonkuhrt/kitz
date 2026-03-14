@@ -10,9 +10,9 @@ import { PrService } from '../services/pr.js'
 
 /** Requires the PR title to include at least one scope. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('pr.scope.require'),
+  id: RuleId.makeUnsafe('pr.scope.require'),
   description: 'At least one scope required',
-  preconditions: [Precondition.HasOpenPR.make()],
+  preconditions: [new Precondition.HasOpenPR()],
   defaults: RuleDefaults.make({ enabled: false }),
   check: Effect.gen(function* () {
     const pr = yield* PrService

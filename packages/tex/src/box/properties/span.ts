@@ -12,7 +12,7 @@ export type Value = number | string | bigint
 /**
  * Span value schema.
  */
-export const ValueSchema = S.Union(S.Number, S.String, S.BigIntFromSelf)
+export const ValueSchema = S.Union([S.Number, S.String, S.BigInt])
 
 /**
  * Axied input type for span values.
@@ -26,7 +26,9 @@ export type Input = Axied.Input<Value>
  *
  * @category Text Formatting
  */
-export class Span extends Axied.Class<Span>('Span')(ValueSchema) {}
+export class Span extends Axied.Class<Span>('Span')(ValueSchema) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Parse span input into a Span instance.

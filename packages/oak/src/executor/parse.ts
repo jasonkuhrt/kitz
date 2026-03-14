@@ -16,13 +16,13 @@ import { prompt } from './prompt.js'
 import type { ArgumentValue } from './types.js'
 
 export interface ParseProgressPostPromptAnnotation {
-  globalErrors: OpeningArgs.ParseResult['globalErrors']
-  mutuallyExclusiveParameters: OpeningArgs.ParseResult['mutuallyExclusiveParameters']
+  globalErrors: OpeningArgs.SchemaIssue['globalErrors']
+  mutuallyExclusiveParameters: OpeningArgs.SchemaIssue['mutuallyExclusiveParameters']
   basicParameters: Record<
     string,
     {
-      openingParseResult: OpeningArgs.ParseResult['basicParameters'][string]
-      spec: OpeningArgs.ParseResult['basicParameters'][string]['parameter']
+      openingParseResult: OpeningArgs.SchemaIssue['basicParameters'][string]
+      spec: OpeningArgs.SchemaIssue['basicParameters'][string]['parameter']
       prompt: {
         enabled: boolean
       }
@@ -31,13 +31,13 @@ export interface ParseProgressPostPromptAnnotation {
 }
 
 export interface ParseProgressPostPrompt {
-  globalErrors: OpeningArgs.ParseResult['globalErrors']
-  mutuallyExclusiveParameters: OpeningArgs.ParseResult['mutuallyExclusiveParameters']
+  globalErrors: OpeningArgs.SchemaIssue['globalErrors']
+  mutuallyExclusiveParameters: OpeningArgs.SchemaIssue['mutuallyExclusiveParameters']
   basicParameters: Record<
     string,
     {
-      spec: OpeningArgs.ParseResult['basicParameters'][string]['parameter']
-      openingParseResult: OpeningArgs.ParseResult['basicParameters'][string]
+      spec: OpeningArgs.SchemaIssue['basicParameters'][string]['parameter']
+      openingParseResult: OpeningArgs.SchemaIssue['basicParameters'][string]
       prompt: {
         enabled: boolean
         arg: ArgumentValue
@@ -47,13 +47,13 @@ export interface ParseProgressPostPrompt {
 }
 
 export interface ParseProgressDone {
-  globalErrors: OpeningArgs.ParseResult['globalErrors']
-  mutuallyExclusiveParameters: OpeningArgs.ParseResult['mutuallyExclusiveParameters']
+  globalErrors: OpeningArgs.SchemaIssue['globalErrors']
+  mutuallyExclusiveParameters: OpeningArgs.SchemaIssue['mutuallyExclusiveParameters']
   basicParameters: Record<
     string,
     {
-      spec: OpeningArgs.ParseResult['basicParameters'][string]['parameter']
-      openingParseResult: OpeningArgs.ParseResult['basicParameters'][string]
+      spec: OpeningArgs.SchemaIssue['basicParameters'][string]['parameter']
+      openingParseResult: OpeningArgs.SchemaIssue['basicParameters'][string]
       prompt: {
         enabled: boolean
         arg: ArgumentValue

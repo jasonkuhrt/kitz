@@ -21,8 +21,9 @@ export const ItemBaseFields = {
  */
 export class Official extends S.TaggedClass<Official>()('Official', {
   ...ItemBaseFields,
-  version: S.Union(OfficialFirst, OfficialIncrement),
+  version: S.Union([OfficialFirst, OfficialIncrement]),
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Official)
 
   /** The version this release will produce. Extracts `to` from increments, `version` from firsts. */

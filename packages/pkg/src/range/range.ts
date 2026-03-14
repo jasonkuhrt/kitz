@@ -1,6 +1,6 @@
 import { Semver } from '@kitz/semver'
 import { Range as VltRange, Version as VltVersion } from '@vltpkg/semver'
-import { Effect, ParseResult, Schema as S } from 'effect'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import type { SemverValue } from '../semver-schema.js'
 import { Comparator } from './comparator.js'
 import type { Operator } from './operator.js'
@@ -35,9 +35,9 @@ export type Range = readonly [
   ...(readonly [Comparator, ...Comparator[]])[],
 ]
 
-export const Range: S.Schema<Range> = S.NonEmptyArray(S.NonEmptyArray(Comparator))
+export const Range = S.NonEmptyArray(S.NonEmptyArray(Comparator))
 
-export const is: (input: unknown) => input is Range = S.is(Range)
+export const is = S.is(Range)
 
 /**
  * Construct a Range from comparator sets.
@@ -52,18 +52,26 @@ export const make = (sets: Range): Range => sets
  * Uses @vltpkg/semver internally for battle-tested parsing,
  * then converts to clean Effect Schema types.
  */
-export const Schema: S.Schema<Range, string> = S.transformOrFail(S.String, Range, {
-  strict: true,
-  decode: (value, _, ast) =>
-    Effect.try({
-      try: () => convertVltRange(new VltRange(value)),
-      catch: (error) => new ParseResult.Type(ast, value, `Invalid semver range: ${String(error)}`),
-    }),
-  encode: (range) =>
-    Effect.succeed(
-      range.map((set) => set.map((c) => Comparator.toString(c)).join(' ')).join(' || '),
+export const Schema = S.String.pipe(
+  S.decodeTo(Range, {
+    decode: SchemaGetter.transformOrFail((value) =>
+      Effect.try({
+        try: () => convertVltRange(new VltRange(value)),
+        catch: (error) =>
+          new SchemaIssue.InvalidValue(Option.some(value), {
+            message: `Invalid semver range: ${String(error)}`,
+          }),
+      }),
     ),
-})
+    encode: SchemaGetter.transform((range: Range) =>
+      range
+        .map((set: readonly [Comparator, ...Comparator[]]) =>
+          set.map((c: Comparator) => Comparator.toString(c)).join(' '),
+        )
+        .join(' || '),
+    ),
+  }),
+)
 
 export function fromString(value: string): Range {
   return S.decodeSync(Schema)(value)

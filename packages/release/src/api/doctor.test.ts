@@ -12,7 +12,7 @@ import {
 } from './doctor.js'
 
 const ruleRef = (id: string, description = 'Test rule') => ({
-  id: RuleId.make(id),
+  id: RuleId.makeUnsafe(id),
   description,
 })
 
@@ -81,7 +81,7 @@ describe('doctor api', () => {
                   'active branch is allowed for the planned release lifecycle',
                 ),
                 duration: 2,
-                severity: Severity.Error.make(),
+                severity: Severity.Error.make({}),
                 violation: Violation.make({
                   location: Environment.make({
                     message:

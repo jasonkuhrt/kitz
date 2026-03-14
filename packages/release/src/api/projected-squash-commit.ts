@@ -1,7 +1,7 @@
 import type { Analysis } from './analyzer/models/analysis.js'
 import { ConventionalCommits } from '@kitz/conventional-commits'
 import type { Semver } from '@kitz/semver'
-import { Either, Option } from 'effect'
+import { Result, Option } from 'effect'
 
 export interface ScopeImpact {
   readonly scope: string
@@ -86,15 +86,15 @@ const getActualHeader = (
 } => {
   const parsed = ConventionalCommits.Title.parseEither(title.trim())
 
-  if (Either.isLeft(parsed)) {
+  if (Result.isFailure(parsed)) {
     return {
       header: null,
-      error: parsed.left.message,
+      error: parsed.failure.message,
     }
   }
 
   return {
-    header: ConventionalCommits.Commit.renderHeader(parsed.right),
+    header: ConventionalCommits.Commit.renderHeader(parsed.success),
     error: null,
   }
 }

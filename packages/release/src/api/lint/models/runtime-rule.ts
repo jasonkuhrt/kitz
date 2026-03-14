@@ -23,7 +23,7 @@ export interface RuntimeRule<
   Context = never,
 > {
   readonly data: Rule
-  readonly optionsSchema?: Schema.Schema.AnyNoContext
+  readonly optionsSchema?: Schema.Top
   readonly check: Effect.Effect<CheckResult<Metadata>, Error, Context>
 }
 
@@ -34,7 +34,7 @@ type CreateParams<Options, Metadata, Error, Context> = {
   readonly preventsDescriptions?: Rule['preventsDescriptions']
   readonly preconditions: Rule['preconditions']
   readonly defaults?: Rule['defaults']
-  readonly optionsSchema?: Schema.Schema.AnyNoContext
+  readonly optionsSchema?: Schema.Top
   readonly check: Effect.Effect<CheckResult<Metadata>, Error, Context>
 }
 

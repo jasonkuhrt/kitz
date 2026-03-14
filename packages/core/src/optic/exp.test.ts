@@ -1,5 +1,5 @@
 import { Assert } from '#kitz/assert'
-import { Either } from 'effect'
+import { Result } from 'effect'
 import { describe, expect, test } from 'vitest'
 import {
   type Compile,
@@ -26,18 +26,18 @@ const A = Assert.Type
 describe('property access', () => {
   test('.name', () => {
     const result = compile('.name')
-    expect(Either.isRight(result)).toBe(true)
-    A.exact.ofAs<Either.Right<never, readonly [Property.$Get<'name'>]>>().onAs<Compile<'.name'>>()
+    expect(Result.isSuccess(result)).toBe(true)
+    A.exact.ofAs<Result.Success<readonly [Property.$Get<'name'>], never>>().onAs<Compile<'.name'>>()
   })
 
   test('.user.address.city', () => {
     const result = compile('.user.address.city')
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
     A.exact
       .ofAs<
-        Either.Right<
-          never,
-          readonly [Property.$Get<'user'>, Property.$Get<'address'>, Property.$Get<'city'>]
+        Result.Success<
+          readonly [Property.$Get<'user'>, Property.$Get<'address'>, Property.$Get<'city'>],
+          never
         >
       >()
       .onAs<Compile<'.user.address.city'>>()
@@ -45,20 +45,20 @@ describe('property access', () => {
 
   test("['weird.name']", () => {
     const result = compile("['weird.name']")
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
     A.exact
-      .ofAs<Either.Right<never, readonly [Property.$Get<'weird.name'>]>>()
+      .ofAs<Result.Success<readonly [Property.$Get<'weird.name'>], never>>()
       .onAs<Compile<"['weird.name']">>()
   })
 
   test(".user['my.key'].value", () => {
     const result = compile(".user['my.key'].value")
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
     A.exact
       .ofAs<
-        Either.Right<
-          never,
-          readonly [Property.$Get<'user'>, Property.$Get<'my.key'>, Property.$Get<'value'>]
+        Result.Success<
+          readonly [Property.$Get<'user'>, Property.$Get<'my.key'>, Property.$Get<'value'>],
+          never
         >
       >()
       .onAs<Compile<".user['my.key'].value">>()
@@ -71,18 +71,18 @@ describe('property access', () => {
 
 describe('awaited (#) - type-level only', () => {
   test('# type-level compiles', () => {
-    A.exact.ofAs<Either.Right<never, readonly [Awaited.$Get]>>().onAs<Compile<'#'>>()
+    A.exact.ofAs<Result.Success<readonly [Awaited.$Get], never>>().onAs<Compile<'#'>>()
   })
 
   test('.data# type-level compiles', () => {
     A.exact
-      .ofAs<Either.Right<never, readonly [Property.$Get<'data'>, Awaited.$Get]>>()
+      .ofAs<Result.Success<readonly [Property.$Get<'data'>, Awaited.$Get], never>>()
       .onAs<Compile<'.data#'>>()
   })
 
   test('# rejected at value-level', () => {
     const result = compile('#')
-    expect(Either.isLeft(result)).toBe(true)
+    expect(Result.isFailure(result)).toBe(true)
   })
 })
 
@@ -92,24 +92,26 @@ describe('awaited (#) - type-level only', () => {
 
 describe('returned (>) - type-level only', () => {
   test('> type-level compiles', () => {
-    A.exact.ofAs<Either.Right<never, readonly [Returned.$Get]>>().onAs<Compile<'>'>>()
+    A.exact.ofAs<Result.Success<readonly [Returned.$Get], never>>().onAs<Compile<'>'>>()
   })
 
   test('># type-level compiles', () => {
     A.exact
-      .ofAs<Either.Right<never, readonly [Returned.$Get, Awaited.$Get]>>()
+      .ofAs<Result.Success<readonly [Returned.$Get, Awaited.$Get], never>>()
       .onAs<Compile<'>#'>>()
   })
 
   test('.handler># type-level compiles', () => {
     A.exact
-      .ofAs<Either.Right<never, readonly [Property.$Get<'handler'>, Returned.$Get, Awaited.$Get]>>()
+      .ofAs<
+        Result.Success<readonly [Property.$Get<'handler'>, Returned.$Get, Awaited.$Get], never>
+      >()
       .onAs<Compile<'.handler>#'>>()
   })
 
   test('> rejected at value-level', () => {
     const result = compile('>')
-    expect(Either.isLeft(result)).toBe(true)
+    expect(Result.isFailure(result)).toBe(true)
   })
 })
 
@@ -119,22 +121,22 @@ describe('returned (>) - type-level only', () => {
 
 describe('parameters - type-level only', () => {
   test('() type-level compiles', () => {
-    A.exact.ofAs<Either.Right<never, readonly [Parameters.$Get]>>().onAs<Compile<'()'>>()
+    A.exact.ofAs<Result.Success<readonly [Parameters.$Get], never>>().onAs<Compile<'()'>>()
   })
 
   test('(0) type-level compiles', () => {
-    A.exact.ofAs<Either.Right<never, readonly [Parameter1.$Get]>>().onAs<Compile<'(0)'>>()
+    A.exact.ofAs<Result.Success<readonly [Parameter1.$Get], never>>().onAs<Compile<'(0)'>>()
   })
 
   test('>(0) type-level compiles', () => {
     A.exact
-      .ofAs<Either.Right<never, readonly [Returned.$Get, Parameter1.$Get]>>()
+      .ofAs<Result.Success<readonly [Returned.$Get, Parameter1.$Get], never>>()
       .onAs<Compile<'>(0)'>>()
   })
 
   test('() rejected at value-level', () => {
     const result = compile('()')
-    expect(Either.isLeft(result)).toBe(true)
+    expect(Result.isFailure(result)).toBe(true)
   })
 })
 
@@ -144,18 +146,18 @@ describe('parameters - type-level only', () => {
 
 describe('array ([]) - type-level only', () => {
   test('[] type-level compiles', () => {
-    A.exact.ofAs<Either.Right<never, readonly [Array.$Get]>>().onAs<Compile<'[]'>>()
+    A.exact.ofAs<Result.Success<readonly [Array.$Get], never>>().onAs<Compile<'[]'>>()
   })
 
   test('.items[] type-level compiles', () => {
     A.exact
-      .ofAs<Either.Right<never, readonly [Property.$Get<'items'>, Array.$Get]>>()
+      .ofAs<Result.Success<readonly [Property.$Get<'items'>, Array.$Get], never>>()
       .onAs<Compile<'.items[]'>>()
   })
 
   test('[] rejected at value-level', () => {
     const result = compile('[]')
-    expect(Either.isLeft(result)).toBe(true)
+    expect(Result.isFailure(result)).toBe(true)
   })
 })
 
@@ -166,21 +168,21 @@ describe('array ([]) - type-level only', () => {
 describe('tuple ([N])', () => {
   test('[0]', () => {
     const result = compile('[0]')
-    expect(Either.isRight(result)).toBe(true)
-    A.exact.ofAs<Either.Right<never, readonly [Tuple.$Get<0>]>>().onAs<Compile<'[0]'>>()
+    expect(Result.isSuccess(result)).toBe(true)
+    A.exact.ofAs<Result.Success<readonly [Tuple.$Get<0>], never>>().onAs<Compile<'[0]'>>()
   })
 
   test('[2]', () => {
     const result = compile('[2]')
-    expect(Either.isRight(result)).toBe(true)
-    A.exact.ofAs<Either.Right<never, readonly [Tuple.$Get<2>]>>().onAs<Compile<'[2]'>>()
+    expect(Result.isSuccess(result)).toBe(true)
+    A.exact.ofAs<Result.Success<readonly [Tuple.$Get<2>], never>>().onAs<Compile<'[2]'>>()
   })
 
   test('.callbacks[0]', () => {
     const result = compile('.callbacks[0]')
-    expect(Either.isRight(result)).toBe(true)
+    expect(Result.isSuccess(result)).toBe(true)
     A.exact
-      .ofAs<Either.Right<never, readonly [Property.$Get<'callbacks'>, Tuple.$Get<0>]>>()
+      .ofAs<Result.Success<readonly [Property.$Get<'callbacks'>, Tuple.$Get<0>], never>>()
       .onAs<Compile<'.callbacks[0]'>>()
   })
 })
@@ -191,18 +193,18 @@ describe('tuple ([N])', () => {
 
 describe('indexed (:) - type-level only', () => {
   test(': type-level compiles', () => {
-    A.exact.ofAs<Either.Right<never, readonly [Indexed.$Get]>>().onAs<Compile<':'>>()
+    A.exact.ofAs<Result.Success<readonly [Indexed.$Get], never>>().onAs<Compile<':'>>()
   })
 
   test('.data: type-level compiles', () => {
     A.exact
-      .ofAs<Either.Right<never, readonly [Property.$Get<'data'>, Indexed.$Get]>>()
+      .ofAs<Result.Success<readonly [Property.$Get<'data'>, Indexed.$Get], never>>()
       .onAs<Compile<'.data:'>>()
   })
 
   test(': rejected at value-level', () => {
     const result = compile(':')
-    expect(Either.isLeft(result)).toBe(true)
+    expect(Result.isFailure(result)).toBe(true)
   })
 })
 
@@ -214,9 +216,9 @@ describe('complex compositions - type-level only', () => {
   test('.callbacks[0]># type-level compiles', () => {
     A.exact
       .ofAs<
-        Either.Right<
-          never,
-          readonly [Property.$Get<'callbacks'>, Tuple.$Get<0>, Returned.$Get, Awaited.$Get]
+        Result.Success<
+          readonly [Property.$Get<'callbacks'>, Tuple.$Get<0>, Returned.$Get, Awaited.$Get],
+          never
         >
       >()
       .onAs<Compile<'.callbacks[0]>#'>>()
@@ -225,7 +227,7 @@ describe('complex compositions - type-level only', () => {
   test('.users[].name type-level compiles', () => {
     A.exact
       .ofAs<
-        Either.Right<never, readonly [Property.$Get<'users'>, Array.$Get, Property.$Get<'name'>]>
+        Result.Success<readonly [Property.$Get<'users'>, Array.$Get, Property.$Get<'name'>], never>
       >()
       .onAs<Compile<'.users[].name'>>()
   })
@@ -238,25 +240,25 @@ describe('complex compositions - type-level only', () => {
 describe('error cases', () => {
   test('empty string', () => {
     const result = compile('')
-    expect(Either.isLeft(result)).toBe(true)
-    A.exact.ofAs<Either.Left<CompileErrorEmpty, never>>().on(result)
+    expect(Result.isFailure(result)).toBe(true)
+    A.exact.ofAs<Result.Failure<never, CompileErrorEmpty>>().on(result)
   })
 
   test('invalid syntax: no leading dot', () => {
     const result = compile('invalid')
-    expect(Either.isLeft(result)).toBe(true)
-    A.sub.ofAs<Either.Left<CompileErrorInvalidSyntax<'invalid'>, never>>().on(result)
+    expect(Result.isFailure(result)).toBe(true)
+    A.sub.ofAs<Result.Failure<never, CompileErrorInvalidSyntax<'invalid'>>>().on(result)
   })
 
   test('invalid syntax: double dot', () => {
     const result = compile('..')
-    expect(Either.isLeft(result)).toBe(true)
-    A.sub.ofAs<Either.Left<CompileErrorInvalidSyntax<'..'>, never>>().on(result)
+    expect(Result.isFailure(result)).toBe(true)
+    A.sub.ofAs<Result.Failure<never, CompileErrorInvalidSyntax<'..'>>>().on(result)
   })
 
   test('invalid syntax: unclosed bracket', () => {
     const result = compile('[0')
-    expect(Either.isLeft(result)).toBe(true)
-    A.sub.ofAs<Either.Left<CompileErrorInvalidSyntax<'[0'>, never>>().on(result)
+    expect(Result.isFailure(result)).toBe(true)
+    A.sub.ofAs<Result.Failure<never, CompileErrorInvalidSyntax<'[0'>>>().on(result)
   })
 })

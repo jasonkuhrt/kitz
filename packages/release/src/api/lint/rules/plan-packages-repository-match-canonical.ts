@@ -34,19 +34,19 @@ const extractRepositoryTarget = (repository: unknown): string | null => {
 
 /** Advises when planned packages point at a repo other than the canonical GitHub release target. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('plan.packages-repository-match-canonical'),
+  id: RuleId.makeUnsafe('plan.packages-repository-match-canonical'),
   description: 'planned package repository metadata points at the canonical GitHub repo',
-  defaults: RuleDefaults.make({ severity: Severity.Warn.make() }),
-  preconditions: [Precondition.HasReleasePlan.make()],
+  defaults: RuleDefaults.make({ severity: Severity.Warn.make({}) }),
+  preconditions: [new Precondition.HasReleasePlan()],
   check: Effect.gen(function* () {
     const env = yield* Env.Env
     const manifests = yield* loadPlannedManifests
-    const target = yield* resolveReleaseTarget(env.vars).pipe(Effect.either)
+    const target = yield* resolveReleaseTarget(env.vars).pipe(Effect.result)
 
-    if (target._tag === 'Left') {
+    if (target._tag === 'Failure') {
       return Violation.make({
         location: Environment.make({
-          message: target.left.message,
+          message: target.failure.message,
         }),
         summary: 'Canonical GitHub repo could not be resolved for repository provenance checks.',
         detail:
@@ -67,7 +67,7 @@ export const rule = RuntimeRule.create({
       })
     }
 
-    const canonicalRepo = `${target.right.owner}/${target.right.repo}`
+    const canonicalRepo = `${target.success.owner}/${target.success.repo}`
     const offenders = manifests.filter((entry) => {
       const repositoryTarget = extractRepositoryTarget(entry.manifest.repository)
       return repositoryTarget !== null && repositoryTarget !== canonicalRepo

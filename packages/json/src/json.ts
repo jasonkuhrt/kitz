@@ -48,7 +48,7 @@ export { type Obj as Object }
  *
  * @category Schemas
  */
-export const PrimitiveSchema = S.Union(S.String, S.Number, S.Boolean, S.Null)
+export const PrimitiveSchema = S.Union([S.String, S.Number, S.Boolean, S.Null])
 
 /**
  * JSON value schema.
@@ -57,8 +57,8 @@ export const PrimitiveSchema = S.Union(S.String, S.Number, S.Boolean, S.Null)
  * @category Schemas
  */
 // @ts-expect-error - Recursive type inference limitation
-export const ValueSchema: S.Schema<Value> = S.suspend(() =>
-  S.Union(PrimitiveSchema, S.Array(ValueSchema), S.Record({ key: S.String, value: ValueSchema })),
+export const ValueSchema: S.Codec<Value, Value> = S.suspend(() =>
+  S.Union([PrimitiveSchema, S.Array(ValueSchema), S.Record(S.String, ValueSchema)]),
 )
 
 /**
@@ -67,7 +67,7 @@ export const ValueSchema: S.Schema<Value> = S.suspend(() =>
  *
  * @category Schemas
  */
-export const ObjectSchema = S.Record({ key: S.String, value: ValueSchema })
+export const ObjectSchema = S.Record(S.String, ValueSchema)
 
 /**
  * Primary schema for JSON string parsing/serialization.
@@ -85,7 +85,7 @@ export const ObjectSchema = S.Record({ key: S.String, value: ValueSchema })
  *
  * @category Schemas
  */
-export const Schema = S.parseJson(ValueSchema, { space: 2 }).annotations({
+export const Schema = S.fromJsonString(ValueSchema).annotate({
   identifier: 'Json',
   title: 'JSON Value',
   description: 'A valid JSON value parsed from/serialized to a string',

@@ -20,7 +20,7 @@ export type Value = number | string | bigint
 /**
  * Padding value schema.
  */
-export const Value = S.Union(S.Number, S.String, S.BigIntFromSelf)
+export const Value = S.Union([S.Number, S.String, S.BigInt])
 
 /**
  * Padding configuration using logical properties.
@@ -31,7 +31,9 @@ export const Value = S.Union(S.Number, S.String, S.BigIntFromSelf)
  *
  * @category Text Formatting
  */
-export class Padding extends Sided.Class<Padding>('Padding')(Value) {}
+export class Padding extends Sided.Class<Padding>('Padding')(Value) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Parse padding input into a Padding instance.

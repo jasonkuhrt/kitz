@@ -3,7 +3,7 @@ import { Schema as S } from 'effect'
 
 const baseTags = ['kit', 'release'] as const
 const ReleaseErrorContext = S.Struct({
-  operation: S.Literal('plan', 'apply', 'tag'),
+  operation: S.Literals(['plan', 'apply', 'tag']),
   detail: S.optional(S.String),
 })
 

@@ -266,7 +266,7 @@ export const makeWithState = (
 ): Effect.Effect<{ layer: Layer.Layer<Git>; state: GitMemoryState }> =>
   Effect.gen(function* () {
     const state = yield* makeState(config)
-    const layer = Layer.succeed(Git, makeService(state))
+    const layer = Layer.succeed(Git)(makeService(state))
     return { layer, state }
   })
 

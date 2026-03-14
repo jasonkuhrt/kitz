@@ -1,5 +1,5 @@
 import { describe, expect, it as test } from '@effect/vitest'
-import { WorkflowEngine } from '@effect/workflow'
+import { WorkflowEngine } from 'effect/unstable/workflow'
 import { Fs } from '@kitz/fs'
 import { Duration, Effect } from 'effect'
 import { makeWorkflowRuntime } from './runtime.js'

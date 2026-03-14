@@ -1,5 +1,5 @@
 import { Fn, Optic, Ts } from '@kitz/core'
-import type { Either } from 'effect'
+import type { Result } from 'effect'
 import type { StaticErrorAssertion } from '../assertion-error.js'
 import * as Asserts from '../asserts.js'
 import type { State } from './state.js'
@@ -67,8 +67,8 @@ type Assert<
   ___$ExtractionResult = Fn.Kind.PipeRight<$RawActual, $State['actual_extractors']>,
 > =
   // Check if extraction failed
-  ___$ExtractionResult extends Either.Left<infer __error__, infer _>  ? __error__ :
-  ___$ExtractionResult extends Either.Right<infer _, infer __value__> ?
+  ___$ExtractionResult extends Result.Failure<infer _, infer __error__>  ? __error__ :
+  ___$ExtractionResult extends Result.Success<infer __value__, infer _> ?
     (
       Ts.IsUnknown<__value__> extends true
         ? $State['matcher_allowUnknown'] extends true
@@ -76,7 +76,7 @@ type Assert<
           : Ts.Err.StaticErrorMessage<'Type unknown is not a valid actual type to assertion on unless flag has been set'>
         : AssertsKindApply<$Expected, __value__, $State>
     )
-                                                                      : never // Shouldn't happen - ApplyExtractors always returns Either
+                                                                      : never // Shouldn't happen - ApplyExtractors always returns Result
 type AssertsKindApply<
   $Expected,
   $Actual,
@@ -158,9 +158,9 @@ export type AssertUnaryRelator<
   $Kind extends Fn.Kind.Kind,
   ___$ExtractionResult = Fn.Kind.PipeRight<$actual, $State['actual_extractors']>,
 > =
-  ___$ExtractionResult extends Either.Left<infer __error__, infer _>
+  ___$ExtractionResult extends Result.Failure<infer _, infer __error__>
     ? __error__ // Extraction failed - propagate error
-    : ___$ExtractionResult extends Either.Right<infer _, infer __value__>
+    : ___$ExtractionResult extends Result.Success<infer __value__, infer _>
       ? Fn.Kind.Apply<$Kind, [__value__, $State['matcher_negated']]>
       : never
 

@@ -1,6 +1,6 @@
 import { Lang } from '@kitz/core'
 import { Fs } from '@kitz/fs'
-import { Either, Schema as S } from 'effect'
+import { Result, Schema as S } from 'effect'
 import { existsSync, readdirSync, readFileSync } from 'fs'
 import { basename, dirname, extname, join } from 'path'
 import {
@@ -89,14 +89,14 @@ const findModuleReadme = (sourceFilePath: string): string | undefined => {
 const findNamespaceHomePagePath = (exportDeclFile: string): string | undefined => {
   const dir = dirname(exportDeclFile)
 
-  const filesResult = Either.try({
+  const filesResult = Result.try({
     try: () => readdirSync(dir),
     catch: () => undefined,
   })
 
-  if (Either.isLeft(filesResult)) return undefined
+  if (Result.isFailure(filesResult)) return undefined
 
-  const files = filesResult.right
+  const files = filesResult.success
   const homeFiles = files.filter((f: string) => f.endsWith('.home.md')).sort()
 
   if (homeFiles.length === 0) return undefined
@@ -143,13 +143,13 @@ const addHomePageIfExists = (
   const homePagePath = findNamespaceHomePagePath(exportDeclFilePath)
   if (!homePagePath) return nestedModule
 
-  const parsedHome = Either.try({
+  const parsedHome = Result.try({
     try: () => parseHomePage(homePageMarkdown, homePagePath),
     catch: (error) => error,
   })
 
-  if (Either.isLeft(parsedHome)) {
-    const cause = parsedHome.left
+  if (Result.isFailure(parsedHome)) {
+    const cause = parsedHome.failure
     if (cause instanceof Error) {
       throw new Error(`Failed to parse home page for namespace '${nsName}':\n${cause.message}`, {
         cause,
@@ -158,7 +158,7 @@ const addHomePageIfExists = (
     return Lang.throw(cause)
   }
 
-  const home = parsedHome.right
+  const home = parsedHome.success
 
   // Update ModuleDocs with home
   const existingDocs = nestedModule.docs

@@ -1,6 +1,6 @@
 import { Obj } from '@kitz/core'
 import { Git } from '@kitz/git'
-import { Effect, ParseResult, Schema } from 'effect'
+import { Effect, SchemaIssue, Schema } from 'effect'
 import type { ResolvedConfig } from '../models/config.js'
 import * as Precondition from '../models/precondition.js'
 import { Failed, Finished, Report, RuleCheckResult, Skipped } from '../models/report.js'
@@ -105,7 +105,7 @@ const resolveRulesToRun = (
     // Resolve enabled: per-rule config > rule defaults > global defaults
     const ruleConfig = config.rules[rule.data.id]
     const enabled =
-      ruleConfig?.overrides.enabled ?? rule.data.defaults?.enabled ?? config.defaults.enabled
+      ruleConfig?.['overrides'].enabled ?? rule.data.defaults?.enabled ?? config.defaults.enabled
 
     if (enabled === false) {
       inactive.push(rule)
@@ -157,7 +157,7 @@ export const check = (
   params: CheckParams,
 ): Effect.Effect<
   Report,
-  ParseResult.ParseError | RegisteredRuleError,
+  Schema.SchemaError | RegisteredRuleError,
   EvaluatedPreconditionsService | RegisteredRuleContextWithoutOptions
 > => {
   const { config } = params
@@ -194,7 +194,7 @@ const checkRule = (
   preconditions: EvaluatedPreconditions,
 ): Effect.Effect<
   RuleCheckResult,
-  ParseResult.ParseError | RegisteredRuleError,
+  Schema.SchemaError | RegisteredRuleError,
   RegisteredRuleContextWithoutOptions
 > => {
   return Effect.gen(function* () {
@@ -223,11 +223,11 @@ const checkRule = (
     }
 
     // Get rule options from config
-    const rawOptions = config.rules[rule.data.id]?.options ?? {}
+    const rawOptions = config.rules[rule.data.id]?.['options'] ?? {}
 
     // Validate options against rule's schema (if defined)
     const options = rule.optionsSchema
-      ? yield* Schema.decodeUnknown(rule.optionsSchema)(rawOptions)
+      ? yield* Schema.decodeUnknownEffect(rule.optionsSchema)(rawOptions)
       : rawOptions
 
     // Run the check with options provided
@@ -253,12 +253,18 @@ const checkRule = (
       violation,
       metadata,
     })
-  })
+  }) as Effect.Effect<
+    RuleCheckResult,
+    Schema.SchemaError | RegisteredRuleError,
+    RegisteredRuleContextWithoutOptions
+  >
 }
 
 const resolveRuleSeverity = (rule: RegisteredRule, config: ResolvedConfig): Severity => {
   const ruleConfig = config.rules[rule.data.id]
-  return ruleConfig?.overrides.severity ?? rule.data.defaults?.severity ?? config.defaults.severity
+  return (
+    ruleConfig?.['overrides'].severity ?? rule.data.defaults?.severity ?? config.defaults.severity
+  )
 }
 
 /**

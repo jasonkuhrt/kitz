@@ -1,4 +1,4 @@
-import { HttpClient, HttpClientError } from '@effect/platform'
+import { HttpClient, HttpClientError } from 'effect/unstable/http'
 import { Err } from '@kitz/core'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
@@ -10,7 +10,7 @@ import { Effect, Option, Schema as S } from 'effect'
 
 const baseTags = ['kit', 'npm-registry'] as const
 
-const NpmRegistryOperationSchema = S.Literal('getVersions', 'getLatestVersion')
+const NpmRegistryOperationSchema = S.Literals(['getVersions', 'getLatestVersion'])
 const ErrorCause = S.instanceOf(Error)
 const NpmRegistryErrorContext = S.Struct({
   operation: NpmRegistryOperationSchema,
@@ -25,7 +25,7 @@ const SemverParseErrorContext = S.Struct({
 /**
  * Npm registry operation names for structured error context.
  */
-export type NpmRegistryOperation = S.Schema.Type<typeof NpmRegistryOperationSchema>
+export type NpmRegistryOperation = typeof NpmRegistryOperationSchema.Type
 
 /**
  * Npm registry operation error.
@@ -92,29 +92,23 @@ const fetchPackageMetadata = <$data>(
       }
       return response.json.pipe(Effect.map((data) => Option.some(data as $data)))
     }),
-    Effect.catchTag('ResponseError', (error) => {
-      if (error.response.status === 404) {
+    Effect.catchTag('HttpClientError', (error) => {
+      const response = error.response
+      if (response?.status === 404) {
         return Effect.succeed(Option.none<$data>())
       }
+      const detail = response ? `status ${response.status}` : undefined
       return Effect.fail(
         new NpmRegistryError({
           context: {
             operation,
             packageName: moniker.moniker,
-            detail: `status ${error.response.status}`,
+            detail,
           },
           cause: error,
         }),
       )
     }),
-    Effect.catchTag('RequestError', (error) =>
-      Effect.fail(
-        new NpmRegistryError({
-          context: { operation, packageName: moniker.moniker },
-          cause: error,
-        }),
-      ),
-    ),
   )
 }
 

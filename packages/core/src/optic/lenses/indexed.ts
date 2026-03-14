@@ -1,7 +1,7 @@
 import type { Fn } from '#fn'
 import type { Rec } from '#rec'
 import type { Ts } from '#ts'
-import type { Either } from 'effect'
+import type { Result } from 'effect'
 
 /**
  * Error when type does not have an index signature.
@@ -16,16 +16,16 @@ export type LensErrorNoIndexSignature<$Actual> = Ts.Err.StaticError<
  *
  * @example
  * ```ts
- * type T1 = Get<Record<string, number>> // Either.Right<number>
- * type T2 = Get<{ [k: string]: Foo }> // Either.Right<Foo>
- * type T3 = Get<{ name: string }> // Either.Left<error>
+ * type T1 = Get<Record<string, number>> // Result.Success<number>
+ * type T2 = Get<{ [k: string]: Foo }> // Result.Success<Foo>
+ * type T3 = Get<{ name: string }> // Result.Failure<error>
  * ```
  */
 // oxfmt-ignore
 export type Get<$T> =
   string extends keyof $T
-    ? Either.Right<never, $T[string]>
-    : Either.Left<LensErrorNoIndexSignature<$T>, never>
+    ? Result.Success<$T[string], never>
+    : Result.Failure<never, LensErrorNoIndexSignature<$T>>
 
 /**
  * Set the value type of a type's string index signature.

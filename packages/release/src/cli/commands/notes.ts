@@ -11,7 +11,7 @@ import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
-import { Console, Effect, Layer, Schema } from 'effect'
+import { Console, Effect, Layer, Schema, SchemaGetter } from 'effect'
 import * as Api from '../../api/__.js'
 import { FileSystemLayer } from '../../platform.js'
 
@@ -26,25 +26,24 @@ const args = Oak.Command.create()
   .parameter(
     'pkg p',
     Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotations({ description: 'Filter to specific package (default: all packages)' }),
+      Schema.annotate({ description: 'Filter to specific package (default: all packages)' }),
     ),
   )
   .parameter(
     'format f',
-    Schema.transform(
-      Schema.UndefinedOr(Schema.Literal('md', 'json')),
-      Schema.Literal('md', 'json'),
-      {
-        strict: true,
-        decode: (v) => v ?? 'md',
-        encode: (v) => v,
-      },
-    ).pipe(Schema.annotations({ description: 'Output format', default: 'md' })),
+    Schema.UndefinedOr(Schema.Literals(['md', 'json']))
+      .pipe(
+        Schema.decodeTo(Schema.Literals(['md', 'json']), {
+          decode: SchemaGetter.transform((v) => v ?? 'md'),
+          encode: SchemaGetter.transform((v) => v),
+        }),
+      )
+      .pipe(Schema.annotate({ description: 'Output format', default: 'md' })),
   )
   .parameter(
     'since s',
     Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotations({
+      Schema.annotate({
         description: 'Show changes since this tag (default: last release tag)',
       }),
     ),

@@ -8,7 +8,7 @@ import { Violation } from './violation.js'
 describe('RuntimeRule', () => {
   test('create with clean check', () => {
     const rule = create({
-      id: RuleId.make('env.git-clean'),
+      id: RuleId.makeUnsafe('env.git-clean'),
       description: 'Working directory is clean',
       preconditions: [],
       check: Effect.succeed(undefined),
@@ -22,7 +22,7 @@ describe('RuntimeRule', () => {
       location: Environment.make({ message: 'Dirty working directory' }),
     })
     const rule = create({
-      id: RuleId.make('env.git-clean'),
+      id: RuleId.makeUnsafe('env.git-clean'),
       description: 'Working directory is clean',
       preconditions: [],
       check: Effect.succeed(violation),
@@ -32,7 +32,7 @@ describe('RuntimeRule', () => {
 
   test('create with metadata result', () => {
     const rule = create({
-      id: RuleId.make('env.npm-authenticated'),
+      id: RuleId.makeUnsafe('env.npm-authenticated'),
       description: 'npm is authenticated',
       preconditions: [],
       check: Effect.succeed({ metadata: { username: 'testuser' } }),
@@ -43,7 +43,7 @@ describe('RuntimeRule', () => {
   test('create with options schema', () => {
     const OptionsSchema = Schema.Struct({ registry: Schema.String })
     const rule = create({
-      id: RuleId.make('env.npm-authenticated'),
+      id: RuleId.makeUnsafe('env.npm-authenticated'),
       description: 'npm is authenticated',
       preconditions: [],
       optionsSchema: OptionsSchema,
@@ -54,7 +54,7 @@ describe('RuntimeRule', () => {
 
   test('check is an Effect', async () => {
     const rule = create({
-      id: RuleId.make('env.git-clean'),
+      id: RuleId.makeUnsafe('env.git-clean'),
       description: 'test',
       preconditions: [],
       check: Effect.succeed(undefined),
@@ -65,7 +65,7 @@ describe('RuntimeRule', () => {
 
   test('create with defaults', () => {
     const rule = create({
-      id: RuleId.make('env.git-clean'),
+      id: RuleId.makeUnsafe('env.git-clean'),
       description: 'test',
       preconditions: [],
       defaults: RuleDefaults.make({ enabled: true }),

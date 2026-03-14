@@ -17,10 +17,10 @@ interface Metadata {
 
 /** Verifies that planned release tags do not already exist in the git repository. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('plan.tags-unique'),
+  id: RuleId.makeUnsafe('plan.tags-unique'),
   description: 'planned release tags do not already exist in git',
   defaults: RuleDefaults.make({ enabled: false }),
-  preconditions: [Precondition.HasReleasePlan.make()],
+  preconditions: [new Precondition.HasReleasePlan()],
   check: Effect.gen(function* () {
     const plan = yield* ReleasePlanService
     const git = yield* Git.Git

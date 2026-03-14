@@ -1,6 +1,6 @@
 import { Schema as S } from 'effect'
 import type * as EAST from 'effect/SchemaAST'
-import { isLiteral, isTransformation, isTypeLiteral } from 'effect/SchemaAST'
+import { isLiteral, isObjects } from 'effect/SchemaAST'
 import * as AST from './ast.js'
 import type { AnySchema, StringOrNever } from './sch.js'
 import type { ExtractFields } from './struct.js'
@@ -38,15 +38,18 @@ export const getTagOrThrow = <schema extends AnySchema>(schema: schema): ArgTagS
   // Resolve non-structural wrappers
   let resolved = AST.resolve(schema.ast)
 
-  // If it's a transformation, check the 'to' side
-  if (isTransformation(schema.ast)) {
-    resolved = AST.resolve(schema.ast.to)
+  // In v4, transformations are in encoding chain
+  if (schema.ast.encoding !== undefined) {
+    const toEncodedAst = schema.ast.encoding[0]?.to
+    if (toEncodedAst) {
+      resolved = AST.resolve(toEncodedAst)
+    }
   }
 
-  // Check if we reached a TypeLiteral (struct)
-  if (!isTypeLiteral(resolved)) {
+  // Check if we reached an Objects (struct)
+  if (!isObjects(resolved)) {
     throw new Error(
-      `Expected to reach a TypeLiteral (struct) after traversing non-structural schemas, but got: ${resolved._tag}`,
+      `Expected to reach an Objects (struct) after traversing non-structural schemas, but got: ${resolved._tag}`,
     )
   }
 
@@ -81,8 +84,8 @@ export const getTagOrThrow = <schema extends AnySchema>(schema: schema): ArgTagS
  * Returns never if not found.
  * NOTE: Cannot extract actual schemas from suspended types, only direct schemas.
  */
-export type ExtractByTag<$TagName extends Tag, $Union extends S.Schema.All> =
-  $Union extends S.Union<infer $Members extends readonly S.Schema.All[]>
+export type ExtractByTag<$TagName extends Tag, $Union extends S.Top> =
+  $Union extends S.Union<infer $Members extends readonly S.Top[]>
     ? ExtractTaggedStructFromArray<$TagName, $Members>
     : $Union extends S.TaggedStruct<infer __tag__, any>
       ? $TagName extends __tag__
@@ -93,11 +96,8 @@ export type ExtractByTag<$TagName extends Tag, $Union extends S.Schema.All> =
 // Helper to extract from array of schemas
 type ExtractTaggedStructFromArray<
   $TagName extends Tag,
-  $Schemas extends readonly S.Schema.All[],
-> = $Schemas extends readonly [
-  infer $First extends S.Schema.All,
-  ...infer $Rest extends readonly S.Schema.All[],
-]
+  $Schemas extends readonly S.Top[],
+> = $Schemas extends readonly [infer $First extends S.Top, ...infer $Rest extends readonly S.Top[]]
   ? $First extends S.TaggedStruct<infer __tag__, any>
     ? $TagName extends __tag__
       ? $First
@@ -109,15 +109,15 @@ type ExtractTaggedStructFromArray<
  * Predicate to check if a union contains a specific tag.
  * Can check suspended types by looking at their decoded type's _tag.
  */
-export type DoesTaggedUnionContainTag<$TagName extends string, $Union extends S.Schema.All> =
-  $Union extends S.Union<infer $Members extends readonly S.Schema.All[]>
+export type DoesTaggedUnionContainTag<$TagName extends string, $Union extends S.Top> =
+  $Union extends S.Union<infer $Members extends readonly S.Top[]>
     ? ContainsTagInArray<$TagName, $Members>
     : $Union extends S.TaggedStruct<infer __tag__, any>
       ? $TagName extends __tag__
         ? true
         : false
-      : $Union extends S.suspend<infer $Type, any, any>
-        ? $Type extends { readonly _tag: infer __tag__ }
+      : $Union extends S.suspend<infer $Schema>
+        ? $Schema['Type'] extends { readonly _tag: infer __tag__ }
           ? $TagName extends __tag__
             ? true
             : false
@@ -127,17 +127,14 @@ export type DoesTaggedUnionContainTag<$TagName extends string, $Union extends S.
 // Helper to check if array contains tag
 type ContainsTagInArray<
   $TagName extends string,
-  $Schemas extends readonly S.Schema.All[],
-> = $Schemas extends readonly [
-  infer $First extends S.Schema.All,
-  ...infer $Rest extends readonly S.Schema.All[],
-]
+  $Schemas extends readonly S.Top[],
+> = $Schemas extends readonly [infer $First extends S.Top, ...infer $Rest extends readonly S.Top[]]
   ? $First extends S.TaggedStruct<infer __tag__, any>
     ? $TagName extends __tag__
       ? true
       : ContainsTagInArray<$TagName, $Rest>
-    : $First extends S.suspend<infer $Type, any, any>
-      ? $Type extends { readonly _tag: infer __tag__ }
+    : $First extends S.suspend<infer $Schema>
+      ? $Schema['Type'] extends { readonly _tag: infer __tag__ }
         ? $TagName extends __tag__
           ? true
           : ContainsTagInArray<$TagName, $Rest>

@@ -30,12 +30,11 @@
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
-    "@effect/platform": "^0.81.0",
     "@octokit/types": "^13.10.0",
-    "effect": "^3.19.13"
+    "effect": "4.0.0-beta.31"
   },
   "devDependencies": {
-    "@effect/vitest": "^0.27.0",
+    "@effect/vitest": "4.0.0-beta.31",
     "@kitz/test": "workspace:*"
   }
 }

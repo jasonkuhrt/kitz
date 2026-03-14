@@ -8,7 +8,7 @@ import type { Package } from '../workspace.js'
  * Encoded: `{ scope: string, name: string, path: string }`
  * Decoded: `Package` (with path as AbsDir, name as Moniker)
  */
-export const PackageSchema: S.Schema<Package, { scope: string; name: string; path: string }> =
+export const PackageSchema: S.Codec<Package, { scope: string; name: string; path: string }> =
   S.Struct({
     scope: S.String,
     name: Pkg.Moniker.FromString,

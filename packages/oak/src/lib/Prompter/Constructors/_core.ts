@@ -43,36 +43,34 @@ export const create = (channels: PromptEngine.Channels): Prompter => {
       // String and Number types - use key press input to build string
       if (schema._tag === `string` || schema._tag === `number`) {
         const isOptional = params.parameter.type.metadata.optionality._tag !== `required`
-        return Effect.gen(function* (_) {
-          const result = yield* _(
-            PromptEngine.create({
-              channels,
-              initialState: { value: `` },
-              skippable: isOptional,
-              draw: (state) => {
-                return Text.pad(`left`, marginLeft, ` `, `${params.prompt}${state.value}`)
+        return Effect.gen(function* () {
+          const result = yield* PromptEngine.create({
+            channels,
+            initialState: { value: `` },
+            skippable: isOptional,
+            draw: (state) => {
+              return Text.pad(`left`, marginLeft, ` `, `${params.prompt}${state.value}`)
+            },
+            on: [
+              {
+                // Match backspace separately
+                match: `backspace`,
+                run: (state: { value: string }) => ({ value: state.value.slice(0, -1) }),
               },
-              on: [
-                {
-                  // Match backspace separately
-                  match: `backspace`,
-                  run: (state: { value: string }) => ({ value: state.value.slice(0, -1) }),
+              {
+                // Match all other keys by having empty match criteria (matches everything)
+                // The PromptEngine filters out return/escape automatically
+                match: {},
+                run: (state: { value: string }, event: KeyPress.KeyPressEvent) => {
+                  // Add the character if it has a sequence (printable character)
+                  if (event.sequence && event.sequence !== ``) {
+                    return { value: state.value + event.sequence }
+                  }
+                  return state
                 },
-                {
-                  // Match all other keys by having empty match criteria (matches everything)
-                  // The PromptEngine filters out return/escape automatically
-                  match: {},
-                  run: (state: { value: string }, event: KeyPress.KeyPressEvent) => {
-                    // Add the character if it has a sequence (printable character)
-                    if (event.sequence && event.sequence !== ``) {
-                      return { value: state.value + event.sequence }
-                    }
-                    return state
-                  },
-                },
-              ] as any,
-            }),
-          )
+              },
+            ] as any,
+          })
           if (result === null) return undefined as any
           const value = result.value
           if (schema._tag === `number`) {
@@ -84,24 +82,22 @@ export const create = (channels: PromptEngine.Channels): Prompter => {
 
       // Boolean type - toggle between yes/no
       if (schema._tag === `boolean`) {
-        return Effect.gen(function* (_) {
-          const result = yield* _(
-            PromptEngine.create({
-              channels,
-              initialState: { value: false },
-              draw: (state) => {
-                const yes = state.value ? Term.colors.positive(`yes`) : `yes`
-                const no = !state.value ? Term.colors.positive(`no`) : `no`
-                return Text.pad(`left`, marginLeft, ` `, `${params.prompt}${yes} / ${no}`)
+        return Effect.gen(function* () {
+          const result = yield* PromptEngine.create({
+            channels,
+            initialState: { value: false },
+            draw: (state) => {
+              const yes = state.value ? Term.colors.positive(`yes`) : `yes`
+              const no = !state.value ? Term.colors.positive(`no`) : `no`
+              return Text.pad(`left`, marginLeft, ` `, `${params.prompt}${yes} / ${no}`)
+            },
+            on: [
+              {
+                match: [`right`, `left`, `tab`],
+                run: (state) => ({ value: !state.value }),
               },
-              on: [
-                {
-                  match: [`right`, `left`, `tab`],
-                  run: (state) => ({ value: !state.value }),
-                },
-              ],
-            }),
-          )
+            ],
+          })
           if (result === null) throw new Error(`Boolean selection cancelled`)
           return result.value as any
         })
@@ -109,30 +105,28 @@ export const create = (channels: PromptEngine.Channels): Prompter => {
 
       // Enum type - select from values
       if (schema._tag === `enum`) {
-        return Effect.gen(function* (_) {
+        return Effect.gen(function* () {
           const values = schema.values
-          const result = yield* _(
-            PromptEngine.create({
-              channels,
-              initialState: { index: 0 },
-              draw: (state) => {
-                const options = values
-                  .map((v, i) => (i === state.index ? Term.colors.positive(String(v)) : String(v)))
-                  .join(` / `)
-                return Text.pad(`left`, marginLeft, ` `, `${params.prompt}${options}`)
+          const result = yield* PromptEngine.create({
+            channels,
+            initialState: { index: 0 },
+            draw: (state) => {
+              const options = values
+                .map((v, i) => (i === state.index ? Term.colors.positive(String(v)) : String(v)))
+                .join(` / `)
+              return Text.pad(`left`, marginLeft, ` `, `${params.prompt}${options}`)
+            },
+            on: [
+              {
+                match: [`right`, `tab`],
+                run: (state) => ({ index: (state.index + 1) % values.length }),
               },
-              on: [
-                {
-                  match: [`right`, `tab`],
-                  run: (state) => ({ index: (state.index + 1) % values.length }),
-                },
-                {
-                  match: [{ name: `tab`, shift: true }, `left`],
-                  run: (state) => ({ index: (state.index - 1 + values.length) % values.length }),
-                },
-              ],
-            }),
-          )
+              {
+                match: [{ name: `tab`, shift: true }, `left`],
+                run: (state) => ({ index: (state.index - 1 + values.length) % values.length }),
+              },
+            ],
+          })
           if (result === null) throw new Error(`Enum selection cancelled`)
           return values[result.index] as any
         })
@@ -140,53 +134,49 @@ export const create = (channels: PromptEngine.Channels): Prompter => {
 
       // Union type - first select type, then prompt for value
       if (schema._tag === `union`) {
-        return Effect.gen(function* (_) {
+        return Effect.gen(function* () {
           // First prompt: select which union member type to use
           const typeNames = schema.members.map((m) => m._tag)
-          const typeResult = yield* _(
-            PromptEngine.create({
-              channels,
-              initialState: { index: 0 },
-              draw: (state) => {
-                const options = typeNames
-                  .map((name, i) => (i === state.index ? Term.colors.positive(name) : name))
-                  .join(` / `)
-                return Text.pad(`left`, marginLeft, ` `, `${params.prompt}select type: ${options}`)
+          const typeResult = yield* PromptEngine.create({
+            channels,
+            initialState: { index: 0 },
+            draw: (state) => {
+              const options = typeNames
+                .map((name, i) => (i === state.index ? Term.colors.positive(name) : name))
+                .join(` / `)
+              return Text.pad(`left`, marginLeft, ` `, `${params.prompt}select type: ${options}`)
+            },
+            on: [
+              {
+                match: [`right`, `tab`],
+                run: (state) => ({ index: (state.index + 1) % typeNames.length }),
               },
-              on: [
-                {
-                  match: [`right`, `tab`],
-                  run: (state) => ({ index: (state.index + 1) % typeNames.length }),
-                },
-                {
-                  match: [{ name: `tab`, shift: true }, `left`],
-                  run: (state) => ({
-                    index: (state.index - 1 + typeNames.length) % typeNames.length,
-                  }),
-                },
-              ],
-            }),
-          )
+              {
+                match: [{ name: `tab`, shift: true }, `left`],
+                run: (state) => ({
+                  index: (state.index - 1 + typeNames.length) % typeNames.length,
+                }),
+              },
+            ],
+          })
           if (typeResult === null) throw new Error(`Union type selection cancelled`)
 
           // Second prompt: prompt for the selected type
           const selectedSchema = schema.members[typeResult.index]!
           const prompter = create(channels)
-          return yield* _(
-            prompter.ask({
-              ...params,
-              parameter: {
-                ...params.parameter,
-                type: {
-                  ...params.parameter.type,
-                  metadata: {
-                    ...params.parameter.type.metadata,
-                    schema: selectedSchema,
-                  },
+          return yield* prompter.ask({
+            ...params,
+            parameter: {
+              ...params.parameter,
+              type: {
+                ...params.parameter.type,
+                metadata: {
+                  ...params.parameter.type.metadata,
+                  schema: selectedSchema,
                 },
-              } as any,
-            }),
-          )
+              },
+            } as any,
+          })
         }) as any
       }
 

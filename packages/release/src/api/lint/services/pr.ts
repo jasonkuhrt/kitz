@@ -1,6 +1,6 @@
 import type { ConventionalCommits } from '@kitz/conventional-commits'
 import { ConventionalCommits as CC } from '@kitz/conventional-commits'
-import { Context, Effect, Either, Layer, Option } from 'effect'
+import { Effect, Result, Layer, Option, ServiceMap } from 'effect'
 
 /** PR data available to lint rules. */
 export interface Pr {
@@ -17,7 +17,7 @@ export interface Pr {
 }
 
 /** Service providing PR context. */
-export class PrService extends Context.Tag('PrService')<PrService, Pr>() {}
+export class PrService extends ServiceMap.Service<PrService, Pr>()('PrService') {}
 
 const fallbackPr: Pr = {
   number: 0,
@@ -33,14 +33,14 @@ export const fromPullRequest = (pullRequest: {
   readonly body: string | null
 }): Effect.Effect<Pr> =>
   CC.Title.parse(pullRequest.title).pipe(
-    Effect.either,
+    Effect.result,
     Effect.map((parsed) =>
-      Either.isRight(parsed)
+      Result.isSuccess(parsed)
         ? {
             number: pullRequest.number,
             title: pullRequest.title,
             body: pullRequest.body ?? '',
-            commit: Option.some(parsed.right),
+            commit: Option.some(parsed.success),
             titleParseError: Option.none(),
           }
         : {
@@ -48,7 +48,7 @@ export const fromPullRequest = (pullRequest: {
             title: pullRequest.title,
             body: pullRequest.body ?? '',
             commit: Option.none(),
-            titleParseError: Option.some(parsed.left.message),
+            titleParseError: Option.some(parsed.failure.message),
           },
     ),
   )

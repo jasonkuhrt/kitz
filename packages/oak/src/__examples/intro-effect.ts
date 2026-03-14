@@ -1,4 +1,4 @@
-import { Schema } from 'effect'
+import { Schema, SchemaGetter } from 'effect'
 import { Command } from '../__.js'
 import { EffectSchema } from '../_entrypoints/extensions.js'
 
@@ -6,57 +6,63 @@ const args = await Command.create()
   .use(EffectSchema)
   .parameter(
     `filePath`,
-    Schema.String.pipe(Schema.annotations({ description: `Path to the file to convert.` })),
+    Schema.String.pipe(Schema.annotate({ description: `Path to the file to convert.` })),
   )
   .parameter(
     `to`,
-    Schema.Literal(`json`, `yaml`, `toml`).pipe(
-      Schema.annotations({ description: `Format to convert to.` }),
+    Schema.Literals([`json`, `yaml`, `toml`]).pipe(
+      Schema.annotate({ description: `Format to convert to.` }),
     ),
   )
   .parameter(
     `from`,
-    Schema.UndefinedOr(Schema.Literal(`json`, `yaml`, `toml`)).pipe(
-      Schema.annotations({ description: `Source format (auto-detected if omitted).` }),
+    Schema.UndefinedOr(Schema.Literals([`json`, `yaml`, `toml`])).pipe(
+      Schema.annotate({ description: `Source format (auto-detected if omitted).` }),
     ),
   )
   .parameter(
     `output o`,
     Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotations({ description: `Output file path (prints to stdout if omitted).` }),
+      Schema.annotate({ description: `Output file path (prints to stdout if omitted).` }),
     ),
   )
   .parameter(
     `encoding`,
-    Schema.UndefinedOr(Schema.Literal(`utf8`, `utf16`, `ascii`)).pipe(
-      Schema.annotations({ description: `File encoding to use.` }),
+    Schema.UndefinedOr(Schema.Literals([`utf8`, `utf16`, `ascii`])).pipe(
+      Schema.annotate({ description: `File encoding to use.` }),
     ),
   )
   .parameter(
     `verbose v`,
-    Schema.transform(Schema.UndefinedOr(Schema.Boolean), Schema.Boolean, {
-      strict: true,
-      decode: (value) => value ?? false,
-      encode: (value) => value,
-    }).pipe(
-      Schema.annotations({
-        description: `Log detailed progress as conversion executes.`,
-        default: false,
-      }),
-    ),
+    Schema.UndefinedOr(Schema.Boolean)
+      .pipe(
+        Schema.decodeTo(Schema.Boolean, {
+          decode: SchemaGetter.transform((value) => value ?? false),
+          encode: SchemaGetter.transform((value) => value),
+        }),
+      )
+      .pipe(
+        Schema.annotate({
+          description: `Log detailed progress as conversion executes.`,
+          default: false,
+        }),
+      ),
   )
   .parameter(
     `move m`,
-    Schema.transform(Schema.UndefinedOr(Schema.Boolean), Schema.Boolean, {
-      strict: true,
-      decode: (value) => value ?? false,
-      encode: (value) => value,
-    }).pipe(
-      Schema.annotations({
-        description: `Delete the original file after it has been converted.`,
-        default: false,
-      }),
-    ),
+    Schema.UndefinedOr(Schema.Boolean)
+      .pipe(
+        Schema.decodeTo(Schema.Boolean, {
+          decode: SchemaGetter.transform((value) => value ?? false),
+          encode: SchemaGetter.transform((value) => value),
+        }),
+      )
+      .pipe(
+        Schema.annotate({
+          description: `Delete the original file after it has been converted.`,
+          default: false,
+        }),
+      ),
   )
   .settings({
     prompt: {

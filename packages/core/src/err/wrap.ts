@@ -24,7 +24,7 @@ export interface WrapOptions {
  * If the input is not an Error, it will be converted to one using {@link ensure}.
  *
  * @param cause - The error to wrap (will be set as the cause)
- * @param messageOrOptions - Either a string message or options with message and context
+ * @param messageOrOptions - Result a string message or options with message and context
  * @returns A new Error with the given message and the original error as cause
  *
  * @example

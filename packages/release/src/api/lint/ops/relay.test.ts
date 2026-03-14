@@ -7,7 +7,7 @@ import { Environment } from '../models/violation-location.js'
 import { formatReport } from './relay.js'
 
 const ruleRef = (id: string, description = 'Test rule') => ({
-  id: RuleId.make(id),
+  id: RuleId.makeUnsafe(id),
   description,
 })
 
@@ -21,7 +21,7 @@ describe('formatReport', () => {
             'declared publish channel matches the active runtime',
           ),
           duration: 4,
-          severity: Severity.Error.make(),
+          severity: Severity.Error.make({}),
           violation: Violation.make({
             location: Environment.make({ message: 'ACTIONS_ID_TOKEN_REQUEST_URL is missing.' }),
             summary: 'Trusted publishing is configured but OIDC is unavailable.',
@@ -72,7 +72,7 @@ describe('formatReport', () => {
         Finished.make({
           rule: ruleRef('env.release-branch-allowed', 'active branch is allowed'),
           duration: 1,
-          severity: Severity.Error.make(),
+          severity: Severity.Error.make({}),
         }),
       ],
     })

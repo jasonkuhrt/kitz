@@ -16,5 +16,6 @@ export class Rule extends Schema.TaggedClass<Rule>()('Rule', {
   preconditions: Schema.Array(Precondition.Precondition),
   defaults: Schema.optional(RuleDefaults),
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Rule)
 }

@@ -1,4 +1,4 @@
-import { FileSystem } from '@effect/platform'
+import { FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'

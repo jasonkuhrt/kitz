@@ -9,7 +9,7 @@
  * @category Color
  */
 
-import { ParseResult, Schema as S } from 'effect'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import type { ColorRgb } from './named-colors.js'
 import { parse } from './parser.js'
 
@@ -40,10 +40,11 @@ import { parse } from './parser.js'
  * @see https://effect.website/docs/guides/schema/branded-types - Effect Schema branded types
  */
 export class Color extends S.TaggedClass<Color>()('Color', {
-  r: S.Number.pipe(S.int(), S.between(0, 255)),
-  g: S.Number.pipe(S.int(), S.between(0, 255)),
-  b: S.Number.pipe(S.int(), S.between(0, 255)),
+  r: S.Number.pipe(S.check(S.isInt(), S.isBetween({ minimum: 0, maximum: 255 }))),
+  g: S.Number.pipe(S.check(S.isInt(), S.isBetween({ minimum: 0, maximum: 255 }))),
+  b: S.Number.pipe(S.check(S.isInt(), S.isBetween({ minimum: 0, maximum: 255 }))),
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Color)
 
   override toString() {
@@ -98,29 +99,28 @@ export class Color extends S.TaggedClass<Color>()('Color', {
    *
    * @see https://www.w3.org/TR/css-color-4/#color-syntax - CSS Color syntax specification
    */
-  static String = S.transformOrFail(S.String, Color, {
-    strict: true,
-    encode: (decoded) => {
-      // Encode to hex format
-      const r = decoded.r.toString(16).padStart(2, '0')
-      const g = decoded.g.toString(16).padStart(2, '0')
-      const b = decoded.b.toString(16).padStart(2, '0')
-      return ParseResult.succeed(`#${r}${g}${b}`.toUpperCase())
-    },
-    decode: (input, _options, ast) => {
-      const result = parse(input)
-      if (result === null) {
-        return ParseResult.fail(
-          new ParseResult.Type(
-            ast,
-            input,
-            `Invalid color format. Expected hex (#FF5733), RGB (rgb 255 87 51 or rgb(255, 87, 51)), HSL (hsl 120 100 50 or hsl(120, 100, 50)), or named color (red, blue, etc.)`,
-          ),
-        )
-      }
-      return ParseResult.succeed(new Color(result))
-    },
-  })
+  static String = S.String.pipe(
+    S.decodeTo(Color, {
+      decode: SchemaGetter.transformOrFail((input) => {
+        const result = parse(input)
+        if (result === null) {
+          return Effect.fail(
+            new SchemaIssue.InvalidValue(Option.some(input), {
+              message: `Invalid color format. Expected hex (#FF5733), RGB (rgb 255 87 51 or rgb(255, 87, 51)), HSL (hsl 120 100 50 or hsl(120, 100, 50)), or named color (red, blue, etc.)`,
+            }),
+          )
+        }
+        return Effect.succeed(Color.make(result))
+      }),
+      encode: SchemaGetter.transform((decoded) => {
+        // Encode to hex format
+        const r = decoded.r.toString(16).padStart(2, '0')
+        const g = decoded.g.toString(16).padStart(2, '0')
+        const b = decoded.b.toString(16).padStart(2, '0')
+        return `#${r}${g}${b}`.toUpperCase()
+      }),
+    }),
+  )
 
   /**
    * Parse a color string to a Color instance.
@@ -152,7 +152,7 @@ export class Color extends S.TaggedClass<Color>()('Color', {
    * ```
    */
   static fromRgb = (rgb: ColorRgb): Color => {
-    return new Color(rgb)
+    return Color.make(rgb)
   }
 }
 
@@ -180,13 +180,16 @@ export class Color extends S.TaggedClass<Color>()('Color', {
  *
  * @see https://effect.website/docs/guides/schema/data-types#union - Effect Schema unions
  */
-export const ColorInput = S.Union(
+export const ColorInput = S.Union([
   Color.String,
   S.Struct({
-    r: S.Number.pipe(S.int(), S.between(0, 255)),
-    g: S.Number.pipe(S.int(), S.between(0, 255)),
-    b: S.Number.pipe(S.int(), S.between(0, 255)),
+    r: S.Number.pipe(S.check(S.isInt(), S.isBetween({ minimum: 0, maximum: 255 }))),
+    g: S.Number.pipe(S.check(S.isInt(), S.isBetween({ minimum: 0, maximum: 255 }))),
+    b: S.Number.pipe(S.check(S.isInt(), S.isBetween({ minimum: 0, maximum: 255 }))),
   }).pipe(
-    S.transform(Color, { decode: Color.fromRgb, encode: (c) => ({ r: c.r, g: c.g, b: c.b }) }),
+    S.decodeTo(Color, {
+      decode: SchemaGetter.transform(Color.fromRgb),
+      encode: SchemaGetter.transform((c) => ({ r: c.r, g: c.g, b: c.b })),
+    }),
   ),
-)
+])

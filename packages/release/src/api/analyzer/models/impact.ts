@@ -3,7 +3,7 @@ import { Option, Schema as S } from 'effect'
 import { ReleaseCommit } from './commit.js'
 import { PackageSchema } from './package-schema.js'
 
-const CurrentVersionSchema: S.Schema<
+const CurrentVersionSchema: S.Codec<
   Option.Option<Semver.Semver>,
   string | null
 > = S.OptionFromNullOr(Semver.Schema)
@@ -17,5 +17,6 @@ export class Impact extends S.TaggedClass<Impact>()('Impact', {
   commits: S.Array(ReleaseCommit),
   currentVersion: CurrentVersionSchema,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Impact)
 }

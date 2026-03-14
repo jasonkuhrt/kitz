@@ -18,6 +18,7 @@
     "eslint/no-control-regex": "off",
     "typescript/no-explicit-any": "off",
     "typescript/no-unsafe-type-assertion": "off",
+    "typescript/unbound-method": "off",
     "typescript/no-unnecessary-type-assertion": "warn",
     "eslint-plugin-jest/expect-expect": "off",
     "eslint-plugin-jest/no-standalone-expect": "off",

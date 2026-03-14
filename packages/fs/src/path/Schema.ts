@@ -5,7 +5,6 @@ import { RelDir } from './RelDir/_.js'
 import { RelFile } from './RelFile/_.js'
 
 // needed to avoid '...canot be naned...' errors
-import type { RefineSchemaId, TypeId } from 'effect/Schema'
 
 /**
  * Union schema of all path types with string codec baked in.
@@ -28,11 +27,11 @@ import type { RefineSchemaId, TypeId } from 'effect/Schema'
  * })
  * ```
  */
-export const Schema = S.Union(
+export const Schema = S.Union([
   AbsFile.Schema,
   AbsDir.Schema,
   RelFile.Schema,
   RelDir.Schema,
-).annotations({
+]).annotate({
   identifier: 'FsPathAny',
 })

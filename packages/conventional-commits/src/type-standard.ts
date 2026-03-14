@@ -25,7 +25,7 @@ const standardValues = {
   revert: 'revert',
 } as const
 
-export const StandardValue = Schema.Enums(standardValues)
+export const StandardValue = Schema.Enum(standardValues)
 export type StandardValue = keyof typeof standardValues
 
 // ─── Standard Impact Mapping ────────────────────────────────────
@@ -57,6 +57,7 @@ export const StandardImpact: Record<StandardValue, Option.Option<BumpType>> = {
 export class Standard extends Schema.TaggedClass<Standard>()('Standard', {
   value: StandardValue,
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Standard)
   static parse = (value: StandardValue) => Standard.make({ value })
 }

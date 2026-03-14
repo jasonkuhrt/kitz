@@ -2,8 +2,10 @@ import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, Either, HashMap, MutableHashMap, Option, Schema as S } from 'effect'
+import { Effect, Result, HashMap, MutableHashMap, Option, Schema as S } from 'effect'
+import type { Candidate } from '../version/models/candidate.js'
 import { CandidateSchema } from '../version/models/candidate.js'
+import type { Ephemeral } from '../version/models/ephemeral.js'
 import { EphemeralSchema } from '../version/models/ephemeral.js'
 import { ReleaseCommit } from './models/commit.js'
 
@@ -42,14 +44,14 @@ export const extractImpacts = (gitCommit: Git.Commit): Effect.Effect<CommitImpac
   Effect.gen(function* () {
     // Parse the commit title (first line)
     const title = gitCommit.message.split('\n')[0] ?? gitCommit.message
-    const parseResult = yield* Effect.either(ConventionalCommits.Title.parse(title))
+    const parseResult = yield* Effect.result(ConventionalCommits.Title.parse(title))
 
-    if (Either.isLeft(parseResult)) {
+    if (Result.isFailure(parseResult)) {
       // Not a conventional commit - no impacts
       return []
     }
 
-    const parsedCC = parseResult.right
+    const parsedCC = parseResult.success
     const releaseCommit = ReleaseCommit.make({
       hash: gitCommit.hash,
       author: gitCommit.author,

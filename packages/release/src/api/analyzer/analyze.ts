@@ -6,7 +6,7 @@
  * by Planner (for version projection) and Commentator (for PR comments).
  */
 
-import { FileSystem } from '@effect/platform'
+import { FileSystem } from 'effect'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
@@ -126,8 +126,10 @@ export const analyze = (
       } else if (tags.includes(until)) {
         const newerCommits = yield* git
           .getCommitsSince(until)
-          .pipe(Effect.catchAll(() => Effect.succeed([])))
-        const newerHashes = HashSet.fromIterable(newerCommits.map((commit) => commit.hash))
+          .pipe(Effect.catch(() => Effect.succeed([] as { hash: string }[])))
+        const newerHashes = HashSet.fromIterable(
+          newerCommits.map((commit: { hash: string }) => commit.hash),
+        )
         commits = commits.filter((commit) => !HashSet.has(newerHashes, commit.hash))
       }
     }

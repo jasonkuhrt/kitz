@@ -67,10 +67,9 @@ export namespace PromptEngine {
 
   export const create = <State extends object, Skippable extends boolean>(
     params: Params<State, Skippable>,
-  ): Effect.Effect<Skippable extends true ? null | State : State> =>
-    Effect.gen(function* (_) {
-      type Ret = Skippable extends true ? null | State : State
-
+  ): Effect.Effect<Skippable extends true ? null | State : State> => {
+    type Ret = Skippable extends true ? null | State : State
+    return Effect.gen(function* () {
       const args = {
         cursor: false,
         skippable: false,
@@ -79,12 +78,12 @@ export namespace PromptEngine {
       }
       const matchers = args.on.map(({ match, run }) => {
         return {
-          match: (Array.isArray(match) ? match : [match]).map((_) =>
-            typeof _ === `string`
+          match: (Array.isArray(match) ? match : [match]).map((m) =>
+            typeof m === `string`
               ? {
-                  name: _,
+                  name: m,
                 }
-              : _,
+              : m,
           ),
           run,
         }
@@ -114,14 +113,15 @@ export namespace PromptEngine {
       const initialState = args.initialState
       refresh(initialState)
 
-      return yield* _(
-        pipe(
-          channels.readKeyPresses(),
-          Stream.takeUntil(
-            (value) => !Exit.isExit(value) && args.skippable && value.name === `escape`,
-          ),
-          Stream.takeUntil((value) => !Exit.isExit(value) && value.name === `return`),
-          Stream.runFold(initialState as Ret, (state, value): Ret => {
+      return (yield* pipe(
+        channels.readKeyPresses(),
+        Stream.takeUntil(
+          (value) => !Exit.isExit(value) && args.skippable && value.name === `escape`,
+        ),
+        Stream.takeUntil((value) => !Exit.isExit(value) && value.name === `return`),
+        Stream.runFold(
+          () => initialState as Ret,
+          (state: Ret, value): Ret => {
             // todo do higher in the stack
             if (Exit.isExit(value)) {
               process.exit()
@@ -132,17 +132,18 @@ export namespace PromptEngine {
             const matcher = matchers.find((matcher) =>
               matcher.match.some((match) => isKeyPressMatchPattern(value, match ?? {})),
             )
-            const newState = matcher?.run(state, value) ?? state
-            refresh(newState)
-            return newState as Ret
-          }),
-          Effect.tap(() => {
-            cleanup()
-            return Effect.void
-          }),
+            const newState = (matcher?.run(state as State, value) ?? state) as Ret
+            refresh(newState as State)
+            return newState
+          },
         ),
-      )
-    })
+        Effect.tap(() => {
+          cleanup()
+          return Effect.void
+        }),
+      )) as Ret
+    }) as Effect.Effect<Ret>
+  }
 
   export interface Channels {
     output: (value: string) => void

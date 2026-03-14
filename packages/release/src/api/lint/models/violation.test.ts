@@ -6,7 +6,7 @@ import { CommandFix, DocLink, FixStep, GuideFix, Hint, Violation } from './viola
 describe('Violation', () => {
   test('make with PrTitle location', () => {
     const v = Violation.make({
-      location: ViolationLocation.PrTitle.make({ title: 'bad title' }),
+      location: new ViolationLocation.PrTitle({ title: 'bad title' }),
     })
     expect(v._tag).toBe('Violation')
     expect(Violation.is(v)).toBe(true)
@@ -15,14 +15,14 @@ describe('Violation', () => {
 
   test('make with Environment location', () => {
     const v = Violation.make({
-      location: ViolationLocation.Environment.make({ message: 'not authenticated' }),
+      location: new ViolationLocation.Environment({ message: 'not authenticated' }),
     })
     expect(v.location._tag).toBe('ViolationLocationEnvironment')
   })
 
   test('schema roundtrip', () => {
     const v = Violation.make({
-      location: ViolationLocation.GitHistory.make({ sha: 'abc1234' }),
+      location: new ViolationLocation.GitHistory({ sha: 'abc1234' }),
       summary: 'History is not monotonic',
       fix: GuideFix.make({
         summary: 'Rebase the branch and rerun doctor.',
@@ -99,47 +99,47 @@ describe('DocLink', () => {
 
 describe('ViolationLocation variants', () => {
   test('PrTitle', () => {
-    const loc = ViolationLocation.PrTitle.make({ title: 'fix: something' })
+    const loc = new ViolationLocation.PrTitle({ title: 'fix: something' })
     expect(loc._tag).toBe('ViolationLocationPrTitle')
     expect(ViolationLocation.PrTitle.is(loc)).toBe(true)
   })
 
   test('PrBody', () => {
-    const loc = ViolationLocation.PrBody.make({})
+    const loc = new ViolationLocation.PrBody({})
     expect(loc._tag).toBe('ViolationLocationPrBody')
   })
 
   test('PrBody with line', () => {
-    const loc = ViolationLocation.PrBody.make({ line: 42 })
+    const loc = new ViolationLocation.PrBody({ line: 42 })
     expect(loc.line).toBe(42)
   })
 
   test('RepoSettings', () => {
-    const loc = ViolationLocation.RepoSettings.make({})
+    const loc = new ViolationLocation.RepoSettings({})
     expect(loc._tag).toBe('ViolationLocationRepoSettings')
   })
 
   test('GitHistory', () => {
-    const loc = ViolationLocation.GitHistory.make({ sha: 'abc1234' })
+    const loc = new ViolationLocation.GitHistory({ sha: 'abc1234' })
     expect(loc._tag).toBe('ViolationLocationGitHistory')
     expect(loc.sha).toBe('abc1234')
   })
 
   test('File', () => {
-    const loc = ViolationLocation.File.make({ path: 'src/index.ts', line: 10 })
+    const loc = new ViolationLocation.File({ path: 'src/index.ts', line: 10 })
     expect(loc._tag).toBe('ViolationLocationFile')
     expect(loc.path).toBe('src/index.ts')
     expect(loc.line).toBe(10)
   })
 
   test('Environment', () => {
-    const loc = ViolationLocation.Environment.make({ message: 'npm not authenticated' })
+    const loc = new ViolationLocation.Environment({ message: 'npm not authenticated' })
     expect(loc._tag).toBe('ViolationLocationEnvironment')
     expect(loc.message).toBe('npm not authenticated')
   })
 
   test('ViolationLocation union schema roundtrip', () => {
-    const loc = ViolationLocation.File.make({ path: 'test.ts' })
+    const loc = new ViolationLocation.File({ path: 'test.ts' })
     const encoded = Schema.encodeSync(ViolationLocation.ViolationLocation)(loc)
     const decoded = Schema.decodeSync(ViolationLocation.ViolationLocation)(encoded)
     expect(decoded._tag).toBe('ViolationLocationFile')

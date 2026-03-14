@@ -1,4 +1,4 @@
-import { ParseResult, Schema as S } from 'effect'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 
 /**
  * Logical properties shape for axis property classes.
@@ -22,13 +22,13 @@ export type Logical<$value> = {
  * import { Sided } from './property-factories/sided/_.js'
  *
  * // Create a Padding class with number | string values
- * const ValueSchema = S.Union(S.Number, S.String)
+ * const ValueSchema = S.Union([S.Number, S.String])
  * export class Padding extends Sided.Class<Padding>('Padding')(ValueSchema) {}
  * ```
  */
 export const Class =
   <Self = never>(identifier: string) =>
-  <$valueSchema extends S.Schema.All>(valueSchema: $valueSchema) =>
+  <$valueSchema extends S.Top>(valueSchema: $valueSchema) =>
     S.Class<Self>(identifier)({
       mainStart: S.optional(valueSchema),
       mainEnd: S.optional(valueSchema),
@@ -181,15 +181,15 @@ const parseAxis = <$value = number>(
  *
  * Accepts: value | [start, end] | [start] | { start?, end? }
  */
-const AxisValueSchema = <$valueSchema extends S.Schema.Any>(valueSchema: $valueSchema) =>
-  S.Union(
+const AxisValueSchema = <$valueSchema extends S.Top>(valueSchema: $valueSchema) =>
+  S.Union([
     valueSchema,
-    S.Tuple(valueSchema, valueSchema),
-    S.Tuple(valueSchema),
-    S.Tuple(valueSchema, S.Undefined),
-    S.Tuple(S.Undefined, valueSchema),
+    S.Tuple([valueSchema, valueSchema]),
+    S.Tuple([valueSchema]),
+    S.Tuple([valueSchema, S.Undefined]),
+    S.Tuple([S.Undefined, valueSchema]),
     S.Struct({ start: S.optional(valueSchema), end: S.optional(valueSchema) }),
-  )
+  ])
 
 /**
  * Schema that accepts Input forms for sided properties.
@@ -201,14 +201,14 @@ const AxisValueSchema = <$valueSchema extends S.Schema.Any>(valueSchema: $valueS
  * - { main?, cross? }: object with axes
  * - { mainStart?, mainEnd?, crossStart?, crossEnd? }: explicit logical
  */
-export const InputSchema = <$valueSchema extends S.Schema.Any>(valueSchema: $valueSchema) => {
+export const InputSchema = <$valueSchema extends S.Top>(valueSchema: $valueSchema) => {
   const axisSchema = AxisValueSchema(valueSchema)
-  return S.Union(
+  return S.Union([
     valueSchema, // Single value → all sides
-    S.Tuple(valueSchema, valueSchema), // [main, cross] primitives
-    S.Tuple(axisSchema, axisSchema), // [[main...], [cross...]]
-    S.Tuple(axisSchema), // [[main...]] only
-    S.Tuple(S.Undefined, axisSchema), // [, [cross...]] only (sparse)
+    S.Tuple([valueSchema, valueSchema]), // [main, cross] primitives
+    S.Tuple([axisSchema, axisSchema]), // [[main...], [cross...]]
+    S.Tuple([axisSchema]), // [[main...]] only
+    S.Tuple([S.Undefined, axisSchema]), // [, [cross...]] only (sparse)
     S.Struct({ main: S.optional(axisSchema), cross: S.optional(axisSchema) }), // { main?, cross? }
     S.Struct({
       mainStart: S.optional(valueSchema),
@@ -216,7 +216,7 @@ export const InputSchema = <$valueSchema extends S.Schema.Any>(valueSchema: $val
       crossStart: S.optional(valueSchema),
       crossEnd: S.optional(valueSchema),
     }), // Explicit logical
-  )
+  ])
 }
 
 /**
@@ -225,19 +225,22 @@ export const InputSchema = <$valueSchema extends S.Schema.Any>(valueSchema: $val
  * Accepts shorthand inputs and normalizes to { mainStart?, mainEnd?, crossStart?, crossEnd? }.
  * Encoding is forbidden (one-way transformation).
  */
-export const fromInput = <$valueSchema extends S.Schema.Any>(valueSchema: $valueSchema) =>
-  S.transformOrFail(
-    InputSchema(valueSchema),
-    S.Struct({
-      mainStart: S.optional(valueSchema),
-      mainEnd: S.optional(valueSchema),
-      crossStart: S.optional(valueSchema),
-      crossEnd: S.optional(valueSchema),
-    }),
-    {
-      strict: false,
-      decode: (input) => ParseResult.succeed(parse(input as Input<S.Schema.Type<$valueSchema>>)),
-      encode: (value, _, ast) =>
-        ParseResult.fail(new ParseResult.Forbidden(ast, value, 'One-way transformation')),
-    },
+export const fromInput = <$valueSchema extends S.Top>(valueSchema: $valueSchema) =>
+  InputSchema(valueSchema).pipe(
+    S.decodeTo(
+      S.Struct({
+        mainStart: S.optional(valueSchema),
+        mainEnd: S.optional(valueSchema),
+        crossStart: S.optional(valueSchema),
+        crossEnd: S.optional(valueSchema),
+      }),
+      {
+        decode: SchemaGetter.transform((input) => parse(input as Input<$valueSchema['Type']>)),
+        encode: SchemaGetter.transformOrFail((value) =>
+          Effect.fail(
+            new SchemaIssue.Forbidden(Option.some(value), { message: 'One-way transformation' }),
+          ),
+        ),
+      },
+    ),
   )

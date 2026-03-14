@@ -1,4 +1,4 @@
-import { Match, ParseResult, Schema as S } from 'effect'
+import { Effect, Exit, Match, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { CodecString as Analyzer } from '../../path-analyzer/codec-string/_.js'
 import * as Extension from './extension.js'
 
@@ -10,59 +10,65 @@ export class FileName extends S.TaggedClass<FileName>()('FileName', {
   stem: S.String,
   extension: S.NullOr(Extension.Extension),
 }) {
+  static make = this.makeUnsafe
   static is = S.is(FileName)
 
   /**
    * Schema for transforming between string and FileName class.
    */
-  static String = S.transformOrFail(S.String, FileName, {
-    strict: true,
-    encode: (decoded) => {
-      const filename = decoded.extension ? `${decoded.stem}${decoded.extension}` : decoded.stem
-      return ParseResult.succeed(filename)
-    },
-    decode: (input, options, ast) => {
-      return Match.value(Analyzer.analyze(input)).pipe(
-        Match.tagsExhaustive({
-          file: (file) => {
-            // File should be just a filename, not a path
-            if (file.path.length > 0 || file.path.some((s) => s === '..')) {
-              return ParseResult.fail(
-                new ParseResult.Type(ast, input, `File should be a filename only, not a path`),
-              )
-            }
-
-            // The analysis already extracts the extension but we need to validate it
-            if (file.file.extension) {
-              const extResult = S.decodeEither(Extension.Extension)(file.file.extension)
-              if (extResult._tag === 'Left') {
-                return ParseResult.fail(
-                  new ParseResult.Type(
-                    ast,
-                    input,
-                    `Invalid file extension: ${file.file.extension}`,
-                  ),
+  static String = S.String.pipe(
+    S.decodeTo(FileName, {
+      encode: SchemaGetter.transform((decoded) => {
+        const filename = decoded.extension ? `${decoded.stem}${decoded.extension}` : decoded.stem
+        return filename
+      }),
+      decode: SchemaGetter.transformOrFail((input) => {
+        return Match.value(Analyzer.analyze(input)).pipe(
+          Match.tagsExhaustive({
+            file: (file) => {
+              // File should be just a filename, not a path
+              if (file.path.length > 0 || file.path.some((s) => s === '..')) {
+                return Effect.fail(
+                  new SchemaIssue.InvalidValue(Option.some(input), {
+                    message: `File should be a filename only, not a path`,
+                  }),
                 )
               }
-              return ParseResult.succeed(
-                FileName.make({
-                  stem: file.file.stem,
-                  extension: extResult.right,
+
+              // The analysis already extracts the extension but we need to validate it
+              if (file.file.extension) {
+                const extResult = S.decodeUnknownExit(Extension.Extension)(file.file.extension)
+                if (Exit.isFailure(extResult)) {
+                  return Effect.fail(
+                    new SchemaIssue.InvalidValue(Option.some(input), {
+                      message: `Invalid file extension: ${file.file.extension}`,
+                    }),
+                  )
+                }
+                return Effect.succeed(
+                  FileName.make({
+                    stem: file.file.stem,
+                    extension: extResult.value,
+                  }),
+                )
+              } else {
+                return Effect.succeed(
+                  FileName.make({
+                    stem: file.file.stem,
+                    extension: null,
+                  }),
+                )
+              }
+            },
+            dir: () =>
+              Effect.fail(
+                new SchemaIssue.InvalidValue(Option.some(input), {
+                  message: `File cannot be a directory`,
                 }),
-              )
-            } else {
-              return ParseResult.succeed(
-                FileName.make({
-                  stem: file.file.stem,
-                  extension: null,
-                }),
-              )
-            }
-          },
-          dir: () =>
-            ParseResult.fail(new ParseResult.Type(ast, input, `File cannot be a directory`)),
-        }),
-      )
-    },
-  })
+              ),
+          }),
+        )
+      }),
+    }),
+  )
 }

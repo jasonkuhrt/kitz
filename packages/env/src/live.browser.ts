@@ -26,4 +26,4 @@ export const env = {
 /**
  * Live layer for browser environment.
  */
-export const Live = Layer.succeed(Env, env)
+export const Live = Layer.succeed(Env)(env)

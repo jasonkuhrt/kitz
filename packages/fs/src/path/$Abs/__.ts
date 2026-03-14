@@ -3,7 +3,6 @@ import { AbsDir } from '../AbsDir/_.js'
 import { AbsFile } from '../AbsFile/_.js'
 
 // needed to avoid '...canot be naned...' errors
-import type { RefineSchemaId, TypeId } from 'effect/Schema'
 
 /**
  * Union schema of all absolute path types with string codec baked in.
@@ -24,7 +23,7 @@ import type { RefineSchemaId, TypeId } from 'effect/Schema'
  * })
  * ```
  */
-export const Schema = S.Union(AbsFile.Schema, AbsDir.Schema).annotations({
+export const Schema = S.Union([AbsFile.Schema, AbsDir.Schema]).annotate({
   identifier: '$Abs',
 })
 

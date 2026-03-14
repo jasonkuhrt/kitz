@@ -6,7 +6,7 @@ import { Schema } from 'effect'
  * Standard footer tokens defined by the Conventional Commits spec.
  * Both forms are semantically equivalent per the spec.
  */
-export const StandardToken = Schema.Enums({
+export const StandardToken = Schema.Enum({
   'BREAKING CHANGE': 'BREAKING CHANGE',
   'BREAKING-CHANGE': 'BREAKING-CHANGE',
 })
@@ -21,6 +21,7 @@ export class Standard extends Schema.TaggedClass<Standard>()('Standard', {
   token: StandardToken,
   value: Schema.String,
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Standard)
 }
 
@@ -33,6 +34,7 @@ export class Custom extends Schema.TaggedClass<Custom>()('Custom', {
   token: Schema.String,
   value: Schema.String,
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Custom)
 }
 
@@ -41,7 +43,7 @@ export class Custom extends Schema.TaggedClass<Custom>()('Custom', {
 /**
  * Footer: either a standard spec-defined footer or a custom extension.
  */
-export const Footer = Schema.Union(Standard, Custom)
+export const Footer = Schema.Union([Standard, Custom])
 export type Footer = typeof Footer.Type
 
 // ─── Accessors ─────────────────────────────────────────────────

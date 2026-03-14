@@ -21,9 +21,9 @@ import type { ConfigDefinition } from './define.js'
  * })
  * ```
  */
-export const createDefineConfig = <S extends Schema.Schema.AnyNoContext>(
+export const createDefineConfig = <S extends Schema.Top>(
   definition: ConfigDefinition<S>,
-): ((config: Schema.Schema.Type<S>) => Schema.Schema.Type<S>) => {
+): ((config: S['Type']) => S['Type']) => {
   // Simple identity function that provides type inference
   // The actual validation happens in load()
   void definition // Used for type inference only

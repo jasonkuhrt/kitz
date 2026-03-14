@@ -1,10 +1,7 @@
-import { ParseResult, Schema as S } from 'effect'
-import type { RefineSchemaId, TypeId } from 'effect/Schema'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { analyze } from '../../path-analyzer/codec-string/__.js'
 import { FileName } from '../types/fileName.js'
 import { Segments } from '../types/segments.js'
-
-type _ = RefineSchemaId
 
 /**
  * Absolute file location class.
@@ -14,6 +11,7 @@ class AbsFileClass extends S.TaggedClass<AbsFileClass>()('FsPathAbsFile', {
   segments: Segments,
   fileName: FileName,
 }) {
+  static make = this.makeUnsafe
   override toString() {
     return S.encodeSync(Schema)(this)
   }
@@ -50,44 +48,49 @@ export const name = (instance: AbsFileClass): string =>
  * })
  * ```
  */
-export const Schema: S.Schema<AbsFileClass, string> = S.transformOrFail(S.String, AbsFileClass, {
-  strict: true,
-  encode: (decoded) => {
-    // Source of truth for string conversion
-    const pathString = decoded.segments.join('/')
-    const fileString = decoded.fileName.extension
-      ? `${decoded.fileName.stem}${decoded.fileName.extension}`
-      : decoded.fileName.stem
-    return ParseResult.succeed(
-      pathString.length > 0 ? `/${pathString}/${fileString}` : `/${fileString}`,
-    )
-  },
-  decode: (input, options, ast) => {
-    // Analyze the input string with file hint for ambiguous dotfiles
-    const analysis = analyze(input, { hint: 'file' })
+export const Schema: S.Codec<AbsFileClass, string> = S.String.pipe(
+  S.decodeTo(AbsFileClass, {
+    encode: SchemaGetter.transform((decoded) => {
+      // Source of truth for string conversion
+      const pathString = decoded.segments.join('/')
+      const fileString = decoded.fileName.extension
+        ? `${decoded.fileName.stem}${decoded.fileName.extension}`
+        : decoded.fileName.stem
+      return pathString.length > 0 ? `/${pathString}/${fileString}` : `/${fileString}`
+    }),
+    decode: SchemaGetter.transformOrFail((input) => {
+      // Analyze the input string with file hint for ambiguous dotfiles
+      const analysis = analyze(input, { hint: 'file' })
 
-    // Validate it's an absolute file
-    if (analysis._tag !== 'file') {
-      return ParseResult.fail(
-        new ParseResult.Type(ast, input, 'Expected a file path, got a directory path'),
-      )
-    }
-    if (!analysis.isPathAbsolute) {
-      return ParseResult.fail(new ParseResult.Type(ast, input, 'Absolute paths must start with /'))
-    }
+      // Validate it's an absolute file
+      if (analysis._tag !== 'file') {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(input), {
+            message: 'Expected a file path, got a directory path',
+          }),
+        )
+      }
+      if (!analysis.isPathAbsolute) {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(input), {
+            message: 'Absolute paths must start with /',
+          }),
+        )
+      }
 
-    // Valid - return as AbsFile
-    return ParseResult.succeed(
-      AbsFileClass.make({
-        segments: analysis.path,
-        fileName: FileName.make({
-          stem: analysis.file.stem,
-          extension: analysis.file.extension,
+      // Valid - return as AbsFile
+      return Effect.succeed(
+        AbsFileClass.make({
+          segments: analysis.path,
+          fileName: FileName.make({
+            stem: analysis.file.stem,
+            extension: analysis.file.extension,
+          }),
         }),
-      }),
-    )
-  },
-})
+      )
+    }),
+  }),
+)
 
 /**
  * Type guard to check if a value is an AbsFile instance.
@@ -98,7 +101,7 @@ export const is = S.is(Schema)
  * Direct constructor for AbsFile from structured data.
  * Bypasses string parsing for efficient internal operations.
  */
-export const make = AbsFileClass.make.bind(AbsFileClass)
+export const make = (args: ConstructorParameters<typeof AbsFileClass>[0]) => new AbsFileClass(args)
 
 /**
  * Decode from string to AbsFile instance.

@@ -21,7 +21,7 @@
     "@kitz/syn": "workspace:*",
     "@microsoft/tsdoc": "^0.16.0",
     "@types/mdast": "^4.0.4",
-    "effect": "^3.0.0",
+    "effect": "4.0.0-beta.31",
     "mdast": "^3.0.0",
     "mdast-util-to-string": "^4.0.0",
     "remark-gfm": "^4.0.1",

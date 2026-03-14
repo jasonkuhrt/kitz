@@ -14,12 +14,14 @@ export class Commit extends Schema.TaggedClass<Commit>()('Commit', {
   message: Schema.String,
   author: Author,
   date: Schema.Date,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Fields type for ParsedCommit with the message field replaced by a parsed schema.
  */
-type ParsedCommitFields<P extends Schema.Schema.Any> = Omit<
+type ParsedCommitFields<P extends Schema.Top> = Omit<
   (typeof Commit)['fields'],
   '_tag' | 'message'
 > & {
@@ -56,11 +58,10 @@ const baseFields = {
  */
 export const ParsedCommit =
   <Self = never>(identifier?: string) =>
-  <Tag extends string, P extends Schema.Schema.Any>(
-    tag: Tag,
-    parsedSchema: P,
-  ): Schema.TaggedClass<Self, Tag, { readonly _tag: Schema.tag<Tag> } & ParsedCommitFields<P>> =>
+  <Tag extends string, P extends Schema.Top>(tag: Tag, parsedSchema: P) =>
     Schema.TaggedClass<Self>(identifier)(tag, {
-      ...baseFields,
+      hash: baseFields.hash,
+      author: baseFields.author,
+      date: baseFields.date,
       message: parsedSchema,
-    }) as any
+    })

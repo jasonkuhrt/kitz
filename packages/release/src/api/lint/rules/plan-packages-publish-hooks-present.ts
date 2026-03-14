@@ -35,13 +35,13 @@ const findPublishHooks = (manifests: readonly PlannedManifest[]): readonly Offen
 
 /** Warns when planned packages define opaque npm publish hooks. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('plan.packages-publish-hooks-present'),
+  id: RuleId.makeUnsafe('plan.packages-publish-hooks-present'),
   description: 'planned packages do not define opaque npm pack hooks',
   preventsDescriptions: [
     'surprising artifact-preparation side effects that release cannot semantically inspect',
   ],
-  defaults: RuleDefaults.make({ severity: Severity.Warn.make() }),
-  preconditions: [Precondition.HasReleasePlan.make()],
+  defaults: RuleDefaults.make({ severity: Severity.Warn.make({}) }),
+  preconditions: [new Precondition.HasReleasePlan()],
   check: loadPlannedManifests.pipe(
     Effect.map((manifests) => {
       const offenders = findPublishHooks(manifests)

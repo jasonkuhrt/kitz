@@ -24,7 +24,11 @@ export const forecast = (analysis: Analysis, recon: Recon): Forecast => {
       bump: impact.bump,
       currentVersion: impact.currentVersion,
       nextOfficialVersion,
-      commits: buildCommitDisplays(impact.commits, impact.package.scope, baseUrl),
+      commits: buildCommitDisplays(
+        impact.commits as unknown as readonly ReleaseCommit[],
+        impact.package.scope,
+        baseUrl,
+      ),
       sourceUrl: `${baseUrl}/tree/${branch}/packages/${impact.package.scope}`,
     })
   })

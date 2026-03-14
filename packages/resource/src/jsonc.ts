@@ -23,11 +23,11 @@
  * @module
  */
 
-import { FileSystem } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { FileSystem } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import { Fs } from '@kitz/fs'
 import { Jsonc } from '@kitz/jsonc'
-import { Effect, Option, ParseResult, Schema, SchemaAST } from 'effect'
+import { Effect, Option, SchemaIssue, Schema, SchemaAST } from 'effect'
 import { NotFoundError, ParseError, ReadError } from './errors.js'
 import type { CreateOptions, ReadOnlyResource, ResourceError } from './resource.js'
 
@@ -67,7 +67,7 @@ const resolvePath = (path: Fs.Path.$Abs, filename: string): Fs.Path.AbsFile => {
  * const tsconfig = Resource.createJsonc(
  *   'tsconfig.json',
  *   Schema.Struct({
- *     compilerOptions: Schema.optional(Schema.Record({ key: Schema.String, value: Schema.Unknown })),
+ *     compilerOptions: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
  *   }),
  *   {}
  * )
@@ -77,7 +77,7 @@ const resolvePath = (path: Fs.Path.$Abs, filename: string): Fs.Path.AbsFile => {
  */
 export const createJsonc = <A, I, R = never>(
   filename: string,
-  schema: Schema.Schema<A, I, R>,
+  schema: Schema.Codec<A, I, R>,
   emptyValue: A,
   options?: CreateOptions,
 ): ReadOnlyResource<A, FileSystem.FileSystem | R> => {
@@ -85,20 +85,17 @@ export const createJsonc = <A, I, R = never>(
     ? { onExcessProperty: 'preserve' }
     : undefined
 
-  // Compose parseJsonc with the provided schema to get Schema<A, string>
-  const jsoncSchema = Schema.compose(Jsonc.parseJsonc(), schema)
+  // Pipe parseJsonc through the provided schema to get Schema<A, string>
+  const jsoncSchema = Jsonc.parseJsonc().pipe(Schema.decodeTo(schema))
 
   const decode = (content: string, filePath: Fs.Path.AbsFile) =>
-    Schema.decode(
-      jsoncSchema,
-      parseOptions,
-    )(content).pipe(
+    Schema.decodeEffect(jsoncSchema)(content).pipe(
       Effect.mapError(
         (error) =>
           new ParseError({
             context: {
               path: filePath,
-              detail: ParseResult.TreeFormatter.formatErrorSync(error),
+              detail: SchemaIssue.makeFormatterDefault()(error.issue),
             },
           }),
       ),

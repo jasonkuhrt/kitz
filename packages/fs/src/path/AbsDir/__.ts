@@ -1,10 +1,7 @@
-import { ParseResult, Schema as S } from 'effect'
-import type { RefineSchemaId } from 'effect/Schema'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { analyze } from '../../path-analyzer/codec-string/__.js'
 import { stringSeparator } from '../constants.js'
 import { Segments } from '../types/segments.js'
-
-type _ = RefineSchemaId
 
 /**
  * Absolute directory location class.
@@ -13,6 +10,7 @@ type _ = RefineSchemaId
 class AbsDirClass extends S.TaggedClass<AbsDirClass>()('FsPathAbsDir', {
   segments: Segments,
 }) {
+  static make = this.makeUnsafe
   override toString() {
     return S.encodeSync(Schema)(this)
   }
@@ -46,35 +44,42 @@ export const name = (instance: AbsDirClass): string => instance.segments.at(-1) 
  * })
  * ```
  */
-export const Schema: S.Schema<AbsDirClass, string> = S.transformOrFail(S.String, AbsDirClass, {
-  strict: true,
-  encode: (decoded) => {
-    const pathString = decoded.segments.join(stringSeparator)
-    const string = decoded.segments.length === 0 ? '/' : `/${pathString}/`
-    return ParseResult.succeed(string)
-  },
-  decode: (input, options, ast) => {
-    // Analyze the input string with directory hint for ambiguous paths
-    const analysis = analyze(input, { hint: 'directory' })
+export const Schema: S.Codec<AbsDirClass, string> = S.String.pipe(
+  S.decodeTo(AbsDirClass, {
+    encode: SchemaGetter.transform((decoded) => {
+      const pathString = decoded.segments.join(stringSeparator)
+      const string = decoded.segments.length === 0 ? '/' : `/${pathString}/`
+      return string
+    }),
+    decode: SchemaGetter.transformOrFail((input) => {
+      // Analyze the input string with directory hint for ambiguous paths
+      const analysis = analyze(input, { hint: 'directory' })
 
-    // Validate it's an absolute directory
-    if (analysis._tag !== 'dir') {
-      return ParseResult.fail(
-        new ParseResult.Type(ast, input, 'Expected a directory path, got a file path'),
+      // Validate it's an absolute directory
+      if (analysis._tag !== 'dir') {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(input), {
+            message: 'Expected a directory path, got a file path',
+          }),
+        )
+      }
+      if (!analysis.isPathAbsolute) {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(input), {
+            message: 'Absolute paths must start with /',
+          }),
+        )
+      }
+
+      // Valid - return as AbsDir
+      return Effect.succeed(
+        AbsDirClass.make({
+          segments: analysis.path,
+        }),
       )
-    }
-    if (!analysis.isPathAbsolute) {
-      return ParseResult.fail(new ParseResult.Type(ast, input, 'Absolute paths must start with /'))
-    }
-
-    // Valid - return as AbsDir
-    return ParseResult.succeed(
-      AbsDirClass.make({
-        segments: analysis.path,
-      }),
-    )
-  },
-})
+    }),
+  }),
+)
 
 /**
  * Type guard to check if a value is an AbsDir instance.
@@ -85,7 +90,7 @@ export const is = S.is(Schema)
  * Direct constructor for AbsDir from structured data.
  * Bypasses string parsing for efficient internal operations.
  */
-export const make = AbsDirClass.make.bind(AbsDirClass)
+export const make = (args: ConstructorParameters<typeof AbsDirClass>[0]) => new AbsDirClass(args)
 
 /**
  * Decode from string to AbsDir instance.

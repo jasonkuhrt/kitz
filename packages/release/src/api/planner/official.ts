@@ -1,4 +1,4 @@
-import { FileSystem } from '@effect/platform'
+import { FileSystem } from 'effect'
 import { Resource } from '@kitz/resource'
 import { Effect, Option } from 'effect'
 import { buildDependencyGraph } from '../analyzer/cascade.js'

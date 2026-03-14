@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { Effect, Either } from 'effect'
+import { Effect, Result } from 'effect'
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'fs'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
@@ -149,14 +149,14 @@ const generateDocs = async () => {
 
     // 1. Format with dprint
     if (formatter) {
-      const formattedResult = Either.try({
+      const formattedResult = Result.try({
         try: () => formatter.formatText(content),
         catch: (error) => error,
       })
-      if (Either.isRight(formattedResult)) {
-        content = formattedResult.right
+      if (Result.isSuccess(formattedResult)) {
+        content = formattedResult.success
       } else {
-        console.warn(`Warning: Failed to format ${file}:`, formattedResult.left)
+        console.warn(`Warning: Failed to format ${file}:`, formattedResult.failure)
       }
     }
 
@@ -168,18 +168,18 @@ const generateDocs = async () => {
     content = content.replace(
       /```typescript( twoslash)?\n([\s\S]*?)```/g,
       (match, twoslash, code) => {
-        const processedResult = Either.try({
+        const processedResult = Result.try({
           try: () => addTwoslashAnnotations(code),
           catch: (error) => error,
         })
-        if (Either.isRight(processedResult)) {
-          const processed = processedResult.right
+        if (Result.isSuccess(processedResult)) {
+          const processed = processedResult.success
           return `\`\`\`typescript${twoslash || ''}\n${processed}\`\`\``
         }
         // If AST parsing fails, render as vanilla TypeScript (remove twoslash)
         console.warn(
           'Warning: Failed to parse TypeScript code block, rendering as vanilla:',
-          processedResult.left,
+          processedResult.failure,
         )
         return `\`\`\`typescript\n${code}\`\`\``
       },

@@ -1,6 +1,6 @@
 import { Lang } from '@kitz/core'
 import { Fs } from '@kitz/fs'
-import { Context, Layer } from 'effect'
+import { Layer, ServiceMap } from 'effect'
 import type { Arch, Os, Platform } from './types.js'
 
 /**
@@ -40,7 +40,7 @@ export interface EnvService {
  * Effect.runPromise(Effect.provide(program, Env.Live))
  * ```
  */
-export class Env extends Context.Tag('Env')<Env, EnvService>() {}
+export class Env extends ServiceMap.Service<Env, EnvService>()('Env') {}
 
 /**
  * Test layer for mocking environment in tests.
@@ -57,7 +57,7 @@ export class Env extends Context.Tag('Env')<Env, EnvService>() {}
  * ```
  */
 export const Test = (config: Partial<EnvService> = {}) =>
-  Layer.succeed(Env, {
+  Layer.succeed(Env)({
     cwd: config.cwd ?? Fs.Path.AbsDir.fromString('/'),
     argv: config.argv ?? [],
     vars: config.vars ?? {},

@@ -946,7 +946,9 @@ export function create(state: State = defaultState): any {
             ? layerOrFactory
             : (layerOrFactory as (testCase: any) => Layer.Layer<any>)({ input, output, ...params })
 
-        const effectWithLayer = Effect.provide(effect, layer as any) as Effect.Effect<any, any>
+        const effectWithLayer = (effect as Effect.Effect<any, any, any>).pipe(
+          Effect.provide(layer as Layer.Layer<any>),
+        )
         return Effect.runPromise(effectWithLayer)
       }
 
@@ -1005,7 +1007,9 @@ export function create(state: State = defaultState): any {
                     ...params,
                   })
 
-            const effectWithLayer = Effect.provide(effect, layer as any) as Effect.Effect<any, any>
+            const effectWithLayer = (effect as Effect.Effect<any, any, any>).pipe(
+              Effect.provide(layer as Layer.Layer<any>),
+            )
             return Effect.runPromise(effectWithLayer)
           }
 

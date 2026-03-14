@@ -37,13 +37,13 @@ const findOffenders = (manifests: readonly PlannedManifest[]) =>
 
 /** Verifies that planned package manifests remain source-oriented in the repo. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('plan.packages-runtime-targets-source-oriented'),
+  id: RuleId.makeUnsafe('plan.packages-runtime-targets-source-oriented'),
   description: 'planned package manifests keep runtime targets source-oriented in the repo',
   preventsDescriptions: [
     'stale publish-time manifest rewrites leaving package.json runtime entries pointed at build output',
     'local source-first development accidentally depending on prior build artifacts',
   ],
-  preconditions: [Precondition.HasReleasePlan.make()],
+  preconditions: [new Precondition.HasReleasePlan()],
   check: loadPlannedManifests.pipe(
     Effect.map((manifests) => {
       const offenders = findOffenders(manifests)

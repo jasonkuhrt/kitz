@@ -1,14 +1,14 @@
 import { Err, Lang, Obj } from '@kitz/core'
 import { Group } from '@kitz/group'
 import { Alge } from 'alge'
-import { Either } from 'effect'
+import { Result } from 'effect'
 import { Errors } from '../Errors/_.js'
 import type { ParameterExclusive } from '../Parameter/exclusive.js'
 import type { Parameter } from '../Parameter/types.js'
 import * as SchemaRuntime from '../schema/schema-runtime.js'
 import { Environment } from './Environment/_.js'
 import { Line } from './Line/_.js'
-import type { ArgumentReport, ParseResult } from './types.js'
+import type { ArgumentReport, SchemaIssue } from './types.js'
 export { Environment } from './Environment/_.js'
 export { Line } from './Line/_.js'
 export * from './types.js'
@@ -21,8 +21,8 @@ export const parse = ({
   parameters: Parameter[]
   line: Line.RawInputs
   environment: Environment.RawInputs
-}): ParseResult => {
-  const result: ParseResult = {
+}): SchemaIssue => {
+  const result: SchemaIssue = {
     globalErrors: [],
     basicParameters: {},
     mutuallyExclusiveParameters: {},
@@ -89,12 +89,12 @@ export const parse = ({
         .else((argReportValue) => {
           // Note: OakSchema doesn't have transform, we just validate directly
           const validationResult = SchemaRuntime.validate(parameter.type, argReportValue.value)
-          if (Either.isRight(validationResult)) {
-            if (isArgumentValue(validationResult.right)) {
+          if (Result.isSuccess(validationResult)) {
+            if (isArgumentValue(validationResult.success)) {
               return {
                 _tag: `supplied` as const,
                 parameter,
-                value: validationResult.right,
+                value: validationResult.success,
               }
             }
 
@@ -108,7 +108,7 @@ export const parse = ({
                     validationErrors: [
                       `Supported types are string, number, boolean, null, and undefined.`,
                     ],
-                    value: validationResult.right,
+                    value: validationResult.success,
                   },
                 }),
               ],
@@ -122,8 +122,8 @@ export const parse = ({
               new Errors.ErrorInvalidArgument({
                 context: {
                   spec: parameter,
-                  validationErrors: validationResult.left.errors,
-                  value: validationResult.left.value,
+                  validationErrors: validationResult.failure.errors,
+                  value: validationResult.failure.value,
                 },
               }),
             ],

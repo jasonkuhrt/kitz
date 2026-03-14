@@ -1,4 +1,4 @@
-import { FileSystem } from '@effect/platform'
+import { FileSystem } from 'effect'
 import { Effect } from 'effect'
 import type { FragmentNotFoundError, SourceReadError, TargetFileError } from './errors.js'
 import { extractFromFile } from './extract.js'

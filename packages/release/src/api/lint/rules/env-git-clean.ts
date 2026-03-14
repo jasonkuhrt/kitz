@@ -7,7 +7,7 @@ import { Environment } from '../models/violation-location.js'
 
 /** Verifies that the git working directory has no uncommitted changes before publishing. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('env.git-clean'),
+  id: RuleId.makeUnsafe('env.git-clean'),
   description: 'git working directory has no uncommitted changes',
   preventsDescriptions: [
     'publishing from a dirty working tree and tagging code that does not match committed source',

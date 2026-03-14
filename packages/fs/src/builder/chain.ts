@@ -1,4 +1,4 @@
-import { Error as PlatformError, FileSystem } from '@effect/platform'
+import { PlatformError, FileSystem } from 'effect'
 import type { Json } from '@kitz/json'
 import { Effect } from 'effect'
 import type { InferFileContent } from '../filesystem.js'

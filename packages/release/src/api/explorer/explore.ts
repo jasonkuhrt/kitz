@@ -90,7 +90,7 @@ export const resolveReleaseTarget = (
 
     const git = yield* Git.Git
     const remoteUrl = yield* git.getRemoteUrl('origin').pipe(
-      Effect.catchAll((error) =>
+      Effect.catch((error: any) =>
         Effect.fail(
           new ExplorerError({
             context: {
@@ -196,8 +196,10 @@ export const resolvePullRequest = (): Effect.Effect<
     const target = yield* resolveReleaseTarget(env.vars)
 
     const token = resolveGithubToken(env.vars) ?? undefined
-    const pullRequests = yield* Github.Github.pipe(
-      Effect.flatMap((github) => github.listOpenPullRequests()),
+    const pullRequests = yield* Effect.gen(function* () {
+      const github = yield* Github.Github
+      return yield* github.listOpenPullRequests()
+    }).pipe(
       Effect.provide(
         Github.LiveFetch({ owner: target.owner, repo: target.repo, ...(token ? { token } : {}) }),
       ),

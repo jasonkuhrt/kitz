@@ -1,8 +1,8 @@
-import { FileSystem } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { FileSystem } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import { Err } from '@kitz/core'
 import { Fs } from '@kitz/fs'
-import { Effect, Option, pipe, Schema as S } from 'effect'
+import { Effect, Schema as S } from 'effect'
 
 /**
  * Base ES module type. Use as constraint or when module structure is unknown.
@@ -331,11 +331,7 @@ export const dynamicImportFile = <
   if (options?.bustCache) {
     return Effect.gen(function* () {
       const info = yield* Fs.stat(path)
-      const mtime = pipe(
-        info.mtime,
-        Option.map((d) => d.getTime()),
-        Option.getOrElse(() => 0),
-      )
+      const mtime = info.mtime ? info.mtime.getTime() : 0
       importUrl.searchParams.set('t', String(mtime))
       return yield* doImport
     }) as any

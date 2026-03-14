@@ -8,7 +8,7 @@ import { AbsDir } from '../AbsDir/_.js'
 import { RelDir } from '../RelDir/_.js'
 
 // Create an equivalence for string arrays
-const segmentsEquivalence = Array.getEquivalence(Equivalence.string)
+const segmentsEquivalence = Array.makeEquivalence(Equivalence.String)
 
 // ============================================================================
 // Type utilities

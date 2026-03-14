@@ -1,3 +1,4 @@
+import assert from 'node:assert'
 import { Assert } from '@kitz/assert'
 import { Test } from '@kitz/test'
 import { Schema as S } from 'effect'
@@ -17,9 +18,9 @@ Test.describe('hasRequiredFields')
     [[S.Struct({ port: S.Number })], true, { comment: 'required Number field' }],
     // Optional: Schema.optional (no default)
     [[S.Struct({ name: S.optional(S.String) })], false, { comment: 'optional field' }],
-    // Optional: Schema.optionalWith with default
+    // Optional: Schema.optional with default
     [
-      [S.Struct({ port: S.optionalWith(S.Number, { default: () => 3000 }) })],
+      [S.Struct({ port: S.Number.pipe(S.withDecodingDefaultKey(() => 3000)) })],
       false,
       {
         comment: 'optionalWith default',
@@ -30,7 +31,7 @@ Test.describe('hasRequiredFields')
       [
         S.Struct({
           apiKey: S.String, // required
-          port: S.optionalWith(S.Number, { default: () => 3000 }), // optional
+          port: S.Number.pipe(S.withDecodingDefaultKey(() => 3000)), // optional
         }),
       ],
       true,
@@ -40,8 +41,8 @@ Test.describe('hasRequiredFields')
     [
       [
         S.Struct({
-          trunk: S.optionalWith(S.String, { default: () => 'main' }),
-          port: S.optionalWith(S.Number, { default: () => 8080 }),
+          trunk: S.String.pipe(S.withDecodingDefaultKey(() => 'main')),
+          port: S.Number.pipe(S.withDecodingDefaultKey(() => 8080)),
         }),
       ],
       false,
@@ -53,7 +54,7 @@ Test.describe('hasRequiredFields')
     [
       [
         S.Struct({
-          name: S.optionalWith(S.String, { nullable: true }),
+          name: S.optional(S.NullOr(S.String)),
         }),
       ],
       false,
@@ -63,7 +64,7 @@ Test.describe('hasRequiredFields')
     [
       [
         S.Struct({
-          name: S.optionalWith(S.String, { exact: true }),
+          name: S.optionalKey(S.String),
         }),
       ],
       false,
@@ -86,7 +87,7 @@ Test.describe('hasRequiredFields > Schema.Class')
     [
       [
         class extends S.Class<any>('Config')({
-          trunk: S.optionalWith(S.String, { default: () => 'main' }),
+          trunk: S.String.pipe(S.withDecodingDefaultKey(() => 'main')),
         }) {},
       ],
       false,
@@ -97,7 +98,7 @@ Test.describe('hasRequiredFields > Schema.Class')
       [
         class extends S.Class<any>('Config')({
           apiKey: S.String,
-          port: S.optionalWith(S.Number, { default: () => 3000 }),
+          port: S.Number.pipe(S.withDecodingDefaultKey(() => 3000)),
         }) {},
       ],
       true,
@@ -115,7 +116,7 @@ const _reqSchema = S.Struct({ apiKey: S.String })
 type _reqString = Assert.exact.of<HasRequiredFields<typeof _reqSchema>, true>
 
 // All optional → false
-const _optSchema = S.Struct({ port: S.optionalWith(S.Number, { default: () => 3000 }) })
+const _optSchema = S.Struct({ port: S.Number.pipe(S.withDecodingDefaultKey(() => 3000)) })
 type _optAll = Assert.exact.of<HasRequiredFields<typeof _optSchema>, false>
 
 // Empty struct → false
@@ -123,18 +124,18 @@ const _emptySchema = S.Struct({})
 type _empty = Assert.exact.of<HasRequiredFields<typeof _emptySchema>, false>
 
 // Type assertion for runtime values
-Test.describe('HasRequiredFields type').test(() => {
+Test.describe('HasRequiredFields runtime').test(() => {
   // Required
   const reqSchema = S.Struct({ apiKey: S.String })
-  A<true>().on(hasRequiredFields(reqSchema) as HasRequiredFields<typeof reqSchema>)
+  assert.equal(hasRequiredFields(reqSchema), true)
 
   // Optional with default
   const optSchema = S.Struct({
-    port: S.optionalWith(S.Number, { default: () => 3000 }),
+    port: S.Number.pipe(S.withDecodingDefaultKey(() => 3000)),
   })
-  A<false>().on(hasRequiredFields(optSchema) as HasRequiredFields<typeof optSchema>)
+  assert.equal(hasRequiredFields(optSchema), false)
 
   // Empty
   const emptySchema = S.Struct({})
-  A<false>().on(hasRequiredFields(emptySchema) as HasRequiredFields<typeof emptySchema>)
+  assert.equal(hasRequiredFields(emptySchema), false)
 })

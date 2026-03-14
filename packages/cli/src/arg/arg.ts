@@ -1,5 +1,5 @@
 import { Str, Ts } from '@kitz/core'
-import { ParseResult, Schema as S } from 'effect'
+import { Effect, SchemaGetter, Schema as S } from 'effect'
 
 /**
  * Error for CLI argument parsing failures.
@@ -309,7 +309,9 @@ class ArgLongFlag extends S.TaggedClass<ArgLongFlag>()('long-flag', {
   negated: S.Boolean,
   value: S.NullOr(S.String),
   original: S.String,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Schema for short flag argument (`-v`, `-n=10`).
@@ -318,7 +320,9 @@ class ArgShortFlag extends S.TaggedClass<ArgShortFlag>()('short-flag', {
   name: S.String,
   value: S.NullOr(S.String),
   original: S.String,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Schema for short flag cluster argument (`-abc`, `-xyz=value`).
@@ -326,9 +330,11 @@ class ArgShortFlag extends S.TaggedClass<ArgShortFlag>()('short-flag', {
  * Represents a multi-character short flag that expands into individual flags.
  */
 class ArgShortFlagCluster extends S.TaggedClass<ArgShortFlagCluster>()('short-flag-cluster', {
-  flags: S.Array(ArgShortFlag).pipe(S.minItems(2)),
+  flags: S.Array(ArgShortFlag).pipe(S.check(S.isMinLength(2))),
   original: S.String,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Schema for positional argument (`file.txt`, `123`).
@@ -336,7 +342,9 @@ class ArgShortFlagCluster extends S.TaggedClass<ArgShortFlagCluster>()('short-fl
 class ArgPositional extends S.TaggedClass<ArgPositional>()('positional', {
   value: S.String,
   original: S.String,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * Schema for separator argument (`--`).
@@ -344,15 +352,17 @@ class ArgPositional extends S.TaggedClass<ArgPositional>()('positional', {
 class ArgSeparator extends S.TaggedClass<ArgSeparator>()('separator', {
   value: S.Null,
   original: S.Literal('--'),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
-const _ArgSchema = S.Union(
+const _ArgSchema = S.Union([
   ArgLongFlag,
   ArgShortFlag,
   ArgShortFlagCluster,
   ArgPositional,
   ArgSeparator,
-)
+])
 
 const ArgNamespace = {
   /**
@@ -366,70 +376,60 @@ const ArgNamespace = {
    * })
    * ```
    */
-  String: S.transformOrFail(S.String, _ArgSchema, {
-    strict: true,
-    decode: (input, _options, _ast) => {
-      // Use runtime analyzer to parse the argument
-      const analysis = analyze_(input)
+  String: S.String.pipe(
+    S.decodeTo(_ArgSchema, {
+      decode: SchemaGetter.transform((input) => {
+        // Use runtime analyzer to parse the argument
+        const analysis = analyze_(input)
 
-      // Transform analysis result into Arg format
-      switch (analysis._tag) {
-        case 'long-flag':
-          return ParseResult.succeed(
-            new ArgLongFlag({
+        // Transform analysis result into Arg format
+        switch (analysis._tag) {
+          case 'long-flag':
+            return ArgLongFlag.make({
               name: analysis.name,
               negated: analysis.negated,
               value: analysis.value,
               original: analysis.original,
-            }),
-          )
+            })
 
-        case 'short-flag':
-          return ParseResult.succeed(
-            new ArgShortFlag({
+          case 'short-flag':
+            return ArgShortFlag.make({
               name: analysis.name,
               value: analysis.value,
               original: analysis.original,
-            }),
-          )
+            })
 
-        case 'short-flag-cluster':
-          return ParseResult.succeed(
-            new ArgShortFlagCluster({
-              flags: analysis.flags.map(
-                (f) =>
-                  new ArgShortFlag({
-                    name: f.name,
-                    value: f.value,
-                    original: f.original,
-                  }),
+          case 'short-flag-cluster':
+            return ArgShortFlagCluster.make({
+              flags: analysis.flags.map((f) =>
+                ArgShortFlag.make({
+                  name: f.name,
+                  value: f.value,
+                  original: f.original,
+                }),
               ),
               original: analysis.original,
-            }),
-          )
+            })
 
-        case 'positional':
-          return ParseResult.succeed(
-            new ArgPositional({
+          case 'positional':
+            return ArgPositional.make({
               value: analysis.value,
               original: analysis.original,
-            }),
-          )
+            })
 
-        case 'separator':
-          return ParseResult.succeed(
-            new ArgSeparator({
+          case 'separator':
+            return ArgSeparator.make({
               value: null,
               original: analysis.original,
-            }),
-          )
-      }
-    },
-    encode: (decoded) => {
-      // Encode back to original string
-      return ParseResult.succeed(decoded.original)
-    },
-  }),
+            })
+        }
+      }),
+      encode: SchemaGetter.transform((decoded) => {
+        // Encode back to original string
+        return decoded.original
+      }),
+    }),
+  ),
 
   /**
    * Create a typed Arg from a literal string with compile-time analysis.

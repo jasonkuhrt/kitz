@@ -1,4 +1,4 @@
-import { FileSystem } from '@effect/platform'
+import { FileSystem } from 'effect'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
 import { Effect, HashMap, HashSet, MutableHashMap, Option } from 'effect'

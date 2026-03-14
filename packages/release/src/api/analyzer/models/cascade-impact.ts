@@ -2,7 +2,7 @@ import { Semver } from '@kitz/semver'
 import { Option, Schema as S } from 'effect'
 import { PackageSchema } from './package-schema.js'
 
-const CurrentVersionSchema: S.Schema<
+const CurrentVersionSchema: S.Codec<
   Option.Option<Semver.Semver>,
   string | null
 > = S.OptionFromNullOr(Semver.Schema)
@@ -16,5 +16,6 @@ export class CascadeImpact extends S.TaggedClass<CascadeImpact>()('CascadeImpact
   triggeredBy: S.Array(PackageSchema),
   currentVersion: CurrentVersionSchema,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(CascadeImpact)
 }

@@ -1,3 +1,3 @@
-import { FileSystem } from '@effect/platform'
+import { FileSystem } from 'effect'
 
 export const fs = FileSystem

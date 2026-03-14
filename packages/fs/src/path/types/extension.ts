@@ -6,9 +6,9 @@ import { Schema as S } from 'effect'
  * In JavaScript context, we only need to exclude / since strings can't contain NUL.
  */
 export const Extension = S.String.pipe(
-  S.pattern(/^\.[^/]+$/),
+  S.check(S.isPattern(/^\.[^/]+$/)),
   // S.brand('Extension'),
-  S.annotations({
+  S.annotate({
     identifier: 'Extension',
     description: 'A file extension starting with a dot (POSIX-compliant)',
   }),
@@ -26,7 +26,7 @@ export type Extension = typeof Extension.Type
  * @param ext - The extension string (must start with dot)
  * @returns A branded Extension
  */
-export const make = (ext: string): Extension => Extension.make(ext)
+export const make = (ext: string): Extension => S.decodeSync(Extension)(ext)
 
 /**
  * Common file extensions as branded constants.

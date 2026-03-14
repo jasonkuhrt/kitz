@@ -17,7 +17,7 @@ interface Metadata {
 
 /** Verifies that the git remote (default: origin) is configured and reachable. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('env.git-remote'),
+  id: RuleId.makeUnsafe('env.git-remote'),
   description: 'git remote is configured and reachable',
   preventsDescriptions: [
     'tag push failures because the release remote is missing, misnamed, or unreachable',
@@ -32,7 +32,7 @@ export const rule = RuntimeRule.create({
 
     const result = yield* git.getRemoteUrl(remote).pipe(
       Effect.map((url) => ({ metadata: { url } })),
-      Effect.catchAll((error) =>
+      Effect.catch((error: any) =>
         Effect.succeed({
           violation: Violation.make({
             location: Environment.make({

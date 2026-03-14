@@ -1,6 +1,6 @@
 import { Git } from '@kitz/git'
 import { Semver } from '@kitz/semver'
-import { ParseResult, Schema as S } from 'effect'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 
 /**
  * Structured representation of an ephemeral (PR) prerelease identifier.
@@ -18,10 +18,11 @@ import { ParseResult, Schema as S } from 'effect'
  * ```
  */
 export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
-  prNumber: S.Number.pipe(S.positive(), S.int()),
-  iteration: S.Number.pipe(S.positive(), S.int()),
+  prNumber: S.Number.pipe(S.check(S.isGreaterThan(0), S.isInt())),
+  iteration: S.Number.pipe(S.check(S.isGreaterThan(0), S.isInt())),
   sha: Git.Sha.Sha,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Ephemeral)
 
   /** Compute ephemeral version: 0.0.0-pr.N.iter.sha */
@@ -37,26 +38,25 @@ const EphemeralPattern = /^pr\.(\d+)\.(\d+)\.([a-f0-9]{7,40})$/i
 /**
  * Schema that transforms between string format and structured Ephemeral.
  */
-export const EphemeralSchema = S.transformOrFail(EphemeralEncoded, Ephemeral, {
-  strict: true,
-  decode: (value, _, ast) => {
-    const match = EphemeralPattern.exec(value)
-    if (!match) {
-      return ParseResult.fail(
-        new ParseResult.Type(
-          ast,
-          value,
-          `Invalid ephemeral prerelease format: expected 'pr.<number>.<number>.<sha>'`,
-        ),
-      )
-    }
-    const prNumber = parseInt(match[1]!, 10)
-    const iteration = parseInt(match[2]!, 10)
-    const sha = Git.Sha.make(match[3]!)
-    return ParseResult.succeed(Ephemeral.make({ prNumber, iteration, sha }))
-  },
-  encode: (eph) => ParseResult.succeed(`pr.${eph.prNumber}.${eph.iteration}.${eph.sha}`),
-})
+export const EphemeralSchema = EphemeralEncoded.pipe(
+  S.decodeTo(Ephemeral, {
+    decode: SchemaGetter.transformOrFail((value) => {
+      const match = EphemeralPattern.exec(value)
+      if (!match) {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(value), {
+            message: `Invalid ephemeral prerelease format: expected 'pr.<number>.<number>.<sha>'`,
+          }),
+        )
+      }
+      const prNumber = parseInt(match[1]!, 10)
+      const iteration = parseInt(match[2]!, 10)
+      const sha = Git.Sha.make(match[3]!)
+      return Effect.succeed(Ephemeral.make({ prNumber, iteration, sha }))
+    }),
+    encode: SchemaGetter.transform((eph) => `pr.${eph.prNumber}.${eph.iteration}.${eph.sha}`),
+  }),
+)
 
 // ============================================================================
 // Constructors

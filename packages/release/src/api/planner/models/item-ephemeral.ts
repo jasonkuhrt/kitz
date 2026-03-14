@@ -11,6 +11,7 @@ export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
   ...ItemBaseFields,
   prerelease: Version.Ephemeral,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(Ephemeral)
 
   get nextVersion(): Semver.Semver {

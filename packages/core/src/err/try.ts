@@ -370,7 +370,7 @@ export const tryOrNull = tryOrWith(null)
  * Handles both synchronous and asynchronous functions automatically.
  *
  * @param fn - The function to execute
- * @param wrapper - Either a string message, options object, or a function that wraps the error
+ * @param wrapper - Result a string message, options object, or a function that wraps the error
  * @returns The result of the function if successful
  * @throws The wrapped error if the function throws
  *
@@ -428,7 +428,7 @@ export function tryOrRethrow<$Return>(
  * If any function throws, all errors are collected into an AggregateError.
  *
  * @param fns - Array of functions to execute
- * @param wrapper - Either a string message, options object, or a function that wraps the error
+ * @param wrapper - Result a string message, options object, or a function that wraps the error
  * @returns Array of results if all succeed
  * @throws AggregateError with wrapped individual errors if any fail
  *

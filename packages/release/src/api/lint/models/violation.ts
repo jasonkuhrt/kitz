@@ -6,6 +6,7 @@ export class DocLink extends Schema.TaggedClass<DocLink>()('ViolationDocLink', {
   label: Schema.String,
   url: Schema.String,
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(DocLink)
 }
 
@@ -13,6 +14,7 @@ export class DocLink extends Schema.TaggedClass<DocLink>()('ViolationDocLink', {
 export class FixStep extends Schema.TaggedClass<FixStep>()('ViolationFixStep', {
   description: Schema.String,
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(FixStep)
 }
 
@@ -25,6 +27,7 @@ export class GuideFix extends Schema.TaggedClass<GuideFix>()('ViolationGuideFix'
   /** Links specifically relevant to completing the fix. */
   docs: Schema.optional(Schema.Array(DocLink)),
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(GuideFix)
 }
 
@@ -37,11 +40,12 @@ export class CommandFix extends Schema.TaggedClass<CommandFix>()('ViolationComma
   /** Links specifically relevant to completing the fix. */
   docs: Schema.optional(Schema.Array(DocLink)),
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(CommandFix)
 }
 
 /** First-class remediation attached to a violation. */
-export const ViolationFix = Schema.Union(GuideFix, CommandFix)
+export const ViolationFix = Schema.Union([GuideFix, CommandFix])
 export type ViolationFix = typeof ViolationFix.Type
 
 /** Heuristic suggestion. Shown to user, never auto-applied. */
@@ -49,6 +53,7 @@ export class Hint extends Schema.TaggedClass<Hint>()('Hint', {
   /** Human-readable suggestion. */
   description: Schema.String,
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Hint)
 }
 
@@ -67,5 +72,6 @@ export class Violation extends Schema.TaggedClass<Violation>()('Violation', {
   /** Links to relevant documentation. */
   docs: Schema.optional(Schema.Array(DocLink)),
 }) {
+  static make = this.makeUnsafe
   static is = Schema.is(Violation)
 }

@@ -16,7 +16,7 @@ export const prompt = (
   parseProgress: ParseProgressPostPromptAnnotation,
   prompter: null | Prompter.Prompter,
 ): Effect.Effect<ParseProgressPostPrompt> =>
-  Effect.gen(function* (_) {
+  Effect.gen(function* () {
     if (prompter === null) {
       return {
         ...parseProgress,
@@ -35,8 +35,8 @@ export const prompt = (
 
     const args: Record<string, ArgumentValue> = {}
     const parameters = Obj.entries(parseProgress.basicParameters)
-      .filter((_) => _[1].prompt.enabled)
-      .map((_) => _[1].spec)
+      .filter((_: any) => _[1].prompt.enabled)
+      .map((_: any) => _[1].spec)
     const indexTotal = parameters.length
     let indexCurrent = 1
     const gutterWidth = String(indexTotal).length * 2 + 3
@@ -66,11 +66,11 @@ export const prompt = (
           marginLeft: gutterWidth,
           parameter,
         })
-        const arg = yield* _(asking)
+        const arg = yield* asking
         const validationResult = SchemaRuntime.validate(parameter.type, arg)
-        if (validationResult._tag === `Right`) {
-          if (isArgumentValue(validationResult.right)) {
-            args[parameter.name.canonical] = validationResult.right
+        if (validationResult._tag === `Success`) {
+          if (isArgumentValue(validationResult.success)) {
+            args[parameter.name.canonical] = validationResult.success
             prompter.say(``) // newline
             indexCurrent++
             break
@@ -91,7 +91,7 @@ export const prompt = (
               `left`,
               gutterWidth,
               ` `,
-              Term.colors.alert(`Invalid value: ${validationResult.left.errors.join(`, `)}`),
+              Term.colors.alert(`Invalid value: ${validationResult.failure.errors.join(`, `)}`),
             ),
           )
         }

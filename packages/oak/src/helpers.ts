@@ -1,5 +1,5 @@
 import { Lang, Obj, Str } from '@kitz/core'
-import { Either } from 'effect'
+import { Result } from 'effect'
 
 export const BooleanLookup = {
   true: true,
@@ -23,20 +23,20 @@ export const lowerCaseObjectKeys = <$Obj extends Record<string, unknown>>(obj: $
 
 export const parseEnvironmentVariableBoolean = (
   serializedValue: string,
-): Either.Either<boolean, Error> => {
+): Result.Result<boolean, Error> => {
   // @ts-expect-error ignore
   const value = environmentVariableBooleanLookup[serializedValue]
-  if (value === undefined) return Either.left(new Error(`Invalid boolean value: ${value}`))
-  return Either.right(value)
+  if (value === undefined) return Result.fail(new Error(`Invalid boolean value: ${value}`))
+  return Result.succeed(value)
 }
 
 export const parseEnvironmentVariableBooleanOrThrow = (value: string) => {
   const result = parseEnvironmentVariableBoolean(value)
-  if (Either.isRight(result)) {
-    return result.right
+  if (Result.isSuccess(result)) {
+    return result.success
   }
 
-  return Lang.throw(result.left)
+  return Lang.throw(result.failure)
 }
 
 export const negateNamePattern = /^no([A-Z].+)/

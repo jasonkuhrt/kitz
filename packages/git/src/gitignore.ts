@@ -27,7 +27,7 @@
 
 import { Str } from '@kitz/core'
 import { Resource } from '@kitz/resource'
-import { Schema as S } from 'effect'
+import { SchemaGetter, Schema as S } from 'effect'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -68,27 +68,29 @@ const remakeSection = (section: Section, entries: readonly Entry[]): Section =>
  * Schema.decodeSync(Git.Gitignore.Pattern)('')  // throws (empty after trim)
  * ```
  */
-const Pattern = S.transform(
-  S.String,
-  S.String.pipe(
-    S.nonEmptyString(),
-    S.pattern(/^[^\x00]*$/, { message: () => 'Pattern cannot contain null bytes' }),
-    S.brand('GitignorePattern'),
-  ),
-  {
-    strict: true,
-    decode: (s) => {
-      let normalized = s.trim()
-      while (normalized.startsWith('./')) {
-        normalized = normalized.slice(2)
-      }
-      return normalized
+const Pattern = S.String.pipe(
+  S.decodeTo(
+    S.String.pipe(
+      S.check(
+        S.isMinLength(1),
+        S.isPattern(/^[^\x00]*$/, { message: 'Pattern cannot contain null bytes' }),
+      ),
+      S.brand('GitignorePattern'),
+    ),
+    {
+      decode: SchemaGetter.transform((s) => {
+        let normalized = s.trim()
+        while (normalized.startsWith('./')) {
+          normalized = normalized.slice(2)
+        }
+        return normalized
+      }),
+      encode: SchemaGetter.transform((p) => p),
     },
-    encode: (p) => p,
-  },
+  ),
 )
 
-type Pattern = S.Schema.Type<typeof Pattern>
+type Pattern = typeof Pattern.Type
 
 /** Decode a string to a normalized Pattern (convenience). */
 const decodePattern = S.decodeSync(Pattern)
@@ -101,7 +103,9 @@ class Entry extends S.Class<Entry>('GitignoreEntry')({
   pattern: Pattern,
   /** Whether negated with ! prefix */
   negated: S.Boolean,
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 /**
  * A section of entries, optionally preceded by a comment header.
@@ -115,7 +119,9 @@ class Section extends S.Class<Section>('GitignoreSection')({
   comments: S.Array(S.String),
   /** Entries in this section */
   entries: S.Array(Entry),
-}) {}
+}) {
+  static make = this.makeUnsafe
+}
 
 // ─── Internal Parse/Stringify ─────────────────────────────────────────────────
 
@@ -221,6 +227,7 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
   /** Sections (patterns grouped by preceding comments) */
   sections: S.Array(Section),
 }) {
+  static make = this.makeUnsafe
   // ─── Internal Types (exposed for advanced use) ─────────────────────────────
 
   /** A single gitignore entry (pattern line). */
@@ -252,11 +259,12 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
    * const output = Schema.encodeSync(Git.Gitignore.Schema)(gitignore)
    * ```
    */
-  static Schema: S.Schema<Gitignore, string> = S.transform(S.String, Gitignore, {
-    strict: true,
-    decode: (content) => parse(content) as any,
-    encode: (gitignore) => toStringGitignore(gitignore as any),
-  }) as any
+  static Schema: S.Codec<Gitignore, string> = S.String.pipe(
+    S.decodeTo(Gitignore, {
+      decode: SchemaGetter.transform((content) => parse(content) as any),
+      encode: SchemaGetter.transform((gitignore) => toStringGitignore(gitignore as any)),
+    }),
+  ) as any
 
   // ─── Resource ──────────────────────────────────────────────────────────────
 

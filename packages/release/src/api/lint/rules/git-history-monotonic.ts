@@ -24,7 +24,7 @@ const extractPackageNames = (tags: string[]): string[] => {
 
 /** Audits that version tags increase monotonically with commit ancestry. */
 export const rule = RuntimeRule.create({
-  id: RuleId.make('git.history.monotonic'),
+  id: RuleId.makeUnsafe('git.history.monotonic'),
   description: 'Versions increase with commit order (ancestry-based)',
   preconditions: [],
   check: Effect.gen(function* () {

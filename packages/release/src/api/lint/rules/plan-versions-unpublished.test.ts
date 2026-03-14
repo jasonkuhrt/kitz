@@ -1,5 +1,5 @@
-import { Command, CommandExecutor } from '@effect/platform'
-import { Effect, Inspectable, Layer, Option, Sink, Stream } from 'effect'
+import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
+import { Effect, Layer, Stream } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
@@ -11,27 +11,25 @@ import { rule } from './plan-versions-unpublished.js'
 
 const textEncoder = new TextEncoder()
 
-const makeProcess = (stdout: string, exitCode: number): CommandExecutor.Process => ({
-  [CommandExecutor.ProcessTypeId]: CommandExecutor.ProcessTypeId,
-  pid: CommandExecutor.ProcessId(1),
-  exitCode: Effect.succeed(CommandExecutor.ExitCode(exitCode)),
-  isRunning: Effect.succeed(false),
-  kill: () => Effect.void,
-  stderr: Stream.empty,
-  stdin: Sink.drain,
-  stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
-  toJSON: () => ({ _tag: 'MockProcess', pid: 1, exitCode }),
-  [Inspectable.NodeInspectSymbol]() {
-    return this.toJSON()
-  },
-})
+const makeHandle = (stdout: string, exitCode: number): ChildProcessSpawner.ChildProcessHandle =>
+  ChildProcessSpawner.makeHandle({
+    pid: ChildProcessSpawner.ProcessId(1),
+    exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(exitCode)),
+    isRunning: Effect.succeed(false),
+    kill: () => Effect.void,
+    stderr: Stream.empty,
+    stdin: Effect.void as any,
+    stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
+    all: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
+    getInputFd: () => Effect.void as any,
+    getOutputFd: () => Stream.empty,
+  })
 
-const makeCommandExecutorLayer = (exists: boolean) =>
-  Layer.succeed(CommandExecutor.CommandExecutor, {
-    [CommandExecutor.TypeId]: CommandExecutor.TypeId,
-    exitCode: () => Effect.succeed(CommandExecutor.ExitCode(0)),
-    start: (command) => {
-      const standard = Command.flatten(command)[0]
+const makeSpawnerLayer = (exists: boolean) =>
+  Layer.succeed(
+    ChildProcessSpawner.ChildProcessSpawner,
+    ChildProcessSpawner.make((command) => {
+      const standard = ChildProcess.isStandardCommand(command) ? command : undefined
       if (
         !standard ||
         standard.command !== 'npm' ||
@@ -39,7 +37,7 @@ const makeCommandExecutorLayer = (exists: boolean) =>
         standard.args?.[1] !== 'view'
       ) {
         return Effect.die(
-          `Unexpected command in mock executor: ${standard?.command ?? 'unknown'}`,
+          `Unexpected command in mock spawner: ${standard?.command ?? 'unknown'}`,
         ) as any
       }
 
@@ -50,8 +48,8 @@ const makeCommandExecutorLayer = (exists: boolean) =>
 
       return Effect.succeed(
         exists
-          ? makeProcess('"1.0.1"\n', 0)
-          : makeProcess(
+          ? makeHandle('"1.0.1"\n', 0)
+          : makeHandle(
               JSON.stringify(
                 {
                   error: {
@@ -64,13 +62,9 @@ const makeCommandExecutorLayer = (exists: boolean) =>
               ) + '\n',
               1,
             ),
-      ) as any
-    },
-    string: () => Effect.die('string not implemented in mock command executor') as any,
-    lines: () => Effect.die('lines not implemented in mock command executor') as any,
-    stream: () => Stream.empty,
-    streamLines: () => Stream.empty,
-  } satisfies CommandExecutor.CommandExecutor)
+      )
+    }),
+  )
 
 const releasePlanLayer = ReleasePlan.make([
   {
@@ -85,7 +79,7 @@ describe('plan.versions-unpublished', () => {
     const result = await Effect.runPromise(
       rule.check.pipe(
         Effect.provide(releasePlanLayer),
-        Effect.provide(makeCommandExecutorLayer(true)),
+        Effect.provide(makeSpawnerLayer(true)),
         Effect.provideService(RuleOptionsService, {}),
       ),
     )
@@ -98,7 +92,7 @@ describe('plan.versions-unpublished', () => {
     const result = await Effect.runPromise(
       rule.check.pipe(
         Effect.provide(releasePlanLayer),
-        Effect.provide(makeCommandExecutorLayer(false)),
+        Effect.provide(makeSpawnerLayer(false)),
         Effect.provideService(RuleOptionsService, {}),
       ),
     )

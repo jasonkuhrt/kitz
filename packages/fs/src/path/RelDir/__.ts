@@ -1,18 +1,15 @@
-import { ParseResult, Schema as S } from 'effect'
-import type { RefineSchemaId, TypeId } from 'effect/Schema'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { analyze, backPrefix, herePrefix, separator } from '../../path-analyzer/codec-string/__.js'
 import { Segments } from '../types/segments.js'
 
-type _ = RefineSchemaId
-
 /**
- * Property signature for back field with default 0.
+ * Back field with default 0.
  * Represents the count of unresolved parent directory traversals (..).
+ * Required in the Type, optional in the constructor (defaults to 0).
  */
 const Back = S.Int.pipe(
-  S.nonNegative(),
-  S.propertySignature,
-  S.withConstructorDefault(() => 0),
+  S.check(S.isGreaterThanOrEqualTo(0)),
+  S.withConstructorDefault(() => Option.some(0)),
 )
 
 /**
@@ -23,6 +20,7 @@ class RelDirClass extends S.TaggedClass<RelDirClass>()('FsPathRelDir', {
   back: Back,
   segments: Segments,
 }) {
+  static make = this.makeUnsafe
   override toString() {
     return S.encodeSync(Schema)(this)
   }
@@ -56,54 +54,49 @@ export const name = (instance: RelDirClass): string => instance.segments.at(-1) 
  * })
  * ```
  */
-export const Schema: S.Schema<RelDirClass, string> = S.transformOrFail(S.String, RelDirClass, {
-  strict: true,
-  encode: (decoded) => {
-    // Build the path string from back count and segments
-    const backPrefixStr = backPrefix.repeat(decoded.back)
-    const pathString = decoded.segments.join(separator)
+export const Schema: S.Codec<RelDirClass, string> = S.String.pipe(
+  S.decodeTo(RelDirClass, {
+    encode: SchemaGetter.transform((decoded) => {
+      // Build the path string from back count and segments
+      const backPrefixStr = backPrefix.repeat(decoded.back)
+      const pathString = decoded.segments.join(separator)
 
-    // Determine the prefix: use back traversal or current directory marker
-    if (decoded.back > 0) {
-      // Back traversal: "../" repeated, then segments, then trailing slash
-      // e.g., back=2, segments=['lib'] -> '../../lib/'
-      // e.g., back=1, segments=[] -> '../'
-      return ParseResult.succeed(
-        pathString.length > 0 ? `${backPrefixStr}${pathString}${separator}` : backPrefixStr,
-      )
-    }
-    // Forward path: "./" prefix, then segments, then trailing slash
-    // e.g., back=0, segments=['src'] -> './src/'
-    // e.g., back=0, segments=[] -> './'
-    return ParseResult.succeed(
-      pathString.length > 0 ? `${herePrefix}${pathString}${separator}` : herePrefix,
-    )
-  },
-  decode: (input, options, ast) => {
-    // Analyze the input string with directory hint for ambiguous paths
-    const analysis = analyze(input, { hint: 'directory' })
+      // Determine the prefix: use back traversal or current directory marker
+      if (decoded.back > 0) {
+        return pathString.length > 0 ? `${backPrefixStr}${pathString}${separator}` : backPrefixStr
+      }
+      return pathString.length > 0 ? `${herePrefix}${pathString}${separator}` : herePrefix
+    }),
+    decode: SchemaGetter.transformOrFail((input) => {
+      // Analyze the input string with directory hint for ambiguous paths
+      const analysis = analyze(input, { hint: 'directory' })
 
-    // Validate it's a relative directory
-    if (analysis._tag !== 'dir') {
-      return ParseResult.fail(
-        new ParseResult.Type(ast, input, 'Expected a directory path, got a file path'),
-      )
-    }
-    if (analysis.isPathAbsolute) {
-      return ParseResult.fail(
-        new ParseResult.Type(ast, input, 'Relative paths must not start with /'),
-      )
-    }
+      // Validate it's a relative directory
+      if (analysis._tag !== 'dir') {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(input), {
+            message: 'Expected a directory path, got a file path',
+          }),
+        )
+      }
+      if (analysis.isPathAbsolute) {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(input), {
+            message: 'Relative paths must not start with /',
+          }),
+        )
+      }
 
-    // Valid - return as RelDir
-    return ParseResult.succeed(
-      RelDirClass.make({
-        back: analysis.back,
-        segments: analysis.path,
-      }),
-    )
-  },
-})
+      // Valid - return as RelDir
+      return Effect.succeed(
+        RelDirClass.make({
+          back: analysis.back,
+          segments: analysis.path,
+        }),
+      )
+    }),
+  }),
+)
 
 /**
  * Type guard to check if a value is a RelDir instance.
@@ -114,7 +107,7 @@ export const is = S.is(Schema)
  * Direct constructor for RelDir from structured data.
  * Bypasses string parsing for efficient internal operations.
  */
-export const make = RelDirClass.make.bind(RelDirClass)
+export const make = (args: ConstructorParameters<typeof RelDirClass>[0]) => new RelDirClass(args)
 
 /**
  * Decode from string to RelDir instance.

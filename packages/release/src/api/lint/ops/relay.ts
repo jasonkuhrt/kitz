@@ -1,5 +1,5 @@
-import { FileSystem } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { FileSystem } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import { Console, Effect, Match } from 'effect'
 import { Failed, Finished, type Report, Skipped } from '../models/report.js'
 import * as Severity from '../models/severity.js'

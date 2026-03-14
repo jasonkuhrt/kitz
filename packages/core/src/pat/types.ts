@@ -10,7 +10,7 @@ import type { ArrayConstraint, Combinator, NumberConstraint, StringConstraint } 
  * - String constraints (`$length`, `$format`)
  * - Effect Schemas
  */
-export type StringPattern = string | RegExp | StringConstraint | S.Schema.Any
+export type StringPattern = string | RegExp | StringConstraint | S.Top
 
 /**
  * Number pattern - matches number values.
@@ -20,7 +20,7 @@ export type StringPattern = string | RegExp | StringConstraint | S.Schema.Any
  * - Number constraints (`$gt`, `$gte`, `$lt`, `$lte`, `$eq`)
  * - Effect Schemas
  */
-export type NumberPattern = number | NumberConstraint | S.Schema.Any
+export type NumberPattern = number | NumberConstraint | S.Top
 
 /**
  * Boolean pattern - matches boolean values.
@@ -29,7 +29,7 @@ export type NumberPattern = number | NumberConstraint | S.Schema.Any
  * - Literal booleans
  * - Effect Schemas
  */
-export type BooleanPattern = boolean | S.Schema.Any
+export type BooleanPattern = boolean | S.Top
 
 /**
  * BigInt pattern - matches bigint values.
@@ -38,7 +38,7 @@ export type BooleanPattern = boolean | S.Schema.Any
  * - Literal bigints
  * - Effect Schemas
  */
-export type BigIntPattern = bigint | S.Schema.Any
+export type BigIntPattern = bigint | S.Top
 
 /**
  * Date pattern - matches Date values.
@@ -47,7 +47,7 @@ export type BigIntPattern = bigint | S.Schema.Any
  * - Literal dates
  * - Effect Schemas
  */
-export type DatePattern = Date | S.Schema.Any
+export type DatePattern = Date | S.Top
 
 /**
  * Array pattern - matches array values.
@@ -146,7 +146,7 @@ export type PatternForValue<$Value> = PatternForType<$Value>
  * type UserPattern = PatternForSchema<typeof UserSchema>
  * ```
  */
-export type PatternForSchema<$Schema extends S.Schema.Any> = PatternForType<S.Schema.Type<$Schema>>
+export type PatternForSchema<$Schema extends S.Top> = PatternForType<$Schema['Type']>
 
 /**
  * Pattern type for a v1 Schema (Zod, Yup, etc.).

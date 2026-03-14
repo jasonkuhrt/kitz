@@ -1,6 +1,6 @@
 import { Fs } from '@kitz/fs'
 import { Syn } from '@kitz/syn'
-import { Either, Match } from 'effect'
+import { Result, Match } from 'effect'
 import { readFileSync, writeFileSync } from 'fs'
 import { mkdirSync } from 'fs'
 import { join } from 'path'
@@ -197,13 +197,13 @@ const getDrillableModules = (model: InterfaceModel): Set<string> => {
   // Find the main entrypoint export file
   const mainExportPath = join(process.cwd(), 'build/exports/index.js')
 
-  const contentResult = Either.try({
+  const contentResult = Result.try({
     try: () => readFileSync(mainExportPath, 'utf-8'),
     catch: () => undefined,
   })
 
-  if (Either.isRight(contentResult)) {
-    const content = contentResult.right
+  if (Result.isSuccess(contentResult)) {
+    const content = contentResult.success
     // Match export statements like: export * from '@kitz/core/arr'
     const exportPattern = /export\s+\*\s+from\s+['"]#([^'"]+)['"]/g
     let match

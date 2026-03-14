@@ -1,4 +1,4 @@
-import { FileSystem } from '@effect/platform'
+import { FileSystem } from 'effect'
 import { Array as A, Effect, Stream } from 'effect'
 import { FragmentNotFoundError, TargetFileError } from './errors.js'
 import type { FragmentMap } from './extract.js'
@@ -66,7 +66,7 @@ export function injectIntoString(
     },
   )
 
-  if (A.isNonEmptyArray(missingIds)) {
+  if (A.isArrayNonEmpty(missingIds)) {
     return Effect.fail(
       new FragmentNotFoundError({
         context: {
@@ -94,7 +94,10 @@ export function injectIntoFile(
       Effect.mapError(
         (error) =>
           new TargetFileError({
-            context: { filePath, detail: String(error) },
+            context: {
+              filePath,
+              detail: error instanceof Error ? error.message : JSON.stringify(error),
+            },
           }),
       ),
     )
@@ -109,7 +112,10 @@ export function injectIntoFile(
       Effect.mapError(
         (error) =>
           new TargetFileError({
-            context: { filePath, detail: String(error) },
+            context: {
+              filePath,
+              detail: error instanceof Error ? error.message : JSON.stringify(error),
+            },
           }),
       ),
     )
@@ -139,7 +145,10 @@ export function injectIntoDirectory(
       Effect.mapError(
         (error) =>
           new TargetFileError({
-            context: { filePath: dirPath, detail: String(error) },
+            context: {
+              filePath: dirPath,
+              detail: error instanceof Error ? error.message : JSON.stringify(error),
+            },
           }),
       ),
     )

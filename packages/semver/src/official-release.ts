@@ -12,9 +12,9 @@ const formatOfficialRelease = (version: OfficialRelease): string => {
 export class OfficialRelease extends S.TaggedClass<OfficialRelease>()(
   'SemverOfficialRelease',
   {
-    major: S.Number.pipe(S.int(), S.nonNegative()),
-    minor: S.Number.pipe(S.int(), S.nonNegative()),
-    patch: S.Number.pipe(S.int(), S.nonNegative()),
+    major: S.Number.pipe(S.check(S.isInt(), S.isGreaterThanOrEqualTo(0))),
+    minor: S.Number.pipe(S.check(S.isInt(), S.isGreaterThanOrEqualTo(0))),
+    patch: S.Number.pipe(S.check(S.isInt(), S.isGreaterThanOrEqualTo(0))),
     build: S.optional(BuildIds),
   },
   {
@@ -23,6 +23,7 @@ export class OfficialRelease extends S.TaggedClass<OfficialRelease>()(
     description: 'A semantic version that is an official release (no pre-release identifiers)',
   },
 ) {
+  static make = this.makeUnsafe
   static is = S.is(OfficialRelease)
   static override toString = (version: OfficialRelease): string => formatOfficialRelease(version)
 

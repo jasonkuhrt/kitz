@@ -1,5 +1,5 @@
 import { Test } from '@kitz/test'
-import { Schema } from 'effect'
+import { Exit, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { RuleDefaults, RuleId } from './rule-defaults.js'
 import * as Severity from './severity.js'
@@ -18,8 +18,8 @@ describe('RuleId', () => {
       { input: 'plan.tags-unique', output: true, comment: 'plan category' },
     )
     .test(({ input, output }) => {
-      const result = Schema.decodeEither(RuleId)(input)
-      expect(result._tag === 'Right').toBe(output)
+      const result = Schema.decodeUnknownExit(RuleId)(input)
+      expect(Exit.isSuccess(result)).toBe(output)
     })
 
   Test.describe('invalid patterns')
@@ -34,12 +34,12 @@ describe('RuleId', () => {
       { input: '', output: false, comment: 'empty string' },
     )
     .test(({ input, output }) => {
-      const result = Schema.decodeEither(RuleId)(input)
-      expect(result._tag === 'Right').toBe(output)
+      const result = Schema.decodeUnknownExit(RuleId)(input)
+      expect(Exit.isSuccess(result)).toBe(output)
     })
 
   test('RuleId.make creates branded value', () => {
-    const id = RuleId.make('env.git-clean')
+    const id = RuleId.makeUnsafe('env.git-clean')
     expect(id).toBe('env.git-clean')
   })
 })

@@ -3,7 +3,7 @@ import { Option, Schema as S } from 'effect'
 import { calculateNextVersion } from '../calculate.js'
 import type { OfficialFirst } from './official-first.js'
 
-const SemverSchema: S.Schema<Semver.Semver, Semver.Semver> = Semver.Semver
+const SemverSchema = Semver.Semver
 
 /**
  * Increment from an existing version.
@@ -13,6 +13,7 @@ export class OfficialIncrement extends S.TaggedClass<OfficialIncrement>()('Offic
   to: SemverSchema,
   bump: Semver.BumpType,
 }) {
+  static make = this.makeUnsafe
   static is = S.is(OfficialIncrement)
 
   static fromImpact(current: Semver.Semver, bump: Semver.BumpType): OfficialIncrement {

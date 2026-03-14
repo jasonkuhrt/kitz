@@ -24,10 +24,10 @@
  * @module
  */
 
-import { FileSystem } from '@effect/platform'
-import type { PlatformError } from '@effect/platform/Error'
+import { FileSystem } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
 import { Fs } from '@kitz/fs'
-import { Effect, Option, ParseResult, Schema, SchemaAST } from 'effect'
+import { Effect, Option, SchemaIssue, Schema, SchemaAST } from 'effect'
 import { EncodeError, NotFoundError, ParseError, ReadError, WriteError } from './errors.js'
 
 export { EncodeError, NotFoundError, ParseError, ReadError, WriteError }
@@ -181,7 +181,7 @@ const resolvePath = (path: Fs.Path.$Abs, filename: string): Fs.Path.AbsFile => {
  */
 export const create = <T, R = never>(
   filename: string,
-  schema: Schema.Schema<T, string, R>,
+  schema: Schema.Codec<T, string, R>,
   emptyValue: T,
   options?: CreateOptions,
 ): Resource<T, FileSystem.FileSystem | R> => {
@@ -190,32 +190,26 @@ export const create = <T, R = never>(
     : undefined
 
   const decode = (content: string, filePath: Fs.Path.AbsFile) =>
-    Schema.decode(
-      schema,
-      parseOptions,
-    )(content).pipe(
+    Schema.decodeEffect(schema)(content).pipe(
       Effect.mapError(
         (error) =>
           new ParseError({
             context: {
               path: filePath,
-              detail: ParseResult.TreeFormatter.formatErrorSync(error),
+              detail: SchemaIssue.makeFormatterDefault()(error.issue),
             },
           }),
       ),
     )
 
   const encode = (value: T, filePath: Fs.Path.AbsFile) =>
-    Schema.encode(
-      schema,
-      parseOptions,
-    )(value).pipe(
+    Schema.encodeEffect(schema)(value).pipe(
       Effect.mapError(
         (error) =>
           new EncodeError({
             context: {
               path: filePath,
-              detail: ParseResult.TreeFormatter.formatErrorSync(error),
+              detail: SchemaIssue.makeFormatterDefault()(error.issue),
             },
           }),
       ),
@@ -350,7 +344,7 @@ export const create = <T, R = never>(
 /**
  * Create a JSON resource.
  *
- * Wraps the schema with `Schema.parseJson` internally, so you provide
+ * Wraps the schema with `Schema.fromJsonString` internally, so you provide
  * a schema for the parsed object type (not string).
  *
  * @param filename - Filename to use when path is a directory
@@ -369,12 +363,12 @@ export const create = <T, R = never>(
  */
 export const createJson = <A, I, R = never>(
   filename: string,
-  schema: Schema.Schema<A, I, R>,
+  schema: Schema.Codec<A, I, R>,
   emptyValue: A,
   options?: CreateOptions,
 ): Resource<A, FileSystem.FileSystem | R> => {
-  // Compose with parseJson to get Schema<A, string>
-  const jsonSchema = Schema.compose(Schema.parseJson(), schema)
+  // fromJsonString(schema) produces Schema<A, string> for create()
+  const jsonSchema = Schema.fromJsonString(schema)
   return create(filename, jsonSchema, emptyValue, options)
 }
 

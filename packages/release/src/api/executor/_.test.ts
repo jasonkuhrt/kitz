@@ -4,7 +4,7 @@ import { Github } from '@kitz/github'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { describe, expect, it as test } from '@effect/vitest'
-import { Effect, LogLevel, Logger, Ref } from 'effect'
+import { Effect, Ref } from 'effect'
 import { execute, executeObservable } from './execute.js'
 import {
   decodeJsonRecordSync,
@@ -28,11 +28,10 @@ const workspacePackages: Parameters<typeof planOfficial>[0] = [
 ]
 
 const tagCore = (version: string) => tag(Pkg.Moniker.parse('@kitz/core'), version)
-const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  effect.pipe(Logger.withMinimumLogLevel(LogLevel.None))
+const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect
 
 describe('Executor integration', () => {
-  test.scopedLive(
+  test.live(
     'runs non-dry-run official workflow with mocked services and restores manifest semver',
     () =>
       quiet(
@@ -98,7 +97,7 @@ describe('Executor integration', () => {
       ),
   )
 
-  test.scopedLive('fails preflight on conflicting tag and does not publish', () =>
+  test.live('fails preflight on conflicting tag and does not publish', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -123,14 +122,14 @@ describe('Executor integration', () => {
 
         const outcome = yield* execute(plan, { dryRun: false }).pipe(
           Effect.provide(harness.workflowLayer),
-          Effect.either,
+          Effect.result,
         )
 
-        expect(outcome._tag).toBe('Left')
-        if (outcome._tag === 'Left') {
-          expect(outcome.left._tag).toBe('ExecutorPreflightError')
-          if (outcome.left._tag === 'ExecutorPreflightError') {
-            expect(outcome.left.context.check).toBe('plan.tags-unique')
+        expect(outcome._tag).toBe('Failure')
+        if (outcome._tag === 'Failure') {
+          expect(outcome.failure._tag).toBe('ExecutorPreflightError')
+          if (outcome.failure._tag === 'ExecutorPreflightError') {
+            expect(outcome.failure.context.check).toBe('plan.tags-unique')
           }
         }
 
@@ -143,7 +142,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.scopedLive('fails preflight when git working tree is dirty', () =>
+  test.live('fails preflight when git working tree is dirty', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -161,14 +160,14 @@ describe('Executor integration', () => {
 
         const outcome = yield* execute(plan, { dryRun: false }).pipe(
           Effect.provide(harness.workflowLayer),
-          Effect.either,
+          Effect.result,
         )
 
-        expect(outcome._tag).toBe('Left')
-        if (outcome._tag === 'Left') {
-          expect(outcome.left._tag).toBe('ExecutorPreflightError')
-          if (outcome.left._tag === 'ExecutorPreflightError') {
-            expect(outcome.left.context.check).toBe('env.git-clean')
+        expect(outcome._tag).toBe('Failure')
+        if (outcome._tag === 'Failure') {
+          expect(outcome.failure._tag).toBe('ExecutorPreflightError')
+          if (outcome.failure._tag === 'ExecutorPreflightError') {
+            expect(outcome.failure.context.check).toBe('env.git-clean')
           }
         }
 
@@ -178,7 +177,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.scopedLive('fails preflight when official release is attempted off trunk', () =>
+  test.live('fails preflight when official release is attempted off trunk', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -197,14 +196,14 @@ describe('Executor integration', () => {
 
         const outcome = yield* execute(plan, { dryRun: false, trunk: 'main' }).pipe(
           Effect.provide(harness.workflowLayer),
-          Effect.either,
+          Effect.result,
         )
 
-        expect(outcome._tag).toBe('Left')
-        if (outcome._tag === 'Left') {
-          expect(outcome.left._tag).toBe('ExecutorPreflightError')
-          if (outcome.left._tag === 'ExecutorPreflightError') {
-            expect(outcome.left.context.check).toBe('env.release-branch-allowed')
+        expect(outcome._tag).toBe('Failure')
+        if (outcome._tag === 'Failure') {
+          expect(outcome.failure._tag).toBe('ExecutorPreflightError')
+          if (outcome.failure._tag === 'ExecutorPreflightError') {
+            expect(outcome.failure.context.check).toBe('env.release-branch-allowed')
           }
         }
 
@@ -214,7 +213,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.scopedLive(
+  test.live(
     'maps publish failures to ExecutorPublishError and restores manifest after retries',
     () =>
       quiet(
@@ -237,15 +236,15 @@ describe('Executor integration', () => {
 
           const outcome = yield* execute(plan, { dryRun: false }).pipe(
             Effect.provide(harness.workflowLayer),
-            Effect.either,
+            Effect.result,
           )
 
-          expect(outcome._tag).toBe('Left')
-          if (outcome._tag === 'Left') {
-            expect(outcome.left._tag).toBe('ExecutorPublishError')
-            if (outcome.left._tag === 'ExecutorPublishError') {
-              expect(outcome.left.context.packageName).toBe('@kitz/core')
-              expect(outcome.left.context.detail).toContain('mock publish failure')
+          expect(outcome._tag).toBe('Failure')
+          if (outcome._tag === 'Failure') {
+            expect(outcome.failure._tag).toBe('ExecutorPublishError')
+            if (outcome.failure._tag === 'ExecutorPublishError') {
+              expect(outcome.failure.context.packageName).toBe('@kitz/core')
+              expect(outcome.failure.context.detail).toContain('mock publish failure')
             }
           }
 
@@ -269,7 +268,7 @@ describe('Executor integration', () => {
       ),
   )
 
-  test.scopedLive('surfaces pack-hook cleanup guidance when artifact preparation fails', () =>
+  test.live('surfaces pack-hook cleanup guidance when artifact preparation fails', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -298,17 +297,17 @@ describe('Executor integration', () => {
 
         const outcome = yield* execute(plan, { dryRun: false }).pipe(
           Effect.provide(harness.workflowLayer),
-          Effect.either,
+          Effect.result,
         )
 
-        expect(outcome._tag).toBe('Left')
-        if (outcome._tag === 'Left') {
-          expect(outcome.left._tag).toBe('ExecutorPublishError')
-          if (outcome.left._tag === 'ExecutorPublishError') {
-            expect(outcome.left.context.detail).toContain('mock pack failure')
-            expect(outcome.left.context.detail).toContain('Manifest cleanup restored version')
-            expect(outcome.left.context.detail).toContain('Pack hooks detected (prepack)')
-            expect(outcome.left.context.detail).toContain(
+        expect(outcome._tag).toBe('Failure')
+        if (outcome._tag === 'Failure') {
+          expect(outcome.failure._tag).toBe('ExecutorPublishError')
+          if (outcome.failure._tag === 'ExecutorPublishError') {
+            expect(outcome.failure.context.detail).toContain('mock pack failure')
+            expect(outcome.failure.context.detail).toContain('Manifest cleanup restored version')
+            expect(outcome.failure.context.detail).toContain('Pack hooks detected (prepack)')
+            expect(outcome.failure.context.detail).toContain(
               'plan.packages-runtime-targets-source-oriented',
             )
           }
@@ -334,7 +333,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.scopedLive('updates existing GitHub candidate release when tag option is next', () =>
+  test.live('updates existing GitHub candidate release when tag option is next', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -382,7 +381,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.scopedLive('observable workflow exposes graph in dry-run mode', () =>
+  test.live('observable workflow exposes graph in dry-run mode', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -413,7 +412,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.scopedLive('observable execution uses caller-provided runtime services', () =>
+  test.live('observable execution uses caller-provided runtime services', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({

@@ -1,4 +1,5 @@
-import { Command, CommandExecutor, FileSystem } from '@effect/platform'
+import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
+import { FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
@@ -6,8 +7,8 @@ import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { describe, expect, it as test } from '@effect/vitest'
-import { Effect, Inspectable, Layer, LogLevel, Logger, Ref, Scope, Sink, Stream } from 'effect'
-import { CommandExecutorLayer, FileSystemLayer } from '../../platform.js'
+import { Effect, Layer, Ref, Scope, Stream } from 'effect'
+import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
 import { execute } from './execute.js'
 import { makeTestRuntime } from './runtime.js'
 import { decodeJsonRecord, planOfficial, tag } from './test-support.js'
@@ -39,26 +40,24 @@ interface RealHarness {
 
 const textEncoder = new TextEncoder()
 
-const makeProcess = (stdout: string, exitCode: number): CommandExecutor.Process => ({
-  [CommandExecutor.ProcessTypeId]: CommandExecutor.ProcessTypeId,
-  pid: CommandExecutor.ProcessId(1),
-  exitCode: Effect.succeed(CommandExecutor.ExitCode(exitCode)),
-  isRunning: Effect.succeed(false),
-  kill: () => Effect.void,
-  stderr: Stream.empty,
-  stdin: Sink.drain,
-  stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
-  toJSON: () => ({ _tag: 'MockProcess', pid: 1, exitCode }),
-  [Inspectable.NodeInspectSymbol]() {
-    return this.toJSON()
-  },
-})
+const makeHandle = (stdout: string, exitCode: number): ChildProcessSpawner.ChildProcessHandle =>
+  ChildProcessSpawner.makeHandle({
+    pid: ChildProcessSpawner.ProcessId(1),
+    exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(exitCode)),
+    isRunning: Effect.succeed(false),
+    kill: () => Effect.void,
+    stderr: Stream.empty,
+    stdin: Effect.void as any,
+    stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
+    all: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
+    getInputFd: () => Effect.void as any,
+    getOutputFd: () => Stream.empty,
+  })
 
 const slugPackageName = (packageName: string): string =>
   packageName.replace(/^@/u, '').replace(/\//gu, '-')
 
-const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  effect.pipe(Logger.withMinimumLogLevel(LogLevel.None))
+const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect
 
 const withFileSystem = <A, E, R>(effect: Effect.Effect<A, E, R | FileSystem.FileSystem>) =>
   effect.pipe(Effect.provide(FileSystemLayer))
@@ -141,27 +140,22 @@ const writeFixtureWorkspace = (
   })
 
 const makeCommandLayer = () => {
-  const baseLayer = CommandExecutorLayer
+  const baseLayer = ChildProcessSpawnerLayer
 
   return Layer.effect(
-    CommandExecutor.CommandExecutor,
+    ChildProcessSpawner.ChildProcessSpawner,
     Effect.gen(function* () {
-      const base = yield* CommandExecutor.CommandExecutor
+      const base = yield* ChildProcessSpawner.ChildProcessSpawner
 
-      const commandOf = (command: Parameters<typeof base.string>[0]) =>
-        (Command.flatten(command)[0] ?? undefined) as
-          | { command?: string; args?: readonly string[] }
-          | undefined
-
-      const wrapStart: typeof base.start = (command) => {
-        const standard = commandOf(command)
+      const wrapSpawn: typeof base.spawn = (command) => {
+        const standard = ChildProcess.isStandardCommand(command) ? command : undefined
         if (
           standard?.command === 'npm' &&
           standard.args?.[0] === '--silent' &&
           standard.args?.[1] === 'view'
         ) {
           return Effect.succeed(
-            makeProcess(
+            makeHandle(
               JSON.stringify(
                 {
                   error: {
@@ -174,24 +168,15 @@ const makeCommandLayer = () => {
               ) + '\n',
               1,
             ),
-          ) as any
+          )
         }
-        return base.start(command)
-      }
-
-      const wrapString: typeof base.string = (command, encoding) => {
-        const standard = commandOf(command)
         if (standard?.command === 'npm' && standard.args?.[0] === 'whoami') {
-          return Effect.succeed('fixture-user\n') as any
+          return Effect.succeed(makeHandle('fixture-user\n', 0))
         }
-        return base.string(command, encoding)
+        return base.spawn(command)
       }
 
-      return {
-        ...base,
-        start: wrapStart,
-        string: wrapString,
-      } satisfies CommandExecutor.CommandExecutor
+      return ChildProcessSpawner.make(wrapSpawn)
     }),
   ).pipe(Layer.provide(baseLayer))
 }
@@ -560,7 +545,7 @@ const makeWorkflowTestRuntime = () => makeTestRuntime()
 const E2E_TEST_TIMEOUT_MS = 90_000
 
 describe('Executor e2e', () => {
-  test.scopedLive(
+  test.live(
     'resumes after a prepack failure without re-packing completed packages',
     () =>
       quiet(
@@ -598,10 +583,10 @@ describe('Executor e2e', () => {
 
           const firstRun = yield* execute(plan, { dryRun: false }).pipe(
             Effect.provide(workflowContext),
-            Effect.either,
+            Effect.result,
           )
 
-          expect(firstRun._tag).toBe('Left')
+          expect(firstRun._tag).toBe('Failure')
           expect(yield* Ref.get(harness.packCalls)).toEqual(['@kitz/a', '@kitz/b', '@kitz/c'])
           expect(yield* Ref.get(harness.publishCalls)).toEqual([])
 
@@ -617,12 +602,12 @@ describe('Executor e2e', () => {
 
           const secondRun = yield* execute(plan, { dryRun: false }).pipe(
             Effect.provide(workflowContext),
-            Effect.either,
+            Effect.result,
           )
 
-          expect(secondRun._tag).toBe('Right')
-          if (secondRun._tag === 'Right') {
-            expect(secondRun.right.releasedPackages).toEqual(['@kitz/a', '@kitz/b', '@kitz/c'])
+          expect(secondRun._tag).toBe('Success')
+          if (secondRun._tag === 'Success') {
+            expect(secondRun.success.releasedPackages).toEqual(['@kitz/a', '@kitz/b', '@kitz/c'])
           }
 
           expect(yield* Ref.get(harness.packCalls)).toEqual([
@@ -638,7 +623,7 @@ describe('Executor e2e', () => {
   )
 
   for (const scenario of hookFailureScenarios) {
-    test.scopedLive(
+    test.live(
       scenario.name,
       () =>
         quiet(
@@ -659,10 +644,10 @@ describe('Executor e2e', () => {
 
             const firstRun = yield* execute(plan, { dryRun: false }).pipe(
               Effect.provide(workflowContext),
-              Effect.either,
+              Effect.result,
             )
 
-            expect(firstRun._tag).toBe('Left')
+            expect(firstRun._tag).toBe('Failure')
             expect(yield* Ref.get(harness.packCalls)).toEqual(scenario.firstPackCalls)
             expect(yield* Ref.get(harness.publishCalls)).toEqual([])
 
@@ -676,12 +661,12 @@ describe('Executor e2e', () => {
 
             const secondRun = yield* execute(plan, { dryRun: false }).pipe(
               Effect.provide(workflowContext),
-              Effect.either,
+              Effect.result,
             )
 
-            expect(secondRun._tag).toBe('Right')
-            if (secondRun._tag === 'Right') {
-              expect(secondRun.right).toEqual(graphResult)
+            expect(secondRun._tag).toBe('Success')
+            if (secondRun._tag === 'Success') {
+              expect(secondRun.success).toEqual(graphResult)
             }
 
             expect(yield* Ref.get(harness.packCalls)).toEqual(scenario.finalPackCalls)
@@ -693,7 +678,7 @@ describe('Executor e2e', () => {
   }
 
   for (const scenario of publishFailureScenarios) {
-    test.scopedLive(
+    test.live(
       scenario.name,
       () =>
         quiet(
@@ -714,10 +699,10 @@ describe('Executor e2e', () => {
 
             const firstRun = yield* execute(plan, { dryRun: false }).pipe(
               Effect.provide(workflowContext),
-              Effect.either,
+              Effect.result,
             )
 
-            expect(firstRun._tag).toBe('Left')
+            expect(firstRun._tag).toBe('Failure')
             expect(yield* Ref.get(harness.packCalls)).toEqual(graphResult.releasedPackages)
             expect(yield* Ref.get(harness.publishCalls)).toEqual(scenario.firstPublishCalls)
             expect(yield* Ref.get(harness.gitState.createdTags)).toEqual([])
@@ -727,12 +712,12 @@ describe('Executor e2e', () => {
 
             const secondRun = yield* execute(plan, { dryRun: false }).pipe(
               Effect.provide(workflowContext),
-              Effect.either,
+              Effect.result,
             )
 
-            expect(secondRun._tag).toBe('Right')
-            if (secondRun._tag === 'Right') {
-              expect(secondRun.right).toEqual(graphResult)
+            expect(secondRun._tag).toBe('Success')
+            if (secondRun._tag === 'Success') {
+              expect(secondRun.success).toEqual(graphResult)
             }
 
             expect(yield* Ref.get(harness.packCalls)).toEqual(graphResult.releasedPackages)

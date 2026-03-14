@@ -23,6 +23,7 @@ export class ReleaseCommit extends Git.ParsedCommit<ReleaseCommit>()(
   'ReleaseCommit',
   ConventionalCommits.Commit.Commit,
 ) {
+  static make = this.makeUnsafe
   /**
    * Instance sugar for {@link ReleaseCommit.forScope}.
    */
@@ -37,11 +38,12 @@ export class ReleaseCommit extends Git.ParsedCommit<ReleaseCommit>()(
    * For Multi commits: finds the target for the given scope.
    */
   static forScope(commit: ReleaseCommit, scope: string): ScopedCommitInfo {
-    const parsed = commit.message
+    const parsed = commit['message']
+    const hash = commit['hash']
 
     if (ConventionalCommits.Commit.Single.is(parsed)) {
       return {
-        hash: commit.hash,
+        hash,
         type: parsed.type.value,
         description: parsed.message,
         breaking: parsed.breaking,
@@ -49,10 +51,10 @@ export class ReleaseCommit extends Git.ParsedCommit<ReleaseCommit>()(
     }
 
     // Multi commit - find the target for this scope
-    const target = parsed.targets.find((t) => t.scope === scope)
+    const target = parsed.targets.find((t: any) => t.scope === scope)
 
     return {
-      hash: commit.hash,
+      hash,
       type: target?.type.value ?? 'chore',
       description: parsed.message,
       breaking: target?.breaking ?? false,
