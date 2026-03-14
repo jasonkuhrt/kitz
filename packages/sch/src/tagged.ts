@@ -40,7 +40,7 @@ export const getTagOrThrow = <schema extends AnySchema>(schema: schema): ArgTagS
 
   // In v4, transformations are in encoding chain
   if (schema.ast.encoding !== undefined) {
-    const toEncodedAst = (schema.ast as any).encoding[0]?.to
+    const toEncodedAst = schema.ast.encoding[0]?.to
     if (toEncodedAst) {
       resolved = AST.resolve(toEncodedAst)
     }

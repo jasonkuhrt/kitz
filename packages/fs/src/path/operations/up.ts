@@ -79,5 +79,5 @@ export function up<$input extends Input>($input: $input): normalize<$input> {
         })
       },
     }),
-  ) as any
+  ) as normalize<$input>
 }

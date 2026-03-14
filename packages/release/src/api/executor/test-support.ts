@@ -1,5 +1,5 @@
 import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
-import { FileSystem } from 'effect'
+import { FileSystem, Sink } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
@@ -42,10 +42,10 @@ const makeHandle = (stdout: string, exitCode: number): ChildProcessSpawner.Child
     isRunning: Effect.succeed(false),
     kill: () => Effect.void,
     stderr: Stream.empty,
-    stdin: Effect.void as any,
+    stdin: Sink.drain,
     stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
     all: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
-    getInputFd: () => Effect.void as any,
+    getInputFd: () => Sink.drain,
     getOutputFd: () => Stream.empty,
   })
 
@@ -53,7 +53,7 @@ export const makeMockSpawnerLayer = (whoamiUsername: string) => {
   const spawner = ChildProcessSpawner.make((command) => {
     const standard = ChildProcess.isStandardCommand(command) ? command : undefined
     if (!standard) {
-      return Effect.die('Unexpected piped command in mock spawner') as any
+      return Effect.die('Unexpected piped command in mock spawner')
     }
 
     const args = standard.args
@@ -92,7 +92,7 @@ export const makeMockSpawnerLayer = (whoamiUsername: string) => {
       )
     }
 
-    return Effect.die(`Unexpected command in mock spawner: ${standard.command}`) as any
+    return Effect.die(`Unexpected command in mock spawner: ${standard.command}`)
   })
 
   return Layer.succeed(ChildProcessSpawner.ChildProcessSpawner, spawner)

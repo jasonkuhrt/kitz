@@ -16,5 +16,5 @@ export class Analysis extends S.TaggedClass<Analysis>()('Analysis', {
   tags: S.Array(S.String),
 }) {
   static make = this.makeUnsafe
-  static is = S.is(Analysis as any) as (u: unknown) => u is Analysis
+  static is = S.is(Analysis)
 }

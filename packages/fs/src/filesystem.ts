@@ -614,7 +614,10 @@ export const write: {
       | Path.$Dir
 
     if (Path.$File.is(loc)) {
-      const fileLoc: { segments: string[]; fileName: { extension: string | null } } = loc as any
+      const fileLoc: {
+        readonly segments: readonly string[]
+        readonly fileName: { readonly extension: string | null }
+      } = loc
       const [, content, options] = params
       const filePath = Path.toString(loc) as string
 
@@ -656,8 +659,12 @@ export const write: {
           (options as WriteFileStringOptions) || {},
         )
       } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(content)) {
-        // Node.js Buffer
-        return yield* fs.writeFile(filePath, content as any, (options as WriteFileOptions) || {})
+        // Node.js Buffer — Buffer extends Uint8Array, safe to pass directly
+        return yield* fs.writeFile(
+          filePath,
+          new Uint8Array(content.buffer, content.byteOffset, content.byteLength),
+          (options as WriteFileOptions) || {},
+        )
       } else {
         // Fallback: stringify anything else
         const stringContent =

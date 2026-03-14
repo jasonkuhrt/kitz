@@ -57,7 +57,7 @@ export const PrimitiveSchema = S.Union([S.String, S.Number, S.Boolean, S.Null])
  * @category Schemas
  */
 // @ts-expect-error - Recursive type inference limitation
-export const ValueSchema: S.Schema<Value> = S.suspend(() =>
+export const ValueSchema: S.Codec<Value, Value> = S.suspend(() =>
   S.Union([PrimitiveSchema, S.Array(ValueSchema), S.Record(S.String, ValueSchema)]),
 )
 
@@ -104,7 +104,7 @@ export const Schema = S.fromJsonString(ValueSchema).annotate({
  *
  * @category Type Guards
  */
-export const is = S.is(ValueSchema as any) as (value: unknown) => value is Value
+export const is = S.is(ValueSchema)
 
 /**
  * Type guard to check if a value is a JSON primitive.
@@ -118,7 +118,7 @@ export const isPrimitive = S.is(PrimitiveSchema)
  *
  * @category Type Guards
  */
-export const isObject = S.is(ObjectSchema as any) as (value: unknown) => value is Obj
+export const isObject = S.is(ObjectSchema)
 
 //
 //
@@ -134,11 +134,11 @@ export const isObject = S.is(ObjectSchema as any) as (value: unknown) => value i
  *
  * @category Parsing
  */
-export const fromString = S.decodeSync(Schema as any) as (value: string) => Value
+export const fromString = S.decodeSync(Schema)
 
 /**
  * Serialize a JSON value to a pretty-printed string.
  *
  * @category Serialization
  */
-export const toString = S.encodeSync(Schema as any) as (value: Value) => string
+export const toString = S.encodeSync(Schema)

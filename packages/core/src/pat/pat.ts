@@ -95,8 +95,9 @@ export type Pattern<$Value = unknown> = PatternForType<$Value>
  * ```
  */
 export const isMatch = <value>(value: value, pattern: Pattern<value>): boolean => {
-  const schema = toSchema(pattern)
-  return S.is(schema as any)(value)
+  // toSchema only builds from service-free primitives (Number, String, Unknown, Literal, etc.)
+  const schema = toSchema(pattern) as S.Top & { readonly DecodingServices: never }
+  return S.is(schema)(value)
 }
 
 /**

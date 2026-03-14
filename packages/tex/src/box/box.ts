@@ -849,7 +849,11 @@ export const String = Box.pipe(
   }),
 )
 
-export const makeFromEncoded = S.decodeSync(Box as any) as (input: typeof Box.Encoded) => Box
+// Box is service-free at runtime; DecodingServices: unknown comes only from
+// the recursive S.suspend(() => Box) type annotation, not real services.
+export const makeFromEncoded = S.decodeSync(
+  Box as unknown as S.Top & { readonly DecodingServices: never },
+) as (input: typeof Box.Encoded) => Box
 
 export type Encoded = typeof Box.Encoded
 
@@ -920,7 +924,11 @@ const BoxFromInput = S.Struct({
  * })
  * ```
  */
-export const makeFromInput = S.decodeSync(BoxFromInput as any)
+// BoxFromInput is service-free at runtime; DecodingServices: unknown comes only
+// from the recursive S.suspend(() => Box) type annotation in BoxContentSchema.
+export const makeFromInput = S.decodeSync(
+  BoxFromInput as unknown as S.Top & { readonly DecodingServices: never },
+)
 
 /**
  * Input type for makeFromInput - accepts shorthand forms.

@@ -93,13 +93,11 @@ const fetchPackageMetadata = <$data>(
       return response.json.pipe(Effect.map((data) => Option.some(data as $data)))
     }),
     Effect.catchTag('HttpClientError', (error) => {
-      // Check if it's a response-level error with a status code
-      const reason = error.reason
-      if ('response' in reason && (reason as any).response?.status === 404) {
+      const response = error.response
+      if (response?.status === 404) {
         return Effect.succeed(Option.none<$data>())
       }
-      // Check if it's a response error and include status detail
-      const detail = 'response' in reason ? `status ${(reason as any).response?.status}` : undefined
+      const detail = response ? `status ${response.status}` : undefined
       return Effect.fail(
         new NpmRegistryError({
           context: {

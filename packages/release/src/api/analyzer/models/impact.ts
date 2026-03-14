@@ -14,9 +14,9 @@ const CurrentVersionSchema: S.Codec<
 export class Impact extends S.TaggedClass<Impact>()('Impact', {
   package: PackageSchema,
   bump: Semver.BumpType,
-  commits: S.Array(ReleaseCommit as any),
+  commits: S.Array(ReleaseCommit),
   currentVersion: CurrentVersionSchema,
 }) {
   static make = this.makeUnsafe
-  static is = S.is(Impact as any) as (u: unknown) => u is Impact
+  static is = S.is(Impact)
 }

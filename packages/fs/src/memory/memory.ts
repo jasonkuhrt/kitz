@@ -1,6 +1,6 @@
 import { PlatformError, systemError } from 'effect/PlatformError'
 import { FileSystem, make as makeFileSystem } from 'effect/FileSystem'
-import { Effect, Layer } from 'effect'
+import { Effect, Layer, Stream } from 'effect'
 
 const createUnsupportedError = (method: string, operation: string) =>
   systemError({
@@ -234,7 +234,7 @@ export const layer = (initialDiskLayout: DiskLayout) => {
       return Effect.void
     },
     utimes: () => Effect.void,
-    watch: () => failUnsupported('watch', 'Watch operations') as any,
+    watch: () => Stream.fromEffect(failUnsupported('watch', 'Watch operations')),
 
     // Rename/move files
     rename: (oldPath: string, newPath: string) => {

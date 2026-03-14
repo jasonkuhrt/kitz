@@ -3,6 +3,13 @@ import { Num } from '#num'
 import { Rec } from '#rec'
 import { Str } from '#str'
 import * as S from 'effect/Schema'
+import type * as SchemaAST from 'effect/SchemaAST'
+
+/**
+ * Schemas built by toSchema are always service-free (no DecodingServices required).
+ * This type narrows S.Top to satisfy S.is/S.decodeSync which require DecodingServices: never.
+ */
+type ServiceFreeSchema = S.Top & { readonly DecodingServices: never }
 
 /**
  * Constraint object for strings.
@@ -100,22 +107,23 @@ const isCombinator = (value: unknown): value is Combinator => {
  * Compile a number constraint object to an Effect Schema.
  */
 const compileNumberConstraint = (constraint: NumberConstraint): S.Top => {
-  let schema: any = S.Number
+  if (constraint.$eq !== undefined) {
+    return S.Literal(constraint.$eq)
+  }
+
+  let schema = S.Number
 
   if (constraint.$gt !== undefined) {
-    schema = schema.pipe(S.check(S.isGreaterThan(constraint.$gt) as any))
+    schema = schema.check(S.isGreaterThan(constraint.$gt))
   }
   if (constraint.$gte !== undefined) {
-    schema = schema.pipe(S.check(S.isGreaterThanOrEqualTo(constraint.$gte) as any))
+    schema = schema.check(S.isGreaterThanOrEqualTo(constraint.$gte))
   }
   if (constraint.$lt !== undefined) {
-    schema = schema.pipe(S.check(S.isLessThan(constraint.$lt) as any))
+    schema = schema.check(S.isLessThan(constraint.$lt))
   }
   if (constraint.$lte !== undefined) {
-    schema = schema.pipe(S.check(S.isLessThanOrEqualTo(constraint.$lte) as any))
-  }
-  if (constraint.$eq !== undefined) {
-    schema = S.Literal(constraint.$eq)
+    schema = schema.check(S.isLessThanOrEqualTo(constraint.$lte))
   }
 
   return schema
@@ -125,34 +133,34 @@ const compileNumberConstraint = (constraint: NumberConstraint): S.Top => {
  * Compile a string constraint object to an Effect Schema.
  */
 const compileStringConstraint = (constraint: StringConstraint): S.Top => {
-  let schema: any = S.String
+  let schema = S.String
 
   if (constraint.$length !== undefined) {
     if (Num.is(constraint.$length)) {
-      schema = schema.pipe(S.check(S.isMinLength(constraint.$length) as any))
+      schema = schema.check(S.isMinLength(constraint.$length))
     } else {
       // Nested number constraint
       const numConstraint = constraint.$length
       if (numConstraint.$gte !== undefined) {
-        schema = schema.pipe(S.check(S.isMinLength(numConstraint.$gte) as any))
+        schema = schema.check(S.isMinLength(numConstraint.$gte))
       }
       if (numConstraint.$gt !== undefined) {
-        schema = schema.pipe(S.check(S.isMinLength(numConstraint.$gt + 1) as any))
+        schema = schema.check(S.isMinLength(numConstraint.$gt + 1))
       }
       if (numConstraint.$lte !== undefined) {
-        schema = schema.pipe(S.check(S.isMaxLength(numConstraint.$lte) as any))
+        schema = schema.check(S.isMaxLength(numConstraint.$lte))
       }
       if (numConstraint.$lt !== undefined) {
-        schema = schema.pipe(S.check(S.isMaxLength(numConstraint.$lt - 1) as any))
+        schema = schema.check(S.isMaxLength(numConstraint.$lt - 1))
       }
       if (numConstraint.$eq !== undefined) {
-        schema = schema.pipe(S.check(S.isMinLength(numConstraint.$eq) as any))
+        schema = schema.check(S.isMinLength(numConstraint.$eq))
       }
     }
   }
 
   if (constraint.$format !== undefined) {
-    schema = schema.pipe(S.check(S.isPattern(constraint.$format) as any))
+    schema = schema.check(S.isPattern(constraint.$format))
   }
 
   return schema
@@ -162,24 +170,23 @@ const compileStringConstraint = (constraint: StringConstraint): S.Top => {
  * Compile an array constraint object to an Effect Schema.
  */
 const compileArrayConstraint = (constraint: ArrayConstraint): S.Top => {
-  let schema: any = S.Array(S.Unknown)
+  // Build base array schema — $every changes element type
+  const base =
+    constraint.$every !== undefined ? S.Array(toSchema(constraint.$every)) : S.Array(S.Unknown)
 
-  // Handle '$every' - all elements must match
-  if (constraint.$every !== undefined) {
-    const elementSchema = toSchema(constraint.$every)
-    schema = S.Array(elementSchema)
-  }
+  // Collect all checks to apply to the base schema.
+  // All checks work on { readonly length: number } or readonly unknown[],
+  // both of which are compatible with the array's Type.
+  const checks: Array<SchemaAST.Check<readonly unknown[]>> = []
 
   // Handle '$some' - at least one element must match
   if (constraint.$some !== undefined) {
-    const elementSchema = toSchema(constraint.$some)
-    schema = schema.pipe(
-      S.check(
-        S.makeFilter(
-          (arr: unknown[]) =>
-            arr.some((el) => S.is(elementSchema as any)(el)) ||
-            `Array must have at least one element matching the pattern`,
-        ) as any,
+    const elementSchema = toSchema(constraint.$some) as ServiceFreeSchema
+    checks.push(
+      S.makeFilter(
+        (arr: readonly unknown[]) =>
+          arr.some((el) => S.is(elementSchema)(el)) ||
+          `Array must have at least one element matching the pattern`,
       ),
     )
   }
@@ -187,32 +194,32 @@ const compileArrayConstraint = (constraint: ArrayConstraint): S.Top => {
   // Handle length constraint
   if (constraint.$length !== undefined) {
     if (Num.is(constraint.$length)) {
-      schema = schema.pipe(
-        S.check(S.isMinLength(constraint.$length) as any, S.isMaxLength(constraint.$length) as any),
-      )
+      checks.push(S.isMinLength(constraint.$length), S.isMaxLength(constraint.$length))
     } else {
       const numConstraint = constraint.$length
       if (numConstraint.$gte !== undefined) {
-        schema = schema.pipe(S.check(S.isMinLength(numConstraint.$gte) as any))
+        checks.push(S.isMinLength(numConstraint.$gte))
       }
       if (numConstraint.$gt !== undefined) {
-        schema = schema.pipe(S.check(S.isMinLength(numConstraint.$gt + 1) as any))
+        checks.push(S.isMinLength(numConstraint.$gt + 1))
       }
       if (numConstraint.$lte !== undefined) {
-        schema = schema.pipe(S.check(S.isMaxLength(numConstraint.$lte) as any))
+        checks.push(S.isMaxLength(numConstraint.$lte))
       }
       if (numConstraint.$lt !== undefined) {
-        schema = schema.pipe(S.check(S.isMaxLength(numConstraint.$lt - 1) as any))
+        checks.push(S.isMaxLength(numConstraint.$lt - 1))
       }
       if (numConstraint.$eq !== undefined) {
-        schema = schema.pipe(
-          S.check(S.isMinLength(numConstraint.$eq) as any, S.isMaxLength(numConstraint.$eq) as any),
-        )
+        checks.push(S.isMinLength(numConstraint.$eq), S.isMaxLength(numConstraint.$eq))
       }
     }
   }
 
-  return schema
+  if (checks.length > 0) {
+    const [first, ...rest] = checks
+    return base.check(first!, ...rest)
+  }
+  return base
 }
 
 /**
@@ -221,14 +228,12 @@ const compileArrayConstraint = (constraint: ArrayConstraint): S.Top => {
 const compileCombinator = (combinator: Combinator): S.Top => {
   // Handle '$not'
   if (combinator.$not !== undefined) {
-    const innerSchema = toSchema(combinator.$not)
-    return S.Unknown.pipe(
-      S.check(
-        S.makeFilter(
-          (value) => !S.is(innerSchema as any)(value) || `Value must not match the negated pattern`,
-        ) as any,
+    const innerSchema = toSchema(combinator.$not) as ServiceFreeSchema
+    return S.Unknown.check(
+      S.makeFilter(
+        (value) => !S.is(innerSchema)(value) || `Value must not match the negated pattern`,
       ),
-    ) as any
+    )
   }
 
   // Handle '$or' (union)
@@ -239,15 +244,13 @@ const compileCombinator = (combinator: Combinator): S.Top => {
 
   // Handle '$and' (intersection)
   if (combinator.$and !== undefined && Arr.is(combinator.$and)) {
-    const schemas = combinator.$and.map(toSchema)
+    const schemas = combinator.$and.map(toSchema) as ServiceFreeSchema[]
     // Validate against all schemas using a filter
-    return S.Unknown.pipe(
-      S.check(
-        S.makeFilter((value) => schemas.every((schema) => S.is(schema as any)(value)), {
-          message: `Value must match all patterns in $and`,
-        }) as any,
+    return S.Unknown.check(
+      S.makeFilter(
+        (value) => schemas.every((s) => S.is(s)(value)) || `Value must match all patterns in $and`,
       ),
-    ) as any
+    )
   }
 
   return S.Unknown
@@ -258,7 +261,7 @@ const compileCombinator = (combinator: Combinator): S.Top => {
  *
  * Converts various pattern types to executable Effect Schemas:
  * - Literals → `S.Literal(value)`
- * - Regex → `S.String.pipe(S.check(S.isPattern(regex) as any))`
+ * - Regex → `S.String.check(S.isPattern(regex))`
  * - Schemas → pass through
  * - Constraint objects → compiled to schema pipelines
  * - Combinators → compiled to schema combinators
@@ -276,7 +279,12 @@ export const toSchema = (pattern: unknown): S.Top => {
 
   // Regex → String with pattern
   if (pattern instanceof RegExp) {
-    return S.String.pipe(S.check(S.isPattern(pattern) as any))
+    return S.String.check(S.isPattern(pattern))
+  }
+
+  // Null literal
+  if (pattern === null) {
+    return S.Null
   }
 
   // Primitive literals
@@ -284,10 +292,9 @@ export const toSchema = (pattern: unknown): S.Top => {
     Str.is(pattern) ||
     Num.is(pattern) ||
     typeof pattern === 'boolean' ||
-    typeof pattern === 'bigint' ||
-    pattern === null
+    typeof pattern === 'bigint'
   ) {
-    return S.Literal(pattern as any)
+    return S.Literal(pattern)
   }
 
   // Ambiguous { $length: ... } - could be string OR array constraint
@@ -295,17 +302,15 @@ export const toSchema = (pattern: unknown): S.Top => {
   if (Rec.is(pattern)) {
     const keys = Object.keys(pattern)
     if (keys.length === 1 && keys[0] === '$length') {
-      const lengthValue = (pattern as any).$length
+      const lengthValue = pattern['$length'] as number | NumberConstraint
       // Generate schemas for both string and array interpretations
-      const stringSchema = Num.is(lengthValue)
-        ? S.String.pipe(S.check(S.isMinLength(lengthValue) as any))
+      const stringSchema: S.Top = Num.is(lengthValue)
+        ? S.String.check(S.isMinLength(lengthValue))
         : compileStringConstraint({ $length: lengthValue })
-      const arraySchema = Num.is(lengthValue)
-        ? S.Array(S.Unknown).pipe(
-            S.check(S.isMinLength(lengthValue) as any, S.isMaxLength(lengthValue) as any),
-          )
+      const arraySchema: S.Top = Num.is(lengthValue)
+        ? S.Array(S.Unknown).check(S.isMinLength(lengthValue), S.isMaxLength(lengthValue))
         : compileArrayConstraint({ $length: lengthValue })
-      return S.Union([stringSchema, arraySchema]) as any
+      return S.Union([stringSchema, arraySchema])
     }
   }
 
