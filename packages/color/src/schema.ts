@@ -192,4 +192,4 @@ export const ColorInput = S.Union([
       encode: SchemaGetter.transform((c) => ({ r: c.r, g: c.g, b: c.b })),
     }),
   ),
-] as any)
+])
