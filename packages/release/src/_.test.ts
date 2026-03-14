@@ -269,7 +269,7 @@ describe('Planner.ephemeral', () => {
     )
 
     expect(result.releases).toHaveLength(1)
-    expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.42.1.abc1234')
+    expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.42.1.gabc1234')
   })
 
   test('increments ephemeral iteration', async () => {
@@ -284,7 +284,7 @@ describe('Planner.ephemeral', () => {
     )
 
     expect(result.releases).toHaveLength(1)
-    expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.42.2.abc1234')
+    expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.42.2.gabc1234')
   })
 
   test('detects PR number from environment', async () => {
@@ -308,7 +308,7 @@ describe('Planner.ephemeral', () => {
     )
 
     expect(result.releases).toHaveLength(1)
-    expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.123.1.def7890')
+    expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.123.1.gdef7890')
   })
 })
 
