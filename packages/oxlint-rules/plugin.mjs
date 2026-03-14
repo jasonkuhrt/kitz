@@ -14,16 +14,16 @@ import fs from 'node:fs'
 import { builtinModules } from 'node:module'
 // oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import path from 'node:path'
-import { definePlugin, defineRule } from 'oxlint'
+import { definePlugin, defineRule } from '@oxlint/plugins'
 
-/** @typedef {import('oxlint').ESTree.Expression} Expression */
+/** @typedef {import('@oxlint/plugins').ESTree.Expression} Expression */
 // oxlint-disable-next-line typescript-eslint/no-duplicate-type-constituents, typescript-eslint/no-redundant-type-constituents
-/** @typedef {import('oxlint').ESTree.FunctionDeclaration | import('oxlint').ESTree.FunctionExpression | import('oxlint').ESTree.ArrowFunctionExpression} FunctionLikeNode */
-/** @typedef {import('oxlint').ESTree.MemberExpression} MemberExpression */
-/** @typedef {import('oxlint').ESTree.Program} Program */
-/** @typedef {import('oxlint').ESTree.Statement} Statement */
-/** @typedef {import('oxlint').ESTree.TSType} TSType */
-/** @typedef {import('oxlint').ESTree.TSTypeName} TSTypeName */
+/** @typedef {import('@oxlint/plugins').ESTree.FunctionDeclaration | import('@oxlint/plugins').ESTree.FunctionExpression | import('@oxlint/plugins').ESTree.ArrowFunctionExpression} FunctionLikeNode */
+/** @typedef {import('@oxlint/plugins').ESTree.MemberExpression} MemberExpression */
+/** @typedef {import('@oxlint/plugins').ESTree.Program} Program */
+/** @typedef {import('@oxlint/plugins').ESTree.Statement} Statement */
+/** @typedef {import('@oxlint/plugins').ESTree.TSType} TSType */
+/** @typedef {import('@oxlint/plugins').ESTree.TSTypeName} TSTypeName */
 /** @typedef {{ namespaceName: string, sourcePath: string }} NamespaceExport */
 /** @typedef {{ importAlias: string, namespaceName: string }} CoreNamespaceConvention */
 /** @typedef {{ expectedNamespaceName: string, expectedTargetPath: string | null }} NamespaceFileConvention */
@@ -1153,14 +1153,14 @@ const readModuleDirectoryState = (directoryPath) => {
 }
 
 /**
- * @param {import('oxlint').Context} context
+ * @param {import('@oxlint/plugins').Context} context
  * @returns {string}
  */
 const getNormalizedRelativePath = (context) =>
   normalizePath(path.relative(context.cwd, context.filename))
 
 /**
- * @param {import('oxlint').Context} context
+ * @param {import('@oxlint/plugins').Context} context
  * @returns {string}
  */
 const getNormalizedAbsolutePath = (context) => normalizePath(context.filename)
@@ -1483,7 +1483,7 @@ const isWithinReturnedExpression = (node, functionNode) => {
 }
 
 /**
- * @param {import('oxlint').ESTree.TSAsExpression | import('oxlint').ESTree.TSTypeAssertion} node
+ * @param {import('@oxlint/plugins').ESTree.TSAsExpression | import('@oxlint/plugins').ESTree.TSTypeAssertion} node
  * @returns {boolean}
  */
 const isAllowedComplexReturnAnyAssertion = (node) => {
@@ -1797,7 +1797,7 @@ const isEffectModuleFile = (filePath) =>
   filePath.includes(`/packages/`) && filePath.includes(`/src/`) && !isTestFilePath(filePath)
 
 /**
- * @param {import('oxlint').ESTree.TSPropertySignature} propertySignature
+ * @param {import('@oxlint/plugins').ESTree.TSPropertySignature} propertySignature
  * @returns {boolean}
  */
 const isTagProperty = (propertySignature) => {
@@ -1847,7 +1847,7 @@ const isTaggedErrorType = (typeAnnotation) => {
 }
 
 /**
- * @param {import('oxlint').ESTree.CallExpression} callExpression
+ * @param {import('@oxlint/plugins').ESTree.CallExpression} callExpression
  * @returns {boolean}
  */
 const isBoundaryInputCall = (callExpression) => {
@@ -1887,7 +1887,7 @@ const isBoundaryInputCall = (callExpression) => {
 }
 
 /**
- * @param {import('oxlint').ESTree.CallExpression} callExpression
+ * @param {import('@oxlint/plugins').ESTree.CallExpression} callExpression
  * @returns {boolean}
  */
 const isSchemaDecodeCall = (callExpression) => {
