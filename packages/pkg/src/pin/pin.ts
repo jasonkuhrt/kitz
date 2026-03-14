@@ -1,7 +1,7 @@
 import { Moniker } from '#moniker'
 import { Range as SemverRange } from '#range'
 import { Semver } from '@kitz/semver'
-import { Effect, Match, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { SemverFromString, SemverSelf } from '../semver-schema.js'
 
 // ============================================================================
@@ -479,9 +479,13 @@ export class Alias extends S.TaggedClass<Alias>()('PinAlias', {
  * Represents any valid dependency format from package.json.
  * Use {@link fromString} for type-safe parsing.
  *
+ * Tagged union with `.guards`, `.match`, `.cases`, and `.isAnyOf` utilities.
+ *
  * @see {@link https://docs.npmjs.com/cli/v10/configuring-npm/package-json#dependencies | npm dependencies}
  */
-export const Pin = S.Union([Range, Exact, Tag, Workspace, Git, Path, Url, Alias])
+export const Pin = S.Union([Range, Exact, Tag, Workspace, Git, Path, Url, Alias]).pipe(
+  S.toTaggedUnion('_tag'),
+)
 export type Pin = typeof Pin.Type
 
 /**
@@ -565,6 +569,8 @@ export const fromLiteral = <const $S extends string>(input: $S): ParsePin<$S> =>
 /**
  * Exhaustively pattern match on a Pin variant.
  *
+ * Delegates to `Pin.match` from the tagged union.
+ *
  * @example
  * ```ts
  * const description = match(pin, {
@@ -579,19 +585,7 @@ export const fromLiteral = <const $S extends string>(input: $S): ParsePin<$S> =>
  * })
  * ```
  */
-export const match = <$A>(
-  pin: Pin,
-  cases: {
-    PinRange: (p: Range) => $A
-    PinExact: (p: Exact) => $A
-    PinTag: (p: Tag) => $A
-    PinWorkspace: (p: Workspace) => $A
-    PinGit: (p: Git) => $A
-    PinPath: (p: Path) => $A
-    PinUrl: (p: Url) => $A
-    PinAlias: (p: Alias) => $A
-  },
-) => Match.value(pin).pipe(Match.tagsExhaustive(cases))
+export const match: typeof Pin.match = Pin.match
 
 // ============================================================================
 // String Codec

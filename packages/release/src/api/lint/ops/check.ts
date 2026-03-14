@@ -128,16 +128,14 @@ const resolveRulesToRun = (
 const evaluatePrecondition = (
   precondition: Precondition.Precondition,
   evaluated: EvaluatedPreconditions,
-): boolean => {
-  if (Precondition.HasOpenPR.is(precondition)) return evaluated.hasOpenPR
-  if (Precondition.HasDiff.is(precondition)) return evaluated.hasDiff
-  if (Precondition.IsMonorepo.is(precondition)) return evaluated.isMonorepo
-  if (Precondition.HasGitHubAccess.is(precondition)) return evaluated.hasGitHubAccess
-  if (Precondition.HasReleasePlan.is(precondition)) return evaluated.hasReleasePlan
-  // Exhaustive check - if we add new preconditions, TypeScript will error here
-  const _: never = precondition
-  return _
-}
+): boolean =>
+  Precondition.Precondition.match(precondition, {
+    PreconditionHasOpenPR: () => evaluated.hasOpenPR,
+    PreconditionHasDiff: () => evaluated.hasDiff,
+    PreconditionIsMonorepo: () => evaluated.isMonorepo,
+    PreconditionHasGitHubAccess: () => evaluated.hasGitHubAccess,
+    PreconditionHasReleasePlan: () => evaluated.hasReleasePlan,
+  })
 
 /**
  * Evaluate all preconditions for a rule.

@@ -14,7 +14,6 @@ export class Completed extends Schema.TaggedClass<Completed>()('WorkflowComplete
   durationMs: Schema.Number,
 }) {
   static make = this.makeUnsafe
-  static is = Schema.is(Completed)
 }
 
 /**
@@ -25,7 +24,6 @@ export class Failed extends Schema.TaggedClass<Failed>()('WorkflowFailed', {
   error: Schema.String,
 }) {
   static make = this.makeUnsafe
-  static is = Schema.is(Failed)
 }
 
 /**
@@ -36,4 +34,4 @@ export type Event = Completed | Failed
 /**
  * Schema for workflow lifecycle events.
  */
-export const Event = Schema.Union([Completed, Failed])
+export const Event = Schema.Union([Completed, Failed]).pipe(Schema.toTaggedUnion('_tag'))

@@ -43,7 +43,7 @@ export class Custom extends Schema.TaggedClass<Custom>()('Custom', {
 /**
  * Footer: either a standard spec-defined footer or a custom extension.
  */
-export const Footer = Schema.Union([Standard, Custom])
+export const Footer = Schema.Union([Standard, Custom]).pipe(Schema.toTaggedUnion('_tag'))
 export type Footer = typeof Footer.Type
 
 // ─── Accessors ─────────────────────────────────────────────────
@@ -62,7 +62,7 @@ export const value = (footer: Footer): string => footer.value
  * Check if a footer indicates a breaking change.
  * Standard footers are always breaking changes (that's what they represent).
  */
-export const isBreakingChange = (footer: Footer): boolean => Standard.is(footer)
+export const isBreakingChange = (footer: Footer): boolean => Footer.guards.Standard(footer)
 
 // ─── Smart Constructor ─────────────────────────────────────────
 

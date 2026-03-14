@@ -32,7 +32,13 @@ export type LifecycleEvent = ActivityTypes.Event | WorkflowTypes.Event
 /**
  * Schema for all lifecycle events.
  */
-export const LifecycleEvent = Schema.Union([ActivityTypes.Event, WorkflowTypes.Event])
+export const LifecycleEvent = Schema.Union([
+  ActivityTypes.Started,
+  ActivityTypes.Completed,
+  ActivityTypes.Failed,
+  WorkflowTypes.Completed,
+  WorkflowTypes.Failed,
+]).pipe(Schema.toTaggedUnion('_tag'))
 
 // ─── Event PubSub Service ────────────────────────────────────────────────────
 

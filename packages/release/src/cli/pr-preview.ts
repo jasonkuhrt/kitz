@@ -95,7 +95,7 @@ const hasBlockingViolations = (report: Api.Lint.Report): boolean =>
     (result) =>
       Api.Lint.Finished.is(result) &&
       result.violation !== undefined &&
-      Api.Lint.Error.is(result.severity),
+      Api.Lint.Severity.guards.SeverityError(result.severity),
   )
 
 const toMonorepo = (packages: readonly Api.Analyzer.Workspace.Package[]) => ({

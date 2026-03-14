@@ -39,7 +39,6 @@ export class Started extends Schema.TaggedClass<Started>()('ActivityStarted', {
   resumed: Schema.Boolean,
 }) {
   static make = this.makeUnsafe
-  static is = Schema.is(Started)
 }
 
 /**
@@ -54,7 +53,6 @@ export class Completed extends Schema.TaggedClass<Completed>()('ActivityComplete
   durationMs: Schema.Number,
 }) {
   static make = this.makeUnsafe
-  static is = Schema.is(Completed)
 }
 
 /**
@@ -66,7 +64,6 @@ export class Failed extends Schema.TaggedClass<Failed>()('ActivityFailed', {
   error: Schema.String,
 }) {
   static make = this.makeUnsafe
-  static is = Schema.is(Failed)
 }
 
 /**
@@ -77,17 +74,14 @@ export type Event = Started | Completed | Failed
 /**
  * Schema for activity lifecycle events.
  */
-export const Event = Schema.Union([Started, Completed, Failed])
-
-// ─── Lookup Tables ──────────────────────────────────────────────────────────
-
-const stateFromEventLookup = {
-  ActivityStarted: 'running',
-  ActivityCompleted: 'completed',
-  ActivityFailed: 'failed',
-} as const satisfies Record<Event['_tag'], State>
+export const Event = Schema.Union([Started, Completed, Failed]).pipe(Schema.toTaggedUnion('_tag'))
 
 /**
  * Derive activity state from an event.
  */
-export const stateFromEvent = (event: Event): State => stateFromEventLookup[event._tag]
+export const stateFromEvent = (event: Event): State =>
+  Event.match(event, {
+    ActivityStarted: () => State.enums.running,
+    ActivityCompleted: () => State.enums.completed,
+    ActivityFailed: () => State.enums.failed,
+  })

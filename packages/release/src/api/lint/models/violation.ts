@@ -45,7 +45,7 @@ export class CommandFix extends Schema.TaggedClass<CommandFix>()('ViolationComma
 }
 
 /** First-class remediation attached to a violation. */
-export const ViolationFix = Schema.Union([GuideFix, CommandFix])
+export const ViolationFix = Schema.Union([GuideFix, CommandFix]).pipe(Schema.toTaggedUnion('_tag'))
 export type ViolationFix = typeof ViolationFix.Type
 
 /** Heuristic suggestion. Shown to user, never auto-applied. */
