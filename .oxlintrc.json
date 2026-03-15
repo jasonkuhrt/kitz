@@ -77,7 +77,8 @@
     {
       "files": ["**/*.test.*", "**/*.spec.*", "**/__tests__/**", "**/__tests/**"],
       "rules": {
-        "eslint-plugin-unicorn/no-thenable": "off"
+        "eslint-plugin-unicorn/no-thenable": "off",
+        "eslint-plugin-vitest/warn-todo": "warn"
       }
     },
     {

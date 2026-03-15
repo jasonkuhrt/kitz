@@ -11,13 +11,13 @@
  * The framework handles AST traversal, JSDoc extraction, and fact building.
  */
 
-import { defineRule } from 'oxlint'
+import { defineRule } from '@oxlint/plugins'
 import { getJSDocForNode } from './jsdoc.mjs'
 
 /**
- * @typedef {import('oxlint').ESTree.Node} Node
- * @typedef {import('oxlint').ESTree.ExportNamedDeclaration} ExportNamedDeclaration
- * @typedef {import('oxlint').ESTree.ExportDefaultDeclaration} ExportDefaultDeclaration
+ * @typedef {import('@oxlint/plugins').ESTree.Node} Node
+ * @typedef {import('@oxlint/plugins').ESTree.ExportNamedDeclaration} ExportNamedDeclaration
+ * @typedef {import('@oxlint/plugins').ESTree.ExportDefaultDeclaration} ExportDefaultDeclaration
  */
 
 /**
@@ -38,7 +38,7 @@ import { getJSDocForNode } from './jsdoc.mjs'
 
 /**
  * @typedef {object} ExportRuleSpec
- * @property {import('oxlint').RuleMeta}  meta
+ * @property {import('@oxlint/plugins').RuleMeta}  meta
  * @property {((fact: ExportFact) => boolean)=}  where     — optional filter
  * @property {(fact: ExportFact) => Finding | Finding[] | null | undefined} findings
  * @property {((filename: string) => boolean)=}  fileFilter — optional file-level filter
@@ -114,7 +114,7 @@ function isTypeOnlyDeclaration(node) {
 /**
  * Build export facts from an ExportNamedDeclaration.
  *
- * @param {import('oxlint').SourceCode} sourceCode
+ * @param {import('@oxlint/plugins').SourceCode} sourceCode
  * @param {ExportNamedDeclaration} exportNode
  * @returns {ExportFact[]}
  */

@@ -9,7 +9,7 @@ Tsconfig paths are automatically kept in sync with package.json subpath imports 
 
 ## How It Works
 
-The lint rule (`tools/oxlint-custom-rules/plugin.mjs`) compares tsconfig.json paths against package.json imports for each package. When drift is detected, it:
+The lint rule (`packages/oxlint-rules/plugin.mjs`) compares tsconfig.json paths against package.json imports for each package. When drift is detected, it:
 
 1. Reports a `subpathImportsIntegrityTsconfigDrift` diagnostic
 2. Auto-fixes the tsconfig.json by writing corrected paths

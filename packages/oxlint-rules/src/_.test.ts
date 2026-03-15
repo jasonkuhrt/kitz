@@ -1,3 +1,4 @@
+// oxlint-disable kitz/module/subpath-imports-integrity
 // oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 // oxlint-disable-next-line kitz/module/no-nodejs-builtins
@@ -6,6 +7,8 @@ import os from 'node:os'
 import path from 'node:path'
 // oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { spawnSync } from 'node:child_process'
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
+import { fileURLToPath } from 'node:url'
 import { describe, expect, test } from 'vitest'
 import { OxlintRules } from './_.js'
 
@@ -19,6 +22,7 @@ interface OxlintJsonOutput {
   readonly diagnostics: ReadonlyArray<OxlintDiagnostic>
 }
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(__dirname, `../../..`)
 const OXLINT_BIN = path.join(REPO_ROOT, `node_modules`, `.bin`, `oxlint`)
 const RECOMMENDED_JSON_PATH = path.resolve(__dirname, `../configs/recommended.json`)
