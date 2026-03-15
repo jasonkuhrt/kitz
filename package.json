@@ -34,6 +34,7 @@
     "check:types:packages": "bun run --workspaces check:types",
     "check:package:packages": "sh -lc 'bun run build:packages && bun run --workspaces check:package'",
     "test:packages": "bun run --if-present --workspaces test",
+    "test:oxlint-rules": "bun run test:oxlint-custom-rules && bun run --cwd packages/oxlint-rules test",
     "test:oxlint-custom-rules": "vitest run tools/oxlint-custom-rules/tests/custom-rules.test.ts",
     "check:api-model-style": "oxlint --config .oxlintrc.api-model-style.json --import-plugin packages",
     "check:release": "bun run --cwd packages/release check:types && bun run --cwd packages/release check:lint",

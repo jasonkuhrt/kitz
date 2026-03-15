@@ -46,7 +46,7 @@ const runOxlint = (ruleName: string, fixtureFilePath: string): OxlintJsonOutput 
     throw new Error(`Oxlint exited with code ${result.status}: ${output}`)
   }
 
-  // oxlint-disable-next-line kitz/no-json-parse
+  // oxlint-disable-next-line kitz/schema/no-json-parse
   return JSON.parse(result.stdout) as OxlintJsonOutput
 }
 
@@ -59,12 +59,12 @@ const rules: ReadonlyArray<{
   readonly passingFixtures: ReadonlyArray<string>
 }> = [
   {
-    name: `no-json-parse`,
+    name: `schema/no-json-parse`,
     failingFixtures: [`no-json-parse/fail-1.ts`, `no-json-parse/fail-2.ts`],
     passingFixtures: [`no-json-parse/pass-1.ts`, `no-json-parse/pass-2.ts`],
   },
   {
-    name: `no-try-catch`,
+    name: `error/no-try-catch`,
     failingFixtures: [`no-try-catch/fail-1.ts`, `no-try-catch/fail-2.ts`],
     passingFixtures: [
       `no-try-catch/pass-1.ts`,
@@ -73,7 +73,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `no-native-promise-construction`,
+    name: `effect/no-native-promise-construction`,
     failingFixtures: [
       `no-native-promise-construction/fail-1.ts`,
       `no-native-promise-construction/fail-2.ts`,
@@ -84,7 +84,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `no-native-map-set-in-effect-modules`,
+    name: `domain/no-native-map-set`,
     failingFixtures: [
       `packages/release/src/no-native-map-set-in-effect-modules/fail-1.ts`,
       `packages/release/src/no-native-map-set-in-effect-modules/fail-2.ts`,
@@ -95,7 +95,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `no-nodejs-builtin-imports`,
+    name: `module/no-nodejs-builtins`,
     failingFixtures: [
       `no-nodejs-builtin-imports/fail-node-not-covered/src/feature.ts`,
       `no-nodejs-builtin-imports/fail-fs-extra-not-covered/src/feature.ts`,
@@ -110,7 +110,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `resolver-platform-dispatch`,
+    name: `module/resolver-platform-dispatch`,
     failingFixtures: [
       `resolver-platform-dispatch/packages/demo/src/fail-globalthis-bun-dispatch.ts`,
       `resolver-platform-dispatch/packages/demo/src/fail-process-versions-bun-dispatch.ts`,
@@ -131,7 +131,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `schema-parsing-contract`,
+    name: `schema/schema-parsing-contract`,
     failingFixtures: [
       `schema-parsing-contract/packages/release/src/api/fail-exact-release-tag.ts`,
       `schema-parsing-contract/packages/release/src/api/fail-release-tag-split.ts`,
@@ -148,12 +148,12 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `no-throw`,
+    name: `error/no-throw`,
     failingFixtures: [`no-throw/fail-1.ts`, `no-throw/fail-2.ts`],
     passingFixtures: [`no-throw/pass-1.test.ts`, `no-throw/pass-2.ts`],
   },
   {
-    name: `no-promise-then-chain`,
+    name: `effect/no-promise-then-chain`,
     failingFixtures: [`no-promise-then-chain/fail-1.ts`, `no-promise-then-chain/fail-2.ts`],
     passingFixtures: [
       `no-promise-then-chain/pass-1.ts`,
@@ -162,7 +162,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `no-effect-run-in-library-code`,
+    name: `effect/no-effect-run-in-library-code`,
     failingFixtures: [
       `no-effect-run-in-library-code/fail-1.ts`,
       `no-effect-run-in-library-code/fail-2.ts`,
@@ -174,7 +174,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `require-typed-effect-errors`,
+    name: `error/require-typed-effect-errors`,
     failingFixtures: [
       `require-typed-effect-errors/fail-1.ts`,
       `require-typed-effect-errors/fail-2.ts`,
@@ -185,7 +185,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `require-schema-decode-at-boundary`,
+    name: `schema/require-schema-decode`,
     failingFixtures: [
       `require-schema-decode-at-boundary/packages/http/fail-1.ts`,
       `require-schema-decode-at-boundary/packages/env/fail-2.ts`,
@@ -196,7 +196,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `no-process-env-outside-config-modules`,
+    name: `domain/no-process-env`,
     failingFixtures: [
       `no-process-env-outside-config-modules/fail-1.ts`,
       `no-process-env-outside-config-modules/fail-2.ts`,
@@ -207,12 +207,12 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `no-date-now-in-domain`,
+    name: `domain/no-date-now`,
     failingFixtures: [`no-date-now-in-domain/fail-1.ts`, `no-date-now-in-domain/fail-2.ts`],
     passingFixtures: [`no-date-now-in-domain/src/cli/pass-1.ts`, `no-date-now-in-domain/pass-2.ts`],
   },
   {
-    name: `no-math-random-in-domain`,
+    name: `domain/no-math-random`,
     failingFixtures: [`no-math-random-in-domain/fail-1.ts`, `no-math-random-in-domain/fail-2.ts`],
     passingFixtures: [
       `no-math-random-in-domain/src/cli/pass-1.ts`,
@@ -220,7 +220,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `no-console-in-effect-modules`,
+    name: `domain/no-console`,
     failingFixtures: [
       `no-console-in-effect-modules/packages/foo/src/fail-1.ts`,
       `no-console-in-effect-modules/packages/foo/src/fail-2.ts`,
@@ -231,7 +231,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `require-tagged-error-types`,
+    name: `error/require-tagged-error-types`,
     failingFixtures: [
       `require-tagged-error-types/fail-1.ts`,
       `require-tagged-error-types/fail-2.ts`,
@@ -242,7 +242,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `namespace-file-conventions`,
+    name: `module/namespace-file-conventions`,
     failingFixtures: [
       `namespace-file-conventions/packages/demo/src/foo/_.ts`,
       `namespace-file-conventions/packages/demo/src/bar-baz/_.ts`,
@@ -258,7 +258,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `barrel-file-conventions`,
+    name: `module/barrel-file-conventions`,
     failingFixtures: [
       `barrel-file-conventions/packages/barrel/src/a/__.ts`,
       `barrel-file-conventions/packages/barrel/src/b/__.ts`,
@@ -272,7 +272,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `module-structure-conventions`,
+    name: `module/module-structure-conventions`,
     failingFixtures: [
       `module-structure-conventions/packages/missing-barrel/src/alpha/_.ts`,
       `module-structure-conventions/packages/wrong-target/src/beta/_.ts`,
@@ -284,7 +284,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `no-deep-imports-when-namespace-entrypoint-exists`,
+    name: `module/no-deep-imports`,
     failingFixtures: [
       `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/fail-imports-scoped-impl.ts`,
       `no-deep-imports-when-namespace-entrypoint-exists/packages/pkg/src/fail-imports-deep-nested.ts`,
@@ -304,7 +304,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `prefer-subpath-imports`,
+    name: `module/prefer-subpath-imports`,
     failingFixtures: [
       `prefer-subpath-imports/packages/has-imports/src/foo/fail-relative-door.ts`,
       // E2E: relative import to door when #alpha exists
@@ -318,7 +318,7 @@ const rules: ReadonlyArray<{
     ],
   },
   {
-    name: `subpath-imports-integrity`,
+    name: `module/subpath-imports-integrity`,
     failingFixtures: [
       `subpath-imports-integrity/fail-broken-ref/packages/broken/src/beta/_.ts`,
       `subpath-imports-integrity/fail-wrong-format/packages/wrongfmt/src/gamma/_.ts`,
@@ -360,12 +360,10 @@ describe(`e2e: resolution chain`, () => {
 
   test(`oxlint flags deep import in e2e project`, () => {
     const output = runOxlint(
-      `no-deep-imports-when-namespace-entrypoint-exists`,
+      `module/no-deep-imports`,
       `e2e-module-boundaries/packages/demo/src/e2e-fail-deep-import.ts`,
     )
-    expect(
-      countDiagnosticsForRule(output, `no-deep-imports-when-namespace-entrypoint-exists`),
-    ).toBeGreaterThan(0)
+    expect(countDiagnosticsForRule(output, `module/no-deep-imports`)).toBeGreaterThan(0)
   })
 
   test(`oxlint flags prefer-subpath violation in e2e project`, () => {
@@ -418,7 +416,7 @@ describe(`e2e: subpath-imports-integrity tsconfig autofix`, () => {
     fs.copyFileSync(path.join(fixtureDir, `src/alpha/_.ts`), path.join(tmpPkgDir, `src/alpha/_.ts`))
 
     // Verify tsconfig is drifted before running
-    // oxlint-disable-next-line kitz/no-json-parse
+    // oxlint-disable-next-line kitz/schema/no-json-parse
     const beforeTsconfig = JSON.parse(
       fs.readFileSync(path.join(tmpPkgDir, `tsconfig.json`), `utf8`),
     )
@@ -447,12 +445,12 @@ describe(`e2e: subpath-imports-integrity tsconfig autofix`, () => {
     }
 
     // Parse diagnostics - expect the drift warning
-    // oxlint-disable-next-line kitz/no-json-parse
+    // oxlint-disable-next-line kitz/schema/no-json-parse
     const output = JSON.parse(result.stdout) as OxlintJsonOutput
     expect(countDiagnosticsForRule(output, `subpath-imports-integrity`)).toBeGreaterThan(0)
 
     // Verify tsconfig was auto-fixed
-    // oxlint-disable-next-line kitz/no-json-parse
+    // oxlint-disable-next-line kitz/schema/no-json-parse
     const afterTsconfig = JSON.parse(fs.readFileSync(path.join(tmpPkgDir, `tsconfig.json`), `utf8`))
     expect(afterTsconfig.compilerOptions.paths[`#alpha`]).toEqual([`./src/alpha/_.js`])
     expect(afterTsconfig.compilerOptions.paths[`#alpha/*`]).toEqual([`./src/alpha/*.js`])
