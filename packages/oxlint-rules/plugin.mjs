@@ -3863,41 +3863,24 @@ const getStaticTemplate = (staticName, className) => {
   }
 }
 
-const autofixInsertStatics = (context, className, missingStatics) => {
-  try {
-    if (context.filename.includes(`/fixtures/`)) return
+/**
+ * Build a fix callback that inserts missing statics after the class opening brace.
+ * Returns a fix function for use in context.report({ fix }).
+ * Only applies when oxlint is run with --fix.
+ */
+const buildStaticsFix = (classNode, className, missingStatics) => {
+  const staticsToInsert = missingStatics
+    .map((name) => getStaticTemplate(name, className))
+    .filter((line) => line !== null)
 
-    const sourceText = fs.readFileSync(context.filename, `utf8`)
-    const lines = sourceText.split(`\n`)
+  if (staticsToInsert.length === 0) return undefined
 
-    const classPattern = new RegExp(`class\\s+${className}\\s+extends`)
-    let insertLineIndex = -1
+  const insertText = `\n` + staticsToInsert.join(`\n`)
 
-    for (let i = 0; i < lines.length; i++) {
-      if (classPattern.test(lines[i])) {
-        for (let j = i; j < Math.min(i + 10, lines.length); j++) {
-          const braceIndex = lines[j].indexOf(`{`)
-          if (braceIndex !== -1) {
-            insertLineIndex = j + 1
-            break
-          }
-        }
-        break
-      }
-    }
-
-    if (insertLineIndex === -1) return
-
-    const staticsToInsert = missingStatics
-      .map((name) => getStaticTemplate(name, className))
-      .filter((line) => line !== null)
-
-    if (staticsToInsert.length === 0) return
-
-    lines.splice(insertLineIndex, 0, ...staticsToInsert)
-    fs.writeFileSync(context.filename, lines.join(`\n`))
-  } catch {
-    // Ignore write errors
+  return (fixer) => {
+    // Insert after the opening brace of the class body
+    const classBody = classNode.body
+    return fixer.insertTextAfterRange([classBody.range[0], classBody.range[0] + 1], insertText)
   }
 }
 
@@ -3908,6 +3891,7 @@ const requireSchemaClassStaticsRule = defineRule({
       description: `Require standard statics (make, is, decode, decodeSync, encode, encodeSync, equivalence) on every Schema.TaggedClass and Schema.Class.`,
       recommended: true,
     },
+    fixable: `code`,
     messages: MESSAGES,
   },
   create(context) {
@@ -3929,9 +3913,8 @@ const requireSchemaClassStaticsRule = defineRule({
           node: node.id ?? node,
           messageId: MESSAGE_IDS.requireSchemaClassStatics,
           data: { className, missing: missing.join(`, `) },
+          fix: buildStaticsFix(node, className, missing),
         })
-
-        autofixInsertStatics(context, className, missing)
       },
     }
   },
@@ -3944,6 +3927,7 @@ const requireSchemaClassOrderingRule = defineRule({
       description: `Require schema classes to declare ordering (static order + utilities) or opt out (static ordered = false as const).`,
       recommended: true,
     },
+    fixable: `code`,
     messages: MESSAGES,
   },
   create(context) {
@@ -3973,9 +3957,8 @@ const requireSchemaClassOrderingRule = defineRule({
             node: node.id ?? node,
             messageId: MESSAGE_IDS.requireSchemaClassOrderingIncomplete,
             data: { className, missing: missing.join(`, `) },
+            fix: buildStaticsFix(node, className, missing),
           })
-
-          autofixInsertStatics(context, className, missing)
           return
         }
 
@@ -3983,9 +3966,8 @@ const requireSchemaClassOrderingRule = defineRule({
           node: node.id ?? node,
           messageId: MESSAGE_IDS.requireSchemaClassOrdering,
           data: { className },
+          fix: buildStaticsFix(node, className, [`ordered`]),
         })
-
-        autofixInsertStatics(context, className, [`ordered`])
       },
     }
   },
@@ -4041,6 +4023,7 @@ const requireTaggedUnionCompanionRule = defineRule({
       description: `Require 'export type X = typeof X.Type' companion for every Schema.toTaggedUnion declaration.`,
       recommended: true,
     },
+    fixable: `code`,
     messages: MESSAGES,
   },
   create(context) {
@@ -4070,20 +4053,9 @@ const requireTaggedUnionCompanionRule = defineRule({
             node: stmt,
             messageId: MESSAGE_IDS.requireTaggedUnionCompanion,
             data: { name },
+            fix: (fixer) =>
+              fixer.insertTextAfter(stmt, `\nexport type ${name} = typeof ${name}.Type`),
           })
-
-          try {
-            if (context.filename.includes(`/fixtures/`)) continue
-            const sourceText = fs.readFileSync(context.filename, `utf8`)
-            const lines = sourceText.split(`\n`)
-            const endLine = stmt.loc?.end?.line
-            if (endLine) {
-              lines.splice(endLine, 0, `export type ${name} = typeof ${name}.Type`)
-              fs.writeFileSync(context.filename, lines.join(`\n`))
-            }
-          } catch {
-            // Ignore
-          }
         }
       },
     }
