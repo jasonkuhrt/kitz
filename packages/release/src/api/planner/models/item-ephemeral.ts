@@ -5,7 +5,7 @@ import { ItemBaseFields } from './item-official.js'
 
 /**
  * An ephemeral release plan item for PR testing.
- * Version format: `0.0.0-pr.${prNumber}.${iteration}.${sha}`
+ * Version format: `0.0.0-pr.${prNumber}.${iteration}.g${sha}`
  */
 export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
   ...ItemBaseFields,
@@ -15,12 +15,11 @@ export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
   static is = S.is(Ephemeral)
 
   get nextVersion(): Semver.Semver {
-    return Semver.withPre(Semver.zero, [
-      'pr',
+    return Version.Ephemeral.calculateVersion(
       this.prerelease.prNumber,
       this.prerelease.iteration,
       this.prerelease.sha,
-    ])
+    )
   }
 
   get currentVersion(): Option.Option<Semver.Semver> {

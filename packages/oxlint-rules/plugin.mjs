@@ -77,6 +77,11 @@ const MESSAGE_IDS = {
   schemaParsingContractStaticFromLiteral: `schemaParsingContractStaticFromLiteral`,
   schemaParsingContractPinExactFromString: `schemaParsingContractPinExactFromString`,
   schemaParsingContractPinFromLiteral: `schemaParsingContractPinFromLiteral`,
+  requireSchemaClassStatics: `requireSchemaClassStatics`,
+  requireSchemaClassOrdering: `requireSchemaClassOrdering`,
+  requireSchemaClassOrderingIncomplete: `requireSchemaClassOrderingIncomplete`,
+  requireTaggedUnionCompanion: `requireTaggedUnionCompanion`,
+  requireTaggedUnionNamespace: `requireTaggedUnionNamespace`,
 }
 
 const MESSAGES = {
@@ -96,6 +101,11 @@ const MESSAGES = {
   [MESSAGE_IDS.noMathRandomInDomain]: `Use Effect Random service instead of Math.random in domain/library code.`,
   [MESSAGE_IDS.noConsoleInEffectModules]: `Use Effect.log* or structured logging adapters instead of console.* in Effect modules.`,
   [MESSAGE_IDS.requireTaggedErrorTypes]: `Effect error channel types should be tagged (include _tag) for pattern matching.`,
+  [MESSAGE_IDS.requireSchemaClassStatics]: `Schema class '{{className}}' is missing standard static(s): {{missing}}. These are required on every Schema.TaggedClass and Schema.Class.`,
+  [MESSAGE_IDS.requireSchemaClassOrdering]: `Schema class '{{className}}' has no ordering declaration. Add 'static order' with ordering utilities, or 'static ordered = false as const' to opt out.`,
+  [MESSAGE_IDS.requireSchemaClassOrderingIncomplete]: `Schema class '{{className}}' has 'static order' but is missing derived ordering utilities: {{missing}}.`,
+  [MESSAGE_IDS.requireTaggedUnionCompanion]: `Tagged union '{{name}}' is missing companion type. Add 'export type {{name}} = typeof {{name}}.Type' after the declaration.`,
+  [MESSAGE_IDS.requireTaggedUnionNamespace]: `Tagged union '{{name}}' is missing companion namespace. Add 'export namespace {{name}} { ... }' with type re-exports for each union member.`,
   [MESSAGE_IDS.namespaceFileConventionsSingleStatement]: `Namespace files (_.ts) may only contain: one namespace export, type-only exports, and one namespace declaration.`,
   [MESSAGE_IDS.namespaceFileConventionsNamespaceExport]: `Namespace files (_.ts) must include exactly one value namespace export using 'export * as Name from ...'.`,
   [MESSAGE_IDS.namespaceFileConventionsNamespaceDeclaration]: `Namespace files (_.ts) must include one exported JSDoc target with a matching name: 'export namespace Name {}' or 'export type Name = ...'.`,
@@ -3744,6 +3754,397 @@ const subpathImportsIntegrityRule = defineRule({
   },
 })
 
+// ─── Schema Class / Tagged Union Convention Rules ────────────────────────────
+
+/**
+ * Detect whether a class declaration extends Schema.TaggedClass or Schema.Class.
+ * Returns the class name string if it matches, null otherwise.
+ */
+const getSchemaClassName = (node) => {
+  if (node.type !== `ClassDeclaration` || !node.id || !node.superClass) {
+    return null
+  }
+
+  let current = node.superClass
+  const maxDepth = 5
+  for (let i = 0; i < maxDepth; i++) {
+    if (current.type === `CallExpression`) {
+      current = current.callee
+      continue
+    }
+    if (current.type === `MemberExpression`) {
+      const prop = getPropertyName(current)
+      if (prop === `TaggedClass` || prop === `Class`) {
+        const obj = current.object
+        if (isIdentifier(obj) && (obj.name === `Schema` || obj.name === `S`)) {
+          return node.id.name
+        }
+      }
+      if (prop === `extend`) {
+        current = current.object
+        continue
+      }
+      return null
+    }
+    break
+  }
+  return null
+}
+
+const classHasStatic = (classBody, staticName) => {
+  return classBody.body.some(
+    (member) =>
+      member.type === `PropertyDefinition` &&
+      member.static &&
+      member.key?.type === `Identifier` &&
+      member.key.name === staticName,
+  )
+}
+
+const classHasOrderedFalse = (classBody) => {
+  return classBody.body.some((member) => {
+    if (
+      member.type !== `PropertyDefinition` ||
+      !member.static ||
+      member.key?.type !== `Identifier` ||
+      member.key.name !== `ordered`
+    ) {
+      return false
+    }
+
+    let value = member.value
+    if (value?.type === `TSAsExpression`) {
+      value = value.expression
+    }
+
+    return value?.type === `Literal` && value.value === false
+  })
+}
+
+const REQUIRED_SCHEMA_STATICS = [
+  `make`,
+  `is`,
+  `decode`,
+  `decodeSync`,
+  `encode`,
+  `encodeSync`,
+  `equivalence`,
+]
+const REQUIRED_ORDERING_STATICS = [`min`, `max`, `lessThan`, `greaterThan`]
+
+const getStaticTemplate = (staticName, className) => {
+  switch (staticName) {
+    case `make`:
+      return `  static make = this.makeUnsafe`
+    case `is`:
+      return `  static is = Schema.is(${className})`
+    case `decode`:
+      return `  static decode = Schema.decode(${className})`
+    case `decodeSync`:
+      return `  static decodeSync = Schema.decodeSync(${className})`
+    case `encode`:
+      return `  static encode = Schema.encode(${className})`
+    case `encodeSync`:
+      return `  static encodeSync = Schema.encodeSync(${className})`
+    case `equivalence`:
+      return `  static equivalence = Schema.equivalence(${className})`
+    case `ordered`:
+      return `  static ordered = false as const`
+    case `min`:
+      return `  static min = Order.min(${className}.order)`
+    case `max`:
+      return `  static max = Order.max(${className}.order)`
+    case `lessThan`:
+      return `  static lessThan = Order.lessThan(${className}.order)`
+    case `greaterThan`:
+      return `  static greaterThan = Order.greaterThan(${className}.order)`
+    default:
+      return null
+  }
+}
+
+const autofixInsertStatics = (context, className, missingStatics) => {
+  try {
+    if (context.filename.includes(`/fixtures/`)) return
+
+    const sourceText = fs.readFileSync(context.filename, `utf8`)
+    const lines = sourceText.split(`\n`)
+
+    const classPattern = new RegExp(`class\\s+${className}\\s+extends`)
+    let insertLineIndex = -1
+
+    for (let i = 0; i < lines.length; i++) {
+      if (classPattern.test(lines[i])) {
+        for (let j = i; j < Math.min(i + 10, lines.length); j++) {
+          const braceIndex = lines[j].indexOf(`{`)
+          if (braceIndex !== -1) {
+            insertLineIndex = j + 1
+            break
+          }
+        }
+        break
+      }
+    }
+
+    if (insertLineIndex === -1) return
+
+    const staticsToInsert = missingStatics
+      .map((name) => getStaticTemplate(name, className))
+      .filter((line) => line !== null)
+
+    if (staticsToInsert.length === 0) return
+
+    lines.splice(insertLineIndex, 0, ...staticsToInsert)
+    fs.writeFileSync(context.filename, lines.join(`\n`))
+  } catch {
+    // Ignore write errors
+  }
+}
+
+const requireSchemaClassStaticsRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Require standard statics (make, is, decode, decodeSync, encode, encodeSync, equivalence) on every Schema.TaggedClass and Schema.Class.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    const filePath = getNormalizedRelativePath(context)
+    if (isTestFilePath(filePath) || isTypeDefinitionFileName(filePath)) {
+      return {}
+    }
+
+    return {
+      ClassDeclaration(node) {
+        const className = getSchemaClassName(node)
+        if (!className) return
+
+        const missing = REQUIRED_SCHEMA_STATICS.filter((name) => !classHasStatic(node.body, name))
+
+        if (missing.length === 0) return
+
+        context.report({
+          node: node.id ?? node,
+          messageId: MESSAGE_IDS.requireSchemaClassStatics,
+          data: { className, missing: missing.join(`, `) },
+        })
+
+        autofixInsertStatics(context, className, missing)
+      },
+    }
+  },
+})
+
+const requireSchemaClassOrderingRule = defineRule({
+  meta: {
+    type: `suggestion`,
+    docs: {
+      description: `Require schema classes to declare ordering (static order + utilities) or opt out (static ordered = false as const).`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    const filePath = getNormalizedRelativePath(context)
+    if (isTestFilePath(filePath) || isTypeDefinitionFileName(filePath)) {
+      return {}
+    }
+
+    return {
+      ClassDeclaration(node) {
+        const className = getSchemaClassName(node)
+        if (!className) return
+
+        const hasOrder = classHasStatic(node.body, `order`)
+        const hasOrderedFalse = classHasOrderedFalse(node.body)
+
+        if (hasOrderedFalse) return
+
+        if (hasOrder) {
+          const missing = REQUIRED_ORDERING_STATICS.filter(
+            (name) => !classHasStatic(node.body, name),
+          )
+
+          if (missing.length === 0) return
+
+          context.report({
+            node: node.id ?? node,
+            messageId: MESSAGE_IDS.requireSchemaClassOrderingIncomplete,
+            data: { className, missing: missing.join(`, `) },
+          })
+
+          autofixInsertStatics(context, className, missing)
+          return
+        }
+
+        context.report({
+          node: node.id ?? node,
+          messageId: MESSAGE_IDS.requireSchemaClassOrdering,
+          data: { className },
+        })
+
+        autofixInsertStatics(context, className, [`ordered`])
+      },
+    }
+  },
+})
+
+const unwrapExport = (node) => {
+  if (node.type === `ExportNamedDeclaration` && node.declaration) {
+    return node.declaration
+  }
+  return node
+}
+
+const getTaggedUnionName = (node) => {
+  const decl = unwrapExport(node)
+
+  if (decl.type !== `VariableDeclaration` || decl.declarations.length !== 1) {
+    return null
+  }
+
+  const varDecl = decl.declarations[0]
+  if (!varDecl.id || varDecl.id.type !== `Identifier` || !varDecl.init) {
+    return null
+  }
+
+  const init = varDecl.init
+  if (init.type !== `CallExpression`) return null
+
+  const callee = init.callee
+  if (callee.type !== `MemberExpression`) return null
+
+  const pipeProp = getPropertyName(callee)
+  if (pipeProp !== `pipe`) return null
+
+  const hasToTaggedUnion = init.arguments.some((arg) => {
+    if (arg.type !== `CallExpression`) return false
+    const innerCallee = arg.callee
+    if (innerCallee.type !== `MemberExpression`) return false
+    const prop = getPropertyName(innerCallee)
+    if (prop !== `toTaggedUnion`) return false
+    const obj = innerCallee.object
+    return isIdentifier(obj) && (obj.name === `Schema` || obj.name === `S`)
+  })
+
+  if (!hasToTaggedUnion) return null
+
+  return varDecl.id.name
+}
+
+const requireTaggedUnionCompanionRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Require 'export type X = typeof X.Type' companion for every Schema.toTaggedUnion declaration.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    const filePath = getNormalizedRelativePath(context)
+    if (isTestFilePath(filePath) || isTypeDefinitionFileName(filePath)) {
+      return {}
+    }
+
+    return {
+      Program(programNode) {
+        const statements = programNode.body
+
+        for (let i = 0; i < statements.length; i++) {
+          const stmt = statements[i]
+          const name = getTaggedUnionName(stmt)
+          if (!name) continue
+
+          const hasCompanion = statements.some((s) => {
+            const d = s.type === `ExportNamedDeclaration` ? s.declaration : s
+            if (!d || d.type !== `TSTypeAliasDeclaration`) return false
+            return d.id?.name === name
+          })
+
+          if (hasCompanion) continue
+
+          context.report({
+            node: stmt,
+            messageId: MESSAGE_IDS.requireTaggedUnionCompanion,
+            data: { name },
+          })
+
+          try {
+            if (context.filename.includes(`/fixtures/`)) continue
+            const sourceText = fs.readFileSync(context.filename, `utf8`)
+            const lines = sourceText.split(`\n`)
+            const endLine = stmt.loc?.end?.line
+            if (endLine) {
+              lines.splice(endLine, 0, `export type ${name} = typeof ${name}.Type`)
+              fs.writeFileSync(context.filename, lines.join(`\n`))
+            }
+          } catch {
+            // Ignore
+          }
+        }
+      },
+    }
+  },
+})
+
+const requireTaggedUnionNamespaceRule = defineRule({
+  meta: {
+    type: `suggestion`,
+    docs: {
+      description: `Require companion namespace with type re-exports for every Schema.toTaggedUnion declaration.`,
+      recommended: true,
+    },
+    messages: MESSAGES,
+  },
+  create(context) {
+    const filePath = getNormalizedRelativePath(context)
+    if (isTestFilePath(filePath) || isTypeDefinitionFileName(filePath)) {
+      return {}
+    }
+
+    return {
+      Program(programNode) {
+        const statements = programNode.body
+
+        for (const stmt of statements) {
+          const name = getTaggedUnionName(stmt)
+          if (!name) continue
+
+          const hasNamespace = statements.some((s) => {
+            if (
+              s.type === `ExportNamedDeclaration` &&
+              s.declaration?.type === `TSModuleDeclaration` &&
+              s.declaration.id?.type === `Identifier` &&
+              s.declaration.id.name === name
+            ) {
+              return true
+            }
+            if (
+              s.type === `TSModuleDeclaration` &&
+              s.id?.type === `Identifier` &&
+              s.id.name === name
+            ) {
+              return true
+            }
+            return false
+          })
+
+          if (hasNamespace) continue
+
+          context.report({
+            node: stmt,
+            messageId: MESSAGE_IDS.requireTaggedUnionNamespace,
+            data: { name },
+          })
+        }
+      },
+    }
+  },
+})
+
 export default definePlugin({
   meta: {
     name: `kitz`,
@@ -3773,6 +4174,10 @@ export default definePlugin({
     'module/no-deep-imports': noDeepImportsWhenNamespaceEntrypointExistsRule,
     'module/prefer-subpath-imports': preferSubpathImportsRule,
     'module/subpath-imports-integrity': subpathImportsIntegrityRule,
+    'adt/require-schema-class-statics': requireSchemaClassStaticsRule,
+    'adt/require-schema-class-ordering': requireSchemaClassOrderingRule,
+    'adt/require-tagged-union-companion': requireTaggedUnionCompanionRule,
+    'adt/require-tagged-union-namespace': requireTaggedUnionNamespaceRule,
     'jsdoc/require-on-exports': requireJsdocOnExportsRule,
     'jsdoc/min-words': jsdocMinWordsRule,
     'jsdoc/no-name-restate': jsdocNoNameRestateRule,

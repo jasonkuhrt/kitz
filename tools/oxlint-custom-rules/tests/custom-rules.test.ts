@@ -334,6 +334,38 @@ const rules: ReadonlyArray<{
       `subpath-imports-integrity/fail-missing-entry/packages/noentry/src/alpha/_.ts`,
     ],
   },
+  {
+    name: `adt/require-schema-class-statics`,
+    failingFixtures: [
+      `adt-require-schema-class-statics/fail-1.ts`,
+      `adt-require-schema-class-statics/fail-2.ts`,
+    ],
+    passingFixtures: [
+      `adt-require-schema-class-statics/pass-1.ts`,
+      `adt-require-schema-class-statics/pass-2.ts`,
+    ],
+  },
+  {
+    name: `adt/require-schema-class-ordering`,
+    failingFixtures: [
+      `adt-require-schema-class-ordering/fail-1.ts`,
+      `adt-require-schema-class-ordering/fail-2.ts`,
+    ],
+    passingFixtures: [
+      `adt-require-schema-class-ordering/pass-1.ts`,
+      `adt-require-schema-class-ordering/pass-2.ts`,
+    ],
+  },
+  {
+    name: `adt/require-tagged-union-companion`,
+    failingFixtures: [`adt-require-tagged-union-companion/fail-1.ts`],
+    passingFixtures: [`adt-require-tagged-union-companion/pass-1.ts`],
+  },
+  {
+    name: `adt/require-tagged-union-namespace`,
+    failingFixtures: [`adt-require-tagged-union-namespace/fail-1.ts`],
+    passingFixtures: [`adt-require-tagged-union-namespace/pass-1.ts`],
+  },
 ]
 
 // ---------------------------------------------------------------------------

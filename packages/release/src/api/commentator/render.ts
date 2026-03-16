@@ -257,7 +257,7 @@ const renderPublishedVersions = (
 
 /**
  * Shorten a PR version string for display.
- * `0.0.0-pr.129.2.959738b` → `pr.129.2.959738b`
+ * `0.0.0-pr.129.2.g959738b` → `pr.129.2.g959738b`
  */
 const shortPrVersion = (version: string): string => {
   const match = version.match(/^0\.0\.0-(.+)$/)

@@ -33,9 +33,9 @@
  * ```
  */
 
-import { Match, MutableHashMap } from 'effect'
+import { MutableHashMap } from 'effect'
 import { State as ActivityStateSchema } from '../models/activity.js'
-import type { LifecycleEvent } from '../observable/__.js'
+import { LifecycleEvent } from '../observable/__.js'
 import * as Core from './core.js'
 import * as Renderers from './renderers/__.js'
 
@@ -91,34 +91,32 @@ export const create = (config: Config): Renderer => {
       ? () => Renderers.Dag.render(config.layers, config.edges ?? [], getState(), useColors)
       : () => Renderers.List.render(config.activities, getState(), useColors)
 
-  const update = (event: LifecycleEvent) =>
-    Match.value(event).pipe(
-      Match.tagsExhaustive({
-        ActivityStarted(e) {
-          MutableHashMap.set(state.activities, e.activity, ActivityStateSchema.enums.running)
-          currentActivity = e.activity
-        },
-        ActivityCompleted(e) {
-          MutableHashMap.set(state.activities, e.activity, ActivityStateSchema.enums.completed)
-          completedCount++
-          if (currentActivity === e.activity) {
-            currentActivity = null
-          }
-        },
-        ActivityFailed(e) {
-          MutableHashMap.set(state.activities, e.activity, ActivityStateSchema.enums.failed)
-          if (currentActivity === e.activity) {
-            currentActivity = null
-          }
-        },
-        WorkflowCompleted() {
+  const update = (event: typeof LifecycleEvent.Type) =>
+    LifecycleEvent.match(event, {
+      ActivityStarted(e) {
+        MutableHashMap.set(state.activities, e.activity, ActivityStateSchema.enums.running)
+        currentActivity = e.activity
+      },
+      ActivityCompleted(e) {
+        MutableHashMap.set(state.activities, e.activity, ActivityStateSchema.enums.completed)
+        completedCount++
+        if (currentActivity === e.activity) {
           currentActivity = null
-        },
-        WorkflowFailed() {
+        }
+      },
+      ActivityFailed(e) {
+        MutableHashMap.set(state.activities, e.activity, ActivityStateSchema.enums.failed)
+        if (currentActivity === e.activity) {
           currentActivity = null
-        },
-      }),
-    )
+        }
+      },
+      WorkflowCompleted() {
+        currentActivity = null
+      },
+      WorkflowFailed() {
+        currentActivity = null
+      },
+    })
 
   return { update, render, renderFull, getState }
 }
@@ -128,7 +126,7 @@ export const create = (config: Config): Renderer => {
  */
 export interface Renderer {
   /** Update state from an activity event */
-  update: (event: LifecycleEvent) => void
+  update: (event: typeof LifecycleEvent.Type) => void
   /** Render current state as ASCII string (compact mode for DAG) */
   render: () => string
   /** Render current state as full ASCII diagram (with box drawing) */

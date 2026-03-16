@@ -90,7 +90,10 @@ export const UnscopedFromString: S.Codec<Unscoped, string> = S.String.pipe(
 
 /**
  * Package moniker - either scoped (\@scope/name) or unscoped (name).
+ *
+ * Tagged union with `.guards`, `.match`, `.cases`, and `.isAnyOf` utilities.
  */
+export const Moniker = S.Union([Scoped, Unscoped]).pipe(S.toTaggedUnion('_tag'))
 export type Moniker = Scoped | Unscoped
 
 /**
@@ -118,9 +121,9 @@ export const parse = S.decodeSync(FromString)
 /**
  * Check if a moniker is scoped.
  */
-export const isScoped = (moniker: Moniker): moniker is Scoped => Scoped.is(moniker)
+export const isScoped = Moniker.guards.Scoped
 
 /**
  * Check if a moniker is unscoped.
  */
-export const isUnscoped = (moniker: Moniker): moniker is Unscoped => Unscoped.is(moniker)
+export const isUnscoped = Moniker.guards.Unscoped

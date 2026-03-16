@@ -93,7 +93,7 @@ describe('pr preview comment sync', () => {
         publishHistory: [
           {
             package: '@kitz/core',
-            version: '0.0.0-pr.129.2.abc1234',
+            version: '0.0.0-pr.129.2.gabc1234',
             iteration: 2,
             sha: 'abc1234',
             timestamp: '2026-03-08T00:00:00.000Z',
@@ -133,7 +133,7 @@ describe('pr preview comment sync', () => {
     expect(Api.Commentator.parsePublishHistory(result.body)).toEqual([
       {
         package: '@kitz/core',
-        version: '0.0.0-pr.129.2.abc1234',
+        version: '0.0.0-pr.129.2.gabc1234',
         iteration: 2,
         sha: 'abc1234',
         timestamp: '2026-03-08T00:00:00.000Z',

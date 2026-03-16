@@ -124,8 +124,10 @@ export class MdFileProvenance extends S.TaggedClass<MdFileProvenance>()('md-file
 
 /**
  * Union of all possible documentation provenance types.
+ *
+ * Tagged union with `.guards`, `.match`, `.cases`, and `.isAnyOf` utilities.
  */
-export const Provenance = S.Union([JSDocProvenance, MdFileProvenance])
+export const Provenance = S.Union([JSDocProvenance, MdFileProvenance]).pipe(S.toTaggedUnion('_tag'))
 export type Provenance = typeof Provenance.Type
 
 /**

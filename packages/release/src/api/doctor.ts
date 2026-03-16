@@ -99,7 +99,9 @@ const titleForLifecycle = (lifecycle: Lifecycle): string =>
 const hasErrorViolations = (report: Report): boolean =>
   report.results.some(
     (result) =>
-      Finished.is(result) && result.violation !== undefined && Severity.Error.is(result.severity),
+      Finished.is(result) &&
+      result.violation !== undefined &&
+      Severity.Severity.guards.SeverityError(result.severity),
   )
 
 export const hasBlockingIssues = (evaluation: DoctorEvaluation): boolean =>
