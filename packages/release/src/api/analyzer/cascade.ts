@@ -31,14 +31,9 @@ export const buildDependencyGraph = (
 
       const manifest = manifestOption.value
 
-      // Check all dependency types
-      const allDeps = {
-        ...manifest.dependencies,
-        ...manifest.devDependencies,
-        ...manifest.peerDependencies,
-      }
-
-      for (const depName of Object.keys(allDeps)) {
+      // Cascades only follow runtime dependency edges. Dev and peer dependency
+      // changes do not require re-publishing dependents.
+      for (const depName of Object.keys(manifest.dependencies ?? {})) {
         // Only track workspace dependencies
         if (!HashSet.has(packageNames, depName)) continue
 
