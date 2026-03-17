@@ -30,4 +30,5 @@
 - Local markdown links: verified for all relative links in generated docs
 - Package checks: `bun run --cwd packages/paka check:types`, `bun run --cwd packages/paka test`, and `bun run format:check` passed after the docs changes
 - Package lint: `bun run --cwd packages/paka check:lint` still reports the pre-existing `src/schema.ts` schema-class warning backlog and no new docs-related problems
+- Docs site: `bun run docs:paka:build` passed and `bun run docs:paka:dev` serves the rendered docs at `http://127.0.0.1:4173/`
 - Review mode: cross-context review deferred into `_lucid-review-request.md` because this pass generated more than six documents without delegated review

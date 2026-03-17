@@ -13,6 +13,8 @@ Generated package-local documentation for `packages/paka` with a focus on the ne
 - `docs/guides/calculate-semver-from-exports.md`
 - `docs/reference/public-api.md`
 - `docs/reference/cli.md`
+- `docs/index.md`
+- `docs/.vitepress/config.mts`
 
 ## Source truth used
 
@@ -27,9 +29,11 @@ Generated package-local documentation for `packages/paka` with a focus on the ne
 - `packages/paka/src/semver.test.ts`
 - repo-local CLI output from `bun packages/paka/src/cli.ts --help`
 - repo-local CLI output from `bun packages/paka/src/cli.ts semver ...`
+- VitePress site build output from `bun run docs:paka:build`
 
 ## Verification plan
 
 - check markdown files for broken local links
 - re-run package type, lint, and test scripts
 - smoke-test extraction and semver examples with Bun
+- build and open a rendered docs site for human review
