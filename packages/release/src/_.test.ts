@@ -35,8 +35,26 @@ const makeTestLayer = (
   diskLayout: Fs.Memory.DiskLayout = {},
 ) => Layer.mergeAll(Git.Memory.make(gitConfig), Fs.Memory.layer(diskLayout), testEnv)
 
-const makePackageJson = (name: string, version: string, dependencies?: Record<string, string>) =>
-  JSON.stringify({ name, version, ...(dependencies && { dependencies }) }, null, 2)
+const makePackageJson = (
+  name: string,
+  version: string,
+  options?: {
+    dependencies?: Record<string, string>
+    devDependencies?: Record<string, string>
+    peerDependencies?: Record<string, string>
+  },
+) =>
+  JSON.stringify(
+    {
+      name,
+      version,
+      ...(options?.dependencies && { dependencies: options.dependencies }),
+      ...(options?.devDependencies && { devDependencies: options.devDependencies }),
+      ...(options?.peerDependencies && { peerDependencies: options.peerDependencies }),
+    },
+    null,
+    2,
+  )
 
 /** Type-safe version assertion */
 const expectVersion = (actual: Semver.Semver | undefined, expected: string) => {
@@ -319,7 +337,9 @@ describe('Cascade', () => {
     const diskLayout: Fs.Memory.DiskLayout = {
       '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
       '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
-        '@kitz/core': 'workspace:*',
+        dependencies: {
+          '@kitz/core': 'workspace:*',
+        },
       }),
     }
 
@@ -348,10 +368,14 @@ describe('Cascade', () => {
     const diskLayout: Fs.Memory.DiskLayout = {
       '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
       '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
-        '@kitz/core': 'workspace:*',
+        dependencies: {
+          '@kitz/core': 'workspace:*',
+        },
       }),
       '/repo/packages/utils/package.json': makePackageJson('@kitz/utils', '1.0.0', {
-        '@kitz/core': 'workspace:*',
+        dependencies: {
+          '@kitz/core': 'workspace:*',
+        },
       }),
     }
 
@@ -378,7 +402,9 @@ describe('Cascade', () => {
     const diskLayout: Fs.Memory.DiskLayout = {
       '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
       '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
-        '@kitz/core': 'workspace:*',
+        dependencies: {
+          '@kitz/core': 'workspace:*',
+        },
       }),
     }
 
@@ -401,6 +427,62 @@ describe('Cascade', () => {
 
     expect(info.description).toContain('Depends on @kitz/core@1.1.0')
   })
+
+  test('does not cascade through devDependencies', async () => {
+    const diskLayout: Fs.Memory.DiskLayout = {
+      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+      '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
+        devDependencies: {
+          '@kitz/core': 'workspace:*',
+        },
+      }),
+    }
+
+    const layer = Layer.mergeAll(
+      Git.Memory.make({
+        tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0'],
+        commits: [Git.Memory.commit('feat(core): new API')],
+      }),
+      Fs.Memory.layer(diskLayout),
+      testEnv,
+    )
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
+
+    expect(result.releases).toHaveLength(1)
+    expect(result.releases[0]!.package.name.moniker).toBe('@kitz/core')
+    expect(result.cascades).toHaveLength(0)
+  })
+
+  test('does not cascade through peerDependencies', async () => {
+    const diskLayout: Fs.Memory.DiskLayout = {
+      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+      '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
+        peerDependencies: {
+          '@kitz/core': 'workspace:*',
+        },
+      }),
+    }
+
+    const layer = Layer.mergeAll(
+      Git.Memory.make({
+        tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0'],
+        commits: [Git.Memory.commit('feat(core): new API')],
+      }),
+      Fs.Memory.layer(diskLayout),
+      testEnv,
+    )
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
+
+    expect(result.releases).toHaveLength(1)
+    expect(result.releases[0]!.package.name.moniker).toBe('@kitz/core')
+    expect(result.cascades).toHaveLength(0)
+  })
 })
 
 describe('Analyzer', () => {
@@ -408,7 +490,9 @@ describe('Analyzer', () => {
     const diskLayout: Fs.Memory.DiskLayout = {
       '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
       '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
-        '@kitz/core': 'workspace:*',
+        dependencies: {
+          '@kitz/core': 'workspace:*',
+        },
       }),
     }
 
@@ -434,6 +518,46 @@ describe('Analyzer', () => {
 
     expect(analysis.cascades).toHaveLength(1)
     expect(analysis.cascades[0]!.triggeredBy.map((pkg) => pkg.name.moniker)).toContain('@kitz/core')
+  })
+
+  test('ignores dev and peer dependency edges when recording cascades', async () => {
+    const diskLayout: Fs.Memory.DiskLayout = {
+      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+      '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
+        devDependencies: {
+          '@kitz/core': 'workspace:*',
+        },
+      }),
+      '/repo/packages/utils/package.json': makePackageJson('@kitz/utils', '1.0.0', {
+        peerDependencies: {
+          '@kitz/core': 'workspace:*',
+        },
+      }),
+    }
+
+    const layer = Layer.mergeAll(
+      Git.Memory.make({
+        tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0', '@kitz/utils@1.0.0'],
+        commits: [Git.Memory.commit('feat(core): new API')],
+      }),
+      Fs.Memory.layer(diskLayout),
+      testEnv,
+    )
+
+    const analysis = await Effect.runPromise(
+      Effect.provide(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          const tags = yield* git.getTags()
+          return yield* Analyzer.analyze({ packages: mockPackages, tags })
+        }),
+        layer,
+      ),
+    )
+
+    expect(analysis.impacts).toHaveLength(1)
+    expect(analysis.impacts[0]!.package.name.moniker).toBe('@kitz/core')
+    expect(analysis.cascades).toHaveLength(0)
   })
 
   test('respects until boundary when analyzing commits', async () => {
