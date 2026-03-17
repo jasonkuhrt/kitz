@@ -1,10 +1,15 @@
 #!/usr/bin/env bun
-import { Effect, Result } from 'effect'
+import { Effect, Result, Schema as S } from 'effect'
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'fs'
 import { readFile } from 'fs/promises'
-import { join } from 'path'
+import { join, resolve } from 'path'
 import { VitePress } from './adaptors/__.js'
 import { extract } from './extractor/__.js'
+import {
+  analyzeSemverImpactFromProjectRoots,
+  renderSemverReport,
+  SemverReportSchema,
+} from './semver.js'
 import { addTwoslashAnnotations } from './transformers.js'
 
 /**
@@ -74,14 +79,94 @@ const findMarkdownFiles = (dir: string): string[] => {
  */
 const main = async () => {
   const command = process.argv[2]
+  const args = process.argv.slice(3)
 
   if (command === 'generate' || !command) {
     await generateDocs()
+  } else if (command === 'semver') {
+    runSemver(args)
+  } else if (command === 'help' || command === '--help' || command === '-h') {
+    printUsage()
   } else {
     console.error(`Unknown command: ${command}`)
-    console.log('Usage: paka generate')
+    printUsage()
     process.exit(1)
   }
+}
+
+type SemverCommandOptions = {
+  previousProjectRoot: string
+  nextProjectRoot: string
+  currentVersion?: string
+  json: boolean
+}
+
+const printUsage = () => {
+  console.log(`Usage:
+  paka generate
+  paka semver <previous-project-root> <next-project-root> [--current-version <version>] [--json]`)
+}
+
+const parseSemverCommandOptions = (args: string[]): SemverCommandOptions => {
+  const positional: string[] = []
+  let json = false
+  let currentVersion: string | undefined
+
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index]
+    if (!arg) continue
+
+    if (arg === '--json') {
+      json = true
+      continue
+    }
+
+    if (arg === '--current-version') {
+      const value = args[index + 1]
+      if (!value) {
+        throw new Error('Missing value for --current-version')
+      }
+      currentVersion = value
+      index++
+      continue
+    }
+
+    if (arg.startsWith('--')) {
+      throw new Error(`Unknown flag: ${arg}`)
+    }
+
+    positional.push(arg)
+  }
+
+  const [previousProjectRoot, nextProjectRoot] = positional
+  if (!previousProjectRoot || !nextProjectRoot) {
+    throw new Error(
+      'Expected two positional package roots: paka semver <previous-project-root> <next-project-root>',
+    )
+  }
+
+  return {
+    previousProjectRoot,
+    nextProjectRoot,
+    json,
+    ...(currentVersion ? { currentVersion } : {}),
+  }
+}
+
+const runSemver = (args: string[]) => {
+  const options = parseSemverCommandOptions(args)
+  const report = analyzeSemverImpactFromProjectRoots({
+    previousProjectRoot: resolve(options.previousProjectRoot),
+    nextProjectRoot: resolve(options.nextProjectRoot),
+    ...(options.currentVersion ? { currentVersion: options.currentVersion } : {}),
+  })
+
+  if (options.json) {
+    console.log(JSON.stringify(S.encodeSync(SemverReportSchema)(report), null, 2))
+    return
+  }
+
+  console.log(renderSemverReport(report))
 }
 
 /**
@@ -203,7 +288,7 @@ const generateDocs = async () => {
 void Promise.resolve(main()).then(
   () => undefined,
   (error) => {
-    console.error('Error generating documentation:', error)
+    console.error('paka failed:', error)
     process.exit(1)
   },
 )

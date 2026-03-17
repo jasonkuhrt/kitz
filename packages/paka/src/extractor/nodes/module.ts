@@ -199,9 +199,11 @@ const createNamespaceExport = (
   isWrapperMarkdown?: boolean,
 ): ValueExport => {
   const jsdoc = overrideJsdoc ?? parseJSDoc(exportDecl)
+  const toExportDocs = (description?: string, guide?: string): typeof Docs.Type | undefined =>
+    description || guide ? Docs.make({ description, guide }) : undefined
 
   // Build docs and docsProvenance for namespace export
-  let docs: typeof ModuleDocs.Type | undefined
+  let docs: typeof Docs.Type | undefined
   let docsProvenance: typeof DocsProvenance.Type | undefined
 
   if (overrideJsdoc) {
@@ -209,7 +211,7 @@ const createNamespaceExport = (
     const description = overrideJsdoc.description || nestedModule.docs?.description
     const guide = overrideJsdoc.guide || nestedModule.docs?.guide
 
-    docs = description || guide ? ModuleDocs.make({ description, guide }) : undefined
+    docs = toExportDocs(description, guide)
 
     // Track provenance
     const descriptionProv = overrideJsdoc.description
@@ -232,7 +234,7 @@ const createNamespaceExport = (
         : undefined
   } else {
     // No override - use nested module's docs
-    docs = nestedModule.docs
+    docs = toExportDocs(nestedModule.docs?.description, nestedModule.docs?.guide)
     docsProvenance = nestedModule.docsProvenance
   }
 
