@@ -12,6 +12,7 @@ const rootCommands = [
     usage: 'plan --lifecycle <official|candidate|ephemeral> [options]',
     description: 'Generate a release plan',
   },
+  { usage: 'resume [options]', description: 'Resume an interrupted release workflow' },
   { usage: 'status [options]', description: 'Inspect durable workflow state for the active plan' },
 ] as const
 

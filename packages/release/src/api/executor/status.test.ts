@@ -104,7 +104,7 @@ describe('Executor status', () => {
 
       const rendered = formatExecutionStatus(workflowStatus)
       expect(rendered).toContain('Release workflow status: suspended')
-      expect(rendered).toContain('Resume: fix the blocking issue')
+      expect(rendered).toContain('Resume: fix the blocking issue, then run `release resume`')
     }),
   )
 

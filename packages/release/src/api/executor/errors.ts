@@ -26,6 +26,14 @@ const ExecutorDependencyCycleErrorContext = S.Struct({
   /** Human-readable local dependency edges that form the cycle */
   edges: S.Array(S.String),
 })
+const ExecutorResumeErrorContext = S.Struct({
+  /** Durable workflow execution identifier */
+  executionId: S.String,
+  /** Current persisted workflow state */
+  state: S.Literals(['not-started', 'succeeded', 'failed']),
+  /** Details about why resume is unavailable */
+  detail: S.String,
+})
 const ExecutorGHReleaseErrorContext = S.Struct({
   /** Git tag for the release */
   tag: S.String,
@@ -42,7 +50,7 @@ const ExecutorGHReleaseErrorContext = S.Struct({
  *
  * **Common causes**: `npm pack` failed, a pack hook mutated local files unexpectedly, the package version already exists on the registry, the npm token lacks publish permissions for this scope, or a network error interrupted tarball publish.
  *
- * **What to do**: check the error's `packageName` and `detail` fields. If the detail mentions manifest cleanup or pack hooks, inspect the package.json before retrying and run `release doctor --onlyRule plan.packages-runtime-targets-source-oriented`. If the version already exists, verify that the planned version does not collide with an existing published version. Fix the cause, then rerun release with the same plan so the durable workflow can resume from the failed activity.
+ * **What to do**: check the error's `packageName` and `detail` fields. If the detail mentions manifest cleanup or pack hooks, inspect the package.json before retrying and run `release doctor --onlyRule plan.packages-runtime-targets-source-oriented`. If the version already exists, verify that the planned version does not collide with an existing published version. Fix the cause, then run `release resume` with the same plan so the durable workflow can continue from the failed activity.
  *
  * {@include executor/errors/publish-error}
  */
@@ -67,7 +75,7 @@ export type ExecutorPublishError = InstanceType<typeof ExecutorPublishError>
  *
  * **Common causes**: the tag already exists locally or on the remote, or the git push is rejected (e.g., branch protection rules, insufficient permissions).
  *
- * **What to do**: check the error's `tag` field to identify which tag failed. If the tag exists, delete it locally (`git tag -d <tag>`) and remotely (`git push origin :refs/tags/<tag>`) before retrying. Fix the cause, then rerun release with the same plan so the durable workflow can resume from the failed tag step.
+ * **What to do**: check the error's `tag` field to identify which tag failed. If the tag exists, delete it locally (`git tag -d <tag>`) and remotely (`git push origin :refs/tags/<tag>`) before retrying. Fix the cause, then run `release resume` with the same plan so the durable workflow can continue from the failed tag step.
  *
  * {@include executor/errors/tag-error}
  */
@@ -137,6 +145,35 @@ export const ExecutorDependencyCycleError: Err.TaggedContextualErrorClass<
 export type ExecutorDependencyCycleError = InstanceType<typeof ExecutorDependencyCycleError>
 
 /**
+ * #### `ExecutorResumeError`
+ *
+ * Raised when a caller asks to resume a workflow that is not resumable.
+ *
+ * **When it occurs**: before execution resumes, after inspecting durable
+ * workflow state for the current plan identity.
+ *
+ * **Common causes**: the plan was never started, the workflow already
+ * completed successfully, or it ended in a terminal failure instead of a
+ * resumable suspension.
+ *
+ * **What to do**: inspect the `state`, `executionId`, and `detail` fields.
+ * If the state is `not-started`, run `release apply` first. If it is
+ * `succeeded`, generate a new plan before releasing again. If it is `failed`,
+ * inspect the terminal failure before deciding whether to create a fresh plan.
+ */
+export const ExecutorResumeError: Err.TaggedContextualErrorClass<
+  'ExecutorResumeError',
+  typeof baseTags,
+  typeof ExecutorResumeErrorContext,
+  undefined
+> = Err.TaggedContextualError('ExecutorResumeError', baseTags, {
+  context: ExecutorResumeErrorContext,
+  message: (ctx) => `Cannot resume ${ctx.executionId}: ${ctx.detail}`,
+})
+
+export type ExecutorResumeError = InstanceType<typeof ExecutorResumeError>
+
+/**
  * #### `ExecutorGHReleaseError`
  *
  * Raised when creating a GitHub release fails.
@@ -145,7 +182,7 @@ export type ExecutorDependencyCycleError = InstanceType<typeof ExecutorDependenc
  *
  * **Common causes**: the GitHub token lacks permission to create releases, or the GitHub API is unavailable.
  *
- * **What to do**: verify that `GITHUB_TOKEN` has `contents: write` permission. Fix the cause, then rerun release with the same plan so the durable workflow can resume from the failed GitHub release step. If needed, you can also create the release manually from the tag because the package is already published.
+ * **What to do**: verify that `GITHUB_TOKEN` has `contents: write` permission. Fix the cause, then run `release resume` with the same plan so the durable workflow can continue from the failed GitHub release step. If needed, you can also create the release manually from the tag because the package is already published.
  *
  * {@include executor/errors/gh-release-error}
  */
@@ -181,5 +218,5 @@ export type ExecutorError =
   | ExecutorDependencyCycleError
   | ExecutorGHReleaseError
 
-/** Union of all executor errors */
-export type All = ExecutorError
+/** Union of all executor-facing errors */
+export type All = ExecutorError | ExecutorResumeError

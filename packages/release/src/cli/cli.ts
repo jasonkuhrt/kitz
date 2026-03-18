@@ -16,6 +16,7 @@ import { FileSystemLayer } from '../platform.js'
  * - forecast        - Render a release forecast
  * - plan            - Generate release plan (--lifecycle official|candidate|ephemeral)
  * - apply           - Execute release plan
+ * - resume          - Resume an interrupted release workflow
  * - status          - Inspect durable workflow state for the active plan
  * - pr ...          - Maintain the release preview comment or canonical PR title
  * - notes [pkg]     - Output release notes
