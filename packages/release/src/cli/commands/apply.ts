@@ -11,7 +11,6 @@
 import { Terminal } from 'effect'
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
-import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Oak } from '@kitz/oak'
@@ -75,12 +74,10 @@ Cli.run(
   Effect.gen(function* () {
     const env = yield* Env.Env
 
-    // Load plan file using schema-validated resource
-    const planDir = Fs.Path.join(env.cwd, Api.Planner.PLAN_DIR)
-    const planFileOption = yield* Api.Planner.resource.read(planDir)
+    const planFileOption = yield* Api.Planner.Store.readActive
 
     if (Option.isNone(planFileOption)) {
-      yield* Console.error(`No release plan found at ${Fs.Path.toString(Api.Planner.PLAN_FILE)}`)
+      yield* Console.error(`No release plan found at ${Api.Planner.Store.activePlanDisplayPath}`)
       yield* Console.error(
         `Run 'release plan --lifecycle <official|candidate|ephemeral>' first to generate a plan.`,
       )
@@ -151,8 +148,6 @@ Cli.run(
 
     yield* Console.log(Api.Renderer.renderApplyDone(result.releasedPackages.length))
 
-    // Clean up plan file on success
-    const planPath = Fs.Path.join(env.cwd, Api.Planner.PLAN_FILE)
-    yield* Fs.remove(planPath)
+    yield* Api.Planner.Store.deleteActive
   }),
 )
