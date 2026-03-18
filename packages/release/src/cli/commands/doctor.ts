@@ -22,7 +22,7 @@ import { Oak } from '@kitz/oak'
 import { Cause, Console, Effect, Layer, Option, Schema, SchemaGetter } from 'effect'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, ServicesLayer, FileSystemLayer } from '../../platform.js'
-import { loadPullRequestDiff } from '../pr-preview.js'
+import { loadConfiguredPullRequestDiff, resolveDiffRemote } from '../pr-preview-diff.js'
 
 const DoctorFailuresSchema = Schema.Struct({
   _tag: Schema.Literal('DoctorFailures'),
@@ -176,8 +176,10 @@ Cli.run(
     const tags = yield* git.getTags()
     const analysis = yield* Api.Analyzer.analyze({ packages, tags })
     const currentBranch = yield* git.getCurrentBranch()
+    const diffRemote = resolveDiffRemote(config)
     const diff = pullRequest
-      ? yield* loadPullRequestDiff({
+      ? yield* loadConfiguredPullRequestDiff({
+          config,
           pullRequest,
           packages,
           required: false,
@@ -225,7 +227,7 @@ Cli.run(
               surface: 'execution',
             }),
             'env.git-clean': enableRule(config, 'env.git-clean'),
-            'env.git-remote': enableRule(config, 'env.git-remote', { remote: 'origin' }),
+            'env.git-remote': enableRule(config, 'env.git-remote', { remote: diffRemote }),
             'plan.tags-unique': enableRule(config, 'plan.tags-unique'),
             'plan.versions-unpublished': enableRule(config, 'plan.versions-unpublished'),
             ...(channel.mode !== 'github-trusted'
