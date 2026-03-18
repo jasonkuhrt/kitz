@@ -20,6 +20,7 @@ import type { Publishing } from '../publishing.js'
 import {
   ExecutorDependencyCycleError,
   ExecutorPreflightError,
+  ExecutorResumeError,
   type ExecutorError,
 } from './errors.js'
 import { type PreflightError, run as runPreflight } from './preflight.js'
@@ -193,7 +194,7 @@ export const formatExecutionStatus = (status: ExecutionStatus): string => {
       lines.push(status.detail)
     }
     lines.push('')
-    lines.push('Resume: fix the blocking issue, then rerun `release apply` with the same plan.')
+    lines.push('Resume: fix the blocking issue, then run `release resume` with the same plan.')
     return lines.join('\n')
   }
 
@@ -431,6 +432,73 @@ export const execute = (
 
     yield* Effect.log(`Starting release workflow for ${payload.releases.length} packages...`)
     yield* runFreshPreflight(payload)
+
+    const result = yield* ReleaseWorkflow.execute(payload)
+    const summary = normalizeWorkflowResult(result)
+
+    yield* Effect.log(`Workflow complete: ${summary.releasedPackages.length} packages released`)
+    return summary
+  })
+
+export const resume = (
+  plan: Plan,
+  options: {
+    dryRun?: boolean
+    tag?: string
+    registry?: string
+    publishing?: Publishing
+    trunk?: string
+  } = {},
+): Effect.Effect<
+  ExecutionResult,
+  ExecutorDependencyCycleError | ExecutorResumeError | ExecutorError,
+  ObservableExecutionRequirements | WorkflowEngine.WorkflowEngine
+> =>
+  Effect.gen(function* () {
+    const workflowStatus = yield* status(plan, options)
+
+    if (workflowStatus.state === 'not-started') {
+      return yield* Effect.fail(
+        new ExecutorResumeError({
+          context: {
+            executionId: workflowStatus.executionId,
+            state: workflowStatus.state,
+            detail:
+              'No persisted workflow state exists for this plan yet. Run `release apply` first.',
+          },
+        }),
+      )
+    }
+
+    if (workflowStatus.state === 'succeeded') {
+      return yield* Effect.fail(
+        new ExecutorResumeError({
+          context: {
+            executionId: workflowStatus.executionId,
+            state: workflowStatus.state,
+            detail:
+              'This release plan already completed successfully. Generate a new plan before releasing again.',
+          },
+        }),
+      )
+    }
+
+    if (workflowStatus.state === 'failed') {
+      return yield* Effect.fail(
+        new ExecutorResumeError({
+          context: {
+            executionId: workflowStatus.executionId,
+            state: workflowStatus.state,
+            detail:
+              'This workflow ended in a terminal failure and cannot be resumed automatically.',
+          },
+        }),
+      )
+    }
+
+    const payload = yield* toPayload(plan, options)
+
+    yield* Effect.log(`Resuming release workflow for ${payload.releases.length} packages...`)
 
     const result = yield* ReleaseWorkflow.execute(payload)
     const summary = normalizeWorkflowResult(result)

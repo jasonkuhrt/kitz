@@ -10,6 +10,7 @@ export {
   type LifecycleEventLine,
   type ObservableExecutionRequirements,
   type ObservableResult,
+  resume,
   status,
   toPayload,
 } from './execute.js'
