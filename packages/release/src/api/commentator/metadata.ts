@@ -84,6 +84,24 @@ export const parsePublishHistory = (body: string): readonly PublishRecord[] => {
   return parseMetadata(body)?.publishHistory ?? []
 }
 
+export const orderPublishHistory = (
+  history: readonly PublishRecord[],
+): readonly PublishRecord[] => {
+  return [...history].toSorted((left, right) => {
+    const timestampDelta =
+      toComparableTimestamp(right.timestamp) - toComparableTimestamp(left.timestamp)
+    if (timestampDelta !== 0) return timestampDelta
+
+    const iterationDelta = right.iteration - left.iteration
+    if (iterationDelta !== 0) return iterationDelta
+
+    const versionDelta = right.version.localeCompare(left.version)
+    if (versionDelta !== 0) return versionDelta
+
+    return right.package.localeCompare(left.package)
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Embed
 // ---------------------------------------------------------------------------
@@ -111,3 +129,8 @@ const getCapture =
   (regex: RegExp) =>
   (input: string): Option.Option<string> =>
     Option.fromNullishOr(input.match(regex)?.[1])
+
+const toComparableTimestamp = (timestamp: string): number => {
+  const parsed = Date.parse(timestamp)
+  return Number.isNaN(parsed) ? Number.NEGATIVE_INFINITY : parsed
+}
