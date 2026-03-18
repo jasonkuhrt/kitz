@@ -10,7 +10,7 @@ import { FileSystem } from 'effect'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
-import { Effect, Exit, HashMap, HashSet, MutableHashSet, Option } from 'effect'
+import { Effect, HashMap, HashSet, MutableHashSet, Option } from 'effect'
 import { buildDependencyGraph } from './cascade.js'
 import { Analysis } from './models/analysis.js'
 import { CascadeImpact } from './models/cascade-impact.js'
@@ -66,11 +66,9 @@ const trimCommitsUntilBoundary = (
     }
 
     const git = yield* Git.Git
-    const newerCommitsExit = yield* Effect.exit(git.getCommitsSince(until))
+    const newerCommits = yield* git.getCommitsSince(until)
     const newerHashes = HashSet.fromIterable(
-      Exit.isSuccess(newerCommitsExit)
-        ? newerCommitsExit.value.map((commit: { hash: string }) => commit.hash)
-        : [],
+      newerCommits.map((commit: { hash: string }) => commit.hash),
     )
 
     return commits.filter((commit) => !HashSet.has(newerHashes, commit.hash))

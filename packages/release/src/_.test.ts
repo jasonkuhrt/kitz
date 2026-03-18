@@ -757,6 +757,55 @@ describe('Analyzer', () => {
 
     expect(analysis.impacts).toHaveLength(0)
   })
+
+  test('fails when until tag lookup cannot be resolved after tag discovery', async () => {
+    const untilTag = 'release-boundary'
+    const layer = makeTestLayer({
+      tags: [untilTag],
+      commits: [Git.Memory.commit('feat(core): newer change')],
+    })
+
+    const result = await Effect.runPromise(
+      Effect.provide(
+        Effect.gen(function* () {
+          const baseGit = yield* Git.Git
+          const tags = yield* baseGit.getTags()
+
+          return yield* Analyzer.analyze({
+            packages: mockPackages,
+            tags,
+            until: untilTag,
+          }).pipe(
+            Effect.provideService(Git.Git, {
+              ...baseGit,
+              getCommitsSince: (tag) =>
+                tag === untilTag
+                  ? Effect.fail(
+                      new Git.GitError({
+                        context: {
+                          operation: 'getCommitsSince',
+                          detail: `forced until lookup failure for ${tag}`,
+                        },
+                        cause: new Error(`forced until lookup failure for ${tag}`),
+                      }),
+                    )
+                  : baseGit.getCommitsSince(tag),
+            }),
+          )
+        }),
+        layer,
+      ).pipe(Effect.result),
+    )
+
+    expect(result._tag).toBe('Failure')
+    if (result._tag === 'Failure') {
+      expect(result.failure._tag).toBe('GitError')
+      if (result.failure._tag === 'GitError') {
+        expect(result.failure.context.operation).toBe('getCommitsSince')
+        expect(result.failure.context.detail).toContain('forced until lookup failure')
+      }
+    }
+  })
 })
 
 // ─── Getter Methods ───────────────────────────────────────────────
