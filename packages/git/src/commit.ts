@@ -1,6 +1,42 @@
-import { Schema } from 'effect'
+import { Effect, Option, Schema, SchemaGetter, SchemaIssue } from 'effect'
 import { Author } from './author.js'
 import { Sha } from './sha.js'
+
+const CommitDateIsoPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
+
+const CommitDate = Schema.String.pipe(
+  Schema.decodeTo(Schema.Date, {
+    decode: SchemaGetter.transformOrFail((value) => {
+      if (!CommitDateIsoPattern.test(value)) {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(value), {
+            message: 'Invalid commit date format: expected canonical ISO 8601 UTC string',
+          }),
+        )
+      }
+
+      const date = new Date(value)
+      if (Number.isNaN(date.getTime()) || date.toISOString() !== value) {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(value), {
+            message: 'Invalid ISO date string',
+          }),
+        )
+      }
+      return Effect.succeed(date)
+    }),
+    encode: SchemaGetter.transformOrFail((value) => {
+      if (Number.isNaN(value.getTime())) {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(value), {
+            message: 'Invalid Date value',
+          }),
+        )
+      }
+      return Effect.succeed(value.toISOString())
+    }),
+  }),
+)
 
 /**
  * A commit from git log.
@@ -13,8 +49,15 @@ export class Commit extends Schema.TaggedClass<Commit>()('Commit', {
   /** Full raw commit message (subject line + body) */
   message: Schema.String,
   author: Author,
-  date: Schema.Date,
+  date: CommitDate,
 }) {
+  static is = Schema.is(Commit)
+  static decode = Schema.decodeUnknownEffect(Commit)
+  static decodeSync = Schema.decodeUnknownSync(Commit)
+  static encode = Schema.encodeUnknownEffect(Commit)
+  static encodeSync = Schema.encodeUnknownSync(Commit)
+  static equivalence = Schema.toEquivalence(Commit)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 

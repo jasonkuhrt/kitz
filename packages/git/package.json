@@ -25,7 +25,8 @@
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
     "check:lint": "oxlint src/",
-    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error",
+    "test": "cd ../.. && vitest run --dir packages/git/src"
   },
   "dependencies": {
     "@kitz/core": "workspace:*",

@@ -144,4 +144,34 @@ describe('Plan', () => {
       expect(result.failure.message).toContain('Plan lifecycle "candidate" cannot include Official')
     }
   })
+
+  test('resource round-trips release commit dates through JSON storage', async () => {
+    const releaseDir = Fs.Path.AbsDir.fromString('/repo/.release/')
+    const validPlan = Plan.make({
+      lifecycle: 'official',
+      timestamp: '2026-01-01T00:00:00Z',
+      releases: [
+        Official.make({
+          package: pkg('@kitz/core', 'core'),
+          version: OfficialFirst.make({ version: Semver.fromString('0.1.0') }),
+          commits: [commit('core')],
+        }),
+      ],
+      cascades: [],
+    })
+
+    const stored = await Effect.runPromise(
+      Effect.gen(function* () {
+        yield* PlannerResource.resource.write(validPlan, releaseDir)
+        return yield* PlannerResource.resource.read(releaseDir)
+      }).pipe(Effect.provide(Fs.Memory.layer({}))),
+    )
+
+    expect(stored._tag).toBe('Some')
+    if (stored._tag === 'None') {
+      throw new Error('expected a persisted plan')
+    }
+
+    expect(stored.value.releases[0]?.commits[0]?.date).toBeInstanceOf(Date)
+  })
 })
