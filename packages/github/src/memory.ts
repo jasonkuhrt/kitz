@@ -197,7 +197,8 @@ const makeService = (state: GithubMemoryState): GithubService => ({
       }
       const updated: Release = {
         ...existing,
-        body: params.body,
+        ...(params.title !== undefined ? { name: params.title } : {}),
+        ...(params.body !== undefined ? { body: params.body } : {}),
       }
       yield* Ref.update(state.releases, (releases) => ({
         ...releases,

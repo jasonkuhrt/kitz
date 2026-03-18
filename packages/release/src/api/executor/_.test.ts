@@ -381,6 +381,106 @@ describe('Executor integration', () => {
     ),
   )
 
+  test.live(
+    'updates existing GitHub candidate release when tag option uses a custom candidate dist-tag',
+    () =>
+      quiet(
+        Effect.gen(function* () {
+          const harness = yield* makeHarness({
+            git: {
+              tags: [tagCore('1.0.0'), tagCore('1.1.0-next.1')],
+              commits: [Git.Memory.commit('feat(core): new API')],
+              isClean: true,
+            },
+            diskLayout: {
+              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            },
+          })
+
+          const plan = yield* planCandidate(workspacePackages).pipe(
+            Effect.provide(harness.planLayer),
+          )
+
+          const plannedRelease = plan.releases[0]
+          expect(plannedRelease).toBeDefined()
+          const candidateTag = tag(
+            plannedRelease!.package.name,
+            Semver.toString(plannedRelease!.nextVersion),
+          )
+
+          yield* Effect.gen(function* () {
+            const gh = yield* Github.Github
+            yield* gh.createRelease({
+              tag: candidateTag,
+              title: '@kitz/core @next',
+              body: 'existing',
+              prerelease: true,
+            })
+          }).pipe(Effect.provide(harness.workflowLayer))
+
+          const result = yield* execute(plan, { dryRun: false, tag: 'candidate' }).pipe(
+            Effect.provide(harness.workflowLayer),
+          )
+
+          expect(result.createdGHReleases).toContain(candidateTag)
+
+          const createdReleases = yield* Ref.get(harness.githubState.createdReleases)
+          const updatedReleases = yield* Ref.get(harness.githubState.updatedReleases)
+          const releases = yield* Ref.get(harness.githubState.releases)
+
+          expect(createdReleases.filter((r) => r.tag === candidateTag)).toHaveLength(1)
+          expect(updatedReleases.filter((r) => r.tag === candidateTag)).toHaveLength(1)
+          expect(updatedReleases.find((r) => r.tag === candidateTag)?.params.title).toBe(
+            '@kitz/core @candidate',
+          )
+          expect(releases[candidateTag]?.name).toBe('@kitz/core @candidate')
+        }),
+      ),
+  )
+
+  test.live('creates a new GitHub candidate release with the custom candidate dist-tag title', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+          },
+        })
+
+        const plan = yield* planCandidate(workspacePackages).pipe(Effect.provide(harness.planLayer))
+
+        const plannedRelease = plan.releases[0]
+        expect(plannedRelease).toBeDefined()
+        const candidateTag = tag(
+          plannedRelease!.package.name,
+          Semver.toString(plannedRelease!.nextVersion),
+        )
+
+        const result = yield* execute(plan, { dryRun: false, tag: 'candidate' }).pipe(
+          Effect.provide(harness.workflowLayer),
+        )
+
+        expect(result.createdGHReleases).toContain(candidateTag)
+
+        const createdReleases = yield* Ref.get(harness.githubState.createdReleases)
+        const createdCandidateRelease = createdReleases.find((r) => r.tag === candidateTag)
+        const pushedTags = yield* Ref.get(harness.gitState.pushedTags)
+
+        expect(createdCandidateRelease).toMatchObject({
+          tag: candidateTag,
+          title: '@kitz/core @candidate',
+          prerelease: true,
+        })
+        expect(pushedTags).toContainEqual({ tag: candidateTag, remote: 'origin', force: true })
+      }),
+    ),
+  )
+
   test.live('observable workflow exposes graph in dry-run mode', () =>
     quiet(
       Effect.gen(function* () {

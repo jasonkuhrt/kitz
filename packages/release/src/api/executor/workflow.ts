@@ -127,6 +127,19 @@ export const toReleaseInfo = (release: ReleasePayloadType['releases'][number]): 
   nextVersion: Semver.fromString(release.nextVersion),
 })
 
+const resolveCandidateDistTag = (options: ReleasePayloadType['options']): string | undefined => {
+  if (options.lifecycle === 'candidate') {
+    return options.tag ?? 'next'
+  }
+
+  // Older persisted payloads may not carry lifecycle yet.
+  if (options.lifecycle === undefined && options.tag === 'next') {
+    return 'next'
+  }
+
+  return undefined
+}
+
 // ============================================================================
 // Workflow Definition (Declarative DAG)
 // ============================================================================
@@ -279,7 +292,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
         Pkg.Moniker.parse(release.packageName),
         Semver.fromString(release.nextVersion),
       )
-      const isCandidate = payload.options.tag === 'next' || tag.endsWith('@next')
+      const candidateDistTag = resolveCandidateDistTag(payload.options)
       return node(
         `PushTag:${tag}`,
         Effect.gen(function* () {
@@ -288,7 +301,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
           } else {
             yield* Effect.log(`Pushing tag: ${tag}`)
             const gitService = yield* Git.Git
-            yield* gitService.pushTag(tag, 'origin', isCandidate)
+            yield* gitService.pushTag(tag, 'origin', candidateDistTag !== undefined)
           }
           return tag
         }).pipe(
@@ -310,7 +323,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
     const createGHReleases = payload.releases.map((release, i) => {
       const nextVersion = Semver.fromString(release.nextVersion)
       const tag = formatTag(Pkg.Moniker.parse(release.packageName), nextVersion)
-      const isCandidate = payload.options.tag === 'next' || tag.endsWith('@next')
+      const candidateDistTag = resolveCandidateDistTag(payload.options)
       const isPrerelease = Semver.getPrerelease(nextVersion) !== undefined
       return node(
         `CreateGHRelease:${tag}`,
@@ -332,18 +345,21 @@ export const ReleaseWorkflow = Flo.Workflow.make({
           const gh = yield* Github.Github
 
           // Check if candidate release already exists
-          if (isCandidate) {
+          if (candidateDistTag !== undefined) {
             const exists = yield* gh.releaseExists(tag)
 
             if (exists) {
               // Update existing candidate release
               yield* Effect.log(`Updating existing candidate release: ${tag}`)
-              yield* gh.updateRelease(tag, { body: changelog.markdown })
+              yield* gh.updateRelease(tag, {
+                title: `${release.packageName} @${candidateDistTag}`,
+                body: changelog.markdown,
+              })
             } else {
               // Create new candidate release
               yield* gh.createRelease({
                 tag,
-                title: `${release.packageName} @next`,
+                title: `${release.packageName} @${candidateDistTag}`,
                 body: changelog.markdown,
                 prerelease: true,
               })

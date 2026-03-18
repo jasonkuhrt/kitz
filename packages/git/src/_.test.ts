@@ -215,6 +215,24 @@ describe('Git', () => {
     expect(pushed).toContainEqual({ remote: 'upstream' })
   })
 
+  test('pushTag records tag, remote, and force flag', async () => {
+    const { layer, state } = await Effect.runPromise(Git.Memory.makeWithState({}))
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const git = yield* Git.Git
+        yield* git.pushTag('@kitz/core@1.0.0-next.1', 'origin', true)
+      }).pipe(Effect.provide(layer)),
+    )
+
+    const pushed = await Effect.runPromise(Ref.get(state.pushedTags))
+    expect(pushed).toContainEqual({
+      tag: '@kitz/core@1.0.0-next.1',
+      remote: 'origin',
+      force: true,
+    })
+  })
+
   test('deleteTag removes tag and records deletion', async () => {
     const { layer, state } = await Effect.runPromise(
       Git.Memory.makeWithState({ tags: ['@kitz/core@1.0.0'] }),
