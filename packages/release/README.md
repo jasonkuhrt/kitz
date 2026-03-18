@@ -280,8 +280,6 @@ export default defineConfig({
   npmTag: 'latest',
   // Dist-tag for candidate releases (default: 'next')
   candidateTag: 'next',
-  // Skip npm publish (dry run mode)
-  skipNpm: false,
   // Scope-to-package-name mapping (auto-scanned if omitted)
   packages: {
     core: '@myorg/core',
@@ -310,6 +308,8 @@ export default defineConfig({
 ```
 
 Programmatic callers can override file config per-field via `Config.load(options)` without modifying `release.config.ts`.
+
+Use `release apply --dry-run` when you want to preview a release without publishing packages or mutating git and GitHub state.
 
 The `operator` block declares script names, not hardcoded package-manager commands. `@kitz/release`
 detects the active package manager from the current environment and renders guidance accordingly

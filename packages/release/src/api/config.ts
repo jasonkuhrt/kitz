@@ -33,11 +33,6 @@ export class Config extends Schema.Class<Config>('Config')({
     Schema.optionalKey,
     Schema.withDecodingDefaultKey(() => 'next'),
   ),
-  /** Skip npm publish (dry run) */
-  skipNpm: Schema.Boolean.pipe(
-    Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => false),
-  ),
   /** Scope to package name mapping (auto-scanned if not provided) */
   packages: Schema.Record(Schema.String, Schema.String).pipe(
     Schema.optionalKey,
@@ -53,6 +48,13 @@ export class Config extends Schema.Class<Config>('Config')({
   /** Lint configuration */
   lint: Schema.optional(LintConfig.Config),
 }) {
+  static is = Schema.is(Config)
+  static decode = Schema.decode(Config)
+  static decodeSync = Schema.decodeSync(Config)
+  static encode = Schema.encode(Config)
+  static encodeSync = Schema.encodeSync(Config)
+  static equivalence = Schema.equivalence(Config)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -63,12 +65,18 @@ export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig
   trunk: Schema.String,
   npmTag: Schema.String,
   candidateTag: Schema.String,
-  skipNpm: Schema.Boolean,
   packages: Schema.Record(Schema.String, Schema.String),
   publishing: Publishing,
   operator: ResolvedOperator,
   lint: LintConfig.ResolvedConfig,
 }) {
+  static is = Schema.is(ResolvedConfig)
+  static decode = Schema.decode(ResolvedConfig)
+  static decodeSync = Schema.decodeSync(ResolvedConfig)
+  static encode = Schema.encode(ResolvedConfig)
+  static encodeSync = Schema.encodeSync(ResolvedConfig)
+  static equivalence = Schema.equivalence(ResolvedConfig)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -150,7 +158,6 @@ export const load = (
       trunk: options?.trunk ?? fileConfig.trunk ?? 'main',
       npmTag: options?.npmTag ?? fileConfig.npmTag ?? 'latest',
       candidateTag: options?.candidateTag ?? fileConfig.candidateTag ?? 'next',
-      skipNpm: options?.skipNpm ?? fileConfig.skipNpm ?? false,
       packages: options?.packages ?? fileConfig.packages ?? {},
       publishing: options?.publishing ?? fileConfig.publishing ?? defaultPublishing(),
       operator,
