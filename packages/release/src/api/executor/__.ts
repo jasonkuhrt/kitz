@@ -2,6 +2,10 @@ export * as Errors from './errors.js'
 export {
   execute,
   executeObservable,
+  graph,
+  type ExecutionGraph,
+  type ExecutionGraphJson,
+  type ExecutionGraphNode,
   type ExecutionResult,
   type ExecutionStatus,
   formatExecutionStatus,
@@ -12,6 +16,7 @@ export {
   type ObservableResult,
   resume,
   status,
+  toJsonGraph,
   toPayload,
 } from './execute.js'
 export * as Preflight from './preflight.js'

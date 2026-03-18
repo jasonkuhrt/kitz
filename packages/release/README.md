@@ -332,6 +332,7 @@ The `release` binary dispatches through file-based command routing:
 | `release forecast`                  | Show the current release forecast             |
 | `release plan --lifecycle <official | candidate                                     | ephemeral>` | Generate a release plan |
 | `release apply`                     | Execute the release plan                      |
+| `release graph`                     | Render the release execution DAG for the active plan |
 | `release resume`                    | Resume an interrupted release workflow        |
 | `release status`                    | Inspect durable workflow state for the active plan |
 | `release notes [pkg]`               | Output unreleased release notes               |
