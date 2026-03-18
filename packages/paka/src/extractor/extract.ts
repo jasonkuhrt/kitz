@@ -3,7 +3,7 @@ import { Fs } from '@kitz/fs'
 import { Schema as S } from 'effect'
 import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
-import { Project } from 'ts-morph'
+import { type ExportDeclaration, Project, type SourceFile } from 'ts-morph'
 import {
   Docs,
   DocsProvenance,
@@ -21,6 +21,7 @@ import {
 import { parseJSDoc } from './nodes/jsdoc.js'
 import { extractModuleFromFile } from './nodes/module.js'
 import { createBuildToSourcePath } from './path-utils.js'
+import { createSourceResolver, getPublicExportTargets } from './resolver.js'
 
 const JsonObjectSchema = S.Record(S.String, S.Unknown)
 const JsonObjectFromStringSchema = S.fromJsonString(JsonObjectSchema)
@@ -71,6 +72,20 @@ const getStringRecordProperty = (
     result[entryKey] = entryValue
   }
   return result
+}
+
+const resolveExportDeclarationSourceFile = (
+  sourceFile: SourceFile,
+  exportDecl: ExportDeclaration,
+  resolveModuleSourceFile?: (importerFilePath: string, specifier: string) => SourceFile | undefined,
+): SourceFile | undefined => {
+  const specifier = exportDecl.getModuleSpecifierValue()
+  if (!specifier) return exportDecl.getModuleSpecifierSourceFile()
+
+  return (
+    resolveModuleSourceFile?.(sourceFile.getFilePath(), specifier) ??
+    exportDecl.getModuleSpecifierSourceFile()
+  )
 }
 
 /**
@@ -475,29 +490,74 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
   )
 
   // Determine which entrypoints to extract
-  const exportsField = getStringRecordProperty(packageJson, 'exports')
-  if (!exportsField) {
+  const exportTargets = getPublicExportTargets(packageJson['exports'])
+  if (Object.keys(exportTargets).length === 0) {
     throw new Error('package.json missing "exports" field')
   }
 
-  const entrypointsToExtract = targetEntrypoints
-    ? Object.entries(exportsField).filter(([key]) => targetEntrypoints.includes(key))
-    : Object.entries(exportsField) // Extract ALL by default
+  const sourceResolver = createSourceResolver({
+    projectRoot,
+    tsconfigPath: resolvedTsconfigPath,
+    buildToSourcePath,
+  })
+
+  const resolveModuleSourceFile = (
+    importerFilePath: string,
+    specifier: string,
+  ): SourceFile | undefined =>
+    sourceResolver.resolveSourceFile(project, importerFilePath, specifier)
+
+  const entrypointResolutionCache = new Map<
+    string,
+    | { sourcePath: string; absoluteSourcePath: string; sourceFile: SourceFile | undefined }
+    | undefined
+  >()
+
+  const getEntrypointResolution = (
+    packagePath: string,
+  ):
+    | { sourcePath: string; absoluteSourcePath: string; sourceFile: SourceFile | undefined }
+    | undefined => {
+    if (entrypointResolutionCache.has(packagePath)) {
+      return entrypointResolutionCache.get(packagePath)
+    }
+
+    const buildPath = exportTargets[packagePath]
+    if (!buildPath) {
+      entrypointResolutionCache.set(packagePath, undefined)
+      return undefined
+    }
+
+    const sourcePath = buildToSourcePath(buildPath)
+    const absoluteSourcePath = join(projectRoot, sourcePath)
+    const sourceFile =
+      project.getSourceFile(absoluteSourcePath) ??
+      project.addSourceFileAtPathIfExists(absoluteSourcePath)
+
+    const resolution = { sourcePath, absoluteSourcePath, sourceFile }
+    entrypointResolutionCache.set(packagePath, resolution)
+    return resolution
+  }
+
+  const entrypointPathsToExtract = targetEntrypoints
+    ? Object.keys(exportTargets).filter((key) => targetEntrypoints.includes(key))
+    : Object.keys(exportTargets)
 
   // Extract each entrypoint
   const extractedEntrypoints: Entrypoint[] = []
 
-  for (const [packagePath, buildPath] of entrypointsToExtract) {
-    // Resolve build path to source path
-    const sourcePath = buildToSourcePath(buildPath)
-    const absoluteSourcePath = join(projectRoot, sourcePath)
+  for (const packagePath of entrypointPathsToExtract) {
+    const resolution = getEntrypointResolution(packagePath)
 
-    // Get source file
-    const sourceFile = project.getSourceFile(absoluteSourcePath)
-    if (!sourceFile) {
-      console.warn(`Warning: Could not find source file for ${packagePath} at ${sourcePath}`)
+    if (!resolution?.sourceFile) {
+      console.warn(
+        `Warning: Could not find source file for ${packagePath} at ${resolution?.sourcePath}`,
+      )
       continue
     }
+
+    const sourcePath = resolution.sourcePath
+    const sourceFile = resolution.sourceFile
 
     // Check for Drillable Namespace Pattern
     // Detection criteria vary by entrypoint type:
@@ -533,20 +593,20 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
         const subpathKey = `./${kebabName}`
 
         // Check if matching subpath exists in exports
-        if (!(subpathKey in exportsField)) continue
+        if (!(subpathKey in exportTargets)) continue
 
         // Resolve the file that the namespace export points to
-        const nsReferencedFile = exportDecl.getModuleSpecifierSourceFile()
+        const nsReferencedFile = resolveExportDeclarationSourceFile(
+          sourceFile,
+          exportDecl,
+          resolveModuleSourceFile,
+        )
         if (!nsReferencedFile) continue
 
         const nsFilePath = nsReferencedFile.getFilePath()
 
         // Resolve the file that the subpath export points to
-        const subpathBuildPath = exportsField[subpathKey]
-        if (!subpathBuildPath) continue
-        const subpathSourcePath = buildToSourcePath(subpathBuildPath)
-        const subpathAbsolutePath = join(projectRoot, subpathSourcePath)
-        const subpathFile = project.getSourceFile(subpathAbsolutePath)
+        const subpathFile = getEntrypointResolution(subpathKey)?.sourceFile
         if (!subpathFile) continue
 
         const subpathFilePath = subpathFile.getFilePath()
@@ -590,7 +650,11 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
 
         const nsName = namespaceExport.getName()
         if (nsName.toLowerCase() === expectedNsName.toLowerCase()) {
-          const nsReferencedFile = exportDecl.getModuleSpecifierSourceFile()
+          const nsReferencedFile = resolveExportDeclarationSourceFile(
+            sourceFile,
+            exportDecl,
+            resolveModuleSourceFile,
+          )
           if (nsReferencedFile && nsReferencedFile.getFilePath() !== sourceFile.getFilePath()) {
             isDrillableNamespace = true
             actualSourceFile = nsReferencedFile
@@ -621,7 +685,11 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
 
             const nsName = namespaceExport.getName()
             if (nsName.toLowerCase() === expectedNsName.toLowerCase()) {
-              const nsReferencedFile = exportDecl.getModuleSpecifierSourceFile()
+              const nsReferencedFile = resolveExportDeclarationSourceFile(
+                siblingFile,
+                exportDecl,
+                resolveModuleSourceFile,
+              )
               if (nsReferencedFile && nsReferencedFile.getFilePath() === sourceFile.getFilePath()) {
                 isDrillableNamespace = true
                 // Keep actualSourceFile as the barrel (entrypoint), use sibling's JSDoc
@@ -653,7 +721,7 @@ export const extract = (config: ExtractConfig): InterfaceModel => {
     let module = extractModuleFromFile(
       actualSourceFile,
       S.decodeSync(Fs.Path.RelFile.Schema)(relativeSourcePath),
-      { filterInternal: true, filterUnderscoreExports },
+      { filterInternal: true, filterUnderscoreExports, resolveModuleSourceFile },
     )
 
     // Apply pattern matching filter if provided

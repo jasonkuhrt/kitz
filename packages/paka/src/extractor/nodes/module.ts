@@ -201,7 +201,7 @@ const createNamespaceExport = (
   const jsdoc = overrideJsdoc ?? parseJSDoc(exportDecl)
 
   // Build docs and docsProvenance for namespace export
-  let docs: typeof ModuleDocs.Type | undefined
+  let docs: typeof Docs.Type | undefined
   let docsProvenance: typeof DocsProvenance.Type | undefined
 
   if (overrideJsdoc) {
@@ -209,7 +209,7 @@ const createNamespaceExport = (
     const description = overrideJsdoc.description || nestedModule.docs?.description
     const guide = overrideJsdoc.guide || nestedModule.docs?.guide
 
-    docs = description || guide ? ModuleDocs.make({ description, guide }) : undefined
+    docs = description || guide ? Docs.make({ description, guide }) : undefined
 
     // Track provenance
     const descriptionProv = overrideJsdoc.description
@@ -233,6 +233,11 @@ const createNamespaceExport = (
   } else {
     // No override - use nested module's docs
     docs = nestedModule.docs
+      ? Docs.make({
+          description: nestedModule.docs.description,
+          guide: nestedModule.docs.guide,
+        })
+      : undefined
     docsProvenance = nestedModule.docsProvenance
   }
 
@@ -325,6 +330,8 @@ export type ModuleExtractionOptions = {
   filterInternal?: boolean
   /** Filter exports starting with underscore _ prefix */
   filterUnderscoreExports?: boolean
+  /** Resolve a re-export specifier to a source file before falling back to ts-morph. */
+  resolveModuleSourceFile?: (importerFilePath: string, specifier: string) => SourceFile | undefined
 }
 
 /**
@@ -346,6 +353,20 @@ const shouldFilterExport = (
   }
 
   return false
+}
+
+const resolveExportDeclarationSourceFile = (
+  sourceFile: SourceFile,
+  exportDecl: ExportDeclaration,
+  options: ModuleExtractionOptions,
+): SourceFile | undefined => {
+  const specifier = exportDecl.getModuleSpecifierValue()
+  if (!specifier) return exportDecl.getModuleSpecifierSourceFile()
+
+  return (
+    options.resolveModuleSourceFile?.(sourceFile.getFilePath(), specifier) ??
+    exportDecl.getModuleSpecifierSourceFile()
+  )
 }
 
 /**
@@ -374,7 +395,7 @@ export const extractModuleFromFile = (
     if (namespaceExport) {
       // This is a namespace re-export: export * as Name from './path'
       const nsName = namespaceExport.getName()
-      const referencedFile = exportDecl.getModuleSpecifierSourceFile()
+      const referencedFile = resolveExportDeclarationSourceFile(sourceFile, exportDecl, options)
 
       if (referencedFile) {
         // Extract the referenced module with its file location
@@ -412,14 +433,18 @@ export const extractModuleFromFile = (
     } else {
       // This is a wildcard re-export: export * from './path'
       // Process namespace exports from the referenced file
-      const referencedFile = exportDecl.getModuleSpecifierSourceFile()
+      const referencedFile = resolveExportDeclarationSourceFile(sourceFile, exportDecl, options)
       if (referencedFile) {
         const nestedExportDecls = referencedFile.getExportDeclarations()
         for (const nestedExportDecl of nestedExportDecls) {
           const nestedNsExport = nestedExportDecl.getNamespaceExport()
           if (nestedNsExport) {
             const nsName = nestedNsExport.getName()
-            const nsFile = nestedExportDecl.getModuleSpecifierSourceFile()
+            const nsFile = resolveExportDeclarationSourceFile(
+              referencedFile,
+              nestedExportDecl,
+              options,
+            )
             if (nsFile) {
               const nsLocation = S.decodeSync(Fs.Path.RelFile.Schema)(
                 absoluteToRelative(nsFile.getFilePath()),
