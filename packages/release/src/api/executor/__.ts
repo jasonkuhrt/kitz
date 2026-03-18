@@ -3,11 +3,14 @@ export {
   execute,
   executeObservable,
   type ExecutionResult,
+  type ExecutionStatus,
+  formatExecutionStatus,
   formatLifecycleEvent,
   type ObservableExecutionError,
   type LifecycleEventLine,
   type ObservableExecutionRequirements,
   type ObservableResult,
+  status,
   toPayload,
 } from './execute.js'
 export * as Preflight from './preflight.js'

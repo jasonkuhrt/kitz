@@ -6,6 +6,7 @@
  */
 
 import { ChildProcessSpawner } from 'effect/unstable/process'
+import { Workflow as DurableWorkflow, WorkflowEngine } from 'effect/unstable/workflow'
 import { FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Flo } from '@kitz/flo'
@@ -13,7 +14,7 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
-import { Config, Effect, HashMap, Match, Option, Schema, Stream } from 'effect'
+import { Cause, Config, Effect, Exit, HashMap, Match, Option, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
 import type { Publishing } from '../publishing.js'
 import {
@@ -76,6 +77,37 @@ export interface LifecycleEventLine {
   readonly message: string
 }
 
+interface ExecutionStatusBase {
+  readonly executionId: string
+  readonly lifecycle: Plan['lifecycle']
+  readonly plannedPackages: readonly string[]
+}
+
+export interface ExecutionStatusNotStarted extends ExecutionStatusBase {
+  readonly state: 'not-started'
+}
+
+export interface ExecutionStatusSuspended extends ExecutionStatusBase {
+  readonly state: 'suspended'
+  readonly detail: string | null
+}
+
+export interface ExecutionStatusSucceeded extends ExecutionStatusBase {
+  readonly state: 'succeeded'
+  readonly summary: ExecutionResult
+}
+
+export interface ExecutionStatusFailed extends ExecutionStatusBase {
+  readonly state: 'failed'
+  readonly detail: string
+}
+
+export type ExecutionStatus =
+  | ExecutionStatusNotStarted
+  | ExecutionStatusSuspended
+  | ExecutionStatusSucceeded
+  | ExecutionStatusFailed
+
 const WorkflowExecutionSchema = Schema.Struct({
   publishes: Schema.Array(Schema.String),
   createTags: Schema.Array(Schema.String),
@@ -98,6 +130,85 @@ const normalizeWorkflowResult = (result: unknown): ExecutionResult =>
       }),
     ),
   )
+
+const summarizeWorkflowStatus = (params: {
+  readonly plan: Plan
+  readonly payload: ReleasePayloadType
+  readonly executionId: string
+  readonly result: DurableWorkflow.Result<unknown, ExecutorError> | undefined
+}): ExecutionStatus => {
+  const base = {
+    executionId: params.executionId,
+    lifecycle: params.plan.lifecycle,
+    plannedPackages: params.payload.releases.map((release) => release.packageName),
+  } satisfies ExecutionStatusBase
+
+  if (params.result === undefined) {
+    return {
+      ...base,
+      state: 'not-started',
+    }
+  }
+
+  if (params.result._tag === 'Suspended') {
+    return {
+      ...base,
+      state: 'suspended',
+      detail: params.result.cause ? Cause.pretty(params.result.cause).trim() : null,
+    }
+  }
+
+  if (Exit.isSuccess(params.result.exit)) {
+    return {
+      ...base,
+      state: 'succeeded',
+      summary: normalizeWorkflowResult(params.result.exit.value),
+    }
+  }
+
+  return {
+    ...base,
+    state: 'failed',
+    detail: Cause.pretty(params.result.exit.cause).trim(),
+  }
+}
+
+export const formatExecutionStatus = (status: ExecutionStatus): string => {
+  const lines = [
+    `Release workflow status: ${status.state}`,
+    `Execution ID: ${status.executionId}`,
+    `Lifecycle: ${status.lifecycle}`,
+    `Packages: ${status.plannedPackages.join(', ') || '(none)'}`,
+  ]
+
+  if (status.state === 'not-started') {
+    lines.push('No persisted workflow state exists for this plan yet.')
+    return lines.join('\n')
+  }
+
+  if (status.state === 'suspended') {
+    if (status.detail) {
+      lines.push('')
+      lines.push('Suspended on:')
+      lines.push(status.detail)
+    }
+    lines.push('')
+    lines.push('Resume: fix the blocking issue, then rerun `release apply` with the same plan.')
+    return lines.join('\n')
+  }
+
+  if (status.state === 'failed') {
+    lines.push('')
+    lines.push('Failure:')
+    lines.push(status.detail)
+    return lines.join('\n')
+  }
+
+  lines.push(`Released packages: ${status.summary.releasedPackages.join(', ') || '(none)'}`)
+  lines.push(`Created tags: ${status.summary.createdTags.join(', ') || '(none)'}`)
+  lines.push(`GitHub releases: ${status.summary.createdGHReleases.join(', ') || '(none)'}`)
+  return lines.join('\n')
+}
 
 /**
  * Convert workflow lifecycle events to printable log lines.
@@ -326,6 +437,33 @@ export const execute = (
 
     yield* Effect.log(`Workflow complete: ${summary.releasedPackages.length} packages released`)
     return summary
+  })
+
+export const status = (
+  plan: Plan,
+  options: {
+    dryRun?: boolean
+    tag?: string
+    registry?: string
+    publishing?: Publishing
+    trunk?: string
+  } = {},
+): Effect.Effect<
+  ExecutionStatus,
+  ExecutorDependencyCycleError,
+  FileSystem.FileSystem | WorkflowEngine.WorkflowEngine
+> =>
+  Effect.gen(function* () {
+    const payload = yield* toPayload(plan, options)
+    const executionId = yield* ReleaseWorkflow.executionId(payload)
+    const result = yield* ReleaseWorkflow.poll(payload)
+
+    return summarizeWorkflowStatus({
+      plan,
+      payload,
+      executionId,
+      result,
+    })
   })
 
 /**
