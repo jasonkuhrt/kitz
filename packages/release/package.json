@@ -30,7 +30,7 @@
     "check:types": "tsgo --noEmit",
     "check:lint": "oxlint src/",
     "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error",
-    "test": "vitest run --root ../.. packages/release/src"
+    "test": "cd ../.. && vitest run --dir packages/release/src"
   },
   "bin": {
     "release": "./build/cli/cli.js"
