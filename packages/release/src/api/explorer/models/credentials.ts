@@ -12,5 +12,5 @@ export interface GithubCredentials {
 export interface NpmCredentials {
   readonly authenticated: boolean
   readonly username: string | null
-  readonly registry: string
+  readonly registry: string | null
 }

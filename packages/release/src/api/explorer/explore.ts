@@ -1,6 +1,7 @@
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
+import { NpmRegistry } from '@kitz/npm-registry'
 import { Effect } from 'effect'
 import type { RuntimeConfig } from '../executor/runtime.js'
 import { ExplorerError } from './errors.js'
@@ -90,7 +91,7 @@ export const resolveReleaseTarget = (
 
     const git = yield* Git.Git
     const remoteUrl = yield* git.getRemoteUrl('origin').pipe(
-      Effect.catch((error: any) =>
+      Effect.catchTag('GitError', (error) =>
         Effect.fail(
           new ExplorerError({
             context: {
@@ -125,6 +126,44 @@ const resolveGithubToken = (vars: Record<string, string | undefined>): string | 
   if (!token || token.trim() === '') return null
   return token
 }
+
+const resolveExplicitNpmRegistry = (vars: Record<string, string | undefined>): string | null =>
+  vars['NPM_CONFIG_REGISTRY'] ?? vars['npm_config_registry'] ?? null
+
+const resolveNpmCredentials = (
+  vars: Record<string, string | undefined>,
+): Effect.Effect<Recon['npm'], never, NpmRegistry.NpmCli> =>
+  Effect.gen(function* () {
+    const cli = yield* NpmRegistry.NpmCli
+    const registry = resolveExplicitNpmRegistry(vars)
+    const whoamiResult = yield* cli.whoami(registry ? { registry } : undefined).pipe(Effect.result)
+
+    if (whoamiResult._tag === 'Success') {
+      return {
+        authenticated: true,
+        username: whoamiResult.success,
+        registry,
+      }
+    }
+
+    return {
+      authenticated: false,
+      username: null,
+      registry,
+    }
+  })
+
+const resolveGitRemotes = (): Effect.Effect<Recon['git']['remotes'], never, Git.Git> =>
+  Effect.gen(function* () {
+    const git = yield* Git.Git
+    const origin = yield* git.getRemoteUrl('origin').pipe(Effect.option)
+
+    if (origin._tag === 'Some') {
+      return { origin: origin.value }
+    }
+
+    return {}
+  })
 
 export const selectConnectedPullRequestNumber = (
   branch: string,
@@ -242,7 +281,7 @@ export const resolvePrNumber = (): Effect.Effect<
 export const explore = (): Effect.Effect<
   Recon,
   ExplorerError | Git.GitError | Git.GitParseError,
-  Env.Env | Git.Git
+  Env.Env | Git.Git | NpmRegistry.NpmCli
 > =>
   Effect.gen(function* () {
     const env = yield* Env.Env
@@ -257,6 +296,8 @@ export const explore = (): Effect.Effect<
     const branch = yield* git.getCurrentBranch()
     const headSha = yield* git.getHeadSha()
     const isClean = yield* git.isClean()
+    const npm = yield* resolveNpmCredentials(vars)
+    const remotes = yield* resolveGitRemotes()
 
     // Detect shallow clone (CI environments commonly use --depth=1)
     const isShallow =
@@ -278,16 +319,12 @@ export const explore = (): Effect.Effect<
           ? { token: githubToken, source: 'env:GITHUB_TOKEN' as const }
           : null,
       },
-      npm: {
-        authenticated: false,
-        username: null,
-        registry: 'https://registry.npmjs.org',
-      },
+      npm,
       git: {
         clean: isClean,
         branch,
         headSha,
-        remotes: {},
+        remotes,
       },
     } satisfies Recon
   })
