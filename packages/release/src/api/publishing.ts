@@ -52,16 +52,16 @@ export class Publishing extends Schema.Class<Publishing>('Publishing')({
   ephemeral: PublishChannel.pipe(Schema.withDecodingDefaultKey(defaultManualChannel)),
 }) {
   static is = Schema.is(Publishing)
-  static decode = Schema.decode(Publishing)
-  static decodeSync = Schema.decodeSync(Publishing)
-  static encode = Schema.encode(Publishing)
-  static encodeSync = Schema.encodeSync(Publishing)
+  static decode = Schema.decodeUnknownEffect(Publishing)
+  static decodeSync = Schema.decodeUnknownSync(Publishing)
+  static encode = Schema.encodeUnknownEffect(Publishing)
+  static encodeSync = Schema.encodeUnknownSync(Publishing)
   static equivalence = Schema.toEquivalence(Publishing)
   static ordered = false as const
   static make = this.makeUnsafe
 }
 
-export const defaultPublishing = (): Publishing => Schema.decodeSync(Publishing)({})
+export const defaultPublishing = (): Publishing => Publishing.decodeSync({})
 
 export const resolvePublishChannel = (
   publishing: Publishing,
