@@ -10,7 +10,7 @@ import { FileSystem } from 'effect'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
-import { Effect, HashMap, HashSet, MutableHashSet, Option } from 'effect'
+import { Effect, Exit, HashMap, HashSet, MutableHashSet, Option } from 'effect'
 import { buildDependencyGraph } from './cascade.js'
 import { Analysis } from './models/analysis.js'
 import { CascadeImpact } from './models/cascade-impact.js'
@@ -37,41 +37,89 @@ export interface AnalyzeOptions {
   readonly exclude?: readonly string[] | undefined
 }
 
-/**
- * Find the last release tag across all packages.
- */
-const findLastReleaseTag = (
-  packages: readonly Package[],
-  tags: readonly string[],
-): Effect.Effect<string | undefined, Git.GitError | Git.GitParseError, Git.Git> =>
-  Effect.gen(function* () {
-    const candidates = MutableHashSet.empty<string>()
+const findLatestReleaseTag = (pkg: Package, tags: readonly string[]): string | undefined => {
+  const version = findLatestTagVersion(pkg.name, tags as string[])
+  return Option.isSome(version)
+    ? Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version: version.value }))
+    : undefined
+}
 
-    for (const pkg of packages) {
-      const version = findLatestTagVersion(pkg.name, tags as string[])
-      if (Option.isSome(version)) {
-        MutableHashSet.add(
-          candidates,
-          Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version: version.value })),
-        )
-      }
+const trimCommitsUntilBoundary = (
+  commits: readonly Git.Commit[],
+  until: string | undefined,
+  tags: readonly string[],
+): Effect.Effect<readonly Git.Commit[], Git.GitError | Git.GitParseError, Git.Git> =>
+  Effect.gen(function* () {
+    if (!until) return commits
+
+    const boundaryIndex = commits.findIndex(
+      (commit) =>
+        commit.hash === until || commit.hash.startsWith(until) || until.startsWith(commit.hash),
+    )
+
+    if (boundaryIndex >= 0) {
+      return commits.slice(boundaryIndex)
     }
 
-    if (MutableHashSet.size(candidates) === 0) return undefined
+    if (!tags.includes(until)) {
+      return commits
+    }
 
     const git = yield* Git.Git
-    let closestTag: string | undefined
-    let closestDistance = Number.POSITIVE_INFINITY
+    const newerCommitsExit = yield* Effect.exit(git.getCommitsSince(until))
+    const newerHashes = HashSet.fromIterable(
+      Exit.isSuccess(newerCommitsExit)
+        ? newerCommitsExit.value.map((commit: { hash: string }) => commit.hash)
+        : [],
+    )
 
-    for (const tag of candidates) {
-      const commitsSince = yield* git.getCommitsSince(tag)
-      if (commitsSince.length < closestDistance) {
-        closestTag = tag
-        closestDistance = commitsSince.length
+    return commits.filter((commit) => !HashSet.has(newerHashes, commit.hash))
+  })
+
+const collectScopedCommits = (
+  options: AnalyzeOptions,
+): Effect.Effect<
+  {
+    readonly commits: readonly Git.Commit[]
+    readonly allowedHashesByScope: HashMap.HashMap<string, HashSet.HashSet<string>>
+  },
+  Git.GitError | Git.GitParseError,
+  Git.Git
+> =>
+  Effect.gen(function* () {
+    const git = yield* Git.Git
+    const cache: Array<{ since: string | undefined; commits: readonly Git.Commit[] }> = []
+    const allowedHashesByScopeEntries: Array<[string, HashSet.HashSet<string>]> = []
+    const uniqueCommits: Git.Commit[] = []
+    const seenHashes = MutableHashSet.empty<string>()
+
+    for (const pkg of options.packages) {
+      const since = options.since ?? findLatestReleaseTag(pkg, options.tags)
+      let cached = cache.find((entry) => entry.since === since)
+
+      if (!cached) {
+        const commits = yield* git.getCommitsSince(since)
+        const trimmedCommits = yield* trimCommitsUntilBoundary(commits, options.until, options.tags)
+        cached = { since, commits: trimmedCommits }
+        cache.push(cached)
+      }
+
+      allowedHashesByScopeEntries.push([
+        pkg.scope,
+        HashSet.fromIterable(cached.commits.map((commit) => commit.hash)),
+      ])
+
+      for (const commit of cached.commits) {
+        if (MutableHashSet.has(seenHashes, commit.hash)) continue
+        MutableHashSet.add(seenHashes, commit.hash)
+        uniqueCommits.push(commit)
       }
     }
 
-    return closestTag
+    return {
+      commits: uniqueCommits,
+      allowedHashesByScope: HashMap.fromIterable(allowedHashesByScopeEntries),
+    }
   })
 
 /**
@@ -106,33 +154,10 @@ export const analyze = (
   Git.Git | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
-    const git = yield* Git.Git
     const { packages, tags, filter, exclude } = options
 
     // ── Step 1: Fetch commits since last release ──────────────────────
-    const since = options.since ?? (yield* findLastReleaseTag(packages, tags))
-    let commits = yield* git.getCommitsSince(since)
-
-    // Apply optional upper boundary (until), trimming newer commits.
-    if (options.until) {
-      const until = options.until
-      const boundaryIndex = commits.findIndex(
-        (commit) =>
-          commit.hash === until || commit.hash.startsWith(until) || until.startsWith(commit.hash),
-      )
-
-      if (boundaryIndex >= 0) {
-        commits = commits.slice(boundaryIndex)
-      } else if (tags.includes(until)) {
-        const newerCommits = yield* git
-          .getCommitsSince(until)
-          .pipe(Effect.catch(() => Effect.succeed([] as { hash: string }[])))
-        const newerHashes = HashSet.fromIterable(
-          newerCommits.map((commit: { hash: string }) => commit.hash),
-        )
-        commits = commits.filter((commit) => !HashSet.has(newerHashes, commit.hash))
-      }
-    }
+    const { commits, allowedHashesByScope } = yield* collectScopedCommits(options)
 
     // ── Step 2: Extract impacts from all commits ──────────────────────
     // Unbounded concurrency is safe here: extractImpacts is pure (CPU-only,
@@ -143,7 +168,10 @@ export const analyze = (
       commits.map((c) => extractImpacts(c)),
       { concurrency: 'unbounded' },
     )
-    const flatImpacts = allImpacts.flat()
+    const flatImpacts = allImpacts.flat().filter((impact) => {
+      const allowedHashes = Option.getOrUndefined(HashMap.get(allowedHashesByScope, impact.scope))
+      return allowedHashes ? HashSet.has(allowedHashes, impact.commit.hash) : false
+    })
 
     // ── Step 3: Aggregate by package ──────────────────────────────────
     const aggregated = aggregateByPackage(flatImpacts)
