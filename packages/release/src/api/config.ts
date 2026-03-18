@@ -49,11 +49,11 @@ export class Config extends Schema.Class<Config>('Config')({
   lint: Schema.optional(LintConfig.Config),
 }) {
   static is = Schema.is(Config)
-  static decode = Schema.decode(Config)
-  static decodeSync = Schema.decodeSync(Config)
-  static encode = Schema.encode(Config)
-  static encodeSync = Schema.encodeSync(Config)
-  static equivalence = Schema.equivalence(Config)
+  static decode = Schema.decodeUnknownEffect(Config)
+  static decodeSync = Schema.decodeUnknownSync(Config)
+  static encode = Schema.encodeUnknownEffect(Config)
+  static encodeSync = Schema.encodeUnknownSync(Config)
+  static equivalence = Schema.toEquivalence(Config)
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -71,11 +71,11 @@ export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig
   lint: LintConfig.ResolvedConfig,
 }) {
   static is = Schema.is(ResolvedConfig)
-  static decode = Schema.decode(ResolvedConfig)
-  static decodeSync = Schema.decodeSync(ResolvedConfig)
-  static encode = Schema.encode(ResolvedConfig)
-  static encodeSync = Schema.encodeSync(ResolvedConfig)
-  static equivalence = Schema.equivalence(ResolvedConfig)
+  static decode = Schema.decodeUnknownEffect(ResolvedConfig)
+  static decodeSync = Schema.decodeUnknownSync(ResolvedConfig)
+  static encode = Schema.encodeUnknownEffect(ResolvedConfig)
+  static encodeSync = Schema.encodeUnknownSync(ResolvedConfig)
+  static equivalence = Schema.toEquivalence(ResolvedConfig)
   static ordered = false as const
   static make = this.makeUnsafe
 }

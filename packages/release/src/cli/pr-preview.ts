@@ -1,8 +1,8 @@
-import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
-import { Data, Effect, HashSet, Layer, MutableHashSet } from 'effect'
+import { Data, Effect, Layer } from 'effect'
 import * as Api from '../api/__.js'
+import { loadConfiguredPullRequestDiff } from './pr-preview-diff.js'
 
 const previewDoctorRuleIds = [
   'env.publish-channel-ready',
@@ -40,54 +40,6 @@ const enableRule = (
       ...ruleOptions,
     },
   })
-}
-
-const parseDiffStatus = (token: string): Api.Lint.ChangedFile['status'] => {
-  switch (token[0]) {
-    case 'A':
-      return 'added'
-    case 'D':
-      return 'deleted'
-    case 'R':
-      return 'renamed'
-    default:
-      return 'modified'
-  }
-}
-
-const parseDiffLine = (line: string): Api.Lint.ChangedFile | null => {
-  const parts = line.split('\t')
-  const statusToken = parts[0]?.trim()
-  if (!statusToken) return null
-
-  const path =
-    statusToken.startsWith('R') || statusToken.startsWith('C')
-      ? (parts[2]?.trim() ?? parts[1]?.trim())
-      : parts[1]?.trim()
-
-  if (!path) return null
-
-  return {
-    path,
-    status: parseDiffStatus(statusToken),
-  }
-}
-
-const toAffectedPackages = (
-  files: readonly Api.Lint.ChangedFile[],
-  packages: readonly Api.Analyzer.Workspace.Package[],
-): readonly string[] => {
-  const scopes = HashSet.fromIterable(packages.map((pkg) => pkg.scope))
-  const affected = MutableHashSet.empty<string>()
-
-  for (const file of files) {
-    const [root, scope] = file.path.split('/')
-    if (root === 'packages' && scope && HashSet.has(scopes, scope)) {
-      MutableHashSet.add(affected, scope)
-    }
-  }
-
-  return Array.from(affected).toSorted((left, right) => left.localeCompare(right))
 }
 
 const hasBlockingViolations = (report: Api.Lint.Report): boolean =>
@@ -194,73 +146,6 @@ export const upsertPullRequestPreviewComment = (params: PreviewCommentUpdatePara
       body,
       issueComment,
     } satisfies PreviewCommentUpdateResult
-  })
-
-export const loadPullRequestDiff = (params: {
-  readonly pullRequest: Github.PullRequest
-  readonly packages: readonly Api.Analyzer.Workspace.Package[]
-  readonly required: boolean
-}) =>
-  Effect.gen(function* () {
-    const git = yield* Git.Git
-    const root = yield* git.getRoot()
-    const baseRef = params.pullRequest.base.ref.trim()
-
-    if (baseRef.length === 0) {
-      return params.required
-        ? yield* Effect.fail(
-            new Api.Explorer.ExplorerError({
-              context: {
-                detail:
-                  'Connected pull request is missing a base ref, so release preview cannot compute the PR diff.',
-              },
-            }),
-          )
-        : null
-    }
-
-    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-    const command = ChildProcess.make(
-      'git',
-      ['diff', '--name-status', `origin/${baseRef}...HEAD`],
-      {
-        cwd: root,
-      },
-    )
-    const output = yield* spawner.string(command).pipe(
-      Effect.result,
-      Effect.flatMap((result) => {
-        if (result._tag === 'Success') return Effect.succeed(result.success)
-
-        if (!params.required) {
-          return Effect.logWarning(
-            `Skipping diff-aware release checks because git diff against origin/${baseRef} could not be computed: ${result.failure instanceof Error ? result.failure.message : JSON.stringify(result.failure)}`,
-          ).pipe(Effect.as(''))
-        }
-
-        return Effect.fail(
-          new Api.Explorer.ExplorerError({
-            context: {
-              detail:
-                `Could not compute git diff against origin/${baseRef}. ` +
-                'Fetch the pull-request base branch before running release preview or doctor.',
-            },
-          }),
-        )
-      }),
-    )
-
-    const files = output
-      .split('\n')
-      .map((line: string) => line.trim())
-      .filter((line: string) => line.length > 0)
-      .map(parseDiffLine)
-      .filter((entry: any): entry is Api.Lint.ChangedFile => entry !== null)
-
-    return {
-      files,
-      affectedPackages: toAffectedPackages(files, params.packages),
-    }
   })
 
 export const buildPreviewDoctorSummary = (params: {
@@ -494,7 +379,8 @@ export const runPrPreview = (options: RunPrPreviewOptions = {}) =>
       actualTitle: pullRequest.title,
       impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis),
     })
-    const diff = yield* loadPullRequestDiff({
+    const diff = yield* loadConfiguredPullRequestDiff({
+      config,
       pullRequest,
       packages,
       required: true,
