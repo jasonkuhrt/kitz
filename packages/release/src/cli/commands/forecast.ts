@@ -10,6 +10,7 @@ import { FileSystem } from 'effect'
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
+import { NpmRegistry } from '@kitz/npm-registry'
 import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Option, Schema, SchemaGetter } from 'effect'
 import * as Api from '../../api/__.js'
@@ -40,8 +41,11 @@ const args = Oak.Command.create()
   .parse()
 
 const spawnerLayer = ChildProcessSpawnerLayer
+const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(spawnerLayer))
 
-Cli.run(Layer.mergeAll(Env.Live, ServicesLayer, FileSystemLayer, Git.GitLive, spawnerLayer))(
+Cli.run(
+  Layer.mergeAll(Env.Live, ServicesLayer, FileSystemLayer, Git.GitLive, spawnerLayer, npmLayer),
+)(
   Effect.gen(function* () {
     const input = yield* args.fromFile
       ? loadForecastInputFromFile(args.fromFile)

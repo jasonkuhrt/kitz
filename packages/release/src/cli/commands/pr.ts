@@ -20,6 +20,7 @@ import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
+import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Layer } from 'effect'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
@@ -57,6 +58,8 @@ const parseAction = (args: readonly string[]): ParsedAction | null => {
   }
   return null
 }
+
+const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
 
 interface PreparedPrTitle {
   readonly pullRequest: {
@@ -123,7 +126,7 @@ const preparePrTitle = Effect.gen(function* () {
   } satisfies PreparedPrTitle
 })
 
-Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, ChildProcessSpawnerLayer))(
+Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, ChildProcessSpawnerLayer, npmLayer))(
   Effect.gen(function* () {
     const env = yield* Env.Env
     const argv = yield* Cli.parseArgv(env.argv)
