@@ -1,10 +1,15 @@
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import os from 'node:os'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Test } from '@kitz/test'
-import { Effect, Layer, Option } from 'effect'
+import { Effect, Layer, Option, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { Analyzer, Planner } from './__.js'
 
@@ -62,6 +67,29 @@ const expectVersion = (actual: Semver.Semver | undefined, expected: string) => {
   expect(Semver.equivalence(actual!, Semver.fromString(expected))).toBe(true)
 }
 
+const JsonRecordFromStringSchema = Schema.fromJsonString(
+  Schema.Record(Schema.String, Schema.Unknown),
+)
+const decodeJsonRecordSync = Schema.decodeUnknownSync(JsonRecordFromStringSchema)
+
+const getOptionalStringField = (
+  record: Record<string, unknown>,
+  key: string,
+): string | undefined => {
+  const value = record[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+const getOptionalRecordField = (
+  record: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> | undefined => {
+  const value = record[key]
+  return typeof value === 'object' && value !== null
+    ? (value as Record<string, unknown>)
+    : undefined
+}
+
 /**
  * Pipeline helper: analyze → plan official.
  * Mirrors the two-step pipeline CLI commands use.
@@ -104,6 +132,124 @@ const analyzeAndPlanEphemeral = (
     const analysis = yield* Analyzer.analyze({ packages, tags })
     return yield* Planner.ephemeral(analysis, { packages }, options)
   })
+
+describe('release package scripts', () => {
+  test('pins the package test script to the local release src tree', () => {
+    const packageJson = decodeJsonRecordSync(
+      readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+    )
+
+    const scripts = getOptionalRecordField(packageJson, 'scripts')
+    const testScript = scripts ? getOptionalStringField(scripts, 'test') : undefined
+    expect(testScript).toBeDefined()
+
+    const projectDir = mkdtempSync(path.join(os.tmpdir(), 'kitz-release-test-scope-'))
+    const releaseDir = path.join(projectDir, 'packages', 'release')
+
+    try {
+      mkdirSync(path.join(releaseDir, 'src'), { recursive: true })
+      mkdirSync(
+        path.join(projectDir, '.claude', 'worktrees', 'mirror', 'packages', 'release', 'src'),
+        {
+          recursive: true,
+        },
+      )
+
+      writeFileSync(
+        path.join(projectDir, 'vitest.config.ts'),
+        [
+          `import { defineConfig } from 'vitest/config'`,
+          ``,
+          `export default defineConfig({`,
+          `  test: {`,
+          `    globals: false,`,
+          `    globalSetup: ['./vitest.global-setup.ts'],`,
+          `  },`,
+          `})`,
+          ``,
+        ].join('\n'),
+        'utf8',
+      )
+      writeFileSync(
+        path.join(projectDir, 'vitest.global-setup.ts'),
+        `export default async function setup() {}\n`,
+        'utf8',
+      )
+      writeFileSync(
+        path.join(releaseDir, 'package.json'),
+        JSON.stringify(
+          {
+            name: '@kitz/release-test-scope',
+            private: true,
+            type: 'module',
+            scripts: {
+              test: testScript,
+            },
+          },
+          null,
+          2,
+        ) + '\n',
+        'utf8',
+      )
+      writeFileSync(
+        path.join(releaseDir, 'src', 'real.test.ts'),
+        [
+          `import { expect, test } from 'vitest'`,
+          ``,
+          `test('real release test runs', () => {`,
+          `  expect(true).toBe(true)`,
+          `})`,
+          ``,
+        ].join('\n'),
+        'utf8',
+      )
+      writeFileSync(
+        path.join(
+          projectDir,
+          '.claude',
+          'worktrees',
+          'mirror',
+          'packages',
+          'release',
+          'src',
+          'mirrored.test.ts',
+        ),
+        [
+          `import { test } from 'vitest'`,
+          ``,
+          `test('mirrored worktree test should not run', () => {`,
+          `  throw new Error('mirrored worktree test should not run')`,
+          `})`,
+          ``,
+        ].join('\n'),
+        'utf8',
+      )
+
+      const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
+      symlinkSync(path.join(repoRoot, 'node_modules'), path.join(projectDir, 'node_modules'))
+      const result = spawnSync('/bin/sh', ['-lc', `${testScript} --reporter=verbose`], {
+        cwd: releaseDir,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: `${path.join(repoRoot, 'node_modules', '.bin')}:${process.env['PATH'] ?? ''}`,
+        },
+      })
+
+      if (result.error) {
+        throw result.error
+      }
+
+      const output = `${result.stdout}\n${result.stderr}`
+      expect(result.status).toBe(0)
+      expect(output).toContain('real release test runs')
+      expect(output).not.toContain('mirrored worktree test should not run')
+      expect(output).not.toContain('.claude/worktrees')
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true })
+    }
+  })
+})
 
 // ─── Planner.official ────────────────────────────────────────────────
 
