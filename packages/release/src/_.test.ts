@@ -11,6 +11,7 @@ import { Semver } from '@kitz/semver'
 import { Test } from '@kitz/test'
 import { Effect, Layer, Option, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
+import * as ReleaseConfig from './api/config.js'
 import { Analyzer, Planner } from './__.js'
 
 // ─── Test Helpers ───────────────────────────────────────────────────
@@ -134,6 +135,14 @@ const analyzeAndPlanEphemeral = (
   })
 
 describe('release package scripts', () => {
+  test('does not expose inert skipNpm configuration', () => {
+    expect('skipNpm' in ReleaseConfig.Config.fields).toBe(false)
+    expect('skipNpm' in ReleaseConfig.ResolvedConfig.fields).toBe(false)
+
+    const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
+    expect(readme).not.toContain('skipNpm')
+  })
+
   test('pins the package test script to the local release src tree', () => {
     const packageJson = decodeJsonRecordSync(
       readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
