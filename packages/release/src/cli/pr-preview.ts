@@ -7,7 +7,7 @@ import {
   createCommandLintConfig,
   type CommandLintRuleSpec,
 } from './lint-rule-config.js'
-import { loadConfiguredPullRequestDiff } from './pr-preview-diff.js'
+import { loadConfiguredPullRequestDiff, resolveDiffRemote } from './pr-preview-diff.js'
 
 const manualPreviewDeferredRules = [
   Api.Lint.Rules.EnvNpmAuthenticated,
@@ -43,6 +43,7 @@ export class PreviewBlockingError extends Data.TaggedError('PreviewBlockingError
 
 export interface RunPrPreviewOptions {
   readonly checkOnly?: boolean
+  readonly remote?: string
 }
 
 export interface PreviewCommentUpdateParams {
@@ -131,6 +132,7 @@ export const buildPreviewDoctorSummary = (params: {
   readonly pullRequest: Github.PullRequest
   readonly projectedSquashCommit?: Api.ProjectedSquashCommit.Preview
   readonly diff: Api.Lint.Diff
+  readonly explicitDiffRemote?: string
   readonly blockingTitleChecks: boolean
 }) =>
   Effect.gen(function* () {
@@ -263,7 +265,10 @@ export const buildPreviewDoctorSummary = (params: {
                 commands: [
                   ...params.config.operator.prepareCommands,
                   `PR_NUMBER=${String(plan.releases.find(Api.Planner.Ephemeral.is)?.prerelease.prNumber ?? params.pullRequest.number)} ${appendReleaseCommand(params.config.operator.releaseCommand, 'plan --lifecycle ephemeral')}`,
-                  appendReleaseCommand(params.config.operator.releaseCommand, 'doctor'),
+                  appendReleaseCommand(
+                    params.config.operator.releaseCommand,
+                    renderDoctorCommandSuffix(params.explicitDiffRemote),
+                  ),
                   appendReleaseCommand(params.config.operator.releaseCommand, 'apply --yes'),
                 ],
                 note:
@@ -279,7 +284,9 @@ export const buildPreviewDoctorSummary = (params: {
                         preventsDescriptions: rule.data.preventsDescriptions,
                         checkCommand: appendReleaseCommand(
                           params.config.operator.releaseCommand,
-                          `doctor --onlyRule ${rule.data.id}`,
+                          renderDoctorCommandSuffix(params.explicitDiffRemote, [
+                            `--onlyRule ${rule.data.id}`,
+                          ]),
                         ),
                       },
                     ]
@@ -340,11 +347,13 @@ export const runPrPreview = (options: RunPrPreviewOptions = {}) =>
       actualTitle: pullRequest.title,
       impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis),
     })
+    const diffRemote = loadDiffRemote(config, options.remote)
     const diff = yield* loadConfiguredPullRequestDiff({
       config,
       pullRequest,
       packages,
       required: true,
+      ...(options.remote ? { remote: options.remote } : {}),
     })
 
     const doctor = yield* buildPreviewDoctorSummary({
@@ -354,6 +363,7 @@ export const runPrPreview = (options: RunPrPreviewOptions = {}) =>
       pullRequest,
       ...(projectedSquashCommit ? { projectedSquashCommit } : {}),
       diff: diff ?? { files: [], affectedPackages: [] },
+      ...(options.remote ? { explicitDiffRemote: diffRemote } : {}),
       blockingTitleChecks: true,
     })
 
@@ -395,3 +405,18 @@ export const runPrPreview = (options: RunPrPreviewOptions = {}) =>
       ...preview,
     } satisfies RunPrPreviewResult
   })
+
+const loadDiffRemote = (config: Api.Config.ResolvedConfig, remote?: string): string =>
+  resolveDiffRemote(config, remote)
+
+const renderDoctorCommandSuffix = (
+  explicitDiffRemote: string | undefined,
+  extraArgs: readonly string[] = [],
+): string => {
+  const args = ['doctor']
+  if (explicitDiffRemote) {
+    args.push(`--remote ${explicitDiffRemote}`)
+  }
+  args.push(...extraArgs)
+  return args.join(' ')
+}

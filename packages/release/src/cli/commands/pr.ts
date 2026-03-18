@@ -25,39 +25,7 @@ import { Console, Effect, Layer } from 'effect'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
 import { PreviewBlockingError, runPrPreview } from '../pr-preview.js'
-
-const helpFlags = ['-h', '--help'] as const
-
-const formatHelp = (): string =>
-  [
-    'Usage: release pr <preview|title <suggest|apply>>',
-    '',
-    'Commands:',
-    '  preview         Update the release preview comment and fail on blocking preview checks',
-    '                  Pass `--check-only` to run checks without updating the comment',
-    '  title suggest   Show the canonical release header and suggested PR title',
-    '  title apply     Update the connected PR title by replacing only its header',
-  ].join('\n')
-
-type ParsedAction =
-  | { readonly _tag: 'preview'; readonly checkOnly: boolean }
-  | { readonly _tag: 'title'; readonly action: 'suggest' | 'apply' }
-
-const parseAction = (args: readonly string[]): ParsedAction | null => {
-  if (args[0] === 'preview') {
-    const previewArgs = args.slice(1)
-    const checkOnly = previewArgs.includes('--check-only')
-    const unknownPreviewArgs = previewArgs.filter((arg) => arg !== '--check-only')
-    if (unknownPreviewArgs.length === 0) {
-      return { _tag: 'preview', checkOnly }
-    }
-  }
-  if (args.length < 2 || args[0] !== 'title') return null
-  if (args[1] === 'suggest' || args[1] === 'apply') {
-    return { _tag: 'title', action: args[1] }
-  }
-  return null
-}
+import { formatHelp, helpFlags, parseAction } from './pr-lib.js'
 
 const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
 
@@ -152,7 +120,12 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, ChildProcessSpawn
 
     if (action._tag === 'preview') {
       const previewResult = yield* runPrPreview(
-        action.checkOnly ? { checkOnly: true } : undefined,
+        action.checkOnly || action.remote
+          ? {
+              ...(action.checkOnly ? { checkOnly: true } : {}),
+              ...(action.remote ? { remote: action.remote } : {}),
+            }
+          : undefined,
       ).pipe(Effect.result)
 
       if (previewResult._tag === 'Failure') {
