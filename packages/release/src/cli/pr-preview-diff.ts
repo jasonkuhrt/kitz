@@ -19,7 +19,16 @@ export interface DiffRemoteConfigLike {
   }
 }
 
-export const resolveDiffRemote = (config: DiffRemoteConfigLike): string => {
+const normalizeRemoteOverride = (remote: string | undefined): string | undefined => {
+  if (remote === undefined) return undefined
+  const normalized = remote.trim()
+  return normalized.length > 0 ? normalized : undefined
+}
+
+export const resolveDiffRemote = (config: DiffRemoteConfigLike, override?: string): string => {
+  const explicitRemote = normalizeRemoteOverride(override)
+  if (explicitRemote) return explicitRemote
+
   const remote = config.lint?.rules?.['env.git-remote']?.options?.['remote']
   return typeof remote === 'string' && remote.trim().length > 0 ? remote.trim() : 'origin'
 }
@@ -158,10 +167,11 @@ export const loadConfiguredPullRequestDiff = (params: {
   readonly pullRequest: Github.PullRequest
   readonly packages: readonly Package[]
   readonly required: boolean
+  readonly remote?: string
 }) =>
   loadPullRequestDiff({
     pullRequest: params.pullRequest,
     packages: params.packages,
     required: params.required,
-    remote: resolveDiffRemote(params.config),
+    remote: resolveDiffRemote(params.config, params.remote),
   })

@@ -318,6 +318,8 @@ Use `release plan --out <file>` when you want to persist a plan somewhere other 
 
 Use `release notes --until <tag-or-sha>` when you need a bounded notes window, and `release forecast --format md` when you want a shareable markdown summary instead of a terminal-oriented table or tree.
 
+Use `release doctor --remote <name>` or `release pr preview --remote <name>` when release diff checks need to compare against a non-`origin` remote for this run.
+
 The `operator` block declares script names, not hardcoded package-manager commands. `@kitz/release`
 detects the active package manager from the current environment and renders guidance accordingly
 (`bun run ...`, `pnpm ...`, `npm run ...`, etc).

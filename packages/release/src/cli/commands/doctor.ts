@@ -95,6 +95,15 @@ const args = Oak.Command.create()
       Schema.annotate({ description: 'Output format (text or json)' }),
     ),
   )
+  .parameter(
+    'remote r',
+    Schema.UndefinedOr(Schema.String).pipe(
+      Schema.annotate({
+        description:
+          'Remote to use for env.git-remote validation and PR diff-aware checks (default: configured env.git-remote or origin)',
+      }),
+    ),
+  )
   .parse()
 
 const spawnerLayer = ChildProcessSpawnerLayer
@@ -163,13 +172,14 @@ Cli.run(
     const tags = yield* git.getTags()
     const analysis = yield* Api.Analyzer.analyze({ packages, tags })
     const currentBranch = yield* git.getCurrentBranch()
-    const diffRemote = resolveDiffRemote(config)
+    const diffRemote = resolveDiffRemote(config, args.remote)
     const diff = pullRequest
       ? yield* loadConfiguredPullRequestDiff({
           config,
           pullRequest,
           packages,
           required: false,
+          ...(args.remote ? { remote: args.remote } : {}),
         })
       : null
     const monorepo = {

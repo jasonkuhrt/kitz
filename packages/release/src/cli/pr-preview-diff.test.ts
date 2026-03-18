@@ -58,6 +58,25 @@ describe('pr preview diff analysis', () => {
     ).toBe('upstream')
   })
 
+  test('prefers an explicit remote override over configured env.git-remote options', () => {
+    expect(
+      resolveDiffRemote(
+        {
+          lint: {
+            rules: {
+              'env.git-remote': {
+                options: {
+                  remote: 'upstream',
+                },
+              },
+            },
+          },
+        },
+        'fork',
+      ),
+    ).toBe('fork')
+  })
+
   test('maps affected packages using the resolved package path', async () => {
     const pullRequest = {
       number: 129,
@@ -151,6 +170,65 @@ describe('pr preview diff analysis', () => {
           makeSpawnerLayer((command) => {
             expect(command.command).toBe('git')
             expect(command.args).toEqual(['diff', '--name-status', 'upstream/main...HEAD'])
+            return 'M\ttooling/pkg-core/src/index.ts\n'
+          }),
+        ),
+      ),
+    )
+
+    expect(diff).toEqual({
+      files: [{ path: 'tooling/pkg-core/src/index.ts', status: 'modified' }],
+      affectedPackages: ['core'],
+    })
+  })
+
+  test('loads pull request diffs against an explicit remote override', async () => {
+    const pullRequest = {
+      number: 129,
+      html_url: 'https://github.com/org/repo/pull/129',
+      title: 'feat(core): update package path matching',
+      body: null,
+      base: { ref: 'main' },
+      head: { ref: 'feature/path-aware-preview' },
+    } satisfies Github.PullRequest
+
+    const packages = [
+      {
+        scope: 'core',
+        name: Pkg.Moniker.parse('@kitz/core'),
+        path: Fs.Path.AbsDir.fromString('/repo/tooling/pkg-core/'),
+      },
+    ] satisfies readonly Package[]
+
+    const { layer: gitLayer } = await Effect.runPromise(
+      Git.Memory.makeWithState({
+        root: '/repo',
+      }),
+    )
+
+    const diff = await Effect.runPromise(
+      loadConfiguredPullRequestDiff({
+        config: {
+          lint: {
+            rules: {
+              'env.git-remote': {
+                options: {
+                  remote: 'upstream',
+                },
+              },
+            },
+          },
+        },
+        remote: 'fork',
+        pullRequest,
+        packages,
+        required: true,
+      }).pipe(
+        Effect.provide(gitLayer),
+        Effect.provide(
+          makeSpawnerLayer((command) => {
+            expect(command.command).toBe('git')
+            expect(command.args).toEqual(['diff', '--name-status', 'fork/main...HEAD'])
             return 'M\ttooling/pkg-core/src/index.ts\n'
           }),
         ),
