@@ -3,6 +3,7 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Effect, MutableHashSet } from 'effect'
+import { PackageLocation } from '../api/analyzer/package-location.js'
 import { ExplorerError } from '../api/explorer/errors.js'
 import type { ChangedFile, Diff } from '../api/lint/services/diff.js'
 import type { Package } from '../api/analyzer/workspace.js'
@@ -57,34 +58,25 @@ const parseDiffLine = (line: string): ChangedFile | null => {
 const toAffectedPackages = (
   files: readonly ChangedFile[],
   packages: readonly Package[],
-  root: string,
+  root: Fs.Path.AbsDir,
 ): readonly string[] => {
-  const rootPrefix = `${root.replace(/\\/gu, '/').replace(/\/+$/u, '')}/`
   const packageRoots = packages
-    .map((pkg) => {
-      const absolutePath = Fs.Path.toString(pkg.path).replace(/\\/gu, '/')
-      if (!absolutePath.startsWith(rootPrefix)) return null
-
-      const relativePath = absolutePath.slice(rootPrefix.length).replace(/\/+$/u, '')
-      if (relativePath.length === 0) return null
-
-      return {
-        scope: pkg.scope,
-        relativePath,
-      }
-    })
-    .filter((pkg): pkg is { readonly scope: string; readonly relativePath: string } => pkg !== null)
-    .toSorted((left, right) => right.relativePath.length - left.relativePath.length)
+    .map((pkg) => ({
+      scope: pkg.scope,
+      location: PackageLocation.fromAbsolutePath(root, pkg.path),
+    }))
+    .toSorted(
+      (left, right) =>
+        PackageLocation.toRelativePathString(right.location).length -
+        PackageLocation.toRelativePathString(left.location).length,
+    )
   const affected = MutableHashSet.empty<string>()
 
   for (const file of files) {
     const normalizedPath = file.path.replace(/\\/gu, '/').replace(/^\.\/+/u, '')
 
     for (const pkg of packageRoots) {
-      if (
-        normalizedPath === pkg.relativePath ||
-        normalizedPath.startsWith(`${pkg.relativePath}/`)
-      ) {
+      if (PackageLocation.containsRepoPath(pkg.location, normalizedPath)) {
         MutableHashSet.add(affected, pkg.scope)
         break
       }
@@ -102,7 +94,7 @@ export const loadPullRequestDiff = (params: {
 }) =>
   Effect.gen(function* () {
     const git = yield* Git.Git
-    const root = yield* git.getRoot()
+    const root = Fs.Path.AbsDir.fromString(yield* git.getRoot())
     const baseRef = params.pullRequest.base.ref.trim()
     const remote = params.remote ?? 'origin'
 
@@ -123,7 +115,7 @@ export const loadPullRequestDiff = (params: {
     const command = ChildProcess.make(
       'git',
       ['diff', '--name-status', `${remote}/${baseRef}...HEAD`],
-      { cwd: root },
+      { cwd: Fs.Path.toString(root) },
     )
     const output = yield* spawner.string(command).pipe(
       Effect.result,
