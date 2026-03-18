@@ -118,7 +118,9 @@ describe('planner core', () => {
     const result = await Effect.runPromise(
       candidate(
         Analysis.make({
-          ...singleImpactAnalysis,
+          impacts: singleImpactAnalysis.impacts,
+          cascades: singleImpactAnalysis.cascades,
+          unchanged: singleImpactAnalysis.unchanged,
           tags: ['@kitz/core@1.0.0', '@kitz/cli@2.0.0', '@kitz/cli@2.0.1-next.4'],
         }),
         { packages },
@@ -140,7 +142,9 @@ describe('planner core', () => {
     const result = await Effect.runPromise(
       ephemeral(
         Analysis.make({
-          ...singleImpactAnalysis,
+          impacts: singleImpactAnalysis.impacts,
+          cascades: singleImpactAnalysis.cascades,
+          unchanged: singleImpactAnalysis.unchanged,
           tags: ['@kitz/core@1.0.0', '@kitz/cli@0.0.0-pr.42.3.gabc1234'],
         }),
         { packages },

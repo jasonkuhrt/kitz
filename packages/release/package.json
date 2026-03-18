@@ -49,6 +49,7 @@
     "@kitz/github": "workspace:*",
     "@kitz/mod": "workspace:*",
     "@kitz/monorepo": "workspace:*",
+    "@kitz/num": "workspace:*",
     "@kitz/npm-registry": "workspace:*",
     "@kitz/oak": "workspace:*",
     "@kitz/platform": "workspace:*",

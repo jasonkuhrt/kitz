@@ -1,5 +1,6 @@
+import { Num } from '@kitz/num'
 import { Github } from '@kitz/github'
-import { Effect } from 'effect'
+import { Effect, Option, Schema, SchemaGetter, SchemaIssue } from 'effect'
 import * as Api from '../../api/__.js'
 
 export interface PreviewPublishSurface {
@@ -20,10 +21,62 @@ export interface PreviewPublishReport {
   readonly publishHistory: readonly Api.Commentator.PublishRecord[]
 }
 
+type PositiveSafeInt = Num.SafeInt.SafeInt
+
+const PositiveSafeInt = Schema.Number.check(
+  Schema.isInt({
+    message: 'Expected a canonical positive integer',
+  }),
+  Schema.isBetween(
+    {
+      minimum: 1,
+      maximum: Number.MAX_SAFE_INTEGER,
+    },
+    {
+      message: 'Expected a positive safe integer',
+    },
+  ),
+)
+
+const PositiveSafeIntFromString = Schema.String.pipe(
+  Schema.decodeTo(PositiveSafeInt, {
+    decode: SchemaGetter.transformOrFail((input) => {
+      const normalized = input.trim()
+      if (!/^[1-9]\d*$/u.test(normalized)) {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(input), {
+            message: 'Expected a canonical positive integer string',
+          }),
+        )
+      }
+
+      const parsed = Number(normalized)
+      const safeInt = Num.SafeInt.tryFrom(parsed)
+      if (safeInt === null || safeInt <= 0) {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(input), {
+            message: 'Expected a positive safe integer',
+          }),
+        )
+      }
+
+      return Effect.succeed(safeInt)
+    }),
+    encode: SchemaGetter.transform((value) => String(value)),
+  }),
+)
+
+const decodePositiveSafeInt = (
+  input: unknown,
+): Effect.Effect<PositiveSafeInt, Schema.SchemaError> =>
+  Schema.decodeUnknownEffect(PositiveSafeIntFromString)(input).pipe(
+    Effect.map((value) => value as PositiveSafeInt),
+  )
+
 export const parsePositiveIntegerOption = (
   value: string | undefined,
   label: string,
-): Effect.Effect<number | undefined, Api.Explorer.ExplorerError> =>
+): Effect.Effect<PositiveSafeInt | undefined, Api.Explorer.ExplorerError> =>
   Effect.gen(function* () {
     if (value === undefined) return undefined
 
@@ -38,18 +91,16 @@ export const parsePositiveIntegerOption = (
       )
     }
 
-    const parsed = Number.parseInt(normalized, 10)
-    if (!Number.isSafeInteger(parsed) || parsed <= 0) {
-      return yield* Effect.fail(
-        new Api.Explorer.ExplorerError({
-          context: {
-            detail: `Expected --${label} to be a positive integer, but received "${value}".`,
-          },
-        }),
-      )
-    }
-
-    return parsed
+    return yield* decodePositiveSafeInt(normalized).pipe(
+      Effect.mapError(
+        () =>
+          new Api.Explorer.ExplorerError({
+            context: {
+              detail: `Expected --${label} to be a positive integer, but received "${value}".`,
+            },
+          }),
+      ),
+    )
   })
 
 export const resolvePreviewPublishSurface = (

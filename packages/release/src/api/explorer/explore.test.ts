@@ -216,6 +216,55 @@ describe('explore', () => {
       expect(result.success.npm.registry).toBe('https://npm.pkg.github.com')
     }
   })
+
+  test('fails when remote lookup errors even if GITHUB_REPOSITORY provides the release target', async () => {
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const baseGit = yield* Git.Git
+
+        return yield* explore().pipe(
+          Effect.provideService(Git.Git, {
+            ...baseGit,
+            getRemoteUrl: () =>
+              Effect.fail(
+                new Git.GitError({
+                  context: {
+                    operation: 'getRemoteUrl',
+                    detail: 'forced remote lookup failure',
+                  },
+                  cause: new Error('forced remote lookup failure'),
+                }),
+              ),
+          }),
+        )
+      }).pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            Env.Test({
+              vars: {
+                GITHUB_REPOSITORY: 'kitz-org/kitz',
+                GITHUB_TOKEN: 'token-123',
+              },
+            }),
+            Git.Memory.make({
+              remoteUrl: 'git@github.com:jasonkuhrt/kitz.git',
+            }),
+            makeNpmCliLayer(),
+          ),
+        ),
+        Effect.result,
+      ),
+    )
+
+    expect(result._tag).toBe('Failure')
+    if (result._tag === 'Failure') {
+      expect(result.failure._tag).toBe('GitError')
+      if (result.failure._tag === 'GitError') {
+        expect(result.failure.context.operation).toBe('getRemoteUrl')
+        expect(result.failure.context.detail).toContain('forced remote lookup failure')
+      }
+    }
+  })
 })
 
 describe('toExecutorRuntimeConfig', () => {

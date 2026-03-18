@@ -4,7 +4,7 @@ import { renderGraph } from './graph.js'
 const makeReadonlyMap = <A>(
   entries: ReadonlyArray<readonly [string, A]>,
 ): ReadonlyMap<string, A> => {
-  const record = Object.fromEntries(entries)
+  const record: Partial<Record<string, A>> = Object.fromEntries(entries)
   const iterator = function* (): Generator<[string, A], undefined, unknown> {
     for (const [key, value] of entries) {
       yield [key, value]
@@ -13,7 +13,7 @@ const makeReadonlyMap = <A>(
   }
 
   const map = {
-    get: (key: string) => record[key] as A | undefined,
+    get: (key: string) => record[key],
     has: (key: string) => key in record,
     forEach: (callbackfn) => {
       for (const [key, value] of entries) {

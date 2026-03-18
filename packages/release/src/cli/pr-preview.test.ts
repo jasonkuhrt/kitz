@@ -71,7 +71,9 @@ const blockingDoctor = {
   deferredChecks: [],
 } satisfies Api.Commentator.DoctorSummary
 
-const makeResolvedConfig = (): Api.Config.ResolvedConfig =>
+const makeResolvedConfig = (options?: {
+  readonly diffRemote?: string
+}): Api.Config.ResolvedConfig =>
   Api.Config.ResolvedConfig.make({
     trunk: 'main',
     npmTag: 'latest',
@@ -88,7 +90,23 @@ const makeResolvedConfig = (): Api.Config.ResolvedConfig =>
       releaseCommand: 'bun run release',
       prepareCommands: ['bun run release:build'],
     }),
-    lint: Api.Lint.resolveConfig({}),
+    lint: Api.Lint.resolveConfig({
+      ...(options?.diffRemote
+        ? {
+            rules: {
+              'env.git-remote': Api.Lint.RuleConfig.make({
+                overrides: Api.Lint.RuleDefaults.make({
+                  enabled: true,
+                  severity: Api.Lint.Error.make({}),
+                }),
+                options: {
+                  remote: options.diffRemote,
+                },
+              }),
+            },
+          }
+        : {}),
+    }),
   })
 
 describe('pr preview comment sync', () => {
@@ -336,7 +354,7 @@ describe('pr preview comment sync', () => {
           files: [{ path: 'packages/core/src/index.ts', status: 'modified' }],
           affectedPackages: ['@kitz/core'],
         },
-        explicitDiffRemote: 'fork',
+        diffRemote: 'fork',
         blockingTitleChecks: false,
       }).pipe(
         Effect.provide(
@@ -370,6 +388,92 @@ describe('pr preview comment sync', () => {
       ruleId: Api.Lint.Rules.EnvGitRemote.data.id,
       preventsDescriptions: Api.Lint.Rules.EnvGitRemote.data.preventsDescriptions,
       checkCommand: 'bun run release doctor --remote fork --onlyRule env.git-remote',
+    })
+  })
+
+  test('uses the configured diff remote in manual preview runbook commands', async () => {
+    const pullRequest = {
+      number: 129,
+      html_url: 'https://github.com/org/repo/pull/129',
+      title: 'feat(core): release preview',
+      body: null,
+      base: { ref: 'main' },
+      head: { ref: 'feature/release-preview' },
+    } satisfies Github.PullRequest
+
+    const packages = [
+      {
+        scope: 'core',
+        name: Pkg.Moniker.parse('@kitz/core'),
+        path: Fs.Path.AbsDir.fromString('/repo/packages/core/'),
+      },
+    ] satisfies readonly Api.Analyzer.Workspace.Package[]
+
+    const analysis = Analysis.make({
+      impacts: [
+        Impact.make({
+          package: packages[0]!,
+          bump: 'minor',
+          commits: [makeCascadeCommit('core', 'preview release')],
+          currentVersion: Option.some(Semver.fromString('1.0.0')),
+        }),
+      ],
+      cascades: [],
+      unchanged: [],
+      tags: ['@kitz/core@1.0.0'],
+    })
+    const { layer: gitLayer } = await Effect.runPromise(
+      Git.Memory.makeWithState({
+        root: '/repo',
+        branch: 'feature/release-preview',
+        headSha: Git.Sha.make('abc1234'),
+        tags: ['@kitz/core@1.0.0'],
+      }),
+    )
+
+    const summary = await Effect.runPromise(
+      buildPreviewDoctorSummary({
+        config: makeResolvedConfig({ diffRemote: 'upstream' }),
+        analysis,
+        packages,
+        pullRequest,
+        diff: {
+          files: [{ path: 'packages/core/src/index.ts', status: 'modified' }],
+          affectedPackages: ['@kitz/core'],
+        },
+        blockingTitleChecks: false,
+      }).pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            FileSystemLayer,
+            gitLayer,
+            makeMockSpawnerLayer('mock-user'),
+            Env.Test({
+              cwd: Fs.Path.AbsDir.fromString('/repo/'),
+              vars: { PR_NUMBER: '129' },
+            }),
+            Fs.Memory.layer({
+              '/repo/packages/core/package.json': JSON.stringify({
+                name: '@kitz/core',
+                version: '1.0.0',
+              }),
+            }),
+          ),
+        ),
+      ),
+    )
+
+    expect(summary.summary?.runbook?.commands).toEqual([
+      'bun run release:build',
+      'PR_NUMBER=129 bun run release plan --lifecycle ephemeral',
+      'bun run release doctor --remote upstream',
+      'bun run release apply --yes',
+    ])
+    expect(summary.summary?.deferredChecks).toContainEqual({
+      label: Api.Lint.Rules.EnvGitRemote.data.description,
+      ruleId: Api.Lint.Rules.EnvGitRemote.data.id,
+      preventsDescriptions: Api.Lint.Rules.EnvGitRemote.data.preventsDescriptions,
+      checkCommand: 'bun run release doctor --remote upstream --onlyRule env.git-remote',
     })
   })
 })

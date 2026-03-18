@@ -18,7 +18,7 @@
     "@kitz/core": "workspace:*",
     "@types/object-inspect": "^1.13.0",
     "effect": "4.0.0-beta.31",
-    "fast-check": "^4.4.0",
+    "fast-check": "^4.6.0",
     "object-inspect": "^1.13.4",
     "type-fest": "^5.3.1"
   },
