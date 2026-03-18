@@ -20,6 +20,12 @@ const ExecutorPreflightErrorContext = S.Struct({
   /** Details about the failure */
   detail: S.String,
 })
+const ExecutorDependencyCycleErrorContext = S.Struct({
+  /** Packages participating in the local dependency cycle */
+  packages: S.Array(S.String),
+  /** Human-readable local dependency edges that form the cycle */
+  edges: S.Array(S.String),
+})
 const ExecutorGHReleaseErrorContext = S.Struct({
   /** Git tag for the release */
   tag: S.String,
@@ -103,6 +109,34 @@ export const ExecutorPreflightError: Err.TaggedContextualErrorClass<
 export type ExecutorPreflightError = InstanceType<typeof ExecutorPreflightError>
 
 /**
+ * #### `ExecutorDependencyCycleError`
+ *
+ * Raised when the planned packages contain a local dependency cycle.
+ *
+ * **When it occurs**: while building the release workflow payload, before
+ * preflight or publishing begins.
+ *
+ * **Common causes**: two or more planned workspace packages depend on each
+ * other locally, so no publish order can satisfy every dependency edge.
+ *
+ * **What to do**: inspect the reported `packages` and `edges`, then break the
+ * cycle or exclude one side from the release. Release execution cannot start
+ * until the dependency graph is acyclic.
+ */
+export const ExecutorDependencyCycleError: Err.TaggedContextualErrorClass<
+  'ExecutorDependencyCycleError',
+  typeof baseTags,
+  typeof ExecutorDependencyCycleErrorContext,
+  undefined
+> = Err.TaggedContextualError('ExecutorDependencyCycleError', baseTags, {
+  context: ExecutorDependencyCycleErrorContext,
+  message: (ctx) =>
+    `Release dependency cycle detected across ${ctx.packages.join(', ')}: ${ctx.edges.join('; ')}`,
+})
+
+export type ExecutorDependencyCycleError = InstanceType<typeof ExecutorDependencyCycleError>
+
+/**
  * #### `ExecutorGHReleaseError`
  *
  * Raised when creating a GitHub release fails.
@@ -136,6 +170,7 @@ export const ExecutorError = S.Union([
   ExecutorPublishError,
   ExecutorTagError,
   ExecutorPreflightError,
+  ExecutorDependencyCycleError,
   ExecutorGHReleaseError,
 ])
 
@@ -143,6 +178,7 @@ export type ExecutorError =
   | ExecutorPublishError
   | ExecutorTagError
   | ExecutorPreflightError
+  | ExecutorDependencyCycleError
   | ExecutorGHReleaseError
 
 /** Union of all executor errors */

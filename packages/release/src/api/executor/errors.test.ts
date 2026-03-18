@@ -1,6 +1,7 @@
 import { Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import {
+  ExecutorDependencyCycleError,
   ExecutorError,
   ExecutorGHReleaseError,
   ExecutorPreflightError,
@@ -51,12 +52,29 @@ describe('ExecutorGHReleaseError', () => {
   })
 })
 
+describe('ExecutorDependencyCycleError', () => {
+  test('constructs with message', () => {
+    const err = new ExecutorDependencyCycleError({
+      context: {
+        packages: ['@kitz/a', '@kitz/b'],
+        edges: ['@kitz/a -> @kitz/b', '@kitz/b -> @kitz/a'],
+      },
+    })
+    expect(err._tag).toBe('ExecutorDependencyCycleError')
+    expect(err.message).toContain('@kitz/a')
+    expect(err.message).toContain('@kitz/b -> @kitz/a')
+  })
+})
+
 describe('ExecutorError union', () => {
   test('all variants are valid', () => {
     const errors = [
       new ExecutorPublishError({ context: { packageName: 'pkg', detail: 'd' } }),
       new ExecutorTagError({ context: { tag: 'tag', detail: 'd' } }),
       new ExecutorPreflightError({ context: { check: 'c', detail: 'd' } }),
+      new ExecutorDependencyCycleError({
+        context: { packages: ['pkg-a', 'pkg-b'], edges: ['pkg-a -> pkg-b', 'pkg-b -> pkg-a'] },
+      }),
       new ExecutorGHReleaseError({ context: { tag: 'tag', detail: 'd' } }),
     ]
     for (const err of errors) {

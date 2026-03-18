@@ -5,7 +5,7 @@ import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { describe, expect, it as test } from '@effect/vitest'
 import { Effect, Ref } from 'effect'
-import { execute, executeObservable } from './execute.js'
+import { execute, executeObservable, toPayload } from './execute.js'
 import {
   decodeJsonRecordSync,
   decodeSemverFromManifest,
@@ -26,8 +26,28 @@ const workspacePackages: Parameters<typeof planOfficial>[0] = [
     path: corePackagePath,
   },
 ]
+const cycleWorkspacePackages: Parameters<typeof planOfficial>[0] = [
+  {
+    name: Pkg.Moniker.parse('@kitz/a'),
+    scope: 'a',
+    path: Fs.Path.AbsDir.fromString('/repo/packages/a/'),
+  },
+  {
+    name: Pkg.Moniker.parse('@kitz/b'),
+    scope: 'b',
+    path: Fs.Path.AbsDir.fromString('/repo/packages/b/'),
+  },
+  {
+    name: Pkg.Moniker.parse('@kitz/c'),
+    scope: 'c',
+    path: Fs.Path.AbsDir.fromString('/repo/packages/c/'),
+  },
+]
 
 const tagCore = (version: string) => tag(Pkg.Moniker.parse('@kitz/core'), version)
+const tagA = (version: string) => tag(Pkg.Moniker.parse('@kitz/a'), version)
+const tagB = (version: string) => tag(Pkg.Moniker.parse('@kitz/b'), version)
+const tagC = (version: string) => tag(Pkg.Moniker.parse('@kitz/c'), version)
 const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect
 
 describe('Executor integration', () => {
@@ -209,6 +229,134 @@ describe('Executor integration', () => {
 
         const publishAttempts = yield* Ref.get(harness.publishAttempts)
         expect(publishAttempts).toBe(0)
+      }),
+    ),
+  )
+
+  test.live('fails before workflow start when planned packages form a local dependency cycle', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagA('1.0.0'), tagB('1.0.0'), tagC('1.0.0')],
+            commits: [
+              Git.Memory.commit('feat(a): add feature'),
+              Git.Memory.commit('feat(b): add feature'),
+            ],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/a/package.json': makePackageJson('@kitz/a', '1.0.0', {
+              dependencies: {
+                '@kitz/b': 'workspace:^',
+              },
+            }),
+            '/repo/packages/b/package.json': makePackageJson('@kitz/b', '1.0.0', {
+              dependencies: {
+                '@kitz/a': 'workspace:^',
+              },
+            }),
+            '/repo/packages/c/package.json': makePackageJson('@kitz/c', '1.0.0', {
+              dependencies: {
+                '@kitz/a': 'workspace:^',
+              },
+            }),
+          },
+        })
+
+        const plan = yield* planOfficial(cycleWorkspacePackages).pipe(
+          Effect.provide(harness.planLayer),
+        )
+
+        expect(plan.cascades.some((item) => item.package.name.moniker === '@kitz/c')).toBe(true)
+
+        const outcome = yield* execute(plan, { dryRun: false }).pipe(
+          Effect.provide(harness.workflowLayer),
+          Effect.result,
+        )
+
+        expect(outcome._tag).toBe('Failure')
+        if (outcome._tag === 'Failure') {
+          expect(outcome.failure._tag).toBe('ExecutorDependencyCycleError')
+          if (outcome.failure._tag === 'ExecutorDependencyCycleError') {
+            expect(outcome.failure.context.packages).toEqual(['@kitz/a', '@kitz/b'])
+            expect(outcome.failure.context.edges).toEqual([
+              '@kitz/a -> @kitz/b',
+              '@kitz/b -> @kitz/a',
+            ])
+          }
+        }
+
+        const packCalls = yield* Ref.get(harness.packCalls)
+        expect(packCalls).toHaveLength(0)
+
+        const publishAttempts = yield* Ref.get(harness.publishAttempts)
+        expect(publishAttempts).toBe(0)
+      }),
+    ),
+  )
+
+  test.live('direct payload construction fails for dependency cycles', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagA('1.0.0'), tagB('1.0.0'), tagC('1.0.0')],
+            commits: [
+              Git.Memory.commit('feat(a): add feature'),
+              Git.Memory.commit('feat(b): add feature'),
+            ],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/a/package.json': makePackageJson('@kitz/a', '1.0.0', {
+              dependencies: {
+                '@kitz/b': 'workspace:^',
+              },
+            }),
+            '/repo/packages/b/package.json': makePackageJson('@kitz/b', '1.0.0', {
+              dependencies: {
+                '@kitz/a': 'workspace:^',
+              },
+            }),
+            '/repo/packages/c/package.json': makePackageJson('@kitz/c', '1.0.0', {
+              dependencies: {
+                '@kitz/a': 'workspace:^',
+              },
+            }),
+          },
+        })
+
+        const plan = yield* planOfficial(cycleWorkspacePackages).pipe(
+          Effect.provide(harness.planLayer),
+        )
+
+        const outcome = yield* toPayload(plan).pipe(
+          Effect.provide(harness.planLayer),
+          Effect.result,
+        )
+
+        expect(outcome._tag).toBe('Failure')
+        if (outcome._tag === 'Failure') {
+          expect(outcome.failure._tag).toBe('ExecutorDependencyCycleError')
+          if (outcome.failure._tag === 'ExecutorDependencyCycleError') {
+            expect(outcome.failure.context.packages).toEqual(['@kitz/a', '@kitz/b'])
+            expect(outcome.failure.context.edges).toEqual([
+              '@kitz/a -> @kitz/b',
+              '@kitz/b -> @kitz/a',
+            ])
+          }
+        }
+
+        const observableAttempt = yield* executeObservable(plan, {
+          dryRun: true,
+          dbPath: `/tmp/kitz-release-workflow-${Date.now()}-${Math.random().toString(16).slice(2)}.db`,
+        }).pipe(Effect.provide(harness.planLayer), Effect.result)
+
+        expect(observableAttempt._tag).toBe('Failure')
+        if (observableAttempt._tag === 'Failure') {
+          expect(observableAttempt.failure._tag).toBe('ExecutorDependencyCycleError')
+        }
       }),
     ),
   )
