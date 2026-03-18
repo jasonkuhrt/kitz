@@ -16,7 +16,11 @@ import { Pkg } from '@kitz/pkg'
 import { Config, Effect, HashMap, Match, Option, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
 import type { Publishing } from '../publishing.js'
-import { ExecutorPreflightError, type ExecutorError } from './errors.js'
+import {
+  ExecutorDependencyCycleError,
+  ExecutorPreflightError,
+  type ExecutorError,
+} from './errors.js'
 import { type PreflightError, run as runPreflight } from './preflight.js'
 import { makeRuntime, type RuntimeConfig } from './runtime.js'
 import {
@@ -119,11 +123,11 @@ export const formatLifecycleEvent = (event: Flo.LifecycleEvent): LifecycleEventL
 
 /**
  * Order releases so publish dependencies always appear before their dependents.
- * Cycles are broken deterministically by package name.
+ * Cycles are rejected with a clear error instead of dropping dependency edges.
  */
 const orderReleaseEntries = (
   entries: ReadonlyArray<ReleasePayloadType['releases'][number]>,
-): ReleasePayloadType['releases'] => {
+): Effect.Effect<ReleasePayloadType['releases'], ExecutorDependencyCycleError> => {
   const dependencies = Object.fromEntries(
     entries.map((entry) => [
       entry.packageName,
@@ -141,8 +145,46 @@ const orderReleaseEntries = (
       )
       .toSorted((a, b) => a.packageName.localeCompare(b.packageName))
 
-    const next =
-      ready[0] ?? remaining.toSorted((a, b) => a.packageName.localeCompare(b.packageName))[0]
+    if (ready.length === 0) {
+      const remainingPackages = remaining
+        .map((entry) => entry.packageName)
+        .toSorted((a, b) => a.localeCompare(b))
+      const canReach = (start: string, target: string, seen: readonly string[] = []): boolean => {
+        if (start === target) return true
+        if (seen.includes(start)) return false
+
+        return (dependencies[start] ?? [])
+          .filter((name) => remainingPackages.includes(name))
+          .some((name) => canReach(name, target, [...seen, start]))
+      }
+
+      const cyclePackages = remainingPackages.filter((packageName) =>
+        (dependencies[packageName] ?? [])
+          .filter((name) => remainingPackages.includes(name))
+          .some((name) => canReach(name, packageName)),
+      )
+      const reportedPackages = cyclePackages.length > 0 ? cyclePackages : remainingPackages
+      const edges = remaining
+        .filter((entry) => reportedPackages.includes(entry.packageName))
+        .toSorted((a, b) => a.packageName.localeCompare(b.packageName))
+        .flatMap((entry) =>
+          (dependencies[entry.packageName] ?? [])
+            .filter((name) => reportedPackages.includes(name))
+            .toSorted((a, b) => a.localeCompare(b))
+            .map((name) => `${entry.packageName} -> ${name}`),
+        )
+
+      return Effect.fail(
+        new ExecutorDependencyCycleError({
+          context: {
+            packages: reportedPackages,
+            edges,
+          },
+        }),
+      )
+    }
+
+    const next = ready[0]
     if (next === undefined) break
 
     ordered.push({
@@ -157,7 +199,7 @@ const orderReleaseEntries = (
     }
   }
 
-  return ordered
+  return Effect.succeed(ordered)
 }
 
 /**
@@ -173,7 +215,7 @@ export const toPayload = (
     publishing?: Publishing
     trunk?: string
   } = {},
-): Effect.Effect<ReleasePayloadType, never, FileSystem.FileSystem> =>
+): Effect.Effect<ReleasePayloadType, ExecutorDependencyCycleError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const planItems = [...plan.releases, ...plan.cascades]
     const localPackageNames = planItems.map((item) => item.package.name.moniker)
@@ -206,8 +248,10 @@ export const toPayload = (
       ),
     )
 
+    const orderedReleases = yield* orderReleaseEntries(releaseEntries)
+
     return {
-      releases: orderReleaseEntries(releaseEntries),
+      releases: orderedReleases,
       options: {
         dryRun: options.dryRun ?? false,
         ...(options.tag && { tag: options.tag }),
@@ -309,7 +353,11 @@ export const executeObservable = (
     dbPath?: string
     github?: RuntimeConfig['github']
   } = {},
-): Effect.Effect<ObservableResult<ObservableExecutionRequirements>, never, FileSystem.FileSystem> =>
+): Effect.Effect<
+  ObservableResult<ObservableExecutionRequirements>,
+  ObservableExecutionError,
+  FileSystem.FileSystem
+> =>
   Effect.gen(function* () {
     const payload = yield* toPayload(plan, options)
 
