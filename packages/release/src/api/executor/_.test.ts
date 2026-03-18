@@ -481,6 +481,45 @@ describe('Executor integration', () => {
     ),
   )
 
+  test.live(
+    'publishes ephemeral releases with a custom dist-tag while keeping GitHub prerelease semantics versioned',
+    () =>
+      quiet(
+        Effect.gen(function* () {
+          const harness = yield* makeHarness({
+            git: {
+              tags: [tagCore('1.0.0')],
+              commits: [Git.Memory.commit('feat(core): new API')],
+              isClean: true,
+              headSha: Git.Sha.make('abc1234'),
+            },
+            diskLayout: {
+              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            },
+          })
+
+          const plan = yield* planEphemeral(workspacePackages, { prNumber: 42 }).pipe(
+            Effect.provide(harness.planLayer),
+          )
+
+          const result = yield* execute(plan, { dryRun: false, tag: 'preview-42' }).pipe(
+            Effect.provide(harness.workflowLayer),
+          )
+
+          expect(result.createdGHReleases).toHaveLength(1)
+
+          const publishCalls = yield* Ref.get(harness.publishCalls)
+          const pushedTags = yield* Ref.get(harness.gitState.pushedTags)
+          const createdReleases = yield* Ref.get(harness.githubState.createdReleases)
+
+          expect(publishCalls[0]?.tag).toBe('preview-42')
+          expect(pushedTags[0]).toMatchObject({ force: false })
+          expect(createdReleases[0]?.title).toContain(' v0.0.0-pr.42.1.')
+          expect(createdReleases[0]?.prerelease).toBe(true)
+        }),
+      ),
+  )
+
   test.live('observable workflow exposes graph in dry-run mode', () =>
     quiet(
       Effect.gen(function* () {

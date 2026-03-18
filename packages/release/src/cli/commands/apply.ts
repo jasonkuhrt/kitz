@@ -92,7 +92,13 @@ Cli.run(
 
     // Plan file now stores rich PlannedRelease data directly - no conversion needed
     const plan = planFileOption.value
-    const tag = args.tag ?? (plan.lifecycle === 'official' ? config.npmTag : config.candidateTag)
+    const publish = Api.Publishing.resolvePublishSemantics({
+      lifecycle: plan.lifecycle,
+      ...(args.tag !== undefined ? { tag: args.tag } : {}),
+      publishing: config.publishing,
+      npmTag: config.npmTag,
+      candidateTag: config.candidateTag,
+    })
 
     // Confirmation prompt (unless --yes)
     if (!args.yes && !args.dryRun) {
@@ -120,7 +126,7 @@ Cli.run(
     // Execute with observable workflow
     const { events, execute } = yield* Api.Executor.executeObservable(plan, {
       dryRun: args.dryRun,
-      tag,
+      tag: publish.distTag,
       publishing: config.publishing,
       trunk: config.trunk,
       github: runtimeConfig.github,

@@ -188,7 +188,12 @@ export const buildPreviewDoctorSummary = (params: {
       }
     }
 
-    const channel = Api.Publishing.resolvePublishChannel(params.config.publishing, plan.lifecycle)
+    const publish = Api.Publishing.resolvePublishSemantics({
+      lifecycle: plan.lifecycle,
+      publishing: params.config.publishing,
+      npmTag: params.config.npmTag,
+      candidateTag: params.config.candidateTag,
+    })
     const commentDoctorRules = [
       ...previewDoctorRuleIds,
       'pr.type.release-kind-match-diff',
@@ -283,7 +288,7 @@ export const buildPreviewDoctorSummary = (params: {
       summary: Api.Commentator.createDoctorSummary(report, {
         lifecycle: plan.lifecycle,
         plannedPackages: plannedItems.length,
-        ...(channel.mode === 'manual' && plan.lifecycle === 'ephemeral'
+        ...(publish.channel.mode === 'manual' && plan.lifecycle === 'ephemeral'
           ? {
               runbook: {
                 title: 'Manual Preview Runbook',
@@ -293,12 +298,12 @@ export const buildPreviewDoctorSummary = (params: {
                   appendReleaseCommand(params.config.operator.releaseCommand, 'doctor'),
                   appendReleaseCommand(
                     params.config.operator.releaseCommand,
-                    'apply --yes --tag pr',
+                    `apply --yes --tag ${publish.distTag}`,
                   ),
                 ],
                 note:
                   'Step 2 writes the exact ephemeral publish plan to `.release/plan.json`. ' +
-                  'Step 4 publishes those packages to the `pr` dist-tag.',
+                  `Step 4 publishes those packages to the \`${publish.distTag}\` dist-tag.`,
               },
               deferredChecks: manualPreviewDeferredRules.flatMap((rule) =>
                 rule.data.preventsDescriptions && rule.data.preventsDescriptions.length > 0
