@@ -22,6 +22,11 @@ import { Oak } from '@kitz/oak'
 import { Cause, Console, Effect, FileSystem, Layer, Option, Schema, SchemaGetter } from 'effect'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, ServicesLayer, FileSystemLayer } from '../../platform.js'
+import {
+  commandLintRule,
+  createCommandLintConfig,
+  type CommandLintRuleSpec,
+} from '../lint-rule-config.js'
 import { loadConfiguredPullRequestDiff, resolveDiffRemote } from '../pr-preview-diff.js'
 import { computeLifecyclePlanAttempt, toUnavailableLifecycleReport } from './doctor-lib.js'
 
@@ -39,24 +44,6 @@ const parseCsvStrings = (value: string | undefined): readonly string[] | undefin
     .filter((part) => part.length > 0)
 
   return parts.length > 0 ? parts : undefined
-}
-
-const enableRule = (
-  config: Api.Config.ResolvedConfig,
-  ruleId: string,
-  ruleOptions: Record<string, unknown> = {},
-) => {
-  const existing = config.lint.rules[ruleId]
-  return Api.Lint.ResolvedRuleConfig.make({
-    overrides: Api.Lint.ResolvedRuleDefaults.make({
-      enabled: true,
-      severity: existing?.['overrides'].severity ?? config.lint.defaults.severity,
-    }),
-    options: {
-      ...existing?.['options'],
-      ...ruleOptions,
-    },
-  })
 }
 
 const args = Oak.Command.create()
@@ -218,49 +205,60 @@ Cli.run(
                 }),
               })
             : undefined
-        const lintConfig = Api.Lint.ResolvedConfig.make({
-          defaults: config.lint.defaults,
-          onlyRules: config.lint.onlyRules,
-          skipRules: config.lint.skipRules,
-          rules: {
-            ...config.lint.rules,
-            'env.publish-channel-ready': enableRule(config, 'env.publish-channel-ready', {
+        const doctorRules = [
+          commandLintRule({
+            id: 'env.publish-channel-ready',
+            options: {
               surface: 'execution',
-            }),
-            'env.git-clean': enableRule(config, 'env.git-clean'),
-            'env.git-remote': enableRule(config, 'env.git-remote', { remote: diffRemote }),
-            'plan.tags-unique': enableRule(config, 'plan.tags-unique'),
-            'plan.versions-unpublished': enableRule(config, 'plan.versions-unpublished'),
-            ...(channel.mode !== 'github-trusted'
-              ? {
-                  'env.npm-authenticated': enableRule(config, 'env.npm-authenticated'),
-                }
-              : {}),
-            ...(projectedSquashCommit?.projectedHeader
-              ? {
-                  'pr.projected-squash-commit-sync': Api.Lint.ResolvedRuleConfig.make({
-                    overrides:
-                      config.lint.rules['pr.projected-squash-commit-sync']?.['overrides'] ??
-                      Api.Lint.ResolvedRuleDefaults.make({
-                        enabled: 'auto',
-                        severity: Api.Lint.Warn.make({}),
-                      }),
-                    options: {
-                      ...config.lint.rules['pr.projected-squash-commit-sync']?.['options'],
-                      projectedHeader: projectedSquashCommit.projectedHeader,
-                    },
-                  }),
-                }
-              : {}),
-            ...(pullRequest && hasDiff
-              ? {
-                  'pr.type.release-kind-match-diff': enableRule(
-                    config,
-                    'pr.type.release-kind-match-diff',
-                  ),
-                }
-              : {}),
-          },
+            },
+          }),
+          commandLintRule({
+            id: 'env.git-clean',
+          }),
+          commandLintRule({
+            id: 'env.git-remote',
+            options: {
+              remote: diffRemote,
+            },
+          }),
+          commandLintRule({
+            id: 'plan.tags-unique',
+          }),
+          commandLintRule({
+            id: 'plan.versions-unpublished',
+          }),
+          ...(channel.mode !== 'github-trusted'
+            ? [
+                commandLintRule({
+                  id: 'env.npm-authenticated',
+                }),
+              ]
+            : []),
+          ...(projectedSquashCommit?.projectedHeader
+            ? [
+                commandLintRule({
+                  id: 'pr.projected-squash-commit-sync',
+                  options: {
+                    projectedHeader: projectedSquashCommit.projectedHeader,
+                  },
+                  enabled: 'auto',
+                  severity: Api.Lint.Warn.make({}),
+                  preserveExistingOverrides: true,
+                }),
+              ]
+            : []),
+          ...(pullRequest && hasDiff
+            ? [
+                commandLintRule({
+                  id: 'pr.type.release-kind-match-diff',
+                }),
+              ]
+            : []),
+        ] satisfies readonly CommandLintRuleSpec[]
+
+        const lintConfig = createCommandLintConfig({
+          config,
+          rules: doctorRules,
         })
         const baseReportEffect = Api.Lint.check({ config: lintConfig }).pipe(
           Effect.provide(

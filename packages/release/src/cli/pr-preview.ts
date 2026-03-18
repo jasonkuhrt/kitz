@@ -2,17 +2,12 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Data, Effect, Layer } from 'effect'
 import * as Api from '../api/__.js'
+import {
+  commandLintRule,
+  createCommandLintConfig,
+  type CommandLintRuleSpec,
+} from './lint-rule-config.js'
 import { loadConfiguredPullRequestDiff } from './pr-preview-diff.js'
-
-const previewDoctorRuleIds = [
-  'env.publish-channel-ready',
-  'plan.packages-not-private',
-  'plan.packages-license-present',
-  'plan.packages-repository-present',
-  'plan.packages-repository-match-canonical',
-  'plan.versions-unpublished',
-  'plan.tags-unique',
-] as const
 
 const manualPreviewDeferredRules = [
   Api.Lint.Rules.EnvNpmAuthenticated,
@@ -22,25 +17,6 @@ const manualPreviewDeferredRules = [
 
 const appendReleaseCommand = (releaseCommand: string, suffix: string): string =>
   `${releaseCommand} ${suffix}`
-
-const enableRule = (
-  config: Api.Config.ResolvedConfig,
-  ruleId: string,
-  ruleOptions: Record<string, unknown> = {},
-  options?: { readonly severity?: Api.Lint.Severity },
-) => {
-  const existing = config.lint.rules[ruleId]
-  return Api.Lint.RuleConfig.make({
-    overrides: Api.Lint.RuleDefaults.make({
-      enabled: true,
-      severity: options?.severity ?? existing?.overrides.severity ?? config.lint.defaults.severity,
-    }),
-    options: {
-      ...existing?.options,
-      ...ruleOptions,
-    },
-  })
-}
 
 const hasBlockingViolations = (report: Api.Lint.Report): boolean =>
   report.results.some(
@@ -194,63 +170,55 @@ export const buildPreviewDoctorSummary = (params: {
       npmTag: params.config.npmTag,
       candidateTag: params.config.candidateTag,
     })
-    const commentDoctorRules = [
-      ...previewDoctorRuleIds,
-      'pr.type.release-kind-match-diff',
-      ...(params.projectedSquashCommit?.projectedHeader
-        ? (['pr.projected-squash-commit-sync'] as const)
-        : []),
-    ]
-
     const titleSeverity = params.blockingTitleChecks
       ? Api.Lint.Error.make({})
       : params.config.lint.defaults.severity
-    const lintConfig = Api.Lint.resolveConfig({
-      defaults: Api.Lint.RuleDefaults.make({
-        enabled: params.config.lint.defaults.enabled,
-        severity: params.config.lint.defaults.severity,
-      }),
-      rules: {
-        ...params.config.lint.rules,
-        'env.publish-channel-ready': enableRule(params.config, 'env.publish-channel-ready', {
+    const commentDoctorRules = [
+      commandLintRule({
+        id: 'env.publish-channel-ready',
+        options: {
           surface: 'preview',
-        }),
-        'plan.packages-not-private': enableRule(params.config, 'plan.packages-not-private'),
-        'plan.packages-license-present': enableRule(params.config, 'plan.packages-license-present'),
-        'plan.packages-repository-present': enableRule(
-          params.config,
-          'plan.packages-repository-present',
-        ),
-        'plan.packages-repository-match-canonical': enableRule(
-          params.config,
-          'plan.packages-repository-match-canonical',
-        ),
-        'plan.versions-unpublished': enableRule(params.config, 'plan.versions-unpublished'),
-        'plan.tags-unique': enableRule(params.config, 'plan.tags-unique'),
-        'pr.type.release-kind-match-diff': enableRule(
-          params.config,
-          'pr.type.release-kind-match-diff',
-          {},
-          {
-            severity: titleSeverity,
-          },
-        ),
-        ...(params.projectedSquashCommit?.projectedHeader
-          ? {
-              'pr.projected-squash-commit-sync': enableRule(
-                params.config,
-                'pr.projected-squash-commit-sync',
-                {
-                  projectedHeader: params.projectedSquashCommit.projectedHeader,
-                },
-                {
-                  severity: titleSeverity,
-                },
-              ),
-            }
-          : {}),
-      },
-      onlyRules: [...commentDoctorRules],
+        },
+      }),
+      commandLintRule({
+        id: 'plan.packages-not-private',
+      }),
+      commandLintRule({
+        id: 'plan.packages-license-present',
+      }),
+      commandLintRule({
+        id: 'plan.packages-repository-present',
+      }),
+      commandLintRule({
+        id: 'plan.packages-repository-match-canonical',
+      }),
+      commandLintRule({
+        id: 'plan.versions-unpublished',
+      }),
+      commandLintRule({
+        id: 'plan.tags-unique',
+      }),
+      commandLintRule({
+        id: 'pr.type.release-kind-match-diff',
+        severity: titleSeverity,
+      }),
+      ...(params.projectedSquashCommit?.projectedHeader
+        ? [
+            commandLintRule({
+              id: 'pr.projected-squash-commit-sync',
+              options: {
+                projectedHeader: params.projectedSquashCommit.projectedHeader,
+              },
+              severity: titleSeverity,
+            }),
+          ]
+        : []),
+    ] satisfies readonly CommandLintRuleSpec[]
+    const lintConfig = createCommandLintConfig({
+      config: params.config,
+      rules: commentDoctorRules,
+      onlyRules: commentDoctorRules.map((rule) => rule.id),
+      skipRules: [],
     })
 
     const report = yield* Api.Lint.check({ config: lintConfig }).pipe(
