@@ -164,8 +164,8 @@ export const buildPreviewDoctorSummary = (params: {
       }
     }
 
-    const publish = Api.Publishing.resolvePublishSemantics({
-      lifecycle: plan.lifecycle,
+    const publish = Api.Publishing.resolvePublishSemanticsForPlan({
+      plan,
       publishing: params.config.publishing,
       npmTag: params.config.npmTag,
       candidateTag: params.config.candidateTag,
@@ -264,14 +264,11 @@ export const buildPreviewDoctorSummary = (params: {
                   ...params.config.operator.prepareCommands,
                   `PR_NUMBER=${String(plan.releases.find(Api.Planner.Ephemeral.is)?.prerelease.prNumber ?? params.pullRequest.number)} ${appendReleaseCommand(params.config.operator.releaseCommand, 'plan --lifecycle ephemeral')}`,
                   appendReleaseCommand(params.config.operator.releaseCommand, 'doctor'),
-                  appendReleaseCommand(
-                    params.config.operator.releaseCommand,
-                    `apply --yes --tag ${publish.distTag}`,
-                  ),
+                  appendReleaseCommand(params.config.operator.releaseCommand, 'apply --yes'),
                 ],
                 note:
                   'Step 2 writes the exact ephemeral publish plan to `.release/plan.json`. ' +
-                  `Step 4 publishes those packages to the \`${publish.distTag}\` dist-tag.`,
+                  `Step 4 publishes those packages to the \`${publish.distTag}\` dist-tag automatically.`,
               },
               deferredChecks: manualPreviewDeferredRules.flatMap((rule) =>
                 rule.data.preventsDescriptions && rule.data.preventsDescriptions.length > 0

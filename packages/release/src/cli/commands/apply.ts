@@ -51,7 +51,7 @@ const args = Oak.Command.create()
   .parameter(
     'tag t',
     Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotate({ description: 'npm dist-tag (default: latest)' }),
+      Schema.annotate({ description: 'npm dist-tag override' }),
     ),
   )
   .parse()
@@ -89,8 +89,8 @@ Cli.run(
 
     // Plan file now stores rich PlannedRelease data directly - no conversion needed
     const plan = planFileOption.value
-    const publish = Api.Publishing.resolvePublishSemantics({
-      lifecycle: plan.lifecycle,
+    const publish = Api.Publishing.resolvePublishSemanticsForPlan({
+      plan,
       ...(args.tag !== undefined ? { tag: args.tag } : {}),
       publishing: config.publishing,
       npmTag: config.npmTag,

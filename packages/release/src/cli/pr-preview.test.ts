@@ -1,10 +1,21 @@
+import { Env } from '@kitz/env'
+import { Fs } from '@kitz/fs'
+import { Git } from '@kitz/git'
+import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Github } from '@kitz/github'
-import { Effect, Ref, Option } from 'effect'
+import { Effect, Layer, Option, Ref } from 'effect'
 import { describe, expect, test } from 'vitest'
 import * as Api from '../api/__.js'
+import { Analysis, Impact, makeCascadeCommit } from '../api/analyzer/models/__.js'
+import { makeMockSpawnerLayer } from '../api/executor/test-support.js'
 import { CommitDisplay, Forecast, ForecastRelease } from '../api/forecaster/models.js'
-import { PreviewBlockingError, upsertPullRequestPreviewComment } from './pr-preview.js'
+import { FileSystemLayer } from '../platform.js'
+import {
+  PreviewBlockingError,
+  buildPreviewDoctorSummary,
+  upsertPullRequestPreviewComment,
+} from './pr-preview.js'
 
 const forecast = Forecast.make({
   owner: 'org',
@@ -59,6 +70,26 @@ const blockingDoctor = {
   guidance: [],
   deferredChecks: [],
 } satisfies Api.Commentator.DoctorSummary
+
+const makeResolvedConfig = (): Api.Config.ResolvedConfig =>
+  Api.Config.ResolvedConfig.make({
+    trunk: 'main',
+    npmTag: 'latest',
+    candidateTag: 'next',
+    packages: {
+      core: '@kitz/core',
+    },
+    publishing: Api.Publishing.defaultPublishing(),
+    operator: Api.Operator.ResolvedOperator.make({
+      manager: Pkg.Manager.DetectedPackageManager.make({
+        name: 'bun',
+        source: 'runtime',
+      }),
+      releaseCommand: 'bun run release',
+      prepareCommands: ['bun run release:build'],
+    }),
+    lint: Api.Lint.resolveConfig({}),
+  })
 
 describe('pr preview comment sync', () => {
   test('creates a new marker comment when none exists', async () => {
@@ -172,5 +203,86 @@ describe('pr preview comment sync', () => {
     const created = await Effect.runPromise(Ref.get(state.createdIssueComments))
     expect(created).toHaveLength(1)
     expect(created[0]?.body).toContain('## Release Forecast')
+  })
+
+  test('builds a manual preview runbook that uses the derived per-PR dist-tag automatically', async () => {
+    const pullRequest = {
+      number: 129,
+      html_url: 'https://github.com/org/repo/pull/129',
+      title: 'feat(core): release preview',
+      body: null,
+      base: { ref: 'main' },
+      head: { ref: 'feature/release-preview' },
+    } satisfies Github.PullRequest
+
+    const packages = [
+      {
+        scope: 'core',
+        name: Pkg.Moniker.parse('@kitz/core'),
+        path: Fs.Path.AbsDir.fromString('/repo/packages/core/'),
+      },
+    ] satisfies readonly Api.Analyzer.Workspace.Package[]
+
+    const analysis = Analysis.make({
+      impacts: [
+        Impact.make({
+          package: packages[0]!,
+          bump: 'minor',
+          commits: [makeCascadeCommit('core', 'preview release')],
+          currentVersion: Option.some(Semver.fromString('1.0.0')),
+        }),
+      ],
+      cascades: [],
+      unchanged: [],
+      tags: ['@kitz/core@1.0.0'],
+    })
+    const { layer: gitLayer } = await Effect.runPromise(
+      Git.Memory.makeWithState({
+        root: '/repo',
+        branch: 'feature/release-preview',
+        headSha: Git.Sha.make('abc1234'),
+        tags: ['@kitz/core@1.0.0'],
+      }),
+    )
+
+    const summary = await Effect.runPromise(
+      buildPreviewDoctorSummary({
+        config: makeResolvedConfig(),
+        analysis,
+        packages,
+        pullRequest,
+        diff: {
+          files: [{ path: 'packages/core/src/index.ts', status: 'modified' }],
+          affectedPackages: ['@kitz/core'],
+        },
+        blockingTitleChecks: false,
+      }).pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            FileSystemLayer,
+            gitLayer,
+            makeMockSpawnerLayer('mock-user'),
+            Env.Test({
+              cwd: Fs.Path.AbsDir.fromString('/repo/'),
+              vars: { PR_NUMBER: '129' },
+            }),
+            Fs.Memory.layer({
+              '/repo/packages/core/package.json': JSON.stringify({
+                name: '@kitz/core',
+                version: '1.0.0',
+              }),
+            }),
+          ),
+        ),
+      ),
+    )
+
+    expect(summary.summary?.runbook?.commands).toEqual([
+      'bun run release:build',
+      'PR_NUMBER=129 bun run release plan --lifecycle ephemeral',
+      'bun run release doctor',
+      'bun run release apply --yes',
+    ])
+    expect(summary.summary?.runbook?.note).toContain('`pr-129` dist-tag automatically')
   })
 })
