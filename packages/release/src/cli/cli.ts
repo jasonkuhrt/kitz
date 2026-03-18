@@ -15,6 +15,7 @@ import { FileSystemLayer } from '../platform.js'
  * - doctor          - Run release doctor checks and publishability audits
  * - explain <pkg>   - Explain why a package is primary, cascade, or unchanged
  * - forecast        - Render a release forecast
+ * - history         - Inspect publish state and history from the PR preview comment
  * - plan            - Generate release plan (--lifecycle official|candidate|ephemeral)
  * - apply           - Execute release plan
  * - graph           - Render the release execution DAG for the active plan

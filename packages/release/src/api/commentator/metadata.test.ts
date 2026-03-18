@@ -2,6 +2,7 @@ import { Test } from '@kitz/test'
 import { describe, expect, test } from 'vitest'
 import {
   type Metadata,
+  orderPublishHistory,
   parseMetadata,
   parsePublishHistory,
   type PublishRecord,
@@ -138,6 +139,43 @@ describe('parsePublishHistory', () => {
       '-->',
     ].join('\n')
     expect(parsePublishHistory(body)).toEqual([])
+  })
+})
+
+describe('orderPublishHistory', () => {
+  test('sorts newest publish records first and leaves malformed timestamps last', () => {
+    const ordered = orderPublishHistory([
+      {
+        package: '@kitz/core',
+        version: '0.0.0-pr.129.1.gabc1234',
+        iteration: 1,
+        sha: 'abc1234',
+        timestamp: 'not-a-date',
+        runId: 'run-1',
+      },
+      {
+        package: '@kitz/core',
+        version: '0.0.0-pr.129.2.gdef5678',
+        iteration: 2,
+        sha: 'def5678',
+        timestamp: '2026-03-18T12:00:00.000Z',
+        runId: 'run-2',
+      },
+      {
+        package: '@kitz/cli',
+        version: '0.0.0-pr.129.2.g9876543',
+        iteration: 2,
+        sha: '9876543',
+        timestamp: '2026-03-18T12:01:00.000Z',
+        runId: 'run-3',
+      },
+    ])
+
+    expect(ordered.map((record) => record.version)).toEqual([
+      '0.0.0-pr.129.2.g9876543',
+      '0.0.0-pr.129.2.gdef5678',
+      '0.0.0-pr.129.1.gabc1234',
+    ])
   })
 })
 

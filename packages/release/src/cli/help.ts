@@ -6,6 +6,10 @@ const rootCommands = [
     description: 'Explain why a package is primary, cascade, or unchanged',
   },
   { usage: 'forecast [options]', description: 'Render a release forecast' },
+  {
+    usage: 'history [options]',
+    description: 'Inspect publish state and history from the PR preview comment',
+  },
   { usage: 'init [options]', description: 'Initialize release configuration' },
   { usage: 'notes [pkg] [options]', description: 'Show unreleased release notes' },
   {

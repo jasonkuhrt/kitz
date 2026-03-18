@@ -320,6 +320,8 @@ Use `release notes --until <tag-or-sha>` when you need a bounded notes window, a
 
 Use `release doctor --remote <name>` or `release pr preview --remote <name>` when release diff checks need to compare against a non-`origin` remote for this run.
 
+Use `release history` to inspect the publish state and embedded publish records stored on the current PR preview comment, `release history --pr <number>` to target a specific PR, and `release history --format json` for automation-friendly output.
+
 The `operator` block declares script names, not hardcoded package-manager commands. `@kitz/release`
 detects the active package manager from the current environment and renders guidance accordingly
 (`bun run ...`, `pnpm ...`, `npm run ...`, etc).
@@ -339,6 +341,7 @@ The `release` binary dispatches through file-based command routing:
 | Command                             | Purpose                                       |
 | ----------------------------------- | --------------------------------------------- | ----------- | ----------------------- |
 | `release forecast [options]`        | Show the current release forecast             |
+| `release history [options]`         | Inspect publish state and history from the PR preview comment |
 | `release plan --lifecycle <official | candidate                                     | ephemeral> [--out <file>]` | Generate a release plan |
 | `release apply [--from <file>]`     | Execute the release plan                      |
 | `release explain <pkg>`             | Explain why a package is primary, cascade, or unchanged |
