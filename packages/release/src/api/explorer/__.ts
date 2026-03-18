@@ -1,8 +1,13 @@
 export * as Errors from './errors.js'
 export { ExplorerError } from './errors.js'
+export type { ResolvedGitHubContext, ResolvedPullRequestContext } from './explore.js'
 export {
   detectPrNumber,
   explore,
+  exploreFromContext,
+  resolveGitHubContext,
+  resolvePullRequestContext,
+  resolvePullRequestFromContext,
   resolvePullRequest,
   resolvePrNumber,
   resolveReleaseTarget,

@@ -62,6 +62,7 @@ const parseAction = (args: readonly string[]): ParsedAction | null => {
 const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
 
 interface PreparedPrTitle {
+  readonly githubContext: Api.Explorer.ResolvedGitHubContext
   readonly pullRequest: {
     readonly number: number
     readonly title: string
@@ -85,7 +86,8 @@ const preparePrTitle = Effect.gen(function* () {
     return null
   }
 
-  const pullRequest = yield* Api.Explorer.resolvePullRequest()
+  const pullRequestContext = yield* Api.Explorer.resolvePullRequestContext()
+  const pullRequest = pullRequestContext.pullRequest
   if (!pullRequest) {
     return yield* Effect.fail(
       new Api.Explorer.ExplorerError({
@@ -119,6 +121,7 @@ const preparePrTitle = Effect.gen(function* () {
   ).pipe(Effect.result)
 
   return {
+    githubContext: pullRequestContext,
     pullRequest,
     projectedHeader,
     suggestedTitle: rewriteAttempt._tag === 'Success' ? rewriteAttempt.success : null,
@@ -217,13 +220,20 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, ChildProcessSpawn
       )
     }
 
-    const target = yield* Api.Explorer.resolveReleaseTarget(env.vars)
     const updated = yield* Effect.gen(function* () {
       const github = yield* Github.Github
       return yield* github.updatePullRequest(prepared.pullRequest.number, {
         title: nextTitle,
       })
-    }).pipe(Effect.provide(Github.LiveFetch({ owner: target.owner, repo: target.repo, token })))
+    }).pipe(
+      Effect.provide(
+        Github.LiveFetch({
+          owner: prepared.githubContext.target.owner,
+          repo: prepared.githubContext.target.repo,
+          token,
+        }),
+      ),
+    )
 
     yield* Console.log(`Updated PR #${String(updated.number)} title.`)
     yield* Console.log(`Before: \`${prepared.pullRequest.title}\``)
