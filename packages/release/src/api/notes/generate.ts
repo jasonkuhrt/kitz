@@ -5,7 +5,7 @@
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, MutableHashSet, Option } from 'effect'
+import { Effect, Exit, HashSet, MutableHashSet, Option } from 'effect'
 import type { ReleaseCommit } from '../analyzer/models/commit.js'
 import { extractImpacts, findLatestTagVersion } from '../analyzer/version.js'
 import type { Package } from '../analyzer/workspace.js'
@@ -62,6 +62,52 @@ export interface GenerateResult {
 const toReleaseTag = (pkg: Package, version: Semver.Semver): string =>
   Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version }))
 
+const trimCommitsUntilBoundary = (
+  commits: readonly Git.Commit[],
+  until: string | undefined,
+  tags: readonly string[],
+): Effect.Effect<readonly Git.Commit[], Git.GitError | Git.GitParseError, Git.Git> =>
+  Effect.gen(function* () {
+    if (!until) return commits
+
+    const boundaryIndex = commits.findIndex(
+      (commit) =>
+        commit.hash === until || commit.hash.startsWith(until) || until.startsWith(commit.hash),
+    )
+
+    if (boundaryIndex >= 0) {
+      return commits.slice(boundaryIndex)
+    }
+
+    const git = yield* Git.Git
+    const newerCommitsExit = yield* Effect.exit(git.getCommitsSince(until))
+
+    if (Exit.isFailure(newerCommitsExit)) {
+      const knownTag = yield* Effect.option(git.getTagSha(until))
+      if (Option.isSome(knownTag)) {
+        return yield* Effect.failCause(newerCommitsExit.cause)
+      }
+
+      const knownCommit = yield* Effect.option(git.commitExists(until))
+      if (Option.getOrElse(knownCommit, () => false)) {
+        return yield* Effect.failCause(newerCommitsExit.cause)
+      }
+
+      if (tags.includes(until)) {
+        return yield* Effect.failCause(newerCommitsExit.cause)
+      }
+
+      return commits
+    }
+
+    const newerCommits = newerCommitsExit.value
+    const newerHashes = HashSet.fromIterable(
+      newerCommits.map((commit: { hash: string }) => commit.hash),
+    )
+
+    return commits.filter((commit) => !HashSet.has(newerHashes, commit.hash))
+  })
+
 /**
  * Generate release notes for packages with changes.
  *
@@ -104,9 +150,10 @@ export const generate = (
           onSome: (version) => toReleaseTag(pkg, version),
         })
       const commits = yield* git.getCommitsSince(since)
+      const boundedCommits = yield* trimCommitsUntilBoundary(commits, options.until, tags)
 
       const impactsByCommit = yield* Effect.all(
-        commits.map((commit) => extractImpacts(commit)),
+        boundedCommits.map((commit) => extractImpacts(commit)),
         { concurrency: 'unbounded' },
       )
       const impacts = impactsByCommit.flat().filter((impact) => impact.scope === pkg.scope)
