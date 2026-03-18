@@ -53,6 +53,14 @@ const args = Oak.Command.create()
       }),
     ),
   )
+  .parameter(
+    'until u',
+    Schema.UndefinedOr(Schema.String).pipe(
+      Schema.annotate({
+        description: 'Stop at this tag or SHA instead of HEAD',
+      }),
+    ),
+  )
   .parse()
 
 Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
@@ -71,6 +79,7 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
       packages,
       tags,
       since: args.since,
+      until: args.until,
       filter: args.pkg ? [args.pkg] : undefined,
     })
 
