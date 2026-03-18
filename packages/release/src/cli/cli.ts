@@ -13,6 +13,7 @@ import { FileSystemLayer } from '../platform.js'
  *
  * Available commands:
  * - doctor          - Run release doctor checks and publishability audits
+ * - explain <pkg>   - Explain why a package is primary, cascade, or unchanged
  * - forecast        - Render a release forecast
  * - plan            - Generate release plan (--lifecycle official|candidate|ephemeral)
  * - apply           - Execute release plan

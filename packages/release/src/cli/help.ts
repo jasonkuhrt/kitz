@@ -1,6 +1,10 @@
 const rootCommands = [
   { usage: 'apply [options]', description: 'Execute the release plan' },
   { usage: 'doctor [options]', description: 'Run release doctor checks and publishability audits' },
+  {
+    usage: 'explain <pkg> [options]',
+    description: 'Explain why a package is primary, cascade, or unchanged',
+  },
   { usage: 'forecast [options]', description: 'Render a release forecast' },
   { usage: 'init [options]', description: 'Initialize release configuration' },
   { usage: 'notes [pkg] [options]', description: 'Show unreleased release notes' },

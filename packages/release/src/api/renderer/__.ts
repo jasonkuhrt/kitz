@@ -1,3 +1,4 @@
+export * from './explain.js'
 export * from './graph.js'
 export * from './plan.js'
 export * from './table.js'

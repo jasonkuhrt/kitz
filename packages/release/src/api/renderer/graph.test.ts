@@ -5,8 +5,11 @@ const makeReadonlyMap = <A>(
   entries: ReadonlyArray<readonly [string, A]>,
 ): ReadonlyMap<string, A> => {
   const record = Object.fromEntries(entries)
-  const iterator = function* () {
-    yield* entries
+  const iterator = function* (): Generator<[string, A], undefined, unknown> {
+    for (const [key, value] of entries) {
+      yield [key, value]
+    }
+    return undefined
   }
 
   const map = {
@@ -18,15 +21,17 @@ const makeReadonlyMap = <A>(
       }
     },
     entries: iterator,
-    keys: function* () {
+    keys: function* (): Generator<string, undefined, unknown> {
       for (const [key] of entries) {
         yield key
       }
+      return undefined
     },
-    values: function* () {
+    values: function* (): Generator<A, undefined, unknown> {
       for (const [, value] of entries) {
         yield value
       }
+      return undefined
     },
     [Symbol.iterator]: iterator,
     get size() {
