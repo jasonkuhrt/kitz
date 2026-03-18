@@ -280,10 +280,13 @@ export default defineConfig({
   npmTag: 'latest',
   // Dist-tag for candidate releases (default: 'next')
   candidateTag: 'next',
-  // Scope-to-package-name mapping (auto-scanned if omitted)
+  // Scope-to-package mapping (auto-scanned if omitted)
   packages: {
     core: '@myorg/core',
-    utils: '@myorg/utils',
+    docs: {
+      name: '@myorg/docs',
+      path: './tooling/pkg-docs/',
+    },
   },
   // Declare how each lifecycle is actually published
   publishing: {
