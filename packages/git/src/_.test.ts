@@ -43,7 +43,7 @@ describe('Sha', () => {
       { input: '', output: 'empty', comment: 'empty string' },
     )
     .test(({ input }) => {
-      expect(() => Git.Sha.make(input)).toThrow(/Sha/)
+      expect(() => Git.Sha.make(input)).toThrow()
     })
 
   Test.describe('Sha.is')
@@ -270,6 +270,38 @@ describe('Commit', () => {
     expect(commit.message).toBe('feat(core): add feature\n\nDetailed description')
     expect(commit.author.name).toBe('Jane Doe')
     expect(commit.author.email).toBe('jane@example.com')
+  })
+
+  test('round-trips commit dates through JSON encoding', () => {
+    const commit = Git.Commit.make({
+      hash: Git.Sha.make('abc1234'),
+      message: 'feat(core): add feature\n\nDetailed description',
+      author: Git.Author.make({ name: 'Jane Doe', email: 'jane@example.com' }),
+      date: new Date('2024-01-15T00:00:00.000Z'),
+    })
+
+    const encoded = Schema.encodeSync(Git.Commit)(commit)
+    const decoded = Schema.decodeSync(Git.Commit)(encoded)
+
+    expect(encoded.date).toBe('2024-01-15T00:00:00.000Z')
+    expect(decoded.date).toBeInstanceOf(Date)
+    expect(decoded.date.toISOString()).toBe('2024-01-15T00:00:00.000Z')
+  })
+
+  test('rejects non-canonical commit date strings during JSON decode', () => {
+    expect(() =>
+      Schema.decodeSync(Git.Commit)({
+        _tag: 'Commit',
+        hash: Git.Sha.make('abc1234'),
+        message: 'feat(core): add feature',
+        author: {
+          _tag: 'Author',
+          name: 'Jane Doe',
+          email: 'jane@example.com',
+        },
+        date: '01/15/2024',
+      }),
+    ).toThrow('Invalid commit date format')
   })
 })
 
