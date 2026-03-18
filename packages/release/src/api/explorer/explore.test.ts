@@ -3,6 +3,7 @@ import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Effect, Layer } from 'effect'
 import { describe, expect, test } from 'vitest'
+import type { Recon } from './models/__.js'
 import { explore, toExecutorRuntimeConfig } from './explore.js'
 
 const makeNpmCliLayer = (options?: {
@@ -219,7 +220,7 @@ describe('explore', () => {
 
 describe('toExecutorRuntimeConfig', () => {
   test('maps recon to executor runtime github config', () => {
-    const recon = {
+    const recon: Recon = {
       ci: { detected: false as const, provider: null, prNumber: null },
       github: {
         target: {
@@ -238,6 +239,7 @@ describe('toExecutorRuntimeConfig', () => {
         registry: 'https://registry.npmjs.org',
       },
       git: {
+        root: '/repo/' as unknown as Recon['git']['root'],
         clean: true,
         branch: 'main',
         headSha: 'abc1234',

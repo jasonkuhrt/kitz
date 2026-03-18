@@ -1,4 +1,5 @@
 import { Env } from '@kitz/env'
+import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
@@ -293,6 +294,7 @@ export const explore = (): Effect.Effect<
     const githubToken = resolveGithubToken(vars)
 
     // Gather real git state
+    const root = Fs.Path.AbsDir.fromString(yield* git.getRoot())
     const branch = yield* git.getCurrentBranch()
     const headSha = yield* git.getHeadSha()
     const isClean = yield* git.isClean()
@@ -321,6 +323,7 @@ export const explore = (): Effect.Effect<
       },
       npm,
       git: {
+        root,
         clean: isClean,
         branch,
         headSha,

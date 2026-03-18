@@ -6,6 +6,7 @@ import { Monorepo } from '@kitz/monorepo'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
 import { Effect, Exit } from 'effect'
+import { PackageLocation } from './package-location.js'
 
 /**
  * A scanned package in the monorepo.
@@ -24,18 +25,13 @@ export interface Package {
  */
 export type PackageMap = Record<string, string>
 
-// Shared typed path for packages directory
-const packagesRelDir = Fs.Path.RelDir.fromString('./packages/')
-
 const inferConfiguredPackage = (cwd: Fs.Path.AbsDir, scope: string, name: string): Package => {
-  const packagesDir = Fs.Path.join(cwd, packagesRelDir)
-  const scopeRelDir = Fs.Path.RelDir.fromString(`./${scope}/`)
-  const scopeDir = Fs.Path.join(packagesDir, scopeRelDir)
+  const location = PackageLocation.inferDefault(cwd, scope)
 
   return {
     scope,
     name: Pkg.Moniker.parse(name),
-    path: scopeDir,
+    path: location.path,
   }
 }
 

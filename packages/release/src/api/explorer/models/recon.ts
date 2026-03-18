@@ -1,3 +1,4 @@
+import { Fs } from '@kitz/fs'
 import type { CiContext } from './ci-context.js'
 import type { GithubCredentials, NpmCredentials } from './credentials.js'
 import type { GitIdentity } from './git-identity.js'
@@ -14,6 +15,7 @@ export interface Recon {
   }
   readonly npm: NpmCredentials
   readonly git: {
+    readonly root: Fs.Path.AbsDir
     readonly clean: boolean
     readonly branch: string
     readonly headSha: string
