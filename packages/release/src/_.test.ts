@@ -287,6 +287,28 @@ describe('Planner.official', () => {
     expect(result.cascades).toHaveLength(0)
   })
 
+  test('keeps unreleased package commits even when another package was released more recently', async () => {
+    const layer = makeTestLayer({
+      tags: ['@kitz/core@9.0.0', '@kitz/cli@1.0.0'],
+      commits: [
+        Git.Memory.commit('feat(cli): 1.0.0 release'),
+        Git.Memory.commit('fix(core): patch after the core release'),
+        Git.Memory.commit('feat(core): feature after the core release'),
+        Git.Memory.commit('feat(core): 9.0.0 release'),
+      ],
+    })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
+
+    expect(result.releases).toHaveLength(1)
+    expect(result.releases[0]!.package.name.moniker).toBe('@kitz/core')
+    expect(result.releases[0]!.bumpType).toBe('minor')
+    expectVersion(result.releases[0]!.nextVersion, '9.1.0')
+    expect(result.releases[0]!.commits).toHaveLength(2)
+  })
+
   Test.describe('bump detection')
     .inputType<{ tags: string[]; commit: string }>()
     .outputType<{ bump: Semver.BumpType; version: string }>()
