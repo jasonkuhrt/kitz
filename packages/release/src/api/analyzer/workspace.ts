@@ -5,7 +5,7 @@ import { Fs } from '@kitz/fs'
 import { Monorepo } from '@kitz/monorepo'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
-import { Effect } from 'effect'
+import { Effect, Exit } from 'effect'
 
 /**
  * A scanned package in the monorepo.
@@ -26,6 +26,18 @@ export type PackageMap = Record<string, string>
 
 // Shared typed path for packages directory
 const packagesRelDir = Fs.Path.RelDir.fromString('./packages/')
+
+const inferConfiguredPackage = (cwd: Fs.Path.AbsDir, scope: string, name: string): Package => {
+  const packagesDir = Fs.Path.join(cwd, packagesRelDir)
+  const scopeRelDir = Fs.Path.RelDir.fromString(`./${scope}/`)
+  const scopeDir = Fs.Path.join(packagesDir, scopeRelDir)
+
+  return {
+    scope,
+    name: Pkg.Moniker.parse(name),
+    path: scopeDir,
+  }
+}
 
 /**
  * Error type for scan operation.
@@ -94,22 +106,31 @@ export const resolvePackages = (
   configPackages: PackageMap,
 ): Effect.Effect<Package[], ScanError, FileSystem.FileSystem | Env.Env> =>
   Effect.gen(function* () {
-    // If config explicitly provides packages, use those
-    if (Object.keys(configPackages).length > 0) {
-      const env = yield* Env.Env
-      const packagesDir = Fs.Path.join(env.cwd, packagesRelDir)
-
-      return Object.entries(configPackages).map(([scope, name]) => {
-        const scopeRelDir = Fs.Path.RelDir.fromString(`./${scope}/`)
-        const scopeDir = Fs.Path.join(packagesDir, scopeRelDir)
-        return {
-          scope,
-          name: Pkg.Moniker.parse(name),
-          path: scopeDir,
-        }
-      })
+    if (Object.keys(configPackages).length === 0) {
+      return yield* scan
     }
 
-    // Otherwise scan from filesystem
-    return yield* scan
+    const env = yield* Env.Env
+    const discoveredPackagesExit = yield* Effect.exit(scan)
+
+    if (Exit.isFailure(discoveredPackagesExit)) {
+      return Object.entries(configPackages).map(([scope, name]) =>
+        inferConfiguredPackage(env.cwd, scope, name),
+      )
+    }
+
+    const discoveredPackages = discoveredPackagesExit.value
+    const discoveredByName = Object.fromEntries(
+      discoveredPackages.map((pkg): [string, Package] => [pkg.name.moniker, pkg]),
+    ) as Record<string, Package>
+    return Object.entries(configPackages).map(([scope, name]) => {
+      const matched = discoveredByName[name]
+      return matched
+        ? {
+            scope,
+            name: matched.name,
+            path: matched.path,
+          }
+        : inferConfiguredPackage(env.cwd, scope, name)
+    })
   })
