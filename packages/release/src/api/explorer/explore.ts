@@ -165,16 +165,15 @@ const resolveNpmCredentials = (
     }
   })
 
-const resolveGitRemotes = (): Effect.Effect<Recon['git']['remotes'], never, Git.Git> =>
+const resolveGitRemotes = (): Effect.Effect<
+  Recon['git']['remotes'],
+  Git.GitError | Git.GitParseError,
+  Git.Git
+> =>
   Effect.gen(function* () {
     const git = yield* Git.Git
-    const origin = yield* git.getRemoteUrl('origin').pipe(Effect.option)
-
-    if (origin._tag === 'Some') {
-      return { origin: origin.value }
-    }
-
-    return {}
+    const origin = yield* git.getRemoteUrl('origin')
+    return { origin }
   })
 
 export const selectConnectedPullRequestNumber = (

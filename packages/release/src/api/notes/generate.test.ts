@@ -212,4 +212,34 @@ describe('Notes.generate', () => {
       }
     }
   })
+
+  test('fails when the until boundary cannot be resolved as a known tag or commit', async () => {
+    const result = await Effect.runPromise(
+      generate({
+        packages,
+        tags: ['@kitz/core@1.0.0'],
+        since: '@kitz/core@1.0.0',
+        until: '@kitz/core@9.9.9',
+      }).pipe(
+        Effect.provide(
+          Git.Memory.make({
+            tags: ['@kitz/core@1.0.0'],
+            commits: [
+              Git.Memory.commit('feat(core): newer change should not be silently included'),
+              Git.Memory.commit('feat(core): 1.0.0 release'),
+            ],
+          }),
+        ),
+        Effect.result,
+      ),
+    )
+
+    expect(result._tag).toBe('Failure')
+    if (result._tag === 'Failure') {
+      expect(result.failure._tag).toBe('GitError')
+      if (result.failure._tag === 'GitError') {
+        expect(result.failure.context.detail).toContain('@kitz/core@9.9.9')
+      }
+    }
+  })
 })

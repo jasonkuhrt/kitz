@@ -4,7 +4,7 @@ import { Github } from '@kitz/github'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { describe, expect, it as test } from '@effect/vitest'
-import { Effect, Ref } from 'effect'
+import { Effect, FileSystem, Ref } from 'effect'
 import { execute, executeObservable, toPayload } from './execute.js'
 import {
   decodeJsonRecordSync,
@@ -695,6 +695,49 @@ describe('Executor integration', () => {
         expect(allActivities).toContain(`CreateTag:${tagCore('1.1.0')}`)
         expect(allActivities).toContain(`PushTag:${tagCore('1.1.0')}`)
         expect(allActivities).toContain(`CreateGHRelease:${tagCore('1.1.0')}`)
+      }),
+    ),
+  )
+
+  test.live('observable workflow builds the release payload only once', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+          },
+        })
+
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
+        const manifestReads = yield* Ref.make(0)
+
+        const observable = yield* Effect.gen(function* () {
+          const fileSystem = yield* FileSystem.FileSystem
+          return yield* executeObservable(plan, {
+            dryRun: true,
+            dbPath: `/tmp/kitz-release-workflow-${Date.now()}-${Math.random().toString(16).slice(2)}.db`,
+          }).pipe(
+            Effect.provideService(FileSystem.FileSystem, {
+              ...fileSystem,
+              readFileString: (path, options) =>
+                Effect.gen(function* () {
+                  if (path.endsWith('/package.json')) {
+                    yield* Ref.update(manifestReads, (count) => count + 1)
+                  }
+                  return yield* fileSystem.readFileString(path, options)
+                }),
+            }),
+          )
+        }).pipe(Effect.provide(harness.planLayer))
+
+        expect(observable.graph.layers.flatMap((layer) => [...layer])).toContain(
+          'Prepare:@kitz/core',
+        )
+        expect(yield* Ref.get(manifestReads)).toBe(1)
       }),
     ),
   )

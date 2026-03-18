@@ -72,24 +72,32 @@ Cli.run(
       candidateTag: config.candidateTag,
     })
 
-    const workflowStatus = yield* Api.Executor.status(plan, {
+    const runtime = yield* Api.Explorer.explore()
+    const runtimeConfig = Api.Explorer.toExecutorRuntimeConfig(runtime)
+    if (!runtimeConfig.github) {
+      yield* Console.error('GitHub release target and token are required for release resume.')
+      yield* Console.error('Set GITHUB_TOKEN and ensure origin points to GitHub, then retry.')
+      return env.exit(1)
+    }
+
+    const resumeAttempt = yield* Api.Executor.resumeObservable(plan, {
+      dryRun: false,
       tag: publish.distTag,
       publishing: config.publishing,
       trunk: config.trunk,
-    }).pipe(Effect.provide(Api.Executor.makeWorkflowRuntime()))
+      github: runtimeConfig.github,
+    }).pipe(Effect.provide(Api.Executor.makeWorkflowRuntime()), Effect.result)
 
-    if (workflowStatus.state !== 'suspended') {
-      yield* Console.error(Api.Executor.formatExecutionStatus(workflowStatus))
-      yield* Console.error('')
-      yield* Console.error(
-        workflowStatus.state === 'not-started'
-          ? 'No interrupted workflow exists for this plan yet. Run `release apply` first.'
-          : workflowStatus.state === 'succeeded'
-            ? 'This release plan already completed successfully. Generate a new plan before releasing again.'
-            : 'This workflow ended in a terminal failure and cannot be resumed automatically.',
-      )
-      return env.exit(1)
+    if (resumeAttempt._tag === 'Failure') {
+      if (resumeAttempt.failure._tag === 'ExecutorResumeError') {
+        yield* Console.error(resumeAttempt.failure.message)
+        return env.exit(1)
+      }
+
+      return yield* Effect.fail(resumeAttempt.failure)
     }
+
+    const { events, execute, status: workflowStatus } = resumeAttempt.success
 
     yield* Console.log(Api.Executor.formatExecutionStatus(workflowStatus))
 
@@ -100,22 +108,6 @@ Cli.run(
         return env.exit(1)
       }
     }
-
-    const runtime = yield* Api.Explorer.explore()
-    const runtimeConfig = Api.Explorer.toExecutorRuntimeConfig(runtime)
-    if (!runtimeConfig.github) {
-      yield* Console.error('GitHub release target and token are required for release resume.')
-      yield* Console.error('Set GITHUB_TOKEN and ensure origin points to GitHub, then retry.')
-      return env.exit(1)
-    }
-
-    const { events, execute } = yield* Api.Executor.executeObservable(plan, {
-      dryRun: false,
-      tag: publish.distTag,
-      publishing: config.publishing,
-      trunk: config.trunk,
-      github: runtimeConfig.github,
-    })
 
     const eventFiber = yield* events.pipe(
       Stream.tap((event) => {

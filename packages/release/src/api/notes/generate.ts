@@ -97,7 +97,17 @@ const trimCommitsUntilBoundary = (
         return yield* Effect.failCause(newerCommitsExit.cause)
       }
 
-      return commits
+      return yield* Effect.fail(
+        new Git.GitError({
+          context: {
+            operation: 'getCommitsSince',
+            detail: `Could not resolve release notes until boundary "${until}" as a known tag or commit.`,
+          },
+          cause: new Error(
+            `Could not resolve release notes until boundary "${until}" as a known tag or commit.`,
+          ),
+        }),
+      )
     }
 
     const newerCommits = newerCommitsExit.value

@@ -205,4 +205,47 @@ describe('command workspace bootstrap', () => {
       rmSync(rootDir, { recursive: true, force: true })
     }
   })
+
+  test('fails when config.packages requires discovery but workspace scanning is unavailable', async () => {
+    const rootDir = mkdtempSync(path.join(os.tmpdir(), 'kitz-release-command-workspace-fail-'))
+
+    try {
+      writeFileSync(
+        path.join(rootDir, 'package.json'),
+        JSON.stringify(
+          {
+            name: '@fixture/repo',
+            private: true,
+            type: 'module',
+            workspaces: [],
+          },
+          null,
+          2,
+        ),
+      )
+
+      const result = await Effect.runPromise(
+        Effect.provide(
+          loadCommandWorkspaceWith(
+            Effect.succeed(
+              makeResolvedConfig({
+                core: '@kitz/core',
+              }),
+            ),
+          ),
+          Layer.mergeAll(
+            FileSystemLayer,
+            Env.Test({ cwd: Fs.Path.AbsDir.fromString(`${rootDir}/`) }),
+          ),
+        ).pipe(Effect.result),
+      )
+
+      expect(result._tag).toBe('Failure')
+      if (result._tag === 'Failure') {
+        expect(result.failure._tag).toBe('PackageResolutionError')
+      }
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true })
+    }
+  })
 })

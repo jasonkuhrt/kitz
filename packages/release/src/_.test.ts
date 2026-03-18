@@ -236,7 +236,7 @@ describe('release package scripts', () => {
 
       const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
       symlinkSync(path.join(repoRoot, 'node_modules'), path.join(projectDir, 'node_modules'))
-      const result = spawnSync('/bin/sh', ['-lc', `${testScript} --reporter=verbose`], {
+      const result = spawnSync('/bin/sh', ['-c', `${testScript} --reporter=verbose`], {
         cwd: releaseDir,
         encoding: 'utf8',
         env: {

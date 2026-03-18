@@ -5,7 +5,7 @@ import { Fs } from '@kitz/fs'
 import { Monorepo } from '@kitz/monorepo'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
-import { Effect, Exit } from 'effect'
+import { Data, Effect, Exit } from 'effect'
 import { PackageLocation } from './package-location.js'
 
 /**
@@ -81,6 +81,16 @@ export type ScanError =
   | PlatformError
   | Resource.ResourceError
 
+export class PackageResolutionError extends Data.TaggedError('PackageResolutionError')<{
+  readonly context: {
+    readonly detail: string
+    readonly scope: string
+    readonly packageName: string
+  }
+}> {}
+
+export type ResolvePackagesError = ScanError | PackageResolutionError
+
 /**
  * Scan packages in the monorepo using the root package.json workspaces field.
  *
@@ -137,26 +147,58 @@ export const toPackageMap = (packages: Package[]): PackageMap => {
  */
 export const resolvePackages = (
   configPackages: PackageMap,
-): Effect.Effect<Package[], ScanError, FileSystem.FileSystem | Env.Env> =>
+): Effect.Effect<Package[], ResolvePackagesError, FileSystem.FileSystem | Env.Env> =>
   Effect.gen(function* () {
     if (Object.keys(configPackages).length === 0) {
       return yield* scan
     }
 
     const env = yield* Env.Env
-    const discoveredPackagesExit = yield* Effect.exit(scan)
+    const configuredEntries = Object.entries(configPackages)
+    const entriesNeedingDiscovery = configuredEntries.filter(
+      ([, entry]) => typeof entry === 'string' || entry.path === undefined,
+    )
 
-    if (Exit.isFailure(discoveredPackagesExit)) {
-      return Object.entries(configPackages).map(([scope, entry]) =>
+    if (entriesNeedingDiscovery.length === 0) {
+      return configuredEntries.map(([scope, entry]) =>
         inferConfiguredPackage(env.cwd, scope, entry),
       )
+    }
+
+    const discoveredPackagesExit = yield* Effect.exit(scan)
+    if (Exit.isFailure(discoveredPackagesExit)) {
+      return yield* Effect.failCause(discoveredPackagesExit.cause)
     }
 
     const discoveredPackages = discoveredPackagesExit.value
     const discoveredByName = Object.fromEntries(
       discoveredPackages.map((pkg): [string, Package] => [pkg.name.moniker, pkg]),
     ) as Record<string, Package>
-    return Object.entries(configPackages).map(([scope, entry]) => {
+
+    const unresolvedEntry = configuredEntries.find(([_, entry]) => {
+      if (typeof entry !== 'string' && entry.path !== undefined) {
+        return false
+      }
+
+      return discoveredByName[resolveConfiguredName(entry)] === undefined
+    })
+    if (unresolvedEntry) {
+      const [scope, entry] = unresolvedEntry
+      const packageName = resolveConfiguredName(entry)
+      return yield* Effect.fail(
+        new PackageResolutionError({
+          context: {
+            scope,
+            packageName,
+            detail:
+              `Configured package "${packageName}" for scope "${scope}" was not found in workspace discovery. ` +
+              'Add an explicit `path` in `config.packages` or update the package name to match the workspace manifest.',
+          },
+        }),
+      )
+    }
+
+    return configuredEntries.map(([scope, entry]) => {
       if (typeof entry !== 'string' && entry.path !== undefined) {
         return inferConfiguredPackage(env.cwd, scope, entry)
       }

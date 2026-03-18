@@ -3,7 +3,14 @@ import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { describe, expect, it as test } from '@effect/vitest'
 import { Effect, Layer, Ref } from 'effect'
-import { execute, formatExecutionStatus, resume, status, toPayload } from './execute.js'
+import {
+  execute,
+  formatExecutionStatus,
+  resume,
+  resumeObservable,
+  status,
+  toPayload,
+} from './execute.js'
 import { ReleaseWorkflow } from './workflow.js'
 import {
   decodeJsonRecordSync,
@@ -68,6 +75,43 @@ describe('Executor workflow state', () => {
           if (result.failure._tag === 'ExecutorResumeError') {
             expect(result.failure.context.state).toBe('not-started')
             expect(result.failure.context.detail).toContain('Run `release apply` first')
+          }
+        }
+      }),
+    ),
+  )
+
+  test.live('fails observable resume when no persisted workflow state exists yet', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0'), tagCli('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
+              dependencies: {
+                '@kitz/core': 'workspace:^',
+              },
+            }),
+          },
+        })
+        const workflowContext = yield* Layer.build(harness.workflowLayer)
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
+
+        const result = yield* resumeObservable(plan, { dryRun: false }).pipe(
+          Effect.provide(workflowContext),
+          Effect.result,
+        )
+
+        expect(result._tag).toBe('Failure')
+        if (result._tag === 'Failure') {
+          expect(result.failure._tag).toBe('ExecutorResumeError')
+          if (result.failure._tag === 'ExecutorResumeError') {
+            expect(result.failure.context.state).toBe('not-started')
           }
         }
       }),
@@ -259,6 +303,45 @@ describe('Executor workflow state', () => {
           if (result.failure._tag === 'ExecutorResumeError') {
             expect(result.failure.context.state).toBe('succeeded')
             expect(result.failure.context.detail).toContain('already completed successfully')
+          }
+        }
+      }),
+    ),
+  )
+
+  test.live('fails observable resume when the workflow already completed successfully', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0'), tagCli('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
+              dependencies: {
+                '@kitz/core': 'workspace:^',
+              },
+            }),
+          },
+        })
+        const workflowContext = yield* Layer.build(harness.workflowLayer)
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
+
+        yield* execute(plan, { dryRun: false }).pipe(Effect.provide(workflowContext))
+
+        const result = yield* resumeObservable(plan, { dryRun: false }).pipe(
+          Effect.provide(workflowContext),
+          Effect.result,
+        )
+
+        expect(result._tag).toBe('Failure')
+        if (result._tag === 'Failure') {
+          expect(result.failure._tag).toBe('ExecutorResumeError')
+          if (result.failure._tag === 'ExecutorResumeError') {
+            expect(result.failure.context.state).toBe('succeeded')
           }
         }
       }),
