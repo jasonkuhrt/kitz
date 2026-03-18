@@ -14,7 +14,7 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
-import { Cause, Config, Effect, Exit, HashMap, Match, Option, Schema, Stream } from 'effect'
+import { Cause, Config, Effect, Exit, Match, Option, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
 import type { Publishing } from '../publishing.js'
 import {
@@ -58,10 +58,21 @@ export interface ObservableResult<R = never> {
    */
   readonly execute: Effect.Effect<ExecutionResult, ObservableExecutionError, R>
   /** Graph information for visualization */
-  readonly graph: {
-    readonly layers: readonly (readonly string[])[]
-    readonly nodes: HashMap.HashMap<string, { dependencies: readonly string[] }>
-  }
+  readonly graph: ExecutionGraph
+}
+
+export interface ExecutionGraphNode {
+  readonly dependencies: readonly string[]
+}
+
+export interface ExecutionGraph {
+  readonly layers: readonly (readonly string[])[]
+  readonly nodes: ReadonlyMap<string, ExecutionGraphNode>
+}
+
+export interface ExecutionGraphJson {
+  readonly layers: readonly (readonly string[])[]
+  readonly nodes: Readonly<Record<string, ExecutionGraphNode>>
 }
 
 export type ObservableExecutionRequirements =
@@ -534,6 +545,35 @@ export const status = (
     })
   })
 
+export const graph = (
+  plan: Plan,
+  options: {
+    dryRun?: boolean
+    tag?: string
+    registry?: string
+    publishing?: Publishing
+    trunk?: string
+  } = {},
+): Effect.Effect<ExecutionGraph, ExecutorDependencyCycleError, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const payload = yield* toPayload(plan, options)
+    const { layers, nodes } = ReleaseWorkflow.toGraph(payload)
+
+    return {
+      layers,
+      nodes: nodes as ReadonlyMap<string, ExecutionGraphNode>,
+    }
+  })
+
+export const toJsonGraph = (graph: ExecutionGraph): ExecutionGraphJson => ({
+  layers: graph.layers.map((layer) => [...layer]),
+  nodes: Object.fromEntries(
+    [...graph.nodes.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, node]) => [name, { dependencies: [...node.dependencies] }]),
+  ),
+})
+
 /**
  * Execute the release workflow with observable events and graph info.
  *
@@ -568,14 +608,7 @@ export const executeObservable = (
     const payload = yield* toPayload(plan, options)
 
     // Get graph structure for visualization
-    const { layers, nodes } = ReleaseWorkflow.toGraph(payload)
-    const typedNodes = nodes as ReadonlyMap<string, { dependencies: readonly string[] }>
-
-    // Build edges for renderer
-    const graphInfo = {
-      layers,
-      nodes: HashMap.fromIterable(typedNodes.entries()),
-    }
+    const graphInfo = yield* graph(plan, options)
 
     // Get observable execution
     const { events, execute: workflowExecute } = yield* ReleaseWorkflow.observable(payload)
