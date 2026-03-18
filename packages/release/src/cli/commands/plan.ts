@@ -8,11 +8,12 @@
  * - `candidate` — Pre-release to the `next` dist-tag
  * - `ephemeral` — Per-PR integration release
  *
- * The plan is written to `.release/plan.json` and can be executed with `release apply`.
+ * The plan is written to `.release/plan.json` by default and can be executed with `release apply`.
  */
 import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'
 import { Env } from '@kitz/env'
+import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Schema } from 'effect'
@@ -27,7 +28,7 @@ import {
 /**
  * release plan --lifecycle <official|candidate|ephemeral>
  *
- * Generate a release plan. Writes to .release/plan.json.
+ * Generate a release plan. Writes to .release/plan.json by default.
  */
 const args = Oak.Command.create()
   .use(Oak.EffectSchema)
@@ -50,6 +51,12 @@ const args = Oak.Command.create()
     'exclude x',
     Schema.UndefinedOr(Schema.Array(Schema.String)).pipe(
       Schema.annotate({ description: 'Exclude package(s)' }),
+    ),
+  )
+  .parameter(
+    'out o',
+    Schema.UndefinedOr(Schema.String).pipe(
+      Schema.annotate({ description: 'Write the generated plan to a specific file path' }),
     ),
   )
   .parse()
@@ -100,11 +107,14 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
     // Display plan
     yield* Console.log(Api.Renderer.renderPlan(plan))
 
-    yield* Api.Planner.Store.writeActive(plan)
+    const planPath = args.out !== undefined ? Fs.Path.fromString(args.out) : undefined
+    const planLocation = yield* Api.Planner.Store.resolvePlanLocation(planPath)
+
+    yield* Api.Planner.Store.write(plan, planPath)
 
     const done = Str.Builder()
-    done`Plan written to ${Api.Planner.Store.activePlanDisplayPath}`
-    done`Run 'release apply' to execute.`
+    done`Plan written to ${Fs.Path.toString(planLocation.file)}`
+    done`Run 'release apply${args.out ? ` --from ${args.out}` : ''}' to execute.`
     yield* Console.log(done.render())
   }),
 )
