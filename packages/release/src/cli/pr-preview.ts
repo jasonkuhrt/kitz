@@ -312,18 +312,9 @@ export const runPrPreview = (options: RunPrPreviewOptions = {}) =>
       )
     }
 
-    const runtime = yield* Api.Explorer.explore()
-    if (!runtime.github.target) {
-      return yield* Effect.fail(
-        new Api.Explorer.ExplorerError({
-          context: {
-            detail:
-              'Could not resolve the GitHub repository target for the connected pull request.',
-          },
-        }),
-      )
-    }
-    const pullRequest = yield* Api.Explorer.resolvePullRequest()
+    const pullRequestContext = yield* Api.Explorer.resolvePullRequestContext()
+    const runtime = yield* Api.Explorer.exploreFromContext(pullRequestContext)
+    const pullRequest = pullRequestContext.pullRequest
     if (!pullRequest) {
       return yield* Effect.fail(
         new Api.Explorer.ExplorerError({
@@ -335,7 +326,7 @@ export const runPrPreview = (options: RunPrPreviewOptions = {}) =>
       )
     }
 
-    const token = runtime.github.credentials?.token
+    const token = pullRequestContext.token
     if (!token || token.trim() === '') {
       return yield* Effect.fail(
         new Github.GithubConfigError({
@@ -395,8 +386,8 @@ export const runPrPreview = (options: RunPrPreviewOptions = {}) =>
     }).pipe(
       Effect.provide(
         Github.LiveFetch({
-          owner: runtime.github.target.owner,
-          repo: runtime.github.target.repo,
+          owner: pullRequestContext.target.owner,
+          repo: pullRequestContext.target.repo,
           token,
         }),
       ),

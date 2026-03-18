@@ -8,6 +8,17 @@ import type { RuntimeConfig } from '../executor/runtime.js'
 import { ExplorerError } from './errors.js'
 import type { CiContext, GitIdentity, Recon } from './models/__.js'
 
+export interface ResolvedGitHubContext {
+  readonly branch: string
+  readonly explicitPrNumber: number | null
+  readonly target: GitIdentity
+  readonly token: string | null
+}
+
+export interface ResolvedPullRequestContext extends ResolvedGitHubContext {
+  readonly pullRequest: Github.PullRequest | null
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -217,6 +228,75 @@ export const selectPullRequestByNumber = (
     )
   })
 
+const liveGithubLayerForContext = (context: ResolvedGitHubContext) =>
+  Github.LiveFetch({
+    owner: context.target.owner,
+    repo: context.target.repo,
+    ...(context.token ? { token: context.token } : {}),
+  })
+
+export const resolveGitHubContext = (): Effect.Effect<
+  ResolvedGitHubContext,
+  ExplorerError | Git.GitError | Git.GitParseError,
+  Env.Env | Git.Git
+> =>
+  Effect.gen(function* () {
+    const env = yield* Env.Env
+    const git = yield* Git.Git
+
+    return {
+      branch: yield* git.getCurrentBranch(),
+      explicitPrNumber: detectPrNumber(env.vars),
+      target: yield* resolveReleaseTarget(env.vars),
+      token: resolveGithubToken(env.vars),
+    } satisfies ResolvedGitHubContext
+  })
+
+export const resolvePullRequestFromContext = (
+  context: ResolvedGitHubContext,
+): Effect.Effect<
+  Github.PullRequest | null,
+  | ExplorerError
+  | Github.GithubError
+  | Github.GithubNotFoundError
+  | Github.GithubAuthError
+  | Github.GithubRateLimitError,
+  Github.Github
+> =>
+  Effect.gen(function* () {
+    const github = yield* Github.Github
+    const pullRequests = yield* github.listOpenPullRequests()
+
+    if (context.explicitPrNumber !== null) {
+      return yield* selectPullRequestByNumber(context.explicitPrNumber, pullRequests)
+    }
+
+    return yield* selectConnectedPullRequest(context.branch, pullRequests)
+  })
+
+export const resolvePullRequestContext = (): Effect.Effect<
+  ResolvedPullRequestContext,
+  | ExplorerError
+  | Git.GitError
+  | Git.GitParseError
+  | Github.GithubError
+  | Github.GithubNotFoundError
+  | Github.GithubAuthError
+  | Github.GithubRateLimitError,
+  Env.Env | Git.Git
+> =>
+  Effect.gen(function* () {
+    const context = yield* resolveGitHubContext()
+    const pullRequest = yield* resolvePullRequestFromContext(context).pipe(
+      Effect.provide(liveGithubLayerForContext(context)),
+    )
+
+    return {
+      ...context,
+      pullRequest,
+    } satisfies ResolvedPullRequestContext
+  })
+
 export const resolvePullRequest = (): Effect.Effect<
   Github.PullRequest | null,
   | ExplorerError
@@ -229,27 +309,10 @@ export const resolvePullRequest = (): Effect.Effect<
   Env.Env | Git.Git
 > =>
   Effect.gen(function* () {
-    const env = yield* Env.Env
-    const git = yield* Git.Git
-    const prNumber = detectPrNumber(env.vars)
-    const branch = yield* git.getCurrentBranch()
-    const target = yield* resolveReleaseTarget(env.vars)
-
-    const token = resolveGithubToken(env.vars) ?? undefined
-    const pullRequests = yield* Effect.gen(function* () {
-      const github = yield* Github.Github
-      return yield* github.listOpenPullRequests()
-    }).pipe(
-      Effect.provide(
-        Github.LiveFetch({ owner: target.owner, repo: target.repo, ...(token ? { token } : {}) }),
-      ),
+    const context = yield* resolveGitHubContext()
+    return yield* resolvePullRequestFromContext(context).pipe(
+      Effect.provide(liveGithubLayerForContext(context)),
     )
-
-    if (prNumber !== null) {
-      return yield* selectPullRequestByNumber(prNumber, pullRequests)
-    }
-
-    return yield* selectConnectedPullRequest(branch, pullRequests)
   })
 
 export const resolvePrNumber = (): Effect.Effect<
@@ -264,22 +327,17 @@ export const resolvePrNumber = (): Effect.Effect<
   Env.Env | Git.Git
 > =>
   Effect.gen(function* () {
-    const env = yield* Env.Env
-    const detected = detectPrNumber(env.vars)
-    if (detected !== null) return detected
-    const pullRequest = yield* resolvePullRequest()
+    const context = yield* resolveGitHubContext()
+    if (context.explicitPrNumber !== null) return context.explicitPrNumber
+    const pullRequest = yield* resolvePullRequestFromContext(context).pipe(
+      Effect.provide(liveGithubLayerForContext(context)),
+    )
     return pullRequest?.number ?? null
   })
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-/**
- * Gather environmental reconnaissance — all facts about the release
- * environment needed before analysis or execution begins.
- */
-export const explore = (): Effect.Effect<
+export const exploreFromContext = (
+  context: ResolvedGitHubContext,
+): Effect.Effect<
   Recon,
   ExplorerError | Git.GitError | Git.GitParseError,
   Env.Env | Git.Git | NpmRegistry.NpmCli
@@ -290,12 +348,9 @@ export const explore = (): Effect.Effect<
     const vars = env.vars
 
     const ci = detectExecutionContext(vars)
-    const target = yield* resolveReleaseTarget(vars)
-    const githubToken = resolveGithubToken(vars)
 
     // Gather real git state
     const root = Fs.Path.AbsDir.fromString(yield* git.getRoot())
-    const branch = yield* git.getCurrentBranch()
     const headSha = yield* git.getHeadSha()
     const isClean = yield* git.isClean()
     const npm = yield* resolveNpmCredentials(vars)
@@ -316,20 +371,38 @@ export const explore = (): Effect.Effect<
     return {
       ci,
       github: {
-        target,
-        credentials: githubToken
-          ? { token: githubToken, source: 'env:GITHUB_TOKEN' as const }
+        target: context.target,
+        credentials: context.token
+          ? { token: context.token, source: 'env:GITHUB_TOKEN' as const }
           : null,
       },
       npm,
       git: {
         root,
         clean: isClean,
-        branch,
+        branch: context.branch,
         headSha,
         remotes,
       },
     } satisfies Recon
+  })
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Gather environmental reconnaissance — all facts about the release
+ * environment needed before analysis or execution begins.
+ */
+export const explore = (): Effect.Effect<
+  Recon,
+  ExplorerError | Git.GitError | Git.GitParseError,
+  Env.Env | Git.Git | NpmRegistry.NpmCli
+> =>
+  Effect.gen(function* () {
+    const context = yield* resolveGitHubContext()
+    return yield* exploreFromContext(context)
   })
 
 /**

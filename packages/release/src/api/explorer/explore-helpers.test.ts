@@ -1,3 +1,4 @@
+import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Test } from '@kitz/test'
@@ -5,6 +6,8 @@ import { Effect, Result, Layer } from 'effect'
 import { describe, expect, test } from 'vitest'
 import {
   detectPrNumber,
+  resolveGitHubContext,
+  resolvePullRequestFromContext,
   resolveReleaseTarget,
   selectConnectedPullRequest,
   selectConnectedPullRequestNumber,
@@ -146,6 +149,111 @@ describe('resolveReleaseTarget', () => {
       expect(result.failure._tag).toBe('ExplorerError')
       expect(result.failure.context.detail).toContain('Could not resolve GitHub repository')
     }
+  })
+})
+
+describe('resolveGitHubContext', () => {
+  const run = (
+    vars: Record<string, string | undefined>,
+    gitConfig: Parameters<typeof Git.Memory.make>[0] = {},
+  ) =>
+    Effect.runPromise(
+      resolveGitHubContext().pipe(
+        Effect.provide(Layer.mergeAll(Env.Test({ vars }), Git.Memory.make(gitConfig))),
+        Effect.result,
+      ),
+    )
+
+  test('collects branch, explicit PR number, target, and token once', async () => {
+    const result = await run(
+      {
+        GITHUB_REPOSITORY: 'kitz-org/kitz',
+        GITHUB_PR_NUMBER: '129',
+        GITHUB_TOKEN: 'token-123',
+      },
+      {
+        branch: 'feat/release-preview',
+        remoteUrl: 'git@github.com:other/ignored.git',
+      },
+    )
+
+    expect(Result.isSuccess(result)).toBe(true)
+    if (Result.isSuccess(result)) {
+      expect(result.success).toEqual({
+        branch: 'feat/release-preview',
+        explicitPrNumber: 129,
+        target: {
+          owner: 'kitz-org',
+          repo: 'kitz',
+          source: 'env:GITHUB_REPOSITORY',
+        },
+        token: 'token-123',
+      })
+    }
+  })
+
+  test('falls back to origin remote and no explicit PR when env is absent', async () => {
+    const result = await run(
+      {},
+      {
+        branch: 'feat/release-preview',
+        remoteUrl: 'git@github.com:jasonkuhrt/kitz.git',
+      },
+    )
+
+    expect(Result.isSuccess(result)).toBe(true)
+    if (Result.isSuccess(result)) {
+      expect(result.success.branch).toBe('feat/release-preview')
+      expect(result.success.explicitPrNumber).toBeNull()
+      expect(result.success.target).toEqual({
+        owner: 'jasonkuhrt',
+        repo: 'kitz',
+        source: 'git:origin',
+      })
+      expect(result.success.token).toBeNull()
+    }
+  })
+})
+
+describe('resolvePullRequestFromContext', () => {
+  test('prefers an explicit PR number over branch matching', async () => {
+    const result = await Effect.runPromise(
+      resolvePullRequestFromContext({
+        branch: 'feat/release-preview',
+        explicitPrNumber: 130,
+        target: {
+          owner: 'jasonkuhrt',
+          repo: 'kitz',
+          source: 'git:origin',
+        },
+        token: 'token-123',
+      }).pipe(
+        Effect.provide(
+          Github.Memory.make({
+            pullRequests: [
+              {
+                number: 129,
+                html_url: 'https://github.com/jasonkuhrt/kitz/pull/129',
+                title: 'feat(release): improve doctor output',
+                body: '',
+                base: { ref: 'main' },
+                head: { ref: 'feat/release-preview' },
+              },
+              {
+                number: 130,
+                html_url: 'https://github.com/jasonkuhrt/kitz/pull/130',
+                title: 'feat(release): improve forecast output',
+                body: '',
+                base: { ref: 'main' },
+                head: { ref: 'feat/other' },
+              },
+            ] satisfies readonly Github.PullRequest[],
+          }),
+        ),
+      ),
+    )
+
+    expect(result?.number).toBe(130)
   })
 })
 
