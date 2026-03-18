@@ -4,7 +4,8 @@
  * Render a read-only release forecast from the current repo or a saved forecast file.
  *
  * Forecasts are lifecycle-agnostic: they always project official versions for human review.
- * Output formats support scan-heavy CLI viewing (`table`, `tree`) and machine exchange (`json`).
+ * Output formats support scan-heavy CLI viewing (`table`, `tree`), shareable markdown (`md`),
+ * and machine exchange (`json`).
  */
 import { FileSystem } from 'effect'
 import { Cli } from '@kitz/cli'
@@ -26,9 +27,9 @@ const args = Oak.Command.create()
   .description('Render a release forecast')
   .parameter(
     'format f',
-    Schema.UndefinedOr(Schema.Literals(['table', 'tree', 'json']))
+    Schema.UndefinedOr(Schema.Literals(['table', 'tree', 'md', 'json']))
       .pipe(
-        Schema.decodeTo(Schema.Literals(['table', 'tree', 'json']), {
+        Schema.decodeTo(Schema.Literals(['table', 'tree', 'md', 'json']), {
           decode: SchemaGetter.transform((value) => value ?? 'table'),
           encode: SchemaGetter.transform((value) => value),
         }),
@@ -61,11 +62,16 @@ Cli.run(
         ? Api.Renderer.renderTable(input.forecast)
         : args.format === 'tree'
           ? Api.Renderer.renderTree(input.forecast)
-          : Api.Forecaster.encodeForecastEnvelope({
-              forecast: input.forecast,
-              publishState: input.publishState,
-              publishHistory: input.publishHistory,
-            })
+          : args.format === 'md'
+            ? Api.Renderer.renderForecastMarkdown(input.forecast, {
+                publishState: input.publishState,
+                publishHistory: input.publishHistory,
+              })
+            : Api.Forecaster.encodeForecastEnvelope({
+                forecast: input.forecast,
+                publishState: input.publishState,
+                publishHistory: input.publishHistory,
+              })
 
     yield* Console.log(rendered)
   }),
