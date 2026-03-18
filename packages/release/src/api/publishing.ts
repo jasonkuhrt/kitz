@@ -27,6 +27,15 @@ export const PublishChannel = Schema.Union([
 
 export type PublishChannel = typeof PublishChannel.Type
 
+export interface PublishSemantics {
+  readonly lifecycle: Lifecycle
+  readonly channel: PublishChannel
+  readonly distTag: string
+  readonly prerelease: boolean
+  readonly forcePushTag: boolean
+  readonly githubReleaseStyle: 'versioned' | 'dist-tagged'
+}
+
 const defaultManualChannel = (): PublishChannel => ({
   mode: 'manual',
 })
@@ -42,6 +51,13 @@ export class Publishing extends Schema.Class<Publishing>('Publishing')({
   candidate: PublishChannel.pipe(Schema.withDecodingDefaultKey(defaultManualChannel)),
   ephemeral: PublishChannel.pipe(Schema.withDecodingDefaultKey(defaultManualChannel)),
 }) {
+  static is = Schema.is(Publishing)
+  static decode = Schema.decode(Publishing)
+  static decodeSync = Schema.decodeSync(Publishing)
+  static encode = Schema.encode(Publishing)
+  static encodeSync = Schema.encodeSync(Publishing)
+  static equivalence = Schema.toEquivalence(Publishing)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -51,3 +67,54 @@ export const resolvePublishChannel = (
   publishing: Publishing,
   lifecycle: Lifecycle,
 ): PublishChannel => publishing[lifecycle] ?? { mode: 'manual' as const }
+
+export const resolvePublishSemantics = (params: {
+  readonly lifecycle: Lifecycle
+  readonly publishing?: Publishing
+  readonly tag?: string
+  readonly npmTag?: string
+  readonly candidateTag?: string
+}): PublishSemantics => {
+  const channel = resolvePublishChannel(params.publishing ?? defaultPublishing(), params.lifecycle)
+
+  switch (params.lifecycle) {
+    case 'official':
+      return {
+        lifecycle: params.lifecycle,
+        channel,
+        distTag: params.tag ?? params.npmTag ?? 'latest',
+        prerelease: false,
+        forcePushTag: false,
+        githubReleaseStyle: 'versioned',
+      }
+    case 'candidate':
+      return {
+        lifecycle: params.lifecycle,
+        channel,
+        distTag: params.tag ?? params.candidateTag ?? 'next',
+        prerelease: true,
+        forcePushTag: true,
+        githubReleaseStyle: 'dist-tagged',
+      }
+    case 'ephemeral':
+      return {
+        lifecycle: params.lifecycle,
+        channel,
+        distTag: params.tag ?? 'pr',
+        prerelease: true,
+        forcePushTag: false,
+        githubReleaseStyle: 'versioned',
+      }
+  }
+}
+
+export const formatGithubReleaseTitle = (
+  semantics: PublishSemantics,
+  params: {
+    readonly packageName: string
+    readonly version: string
+  },
+): string =>
+  semantics.githubReleaseStyle === 'dist-tagged'
+    ? `${params.packageName} @${semantics.distTag}`
+    : `${params.packageName} v${params.version}`

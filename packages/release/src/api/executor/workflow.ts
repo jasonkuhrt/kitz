@@ -20,7 +20,7 @@ import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Schema } from 'effect'
 import * as Notes from '../notes/__.js'
-import { Publishing } from '../publishing.js'
+import { formatGithubReleaseTitle, Publishing, resolvePublishSemantics } from '../publishing.js'
 import { LifecycleSchema } from '../version/models/lifecycle.js'
 import {
   ExecutorError as ExecutorErrorSchema,
@@ -127,18 +127,11 @@ export const toReleaseInfo = (release: ReleasePayloadType['releases'][number]): 
   nextVersion: Semver.fromString(release.nextVersion),
 })
 
-const resolveCandidateDistTag = (options: ReleasePayloadType['options']): string | undefined => {
-  if (options.lifecycle === 'candidate') {
-    return options.tag ?? 'next'
-  }
-
-  // Older persisted payloads may not carry lifecycle yet.
-  if (options.lifecycle === undefined && options.tag === 'next') {
-    return 'next'
-  }
-
-  return undefined
-}
+const legacyCandidateSemantics = (distTag: string) =>
+  resolvePublishSemantics({
+    lifecycle: 'candidate',
+    tag: distTag,
+  })
 
 // ============================================================================
 // Workflow Definition (Declarative DAG)
@@ -163,6 +156,16 @@ export const ReleaseWorkflow = Flo.Workflow.make({
   layerConcurrency: 1,
 
   graph: (payload, node) => {
+    const publishSemantics =
+      payload.options.lifecycle !== undefined
+        ? resolvePublishSemantics({
+            lifecycle: payload.options.lifecycle,
+            ...(payload.options.publishing !== undefined
+              ? { publishing: payload.options.publishing }
+              : {}),
+            ...(payload.options.tag !== undefined ? { tag: payload.options.tag } : {}),
+          })
+        : undefined
     const plannedReleases = payload.releases.map(toReleaseInfo)
 
     const prepares = payload.releases.map((release) =>
@@ -292,7 +295,6 @@ export const ReleaseWorkflow = Flo.Workflow.make({
         Pkg.Moniker.parse(release.packageName),
         Semver.fromString(release.nextVersion),
       )
-      const candidateDistTag = resolveCandidateDistTag(payload.options)
       return node(
         `PushTag:${tag}`,
         Effect.gen(function* () {
@@ -301,7 +303,12 @@ export const ReleaseWorkflow = Flo.Workflow.make({
           } else {
             yield* Effect.log(`Pushing tag: ${tag}`)
             const gitService = yield* Git.Git
-            yield* gitService.pushTag(tag, 'origin', candidateDistTag !== undefined)
+            yield* gitService.pushTag(
+              tag,
+              'origin',
+              publishSemantics?.forcePushTag ??
+                (payload.options.lifecycle === undefined && payload.options.tag === 'next'),
+            )
           }
           return tag
         }).pipe(
@@ -323,8 +330,11 @@ export const ReleaseWorkflow = Flo.Workflow.make({
     const createGHReleases = payload.releases.map((release, i) => {
       const nextVersion = Semver.fromString(release.nextVersion)
       const tag = formatTag(Pkg.Moniker.parse(release.packageName), nextVersion)
-      const candidateDistTag = resolveCandidateDistTag(payload.options)
-      const isPrerelease = Semver.getPrerelease(nextVersion) !== undefined
+      const legacyCandidateDistTag =
+        payload.options.lifecycle === undefined && payload.options.tag === 'next'
+          ? 'next'
+          : undefined
+      const isPrereleaseVersion = Semver.getPrerelease(nextVersion) !== undefined
       return node(
         `CreateGHRelease:${tag}`,
         Effect.gen(function* () {
@@ -344,33 +354,54 @@ export const ReleaseWorkflow = Flo.Workflow.make({
 
           const gh = yield* Github.Github
 
-          // Check if candidate release already exists
-          if (candidateDistTag !== undefined) {
+          if (
+            publishSemantics?.githubReleaseStyle === 'dist-tagged' ||
+            legacyCandidateDistTag !== undefined
+          ) {
+            const distTag = publishSemantics?.distTag ?? legacyCandidateDistTag!
             const exists = yield* gh.releaseExists(tag)
 
             if (exists) {
-              // Update existing candidate release
               yield* Effect.log(`Updating existing candidate release: ${tag}`)
               yield* gh.updateRelease(tag, {
-                title: `${release.packageName} @${candidateDistTag}`,
+                title: formatGithubReleaseTitle(
+                  publishSemantics ?? legacyCandidateSemantics(distTag),
+                  {
+                    packageName: release.packageName,
+                    version: release.nextVersion,
+                  },
+                ),
                 body: changelog.markdown,
               })
             } else {
-              // Create new candidate release
               yield* gh.createRelease({
                 tag,
-                title: `${release.packageName} @${candidateDistTag}`,
+                title: formatGithubReleaseTitle(
+                  publishSemantics ?? legacyCandidateSemantics(distTag),
+                  {
+                    packageName: release.packageName,
+                    version: release.nextVersion,
+                  },
+                ),
                 body: changelog.markdown,
                 prerelease: true,
               })
             }
           } else {
-            // Create official release
+            const releaseSemantics =
+              publishSemantics ??
+              resolvePublishSemantics({
+                lifecycle: isPrereleaseVersion ? 'ephemeral' : 'official',
+                ...(payload.options.tag !== undefined ? { tag: payload.options.tag } : {}),
+              })
             yield* gh.createRelease({
               tag,
-              title: `${release.packageName} v${release.nextVersion}`,
+              title: formatGithubReleaseTitle(releaseSemantics, {
+                packageName: release.packageName,
+                version: release.nextVersion,
+              }),
               body: changelog.markdown,
-              ...(isPrerelease && { prerelease: true }),
+              ...(releaseSemantics.prerelease || isPrereleaseVersion ? { prerelease: true } : {}),
             })
           }
 
