@@ -43,7 +43,8 @@ export interface CreateReleaseParams {
 
 /** Parameters for updating a release */
 export interface UpdateReleaseParams {
-  readonly body: string
+  readonly title?: string
+  readonly body?: string
 }
 
 /** Parameters for updating a pull request */

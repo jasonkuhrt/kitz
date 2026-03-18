@@ -412,7 +412,7 @@ describe('Executor integration', () => {
             const gh = yield* Github.Github
             yield* gh.createRelease({
               tag: candidateTag,
-              title: '@kitz/core @candidate',
+              title: '@kitz/core @next',
               body: 'existing',
               prerelease: true,
             })
@@ -426,12 +426,14 @@ describe('Executor integration', () => {
 
           const createdReleases = yield* Ref.get(harness.githubState.createdReleases)
           const updatedReleases = yield* Ref.get(harness.githubState.updatedReleases)
+          const releases = yield* Ref.get(harness.githubState.releases)
 
           expect(createdReleases.filter((r) => r.tag === candidateTag)).toHaveLength(1)
-          expect(createdReleases.find((r) => r.tag === candidateTag)?.title).toBe(
+          expect(updatedReleases.filter((r) => r.tag === candidateTag)).toHaveLength(1)
+          expect(updatedReleases.find((r) => r.tag === candidateTag)?.params.title).toBe(
             '@kitz/core @candidate',
           )
-          expect(updatedReleases.filter((r) => r.tag === candidateTag)).toHaveLength(1)
+          expect(releases[candidateTag]?.name).toBe('@kitz/core @candidate')
         }),
       ),
   )

@@ -323,7 +323,10 @@ const makeGithubService = (
         Effect.flatMap((release) =>
           httpPatch<Release>(
             `${releasesPath}/${release.id}`,
-            { body: params.body },
+            {
+              ...(params.title !== undefined ? { name: params.title } : {}),
+              ...(params.body !== undefined ? { body: params.body } : {}),
+            } satisfies Record<string, unknown>,
             'updateRelease',
           ),
         ),

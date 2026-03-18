@@ -351,7 +351,10 @@ export const ReleaseWorkflow = Flo.Workflow.make({
             if (exists) {
               // Update existing candidate release
               yield* Effect.log(`Updating existing candidate release: ${tag}`)
-              yield* gh.updateRelease(tag, { body: changelog.markdown })
+              yield* gh.updateRelease(tag, {
+                title: `${release.packageName} @${candidateDistTag}`,
+                body: changelog.markdown,
+              })
             } else {
               // Create new candidate release
               yield* gh.createRelease({

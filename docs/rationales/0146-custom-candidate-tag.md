@@ -13,6 +13,7 @@ Custom candidate channels already flow through release config and `apply`, but w
 - Add a workflow helper that resolves the candidate dist-tag from payload lifecycle and runtime options.
 - Use that helper for candidate push behavior and GitHub release create/update behavior.
 - Generate candidate GitHub release titles from the real dist-tag.
+- Extend GitHub release updates so an existing candidate release title is rewritten when the channel changes.
 - Cover the regression with executor tests for custom candidate release update/create paths and the candidate force-push path.
 
 ## Where
@@ -21,6 +22,10 @@ Custom candidate channels already flow through release config and `apply`, but w
 - `packages/release/src/api/executor/_.test.ts`
 - `packages/git/src/memory.ts`
 - `packages/git/src/_.test.ts`
+- `packages/github/src/service.ts`
+- `packages/github/src/live.ts`
+- `packages/github/src/memory.ts`
+- `packages/github/src/_.test.ts`
 
 ## When
 
