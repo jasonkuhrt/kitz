@@ -1,15 +1,15 @@
 import { FileSystem } from 'effect'
 import { Resource } from '@kitz/resource'
 import { Effect, Option } from 'effect'
-import { buildDependencyGraph } from '../analyzer/cascade.js'
 import type { Analysis } from '../analyzer/models/__.js'
 import { calculateNextVersion } from '../version/calculate.js'
 import { OfficialFirst } from '../version/models/official-first.js'
 import { OfficialIncrement } from '../version/models/official-increment.js'
 import { detect as detectCascades } from './cascade.js'
+import { planLifecycle } from './core.js'
 import { Official } from './models/item-official.js'
-import { Plan } from './models/plan.js'
-import { type Options, passesFilter } from './options.js'
+import type { PlanOf } from './models/plan.js'
+import { type Options } from './options.js'
 
 /**
  * Context required for planning.
@@ -34,18 +34,14 @@ export const official = (
   analysis: Analysis,
   ctx: Context,
   options?: Options,
-): Effect.Effect<Plan, Resource.ResourceError, FileSystem.FileSystem> =>
-  Effect.gen(function* () {
-    // 1. Transform analysis impacts to planned releases
-    const releases: Official[] = []
-
-    for (const impact of analysis.impacts) {
-      if (!passesFilter(impact.package.name.moniker, options)) continue
-
-      // Calculate next version from impact
+): Effect.Effect<PlanOf<'official'>, Resource.ResourceError, FileSystem.FileSystem> =>
+  planLifecycle({
+    analysis,
+    packages: ctx.packages,
+    lifecycle: 'official',
+    options,
+    toPrimaryRelease: (impact) => {
       const nextVersion = calculateNextVersion(impact.currentVersion, impact.bump)
-
-      // Build version union
       const version: OfficialFirst | OfficialIncrement = Option.isSome(impact.currentVersion)
         ? OfficialIncrement.make({
             from: impact.currentVersion.value,
@@ -54,25 +50,12 @@ export const official = (
           })
         : OfficialFirst.make({ version: nextVersion })
 
-      releases.push(
-        Official.make({
-          package: impact.package,
-          version,
-          commits: impact.commits,
-        }),
-      )
-    }
-
-    // 2. Detect cascade releases (packages that depend on released packages)
-    const dependencyGraph = yield* buildDependencyGraph([...ctx.packages])
-    const cascades = detectCascades([...ctx.packages], releases, dependencyGraph, [
-      ...analysis.tags,
-    ])
-
-    return Plan.make({
-      lifecycle: 'official',
-      timestamp: new Date().toISOString(),
-      releases,
-      cascades,
-    })
+      return Official.make({
+        package: impact.package,
+        version,
+        commits: impact.commits,
+      })
+    },
+    toCascades: ({ packages, primaryReleases, dependencyGraph, tags }) =>
+      detectCascades(packages, [...primaryReleases], dependencyGraph, [...tags]),
   })

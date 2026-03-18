@@ -19,10 +19,11 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
-import { Cause, Console, Effect, Layer, Option, Schema, SchemaGetter } from 'effect'
+import { Cause, Console, Effect, FileSystem, Layer, Option, Schema, SchemaGetter } from 'effect'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, ServicesLayer, FileSystemLayer } from '../../platform.js'
 import { loadConfiguredPullRequestDiff, resolveDiffRemote } from '../pr-preview-diff.js'
+import { computeLifecyclePlanAttempt, toUnavailableLifecycleReport } from './doctor-lib.js'
 
 const DoctorFailuresSchema = Schema.Struct({
   _tag: Schema.Literal('DoctorFailures'),
@@ -304,21 +305,12 @@ Cli.run(
       yield* evaluatePlan(scope.plan, true)
     } else {
       for (const target of scope.lifecycles) {
-        const planAttempt = yield* (
-          target.lifecycle === 'official'
-            ? Api.Planner.official(analysis, { packages })
-            : target.lifecycle === 'candidate'
-              ? Api.Planner.candidate(analysis, { packages })
-              : Api.Planner.ephemeral(analysis, { packages })
-        ).pipe(Effect.result)
+        const planAttempt = yield* computeLifecyclePlanAttempt(analysis, packages, target.lifecycle)
 
         if (planAttempt._tag === 'Failure') {
-          reports.push({
-            _tag: 'UnavailableLifecycleReport' as const,
-            lifecycle: target.lifecycle,
-            required: target.required,
-            reason: planAttempt.failure.message,
-          })
+          reports.push(
+            toUnavailableLifecycleReport(target.lifecycle, target.required, planAttempt.failure),
+          )
           continue
         }
 
