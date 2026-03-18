@@ -18,6 +18,7 @@ describe('release root help', () => {
     expect(help).toContain('notes [pkg] [options]')
     expect(help).toContain('pr <preview|title <suggest|apply>>')
     expect(help).toContain('plan --lifecycle <official|candidate|ephemeral> [options]')
+    expect(help).toContain('status [options]')
     expect(help).toContain('Run `release <command> -h` for command-specific help.')
   })
 })
