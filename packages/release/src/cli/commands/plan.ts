@@ -13,7 +13,6 @@
 import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'
 import { Env } from '@kitz/env'
-import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Schema } from 'effect'
@@ -101,18 +100,10 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
     // Display plan
     yield* Console.log(Api.Renderer.renderPlan(plan))
 
-    // Write plan file using resource
-    const env = yield* Env.Env
-    const planDir = Fs.Path.join(env.cwd, Api.Planner.PLAN_DIR)
-
-    // Ensure directory exists
-    yield* Fs.write(planDir, { recursive: true })
-
-    // Write plan using schema-validated resource
-    yield* Api.Planner.resource.write(plan, planDir)
+    yield* Api.Planner.Store.writeActive(plan)
 
     const done = Str.Builder()
-    done`Plan written to ${Fs.Path.toString(Api.Planner.PLAN_FILE)}`
+    done`Plan written to ${Api.Planner.Store.activePlanDisplayPath}`
     done`Run 'release apply' to execute.`
     yield* Console.log(done.render())
   }),

@@ -16,7 +16,6 @@
 import { Cli } from '@kitz/cli'
 import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
-import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
 import { Cause, Console, Effect, FileSystem, Layer, Option, Schema, SchemaGetter } from 'effect'
@@ -142,8 +141,7 @@ Cli.run(
     }
     const { config, packages } = workspace
 
-    const planDir = Fs.Path.join(env.cwd, Api.Planner.PLAN_DIR)
-    const activePlan = yield* Api.Planner.resource.read(planDir)
+    const activePlan = yield* Api.Planner.Store.readActive
     const needsSmartScope = !args.lifecycle && !args.all && activePlan._tag !== 'Some'
     const needsPrContext =
       needsSmartScope ||
