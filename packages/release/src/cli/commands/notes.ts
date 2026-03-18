@@ -14,7 +14,11 @@ import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Schema, SchemaGetter } from 'effect'
 import * as Api from '../../api/__.js'
 import { FileSystemLayer } from '../../platform.js'
-import { loadNotesPackages } from './notes-lib.js'
+import {
+  isReadyCommandWorkspace,
+  loadCommandWorkspace,
+  noPackagesFoundMessage,
+} from './command-workspace.js'
 
 /**
  * release notes [pkg]
@@ -55,15 +59,12 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
   Effect.gen(function* () {
     const git = yield* Git.Git
 
-    const packages = yield* loadNotesPackages
-
-    if (packages.length === 0) {
-      yield* Console.log(
-        'No packages found. Check release.config.ts `packages` field ' +
-          'or ensure the root package.json defines workspace packages.',
-      )
+    const workspace = yield* loadCommandWorkspace()
+    if (!isReadyCommandWorkspace(workspace)) {
+      yield* Console.log(noPackagesFoundMessage)
       return
     }
+    const { packages } = workspace
 
     const tags = yield* git.getTags()
     const result = yield* Api.Notes.generate({
