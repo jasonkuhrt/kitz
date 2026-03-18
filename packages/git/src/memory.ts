@@ -48,7 +48,7 @@ export interface GitMemoryState {
   /** Tags created (for verification) */
   readonly createdTags: Ref.Ref<Array<{ tag: string; message: string | undefined }>>
   /** Tag push operations (for verification) */
-  readonly pushedTags: Ref.Ref<Array<{ remote: string }>>
+  readonly pushedTags: Ref.Ref<Array<{ remote: string; tag?: string; force?: boolean }>>
   /** Map of tag -> SHA */
   readonly tagShas: Ref.Ref<Record<string, Sha.Sha>>
   /** Map of sha -> parent SHAs for ancestry */
@@ -73,7 +73,7 @@ export const makeState = (config: GitMemoryConfig = {}): Effect.Effect<GitMemory
     root: Ref.make(config.root ?? '/repo'),
     headSha: Ref.make(config.headSha ?? Sha.make('abc1234')),
     createdTags: Ref.make<Array<{ tag: string; message: string | undefined }>>([]),
-    pushedTags: Ref.make<Array<{ remote: string }>>([]),
+    pushedTags: Ref.make<Array<{ remote: string; tag?: string; force?: boolean }>>([]),
     tagShas: Ref.make<Record<string, Sha.Sha>>({}),
     commitParents: Ref.make<Record<string, string[]>>({}),
     deletedTags: Ref.make<string[]>([]),
@@ -211,8 +211,8 @@ const makeService = (state: GitMemoryState): GitService => ({
       return commits.some((c) => c.hash === sha || c.hash.startsWith(sha)) || sha in parents
     }),
 
-  pushTag: (tag, remote = 'origin', _force = false) =>
-    Ref.update(state.pushedTags, (pushed) => [...pushed, { remote }]),
+  pushTag: (tag, remote = 'origin', force = false) =>
+    Ref.update(state.pushedTags, (pushed) => [...pushed, { tag, remote, force }]),
 
   deleteRemoteTag: (tag, remote = 'origin') =>
     Ref.update(state.deletedRemoteTags, (deleted) => [...deleted, { tag, remote }]),
