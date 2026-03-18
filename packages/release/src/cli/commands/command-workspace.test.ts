@@ -77,7 +77,10 @@ describe('command workspace bootstrap', () => {
           loadCommandWorkspaceWith(
             Effect.succeed(
               makeResolvedConfig({
-                core: '@kitz/core',
+                core: {
+                  name: '@kitz/core',
+                  path: './tooling/pkg-core/',
+                },
               }),
             ),
           ),

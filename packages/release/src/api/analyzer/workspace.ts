@@ -21,17 +21,54 @@ export interface Package {
 }
 
 /**
- * Scope to package name mapping.
+ * Explicit package config entry for nonstandard workspace layouts.
  */
-export type PackageMap = Record<string, string>
+export interface PackageConfigEntry {
+  /** Full package name from package.json */
+  readonly name: string
+  /** Optional repo-relative package directory */
+  readonly path?: string | undefined
+}
 
-const inferConfiguredPackage = (cwd: Fs.Path.AbsDir, scope: string, name: string): Package => {
+/**
+ * Scope to package config mapping.
+ *
+ * Entries may be a package name string or a structured `{ name, path }`
+ * object when the package lives outside the default `packages/<scope>/`
+ * layout.
+ */
+export type PackageMap = Record<string, string | PackageConfigEntry>
+
+const resolveConfiguredName = (entry: string | PackageConfigEntry): string =>
+  typeof entry === 'string' ? entry : entry.name
+
+const normalizeConfiguredPath = (path: string): Fs.Path.RelDir => {
+  const trimmed = path.trim().replace(/\\/gu, '/')
+  const withLeadingDot =
+    trimmed.startsWith('./') || trimmed.startsWith('../') ? trimmed : `./${trimmed}`
+  const withTrailingSlash = withLeadingDot.endsWith('/') ? withLeadingDot : `${withLeadingDot}/`
+  return Fs.Path.RelDir.fromString(withTrailingSlash)
+}
+
+const inferConfiguredPackage = (
+  cwd: Fs.Path.AbsDir,
+  scope: string,
+  entry: string | PackageConfigEntry,
+): Package => {
+  const name = resolveConfiguredName(entry)
+  const explicitPath =
+    typeof entry === 'string' || entry.path === undefined
+      ? undefined
+      : PackageLocation.fromAbsolutePath(
+          cwd,
+          Fs.Path.join(cwd, normalizeConfiguredPath(entry.path)),
+        )
   const location = PackageLocation.inferDefault(cwd, scope)
 
   return {
     scope,
     name: Pkg.Moniker.parse(name),
-    path: location.path,
+    path: explicitPath?.path ?? location.path,
   }
 }
 
@@ -110,8 +147,8 @@ export const resolvePackages = (
     const discoveredPackagesExit = yield* Effect.exit(scan)
 
     if (Exit.isFailure(discoveredPackagesExit)) {
-      return Object.entries(configPackages).map(([scope, name]) =>
-        inferConfiguredPackage(env.cwd, scope, name),
+      return Object.entries(configPackages).map(([scope, entry]) =>
+        inferConfiguredPackage(env.cwd, scope, entry),
       )
     }
 
@@ -119,7 +156,12 @@ export const resolvePackages = (
     const discoveredByName = Object.fromEntries(
       discoveredPackages.map((pkg): [string, Package] => [pkg.name.moniker, pkg]),
     ) as Record<string, Package>
-    return Object.entries(configPackages).map(([scope, name]) => {
+    return Object.entries(configPackages).map(([scope, entry]) => {
+      if (typeof entry !== 'string' && entry.path !== undefined) {
+        return inferConfiguredPackage(env.cwd, scope, entry)
+      }
+
+      const name = resolveConfiguredName(entry)
       const matched = discoveredByName[name]
       return matched
         ? {
@@ -127,6 +169,6 @@ export const resolvePackages = (
             name: matched.name,
             path: matched.path,
           }
-        : inferConfiguredPackage(env.cwd, scope, name)
+        : inferConfiguredPackage(env.cwd, scope, entry)
     })
   })

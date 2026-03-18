@@ -4,6 +4,7 @@ import { Conf } from '@kitz/conf'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Effect, Schema } from 'effect'
+import type { PackageMap } from './analyzer/workspace.js'
 import * as LintConfig from './lint/models/config.js'
 import {
   defaultOperator,
@@ -13,6 +14,15 @@ import {
   resolve as resolveOperator,
 } from './operator.js'
 import { defaultPublishing, Publishing } from './publishing.js'
+
+const PackageConfigEntrySchema = Schema.Struct({
+  name: Schema.String,
+  path: Schema.optional(Schema.String),
+})
+const PackageMapSchema = Schema.Record(
+  Schema.String,
+  Schema.Union([Schema.String, PackageConfigEntrySchema]),
+)
 
 /**
  * Release configuration schema (input from file).
@@ -33,10 +43,10 @@ export class Config extends Schema.Class<Config>('Config')({
     Schema.optionalKey,
     Schema.withDecodingDefaultKey(() => 'next'),
   ),
-  /** Scope to package name mapping (auto-scanned if not provided) */
-  packages: Schema.Record(Schema.String, Schema.String).pipe(
+  /** Scope to package config mapping (auto-scanned if not provided) */
+  packages: PackageMapSchema.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => ({}) as Record<string, string>),
+    Schema.withDecodingDefaultKey(() => ({}) as PackageMap),
   ),
   /** Declares how each lifecycle is published. */
   publishing: Publishing.pipe(
@@ -65,7 +75,7 @@ export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig
   trunk: Schema.String,
   npmTag: Schema.String,
   candidateTag: Schema.String,
-  packages: Schema.Record(Schema.String, Schema.String),
+  packages: PackageMapSchema,
   publishing: Publishing,
   operator: ResolvedOperator,
   lint: LintConfig.ResolvedConfig,
@@ -100,7 +110,10 @@ const ConfigFile = Conf.File.define({
  *   trunk: 'main',
  *   packages: {
  *     core: '@kitz/core',
- *     kitz: 'kitz',
+ *     docs: {
+ *       name: '@kitz/docs',
+ *       path: './tooling/pkg-docs/',
+ *     },
  *   },
  *   publishing: {
  *     official: { mode: 'manual' },
