@@ -96,7 +96,7 @@ Version arithmetic depends on the **lifecycle** — the kind of release being pr
 
 - **Candidate** — pre-release for validation before an official release. Uses the _projected_ official version as a base, with a `-next.<N>` suffix that increments across successive candidate releases for the same base version. Published to the `next` dist-tag. Version format: `<base>-next.<iteration>`.
 
-- **Ephemeral** — PR-scoped release for integration testing. Uses a zero base version (`0.0.0`) with PR metadata embedded in the prerelease segment, so every PR gets its own isolated version namespace. Published to a per-PR dist-tag. Version format: `0.0.0-pr.<prNumber>.<iteration>.<sha>`.
+- **Ephemeral** — PR-scoped release for integration testing. Uses a zero base version (`0.0.0`) with PR metadata embedded in the prerelease segment, so every PR gets its own isolated version namespace. Published automatically to dist-tag `pr-<prNumber>`. Version format: `0.0.0-pr.<prNumber>.<iteration>.<sha>`.
 
 <!-- /@doc -->
 

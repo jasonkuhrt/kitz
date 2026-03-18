@@ -1,4 +1,6 @@
 import { Schema } from 'effect'
+import { Ephemeral } from './planner/models/item-ephemeral.js'
+import type { Plan } from './planner/models/plan.js'
 import type { Lifecycle } from './version/models/lifecycle.js'
 
 const defaultTokenEnv = (): string => 'NPM_TOKEN'
@@ -68,12 +70,22 @@ export const resolvePublishChannel = (
   lifecycle: Lifecycle,
 ): PublishChannel => publishing[lifecycle] ?? { mode: 'manual' as const }
 
+export const formatEphemeralDistTag = (prNumber: number): string => `pr-${String(prNumber)}`
+
+export const resolvePlanPrNumber = (plan: Plan): number | undefined => {
+  if (plan.lifecycle !== 'ephemeral') return undefined
+
+  const ephemeralRelease = [...plan.releases, ...plan.cascades].find(Ephemeral.is)
+  return ephemeralRelease?.prerelease.prNumber
+}
+
 export const resolvePublishSemantics = (params: {
   readonly lifecycle: Lifecycle
   readonly publishing?: Publishing
   readonly tag?: string
   readonly npmTag?: string
   readonly candidateTag?: string
+  readonly prNumber?: number
 }): PublishSemantics => {
   const channel = resolvePublishChannel(params.publishing ?? defaultPublishing(), params.lifecycle)
 
@@ -100,12 +112,33 @@ export const resolvePublishSemantics = (params: {
       return {
         lifecycle: params.lifecycle,
         channel,
-        distTag: params.tag ?? 'pr',
+        distTag:
+          params.tag ??
+          (params.prNumber !== undefined ? formatEphemeralDistTag(params.prNumber) : 'pr'),
         prerelease: true,
         forcePushTag: false,
         githubReleaseStyle: 'versioned',
       }
   }
+}
+
+export const resolvePublishSemanticsForPlan = (params: {
+  readonly plan: Plan
+  readonly publishing?: Publishing
+  readonly tag?: string
+  readonly npmTag?: string
+  readonly candidateTag?: string
+}): PublishSemantics => {
+  const prNumber = resolvePlanPrNumber(params.plan)
+
+  return resolvePublishSemantics({
+    lifecycle: params.plan.lifecycle,
+    ...(params.publishing !== undefined ? { publishing: params.publishing } : {}),
+    ...(params.tag !== undefined ? { tag: params.tag } : {}),
+    ...(params.npmTag !== undefined ? { npmTag: params.npmTag } : {}),
+    ...(params.candidateTag !== undefined ? { candidateTag: params.candidateTag } : {}),
+    ...(prNumber !== undefined ? { prNumber } : {}),
+  })
 }
 
 export const formatGithubReleaseTitle = (

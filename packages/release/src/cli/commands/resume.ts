@@ -64,8 +64,8 @@ Cli.run(
 
     const config = yield* Api.Config.load()
     const plan = planFileOption.value
-    const publish = Api.Publishing.resolvePublishSemantics({
-      lifecycle: plan.lifecycle,
+    const publish = Api.Publishing.resolvePublishSemanticsForPlan({
+      plan,
       ...(args.tag !== undefined ? { tag: args.tag } : {}),
       publishing: config.publishing,
       npmTag: config.npmTag,

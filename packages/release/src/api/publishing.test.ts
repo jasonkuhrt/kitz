@@ -1,13 +1,44 @@
+import { Fs } from '@kitz/fs'
+import { Git } from '@kitz/git'
+import { Pkg } from '@kitz/pkg'
+import * as Version from './version/__.js'
 import { Effect, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
+import { makeCascadeCommit } from './analyzer/models/commit.js'
+import { Ephemeral as EphemeralItem } from './planner/models/item-ephemeral.js'
+import { Plan } from './planner/models/plan.js'
 import {
   formatGithubReleaseTitle,
+  formatEphemeralDistTag,
   Publishing,
   resolvePublishChannel,
+  resolvePlanPrNumber,
   resolvePublishSemantics,
+  resolvePublishSemanticsForPlan,
 } from './publishing.js'
 
 describe('Publishing', () => {
+  const ephemeralPlan = Plan.make({
+    lifecycle: 'ephemeral',
+    timestamp: '2026-03-18T00:00:00.000Z',
+    releases: [
+      EphemeralItem.make({
+        package: {
+          name: Pkg.Moniker.parse('@kitz/core'),
+          scope: 'core',
+          path: Fs.Path.AbsDir.fromString('/repo/packages/core/'),
+        },
+        commits: [makeCascadeCommit('core', 'preview release')],
+        prerelease: Version.Ephemeral.make({
+          prNumber: 42,
+          iteration: 1,
+          sha: Git.Sha.make('abc1234'),
+        }),
+      }),
+    ],
+    cascades: [],
+  })
+
   test('defaults every lifecycle to manual', () => {
     const publishing = Publishing.decodeSync({})
 
@@ -51,14 +82,41 @@ describe('Publishing', () => {
     ).toBe('@kitz/core @candidate')
   })
 
-  test('resolves ephemeral dist-tag semantics independently of candidate config', () => {
-    const semantics = resolvePublishSemantics({
-      lifecycle: 'ephemeral',
+  test('formats first-class per-PR ephemeral dist-tags', () => {
+    expect(formatEphemeralDistTag(42)).toBe('pr-42')
+  })
+
+  test('derives the ephemeral dist-tag from the planned PR number', () => {
+    expect(resolvePlanPrNumber(ephemeralPlan)).toBe(42)
+
+    const semantics = resolvePublishSemanticsForPlan({
+      plan: ephemeralPlan,
       candidateTag: 'candidate',
+    })
+
+    expect(semantics.distTag).toBe('pr-42')
+    expect(semantics.prerelease).toBe(true)
+    expect(semantics.forcePushTag).toBe(false)
+    expect(semantics.githubReleaseStyle).toBe('versioned')
+  })
+
+  test('still allows explicit ephemeral dist-tag overrides', () => {
+    const semantics = resolvePublishSemanticsForPlan({
+      plan: ephemeralPlan,
       tag: 'preview-42',
     })
 
     expect(semantics.distTag).toBe('preview-42')
+  })
+
+  test('resolves ephemeral dist-tag semantics independently of candidate config', () => {
+    const semantics = resolvePublishSemantics({
+      lifecycle: 'ephemeral',
+      candidateTag: 'candidate',
+      prNumber: 42,
+    })
+
+    expect(semantics.distTag).toBe('pr-42')
     expect(semantics.prerelease).toBe(true)
     expect(semantics.forcePushTag).toBe(false)
     expect(semantics.githubReleaseStyle).toBe('versioned')
