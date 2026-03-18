@@ -1,4 +1,4 @@
-import { Schema } from 'effect'
+import { Effect, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import {
   formatGithubReleaseTitle,
@@ -9,7 +9,7 @@ import {
 
 describe('Publishing', () => {
   test('defaults every lifecycle to manual', () => {
-    const publishing = Schema.decodeSync(Publishing)({})
+    const publishing = Publishing.decodeSync({})
 
     expect(publishing.official.mode).toBe('manual')
     expect(publishing.candidate.mode).toBe('manual')
@@ -17,7 +17,7 @@ describe('Publishing', () => {
   })
 
   test('resolves the active channel by lifecycle', () => {
-    const publishing = Schema.decodeSync(Publishing)({
+    const publishing = Publishing.decodeSync({
       official: { mode: 'github-trusted', workflow: 'trunk.yml' },
       ephemeral: { mode: 'github-token', workflow: 'publish-pr.yml', tokenEnv: 'NPM_TOKEN' },
     })
@@ -68,5 +68,39 @@ describe('Publishing', () => {
         version: '0.0.0-pr.42.1.gabc1234',
       }),
     ).toBe('@kitz/core v0.0.0-pr.42.1.gabc1234')
+  })
+
+  test('keeps the publishing schema static helpers usable', async () => {
+    const publishing = Publishing.decodeSync({
+      candidate: { mode: 'github-token', workflow: 'publish-candidate.yml' },
+    })
+
+    expect(publishing.candidate).toEqual({
+      mode: 'github-token',
+      workflow: 'publish-candidate.yml',
+      tokenEnv: 'NPM_TOKEN',
+    })
+    expect(Publishing.encodeSync(publishing)).toEqual({
+      official: { mode: 'manual' },
+      candidate: {
+        mode: 'github-token',
+        workflow: 'publish-candidate.yml',
+        tokenEnv: 'NPM_TOKEN',
+      },
+      ephemeral: { mode: 'manual' },
+    })
+
+    const decoded = await Effect.runPromise(
+      Publishing.decode({
+        ephemeral: { mode: 'github-trusted', workflow: 'publish-preview.yml' },
+      }),
+    )
+    const encoded = await Effect.runPromise(Publishing.encode(decoded))
+
+    expect(encoded).toEqual({
+      official: { mode: 'manual' },
+      candidate: { mode: 'manual' },
+      ephemeral: { mode: 'github-trusted', workflow: 'publish-preview.yml' },
+    })
   })
 })
