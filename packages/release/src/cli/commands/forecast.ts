@@ -15,6 +15,11 @@ import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Option, Schema, SchemaGetter } from 'effect'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, ServicesLayer, FileSystemLayer } from '../../platform.js'
+import {
+  isReadyCommandWorkspace,
+  loadCommandWorkspace,
+  noPackagesFoundMessage,
+} from './command-workspace.js'
 
 const args = Oak.Command.create()
   .use(Oak.EffectSchema)
@@ -76,14 +81,9 @@ interface ForecastInput {
 const buildForecastInput = () =>
   Effect.gen(function* () {
     const git = yield* Git.Git
-    const config = yield* Api.Config.load()
-    const packages = yield* Api.Analyzer.Workspace.resolvePackages(config.packages)
-
-    if (packages.length === 0) {
-      yield* Console.log(
-        'No packages found. Check release.config.ts `packages` field ' +
-          'or ensure the root package.json defines workspace packages.',
-      )
+    const workspace = yield* loadCommandWorkspace()
+    if (!isReadyCommandWorkspace(workspace)) {
+      yield* Console.log(noPackagesFoundMessage)
       return {
         forecast: Api.Forecaster.Forecast.make({
           owner: '',
@@ -98,6 +98,7 @@ const buildForecastInput = () =>
         interactiveChecklist: false,
       }
     }
+    const { config, packages } = workspace
 
     const tags = yield* git.getTags()
     const analysis = yield* Api.Analyzer.analyze({ packages, tags })

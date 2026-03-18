@@ -28,6 +28,11 @@ import {
   type CommandLintRuleSpec,
 } from '../lint-rule-config.js'
 import { loadConfiguredPullRequestDiff, resolveDiffRemote } from '../pr-preview-diff.js'
+import {
+  isReadyCommandWorkspace,
+  loadCommandWorkspace,
+  noPackagesFoundMessage,
+} from './command-workspace.js'
 import { computeLifecyclePlanAttempt, toUnavailableLifecycleReport } from './doctor-lib.js'
 
 const DoctorFailuresSchema = Schema.Struct({
@@ -125,21 +130,17 @@ Cli.run(
       return yield* Effect.fail({ _tag: 'DoctorFailures' })
     }
 
-    const config = yield* Api.Config.load({
+    const workspace = yield* loadCommandWorkspace({
       lint: {
         onlyRules: parseCsvStrings(args.onlyRule),
         skipRules: parseCsvStrings(args.skipRule),
       },
     })
-    const packages = yield* Api.Analyzer.Workspace.resolvePackages(config.packages)
-
-    if (packages.length === 0) {
-      yield* Console.log(
-        'No packages found. Check release.config.ts `packages` field ' +
-          'or ensure the root package.json defines workspace packages.',
-      )
+    if (!isReadyCommandWorkspace(workspace)) {
+      yield* Console.log(noPackagesFoundMessage)
       return
     }
+    const { config, packages } = workspace
 
     const planDir = Fs.Path.join(env.cwd, Api.Planner.PLAN_DIR)
     const activePlan = yield* Api.Planner.resource.read(planDir)
