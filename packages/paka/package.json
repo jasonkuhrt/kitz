@@ -18,6 +18,7 @@
     "@dprint/markdown": "^0.20.0",
     "@kitz/core": "workspace:*",
     "@kitz/fs": "workspace:*",
+    "@kitz/semver": "workspace:*",
     "@kitz/syn": "workspace:*",
     "@microsoft/tsdoc": "^0.16.0",
     "@types/mdast": "^4.0.4",
@@ -35,7 +36,11 @@
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
     "check:lint": "oxlint src/",
-    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error",
+    "test": "vitest run --root ../.. packages/paka/src",
+    "docs:dev": "vitepress dev docs --host 127.0.0.1 --port 4173",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs --host 127.0.0.1 --port 4173"
   },
   "files": [
     "build",
