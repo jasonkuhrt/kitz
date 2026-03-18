@@ -35,8 +35,11 @@ export const PLAN_FILE = Fs.Path.fromString('./.release/plan.json')
 const baseResource = Resource.createJson('plan.json', Plan, Plan.empty)
 const planFilename = Fs.Path.RelFile.fromString('./plan.json')
 
-const resolvePlanFile = (path: Fs.Path.$Abs): Fs.Path.AbsFile =>
+export const resolvePlanFile = (path: Fs.Path.$Abs): Fs.Path.AbsFile =>
   Fs.Path.AbsFile.is(path) ? path : Fs.Path.join(path, planFilename)
+
+export const resolvePlanDir = (path: Fs.Path.$Abs): Fs.Path.AbsDir =>
+  Fs.Path.AbsFile.is(path) ? Fs.Path.toDir(path) : path
 
 const validatePlan = <T extends Plan>(
   path: Fs.Path.$Abs,

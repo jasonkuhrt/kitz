@@ -10,9 +10,13 @@ import { Official } from './models/item-official.js'
 import { Plan } from './models/plan.js'
 import {
   activePlanDisplayPath,
+  delete_,
   deleteActive,
+  read,
   readActive,
+  resolvePlanLocation,
   resolveActivePlanLocation,
+  write,
   writeActive,
 } from './store.js'
 
@@ -79,6 +83,51 @@ describe('planner store', () => {
     expect(result.stored.value.releases[0]?.commits[0]?.date.toISOString()).toBe(
       plan.releases[0]?.commits[0]?.date.toISOString(),
     )
+    expect(result.deleted).toBe(true)
+    expect(Option.isNone(result.afterDelete)).toBe(true)
+  })
+
+  test('resolves custom plan file paths relative to cwd', async () => {
+    const location = await Effect.runPromise(
+      resolvePlanLocation(Fs.Path.fromString('./tmp/release-plan.json')).pipe(
+        Effect.provide(Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') })),
+      ),
+    )
+
+    expect(Fs.Path.toString(location.path)).toBe('/repo/tmp/release-plan.json')
+    expect(Fs.Path.toString(location.dir)).toBe('/repo/tmp/')
+    expect(Fs.Path.toString(location.file)).toBe('/repo/tmp/release-plan.json')
+  })
+
+  test('writes, reads, and deletes a plan at a custom file path without using the active location', async () => {
+    const customPath = Fs.Path.fromString('./tmp/release-plan.json')
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        yield* write(plan, customPath)
+        const stored = yield* read(customPath)
+        const activePlan = yield* readActive
+        const deleted = yield* delete_(customPath)
+        const afterDelete = yield* read(customPath)
+
+        return { stored, activePlan, deleted, afterDelete }
+      }).pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            Fs.Memory.layer({}),
+            Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') }),
+          ),
+        ),
+      ),
+    )
+
+    expect(Option.isSome(result.stored)).toBe(true)
+    if (Option.isNone(result.stored)) {
+      throw new Error('expected the custom plan store to return the written plan')
+    }
+
+    expect(result.stored.value.releases[0]?.package.name.moniker).toBe('@kitz/core')
+    expect(Option.isNone(result.activePlan)).toBe(true)
     expect(result.deleted).toBe(true)
     expect(Option.isNone(result.afterDelete)).toBe(true)
   })

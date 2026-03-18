@@ -3,34 +3,62 @@ import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
 import { Effect } from 'effect'
 import { type Plan } from './models/plan.js'
-import { PLAN_DIR, PLAN_FILE, resource } from './resource.js'
+import { PLAN_FILE, resolvePlanDir, resolvePlanFile, resource } from './resource.js'
 
 export interface ActivePlanLocation {
+  readonly path: Fs.Path.$Abs
   readonly dir: Fs.Path.AbsDir
   readonly file: Fs.Path.AbsFile
 }
 
 export const activePlanDisplayPath = Fs.Path.toString(PLAN_FILE)
 
-export const resolveActivePlanLocation: Effect.Effect<ActivePlanLocation, never, Env.Env> =
+const resolvePlanInput = (path: Fs.Path | undefined, cwd: Fs.Path.AbsDir): Fs.Path.$Abs => {
+  if (path === undefined) {
+    return Fs.Path.join(cwd, PLAN_FILE)
+  }
+
+  return Fs.Path.ensureAbsolute(path, cwd)
+}
+
+export const resolvePlanLocation = (
+  path?: Fs.Path,
+): Effect.Effect<ActivePlanLocation, never, Env.Env> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
+    const resolvedPath = resolvePlanInput(path, env.cwd)
     return {
-      dir: Fs.Path.join(env.cwd, PLAN_DIR),
-      file: Fs.Path.join(env.cwd, PLAN_FILE),
+      path: resolvedPath,
+      dir: resolvePlanDir(resolvedPath),
+      file: resolvePlanFile(resolvedPath),
     }
   })
 
-const withActivePlanDir = <A, R>(
-  f: (dir: Fs.Path.AbsDir) => Effect.Effect<A, Resource.ResourceError, R>,
-) => Effect.flatMap(resolveActivePlanLocation, ({ dir }) => f(dir))
+export const resolveActivePlanLocation: Effect.Effect<ActivePlanLocation, never, Env.Env> =
+  resolvePlanLocation()
 
-export const readActive = withActivePlanDir(resource.read)
+const withPlanPath = <A, R>(
+  path: Fs.Path | undefined,
+  f: (resolvedPath: Fs.Path.$Abs) => Effect.Effect<A, Resource.ResourceError, R>,
+) => Effect.flatMap(resolvePlanLocation(path), ({ path: resolvedPath }) => f(resolvedPath))
 
-export const readActiveRequired = withActivePlanDir(resource.readRequired)
+export const read = (path?: Fs.Path) => withPlanPath(path, resource.read)
 
-export const readActiveOrEmpty = withActivePlanDir(resource.readOrEmpty)
+export const readRequired = (path?: Fs.Path) => withPlanPath(path, resource.readRequired)
 
-export const writeActive = (plan: Plan) => withActivePlanDir((dir) => resource.write(plan, dir))
+export const readOrEmpty = (path?: Fs.Path) => withPlanPath(path, resource.readOrEmpty)
 
-export const deleteActive = withActivePlanDir(resource.delete)
+export const write = (plan: Plan, path?: Fs.Path) =>
+  withPlanPath(path, (resolvedPath) => resource.write(plan, resolvedPath))
+
+export const delete_ = (path?: Fs.Path) => withPlanPath(path, resource.delete)
+
+export const readActive = read()
+
+export const readActiveRequired = readRequired()
+
+export const readActiveOrEmpty = readOrEmpty()
+
+export const writeActive = (plan: Plan) => write(plan)
+
+export const deleteActive = delete_()

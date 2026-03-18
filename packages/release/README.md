@@ -314,6 +314,8 @@ Programmatic callers can override file config per-field via `Config.load(options
 
 Use `release apply --dry-run` when you want to preview a release without publishing packages or mutating git and GitHub state.
 
+Use `release plan --out <file>` when you want to persist a plan somewhere other than `.release/plan.json`, and pair it with `release apply --from <file>` to execute that exact snapshot without moving the active plan file.
+
 The `operator` block declares script names, not hardcoded package-manager commands. `@kitz/release`
 detects the active package manager from the current environment and renders guidance accordingly
 (`bun run ...`, `pnpm ...`, `npm run ...`, etc).
@@ -333,8 +335,8 @@ The `release` binary dispatches through file-based command routing:
 | Command                             | Purpose                                       |
 | ----------------------------------- | --------------------------------------------- | ----------- | ----------------------- |
 | `release forecast`                  | Show the current release forecast             |
-| `release plan --lifecycle <official | candidate                                     | ephemeral>` | Generate a release plan |
-| `release apply`                     | Execute the release plan                      |
+| `release plan --lifecycle <official | candidate                                     | ephemeral> [--out <file>]` | Generate a release plan |
+| `release apply [--from <file>]`     | Execute the release plan                      |
 | `release explain <pkg>`             | Explain why a package is primary, cascade, or unchanged |
 | `release graph`                     | Render the release execution DAG for the active plan |
 | `release resume`                    | Resume an interrupted release workflow        |
