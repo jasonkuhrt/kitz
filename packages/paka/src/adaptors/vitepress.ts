@@ -365,7 +365,7 @@ ${description}${namespaceList}`
 
   return Md.sections(
     Md.heading(1, 'API Reference'),
-    'Browse the complete API documentation for @wollybeard/kit.',
+    `Browse the complete API documentation for ${model.name}.`,
     modules.join('\n\n'),
   )
 }

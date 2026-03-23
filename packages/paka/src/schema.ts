@@ -974,7 +974,11 @@ export class SimpleEntrypoint extends S.TaggedClass<SimpleEntrypoint>()('SimpleE
    * @returns Array with single import example
    */
   getImportExamples(packageName: string, path: string): ImportExample[] {
-    const moduleName = path.replace('./', '')
+    const moduleName = path
+      .replace(/^\.\//, '')
+      .split('-')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join('')
     const subpath = packageName + path.replace('.', '')
 
     return [

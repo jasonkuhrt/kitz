@@ -8,6 +8,7 @@ import {
   type ExportedDeclarations,
   type ModuleDeclaration,
   Node,
+  SyntaxKind,
   type SourceFile,
 } from 'ts-morph'
 import {
@@ -199,17 +200,24 @@ const createNamespaceExport = (
   isWrapperMarkdown?: boolean,
 ): ValueExport => {
   const jsdoc = overrideJsdoc ?? parseJSDoc(exportDecl)
+  const nestedDocs =
+    nestedModule.docs?.description || nestedModule.docs?.guide
+      ? Docs.make({
+          description: nestedModule.docs?.description,
+          guide: nestedModule.docs?.guide,
+        })
+      : undefined
 
   // Build docs and docsProvenance for namespace export
-  let docs: typeof ModuleDocs.Type | undefined
+  let docs: typeof Docs.Type | undefined
   let docsProvenance: typeof DocsProvenance.Type | undefined
 
   if (overrideJsdoc) {
     // Shadow namespace or wrapper markdown override
-    const description = overrideJsdoc.description || nestedModule.docs?.description
-    const guide = overrideJsdoc.guide || nestedModule.docs?.guide
+    const description = overrideJsdoc.description || nestedDocs?.description
+    const guide = overrideJsdoc.guide || nestedDocs?.guide
 
-    docs = description || guide ? ModuleDocs.make({ description, guide }) : undefined
+    docs = description || guide ? Docs.make({ description, guide }) : undefined
 
     // Track provenance
     const descriptionProv = overrideJsdoc.description
@@ -232,7 +240,7 @@ const createNamespaceExport = (
         : undefined
   } else {
     // No override - use nested module's docs
-    docs = nestedModule.docs
+    docs = nestedDocs
     docsProvenance = nestedModule.docsProvenance
   }
 
@@ -581,7 +589,7 @@ export const extractModule = (
   // Get all exported declarations from the namespace
   for (const statement of body.getStatements()) {
     // Check for export keyword
-    const hasExportModifier = statement.getCombinedModifierFlags() & 1 // ts.ModifierFlags.Export = 1
+    const hasExportModifier = statement.hasModifier(SyntaxKind.ExportKeyword)
     if (!hasExportModifier) {
       continue
     }

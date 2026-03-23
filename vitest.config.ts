@@ -1,14 +1,40 @@
 import { setup } from '@ark/attest'
-import path from 'node:path'
 import tsconfigPaths from 'vite-tsconfig-paths'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 
-const ssrResolveConditions = [
-  'module',
-  'node',
-  'development|production',
-  ...('bun' in process.versions ? ['bun'] : []),
+const ssrResolveConditions = ['module', 'node', 'development|production']
+
+const testExclude = [
+  ...configDefaults.exclude,
+  '.claude/**',
+  '**/build/**',
+  '**/*.demo.{js,jsx,ts,tsx,mjs,mts,cjs,cts}',
+  'tools/oxlint-custom-rules/tests/fixtures/**',
+  '**/*.test-d.ts',
 ]
+
+const coverageExclude = [
+  '**/*.d.ts',
+  '**/*.test-d.ts',
+  '**/*.test-helpers.ts',
+  '**/*.demo.{js,jsx,ts,tsx,mjs,mts,cjs,cts}',
+  '**/*.{test,spec}.{js,jsx,ts,tsx,mjs,mts,cjs,cts}',
+  '**/__tests/**',
+  '**/__tests__/**',
+  '**/__snapshots__/**',
+  '**/__mocks__/**',
+  '**/__examples__/**',
+  '**/build/**',
+  '.claude/**',
+  'tools/oxlint-custom-rules/tests/fixtures/**',
+]
+
+const repoRoot = import.meta.dirname
+const packageRelativeRoot = process.cwd().replace(`${repoRoot}/`, ``)
+const packageSpecificCoverageExclude =
+  packageRelativeRoot === 'packages/kitz' || packageRelativeRoot === 'packages/platform'
+    ? ['src/**/*.ts']
+    : []
 
 // Run attest type checking only when explicitly requested via ATTEST env var
 if (process.env[`ATTEST`] === `true`) {
@@ -21,15 +47,27 @@ export default defineConfig({
   resolve: {
     alias: {
       // Circular devDep workaround - see .claude/rules/circular-devdep-workaround.md
-      '#kitz/test/test': path.resolve(__dirname, 'packages/test/src/__.ts'),
-      '#kitz/test': path.resolve(__dirname, 'packages/test/src/_.ts'),
-      '#kitz/assert/assert': path.resolve(__dirname, 'packages/assert/src/__.ts'),
-      '#kitz/assert': path.resolve(__dirname, 'packages/assert/src/_.ts'),
+      '#kitz/test/test': `${repoRoot}/packages/test/src/__.ts`,
+      '#kitz/test': `${repoRoot}/packages/test/src/_.ts`,
+      '#kitz/assert/assert': `${repoRoot}/packages/assert/src/__.ts`,
+      '#kitz/assert': `${repoRoot}/packages/assert/src/_.ts`,
     },
   },
   test: {
     globals: false,
-    globalSetup: ['./vitest.global-setup.ts'],
+    globalSetup: [`${repoRoot}/vitest.global-setup.ts`],
+    include: configDefaults.include,
+    exclude: testExclude,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text'],
+      exclude: [...coverageExclude, ...packageSpecificCoverageExclude],
+      thresholds: {
+        perFile: true,
+        lines: 70,
+        functions: 70,
+      },
+    },
   },
   ssr: {
     resolve: {

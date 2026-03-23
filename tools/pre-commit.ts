@@ -182,6 +182,10 @@ const runLint = (
   return run('bun', ['tools/run-lint.ts', ...args, '--', ...paths], { cwd: snapshotRoot })
 }
 
+const runCoverage = (): CommandResult => {
+  return run('bun', ['run', 'check:cov:packages'], { cwd: repoRoot })
+}
+
 const materializeIndexSnapshot = (): string => {
   const tempDir = mkdtempSync(join(tmpdir(), 'kitz-pre-commit-'))
   const prefix = tempDir.endsWith('/') ? tempDir : `${tempDir}/`
@@ -225,7 +229,6 @@ const main = (): void => {
   const formattablePaths = stagedPaths.filter(isFormattable)
   const lintablePaths = stagedPaths.filter(isLintable)
   const managedPaths = [...new Set([...formattablePaths, ...lintablePaths])]
-  if (managedPaths.length === 0) return
 
   const snapshotRoot = materializeIndexSnapshot()
 
@@ -258,6 +261,12 @@ const main = (): void => {
         logFailure('Lint check', lintCheck)
         process.exit(1)
       }
+    }
+
+    const coverageCheck = runCoverage()
+    if (coverageCheck.status !== 0) {
+      logFailure('Coverage check', coverageCheck)
+      process.exit(1)
     }
   } finally {
     rmSync(snapshotRoot, { recursive: true, force: true })
