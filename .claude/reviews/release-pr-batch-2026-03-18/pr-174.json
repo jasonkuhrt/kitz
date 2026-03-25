@@ -1,0 +1,33 @@
+{
+  "pr_number": 174,
+  "title": "fix(release): support custom candidate dist-tags",
+  "verdict": "findings",
+  "summary": "The PR correctly fixes the custom candidate dist-tag bug by introducing `resolveCandidateDistTag` — a helper that derives candidacy from `options.lifecycle` (set from `plan.lifecycle` in `toPayload`) rather than the literal string `'next'`. The logic chain is sound: `execute(plan, { tag: 'candidate' })` → `toPayload` sets `lifecycle: plan.lifecycle` → `resolveCandidateDistTag` returns `'candidate'` → force-push and GH release title both use the real dist-tag.\n\nThe `UpdateReleaseParams` interface change (making both fields optional) is the primary concern: it now allows a semantically empty `updateRelease(tag, {})` call that makes a real HTTP PATCH with no fields. The rest of the findings are minor efficiency/documentation items.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "UpdateReleaseParams with all-optional fields allows no-op API calls",
+      "file": "packages/github/src/service.ts",
+      "line": 44,
+      "body": "Both `title` and `body` are now optional with no runtime guard requiring at least one. A caller can invoke `gh.updateRelease(tag, {})` which produces a real HTTP PATCH with an empty body — a wasted API call (and in memory.ts, it spreads nothing over the existing release). The `live.ts` implementation already uses conditional spreads so the HTTP body may be `{}`. This isn't exercised today, but it's a latent footgun in the interface contract.\n\nConsider a type-level constraint such as `AtLeastOne<UpdateReleaseParams>` or a runtime guard at the top of `updateRelease` that early-returns when neither field is provided."
+    },
+    {
+      "priority": "P3",
+      "title": "resolveCandidateDistTag recomputed inside every .map() iteration",
+      "file": "packages/release/src/api/executor/workflow.ts",
+      "line": 127,
+      "body": "The helper reads only from `payload.options`, which is constant for all releases in the batch. It is called once inside `pushTags`'s `.map()` and once inside `createGHReleases`'s `.map()`, recomputing the same value for each release. The result could be hoisted above each loop with a single `const candidateDistTag = resolveCandidateDistTag(payload.options)`. Trivially inefficient, but also slightly obscures that the value is per-batch, not per-release."
+    },
+    {
+      "priority": "P3",
+      "title": "Silent removal of tag.endsWith('@next') fallback with no explanatory comment",
+      "file": "packages/release/src/api/executor/workflow.ts",
+      "line": 282,
+      "body": "The old code had `const isCandidate = payload.options.tag === 'next' || tag.endsWith('@next')`. This PR removes the `tag.endsWith('@next')` branch entirely with no inline comment. While that branch was almost certainly dead code (a tag like `@kitz/core@1.0.0-next.1` does not end with `@next`, and neither does a normal stable tag), the rationale doc only mentions the legacy `next` case — it doesn't explicitly acknowledge the removal of this second branch. A one-line comment noting the branch was inert would prevent future readers from wondering whether it was accidentally dropped."
+    }
+  ],
+  "residual_risks": [
+    "Durable payloads persisted before the `lifecycle` field was introduced that also had a non-'next' custom `options.tag` (e.g. `'beta'`) will return `undefined` from `resolveCandidateDistTag` and won't be treated as candidates. The rationale doc acknowledges the legacy fallback only covers `tag === 'next'`, so this is an accepted gap — but it is a real behavioral cliff for any historical payloads with custom candidate tags.",
+    "The `createdGHReleases` field in `ExecutionResult` now semantically includes 'updated' candidate releases in addition to newly created ones. The test at line 373 asserts this by design, but any downstream consumer reading `createdGHReleases` as strictly 'newly created' will over-count. This naming issue pre-dates the PR but is reinforced here."
+  ]
+}

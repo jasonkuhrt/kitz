@@ -1,0 +1,40 @@
+{
+  "pr_number": 185,
+  "title": "fix(release): round-trip commit dates in plan storage",
+  "verdict": "findings",
+  "summary": "The core fix is sound: replacing `Schema.Date` (which accepts any string) with a custom `CommitDate` schema that enforces canonical ISO 8601 UTC format (`YYYY-MM-DDTHH:mm:ss.sssZ`) — matching the `Date.prototype.toISOString()` output — solves the round-trip failure cleanly and follows established codebase patterns (`SchemaGetter.transformOrFail`, `SchemaIssue.InvalidValue`). The regression tests are well-targeted.\n\nThree issues worth noting: the `test` script in `git/package.json` uses a different invocation style from all other packages; several static methods were added to `Commit` that are unused across the codebase and weren't motivated by the bug fix; and a pre-existing Sha error-message assertion was silently weakened.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "test script format diverges from workspace convention",
+      "file": "packages/git/package.json",
+      "line": 28,
+      "body": "Every other package with a `test` script uses the pattern `vitest run --root ../.. packages/<pkg>/src` (release, github, yaml, oxlint-rules). This PR introduces a different form: `cd ../.. && vitest run --dir packages/git/src`. The `cd` + `--dir` approach is shell-dependent and differs in how vitest resolves its config and root. For consistency and reliability, use the established form:\n```json\n\"test\": \"vitest run --root ../.. packages/git/src\"\n```"
+    },
+    {
+      "priority": "P2",
+      "title": "`static ordered = false as const` is unexplained dead code",
+      "file": "packages/git/src/commit.ts",
+      "line": 57,
+      "body": "No other class in the codebase declares `static ordered`, and no code reads `Commit.ordered`. There is no protocol, interface, or utility in scope that consumes it. Adding undocumented, unused properties to a shared schema class violates the project's \"avoid over-engineering\" rule (CLAUDE.md: *Don't add features beyond what was asked*). If this is scaffolding for a future ordering protocol, it should land with the feature that requires it — not speculatively."
+    },
+    {
+      "priority": "P2",
+      "title": "Unused static utility methods added to `Commit` (scope creep)",
+      "file": "packages/git/src/commit.ts",
+      "line": 51,
+      "body": "The PR adds `decode`, `decodeSync`, `encode`, `encodeSync`, and `equivalence` as static methods. None of these appear anywhere in the codebase, and `static is` (the one established pattern) was not included. While `static is = Schema.is(Commit)` is a widely-used convention here, the decode/encode/equivalence cluster is novel and unused. These should be added only when a consumer needs them. As-is they're speculative API surface on a shared package."
+    },
+    {
+      "priority": "P3",
+      "title": "Sha error assertion silently weakened",
+      "file": "packages/git/src/_.test.ts",
+      "line": 46,
+      "body": "The test was changed from `.toThrow(/Sha/)` to `.toThrow()`. The regex asserted the error message referenced the `Sha` type, giving the test some discriminating power. The change is unrelated to the date round-trip fix and comes with no explanation. If Effect v4 changed the error message format so the old regex no longer matches, the fix should update the regex to the new format rather than dropping it entirely."
+    }
+  ],
+  "residual_risks": [
+    "CommitDate's regex enforces millisecond precision (`.sssZ`). Dates arriving from live git log parsing via `new Date(entry.date)` in `live.ts` bypass the schema (constructed via `makeUnsafe`), so they won't fail on construction — but if such a Date were encoded and then decoded with a non-UTC-millisecond string in a different context, it would be rejected. This path is currently safe because `Date.toISOString()` always produces the exact format the regex requires.",
+    "The redundant `date.toISOString() !== value` guard inside the decode transform cannot actually fire after the regex passes — every string matching the regex will round-trip. This is harmless but could mislead future maintainers into thinking the check catches something the regex misses."
+  ]
+}

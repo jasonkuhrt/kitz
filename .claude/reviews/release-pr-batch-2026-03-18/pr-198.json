@@ -1,0 +1,47 @@
+{
+  "pr_number": 198,
+  "title": "feat(release): add diff remote overrides",
+  "verdict": "findings",
+  "summary": "The PR correctly adds an explicit `--remote` override for `release pr preview` and `release doctor`. The priority waterfall (explicit override → config → \"origin\") is implemented correctly in `resolveDiffRemote`. Tests are thorough. However, there are several code quality issues: a trivial wrapper function that adds no value, a dead assignment, duplicated normalization logic across two files, and an \"args as compound strings with embedded spaces\" pattern in `renderDoctorCommandSuffix` that silently allows invalid remote names containing spaces to produce broken runbook commands.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "`loadDiffRemote` is a trivial wrapper adding no value",
+      "file": "packages/release/src/cli/pr-preview.ts",
+      "line": 405,
+      "body": "The new private helper `loadDiffRemote` is a one-liner that does nothing but delegate to the already-imported `resolveDiffRemote`:\n\n```typescript\nconst loadDiffRemote = (config: Api.Config.ResolvedConfig, remote?: string): string =>\n  resolveDiffRemote(config, remote)\n```\n\nThis is dead abstraction. Call `resolveDiffRemote(config, options.remote)` directly at the call site in `runPrPreview`. The indirection creates noise and a misleading name difference (`loadDiffRemote` vs `resolveDiffRemote`) that implies different behavior where there is none."
+    },
+    {
+      "priority": "P2",
+      "title": "Dead assignment when `options.remote` is falsy",
+      "file": "packages/release/src/cli/pr-preview.ts",
+      "line": 347,
+      "body": "In `runPrPreview`:\n```typescript\nconst diffRemote = loadDiffRemote(config, options.remote)  // always computed\n// ...\n...(options.remote ? { explicitDiffRemote: diffRemote } : {}),  // only used when truthy\n```\nWhen `options.remote` is `undefined`, `diffRemote` is computed (resolving through config) but immediately discarded. This is a silent dead assignment. The guard should be moved before the computation:\n```typescript\nconst diffRemote = options.remote ? resolveDiffRemote(config, options.remote) : undefined\n// ...\n...(diffRemote ? { explicitDiffRemote: diffRemote } : {}),\n```\nThis also eliminates the `loadDiffRemote` wrapper naturally."
+    },
+    {
+      "priority": "P2",
+      "title": "Duplicated remote normalization logic across two files",
+      "file": "packages/release/src/cli/commands/pr-lib.ts",
+      "line": 18,
+      "body": "There are two separate implementations of remote normalization:\n\n- `normalizeRemoteArg` in `pr-lib.ts` — trims, rejects empty strings, rejects strings starting with `--`\n- `normalizeRemoteOverride` in `pr-preview-diff.ts` — trims, rejects empty strings only\n\nThey diverge on the `--` prefix check. If the normalization logic changes (e.g., rejecting names with `/` or spaces), only one file gets updated. Extract a single `normalizeRemote` function into `pr-preview-diff.ts` (already has the concept) and import it from `pr-lib.ts`."
+    },
+    {
+      "priority": "P2",
+      "title": "`renderDoctorCommandSuffix` silently accepts remote names with spaces, producing broken runbook commands",
+      "file": "packages/release/src/cli/pr-preview.ts",
+      "line": 407,
+      "body": "```typescript\nargs.push(`--remote ${explicitDiffRemote}`)\n```\nIf `explicitDiffRemote` contains a space (e.g., `\"my remote\"`), the rendered runbook command becomes:\n```\nbun run release doctor --remote my remote\n```\nwhich is shell-invalid. Neither `normalizeRemoteArg` nor `normalizeRemoteOverride` rejects whitespace-containing strings — they only trim leading/trailing spaces. While git remote names cannot contain spaces by git's own validation, the CLI layer should defensively reject such values with an explicit error rather than silently generating a broken command string.\n\nA simple `if (normalized.includes(' ')) return null` in `normalizeRemoteArg` (and its `pr-preview-diff.ts` counterpart) would close this."
+    },
+    {
+      "priority": "P3",
+      "title": "Unnecessary conditional object spread for optional flag in `pr.ts`",
+      "file": "packages/release/src/cli/commands/pr.ts",
+      "line": 120,
+      "body": "```typescript\naction.checkOnly || action.remote\n  ? {\n      ...(action.checkOnly ? { checkOnly: true } : {}),\n      ...(action.remote ? { remote: action.remote } : {}),\n    }\n  : undefined,\n```\nSince `RunPrPreviewOptions` has `checkOnly?: boolean` and `remote?: string`, both optional, passing `undefined` values for optional fields is equivalent to omitting them. This simplifies to:\n```typescript\n{ checkOnly: action.checkOnly || undefined, remote: action.remote }\n```\nor even just:\n```typescript\n{ remote: action.remote, ...(action.checkOnly ? { checkOnly: true } : {}) }\n```\nThe outer `|| action.remote ? ... : undefined` guard also becomes unnecessary once `RunPrPreviewOptions` accepts the `remote` field unconditionally."
+    }
+  ],
+  "residual_risks": [
+    "The `renderDoctorCommandSuffix` function builds command strings by embedding flag-value pairs as single array elements with internal spaces (e.g., `'--remote fork'`), then joining. This pattern is opaque — future contributors may treat each element as a true single-token argument and accidentally introduce multi-word elements that only work because they happen to be joined with the same delimiter. Consider a clearer interface where each flag and value is a separate element.",
+    "The `pr-lib.ts` `parseAction` uses a manual index-bumping loop (`index += 1`) to consume `--remote`'s value argument. This pattern is error-prone if more value-taking flags are added later. An argument-parsing library (or even a simple two-pass approach) would be safer as the flag surface grows."
+  ]
+}

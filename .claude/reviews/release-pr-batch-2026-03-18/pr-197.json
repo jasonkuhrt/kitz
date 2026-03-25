@@ -1,0 +1,19 @@
+{
+  "pr_number": 197,
+  "title": "release: add bounded notes and markdown forecast",
+  "verdict": "findings",
+  "summary": "Solid, well-scoped PR. The `until` CLI flag is a clean pass-through to a pre-existing `GenerateOptions.until` field. The `forecast-markdown` renderer is correctly structured, well-tested, and integrates with existing model types (`ForecastRelease.currentVersionDisplay`, `CommitDisplay`, `PublishRecord`) without any mismatches. One minor structural inconsistency in the markdown output: the Primary and Cascades sections use `###` headings, but the publish metadata is rendered as bare bullet items under the summary line with no section heading, breaking the document hierarchy.",
+  "findings": [
+    {
+      "priority": "P3",
+      "title": "Publish metadata section lacks a `###` heading, breaking document hierarchy",
+      "file": "packages/release/src/api/renderer/forecast-markdown.ts",
+      "line": 32,
+      "body": "The `### Primary (N)` and `### Cascades (N)` sections both have headings, but the publish state/history block is emitted as plain bullet list items directly under the summary line with no heading. If a reader pastes this into an issue or PR body, the publish section is visually unanchored and inconsistent with the rest of the document structure.\n\nConsider adding a heading like `### Publish` or `### Publish Metadata` before the conditional block:\n```typescript\nif (publishState !== 'idle' || publishHistory.length > 0) {\n  output``\n  output`### Publish`\n  output``\n  output`- Publish state: \\`${publishState}\\``\n  ...\n}\n```"
+    }
+  ],
+  "residual_risks": [
+    "The `--until` boundary is not validated against known tags/SHAs at the CLI layer — an invalid ref will only fail at the git-log level, potentially producing an unhelpful error message rather than a clear user-facing diagnostic. This matches the existing `--since` behavior, so it is a pre-existing limitation rather than a regression introduced here.",
+    "The nested ternary for format dispatch in `forecast.ts` is now 3 levels deep; adding a fourth format will require a refactor toward a dispatch table to stay readable."
+  ]
+}

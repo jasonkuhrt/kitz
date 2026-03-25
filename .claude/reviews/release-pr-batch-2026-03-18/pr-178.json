@@ -1,0 +1,26 @@
+{
+  "pr_number": 178,
+  "title": "refactor(release): centralize package location resolution",
+  "verdict": "findings",
+  "summary": "Clean, well-structured refactor that correctly centralizes repo-relative path derivation in a single abstraction. Tests cover custom layouts, standard layouts, out-of-root rejection, and `containsRepoPath` matching. Two findings: one dead-code guard in `fromAbsolutePath` and one undocumented behavioral change from silent-skip to Effect-defect for out-of-root packages.",
+  "findings": [
+    {
+      "priority": "P3",
+      "title": "Dead code: second TypeError guard in `fromAbsolutePath` is unreachable",
+      "file": "packages/release/src/api/analyzer/package-location.ts",
+      "line": 40,
+      "body": "The guard `if (relativePath.length === 0)` with the message `\"cannot be the repo root itself\"` is unreachable. `normalizeAbsoluteDir` strips trailing slashes from both `root` and `path`, so when `path === root`, both normalize to the same string (e.g. `/repo`). Then `normalizedPath.startsWith(rootPrefix)` = `'/repo'.startsWith('/repo/')` → `false`, so the first `TypeError` fires instead with the misleading message `\"is not inside repo root\"`. The second guard never executes. Either the normalization should preserve a trailing slash on `rootPrefix` differently, or the error message on the first guard should cover the root-equality case explicitly."
+    },
+    {
+      "priority": "P2",
+      "title": "Silent skip → Effect defect: behavioral change in `toAffectedPackages` is undocumented",
+      "file": "packages/release/src/cli/pr-preview-diff.ts",
+      "line": 71,
+      "body": "The old `toAffectedPackages` silently skipped packages whose absolute path wasn't inside the repo root (via a `null` filter). The new code calls `PackageLocation.fromAbsolutePath(root, pkg.path)` inside `.map()`, which throws a synchronous `TypeError` for any out-of-root package. Since `toAffectedPackages` is called as a plain function inside `Effect.gen` (not yielded), Effect's generator runner converts the uncaught throw into a defect (`Effect.die`), failing the entire `loadPullRequestDiff` effect rather than skipping the problematic package.\n\nThis is arguably the correct behavior (out-of-root packages are a programmer error), but it's an observable breaking change from the prior graceful degradation. A comment on `fromAbsolutePath` or a short rationale note clarifying the fail-fast intent would make the contract explicit."
+    }
+  ],
+  "residual_risks": [
+    "Branch names or package directory names containing URL-special characters (e.g. `#`, `?`, spaces) are not percent-encoded in `toSourceUrl`. The string interpolation `https://github.com/.../tree/${branch}/${relativePath}` would produce invalid URLs. This existed before the refactor (the old inline template strings had the same issue), so not introduced here — but worth tracking as a pre-existing gap now surfaced clearly.",
+    "`normalizeRelativeDir` accepts `Fs.Path.RelDir | string`, making the union open to arbitrary strings at call sites without branded-type guarantees. Currently all call sites pass known-good values, but the type signature doesn't enforce it."
+  ]
+}

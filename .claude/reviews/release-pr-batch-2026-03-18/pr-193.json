@@ -1,0 +1,33 @@
+{
+  "pr_number": 193,
+  "title": "feat(release): add explain command",
+  "verdict": "findings",
+  "summary": "The PR correctly adds a `release explain <pkg>` command with planner, renderer, and CLI layers, backed by solid test coverage. The BFS-based transitive path derivation is the key design contribution — it correctly fills the gap where `CascadeImpact.triggeredBy` is empty for transitive cascades. No logic bugs were found. Three issues worth noting: the dependency graph is re-read from disk on every explain call (redundant I/O since `analyze()` already built it), the `triggeredBy` field in `CascadeExplanation` has different semantics than in `CascadeImpact` (root-cause primaries vs direct triggers — undocumented divergence), and the README table inserts `explain` after `apply` rather than before it in workflow order.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "explain() rebuilds the dependency graph on every cascade explanation",
+      "file": "packages/release/src/api/planner/explain.ts",
+      "line": 170,
+      "body": "`explain()` calls `buildDependencyGraph([...options.packages])` inside the cascade branch, which re-reads every package's `package.json` from the filesystem. `analyze()` already ran `buildDependencyGraph` (line 197 of `analyze.ts`) to produce the `analysis` it passes in — but that graph is not stored in `Analysis`. The result is duplicate filesystem I/O on every `explain` call.\n\nThe clean fix is to include the `DependencyGraph` as a field in `Analysis` (it's already computed there) and thread it through to `explain()`. This eliminates the redundant reads and makes the explain function consistent with the graph used during analysis, even if package manifests change between the two calls."
+    },
+    {
+      "priority": "P2",
+      "title": "`triggeredBy` semantics diverge between CascadeImpact and CascadeExplanation — undocumented",
+      "file": "packages/release/src/api/planner/explain.ts",
+      "line": 185,
+      "body": "`CascadeImpact.triggeredBy` (from the analyzer, `analyze.ts` lines 240–249) stores **direct** primary-to-cascade edges only: if A→B→C and only A is a primary impact, `CascadeImpact.triggeredBy` for C is `[]` because no primary directly depends on C.\n\n`CascadeExplanation.triggeredBy` (produced here) stores **root-cause primary packages** derived via BFS from all primaries to the target — so for C it would contain A.\n\nThese are semantically different despite the identical field name, and neither the type interface nor the JSDoc documents this distinction. Future maintainers who rely on `triggeredBy` in `CascadeExplanation` expecting the same semantics as `CascadeImpact.triggeredBy` will be surprised. The divergence should be documented on both types, ideally with field names like `directTriggers` vs `rootCausePrimaries`."
+    },
+    {
+      "priority": "P3",
+      "title": "README table inserts `explain` after `apply` — out of workflow order",
+      "file": "packages/release/README.md",
+      "line": 335,
+      "body": "`explain` is inserted between `apply` and `graph` in the command reference table. As a diagnostic/pre-flight tool, it is more naturally used before `apply` (to understand why a package is classified before executing the plan). The logical workflow order would be: `forecast → plan → explain → apply → graph → resume → status`. `help.ts` correctly alphabetizes commands; the README table should either match alphabetical order or be reordered to reflect the workflow sequence consistently."
+    }
+  ],
+  "residual_risks": [
+    "The test for cascade paths only covers the case where `CascadeImpact.triggeredBy` is empty (`app` in the test setup). There is no test for the case where both `cascadeImpact.triggeredBy` is non-empty AND dependency paths are found — in which case the code silently discards the analysis-derived `triggeredBy` in favor of path-derived values. If the two ever diverge due to graph inconsistency, there is no observable failure.",
+    "If a package.json manifest is unreadable during the explain call (but was readable during analysis), `buildDependencyGraph` silently skips it, potentially producing an incomplete graph. This could cause a cascade package to show empty `dependencyPaths` and empty `triggeredBy` (since it falls back to the analysis's empty `triggeredBy`), giving a misleading 'no triggers found' explanation with no error."
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "pr_number": 167,
+  "title": "fix(release): scope package test discovery",
+  "verdict": "findings",
+  "summary": "The core fix is sound: replacing the positional-arg substring filter with `--dir` correctly constrains Vitest discovery to the `packages/release/src` subtree and prevents `.claude/worktrees` mirror files from being picked up. The regression test validates the right behavior. Two issues found: a reliability risk from using a login shell in `spawnSync`, and minor over-engineering of JSON parsing with Effect Schema.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "Login shell flag `-lc` in spawnSync can cause vitest to not be found in CI",
+      "file": "packages/release/src/_.test.ts",
+      "line": 220,
+      "body": "The subprocess is launched with `/bin/sh -lc …`. The `-l` (login shell) flag causes the shell to source profile scripts (`.profile`, `.bash_profile`, `/etc/profile.d/*`, etc.), which may **reset or override PATH** — e.g. NVM, rbenv, and many CI setup scripts do `export PATH=…` wholesale, dropping the prepended `node_modules/.bin` entry that the test explicitly adds. If PATH is reset, `vitest` won't be found and the test will fail with a confusing `command not found` exit instead of a meaningful assertion error.\n\nShould be `-c` only:\n```ts\nconst result = spawnSync('/bin/sh', ['-c', `${testScript} --reporter=verbose`], {\n```\nThe PATH override via `env` is sufficient without `-l`."
+    },
+    {
+      "priority": "P3",
+      "title": "Effect Schema used for simple JSON.parse of package.json",
+      "file": "packages/release/src/_.test.ts",
+      "line": 68,
+      "body": "`Schema.fromJsonString(Schema.Record(Schema.String, Schema.Unknown))` and `Schema.decodeUnknownSync` are used to read `package.json`. Since the file is trusted source (a repo-committed file) and any parse error would already surface as a thrown exception, this is over-engineered. Plain `JSON.parse` with a cast achieves the same thing without pulling Schema semantics into test infrastructure:\n\n```ts\nconst packageJson = JSON.parse(\n  readFileSync(new URL('../package.json', import.meta.url), 'utf8')\n) as Record<string, unknown>\n```\nThe `getOptionalStringField` / `getOptionalRecordField` helpers can stay — they're straightforward guards."
+    }
+  ],
+  "residual_risks": [
+    "The behavioral test creates a minimal synthetic `vitest.config.ts` (no `tsconfigPaths`, no `resolve.alias`, no `exclude` globs) that differs from the real monorepo config. If the production config gains an `exclude: ['.claude/**']` pattern in the future, the `--dir` constraint would become redundant but the test would still pass, potentially masking a regression in either direction.",
+    "The `${testScript}` value is interpolated directly into a shell command string without quoting/escaping. If the script ever contains shell metacharacters (unlikely given it's maintained in repo), this would be a shell-injection vector. Low risk in current context.",
+    "The `symlinkSync` to the real `node_modules` creates a cross-device dependency: if the repo's node_modules layout changes (e.g., hoisting changes, lockfile update removes vitest), the subprocess test can fail without any change to this test file."
+  ]
+}

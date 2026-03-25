@@ -1,0 +1,26 @@
+{
+  "pr_number": 194,
+  "title": "feat(release): derive ephemeral dist-tags from PR numbers",
+  "verdict": "findings",
+  "summary": "The PR correctly addresses the ephemeral dist-tag problem: all four CLI commands (apply, graph, resume, status) and the PR preview runbook now consistently derive the `pr-<N>` dist-tag automatically from the plan rather than requiring an explicit `--tag` override. The new `resolvePublishSemanticsForPlan` wrapper cleanly separates plan-aware from plan-agnostic semantics resolution.\n\nTwo findings worth noting: (1) a minor inconsistency in how the PR number is located between `resolvePlanPrNumber` (searches `releases + cascades`) and the inline runbook PR_NUMBER expression (searches `releases` only) — functionally equivalent due to the fallback but semantically inconsistent; (2) the verbose conditional-spread pattern in `resolvePublishSemanticsForPlan` is unnecessary since the underlying function already handles all those params as optional.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "Inconsistent PR number search scope: `resolvePlanPrNumber` vs runbook inline",
+      "file": "packages/release/src/cli/pr-preview.ts",
+      "line": 407,
+      "body": "The inline expression in the runbook command uses `plan.releases.find(Api.Planner.Ephemeral.is)?.prerelease.prNumber` (searches only `releases`), while the newly introduced `resolvePlanPrNumber` searches `[...plan.releases, ...plan.cascades]`. They are semantically equivalent here because the inline code falls back to `params.pullRequest.number` (which equals the PR number anyway), but the inconsistency is a latent trap — a future reader or editor might not realize these two code paths are expected to return the same value by different routes. The inline could simply call `resolvePlanPrNumber(plan) ?? params.pullRequest.number` to use the canonical logic:\n```ts\n// before\nplan.releases.find(Api.Planner.Ephemeral.is)?.prerelease.prNumber ?? params.pullRequest.number\n// after\nApi.Publishing.resolvePlanPrNumber(plan) ?? params.pullRequest.number\n```"
+    },
+    {
+      "priority": "P3",
+      "title": "Verbose conditional-spread pattern in `resolvePublishSemanticsForPlan` is unnecessary",
+      "file": "packages/release/src/api/publishing.ts",
+      "line": 122,
+      "body": "The function spreads optional params conditionally:\n```ts\n...(params.publishing !== undefined ? { publishing: params.publishing } : {}),\n...(params.tag !== undefined ? { tag: params.tag } : {}),\n// etc.\n```\nAll of these fields are already typed as optional in `resolvePublishSemantics`. Passing `undefined` explicitly is identical to omitting the key — every read site already uses `?? defaultValue` or explicit guards. The simpler form is:\n```ts\nreturn resolvePublishSemantics({\n  lifecycle: params.plan.lifecycle,\n  publishing: params.publishing,\n  tag: params.tag,\n  npmTag: params.npmTag,\n  candidateTag: params.candidateTag,\n  prNumber,\n})\n```\nThis has identical runtime semantics and is far easier to read."
+    }
+  ],
+  "residual_risks": [
+    "If an ephemeral plan somehow contains no `Ephemeral` items (e.g., a degenerate/empty plan), `resolvePlanPrNumber` returns `undefined` and all four commands silently fall back to the generic `'pr'` dist-tag instead of erroring. Since an ephemeral plan with no ephemeral items is likely a planner bug, this silent fallback could mask upstream issues.",
+    "The `resolvePublishSemantics` function still accepts the raw `prNumber` param directly — callers outside this module could invoke it without a PR number and silently get the `'pr'` fallback dist-tag. Encapsulation is good (the plan-aware wrapper is the recommended path) but there is no enforcement."
+  ]
+}

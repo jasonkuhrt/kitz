@@ -1,0 +1,10 @@
+{
+  "pr_number": 183,
+  "title": "refactor(release): share command workspace bootstrap",
+  "verdict": "no-findings",
+  "summary": "Clean refactor that extracts a shared `loadCommandWorkspace` / `loadCommandWorkspaceWith` bootstrap used by `plan`, `forecast`, `notes`, and `doctor`. The discriminated union design (`ReadyCommandWorkspace | EmptyCommandWorkspace`) correctly carries `config` through both branches, preserves all pre-existing empty-workspace behaviors, and adds genuinely new test coverage for the empty-workspace case. The deleted `notes-lib.ts` was a thin wrapper with no standalone value. No logic regressions or type-safety gaps found.",
+  "findings": [],
+  "residual_risks": [
+    "The `resolvePackages` call inside `loadCommandWorkspaceWith` may have its own error/requirements channels not captured in the public signature — callers get the full inferred type but it is not explicitly documented. Low risk in practice since Effect inference handles it, but worth noting if the function is ever exposed as a public API."
+  ]
+}

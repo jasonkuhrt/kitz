@@ -1,0 +1,33 @@
+{
+  "pr_number": 188,
+  "title": "refactor(release): share PR context resolution",
+  "verdict": "findings",
+  "summary": "This refactor eliminates duplicate env/git resolution across `explore`, `resolvePullRequest`, and `resolvePrNumber` by introducing a shared `ResolvedGitHubContext` / `ResolvedPullRequestContext` data model and composing all downstream effects from a single resolved context. The motivation is sound, the layering is clean, and the Effect composition patterns are correct. Three issues worth noting: one test-coverage gap for a new exported helper, one silent error-message degradation in `pr-preview`, and a public API surface that is larger than what consumers strictly need.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "Branch-matching path of `resolvePullRequestFromContext` has no test coverage",
+      "file": "packages/release/src/api/explorer/explore-helpers.test.ts",
+      "line": 208,
+      "body": "The new `resolvePullRequestFromContext` test only exercises the `explicitPrNumber !== null` branch (explicit PR number). The other branch — falling back to `selectConnectedPullRequest(context.branch, pullRequests)` when `explicitPrNumber` is `null` — has no focused coverage. Because this is a newly-extracted public helper, the happy path of branch matching should also have a test case, particularly since `selectConnectedPullRequest` already has its own tests and this exercises the routing logic between the two paths."
+    },
+    {
+      "priority": "P2",
+      "title": "`pr-preview.ts` drops a targeted error message when GitHub target cannot be resolved",
+      "file": "packages/release/src/cli/pr-preview.ts",
+      "line": 312,
+      "body": "Before this PR, `pr-preview` had an explicit guard after `explore()`:\n```typescript\nif (!runtime.github.target) {\n  return yield* Effect.fail(\n    new Api.Explorer.ExplorerError({\n      context: { detail: 'Could not resolve the GitHub repository target for the connected pull request.' },\n    }),\n  )\n}\n```\nThat guard is removed. The safety is preserved because `resolveGitHubContext()` calls `resolveReleaseTarget()` which fails as an Effect when it can't determine the target — so the flow still fails. However, the error the user sees is now whatever `resolveReleaseTarget` produces (a generic resolution error) rather than the context-aware message scoped to the PR preview command. The PR preview error surface should ideally remain as specific as possible."
+    },
+    {
+      "priority": "P3",
+      "title": "`exploreFromContext` is exported publicly but is primarily an internal composition helper",
+      "file": "packages/release/src/api/explorer/__.ts",
+      "line": null,
+      "body": "Four new symbols are added to the public barrel (`exploreFromContext`, `resolveGitHubContext`, `resolvePullRequestContext`, `resolvePullRequestFromContext`) plus two new types. `exploreFromContext` in particular is a split of the existing `explore()` for internal composition — it requires callers to already hold a `ResolvedGitHubContext` (a type that is itself now public), which creates an implicit dependency on call-site discipline that the original `explore()` did not impose. If external consumers call `exploreFromContext` with a stale or synthetic context, they can get a `Recon` snapshot where `branch`, `target`, and `token` disagree with what the git/env services would have returned. Consider whether `exploreFromContext` should stay internal (`liveGithubLayerForContext` correctly stayed private as a model for this). The `resolve*` helpers are more defensible as public API since they are the core reusable units."
+    }
+  ],
+  "residual_risks": [
+    "No test for `resolvePullRequestContext()` itself (the combined helper) — the individual composing pieces are tested but not the integrated path that writes both PR resolution and context into `ResolvedPullRequestContext`.",
+    "The three `resolvePr*` variants (`resolvePullRequest`, `resolvePullRequestContext`, `resolvePullRequestFromContext`) and the legacy `resolvePrNumber` form a surface where the behavioral differences may not be obvious to future maintainers; a short JSDoc on each distinguishing its use case would reduce confusion."
+  ]
+}

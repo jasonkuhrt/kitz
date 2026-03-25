@@ -1,0 +1,10 @@
+{
+  "pr_number": 169,
+  "title": "fix(release): fail when until boundary cannot be resolved",
+  "verdict": "no-findings",
+  "summary": "Clean, focused bug fix. The old code used `Effect.exit(git.getCommitsSince(until))` + `Exit.isSuccess()` check to silently swallow git lookup failures, falling back to an empty `HashSet` — causing the boundary to be ignored and analysis to include more commits than intended. The fix replaces this with direct `yield*`, letting `GitError` propagate through the already-declared error channel. The `Exit` import is removed as a consequence.\n\nThe regression test follows the established codebase pattern for `Effect.result` (also seen in `packages/git/src/_.test.ts`), correctly uses `Effect.provideService` to selectively override `getCommitsSince` only for the `untilTag`, and asserts that the typed `GitError` propagates with the correct `context.operation` and `context.detail` fields.",
+  "findings": [],
+  "residual_risks": [
+    "The `trimCommitsUntilBoundary` helper now propagates `GitError` upward, which changes the observable behavior for callers of `analyze()` that previously never saw a failure on this path. Any callers that relied on the silent-fallback behavior (i.e., not handling `GitError` from `until` resolution) will now surface errors. The existing `Git.GitError` declaration in `analyze()`'s return type confirms this is intentional and type-safe, but downstream consumers should be verified if they depend on the old silent-pass behavior."
+  ]
+}

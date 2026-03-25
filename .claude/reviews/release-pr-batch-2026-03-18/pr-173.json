@@ -1,0 +1,26 @@
+{
+  "pr_number": 173,
+  "title": "fix(release): make explorer recon truthful",
+  "verdict": "findings",
+  "summary": "The PR correctly wires `NpmRegistry.NpmCli` into `explore()` to replace hardcoded placeholder values with real runtime observations. The core logic — `resolveNpmCredentials` absorbing `NpmCliError` gracefully, `resolveGitRemotes` using `Effect.option` for leniency, and propagating the new `NpmCli` requirement into `forecast.ts` and `pr.ts` — is sound. The `catchTag('GitError', ...)` fix in `resolveReleaseTarget` is a welcome bonus.\n\nTwo issues are worth flagging: the `toExecutorRuntimeConfig` test fixture now contains `registry: 'https://registry.npmjs.org'`, which `explore()` can never produce after this change (the type widening to `string | null` silently accepts it instead of forcing a fixture update). The `resolveGitRemotes` function swallows all `GitError`s via `Effect.option`, including genuine CLI failures — this is inconsistent with the fix made in the same PR to `resolveReleaseTarget`.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "toExecutorRuntimeConfig test fixture uses `registry: 'https://registry.npmjs.org'` — a value explore() can no longer produce",
+      "file": "packages/release/src/api/explorer/explore.test.ts",
+      "line": 149,
+      "body": "The `describe('toExecutorRuntimeConfig', ...)` block constructs a static `Recon` fixture with `npm: { ..., registry: 'https://registry.npmjs.org' }`. After this PR, `explore()` always returns `registry: null` when no `NPM_CONFIG_REGISTRY` env var is set. TypeScript accepts the fixture because `string` satisfies the new `string | null` type — no compile error surfaces — but the fixture now silently tests a path that the live `explore()` function can no longer reach.\n\nThe fixture should be updated to `registry: null` (the new default), or a comment should explain it deliberately tests the explicit-registry variant. As written, it could mislead a future reader into thinking `'https://registry.npmjs.org'` is still the live default."
+    },
+    {
+      "priority": "P3",
+      "title": "`resolveGitRemotes` swallows all GitErrors via `Effect.option` — inconsistent with the `catchTag` fix in the same PR",
+      "file": "packages/release/src/api/explorer/explore.ts",
+      "line": 167,
+      "body": "```ts\nconst origin = yield* git.getRemoteUrl('origin').pipe(Effect.option)\n```\n`Effect.option` converts **any** `GitError` (CLI crash, permissions failure, not just 'no remote configured') into `Option.none()`, silently returning `{}`. This is inconsistent with the fix made in this very PR to `resolveReleaseTarget`, which changed from `Effect.catch((error: any) => ...)` to `Effect.catchTag('GitError', ...)` for precisely this reason.\n\nThe leniency is arguably intentional (remotes is informational; explore would already fail earlier if git is completely broken), but it's undocumented. A brief comment like `// Informational only — missing or unreachable origin is non-fatal` would prevent future readers from wondering whether this is intentional or an oversight."
+    }
+  ],
+  "residual_risks": [
+    "The `NpmCredentials.registry` field changed from `string` to `string | null`. No current consumers of `recon.npm.registry` were found in the codebase, but downstream consumers outside this repo (or future code) that relied on the field always being a non-null URL will receive `null` silently — TypeScript won't catch this until they attempt to use the value as a `string`.",
+    "Duplicate `ChildProcessSpawner` service in `forecast.ts` layer composition (`spawnerLayer` appears both directly in `mergeAll` and baked into `npmLayer` via `Layer.provide(spawnerLayer)`). Effect deduplicates correctly, but this redundancy could cause confusion if `spawnerLayer` is ever swapped to a different implementation without updating the `npmLayer` binding."
+  ]
+}

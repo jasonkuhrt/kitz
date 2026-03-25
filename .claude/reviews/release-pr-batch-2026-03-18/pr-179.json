@@ -1,0 +1,33 @@
+{
+  "pr_number": 179,
+  "title": "refactor(release): centralize publish channel semantics",
+  "verdict": "findings",
+  "summary": "The refactoring is sound overall: `resolvePublishSemantics` correctly consolidates lifecycle-specific dist-tag, prerelease, force-push, and GitHub title logic that was previously duplicated across `apply.ts`, `workflow.ts`, and `pr-preview.ts`. The `formatGithubReleaseTitle` helper is a clean extraction. Legacy payload support is preserved via `legacyCandidateDistTag` and the `??` fallback chain in `workflow.ts`. Tests cover the new candidate and ephemeral paths. Two real issues remain: unrelated static members were added to `Publishing` (scope creep with an unexplained `ordered = false as const`), and programmatic callers of `execute()` with an `official` lifecycle but no explicit `tag` silently get `'latest'` instead of the configured `npmTag`.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "Unrelated static members added to `Publishing` Schema.Class, including unexplained `ordered = false`",
+      "file": "packages/release/src/api/publishing.ts",
+      "line": 54,
+      "body": "The diff adds `static is`, `static decode`, `static decodeSync`, `static encode`, `static encodeSync`, `static equivalence`, and `static ordered = false as const` to `Publishing`. None of these are related to the PR's stated scope of centralizing publish semantics. The `static ordered = false as const` is particularly concerning — it appears nowhere else in the release package, has no explanation in the PR description or rationale doc, and could shadow a property name used by Effect's Schema.Class machinery or a future convention in the codebase. If this was added to satisfy a type interface, that interface should be cited. If not, these should be removed."
+    },
+    {
+      "priority": "P2",
+      "title": "`resolvePublishSemantics` in `workflow.ts` silently ignores `npmTag`/`candidateTag` for programmatic callers",
+      "file": "packages/release/src/api/executor/workflow.ts",
+      "line": 156,
+      "body": "The `ReleasePayload.options` schema only carries `tag` (not `npmTag` or `candidateTag`), so when `resolvePublishSemantics` is called in the graph function it can only see `lifecycle`, `publishing`, and `tag`. This is safe when the caller is `apply.ts`, which pre-resolves the distTag (including config-level `npmTag`/`candidateTag`) and stores the resolved value as `tag` in the payload. However, any direct programmatic caller of `execute()` passing `lifecycle: 'official'` without an explicit `tag` will silently receive `distTag: 'latest'` regardless of what their config specifies as `npmTag`. The function signature makes no mention of this constraint. At minimum, a comment should document that `tag` in the payload is expected to be the already-resolved distTag; ideally the public `execute` API surface should accept `npmTag`/`candidateTag` or the re-resolution in the workflow should be removed."
+    },
+    {
+      "priority": "P3",
+      "title": "Non-null assertion on `legacyCandidateDistTag!` inside an OR condition obscures intent",
+      "file": "packages/release/src/api/executor/workflow.ts",
+      "line": 354,
+      "body": "Inside `if (publishSemantics?.githubReleaseStyle === 'dist-tagged' || legacyCandidateDistTag !== undefined)`, TypeScript cannot narrow `legacyCandidateDistTag` to `string` because the OR means either branch could have satisfied the condition. The resulting `publishSemantics?.distTag ?? legacyCandidateDistTag!` is pragmatically correct but communicates nothing about the expected invariant. Replacing the assertion with `?? legacyCandidateDistTag ?? 'next'` (matching the constant that was always intended here) would both satisfy the type checker and document the fallback value explicitly."
+    }
+  ],
+  "residual_risks": [
+    "The rationale doc (docs/rationales/0151-centralize-publish-semantics.md) correctly describes the decision but does not mention the legacy payload support path; if the legacy code is ever removed, the workflow's fallback `publishSemantics ??` branches should be audited at the same time.",
+    "The new test for ephemeral releases uses `toContain(' v0.0.0-pr.42.1.')` rather than an exact title match; if the version format changes, the test may continue to pass even with a broken title."
+  ]
+}

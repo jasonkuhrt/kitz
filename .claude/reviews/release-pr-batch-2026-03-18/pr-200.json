@@ -1,0 +1,34 @@
+{
+  "pr_number": 200,
+  "title": "feat(release): add preview publish history command",
+  "verdict": "findings",
+  "summary": "The PR introduces a well-structured `release history` command with clean separation between the library logic (`history-lib.ts`), CLI entry point (`history.ts`), and tests. The `orderPublishHistory` sort comparator is correct — malformed timestamps map to `NEGATIVE_INFINITY` so they sink to the bottom, and the deterministic tie-breaking cascade (iteration → version → package) is solid. However, the PR is incomplete: it calls `Api.Explorer.resolveGitHubContext()`, `Api.Explorer.resolvePullRequestFromContext()`, and references the type `Api.Explorer.ResolvedGitHubContext`, but none of these are defined in the PR diff or the current codebase. There is also a validation bug in `parsePositiveIntegerOption` where inputs like `'3abc'` are silently accepted as `3` due to `parseInt`'s lenient parsing semantics.",
+  "findings": [
+    {
+      "priority": "P0",
+      "title": "Three Explorer API symbols referenced but not defined anywhere",
+      "file": "packages/release/src/cli/commands/history-lib.ts",
+      "line": 66,
+      "body": "The new files reference `Api.Explorer.resolvePullRequestFromContext(...)`, `Api.Explorer.resolveGitHubContext()` (in `history.ts:56`), and the type `Api.Explorer.ResolvedGitHubContext` (in `history-lib.ts:1` and `history-lib.test.ts:16`). None of these are exported from `packages/release/src/api/explorer/__.ts`, none appear in `explore.ts`, and a codebase-wide search finds zero occurrences. The PR diff includes no additions to `explore.ts` or `__.ts`. This means the code cannot compile as submitted."
+    },
+    {
+      "priority": "P2",
+      "title": "`parseInt` silently accepts partial numbers like `'3abc'`",
+      "file": "packages/release/src/cli/commands/history-lib.ts",
+      "line": 53,
+      "body": "`Number.parseInt('3abc', 10)` returns `3` — not `NaN` — because `parseInt` parses leading digits and ignores the trailing non-numeric suffix. The subsequent `Number.isSafeInteger(parsed) && parsed > 0` check passes, so `'3abc'` is silently treated as `3` with no error. The same applies to `'5.9'` (parsed as `5`). Fix by replacing `Number.parseInt` with `Number()` (which returns `NaN` for `'3abc'`), or by adding a `/^\\d+$/` regex guard before parsing:\n\n```typescript\nconst parsed = Number(normalized)\nif (!Number.isSafeInteger(parsed) || parsed <= 0) { ... }\n```\n\nThe existing tests don't cover this case, so a `'3abc'` test case should be added alongside the fix."
+    },
+    {
+      "priority": "P3",
+      "title": "Unnecessary conditional spreads for optional parameters",
+      "file": "packages/release/src/cli/commands/history.ts",
+      "line": 62,
+      "body": "`...(prNumber !== undefined ? { prNumber } : {})` and `...(limit !== undefined ? { limit } : {})` are both redundant. `resolvePreviewPublishSurface` defaults `options.prNumber` via `??`, and `toPreviewPublishReport` guards with `=== undefined` — so passing `{ prNumber: undefined }` is behaviorally identical to omitting the key. Simplify to:\n\n```typescript\nconst surface = yield* resolvePreviewPublishSurface(context, { prNumber }).pipe(...)\nconst report = toPreviewPublishReport(surface, { limit })\n```"
+    }
+  ],
+  "residual_risks": [
+    "The `issueComment?.body` falsy check treats an empty-string body the same as a missing comment. This is correct for the preview comment use case (an empty body would contain no metadata), but worth noting if the GitHub API can return whitespace-only bodies for other reasons.",
+    "The error message uses the backtick-quoted command name `\\`release pr preview\\`` in the `detail` string. If the `ExplorerError.message` template wraps `detail` in a shell-unsafe context, the backticks could be misread — low risk but worth keeping in mind for any future logging/formatting changes.",
+    "There is no upper-bound check on the `--limit` value. An extremely large integer (e.g. `Number.MAX_SAFE_INTEGER`) passes `isSafeInteger && > 0` and would be passed through to `Array.prototype.slice`, which is safe but could be confusing UX if the intent is to display a reasonable window."
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "pr_number": 182,
+  "title": "fix(release): restore publishing typecheck gate",
+  "verdict": "findings",
+  "summary": "The PR correctly fixes a self-referential TypeScript inference issue inside the `Publishing` class body by replacing `Schema.decode/encode(Publishing)` with their `decodeUnknownEffect/encodeUnknownEffect` counterparts. Runtime behaviour is equivalent — the schema's validation logic runs the same way — and the new tests confirm correct decoding, encoding, and default-resolution across both sync and Effect-based paths. One semantic tradeoff is worth noting: the `encode` and `encodeSync` statics now accept `unknown` instead of a typed `Publishing` instance, weakening the compile-time contract for callers who use those helpers directly.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "encode/encodeSync statics accept `unknown` instead of `Publishing`, weakening caller type safety",
+      "file": "packages/release/src/api/publishing.ts",
+      "line": 55,
+      "body": "```typescript\n// Before (typed input — callers get compile-time safety)\nstatic encode = Schema.encode(Publishing)       // (a: Publishing) => Effect<I>\nstatic encodeSync = Schema.encodeSync(Publishing) // (a: Publishing) => I\n\n// After (unknown input — callers lose compile-time enforcement)\nstatic encode = Schema.encodeUnknownEffect(Publishing)  // (u: unknown) => Effect<I>\nstatic encodeSync = Schema.encodeUnknownSync(Publishing) // (u: unknown) => I\n```\n\nFor the **decode** statics, `unknown` input is idiomatic and correct (you're accepting external data). For the **encode** statics, a caller who already holds a valid `Publishing` instance loses the compile-time guarantee that they're passing the right type — `Publishing.encodeSync(completelywrongvalue)` now compiles without error and only fails at runtime.\n\nThis is the correct pragmatic fix for the self-reference problem, and runtime validation still catches bad inputs. But if the goal is a strict ergonomic API, a follow-up could reintroduce typed encode helpers under a different name (e.g. `encodeSyncTyped`) now that the class is defined, or leverage a post-class declaration like:\n```typescript\n// After class body — no more self-reference problem\nPublishing.encode = Schema.encode(Publishing)\n```\nThis is low-priority given the pre-1.0 stance, but worth tracking."
+    }
+  ],
+  "residual_risks": [
+    "Schema.encodeUnknownEffect and Schema.encodeUnknownSync have no prior usages in this codebase (unlike decodeUnknownEffect which has 9+). If Effect v4 renames or removes these functions in a later beta, the `encode` statics will silently break type-checking again. The existing test coverage should catch runtime failures, but the API surface should be re-verified when upgrading the Effect beta version."
+  ]
+}

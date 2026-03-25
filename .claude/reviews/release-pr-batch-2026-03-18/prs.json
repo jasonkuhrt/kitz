@@ -1,0 +1,312 @@
+[
+  {
+    "headRefName": "codex/release-bug-139-test-scope",
+    "mergeCommit": {
+      "oid": "a31b69e122d10b5abcde4f46bda0f049400bec34"
+    },
+    "mergedAt": "2026-03-18T06:44:44Z",
+    "number": 167,
+    "title": "fix(release): scope package test discovery",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/167"
+  },
+  {
+    "headRefName": "codex/release-bug-140-per-package-boundaries",
+    "mergeCommit": {
+      "oid": "5d4cd48795dcfdc67b5e639a2ebb8e74e932da84"
+    },
+    "mergedAt": "2026-03-18T06:55:33Z",
+    "number": 168,
+    "title": "fix(release): honor per-package analysis boundaries",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/168"
+  },
+  {
+    "headRefName": "codex/release-bug-141-until-boundary-fail-fast",
+    "mergeCommit": {
+      "oid": "1bde328a5e8a3066560371c69b56b412ed7e4783"
+    },
+    "mergedAt": "2026-03-18T06:59:28Z",
+    "number": 169,
+    "title": "fix(release): fail when until boundary cannot be resolved",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/169"
+  },
+  {
+    "headRefName": "codex/release-bug-142-configured-package-paths",
+    "mergeCommit": {
+      "oid": "e5d0388b532bf9ab4689dc524d27413de7ce635e"
+    },
+    "mergedAt": "2026-03-18T07:08:04Z",
+    "number": 170,
+    "title": "fix(release): resolve configured packages from workspace paths",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/170"
+  },
+  {
+    "headRefName": "codex/release-bug-143-notes-honor-config-packages",
+    "mergeCommit": {
+      "oid": "5039552f99c66a415da5cbfa7ec199aea6ce527a"
+    },
+    "mergedAt": "2026-03-18T07:23:04Z",
+    "number": 171,
+    "title": "fix: honor configured packages in release notes",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/171"
+  },
+  {
+    "headRefName": "codex/release-bug-144-notes-until-boundary",
+    "mergeCommit": {
+      "oid": "1f6b4aa66ce9f18033716c29e1d1cfc35baa0271"
+    },
+    "mergedAt": "2026-03-18T07:44:04Z",
+    "number": 172,
+    "title": "fix(release): honor notes until boundaries",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/172"
+  },
+  {
+    "headRefName": "codex/release-bug-145-truthful-recon",
+    "mergeCommit": {
+      "oid": "2e0156b288c4586e622016d660419315b5c0e8af"
+    },
+    "mergedAt": "2026-03-18T08:04:51Z",
+    "number": 173,
+    "title": "fix(release): make explorer recon truthful",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/173"
+  },
+  {
+    "headRefName": "codex/release-bug-146-custom-candidate-tag",
+    "mergeCommit": {
+      "oid": "52a748e374de20d6ae2c9ded4d8a4624c1b33452"
+    },
+    "mergedAt": "2026-03-18T08:35:21Z",
+    "number": 174,
+    "title": "fix(release): support custom candidate dist-tags",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/174"
+  },
+  {
+    "headRefName": "codex/release-bug-147-skip-npm",
+    "mergeCommit": {
+      "oid": "f4e07e4e65679aec68e0bee74a13e818bab73b9b"
+    },
+    "mergedAt": "2026-03-18T08:46:00Z",
+    "number": 175,
+    "title": "fix(release): remove dead skipNpm config",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/175"
+  },
+  {
+    "headRefName": "codex/release-bug-148-pr-preview-paths",
+    "mergeCommit": {
+      "oid": "8fa01c8be10b158dcaba17cf252ee66781202c07"
+    },
+    "mergedAt": "2026-03-18T09:15:33Z",
+    "number": 176,
+    "title": "fix(release): remove preview diff layout assumptions",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/176"
+  },
+  {
+    "headRefName": "codex/release-refactor-149-planner-core",
+    "mergeCommit": {
+      "oid": "8b36d8d481109374e08690b06803a948db03a1eb"
+    },
+    "mergedAt": "2026-03-18T09:57:30Z",
+    "number": 177,
+    "title": "refactor(release): unify lifecycle planner core",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/177"
+  },
+  {
+    "headRefName": "codex/release-refactor-150-package-location-abstraction",
+    "mergeCommit": {
+      "oid": "87786cc7f3c1a3a9735295b222ef16367dbd34c4"
+    },
+    "mergedAt": "2026-03-18T10:07:16Z",
+    "number": 178,
+    "title": "refactor(release): centralize package location resolution",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/178"
+  },
+  {
+    "headRefName": "codex/release-refactor-151-channel-semantics",
+    "mergeCommit": {
+      "oid": "dc53b2d65c87c00e5f880a52362cc7cbd177c044"
+    },
+    "mergedAt": "2026-03-18T10:37:32Z",
+    "number": 179,
+    "title": "refactor(release): centralize publish channel semantics",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/179"
+  },
+  {
+    "headRefName": "codex/release-refactor-152-rule-enabling-helper",
+    "mergeCommit": {
+      "oid": "c9cc9c557304e20c22afeb4a3d84a84c6af80b96"
+    },
+    "mergedAt": "2026-03-18T10:50:23Z",
+    "number": 180,
+    "title": "refactor(release): share command lint rule helpers",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/180"
+  },
+  {
+    "headRefName": "codex/release-fix-181-publishing-typecheck-gate",
+    "mergeCommit": {
+      "oid": "0d5f458106d5ccea9a66eaed6f194173a713286d"
+    },
+    "mergedAt": "2026-03-18T10:54:36Z",
+    "number": 182,
+    "title": "fix(release): restore publishing typecheck gate",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/182"
+  },
+  {
+    "headRefName": "codex/release-refactor-153-command-bootstrap",
+    "mergeCommit": {
+      "oid": "eca69283362cbb3b27bb2aeab70979916b66a963"
+    },
+    "mergedAt": "2026-03-18T11:04:39Z",
+    "number": 183,
+    "title": "refactor(release): share command workspace bootstrap",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/183"
+  },
+  {
+    "headRefName": "codex/release-fix-184-plan-resource-date-roundtrip",
+    "mergeCommit": {
+      "oid": "052d2d855ac0b01bdeb61d3f886978c6f344543a"
+    },
+    "mergedAt": "2026-03-18T11:25:49Z",
+    "number": 185,
+    "title": "fix(release): round-trip commit dates in plan storage",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/185"
+  },
+  {
+    "headRefName": "codex/release-refactor-154-plan-store",
+    "mergeCommit": {
+      "oid": "2b2614422668cfadb9086b7805c928c143d6d068"
+    },
+    "mergedAt": "2026-03-18T11:36:02Z",
+    "number": 186,
+    "title": "refactor(release): share active plan store",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/186"
+  },
+  {
+    "headRefName": "codex/release-refactor-155-explicit-cycle-handling",
+    "mergeCommit": {
+      "oid": "b03270094e69b2757d05f151dc63b01686e747ae"
+    },
+    "mergedAt": "2026-03-18T11:51:38Z",
+    "number": 187,
+    "title": "refactor(release): reject dependency cycles explicitly",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/187"
+  },
+  {
+    "headRefName": "codex/release-refactor-156-pr-context-resolver",
+    "mergeCommit": {
+      "oid": "0a14f007c71e5df36c4c05368a91e708f473c32d"
+    },
+    "mergedAt": "2026-03-18T12:10:16Z",
+    "number": 188,
+    "title": "refactor(release): share PR context resolution",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/188"
+  },
+  {
+    "headRefName": "codex/release-feature-157-status-command",
+    "mergeCommit": {
+      "oid": "f4e271e6099f989134b99cc7ac3282e0464f8187"
+    },
+    "mergedAt": "2026-03-18T12:58:30Z",
+    "number": 189,
+    "title": "release: add status command for durable workflow state",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/189"
+  },
+  {
+    "headRefName": "codex/release-feature-158-resume-command",
+    "mergeCommit": {
+      "oid": "98e3aa3aab95ee1a08f1c1a9caeeca11bf736d17"
+    },
+    "mergedAt": "2026-03-18T13:05:05Z",
+    "number": 190,
+    "title": "release: add explicit resume command",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/190"
+  },
+  {
+    "headRefName": "codex/release-feature-159-graph-command",
+    "mergeCommit": {
+      "oid": "4823f930fcb37edda40575194dd906fb0ea92cf9"
+    },
+    "mergedAt": "2026-03-18T13:10:13Z",
+    "number": 192,
+    "title": "release: add release graph command",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/192"
+  },
+  {
+    "headRefName": "codex/release-feature-160-explain-command",
+    "mergeCommit": {
+      "oid": "5f58ec28e56a6def00b9a22db001d60d900dfbd2"
+    },
+    "mergedAt": "2026-03-18T13:21:53Z",
+    "number": 193,
+    "title": "feat(release): add explain command",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/193"
+  },
+  {
+    "headRefName": "codex/release-feature-161-pr-dist-tag",
+    "mergeCommit": {
+      "oid": "e1032d3489d63248a22a453589c6da04562d8eb7"
+    },
+    "mergedAt": "2026-03-18T13:32:51Z",
+    "number": 194,
+    "title": "feat(release): derive ephemeral dist-tags from pr numbers",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/194"
+  },
+  {
+    "headRefName": "codex/release-feature-162-package-paths",
+    "mergeCommit": {
+      "oid": "cac14e18563711f8b7f6db823568d7427c6d7374"
+    },
+    "mergedAt": "2026-03-18T13:38:56Z",
+    "number": 195,
+    "title": "feat(release): support explicit package paths",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/195"
+  },
+  {
+    "headRefName": "codex/release-feature-163-plan-paths",
+    "mergeCommit": {
+      "oid": "5a200ea2a4e554fc04c695b6017ed9a3f2c57224"
+    },
+    "mergedAt": "2026-03-18T13:49:48Z",
+    "number": 196,
+    "title": "release: add plan --out and apply --from",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/196"
+  },
+  {
+    "headRefName": "codex/release-feature-164-bounded-notes-forecast",
+    "mergeCommit": {
+      "oid": "c50105d65ed7dbf73824dfec04f8dd96bd0e25f3"
+    },
+    "mergedAt": "2026-03-18T13:57:18Z",
+    "number": 197,
+    "title": "release: add bounded notes and markdown forecast",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/197"
+  },
+  {
+    "headRefName": "codex/release-feature-165-diff-remote",
+    "mergeCommit": {
+      "oid": "b854e14937de8e4584737dc37576dfc27055ec50"
+    },
+    "mergedAt": "2026-03-18T14:13:21Z",
+    "number": 198,
+    "title": "feat(release): add diff remote overrides",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/198"
+  },
+  {
+    "headRefName": "codex/release-feature-165-diff-remote",
+    "mergeCommit": {
+      "oid": "c14319ff80a6a32b9e155240fdbee0d58308a337"
+    },
+    "mergedAt": "2026-03-18T14:13:15Z",
+    "number": 199,
+    "title": "feat(release): allow diff remote overrides",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/199"
+  },
+  {
+    "headRefName": "codex/release-feature-166-publish-history",
+    "mergeCommit": {
+      "oid": "daef856f94bb55a0e4131bf1155e188365c7fb86"
+    },
+    "mergedAt": "2026-03-18T14:27:22Z",
+    "number": 200,
+    "title": "feat(release): add preview publish history command",
+    "url": "https://github.com/jasonkuhrt/kitz/pull/200"
+  }
+]

@@ -1,0 +1,19 @@
+{
+  "pr_number": 186,
+  "title": "refactor(release): share active plan store",
+  "verdict": "findings",
+  "summary": "Clean refactor that centralizes the `.release/plan.json` lifecycle behind a typed store. No correctness or safety issues. The `resource.write` already auto-creates parent directories (confirmed in source), so removing the explicit `Fs.write(planDir, { recursive: true })` in `plan.ts` is safe. One minor concern: two store exports are unused pre-emptive API surface.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "Pre-emptive exports: readActiveRequired and readActiveOrEmpty not used",
+      "file": "packages/release/src/api/planner/store.ts",
+      "line": 31,
+      "body": "Both `readActiveRequired` and `readActiveOrEmpty` are exported but no command or test in this PR (or elsewhere in `packages/release/src`) actually calls them. Per CONTRIBUTING.md, over-engineering should be avoided — exports should be added when needed, not speculatively. These can be added when a consumer is ready."
+    }
+  ],
+  "residual_risks": [
+    "If a future caller passes an Effect-returning function to `withActivePlanDir` with an error type narrower than `Resource.ResourceError`, the helper's type constraint will silently widen the error channel — callers should be aware the error type is fixed to `Resource.ResourceError`.",
+    "The `activePlanDisplayPath` constant is computed from the module-level `PLAN_FILE` path (`./.release/plan.json`) and is always relative regardless of `cwd`. This is correct for display purposes but callers should not mistake it for a resolvable path."
+  ]
+}

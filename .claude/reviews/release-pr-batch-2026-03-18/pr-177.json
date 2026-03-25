@@ -1,0 +1,33 @@
+{
+  "pr_number": 177,
+  "title": "refactor(release): unify lifecycle planner core",
+  "verdict": "findings",
+  "summary": "Solid DRY refactoring that extracts a generic `planLifecycle` core to eliminate duplicated orchestration across the three lifecycle planners. The lifecycle-typed `PlanOf<$lifecycle>` / `PlannedItem<$lifecycle>` generics and the constructor-time + I/O-boundary consistency validation are well-designed. Two issues worth fixing were identified: a double call of `assertLifecycleConsistency` in the exported `make` function (harmless but confusing), and an observable asymmetry between `Plan.decode` (schema-only, no consistency check) and `Plan.is` (schema + consistency), which means a successfully decoded Plan can fail its own type guard.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "Plan.decode and Plan.is enforce different invariants — a decoded Plan can fail Plan.is",
+      "file": "packages/release/src/api/planner/models/plan.ts",
+      "line": 83,
+      "body": "The new `Plan.decode = S.decodeUnknownEffect(Plan)` runs only schema validation. The new `Plan.is = (v) => S.is(Plan)(v) && hasConsistentLifecycle(v)` runs schema validation **plus** lifecycle consistency. This means a `Plan` produced via `await Plan.decode(rawJson)` (e.g., for testing or direct usage outside the resource) could satisfy the Schema shape but fail `Plan.is`, even though the caller holds a value of type `Plan`.\n\nThe `resource.ts` I/O layer correctly calls `validatePlan` (which runs `assertLifecycleConsistency`) after decoding, so the resource path is safe. But direct callers of `Plan.decode` — including any future tests or integrations that bypass the resource — will silently hold inconsistent `Plan` values that fail `Plan.is`.\n\n**Fix**: Either run `assertLifecycleConsistency` inside `Plan.decode` (make decode enforce the full invariant), or document clearly on `Plan.is` that it checks consistency beyond schema membership, and on `Plan.decode` that the returned value may be inconsistent. A third option: expose a `Plan.validate(plan)` helper that callers can chain after `Plan.decode`."
+    },
+    {
+      "priority": "P2",
+      "title": "assertLifecycleConsistency called twice in the exported make() function",
+      "file": "packages/release/src/api/planner/models/plan.ts",
+      "line": 113,
+      "body": "The exported `make` function wraps its result in `assertLifecycleConsistency(...)`, but `Plan.make` (called inside) **already** calls `assertLifecycleConsistency(this.makeUnsafe(input))`. So for every plan built via `planLifecycle` → `make(...)`, the consistency check fires twice.\n\n```typescript\n// Outer assertLifecycleConsistency is redundant — Plan.make already calls it\nexport const make = (...) =>\n  assertLifecycleConsistency(   // ← redundant\n    Plan.make({ ... }),          // ← Plan.make already asserts\n  ) as PlanOf<$lifecycle>\n```\n\nWhile harmless (idempotent), it creates a misleading impression that the outer call is necessary for safety, and it will confuse future maintainers tracing the invariant enforcement path.\n\n**Fix**: Remove the outer `assertLifecycleConsistency` call and rely on the cast:\n```typescript\nexport const make = <$lifecycle extends Lifecycle>(\n  lifecycle: $lifecycle,\n  releases: PlannedItem<$lifecycle>[],\n  cascades: PlannedItem<$lifecycle>[],\n): PlanOf<$lifecycle> =>\n  Plan.make({\n    lifecycle,\n    timestamp: new Date().toISOString(),\n    releases: [...releases],\n    cascades: [...cascades],\n  }) as PlanOf<$lifecycle>\n```\nThe invariant is enforced once inside `Plan.make`, and the `as` cast is justified because `PlannedItem<$lifecycle>[]` inputs guarantee lifecycle consistency before calling `Plan.make`."
+    },
+    {
+      "priority": "P3",
+      "title": "PlanOf type's arrays are mutable while Plan's arrays are readonly — minor inconsistency",
+      "file": "packages/release/src/api/planner/models/plan.ts",
+      "line": 17,
+      "body": "The `PlanOf<$lifecycle>` type declares:\n```typescript\nexport type PlanOf<$lifecycle extends Lifecycle> = Plan & {\n  readonly lifecycle: $lifecycle\n  readonly releases: PlannedItem<$lifecycle>[]     // mutable\n  readonly cascades: PlannedItem<$lifecycle>[]     // mutable\n}\n```\nBut `Plan` (the base Schema class) has `releases: S.Array(ItemSchema)` which Effect Schema represents as `readonly Item[]`. Making the narrowed arrays mutable in `PlanOf` is an inconsistency — assignments like `plan.releases.push(item)` would be allowed at the narrowed type level but not at the base type level, and the runtime object's array is likely immutable (coming from Effect Schema's `S.Array`).\n\n**Fix**: Use `readonly PlannedItem<$lifecycle>[]` to match the Schema-inferred type:\n```typescript\nexport type PlanOf<$lifecycle extends Lifecycle> = Plan & {\n  readonly lifecycle: $lifecycle\n  readonly releases: readonly PlannedItem<$lifecycle>[]\n  readonly cascades: readonly PlannedItem<$lifecycle>[]\n}\n```"
+    }
+  ],
+  "residual_risks": [
+    "The `matchesLifecycle` switch in plan.ts has no explicit default/never-assert. TypeScript's exhaustiveness should catch future Lifecycle additions at compile time, but only if `noImplicitReturns` is enabled — worth verifying in tsconfig.",
+    "The `computeLifecyclePlan` function in doctor-lib.ts explicitly widens PlanOf<lifecycle> to Plan via Effect.map casts. If the return type is ever consumed in a lifecycle-specific way downstream, the type information will have been silently lost."
+  ]
+}

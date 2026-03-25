@@ -1,0 +1,40 @@
+{
+  "pr_number": 189,
+  "title": "release: add status command for durable workflow state",
+  "verdict": "findings",
+  "summary": "The PR adds a `release status` command that polls the durable workflow runtime and renders execution state. The overall design is solid — it derives the same workflow identity as `apply`, covers the four relevant states (not-started, suspended, succeeded, failed), and has good test coverage for three of them. One reference to a non-existent type in the `status` function signature is a compile error. The CLI command also unconditionally exits 0 regardless of workflow state, which limits scripting utility. A minor test coverage gap exists for the `'failed'` state under real workflow conditions.",
+  "findings": [
+    {
+      "priority": "P1",
+      "title": "`ExecutorDependencyCycleError` is referenced but does not exist",
+      "file": "packages/release/src/api/executor/execute.ts",
+      "line": 445,
+      "body": "The `status` function declares `ExecutorDependencyCycleError` as its error type parameter, but this type is never defined or imported anywhere in the codebase. `grep -r ExecutorDependencyCycleError packages/release` returns no results. Since `toPayload` has error channel `never`, `ReleaseWorkflow.executionId` has error channel `never`, and `ReleaseWorkflow.poll` has error channel `never`, the correct type is `never`. This is a TypeScript compilation error.\n\n```typescript\n// Current (broken)\n): Effect.Effect<\n  ExecutionStatus,\n  ExecutorDependencyCycleError,          // ← doesn't exist\n  FileSystem.FileSystem | WorkflowEngine.WorkflowEngine\n>\n\n// Correct\n): Effect.Effect<\n  ExecutionStatus,\n  never,\n  FileSystem.FileSystem | WorkflowEngine.WorkflowEngine\n>\n```"
+    },
+    {
+      "priority": "P2",
+      "title": "CLI status command always exits 0, even for failed or suspended workflows",
+      "file": "packages/release/src/cli/commands/status.ts",
+      "line": 60,
+      "body": "The `status` command calls `Console.log(...)` and returns normally for every execution state, including `'failed'` and `'suspended'`. This means `echo $?` is always `0`, making the command unusable in scripts or CI checks that gate on release health.\n\nCompare the `apply` command, which calls `env.exit(1)` on error paths. At minimum, `'failed'` should exit non-zero. `'suspended'` is arguable — it's a recoverable state — but many operators would expect a non-zero exit there too.\n\n```typescript\nif (workflowStatus.state === 'failed' || workflowStatus.state === 'suspended') {\n  yield* Console.log(...)\n  return env.exit(1)\n}\nyield* Console.log(...)\n```"
+    },
+    {
+      "priority": "P3",
+      "title": "`'failed'` execution state is not covered by a live workflow test",
+      "file": "packages/release/src/api/executor/status.test.ts",
+      "line": 53,
+      "body": "The `'failed'` state (a `Complete` exit with a failure cause) is only exercised via a direct `formatExecutionStatus` call with hand-crafted data. No live test actually drives the workflow into a `_tag === 'Complete'` failed exit.\n\nThis is also a subtle semantic gap: because `make()` annotates the workflow with `SuspendOnFailure: true`, typed `ExecutorError`s become suspensions rather than failures. A `'Complete'`+failed result would only occur from an unhandled defect — a case the `'failed'` branch in `summarizeWorkflowStatus` is actually designed to catch. The test covers the formatter but not the real trigger path."
+    },
+    {
+      "priority": "P3",
+      "title": "`poll` addition to `WorkflowInstance` interface lacks JSDoc",
+      "file": "packages/flo/src/workflow/workflow.ts",
+      "line": 320,
+      "body": "The PR adds `poll` to the `WorkflowInstance` interface with a single-line JSDoc comment, but all sibling methods (`execute`, `observable`, `exists`) have multi-line JSDoc that documents when the method is appropriate and what it returns. The `poll` entry should note that it returns `undefined` when the execution has not started, distinguish the `'Suspended'` vs `'Complete'` variants, and clarify its relationship to `exists`."
+    }
+  ],
+  "residual_risks": [
+    "The `Suspended` cause renders via `Cause.pretty()` on a `Cause.Cause<never>` (defect-only cause). Since `SuspendOnFailure` squashes typed errors into defects, the rendered detail for operator-facing messages may show internal stack traces rather than the structured error message from the original `ExecutorPublishError` / `ExecutorTagError`. The displayed message could be noisier than ideal for operators.",
+    "The `dryRun` option accepted by `status()` affects workflow identity (it's part of the payload hash). The CLI omits `dryRun` (defaulting to `false`), which is correct for production runs. If a future caller passes `dryRun: true` it would look up a separate (likely non-existent) execution and always return `'not-started'`, which could be silently misleading."
+  ]
+}

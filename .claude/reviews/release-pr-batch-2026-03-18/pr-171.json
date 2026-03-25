@@ -1,0 +1,33 @@
+{
+  "pr_number": 171,
+  "title": "fix: honor configured packages in release notes",
+  "verdict": "findings",
+  "summary": "The PR correctly identifies the bug (notes used `scan` instead of `resolvePackages(config.packages)`) and the extraction of `loadNotesPackages` into a testable helper is a good design. However, the new tests have a critical mismatch between their fixture layout and what `resolvePackages` actually does when given a non-empty `configPackages` map — meaning tests 1 and 2 will fail on the path assertion. There is also a minor redundant wrapper and the root-cause behavior of `resolvePackages` (hardcoded `./packages/` path construction) may need reconsideration.",
+  "findings": [
+    {
+      "priority": "P1",
+      "title": "Tests 1 and 2 have incorrect path assertions — will fail at runtime",
+      "file": "packages/release/src/cli/commands/notes-lib.test.ts",
+      "line": 62,
+      "body": "Both `resolveNotesPackages` and `loadNotesPackagesWith` tests create workspace fixtures at `tooling/pkg-core/` and `tooling/pkg-cli/` (matching the root `workspaces: ['tooling/*']` glob), then assert:\n```ts\nexpect(Fs.Path.toString(packages[0]!.path)).toBe(`${rootDir}/tooling/pkg-core/`)\n```\nBut `resolvePackages` with a non-empty `configPackages` does **not** consult the filesystem — it constructs synthetic paths using the hardcoded `./packages/` dir and the scope key:\n```ts\n// workspace.ts line 100-104\nconst packagesDir = Fs.Path.join(env.cwd, packagesRelDir)  // cwd/packages/\nconst scopeRelDir = Fs.Path.RelDir.fromString(`./${scope}/`) // ./core/\nconst scopeDir = Fs.Path.join(packagesDir, scopeRelDir)      // cwd/packages/core/\n```\nFor `{ core: '@kitz/core' }` the returned path is `${rootDir}/packages/core/`, **not** `${rootDir}/tooling/pkg-core/`. The assertion will fail.\n\nFix options:\n1. **Make the fixture match the implementation**: change fixture directories to `packages/core/` and `packages/cli/`, update `workspaces: ['packages/*']`, and fix the assertions to `${rootDir}/packages/core/`.\n2. **Make the implementation match the intent**: change `resolvePackages` to scan first and then filter by configured names (like `scan` already does), so it returns actual workspace paths. This is arguably the more correct behavior for \"honoring\" a config."
+    },
+    {
+      "priority": "P2",
+      "title": "`resolvePackages` with configured packages uses a hardcoded `./packages/` path assumption",
+      "file": "packages/release/src/api/analyzer/workspace.ts",
+      "line": 98,
+      "body": "When `configPackages` is non-empty, `resolvePackages` constructs package paths as `cwd/packages/<scope>/` regardless of where the monorepo actually stores its packages. This hard-codes a kitz-specific convention and means configured packages are located by convention rather than discovery.\n\nThe `scan` fallback correctly uses `Monorepo.Workspace.read` to discover actual paths. The configured-packages branch should probably also scan and then filter, or at minimum document this convention constraint clearly. As-is, any repo where packages aren't under `./packages/<scope>/` would get wrong paths silently."
+    },
+    {
+      "priority": "P3",
+      "title": "`resolveNotesPackages` is an unnecessary `Effect.gen` wrapper with no added value",
+      "file": "packages/release/src/cli/commands/notes-lib.ts",
+      "line": 6,
+      "body": "```ts\nexport const resolveNotesPackages = (configPackages: Api.Analyzer.Workspace.PackageMap) =>\n  Effect.gen(function* () {\n    return yield* Api.Analyzer.Workspace.resolvePackages(configPackages)\n  })\n```\nThis is a pass-through wrapper — `Effect.gen` wrapping a single `yield*` adds no transformation, error handling, or context. It could simply be:\n```ts\nexport const resolveNotesPackages = Api.Analyzer.Workspace.resolvePackages\n```\nor removed in favor of calling `Api.Analyzer.Workspace.resolvePackages` directly from `loadNotesPackagesWith`."
+    }
+  ],
+  "residual_risks": [
+    "If the path mismatch between fixture and implementation is not caught by CI (e.g. if the test suite was not run for this PR), the regression test for 'honors config.packages' provides no actual coverage and the original bug may resurface.",
+    "The hardcoded `./packages/` assumption in `resolvePackages` will silently return wrong paths for any consuming repo that doesn't follow the kitz package layout — this risk exists across all commands using `resolvePackages` (plan, forecast, doctor, pr, notes), not just notes."
+  ]
+}

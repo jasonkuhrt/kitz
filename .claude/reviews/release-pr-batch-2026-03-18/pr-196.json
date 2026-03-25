@@ -1,0 +1,26 @@
+{
+  "pr_number": 196,
+  "title": "release: add plan --out and apply --from",
+  "verdict": "findings",
+  "summary": "This PR cleanly refactors the planner store from a dir-centric to a path-centric API, adding `--out` and `--from` flags to `plan` and `apply` commands respectively. The design is sound: a single `resolvePlanLocation(path?)` function acts as the canonical resolution point, and the active-plan defaults are preserved as zero-argument calls. Effect laziness is correctly relied upon for module-level constants. Two minor issues found: redundant double-resolution in CLI commands, and a pre-existing README table formatting issue with pipe characters.",
+  "findings": [
+    {
+      "priority": "P3",
+      "title": "Double path resolution in CLI commands",
+      "file": "packages/release/src/cli/commands/apply.ts",
+      "line": 81,
+      "body": "In both `apply.ts` and `plan.ts`, `resolvePlanLocation(planPath)` is called explicitly to obtain `planLocation` for display purposes, and then immediately `read(planPath)` / `write(plan, planPath)` each call `resolvePlanLocation` internally a second time with the same input. This causes two redundant Effect evaluations doing identical work. Consider threading `planLocation` through to avoid the double resolution, e.g. by accepting an already-resolved `ActivePlanLocation` in the store functions, or by deriving the display string from the same `planLocation` returned by the inner call."
+    },
+    {
+      "priority": "P3",
+      "title": "README table pipe characters break Markdown rendering",
+      "file": "packages/release/README.md",
+      "line": 338,
+      "body": "The `|` characters inside `<official | candidate | ephemeral>` are not escaped within a Markdown table cell, so most parsers will interpret them as column separators and break the table layout. This was a pre-existing issue that the PR extends. Fixing it requires either escaping (`\\|`) or using a code-span that wraps the whole lifecycle argument so the pipes are rendered literally."
+    }
+  ],
+  "residual_risks": [
+    "The resource-layer functions (`resource.read`, `resource.write`, `resource.delete`) now receive `Fs.Path.$Abs` (which can be either AbsFile or AbsDir) rather than always AbsDir. The correctness of this depends on `resolvePlanFile` being called inside those resource functions — this is visible in the existing `resource.ts` logic but the full `@kitz/resource` API surface was not reviewable since the files weren't in the current worktree.",
+    "No integration test covers the case where `--out` and `--from` are passed mismatched paths (e.g. plan written to A, apply reads from B). This is an expected user-error path but currently produces no specific error message."
+  ]
+}

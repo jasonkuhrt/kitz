@@ -1,0 +1,19 @@
+{
+  "pr_number": 187,
+  "title": "refactor(release): reject dependency cycles explicitly",
+  "verdict": "findings",
+  "summary": "The PR is logically correct and well-structured. It converts `orderReleaseEntries` from a silent cycle-breaking heuristic to an explicit `ExecutorDependencyCycleError`, correctly propagates the error through `toPayload` and `executeObservable`, updates the `ObservableExecutionError` union type, and adds thorough test coverage. The cycle detection algorithm (Kahn's + DFS cycle-member filter) correctly isolates only actual cycle participants (e.g. `@kitz/a`, `@kitz/b`) from downstream-blocked bystanders (e.g. `@kitz/c`). One dead-code line remains from the refactor.",
+  "findings": [
+    {
+      "priority": "P3",
+      "title": "Dead code: `if (next === undefined) break` is unreachable after refactor",
+      "file": "packages/release/src/api/executor/execute.ts",
+      "line": 193,
+      "body": "After the `if (ready.length === 0)` block returns `Effect.fail(...)` early, execution can only continue when `ready.length > 0`, guaranteeing `ready[0]` is defined. The subsequent `if (next === undefined) break` guard can never trigger and is now dead code. It was load-bearing in the old implementation where `next` was `ready[0] ?? fallback`, but the fallback path was removed. This doesn't affect correctness but is a minor readability issue."
+    }
+  ],
+  "residual_risks": [
+    "The `canReach` DFS has O(n³) worst-case complexity over the cycle participants. For typical workspace sizes this is negligible, but if the release tool is ever used on very large monorepos with complex cycles it could become slow.",
+    "The test for `toPayload` uses `harness.planLayer` instead of `harness.workflowLayer`; this works because `toPayload` only needs `FileSystem.FileSystem` (provided by `planLayer`), but if `toPayload`'s service requirements expand in future, the test harness choice may silently mask missing services."
+  ]
+}

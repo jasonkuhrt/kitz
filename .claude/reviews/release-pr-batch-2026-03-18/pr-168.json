@@ -1,0 +1,27 @@
+{
+  "pr_number": 168,
+  "title": "fix(release): honor per-package analysis boundaries",
+  "verdict": "findings",
+  "summary": "This PR correctly fixes the monorepo staggered-release bug where a newer release in one package was masking unreleased commits in another package. The architectural shift from a single \"closest release tag\" to per-package boundaries via `allowedHashesByScope` is sound, and the regression test directly covers the fixed scenario.\n\nTwo minor-to-moderate issues are noted: a silent-failure filter that changes where unknown scopes are dropped (functionally equivalent but masks future mistakes), and a cache using a linear array scan instead of a `Map` (negligible for typical monorepos, but inconsistent with the Effect/HashMap style used elsewhere). No P0/P1 logic errors found.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "`allowedHashesByScope` silently drops unknown scopes instead of passing them through",
+      "file": "packages/release/src/api/analyzer/analyze.ts",
+      "line": 168,
+      "body": "The new `flatImpacts` filter returns `false` when `allowedHashes` is `undefined` (scope not in `allowedHashesByScope`):\n\n```typescript\nreturn allowedHashes ? HashSet.has(allowedHashes, impact.commit.hash) : false\n```\n\nPrior to this PR, unknown scopes passed through `flatImpacts` and were silently dropped later in the `aggregateByPackage` loop (`if (!pkg) continue`). The new behavior is functionally equivalent for today's code, but it changes the contract: any scope not in `options.packages` is now dropped at the `extractImpacts` stage rather than the `aggregateByPackage` stage. If any code path between these two stages ever needs to process unknown-scope impacts (e.g., for logging or diagnostics), this early drop would be a silent bug.\n\nConsider: `return allowedHashes === undefined || HashSet.has(allowedHashes, impact.commit.hash)` to pass through unknown scopes for the existing downstream filter to handle. Or add a comment documenting that the `false` branch is intentionally mirroring the downstream `if (!pkg) continue` behavior."
+    },
+    {
+      "priority": "P3",
+      "title": "Cache in `collectScopedCommits` uses linear array scan instead of a `Map`",
+      "file": "packages/release/src/api/analyzer/analyze.ts",
+      "line": 102,
+      "body": "The commit cache uses an `Array` with `Array.find()` for lookups:\n\n```typescript\nconst cache: Array<{ since: string | undefined; commits: readonly Git.Commit[] }> = []\n// ...\nlet cached = cache.find((entry) => entry.since === since)\n```\n\nThis is O(n) per package lookup, making the overall loop O(packages²). For typical monorepos this is negligible, but it is inconsistent with the rest of the codebase's use of `HashMap`/`MutableHashMap` for keyed collections.\n\nA `Map<string | undefined, readonly Git.Commit[]>` would be more idiomatic and O(1):\n\n```typescript\nconst cache = new Map<string | undefined, readonly Git.Commit[]>()\n// ...\nconst trimmedCommits = cache.get(since) ?? ...compute and set...\n```\n\nNote: `Map` handles `undefined` keys correctly, unlike most record-based approaches."
+    }
+  ],
+  "residual_risks": [
+    "The `trimCommitsUntilBoundary` tag-based fallback path silently treats a git error as 'no newer commits', keeping all commits when the boundary tag cannot be resolved. This preserves existing behavior from before the PR, but the failure mode is non-obvious: a missing/renamed upstream tag would cause too many commits to be included rather than failing loudly.",
+    "Multi-scope commits (e.g., `feat(core, cli): ...`) create separate `CommitImpact` entries per scope. Each entry is filtered independently against its scope's `allowedHashesByScope`. This is correct, but if a commit is allowed for `cli` (in `allowedHashes`) but not for `core`, only the `cli` impact survives. This is the intended behavior per the bug fix, but it means commit attribution in the final release notes is scope-gated.",
+    "When `options.since` is explicitly provided (not inferred from tags), all packages use the same boundary — the per-package logic is bypassed. This is the existing contract but it is implicit. Callers that pass `options.since` expecting it to interact with per-package tags will be surprised."
+  ]
+}

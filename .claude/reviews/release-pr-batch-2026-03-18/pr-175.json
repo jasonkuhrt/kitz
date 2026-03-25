@@ -1,0 +1,26 @@
+{
+  "pr_number": 175,
+  "title": "fix(release): remove dead skipNpm config",
+  "verdict": "findings",
+  "summary": "The core fix is clean and correct: `skipNpm` is removed from both `Config` and `ResolvedConfig` schema classes and the `load()` function, the README is updated, and the regression test is well-constructed (checking both schema `fields` and the README text). However, the PR bundles two unrelated additions — a batch of static utility methods and an unexplained `ordered = false as const` marker — that are not present on any other `Schema.Class` subclass in the codebase and are not mentioned in the PR description.",
+  "findings": [
+    {
+      "priority": "P1",
+      "title": "`static ordered = false as const` is unexplained and has no consumer",
+      "file": "packages/release/src/api/config.ts",
+      "line": 54,
+      "body": "Both `Config` and `ResolvedConfig` gain `static ordered = false as const`. A codebase-wide search finds zero reads of `.ordered` on any schema class — the only occurrence of `ordered` as a name is a local variable in `execute.ts`. `ordered` is not a standard Effect `Schema.Class` property, nor is it an established convention in this repo (no other Schema.Class subclass has it). Adding an unexplained boolean marker to production schema classes is a smell: it either implies a planned catalog/ordering feature that was never wired up, or it's dead code that leaked from a draft. Should be removed or explained with a comment and a consumer."
+    },
+    {
+      "priority": "P2",
+      "title": "Out-of-scope static delegators applied inconsistently",
+      "file": "packages/release/src/api/config.ts",
+      "line": 48,
+      "body": "Both `Config` and `ResolvedConfig` gain six new static delegators (`is`, `decode`, `decodeSync`, `encode`, `encodeSync`, `equivalence`) that are unrelated to the `skipNpm` removal. While `static is` is an established pattern throughout the repo, the `decode/encode/equivalence` delegators are not — no other `Schema.Class` subclass in the release package (`Publishing`, `Operator`, `ResolvedOperator`, `LintConfig.Config`, etc.) has them. The PR silently introduces a new convention on only two classes, creating inconsistency. These additions should either be a separate PR that applies the pattern uniformly across all release schema classes, or they should be omitted here."
+    }
+  ],
+  "residual_risks": [
+    "If future code reads `Config.ordered` or `ResolvedConfig.ordered` expecting it to reflect actual schema ordering semantics, the hardcoded `false` will silently misbehave.",
+    "The partial application of `decode/encode/equivalence` delegators may cause confusion when callers need the same ergonomics on `Publishing`, `Operator`, or lint config classes — they won't exist there."
+  ]
+}

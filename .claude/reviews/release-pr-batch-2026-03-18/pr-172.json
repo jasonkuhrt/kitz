@@ -1,0 +1,34 @@
+{
+  "pr_number": 172,
+  "title": "fix(release): honor notes until boundaries",
+  "verdict": "findings",
+  "summary": "The PR correctly implements `until` boundary trimming for `Notes.generate`. The core logic is sound: the function first scans the already-fetched window by hash, then falls back to a `getCommitsSince(until)` call to identify and exclude newer commits, with a three-tier \"known boundary\" check guarding whether an infra failure should propagate or be treated as an unknown boundary. All five test cases are logically correct and match the implementation. Two issues worth noting: a silent no-op fallback path when all boundary checks fail (no log, no observable signal) and a minor category confusion in `Effect.option(git.getTagSha(...))` that treats infra errors identically to \"tag not found.\"",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "Silent fallback emits no signal when `until` boundary cannot be verified",
+      "file": "packages/release/src/api/notes/generate.ts",
+      "line": 106,
+      "body": "When `getCommitsSince(until)` fails **and** none of the three knowledge checks succeed (`getTagSha`, `commitExists`, `tags.includes`), the function silently returns the full commit window — effectively ignoring `until`. A caller who passes a misspelled tag name or an invalid SHA would receive wider-than-expected release notes with no warning, log, or error.\n\nThe `generate` result doesn't expose which packages had their `until` boundary honored vs. ignored, so callers have no way to detect this silently-widened state.\n\nConsider adding at least a structured `Effect.logDebug` (or a field on `GenerateResult`) for the \"unknown boundary, falling back\" case:\n```typescript\nreturn yield* Effect.logDebug(\n  `notes.generate: until boundary '${until}' is unknown — falling back to full window`,\n).pipe(Effect.as(commits))\n```"
+    },
+    {
+      "priority": "P2",
+      "title": "`Effect.option(git.getTagSha(until))` conflates \"tag not found\" with git infrastructure failures",
+      "file": "packages/release/src/api/notes/generate.ts",
+      "line": 93,
+      "body": "In the failure branch of `getCommitsSince(until)`, the code uses:\n```typescript\nconst knownTag = yield* Effect.option(git.getTagSha(until))\n```\n`Effect.option` converts **any** typed failure to `None` — including `GitError`s that result from git being temporarily unavailable, not just \"tag not found\". In that degraded state:\n- `knownTag` → `None`\n- `commitExists` falls back similarly (live impl swallows errors via `.then(() => true, () => false)`, so this is benign)\n- If `until` is also absent from the caller's `tags` snapshot → falls through to silent widening\n\nThis is a latent risk rather than an active bug today (because `getCommitsSince(since)` would already have failed earlier if git were truly unavailable). But the assumption is implicit and not commented. A narrow `Effect.option` for only the `GitParseError` / \"not found\" case, or an explicit comment, would make the intent clearer."
+    },
+    {
+      "priority": "P3",
+      "title": "Test for failure case inspects `result.failure` without type narrowing the Cause",
+      "file": "packages/release/src/api/notes/generate.test.ts",
+      "line": 197,
+      "body": "The final test accesses `result.failure._tag` and `result.failure.context` directly:\n```typescript\nexpect(result.failure._tag).toBe('GitError')\nif (result.failure._tag === 'GitError') {\n  expect(result.failure.context.operation).toBe('getCommitsSince')\n}\n```\nThis pattern is consistent with every other test in the `packages/release` suite (confirmed), so it is correct for the repo's Effect v4 `Exit` API. No change needed — just noting for reviewers unfamiliar with the convention that `result.failure` gives the typed error directly (not the `Cause`)."
+    }
+  ],
+  "residual_risks": [
+    "The caller-supplied `tags` snapshot is used as the last-resort 'known boundary' check. If this snapshot is stale (missing a recently-pushed tag), the stale-tag detection silently falls through to widening release notes — as documented in the plan file's risk section but not guarded against at runtime.",
+    "The `getCommitsSince(until)` set-subtraction path (filtering newer hashes) depends on hash equality between the results of two separate git calls. If git returns abbreviated hashes for one call and full SHAs for another, the `HashSet.has` check would never match and no trimming would occur. The Memory implementation avoids this by using consistent hash lengths, but the live path should be verified.",
+    "No integration test exercises the `until` boundary against a real git repo; all coverage uses `Git.Memory`. The semantic differences between `git log X..` and the Memory mock's `getCommitsSince` could diverge on edge cases (merge commits, detached HEAD, shallow clones)."
+  ]
+}

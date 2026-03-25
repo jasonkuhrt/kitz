@@ -1,0 +1,33 @@
+{
+  "pr_number": 192,
+  "title": "release: add release graph command",
+  "verdict": "findings",
+  "summary": "The PR is well-structured and achieves its goal cleanly: it promotes the inline graph shape into a proper typed API (`ExecutionGraph`, `graph()`, `toJsonGraph()`), adds a readable tree renderer, and wires a new CLI command with text/JSON output formats. Three issues stand out: a double `toPayload` computation introduced by the refactoring of `executeObservable`, an unnecessary custom `ReadonlyMap` helper in the renderer test, and a trivial `.size` vs spread in the renderer.",
+  "findings": [
+    {
+      "priority": "P1",
+      "title": "`executeObservable` calls `toPayload` twice after the refactor",
+      "file": "packages/release/src/api/executor/execute.ts",
+      "line": 608,
+      "body": "After the refactor, `executeObservable` still calls `yield* toPayload(plan, options)` to produce `payload` (needed for `ReleaseWorkflow.observable(payload)` below), and then immediately calls `yield* graph(plan, options)` — which internally calls `toPayload(plan, options)` a second time. That means all the I/O and computation in `toPayload` runs twice for every `executeObservable` invocation.\n\nThe fix is to compute the graph directly from the already-resolved `payload` instead of delegating to `graph()`:\n\n```typescript\n// inside executeObservable, after `const payload = yield* toPayload(plan, options)`\nconst { layers, nodes } = ReleaseWorkflow.toGraph(payload)\nconst graphInfo: ExecutionGraph = {\n  layers,\n  nodes: nodes as ReadonlyMap<string, ExecutionGraphNode>,\n}\n```\n\nAlternatively, `graph()` could accept a pre-computed payload as an optional argument. Either way the double computation should be eliminated."
+    },
+    {
+      "priority": "P2",
+      "title": "`makeReadonlyMap` test helper is unnecessary — `new Map()` already satisfies `ReadonlyMap`",
+      "file": "packages/release/src/api/renderer/graph.test.ts",
+      "line": 5,
+      "body": "The 30-line `makeReadonlyMap` factory (with manual `get`, `has`, `forEach`, `entries`, `keys`, `values`, `[Symbol.iterator]`, and `size`) replicates what the built-in `Map` class already provides. `Map<K, V>` structurally satisfies `ReadonlyMap<K, V>` in TypeScript, so:\n\n```typescript\nconst map = new Map([\n  ['Prepare:@kitz/core', { dependencies: [] }],\n  ['Publish:@kitz/core', { dependencies: ['Prepare:@kitz/core'] }],\n  ['CreateTag:@kitz/core@1.1.0', { dependencies: ['Publish:@kitz/core'] }],\n] as const)\n```\n\nworks directly. The hand-rolled helper should be deleted; beyond the boilerplate, its `forEach` lacks a type annotation for `callbackfn` and the implementation is essentially untested infrastructure that adds maintenance surface."
+    },
+    {
+      "priority": "P3",
+      "title": "`[...graph.nodes.keys()].length` should use `.size` directly",
+      "file": "packages/release/src/api/renderer/graph.ts",
+      "line": 4,
+      "body": "`ReadonlyMap` exposes a `.size` property. Spreading all keys into a temporary array just to count them is unnecessary:\n\n```typescript\n// current\nconst nodeCount = [...graph.nodes.keys()].length\n\n// correct\nconst nodeCount = graph.nodes.size\n```"
+    }
+  ],
+  "residual_risks": [
+    "The `graph` CLI command hardcodes `dryRun: false`. If `toPayload` / `ReleaseWorkflow.toGraph` behaves differently under dry-run mode (e.g. omits publish steps), the graph may not faithfully represent what a dry-run `apply` would execute. Worth verifying or documenting.",
+    "The `SchemaGetter.transform` approach for the `format` parameter default (`value ?? 'text'`) is unfamiliar enough that it warrants a quick sanity-check against how other commands handle optional enum params — the intent is clear but the encode path is an identity that never actually re-encodes `undefined`."
+  ]
+}

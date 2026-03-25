@@ -1,0 +1,33 @@
+{
+  "pr_number": 176,
+  "title": "fix(release): remove preview diff layout assumptions",
+  "verdict": "findings",
+  "summary": "This is a clean, well-motivated refactor. The core fix — replacing the hardcoded `packages/<scope>` path matching with real package-directory resolution — is correct and properly tested. The extraction of diff loading into `pr-preview-diff.ts` is well-structured. Three minor issues are worth flagging.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "Schema.encodeUnknownEffect / encodeUnknownSync are unverified in Effect beta.31",
+      "file": "packages/release/src/api/config.ts",
+      "line": 54,
+      "body": "The PR replaces `Schema.encode` / `Schema.encodeSync` with `Schema.encodeUnknownEffect` / `Schema.encodeUnknownSync`. The `decode`-side renames (`decodeUnknownEffect`, `decodeUnknownSync`) are confirmed throughout the codebase. However, `encodeUnknownEffect` and `encodeUnknownSync` appear in no other file in the repo — they cannot be cross-validated from local usage. The official Effect v4 docs (effect.website) only list `encode` (returns Effect) and `encodeSync` as the encode variants.\n\nIf beta.31 does not export `encodeUnknownEffect` / `encodeUnknownSync`, these static methods will be `undefined` at runtime (or TypeScript will error at build time). The `bun run release:verify` step in the PR description should catch this, but worth confirming the CI gate actually ran successfully before assuming these API names are valid."
+    },
+    {
+      "priority": "P3",
+      "title": "Unused Diff type import in pr-preview-diff.ts",
+      "file": "packages/release/src/cli/pr-preview-diff.ts",
+      "line": 8,
+      "body": "Line 8 imports both `ChangedFile` and `Diff` from `'../api/lint/services/diff.js'`, but `Diff` is never referenced in the file — only `ChangedFile` is used. This is a dead import that will trigger any unused-import lint rule.\n\n```ts\n// Before\nimport type { ChangedFile, Diff } from '../api/lint/services/diff.js'\n// After\nimport type { ChangedFile } from '../api/lint/services/diff.js'\n```"
+    },
+    {
+      "priority": "P3",
+      "title": "resolveDiffRemote called twice in the doctor command",
+      "file": "packages/release/src/cli/commands/doctor.ts",
+      "line": 179,
+      "body": "`resolveDiffRemote(config)` is computed explicitly and stored in `diffRemote` (used for the `env.git-remote` rule option), but then `loadConfiguredPullRequestDiff({ config, ... })` internally calls `resolveDiffRemote(config)` a second time from the same config.\n\nThis is not a correctness bug — both reads produce the same value. But the doctor site could instead call `loadPullRequestDiff({ ..., remote: diffRemote })` directly to make the data flow explicit and avoid the redundant computation:\n\n```ts\nconst diffRemote = resolveDiffRemote(config)\nconst diff = pullRequest\n  ? yield* loadPullRequestDiff({ pullRequest, packages, required: false, remote: diffRemote })\n  : null\n```"
+    }
+  ],
+  "residual_risks": [
+    "The test mock uses `as any` for the `stdin` and `getInputFd` fields of the ChildProcessHandle. If the handle interface changes in a future Effect beta, these mock fields could silently mismatch without a type error.",
+    "DiffRemoteConfigLike uses Record<string, { options?: Record<string, unknown> }> for rules, so a typo in 'env.git-remote' anywhere that uses resolveDiffRemote would not be caught at compile time."
+  ]
+}

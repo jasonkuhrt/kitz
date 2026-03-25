@@ -1,0 +1,26 @@
+{
+  "pr_number": 180,
+  "title": "refactor(release): share command lint rule helpers",
+  "verdict": "findings",
+  "summary": "Clean, well-structured refactoring that correctly eliminates two near-identical `enableRule` helpers and unifies them behind a typed `CommandLintRuleSpec` + `createCommandLintConfig` pair. The `preserveExistingOverrides` flag faithfully preserves the legacy `pr.projected-squash-commit-sync` doctor semantics, and the `resolveRuleList` / `skipRules: []` interaction was verified to be behaviorally equivalent to the old `pr-preview.ts` code. No P0/P1 issues found. Two P3 type-safety gaps are worth tracking as tech debt.",
+  "findings": [
+    {
+      "priority": "P3",
+      "title": "CommandLintRuleOptions is a manually-maintained type map with no structural link to actual rule schemas",
+      "file": "packages/release/src/cli/lint-rule-config.ts",
+      "line": 1,
+      "body": "The `CommandLintRuleOptions` interface hardcodes option shapes for each rule ID (e.g., `surface?: 'execution' | 'preview'`, `remote?: string`). There is no compile-time coupling between these annotations and the actual Schema or option types defined inside each rule file. If a rule's options change — say `surface` gains a new variant, or `projectedHeader` becomes optional — the interface must be updated by hand and there is no compiler error to remind authors. Consider deriving this map from the rule implementations rather than maintaining it separately."
+    },
+    {
+      "priority": "P3",
+      "title": "options is optional in CommandLintRuleSpec even for rules with required option fields",
+      "file": "packages/release/src/cli/lint-rule-config.ts",
+      "line": 28,
+      "body": "For `'pr.projected-squash-commit-sync'`, `CommandLintRuleOptions` declares `{ readonly projectedHeader: string }` (required). However, the `options?` field in `CommandLintRuleSpec<K>` is optional for all `K`, so `commandLintRule({ id: 'pr.projected-squash-commit-sync' })` compiles without `options`. At runtime `buildEnabledRuleConfig` would merge an empty object, leaving `projectedHeader` undefined. The rule's check then compares `actualHeader !== options.projectedHeader` — `undefined` — silently failing to flag a mismatch. Both current call sites supply `projectedHeader` correctly, so there is no live bug, but a future call site can accidentally omit it and TypeScript will not warn. A conditional required-options overload or a runtime assertion would close the gap."
+    }
+  ],
+  "residual_risks": [
+    "CommandLintRuleOptions drift: as rules evolve their option schemas, the manually-maintained interface in lint-rule-config.ts can silently go stale, producing incorrect type narrowing without a build error.",
+    "check:types currently fails on the pre-existing packages/release/src/api/publishing.ts static decode/encode self-reference errors (unrelated to this PR), so the full type-check gate is not green on trunk."
+  ]
+}

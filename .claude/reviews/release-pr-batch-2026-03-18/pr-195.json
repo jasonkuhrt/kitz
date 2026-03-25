@@ -1,0 +1,40 @@
+{
+  "pr_number": 195,
+  "title": "feat(release): support explicit package paths",
+  "verdict": "findings",
+  "summary": "This PR extends the release config schema to allow package entries to be either shorthand strings (`\"@myorg/core\"`) or structured `{ name, path }` objects for non-standard workspace layouts. The feature is well-motivated and the core path-resolution logic is correct. The main concern is an architectural inconsistency: `PackageConfigEntry` is defined as a TypeScript interface in `workspace.ts` while a structurally-equivalent `PackageConfigEntrySchema` is defined separately in `config.ts`. This dual-definition means a schema change and an interface change can diverge silently. There are also minor correctness and test clarity issues.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "Schema and runtime type are defined in two separate places and can drift",
+      "file": "packages/release/src/api/config.ts",
+      "line": 15,
+      "body": "The PR introduces `PackageConfigEntrySchema` (in `config.ts`) and `PackageConfigEntry` interface (in `workspace.ts`) as two independent definitions of the same concept. `config.ts` imports `PackageMap` (the type) from `workspace.ts` but defines the schema locally. If the interface in `workspace.ts` ever gains a new required field, the schema in `config.ts` will not be updated automatically, leading to configs that decode successfully but fail at runtime when the missing field is accessed.\n\nThe Effect Schema pattern avoids this by making the schema the single source of truth:\n```typescript\n// In workspace.ts (or a shared location)\nexport const PackageConfigEntrySchema = Schema.Struct({\n  name: Schema.String,\n  path: Schema.optional(Schema.String),\n})\nexport type PackageConfigEntry = Schema.Schema.Type<typeof PackageConfigEntrySchema>\n```\nThen `config.ts` imports and reuses `PackageConfigEntrySchema` directly instead of redefining it."
+    },
+    {
+      "priority": "P3",
+      "title": "`toPackageMap` return type is too wide after the `PackageMap` type change",
+      "file": "packages/release/src/api/analyzer/workspace.ts",
+      "line": 79,
+      "body": "After the PR, `PackageMap = Record<string, string | PackageConfigEntry>`. The `toPackageMap` function builds a map from scanned `Package[]` objects and only ever assigns `pkg.name.moniker` (a `string`) to each entry. Its return type is inferred as `PackageMap`, which implies consumers might receive `PackageConfigEntry` values — they never will. This unnecessarily widens the contract.\n\nConsider narrowing the return type:\n```typescript\nexport const toPackageMap = (packages: Package[]): Record<string, string> => { ... }\n```\nThe resulting `Record<string, string>` is still assignable to `PackageMap` at call sites that need it."
+    },
+    {
+      "priority": "P3",
+      "title": "`PackageLocation.inferDefault` is called unconditionally even when an explicit path is provided",
+      "file": "packages/release/src/api/analyzer/workspace.ts",
+      "line": 56,
+      "body": "In the updated `inferConfiguredPackage`, `PackageLocation.inferDefault(cwd, scope)` is always computed, then its result is discarded when an explicit path exists (`explicitPath?.path ?? location.path`). This is wasteful and slightly obscures intent. Prefer computing the default only when needed:\n```typescript\nconst path = explicitPath?.path ?? PackageLocation.inferDefault(cwd, scope).path\n```\nThis is a minor issue if `inferDefault` is pure/cheap, but worth fixing for clarity."
+    },
+    {
+      "priority": "P3",
+      "title": "Fallback workspace test does not write a `package.json` in the explicit path directory",
+      "file": "packages/release/src/api/analyzer/workspace.test.ts",
+      "line": 152,
+      "body": "The test \"resolves explicit package paths even when workspace discovery is unavailable\" creates the `tooling/pkg-core/` directory but does not write a `package.json` in it. This means the test only validates that `resolvePackages` computes the correct absolute path string — it does not validate that the package is actually resolvable (e.g. readable manifest). This is probably intentional for a unit test, but the contrast with the first test (which does write `package.json`) may mislead future readers or hide a gap in integration coverage. A short comment explaining this would improve clarity."
+    }
+  ],
+  "residual_risks": [
+    "No validation prevents `path` entries using `../` traversal outside the workspace root. The rationale doc mentions this risk but no guard is implemented. In practice this is low risk since only repo owners write the config, but it's worth noting.",
+    "The `normalizeConfiguredPath` function prepends `./` to bare paths and absolute paths alike. An absolute path like `/etc/secrets` would become `.//etc/secrets`, which is likely to error at join-time rather than silently resolving to the root — but this edge case is untested."
+  ]
+}

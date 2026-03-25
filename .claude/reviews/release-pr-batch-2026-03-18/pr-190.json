@@ -1,0 +1,33 @@
+{
+  "pr_number": 190,
+  "title": "release: add explicit resume command",
+  "verdict": "findings",
+  "summary": "The PR successfully introduces a first-class `release resume` command with a typed `ExecutorResumeError`, solid test coverage for the not-started and succeeded guard cases, and correct documentation updates. The core durable-workflow mechanics are sound: `runFreshPreflight` already skips for existing executions, so the resume path will not re-run preflight regardless of which execution path is used.\n\nThe main architectural issue is that the new `resume()` API is bypassed by the CLI command it was created to back. The CLI manually replicates the state guard and then calls `executeObservable` (the streaming `execute` path), leaving the typed `resume()` guard orphaned in the streaming case. This also means the `resume()` function's non-streaming path and the CLI's streaming path share no code, giving the two surfaces a different relationship to the workflow engine (`ReleaseWorkflow.execute` vs `ReleaseWorkflow.observable`). A secondary but lower-priority issue is that `resume()` silently falls through to execution for any state not explicitly matched (anything that is not `not-started`, `succeeded`, or `failed`), which would include a theoretical `running` state.",
+  "findings": [
+    {
+      "priority": "P1",
+      "title": "CLI `resume.ts` bypasses the typed `resume()` API, duplicating state validation",
+      "file": "packages/release/src/cli/commands/resume.ts",
+      "line": 96,
+      "body": "The CLI command manually checks `workflowStatus.state !== 'suspended'` and then calls `Api.Executor.executeObservable(...)` — the same streaming `execute` path used by `release apply`. The new `resume()` API introduced in this same PR is never invoked by the CLI.\n\nThis creates two problems:\n1. **Logic duplication**: state validation exists independently in the CLI and in `resume()`. They can diverge.\n2. **Different engine paths**: `resume()` calls `ReleaseWorkflow.execute(payload)` while `executeObservable` calls `ReleaseWorkflow.observable(payload)`. These are different paths through the workflow engine.\n\nThe correct fix is to add a `resumeObservable` function in `execute.ts` that mirrors the structure of `executeObservable` but enforces the same state guards as `resume()`. The CLI should call `resumeObservable` instead of its current manual check + `executeObservable` pattern.\n\n```typescript\n// In execute.ts — add alongside resume()\nexport const resumeObservable = (\n  plan: Plan,\n  options: ...\n): Effect.Effect<ObservableResult<...>, ExecutorResumeError | ..., ...> =>\n  Effect.gen(function* () {\n    const workflowStatus = yield* status(plan, options)\n    if (workflowStatus.state !== 'suspended') {\n      return yield* Effect.fail(new ExecutorResumeError({ ... }))\n    }\n    // delegate to core observable logic\n    ...\n  })\n```"
+    },
+    {
+      "priority": "P2",
+      "title": "`resume()` silently falls through to execution for states not explicitly matched",
+      "file": "packages/release/src/api/executor/execute.ts",
+      "line": 440,
+      "body": "`resume()` handles three explicit states (`not-started`, `succeeded`, `failed`) with typed failures, then falls through to execution for everything else — implicitly treating any other state as `suspended`. If a `running` or unrecognised state were ever returned by `status()`, it would be treated as resumable rather than rejected with a clear error.\n\nSince the intent is clearly \"only resume when suspended\", the safest pattern is to guard on `state === 'suspended'` affirmatively rather than guarding against specific non-suspended states:\n\n```typescript\n// Replace the three if-blocks with:\nif (workflowStatus.state !== 'suspended') {\n  return yield* Effect.fail(\n    new ExecutorResumeError({\n      context: {\n        executionId: workflowStatus.executionId,\n        state: workflowStatus.state,   // widen type to string if needed\n        detail: stateToDetail(workflowStatus.state),\n      },\n    }),\n  )\n}\n```\n\nThis also eliminates the parallel logic in the CLI that already uses the affirmative `!== 'suspended'` check."
+    },
+    {
+      "priority": "P3",
+      "title": "`ExecutorDependencyCycleError` is absent from `errors.ts`'s `All` type",
+      "file": "packages/release/src/api/executor/errors.ts",
+      "line": 218,
+      "body": "The `All` type is defined as `ExecutorError | ExecutorResumeError`. But `execute()` and `resume()` both surface `ExecutorDependencyCycleError` in their typed error channels, and `ExecutorDependencyCycleError` is not a member of `ExecutorError`. This means `ExecutorDependencyCycleError` can be raised through the executor but is not included in the public `All` union.\n\nThis appears to be a pre-existing gap that the PR did not introduce but also did not fix while touching the `All` type. `All` should reflect every error the executor can raise:\n\n```typescript\nexport type All = ExecutorError | ExecutorResumeError | ExecutorDependencyCycleError\n```"
+    }
+  ],
+  "residual_risks": [
+    "The `failed` state is treated as non-resumable with the message 'terminal failure'. Whether a `failed` durable workflow is always non-resumable (vs. a retryable transient failure) depends on the Effect workflow engine's state machine. If the engine can transition from `failed` back to `suspended` after operator intervention, the current guard may be overly restrictive.",
+    "The CLI prompts for confirmation with `[y/N]` but exits with code `1` on cancellation. A user-initiated cancel is not an error — `exit(0)` would be more conventional, though this is a UX convention question."
+  ]
+}

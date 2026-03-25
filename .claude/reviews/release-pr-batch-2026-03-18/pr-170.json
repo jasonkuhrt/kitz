@@ -1,0 +1,33 @@
+{
+  "pr_number": 170,
+  "title": "fix(release): resolve configured packages from workspace paths",
+  "verdict": "findings",
+  "summary": "The PR correctly fixes the bug where configured `config.packages` entries always resolved to conventional `packages/{scope}/` paths, ignoring nonstandard workspace layouts. The strategy — scan first, match by moniker, fall back to inferred — is sound. Two real-filesystem regression tests cover the happy path and the stale-config case. One behavioral inconsistency (silent scan error swallowing) and two minor quality issues are noted.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "Scan failure is silently swallowed when config packages are present",
+      "file": "packages/release/src/api/analyzer/workspace.ts",
+      "line": 113,
+      "body": "When `Exit.isFailure(discoveredPackagesExit)` is true, the error is dropped and every configured package silently falls back to an inferred `packages/{scope}/` path. A workspace read failure (e.g. malformed root `package.json`, missing `workspaces` field) would produce incorrect package paths with no diagnostic signal.\n\nThis is an asymmetric contract: when `configPackages` is empty, `ScanError` surfaces to the caller; when it's non-empty, the same error disappears. Consider at least logging the cause:\n\n```typescript\nif (Exit.isFailure(discoveredPackagesExit)) {\n  yield* Effect.logWarning(\n    'Workspace scan failed; falling back to inferred package paths',\n    { cause: discoveredPackagesExit.cause },\n  )\n  return Object.entries(configPackages).map(([scope, name]) =>\n    inferConfiguredPackage(env.cwd, scope, name),\n  )\n}\n```"
+    },
+    {
+      "priority": "P3",
+      "title": "Unnecessary `as Record<string, Package>` cast on `discoveredByName`",
+      "file": "packages/release/src/api/analyzer/workspace.ts",
+      "line": 126,
+      "body": "`Object.fromEntries` with explicit tuple types already produces `Record<string, Package>` — the cast is redundant and masks potential future type mismatches. Remove the cast:\n\n```typescript\nconst discoveredByName = Object.fromEntries(\n  discoveredPackages.map((pkg): [string, Package] => [pkg.name.moniker, pkg]),\n)\n```"
+    },
+    {
+      "priority": "P3",
+      "title": "Duplicated test setup across both test cases",
+      "file": "packages/release/src/api/analyzer/workspace.test.ts",
+      "line": 22,
+      "body": "Both tests create the same temp directory structure (`tooling/pkg-core` with `@kitz/core`). This could be extracted into a `beforeEach`/`afterEach` pair with a shared `rootDir` variable, reducing ~25 lines of duplicate setup and making future additions cheaper."
+    }
+  ],
+  "residual_risks": [
+    "The inferred fallback path `packages/{scope}/` is not validated to exist, so stale config entries produce a `Package` object with a non-existent `path`. Downstream consumers must handle missing paths gracefully.",
+    "The `discoveredByName` map uses moniker as key — if two workspace packages share the same moniker (degenerate repo), the last one wins silently."
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "pr_number": 199,
+  "title": "feat(release): allow diff remote overrides",
+  "verdict": "findings",
+  "summary": "The PR correctly adds per-run `--remote` overrides for `release doctor` and `release pr preview`, with good test coverage for `parseAction`, `resolveDiffRemote`, `loadConfiguredPullRequestDiff`, and `buildPreviewDoctorSummary`. The main issues are: (1) a dead-abstraction wrapper `loadDiffRemote` that adds zero logic, and (2) the wiring in `runPrPreview` that connects `options.remote → diffRemote → explicitDiffRemote` is not integration-tested — only `buildPreviewDoctorSummary` is exercised directly, leaving the conditional spreading logic in `runPrPreview` uncovered.",
+  "findings": [
+    {
+      "priority": "P2",
+      "title": "runPrPreview remote wiring is untested — only buildPreviewDoctorSummary is covered directly",
+      "file": "packages/release/src/cli/pr-preview.test.ts",
+      "line": null,
+      "body": "The PR's test for runbook remote injection passes `explicitDiffRemote: 'fork'` directly to `buildPreviewDoctorSummary`, bypassing the logic in `runPrPreview` that computes and conditionally spreads it:\n\n```typescript\n// pr-preview.ts — untested wiring\nconst diffRemote = loadDiffRemote(config, options.remote)\n...(options.remote ? { remote: options.remote } : {}),        // to diff loader\n...(options.remote ? { explicitDiffRemote: diffRemote } : {}), // to summary\n```\n\nIf someone changed the condition (e.g. switched from `options.remote` to a different check) or broke the `loadDiffRemote → explicitDiffRemote` chain, the existing tests would still pass. An integration test calling `runPrPreview({ remote: 'fork' })` with mocked services and asserting the resulting runbook commands would close this gap."
+    },
+    {
+      "priority": "P3",
+      "title": "`loadDiffRemote` is a dead-abstraction wrapper with no added logic",
+      "file": "packages/release/src/cli/pr-preview.ts",
+      "line": null,
+      "body": "The function at the bottom of `pr-preview.ts` is a pure passthrough:\n\n```typescript\nconst loadDiffRemote = (config: Api.Config.ResolvedConfig, remote?: string): string =>\n  resolveDiffRemote(config, remote)\n```\n\nIt has exactly one call site, adds no logic, and its name doesn't distinguish it from `resolveDiffRemote`. This should be removed and `resolveDiffRemote` called directly:\n\n```typescript\n// before\nconst diffRemote = loadDiffRemote(config, options.remote)\n\n// after\nconst diffRemote = resolveDiffRemote(config, options.remote)\n```"
+    },
+    {
+      "priority": "P3",
+      "title": "Raw vs normalized remote: two divergent normalization paths in runPrPreview",
+      "file": "packages/release/src/cli/pr-preview.ts",
+      "line": null,
+      "body": "In `runPrPreview`, `diffRemote` is normalized via `loadDiffRemote` (trim + empty-check) and used for the runbook display. But `loadConfiguredPullRequestDiff` receives the raw `options.remote`, which normalizes independently inside `resolveDiffRemote`. They produce the same result today, but the code suggests two separate sources of truth for the effective remote:\n\n```typescript\nconst diffRemote = loadDiffRemote(config, options.remote)          // normalized\nyield* loadConfiguredPullRequestDiff({ ..., remote: options.remote }) // also normalizes\n```\n\nPassing `diffRemote` to `loadConfiguredPullRequestDiff` instead of `options.remote` would make the actual remote used for diffs and the one shown in the runbook share a single normalization point."
+    }
+  ],
+  "residual_risks": [
+    "Remote names accepted from the CLI are not validated against git's allowed remote name format. A value like `fork/../secret` would be passed into git args and could produce unexpected git behavior, though not a shell-injection risk since git is spawned directly (not via a shell). Consider a simple regex guard on remote names at the parse layer.",
+    "Doctor command's `remote r` parameter uses `Schema.UndefinedOr(Schema.String)` which accepts whitespace-only strings. These silently fall through to `origin` after `normalizeRemoteOverride` trims them, which may confuse operators who pass `--remote '   '` expecting an error."
+  ]
+}

@@ -1,0 +1,798 @@
+{
+  "counts": {
+    "total": 31,
+    "no_findings": 2,
+    "findings": 29,
+    "insufficient_context": 0
+  },
+  "byPriority": [
+    {
+      "priority": "P0",
+      "count": 1
+    },
+    {
+      "priority": "P1",
+      "count": 5
+    },
+    {
+      "priority": "P2",
+      "count": 35
+    },
+    {
+      "priority": "P3",
+      "count": 35
+    }
+  ],
+  "noFindings": [
+    {
+      "pr_number": 169,
+      "title": "fix(release): fail when until boundary cannot be resolved"
+    },
+    {
+      "pr_number": 183,
+      "title": "refactor(release): share command workspace bootstrap"
+    }
+  ],
+  "findings": [
+    {
+      "pr_number": 167,
+      "pr_title": "fix(release): scope package test discovery",
+      "pr_summary": "The core fix is sound: replacing the positional-arg substring filter with `--dir` correctly constrains Vitest discovery to the `packages/release/src` subtree and prevents `.claude/worktrees` mirror files from being picked up. The regression test validates the right behavior. Two issues found: a reliability risk from using a login shell in `spawnSync`, and minor over-engineering of JSON parsing with Effect Schema.",
+      "priority": "P2",
+      "title": "Login shell flag `-lc` in spawnSync can cause vitest to not be found in CI",
+      "file": "packages/release/src/_.test.ts",
+      "line": 220,
+      "body": "The subprocess is launched with `/bin/sh -lc …`. The `-l` (login shell) flag causes the shell to source profile scripts (`.profile`, `.bash_profile`, `/etc/profile.d/*`, etc.), which may **reset or override PATH** — e.g. NVM, rbenv, and many CI setup scripts do `export PATH=…` wholesale, dropping the prepended `node_modules/.bin` entry that the test explicitly adds. If PATH is reset, `vitest` won't be found and the test will fail with a confusing `command not found` exit instead of a meaningful assertion error.\n\nShould be `-c` only:\n```ts\nconst result = spawnSync('/bin/sh', ['-c', `${testScript} --reporter=verbose`], {\n```\nThe PATH override via `env` is sufficient without `-l`."
+    },
+    {
+      "pr_number": 167,
+      "pr_title": "fix(release): scope package test discovery",
+      "pr_summary": "The core fix is sound: replacing the positional-arg substring filter with `--dir` correctly constrains Vitest discovery to the `packages/release/src` subtree and prevents `.claude/worktrees` mirror files from being picked up. The regression test validates the right behavior. Two issues found: a reliability risk from using a login shell in `spawnSync`, and minor over-engineering of JSON parsing with Effect Schema.",
+      "priority": "P3",
+      "title": "Effect Schema used for simple JSON.parse of package.json",
+      "file": "packages/release/src/_.test.ts",
+      "line": 68,
+      "body": "`Schema.fromJsonString(Schema.Record(Schema.String, Schema.Unknown))` and `Schema.decodeUnknownSync` are used to read `package.json`. Since the file is trusted source (a repo-committed file) and any parse error would already surface as a thrown exception, this is over-engineered. Plain `JSON.parse` with a cast achieves the same thing without pulling Schema semantics into test infrastructure:\n\n```ts\nconst packageJson = JSON.parse(\n  readFileSync(new URL('../package.json', import.meta.url), 'utf8')\n) as Record<string, unknown>\n```\nThe `getOptionalStringField` / `getOptionalRecordField` helpers can stay — they're straightforward guards."
+    },
+    {
+      "pr_number": 168,
+      "pr_title": "fix(release): honor per-package analysis boundaries",
+      "pr_summary": "This PR correctly fixes the monorepo staggered-release bug where a newer release in one package was masking unreleased commits in another package. The architectural shift from a single \"closest release tag\" to per-package boundaries via `allowedHashesByScope` is sound, and the regression test directly covers the fixed scenario.\n\nTwo minor-to-moderate issues are noted: a silent-failure filter that changes where unknown scopes are dropped (functionally equivalent but masks future mistakes), and a cache using a linear array scan instead of a `Map` (negligible for typical monorepos, but inconsistent with the Effect/HashMap style used elsewhere). No P0/P1 logic errors found.",
+      "priority": "P2",
+      "title": "`allowedHashesByScope` silently drops unknown scopes instead of passing them through",
+      "file": "packages/release/src/api/analyzer/analyze.ts",
+      "line": 168,
+      "body": "The new `flatImpacts` filter returns `false` when `allowedHashes` is `undefined` (scope not in `allowedHashesByScope`):\n\n```typescript\nreturn allowedHashes ? HashSet.has(allowedHashes, impact.commit.hash) : false\n```\n\nPrior to this PR, unknown scopes passed through `flatImpacts` and were silently dropped later in the `aggregateByPackage` loop (`if (!pkg) continue`). The new behavior is functionally equivalent for today's code, but it changes the contract: any scope not in `options.packages` is now dropped at the `extractImpacts` stage rather than the `aggregateByPackage` stage. If any code path between these two stages ever needs to process unknown-scope impacts (e.g., for logging or diagnostics), this early drop would be a silent bug.\n\nConsider: `return allowedHashes === undefined || HashSet.has(allowedHashes, impact.commit.hash)` to pass through unknown scopes for the existing downstream filter to handle. Or add a comment documenting that the `false` branch is intentionally mirroring the downstream `if (!pkg) continue` behavior."
+    },
+    {
+      "pr_number": 168,
+      "pr_title": "fix(release): honor per-package analysis boundaries",
+      "pr_summary": "This PR correctly fixes the monorepo staggered-release bug where a newer release in one package was masking unreleased commits in another package. The architectural shift from a single \"closest release tag\" to per-package boundaries via `allowedHashesByScope` is sound, and the regression test directly covers the fixed scenario.\n\nTwo minor-to-moderate issues are noted: a silent-failure filter that changes where unknown scopes are dropped (functionally equivalent but masks future mistakes), and a cache using a linear array scan instead of a `Map` (negligible for typical monorepos, but inconsistent with the Effect/HashMap style used elsewhere). No P0/P1 logic errors found.",
+      "priority": "P3",
+      "title": "Cache in `collectScopedCommits` uses linear array scan instead of a `Map`",
+      "file": "packages/release/src/api/analyzer/analyze.ts",
+      "line": 102,
+      "body": "The commit cache uses an `Array` with `Array.find()` for lookups:\n\n```typescript\nconst cache: Array<{ since: string | undefined; commits: readonly Git.Commit[] }> = []\n// ...\nlet cached = cache.find((entry) => entry.since === since)\n```\n\nThis is O(n) per package lookup, making the overall loop O(packages²). For typical monorepos this is negligible, but it is inconsistent with the rest of the codebase's use of `HashMap`/`MutableHashMap` for keyed collections.\n\nA `Map<string | undefined, readonly Git.Commit[]>` would be more idiomatic and O(1):\n\n```typescript\nconst cache = new Map<string | undefined, readonly Git.Commit[]>()\n// ...\nconst trimmedCommits = cache.get(since) ?? ...compute and set...\n```\n\nNote: `Map` handles `undefined` keys correctly, unlike most record-based approaches."
+    },
+    {
+      "pr_number": 170,
+      "pr_title": "fix(release): resolve configured packages from workspace paths",
+      "pr_summary": "The PR correctly fixes the bug where configured `config.packages` entries always resolved to conventional `packages/{scope}/` paths, ignoring nonstandard workspace layouts. The strategy — scan first, match by moniker, fall back to inferred — is sound. Two real-filesystem regression tests cover the happy path and the stale-config case. One behavioral inconsistency (silent scan error swallowing) and two minor quality issues are noted.",
+      "priority": "P2",
+      "title": "Scan failure is silently swallowed when config packages are present",
+      "file": "packages/release/src/api/analyzer/workspace.ts",
+      "line": 113,
+      "body": "When `Exit.isFailure(discoveredPackagesExit)` is true, the error is dropped and every configured package silently falls back to an inferred `packages/{scope}/` path. A workspace read failure (e.g. malformed root `package.json`, missing `workspaces` field) would produce incorrect package paths with no diagnostic signal.\n\nThis is an asymmetric contract: when `configPackages` is empty, `ScanError` surfaces to the caller; when it's non-empty, the same error disappears. Consider at least logging the cause:\n\n```typescript\nif (Exit.isFailure(discoveredPackagesExit)) {\n  yield* Effect.logWarning(\n    'Workspace scan failed; falling back to inferred package paths',\n    { cause: discoveredPackagesExit.cause },\n  )\n  return Object.entries(configPackages).map(([scope, name]) =>\n    inferConfiguredPackage(env.cwd, scope, name),\n  )\n}\n```"
+    },
+    {
+      "pr_number": 170,
+      "pr_title": "fix(release): resolve configured packages from workspace paths",
+      "pr_summary": "The PR correctly fixes the bug where configured `config.packages` entries always resolved to conventional `packages/{scope}/` paths, ignoring nonstandard workspace layouts. The strategy — scan first, match by moniker, fall back to inferred — is sound. Two real-filesystem regression tests cover the happy path and the stale-config case. One behavioral inconsistency (silent scan error swallowing) and two minor quality issues are noted.",
+      "priority": "P3",
+      "title": "Unnecessary `as Record<string, Package>` cast on `discoveredByName`",
+      "file": "packages/release/src/api/analyzer/workspace.ts",
+      "line": 126,
+      "body": "`Object.fromEntries` with explicit tuple types already produces `Record<string, Package>` — the cast is redundant and masks potential future type mismatches. Remove the cast:\n\n```typescript\nconst discoveredByName = Object.fromEntries(\n  discoveredPackages.map((pkg): [string, Package] => [pkg.name.moniker, pkg]),\n)\n```"
+    },
+    {
+      "pr_number": 170,
+      "pr_title": "fix(release): resolve configured packages from workspace paths",
+      "pr_summary": "The PR correctly fixes the bug where configured `config.packages` entries always resolved to conventional `packages/{scope}/` paths, ignoring nonstandard workspace layouts. The strategy — scan first, match by moniker, fall back to inferred — is sound. Two real-filesystem regression tests cover the happy path and the stale-config case. One behavioral inconsistency (silent scan error swallowing) and two minor quality issues are noted.",
+      "priority": "P3",
+      "title": "Duplicated test setup across both test cases",
+      "file": "packages/release/src/api/analyzer/workspace.test.ts",
+      "line": 22,
+      "body": "Both tests create the same temp directory structure (`tooling/pkg-core` with `@kitz/core`). This could be extracted into a `beforeEach`/`afterEach` pair with a shared `rootDir` variable, reducing ~25 lines of duplicate setup and making future additions cheaper."
+    },
+    {
+      "pr_number": 171,
+      "pr_title": "fix: honor configured packages in release notes",
+      "pr_summary": "The PR correctly identifies the bug (notes used `scan` instead of `resolvePackages(config.packages)`) and the extraction of `loadNotesPackages` into a testable helper is a good design. However, the new tests have a critical mismatch between their fixture layout and what `resolvePackages` actually does when given a non-empty `configPackages` map — meaning tests 1 and 2 will fail on the path assertion. There is also a minor redundant wrapper and the root-cause behavior of `resolvePackages` (hardcoded `./packages/` path construction) may need reconsideration.",
+      "priority": "P1",
+      "title": "Tests 1 and 2 have incorrect path assertions — will fail at runtime",
+      "file": "packages/release/src/cli/commands/notes-lib.test.ts",
+      "line": 62,
+      "body": "Both `resolveNotesPackages` and `loadNotesPackagesWith` tests create workspace fixtures at `tooling/pkg-core/` and `tooling/pkg-cli/` (matching the root `workspaces: ['tooling/*']` glob), then assert:\n```ts\nexpect(Fs.Path.toString(packages[0]!.path)).toBe(`${rootDir}/tooling/pkg-core/`)\n```\nBut `resolvePackages` with a non-empty `configPackages` does **not** consult the filesystem — it constructs synthetic paths using the hardcoded `./packages/` dir and the scope key:\n```ts\n// workspace.ts line 100-104\nconst packagesDir = Fs.Path.join(env.cwd, packagesRelDir)  // cwd/packages/\nconst scopeRelDir = Fs.Path.RelDir.fromString(`./${scope}/`) // ./core/\nconst scopeDir = Fs.Path.join(packagesDir, scopeRelDir)      // cwd/packages/core/\n```\nFor `{ core: '@kitz/core' }` the returned path is `${rootDir}/packages/core/`, **not** `${rootDir}/tooling/pkg-core/`. The assertion will fail.\n\nFix options:\n1. **Make the fixture match the implementation**: change fixture directories to `packages/core/` and `packages/cli/`, update `workspaces: ['packages/*']`, and fix the assertions to `${rootDir}/packages/core/`.\n2. **Make the implementation match the intent**: change `resolvePackages` to scan first and then filter by configured names (like `scan` already does), so it returns actual workspace paths. This is arguably the more correct behavior for \"honoring\" a config."
+    },
+    {
+      "pr_number": 171,
+      "pr_title": "fix: honor configured packages in release notes",
+      "pr_summary": "The PR correctly identifies the bug (notes used `scan` instead of `resolvePackages(config.packages)`) and the extraction of `loadNotesPackages` into a testable helper is a good design. However, the new tests have a critical mismatch between their fixture layout and what `resolvePackages` actually does when given a non-empty `configPackages` map — meaning tests 1 and 2 will fail on the path assertion. There is also a minor redundant wrapper and the root-cause behavior of `resolvePackages` (hardcoded `./packages/` path construction) may need reconsideration.",
+      "priority": "P2",
+      "title": "`resolvePackages` with configured packages uses a hardcoded `./packages/` path assumption",
+      "file": "packages/release/src/api/analyzer/workspace.ts",
+      "line": 98,
+      "body": "When `configPackages` is non-empty, `resolvePackages` constructs package paths as `cwd/packages/<scope>/` regardless of where the monorepo actually stores its packages. This hard-codes a kitz-specific convention and means configured packages are located by convention rather than discovery.\n\nThe `scan` fallback correctly uses `Monorepo.Workspace.read` to discover actual paths. The configured-packages branch should probably also scan and then filter, or at minimum document this convention constraint clearly. As-is, any repo where packages aren't under `./packages/<scope>/` would get wrong paths silently."
+    },
+    {
+      "pr_number": 171,
+      "pr_title": "fix: honor configured packages in release notes",
+      "pr_summary": "The PR correctly identifies the bug (notes used `scan` instead of `resolvePackages(config.packages)`) and the extraction of `loadNotesPackages` into a testable helper is a good design. However, the new tests have a critical mismatch between their fixture layout and what `resolvePackages` actually does when given a non-empty `configPackages` map — meaning tests 1 and 2 will fail on the path assertion. There is also a minor redundant wrapper and the root-cause behavior of `resolvePackages` (hardcoded `./packages/` path construction) may need reconsideration.",
+      "priority": "P3",
+      "title": "`resolveNotesPackages` is an unnecessary `Effect.gen` wrapper with no added value",
+      "file": "packages/release/src/cli/commands/notes-lib.ts",
+      "line": 6,
+      "body": "```ts\nexport const resolveNotesPackages = (configPackages: Api.Analyzer.Workspace.PackageMap) =>\n  Effect.gen(function* () {\n    return yield* Api.Analyzer.Workspace.resolvePackages(configPackages)\n  })\n```\nThis is a pass-through wrapper — `Effect.gen` wrapping a single `yield*` adds no transformation, error handling, or context. It could simply be:\n```ts\nexport const resolveNotesPackages = Api.Analyzer.Workspace.resolvePackages\n```\nor removed in favor of calling `Api.Analyzer.Workspace.resolvePackages` directly from `loadNotesPackagesWith`."
+    },
+    {
+      "pr_number": 172,
+      "pr_title": "fix(release): honor notes until boundaries",
+      "pr_summary": "The PR correctly implements `until` boundary trimming for `Notes.generate`. The core logic is sound: the function first scans the already-fetched window by hash, then falls back to a `getCommitsSince(until)` call to identify and exclude newer commits, with a three-tier \"known boundary\" check guarding whether an infra failure should propagate or be treated as an unknown boundary. All five test cases are logically correct and match the implementation. Two issues worth noting: a silent no-op fallback path when all boundary checks fail (no log, no observable signal) and a minor category confusion in `Effect.option(git.getTagSha(...))` that treats infra errors identically to \"tag not found.\"",
+      "priority": "P2",
+      "title": "Silent fallback emits no signal when `until` boundary cannot be verified",
+      "file": "packages/release/src/api/notes/generate.ts",
+      "line": 106,
+      "body": "When `getCommitsSince(until)` fails **and** none of the three knowledge checks succeed (`getTagSha`, `commitExists`, `tags.includes`), the function silently returns the full commit window — effectively ignoring `until`. A caller who passes a misspelled tag name or an invalid SHA would receive wider-than-expected release notes with no warning, log, or error.\n\nThe `generate` result doesn't expose which packages had their `until` boundary honored vs. ignored, so callers have no way to detect this silently-widened state.\n\nConsider adding at least a structured `Effect.logDebug` (or a field on `GenerateResult`) for the \"unknown boundary, falling back\" case:\n```typescript\nreturn yield* Effect.logDebug(\n  `notes.generate: until boundary '${until}' is unknown — falling back to full window`,\n).pipe(Effect.as(commits))\n```"
+    },
+    {
+      "pr_number": 172,
+      "pr_title": "fix(release): honor notes until boundaries",
+      "pr_summary": "The PR correctly implements `until` boundary trimming for `Notes.generate`. The core logic is sound: the function first scans the already-fetched window by hash, then falls back to a `getCommitsSince(until)` call to identify and exclude newer commits, with a three-tier \"known boundary\" check guarding whether an infra failure should propagate or be treated as an unknown boundary. All five test cases are logically correct and match the implementation. Two issues worth noting: a silent no-op fallback path when all boundary checks fail (no log, no observable signal) and a minor category confusion in `Effect.option(git.getTagSha(...))` that treats infra errors identically to \"tag not found.\"",
+      "priority": "P2",
+      "title": "`Effect.option(git.getTagSha(until))` conflates \"tag not found\" with git infrastructure failures",
+      "file": "packages/release/src/api/notes/generate.ts",
+      "line": 93,
+      "body": "In the failure branch of `getCommitsSince(until)`, the code uses:\n```typescript\nconst knownTag = yield* Effect.option(git.getTagSha(until))\n```\n`Effect.option` converts **any** typed failure to `None` — including `GitError`s that result from git being temporarily unavailable, not just \"tag not found\". In that degraded state:\n- `knownTag` → `None`\n- `commitExists` falls back similarly (live impl swallows errors via `.then(() => true, () => false)`, so this is benign)\n- If `until` is also absent from the caller's `tags` snapshot → falls through to silent widening\n\nThis is a latent risk rather than an active bug today (because `getCommitsSince(since)` would already have failed earlier if git were truly unavailable). But the assumption is implicit and not commented. A narrow `Effect.option` for only the `GitParseError` / \"not found\" case, or an explicit comment, would make the intent clearer."
+    },
+    {
+      "pr_number": 172,
+      "pr_title": "fix(release): honor notes until boundaries",
+      "pr_summary": "The PR correctly implements `until` boundary trimming for `Notes.generate`. The core logic is sound: the function first scans the already-fetched window by hash, then falls back to a `getCommitsSince(until)` call to identify and exclude newer commits, with a three-tier \"known boundary\" check guarding whether an infra failure should propagate or be treated as an unknown boundary. All five test cases are logically correct and match the implementation. Two issues worth noting: a silent no-op fallback path when all boundary checks fail (no log, no observable signal) and a minor category confusion in `Effect.option(git.getTagSha(...))` that treats infra errors identically to \"tag not found.\"",
+      "priority": "P3",
+      "title": "Test for failure case inspects `result.failure` without type narrowing the Cause",
+      "file": "packages/release/src/api/notes/generate.test.ts",
+      "line": 197,
+      "body": "The final test accesses `result.failure._tag` and `result.failure.context` directly:\n```typescript\nexpect(result.failure._tag).toBe('GitError')\nif (result.failure._tag === 'GitError') {\n  expect(result.failure.context.operation).toBe('getCommitsSince')\n}\n```\nThis pattern is consistent with every other test in the `packages/release` suite (confirmed), so it is correct for the repo's Effect v4 `Exit` API. No change needed — just noting for reviewers unfamiliar with the convention that `result.failure` gives the typed error directly (not the `Cause`)."
+    },
+    {
+      "pr_number": 173,
+      "pr_title": "fix(release): make explorer recon truthful",
+      "pr_summary": "The PR correctly wires `NpmRegistry.NpmCli` into `explore()` to replace hardcoded placeholder values with real runtime observations. The core logic — `resolveNpmCredentials` absorbing `NpmCliError` gracefully, `resolveGitRemotes` using `Effect.option` for leniency, and propagating the new `NpmCli` requirement into `forecast.ts` and `pr.ts` — is sound. The `catchTag('GitError', ...)` fix in `resolveReleaseTarget` is a welcome bonus.\n\nTwo issues are worth flagging: the `toExecutorRuntimeConfig` test fixture now contains `registry: 'https://registry.npmjs.org'`, which `explore()` can never produce after this change (the type widening to `string | null` silently accepts it instead of forcing a fixture update). The `resolveGitRemotes` function swallows all `GitError`s via `Effect.option`, including genuine CLI failures — this is inconsistent with the fix made in the same PR to `resolveReleaseTarget`.",
+      "priority": "P2",
+      "title": "toExecutorRuntimeConfig test fixture uses `registry: 'https://registry.npmjs.org'` — a value explore() can no longer produce",
+      "file": "packages/release/src/api/explorer/explore.test.ts",
+      "line": 149,
+      "body": "The `describe('toExecutorRuntimeConfig', ...)` block constructs a static `Recon` fixture with `npm: { ..., registry: 'https://registry.npmjs.org' }`. After this PR, `explore()` always returns `registry: null` when no `NPM_CONFIG_REGISTRY` env var is set. TypeScript accepts the fixture because `string` satisfies the new `string | null` type — no compile error surfaces — but the fixture now silently tests a path that the live `explore()` function can no longer reach.\n\nThe fixture should be updated to `registry: null` (the new default), or a comment should explain it deliberately tests the explicit-registry variant. As written, it could mislead a future reader into thinking `'https://registry.npmjs.org'` is still the live default."
+    },
+    {
+      "pr_number": 173,
+      "pr_title": "fix(release): make explorer recon truthful",
+      "pr_summary": "The PR correctly wires `NpmRegistry.NpmCli` into `explore()` to replace hardcoded placeholder values with real runtime observations. The core logic — `resolveNpmCredentials` absorbing `NpmCliError` gracefully, `resolveGitRemotes` using `Effect.option` for leniency, and propagating the new `NpmCli` requirement into `forecast.ts` and `pr.ts` — is sound. The `catchTag('GitError', ...)` fix in `resolveReleaseTarget` is a welcome bonus.\n\nTwo issues are worth flagging: the `toExecutorRuntimeConfig` test fixture now contains `registry: 'https://registry.npmjs.org'`, which `explore()` can never produce after this change (the type widening to `string | null` silently accepts it instead of forcing a fixture update). The `resolveGitRemotes` function swallows all `GitError`s via `Effect.option`, including genuine CLI failures — this is inconsistent with the fix made in the same PR to `resolveReleaseTarget`.",
+      "priority": "P3",
+      "title": "`resolveGitRemotes` swallows all GitErrors via `Effect.option` — inconsistent with the `catchTag` fix in the same PR",
+      "file": "packages/release/src/api/explorer/explore.ts",
+      "line": 167,
+      "body": "```ts\nconst origin = yield* git.getRemoteUrl('origin').pipe(Effect.option)\n```\n`Effect.option` converts **any** `GitError` (CLI crash, permissions failure, not just 'no remote configured') into `Option.none()`, silently returning `{}`. This is inconsistent with the fix made in this very PR to `resolveReleaseTarget`, which changed from `Effect.catch((error: any) => ...)` to `Effect.catchTag('GitError', ...)` for precisely this reason.\n\nThe leniency is arguably intentional (remotes is informational; explore would already fail earlier if git is completely broken), but it's undocumented. A brief comment like `// Informational only — missing or unreachable origin is non-fatal` would prevent future readers from wondering whether this is intentional or an oversight."
+    },
+    {
+      "pr_number": 174,
+      "pr_title": "fix(release): support custom candidate dist-tags",
+      "pr_summary": "The PR correctly fixes the custom candidate dist-tag bug by introducing `resolveCandidateDistTag` — a helper that derives candidacy from `options.lifecycle` (set from `plan.lifecycle` in `toPayload`) rather than the literal string `'next'`. The logic chain is sound: `execute(plan, { tag: 'candidate' })` → `toPayload` sets `lifecycle: plan.lifecycle` → `resolveCandidateDistTag` returns `'candidate'` → force-push and GH release title both use the real dist-tag.\n\nThe `UpdateReleaseParams` interface change (making both fields optional) is the primary concern: it now allows a semantically empty `updateRelease(tag, {})` call that makes a real HTTP PATCH with no fields. The rest of the findings are minor efficiency/documentation items.",
+      "priority": "P2",
+      "title": "UpdateReleaseParams with all-optional fields allows no-op API calls",
+      "file": "packages/github/src/service.ts",
+      "line": 44,
+      "body": "Both `title` and `body` are now optional with no runtime guard requiring at least one. A caller can invoke `gh.updateRelease(tag, {})` which produces a real HTTP PATCH with an empty body — a wasted API call (and in memory.ts, it spreads nothing over the existing release). The `live.ts` implementation already uses conditional spreads so the HTTP body may be `{}`. This isn't exercised today, but it's a latent footgun in the interface contract.\n\nConsider a type-level constraint such as `AtLeastOne<UpdateReleaseParams>` or a runtime guard at the top of `updateRelease` that early-returns when neither field is provided."
+    },
+    {
+      "pr_number": 174,
+      "pr_title": "fix(release): support custom candidate dist-tags",
+      "pr_summary": "The PR correctly fixes the custom candidate dist-tag bug by introducing `resolveCandidateDistTag` — a helper that derives candidacy from `options.lifecycle` (set from `plan.lifecycle` in `toPayload`) rather than the literal string `'next'`. The logic chain is sound: `execute(plan, { tag: 'candidate' })` → `toPayload` sets `lifecycle: plan.lifecycle` → `resolveCandidateDistTag` returns `'candidate'` → force-push and GH release title both use the real dist-tag.\n\nThe `UpdateReleaseParams` interface change (making both fields optional) is the primary concern: it now allows a semantically empty `updateRelease(tag, {})` call that makes a real HTTP PATCH with no fields. The rest of the findings are minor efficiency/documentation items.",
+      "priority": "P3",
+      "title": "resolveCandidateDistTag recomputed inside every .map() iteration",
+      "file": "packages/release/src/api/executor/workflow.ts",
+      "line": 127,
+      "body": "The helper reads only from `payload.options`, which is constant for all releases in the batch. It is called once inside `pushTags`'s `.map()` and once inside `createGHReleases`'s `.map()`, recomputing the same value for each release. The result could be hoisted above each loop with a single `const candidateDistTag = resolveCandidateDistTag(payload.options)`. Trivially inefficient, but also slightly obscures that the value is per-batch, not per-release."
+    },
+    {
+      "pr_number": 174,
+      "pr_title": "fix(release): support custom candidate dist-tags",
+      "pr_summary": "The PR correctly fixes the custom candidate dist-tag bug by introducing `resolveCandidateDistTag` — a helper that derives candidacy from `options.lifecycle` (set from `plan.lifecycle` in `toPayload`) rather than the literal string `'next'`. The logic chain is sound: `execute(plan, { tag: 'candidate' })` → `toPayload` sets `lifecycle: plan.lifecycle` → `resolveCandidateDistTag` returns `'candidate'` → force-push and GH release title both use the real dist-tag.\n\nThe `UpdateReleaseParams` interface change (making both fields optional) is the primary concern: it now allows a semantically empty `updateRelease(tag, {})` call that makes a real HTTP PATCH with no fields. The rest of the findings are minor efficiency/documentation items.",
+      "priority": "P3",
+      "title": "Silent removal of tag.endsWith('@next') fallback with no explanatory comment",
+      "file": "packages/release/src/api/executor/workflow.ts",
+      "line": 282,
+      "body": "The old code had `const isCandidate = payload.options.tag === 'next' || tag.endsWith('@next')`. This PR removes the `tag.endsWith('@next')` branch entirely with no inline comment. While that branch was almost certainly dead code (a tag like `@kitz/core@1.0.0-next.1` does not end with `@next`, and neither does a normal stable tag), the rationale doc only mentions the legacy `next` case — it doesn't explicitly acknowledge the removal of this second branch. A one-line comment noting the branch was inert would prevent future readers from wondering whether it was accidentally dropped."
+    },
+    {
+      "pr_number": 175,
+      "pr_title": "fix(release): remove dead skipNpm config",
+      "pr_summary": "The core fix is clean and correct: `skipNpm` is removed from both `Config` and `ResolvedConfig` schema classes and the `load()` function, the README is updated, and the regression test is well-constructed (checking both schema `fields` and the README text). However, the PR bundles two unrelated additions — a batch of static utility methods and an unexplained `ordered = false as const` marker — that are not present on any other `Schema.Class` subclass in the codebase and are not mentioned in the PR description.",
+      "priority": "P1",
+      "title": "`static ordered = false as const` is unexplained and has no consumer",
+      "file": "packages/release/src/api/config.ts",
+      "line": 54,
+      "body": "Both `Config` and `ResolvedConfig` gain `static ordered = false as const`. A codebase-wide search finds zero reads of `.ordered` on any schema class — the only occurrence of `ordered` as a name is a local variable in `execute.ts`. `ordered` is not a standard Effect `Schema.Class` property, nor is it an established convention in this repo (no other Schema.Class subclass has it). Adding an unexplained boolean marker to production schema classes is a smell: it either implies a planned catalog/ordering feature that was never wired up, or it's dead code that leaked from a draft. Should be removed or explained with a comment and a consumer."
+    },
+    {
+      "pr_number": 175,
+      "pr_title": "fix(release): remove dead skipNpm config",
+      "pr_summary": "The core fix is clean and correct: `skipNpm` is removed from both `Config` and `ResolvedConfig` schema classes and the `load()` function, the README is updated, and the regression test is well-constructed (checking both schema `fields` and the README text). However, the PR bundles two unrelated additions — a batch of static utility methods and an unexplained `ordered = false as const` marker — that are not present on any other `Schema.Class` subclass in the codebase and are not mentioned in the PR description.",
+      "priority": "P2",
+      "title": "Out-of-scope static delegators applied inconsistently",
+      "file": "packages/release/src/api/config.ts",
+      "line": 48,
+      "body": "Both `Config` and `ResolvedConfig` gain six new static delegators (`is`, `decode`, `decodeSync`, `encode`, `encodeSync`, `equivalence`) that are unrelated to the `skipNpm` removal. While `static is` is an established pattern throughout the repo, the `decode/encode/equivalence` delegators are not — no other `Schema.Class` subclass in the release package (`Publishing`, `Operator`, `ResolvedOperator`, `LintConfig.Config`, etc.) has them. The PR silently introduces a new convention on only two classes, creating inconsistency. These additions should either be a separate PR that applies the pattern uniformly across all release schema classes, or they should be omitted here."
+    },
+    {
+      "pr_number": 176,
+      "pr_title": "fix(release): remove preview diff layout assumptions",
+      "pr_summary": "This is a clean, well-motivated refactor. The core fix — replacing the hardcoded `packages/<scope>` path matching with real package-directory resolution — is correct and properly tested. The extraction of diff loading into `pr-preview-diff.ts` is well-structured. Three minor issues are worth flagging.",
+      "priority": "P2",
+      "title": "Schema.encodeUnknownEffect / encodeUnknownSync are unverified in Effect beta.31",
+      "file": "packages/release/src/api/config.ts",
+      "line": 54,
+      "body": "The PR replaces `Schema.encode` / `Schema.encodeSync` with `Schema.encodeUnknownEffect` / `Schema.encodeUnknownSync`. The `decode`-side renames (`decodeUnknownEffect`, `decodeUnknownSync`) are confirmed throughout the codebase. However, `encodeUnknownEffect` and `encodeUnknownSync` appear in no other file in the repo — they cannot be cross-validated from local usage. The official Effect v4 docs (effect.website) only list `encode` (returns Effect) and `encodeSync` as the encode variants.\n\nIf beta.31 does not export `encodeUnknownEffect` / `encodeUnknownSync`, these static methods will be `undefined` at runtime (or TypeScript will error at build time). The `bun run release:verify` step in the PR description should catch this, but worth confirming the CI gate actually ran successfully before assuming these API names are valid."
+    },
+    {
+      "pr_number": 176,
+      "pr_title": "fix(release): remove preview diff layout assumptions",
+      "pr_summary": "This is a clean, well-motivated refactor. The core fix — replacing the hardcoded `packages/<scope>` path matching with real package-directory resolution — is correct and properly tested. The extraction of diff loading into `pr-preview-diff.ts` is well-structured. Three minor issues are worth flagging.",
+      "priority": "P3",
+      "title": "Unused Diff type import in pr-preview-diff.ts",
+      "file": "packages/release/src/cli/pr-preview-diff.ts",
+      "line": 8,
+      "body": "Line 8 imports both `ChangedFile` and `Diff` from `'../api/lint/services/diff.js'`, but `Diff` is never referenced in the file — only `ChangedFile` is used. This is a dead import that will trigger any unused-import lint rule.\n\n```ts\n// Before\nimport type { ChangedFile, Diff } from '../api/lint/services/diff.js'\n// After\nimport type { ChangedFile } from '../api/lint/services/diff.js'\n```"
+    },
+    {
+      "pr_number": 176,
+      "pr_title": "fix(release): remove preview diff layout assumptions",
+      "pr_summary": "This is a clean, well-motivated refactor. The core fix — replacing the hardcoded `packages/<scope>` path matching with real package-directory resolution — is correct and properly tested. The extraction of diff loading into `pr-preview-diff.ts` is well-structured. Three minor issues are worth flagging.",
+      "priority": "P3",
+      "title": "resolveDiffRemote called twice in the doctor command",
+      "file": "packages/release/src/cli/commands/doctor.ts",
+      "line": 179,
+      "body": "`resolveDiffRemote(config)` is computed explicitly and stored in `diffRemote` (used for the `env.git-remote` rule option), but then `loadConfiguredPullRequestDiff({ config, ... })` internally calls `resolveDiffRemote(config)` a second time from the same config.\n\nThis is not a correctness bug — both reads produce the same value. But the doctor site could instead call `loadPullRequestDiff({ ..., remote: diffRemote })` directly to make the data flow explicit and avoid the redundant computation:\n\n```ts\nconst diffRemote = resolveDiffRemote(config)\nconst diff = pullRequest\n  ? yield* loadPullRequestDiff({ pullRequest, packages, required: false, remote: diffRemote })\n  : null\n```"
+    },
+    {
+      "pr_number": 177,
+      "pr_title": "refactor(release): unify lifecycle planner core",
+      "pr_summary": "Solid DRY refactoring that extracts a generic `planLifecycle` core to eliminate duplicated orchestration across the three lifecycle planners. The lifecycle-typed `PlanOf<$lifecycle>` / `PlannedItem<$lifecycle>` generics and the constructor-time + I/O-boundary consistency validation are well-designed. Two issues worth fixing were identified: a double call of `assertLifecycleConsistency` in the exported `make` function (harmless but confusing), and an observable asymmetry between `Plan.decode` (schema-only, no consistency check) and `Plan.is` (schema + consistency), which means a successfully decoded Plan can fail its own type guard.",
+      "priority": "P2",
+      "title": "Plan.decode and Plan.is enforce different invariants — a decoded Plan can fail Plan.is",
+      "file": "packages/release/src/api/planner/models/plan.ts",
+      "line": 83,
+      "body": "The new `Plan.decode = S.decodeUnknownEffect(Plan)` runs only schema validation. The new `Plan.is = (v) => S.is(Plan)(v) && hasConsistentLifecycle(v)` runs schema validation **plus** lifecycle consistency. This means a `Plan` produced via `await Plan.decode(rawJson)` (e.g., for testing or direct usage outside the resource) could satisfy the Schema shape but fail `Plan.is`, even though the caller holds a value of type `Plan`.\n\nThe `resource.ts` I/O layer correctly calls `validatePlan` (which runs `assertLifecycleConsistency`) after decoding, so the resource path is safe. But direct callers of `Plan.decode` — including any future tests or integrations that bypass the resource — will silently hold inconsistent `Plan` values that fail `Plan.is`.\n\n**Fix**: Either run `assertLifecycleConsistency` inside `Plan.decode` (make decode enforce the full invariant), or document clearly on `Plan.is` that it checks consistency beyond schema membership, and on `Plan.decode` that the returned value may be inconsistent. A third option: expose a `Plan.validate(plan)` helper that callers can chain after `Plan.decode`."
+    },
+    {
+      "pr_number": 177,
+      "pr_title": "refactor(release): unify lifecycle planner core",
+      "pr_summary": "Solid DRY refactoring that extracts a generic `planLifecycle` core to eliminate duplicated orchestration across the three lifecycle planners. The lifecycle-typed `PlanOf<$lifecycle>` / `PlannedItem<$lifecycle>` generics and the constructor-time + I/O-boundary consistency validation are well-designed. Two issues worth fixing were identified: a double call of `assertLifecycleConsistency` in the exported `make` function (harmless but confusing), and an observable asymmetry between `Plan.decode` (schema-only, no consistency check) and `Plan.is` (schema + consistency), which means a successfully decoded Plan can fail its own type guard.",
+      "priority": "P2",
+      "title": "assertLifecycleConsistency called twice in the exported make() function",
+      "file": "packages/release/src/api/planner/models/plan.ts",
+      "line": 113,
+      "body": "The exported `make` function wraps its result in `assertLifecycleConsistency(...)`, but `Plan.make` (called inside) **already** calls `assertLifecycleConsistency(this.makeUnsafe(input))`. So for every plan built via `planLifecycle` → `make(...)`, the consistency check fires twice.\n\n```typescript\n// Outer assertLifecycleConsistency is redundant — Plan.make already calls it\nexport const make = (...) =>\n  assertLifecycleConsistency(   // ← redundant\n    Plan.make({ ... }),          // ← Plan.make already asserts\n  ) as PlanOf<$lifecycle>\n```\n\nWhile harmless (idempotent), it creates a misleading impression that the outer call is necessary for safety, and it will confuse future maintainers tracing the invariant enforcement path.\n\n**Fix**: Remove the outer `assertLifecycleConsistency` call and rely on the cast:\n```typescript\nexport const make = <$lifecycle extends Lifecycle>(\n  lifecycle: $lifecycle,\n  releases: PlannedItem<$lifecycle>[],\n  cascades: PlannedItem<$lifecycle>[],\n): PlanOf<$lifecycle> =>\n  Plan.make({\n    lifecycle,\n    timestamp: new Date().toISOString(),\n    releases: [...releases],\n    cascades: [...cascades],\n  }) as PlanOf<$lifecycle>\n```\nThe invariant is enforced once inside `Plan.make`, and the `as` cast is justified because `PlannedItem<$lifecycle>[]` inputs guarantee lifecycle consistency before calling `Plan.make`."
+    },
+    {
+      "pr_number": 177,
+      "pr_title": "refactor(release): unify lifecycle planner core",
+      "pr_summary": "Solid DRY refactoring that extracts a generic `planLifecycle` core to eliminate duplicated orchestration across the three lifecycle planners. The lifecycle-typed `PlanOf<$lifecycle>` / `PlannedItem<$lifecycle>` generics and the constructor-time + I/O-boundary consistency validation are well-designed. Two issues worth fixing were identified: a double call of `assertLifecycleConsistency` in the exported `make` function (harmless but confusing), and an observable asymmetry between `Plan.decode` (schema-only, no consistency check) and `Plan.is` (schema + consistency), which means a successfully decoded Plan can fail its own type guard.",
+      "priority": "P3",
+      "title": "PlanOf type's arrays are mutable while Plan's arrays are readonly — minor inconsistency",
+      "file": "packages/release/src/api/planner/models/plan.ts",
+      "line": 17,
+      "body": "The `PlanOf<$lifecycle>` type declares:\n```typescript\nexport type PlanOf<$lifecycle extends Lifecycle> = Plan & {\n  readonly lifecycle: $lifecycle\n  readonly releases: PlannedItem<$lifecycle>[]     // mutable\n  readonly cascades: PlannedItem<$lifecycle>[]     // mutable\n}\n```\nBut `Plan` (the base Schema class) has `releases: S.Array(ItemSchema)` which Effect Schema represents as `readonly Item[]`. Making the narrowed arrays mutable in `PlanOf` is an inconsistency — assignments like `plan.releases.push(item)` would be allowed at the narrowed type level but not at the base type level, and the runtime object's array is likely immutable (coming from Effect Schema's `S.Array`).\n\n**Fix**: Use `readonly PlannedItem<$lifecycle>[]` to match the Schema-inferred type:\n```typescript\nexport type PlanOf<$lifecycle extends Lifecycle> = Plan & {\n  readonly lifecycle: $lifecycle\n  readonly releases: readonly PlannedItem<$lifecycle>[]\n  readonly cascades: readonly PlannedItem<$lifecycle>[]\n}\n```"
+    },
+    {
+      "pr_number": 178,
+      "pr_title": "refactor(release): centralize package location resolution",
+      "pr_summary": "Clean, well-structured refactor that correctly centralizes repo-relative path derivation in a single abstraction. Tests cover custom layouts, standard layouts, out-of-root rejection, and `containsRepoPath` matching. Two findings: one dead-code guard in `fromAbsolutePath` and one undocumented behavioral change from silent-skip to Effect-defect for out-of-root packages.",
+      "priority": "P3",
+      "title": "Dead code: second TypeError guard in `fromAbsolutePath` is unreachable",
+      "file": "packages/release/src/api/analyzer/package-location.ts",
+      "line": 40,
+      "body": "The guard `if (relativePath.length === 0)` with the message `\"cannot be the repo root itself\"` is unreachable. `normalizeAbsoluteDir` strips trailing slashes from both `root` and `path`, so when `path === root`, both normalize to the same string (e.g. `/repo`). Then `normalizedPath.startsWith(rootPrefix)` = `'/repo'.startsWith('/repo/')` → `false`, so the first `TypeError` fires instead with the misleading message `\"is not inside repo root\"`. The second guard never executes. Either the normalization should preserve a trailing slash on `rootPrefix` differently, or the error message on the first guard should cover the root-equality case explicitly."
+    },
+    {
+      "pr_number": 178,
+      "pr_title": "refactor(release): centralize package location resolution",
+      "pr_summary": "Clean, well-structured refactor that correctly centralizes repo-relative path derivation in a single abstraction. Tests cover custom layouts, standard layouts, out-of-root rejection, and `containsRepoPath` matching. Two findings: one dead-code guard in `fromAbsolutePath` and one undocumented behavioral change from silent-skip to Effect-defect for out-of-root packages.",
+      "priority": "P2",
+      "title": "Silent skip → Effect defect: behavioral change in `toAffectedPackages` is undocumented",
+      "file": "packages/release/src/cli/pr-preview-diff.ts",
+      "line": 71,
+      "body": "The old `toAffectedPackages` silently skipped packages whose absolute path wasn't inside the repo root (via a `null` filter). The new code calls `PackageLocation.fromAbsolutePath(root, pkg.path)` inside `.map()`, which throws a synchronous `TypeError` for any out-of-root package. Since `toAffectedPackages` is called as a plain function inside `Effect.gen` (not yielded), Effect's generator runner converts the uncaught throw into a defect (`Effect.die`), failing the entire `loadPullRequestDiff` effect rather than skipping the problematic package.\n\nThis is arguably the correct behavior (out-of-root packages are a programmer error), but it's an observable breaking change from the prior graceful degradation. A comment on `fromAbsolutePath` or a short rationale note clarifying the fail-fast intent would make the contract explicit."
+    },
+    {
+      "pr_number": 179,
+      "pr_title": "refactor(release): centralize publish channel semantics",
+      "pr_summary": "The refactoring is sound overall: `resolvePublishSemantics` correctly consolidates lifecycle-specific dist-tag, prerelease, force-push, and GitHub title logic that was previously duplicated across `apply.ts`, `workflow.ts`, and `pr-preview.ts`. The `formatGithubReleaseTitle` helper is a clean extraction. Legacy payload support is preserved via `legacyCandidateDistTag` and the `??` fallback chain in `workflow.ts`. Tests cover the new candidate and ephemeral paths. Two real issues remain: unrelated static members were added to `Publishing` (scope creep with an unexplained `ordered = false as const`), and programmatic callers of `execute()` with an `official` lifecycle but no explicit `tag` silently get `'latest'` instead of the configured `npmTag`.",
+      "priority": "P2",
+      "title": "Unrelated static members added to `Publishing` Schema.Class, including unexplained `ordered = false`",
+      "file": "packages/release/src/api/publishing.ts",
+      "line": 54,
+      "body": "The diff adds `static is`, `static decode`, `static decodeSync`, `static encode`, `static encodeSync`, `static equivalence`, and `static ordered = false as const` to `Publishing`. None of these are related to the PR's stated scope of centralizing publish semantics. The `static ordered = false as const` is particularly concerning — it appears nowhere else in the release package, has no explanation in the PR description or rationale doc, and could shadow a property name used by Effect's Schema.Class machinery or a future convention in the codebase. If this was added to satisfy a type interface, that interface should be cited. If not, these should be removed."
+    },
+    {
+      "pr_number": 179,
+      "pr_title": "refactor(release): centralize publish channel semantics",
+      "pr_summary": "The refactoring is sound overall: `resolvePublishSemantics` correctly consolidates lifecycle-specific dist-tag, prerelease, force-push, and GitHub title logic that was previously duplicated across `apply.ts`, `workflow.ts`, and `pr-preview.ts`. The `formatGithubReleaseTitle` helper is a clean extraction. Legacy payload support is preserved via `legacyCandidateDistTag` and the `??` fallback chain in `workflow.ts`. Tests cover the new candidate and ephemeral paths. Two real issues remain: unrelated static members were added to `Publishing` (scope creep with an unexplained `ordered = false as const`), and programmatic callers of `execute()` with an `official` lifecycle but no explicit `tag` silently get `'latest'` instead of the configured `npmTag`.",
+      "priority": "P2",
+      "title": "`resolvePublishSemantics` in `workflow.ts` silently ignores `npmTag`/`candidateTag` for programmatic callers",
+      "file": "packages/release/src/api/executor/workflow.ts",
+      "line": 156,
+      "body": "The `ReleasePayload.options` schema only carries `tag` (not `npmTag` or `candidateTag`), so when `resolvePublishSemantics` is called in the graph function it can only see `lifecycle`, `publishing`, and `tag`. This is safe when the caller is `apply.ts`, which pre-resolves the distTag (including config-level `npmTag`/`candidateTag`) and stores the resolved value as `tag` in the payload. However, any direct programmatic caller of `execute()` passing `lifecycle: 'official'` without an explicit `tag` will silently receive `distTag: 'latest'` regardless of what their config specifies as `npmTag`. The function signature makes no mention of this constraint. At minimum, a comment should document that `tag` in the payload is expected to be the already-resolved distTag; ideally the public `execute` API surface should accept `npmTag`/`candidateTag` or the re-resolution in the workflow should be removed."
+    },
+    {
+      "pr_number": 179,
+      "pr_title": "refactor(release): centralize publish channel semantics",
+      "pr_summary": "The refactoring is sound overall: `resolvePublishSemantics` correctly consolidates lifecycle-specific dist-tag, prerelease, force-push, and GitHub title logic that was previously duplicated across `apply.ts`, `workflow.ts`, and `pr-preview.ts`. The `formatGithubReleaseTitle` helper is a clean extraction. Legacy payload support is preserved via `legacyCandidateDistTag` and the `??` fallback chain in `workflow.ts`. Tests cover the new candidate and ephemeral paths. Two real issues remain: unrelated static members were added to `Publishing` (scope creep with an unexplained `ordered = false as const`), and programmatic callers of `execute()` with an `official` lifecycle but no explicit `tag` silently get `'latest'` instead of the configured `npmTag`.",
+      "priority": "P3",
+      "title": "Non-null assertion on `legacyCandidateDistTag!` inside an OR condition obscures intent",
+      "file": "packages/release/src/api/executor/workflow.ts",
+      "line": 354,
+      "body": "Inside `if (publishSemantics?.githubReleaseStyle === 'dist-tagged' || legacyCandidateDistTag !== undefined)`, TypeScript cannot narrow `legacyCandidateDistTag` to `string` because the OR means either branch could have satisfied the condition. The resulting `publishSemantics?.distTag ?? legacyCandidateDistTag!` is pragmatically correct but communicates nothing about the expected invariant. Replacing the assertion with `?? legacyCandidateDistTag ?? 'next'` (matching the constant that was always intended here) would both satisfy the type checker and document the fallback value explicitly."
+    },
+    {
+      "pr_number": 180,
+      "pr_title": "refactor(release): share command lint rule helpers",
+      "pr_summary": "Clean, well-structured refactoring that correctly eliminates two near-identical `enableRule` helpers and unifies them behind a typed `CommandLintRuleSpec` + `createCommandLintConfig` pair. The `preserveExistingOverrides` flag faithfully preserves the legacy `pr.projected-squash-commit-sync` doctor semantics, and the `resolveRuleList` / `skipRules: []` interaction was verified to be behaviorally equivalent to the old `pr-preview.ts` code. No P0/P1 issues found. Two P3 type-safety gaps are worth tracking as tech debt.",
+      "priority": "P3",
+      "title": "CommandLintRuleOptions is a manually-maintained type map with no structural link to actual rule schemas",
+      "file": "packages/release/src/cli/lint-rule-config.ts",
+      "line": 1,
+      "body": "The `CommandLintRuleOptions` interface hardcodes option shapes for each rule ID (e.g., `surface?: 'execution' | 'preview'`, `remote?: string`). There is no compile-time coupling between these annotations and the actual Schema or option types defined inside each rule file. If a rule's options change — say `surface` gains a new variant, or `projectedHeader` becomes optional — the interface must be updated by hand and there is no compiler error to remind authors. Consider deriving this map from the rule implementations rather than maintaining it separately."
+    },
+    {
+      "pr_number": 180,
+      "pr_title": "refactor(release): share command lint rule helpers",
+      "pr_summary": "Clean, well-structured refactoring that correctly eliminates two near-identical `enableRule` helpers and unifies them behind a typed `CommandLintRuleSpec` + `createCommandLintConfig` pair. The `preserveExistingOverrides` flag faithfully preserves the legacy `pr.projected-squash-commit-sync` doctor semantics, and the `resolveRuleList` / `skipRules: []` interaction was verified to be behaviorally equivalent to the old `pr-preview.ts` code. No P0/P1 issues found. Two P3 type-safety gaps are worth tracking as tech debt.",
+      "priority": "P3",
+      "title": "options is optional in CommandLintRuleSpec even for rules with required option fields",
+      "file": "packages/release/src/cli/lint-rule-config.ts",
+      "line": 28,
+      "body": "For `'pr.projected-squash-commit-sync'`, `CommandLintRuleOptions` declares `{ readonly projectedHeader: string }` (required). However, the `options?` field in `CommandLintRuleSpec<K>` is optional for all `K`, so `commandLintRule({ id: 'pr.projected-squash-commit-sync' })` compiles without `options`. At runtime `buildEnabledRuleConfig` would merge an empty object, leaving `projectedHeader` undefined. The rule's check then compares `actualHeader !== options.projectedHeader` — `undefined` — silently failing to flag a mismatch. Both current call sites supply `projectedHeader` correctly, so there is no live bug, but a future call site can accidentally omit it and TypeScript will not warn. A conditional required-options overload or a runtime assertion would close the gap."
+    },
+    {
+      "pr_number": 182,
+      "pr_title": "fix(release): restore publishing typecheck gate",
+      "pr_summary": "The PR correctly fixes a self-referential TypeScript inference issue inside the `Publishing` class body by replacing `Schema.decode/encode(Publishing)` with their `decodeUnknownEffect/encodeUnknownEffect` counterparts. Runtime behaviour is equivalent — the schema's validation logic runs the same way — and the new tests confirm correct decoding, encoding, and default-resolution across both sync and Effect-based paths. One semantic tradeoff is worth noting: the `encode` and `encodeSync` statics now accept `unknown` instead of a typed `Publishing` instance, weakening the compile-time contract for callers who use those helpers directly.",
+      "priority": "P2",
+      "title": "encode/encodeSync statics accept `unknown` instead of `Publishing`, weakening caller type safety",
+      "file": "packages/release/src/api/publishing.ts",
+      "line": 55,
+      "body": "```typescript\n// Before (typed input — callers get compile-time safety)\nstatic encode = Schema.encode(Publishing)       // (a: Publishing) => Effect<I>\nstatic encodeSync = Schema.encodeSync(Publishing) // (a: Publishing) => I\n\n// After (unknown input — callers lose compile-time enforcement)\nstatic encode = Schema.encodeUnknownEffect(Publishing)  // (u: unknown) => Effect<I>\nstatic encodeSync = Schema.encodeUnknownSync(Publishing) // (u: unknown) => I\n```\n\nFor the **decode** statics, `unknown` input is idiomatic and correct (you're accepting external data). For the **encode** statics, a caller who already holds a valid `Publishing` instance loses the compile-time guarantee that they're passing the right type — `Publishing.encodeSync(completelywrongvalue)` now compiles without error and only fails at runtime.\n\nThis is the correct pragmatic fix for the self-reference problem, and runtime validation still catches bad inputs. But if the goal is a strict ergonomic API, a follow-up could reintroduce typed encode helpers under a different name (e.g. `encodeSyncTyped`) now that the class is defined, or leverage a post-class declaration like:\n```typescript\n// After class body — no more self-reference problem\nPublishing.encode = Schema.encode(Publishing)\n```\nThis is low-priority given the pre-1.0 stance, but worth tracking."
+    },
+    {
+      "pr_number": 185,
+      "pr_title": "fix(release): round-trip commit dates in plan storage",
+      "pr_summary": "The core fix is sound: replacing `Schema.Date` (which accepts any string) with a custom `CommitDate` schema that enforces canonical ISO 8601 UTC format (`YYYY-MM-DDTHH:mm:ss.sssZ`) — matching the `Date.prototype.toISOString()` output — solves the round-trip failure cleanly and follows established codebase patterns (`SchemaGetter.transformOrFail`, `SchemaIssue.InvalidValue`). The regression tests are well-targeted.\n\nThree issues worth noting: the `test` script in `git/package.json` uses a different invocation style from all other packages; several static methods were added to `Commit` that are unused across the codebase and weren't motivated by the bug fix; and a pre-existing Sha error-message assertion was silently weakened.",
+      "priority": "P2",
+      "title": "test script format diverges from workspace convention",
+      "file": "packages/git/package.json",
+      "line": 28,
+      "body": "Every other package with a `test` script uses the pattern `vitest run --root ../.. packages/<pkg>/src` (release, github, yaml, oxlint-rules). This PR introduces a different form: `cd ../.. && vitest run --dir packages/git/src`. The `cd` + `--dir` approach is shell-dependent and differs in how vitest resolves its config and root. For consistency and reliability, use the established form:\n```json\n\"test\": \"vitest run --root ../.. packages/git/src\"\n```"
+    },
+    {
+      "pr_number": 185,
+      "pr_title": "fix(release): round-trip commit dates in plan storage",
+      "pr_summary": "The core fix is sound: replacing `Schema.Date` (which accepts any string) with a custom `CommitDate` schema that enforces canonical ISO 8601 UTC format (`YYYY-MM-DDTHH:mm:ss.sssZ`) — matching the `Date.prototype.toISOString()` output — solves the round-trip failure cleanly and follows established codebase patterns (`SchemaGetter.transformOrFail`, `SchemaIssue.InvalidValue`). The regression tests are well-targeted.\n\nThree issues worth noting: the `test` script in `git/package.json` uses a different invocation style from all other packages; several static methods were added to `Commit` that are unused across the codebase and weren't motivated by the bug fix; and a pre-existing Sha error-message assertion was silently weakened.",
+      "priority": "P2",
+      "title": "`static ordered = false as const` is unexplained dead code",
+      "file": "packages/git/src/commit.ts",
+      "line": 57,
+      "body": "No other class in the codebase declares `static ordered`, and no code reads `Commit.ordered`. There is no protocol, interface, or utility in scope that consumes it. Adding undocumented, unused properties to a shared schema class violates the project's \"avoid over-engineering\" rule (CLAUDE.md: *Don't add features beyond what was asked*). If this is scaffolding for a future ordering protocol, it should land with the feature that requires it — not speculatively."
+    },
+    {
+      "pr_number": 185,
+      "pr_title": "fix(release): round-trip commit dates in plan storage",
+      "pr_summary": "The core fix is sound: replacing `Schema.Date` (which accepts any string) with a custom `CommitDate` schema that enforces canonical ISO 8601 UTC format (`YYYY-MM-DDTHH:mm:ss.sssZ`) — matching the `Date.prototype.toISOString()` output — solves the round-trip failure cleanly and follows established codebase patterns (`SchemaGetter.transformOrFail`, `SchemaIssue.InvalidValue`). The regression tests are well-targeted.\n\nThree issues worth noting: the `test` script in `git/package.json` uses a different invocation style from all other packages; several static methods were added to `Commit` that are unused across the codebase and weren't motivated by the bug fix; and a pre-existing Sha error-message assertion was silently weakened.",
+      "priority": "P2",
+      "title": "Unused static utility methods added to `Commit` (scope creep)",
+      "file": "packages/git/src/commit.ts",
+      "line": 51,
+      "body": "The PR adds `decode`, `decodeSync`, `encode`, `encodeSync`, and `equivalence` as static methods. None of these appear anywhere in the codebase, and `static is` (the one established pattern) was not included. While `static is = Schema.is(Commit)` is a widely-used convention here, the decode/encode/equivalence cluster is novel and unused. These should be added only when a consumer needs them. As-is they're speculative API surface on a shared package."
+    },
+    {
+      "pr_number": 185,
+      "pr_title": "fix(release): round-trip commit dates in plan storage",
+      "pr_summary": "The core fix is sound: replacing `Schema.Date` (which accepts any string) with a custom `CommitDate` schema that enforces canonical ISO 8601 UTC format (`YYYY-MM-DDTHH:mm:ss.sssZ`) — matching the `Date.prototype.toISOString()` output — solves the round-trip failure cleanly and follows established codebase patterns (`SchemaGetter.transformOrFail`, `SchemaIssue.InvalidValue`). The regression tests are well-targeted.\n\nThree issues worth noting: the `test` script in `git/package.json` uses a different invocation style from all other packages; several static methods were added to `Commit` that are unused across the codebase and weren't motivated by the bug fix; and a pre-existing Sha error-message assertion was silently weakened.",
+      "priority": "P3",
+      "title": "Sha error assertion silently weakened",
+      "file": "packages/git/src/_.test.ts",
+      "line": 46,
+      "body": "The test was changed from `.toThrow(/Sha/)` to `.toThrow()`. The regex asserted the error message referenced the `Sha` type, giving the test some discriminating power. The change is unrelated to the date round-trip fix and comes with no explanation. If Effect v4 changed the error message format so the old regex no longer matches, the fix should update the regex to the new format rather than dropping it entirely."
+    },
+    {
+      "pr_number": 186,
+      "pr_title": "refactor(release): share active plan store",
+      "pr_summary": "Clean refactor that centralizes the `.release/plan.json` lifecycle behind a typed store. No correctness or safety issues. The `resource.write` already auto-creates parent directories (confirmed in source), so removing the explicit `Fs.write(planDir, { recursive: true })` in `plan.ts` is safe. One minor concern: two store exports are unused pre-emptive API surface.",
+      "priority": "P2",
+      "title": "Pre-emptive exports: readActiveRequired and readActiveOrEmpty not used",
+      "file": "packages/release/src/api/planner/store.ts",
+      "line": 31,
+      "body": "Both `readActiveRequired` and `readActiveOrEmpty` are exported but no command or test in this PR (or elsewhere in `packages/release/src`) actually calls them. Per CONTRIBUTING.md, over-engineering should be avoided — exports should be added when needed, not speculatively. These can be added when a consumer is ready."
+    },
+    {
+      "pr_number": 187,
+      "pr_title": "refactor(release): reject dependency cycles explicitly",
+      "pr_summary": "The PR is logically correct and well-structured. It converts `orderReleaseEntries` from a silent cycle-breaking heuristic to an explicit `ExecutorDependencyCycleError`, correctly propagates the error through `toPayload` and `executeObservable`, updates the `ObservableExecutionError` union type, and adds thorough test coverage. The cycle detection algorithm (Kahn's + DFS cycle-member filter) correctly isolates only actual cycle participants (e.g. `@kitz/a`, `@kitz/b`) from downstream-blocked bystanders (e.g. `@kitz/c`). One dead-code line remains from the refactor.",
+      "priority": "P3",
+      "title": "Dead code: `if (next === undefined) break` is unreachable after refactor",
+      "file": "packages/release/src/api/executor/execute.ts",
+      "line": 193,
+      "body": "After the `if (ready.length === 0)` block returns `Effect.fail(...)` early, execution can only continue when `ready.length > 0`, guaranteeing `ready[0]` is defined. The subsequent `if (next === undefined) break` guard can never trigger and is now dead code. It was load-bearing in the old implementation where `next` was `ready[0] ?? fallback`, but the fallback path was removed. This doesn't affect correctness but is a minor readability issue."
+    },
+    {
+      "pr_number": 188,
+      "pr_title": "refactor(release): share PR context resolution",
+      "pr_summary": "This refactor eliminates duplicate env/git resolution across `explore`, `resolvePullRequest`, and `resolvePrNumber` by introducing a shared `ResolvedGitHubContext` / `ResolvedPullRequestContext` data model and composing all downstream effects from a single resolved context. The motivation is sound, the layering is clean, and the Effect composition patterns are correct. Three issues worth noting: one test-coverage gap for a new exported helper, one silent error-message degradation in `pr-preview`, and a public API surface that is larger than what consumers strictly need.",
+      "priority": "P2",
+      "title": "Branch-matching path of `resolvePullRequestFromContext` has no test coverage",
+      "file": "packages/release/src/api/explorer/explore-helpers.test.ts",
+      "line": 208,
+      "body": "The new `resolvePullRequestFromContext` test only exercises the `explicitPrNumber !== null` branch (explicit PR number). The other branch — falling back to `selectConnectedPullRequest(context.branch, pullRequests)` when `explicitPrNumber` is `null` — has no focused coverage. Because this is a newly-extracted public helper, the happy path of branch matching should also have a test case, particularly since `selectConnectedPullRequest` already has its own tests and this exercises the routing logic between the two paths."
+    },
+    {
+      "pr_number": 188,
+      "pr_title": "refactor(release): share PR context resolution",
+      "pr_summary": "This refactor eliminates duplicate env/git resolution across `explore`, `resolvePullRequest`, and `resolvePrNumber` by introducing a shared `ResolvedGitHubContext` / `ResolvedPullRequestContext` data model and composing all downstream effects from a single resolved context. The motivation is sound, the layering is clean, and the Effect composition patterns are correct. Three issues worth noting: one test-coverage gap for a new exported helper, one silent error-message degradation in `pr-preview`, and a public API surface that is larger than what consumers strictly need.",
+      "priority": "P2",
+      "title": "`pr-preview.ts` drops a targeted error message when GitHub target cannot be resolved",
+      "file": "packages/release/src/cli/pr-preview.ts",
+      "line": 312,
+      "body": "Before this PR, `pr-preview` had an explicit guard after `explore()`:\n```typescript\nif (!runtime.github.target) {\n  return yield* Effect.fail(\n    new Api.Explorer.ExplorerError({\n      context: { detail: 'Could not resolve the GitHub repository target for the connected pull request.' },\n    }),\n  )\n}\n```\nThat guard is removed. The safety is preserved because `resolveGitHubContext()` calls `resolveReleaseTarget()` which fails as an Effect when it can't determine the target — so the flow still fails. However, the error the user sees is now whatever `resolveReleaseTarget` produces (a generic resolution error) rather than the context-aware message scoped to the PR preview command. The PR preview error surface should ideally remain as specific as possible."
+    },
+    {
+      "pr_number": 188,
+      "pr_title": "refactor(release): share PR context resolution",
+      "pr_summary": "This refactor eliminates duplicate env/git resolution across `explore`, `resolvePullRequest`, and `resolvePrNumber` by introducing a shared `ResolvedGitHubContext` / `ResolvedPullRequestContext` data model and composing all downstream effects from a single resolved context. The motivation is sound, the layering is clean, and the Effect composition patterns are correct. Three issues worth noting: one test-coverage gap for a new exported helper, one silent error-message degradation in `pr-preview`, and a public API surface that is larger than what consumers strictly need.",
+      "priority": "P3",
+      "title": "`exploreFromContext` is exported publicly but is primarily an internal composition helper",
+      "file": "packages/release/src/api/explorer/__.ts",
+      "line": null,
+      "body": "Four new symbols are added to the public barrel (`exploreFromContext`, `resolveGitHubContext`, `resolvePullRequestContext`, `resolvePullRequestFromContext`) plus two new types. `exploreFromContext` in particular is a split of the existing `explore()` for internal composition — it requires callers to already hold a `ResolvedGitHubContext` (a type that is itself now public), which creates an implicit dependency on call-site discipline that the original `explore()` did not impose. If external consumers call `exploreFromContext` with a stale or synthetic context, they can get a `Recon` snapshot where `branch`, `target`, and `token` disagree with what the git/env services would have returned. Consider whether `exploreFromContext` should stay internal (`liveGithubLayerForContext` correctly stayed private as a model for this). The `resolve*` helpers are more defensible as public API since they are the core reusable units."
+    },
+    {
+      "pr_number": 189,
+      "pr_title": "release: add status command for durable workflow state",
+      "pr_summary": "The PR adds a `release status` command that polls the durable workflow runtime and renders execution state. The overall design is solid — it derives the same workflow identity as `apply`, covers the four relevant states (not-started, suspended, succeeded, failed), and has good test coverage for three of them. One reference to a non-existent type in the `status` function signature is a compile error. The CLI command also unconditionally exits 0 regardless of workflow state, which limits scripting utility. A minor test coverage gap exists for the `'failed'` state under real workflow conditions.",
+      "priority": "P1",
+      "title": "`ExecutorDependencyCycleError` is referenced but does not exist",
+      "file": "packages/release/src/api/executor/execute.ts",
+      "line": 445,
+      "body": "The `status` function declares `ExecutorDependencyCycleError` as its error type parameter, but this type is never defined or imported anywhere in the codebase. `grep -r ExecutorDependencyCycleError packages/release` returns no results. Since `toPayload` has error channel `never`, `ReleaseWorkflow.executionId` has error channel `never`, and `ReleaseWorkflow.poll` has error channel `never`, the correct type is `never`. This is a TypeScript compilation error.\n\n```typescript\n// Current (broken)\n): Effect.Effect<\n  ExecutionStatus,\n  ExecutorDependencyCycleError,          // ← doesn't exist\n  FileSystem.FileSystem | WorkflowEngine.WorkflowEngine\n>\n\n// Correct\n): Effect.Effect<\n  ExecutionStatus,\n  never,\n  FileSystem.FileSystem | WorkflowEngine.WorkflowEngine\n>\n```"
+    },
+    {
+      "pr_number": 189,
+      "pr_title": "release: add status command for durable workflow state",
+      "pr_summary": "The PR adds a `release status` command that polls the durable workflow runtime and renders execution state. The overall design is solid — it derives the same workflow identity as `apply`, covers the four relevant states (not-started, suspended, succeeded, failed), and has good test coverage for three of them. One reference to a non-existent type in the `status` function signature is a compile error. The CLI command also unconditionally exits 0 regardless of workflow state, which limits scripting utility. A minor test coverage gap exists for the `'failed'` state under real workflow conditions.",
+      "priority": "P2",
+      "title": "CLI status command always exits 0, even for failed or suspended workflows",
+      "file": "packages/release/src/cli/commands/status.ts",
+      "line": 60,
+      "body": "The `status` command calls `Console.log(...)` and returns normally for every execution state, including `'failed'` and `'suspended'`. This means `echo $?` is always `0`, making the command unusable in scripts or CI checks that gate on release health.\n\nCompare the `apply` command, which calls `env.exit(1)` on error paths. At minimum, `'failed'` should exit non-zero. `'suspended'` is arguable — it's a recoverable state — but many operators would expect a non-zero exit there too.\n\n```typescript\nif (workflowStatus.state === 'failed' || workflowStatus.state === 'suspended') {\n  yield* Console.log(...)\n  return env.exit(1)\n}\nyield* Console.log(...)\n```"
+    },
+    {
+      "pr_number": 189,
+      "pr_title": "release: add status command for durable workflow state",
+      "pr_summary": "The PR adds a `release status` command that polls the durable workflow runtime and renders execution state. The overall design is solid — it derives the same workflow identity as `apply`, covers the four relevant states (not-started, suspended, succeeded, failed), and has good test coverage for three of them. One reference to a non-existent type in the `status` function signature is a compile error. The CLI command also unconditionally exits 0 regardless of workflow state, which limits scripting utility. A minor test coverage gap exists for the `'failed'` state under real workflow conditions.",
+      "priority": "P3",
+      "title": "`'failed'` execution state is not covered by a live workflow test",
+      "file": "packages/release/src/api/executor/status.test.ts",
+      "line": 53,
+      "body": "The `'failed'` state (a `Complete` exit with a failure cause) is only exercised via a direct `formatExecutionStatus` call with hand-crafted data. No live test actually drives the workflow into a `_tag === 'Complete'` failed exit.\n\nThis is also a subtle semantic gap: because `make()` annotates the workflow with `SuspendOnFailure: true`, typed `ExecutorError`s become suspensions rather than failures. A `'Complete'`+failed result would only occur from an unhandled defect — a case the `'failed'` branch in `summarizeWorkflowStatus` is actually designed to catch. The test covers the formatter but not the real trigger path."
+    },
+    {
+      "pr_number": 189,
+      "pr_title": "release: add status command for durable workflow state",
+      "pr_summary": "The PR adds a `release status` command that polls the durable workflow runtime and renders execution state. The overall design is solid — it derives the same workflow identity as `apply`, covers the four relevant states (not-started, suspended, succeeded, failed), and has good test coverage for three of them. One reference to a non-existent type in the `status` function signature is a compile error. The CLI command also unconditionally exits 0 regardless of workflow state, which limits scripting utility. A minor test coverage gap exists for the `'failed'` state under real workflow conditions.",
+      "priority": "P3",
+      "title": "`poll` addition to `WorkflowInstance` interface lacks JSDoc",
+      "file": "packages/flo/src/workflow/workflow.ts",
+      "line": 320,
+      "body": "The PR adds `poll` to the `WorkflowInstance` interface with a single-line JSDoc comment, but all sibling methods (`execute`, `observable`, `exists`) have multi-line JSDoc that documents when the method is appropriate and what it returns. The `poll` entry should note that it returns `undefined` when the execution has not started, distinguish the `'Suspended'` vs `'Complete'` variants, and clarify its relationship to `exists`."
+    },
+    {
+      "pr_number": 190,
+      "pr_title": "release: add explicit resume command",
+      "pr_summary": "The PR successfully introduces a first-class `release resume` command with a typed `ExecutorResumeError`, solid test coverage for the not-started and succeeded guard cases, and correct documentation updates. The core durable-workflow mechanics are sound: `runFreshPreflight` already skips for existing executions, so the resume path will not re-run preflight regardless of which execution path is used.\n\nThe main architectural issue is that the new `resume()` API is bypassed by the CLI command it was created to back. The CLI manually replicates the state guard and then calls `executeObservable` (the streaming `execute` path), leaving the typed `resume()` guard orphaned in the streaming case. This also means the `resume()` function's non-streaming path and the CLI's streaming path share no code, giving the two surfaces a different relationship to the workflow engine (`ReleaseWorkflow.execute` vs `ReleaseWorkflow.observable`). A secondary but lower-priority issue is that `resume()` silently falls through to execution for any state not explicitly matched (anything that is not `not-started`, `succeeded`, or `failed`), which would include a theoretical `running` state.",
+      "priority": "P1",
+      "title": "CLI `resume.ts` bypasses the typed `resume()` API, duplicating state validation",
+      "file": "packages/release/src/cli/commands/resume.ts",
+      "line": 96,
+      "body": "The CLI command manually checks `workflowStatus.state !== 'suspended'` and then calls `Api.Executor.executeObservable(...)` — the same streaming `execute` path used by `release apply`. The new `resume()` API introduced in this same PR is never invoked by the CLI.\n\nThis creates two problems:\n1. **Logic duplication**: state validation exists independently in the CLI and in `resume()`. They can diverge.\n2. **Different engine paths**: `resume()` calls `ReleaseWorkflow.execute(payload)` while `executeObservable` calls `ReleaseWorkflow.observable(payload)`. These are different paths through the workflow engine.\n\nThe correct fix is to add a `resumeObservable` function in `execute.ts` that mirrors the structure of `executeObservable` but enforces the same state guards as `resume()`. The CLI should call `resumeObservable` instead of its current manual check + `executeObservable` pattern.\n\n```typescript\n// In execute.ts — add alongside resume()\nexport const resumeObservable = (\n  plan: Plan,\n  options: ...\n): Effect.Effect<ObservableResult<...>, ExecutorResumeError | ..., ...> =>\n  Effect.gen(function* () {\n    const workflowStatus = yield* status(plan, options)\n    if (workflowStatus.state !== 'suspended') {\n      return yield* Effect.fail(new ExecutorResumeError({ ... }))\n    }\n    // delegate to core observable logic\n    ...\n  })\n```"
+    },
+    {
+      "pr_number": 190,
+      "pr_title": "release: add explicit resume command",
+      "pr_summary": "The PR successfully introduces a first-class `release resume` command with a typed `ExecutorResumeError`, solid test coverage for the not-started and succeeded guard cases, and correct documentation updates. The core durable-workflow mechanics are sound: `runFreshPreflight` already skips for existing executions, so the resume path will not re-run preflight regardless of which execution path is used.\n\nThe main architectural issue is that the new `resume()` API is bypassed by the CLI command it was created to back. The CLI manually replicates the state guard and then calls `executeObservable` (the streaming `execute` path), leaving the typed `resume()` guard orphaned in the streaming case. This also means the `resume()` function's non-streaming path and the CLI's streaming path share no code, giving the two surfaces a different relationship to the workflow engine (`ReleaseWorkflow.execute` vs `ReleaseWorkflow.observable`). A secondary but lower-priority issue is that `resume()` silently falls through to execution for any state not explicitly matched (anything that is not `not-started`, `succeeded`, or `failed`), which would include a theoretical `running` state.",
+      "priority": "P2",
+      "title": "`resume()` silently falls through to execution for states not explicitly matched",
+      "file": "packages/release/src/api/executor/execute.ts",
+      "line": 440,
+      "body": "`resume()` handles three explicit states (`not-started`, `succeeded`, `failed`) with typed failures, then falls through to execution for everything else — implicitly treating any other state as `suspended`. If a `running` or unrecognised state were ever returned by `status()`, it would be treated as resumable rather than rejected with a clear error.\n\nSince the intent is clearly \"only resume when suspended\", the safest pattern is to guard on `state === 'suspended'` affirmatively rather than guarding against specific non-suspended states:\n\n```typescript\n// Replace the three if-blocks with:\nif (workflowStatus.state !== 'suspended') {\n  return yield* Effect.fail(\n    new ExecutorResumeError({\n      context: {\n        executionId: workflowStatus.executionId,\n        state: workflowStatus.state,   // widen type to string if needed\n        detail: stateToDetail(workflowStatus.state),\n      },\n    }),\n  )\n}\n```\n\nThis also eliminates the parallel logic in the CLI that already uses the affirmative `!== 'suspended'` check."
+    },
+    {
+      "pr_number": 190,
+      "pr_title": "release: add explicit resume command",
+      "pr_summary": "The PR successfully introduces a first-class `release resume` command with a typed `ExecutorResumeError`, solid test coverage for the not-started and succeeded guard cases, and correct documentation updates. The core durable-workflow mechanics are sound: `runFreshPreflight` already skips for existing executions, so the resume path will not re-run preflight regardless of which execution path is used.\n\nThe main architectural issue is that the new `resume()` API is bypassed by the CLI command it was created to back. The CLI manually replicates the state guard and then calls `executeObservable` (the streaming `execute` path), leaving the typed `resume()` guard orphaned in the streaming case. This also means the `resume()` function's non-streaming path and the CLI's streaming path share no code, giving the two surfaces a different relationship to the workflow engine (`ReleaseWorkflow.execute` vs `ReleaseWorkflow.observable`). A secondary but lower-priority issue is that `resume()` silently falls through to execution for any state not explicitly matched (anything that is not `not-started`, `succeeded`, or `failed`), which would include a theoretical `running` state.",
+      "priority": "P3",
+      "title": "`ExecutorDependencyCycleError` is absent from `errors.ts`'s `All` type",
+      "file": "packages/release/src/api/executor/errors.ts",
+      "line": 218,
+      "body": "The `All` type is defined as `ExecutorError | ExecutorResumeError`. But `execute()` and `resume()` both surface `ExecutorDependencyCycleError` in their typed error channels, and `ExecutorDependencyCycleError` is not a member of `ExecutorError`. This means `ExecutorDependencyCycleError` can be raised through the executor but is not included in the public `All` union.\n\nThis appears to be a pre-existing gap that the PR did not introduce but also did not fix while touching the `All` type. `All` should reflect every error the executor can raise:\n\n```typescript\nexport type All = ExecutorError | ExecutorResumeError | ExecutorDependencyCycleError\n```"
+    },
+    {
+      "pr_number": 192,
+      "pr_title": "release: add release graph command",
+      "pr_summary": "The PR is well-structured and achieves its goal cleanly: it promotes the inline graph shape into a proper typed API (`ExecutionGraph`, `graph()`, `toJsonGraph()`), adds a readable tree renderer, and wires a new CLI command with text/JSON output formats. Three issues stand out: a double `toPayload` computation introduced by the refactoring of `executeObservable`, an unnecessary custom `ReadonlyMap` helper in the renderer test, and a trivial `.size` vs spread in the renderer.",
+      "priority": "P1",
+      "title": "`executeObservable` calls `toPayload` twice after the refactor",
+      "file": "packages/release/src/api/executor/execute.ts",
+      "line": 608,
+      "body": "After the refactor, `executeObservable` still calls `yield* toPayload(plan, options)` to produce `payload` (needed for `ReleaseWorkflow.observable(payload)` below), and then immediately calls `yield* graph(plan, options)` — which internally calls `toPayload(plan, options)` a second time. That means all the I/O and computation in `toPayload` runs twice for every `executeObservable` invocation.\n\nThe fix is to compute the graph directly from the already-resolved `payload` instead of delegating to `graph()`:\n\n```typescript\n// inside executeObservable, after `const payload = yield* toPayload(plan, options)`\nconst { layers, nodes } = ReleaseWorkflow.toGraph(payload)\nconst graphInfo: ExecutionGraph = {\n  layers,\n  nodes: nodes as ReadonlyMap<string, ExecutionGraphNode>,\n}\n```\n\nAlternatively, `graph()` could accept a pre-computed payload as an optional argument. Either way the double computation should be eliminated."
+    },
+    {
+      "pr_number": 192,
+      "pr_title": "release: add release graph command",
+      "pr_summary": "The PR is well-structured and achieves its goal cleanly: it promotes the inline graph shape into a proper typed API (`ExecutionGraph`, `graph()`, `toJsonGraph()`), adds a readable tree renderer, and wires a new CLI command with text/JSON output formats. Three issues stand out: a double `toPayload` computation introduced by the refactoring of `executeObservable`, an unnecessary custom `ReadonlyMap` helper in the renderer test, and a trivial `.size` vs spread in the renderer.",
+      "priority": "P2",
+      "title": "`makeReadonlyMap` test helper is unnecessary — `new Map()` already satisfies `ReadonlyMap`",
+      "file": "packages/release/src/api/renderer/graph.test.ts",
+      "line": 5,
+      "body": "The 30-line `makeReadonlyMap` factory (with manual `get`, `has`, `forEach`, `entries`, `keys`, `values`, `[Symbol.iterator]`, and `size`) replicates what the built-in `Map` class already provides. `Map<K, V>` structurally satisfies `ReadonlyMap<K, V>` in TypeScript, so:\n\n```typescript\nconst map = new Map([\n  ['Prepare:@kitz/core', { dependencies: [] }],\n  ['Publish:@kitz/core', { dependencies: ['Prepare:@kitz/core'] }],\n  ['CreateTag:@kitz/core@1.1.0', { dependencies: ['Publish:@kitz/core'] }],\n] as const)\n```\n\nworks directly. The hand-rolled helper should be deleted; beyond the boilerplate, its `forEach` lacks a type annotation for `callbackfn` and the implementation is essentially untested infrastructure that adds maintenance surface."
+    },
+    {
+      "pr_number": 192,
+      "pr_title": "release: add release graph command",
+      "pr_summary": "The PR is well-structured and achieves its goal cleanly: it promotes the inline graph shape into a proper typed API (`ExecutionGraph`, `graph()`, `toJsonGraph()`), adds a readable tree renderer, and wires a new CLI command with text/JSON output formats. Three issues stand out: a double `toPayload` computation introduced by the refactoring of `executeObservable`, an unnecessary custom `ReadonlyMap` helper in the renderer test, and a trivial `.size` vs spread in the renderer.",
+      "priority": "P3",
+      "title": "`[...graph.nodes.keys()].length` should use `.size` directly",
+      "file": "packages/release/src/api/renderer/graph.ts",
+      "line": 4,
+      "body": "`ReadonlyMap` exposes a `.size` property. Spreading all keys into a temporary array just to count them is unnecessary:\n\n```typescript\n// current\nconst nodeCount = [...graph.nodes.keys()].length\n\n// correct\nconst nodeCount = graph.nodes.size\n```"
+    },
+    {
+      "pr_number": 193,
+      "pr_title": "feat(release): add explain command",
+      "pr_summary": "The PR correctly adds a `release explain <pkg>` command with planner, renderer, and CLI layers, backed by solid test coverage. The BFS-based transitive path derivation is the key design contribution — it correctly fills the gap where `CascadeImpact.triggeredBy` is empty for transitive cascades. No logic bugs were found. Three issues worth noting: the dependency graph is re-read from disk on every explain call (redundant I/O since `analyze()` already built it), the `triggeredBy` field in `CascadeExplanation` has different semantics than in `CascadeImpact` (root-cause primaries vs direct triggers — undocumented divergence), and the README table inserts `explain` after `apply` rather than before it in workflow order.",
+      "priority": "P2",
+      "title": "explain() rebuilds the dependency graph on every cascade explanation",
+      "file": "packages/release/src/api/planner/explain.ts",
+      "line": 170,
+      "body": "`explain()` calls `buildDependencyGraph([...options.packages])` inside the cascade branch, which re-reads every package's `package.json` from the filesystem. `analyze()` already ran `buildDependencyGraph` (line 197 of `analyze.ts`) to produce the `analysis` it passes in — but that graph is not stored in `Analysis`. The result is duplicate filesystem I/O on every `explain` call.\n\nThe clean fix is to include the `DependencyGraph` as a field in `Analysis` (it's already computed there) and thread it through to `explain()`. This eliminates the redundant reads and makes the explain function consistent with the graph used during analysis, even if package manifests change between the two calls."
+    },
+    {
+      "pr_number": 193,
+      "pr_title": "feat(release): add explain command",
+      "pr_summary": "The PR correctly adds a `release explain <pkg>` command with planner, renderer, and CLI layers, backed by solid test coverage. The BFS-based transitive path derivation is the key design contribution — it correctly fills the gap where `CascadeImpact.triggeredBy` is empty for transitive cascades. No logic bugs were found. Three issues worth noting: the dependency graph is re-read from disk on every explain call (redundant I/O since `analyze()` already built it), the `triggeredBy` field in `CascadeExplanation` has different semantics than in `CascadeImpact` (root-cause primaries vs direct triggers — undocumented divergence), and the README table inserts `explain` after `apply` rather than before it in workflow order.",
+      "priority": "P2",
+      "title": "`triggeredBy` semantics diverge between CascadeImpact and CascadeExplanation — undocumented",
+      "file": "packages/release/src/api/planner/explain.ts",
+      "line": 185,
+      "body": "`CascadeImpact.triggeredBy` (from the analyzer, `analyze.ts` lines 240–249) stores **direct** primary-to-cascade edges only: if A→B→C and only A is a primary impact, `CascadeImpact.triggeredBy` for C is `[]` because no primary directly depends on C.\n\n`CascadeExplanation.triggeredBy` (produced here) stores **root-cause primary packages** derived via BFS from all primaries to the target — so for C it would contain A.\n\nThese are semantically different despite the identical field name, and neither the type interface nor the JSDoc documents this distinction. Future maintainers who rely on `triggeredBy` in `CascadeExplanation` expecting the same semantics as `CascadeImpact.triggeredBy` will be surprised. The divergence should be documented on both types, ideally with field names like `directTriggers` vs `rootCausePrimaries`."
+    },
+    {
+      "pr_number": 193,
+      "pr_title": "feat(release): add explain command",
+      "pr_summary": "The PR correctly adds a `release explain <pkg>` command with planner, renderer, and CLI layers, backed by solid test coverage. The BFS-based transitive path derivation is the key design contribution — it correctly fills the gap where `CascadeImpact.triggeredBy` is empty for transitive cascades. No logic bugs were found. Three issues worth noting: the dependency graph is re-read from disk on every explain call (redundant I/O since `analyze()` already built it), the `triggeredBy` field in `CascadeExplanation` has different semantics than in `CascadeImpact` (root-cause primaries vs direct triggers — undocumented divergence), and the README table inserts `explain` after `apply` rather than before it in workflow order.",
+      "priority": "P3",
+      "title": "README table inserts `explain` after `apply` — out of workflow order",
+      "file": "packages/release/README.md",
+      "line": 335,
+      "body": "`explain` is inserted between `apply` and `graph` in the command reference table. As a diagnostic/pre-flight tool, it is more naturally used before `apply` (to understand why a package is classified before executing the plan). The logical workflow order would be: `forecast → plan → explain → apply → graph → resume → status`. `help.ts` correctly alphabetizes commands; the README table should either match alphabetical order or be reordered to reflect the workflow sequence consistently."
+    },
+    {
+      "pr_number": 194,
+      "pr_title": "feat(release): derive ephemeral dist-tags from PR numbers",
+      "pr_summary": "The PR correctly addresses the ephemeral dist-tag problem: all four CLI commands (apply, graph, resume, status) and the PR preview runbook now consistently derive the `pr-<N>` dist-tag automatically from the plan rather than requiring an explicit `--tag` override. The new `resolvePublishSemanticsForPlan` wrapper cleanly separates plan-aware from plan-agnostic semantics resolution.\n\nTwo findings worth noting: (1) a minor inconsistency in how the PR number is located between `resolvePlanPrNumber` (searches `releases + cascades`) and the inline runbook PR_NUMBER expression (searches `releases` only) — functionally equivalent due to the fallback but semantically inconsistent; (2) the verbose conditional-spread pattern in `resolvePublishSemanticsForPlan` is unnecessary since the underlying function already handles all those params as optional.",
+      "priority": "P2",
+      "title": "Inconsistent PR number search scope: `resolvePlanPrNumber` vs runbook inline",
+      "file": "packages/release/src/cli/pr-preview.ts",
+      "line": 407,
+      "body": "The inline expression in the runbook command uses `plan.releases.find(Api.Planner.Ephemeral.is)?.prerelease.prNumber` (searches only `releases`), while the newly introduced `resolvePlanPrNumber` searches `[...plan.releases, ...plan.cascades]`. They are semantically equivalent here because the inline code falls back to `params.pullRequest.number` (which equals the PR number anyway), but the inconsistency is a latent trap — a future reader or editor might not realize these two code paths are expected to return the same value by different routes. The inline could simply call `resolvePlanPrNumber(plan) ?? params.pullRequest.number` to use the canonical logic:\n```ts\n// before\nplan.releases.find(Api.Planner.Ephemeral.is)?.prerelease.prNumber ?? params.pullRequest.number\n// after\nApi.Publishing.resolvePlanPrNumber(plan) ?? params.pullRequest.number\n```"
+    },
+    {
+      "pr_number": 194,
+      "pr_title": "feat(release): derive ephemeral dist-tags from PR numbers",
+      "pr_summary": "The PR correctly addresses the ephemeral dist-tag problem: all four CLI commands (apply, graph, resume, status) and the PR preview runbook now consistently derive the `pr-<N>` dist-tag automatically from the plan rather than requiring an explicit `--tag` override. The new `resolvePublishSemanticsForPlan` wrapper cleanly separates plan-aware from plan-agnostic semantics resolution.\n\nTwo findings worth noting: (1) a minor inconsistency in how the PR number is located between `resolvePlanPrNumber` (searches `releases + cascades`) and the inline runbook PR_NUMBER expression (searches `releases` only) — functionally equivalent due to the fallback but semantically inconsistent; (2) the verbose conditional-spread pattern in `resolvePublishSemanticsForPlan` is unnecessary since the underlying function already handles all those params as optional.",
+      "priority": "P3",
+      "title": "Verbose conditional-spread pattern in `resolvePublishSemanticsForPlan` is unnecessary",
+      "file": "packages/release/src/api/publishing.ts",
+      "line": 122,
+      "body": "The function spreads optional params conditionally:\n```ts\n...(params.publishing !== undefined ? { publishing: params.publishing } : {}),\n...(params.tag !== undefined ? { tag: params.tag } : {}),\n// etc.\n```\nAll of these fields are already typed as optional in `resolvePublishSemantics`. Passing `undefined` explicitly is identical to omitting the key — every read site already uses `?? defaultValue` or explicit guards. The simpler form is:\n```ts\nreturn resolvePublishSemantics({\n  lifecycle: params.plan.lifecycle,\n  publishing: params.publishing,\n  tag: params.tag,\n  npmTag: params.npmTag,\n  candidateTag: params.candidateTag,\n  prNumber,\n})\n```\nThis has identical runtime semantics and is far easier to read."
+    },
+    {
+      "pr_number": 195,
+      "pr_title": "feat(release): support explicit package paths",
+      "pr_summary": "This PR extends the release config schema to allow package entries to be either shorthand strings (`\"@myorg/core\"`) or structured `{ name, path }` objects for non-standard workspace layouts. The feature is well-motivated and the core path-resolution logic is correct. The main concern is an architectural inconsistency: `PackageConfigEntry` is defined as a TypeScript interface in `workspace.ts` while a structurally-equivalent `PackageConfigEntrySchema` is defined separately in `config.ts`. This dual-definition means a schema change and an interface change can diverge silently. There are also minor correctness and test clarity issues.",
+      "priority": "P2",
+      "title": "Schema and runtime type are defined in two separate places and can drift",
+      "file": "packages/release/src/api/config.ts",
+      "line": 15,
+      "body": "The PR introduces `PackageConfigEntrySchema` (in `config.ts`) and `PackageConfigEntry` interface (in `workspace.ts`) as two independent definitions of the same concept. `config.ts` imports `PackageMap` (the type) from `workspace.ts` but defines the schema locally. If the interface in `workspace.ts` ever gains a new required field, the schema in `config.ts` will not be updated automatically, leading to configs that decode successfully but fail at runtime when the missing field is accessed.\n\nThe Effect Schema pattern avoids this by making the schema the single source of truth:\n```typescript\n// In workspace.ts (or a shared location)\nexport const PackageConfigEntrySchema = Schema.Struct({\n  name: Schema.String,\n  path: Schema.optional(Schema.String),\n})\nexport type PackageConfigEntry = Schema.Schema.Type<typeof PackageConfigEntrySchema>\n```\nThen `config.ts` imports and reuses `PackageConfigEntrySchema` directly instead of redefining it."
+    },
+    {
+      "pr_number": 195,
+      "pr_title": "feat(release): support explicit package paths",
+      "pr_summary": "This PR extends the release config schema to allow package entries to be either shorthand strings (`\"@myorg/core\"`) or structured `{ name, path }` objects for non-standard workspace layouts. The feature is well-motivated and the core path-resolution logic is correct. The main concern is an architectural inconsistency: `PackageConfigEntry` is defined as a TypeScript interface in `workspace.ts` while a structurally-equivalent `PackageConfigEntrySchema` is defined separately in `config.ts`. This dual-definition means a schema change and an interface change can diverge silently. There are also minor correctness and test clarity issues.",
+      "priority": "P3",
+      "title": "`toPackageMap` return type is too wide after the `PackageMap` type change",
+      "file": "packages/release/src/api/analyzer/workspace.ts",
+      "line": 79,
+      "body": "After the PR, `PackageMap = Record<string, string | PackageConfigEntry>`. The `toPackageMap` function builds a map from scanned `Package[]` objects and only ever assigns `pkg.name.moniker` (a `string`) to each entry. Its return type is inferred as `PackageMap`, which implies consumers might receive `PackageConfigEntry` values — they never will. This unnecessarily widens the contract.\n\nConsider narrowing the return type:\n```typescript\nexport const toPackageMap = (packages: Package[]): Record<string, string> => { ... }\n```\nThe resulting `Record<string, string>` is still assignable to `PackageMap` at call sites that need it."
+    },
+    {
+      "pr_number": 195,
+      "pr_title": "feat(release): support explicit package paths",
+      "pr_summary": "This PR extends the release config schema to allow package entries to be either shorthand strings (`\"@myorg/core\"`) or structured `{ name, path }` objects for non-standard workspace layouts. The feature is well-motivated and the core path-resolution logic is correct. The main concern is an architectural inconsistency: `PackageConfigEntry` is defined as a TypeScript interface in `workspace.ts` while a structurally-equivalent `PackageConfigEntrySchema` is defined separately in `config.ts`. This dual-definition means a schema change and an interface change can diverge silently. There are also minor correctness and test clarity issues.",
+      "priority": "P3",
+      "title": "`PackageLocation.inferDefault` is called unconditionally even when an explicit path is provided",
+      "file": "packages/release/src/api/analyzer/workspace.ts",
+      "line": 56,
+      "body": "In the updated `inferConfiguredPackage`, `PackageLocation.inferDefault(cwd, scope)` is always computed, then its result is discarded when an explicit path exists (`explicitPath?.path ?? location.path`). This is wasteful and slightly obscures intent. Prefer computing the default only when needed:\n```typescript\nconst path = explicitPath?.path ?? PackageLocation.inferDefault(cwd, scope).path\n```\nThis is a minor issue if `inferDefault` is pure/cheap, but worth fixing for clarity."
+    },
+    {
+      "pr_number": 195,
+      "pr_title": "feat(release): support explicit package paths",
+      "pr_summary": "This PR extends the release config schema to allow package entries to be either shorthand strings (`\"@myorg/core\"`) or structured `{ name, path }` objects for non-standard workspace layouts. The feature is well-motivated and the core path-resolution logic is correct. The main concern is an architectural inconsistency: `PackageConfigEntry` is defined as a TypeScript interface in `workspace.ts` while a structurally-equivalent `PackageConfigEntrySchema` is defined separately in `config.ts`. This dual-definition means a schema change and an interface change can diverge silently. There are also minor correctness and test clarity issues.",
+      "priority": "P3",
+      "title": "Fallback workspace test does not write a `package.json` in the explicit path directory",
+      "file": "packages/release/src/api/analyzer/workspace.test.ts",
+      "line": 152,
+      "body": "The test \"resolves explicit package paths even when workspace discovery is unavailable\" creates the `tooling/pkg-core/` directory but does not write a `package.json` in it. This means the test only validates that `resolvePackages` computes the correct absolute path string — it does not validate that the package is actually resolvable (e.g. readable manifest). This is probably intentional for a unit test, but the contrast with the first test (which does write `package.json`) may mislead future readers or hide a gap in integration coverage. A short comment explaining this would improve clarity."
+    },
+    {
+      "pr_number": 196,
+      "pr_title": "release: add plan --out and apply --from",
+      "pr_summary": "This PR cleanly refactors the planner store from a dir-centric to a path-centric API, adding `--out` and `--from` flags to `plan` and `apply` commands respectively. The design is sound: a single `resolvePlanLocation(path?)` function acts as the canonical resolution point, and the active-plan defaults are preserved as zero-argument calls. Effect laziness is correctly relied upon for module-level constants. Two minor issues found: redundant double-resolution in CLI commands, and a pre-existing README table formatting issue with pipe characters.",
+      "priority": "P3",
+      "title": "Double path resolution in CLI commands",
+      "file": "packages/release/src/cli/commands/apply.ts",
+      "line": 81,
+      "body": "In both `apply.ts` and `plan.ts`, `resolvePlanLocation(planPath)` is called explicitly to obtain `planLocation` for display purposes, and then immediately `read(planPath)` / `write(plan, planPath)` each call `resolvePlanLocation` internally a second time with the same input. This causes two redundant Effect evaluations doing identical work. Consider threading `planLocation` through to avoid the double resolution, e.g. by accepting an already-resolved `ActivePlanLocation` in the store functions, or by deriving the display string from the same `planLocation` returned by the inner call."
+    },
+    {
+      "pr_number": 196,
+      "pr_title": "release: add plan --out and apply --from",
+      "pr_summary": "This PR cleanly refactors the planner store from a dir-centric to a path-centric API, adding `--out` and `--from` flags to `plan` and `apply` commands respectively. The design is sound: a single `resolvePlanLocation(path?)` function acts as the canonical resolution point, and the active-plan defaults are preserved as zero-argument calls. Effect laziness is correctly relied upon for module-level constants. Two minor issues found: redundant double-resolution in CLI commands, and a pre-existing README table formatting issue with pipe characters.",
+      "priority": "P3",
+      "title": "README table pipe characters break Markdown rendering",
+      "file": "packages/release/README.md",
+      "line": 338,
+      "body": "The `|` characters inside `<official | candidate | ephemeral>` are not escaped within a Markdown table cell, so most parsers will interpret them as column separators and break the table layout. This was a pre-existing issue that the PR extends. Fixing it requires either escaping (`\\|`) or using a code-span that wraps the whole lifecycle argument so the pipes are rendered literally."
+    },
+    {
+      "pr_number": 197,
+      "pr_title": "release: add bounded notes and markdown forecast",
+      "pr_summary": "Solid, well-scoped PR. The `until` CLI flag is a clean pass-through to a pre-existing `GenerateOptions.until` field. The `forecast-markdown` renderer is correctly structured, well-tested, and integrates with existing model types (`ForecastRelease.currentVersionDisplay`, `CommitDisplay`, `PublishRecord`) without any mismatches. One minor structural inconsistency in the markdown output: the Primary and Cascades sections use `###` headings, but the publish metadata is rendered as bare bullet items under the summary line with no section heading, breaking the document hierarchy.",
+      "priority": "P3",
+      "title": "Publish metadata section lacks a `###` heading, breaking document hierarchy",
+      "file": "packages/release/src/api/renderer/forecast-markdown.ts",
+      "line": 32,
+      "body": "The `### Primary (N)` and `### Cascades (N)` sections both have headings, but the publish state/history block is emitted as plain bullet list items directly under the summary line with no heading. If a reader pastes this into an issue or PR body, the publish section is visually unanchored and inconsistent with the rest of the document structure.\n\nConsider adding a heading like `### Publish` or `### Publish Metadata` before the conditional block:\n```typescript\nif (publishState !== 'idle' || publishHistory.length > 0) {\n  output``\n  output`### Publish`\n  output``\n  output`- Publish state: \\`${publishState}\\``\n  ...\n}\n```"
+    },
+    {
+      "pr_number": 198,
+      "pr_title": "feat(release): add diff remote overrides",
+      "pr_summary": "The PR correctly adds an explicit `--remote` override for `release pr preview` and `release doctor`. The priority waterfall (explicit override → config → \"origin\") is implemented correctly in `resolveDiffRemote`. Tests are thorough. However, there are several code quality issues: a trivial wrapper function that adds no value, a dead assignment, duplicated normalization logic across two files, and an \"args as compound strings with embedded spaces\" pattern in `renderDoctorCommandSuffix` that silently allows invalid remote names containing spaces to produce broken runbook commands.",
+      "priority": "P2",
+      "title": "`loadDiffRemote` is a trivial wrapper adding no value",
+      "file": "packages/release/src/cli/pr-preview.ts",
+      "line": 405,
+      "body": "The new private helper `loadDiffRemote` is a one-liner that does nothing but delegate to the already-imported `resolveDiffRemote`:\n\n```typescript\nconst loadDiffRemote = (config: Api.Config.ResolvedConfig, remote?: string): string =>\n  resolveDiffRemote(config, remote)\n```\n\nThis is dead abstraction. Call `resolveDiffRemote(config, options.remote)` directly at the call site in `runPrPreview`. The indirection creates noise and a misleading name difference (`loadDiffRemote` vs `resolveDiffRemote`) that implies different behavior where there is none."
+    },
+    {
+      "pr_number": 198,
+      "pr_title": "feat(release): add diff remote overrides",
+      "pr_summary": "The PR correctly adds an explicit `--remote` override for `release pr preview` and `release doctor`. The priority waterfall (explicit override → config → \"origin\") is implemented correctly in `resolveDiffRemote`. Tests are thorough. However, there are several code quality issues: a trivial wrapper function that adds no value, a dead assignment, duplicated normalization logic across two files, and an \"args as compound strings with embedded spaces\" pattern in `renderDoctorCommandSuffix` that silently allows invalid remote names containing spaces to produce broken runbook commands.",
+      "priority": "P2",
+      "title": "Dead assignment when `options.remote` is falsy",
+      "file": "packages/release/src/cli/pr-preview.ts",
+      "line": 347,
+      "body": "In `runPrPreview`:\n```typescript\nconst diffRemote = loadDiffRemote(config, options.remote)  // always computed\n// ...\n...(options.remote ? { explicitDiffRemote: diffRemote } : {}),  // only used when truthy\n```\nWhen `options.remote` is `undefined`, `diffRemote` is computed (resolving through config) but immediately discarded. This is a silent dead assignment. The guard should be moved before the computation:\n```typescript\nconst diffRemote = options.remote ? resolveDiffRemote(config, options.remote) : undefined\n// ...\n...(diffRemote ? { explicitDiffRemote: diffRemote } : {}),\n```\nThis also eliminates the `loadDiffRemote` wrapper naturally."
+    },
+    {
+      "pr_number": 198,
+      "pr_title": "feat(release): add diff remote overrides",
+      "pr_summary": "The PR correctly adds an explicit `--remote` override for `release pr preview` and `release doctor`. The priority waterfall (explicit override → config → \"origin\") is implemented correctly in `resolveDiffRemote`. Tests are thorough. However, there are several code quality issues: a trivial wrapper function that adds no value, a dead assignment, duplicated normalization logic across two files, and an \"args as compound strings with embedded spaces\" pattern in `renderDoctorCommandSuffix` that silently allows invalid remote names containing spaces to produce broken runbook commands.",
+      "priority": "P2",
+      "title": "Duplicated remote normalization logic across two files",
+      "file": "packages/release/src/cli/commands/pr-lib.ts",
+      "line": 18,
+      "body": "There are two separate implementations of remote normalization:\n\n- `normalizeRemoteArg` in `pr-lib.ts` — trims, rejects empty strings, rejects strings starting with `--`\n- `normalizeRemoteOverride` in `pr-preview-diff.ts` — trims, rejects empty strings only\n\nThey diverge on the `--` prefix check. If the normalization logic changes (e.g., rejecting names with `/` or spaces), only one file gets updated. Extract a single `normalizeRemote` function into `pr-preview-diff.ts` (already has the concept) and import it from `pr-lib.ts`."
+    },
+    {
+      "pr_number": 198,
+      "pr_title": "feat(release): add diff remote overrides",
+      "pr_summary": "The PR correctly adds an explicit `--remote` override for `release pr preview` and `release doctor`. The priority waterfall (explicit override → config → \"origin\") is implemented correctly in `resolveDiffRemote`. Tests are thorough. However, there are several code quality issues: a trivial wrapper function that adds no value, a dead assignment, duplicated normalization logic across two files, and an \"args as compound strings with embedded spaces\" pattern in `renderDoctorCommandSuffix` that silently allows invalid remote names containing spaces to produce broken runbook commands.",
+      "priority": "P2",
+      "title": "`renderDoctorCommandSuffix` silently accepts remote names with spaces, producing broken runbook commands",
+      "file": "packages/release/src/cli/pr-preview.ts",
+      "line": 407,
+      "body": "```typescript\nargs.push(`--remote ${explicitDiffRemote}`)\n```\nIf `explicitDiffRemote` contains a space (e.g., `\"my remote\"`), the rendered runbook command becomes:\n```\nbun run release doctor --remote my remote\n```\nwhich is shell-invalid. Neither `normalizeRemoteArg` nor `normalizeRemoteOverride` rejects whitespace-containing strings — they only trim leading/trailing spaces. While git remote names cannot contain spaces by git's own validation, the CLI layer should defensively reject such values with an explicit error rather than silently generating a broken command string.\n\nA simple `if (normalized.includes(' ')) return null` in `normalizeRemoteArg` (and its `pr-preview-diff.ts` counterpart) would close this."
+    },
+    {
+      "pr_number": 198,
+      "pr_title": "feat(release): add diff remote overrides",
+      "pr_summary": "The PR correctly adds an explicit `--remote` override for `release pr preview` and `release doctor`. The priority waterfall (explicit override → config → \"origin\") is implemented correctly in `resolveDiffRemote`. Tests are thorough. However, there are several code quality issues: a trivial wrapper function that adds no value, a dead assignment, duplicated normalization logic across two files, and an \"args as compound strings with embedded spaces\" pattern in `renderDoctorCommandSuffix` that silently allows invalid remote names containing spaces to produce broken runbook commands.",
+      "priority": "P3",
+      "title": "Unnecessary conditional object spread for optional flag in `pr.ts`",
+      "file": "packages/release/src/cli/commands/pr.ts",
+      "line": 120,
+      "body": "```typescript\naction.checkOnly || action.remote\n  ? {\n      ...(action.checkOnly ? { checkOnly: true } : {}),\n      ...(action.remote ? { remote: action.remote } : {}),\n    }\n  : undefined,\n```\nSince `RunPrPreviewOptions` has `checkOnly?: boolean` and `remote?: string`, both optional, passing `undefined` values for optional fields is equivalent to omitting them. This simplifies to:\n```typescript\n{ checkOnly: action.checkOnly || undefined, remote: action.remote }\n```\nor even just:\n```typescript\n{ remote: action.remote, ...(action.checkOnly ? { checkOnly: true } : {}) }\n```\nThe outer `|| action.remote ? ... : undefined` guard also becomes unnecessary once `RunPrPreviewOptions` accepts the `remote` field unconditionally."
+    },
+    {
+      "pr_number": 199,
+      "pr_title": "feat(release): allow diff remote overrides",
+      "pr_summary": "The PR correctly adds per-run `--remote` overrides for `release doctor` and `release pr preview`, with good test coverage for `parseAction`, `resolveDiffRemote`, `loadConfiguredPullRequestDiff`, and `buildPreviewDoctorSummary`. The main issues are: (1) a dead-abstraction wrapper `loadDiffRemote` that adds zero logic, and (2) the wiring in `runPrPreview` that connects `options.remote → diffRemote → explicitDiffRemote` is not integration-tested — only `buildPreviewDoctorSummary` is exercised directly, leaving the conditional spreading logic in `runPrPreview` uncovered.",
+      "priority": "P2",
+      "title": "runPrPreview remote wiring is untested — only buildPreviewDoctorSummary is covered directly",
+      "file": "packages/release/src/cli/pr-preview.test.ts",
+      "line": null,
+      "body": "The PR's test for runbook remote injection passes `explicitDiffRemote: 'fork'` directly to `buildPreviewDoctorSummary`, bypassing the logic in `runPrPreview` that computes and conditionally spreads it:\n\n```typescript\n// pr-preview.ts — untested wiring\nconst diffRemote = loadDiffRemote(config, options.remote)\n...(options.remote ? { remote: options.remote } : {}),        // to diff loader\n...(options.remote ? { explicitDiffRemote: diffRemote } : {}), // to summary\n```\n\nIf someone changed the condition (e.g. switched from `options.remote` to a different check) or broke the `loadDiffRemote → explicitDiffRemote` chain, the existing tests would still pass. An integration test calling `runPrPreview({ remote: 'fork' })` with mocked services and asserting the resulting runbook commands would close this gap."
+    },
+    {
+      "pr_number": 199,
+      "pr_title": "feat(release): allow diff remote overrides",
+      "pr_summary": "The PR correctly adds per-run `--remote` overrides for `release doctor` and `release pr preview`, with good test coverage for `parseAction`, `resolveDiffRemote`, `loadConfiguredPullRequestDiff`, and `buildPreviewDoctorSummary`. The main issues are: (1) a dead-abstraction wrapper `loadDiffRemote` that adds zero logic, and (2) the wiring in `runPrPreview` that connects `options.remote → diffRemote → explicitDiffRemote` is not integration-tested — only `buildPreviewDoctorSummary` is exercised directly, leaving the conditional spreading logic in `runPrPreview` uncovered.",
+      "priority": "P3",
+      "title": "`loadDiffRemote` is a dead-abstraction wrapper with no added logic",
+      "file": "packages/release/src/cli/pr-preview.ts",
+      "line": null,
+      "body": "The function at the bottom of `pr-preview.ts` is a pure passthrough:\n\n```typescript\nconst loadDiffRemote = (config: Api.Config.ResolvedConfig, remote?: string): string =>\n  resolveDiffRemote(config, remote)\n```\n\nIt has exactly one call site, adds no logic, and its name doesn't distinguish it from `resolveDiffRemote`. This should be removed and `resolveDiffRemote` called directly:\n\n```typescript\n// before\nconst diffRemote = loadDiffRemote(config, options.remote)\n\n// after\nconst diffRemote = resolveDiffRemote(config, options.remote)\n```"
+    },
+    {
+      "pr_number": 199,
+      "pr_title": "feat(release): allow diff remote overrides",
+      "pr_summary": "The PR correctly adds per-run `--remote` overrides for `release doctor` and `release pr preview`, with good test coverage for `parseAction`, `resolveDiffRemote`, `loadConfiguredPullRequestDiff`, and `buildPreviewDoctorSummary`. The main issues are: (1) a dead-abstraction wrapper `loadDiffRemote` that adds zero logic, and (2) the wiring in `runPrPreview` that connects `options.remote → diffRemote → explicitDiffRemote` is not integration-tested — only `buildPreviewDoctorSummary` is exercised directly, leaving the conditional spreading logic in `runPrPreview` uncovered.",
+      "priority": "P3",
+      "title": "Raw vs normalized remote: two divergent normalization paths in runPrPreview",
+      "file": "packages/release/src/cli/pr-preview.ts",
+      "line": null,
+      "body": "In `runPrPreview`, `diffRemote` is normalized via `loadDiffRemote` (trim + empty-check) and used for the runbook display. But `loadConfiguredPullRequestDiff` receives the raw `options.remote`, which normalizes independently inside `resolveDiffRemote`. They produce the same result today, but the code suggests two separate sources of truth for the effective remote:\n\n```typescript\nconst diffRemote = loadDiffRemote(config, options.remote)          // normalized\nyield* loadConfiguredPullRequestDiff({ ..., remote: options.remote }) // also normalizes\n```\n\nPassing `diffRemote` to `loadConfiguredPullRequestDiff` instead of `options.remote` would make the actual remote used for diffs and the one shown in the runbook share a single normalization point."
+    },
+    {
+      "pr_number": 200,
+      "pr_title": "feat(release): add preview publish history command",
+      "pr_summary": "The PR introduces a well-structured `release history` command with clean separation between the library logic (`history-lib.ts`), CLI entry point (`history.ts`), and tests. The `orderPublishHistory` sort comparator is correct — malformed timestamps map to `NEGATIVE_INFINITY` so they sink to the bottom, and the deterministic tie-breaking cascade (iteration → version → package) is solid. However, the PR is incomplete: it calls `Api.Explorer.resolveGitHubContext()`, `Api.Explorer.resolvePullRequestFromContext()`, and references the type `Api.Explorer.ResolvedGitHubContext`, but none of these are defined in the PR diff or the current codebase. There is also a validation bug in `parsePositiveIntegerOption` where inputs like `'3abc'` are silently accepted as `3` due to `parseInt`'s lenient parsing semantics.",
+      "priority": "P0",
+      "title": "Three Explorer API symbols referenced but not defined anywhere",
+      "file": "packages/release/src/cli/commands/history-lib.ts",
+      "line": 66,
+      "body": "The new files reference `Api.Explorer.resolvePullRequestFromContext(...)`, `Api.Explorer.resolveGitHubContext()` (in `history.ts:56`), and the type `Api.Explorer.ResolvedGitHubContext` (in `history-lib.ts:1` and `history-lib.test.ts:16`). None of these are exported from `packages/release/src/api/explorer/__.ts`, none appear in `explore.ts`, and a codebase-wide search finds zero occurrences. The PR diff includes no additions to `explore.ts` or `__.ts`. This means the code cannot compile as submitted."
+    },
+    {
+      "pr_number": 200,
+      "pr_title": "feat(release): add preview publish history command",
+      "pr_summary": "The PR introduces a well-structured `release history` command with clean separation between the library logic (`history-lib.ts`), CLI entry point (`history.ts`), and tests. The `orderPublishHistory` sort comparator is correct — malformed timestamps map to `NEGATIVE_INFINITY` so they sink to the bottom, and the deterministic tie-breaking cascade (iteration → version → package) is solid. However, the PR is incomplete: it calls `Api.Explorer.resolveGitHubContext()`, `Api.Explorer.resolvePullRequestFromContext()`, and references the type `Api.Explorer.ResolvedGitHubContext`, but none of these are defined in the PR diff or the current codebase. There is also a validation bug in `parsePositiveIntegerOption` where inputs like `'3abc'` are silently accepted as `3` due to `parseInt`'s lenient parsing semantics.",
+      "priority": "P2",
+      "title": "`parseInt` silently accepts partial numbers like `'3abc'`",
+      "file": "packages/release/src/cli/commands/history-lib.ts",
+      "line": 53,
+      "body": "`Number.parseInt('3abc', 10)` returns `3` — not `NaN` — because `parseInt` parses leading digits and ignores the trailing non-numeric suffix. The subsequent `Number.isSafeInteger(parsed) && parsed > 0` check passes, so `'3abc'` is silently treated as `3` with no error. The same applies to `'5.9'` (parsed as `5`). Fix by replacing `Number.parseInt` with `Number()` (which returns `NaN` for `'3abc'`), or by adding a `/^\\d+$/` regex guard before parsing:\n\n```typescript\nconst parsed = Number(normalized)\nif (!Number.isSafeInteger(parsed) || parsed <= 0) { ... }\n```\n\nThe existing tests don't cover this case, so a `'3abc'` test case should be added alongside the fix."
+    },
+    {
+      "pr_number": 200,
+      "pr_title": "feat(release): add preview publish history command",
+      "pr_summary": "The PR introduces a well-structured `release history` command with clean separation between the library logic (`history-lib.ts`), CLI entry point (`history.ts`), and tests. The `orderPublishHistory` sort comparator is correct — malformed timestamps map to `NEGATIVE_INFINITY` so they sink to the bottom, and the deterministic tie-breaking cascade (iteration → version → package) is solid. However, the PR is incomplete: it calls `Api.Explorer.resolveGitHubContext()`, `Api.Explorer.resolvePullRequestFromContext()`, and references the type `Api.Explorer.ResolvedGitHubContext`, but none of these are defined in the PR diff or the current codebase. There is also a validation bug in `parsePositiveIntegerOption` where inputs like `'3abc'` are silently accepted as `3` due to `parseInt`'s lenient parsing semantics.",
+      "priority": "P3",
+      "title": "Unnecessary conditional spreads for optional parameters",
+      "file": "packages/release/src/cli/commands/history.ts",
+      "line": 62,
+      "body": "`...(prNumber !== undefined ? { prNumber } : {})` and `...(limit !== undefined ? { limit } : {})` are both redundant. `resolvePreviewPublishSurface` defaults `options.prNumber` via `??`, and `toPreviewPublishReport` guards with `=== undefined` — so passing `{ prNumber: undefined }` is behaviorally identical to omitting the key. Simplify to:\n\n```typescript\nconst surface = yield* resolvePreviewPublishSurface(context, { prNumber }).pipe(...)\nconst report = toPreviewPublishReport(surface, { limit })\n```"
+    }
+  ]
+}
