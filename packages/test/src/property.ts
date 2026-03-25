@@ -1,4 +1,4 @@
-import fc from 'fast-check'
+import fc, { check, property as fcProperty } from 'fast-check'
 import * as Vitest from 'vitest'
 
 /**
@@ -47,9 +47,9 @@ export const property = <Ts extends [unknown, ...unknown[]]>(
   ]
 ) => {
   const description = args[0]
-  const rest = args.slice(1) as Parameters<typeof fc.property>
+  const rest = args.slice(1) as Parameters<typeof fcProperty>
   Vitest.test('PROPERTY: ' + description, () => {
-    const result = fc.check(fc.property(...rest))
+    const result = check(fcProperty(...rest))
 
     if (result.failed) {
       // Extract just the useful parts from the fast-check error

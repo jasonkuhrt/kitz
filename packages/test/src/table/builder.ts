@@ -45,6 +45,7 @@ interface Group {
  */
 export interface SnapshotConfig {
   arguments?: boolean
+  runner?: boolean
 }
 
 /**
@@ -82,7 +83,7 @@ export const defaultState: State = {
   defaultOutputProvider: Option.none<Fn.AnyAny>(),
   snapshotSerializer: Option.none(),
   snapshotSchemas: [],
-  snapshotConfig: { arguments: true },
+  snapshotConfig: { arguments: true, runner: true },
   pendingDescribe: Option.none(),
   accumulatedGroups: [],
   currentCases: [],

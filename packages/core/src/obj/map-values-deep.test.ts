@@ -23,6 +23,7 @@ const replaceSpecificObject = (value: any) => {
 }
 
 Test.on(Obj.mapValuesDeep)
+  .snapshots({ arguments: false })
   .describeInputs('primitives pass through', [
     ['hello', () => undefined],
     [42, () => undefined],

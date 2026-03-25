@@ -2,11 +2,7 @@
 
 exports[`createDeferred > state tracking > after reject 1`] = `
 "
-╔══════════════════════════════════════════════════╗ RUNNER
-d.reject(new Error("test"));
-d.promise.catch(() => {
-});
-╠══════════════════════════════════════════════════╣ OUTPUTS RETURN OBJECT
+╔══════════════════════════════════════════════════╗ OUTPUTS RETURN OBJECT
 {
   promise: Promise [Promise] {},
   resolve: [Function: resolve],
@@ -20,9 +16,7 @@ d.promise.catch(() => {
 
 exports[`createDeferred > state tracking > after resolve 1`] = `
 "
-╔══════════════════════════════════════════════════╗ RUNNER
-d.resolve(1);
-╠══════════════════════════════════════════════════╣ OUTPUTS RETURN OBJECT
+╔══════════════════════════════════════════════════╗ OUTPUTS RETURN OBJECT
 {
   promise: Promise [Promise] {},
   resolve: [Function: resolve],
@@ -36,9 +30,7 @@ d.resolve(1);
 
 exports[`createDeferred > state tracking > initial 1`] = `
 "
-╔══════════════════════════════════════════════════╗ RUNNER
-
-╠══════════════════════════════════════════════════╣ OUTPUTS RETURN OBJECT
+╔══════════════════════════════════════════════════╗ OUTPUTS RETURN OBJECT
 {
   promise: Promise [Promise] {},
   resolve: [Function: resolve],
@@ -52,34 +44,21 @@ exports[`createDeferred > state tracking > initial 1`] = `
 
 exports[`createDeferred > strict > reject resolve calls throw 1`] = `
 "
-╔══════════════════════════════════════════════════╗ RUNNER
-d.reject(new Error("test"));
-d.promise.catch(() => {
-});
-d.resolve(1);
-╠══════════════════════════════════════════════════╣ OUTPUTS THROW ERROR
+╔══════════════════════════════════════════════════╗ OUTPUTS THROW ERROR
 Error: Deferred promise already settled
 ╚══════════════════════════════════════════════════╝"
 `;
 
 exports[`createDeferred > strict > resolve reject calls throw 1`] = `
 "
-╔══════════════════════════════════════════════════╗ RUNNER
-d.reject(new Error("test"));
-d.promise.catch(() => {
-});
-d.resolve(1);
-╠══════════════════════════════════════════════════╣ OUTPUTS THROW ERROR
+╔══════════════════════════════════════════════════╗ OUTPUTS THROW ERROR
 Error: Deferred promise already settled
 ╚══════════════════════════════════════════════════╝"
 `;
 
 exports[`createDeferred > strict > resolve resolve calls throw 1`] = `
 "
-╔══════════════════════════════════════════════════╗ RUNNER
-d.resolve(1);
-d.resolve(1);
-╠══════════════════════════════════════════════════╣ OUTPUTS THROW ERROR
+╔══════════════════════════════════════════════════╗ OUTPUTS THROW ERROR
 Error: Deferred promise already settled
 ╚══════════════════════════════════════════════════╝"
 `;

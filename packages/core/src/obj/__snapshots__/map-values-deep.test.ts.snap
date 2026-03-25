@@ -2,102 +2,49 @@
 
 exports[`mapValuesDeep > array recursion > mapValuesDeep([ 'short', 'this is long' ], (value) => { if (typeof value === "string" && value.length > 10) { return value....) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-[ 'short', 'this is long' ]
-....................................................
-(value) => {
-  if (typeof value === "string" && value.length > 10) {
-    return value.slice(0, 10) + "...";
-  }
-}
-╠══════════════════════════════════════════════════╣ THEN RETURNS ARRAY
+╔══════════════════════════════════════════════════╗ THEN RETURNS ARRAY
 [ 'short', 'this is long' ]
 ╚══════════════════════════════════════════════════╝"
 `;
 
 exports[`mapValuesDeep > array recursion > mapValuesDeep([ [Error: e1], [Error: e2] ], (value) => { if (value instanceof Error) return value.message; }) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-[ [Error: e1], [Error: e2] ]
-....................................................
-(value) => {
-  if (value instanceof Error) return value.message;
-}
-╠══════════════════════════════════════════════════╣ THEN RETURNS ARRAY
+╔══════════════════════════════════════════════════╗ THEN RETURNS ARRAY
 [ 'e1', 'e2' ]
 ╚══════════════════════════════════════════════════╝"
 `;
 
 exports[`mapValuesDeep > array recursion > mapValuesDeep([ 1, 2, 3 ], (value) => { if (typeof value === "number") return value * 2; }) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-[ 1, 2, 3 ]
-....................................................
-(value) => {
-  if (typeof value === "number") return value * 2;
-}
-╠══════════════════════════════════════════════════╣ THEN RETURNS ARRAY
+╔══════════════════════════════════════════════════╗ THEN RETURNS ARRAY
 [ 1, 2, 3 ]
 ╚══════════════════════════════════════════════════╝"
 `;
 
 exports[`mapValuesDeep > early exit on match > mapValuesDeep('short', (value) => { if (typeof value === "string" && value.length > 10) { return value....) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-short
-....................................................
-(value) => {
-  if (typeof value === "string" && value.length > 10) {
-    return value.slice(0, 10) + "...";
-  }
-}
-╠══════════════════════════════════════════════════╣ THEN RETURNS STRING
+╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 short
 ╚══════════════════════════════════════════════════╝"
 `;
 
 exports[`mapValuesDeep > early exit on match > mapValuesDeep('this is a very long string', (value) => { if (typeof value === "string" && value.length > 10) { return value....) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-this is a very long string
-....................................................
-(value) => {
-  if (typeof value === "string" && value.length > 10) {
-    return value.slice(0, 10) + "...";
-  }
-}
-╠══════════════════════════════════════════════════╣ THEN RETURNS STRING
+╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 this is a very long string
 ╚══════════════════════════════════════════════════╝"
 `;
 
 exports[`mapValuesDeep > early exit on match > mapValuesDeep([Error: test error], (value) => { if (value instanceof Error) return value.message; }) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-Error: test error
-....................................................
-(value) => {
-  if (value instanceof Error) return value.message;
-}
-╠══════════════════════════════════════════════════╣ THEN RETURNS STRING
+╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 test error
 ╚══════════════════════════════════════════════════╝"
 `;
 
 exports[`mapValuesDeep > early exit on match > mapValuesDeep({ num: 10, nested: { num: 20 } }, (value) => { if (typeof value === "number") return value * 2; }) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-{
-  num: 10,
-  nested: {
-    num: 20
-  }
-}
-....................................................
-(value) => {
-  if (typeof value === "number") return value * 2;
-}
-╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
 {
   num: 10,
   nested: {
@@ -109,51 +56,21 @@ exports[`mapValuesDeep > early exit on match > mapValuesDeep({ num: 10, nested: 
 
 exports[`mapValuesDeep > early exit on match > mapValuesDeep(5, (value) => { if (typeof value === "number") return value * 2; }) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-5
-....................................................
-(value) => {
-  if (typeof value === "number") return value * 2;
-}
-╠══════════════════════════════════════════════════╣ THEN RETURNS NUMBER
+╔══════════════════════════════════════════════════╗ THEN RETURNS NUMBER
 5
 ╚══════════════════════════════════════════════════╝"
 `;
 
 exports[`mapValuesDeep > early exit stops recursion > mapValuesDeep({ replace: true, nested: { untouched: 'data' } }, (value) => { if (typeof value === "object" && value !== null && "replace" in val...) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-{
-  replace: true,
-  nested: {
-    untouched: 'data'
-  }
-}
-....................................................
-(value) => {
-  if (typeof value === "object" && value !== null && "replace" in value) {
-    return "REPLACED";
-  }
-}
-╠══════════════════════════════════════════════════╣ THEN RETURNS STRING
+╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 REPLACED
 ╚══════════════════════════════════════════════════╝"
 `;
 
 exports[`mapValuesDeep > mixed structures > mapValuesDeep({ nums: [ 1, 2 ], nested: { nums: [ 3, 4 ] } }, (value) => { if (typeof value === "number") return value * 2; }) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-{
-  nums: [ 1, 2 ],
-  nested: {
-    nums: [ 3, 4 ]
-  }
-}
-....................................................
-(value) => {
-  if (typeof value === "number") return value * 2;
-}
-╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
 {
   nums: [ 1, 2 ],
   nested: {
@@ -165,18 +82,7 @@ exports[`mapValuesDeep > mixed structures > mapValuesDeep({ nums: [ 1, 2 ], nest
 
 exports[`mapValuesDeep > object recursion > mapValuesDeep({ a: 5, b: { c: 10 } }, (value) => { if (typeof value === "number") return value * 2; }) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-{
-  a: 5,
-  b: {
-    c: 10
-  }
-}
-....................................................
-(value) => {
-  if (typeof value === "number") return value * 2;
-}
-╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
 {
   a: 5,
   b: {
@@ -188,15 +94,7 @@ exports[`mapValuesDeep > object recursion > mapValuesDeep({ a: 5, b: { c: 10 } }
 
 exports[`mapValuesDeep > object recursion > mapValuesDeep({ err: [Error: test] }, (value) => { if (value instanceof Error) return value.message; }) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-{
-  err: [Error: test]
-}
-....................................................
-(value) => {
-  if (value instanceof Error) return value.message;
-}
-╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
 {
   err: 'test'
 }
@@ -205,17 +103,7 @@ exports[`mapValuesDeep > object recursion > mapValuesDeep({ err: [Error: test] }
 
 exports[`mapValuesDeep > object recursion > mapValuesDeep({ str: 'short and long string' }, (value) => { if (typeof value === "string" && value.length > 10) { return value....) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-{
-  str: 'short and long string'
-}
-....................................................
-(value) => {
-  if (typeof value === "string" && value.length > 10) {
-    return value.slice(0, 10) + "...";
-  }
-}
-╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
 {
   str: 'short and long string'
 }
@@ -224,55 +112,35 @@ exports[`mapValuesDeep > object recursion > mapValuesDeep({ str: 'short and long
 
 exports[`mapValuesDeep > primitives pass through > mapValuesDeep('hello', () => void 0) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-hello
-....................................................
-() => void 0
-╠══════════════════════════════════════════════════╣ THEN RETURNS STRING
+╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 hello
 ╚══════════════════════════════════════════════════╝"
 `;
 
 exports[`mapValuesDeep > primitives pass through > mapValuesDeep(42, () => void 0) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-42
-....................................................
-() => void 0
-╠══════════════════════════════════════════════════╣ THEN RETURNS NUMBER
+╔══════════════════════════════════════════════════╗ THEN RETURNS NUMBER
 42
 ╚══════════════════════════════════════════════════╝"
 `;
 
 exports[`mapValuesDeep > primitives pass through > mapValuesDeep(null, () => void 0) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-null
-....................................................
-() => void 0
-╠══════════════════════════════════════════════════╣ THEN RETURNS NULL
+╔══════════════════════════════════════════════════╗ THEN RETURNS NULL
 null
 ╚══════════════════════════════════════════════════╝"
 `;
 
 exports[`mapValuesDeep > primitives pass through > mapValuesDeep(true, () => void 0) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-true
-....................................................
-() => void 0
-╠══════════════════════════════════════════════════╣ THEN RETURNS BOOLEAN
+╔══════════════════════════════════════════════════╗ THEN RETURNS BOOLEAN
 true
 ╚══════════════════════════════════════════════════╝"
 `;
 
 exports[`mapValuesDeep > primitives pass through > mapValuesDeep(undefined, () => void 0) 1`] = `
 "
-╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
-undefined
-....................................................
-() => void 0
-╠══════════════════════════════════════════════════╣ THEN RETURNS UNDEFINED
+╔══════════════════════════════════════════════════╗ THEN RETURNS UNDEFINED
 undefined
 ╚══════════════════════════════════════════════════╝"
 `;

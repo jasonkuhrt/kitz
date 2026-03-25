@@ -590,6 +590,7 @@ export interface TestBuilder<State extends BuilderTypeState> {
    *
    * @param config - Snapshot configuration options
    * @param config.arguments - Whether to include the "GIVEN ARGUMENTS" section (default: true)
+   * @param config.runner - Whether to include the "RUNNER" section for runner snapshots (default: true)
    *
    * @example
    * ```ts

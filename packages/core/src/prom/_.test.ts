@@ -43,6 +43,7 @@ describe('isShape', () => {
 
 describe('createDeferred', () => {
   Test.describe('state tracking')
+    .snapshots({ runner: false })
     .onSetup(() => ({
       d: Prom.createDeferred<number>(),
     }))
@@ -58,6 +59,7 @@ describe('createDeferred', () => {
     .test()
 
   Test.describe('strict')
+    .snapshots({ runner: false })
     .onSetup(() => ({
       d: Prom.createDeferred<number>({ strict: true }),
     }))

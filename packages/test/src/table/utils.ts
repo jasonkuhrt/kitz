@@ -318,7 +318,7 @@ export const formatSnapshotWithInput: FormatSnapshotWithInput = (
   runner?: Fn.AnyAny,
   serializer: SnapshotSerializer = defaultSnapshotSerializer,
   context: any = {},
-  snapshotConfig: { arguments?: boolean } = { arguments: true },
+  snapshotConfig: { arguments?: boolean; runner?: boolean } = { arguments: true, runner: true },
 ): string => {
   // Fixed width for all boxes
   const width = 50
@@ -351,7 +351,7 @@ export const formatSnapshotWithInput: FormatSnapshotWithInput = (
   }
 
   // Runner mode: Show runner function and output
-  if (runner) {
+  if (runner && snapshotConfig.runner !== false) {
     const analyzed = Fn.analyzeFunction(runner)
 
     return buildBox({

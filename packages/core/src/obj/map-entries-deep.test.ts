@@ -23,6 +23,7 @@ const combinedTransform = (key: string, value: Obj.DeepObjectValue) => {
 }
 
 Test.on(Obj.mapEntriesDeep)
+  .snapshots({ arguments: false })
   .describeInputs('primitives', [
     ['hello', () => undefined],
     [42, () => undefined],

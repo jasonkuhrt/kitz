@@ -2,6 +2,7 @@ import { Test } from '#kitz/test'
 import { analyzeFunction } from './analyze.js'
 
 Test.on(analyzeFunction)
+  .snapshots({ arguments: false })
   .describeInputs('parameters - named', [
     (a: number) => a,
     (a: number, b: string, c: boolean) => [a, b, c],
