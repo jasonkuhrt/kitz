@@ -31,6 +31,7 @@ bun add kitz
 bun add @kitz/core
 bun add @kitz/fs
 bun add @kitz/cli
+bun add @kitz/yaml
 # ... etc
 ```
 
@@ -122,6 +123,7 @@ You will also find these conventions:
 | [`@kitz/tree`](./packages/tree)                       | Tree data structure utilities      |
 | [`@kitz/url`](./packages/url)                         | URL utilities                      |
 | [`@kitz/ware`](./packages/ware)                       | Middleware utilities               |
+| [`@kitz/yaml`](./packages/yaml)                       | YAML codecs and resources          |
 
 <!-- PACKAGES_TABLE_END -->
 

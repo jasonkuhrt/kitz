@@ -58,6 +58,7 @@
     "./tree": "./src/tree.ts",
     "./url": "./src/url.ts",
     "./ware": "./src/ware.ts",
+    "./yaml": "./src/yaml.ts",
     "./monorepo": "./src/monorepo.ts"
   },
   "files": [
@@ -103,6 +104,7 @@
     "@kitz/tex": "workspace:*",
     "@kitz/tree": "workspace:*",
     "@kitz/url": "workspace:*",
-    "@kitz/ware": "workspace:*"
+    "@kitz/ware": "workspace:*",
+    "@kitz/yaml": "workspace:*"
   }
 }
