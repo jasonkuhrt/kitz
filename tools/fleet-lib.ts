@@ -15,16 +15,13 @@ export interface DependencyMap {
   readonly optionalDependencies?: Record<string, string>
 }
 
-const DependencyRecordSchema = Schema.Record({
-  key: Schema.String,
-  value: Schema.String,
-})
-const WorkspacesSchema = Schema.Union(
+const DependencyRecordSchema = Schema.Record(Schema.String, Schema.String)
+const WorkspacesSchema = Schema.Union([
   Schema.Array(Schema.String),
   Schema.Struct({
     packages: Schema.optional(Schema.Array(Schema.String)),
   }),
-)
+])
 const PackageJsonManifestSchema = Schema.Struct({
   name: Schema.optional(Schema.String),
   packageManager: Schema.optional(Schema.String),
@@ -37,7 +34,7 @@ const PackageJsonManifestSchema = Schema.Struct({
 
 export type PackageJsonManifest = Schema.Schema.Type<typeof PackageJsonManifestSchema>
 
-const decodeManifest = Schema.decodeUnknownSync(Schema.parseJson(PackageJsonManifestSchema))
+const decodeManifest = Schema.decodeUnknownSync(Schema.fromJsonString(PackageJsonManifestSchema))
 
 export interface KitzOpportunity {
   readonly id: string
