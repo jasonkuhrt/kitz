@@ -1,0 +1,136 @@
+{
+    "src/ts/err.test.ts": [
+        {
+            "location": {
+                "start": {
+                    "line": 10,
+                    "char": 3
+                },
+                "end": {
+                    "line": 10,
+                    "char": 28
+                }
+            },
+            "args": [
+                {
+                    "type": "{ ERROR_________: \".parse.param\"; message_______: \"Invalid param\"; input_________: string; }",
+                    "relationships": {
+                        "args": [
+                            "equality"
+                        ],
+                        "typeArgs": []
+                    }
+                }
+            ],
+            "typeArgs": [],
+            "errors": [],
+            "completions": {}
+        },
+        {
+            "location": {
+                "start": {
+                    "line": 19,
+                    "char": 3
+                },
+                "end": {
+                    "line": 19,
+                    "char": 28
+                }
+            },
+            "args": [
+                {
+                    "type": "{ ERROR_________: \".domain\"; message_______: \"Error\"; }",
+                    "relationships": {
+                        "args": [
+                            "equality"
+                        ],
+                        "typeArgs": []
+                    }
+                }
+            ],
+            "typeArgs": [],
+            "errors": [],
+            "completions": {}
+        },
+        {
+            "location": {
+                "start": {
+                    "line": 28,
+                    "char": 3
+                },
+                "end": {
+                    "line": 28,
+                    "char": 35
+                }
+            },
+            "args": [
+                {
+                    "type": "true",
+                    "relationships": {
+                        "args": [
+                            "equality"
+                        ],
+                        "typeArgs": [
+                            "equality"
+                        ]
+                    }
+                }
+            ],
+            "typeArgs": [
+                {
+                    "type": "true",
+                    "relationships": {
+                        "args": [
+                            "equality"
+                        ],
+                        "typeArgs": [
+                            "equality"
+                        ]
+                    }
+                }
+            ],
+            "errors": [],
+            "completions": {}
+        },
+        {
+            "location": {
+                "start": {
+                    "line": 33,
+                    "char": 3
+                },
+                "end": {
+                    "line": 33,
+                    "char": 36
+                }
+            },
+            "args": [
+                {
+                    "type": "false",
+                    "relationships": {
+                        "args": [
+                            "equality"
+                        ],
+                        "typeArgs": [
+                            "equality"
+                        ]
+                    }
+                }
+            ],
+            "typeArgs": [
+                {
+                    "type": "false",
+                    "relationships": {
+                        "args": [
+                            "equality"
+                        ],
+                        "typeArgs": [
+                            "equality"
+                        ]
+                    }
+                }
+            ],
+            "errors": [],
+            "completions": {}
+        }
+    ]
+}

@@ -1,7 +1,16 @@
 import { Test } from '@kitz/test'
 import { MutableHashMap, Option } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import * as Flo from './__.js'
+
+beforeEach(() => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date('2024-01-01T00:00:00.000Z'))
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+})
 
 // ─── Event Helpers ─────────────────────────────────────────────
 

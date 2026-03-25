@@ -102,18 +102,16 @@ export const ObservableActivity = {
     Effect.gen(function* () {
       const maybePubsub = yield* Effect.serviceOption(WorkflowEvents)
 
-      // Create the underlying activity (with optional retry)
-      let activity = Activity.make({
-        name: config.name,
-        error: config.error,
-        execute: config.execute,
-      }) as unknown as Effect.Effect<void, ObservableActivityError<E>, R>
-      if (config.retry) {
-        activity = activity.pipe(Activity.retry(config.retry))
-      }
-
       // No event service - just run the activity
       if (Option.isNone(maybePubsub)) {
+        let activity = Activity.make({
+          name: config.name,
+          error: config.error,
+          execute: config.execute,
+        }).asEffect() as Effect.Effect<void, ObservableActivityError<E>, R>
+        if (config.retry) {
+          activity = activity.pipe(Activity.retry(config.retry))
+        }
         return yield* activity
       }
 
@@ -130,19 +128,29 @@ export const ObservableActivity = {
         }),
       ).pipe(Effect.ignore)
 
+      const publishFailure = (error: ObservableActivityError<E>) => {
+        const errorMessage = error instanceof Error ? error.message : JSON.stringify(error)
+        return PubSub.publish(
+          pubsub,
+          ActivityTypes.Failed.make({
+            activity: config.name,
+            timestamp: new Date(),
+            error: errorMessage,
+          }),
+        ).pipe(Effect.ignore)
+      }
+
+      let activity = Activity.make({
+        name: config.name,
+        error: config.error,
+        execute: config.execute.pipe(Effect.tapError(publishFailure)),
+      }).asEffect() as Effect.Effect<void, ObservableActivityError<E>, R>
+      if (config.retry) {
+        activity = activity.pipe(Activity.retry(config.retry))
+      }
+
       // Run the actual activity with timing
       const [duration, result] = yield* activity.pipe(
-        Effect.tapError((error) => {
-          const errorMessage = error instanceof Error ? error.message : JSON.stringify(error)
-          return PubSub.publish(
-            pubsub,
-            ActivityTypes.Failed.make({
-              activity: config.name,
-              timestamp: new Date(),
-              error: errorMessage,
-            }),
-          ).pipe(Effect.ignore)
-        }),
         Effect.timed,
       )
 

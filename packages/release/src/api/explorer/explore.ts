@@ -90,14 +90,13 @@ export const resolveReleaseTarget = (
 
     const git = yield* Git.Git
     const remoteUrl = yield* git.getRemoteUrl('origin').pipe(
-      Effect.catch((error: any) =>
-        Effect.fail(
+      Effect.mapError(
+        (error) =>
           new ExplorerError({
             context: {
               detail: `Could not read git remote "origin". Set GITHUB_REPOSITORY="<owner>/<repo>" or configure origin to github.com. (${error.message})`,
             },
           }),
-        ),
       ),
     )
 
@@ -125,6 +124,30 @@ const resolveGithubToken = (vars: Record<string, string | undefined>): string | 
   if (!token || token.trim() === '') return null
   return token
 }
+
+interface PullRequestListingParams {
+  readonly owner: string
+  readonly repo: string
+  readonly token?: string
+}
+
+export interface PullRequestResolverDependencies {
+  readonly listOpenPullRequests?: (
+    params: PullRequestListingParams,
+  ) => Effect.Effect<
+    readonly Github.PullRequest[],
+    | Github.GithubError
+    | Github.GithubNotFoundError
+    | Github.GithubAuthError
+    | Github.GithubRateLimitError
+  >
+}
+
+const listOpenPullRequestsLive = ({ owner, repo, token }: PullRequestListingParams) =>
+  Effect.gen(function* () {
+    const github = yield* Github.Github
+    return yield* github.listOpenPullRequests()
+  }).pipe(Effect.provide(Github.LiveFetch({ owner, repo, ...(token ? { token } : {}) })))
 
 export const selectConnectedPullRequestNumber = (
   branch: string,
@@ -177,7 +200,9 @@ export const selectPullRequestByNumber = (
     )
   })
 
-export const resolvePullRequest = (): Effect.Effect<
+export const resolvePullRequest = (
+  dependencies: PullRequestResolverDependencies = {},
+): Effect.Effect<
   Github.PullRequest | null,
   | ExplorerError
   | Git.GitError
@@ -196,14 +221,11 @@ export const resolvePullRequest = (): Effect.Effect<
     const target = yield* resolveReleaseTarget(env.vars)
 
     const token = resolveGithubToken(env.vars) ?? undefined
-    const pullRequests = yield* Effect.gen(function* () {
-      const github = yield* Github.Github
-      return yield* github.listOpenPullRequests()
-    }).pipe(
-      Effect.provide(
-        Github.LiveFetch({ owner: target.owner, repo: target.repo, ...(token ? { token } : {}) }),
-      ),
-    )
+    const pullRequests = yield* (dependencies.listOpenPullRequests ?? listOpenPullRequestsLive)({
+      owner: target.owner,
+      repo: target.repo,
+      ...(token ? { token } : {}),
+    })
 
     if (prNumber !== null) {
       return yield* selectPullRequestByNumber(prNumber, pullRequests)
@@ -212,7 +234,9 @@ export const resolvePullRequest = (): Effect.Effect<
     return yield* selectConnectedPullRequest(branch, pullRequests)
   })
 
-export const resolvePrNumber = (): Effect.Effect<
+export const resolvePrNumber = (
+  dependencies: PullRequestResolverDependencies = {},
+): Effect.Effect<
   number | null,
   | ExplorerError
   | Git.GitError
@@ -227,7 +251,7 @@ export const resolvePrNumber = (): Effect.Effect<
     const env = yield* Env.Env
     const detected = detectPrNumber(env.vars)
     if (detected !== null) return detected
-    const pullRequest = yield* resolvePullRequest()
+    const pullRequest = yield* resolvePullRequest(dependencies)
     return pullRequest?.number ?? null
   })
 

@@ -609,17 +609,17 @@ export const match = <$A>(
  */
 export const toString = (pin: Pin): string =>
   match(pin, {
-    PinRange: (p) => `${monikerToString(p.name)}@${p.range.toString()}`,
+    PinRange: (p) => `${monikerToString(p.name)}@${SemverRange.toString(p.range)}`,
     PinExact: (p) => `${monikerToString(p.name)}@${Semver.toString(p.version)}`,
     PinTag: (p) => `${monikerToString(p.name)}@${p.tag}`,
     PinWorkspace: (p) => {
-      const rangeStr = typeof p.range === 'string' ? p.range : p.range.toString()
+      const rangeStr = typeof p.range === 'string' ? p.range : SemverRange.toString(p.range)
       return `${monikerToString(p.name)}@workspace:${rangeStr}`
     },
     PinGit: (p) => {
       let result = `${monikerToString(p.name)}@${p.url}`
       if (p.semver._tag === 'Some') {
-        result += `#semver:${p.semver.value.toString()}`
+        result += `#semver:${SemverRange.toString(p.semver.value)}`
       } else if (p.ref._tag === 'Some') {
         result += `#${p.ref.value}`
       }

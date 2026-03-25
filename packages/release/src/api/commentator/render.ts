@@ -73,8 +73,8 @@ export const render = (forecast: Forecast, options?: RenderOptions): string => {
     output``
   }
 
-  // Explainer toggle
-  output(renderExplainer())
+  // Help toggle
+  output(renderHelp())
   output``
 
   if (projectedSquashCommit) {
@@ -290,25 +290,26 @@ const renderStatusBanner = (
 }
 
 // ---------------------------------------------------------------------------
-// Explainer
+// Help
 // ---------------------------------------------------------------------------
 
-/** Render the collapsible "How release calculation works" explainer block. */
-const renderExplainer = (): string => {
+/** Render the collapsible help block for release forecast terminology. */
+const renderHelp = (): string => {
   const lines = [
-    '<details><summary>How release calculation works</summary>',
+    '<details><summary>Help</summary>',
     '',
-    '**Primary** — packages with commits directly touching their source in this PR.',
-    '**Cascade** — packages that depend on a primary release; re-published for consistency.',
-    '',
-    '| Context | Version Format |',
-    '| --- | --- |',
-    '| Ephemeral (PR) | `0.0.0-pr.<N>.<iter>.<sha>` |',
-    '| Candidate | `<base>-next.<N>` |',
-    '| Official | Semver bump from conventional commits |',
+    '| Term | Where | Meaning |',
+    '| --- | --- | --- |',
+    '| Packages | Summary line | Total packages in this forecast (`primary + cascades`). |',
+    '| Primary | Summary line, section heading | Packages with direct source changes in this PR. |',
+    '| Cascades | Summary line, section heading | Packages re-published because they depend on a primary release. |',
+    '| Head | Summary line | The exact commit SHA this forecast was computed from. |',
+    '| Ephemeral | Version and publish history | PR preview version format: `0.0.0-pr.<N>.<iter>.<sha>`. |',
+    '| Candidate | Version and publish history | Pre-release version format: `<base>-next.<N>`. |',
+    '| Official | Version lines | Final semver release version computed from commit semantics. |',
     '',
     'Bump rules: `feat()` → minor · `fix()` → patch · `!` → major',
-    'Cascades inherit patch bump.',
+    'Cascades use patch because they are being re-published due to dependency movement, not direct source edits.',
     '',
     '</details>',
   ]

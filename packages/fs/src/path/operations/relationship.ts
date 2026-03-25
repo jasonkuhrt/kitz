@@ -1,5 +1,5 @@
 /* oxlint-disable typescript-eslint(no-unnecessary-type-assertion) -- branded conditional path return types require explicit assertions; oxlint misidentifies them as redundant. */
-import { Array, Equivalence, Match, Option } from 'effect'
+import { Array, Equivalence, Option } from 'effect'
 import type { $Abs } from '../$Abs/_.js'
 import type { $Dir } from '../$Dir/_.js'
 import { $Rel } from '../$Rel/_.js'
@@ -71,34 +71,7 @@ export type MatchingTypeGroupForDir<$a extends $Dir> = {
  * ```
  */
 export function isDescendantOf<$a extends Path>(child: $a, parent: MatchingDirGroup<$a>): boolean {
-  // Can't compare paths of different types - check if tags match
-  // Cast to Path for Match.tagsExhaustive since generic constraint is checked at call site
-  const tagsMatch = Match.value(child as Path).pipe(
-    Match.tagsExhaustive({
-      FsPathAbsFile: () =>
-        Match.value(parent as Path).pipe(
-          Match.tag('FsPathAbsFile', () => true),
-          Match.orElse(() => false),
-        ),
-      FsPathAbsDir: () =>
-        Match.value(parent as Path).pipe(
-          Match.tag('FsPathAbsDir', () => true),
-          Match.orElse(() => false),
-        ),
-      FsPathRelFile: () =>
-        Match.value(parent as Path).pipe(
-          Match.tag('FsPathRelFile', () => true),
-          Match.orElse(() => false),
-        ),
-      FsPathRelDir: () =>
-        Match.value(parent as Path).pipe(
-          Match.tag('FsPathRelDir', () => true),
-          Match.orElse(() => false),
-        ),
-    }),
-  )
-
-  if (!tagsMatch) {
+  if ($Rel.is(child) !== $Rel.is(parent as Path)) {
     return false
   }
 

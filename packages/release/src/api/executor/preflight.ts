@@ -18,6 +18,8 @@ const PreflightErrorContext = S.Struct({
 })
 const decodeNpmAuthMetadata = S.decodeUnknownOption(NpmAuthMetadataSchema)
 const decodeGitRemoteMetadata = S.decodeUnknownOption(GitRemoteMetadataSchema)
+const toError = (error: unknown): Error =>
+  error instanceof Error ? error : new Error(String(error))
 
 /**
  * Error during preflight checks.
@@ -64,6 +66,31 @@ export interface PreflightOptions {
   readonly trunk?: string
 }
 
+interface PreflightLintCheckParams {
+  readonly config: Lint.ResolvedConfig
+  readonly preconditionsLayer: Layer.Layer<any>
+  readonly releasePlanLayer: Layer.Layer<any>
+  readonly releaseContextLayer: Layer.Layer<any>
+}
+
+export interface PreflightDependencies {
+  readonly getCurrentBranch?: (git: Git.GitService) => Effect.Effect<string, Error>
+  readonly runLintCheck?: (params: PreflightLintCheckParams) => Effect.Effect<Lint.Report, Error>
+}
+
+const runLintCheckLive = (params: PreflightLintCheckParams) =>
+  Lint.check({ config: params.config }).pipe(
+    Effect.provide(
+      Layer.mergeAll(
+        Lint.DefaultServicesLayer,
+        params.preconditionsLayer,
+        params.releasePlanLayer,
+        params.releaseContextLayer,
+      ),
+    ),
+    Effect.mapError(toError),
+  )
+
 /**
  * Run all preflight checks using the lint system.
  *
@@ -79,6 +106,7 @@ export interface PreflightOptions {
 export const run = (
   releases: ReleaseInfo[],
   options?: PreflightOptions,
+  dependencies: PreflightDependencies = {},
 ): Effect.Effect<
   PreflightResult,
   PreflightError,
@@ -138,16 +166,17 @@ export const run = (
       packagePath: r.package.path,
       version: r.nextVersion,
     }))
-    const currentBranch = yield* git.getCurrentBranch().pipe(
-      Effect.catch((error: any) =>
-        Effect.fail(
+    const currentBranch = yield* (
+      dependencies.getCurrentBranch?.(git) ?? git.getCurrentBranch()
+    ).pipe(
+      Effect.mapError(
+        (error) =>
           new PreflightError({
             context: {
               check: 'env.release-branch-allowed',
-              detail: error.message ?? String(error),
+              detail: error instanceof Error ? error.message : String(error),
             },
           }),
-        ),
       ),
     )
 
@@ -164,24 +193,20 @@ export const run = (
     })
 
     // Run lint check, mapping any errors to PreflightError
-    const report = yield* Lint.check({ config }).pipe(
-      Effect.provide(
-        Layer.mergeAll(
-          Lint.DefaultServicesLayer,
-          preconditionsLayer,
-          releasePlanLayer,
-          releaseContextLayer,
-        ),
-      ),
-      Effect.catch((error: any) =>
-        Effect.fail(
+    const report = yield* (dependencies.runLintCheck ?? runLintCheckLive)({
+      config,
+      preconditionsLayer,
+      releasePlanLayer,
+      releaseContextLayer,
+    }).pipe(
+      Effect.mapError(
+        (error) =>
           new PreflightError({
             context: {
               check: 'lint-execution',
-              detail: error.message ?? String(error),
+              detail: error instanceof Error ? error.message : String(error),
             },
           }),
-        ),
       ),
     )
 

@@ -11,7 +11,7 @@ Layer 1:
 ○ Publish:B
 Layer 2: ○ CreateTag
 
-0/4 completed (1ms)
+0/4 completed (0)
 ╚══════════════════════════════════════════════════╝"
 `;
 
@@ -78,15 +78,15 @@ Layer 2: ○ CreateTag
 exports[`Renderer > DAG mode > compact > renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:A', 'Publish:B' ], [ 'CreateTag' ] ], ed...) 6`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
-[1m[36mWorkflow Progress[39m[22m
+Workflow Progress
 
-[2mLayer 0:[22m [32m✓ Preflight[39m
-[2mLayer 1:[22m
-[33m● Publish:A[39m
-[90m○ Publish:B[39m
-[2mLayer 2:[22m [90m○ CreateTag[39m
+Layer 0: ✓ Preflight
+Layer 1:
+● Publish:A
+○ Publish:B
+Layer 2: ○ CreateTag
 
-[2m1/4 completed (0)[22m
+1/4 completed (0)
 ╚══════════════════════════════════════════════════╝"
 `;
 
@@ -298,7 +298,7 @@ exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ '
 
 
 
-0/4 completed (1ms)
+0/4 completed (0)
 ╚══════════════════════════════════════════════════╝"
 `;
 
@@ -520,75 +520,75 @@ exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ '
 
 
 
-[32m┌──────────┐[39m
-[32m│[39m✓  StepA   [32m│[39m
-[32m└──────────┘[39m
+┌──────────┐
+│✓  StepA   │
+└──────────┘
 
 ──→
 
-[33m┌──────────┐[39m
-[33m│[39m●  StepB   [33m│[39m
-[33m└──────────┘[39m
+┌──────────┐
+│●  StepB   │
+└──────────┘
 
 ──→
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepD   [90m│[39m
-[90m└──────────┘[39m
+┌──────────┐
+│○  StepD   │
+└──────────┘
 
 
 
-[32m┌──────────┐[39m
-[32m│[39m✓  StepA   [32m│[39m
-[32m└──────────┘[39m
-
-──→
-
-[33m┌──────────┐[39m
-[33m│[39m●  StepB   [33m│[39m
-[33m└──────────┘[39m
+┌──────────┐
+│✓  StepA   │
+└──────────┘
 
 ──→
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepD   [90m│[39m
-[90m└──────────┘[39m
-
-
-
-[32m┌──────────┐[39m
-[32m│[39m✓  StepA   [32m│[39m
-[32m└──────────┘[39m
+┌──────────┐
+│●  StepB   │
+└──────────┘
 
 ──→
 
-[33m┌──────────┐[39m
-[33m│[39m●  StepB   [33m│[39m
-[33m└──────────┘[39m
+┌──────────┐
+│○  StepD   │
+└──────────┘
+
+
+
+┌──────────┐
+│✓  StepA   │
+└──────────┘
 
 ──→
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepD   [90m│[39m
-[90m└──────────┘[39m
-
-
-
-[32m┌──────────┐[39m
-[32m│[39m✓  StepA   [32m│[39m
-[32m└──────────┘[39m
+┌──────────┐
+│●  StepB   │
+└──────────┘
 
 ──→
 
-[33m┌──────────┐[39m
-[33m│[39m●  StepB   [33m│[39m
-[33m└──────────┘[39m
+┌──────────┐
+│○  StepD   │
+└──────────┘
+
+
+
+┌──────────┐
+│✓  StepA   │
+└──────────┘
 
 ──→
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepD   [90m│[39m
-[90m└──────────┘[39m
+┌──────────┐
+│●  StepB   │
+└──────────┘
+
+──→
+
+┌──────────┐
+│○  StepD   │
+└──────────┘
 
 │
 
@@ -598,63 +598,21 @@ exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ '
 
 
 
-[32m┌──────────┐[39m
-[32m│[39m✓  StepA   [32m│[39m
-[32m└──────────┘[39m
+┌──────────┐
+│✓  StepA   │
+└──────────┘
 
 ──→
 
-[33m┌──────────┐[39m
-[33m│[39m●  StepB   [33m│[39m
-[33m└──────────┘[39m
+┌──────────┐
+│●  StepB   │
+└──────────┘
 
 ──→
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepD   [90m│[39m
-[90m└──────────┘[39m
-
-│
-
-│
-
-
-
-
-
-
-
-
-
-
-
-[90m┌──────────┐[39m
-[90m│[39m○  StepC   [90m│[39m
-[90m└──────────┘[39m
-
-──→
-
-
-
-
-
-
-
-[32m┌──────────┐[39m
-[32m│[39m✓  StepA   [32m│[39m
-[32m└──────────┘[39m
-
-──→
-
-[33m┌──────────┐[39m
-[33m│[39m●  StepB   [33m│[39m
-[33m└──────────┘[39m
-
-──→
-
-[90m┌──────────┐[39m
-[90m│[39m○  StepD   [90m│[39m
-[90m└──────────┘[39m
+┌──────────┐
+│○  StepD   │
+└──────────┘
 
 │
 
@@ -670,9 +628,9 @@ exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ '
 
 
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepC   [90m│[39m
-[90m└──────────┘[39m
+┌──────────┐
+│○  StepC   │
+└──────────┘
 
 ──→
 
@@ -682,21 +640,21 @@ exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ '
 
 
 
-[32m┌──────────┐[39m
-[32m│[39m✓  StepA   [32m│[39m
-[32m└──────────┘[39m
+┌──────────┐
+│✓  StepA   │
+└──────────┘
 
 ──→
 
-[33m┌──────────┐[39m
-[33m│[39m●  StepB   [33m│[39m
-[33m└──────────┘[39m
+┌──────────┐
+│●  StepB   │
+└──────────┘
 
 ──→
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepD   [90m│[39m
-[90m└──────────┘[39m
+┌──────────┐
+│○  StepD   │
+└──────────┘
 
 │
 
@@ -712,9 +670,9 @@ exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ '
 
 
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepC   [90m│[39m
-[90m└──────────┘[39m
+┌──────────┐
+│○  StepC   │
+└──────────┘
 
 ──→
 
@@ -722,7 +680,49 @@ exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ '
 
 
 
-[2m1/4 completed (0)[22m
+
+
+┌──────────┐
+│✓  StepA   │
+└──────────┘
+
+──→
+
+┌──────────┐
+│●  StepB   │
+└──────────┘
+
+──→
+
+┌──────────┐
+│○  StepD   │
+└──────────┘
+
+│
+
+│
+
+
+
+
+
+
+
+
+
+
+
+┌──────────┐
+│○  StepC   │
+└──────────┘
+
+──→
+
+
+
+
+
+1/4 completed (0)
 ╚══════════════════════════════════════════════════╝"
 `;
 
@@ -1377,7 +1377,7 @@ exports[`Renderer > list mode > renderList({ activities: [ 'Preflight', 'Publish
 ○ CreateTag
 ○ PushTags
 
-0/5 completed (1ms)
+0/5 completed (0)
 ╚══════════════════════════════════════════════════╝"
 `;
 
@@ -1403,7 +1403,7 @@ exports[`Renderer > list mode > renderList({ activities: [ 'Preflight', 'Publish
 ○ CreateTag
 ○ PushTags
 
-1/5 completed (1ms)
+1/5 completed (0)
 ╚══════════════════════════════════════════════════╝"
 `;
 
@@ -1436,10 +1436,10 @@ exports[`Renderer > list mode > renderList({ activities: [ 'Preflight', 'Publish
 exports[`Renderer > list mode > renderList({ activities: [ 'Step1', 'Step2', 'Step3' ], colors: true, events: [ Started { a...) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
-[32m✓[39m Step1
-[33m●[39m Step2
-[90m○[39m Step3
+✓ Step1
+● Step2
+○ Step3
 
-[2m1/3 completed (0)[22m
+1/3 completed (0)
 ╚══════════════════════════════════════════════════╝"
 `;

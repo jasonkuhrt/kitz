@@ -7,13 +7,13 @@ exports[`Alias > fromString('@my/react@npm:react@^18.0.0') 1`] = `
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Alias {
   name: Scoped {
+    _tag: 'Scoped',
     scope: 'my',
-    name: 'react',
-    _tag: 'Scoped'
+    name: 'react'
   },
   target: Unscoped {
-    name: 'react',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'react'
   },
   targetSpecifier: '^18.0.0',
   _tag: 'PinAlias'
@@ -28,13 +28,13 @@ custom@npm:@scope/pkg@latest
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Alias {
   name: Unscoped {
-    name: 'custom',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'custom'
   },
   target: Scoped {
+    _tag: 'Scoped',
     scope: 'scope',
-    name: 'pkg',
-    _tag: 'Scoped'
+    name: 'pkg'
   },
   targetSpecifier: 'latest',
   _tag: 'PinAlias'
@@ -49,12 +49,12 @@ my-lodash@npm:lodash@^4.0.0
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Alias {
   name: Unscoped {
-    name: 'my-lodash',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'my-lodash'
   },
   target: Unscoped {
-    name: 'lodash',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'lodash'
   },
   targetSpecifier: '^4.0.0',
   _tag: 'PinAlias'
@@ -67,10 +67,10 @@ exports[`Git > fromString('my-pkg@git+https://github.com/org/repo#semver:^1.0.0'
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 my-pkg@git+https://github.com/org/repo#semver:^1.0.0
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Git {
+GitClass {
   name: Unscoped {
-    name: 'my-pkg',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'my-pkg'
   },
   url: 'git+https://github.com/org/repo',
   ref: { _id: 'Option', _tag: 'None' },
@@ -79,25 +79,25 @@ Git {
   _tag: 'Some',
   value: [
     [
-      Comparator {
+      ComparatorClass {
         operator: '>=',
         version: OfficialRelease {
+          _tag: 'SemverOfficialRelease',
           major: 1,
           minor: 0,
           patch: 0,
-          build: undefined,
-          _tag: 'SemverOfficialRelease'
+          build: undefined
         }
       },
-      Comparator {
+      ComparatorClass {
         operator: '<',
         version: PreRelease {
+          _tag: 'SemverPreRelease',
           major: 2,
           minor: 0,
           patch: 0,
           prerelease: [ 0 ],
-          build: undefined,
-          _tag: 'SemverPreRelease'
+          build: undefined
         }
       }
     ]
@@ -113,10 +113,10 @@ exports[`Git > fromString('my-pkg@git+https://github.com/org/repo#v1.0.0') 1`] =
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 my-pkg@git+https://github.com/org/repo#v1.0.0
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Git {
+GitClass {
   name: Unscoped {
-    name: 'my-pkg',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'my-pkg'
   },
   url: 'git+https://github.com/org/repo',
   ref: { _id: 'Option', _tag: 'Some', value: 'v1.0.0' },
@@ -131,10 +131,10 @@ exports[`Git > fromString('my-pkg@git+https://github.com/org/repo') 1`] = `
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 my-pkg@git+https://github.com/org/repo
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Git {
+GitClass {
   name: Unscoped {
-    name: 'my-pkg',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'my-pkg'
   },
   url: 'git+https://github.com/org/repo',
   ref: { _id: 'Option', _tag: 'None' },
@@ -149,10 +149,10 @@ exports[`Git > fromString('my-pkg@github:user/repo') 1`] = `
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 my-pkg@github:user/repo
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Git {
+GitClass {
   name: Unscoped {
-    name: 'my-pkg',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'my-pkg'
   },
   url: 'github:user/repo',
   ref: { _id: 'Option', _tag: 'None' },
@@ -169,9 +169,9 @@ exports[`Path > fromString('@local/util@file:./packages/util') 1`] = `
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Path {
   name: Scoped {
+    _tag: 'Scoped',
     scope: 'local',
-    name: 'util',
-    _tag: 'Scoped'
+    name: 'util'
   },
   path: './packages/util',
   _tag: 'PinPath'
@@ -186,8 +186,8 @@ my-pkg@file:../shared
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Path {
   name: Unscoped {
-    name: 'my-pkg',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'my-pkg'
   },
   path: '../shared',
   _tag: 'PinPath'
@@ -202,8 +202,8 @@ pkg@file:/absolute/path
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Path {
   name: Unscoped {
-    name: 'pkg',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'pkg'
   },
   path: '/absolute/path',
   _tag: 'PinPath'
@@ -216,33 +216,33 @@ exports[`Range > fromString('@kitz/core@^1.0.0') 1`] = `
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 @kitz/core@^1.0.0
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Range {
+RangeClass {
   name: Scoped {
+    _tag: 'Scoped',
     scope: 'kitz',
-    name: 'core',
-    _tag: 'Scoped'
+    name: 'core'
   },
   range: [
     [
-      Comparator {
+      ComparatorClass {
         operator: '>=',
         version: OfficialRelease {
+          _tag: 'SemverOfficialRelease',
           major: 1,
           minor: 0,
           patch: 0,
-          build: undefined,
-          _tag: 'SemverOfficialRelease'
+          build: undefined
         }
       },
-      Comparator {
+      ComparatorClass {
         operator: '<',
         version: PreRelease {
+          _tag: 'SemverPreRelease',
           major: 2,
           minor: 0,
           patch: 0,
           prerelease: [ 0 ],
-          build: undefined,
-          _tag: 'SemverPreRelease'
+          build: undefined
         }
       }
     ]
@@ -257,33 +257,33 @@ exports[`Range > fromString('@scope/pkg@~2.3.4') 1`] = `
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 @scope/pkg@~2.3.4
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Range {
+RangeClass {
   name: Scoped {
+    _tag: 'Scoped',
     scope: 'scope',
-    name: 'pkg',
-    _tag: 'Scoped'
+    name: 'pkg'
   },
   range: [
     [
-      Comparator {
+      ComparatorClass {
         operator: '>=',
         version: OfficialRelease {
+          _tag: 'SemverOfficialRelease',
           major: 2,
           minor: 3,
           patch: 4,
-          build: undefined,
-          _tag: 'SemverOfficialRelease'
+          build: undefined
         }
       },
-      Comparator {
+      ComparatorClass {
         operator: '<',
         version: PreRelease {
+          _tag: 'SemverPreRelease',
           major: 2,
           minor: 4,
           patch: 0,
           prerelease: [ 0 ],
-          build: undefined,
-          _tag: 'SemverPreRelease'
+          build: undefined
         }
       }
     ]
@@ -298,21 +298,21 @@ exports[`Range > fromString('express@4.18.0') 1`] = `
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 express@4.18.0
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Range {
+RangeClass {
   name: Unscoped {
-    name: 'express',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'express'
   },
   range: [
     [
-      Comparator {
+      ComparatorClass {
         operator: '',
         version: OfficialRelease {
+          _tag: 'SemverOfficialRelease',
           major: 4,
           minor: 18,
           patch: 0,
-          build: undefined,
-          _tag: 'SemverOfficialRelease'
+          build: undefined
         }
       }
     ]
@@ -327,21 +327,21 @@ exports[`Range > fromString('lodash@>=4.0.0') 1`] = `
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 lodash@>=4.0.0
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Range {
+RangeClass {
   name: Unscoped {
-    name: 'lodash',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'lodash'
   },
   range: [
     [
-      Comparator {
+      ComparatorClass {
         operator: '>=',
         version: OfficialRelease {
+          _tag: 'SemverOfficialRelease',
           major: 4,
           minor: 0,
           patch: 0,
-          build: undefined,
-          _tag: 'SemverOfficialRelease'
+          build: undefined
         }
       }
     ]
@@ -356,21 +356,21 @@ exports[`Range > fromString('pkg@*') 1`] = `
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 pkg@*
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Range {
+RangeClass {
   name: Unscoped {
-    name: 'pkg',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'pkg'
   },
   range: [
     [
-      Comparator {
+      ComparatorClass {
         operator: '>=',
         version: OfficialRelease {
+          _tag: 'SemverOfficialRelease',
           major: 0,
           minor: 0,
           patch: 0,
-          build: undefined,
-          _tag: 'SemverOfficialRelease'
+          build: undefined
         }
       }
     ]
@@ -387,9 +387,9 @@ exports[`Tag > fromString('@kitz/core@next') 1`] = `
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Tag {
   name: Scoped {
+    _tag: 'Scoped',
     scope: 'kitz',
-    name: 'core',
-    _tag: 'Scoped'
+    name: 'core'
   },
   tag: 'next',
   _tag: 'PinTag'
@@ -404,8 +404,8 @@ lodash@latest
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Tag {
   name: Unscoped {
-    name: 'lodash',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'lodash'
   },
   tag: 'latest',
   _tag: 'PinTag'
@@ -420,8 +420,8 @@ pkg@beta
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Tag {
   name: Unscoped {
-    name: 'pkg',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'pkg'
   },
   tag: 'beta',
   _tag: 'PinTag'
@@ -436,8 +436,8 @@ react@canary
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Tag {
   name: Unscoped {
-    name: 'react',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'react'
   },
   tag: 'canary',
   _tag: 'PinTag'
@@ -452,8 +452,8 @@ custom@http://registry.internal/custom.tar.gz
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Url {
   name: Unscoped {
-    name: 'custom',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'custom'
   },
   url: 'http://registry.internal/custom.tar.gz',
   _tag: 'PinUrl'
@@ -468,8 +468,8 @@ my-pkg@https://example.com/pkg-1.0.0.tgz
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Url {
   name: Unscoped {
-    name: 'my-pkg',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'my-pkg'
   },
   url: 'https://example.com/pkg-1.0.0.tgz',
   _tag: 'PinUrl'
@@ -482,11 +482,11 @@ exports[`Workspace > fromString('@internal/util@workspace:*') 1`] = `
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 @internal/util@workspace:*
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Workspace {
+WorkspaceClass {
   name: Scoped {
+    _tag: 'Scoped',
     scope: 'internal',
-    name: 'util',
-    _tag: 'Scoped'
+    name: 'util'
   },
   range: '*',
   _tag: 'PinWorkspace'
@@ -499,11 +499,11 @@ exports[`Workspace > fromString('@kitz/core@workspace:^') 1`] = `
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 @kitz/core@workspace:^
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Workspace {
+WorkspaceClass {
   name: Scoped {
+    _tag: 'Scoped',
     scope: 'kitz',
-    name: 'core',
-    _tag: 'Scoped'
+    name: 'core'
   },
   range: '^',
   _tag: 'PinWorkspace'
@@ -516,33 +516,33 @@ exports[`Workspace > fromString('@scope/pkg@workspace:^1.0.0') 1`] = `
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 @scope/pkg@workspace:^1.0.0
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Workspace {
+WorkspaceClass {
   name: Scoped {
+    _tag: 'Scoped',
     scope: 'scope',
-    name: 'pkg',
-    _tag: 'Scoped'
+    name: 'pkg'
   },
   range: [
     [
-      Comparator {
+      ComparatorClass {
         operator: '>=',
         version: OfficialRelease {
+          _tag: 'SemverOfficialRelease',
           major: 1,
           minor: 0,
           patch: 0,
-          build: undefined,
-          _tag: 'SemverOfficialRelease'
+          build: undefined
         }
       },
-      Comparator {
+      ComparatorClass {
         operator: '<',
         version: PreRelease {
+          _tag: 'SemverPreRelease',
           major: 2,
           minor: 0,
           patch: 0,
           prerelease: [ 0 ],
-          build: undefined,
-          _tag: 'SemverPreRelease'
+          build: undefined
         }
       }
     ]
@@ -557,10 +557,10 @@ exports[`Workspace > fromString('local-pkg@workspace:~') 1`] = `
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 local-pkg@workspace:~
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Workspace {
+WorkspaceClass {
   name: Unscoped {
-    name: 'local-pkg',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'local-pkg'
   },
   range: '~',
   _tag: 'PinWorkspace'
@@ -573,11 +573,11 @@ exports[`fromString > auto-detection > fromString('@internal/util@workspace:*') 
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 @internal/util@workspace:*
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Workspace {
+WorkspaceClass {
   name: Scoped {
+    _tag: 'Scoped',
     scope: 'internal',
-    name: 'util',
-    _tag: 'Scoped'
+    name: 'util'
   },
   range: '*',
   _tag: 'PinWorkspace'
@@ -590,33 +590,33 @@ exports[`fromString > auto-detection > fromString('@kitz/core@^1.0.0') 1`] = `
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 @kitz/core@^1.0.0
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Range {
+RangeClass {
   name: Scoped {
+    _tag: 'Scoped',
     scope: 'kitz',
-    name: 'core',
-    _tag: 'Scoped'
+    name: 'core'
   },
   range: [
     [
-      Comparator {
+      ComparatorClass {
         operator: '>=',
         version: OfficialRelease {
+          _tag: 'SemverOfficialRelease',
           major: 1,
           minor: 0,
           patch: 0,
-          build: undefined,
-          _tag: 'SemverOfficialRelease'
+          build: undefined
         }
       },
-      Comparator {
+      ComparatorClass {
         operator: '<',
         version: PreRelease {
+          _tag: 'SemverPreRelease',
           major: 2,
           minor: 0,
           patch: 0,
           prerelease: [ 0 ],
-          build: undefined,
-          _tag: 'SemverPreRelease'
+          build: undefined
         }
       }
     ]
@@ -633,8 +633,8 @@ lodash@latest
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Tag {
   name: Unscoped {
-    name: 'lodash',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'lodash'
   },
   tag: 'latest',
   _tag: 'PinTag'
@@ -649,12 +649,12 @@ my-lodash@npm:lodash@^4.0.0
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Alias {
   name: Unscoped {
-    name: 'my-lodash',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'my-lodash'
   },
   target: Unscoped {
-    name: 'lodash',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'lodash'
   },
   targetSpecifier: '^4.0.0',
   _tag: 'PinAlias'
@@ -669,8 +669,8 @@ my-pkg@file:../shared
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Path {
   name: Unscoped {
-    name: 'my-pkg',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'my-pkg'
   },
   path: '../shared',
   _tag: 'PinPath'
@@ -683,10 +683,10 @@ exports[`fromString > auto-detection > fromString('my-pkg@git+https://github.com
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 my-pkg@git+https://github.com/org/repo#v1.0.0
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
-Git {
+GitClass {
   name: Unscoped {
-    name: 'my-pkg',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'my-pkg'
   },
   url: 'git+https://github.com/org/repo',
   ref: { _id: 'Option', _tag: 'Some', value: 'v1.0.0' },
@@ -703,8 +703,8 @@ my-pkg@https://example.com/pkg.tgz
 ╠══════════════════════════════════════════════════╣ THEN RETURNS OBJECT
 Url {
   name: Unscoped {
-    name: 'my-pkg',
-    _tag: 'Unscoped'
+    _tag: 'Unscoped',
+    name: 'my-pkg'
   },
   url: 'https://example.com/pkg.tgz',
   _tag: 'PinUrl'
@@ -726,7 +726,7 @@ exports[`toString > roundtrip > fn('@kitz/core@^1.0.0') 1`] = `
 ╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
 @kitz/core@^1.0.0
 ╠══════════════════════════════════════════════════╣ THEN RETURNS STRING
-@kitz/core@>=1.0.0,<2.0.0-0
+@kitz/core@>=1.0.0 <2.0.0-0
 ╚══════════════════════════════════════════════════╝"
 `;
 

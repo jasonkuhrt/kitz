@@ -16,21 +16,23 @@ class ComparatorClass extends S.Class<ComparatorClass>('PkgRangeComparator')({
   static make = this.makeUnsafe
   static is = S.is(ComparatorClass)
 
+  private static render = (c: ComparatorClass): string => {
+    const v = c.version
+    const prerelease = v._tag === 'SemverPreRelease' ? `-${v.prerelease.join('.')}` : ''
+    const build = v.build?.length ? `+${v.build.join('.')}` : ''
+    return `${c.operator}${v.major}.${v.minor}.${v.patch}${prerelease}${build}`
+  }
+
   static Schema = S.String.pipe(
     S.decodeTo(ComparatorClass, {
       decode: SchemaGetter.transform(() => {
         return Lang.todo('Comparator.Schema decode')
       }),
-      encode: SchemaGetter.transform((c) => {
-        const v = c.version
-        const prerelease = v._tag === 'SemverPreRelease' ? `-${v.prerelease.join('.')}` : ''
-        const build = v.build?.length ? `+${v.build.join('.')}` : ''
-        return `${c.operator}${v.major}.${v.minor}.${v.patch}${prerelease}${build}`
-      }),
+      encode: SchemaGetter.transform(ComparatorClass.render),
     }),
   )
 
-  static override toString = S.encodeSync(ComparatorClass.Schema)
+  static override toString = ComparatorClass.render
 
   override toString(): string {
     return ComparatorClass.toString(this)

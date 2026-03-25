@@ -2,11 +2,7 @@ import { describe, expect, test } from 'vitest'
 import * as WareNamespace from './_.js'
 import * as Ware from './__.js'
 import { initialInput2, pipeline, pipelineWithOptions, run } from './_.test-helpers.js'
-import {
-  ContextualAggregateError,
-  ContextualError,
-  partitionAndAggregateErrors,
-} from './_errors.js'
+import { ContextualAggregateError, ContextualError, partitionAndAggregateErrors } from './_errors.js'
 import {
   ErrorAnywareInterceptorEntrypoint,
   InterceptorEntryHookIssue,
@@ -52,12 +48,9 @@ describe('ware', () => {
     })
     expect(stepDefinition.name).toBe(`demo`)
 
-    const trigger = Ware.StepTrigger.create(
-      initialInput2,
-      async (parameters?: { input?: { value: string } }) => {
-        return parameters?.input?.value ?? `default`
-      },
-    )
+    const trigger = Ware.StepTrigger.create(initialInput2, async (parameters?: { input?: { value: string } }) => {
+      return parameters?.input?.value ?? `default`
+    })
     expect(trigger.input).toEqual(initialInput2)
     expect(await trigger({ input: { value: `override` } })).toBe(`override`)
 
@@ -116,21 +109,21 @@ describe('ware', () => {
   })
 
   test('builds and runs overloaded pipelines through pipeline and extension builders', async () => {
-    const extension = Ware.Extension.Builder.create<
-      ReturnType<typeof createBaseBuilder>['type']
-    >().overload(({ create }) => {
-      const overload = create({
-        discriminant: { name: `kind`, value: `special` },
-      })
-      overload.configurator((builder) => builder.default({ featureFlag: true }))
-      overload.stepWithExtendedInput<{ featureFlag: boolean }>()(`decorate`, {
-        run: (input: { kind: string; value: string; featureFlag: boolean }) => ({
-          kind: input.kind,
-          value: `${input.value}:special-decorate`,
-        }),
-      })
-      return overload
-    })
+    const extension = Ware.Extension.Builder.create<ReturnType<typeof createBaseBuilder>['type']>().overload(
+      ({ create }) => {
+        const overload = create({
+          discriminant: { name: `kind`, value: `special` },
+        })
+        overload.configurator((builder) => builder.default({ featureFlag: true }))
+        overload.stepWithExtendedInput<{ featureFlag: boolean }>()(`decorate`, {
+          run: (input: { kind: string; value: string; featureFlag: boolean }) => ({
+            kind: input.kind,
+            value: `${input.value}:special-decorate`,
+          }),
+        })
+        return overload
+      },
+    )
 
     const executablePipeline = createBaseBuilder()
       .use(extension)
@@ -162,9 +155,7 @@ describe('ware', () => {
     expect(await run()).toEqual({ value: { value: `initial+a+b` } })
 
     const runner = Ware.createRunner(pipeline)
-    expect(await runner({ initialInput: initialInput2 })).toEqual({
-      value: { value: `initial+a+b` },
-    })
+    expect(await runner({ initialInput: initialInput2 })).toEqual({ value: { value: `initial+a+b` } })
 
     const intercepted = await run(async ({ a }) => {
       const { b } = await a({
@@ -196,19 +187,13 @@ describe('ware', () => {
   })
 
   test('supports optional and off entrypoint selection while rejecting invalid interceptors in required mode', async () => {
-    const required = await pipelineWithOptions({ entrypointSelectionMode: `required` }).run(
-      async (hooks) => hooks,
-    )
+    const required = await pipelineWithOptions({ entrypointSelectionMode: `required` }).run(async (hooks) => hooks)
     expect(required).toBeInstanceOf(ContextualAggregateError)
 
-    const optional = await pipelineWithOptions({ entrypointSelectionMode: `optional` }).run(
-      async (hooks) => hooks,
-    )
+    const optional = await pipelineWithOptions({ entrypointSelectionMode: `optional` }).run(async (hooks) => hooks)
     expect(optional).toEqual({ value: { value: `initial+a+b` } })
 
-    const off = await pipelineWithOptions({ entrypointSelectionMode: `off` }).run(
-      async (hooks) => hooks,
-    )
+    const off = await pipelineWithOptions({ entrypointSelectionMode: `off` }).run(async (hooks) => hooks)
     expect(off).toEqual({ value: { value: `initial+a+b` } })
   })
 
@@ -324,19 +309,17 @@ const createBaseBuilder = () =>
         value: `${input.value}:decorate`,
       }),
     })
-    .stepWithRunnerType<
-      (
-        input: { kind: `plain` | `special`; value: string },
-        slots: undefined,
-        previous: {
-          decorate: {
-            input: { kind: `plain` | `special`; value: string }
-            output: { kind: `plain` | `special`; value: string }
-          }
-        },
-      ) => { value: string }
-    >()(`finalize`, {
-    run: (input) => ({
-      value: `${input.value}:final`,
-    }),
-  })
+    .stepWithRunnerType<(
+      input: { kind: `plain` | `special`; value: string },
+      slots: undefined,
+      previous: {
+        decorate: {
+          input: { kind: `plain` | `special`; value: string }
+          output: { kind: `plain` | `special`; value: string }
+        }
+      },
+    ) => { value: string }>()(`finalize`, {
+      run: (input) => ({
+        value: `${input.value}:final`,
+      }),
+    })

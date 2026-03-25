@@ -19,6 +19,35 @@ afterEach(() => {
 })
 
 describe('env.publish-channel-ready', () => {
+  test('returns manual metadata when publishing is declared as manual', async () => {
+    const result = await Effect.runPromise(
+      rule.check.pipe(
+        Effect.provide(
+          ReleaseContext.make({
+            lifecycle: 'official',
+            publishing: {
+              official: { mode: 'manual' },
+              candidate: { mode: 'manual' },
+              ephemeral: { mode: 'manual' },
+            },
+          }),
+        ),
+        Effect.provide(Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/'), vars: {} })),
+        Effect.provideService(RuleOptionsService, { surface: 'execution' }),
+      ),
+    )
+
+    expect(Violation.is(result)).toBe(false)
+    if (Violation.is(result) || result === undefined || !('metadata' in result)) {
+      throw new Error('expected manual metadata')
+    }
+
+    expect(result.metadata).toEqual({
+      status: 'manual',
+      mode: 'manual',
+    })
+  })
+
   test('violates when trusted publishing is configured but OIDC env is missing in GitHub Actions', async () => {
     process.env['GITHUB_ACTIONS'] = 'true'
     process.env['GITHUB_WORKFLOW_REF'] =
@@ -78,5 +107,80 @@ describe('env.publish-channel-ready', () => {
     expect(metadata.status).toBe('deferred')
     expect(metadata.workflow).toBe('publish-pr.yml')
     expect(metadata.activeWorkflow).toBe('pr.yml')
+  })
+
+  test('violates when github-token publishing is active but the npm token env is blank', async () => {
+    process.env['GITHUB_ACTIONS'] = 'true'
+    process.env['GITHUB_WORKFLOW_REF'] =
+      'jasonkuhrt/kitz/.github/workflows/publish-pr.yml@refs/heads/main'
+    process.env['NPM_TOKEN'] = '   '
+
+    const result = await Effect.runPromise(
+      rule.check.pipe(
+        Effect.provide(
+          ReleaseContext.make({
+            lifecycle: 'ephemeral',
+            publishing: {
+              official: { mode: 'manual' },
+              candidate: { mode: 'manual' },
+              ephemeral: {
+                mode: 'github-token',
+                workflow: 'publish-pr.yml',
+                tokenEnv: 'NPM_TOKEN',
+              },
+            },
+          }),
+        ),
+        Effect.provide(Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/'), vars: process.env })),
+        Effect.provideService(RuleOptionsService, { surface: 'execution' }),
+      ),
+    )
+
+    expect(Violation.is(result)).toBe(true)
+    if (!Violation.is(result)) {
+      throw new Error('expected a violation')
+    }
+
+    expect(result.summary).toContain('expects an npm token')
+  })
+
+  test('returns ready metadata when github-token publishing has credentials in the active workflow', async () => {
+    process.env['GITHUB_ACTIONS'] = 'true'
+    process.env['GITHUB_WORKFLOW_REF'] =
+      'jasonkuhrt/kitz/.github/workflows/publish-pr.yml@refs/heads/main'
+    process.env['NPM_TOKEN'] = 'token-123'
+
+    const result = await Effect.runPromise(
+      rule.check.pipe(
+        Effect.provide(
+          ReleaseContext.make({
+            lifecycle: 'ephemeral',
+            publishing: {
+              official: { mode: 'manual' },
+              candidate: { mode: 'manual' },
+              ephemeral: {
+                mode: 'github-token',
+                workflow: 'publish-pr.yml',
+                tokenEnv: 'NPM_TOKEN',
+              },
+            },
+          }),
+        ),
+        Effect.provide(Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/'), vars: process.env })),
+        Effect.provideService(RuleOptionsService, { surface: 'execution' }),
+      ),
+    )
+
+    expect(Violation.is(result)).toBe(false)
+    if (Violation.is(result) || result === undefined || !('metadata' in result)) {
+      throw new Error('expected ready metadata')
+    }
+
+    expect(result.metadata).toEqual({
+      status: 'ready',
+      mode: 'github-token',
+      workflow: 'publish-pr.yml',
+      tokenEnv: 'NPM_TOKEN',
+    })
   })
 })

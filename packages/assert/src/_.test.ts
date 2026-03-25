@@ -29,51 +29,34 @@ describe('assert', () => {
     expect(Assert.equiv.of<boolean, boolean>(true)(false)).toBe(builder)
     expect(Assert.not.exact.number(1)).toBe(builder)
     expect(Assert.array.exact.of<string[], string[]>(['a'])(['b'])).toBe(builder)
-    expect(Assert.awaited.sub.of<Promise<string>, Promise<string>>(Promise.resolve('a'))).toBe(
+    expect(Assert.awaited.sub.of<Promise<string>, Promise<string>>(Promise.resolve('a'))).toBe(builder)
+    expect(Assert.returned.equiv.of<() => number, () => number>(() => 1)(() => 2)).toBe(builder)
+    expect(Assert.parameter1.exact.of<(value: string) => void, (value: string) => void>(() => {})).toBe(
       builder,
     )
-    expect(Assert.returned.equiv.of<() => number, () => number>(() => 1)(() => 2)).toBe(builder)
-    expect(
-      Assert.parameter1.exact.of<(value: string) => void, (value: string) => void>(() => {}),
-    ).toBe(builder)
-    expect(
-      Assert.parameters.sub.of<(a: string, b: number) => void, (a: string, b: number) => void>(
-        () => {},
-      ),
-    ).toBe(builder)
+    expect(Assert.parameters.sub.of<(a: string, b: number) => void, (a: string, b: number) => void>(() => {})).toBe(
+      builder,
+    )
   })
 
   test('supports builder settings helpers and nested namespaces', () => {
     expect(Assert.setInfer('auto')).toBe(builder)
     expect(Assert.extract('value')).toBe(builder)
-    expect(
-      Assert.parameter2.not.exact.of<
-        (a: string, b: number) => void,
-        (a: string, b: number) => void
-      >(() => {}),
-    ).toBe(builder)
-    expect(
-      Assert.parameter3.sub.of<
-        (a: string, b: number, c: boolean) => void,
-        (a: string, b: number, c: boolean) => void
-      >(() => {}),
-    ).toBe(builder)
-    expect(
-      Assert.parameter4.equiv.of<
-        (a: string, b: number, c: boolean, d: bigint) => void,
-        (a: string, b: number, c: boolean, d: bigint) => void
-      >(() => {}),
-    ).toBe(builder)
-    expect(
-      Assert.parameter5.not.sub.of<
-        (a: string, b: number, c: boolean, d: bigint, e: symbol) => void,
-        (a: string, b: number, c: boolean, d: bigint, e: symbol) => void
-      >(() => {}),
-    ).toBe(builder)
-    expect(Assert.array.not.equiv.of<string[], string[]>(['a'])(['b'])).toBe(builder)
-    expect(Assert.awaited.not.exact.of<Promise<number>, Promise<number>>(Promise.resolve(1))).toBe(
+    expect(Assert.parameter2.not.exact.of<(a: string, b: number) => void, (a: string, b: number) => void>(() => {})).toBe(
       builder,
     )
+    expect(Assert.parameter3.sub.of<(a: string, b: number, c: boolean) => void, (a: string, b: number, c: boolean) => void>(() => {})).toBe(
+      builder,
+    )
+    expect(Assert.parameter4.equiv.of<(a: string, b: number, c: boolean, d: bigint) => void, (a: string, b: number, c: boolean, d: bigint) => void>(() => {})).toBe(
+      builder,
+    )
+    expect(Assert.parameter5.not.sub.of<
+      (a: string, b: number, c: boolean, d: bigint, e: symbol) => void,
+      (a: string, b: number, c: boolean, d: bigint, e: symbol) => void
+    >(() => {})).toBe(builder)
+    expect(Assert.array.not.equiv.of<string[], string[]>(['a'])(['b'])).toBe(builder)
+    expect(Assert.awaited.not.exact.of<Promise<number>, Promise<number>>(Promise.resolve(1))).toBe(builder)
     expect(Assert.returned.not.sub.of<() => string, () => string>(() => 'value')).toBe(builder)
   })
 })

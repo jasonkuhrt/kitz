@@ -549,11 +549,12 @@ export const removeSurroundingWith = flipCurried(removeSurroundingOn)
  * truncate('very long text that needs truncating') // 'very long text that needs truncating...' (if > 80 chars)
  * ```
  */
-export const truncate = (str: string, maxLength: number = 80): string => {
-  if (str.length <= maxLength) return str
+export const truncate = (str: string, maxLength?: number): string => {
+  const maxLength_ = maxLength ?? 80
+  if (str.length <= maxLength_) return str
   const indicator = '...'
   // No negative slice size
-  const sliceSize = Math.max(maxLength - indicator.length, 0)
+  const sliceSize = Math.max(maxLength_ - indicator.length, 0)
   return `${str.slice(0, sliceSize)}${indicator}`
 }
 

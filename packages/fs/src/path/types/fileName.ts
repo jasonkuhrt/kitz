@@ -23,7 +23,7 @@ export class FileName extends S.TaggedClass<FileName>()('FileName', {
         return filename
       }),
       decode: SchemaGetter.transformOrFail((input) => {
-        return Match.value(Analyzer.analyze(input)).pipe(
+        return Match.value(Analyzer.analyze(input, { hint: 'file' })).pipe(
           Match.tagsExhaustive({
             file: (file) => {
               // File should be just a filename, not a path

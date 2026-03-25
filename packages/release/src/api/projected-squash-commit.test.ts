@@ -1,5 +1,21 @@
+import { Fs } from '@kitz/fs'
+import { Pkg } from '@kitz/pkg'
+import { Option } from 'effect'
 import { describe, expect, test } from 'vitest'
-import { preview, renderHeader } from './projected-squash-commit.js'
+import { Impact } from './analyzer/models/impact.js'
+import { collectScopeImpacts, preview, renderHeader } from './projected-squash-commit.js'
+
+const makeImpact = (scope: string, bump: 'major' | 'minor' | 'patch') =>
+  Impact.make({
+    package: {
+      scope,
+      name: Pkg.Moniker.parse(`@kitz/${scope}`),
+      path: Fs.Path.AbsDir.fromString(`/repo/packages/${scope}/`),
+    },
+    bump,
+    commits: [],
+    currentVersion: Option.none(),
+  })
 
 describe('projected squash commit', () => {
   test('renders a canonical release header from primary impacts', () => {
@@ -29,6 +45,30 @@ describe('projected squash commit', () => {
     expect(result.inSync).toBe(true)
   })
 
+  test('collects unique scope impacts and keeps the highest bump per scope', () => {
+    const result = collectScopeImpacts(
+      {
+        impacts: [
+          makeImpact('release', 'patch'),
+          makeImpact('cli', 'patch'),
+          makeImpact('release', 'minor'),
+          makeImpact('cli', 'major'),
+          makeImpact('core', 'minor'),
+        ],
+      },
+      { scopes: ['release', 'cli'] },
+    )
+
+    expect(result).toEqual([
+      { scope: 'cli', bump: 'major' },
+      { scope: 'release', bump: 'minor' },
+    ])
+  })
+
+  test('returns null when there is no projected header to render', () => {
+    expect(renderHeader({ impacts: [] })).toBeNull()
+  })
+
   test('returns a reason when there are no primary impacts', () => {
     const result = preview({
       actualTitle: 'feat(release): polish',
@@ -49,5 +89,16 @@ describe('projected squash commit', () => {
     expect(result.actualHeader).toBeNull()
     expect(result.actualTitleError).toContain('Missing colon separator')
     expect(result.inSync).toBe(false)
+  })
+
+  test('treats an empty title as already in sync when there are no impacts', () => {
+    const result = preview({
+      actualTitle: '   ',
+      impacts: [],
+    })
+
+    expect(result.actualTitle).toBe('')
+    expect(result.projectedHeader).toBeNull()
+    expect(result.inSync).toBe(true)
   })
 })

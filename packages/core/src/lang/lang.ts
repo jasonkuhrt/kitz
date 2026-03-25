@@ -1,5 +1,8 @@
 import { CoreLang } from '#lang/core'
-import type { Primitive, TypeGuardImplementation } from '#lang/core/lang'
+import type {
+  Primitive,
+  TypeGuardImplementationInput,
+} from '#lang/core/lang'
 import type { Prom } from '#prom'
 import * as fc from 'fast-check'
 
@@ -32,9 +35,12 @@ export type NegatedTypeGuard<$Type> = (value: unknown) => value is Exclude<typeo
  * ```
  */
 export const negatedTypeGuard = <type>(
-  typeGuard: TypeGuardImplementation,
+  typeGuard: TypeGuardImplementationInput,
 ): NegatedTypeGuard<type> => {
-  if (typeof typeGuard === TypeofTypesEnum.function) return typeGuard as any
+  if (typeof typeGuard === TypeofTypesEnum.function) {
+    return ((value): value is Exclude<typeof value, type> => !typeGuard(value)) as any
+  }
+
   return (value): value is Exclude<typeof value, type> => value !== typeGuard
 }
 

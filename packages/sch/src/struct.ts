@@ -184,6 +184,18 @@ const getObjectsAst = (ast: EAST.AST): EAST.Objects | null => {
   return null
 }
 
+const isOptionalProperty = (prop: EAST.PropertySignature): boolean => {
+  if (EAST.isOptional(prop.type)) {
+    return true
+  }
+
+  if (prop.type.context?.isOptional === true) {
+    return true
+  }
+
+  return prop.type.encoding?.some((link) => link.to.context?.isOptional === true) ?? false
+}
+
 /**
  * Check if a struct schema has any required fields on the encoded (input) side.
  *
@@ -221,7 +233,7 @@ export const hasRequiredFields = (schema: S.Top): boolean => {
   }
 
   for (const prop of objectsAst.propertySignatures) {
-    if (!EAST.isOptional(prop.type)) {
+    if (!isOptionalProperty(prop)) {
       return true
     }
   }

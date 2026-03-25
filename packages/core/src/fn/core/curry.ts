@@ -17,7 +17,13 @@ export const curry = <fn extends AnyAny>(
       },
 ): curry<fn> => {
   const fn_ = fn as AnyAny
-  const curried = (arg1: any) => (arg2: any) => fn_(arg1, arg2)
+  const curried = (...received: any[]): any => {
+    if (received.length >= fn_.length) {
+      return fn_(...received)
+    }
+
+    return (...next: any[]) => curried(...received, ...next)
+  }
   return curried as any
 }
 
@@ -65,7 +71,7 @@ type LastAsTuple<$Array extends Arr.Unknown> =
  * @category Currying & Binding
  */
 export const uncurry = <fn extends AnyAny2Curried>(fn: fn): uncurry<fn> => {
-  const uncurried = (arg1: any) => (arg2: any) => fn(arg1)(arg2)
+  const uncurried = (arg1: any, arg2: any) => fn(arg1)(arg2)
   return uncurried as any
 }
 

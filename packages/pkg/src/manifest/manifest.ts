@@ -7,6 +7,7 @@ import { Effect, Option, Schema as S } from 'effect'
 import { SemverFromString, type SemverValue } from '../semver-schema.js'
 
 const zeroSemver: SemverValue = Semver.fromString('0.0.0') as SemverValue
+const preserveExcessProperties = { onExcessProperty: 'preserve' } as const
 
 const Author = S.Struct({
   name: S.optional(S.String),
@@ -72,8 +73,15 @@ class ManifestClass extends S.Class<ManifestClass>('Manifest')({
    * Useful when you need to perform multiple mutations efficiently.
    */
   toMutable(): ManifestMutable {
-    // oxlint-disable-next-line kitz/schema/no-json-parse -- deep clone, not IO parsing
-    return JSON.parse(JSON.stringify(this)) as ManifestMutable
+    const encoded = S.encodeSync(Manifest)(this) as Record<string, unknown>
+
+    for (const [key, value] of Object.entries(this as Record<string, unknown>)) {
+      if (!(key in encoded)) {
+        encoded[key] = structuredClone(value)
+      }
+    }
+
+    return encoded as ManifestMutable
   }
 }
 
@@ -92,7 +100,7 @@ export const ManifestSchemaImmutable = Manifest
 /**
  * Mutable type for runtime manipulation
  */
-export type ManifestMutable = Ts.WritableDeep<Manifest>
+export type ManifestMutable = Ts.WritableDeep<typeof Manifest.Encoded>
 
 /**
  * Type for bin property when normalized
@@ -137,12 +145,13 @@ export const resourceMutable: Resource.Resource<ManifestMutable> = {
     resource.read(path).pipe(Effect.map(Option.map((m) => m.toMutable()))),
   readRequired: (path: Fs.Path.$Abs) =>
     resource.readRequired(path).pipe(Effect.map((m) => m.toMutable())),
-  write: (value: ManifestMutable, path: Fs.Path.$Abs) => resource.write(Manifest.make(value), path),
+  write: (value: ManifestMutable, path: Fs.Path.$Abs) =>
+    resource.write(S.decodeSync(Manifest)(value, preserveExcessProperties), path),
   readOrEmpty: (path: Fs.Path.$Abs) =>
     resource.readOrEmpty(path).pipe(Effect.map((m) => m.toMutable())),
   update: (path: Fs.Path.$Abs, fn: (current: ManifestMutable) => ManifestMutable) =>
     resource
-      .update(path, (m) => Manifest.make(fn(m.toMutable())))
+      .update(path, (m) => S.decodeSync(Manifest)(fn(m.toMutable()), preserveExcessProperties))
       .pipe(Effect.map((m) => m.toMutable())),
   delete: (path: Fs.Path.$Abs) => resource.delete(path),
 }

@@ -1,6 +1,6 @@
 import { Fn, Fn as _, Ts } from '@kitz/core'
 import type { StandardSchemaV1 } from '@standard-schema/spec'
-import { Schema, SchemaAST, SchemaGetter } from 'effect'
+import { Option, Schema, SchemaAST, SchemaGetter } from 'effect'
 import { createExtension } from '../../extension.js'
 import type { Optionality, SchemaType } from '../../schema/oak-schema.js'
 import { Term } from '../../term.js'
@@ -34,41 +34,24 @@ export const EffectSchema = createExtension<SupportedType, EffectSchemaGuard>({
   toStandardSchema: (schema: unknown): StandardSchemaV1<any, any> => {
     const effectSchema = schema as Schema.Codec<any, any>
 
-    // Check if this is Schema.Option - if so, wrap it to accept plain values
-    // For CLI purposes, we want to accept T | undefined instead of { _tag: "None" } | { _tag: "Some", value: T }
-    if (isOptionSchema(effectSchema.ast)) {
-      // Extract the inner type from the Option's "Some" branch
-      // In v4, use SchemaAST.toEncoded to get the encoded form (Union of None | Some)
-      const encodedAst = SchemaAST.toEncoded(effectSchema.ast)
-      const fromUnion = encodedAst as SchemaAST.Union
-      const someType = fromUnion.types.find((t) => {
-        if (t._tag !== `Objects`) return false
-        const typeLiteral = t
-        const tagProp = typeLiteral.propertySignatures.find((p) => p.name === `_tag`)
-        if (!tagProp) return false
-        const tagType = tagProp.type
-        if (tagType._tag !== `Literal`) return false
-        return tagType.literal === `Some`
-      })
+    const optionInnerAst = getOptionInnerAst(effectSchema.ast)
 
-      if (someType && someType._tag === `Objects`) {
-        const valueProp = someType.propertySignatures.find((p) => p.name === `value`)
-        if (valueProp) {
-          // Build inner schema from AST and wrap it to handle Option encoding
-          const innerSchema = buildSchemaFromAST(valueProp.type)
-          const wrappedSchema = Schema.UndefinedOr(innerSchema).pipe(
-            Schema.decodeTo(effectSchema as any, {
-              decode: SchemaGetter.transform((value: any) =>
-                value === undefined ? { _tag: `None` as const } : { _tag: `Some` as const, value },
-              ),
-              encode: SchemaGetter.transform((optionValue: any) =>
-                optionValue._tag === `None` ? undefined : optionValue.value,
-              ),
-            }),
-          )
-          return Schema.toStandardSchemaV1(wrappedSchema as any)
-        }
-      }
+    // Plain Schema.Option(T) expects Option values at runtime.
+    // For CLI parameters we want to accept T | undefined and decode to Option<T>.
+    if (optionInnerAst && effectSchema.ast.encoding === undefined) {
+      const innerSchema = buildSchemaFromAST(optionInnerAst)
+      const wrappedSchema = Schema.UndefinedOr(innerSchema).pipe(
+        Schema.decodeTo(effectSchema as any, {
+          decode: SchemaGetter.transform((value: any) =>
+            value === undefined ? Option.none() : Option.some(value),
+          ),
+          encode: SchemaGetter.transform((optionValue: any) =>
+            Option.isNone(optionValue) ? undefined : optionValue.value,
+          ),
+        }),
+      )
+
+      return Schema.toStandardSchemaV1(wrappedSchema as any)
     }
 
     // Effect Schema provides standardSchemaV1() to convert to Standard Schema V1
@@ -102,6 +85,8 @@ const extractEffectSchemaMetadata = (
   helpHints?: any
 } => {
   const ast = effectSchema.ast
+  const annotatedDefault = getAnnotatedDefault(ast)
+  const optionInnerAst = getOptionInnerAst(ast)
 
   // Extract description from annotations
   const description = previous?.description ?? SchemaAST.resolveDescription(ast)
@@ -112,50 +97,24 @@ const extractEffectSchemaMetadata = (
 
   if (previous?.optionality) {
     optionality = previous.optionality
-  } else if (isOptionSchema(ast)) {
-    // Schema.Option(T) - optional, returns Option.none() when omitted
-    optionality = { _tag: `optional`, omittedValue: undefined }
-    // Extract the underlying type from the Option transformation
-    // The 'to' side of the transformation is the Option<T> type
-    // We want to extract T from inside the Option
-    // In v4, transformations are in the encoding chain. Extract the encoded AST
-    // for the Option schema to find the "Some" branch with its value type.
-    const encodedAst = SchemaAST.toEncoded(ast)
-    const typeAst = SchemaAST.toType(ast)
-    // The encoded side is a Union of { _tag: "None" } | { _tag: "Some", value: T }
-    if (encodedAst._tag === `Union`) {
-      const someType = encodedAst.types.find((t) => {
-        if (t._tag !== `Objects`) return false
-        const tagProp = t.propertySignatures.find((p) => p.name === `_tag`)
-        if (!tagProp) return false
-        const tagType = tagProp.type
-        if (tagType._tag !== `Literal`) return false
-        return tagType.literal === `Some`
-      })
-      if (someType && someType._tag === `Objects`) {
-        const valueProp = someType.propertySignatures.find((p) => p.name === `value`)
-        if (valueProp) {
-          unwrappedAst = valueProp.type
-        } else {
-          unwrappedAst = typeAst // fallback
-        }
-      } else {
-        unwrappedAst = typeAst // fallback
-      }
-    } else {
-      unwrappedAst = typeAst // fallback
-    }
+  } else if (optionInnerAst) {
+    optionality = { _tag: `default`, getValue: () => Option.none() }
+    unwrappedAst = optionInnerAst
   } else if (ast.encoding !== undefined) {
     // This AST has an encoding transformation chain
-    // Check if the encoded form is a Union with undefined (indicates default pattern)
-    const encodedAst = SchemaAST.toEncoded(ast)
-    if (encodedAst._tag === `Union` && hasUndefinedMember(encodedAst as SchemaAST.Union)) {
-      // This is a default value pattern (e.g., decodeTo with UndefinedOr)
+    const encodedUnion = getEncodedUnion(ast)
+    unwrappedAst = SchemaAST.toType(ast)
+
+    if (annotatedDefault.hasDefault) {
+      optionality = { _tag: `default`, getValue: () => annotatedDefault.value }
+    } else if (
+      encodedUnion &&
+      (hasUndefinedMember(encodedUnion) || hasNullMember(encodedUnion))
+    ) {
+      // This is a transformed default pattern (e.g., decodeTo with UndefinedOr)
       optionality = { _tag: `default`, getValue: () => undefined }
-      unwrappedAst = SchemaAST.toType(ast)
     } else {
       optionality = { _tag: `required` }
-      unwrappedAst = SchemaAST.toType(ast)
     }
   } else if (ast._tag === `Union`) {
     const unionAst = ast as SchemaAST.Union
@@ -279,6 +238,24 @@ const extractBaseTypeInfo = (
     }
   }
 
+  if (ast._tag === `Null`) {
+    return {
+      schemaType: { _tag: `literal`, value: null },
+      refinements: [],
+      displayType: Term.colors.secondary(`null`),
+      priority: 5,
+    }
+  }
+
+  if (ast._tag === `Undefined`) {
+    return {
+      schemaType: { _tag: `literal`, value: undefined },
+      refinements: [],
+      displayType: Term.colors.secondary(`undefined`),
+      priority: 5,
+    }
+  }
+
   return null
 }
 
@@ -350,6 +327,10 @@ const buildSchemaFromAST = (ast: SchemaAST.AST): Schema.Top => {
       // For literals, we need to use Schema.Literal with the actual value
       const literalValue = ast.literal
       return Schema.Literal(literalValue)
+    case `Null`:
+      return Schema.Null
+    case `Undefined`:
+      return Schema.Undefined
     default:
       // For complex types, use Schema.make to construct from AST
       return Schema.make(ast)
@@ -357,32 +338,13 @@ const buildSchemaFromAST = (ast: SchemaAST.AST): Schema.Top => {
 }
 
 /**
- * Check if this is a Schema.Option transformation.
- * Schema.Option creates a transformation from { _tag: "None" } | { _tag: "Some", value: T }
+ * In Effect v4, Option schemas are Declarations annotated with the effect/Option type constructor.
  */
 const isOptionSchema = (ast: SchemaAST.AST): boolean => {
-  // In v4, Option schemas have an encoding chain. Check the encoded form.
-  if (!ast.encoding) return false
+  if (ast._tag !== `Declaration`) return false
 
-  const encodedAst = SchemaAST.toEncoded(ast)
-
-  // Check if the encoded side is a Union with { _tag: "None" } | { _tag: "Some", value: T }
-  if (encodedAst._tag === `Union`) {
-    const union = encodedAst as SchemaAST.Union
-    const hasNoneAndSome = union.types.some((t) => {
-      if (t._tag !== `Objects`) return false
-      return t.propertySignatures.some((p) => {
-        if (p.name !== `_tag`) return false
-        const type = p.type
-        if (type._tag !== `Literal`) return false
-        const literal = type.literal
-        return literal === `None` || literal === `Some`
-      })
-    })
-    return hasNoneAndSome
-  }
-
-  return false
+  const typeConstructor = ast.annotations?.typeConstructor as { readonly _tag?: unknown } | undefined
+  return typeConstructor?._tag === `effect/Option`
 }
 
 /**
@@ -393,11 +355,10 @@ const hasUndefinedMember = (ast: SchemaAST.Union): boolean => {
 }
 
 /**
- * Check if a Union contains a null Literal member.
- * In Effect Schema, null is represented as Literal with literal: null
+ * Check if a Union contains a null member.
  */
 const hasNullMember = (ast: SchemaAST.Union): boolean => {
-  return ast.types.some((t) => t._tag === `Literal` && t.literal === null)
+  return ast.types.some((t) => t._tag === `Null` || (t._tag === `Literal` && t.literal === null))
 }
 
 /**
@@ -406,7 +367,7 @@ const hasNullMember = (ast: SchemaAST.Union): boolean => {
  */
 const removeNullishFromUnion = (ast: SchemaAST.Union): SchemaAST.AST => {
   const nonNullishTypes = ast.types.filter(
-    (t) => t._tag !== `Undefined` && !(t._tag === `Literal` && t.literal === null),
+    (t) => t._tag !== `Undefined` && t._tag !== `Null` && !(t._tag === `Literal` && t.literal === null),
   )
 
   // If no types remain (shouldn't happen), return the original
@@ -422,3 +383,44 @@ const removeNullishFromUnion = (ast: SchemaAST.Union): SchemaAST.AST => {
   // Otherwise, return a new union without undefined/null
   return new SchemaAST.Union(nonNullishTypes, ast.mode, ast.annotations)
 }
+
+const getOptionInnerAst = (ast: SchemaAST.AST): SchemaAST.AST | null => {
+  if (!isOptionSchema(ast)) return null
+  return ast.typeParameters[0] ?? null
+}
+
+const getEncodedUnion = (ast: SchemaAST.AST): SchemaAST.Union | null => {
+  if (ast.encoding === undefined) return null
+  const encodedAst = SchemaAST.toEncoded(ast)
+  return encodedAst._tag === `Union` ? encodedAst : null
+}
+
+const getAnnotatedDefault = (
+  ast: SchemaAST.AST,
+): { readonly hasDefault: boolean; readonly value: unknown } => {
+  if (!ast.annotations || !Object.prototype.hasOwnProperty.call(ast.annotations, `default`)) {
+    return { hasDefault: false, value: undefined }
+  }
+
+  return {
+    hasDefault: true,
+    value: (ast.annotations as { readonly default: unknown }).default,
+  }
+}
+
+/** @internal */
+export const EffectSchemaInternals = {
+  extractEffectSchemaMetadata,
+  extractSchemaTypeInfo,
+  extractBaseTypeInfo,
+  extractChecksInfo,
+  extractUnionInfo,
+  buildSchemaFromAST,
+  isOptionSchema,
+  hasUndefinedMember,
+  hasNullMember,
+  removeNullishFromUnion,
+  getOptionInnerAst,
+  getEncodedUnion,
+  getAnnotatedDefault,
+} as const

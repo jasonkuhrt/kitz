@@ -31,9 +31,9 @@ export const rule = RuntimeRule.create({
     const remote = options.remote ?? 'origin'
 
     const result = yield* git.getRemoteUrl(remote).pipe(
-      Effect.map((url) => ({ metadata: { url } })),
-      Effect.catch((error: any) =>
-        Effect.succeed({
+      Effect.match({
+        onSuccess: (url) => ({ metadata: { url } }),
+        onFailure: (error) => ({
           violation: Violation.make({
             location: Environment.make({
               message: `Git remote '${remote}' not configured or unreachable: ${error.message}`,
@@ -58,7 +58,7 @@ export const rule = RuntimeRule.create({
             ],
           }),
         }),
-      ),
+      }),
     )
 
     return result

@@ -1,14 +1,23 @@
 import { Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
-import { Publishing, resolvePublishChannel } from './publishing.js'
+import { PublishChannelGitHubToken, Publishing, defaultPublishing, resolvePublishChannel } from './publishing.js'
 
 describe('Publishing', () => {
   test('defaults every lifecycle to manual', () => {
-    const publishing = Schema.decodeSync(Publishing)({})
+    const publishing = defaultPublishing()
 
     expect(publishing.official.mode).toBe('manual')
     expect(publishing.candidate.mode).toBe('manual')
     expect(publishing.ephemeral.mode).toBe('manual')
+  })
+
+  test('defaults github token channels to NPM_TOKEN', () => {
+    const channel = Schema.decodeSync(PublishChannelGitHubToken)({
+      mode: 'github-token',
+      workflow: 'publish-pr.yml',
+    })
+
+    expect(channel.tokenEnv).toBe('NPM_TOKEN')
   })
 
   test('resolves the active channel by lifecycle', () => {

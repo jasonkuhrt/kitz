@@ -187,21 +187,6 @@ export type InspectOptions = InferOptions<typeof optionSpecs>
 export type InspectConfig = Resolve<typeof optionSpecs>
 
 /**
- * Get the prefix letter for a section.
- * @internal
- */
-const getSectionPrefix = (section: 'type' | 'message' | 'stack' | 'context' | 'cause'): string => {
-  const prefixes = {
-    type: 'T',
-    message: 'M',
-    stack: 'S',
-    context: 'C',
-    cause: 'CAUSE',
-  }
-  return prefixes[section]
-}
-
-/**
  * Render an error to a string with detailed formatting.
  *
  * Features:

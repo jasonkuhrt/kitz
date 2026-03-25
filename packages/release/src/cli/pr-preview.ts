@@ -138,6 +138,47 @@ export type RunPrPreviewResult =
   | { readonly _tag: 'checked'; readonly issueNumber: number }
   | ({ readonly _tag: 'updated' } & PreviewCommentUpdateResult)
 
+interface PreviewDoctorLintParams {
+  readonly config: Api.Lint.ResolvedConfig
+  readonly diff: Api.Lint.Diff
+  readonly packages: readonly Api.Analyzer.Workspace.Package[]
+  readonly pullRequest: Github.PullRequest
+  readonly plannedItems: ReadonlyArray<{
+    readonly package: Api.Analyzer.Workspace.Package
+    readonly nextVersion: unknown
+  }>
+  readonly lifecycle: Api.Commentator.DoctorSummary['lifecycle']
+  readonly publishing: Api.Config.ResolvedConfig['publishing']
+}
+
+export interface BuildPreviewDoctorSummaryDependencies {
+  readonly planEphemeral?: typeof Api.Planner.ephemeral
+  readonly runLintCheck?: (params: PreviewDoctorLintParams) => Effect.Effect<Api.Lint.Report, Error>
+}
+
+interface PreviewCommentTransportParams extends PreviewCommentUpdateParams {
+  readonly runtime: {
+    readonly owner: string
+    readonly repo: string
+    readonly token: string
+  }
+}
+
+export interface RunPrPreviewDependencies {
+  readonly loadConfig?: typeof Api.Config.load
+  readonly resolvePackages?: typeof Api.Analyzer.Workspace.resolvePackages
+  readonly exploreRuntime?: typeof Api.Explorer.explore
+  readonly resolvePullRequest?: typeof Api.Explorer.resolvePullRequest
+  readonly getTags?: (git: Git.GitService) => Effect.Effect<readonly string[], Error>
+  readonly analyze?: typeof Api.Analyzer.analyze
+  readonly loadPullRequestDiff?: typeof loadPullRequestDiff
+  readonly buildPreviewDoctorSummary?: typeof buildPreviewDoctorSummary
+  readonly forecast?: typeof Api.Forecaster.forecast
+  readonly updatePreviewComment?: (
+    params: PreviewCommentTransportParams,
+  ) => Effect.Effect<PreviewCommentUpdateResult, Error>
+}
+
 const hasBlockingPreviewIssues = (doctor?: Api.Commentator.DoctorSummary): boolean =>
   doctor?.rows.some((row) => row.status === 'error') ?? false
 
@@ -263,19 +304,59 @@ export const loadPullRequestDiff = (params: {
     }
   })
 
-export const buildPreviewDoctorSummary = (params: {
-  readonly config: Api.Config.ResolvedConfig
-  readonly analysis: Api.Analyzer.Models.Analysis
-  readonly packages: readonly Api.Analyzer.Workspace.Package[]
-  readonly pullRequest: Github.PullRequest
-  readonly projectedSquashCommit?: Api.ProjectedSquashCommit.Preview
-  readonly diff: Api.Lint.Diff
-  readonly blockingTitleChecks: boolean
-}) =>
+const runPreviewDoctorLintLive = (params: PreviewDoctorLintParams) =>
+  Api.Lint.fromPullRequest(params.pullRequest).pipe(
+    Effect.flatMap((pullRequest) =>
+      Api.Lint.check({ config: params.config }).pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            Layer.succeed(Api.Lint.DiffService, params.diff),
+            Api.Lint.DefaultGitHubLayer,
+            Api.Lint.Preconditions.make({
+              hasOpenPR: true,
+              hasDiff: params.diff.files.length > 0,
+              hasReleasePlan: true,
+              isMonorepo: params.packages.length > 1,
+            }),
+            Api.Lint.ReleasePlan.make(
+              params.plannedItems.map((item) => ({
+                packageName: item.package.name,
+                packagePath: item.package.path,
+                version: item.nextVersion,
+              })),
+            ),
+            Api.Lint.ReleaseContext.make({
+              lifecycle: params.lifecycle,
+              publishing: params.publishing,
+            }),
+          ),
+        ),
+        Effect.provideService(Api.Lint.MonorepoService, toMonorepo(params.packages)),
+        Effect.provideService(Api.Lint.PrService, pullRequest),
+      ),
+    ),
+    Effect.mapError((error) => (error instanceof Error ? error : new Error(String(error)))),
+  )
+
+export const buildPreviewDoctorSummary = (
+  params: {
+    readonly config: Api.Config.ResolvedConfig
+    readonly analysis: Api.Analyzer.Models.Analysis
+    readonly packages: readonly Api.Analyzer.Workspace.Package[]
+    readonly pullRequest: Github.PullRequest
+    readonly projectedSquashCommit?: Api.ProjectedSquashCommit.Preview
+    readonly diff: Api.Lint.Diff
+    readonly blockingTitleChecks: boolean
+  },
+  dependencies: BuildPreviewDoctorSummaryDependencies = {},
+) =>
   Effect.gen(function* () {
-    const planAttempt = yield* Api.Planner.ephemeral(params.analysis, {
-      packages: params.packages,
-    }).pipe(Effect.result)
+    const planAttempt = yield* (dependencies.planEphemeral ?? Api.Planner.ephemeral)(
+      params.analysis,
+      {
+        packages: params.packages,
+      },
+    ).pipe(Effect.result)
 
     if (planAttempt._tag === 'Failure') {
       return {
@@ -363,36 +444,15 @@ export const buildPreviewDoctorSummary = (params: {
       onlyRules: [...commentDoctorRules],
     })
 
-    const report = yield* Api.Lint.check({ config: lintConfig }).pipe(
-      Effect.provide(
-        Layer.mergeAll(
-          Layer.succeed(Api.Lint.DiffService, params.diff),
-          Api.Lint.DefaultGitHubLayer,
-          Api.Lint.Preconditions.make({
-            hasOpenPR: true,
-            hasDiff: params.diff.files.length > 0,
-            hasReleasePlan: true,
-            isMonorepo: params.packages.length > 1,
-          }),
-          Api.Lint.ReleasePlan.make(
-            plannedItems.map((item) => ({
-              packageName: item.package.name,
-              packagePath: item.package.path,
-              version: item.nextVersion,
-            })),
-          ),
-          Api.Lint.ReleaseContext.make({
-            lifecycle: plan.lifecycle,
-            publishing: params.config.publishing,
-          }),
-        ),
-      ),
-      Effect.provideService(Api.Lint.MonorepoService, toMonorepo(params.packages)),
-      Effect.provideService(
-        Api.Lint.PrService,
-        yield* Api.Lint.fromPullRequest(params.pullRequest),
-      ),
-    )
+    const report = yield* (dependencies.runLintCheck ?? runPreviewDoctorLintLive)({
+      config: lintConfig,
+      diff: params.diff,
+      packages: params.packages,
+      pullRequest: params.pullRequest,
+      plannedItems,
+      lifecycle: plan.lifecycle,
+      publishing: params.config.publishing,
+    })
 
     return {
       summary: Api.Commentator.createDoctorSummary(report, {
@@ -437,11 +497,35 @@ export const buildPreviewDoctorSummary = (params: {
     }
   })
 
-export const runPrPreview = (options: RunPrPreviewOptions = {}) =>
+const updatePreviewCommentLive = (params: PreviewCommentTransportParams) =>
+  upsertPullRequestPreviewComment({
+    issueNumber: params.issueNumber,
+    forecast: params.forecast,
+    ...(params.doctor ? { doctor: params.doctor } : {}),
+    ...(params.projectedSquashCommit
+      ? { projectedSquashCommit: params.projectedSquashCommit }
+      : {}),
+    interactiveChecklist: params.interactiveChecklist,
+  }).pipe(
+    Effect.provide(
+      Github.LiveFetch({
+        owner: params.runtime.owner,
+        repo: params.runtime.repo,
+        token: params.runtime.token,
+      }),
+    ),
+  )
+
+export const runPrPreview = (
+  options: RunPrPreviewOptions = {},
+  dependencies: RunPrPreviewDependencies = {},
+) =>
   Effect.gen(function* () {
     const git = yield* Git.Git
-    const config = yield* Api.Config.load()
-    const packages = yield* Api.Analyzer.Workspace.resolvePackages(config.packages)
+    const config = yield* (dependencies.loadConfig ?? Api.Config.load)()
+    const packages = yield* (
+      dependencies.resolvePackages ?? Api.Analyzer.Workspace.resolvePackages
+    )(config.packages)
 
     if (packages.length === 0) {
       return yield* Effect.fail(
@@ -454,7 +538,7 @@ export const runPrPreview = (options: RunPrPreviewOptions = {}) =>
       )
     }
 
-    const runtime = yield* Api.Explorer.explore()
+    const runtime = yield* (dependencies.exploreRuntime ?? Api.Explorer.explore)()
     if (!runtime.github.target) {
       return yield* Effect.fail(
         new Api.Explorer.ExplorerError({
@@ -465,7 +549,9 @@ export const runPrPreview = (options: RunPrPreviewOptions = {}) =>
         }),
       )
     }
-    const pullRequest = yield* Api.Explorer.resolvePullRequest()
+    const pullRequest = yield* (
+      dependencies.resolvePullRequest ?? Api.Explorer.resolvePullRequest
+    )()
     if (!pullRequest) {
       return yield* Effect.fail(
         new Api.Explorer.ExplorerError({
@@ -488,19 +574,19 @@ export const runPrPreview = (options: RunPrPreviewOptions = {}) =>
       )
     }
 
-    const tags = yield* git.getTags()
-    const analysis = yield* Api.Analyzer.analyze({ packages, tags })
+    const tags = yield* dependencies.getTags?.(git) ?? git.getTags()
+    const analysis = yield* (dependencies.analyze ?? Api.Analyzer.analyze)({ packages, tags })
     const projectedSquashCommit = Api.ProjectedSquashCommit.preview({
       actualTitle: pullRequest.title,
       impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis),
     })
-    const diff = yield* loadPullRequestDiff({
+    const diff = yield* (dependencies.loadPullRequestDiff ?? loadPullRequestDiff)({
       pullRequest,
       packages,
       required: true,
     })
 
-    const doctor = yield* buildPreviewDoctorSummary({
+    const doctor = yield* (dependencies.buildPreviewDoctorSummary ?? buildPreviewDoctorSummary)({
       config,
       analysis,
       packages,
@@ -525,23 +611,20 @@ export const runPrPreview = (options: RunPrPreviewOptions = {}) =>
       } satisfies RunPrPreviewResult
     }
 
-    const forecast = Api.Forecaster.forecast(analysis, runtime)
-    const preview = yield* upsertPullRequestPreviewComment({
+    const forecast = (dependencies.forecast ?? Api.Forecaster.forecast)(analysis, runtime)
+    const preview = yield* (dependencies.updatePreviewComment ?? updatePreviewCommentLive)({
       issueNumber: pullRequest.number,
       forecast,
       ...(doctor.summary ? { doctor: doctor.summary } : {}),
       ...(projectedSquashCommit ? { projectedSquashCommit } : {}),
       interactiveChecklist:
         (config.publishing.ephemeral ?? { mode: 'manual' as const }).mode !== 'manual',
-    }).pipe(
-      Effect.provide(
-        Github.LiveFetch({
-          owner: runtime.github.target.owner,
-          repo: runtime.github.target.repo,
-          token,
-        }),
-      ),
-    )
+      runtime: {
+        owner: runtime.github.target.owner,
+        repo: runtime.github.target.repo,
+        token,
+      },
+    })
 
     return {
       _tag: 'updated',

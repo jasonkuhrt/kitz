@@ -82,11 +82,18 @@ describe('ensure', () => {
           const result = ensure(value)
           expect(result).toBeInstanceOf(Error)
 
-          // Handle edge cases where String() might fail
-          try {
+          if (
+            typeof value === 'string' ||
+            typeof value === 'number' ||
+            typeof value === 'boolean' ||
+            typeof value === 'bigint' ||
+            typeof value === 'symbol' ||
+            value === null ||
+            value === undefined
+          ) {
             expect(result.message).toBe(String(value))
-          } catch {
-            expect(result.message).toBe('[Unrepresentable value]')
+          } else {
+            expect(result.message).toBe(Object.prototype.toString.call(value))
           }
         },
       ),

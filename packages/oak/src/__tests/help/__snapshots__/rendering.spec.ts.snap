@@ -4,10 +4,10 @@ exports[`Help rendering > enum > enum members are listed > monochrome 1`] = `
 "
 PARAMETERS
 
-  Name    Type                           Default       Environment (1)  
-                                                                        
-  foo     'apple' | 'dolphin' | 'cab'     REQUIRED     ✓                
-                                                                        
+  Name    Type                           Default      Environment (1)  
+                                                                       
+  foo     'apple' | 'dolphin' | 'cab'     REQUIRED    ✓                
+                                                                       
          
   NOTES  
   ━━━━━  
@@ -44,12 +44,12 @@ exports[`Help rendering > enum > when there are many members they wrap > monochr
 "
 PARAMETERS
 
-  Name    Type                                                       Default       Environment (1)  
-                                                                                                    
-  foo     'apple' | 'baby' | 'cannabis' | 'dinosaur' | 'elephant'     REQUIRED     ✓                
-          | 'fanna' | 'goat' | 'house' | 'island' | 'jake' |                                        
-          'kilomanjara'                                                                             
-                                                                                                    
+  Name    Type                                                       Default      Environment (1)  
+                                                                                                   
+  foo     'apple' | 'baby' | 'cannabis' | 'dinosaur' | 'elephant'     REQUIRED    ✓                
+          | 'fanna' | 'goat' | 'house' | 'island' | 'jake' |                                       
+          'kilomanjara'                                                                            
+                                                                                                   
          
   NOTES  
   ━━━━━  
@@ -66,10 +66,10 @@ exports[`Help rendering > enum > when there is only one enum member it is prefix
 "
 PARAMETERS
 
-  Name    Type       Default       Environment (1)  
-                                                    
-  foo     'apple'     REQUIRED     ✓                
-                                                    
+  Name    Type       Default      Environment (1)  
+                                                   
+  foo     'apple'     REQUIRED    ✓                
+                                                   
          
   NOTES  
   ━━━━━  
@@ -86,14 +86,14 @@ exports[`Help rendering > enums do not mess up alignment when they are widest li
 "
 PARAMETERS
 
-  Name    Type                                                     Default       Environment (1)  
-                                                                                                  
-  foo     'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' |     REQUIRED     ✓                
-          'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' |                                   
-          's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z'                                           
-                                                                                                  
-  bar     string                                                   undefined     ✓                
-                                                                                                  
+  Name    Type                                                     Default      Environment (1)  
+                                                                                                 
+  foo     'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' |     REQUIRED    ✓                
+          'j' | 'k' | 'l' | 'm' | 'n' | 'o' | 'p' | 'q' | 'r' |                                  
+          's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z'                                          
+                                                                                                 
+  bar     string                                                   undefined    ✓                
+                                                                                                 
          
   NOTES  
   ━━━━━  
@@ -111,12 +111,12 @@ exports[`Help rendering > environment > when environment has custom prefix it is
 "
 PARAMETERS
 
-  Name    Type      Default       Environment (1)  
-                                                   
-  bar     string     REQUIRED     ✓                
-                                                   
-  foo     string     REQUIRED     ✓ MOO_FOO        
-                                                   
+  Name    Type      Default      Environment (1)  
+                                                  
+  bar     string     REQUIRED    ✓                
+                                                  
+  foo     string     REQUIRED    ✓ MOO_FOO        
+                                                  
          
   NOTES  
   ━━━━━  
@@ -135,12 +135,12 @@ exports[`Help rendering > environment > when environment has multiple custom pre
 "
 PARAMETERS
 
-  Name    Type      Default       Environment (1)      
-                                                       
-  bar     string     REQUIRED     ✓                    
-                                                       
-  foo     string     REQUIRED     ✓ MOO_FOO | BOO_FOO  
-                                                       
+  Name    Type      Default      Environment (1)      
+                                                      
+  bar     string     REQUIRED    ✓                    
+                                                      
+  foo     string     REQUIRED    ✓ MOO_FOO | BOO_FOO  
+                                                      
          
   NOTES  
   ━━━━━  
@@ -159,12 +159,12 @@ exports[`Help rendering > environment > when environment has no prefix it is dis
 "
 PARAMETERS
 
-  Name    Type      Default       Environment (1)  
-                                                   
-  bar     string     REQUIRED     ✓                
-                                                   
-  foo     string     REQUIRED     ✓ FOO            
-                                                   
+  Name    Type      Default      Environment (1)  
+                                                  
+  bar     string     REQUIRED    ✓                
+                                                  
+  foo     string     REQUIRED    ✓ FOO            
+                                                  
          
   NOTES  
   ━━━━━  
@@ -182,12 +182,12 @@ exports[`Help rendering > environment > when environment is disabled for one par
 "
 PARAMETERS
 
-  Name    Type      Default       Environment (1)  
-                                                   
-  bar     string     REQUIRED     ✓                
-                                                   
-  foo     string     REQUIRED     ✕                
-                                                   
+  Name    Type      Default      Environment (1)  
+                                                  
+  bar     string     REQUIRED    ✓                
+                                                  
+  foo     string     REQUIRED    ✕                
+                                                  
          
   NOTES  
   ━━━━━  
@@ -204,10 +204,10 @@ exports[`Help rendering > environment > when environment is disabled then enviro
 "
 PARAMETERS
 
-  Name    Type      Default     
-                                
-  foo     string     REQUIRED   
-                                
+  Name    Type      Default    
+                               
+  foo     string     REQUIRED  
+                               
 "
 `;
 
@@ -215,10 +215,10 @@ exports[`Help rendering > environment > when environment is enabled it shows as 
 "
 PARAMETERS
 
-  Name    Type      Default       Environment (1)  
-                                                   
-  foo     string     REQUIRED     ✓                
-                                                   
+  Name    Type      Default      Environment (1)  
+                                                  
+  foo     string     REQUIRED    ✓                
+                                                  
          
   NOTES  
   ━━━━━  
@@ -235,14 +235,14 @@ exports[`Help rendering > exclusive > default > shows the group default > monoch
 "
 PARAMETERS
 
-  Name            Type      Default            Environment (1)  
-                                                                
-  ┌─foo (2)                 bar@bar_default                     
-  ◒ bar           string    –                  ✓                
-  │ b                                                           
-  ◒ baz           string    –                  ✓                
-  │ z                                                           
-  └─                                                            
+  Name         Type      Default            Environment (1)  
+                                                             
+  ┌─foo (2)              bar@bar_default                     
+  ◒ bar        string    –                  ✓                
+  │ b                                                        
+  ◒ baz        string    –                  ✓                
+  │ z                                                        
+  └─                                                         
          
   NOTES  
   ━━━━━  
@@ -263,14 +263,14 @@ exports[`Help rendering > exclusive > default with long value > shows the group 
 "
 PARAMETERS
 
-  Name            Type      Default                                Environment (1)  
-                                                                                    
-  ┌─foo (2)                 bar@bar_defaulttttttttttttttttttttt                     
-  ◒ bar           string    –                                      ✓                
-  │ b                                                                               
-  ◒ baz           string    –                                      ✓                
-  │ z                                                                               
-  └─                                                                                
+  Name         Type      Default                                Environment (1)  
+                                                                                 
+  ┌─foo (2)              bar@bar_defaulttttttttttttttttttttt                     
+  ◒ bar        string    –                                      ✓                
+  │ b                                                                            
+  ◒ baz        string    –                                      ✓                
+  │ z                                                                            
+  └─                                                                             
          
   NOTES  
   ━━━━━  
@@ -291,14 +291,14 @@ exports[`Help rendering > exclusive > optional > shows exclusive parameters as a
 "
 PARAMETERS
 
-  Name            Type      Default      Environment (1)  
-                                                          
-  ┌─foo (2)                 undefined                     
-  ◒ bar           string    –            ✓                
-  │ b                                                     
-  ◒ baz           string    –            ✓                
-  │ z                                                     
-  └─                                                      
+  Name         Type      Default      Environment (1)  
+                                                       
+  ┌─foo (2)              undefined                     
+  ◒ bar        string    –            ✓                
+  │ b                                                  
+  ◒ baz        string    –            ✓                
+  │ z                                                  
+  └─                                                   
          
   NOTES  
   ━━━━━  
@@ -319,16 +319,16 @@ exports[`Help rendering > exclusive > required > shows REQUIRED aligned in Defau
 "
 PARAMETERS
 
-  Name         Type                                                            Default       Environment (1)  
-                                                                                                              
-  option       'apple' | 'banana' | 'cherry' | 'dragonfruit' | 'elderberry'    undefined     ✓                
-                                                                                                              
-  ┌─foo (2)                                                                     REQUIRED                      
-  ◒ bar        string                                                          –             ✓                
-  │ b                                                                                                         
-  ◒ baz        string                                                          –             ✓                
-  │ z                                                                                                         
-  └─                                                                                                          
+  Name         Type                                                            Default      Environment (1)  
+                                                                                                             
+  option       'apple' | 'banana' | 'cherry' | 'dragonfruit' | 'elderberry'    undefined    ✓                
+                                                                                                             
+  ┌─foo (2)                                                                     REQUIRED                     
+  ◒ bar        string                                                          –            ✓                
+  │ b                                                                                                        
+  ◒ baz        string                                                          –            ✓                
+  │ z                                                                                                        
+  └─                                                                                                         
          
   NOTES  
   ━━━━━  
@@ -350,14 +350,14 @@ exports[`Help rendering > exclusive > with environment disabled > shows the grou
 "
 PARAMETERS
 
-  Name            Type      Default          
-                                             
-  ┌─foo (2)                 bar@bar_default  
-  ◒ bar           string    –                
-  │ b                                        
-  ◒ baz           string    –                
-  │ z                                        
-  └─                                         
+  Name         Type      Default          
+                                          
+  ┌─foo (2)              bar@bar_default  
+  ◒ bar        string    –                
+  │ b                                     
+  ◒ baz        string    –                
+  │ z                                     
+  └─                                      
          
   NOTES  
   ━━━━━  
@@ -537,10 +537,10 @@ exports[`Help rendering > union parameter > condensed pipe style > used when no 
 "
 PARAMETERS
 
-  Name    Type               Default       Environment (1)  
-                                                            
-  bar     string | number     REQUIRED     ✓                
-  b                                                         
+  Name    Type               Default      Environment (1)  
+                                                           
+  bar     string | number     REQUIRED    ✓                
+  b                                                        
          
   NOTES  
   ━━━━━  
@@ -557,11 +557,11 @@ exports[`Help rendering > union parameter > condensed pipe style > used when onl
 "
 PARAMETERS
 
-  Name    Type/Description    Default       Environment (1)  
-                                                             
-  bar     string | number      REQUIRED     ✓                
-  b       Blah blah blah.                                    
-                                                             
+  Name    Type/Description    Default      Environment (1)  
+                                                            
+  bar     string | number      REQUIRED    ✓                
+  b       Blah blah blah.                                   
+                                                            
          
   NOTES  
   ━━━━━  
@@ -578,10 +578,10 @@ exports[`Help rendering > union parameter > expanded style > can be forced via s
 "
 PARAMETERS
 
-  Name    Type               Default       Environment (1)  
-                                                            
-  bar     string | number     REQUIRED     ✓                
-  b                                                         
+  Name    Type               Default      Environment (1)  
+                                                           
+  bar     string | number     REQUIRED    ✓                
+  b                                                        
          
   NOTES  
   ━━━━━  
@@ -598,10 +598,10 @@ exports[`Help rendering > union parameter > expanded style > shows member on eac
 "
 PARAMETERS
 
-  Name    Type               Default       Environment (1)  
-                                                            
-  bar     string | number     REQUIRED     ✓                
-  b                                                         
+  Name    Type               Default      Environment (1)  
+                                                           
+  bar     string | number     REQUIRED    ✓                
+  b                                                        
          
   NOTES  
   ━━━━━  
@@ -618,10 +618,10 @@ exports[`Help rendering > union parameter > expanded style > shows member on eac
 "
 PARAMETERS
 
-  Name    Type               Default       Environment (1)  
-                                                            
-  bar     string | number     REQUIRED     ✓                
-  b                                                         
+  Name    Type               Default      Environment (1)  
+                                                           
+  bar     string | number     REQUIRED    ✓                
+  b                                                        
          
   NOTES  
   ━━━━━  
@@ -638,11 +638,11 @@ exports[`Help rendering > union parameter > expanded style > shows overall descr
 "
 PARAMETERS
 
-  Name    Type/Description           Default       Environment (1)  
-                                                                    
-  bar     string | number             REQUIRED     ✓                
-  b       Blah blah blah overall.                                   
-                                                                    
+  Name    Type/Description           Default      Environment (1)  
+                                                                   
+  bar     string | number             REQUIRED    ✓                
+  b       Blah blah blah overall.                                  
+                                                                   
          
   NOTES  
   ━━━━━  

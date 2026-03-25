@@ -30,9 +30,9 @@ export const rule = RuntimeRule.create({
     const whoamiOptions = options.registry ? { registry: options.registry } : undefined
 
     const result = yield* NpmRegistry.Cli.whoami(whoamiOptions).pipe(
-      Effect.map((username) => ({ metadata: { username } })),
-      Effect.catch((error: any) =>
-        Effect.succeed({
+      Effect.match({
+        onSuccess: (username) => ({ metadata: { username } }),
+        onFailure: (error) => ({
           violation: Violation.make({
             location: Environment.make({
               message:
@@ -98,7 +98,7 @@ export const rule = RuntimeRule.create({
             ],
           }),
         }),
-      ),
+      }),
     )
     return result
   }),

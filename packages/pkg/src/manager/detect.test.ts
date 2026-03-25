@@ -53,6 +53,27 @@ describe('Pkg.Manager.detect', () => {
     expect(detected.source).toBe('manifest')
   })
 
+  test('falls back to npm_execpath when the user agent is absent', async () => {
+    const detected = await Effect.runPromise(
+      detect().pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            Fs.Memory.layer({}),
+            Env.Test({
+              cwd: Fs.Path.AbsDir.fromString('/repo/'),
+              vars: {
+                npm_execpath: '/Users/test/.volta/bin/yarn',
+              },
+            }),
+          ),
+        ),
+      ),
+    )
+
+    expect(detected.name).toBe('yarn')
+    expect(detected.source).toBe('exec-path')
+  })
+
   test('falls back to lockfiles when packageManager is absent', async () => {
     const detected = await Effect.runPromise(
       detect().pipe(
@@ -73,6 +94,48 @@ describe('Pkg.Manager.detect', () => {
     expect(detected.name).toBe('bun')
     expect(detected.source).toBe('lockfile')
   })
+
+  test('falls back to the bun runtime when project metadata is absent', async () => {
+    const detected = await Effect.runPromise(
+      detect().pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            Fs.Memory.layer({
+              '/repo/package.json': JSON.stringify({ name: 'workspace' }, null, 2),
+            }),
+            Env.Test({
+              cwd: Fs.Path.AbsDir.fromString('/repo/packages/release/'),
+              platform: 'bun',
+            }),
+          ),
+        ),
+      ),
+    )
+
+    expect(detected.name).toBe('bun')
+    expect(detected.source).toBe('runtime')
+  })
+
+  test('returns unknown outside bun when nothing can be detected', async () => {
+    const detected = await Effect.runPromise(
+      detect().pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            Fs.Memory.layer({
+              '/repo/package.json': JSON.stringify({ name: 'workspace' }, null, 2),
+            }),
+            Env.Test({
+              cwd: Fs.Path.AbsDir.fromString('/repo/packages/release/'),
+              platform: 'node',
+            }),
+          ),
+        ),
+      ),
+    )
+
+    expect(detected.name).toBe('unknown')
+    expect(detected.source).toBe('unknown')
+  })
 })
 
 describe('Pkg.Manager.renderScriptCommand', () => {
@@ -85,5 +148,10 @@ describe('Pkg.Manager.renderScriptCommand', () => {
     expect(renderScriptCommand('npm', 'release', 'doctor --all')).toBe(
       'npm run release -- doctor --all',
     )
+  })
+
+  test('renders yarn and unknown managers with trimmed arguments', () => {
+    expect(renderScriptCommand('yarn', 'release', ' doctor ')).toBe('yarn release doctor')
+    expect(renderScriptCommand('unknown', 'release')).toBe('release')
   })
 })

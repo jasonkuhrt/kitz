@@ -126,7 +126,7 @@ export const analyze = (
       } else if (tags.includes(until)) {
         const newerCommits = yield* git
           .getCommitsSince(until)
-          .pipe(Effect.catch(() => Effect.succeed([] as { hash: string }[])))
+          .pipe(Effect.orElseSucceed((): typeof commits => []))
         const newerHashes = HashSet.fromIterable(
           newerCommits.map((commit: { hash: string }) => commit.hash),
         )

@@ -44,4 +44,32 @@ describe('Pkg.Manifest runtime targets', () => {
     expect(isRuntimeTargetSourceOriented(runtimeTargets)).toBe(false)
     expect(isRuntimeTargetSourceOriented({ '#pkg': './src/_.ts' })).toBe(true)
   })
+
+  test('rewrites nested arrays and leaves non-string leaves alone', () => {
+    const targets = {
+      '.': ['./src/_.ts', { browser: './src/feature.browser.ts', count: 2, active: true }],
+      nullish: null,
+    }
+
+    expect(rewriteRuntimeTargetsToBuild(targets)).toEqual({
+      '.': ['./build/_.js', { browser: './build/feature.browser.js', count: 2, active: true }],
+      nullish: null,
+    })
+
+    expect(
+      rewriteRuntimeTargetsToSource({
+        '.': ['./build/_.js', { default: './build/feature.node.js', count: 2, active: true }],
+        nullish: null,
+      }),
+    ).toEqual({
+      '.': ['./src/_.ts', { default: './src/feature.node.ts', count: 2, active: true }],
+      nullish: null,
+    })
+
+    expect(
+      findBuildRuntimeTargets({
+        '.': ['./build/_.js', { nested: './build/feature.node.js', ignored: false }],
+      }),
+    ).toEqual(['./build/_.js', './build/feature.node.js'])
+  })
 })

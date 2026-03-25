@@ -6,7 +6,10 @@ import type { Parameter } from '../types.js'
 export const validate = (parameter: Parameter, value: unknown) => {
   if (parameter.type.metadata.optionality._tag === `optional` && value === undefined) {
     // Use the omittedValue if specified (e.g., null for NullOr schemas)
-    const result = parameter.type.metadata.optionality.omittedValue ?? value
+    const result =
+      parameter.type.metadata.optionality.omittedValue !== undefined
+        ? parameter.type.metadata.optionality.omittedValue
+        : value
     return Result.succeed(result)
   }
   return SchemaRuntime.validate(parameter.type, value)

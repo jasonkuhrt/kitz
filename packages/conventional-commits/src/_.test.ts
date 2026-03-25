@@ -168,6 +168,17 @@ test('Footer > serialization', () => {
     `)
 })
 
+test('Footer accessors expose token, value, and constructor narrowing', () => {
+  expect(ConventionalCommits.Footer.token(fixtures.footer.standard.breaking)).toBe(
+    'BREAKING CHANGE',
+  )
+  expect(ConventionalCommits.Footer.value(fixtures.footer.standard.breaking)).toBe('removed X')
+  expect(ConventionalCommits.Footer.Standard.is(fixtures.footer.standard.breakingHyphen)).toBe(
+    true,
+  )
+  expect(ConventionalCommits.Footer.Custom.is(fixtures.footer.custom.reviewedBy)).toBe(true)
+})
+
 // ─── Footer.isBreakingChange() ───────────────────────────────────
 
 Test.describe('Footer.isBreakingChange')
@@ -415,6 +426,24 @@ test('Commit.facets > expands multi-scope single commits per scope', () => {
   ])
 })
 
+test('Commit.facets > keeps null scopes for scope-less single commits', () => {
+  expect(ConventionalCommits.Commit.facets(fixtures.commitSingle.simple)).toEqual([
+    {
+      type: fixtures.type.standard.feat,
+      scope: null,
+      breaking: false,
+    },
+  ])
+})
+
+test('Commit.scopes > filters out null scopes', () => {
+  expect(ConventionalCommits.Commit.scopes(fixtures.commitSingle.simple)).toEqual([])
+  expect(ConventionalCommits.Commit.scopes(fixtures.commitSingle.multiScope)).toEqual([
+    'core',
+    'cli',
+  ])
+})
+
 test('Commit.types > preserves unique type order across multi-target commits', () => {
   expect(ConventionalCommits.Commit.types(fixtures.commitMulti.simple)).toEqual([
     fixtures.type.standard.feat,
@@ -426,6 +455,38 @@ test('Commit.renderHeader > renders canonical grouped header for multi-target co
   expect(ConventionalCommits.Commit.renderHeader(fixtures.commitMulti.simple)).toBe(
     'feat(core)!, fix(cli)',
   )
+})
+
+test('Commit.renderHeader > renders single headers and merges repeated multi-target groups', () => {
+  expect(ConventionalCommits.Commit.renderHeader(fixtures.commitSingle.simple)).toBe('feat')
+  expect(ConventionalCommits.Commit.renderHeader(fixtures.commitSingle.multiScope)).toBe(
+    'feat(core, cli)!',
+  )
+
+  const grouped = ConventionalCommits.Commit.Multi.make({
+    targets: [
+      ConventionalCommits.Target.make({
+        type: ConventionalCommits.Type.Standard.parse('feat'),
+        scope: 'core',
+        breaking: false,
+      }),
+      ConventionalCommits.Target.make({
+        type: ConventionalCommits.Type.Standard.parse('feat'),
+        scope: 'release',
+        breaking: false,
+      }),
+      ConventionalCommits.Target.make({
+        type: ConventionalCommits.Type.Standard.parse('fix'),
+        scope: 'cli',
+        breaking: true,
+      }),
+    ],
+    message: 'grouped',
+    summary: Option.none(),
+    sections: {},
+  })
+
+  expect(ConventionalCommits.Commit.renderHeader(grouped)).toBe('feat(core, release), fix(cli)!')
 })
 
 test('Title.rewriteHeader > preserves the original subject', async () => {

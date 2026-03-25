@@ -203,7 +203,7 @@ export const create = <T, R = never>(
     )
 
   const encode = (value: T, filePath: Fs.Path.AbsFile) =>
-    Schema.encodeEffect(schema)(value).pipe(
+    Schema.encodeEffect(schema)(value, parseOptions).pipe(
       Effect.mapError(
         (error) =>
           new EncodeError({

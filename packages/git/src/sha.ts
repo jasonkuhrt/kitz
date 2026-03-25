@@ -3,7 +3,7 @@ import { Schema } from 'effect'
 /**
  * Git commit SHA (short or full form).
  *
- * - Short form: 7-12 hex characters (default `git log --oneline` output)
+ * - Short form: 7-40 hex characters (default `git log --oneline` output)
  * - Full form: 40 hex characters (complete SHA-1 hash)
  *
  * @example

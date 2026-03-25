@@ -517,7 +517,7 @@ export const find = <value>(
   arr: value[],
   predicate: Bool.PredicateMaybe<value>,
 ): value | undefined => {
-  const predicate_ = Bool.ensurePredicate(predicate)
+  const predicate_ = Fn.is(predicate) ? predicate : (candidate: value) => candidate === predicate
   return arr.find((value) => {
     return predicate_(value as any)
   })

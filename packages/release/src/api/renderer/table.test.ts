@@ -39,6 +39,16 @@ const makeCascade = (name: string, scope: string, triggeredBy: string[]) =>
     sourceUrl: `https://github.com/org/repo/tree/main/packages/${scope}`,
   })
 
+const makeNewCascade = (name: string, scope: string) =>
+  ForecastCascade.make({
+    packageName: name,
+    packageScope: scope,
+    currentVersion: Option.none(),
+    nextOfficialVersion: Semver.fromString('0.1.0'),
+    triggeredBy: [],
+    sourceUrl: `https://github.com/org/repo/tree/main/packages/${scope}`,
+  })
+
 const emptyForecast = Forecast.make({
   owner: 'org',
   repo: 'repo',
@@ -94,6 +104,19 @@ describe('renderTable', () => {
     expect(output.indexOf('@kitz/cli')).toBeLessThan(output.indexOf('@kitz/core'))
   })
 
+  test('breaks commit-count ties by package name', () => {
+    const forecast = remakeForecast(emptyForecast, {
+      releases: [
+        makeRelease('@kitz/utils', 'utils', 'patch', [makeCommit('aaa', 'fix', 'a')]),
+        makeRelease('@kitz/cli', 'cli', 'patch', [makeCommit('bbb', 'fix', 'b')]),
+      ],
+    })
+
+    const output = renderTable(forecast)
+
+    expect(output.indexOf('@kitz/cli')).toBeLessThan(output.indexOf('@kitz/utils'))
+  })
+
   test('renders cascade table when cascades exist', () => {
     const forecast = remakeForecast(emptyForecast, {
       releases: [makeRelease('@kitz/core', 'core', 'minor')],
@@ -120,5 +143,18 @@ describe('renderTable', () => {
     const output = renderTable(forecast, { maxItems: 1 })
 
     expect(output).toContain('... 2 more primary releases')
+  })
+
+  test('renders new cascades without explicit triggers', () => {
+    const forecast = remakeForecast(emptyForecast, {
+      cascades: [makeNewCascade('@kitz/plugin', 'plugin')],
+    })
+
+    const output = renderTable(forecast)
+
+    expect(output).toContain('Cascades (1)')
+    expect(output).toContain('@kitz/plugin')
+    expect(output).toContain('new')
+    expect(output).toContain('cascade')
   })
 })

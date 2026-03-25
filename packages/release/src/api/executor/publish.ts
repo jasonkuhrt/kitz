@@ -175,7 +175,7 @@ export const preparePackageArtifact = (
     yield* fs.makeDirectory(Fs.Path.toString(artifactDir), { recursive: true })
     yield* fs
       .remove(Fs.Path.toString(artifactPath), { force: true })
-      .pipe(Effect.catch(() => Effect.void))
+      .pipe(Effect.ignore)
 
     const packResult = yield* cli
       .pack({

@@ -51,6 +51,14 @@ const parseExecPath = (value: string | undefined): Option.Option<PackageManager>
   return Option.none()
 }
 
+const getParentOrBreak = (current: Fs.Path.AbsDir): Option.Option<Fs.Path.AbsDir> => {
+  const parent = Fs.Path.up(current)
+  if (Fs.Path.toString(parent) === Fs.Path.toString(current)) {
+    return Option.none()
+  }
+  return Option.some(parent)
+}
+
 const detectFromEnvironment = Effect.gen(function* () {
   const env = yield* Env.Env
 
@@ -115,15 +123,15 @@ const locateFromManifestOrLockfile = (
       const packageJsonPath = Fs.Path.join(current, packageJsonRelFile)
       const packageJsonExists = yield* fs.exists(Fs.Path.toString(packageJsonPath))
       if (packageJsonExists) {
-        const parent = Fs.Path.up(current)
-        if (parent === null) break
-        current = parent
+        const parent = getParentOrBreak(current)
+        if (Option.isNone(parent)) break
+        current = parent.value
         continue
       }
 
-      const parent = Fs.Path.up(current)
-      if (parent === null) break
-      current = parent
+      const parent = getParentOrBreak(current)
+      if (Option.isNone(parent)) break
+      current = parent.value
     }
 
     return Option.none()

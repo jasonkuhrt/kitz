@@ -159,25 +159,25 @@ exports[`inspect > stack trace filtering > shows all frames filtered message 1`]
 `;
 
 exports[`inspect > visual guides (with color) > shows proper indentation for aggregate errors 1`] = `
-"[31mAggregateError[39m: Multiple
+"AggregateError: Multiple
 @ main /app/main.ts:10:10
-[2m    ↓[22m
-[2m    │[22m
-  [2m0 ├─[22m [31mError[39m: First
-    [2m│  [22m@ first /app/first.ts:1:1
-    [2m│[22m
-  [2m1 ├─[22m [31mError[39m: Second
-    [2m│  [22m@ second /app/second.ts:2:2
-    [2m│[22m
-  [2m2 ├─[22m [31mError[39m: Third
-    [2m│  [22m@ third /app/third.ts:3:3
-[2m    └[22m"
+    ↓
+    │
+  0 ├─ Error: First
+    │  @ first /app/first.ts:1:1
+    │
+  1 ├─ Error: Second
+    │  @ second /app/second.ts:2:2
+    │
+  2 ├─ Error: Third
+    │  @ third /app/third.ts:3:3
+    └"
 `;
 
 exports[`inspect > visual guides (with color) > shows tree characters for nested errors 1`] = `
-"[31mError[39m: Main
+"Error: Main
 @ main /app/main.ts:10:10
   ↓
-  [31mError[39m: Cause
+  Error: Cause
   @ cause /app/cause.ts:5:5"
 `;

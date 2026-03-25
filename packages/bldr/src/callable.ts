@@ -607,8 +607,8 @@ export const fromInterface = <$Builder>() => {
   ): (() => $Builder) => {
     // Return a factory that creates fresh builder instances
     return () => {
-      // Copy emptyData for each instance
-      const data = { ...emptyData }
+      // Clone the seed data so builder instances never share nested state.
+      const data = structuredClone(emptyData)
       const config = impl(data)
 
       // Create the callable function

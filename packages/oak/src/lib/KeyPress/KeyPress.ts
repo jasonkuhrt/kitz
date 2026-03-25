@@ -45,32 +45,55 @@ export interface KeyPressEvent<Name extends Key = Key> {
   sequence: string
 }
 
-export const readOne = Effect.callback<KeyPressEvent>((resume) => {
-  const rl = Readline.promises.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    terminal: false,
-  })
-  const originalIsRawState = process.stdin.isRaw
-  if (!process.stdin.isRaw) {
-    process.stdin.setRawMode(true)
-  }
-  Readline.emitKeypressEvents(process.stdin, rl)
-  const listener = (_key: string, event: KeyPressEvent) => {
-    rl.close()
-    process.stdin.removeListener(`keypress`, listener)
-    if (!originalIsRawState) {
-      process.stdin.setRawMode(false)
-    }
-    resume(Effect.succeed(event))
-  }
+export interface KeyPressDependencies {
+  stdin: Pick<
+    typeof process.stdin,
+    'isRaw' | 'setRawMode' | 'on' | 'removeListener'
+  >
+  stdout: typeof process.stdout
+  createInterface: typeof Readline.promises.createInterface
+  emitKeypressEvents: typeof Readline.emitKeypressEvents
+}
 
-  process.stdin.on(`keypress`, listener)
+export const createKeyPressDependencies = (): KeyPressDependencies => ({
+  stdin: process.stdin,
+  stdout: process.stdout,
+  createInterface: Readline.promises.createInterface,
+  emitKeypressEvents: Readline.emitKeypressEvents,
 })
 
-export const readMany = (params?: { exitOnCtrlC?: boolean }) =>
+export const readOneWith = (dependencies: KeyPressDependencies): Effect.Effect<KeyPressEvent> =>
+  Effect.callback<KeyPressEvent>((resume) => {
+    const rl = dependencies.createInterface({
+      input: dependencies.stdin as typeof process.stdin,
+      output: dependencies.stdout,
+      terminal: false,
+    })
+    const originalIsRawState = dependencies.stdin.isRaw
+    if (!dependencies.stdin.isRaw) {
+      dependencies.stdin.setRawMode(true)
+    }
+    dependencies.emitKeypressEvents(dependencies.stdin as typeof process.stdin, rl)
+    const listener = (_key: string, event: KeyPressEvent) => {
+      rl.close()
+      dependencies.stdin.removeListener(`keypress`, listener)
+      if (!originalIsRawState) {
+        dependencies.stdin.setRawMode(false)
+      }
+      resume(Effect.succeed(event))
+    }
+
+    dependencies.stdin.on(`keypress`, listener)
+  })
+
+export const readOne = readOneWith(createKeyPressDependencies())
+
+export const readManyFrom = (
+  readOneEffect: Effect.Effect<KeyPressEvent>,
+  params?: { exitOnCtrlC?: boolean },
+) =>
   pipe(
-    Stream.fromEffectRepeat(readOne),
+    Stream.fromEffectRepeat(readOneEffect),
     Stream.map((event: KeyPressEvent) =>
       event.name == `c` && event.ctrl && params?.exitOnCtrlC !== false ? Exit.void : event,
     ),
@@ -78,3 +101,8 @@ export const readMany = (params?: { exitOnCtrlC?: boolean }) =>
       return Exit.isExit(event)
     }),
   )
+
+export const readMany = (
+  params?: { exitOnCtrlC?: boolean },
+  readOneEffect: Effect.Effect<KeyPressEvent> = readOne,
+) => readManyFrom(readOneEffect, params)

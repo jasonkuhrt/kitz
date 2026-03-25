@@ -2,7 +2,17 @@ import assert from 'node:assert'
 import { Assert } from '@kitz/assert'
 import { Test } from '@kitz/test'
 import { Schema as S } from 'effect'
-import { type HasRequiredFields, hasRequiredFields } from './struct.js'
+import { describe, expect, test } from 'vitest'
+import {
+  clearExceptTag,
+  extractFields,
+  type HasRequiredFields,
+  hasRequiredFields,
+  isTagged,
+  pickLiteral1Fields,
+  pickLiteral1FieldsAsLiterals,
+  getValueAtField,
+} from './struct.js'
 
 const A = Assert.Type.exact.ofAs
 
@@ -138,4 +148,46 @@ Test.describe('HasRequiredFields runtime').test(() => {
   // Empty
   const emptySchema = S.Struct({})
   assert.equal(hasRequiredFields(emptySchema), false)
+})
+
+describe('struct helpers', () => {
+  const Config = S.Struct({
+    _tag: S.Literal('Config'),
+    mode: S.Literal('prod'),
+    retries: S.Number,
+    label: S.String,
+  })
+
+  test('isTagged and clearExceptTag operate on tagged objects', () => {
+    const tagged = {
+      _tag: 'Config',
+      mode: 'prod',
+      retries: 3,
+    }
+
+    expect(isTagged(tagged)).toBe(true)
+    expect(isTagged(null)).toBe(false)
+    expect(isTagged('Config')).toBe(false)
+
+    clearExceptTag(tagged)
+
+    expect(tagged).toEqual({ _tag: 'Config' })
+  })
+
+  test('extractFields selects a schema field subset', () => {
+    const extracted = extractFields(Config, ['mode', 'retries'] as const)
+
+    expect(Object.keys(extracted)).toEqual(['mode', 'retries'])
+    expect(extracted.mode).toBe(Config.fields.mode)
+    expect(extracted.retries).toBe(Config.fields.retries)
+  })
+
+  test('pickLiteral1Fields and getValueAtField expose literal schema metadata', () => {
+    expect(pickLiteral1FieldsAsLiterals(Config)).toEqual({
+      mode: 'prod',
+    })
+    expect(Object.keys(pickLiteral1Fields(Config))).toEqual(['_tag', 'mode'])
+    expect(getValueAtField(Config, 'mode')).toBe('prod')
+    expect(() => getValueAtField(Config, 'label')).toThrow('not a literal')
+  })
 })

@@ -1,11 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`can be stack of conditional prompts > args 1`] = `
-{
-  "a": "foo",
-  "help": false,
-}
-`;
+exports[`can be stack of conditional prompts > args 1`] = `Promise {}`;
 
 exports[`can be stack of conditional prompts > tty output 1`] = `
 "1/1a optional (press esc to skip)
@@ -144,12 +139,7 @@ exports[`prompt can be enabled by default > tty output 1`] = `
 "
 `;
 
-exports[`prompt can be toggled by check on error > toggle to enabled > check does match > args 1`] = `
-{
-  "a": "foo",
-  "help": false,
-}
-`;
+exports[`prompt can be toggled by check on error > toggle to enabled > check does match > args 1`] = `Promise {}`;
 
 exports[`prompt can be toggled by check on error > toggle to enabled > check does match > tty output 1`] = `
 "1/1a

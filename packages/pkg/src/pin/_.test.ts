@@ -98,4 +98,82 @@ describe('workspaceSpecifierToPublished', () => {
       '^1.0.0',
     )
   })
+
+  test('rejects non-workspace specifiers', () => {
+    expect(() => Pin.workspaceSpecifierToPublished('@kitz/core', '^1.0.0', Semver.zero)).toThrow(
+      'Expected workspace protocol dependency',
+    )
+  })
+})
+
+describe('Exact', () => {
+  test('parses and renders exact pins', () => {
+    const pin = Pin.Exact.fromString('@kitz/core@1.2.3')
+
+    expect(pin.name.moniker).toBe('@kitz/core')
+    expect(pin.version.toString()).toBe('1.2.3')
+    expect(Pin.toString(pin)).toBe('@kitz/core@1.2.3')
+  })
+
+  test('rejects malformed exact pins', () => {
+    expect(() => Pin.Exact.fromString('@kitz/core')).toThrow('Invalid exact pin')
+    expect(() => Pin.Exact.fromString('@kitz/core@not-a-version')).toThrow('Invalid semver')
+  })
+})
+
+describe('fromString dispatch and rendering', () => {
+  test('renders pins with git refs, semver refs, workspace ranges, and aliases', () => {
+    expect(Pin.toString(Pin.Git.fromString('pkg@git+https://github.com/org/repo#main'))).toBe(
+      'pkg@git+https://github.com/org/repo#main',
+    )
+    expect(
+      Pin.toString(Pin.Git.fromString('pkg@git+https://github.com/org/repo#semver:^1.0.0')),
+    ).toBe('pkg@git+https://github.com/org/repo#semver:>=1.0.0 <2.0.0-0')
+    expect(Pin.toString(Pin.Workspace.fromString('@kitz/core@workspace:^1.2.0'))).toBe(
+      '@kitz/core@workspace:>=1.2.0 <2.0.0-0',
+    )
+    expect(Pin.toString(Pin.Alias.fromString('my-react@npm:react@^18.0.0'))).toBe(
+      'my-react@npm:react@^18.0.0',
+    )
+  })
+
+  test('treats digit-leading non-semver specifiers as ranges', () => {
+    const pin = Pin.fromString('pkg@1')
+
+    expect(Pin.Range.is(pin)).toBe(true)
+    expect(Pin.toString(pin)).toBe('pkg@>=1.0.0 <2.0.0-0')
+  })
+
+  test('matches each pin variant exhaustively', () => {
+    const describePin = (input: string): string =>
+      Pin.match(Pin.fromString(input), {
+        PinRange: () => 'range',
+        PinExact: () => 'exact',
+        PinTag: () => 'tag',
+        PinWorkspace: () => 'workspace',
+        PinGit: () => 'git',
+        PinPath: () => 'path',
+        PinUrl: () => 'url',
+        PinAlias: () => 'alias',
+      })
+
+    expect(
+      [
+        describePin('@kitz/core@^1.0.0'),
+        describePin('@kitz/core@1.0.0'),
+        describePin('lodash@latest'),
+        describePin('@kitz/core@workspace:*'),
+        describePin('pkg@git+https://github.com/org/repo#main'),
+        describePin('pkg@file:../shared'),
+        describePin('pkg@https://example.com/pkg.tgz'),
+        describePin('my-lodash@npm:lodash@^4.0.0'),
+      ],
+    ).toEqual(['range', 'exact', 'tag', 'workspace', 'git', 'path', 'url', 'alias'])
+  })
+
+  test('rejects pins missing a specifier', () => {
+    expect(() => Pin.fromString('pkg')).toThrow('Missing specifier')
+    expect(() => Pin.fromString('@kitz/core')).toThrow('Missing specifier')
+    expect(() => Pin.fromString('@kitz')).toThrow('Invalid scoped package')
+  })
 })

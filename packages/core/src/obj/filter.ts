@@ -274,7 +274,9 @@ export const policyFilter = <
  * // Only includes properties that have actual values
  * ```
  */
-export const omitUndefined = omitWith(Undefined.isnt)
+export const omitUndefined = <$Object extends object>(obj: $Object): Partial<$Object> => {
+  return omit(obj, (_key, value) => value === undefined)
+}
 
 export interface partition extends Ts.SimpleSignature.SimpleSignature<
   [(obj: object, pickedKeys: readonly string[]) => { picked: object; omitted: object }]
