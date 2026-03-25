@@ -14,6 +14,11 @@
     "bun": ">=1.3.6"
   },
   "scripts": {
+    "fleet:scan": "bun tools/fleet.ts scan",
+    "fleet:scan:json": "bun tools/fleet.ts scan --json",
+    "fleet:link": "bun tools/fleet.ts link --no-save",
+    "fleet:link:dry-run": "bun tools/fleet.ts link --dry-run --no-save",
+    "fleet:link:save": "bun tools/fleet.ts link --save",
     "install:ci": "bun install --frozen-lockfile",
     "prepare": "git config core.hooksPath hooks",
     "build:packages": "bun run --workspaces build",
@@ -34,6 +39,8 @@
     "check:package:packages": "sh -lc 'bun run build:packages && bun run --workspaces check:package'",
     "test:packages": "bun run --if-present --workspaces test",
     "check:cov:packages": "node tools/run-workspace-coverage.mjs",
+    "test:oxlint-rules": "bun run test:oxlint-custom-rules && bun run --cwd packages/oxlint-rules test",
+    "test:fleet": "vitest run tools/fleet-lib.test.ts",
     "test:oxlint-custom-rules": "vitest run tools/oxlint-custom-rules/tests/custom-rules.test.ts",
     "check:api-model-style": "oxlint --config .oxlintrc.api-model-style.json --import-plugin packages",
     "check:release": "bun run --cwd packages/release check:types && bun run --cwd packages/release check:lint",

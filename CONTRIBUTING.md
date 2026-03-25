@@ -44,7 +44,7 @@ bun run --filter @kitz/core build            # Single package
 
 Custom Oxlint rules use two paths:
 
-- JS plugin rules for Effect-first standards and `_.ts` / `__.ts` conventions: `tools/oxlint-custom-rules/plugin.mjs`
+- Published Kitz rules package and presets: `packages/oxlint-rules/`
 - Official Oxlint type-aware rules via the `oxlint-tsgolint` package
 
 `kitz/ts/no-type-assertion` remains disabled. `typescript/no-unsafe-type-assertion` is also disabled for now because it is currently too noisy for this repo's function-body typing policy. `typescript/no-explicit-any` and `eslint-plugin-promise/prefer-await-to-then` are also temporarily disabled while the warning backlog is reduced. `kitz/error/no-throw` is temporarily disabled in repo lint configs while the remaining throw sites are migrated back onto typed failure channels; keep the rule implementation and fixture coverage intact so it can be restored once that backlog is cleared.
@@ -55,6 +55,7 @@ bun run check:lint:type-aware             # Lint with checker-backed rules enabl
 bun run check:lint:strict-custom-rules    # Lint (custom rules as errors)
 bun run check:lint:strict-custom-rules:type-aware
 bun run test:oxlint-custom-rules          # Fixture tests for custom rules
+bun run test:oxlint-rules                 # Fixtures + package preset surface
 ```
 
 Rule details and migration guidance: `docs/oxlint-custom-rules.md`.

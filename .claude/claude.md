@@ -10,6 +10,7 @@
 - Run tests through `bun run <script>` or `bun run --cwd <package> <script>`.
 - If a focused test workflow does not exist yet, add an appropriate Bun script first and then run that script.
 - Prefer canonical repo or package scripts over one-off shell commands when the workflow matters.
+- Treat `oxlint` warnings as blocking. Keep rule severities at `warn` so IDEs do not visually conflate lint findings with type-check errors, but do not close work while any `oxlint` warning is still live.
 
 ## Backwards Compatibility
 

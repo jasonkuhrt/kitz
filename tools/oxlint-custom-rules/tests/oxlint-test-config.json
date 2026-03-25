@@ -12,7 +12,7 @@
   "jsPlugins": [
     {
       "name": "kitz",
-      "specifier": "../plugin.mjs"
+      "specifier": "../../../packages/oxlint-rules/plugin.mjs"
     }
   ],
   "rules": {

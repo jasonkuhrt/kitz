@@ -5,7 +5,7 @@ This repo uses two custom-rule paths:
 - Oxlint experimental JS plugin rules (`kitz/*`) for Effect-first conventions.
 - Official Oxlint type-aware rules (`typescript/*`) via `oxlint-tsgolint`.
 
-- Plugin file: `tools/oxlint-custom-rules/plugin.mjs`
+- Published package: `packages/oxlint-rules/`
 - Plugin alias: `kitz`
 - Type-aware backend: `oxlint-tsgolint`
 - Base severity: `warn`

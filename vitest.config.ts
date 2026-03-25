@@ -2,7 +2,11 @@ import { setup } from '@ark/attest'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import { configDefaults, defineConfig } from 'vitest/config'
 
-const ssrResolveConditions = ['module', 'node', 'development|production']
+const ssrResolveConditions = [
+  'module',
+  'node',
+  'development|production',
+]
 
 const testExclude = [
   ...configDefaults.exclude,
