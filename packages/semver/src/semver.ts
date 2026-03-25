@@ -120,7 +120,7 @@ export const Semver = S.Union([OfficialRelease, PreRelease]).annotate({
 export const Schema = S.String.pipe(
   S.decodeTo(Semver, {
     decode: SchemaGetter.transformOrFail(
-      // oxlint-disable-next-line kitz/require-tagged-error-types -- SchemaIssue.Issue is tagged at runtime
+      // oxlint-disable-next-line kitz/error/require-tagged-error-types -- SchemaIssue.Issue is tagged at runtime
       (value: string): Effect.Effect<OfficialRelease | PreRelease, SchemaIssue.Issue> => {
         const parsed = parse(value)
         if (!parsed) {

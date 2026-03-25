@@ -1,6 +1,6 @@
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs'
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { basename, dirname, join } from 'node:path'
 import { Schema } from 'effect'
 

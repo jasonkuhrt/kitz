@@ -1,4 +1,4 @@
-/* eslint-disable kitz/no-throw -- This file IS the centralized throw point for all throws. */
+/* eslint-disable kitz/error/no-throw -- This file IS the centralized throw point for all throws. */
 
 //
 // All functions in this file use `const` bindings with explicit call-signature

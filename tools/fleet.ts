@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { spawnSync } from 'node:child_process'
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { basename } from 'node:path'
 import {
   defaultFleetBaseDir,
@@ -161,7 +161,7 @@ const run = (
 
   const result = spawnSync(command[0]!, command.slice(1), {
     cwd,
-    // oxlint-disable-next-line kitz/no-process-env-outside-config-modules
+    // oxlint-disable-next-line kitz/domain/no-process-env
     env: process.env,
     stdio: 'inherit',
   })

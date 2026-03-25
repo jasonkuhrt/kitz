@@ -1,8 +1,8 @@
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { tmpdir } from 'node:os'
-// oxlint-disable-next-line kitz/no-nodejs-builtin-imports
+// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { join } from 'node:path'
 import { afterEach, describe, expect, test } from 'vitest'
 import {
