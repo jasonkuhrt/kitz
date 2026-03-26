@@ -29,3 +29,7 @@ CLAUDE.local.md
 
 # Release CLI output
 .release/
+
+# shan-managed (do not edit)
+.codex/skills
+# end shan-managed
