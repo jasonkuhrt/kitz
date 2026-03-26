@@ -1,5 +1,5 @@
 import { expect } from 'vitest'
-import '../../test/matchers/_.js'
+import '../../../test/src/matchers/_.js'
 import { Path } from './_.js'
 
 interface PathMatchers<R = unknown> {

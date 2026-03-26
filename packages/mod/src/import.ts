@@ -331,7 +331,13 @@ export const dynamicImportFile = <
   if (options?.bustCache) {
     return Effect.gen(function* () {
       const info = yield* Fs.stat(path)
-      const mtime = info.mtime ? info.mtime.getTime() : 0
+      const rawMtime = info.mtime as { getTime?: () => number } | number | undefined
+      const mtime =
+        typeof rawMtime === 'number'
+          ? rawMtime
+          : typeof rawMtime?.getTime === 'function'
+            ? rawMtime.getTime()
+            : 0
       importUrl.searchParams.set('t', String(mtime))
       return yield* doImport
     }) as any

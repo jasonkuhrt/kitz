@@ -2,13 +2,21 @@ import { describe, expect, test } from 'vitest'
 import * as WareNamespace from './_.js'
 import * as Ware from './__.js'
 import { initialInput2, pipeline, pipelineWithOptions, run } from './_.test-helpers.js'
-import { ContextualAggregateError, ContextualError, partitionAndAggregateErrors } from './_errors.js'
+import {
+  ContextualAggregateError,
+  ContextualError,
+  partitionAndAggregateErrors,
+} from './_errors.js'
 import {
   ErrorAnywareInterceptorEntrypoint,
   InterceptorEntryHookIssue,
   getEntryStep,
 } from './run/getEntrypoint.js'
 import { createResultEnvelope } from './run/resultEnvelope.js'
+
+const asNonRetryingInterceptor = (value: unknown): Ware.NonRetryingInterceptorInput => {
+  return value as Ware.NonRetryingInterceptorInput
+}
 
 describe('ware', () => {
   test('re-exports the public runtime surface', () => {
@@ -48,9 +56,12 @@ describe('ware', () => {
     })
     expect(stepDefinition.name).toBe(`demo`)
 
-    const trigger = Ware.StepTrigger.create(initialInput2, async (parameters?: { input?: { value: string } }) => {
-      return parameters?.input?.value ?? `default`
-    })
+    const trigger = Ware.StepTrigger.create(
+      initialInput2,
+      async (parameters?: { input?: { value: string } }) => {
+        return parameters?.input?.value ?? `default`
+      },
+    )
     expect(trigger.input).toEqual(initialInput2)
     expect(await trigger({ input: { value: `override` } })).toBe(`override`)
 
@@ -71,23 +82,23 @@ describe('ware', () => {
     const cases = [
       {
         issue: InterceptorEntryHookIssue.multipleParameters,
-        interceptor: (_a: unknown, _b: unknown) => undefined,
+        interceptor: asNonRetryingInterceptor((_a: unknown, _b: unknown) => undefined),
       },
       {
         issue: InterceptorEntryHookIssue.noParameters,
-        interceptor: () => undefined,
+        interceptor: asNonRetryingInterceptor(() => undefined),
       },
       {
         issue: InterceptorEntryHookIssue.notDestructured,
-        interceptor: (_hooks: unknown) => undefined,
+        interceptor: asNonRetryingInterceptor((_hooks: unknown) => undefined),
       },
       {
         issue: InterceptorEntryHookIssue.multipleDestructuredHookNames,
-        interceptor: ({ a, b }: Record<string, unknown>) => a ?? b,
+        interceptor: asNonRetryingInterceptor(({ a, b }: Record<string, unknown>) => a ?? b),
       },
       {
         issue: InterceptorEntryHookIssue.invalidDestructuredHookNames,
-        interceptor: ({ z }: Record<string, unknown>) => z,
+        interceptor: asNonRetryingInterceptor(({ z }: Record<string, unknown>) => z),
       },
     ] as const
 
@@ -104,26 +115,29 @@ describe('ware', () => {
       issue: InterceptorEntryHookIssue.destructuredWithoutEntryHook,
     })
 
-    const step = getEntryStep(pipeline, ({ b }: Record<string, unknown>) => b)
+    const step = getEntryStep(
+      pipeline,
+      asNonRetryingInterceptor(({ b }: Record<string, unknown>) => b),
+    )
     expect(step).toMatchObject({ name: `b` })
   })
 
   test('builds and runs overloaded pipelines through pipeline and extension builders', async () => {
-    const extension = Ware.Extension.Builder.create<ReturnType<typeof createBaseBuilder>['type']>().overload(
-      ({ create }) => {
-        const overload = create({
-          discriminant: { name: `kind`, value: `special` },
-        })
-        overload.configurator((builder) => builder.default({ featureFlag: true }))
-        overload.stepWithExtendedInput<{ featureFlag: boolean }>()(`decorate`, {
-          run: (input: { kind: string; value: string; featureFlag: boolean }) => ({
-            kind: input.kind,
-            value: `${input.value}:special-decorate`,
-          }),
-        })
-        return overload
-      },
-    )
+    const extension = Ware.Extension.Builder.create<
+      ReturnType<typeof createBaseBuilder>['type']
+    >().overload(({ create }) => {
+      const overload = create({
+        discriminant: { name: `kind`, value: `special` },
+      })
+      overload.configurator((builder) => builder.default({ featureFlag: true }))
+      overload.stepWithExtendedInput<{ featureFlag: boolean }>()(`decorate`, {
+        run: (input: { kind: string; value: string; featureFlag: boolean }) => ({
+          kind: input.kind,
+          value: `${input.value}:special-decorate`,
+        }),
+      })
+      return overload
+    })
 
     const executablePipeline = createBaseBuilder()
       .use(extension)
@@ -138,14 +152,16 @@ describe('ware', () => {
       )
       .done()
 
+    const runtimePipeline = executablePipeline as Ware.Pipeline
+
     expect(
-      await Ware.PipelineDefinition.run(executablePipeline, {
+      await Ware.PipelineDefinition.run(runtimePipeline, {
         initialInput: { kind: `plain`, value: `seed` },
       }),
     ).toEqual({ value: { value: `seed:decorate:final` } })
 
     expect(
-      await Ware.PipelineDefinition.run(executablePipeline, {
+      await Ware.PipelineDefinition.run(runtimePipeline, {
         initialInput: { kind: `special`, value: `seed` },
       }),
     ).toEqual({ value: { value: `seed:special-decorate:special-final` } })
@@ -155,7 +171,9 @@ describe('ware', () => {
     expect(await run()).toEqual({ value: { value: `initial+a+b` } })
 
     const runner = Ware.createRunner(pipeline)
-    expect(await runner({ initialInput: initialInput2 })).toEqual({ value: { value: `initial+a+b` } })
+    expect(await runner({ initialInput: initialInput2 })).toEqual({
+      value: { value: `initial+a+b` },
+    })
 
     const intercepted = await run(async ({ a }) => {
       const { b } = await a({
@@ -187,13 +205,19 @@ describe('ware', () => {
   })
 
   test('supports optional and off entrypoint selection while rejecting invalid interceptors in required mode', async () => {
-    const required = await pipelineWithOptions({ entrypointSelectionMode: `required` }).run(async (hooks) => hooks)
+    const required = await pipelineWithOptions({ entrypointSelectionMode: `required` }).run(
+      async (hooks) => hooks,
+    )
     expect(required).toBeInstanceOf(ContextualAggregateError)
 
-    const optional = await pipelineWithOptions({ entrypointSelectionMode: `optional` }).run(async (hooks) => hooks)
+    const optional = await pipelineWithOptions({ entrypointSelectionMode: `optional` }).run(
+      async (hooks) => hooks,
+    )
     expect(optional).toEqual({ value: { value: `initial+a+b` } })
 
-    const off = await pipelineWithOptions({ entrypointSelectionMode: `off` }).run(async (hooks) => hooks)
+    const off = await pipelineWithOptions({ entrypointSelectionMode: `off` }).run(
+      async (hooks) => hooks,
+    )
     expect(off).toEqual({ value: { value: `initial+a+b` } })
   })
 
@@ -309,17 +333,19 @@ const createBaseBuilder = () =>
         value: `${input.value}:decorate`,
       }),
     })
-    .stepWithRunnerType<(
-      input: { kind: `plain` | `special`; value: string },
-      slots: undefined,
-      previous: {
-        decorate: {
-          input: { kind: `plain` | `special`; value: string }
-          output: { kind: `plain` | `special`; value: string }
-        }
-      },
-    ) => { value: string }>()(`finalize`, {
-      run: (input) => ({
-        value: `${input.value}:final`,
-      }),
-    })
+    .stepWithRunnerType<
+      (
+        input: { kind: `plain` | `special`; value: string },
+        slots: undefined,
+        previous: {
+          decorate: {
+            input: { kind: `plain` | `special`; value: string }
+            output: { kind: `plain` | `special`; value: string }
+          }
+        },
+      ) => { value: string }
+    >()(`finalize`, {
+    run: (input) => ({
+      value: `${input.value}:final`,
+    }),
+  })

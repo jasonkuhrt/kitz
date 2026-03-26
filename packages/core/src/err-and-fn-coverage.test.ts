@@ -2,13 +2,7 @@ import { Effect, Schema } from 'effect'
 import { describe, expect, test, vi } from 'vitest'
 import { TaggedContextualError, hasTag } from './err/contextual.js'
 import { guardNull, log, logUnsafe, throwNull } from './err/__.js'
-import {
-  tryCatch,
-  tryCatchIgnore,
-  tryCatchify,
-  tryOr,
-  tryOrAsync,
-} from './err/try.js'
+import { tryCatch, tryCatchIgnore, tryCatchify, tryOr, tryOrAsync } from './err/try.js'
 import { ensure, is, isAbortError, isAggregateError } from './err/type.js'
 import { analyzeFunction, isUnary } from './fn/analyze.js'
 import { $identityPartial, applySecond, bind, is as isFunction, noop } from './fn/core/base.js'
@@ -59,44 +53,56 @@ describe('core error and function coverage', () => {
     expect(parseJsonSafe('{')).toBeInstanceOf(Error)
 
     class NetworkError extends Error {}
-    const throwsNetwork = tryCatchify(
-      () => {
-        throw new NetworkError('offline')
-      },
-      [(error): error is NetworkError => error instanceof NetworkError],
-    )
+    const throwsNetwork = tryCatchify(() => {
+      throw new NetworkError('offline')
+    }, [(error): error is NetworkError => error instanceof NetworkError])
     expect(throwsNetwork()).toBeInstanceOf(NetworkError)
 
     expect(tryCatch(() => 1)).toBe(1)
     expect(await tryCatch(Promise.resolve(2))).toBe(2)
-    expect(tryCatch(() => {
-      throw new Error('caught')
-    })).toBeInstanceOf(Error)
+    expect(
+      tryCatch(() => {
+        throw new Error('caught')
+      }),
+    ).toBeInstanceOf(Error)
     expect(() =>
-      tryCatch(
-        () => {
-          throw 'boom'
-        },
-        [(error): error is TypeError => error instanceof TypeError],
-      ),
+      tryCatch(() => {
+        throw 'boom'
+      }, [(error): error is TypeError => error instanceof TypeError]),
     ).toThrow('boom')
 
     expect(tryCatchIgnore(() => 'ok')).toBe('ok')
-    expect(tryCatchIgnore(() => {
-      throw new Error('ignore')
-    })).toBeUndefined()
-    expect(await tryCatchIgnore(async () => {
-      throw new Error('ignore async')
-    })).toBeUndefined()
+    expect(
+      tryCatchIgnore(() => {
+        throw new Error('ignore')
+      }),
+    ).toBeUndefined()
+    expect(
+      await tryCatchIgnore(async () => {
+        throw new Error('ignore async')
+      }),
+    ).toBeUndefined()
 
     expect(tryOr(() => 1, 'fallback')).toBe(1)
-    expect(tryOr(() => {
-      throw new Error('fallback')
-    }, 'fallback')).toBe('fallback')
-    expect(await tryOr(() => Promise.resolve(1), async () => 2)).toBe(1)
-    expect(await tryOrAsync(() => {
-      throw new Error('fallback')
-    }, async () => 2)).toBe(2)
+    expect(
+      tryOr(() => {
+        throw new Error('fallback')
+      }, 'fallback'),
+    ).toBe('fallback')
+    expect(
+      await tryOr(
+        () => Promise.resolve(1),
+        async () => 2,
+      ),
+    ).toBe(1)
+    expect(
+      await tryOrAsync(
+        () => {
+          throw new Error('fallback')
+        },
+        async () => 2,
+      ),
+    ).toBe(2)
   })
 
   test('covers error type helpers', () => {
@@ -148,11 +154,13 @@ describe('core error and function coverage', () => {
     const curriedAdd = curry(add)
     expect(curriedAdd(1)(2)).toBe(3)
 
-    const format = curry((left: string, middle: string, right: string) => `${left}${middle}${right}`)
-    expect(format('a')('b', 'c')).toBe('abc')
+    const format = curry(
+      (left: string, middle: string, right: string) => `${left}${middle}${right}`,
+    )
+    expect(format('a')('b')('c')).toBe('abc')
 
-    const isOak = curry((value: string) => value === 'oak')
-    expect(isOak('oak')).toBe(true)
+    const isOak = curry((expected: string, value: string) => value === expected)
+    expect(isOak('oak')('oak')).toBe(true)
 
     const uncurriedAdd = uncurry((a: number) => (b: number) => a + b)
     expect(uncurriedAdd(1, 2)).toBe(3)

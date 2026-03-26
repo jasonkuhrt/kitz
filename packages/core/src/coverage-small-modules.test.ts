@@ -80,10 +80,9 @@ describe('core small-module coverage', () => {
 
     const greeting = interpolate('Hello ${name} from ${place}')
     expect(greeting({ name: 'Oak', place: 'kitz' })).toBe('Hello Oak from kitz')
-    expect([...`${'${name} ${value}'}`.matchAll(templateVariablePattern)].map((match) => match[1])).toEqual([
-      'name',
-      'value',
-    ])
+    expect(
+      [...`${'${name} ${value}'}`.matchAll(templateVariablePattern)].map((match) => match[1]),
+    ).toEqual(['name', 'value'])
 
     expect(camel('hello-world')).toBe('helloWorld')
     expect(kebab('HelloWorld')).toBe('hello-world')
@@ -138,7 +137,7 @@ describe('core small-module coverage', () => {
     expect(resolveLazy(valueThunk)).toEqual({ mode: 'strict' })
     expect(resolveLazy('ready')).toBe('ready')
     expect(resolveLazyFactory(() => 42)()).toBe(42)
-    expect(identityProxy.foo.bar.baz).toBe(identityProxy)
+    expect((identityProxy as any).foo.bar.baz).toBe(identityProxy)
   })
 
   test('covers language helpers and runtime arbitraries', () => {
@@ -228,7 +227,7 @@ describe('core small-module coverage', () => {
     expect(isRecord(new Date())).toBe(false)
 
     const created = createRecord<number>()
-    created.count = 1
+    created['count'] = 1
     expect(created).toEqual({ count: 1 })
     expect(mergeRecord({ a: 1 }, { b: 2 })).toEqual({ a: 1, b: 2 })
 
@@ -255,15 +254,15 @@ describe('core small-module coverage', () => {
   })
 
   test('covers equality type guards', () => {
-    const maybeNull: string | null = null
-    const maybeText: string | null = 'oak'
-    const maybeFlag: 'on' | 'off' = 'on'
+    const maybeNull = null as string | null
+    const maybeText = 'oak' as string | null
+    const maybeFlag = 'on' as 'on' | 'off'
 
     expect(isTypeWith(null)(maybeNull)).toBe(true)
     expect(isTypeWith(null)(maybeText)).toBe(false)
     expect(isntTypeWith(null)(maybeNull)).toBe(false)
     expect(isntTypeWith(null)(maybeText)).toBe(true)
-    expect(isTypeWith('on')(maybeFlag)).toBe(true)
-    expect(isntTypeWith('on')(maybeFlag)).toBe(false)
+    expect((isTypeWith as any)('on')(maybeFlag)).toBe(true)
+    expect((isntTypeWith as any)('on')(maybeFlag)).toBe(false)
   })
 })

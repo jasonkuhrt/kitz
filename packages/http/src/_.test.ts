@@ -73,6 +73,10 @@ describe('http', () => {
       'content-type': 'application/json',
       'x-test': 'yes',
     })
+    expect(responseCacheControl({ visibility: 'private', maxAge: 0, staleIfError: 0 })).toEqual([
+      'Cache-Control',
+      'private',
+    ])
   })
 
   test('merges headers and request init structures', () => {
@@ -86,17 +90,30 @@ describe('http', () => {
     )
     const fromAdditionalOnly = mergeInitWithStrategyMerge(undefined, { 'x-only': '1' })
     const fromBaseOnly = mergeInitWithStrategyMerge({ 'x-only': '1' }, undefined)
+    const baseHeaders = new Headers({ 'x-shared': '1' })
+    const fromHeadersOnly = mergeInitWithStrategyMerge(baseHeaders, undefined)
+    const fromNothing = mergeInitWithStrategyMerge(undefined, undefined)
     const request = mergeInit(
       { method: 'GET', headers: { 'x-base': '1', 'x-drop': 'keep' } },
       { method: 'POST', headers: { 'x-add': '2', 'x-drop': UnsetValue } },
     )
+    const requestFromAdditionalOnly = mergeInit(undefined, {
+      method: 'PATCH',
+      headers: { 'x-add': '2' },
+    })
+    const emptyRequest = mergeInit()
 
     expect(initToRec(mergedSet)).toEqual({ 'x-add': '2', 'x-base': '1' })
     expect(initToRec(mergedAppend)).toEqual({ 'x-list': 'a=1, b=2' })
     expect(initToRec(fromAdditionalOnly)).toEqual({ 'x-only': '1' })
     expect(initToRec(fromBaseOnly)).toEqual({ 'x-only': '1' })
+    expect(fromHeadersOnly).toBe(baseHeaders)
+    expect(fromNothing).toBeUndefined()
     expect(request.method).toBe('POST')
     expect(initToRec(request.headers)).toEqual({ 'x-add': '2', 'x-base': '1' })
+    expect(requestFromAdditionalOnly.method).toBe('PATCH')
+    expect(initToRec(requestFromAdditionalOnly.headers)).toEqual({ 'x-add': '2' })
+    expect(initToRec(emptyRequest.headers)).toEqual({})
   })
 
   test('creates response helpers and search-param utilities', () => {

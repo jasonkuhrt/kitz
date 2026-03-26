@@ -4,6 +4,13 @@ import { createCallable, createCallableMutable, fromInterface } from './callable
 import { StateSymbol, create } from './constructor.js'
 import { createMutable } from './mutable.js'
 
+type MutableLinesBuilder = {
+  data: { lines: string[]; calls: number }
+  return: () => { lines: string[]; calls: number }
+  add: (line: string) => MutableLinesBuilder
+  size: () => number
+}
+
 describe('bldr', () => {
   test('exports the namespace and immutable builder constructor', () => {
     const builder = create({
@@ -38,7 +45,7 @@ describe('bldr', () => {
         },
         size: () => builder.data.lines.length,
       },
-    })
+    }) as MutableLinesBuilder
 
     const chained = builder.add('first').add('second')
 
@@ -129,6 +136,15 @@ describe('bldr', () => {
         },
       }),
     )
+    const templated = createCallableMutable({ lines: [] as string[] }, (data) => ({
+      call: (line: string) => {
+        data.lines.push(line)
+      },
+      builder: {},
+      terminal: {
+        snapshot: () => data.lines,
+      },
+    }))
 
     expect(builder('one').comment('two').build()).toBe('one\n// two')
     expect(builder.count()).toBe(1)
@@ -137,13 +153,14 @@ describe('bldr', () => {
       lines: ['alpha', 'beta'],
       tags: ['tag gamma'],
     })
+    expect(templated`value ${123} ${false}`.snapshot()).toEqual(['value 123 false'])
   })
 
   test('creates fresh interface-driven callable builders', () => {
     interface CodeBuilder {
-      (line: string): CodeBuilder
-      (strings: TemplateStringsArray, ...values: unknown[]): CodeBuilder
-      comment(label: string): CodeBuilder
+      (line: string): void
+      (strings: TemplateStringsArray, ...values: unknown[]): void
+      comment(label: string): void
       build(): string
     }
 
@@ -160,7 +177,11 @@ describe('bldr', () => {
     const first = factory()
     const second = factory()
 
-    expect(first('a').comment('b')`value ${1} ${false}`.build()).toBe('a\n// b\nvalue 1 false')
+    first('a')
+    first.comment('b')
+    first`value ${1} ${false}`
+
+    expect(first.build()).toBe('a\n// b\nvalue 1 false')
     expect(second.build()).toBe('')
   })
 })

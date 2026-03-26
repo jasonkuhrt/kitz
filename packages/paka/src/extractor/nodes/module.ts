@@ -589,7 +589,12 @@ export const extractModule = (
   // Get all exported declarations from the namespace
   for (const statement of body.getStatements()) {
     // Check for export keyword
-    const hasExportModifier = statement.hasModifier(SyntaxKind.ExportKeyword)
+    const compilerNode = statement.compilerNode as {
+      modifiers?: ReadonlyArray<{ kind: SyntaxKind }>
+    }
+    const hasExportModifier =
+      compilerNode.modifiers?.some((modifier) => modifier.kind === SyntaxKind.ExportKeyword) ??
+      false
     if (!hasExportModifier) {
       continue
     }

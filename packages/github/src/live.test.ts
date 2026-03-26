@@ -1,5 +1,10 @@
-import { Effect, Layer } from 'effect'
-import { HttpClient, HttpClientError, HttpClientResponse } from 'effect/unstable/http'
+import { Effect, Fiber, Layer } from 'effect'
+import {
+  HttpClient,
+  HttpClientError,
+  HttpClientRequest,
+  HttpClientResponse,
+} from 'effect/unstable/http'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { getGithubToken } from './env.js'
 import { Github } from './_.js'
@@ -11,12 +16,17 @@ interface RequestRecord {
   readonly bodyText: string | undefined
 }
 
-type RouteHandler = Parameters<typeof HttpClient.make>[0]
+type MockRouteHandler = (
+  request: HttpClientRequest.HttpClientRequest,
+  url: URL,
+  signal: AbortSignal,
+  fiber: Fiber.Fiber<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>,
+) => Effect.Effect<
+  Response | HttpClientResponse.HttpClientResponse,
+  HttpClientError.HttpClientError
+>
 
-const jsonResponse = (
-  body: unknown,
-  init: ResponseInit = {},
-): Response =>
+const jsonResponse = (body: unknown, init: ResponseInit = {}): Response =>
   new Response(JSON.stringify(body), {
     ...init,
     headers: {
@@ -25,7 +35,7 @@ const jsonResponse = (
     },
   })
 
-const makeHttpLayer = (handler: RouteHandler) => {
+const makeHttpLayer = (handler: MockRouteHandler) => {
   const requests: RequestRecord[] = []
 
   const client = HttpClient.make((request, url, signal, fiber) => {
@@ -67,7 +77,7 @@ const provideLive = (
   },
 ) => Github.Live(config).pipe(Layer.provide(layer))
 
-const transportError = (request: Parameters<RouteHandler>[0], description: string) =>
+const transportError = (request: HttpClientRequest.HttpClientRequest, description: string) =>
   new HttpClientError.HttpClientError({
     reason: new HttpClientError.TransportError({
       request,
@@ -76,19 +86,43 @@ const transportError = (request: Parameters<RouteHandler>[0], description: strin
     }),
   })
 
+const expectGithubError = (error: unknown): Github.GithubError => {
+  expect(error).toBeInstanceOf(Github.GithubError)
+  if (!(error instanceof Github.GithubError)) {
+    throw new Error('Expected GithubError')
+  }
+  return error
+}
+
+const expectGithubAuthError = (error: unknown): Github.GithubAuthError => {
+  expect(error).toBeInstanceOf(Github.GithubAuthError)
+  if (!(error instanceof Github.GithubAuthError)) {
+    throw new Error('Expected GithubAuthError')
+  }
+  return error
+}
+
+const expectGithubRateLimitError = (error: unknown): Github.GithubRateLimitError => {
+  expect(error).toBeInstanceOf(Github.GithubRateLimitError)
+  if (!(error instanceof Github.GithubRateLimitError)) {
+    throw new Error('Expected GithubRateLimitError')
+  }
+  return error
+}
+
 afterEach(() => {
-  delete process.env.GITHUB_TOKEN
+  delete process.env[`GITHUB_TOKEN`]
   vi.unstubAllGlobals()
 })
 
 describe('getGithubToken', () => {
   test('prefers explicit tokens over the environment and falls back to GITHUB_TOKEN', () => {
-    process.env.GITHUB_TOKEN = 'env-token'
+    process.env[`GITHUB_TOKEN`] = 'env-token'
 
     expect(getGithubToken('explicit-token')).toBe('explicit-token')
     expect(getGithubToken(undefined)).toBe('env-token')
 
-    delete process.env.GITHUB_TOKEN
+    delete process.env[`GITHUB_TOKEN`]
     expect(getGithubToken(undefined)).toBeUndefined()
   })
 })
@@ -274,7 +308,7 @@ describe('Github.Live', () => {
     expect(result.upsertedDiscovered.id).toBe(101)
     expect(result.upsertedCreated.id).toBe(102)
 
-    expect(http.requests[0]?.headers.authorization).toBe('Bearer test-token')
+    expect(http.requests[0]?.headers[`authorization`]).toBe('Bearer test-token')
     expect(http.requests[1]?.bodyText).toContain('"tag_name":"v1.2.4"')
     expect(http.requests[5]?.bodyText).toContain('"title":"feat: updated release"')
   })
@@ -344,13 +378,12 @@ describe('Github.Live', () => {
     )
 
     expect(missing).toBe(false)
-    expect(auth).toBeInstanceOf(Github.GithubAuthError)
-    expect(rate).toBeInstanceOf(Github.GithubRateLimitError)
-    expect(rate.context.resetAt.toISOString()).toBe('2026-01-01T00:00:00.000Z')
-    expect(failure).toBeInstanceOf(Github.GithubError)
-    expect(failure.context.detail).toContain('socket closed')
-    expect(serverError).toBeInstanceOf(Github.GithubError)
-    expect(serverError.context.status).toBe(500)
+    expectGithubAuthError(auth)
+    expect(expectGithubRateLimitError(rate).context.resetAt.toISOString()).toBe(
+      '2026-01-01T00:00:00.000Z',
+    )
+    expect(expectGithubError(failure).context.detail).toContain('socket closed')
+    expect(expectGithubError(serverError).context.status).toBe(500)
   })
 
   test('maps POST and PATCH errors to the expected github error types', async () => {
@@ -409,11 +442,11 @@ describe('Github.Live', () => {
       }).pipe(Effect.provide(layer)),
     )
 
-    expect(result.createRelease).toBeInstanceOf(Github.GithubError)
-    expect(result.createRelease.context.status).toBe(404)
-    expect(result.createComment).toBeInstanceOf(Github.GithubRateLimitError)
-    expect(result.createComment.context.resetAt.getTime()).toBeGreaterThanOrEqual(result.now)
-    expect(result.updatePull).toBeInstanceOf(Github.GithubAuthError)
+    expect(expectGithubError(result.createRelease).context.status).toBe(404)
+    expect(
+      expectGithubRateLimitError(result.createComment).context.resetAt.getTime(),
+    ).toBeGreaterThanOrEqual(result.now)
+    expectGithubAuthError(result.updatePull)
   })
 })
 
@@ -425,7 +458,8 @@ describe('Github.LiveFetch', () => {
         jsonResponse({
           id: 1,
           tag_name: 'v3.0.0',
-        })),
+        }),
+      ),
     )
 
     const result = await Effect.runPromise(

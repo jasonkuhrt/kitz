@@ -107,10 +107,7 @@ const extractEffectSchemaMetadata = (
 
     if (annotatedDefault.hasDefault) {
       optionality = { _tag: `default`, getValue: () => annotatedDefault.value }
-    } else if (
-      encodedUnion &&
-      (hasUndefinedMember(encodedUnion) || hasNullMember(encodedUnion))
-    ) {
+    } else if (encodedUnion && (hasUndefinedMember(encodedUnion) || hasNullMember(encodedUnion))) {
       // This is a transformed default pattern (e.g., decodeTo with UndefinedOr)
       optionality = { _tag: `default`, getValue: () => undefined }
     } else {
@@ -343,7 +340,9 @@ const buildSchemaFromAST = (ast: SchemaAST.AST): Schema.Top => {
 const isOptionSchema = (ast: SchemaAST.AST): boolean => {
   if (ast._tag !== `Declaration`) return false
 
-  const typeConstructor = ast.annotations?.typeConstructor as { readonly _tag?: unknown } | undefined
+  const typeConstructor = ast.annotations?.['typeConstructor'] as
+    | { readonly _tag?: unknown }
+    | undefined
   return typeConstructor?._tag === `effect/Option`
 }
 
@@ -367,7 +366,8 @@ const hasNullMember = (ast: SchemaAST.Union): boolean => {
  */
 const removeNullishFromUnion = (ast: SchemaAST.Union): SchemaAST.AST => {
   const nonNullishTypes = ast.types.filter(
-    (t) => t._tag !== `Undefined` && t._tag !== `Null` && !(t._tag === `Literal` && t.literal === null),
+    (t) =>
+      t._tag !== `Undefined` && t._tag !== `Null` && !(t._tag === `Literal` && t.literal === null),
   )
 
   // If no types remain (shouldn't happen), return the original
@@ -386,7 +386,10 @@ const removeNullishFromUnion = (ast: SchemaAST.Union): SchemaAST.AST => {
 
 const getOptionInnerAst = (ast: SchemaAST.AST): SchemaAST.AST | null => {
   if (!isOptionSchema(ast)) return null
-  return ast.typeParameters[0] ?? null
+  const declaration = ast as SchemaAST.Declaration & {
+    readonly typeParameters?: readonly SchemaAST.AST[]
+  }
+  return declaration.typeParameters?.[0] ?? null
 }
 
 const getEncodedUnion = (ast: SchemaAST.AST): SchemaAST.Union | null => {

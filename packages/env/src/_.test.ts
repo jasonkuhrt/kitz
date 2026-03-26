@@ -45,7 +45,7 @@ describe('env', () => {
     expect(defaults.arch).toBe('x64')
     expect(() => defaults.exit(9)).toThrow('Env.exit(9) called in test environment')
     expect(custom.cwd).toStrictEqual(Fs.Path.AbsDir.fromString('/repo'))
-    expect(custom.vars.KITZ_ENV).toBe('test')
+    expect(custom.vars[`KITZ_ENV`]).toBe('test')
     expect(custom.platform).toBe('bun')
     expect(custom.os).toBe('darwin')
     expect(custom.arch).toBe('arm64')

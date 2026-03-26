@@ -1,13 +1,14 @@
-import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { Effect } from 'effect'
+import { Effect, FileSystem } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { Fs } from '@kitz/fs'
 import { Platform } from '@kitz/platform'
 import * as ModModule from './_.js'
 import {
   dynamicImportFile,
+  type DynamicImportFileOptions,
   ImportErrorNotFound,
   ImportErrorOther,
   ImportErrorPackageConfig,
@@ -40,15 +41,15 @@ describe('mod', () => {
 
   test('imports default and named exports from local modules', async () => {
     const imported = await Effect.runPromise(
-      dynamicImportFile<{ default: { name: string }; helper: () => string }>(
-        Fs.Path.AbsFile.fromString('/tmp/sample.mjs'),
-        {
-          importFn: async () => ({
-            default: { name: 'sample' },
-            helper: () => 'helper',
-          }),
-        },
-      ),
+      dynamicImportFile<
+        { default: { name: string }; helper: () => string },
+        DynamicImportFileOptions
+      >(Fs.Path.AbsFile.fromString('/tmp/sample.mjs'), {
+        importFn: async () => ({
+          default: { name: 'sample' },
+          helper: () => 'helper',
+        }),
+      }),
     )
 
     expect(imported.default).toEqual({ name: 'sample' })
@@ -74,31 +75,52 @@ describe('mod', () => {
   test('busts the native ESM cache when requested', async () => {
     const result = await withTempDir(async (dir) => {
       const modulePath = toAbsFile(dir, 'cached.mjs')
-      const diskPath = path.join(dir, 'cached.mjs')
       const seen: string[] = []
-
-      writeFileSync(diskPath, `export default 'first'\n`)
-      const first = await Effect.runPromise(
-        importDefault<string>(modulePath, {
-          bustCache: true,
-          importFn: async (url) => {
-            seen.push(url)
-            return { default: new URL(url).searchParams.get('t') ?? 'missing' }
-          },
+      let statCallCount = 0
+      const baseFileSystem = await Effect.runPromise(
+        Effect.gen(function* () {
+          return yield* FileSystem.FileSystem
         }).pipe(Effect.provide(Platform.FileSystem.layer)),
       )
+      const fileSystem: FileSystem.FileSystem = {
+        ...baseFileSystem,
+        stat: () =>
+          Effect.succeed<FileSystem.File.Info>({
+            type: 'File',
+            mtime: { getTime: () => [1000, 2000][statCallCount++] ?? 2000 } as Date,
+            atime: undefined,
+            birthtime: undefined,
+            dev: 0,
+            ino: undefined,
+            mode: 0,
+            nlink: undefined,
+            uid: undefined,
+            gid: undefined,
+            rdev: undefined,
+            size: FileSystem.Size(0n),
+            blksize: undefined,
+            blocks: undefined,
+          }),
+      }
 
-      writeFileSync(diskPath, `export default 'second'\n`)
-      const nextMtime = new Date(Date.now() + 1000)
-      utimesSync(diskPath, nextMtime, nextMtime)
-      const second = await Effect.runPromise(
-        importDefault<string>(modulePath, {
+      const first = await Effect.runPromise(
+        importDefault<string, DynamicImportFileOptions & { bustCache: true }>(modulePath, {
           bustCache: true,
-          importFn: async (url) => {
+          importFn: async (url: string) => {
             seen.push(url)
             return { default: new URL(url).searchParams.get('t') ?? 'missing' }
           },
-        }).pipe(Effect.provide(Platform.FileSystem.layer)),
+        }).pipe(Effect.provideService(FileSystem.FileSystem, fileSystem)),
+      )
+
+      const second = await Effect.runPromise(
+        importDefault<string, DynamicImportFileOptions & { bustCache: true }>(modulePath, {
+          bustCache: true,
+          importFn: async (url: string) => {
+            seen.push(url)
+            return { default: new URL(url).searchParams.get('t') ?? 'missing' }
+          },
+        }).pipe(Effect.provideService(FileSystem.FileSystem, fileSystem)),
       )
 
       return { first, second, seen }

@@ -11,11 +11,19 @@ export class Scoped extends S.TaggedClass<Scoped>()('Scoped', {
   scope: S.String,
   name: S.String,
 }) {
-  static decode = Schema.decode(Scoped)
-  static decodeSync = Schema.decodeSync(Scoped)
-  static encode = Schema.encode(Scoped)
-  static encodeSync = Schema.encodeSync(Scoped)
-  static equivalence = Schema.equivalence(Scoped)
+  static equivalence = S.toEquivalence(Scoped)
+  static get decode(): any {
+    return S.decode(Scoped)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(Scoped)
+  }
+  static get encode(): any {
+    return S.encode(Scoped)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(Scoped)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(Scoped)
@@ -60,11 +68,19 @@ export const ScopedFromString: S.Codec<Scoped, string> = S.String.pipe(
 export class Unscoped extends S.TaggedClass<Unscoped>()('Unscoped', {
   name: S.String,
 }) {
-  static decode = Schema.decode(Unscoped)
-  static decodeSync = Schema.decodeSync(Unscoped)
-  static encode = Schema.encode(Unscoped)
-  static encodeSync = Schema.encodeSync(Unscoped)
-  static equivalence = Schema.equivalence(Unscoped)
+  static equivalence = S.toEquivalence(Unscoped)
+  static get decode(): any {
+    return S.decode(Unscoped)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(Unscoped)
+  }
+  static get encode(): any {
+    return S.encode(Unscoped)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(Unscoped)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(Unscoped)

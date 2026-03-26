@@ -1,6 +1,7 @@
 import * as ansis from 'ansis'
 import { Schema as S } from 'effect'
 import { describe, expect, test } from 'vitest'
+import type { ListBuilder } from './chain/list.js'
 import * as TexNamespace from './_.js'
 import * as Tex from './__.js'
 import * as Clockhand from './box/clockhand/clockhand.js'
@@ -17,14 +18,14 @@ describe('tex', () => {
   })
 
   test('reads terminal width from env and stdout with fallback behavior', () => {
-    const originalColumns = process.env.COLUMNS
+    const originalColumns = process.env[`COLUMNS`]
     const originalDescriptor = Object.getOwnPropertyDescriptor(process.stdout, `columns`)
 
     try {
-      process.env.COLUMNS = `72`
+      process.env[`COLUMNS`] = `72`
       expect(getTerminalWidth(10)).toBe(72)
 
-      process.env.COLUMNS = `nope`
+      process.env[`COLUMNS`] = `nope`
       Object.defineProperty(process.stdout, `columns`, {
         value: 44,
         configurable: true,
@@ -38,9 +39,9 @@ describe('tex', () => {
       expect(getTerminalWidth(33)).toBe(33)
     } finally {
       if (originalColumns === undefined) {
-        delete process.env.COLUMNS
+        delete process.env[`COLUMNS`]
       } else {
-        process.env.COLUMNS = originalColumns
+        process.env[`COLUMNS`] = originalColumns
       }
 
       if (originalDescriptor) {
@@ -77,7 +78,9 @@ describe('tex', () => {
       left: 4,
     })
     expect(Clockhand.parse({ left: `L` })).toEqual({ left: `L` })
-    expect(() => Clockhand.parse([1, 2, 3, 4, 5] as any)).toThrow(`Invalid clockhand array length: 5`)
+    expect(() => Clockhand.parse([1, 2, 3, 4, 5] as any)).toThrow(
+      `Invalid clockhand array length: 5`,
+    )
 
     expect(Tex.Box.Sided.parse(2)).toEqual({
       mainStart: 2,
@@ -91,7 +94,12 @@ describe('tex', () => {
       crossStart: 4,
       crossEnd: 4,
     })
-    expect(Tex.Box.Sided.parse([[1, 2], [3, 4]])).toEqual({
+    expect(
+      Tex.Box.Sided.parse([
+        [1, 2],
+        [3, 4],
+      ]),
+    ).toEqual({
       mainStart: 1,
       mainEnd: 2,
       crossStart: 3,
@@ -108,7 +116,12 @@ describe('tex', () => {
     expect(Tex.Box.Axied.parse([undefined, 5])).toEqual({ cross: 5 })
     expect(Tex.Box.Axied.parse({ main: 8 })).toEqual({ main: 8 })
 
-    expect(Tex.Box.Padding.parse([[1, 2], [3, 4]])).toMatchObject({
+    expect(
+      Tex.Box.Padding.parse([
+        [1, 2],
+        [3, 4],
+      ]),
+    ).toMatchObject({
       mainStart: 1,
       mainEnd: 2,
       crossStart: 3,
@@ -148,7 +161,9 @@ describe('tex', () => {
     })
 
     expect(() =>
-      S.encodeSync(Tex.Box.Border.fromCornerInput)(Tex.Box.Border.BorderCorners.make({ topLeft: `x` })),
+      S.encodeSync(Tex.Box.Border.fromCornerInput)(
+        Tex.Box.Border.BorderCorners.make({ topLeft: `x` }),
+      ),
     ).toThrow(`One-way transformation`)
     expect(() =>
       S.encodeSync(Tex.Box.Padding.fromInput)(Tex.Box.Padding.Padding.make({ mainStart: 1 })),
@@ -156,12 +171,12 @@ describe('tex', () => {
     expect(() =>
       S.encodeSync(Tex.Box.Margin.fromInput)(Tex.Box.Margin.Margin.make({ mainStart: 1 })),
     ).toThrow(`One-way transformation`)
-    expect(() => S.encodeSync(Tex.Box.Sided.fromInput(Tex.Box.Padding.Value))({ mainStart: 1 } as any)).toThrow(
-      `One-way transformation`,
-    )
-    expect(() => S.encodeSync(Tex.Box.Axied.fromInput(Tex.Box.Span.ValueSchema))({ main: 1 } as any)).toThrow(
-      `One-way transformation`,
-    )
+    expect(() =>
+      S.encodeSync(Tex.Box.Sided.fromInput(Tex.Box.Padding.Value))({ mainStart: 1 } as any),
+    ).toThrow(`One-way transformation`)
+    expect(() =>
+      S.encodeSync(Tex.Box.Axied.fromInput(Tex.Box.Span.ValueSchema))({ main: 1 } as any),
+    ).toThrow(`One-way transformation`)
   })
 
   test('renders nested blocks, standalone blocks, lists, and tables', () => {
@@ -176,25 +191,23 @@ describe('tex', () => {
     const builder = Tex.Tex({ terminalWidth: 28, padding: [0, 1], border: { style: `single` } })
       .text(`Header`)
       .block(standalone)
-      .list(
-        {
+      .list(($: ListBuilder) =>
+        $.set({
           gap: 1,
           bullet: {
             graphic: (index) => `${index + 1}.`,
             align: { horizontal: `right` },
           },
-        },
-        ($) => $.item(`First`).items(`Second`, null).items([`Third`]),
+        })
+          .item(`First`)
+          .items(`Second`, null)
+          .items([`Third`]),
       )
       .table({ gap: { main: `-`, cross: ` | `, intersection: `-+-` } }, ($) =>
         $.headers([`Name`])
           .header({ border: { style: `single` } }, `Count`)
           .row(`Apples`, `2`)
-          .rows([
-            [`Pears`, `10`],
-            null,
-            [`Oranges`, `100`],
-          ]),
+          .rows([[`Pears`, `10`], null, [`Oranges`, `100`]]),
       )
       .block({ border: { style: `single` }, padding: [0, 1] }, ($) =>
         $.text(`Inner`).list([`Nested`, `Items`]),
@@ -250,9 +263,12 @@ describe('tex', () => {
     const immutable = Tex.Box.border(
       Tex.Box.gap(
         Tex.Box.spanRange(
-          Tex.Box.span(Tex.Box.margin(Tex.Box.pad(Tex.Box.content(base, `updated`), [1, 2]), [1, 1]), {
-            cross: 22,
-          }),
+          Tex.Box.span(
+            Tex.Box.margin(Tex.Box.pad(Tex.Box.content(base, `updated`), [1, 2]), [1, 1]),
+            {
+              cross: 22,
+            },
+          ),
           { cross: { min: 8, max: 30 } },
         ),
         { main: 1, cross: 2 },
@@ -277,18 +293,39 @@ describe('tex', () => {
       span: [2, 20],
       gap: 1,
       border: { corners: `rounded` },
-    })
+    }) as Tex.Box.Box
     expect(fromInputBox).toBeInstanceOf(Tex.Box.Box)
     expect(fromInputBox.content).toBe(`input`)
-    expect(fromInputBox.padding).toMatchObject({ mainStart: 1, mainEnd: 1, crossStart: 2, crossEnd: 2 })
+    expect(fromInputBox.padding).toMatchObject({
+      mainStart: 1,
+      mainEnd: 1,
+      crossStart: 2,
+      crossEnd: 2,
+    })
     expect(fromInputBox.border?.corners).toMatchObject({
       topLeft: `╭`,
       topRight: `╮`,
       bottomRight: `╯`,
       bottomLeft: `╰`,
     })
-    expect(S.decodeSync(Tex.Box.String)(base)).toBe(`seed`)
-    expect(() => S.encodeSync(Tex.Box.String)(`seed`)).toThrow()
+    const boxStringCodec = Tex.Box.String as unknown as S.Top & {
+      readonly DecodingServices: never
+      readonly EncodingServices: never
+    }
+    expect(S.decodeSync(boxStringCodec)(base)).toBe(`seed`)
+    expect(() => S.encodeSync(boxStringCodec)(`seed`)).toThrow()
+
+    const styledBorder: Tex.Box.BorderInput = {
+      style: `single`,
+      edges: {
+        top: { char: `=`, color: { foreground: `blue` } },
+        left: ({ lineIndex }) => (lineIndex === 0 ? `>` : `|`),
+      },
+      corners: {
+        topLeft: { char: `*`, bold: true },
+        bottomRight: `+`,
+      },
+    }
 
     const mutable = Tex.Box.Box.make({
       content: [
@@ -307,17 +344,7 @@ describe('tex', () => {
         mainEnd: 1,
         crossStart: 1,
       })
-      .border$({
-        style: `single`,
-        edges: {
-          top: { char: `=`, color: { foreground: `blue` } },
-          left: ({ lineIndex }) => (lineIndex === 0 ? `>` : `|`),
-        },
-        corners: {
-          topLeft: { char: `*`, bold: true },
-          bottomRight: `+`,
-        },
-      })
+      .border$(styledBorder)
       .span$({ cross: 30 })
       .spanRange$({ cross: { min: 10, max: 40 } })
 

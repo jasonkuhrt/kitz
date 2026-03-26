@@ -1,6 +1,6 @@
 import { Assert } from '@kitz/assert'
 import { Test } from '@kitz/test'
-import { Effect, Exit, Option, Schema } from 'effect'
+import { Effect, Exit, Option, Result, Schema } from 'effect'
 import { expect, test } from 'vitest'
 import { ConventionalCommits } from './_.js'
 
@@ -173,10 +173,45 @@ test('Footer accessors expose token, value, and constructor narrowing', () => {
     'BREAKING CHANGE',
   )
   expect(ConventionalCommits.Footer.value(fixtures.footer.standard.breaking)).toBe('removed X')
-  expect(ConventionalCommits.Footer.Standard.is(fixtures.footer.standard.breakingHyphen)).toBe(
-    true,
-  )
+  expect(ConventionalCommits.Footer.Standard.is(fixtures.footer.standard.breakingHyphen)).toBe(true)
   expect(ConventionalCommits.Footer.Custom.is(fixtures.footer.custom.reviewedBy)).toBe(true)
+})
+
+test('Footer schema statics decode and encode both footer variants', async () => {
+  const standardDecoded = ConventionalCommits.Footer.Standard.decodeSync({
+    _tag: 'Standard',
+    token: 'BREAKING CHANGE',
+    value: 'removed X',
+  })
+  const standardEncoded = ConventionalCommits.Footer.Standard.encodeSync(
+    fixtures.footer.standard.breakingHyphen,
+  )
+  const customDecoded = ConventionalCommits.Footer.Custom.decodeSync({
+    _tag: 'Custom',
+    token: 'Fixes',
+    value: '#123',
+  })
+  const customEncoded = ConventionalCommits.Footer.Custom.encodeSync(
+    fixtures.footer.custom.reviewedBy,
+  )
+
+  expect(standardDecoded).toBeInstanceOf(ConventionalCommits.Footer.Standard)
+  expect(standardEncoded).toEqual({
+    _tag: 'Standard',
+    token: 'BREAKING-CHANGE',
+    value: 'removed Y',
+  })
+  expect(customDecoded).toBeInstanceOf(ConventionalCommits.Footer.Custom)
+  expect(customEncoded).toEqual({
+    _tag: 'Custom',
+    token: 'Reviewed-by',
+    value: 'alice',
+  })
+
+  expect(typeof ConventionalCommits.Footer.Standard.decode).toBe('function')
+  expect(typeof ConventionalCommits.Footer.Standard.encode).toBe('function')
+  expect(typeof ConventionalCommits.Footer.Custom.decode).toBe('function')
+  expect(typeof ConventionalCommits.Footer.Custom.encode).toBe('function')
 })
 
 // ─── Footer.isBreakingChange() ───────────────────────────────────
@@ -409,6 +444,39 @@ test('parseTitle > Commit.Multi > global breaking', async () => {
     expect(result.value.targets[0]?.breaking).toBe(true)
     expect(result.value.targets[1]?.breaking).toBe(true)
   }
+})
+
+test('parseTitle > parseEither surfaces malformed header edge cases', () => {
+  const invalidSingle = ConventionalCommits.Title.parseEither('feat(core: broken')
+  const invalidMultiGroup = ConventionalCommits.Title.parseEither('feat(core), fix(: broken')
+  const missingMultiScope = ConventionalCommits.Title.parseEither('feat(core), fix: broken')
+  const emptyMultiScopes = ConventionalCommits.Title.parseEither('feat( ), fix( ): broken')
+
+  expect(Result.isFailure(invalidSingle)).toBe(true)
+  expect(Result.isFailure(invalidMultiGroup)).toBe(true)
+  expect(Result.isFailure(missingMultiScope)).toBe(true)
+  expect(Result.isFailure(emptyMultiScopes)).toBe(true)
+
+  if (Result.isFailure(invalidSingle)) {
+    expect(invalidSingle.failure.message).toContain('Invalid type-scope format')
+  }
+  if (Result.isFailure(invalidMultiGroup)) {
+    expect(invalidMultiGroup.failure.message).toContain('Invalid type-scope group')
+  }
+  if (Result.isFailure(missingMultiScope)) {
+    expect(missingMultiScope.failure.message).toContain('CommitMulti commits require scopes')
+  }
+  if (Result.isFailure(emptyMultiScopes)) {
+    expect(emptyMultiScopes.failure.message).toContain('No targets found')
+  }
+})
+
+test('rewriteHeader preserves the parsed subject', async () => {
+  const rewritten = await Effect.runPromise(
+    ConventionalCommits.Title.rewriteHeader('feat(core): add feature', 'fix(cli)!'),
+  )
+
+  expect(rewritten).toBe('fix(cli)!: add feature')
 })
 
 test('Commit.facets > expands multi-scope single commits per scope', () => {

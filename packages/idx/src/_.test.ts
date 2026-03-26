@@ -10,7 +10,7 @@ describe('idx', () => {
   })
 
   test('stores primitive keys and compacts arrays after deletion', () => {
-    const index = create<number>()
+    const index = create<number, number>()
 
     expect(index.toMap()).toEqual(new Map())
 
@@ -47,15 +47,15 @@ describe('idx', () => {
     expect(index.toArray()).toEqual([aliceUpdated])
   })
 
-  test('supports object keys and eager construction from arrays', () => {
+  test('supports keyed construction from arrays', () => {
     const first = { id: 1 }
     const second = { id: 2 }
-    const index = fromArray([first, second])
+    const index = fromArray([first, second], { key: (item) => item.id })
 
     expect(index.get(first)).toBe(first)
-    expect(index.getAt(second)).toBe(second)
-    expect(index.toMap().get(first)).toBe(first)
-    expect(index.deleteAt(first)).toBe(true)
+    expect(index.getAt(2)).toBe(second)
+    expect(index.toMap().get(1)).toBe(first)
+    expect(index.deleteAt(1)).toBe(true)
     expect(index.toArray()).toEqual([second])
   })
 

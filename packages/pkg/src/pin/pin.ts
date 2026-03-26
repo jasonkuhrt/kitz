@@ -134,11 +134,19 @@ class RangeClass extends S.TaggedClass<RangeClass>()('PinRange', {
   name: Moniker.FromString,
   range: SemverRange.Schema,
 }) {
-  static decode = Schema.decode(RangeClass)
-  static decodeSync = Schema.decodeSync(RangeClass)
-  static encode = Schema.encode(RangeClass)
-  static encodeSync = Schema.encodeSync(RangeClass)
-  static equivalence = Schema.equivalence(RangeClass)
+  static equivalence = S.toEquivalence(RangeClass)
+  static get decode(): any {
+    return S.decode(RangeClass)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(RangeClass)
+  }
+  static get encode(): any {
+    return S.encode(RangeClass)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(RangeClass)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(RangeClass)
@@ -182,11 +190,19 @@ class ExactClass extends S.TaggedClass<ExactClass>()('PinExact', {
   name: Moniker.FromString,
   version: SemverSelf,
 }) {
-  static decode = Schema.decode(ExactClass)
-  static decodeSync = Schema.decodeSync(ExactClass)
-  static encode = Schema.encode(ExactClass)
-  static encodeSync = Schema.encodeSync(ExactClass)
-  static equivalence = Schema.equivalence(ExactClass)
+  static equivalence = S.toEquivalence(ExactClass)
+  static get decode(): any {
+    return S.decode(ExactClass)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(ExactClass)
+  }
+  static get encode(): any {
+    return S.encode(ExactClass)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(ExactClass)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(ExactClass)
@@ -262,11 +278,19 @@ export class Tag extends S.TaggedClass<Tag>()('PinTag', {
   name: Moniker.FromString,
   tag: DistTag,
 }) {
-  static decode = Schema.decode(Tag)
-  static decodeSync = Schema.decodeSync(Tag)
-  static encode = Schema.encode(Tag)
-  static encodeSync = Schema.encodeSync(Tag)
-  static equivalence = Schema.equivalence(Tag)
+  static equivalence = S.toEquivalence(Tag)
+  static get decode(): any {
+    return S.decode(Tag)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(Tag)
+  }
+  static get encode(): any {
+    return S.encode(Tag)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(Tag)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(Tag)
@@ -302,11 +326,19 @@ class WorkspaceClass extends S.TaggedClass<WorkspaceClass>()('PinWorkspace', {
   name: Moniker.FromString,
   range: WorkspaceRange,
 }) {
-  static decode = Schema.decode(WorkspaceClass)
-  static decodeSync = Schema.decodeSync(WorkspaceClass)
-  static encode = Schema.encode(WorkspaceClass)
-  static encodeSync = Schema.encodeSync(WorkspaceClass)
-  static equivalence = Schema.equivalence(WorkspaceClass)
+  static equivalence = S.toEquivalence(WorkspaceClass)
+  static get decode(): any {
+    return S.decode(WorkspaceClass)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(WorkspaceClass)
+  }
+  static get encode(): any {
+    return S.encode(WorkspaceClass)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(WorkspaceClass)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(WorkspaceClass)
@@ -355,11 +387,19 @@ class GitClass extends S.TaggedClass<GitClass>()('PinGit', {
   /** Semver range for git tags (used with #semver: fragment). */
   semver: S.OptionFromUndefinedOr(SemverRange.Schema),
 }) {
-  static decode = Schema.decode(GitClass)
-  static decodeSync = Schema.decodeSync(GitClass)
-  static encode = Schema.encode(GitClass)
-  static encodeSync = Schema.encodeSync(GitClass)
-  static equivalence = Schema.equivalence(GitClass)
+  static equivalence = S.toEquivalence(GitClass)
+  static get decode(): any {
+    return S.decode(GitClass)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(GitClass)
+  }
+  static get encode(): any {
+    return S.encode(GitClass)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(GitClass)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(GitClass)
@@ -401,11 +441,19 @@ export class Path extends S.TaggedClass<Path>()('PinPath', {
   /** Relative or absolute filesystem path. */
   path: S.String,
 }) {
-  static decode = Schema.decode(Path)
-  static decodeSync = Schema.decodeSync(Path)
-  static encode = Schema.encode(Path)
-  static encodeSync = Schema.encodeSync(Path)
-  static equivalence = Schema.equivalence(Path)
+  static equivalence = S.toEquivalence(Path)
+  static get decode(): any {
+    return S.decode(Path)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(Path)
+  }
+  static get encode(): any {
+    return S.encode(Path)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(Path)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(Path)
@@ -441,11 +489,19 @@ export class Url extends S.TaggedClass<Url>()('PinUrl', {
   /** Full URL to the tarball. */
   url: S.String,
 }) {
-  static decode = Schema.decode(Url)
-  static decodeSync = Schema.decodeSync(Url)
-  static encode = Schema.encode(Url)
-  static encodeSync = Schema.encodeSync(Url)
-  static equivalence = Schema.equivalence(Url)
+  static equivalence = S.toEquivalence(Url)
+  static get decode(): any {
+    return S.decode(Url)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(Url)
+  }
+  static get encode(): any {
+    return S.encode(Url)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(Url)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(Url)
@@ -486,11 +542,19 @@ export class Alias extends S.TaggedClass<Alias>()('PinAlias', {
   /** Version specifier for the target package (range or tag). */
   targetSpecifier: S.String,
 }) {
-  static decode = Schema.decode(Alias)
-  static decodeSync = Schema.decodeSync(Alias)
-  static encode = Schema.encode(Alias)
-  static encodeSync = Schema.encodeSync(Alias)
-  static equivalence = Schema.equivalence(Alias)
+  static equivalence = S.toEquivalence(Alias)
+  static get decode(): any {
+    return S.decode(Alias)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(Alias)
+  }
+  static get encode(): any {
+    return S.encode(Alias)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(Alias)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(Alias)

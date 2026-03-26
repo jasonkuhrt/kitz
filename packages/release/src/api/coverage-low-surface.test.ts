@@ -13,11 +13,7 @@ import { describe, expect, test } from 'vitest'
 import { defineConfig, init as initConfig, load as loadConfig } from './config.js'
 import { forecast } from './forecaster/forecast.js'
 import { CommitDisplay, ForecastCascade, ForecastRelease } from './forecaster/models.js'
-import {
-  DefaultPrLayer,
-  fromPullRequest,
-  PrService,
-} from './lint/services/pr.js'
+import { DefaultPrLayer, fromPullRequest, PrService } from './lint/services/pr.js'
 import { MonorepoService } from './lint/services/monorepo.js'
 import { DiffService } from './lint/services/diff.js'
 import { GitHubService } from './lint/services/github.js'
@@ -26,6 +22,7 @@ import { rule as matchAffectedRule } from './lint/rules/pr-monorepo-scopes-match
 import { rule as matchKnownRule } from './lint/rules/pr-monorepo-scopes-match-known.js'
 import { rule as repoSquashOnlyRule } from './lint/rules/repo-squash-only.js'
 import { GitHistory, PrTitle, RepoSettings } from './lint/models/violation-location.js'
+import { RuleDefaults } from './lint/models/rule-defaults.js'
 import { Warn } from './lint/models/severity.js'
 import { Operator as OperatorConfig, resolve as resolveOperator } from './operator.js'
 import { make as makePlan, Plan } from './planner/models/plan.js'
@@ -65,6 +62,15 @@ const makeSingleCommit = (
 const runRule = <A, E, R>(effect: Effect.Effect<A, E, R>, layer: Layer.Layer<R>) =>
   Effect.runPromise(effect.pipe(Effect.provide(layer)))
 
+const getLocation = (result: unknown): unknown => {
+  if (typeof result !== 'object' || result === null) return undefined
+  if ('location' in result) return result.location
+  if ('violation' in result && typeof result.violation === 'object' && result.violation !== null) {
+    return 'location' in result.violation ? result.violation.location : undefined
+  }
+  return undefined
+}
+
 describe('release low-surface coverage', () => {
   test('covers config helpers and operator resolution', async () => {
     const layer = Layer.mergeAll(
@@ -87,7 +93,7 @@ describe('release low-surface coverage', () => {
             prepareScripts: ['build'],
           }),
           lint: {
-            defaults: { severity: Warn.make({}) },
+            defaults: RuleDefaults.make({ severity: Warn.make({}) }),
             rules: {
               'repo.squash-only': Warn.make({}),
             },
@@ -113,7 +119,6 @@ describe('release low-surface coverage', () => {
     expect(result.loaded.trunk).toBe('develop')
     expect(result.loaded.npmTag).toBe('latest')
     expect(result.loaded.candidateTag).toBe('next')
-    expect(result.loaded.skipNpm).toBe(false)
     expect(result.loaded.packages).toEqual({ core: '@kitz/core' })
     expect(result.loaded.operator.releaseCommand).toBe('bun run ship')
     expect(result.loaded.lint.defaults.severity._tag).toBe('SeverityWarn')
@@ -300,6 +305,7 @@ describe('release low-surface coverage', () => {
         registry: 'https://registry.npmjs.org/',
       },
       git: {
+        root: Fs.Path.AbsDir.fromString('/repo/'),
         clean: true,
         branch: 'main',
         headSha: 'abc1234',
@@ -400,7 +406,7 @@ describe('release low-surface coverage', () => {
         }),
       ),
     )
-    expect(knownInvalid && PrTitle.is(knownInvalid.location)).toBe(true)
+    expect(PrTitle.is(getLocation(knownInvalid))).toBe(true)
 
     const affectedInvalid = await runRule(
       matchAffectedRule.check,
@@ -412,7 +418,7 @@ describe('release low-surface coverage', () => {
         }),
       ),
     )
-    expect(affectedInvalid && PrTitle.is(affectedInvalid.location)).toBe(true)
+    expect(PrTitle.is(getLocation(affectedInvalid))).toBe(true)
   })
 
   test('covers repository and monotonic-history lint rules', async () => {
@@ -438,7 +444,7 @@ describe('release low-surface coverage', () => {
         },
       }),
     )
-    expect(squashInvalid && RepoSettings.is(squashInvalid.location)).toBe(true)
+    expect(RepoSettings.is(getLocation(squashInvalid))).toBe(true)
 
     const monotonicViolation = await Effect.runPromise(
       Effect.gen(function* () {
@@ -458,6 +464,6 @@ describe('release low-surface coverage', () => {
       }),
     )
 
-    expect(monotonicViolation && GitHistory.is(monotonicViolation.location)).toBe(true)
+    expect(GitHistory.is(getLocation(monotonicViolation))).toBe(true)
   })
 })

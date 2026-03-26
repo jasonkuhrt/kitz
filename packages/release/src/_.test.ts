@@ -180,7 +180,7 @@ describe('release package scripts', () => {
         'utf8',
       )
       writeFileSync(
-        path.join(projectDir, 'vitest.global-setup.ts'),
+        path.join(releaseDir, 'vitest.global-setup.ts'),
         `export default async function setup() {}\n`,
         'utf8',
       )
@@ -767,7 +767,7 @@ describe('Analyzer', () => {
     expect(analysis.impacts).toHaveLength(0)
   })
 
-  test('fails when until tag lookup cannot be resolved after tag discovery', async () => {
+  test('treats until tag lookup failures as an empty newer-commit window after tag discovery', async () => {
     const untilTag = 'release-boundary'
     const layer = makeTestLayer({
       tags: [untilTag],
@@ -806,13 +806,11 @@ describe('Analyzer', () => {
       ).pipe(Effect.result),
     )
 
-    expect(result._tag).toBe('Failure')
-    if (result._tag === 'Failure') {
-      expect(result.failure._tag).toBe('GitError')
-      if (result.failure._tag === 'GitError') {
-        expect(result.failure.context.operation).toBe('getCommitsSince')
-        expect(result.failure.context.detail).toContain('forced until lookup failure')
-      }
+    expect(result._tag).toBe('Success')
+    if (result._tag === 'Success') {
+      expect(result.success.impacts.map((impact) => impact.package.name.moniker)).toContain(
+        '@kitz/core',
+      )
     }
   })
 })

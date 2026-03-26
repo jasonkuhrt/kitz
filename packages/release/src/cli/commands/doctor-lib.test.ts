@@ -7,7 +7,11 @@ import { Effect, Layer, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { Analysis, Impact, makeCascadeCommit } from '../../api/analyzer/models/__.js'
 import type { Package } from '../../api/analyzer/workspace.js'
-import { computeLifecyclePlanAttempt, toUnavailableLifecycleReport } from './doctor-lib.js'
+import {
+  computeLifecyclePlan,
+  computeLifecyclePlanAttempt,
+  toUnavailableLifecycleReport,
+} from './doctor-lib.js'
 
 const packages: readonly Package[] = [
   {
@@ -51,6 +55,17 @@ const workspaceLayer = Fs.Memory.layer({
 })
 
 describe('doctor lifecycle planning helpers', () => {
+  test('dispatches official lifecycle planning through the official planner', async () => {
+    const result = await Effect.runPromise(
+      computeLifecyclePlan(analysis, packages, 'official').pipe(
+        Effect.provide(Layer.mergeAll(workspaceLayer, Env.Test(), Git.Memory.make())),
+      ),
+    )
+
+    expect(result.lifecycle).toBe('official')
+    expect(result.releases[0]?.nextVersion.toString()).toBe('1.1.0')
+  })
+
   test('dispatches candidate lifecycle planning through the candidate planner', async () => {
     const result = await Effect.runPromise(
       computeLifecyclePlanAttempt(analysis, packages, 'candidate').pipe(
@@ -65,6 +80,29 @@ describe('doctor lifecycle planning helpers', () => {
     }
   })
 
+  test('dispatches ephemeral lifecycle planning through the ephemeral planner', async () => {
+    const result = await Effect.runPromise(
+      computeLifecyclePlan(analysis, packages, 'ephemeral').pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            workspaceLayer,
+            Env.Test({
+              vars: {
+                PR_NUMBER: '42',
+              },
+            }),
+            Git.Memory.make({
+              headSha: Git.Sha.make('abc1234'),
+            }),
+          ),
+        ),
+      ),
+    )
+
+    expect(result.lifecycle).toBe('ephemeral')
+    expect(result.releases[0]?.nextVersion.toString()).toContain('0.0.0-pr.42.1.')
+  })
+
   test('converts planner failures into unavailable lifecycle reports with the failure message', () => {
     const report = toUnavailableLifecycleReport('ephemeral', true, new Error('planner failed'))
     expect(report).toEqual({
@@ -73,5 +111,13 @@ describe('doctor lifecycle planning helpers', () => {
       required: true,
       reason: 'planner failed',
     })
+  })
+
+  test('normalizes non-Error planner failures into unavailable lifecycle reports', () => {
+    const report = toUnavailableLifecycleReport('official', false, 'planner failed hard')
+
+    expect(report.lifecycle).toBe('official')
+    expect(report.required).toBe(false)
+    expect(report.reason).toContain('planner failed hard')
   })
 })

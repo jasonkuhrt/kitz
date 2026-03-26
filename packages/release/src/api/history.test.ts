@@ -111,7 +111,7 @@ describe('History.set', () => {
     const tagShas = await Effect.runPromise(Ref.get(state.tagShas))
     const pushedTags = await Effect.runPromise(Ref.get(state.pushedTags))
     expect(tagShas[newTag]).toBe(newSha)
-    expect(pushedTags).toContainEqual({ remote: 'upstream' })
+    expect(pushedTags).toContainEqual({ tag: newTag, remote: 'upstream', force: false })
   })
 
   test('moves existing tag and revalidates against refreshed tag list', async () => {
@@ -185,6 +185,9 @@ describe('History.set', () => {
     expect(result._tag).toBe('Failure')
     if (result._tag === 'Failure') {
       expect(result.failure._tag).toBe('TagExistsError')
+      if (result.failure._tag !== 'TagExistsError') {
+        throw new Error('expected tag-exists failure')
+      }
       expect(History.formatTagExistsError(result.failure)).toContain('Use --move')
     }
   })
@@ -229,6 +232,9 @@ describe('History.set', () => {
     expect(result._tag).toBe('Failure')
     if (result._tag === 'Failure') {
       expect(result.failure._tag).toBe('MonotonicViolationError')
+      if (result.failure._tag !== 'MonotonicViolationError') {
+        throw new Error('expected monotonic violation failure')
+      }
       expect(History.formatMonotonicViolationError(result.failure)).toContain(
         'Versions must increase with commit order',
       )
@@ -307,6 +313,8 @@ describe('History.audit', () => {
 
     expect(History.formatAuditResult(validResult)).toContain('@kitz/core:')
     expect(History.formatAuditResult(invalidResult)).toContain('version order is invalid')
-    expect(History.formatAuditResults([validResult])).toContain('All packages have valid release history')
+    expect(History.formatAuditResults([validResult])).toContain(
+      'All packages have valid release history',
+    )
   })
 })

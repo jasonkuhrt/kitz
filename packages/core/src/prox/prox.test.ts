@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { createCachedGetProxy } from './prox.js'
+import { createCachedGetProxy, createRecursive } from './prox.js'
 
 describe('createCachedGetProxy', () => {
   test('creates a proxy that caches function results', () => {
@@ -50,5 +50,21 @@ describe('createCachedGetProxy', () => {
 
     // Should return the actual property, not a generated function
     expect(proxy.$).toEqual({ bar: 'baz' })
+  })
+
+  test('creates a recursive proxy that returns itself for gets and calls', () => {
+    type Builder = {
+      exact: Builder
+      equiv: Builder
+      of: <T>() => Builder
+    }
+
+    const proxy = createRecursive<Builder>()
+    const callable = proxy as Builder & (() => Builder)
+
+    expect(proxy.exact).toBe(proxy)
+    expect(proxy.exact.equiv).toBe(proxy)
+    expect(callable()).toBe(proxy)
+    expect(callable().of<string>()).toBe(proxy)
   })
 })

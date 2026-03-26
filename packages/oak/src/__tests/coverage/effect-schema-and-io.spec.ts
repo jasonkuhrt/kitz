@@ -1,8 +1,8 @@
 import { Effect, Exit, Option, Schema, SchemaGetter, Stream } from 'effect'
 import { describe, expect, test } from 'vitest'
 import {
-  EffectSchema,
-  EffectSchemaInternals,
+  EffectSchema as EffectSchemaMaybe,
+  EffectSchemaInternals as EffectSchemaInternalsMaybe,
 } from '../../extensions/effect-schema/effect-schema.js'
 import {
   createKeyPressDependencies,
@@ -19,6 +19,13 @@ import {
   createProcessChannels,
   createProcessPrompter,
 } from '../../lib/Prompter/Constructors/Process.js'
+
+const EffectSchema = EffectSchemaMaybe as Required<typeof EffectSchemaMaybe>
+const EffectSchemaInternals = EffectSchemaInternalsMaybe as Required<
+  typeof EffectSchemaInternalsMaybe
+>
+const decodeSync = (schema: Schema.Top) =>
+  Schema.decodeSync(schema as Schema.Top & { readonly DecodingServices: never })
 
 const keyEvent = (name: KeyPressEvent['name'], params?: Partial<KeyPressEvent>): KeyPressEvent => ({
   name,
@@ -45,7 +52,8 @@ describe('oak coverage helpers: effect schema and io', () => {
     const optionFromUndefinedStandard = EffectSchema.toStandardSchema(
       Schema.OptionFromUndefinedOr(Schema.Number),
     )
-    const optionFromUndefinedNone = await optionFromUndefinedStandard['~standard'].validate(undefined)
+    const optionFromUndefinedNone =
+      await optionFromUndefinedStandard['~standard'].validate(undefined)
     const optionFromUndefinedSome = await optionFromUndefinedStandard['~standard'].validate(5)
     expect('value' in optionFromUndefinedNone && optionFromUndefinedNone.value._tag).toBe('None')
     expect('value' in optionFromUndefinedSome && optionFromUndefinedSome.value._tag).toBe('Some')
@@ -63,7 +71,9 @@ describe('oak coverage helpers: effect schema and io', () => {
     )
     const rawOptionLiteralValue = await rawOptionLiteral['~standard'].validate('yes')
     const rawOptionStructValue = await rawOptionStruct['~standard'].validate({ value: 'ok' })
-    expect('value' in rawOptionLiteralValue && Option.isSome(rawOptionLiteralValue.value)).toBe(true)
+    expect('value' in rawOptionLiteralValue && Option.isSome(rawOptionLiteralValue.value)).toBe(
+      true,
+    )
     expect('value' in rawOptionLiteralValue && rawOptionLiteralValue.value.value).toBe('yes')
     expect('value' in rawOptionStructValue && Option.isSome(rawOptionStructValue.value)).toBe(true)
     expect('value' in rawOptionStructValue && rawOptionStructValue.value.value).toEqual({
@@ -80,7 +90,9 @@ describe('oak coverage helpers: effect schema and io', () => {
       .pipe(Schema.annotate({ default: false, description: 'Verbose mode' }))
 
     const defaultedBooleanStandard = EffectSchema.toStandardSchema(defaultedBoolean)
-    expect(await defaultedBooleanStandard['~standard'].validate(undefined)).toEqual({ value: false })
+    expect(await defaultedBooleanStandard['~standard'].validate(undefined)).toEqual({
+      value: false,
+    })
     expect(await defaultedBooleanStandard['~standard'].validate(true)).toEqual({ value: true })
 
     const described = Schema.String.pipe(
@@ -137,7 +149,9 @@ describe('oak coverage helpers: effect schema and io', () => {
       expect(Option.isNone(plainOptionMetadata.optionality.getValue())).toBe(true)
     }
 
-    const optionFromNullMetadata = EffectSchema.extractMetadata(Schema.OptionFromNullOr(Schema.Number))
+    const optionFromNullMetadata = EffectSchema.extractMetadata(
+      Schema.OptionFromNullOr(Schema.Number),
+    )
     expect(optionFromNullMetadata).toMatchObject({
       optionality: { _tag: 'default' },
       schema: { _tag: 'number' },
@@ -158,12 +172,16 @@ describe('oak coverage helpers: effect schema and io', () => {
       schema: { _tag: 'string' },
       helpHints: { displayType: 'string', priority: 1 },
     })
-    expect(EffectSchema.extractMetadata(Schema.Union([Schema.String, Schema.Number]))).toMatchObject({
+    expect(
+      EffectSchema.extractMetadata(Schema.Union([Schema.String, Schema.Number])),
+    ).toMatchObject({
       schema: { _tag: 'union', members: [{ _tag: 'string' }, { _tag: 'number' }] },
       helpHints: { displayType: 'string | number', priority: 0 },
     })
     expect(
-      EffectSchema.extractMetadata(Schema.Union([Schema.String, Schema.Struct({ value: Schema.String })])),
+      EffectSchema.extractMetadata(
+        Schema.Union([Schema.String, Schema.Struct({ value: Schema.String })]),
+      ),
     ).toMatchObject({
       helpHints: { displayType: 'string | unknown', priority: 0 },
     })
@@ -173,16 +191,18 @@ describe('oak coverage helpers: effect schema and io', () => {
       optionality: { _tag: 'optional' },
       helpHints: { displayType: 'string | number', priority: 0 },
     })
-    expect(EffectSchema.extractMetadata(Schema.Union([Schema.Undefined, Schema.Null]))).toMatchObject({
+    expect(
+      EffectSchema.extractMetadata(Schema.Union([Schema.Undefined, Schema.Null])),
+    ).toMatchObject({
       optionality: { _tag: 'optional' },
       helpHints: { displayType: 'undefined | null', priority: 0 },
     })
-    expect(EffectSchema.extractMetadata(Schema.Union([Schema.Literal('a'), Schema.Literal(3)]))).toMatchObject(
-      {
-        schema: { _tag: 'enum', values: ['a', 3] },
-        helpHints: { displayType: "'a' | 3", priority: 4 },
-      },
-    )
+    expect(
+      EffectSchema.extractMetadata(Schema.Union([Schema.Literal('a'), Schema.Literal(3)])),
+    ).toMatchObject({
+      schema: { _tag: 'enum', values: ['a', 3] },
+      helpHints: { displayType: "'a' | 3", priority: 4 },
+    })
     const defaultedBooleanMetadata = EffectSchema.extractMetadata(defaultedBoolean)
     expect(defaultedBooleanMetadata).toMatchObject({
       description: 'Verbose mode',
@@ -226,7 +246,7 @@ describe('oak coverage helpers: effect schema and io', () => {
     const mixedUnionAst = Schema.Union([Schema.String, Schema.Number]).ast as any
     const undefinedUnionAst = Schema.Union([Schema.String, Schema.Undefined]).ast as any
     const nullUnionAst = Schema.Union([Schema.String, Schema.Null]).ast as any
-    const literalNullUnionAst = Schema.Union([Schema.String, Schema.Literal(null)]).ast as any
+    const literalNullUnionAst = Schema.Union([Schema.String, Schema.Null]).ast as any
     const nullishUnionAst = Schema.Union([
       Schema.String,
       Schema.Number,
@@ -304,19 +324,19 @@ describe('oak coverage helpers: effect schema and io', () => {
       priority: 3,
     })
 
-    expect(Schema.decodeSync(EffectSchemaInternals.buildSchemaFromAST(stringAst))('oak')).toBe('oak')
-    expect(Schema.decodeSync(EffectSchemaInternals.buildSchemaFromAST(numberAst))(1)).toBe(1)
-    expect(Schema.decodeSync(EffectSchemaInternals.buildSchemaFromAST(booleanAst))(true)).toBe(true)
-    expect(Schema.decodeSync(EffectSchemaInternals.buildSchemaFromAST(nullAst))(null)).toBe(null)
-    expect(Schema.decodeSync(EffectSchemaInternals.buildSchemaFromAST(undefinedAst))(undefined)).toBe(
+    expect(decodeSync(EffectSchemaInternals.buildSchemaFromAST(stringAst))('oak')).toBe('oak')
+    expect(decodeSync(EffectSchemaInternals.buildSchemaFromAST(numberAst))(1)).toBe(1)
+    expect(decodeSync(EffectSchemaInternals.buildSchemaFromAST(booleanAst))(true)).toBe(true)
+    expect(decodeSync(EffectSchemaInternals.buildSchemaFromAST(nullAst))(null)).toBe(null)
+    expect(decodeSync(EffectSchemaInternals.buildSchemaFromAST(undefinedAst))(undefined)).toBe(
       undefined,
     )
-    expect(Schema.decodeSync(EffectSchemaInternals.buildSchemaFromAST(literalAst))('json')).toBe(
-      'json',
-    )
+    expect(decodeSync(EffectSchemaInternals.buildSchemaFromAST(literalAst))('json')).toBe('json')
     expect(
-      Schema.decodeSync(EffectSchemaInternals.buildSchemaFromAST(structAst))({ value: 'oak' }),
-    ).toEqual({ value: 'oak' })
+      decodeSync(EffectSchemaInternals.buildSchemaFromAST(structAst))({ value: 'oak' }),
+    ).toEqual({
+      value: 'oak',
+    })
 
     expect(EffectSchemaInternals.isOptionSchema(optionAst)).toBe(true)
     expect(EffectSchemaInternals.isOptionSchema(optionFromUndefinedAst)).toBe(true)
@@ -341,7 +361,9 @@ describe('oak coverage helpers: effect schema and io', () => {
     expect(EffectSchemaInternals.hasNullMember(literalNullUnionAst)).toBe(true)
     expect(EffectSchemaInternals.hasNullMember(mixedUnionAst)).toBe(false)
 
-    expect(EffectSchemaInternals.removeNullishFromUnion(emptyNullishUnionAst)).toBe(emptyNullishUnionAst)
+    expect(EffectSchemaInternals.removeNullishFromUnion(emptyNullishUnionAst)).toBe(
+      emptyNullishUnionAst,
+    )
     expect(EffectSchemaInternals.removeNullishFromUnion(undefinedUnionAst)).toBe(stringAst)
     expect(EffectSchemaInternals.removeNullishFromUnion(nullishUnionAst)).toMatchObject({
       _tag: 'Union',
@@ -371,6 +393,7 @@ describe('oak coverage helpers: effect schema and io', () => {
         setRawMode: (mode: boolean) => {
           rawModes.push(mode)
           ;(dependencies.stdin as any).isRaw = mode
+          return dependencies.stdin as any
         },
         on: (_event: string, next: (key: string, event: KeyPressEvent) => void) => {
           listener = next
@@ -399,21 +422,24 @@ describe('oak coverage helpers: effect schema and io', () => {
     let exitIndex = 0
     const exitCollected = await Effect.runPromise(
       Stream.runCollect(
-        readMany(undefined, Effect.sync(() => exitEvents[exitIndex++]!)).pipe(Stream.take(2)),
+        readMany(
+          undefined,
+          Effect.sync(() => exitEvents[exitIndex++]!),
+        ).pipe(Stream.take(2)),
       ),
     )
-    expect(Array.from(exitCollected).map((event) => (Exit.isExit(event) ? 'exit' : event.name))).toEqual([
-      'a',
-      'exit',
-    ])
+    expect(
+      Array.from(exitCollected).map((event) => (Exit.isExit(event) ? 'exit' : event.name)),
+    ).toEqual(['a', 'exit'])
 
     const continuedEvents = [keyEvent('c', { ctrl: true }), keyEvent('b')]
     let continueIndex = 0
     const continued = await Effect.runPromise(
       Stream.runCollect(
-        readMany({ exitOnCtrlC: false }, Effect.sync(() => continuedEvents[continueIndex++]!)).pipe(
-          Stream.take(2),
-        ),
+        readMany(
+          { exitOnCtrlC: false },
+          Effect.sync(() => continuedEvents[continueIndex++]!),
+        ).pipe(Stream.take(2)),
       ),
     )
     expect(Array.from(continued)).toEqual(continuedEvents)
@@ -451,8 +477,7 @@ describe('oak coverage helpers: effect schema and io', () => {
     let closed = 0
     const channels = createProcessChannels({
       stdout: { write: (value: string) => (writes.push(value), true) } as any,
-      readMany: () =>
-        Stream.fromIterable([keyEvent('left'), Exit.void, keyEvent('right')]) as any,
+      readMany: () => Stream.fromIterable([keyEvent('left'), Exit.void, keyEvent('right')]) as any,
       stdin: {} as any,
       createInterface: () =>
         ({
@@ -471,10 +496,9 @@ describe('oak coverage helpers: effect schema and io', () => {
     const readKeys = await Effect.runPromise(
       Stream.runCollect(channels.readKeyPresses({ matching: ['right'] })),
     )
-    expect(Array.from(readKeys).map((event) => (Exit.isExit(event) ? 'exit' : event.name))).toEqual([
-      'exit',
-      'right',
-    ])
+    expect(Array.from(readKeys).map((event) => (Exit.isExit(event) ? 'exit' : event.name))).toEqual(
+      ['exit', 'right'],
+    )
 
     const linePending = Effect.runPromise(channels.readLine())
     lineListener?.('typed')

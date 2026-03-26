@@ -19,8 +19,10 @@ describe('color', () => {
     expect(hexToRgb('336699')).toEqual({ r: 51, g: 102, b: 153 })
     expect(hslToRgb(0, 100, 50)).toEqual({ r: 255, g: 0, b: 0 })
     expect(hslToRgb(120, 100, 50)).toEqual({ r: 0, g: 255, b: 0 })
+    expect(hslToRgb(180, 100, 50)).toEqual({ r: 0, g: 255, b: 255 })
     expect(hslToRgb(360, 100, 50)).toEqual({ r: 255, g: 0, b: 0 })
     expect(hslToRgb(0, 0, 50)).toEqual({ r: 128, g: 128, b: 128 })
+    expect(hslToRgb(0, 100, 75)).toEqual({ r: 255, g: 128, b: 128 })
   })
 
   test('parses supported runtime color formats', () => {
@@ -28,6 +30,7 @@ describe('color', () => {
     expect(parse('#FF5733')).toEqual({ r: 255, g: 87, b: 51 })
     expect(parse('FF5733')).toEqual({ r: 255, g: 87, b: 51 })
     expect(parse('rgb 255 87 51')).toEqual({ r: 255, g: 87, b: 51 })
+    expect(parse('rgb 500 87 51')).toBe(null)
     expect(parse('rgb(255, 87, 51)')).toEqual({ r: 255, g: 87, b: 51 })
     expect(parse('rgb(500, 87, 51)')).toBe(null)
     expect(parse('hsl 240 100 50')).toEqual({ r: 0, g: 0, b: 255 })

@@ -11,7 +11,7 @@
 
 import { Color } from '@kitz/color'
 import * as ansis from 'ansis'
-import type { Style } from './style.js'
+import type { CharStyle, Style } from './style.js'
 
 /**
  * An ansis style object - a callable function with `.open` and `.close` properties.
@@ -150,7 +150,7 @@ export const applyStyle = (text: string, style?: Style): string => {
  *
  * @internal
  */
-export const extractChar = (value: string | { char: string }): string => {
+export const extractChar = (value: string | CharStyle): string => {
   return typeof value === 'string' ? value : value.char
 }
 
@@ -162,7 +162,7 @@ export const extractChar = (value: string | { char: string }): string => {
  *
  * @internal
  */
-export const extractStyle = (value: string | { char: string }): Style | undefined => {
+export const extractStyle = (value: string | CharStyle): Style | undefined => {
   if (typeof value === 'string') return undefined
 
   // Type guard: check if value has style properties

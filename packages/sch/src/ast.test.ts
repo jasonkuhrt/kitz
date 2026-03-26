@@ -20,8 +20,8 @@ describe('ast helpers', () => {
         name: S.String,
       }),
       {
-        decode: (value) => ({ name: value }),
-        encode: (value) => value.name,
+        decode: ((value: string) => ({ name: value })) as any,
+        encode: ((value: { readonly name: string }) => value.name) as any,
       },
     ),
   )
@@ -53,8 +53,12 @@ describe('ast helpers', () => {
 
     expect(valueSchema).toBeDefined()
     expect(nameSchema).toBeDefined()
-    expect(S.decodeUnknownSync(valueSchema! as S.Schema<string>)('demo')).toBe('demo')
-    expect(S.decodeUnknownSync(nameSchema! as S.Schema<string>)('demo')).toBe('demo')
+    expect(
+      S.decodeUnknownSync(valueSchema! as S.Top & { readonly DecodingServices: never })('demo'),
+    ).toBe('demo')
+    expect(
+      S.decodeUnknownSync(nameSchema! as S.Top & { readonly DecodingServices: never })('demo'),
+    ).toBe('demo')
     expect(AST.getFieldSchema(Tagged, 'missing')).toBeUndefined()
   })
 
@@ -96,6 +100,6 @@ describe('ast helpers', () => {
     })
 
     expect(annotated).not.toBe(base)
-    expect(annotated.ast.annotations?.title).toBe('Demo')
+    expect(annotated.ast.annotations?.['title']).toBe('Demo')
   })
 })

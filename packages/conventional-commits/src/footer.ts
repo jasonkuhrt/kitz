@@ -21,10 +21,19 @@ export class Standard extends Schema.TaggedClass<Standard>()('Standard', {
   token: StandardToken,
   value: Schema.String,
 }) {
-  static decode = Schema.decode(Standard)
-  static decodeSync = Schema.decodeSync(Standard)
-  static encode = Schema.encode(Standard)
-  static encodeSync = Schema.encodeSync(Standard)
+  static equivalence = Schema.toEquivalence(Standard)
+  static get decode(): any {
+    return Schema.decode(Standard)
+  }
+  static get decodeSync(): any {
+    return Schema.decodeSync(Standard)
+  }
+  static get encode(): any {
+    return Schema.encode(Standard)
+  }
+  static get encodeSync(): any {
+    return Schema.encodeSync(Standard)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
   static is = Schema.is(Standard)
@@ -39,10 +48,19 @@ export class Custom extends Schema.TaggedClass<Custom>()('Custom', {
   token: Schema.String,
   value: Schema.String,
 }) {
-  static decode = Schema.decode(Custom)
-  static decodeSync = Schema.decodeSync(Custom)
-  static encode = Schema.encode(Custom)
-  static encodeSync = Schema.encodeSync(Custom)
+  static equivalence = Schema.toEquivalence(Custom)
+  static get decode(): any {
+    return Schema.decode(Custom)
+  }
+  static get decodeSync(): any {
+    return Schema.decodeSync(Custom)
+  }
+  static get encode(): any {
+    return Schema.encode(Custom)
+  }
+  static get encodeSync(): any {
+    return Schema.encodeSync(Custom)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
   static is = Schema.is(Custom)

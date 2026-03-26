@@ -22,11 +22,11 @@ const restoreEnv = (key: string, value: string | undefined) => {
 
 describe('core error inspection and try coverage', () => {
   test('covers inspect environment overrides and help output', () => {
-    const previousColor = process.env.ERROR_DISPLAY_COLOR
-    const previousShowHelp = process.env.ERROR_DISPLAY_SHOW_HELP
+    const previousColor = process.env['ERROR_DISPLAY_COLOR']
+    const previousShowHelp = process.env['ERROR_DISPLAY_SHOW_HELP']
 
-    process.env.ERROR_DISPLAY_COLOR = 'false'
-    process.env.ERROR_DISPLAY_SHOW_HELP = 'true'
+    process.env['ERROR_DISPLAY_COLOR'] = 'false'
+    process.env['ERROR_DISPLAY_SHOW_HELP'] = 'true'
 
     try {
       const output = inspect(new Error('boom'), { maxFrames: 0 })
@@ -120,22 +120,19 @@ describe('core error inspection and try coverage', () => {
     ).toThrow(TypeError)
 
     await expect(
-      tryOrRethrow(async () => {
-        throw new Error('boom')
-      }, { message: 'async outer', context: { source: 'test' } }),
+      tryOrRethrow(
+        async () => {
+          throw new Error('boom')
+        },
+        { message: 'async outer', context: { source: 'test' } },
+      ),
     ).rejects.toThrow('async outer')
   })
 
   test('covers tryAllOrRethrow success and aggregate failures', async () => {
-    await expect(
-      tryAllOrRethrow(
-        [
-          () => 1,
-          async () => 2,
-        ] as const,
-        'unused',
-      ),
-    ).resolves.toEqual([1, 2])
+    await expect(tryAllOrRethrow([() => 1, async () => 2] as const, 'unused')).resolves.toEqual([
+      1, 2,
+    ])
 
     await expect(
       tryAllOrRethrow(

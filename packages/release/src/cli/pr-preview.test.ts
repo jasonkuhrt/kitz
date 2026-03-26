@@ -17,6 +17,9 @@ import {
   upsertPullRequestPreviewComment,
 } from './pr-preview.js'
 
+const assumePure = <A, E>(effect: Effect.Effect<A, E, unknown>) =>
+  effect as Effect.Effect<A, E, never>
+
 const forecast = Forecast.make({
   owner: 'org',
   repo: 'repo',
@@ -264,32 +267,34 @@ describe('pr preview comment sync', () => {
     )
 
     const summary = await Effect.runPromise(
-      buildPreviewDoctorSummary({
-        config: makeResolvedConfig(),
-        analysis,
-        packages,
-        pullRequest,
-        diff: {
-          files: [{ path: 'packages/core/src/index.ts', status: 'modified' }],
-          affectedPackages: ['@kitz/core'],
-        },
-        blockingTitleChecks: false,
-      }).pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            FileSystemLayer,
-            gitLayer,
-            makeMockSpawnerLayer('mock-user'),
-            Env.Test({
-              cwd: Fs.Path.AbsDir.fromString('/repo/'),
-              vars: { PR_NUMBER: '129' },
-            }),
-            Fs.Memory.layer({
-              '/repo/packages/core/package.json': JSON.stringify({
-                name: '@kitz/core',
-                version: '1.0.0',
+      assumePure(
+        buildPreviewDoctorSummary({
+          config: makeResolvedConfig(),
+          analysis,
+          packages,
+          pullRequest,
+          diff: {
+            files: [{ path: 'packages/core/src/index.ts', status: 'modified' }],
+            affectedPackages: ['@kitz/core'],
+          },
+          blockingTitleChecks: false,
+        }).pipe(
+          Effect.provide(
+            Layer.mergeAll(
+              FileSystemLayer,
+              gitLayer,
+              makeMockSpawnerLayer('mock-user'),
+              Env.Test({
+                cwd: Fs.Path.AbsDir.fromString('/repo/'),
+                vars: { PR_NUMBER: '129' },
               }),
-            }),
+              Fs.Memory.layer({
+                '/repo/packages/core/package.json': JSON.stringify({
+                  name: '@kitz/core',
+                  version: '1.0.0',
+                }),
+              }),
+            ),
           ),
         ),
       ),
@@ -345,33 +350,35 @@ describe('pr preview comment sync', () => {
     )
 
     const summary = await Effect.runPromise(
-      buildPreviewDoctorSummary({
-        config: makeResolvedConfig(),
-        analysis,
-        packages,
-        pullRequest,
-        diff: {
-          files: [{ path: 'packages/core/src/index.ts', status: 'modified' }],
-          affectedPackages: ['@kitz/core'],
-        },
-        diffRemote: 'fork',
-        blockingTitleChecks: false,
-      }).pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            FileSystemLayer,
-            gitLayer,
-            makeMockSpawnerLayer('mock-user'),
-            Env.Test({
-              cwd: Fs.Path.AbsDir.fromString('/repo/'),
-              vars: { PR_NUMBER: '129' },
-            }),
-            Fs.Memory.layer({
-              '/repo/packages/core/package.json': JSON.stringify({
-                name: '@kitz/core',
-                version: '1.0.0',
+      assumePure(
+        buildPreviewDoctorSummary({
+          config: makeResolvedConfig(),
+          analysis,
+          packages,
+          pullRequest,
+          diff: {
+            files: [{ path: 'packages/core/src/index.ts', status: 'modified' }],
+            affectedPackages: ['@kitz/core'],
+          },
+          diffRemote: 'fork',
+          blockingTitleChecks: false,
+        }).pipe(
+          Effect.provide(
+            Layer.mergeAll(
+              FileSystemLayer,
+              gitLayer,
+              makeMockSpawnerLayer('mock-user'),
+              Env.Test({
+                cwd: Fs.Path.AbsDir.fromString('/repo/'),
+                vars: { PR_NUMBER: '129' },
               }),
-            }),
+              Fs.Memory.layer({
+                '/repo/packages/core/package.json': JSON.stringify({
+                  name: '@kitz/core',
+                  version: '1.0.0',
+                }),
+              }),
+            ),
           ),
         ),
       ),
@@ -432,32 +439,34 @@ describe('pr preview comment sync', () => {
     )
 
     const summary = await Effect.runPromise(
-      buildPreviewDoctorSummary({
-        config: makeResolvedConfig({ diffRemote: 'upstream' }),
-        analysis,
-        packages,
-        pullRequest,
-        diff: {
-          files: [{ path: 'packages/core/src/index.ts', status: 'modified' }],
-          affectedPackages: ['@kitz/core'],
-        },
-        blockingTitleChecks: false,
-      }).pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            FileSystemLayer,
-            gitLayer,
-            makeMockSpawnerLayer('mock-user'),
-            Env.Test({
-              cwd: Fs.Path.AbsDir.fromString('/repo/'),
-              vars: { PR_NUMBER: '129' },
-            }),
-            Fs.Memory.layer({
-              '/repo/packages/core/package.json': JSON.stringify({
-                name: '@kitz/core',
-                version: '1.0.0',
+      assumePure(
+        buildPreviewDoctorSummary({
+          config: makeResolvedConfig({ diffRemote: 'upstream' }),
+          analysis,
+          packages,
+          pullRequest,
+          diff: {
+            files: [{ path: 'packages/core/src/index.ts', status: 'modified' }],
+            affectedPackages: ['@kitz/core'],
+          },
+          blockingTitleChecks: false,
+        }).pipe(
+          Effect.provide(
+            Layer.mergeAll(
+              FileSystemLayer,
+              gitLayer,
+              makeMockSpawnerLayer('mock-user'),
+              Env.Test({
+                cwd: Fs.Path.AbsDir.fromString('/repo/'),
+                vars: { PR_NUMBER: '129' },
               }),
-            }),
+              Fs.Memory.layer({
+                '/repo/packages/core/package.json': JSON.stringify({
+                  name: '@kitz/core',
+                  version: '1.0.0',
+                }),
+              }),
+            ),
           ),
         ),
       ),

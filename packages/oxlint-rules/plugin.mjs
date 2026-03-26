@@ -3794,10 +3794,11 @@ const getSchemaClassName = (node) => {
 const classHasStatic = (classBody, staticName) => {
   return classBody.body.some(
     (member) =>
-      member.type === `PropertyDefinition` &&
       member.static &&
       member.key?.type === `Identifier` &&
-      member.key.name === staticName,
+      member.key.name === staticName &&
+      (member.type === `PropertyDefinition` ||
+        (member.type === `MethodDefinition` && member.kind === `get`)),
   )
 }
 
@@ -3847,7 +3848,7 @@ const getStaticTemplate = (staticName, className) => {
     case `encodeSync`:
       return `  static encodeSync = Schema.encodeSync(${className})`
     case `equivalence`:
-      return `  static equivalence = Schema.equivalence(${className})`
+      return `  static equivalence = Schema.toEquivalence(${className})`
     case `ordered`:
       return `  static ordered = false as const`
     case `min`:

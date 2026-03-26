@@ -73,7 +73,7 @@ declare const testObj: TestObj
 
   A<{ a: number }>().on(allowSingle)
   A<{}>().on(denySingle)
-  A<{ a?: number | undefined }>().on(pickSingle)
+  A<Partial<{ a: number }>>().on(pickSingle)
 }
 
 // Test 7: Complex nested object

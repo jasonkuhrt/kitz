@@ -163,7 +163,7 @@ describe('core object and string coverage', () => {
       c: { nested: true },
       'data-mode': 'strict',
     })
-    expect(pick(source, (_key, value, obj) => value === obj.c)).toEqual({
+    expect(pick(source, (_key, value) => value === source.c)).toEqual({
       c: { nested: true },
     })
     expect(pickWith(['a'])(source)).toEqual({ a: 1 })
@@ -241,10 +241,12 @@ describe('core object and string coverage', () => {
     expect(hasSymbolLike('nope', transport1, 'http')).toBe(false)
     expect(hasSymbolLikeWith(transport1, 'http')(value)).toBe(true)
 
-    expect(fromEntries([
-      ['a', 1],
-      ['b', 'two'],
-    ] as const)).toEqual({
+    expect(
+      fromEntries([
+        ['a', 1],
+        ['b', 'two'],
+      ] as const),
+    ).toEqual({
       a: 1,
       b: 'two',
     })
@@ -310,16 +312,15 @@ describe('core object and string coverage', () => {
     expect(Option.isSome(matchOn('hello jane')(/jane/))).toBe(true)
     expect(Option.isSome(matchWith(/hello/)('hello jane'))).toBe(true)
 
-    const digitPattern = pattern('\\d+', 'g')
+    const digitPattern = patternWith('g')('\\d+')
+    const digitCharPattern = /\d/g
     expect(Array.from(matchAll('a1b22', digitPattern), (found) => found[0])).toEqual(['1', '22'])
-    expect(Array.from(matchAllOn('a1b2')(pattern('\\d', 'g')), (found) => found[0])).toEqual([
-      '1',
-      '2',
-    ])
-    expect(Array.from(matchAllWith(pattern('\\d', 'g'))('a1b2'), (found) => found[0])).toEqual([
-      '1',
-      '2',
-    ])
+    expect(
+      Array.from((matchAllOn('a1b2') as any)(digitCharPattern), (found: any) => found[0]),
+    ).toEqual(['1', '2'])
+    expect(
+      Array.from((matchAllWith as any)(digitCharPattern)('a1b2'), (found: any) => found[0]),
+    ).toEqual(['1', '2'])
 
     expect(isMatch('hello', 'hello')).toBe(true)
     expect(isMatch('hello', /^he/)).toBe(true)
@@ -340,22 +341,22 @@ describe('core object and string coverage', () => {
     expect(replaceLeadingOn('// note')('$')('//')).toBe('$ note')
     expect(stripLeading('//')('// note')).toBe(' note')
 
+    const greetingPattern = pattern('hello (?<name>\\w+)')
     expect(replace('hello world', ' ', '_')).toBe('hello_world')
     expect(replace('a-b-c', ['a', 'c'], 'x')).toBe('x-b-x')
     expect(
-      replace('hello jane', /hello (?<name>\w+)/, (found) => found.groups.name!.toUpperCase()),
+      replace('hello jane', greetingPattern, (found) => found.groups.name!.toUpperCase()),
     ).toBe('JANE')
     expect(replace('a1', /\d/, '#')).toBe('a#')
-    expect(replaceOn('hello world')('world')('kitz')).toBe('hello kitz')
+    expect((replaceOn as any)('hello world')('world')('kitz')).toBe('hello kitz')
     expect(replaceWith('world', 'kitz')('hello world')).toBe('hello kitz')
 
     expect(replaceAll('a-a', 'a', 'x')).toBe('x-x')
     expect(replaceAll('a-b-a', ['a', 'b'], 'x')).toBe('x-x-x')
-    expect(
-      replaceAll('a1b2', /(?<digit>\d)/g, (found) => `[${found.groups.digit}]`),
-    ).toBe('a[1]b[2]')
+    const digits = pattern('\\d', 'g')
+    expect(replaceAll('a1b2', digits, (found) => `[${found.value}]`)).toBe('a[1]b[2]')
     expect(replaceAll('a1b2', /\d/g, '#')).toBe('a#b#')
-    expect(replaceAllOn('a-a')('a')('x')).toBe('x-x')
+    expect((replaceAllOn as any)('a-a')('a')('x')).toBe('x-x')
     expect(replaceAllWith(/\d/g, '#')('a1b2')).toBe('a#b#')
 
     expect(append('hello', ' world')).toBe('hello world')
@@ -391,9 +392,15 @@ describe('core object and string coverage', () => {
     expect(lines('a\r\nb\rc\n')).toEqual(['a', 'b', 'c', ''])
     expect(unlines(['a', 'b'])).toBe('a\nb')
 
-    expect(indent('a\nb')).toBe(`${defaultIndentCharacter.repeat(2)}a\n${defaultIndentCharacter.repeat(2)}b`)
-    expect(indentOn('a\nb')(4)).toBe(`${defaultIndentCharacter.repeat(4)}a\n${defaultIndentCharacter.repeat(4)}b`)
-    expect(indentWith(3)('a\nb')).toBe(`${defaultIndentCharacter.repeat(3)}a\n${defaultIndentCharacter.repeat(3)}b`)
+    expect(indent('a\nb')).toBe(
+      `${defaultIndentCharacter.repeat(2)}a\n${defaultIndentCharacter.repeat(2)}b`,
+    )
+    expect(indentOn('a\nb')(4)).toBe(
+      `${defaultIndentCharacter.repeat(4)}a\n${defaultIndentCharacter.repeat(4)}b`,
+    )
+    expect(indentWith(3)('a\nb')).toBe(
+      `${defaultIndentCharacter.repeat(3)}a\n${defaultIndentCharacter.repeat(3)}b`,
+    )
     expect(indentBy('a\nb', '> ')).toBe('> a\n> b')
     expect(indentBy('a\nb', (_, index) => `${index}: `)).toBe('0: a\n1: b')
     expect(indentByOn('a\nb')('> ')).toBe('> a\n> b')

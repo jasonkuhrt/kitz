@@ -1,12 +1,17 @@
 #!/usr/bin/env bun
 
-// oxlint-disable-next-line kitz/module/no-nodejs-builtins
+// oxlint-disable kitz/module/no-nodejs-builtins
 import { spawnSync } from 'node:child_process'
-// oxlint-disable-next-line kitz/module/no-nodejs-builtins
-import { existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
-// oxlint-disable-next-line kitz/module/no-nodejs-builtins
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
-// oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { extname, join } from 'node:path'
 
 const FORMATTABLE_EXTENSIONS = new Set([
@@ -50,13 +55,17 @@ interface CommandResult {
 const run = (
   command: string,
   args: readonly string[],
-  options: { readonly cwd?: string; readonly input?: Buffer | string } = {},
+  options: {
+    readonly cwd?: string
+    readonly env?: NodeJS.ProcessEnv
+    readonly input?: Buffer | string
+  } = {},
 ): CommandResult => {
   const result = spawnSync(command, args, {
     cwd: options.cwd,
     input: options.input,
     encoding: 'utf8',
-    env,
+    env: options.env ?? env,
     maxBuffer: MAX_BUFFER,
   })
 
@@ -72,7 +81,11 @@ const run = (
 const runOrThrow = (
   command: string,
   args: readonly string[],
-  options: { readonly cwd?: string; readonly input?: Buffer | string } = {},
+  options: {
+    readonly cwd?: string
+    readonly env?: NodeJS.ProcessEnv
+    readonly input?: Buffer | string
+  } = {},
 ): string => {
   const result = run(command, args, options)
   if (result.status !== 0) {
@@ -86,12 +99,16 @@ const runOrThrow = (
 const runBufferOrThrow = (
   command: string,
   args: readonly string[],
-  options: { readonly cwd?: string; readonly input?: Buffer | string } = {},
+  options: {
+    readonly cwd?: string
+    readonly env?: NodeJS.ProcessEnv
+    readonly input?: Buffer | string
+  } = {},
 ): Buffer => {
   const result = spawnSync(command, args, {
     cwd: options.cwd,
     input: options.input,
-    env,
+    env: options.env ?? env,
     maxBuffer: MAX_BUFFER,
   })
 
@@ -216,7 +233,14 @@ const runLint = (
 }
 
 const runCoverageInSnapshot = (snapshotRoot: string): CommandResult =>
-  run('bun', ['run', 'check:cov:packages'], { cwd: snapshotRoot })
+  run(join(snapshotRoot, 'tools', 'run-workspace-coverage.mjs'), [], {
+    cwd: snapshotRoot,
+    env: {
+      ...env,
+      GIT_DIR: join(repoRoot, '.git'),
+      GIT_WORK_TREE: snapshotRoot,
+    },
+  })
 
 const runTypecheck = (snapshotRoot: string): CommandResult =>
   run('bun', ['run', 'check:types'], { cwd: snapshotRoot })
@@ -234,6 +258,14 @@ const materializeIndexSnapshot = (): string => {
   const nodeModulesPath = join(repoRoot, 'node_modules')
   if (existsSync(nodeModulesPath)) {
     symlinkSync(nodeModulesPath, join(tempDir, 'node_modules'))
+  }
+  const packagesRoot = join(repoRoot, 'packages')
+  if (existsSync(packagesRoot)) {
+    for (const packageName of readdirSync(packagesRoot)) {
+      const packageNodeModulesPath = join(packagesRoot, packageName, 'node_modules')
+      if (!existsSync(packageNodeModulesPath)) continue
+      symlinkSync(packageNodeModulesPath, join(tempDir, 'packages', packageName, 'node_modules'))
+    }
   }
   return tempDir
 }

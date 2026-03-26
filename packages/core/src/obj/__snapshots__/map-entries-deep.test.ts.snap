@@ -1,11 +1,39 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`mapEntriesDeep > arrays > mapEntriesDeep({ numbers: [ 1, 2, 3 ], strings: [ 'a', 'b' ] }, () => undefined) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
+{
+  numbers: [ 1, 2, 3 ],
+  strings: [ 'a', 'b' ]
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
 exports[`mapEntriesDeep > arrays > mapEntriesDeep({ numbers: [ 1, 2, 3 ], strings: [ 'a', 'b' ] }, () => void 0) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
 {
   numbers: [ 1, 2, 3 ],
   strings: [ 'a', 'b' ]
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`mapEntriesDeep > arrays > mapEntriesDeep({ users: [ { $id: 1, $name: 'alice' }, { $id: 2, $name: 'bob' } ] }, (key, value) => key.startsWith("$") ? { key: key.slice(1), value } : undefined) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
+{
+  users: [
+    {
+      id: 1,
+      name: 'alice'
+    },
+    {
+      id: 2,
+      name: 'bob'
+    }
+  ]
 }
 ╚══════════════════════════════════════════════════╝"
 `;
@@ -46,6 +74,21 @@ exports[`mapEntriesDeep > empty objects > mapEntriesDeep({}, (key, value) => ({ 
 ╚══════════════════════════════════════════════════╝"
 `;
 
+exports[`mapEntriesDeep > key transformations > mapEntriesDeep({ $a: { $b: { $c: { $d: 'deep' } } } }, (key, value) => key.startsWith("$") ? { key: key.slice(1), value } : undefined) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
+{
+  a: {
+    b: {
+      c: {
+        d: 'deep'
+      }
+    }
+  }
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
 exports[`mapEntriesDeep > key transformations > mapEntriesDeep({ $a: { $b: { $c: { $d: 'deep' } } } }, (key, value) => key.startsWith("$") ? { key: key.slice(1), value } : void 0) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
@@ -61,6 +104,19 @@ exports[`mapEntriesDeep > key transformations > mapEntriesDeep({ $a: { $b: { $c:
 ╚══════════════════════════════════════════════════╝"
 `;
 
+exports[`mapEntriesDeep > key transformations > mapEntriesDeep({ $foo: 'a', bar: 'b', $baz: { nested: 'c' } }, (key, value) => key.startsWith("$") ? { key: key.slice(1), value } : undefined) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
+{
+  foo: 'a',
+  bar: 'b',
+  baz: {
+    nested: 'c'
+  }
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
 exports[`mapEntriesDeep > key transformations > mapEntriesDeep({ $foo: 'a', bar: 'b', $baz: { nested: 'c' } }, (key, value) => key.startsWith("$") ? { key: key.slice(1), value } : void 0) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
@@ -69,6 +125,18 @@ exports[`mapEntriesDeep > key transformations > mapEntriesDeep({ $foo: 'a', bar:
   bar: 'b',
   baz: {
     nested: 'c'
+  }
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`mapEntriesDeep > key transformations > mapEntriesDeep({ $foo: 'bar', $baz: { $nested: 'value' } }, (key, value) => key.startsWith("$") ? { key: key.slice(1), value } : undefined) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
+{
+  foo: 'bar',
+  baz: {
+    nested: 'value'
   }
 }
 ╚══════════════════════════════════════════════════╝"
@@ -105,11 +173,31 @@ exports[`mapEntriesDeep > mixed structures > mapEntriesDeep({ str: 'hello', arr:
 ╚══════════════════════════════════════════════════╝"
 `;
 
+exports[`mapEntriesDeep > non-plain objects (Date, RegExp, etc.) > mapEntriesDeep({ $pattern: /test/i }, (key, value) => key.startsWith("$") ? { key: key.slice(1), value } : undefined) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
+{
+  pattern: /test/i
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
 exports[`mapEntriesDeep > non-plain objects (Date, RegExp, etc.) > mapEntriesDeep({ $pattern: /test/i }, (key, value) => key.startsWith("$") ? { key: key.slice(1), value } : void 0) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
 {
   pattern: /test/i
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`mapEntriesDeep > non-plain objects (Date, RegExp, etc.) > mapEntriesDeep({ nested: { $regex: /[a-z]+/ } }, (key, value) => key.startsWith("$") ? { key: key.slice(1), value } : undefined) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
+{
+  nested: {
+    regex: /[a-z]+/
+  }
 }
 ╚══════════════════════════════════════════════════╝"
 `;
@@ -125,10 +213,24 @@ exports[`mapEntriesDeep > non-plain objects (Date, RegExp, etc.) > mapEntriesDee
 ╚══════════════════════════════════════════════════╝"
 `;
 
+exports[`mapEntriesDeep > primitives > mapEntriesDeep('hello', () => undefined) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
+hello
+╚══════════════════════════════════════════════════╝"
+`;
+
 exports[`mapEntriesDeep > primitives > mapEntriesDeep('hello', () => void 0) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 hello
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`mapEntriesDeep > primitives > mapEntriesDeep(42, () => undefined) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS NUMBER
+42
 ╚══════════════════════════════════════════════════╝"
 `;
 
@@ -139,6 +241,13 @@ exports[`mapEntriesDeep > primitives > mapEntriesDeep(42, () => void 0) 1`] = `
 ╚══════════════════════════════════════════════════╝"
 `;
 
+exports[`mapEntriesDeep > primitives > mapEntriesDeep(null, () => undefined) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS NULL
+null
+╚══════════════════════════════════════════════════╝"
+`;
+
 exports[`mapEntriesDeep > primitives > mapEntriesDeep(null, () => void 0) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS NULL
@@ -146,10 +255,27 @@ null
 ╚══════════════════════════════════════════════════╝"
 `;
 
+exports[`mapEntriesDeep > primitives > mapEntriesDeep(true, () => undefined) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS BOOLEAN
+true
+╚══════════════════════════════════════════════════╝"
+`;
+
 exports[`mapEntriesDeep > primitives > mapEntriesDeep(true, () => void 0) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS BOOLEAN
 true
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`mapEntriesDeep > selective transformations > mapEntriesDeep({ keep: 'me', transform: 'this' }, (key, value) => key === "transform" ? { key, value: "TRANSFORMED" } : undefined) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
+{
+  keep: 'me',
+  transform: 'TRANSFORMED'
+}
 ╚══════════════════════════════════════════════════╝"
 `;
 

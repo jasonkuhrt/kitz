@@ -66,12 +66,24 @@ export class Example extends S.Class<Example>('Example')({
   /** Programming language for syntax highlighting */
   language: S.String,
 }) {
-  static is = Schema.is(Example)
-  static decode = Schema.decode(Example)
-  static decodeSync = Schema.decodeSync(Example)
-  static encode = Schema.encode(Example)
-  static encodeSync = Schema.encodeSync(Example)
-  static equivalence = Schema.equivalence(Example)
+  static get is() {
+    return S.is(Example)
+  }
+  static get decode(): any {
+    return S.decode(Example)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(Example)
+  }
+  static get encode(): any {
+    return S.encode(Example)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(Example)
+  }
+  static get equivalence() {
+    return S.toEquivalence(Example)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -88,12 +100,24 @@ export class ImportExample extends S.Class<ImportExample>('ImportExample')({
   /** Import code snippet */
   content: S.String,
 }) {
-  static is = Schema.is(ImportExample)
-  static decode = Schema.decode(ImportExample)
-  static decodeSync = Schema.decodeSync(ImportExample)
-  static encode = Schema.encode(ImportExample)
-  static encodeSync = Schema.encodeSync(ImportExample)
-  static equivalence = Schema.equivalence(ImportExample)
+  static get is() {
+    return S.is(ImportExample)
+  }
+  static get decode(): any {
+    return S.decode(ImportExample)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(ImportExample)
+  }
+  static get encode(): any {
+    return S.encode(ImportExample)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(ImportExample)
+  }
+  static get equivalence() {
+    return S.toEquivalence(ImportExample)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -107,12 +131,24 @@ export class SourceLocation extends S.Class<SourceLocation>('SourceLocation')({
   /** Line number where the export is defined */
   line: S.Number,
 }) {
-  static is = Schema.is(SourceLocation)
-  static decode = Schema.decode(SourceLocation)
-  static decodeSync = Schema.decodeSync(SourceLocation)
-  static encode = Schema.encode(SourceLocation)
-  static encodeSync = Schema.encodeSync(SourceLocation)
-  static equivalence = Schema.equivalence(SourceLocation)
+  static get is() {
+    return S.is(SourceLocation)
+  }
+  static get decode(): any {
+    return S.decode(SourceLocation)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(SourceLocation)
+  }
+  static get encode(): any {
+    return S.encode(SourceLocation)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(SourceLocation)
+  }
+  static get equivalence() {
+    return S.toEquivalence(SourceLocation)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -129,12 +165,24 @@ export class JSDocProvenance extends S.TaggedClass<JSDocProvenance>()('jsdoc', {
   /** Whether description came from shadow namespace pattern */
   shadowNamespace: S.Boolean,
 }) {
-  static is = Schema.is(JSDocProvenance)
-  static decode = Schema.decode(JSDocProvenance)
-  static decodeSync = Schema.decodeSync(JSDocProvenance)
-  static encode = Schema.encode(JSDocProvenance)
-  static encodeSync = Schema.encodeSync(JSDocProvenance)
-  static equivalence = Schema.equivalence(JSDocProvenance)
+  static get is() {
+    return S.is(JSDocProvenance)
+  }
+  static get decode(): any {
+    return S.decode(JSDocProvenance)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(JSDocProvenance)
+  }
+  static get encode(): any {
+    return S.encode(JSDocProvenance)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(JSDocProvenance)
+  }
+  static get equivalence() {
+    return S.toEquivalence(JSDocProvenance)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -147,12 +195,24 @@ export class MdFileProvenance extends S.TaggedClass<MdFileProvenance>()('md-file
   /** Relative path to the source markdown file */
   filePath: Fs.Path.RelFile.Schema,
 }) {
-  static is = Schema.is(MdFileProvenance)
-  static decode = Schema.decode(MdFileProvenance)
-  static decodeSync = Schema.decodeSync(MdFileProvenance)
-  static encode = Schema.encode(MdFileProvenance)
-  static encodeSync = Schema.encodeSync(MdFileProvenance)
-  static equivalence = Schema.equivalence(MdFileProvenance)
+  static get is() {
+    return S.is(MdFileProvenance)
+  }
+  static get decode(): any {
+    return S.decode(MdFileProvenance)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(MdFileProvenance)
+  }
+  static get encode(): any {
+    return S.encode(MdFileProvenance)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(MdFileProvenance)
+  }
+  static get equivalence() {
+    return S.toEquivalence(MdFileProvenance)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -180,12 +240,24 @@ export class Docs extends S.Class<Docs>('Docs')({
   /** Long-form guide/tutorial content (narrative style) - from .md files or @guide tag */
   guide: S.optional(S.String),
 }) {
-  static is = Schema.is(Docs)
-  static decode = Schema.decode(Docs)
-  static decodeSync = Schema.decodeSync(Docs)
-  static encode = Schema.encode(Docs)
-  static encodeSync = Schema.encodeSync(Docs)
-  static equivalence = Schema.equivalence(Docs)
+  static get is() {
+    return S.is(Docs)
+  }
+  static get decode(): any {
+    return S.decode(Docs)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(Docs)
+  }
+  static get encode(): any {
+    return S.encode(Docs)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(Docs)
+  }
+  static get equivalence() {
+    return S.toEquivalence(Docs)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -199,12 +271,24 @@ export class Feature extends S.Class<Feature>('Feature')({
   /** Feature description (markdown content) */
   body: S.String,
 }) {
-  static is = Schema.is(Feature)
-  static decode = Schema.decode(Feature)
-  static decodeSync = Schema.decodeSync(Feature)
-  static encode = Schema.encode(Feature)
-  static encodeSync = Schema.encodeSync(Feature)
-  static equivalence = Schema.equivalence(Feature)
+  static get is() {
+    return S.is(Feature)
+  }
+  static get decode(): any {
+    return S.decode(Feature)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(Feature)
+  }
+  static get encode(): any {
+    return S.encode(Feature)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(Feature)
+  }
+  static get equivalence() {
+    return S.toEquivalence(Feature)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -242,12 +326,24 @@ export class Home extends S.Class<Home>('Home')({
   /** Body sections with exports insertion points (optional) */
   body: S.optional(S.Array(BodySection)),
 }) {
-  static is = Schema.is(Home)
-  static decode = Schema.decode(Home)
-  static decodeSync = Schema.decodeSync(Home)
-  static encode = Schema.encode(Home)
-  static encodeSync = Schema.encodeSync(Home)
-  static equivalence = Schema.equivalence(Home)
+  static get is() {
+    return S.is(Home)
+  }
+  static get decode(): any {
+    return S.decode(Home)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(Home)
+  }
+  static get encode(): any {
+    return S.encode(Home)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(Home)
+  }
+  static get equivalence() {
+    return S.toEquivalence(Home)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -263,12 +359,24 @@ export class ModuleDocs extends S.Class<ModuleDocs>('ModuleDocs')({
   /** Landing page content (triggers hero layout) */
   home: S.optional(Home),
 }) {
-  static is = Schema.is(ModuleDocs)
-  static decode = Schema.decode(ModuleDocs)
-  static decodeSync = Schema.decodeSync(ModuleDocs)
-  static encode = Schema.encode(ModuleDocs)
-  static encodeSync = Schema.encodeSync(ModuleDocs)
-  static equivalence = Schema.equivalence(ModuleDocs)
+  static get is() {
+    return S.is(ModuleDocs)
+  }
+  static get decode(): any {
+    return S.decode(ModuleDocs)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(ModuleDocs)
+  }
+  static get encode(): any {
+    return S.encode(ModuleDocs)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(ModuleDocs)
+  }
+  static get equivalence() {
+    return S.toEquivalence(ModuleDocs)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -284,12 +392,24 @@ export class DocsProvenance extends S.Class<DocsProvenance>('DocsProvenance')({
   /** Provenance for the guide field */
   guide: S.optional(Provenance),
 }) {
-  static is = Schema.is(DocsProvenance)
-  static decode = Schema.decode(DocsProvenance)
-  static decodeSync = Schema.decodeSync(DocsProvenance)
-  static encode = Schema.encode(DocsProvenance)
-  static encodeSync = Schema.encodeSync(DocsProvenance)
-  static equivalence = Schema.equivalence(DocsProvenance)
+  static get is() {
+    return S.is(DocsProvenance)
+  }
+  static get decode(): any {
+    return S.decode(DocsProvenance)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(DocsProvenance)
+  }
+  static get encode(): any {
+    return S.encode(DocsProvenance)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(DocsProvenance)
+  }
+  static get equivalence() {
+    return S.toEquivalence(DocsProvenance)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -316,12 +436,24 @@ export class TypeParameter extends S.Class<TypeParameter>('TypeParameter')({
   /** Optional default value (e.g., '= unknown') */
   default: S.optional(S.String),
 }) {
-  static is = Schema.is(TypeParameter)
-  static decode = Schema.decode(TypeParameter)
-  static decodeSync = Schema.decodeSync(TypeParameter)
-  static encode = Schema.encode(TypeParameter)
-  static encodeSync = Schema.encodeSync(TypeParameter)
-  static equivalence = Schema.equivalence(TypeParameter)
+  static get is() {
+    return S.is(TypeParameter)
+  }
+  static get decode(): any {
+    return S.decode(TypeParameter)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(TypeParameter)
+  }
+  static get encode(): any {
+    return S.encode(TypeParameter)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(TypeParameter)
+  }
+  static get equivalence() {
+    return S.toEquivalence(TypeParameter)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -354,12 +486,24 @@ export class Parameter extends S.Class<Parameter>('Parameter')({
   /** Parameter description from @param JSDoc tag */
   description: S.optional(S.String),
 }) {
-  static is = Schema.is(Parameter)
-  static decode = Schema.decode(Parameter)
-  static decodeSync = Schema.decodeSync(Parameter)
-  static encode = Schema.encode(Parameter)
-  static encodeSync = Schema.encodeSync(Parameter)
-  static equivalence = Schema.equivalence(Parameter)
+  static get is() {
+    return S.is(Parameter)
+  }
+  static get decode(): any {
+    return S.decode(Parameter)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(Parameter)
+  }
+  static get encode(): any {
+    return S.encode(Parameter)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(Parameter)
+  }
+  static get equivalence() {
+    return S.toEquivalence(Parameter)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -393,12 +537,24 @@ export class FunctionSignature extends S.Class<FunctionSignature>('FunctionSigna
   /** Error descriptions from @throws JSDoc tags */
   throws: S.Array(S.String),
 }) {
-  static is = Schema.is(FunctionSignature)
-  static decode = Schema.decode(FunctionSignature)
-  static decodeSync = Schema.decodeSync(FunctionSignature)
-  static encode = Schema.encode(FunctionSignature)
-  static encodeSync = Schema.encodeSync(FunctionSignature)
-  static equivalence = Schema.equivalence(FunctionSignature)
+  static get is() {
+    return S.is(FunctionSignature)
+  }
+  static get decode(): any {
+    return S.decode(FunctionSignature)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(FunctionSignature)
+  }
+  static get encode(): any {
+    return S.encode(FunctionSignature)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(FunctionSignature)
+  }
+  static get equivalence() {
+    return S.toEquivalence(FunctionSignature)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -429,12 +585,24 @@ export class FunctionSignatureModel extends S.TaggedClass<FunctionSignatureModel
     overloads: S.Array(FunctionSignature),
   },
 ) {
-  static is = Schema.is(FunctionSignatureModel)
-  static decode = Schema.decode(FunctionSignatureModel)
-  static decodeSync = Schema.decodeSync(FunctionSignatureModel)
-  static encode = Schema.encode(FunctionSignatureModel)
-  static encodeSync = Schema.encodeSync(FunctionSignatureModel)
-  static equivalence = Schema.equivalence(FunctionSignatureModel)
+  static get is() {
+    return S.is(FunctionSignatureModel)
+  }
+  static get decode(): any {
+    return S.decode(FunctionSignatureModel)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(FunctionSignatureModel)
+  }
+  static get encode(): any {
+    return S.encode(FunctionSignatureModel)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(FunctionSignatureModel)
+  }
+  static get equivalence() {
+    return S.toEquivalence(FunctionSignatureModel)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -482,12 +650,24 @@ export class BuilderMethod extends S.Class<BuilderMethod>('BuilderMethod')({
   /** For transform methods, the name of the returned builder type */
   transformsTo: S.optional(S.String),
 }) {
-  static is = Schema.is(BuilderMethod)
-  static decode = Schema.decode(BuilderMethod)
-  static decodeSync = Schema.decodeSync(BuilderMethod)
-  static encode = Schema.encode(BuilderMethod)
-  static encodeSync = Schema.encodeSync(BuilderMethod)
-  static equivalence = Schema.equivalence(BuilderMethod)
+  static get is() {
+    return S.is(BuilderMethod)
+  }
+  static get decode(): any {
+    return S.decode(BuilderMethod)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(BuilderMethod)
+  }
+  static get encode(): any {
+    return S.encode(BuilderMethod)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(BuilderMethod)
+  }
+  static get equivalence() {
+    return S.toEquivalence(BuilderMethod)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -555,12 +735,24 @@ export class BuilderSignatureModel extends S.TaggedClass<BuilderSignatureModel>(
     transformMethods: S.Array(BuilderMethod),
   },
 ) {
-  static is = Schema.is(BuilderSignatureModel)
-  static decode = Schema.decode(BuilderSignatureModel)
-  static decodeSync = Schema.decodeSync(BuilderSignatureModel)
-  static encode = Schema.encode(BuilderSignatureModel)
-  static encodeSync = Schema.encodeSync(BuilderSignatureModel)
-  static equivalence = Schema.equivalence(BuilderSignatureModel)
+  static get is() {
+    return S.is(BuilderSignatureModel)
+  }
+  static get decode(): any {
+    return S.decode(BuilderSignatureModel)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(BuilderSignatureModel)
+  }
+  static get encode(): any {
+    return S.encode(BuilderSignatureModel)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(BuilderSignatureModel)
+  }
+  static get equivalence() {
+    return S.toEquivalence(BuilderSignatureModel)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -577,12 +769,24 @@ export class TypeSignatureModel extends S.TaggedClass<TypeSignatureModel>()('Typ
   /** Full type text */
   text: S.String,
 }) {
-  static is = Schema.is(TypeSignatureModel)
-  static decode = Schema.decode(TypeSignatureModel)
-  static decodeSync = Schema.decodeSync(TypeSignatureModel)
-  static encode = Schema.encode(TypeSignatureModel)
-  static encodeSync = Schema.encodeSync(TypeSignatureModel)
-  static equivalence = Schema.equivalence(TypeSignatureModel)
+  static get is() {
+    return S.is(TypeSignatureModel)
+  }
+  static get decode(): any {
+    return S.decode(TypeSignatureModel)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(TypeSignatureModel)
+  }
+  static get encode(): any {
+    return S.encode(TypeSignatureModel)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(TypeSignatureModel)
+  }
+  static get equivalence() {
+    return S.toEquivalence(TypeSignatureModel)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -606,12 +810,24 @@ export class ValueSignatureModel extends S.TaggedClass<ValueSignatureModel>()(
     type: S.String,
   },
 ) {
-  static is = Schema.is(ValueSignatureModel)
-  static decode = Schema.decode(ValueSignatureModel)
-  static decodeSync = Schema.decodeSync(ValueSignatureModel)
-  static encode = Schema.encode(ValueSignatureModel)
-  static encodeSync = Schema.encodeSync(ValueSignatureModel)
-  static equivalence = Schema.equivalence(ValueSignatureModel)
+  static get is() {
+    return S.is(ValueSignatureModel)
+  }
+  static get decode(): any {
+    return S.decode(ValueSignatureModel)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(ValueSignatureModel)
+  }
+  static get encode(): any {
+    return S.encode(ValueSignatureModel)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(ValueSignatureModel)
+  }
+  static get equivalence() {
+    return S.toEquivalence(ValueSignatureModel)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -648,12 +864,24 @@ export class ClassProperty extends S.Class<ClassProperty>('ClassProperty')({
   /** Property description from JSDoc */
   description: S.optional(S.String),
 }) {
-  static is = Schema.is(ClassProperty)
-  static decode = Schema.decode(ClassProperty)
-  static decodeSync = Schema.decodeSync(ClassProperty)
-  static encode = Schema.encode(ClassProperty)
-  static encodeSync = Schema.encodeSync(ClassProperty)
-  static equivalence = Schema.equivalence(ClassProperty)
+  static get is() {
+    return S.is(ClassProperty)
+  }
+  static get decode(): any {
+    return S.decode(ClassProperty)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(ClassProperty)
+  }
+  static get encode(): any {
+    return S.encode(ClassProperty)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(ClassProperty)
+  }
+  static get equivalence() {
+    return S.toEquivalence(ClassProperty)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -682,12 +910,24 @@ export class ClassMethod extends S.Class<ClassMethod>('ClassMethod')({
   /** Whether method is static */
   static: S.Boolean,
 }) {
-  static is = Schema.is(ClassMethod)
-  static decode = Schema.decode(ClassMethod)
-  static decodeSync = Schema.decodeSync(ClassMethod)
-  static encode = Schema.encode(ClassMethod)
-  static encodeSync = Schema.encodeSync(ClassMethod)
-  static equivalence = Schema.equivalence(ClassMethod)
+  static get is() {
+    return S.is(ClassMethod)
+  }
+  static get decode(): any {
+    return S.decode(ClassMethod)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(ClassMethod)
+  }
+  static get encode(): any {
+    return S.encode(ClassMethod)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(ClassMethod)
+  }
+  static get equivalence() {
+    return S.toEquivalence(ClassMethod)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -731,12 +971,24 @@ export class ClassSignatureModel extends S.TaggedClass<ClassSignatureModel>()(
     methods: S.Array(ClassMethod),
   },
 ) {
-  static is = Schema.is(ClassSignatureModel)
-  static decode = Schema.decode(ClassSignatureModel)
-  static decodeSync = Schema.decodeSync(ClassSignatureModel)
-  static encode = Schema.encode(ClassSignatureModel)
-  static encodeSync = Schema.encodeSync(ClassSignatureModel)
-  static equivalence = Schema.equivalence(ClassSignatureModel)
+  static get is() {
+    return S.is(ClassSignatureModel)
+  }
+  static get decode(): any {
+    return S.decode(ClassSignatureModel)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(ClassSignatureModel)
+  }
+  static get encode(): any {
+    return S.encode(ClassSignatureModel)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(ClassSignatureModel)
+  }
+  static get equivalence() {
+    return S.toEquivalence(ClassSignatureModel)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -812,12 +1064,24 @@ export class Module extends S.Class<Module>('Module')({
   /** All exports in this module */
   exports: S.Array(S.suspend((): S.Codec<Export, ExportEncoded> => Export as any)),
 }) {
-  static is = Schema.is(Module)
-  static decode = Schema.decode(Module)
-  static decodeSync = Schema.decodeSync(Module)
-  static encode = Schema.encode(Module)
-  static encodeSync = Schema.encodeSync(Module)
-  static equivalence = Schema.equivalence(Module)
+  static get is() {
+    return S.is(Module)
+  }
+  static get decode(): any {
+    return S.decode(Module)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(Module)
+  }
+  static get encode(): any {
+    return S.encode(Module)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(Module)
+  }
+  static get equivalence() {
+    return S.toEquivalence(Module)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
   /**
@@ -911,14 +1175,26 @@ export class ValueExport extends S.TaggedClass<ValueExport>('ValueExport')('valu
   /** Nested module for namespace exports */
   module: S.optional(S.suspend((): S.Codec<Module, ModuleEncoded> => Module as any)),
 }) {
-  static decode = Schema.decode(ValueExport)
-  static decodeSync = Schema.decodeSync(ValueExport)
-  static encode = Schema.encode(ValueExport)
-  static encodeSync = Schema.encodeSync(ValueExport)
-  static equivalence = Schema.equivalence(ValueExport)
+  static get decode(): any {
+    return S.decode(ValueExport)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(ValueExport)
+  }
+  static get encode(): any {
+    return S.encode(ValueExport)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(ValueExport)
+  }
+  static get equivalence() {
+    return S.toEquivalence(ValueExport)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
-  static is = S.is(ValueExport)
+  static get is() {
+    return S.is(ValueExport)
+  }
 
   /**
    * Get type icon/badge for documentation rendering.
@@ -946,14 +1222,26 @@ export class TypeExport extends S.TaggedClass<TypeExport>('TypeExport')('type', 
   ...BaseExportFields,
   type: TypeExportType,
 }) {
-  static decode = Schema.decode(TypeExport)
-  static decodeSync = Schema.decodeSync(TypeExport)
-  static encode = Schema.encode(TypeExport)
-  static encodeSync = Schema.encodeSync(TypeExport)
-  static equivalence = Schema.equivalence(TypeExport)
+  static get decode(): any {
+    return S.decode(TypeExport)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(TypeExport)
+  }
+  static get encode(): any {
+    return S.encode(TypeExport)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(TypeExport)
+  }
+  static get equivalence() {
+    return S.toEquivalence(TypeExport)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
-  static is = S.is(TypeExport)
+  static get is() {
+    return S.is(TypeExport)
+  }
 
   /**
    * Get type icon/badge for documentation rendering.
@@ -1045,12 +1333,24 @@ export class DrillableNamespaceEntrypoint extends S.TaggedClass<DrillableNamespa
     module: Module,
   },
 ) {
-  static is = Schema.is(DrillableNamespaceEntrypoint)
-  static decode = Schema.decode(DrillableNamespaceEntrypoint)
-  static decodeSync = Schema.decodeSync(DrillableNamespaceEntrypoint)
-  static encode = Schema.encode(DrillableNamespaceEntrypoint)
-  static encodeSync = Schema.encodeSync(DrillableNamespaceEntrypoint)
-  static equivalence = Schema.equivalence(DrillableNamespaceEntrypoint)
+  static get is() {
+    return S.is(DrillableNamespaceEntrypoint)
+  }
+  static get decode(): any {
+    return S.decode(DrillableNamespaceEntrypoint)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(DrillableNamespaceEntrypoint)
+  }
+  static get encode(): any {
+    return S.encode(DrillableNamespaceEntrypoint)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(DrillableNamespaceEntrypoint)
+  }
+  static get equivalence() {
+    return S.toEquivalence(DrillableNamespaceEntrypoint)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
   /**
@@ -1116,12 +1416,24 @@ export class SimpleEntrypoint extends S.TaggedClass<SimpleEntrypoint>()('SimpleE
   /** The extracted module interface */
   module: Module,
 }) {
-  static is = Schema.is(SimpleEntrypoint)
-  static decode = Schema.decode(SimpleEntrypoint)
-  static decodeSync = Schema.decodeSync(SimpleEntrypoint)
-  static encode = Schema.encode(SimpleEntrypoint)
-  static encodeSync = Schema.encodeSync(SimpleEntrypoint)
-  static equivalence = Schema.equivalence(SimpleEntrypoint)
+  static get is() {
+    return S.is(SimpleEntrypoint)
+  }
+  static get decode(): any {
+    return S.decode(SimpleEntrypoint)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(SimpleEntrypoint)
+  }
+  static get encode(): any {
+    return S.encode(SimpleEntrypoint)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(SimpleEntrypoint)
+  }
+  static get equivalence() {
+    return S.toEquivalence(SimpleEntrypoint)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
   /**
@@ -1192,12 +1504,24 @@ export class PackageMetadata extends S.Class<PackageMetadata>('PackageMetadata')
   /** Version of the extractor tool */
   extractorVersion: S.String,
 }) {
-  static is = Schema.is(PackageMetadata)
-  static decode = Schema.decode(PackageMetadata)
-  static decodeSync = Schema.decodeSync(PackageMetadata)
-  static encode = Schema.encode(PackageMetadata)
-  static encodeSync = Schema.encodeSync(PackageMetadata)
-  static equivalence = Schema.equivalence(PackageMetadata)
+  static get is() {
+    return S.is(PackageMetadata)
+  }
+  static get decode(): any {
+    return S.decode(PackageMetadata)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(PackageMetadata)
+  }
+  static get encode(): any {
+    return S.encode(PackageMetadata)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(PackageMetadata)
+  }
+  static get equivalence() {
+    return S.toEquivalence(PackageMetadata)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -1215,12 +1539,24 @@ export class Package extends S.Class<Package>('Package')({
   /** Extraction metadata */
   metadata: PackageMetadata,
 }) {
-  static is = Schema.is(Package)
-  static decode = Schema.decode(Package)
-  static decodeSync = Schema.decodeSync(Package)
-  static encode = Schema.encode(Package)
-  static encodeSync = Schema.encodeSync(Package)
-  static equivalence = Schema.equivalence(Package)
+  static get is() {
+    return S.is(Package)
+  }
+  static get decode(): any {
+    return S.decode(Package)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(Package)
+  }
+  static get encode(): any {
+    return S.encode(Package)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(Package)
+  }
+  static get equivalence() {
+    return S.toEquivalence(Package)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }

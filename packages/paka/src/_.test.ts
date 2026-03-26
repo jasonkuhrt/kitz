@@ -7,7 +7,13 @@ import { IndentationText, Project } from 'ts-morph'
 import { describe, expect, test } from 'vitest'
 import * as PakaNamespace from './_.js'
 import * as Paka from './__.js'
-import { extractH1Sections, extractH2Subsections, parseMarkdown, toMarkdown, toPlainText } from './extractor/markdown.js'
+import {
+  extractH1Sections,
+  extractH2Subsections,
+  parseMarkdown,
+  toMarkdown,
+  toPlainText,
+} from './extractor/markdown.js'
 import { parseHomePage } from './extractor/home-page.js'
 import { extract, extractFromFiles } from './extractor/extract.js'
 import { absoluteToRelative, createBuildToSourcePath } from './extractor/path-utils.js'
@@ -47,6 +53,57 @@ describe('paka', () => {
     ).toMatchObject({
       hero: { name: `Paka` },
     })
+  })
+
+  test('exposes static schema helpers across paka model classes', () => {
+    const schemaClasses = [
+      Paka.Example,
+      Paka.ImportExample,
+      Paka.SourceLocation,
+      Paka.JSDocProvenance,
+      Paka.MdFileProvenance,
+      Paka.Docs,
+      Paka.Feature,
+      Paka.Home,
+      Paka.ModuleDocs,
+      Paka.DocsProvenance,
+      Paka.TypeParameter,
+      Paka.Parameter,
+      Paka.FunctionSignature,
+      Paka.FunctionSignatureModel,
+      Paka.BuilderMethod,
+      Paka.BuilderSignatureModel,
+      Paka.TypeSignatureModel,
+      Paka.ValueSignatureModel,
+      Paka.ClassProperty,
+      Paka.ClassMethod,
+      Paka.ClassSignatureModel,
+      Paka.Module,
+      Paka.ValueExport,
+      Paka.TypeExport,
+      Paka.DrillableNamespaceEntrypoint,
+      Paka.SimpleEntrypoint,
+      Paka.PackageMetadata,
+      Paka.Package,
+    ] as const
+
+    for (const schemaClass of schemaClasses) {
+      expect(typeof schemaClass.is).toBe(`function`)
+      expect(typeof schemaClass.decode).toBe(`function`)
+      expect(typeof schemaClass.decodeSync).toBe(`function`)
+      expect(typeof schemaClass.encode).toBe(`function`)
+      expect(typeof schemaClass.encodeSync).toBe(`function`)
+      expect(typeof schemaClass.equivalence).toBe(`function`)
+      expect(schemaClass.ordered).toBe(false)
+      expect(typeof schemaClass.make).toBe(`function`)
+    }
+
+    expect(Paka.Provenance).toBeDefined()
+    expect(Paka.BodySection).toBeDefined()
+    expect(Paka.SignatureModel).toBeDefined()
+    expect(Paka.Export).toBeDefined()
+    expect(Paka.Entrypoint).toBeDefined()
+    expect(Paka.InterfaceModel).toBe(Paka.Package)
   })
 
   test('transforms build paths and absolute paths', () => {
@@ -130,11 +187,15 @@ Generated export listing.
       },
     ])
 
-    expect(() =>
-      extractH1Sections(parseMarkdown(`# Hero\nA\n# Hero\nB`)),
-    ).toThrow(`Duplicate section '# Hero' found`)
-    expect(() => parseHomePage(`# Unknown\nNope`, `docs/home.md`)).toThrow(`Allowed top-level headings`)
-    expect(() => parseHomePage(`# Hero\n## Nope\nBad`, `docs/home.md`)).toThrow(`Allowed subheadings`)
+    expect(() => extractH1Sections(parseMarkdown(`# Hero\nA\n# Hero\nB`))).toThrow(
+      `Duplicate section '# Hero' found`,
+    )
+    expect(() => parseHomePage(`# Unknown\nNope`, `docs/home.md`)).toThrow(
+      `Allowed top-level headings`,
+    )
+    expect(() => parseHomePage(`# Hero\n## Nope\nBad`, `docs/home.md`)).toThrow(
+      `Allowed subheadings`,
+    )
   })
 
   test('converts markdown guides to generated JSDoc', () => {
@@ -365,12 +426,21 @@ export const nestedValue = true
       expect(arrowDecl && categorize(arrowDecl)).toEqual({ level: `value`, type: `function` })
       expect(dataDecl && categorize(dataDecl)).toEqual({ level: `value`, type: `const` })
       expect(classDecl && categorize(classDecl)).toEqual({ level: `value`, type: `class` })
-      expect(interfaceDecl && categorize(interfaceDecl)).toEqual({ level: `type`, type: `interface` })
+      expect(interfaceDecl && categorize(interfaceDecl)).toEqual({
+        level: `type`,
+        type: `interface`,
+      })
       expect(unionDecl && categorize(unionDecl)).toEqual({ level: `type`, type: `union` })
-      expect(intersectionDecl && categorize(intersectionDecl)).toEqual({ level: `type`, type: `intersection` })
+      expect(intersectionDecl && categorize(intersectionDecl)).toEqual({
+        level: `type`,
+        type: `intersection`,
+      })
       expect(aliasDecl && categorize(aliasDecl)).toEqual({ level: `type`, type: `type-alias` })
       expect(enumDecl && categorize(enumDecl)).toEqual({ level: `type`, type: `enum` })
-      expect(namespaceDecl && categorize(namespaceDecl)).toEqual({ level: `value`, type: `namespace` })
+      expect(namespaceDecl && categorize(namespaceDecl)).toEqual({
+        level: `value`,
+        type: `namespace`,
+      })
 
       const builderSignature = builderDecl && extractSignature(builderDecl)
       expect(builderSignature?._tag).toBe(`BuilderSignatureModel`)
@@ -529,13 +599,23 @@ Generated exports here.
       expect(model.entrypoints).toHaveLength(2)
       expect(model.entrypoints[0]?.path).toBe(`.`)
       expect(model.entrypoints[1]?.path).toBe(`./utils`)
-      expect(model.entrypoints[1]?.module.exports.some((entry) => entry.name === `visible`)).toBe(true)
-      expect(model.entrypoints[1]?.module.exports.some((entry) => entry.name === `hidden`)).toBe(false)
+      expect(model.entrypoints[1]?.module.exports.some((entry) => entry.name === `visible`)).toBe(
+        true,
+      )
+      expect(model.entrypoints[1]?.module.exports.some((entry) => entry.name === `hidden`)).toBe(
+        false,
+      )
 
       const files = {
         [join(fixtureDir, `package.json`)]: readFileSync(join(fixtureDir, `package.json`), `utf8`),
-        [join(fixtureDir, `tsconfig.build.json`)]: readFileSync(join(fixtureDir, `tsconfig.build.json`), `utf8`),
-        [join(fixtureDir, `src`, `index.ts`)]: readFileSync(join(fixtureDir, `src`, `index.ts`), `utf8`),
+        [join(fixtureDir, `tsconfig.build.json`)]: readFileSync(
+          join(fixtureDir, `tsconfig.build.json`),
+          `utf8`,
+        ),
+        [join(fixtureDir, `src`, `index.ts`)]: readFileSync(
+          join(fixtureDir, `src`, `index.ts`),
+          `utf8`,
+        ),
         [join(fixtureDir, `src`, `utils`, `__.ts`)]: readFileSync(
           join(fixtureDir, `src`, `utils`, `__.ts`),
           `utf8`,
@@ -1025,9 +1105,9 @@ Generated exports here.
       expect(combinedType.typeIcon).toBe(`∩`)
       expect(featureEntrypoint.moduleName).toBe(`FeatureTools`)
       expect(featureEntrypoint.kebabName).toBe(`feature-tools`)
-      expect(featureEntrypoint.getImportExamples(`@example/ui`, featureEntrypoint.path)[0]?.content).toBe(
-        `import * as FeatureTools from '@example/ui/feature-tools'`,
-      )
+      expect(
+        featureEntrypoint.getImportExamples(`@example/ui`, featureEntrypoint.path)[0]?.content,
+      ).toBe(`import * as FeatureTools from '@example/ui/feature-tools'`)
       expect(testEntrypoint.getImportExamples(`@example/ui`, [])).toEqual([])
       expect(testEntrypoint.getImportExamples(`@example/ui`, [`Test`])).toEqual([
         Paka.ImportExample.make({
@@ -1156,7 +1236,9 @@ export * as Widget from './__.js'
     expect(inMemoryModel.entrypoints[0]?._tag).toBe(`DrillableNamespaceEntrypoint`)
     expect(inMemoryModel.entrypoints[0]?.module.docs?.description).toBe(`Widget docs.`)
     expect(inMemoryModel.entrypoints[0]?.module.category).toBe(`Tools`)
-    expect(inMemoryModel.entrypoints[0]?.module.exports.map((entry) => entry.name)).toEqual([`kept`])
+    expect(inMemoryModel.entrypoints[0]?.module.exports.map((entry) => entry.name)).toEqual([
+      `kept`,
+    ])
 
     const fixtureDir = mkdtempSync(join(tmpdir(), `paka-extract-edges-`))
 
@@ -1219,7 +1301,9 @@ export const ignored = () => 'nope'
       expect(extracted.entrypoints[0]?._tag).toBe(`DrillableNamespaceEntrypoint`)
       expect(extracted.entrypoints[0]?.module.docs?.description).toBe(`FooBar docs.`)
       expect(extracted.entrypoints[0]?.module.category).toBe(`Utilities`)
-      expect(extracted.entrypoints[0]?.module.exports.map((entry) => entry.name)).toEqual([`picked`])
+      expect(extracted.entrypoints[0]?.module.exports.map((entry) => entry.name)).toEqual([
+        `picked`,
+      ])
     } finally {
       rmSync(fixtureDir, { recursive: true, force: true })
     }

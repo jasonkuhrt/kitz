@@ -33,7 +33,7 @@ describe('jsonc', () => {
   test('surfaces JSON encoding failures', () => {
     const codec = parseJsonc()
     const circular: Record<string, unknown> = {}
-    circular.self = circular
+    circular['self'] = circular
 
     expect(() => Schema.encodeSync(codec)(circular)).toThrow(/circular/i)
   })

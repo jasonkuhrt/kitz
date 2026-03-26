@@ -13,10 +13,24 @@ class ComparatorClass extends S.Class<ComparatorClass>('PkgRangeComparator')({
   operator: Operator,
   version: SemverSelf,
 }) {
+  static equivalence = S.toEquivalence(ComparatorClass)
+  static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(ComparatorClass)
+  static get decode(): any {
+    return S.decode(ComparatorClass)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(ComparatorClass)
+  }
+  static get encode(): any {
+    return S.encode(ComparatorClass)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(ComparatorClass)
+  }
 
-  private static render = (c: ComparatorClass): string => {
+  static render = (c: ComparatorClass): string => {
     const v = c.version
     const prerelease = v._tag === 'SemverPreRelease' ? `-${v.prerelease.join('.')}` : ''
     const build = v.build?.length ? `+${v.build.join('.')}` : ''

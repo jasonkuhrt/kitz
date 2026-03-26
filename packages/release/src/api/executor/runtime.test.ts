@@ -53,7 +53,11 @@ describe('Executor runtime', () => {
         expect(result._tag).toBe('Failure')
         if (result._tag === 'Failure') {
           expect(result.failure._tag).toBe('GithubError')
-          expect(result.failure.context.detail).toContain('GitHub runtime is not configured')
+          const detail =
+            'detail' in result.failure.context && typeof result.failure.context.detail === 'string'
+              ? result.failure.context.detail
+              : ''
+          expect(detail).toContain('GitHub runtime is not configured')
         }
       }
     }).pipe(

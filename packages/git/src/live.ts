@@ -6,6 +6,24 @@ import { Commit } from './commit.js'
 import { Git, GitError, type GitOperation, GitParseError, type GitService } from './service.js'
 import * as Sha from './sha.js'
 
+// oxlint-disable-next-line kitz/domain/no-process-env
+const env = process.env
+
+const sanitizeGitEnv = (): NodeJS.ProcessEnv => {
+  const nextEnv = { ...env }
+  for (const key of Object.keys(nextEnv)) {
+    if (key.startsWith('GIT_')) {
+      delete nextEnv[key]
+    }
+  }
+  return nextEnv
+}
+
+const createGit = (cwd?: string): SimpleGit => {
+  const git = cwd ? simpleGit(cwd) : simpleGit()
+  return git.env(sanitizeGitEnv())
+}
+
 // ============================================================================
 // Helper
 // ============================================================================
@@ -205,9 +223,9 @@ const makeGitService = (git: SimpleGit): GitService => ({
 /**
  * Live implementation of Git service using simple-git.
  */
-export const GitLive = Layer.sync(Git, () => makeGitService(simpleGit()))
+export const GitLive = Layer.sync(Git, () => makeGitService(createGit()))
 
 /**
  * Create a Git service for a specific directory.
  */
-export const makeGitLive = (cwd: string) => Layer.sync(Git, () => makeGitService(simpleGit(cwd)))
+export const makeGitLive = (cwd: string) => Layer.sync(Git, () => makeGitService(createGit(cwd)))

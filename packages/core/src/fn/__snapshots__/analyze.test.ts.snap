@@ -30,6 +30,21 @@ exports[`analyzeFunction > async functions > analyzeFunction(async (a) => a + 1)
 ╚══════════════════════════════════════════════════╝"
 `;
 
+exports[`analyzeFunction > async functions > analyzeFunction(async function f(a) { return a + 1; }) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
+{
+  body: 'return a + 1;',
+  parameters: [
+    {
+      type: 'name',
+      value: 'a'
+    }
+  ]
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
 exports[`analyzeFunction > async functions > analyzeFunction(async function f2(a) { return a + 1; }) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
@@ -127,6 +142,25 @@ exports[`analyzeFunction > parameters - destructured > analyzeFunction(({ a, b }
 ╚══════════════════════════════════════════════════╝"
 `;
 
+exports[`analyzeFunction > parameters - destructured > analyzeFunction((a, { b, c }) => [ a, b, c ]) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
+{
+  body: '[\\n\\ta,\\n\\tb,\\n\\tc\\n]',
+  parameters: [
+    {
+      type: 'name',
+      value: 'a'
+    },
+    {
+      type: 'destructured',
+      names: [ 'b', 'c' ]
+    }
+  ]
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
 exports[`analyzeFunction > parameters - destructured > analyzeFunction((a, { b, c }) => [a, b, c]) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
@@ -199,6 +233,29 @@ exports[`analyzeFunction > parameters - named > analyzeFunction((a) => a) 1`] = 
     {
       type: 'name',
       value: 'a'
+    }
+  ]
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`analyzeFunction > parameters - named > analyzeFunction((a, b, c) => [ a, b, c ]) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
+{
+  body: '[\\n\\t\\ta,\\n\\t\\tb,\\n\\t\\tc\\n\\t]',
+  parameters: [
+    {
+      type: 'name',
+      value: 'a'
+    },
+    {
+      type: 'name',
+      value: 'b'
+    },
+    {
+      type: 'name',
+      value: 'c'
     }
   ]
 }

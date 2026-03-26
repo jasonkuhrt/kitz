@@ -38,11 +38,20 @@ export class Started extends Schema.TaggedClass<Started>()('ActivityStarted', {
   /** True if this activity was already completed (resumed from checkpoint) */
   resumed: Schema.Boolean,
 }) {
+  static equivalence = Schema.toEquivalence(Started)
   static is = Schema.is(Started)
-  static decode = Schema.decode(Started)
-  static decodeSync = Schema.decodeSync(Started)
-  static encode = Schema.encode(Started)
-  static encodeSync = Schema.encodeSync(Started)
+  static get decode(): any {
+    return Schema.decode(Started)
+  }
+  static get decodeSync(): any {
+    return Schema.decodeSync(Started)
+  }
+  static get encode(): any {
+    return Schema.encode(Started)
+  }
+  static get encodeSync(): any {
+    return Schema.encodeSync(Started)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -58,11 +67,20 @@ export class Completed extends Schema.TaggedClass<Completed>()('ActivityComplete
   /** Duration in milliseconds (very short if resumed) */
   durationMs: Schema.Number,
 }) {
+  static equivalence = Schema.toEquivalence(Completed)
   static is = Schema.is(Completed)
-  static decode = Schema.decode(Completed)
-  static decodeSync = Schema.decodeSync(Completed)
-  static encode = Schema.encode(Completed)
-  static encodeSync = Schema.encodeSync(Completed)
+  static get decode(): any {
+    return Schema.decode(Completed)
+  }
+  static get decodeSync(): any {
+    return Schema.decodeSync(Completed)
+  }
+  static get encode(): any {
+    return Schema.encode(Completed)
+  }
+  static get encodeSync(): any {
+    return Schema.encodeSync(Completed)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }
@@ -75,11 +93,20 @@ export class Failed extends Schema.TaggedClass<Failed>()('ActivityFailed', {
   timestamp: Schema.Date,
   error: Schema.String,
 }) {
+  static equivalence = Schema.toEquivalence(Failed)
   static is = Schema.is(Failed)
-  static decode = Schema.decode(Failed)
-  static decodeSync = Schema.decodeSync(Failed)
-  static encode = Schema.encode(Failed)
-  static encodeSync = Schema.encodeSync(Failed)
+  static get decode(): any {
+    return Schema.decode(Failed)
+  }
+  static get decodeSync(): any {
+    return Schema.decodeSync(Failed)
+  }
+  static get encode(): any {
+    return Schema.encode(Failed)
+  }
+  static get encodeSync(): any {
+    return Schema.encodeSync(Failed)
+  }
   static ordered = false as const
   static make = this.makeUnsafe
 }

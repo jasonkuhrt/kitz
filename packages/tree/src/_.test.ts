@@ -132,7 +132,8 @@ describe('tree', () => {
     )
 
     const targetNode = sampleTree.root?.children[1]?.children[1]
-    expect(path(sampleTree, targetNode!).map((node) => node.value)).toEqual([
+    if (!targetNode) throw new Error('expected sample tree to contain right.leaf2')
+    expect(path(sampleTree, targetNode)?.map((node) => node.value)).toEqual([
       'root',
       'right',
       'right.leaf2',
@@ -244,39 +245,39 @@ describe('tree', () => {
     const leafNode = fc.sample(arbitraryShapes.leaf(fc.constant('leaf')), {
       numRuns: 1,
       seed: 1,
-    })[0]
+    })[0]!
     const exactDepthLeaf = fc.sample(arbitraryShapes.withDepth(fc.constant('leaf'), 0), {
       numRuns: 1,
       seed: 2,
-    })[0]
+    })[0]!
     const exactDepthTree = fc.sample(arbitraryShapes.withDepth(fc.constant('node'), 2), {
       numRuns: 1,
       seed: 3,
-    })[0]
+    })[0]!
     const linearLeaf = fc.sample(arbitraryShapes.linear(fc.constant('only'), 1), {
       numRuns: 1,
       seed: 4,
-    })[0]
+    })[0]!
     const linearTree = fc.sample(arbitraryShapes.linear(fc.constant('line'), 4), {
       numRuns: 1,
       seed: 5,
-    })[0]
+    })[0]!
     const balancedLeaf = fc.sample(arbitraryShapes.balanced(fc.constant('leaf'), 0), {
       numRuns: 1,
       seed: 6,
-    })[0]
+    })[0]!
     const balancedTree = fc.sample(arbitraryShapes.balanced(fc.constant('balanced'), 2, 2), {
       numRuns: 1,
       seed: 7,
-    })[0]
+    })[0]!
     const wideLeaf = fc.sample(arbitraryShapes.wide(fc.constant('leaf'), 4, 0), {
       numRuns: 1,
       seed: 8,
-    })[0]
+    })[0]!
     const wideTree = fc.sample(arbitraryShapes.wide(fc.constant('wide'), 4, 1), {
       numRuns: 1,
       seed: 9,
-    })[0]
+    })[0]!
 
     expect(generatedTrees.some((tree) => tree.root === null)).toBe(true)
     expect(

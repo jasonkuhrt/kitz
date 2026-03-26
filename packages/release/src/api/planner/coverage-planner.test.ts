@@ -23,11 +23,7 @@ const makePackage = (scope: string, name = `@kitz/${scope}`) => ({
   path: Fs.Path.AbsDir.fromString(`/repo/packages/${scope}/`),
 })
 
-const makePackageJson = (
-  name: string,
-  version: string,
-  dependencies?: Record<string, string>,
-) =>
+const makePackageJson = (name: string, version: string, dependencies?: Record<string, string>) =>
   JSON.stringify(
     {
       name,
@@ -139,10 +135,10 @@ describe('planner coverage helpers', () => {
     )
 
     expect(plan.releases).toHaveLength(1)
-    expect(plan.releases[0]!.nextVersion.toString()).toBe('0.0.0-pr.42.1.abc1234')
+    expect(plan.releases[0]!.nextVersion.toString()).toBe('0.0.0-pr.42.1.gabc1234')
     expect(plan.cascades).toHaveLength(1)
     expect(plan.cascades[0]!.package.name.moniker).toBe('@kitz/cli')
-    expect(plan.cascades[0]!.nextVersion.toString()).toBe('0.0.0-pr.42.3.abc1234')
+    expect(plan.cascades[0]!.nextVersion.toString()).toBe('0.0.0-pr.42.3.gabc1234')
   })
 
   test('analyzes requested cascades by scope and reports missing packages', async () => {

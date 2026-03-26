@@ -32,7 +32,7 @@ const formatYamlError = (error: unknown): string =>
  * `)
  * ```
  */
-export const parseYaml = (): Schema.Schema<unknown, string> =>
+export const parseYaml = (): Schema.Codec<unknown, string> =>
   Schema.String.pipe(
     Schema.decodeTo(
       Schema.Unknown,
@@ -62,7 +62,7 @@ export const parseYaml = (): Schema.Schema<unknown, string> =>
               new SchemaIssue.InvalidValue(Option.some(value), {
                 message: formatYamlError(error),
               }),
-        }),
+          }),
       }),
     ),
     Schema.annotate({
@@ -95,7 +95,7 @@ export const parseYaml = (): Schema.Schema<unknown, string> =>
  */
 export const createResource = <A, I, R = never>(
   filename: string,
-  schema: Schema.Schema<A, I, R>,
+  schema: Schema.Codec<A, I, R>,
   emptyValue: A,
   options?: Resource.CreateOptions,
 ): Resource.Resource<A, FileSystem.FileSystem | R> =>

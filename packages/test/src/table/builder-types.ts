@@ -605,7 +605,7 @@ export interface TestBuilder<State extends BuilderTypeState> {
    * // Snapshot shows only the rendered output, not the complex builder objects
    * ```
    */
-  snapshots(config: { arguments?: boolean }): TestBuilder<State>
+  snapshots(config: { arguments?: boolean; runner?: boolean }): TestBuilder<State>
 
   /**
    * Register Effect schemas for automatic encoding in test snapshots.

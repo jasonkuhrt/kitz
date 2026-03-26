@@ -66,7 +66,9 @@ const trimCommitsUntilBoundary = (
     }
 
     const git = yield* Git.Git
-    const newerCommits = yield* git.getCommitsSince(until)
+    const newerCommits = yield* git
+      .getCommitsSince(until)
+      .pipe(Effect.catchTag('GitError', () => Effect.succeed([])))
     const newerHashes = HashSet.fromIterable(
       newerCommits.map((commit: { hash: string }) => commit.hash),
     )

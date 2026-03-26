@@ -43,6 +43,21 @@ describe('PreflightError', () => {
 })
 
 describe('preflight.run', () => {
+  const makeWorkflowLayer = async () =>
+    (
+      await Effect.runPromise(
+        makeHarness({
+          git: {
+            root: '/repo',
+            tags: [],
+            commits: [],
+            isClean: true,
+          },
+          diskLayout: {},
+        }),
+      )
+    ).workflowLayer
+
   const ruleRef = (id: string, description: string) => ({
     id: RuleId.makeUnsafe(id),
     description,
@@ -126,10 +141,11 @@ describe('preflight.run', () => {
   })
 
   test('maps current-branch failures to env.release-branch-allowed', async () => {
+    const workflowLayer = await makeWorkflowLayer()
     const result = await Effect.runPromise(
       run([release], undefined, {
         getCurrentBranch: () => Effect.fail(new Error('branch unavailable')),
-      }).pipe(Effect.provide(Git.Memory.make({})), Effect.result),
+      }).pipe(Effect.provide(workflowLayer), Effect.result),
     )
 
     expect(result._tag).toBe('Failure')
@@ -142,10 +158,11 @@ describe('preflight.run', () => {
   })
 
   test('maps lint execution failures to lint-execution', async () => {
+    const workflowLayer = await makeWorkflowLayer()
     const result = await Effect.runPromise(
       run([release], undefined, {
         runLintCheck: () => Effect.fail(new Error('lint exploded')),
-      }).pipe(Effect.provide(Git.Memory.make({})), Effect.result),
+      }).pipe(Effect.provide(workflowLayer), Effect.result),
     )
 
     expect(result._tag).toBe('Failure')
@@ -158,6 +175,7 @@ describe('preflight.run', () => {
   })
 
   test('falls back when metadata is malformed and uses a generic message for non-environment violations', async () => {
+    const workflowLayer = await makeWorkflowLayer()
     const report = Report.make({
       results: [
         Finished.make({
@@ -187,7 +205,7 @@ describe('preflight.run', () => {
     const result = await Effect.runPromise(
       run([release], undefined, {
         runLintCheck: () => Effect.succeed(report),
-      }).pipe(Effect.provide(Git.Memory.make({})), Effect.result),
+      }).pipe(Effect.provide(workflowLayer), Effect.result),
     )
 
     expect(result._tag).toBe('Failure')

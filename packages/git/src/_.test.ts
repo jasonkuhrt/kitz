@@ -1,7 +1,55 @@
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { Test } from '@kitz/test'
 import { Effect, Ref, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { Git } from './_.js'
+
+const gitEnv: NodeJS.ProcessEnv = {}
+for (const key of ['HOME', 'PATH', 'TMPDIR', 'TMP', 'TEMP', 'LANG', 'LC_ALL']) {
+  const value = process.env[key]
+  if (value !== undefined) {
+    gitEnv[key] = value
+  }
+}
+
+const runGit = (cwd: string, args: string[]): string =>
+  execFileSync('git', args, { cwd, encoding: 'utf8', env: gitEnv }).trim()
+
+const makeTempGitRepo = () => {
+  const root = mkdtempSync(join(tmpdir(), 'kitz-git-live-'))
+  const remote = mkdtempSync(join(tmpdir(), 'kitz-git-remote-'))
+
+  runGit(root, ['init', '-b', 'main'])
+  runGit(root, ['config', 'user.name', 'Kitz Test'])
+  runGit(root, ['config', 'user.email', 'kitz@example.com'])
+
+  writeFileSync(join(root, 'README.md'), '# temp repo\n')
+  runGit(root, ['add', 'README.md'])
+  runGit(root, ['commit', '-m', 'chore(core): release 1.0.0'])
+  const releaseSha = runGit(root, ['rev-parse', '--short', 'HEAD'])
+  runGit(root, ['tag', '@kitz/core@1.0.0'])
+
+  writeFileSync(join(root, 'feature.txt'), 'feature\n')
+  runGit(root, ['add', 'feature.txt'])
+  runGit(root, ['commit', '-m', 'feat(core): add feature'])
+
+  runGit(remote, ['init', '--bare'])
+  runGit(root, ['remote', 'add', 'origin', remote])
+  runGit(root, ['push', '-u', 'origin', 'main'])
+
+  return {
+    root,
+    remote,
+    releaseSha: Git.Sha.make(releaseSha),
+    cleanup: () => {
+      rmSync(root, { recursive: true, force: true })
+      rmSync(remote, { recursive: true, force: true })
+    },
+  }
+}
 
 // ============================================================================
 // Sha
@@ -251,6 +299,108 @@ describe('Git', () => {
     expect(tags).not.toContain('@kitz/core@1.0.0')
     expect(deleted).toContain('@kitz/core@1.0.0')
   })
+
+  test('getCommitsSince returns all commits for non-package and unmatched tags', async () => {
+    const commits = [
+      Git.Memory.commit('feat(core): add feature'),
+      Git.Memory.commit('fix(core): patch'),
+    ]
+    const layer = Git.Memory.make({
+      tags: ['v1.0.0', '@kitz/core@1.0.0'],
+      commits,
+    })
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const git = yield* Git.Git
+        const nonPackageTag = yield* git.getCommitsSince('v1.0.0')
+        const unmatchedTag = yield* git.getCommitsSince('@kitz/core@1.0.0')
+        return { nonPackageTag, unmatchedTag }
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.nonPackageTag).toEqual(commits)
+    expect(result.unmatchedTag).toEqual(commits)
+  })
+
+  test('getTagSha, isAncestor, and commitExists use in-memory state', async () => {
+    const releaseSha = Git.Sha.make('abc1234')
+    const headSha = Git.Sha.make('def5678')
+    const layer = Git.Memory.make({
+      commits: [Git.Memory.commit('feat(core): add feature', { hash: headSha })],
+      headSha,
+    })
+    const { layer: statefulLayer, state } = await Effect.runPromise(Git.Memory.makeWithState({}))
+
+    await Effect.runPromise(Ref.set(state.tagShas, { '@kitz/core@1.0.0': releaseSha }))
+    await Effect.runPromise(
+      Ref.set(state.commitParents, { [headSha]: [releaseSha], [releaseSha]: [] }),
+    )
+    await Effect.runPromise(
+      Ref.set(state.commits, [Git.Memory.commit('feat(core): add feature', { hash: headSha })]),
+    )
+
+    const memoryResult = await Effect.runPromise(
+      Effect.gen(function* () {
+        const git = yield* Git.Git
+        return {
+          tagSha: yield* git.getTagSha('@kitz/core@1.0.0'),
+          isAncestor: yield* git.isAncestor(releaseSha, headSha),
+          isNotAncestor: yield* git.isAncestor(headSha, releaseSha),
+          commitExists: yield* git.commitExists(headSha),
+          parentExists: yield* git.commitExists(releaseSha),
+          missingCommit: yield* git.commitExists(Git.Sha.make('feed123')),
+        }
+      }).pipe(Effect.provide(statefulLayer)),
+    )
+
+    const configuredHead = await Effect.runPromise(
+      Effect.gen(function* () {
+        const git = yield* Git.Git
+        return yield* git.getHeadSha()
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(memoryResult.tagSha).toBe(releaseSha)
+    expect(memoryResult.isAncestor).toBe(true)
+    expect(memoryResult.isNotAncestor).toBe(false)
+    expect(memoryResult.commitExists).toBe(true)
+    expect(memoryResult.parentExists).toBe(true)
+    expect(memoryResult.missingCommit).toBe(false)
+    expect(configuredHead).toBe(headSha)
+  })
+
+  test('createTagAt, deleteRemoteTag, and getRemoteUrl update mutable state', async () => {
+    const { layer, state } = await Effect.runPromise(
+      Git.Memory.makeWithState({ remoteUrl: 'git@github.com:kitz/test.git' }),
+    )
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const git = yield* Git.Git
+        yield* git.createTagAt('@kitz/core@1.0.1', 'abc1234', 'release')
+        yield* git.deleteRemoteTag('@kitz/core@1.0.1', 'upstream')
+        return yield* git.getRemoteUrl('upstream')
+      }).pipe(Effect.provide(layer)),
+    )
+
+    const tags = await Effect.runPromise(Ref.get(state.tags))
+    const tagShas = await Effect.runPromise(Ref.get(state.tagShas))
+    const createdTags = await Effect.runPromise(Ref.get(state.createdTags))
+    const deletedRemoteTags = await Effect.runPromise(Ref.get(state.deletedRemoteTags))
+    const remoteUrl = await Effect.runPromise(
+      Effect.gen(function* () {
+        const git = yield* Git.Git
+        return yield* git.getRemoteUrl()
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(tags).toContain('@kitz/core@1.0.1')
+    expect(tagShas['@kitz/core@1.0.1']).toBe('abc1234')
+    expect(createdTags).toContainEqual({ tag: '@kitz/core@1.0.1', message: 'release' })
+    expect(deletedRemoteTags).toContainEqual({ tag: '@kitz/core@1.0.1', remote: 'upstream' })
+    expect(remoteUrl).toBe('git@github.com:kitz/test.git')
+  })
 })
 
 // ============================================================================
@@ -388,66 +538,192 @@ describe('Memory utilities', () => {
 // Live Layer (integration tests against real git)
 // ============================================================================
 
-describe('GitLive', () => {
-  test('getTags returns array', async () => {
-    const result = await Effect.runPromise(
-      Effect.gen(function* () {
-        const git = yield* Git.Git
-        return yield* git.getTags()
-      }).pipe(Effect.provide(Git.GitLive)),
-    )
+describe.sequential('GitLive', () => {
+  test('GitLive uses the current working directory when it is a repo', async () => {
+    const repo = makeTempGitRepo()
+    const originalCwd = process.cwd()
 
-    expect(Array.isArray(result)).toBe(true)
+    try {
+      process.chdir(repo.root)
+
+      const result = await Effect.runPromise(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          return yield* git.getCurrentBranch()
+        }).pipe(Effect.provide(Git.GitLive)),
+      )
+
+      expect(result).toBe('main')
+    } finally {
+      process.chdir(originalCwd)
+      repo.cleanup()
+    }
   })
 
-  test('getCurrentBranch returns string', async () => {
-    const result = await Effect.runPromise(
-      Effect.gen(function* () {
-        const git = yield* Git.Git
-        return yield* git.getCurrentBranch()
-      }).pipe(Effect.provide(Git.GitLive)),
-    )
+  test('getTags returns repo tags', async () => {
+    const repo = makeTempGitRepo()
 
-    expect(typeof result).toBe('string')
-    expect(result.length).toBeGreaterThan(0)
+    try {
+      const result = await Effect.runPromise(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          return yield* git.getTags()
+        }).pipe(Effect.provide(Git.makeGitLive(repo.root))),
+      )
+
+      expect(result).toContain('@kitz/core@1.0.0')
+    } finally {
+      repo.cleanup()
+    }
   })
 
-  test('isClean returns boolean', async () => {
-    const result = await Effect.runPromise(
-      Effect.gen(function* () {
-        const git = yield* Git.Git
-        return yield* git.isClean()
-      }).pipe(Effect.provide(Git.GitLive)),
-    )
+  test('getCurrentBranch returns the repo branch', async () => {
+    const repo = makeTempGitRepo()
 
-    expect(typeof result).toBe('boolean')
+    try {
+      const result = await Effect.runPromise(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          return yield* git.getCurrentBranch()
+        }).pipe(Effect.provide(Git.makeGitLive(repo.root))),
+      )
+
+      expect(result).toBe('main')
+    } finally {
+      repo.cleanup()
+    }
   })
 
-  test('getHeadSha returns valid SHA', async () => {
-    const result = await Effect.runPromise(
-      Effect.gen(function* () {
-        const git = yield* Git.Git
-        return yield* git.getHeadSha()
-      }).pipe(Effect.provide(Git.GitLive)),
-    )
+  test('isClean returns the repo status', async () => {
+    const repo = makeTempGitRepo()
 
-    expect(Git.Sha.is(result)).toBe(true)
+    try {
+      const result = await Effect.runPromise(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          return yield* git.isClean()
+        }).pipe(Effect.provide(Git.makeGitLive(repo.root))),
+      )
+
+      expect(result).toBe(true)
+    } finally {
+      repo.cleanup()
+    }
   })
 
-  test('getCommitsSince returns commits with expected shape', async () => {
-    const result = await Effect.runPromise(
-      Effect.gen(function* () {
-        const git = yield* Git.Git
-        return yield* git.getCommitsSince(undefined)
-      }).pipe(Effect.provide(Git.GitLive)),
-    )
+  test('getHeadSha returns a valid SHA for the repo head', async () => {
+    const repo = makeTempGitRepo()
 
-    expect(Array.isArray(result)).toBe(true)
-    expect(result.length).toBeGreaterThan(0)
-    expect(result[0]).toHaveProperty('hash')
-    expect(result[0]).toHaveProperty('message')
-    expect(result[0]).toHaveProperty('author')
-    expect(result[0]).toHaveProperty('date')
+    try {
+      const result = await Effect.runPromise(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          return yield* git.getHeadSha()
+        }).pipe(Effect.provide(Git.makeGitLive(repo.root))),
+      )
+
+      expect(Git.Sha.is(result)).toBe(true)
+    } finally {
+      repo.cleanup()
+    }
+  })
+
+  test('getCommitsSince returns the repo commit history', async () => {
+    const repo = makeTempGitRepo()
+
+    try {
+      const result = await Effect.runPromise(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          return yield* git.getCommitsSince(undefined)
+        }).pipe(Effect.provide(Git.makeGitLive(repo.root))),
+      )
+
+      expect(Array.isArray(result)).toBe(true)
+      expect(result.length).toBe(2)
+      expect(result[0]).toHaveProperty('hash')
+      expect(result[0]).toHaveProperty('message')
+      expect(result[0]).toHaveProperty('author')
+      expect(result[0]).toHaveProperty('date')
+    } finally {
+      repo.cleanup()
+    }
+  })
+
+  test('covers tag, ancestry, remote, and deletion operations against a real repo', async () => {
+    const repo = makeTempGitRepo()
+
+    try {
+      const result = await Effect.runPromise(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          const root = yield* git.getRoot()
+          const tagSha = yield* git.getTagSha('@kitz/core@1.0.0')
+          const headSha = yield* git.getHeadSha()
+          const ancestor = yield* git.isAncestor(tagSha, headSha)
+          const reverseAncestor = yield* git.isAncestor(Git.Sha.make('deadbee'), headSha)
+          const existingCommit = yield* git.commitExists(headSha)
+          const missingCommit = yield* git.commitExists(Git.Sha.make('deadbee'))
+          const remoteUrl = yield* git.getRemoteUrl('origin')
+
+          yield* git.createTag('v1.0.1', 'annotated release')
+          yield* git.createTag('scratch')
+          yield* git.createTagAt('v1.0.0-hotfix', repo.releaseSha, 'hotfix release')
+          yield* git.createTagAt('v1.0.0-lightweight', repo.releaseSha)
+          yield* git.pushTags('origin')
+          yield* git.pushTag('v1.0.0-lightweight', 'origin', true)
+          yield* git.deleteRemoteTag('v1.0.0-lightweight', 'origin')
+          yield* git.deleteTag('v1.0.1')
+
+          return {
+            root,
+            tagSha,
+            headSha,
+            ancestor,
+            reverseAncestor,
+            existingCommit,
+            missingCommit,
+            remoteUrl,
+          }
+        }).pipe(Effect.provide(Git.makeGitLive(repo.root))),
+      )
+
+      expect(realpathSync(result.root)).toBe(realpathSync(repo.root))
+      expect(result.tagSha.startsWith(repo.releaseSha)).toBe(true)
+      expect(Git.Sha.is(result.headSha)).toBe(true)
+      expect(result.ancestor).toBe(true)
+      expect(result.reverseAncestor).toBe(false)
+      expect(result.existingCommit).toBe(true)
+      expect(result.missingCommit).toBe(false)
+      expect(realpathSync(result.remoteUrl)).toBe(realpathSync(repo.remote))
+      expect(runGit(repo.root, ['tag'])).not.toContain('v1.0.1')
+      expect(runGit(repo.root, ['ls-remote', '--tags', 'origin'])).not.toContain(
+        'v1.0.0-lightweight',
+      )
+    } finally {
+      repo.cleanup()
+    }
+  })
+
+  test('wraps live git failures in GitError', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'kitz-git-invalid-'))
+
+    try {
+      const result = await Effect.runPromise(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          return yield* git.getRoot()
+        }).pipe(Effect.provide(Git.makeGitLive(root)), Effect.result),
+      )
+
+      expect(result._tag).toBe('Failure')
+      if (result._tag === 'Failure') {
+        expect(result.failure._tag).toBe('GitError')
+        expect(result.failure.context.operation).toBe('getRoot')
+      }
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })
 

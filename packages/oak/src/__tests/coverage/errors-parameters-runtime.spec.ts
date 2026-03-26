@@ -1,7 +1,10 @@
 import { Result } from 'effect'
 import { describe, expect, test } from 'vitest'
 import * as Errors from '../../Errors/Errors.js'
-import { parse as parseEnvironment, lookupEnvironmentVariableArgument } from '../../OpeningArgs/Environment/Environment.js'
+import {
+  parse as parseEnvironment,
+  lookupEnvironmentVariableArgument,
+} from '../../OpeningArgs/Environment/Environment.js'
 import { parameterBasicCreate } from '../../Parameter/basic.js'
 import {
   findByName,
@@ -32,19 +35,17 @@ const makeSchema = <Output>(params: {
     },
   },
   metadata: {
-    description: params.description,
+    ...(params.description === undefined ? {} : { description: params.description }),
     optionality: params.optionality ?? { _tag: 'required' },
     schema: params.schema,
-    helpHints: params.helpHints,
-  },
+    ...(params.helpHints === undefined ? {} : { helpHints: params.helpHints }),
+  } as any,
 })
 
 const booleanSchema = makeSchema<boolean>({
   schema: { _tag: 'boolean' },
   validate: (value) =>
-    typeof value === 'boolean'
-      ? { value }
-      : { issues: [{ message: 'Expected boolean value' }] },
+    typeof value === 'boolean' ? { value } : { issues: [{ message: 'Expected boolean value' }] },
   helpHints: { displayType: 'boolean', priority: 3 },
 })
 
@@ -177,8 +178,8 @@ describe('oak coverage helpers: errors, parameters, and schema runtime', () => {
         context: {
           group,
           offenses: [
-            { spec: parameter, arg: { value: 'true' } },
-            { spec: group.parameters.quiet, arg: { value: 'false' } },
+            { spec: parameter, arg: { source: 'flag', value: 'true' as any } as any },
+            { spec: group.parameters.quiet, arg: { source: 'flag', value: 'false' as any } as any },
           ],
         },
       }).message,
@@ -276,7 +277,10 @@ describe('oak coverage helpers: errors, parameters, and schema runtime', () => {
     }
 
     const parametersWithHelp = createParameters(inputs, withHelp)
-    expect(parametersWithHelp.map((parameter) => parameter.name.canonical)).toEqual(['name', 'help'])
+    expect(parametersWithHelp.map((parameter) => parameter.name.canonical)).toEqual([
+      'name',
+      'help',
+    ])
 
     const help = parametersWithHelp[1]
     expect(help?.type.metadata.optionality._tag).toBe('default')
@@ -311,7 +315,7 @@ describe('oak coverage helpers: errors, parameters, and schema runtime', () => {
       [parameter],
     )
 
-    const report = parsed.reports.verbose
+    const report = parsed.reports['verbose']
     expect(parsed.globalErrors).toEqual([])
     expect(report?.source.name).toBe('CLI_PARAM_VERBOSE')
     expect(report?.value).toEqual({ _tag: 'boolean', value: true, negated: false })
@@ -367,7 +371,11 @@ describe('oak coverage helpers: errors, parameters, and schema runtime', () => {
       settings,
     )
     const parsed = parseEnvironment({ CLI_PARAM_NO_VERBOSE: 'true' }, [parameter])
-    expect(parsed.reports.verbose?.value).toEqual({ _tag: 'boolean', value: true, negated: true })
+    expect(parsed.reports['verbose']?.value).toEqual({
+      _tag: 'boolean',
+      value: true,
+      negated: true,
+    })
   })
 
   test('validates, deserializes, and renders oak schema runtime helpers', () => {
@@ -444,7 +452,12 @@ describe('oak coverage helpers: errors, parameters, and schema runtime', () => {
     expect(SchemaRuntime.getTag(stringSchema)).toBe('TypeString')
     expect(SchemaRuntime.getTag(objectUnionSchema)).toBe('TypeUnion')
     expect(SchemaRuntime.getTag(enumNumberSchema)).toBe('TypeScalar')
-    expect(SchemaRuntime.getTag({ ...stringSchema, metadata: { ...stringSchema.metadata, schema: { _tag: 'mystery' } as any } })).toBe('TypeScalar')
+    expect(
+      SchemaRuntime.getTag({
+        ...stringSchema,
+        metadata: { ...stringSchema.metadata, schema: { _tag: 'mystery' } as any },
+      }),
+    ).toBe('TypeScalar')
     expect(SchemaRuntime.help(objectUnionSchema)).toContain('Reads object-like values')
     expect(SchemaRuntime.help(objectUnionSchema)).toContain('object payload')
   })
