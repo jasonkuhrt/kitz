@@ -45,4 +45,4 @@ export const Precondition = Schema.Union([
   IsMonorepo,
   HasGitHubAccess,
   HasReleasePlan,
-])
+]).pipe(Schema.toTaggedUnion('_tag'))

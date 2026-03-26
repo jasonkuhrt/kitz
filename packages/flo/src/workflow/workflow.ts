@@ -317,6 +317,15 @@ export interface WorkflowInstance<Name extends string, Payload, Result, Error> {
   /** Deterministic execution identity for a payload. */
   readonly executionId: (payload: Payload) => Effect.Effect<string>
 
+  /** Poll the durable runtime for the current execution state of a payload. */
+  readonly poll: (
+    payload: Payload,
+  ) => Effect.Effect<
+    EffectWorkflow.Result<UnwrapHandles<Result>, Error> | undefined,
+    never,
+    WorkflowEngine.WorkflowEngine
+  >
+
   /** True when this payload already has persisted workflow state. */
   readonly exists: (
     payload: Payload,
@@ -562,10 +571,17 @@ export const make = <Name extends string, Payload, Result, Error>(
 
   const executionId = (payload: Payload) => workflow.executionId(payload as any)
 
-  const exists = (payload: Payload) =>
+  const poll = (payload: Payload) =>
     Effect.gen(function* () {
       const id = yield* executionId(payload)
-      return (yield* workflow.poll(id)) !== undefined
+      return (yield* workflow.poll(id)) as
+        | EffectWorkflow.Result<UnwrapHandles<Result>, Error>
+        | undefined
+    })
+
+  const exists = (payload: Payload) =>
+    Effect.gen(function* () {
+      return (yield* poll(payload)) !== undefined
     })
 
   const execute = (payload: Payload) =>
@@ -618,6 +634,7 @@ export const make = <Name extends string, Payload, Result, Error>(
   return {
     name: config.name,
     executionId,
+    poll,
     exists,
     toGraph,
     execute,

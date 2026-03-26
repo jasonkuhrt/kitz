@@ -1,11 +1,17 @@
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import os from 'node:os'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Test } from '@kitz/test'
-import { Effect, Layer, Option } from 'effect'
+import { Effect, Layer, Option, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
+import * as ReleaseConfig from './api/config.js'
 import { Analyzer, Planner } from './__.js'
 
 // ─── Test Helpers ───────────────────────────────────────────────────
@@ -62,6 +68,29 @@ const expectVersion = (actual: Semver.Semver | undefined, expected: string) => {
   expect(Semver.equivalence(actual!, Semver.fromString(expected))).toBe(true)
 }
 
+const JsonRecordFromStringSchema = Schema.fromJsonString(
+  Schema.Record(Schema.String, Schema.Unknown),
+)
+const decodeJsonRecordSync = Schema.decodeUnknownSync(JsonRecordFromStringSchema)
+
+const getOptionalStringField = (
+  record: Record<string, unknown>,
+  key: string,
+): string | undefined => {
+  const value = record[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+const getOptionalRecordField = (
+  record: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> | undefined => {
+  const value = record[key]
+  return typeof value === 'object' && value !== null
+    ? (value as Record<string, unknown>)
+    : undefined
+}
+
 /**
  * Pipeline helper: analyze → plan official.
  * Mirrors the two-step pipeline CLI commands use.
@@ -105,6 +134,132 @@ const analyzeAndPlanEphemeral = (
     return yield* Planner.ephemeral(analysis, { packages }, options)
   })
 
+describe('release package scripts', () => {
+  test('does not expose inert skipNpm configuration', () => {
+    expect('skipNpm' in ReleaseConfig.Config.fields).toBe(false)
+    expect('skipNpm' in ReleaseConfig.ResolvedConfig.fields).toBe(false)
+
+    const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
+    expect(readme).not.toContain('skipNpm')
+  })
+
+  test('pins the package test script to the local release src tree', () => {
+    const packageJson = decodeJsonRecordSync(
+      readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+    )
+
+    const scripts = getOptionalRecordField(packageJson, 'scripts')
+    const testScript = scripts ? getOptionalStringField(scripts, 'test') : undefined
+    expect(testScript).toBeDefined()
+
+    const projectDir = mkdtempSync(path.join(os.tmpdir(), 'kitz-release-test-scope-'))
+    const releaseDir = path.join(projectDir, 'packages', 'release')
+
+    try {
+      mkdirSync(path.join(releaseDir, 'src'), { recursive: true })
+      mkdirSync(
+        path.join(projectDir, '.claude', 'worktrees', 'mirror', 'packages', 'release', 'src'),
+        {
+          recursive: true,
+        },
+      )
+
+      writeFileSync(
+        path.join(projectDir, 'vitest.config.ts'),
+        [
+          `import { defineConfig } from 'vitest/config'`,
+          ``,
+          `export default defineConfig({`,
+          `  test: {`,
+          `    globals: false,`,
+          `    globalSetup: ['./vitest.global-setup.ts'],`,
+          `  },`,
+          `})`,
+          ``,
+        ].join('\n'),
+        'utf8',
+      )
+      writeFileSync(
+        path.join(projectDir, 'vitest.global-setup.ts'),
+        `export default async function setup() {}\n`,
+        'utf8',
+      )
+      writeFileSync(
+        path.join(releaseDir, 'package.json'),
+        JSON.stringify(
+          {
+            name: '@kitz/release-test-scope',
+            private: true,
+            type: 'module',
+            scripts: {
+              test: testScript,
+            },
+          },
+          null,
+          2,
+        ) + '\n',
+        'utf8',
+      )
+      writeFileSync(
+        path.join(releaseDir, 'src', 'real.test.ts'),
+        [
+          `import { expect, test } from 'vitest'`,
+          ``,
+          `test('real release test runs', () => {`,
+          `  expect(true).toBe(true)`,
+          `})`,
+          ``,
+        ].join('\n'),
+        'utf8',
+      )
+      writeFileSync(
+        path.join(
+          projectDir,
+          '.claude',
+          'worktrees',
+          'mirror',
+          'packages',
+          'release',
+          'src',
+          'mirrored.test.ts',
+        ),
+        [
+          `import { test } from 'vitest'`,
+          ``,
+          `test('mirrored worktree test should not run', () => {`,
+          `  throw new Error('mirrored worktree test should not run')`,
+          `})`,
+          ``,
+        ].join('\n'),
+        'utf8',
+      )
+
+      const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
+      symlinkSync(path.join(repoRoot, 'node_modules'), path.join(projectDir, 'node_modules'))
+      const result = spawnSync('/bin/sh', ['-c', `${testScript} --reporter=verbose`], {
+        cwd: releaseDir,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: `${path.join(repoRoot, 'node_modules', '.bin')}:${process.env['PATH'] ?? ''}`,
+        },
+      })
+
+      if (result.error) {
+        throw result.error
+      }
+
+      const output = `${result.stdout}\n${result.stderr}`
+      expect(result.status).toBe(0)
+      expect(output).toContain('real release test runs')
+      expect(output).not.toContain('mirrored worktree test should not run')
+      expect(output).not.toContain('.claude/worktrees')
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true })
+    }
+  })
+})
+
 // ─── Planner.official ────────────────────────────────────────────────
 
 describe('Planner.official', () => {
@@ -139,6 +294,28 @@ describe('Planner.official', () => {
 
     expect(result.releases).toHaveLength(0)
     expect(result.cascades).toHaveLength(0)
+  })
+
+  test('keeps unreleased package commits even when another package was released more recently', async () => {
+    const layer = makeTestLayer({
+      tags: ['@kitz/core@9.0.0', '@kitz/cli@1.0.0'],
+      commits: [
+        Git.Memory.commit('feat(cli): 1.0.0 release'),
+        Git.Memory.commit('fix(core): patch after the core release'),
+        Git.Memory.commit('feat(core): feature after the core release'),
+        Git.Memory.commit('feat(core): 9.0.0 release'),
+      ],
+    })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
+
+    expect(result.releases).toHaveLength(1)
+    expect(result.releases[0]!.package.name.moniker).toBe('@kitz/core')
+    expect(result.releases[0]!.bumpType).toBe('minor')
+    expectVersion(result.releases[0]!.nextVersion, '9.1.0')
+    expect(result.releases[0]!.commits).toHaveLength(2)
   })
 
   Test.describe('bump detection')
@@ -287,7 +464,7 @@ describe('Planner.ephemeral', () => {
     )
 
     expect(result.releases).toHaveLength(1)
-    expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.42.1.abc1234')
+    expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.42.1.gabc1234')
   })
 
   test('increments ephemeral iteration', async () => {
@@ -302,7 +479,7 @@ describe('Planner.ephemeral', () => {
     )
 
     expect(result.releases).toHaveLength(1)
-    expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.42.2.abc1234')
+    expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.42.2.gabc1234')
   })
 
   test('detects PR number from environment', async () => {
@@ -326,7 +503,7 @@ describe('Planner.ephemeral', () => {
     )
 
     expect(result.releases).toHaveLength(1)
-    expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.123.1.def7890')
+    expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.123.1.gdef7890')
   })
 })
 
@@ -588,6 +765,55 @@ describe('Analyzer', () => {
     )
 
     expect(analysis.impacts).toHaveLength(0)
+  })
+
+  test('fails when until tag lookup cannot be resolved after tag discovery', async () => {
+    const untilTag = 'release-boundary'
+    const layer = makeTestLayer({
+      tags: [untilTag],
+      commits: [Git.Memory.commit('feat(core): newer change')],
+    })
+
+    const result = await Effect.runPromise(
+      Effect.provide(
+        Effect.gen(function* () {
+          const baseGit = yield* Git.Git
+          const tags = yield* baseGit.getTags()
+
+          return yield* Analyzer.analyze({
+            packages: mockPackages,
+            tags,
+            until: untilTag,
+          }).pipe(
+            Effect.provideService(Git.Git, {
+              ...baseGit,
+              getCommitsSince: (tag) =>
+                tag === untilTag
+                  ? Effect.fail(
+                      new Git.GitError({
+                        context: {
+                          operation: 'getCommitsSince',
+                          detail: `forced until lookup failure for ${tag}`,
+                        },
+                        cause: new Error(`forced until lookup failure for ${tag}`),
+                      }),
+                    )
+                  : baseGit.getCommitsSince(tag),
+            }),
+          )
+        }),
+        layer,
+      ).pipe(Effect.result),
+    )
+
+    expect(result._tag).toBe('Failure')
+    if (result._tag === 'Failure') {
+      expect(result.failure._tag).toBe('GitError')
+      if (result.failure._tag === 'GitError') {
+        expect(result.failure.context.operation).toBe('getCommitsSince')
+        expect(result.failure.context.detail).toContain('forced until lookup failure')
+      }
+    }
   })
 })
 

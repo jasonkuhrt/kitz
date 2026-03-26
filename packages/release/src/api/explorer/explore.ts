@@ -1,10 +1,23 @@
 import { Env } from '@kitz/env'
+import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
+import { NpmRegistry } from '@kitz/npm-registry'
 import { Effect } from 'effect'
 import type { RuntimeConfig } from '../executor/runtime.js'
 import { ExplorerError } from './errors.js'
 import type { CiContext, GitIdentity, Recon } from './models/__.js'
+
+export interface ResolvedGitHubContext {
+  readonly branch: string
+  readonly explicitPrNumber: number | null
+  readonly target: GitIdentity
+  readonly token: string | null
+}
+
+export interface ResolvedPullRequestContext extends ResolvedGitHubContext {
+  readonly pullRequest: Github.PullRequest | null
+}
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -90,13 +103,14 @@ export const resolveReleaseTarget = (
 
     const git = yield* Git.Git
     const remoteUrl = yield* git.getRemoteUrl('origin').pipe(
-      Effect.mapError(
-        (error) =>
+      Effect.catchTag('GitError', (error) =>
+        Effect.fail(
           new ExplorerError({
             context: {
               detail: `Could not read git remote "origin". Set GITHUB_REPOSITORY="<owner>/<repo>" or configure origin to github.com. (${error.message})`,
             },
           }),
+        ),
       ),
     )
 
@@ -125,29 +139,42 @@ const resolveGithubToken = (vars: Record<string, string | undefined>): string | 
   return token
 }
 
-interface PullRequestListingParams {
-  readonly owner: string
-  readonly repo: string
-  readonly token?: string
-}
+const resolveExplicitNpmRegistry = (vars: Record<string, string | undefined>): string | null =>
+  vars['NPM_CONFIG_REGISTRY'] ?? vars['npm_config_registry'] ?? null
 
-export interface PullRequestResolverDependencies {
-  readonly listOpenPullRequests?: (
-    params: PullRequestListingParams,
-  ) => Effect.Effect<
-    readonly Github.PullRequest[],
-    | Github.GithubError
-    | Github.GithubNotFoundError
-    | Github.GithubAuthError
-    | Github.GithubRateLimitError
-  >
-}
-
-const listOpenPullRequestsLive = ({ owner, repo, token }: PullRequestListingParams) =>
+const resolveNpmCredentials = (
+  vars: Record<string, string | undefined>,
+): Effect.Effect<Recon['npm'], never, NpmRegistry.NpmCli> =>
   Effect.gen(function* () {
-    const github = yield* Github.Github
-    return yield* github.listOpenPullRequests()
-  }).pipe(Effect.provide(Github.LiveFetch({ owner, repo, ...(token ? { token } : {}) })))
+    const cli = yield* NpmRegistry.NpmCli
+    const registry = resolveExplicitNpmRegistry(vars)
+    const whoamiResult = yield* cli.whoami(registry ? { registry } : undefined).pipe(Effect.result)
+
+    if (whoamiResult._tag === 'Success') {
+      return {
+        authenticated: true,
+        username: whoamiResult.success,
+        registry,
+      }
+    }
+
+    return {
+      authenticated: false,
+      username: null,
+      registry,
+    }
+  })
+
+const resolveGitRemotes = (): Effect.Effect<
+  Recon['git']['remotes'],
+  Git.GitError | Git.GitParseError,
+  Git.Git
+> =>
+  Effect.gen(function* () {
+    const git = yield* Git.Git
+    const origin = yield* git.getRemoteUrl('origin')
+    return { origin }
+  })
 
 export const selectConnectedPullRequestNumber = (
   branch: string,
@@ -200,9 +227,76 @@ export const selectPullRequestByNumber = (
     )
   })
 
-export const resolvePullRequest = (
-  dependencies: PullRequestResolverDependencies = {},
+const liveGithubLayerForContext = (context: ResolvedGitHubContext) =>
+  Github.LiveFetch({
+    owner: context.target.owner,
+    repo: context.target.repo,
+    ...(context.token ? { token: context.token } : {}),
+  })
+
+export const resolveGitHubContext = (): Effect.Effect<
+  ResolvedGitHubContext,
+  ExplorerError | Git.GitError | Git.GitParseError,
+  Env.Env | Git.Git
+> =>
+  Effect.gen(function* () {
+    const env = yield* Env.Env
+    const git = yield* Git.Git
+
+    return {
+      branch: yield* git.getCurrentBranch(),
+      explicitPrNumber: detectPrNumber(env.vars),
+      target: yield* resolveReleaseTarget(env.vars),
+      token: resolveGithubToken(env.vars),
+    } satisfies ResolvedGitHubContext
+  })
+
+export const resolvePullRequestFromContext = (
+  context: ResolvedGitHubContext,
 ): Effect.Effect<
+  Github.PullRequest | null,
+  | ExplorerError
+  | Github.GithubError
+  | Github.GithubNotFoundError
+  | Github.GithubAuthError
+  | Github.GithubRateLimitError,
+  Github.Github
+> =>
+  Effect.gen(function* () {
+    const github = yield* Github.Github
+    const pullRequests = yield* github.listOpenPullRequests()
+
+    if (context.explicitPrNumber !== null) {
+      return yield* selectPullRequestByNumber(context.explicitPrNumber, pullRequests)
+    }
+
+    return yield* selectConnectedPullRequest(context.branch, pullRequests)
+  })
+
+export const resolvePullRequestContext = (): Effect.Effect<
+  ResolvedPullRequestContext,
+  | ExplorerError
+  | Git.GitError
+  | Git.GitParseError
+  | Github.GithubError
+  | Github.GithubNotFoundError
+  | Github.GithubAuthError
+  | Github.GithubRateLimitError,
+  Env.Env | Git.Git
+> =>
+  Effect.gen(function* () {
+    const context = yield* resolveGitHubContext()
+    const pullRequest = yield* resolvePullRequestFromContext(context).pipe(
+      Effect.provide(liveGithubLayerForContext(context)),
+    )
+
+    return {
+      ...context,
+      pullRequest,
+    } satisfies ResolvedPullRequestContext
+  })
+
+export const resolvePullRequest = (): Effect.Effect<
   Github.PullRequest | null,
   | ExplorerError
   | Git.GitError
@@ -214,29 +308,13 @@ export const resolvePullRequest = (
   Env.Env | Git.Git
 > =>
   Effect.gen(function* () {
-    const env = yield* Env.Env
-    const git = yield* Git.Git
-    const prNumber = detectPrNumber(env.vars)
-    const branch = yield* git.getCurrentBranch()
-    const target = yield* resolveReleaseTarget(env.vars)
-
-    const token = resolveGithubToken(env.vars) ?? undefined
-    const pullRequests = yield* (dependencies.listOpenPullRequests ?? listOpenPullRequestsLive)({
-      owner: target.owner,
-      repo: target.repo,
-      ...(token ? { token } : {}),
-    })
-
-    if (prNumber !== null) {
-      return yield* selectPullRequestByNumber(prNumber, pullRequests)
-    }
-
-    return yield* selectConnectedPullRequest(branch, pullRequests)
+    const context = yield* resolveGitHubContext()
+    return yield* resolvePullRequestFromContext(context).pipe(
+      Effect.provide(liveGithubLayerForContext(context)),
+    )
   })
 
-export const resolvePrNumber = (
-  dependencies: PullRequestResolverDependencies = {},
-): Effect.Effect<
+export const resolvePrNumber = (): Effect.Effect<
   number | null,
   | ExplorerError
   | Git.GitError
@@ -248,25 +326,20 @@ export const resolvePrNumber = (
   Env.Env | Git.Git
 > =>
   Effect.gen(function* () {
-    const env = yield* Env.Env
-    const detected = detectPrNumber(env.vars)
-    if (detected !== null) return detected
-    const pullRequest = yield* resolvePullRequest(dependencies)
+    const context = yield* resolveGitHubContext()
+    if (context.explicitPrNumber !== null) return context.explicitPrNumber
+    const pullRequest = yield* resolvePullRequestFromContext(context).pipe(
+      Effect.provide(liveGithubLayerForContext(context)),
+    )
     return pullRequest?.number ?? null
   })
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-/**
- * Gather environmental reconnaissance — all facts about the release
- * environment needed before analysis or execution begins.
- */
-export const explore = (): Effect.Effect<
+export const exploreFromContext = (
+  context: ResolvedGitHubContext,
+): Effect.Effect<
   Recon,
   ExplorerError | Git.GitError | Git.GitParseError,
-  Env.Env | Git.Git
+  Env.Env | Git.Git | NpmRegistry.NpmCli
 > =>
   Effect.gen(function* () {
     const env = yield* Env.Env
@@ -274,13 +347,13 @@ export const explore = (): Effect.Effect<
     const vars = env.vars
 
     const ci = detectExecutionContext(vars)
-    const target = yield* resolveReleaseTarget(vars)
-    const githubToken = resolveGithubToken(vars)
 
     // Gather real git state
-    const branch = yield* git.getCurrentBranch()
+    const root = Fs.Path.AbsDir.fromString(yield* git.getRoot())
     const headSha = yield* git.getHeadSha()
     const isClean = yield* git.isClean()
+    const npm = yield* resolveNpmCredentials(vars)
+    const remotes = yield* resolveGitRemotes()
 
     // Detect shallow clone (CI environments commonly use --depth=1)
     const isShallow =
@@ -297,23 +370,38 @@ export const explore = (): Effect.Effect<
     return {
       ci,
       github: {
-        target,
-        credentials: githubToken
-          ? { token: githubToken, source: 'env:GITHUB_TOKEN' as const }
+        target: context.target,
+        credentials: context.token
+          ? { token: context.token, source: 'env:GITHUB_TOKEN' as const }
           : null,
       },
-      npm: {
-        authenticated: false,
-        username: null,
-        registry: 'https://registry.npmjs.org',
-      },
+      npm,
       git: {
+        root,
         clean: isClean,
-        branch,
+        branch: context.branch,
         headSha,
-        remotes: {},
+        remotes,
       },
     } satisfies Recon
+  })
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Gather environmental reconnaissance — all facts about the release
+ * environment needed before analysis or execution begins.
+ */
+export const explore = (): Effect.Effect<
+  Recon,
+  ExplorerError | Git.GitError | Git.GitParseError,
+  Env.Env | Git.Git | NpmRegistry.NpmCli
+> =>
+  Effect.gen(function* () {
+    const context = yield* resolveGitHubContext()
+    return yield* exploreFromContext(context)
   })
 
 /**

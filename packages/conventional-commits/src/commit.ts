@@ -9,12 +9,17 @@ export { Single } from './commit-single.js'
 /**
  * A conventional commit—either single (standard CC) or multi (extended for monorepos).
  */
-export const Commit = Schema.Union([Single, Multi])
+export const Commit = Schema.Union([Single, Multi]).pipe(Schema.toTaggedUnion('_tag'))
 
 /**
  * Type alias for the Commit union.
  */
 export type Commit = typeof Commit.Type
+
+export namespace Commit {
+  export type Single = import('./commit-single.js').Single
+  export type Multi = import('./commit-multi.js').Multi
+}
 
 /**
  * Normalized view of one type/scope/breaking facet in a commit.
@@ -29,7 +34,7 @@ export interface Facet {
  * Expand a commit into normalized type/scope/breaking facets.
  */
 export const facets = (commit: Commit): readonly Facet[] => {
-  if (Single.is(commit)) {
+  if (Commit.guards.Single(commit)) {
     if (commit.scopes.length === 0) {
       return [{ type: commit.type, scope: null, breaking: commit.breaking }]
     }
@@ -74,7 +79,7 @@ export const types = (commit: Commit): readonly Type[] => {
  * Render a canonical conventional-commit header from a parsed commit.
  */
 export const renderHeader = (commit: Commit): string => {
-  if (Single.is(commit)) {
+  if (Commit.guards.Single(commit)) {
     const scopesPart = commit.scopes.length > 0 ? `(${commit.scopes.join(', ')})` : ''
     const breakingPart = commit.breaking ? '!' : ''
     return `${commit.type.value}${scopesPart}${breakingPart}`

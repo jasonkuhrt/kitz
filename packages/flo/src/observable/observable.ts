@@ -32,7 +32,21 @@ export type LifecycleEvent = ActivityTypes.Event | WorkflowTypes.Event
 /**
  * Schema for all lifecycle events.
  */
-export const LifecycleEvent = Schema.Union([ActivityTypes.Event, WorkflowTypes.Event])
+export const LifecycleEvent = Schema.Union([
+  ActivityTypes.Started,
+  ActivityTypes.Completed,
+  ActivityTypes.Failed,
+  WorkflowTypes.Completed,
+  WorkflowTypes.Failed,
+]).pipe(Schema.toTaggedUnion('_tag'))
+
+export namespace LifecycleEvent {
+  export type ActivityStarted = import('../models/activity.js').Started
+  export type ActivityCompleted = import('../models/activity.js').Completed
+  export type ActivityFailed = import('../models/activity.js').Failed
+  export type WorkflowCompleted = import('../models/workflow.js').Completed
+  export type WorkflowFailed = import('../models/workflow.js').Failed
+}
 
 // ─── Event PubSub Service ────────────────────────────────────────────────────
 
@@ -150,9 +164,7 @@ export const ObservableActivity = {
       }
 
       // Run the actual activity with timing
-      const [duration, result] = yield* activity.pipe(
-        Effect.timed,
-      )
+      const [duration, result] = yield* activity.pipe(Effect.timed)
 
       // Emit completed
       yield* PubSub.publish(

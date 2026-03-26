@@ -66,6 +66,13 @@ export class Example extends S.Class<Example>('Example')({
   /** Programming language for syntax highlighting */
   language: S.String,
 }) {
+  static is = Schema.is(Example)
+  static decode = Schema.decode(Example)
+  static decodeSync = Schema.decodeSync(Example)
+  static encode = Schema.encode(Example)
+  static encodeSync = Schema.encodeSync(Example)
+  static equivalence = Schema.equivalence(Example)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -81,6 +88,13 @@ export class ImportExample extends S.Class<ImportExample>('ImportExample')({
   /** Import code snippet */
   content: S.String,
 }) {
+  static is = Schema.is(ImportExample)
+  static decode = Schema.decode(ImportExample)
+  static decodeSync = Schema.decodeSync(ImportExample)
+  static encode = Schema.encode(ImportExample)
+  static encodeSync = Schema.encodeSync(ImportExample)
+  static equivalence = Schema.equivalence(ImportExample)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -93,6 +107,13 @@ export class SourceLocation extends S.Class<SourceLocation>('SourceLocation')({
   /** Line number where the export is defined */
   line: S.Number,
 }) {
+  static is = Schema.is(SourceLocation)
+  static decode = Schema.decode(SourceLocation)
+  static decodeSync = Schema.decodeSync(SourceLocation)
+  static encode = Schema.encode(SourceLocation)
+  static encodeSync = Schema.encodeSync(SourceLocation)
+  static equivalence = Schema.equivalence(SourceLocation)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -108,6 +129,13 @@ export class JSDocProvenance extends S.TaggedClass<JSDocProvenance>()('jsdoc', {
   /** Whether description came from shadow namespace pattern */
   shadowNamespace: S.Boolean,
 }) {
+  static is = Schema.is(JSDocProvenance)
+  static decode = Schema.decode(JSDocProvenance)
+  static decodeSync = Schema.decodeSync(JSDocProvenance)
+  static encode = Schema.encode(JSDocProvenance)
+  static encodeSync = Schema.encodeSync(JSDocProvenance)
+  static equivalence = Schema.equivalence(JSDocProvenance)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -119,14 +147,28 @@ export class MdFileProvenance extends S.TaggedClass<MdFileProvenance>()('md-file
   /** Relative path to the source markdown file */
   filePath: Fs.Path.RelFile.Schema,
 }) {
+  static is = Schema.is(MdFileProvenance)
+  static decode = Schema.decode(MdFileProvenance)
+  static decodeSync = Schema.decodeSync(MdFileProvenance)
+  static encode = Schema.encode(MdFileProvenance)
+  static encodeSync = Schema.encodeSync(MdFileProvenance)
+  static equivalence = Schema.equivalence(MdFileProvenance)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
 /**
  * Union of all possible documentation provenance types.
+ *
+ * Tagged union with `.guards`, `.match`, `.cases`, and `.isAnyOf` utilities.
  */
-export const Provenance = S.Union([JSDocProvenance, MdFileProvenance])
+export const Provenance = S.Union([JSDocProvenance, MdFileProvenance]).pipe(S.toTaggedUnion('_tag'))
 export type Provenance = typeof Provenance.Type
+
+export namespace Provenance {
+  export type JSDoc = import('./schema.js').JSDocProvenance
+  export type MdFile = import('./schema.js').MdFileProvenance
+}
 
 /**
  * Documentation content for modules and exports.
@@ -138,6 +180,13 @@ export class Docs extends S.Class<Docs>('Docs')({
   /** Long-form guide/tutorial content (narrative style) - from .md files or @guide tag */
   guide: S.optional(S.String),
 }) {
+  static is = Schema.is(Docs)
+  static decode = Schema.decode(Docs)
+  static decodeSync = Schema.decodeSync(Docs)
+  static encode = Schema.encode(Docs)
+  static encodeSync = Schema.encodeSync(Docs)
+  static equivalence = Schema.equivalence(Docs)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -150,6 +199,13 @@ export class Feature extends S.Class<Feature>('Feature')({
   /** Feature description (markdown content) */
   body: S.String,
 }) {
+  static is = Schema.is(Feature)
+  static decode = Schema.decode(Feature)
+  static decodeSync = Schema.decodeSync(Feature)
+  static encode = Schema.encode(Feature)
+  static encodeSync = Schema.encodeSync(Feature)
+  static equivalence = Schema.equivalence(Feature)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -186,6 +242,13 @@ export class Home extends S.Class<Home>('Home')({
   /** Body sections with exports insertion points (optional) */
   body: S.optional(S.Array(BodySection)),
 }) {
+  static is = Schema.is(Home)
+  static decode = Schema.decode(Home)
+  static decodeSync = Schema.decodeSync(Home)
+  static encode = Schema.encode(Home)
+  static encodeSync = Schema.encodeSync(Home)
+  static equivalence = Schema.equivalence(Home)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -200,6 +263,13 @@ export class ModuleDocs extends S.Class<ModuleDocs>('ModuleDocs')({
   /** Landing page content (triggers hero layout) */
   home: S.optional(Home),
 }) {
+  static is = Schema.is(ModuleDocs)
+  static decode = Schema.decode(ModuleDocs)
+  static decodeSync = Schema.decodeSync(ModuleDocs)
+  static encode = Schema.encode(ModuleDocs)
+  static encodeSync = Schema.encodeSync(ModuleDocs)
+  static equivalence = Schema.equivalence(ModuleDocs)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -214,6 +284,13 @@ export class DocsProvenance extends S.Class<DocsProvenance>('DocsProvenance')({
   /** Provenance for the guide field */
   guide: S.optional(Provenance),
 }) {
+  static is = Schema.is(DocsProvenance)
+  static decode = Schema.decode(DocsProvenance)
+  static decodeSync = Schema.decodeSync(DocsProvenance)
+  static encode = Schema.encode(DocsProvenance)
+  static encodeSync = Schema.encodeSync(DocsProvenance)
+  static equivalence = Schema.equivalence(DocsProvenance)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -239,6 +316,13 @@ export class TypeParameter extends S.Class<TypeParameter>('TypeParameter')({
   /** Optional default value (e.g., '= unknown') */
   default: S.optional(S.String),
 }) {
+  static is = Schema.is(TypeParameter)
+  static decode = Schema.decode(TypeParameter)
+  static decodeSync = Schema.decodeSync(TypeParameter)
+  static encode = Schema.encode(TypeParameter)
+  static encodeSync = Schema.encodeSync(TypeParameter)
+  static equivalence = Schema.equivalence(TypeParameter)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -270,6 +354,13 @@ export class Parameter extends S.Class<Parameter>('Parameter')({
   /** Parameter description from @param JSDoc tag */
   description: S.optional(S.String),
 }) {
+  static is = Schema.is(Parameter)
+  static decode = Schema.decode(Parameter)
+  static decodeSync = Schema.decodeSync(Parameter)
+  static encode = Schema.encode(Parameter)
+  static encodeSync = Schema.encodeSync(Parameter)
+  static equivalence = Schema.equivalence(Parameter)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -302,6 +393,13 @@ export class FunctionSignature extends S.Class<FunctionSignature>('FunctionSigna
   /** Error descriptions from @throws JSDoc tags */
   throws: S.Array(S.String),
 }) {
+  static is = Schema.is(FunctionSignature)
+  static decode = Schema.decode(FunctionSignature)
+  static decodeSync = Schema.decodeSync(FunctionSignature)
+  static encode = Schema.encode(FunctionSignature)
+  static encodeSync = Schema.encodeSync(FunctionSignature)
+  static equivalence = Schema.equivalence(FunctionSignature)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -331,6 +429,13 @@ export class FunctionSignatureModel extends S.TaggedClass<FunctionSignatureModel
     overloads: S.Array(FunctionSignature),
   },
 ) {
+  static is = Schema.is(FunctionSignatureModel)
+  static decode = Schema.decode(FunctionSignatureModel)
+  static decodeSync = Schema.decodeSync(FunctionSignatureModel)
+  static encode = Schema.encode(FunctionSignatureModel)
+  static encodeSync = Schema.encodeSync(FunctionSignatureModel)
+  static equivalence = Schema.equivalence(FunctionSignatureModel)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -377,6 +482,13 @@ export class BuilderMethod extends S.Class<BuilderMethod>('BuilderMethod')({
   /** For transform methods, the name of the returned builder type */
   transformsTo: S.optional(S.String),
 }) {
+  static is = Schema.is(BuilderMethod)
+  static decode = Schema.decode(BuilderMethod)
+  static decodeSync = Schema.decodeSync(BuilderMethod)
+  static encode = Schema.encode(BuilderMethod)
+  static encodeSync = Schema.encodeSync(BuilderMethod)
+  static equivalence = Schema.equivalence(BuilderMethod)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -443,6 +555,13 @@ export class BuilderSignatureModel extends S.TaggedClass<BuilderSignatureModel>(
     transformMethods: S.Array(BuilderMethod),
   },
 ) {
+  static is = Schema.is(BuilderSignatureModel)
+  static decode = Schema.decode(BuilderSignatureModel)
+  static decodeSync = Schema.decodeSync(BuilderSignatureModel)
+  static encode = Schema.encode(BuilderSignatureModel)
+  static encodeSync = Schema.encodeSync(BuilderSignatureModel)
+  static equivalence = Schema.equivalence(BuilderSignatureModel)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -458,6 +577,13 @@ export class TypeSignatureModel extends S.TaggedClass<TypeSignatureModel>()('Typ
   /** Full type text */
   text: S.String,
 }) {
+  static is = Schema.is(TypeSignatureModel)
+  static decode = Schema.decode(TypeSignatureModel)
+  static decodeSync = Schema.decodeSync(TypeSignatureModel)
+  static encode = Schema.encode(TypeSignatureModel)
+  static encodeSync = Schema.encodeSync(TypeSignatureModel)
+  static equivalence = Schema.equivalence(TypeSignatureModel)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -480,6 +606,13 @@ export class ValueSignatureModel extends S.TaggedClass<ValueSignatureModel>()(
     type: S.String,
   },
 ) {
+  static is = Schema.is(ValueSignatureModel)
+  static decode = Schema.decode(ValueSignatureModel)
+  static decodeSync = Schema.decodeSync(ValueSignatureModel)
+  static encode = Schema.encode(ValueSignatureModel)
+  static encodeSync = Schema.encodeSync(ValueSignatureModel)
+  static equivalence = Schema.equivalence(ValueSignatureModel)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -515,6 +648,13 @@ export class ClassProperty extends S.Class<ClassProperty>('ClassProperty')({
   /** Property description from JSDoc */
   description: S.optional(S.String),
 }) {
+  static is = Schema.is(ClassProperty)
+  static decode = Schema.decode(ClassProperty)
+  static decodeSync = Schema.decodeSync(ClassProperty)
+  static encode = Schema.encode(ClassProperty)
+  static encodeSync = Schema.encodeSync(ClassProperty)
+  static equivalence = Schema.equivalence(ClassProperty)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -542,6 +682,13 @@ export class ClassMethod extends S.Class<ClassMethod>('ClassMethod')({
   /** Whether method is static */
   static: S.Boolean,
 }) {
+  static is = Schema.is(ClassMethod)
+  static decode = Schema.decode(ClassMethod)
+  static decodeSync = Schema.decodeSync(ClassMethod)
+  static encode = Schema.encode(ClassMethod)
+  static encodeSync = Schema.encodeSync(ClassMethod)
+  static equivalence = Schema.equivalence(ClassMethod)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -584,6 +731,13 @@ export class ClassSignatureModel extends S.TaggedClass<ClassSignatureModel>()(
     methods: S.Array(ClassMethod),
   },
 ) {
+  static is = Schema.is(ClassSignatureModel)
+  static decode = Schema.decode(ClassSignatureModel)
+  static decodeSync = Schema.decodeSync(ClassSignatureModel)
+  static encode = Schema.encode(ClassSignatureModel)
+  static encodeSync = Schema.encodeSync(ClassSignatureModel)
+  static equivalence = Schema.equivalence(ClassSignatureModel)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -658,6 +812,13 @@ export class Module extends S.Class<Module>('Module')({
   /** All exports in this module */
   exports: S.Array(S.suspend((): S.Codec<Export, ExportEncoded> => Export as any)),
 }) {
+  static is = Schema.is(Module)
+  static decode = Schema.decode(Module)
+  static decodeSync = Schema.decodeSync(Module)
+  static encode = Schema.encode(Module)
+  static encodeSync = Schema.encodeSync(Module)
+  static equivalence = Schema.equivalence(Module)
+  static ordered = false as const
   static make = this.makeUnsafe
   /**
    * Get namespace exports (value exports with type='namespace' and nested module).
@@ -750,6 +911,12 @@ export class ValueExport extends S.TaggedClass<ValueExport>('ValueExport')('valu
   /** Nested module for namespace exports */
   module: S.optional(S.suspend((): S.Codec<Module, ModuleEncoded> => Module as any)),
 }) {
+  static decode = Schema.decode(ValueExport)
+  static decodeSync = Schema.decodeSync(ValueExport)
+  static encode = Schema.encode(ValueExport)
+  static encodeSync = Schema.encodeSync(ValueExport)
+  static equivalence = Schema.equivalence(ValueExport)
+  static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(ValueExport)
 
@@ -779,6 +946,12 @@ export class TypeExport extends S.TaggedClass<TypeExport>('TypeExport')('type', 
   ...BaseExportFields,
   type: TypeExportType,
 }) {
+  static decode = Schema.decode(TypeExport)
+  static decodeSync = Schema.decodeSync(TypeExport)
+  static encode = Schema.encode(TypeExport)
+  static encodeSync = Schema.encodeSync(TypeExport)
+  static equivalence = Schema.equivalence(TypeExport)
+  static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(TypeExport)
 
@@ -872,6 +1045,13 @@ export class DrillableNamespaceEntrypoint extends S.TaggedClass<DrillableNamespa
     module: Module,
   },
 ) {
+  static is = Schema.is(DrillableNamespaceEntrypoint)
+  static decode = Schema.decode(DrillableNamespaceEntrypoint)
+  static decodeSync = Schema.decodeSync(DrillableNamespaceEntrypoint)
+  static encode = Schema.encode(DrillableNamespaceEntrypoint)
+  static encodeSync = Schema.encodeSync(DrillableNamespaceEntrypoint)
+  static equivalence = Schema.equivalence(DrillableNamespaceEntrypoint)
+  static ordered = false as const
   static make = this.makeUnsafe
   /**
    * Generate import examples for this entrypoint.
@@ -936,6 +1116,13 @@ export class SimpleEntrypoint extends S.TaggedClass<SimpleEntrypoint>()('SimpleE
   /** The extracted module interface */
   module: Module,
 }) {
+  static is = Schema.is(SimpleEntrypoint)
+  static decode = Schema.decode(SimpleEntrypoint)
+  static decodeSync = Schema.decodeSync(SimpleEntrypoint)
+  static encode = Schema.encode(SimpleEntrypoint)
+  static encodeSync = Schema.encodeSync(SimpleEntrypoint)
+  static equivalence = Schema.equivalence(SimpleEntrypoint)
+  static ordered = false as const
   static make = this.makeUnsafe
   /**
    * Derive PascalCase module name from path.
@@ -1005,6 +1192,13 @@ export class PackageMetadata extends S.Class<PackageMetadata>('PackageMetadata')
   /** Version of the extractor tool */
   extractorVersion: S.String,
 }) {
+  static is = Schema.is(PackageMetadata)
+  static decode = Schema.decode(PackageMetadata)
+  static decodeSync = Schema.decodeSync(PackageMetadata)
+  static encode = Schema.encode(PackageMetadata)
+  static encodeSync = Schema.encodeSync(PackageMetadata)
+  static equivalence = Schema.equivalence(PackageMetadata)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -1021,6 +1215,13 @@ export class Package extends S.Class<Package>('Package')({
   /** Extraction metadata */
   metadata: PackageMetadata,
 }) {
+  static is = Schema.is(Package)
+  static decode = Schema.decode(Package)
+  static decodeSync = Schema.decodeSync(Package)
+  static encode = Schema.encode(Package)
+  static encodeSync = Schema.encodeSync(Package)
+  static equivalence = Schema.equivalence(Package)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 

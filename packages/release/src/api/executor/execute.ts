@@ -6,6 +6,7 @@
  */
 
 import { ChildProcessSpawner } from 'effect/unstable/process'
+import { Workflow as DurableWorkflow, WorkflowEngine } from 'effect/unstable/workflow'
 import { FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Flo } from '@kitz/flo'
@@ -13,10 +14,15 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
-import { Config, Effect, HashMap, Match, Option, Schema, Stream } from 'effect'
+import { Cause, Config, Effect, Exit, Match, Option, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
 import type { Publishing } from '../publishing.js'
-import { ExecutorPreflightError, type ExecutorError } from './errors.js'
+import {
+  ExecutorDependencyCycleError,
+  ExecutorPreflightError,
+  ExecutorResumeError,
+  type ExecutorError,
+} from './errors.js'
 import { type PreflightError, run as runPreflight } from './preflight.js'
 import { makeRuntime, type RuntimeConfig } from './runtime.js'
 import {
@@ -52,10 +58,26 @@ export interface ObservableResult<R = never> {
    */
   readonly execute: Effect.Effect<ExecutionResult, ObservableExecutionError, R>
   /** Graph information for visualization */
-  readonly graph: {
-    readonly layers: readonly (readonly string[])[]
-    readonly nodes: HashMap.HashMap<string, { dependencies: readonly string[] }>
-  }
+  readonly graph: ExecutionGraph
+}
+
+export interface ObservableResumeResult<R = never> extends ObservableResult<R> {
+  /** Persisted workflow status that was validated for resume */
+  readonly status: ExecutionStatusSuspended
+}
+
+export interface ExecutionGraphNode {
+  readonly dependencies: readonly string[]
+}
+
+export interface ExecutionGraph {
+  readonly layers: readonly (readonly string[])[]
+  readonly nodes: ReadonlyMap<string, ExecutionGraphNode>
+}
+
+export interface ExecutionGraphJson {
+  readonly layers: readonly (readonly string[])[]
+  readonly nodes: Readonly<Record<string, ExecutionGraphNode>>
 }
 
 export type ObservableExecutionRequirements =
@@ -67,10 +89,59 @@ export type ObservableExecutionRequirements =
 
 export type ObservableExecutionError = Config.ConfigError | ExecutorError
 
+interface ExecutionOptions {
+  readonly dryRun?: boolean
+  readonly tag?: string
+  readonly registry?: string
+  readonly publishing?: Publishing
+  readonly trunk?: string
+}
+
+interface ObservableExecutionOptions extends ExecutionOptions {
+  readonly dbPath?: string
+  readonly github?: RuntimeConfig['github']
+}
+
+interface ResolvedExecutionState {
+  readonly payload: ReleasePayloadType
+  readonly status: ExecutionStatus
+}
+
 export interface LifecycleEventLine {
   readonly level: 'info' | 'error'
   readonly message: string
 }
+
+interface ExecutionStatusBase {
+  readonly executionId: string
+  readonly lifecycle: Plan['lifecycle']
+  readonly plannedPackages: readonly string[]
+}
+
+export interface ExecutionStatusNotStarted extends ExecutionStatusBase {
+  readonly state: 'not-started'
+}
+
+export interface ExecutionStatusSuspended extends ExecutionStatusBase {
+  readonly state: 'suspended'
+  readonly detail: string | null
+}
+
+export interface ExecutionStatusSucceeded extends ExecutionStatusBase {
+  readonly state: 'succeeded'
+  readonly summary: ExecutionResult
+}
+
+export interface ExecutionStatusFailed extends ExecutionStatusBase {
+  readonly state: 'failed'
+  readonly detail: string
+}
+
+export type ExecutionStatus =
+  | ExecutionStatusNotStarted
+  | ExecutionStatusSuspended
+  | ExecutionStatusSucceeded
+  | ExecutionStatusFailed
 
 const WorkflowExecutionSchema = Schema.Struct({
   publishes: Schema.Array(Schema.String),
@@ -94,6 +165,130 @@ const normalizeWorkflowResult = (result: unknown): ExecutionResult =>
       }),
     ),
   )
+
+const summarizeWorkflowStatus = (params: {
+  readonly plan: Plan
+  readonly payload: ReleasePayloadType
+  readonly executionId: string
+  readonly result: DurableWorkflow.Result<unknown, ExecutorError> | undefined
+}): ExecutionStatus => {
+  const base = {
+    executionId: params.executionId,
+    lifecycle: params.plan.lifecycle,
+    plannedPackages: params.payload.releases.map((release) => release.packageName),
+  } satisfies ExecutionStatusBase
+
+  if (params.result === undefined) {
+    return {
+      ...base,
+      state: 'not-started',
+    }
+  }
+
+  if (params.result._tag === 'Suspended') {
+    return {
+      ...base,
+      state: 'suspended',
+      detail: params.result.cause ? Cause.pretty(params.result.cause).trim() : null,
+    }
+  }
+
+  if (Exit.isSuccess(params.result.exit)) {
+    return {
+      ...base,
+      state: 'succeeded',
+      summary: normalizeWorkflowResult(params.result.exit.value),
+    }
+  }
+
+  return {
+    ...base,
+    state: 'failed',
+    detail: Cause.pretty(params.result.exit.cause).trim(),
+  }
+}
+
+const createResumeError = (
+  status: Exclude<ExecutionStatus, ExecutionStatusSuspended>,
+): ExecutorResumeError =>
+  new ExecutorResumeError({
+    context: {
+      executionId: status.executionId,
+      state: status.state,
+      detail:
+        status.state === 'not-started'
+          ? 'No persisted workflow state exists for this plan yet. Run `release apply` first.'
+          : status.state === 'succeeded'
+            ? 'This release plan already completed successfully. Generate a new plan before releasing again.'
+            : 'This workflow ended in a terminal failure and cannot be resumed automatically.',
+    },
+  })
+
+const ensureResumableStatus = (
+  status: ExecutionStatus,
+): Effect.Effect<ExecutionStatusSuspended, ExecutorResumeError> =>
+  status.state === 'suspended' ? Effect.succeed(status) : Effect.fail(createResumeError(status))
+
+const resolveExecutionState = (
+  plan: Plan,
+  options: ExecutionOptions = {},
+): Effect.Effect<
+  ResolvedExecutionState,
+  ExecutorDependencyCycleError,
+  FileSystem.FileSystem | WorkflowEngine.WorkflowEngine
+> =>
+  Effect.gen(function* () {
+    const payload = yield* toPayload(plan, options)
+    const executionId = yield* ReleaseWorkflow.executionId(payload)
+    const result = yield* ReleaseWorkflow.poll(payload)
+
+    return {
+      payload,
+      status: summarizeWorkflowStatus({
+        plan,
+        payload,
+        executionId,
+        result,
+      }),
+    } satisfies ResolvedExecutionState
+  })
+
+export const formatExecutionStatus = (status: ExecutionStatus): string => {
+  const lines = [
+    `Release workflow status: ${status.state}`,
+    `Execution ID: ${status.executionId}`,
+    `Lifecycle: ${status.lifecycle}`,
+    `Packages: ${status.plannedPackages.join(', ') || '(none)'}`,
+  ]
+
+  if (status.state === 'not-started') {
+    lines.push('No persisted workflow state exists for this plan yet.')
+    return lines.join('\n')
+  }
+
+  if (status.state === 'suspended') {
+    if (status.detail) {
+      lines.push('')
+      lines.push('Suspended on:')
+      lines.push(status.detail)
+    }
+    lines.push('')
+    lines.push('Resume: fix the blocking issue, then run `release resume` with the same plan.')
+    return lines.join('\n')
+  }
+
+  if (status.state === 'failed') {
+    lines.push('')
+    lines.push('Failure:')
+    lines.push(status.detail)
+    return lines.join('\n')
+  }
+
+  lines.push(`Released packages: ${status.summary.releasedPackages.join(', ') || '(none)'}`)
+  lines.push(`Created tags: ${status.summary.createdTags.join(', ') || '(none)'}`)
+  lines.push(`GitHub releases: ${status.summary.createdGHReleases.join(', ') || '(none)'}`)
+  return lines.join('\n')
+}
 
 /**
  * Convert workflow lifecycle events to printable log lines.
@@ -119,11 +314,11 @@ export const formatLifecycleEvent = (event: Flo.LifecycleEvent): LifecycleEventL
 
 /**
  * Order releases so publish dependencies always appear before their dependents.
- * Cycles are broken deterministically by package name.
+ * Cycles are rejected with a clear error instead of dropping dependency edges.
  */
 const orderReleaseEntries = (
   entries: ReadonlyArray<ReleasePayloadType['releases'][number]>,
-): ReleasePayloadType['releases'] => {
+): Effect.Effect<ReleasePayloadType['releases'], ExecutorDependencyCycleError> => {
   const dependencies = Object.fromEntries(
     entries.map((entry) => [
       entry.packageName,
@@ -141,8 +336,46 @@ const orderReleaseEntries = (
       )
       .toSorted((a, b) => a.packageName.localeCompare(b.packageName))
 
-    const next =
-      ready[0] ?? remaining.toSorted((a, b) => a.packageName.localeCompare(b.packageName))[0]
+    if (ready.length === 0) {
+      const remainingPackages = remaining
+        .map((entry) => entry.packageName)
+        .toSorted((a, b) => a.localeCompare(b))
+      const canReach = (start: string, target: string, seen: readonly string[] = []): boolean => {
+        if (start === target) return true
+        if (seen.includes(start)) return false
+
+        return (dependencies[start] ?? [])
+          .filter((name) => remainingPackages.includes(name))
+          .some((name) => canReach(name, target, [...seen, start]))
+      }
+
+      const cyclePackages = remainingPackages.filter((packageName) =>
+        (dependencies[packageName] ?? [])
+          .filter((name) => remainingPackages.includes(name))
+          .some((name) => canReach(name, packageName)),
+      )
+      const reportedPackages = cyclePackages.length > 0 ? cyclePackages : remainingPackages
+      const edges = remaining
+        .filter((entry) => reportedPackages.includes(entry.packageName))
+        .toSorted((a, b) => a.packageName.localeCompare(b.packageName))
+        .flatMap((entry) =>
+          (dependencies[entry.packageName] ?? [])
+            .filter((name) => reportedPackages.includes(name))
+            .toSorted((a, b) => a.localeCompare(b))
+            .map((name) => `${entry.packageName} -> ${name}`),
+        )
+
+      return Effect.fail(
+        new ExecutorDependencyCycleError({
+          context: {
+            packages: reportedPackages,
+            edges,
+          },
+        }),
+      )
+    }
+
+    const next = ready[0]
     if (next === undefined) break
 
     ordered.push({
@@ -157,7 +390,7 @@ const orderReleaseEntries = (
     }
   }
 
-  return ordered
+  return Effect.succeed(ordered)
 }
 
 /**
@@ -173,7 +406,7 @@ export const toPayload = (
     publishing?: Publishing
     trunk?: string
   } = {},
-): Effect.Effect<ReleasePayloadType, never, FileSystem.FileSystem> =>
+): Effect.Effect<ReleasePayloadType, ExecutorDependencyCycleError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const planItems = [...plan.releases, ...plan.cascades]
     const localPackageNames = planItems.map((item) => item.package.name.moniker)
@@ -206,8 +439,10 @@ export const toPayload = (
       ),
     )
 
+    const orderedReleases = yield* orderReleaseEntries(releaseEntries)
+
     return {
-      releases: orderReleaseEntries(releaseEntries),
+      releases: orderedReleases,
       options: {
         dryRun: options.dryRun ?? false,
         ...(options.tag && { tag: options.tag }),
@@ -261,16 +496,7 @@ const runFreshPreflight = (payload: ReleasePayloadType) =>
  * - Each tag push runs after its tag is created
  * - Each GitHub release runs after its tag is pushed
  */
-export const execute = (
-  plan: Plan,
-  options: {
-    dryRun?: boolean
-    tag?: string
-    registry?: string
-    publishing?: Publishing
-    trunk?: string
-  } = {},
-) =>
+export const execute = (plan: Plan, options: ExecutionOptions = {}) =>
   Effect.gen(function* () {
     const payload = yield* toPayload(plan, options)
 
@@ -283,6 +509,67 @@ export const execute = (
     yield* Effect.log(`Workflow complete: ${summary.releasedPackages.length} packages released`)
     return summary
   })
+
+export const resume = (
+  plan: Plan,
+  options: ExecutionOptions = {},
+): Effect.Effect<
+  ExecutionResult,
+  ExecutorDependencyCycleError | ExecutorResumeError | ExecutorError,
+  ObservableExecutionRequirements | WorkflowEngine.WorkflowEngine
+> =>
+  Effect.gen(function* () {
+    const { payload, status: workflowStatus } = yield* resolveExecutionState(plan, options)
+    yield* ensureResumableStatus(workflowStatus)
+
+    yield* Effect.log(`Resuming release workflow for ${payload.releases.length} packages...`)
+
+    const result = yield* ReleaseWorkflow.execute(payload)
+    const summary = normalizeWorkflowResult(result)
+
+    yield* Effect.log(`Workflow complete: ${summary.releasedPackages.length} packages released`)
+    return summary
+  })
+
+export const status = (
+  plan: Plan,
+  options: ExecutionOptions = {},
+): Effect.Effect<
+  ExecutionStatus,
+  ExecutorDependencyCycleError,
+  FileSystem.FileSystem | WorkflowEngine.WorkflowEngine
+> =>
+  Effect.gen(function* () {
+    const executionState = yield* resolveExecutionState(plan, options)
+    return executionState.status
+  })
+
+const graphFromPayload = (payload: ReleasePayloadType): ExecutionGraph => {
+  const { layers, nodes } = ReleaseWorkflow.toGraph(payload)
+
+  return {
+    layers,
+    nodes: nodes as ReadonlyMap<string, ExecutionGraphNode>,
+  }
+}
+
+export const graph = (
+  plan: Plan,
+  options: ExecutionOptions = {},
+): Effect.Effect<ExecutionGraph, ExecutorDependencyCycleError, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const payload = yield* toPayload(plan, options)
+    return graphFromPayload(payload)
+  })
+
+export const toJsonGraph = (graph: ExecutionGraph): ExecutionGraphJson => ({
+  layers: graph.layers.map((layer) => [...layer]),
+  nodes: Object.fromEntries(
+    [...graph.nodes.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([name, node]) => [name, { dependencies: [...node.dependencies] }]),
+  ),
+})
 
 /**
  * Execute the release workflow with observable events and graph info.
@@ -300,30 +587,23 @@ export const execute = (
  */
 export const executeObservable = (
   plan: Plan,
-  options: {
-    dryRun?: boolean
-    tag?: string
-    registry?: string
-    publishing?: Publishing
-    trunk?: string
-    dbPath?: string
-    github?: RuntimeConfig['github']
-  } = {},
-): Effect.Effect<ObservableResult<ObservableExecutionRequirements>, never, FileSystem.FileSystem> =>
+  options: ObservableExecutionOptions = {},
+): Effect.Effect<
+  ObservableResult<ObservableExecutionRequirements>,
+  ObservableExecutionError,
+  FileSystem.FileSystem
+> =>
   Effect.gen(function* () {
     const payload = yield* toPayload(plan, options)
+    return yield* makeObservableResult(payload, options)
+  })
 
-    // Get graph structure for visualization
-    const { layers, nodes } = ReleaseWorkflow.toGraph(payload)
-    const typedNodes = nodes as ReadonlyMap<string, { dependencies: readonly string[] }>
-
-    // Build edges for renderer
-    const graphInfo = {
-      layers,
-      nodes: HashMap.fromIterable(typedNodes.entries()),
-    }
-
-    // Get observable execution
+const makeObservableResult = (
+  payload: ReleasePayloadType,
+  options: ObservableExecutionOptions = {},
+): Effect.Effect<ObservableResult<ObservableExecutionRequirements>, ObservableExecutionError> =>
+  Effect.gen(function* () {
+    const graphInfo = graphFromPayload(payload)
     const { events, execute: workflowExecute } = yield* ReleaseWorkflow.observable(payload)
 
     const runtimeConfig: RuntimeConfig = {
@@ -331,7 +611,6 @@ export const executeObservable = (
       ...(options.github && { github: options.github }),
     }
 
-    // Wrap execute to extract results and provide workflow runtime
     const wrappedExecute = Effect.gen(function* () {
       yield* runFreshPreflight(payload)
       const result = yield* workflowExecute
@@ -342,5 +621,24 @@ export const executeObservable = (
       events,
       execute: wrappedExecute,
       graph: graphInfo,
+    }
+  })
+
+export const resumeObservable = (
+  plan: Plan,
+  options: ObservableExecutionOptions = {},
+): Effect.Effect<
+  ObservableResumeResult<ObservableExecutionRequirements>,
+  ObservableExecutionError | ExecutorResumeError,
+  FileSystem.FileSystem | WorkflowEngine.WorkflowEngine
+> =>
+  Effect.gen(function* () {
+    const { payload, status: workflowStatus } = yield* resolveExecutionState(plan, options)
+    const resumableStatus = yield* ensureResumableStatus(workflowStatus)
+    const observable = yield* makeObservableResult(payload, options)
+
+    return {
+      ...observable,
+      status: resumableStatus,
     }
   })

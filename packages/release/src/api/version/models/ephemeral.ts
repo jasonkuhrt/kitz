@@ -10,11 +10,11 @@ import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
  * @example
  * ```ts
  * // Decode from string
- * const eph = S.decodeSync(EphemeralSchema)('pr.123.5.abc1234')
+ * const eph = S.decodeSync(EphemeralSchema)('pr.123.5.gabc1234')
  * // { _tag: 'Ephemeral', prNumber: 123, iteration: 5, sha: 'abc1234' }
  *
  * // Encode to string
- * S.encodeSync(EphemeralSchema)(eph) // 'pr.123.5.abc1234'
+ * S.encodeSync(EphemeralSchema)(eph) // 'pr.123.5.gabc1234'
  * ```
  */
 export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
@@ -25,15 +25,19 @@ export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
   static make = this.makeUnsafe
   static is = S.is(Ephemeral)
 
-  /** Compute ephemeral version: 0.0.0-pr.N.iter.sha */
+  /** Compute ephemeral version: 0.0.0-pr.N.iter.gSHA */
   static calculateVersion(prNumber: number, iteration: number, sha: Git.Sha.Sha): Semver.Semver {
-    return Semver.withPre(Semver.zero, ['pr', prNumber, iteration, sha])
+    // Prefix SHA with 'g' (git convention) to ensure it's always a valid
+    // alphanumeric semver prerelease identifier. An all-digit SHA like
+    // "09796047" is neither valid numeric (leading zeros) nor alphanumeric
+    // (no letters) per the semver spec.
+    return Semver.withPre(Semver.zero, ['pr', prNumber, iteration, `g${sha}`])
   }
 }
 
 const EphemeralEncoded = S.String
 
-const EphemeralPattern = /^pr\.(\d+)\.(\d+)\.([a-f0-9]{7,40})$/i
+const EphemeralPattern = /^pr\.(\d+)\.(\d+)\.g?([a-f0-9]{7,40})$/i
 
 /**
  * Schema that transforms between string format and structured Ephemeral.
@@ -54,7 +58,7 @@ export const EphemeralSchema = EphemeralEncoded.pipe(
       const sha = Git.Sha.make(match[3]!)
       return Effect.succeed(Ephemeral.make({ prNumber, iteration, sha }))
     }),
-    encode: SchemaGetter.transform((eph) => `pr.${eph.prNumber}.${eph.iteration}.${eph.sha}`),
+    encode: SchemaGetter.transform((eph) => `pr.${eph.prNumber}.${eph.iteration}.g${eph.sha}`),
   }),
 )
 

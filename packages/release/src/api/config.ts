@@ -4,6 +4,7 @@ import { Conf } from '@kitz/conf'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Effect, Schema } from 'effect'
+import type { PackageMap } from './analyzer/workspace.js'
 import * as LintConfig from './lint/models/config.js'
 import {
   defaultOperator,
@@ -13,6 +14,15 @@ import {
   resolve as resolveOperator,
 } from './operator.js'
 import { defaultPublishing, Publishing } from './publishing.js'
+
+const PackageConfigEntrySchema = Schema.Struct({
+  name: Schema.String,
+  path: Schema.optional(Schema.String),
+})
+const PackageMapSchema = Schema.Record(
+  Schema.String,
+  Schema.Union([Schema.String, PackageConfigEntrySchema]),
+)
 
 /**
  * Release configuration schema (input from file).
@@ -33,15 +43,10 @@ export class Config extends Schema.Class<Config>('Config')({
     Schema.optionalKey,
     Schema.withDecodingDefaultKey(() => 'next'),
   ),
-  /** Skip npm publish (dry run) */
-  skipNpm: Schema.Boolean.pipe(
+  /** Scope to package config mapping (auto-scanned if not provided) */
+  packages: PackageMapSchema.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => false),
-  ),
-  /** Scope to package name mapping (auto-scanned if not provided) */
-  packages: Schema.Record(Schema.String, Schema.String).pipe(
-    Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => ({}) as Record<string, string>),
+    Schema.withDecodingDefaultKey(() => ({}) as PackageMap),
   ),
   /** Declares how each lifecycle is published. */
   publishing: Publishing.pipe(
@@ -53,6 +58,13 @@ export class Config extends Schema.Class<Config>('Config')({
   /** Lint configuration */
   lint: Schema.optional(LintConfig.Config),
 }) {
+  static is = Schema.is(Config)
+  static decode = Schema.decodeUnknownEffect(Config)
+  static decodeSync = Schema.decodeUnknownSync(Config)
+  static encode = Schema.encodeUnknownEffect(Config)
+  static encodeSync = Schema.encodeUnknownSync(Config)
+  static equivalence = Schema.toEquivalence(Config)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -63,12 +75,18 @@ export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig
   trunk: Schema.String,
   npmTag: Schema.String,
   candidateTag: Schema.String,
-  skipNpm: Schema.Boolean,
-  packages: Schema.Record(Schema.String, Schema.String),
+  packages: PackageMapSchema,
   publishing: Publishing,
   operator: ResolvedOperator,
   lint: LintConfig.ResolvedConfig,
 }) {
+  static is = Schema.is(ResolvedConfig)
+  static decode = Schema.decodeUnknownEffect(ResolvedConfig)
+  static decodeSync = Schema.decodeUnknownSync(ResolvedConfig)
+  static encode = Schema.encodeUnknownEffect(ResolvedConfig)
+  static encodeSync = Schema.encodeUnknownSync(ResolvedConfig)
+  static equivalence = Schema.toEquivalence(ResolvedConfig)
+  static ordered = false as const
   static make = this.makeUnsafe
 }
 
@@ -92,7 +110,10 @@ const ConfigFile = Conf.File.define({
  *   trunk: 'main',
  *   packages: {
  *     core: '@kitz/core',
- *     kitz: 'kitz',
+ *     docs: {
+ *       name: '@kitz/docs',
+ *       path: './tooling/pkg-docs/',
+ *     },
  *   },
  *   publishing: {
  *     official: { mode: 'manual' },
@@ -150,7 +171,6 @@ export const load = (
       trunk: options?.trunk ?? fileConfig.trunk ?? 'main',
       npmTag: options?.npmTag ?? fileConfig.npmTag ?? 'latest',
       candidateTag: options?.candidateTag ?? fileConfig.candidateTag ?? 'next',
-      skipNpm: options?.skipNpm ?? fileConfig.skipNpm ?? false,
       packages: options?.packages ?? fileConfig.packages ?? {},
       publishing: options?.publishing ?? fileConfig.publishing ?? defaultPublishing(),
       operator,

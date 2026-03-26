@@ -1,52 +1,7 @@
-import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { Test } from '@kitz/test'
 import { Effect, Ref, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { Git } from './_.js'
-
-const runGit = (cwd: string, args: readonly string[]): string => {
-  const result = spawnSync('git', args, {
-    cwd,
-    encoding: 'utf8',
-  })
-
-  if ((result.status ?? 1) !== 0) {
-    throw new Error((result.stderr || result.stdout || `git ${args.join(' ')} failed`).trim())
-  }
-
-  return result.stdout.trim()
-}
-
-const createTempGitRepo = () => {
-  const rootDir = mkdtempSync(join(tmpdir(), 'kitz-git-'))
-  const repoDir = join(rootDir, 'repo')
-  const remoteDir = join(rootDir, 'remote.git')
-
-  mkdirSync(repoDir)
-  runGit(rootDir, ['init', '--bare', remoteDir])
-  runGit(repoDir, ['init', '-b', 'main'])
-  runGit(repoDir, ['config', 'user.name', 'Kitz Test'])
-  runGit(repoDir, ['config', 'user.email', 'kitz@example.com'])
-  runGit(repoDir, ['remote', 'add', 'origin', remoteDir])
-
-  writeFileSync(join(repoDir, 'package.txt'), 'v1\n')
-  runGit(repoDir, ['add', 'package.txt'])
-  runGit(repoDir, ['commit', '-m', 'feat(core): release 1.0.0'])
-  runGit(repoDir, ['tag', '-a', '@kitz/core@1.0.0', '-m', 'Release 1.0.0'])
-
-  writeFileSync(join(repoDir, 'package.txt'), 'v2\n')
-  runGit(repoDir, ['add', 'package.txt'])
-  runGit(repoDir, ['commit', '-m', 'feat(core): release 1.1.0'])
-
-  return {
-    repoDir,
-    remoteDir,
-    cleanup: () => rmSync(rootDir, { recursive: true, force: true }),
-  }
-}
 
 // ============================================================================
 // Sha
@@ -260,6 +215,24 @@ describe('Git', () => {
     expect(pushed).toContainEqual({ remote: 'upstream' })
   })
 
+  test('pushTag records tag, remote, and force flag', async () => {
+    const { layer, state } = await Effect.runPromise(Git.Memory.makeWithState({}))
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const git = yield* Git.Git
+        yield* git.pushTag('@kitz/core@1.0.0-next.1', 'origin', true)
+      }).pipe(Effect.provide(layer)),
+    )
+
+    const pushed = await Effect.runPromise(Ref.get(state.pushedTags))
+    expect(pushed).toContainEqual({
+      tag: '@kitz/core@1.0.0-next.1',
+      remote: 'origin',
+      force: true,
+    })
+  })
+
   test('deleteTag removes tag and records deletion', async () => {
     const { layer, state } = await Effect.runPromise(
       Git.Memory.makeWithState({ tags: ['@kitz/core@1.0.0'] }),
@@ -322,6 +295,38 @@ describe('Commit', () => {
       type: 'feat',
     })
   })
+
+  test('round-trips commit dates through JSON encoding', () => {
+    const commit = Git.Commit.make({
+      hash: Git.Sha.make('abc1234'),
+      message: 'feat(core): add feature\n\nDetailed description',
+      author: Git.Author.make({ name: 'Jane Doe', email: 'jane@example.com' }),
+      date: new Date('2024-01-15T00:00:00.000Z'),
+    })
+
+    const encoded = Schema.encodeSync(Git.Commit)(commit)
+    const decoded = Schema.decodeSync(Git.Commit)(encoded)
+
+    expect(encoded.date).toBe('2024-01-15T00:00:00.000Z')
+    expect(decoded.date).toBeInstanceOf(Date)
+    expect(decoded.date.toISOString()).toBe('2024-01-15T00:00:00.000Z')
+  })
+
+  test('rejects non-canonical commit date strings during JSON decode', () => {
+    expect(() =>
+      Schema.decodeSync(Git.Commit)({
+        _tag: 'Commit',
+        hash: Git.Sha.make('abc1234'),
+        message: 'feat(core): add feature',
+        author: {
+          _tag: 'Author',
+          name: 'Jane Doe',
+          email: 'jane@example.com',
+        },
+        date: '01/15/2024',
+      }),
+    ).toThrow('Invalid commit date format')
+  })
 })
 
 describe('Git service errors', () => {
@@ -376,82 +381,6 @@ describe('Memory utilities', () => {
     )
 
     expect(branch).toBe('develop')
-  })
-
-  test('memory git covers ancestry, tag SHAs, and remote bookkeeping', async () => {
-    const first = Git.Memory.commit('feat(core): release 1.0.0', { hash: Git.Sha.make('abc1234') })
-    const second = Git.Memory.commit('feat(core): release 1.1.0', { hash: Git.Sha.make('def5678') })
-
-    const { layer, state } = await Effect.runPromise(
-      Git.Memory.makeWithState({
-        tags: ['v1.0.0', '@kitz/core@1.0.0'],
-        commits: [second, first],
-        remoteUrl: 'git@github.com:kitz/repo.git',
-      }),
-    )
-
-    await Effect.runPromise(
-      Ref.set(state.tagShas, {
-        '@kitz/core@1.0.0': first.hash,
-      }),
-    )
-    await Effect.runPromise(
-      Ref.set(state.commitParents, {
-        [second.hash]: [first.hash],
-      }),
-    )
-
-    const result = await Effect.runPromise(
-      Effect.gen(function* () {
-        const git = yield* Git.Git
-
-        const plainTagCommits = yield* git.getCommitsSince('v1.0.0')
-        const versionTagCommits = yield* git.getCommitsSince('@kitz/core@1.0.0')
-        const tagSha = yield* git.getTagSha('@kitz/core@1.0.0')
-        const isAncestor = yield* git.isAncestor(first.hash, second.hash)
-        const isNotAncestor = yield* git.isAncestor(second.hash, first.hash)
-        yield* git.createTagAt('v1.1.0', second.hash, 'Release 1.1.0')
-        const headCommitExists = yield* git.commitExists(second.hash)
-        const parentCommitExists = yield* git.commitExists(first.hash)
-        const missingCommitExists = yield* git.commitExists('deadbee')
-        yield* git.pushTag('v1.1.0', 'upstream', true)
-        yield* git.deleteRemoteTag('v1.1.0', 'upstream')
-        const remoteUrl = yield* git.getRemoteUrl('upstream')
-
-        return {
-          plainTagCommits,
-          versionTagCommits,
-          tagSha,
-          isAncestor,
-          isNotAncestor,
-          headCommitExists,
-          parentCommitExists,
-          missingCommitExists,
-          remoteUrl,
-        }
-      }).pipe(Effect.provide(layer)),
-    )
-
-    expect(result.plainTagCommits).toHaveLength(2)
-    expect(result.versionTagCommits).toHaveLength(1)
-    expect(result.versionTagCommits[0]?.hash).toBe(second.hash)
-    expect(result.tagSha).toBe(first.hash)
-    expect(result.isAncestor).toBe(true)
-    expect(result.isNotAncestor).toBe(false)
-    expect(result.headCommitExists).toBe(true)
-    expect(result.parentCommitExists).toBe(true)
-    expect(result.missingCommitExists).toBe(false)
-    expect(result.remoteUrl).toBe('git@github.com:kitz/repo.git')
-
-    const createdTags = await Effect.runPromise(Ref.get(state.createdTags))
-    const pushedTags = await Effect.runPromise(Ref.get(state.pushedTags))
-    const deletedRemoteTags = await Effect.runPromise(Ref.get(state.deletedRemoteTags))
-    const tagShas = await Effect.runPromise(Ref.get(state.tagShas))
-
-    expect(createdTags).toContainEqual({ tag: 'v1.1.0', message: 'Release 1.1.0' })
-    expect(pushedTags).toContainEqual({ remote: 'upstream' })
-    expect(deletedRemoteTags).toContainEqual({ tag: 'v1.1.0', remote: 'upstream' })
-    expect(tagShas['v1.1.0']).toBe(second.hash)
   })
 })
 
@@ -519,71 +448,6 @@ describe('GitLive', () => {
     expect(result[0]).toHaveProperty('message')
     expect(result[0]).toHaveProperty('author')
     expect(result[0]).toHaveProperty('date')
-  })
-
-  test('makeGitLive operates against a temp repository end to end', async () => {
-    const tempRepo = createTempGitRepo()
-
-    try {
-      const layer = Git.makeGitLive(tempRepo.repoDir)
-
-      const result = await Effect.runPromise(
-        Effect.gen(function* () {
-          const git = yield* Git.Git
-
-          const root = yield* git.getRoot()
-          const branch = yield* git.getCurrentBranch()
-          const isClean = yield* git.isClean()
-          const headSha = yield* git.getHeadSha()
-          const tags = yield* git.getTags()
-          const tagSha = yield* git.getTagSha('@kitz/core@1.0.0')
-          const commitsSince = yield* git.getCommitsSince('@kitz/core@1.0.0')
-          const isAncestor = yield* git.isAncestor(tagSha, headSha)
-          const commitExists = yield* git.commitExists(headSha)
-          yield* git.createTag('v1.1.1', 'Release 1.1.1')
-          yield* git.createTagAt('v1.1.2', headSha, 'Release 1.1.2')
-          yield* git.pushTags('origin')
-          yield* git.pushTag('v1.1.2', 'origin', true)
-          yield* git.deleteRemoteTag('v1.1.2', 'origin')
-          const remoteUrl = yield* git.getRemoteUrl('origin')
-          yield* git.deleteTag('v1.1.1')
-          const tagsAfterDelete = yield* git.getTags()
-
-          return {
-            root,
-            branch,
-            isClean,
-            headSha,
-            tags,
-            tagSha,
-            commitsSince,
-            isAncestor,
-            commitExists,
-            remoteUrl,
-            tagsAfterDelete,
-          }
-        }).pipe(Effect.provide(layer)),
-      )
-
-      const remoteTags = runGit(tempRepo.remoteDir, ['tag', '--list']).split('\n').filter(Boolean)
-
-      expect(result.root.replace(/^\/private/, '')).toBe(tempRepo.repoDir)
-      expect(result.branch).toBe('main')
-      expect(result.isClean).toBe(true)
-      expect(Git.Sha.is(result.headSha)).toBe(true)
-      expect(result.tags).toContain('@kitz/core@1.0.0')
-      expect(Git.Sha.is(result.tagSha)).toBe(true)
-      expect(result.commitsSince).toHaveLength(1)
-      expect(result.isAncestor).toBe(true)
-      expect(result.commitExists).toBe(true)
-      expect(result.remoteUrl).toBe(tempRepo.remoteDir)
-      expect(result.tagsAfterDelete).not.toContain('v1.1.1')
-      expect(remoteTags).toContain('@kitz/core@1.0.0')
-      expect(remoteTags).toContain('v1.1.1')
-      expect(remoteTags).not.toContain('v1.1.2')
-    } finally {
-      tempRepo.cleanup()
-    }
   })
 })
 

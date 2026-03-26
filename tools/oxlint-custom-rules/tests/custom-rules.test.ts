@@ -334,6 +334,38 @@ const rules: ReadonlyArray<{
       `subpath-imports-integrity/fail-missing-entry/packages/noentry/src/alpha/_.ts`,
     ],
   },
+  {
+    name: `adt/require-schema-class-statics`,
+    failingFixtures: [
+      `adt-require-schema-class-statics/fail-1.ts`,
+      `adt-require-schema-class-statics/fail-2.ts`,
+    ],
+    passingFixtures: [
+      `adt-require-schema-class-statics/pass-1.ts`,
+      `adt-require-schema-class-statics/pass-2.ts`,
+    ],
+  },
+  {
+    name: `adt/require-schema-class-ordering`,
+    failingFixtures: [
+      `adt-require-schema-class-ordering/fail-1.ts`,
+      `adt-require-schema-class-ordering/fail-2.ts`,
+    ],
+    passingFixtures: [
+      `adt-require-schema-class-ordering/pass-1.ts`,
+      `adt-require-schema-class-ordering/pass-2.ts`,
+    ],
+  },
+  {
+    name: `adt/require-tagged-union-companion`,
+    failingFixtures: [`adt-require-tagged-union-companion/fail-1.ts`],
+    passingFixtures: [`adt-require-tagged-union-companion/pass-1.ts`],
+  },
+  {
+    name: `adt/require-tagged-union-namespace`,
+    failingFixtures: [`adt-require-tagged-union-namespace/fail-1.ts`],
+    passingFixtures: [`adt-require-tagged-union-namespace/pass-1.ts`],
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -363,36 +395,34 @@ describe(`e2e: resolution chain`, () => {
       `module/no-deep-imports`,
       `e2e-module-boundaries/packages/demo/src/e2e-fail-deep-import.ts`,
     )
-    expect(
-      countDiagnosticsForRule(output, `module/no-deep-imports`),
-    ).toBeGreaterThan(0)
+    expect(countDiagnosticsForRule(output, `module/no-deep-imports`)).toBeGreaterThan(0)
   })
 
   test(`oxlint flags prefer-subpath violation in e2e project`, () => {
     const output = runOxlint(
-      `module/prefer-subpath-imports`,
+      `prefer-subpath-imports`,
       `e2e-module-boundaries/packages/demo/src/e2e-fail-prefer-subpath.ts`,
     )
-    expect(countDiagnosticsForRule(output, `module/prefer-subpath-imports`)).toBeGreaterThan(0)
+    expect(countDiagnosticsForRule(output, `prefer-subpath-imports`)).toBeGreaterThan(0)
   })
 
   test(`oxlint allows door import in e2e project`, () => {
     const output = runOxlint(
-      `module/no-deep-imports`,
+      `no-deep-imports-when-namespace-entrypoint-exists`,
       `e2e-module-boundaries/packages/demo/src/e2e-pass-through-door.ts`,
     )
     expect(
-      countDiagnosticsForRule(output, `module/no-deep-imports`),
+      countDiagnosticsForRule(output, `no-deep-imports-when-namespace-entrypoint-exists`),
     ).toBe(0)
   })
 
   test(`consumer.ts using #imports produces no deep-import violations`, () => {
     const output = runOxlint(
-      `module/no-deep-imports`,
+      `no-deep-imports-when-namespace-entrypoint-exists`,
       `e2e-module-boundaries/packages/demo/src/consumer.ts`,
     )
     expect(
-      countDiagnosticsForRule(output, `module/no-deep-imports`),
+      countDiagnosticsForRule(output, `no-deep-imports-when-namespace-entrypoint-exists`),
     ).toBe(0)
   })
 })
@@ -449,7 +479,7 @@ describe(`e2e: subpath-imports-integrity tsconfig autofix`, () => {
     // Parse diagnostics - expect the drift warning
     // oxlint-disable-next-line kitz/schema/no-json-parse
     const output = JSON.parse(result.stdout) as OxlintJsonOutput
-    expect(countDiagnosticsForRule(output, `module/subpath-imports-integrity`)).toBeGreaterThan(0)
+    expect(countDiagnosticsForRule(output, `subpath-imports-integrity`)).toBeGreaterThan(0)
 
     // Verify tsconfig was auto-fixed
     // oxlint-disable-next-line kitz/schema/no-json-parse

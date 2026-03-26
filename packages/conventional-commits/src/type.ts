@@ -13,8 +13,13 @@ export { Standard, StandardImpact, StandardValue } from './type-standard.js'
 /**
  * Commit type: either a standard type or a custom extension.
  */
-export const Type = Schema.Union([Standard, Custom])
+export const Type = Schema.Union([Standard, Custom]).pipe(Schema.toTaggedUnion('_tag'))
 export type Type = typeof Type.Type
+
+export namespace Type {
+  export type Standard = import('./type-standard.js').Standard
+  export type Custom = import('./type-custom.js').Custom
+}
 
 // ─── Parse ──────────────────────────────────────────────────────
 

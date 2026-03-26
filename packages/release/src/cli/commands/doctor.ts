@@ -16,13 +16,23 @@
 import { Cli } from '@kitz/cli'
 import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
-import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
-import { Cause, Console, Effect, Layer, Option, Schema, SchemaGetter } from 'effect'
+import { Cause, Console, Effect, FileSystem, Layer, Option, Schema, SchemaGetter } from 'effect'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, ServicesLayer, FileSystemLayer } from '../../platform.js'
-import { loadPullRequestDiff } from '../pr-preview.js'
+import {
+  commandLintRule,
+  createCommandLintConfig,
+  type CommandLintRuleSpec,
+} from '../lint-rule-config.js'
+import { loadConfiguredPullRequestDiff, resolveDiffRemote } from '../pr-preview-diff.js'
+import {
+  isReadyCommandWorkspace,
+  loadCommandWorkspace,
+  noPackagesFoundMessage,
+} from './command-workspace.js'
+import { computeLifecyclePlanAttempt, toUnavailableLifecycleReport } from './doctor-lib.js'
 
 const DoctorFailuresSchema = Schema.Struct({
   _tag: Schema.Literal('DoctorFailures'),
@@ -38,24 +48,6 @@ const parseCsvStrings = (value: string | undefined): readonly string[] | undefin
     .filter((part) => part.length > 0)
 
   return parts.length > 0 ? parts : undefined
-}
-
-const enableRule = (
-  config: Api.Config.ResolvedConfig,
-  ruleId: string,
-  ruleOptions: Record<string, unknown> = {},
-) => {
-  const existing = config.lint.rules[ruleId]
-  return Api.Lint.ResolvedRuleConfig.make({
-    overrides: Api.Lint.ResolvedRuleDefaults.make({
-      enabled: true,
-      severity: existing?.['overrides'].severity ?? config.lint.defaults.severity,
-    }),
-    options: {
-      ...existing?.['options'],
-      ...ruleOptions,
-    },
-  })
 }
 
 const args = Oak.Command.create()
@@ -103,6 +95,15 @@ const args = Oak.Command.create()
       Schema.annotate({ description: 'Output format (text or json)' }),
     ),
   )
+  .parameter(
+    'remote r',
+    Schema.UndefinedOr(Schema.String).pipe(
+      Schema.annotate({
+        description:
+          'Remote to use for env.git-remote validation and PR diff-aware checks (default: configured env.git-remote or origin)',
+      }),
+    ),
+  )
   .parse()
 
 const spawnerLayer = ChildProcessSpawnerLayer
@@ -137,24 +138,19 @@ Cli.run(
       return yield* Effect.fail({ _tag: 'DoctorFailures' })
     }
 
-    const config = yield* Api.Config.load({
+    const workspace = yield* loadCommandWorkspace({
       lint: {
         onlyRules: parseCsvStrings(args.onlyRule),
         skipRules: parseCsvStrings(args.skipRule),
       },
     })
-    const packages = yield* Api.Analyzer.Workspace.resolvePackages(config.packages)
-
-    if (packages.length === 0) {
-      yield* Console.log(
-        'No packages found. Check release.config.ts `packages` field ' +
-          'or ensure the root package.json defines workspace packages.',
-      )
+    if (!isReadyCommandWorkspace(workspace)) {
+      yield* Console.log(noPackagesFoundMessage)
       return
     }
+    const { config, packages } = workspace
 
-    const planDir = Fs.Path.join(env.cwd, Api.Planner.PLAN_DIR)
-    const activePlan = yield* Api.Planner.resource.read(planDir)
+    const activePlan = yield* Api.Planner.Store.readActive
     const needsSmartScope = !args.lifecycle && !args.all && activePlan._tag !== 'Some'
     const needsPrContext =
       needsSmartScope ||
@@ -176,11 +172,14 @@ Cli.run(
     const tags = yield* git.getTags()
     const analysis = yield* Api.Analyzer.analyze({ packages, tags })
     const currentBranch = yield* git.getCurrentBranch()
+    const diffRemote = resolveDiffRemote(config, args.remote)
     const diff = pullRequest
-      ? yield* loadPullRequestDiff({
+      ? yield* loadConfiguredPullRequestDiff({
+          config,
           pullRequest,
           packages,
           required: false,
+          ...(args.remote ? { remote: args.remote } : {}),
         })
       : null
     const monorepo = {
@@ -215,49 +214,60 @@ Cli.run(
                 }),
               })
             : undefined
-        const lintConfig = Api.Lint.ResolvedConfig.make({
-          defaults: config.lint.defaults,
-          onlyRules: config.lint.onlyRules,
-          skipRules: config.lint.skipRules,
-          rules: {
-            ...config.lint.rules,
-            'env.publish-channel-ready': enableRule(config, 'env.publish-channel-ready', {
+        const doctorRules = [
+          commandLintRule({
+            id: 'env.publish-channel-ready',
+            options: {
               surface: 'execution',
-            }),
-            'env.git-clean': enableRule(config, 'env.git-clean'),
-            'env.git-remote': enableRule(config, 'env.git-remote', { remote: 'origin' }),
-            'plan.tags-unique': enableRule(config, 'plan.tags-unique'),
-            'plan.versions-unpublished': enableRule(config, 'plan.versions-unpublished'),
-            ...(channel.mode !== 'github-trusted'
-              ? {
-                  'env.npm-authenticated': enableRule(config, 'env.npm-authenticated'),
-                }
-              : {}),
-            ...(projectedSquashCommit?.projectedHeader
-              ? {
-                  'pr.projected-squash-commit-sync': Api.Lint.ResolvedRuleConfig.make({
-                    overrides:
-                      config.lint.rules['pr.projected-squash-commit-sync']?.['overrides'] ??
-                      Api.Lint.ResolvedRuleDefaults.make({
-                        enabled: 'auto',
-                        severity: Api.Lint.Warn.make({}),
-                      }),
-                    options: {
-                      ...config.lint.rules['pr.projected-squash-commit-sync']?.['options'],
-                      projectedHeader: projectedSquashCommit.projectedHeader,
-                    },
-                  }),
-                }
-              : {}),
-            ...(pullRequest && hasDiff
-              ? {
-                  'pr.type.release-kind-match-diff': enableRule(
-                    config,
-                    'pr.type.release-kind-match-diff',
-                  ),
-                }
-              : {}),
-          },
+            },
+          }),
+          commandLintRule({
+            id: 'env.git-clean',
+          }),
+          commandLintRule({
+            id: 'env.git-remote',
+            options: {
+              remote: diffRemote,
+            },
+          }),
+          commandLintRule({
+            id: 'plan.tags-unique',
+          }),
+          commandLintRule({
+            id: 'plan.versions-unpublished',
+          }),
+          ...(channel.mode !== 'github-trusted'
+            ? [
+                commandLintRule({
+                  id: 'env.npm-authenticated',
+                }),
+              ]
+            : []),
+          ...(projectedSquashCommit?.projectedHeader
+            ? [
+                commandLintRule({
+                  id: 'pr.projected-squash-commit-sync',
+                  options: {
+                    projectedHeader: projectedSquashCommit.projectedHeader,
+                  },
+                  enabled: 'auto',
+                  severity: Api.Lint.Warn.make({}),
+                  preserveExistingOverrides: true,
+                }),
+              ]
+            : []),
+          ...(pullRequest && hasDiff
+            ? [
+                commandLintRule({
+                  id: 'pr.type.release-kind-match-diff',
+                }),
+              ]
+            : []),
+        ] satisfies readonly CommandLintRuleSpec[]
+
+        const lintConfig = createCommandLintConfig({
+          config,
+          rules: doctorRules,
         })
         const baseReportEffect = Api.Lint.check({ config: lintConfig }).pipe(
           Effect.provide(
@@ -302,21 +312,12 @@ Cli.run(
       yield* evaluatePlan(scope.plan, true)
     } else {
       for (const target of scope.lifecycles) {
-        const planAttempt = yield* (
-          target.lifecycle === 'official'
-            ? Api.Planner.official(analysis, { packages })
-            : target.lifecycle === 'candidate'
-              ? Api.Planner.candidate(analysis, { packages })
-              : Api.Planner.ephemeral(analysis, { packages })
-        ).pipe(Effect.result)
+        const planAttempt = yield* computeLifecyclePlanAttempt(analysis, packages, target.lifecycle)
 
         if (planAttempt._tag === 'Failure') {
-          reports.push({
-            _tag: 'UnavailableLifecycleReport' as const,
-            lifecycle: target.lifecycle,
-            required: target.required,
-            reason: planAttempt.failure.message,
-          })
+          reports.push(
+            toUnavailableLifecycleReport(target.lifecycle, target.required, planAttempt.failure),
+          )
           continue
         }
 

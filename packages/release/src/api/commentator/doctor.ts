@@ -2,7 +2,7 @@ import { Str } from '@kitz/core'
 import { Option, Schema } from 'effect'
 import { Failed, Finished, type Report, Skipped } from '../lint/models/report.js'
 import type { Severity } from '../lint/models/severity.js'
-import { CommandFix, GuideFix, Violation } from '../lint/models/violation.js'
+import { Violation, ViolationFix } from '../lint/models/violation.js'
 import {
   PublishChannelReadyMetadataSchema,
   type PublishChannelReadyMetadata,
@@ -240,7 +240,7 @@ const toDoctorStatus = (severity: Severity): DoctorStatus =>
 const toGuidanceFix = (violation: Violation): DoctorGuidance['fix'] | undefined => {
   if (!violation.fix) return undefined
 
-  if (GuideFix.is(violation.fix)) {
+  if (ViolationFix.guards.ViolationGuideFix(violation.fix)) {
     return {
       summary: violation.fix.summary,
       steps: violation.fix.steps.map((step) => step.description),
@@ -248,7 +248,7 @@ const toGuidanceFix = (violation: Violation): DoctorGuidance['fix'] | undefined 
     }
   }
 
-  if (CommandFix.is(violation.fix)) {
+  if (ViolationFix.guards.ViolationCommandFix(violation.fix)) {
     return {
       summary: violation.fix.summary,
       command: violation.fix.command,

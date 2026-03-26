@@ -8,7 +8,7 @@
  * - `candidate` — Pre-release to the `next` dist-tag
  * - `ephemeral` — Per-PR integration release
  *
- * The plan is written to `.release/plan.json` and can be executed with `release apply`.
+ * The plan is written to `.release/plan.json` by default and can be executed with `release apply`.
  */
 import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'
@@ -19,11 +19,16 @@ import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 import { FileSystemLayer } from '../../platform.js'
+import {
+  isReadyCommandWorkspace,
+  loadCommandWorkspace,
+  noPackagesFoundMessage,
+} from './command-workspace.js'
 
 /**
  * release plan --lifecycle <official|candidate|ephemeral>
  *
- * Generate a release plan. Writes to .release/plan.json.
+ * Generate a release plan. Writes to .release/plan.json by default.
  */
 const args = Oak.Command.create()
   .use(Oak.EffectSchema)
@@ -48,23 +53,24 @@ const args = Oak.Command.create()
       Schema.annotate({ description: 'Exclude package(s)' }),
     ),
   )
+  .parameter(
+    'out o',
+    Schema.UndefinedOr(Schema.String).pipe(
+      Schema.annotate({ description: 'Write the generated plan to a specific file path' }),
+    ),
+  )
   .parse()
 
 Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
   Effect.gen(function* () {
     const git = yield* Git.Git
 
-    // Load config and scan packages
-    const config = yield* Api.Config.load()
-    const packages = yield* Api.Analyzer.Workspace.resolvePackages(config.packages)
-
-    if (packages.length === 0) {
-      yield* Console.log(
-        'No packages found. Check release.config.ts `packages` field ' +
-          'or ensure the root package.json defines workspace packages.',
-      )
+    const workspace = yield* loadCommandWorkspace()
+    if (!isReadyCommandWorkspace(workspace)) {
+      yield* Console.log(noPackagesFoundMessage)
       return
     }
+    const { packages } = workspace
 
     // Build release options
     const options = {
@@ -101,19 +107,14 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
     // Display plan
     yield* Console.log(Api.Renderer.renderPlan(plan))
 
-    // Write plan file using resource
-    const env = yield* Env.Env
-    const planDir = Fs.Path.join(env.cwd, Api.Planner.PLAN_DIR)
+    const planPath = args.out !== undefined ? Fs.Path.fromString(args.out) : undefined
+    const planLocation = yield* Api.Planner.Store.resolvePlanLocation(planPath)
 
-    // Ensure directory exists
-    yield* Fs.write(planDir, { recursive: true })
-
-    // Write plan using schema-validated resource
-    yield* Api.Planner.resource.write(plan, planDir)
+    yield* Api.Planner.Store.write(plan, planPath)
 
     const done = Str.Builder()
-    done`Plan written to ${Fs.Path.toString(Api.Planner.PLAN_FILE)}`
-    done`Run 'release apply' to execute.`
+    done`Plan written to ${Fs.Path.toString(planLocation.file)}`
+    done`Run 'release apply${args.out ? ` --from ${args.out}` : ''}' to execute.`
     yield* Console.log(done.render())
   }),
 )

@@ -35,4 +35,4 @@ export type Item = Official | Candidate | Ephemeral
 /**
  * Schema for Item union (used for serialization).
  */
-export const ItemSchema = S.Union([Official, Candidate, Ephemeral])
+export const ItemSchema = S.Union([Official, Candidate, Ephemeral]).pipe(S.toTaggedUnion('_tag'))

@@ -21,6 +21,11 @@ export class Standard extends Schema.TaggedClass<Standard>()('Standard', {
   token: StandardToken,
   value: Schema.String,
 }) {
+  static decode = Schema.decode(Standard)
+  static decodeSync = Schema.decodeSync(Standard)
+  static encode = Schema.encode(Standard)
+  static encodeSync = Schema.encodeSync(Standard)
+  static ordered = false as const
   static make = this.makeUnsafe
   static is = Schema.is(Standard)
 }
@@ -34,6 +39,11 @@ export class Custom extends Schema.TaggedClass<Custom>()('Custom', {
   token: Schema.String,
   value: Schema.String,
 }) {
+  static decode = Schema.decode(Custom)
+  static decodeSync = Schema.decodeSync(Custom)
+  static encode = Schema.encode(Custom)
+  static encodeSync = Schema.encodeSync(Custom)
+  static ordered = false as const
   static make = this.makeUnsafe
   static is = Schema.is(Custom)
 }
@@ -43,8 +53,13 @@ export class Custom extends Schema.TaggedClass<Custom>()('Custom', {
 /**
  * Footer: either a standard spec-defined footer or a custom extension.
  */
-export const Footer = Schema.Union([Standard, Custom])
+export const Footer = Schema.Union([Standard, Custom]).pipe(Schema.toTaggedUnion('_tag'))
 export type Footer = typeof Footer.Type
+
+export namespace Footer {
+  export type Standard = import('./footer.js').Standard
+  export type Custom = import('./footer.js').Custom
+}
 
 // ─── Accessors ─────────────────────────────────────────────────
 
@@ -62,7 +77,7 @@ export const value = (footer: Footer): string => footer.value
  * Check if a footer indicates a breaking change.
  * Standard footers are always breaking changes (that's what they represent).
  */
-export const isBreakingChange = (footer: Footer): boolean => Standard.is(footer)
+export const isBreakingChange = (footer: Footer): boolean => Footer.guards.Standard(footer)
 
 // ─── Smart Constructor ─────────────────────────────────────────
 

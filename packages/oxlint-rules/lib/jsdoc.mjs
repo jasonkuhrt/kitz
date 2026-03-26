@@ -145,8 +145,8 @@ export function createJSDocFact(raw) {
  * in OxLint's JS plugin runtime (throws "not supported at present").
  * Finds the last block comment before the node that looks like a JSDoc comment.
  *
- * @param {import('oxlint').SourceCode} sourceCode
- * @param {import('oxlint').ESTree.Node} node
+ * @param {import('@oxlint/plugins').SourceCode} sourceCode
+ * @param {import('@oxlint/plugins').ESTree.Node} node
  * @returns {JSDocFact}
  */
 export function getJSDocForNode(sourceCode, node) {

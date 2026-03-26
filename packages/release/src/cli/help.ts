@@ -1,7 +1,15 @@
 const rootCommands = [
   { usage: 'apply [options]', description: 'Execute the release plan' },
   { usage: 'doctor [options]', description: 'Run release doctor checks and publishability audits' },
+  {
+    usage: 'explain <pkg> [options]',
+    description: 'Explain why a package is primary, cascade, or unchanged',
+  },
   { usage: 'forecast [options]', description: 'Render a release forecast' },
+  {
+    usage: 'history [options]',
+    description: 'Inspect publish state and history from the PR preview comment',
+  },
   { usage: 'init [options]', description: 'Initialize release configuration' },
   { usage: 'notes [pkg] [options]', description: 'Show unreleased release notes' },
   {
@@ -12,6 +20,9 @@ const rootCommands = [
     usage: 'plan --lifecycle <official|candidate|ephemeral> [options]',
     description: 'Generate a release plan',
   },
+  { usage: 'graph [options]', description: 'Render the release execution DAG for the active plan' },
+  { usage: 'resume [options]', description: 'Resume an interrupted release workflow' },
+  { usage: 'status [options]', description: 'Inspect durable workflow state for the active plan' },
 ] as const
 
 const helpFlags = ['-h', '--help'] as const

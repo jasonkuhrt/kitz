@@ -167,7 +167,7 @@ describe('Ephemeral', () => {
 
   test('EphemeralSchema encode', () => {
     const e = makeEphemeral(42, 3, sha)
-    expect(encodeEphemeral(e)).toBe('pr.42.3.abc1234')
+    expect(encodeEphemeral(e)).toBe('pr.42.3.gabc1234')
   })
 
   test('invalid format fails decode', () => {

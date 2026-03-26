@@ -9,7 +9,7 @@ import { Pkg } from '@kitz/pkg'
 import { describe, expect, it as test } from '@effect/vitest'
 import { Effect, Layer, Ref, Scope, Stream } from 'effect'
 import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
-import { execute } from './execute.js'
+import { execute, resume } from './execute.js'
 import { makeTestRuntime } from './runtime.js'
 import { decodeJsonRecord, planOfficial, tag } from './test-support.js'
 
@@ -600,7 +600,7 @@ describe('Executor e2e', () => {
             ),
           ).pipe(Effect.orDie)
 
-          const secondRun = yield* execute(plan, { dryRun: false }).pipe(
+          const secondRun = yield* resume(plan, { dryRun: false }).pipe(
             Effect.provide(workflowContext),
             Effect.result,
           )
@@ -659,7 +659,7 @@ describe('Executor e2e', () => {
               ),
             ).pipe(Effect.orDie)
 
-            const secondRun = yield* execute(plan, { dryRun: false }).pipe(
+            const secondRun = yield* resume(plan, { dryRun: false }).pipe(
               Effect.provide(workflowContext),
               Effect.result,
             )
@@ -710,7 +710,7 @@ describe('Executor e2e', () => {
 
             yield* Ref.set(harness.failPublishPackages, [])
 
-            const secondRun = yield* execute(plan, { dryRun: false }).pipe(
+            const secondRun = yield* resume(plan, { dryRun: false }).pipe(
               Effect.provide(workflowContext),
               Effect.result,
             )

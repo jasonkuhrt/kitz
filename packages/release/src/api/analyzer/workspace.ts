@@ -5,7 +5,8 @@ import { Fs } from '@kitz/fs'
 import { Monorepo } from '@kitz/monorepo'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
-import { Effect } from 'effect'
+import { Data, Effect, Exit } from 'effect'
+import { PackageLocation } from './package-location.js'
 
 /**
  * A scanned package in the monorepo.
@@ -20,12 +21,56 @@ export interface Package {
 }
 
 /**
- * Scope to package name mapping.
+ * Explicit package config entry for nonstandard workspace layouts.
  */
-export type PackageMap = Record<string, string>
+export interface PackageConfigEntry {
+  /** Full package name from package.json */
+  readonly name: string
+  /** Optional repo-relative package directory */
+  readonly path?: string | undefined
+}
 
-// Shared typed path for packages directory
-const packagesRelDir = Fs.Path.RelDir.fromString('./packages/')
+/**
+ * Scope to package config mapping.
+ *
+ * Entries may be a package name string or a structured `{ name, path }`
+ * object when the package lives outside the default `packages/<scope>/`
+ * layout.
+ */
+export type PackageMap = Record<string, string | PackageConfigEntry>
+
+const resolveConfiguredName = (entry: string | PackageConfigEntry): string =>
+  typeof entry === 'string' ? entry : entry.name
+
+const normalizeConfiguredPath = (path: string): Fs.Path.RelDir => {
+  const trimmed = path.trim().replace(/\\/gu, '/')
+  const withLeadingDot =
+    trimmed.startsWith('./') || trimmed.startsWith('../') ? trimmed : `./${trimmed}`
+  const withTrailingSlash = withLeadingDot.endsWith('/') ? withLeadingDot : `${withLeadingDot}/`
+  return Fs.Path.RelDir.fromString(withTrailingSlash)
+}
+
+const inferConfiguredPackage = (
+  cwd: Fs.Path.AbsDir,
+  scope: string,
+  entry: string | PackageConfigEntry,
+): Package => {
+  const name = resolveConfiguredName(entry)
+  const explicitPath =
+    typeof entry === 'string' || entry.path === undefined
+      ? undefined
+      : PackageLocation.fromAbsolutePath(
+          cwd,
+          Fs.Path.join(cwd, normalizeConfiguredPath(entry.path)),
+        )
+  const location = PackageLocation.inferDefault(cwd, scope)
+
+  return {
+    scope,
+    name: Pkg.Moniker.parse(name),
+    path: explicitPath?.path ?? location.path,
+  }
+}
 
 /**
  * Error type for scan operation.
@@ -35,6 +80,16 @@ export type ScanError =
   | Monorepo.Workspace.Errors.GlobError
   | PlatformError
   | Resource.ResourceError
+
+export class PackageResolutionError extends Data.TaggedError('PackageResolutionError')<{
+  readonly context: {
+    readonly detail: string
+    readonly scope: string
+    readonly packageName: string
+  }
+}> {}
+
+export type ResolvePackagesError = ScanError | PackageResolutionError
 
 /**
  * Scan packages in the monorepo using the root package.json workspaces field.
@@ -92,24 +147,70 @@ export const toPackageMap = (packages: Package[]): PackageMap => {
  */
 export const resolvePackages = (
   configPackages: PackageMap,
-): Effect.Effect<Package[], ScanError, FileSystem.FileSystem | Env.Env> =>
+): Effect.Effect<Package[], ResolvePackagesError, FileSystem.FileSystem | Env.Env> =>
   Effect.gen(function* () {
-    // If config explicitly provides packages, use those
-    if (Object.keys(configPackages).length > 0) {
-      const env = yield* Env.Env
-      const packagesDir = Fs.Path.join(env.cwd, packagesRelDir)
-
-      return Object.entries(configPackages).map(([scope, name]) => {
-        const scopeRelDir = Fs.Path.RelDir.fromString(`./${scope}/`)
-        const scopeDir = Fs.Path.join(packagesDir, scopeRelDir)
-        return {
-          scope,
-          name: Pkg.Moniker.parse(name),
-          path: scopeDir,
-        }
-      })
+    if (Object.keys(configPackages).length === 0) {
+      return yield* scan
     }
 
-    // Otherwise scan from filesystem
-    return yield* scan
+    const env = yield* Env.Env
+    const configuredEntries = Object.entries(configPackages)
+    const entriesNeedingDiscovery = configuredEntries.filter(
+      ([, entry]) => typeof entry === 'string' || entry.path === undefined,
+    )
+
+    if (entriesNeedingDiscovery.length === 0) {
+      return configuredEntries.map(([scope, entry]) =>
+        inferConfiguredPackage(env.cwd, scope, entry),
+      )
+    }
+
+    const discoveredPackagesExit = yield* Effect.exit(scan)
+    if (Exit.isFailure(discoveredPackagesExit)) {
+      return yield* Effect.failCause(discoveredPackagesExit.cause)
+    }
+
+    const discoveredPackages = discoveredPackagesExit.value
+    const discoveredByName = Object.fromEntries(
+      discoveredPackages.map((pkg): [string, Package] => [pkg.name.moniker, pkg]),
+    ) as Record<string, Package>
+
+    const unresolvedEntry = configuredEntries.find(([_, entry]) => {
+      if (typeof entry !== 'string' && entry.path !== undefined) {
+        return false
+      }
+
+      return discoveredByName[resolveConfiguredName(entry)] === undefined
+    })
+    if (unresolvedEntry) {
+      const [scope, entry] = unresolvedEntry
+      const packageName = resolveConfiguredName(entry)
+      return yield* Effect.fail(
+        new PackageResolutionError({
+          context: {
+            scope,
+            packageName,
+            detail:
+              `Configured package "${packageName}" for scope "${scope}" was not found in workspace discovery. ` +
+              'Add an explicit `path` in `config.packages` or update the package name to match the workspace manifest.',
+          },
+        }),
+      )
+    }
+
+    return configuredEntries.map(([scope, entry]) => {
+      if (typeof entry !== 'string' && entry.path !== undefined) {
+        return inferConfiguredPackage(env.cwd, scope, entry)
+      }
+
+      const name = resolveConfiguredName(entry)
+      const matched = discoveredByName[name]
+      return matched
+        ? {
+            scope,
+            name: matched.name,
+            path: matched.path,
+          }
+        : inferConfiguredPackage(env.cwd, scope, entry)
+    })
   })

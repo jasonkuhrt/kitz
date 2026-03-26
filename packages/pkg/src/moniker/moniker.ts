@@ -11,6 +11,12 @@ export class Scoped extends S.TaggedClass<Scoped>()('Scoped', {
   scope: S.String,
   name: S.String,
 }) {
+  static decode = Schema.decode(Scoped)
+  static decodeSync = Schema.decodeSync(Scoped)
+  static encode = Schema.encode(Scoped)
+  static encodeSync = Schema.encodeSync(Scoped)
+  static equivalence = Schema.equivalence(Scoped)
+  static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(Scoped)
 
@@ -54,6 +60,12 @@ export const ScopedFromString: S.Codec<Scoped, string> = S.String.pipe(
 export class Unscoped extends S.TaggedClass<Unscoped>()('Unscoped', {
   name: S.String,
 }) {
+  static decode = Schema.decode(Unscoped)
+  static decodeSync = Schema.decodeSync(Unscoped)
+  static encode = Schema.encode(Unscoped)
+  static encodeSync = Schema.encodeSync(Unscoped)
+  static equivalence = Schema.equivalence(Unscoped)
+  static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(Unscoped)
 
@@ -90,8 +102,16 @@ export const UnscopedFromString: S.Codec<Unscoped, string> = S.String.pipe(
 
 /**
  * Package moniker - either scoped (\@scope/name) or unscoped (name).
+ *
+ * Tagged union with `.guards`, `.match`, `.cases`, and `.isAnyOf` utilities.
  */
+export const Moniker = S.Union([Scoped, Unscoped]).pipe(S.toTaggedUnion('_tag'))
 export type Moniker = Scoped | Unscoped
+
+export namespace Moniker {
+  export type Scoped = import('./moniker.js').Scoped
+  export type Unscoped = import('./moniker.js').Unscoped
+}
 
 /**
  * Schema that parses package name strings into Moniker instances.
@@ -118,9 +138,9 @@ export const parse = S.decodeSync(FromString)
 /**
  * Check if a moniker is scoped.
  */
-export const isScoped = (moniker: Moniker): moniker is Scoped => Scoped.is(moniker)
+export const isScoped = Moniker.guards.Scoped
 
 /**
  * Check if a moniker is unscoped.
  */
-export const isUnscoped = (moniker: Moniker): moniker is Unscoped => Unscoped.is(moniker)
+export const isUnscoped = Moniker.guards.Unscoped

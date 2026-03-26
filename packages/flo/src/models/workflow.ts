@@ -13,8 +13,13 @@ export class Completed extends Schema.TaggedClass<Completed>()('WorkflowComplete
   timestamp: Schema.Date,
   durationMs: Schema.Number,
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(Completed)
+  static decode = Schema.decode(Completed)
+  static decodeSync = Schema.decodeSync(Completed)
+  static encode = Schema.encode(Completed)
+  static encodeSync = Schema.encodeSync(Completed)
+  static ordered = false as const
+  static make = this.makeUnsafe
 }
 
 /**
@@ -24,8 +29,13 @@ export class Failed extends Schema.TaggedClass<Failed>()('WorkflowFailed', {
   timestamp: Schema.Date,
   error: Schema.String,
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(Failed)
+  static decode = Schema.decode(Failed)
+  static decodeSync = Schema.decodeSync(Failed)
+  static encode = Schema.encode(Failed)
+  static encodeSync = Schema.encodeSync(Failed)
+  static ordered = false as const
+  static make = this.makeUnsafe
 }
 
 /**
@@ -36,4 +46,9 @@ export type Event = Completed | Failed
 /**
  * Schema for workflow lifecycle events.
  */
-export const Event = Schema.Union([Completed, Failed])
+export const Event = Schema.Union([Completed, Failed]).pipe(Schema.toTaggedUnion('_tag'))
+
+export namespace Event {
+  export type Completed = import('./workflow.js').Completed
+  export type Failed = import('./workflow.js').Failed
+}

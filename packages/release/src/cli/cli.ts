@@ -13,9 +13,14 @@ import { FileSystemLayer } from '../platform.js'
  *
  * Available commands:
  * - doctor          - Run release doctor checks and publishability audits
+ * - explain <pkg>   - Explain why a package is primary, cascade, or unchanged
  * - forecast        - Render a release forecast
+ * - history         - Inspect publish state and history from the PR preview comment
  * - plan            - Generate release plan (--lifecycle official|candidate|ephemeral)
  * - apply           - Execute release plan
+ * - graph           - Render the release execution DAG for the active plan
+ * - resume          - Resume an interrupted release workflow
+ * - status          - Inspect durable workflow state for the active plan
  * - pr ...          - Maintain the release preview comment or canonical PR title
  * - notes [pkg]     - Output release notes
  * - init            - Initialize release in project

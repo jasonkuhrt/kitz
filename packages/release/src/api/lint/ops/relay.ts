@@ -4,7 +4,7 @@ import { Console, Effect, Match } from 'effect'
 import { Failed, Finished, type Report, Skipped } from '../models/report.js'
 import * as Severity from '../models/severity.js'
 import * as ViolationLocation from '../models/violation-location.js'
-import { CommandFix, GuideFix } from '../models/violation.js'
+import { ViolationFix } from '../models/violation.js'
 
 export type Destination =
   | { readonly _tag: 'stdout' }
@@ -48,7 +48,7 @@ export const formatReport = (report: Report, options?: FormatReportOptions): str
   if (violated.length > 0) {
     lines.push(`Violations (${violated.length}):`)
     for (const result of violated) {
-      const level = Severity.Error.is(result.severity) ? 'error' : 'warn'
+      const level = Severity.Severity.guards.SeverityError(result.severity) ? 'error' : 'warn'
       lines.push(`  - [${level}] ${result.rule.id}: ${result.rule.description}`)
       if (result.violation) {
         const location = formatLocation(result.violation.location)
@@ -58,13 +58,13 @@ export const formatReport = (report: Report, options?: FormatReportOptions): str
         if (result.violation.fix) {
           lines.push(`      fix: ${result.violation.fix.summary}`)
 
-          if (GuideFix.is(result.violation.fix)) {
+          if (ViolationFix.guards.ViolationGuideFix(result.violation.fix)) {
             for (const [index, step] of result.violation.fix.steps.entries()) {
               lines.push(`      step ${String(index + 1)}: ${step.description}`)
             }
           }
 
-          if (CommandFix.is(result.violation.fix)) {
+          if (ViolationFix.guards.ViolationCommandFix(result.violation.fix)) {
             lines.push(`      command: ${result.violation.fix.command}`)
           }
 

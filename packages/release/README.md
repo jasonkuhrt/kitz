@@ -96,7 +96,7 @@ Version arithmetic depends on the **lifecycle** — the kind of release being pr
 
 - **Candidate** — pre-release for validation before an official release. Uses the _projected_ official version as a base, with a `-next.<N>` suffix that increments across successive candidate releases for the same base version. Published to the `next` dist-tag. Version format: `<base>-next.<iteration>`.
 
-- **Ephemeral** — PR-scoped release for integration testing. Uses a zero base version (`0.0.0`) with PR metadata embedded in the prerelease segment, so every PR gets its own isolated version namespace. Published to a per-PR dist-tag. Version format: `0.0.0-pr.<prNumber>.<iteration>.<sha>`.
+- **Ephemeral** — PR-scoped release for integration testing. Uses a zero base version (`0.0.0`) with PR metadata embedded in the prerelease segment, so every PR gets its own isolated version namespace. Published automatically to dist-tag `pr-<prNumber>`. Version format: `0.0.0-pr.<prNumber>.<iteration>.<sha>`.
 
 <!-- /@doc -->
 
@@ -280,12 +280,13 @@ export default defineConfig({
   npmTag: 'latest',
   // Dist-tag for candidate releases (default: 'next')
   candidateTag: 'next',
-  // Skip npm publish (dry run mode)
-  skipNpm: false,
-  // Scope-to-package-name mapping (auto-scanned if omitted)
+  // Scope-to-package mapping (auto-scanned if omitted)
   packages: {
     core: '@myorg/core',
-    utils: '@myorg/utils',
+    docs: {
+      name: '@myorg/docs',
+      path: './tooling/pkg-docs/',
+    },
   },
   // Declare how each lifecycle is actually published
   publishing: {
@@ -311,6 +312,16 @@ export default defineConfig({
 
 Programmatic callers can override file config per-field via `Config.load(options)` without modifying `release.config.ts`.
 
+Use `release apply --dry-run` when you want to preview a release without publishing packages or mutating git and GitHub state.
+
+Use `release plan --out <file>` when you want to persist a plan somewhere other than `.release/plan.json`, and pair it with `release apply --from <file>` to execute that exact snapshot without moving the active plan file.
+
+Use `release notes --until <tag-or-sha>` when you need a bounded notes window, and `release forecast --format md` when you want a shareable markdown summary instead of a terminal-oriented table or tree.
+
+Use `release doctor --remote <name>` or `release pr preview --remote <name>` when release diff checks need to compare against a non-`origin` remote for this run.
+
+Use `release history` to inspect the publish state and embedded publish records stored on the current PR preview comment, `release history --pr <number>` to target a specific PR, and `release history --format json` for automation-friendly output.
+
 The `operator` block declares script names, not hardcoded package-manager commands. `@kitz/release`
 detects the active package manager from the current environment and renders guidance accordingly
 (`bun run ...`, `pnpm ...`, `npm run ...`, etc).
@@ -329,10 +340,15 @@ The `release` binary dispatches through file-based command routing:
 
 | Command                             | Purpose                                       |
 | ----------------------------------- | --------------------------------------------- | ----------- | ----------------------- |
-| `release forecast`                  | Show the current release forecast             |
-| `release plan --lifecycle <official | candidate                                     | ephemeral>` | Generate a release plan |
-| `release apply`                     | Execute the release plan                      |
-| `release notes [pkg]`               | Output unreleased release notes               |
+| `release forecast [options]`        | Show the current release forecast             |
+| `release history [options]`         | Inspect publish state and history from the PR preview comment |
+| `release plan --lifecycle <official | candidate                                     | ephemeral> [--out <file>]` | Generate a release plan |
+| `release apply [--from <file>]`     | Execute the release plan                      |
+| `release explain <pkg>`             | Explain why a package is primary, cascade, or unchanged |
+| `release graph`                     | Render the release execution DAG for the active plan |
+| `release resume`                    | Resume an interrupted release workflow        |
+| `release status`                    | Inspect durable workflow state for the active plan |
+| `release notes [pkg] [options]`     | Output unreleased release notes               |
 | `release doctor`                    | Run release doctor checks                     |
 | `release init`                      | Initialize `release.config.ts` in the project |
 

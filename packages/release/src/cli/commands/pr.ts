@@ -20,45 +20,17 @@ import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
+import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Layer } from 'effect'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
 import { PreviewBlockingError, runPrPreview } from '../pr-preview.js'
+import { formatHelp, helpFlags, parseAction } from './pr-lib.js'
 
-const helpFlags = ['-h', '--help'] as const
-
-const formatHelp = (): string =>
-  [
-    'Usage: release pr <preview|title <suggest|apply>>',
-    '',
-    'Commands:',
-    '  preview         Update the release preview comment and fail on blocking preview checks',
-    '                  Pass `--check-only` to run checks without updating the comment',
-    '  title suggest   Show the canonical release header and suggested PR title',
-    '  title apply     Update the connected PR title by replacing only its header',
-  ].join('\n')
-
-type ParsedAction =
-  | { readonly _tag: 'preview'; readonly checkOnly: boolean }
-  | { readonly _tag: 'title'; readonly action: 'suggest' | 'apply' }
-
-const parseAction = (args: readonly string[]): ParsedAction | null => {
-  if (args[0] === 'preview') {
-    const previewArgs = args.slice(1)
-    const checkOnly = previewArgs.includes('--check-only')
-    const unknownPreviewArgs = previewArgs.filter((arg) => arg !== '--check-only')
-    if (unknownPreviewArgs.length === 0) {
-      return { _tag: 'preview', checkOnly }
-    }
-  }
-  if (args.length < 2 || args[0] !== 'title') return null
-  if (args[1] === 'suggest' || args[1] === 'apply') {
-    return { _tag: 'title', action: args[1] }
-  }
-  return null
-}
+const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
 
 interface PreparedPrTitle {
+  readonly githubContext: Api.Explorer.ResolvedGitHubContext
   readonly pullRequest: {
     readonly number: number
     readonly title: string
@@ -82,7 +54,8 @@ const preparePrTitle = Effect.gen(function* () {
     return null
   }
 
-  const pullRequest = yield* Api.Explorer.resolvePullRequest()
+  const pullRequestContext = yield* Api.Explorer.resolvePullRequestContext()
+  const pullRequest = pullRequestContext.pullRequest
   if (!pullRequest) {
     return yield* Effect.fail(
       new Api.Explorer.ExplorerError({
@@ -116,6 +89,7 @@ const preparePrTitle = Effect.gen(function* () {
   ).pipe(Effect.result)
 
   return {
+    githubContext: pullRequestContext,
     pullRequest,
     projectedHeader,
     suggestedTitle: rewriteAttempt._tag === 'Success' ? rewriteAttempt.success : null,
@@ -123,7 +97,7 @@ const preparePrTitle = Effect.gen(function* () {
   } satisfies PreparedPrTitle
 })
 
-Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, ChildProcessSpawnerLayer))(
+Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, ChildProcessSpawnerLayer, npmLayer))(
   Effect.gen(function* () {
     const env = yield* Env.Env
     const argv = yield* Cli.parseArgv(env.argv)
@@ -146,7 +120,12 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, ChildProcessSpawn
 
     if (action._tag === 'preview') {
       const previewResult = yield* runPrPreview(
-        action.checkOnly ? { checkOnly: true } : undefined,
+        action.checkOnly || action.remote
+          ? {
+              ...(action.checkOnly ? { checkOnly: true } : {}),
+              ...(action.remote ? { remote: action.remote } : {}),
+            }
+          : undefined,
       ).pipe(Effect.result)
 
       if (previewResult._tag === 'Failure') {
@@ -214,13 +193,20 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, ChildProcessSpawn
       )
     }
 
-    const target = yield* Api.Explorer.resolveReleaseTarget(env.vars)
     const updated = yield* Effect.gen(function* () {
       const github = yield* Github.Github
       return yield* github.updatePullRequest(prepared.pullRequest.number, {
         title: nextTitle,
       })
-    }).pipe(Effect.provide(Github.LiveFetch({ owner: target.owner, repo: target.repo, token })))
+    }).pipe(
+      Effect.provide(
+        Github.LiveFetch({
+          owner: prepared.githubContext.target.owner,
+          repo: prepared.githubContext.target.repo,
+          token,
+        }),
+      ),
+    )
 
     yield* Console.log(`Updated PR #${String(updated.number)} title.`)
     yield* Console.log(`Before: \`${prepared.pullRequest.title}\``)

@@ -42,6 +42,10 @@
     "kitz/module/subpath-imports-integrity": [
       "warn",
       { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }
-    ]
+    ],
+    "kitz/adt/require-schema-class-statics": "warn",
+    "kitz/adt/require-schema-class-ordering": "warn",
+    "kitz/adt/require-tagged-union-companion": "warn",
+    "kitz/adt/require-tagged-union-namespace": "warn"
   }
 }

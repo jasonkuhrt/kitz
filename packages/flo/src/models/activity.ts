@@ -38,8 +38,13 @@ export class Started extends Schema.TaggedClass<Started>()('ActivityStarted', {
   /** True if this activity was already completed (resumed from checkpoint) */
   resumed: Schema.Boolean,
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(Started)
+  static decode = Schema.decode(Started)
+  static decodeSync = Schema.decodeSync(Started)
+  static encode = Schema.encode(Started)
+  static encodeSync = Schema.encodeSync(Started)
+  static ordered = false as const
+  static make = this.makeUnsafe
 }
 
 /**
@@ -53,8 +58,13 @@ export class Completed extends Schema.TaggedClass<Completed>()('ActivityComplete
   /** Duration in milliseconds (very short if resumed) */
   durationMs: Schema.Number,
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(Completed)
+  static decode = Schema.decode(Completed)
+  static decodeSync = Schema.decodeSync(Completed)
+  static encode = Schema.encode(Completed)
+  static encodeSync = Schema.encodeSync(Completed)
+  static ordered = false as const
+  static make = this.makeUnsafe
 }
 
 /**
@@ -65,8 +75,13 @@ export class Failed extends Schema.TaggedClass<Failed>()('ActivityFailed', {
   timestamp: Schema.Date,
   error: Schema.String,
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(Failed)
+  static decode = Schema.decode(Failed)
+  static decodeSync = Schema.decodeSync(Failed)
+  static encode = Schema.encode(Failed)
+  static encodeSync = Schema.encodeSync(Failed)
+  static ordered = false as const
+  static make = this.makeUnsafe
 }
 
 /**
@@ -77,17 +92,20 @@ export type Event = Started | Completed | Failed
 /**
  * Schema for activity lifecycle events.
  */
-export const Event = Schema.Union([Started, Completed, Failed])
+export const Event = Schema.Union([Started, Completed, Failed]).pipe(Schema.toTaggedUnion('_tag'))
 
-// ─── Lookup Tables ──────────────────────────────────────────────────────────
-
-const stateFromEventLookup = {
-  ActivityStarted: 'running',
-  ActivityCompleted: 'completed',
-  ActivityFailed: 'failed',
-} as const satisfies Record<Event['_tag'], State>
+export namespace Event {
+  export type Started = import('./activity.js').Started
+  export type Completed = import('./activity.js').Completed
+  export type Failed = import('./activity.js').Failed
+}
 
 /**
  * Derive activity state from an event.
  */
-export const stateFromEvent = (event: Event): State => stateFromEventLookup[event._tag]
+export const stateFromEvent = (event: Event): State =>
+  Event.match(event, {
+    ActivityStarted: () => State.enums.running,
+    ActivityCompleted: () => State.enums.completed,
+    ActivityFailed: () => State.enums.failed,
+  })

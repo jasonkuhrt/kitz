@@ -1,7 +1,7 @@
 import { Moniker } from '#moniker'
 import { Range as SemverRange } from '#range'
 import { Semver } from '@kitz/semver'
-import { Effect, Match, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { SemverFromString, SemverSelf } from '../semver-schema.js'
 
 // ============================================================================
@@ -134,6 +134,12 @@ class RangeClass extends S.TaggedClass<RangeClass>()('PinRange', {
   name: Moniker.FromString,
   range: SemverRange.Schema,
 }) {
+  static decode = Schema.decode(RangeClass)
+  static decodeSync = Schema.decodeSync(RangeClass)
+  static encode = Schema.encode(RangeClass)
+  static encodeSync = Schema.encodeSync(RangeClass)
+  static equivalence = Schema.equivalence(RangeClass)
+  static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(RangeClass)
 
@@ -176,6 +182,12 @@ class ExactClass extends S.TaggedClass<ExactClass>()('PinExact', {
   name: Moniker.FromString,
   version: SemverSelf,
 }) {
+  static decode = Schema.decode(ExactClass)
+  static decodeSync = Schema.decodeSync(ExactClass)
+  static encode = Schema.encode(ExactClass)
+  static encodeSync = Schema.encodeSync(ExactClass)
+  static equivalence = Schema.equivalence(ExactClass)
+  static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(ExactClass)
 
@@ -250,6 +262,12 @@ export class Tag extends S.TaggedClass<Tag>()('PinTag', {
   name: Moniker.FromString,
   tag: DistTag,
 }) {
+  static decode = Schema.decode(Tag)
+  static decodeSync = Schema.decodeSync(Tag)
+  static encode = Schema.encode(Tag)
+  static encodeSync = Schema.encodeSync(Tag)
+  static equivalence = Schema.equivalence(Tag)
+  static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(Tag)
 
@@ -284,6 +302,12 @@ class WorkspaceClass extends S.TaggedClass<WorkspaceClass>()('PinWorkspace', {
   name: Moniker.FromString,
   range: WorkspaceRange,
 }) {
+  static decode = Schema.decode(WorkspaceClass)
+  static decodeSync = Schema.decodeSync(WorkspaceClass)
+  static encode = Schema.encode(WorkspaceClass)
+  static encodeSync = Schema.encodeSync(WorkspaceClass)
+  static equivalence = Schema.equivalence(WorkspaceClass)
+  static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(WorkspaceClass)
 
@@ -331,6 +355,12 @@ class GitClass extends S.TaggedClass<GitClass>()('PinGit', {
   /** Semver range for git tags (used with #semver: fragment). */
   semver: S.OptionFromUndefinedOr(SemverRange.Schema),
 }) {
+  static decode = Schema.decode(GitClass)
+  static decodeSync = Schema.decodeSync(GitClass)
+  static encode = Schema.encode(GitClass)
+  static encodeSync = Schema.encodeSync(GitClass)
+  static equivalence = Schema.equivalence(GitClass)
+  static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(GitClass)
 
@@ -371,6 +401,12 @@ export class Path extends S.TaggedClass<Path>()('PinPath', {
   /** Relative or absolute filesystem path. */
   path: S.String,
 }) {
+  static decode = Schema.decode(Path)
+  static decodeSync = Schema.decodeSync(Path)
+  static encode = Schema.encode(Path)
+  static encodeSync = Schema.encodeSync(Path)
+  static equivalence = Schema.equivalence(Path)
+  static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(Path)
 
@@ -405,6 +441,12 @@ export class Url extends S.TaggedClass<Url>()('PinUrl', {
   /** Full URL to the tarball. */
   url: S.String,
 }) {
+  static decode = Schema.decode(Url)
+  static decodeSync = Schema.decodeSync(Url)
+  static encode = Schema.encode(Url)
+  static encodeSync = Schema.encodeSync(Url)
+  static equivalence = Schema.equivalence(Url)
+  static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(Url)
 
@@ -444,6 +486,12 @@ export class Alias extends S.TaggedClass<Alias>()('PinAlias', {
   /** Version specifier for the target package (range or tag). */
   targetSpecifier: S.String,
 }) {
+  static decode = Schema.decode(Alias)
+  static decodeSync = Schema.decodeSync(Alias)
+  static encode = Schema.encode(Alias)
+  static encodeSync = Schema.encodeSync(Alias)
+  static equivalence = Schema.equivalence(Alias)
+  static ordered = false as const
   static make = this.makeUnsafe
   static is = S.is(Alias)
 
@@ -479,10 +527,25 @@ export class Alias extends S.TaggedClass<Alias>()('PinAlias', {
  * Represents any valid dependency format from package.json.
  * Use {@link fromString} for type-safe parsing.
  *
+ * Tagged union with `.guards`, `.match`, `.cases`, and `.isAnyOf` utilities.
+ *
  * @see {@link https://docs.npmjs.com/cli/v10/configuring-npm/package-json#dependencies | npm dependencies}
  */
-export const Pin = S.Union([Range, Exact, Tag, Workspace, Git, Path, Url, Alias])
+export const Pin = S.Union([Range, Exact, Tag, Workspace, Git, Path, Url, Alias]).pipe(
+  S.toTaggedUnion('_tag'),
+)
 export type Pin = typeof Pin.Type
+
+export namespace Pin {
+  export type Range = import('./pin.js').Range
+  export type Exact = import('./pin.js').Exact
+  export type Tag = import('./pin.js').Tag
+  export type Workspace = import('./pin.js').Workspace
+  export type Git = import('./pin.js').Git
+  export type Path = import('./pin.js').Path
+  export type Url = import('./pin.js').Url
+  export type Alias = import('./pin.js').Alias
+}
 
 /**
  * Type guard for Pin union.
@@ -565,6 +628,8 @@ export const fromLiteral = <const $S extends string>(input: $S): ParsePin<$S> =>
 /**
  * Exhaustively pattern match on a Pin variant.
  *
+ * Delegates to `Pin.match` from the tagged union.
+ *
  * @example
  * ```ts
  * const description = match(pin, {
@@ -579,19 +644,7 @@ export const fromLiteral = <const $S extends string>(input: $S): ParsePin<$S> =>
  * })
  * ```
  */
-export const match = <$A>(
-  pin: Pin,
-  cases: {
-    PinRange: (p: Range) => $A
-    PinExact: (p: Exact) => $A
-    PinTag: (p: Tag) => $A
-    PinWorkspace: (p: Workspace) => $A
-    PinGit: (p: Git) => $A
-    PinPath: (p: Path) => $A
-    PinUrl: (p: Url) => $A
-    PinAlias: (p: Alias) => $A
-  },
-) => Match.value(pin).pipe(Match.tagsExhaustive(cases))
+export const match: typeof Pin.match = Pin.match
 
 // ============================================================================
 // String Codec

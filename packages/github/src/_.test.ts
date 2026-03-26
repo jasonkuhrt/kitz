@@ -106,21 +106,24 @@ describe('Github', () => {
       Effect.gen(function* () {
         const gh = yield* Github.Github
         return yield* gh.updateRelease('v1.0.0', {
+          title: 'Updated Title',
           body: 'Updated changelog',
         })
       }).pipe(Effect.provide(layer)),
     )
 
+    expect(result.name).toBe('Updated Title')
     expect(result.body).toBe('Updated changelog')
 
     const releases = await Effect.runPromise(Ref.get(state.releases))
     const updated = await Effect.runPromise(Ref.get(state.updatedReleases))
 
+    expect(releases['v1.0.0']!.name).toBe('Updated Title')
     expect(releases['v1.0.0']!.body).toBe('Updated changelog')
     expect(updated).toHaveLength(1)
     expect(updated[0]).toEqual({
       tag: 'v1.0.0',
-      params: { body: 'Updated changelog' },
+      params: { title: 'Updated Title', body: 'Updated changelog' },
     })
   })
 

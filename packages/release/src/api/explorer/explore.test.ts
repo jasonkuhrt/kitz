@@ -1,57 +1,39 @@
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
+import { NpmRegistry } from '@kitz/npm-registry'
 import { Effect, Layer } from 'effect'
 import { describe, expect, test } from 'vitest'
-import {
-  detectPrNumber,
-  explore,
-  resolvePrNumber,
-  resolvePullRequest,
-  resolveReleaseTarget,
-  selectConnectedPullRequest,
-  selectConnectedPullRequestNumber,
-  selectPullRequestByNumber,
-  toExecutorRuntimeConfig,
-} from './explore.js'
+import type { Recon } from './models/__.js'
+import { explore, toExecutorRuntimeConfig } from './explore.js'
+
+const makeNpmCliLayer = (options?: {
+  readonly username?: string
+  readonly onWhoami?: (options: { readonly registry?: string } | undefined) => void
+}) =>
+  Layer.succeed(NpmRegistry.NpmCli, {
+    whoami: (whoamiOptions) => {
+      options?.onWhoami?.(whoamiOptions)
+      return Effect.succeed(options?.username ?? 'npm-user')
+    },
+    pack: () => Effect.die('unexpected npm pack call in explore test'),
+    publish: () => Effect.die('unexpected npm publish call in explore test'),
+  })
 
 const runExplore = (
   vars: Record<string, string | undefined>,
   gitConfig: Parameters<typeof Git.Memory.make>[0] = {},
+  npmOptions?: Parameters<typeof makeNpmCliLayer>[0],
 ) =>
   Effect.runPromise(
     explore().pipe(
-      Effect.provide(Layer.mergeAll(Env.Test({ vars }), Git.Memory.make(gitConfig))),
+      Effect.provide(
+        Layer.mergeAll(Env.Test({ vars }), Git.Memory.make(gitConfig), makeNpmCliLayer(npmOptions)),
+      ),
       Effect.result,
     ),
   )
 
 describe('explore', () => {
-  test('detects PR numbers from CI pull request URLs and explores shallow clones', async () => {
-    const result = await runExplore(
-      {
-        CI: 'true',
-        CI_PULL_REQUEST: 'https://github.com/kitz-org/kitz/pull/129',
-        GITHUB_REPOSITORY: 'kitz-org/kitz',
-        GIT_DEPTH: '1',
-      },
-      {
-        branch: 'feature/release',
-      },
-    )
-
-    expect(detectPrNumber({ CI_PULL_REQUEST: 'https://github.com/kitz-org/kitz/pull/129' })).toBe(
-      129,
-    )
-    expect(result._tag).toBe('Success')
-    if (result._tag === 'Success') {
-      expect(result.success.ci).toEqual({
-        detected: true,
-        provider: 'generic',
-        prNumber: 129,
-      })
-    }
-  })
-
   test('resolves in CI from GITHUB_REPOSITORY + GITHUB_TOKEN', async () => {
     const result = await runExplore({
       CI: 'true',
@@ -162,81 +144,99 @@ describe('explore', () => {
       )
     }
   })
-})
 
-describe('explorer helpers', () => {
-  const pullRequests = [
-    {
-      number: 12,
-      html_url: 'https://github.com/kitz-org/kitz/pull/12',
-      title: 'First',
-      body: null,
-      base: { ref: 'main' },
-      head: { ref: 'feature/release' },
-    },
-    {
-      number: 34,
-      html_url: 'https://github.com/kitz-org/kitz/pull/34',
-      title: 'Second',
-      body: null,
-      base: { ref: 'main' },
-      head: { ref: 'feature/release' },
-    },
-  ] as const
-
-  test('matches pull requests by branch and number, including ambiguous failures', async () => {
-    const none = await Effect.runPromise(selectConnectedPullRequest('main', pullRequests))
-    const number = await Effect.runPromise(
-      selectConnectedPullRequestNumber('missing-branch', pullRequests),
-    )
-    const direct = await Effect.runPromise(selectPullRequestByNumber(12, pullRequests))
-    const duplicateByBranch = await Effect.runPromise(
-      selectConnectedPullRequest('feature/release', pullRequests).pipe(Effect.result),
-    )
-    const duplicateByNumber = await Effect.runPromise(
-      selectPullRequestByNumber(34, [...pullRequests, pullRequests[1]!]).pipe(Effect.result),
-    )
-
-    expect(none).toBeNull()
-    expect(number).toBeNull()
-    expect(direct?.number).toBe(12)
-    expect(duplicateByBranch._tag).toBe('Failure')
-    expect(duplicateByNumber._tag).toBe('Failure')
-  })
-
-  test('resolves release targets from trimmed repository env values', async () => {
-    const target = await Effect.runPromise(
-      resolveReleaseTarget({ GITHUB_REPOSITORY: '  kitz-org/kitz  ' }).pipe(
-        Effect.provide(Git.Memory.make({})),
-      ),
-    )
-
-    expect(target).toEqual({
-      owner: 'kitz-org',
-      repo: 'kitz',
-      source: 'env:GITHUB_REPOSITORY',
-    })
-  })
-
-  test('resolves pull requests through injected listing dependencies', async () => {
-    const listedPullRequests = [
+  test('reports discovered npm auth and origin remote instead of placeholders', async () => {
+    const result = await runExplore(
       {
-        number: 51,
-        html_url: 'https://github.com/kitz-org/kitz/pull/51',
-        title: 'feat(core): release',
-        body: null,
-        base: { ref: 'main' },
-        head: { ref: 'feature/release' },
+        GITHUB_TOKEN: 'token-123',
       },
-    ] as const
-    const seen: Array<{ owner: string; repo: string; token?: string }> = []
+      {
+        remoteUrl: 'git@github.com:jasonkuhrt/kitz.git',
+      },
+    )
 
-    const resolvedPullRequest = await Effect.runPromise(
-      resolvePullRequest({
-        listOpenPullRequests: (params) => {
-          seen.push(params)
-          return Effect.succeed(listedPullRequests)
+    expect(result._tag).toBe('Success')
+    if (result._tag === 'Success') {
+      expect(result.success.npm).toEqual({
+        authenticated: true,
+        username: 'npm-user',
+        registry: null,
+      })
+      expect(result.success.git.remotes).toEqual({
+        origin: 'git@github.com:jasonkuhrt/kitz.git',
+      })
+    }
+  })
+
+  test('lets npm resolve registry config when no registry env var is set', async () => {
+    let seenWhoamiOptions: { readonly registry?: string } | undefined
+
+    const result = await runExplore(
+      {
+        GITHUB_TOKEN: 'token-123',
+      },
+      {
+        remoteUrl: 'git@github.com:jasonkuhrt/kitz.git',
+      },
+      {
+        onWhoami: (options) => {
+          seenWhoamiOptions = options
         },
+      },
+    )
+
+    expect(result._tag).toBe('Success')
+    if (result._tag === 'Success') {
+      expect(seenWhoamiOptions).toBeUndefined()
+      expect(result.success.npm.registry).toBeNull()
+    }
+  })
+
+  test('reports the explicit npm registry from environment when one is set', async () => {
+    let seenWhoamiOptions: { readonly registry?: string } | undefined
+
+    const result = await runExplore(
+      {
+        GITHUB_TOKEN: 'token-123',
+        NPM_CONFIG_REGISTRY: 'https://npm.pkg.github.com',
+      },
+      {
+        remoteUrl: 'git@github.com:jasonkuhrt/kitz.git',
+      },
+      {
+        onWhoami: (options) => {
+          seenWhoamiOptions = options
+        },
+      },
+    )
+
+    expect(result._tag).toBe('Success')
+    if (result._tag === 'Success') {
+      expect(seenWhoamiOptions).toEqual({ registry: 'https://npm.pkg.github.com' })
+      expect(result.success.npm.registry).toBe('https://npm.pkg.github.com')
+    }
+  })
+
+  test('fails when remote lookup errors even if GITHUB_REPOSITORY provides the release target', async () => {
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const baseGit = yield* Git.Git
+
+        return yield* explore().pipe(
+          Effect.provideService(Git.Git, {
+            ...baseGit,
+            getRemoteUrl: () =>
+              Effect.fail(
+                new Git.GitError({
+                  context: {
+                    operation: 'getRemoteUrl',
+                    detail: 'forced remote lookup failure',
+                  },
+                  cause: new Error('forced remote lookup failure'),
+                }),
+              ),
+          }),
+        )
       }).pipe(
         Effect.provide(
           Layer.mergeAll(
@@ -244,42 +244,32 @@ describe('explorer helpers', () => {
               vars: {
                 GITHUB_REPOSITORY: 'kitz-org/kitz',
                 GITHUB_TOKEN: 'token-123',
-                PR_NUMBER: '51',
               },
             }),
-            Git.Memory.make({ branch: 'feature/release' }),
+            Git.Memory.make({
+              remoteUrl: 'git@github.com:jasonkuhrt/kitz.git',
+            }),
+            makeNpmCliLayer(),
           ),
         ),
+        Effect.result,
       ),
     )
 
-    const resolvedNumber = await Effect.runPromise(
-      resolvePrNumber({
-        listOpenPullRequests: () => Effect.succeed(listedPullRequests),
-      }).pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            Env.Test({
-              vars: {
-                GITHUB_REPOSITORY: 'kitz-org/kitz',
-                GITHUB_TOKEN: 'token-123',
-              },
-            }),
-            Git.Memory.make({ branch: 'feature/release' }),
-          ),
-        ),
-      ),
-    )
-
-    expect(resolvedPullRequest?.number).toBe(51)
-    expect(resolvedNumber).toBe(51)
-    expect(seen).toEqual([{ owner: 'kitz-org', repo: 'kitz', token: 'token-123' }])
+    expect(result._tag).toBe('Failure')
+    if (result._tag === 'Failure') {
+      expect(result.failure._tag).toBe('GitError')
+      if (result.failure._tag === 'GitError') {
+        expect(result.failure.context.operation).toBe('getRemoteUrl')
+        expect(result.failure.context.detail).toContain('forced remote lookup failure')
+      }
+    }
   })
 })
 
 describe('toExecutorRuntimeConfig', () => {
   test('maps recon to executor runtime github config', () => {
-    const recon = {
+    const recon: Recon = {
       ci: { detected: false as const, provider: null, prNumber: null },
       github: {
         target: {
@@ -298,6 +288,7 @@ describe('toExecutorRuntimeConfig', () => {
         registry: 'https://registry.npmjs.org',
       },
       git: {
+        root: '/repo/' as unknown as Recon['git']['root'],
         clean: true,
         branch: 'main',
         headSha: 'abc1234',
@@ -313,32 +304,5 @@ describe('toExecutorRuntimeConfig', () => {
         token: 'token-123',
       },
     })
-  })
-
-  test('returns an empty config when github credentials are unavailable', () => {
-    expect(
-      toExecutorRuntimeConfig({
-        ci: { detected: false, provider: null, prNumber: null },
-        github: {
-          target: {
-            owner: 'jasonkuhrt',
-            repo: 'kitz',
-            source: 'git:origin',
-          },
-          credentials: null,
-        },
-        npm: {
-          authenticated: false,
-          username: null,
-          registry: 'https://registry.npmjs.org',
-        },
-        git: {
-          clean: true,
-          branch: 'main',
-          headSha: 'abc1234',
-          remotes: {},
-        },
-      }),
-    ).toEqual({})
   })
 })

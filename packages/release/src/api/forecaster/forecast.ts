@@ -1,5 +1,6 @@
 import type { Analysis } from '../analyzer/models/__.js'
 import type { ReleaseCommit } from '../analyzer/models/commit.js'
+import { PackageLocation } from '../analyzer/package-location.js'
 import type { Recon } from '../explorer/models/__.js'
 import { calculateNextVersion } from '../version/calculate.js'
 import { CommitDisplay, Forecast, ForecastCascade, ForecastRelease } from './models.js'
@@ -13,7 +14,7 @@ import { CommitDisplay, Forecast, ForecastCascade, ForecastRelease } from './mod
  */
 export const forecast = (analysis: Analysis, recon: Recon): Forecast => {
   const { owner, repo } = recon.github.target!
-  const { branch, headSha } = recon.git
+  const { root, branch, headSha } = recon.git
   const baseUrl = `https://github.com/${owner}/${repo}`
 
   const releases = analysis.impacts.map((impact) => {
@@ -29,7 +30,14 @@ export const forecast = (analysis: Analysis, recon: Recon): Forecast => {
         impact.package.scope,
         baseUrl,
       ),
-      sourceUrl: `${baseUrl}/tree/${branch}/packages/${impact.package.scope}`,
+      sourceUrl: PackageLocation.toSourceUrl(
+        PackageLocation.fromAbsolutePath(root, impact.package.path),
+        {
+          owner,
+          repo,
+          branch,
+        },
+      ),
     })
   })
 
@@ -41,7 +49,14 @@ export const forecast = (analysis: Analysis, recon: Recon): Forecast => {
       currentVersion: cascade.currentVersion,
       nextOfficialVersion,
       triggeredBy: cascade.triggeredBy.map((pkg) => pkg.name.moniker),
-      sourceUrl: `${baseUrl}/tree/${branch}/packages/${cascade.package.scope}`,
+      sourceUrl: PackageLocation.toSourceUrl(
+        PackageLocation.fromAbsolutePath(root, cascade.package.path),
+        {
+          owner,
+          repo,
+          branch,
+        },
+      ),
     })
   })
 

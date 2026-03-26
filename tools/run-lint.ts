@@ -64,7 +64,11 @@ const targetGroups = explicitTargets.length > 0 ? chunk(targets, 50) : getDefaul
 for (const group of targetGroups) {
   if (group.length === 0) continue
 
-  const result = spawnSync(oxlintBin, [...optionArgs, ...group], {
+  // Always pass explicit config to avoid auto-discovery issues with JS plugin resolution
+  const hasConfig = optionArgs.some((arg) => arg === '--config' || arg === '-c')
+  const configArgs = hasConfig ? [] : ['--config', join(repoRoot, '.oxlintrc.json')]
+
+  const result = spawnSync(oxlintBin, [...configArgs, ...optionArgs, ...group], {
     cwd: repoRoot,
     stdio: 'inherit',
     env,

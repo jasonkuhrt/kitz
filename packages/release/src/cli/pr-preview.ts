@@ -1,18 +1,13 @@
-import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
-import { Data, Effect, HashSet, Layer, MutableHashSet } from 'effect'
+import { Data, Effect, Layer } from 'effect'
 import * as Api from '../api/__.js'
-
-const previewDoctorRuleIds = [
-  'env.publish-channel-ready',
-  'plan.packages-not-private',
-  'plan.packages-license-present',
-  'plan.packages-repository-present',
-  'plan.packages-repository-match-canonical',
-  'plan.versions-unpublished',
-  'plan.tags-unique',
-] as const
+import {
+  commandLintRule,
+  createCommandLintConfig,
+  type CommandLintRuleSpec,
+} from './lint-rule-config.js'
+import { loadPullRequestDiff, resolveDiffRemote } from './pr-preview-diff.js'
 
 const manualPreviewDeferredRules = [
   Api.Lint.Rules.EnvNpmAuthenticated,
@@ -23,79 +18,12 @@ const manualPreviewDeferredRules = [
 const appendReleaseCommand = (releaseCommand: string, suffix: string): string =>
   `${releaseCommand} ${suffix}`
 
-const enableRule = (
-  config: Api.Config.ResolvedConfig,
-  ruleId: string,
-  ruleOptions: Record<string, unknown> = {},
-  options?: { readonly severity?: Api.Lint.Severity },
-) => {
-  const existing = config.lint.rules[ruleId]
-  return Api.Lint.RuleConfig.make({
-    overrides: Api.Lint.RuleDefaults.make({
-      enabled: true,
-      severity: options?.severity ?? existing?.overrides.severity ?? config.lint.defaults.severity,
-    }),
-    options: {
-      ...existing?.options,
-      ...ruleOptions,
-    },
-  })
-}
-
-const parseDiffStatus = (token: string): Api.Lint.ChangedFile['status'] => {
-  switch (token[0]) {
-    case 'A':
-      return 'added'
-    case 'D':
-      return 'deleted'
-    case 'R':
-      return 'renamed'
-    default:
-      return 'modified'
-  }
-}
-
-const parseDiffLine = (line: string): Api.Lint.ChangedFile | null => {
-  const parts = line.split('\t')
-  const statusToken = parts[0]?.trim()
-  if (!statusToken) return null
-
-  const path =
-    statusToken.startsWith('R') || statusToken.startsWith('C')
-      ? (parts[2]?.trim() ?? parts[1]?.trim())
-      : parts[1]?.trim()
-
-  if (!path) return null
-
-  return {
-    path,
-    status: parseDiffStatus(statusToken),
-  }
-}
-
-const toAffectedPackages = (
-  files: readonly Api.Lint.ChangedFile[],
-  packages: readonly Api.Analyzer.Workspace.Package[],
-): readonly string[] => {
-  const scopes = HashSet.fromIterable(packages.map((pkg) => pkg.scope))
-  const affected = MutableHashSet.empty<string>()
-
-  for (const file of files) {
-    const [root, scope] = file.path.split('/')
-    if (root === 'packages' && scope && HashSet.has(scopes, scope)) {
-      MutableHashSet.add(affected, scope)
-    }
-  }
-
-  return Array.from(affected).toSorted((left, right) => left.localeCompare(right))
-}
-
 const hasBlockingViolations = (report: Api.Lint.Report): boolean =>
   report.results.some(
     (result) =>
       Api.Lint.Finished.is(result) &&
       result.violation !== undefined &&
-      Api.Lint.Error.is(result.severity),
+      Api.Lint.Severity.guards.SeverityError(result.severity),
   )
 
 const toMonorepo = (packages: readonly Api.Analyzer.Workspace.Package[]) => ({
@@ -115,6 +43,7 @@ export class PreviewBlockingError extends Data.TaggedError('PreviewBlockingError
 
 export interface RunPrPreviewOptions {
   readonly checkOnly?: boolean
+  readonly remote?: string
 }
 
 export interface PreviewCommentUpdateParams {
@@ -137,47 +66,6 @@ export interface PreviewCommentUpdateResult {
 export type RunPrPreviewResult =
   | { readonly _tag: 'checked'; readonly issueNumber: number }
   | ({ readonly _tag: 'updated' } & PreviewCommentUpdateResult)
-
-interface PreviewDoctorLintParams {
-  readonly config: Api.Lint.ResolvedConfig
-  readonly diff: Api.Lint.Diff
-  readonly packages: readonly Api.Analyzer.Workspace.Package[]
-  readonly pullRequest: Github.PullRequest
-  readonly plannedItems: ReadonlyArray<{
-    readonly package: Api.Analyzer.Workspace.Package
-    readonly nextVersion: unknown
-  }>
-  readonly lifecycle: Api.Commentator.DoctorSummary['lifecycle']
-  readonly publishing: Api.Config.ResolvedConfig['publishing']
-}
-
-export interface BuildPreviewDoctorSummaryDependencies {
-  readonly planEphemeral?: typeof Api.Planner.ephemeral
-  readonly runLintCheck?: (params: PreviewDoctorLintParams) => Effect.Effect<Api.Lint.Report, Error>
-}
-
-interface PreviewCommentTransportParams extends PreviewCommentUpdateParams {
-  readonly runtime: {
-    readonly owner: string
-    readonly repo: string
-    readonly token: string
-  }
-}
-
-export interface RunPrPreviewDependencies {
-  readonly loadConfig?: typeof Api.Config.load
-  readonly resolvePackages?: typeof Api.Analyzer.Workspace.resolvePackages
-  readonly exploreRuntime?: typeof Api.Explorer.explore
-  readonly resolvePullRequest?: typeof Api.Explorer.resolvePullRequest
-  readonly getTags?: (git: Git.GitService) => Effect.Effect<readonly string[], Error>
-  readonly analyze?: typeof Api.Analyzer.analyze
-  readonly loadPullRequestDiff?: typeof loadPullRequestDiff
-  readonly buildPreviewDoctorSummary?: typeof buildPreviewDoctorSummary
-  readonly forecast?: typeof Api.Forecaster.forecast
-  readonly updatePreviewComment?: (
-    params: PreviewCommentTransportParams,
-  ) => Effect.Effect<PreviewCommentUpdateResult, Error>
-}
 
 const hasBlockingPreviewIssues = (doctor?: Api.Commentator.DoctorSummary): boolean =>
   doctor?.rows.some((row) => row.status === 'error') ?? false
@@ -237,126 +125,21 @@ export const upsertPullRequestPreviewComment = (params: PreviewCommentUpdatePara
     } satisfies PreviewCommentUpdateResult
   })
 
-export const loadPullRequestDiff = (params: {
-  readonly pullRequest: Github.PullRequest
+export const buildPreviewDoctorSummary = (params: {
+  readonly config: Api.Config.ResolvedConfig
+  readonly analysis: Api.Analyzer.Models.Analysis
   readonly packages: readonly Api.Analyzer.Workspace.Package[]
-  readonly required: boolean
+  readonly pullRequest: Github.PullRequest
+  readonly projectedSquashCommit?: Api.ProjectedSquashCommit.Preview
+  readonly diff: Api.Lint.Diff
+  readonly diffRemote?: string
+  readonly blockingTitleChecks: boolean
 }) =>
   Effect.gen(function* () {
-    const git = yield* Git.Git
-    const root = yield* git.getRoot()
-    const baseRef = params.pullRequest.base.ref.trim()
-
-    if (baseRef.length === 0) {
-      return params.required
-        ? yield* Effect.fail(
-            new Api.Explorer.ExplorerError({
-              context: {
-                detail:
-                  'Connected pull request is missing a base ref, so release preview cannot compute the PR diff.',
-              },
-            }),
-          )
-        : null
-    }
-
-    const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-    const command = ChildProcess.make(
-      'git',
-      ['diff', '--name-status', `origin/${baseRef}...HEAD`],
-      {
-        cwd: root,
-      },
-    )
-    const output = yield* spawner.string(command).pipe(
-      Effect.result,
-      Effect.flatMap((result) => {
-        if (result._tag === 'Success') return Effect.succeed(result.success)
-
-        if (!params.required) {
-          return Effect.logWarning(
-            `Skipping diff-aware release checks because git diff against origin/${baseRef} could not be computed: ${result.failure instanceof Error ? result.failure.message : JSON.stringify(result.failure)}`,
-          ).pipe(Effect.as(''))
-        }
-
-        return Effect.fail(
-          new Api.Explorer.ExplorerError({
-            context: {
-              detail:
-                `Could not compute git diff against origin/${baseRef}. ` +
-                'Fetch the pull-request base branch before running release preview or doctor.',
-            },
-          }),
-        )
-      }),
-    )
-
-    const files = output
-      .split('\n')
-      .map((line: string) => line.trim())
-      .filter((line: string) => line.length > 0)
-      .map(parseDiffLine)
-      .filter((entry: any): entry is Api.Lint.ChangedFile => entry !== null)
-
-    return {
-      files,
-      affectedPackages: toAffectedPackages(files, params.packages),
-    }
-  })
-
-const runPreviewDoctorLintLive = (params: PreviewDoctorLintParams) =>
-  Api.Lint.fromPullRequest(params.pullRequest).pipe(
-    Effect.flatMap((pullRequest) =>
-      Api.Lint.check({ config: params.config }).pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            Layer.succeed(Api.Lint.DiffService, params.diff),
-            Api.Lint.DefaultGitHubLayer,
-            Api.Lint.Preconditions.make({
-              hasOpenPR: true,
-              hasDiff: params.diff.files.length > 0,
-              hasReleasePlan: true,
-              isMonorepo: params.packages.length > 1,
-            }),
-            Api.Lint.ReleasePlan.make(
-              params.plannedItems.map((item) => ({
-                packageName: item.package.name,
-                packagePath: item.package.path,
-                version: item.nextVersion,
-              })),
-            ),
-            Api.Lint.ReleaseContext.make({
-              lifecycle: params.lifecycle,
-              publishing: params.publishing,
-            }),
-          ),
-        ),
-        Effect.provideService(Api.Lint.MonorepoService, toMonorepo(params.packages)),
-        Effect.provideService(Api.Lint.PrService, pullRequest),
-      ),
-    ),
-    Effect.mapError((error) => (error instanceof Error ? error : new Error(String(error)))),
-  )
-
-export const buildPreviewDoctorSummary = (
-  params: {
-    readonly config: Api.Config.ResolvedConfig
-    readonly analysis: Api.Analyzer.Models.Analysis
-    readonly packages: readonly Api.Analyzer.Workspace.Package[]
-    readonly pullRequest: Github.PullRequest
-    readonly projectedSquashCommit?: Api.ProjectedSquashCommit.Preview
-    readonly diff: Api.Lint.Diff
-    readonly blockingTitleChecks: boolean
-  },
-  dependencies: BuildPreviewDoctorSummaryDependencies = {},
-) =>
-  Effect.gen(function* () {
-    const planAttempt = yield* (dependencies.planEphemeral ?? Api.Planner.ephemeral)(
-      params.analysis,
-      {
-        packages: params.packages,
-      },
-    ).pipe(Effect.result)
+    const diffRemote = params.diffRemote ?? resolveDiffRemote(params.config)
+    const planAttempt = yield* Api.Planner.ephemeral(params.analysis, {
+      packages: params.packages,
+    }).pipe(Effect.result)
 
     if (planAttempt._tag === 'Failure') {
       return {
@@ -384,96 +167,114 @@ export const buildPreviewDoctorSummary = (
       }
     }
 
-    const channel = Api.Publishing.resolvePublishChannel(params.config.publishing, plan.lifecycle)
-    const commentDoctorRules = [
-      ...previewDoctorRuleIds,
-      'pr.type.release-kind-match-diff',
-      ...(params.projectedSquashCommit?.projectedHeader
-        ? (['pr.projected-squash-commit-sync'] as const)
-        : []),
-    ]
-
+    const publish = Api.Publishing.resolvePublishSemanticsForPlan({
+      plan,
+      publishing: params.config.publishing,
+      npmTag: params.config.npmTag,
+      candidateTag: params.config.candidateTag,
+    })
     const titleSeverity = params.blockingTitleChecks
       ? Api.Lint.Error.make({})
       : params.config.lint.defaults.severity
-    const lintConfig = Api.Lint.resolveConfig({
-      defaults: Api.Lint.RuleDefaults.make({
-        enabled: params.config.lint.defaults.enabled,
-        severity: params.config.lint.defaults.severity,
-      }),
-      rules: {
-        ...params.config.lint.rules,
-        'env.publish-channel-ready': enableRule(params.config, 'env.publish-channel-ready', {
+    const commentDoctorRules = [
+      commandLintRule({
+        id: 'env.publish-channel-ready',
+        options: {
           surface: 'preview',
-        }),
-        'plan.packages-not-private': enableRule(params.config, 'plan.packages-not-private'),
-        'plan.packages-license-present': enableRule(params.config, 'plan.packages-license-present'),
-        'plan.packages-repository-present': enableRule(
-          params.config,
-          'plan.packages-repository-present',
-        ),
-        'plan.packages-repository-match-canonical': enableRule(
-          params.config,
-          'plan.packages-repository-match-canonical',
-        ),
-        'plan.versions-unpublished': enableRule(params.config, 'plan.versions-unpublished'),
-        'plan.tags-unique': enableRule(params.config, 'plan.tags-unique'),
-        'pr.type.release-kind-match-diff': enableRule(
-          params.config,
-          'pr.type.release-kind-match-diff',
-          {},
-          {
-            severity: titleSeverity,
-          },
-        ),
-        ...(params.projectedSquashCommit?.projectedHeader
-          ? {
-              'pr.projected-squash-commit-sync': enableRule(
-                params.config,
-                'pr.projected-squash-commit-sync',
-                {
-                  projectedHeader: params.projectedSquashCommit.projectedHeader,
-                },
-                {
-                  severity: titleSeverity,
-                },
-              ),
-            }
-          : {}),
-      },
-      onlyRules: [...commentDoctorRules],
+        },
+      }),
+      commandLintRule({
+        id: 'plan.packages-not-private',
+      }),
+      commandLintRule({
+        id: 'plan.packages-license-present',
+      }),
+      commandLintRule({
+        id: 'plan.packages-repository-present',
+      }),
+      commandLintRule({
+        id: 'plan.packages-repository-match-canonical',
+      }),
+      commandLintRule({
+        id: 'plan.versions-unpublished',
+      }),
+      commandLintRule({
+        id: 'plan.tags-unique',
+      }),
+      commandLintRule({
+        id: 'pr.type.release-kind-match-diff',
+        severity: titleSeverity,
+      }),
+      ...(params.projectedSquashCommit?.projectedHeader
+        ? [
+            commandLintRule({
+              id: 'pr.projected-squash-commit-sync',
+              options: {
+                projectedHeader: params.projectedSquashCommit.projectedHeader,
+              },
+              severity: titleSeverity,
+            }),
+          ]
+        : []),
+    ] satisfies readonly CommandLintRuleSpec[]
+    const lintConfig = createCommandLintConfig({
+      config: params.config,
+      rules: commentDoctorRules,
+      onlyRules: commentDoctorRules.map((rule) => rule.id),
+      skipRules: [],
     })
 
-    const report = yield* (dependencies.runLintCheck ?? runPreviewDoctorLintLive)({
-      config: lintConfig,
-      diff: params.diff,
-      packages: params.packages,
-      pullRequest: params.pullRequest,
-      plannedItems,
-      lifecycle: plan.lifecycle,
-      publishing: params.config.publishing,
-    })
+    const report = yield* Api.Lint.check({ config: lintConfig }).pipe(
+      Effect.provide(
+        Layer.mergeAll(
+          Layer.succeed(Api.Lint.DiffService, params.diff),
+          Api.Lint.DefaultGitHubLayer,
+          Api.Lint.Preconditions.make({
+            hasOpenPR: true,
+            hasDiff: params.diff.files.length > 0,
+            hasReleasePlan: true,
+            isMonorepo: params.packages.length > 1,
+          }),
+          Api.Lint.ReleasePlan.make(
+            plannedItems.map((item) => ({
+              packageName: item.package.name,
+              packagePath: item.package.path,
+              version: item.nextVersion,
+            })),
+          ),
+          Api.Lint.ReleaseContext.make({
+            lifecycle: plan.lifecycle,
+            publishing: params.config.publishing,
+          }),
+        ),
+      ),
+      Effect.provideService(Api.Lint.MonorepoService, toMonorepo(params.packages)),
+      Effect.provideService(
+        Api.Lint.PrService,
+        yield* Api.Lint.fromPullRequest(params.pullRequest),
+      ),
+    )
 
     return {
       summary: Api.Commentator.createDoctorSummary(report, {
         lifecycle: plan.lifecycle,
         plannedPackages: plannedItems.length,
-        ...(channel.mode === 'manual' && plan.lifecycle === 'ephemeral'
+        ...(publish.channel.mode === 'manual' && plan.lifecycle === 'ephemeral'
           ? {
               runbook: {
                 title: 'Manual Preview Runbook',
                 commands: [
                   ...params.config.operator.prepareCommands,
                   `PR_NUMBER=${String(plan.releases.find(Api.Planner.Ephemeral.is)?.prerelease.prNumber ?? params.pullRequest.number)} ${appendReleaseCommand(params.config.operator.releaseCommand, 'plan --lifecycle ephemeral')}`,
-                  appendReleaseCommand(params.config.operator.releaseCommand, 'doctor'),
                   appendReleaseCommand(
                     params.config.operator.releaseCommand,
-                    'apply --yes --tag pr',
+                    renderDoctorCommandSuffix(diffRemote),
                   ),
+                  appendReleaseCommand(params.config.operator.releaseCommand, 'apply --yes'),
                 ],
                 note:
                   'Step 2 writes the exact ephemeral publish plan to `.release/plan.json`. ' +
-                  'Step 4 publishes those packages to the `pr` dist-tag.',
+                  `Step 4 publishes those packages to the \`${publish.distTag}\` dist-tag automatically.`,
               },
               deferredChecks: manualPreviewDeferredRules.flatMap((rule) =>
                 rule.data.preventsDescriptions && rule.data.preventsDescriptions.length > 0
@@ -484,7 +285,7 @@ export const buildPreviewDoctorSummary = (
                         preventsDescriptions: rule.data.preventsDescriptions,
                         checkCommand: appendReleaseCommand(
                           params.config.operator.releaseCommand,
-                          `doctor --onlyRule ${rule.data.id}`,
+                          renderDoctorCommandSuffix(diffRemote, [`--onlyRule ${rule.data.id}`]),
                         ),
                       },
                     ]
@@ -497,35 +298,11 @@ export const buildPreviewDoctorSummary = (
     }
   })
 
-const updatePreviewCommentLive = (params: PreviewCommentTransportParams) =>
-  upsertPullRequestPreviewComment({
-    issueNumber: params.issueNumber,
-    forecast: params.forecast,
-    ...(params.doctor ? { doctor: params.doctor } : {}),
-    ...(params.projectedSquashCommit
-      ? { projectedSquashCommit: params.projectedSquashCommit }
-      : {}),
-    interactiveChecklist: params.interactiveChecklist,
-  }).pipe(
-    Effect.provide(
-      Github.LiveFetch({
-        owner: params.runtime.owner,
-        repo: params.runtime.repo,
-        token: params.runtime.token,
-      }),
-    ),
-  )
-
-export const runPrPreview = (
-  options: RunPrPreviewOptions = {},
-  dependencies: RunPrPreviewDependencies = {},
-) =>
+export const runPrPreview = (options: RunPrPreviewOptions = {}) =>
   Effect.gen(function* () {
     const git = yield* Git.Git
-    const config = yield* (dependencies.loadConfig ?? Api.Config.load)()
-    const packages = yield* (
-      dependencies.resolvePackages ?? Api.Analyzer.Workspace.resolvePackages
-    )(config.packages)
+    const config = yield* Api.Config.load()
+    const packages = yield* Api.Analyzer.Workspace.resolvePackages(config.packages)
 
     if (packages.length === 0) {
       return yield* Effect.fail(
@@ -538,20 +315,9 @@ export const runPrPreview = (
       )
     }
 
-    const runtime = yield* (dependencies.exploreRuntime ?? Api.Explorer.explore)()
-    if (!runtime.github.target) {
-      return yield* Effect.fail(
-        new Api.Explorer.ExplorerError({
-          context: {
-            detail:
-              'Could not resolve the GitHub repository target for the connected pull request.',
-          },
-        }),
-      )
-    }
-    const pullRequest = yield* (
-      dependencies.resolvePullRequest ?? Api.Explorer.resolvePullRequest
-    )()
+    const pullRequestContext = yield* Api.Explorer.resolvePullRequestContext()
+    const runtime = yield* Api.Explorer.exploreFromContext(pullRequestContext)
+    const pullRequest = pullRequestContext.pullRequest
     if (!pullRequest) {
       return yield* Effect.fail(
         new Api.Explorer.ExplorerError({
@@ -563,7 +329,7 @@ export const runPrPreview = (
       )
     }
 
-    const token = runtime.github.credentials?.token
+    const token = pullRequestContext.token
     if (!token || token.trim() === '') {
       return yield* Effect.fail(
         new Github.GithubConfigError({
@@ -574,25 +340,28 @@ export const runPrPreview = (
       )
     }
 
-    const tags = yield* dependencies.getTags?.(git) ?? git.getTags()
-    const analysis = yield* (dependencies.analyze ?? Api.Analyzer.analyze)({ packages, tags })
+    const tags = yield* git.getTags()
+    const analysis = yield* Api.Analyzer.analyze({ packages, tags })
     const projectedSquashCommit = Api.ProjectedSquashCommit.preview({
       actualTitle: pullRequest.title,
       impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis),
     })
-    const diff = yield* (dependencies.loadPullRequestDiff ?? loadPullRequestDiff)({
+    const diffRemote = resolveDiffRemote(config, options.remote)
+    const diff = yield* loadPullRequestDiff({
       pullRequest,
       packages,
       required: true,
+      remote: diffRemote,
     })
 
-    const doctor = yield* (dependencies.buildPreviewDoctorSummary ?? buildPreviewDoctorSummary)({
+    const doctor = yield* buildPreviewDoctorSummary({
       config,
       analysis,
       packages,
       pullRequest,
       ...(projectedSquashCommit ? { projectedSquashCommit } : {}),
       diff: diff ?? { files: [], affectedPackages: [] },
+      ...(diffRemote !== 'origin' ? { diffRemote } : {}),
       blockingTitleChecks: true,
     })
 
@@ -611,23 +380,38 @@ export const runPrPreview = (
       } satisfies RunPrPreviewResult
     }
 
-    const forecast = (dependencies.forecast ?? Api.Forecaster.forecast)(analysis, runtime)
-    const preview = yield* (dependencies.updatePreviewComment ?? updatePreviewCommentLive)({
+    const forecast = Api.Forecaster.forecast(analysis, runtime)
+    const preview = yield* upsertPullRequestPreviewComment({
       issueNumber: pullRequest.number,
       forecast,
       ...(doctor.summary ? { doctor: doctor.summary } : {}),
       ...(projectedSquashCommit ? { projectedSquashCommit } : {}),
       interactiveChecklist:
         (config.publishing.ephemeral ?? { mode: 'manual' as const }).mode !== 'manual',
-      runtime: {
-        owner: runtime.github.target.owner,
-        repo: runtime.github.target.repo,
-        token,
-      },
-    })
+    }).pipe(
+      Effect.provide(
+        Github.LiveFetch({
+          owner: pullRequestContext.target.owner,
+          repo: pullRequestContext.target.repo,
+          token,
+        }),
+      ),
+    )
 
     return {
       _tag: 'updated',
       ...preview,
     } satisfies RunPrPreviewResult
   })
+
+const renderDoctorCommandSuffix = (
+  diffRemote: string | undefined,
+  extraArgs: readonly string[] = [],
+): string => {
+  const args = ['doctor']
+  if (diffRemote && diffRemote !== 'origin') {
+    args.push(`--remote ${diffRemote}`)
+  }
+  args.push(...extraArgs)
+  return args.join(' ')
+}
