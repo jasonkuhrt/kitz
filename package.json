@@ -39,6 +39,7 @@
     "check:package:packages": "sh -lc 'bun run build:packages && bun run --workspaces check:package'",
     "test:packages": "bun run --if-present --workspaces test",
     "check:cov:packages": "node tools/run-workspace-coverage.mjs",
+    "check:ci": "actionlint",
     "test:oxlint-rules": "bun run test:oxlint-custom-rules && bun run --cwd packages/oxlint-rules test",
     "test:fleet": "vitest run tools/fleet-lib.test.ts",
     "test:oxlint-custom-rules": "vitest run tools/oxlint-custom-rules/tests/custom-rules.test.ts",

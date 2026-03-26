@@ -40,6 +40,25 @@ bun run --filter @kitz/core build            # Single package
 
 **Cross-package dependencies**: Use `workspace:*` and import by package name. Note that `#` imports are scoped per-package - cross-package `#` imports are not valid.
 
+## Commit Hook
+
+`hooks/pre-commit` is tracked in the repo and installed by `bun run prepare`.
+
+Run it manually with:
+
+```bash
+bun run pre-commit
+```
+
+The hook:
+
+- formats and lints the staged snapshot, then syncs fixes back to the index
+- blocks conflict markers and repo-local artifacts such as `.claude/*.local.md`, `.serena/cache/`, `.claude/worktrees/`, `.release/`, and `.DS_Store`
+- requires tracked `hooks/*` scripts to stay executable and use a shell shebang
+- runs `shellcheck` for staged shell scripts and `bun run check:ci` for staged GitHub workflow files
+- runs `bun run check:types` when staged changes can affect TypeScript
+- runs `bun run check:cov:packages` on every commit
+
 ## Linting (Custom Rules)
 
 Custom Oxlint rules use two paths:

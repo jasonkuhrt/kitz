@@ -23,6 +23,19 @@ const FORMATTABLE_EXTENSIONS = new Set([
 ])
 
 const LINTABLE_EXTENSIONS = new Set(['.js', '.jsx', '.ts', '.tsx', '.mjs', '.cjs', '.mts', '.cts'])
+const TYPECHECKABLE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts'])
+const SHELLCHECKABLE_EXTENSIONS = new Set(['.sh'])
+const VALID_HOOK_SHEBANGS = new Set(['#!/usr/bin/env sh', '#!/usr/bin/env bash'])
+const LOCAL_ARTIFACT_PREFIXES = [
+  '.playwright-mcp/',
+  '.serena/cache/',
+  '.claude/worktrees/',
+  '.worktrees/',
+  '.release/',
+] as const
+const WORKFLOW_PATH_PATTERN = /^\.github\/workflows\/.+\.(yml|yaml)$/
+const TSCONFIG_PATTERN = /^tsconfig(?:\..+)?\.json$/
+const CLAUDE_LOCAL_CONTEXT_PATTERN = /^\.claude\/[^/]+\.local\.md$/
 
 const MAX_BUFFER = 16 * 1024 * 1024
 // oxlint-disable-next-line kitz/domain/no-process-env
@@ -165,6 +178,26 @@ const syncWorkingTreeIfSafe = (
 
 const isFormattable = (path: string): boolean => FORMATTABLE_EXTENSIONS.has(extname(path))
 const isLintable = (path: string): boolean => LINTABLE_EXTENSIONS.has(extname(path))
+const basename = (path: string): string => path.split('/').at(-1) ?? path
+
+const isTypecheckRelevant = (path: string): boolean => {
+  if (TYPECHECKABLE_EXTENSIONS.has(extname(path))) return true
+
+  const file = basename(path)
+  return file === 'package.json' || TSCONFIG_PATTERN.test(file)
+}
+
+const isWorkflowPath = (path: string): boolean => WORKFLOW_PATH_PATTERN.test(path)
+const isHookPath = (path: string): boolean => path.startsWith('hooks/')
+const isShellcheckable = (path: string): boolean =>
+  SHELLCHECKABLE_EXTENSIONS.has(extname(path)) || isHookPath(path)
+
+const isBlockedLocalArtifact = (path: string): boolean => {
+  if (basename(path) === '.DS_Store') return true
+  if (path === 'CLAUDE.local.md') return true
+  if (CLAUDE_LOCAL_CONTEXT_PATTERN.test(path)) return true
+  return LOCAL_ARTIFACT_PREFIXES.some((prefix) => path.startsWith(prefix))
+}
 
 const runFormat = (
   snapshotRoot: string,
@@ -182,9 +215,17 @@ const runLint = (
   return run('bun', ['tools/run-lint.ts', ...args, '--', ...paths], { cwd: snapshotRoot })
 }
 
-const runCoverage = (): CommandResult => {
-  return run('bun', ['run', 'check:cov:packages'], { cwd: repoRoot })
-}
+const runCoverageInSnapshot = (snapshotRoot: string): CommandResult =>
+  run('bun', ['run', 'check:cov:packages'], { cwd: snapshotRoot })
+
+const runTypecheck = (snapshotRoot: string): CommandResult =>
+  run('bun', ['run', 'check:types'], { cwd: snapshotRoot })
+
+const runShellcheck = (snapshotRoot: string, paths: readonly string[]): CommandResult =>
+  run('shellcheck', [...paths], { cwd: snapshotRoot })
+
+const runActionlint = (snapshotRoot: string, paths: readonly string[]): CommandResult =>
+  run('bun', ['run', 'check:ci', '--', ...paths], { cwd: snapshotRoot })
 
 const materializeIndexSnapshot = (): string => {
   const tempDir = mkdtempSync(join(tmpdir(), 'kitz-pre-commit-'))
@@ -222,13 +263,97 @@ const logFailure = (label: string, result: CommandResult): void => {
   if (result.stderr.trim()) console.error(result.stderr.trim())
 }
 
+const fail = (message: string): never => {
+  console.error(message)
+  process.exit(1)
+}
+
+const assertNoBlockedLocalArtifacts = (stagedPaths: readonly string[]): void => {
+  const blockedPaths = stagedPaths.filter(isBlockedLocalArtifact)
+
+  if (blockedPaths.length === 0) return
+
+  fail(
+    [
+      'Refusing to commit local-only artifacts:',
+      ...blockedPaths.map((path) => `  ${path}`),
+      'Unstage or remove these files before committing.',
+    ].join('\n'),
+  )
+}
+
+const assertNoConflictMarkers = (): void => {
+  const result = run(
+    'git',
+    [
+      'grep',
+      '--cached',
+      '-n',
+      '-I',
+      '-e',
+      '^<<<<<<< ',
+      '-e',
+      '^=======$',
+      '-e',
+      '^>>>>>>> ',
+      '--',
+      '.',
+    ],
+    { cwd: repoRoot },
+  )
+
+  if (result.status === 1) return
+  if (result.status > 1) {
+    fail('Failed to scan the staged index for conflict markers.')
+  }
+
+  fail(`Refusing to commit conflict markers:\n${result.stdout.trim()}`)
+}
+
+const assertHookScriptsAreValid = (hookPaths: readonly string[]): void => {
+  if (hookPaths.length === 0) return
+
+  const failures: string[] = []
+
+  for (const path of hookPaths) {
+    const mode = getIndexMode(path)
+    if (mode !== '100755') {
+      failures.push(`${path} must be committed with mode 100755 (found ${mode ?? '<missing>'})`)
+    }
+
+    const firstLine = runOrThrow('git', ['show', `:${path}`], { cwd: repoRoot })
+      .split(/\r?\n/u, 1)
+      .at(0)
+
+    if (!firstLine || !VALID_HOOK_SHEBANGS.has(firstLine)) {
+      failures.push(`${path} must start with ${[...VALID_HOOK_SHEBANGS].join(' or ')}`)
+    }
+  }
+
+  if (failures.length === 0) return
+
+  fail(
+    ['Refusing to commit invalid hook scripts:', ...failures.map((entry) => `  ${entry}`)].join(
+      '\n',
+    ),
+  )
+}
+
 const main = (): void => {
   const stagedPaths = listStagedPaths()
   if (stagedPaths.length === 0) return
 
   const formattablePaths = stagedPaths.filter(isFormattable)
   const lintablePaths = stagedPaths.filter(isLintable)
+  const typecheckRelevantPaths = stagedPaths.filter(isTypecheckRelevant)
+  const shellcheckPaths = stagedPaths.filter(isShellcheckable)
+  const workflowPaths = stagedPaths.filter(isWorkflowPath)
+  const hookPaths = stagedPaths.filter(isHookPath)
   const managedPaths = [...new Set([...formattablePaths, ...lintablePaths])]
+
+  assertNoBlockedLocalArtifacts(stagedPaths)
+  assertNoConflictMarkers()
+  assertHookScriptsAreValid(hookPaths)
 
   const snapshotRoot = materializeIndexSnapshot()
 
@@ -263,7 +388,31 @@ const main = (): void => {
       }
     }
 
-    const coverageCheck = runCoverage()
+    if (shellcheckPaths.length > 0) {
+      const shellcheck = runShellcheck(snapshotRoot, shellcheckPaths)
+      if (shellcheck.status !== 0) {
+        logFailure('Shellcheck', shellcheck)
+        process.exit(1)
+      }
+    }
+
+    if (workflowPaths.length > 0) {
+      const actionlint = runActionlint(snapshotRoot, workflowPaths)
+      if (actionlint.status !== 0) {
+        logFailure('Workflow lint', actionlint)
+        process.exit(1)
+      }
+    }
+
+    if (typecheckRelevantPaths.length > 0) {
+      const typecheck = runTypecheck(snapshotRoot)
+      if (typecheck.status !== 0) {
+        logFailure('Type check', typecheck)
+        process.exit(1)
+      }
+    }
+
+    const coverageCheck = runCoverageInSnapshot(snapshotRoot)
     if (coverageCheck.status !== 0) {
       logFailure('Coverage check', coverageCheck)
       process.exit(1)
