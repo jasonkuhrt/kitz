@@ -41,6 +41,13 @@ export class BorderEdges extends S.Class<BorderEdges>('BorderEdges')({
   left: S.optional(S.String),
 }) {
   static make = this.makeUnsafe
+  static is = S.is(BorderEdges)
+  static decode = S.decodeUnknownEffect(BorderEdges)
+  static decodeSync = S.decodeUnknownSync(BorderEdges)
+  static encode = S.encodeUnknownEffect(BorderEdges)
+  static encodeSync = S.encodeUnknownSync(BorderEdges)
+  static equivalence = S.toEquivalence(BorderEdges)
+  static ordered = false as const
 }
 
 /**
@@ -70,6 +77,13 @@ export class BorderCorners extends S.Class<BorderCorners>('BorderCorners')({
   bottomLeft: S.optional(S.String),
 }) {
   static make = this.makeUnsafe
+  static is = S.is(BorderCorners)
+  static decode = S.decodeUnknownEffect(BorderCorners)
+  static decodeSync = S.decodeUnknownSync(BorderCorners)
+  static encode = S.encodeUnknownEffect(BorderCorners)
+  static encodeSync = S.encodeUnknownSync(BorderCorners)
+  static equivalence = S.toEquivalence(BorderCorners)
+  static ordered = false as const
 }
 
 /**
@@ -99,6 +113,13 @@ export class Border extends S.Class<Border>('Border')({
   corners: S.optional(BorderCorners),
 }) {
   static make = this.makeUnsafe
+  static is = S.is(Border)
+  static decode = S.decodeUnknownEffect(Border)
+  static decodeSync = S.decodeUnknownSync(Border)
+  static encode = S.encodeUnknownEffect(Border)
+  static encodeSync = S.encodeUnknownSync(Border)
+  static equivalence = S.toEquivalence(Border)
+  static ordered = false as const
 }
 
 export const makeFromEncoded = S.decodeSync(Border)

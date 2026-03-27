@@ -27,6 +27,12 @@ export class PreRelease extends S.TaggedClass<PreRelease>()(
 ) {
   static make = this.makeUnsafe
   static is = S.is(PreRelease)
+  static decode = S.decodeUnknownEffect(PreRelease)
+  static decodeSync = S.decodeUnknownSync(PreRelease)
+  static encode = S.encodeUnknownEffect(PreRelease)
+  static encodeSync = S.encodeUnknownSync(PreRelease)
+  static equivalence = S.toEquivalence(PreRelease)
+  static ordered = false as const
   static override toString = (version: PreRelease): string => formatPreRelease(version)
 
   /** String representation for JS coercion (template literals, logging) */

@@ -4,6 +4,7 @@ import { configDefaults, defineConfig } from 'vitest/config'
 
 const ssrResolveConditions = [
   'module',
+  ...(process.versions.bun ? ['bun'] : []),
   'node',
   'development|production',
 ]

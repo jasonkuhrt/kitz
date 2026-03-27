@@ -206,6 +206,13 @@ export class Param extends S.Class<Param>('Param')({
   expression: S.String,
 }) {
   static make = this.makeUnsafe
+  static is = S.is(Param)
+  static decode = S.decodeUnknownEffect(Param)
+  static decodeSync = S.decodeUnknownSync(Param)
+  static encode = S.encodeUnknownEffect(Param)
+  static encodeSync = S.encodeUnknownSync(Param)
+  static equivalence = S.toEquivalence(Param)
+  static ordered = false as const
   /**
    * Schema for parsing from/encoding to string representation.
    * Use this when you need to accept string parameter expressions.

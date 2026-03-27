@@ -16,6 +16,12 @@ export class CommitDisplay extends S.TaggedClass<CommitDisplay>()('CommitDisplay
 }) {
   static make = this.makeUnsafe
   static is = S.is(CommitDisplay)
+  static decode = S.decodeUnknownEffect(CommitDisplay)
+  static decodeSync = S.decodeUnknownSync(CommitDisplay)
+  static encode = S.encodeUnknownEffect(CommitDisplay)
+  static encodeSync = S.encodeUnknownSync(CommitDisplay)
+  static equivalence = S.toEquivalence(CommitDisplay)
+  static ordered = false as const
 }
 
 /**
@@ -32,6 +38,12 @@ export class ForecastRelease extends S.TaggedClass<ForecastRelease>()('ForecastR
 }) {
   static make = this.makeUnsafe
   static is = S.is(ForecastRelease)
+  static decode = S.decodeUnknownEffect(ForecastRelease)
+  static decodeSync = S.decodeUnknownSync(ForecastRelease)
+  static encode = S.encodeUnknownEffect(ForecastRelease)
+  static encodeSync = S.encodeUnknownSync(ForecastRelease)
+  static equivalence = S.toEquivalence(ForecastRelease)
+  static ordered = false as const
 
   get currentVersionDisplay(): string {
     return Option.match(this.currentVersion, {
@@ -54,6 +66,12 @@ export class ForecastCascade extends S.TaggedClass<ForecastCascade>()('ForecastC
 }) {
   static make = this.makeUnsafe
   static is = S.is(ForecastCascade)
+  static decode = S.decodeUnknownEffect(ForecastCascade)
+  static decodeSync = S.decodeUnknownSync(ForecastCascade)
+  static encode = S.encodeUnknownEffect(ForecastCascade)
+  static encodeSync = S.encodeUnknownSync(ForecastCascade)
+  static equivalence = S.toEquivalence(ForecastCascade)
+  static ordered = false as const
 }
 
 /**
@@ -73,4 +91,10 @@ export class Forecast extends S.TaggedClass<Forecast>()('Forecast', {
 }) {
   static make = this.makeUnsafe
   static is = S.is(Forecast)
+  static decode = S.decodeUnknownEffect(Forecast)
+  static decodeSync = S.decodeUnknownSync(Forecast)
+  static encode = S.encodeUnknownEffect(Forecast)
+  static encodeSync = S.encodeUnknownSync(Forecast)
+  static equivalence = S.toEquivalence(Forecast)
+  static ordered = false as const
 }

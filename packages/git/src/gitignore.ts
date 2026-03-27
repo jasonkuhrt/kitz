@@ -105,6 +105,13 @@ class Entry extends S.Class<Entry>('GitignoreEntry')({
   negated: S.Boolean,
 }) {
   static make = this.makeUnsafe
+  static is = S.is(Entry)
+  static decode = S.decodeUnknownEffect(Entry)
+  static decodeSync = S.decodeUnknownSync(Entry)
+  static encode = S.encodeUnknownEffect(Entry)
+  static encodeSync = S.encodeUnknownSync(Entry)
+  static equivalence = S.toEquivalence(Entry)
+  static ordered = false as const
 }
 
 /**
@@ -121,6 +128,13 @@ class Section extends S.Class<Section>('GitignoreSection')({
   entries: S.Array(Entry),
 }) {
   static make = this.makeUnsafe
+  static is = S.is(Section)
+  static decode = S.decodeUnknownEffect(Section)
+  static decodeSync = S.decodeUnknownSync(Section)
+  static encode = S.encodeUnknownEffect(Section)
+  static encodeSync = S.encodeUnknownSync(Section)
+  static equivalence = S.toEquivalence(Section)
+  static ordered = false as const
 }
 
 // ─── Internal Parse/Stringify ─────────────────────────────────────────────────
@@ -228,6 +242,13 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
   sections: S.Array(Section),
 }) {
   static make = this.makeUnsafe
+  static is = S.is(Gitignore)
+  static decode = S.decodeUnknownEffect(Gitignore)
+  static decodeSync = S.decodeUnknownSync(Gitignore)
+  static encode = S.encodeUnknownEffect(Gitignore)
+  static encodeSync = S.encodeUnknownSync(Gitignore)
+  static equivalence = S.toEquivalence(Gitignore)
+  static ordered = false as const
   // ─── Internal Types (exposed for advanced use) ─────────────────────────────
 
   /** A single gitignore entry (pattern line). */

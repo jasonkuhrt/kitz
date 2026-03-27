@@ -311,6 +311,13 @@ class ArgLongFlag extends S.TaggedClass<ArgLongFlag>()('long-flag', {
   original: S.String,
 }) {
   static make = this.makeUnsafe
+  static is = S.is(ArgLongFlag)
+  static decode = S.decodeUnknownEffect(ArgLongFlag)
+  static decodeSync = S.decodeUnknownSync(ArgLongFlag)
+  static encode = S.encodeUnknownEffect(ArgLongFlag)
+  static encodeSync = S.encodeUnknownSync(ArgLongFlag)
+  static equivalence = S.toEquivalence(ArgLongFlag)
+  static ordered = false as const
 }
 
 /**
@@ -322,6 +329,13 @@ class ArgShortFlag extends S.TaggedClass<ArgShortFlag>()('short-flag', {
   original: S.String,
 }) {
   static make = this.makeUnsafe
+  static is = S.is(ArgShortFlag)
+  static decode = S.decodeUnknownEffect(ArgShortFlag)
+  static decodeSync = S.decodeUnknownSync(ArgShortFlag)
+  static encode = S.encodeUnknownEffect(ArgShortFlag)
+  static encodeSync = S.encodeUnknownSync(ArgShortFlag)
+  static equivalence = S.toEquivalence(ArgShortFlag)
+  static ordered = false as const
 }
 
 /**
@@ -334,6 +348,13 @@ class ArgShortFlagCluster extends S.TaggedClass<ArgShortFlagCluster>()('short-fl
   original: S.String,
 }) {
   static make = this.makeUnsafe
+  static is = S.is(ArgShortFlagCluster)
+  static decode = S.decodeUnknownEffect(ArgShortFlagCluster)
+  static decodeSync = S.decodeUnknownSync(ArgShortFlagCluster)
+  static encode = S.encodeUnknownEffect(ArgShortFlagCluster)
+  static encodeSync = S.encodeUnknownSync(ArgShortFlagCluster)
+  static equivalence = S.toEquivalence(ArgShortFlagCluster)
+  static ordered = false as const
 }
 
 /**
@@ -344,6 +365,13 @@ class ArgPositional extends S.TaggedClass<ArgPositional>()('positional', {
   original: S.String,
 }) {
   static make = this.makeUnsafe
+  static is = S.is(ArgPositional)
+  static decode = S.decodeUnknownEffect(ArgPositional)
+  static decodeSync = S.decodeUnknownSync(ArgPositional)
+  static encode = S.encodeUnknownEffect(ArgPositional)
+  static encodeSync = S.encodeUnknownSync(ArgPositional)
+  static equivalence = S.toEquivalence(ArgPositional)
+  static ordered = false as const
 }
 
 /**
@@ -354,6 +382,13 @@ class ArgSeparator extends S.TaggedClass<ArgSeparator>()('separator', {
   original: S.Literal('--'),
 }) {
   static make = this.makeUnsafe
+  static is = S.is(ArgSeparator)
+  static decode = S.decodeUnknownEffect(ArgSeparator)
+  static decodeSync = S.decodeUnknownSync(ArgSeparator)
+  static encode = S.encodeUnknownEffect(ArgSeparator)
+  static encodeSync = S.encodeUnknownSync(ArgSeparator)
+  static equivalence = S.toEquivalence(ArgSeparator)
+  static ordered = false as const
 }
 
 const _ArgSchema = S.Union([

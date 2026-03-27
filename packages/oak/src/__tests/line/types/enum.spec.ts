@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { z } from 'zod/v4'
+import * as z from 'zod/v4'
 import { $, s } from '../../_/helpers.js'
 import { createState } from '../../environment/__helpers__.js'
 

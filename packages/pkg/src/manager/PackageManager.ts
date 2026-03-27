@@ -34,4 +34,11 @@ export class DetectedPackageManager extends Schema.Class<DetectedPackageManager>
   source: DetectionSource,
 }) {
   static make = this.makeUnsafe
+  static is = Schema.is(DetectedPackageManager)
+  static decode = Schema.decodeUnknownEffect(DetectedPackageManager)
+  static decodeSync = Schema.decodeUnknownSync(DetectedPackageManager)
+  static encode = Schema.encodeUnknownEffect(DetectedPackageManager)
+  static encodeSync = Schema.encodeUnknownSync(DetectedPackageManager)
+  static equivalence = Schema.toEquivalence(DetectedPackageManager)
+  static ordered = false as const
 }

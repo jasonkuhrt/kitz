@@ -27,4 +27,10 @@ export class Single extends Schema.TaggedClass<Single>()('Single', {
 }) {
   static make = this.makeUnsafe
   static is = Schema.is(Single)
+  static decode = Schema.decodeUnknownEffect(Single)
+  static decodeSync = Schema.decodeUnknownSync(Single)
+  static encode = Schema.encodeUnknownEffect(Single)
+  static encodeSync = Schema.encodeUnknownSync(Single)
+  static equivalence = Schema.toEquivalence(Single)
+  static ordered = false as const
 }

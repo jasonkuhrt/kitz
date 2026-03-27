@@ -59,5 +59,11 @@ export class Standard extends Schema.TaggedClass<Standard>()('Standard', {
 }) {
   static make = this.makeUnsafe
   static is = Schema.is(Standard)
+  static decode = Schema.decodeUnknownEffect(Standard)
+  static decodeSync = Schema.decodeUnknownSync(Standard)
+  static encode = Schema.encodeUnknownEffect(Standard)
+  static encodeSync = Schema.encodeUnknownSync(Standard)
+  static equivalence = Schema.toEquivalence(Standard)
+  static ordered = false as const
   static parse = (value: StandardValue) => Standard.make({ value })
 }

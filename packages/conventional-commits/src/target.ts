@@ -14,4 +14,11 @@ export class Target extends Schema.TaggedClass<Target>()('Target', {
   breaking: Schema.Boolean,
 }) {
   static make = this.makeUnsafe
+  static is = Schema.is(Target)
+  static decode = Schema.decodeUnknownEffect(Target)
+  static decodeSync = Schema.decodeUnknownSync(Target)
+  static encode = Schema.encodeUnknownEffect(Target)
+  static encodeSync = Schema.encodeUnknownSync(Target)
+  static equivalence = Schema.toEquivalence(Target)
+  static ordered = false as const
 }

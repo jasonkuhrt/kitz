@@ -24,6 +24,12 @@ export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
 }) {
   static make = this.makeUnsafe
   static is = S.is(Ephemeral)
+  static decode = S.decodeUnknownEffect(Ephemeral)
+  static decodeSync = S.decodeUnknownSync(Ephemeral)
+  static encode = S.encodeUnknownEffect(Ephemeral)
+  static encodeSync = S.encodeUnknownSync(Ephemeral)
+  static equivalence = S.toEquivalence(Ephemeral)
+  static ordered = false as const
 
   /** Compute ephemeral version: 0.0.0-pr.N.iter.gSHA */
   static calculateVersion(prNumber: number, iteration: number, sha: Git.Sha.Sha): Semver.Semver {

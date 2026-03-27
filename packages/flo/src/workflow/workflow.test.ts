@@ -146,10 +146,7 @@ describe('Flo.Workflow', () => {
     )
 
     expect(Exit.isFailure(failure.exit)).toBe(true)
-    expect(failure.events.map((event) => event._tag)).toEqual([
-      'ActivityStarted',
-      'WorkflowFailed',
-    ])
+    expect(failure.events.map((event) => event._tag)).toEqual(['ActivityStarted', 'WorkflowFailed'])
 
     const failed = failure.events[1]
     expect(failed && Flo.WorkflowEvent.Failed.is(failed)).toBe(true)

@@ -11,6 +11,13 @@ class AbsDirClass extends S.TaggedClass<AbsDirClass>()('FsPathAbsDir', {
   segments: Segments,
 }) {
   static make = this.makeUnsafe
+  static is = S.is(AbsDirClass)
+  static decode = S.decodeUnknownEffect(AbsDirClass)
+  static decodeSync = S.decodeUnknownSync(AbsDirClass)
+  static encode = S.encodeUnknownEffect(AbsDirClass)
+  static encodeSync = S.encodeUnknownSync(AbsDirClass)
+  static equivalence = S.toEquivalence(AbsDirClass)
+  static ordered = false as const
   override toString() {
     return S.encodeSync(Schema)(this)
   }

@@ -24,6 +24,13 @@ export class Operator extends Schema.Class<Operator>('Operator')({
   ),
 }) {
   static make = this.makeUnsafe
+  static is = Schema.is(Operator)
+  static decode = Schema.decodeUnknownEffect(Operator)
+  static decodeSync = Schema.decodeUnknownSync(Operator)
+  static encode = Schema.encodeUnknownEffect(Operator)
+  static encodeSync = Schema.encodeUnknownSync(Operator)
+  static equivalence = Schema.toEquivalence(Operator)
+  static ordered = false as const
 }
 
 /**
@@ -35,6 +42,13 @@ export class ResolvedOperator extends Schema.Class<ResolvedOperator>('ResolvedOp
   prepareCommands: Schema.Array(Schema.String),
 }) {
   static make = this.makeUnsafe
+  static is = Schema.is(ResolvedOperator)
+  static decode = Schema.decodeUnknownEffect(ResolvedOperator)
+  static decodeSync = Schema.decodeUnknownSync(ResolvedOperator)
+  static encode = Schema.encodeUnknownEffect(ResolvedOperator)
+  static encodeSync = Schema.encodeUnknownSync(ResolvedOperator)
+  static equivalence = Schema.toEquivalence(ResolvedOperator)
+  static ordered = false as const
 }
 
 export const defaultOperator = (): Operator => Operator.make({})

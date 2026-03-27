@@ -134,7 +134,9 @@ describe('Pkg.Manifest', () => {
 
     expect(Option.isSome(result.readOption)).toBe(true)
     expect(result.afterWrite.scripts).toEqual({ build: 'tsgo -b && bun run test' })
-    expect(JSON.parse(result.fileAfterWrite)).toMatchObject({
+    expect(
+      Schema.decodeUnknownSync(Schema.fromJsonString(Manifest))(result.fileAfterWrite),
+    ).toMatchObject({
       scripts: { build: 'tsgo -b && bun run test' },
     })
     expect(result.updated.scripts).toEqual({ build: 'bun run test' })

@@ -1,6 +1,6 @@
 import { Test } from '#kitz/test'
 import { property } from '#kitz/test/test'
-import fc from 'fast-check'
+import * as fc from 'fast-check'
 import { describe, expect, test } from 'vitest'
 import { Prom } from './_.js'
 

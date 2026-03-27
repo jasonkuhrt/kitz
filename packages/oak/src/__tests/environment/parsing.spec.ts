@@ -1,6 +1,6 @@
 import { beforeEach, expect, vi } from 'vitest'
 import { describe, it } from 'vitest'
-import { z } from 'zod/v4'
+import * as z from 'zod/v4'
 import { $, b, n, s } from '../_/helpers.js'
 import { createState, environmentManager } from './__helpers__.js'
 

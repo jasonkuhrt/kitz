@@ -21,6 +21,13 @@ class RelDirClass extends S.TaggedClass<RelDirClass>()('FsPathRelDir', {
   segments: Segments,
 }) {
   static make = this.makeUnsafe
+  static is = S.is(RelDirClass)
+  static decode = S.decodeUnknownEffect(RelDirClass)
+  static decodeSync = S.decodeUnknownSync(RelDirClass)
+  static encode = S.encodeUnknownEffect(RelDirClass)
+  static encodeSync = S.encodeUnknownSync(RelDirClass)
+  static equivalence = S.toEquivalence(RelDirClass)
+  static ordered = false as const
   override toString() {
     return S.encodeSync(Schema)(this)
   }

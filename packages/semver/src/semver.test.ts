@@ -118,9 +118,7 @@ Test.describe('withPre')
 describe('Semver core combinators', () => {
   test('fromString accepts official releases, prereleases, build metadata, and loose prefixes', () => {
     expect(Semver.fromString('1.2.3').toString()).toBe('1.2.3')
-    expect(Semver.fromString(' v1.2.3-next.4+build.7 ').toString()).toBe(
-      '1.2.3-next.4+build.7',
-    )
+    expect(Semver.fromString(' v1.2.3-next.4+build.7 ').toString()).toBe('1.2.3-next.4+build.7')
     expect(Semver.fromString('=2.0.0').toString()).toBe('2.0.0')
   })
 
@@ -151,9 +149,7 @@ describe('Semver core combinators', () => {
 
   test('equivalence compares semver values semantically', () => {
     expect(Semver.equivalence(Semver.fromString('1.2.3'), Semver.make(1, 2, 3))).toBe(true)
-    expect(Semver.equivalence(Semver.fromString('1.2.3'), Semver.fromString('1.2.4'))).toBe(
-      false,
-    )
+    expect(Semver.equivalence(Semver.fromString('1.2.3'), Semver.fromString('1.2.4'))).toBe(false)
   })
 
   test('type guards, constants, and helpers expose the expected semver shape', () => {

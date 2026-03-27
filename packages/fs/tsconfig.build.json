@@ -10,5 +10,6 @@
       "#fs/__.js": ["./src/__.js"],
       "#fs/*": ["./src/*.js"]
     }
-  }
+  },
+  "exclude": ["src/**/*.test.ts", "src/**/*.test-matchers.ts"]
 }

@@ -35,6 +35,6 @@ describe('jsonc', () => {
     const circular: Record<string, unknown> = {}
     circular['self'] = circular
 
-    expect(() => Schema.encodeSync(codec)(circular)).toThrow(/circular/i)
+    expect(() => Schema.encodeSync(codec)(circular)).toThrow(/cyclic|circular/i)
   })
 })

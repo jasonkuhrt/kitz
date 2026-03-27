@@ -19,4 +19,10 @@ export class Impact extends S.TaggedClass<Impact>()('Impact', {
 }) {
   static make = this.makeUnsafe
   static is = S.is(Impact)
+  static decode = S.decodeUnknownEffect(Impact)
+  static decodeSync = S.decodeUnknownSync(Impact)
+  static encode = S.encodeUnknownEffect(Impact)
+  static encodeSync = S.encodeUnknownSync(Impact)
+  static equivalence = S.toEquivalence(Impact)
+  static ordered = false as const
 }

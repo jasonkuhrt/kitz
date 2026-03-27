@@ -46,6 +46,12 @@ export class Color extends S.TaggedClass<Color>()('Color', {
 }) {
   static make = this.makeUnsafe
   static is = S.is(Color)
+  static decode = S.decodeUnknownEffect(Color)
+  static decodeSync = S.decodeUnknownSync(Color)
+  static encode = S.encodeUnknownEffect(Color)
+  static encodeSync = S.encodeUnknownSync(Color)
+  static equivalence = S.toEquivalence(Color)
+  static ordered = false as const
 
   override toString() {
     return S.encodeSync(Color.String)(this)

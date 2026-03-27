@@ -16,17 +16,19 @@ jobs:
     steps:
       - name: Check PR title for CC type
         id: check
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          TITLE="${{ github.event.pull_request.title }}"
-          if [[ "$TITLE" =~ ^ci(\(|:) ]]; then
-            echo "skip-code-checks=true" >> $GITHUB_OUTPUT
-            echo "Skipping code checks (ci): $TITLE"
-          elif [[ "$TITLE" =~ ^chore\.docs(\(|:) ]]; then
-            echo "skip-code-checks=true" >> $GITHUB_OUTPUT
-            echo "Skipping code checks (chore.docs): $TITLE"
+          title="$PR_TITLE"
+          if [[ "$title" =~ ^ci(\(|:) ]]; then
+            echo "skip-code-checks=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping code checks (ci): $title"
+          elif [[ "$title" =~ ^chore\.docs(\(|:) ]]; then
+            echo "skip-code-checks=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping code checks (chore.docs): $title"
           else
-            echo "skip-code-checks=false" >> $GITHUB_OUTPUT
-            echo "Running full checks for: $TITLE"
+            echo "skip-code-checks=false" >> "$GITHUB_OUTPUT"
+            echo "Running full checks for: $title"
           fi
 
   format:

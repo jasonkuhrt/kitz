@@ -25,6 +25,12 @@ export class Finished extends Schema.TaggedClass<Finished>()('RuleCheckResultFin
 }) {
   static make = this.makeUnsafe
   static is = Schema.is(Finished)
+  static decode = Schema.decodeUnknownEffect(Finished)
+  static decodeSync = Schema.decodeUnknownSync(Finished)
+  static encode = Schema.encodeUnknownEffect(Finished)
+  static encodeSync = Schema.encodeUnknownSync(Finished)
+  static equivalence = Schema.toEquivalence(Finished)
+  static ordered = false as const
 }
 
 /** Rule encountered an error during execution. */
@@ -35,6 +41,12 @@ export class Failed extends Schema.TaggedClass<Failed>()('RuleCheckResultFailed'
 }) {
   static make = this.makeUnsafe
   static is = Schema.is(Failed)
+  static decode = Schema.decodeUnknownEffect(Failed)
+  static decodeSync = Schema.decodeUnknownSync(Failed)
+  static encode = Schema.encodeUnknownEffect(Failed)
+  static encodeSync = Schema.encodeUnknownSync(Failed)
+  static equivalence = Schema.toEquivalence(Failed)
+  static ordered = false as const
 }
 
 /** Why a rule was skipped. */
@@ -51,6 +63,12 @@ export class Skipped extends Schema.TaggedClass<Skipped>()('RuleCheckResultSkipp
 }) {
   static make = this.makeUnsafe
   static is = Schema.is(Skipped)
+  static decode = Schema.decodeUnknownEffect(Skipped)
+  static decodeSync = Schema.decodeUnknownSync(Skipped)
+  static encode = Schema.encodeUnknownEffect(Skipped)
+  static encodeSync = Schema.encodeUnknownSync(Skipped)
+  static equivalence = Schema.toEquivalence(Skipped)
+  static ordered = false as const
 }
 
 /** Outcome of checking a single rule. */
@@ -64,4 +82,10 @@ export class Report extends Schema.TaggedClass<Report>()('Report', {
 }) {
   static make = this.makeUnsafe
   static is = Schema.is(Report)
+  static decode = Schema.decodeUnknownEffect(Report)
+  static decodeSync = Schema.decodeUnknownSync(Report)
+  static encode = Schema.encodeUnknownEffect(Report)
+  static encodeSync = Schema.encodeUnknownSync(Report)
+  static equivalence = Schema.toEquivalence(Report)
+  static ordered = false as const
 }

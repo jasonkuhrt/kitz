@@ -32,4 +32,10 @@ export class RuleDefaults extends Schema.TaggedClass<RuleDefaults>()('RuleDefaul
 }) {
   static make = this.makeUnsafe
   static is = Schema.is(RuleDefaults)
+  static decode = Schema.decodeUnknownEffect(RuleDefaults)
+  static decodeSync = Schema.decodeUnknownSync(RuleDefaults)
+  static encode = Schema.encodeUnknownEffect(RuleDefaults)
+  static encodeSync = Schema.encodeUnknownSync(RuleDefaults)
+  static equivalence = Schema.toEquivalence(RuleDefaults)
+  static ordered = false as const
 }

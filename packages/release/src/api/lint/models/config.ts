@@ -16,6 +16,12 @@ export class RuleConfig extends Schema.TaggedClass<RuleConfig>()('RuleConfig', {
 }) {
   static make = this.makeUnsafe
   static is = Schema.is(RuleConfig)
+  static decode = Schema.decodeUnknownEffect(RuleConfig)
+  static decodeSync = Schema.decodeUnknownSync(RuleConfig)
+  static encode = Schema.encodeUnknownEffect(RuleConfig)
+  static encodeSync = Schema.encodeUnknownSync(RuleConfig)
+  static equivalence = Schema.toEquivalence(RuleConfig)
+  static ordered = false as const
 }
 
 /** User configuration for lint. */
@@ -29,6 +35,12 @@ export class Config extends Schema.TaggedClass<Config>()('Config', {
 }) {
   static make = this.makeUnsafe
   static is = Schema.is(Config)
+  static decode = Schema.decodeUnknownEffect(Config)
+  static decodeSync = Schema.decodeUnknownSync(Config)
+  static encode = Schema.encodeUnknownEffect(Config)
+  static encodeSync = Schema.encodeUnknownSync(Config)
+  static equivalence = Schema.toEquivalence(Config)
+  static ordered = false as const
 }
 
 /** Resolved (normalized) rule defaults. */
@@ -41,6 +53,12 @@ export class ResolvedRuleDefaults extends Schema.TaggedClass<ResolvedRuleDefault
 ) {
   static make = this.makeUnsafe
   static is = Schema.is(ResolvedRuleDefaults)
+  static decode = Schema.decodeUnknownEffect(ResolvedRuleDefaults)
+  static decodeSync = Schema.decodeUnknownSync(ResolvedRuleDefaults)
+  static encode = Schema.encodeUnknownEffect(ResolvedRuleDefaults)
+  static encodeSync = Schema.encodeUnknownSync(ResolvedRuleDefaults)
+  static equivalence = Schema.toEquivalence(ResolvedRuleDefaults)
+  static ordered = false as const
 }
 
 /** Resolved (normalized) rule config. */
@@ -53,6 +71,12 @@ export class ResolvedRuleConfig extends Schema.TaggedClass<ResolvedRuleConfig>()
 ) {
   static make = this.makeUnsafe
   static is = Schema.is(ResolvedRuleConfig)
+  static decode = Schema.decodeUnknownEffect(ResolvedRuleConfig)
+  static decodeSync = Schema.decodeUnknownSync(ResolvedRuleConfig)
+  static encode = Schema.encodeUnknownEffect(ResolvedRuleConfig)
+  static encodeSync = Schema.encodeUnknownSync(ResolvedRuleConfig)
+  static equivalence = Schema.toEquivalence(ResolvedRuleConfig)
+  static ordered = false as const
 }
 
 /** Resolved (normalized) configuration. */
@@ -66,6 +90,12 @@ export class ResolvedConfig extends Schema.TaggedClass<ResolvedConfig>()('Resolv
 }) {
   static make = this.makeUnsafe
   static is = Schema.is(ResolvedConfig)
+  static decode = Schema.decodeUnknownEffect(ResolvedConfig)
+  static decodeSync = Schema.decodeUnknownSync(ResolvedConfig)
+  static encode = Schema.encodeUnknownEffect(ResolvedConfig)
+  static encodeSync = Schema.encodeUnknownSync(ResolvedConfig)
+  static equivalence = Schema.toEquivalence(ResolvedConfig)
+  static ordered = false as const
 }
 
 /** System defaults. */

@@ -173,9 +173,7 @@ export const preparePackageArtifact = (
       JSON.stringify(rewrittenManifest, null, 2) + '\n',
     )
     yield* fs.makeDirectory(Fs.Path.toString(artifactDir), { recursive: true })
-    yield* fs
-      .remove(Fs.Path.toString(artifactPath), { force: true })
-      .pipe(Effect.ignore)
+    yield* fs.remove(Fs.Path.toString(artifactPath), { force: true }).pipe(Effect.ignore)
 
     const packResult = yield* cli
       .pack({

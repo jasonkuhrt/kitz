@@ -16,6 +16,12 @@ export class Candidate extends S.TaggedClass<Candidate>()('Candidate', {
 }) {
   static make = this.makeUnsafe
   static is = S.is(Candidate)
+  static decode = S.decodeUnknownEffect(Candidate)
+  static decodeSync = S.decodeUnknownSync(Candidate)
+  static encode = S.encodeUnknownEffect(Candidate)
+  static encodeSync = S.encodeUnknownSync(Candidate)
+  static equivalence = S.toEquivalence(Candidate)
+  static ordered = false as const
 
   get nextVersion(): Semver.Semver {
     return Semver.withPre(this.baseVersion, ['next', this.prerelease.iteration])

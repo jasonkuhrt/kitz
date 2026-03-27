@@ -157,18 +157,16 @@ describe('fromString dispatch and rendering', () => {
         PinAlias: () => 'alias',
       })
 
-    expect(
-      [
-        describePin('@kitz/core@^1.0.0'),
-        describePin('@kitz/core@1.0.0'),
-        describePin('lodash@latest'),
-        describePin('@kitz/core@workspace:*'),
-        describePin('pkg@git+https://github.com/org/repo#main'),
-        describePin('pkg@file:../shared'),
-        describePin('pkg@https://example.com/pkg.tgz'),
-        describePin('my-lodash@npm:lodash@^4.0.0'),
-      ],
-    ).toEqual(['range', 'exact', 'tag', 'workspace', 'git', 'path', 'url', 'alias'])
+    expect([
+      describePin('@kitz/core@^1.0.0'),
+      describePin('@kitz/core@1.0.0'),
+      describePin('lodash@latest'),
+      describePin('@kitz/core@workspace:*'),
+      describePin('pkg@git+https://github.com/org/repo#main'),
+      describePin('pkg@file:../shared'),
+      describePin('pkg@https://example.com/pkg.tgz'),
+      describePin('my-lodash@npm:lodash@^4.0.0'),
+    ]).toEqual(['range', 'exact', 'tag', 'workspace', 'git', 'path', 'url', 'alias'])
   })
 
   test('rejects pins missing a specifier', () => {

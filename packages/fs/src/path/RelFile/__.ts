@@ -23,6 +23,13 @@ class RelFileClass extends S.TaggedClass<RelFileClass>()('FsPathRelFile', {
   fileName: FileName,
 }) {
   static make = this.makeUnsafe
+  static is = S.is(RelFileClass)
+  static decode = S.decodeUnknownEffect(RelFileClass)
+  static decodeSync = S.decodeUnknownSync(RelFileClass)
+  static encode = S.encodeUnknownEffect(RelFileClass)
+  static encodeSync = S.encodeUnknownSync(RelFileClass)
+  static equivalence = S.toEquivalence(RelFileClass)
+  static ordered = false as const
   override toString() {
     return S.encodeSync(Schema)(this)
   }

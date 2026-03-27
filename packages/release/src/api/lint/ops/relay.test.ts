@@ -1,11 +1,18 @@
 import { Fs } from '@kitz/fs'
-import { Effect } from 'effect'
+import { Effect, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { Failed, Finished, Report, Skipped } from '../models/report.js'
 import { RuleId } from '../models/rule-defaults.js'
 import * as Severity from '../models/severity.js'
 import { CommandFix, DocLink, FixStep, GuideFix, Hint, Violation } from '../models/violation.js'
-import { Environment, File, GitHistory, PrBody, PrTitle, RepoSettings } from '../models/violation-location.js'
+import {
+  Environment,
+  File,
+  GitHistory,
+  PrBody,
+  PrTitle,
+  RepoSettings,
+} from '../models/violation-location.js'
 import { Destination, formatReport, relay } from './relay.js'
 
 const ruleRef = (id: string, description = 'Test rule') => ({
@@ -166,7 +173,10 @@ describe('formatReport', () => {
     const report = Report.make({
       results: [
         Finished.make({
-          rule: ruleRef('env.publish-channel-ready', 'declared publish channel matches the active runtime'),
+          rule: ruleRef(
+            'env.publish-channel-ready',
+            'declared publish channel matches the active runtime',
+          ),
           duration: 1,
           severity: Severity.Warn.make({}),
         }),
@@ -185,7 +195,7 @@ describe('formatReport', () => {
       }).pipe(Effect.provide(Fs.Memory.layer({}))),
     )
 
-    expect(JSON.parse(output)).toMatchObject({
+    expect(Schema.decodeUnknownSync(Schema.fromJsonString(Report))(output)).toMatchObject({
       _tag: 'Report',
     })
   })

@@ -29,4 +29,11 @@ export class SpanRange extends S.Class<SpanRange>('SpanRange')({
   ),
 }) {
   static make = this.makeUnsafe
+  static is = S.is(SpanRange)
+  static decode = S.decodeUnknownEffect(SpanRange)
+  static decodeSync = S.decodeUnknownSync(SpanRange)
+  static encode = S.encodeUnknownEffect(SpanRange)
+  static encodeSync = S.encodeUnknownSync(SpanRange)
+  static equivalence = S.toEquivalence(SpanRange)
+  static ordered = false as const
 }

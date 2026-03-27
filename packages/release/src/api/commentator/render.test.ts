@@ -60,8 +60,12 @@ describe('commentator render', () => {
     expect(output).toContain('<!-- kitz-release-plan -->')
     expect(output).toContain('## Release Forecast')
     expect(output).toContain('<details><summary>Help</summary>')
-    expect(output).toContain('| Packages | Summary line | Total packages in this forecast (`primary + cascades`). |')
-    expect(output).toContain('| Head | Summary line | The exact commit SHA this forecast was computed from. |')
+    expect(output).toContain(
+      '| Packages | Summary line | Total packages in this forecast (`primary + cascades`). |',
+    )
+    expect(output).toContain(
+      '| Head | Summary line | The exact commit SHA this forecast was computed from. |',
+    )
     expect(output).toContain('### Projected Release Header')
     expect(output).toContain('feat(cli, release)')
     expect(output).toContain('### Doctor')

@@ -58,8 +58,12 @@ describe('fs path operations and relationships', () => {
     expect(toDir(absFile).toString()).toBe('/workspace/packages/fs/')
 
     expect(ensureAbsolute(absFile, workspace)).toBe(absFile)
-    expect(ensureAbsolute(packageFile, workspace).toString()).toBe('/workspace/packages/fs/package.json')
-    expect(ensureAbsoluteOn(packageFile)(workspace).toString()).toBe('/workspace/packages/fs/package.json')
+    expect(ensureAbsolute(packageFile, workspace).toString()).toBe(
+      '/workspace/packages/fs/package.json',
+    )
+    expect(ensureAbsoluteOn(packageFile)(workspace).toString()).toBe(
+      '/workspace/packages/fs/package.json',
+    )
     expect(ensureAbsoluteWith(workspace)(packagesDir).toString()).toBe('/workspace/packages/fs/')
     expect(ensureOptionalAbsolute(packageFile, workspace)?.toString()).toBe(
       '/workspace/packages/fs/package.json',
@@ -86,7 +90,9 @@ describe('fs path operations and relationships', () => {
 
   test('moves upward through files and directories', () => {
     expect(up('/workspace/packages/fs/').toString()).toBe('/workspace/packages/')
-    expect(up('/workspace/packages/fs/package.json').toString()).toBe('/workspace/packages/package.json')
+    expect(up('/workspace/packages/fs/package.json').toString()).toBe(
+      '/workspace/packages/package.json',
+    )
     expect(up('./packages/fs/').toString()).toBe('./packages/')
     expect(up('./packages/fs/package.json').toString()).toBe('./packages/package.json')
     expect(up('./').toString()).toBe('../')
@@ -131,9 +137,9 @@ describe('fs path operations and relationships', () => {
     expect(isSegmentsStartsWith(['workspace', 'packages', 'fs'], ['workspace', 'packages'])).toBe(
       true,
     )
-    expect(isSegmentsStartsWithPrefix(['workspace', 'packages'])(['workspace', 'packages', 'fs'])).toBe(
-      true,
-    )
+    expect(
+      isSegmentsStartsWithPrefix(['workspace', 'packages'])(['workspace', 'packages', 'fs']),
+    ).toBe(true)
 
     expect(isSameSegments(childDir, AbsDirCodec.fromString('/workspace/packages/fs/'))).toBe(true)
     expect(isSameSegments(relChild, relOther)).toBe(false)

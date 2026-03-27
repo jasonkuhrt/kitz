@@ -1,4 +1,4 @@
-import fc from 'fast-check'
+import * as fc from 'fast-check'
 import { describe, expect, test } from 'vitest'
 import { ensure, is, isAggregateError } from './type.js'
 

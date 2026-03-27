@@ -2,7 +2,7 @@ import { Fn } from '#fn'
 import { Type as A } from '#kitz/assert/assert'
 import { Test } from '#kitz/test'
 import { Ts } from '#ts'
-import fc from 'fast-check'
+import * as fc from 'fast-check'
 import { expect, test } from 'vitest'
 
 Test.property('returns input unchanged for any value', fc.anything(), (value) => {

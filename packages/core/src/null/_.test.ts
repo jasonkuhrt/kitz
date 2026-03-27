@@ -1,7 +1,7 @@
 import { Assert } from '#kitz/assert'
 import { property } from '#kitz/test/test'
 import { Null } from '#null'
-import fc from 'fast-check'
+import * as fc from 'fast-check'
 import { expect, test } from 'vitest'
 
 const A = Assert.Type.exact.ofAs

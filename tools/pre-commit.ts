@@ -124,6 +124,28 @@ const runBufferOrThrow = (
 }
 
 const repoRoot = runOrThrow('git', ['rev-parse', '--show-toplevel']).trim()
+const repoGitDir = runOrThrow('git', ['rev-parse', '--absolute-git-dir']).trim()
+
+const getConfiguredWorktree = (): string | null => {
+  const result = run('git', ['config', '--get', 'core.worktree'], { cwd: repoRoot })
+  if (result.status === 0) return result.stdout.trim()
+  if (result.status === 1) return null
+
+  const detail = result.stderr || result.stdout || 'Could not read core.worktree'
+  throw new Error(detail.trim())
+}
+
+const restoreConfiguredWorktree = (previousWorktree: string | null): void => {
+  if (previousWorktree === null) {
+    const unset = run('git', ['config', '--unset-all', 'core.worktree'], { cwd: repoRoot })
+    if (unset.status === 0 || unset.status === 5) return
+
+    const detail = unset.stderr || unset.stdout || 'Could not unset core.worktree'
+    throw new Error(detail.trim())
+  }
+
+  runOrThrow('git', ['config', 'core.worktree', previousWorktree], { cwd: repoRoot })
+}
 
 const lintArgs = ['--import-plugin', '--deny-warnings']
 const lintFixArgs = [...lintArgs, '--fix-dangerously']
@@ -233,14 +255,7 @@ const runLint = (
 }
 
 const runCoverageInSnapshot = (snapshotRoot: string): CommandResult =>
-  run(join(snapshotRoot, 'tools', 'run-workspace-coverage.mjs'), [], {
-    cwd: snapshotRoot,
-    env: {
-      ...env,
-      GIT_DIR: join(repoRoot, '.git'),
-      GIT_WORK_TREE: snapshotRoot,
-    },
-  })
+  run(join(snapshotRoot, 'tools', 'run-workspace-coverage.mjs'), [], { cwd: snapshotRoot })
 
 const runTypecheck = (snapshotRoot: string): CommandResult =>
   run('bun', ['run', 'check:types'], { cwd: snapshotRoot })
@@ -255,6 +270,7 @@ const materializeIndexSnapshot = (): string => {
   const tempDir = mkdtempSync(join(tmpdir(), 'kitz-pre-commit-'))
   const prefix = tempDir.endsWith('/') ? tempDir : `${tempDir}/`
   runOrThrow('git', ['checkout-index', '--all', `--prefix=${prefix}`], { cwd: repoRoot })
+  writeFileSync(join(tempDir, '.git'), `gitdir: ${repoGitDir}\n`)
   const nodeModulesPath = join(repoRoot, 'node_modules')
   if (existsSync(nodeModulesPath)) {
     symlinkSync(nodeModulesPath, join(tempDir, 'node_modules'))
@@ -387,6 +403,7 @@ const main = (): void => {
   assertNoConflictMarkers()
   assertHookScriptsAreValid(hookPaths)
 
+  const originalCoreWorktree = getConfiguredWorktree()
   const snapshotRoot = materializeIndexSnapshot()
 
   try {
@@ -451,6 +468,7 @@ const main = (): void => {
     }
   } finally {
     rmSync(snapshotRoot, { recursive: true, force: true })
+    restoreConfiguredWorktree(originalCoreWorktree)
   }
 }
 

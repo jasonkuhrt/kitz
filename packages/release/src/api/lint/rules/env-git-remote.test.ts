@@ -44,7 +44,12 @@ describe('env.git-remote', () => {
     )
 
     expect(Violation.is(result)).toBe(false)
-    if (Violation.is(result) || result === undefined || !('violation' in result) || !result.violation) {
+    if (
+      Violation.is(result) ||
+      result === undefined ||
+      !('violation' in result) ||
+      !result.violation
+    ) {
       throw new Error('expected a violation')
     }
 

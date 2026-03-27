@@ -37,12 +37,12 @@ describe('executor execute helpers', () => {
       level: 'info',
       message: '  Starting: publish',
     })
-    expect(
-      formatLifecycleEvent({ _tag: 'ActivityCompleted', activity: 'publish' } as any),
-    ).toEqual({
-      level: 'info',
-      message: '✓ Completed: publish',
-    })
+    expect(formatLifecycleEvent({ _tag: 'ActivityCompleted', activity: 'publish' } as any)).toEqual(
+      {
+        level: 'info',
+        message: '✓ Completed: publish',
+      },
+    )
     expect(
       formatLifecycleEvent({
         _tag: 'ActivityFailed',
@@ -60,10 +60,7 @@ describe('executor execute helpers', () => {
     const plan = Plan.make({
       lifecycle: 'official',
       timestamp: '2026-03-23T00:00:00.000Z',
-      releases: [
-        makeRelease('cli', '1.0.0', '1.1.0'),
-        makeRelease('core', '1.0.0', '1.1.0'),
-      ],
+      releases: [makeRelease('cli', '1.0.0', '1.1.0'), makeRelease('core', '1.0.0', '1.1.0')],
       cascades: [],
     })
 

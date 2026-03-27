@@ -25,6 +25,12 @@ export class OfficialRelease extends S.TaggedClass<OfficialRelease>()(
 ) {
   static make = this.makeUnsafe
   static is = S.is(OfficialRelease)
+  static decode = S.decodeUnknownEffect(OfficialRelease)
+  static decodeSync = S.decodeUnknownSync(OfficialRelease)
+  static encode = S.encodeUnknownEffect(OfficialRelease)
+  static encodeSync = S.encodeUnknownSync(OfficialRelease)
+  static equivalence = S.toEquivalence(OfficialRelease)
+  static ordered = false as const
   static override toString = (version: OfficialRelease): string => formatOfficialRelease(version)
 
   /** String representation for JS coercion (template literals, logging) */

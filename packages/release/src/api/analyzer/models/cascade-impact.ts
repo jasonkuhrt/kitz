@@ -18,4 +18,10 @@ export class CascadeImpact extends S.TaggedClass<CascadeImpact>()('CascadeImpact
 }) {
   static make = this.makeUnsafe
   static is = S.is(CascadeImpact)
+  static decode = S.decodeUnknownEffect(CascadeImpact)
+  static decodeSync = S.decodeUnknownSync(CascadeImpact)
+  static encode = S.encodeUnknownEffect(CascadeImpact)
+  static encodeSync = S.encodeUnknownSync(CascadeImpact)
+  static equivalence = S.toEquivalence(CascadeImpact)
+  static ordered = false as const
 }

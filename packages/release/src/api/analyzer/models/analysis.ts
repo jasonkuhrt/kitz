@@ -17,4 +17,10 @@ export class Analysis extends S.TaggedClass<Analysis>()('Analysis', {
 }) {
   static make = this.makeUnsafe
   static is = S.is(Analysis)
+  static decode = S.decodeUnknownEffect(Analysis)
+  static decodeSync = S.decodeUnknownSync(Analysis)
+  static encode = S.encodeUnknownEffect(Analysis)
+  static encodeSync = S.encodeUnknownSync(Analysis)
+  static equivalence = S.toEquivalence(Analysis)
+  static ordered = false as const
 }

@@ -1,6 +1,6 @@
 import { Assert } from '@kitz/assert'
 import { expect, it } from 'vitest'
-import { z } from 'zod/v4'
+import * as z from 'zod/v4'
 import { $ } from '../../_/helpers.js'
 
 it(`Statically accepts or rejects zod types for the schema`, () => {

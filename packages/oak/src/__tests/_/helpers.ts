@@ -1,6 +1,6 @@
 import { Prom } from '@kitz/core'
 import type { Obj } from '@kitz/core'
-import { z } from 'zod/v4'
+import * as z from 'zod/v4'
 import * as Command from '../../_entrypoints/__.js'
 import type { BuilderCommandState } from '../../builders/command/state.js'
 import type { CommandBuilder } from '../../builders/command/types.js'

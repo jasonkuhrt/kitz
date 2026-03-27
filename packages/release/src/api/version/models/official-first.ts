@@ -11,4 +11,10 @@ export class OfficialFirst extends S.TaggedClass<OfficialFirst>()('OfficialFirst
 }) {
   static make = this.makeUnsafe
   static is = S.is(OfficialFirst)
+  static decode = S.decodeUnknownEffect(OfficialFirst)
+  static decodeSync = S.decodeUnknownSync(OfficialFirst)
+  static encode = S.encodeUnknownEffect(OfficialFirst)
+  static encodeSync = S.encodeUnknownSync(OfficialFirst)
+  static equivalence = S.toEquivalence(OfficialFirst)
+  static ordered = false as const
 }

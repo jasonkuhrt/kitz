@@ -36,3 +36,10 @@ export type Item = Official | Candidate | Ephemeral
  * Schema for Item union (used for serialization).
  */
 export const ItemSchema = S.Union([Official, Candidate, Ephemeral]).pipe(S.toTaggedUnion('_tag'))
+export type ItemSchema = typeof ItemSchema.Type
+
+export namespace ItemSchema {
+  export type Official = import('./item-official.js').Official
+  export type Candidate = import('./item-candidate.js').Candidate
+  export type Ephemeral = import('./item-ephemeral.js').Ephemeral
+}

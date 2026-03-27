@@ -51,9 +51,7 @@ describe('fs path codecs and inputs', () => {
     expect(() => AbsFileCodec.fromString('/docs/')).toThrow(
       'Expected a file path, got a directory path',
     )
-    expect(() => RelDirCodec.fromString('/docs/')).toThrow(
-      'Relative paths must not start with /',
-    )
+    expect(() => RelDirCodec.fromString('/docs/')).toThrow('Relative paths must not start with /')
     expect(() => RelFileCodec.fromString('./docs/')).toThrow(
       'Expected a file path, got a directory path',
     )

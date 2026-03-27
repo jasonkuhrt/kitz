@@ -68,6 +68,13 @@ class ManifestClass extends S.Class<ManifestClass>('Manifest')({
   madge: S.optional(S.Unknown),
 }) {
   static make = this.makeUnsafe
+  static is = S.is(ManifestClass)
+  static decode = S.decodeUnknownEffect(ManifestClass)
+  static decodeSync = S.decodeUnknownSync(ManifestClass)
+  static encode = S.encodeUnknownEffect(ManifestClass)
+  static encodeSync = S.encodeUnknownSync(ManifestClass)
+  static equivalence = S.toEquivalence(ManifestClass)
+  static ordered = false as const
   /**
    * Create a mutable copy of this manifest.
    * Useful when you need to perform multiple mutations efficiently.

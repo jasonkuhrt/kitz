@@ -33,9 +33,9 @@ describe('oak coverage helpers: pattern and text', () => {
     expect(Text.joinListEnglish(['oak', 'pine', 'fir'])).toBe('oak, pine or fir')
 
     expect(Text.col({ lines: ['left'] })).toEqual({ lines: ['left'] })
-    expect(Text.row([Text.col({ lines: ['a', 'bb'] }), Text.col({ lines: ['c'], separator: ' | ' })])).toBe(
-      `a  | c\nbb |  `,
-    )
+    expect(
+      Text.row([Text.col({ lines: ['a', 'bb'] }), Text.col({ lines: ['c'], separator: ' | ' })]),
+    ).toBe(`a  | c\nbb |  `)
 
     expect(Text.toEnvarNameCase('releaseChannel')).toBe('RELEASE_CHANNEL')
     expect(Text.lines(5, 'alpha beta\ngamma')).toEqual(['alpha', 'beta', 'gamma'])
@@ -46,10 +46,7 @@ describe('oak coverage helpers: pattern and text', () => {
     expect(Text.indentColumn(['a', 'b'], '> ')).toEqual(['> a', '> b'])
     expect(Text.indentColumn(['a', 'b'], (index) => `${index}:`)).toEqual(['0:a', '1:b'])
     expect(Text.indentBlockWith('a\nb', (_line, index) => `${index}:`)).toBe('0:a\n1:b')
-    expect(Text.indentColumnWith(['a', 'b'], (_line, index) => `${index}:`)).toEqual([
-      '0:a',
-      '1:b',
-    ])
+    expect(Text.indentColumnWith(['a', 'b'], (_line, index) => `${index}:`)).toEqual(['0:a', '1:b'])
 
     expect(Text.defaultColumnSeparator).toBe('   ')
     expect(Text.visualStringTake('abcdef', 4)).toBe('abcd')

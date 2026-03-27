@@ -102,11 +102,7 @@ describe('arr coverage', () => {
         [1, 2, 3],
         [4, 5],
       ]),
-    ).toEqual([
-      [1, 4],
-      [2, 5],
-      [3],
-    ])
+    ).toEqual([[1, 4], [2, 5], [3]])
 
     const mutable = [1, 2, 2, 3]
     expect(dedupe(mutable)).toBe(mutable)
@@ -125,13 +121,16 @@ describe('arr coverage', () => {
     expect(Object.isFrozen(evens)).toBe(true)
 
     expect(partitionOne([1, 2, 3], (value): value is number => value === 2)).toEqual([[1, 3], 2])
-    expect(() =>
-      partitionOne([1, 2, 3], (value): value is number => value > 1),
-    ).toThrow('Expected at most one item to match predicate')
+    expect(() => partitionOne([1, 2, 3], (value): value is number => value > 1)).toThrow(
+      'Expected at most one item to match predicate',
+    )
 
     const error1 = new Error('one')
     const error2 = new Error('two')
-    expect(partitionErrors([1, error1, 'oak', error2])).toEqual([[1, 'oak'], [error1, error2]])
+    expect(partitionErrors([1, error1, 'oak', error2])).toEqual([
+      [1, 'oak'],
+      [error1, error2],
+    ])
 
     expect(join(['a', 'b', 'c'], ',')).toBe('a,b,c')
     expect(joinOn(['a', 'b', 'c'])(' | ')).toBe('a | b | c')

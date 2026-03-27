@@ -15,6 +15,12 @@ export class OfficialIncrement extends S.TaggedClass<OfficialIncrement>()('Offic
 }) {
   static make = this.makeUnsafe
   static is = S.is(OfficialIncrement)
+  static decode = S.decodeUnknownEffect(OfficialIncrement)
+  static decodeSync = S.decodeUnknownSync(OfficialIncrement)
+  static encode = S.encodeUnknownEffect(OfficialIncrement)
+  static encodeSync = S.encodeUnknownSync(OfficialIncrement)
+  static equivalence = S.toEquivalence(OfficialIncrement)
+  static ordered = false as const
 
   static fromImpact(current: Semver.Semver, bump: Semver.BumpType): OfficialIncrement {
     return OfficialIncrement.make({

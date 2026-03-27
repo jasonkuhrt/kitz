@@ -53,10 +53,12 @@ describe('env', () => {
   })
 
   test('exposes the node live environment used by Vitest', () => {
+    const runtimePlatform = process.versions['bun'] ? 'bun' : 'node'
+
     expect(nodeEnv.platform).toBe('node')
     expect(Array.isArray(nodeEnv.argv)).toBe(true)
     expect(nodeLive).toBeDefined()
-    expect(PublicEnv.env.platform).toBe('node')
+    expect(PublicEnv.env.platform).toBe(runtimePlatform)
   })
 
   test('delegates the node exit function to process.exit', () => {

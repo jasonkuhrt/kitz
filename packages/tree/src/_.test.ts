@@ -1,4 +1,4 @@
-import fc from 'fast-check'
+import * as fc from 'fast-check'
 import { describe, expect, test } from 'vitest'
 import * as TreeNamespace from './_.js'
 import { arbitrary, arbitraryShapes } from './arbitrary.js'

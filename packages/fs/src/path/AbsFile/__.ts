@@ -12,6 +12,13 @@ class AbsFileClass extends S.TaggedClass<AbsFileClass>()('FsPathAbsFile', {
   fileName: FileName,
 }) {
   static make = this.makeUnsafe
+  static is = S.is(AbsFileClass)
+  static decode = S.decodeUnknownEffect(AbsFileClass)
+  static decodeSync = S.decodeUnknownSync(AbsFileClass)
+  static encode = S.encodeUnknownEffect(AbsFileClass)
+  static encodeSync = S.encodeUnknownSync(AbsFileClass)
+  static equivalence = S.toEquivalence(AbsFileClass)
+  static ordered = false as const
   override toString() {
     return S.encodeSync(Schema)(this)
   }

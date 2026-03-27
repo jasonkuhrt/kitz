@@ -1,6 +1,6 @@
 import { Assert } from '@kitz/assert'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { z } from 'zod/v4'
+import * as z from 'zod/v4'
 import type { BuilderCommandState } from '../../builders/command/state.js'
 import type { CommandBuilder } from '../../builders/command/types.js'
 import type { KeyPress } from '../../lib/KeyPress/_.js'

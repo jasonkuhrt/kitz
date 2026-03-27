@@ -46,10 +46,7 @@ export interface KeyPressEvent<Name extends Key = Key> {
 }
 
 export interface KeyPressDependencies {
-  stdin: Pick<
-    typeof process.stdin,
-    'isRaw' | 'setRawMode' | 'on' | 'removeListener'
-  >
+  stdin: Pick<typeof process.stdin, 'isRaw' | 'setRawMode' | 'on' | 'removeListener'>
   stdout: typeof process.stdout
   createInterface: typeof Readline.promises.createInterface
   emitKeypressEvents: typeof Readline.emitKeypressEvents

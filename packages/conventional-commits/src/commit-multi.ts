@@ -37,4 +37,10 @@ export class Multi extends Schema.TaggedClass<Multi>()('Multi', {
 }) {
   static make = this.makeUnsafe
   static is = Schema.is(Multi)
+  static decode = Schema.decodeUnknownEffect(Multi)
+  static decodeSync = Schema.decodeUnknownSync(Multi)
+  static encode = Schema.encodeUnknownEffect(Multi)
+  static encodeSync = Schema.encodeUnknownSync(Multi)
+  static equivalence = Schema.toEquivalence(Multi)
+  static ordered = false as const
 }

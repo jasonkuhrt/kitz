@@ -25,6 +25,12 @@ export class Official extends S.TaggedClass<Official>()('Official', {
 }) {
   static make = this.makeUnsafe
   static is = S.is(Official)
+  static decode = S.decodeUnknownEffect(Official)
+  static decodeSync = S.decodeUnknownSync(Official)
+  static encode = S.encodeUnknownEffect(Official)
+  static encodeSync = S.encodeUnknownSync(Official)
+  static equivalence = S.toEquivalence(Official)
+  static ordered = false as const
 
   /** The version this release will produce. Extracts `to` from increments, `version` from firsts. */
   get nextVersion(): Semver.Semver {

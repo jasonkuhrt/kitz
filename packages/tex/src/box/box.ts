@@ -364,6 +364,21 @@ export class Box extends S.Class<Box>('Box')({
   gap: S.optional(PropGap.Gap),
 }) {
   static make = this.makeUnsafe
+  static is = S.is(Box as any) as (value: unknown) => value is Box
+  static get decode(): any {
+    return S.decode(Box as any)
+  }
+  static get decodeSync(): any {
+    return S.decodeSync(Box as any)
+  }
+  static get encode(): any {
+    return S.encode(Box as any)
+  }
+  static get encodeSync(): any {
+    return S.encodeSync(Box as any)
+  }
+  static equivalence = S.toEquivalence(Box as any)
+  static ordered = false as const
   // Hook storage (private, not part of schema)
   private paddingHooks: Partial<
     Record<keyof PropPadding.Padding, Array<(ctx: any) => number | ((v: number) => number)>>

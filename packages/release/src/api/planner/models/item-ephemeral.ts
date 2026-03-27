@@ -13,6 +13,12 @@ export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
 }) {
   static make = this.makeUnsafe
   static is = S.is(Ephemeral)
+  static decode = S.decodeUnknownEffect(Ephemeral)
+  static decodeSync = S.decodeUnknownSync(Ephemeral)
+  static encode = S.encodeUnknownEffect(Ephemeral)
+  static encodeSync = S.encodeUnknownSync(Ephemeral)
+  static equivalence = S.toEquivalence(Ephemeral)
+  static ordered = false as const
 
   get nextVersion(): Semver.Semver {
     return Version.Ephemeral.calculateVersion(

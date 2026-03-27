@@ -1,7 +1,7 @@
 import { Type as A } from '#kitz/assert/assert'
 import { Obj } from '#obj'
 import { Ts } from '#ts'
-import fc from 'fast-check'
+import * as fc from 'fast-check'
 import { describe, expect, test } from 'vitest'
 
 // ---- Fixtures ----

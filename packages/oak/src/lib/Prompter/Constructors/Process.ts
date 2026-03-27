@@ -20,8 +20,10 @@ export interface ProcessPrompterDependencies {
 
 export const createProcessChannels = (dependencies: ProcessPrompterDependencies = {}) => ({
   output: (value: string) =>
-    (dependencies.output ??
-      ((value: string) => (dependencies.stdout ?? process.stdout).write(value)))(value),
+    (
+      dependencies.output ??
+      ((value: string) => (dependencies.stdout ?? process.stdout).write(value))
+    )(value),
   readKeyPresses: <K extends KeyPress.Key>(params?: PromptEngine.ReadKeyPressesParams<K>) =>
     dependencies.readKeyPresses
       ? dependencies.readKeyPresses(params)

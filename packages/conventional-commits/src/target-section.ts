@@ -12,4 +12,11 @@ export class TargetSection extends Schema.TaggedClass<TargetSection>()('TargetSe
   footers: Schema.Array(Footer),
 }) {
   static make = this.makeUnsafe
+  static is = Schema.is(TargetSection)
+  static decode = Schema.decodeUnknownEffect(TargetSection)
+  static decodeSync = Schema.decodeUnknownSync(TargetSection)
+  static encode = Schema.encodeUnknownEffect(TargetSection)
+  static encodeSync = Schema.encodeUnknownSync(TargetSection)
+  static equivalence = Schema.toEquivalence(TargetSection)
+  static ordered = false as const
 }
