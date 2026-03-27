@@ -159,7 +159,13 @@ const run = (
 
   console.log(printable)
 
-  const result = spawnSync(command[0]!, command.slice(1), {
+  const [program, ...programArgs] = command
+
+  if (program === undefined) {
+    throw new Error('expected command to include a program')
+  }
+
+  const result = spawnSync(program, programArgs, {
     cwd,
     // oxlint-disable-next-line kitz/domain/no-process-env
     env: process.env,

@@ -19,7 +19,7 @@ const makeWorkflowInstance = (name: string) =>
 
 const runObservableWithEvents = <A, E>(
   name: string,
-  effect: Effect.Effect<A, E, never>,
+  effect: Effect.Effect<A, E>,
 ): Effect.Effect<
   { readonly exit: Exit.Exit<A, E>; readonly events: ReadonlyArray<LifecycleEvent> },
   never,

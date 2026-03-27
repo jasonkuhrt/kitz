@@ -345,7 +345,15 @@ describe('core object and string coverage', () => {
     expect(replace('hello world', ' ', '_')).toBe('hello_world')
     expect(replace('a-b-c', ['a', 'c'], 'x')).toBe('x-b-x')
     expect(
-      replace('hello jane', greetingPattern, (found) => found.groups.name!.toUpperCase()),
+      replace('hello jane', greetingPattern, (found) => {
+        const name = found.groups.name
+
+        if (name === undefined) {
+          throw new Error('expected name capture')
+        }
+
+        return name.toUpperCase()
+      }),
     ).toBe('JANE')
     expect(replace('a1', /\d/, '#')).toBe('a#')
     expect((replaceOn as any)('hello world')('world')('kitz')).toBe('hello kitz')

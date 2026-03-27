@@ -81,7 +81,7 @@ describe('core small-module coverage', () => {
     const greeting = interpolate('Hello ${name} from ${place}')
     expect(greeting({ name: 'Oak', place: 'kitz' })).toBe('Hello Oak from kitz')
     expect(
-      [...`${'${name} ${value}'}`.matchAll(templateVariablePattern)].map((match) => match[1]),
+      [...'${name} ${value}'.matchAll(templateVariablePattern)].map((match) => match[1]),
     ).toEqual(['name', 'value'])
 
     expect(camel('hello-world')).toBe('helloWorld')

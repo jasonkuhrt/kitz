@@ -1,5 +1,4 @@
 import { setup } from '@ark/attest'
-import tsconfigPaths from 'vite-tsconfig-paths'
 import { configDefaults, defineConfig } from 'vitest/config'
 
 const ssrResolveConditions = [
@@ -47,9 +46,8 @@ if (process.env[`ATTEST`] === `true`) {
 }
 
 export default defineConfig({
-  // TODO: Remove cast when fixed: https://github.com/vitest-dev/vitest/issues/9126
-  plugins: [tsconfigPaths() as any],
   resolve: {
+    tsconfigPaths: true,
     alias: {
       // Circular devDep workaround - see .claude/rules/circular-devdep-workaround.md
       '#kitz/test/test': `${repoRoot}/packages/test/src/__.ts`,

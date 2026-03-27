@@ -117,21 +117,7 @@ hello
 ╚══════════════════════════════════════════════════╝"
 `;
 
-exports[`mapValuesDeep > primitives pass through > mapValuesDeep('hello', () => void 0) 1`] = `
-"
-╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
-hello
-╚══════════════════════════════════════════════════╝"
-`;
-
 exports[`mapValuesDeep > primitives pass through > mapValuesDeep(42, () => undefined) 1`] = `
-"
-╔══════════════════════════════════════════════════╗ THEN RETURNS NUMBER
-42
-╚══════════════════════════════════════════════════╝"
-`;
-
-exports[`mapValuesDeep > primitives pass through > mapValuesDeep(42, () => void 0) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS NUMBER
 42
@@ -145,13 +131,6 @@ null
 ╚══════════════════════════════════════════════════╝"
 `;
 
-exports[`mapValuesDeep > primitives pass through > mapValuesDeep(null, () => void 0) 1`] = `
-"
-╔══════════════════════════════════════════════════╗ THEN RETURNS NULL
-null
-╚══════════════════════════════════════════════════╝"
-`;
-
 exports[`mapValuesDeep > primitives pass through > mapValuesDeep(true, () => undefined) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS BOOLEAN
@@ -159,21 +138,7 @@ true
 ╚══════════════════════════════════════════════════╝"
 `;
 
-exports[`mapValuesDeep > primitives pass through > mapValuesDeep(true, () => void 0) 1`] = `
-"
-╔══════════════════════════════════════════════════╗ THEN RETURNS BOOLEAN
-true
-╚══════════════════════════════════════════════════╝"
-`;
-
 exports[`mapValuesDeep > primitives pass through > mapValuesDeep(undefined, () => undefined) 1`] = `
-"
-╔══════════════════════════════════════════════════╗ THEN RETURNS UNDEFINED
-undefined
-╚══════════════════════════════════════════════════╝"
-`;
-
-exports[`mapValuesDeep > primitives pass through > mapValuesDeep(undefined, () => void 0) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS UNDEFINED
 undefined

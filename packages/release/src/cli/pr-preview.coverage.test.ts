@@ -195,8 +195,7 @@ const getFailureDetail = (error: unknown): string => {
   return typeof context.detail === 'string' ? context.detail : ''
 }
 
-const assumePure = <A, E>(effect: Effect.Effect<A, E, unknown>) =>
-  effect as Effect.Effect<A, E, never>
+const assumePure = <A, E>(effect: Effect.Effect<A, E, unknown>) => effect as Effect.Effect<A, E>
 
 describe('pr preview coverage', () => {
   test('returns null for optional diff checks when the pull request base ref is missing', async () => {

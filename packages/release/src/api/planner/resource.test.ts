@@ -63,8 +63,10 @@ describe('planner resource helpers', () => {
 
   test('rejects lifecycle-inconsistent plans before persisting them', async () => {
     const invalidPlan = {
-      ...basePlan,
+      lifecycle: basePlan.lifecycle,
+      timestamp: basePlan.timestamp,
       releases: [{ _tag: 'Candidate' }],
+      cascades: basePlan.cascades,
     } as any
 
     const result = await Effect.runPromise(

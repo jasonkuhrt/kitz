@@ -17,8 +17,7 @@ import {
   upsertPullRequestPreviewComment,
 } from './pr-preview.js'
 
-const assumePure = <A, E>(effect: Effect.Effect<A, E, unknown>) =>
-  effect as Effect.Effect<A, E, never>
+const assumePure = <A, E>(effect: Effect.Effect<A, E, unknown>) => effect as Effect.Effect<A, E>
 
 const forecast = Forecast.make({
   owner: 'org',

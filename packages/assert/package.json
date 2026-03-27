@@ -29,7 +29,7 @@
     "test:coverage": "vitest run --config ../../vitest.config.ts --root . --coverage",
     "check:cov": "bun run test:coverage",
     "check:types": "tsgo --noEmit",
-    "check:lint": "oxlint src/",
+    "check:lint": "bun ../../tools/run-lint.ts src/",
     "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   },
   "files": [

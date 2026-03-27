@@ -29,10 +29,13 @@ type MockRouteHandler = (
 const jsonResponse = (body: unknown, init: ResponseInit = {}): Response =>
   new Response(JSON.stringify(body), {
     ...init,
-    headers: {
-      'content-type': 'application/json',
-      ...(init.headers ?? {}),
-    },
+    headers: (() => {
+      const headers = new Headers(init.headers)
+
+      headers.set('content-type', 'application/json')
+
+      return headers
+    })(),
   })
 
 const makeHttpLayer = (handler: MockRouteHandler) => {

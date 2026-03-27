@@ -27,6 +27,15 @@ describe('ast helpers', () => {
   )
 
   const LazyTagged = S.suspend(() => Tagged)
+  const expectObjectsAst = (ast: EAST.AST): EAST.Objects => {
+    expect(EAST.isObjects(ast)).toBe(true)
+
+    if (!EAST.isObjects(ast)) {
+      throw new Error('expected object schema AST')
+    }
+
+    return ast
+  }
 
   test('resolve follows encoding chains and suspended schemas', () => {
     const transformedResolved = AST.resolve(Transformed.ast)
@@ -37,12 +46,14 @@ describe('ast helpers', () => {
   })
 
   test('extractTag reads string literal tags and rejects non-tagged objects', () => {
-    expect(AST.extractTag(Tagged.ast as EAST.Objects)).toBe('Tagged')
+    expect(AST.extractTag(expectObjectsAst(Tagged.ast))).toBe('Tagged')
     expect(
       AST.extractTag(
-        S.Struct({
-          count: S.Number,
-        }).ast as EAST.Objects,
+        expectObjectsAst(
+          S.Struct({
+            count: S.Number,
+          }).ast,
+        ),
       ),
     ).toBeNull()
   })
@@ -63,7 +74,7 @@ describe('ast helpers', () => {
   })
 
   test('property helpers inspect object fields', () => {
-    const ast = Tagged.ast as EAST.Objects
+    const ast = expectObjectsAst(Tagged.ast)
 
     expect(AST.extractPropertyKeys(ast)).toEqual(['_tag', 'value'])
     expect(AST.getPropertySignature(ast, 'value')?.name).toBe('value')
