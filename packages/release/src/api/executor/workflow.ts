@@ -18,9 +18,10 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, Schema } from 'effect'
+import { Effect, Option, Schema } from 'effect'
 import * as Notes from '../notes/__.js'
 import { formatGithubReleaseTitle, Publishing, resolvePublishSemantics } from '../publishing.js'
+import { EphemeralSchema } from '../version/models/ephemeral.js'
 import { LifecycleSchema } from '../version/models/lifecycle.js'
 import {
   ExecutorError as ExecutorErrorSchema,
@@ -133,6 +134,20 @@ const legacyCandidateSemantics = (distTag: string) =>
     tag: distTag,
   })
 
+const resolvePayloadPrNumber = (payload: ReleasePayloadType): number | undefined => {
+  if (payload.options.lifecycle !== 'ephemeral') return undefined
+
+  for (const release of payload.releases) {
+    const prerelease = Semver.getPrerelease(Semver.fromString(release.nextVersion))
+    if (prerelease === undefined) continue
+
+    const decoded = Schema.decodeUnknownOption(EphemeralSchema)(prerelease.join('.'))
+    if (Option.isSome(decoded)) return decoded.value.prNumber
+  }
+
+  return undefined
+}
+
 // ============================================================================
 // Workflow Definition (Declarative DAG)
 // ============================================================================
@@ -156,6 +171,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
   layerConcurrency: 1,
 
   graph: (payload, node) => {
+    const prNumber = resolvePayloadPrNumber(payload)
     const publishSemantics =
       payload.options.lifecycle !== undefined
         ? resolvePublishSemantics({
@@ -164,6 +180,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
               ? { publishing: payload.options.publishing }
               : {}),
             ...(payload.options.tag !== undefined ? { tag: payload.options.tag } : {}),
+            ...(prNumber !== undefined ? { prNumber } : {}),
           })
         : undefined
     const plannedReleases = payload.releases.map(toReleaseInfo)
@@ -220,6 +237,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
         Effect.gen(function* () {
           const releaseInfo = toReleaseInfo(release)
           const tag = formatTag(releaseInfo.package.name, releaseInfo.nextVersion)
+          const publishTag = publishSemantics?.distTag ?? payload.options.tag
 
           if (payload.options.dryRun) {
             yield* Effect.log(`[dry-run] Would publish ${tag}`)
@@ -232,7 +250,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
                 tarball: artifactPathFor(env.cwd, releaseInfo),
               },
               {
-                ...(payload.options.tag && { tag: payload.options.tag }),
+                ...(publishTag !== undefined ? { tag: publishTag } : {}),
                 ...(payload.options.registry && { registry: payload.options.registry }),
               },
             )

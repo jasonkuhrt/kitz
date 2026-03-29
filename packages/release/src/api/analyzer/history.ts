@@ -111,7 +111,7 @@ export const set = (
     }
 
     // Get all tags to check for conflicts and validate monotonicity
-    let tags = yield* git.getTags()
+    const tags = yield* git.getTags()
 
     // Check if tag already exists
     const existingTagIndex = tags.indexOf(tag)
@@ -119,8 +119,11 @@ export const set = (
       // Tag exists - check if it's at the same SHA
       const existingSha = yield* git.getTagSha(tag)
       if (existingSha.startsWith(options.sha) || options.sha.startsWith(existingSha)) {
-        // Same SHA - idempotent, no-op
-        return { tag, sha: options.sha, version, action: 'unchanged' as const, pushed: false }
+        if (push) {
+          yield* git.pushTag(tag, remote, false)
+        }
+
+        return { tag, sha: options.sha, version, action: 'unchanged' as const, pushed: push }
       }
 
       // Different SHA - need --move flag
@@ -133,18 +136,22 @@ export const set = (
           }),
         )
       }
-
-      // Move the tag: delete old, create new
-      yield* git.deleteTag(tag)
-      yield* git.deleteRemoteTag(tag, remote).pipe(Effect.ignore) // May not exist on remote
-      // Refresh tag list so monotonic validation does not inspect the deleted tag.
-      tags = yield* git.getTags()
     }
 
     // Validate monotonic versioning (adjacent check)
-    const validation = yield* validateAdjacent(options.sha, options.pkg, version, tags)
+    const tagsForValidation =
+      existingTagIndex !== -1 && move ? tags.filter((candidate) => candidate !== tag) : tags
+    const validation = yield* validateAdjacent(options.sha, options.pkg, version, tagsForValidation)
     if (!validation.valid) {
       return yield* Effect.fail(new MonotonicViolationError({ validation }))
+    }
+
+    if (existingTagIndex !== -1 && move) {
+      // Only mutate tags after we know the move is valid.
+      yield* git.deleteTag(tag)
+      if (push) {
+        yield* git.deleteRemoteTag(tag, remote).pipe(Effect.ignore) // May not exist on remote
+      }
     }
 
     // Create the tag
@@ -152,7 +159,7 @@ export const set = (
 
     // Push if requested
     if (push) {
-      yield* git.pushTag(tag, remote, move) // Force push if moving
+      yield* git.pushTag(tag, remote, existingTagIndex !== -1 && move)
     }
 
     const action = existingTagIndex !== -1 ? 'moved' : 'created'

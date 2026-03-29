@@ -139,12 +139,39 @@ describe('History.set', () => {
     expect(result.sha).toBe(newSha)
 
     const tagShas = await Effect.runPromise(Ref.get(state.tagShas))
+    const deletedRemoteTags = await Effect.runPromise(Ref.get(state.deletedRemoteTags))
     expect(tagShas[tag]).toBe(newSha)
+    expect(deletedRemoteTags).toEqual([])
   })
 
-  test('returns unchanged when the tag already points at the requested SHA', async () => {
+  test('returns unchanged without pushing when the tag already points at the requested SHA', async () => {
     const sha = Git.Sha.make('abc1234')
-    const { layer } = await setupGitHistory({
+    const { layer, state } = await setupGitHistory({
+      tags: [tag],
+      commits: [coreRelease('1.0.0', sha)],
+      tagShas: { [tag]: sha },
+    })
+
+    const result = await Effect.runPromise(
+      History.set({
+        sha,
+        pkg: packageName,
+        ver: version,
+        push: false,
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(result.action).toBe('unchanged')
+    expect(result.pushed).toBe(false)
+    expect(History.formatSetResult(result)).toContain('already exists')
+
+    const pushedTags = await Effect.runPromise(Ref.get(state.pushedTags))
+    expect(pushedTags).toEqual([])
+  })
+
+  test('re-pushes an unchanged tag when push is enabled', async () => {
+    const sha = Git.Sha.make('abc1234')
+    const { layer, state } = await setupGitHistory({
       tags: [tag],
       commits: [coreRelease('1.0.0', sha)],
       tagShas: { [tag]: sha },
@@ -156,12 +183,15 @@ describe('History.set', () => {
         pkg: packageName,
         ver: version,
         push: true,
+        remote: 'upstream',
       }).pipe(Effect.provide(layer)),
     )
 
     expect(result.action).toBe('unchanged')
-    expect(result.pushed).toBe(false)
-    expect(History.formatSetResult(result)).toContain('already exists')
+    expect(result.pushed).toBe(true)
+
+    const pushedTags = await Effect.runPromise(Ref.get(state.pushedTags))
+    expect(pushedTags).toContainEqual({ tag, remote: 'upstream', force: false })
   })
 
   test('fails when the requested tag exists at a different SHA without move', async () => {
@@ -239,6 +269,49 @@ describe('History.set', () => {
         'Versions must increase with commit order',
       )
     }
+  })
+
+  test('does not delete the original tag before a move passes monotonic validation', async () => {
+    const oldSha = Git.Sha.make('abc1234')
+    const previousSha = Git.Sha.make('fedcba9')
+    const requestedSha = Git.Sha.make('def5678')
+    const higherTag = coreTag('2.0.0')
+    const { layer, state } = await setupGitHistory({
+      tags: [tag, higherTag],
+      commits: [
+        coreRelease('1.0.0', requestedSha),
+        coreRelease('2.0.0', previousSha),
+        coreRelease('1.0.0', oldSha),
+      ],
+      tagShas: {
+        [tag]: oldSha,
+        [higherTag]: previousSha,
+      },
+      commitParents: { [requestedSha]: [previousSha] },
+    })
+
+    const result = await Effect.runPromise(
+      History.set({
+        sha: requestedSha,
+        pkg: packageName,
+        ver: version,
+        move: true,
+        push: true,
+      }).pipe(Effect.provide(layer), Effect.result),
+    )
+
+    expect(result._tag).toBe('Failure')
+    if (result._tag === 'Failure') {
+      expect(result.failure._tag).toBe('MonotonicViolationError')
+    }
+
+    const tagShas = await Effect.runPromise(Ref.get(state.tagShas))
+    const deletedTags = await Effect.runPromise(Ref.get(state.deletedTags))
+    const deletedRemoteTags = await Effect.runPromise(Ref.get(state.deletedRemoteTags))
+
+    expect(tagShas[tag]).toBe(oldSha)
+    expect(deletedTags).toEqual([])
+    expect(deletedRemoteTags).toEqual([])
   })
 })
 

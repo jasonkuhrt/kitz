@@ -16,7 +16,7 @@ import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Cause, Config, Effect, Exit, Match, Option, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
-import type { Publishing } from '../publishing.js'
+import { resolvePublishSemanticsForPlan, type Publishing } from '../publishing.js'
 import {
   ExecutorDependencyCycleError,
   ExecutorPreflightError,
@@ -94,6 +94,8 @@ interface ExecutionOptions {
   readonly tag?: string
   readonly registry?: string
   readonly publishing?: Publishing
+  readonly npmTag?: string
+  readonly candidateTag?: string
   readonly trunk?: string
 }
 
@@ -404,10 +406,26 @@ export const toPayload = (
     tag?: string
     registry?: string
     publishing?: Publishing
+    npmTag?: string
+    candidateTag?: string
     trunk?: string
   } = {},
 ): Effect.Effect<ReleasePayloadType, ExecutorDependencyCycleError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
+    const publishSemantics = resolvePublishSemanticsForPlan({
+      plan,
+      ...(options.publishing !== undefined ? { publishing: options.publishing } : {}),
+      ...(options.tag !== undefined ? { tag: options.tag } : {}),
+      ...(options.npmTag !== undefined ? { npmTag: options.npmTag } : {}),
+      ...(options.candidateTag !== undefined ? { candidateTag: options.candidateTag } : {}),
+    })
+    const resolvedTag =
+      options.tag !== undefined ||
+      options.npmTag !== undefined ||
+      options.candidateTag !== undefined ||
+      plan.lifecycle !== 'official'
+        ? publishSemantics.distTag
+        : undefined
     const planItems = [...plan.releases, ...plan.cascades]
     const localPackageNames = planItems.map((item) => item.package.name.moniker)
     const releaseEntries = yield* Effect.all(
@@ -445,7 +463,7 @@ export const toPayload = (
       releases: orderedReleases,
       options: {
         dryRun: options.dryRun ?? false,
-        ...(options.tag && { tag: options.tag }),
+        ...(resolvedTag !== undefined ? { tag: resolvedTag } : {}),
         ...(options.registry && { registry: options.registry }),
         lifecycle: plan.lifecycle,
         ...(options.publishing && { publishing: options.publishing }),

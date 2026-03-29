@@ -117,6 +117,37 @@ describe('Executor integration', () => {
       ),
   )
 
+  test.live(
+    'publishes official releases to the configured npm dist-tag without a manual tag override',
+    () =>
+      quiet(
+        Effect.gen(function* () {
+          const harness = yield* makeHarness({
+            git: {
+              tags: [tagCore('1.0.0')],
+              commits: [Git.Memory.commit('feat(core): new API')],
+              isClean: true,
+            },
+            diskLayout: {
+              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            },
+          })
+
+          const plan = yield* planOfficial(workspacePackages).pipe(
+            Effect.provide(harness.planLayer),
+          )
+
+          yield* execute(plan, {
+            dryRun: false,
+            npmTag: 'beta',
+          }).pipe(Effect.provide(harness.workflowLayer))
+
+          const publishCalls = yield* Ref.get(harness.publishCalls)
+          expect(publishCalls[0]?.tag).toBe('beta')
+        }),
+      ),
+  )
+
   test.live('fails preflight on conflicting tag and does not publish', () =>
     quiet(
       Effect.gen(function* () {
@@ -529,6 +560,61 @@ describe('Executor integration', () => {
     ),
   )
 
+  test.live('publishes candidate releases to the default next dist-tag', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+          },
+        })
+
+        const plan = yield* planCandidate(workspacePackages).pipe(Effect.provide(harness.planLayer))
+
+        yield* execute(plan, { dryRun: false }).pipe(Effect.provide(harness.workflowLayer))
+
+        const publishCalls = yield* Ref.get(harness.publishCalls)
+        expect(publishCalls[0]?.tag).toBe('next')
+      }),
+    ),
+  )
+
+  test.live(
+    'publishes candidate releases to the configured candidate dist-tag without a manual tag override',
+    () =>
+      quiet(
+        Effect.gen(function* () {
+          const harness = yield* makeHarness({
+            git: {
+              tags: [tagCore('1.0.0')],
+              commits: [Git.Memory.commit('feat(core): new API')],
+              isClean: true,
+            },
+            diskLayout: {
+              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            },
+          })
+
+          const plan = yield* planCandidate(workspacePackages).pipe(
+            Effect.provide(harness.planLayer),
+          )
+
+          yield* execute(plan, {
+            dryRun: false,
+            candidateTag: 'candidate',
+          }).pipe(Effect.provide(harness.workflowLayer))
+
+          const publishCalls = yield* Ref.get(harness.publishCalls)
+          expect(publishCalls[0]?.tag).toBe('candidate')
+        }),
+      ),
+  )
+
   test.live(
     'updates existing GitHub candidate release when tag option uses a custom candidate dist-tag',
     () =>
@@ -666,6 +752,33 @@ describe('Executor integration', () => {
           expect(createdReleases[0]?.prerelease).toBe(true)
         }),
       ),
+  )
+
+  test.live('publishes ephemeral releases to the default PR dist-tag', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+            headSha: Git.Sha.make('abc1234'),
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+          },
+        })
+
+        const plan = yield* planEphemeral(workspacePackages, { prNumber: 42 }).pipe(
+          Effect.provide(harness.planLayer),
+        )
+
+        yield* execute(plan, { dryRun: false }).pipe(Effect.provide(harness.workflowLayer))
+
+        const publishCalls = yield* Ref.get(harness.publishCalls)
+        expect(publishCalls[0]?.tag).toBe('pr-42')
+      }),
+    ),
   )
 
   test.live('observable workflow exposes graph in dry-run mode', () =>
