@@ -10,12 +10,12 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#fuzzy": "./build/_.js",
-    "#fuzzy/*": "./build/*.js"
+    "#fuzzy": "./src/_.ts",
+    "#fuzzy/*": "./src/*.ts"
   },
   "exports": {
-    ".": "./build/_.js",
-    "./__": "./build/__.js"
+    ".": "./src/_.ts",
+    "./__": "./src/__.ts"
   },
   "files": [
     "build",
