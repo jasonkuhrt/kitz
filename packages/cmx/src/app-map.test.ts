@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, test } from 'vitest'
 import { Effect } from 'effect'
+import { Bench } from 'tinybench'
 import { Pat } from '@kitz/core'
 import { AppMap } from './app-map.js'
 import { Command } from './command.js'
@@ -404,23 +405,33 @@ describe('AppMap.getActiveShortcuts conditional (if)', () => {
 // ─────────────────────────────────────────────────────────────────
 // Performance gate — shortcut filtering with Pat.isMatch on hot path
 //
+// Uses tinybench Bench directly for statistically rigorous measurement
+// (proper warmup, iteration control, percentile reporting).
+//
 // Scenario: 50 shortcuts in scope (25 unconditional, 25 conditional),
 // 3-level deep AppMap. All 3 filter sites called per keypress.
-// Budget: <1ms combined (leaves >7ms for fuzzy matching + rendering).
 //
-// For detailed profiling: bun run --cwd packages/cmx bench
+// Budget: <1ms p99 combined per keypress.
+// Rationale: at 120Hz the frame budget is ~8.3ms. Shortcut filtering
+// is one of several hot-path steps (fuzzy matching, ranking, rendering).
+// Allocating <1ms to filtering leaves >7ms for the rest.
+// See docs/rationales/0001-effect-on-hot-path.md.
+//
+// For detailed profiling tables: bun run --cwd packages/cmx bench
 // ─────────────────────────────────────────────────────────────────
 
 describe('AppMap performance gate', () => {
   const perfCap = Capability.make({ name: 'action', execute: Effect.void })
   const perfCmd = Command.Leaf.make({ name: 'action', capability: perfCap })
 
+  // 50 shortcuts: 25 unconditional, 25 conditional with Pat.isMatch patterns
   const perfShortcuts = Array.from({ length: 50 }, (_, i) => {
     const base = { key: `k${i}`, command: perfCmd } as const
     if (i % 2 === 0) return base
     return { ...base, if: { mode: `mode${i % 5}` } satisfies Pat.Pattern }
   })
 
+  // 3-level deep AppMap: root (17 shortcuts) → workspace (17) → thread (16)
   const perfMap = AppMap.make({
     shortcuts: perfShortcuts.slice(0, 17),
     children: [
@@ -439,30 +450,61 @@ describe('AppMap performance gate', () => {
 
   const deepPath = ['workspace', 'thread'] as const
   const state = { mode: 'mode1' }
-  const BUDGET_MS = 1
 
-  it(`resolveShortcut + computeScope + getActiveShortcuts < ${BUDGET_MS}ms for 50 shortcuts`, () => {
-    // Warmup — let V8 JIT compile the hot paths
-    for (let i = 0; i < 1000; i++) {
+  // Budget: 1ms p99 for the combined keypress path (all 3 filter sites)
+  const BUDGET_P99_MS = 1
+
+  test('combined keypress path (resolveShortcut + computeScope + getActiveShortcuts) stays within budget', async () => {
+    const b = new Bench({
+      time: 500, // 500ms measurement window — enough for stable statistics
+      warmupTime: 200, // 200ms warmup — let V8 JIT settle
+      warmupIterations: 100,
+    })
+
+    b.add('resolveShortcut', () => {
       AppMap.resolveShortcut(perfMap, deepPath, 'k1', { state })
-      AppMap.computeScope(perfMap, deepPath, { state })
-      AppMap.getActiveShortcuts(perfMap, deepPath, { state })
-    }
+    })
 
-    // Measure — take median of 100 runs to reduce noise
-    const times: number[] = []
-    for (let run = 0; run < 100; run++) {
-      const start = performance.now()
-      AppMap.resolveShortcut(perfMap, deepPath, 'k1', { state })
+    b.add('computeScope', () => {
       AppMap.computeScope(perfMap, deepPath, { state })
-      AppMap.getActiveShortcuts(perfMap, deepPath, { state })
-      times.push(performance.now() - start)
-    }
-    times.sort((a, b) => a - b)
-    const median = times[Math.floor(times.length / 2)]!
+    })
 
-    expect(median, `median ${median.toFixed(3)}ms exceeds ${BUDGET_MS}ms budget`).toBeLessThan(
-      BUDGET_MS,
+    b.add('getActiveShortcuts', () => {
+      AppMap.getActiveShortcuts(perfMap, deepPath, { state })
+    })
+
+    await b.warmup()
+    await b.run()
+
+    const resolve = b.getTask('resolveShortcut')!.result!
+    const scope = b.getTask('computeScope')!.result!
+    const active = b.getTask('getActiveShortcuts')!.result!
+
+    // Combined p99: worst-case per-keypress cost across all 3 sites
+    const combinedP99 = resolve.p99 + scope.p99 + active.p99
+    const combinedMean = resolve.mean + scope.mean + active.mean
+
+    // Diagnostic output — visible in vitest verbose mode and CI logs
+    console.log(
+      [
+        `\n  Shortcut filter performance (50 shortcuts, 3-level path):`,
+        `    resolveShortcut : mean=${resolve.mean.toFixed(4)}ms  p99=${resolve.p99.toFixed(4)}ms  hz=${resolve.hz.toFixed(0)}`,
+        `    computeScope    : mean=${scope.mean.toFixed(4)}ms  p99=${scope.p99.toFixed(4)}ms  hz=${scope.hz.toFixed(0)}`,
+        `    getActiveShrtcts: mean=${active.mean.toFixed(4)}ms  p99=${active.p99.toFixed(4)}ms  hz=${active.hz.toFixed(0)}`,
+        `    ──────────────────────────────────────────────────`,
+        `    combined        : mean=${combinedMean.toFixed(4)}ms  p99=${combinedP99.toFixed(4)}ms  budget=${BUDGET_P99_MS}ms`,
+      ].join('\n'),
     )
+
+    // Gate: combined p99 must stay within budget
+    expect(
+      combinedP99,
+      `combined p99 ${combinedP99.toFixed(3)}ms exceeds ${BUDGET_P99_MS}ms budget`,
+    ).toBeLessThan(BUDGET_P99_MS)
+
+    // Sanity: each individual site should contribute meaningfully (not degenerate)
+    expect(resolve.hz, 'resolveShortcut hz too low').toBeGreaterThan(1000)
+    expect(scope.hz, 'computeScope hz too low').toBeGreaterThan(1000)
+    expect(active.hz, 'getActiveShortcuts hz too low').toBeGreaterThan(1000)
   })
 })
