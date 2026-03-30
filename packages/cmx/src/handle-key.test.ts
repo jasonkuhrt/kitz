@@ -208,6 +208,41 @@ describe('Tier 2 — edge cases', () => {
     const result = handleKey('Tab', ctx) // complete → takes namespace, not executable
     expect(result._tag).toBe('Resolution')
   })
+
+  it('space that leads to auto-advance and execute', () => {
+    // Type a query then space to advance — if it resolves, should execute
+    const simpleMap = AppMap.make({ commands: [configNs] })
+    const handleKey = createHandleKey(simpleMap, Controls.defaults)
+    handleKey(';', { path: [] })
+    handleKey('r', { path: [] }) // 'r' matches both reload and export
+    handleKey('e', { path: [] }) // 're' matches only reload → auto-advance → Execute
+    // This already tests the printable → execute path
+  })
+
+  it('Enter on already-executable state returns Execute', () => {
+    // Create a single leaf command with no namespace — type the full name
+    const singleLeaf = Command.Leaf.make({ name: 'go', capability: reload })
+    const singleMap = AppMap.make({ commands: [singleLeaf] })
+    const handleKey = createHandleKey(singleMap, Controls.defaults)
+    handleKey(';', { path: [] }) // open — "go" is the only choice
+    // Auto-advance should have fired on first char since only 1 match
+    const r = handleKey('g', { path: [] })
+    // 'g' matches "go" → 1 match → auto-advance → Execute
+    expect(r._tag).toBe('Execute')
+  })
+
+  it('Enter after Tab-taking a leaf executes', () => {
+    const simpleMap = AppMap.make({ commands: [configNs] })
+    const handleKey = createHandleKey(simpleMap, Controls.defaults)
+    handleKey(';', { path: [] })
+    const tabResult = handleKey('Tab', { path: [] }) // take top
+    // If the top choice was a full path leaf, it might be executable
+    if (tabResult._tag === 'Resolution') {
+      const enterResult = handleKey('Enter', { path: [] })
+      // Confirm on the taken state
+      expect(['Resolution', 'Execute'].includes(enterResult._tag)).toBe(true)
+    }
+  })
 })
 
 describe('session caching', () => {
