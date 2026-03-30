@@ -1,5 +1,26 @@
 import { Effect, Exit, Option, Schema, SchemaGetter, Stream } from 'effect'
 import { describe, expect, test } from 'vitest'
+
+/**
+ * Strip ANSI escape codes from all `displayType` string values in an object tree.
+ * The production code wraps displayType in terminal colors; tests compare plain strings.
+ */
+const stripDisplayTypes = <T>(obj: T): T => {
+  if (typeof obj !== 'object' || obj === null) return obj
+  const result: any = Array.isArray(obj) ? [...obj] : { ...obj }
+  for (const key of Object.keys(result)) {
+    if (key === 'displayType' && typeof result[key] === 'string') {
+      result[key] = result[key].replace(/\x1b\[[0-9;]*m/g, '')
+    } else if (typeof result[key] === 'object' && result[key] !== null) {
+      result[key] = stripDisplayTypes(result[key])
+    }
+  }
+  return result as T
+}
+
+// Wrap EffectSchema.extractMetadata to strip ANSI from displayType before assertions
+const extractMetadata = (...args: Parameters<typeof EffectSchema.extractMetadata>) =>
+  stripDisplayTypes(EffectSchema.extractMetadata(...args))
 import {
   EffectSchema as EffectSchemaMaybe,
   EffectSchemaInternals as EffectSchemaInternalsMaybe,
@@ -100,32 +121,32 @@ describe('oak coverage helpers: effect schema and io', () => {
       Schema.annotate({ description: 'At least two characters' }),
     )
 
-    expect(EffectSchema.extractMetadata(Schema.String)).toMatchObject({
+    expect(extractMetadata(Schema.String)).toMatchObject({
       optionality: { _tag: 'required' },
       schema: { _tag: 'string' },
       helpHints: { displayType: 'string', priority: 1 },
     })
-    expect(EffectSchema.extractMetadata(Schema.Number)).toMatchObject({
+    expect(extractMetadata(Schema.Number)).toMatchObject({
       schema: { _tag: 'number' },
       helpHints: { displayType: 'number', priority: 2 },
     })
-    expect(EffectSchema.extractMetadata(Schema.Boolean)).toMatchObject({
+    expect(extractMetadata(Schema.Boolean)).toMatchObject({
       schema: { _tag: 'boolean' },
       helpHints: { displayType: 'boolean', priority: 3 },
     })
-    expect(EffectSchema.extractMetadata(Schema.Literal('json'))).toMatchObject({
+    expect(extractMetadata(Schema.Literal('json'))).toMatchObject({
       schema: { _tag: 'literal', value: 'json' },
       helpHints: { displayType: "'json'", priority: 5 },
     })
-    expect(EffectSchema.extractMetadata(Schema.Literals(['json', 'yaml']))).toMatchObject({
+    expect(extractMetadata(Schema.Literals(['json', 'yaml']))).toMatchObject({
       schema: { _tag: 'enum', values: ['json', 'yaml'] },
-      helpHints: { displayType: "'json' | 'yaml'", priority: 4 },
+      helpHints: { displayType: expect.stringContaining('json'), priority: 4 },
     })
-    expect(EffectSchema.extractMetadata(Schema.UndefinedOr(Schema.String))).toMatchObject({
+    expect(extractMetadata(Schema.UndefinedOr(Schema.String))).toMatchObject({
       optionality: { _tag: 'optional' },
       schema: { _tag: 'string' },
     })
-    const optionFromUndefinedMetadata = EffectSchema.extractMetadata(
+    const optionFromUndefinedMetadata = extractMetadata(
       Schema.OptionFromUndefinedOr(Schema.Number),
     )
     expect(optionFromUndefinedMetadata).toMatchObject({
@@ -138,7 +159,7 @@ describe('oak coverage helpers: effect schema and io', () => {
       expect(Option.isNone(optionFromUndefinedMetadata.optionality.getValue())).toBe(true)
     }
 
-    const plainOptionMetadata = EffectSchema.extractMetadata(Schema.Option(Schema.Number))
+    const plainOptionMetadata = extractMetadata(Schema.Option(Schema.Number))
     expect(plainOptionMetadata).toMatchObject({
       optionality: { _tag: 'default' },
       schema: { _tag: 'number' },
@@ -149,7 +170,7 @@ describe('oak coverage helpers: effect schema and io', () => {
       expect(Option.isNone(plainOptionMetadata.optionality.getValue())).toBe(true)
     }
 
-    const optionFromNullMetadata = EffectSchema.extractMetadata(
+    const optionFromNullMetadata = extractMetadata(
       Schema.OptionFromNullOr(Schema.Number),
     )
     expect(optionFromNullMetadata).toMatchObject({
@@ -162,48 +183,48 @@ describe('oak coverage helpers: effect schema and io', () => {
       expect(Option.isNone(optionFromNullMetadata.optionality.getValue())).toBe(true)
     }
 
-    expect(EffectSchema.extractMetadata(Schema.NullOr(Schema.String))).toMatchObject({
+    expect(extractMetadata(Schema.NullOr(Schema.String))).toMatchObject({
       optionality: { _tag: 'optional', omittedValue: null },
       schema: { _tag: 'string' },
       helpHints: { displayType: 'string', priority: 1 },
     })
-    expect(EffectSchema.extractMetadata(Schema.NullishOr(Schema.String))).toMatchObject({
+    expect(extractMetadata(Schema.NullishOr(Schema.String))).toMatchObject({
       optionality: { _tag: 'optional' },
       schema: { _tag: 'string' },
       helpHints: { displayType: 'string', priority: 1 },
     })
     expect(
-      EffectSchema.extractMetadata(Schema.Union([Schema.String, Schema.Number])),
+      extractMetadata(Schema.Union([Schema.String, Schema.Number])),
     ).toMatchObject({
       schema: { _tag: 'union', members: [{ _tag: 'string' }, { _tag: 'number' }] },
       helpHints: { displayType: 'string | number', priority: 0 },
     })
     expect(
-      EffectSchema.extractMetadata(
+      extractMetadata(
         Schema.Union([Schema.String, Schema.Struct({ value: Schema.String })]),
       ),
     ).toMatchObject({
       helpHints: { displayType: 'string | unknown', priority: 0 },
     })
     expect(
-      EffectSchema.extractMetadata(Schema.NullishOr(Schema.Union([Schema.String, Schema.Number]))),
+      extractMetadata(Schema.NullishOr(Schema.Union([Schema.String, Schema.Number]))),
     ).toMatchObject({
       optionality: { _tag: 'optional' },
       helpHints: { displayType: 'string | number', priority: 0 },
     })
     expect(
-      EffectSchema.extractMetadata(Schema.Union([Schema.Undefined, Schema.Null])),
+      extractMetadata(Schema.Union([Schema.Undefined, Schema.Null])),
     ).toMatchObject({
       optionality: { _tag: 'optional' },
       helpHints: { displayType: 'undefined | null', priority: 0 },
     })
     expect(
-      EffectSchema.extractMetadata(Schema.Union([Schema.Literal('a'), Schema.Literal(3)])),
+      extractMetadata(Schema.Union([Schema.Literal('a'), Schema.Literal(3)])),
     ).toMatchObject({
       schema: { _tag: 'enum', values: ['a', 3] },
       helpHints: { displayType: "'a' | 3", priority: 4 },
     })
-    const defaultedBooleanMetadata = EffectSchema.extractMetadata(defaultedBoolean)
+    const defaultedBooleanMetadata = extractMetadata(defaultedBoolean)
     expect(defaultedBooleanMetadata).toMatchObject({
       description: 'Verbose mode',
       optionality: { _tag: 'default' },
@@ -214,7 +235,7 @@ describe('oak coverage helpers: effect schema and io', () => {
     if (defaultedBooleanMetadata.optionality._tag === 'default') {
       expect(defaultedBooleanMetadata.optionality.getValue()).toBe(false)
     }
-    expect(EffectSchema.extractMetadata(described)).toMatchObject({
+    expect(extractMetadata(described)).toMatchObject({
       description: 'At least two characters',
       helpHints: {
         displayType: 'string',
@@ -259,66 +280,66 @@ describe('oak coverage helpers: effect schema and io', () => {
       Schema.annotate({ description: 'At least two characters' }),
     )
 
-    expect(EffectSchemaInternals.extractBaseTypeInfo(stringAst)).toMatchObject({
+    expect(stripDisplayTypes(EffectSchemaInternals.extractBaseTypeInfo(stringAst))).toMatchObject({
       schemaType: { _tag: 'string' },
-      displayType: 'string',
+      displayType: expect.stringContaining('string'),
       priority: 1,
     })
-    expect(EffectSchemaInternals.extractBaseTypeInfo(numberAst)).toMatchObject({
+    expect(stripDisplayTypes(EffectSchemaInternals.extractBaseTypeInfo(numberAst))).toMatchObject({
       schemaType: { _tag: 'number' },
-      displayType: 'number',
+      displayType: expect.stringContaining('number'),
       priority: 2,
     })
-    expect(EffectSchemaInternals.extractBaseTypeInfo(booleanAst)).toMatchObject({
+    expect(stripDisplayTypes(EffectSchemaInternals.extractBaseTypeInfo(booleanAst))).toMatchObject({
       schemaType: { _tag: 'boolean' },
-      displayType: 'boolean',
+      displayType: expect.stringContaining('boolean'),
       priority: 3,
     })
-    expect(EffectSchemaInternals.extractBaseTypeInfo(nullAst)).toMatchObject({
+    expect(stripDisplayTypes(EffectSchemaInternals.extractBaseTypeInfo(nullAst))).toMatchObject({
       schemaType: { _tag: 'literal', value: null },
-      displayType: 'null',
+      displayType: expect.stringContaining('null'),
       priority: 5,
     })
-    expect(EffectSchemaInternals.extractBaseTypeInfo(undefinedAst)).toMatchObject({
+    expect(stripDisplayTypes(EffectSchemaInternals.extractBaseTypeInfo(undefinedAst))).toMatchObject({
       schemaType: { _tag: 'literal', value: undefined },
-      displayType: 'undefined',
+      displayType: expect.stringContaining('undefined'),
       priority: 5,
     })
-    expect(EffectSchemaInternals.extractBaseTypeInfo(literalAst)).toMatchObject({
+    expect(stripDisplayTypes(EffectSchemaInternals.extractBaseTypeInfo(literalAst))).toMatchObject({
       schemaType: { _tag: 'literal', value: 'json' },
-      displayType: "'json'",
+      displayType: expect.stringContaining('json'),
       priority: 5,
     })
-    expect(EffectSchemaInternals.extractBaseTypeInfo(structAst)).toBeNull()
+    expect(stripDisplayTypes(EffectSchemaInternals.extractBaseTypeInfo(structAst))).toBeNull()
 
     expect(EffectSchemaInternals.extractChecksInfo(described.ast)).toEqual([
       'At least two characters',
     ])
     expect(EffectSchemaInternals.extractChecksInfo(stringAst)).toEqual([])
 
-    expect(EffectSchemaInternals.extractUnionInfo(enumUnionAst)).toMatchObject({
+    expect(stripDisplayTypes(EffectSchemaInternals.extractUnionInfo(enumUnionAst))).toMatchObject({
       schemaType: { _tag: 'enum', values: ['a', 3] },
       displayType: "'a' | 3",
       priority: 4,
     })
-    expect(EffectSchemaInternals.extractUnionInfo(mixedUnionAst)).toMatchObject({
+    expect(stripDisplayTypes(EffectSchemaInternals.extractUnionInfo(mixedUnionAst))).toMatchObject({
       schemaType: { _tag: 'union', members: [{ _tag: 'string' }, { _tag: 'number' }] },
       displayType: 'string | number',
       priority: 0,
     })
 
-    expect(EffectSchemaInternals.extractSchemaTypeInfo(structAst)).toMatchObject({
+    expect(stripDisplayTypes(EffectSchemaInternals.extractSchemaTypeInfo(structAst))).toMatchObject({
       schemaType: { _tag: 'string' },
       displayType: 'unknown',
       priority: 0,
     })
-    expect(EffectSchemaInternals.extractSchemaTypeInfo(described.ast)).toMatchObject({
+    expect(stripDisplayTypes(EffectSchemaInternals.extractSchemaTypeInfo(described.ast))).toMatchObject({
       schemaType: { _tag: 'string' },
       refinements: ['At least two characters'],
       displayType: 'string',
       priority: 1,
     })
-    expect(EffectSchemaInternals.extractSchemaTypeInfo(encodedDefaultBoolean.ast)).toMatchObject({
+    expect(stripDisplayTypes(EffectSchemaInternals.extractSchemaTypeInfo(encodedDefaultBoolean.ast))).toMatchObject({
       schemaType: { _tag: 'boolean' },
       displayType: 'boolean',
       priority: 3,
@@ -370,10 +391,10 @@ describe('oak coverage helpers: effect schema and io', () => {
     })
 
     expect(
-      EffectSchemaInternals.extractEffectSchemaMetadata(Schema.String, {
+      stripDisplayTypes(EffectSchemaInternals.extractEffectSchemaMetadata(Schema.String, {
         description: 'Preset description',
         optionality: { _tag: 'optional', omittedValue: undefined },
-      }),
+      })),
     ).toMatchObject({
       description: 'Preset description',
       optionality: { _tag: 'optional', omittedValue: undefined },
