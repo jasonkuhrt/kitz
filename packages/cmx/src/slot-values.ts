@@ -1,5 +1,8 @@
 import { Effect, Layer, ServiceMap } from 'effect'
 
+/** Consumer-provided Layer whose service type is erased at storage boundaries. */
+type AnyLayer = Layer.Layer<any>
+
 /**
  * Capability-scoped service that provides filled slot values at execution time.
  *
@@ -38,7 +41,7 @@ export const makeSlotValuesLayer = (
 export const buildExecutableEffect = (
   execute: Effect.Effect<void>,
   slotValues: Readonly<Record<string, unknown>>,
-  additionalLayers?: Layer.Layer<any>,
+  additionalLayers?: AnyLayer,
 ): Effect.Effect<void> => {
   const slotLayer = makeSlotValuesLayer(slotValues)
   const combinedLayer = additionalLayers ? Layer.merge(slotLayer, additionalLayers) : slotLayer

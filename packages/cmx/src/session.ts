@@ -8,6 +8,9 @@ import { SlotResolver } from './slot-resolver.js'
 import type { MatcherService } from './matcher.js'
 import { buildExecutableEffect } from './slot-values.js'
 
+/** Consumer-provided Layer whose service type is erased at storage boundaries. */
+type AnyLayer = Layer.Layer<any>
+
 /** The phase of the session lifecycle. */
 type SessionPhase = 'command' | 'slot'
 
@@ -19,9 +22,9 @@ interface SessionState {
   /** The resolved command (leaf or hybrid) when in slot phase. */
   resolvedCommand: (CommandLeaf | CommandHybrid) | null
   /** Dynamic layers from HandleKeyContext. */
-  dynamicLayers: Record<string, Layer.Layer<any>>
+  dynamicLayers: Record<string, AnyLayer>
   /** Static layers collected from the AppMap scope chain. */
-  scopeLayers: ReadonlyArray<Layer.Layer<any>>
+  scopeLayers: ReadonlyArray<AnyLayer>
 }
 
 /** Recursively collect execute Effects from a composite capability's steps. */
@@ -144,8 +147,8 @@ const getSlotValuesFromState = (state: SessionState): Readonly<Record<string, un
 }
 
 /** Build a combined Layer from scope layers + dynamic layers. */
-const buildCombinedLayers = (state: SessionState): Layer.Layer<any> | undefined => {
-  const layers: Layer.Layer<any>[] = [...state.scopeLayers]
+const buildCombinedLayers = (state: SessionState): AnyLayer | undefined => {
+  const layers: AnyLayer[] = [...state.scopeLayers]
   for (const layer of Object.values(state.dynamicLayers)) {
     layers.push(layer)
   }
@@ -170,8 +173,8 @@ export const Session = {
     commands: ReadonlyArray<AnyCommand>,
     proximities: ReadonlyMap<string, number>,
     options?: {
-      readonly dynamicLayers?: Record<string, Layer.Layer<any>>
-      readonly scopeLayers?: ReadonlyArray<Layer.Layer<any>>
+      readonly dynamicLayers?: Record<string, AnyLayer>
+      readonly scopeLayers?: ReadonlyArray<AnyLayer>
       readonly matcher?: MatcherService
     },
   ) => {
@@ -311,10 +314,10 @@ export const Session = {
     const getResolvedCommand = (): (CommandLeaf | CommandHybrid) | null => state.resolvedCommand
 
     /** Get the dynamic layers for effect building. */
-    const getDynamicLayers = (): Record<string, Layer.Layer<any>> => state.dynamicLayers
+    const getDynamicLayers = (): Record<string, AnyLayer> => state.dynamicLayers
 
     /** Update dynamic layers (called when HandleKeyContext changes). */
-    const setDynamicLayers = (layers: Record<string, Layer.Layer<any>>): void => {
+    const setDynamicLayers = (layers: Record<string, AnyLayer>): void => {
       state.dynamicLayers = layers
     }
 

@@ -237,7 +237,8 @@ export const SlotResolver = {
       if (state.query.length === 0 && slot.required !== false) return false
 
       // Validate through the slot's schema before accepting
-      const decode = Schema.decodeUnknownOption(slot.schema)
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument -- AnySlot erases the schema type parameter
+      const decode = Schema.decodeUnknownOption(slot.schema as any)
       const result = decode(state.query)
       if (Option.isNone(result)) return false
 

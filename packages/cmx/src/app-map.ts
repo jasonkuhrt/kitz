@@ -1,5 +1,8 @@
 import type { Layer } from 'effect'
 import { Pat } from '@kitz/core'
+
+/** Consumer-provided Layer whose service type is erased at storage boundaries. */
+type AnyLayer = Layer.Layer<any>
 import type { AnyCommand, CommandLeaf, CommandHybrid } from './command.js'
 import { CmxInvalidPath, CmxDuplicateNamespace } from './errors.js'
 
@@ -34,7 +37,7 @@ export interface AppMapNode {
   readonly name: string
   readonly commands: ReadonlyArray<AnyCommand>
   readonly shortcuts: ReadonlyArray<Shortcut>
-  readonly layer?: Layer.Layer<any> | undefined
+  readonly layer?: AnyLayer | undefined
   readonly children: ReadonlyArray<AppMapNode>
 }
 
@@ -42,7 +45,7 @@ export interface AppMapNode {
 export interface AppMapRoot {
   readonly commands: ReadonlyArray<AnyCommand>
   readonly shortcuts: ReadonlyArray<Shortcut>
-  readonly layer?: Layer.Layer<any> | undefined
+  readonly layer?: AnyLayer | undefined
   readonly children: ReadonlyArray<AppMapNode>
 }
 
@@ -169,7 +172,7 @@ export const AppMap = {
   make: (config: {
     readonly commands?: ReadonlyArray<AnyCommand>
     readonly shortcuts?: ReadonlyArray<Shortcut>
-    readonly layer?: Layer.Layer<any> | undefined
+    readonly layer?: AnyLayer | undefined
     readonly children?: ReadonlyArray<AppMapNode>
   }): AppMapRoot => ({
     commands: config.commands ?? [],
@@ -183,7 +186,7 @@ export const AppMap = {
       readonly name: string
       readonly commands?: ReadonlyArray<AnyCommand>
       readonly shortcuts?: ReadonlyArray<Shortcut>
-      readonly layer?: Layer.Layer<any> | undefined
+      readonly layer?: AnyLayer | undefined
       readonly children?: ReadonlyArray<AppMapNode>
     }): AppMapNode => ({
       name: config.name,

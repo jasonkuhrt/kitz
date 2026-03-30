@@ -9,6 +9,9 @@ import type { Layer } from 'effect'
 import type { MatcherService } from './matcher.js'
 import { Matcher } from './matcher.js'
 
+/** Consumer-provided Layer whose service type is erased at storage boundaries. */
+type AnyLayer = Layer.Layer<any>
+
 /** Context passed with each handleKey call. */
 export interface HandleKeyContext {
   readonly path: ReadonlyArray<string>
@@ -19,7 +22,7 @@ export interface HandleKeyContext {
    * These layers are merged with static AppMap node layers when building
    * the executable Effect for a resolved capability.
    */
-  readonly layers?: Record<string, Layer.Layer<any>>
+  readonly layers?: Record<string, AnyLayer>
   /**
    * Consumer state used for conditional shortcut evaluation.
    * Shortcuts with an `if` pattern are only active when `Pat.isMatch(state, if)` is true.
@@ -196,8 +199,8 @@ export const createHandleKey = (
 const collectScopeLayers = (
   root: AppMapRoot,
   path: ReadonlyArray<string>,
-): ReadonlyArray<Layer.Layer<any>> => {
-  const layers: Layer.Layer<any>[] = []
+): ReadonlyArray<AnyLayer> => {
+  const layers: AnyLayer[] = []
   if (root.layer) layers.push(root.layer)
 
   let current: AppMapRoot = root
