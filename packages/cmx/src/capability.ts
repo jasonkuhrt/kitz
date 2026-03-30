@@ -7,7 +7,7 @@ export interface CapabilitySimple {
   readonly _tag: 'Capability'
   readonly name: string
   readonly slots: ReadonlyArray<AnySlot>
-  readonly execute: Effect.Effect<void, never, never>
+  readonly execute: Effect.Effect<void>
 }
 
 /** A composite capability — ordered sequence of other capabilities. */
@@ -53,7 +53,7 @@ export const Capability = {
   make: (config: {
     readonly name: string
     readonly slots?: ReadonlyArray<AnySlot>
-    readonly execute: Effect.Effect<void, never, never>
+    readonly execute: Effect.Effect<void>
   }): CapabilitySimple => ({
     _tag: 'Capability',
     name: config.name,

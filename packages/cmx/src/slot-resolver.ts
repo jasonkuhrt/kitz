@@ -20,7 +20,7 @@ interface SlotResolverState {
 
 /** Build choices from the focused slot. */
 const buildSlotChoices = (state: SlotResolverState): Choice[] => {
-  const slot = state.slots[state.focusedIndex]
+  const slot = state.slots[state.focusedIndex]!
   if (!slot) return []
 
   switch (slot._tag) {

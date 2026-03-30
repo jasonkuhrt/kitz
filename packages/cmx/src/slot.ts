@@ -32,7 +32,7 @@ export interface SlotFuzzy<A = unknown> extends SlotDocumentation {
   readonly _tag: 'Fuzzy'
   readonly name: string
   readonly schema: Schema.Schema<A>
-  readonly source: Effect.Effect<ReadonlyArray<SlotCandidate<A>>, never, never>
+  readonly source: Effect.Effect<ReadonlyArray<SlotCandidate<A>>>
 }
 
 /** Source handles matching server-side. */
@@ -40,7 +40,7 @@ export interface SlotSearch<A = unknown> extends SlotDocumentation {
   readonly _tag: 'Search'
   readonly name: string
   readonly schema: Schema.Schema<A>
-  readonly source: (query: string) => Effect.Effect<ReadonlyArray<SlotCandidate<A>>, never, never>
+  readonly source: (query: string) => Effect.Effect<ReadonlyArray<SlotCandidate<A>>>
 }
 
 /** Free-form text input. Schema validates on submit. */

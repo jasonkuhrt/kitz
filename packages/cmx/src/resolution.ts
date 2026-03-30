@@ -18,7 +18,7 @@ export interface Resolution {
   readonly query: string
   readonly _tag: 'Leaf' | 'Namespace' | 'Hybrid' | 'None'
   readonly executable: boolean
-  readonly effect: Effect.Effect<void, never, never> | null
+  readonly effect: Effect.Effect<void> | null
   readonly complete: boolean
   readonly topChoice: Choice | null
   readonly choices: ReadonlyArray<Choice>
