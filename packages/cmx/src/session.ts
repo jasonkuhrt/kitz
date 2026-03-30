@@ -247,7 +247,12 @@ export const Session = {
     /** Take the top choice in the current resolver. */
     const choiceTakeTop = (): Resolution => {
       if (state.phase === 'slot' && state.slotResolver) {
-        state.slotResolver.takeTop()
+        const slot = state.slotResolver.getFocusedSlot()
+        if (slot && slot._tag === 'Text') {
+          state.slotResolver.submitText()
+        } else {
+          state.slotResolver.takeTop()
+        }
         return buildCombinedResolution(state)
       }
 
