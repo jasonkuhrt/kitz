@@ -183,7 +183,9 @@ describe('AppMap.resolveShortcut', () => {
         AppMap.Node.make({
           name: 'workspace',
           shortcuts: [{ key: 'n', command: reloadCmd }],
-          children: [AppMap.Node.make({ name: 'thread', shortcuts: [{ key: 'r', command: replyCmd }] })],
+          children: [
+            AppMap.Node.make({ name: 'thread', shortcuts: [{ key: 'r', command: replyCmd }] }),
+          ],
         }),
       ],
     })
