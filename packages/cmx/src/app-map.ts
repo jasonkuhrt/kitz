@@ -13,7 +13,7 @@ export interface AppMapNode {
   readonly name: string
   readonly commands: ReadonlyArray<AnyCommand>
   readonly keybindings: ReadonlyArray<Keybinding>
-  readonly layer?: Layer.Layer<any>
+  readonly layer?: Layer.Layer<any> | undefined
   readonly children: ReadonlyArray<AppMapNode>
 }
 
@@ -21,7 +21,7 @@ export interface AppMapNode {
 export interface AppMapRoot {
   readonly commands: ReadonlyArray<AnyCommand>
   readonly keybindings: ReadonlyArray<Keybinding>
-  readonly layer?: Layer.Layer<any>
+  readonly layer?: Layer.Layer<any> | undefined
   readonly children: ReadonlyArray<AppMapNode>
 }
 
@@ -46,7 +46,7 @@ const resolveChain = (
   const chain: (AppMapRoot | AppMapNode)[] = [root]
   let current: AppMapRoot | AppMapNode = root
   for (const segment of path) {
-    const child = current.children.find((c) => c.name === segment)
+    const child: AppMapNode | undefined = current.children.find((c) => c.name === segment)
     if (!child) {
       throw new CmxInvalidPath({ context: { path: [...path] } })
     }
@@ -68,7 +68,7 @@ const computeScope = (root: AppMapRoot, path: ReadonlyArray<string>): Scope => {
   const seenNamespaces = new Map<string, string>()
 
   for (let i = chain.length - 1; i >= 0; i--) {
-    const node = chain[i]
+    const node = chain[i]!
     const proximity = i + 1 // deeper = higher proximity
     const nodeName = i === 0 ? '(root)' : (node as AppMapNode).name
 
@@ -103,7 +103,7 @@ const resolveKeybinding = (
   const chain = resolveChain(root, path)
   // Walk deepest-first — closer bindings shadow farther ones
   for (let i = chain.length - 1; i >= 0; i--) {
-    const node = chain[i]
+    const node = chain[i]!
     for (const kb of node.keybindings) {
       if (kb.key === key) return kb
     }
@@ -121,7 +121,7 @@ const getActiveKeybindings = (
   const chain = resolveChain(root, path)
   const result: { nodeName: string; keybindings: ReadonlyArray<Keybinding> }[] = []
   for (let i = chain.length - 1; i >= 0; i--) {
-    const node = chain[i]
+    const node = chain[i]!
     const nodeName = i === 0 ? '(root)' : (node as AppMapNode).name
     if (node.keybindings.length > 0) {
       result.push({ nodeName, keybindings: node.keybindings })
@@ -134,7 +134,7 @@ export const AppMap = {
   make: (config: {
     readonly commands?: ReadonlyArray<AnyCommand>
     readonly keybindings?: ReadonlyArray<Keybinding>
-    readonly layer?: Layer.Layer<any>
+    readonly layer?: Layer.Layer<any> | undefined
     readonly children?: ReadonlyArray<AppMapNode>
   }): AppMapRoot => ({
     commands: config.commands ?? [],
@@ -148,7 +148,7 @@ export const AppMap = {
       readonly name: string
       readonly commands?: ReadonlyArray<AnyCommand>
       readonly keybindings?: ReadonlyArray<Keybinding>
-      readonly layer?: Layer.Layer<any>
+      readonly layer?: Layer.Layer<any> | undefined
       readonly children?: ReadonlyArray<AppMapNode>
     }): AppMapNode => ({
       name: config.name,

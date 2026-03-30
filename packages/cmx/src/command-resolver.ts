@@ -24,24 +24,18 @@ const buildFlatChoices = (
   proximities: ReadonlyMap<string, number>,
 ): Choice[] => {
   const paths = collectExecutablePaths(commands)
-  return paths.map((p) => {
-    const namespaceName = p.path.split(' ')[0]
-    return {
-      token: p.path,
-      kind: p.command._tag === 'Hybrid' ? ('hybrid' as const) : ('leaf' as const),
-      executable: p.command._tag === 'Leaf' || p.command._tag === 'Hybrid',
-      description: p.command.description,
-      detail: p.command.detail,
-      icon: p.command.icon,
-      badge: p.command.badge,
-      keybinding: undefined,
-      warning: p.command.warning,
-      deprecated: p.command.deprecated,
-      group: p.command.group,
-      // Store proximity for boost scoring
-      _proximity: proximities.get(namespaceName) ?? 0,
-    }
-  })
+  return paths.map((p): Choice => ({
+    token: p.path,
+    kind: p.command._tag === 'Hybrid' ? 'hybrid' : 'leaf',
+    executable: p.command._tag === 'Leaf' || p.command._tag === 'Hybrid',
+    description: p.command.description,
+    detail: p.command.detail,
+    icon: p.command.icon,
+    badge: p.command.badge,
+    warning: p.command.warning,
+    deprecated: p.command.deprecated,
+    group: p.command.group,
+  }))
 }
 
 /**
@@ -57,9 +51,9 @@ const buildTreeChoices = (
     if (!node || node._tag === 'Leaf') return []
     current = node._tag === 'Namespace' || node._tag === 'Hybrid' ? node.children : []
   }
-  return current.map((cmd) => ({
+  return current.map((cmd): Choice => ({
     token: cmd.name,
-    kind: cmd._tag === 'Leaf' ? ('leaf' as const) : cmd._tag === 'Namespace' ? ('namespace' as const) : ('hybrid' as const),
+    kind: cmd._tag === 'Leaf' ? 'leaf' : cmd._tag === 'Namespace' ? 'namespace' : 'hybrid',
     executable: cmd._tag === 'Leaf' || cmd._tag === 'Hybrid',
     description: cmd.description,
   }))
@@ -112,7 +106,7 @@ const buildResolution = (state: CommandResolverState): Resolution => {
       : buildTreeChoices(state.commands, state.treePath)
 
   const choices = filterChoices(rawChoices, state.query)
-  const topChoice = choices.length > 0 ? choices[0] : null
+  const topChoice = choices.length > 0 ? choices[0]! : null
   const complete = topChoice !== null && topChoice.token.toLowerCase() === state.query.toLowerCase()
 
   // Determine _tag and executable from accepted tokens
@@ -122,14 +116,15 @@ const buildResolution = (state: CommandResolverState): Resolution => {
 
   if (state.mode === 'flat' && state.acceptedTokens.length > 0) {
     // In flat mode, accepted token is the full path like "Config reload"
-    const lastToken = state.acceptedTokens[state.acceptedTokens.length - 1]
+    const lastToken = state.acceptedTokens[state.acceptedTokens.length - 1]!
     const pathSegments = lastToken.token.split(' ')
     const cmd = findCommand(state.commands, pathSegments)
     if (cmd) {
       tag = cmd._tag as Resolution['_tag']
-      if (cmd._tag === 'Leaf' || cmd._tag === 'Hybrid') {
-        executable = cmd.capability.slots.length === 0
-        effect = cmd.capability.execute
+      if ((cmd._tag === 'Leaf' || cmd._tag === 'Hybrid') && 'capability' in cmd) {
+        const cap = cmd.capability
+        executable = cap.slots.length === 0
+        effect = cap._tag === 'Capability' ? cap.execute : null
       }
     }
   } else if (state.mode === 'tree' && state.acceptedTokens.length > 0) {
@@ -138,8 +133,9 @@ const buildResolution = (state: CommandResolverState): Resolution => {
     if (cmd) {
       tag = cmd._tag as Resolution['_tag']
       if ((cmd._tag === 'Leaf' || cmd._tag === 'Hybrid') && 'capability' in cmd) {
-        executable = cmd.capability.slots.length === 0
-        effect = cmd.capability.execute
+        const cap = cmd.capability
+        executable = cap.slots.length === 0
+        effect = cap._tag === 'Capability' ? cap.execute : null
       }
     }
   }
@@ -211,7 +207,7 @@ export const CommandResolver = {
       // Auto-advance: if exactly 1 choice, take it
       if (filtered.length === 1) {
         state.acceptedTokens.push({
-          token: filtered[0].token,
+          token: filtered[0]!.token,
           preTakeQuery: state.query,
         })
         state.query = ''

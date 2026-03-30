@@ -151,7 +151,7 @@ export const SlotResolver = {
       if (char === ' ') {
         const choices = getChoices()
         if (choices.length > 0 && state.query.length > 0) {
-          takeChoice(choices[0])
+          takeChoice(choices[0]!)
         }
         return
       }
@@ -165,7 +165,7 @@ export const SlotResolver = {
 
       // Auto-advance on 1 match
       if (choices.length === 1) {
-        takeChoice(choices[0])
+        takeChoice(choices[0]!)
       }
     }
 
@@ -176,7 +176,7 @@ export const SlotResolver = {
       } else if (state.focusedIndex > 0) {
         // Go back to previous slot
         state.focusedIndex--
-        const prevSlot = state.slots[state.focusedIndex]
+        const prevSlot = state.slots[state.focusedIndex]!
         const filled = state.values.get(prevSlot.name)
         if (filled) {
           state.query = filled.preTakeQuery
@@ -203,7 +203,7 @@ export const SlotResolver = {
     const takeTop = (): void => {
       const choices = getChoices()
       if (choices.length > 0) {
-        takeChoice(choices[0])
+        takeChoice(choices[0]!)
       }
     }
 
@@ -233,10 +233,10 @@ export const SlotResolver = {
     const choiceUndo = (): boolean => {
       state.query = ''
       if (state.focusedIndex > 0) {
-        const currentSlot = state.slots[state.focusedIndex]
+        const currentSlot = state.slots[state.focusedIndex]!
         state.values.delete(currentSlot.name)
         state.focusedIndex--
-        const prevSlot = state.slots[state.focusedIndex]
+        const prevSlot = state.slots[state.focusedIndex]!
         state.values.delete(prevSlot.name)
         return true
       }
@@ -247,7 +247,7 @@ export const SlotResolver = {
     /** Advance to the next unfilled slot, or stay if all filled. */
     const advanceToNextSlot = (): void => {
       for (let i = state.focusedIndex + 1; i < state.slots.length; i++) {
-        if (!state.values.has(state.slots[i].name)) {
+        if (!state.values.has(state.slots[i]!.name)) {
           state.focusedIndex = i
           return
         }

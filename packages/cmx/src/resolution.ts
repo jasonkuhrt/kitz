@@ -8,7 +8,7 @@ export interface SlotState {
   readonly value: unknown | null
   readonly required: boolean
   /** The query that was active when this slot's value was taken. Restored on undo. */
-  readonly preTakeQuery?: string
+  readonly preTakeQuery?: string | undefined
 }
 
 /** The state snapshot returned by every handleKey result that carries resolution data. */
@@ -36,7 +36,7 @@ export const emptyResolution = (choices: ReadonlyArray<Choice>): Resolution => (
   executable: false,
   effect: null,
   complete: false,
-  topChoice: choices.length > 0 ? choices[0] : null,
+  topChoice: choices.length > 0 ? choices[0]! : null,
   choices,
   choicesLoading: false,
   slots: [],

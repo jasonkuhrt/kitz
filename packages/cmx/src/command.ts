@@ -2,18 +2,18 @@ import type { AnyCapability } from './capability.js'
 
 /** Shared documentation fields for all command kinds. */
 interface CommandDocumentation {
-  readonly description?: string
-  readonly detail?: string
-  readonly icon?: string
-  readonly badge?: string
-  readonly examples?: ReadonlyArray<string>
-  readonly related?: ReadonlyArray<string>
-  readonly warning?: string
-  readonly confirmation?: boolean
-  readonly aliases?: ReadonlyArray<string>
-  readonly tags?: ReadonlyArray<string>
-  readonly deprecated?: { readonly replacement: string }
-  readonly group?: string
+  readonly description?: string | undefined
+  readonly detail?: string | undefined
+  readonly icon?: string | undefined
+  readonly badge?: string | undefined
+  readonly examples?: ReadonlyArray<string> | undefined
+  readonly related?: ReadonlyArray<string> | undefined
+  readonly warning?: string | undefined
+  readonly confirmation?: boolean | undefined
+  readonly aliases?: ReadonlyArray<string> | undefined
+  readonly tags?: ReadonlyArray<string> | undefined
+  readonly deprecated?: { readonly replacement: string } | undefined
+  readonly group?: string | undefined
 }
 
 /** Executable terminal command. */
@@ -61,7 +61,7 @@ export const Command = {
      */
     fromCapabilities: <K extends string>(config: {
       readonly name: string
-      readonly description?: string
+      readonly description?: string | undefined
       readonly capabilities: Readonly<Record<K, AnyCapability>>
     }): { readonly namespace: CommandNamespace; readonly commands: Readonly<Record<K, CommandLeaf>> } => {
       const commands = {} as Record<K, CommandLeaf>
