@@ -90,6 +90,7 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
       tags,
       filter: args.pkg ? [...args.pkg] : undefined,
       exclude: args.exclude ? [...args.exclude] : undefined,
+      resolvedConventionalCommitTypes: workspace.config.resolvedConventionalCommitTypes,
     })
     const ctx = { packages }
 

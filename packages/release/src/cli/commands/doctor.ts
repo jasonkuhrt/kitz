@@ -170,7 +170,7 @@ Cli.run(
     })
 
     const tags = yield* git.getTags()
-    const analysis = yield* Api.Analyzer.analyze({ packages, tags })
+    const analysis = yield* Api.Analyzer.analyze({ packages, tags, resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes })
     const currentBranch = yield* git.getCurrentBranch()
     const diffRemote = resolveDiffRemote(config, args.remote)
     const diff = pullRequest

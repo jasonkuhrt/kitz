@@ -431,6 +431,7 @@ export const runPrPreview = (
       packages,
       tags,
       since: `origin/${pullRequest.base.ref}`,
+      resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
     })
     const projectedSquashCommit = Api.ProjectedSquashCommit.preview({
       actualTitle: pullRequest.title,

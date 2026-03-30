@@ -81,6 +81,7 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
       since: args.since,
       until: args.until,
       filter: args.pkg ? [args.pkg] : undefined,
+      resolvedConventionalCommitTypes: workspace.config.resolvedConventionalCommitTypes,
     })
 
     if (result.notes.length === 0) {

@@ -20,15 +20,24 @@ export interface CommitImpact {
 }
 
 /**
- * Get bump type from CC type, returns null for no-impact types.
+ * Resolved type→bump map from config.
+ */
+export type ResolvedConventionalCommitTypes = Record<string, Semver.BumpType>
+
+/**
+ * Get bump type from CC type using the resolved type→bump config.
+ *
+ * Breaking always returns 'major'. Otherwise looks up the type name
+ * in the resolved config map. Returns null for unrecognized types
+ * (lint rules catch those separately).
  */
 export const getBump = (
   type: ConventionalCommits.Type.Type,
   breaking: boolean,
+  resolvedConventionalCommitTypes: ResolvedConventionalCommitTypes,
 ): Semver.BumpType | null => {
   if (breaking) return 'major'
-  if (!ConventionalCommits.Type.Standard.is(type)) return null
-  return Option.getOrNull(ConventionalCommits.Type.impact(type))
+  return resolvedConventionalCommitTypes[type.value] ?? null
 }
 
 const decodeExactPin = S.decodeUnknownOption(Pkg.Pin.Exact.FromString)
@@ -40,7 +49,10 @@ const decodeExactPin = S.decodeUnknownOption(Pkg.Pin.Exact.FromString)
  * which packages are affected and what bump type each needs.
  * Stores the full ReleaseCommit (not flattened per-scope).
  */
-export const extractImpacts = (gitCommit: Git.Commit): Effect.Effect<CommitImpact[]> =>
+export const extractImpacts = (
+  gitCommit: Git.Commit,
+  resolvedConventionalCommitTypes: ResolvedConventionalCommitTypes,
+): Effect.Effect<CommitImpact[]> =>
   Effect.gen(function* () {
     // Parse the commit title (first line)
     const title = gitCommit.message.split('\n')[0] ?? gitCommit.message
@@ -63,7 +75,7 @@ export const extractImpacts = (gitCommit: Git.Commit): Effect.Effect<CommitImpac
     if (ConventionalCommits.Commit.Single.is(parsedCC)) {
       if (parsedCC.scopes.length === 0) return [] // Scopeless - handled by caller
 
-      const bump = getBump(parsedCC.type, parsedCC.breaking)
+      const bump = getBump(parsedCC.type, parsedCC.breaking, resolvedConventionalCommitTypes)
       if (bump === null) return []
 
       for (const scope of parsedCC.scopes) {
@@ -71,7 +83,7 @@ export const extractImpacts = (gitCommit: Git.Commit): Effect.Effect<CommitImpac
       }
     } else if (ConventionalCommits.Commit.Multi.is(parsedCC)) {
       for (const target of parsedCC.targets) {
-        const bump = getBump(target.type, target.breaking)
+        const bump = getBump(target.type, target.breaking, resolvedConventionalCommitTypes)
         if (bump === null) continue
         impacts.push({ scope: target.scope, bump, commit: releaseCommit })
       }
