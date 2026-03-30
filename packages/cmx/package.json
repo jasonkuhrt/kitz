@@ -1,6 +1,11 @@
 {
   "name": "@kitz/cmx",
   "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
   "type": "module",
   "sideEffects": false,
   "imports": {
@@ -19,8 +24,8 @@
     "build": "tsgo -p tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
-    "check:lint": "oxlint --config ../../oxlint.json src/",
-    "check:package": "publint && attw --pack"
+    "check:lint": "oxlint --config ../../.oxlintrc.json src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   },
   "dependencies": {
     "@kitz/core": "workspace:*"
