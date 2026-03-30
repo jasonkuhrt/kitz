@@ -131,7 +131,8 @@ export const assignmentScore = (
   // try swapping its assignment with each alternative. Accept the swap
   // if the global score improves.
 
-  let currentScore = computeScore(assigned, needleCodes, haystackCodes, bonuses, n, m)
+  const sortBuf = new Array<number>(n)
+  let currentScore = computeScore(assigned, needleCodes, haystackCodes, bonuses, n, m, sortBuf)
 
   for (const i of order) {
     if (occurrences[i]!.length <= 1) continue // no alternatives
@@ -149,7 +150,7 @@ export const assignmentScore = (
         // Try the swap
         assigned[i] = altPos
         assigned[otherI] = currentPos
-        const newScore = computeScore(assigned, needleCodes, haystackCodes, bonuses, n, m)
+        const newScore = computeScore(assigned, needleCodes, haystackCodes, bonuses, n, m, sortBuf)
 
         if (newScore > currentScore) {
           // Accept swap
@@ -164,7 +165,7 @@ export const assignmentScore = (
         assigned[i] = altPos
         used.delete(currentPos)
         used.add(altPos)
-        const newScore = computeScore(assigned, needleCodes, haystackCodes, bonuses, n, m)
+        const newScore = computeScore(assigned, needleCodes, haystackCodes, bonuses, n, m, sortBuf)
 
         if (newScore > currentScore) {
           currentScore = newScore
@@ -198,6 +199,7 @@ const computeScore = (
   bonuses: number[],
   n: number,
   m: number,
+  sortBuf: number[] = [],
 ): number => {
   if (n === 0) return 0
 
@@ -210,10 +212,12 @@ const computeScore = (
     if (needleCodes[i] === haystackCodes[pos]!) score += CaseMatchBonus
   }
 
-  // 2. Gap penalty between sorted positions
-  const sorted = [...assigned].sort((a, b) => a - b)
-  for (let k = 1; k < sorted.length; k++) {
-    const gap = sorted[k]! - sorted[k - 1]! - 1
+  // 2. Gap penalty between sorted positions (sort a copy to avoid mutating assigned)
+  for (let k = 0; k < n; k++) sortBuf[k] = assigned[k]!
+  sortBuf.length = n
+  sortBuf.sort((a, b) => a - b)
+  for (let k = 1; k < sortBuf.length; k++) {
+    const gap = sortBuf[k]! - sortBuf[k - 1]! - 1
     if (gap > 0) {
       score += ScoreGapStart + (gap - 1) * ScoreGapExtension
     }
@@ -262,6 +266,4 @@ const longestIncreasingSubsequence = (arr: number[]): number => {
   return tails.length
 }
 
-/** ASCII-only case folding: A-Z → a-z */
-const toLower = (charCode: number): number =>
-  charCode >= 65 && charCode <= 90 ? charCode + 32 : charCode
+import { toLower } from './utils.js'

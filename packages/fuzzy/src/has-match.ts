@@ -1,3 +1,5 @@
+import { toLower } from './utils.js'
+
 /**
  * Multiset containment check. Returns true when every character in the needle
  * exists in the haystack with at least the same multiplicity (case-insensitive).
@@ -31,7 +33,3 @@ export const hasMatch = (needle: string, haystack: string): boolean => {
 
   return true
 }
-
-/** ASCII-only case folding: A-Z → a-z. Non-ASCII passes through unchanged. */
-const toLower = (charCode: number): number =>
-  charCode >= 65 && charCode <= 90 ? charCode + 32 : charCode

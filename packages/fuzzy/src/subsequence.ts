@@ -265,6 +265,4 @@ const isSubsequence = (needle: string, haystack: string): boolean => {
   return ni === needle.length
 }
 
-/** ASCII-only case folding: A-Z → a-z */
-const toLower = (charCode: number): number =>
-  charCode >= 65 && charCode <= 90 ? charCode + 32 : charCode
+import { toLower } from './utils.js'

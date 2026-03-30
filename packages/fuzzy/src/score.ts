@@ -14,15 +14,11 @@ import { subsequenceScore } from './subsequence.js'
  * Data-first form: `score(needle, haystack)`
  * Data-last form: `score(needle)` returns `(haystack) => Option<number>`
  */
-export const score: {
-  (needle: string, haystack: string): Option.Option<number>
-  (needle: string): (haystack: string) => Option.Option<number>
-} = (...args: [string, string?]): any => {
-  if (args.length === 1) {
-    const needle = args[0]
-    return (haystack: string) => scoreImpl(needle, haystack)
-  }
-  return scoreImpl(args[0], args[1]!)
+export function score(needle: string, haystack: string): Option.Option<number>
+export function score(needle: string): (haystack: string) => Option.Option<number>
+export function score(needle: string, haystack?: string): Option.Option<number> | ((haystack: string) => Option.Option<number>) {
+  if (haystack === undefined) return (h: string) => scoreImpl(needle, h)
+  return scoreImpl(needle, haystack)
 }
 
 const scoreImpl = (needle: string, haystack: string): Option.Option<number> => {
