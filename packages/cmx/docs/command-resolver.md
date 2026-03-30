@@ -1,9 +1,9 @@
-# Command Resolver
+# Command Resolver (Internal)
 
-How the Resolver navigates the command tree. This document covers the character-level input model, auto-advance, dead-end prevention, and the surface interaction pattern.
+Internal architecture for how cmx navigates the command tree. This document covers the character-level input model, auto-advance, dead-end prevention, and the control-to-operation mapping. Consumers interact with `cmx.handleKey` — this doc describes what happens inside.
 
-For the SDK surface (capabilities, commands, AppMap), see [README.md](../README.md).
-For the Slot Resolver (enum, fuzzy, search), see [slot-resolver.md](./slot-resolver.md).
+For the consumer API, see [README.md](../README.md).
+For the Slot Resolver, see [slot-resolver.md](./slot-resolver.md).
 
 ## Character-Level Input
 
@@ -82,25 +82,24 @@ If `query.push(char)` would produce zero matches on a non-executable state, the 
 
 Combined with auto-advance (choices can't stay at 1), this means the choices is always 0 (executable) or 2+ during active input.
 
-## Surface Interaction Pattern
+## Internal Control-to-Operation Mapping
 
-Surfaces map their own key bindings to Resolver operations. The Resolver does not dictate key bindings -- it provides enough state for any surface to implement any policy.
+These are the internal operations that Controls map key events to. The consumer never calls these directly — `handleKey` routes through Controls.
 
-| User intent | Resolution | Resolver operation |
+| Control | Resolution state | Internal operation |
 | --- | --- | --- |
-| Confirm | executable | run `resolution.effect` |
-| Confirm | exact namespace | `choice.takeTop()` |
-| Confirm | partial with top match | `choice.takeTop()` |
-| Confirm | incomplete (missing slots) | `choice.takeTop()` -- never execute |
-| Confirm | refusal | surface renders refusal reason |
-| Complete | exact namespace/hybrid | `choice.takeTop()` |
-| Complete | partial with top match | `choice.takeTop()` -- never execute |
-| Complete | exact executable leaf | no-op |
-| Separator (Space) | any | `query.push(' ')` (Resolver handles) |
-| Drill | selected item | `choice.take(item)` |
-| Back | any | `choice.undo()` |
-| Delete | any | `query.undo()` |
-| Handoff | any | `handoff(surfaceId)` |
+| `confirm` | executable | build Execute result with `resolution.effect` |
+| `confirm` | exact hybrid | build Execute result (Enter executes hybrids) |
+| `confirm` | partial with top match | `choice.takeTop()` |
+| `confirm` | incomplete (missing slots) | `choice.takeTop()` — never execute |
+| `complete` | exact namespace/hybrid | `choice.takeTop()` (Tab drills into children) |
+| `complete` | partial with top match | `choice.takeTop()` — never execute |
+| `complete` | exact executable leaf | no-op |
+| space | any | `query.push(' ')` — auto-advance top match |
+| `toggleMode` | any | toggle flat/tree mode |
+| `backspace` | any | `query.undo()` |
+| `cancel` | any | build Close result |
+| printable char | any | `query.push(char)` |
 
 A command palette might map: Enter=Confirm, Tab=Complete, Space=Separator, Backspace=Delete, Escape=Back. A toolbar might map: Click=Confirm. The Resolver is agnostic.
 

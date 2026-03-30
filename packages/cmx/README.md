@@ -113,8 +113,11 @@ const configCommands = Cmx.Command.Namespace.make({
   icon: 'settings',
   children: [reloadCommand, exportCommand],
 })
+```
 
-// Namespace from capabilities -- returns namespace + typed record of generated leaves
+Alternative: generate from capabilities (returns namespace + leaf handles):
+
+```typescript
 const { namespace: configCommands, commands: configLeaves } = Cmx.Command.Namespace
   .fromCapabilities({
     name: 'Config',
@@ -123,12 +126,16 @@ const { namespace: configCommands, commands: configLeaves } = Cmx.Command.Namesp
   })
 // configLeaves.reload and configLeaves.export are the generated Command.Leaf objects
 // Use them for keybindings, related, deprecation replacements, etc.
+```
 
-// Namespace from Effect RPC group
-const configCommands = Cmx.Command.Namespace.fromRpcGroup({
-  name: 'Config',
-  rpcs: ConfigRpcs,
-})
+Alternative: generate from an Effect RPC group:
+
+```typescript
+const { namespace: configCommands, commands: configLeaves } = Cmx.Command.Namespace
+  .fromRpcGroup({
+    name: 'Config',
+    rpcs: ConfigRpcs,
+  })
 
 // Deprecated command
 const oldReload = Cmx.Command.Leaf.make({
@@ -230,9 +237,9 @@ The choices are the list of valid next options at any point during resolution. I
 
 cmx operates in two modes that determine what the choices contain:
 
-__Flat mode (default -- discovery).__ All reachable leaf commands shown as full paths: "Config reload", "Lsp refactor rename", "Buffer close". Matched against the full path with term-level reordering -- typing "reload config" matches "Config reload." This is where cmx starts. The user sees everything and types to narrow.
+__Flat mode (default -- discovery).__ All reachable executable commands (leaves and hybrids) shown as full paths: "Config reload", "Lsp refactor rename", "Lazy". Matched against the full path with term-level reordering -- typing "reload config" matches "Config reload." Namespaces do not appear in flat mode -- they are a tree-mode concept. This is where cmx starts. The user sees everything executable and types to narrow.
 
-__Tree mode (focused -- namespace browsing).__ Only the current namespace's children: "reload", "export" (inside Config). Single-token matching. Entered by taking a namespace choice. `choice.undo()` navigates to the parent namespace within tree mode (not back to flat). `?` toggles back to flat mode. Cancel (Escape) closes the session.
+__Tree mode (focused -- namespace browsing).__ Only the current namespace's children: "reload", "export" (inside Config). Single-token matching. Entered via `?` toggle from flat mode (starts at root namespace). `choice.undo()` navigates to the parent namespace within tree mode. `?` toggles back to flat mode. Cancel (Escape) closes the session.
 
 Toggle between modes with `?` -- a special character cmx interprets (like space for auto-advance). In flat mode, `?` switches to tree mode scoped to the current namespace or root. In tree mode, `?` switches back to flat.
 
@@ -285,7 +292,11 @@ const exportCap = Cmx.Capability.make({
 
 A capability is the smallest executable unit in cmx -- a stable, globally addressable function that actually runs when invoked. Capabilities never appear in the command palette directly. They exist as the substrate that [commands](#command) reference.
 
-Capabilities own their [slots](#slot) -- the typed parameters they need to run. Commands inherit slots from their capability. Composites aggregate slots from their steps. This means cmx always knows what parameters a capability needs, whether it appears as a standalone command, part of a composite, or behind a keybinding. `Cmx.SlotValues` is an Effect service that cmx provides at execution time with the filled values.
+Capabilities own their [slots](#slot) -- the typed parameters they need to run. Commands inherit slots from their capability. Composites aggregate slots from their steps. This means cmx always knows what parameters a capability needs, whether it appears as a standalone command, part of a composite, or behind a keybinding.
+
+**Slot value access.** At execution time, cmx provides filled slot values through a capability-scoped `Cmx.SlotValues` Effect service. The service type is derived from the capability's slot declarations — if a capability declares `slots: [formatSlot]` where `formatSlot` has `schema: S.Literal('json', 'yaml')`, then `yield* Cmx.SlotValues` returns `{ format: 'json' | 'yaml' }`. Each capability sees only the slots it declared, not other capabilities' slots.
+
+**Composite aggregation.** Slots are keyed by a stable slot `name`. If two steps in a composite declare the same slot name, cmx rejects this at setup time (`CmxDuplicateSlot` error). Each step receives only the subset of slot values it declared — not the full aggregate.
 
 A capability's execute function is an Effect with service dependencies in the `R` channel. This means capabilities can depend on app services and scope-provided context without manual wiring -- if the [AppMap](#appmap) provides a `ThreadContext` layer, a capability that depends on `ThreadContext` automatically receives it.
 
@@ -422,7 +433,7 @@ A keybinding is a direct key-to-command mapping registered at an [AppMap](#appma
 
 The `key` field is typed as `Key | Hotkey` from [`@tanstack/hotkeys`](https://github.com/TanStack/hotkeys) -- full IDE autocomplete for key names and modifier combos (`Mod+S`, `Control+Alt+Delete`), static rejection of invalid key names. The `command` field references actual command objects -- type-safe, not string-typed. All types are on the definition side; consumers write string literals and inference handles the rest.
 
-__Keybindings vs Controls.__ Keybindings map keys to __commands__ -- they are domain-level, scope-aware, and registered on AppMap nodes. [Controls](#controls) map keys to __operations__ (open palette, confirm, cancel) -- they are infrastructure-level, not scope-aware, and provided as an Effect service. __Precedence:__ during an active session (Tier 2), Controls take precedence -- `?` means toggleMode, not a keybinding. Outside a session (Tier 1), only keybindings are checked -- `?` fires the keybinding normally. This means the same key can serve both purposes without conflict.
+__Keybindings vs Controls.__ Keybindings map keys to __commands__ -- they are domain-level, scope-aware, and registered on AppMap nodes. [Controls](#controls) map keys to __operations__ (open palette, confirm, cancel) -- they are infrastructure-level, not scope-aware, and provided as an Effect service. __Precedence in Tier 1 (no session):__ Controls are checked first for the `openPalette` key, then keybindings. __Precedence in Tier 2 (active session):__ Controls take precedence -- `?` means toggleMode, not a keybinding. Outside a session, `?` fires the keybinding normally. This means the same key can serve both purposes without conflict.
 
 When a keybinding is triggered via `cmx.handleKey`, cmx returns:
 
@@ -435,36 +446,38 @@ The AppMap exposes keybinding queries:
 
 ```typescript
 // Inside Effect.gen:
-const bindings = yield * appMap.getActiveKeybindings(['workspace', 'thread'])
+const bindings = yield* appMap.getActiveKeybindings(['workspace', 'thread'])
 // all active keybindings from thread → workspace → root, grouped by scope level
 ```
 
 ### handleKey
 
 ```typescript
-const cmx = yield * Cmx
+const program = Effect.gen(function*() {
+  const cmx = yield* Cmx
 
-onKeyDown((key) =>
-  Effect.gen(function*() {
-    const result = yield* cmx.handleKey(key, {
-      path: currentPath(),
-      layers: currentLayers(),
+  onKeyDown((key) =>
+    Effect.gen(function*() {
+      const result = yield* cmx.handleKey(key, {
+        path: currentPath(),
+        layers: currentLayers(),
+      })
+
+      if (result._tag === 'Nil') return
+      if (result._tag === 'Execute') {
+        yield* result.effect
+        return closeUI()
+      }
+      if (result._tag === 'Close') return closeUI()
+      if (result._tag === 'BeginPalette') return showPalette(result)
+      if (result._tag === 'BeginShortcut') {
+        if (result.executable) return yield* result.effect
+        return showSlotPrompt(result)
+      }
+      if (result._tag === 'Resolution') return updateUI(result)
     })
-
-    if (result._tag === 'Nil') return
-    if (result._tag === 'Execute') {
-      yield* result.effect
-      return closeUI()
-    }
-    if (result._tag === 'Close') return closeUI()
-    if (result._tag === 'BeginPalette') return showPalette(result)
-    if (result._tag === 'BeginShortcut') {
-      if (result.executable) return yield* result.effect
-      return showSlotPrompt(result)
-    }
-    if (result._tag === 'Resolution') return updateUI(result)
-  })
-)
+  )
+})
 ```
 
 `handleKey` is the consumer's single entry point. Every key goes through it. cmx tracks internal session state and routes keys to the right subsystem.
@@ -510,18 +523,17 @@ const program = pipe(
 ### Resolution
 
 ```typescript
-// Resolution is the state snapshot carried by Tier 2 results
+// Resolution is the state snapshot carried by handleKey results
+// (not runnable on its own — these are field access examples)
 resolution.acceptedTokens // [{ token: "Config", preTakeQuery: "C" }]
-resolution.query // "r"
-resolution.choices // [{ token: "reload", kind: "leaf", ... }]
-resolution.topChoice // { token: "reload", ... }
-resolution.executable // false
-resolution._tag // "None" (partial match, not yet resolved)
+resolution.query          // "r"
+resolution.choices        // [{ token: "reload", kind: "leaf", ... }]
+resolution.topChoice      // { token: "reload", ... }
+resolution.executable     // false
+resolution._tag           // "None" (partial match, not yet resolved)
 
-// When executable, the effect is ready
-if (resolution.executable && resolution.effect) {
-  yield * resolution.effect
-}
+// When executable, the consumer runs the effect:
+// yield* resolution.effect  (inside Effect.gen)
 ```
 
 A Resolution is the state snapshot carried by `BeginPalette`, `BeginShortcut`, `Resolution`, and `Execute` results. It carries everything a [surface](#surface) needs to render.
@@ -657,6 +669,7 @@ All errors are defined with `Err.TaggedContextualError` from `@kitz/core`.
 | Error                           | Phase   | Context                                               |
 | ------------------------------- | ------- | ----------------------------------------------------- |
 | `CmxDuplicateNamespace`         | Setup   | `{ namespace: string, nodeA: string, nodeB: string }` |
+| `CmxDuplicateSlot`              | Setup   | `{ slot: string, capabilityA: string, capabilityB: string }` |
 | `CmxInvalidAppMap`              | Setup   | `{ detail: string }`                                  |
 | `CmxInvalidPath`                | Runtime | `{ path: string[] }`                                  |
 | `CmxMissingLayer`               | Runtime | `{ nodeId: string, service: string }`                 |
@@ -739,7 +752,7 @@ Pluggable Effect service that maps key events to internal operations (which key 
 
 #### flat mode
 
-The default resolution mode. All reachable leaf commands shown as full paths ("Config reload", "Lsp refactor rename"). Matched with term-level reordering. Toggle to tree mode with `?`.
+The default resolution mode. All reachable executable commands (leaves + hybrids) shown as full paths. Namespaces do not appear. Matched with term-level reordering. Toggle to tree mode with `?`.
 
 #### handleKey
 

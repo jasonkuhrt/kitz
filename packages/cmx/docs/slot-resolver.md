@@ -63,12 +63,12 @@ Choices: whatever the source returns. The source owns both data and matching. Th
 
 ## Source Protocol
 
-A slot source is an Effect that produces an array of candidate items:
+A slot source is an Effect that produces an array of candidate items. The `value` type is generic over the slot's schema — if the schema is `EmailId`, candidates carry `value: EmailId`:
 
 ```typescript
-type SlotCandidate = {
-  value: string       // the value to fill the slot with
-  label: string       // display text in the choices
+type SlotCandidate<V> = {
+  value: V             // typed by the slot's schema
+  label: string        // display text in the choices
   description?: string
 }
 ```
@@ -76,13 +76,14 @@ type SlotCandidate = {
 For **Slot.Fuzzy**, the source has no parameters -- it returns all candidates:
 
 ```typescript
-source: Effect<SlotCandidate[]>
+// If slot schema is EmailId:
+source: Effect<SlotCandidate<EmailId>[]>
 ```
 
 For **Slot.Search**, the source receives the current query:
 
 ```typescript
-source: (query: string) => Effect<SlotCandidate[]>
+source: (query: string) => Effect<SlotCandidate<FilePath>[]>
 ```
 
 Sources are Effects -- they can depend on any services in the Resolver's dependency graph. The AppMap's layers are available, so a source at a `workspace` node can depend on `WorkspaceContext` to filter candidates to the current workspace.
@@ -110,7 +111,7 @@ Cmx.Slot.Text.make({
 })
 ```
 
-Space is literal (not auto-advance). Any character is accepted. Enter submits the current query as the slot value. The schema validates on submit — `CmxSlotValidationFailure` if validation fails.
+Space is literal (not auto-advance). Any character is accepted. Enter (`confirm`) submits the current query as the slot value. Tab (`complete`) also submits for Slot.Text — there are no candidates to complete against, so it behaves the same as confirm. The schema validates on submit — `CmxSlotValidationFailure` if validation fails. If validation fails, the query is preserved and the slot stays focused.
 
 ## Multi-Slot Lifecycle
 
@@ -137,16 +138,20 @@ Step 3: executable
   resolution.executable: true
 ```
 
+**Slot-level preTakeQuery.** Each filled slot stores the query that was active when the value was taken — the same `preTakeQuery` mechanism used for command tokens. On undo, the query is restored to what the user typed, not the full selected value.
+
 **Undo across slot boundaries:**
 
 | State | `query.undo()` (empty query) | `choice.undo()` |
 | --- | --- | --- |
-| Second slot focused, has value | Un-fill this slot, stay focused | Un-fill this slot, go back to previous slot |
-| Second slot focused, no value | Go back to previous slot (with its value restored via preTakeQuery) | Go back to previous slot |
-| First slot focused, has value | Un-fill this slot, stay focused | Un-accept the command, return to command choices |
+| Second slot focused, has value | Un-fill this slot, restore its preTakeQuery | Un-fill this slot, go back to previous slot |
+| Second slot focused, no value | Go back to previous slot (restore its preTakeQuery) | Go back to previous slot |
+| First slot focused, has value | Un-fill this slot, restore its preTakeQuery | Un-accept the command, return to command choices |
 | First slot focused, no value | Un-accept the command, return to command choices | Un-accept the command, return to command choices |
 
-**Skipping optional slots:** Enter/Tab with an optional slot focused and no value skips to the next slot. If no more required slots remain, the resolution becomes executable.
+**Optional slots and executability.** A command with only optional slots becomes executable as soon as the command path is resolved — the user can execute without filling any optional slots. When an optional slot is focused and the user presses confirm/complete with no value, the slot is skipped and the next slot (or execution) follows. `resolution.executable` can be true even while an optional slot is focused.
+
+**Skipping optional slots:** Confirm/Complete with an optional slot focused and no value skips to the next slot. If no more required slots remain, the resolution becomes executable.
 
 ## Matching
 
