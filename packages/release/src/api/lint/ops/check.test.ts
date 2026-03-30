@@ -8,6 +8,7 @@ import { describe, expect, test } from 'vitest'
 import { resolveConfig } from '../models/config.js'
 import { Finished } from '../models/report.js'
 import {
+  ConventionalCommitSettings,
   DefaultDiffLayer,
   DefaultGitHubLayer,
   DefaultMonorepoLayer,
@@ -54,6 +55,7 @@ describe('check', () => {
       }).pipe(
         Effect.provide(
           Layer.mergeAll(
+            ConventionalCommitSettings.DefaultConventionalCommitSettingsLayer,
             DefaultDiffLayer,
             DefaultGitHubLayer,
             DefaultMonorepoLayer,

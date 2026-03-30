@@ -1,5 +1,6 @@
 import { Layer } from 'effect'
 
+export * as ConventionalCommitSettings from './conventional-commit-settings.js'
 export * from './diff.js'
 export * from './github.js'
 export * from './monorepo.js'
@@ -9,6 +10,7 @@ export * as ReleaseContext from './release-context.js'
 export * as ReleasePlan from './release-plan.js'
 export * from './rule-options.js'
 
+import { DefaultConventionalCommitSettingsLayer } from './conventional-commit-settings.js'
 import { DefaultDiffLayer } from './diff.js'
 import { DefaultGitHubLayer } from './github.js'
 import { DefaultMonorepoLayer } from './monorepo.js'
@@ -17,6 +19,7 @@ import { DefaultReleaseContextLayer } from './release-context.js'
 
 /** Default inert service set for rules gated by unmet preconditions. */
 export const DefaultServicesLayer = Layer.mergeAll(
+  DefaultConventionalCommitSettingsLayer,
   DefaultDiffLayer,
   DefaultGitHubLayer,
   DefaultMonorepoLayer,

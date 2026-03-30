@@ -1,3 +1,4 @@
+export { rule as CommitTypeMatchKnown } from './commit-type-match-known.js'
 export { rule as EnvGitClean } from './env-git-clean.js'
 export { rule as EnvGitRemote } from './env-git-remote.js'
 export { rule as EnvNpmAuthenticated } from './env-npm-authenticated.js'

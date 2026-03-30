@@ -293,6 +293,9 @@ Cli.run(
                 trunk: config.trunk,
                 currentBranch,
               }),
+              Api.Lint.ConventionalCommitSettings.make({
+                resolvedTypes: config.resolvedConventionalCommitTypes,
+              }),
             ),
           ),
           Effect.provideService(Api.Lint.MonorepoService, monorepo),

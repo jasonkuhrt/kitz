@@ -750,11 +750,7 @@ describe('pr preview coverage', () => {
     expect(capturedUpdate?.projectedSquashCommit?.projectedHeader).toContain('feat(core)')
   })
 
-  // BUG: runPrPreview hard-codes `origin/${base.ref}` for the `since` parameter
-  // instead of using the resolved remote from config. Workspaces using `upstream`
-  // as their remote will analyze against the wrong ref.
-  // This test documents the expected behavior — it FAILS until the bug is fixed.
-  test.fails(
+  test(
     'passes resolved remote (not hard-coded origin) to analyzer since parameter',
     async () => {
       let capturedSince: string | undefined
