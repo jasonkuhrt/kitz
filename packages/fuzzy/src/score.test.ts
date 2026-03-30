@@ -2,6 +2,7 @@ import { Test } from '@kitz/test'
 import { Option } from 'effect'
 import { expect, test } from 'vitest'
 import { score } from './score.js'
+import { hasMatch } from './has-match.js'
 
 const unwrap = (needle: string, haystack: string) => {
   const result = score(needle, haystack)
@@ -43,6 +44,23 @@ test('subsequence match scores higher than out-of-order match', () => {
   expect(subseq).not.toBeNull()
   expect(ooo).not.toBeNull()
   expect(subseq!).toBeGreaterThan(ooo!)
+})
+
+test('score agrees with hasMatch — score returns None when hasMatch returns false', () => {
+  // "foo bar" has a space, but "foobar" does not. hasMatch uses multiset containment
+  // which will report false (space char missing). The token branch in score() must
+  // not bypass this gate.
+  const cases = [
+    ['foo bar', 'foobar'], // space not in haystack
+    ['a b', 'ab'], // same pattern
+  ] as const
+  for (const [needle, haystack] of cases) {
+    const matched = hasMatch(needle, haystack)
+    const scored = unwrap(needle, haystack)
+    if (!matched) {
+      expect(scored, `score('${needle}', '${haystack}') should be null when hasMatch is false`).toBeNull()
+    }
+  }
 })
 
 test('out-of-order matches are positive, not zero', () => {
