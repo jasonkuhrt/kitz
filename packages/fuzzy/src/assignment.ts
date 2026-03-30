@@ -132,7 +132,7 @@ export const assignmentScore = (
   // if the global score improves.
 
   const sortBuf = new Array<number>(n)
-  let currentScore = computeScore(assigned, needleCodes, haystackCodes, bonuses, n, m, sortBuf)
+  let currentScore = computeScore(assigned, needleCodes, haystackCodes, bonuses, classes, n, m, sortBuf)
 
   for (const i of order) {
     if (occurrences[i]!.length <= 1) continue // no alternatives
@@ -150,7 +150,7 @@ export const assignmentScore = (
         // Try the swap
         assigned[i] = altPos
         assigned[otherI] = currentPos
-        const newScore = computeScore(assigned, needleCodes, haystackCodes, bonuses, n, m, sortBuf)
+        const newScore = computeScore(assigned, needleCodes, haystackCodes, bonuses, classes, n, m, sortBuf)
 
         if (newScore > currentScore) {
           // Accept swap
@@ -165,7 +165,7 @@ export const assignmentScore = (
         assigned[i] = altPos
         used.delete(currentPos)
         used.add(altPos)
-        const newScore = computeScore(assigned, needleCodes, haystackCodes, bonuses, n, m, sortBuf)
+        const newScore = computeScore(assigned, needleCodes, haystackCodes, bonuses, classes, n, m, sortBuf)
 
         if (newScore > currentScore) {
           currentScore = newScore
@@ -197,6 +197,7 @@ const computeScore = (
   needleCodes: number[],
   haystackCodes: number[],
   bonuses: number[],
+  classes: number[],
   n: number,
   m: number,
   sortBuf: number[] = [],
@@ -205,11 +206,21 @@ const computeScore = (
 
   let score = 0
 
-  // 1. Per-position: ScoreMatch + boundary bonus + case match
+  // 1. Per-position: ScoreMatch + boundary bonus + case match + consonant weight
   for (let i = 0; i < n; i++) {
     const pos = assigned[i]!
     score += ScoreMatch + bonuses[pos]!
     if (needleCodes[i] === haystackCodes[pos]!) score += CaseMatchBonus
+
+    // Consonant weight: consonants carry more information than vowels in
+    // English identifiers. Award a small bonus for consonant matches.
+    // Vowels: a, e, i, o, u (lowercase charCodes: 97, 101, 105, 111, 117)
+    const lowerCode = toLower(haystackCodes[pos]!)
+    if (classes[pos] === CharClass.Lower || classes[pos] === CharClass.Upper) {
+      if (lowerCode !== 97 && lowerCode !== 101 && lowerCode !== 105 && lowerCode !== 111 && lowerCode !== 117) {
+        score += 5 // consonant bonus
+      }
+    }
   }
 
   // 2. Gap penalty between sorted positions (sort a copy to avoid mutating assigned)
@@ -224,21 +235,62 @@ const computeScore = (
   }
 
   // 3. Coverage ratio bonus: needle_len / haystack_len, scaled
-  // Shorter haystacks score higher when they contain the same characters.
-  // Scale factor chosen so that a perfect 1.0 coverage adds ~10 points
-  // (roughly one boundary bonus worth).
   const coverageRatio = n / m
   score += coverageRatio * 10
 
   // 4. Order-coherence gradient: LIS length of assigned positions in needle order.
-  // Full subsequence (all in order) → bonus = n.
-  // One transposition → bonus = n-1.
-  // Full reversal → bonus = 1.
-  // Scaled so it contributes meaningfully but doesn't dominate.
   const lisLength = longestIncreasingSubsequence(assigned)
   score += lisLength * 2
 
+  // 5. Word-level boosters for multi-word haystacks
+  // Only triggers for haystacks with whitespace/delimiter word boundaries.
+  const wordStarts = findWordStarts(classes, m)
+  if (wordStarts.length > 1) {
+    // Word coverage breadth: how many distinct words have at least one match?
+    // Matching across multiple words shows broader recall of the command.
+    const wordsHit = new Set<number>()
+    for (let i = 0; i < n; i++) {
+      const pos = assigned[i]!
+      // Find which word this position belongs to
+      let wordIdx = 0
+      for (let w = wordStarts.length - 1; w >= 0; w--) {
+        if (pos >= wordStarts[w]!) {
+          wordIdx = w
+          break
+        }
+      }
+      wordsHit.add(wordIdx)
+    }
+    // Bonus per word covered: 6 points × number of distinct words hit
+    score += wordsHit.size * 6
+
+    // Tail-word weight: matches in later words are more informative.
+    // In command paths, the last word is the most specific.
+    const lastWordStart = wordStarts[wordStarts.length - 1]!
+    for (let i = 0; i < n; i++) {
+      if (assigned[i]! >= lastWordStart) {
+        score += 5 // tail-word bonus per character matching in the last word
+      }
+    }
+  }
+
   return score
+}
+
+/**
+ * Find word start positions in the haystack.
+ * A word starts at position 0 and after whitespace or delimiter characters.
+ * CamelCase transitions are NOT word starts — they're internal structure.
+ */
+const findWordStarts = (classes: number[], m: number): number[] => {
+  const starts: number[] = [0]
+  for (let j = 1; j < m; j++) {
+    const prevCls = classes[j - 1]!
+    if (prevCls === CharClass.White || prevCls === CharClass.Delimiter) {
+      starts.push(j)
+    }
+  }
+  return starts
 }
 
 /**

@@ -248,7 +248,46 @@ export const subsequenceScore = (
     }
   }
 
-  return { score: Math.round(finalScore), positions }
+  // ---------------------------------------------------------------
+  // Phase 4: Word-level boosters for multi-word haystacks
+  // ---------------------------------------------------------------
+  // These apply on top of the DP score when the haystack contains
+  // word boundaries (spaces, delimiters, camelCase).
+
+  let adjustedScore = finalScore
+
+  // Find word starts: positions after whitespace or delimiter boundaries.
+  // CamelCase transitions (BonusCamel123) are NOT word starts for this purpose —
+  // they're internal structure within a single token, not separate words.
+  const wordStarts: number[] = [0]
+  for (let jj = 1; jj < m; jj++) {
+    const prevCls = classes[jj - 1]!
+    if (prevCls === CharClass.White || prevCls === CharClass.Delimiter) {
+      wordStarts.push(jj)
+    }
+  }
+
+  if (wordStarts.length > 1) {
+    // Word coverage breadth: how many distinct words have at least one match?
+    const wordsHit = new Set<number>()
+    for (let k = 0; k < n; k++) {
+      const pos = positions[k]!
+      let wordIdx = 0
+      for (let w = wordStarts.length - 1; w >= 0; w--) {
+        if (pos >= wordStarts[w]!) { wordIdx = w; break }
+      }
+      wordsHit.add(wordIdx)
+    }
+    adjustedScore += wordsHit.size * 6
+
+    // Tail-word weight: matches in the last word are more informative
+    const lastWordStart = wordStarts[wordStarts.length - 1]!
+    for (let k = 0; k < n; k++) {
+      if (positions[k]! >= lastWordStart) adjustedScore += 5
+    }
+  }
+
+  return { score: Math.round(adjustedScore), positions }
 }
 
 /**

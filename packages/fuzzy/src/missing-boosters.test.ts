@@ -66,14 +66,21 @@ describe('MISSING: acronym alignment', () => {
 
 describe('MISSING: consonant weight', () => {
   test('consonant-heavy needle scores higher than vowel-heavy for same haystack', () => {
-    // 'dvd' and 'aai' against 'david' — dvd is all consonants, aai has vowels
-    // Both pass multiset containment on 'david' (d,a,v,i,d)
-    const consonants = scoreOf('dvd', 'david')
-    const vowels = scoreOf('aai', 'david')
+    // Use a haystack where both needles go through the assignment path
+    // and land at similar positions (no start-of-string advantage).
+    // 'rl' vs 'ea' against 'xrelax' (x,r,e,l,a,x)
+    // 'rl' → r(1), l(3) — IS subsequence. Bad.
+    // 'lr' → l(3), r(1) — out of order → assignment path
+    // 'ea' → e(2), a(4) — IS subsequence. Bad.
+    // 'ae' → a(4), e(2) — out of order → assignment path
+    // Both land at mid-word positions with no boundary bonuses.
+    const consonants = scoreOf('lr', 'xrelax')
+    const vowels = scoreOf('ae', 'xrelax')
     expect(consonants).not.toBeNull()
     expect(vowels).not.toBeNull()
-    // Consonant matches should be worth more than vowel matches
-    // Currently they score the same (no consonant weight booster)
+    // Consonant matches (l, r) should score higher than vowel matches (a, e)
+    // Both are 2-char assignment matches on the same 6-char haystack.
+    // The only difference should be the consonant weight bonus.
     expect(consonants!).toBeGreaterThan(vowels!)
   })
 })
@@ -133,14 +140,17 @@ describe('MISSING: token match', () => {
 
 describe('MISSING: word coverage breadth', () => {
   test('matching across 2 words scores higher than within 1 word', () => {
-    // 'cr' in 'config reload' — hits both words (c from config, r from reload)
-    // 'co' in 'config reload' — hits only 'config'
+    // Compare two 2-char matches with similar gap/boundary characteristics
+    // but different word coverage.
+    // 'cr' in 'config reload' — c(0) from word 1, r(7) from word 2 = 2 words hit
+    // 'fi' in 'config reload' — f(3) and i(4) from word 1 only = 1 word hit
+    // Both are subsequences with similar per-char boundary bonuses (none for mid-word)
+    // but 'cr' crosses words while 'fi' stays in one word.
     const twoWords = scoreOf('cr', 'config reload')
-    const oneWord = scoreOf('co', 'config reload')
+    const oneWord = scoreOf('fi', 'config reload')
     expect(twoWords).not.toBeNull()
     expect(oneWord).not.toBeNull()
-    // Two-word coverage should beat single-word coverage
-    // Currently no word coverage booster — both score by character bonuses only
+    // Two-word coverage should give 'cr' a meaningful boost
     expect(twoWords!).toBeGreaterThan(oneWord!)
   })
 })
