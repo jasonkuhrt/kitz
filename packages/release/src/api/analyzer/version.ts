@@ -27,7 +27,7 @@ export const getBump = (
   breaking: boolean,
 ): Semver.BumpType | null => {
   if (breaking) return 'major'
-  if (!ConventionalCommits.Type.Standard.is(type)) return 'patch'
+  if (!ConventionalCommits.Type.Standard.is(type)) return null
   return Option.getOrNull(ConventionalCommits.Type.impact(type))
 }
 
