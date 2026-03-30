@@ -101,8 +101,9 @@ export const assignmentScore = (
 
   // Sort needle indices by number of available positions (ascending) —
   // characters with fewer options get assigned first to avoid conflicts.
-  const order = Array.from({ length: n }, (_, i) => i)
-    .sort((a, b) => occurrences[a]!.length - occurrences[b]!.length)
+  const order = Array.from({ length: n }, (_, i) => i).sort(
+    (a, b) => occurrences[a]!.length - occurrences[b]!.length,
+  )
 
   for (const i of order) {
     let bestPos = -1

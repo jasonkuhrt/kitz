@@ -24,39 +24,40 @@ const buildFlatChoices = (
   proximities: ReadonlyMap<string, number>,
 ): Choice[] => {
   const paths = collectExecutablePaths(commands)
-  return paths.map((p): Choice => ({
-    token: p.path,
-    kind: p.command._tag === 'Hybrid' ? 'hybrid' : 'leaf',
-    executable: p.command._tag === 'Leaf' || p.command._tag === 'Hybrid',
-    description: p.command.description,
-    detail: p.command.detail,
-    icon: p.command.icon,
-    badge: p.command.badge,
-    warning: p.command.warning,
-    deprecated: p.command.deprecated,
-    group: p.command.group,
-  }))
+  return paths.map(
+    (p): Choice => ({
+      token: p.path,
+      kind: p.command._tag === 'Hybrid' ? 'hybrid' : 'leaf',
+      executable: p.command._tag === 'Leaf' || p.command._tag === 'Hybrid',
+      description: p.command.description,
+      detail: p.command.detail,
+      icon: p.command.icon,
+      badge: p.command.badge,
+      warning: p.command.warning,
+      deprecated: p.command.deprecated,
+      group: p.command.group,
+    }),
+  )
 }
 
 /**
  * Build tree-mode choices: children of the current namespace.
  */
-const buildTreeChoices = (
-  commands: ReadonlyArray<AnyCommand>,
-  treePath: string[],
-): Choice[] => {
+const buildTreeChoices = (commands: ReadonlyArray<AnyCommand>, treePath: string[]): Choice[] => {
   let current: ReadonlyArray<AnyCommand> = commands
   for (const segment of treePath) {
     const node = current.find((c) => c.name === segment)
     if (!node || node._tag === 'Leaf') return []
     current = node._tag === 'Namespace' || node._tag === 'Hybrid' ? node.children : []
   }
-  return current.map((cmd): Choice => ({
-    token: cmd.name,
-    kind: cmd._tag === 'Leaf' ? 'leaf' : cmd._tag === 'Namespace' ? 'namespace' : 'hybrid',
-    executable: cmd._tag === 'Leaf' || cmd._tag === 'Hybrid',
-    description: cmd.description,
-  }))
+  return current.map(
+    (cmd): Choice => ({
+      token: cmd.name,
+      kind: cmd._tag === 'Leaf' ? 'leaf' : cmd._tag === 'Namespace' ? 'namespace' : 'hybrid',
+      executable: cmd._tag === 'Leaf' || cmd._tag === 'Hybrid',
+      description: cmd.description,
+    }),
+  )
 }
 
 /**
@@ -79,10 +80,7 @@ const filterChoices = (choices: ReadonlyArray<Choice>, query: string): Choice[] 
 /**
  * Find the command for an accepted path in the command tree.
  */
-const findCommand = (
-  commands: ReadonlyArray<AnyCommand>,
-  path: string[],
-): AnyCommand | null => {
+const findCommand = (commands: ReadonlyArray<AnyCommand>, path: string[]): AnyCommand | null => {
   let current: ReadonlyArray<AnyCommand> = commands
   for (let i = 0; i < path.length; i++) {
     const segment = path[i]
@@ -158,10 +156,7 @@ const buildResolution = (state: CommandResolverState): Resolution => {
 
 /** Create a new Command Resolver. */
 export const CommandResolver = {
-  create: (
-    commands: ReadonlyArray<AnyCommand>,
-    proximities: ReadonlyMap<string, number>,
-  ) => {
+  create: (commands: ReadonlyArray<AnyCommand>, proximities: ReadonlyMap<string, number>) => {
     const state: CommandResolverState = {
       mode: 'flat',
       acceptedTokens: [],

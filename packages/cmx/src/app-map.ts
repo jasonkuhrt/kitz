@@ -117,7 +117,10 @@ const resolveKeybinding = (
 const getActiveKeybindings = (
   root: AppMapRoot,
   path: ReadonlyArray<string>,
-): ReadonlyArray<{ readonly nodeName: string; readonly keybindings: ReadonlyArray<Keybinding> }> => {
+): ReadonlyArray<{
+  readonly nodeName: string
+  readonly keybindings: ReadonlyArray<Keybinding>
+}> => {
   const chain = resolveChain(root, path)
   const result: { nodeName: string; keybindings: ReadonlyArray<Keybinding> }[] = []
   for (let i = chain.length - 1; i >= 0; i--) {

@@ -130,25 +130,17 @@ describe('collectExecutablePaths', () => {
 
   it('collects leaf paths', () => {
     const paths = collectExecutablePaths([configNs])
-    expect(paths.map(p => p.path)).toEqual(['Config reload', 'Config export'])
+    expect(paths.map((p) => p.path)).toEqual(['Config reload', 'Config export'])
   })
 
   it('collects from multiple namespaces', () => {
     const paths = collectExecutablePaths([configNs, bufferNs])
-    expect(paths.map(p => p.path)).toEqual([
-      'Config reload',
-      'Config export',
-      'Buffer close',
-    ])
+    expect(paths.map((p) => p.path)).toEqual(['Config reload', 'Config export', 'Buffer close'])
   })
 
   it('includes hybrid itself and its children', () => {
     const paths = collectExecutablePaths([lazyHybrid])
-    expect(paths.map(p => p.path)).toEqual([
-      'Lazy',
-      'Lazy reload',
-      'Lazy health',
-    ])
+    expect(paths.map((p) => p.path)).toEqual(['Lazy', 'Lazy reload', 'Lazy health'])
   })
 
   it('handles nested namespaces', () => {
@@ -158,16 +150,11 @@ describe('collectExecutablePaths', () => {
         Command.Leaf.make({ name: 'references', capability: reload }),
         Command.Namespace.make({
           name: 'refactor',
-          children: [
-            Command.Leaf.make({ name: 'rename', capability: reload }),
-          ],
+          children: [Command.Leaf.make({ name: 'rename', capability: reload })],
         }),
       ],
     })
     const paths = collectExecutablePaths([lsp])
-    expect(paths.map(p => p.path)).toEqual([
-      'Lsp references',
-      'Lsp refactor rename',
-    ])
+    expect(paths.map((p) => p.path)).toEqual(['Lsp references', 'Lsp refactor rename'])
   })
 })

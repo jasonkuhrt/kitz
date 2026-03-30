@@ -50,7 +50,7 @@ describe('Controls.classify', () => {
     expect(Controls.classify(config, 'c')).toBe('printable')
     expect(Controls.classify(config, 'C')).toBe('printable')
     expect(Controls.classify(config, '1')).toBe('printable')
-    expect(Controls.classify(config, '/'))  .toBe('printable')
+    expect(Controls.classify(config, '/')).toBe('printable')
   })
   it('returns null for non-printable, non-mapped key', () => {
     expect(Controls.classify(config, 'F12')).toBeNull()

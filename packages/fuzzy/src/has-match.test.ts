@@ -25,10 +25,10 @@ Test.on(hasMatch)
     ['xyz', 'hello'],
   ])
   .describeInputs('multiplicity is respected', [
-    ['ll', 'reload'],   // only one l → false
-    ['ll', 'llama'],    // two l's → true
-    ['aab', 'abba'],    // two a's and one b → true
-    ['aab', 'abc'],     // only one a → false
+    ['ll', 'reload'], // only one l → false
+    ['ll', 'llama'], // two l's → true
+    ['aab', 'abba'], // two a's and one b → true
+    ['aab', 'abc'], // only one a → false
   ])
   .describeInputs('case insensitive', [
     ['CFG', 'config'],

@@ -33,9 +33,7 @@ describe('AppMap.make', () => {
         AppMap.Node.make({
           name: 'workspace',
           commands: [configNs],
-          children: [
-            AppMap.Node.make({ name: 'thread', commands: [threadNs] }),
-          ],
+          children: [AppMap.Node.make({ name: 'thread', commands: [threadNs] })],
         }),
       ],
     })
@@ -52,9 +50,7 @@ describe('AppMap.computeScope', () => {
       AppMap.Node.make({
         name: 'workspace',
         commands: [configNs],
-        children: [
-          AppMap.Node.make({ name: 'thread', commands: [threadNs] }),
-        ],
+        children: [AppMap.Node.make({ name: 'thread', commands: [threadNs] })],
       }),
     ],
   })
@@ -93,9 +89,7 @@ describe('AppMap.computeScope proximity', () => {
       AppMap.Node.make({
         name: 'workspace',
         commands: [configNs],
-        children: [
-          AppMap.Node.make({ name: 'thread', commands: [threadNs] }),
-        ],
+        children: [AppMap.Node.make({ name: 'thread', commands: [threadNs] })],
       }),
     ],
   })

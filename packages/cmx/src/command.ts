@@ -63,7 +63,10 @@ export const Command = {
       readonly name: string
       readonly description?: string | undefined
       readonly capabilities: Readonly<Record<K, AnyCapability>>
-    }): { readonly namespace: CommandNamespace; readonly commands: Readonly<Record<K, CommandLeaf>> } => {
+    }): {
+      readonly namespace: CommandNamespace
+      readonly commands: Readonly<Record<K, CommandLeaf>>
+    } => {
       const commands = {} as Record<K, CommandLeaf>
       const children: CommandLeaf[] = []
       for (const [key, cap] of Object.entries<AnyCapability>(config.capabilities)) {

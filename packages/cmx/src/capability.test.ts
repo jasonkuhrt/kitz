@@ -65,7 +65,7 @@ describe('Capability.Composite.make', () => {
       steps: [{ capability: step1 }, { capability: step2 }],
     })
     expect(composite.slots).toHaveLength(2)
-    expect(composite.slots.map(s => s.name)).toEqual(['format', 'destination'])
+    expect(composite.slots.map((s) => s.name)).toEqual(['format', 'destination'])
   })
 
   it('throws CmxDuplicateSlot on slot name collision', () => {

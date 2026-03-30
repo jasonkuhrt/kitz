@@ -34,17 +34,17 @@ Test.describe('scoring constants')
   })
   // dprint-ignore
   .cases(
-    [['ScoreMatch'],              16],
-    [['ScoreGapStart'],           -3],
-    [['ScoreGapExtension'],       -1],
-    [['BonusBoundaryWhite'],      10],
-    [['BonusBoundaryDelimiter'],   9],
-    [['BonusBoundary'],            8],
-    [['BonusNonWord'],             8],
-    [['BonusCamel123'],            7],
-    [['BonusConsecutive'],         4],
+    [['ScoreMatch'], 16],
+    [['ScoreGapStart'], -3],
+    [['ScoreGapExtension'], -1],
+    [['BonusBoundaryWhite'], 10],
+    [['BonusBoundaryDelimiter'], 9],
+    [['BonusBoundary'], 8],
+    [['BonusNonWord'], 8],
+    [['BonusCamel123'], 7],
+    [['BonusConsecutive'], 4],
     [['BonusFirstCharMultiplier'], 2],
-    [['CaseMatchBonus'],           1],
+    [['CaseMatchBonus'], 1],
   )
   .test()
 

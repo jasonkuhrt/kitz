@@ -27,7 +27,11 @@ const lazyHybrid = Command.Hybrid.make({
   children: [Command.Leaf.make({ name: 'reload', capability: lazyReload })],
 })
 
-const proximities = new Map([['Config', 2], ['Buffer', 1], ['Lazy', 3]])
+const proximities = new Map([
+  ['Config', 2],
+  ['Buffer', 1],
+  ['Lazy', 3],
+])
 
 describe('CommandResolver initial state', () => {
   it('starts in flat mode', () => {

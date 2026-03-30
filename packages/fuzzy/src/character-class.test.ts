@@ -17,7 +17,7 @@ Test.describe('charClassOf')
   // dprint-ignore
   .cases(
     // Whitespace → White
-    [[' '],  CharClass.White],
+    [[' '], CharClass.White],
     [['\t'], CharClass.White],
     [['\n'], CharClass.White],
     [['\r'], CharClass.White],
@@ -74,8 +74,7 @@ Test.describe('charClassOf')
   )
   .test()
 
-const bonus = (prev: string, curr: string) =>
-  boundaryBonus(classify(prev), classify(curr))
+const bonus = (prev: string, curr: string) => boundaryBonus(classify(prev), classify(curr))
 
 Test.describe('boundaryBonus')
   .on((prev: string, curr: string) => bonus(prev, curr))
@@ -86,7 +85,7 @@ Test.describe('boundaryBonus')
     [[' ', 'A'], BonusBoundaryWhite],
     [[' ', '0'], BonusBoundaryWhite],
     [[' ', 'é'], BonusBoundaryWhite],
-    [[' ', ' '],  0],
+    [[' ', ' '], 0],
     // Delimiter → word class = BonusBoundaryDelimiter
     [['-', 'a'], BonusBoundaryDelimiter],
     [['-', 'A'], BonusBoundaryDelimiter],

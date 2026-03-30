@@ -8,10 +8,10 @@
     "noEmit": true,
     "paths": {
       "#fuzzy": [
-        "./src/_.ts"
+        "./build/_.js"
       ],
       "#fuzzy/*": [
-        "./src/*.ts"
+        "./build/*.js"
       ]
     }
   },

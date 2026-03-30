@@ -2,8 +2,10 @@ import { Test } from '@kitz/test'
 import { expect, test } from 'vitest'
 import { assignmentScore } from './assignment.js'
 
-const scoreOf = (needle: string, haystack: string) => assignmentScore(needle, haystack)?.score ?? null
-const positionsOf = (needle: string, haystack: string) => assignmentScore(needle, haystack)?.positions ?? null
+const scoreOf = (needle: string, haystack: string) =>
+  assignmentScore(needle, haystack)?.score ?? null
+const positionsOf = (needle: string, haystack: string) =>
+  assignmentScore(needle, haystack)?.positions ?? null
 
 Test.describe('assignmentScore — returns result for out-of-order matches')
   .on(scoreOf)
@@ -19,20 +21,17 @@ Test.describe('assignmentScore — returns null when containment fails')
   .on(scoreOf)
   // dprint-ignore
   .cases(
-    [['cxg', 'Config'],  null],
-    [['ll', 'reload'],   null],
-    [['xyz', 'hello'],   null],
-    [['abcdef', 'abc'],  null],
+    [['cxg', 'Config'], null],
+    [['ll', 'reload'], null],
+    [['xyz', 'hello'], null],
+    [['abcdef', 'abc'], null],
   )
   .test()
 
 Test.describe('assignmentScore — empty needle returns score 0')
   .on(scoreOf)
   // dprint-ignore
-  .cases(
-    [['', 'anything'], 0],
-    [['', ''],         0],
-  )
+  .cases([['', 'anything'], 0], [['', ''], 0])
   .test()
 
 test('vdi/david scores higher than vdi/provide (coverage ratio)', () => {

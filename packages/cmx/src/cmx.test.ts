@@ -9,7 +9,11 @@ const reload = Capability.make({ name: 'reload', execute: Effect.void })
 const exportCap = Capability.make({ name: 'export', execute: Effect.void })
 const close = Capability.make({ name: 'close', execute: Effect.void })
 
-const reloadCmd = Command.Leaf.make({ name: 'reload', capability: reload, description: 'Reload config' })
+const reloadCmd = Command.Leaf.make({
+  name: 'reload',
+  capability: reload,
+  description: 'Reload config',
+})
 const exportCmd = Command.Leaf.make({ name: 'export', capability: exportCap })
 const closeCmd = Command.Leaf.make({ name: 'close', capability: close })
 

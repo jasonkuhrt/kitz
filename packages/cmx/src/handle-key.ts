@@ -26,17 +26,14 @@ interface Session {
  * Create the handleKey function.
  * This is the two-tier dispatch that routes all keys.
  */
-export const createHandleKey = (
-  appMap: AppMapRoot,
-  controls: ControlsConfig,
-) => {
+export const createHandleKey = (appMap: AppMapRoot, controls: ControlsConfig) => {
   let session: Session | null = null
   let cachedPath: ReadonlyArray<string> = []
 
   const handleKey = (key: string, context: HandleKeyContext): HandleKeyResult => {
     // Cache scope computation — only recompute when path changes
-    const pathChanged = context.path.length !== cachedPath.length ||
-      context.path.some((s, i) => s !== cachedPath[i])
+    const pathChanged =
+      context.path.length !== cachedPath.length || context.path.some((s, i) => s !== cachedPath[i])
 
     if (pathChanged) {
       cachedPath = context.path
@@ -70,7 +67,8 @@ export const createHandleKey = (
       const resolution = resolver.getResolution()
       // Find the command's path in the choices
       const matchingChoice = resolution.choices.find(
-        (c) => c.token === kb.command.name ||
+        (c) =>
+          c.token === kb.command.name ||
           resolution.choices.some((ch) => ch.token.endsWith(` ${kb.command.name}`)),
       )
       if (matchingChoice) {

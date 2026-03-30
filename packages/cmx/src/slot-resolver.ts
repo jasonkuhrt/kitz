@@ -70,12 +70,14 @@ const getEnumCandidates = (slot: SlotEnum): Choice[] => {
       }))
     }
     if (ast && ast._tag === 'Literal') {
-      return [{
-        token: String(ast.literal),
-        kind: 'value' as const,
-        executable: false,
-        description: slot.description,
-      }]
+      return [
+        {
+          token: String(ast.literal),
+          kind: 'value' as const,
+          executable: false,
+          description: slot.description,
+        },
+      ]
     }
   } catch {
     // fallback

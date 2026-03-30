@@ -135,7 +135,8 @@ export const subsequenceScore = (
         if (prevD > NEG_INF) {
           const prevFirstBonus = firstBonusInChunk[(i - 1) * stride + (j - 1)]!
           const consecutiveBonus = Math.max(bonus, prevFirstBonus, BonusConsecutive)
-          const effectiveConsecutiveBonus = i === 1 ? consecutiveBonus * BonusFirstCharMultiplier : consecutiveBonus
+          const effectiveConsecutiveBonus =
+            i === 1 ? consecutiveBonus * BonusFirstCharMultiplier : consecutiveBonus
           extendScore = prevD + ScoreMatch + effectiveConsecutiveBonus + caseBonus
         }
 

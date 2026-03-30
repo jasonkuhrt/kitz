@@ -11,21 +11,17 @@ const unwrap = (needle: string, haystack: string) => {
 Test.describe('score — normative golden vectors')
   .on(unwrap)
   // dprint-ignore
-  .cases(
-    [['cfg', 'Config'],        63],
-    [['cr', 'configReload'],   53],
-    [['', 'anything'],          0],
-  )
+  .cases([['cfg', 'Config'], 63], [['cr', 'configReload'], 53], [['', 'anything'], 0])
   .test()
 
 Test.describe('score — no match returns null')
   .on(unwrap)
   // dprint-ignore
   .cases(
-    [['cxg', 'Config'],  null],
-    [['ll', 'reload'],   null],
-    [['x', ''],          null],
-    [['xyz', 'hello'],   null],
+    [['cxg', 'Config'], null],
+    [['ll', 'reload'], null],
+    [['x', ''], null],
+    [['xyz', 'hello'], null],
   )
   .test()
 

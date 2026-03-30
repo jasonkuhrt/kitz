@@ -3,24 +3,26 @@ import { expect, test } from 'vitest'
 import { subsequenceScore } from './subsequence.js'
 
 // Helper that extracts just the score (null-safe)
-const scoreOf = (needle: string, haystack: string) => subsequenceScore(needle, haystack)?.score ?? null
+const scoreOf = (needle: string, haystack: string) =>
+  subsequenceScore(needle, haystack)?.score ?? null
 
 // Helper that extracts just positions
-const positionsOf = (needle: string, haystack: string) => subsequenceScore(needle, haystack)?.positions ?? null
+const positionsOf = (needle: string, haystack: string) =>
+  subsequenceScore(needle, haystack)?.positions ?? null
 
 Test.describe('subsequenceScore — score')
   .on(scoreOf)
   // dprint-ignore
   .cases(
     // Normative scores from README golden test vectors
-    [['cfg', 'Config'],        63],
-    [['cr', 'configReload'],   53],
+    [['cfg', 'Config'], 63],
+    [['cr', 'configReload'], 53],
     // Non-subsequence returns null
-    [['vdi', 'david'],         null],
-    [['cxg', 'Config'],        null],
+    [['vdi', 'david'], null],
+    [['cxg', 'Config'], null],
     // Empty needle
-    [['', 'anything'],         0],
-    [['', ''],                 0],
+    [['', 'anything'], 0],
+    [['', ''], 0],
   )
   .test()
 
@@ -28,10 +30,16 @@ Test.describe('subsequenceScore — positions')
   .on(positionsOf)
   // dprint-ignore
   .cases(
-    [['cfg', 'Config'],        [0, 3, 5]],
-    [['cr', 'configReload'],   [0, 6]],
-    [['', 'anything'],         []],
-    [['vdi', 'david'],         null],
+    [
+      ['cfg', 'Config'],
+      [0, 3, 5],
+    ],
+    [
+      ['cr', 'configReload'],
+      [0, 6],
+    ],
+    [['', 'anything'], []],
+    [['vdi', 'david'], null],
   )
   .test()
 

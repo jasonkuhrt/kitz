@@ -132,10 +132,7 @@ test('consumer boost shifts ranking', () => {
 })
 
 test('out-of-order matches appear in results', () => {
-  const results = Fuzzy.match(
-    [{ text: 'david' }, { text: 'provide' }, { text: 'xyz' }],
-    'vdi',
-  )
+  const results = Fuzzy.match([{ text: 'david' }, { text: 'provide' }, { text: 'xyz' }], 'vdi')
   const texts = results.map((r) => r.candidate.text)
   expect(texts).toContain('david')
   expect(texts).toContain('provide')
