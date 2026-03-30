@@ -68,9 +68,13 @@ const preparePrTitle = Effect.gen(function* () {
   }
 
   const tags = yield* git.getTags()
-  const analysis = yield* Api.Analyzer.analyze({ packages, tags })
+  const analysis = yield* Api.Analyzer.analyze({
+    packages,
+    tags,
+    since: `origin/${pullRequest.base.ref}`,
+  })
   const projectedHeader = Api.ProjectedSquashCommit.renderHeader({
-    impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis),
+    impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis, { primaryOnly: true }),
   })
 
   if (!projectedHeader) {

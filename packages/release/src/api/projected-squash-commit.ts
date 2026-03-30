@@ -19,7 +19,15 @@ export interface Preview {
 
 export const collectScopeImpacts = (
   analysis: Pick<Analysis, 'impacts'>,
-  options?: { readonly scopes?: readonly string[] },
+  options?: {
+    readonly scopes?: readonly string[]
+    /**
+     * When true, exclude patch-only scopes if feat-level (minor/major) scopes exist.
+     * This produces a focused title that reflects the PR's primary intent rather than
+     * listing every collateral fix.
+     */
+    readonly primaryOnly?: boolean
+  },
 ): readonly ScopeImpact[] => {
   const allowedScopes = options?.scopes ?? null
   const impacts = analysis.impacts
@@ -29,7 +37,7 @@ export const collectScopeImpacts = (
       bump: impact.bump,
     }))
 
-  return normalizeScopes(impacts.map((impact) => impact.scope)).map((scope) => {
+  const allScopeImpacts = normalizeScopes(impacts.map((impact) => impact.scope)).map((scope) => {
     const scopedImpacts = impacts.filter((impact) => impact.scope === scope)
     const bump = scopedImpacts.some((impact) => impact.bump === 'major')
       ? 'major'
@@ -38,6 +46,15 @@ export const collectScopeImpacts = (
         : 'patch'
     return { scope, bump } satisfies ScopeImpact
   })
+
+  if (options?.primaryOnly) {
+    const hasFeatLevel = allScopeImpacts.some((si) => si.bump === 'minor' || si.bump === 'major')
+    if (hasFeatLevel) {
+      return allScopeImpacts.filter((si) => si.bump === 'minor' || si.bump === 'major')
+    }
+  }
+
+  return allScopeImpacts
 }
 
 const normalizeScopes = (scopes: readonly string[]): readonly string[] =>

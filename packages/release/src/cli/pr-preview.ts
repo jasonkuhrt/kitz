@@ -427,10 +427,14 @@ export const runPrPreview = (
           const git = yield* Git.Git
           return yield* git.getTags()
         })
-    const analysis = yield* (dependencies.analyze ?? Api.Analyzer.analyze)({ packages, tags })
+    const analysis = yield* (dependencies.analyze ?? Api.Analyzer.analyze)({
+      packages,
+      tags,
+      since: `origin/${pullRequest.base.ref}`,
+    })
     const projectedSquashCommit = Api.ProjectedSquashCommit.preview({
       actualTitle: pullRequest.title,
-      impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis),
+      impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis, { primaryOnly: true }),
     })
     const diffRemote = resolveDiffRemote(config, options.remote)
     const diff = yield* (dependencies.loadPullRequestDiff ?? loadPullRequestDiff)({
