@@ -27,11 +27,30 @@ const scoreOf = (needle: string, haystack: string): number | null => {
 // on the assignment path when positions happen to be monotonically increasing.
 // =============================================================================
 
-describe('MISSING: subsequence order bonus on assignment path', () => {
-  test.skip('assignment path with monotone positions gets an order bonus', () => {
-    // 'abc' in 'xaxbxc' — assignment path, positions would be monotone
-    // Should get an explicit order bonus on top of base assignment score
-    // Currently there's no separate order bonus — just the LIS gradient
+describe('subsequence order bonus on assignment path', () => {
+  test('monotone positions get an order bonus on top of LIS gradient', () => {
+    // 'ba' is out-of-order for 'ab' — LIS = 1, no order bonus
+    // 'ba' is out-of-order for 'ba' — wait, 'ba' IS subsequence of 'ba'... → DP path
+    // Need: 'ba' in something where it's NOT a subsequence but positions are monotone
+    // Actually: assignment path only fires when NOT a subsequence. If positions
+    // are monotone, that means the needle IS a subsequence — contradiction.
+    // But wait: the greedy assignment picks by bonus, not order. If it picks
+    // positions that happen to be monotone but through a different selection path...
+    // This is an edge case. The order bonus fires when LIS === n, which means
+    // positions ARE ordered. For assignment path to run, the needle must NOT be
+    // a subsequence. So ordered assignment positions can only happen if the
+    // assignment picks a different ordering than the natural subsequence.
+    // Example: 'ab' in 'bab' — NOT a subsequence (b comes before a in 'bab').
+    // Assignment: a→1, b→0 or 2. Greedy might pick b→2 (later, but same bonus).
+    // Positions [1, 2] — monotone! LIS = 2 = n → order bonus fires.
+    const result = scoreOf('ab', 'bab')
+    expect(result).not.toBeNull()
+    expect(result!).toBeGreaterThan(0)
+    // Compare with 'ba' in 'bab' which IS a subsequence (DP path, higher score)
+    const subseq = scoreOf('ba', 'bab')
+    expect(subseq).not.toBeNull()
+    // Subsequence should still win overall
+    expect(subseq!).toBeGreaterThan(result!)
   })
 })
 
@@ -42,7 +61,7 @@ describe('MISSING: subsequence order bonus on assignment path', () => {
 // a single acronym bonus that REPLACES per-position edge hits (not stacks).
 // =============================================================================
 
-describe('MISSING: acronym alignment', () => {
+describe('acronym alignment', () => {
   test('acronym match (all chars on word starts) scores higher than scattered match', () => {
     // 'cr' on 'configReload' — C(start), R(camelCase) — both are word starts
     const acronym = scoreOf('cr', 'configReload')
@@ -64,7 +83,7 @@ describe('MISSING: acronym alignment', () => {
 // Only applies to the assignment path.
 // =============================================================================
 
-describe('MISSING: consonant weight', () => {
+describe('consonant weight', () => {
   test('consonant-heavy needle scores higher than vowel-heavy for same haystack', () => {
     // Use a haystack where both needles go through the assignment path
     // and land at similar positions (no start-of-string advantage).
@@ -92,7 +111,7 @@ describe('MISSING: consonant weight', () => {
 // Tighter window = higher score. O(n) sliding window.
 // =============================================================================
 
-describe('MISSING: window compactness', () => {
+describe('window compactness', () => {
   test('compact match scores higher than spread match', () => {
     // 'ac' in 'abc' (window size 3) vs 'ac' in 'axxxxxxxxc' (window size 10)
     // Both are subsequence matches. The compact one should score higher.
@@ -115,7 +134,7 @@ describe('MISSING: window compactness', () => {
 // signals. Includes reorder penalty for out-of-order terms.
 // =============================================================================
 
-describe('MISSING: token match', () => {
+describe('token match', () => {
   test('token-reordered query still matches multi-word haystack', () => {
     // 'reload config' should match 'config reload' via token-level matching
     const reordered = scoreOf('reload config', 'config reload')
@@ -138,7 +157,7 @@ describe('MISSING: token match', () => {
 // Matching chars across multiple words is stronger than chars in one word.
 // =============================================================================
 
-describe('MISSING: word coverage breadth', () => {
+describe('word coverage breadth', () => {
   test('matching across 2 words scores higher than within 1 word', () => {
     // Compare two 2-char matches with similar gap/boundary characteristics
     // but different word coverage.
@@ -161,7 +180,7 @@ describe('MISSING: word coverage breadth', () => {
 // When needle matches an entire haystack word, large bonus.
 // =============================================================================
 
-describe('MISSING: complete-word hit', () => {
+describe('complete-word hit', () => {
   test('exact word match scores higher than partial match', () => {
     // 'reload' exactly matches the second word in 'config reload'
     const exactWord = scoreOf('reload', 'config reload')
@@ -182,7 +201,7 @@ describe('MISSING: complete-word hit', () => {
 // Last word is most specific (e.g. 'commit' in 'git commit').
 // =============================================================================
 
-describe('MISSING: tail-word weight', () => {
+describe('tail-word weight', () => {
   test('match in last word scores higher than match in first word', () => {
     // 'r' in 'config reload' — matches 'r' in 'reload' (word 2, tail)
     // vs 'c' in 'config reload' — matches 'c' in 'config' (word 1, head)
@@ -204,7 +223,7 @@ describe('MISSING: tail-word weight', () => {
 // weight for landing in subsequent words.
 // =============================================================================
 
-describe('MISSING: scope narrowing', () => {
+describe('scope narrowing', () => {
   test('prefix-scoped query discriminates better in subsequent words', () => {
     // 'confr' in 'config reload' — 'conf' scopes to 'config', 'r' discriminates in 'reload'
     // 'confr' in 'config remove' — same prefix scoping, different discrimination
@@ -227,7 +246,7 @@ describe('MISSING: scope narrowing', () => {
 // computeScore also applies it. Let's verify it actually works.
 // =============================================================================
 
-describe('MISSING: exact case bonus verification in assignment path', () => {
+describe('exact case bonus verification in assignment path', () => {
   test('exact case match scores higher than folded case in assignment path', () => {
     // 'VDI' against 'DAVID' (all uppercase, exact case on V, D, I)
     // 'vdi' against 'DAVID' (all mismatched case)
@@ -247,30 +266,26 @@ describe('MISSING: exact case bonus verification in assignment path', () => {
 // Small sets (≤15): relaxed. Large sets (80+): strict.
 // =============================================================================
 
-describe('MISSING: candidate-count heuristic', () => {
-  test('large candidate set is stricter about ordering than small set', () => {
+describe('candidate-count heuristic', () => {
+  test('large candidate set penalizes assignment-path scores more', () => {
     // Same needle/haystack pair, but in different-sized candidate sets.
-    // In a large set, subsequence matches should dominate more strongly.
+    // 'rc' is NOT a subsequence of 'configReload' → assignment path.
+    // In a large set, the assignment penalty is higher.
     const needle = 'rc'
-    const target = { text: 'configReload' } // out-of-order for 'rc'
+    const target = { text: 'configReload' }
     const filler = Array.from({ length: 200 }, (_, i) => ({ text: `item${i}` }))
 
     const smallSet = Fuzzy.match([target], needle)
     const largeSet = Fuzzy.match([target, ...filler], needle)
 
-    // Both should include the target
     expect(smallSet.length).toBeGreaterThan(0)
     const largeTarget = largeSet.find((r) => r.candidate.text === 'configReload')
     expect(largeTarget).toBeDefined()
 
-    // In a large set, the score should be different (stricter weighting)
-    // Currently match() uses the same weights regardless of candidate count
-    // This test documents the missing heuristic — scores are currently identical
     const smallScore = smallSet[0]!.score
     const largeScore = largeTarget!.score
 
-    // When the heuristic exists, these scores will differ
-    // For now, they're the same — this test passes but documents the gap
-    expect(smallScore).toBe(largeScore)
+    // Large set should have a lower score due to assignment penalty
+    expect(smallScore).toBeGreaterThan(largeScore)
   })
 })

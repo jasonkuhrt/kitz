@@ -218,7 +218,7 @@ const computeScore = (
     const lowerCode = toLower(haystackCodes[pos]!)
     if (classes[pos] === CharClass.Lower || classes[pos] === CharClass.Upper) {
       if (lowerCode !== 97 && lowerCode !== 101 && lowerCode !== 105 && lowerCode !== 111 && lowerCode !== 117) {
-        score += 5 // consonant bonus
+        score += 2 // consonant bonus
       }
     }
   }
@@ -238,11 +238,52 @@ const computeScore = (
   const coverageRatio = n / m
   score += coverageRatio * 10
 
+  // 3b. Window compactness: bonus for tight clustering of matched positions.
+  // The window is (max position - min position + 1). A perfect cluster
+  // where window === n gets the maximum bonus. Larger windows get less.
+  // This supplements gap penalty with a global density signal.
+  const minPos = sortBuf[0]!
+  const maxPos = sortBuf[n - 1]!
+  const windowSize = maxPos - minPos + 1
+  // Bonus: higher for tighter windows. Scale: (n / windowSize) × 5
+  // Perfect cluster: n/n × 5 = 5. Fully spread: n/m × 5 ≈ 0.
+  if (windowSize > 0) {
+    score += (n / windowSize) * 5
+  }
+
   // 4. Order-coherence gradient: LIS length of assigned positions in needle order.
   const lisLength = longestIncreasingSubsequence(assigned)
   score += lisLength * 2
 
-  // 5. Word-level boosters for multi-word haystacks
+  // 4b. Subsequence order bonus: if ALL positions are monotonically increasing,
+  // the needle happens to be a subsequence. Award a large bonus — this means
+  // the match preserves the user's character order, which is a strong signal.
+  if (lisLength === n) {
+    score += 8 // roughly one boundary bonus worth
+  }
+
+  // 5. Acronym alignment: if ALL needle chars land on word-start boundaries,
+  // award an acronym bonus. This replaces per-position edge hits when higher.
+  let allOnBoundaries = n > 0
+  for (let i = 0; i < n; i++) {
+    if (bonuses[assigned[i]!]! === 0) {
+      allOnBoundaries = false
+      break
+    }
+  }
+  if (allOnBoundaries) {
+    // Acronym score: BonusBoundary(8) × n — a strong, unified signal
+    const acronymScore = 8 * n
+    // Per-position bonuses already added in step 1. If acronym score exceeds
+    // the sum of individual bonuses, add the difference (replacement semantics).
+    let perPositionBonusSum = 0
+    for (let i = 0; i < n; i++) perPositionBonusSum += bonuses[assigned[i]!]!
+    if (acronymScore > perPositionBonusSum) {
+      score += acronymScore - perPositionBonusSum
+    }
+  }
+
+  // 6. Word-level boosters for multi-word haystacks
   // Only triggers for haystacks with whitespace/delimiter word boundaries.
   const wordStarts = findWordStarts(classes, m)
   if (wordStarts.length > 1) {
@@ -263,6 +304,40 @@ const computeScore = (
     }
     // Bonus per word covered: 6 points × number of distinct words hit
     score += wordsHit.size * 6
+
+    // Scope narrowing: if early needle chars match the first word's prefix
+    // and remaining chars land in later words, the user is scoping then
+    // discriminating. Award a bonus for this pattern.
+    if (n >= 2 && wordsHit.size >= 2) {
+      // Check if the first needle char lands in word 0
+      let firstCharWordIdx = -1
+      for (let w = wordStarts.length - 1; w >= 0; w--) {
+        if (assigned[0]! >= wordStarts[w]!) { firstCharWordIdx = w; break }
+      }
+      // Check if the last needle char lands in a later word
+      let lastCharWordIdx = -1
+      for (let w = wordStarts.length - 1; w >= 0; w--) {
+        if (assigned[n - 1]! >= wordStarts[w]!) { lastCharWordIdx = w; break }
+      }
+      if (firstCharWordIdx === 0 && lastCharWordIdx > 0) {
+        score += 4 // scope narrowing bonus
+      }
+    }
+
+    // Complete-word hit: if needle exactly matches an entire haystack word
+    const needleLowerStr = needleCodes.map((c) => String.fromCharCode(toLower(c))).join('')
+    for (let w = 0; w < wordStarts.length; w++) {
+      const wStart = wordStarts[w]!
+      const wEnd = w + 1 < wordStarts.length ? wordStarts[w + 1]! : m
+      let wEndTrimmed = wEnd
+      while (wEndTrimmed > wStart && (classes[wEndTrimmed - 1] === CharClass.White || classes[wEndTrimmed - 1] === CharClass.Delimiter)) wEndTrimmed--
+      let word = ''
+      for (let j = wStart; j < wEndTrimmed; j++) word += String.fromCharCode(toLower(haystackCodes[j]!))
+      if (word === needleLowerStr) {
+        score += 10
+        break
+      }
+    }
 
     // Tail-word weight: matches in later words are more informative.
     // In command paths, the last word is the most specific.

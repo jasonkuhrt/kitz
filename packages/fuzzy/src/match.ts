@@ -11,8 +11,9 @@ import { subsequenceScore } from './subsequence.js'
  * recency, frequency).
  *
  * `match` auto-tunes internal scoring based on `candidates.length`:
- * - ≤15 candidates: relaxed (order matters less, maximizes recall)
- * - 80+ candidates: strict (order matters more, minimizes noise)
+ * - ≤15 candidates: relaxed (assignment path scores close to subsequence)
+ * - 15-80 candidates: balanced
+ * - 80+ candidates: strict (assignment path scores penalized more)
  */
 export const match = <T extends { readonly text: string; readonly boost?: number }>(
   candidates: readonly T[],
@@ -24,12 +25,18 @@ export const match = <T extends { readonly text: string; readonly boost?: number
       .sort((a, b) => b.score - a.score)
   }
 
+  // Candidate-count heuristic: how much to penalize assignment-path scores
+  // relative to subsequence-path scores. Larger sets need more precision.
+  const n = candidates.length
+  const assignmentPenalty = n <= 15 ? 0 : n <= 80 ? 3 : 8
+
   const results: Array<{ candidate: T; score: number }> = []
 
   for (const candidate of candidates) {
     if (!hasMatch(query, candidate.text)) continue
 
     let matchScore = 0
+    let isAssignmentPath = false
 
     // Try subsequence path first
     const subseq = subsequenceScore(query, candidate.text)
@@ -40,9 +47,16 @@ export const match = <T extends { readonly text: string; readonly boost?: number
       const assignment = assignmentScore(query, candidate.text)
       if (assignment !== null) {
         matchScore = assignment.score
+        isAssignmentPath = true
       } else {
         continue
       }
+    }
+
+    // Apply candidate-count heuristic: penalize assignment-path scores
+    // in larger sets to ensure subsequence matches dominate.
+    if (isAssignmentPath) {
+      matchScore -= assignmentPenalty
     }
 
     const boost = candidate.boost ?? 0

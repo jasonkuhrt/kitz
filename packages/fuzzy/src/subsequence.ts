@@ -280,10 +280,46 @@ export const subsequenceScore = (
     }
     adjustedScore += wordsHit.size * 6
 
+    // Complete-word hit: if the needle exactly matches an entire haystack word,
+    // large bonus. The user directly named the action.
+    const haystackLower = haystack.toLowerCase()
+    const needleLowerStr = needle.toLowerCase()
+    for (let w = 0; w < wordStarts.length; w++) {
+      const wStart = wordStarts[w]!
+      const wEnd = w + 1 < wordStarts.length ? wordStarts[w + 1]! : m
+      // Trim trailing whitespace/delimiter from word
+      let wEndTrimmed = wEnd
+      while (wEndTrimmed > wStart) {
+        const cls = classes[wEndTrimmed - 1]!
+        if (cls === CharClass.White || cls === CharClass.Delimiter) wEndTrimmed--
+        else break
+      }
+      const word = haystackLower.slice(wStart, wEndTrimmed)
+      if (word === needleLowerStr) {
+        adjustedScore += 10 // complete-word hit bonus
+        break
+      }
+    }
+
     // Tail-word weight: matches in the last word are more informative
     const lastWordStart = wordStarts[wordStarts.length - 1]!
     for (let k = 0; k < n; k++) {
       if (positions[k]! >= lastWordStart) adjustedScore += 5
+    }
+
+    // Scope narrowing: early chars match first word prefix, later chars in later words
+    if (n >= 2 && wordsHit.size >= 2) {
+      let firstCharWordIdx = -1
+      for (let w = wordStarts.length - 1; w >= 0; w--) {
+        if (positions[0]! >= wordStarts[w]!) { firstCharWordIdx = w; break }
+      }
+      let lastCharWordIdx = -1
+      for (let w = wordStarts.length - 1; w >= 0; w--) {
+        if (positions[n - 1]! >= wordStarts[w]!) { lastCharWordIdx = w; break }
+      }
+      if (firstCharWordIdx === 0 && lastCharWordIdx > 0) {
+        adjustedScore += 4 // scope narrowing bonus
+      }
     }
   }
 
