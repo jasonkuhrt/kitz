@@ -34,7 +34,7 @@ The public API is `Cmx` -- a singleton Effect service the consumer yields once. 
 
 `handleKey` routes keys through a two-tier dispatch:
 
-**Tier 1 (no active session):** Checks keybindings against the AppMap at the given path. If the key matches a keybinding, creates a session pre-positioned at that command (BeginShortcut). If the key matches the palette-open control, creates a session in flat mode (BeginPalette). Otherwise returns Nil.
+**Tier 1 (no active session):** Checks Controls first for `openPalette`, then checks keybindings against the AppMap at the given path. If the key matches `openPalette`, creates a session in flat mode (BeginPalette). If the key matches a keybinding, creates a session pre-positioned at that command (BeginShortcut). Otherwise returns Nil.
 
 **Tier 2 (active session):** Routes keys to the Resolver -- the internal stateful engine that manages the command/slot resolution lifecycle. The Resolver coordinates two subsystems:
 
@@ -47,7 +47,11 @@ Both subsystems produce the same output: [choices](README.md#choices) ranked ins
 
 **AppMap** owns visibility, proximity, and keybinding resolution. The Resolver reads scope from the AppMap at the session's path.
 
-**Execution is not cmx's concern.** cmx resolves input into a fully-qualified command (capability + slot values). The `Resolution.effect` field is a pre-built Effect the consumer runs. cmx never executes capabilities.
+**Slot value wiring.** Capabilities access filled slot values via `yield* Cmx.SlotValues` — a capability-scoped Effect service whose type is derived from the capability's slot declarations. Each capability sees only the slots it declared. Composites aggregate slots by name — duplicate slot names across steps are rejected at setup time (`CmxDuplicateSlot`). Each composite step sees only its own subset.
+
+**preTakeQuery.** Both accepted command tokens and filled slot values store the query that was active when the value was taken. On undo, the query is restored to what the user typed, not the full token/value text. This is the backspace-across-boundary behavior.
+
+**Execution is not cmx's concern.** cmx resolves input into a fully-qualified command (capability + slot values). The `Resolution.effect` field is a pre-built Effect the consumer runs — `Cmx.SlotValues` is provided inside this effect. cmx never executes capabilities.
 
 **Session lifecycle.** `handleKey` creates sessions on BeginPalette/BeginShortcut and destroys them on Execute/Close. Session state (accepted tokens, query, slot values, mode) is cached between calls. The consumer never manages sessions directly.
 
@@ -56,7 +60,7 @@ Both subsystems produce the same output: [choices](README.md#choices) ranked ins
 | Extension | Service | Purpose |
 | --- | --- | --- |
 | Scoring algorithm | `Matcher` | Swap the matching algorithm. Default: `@kitz/fuzzy`. |
-| Choice ordering | `Ranker` | Reorder the choices after scoring. Default: proximity + match score + alphabetical. |
+| Choice ordering | `Ranker` | Reorder choices beyond what the Matcher provides. Default: sort by Matcher score (which includes proximity boost). |
 | Key-to-operation mapping | `Controls` | Customize which keys trigger which operations. |
 | Slot data source | `Slot.Fuzzy.source` / `Slot.Search.source` | Per-slot Effect that provides candidates. |
 
