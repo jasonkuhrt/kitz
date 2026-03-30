@@ -1,4 +1,4 @@
-import type { Layer, Effect } from 'effect'
+import { Layer, type Effect } from 'effect'
 import type { AnyCommand, CommandLeaf, CommandHybrid } from './command.js'
 import type { Resolution, SlotState } from './resolution.js'
 import type { Choice } from './choice.js'
@@ -6,6 +6,7 @@ import type { AnyCapability } from './capability.js'
 import { CommandResolver } from './command-resolver.js'
 import { SlotResolver } from './slot-resolver.js'
 import type { MatcherService } from './matcher.js'
+import { buildExecutableEffect } from './slot-values.js'
 
 /** The phase of the session lifecycle. */
 type SessionPhase = 'command' | 'slot'
@@ -43,7 +44,9 @@ const buildCombinedResolution = (state: SessionState): Resolution => {
     if (allFilled && state.resolvedCommand) {
       const capability = state.resolvedCommand.capability
       if (capability._tag === 'Capability') {
-        effect = capability.execute
+        const slotValues = getSlotValuesFromState(state)
+        const combinedLayers = buildCombinedLayers(state)
+        effect = buildExecutableEffect(capability.execute, slotValues, combinedLayers)
         executable = true
       }
     }
@@ -61,6 +64,17 @@ const buildCombinedResolution = (state: SessionState): Resolution => {
       choicesLoading: state.slotResolver.isLoading(),
       slots: slotStates,
       focusedSlot,
+    }
+  }
+
+  // Wrap executable effects with layers (the CommandResolver returns raw cap.execute)
+  if (commandResolution.executable && commandResolution.effect) {
+    const combinedLayers = buildCombinedLayers(state)
+    return {
+      ...commandResolution,
+      effect: combinedLayers
+        ? buildExecutableEffect(commandResolution.effect, {}, combinedLayers)
+        : commandResolution.effect,
     }
   }
 
@@ -99,6 +113,29 @@ const findResolvedCommand = (
     return found
   }
   return null
+}
+
+/** Extract slot values from the session state. */
+const getSlotValuesFromState = (state: SessionState): Readonly<Record<string, unknown>> => {
+  if (!state.slotResolver) return {}
+  const slotStates = state.slotResolver.getSlotStates()
+  const values: Record<string, unknown> = {}
+  for (const ss of slotStates) {
+    if (ss.value !== null) {
+      values[ss.name] = ss.value
+    }
+  }
+  return values
+}
+
+/** Build a combined Layer from scope layers + dynamic layers. */
+const buildCombinedLayers = (state: SessionState): Layer.Layer<any> | undefined => {
+  const layers: Layer.Layer<any>[] = [...state.scopeLayers]
+  for (const layer of Object.values(state.dynamicLayers)) {
+    layers.push(layer)
+  }
+  if (layers.length === 0) return undefined
+  return layers.reduce((acc, layer) => Layer.merge(acc, layer))
 }
 
 /**
@@ -231,7 +268,7 @@ export const Session = {
         return buildCombinedResolution(state)
       }
 
-      const current = state.commandResolver.getResolution()
+      const current = buildCombinedResolution(state)
       if (current.executable) {
         return current
       }

@@ -241,9 +241,16 @@ export const SlotResolver = {
     /** Undo the last taken choice (go back to previous slot). */
     const choiceUndo = (): boolean => {
       state.query = ''
+      // If past the end (all slots filled), back up to the last slot
+      if (state.focusedIndex >= state.slots.length && state.slots.length > 0) {
+        state.focusedIndex = state.slots.length - 1
+        const lastSlot = state.slots[state.focusedIndex]!
+        state.values.delete(lastSlot.name)
+        return true
+      }
       if (state.focusedIndex > 0) {
-        const currentSlot = state.slots[state.focusedIndex]!
-        state.values.delete(currentSlot.name)
+        const currentSlot = state.slots[state.focusedIndex]
+        if (currentSlot) state.values.delete(currentSlot.name)
         state.focusedIndex--
         const prevSlot = state.slots[state.focusedIndex]!
         state.values.delete(prevSlot.name)

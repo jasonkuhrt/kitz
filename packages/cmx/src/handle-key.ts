@@ -93,8 +93,7 @@ export const createHandleKey = (
       const resolution = active.session.getResolution()
       const matchingChoice = resolution.choices.find(
         (c) =>
-          c.token === kb.command.name ||
-          resolution.choices.some((ch) => ch.token.endsWith(` ${kb.command.name}`)),
+          c.token === kb.command.name || c.token.endsWith(` ${kb.command.name}`),
       )
       if (matchingChoice) {
         const afterTake = active.session.choiceTake(matchingChoice)

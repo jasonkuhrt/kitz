@@ -206,11 +206,16 @@ export const CommandResolver = {
 
       // Auto-advance: if exactly 1 choice, take it
       if (filtered.length === 1) {
+        const taken = filtered[0]!
         state.acceptedTokens.push({
-          token: filtered[0]!.token,
+          token: taken.token,
           preTakeQuery: state.query,
         })
         state.query = ''
+        // In tree mode, descend into the namespace if it's not a leaf
+        if (state.mode === 'tree' && taken.kind === 'namespace') {
+          state.treePath.push(taken.token)
+        }
       }
 
       return buildResolution(state, matcher)
@@ -270,12 +275,13 @@ export const CommandResolver = {
         state.mode = 'tree'
         state.treePath = []
         state.query = ''
+        state.acceptedTokens = []
       } else {
         state.mode = 'flat'
         state.treePath = []
         state.query = ''
+        state.acceptedTokens = []
       }
-      // Keep accepted tokens
       return buildResolution(state, matcher)
     }
 
