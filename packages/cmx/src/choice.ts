@@ -11,6 +11,7 @@ export interface Choice {
   readonly warning?: string | undefined
   readonly deprecated?: { readonly replacement: string } | undefined
   readonly group?: string | undefined
+  readonly aliases?: ReadonlyArray<string> | undefined
 }
 
 /** An accepted command token with the query that was active when it was taken. */

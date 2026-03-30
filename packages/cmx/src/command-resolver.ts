@@ -40,6 +40,7 @@ const buildFlatChoices = (
       warning: p.command.warning,
       deprecated: p.command.deprecated,
       group: p.command.group,
+      aliases: p.command.aliases,
     }),
   )
 }
@@ -60,6 +61,7 @@ const buildTreeChoices = (commands: ReadonlyArray<AnyCommand>, treePath: string[
       kind: cmd._tag === 'Leaf' ? 'leaf' : cmd._tag === 'Namespace' ? 'namespace' : 'hybrid',
       executable: cmd._tag === 'Leaf' || cmd._tag === 'Hybrid',
       description: cmd.description,
+      aliases: cmd.aliases,
     }),
   )
 }
@@ -72,7 +74,7 @@ const matchChoices = (
   proximities: ReadonlyMap<string, number>,
 ): Choice[] => {
   const candidates = choices.map((c) => ({
-    text: c.token,
+    text: c.aliases?.length ? `${c.token} ${c.aliases.join(' ')}` : c.token,
     boost: proximities.get(c.token.split(' ')[0]!) ?? 0,
     _choice: c,
   }))
