@@ -4,7 +4,7 @@
 
 **Goal:** Implement the @kitz/cmx semantic command system — AppMap-driven visibility, character-level resolution with handleKey two-tier dispatch, slot resolution, and pluggable matching/ranking.
 
-**Architecture:** The Cmx singleton Effect service owns handleKey, which routes through a two-tier dispatch (Tier 1: keybindings + Controls, Tier 2: internal Resolver). The Resolver coordinates a Command Resolver (flat/tree mode navigation) and a Slot Resolver (enum/fuzzy/search/text). All state is internal — consumers see only handleKey results and Resolution snapshots.
+**Architecture:** The Cmx singleton Effect service owns handleKey, which routes through a two-tier dispatch (Tier 1: shortcuts + Controls, Tier 2: internal Resolver). The Resolver coordinates a Command Resolver (flat/tree mode navigation) and a Slot Resolver (enum/fuzzy/search/text). All state is internal — consumers see only handleKey results and Resolution snapshots.
 
 **Tech Stack:** Effect v4, @kitz/core (errors), @kitz/fuzzy (matching), @tanstack/hotkeys (key types), vitest (testing)
 
@@ -22,7 +22,7 @@ packages/cmx/src/
 ├── command.ts                    # Command.Leaf, Command.Namespace, Command.Hybrid
 ├── choice.ts                     # Choice type, AcceptedToken type
 ├── resolution.ts                 # Resolution type
-├── app-map.ts                    # AppMap.make, AppMap.Node.make, scope computation, keybinding resolution
+├── app-map.ts                    # AppMap.make, AppMap.Node.make, scope computation, shortcut resolution
 ├── controls.ts                   # Controls Effect service + defaults
 ├── matcher.ts                    # Matcher Effect service (wraps @kitz/fuzzy)
 ├── ranker.ts                     # Ranker Effect service
@@ -822,7 +822,7 @@ export interface Choice {
   readonly detail?: string
   readonly icon?: string
   readonly badge?: string
-  readonly keybinding?: string
+  readonly shortcut?: string
   readonly warning?: string
   readonly deprecated?: { readonly replacement: string }
   readonly group?: string
@@ -1023,7 +1023,7 @@ import type { Layer } from 'effect'
 import type { AnyCommand, CommandNamespace } from './command.js'
 import { CmxInvalidPath, CmxDuplicateNamespace } from './errors.js'
 
-interface Keybinding {
+interface Shortcut {
   readonly key: string
   readonly command: AnyCommand
 }
@@ -1031,21 +1031,21 @@ interface Keybinding {
 export interface AppMapNode {
   readonly name: string
   readonly commands: ReadonlyArray<AnyCommand>
-  readonly keybindings?: ReadonlyArray<Keybinding>
+  readonly shortcuts?: ReadonlyArray<Shortcut>
   readonly layer?: Layer.Layer<any>
   readonly children: ReadonlyArray<AppMapNode>
 }
 
 export interface AppMapRoot {
   readonly commands: ReadonlyArray<AnyCommand>
-  readonly keybindings?: ReadonlyArray<Keybinding>
+  readonly shortcuts?: ReadonlyArray<Shortcut>
   readonly layer?: Layer.Layer<any>
   readonly children: ReadonlyArray<AppMapNode>
 }
 
 export interface Scope {
   readonly commands: ReadonlyArray<AnyCommand>
-  readonly keybindings: ReadonlyArray<Keybinding>
+  readonly shortcuts: ReadonlyArray<Shortcut>
   readonly proximities: Map<string, number>
 }
 
@@ -1066,7 +1066,7 @@ const findNode = (root: AppMapRoot, path: ReadonlyArray<string>): ReadonlyArray<
 const computeScope = (root: AppMapRoot, path: ReadonlyArray<string>): Scope => {
   const chain = findNode(root, path)
   const commands: AnyCommand[] = []
-  const keybindings: Keybinding[] = []
+  const shortcuts: Shortcut[] = []
   const proximities = new Map<string, number>()
   const seenNamespaces = new Map<string, string>()
 
@@ -1087,23 +1087,23 @@ const computeScope = (root: AppMapRoot, path: ReadonlyArray<string>): Scope => {
       commands.push(cmd)
       proximities.set(cmd.name, proximity)
     }
-    for (const kb of node.keybindings ?? []) {
-      keybindings.push(kb)
+    for (const kb of node.shortcuts ?? []) {
+      shortcuts.push(kb)
     }
   }
 
-  return { commands, keybindings, proximities }
+  return { commands, shortcuts, proximities }
 }
 
 export const AppMap = {
   make: (config: {
     commands?: ReadonlyArray<AnyCommand>
-    keybindings?: ReadonlyArray<Keybinding>
+    shortcuts?: ReadonlyArray<Shortcut>
     layer?: Layer.Layer<any>
     children?: ReadonlyArray<AppMapNode>
   }): AppMapRoot => ({
     commands: config.commands ?? [],
-    keybindings: config.keybindings,
+    shortcuts: config.shortcuts,
     layer: config.layer,
     children: config.children ?? [],
   }),
@@ -1111,13 +1111,13 @@ export const AppMap = {
     make: (config: {
       name: string
       commands?: ReadonlyArray<AnyCommand>
-      keybindings?: ReadonlyArray<Keybinding>
+      shortcuts?: ReadonlyArray<Shortcut>
       layer?: Layer.Layer<any>
       children?: ReadonlyArray<AppMapNode>
     }): AppMapNode => ({
       name: config.name,
       commands: config.commands ?? [],
-      keybindings: config.keybindings,
+      shortcuts: config.shortcuts,
       layer: config.layer,
       children: config.children ?? [],
     }),
@@ -1418,7 +1418,7 @@ git commit -m "feat(cmx): add Session state machine (command → slot → execut
 - Create: `packages/cmx/src/handle-key.ts`
 - Create: `packages/cmx/src/handle-key.test.ts`
 
-Tests cover: Tier 1 (Nil, BeginPalette on openPalette, BeginShortcut on keybinding), Tier 2 (Resolution, Execute, Close), session caching, Controls precedence.
+Tests cover: Tier 1 (Nil, BeginPalette on openPalette, BeginShortcut on shortcut), Tier 2 (Resolution, Execute, Close), session caching, Controls precedence.
 
 - [ ] **Step 1-5: TDD for two-tier dispatch**
 

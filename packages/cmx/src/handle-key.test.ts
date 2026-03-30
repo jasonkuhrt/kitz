@@ -22,12 +22,12 @@ const threadNs = Command.Namespace.make({ name: 'Thread', children: [replyCmd] }
 
 const appMap = AppMap.make({
   commands: [configNs, bufferNs],
-  keybindings: [{ key: 'r', command: reloadCmd }],
+  shortcuts: [{ key: 'r', command: reloadCmd }],
   children: [
     AppMap.Node.make({
       name: 'workspace',
       commands: [threadNs],
-      keybindings: [{ key: 't', command: replyCmd }],
+      shortcuts: [{ key: 't', command: replyCmd }],
     }),
   ],
 })
@@ -51,7 +51,7 @@ describe('Tier 1 — no active session', () => {
     }
   })
 
-  it('returns BeginShortcut on keybinding match', () => {
+  it('returns BeginShortcut on shortcut match', () => {
     const handleKey = createHandleKey(appMap, Controls.defaults)
     const result = handleKey('r', ctx)
     expect(result._tag).toBe('BeginShortcut')
@@ -61,14 +61,14 @@ describe('Tier 1 — no active session', () => {
     }
   })
 
-  it('resolves scope-aware keybindings', () => {
+  it('resolves scope-aware shortcuts', () => {
     const handleKey = createHandleKey(appMap, Controls.defaults)
     // 't' is only bound at workspace level
     const result = handleKey('t', ctx)
     expect(result._tag).toBe('BeginShortcut')
   })
 
-  it('does not match keybindings from deeper nodes', () => {
+  it('does not match shortcuts from deeper nodes', () => {
     const handleKey = createHandleKey(appMap, Controls.defaults)
     // 't' is bound at workspace, but if we're at root, it shouldn't match
     const result = handleKey('t', { path: [] })
@@ -159,7 +159,7 @@ describe('Tier 2 — active palette session', () => {
 describe('Tier 2 — active shortcut session', () => {
   it('shortcut with no slots returns executable BeginShortcut, then Tier 1', () => {
     const handleKey = createHandleKey(appMap, Controls.defaults)
-    const result = handleKey('r', ctx) // keybinding to reload
+    const result = handleKey('r', ctx) // shortcut to reload
     expect(result._tag).toBe('BeginShortcut')
     if (result._tag === 'BeginShortcut') {
       expect(result.executable).toBe(true)

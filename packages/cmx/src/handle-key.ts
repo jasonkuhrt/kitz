@@ -12,6 +12,15 @@ import type { Layer } from 'effect'
 /** Context passed with each handleKey call. */
 export interface HandleKeyContext {
   readonly path: ReadonlyArray<string>
+  /**
+   * Per-call Effect layers keyed by name. Intended for consumers to provide
+   * runtime context (e.g. selected item IDs from React state) to capabilities.
+   *
+   * **Status: not yet wired up.** The field is accepted but not consumed by
+   * the current handleKey implementation. Once capability execution is
+   * integrated, these layers will be merged into the Effect runtime that
+   * runs the resolved capability.
+   */
   readonly layers?: Record<string, Layer.Layer<any>>
 }
 
@@ -58,12 +67,12 @@ export const createHandleKey = (appMap: AppMapRoot, controls: ControlsConfig) =>
       return HKR.BeginPalette(resolver.getResolution())
     }
 
-    // Check keybindings
-    const kb = AppMap.resolveKeybinding(appMap, context.path, key)
+    // Check shortcuts
+    const kb = AppMap.resolveShortcut(appMap, context.path, key)
     if (kb) {
       const scope = AppMap.computeScope(appMap, context.path)
       const resolver = CommandResolver.create(scope.commands, scope.proximities)
-      // Pre-position at the keybinding's command
+      // Pre-position at the shortcut's command
       const resolution = resolver.getResolution()
       // Find the command's path in the choices
       const matchingChoice = resolution.choices.find(

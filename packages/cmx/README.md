@@ -10,13 +10,13 @@ Most applications treat command entry as a raw string submission path. The comma
 
 ## Solution
 
-cmx replaces flat command lists with a structured vocabulary. The consumer defines [capabilities](#capability) (what runs), [commands](#command) (what users see, organized into namespaces), and an [AppMap](#appmap) (where commands are available, with [keybindings](#keybinding)). cmx connects these into a single source of truth.
+cmx replaces flat command lists with a structured vocabulary. The consumer defines [capabilities](#capability) (what runs), [commands](#command) (what users see, organized into namespaces), and an [AppMap](#appmap) (where commands are available, with [shortcuts](#shortcut)). cmx connects these into a single source of truth.
 
 __Context-aware visibility.__ The [AppMap](#appmap) determines which commands exist at any given moment. Commands bound to a `thread` node appear when the user is in a thread and disappear when they navigate away. No manual show/hide logic -- visibility follows structure.
 
 __Proximity-based ranking.__ Commands closer to the user's current position in the AppMap rank higher. Thread commands outrank workspace commands outrank global commands. Ordering reflects where the user is, not alphabetical accident.
 
-__One handler, every key.__ The consumer wires one key handler. cmx routes all keys -- keybindings, palette input, slot filling -- and returns a discriminated result the surface renders. No routing logic in the consumer.
+__One handler, every key.__ The consumer wires one key handler. cmx routes all keys -- shortcuts, palette input, slot filling -- and returns a discriminated result the surface renders. No routing logic in the consumer.
 
 __Safety invariants.__ cmx refuses to execute nonexistent commands, namespaces, or commands with unfilled [slots](#slot). Dead-end prevention blocks input that would produce zero matches. Auto-advance collapses single-item choices during typing.
 
@@ -42,10 +42,10 @@ const { namespace: ConfigCommands, commands: { reload: reloadCmd } } = Cmx.Comma
     capabilities: { reload },
   })
 
-// 3. Build an AppMap with keybindings
+// 3. Build an AppMap with shortcuts
 const appMap = Cmx.AppMap.make({
   commands: [ConfigCommands],
-  keybindings: [
+  shortcuts: [
     { key: 'r', command: reloadCmd },
   ],
 })
@@ -125,7 +125,7 @@ const { namespace: configCommands, commands: configLeaves } = Cmx.Command.Namesp
     capabilities: { reload, export: exportCap },
   })
 // configLeaves.reload and configLeaves.export are the generated Command.Leaf objects
-// Use them for keybindings, related, deprecation replacements, etc.
+// Use them for shortcuts, related, deprecation replacements, etc.
 ```
 
 Alternative: generate from an Effect RPC group:
@@ -225,7 +225,7 @@ __Namespace uniqueness:__ Namespace names must be unique within the visible scop
 
 ```typescript
 for (const choice of resolution.choices) {
-  render(choice.token, choice.kind, choice.description, choice.keybinding)
+  render(choice.token, choice.kind, choice.description, choice.shortcut)
 }
 
 if (resolution.topChoice) {
@@ -256,7 +256,7 @@ Each choice carries:
 | `detail`      | Longer explanation for preview panes                           |
 | `icon`        | Visual identifier                                              |
 | `badge`       | Category/origin indicator                                      |
-| `keybinding`  | Key bound to this command at the current scope, if any         |
+| `shortcut`  | Key bound to this command at the current scope, if any         |
 | `warning`     | Destructive action notice, if any                              |
 | `deprecated`  | Deprecation info with replacement, if any                      |
 | `group`       | Visual grouping identifier                                     |
@@ -292,7 +292,7 @@ const exportCap = Cmx.Capability.make({
 
 A capability is the smallest executable unit in cmx -- a stable, globally addressable function that actually runs when invoked. Capabilities never appear in the command palette directly. They exist as the substrate that [commands](#command) reference.
 
-Capabilities own their [slots](#slot) -- the typed parameters they need to run. Commands inherit slots from their capability. Composites aggregate slots from their steps. This means cmx always knows what parameters a capability needs, whether it appears as a standalone command, part of a composite, or behind a keybinding.
+Capabilities own their [slots](#slot) -- the typed parameters they need to run. Commands inherit slots from their capability. Composites aggregate slots from their steps. This means cmx always knows what parameters a capability needs, whether it appears as a standalone command, part of a composite, or behind a shortcut.
 
 **Slot value access.** At execution time, cmx provides filled slot values through a capability-scoped `Cmx.SlotValues` Effect service. The service type is derived from the capability's slot declarations — if a capability declares `slots: [formatSlot]` where `formatSlot` has `schema: S.Literal('json', 'yaml')`, then `yield* Cmx.SlotValues` returns `{ format: 'json' | 'yaml' }`. Each capability sees only the slots it declared, not other capabilities' slots.
 
@@ -300,7 +300,7 @@ Capabilities own their [slots](#slot) -- the typed parameters they need to run. 
 
 A capability's execute function is an Effect with service dependencies in the `R` channel. This means capabilities can depend on app services and scope-provided context without manual wiring -- if the [AppMap](#appmap) provides a `ThreadContext` layer, a capability that depends on `ThreadContext` automatically receives it.
 
-Capabilities and commands are separate because the grammar should evolve independently from the execution. Renaming a command, adding an alias, or restructuring a namespace never touches execution code. Multiple commands can reference the same capability -- `Config reload` and a keybinding both invoke the same function without duplicating it. Composite capabilities compose at the execution layer without the command grammar knowing.
+Capabilities and commands are separate because the grammar should evolve independently from the execution. Renaming a command, adding an alias, or restructuring a namespace never touches execution code. Multiple commands can reference the same capability -- `Config reload` and a shortcut both invoke the same function without duplicating it. Composite capabilities compose at the execution layer without the command grammar knowing.
 
 ### Slot
 
@@ -382,14 +382,14 @@ const appMap = Cmx.AppMap.make({
     Cmx.AppMap.Node.make({
       name: 'workspace',
       commands: [WorkspaceCommands],
-      keybindings: [
+      shortcuts: [
         { key: 'n', command: newThreadCommand },
       ],
       children: [
         Cmx.AppMap.Node.make({
           name: 'thread',
           commands: [ThreadCommands],
-          keybindings: [
+          shortcuts: [
             { key: 'r', command: replyCommand },
             { key: 'e', command: exportCommand }, // has slots — triggers slot prompt
           ],
@@ -400,7 +400,7 @@ const appMap = Cmx.AppMap.make({
 })
 ```
 
-The AppMap is the application's information architecture for commands -- which commands are available where, and which keybindings are active. The consumer builds the map, binds [commands](#command) and [keybindings](#keybinding) to nodes. The root is implicit -- `AppMap.make` takes commands, keybindings, layers, and children directly. Root-level commands are always visible regardless of which node is active.
+The AppMap is the application's information architecture for commands -- which commands are available where, and which shortcuts are active. The consumer builds the map, binds [commands](#command) and [shortcuts](#shortcut) to nodes. The root is implicit -- `AppMap.make` takes commands, shortcuts, layers, and children directly. Root-level commands are always visible regardless of which node is active.
 
 __Scope:__ The commands in scope are the union of all commands from the active node up to the root, deepest-first. When the active node changes, the scope changes immediately.
 
@@ -415,39 +415,62 @@ The map structure is built once and never reconstructed. Only the dynamic contex
 
 __Capability dependencies__ are satisfied by the scope chain. If a visible capability's service dependencies are not satisfied, cmx treats this as an error.
 
-### Keybinding
+### Shortcut
 
 ```typescript
-Cmx.AppMap.Node.make({
-  name: 'panel',
-  commands: [PanelCommands],
-  keybindings: [
-    { key: 'q', command: panelCloseCommand }, // Key type — autocomplete, static validation
-    { key: 'Mod+E', command: panelExportCommand }, // Hotkey type — modifier combos
-    { key: '?', command: panelHelpCommand },
+Cmx.AppMap.make({
+  commands: [NavigationCommands],
+  shortcuts: [
+    // Inherited (default) — active whenever this node is on the path
+    { key: 'i', command: scopeDescendCommand },
+    { key: 'o', command: scopeAscendCommand },
+    { key: '?', command: toggleHelpCommand },
+    // Local — only active when this node is the deepest in the path
+    { key: 'h', command: focusLeftCommand, local: true },
+    { key: 'l', command: focusRightCommand, local: true },
+    { key: 'j', command: focusDownCommand, local: true },
+    { key: 'k', command: focusUpCommand, local: true },
+  ],
+  children: [
+    Cmx.AppMap.Node.make({
+      name: 'panel',
+      commands: [PanelCommands],
+      shortcuts: [
+        { key: 'q', command: panelCloseCommand },
+        { key: 'Mod+E', command: panelExportCommand },
+      ],
+    }),
   ],
 })
 ```
 
-A keybinding is a direct key-to-command mapping registered at an [AppMap](#appmap) node. Keybindings follow the same visibility rules as commands -- a keybinding is active when its node is on the path from the active node to the root. Closer keybindings shadow farther ones if they bind the same key.
+A shortcut is a direct key-to-command mapping registered at an [AppMap](#appmap) node. Shortcuts follow the same visibility rules as commands -- a shortcut is active when its node is on the path from the active node to the root. Closer shortcuts shadow farther ones if they bind the same key.
+
+#### Local shortcuts
+
+By default, shortcuts are __inherited__ -- active at every depth below their defining node. Set `local: true` to restrict a shortcut to only fire when its node is the __deepest__ in the current path.
+
+Use `local: true` for shortcuts that only make sense at their defining scope (e.g. spatial navigation like `h`/`j`/`k`/`l` at the canvas root). Use the default (inherited) for shortcuts that should be available at every depth (e.g. scope navigation like `i`/`o`, or help toggles like `?`).
+
+A single node can have both local and inherited shortcuts. `resolveShortcut` and `getActiveShortcuts` both respect the `local` flag -- local shortcuts are excluded from resolution and from help overlays when the node is not the deepest.
 
 The `key` field is typed as `Key | Hotkey` from [`@tanstack/hotkeys`](https://github.com/TanStack/hotkeys) -- full IDE autocomplete for key names and modifier combos (`Mod+S`, `Control+Alt+Delete`), static rejection of invalid key names. The `command` field references actual command objects -- type-safe, not string-typed. All types are on the definition side; consumers write string literals and inference handles the rest.
 
-__Keybindings vs Controls.__ Keybindings map keys to __commands__ -- they are domain-level, scope-aware, and registered on AppMap nodes. [Controls](#controls) map keys to __operations__ (open palette, confirm, cancel) -- they are infrastructure-level, not scope-aware, and provided as an Effect service. __Precedence in Tier 1 (no session):__ Controls are checked first for the `openPalette` key, then keybindings. __Precedence in Tier 2 (active session):__ Controls take precedence -- `?` means toggleMode, not a keybinding. Outside a session, `?` fires the keybinding normally. This means the same key can serve both purposes without conflict.
+__Shortcuts vs Controls.__ Shortcuts map keys to __commands__ -- they are domain-level, scope-aware, and registered on AppMap nodes. [Controls](#controls) map keys to __operations__ (open palette, confirm, cancel) -- they are infrastructure-level, not scope-aware, and provided as an Effect service. __Precedence in Tier 1 (no session):__ Controls are checked first for the `openPalette` key, then shortcuts. __Precedence in Tier 2 (active session):__ Controls take precedence -- `?` means toggleMode, not a shortcut. Outside a session, `?` fires the shortcut normally. This means the same key can serve both purposes without conflict.
 
-When a keybinding is triggered via `cmx.handleKey`, cmx returns:
+When a shortcut is triggered via `cmx.handleKey`, cmx returns:
 
 * __`BeginShortcut` with `executable: true`__ -- if the command has no slots. The surface runs `resolution.effect` immediately.
 * __`BeginShortcut` with `executable: false`__ -- if the command has unfilled slots. The surface shows a slot-filling prompt. Subsequent keys produce `Resolution` updates until the command is complete.
 
-Keybinding hints appear on [choices](#choices) via the `keybinding` field -- surfaces can render the key next to the command name.
+Shortcut hints appear on [choices](#choices) via the `shortcut` field -- surfaces can render the key next to the command name.
 
-The AppMap exposes keybinding queries:
+The AppMap exposes shortcut queries:
 
 ```typescript
 // Inside Effect.gen:
-const bindings = yield* appMap.getActiveKeybindings(['workspace', 'thread'])
-// all active keybindings from thread → workspace → root, grouped by scope level
+const bindings = yield* appMap.getActiveShortcuts(['workspace', 'thread'])
+// all active shortcuts from thread → workspace → root, grouped by scope level
 ```
 
 ### handleKey
@@ -488,7 +511,7 @@ __Tier 1 results__ (no active session):
 | --------------- | ------------------------------ | ------------------------------------------------------------- |
 | `Nil`           | Key is not claimed by cmx      | Pass through                                                  |
 | `BeginPalette`  | Palette-open key (`;`) pressed | Show palette UI, render the Resolution                        |
-| `BeginShortcut` | Keybinding matched a command   | If executable: run effect. If slots needed: show slot prompt. |
+| `BeginShortcut` | Shortcut matched a command   | If executable: run effect. If slots needed: show slot prompt. |
 
 __Tier 2 results__ (session active -- palette or shortcut with slots):
 
@@ -716,11 +739,11 @@ Setup errors fail fast at AppMap construction. Runtime errors are in the Effect 
 
 #### AppMap
 
-The application's information architecture for commands -- where commands are available, with keybindings and contextual layers. The root is implicit.
+The application's information architecture for commands -- where commands are available, with shortcuts and contextual layers. The root is implicit.
 
 #### AppMap.Node
 
-A region in the AppMap carrying commands, keybindings, and optional Effect Layers (static or dynamic) for contextual data.
+A region in the AppMap carrying commands, shortcuts, and optional Effect Layers (static or dynamic) for contextual data.
 
 #### capability
 
@@ -728,7 +751,7 @@ A stable executable unit -- the substrate that commands reference. Never appears
 
 #### choice
 
-A single entry in the choices list. Carries token, kind, description, keybinding, and other metadata.
+A single entry in the choices list. Carries token, kind, description, shortcut, and other metadata.
 
 #### choices
 
@@ -748,7 +771,7 @@ A capability whose execution is an ordered sequence of other capabilities. Slots
 
 #### Controls
 
-Pluggable Effect service that maps key events to internal operations (which key opens the palette, confirms, cancels, etc.). Not the same as keybindings.
+Pluggable Effect service that maps key events to internal operations (which key opens the palette, confirms, cancels, etc.). Not the same as shortcuts.
 
 #### flat mode
 
@@ -758,9 +781,9 @@ The default resolution mode. All reachable executable commands (leaves + hybrids
 
 The consumer's single entry point. Takes a `Key` (from `@tanstack/hotkeys`) and the current application path. Returns a discriminated result (Nil, BeginPalette, BeginShortcut, Resolution, Execute, Close). cmx handles all routing internally.
 
-#### keybinding
+#### shortcut
 
-A direct key-to-command mapping registered at an AppMap node. `key` is typed as `Key | Hotkey` from `@tanstack/hotkeys`. `command` references actual command objects. Closer bindings shadow farther ones.
+A direct key-to-command mapping registered at an AppMap node. `key` is typed as `Key | Hotkey` from `@tanstack/hotkeys`. `command` references actual command objects. Closer shortcuts shadow farther ones. Set `local: true` to restrict to the defining node only.
 
 #### Matcher
 

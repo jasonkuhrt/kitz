@@ -57,7 +57,7 @@ export const Command = {
 
     /**
      * Generate a namespace from capabilities. Returns the namespace and a typed
-     * record of the generated leaf commands (for use in keybindings, related, etc.).
+     * record of the generated leaf commands (for use in shortcuts, related, etc.).
      */
     fromCapabilities: <K extends string>(config: {
       readonly name: string

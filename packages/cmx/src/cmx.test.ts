@@ -22,7 +22,7 @@ const bufferNs = Command.Namespace.make({ name: 'Buffer', children: [closeCmd] }
 
 const appMap = AppMap.make({
   commands: [configNs, bufferNs],
-  keybindings: [{ key: 'r', command: reloadCmd }],
+  shortcuts: [{ key: 'r', command: reloadCmd }],
 })
 
 describe('Cmx end-to-end', () => {
@@ -56,11 +56,11 @@ describe('Cmx end-to-end', () => {
     expect(r4._tag).toBe('Nil')
   })
 
-  it('handles keybinding shortcut', () => {
+  it('handles shortcut shortcut', () => {
     const cmx = createCmx(appMap)
     const ctx = { path: [] as string[] }
 
-    // Tier 1: keybinding 'r' → BeginShortcut
+    // Tier 1: shortcut 'r' → BeginShortcut
     const r1 = cmx.handleKey('r', ctx)
     expect(r1._tag).toBe('BeginShortcut')
     if (r1._tag !== 'BeginShortcut') throw new Error()
@@ -145,7 +145,7 @@ describe('Cmx end-to-end', () => {
     })
     const map = AppMap.make({
       commands: [namespace],
-      keybindings: [{ key: 'r', command: commands.reload }],
+      shortcuts: [{ key: 'r', command: commands.reload }],
     })
     const cmx = createCmx(map)
     const result = cmx.handleKey('r', { path: [] })

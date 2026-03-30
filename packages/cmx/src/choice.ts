@@ -7,7 +7,7 @@ export interface Choice {
   readonly detail?: string | undefined
   readonly icon?: string | undefined
   readonly badge?: string | undefined
-  readonly keybinding?: string | undefined
+  readonly shortcut?: string | undefined
   readonly warning?: string | undefined
   readonly deprecated?: { readonly replacement: string } | undefined
   readonly group?: string | undefined

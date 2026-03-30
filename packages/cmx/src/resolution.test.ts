@@ -30,12 +30,12 @@ describe('Choice', () => {
       token: 'reload',
       kind: 'leaf',
       executable: true,
-      keybinding: 'r',
+      shortcut: 'r',
       warning: 'Unsaved changes lost',
       deprecated: { replacement: 'Config refresh' },
       group: 'admin',
     }
-    expect(choice.keybinding).toBe('r')
+    expect(choice.shortcut).toBe('r')
     expect(choice.warning).toBe('Unsaved changes lost')
     expect(choice.deprecated?.replacement).toBe('Config refresh')
     expect(choice.group).toBe('admin')

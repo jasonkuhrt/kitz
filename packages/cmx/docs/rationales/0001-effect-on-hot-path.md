@@ -27,4 +27,4 @@ The one caveat: do not `yield*` inside a loop over large collections. Score all 
 
 ## Result
 
-All Resolver operations (`query.push`, `query.undo`, `choice.takeTop`, `choice.take`, `choice.undo`, `handoff`, `reset`, `resolveKey`, `activeKeybindings`) return `Effect<ResolutionState>`. No sync/async split. If a performance wall is ever hit, the fuzzy-filter algorithm is the optimization target, not Effect.
+All Resolver operations (`query.push`, `query.undo`, `choice.takeTop`, `choice.take`, `choice.undo`, `handoff`, `reset`, `resolveKey`, `activeShortcuts`) return `Effect<ResolutionState>`. No sync/async split. If a performance wall is ever hit, the fuzzy-filter algorithm is the optimization target, not Effect.
