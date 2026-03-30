@@ -43,14 +43,13 @@ Test.describe('subsequenceScore — positions')
   )
   .test()
 
-Test.describe('subsequenceScore — case insensitive')
-  .on(scoreOf)
-  .describeInputs('matches regardless of case', [
-    ['abc', 'ABC'],
-    ['ABC', 'abc'],
-    ['AbC', 'aBc'],
-  ])
-  .test()
+test('case insensitive matching', () => {
+  for (const [needle, haystack] of [['abc', 'ABC'], ['ABC', 'abc'], ['AbC', 'aBc']] as const) {
+    const result = subsequenceScore(needle, haystack)
+    expect(result, `${needle} should match ${haystack}`).not.toBeNull()
+    expect(result!.positions).toEqual([0, 1, 2])
+  }
+})
 
 test('exact case match scores higher than mismatched case', () => {
   // 'Cfg' exactly matches 'C' in 'Config', while 'cfg' matches 'C' by folding

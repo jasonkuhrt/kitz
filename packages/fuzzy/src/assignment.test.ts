@@ -7,15 +7,13 @@ const scoreOf = (needle: string, haystack: string) =>
 const positionsOf = (needle: string, haystack: string) =>
   assignmentScore(needle, haystack)?.positions ?? null
 
-Test.describe('assignmentScore — returns result for out-of-order matches')
-  .on(scoreOf)
-  .describeInputs('characters present but not in subsequence order', [
-    ['vdi', 'david'],
-    ['rc', 'configReload'],
-    ['ba', 'ab'],
-    ['cba', 'abc'],
-  ])
-  .test()
+test('returns positive score for out-of-order matches', () => {
+  for (const [needle, haystack] of [['vdi', 'david'], ['rc', 'configReload'], ['ba', 'ab'], ['cba', 'abc']] as const) {
+    const result = scoreOf(needle, haystack)
+    expect(result, `${needle} → ${haystack} should match`).not.toBeNull()
+    expect(result!).toBeGreaterThan(0)
+  }
+})
 
 Test.describe('assignmentScore — returns null when containment fails')
   .on(scoreOf)

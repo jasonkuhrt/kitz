@@ -8,43 +8,13 @@
  * P2: Optional non-text slots auto-fill instead of skip
  */
 import { describe, expect, it } from 'vitest'
-import { Effect, Schema as S } from 'effect'
+import { Schema as S } from 'effect'
 import { createHandleKey } from './handle-key.js'
-import { AppMap } from './app-map.js'
-import { Command } from './command.js'
-import { Capability } from './capability.js'
 import { Controls } from './controls.js'
 import { CommandResolver } from './command-resolver.js'
 import { SlotResolver } from './slot-resolver.js'
 import { Slot } from './slot.js'
-
-// --- Shared fixtures ---
-
-const reload = Capability.make({ name: 'reload', execute: Effect.void })
-const exportCap = Capability.make({ name: 'export', execute: Effect.void })
-const close = Capability.make({ name: 'close', execute: Effect.void })
-const reply = Capability.make({ name: 'reply', execute: Effect.void })
-
-const reloadCmd = Command.Leaf.make({ name: 'reload', capability: reload })
-const exportCmd = Command.Leaf.make({ name: 'export', capability: exportCap })
-const closeCmd = Command.Leaf.make({ name: 'close', capability: close })
-const replyCmd = Command.Leaf.make({ name: 'reply', capability: reply })
-
-const configNs = Command.Namespace.make({ name: 'Config', children: [reloadCmd, exportCmd] })
-const bufferNs = Command.Namespace.make({ name: 'Buffer', children: [closeCmd] })
-const threadNs = Command.Namespace.make({ name: 'Thread', children: [replyCmd] })
-
-const appMap = AppMap.make({
-  commands: [configNs, bufferNs],
-  shortcuts: [{ key: 'r', command: reloadCmd }],
-  children: [
-    AppMap.Node.make({
-      name: 'workspace',
-      commands: [threadNs],
-      shortcuts: [{ key: 't', command: replyCmd }],
-    }),
-  ],
-})
+import { appMap, bufferNs, configNs, defaultProximities, rootCtx, workspaceCtx } from './test-fixtures.js'
 
 // ============================================================================
 // P1: Stale session after executable shortcuts
@@ -53,10 +23,9 @@ const appMap = AppMap.make({
 describe('P1: stale session after executable shortcut', () => {
   it('next key after an executable shortcut routes through Tier 1, not Tier 2', () => {
     const handleKey = createHandleKey(appMap, Controls.defaults)
-    const ctx = { path: ['workspace'] }
 
     // Press shortcut 'r' → BeginShortcut with executable=true
-    const shortcutResult = handleKey('r', ctx)
+    const shortcutResult = handleKey('r', workspaceCtx)
     expect(shortcutResult._tag).toBe('BeginShortcut')
     if (shortcutResult._tag !== 'BeginShortcut') return
     expect(shortcutResult.executable).toBe(true)
@@ -64,7 +33,7 @@ describe('P1: stale session after executable shortcut', () => {
     // The consumer would execute the effect and be done.
     // The NEXT key should go through Tier 1 (no active session).
     // Bug: active session is stale, so it routes through Tier 2.
-    const nextResult = handleKey('x', ctx)
+    const nextResult = handleKey('x', workspaceCtx)
     expect(nextResult._tag).toBe('Nil')
   })
 })
@@ -78,7 +47,7 @@ describe('P2: scope recomputed on path change', () => {
     const handleKey = createHandleKey(appMap, Controls.defaults)
 
     // Open palette at root
-    const openResult = handleKey(';', { path: [] })
+    const openResult = handleKey(';', rootCtx)
     expect(openResult._tag).toBe('BeginPalette')
     if (openResult._tag !== 'BeginPalette') return
 
@@ -95,14 +64,14 @@ describe('P2: scope recomputed on path change', () => {
 
     // After the path changes, Thread commands should become visible.
     // Bug: session keeps the old scope, Thread.reply stays invisible.
-    if ('resolution' in afterNav) {
-      const newChoices = afterNav.resolution.choices.map((c) => c.token)
-      const hasReplyNow = newChoices.some((t) => t.includes('reply'))
-      // If reply wasn't in root but IS in workspace scope, it should appear
-      if (!hasReplyInRoot) {
-        expect(hasReplyNow).toBe(true)
-      }
-    }
+    // The result must carry a resolution (QueryUpdated or similar with choices).
+    expect(afterNav).toHaveProperty('resolution')
+    const afterNavWithRes = afterNav as { resolution: { choices: Array<{ token: string }> } }
+    const newChoices = afterNavWithRes.resolution.choices.map((c) => c.token)
+    const hasReplyNow = newChoices.some((t) => t.includes('reply'))
+    // reply was not in root scope but IS in workspace scope — it must appear
+    expect(hasReplyInRoot).toBe(false)
+    expect(hasReplyNow).toBe(true)
   })
 })
 
@@ -112,12 +81,7 @@ describe('P2: scope recomputed on path change', () => {
 
 describe('P2: treePath stays in sync on undo', () => {
   it('backspace from empty query after entering namespace returns to parent', () => {
-    const commands = [configNs, bufferNs]
-    const proximities = new Map([
-      ['Config', 1],
-      ['Buffer', 1],
-    ])
-    const resolver = CommandResolver.create(commands, proximities)
+    const resolver = CommandResolver.create([configNs, bufferNs], defaultProximities)
 
     // Switch to tree mode
     resolver.toggleMode()
