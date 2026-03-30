@@ -1,8 +1,9 @@
-import { Effect, Layer } from 'effect'
+import { Effect, Exit, Layer } from 'effect'
 import type { AnyCommand, CommandLeaf, CommandHybrid } from './command.js'
 import type { Resolution, SlotState } from './resolution.js'
 import type { Choice } from './choice.js'
 import type { AnyCapability } from './capability.js'
+import type { AnySlot } from './slot.js'
 import { CommandResolver } from './command-resolver.js'
 import { SlotResolver } from './slot-resolver.js'
 import type { MatcherService } from './matcher.js'
@@ -157,6 +158,26 @@ const buildCombinedLayers = (state: SessionState): AnyLayer | undefined => {
 }
 
 /**
+ * Eagerly load candidates for Fuzzy slots by running their source Effect
+ * synchronously. If the source requires async or services, this is a no-op
+ * and the caller must load candidates externally via setCandidates.
+ */
+const eagerLoadFuzzyCandidates = (
+  slots: ReadonlyArray<AnySlot>,
+  resolver: ReturnType<typeof SlotResolver.create>,
+): void => {
+  for (const slot of slots) {
+    if (slot._tag !== 'Fuzzy') continue
+    const exit = Effect.runSyncExit(slot.source as Effect.Effect<ReadonlyArray<{ value: unknown; label: string; description?: string }>>)
+    if (Exit.isSuccess(exit)) {
+      resolver.setCandidates(slot.name, exit.value as any)
+    }
+    // If the Effect requires async/services, runSyncExit returns a failure.
+    // The slot stays in loading state — callers can use setCandidates later.
+  }
+}
+
+/**
  * Create a Session — the state machine that coordinates command resolution,
  * slot resolution, and effect building.
  *
@@ -201,6 +222,7 @@ export const Session = {
           state.phase = 'slot'
           state.resolvedCommand = cmd
           state.slotResolver = SlotResolver.create(cmd.capability.slots)
+          eagerLoadFuzzyCandidates(cmd.capability.slots, state.slotResolver)
           return buildCombinedResolution(state)
         }
       }
