@@ -400,3 +400,69 @@ describe('AppMap.getActiveShortcuts conditional (if)', () => {
     expect(rootGroup?.shortcuts.map((s) => s.key)).toContain('?')
   })
 })
+
+// ─────────────────────────────────────────────────────────────────
+// Performance gate — shortcut filtering with Pat.isMatch on hot path
+//
+// Scenario: 50 shortcuts in scope (25 unconditional, 25 conditional),
+// 3-level deep AppMap. All 3 filter sites called per keypress.
+// Budget: <1ms combined (leaves >7ms for fuzzy matching + rendering).
+//
+// For detailed profiling: bun run --cwd packages/cmx bench
+// ─────────────────────────────────────────────────────────────────
+
+describe('AppMap performance gate', () => {
+  const perfCap = Capability.make({ name: 'action', execute: Effect.void })
+  const perfCmd = Command.Leaf.make({ name: 'action', capability: perfCap })
+
+  const perfShortcuts = Array.from({ length: 50 }, (_, i) => {
+    const base = { key: `k${i}`, command: perfCmd } as const
+    if (i % 2 === 0) return base
+    return { ...base, if: { mode: `mode${i % 5}` } satisfies Pat.Pattern }
+  })
+
+  const perfMap = AppMap.make({
+    shortcuts: perfShortcuts.slice(0, 17),
+    children: [
+      AppMap.Node.make({
+        name: 'workspace',
+        shortcuts: perfShortcuts.slice(17, 34),
+        children: [
+          AppMap.Node.make({
+            name: 'thread',
+            shortcuts: perfShortcuts.slice(34),
+          }),
+        ],
+      }),
+    ],
+  })
+
+  const deepPath = ['workspace', 'thread'] as const
+  const state = { mode: 'mode1' }
+  const BUDGET_MS = 1
+
+  it(`resolveShortcut + computeScope + getActiveShortcuts < ${BUDGET_MS}ms for 50 shortcuts`, () => {
+    // Warmup — let V8 JIT compile the hot paths
+    for (let i = 0; i < 1000; i++) {
+      AppMap.resolveShortcut(perfMap, deepPath, 'k1', { state })
+      AppMap.computeScope(perfMap, deepPath, { state })
+      AppMap.getActiveShortcuts(perfMap, deepPath, { state })
+    }
+
+    // Measure — take median of 100 runs to reduce noise
+    const times: number[] = []
+    for (let run = 0; run < 100; run++) {
+      const start = performance.now()
+      AppMap.resolveShortcut(perfMap, deepPath, 'k1', { state })
+      AppMap.computeScope(perfMap, deepPath, { state })
+      AppMap.getActiveShortcuts(perfMap, deepPath, { state })
+      times.push(performance.now() - start)
+    }
+    times.sort((a, b) => a - b)
+    const median = times[Math.floor(times.length / 2)]!
+
+    expect(median, `median ${median.toFixed(3)}ms exceeds ${BUDGET_MS}ms budget`).toBeLessThan(
+      BUDGET_MS,
+    )
+  })
+})
