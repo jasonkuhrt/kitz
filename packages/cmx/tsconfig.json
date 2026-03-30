@@ -8,10 +8,10 @@
     "noEmit": true,
     "paths": {
       "#cmx": [
-        "./build/_.js"
+        "./src/_.js"
       ],
       "#cmx/*": [
-        "./build/*.js"
+        "./src/*.js"
       ]
     }
   },
