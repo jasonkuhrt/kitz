@@ -100,7 +100,7 @@ export const createHandleKey = (
 
       case 'confirm': {
         const current = resolver.getResolution()
-        if (current.executable && current.effect) {
+        if (current.executable) {
           session = null
           return HKR.Execute(current)
         }

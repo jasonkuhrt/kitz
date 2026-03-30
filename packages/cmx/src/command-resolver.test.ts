@@ -264,6 +264,16 @@ describe('tree mode navigation', () => {
     expect(tokens).toContain('Buffer')
   })
 
+  it('taking a leaf in tree mode resolves to executable', () => {
+    const resolver = CommandResolver.create([configNs], proximities)
+    resolver.toggleMode() // tree
+    resolver.choiceTakeTop() // enter Config namespace
+    // Now take "reload" leaf
+    const res = resolver.choiceTakeTop()
+    expect(res.executable).toBe(true)
+    expect(res._tag).toBe('Leaf')
+  })
+
   it('queryPush in tree mode filters tree choices', () => {
     const resolver = CommandResolver.create([configNs, bufferNs], proximities)
     resolver.toggleMode()
