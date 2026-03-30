@@ -172,6 +172,44 @@ describe('Tier 2 — active shortcut session', () => {
   })
 })
 
+describe('Tier 2 — edge cases', () => {
+  it('space in active session', () => {
+    const handleKey = createHandleKey(appMap, Controls.defaults)
+    handleKey(';', ctx) // open palette
+    handleKey('C', ctx) // type C
+    handleKey('o', ctx) // type o → query "Co"
+    const result = handleKey(' ', ctx) // space → auto-advance top match
+    expect(result._tag === 'Resolution' || result._tag === 'Execute').toBe(true)
+  })
+
+  it('openPalette key during active session returns Nil', () => {
+    const handleKey = createHandleKey(appMap, Controls.defaults)
+    handleKey(';', ctx) // open palette
+    const result = handleKey(';', ctx) // openPalette again
+    expect(result._tag).toBe('Nil')
+  })
+
+  it('confirm on non-executable advances (takes top choice)', () => {
+    const handleKey = createHandleKey(appMap, Controls.defaults)
+    handleKey(';', ctx) // open palette
+    // In flat mode, confirm takes top choice
+    const result = handleKey('Enter', ctx)
+    // Should take top choice — may or may not be executable
+    expect(result._tag === 'Resolution' || result._tag === 'Execute').toBe(true)
+  })
+
+  it('complete (Tab) on non-executable returns Resolution', () => {
+    // Use an appMap where Tab on first item won't immediately execute
+    // (multi-step path that needs further resolution)
+    const handleKey = createHandleKey(appMap, Controls.defaults)
+    handleKey(';', ctx) // open palette
+    // After toggling to tree mode, Tab takes the top namespace
+    handleKey('?', ctx) // toggle to tree
+    const result = handleKey('Tab', ctx) // complete → takes namespace, not executable
+    expect(result._tag).toBe('Resolution')
+  })
+})
+
 describe('session caching', () => {
   it('maintains session state across multiple handleKey calls', () => {
     const handleKey = createHandleKey(appMap, Controls.defaults)

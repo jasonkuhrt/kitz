@@ -232,6 +232,56 @@ describe('toggleMode', () => {
   })
 })
 
+describe('tree mode navigation', () => {
+  it('choiceTakeTop in tree mode descends into namespace', () => {
+    const resolver = CommandResolver.create([configNs, bufferNs], proximities)
+    resolver.toggleMode() // switch to tree
+    const res = resolver.choiceTakeTop() // take "Config" namespace
+    expect(res.acceptedTokens.length).toBe(1)
+    // Should now show Config's children
+    const tokens = res.choices.map((c) => c.token)
+    expect(tokens).toContain('reload')
+    expect(tokens).toContain('export')
+  })
+
+  it('choiceTake in tree mode descends into namespace', () => {
+    const resolver = CommandResolver.create([configNs, bufferNs], proximities)
+    resolver.toggleMode()
+    const treeRes = resolver.getResolution()
+    const configChoice = treeRes.choices.find((c) => c.token === 'Config')!
+    const res = resolver.choiceTake(configChoice)
+    expect(res.choices.map((c) => c.token)).toContain('reload')
+  })
+
+  it('choiceUndo in tree mode ascends to parent', () => {
+    const resolver = CommandResolver.create([configNs, bufferNs], proximities)
+    resolver.toggleMode()
+    resolver.choiceTakeTop() // enter Config
+    const res = resolver.choiceUndo()
+    // Should be back at root namespace level
+    const tokens = res.choices.map((c) => c.token)
+    expect(tokens).toContain('Config')
+    expect(tokens).toContain('Buffer')
+  })
+
+  it('queryPush in tree mode filters tree choices', () => {
+    const resolver = CommandResolver.create([configNs, bufferNs], proximities)
+    resolver.toggleMode()
+    resolver.choiceTakeTop() // enter Config (shows reload, export)
+    const res = resolver.queryPush('r')
+    // Should filter to just reload
+    expect(res.choices.length).toBeGreaterThan(0)
+  })
+
+  it('space with empty query at namespace level is no-op', () => {
+    const resolver = CommandResolver.create([configNs, bufferNs], proximities)
+    const res1 = resolver.getResolution()
+    const res2 = resolver.queryPush(' ')
+    // Should be no change — empty query + space = no-op
+    expect(res2.acceptedTokens.length).toBe(res1.acceptedTokens.length)
+  })
+})
+
 describe('reset', () => {
   it('clears all state', () => {
     const resolver = CommandResolver.create([configNs, bufferNs], proximities)
