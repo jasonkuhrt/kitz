@@ -47,7 +47,7 @@ interface ActiveSession {
 export const createHandleKey = (
   appMap: AppMapRoot,
   controls: ControlsConfig,
-  matcher: MatcherService = Matcher.substring(),
+  matcher: MatcherService = Matcher.fuzzy(),
 ) => {
   let active: ActiveSession | null = null
   let cachedPath: ReadonlyArray<string> = []

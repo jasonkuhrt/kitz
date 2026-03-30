@@ -4,6 +4,8 @@ import { createCmx } from './cmx.js'
 import { AppMap } from './app-map.js'
 import { Command } from './command.js'
 import { Capability } from './capability.js'
+import { Controls } from './controls.js'
+import { Matcher } from './matcher.js'
 
 const reload = Capability.make({ name: 'reload', execute: Effect.void })
 const exportCap = Capability.make({ name: 'export', execute: Effect.void })
@@ -27,7 +29,8 @@ const appMap = AppMap.make({
 
 describe('Cmx end-to-end', () => {
   it('handles the full palette flow: open → type → auto-advance → execute', () => {
-    const cmx = createCmx(appMap)
+    // Use substring matcher so "re" uniquely matches "Config reload"
+    const cmx = createCmx(appMap, Controls.defaults, Matcher.substring())
     const ctx = { path: [] as string[] }
 
     // Tier 1: open palette
@@ -45,7 +48,7 @@ describe('Cmx end-to-end', () => {
     const r2 = cmx.handleKey('r', ctx)
     expect(r2._tag).toBe('Resolution')
 
-    // Type 'e' — "re" matches only "Config reload" → auto-advance → Execute
+    // Type 'e' — substring "re" matches only "Config reload" → auto-advance → Execute
     const r3 = cmx.handleKey('e', ctx)
     expect(r3._tag).toBe('Execute')
     if (r3._tag !== 'Execute') throw new Error()

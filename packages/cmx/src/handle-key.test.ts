@@ -5,6 +5,7 @@ import { AppMap } from './app-map.js'
 import { Command } from './command.js'
 import { Capability } from './capability.js'
 import { Controls } from './controls.js'
+import { Matcher } from './matcher.js'
 
 const reload = Capability.make({ name: 'reload', execute: Effect.void })
 const exportCap = Capability.make({ name: 'export', execute: Effect.void })
@@ -104,20 +105,19 @@ describe('Tier 2 — active palette session', () => {
   })
 
   it('auto-advances and returns Execute when command is resolved', () => {
-    // Use a simpler appMap with no Thread commands to avoid "re" matching "reply"
+    // Use substring matcher so "re" matches only "Config reload" (not "Config export")
     const simpleMap = AppMap.make({ commands: [configNs] })
-    const handleKey = createHandleKey(simpleMap, Controls.defaults)
+    const handleKey = createHandleKey(simpleMap, Controls.defaults, Matcher.substring())
     handleKey(';', { path: [] }) // open palette
-    // Type "re" — matches only "Config reload" (Config export has no "re")
+    // Type "re" — substring matches only "Config reload" → auto-advance → Execute
     handleKey('r', { path: [] })
     const result = handleKey('e', { path: [] })
-    // After auto-advance to an executable leaf, should return Execute
     expect(result._tag).toBe('Execute')
   })
 
   it('returns to Tier 1 after Execute', () => {
     const simpleMap = AppMap.make({ commands: [configNs] })
-    const handleKey = createHandleKey(simpleMap, Controls.defaults)
+    const handleKey = createHandleKey(simpleMap, Controls.defaults, Matcher.substring())
     handleKey(';', { path: [] })
     handleKey('r', { path: [] })
     handleKey('e', { path: [] }) // Execute
@@ -240,6 +240,33 @@ describe('Tier 2 — edge cases', () => {
       const enterResult = handleKey('Enter', { path: [] })
       // Confirm on the taken state
       expect(['Resolution', 'Execute'].includes(enterResult._tag)).toBe(true)
+    }
+  })
+})
+
+describe('default matcher is fuzzy', () => {
+  it('matches out-of-order characters (fuzzy, not substring)', () => {
+    // "rl" matches "reload" via fuzzy (r...l subsequence) but NOT via substring
+    const simpleMap = AppMap.make({ commands: [configNs] })
+    const handleKey = createHandleKey(simpleMap, Controls.defaults)
+    handleKey(';', { path: [] }) // open palette
+    const r1 = handleKey('r', { path: [] })
+    // After 'r', choices should include "Config reload" (fuzzy matches 'r')
+    if (r1._tag === 'Resolution') {
+      expect(r1.resolution.choices.length).toBeGreaterThan(0)
+    }
+    const r2 = handleKey('l', { path: [] })
+    // 'rl' in order appears in "reload" as a subsequence (r-e-l-o-a-d)
+    // With substring matching, "rl" wouldn't match "reload" (no contiguous "rl")
+    // But wait — "reload" DOES contain "rl" contiguously? No, "r-e-l" — 'rl' is not contiguous.
+    // Actually "reload" → r,e,l,o,a,d — "rl" is NOT a contiguous substring.
+    // With fuzzy, 'r' and 'l' match as subsequence → should still have matches
+    if (r2._tag === 'Resolution') {
+      const matching = r2.resolution.choices.filter((c) => c.token.includes('reload'))
+      expect(matching.length).toBeGreaterThan(0)
+    } else {
+      // Auto-advanced to Execute — also valid (means it matched)
+      expect(r2._tag).toBe('Execute')
     }
   })
 })
