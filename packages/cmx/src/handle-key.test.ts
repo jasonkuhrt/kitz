@@ -157,18 +157,17 @@ describe('Tier 2 — active palette session', () => {
 })
 
 describe('Tier 2 — active shortcut session', () => {
-  it('shortcut with no slots returns executable BeginShortcut, then Tier 1', () => {
+  it('shortcut with no slots returns executable BeginShortcut, then next key is Tier 1', () => {
     const handleKey = createHandleKey(appMap, Controls.defaults)
     const result = handleKey('r', ctx) // shortcut to reload
     expect(result._tag).toBe('BeginShortcut')
     if (result._tag === 'BeginShortcut') {
       expect(result.executable).toBe(true)
     }
-    // Session should be active after BeginShortcut
-    // But since it's executable, consumer runs effect and we expect close
-    // The session stays active until consumer handles it — let's cancel
-    const result2 = handleKey('Escape', ctx)
-    expect(result2._tag).toBe('Close')
+    // An executable shortcut clears the active session immediately.
+    // The next key goes through Tier 1, not Tier 2.
+    const result2 = handleKey('x', ctx)
+    expect(result2._tag).toBe('Nil')
   })
 })
 

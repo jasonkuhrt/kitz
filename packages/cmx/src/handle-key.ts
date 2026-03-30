@@ -58,6 +58,12 @@ export const createHandleKey = (
 
     if (pathChanged) {
       cachedPath = context.path
+      // If the palette is open and the path changed (user navigated),
+      // rebuild the session so scope reflects the new position.
+      // Without this, the palette searches the old scope.
+      if (active) {
+        active = createSession(context)
+      }
     }
 
     // Update dynamic layers on the active session if they changed
@@ -102,6 +108,12 @@ export const createHandleKey = (
       )
       if (matchingChoice) {
         const afterTake = active.session.choiceTake(matchingChoice)
+        // If the shortcut resolves to an immediately executable command (no slots),
+        // clear the active session so the next key routes through Tier 1.
+        // Without this, the stale session hijacks subsequent keystrokes.
+        if (afterTake.executable) {
+          active = null
+        }
         return HKR.BeginShortcut(afterTake, afterTake.executable)
       }
       return HKR.BeginPalette(resolution)

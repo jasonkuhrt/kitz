@@ -227,6 +227,12 @@ export const CommandResolver = {
       } else if (state.acceptedTokens.length > 0) {
         const last = state.acceptedTokens.pop()!
         state.query = last.preTakeQuery
+        // In tree mode, if the popped token was a namespace that pushed
+        // onto treePath, pop treePath too. Otherwise the resolver shows
+        // child choices but the user can't navigate back to the parent.
+        if (state.mode === 'tree' && state.treePath.length > 0) {
+          state.treePath.pop()
+        }
       }
       return buildResolution(state, matcher)
     }

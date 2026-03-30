@@ -208,8 +208,15 @@ export const SlotResolver = {
       advanceToNextSlot()
     }
 
-    /** Take the top choice. */
+    /** Take the top choice — or skip if the slot is optional and query is empty. */
     const takeTop = (): void => {
+      const slot = getFocusedSlot()
+      // If the slot is optional and the user hasn't typed anything,
+      // skip the slot instead of auto-filling with the first candidate.
+      if (slot && slot.required === false && state.query.length === 0) {
+        advanceToNextSlot()
+        return
+      }
       const choices = getChoices()
       if (choices.length > 0) {
         takeChoice(choices[0]!)
