@@ -59,6 +59,7 @@ const program = Effect.gen(function*() {
       const result = yield* cmx.handleKey(key, {
         path: currentPath(),
         layers: currentLayers(),
+        state: currentState(),
       })
 
       if (result._tag === 'Nil') return
@@ -430,6 +431,8 @@ Cmx.AppMap.make({
     { key: 'l', command: focusRightCommand, local: true },
     { key: 'j', command: focusDownCommand, local: true },
     { key: 'k', command: focusUpCommand, local: true },
+    // Conditional — only active when consumer state matches the pattern
+    { key: 't', command: toggleTreeCommand, if: { viewMode: 'tree' } },
   ],
   children: [
     Cmx.AppMap.Node.make({
@@ -453,6 +456,20 @@ By default, shortcuts are __inherited__ -- active at every depth below their def
 Use `local: true` for shortcuts that only make sense at their defining scope (e.g. spatial navigation like `h`/`j`/`k`/`l` at the canvas root). Use the default (inherited) for shortcuts that should be available at every depth (e.g. scope navigation like `i`/`o`, or help toggles like `?`).
 
 A single node can have both local and inherited shortcuts. `resolveShortcut` and `getActiveShortcuts` both respect the `local` flag -- local shortcuts are excluded from resolution and from help overlays when the node is not the deepest.
+
+#### Conditional shortcuts
+
+Set `if` to a `Pat.Pattern` (from `@kitz/core`) to make a shortcut conditional on consumer state. The shortcut is only active when `Pat.isMatch(state, pattern)` returns true. The consumer passes `state` on each `handleKey` call.
+
+```typescript
+// Only active when the consumer is in tree view mode
+{ key: 't', command: collapseAllCommand, if: { viewMode: 'tree' } }
+
+// Only active when there's a selection
+{ key: 'd', command: deleteCommand, if: { hasSelection: true } }
+```
+
+`if` and `local` are orthogonal -- both must pass for the shortcut to be active. A shortcut with `if: { mode: 'tree' }, local: true` only fires when the node is deepest __and__ state matches. When no `state` is passed to `handleKey`, conditional shortcuts are inactive (state defaults to `{}`).
 
 The `key` field is typed as `Key | Hotkey` from [`@tanstack/hotkeys`](https://github.com/TanStack/hotkeys) -- full IDE autocomplete for key names and modifier combos (`Mod+S`, `Control+Alt+Delete`), static rejection of invalid key names. The `command` field references actual command objects -- type-safe, not string-typed. All types are on the definition side; consumers write string literals and inference handles the rest.
 
@@ -484,6 +501,7 @@ const program = Effect.gen(function*() {
       const result = yield* cmx.handleKey(key, {
         path: currentPath(),
         layers: currentLayers(),
+        state: currentState(),
       })
 
       if (result._tag === 'Nil') return
@@ -523,7 +541,7 @@ __Tier 2 results__ (session active -- palette or shortcut with slots):
 
 cmx caches the session. Once `BeginPalette` or `BeginShortcut` fires, subsequent keys return Tier 2 results until `Execute` or `Close`. The surface never manages session lifecycle.
 
-__Path and layers__ are passed on each `handleKey` call -- not fixed at creation. cmx computes scope lazily, caching internally and recomputing only when the path changes. The consumer provides the current path from whatever source it uses (router, Ref, React state).
+__Path, layers, and state__ are passed on each `handleKey` call -- not fixed at creation. cmx computes scope lazily, caching internally and recomputing only when the path changes. The consumer provides the current path from whatever source it uses (router, Ref, React state). `state` is an optional `Record<string, unknown>` used to evaluate conditional shortcuts -- shortcuts with an `if` pattern are only active when state matches.
 
 __Controls__ determine how keys map to internal operations (which key opens the palette, which key confirms, etc.). Provided as an Effect service via the dependency graph, not passed to `handleKey`. Key fields are typed as `Key` from `@tanstack/hotkeys` -- write string literals, get autocomplete:
 
@@ -783,7 +801,7 @@ The consumer's single entry point. Takes a `Key` (from `@tanstack/hotkeys`) and 
 
 #### shortcut
 
-A direct key-to-command mapping registered at an AppMap node. `key` is typed as `Key | Hotkey` from `@tanstack/hotkeys`. `command` references actual command objects. Closer shortcuts shadow farther ones. Set `local: true` to restrict to the defining node only.
+A direct key-to-command mapping registered at an AppMap node. `key` is typed as `Key | Hotkey` from `@tanstack/hotkeys`. `command` references actual command objects. Closer shortcuts shadow farther ones. Set `local: true` to restrict to the defining node only. Set `if` to a `Pat.Pattern` to make conditional on consumer state.
 
 #### Matcher
 
