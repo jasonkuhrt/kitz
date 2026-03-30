@@ -1,4 +1,5 @@
 import type { Layer } from 'effect'
+import { Pat } from '@kitz/core'
 import type { AnyCommand, CommandLeaf, CommandHybrid } from './command.js'
 import { CmxInvalidPath, CmxDuplicateNamespace } from './errors.js'
 
@@ -16,6 +17,16 @@ export interface Shortcut {
    * (e.g. scope navigation like i/o, or help toggles like ?).
    */
   readonly local?: boolean
+  /**
+   * When present, this shortcut is only active when `Pat.isMatch(state, if)` is true.
+   * Orthogonal to `local` — both conditions must pass for the shortcut to be active.
+   */
+  readonly if?: Pat.Pattern
+}
+
+/** Options passed to functions that filter shortcuts by consumer state. */
+export interface ShortcutContext {
+  readonly state?: Record<string, unknown>
 }
 
 /** A named region in the AppMap. */
@@ -70,7 +81,7 @@ const resolveChain = (
  * Compute the scope from an AppMap at a given path.
  * Walks deepest-first, collecting commands, shortcuts, and proximity values.
  */
-const computeScope = (root: AppMapRoot, path: ReadonlyArray<string>): Scope => {
+const computeScope = (root: AppMapRoot, path: ReadonlyArray<string>, context?: ShortcutContext): Scope => {
   const chain = resolveChain(root, path)
   const commands: AnyCommand[] = []
   const shortcuts: Shortcut[] = []
@@ -96,6 +107,7 @@ const computeScope = (root: AppMapRoot, path: ReadonlyArray<string>): Scope => {
 
     for (const kb of node.shortcuts) {
       if (kb.local && i !== chain.length - 1) continue
+      if (kb.if && !Pat.isMatch(context?.state ?? {}, kb.if)) continue
       shortcuts.push(kb)
     }
   }
@@ -110,6 +122,7 @@ const resolveShortcut = (
   root: AppMapRoot,
   path: ReadonlyArray<string>,
   key: string,
+  context?: ShortcutContext,
 ): Shortcut | null => {
   const chain = resolveChain(root, path)
   // Walk deepest-first — closer bindings shadow farther ones
@@ -117,6 +130,7 @@ const resolveShortcut = (
     const node = chain[i]!
     for (const kb of node.shortcuts) {
       if (kb.local && i !== chain.length - 1) continue
+      if (kb.if && !Pat.isMatch(context?.state ?? {}, kb.if)) continue
       if (kb.key === key) return kb
     }
   }
@@ -129,6 +143,7 @@ const resolveShortcut = (
 const getActiveShortcuts = (
   root: AppMapRoot,
   path: ReadonlyArray<string>,
+  context?: ShortcutContext,
 ): ReadonlyArray<{
   readonly nodeName: string
   readonly shortcuts: ReadonlyArray<Shortcut>
@@ -138,7 +153,11 @@ const getActiveShortcuts = (
   for (let i = chain.length - 1; i >= 0; i--) {
     const node = chain[i]!
     const nodeName = i === 0 ? '(root)' : (node as AppMapNode).name
-    const activeShortcuts = node.shortcuts.filter((kb) => !kb.local || i === chain.length - 1)
+    const state = context?.state ?? {}
+    const activeShortcuts = node.shortcuts.filter(
+      (kb) =>
+        (!kb.local || i === chain.length - 1) && (!kb.if || Pat.isMatch(state, kb.if)),
+    )
     if (activeShortcuts.length > 0) {
       result.push({ nodeName, shortcuts: activeShortcuts })
     }

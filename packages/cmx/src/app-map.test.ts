@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { Effect } from 'effect'
+import { Pat } from '@kitz/core'
 import { AppMap } from './app-map.js'
 import { Command } from './command.js'
 import { Capability } from './capability.js'
@@ -295,5 +296,107 @@ describe('AppMap.getActiveShortcuts', () => {
       const groups = AppMap.getActiveShortcuts(allLocalMap, ['workspace'])
       expect(groups.find((g) => g.nodeName === '(root)')).toBeUndefined()
     })
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────
+// Conditional shortcuts via `if` (Pat.isMatch on consumer state)
+// ─────────────────────────────────────────────────────────────────
+
+describe('AppMap.resolveShortcut conditional (if)', () => {
+  const condMap = AppMap.make({
+    shortcuts: [
+      { key: 't', command: navCmd, if: { mode: 'tree' } satisfies Pat.Pattern },
+    ],
+    children: [
+      AppMap.Node.make({
+        name: 'workspace',
+        shortcuts: [{ key: 'n', command: reloadCmd }],
+      }),
+    ],
+  })
+
+  it('fires when state matches the if pattern', () => {
+    const kb = AppMap.resolveShortcut(condMap, [], 't', { state: { mode: 'tree' } })
+    expect(kb?.command).toBe(navCmd)
+  })
+
+  it('does NOT fire when state does not match', () => {
+    const kb = AppMap.resolveShortcut(condMap, [], 't', { state: { mode: 'node' } })
+    expect(kb).toBeNull()
+  })
+
+  it('shortcut without if fires regardless of state', () => {
+    const kb = AppMap.resolveShortcut(condMap, ['workspace'], 'n', { state: { mode: 'node' } })
+    expect(kb?.command).toBe(reloadCmd)
+  })
+
+  it('if and local are orthogonal — both must pass', () => {
+    const bothMap = AppMap.make({
+      shortcuts: [
+        { key: 'x', command: navCmd, local: true, if: { mode: 'tree' } satisfies Pat.Pattern },
+      ],
+      children: [
+        AppMap.Node.make({ name: 'workspace', shortcuts: [] }),
+      ],
+    })
+    // local passes (root is deepest), if passes (state matches)
+    expect(AppMap.resolveShortcut(bothMap, [], 'x', { state: { mode: 'tree' } })?.command).toBe(
+      navCmd,
+    )
+    // local passes (root is deepest), if fails (state doesn't match)
+    expect(AppMap.resolveShortcut(bothMap, [], 'x', { state: { mode: 'node' } })).toBeNull()
+    // local fails (root is not deepest), if passes
+    expect(
+      AppMap.resolveShortcut(bothMap, ['workspace'], 'x', { state: { mode: 'tree' } }),
+    ).toBeNull()
+  })
+
+  it('missing state defaults to {} — shortcuts with if do not match', () => {
+    const kb = AppMap.resolveShortcut(condMap, [], 't')
+    expect(kb).toBeNull()
+  })
+})
+
+describe('AppMap.computeScope conditional (if)', () => {
+  const condMap = AppMap.make({
+    shortcuts: [
+      { key: 't', command: navCmd, if: { mode: 'tree' } satisfies Pat.Pattern },
+      { key: '?', command: closeCmd },
+    ],
+  })
+
+  it('includes shortcut when state matches', () => {
+    const scope = AppMap.computeScope(condMap, [], { state: { mode: 'tree' } })
+    expect(scope.shortcuts.map((s) => s.key)).toContain('t')
+  })
+
+  it('excludes shortcut when state does not match', () => {
+    const scope = AppMap.computeScope(condMap, [], { state: { mode: 'node' } })
+    expect(scope.shortcuts.map((s) => s.key)).not.toContain('t')
+    expect(scope.shortcuts.map((s) => s.key)).toContain('?')
+  })
+})
+
+describe('AppMap.getActiveShortcuts conditional (if)', () => {
+  const condMap = AppMap.make({
+    shortcuts: [
+      { key: 't', command: navCmd, if: { mode: 'tree' } satisfies Pat.Pattern },
+      { key: '?', command: closeCmd },
+    ],
+  })
+
+  it('filters shortcuts by state pattern', () => {
+    const groups = AppMap.getActiveShortcuts(condMap, [], { state: { mode: 'tree' } })
+    const rootGroup = groups.find((g) => g.nodeName === '(root)')
+    expect(rootGroup?.shortcuts.map((s) => s.key)).toContain('t')
+    expect(rootGroup?.shortcuts.map((s) => s.key)).toContain('?')
+  })
+
+  it('excludes non-matching shortcuts', () => {
+    const groups = AppMap.getActiveShortcuts(condMap, [], { state: { mode: 'node' } })
+    const rootGroup = groups.find((g) => g.nodeName === '(root)')
+    expect(rootGroup?.shortcuts.map((s) => s.key)).not.toContain('t')
+    expect(rootGroup?.shortcuts.map((s) => s.key)).toContain('?')
   })
 })

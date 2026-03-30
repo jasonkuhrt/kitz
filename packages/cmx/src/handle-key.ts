@@ -20,6 +20,11 @@ export interface HandleKeyContext {
    * the executable Effect for a resolved capability.
    */
   readonly layers?: Record<string, Layer.Layer<any>>
+  /**
+   * Consumer state used for conditional shortcut evaluation.
+   * Shortcuts with an `if` pattern are only active when `Pat.isMatch(state, if)` is true.
+   */
+  readonly state?: Record<string, unknown>
 }
 
 /** Active session wrapping the Session state machine. */
@@ -68,7 +73,7 @@ export const createHandleKey = (
   }
 
   const createSession = (context: HandleKeyContext): ActiveSession => {
-    const scope = AppMap.computeScope(appMap, context.path)
+    const scope = AppMap.computeScope(appMap, context.path, context)
     const session = Session.create(scope.commands, scope.proximities, {
       dynamicLayers: context.layers ?? {},
       scopeLayers: collectScopeLayers(appMap, context.path),
@@ -86,7 +91,7 @@ export const createHandleKey = (
     }
 
     // Check shortcuts
-    const kb = AppMap.resolveShortcut(appMap, context.path, key)
+    const kb = AppMap.resolveShortcut(appMap, context.path, key, context)
     if (kb) {
       active = createSession(context)
       // Pre-position at the shortcut's command
