@@ -129,6 +129,12 @@ export const SlotResolver = {
 
     const getFocusedSlot = (): AnySlot | null => state.slots[state.focusedIndex] ?? null
 
+    /** Inject loaded candidates for a Fuzzy slot. Called after running the slot's source Effect. */
+    const setCandidates = (slotName: string, candidates: SlotCandidate<unknown>[]): void => {
+      state.cachedCandidates.set(slotName, candidates)
+      state.loading = false
+    }
+
     const getChoices = (): Choice[] => buildSlotChoices(state, matcher)
 
     const getSlotStates = (): SlotState[] => buildSlotStates(state)
@@ -299,6 +305,7 @@ export const SlotResolver = {
       isComplete,
       isLoading,
       isPastEnd,
+      setCandidates,
       queryPush,
       queryUndo,
       takeChoice,

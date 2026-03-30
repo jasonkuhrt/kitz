@@ -253,6 +253,70 @@ describe('SlotResolver — takeChoice edge cases', () => {
   })
 })
 
+describe('SlotResolver — Fuzzy slot', () => {
+  it('returns choices after candidates are loaded', () => {
+    const fuzzySlot = Slot.Fuzzy.make({
+      name: 'project',
+      schema: S.String,
+      source: Effect.succeed([
+        { value: 'alpha', label: 'alpha', description: 'Project Alpha' },
+        { value: 'beta', label: 'beta', description: 'Project Beta' },
+        { value: 'gamma', label: 'gamma', description: 'Project Gamma' },
+      ]),
+    })
+    const resolver = SlotResolver.create([fuzzySlot])
+    expect(resolver.getChoices()).toEqual([]) // no candidates loaded yet
+
+    // Simulate running the source Effect and injecting candidates
+    resolver.setCandidates('project', [
+      { value: 'alpha', label: 'alpha', description: 'Project Alpha' },
+      { value: 'beta', label: 'beta', description: 'Project Beta' },
+      { value: 'gamma', label: 'gamma', description: 'Project Gamma' },
+    ])
+
+    const choices = resolver.getChoices()
+    expect(choices.length).toBe(3)
+    expect(choices.map((c) => c.token)).toEqual(['alpha', 'beta', 'gamma'])
+  })
+
+  it('filters candidates by query', () => {
+    const fuzzySlot = Slot.Fuzzy.make({
+      name: 'project',
+      schema: S.String,
+      source: Effect.succeed([
+        { value: 'alpha', label: 'alpha' },
+        { value: 'beta', label: 'beta' },
+        { value: 'apex', label: 'apex' },
+      ]),
+    })
+    const resolver = SlotResolver.create([fuzzySlot])
+    resolver.setCandidates('project', [
+      { value: 'alpha', label: 'alpha' },
+      { value: 'beta', label: 'beta' },
+      { value: 'apex', label: 'apex' },
+    ])
+    // 'a' is in "alpha", "beta", and "apex" — but 'p' narrows to "alpha" and "apex" (2/3)
+    resolver.queryPush('p')
+    const choices = resolver.getChoices()
+    expect(choices.length).toBe(2)
+    expect(choices.map((c) => c.token).sort()).toEqual(['alpha', 'apex'])
+  })
+
+  it('taking a fuzzy choice records the underlying value', () => {
+    const fuzzySlot = Slot.Fuzzy.make({
+      name: 'project',
+      schema: S.String,
+      source: Effect.succeed([{ value: 'proj-123', label: 'alpha' }]),
+    })
+    const resolver = SlotResolver.create([fuzzySlot])
+    resolver.setCandidates('project', [{ value: 'proj-123', label: 'alpha' }])
+    const choices = resolver.getChoices()
+    resolver.takeChoice(choices[0])
+    const states = resolver.getSlotStates()
+    expect(states[0].value).toBe('proj-123')
+  })
+})
+
 describe('SlotResolver — takeTop', () => {
   it('takes the first choice', () => {
     const resolver = SlotResolver.create([formatSlot])
