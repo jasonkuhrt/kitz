@@ -52,6 +52,7 @@ const makeConfig = (
       releaseCommand: 'bun run release',
       prepareCommands: ['bun run release:build'],
     }),
+    resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
     lint: Api.Lint.resolveConfig({
       defaults: Api.Lint.RuleDefaults.make({
         enabled: 'auto',
@@ -774,6 +775,7 @@ describe('pr preview coverage', () => {
             releaseCommand: 'bun run release',
             prepareCommands: ['bun run release:build'],
           }),
+          resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
           lint: Api.Lint.resolveConfig({
             defaults: Api.Lint.RuleDefaults.make({
               enabled: 'auto',

@@ -27,6 +27,7 @@ const makeResolvedConfig = (
       releaseCommand: 'bun run release',
       prepareCommands: [],
     }),
+    resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
     lint: Api.Lint.resolveConfig({}),
   })
 
