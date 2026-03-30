@@ -11,6 +11,7 @@
  * ```
  */
 
+import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Flo } from '@kitz/flo'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
@@ -366,7 +367,10 @@ export const ReleaseWorkflow = Flo.Workflow.make({
           // Generate changelog for release body
           const changelog = yield* Notes.format({
             scope: release.packageName,
-            commits: release.commits,
+            commits: release.commits.map((c) => ({
+              ...c,
+              type: ConventionalCommits.Type.parse(c.type),
+            })),
             newVersion: release.nextVersion,
           })
 

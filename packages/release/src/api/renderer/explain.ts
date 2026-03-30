@@ -39,7 +39,7 @@ export const renderExplanation = (explanation: PackageExplanation): string => {
     for (const commit of explanation.commits) {
       const scopedCommit = commit.forScope(explanation.package.scope)
       const shortHash = String(commit.hash).slice(0, 7)
-      output`- ${shortHash} ${scopedCommit.type}${scopedCommit.breaking ? '!' : ''}: ${scopedCommit.description}`
+      output`- ${shortHash} ${scopedCommit.type.value}${scopedCommit.breaking ? '!' : ''}: ${scopedCommit.description}`
     }
     return output.render()
   }

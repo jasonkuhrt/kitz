@@ -83,7 +83,7 @@ const buildCommitDisplays = (
     return CommitDisplay.make({
       shortSha: scoped.hash.slice(0, 7),
       subject: scoped.description,
-      type: scoped.type,
+      type: scoped.type.value,
       breaking: scoped.breaking,
       commitUrl: `${baseUrl}/commit/${scoped.hash}`,
     })
