@@ -4,13 +4,14 @@
  * Pure formatters that convert structured commit data to markdown.
  */
 
+import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Effect } from 'effect'
 
 /**
  * A commit entry for release note generation.
  */
 export interface CommitEntry {
-  readonly type: string
+  readonly type: ConventionalCommits.Type.Type
   readonly message: string
   readonly hash: string
   readonly breaking: boolean
@@ -45,7 +46,7 @@ export interface FormattedNotes {
  * ```ts
  * const notes = Effect.runSync(format({
  *   scope: '@kitz/core',
- *   commits: [{ type: 'feat', message: 'add new API', hash: 'abc123', breaking: false }],
+ *   commits: [{ type: ConventionalCommits.Type.parse('feat'), message: 'add new API', hash: 'abc123', breaking: false }],
  *   newVersion: '1.0.0',
  * }))
  * ```
@@ -55,8 +56,8 @@ export const format = (options: FormatOptions): Effect.Effect<FormattedNotes> =>
     const { scope, commits, newVersion } = options
 
     const breaking = commits.filter((c) => c.breaking)
-    const features = commits.filter((c) => c.type === 'feat' && !c.breaking)
-    const fixes = commits.filter((c) => c.type === 'fix' && !c.breaking)
+    const features = commits.filter((c) => c.type.value === 'feat' && !c.breaking)
+    const fixes = commits.filter((c) => c.type.value === 'fix' && !c.breaking)
 
     const lines: string[] = [`## ${scope} v${newVersion}`, '']
 

@@ -24,6 +24,7 @@ import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Layer } from 'effect'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
+import { resolveDiffRemote } from '../pr-preview-diff.js'
 import { PreviewBlockingError, runPrPreview } from '../pr-preview.js'
 import { formatHelp, helpFlags, parseAction } from './pr-lib.js'
 
@@ -68,9 +69,15 @@ const preparePrTitle = Effect.gen(function* () {
   }
 
   const tags = yield* git.getTags()
-  const analysis = yield* Api.Analyzer.analyze({ packages, tags })
+  const remote = resolveDiffRemote(config)
+  const analysis = yield* Api.Analyzer.analyze({
+    packages,
+    tags,
+    since: `${remote}/${pullRequest.base.ref}`,
+    resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
+  })
   const projectedHeader = Api.ProjectedSquashCommit.renderHeader({
-    impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis),
+    impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis, { primaryOnly: true }),
   })
 
   if (!projectedHeader) {

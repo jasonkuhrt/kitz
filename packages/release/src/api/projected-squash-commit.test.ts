@@ -91,6 +91,74 @@ describe('projected squash commit', () => {
     expect(result.inSync).toBe(false)
   })
 
+  test('primaryOnly excludes patch-only scopes when feat-level scopes exist', () => {
+    const result = collectScopeImpacts(
+      {
+        impacts: [
+          makeImpact('cmx', 'minor'),
+          makeImpact('fuzzy', 'minor'),
+          makeImpact('cli', 'patch'),
+          makeImpact('github', 'patch'),
+          makeImpact('kitz', 'patch'),
+        ],
+      },
+      { primaryOnly: true },
+    )
+
+    expect(result).toEqual([
+      { scope: 'cmx', bump: 'minor' },
+      { scope: 'fuzzy', bump: 'minor' },
+    ])
+  })
+
+  test('primaryOnly returns all scopes when only patch-level impacts exist', () => {
+    const result = collectScopeImpacts(
+      {
+        impacts: [
+          makeImpact('cli', 'patch'),
+          makeImpact('github', 'patch'),
+          makeImpact('kitz', 'patch'),
+        ],
+      },
+      { primaryOnly: true },
+    )
+
+    expect(result).toEqual([
+      { scope: 'cli', bump: 'patch' },
+      { scope: 'github', bump: 'patch' },
+      { scope: 'kitz', bump: 'patch' },
+    ])
+  })
+
+  test('primaryOnly includes major-level scopes alongside minor-level scopes', () => {
+    const result = collectScopeImpacts(
+      {
+        impacts: [
+          makeImpact('core', 'major'),
+          makeImpact('cmx', 'minor'),
+          makeImpact('cli', 'patch'),
+        ],
+      },
+      { primaryOnly: true },
+    )
+
+    expect(result).toEqual([
+      { scope: 'cmx', bump: 'minor' },
+      { scope: 'core', bump: 'major' },
+    ])
+  })
+
+  test('primaryOnly=false (default) returns all scopes regardless of bump level', () => {
+    const result = collectScopeImpacts({
+      impacts: [makeImpact('cmx', 'minor'), makeImpact('cli', 'patch')],
+    })
+
+    expect(result).toEqual([
+      { scope: 'cli', bump: 'patch' },
+      { scope: 'cmx', bump: 'minor' },
+    ])
+  })
+
   test('treats an empty title as already in sync when there are no impacts', () => {
     const result = preview({
       actualTitle: '   ',

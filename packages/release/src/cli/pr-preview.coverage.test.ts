@@ -52,6 +52,7 @@ const makeConfig = (
       releaseCommand: 'bun run release',
       prepareCommands: ['bun run release:build'],
     }),
+    resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
     lint: Api.Lint.resolveConfig({
       defaults: Api.Lint.RuleDefaults.make({
         enabled: 'auto',
@@ -747,5 +748,69 @@ describe('pr preview coverage', () => {
     })
     expect(capturedUpdate?.interactiveChecklist).toBe(true)
     expect(capturedUpdate?.projectedSquashCommit?.projectedHeader).toContain('feat(core)')
+  })
+
+  test('passes resolved remote (not hard-coded origin) to analyzer since parameter', async () => {
+    let capturedSince: string | undefined
+    const analysis = makeAnalysis()
+
+    const makeConfigWithRemote = () =>
+      Api.Config.ResolvedConfig.make({
+        trunk: 'main',
+        npmTag: 'latest',
+        candidateTag: 'next',
+        packages: { core: '@kitz/core' },
+        publishing: Api.Publishing.defaultPublishing(),
+        operator: Api.Operator.ResolvedOperator.make({
+          manager: Pkg.Manager.DetectedPackageManager.make({
+            name: 'bun',
+            source: 'runtime',
+          }),
+          releaseCommand: 'bun run release',
+          prepareCommands: ['bun run release:build'],
+        }),
+        resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
+        lint: Api.Lint.resolveConfig({
+          defaults: Api.Lint.RuleDefaults.make({
+            enabled: 'auto',
+            severity: Severity.Warn.make({}),
+          }),
+          rules: {
+            'env.git-remote': Api.Lint.RuleConfig.make({
+              overrides: Api.Lint.RuleDefaults.make({
+                enabled: true,
+                severity: Severity.Error.make({}),
+              }),
+              options: {
+                remote: 'upstream',
+              },
+            }),
+          },
+        }),
+      })
+
+    await Effect.runPromise(
+      assumePure(
+        runPrPreview(
+          { checkOnly: true },
+          {
+            loadConfig: () => Effect.succeed(makeConfigWithRemote()),
+            resolvePackages: () => Effect.succeed([corePackage]),
+            resolvePullRequestContext: () => Effect.succeed(makePullRequestContext()),
+            exploreFromContext: () => Effect.succeed(makeRuntime()),
+            getTags: () => Effect.succeed([]),
+            analyze: (options) => {
+              capturedSince = options.since
+              return Effect.succeed(analysis)
+            },
+            loadPullRequestDiff: () => Effect.succeed({ files: [], affectedPackages: [] }),
+            buildPreviewDoctorSummary: () => Effect.succeed({ blocking: false }),
+          },
+        ),
+      ),
+    )
+
+    // Expected: uses the configured remote 'upstream' instead of hard-coded 'origin'
+    expect(capturedSince).toBe('upstream/main')
   })
 })

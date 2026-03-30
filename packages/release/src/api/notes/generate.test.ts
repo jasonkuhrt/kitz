@@ -4,7 +4,10 @@ import { Pkg } from '@kitz/pkg'
 import { Effect } from 'effect'
 import { describe, expect, test } from 'vitest'
 import type { Package } from '../analyzer/workspace.js'
+import { resolveConventionalCommitTypes } from '../config.js'
 import { generate } from './generate.js'
+
+const defaultTypes = resolveConventionalCommitTypes({})
 
 const packages: Package[] = [
   {
@@ -24,6 +27,7 @@ describe('Notes.generate', () => {
         packages,
         tags: [],
         until: olderHash,
+        resolvedConventionalCommitTypes: defaultTypes,
       }).pipe(
         Effect.provide(
           Git.Memory.make({
@@ -52,6 +56,7 @@ describe('Notes.generate', () => {
         tags: ['@kitz/core@1.0.0', '@kitz/core@1.0.1'],
         since: '@kitz/core@1.0.0',
         until: '@kitz/core@1.0.1',
+        resolvedConventionalCommitTypes: defaultTypes,
       }).pipe(
         Effect.provide(
           Git.Memory.make({
@@ -87,6 +92,7 @@ describe('Notes.generate', () => {
         const baseGit = yield* Git.Git
 
         return yield* generate({
+          resolvedConventionalCommitTypes: defaultTypes,
           packages,
           tags: ['@kitz/core@1.0.0'],
           since: '@kitz/core@1.0.0',
@@ -124,6 +130,7 @@ describe('Notes.generate', () => {
         const baseGit = yield* Git.Git
 
         return yield* generate({
+          resolvedConventionalCommitTypes: defaultTypes,
           packages,
           tags: ['@kitz/core@1.0.0'],
           since: '@kitz/core@1.0.0',
@@ -163,6 +170,7 @@ describe('Notes.generate', () => {
         const baseGit = yield* Git.Git
 
         return yield* generate({
+          resolvedConventionalCommitTypes: defaultTypes,
           packages,
           tags: ['@kitz/core@1.0.0'],
           since: '@kitz/core@1.0.0',
@@ -220,6 +228,7 @@ describe('Notes.generate', () => {
         tags: ['@kitz/core@1.0.0'],
         since: '@kitz/core@1.0.0',
         until: '@kitz/core@9.9.9',
+        resolvedConventionalCommitTypes: defaultTypes,
       }).pipe(
         Effect.provide(
           Git.Memory.make({

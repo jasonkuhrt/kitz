@@ -3,6 +3,7 @@ import type { PlatformError } from 'effect/PlatformError'
 import { Conf } from '@kitz/conf'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
+import { Semver } from '@kitz/semver'
 import { Effect, Schema } from 'effect'
 import type { PackageMap } from './analyzer/workspace.js'
 import * as LintConfig from './lint/models/config.js'
@@ -23,6 +24,53 @@ const PackageMapSchema = Schema.Record(
   Schema.String,
   Schema.Union([Schema.String, PackageConfigEntrySchema]),
 )
+
+/**
+ * Conventional commit type→bump mapping.
+ *
+ * `null` removes a standard type from the recognized set.
+ * Non-null values define the bump level for that type.
+ */
+const CustomTypesSchema = Schema.Record(Schema.String, Schema.NullOr(Semver.BumpType))
+export type CustomTypes = typeof CustomTypesSchema.Type
+
+/**
+ * Conventional commit settings.
+ */
+const ConventionalCommitSettingsSchema = Schema.Struct({
+  types: CustomTypesSchema.pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(() => ({}) as CustomTypes),
+  ),
+})
+export type ConventionalCommitSettings = typeof ConventionalCommitSettingsSchema.Type
+
+const defaultConventionalCommitSettings = (): ConventionalCommitSettings => ({
+  types: {},
+})
+
+/**
+ * Resolve the full type→bump map by merging user overrides over StandardImpact defaults.
+ *
+ * Returns only types with non-null impacts (null removes a type).
+ */
+export const resolveConventionalCommitTypes = (
+  userTypes: CustomTypes,
+): Record<string, Semver.BumpType> => {
+  const standardDefaults: Record<string, Semver.BumpType> = {
+    feat: 'minor',
+    fix: 'patch',
+    docs: 'patch',
+    perf: 'patch',
+  }
+
+  const merged = { ...standardDefaults, ...userTypes }
+  const result: Record<string, Semver.BumpType> = {}
+  for (const [key, value] of Object.entries(merged)) {
+    if (value !== null) result[key] = value
+  }
+  return result
+}
 
 /**
  * Release configuration schema (input from file).
@@ -55,6 +103,11 @@ export class Config extends Schema.Class<Config>('Config')({
   ),
   /** Operator-facing command surface for local guidance and runbooks. */
   operator: Operator.pipe(Schema.optionalKey, Schema.withDecodingDefaultKey(defaultOperator)),
+  /** Conventional commit settings (custom type→bump mappings). */
+  conventionalCommitSettings: ConventionalCommitSettingsSchema.pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(defaultConventionalCommitSettings),
+  ),
   /** Lint configuration */
   lint: Schema.optional(LintConfig.Config),
 }) {
@@ -71,6 +124,11 @@ export class Config extends Schema.Class<Config>('Config')({
 /**
  * Resolved release configuration schema (after merging and resolution).
  */
+/**
+ * Resolved type→bump map. Only types with non-null impacts (standard defaults merged with user overrides).
+ */
+const ResolvedTypesSchema = Schema.Record(Schema.String, Semver.BumpType)
+
 export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig')({
   trunk: Schema.String,
   npmTag: Schema.String,
@@ -78,6 +136,8 @@ export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig
   packages: PackageMapSchema,
   publishing: Publishing,
   operator: ResolvedOperator,
+  /** Resolved type→bump mapping (standard defaults merged with user customTypes, nulls removed). */
+  resolvedConventionalCommitTypes: ResolvedTypesSchema,
   lint: LintConfig.ResolvedConfig,
 }) {
   static is = Schema.is(ResolvedConfig)
@@ -143,8 +203,11 @@ export type ConfigError = Conf.File.LoadError | OperatorResolveError
  * Call-site overrides for config loading.
  * Derived from schema types - any field can be overridden.
  */
-export type LoadOptions = Partial<Omit<typeof Config.Type, 'lint'>> & {
+export type LoadOptions = Partial<
+  Omit<typeof Config.Type, 'lint' | 'conventionalCommitSettings'>
+> & {
   readonly lint?: Partial<typeof LintConfig.Config.Type>
+  readonly conventionalCommitSettings?: ConventionalCommitSettings
 }
 
 /**
@@ -167,6 +230,11 @@ export const load = (
       options?.operator ?? fileConfig.operator ?? defaultOperator(),
     )
 
+    const conventionalCommitSettings =
+      options?.conventionalCommitSettings ??
+      fileConfig.conventionalCommitSettings ??
+      defaultConventionalCommitSettings()
+
     return ResolvedConfig.make({
       trunk: options?.trunk ?? fileConfig.trunk ?? 'main',
       npmTag: options?.npmTag ?? fileConfig.npmTag ?? 'latest',
@@ -174,6 +242,9 @@ export const load = (
       packages: options?.packages ?? fileConfig.packages ?? {},
       publishing: options?.publishing ?? fileConfig.publishing ?? defaultPublishing(),
       operator,
+      resolvedConventionalCommitTypes: resolveConventionalCommitTypes(
+        conventionalCommitSettings.types ?? {},
+      ),
       lint: LintConfig.resolveConfig({
         defaults: options?.lint?.defaults ?? fileConfig.lint?.defaults,
         rules: options?.lint?.rules ?? fileConfig.lint?.rules,

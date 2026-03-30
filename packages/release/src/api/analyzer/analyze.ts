@@ -35,6 +35,9 @@ export interface AnalyzeOptions {
   readonly filter?: readonly string[] | undefined
   /** Packages to exclude by name */
   readonly exclude?: readonly string[] | undefined
+  /** Resolved type→bump mapping from config. Custom types with configured bumps
+   *  generate impacts; unrecognized types return null (lint catches them). */
+  readonly resolvedConventionalCommitTypes: import('./version.js').ResolvedConventionalCommitTypes
 }
 
 const findLatestReleaseTag = (pkg: Package, tags: readonly string[]): string | undefined => {
@@ -165,7 +168,7 @@ export const analyze = (
     // packages.  Individual failures surface as empty impact arrays, so
     // a single malformed commit won't abort the pipeline.
     const allImpacts = yield* Effect.all(
-      commits.map((c) => extractImpacts(c)),
+      commits.map((c) => extractImpacts(c, options.resolvedConventionalCommitTypes)),
       { concurrency: 'unbounded' },
     )
     const flatImpacts = allImpacts.flat().filter((impact) => {

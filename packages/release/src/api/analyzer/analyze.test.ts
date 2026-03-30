@@ -4,7 +4,10 @@ import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Effect, Layer } from 'effect'
 import { describe, expect, test } from 'vitest'
+import { resolveConventionalCommitTypes } from '../config.js'
 import { analyze } from './analyze.js'
+
+const defaultTypes = resolveConventionalCommitTypes({})
 
 const repoRoot = Fs.Path.AbsDir.fromString('/repo/')
 
@@ -62,6 +65,7 @@ describe('analyzer.analyze', () => {
         until: cliFeature.hash,
         filter: ['core', 'cli', 'utils'],
         exclude: ['@kitz/cli'],
+        resolvedConventionalCommitTypes: defaultTypes,
       }).pipe(Effect.provide(layer)),
     )
 
@@ -101,6 +105,7 @@ describe('analyzer.analyze', () => {
         tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0'],
         until: '@kitz/core@1.0.0',
         filter: ['core'],
+        resolvedConventionalCommitTypes: defaultTypes,
       }).pipe(Effect.provide(layer)),
     )
 
@@ -134,6 +139,7 @@ describe('analyzer.analyze', () => {
         packages,
         tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0', '@kitz/utils@1.0.0'],
         filter: ['core', 'utils'],
+        resolvedConventionalCommitTypes: defaultTypes,
       }).pipe(Effect.provide(layer)),
     )
 
@@ -181,6 +187,7 @@ describe('analyzer.analyze', () => {
         until: '@kitz/core@1.0.0',
         packages: [makePackage('core')],
         tags,
+        resolvedConventionalCommitTypes: defaultTypes,
       }).pipe(
         Effect.provide(
           Layer.mergeAll(

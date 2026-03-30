@@ -7,7 +7,7 @@ import { Option } from 'effect'
  */
 export interface ScopedCommitInfo {
   readonly hash: Git.Sha.Sha
-  readonly type: string
+  readonly type: ConventionalCommits.Type.Type
   readonly description: string
   readonly breaking: boolean
 }
@@ -44,7 +44,7 @@ export class ReleaseCommit extends Git.ParsedCommit<ReleaseCommit>()(
     if (ConventionalCommits.Commit.Single.is(parsed)) {
       return {
         hash,
-        type: parsed.type.value,
+        type: parsed.type,
         description: parsed.message,
         breaking: parsed.breaking,
       }
@@ -55,7 +55,7 @@ export class ReleaseCommit extends Git.ParsedCommit<ReleaseCommit>()(
 
     return {
       hash,
-      type: target?.type.value ?? 'chore',
+      type: target?.type ?? ConventionalCommits.Type.parse('chore'),
       description: parsed.message,
       breaking: target?.breaking ?? false,
     }

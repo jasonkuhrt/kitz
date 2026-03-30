@@ -54,6 +54,7 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
       yield* Api.Analyzer.analyze({
         packages: [...workspace.packages],
         tags,
+        resolvedConventionalCommitTypes: workspace.config.resolvedConventionalCommitTypes,
       }),
       {
         packages: workspace.packages,

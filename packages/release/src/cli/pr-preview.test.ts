@@ -92,6 +92,7 @@ const makeResolvedConfig = (options?: {
       releaseCommand: 'bun run release',
       prepareCommands: ['bun run release:build'],
     }),
+    resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
     lint: Api.Lint.resolveConfig({
       ...(options?.diffRemote
         ? {
