@@ -28,6 +28,7 @@
     "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   },
   "dependencies": {
-    "@kitz/core": "workspace:*"
+    "@kitz/core": "workspace:*",
+    "@kitz/fuzzy": "workspace:*"
   }
 }

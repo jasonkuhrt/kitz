@@ -84,10 +84,7 @@ describe('Matcher.substring', () => {
   })
 
   it('prefers starts-with matches', () => {
-    const items: MatchCandidate[] = [
-      { text: 'reload config' },
-      { text: 'Config reload' },
-    ]
+    const items: MatchCandidate[] = [{ text: 'reload config' }, { text: 'Config reload' }]
     const results = matcher.match(items, 'Config')
     // "Config reload" starts with "Config", should rank first
     expect(results[0].candidate.text).toBe('Config reload')

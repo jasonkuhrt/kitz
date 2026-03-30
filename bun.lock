@@ -60,6 +60,7 @@
       "version": "0.0.0-kitz-release",
       "dependencies": {
         "@kitz/core": "workspace:*",
+        "@kitz/fuzzy": "workspace:*",
       },
     },
     "packages/color": {

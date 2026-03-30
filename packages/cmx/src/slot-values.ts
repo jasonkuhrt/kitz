@@ -19,10 +19,9 @@ import { Effect, Layer, ServiceMap } from 'effect'
  * })
  * ```
  */
-export class SlotValues extends ServiceMap.Service<
-  SlotValues,
-  Readonly<Record<string, unknown>>
->()('cmx/SlotValues') {}
+export class SlotValues extends ServiceMap.Service<SlotValues, Readonly<Record<string, unknown>>>()(
+  'cmx/SlotValues',
+) {}
 
 /**
  * Create a Layer that provides slot values for a capability's execution.
@@ -42,8 +41,6 @@ export const buildExecutableEffect = (
   additionalLayers?: Layer.Layer<any>,
 ): Effect.Effect<void> => {
   const slotLayer = makeSlotValuesLayer(slotValues)
-  const combinedLayer = additionalLayers
-    ? Layer.merge(slotLayer, additionalLayers)
-    : slotLayer
+  const combinedLayer = additionalLayers ? Layer.merge(slotLayer, additionalLayers) : slotLayer
   return Effect.provide(execute, combinedLayer)
 }
