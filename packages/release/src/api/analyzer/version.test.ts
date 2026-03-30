@@ -21,13 +21,19 @@ describe('getBump', () => {
 
   test('returns null for Angular convention types without impact (chore, style, etc.)', () => {
     for (const value of ['chore', 'style', 'refactor', 'test', 'build', 'ci', 'revert']) {
-      expect(getBump(ConventionalCommits.Type.parse(value), false, defaultTypes), `expected null for '${value}'`).toBeNull()
+      expect(
+        getBump(ConventionalCommits.Type.parse(value), false, defaultTypes),
+        `expected null for '${value}'`,
+      ).toBeNull()
     }
   })
 
   test('returns null for unconfigured custom types', () => {
     for (const value of ['improvement', 'wip', 'release', 'hotfix']) {
-      expect(getBump(ConventionalCommits.Type.parse(value), false, defaultTypes), `expected null for '${value}'`).toBeNull()
+      expect(
+        getBump(ConventionalCommits.Type.parse(value), false, defaultTypes),
+        `expected null for '${value}'`,
+      ).toBeNull()
     }
   })
 

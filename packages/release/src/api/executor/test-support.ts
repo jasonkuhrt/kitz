@@ -277,7 +277,11 @@ export const planOfficial = (packages: readonly Planner.Context['packages'][numb
   Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
-    const analysis = yield* Analyzer.analyze({ packages, tags, resolvedConventionalCommitTypes: resolveConventionalCommitTypes({}) })
+    const analysis = yield* Analyzer.analyze({
+      packages,
+      tags,
+      resolvedConventionalCommitTypes: resolveConventionalCommitTypes({}),
+    })
     return yield* Planner.official(analysis, { packages })
   })
 
@@ -285,7 +289,11 @@ export const planCandidate = (packages: readonly Planner.Context['packages'][num
   Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
-    const analysis = yield* Analyzer.analyze({ packages, tags, resolvedConventionalCommitTypes: resolveConventionalCommitTypes({}) })
+    const analysis = yield* Analyzer.analyze({
+      packages,
+      tags,
+      resolvedConventionalCommitTypes: resolveConventionalCommitTypes({}),
+    })
     return yield* Planner.candidate(analysis, { packages })
   })
 
@@ -296,6 +304,10 @@ export const planEphemeral = (
   Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
-    const analysis = yield* Analyzer.analyze({ packages, tags, resolvedConventionalCommitTypes: resolveConventionalCommitTypes({}) })
+    const analysis = yield* Analyzer.analyze({
+      packages,
+      tags,
+      resolvedConventionalCommitTypes: resolveConventionalCommitTypes({}),
+    })
     return yield* Planner.ephemeral(analysis, { packages }, options)
   })

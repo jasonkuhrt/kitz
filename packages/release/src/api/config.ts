@@ -31,10 +31,7 @@ const PackageMapSchema = Schema.Record(
  * `null` removes a standard type from the recognized set.
  * Non-null values define the bump level for that type.
  */
-const CustomTypesSchema = Schema.Record(
-  Schema.String,
-  Schema.NullOr(Semver.BumpType),
-)
+const CustomTypesSchema = Schema.Record(Schema.String, Schema.NullOr(Semver.BumpType))
 export type CustomTypes = typeof CustomTypesSchema.Type
 
 /**
@@ -206,7 +203,9 @@ export type ConfigError = Conf.File.LoadError | OperatorResolveError
  * Call-site overrides for config loading.
  * Derived from schema types - any field can be overridden.
  */
-export type LoadOptions = Partial<Omit<typeof Config.Type, 'lint' | 'conventionalCommitSettings'>> & {
+export type LoadOptions = Partial<
+  Omit<typeof Config.Type, 'lint' | 'conventionalCommitSettings'>
+> & {
   readonly lint?: Partial<typeof LintConfig.Config.Type>
   readonly conventionalCommitSettings?: ConventionalCommitSettings
 }
@@ -243,7 +242,9 @@ export const load = (
       packages: options?.packages ?? fileConfig.packages ?? {},
       publishing: options?.publishing ?? fileConfig.publishing ?? defaultPublishing(),
       operator,
-      resolvedConventionalCommitTypes: resolveConventionalCommitTypes(conventionalCommitSettings.types ?? {}),
+      resolvedConventionalCommitTypes: resolveConventionalCommitTypes(
+        conventionalCommitSettings.types ?? {},
+      ),
       lint: LintConfig.resolveConfig({
         defaults: options?.lint?.defaults ?? fileConfig.lint?.defaults,
         rules: options?.lint?.rules ?? fileConfig.lint?.rules,

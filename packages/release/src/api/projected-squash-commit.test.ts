@@ -150,10 +150,7 @@ describe('projected squash commit', () => {
 
   test('primaryOnly=false (default) returns all scopes regardless of bump level', () => {
     const result = collectScopeImpacts({
-      impacts: [
-        makeImpact('cmx', 'minor'),
-        makeImpact('cli', 'patch'),
-      ],
+      impacts: [makeImpact('cmx', 'minor'), makeImpact('cli', 'patch')],
     })
 
     expect(result).toEqual([

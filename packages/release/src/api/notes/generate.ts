@@ -7,7 +7,11 @@ import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Exit, HashSet, MutableHashSet, Option } from 'effect'
 import type { ReleaseCommit } from '../analyzer/models/commit.js'
-import { type ResolvedConventionalCommitTypes, extractImpacts, findLatestTagVersion } from '../analyzer/version.js'
+import {
+  type ResolvedConventionalCommitTypes,
+  extractImpacts,
+  findLatestTagVersion,
+} from '../analyzer/version.js'
 import type { Package } from '../analyzer/workspace.js'
 import { calculateNextVersion } from '../version/calculate.js'
 import { type CommitEntry, format, type FormattedNotes } from './format.js'
@@ -165,7 +169,9 @@ export const generate = (
       const boundedCommits = yield* trimCommitsUntilBoundary(commits, options.until, tags)
 
       const impactsByCommit = yield* Effect.all(
-        boundedCommits.map((commit) => extractImpacts(commit, options.resolvedConventionalCommitTypes)),
+        boundedCommits.map((commit) =>
+          extractImpacts(commit, options.resolvedConventionalCommitTypes),
+        ),
         { concurrency: 'unbounded' },
       )
       const impacts = impactsByCommit.flat().filter((impact) => impact.scope === pkg.scope)

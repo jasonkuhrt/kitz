@@ -16,7 +16,9 @@ export class ConventionalCommitSettingsService extends ServiceMap.Service<
   ConventionalCommitSettings
 >()('ConventionalCommitSettingsService') {}
 
-export const make = (settings: ConventionalCommitSettings): Layer.Layer<ConventionalCommitSettingsService> =>
+export const make = (
+  settings: ConventionalCommitSettings,
+): Layer.Layer<ConventionalCommitSettingsService> =>
   Layer.succeed(ConventionalCommitSettingsService, settings)
 
 export const DefaultConventionalCommitSettingsLayer = make({ resolvedTypes: {} })

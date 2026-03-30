@@ -91,7 +91,8 @@ describe('Notes.generate', () => {
       Effect.gen(function* () {
         const baseGit = yield* Git.Git
 
-        return yield* generate({ resolvedConventionalCommitTypes: defaultTypes,
+        return yield* generate({
+          resolvedConventionalCommitTypes: defaultTypes,
           packages,
           tags: ['@kitz/core@1.0.0'],
           since: '@kitz/core@1.0.0',
@@ -128,7 +129,8 @@ describe('Notes.generate', () => {
       Effect.gen(function* () {
         const baseGit = yield* Git.Git
 
-        return yield* generate({ resolvedConventionalCommitTypes: defaultTypes,
+        return yield* generate({
+          resolvedConventionalCommitTypes: defaultTypes,
           packages,
           tags: ['@kitz/core@1.0.0'],
           since: '@kitz/core@1.0.0',
@@ -167,7 +169,8 @@ describe('Notes.generate', () => {
       Effect.gen(function* () {
         const baseGit = yield* Git.Git
 
-        return yield* generate({ resolvedConventionalCommitTypes: defaultTypes,
+        return yield* generate({
+          resolvedConventionalCommitTypes: defaultTypes,
           packages,
           tags: ['@kitz/core@1.0.0'],
           since: '@kitz/core@1.0.0',

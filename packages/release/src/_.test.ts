@@ -102,7 +102,11 @@ const analyzeAndPlanOfficial = (
   Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
-    const analysis = yield* Analyzer.analyze({ packages, tags, resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}) })
+    const analysis = yield* Analyzer.analyze({
+      packages,
+      tags,
+      resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}),
+    })
     return yield* Planner.official(analysis, { packages }, options)
   })
 
@@ -116,7 +120,11 @@ const analyzeAndPlanCandidate = (
   Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
-    const analysis = yield* Analyzer.analyze({ packages, tags, resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}) })
+    const analysis = yield* Analyzer.analyze({
+      packages,
+      tags,
+      resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}),
+    })
     return yield* Planner.candidate(analysis, { packages }, options)
   })
 
@@ -130,7 +138,11 @@ const analyzeAndPlanEphemeral = (
   Effect.gen(function* () {
     const git = yield* Git.Git
     const tags = yield* git.getTags()
-    const analysis = yield* Analyzer.analyze({ packages, tags, resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}) })
+    const analysis = yield* Analyzer.analyze({
+      packages,
+      tags,
+      resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}),
+    })
     return yield* Planner.ephemeral(analysis, { packages }, options)
   })
 
@@ -687,7 +699,11 @@ describe('Analyzer', () => {
         Effect.gen(function* () {
           const git = yield* Git.Git
           const tags = yield* git.getTags()
-          return yield* Analyzer.analyze({ packages: mockPackages, tags, resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}) })
+          return yield* Analyzer.analyze({
+            packages: mockPackages,
+            tags,
+            resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}),
+          })
         }),
         layer,
       ),
@@ -726,7 +742,11 @@ describe('Analyzer', () => {
         Effect.gen(function* () {
           const git = yield* Git.Git
           const tags = yield* git.getTags()
-          return yield* Analyzer.analyze({ packages: mockPackages, tags, resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}) })
+          return yield* Analyzer.analyze({
+            packages: mockPackages,
+            tags,
+            resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}),
+          })
         }),
         layer,
       ),

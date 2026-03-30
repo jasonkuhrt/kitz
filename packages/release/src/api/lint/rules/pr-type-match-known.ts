@@ -33,8 +33,12 @@ export const rule = RuntimeRule.create({
         fix: GuideFix.make({
           summary: 'Use a recognized type or configure it in release config.',
           steps: [
-            FixStep.make({ description: `Use a standard type (feat, fix, docs, perf, etc.) in the PR title.` }),
-            FixStep.make({ description: `Or add the type to conventionalCommitSettings.types in release.config.ts.` }),
+            FixStep.make({
+              description: `Use a standard type (feat, fix, docs, perf, etc.) in the PR title.`,
+            }),
+            FixStep.make({
+              description: `Or add the type to conventionalCommitSettings.types in release.config.ts.`,
+            }),
           ],
         }),
       })

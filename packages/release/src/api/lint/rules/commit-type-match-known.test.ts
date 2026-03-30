@@ -73,9 +73,7 @@ describe('commit.type.match-known', () => {
             makeSettingsLayer({ ...defaultTypes, deps: 'patch' }),
             emptyOptionsLayer,
             Git.Memory.make({
-              commits: [
-                Git.Memory.commit('deps(core): bump lodash'),
-              ],
+              commits: [Git.Memory.commit('deps(core): bump lodash')],
             }),
           ),
         ),
