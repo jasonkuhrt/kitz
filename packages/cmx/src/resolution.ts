@@ -5,7 +5,7 @@ import type { Choice, AcceptedToken } from './choice.js'
 export interface SlotState {
   readonly name: string
   readonly kind: 'Enum' | 'Fuzzy' | 'Search' | 'Text'
-  readonly value: unknown | null
+  readonly value: unknown
   readonly required: boolean
   /** The query that was active when this slot's value was taken. Restored on undo. */
   readonly preTakeQuery?: string | undefined

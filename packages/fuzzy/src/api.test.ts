@@ -34,8 +34,8 @@ test('Fuzzy.positions data-last curried form', () => {
 test('Fuzzy.match returns scored results', () => {
   const results = Fuzzy.match([{ text: 'Config' }], 'cfg')
   expect(results).toHaveLength(1)
-  expect(results[0]!.candidate.text).toBe('Config')
-  expect(results[0]!.score).toBe(63)
+  expect(results[0].candidate.text).toBe('Config')
+  expect(results[0].score).toBe(63)
 })
 
 test('Fuzzy.CharClass is accessible', () => {

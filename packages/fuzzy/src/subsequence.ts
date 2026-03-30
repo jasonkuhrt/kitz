@@ -190,7 +190,7 @@ export const subsequenceScore = (
         gapPenalty = ScoreGapExtension
       }
 
-      const gapOption = gapScore! > NEG_INF ? gapScore! + gapPenalty : NEG_INF
+      const gapOption = gapScore > NEG_INF ? gapScore + gapPenalty : NEG_INF
 
       M[idx] = Math.max(D[idx], gapOption)
     }
@@ -215,7 +215,7 @@ export const subsequenceScore = (
   for (let jj = 1; jj <= m; jj++) {
     const d = D[n * stride + jj]!
     if (d > finalScore) {
-      finalScore = d!
+      finalScore = d
       bestJ = jj
     }
   }

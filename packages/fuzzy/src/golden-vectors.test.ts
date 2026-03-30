@@ -128,7 +128,7 @@ test('consumer boost shifts ranking', () => {
     ],
     'cfg',
   )
-  expect(results[0]!.candidate.text).toBe('configurable')
+  expect(results[0].candidate.text).toBe('configurable')
 })
 
 test('out-of-order matches appear in results', () => {

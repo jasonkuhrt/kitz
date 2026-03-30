@@ -14,7 +14,7 @@ test('filters out non-matches', () => {
 test('sorts by score descending', () => {
   const results = match([{ text: 'provide' }, { text: 'david' }], 'vdi')
   // david is shorter, higher coverage ratio → should rank first
-  expect(results[0]!.candidate.text).toBe('david')
+  expect(results[0].candidate.text).toBe('david')
 })
 
 test('empty query returns all candidates with score 0', () => {
@@ -25,8 +25,8 @@ test('empty query returns all candidates with score 0', () => {
 
 test('preserves extra candidate fields', () => {
   const results = match([{ text: 'Config', id: 'cmd-1', keybinding: 'Ctrl+R' }], 'cfg')
-  expect(results[0]!.candidate.id).toBe('cmd-1')
-  expect(results[0]!.candidate.keybinding).toBe('Ctrl+R')
+  expect(results[0].candidate.id).toBe('cmd-1')
+  expect(results[0].candidate.keybinding).toBe('Ctrl+R')
 })
 
 test('consumer boost is folded into score', () => {
@@ -38,7 +38,7 @@ test('consumer boost is folded into score', () => {
     'cfg',
   )
   // Both match 'cfg'. 'Config export' has a large boost → should rank first
-  expect(results[0]!.candidate.text).toBe('Config export')
+  expect(results[0].candidate.text).toBe('Config export')
 })
 
 test('includes out-of-order matches', () => {
@@ -50,7 +50,7 @@ test('includes out-of-order matches', () => {
 test('subsequence matches rank above out-of-order matches', () => {
   // 'ab' is subsequence of 'ab', out-of-order for 'ba'
   const results = match([{ text: 'ba' }, { text: 'ab' }], 'ab')
-  expect(results[0]!.candidate.text).toBe('ab')
+  expect(results[0].candidate.text).toBe('ab')
 })
 
 test('empty candidates returns empty results', () => {
@@ -65,5 +65,5 @@ test('boost on empty query shifts ordering', () => {
     ],
     '',
   )
-  expect(results[0]!.candidate.text).toBe('b')
+  expect(results[0].candidate.text).toBe('b')
 })
