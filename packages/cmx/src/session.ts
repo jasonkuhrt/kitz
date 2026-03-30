@@ -1,4 +1,4 @@
-import { Layer, type Effect } from 'effect'
+import { Effect, Layer } from 'effect'
 import type { AnyCommand, CommandLeaf, CommandHybrid } from './command.js'
 import type { Resolution, SlotState } from './resolution.js'
 import type { Choice } from './choice.js'
@@ -24,6 +24,16 @@ interface SessionState {
   scopeLayers: ReadonlyArray<Layer.Layer<any>>
 }
 
+/** Recursively collect execute Effects from a composite capability's steps. */
+const collectStepEffects = (capability: AnyCapability): Effect.Effect<void>[] => {
+  if (capability._tag === 'Capability') return [capability.execute]
+  const effects: Effect.Effect<void>[] = []
+  for (const step of capability.steps) {
+    effects.push(...collectStepEffects(step.capability))
+  }
+  return effects
+}
+
 /**
  * Build a combined Resolution from command resolver state + optional slot resolver state.
  */
@@ -43,10 +53,15 @@ const buildCombinedResolution = (state: SessionState): Resolution => {
 
     if (allFilled && state.resolvedCommand) {
       const capability = state.resolvedCommand.capability
+      const slotValues = getSlotValuesFromState(state)
+      const combinedLayers = buildCombinedLayers(state)
       if (capability._tag === 'Capability') {
-        const slotValues = getSlotValuesFromState(state)
-        const combinedLayers = buildCombinedLayers(state)
         effect = buildExecutableEffect(capability.execute, slotValues, combinedLayers)
+        executable = true
+      } else if (capability._tag === 'Composite') {
+        const stepEffects = collectStepEffects(capability)
+        const sequenced = Effect.all(stepEffects, { discard: true })
+        effect = buildExecutableEffect(sequenced, slotValues, combinedLayers)
         executable = true
       }
     }

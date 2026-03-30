@@ -14,6 +14,14 @@ const exportCap = Capability.make({
 })
 const close = Capability.make({ name: 'close', execute: Effect.void })
 
+// Composite capability: stepA then stepB, no slots
+const stepA = Capability.make({ name: 'stepA', execute: Effect.void })
+const stepB = Capability.make({ name: 'stepB', execute: Effect.void })
+const compositeCap = Capability.Composite.make({
+  name: 'deploy',
+  steps: [{ capability: stepA }, { capability: stepB }],
+})
+
 // Commands
 const reloadCmd = Command.Leaf.make({ name: 'reload', capability: reload })
 const exportCmd = Command.Leaf.make({ name: 'export', capability: exportCap })
@@ -161,5 +169,39 @@ describe('Session — confirm', () => {
     // At initial state with all choices — confirm takes top
     const res = session.confirm()
     expect(res.acceptedTokens.length).toBeGreaterThan(0)
+  })
+})
+
+describe('Session — composite capability', () => {
+  it('composite command resolves as executable with a real effect', () => {
+    const deployCmd = Command.Leaf.make({ name: 'deploy', capability: compositeCap })
+    const session = Session.create([deployCmd], defaultProximities)
+
+    // In flat mode, typing 'd' should match "deploy" and auto-advance
+    const res = session.queryPush('d')
+    expect(res.executable).toBe(true)
+    expect(res.effect).not.toBeNull()
+  })
+
+  it('composite capability effect can be run', async () => {
+    const log: string[] = []
+    const trackedA = Capability.make({
+      name: 'stepA',
+      execute: Effect.sync(() => { log.push('a') }),
+    })
+    const trackedB = Capability.make({
+      name: 'stepB',
+      execute: Effect.sync(() => { log.push('b') }),
+    })
+    const tracked = Capability.Composite.make({
+      name: 'deploy',
+      steps: [{ capability: trackedA }, { capability: trackedB }],
+    })
+    const cmd = Command.Leaf.make({ name: 'deploy', capability: tracked })
+    const session = Session.create([cmd], defaultProximities)
+    const res = session.queryPush('d')
+    expect(res.effect).not.toBeNull()
+    await Effect.runPromise(res.effect!)
+    expect(log).toEqual(['a', 'b'])
   })
 })

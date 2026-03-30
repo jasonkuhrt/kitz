@@ -1,6 +1,8 @@
+import { Effect } from 'effect'
 import type { AnyCommand, CommandLeaf, CommandHybrid } from './command.js'
 import { collectExecutablePaths } from './command.js'
 import type { Choice, AcceptedToken } from './choice.js'
+import type { AnyCapability } from './capability.js'
 import type { Resolution } from './resolution.js'
 import type { MatcherService } from './matcher.js'
 import { Matcher } from './matcher.js'
@@ -97,6 +99,21 @@ const findCommand = (commands: ReadonlyArray<AnyCommand>, path: string[]): AnyCo
   return null
 }
 
+/** Build a sequential effect from a capability (simple or composite). */
+const buildCapabilityEffect = (cap: AnyCapability): Effect.Effect<void> => {
+  if (cap._tag === 'Capability') return cap.execute
+  const effects: Effect.Effect<void>[] = []
+  const collect = (c: AnyCapability): void => {
+    if (c._tag === 'Capability') {
+      effects.push(c.execute)
+    } else {
+      for (const step of c.steps) collect(step.capability)
+    }
+  }
+  collect(cap)
+  return Effect.all(effects, { discard: true })
+}
+
 /** Build a Resolution from the current state. */
 const buildResolution = (state: CommandResolverState, matcher: MatcherService): Resolution => {
   const rawChoices =
@@ -123,7 +140,7 @@ const buildResolution = (state: CommandResolverState, matcher: MatcherService): 
       if ((cmd._tag === 'Leaf' || cmd._tag === 'Hybrid') && 'capability' in cmd) {
         const cap = cmd.capability
         executable = cap.slots.length === 0
-        effect = cap._tag === 'Capability' ? cap.execute : null
+        effect = cap.slots.length === 0 ? buildCapabilityEffect(cap) : null
       }
     }
   } else if (state.mode === 'tree' && state.acceptedTokens.length > 0) {
@@ -134,7 +151,7 @@ const buildResolution = (state: CommandResolverState, matcher: MatcherService): 
       if ((cmd._tag === 'Leaf' || cmd._tag === 'Hybrid') && 'capability' in cmd) {
         const cap = cmd.capability
         executable = cap.slots.length === 0
-        effect = cap._tag === 'Capability' ? cap.execute : null
+        effect = cap.slots.length === 0 ? buildCapabilityEffect(cap) : null
       }
     }
   }
