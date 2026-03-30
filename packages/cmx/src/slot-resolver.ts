@@ -1,6 +1,8 @@
 import type { AnySlot, SlotEnum, SlotFuzzy, SlotSearch, SlotText, SlotCandidate } from './slot.js'
 import type { Choice } from './choice.js'
 import type { SlotState } from './resolution.js'
+import type { MatcherService } from './matcher.js'
+import { Matcher } from './matcher.js'
 
 /** Internal state for the Slot Resolver. */
 interface SlotResolverState {
@@ -19,7 +21,7 @@ interface SlotResolverState {
 }
 
 /** Build choices from the focused slot. */
-const buildSlotChoices = (state: SlotResolverState): Choice[] => {
+const buildSlotChoices = (state: SlotResolverState, matcher: MatcherService): Choice[] => {
   const slot = state.slots[state.focusedIndex]!
   if (!slot) return []
 
@@ -28,12 +30,12 @@ const buildSlotChoices = (state: SlotResolverState): Choice[] => {
       // Derive candidates from schema — for Literal schemas, extract the literals
       // This is a simplified version; full implementation would use Schema introspection
       const candidates = getEnumCandidates(slot)
-      return filterSlotChoices(candidates, state.query)
+      return matchSlotChoices(candidates, state.query, matcher)
     }
     case 'Fuzzy': {
       const cached = state.cachedCandidates.get(slot.name)
       if (!cached) return [] // loading
-      return filterSlotChoices(
+      return matchSlotChoices(
         cached.map((c) => ({
           token: c.label,
           kind: 'value' as const,
@@ -42,6 +44,7 @@ const buildSlotChoices = (state: SlotResolverState): Choice[] => {
           _value: c.value,
         })),
         state.query,
+        matcher,
       )
     }
     case 'Search': {
@@ -85,11 +88,11 @@ const getEnumCandidates = (slot: SlotEnum): Choice[] => {
   return []
 }
 
-/** Filter slot choices by query (simple substring match). */
-const filterSlotChoices = (choices: Choice[], query: string): Choice[] => {
-  if (query === '') return choices
-  const lower = query.toLowerCase()
-  return choices.filter((c) => c.token.toLowerCase().includes(lower))
+/** Score and rank slot choices through the pluggable Matcher. */
+const matchSlotChoices = (choices: Choice[], query: string, matcher: MatcherService): Choice[] => {
+  const candidates = choices.map((c) => ({ text: c.token, _choice: c }))
+  const results = matcher.match(candidates, query)
+  return results.map((r) => r.candidate._choice)
 }
 
 /** Build SlotState array from resolver state. */
@@ -114,7 +117,7 @@ const allRequiredFilled = (state: SlotResolverState): boolean =>
 
 /** Create a Slot Resolver for a capability's slots. */
 export const SlotResolver = {
-  create: (slots: ReadonlyArray<AnySlot>) => {
+  create: (slots: ReadonlyArray<AnySlot>, matcher: MatcherService = Matcher.substring()) => {
     const state: SlotResolverState = {
       slots: [...slots],
       focusedIndex: 0,
@@ -126,7 +129,7 @@ export const SlotResolver = {
 
     const getFocusedSlot = (): AnySlot | null => state.slots[state.focusedIndex] ?? null
 
-    const getChoices = (): Choice[] => buildSlotChoices(state)
+    const getChoices = (): Choice[] => buildSlotChoices(state, matcher)
 
     const getSlotStates = (): SlotState[] => buildSlotStates(state)
 
@@ -160,7 +163,11 @@ export const SlotResolver = {
 
       // Dead-end prevention for non-text slots
       const newQuery = state.query + char
-      const choices = filterSlotChoices(buildSlotChoices({ ...state, query: '' } as any), newQuery)
+      const choices = matchSlotChoices(
+        buildSlotChoices({ ...state, query: '' } as SlotResolverState, matcher),
+        newQuery,
+        matcher,
+      )
       if (choices.length === 0) return // reject
 
       state.query = newQuery

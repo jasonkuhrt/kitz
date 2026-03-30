@@ -2,6 +2,8 @@ import type { AnyCommand, CommandLeaf, CommandHybrid } from './command.js'
 import { collectExecutablePaths } from './command.js'
 import type { Choice, AcceptedToken } from './choice.js'
 import type { Resolution } from './resolution.js'
+import type { MatcherService } from './matcher.js'
+import { Matcher } from './matcher.js'
 
 /** Internal state for the Command Resolver. */
 interface CommandResolverState {
@@ -60,21 +62,20 @@ const buildTreeChoices = (commands: ReadonlyArray<AnyCommand>, treePath: string[
   )
 }
 
-/**
- * Filter choices by query using simple case-insensitive substring matching.
- * TODO: Replace with @kitz/fuzzy Matcher integration when available.
- */
-const filterChoices = (choices: ReadonlyArray<Choice>, query: string): Choice[] => {
-  if (query === '') return [...choices]
-  const lowerQuery = query.toLowerCase()
-  return choices
-    .filter((c) => c.token.toLowerCase().includes(lowerQuery))
-    .sort((a, b) => {
-      // Prefer matches that start with the query
-      const aStarts = a.token.toLowerCase().startsWith(lowerQuery) ? 0 : 1
-      const bStarts = b.token.toLowerCase().startsWith(lowerQuery) ? 0 : 1
-      return aStarts - bStarts
-    })
+/** Score and rank choices through the pluggable Matcher. */
+const matchChoices = (
+  choices: ReadonlyArray<Choice>,
+  query: string,
+  matcher: MatcherService,
+  proximities: ReadonlyMap<string, number>,
+): Choice[] => {
+  const candidates = choices.map((c) => ({
+    text: c.token,
+    boost: proximities.get(c.token.split(' ')[0]!) ?? 0,
+    _choice: c,
+  }))
+  const results = matcher.match(candidates, query)
+  return results.map((r) => r.candidate._choice)
 }
 
 /**
@@ -97,13 +98,13 @@ const findCommand = (commands: ReadonlyArray<AnyCommand>, path: string[]): AnyCo
 }
 
 /** Build a Resolution from the current state. */
-const buildResolution = (state: CommandResolverState): Resolution => {
+const buildResolution = (state: CommandResolverState, matcher: MatcherService): Resolution => {
   const rawChoices =
     state.mode === 'flat'
       ? buildFlatChoices(state.commands, state.proximities)
       : buildTreeChoices(state.commands, state.treePath)
 
-  const choices = filterChoices(rawChoices, state.query)
+  const choices = matchChoices(rawChoices, state.query, matcher, state.proximities)
   const topChoice = choices.length > 0 ? choices[0]! : null
   const complete = topChoice !== null && topChoice.token.toLowerCase() === state.query.toLowerCase()
 
@@ -156,7 +157,11 @@ const buildResolution = (state: CommandResolverState): Resolution => {
 
 /** Create a new Command Resolver. */
 export const CommandResolver = {
-  create: (commands: ReadonlyArray<AnyCommand>, proximities: ReadonlyMap<string, number>) => {
+  create: (
+    commands: ReadonlyArray<AnyCommand>,
+    proximities: ReadonlyMap<string, number>,
+    matcher: MatcherService = Matcher.substring(),
+  ) => {
     const state: CommandResolverState = {
       mode: 'flat',
       acceptedTokens: [],
@@ -166,20 +171,20 @@ export const CommandResolver = {
       treePath: [],
     }
 
-    const getResolution = (): Resolution => buildResolution(state)
+    const getResolution = (): Resolution => buildResolution(state, matcher)
 
     const queryPush = (char: string): Resolution => {
       // Space handling
       if (char === ' ' && state.mode === 'flat') {
         // Auto-advance top choice
-        const resolution = buildResolution(state)
+        const resolution = buildResolution(state, matcher)
         if (resolution.topChoice && state.query.length > 0) {
           state.acceptedTokens.push({
             token: resolution.topChoice.token,
             preTakeQuery: state.query,
           })
           state.query = ''
-          return buildResolution(state)
+          return buildResolution(state, matcher)
         }
         return resolution
       }
@@ -190,11 +195,11 @@ export const CommandResolver = {
         state.mode === 'flat'
           ? buildFlatChoices(state.commands, state.proximities)
           : buildTreeChoices(state.commands, state.treePath)
-      const filtered = filterChoices(rawChoices, newQuery)
+      const filtered = matchChoices(rawChoices, newQuery, matcher, state.proximities)
 
       // Dead-end prevention: reject if zero matches
       if (filtered.length === 0) {
-        return buildResolution(state)
+        return buildResolution(state, matcher)
       }
 
       state.query = newQuery
@@ -208,7 +213,7 @@ export const CommandResolver = {
         state.query = ''
       }
 
-      return buildResolution(state)
+      return buildResolution(state, matcher)
     }
 
     const queryUndo = (): Resolution => {
@@ -218,11 +223,11 @@ export const CommandResolver = {
         const last = state.acceptedTokens.pop()!
         state.query = last.preTakeQuery
       }
-      return buildResolution(state)
+      return buildResolution(state, matcher)
     }
 
     const choiceTakeTop = (): Resolution => {
-      const resolution = buildResolution(state)
+      const resolution = buildResolution(state, matcher)
       if (resolution.topChoice) {
         state.acceptedTokens.push({
           token: resolution.topChoice.token,
@@ -234,7 +239,7 @@ export const CommandResolver = {
           state.treePath.push(resolution.topChoice.token)
         }
       }
-      return buildResolution(state)
+      return buildResolution(state, matcher)
     }
 
     const choiceTake = (choice: Choice): Resolution => {
@@ -246,7 +251,7 @@ export const CommandResolver = {
       if (state.mode === 'tree' && choice.kind === 'namespace') {
         state.treePath.push(choice.token)
       }
-      return buildResolution(state)
+      return buildResolution(state, matcher)
     }
 
     const choiceUndo = (): Resolution => {
@@ -257,7 +262,7 @@ export const CommandResolver = {
       if (state.acceptedTokens.length > 0) {
         state.acceptedTokens.pop()
       }
-      return buildResolution(state)
+      return buildResolution(state, matcher)
     }
 
     const toggleMode = (): Resolution => {
@@ -271,7 +276,7 @@ export const CommandResolver = {
         state.query = ''
       }
       // Keep accepted tokens
-      return buildResolution(state)
+      return buildResolution(state, matcher)
     }
 
     const reset = (): Resolution => {
@@ -279,7 +284,7 @@ export const CommandResolver = {
       state.acceptedTokens = []
       state.query = ''
       state.treePath = []
-      return buildResolution(state)
+      return buildResolution(state, matcher)
     }
 
     return {
