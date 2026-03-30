@@ -1,0 +1,45 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`scoreOf > characters present but not in subsequence order > assignmentScore — returns result for out-of-order matches > scoreOf('ba', 'ab') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+ba
+....................................................
+ab
+╠══════════════════════════════════════════════════╣ THEN RETURNS NUMBER
+66
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`scoreOf > characters present but not in subsequence order > assignmentScore — returns result for out-of-order matches > scoreOf('cba', 'abc') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+cba
+....................................................
+abc
+╠══════════════════════════════════════════════════╣ THEN RETURNS NUMBER
+83
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`scoreOf > characters present but not in subsequence order > assignmentScore — returns result for out-of-order matches > scoreOf('rc', 'configReload') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+rc
+....................................................
+configReload
+╠══════════════════════════════════════════════════╣ THEN RETURNS NUMBER
+57
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`scoreOf > characters present but not in subsequence order > assignmentScore — returns result for out-of-order matches > scoreOf('vdi', 'david') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+vdi
+....................................................
+david
+╠══════════════════════════════════════════════════╣ THEN RETURNS NUMBER
+78
+╚══════════════════════════════════════════════════╝"
+`;

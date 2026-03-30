@@ -1,0 +1,34 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`scoreOf > matches regardless of case > subsequenceScore — case insensitive > scoreOf('ABC', 'abc') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+ABC
+....................................................
+abc
+╠══════════════════════════════════════════════════╣ THEN RETURNS NUMBER
+108
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`scoreOf > matches regardless of case > subsequenceScore — case insensitive > scoreOf('AbC', 'aBc') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+AbC
+....................................................
+aBc
+╠══════════════════════════════════════════════════╣ THEN RETURNS NUMBER
+108
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`scoreOf > matches regardless of case > subsequenceScore — case insensitive > scoreOf('abc', 'ABC') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+abc
+....................................................
+ABC
+╠══════════════════════════════════════════════════╣ THEN RETURNS NUMBER
+108
+╚══════════════════════════════════════════════════╝"
+`;

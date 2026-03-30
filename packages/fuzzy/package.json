@@ -1,0 +1,38 @@
+{
+  "name": "@kitz/fuzzy",
+  "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
+  "description": "Fuzzy matching with fzy's DP core and fzf's scoring constants",
+  "type": "module",
+  "sideEffects": false,
+  "imports": {
+    "#fuzzy": "./src/_.ts",
+    "#fuzzy/*": "./src/*.ts"
+  },
+  "exports": {
+    ".": "./src/_.ts",
+    "./__": "./src/__.ts"
+  },
+  "files": [
+    "build",
+    "src"
+  ],
+  "dependencies": {
+    "effect": "4.0.0-beta.31"
+  },
+  "devDependencies": {
+    "@kitz/test": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsgo -p tsconfig.build.json",
+    "dev": "tsgo -p tsconfig.build.json --watch",
+    "check:types": "tsgo --noEmit",
+    "check:lint": "oxlint --config ../../.oxlintrc.json src/",
+    "check:package": "publint && attw --pack",
+    "test": "vitest run --config ../../vitest.config.ts --root ."
+  }
+}
