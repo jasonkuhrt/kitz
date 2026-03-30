@@ -224,6 +224,62 @@ describe('SlotResolver — advanceToNextSlot edge cases', () => {
   })
 })
 
+describe('SlotResolver — submitText schema validation', () => {
+  it('rejects input that fails schema validation', () => {
+    // Schema that only accepts non-empty strings of at least 3 chars
+    const strictSlot = Slot.Text.make({
+      name: 'code',
+      schema: S.String.check(S.isMinLength(3)),
+    })
+    const resolver = SlotResolver.create([strictSlot])
+    resolver.queryPush('a')
+    resolver.queryPush('b')
+    // "ab" is too short (< 3 chars)
+    const ok = resolver.submitText()
+    expect(ok).toBe(false)
+    expect(resolver.isComplete()).toBe(false)
+    expect(resolver.getSlotStates()[0].value).toBeNull()
+  })
+
+  it('accepts input that passes schema validation', () => {
+    const strictSlot = Slot.Text.make({
+      name: 'code',
+      schema: S.String.check(S.isMinLength(3)),
+    })
+    const resolver = SlotResolver.create([strictSlot])
+    for (const c of 'abc') resolver.queryPush(c)
+    const ok = resolver.submitText()
+    expect(ok).toBe(true)
+    expect(resolver.isComplete()).toBe(true)
+    expect(resolver.getSlotStates()[0].value).toBe('abc')
+  })
+
+  it('stores the decoded value when schema transforms', () => {
+    const numSlot = Slot.Text.make({
+      name: 'count',
+      schema: S.NumberFromString,
+    })
+    const resolver = SlotResolver.create([numSlot])
+    for (const c of '42') resolver.queryPush(c)
+    const ok = resolver.submitText()
+    expect(ok).toBe(true)
+    expect(resolver.getSlotStates()[0].value).toBe(42)
+  })
+
+  it('rejects input for NonEmptyString when empty', () => {
+    const requiredSlot = Slot.Text.make({
+      name: 'label',
+      schema: S.NonEmptyString,
+    })
+    const resolver = SlotResolver.create([requiredSlot])
+    // Submit with empty query — required slot with NonEmptyString rejects ""
+    // First, the early guard rejects empty query on a required slot
+    const ok = resolver.submitText()
+    expect(ok).toBe(false)
+    expect(resolver.getSlotStates()[0].value).toBeNull()
+  })
+})
+
 describe('SlotResolver — submitText edge cases', () => {
   it('submitText on non-text slot returns false', () => {
     const resolver = SlotResolver.create([formatSlot])

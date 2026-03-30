@@ -1,3 +1,4 @@
+import { Option, Schema } from 'effect'
 import type { AnySlot, SlotEnum, SlotFuzzy, SlotSearch, SlotText, SlotCandidate } from './slot.js'
 import type { Choice } from './choice.js'
 import type { SlotState } from './resolution.js'
@@ -235,7 +236,12 @@ export const SlotResolver = {
       if (!slot || slot._tag !== 'Text') return false
       if (state.query.length === 0 && slot.required !== false) return false
 
-      state.values.set(slot.name, { value: state.query, preTakeQuery: state.query })
+      // Validate through the slot's schema before accepting
+      const decode = Schema.decodeUnknownOption(slot.schema)
+      const result = decode(state.query)
+      if (Option.isNone(result)) return false
+
+      state.values.set(slot.name, { value: result.value, preTakeQuery: state.query })
       state.query = ''
       advanceToNextSlot()
       return true
