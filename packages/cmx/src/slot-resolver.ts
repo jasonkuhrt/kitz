@@ -252,10 +252,8 @@ export const SlotResolver = {
           return
         }
       }
-      // All remaining are filled or optional — stay at current (or move past last)
-      if (state.focusedIndex < state.slots.length - 1) {
-        state.focusedIndex = state.slots.length
-      }
+      // All remaining slots are filled — move past the end
+      state.focusedIndex = state.slots.length
     }
 
     /** Check if the focused slot is at or past the end (all slots resolved). */

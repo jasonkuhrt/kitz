@@ -176,6 +176,83 @@ describe('SlotResolver — reset', () => {
   })
 })
 
+describe('SlotResolver — queryPush with enum', () => {
+  it('dead-end prevents invalid chars on non-text slot', () => {
+    const resolver = SlotResolver.create([formatSlot])
+    // 'z' should not match json or yaml — dead-end prevention
+    resolver.queryPush('z')
+    expect(resolver.getQuery()).toBe('') // rejected
+  })
+
+  it('space on non-text slot takes top choice', () => {
+    const resolver = SlotResolver.create([formatSlot])
+    resolver.queryPush('j') // query "j"
+    resolver.queryPush(' ') // space → take top match
+    // After space, if there was a match, it should have been taken
+    // The query should be cleared
+    expect(resolver.getQuery()).toBe('')
+  })
+
+  it('space with empty query on non-text slot is no-op', () => {
+    const resolver = SlotResolver.create([formatSlot])
+    resolver.queryPush(' ')
+    expect(resolver.getQuery()).toBe('')
+  })
+
+  it('queryPush on null focused slot does nothing', () => {
+    const resolver = SlotResolver.create([])
+    resolver.queryPush('a')
+    expect(resolver.getQuery()).toBe('')
+  })
+})
+
+describe('SlotResolver — advanceToNextSlot edge cases', () => {
+  it('all remaining slots filled skips to end', () => {
+    const resolver = SlotResolver.create([formatSlot])
+    resolver.takeChoice({ token: 'json', kind: 'value', executable: false })
+    expect(resolver.isPastEnd()).toBe(true)
+  })
+
+  it('multiple required slots fill in order', () => {
+    const slot1 = Slot.Enum.make({ name: 'a', schema: S.Literal('x') })
+    const slot2 = Slot.Enum.make({ name: 'b', schema: S.Literal('y') })
+    const resolver = SlotResolver.create([slot1, slot2])
+    resolver.takeChoice({ token: 'x', kind: 'value', executable: false })
+    expect(resolver.getFocusedSlotName()).toBe('b')
+    resolver.takeChoice({ token: 'y', kind: 'value', executable: false })
+    expect(resolver.isComplete()).toBe(true)
+  })
+})
+
+describe('SlotResolver — submitText edge cases', () => {
+  it('submitText on non-text slot returns false', () => {
+    const resolver = SlotResolver.create([formatSlot])
+    const ok = resolver.submitText()
+    expect(ok).toBe(false)
+  })
+
+  it('submitText on null focused slot returns false', () => {
+    const resolver = SlotResolver.create([])
+    const ok = resolver.submitText()
+    expect(ok).toBe(false)
+  })
+
+  it('submitText with empty query on optional text slot succeeds', () => {
+    const optText = Slot.Text.make({ name: 'note', schema: S.String, required: false })
+    const resolver = SlotResolver.create([optText])
+    const ok = resolver.submitText()
+    expect(ok).toBe(true)
+  })
+})
+
+describe('SlotResolver — takeChoice edge cases', () => {
+  it('takeChoice on null focused slot does nothing', () => {
+    const resolver = SlotResolver.create([])
+    resolver.takeChoice({ token: 'x', kind: 'value', executable: false })
+    expect(resolver.isComplete()).toBe(true) // no slots = complete
+  })
+})
+
 describe('SlotResolver — takeTop', () => {
   it('takes the first choice', () => {
     const resolver = SlotResolver.create([formatSlot])
