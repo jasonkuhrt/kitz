@@ -29,6 +29,7 @@
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
     "check:lint": "oxlint --config ../../oxlint.json src/",
-    "check:package": "publint && attw --pack"
+    "check:package": "publint && attw --pack",
+    "test": "vitest run --config ../../vitest.config.ts --root ."
   }
 }
