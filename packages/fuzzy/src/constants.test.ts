@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'vitest'
+import { Test } from '@kitz/test'
+import { expect, test } from 'vitest'
 import {
   BonusBoundary,
   BonusBoundaryDelimiter,
@@ -14,34 +15,46 @@ import {
   ScoreMatch,
 } from './constants.js'
 
-describe('scoring constants', () => {
-  test('match fzf values', () => {
-    expect(ScoreMatch).toBe(16)
-    expect(ScoreGapStart).toBe(-3)
-    expect(ScoreGapExtension).toBe(-1)
-    expect(BonusBoundaryWhite).toBe(10)
-    expect(BonusBoundaryDelimiter).toBe(9)
-    expect(BonusBoundary).toBe(8)
-    expect(BonusNonWord).toBe(8)
-    expect(BonusCamel123).toBe(7)
-    expect(BonusConsecutive).toBe(4)
-    expect(BonusFirstCharMultiplier).toBe(2)
-    expect(CaseMatchBonus).toBe(1)
+Test.describe('scoring constants')
+  .on((name: string) => {
+    const constants: Record<string, number> = {
+      ScoreMatch,
+      ScoreGapStart,
+      ScoreGapExtension,
+      BonusBoundaryWhite,
+      BonusBoundaryDelimiter,
+      BonusBoundary,
+      BonusNonWord,
+      BonusCamel123,
+      BonusConsecutive,
+      BonusFirstCharMultiplier,
+      CaseMatchBonus,
+    }
+    return constants[name]
   })
-})
+  // dprint-ignore
+  .cases(
+    [['ScoreMatch'],              16],
+    [['ScoreGapStart'],           -3],
+    [['ScoreGapExtension'],       -1],
+    [['BonusBoundaryWhite'],      10],
+    [['BonusBoundaryDelimiter'],   9],
+    [['BonusBoundary'],            8],
+    [['BonusNonWord'],             8],
+    [['BonusCamel123'],            7],
+    [['BonusConsecutive'],         4],
+    [['BonusFirstCharMultiplier'], 2],
+    [['CaseMatchBonus'],           1],
+  )
+  .test()
 
-describe('CharClass enum', () => {
-  test('has all seven classes with correct values', () => {
-    expect(CharClass.White).toBe(0)
-    expect(CharClass.NonWord).toBe(1)
-    expect(CharClass.Delimiter).toBe(2)
-    expect(CharClass.Lower).toBe(3)
-    expect(CharClass.Upper).toBe(4)
-    expect(CharClass.Letter).toBe(5)
-    expect(CharClass.Number).toBe(6)
-  })
-
-  test('exactly seven classes', () => {
-    expect(Object.keys(CharClass)).toHaveLength(7)
-  })
+test('CharClass has exactly seven classes', () => {
+  expect(Object.keys(CharClass)).toHaveLength(7)
+  expect(CharClass.White).toBe(0)
+  expect(CharClass.NonWord).toBe(1)
+  expect(CharClass.Delimiter).toBe(2)
+  expect(CharClass.Lower).toBe(3)
+  expect(CharClass.Upper).toBe(4)
+  expect(CharClass.Letter).toBe(5)
+  expect(CharClass.Number).toBe(6)
 })
