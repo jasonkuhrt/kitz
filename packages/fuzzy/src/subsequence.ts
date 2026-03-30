@@ -42,9 +42,9 @@ export const subsequenceScore = (
   // Classify each haystack character. The start of the string is treated
   // as if preceded by a White character (so position 0 always earns
   // BonusBoundaryWhite).
-  const classes = new Array<number>(m)
+  const classes = new Array<CharClass>(m)
   const bonuses = new Array<number>(m)
-  let prevClass: number = CharClass.White // start of string = White
+  let prevClass: CharClass = CharClass.White // start of string = White
 
   for (let j = 0; j < m; j++) {
     const charCode = haystack.charCodeAt(j)
@@ -125,12 +125,12 @@ export const subsequenceScore = (
 
         // Option A: start a new match run (not extending a consecutive chunk)
         // Score = M[i-1][j-1] + ScoreMatch + bonus
-        const prevM = M[(i - 1) * stride + (j - 1)]
+        const prevM = M[(i - 1) * stride + (j - 1)]!
         const newRunScore = prevM + ScoreMatch + effectiveBonus + caseBonus
 
         // Option B: extend a consecutive run
         // Score = D[i-1][j-1] + ScoreMatch + max(bonus, firstBonusInChunk, BonusConsecutive)
-        const prevD = D[(i - 1) * stride + (j - 1)]
+        const prevD = D[(i - 1) * stride + (j - 1)]!
         let extendScore = NEG_INF
         if (prevD > NEG_INF) {
           const prevFirstBonus = firstBonusInChunk[(i - 1) * stride + (j - 1)]!
@@ -177,7 +177,7 @@ export const subsequenceScore = (
       // However, this is tricky to detect. The simpler equivalent: use the
       // max of M[n][j] across all j as the final score (see Phase 3).
 
-      const gapScore = M[i * stride + (j - 1)]
+      const gapScore = M[i * stride + (j - 1)]!
       let gapPenalty: number
       if (gapScore <= NEG_INF) {
         gapPenalty = 0 // No valid score to gap from
@@ -189,7 +189,7 @@ export const subsequenceScore = (
         gapPenalty = ScoreGapExtension
       }
 
-      const gapOption = gapScore > NEG_INF ? gapScore + gapPenalty : NEG_INF
+      const gapOption = gapScore! > NEG_INF ? gapScore! + gapPenalty : NEG_INF
 
       M[idx] = Math.max(D[idx], gapOption)
     }
@@ -212,9 +212,9 @@ export const subsequenceScore = (
   let bestJ = 0
 
   for (let jj = 1; jj <= m; jj++) {
-    const d = D[n * stride + jj]
+    const d = D[n * stride + jj]!
     if (d > finalScore) {
-      finalScore = d
+      finalScore = d!
       bestJ = jj
     }
   }
@@ -236,7 +236,7 @@ export const subsequenceScore = (
   while (i > 0 && j > 0) {
     const idx = i * stride + j
 
-    if (D[idx] === M[idx] && D[idx] > NEG_INF) {
+    if (D[idx] === M[idx] && D[idx]! > NEG_INF) {
       // Position j-1 is a match for needle[i-1]
       positions[i - 1] = j - 1
       i--

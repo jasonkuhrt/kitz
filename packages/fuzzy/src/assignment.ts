@@ -47,7 +47,7 @@ export const assignmentScore = (
   const classes = new Array<number>(m)
   const bonuses = new Array<number>(m)
   const haystackCodes = new Array<number>(m)
-  let prevClass: number = CharClass.White
+  let prevClass: CharClass = CharClass.White
 
   for (let j = 0; j < m; j++) {
     const charCode = haystack.charCodeAt(j)

@@ -1,0 +1,34 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`unwrap > order-independent matches > score — out-of-order matches return a positive score > unwrap('ba', 'ab') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+ba
+....................................................
+ab
+╠══════════════════════════════════════════════════╣ THEN RETURNS NUMBER
+66
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`unwrap > order-independent matches > score — out-of-order matches return a positive score > unwrap('cba', 'abc') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+cba
+....................................................
+abc
+╠══════════════════════════════════════════════════╣ THEN RETURNS NUMBER
+83
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`unwrap > order-independent matches > score — out-of-order matches return a positive score > unwrap('vdi', 'david') 1`] = `
+"
+╔══════════════════════════════════════════════════╗ GIVEN ARGUMENTS
+vdi
+....................................................
+david
+╠══════════════════════════════════════════════════╣ THEN RETURNS NUMBER
+78
+╚══════════════════════════════════════════════════╝"
+`;
