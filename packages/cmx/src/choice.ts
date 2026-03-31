@@ -13,7 +13,7 @@ export interface Choice {
   readonly group?: string | undefined
   readonly aliases?: ReadonlyArray<string> | undefined
   /** @internal Command reference for shortcut identity matching. */
-  readonly _command?: unknown | undefined
+  readonly _command?: unknown
 }
 
 /** An accepted command token with the query that was active when it was taken. */
