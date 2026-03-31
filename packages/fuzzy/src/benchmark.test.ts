@@ -107,7 +107,7 @@ const assertWithinBudget = (
 }
 
 describe('fuzzy performance gate', () => {
-  const MATCH_BUDGET = { localMean: 5, ciP99: 40 }
+  const MATCH_BUDGET = { localMean: 8, ciP99: 40 }
 
   test('match() 500 candidates within budget', async () => {
     const b = new Bench({

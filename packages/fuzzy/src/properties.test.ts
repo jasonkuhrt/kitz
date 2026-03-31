@@ -35,12 +35,37 @@ Test.property(
   shortString,
   shortString,
   (needle, haystack) => {
-    // Token matching (needle contains spaces) intentionally bypasses hasMatch:
-    // it splits on spaces and matches each term independently, so score can
-    // return Some even when hasMatch returns false. The invariant only holds
-    // for non-token needles.
+    // Token matching (needle contains spaces) splits on spaces and matches
+    // each term independently — score and match can find results that
+    // hasMatch rejects (e.g. 'config reload' vs 'configReload'). The
+    // hasMatch → score invariant only holds for non-token needles.
+    // Cross-API consistency for token needles is tested separately below.
     if (!needle.includes(' ') && !Fuzzy.hasMatch(needle, haystack)) {
       expect(Option.isNone(Fuzzy.score(needle, haystack))).toBe(true)
+    }
+  },
+)
+
+Test.property(
+  'score, match, and positions agree on token queries',
+  shortString,
+  shortString,
+  (needle, haystack) => {
+    // All three APIs must agree: if score returns Some, match and positions
+    // should also return results (and vice versa).
+    const s = Fuzzy.score(needle, haystack)
+    const m = Fuzzy.match([{ text: haystack }], needle)
+    const p = Fuzzy.positions(needle, haystack)
+
+    if (Option.isSome(s)) {
+      expect(m.length, `score=Some but match=[] for (${JSON.stringify(needle)}, ${JSON.stringify(haystack)})`).toBeGreaterThan(0)
+      expect(Option.isSome(p), `score=Some but positions=None for (${JSON.stringify(needle)}, ${JSON.stringify(haystack)})`).toBe(true)
+    }
+    if (m.length > 0) {
+      expect(Option.isSome(s), `match has results but score=None`).toBe(true)
+    }
+    if (Option.isSome(p)) {
+      expect(Option.isSome(s), `positions=Some but score=None`).toBe(true)
     }
   },
 )

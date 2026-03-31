@@ -1,6 +1,7 @@
 import { assignmentScore } from './assignment.js'
 import { hasMatch } from './has-match.js'
 import { subsequenceScore } from './subsequence.js'
+import { tokenMatch } from './token-match.js'
 
 /**
  * Batch fuzzy matching: filter, score, and sort candidates against a query.
@@ -30,13 +31,30 @@ export const match = <T extends { readonly text: string; readonly boost?: number
   const n = candidates.length
   const assignmentPenalty = n <= 15 ? 0 : n <= 80 ? 3 : 8
 
+  // Token matching: for space-containing queries, try matching each term
+  // independently before falling through to the hasMatch gate.
+  const isTokenQuery = query.includes(' ')
+
   const results: Array<{ candidate: T; score: number }> = []
 
   for (const candidate of candidates) {
-    if (!hasMatch(query, candidate.text)) continue
-
     let matchScore = 0
     let isAssignmentPath = false
+
+    // Token path: split on spaces, match each term independently.
+    // This runs before hasMatch because hasMatch rejects space characters
+    // not in the haystack (e.g. 'config reload' vs 'configReload').
+    if (isTokenQuery) {
+      const token = tokenMatch(query, candidate.text)
+      if (token !== null) {
+        const boost = candidate.boost ?? 0
+        results.push({ candidate, score: token.score + boost })
+        continue
+      }
+      // Token matching failed — fall through to character-level matching
+    }
+
+    if (!hasMatch(query, candidate.text)) continue
 
     // Try subsequence path first
     const subseq = subsequenceScore(query, candidate.text)

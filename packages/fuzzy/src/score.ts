@@ -1,7 +1,8 @@
 import { Option } from 'effect'
 import { assignmentScore } from './assignment.js'
 import { hasMatch } from './has-match.js'
-import { classifyHaystack, subsequenceScore } from './subsequence.js'
+import { subsequenceScore } from './subsequence.js'
+import { tokenMatch } from './token-match.js'
 
 /**
  * Score a needle against a haystack. Returns `Option.some(score)` when the
@@ -34,8 +35,8 @@ const scoreImpl = (needle: string, haystack: string): Option.Option<number> => {
   // not in the haystack, but token match splits on spaces and matches
   // each term independently (e.g. 'config reload' matches 'configReload').
   if (needle.includes(' ')) {
-    const tokenScore = scoreTokenMatch(needle, haystack)
-    if (tokenScore !== null) return Option.some(tokenScore)
+    const result = tokenMatch(needle, haystack)
+    if (result !== null) return Option.some(result.score)
     // If token matching fails (some term not found), fall through to
     // character-level matching below.
   }
@@ -53,97 +54,3 @@ const scoreImpl = (needle: string, haystack: string): Option.Option<number> => {
   // Shouldn't reach here if hasMatch passed, but safety
   return Option.none()
 }
-
-/**
- * Token-level matching: split needle on spaces, match each term as a
- * subsequence against the haystack independently. Terms can match in
- * any order. A reorder penalty applies when the match order differs
- * from the needle order.
- */
-const scoreTokenMatch = (needle: string, haystack: string): number | null => {
-  const terms = needle.split(' ').filter((t) => t.length > 0)
-  // All-whitespace needle: no terms to match but the needle wasn't empty,
-  // so this is not a vacuous match — fall through to character-level matching.
-  if (terms.length === 0) return null
-
-  // Pre-compute haystack classification once, shared across all term scoring calls.
-  const classification = classifyHaystack(haystack)
-
-  const haystackLower = haystack.toLowerCase()
-  const matchPositions: number[] = [] // first match position of each term
-  const termScores: number[] = []
-
-  for (const term of terms) {
-    // Try subsequence match of term against full haystack, reusing classification
-    const subseq = subsequenceScore(term, haystack, classification)
-    if (subseq !== null) {
-      termScores.push(subseq.score)
-      matchPositions.push(subseq.positions[0] ?? 0)
-    } else {
-      // Term doesn't match as subsequence — try containment
-      const termLower = term.toLowerCase()
-      if (!haystackLower.includes(termLower)) return null // term not found
-      termScores.push(ScoreMatch * term.length) // base score for containment
-      matchPositions.push(haystackLower.indexOf(termLower))
-    }
-  }
-
-  // Sum term scores
-  let total = termScores.reduce((a, b) => a + b, 0)
-
-  // Reorder penalty: detect whether terms match haystack words in needle order.
-  // Find which haystack word each term primarily matches (by first character
-  // position), then check if word indices are monotonically increasing.
-  // Word boundaries include whitespace, delimiters, AND camelCase transitions.
-  const wordStarts = findTokenWordStarts(haystack, classification)
-  const termWordIndices = matchPositions.map((pos) => {
-    for (let w = wordStarts.length - 1; w >= 0; w--) {
-      if (pos >= wordStarts[w]!) return w
-    }
-    return 0
-  })
-
-  let inOrder = true
-  for (let i = 1; i < termWordIndices.length; i++) {
-    if (termWordIndices[i]! < termWordIndices[i - 1]!) {
-      inOrder = false
-      break
-    }
-  }
-  if (!inOrder) {
-    // Multiplicative penalty ensures reordered terms always rank below in-order.
-    // A flat penalty (-5) is too small when word-level boosters add 10-20+ points.
-    total = Math.round(total * 0.7)
-  }
-
-  return total
-}
-
-/**
- * Find word start positions including camelCase transitions.
- * Unlike the subsequence/assignment word-start finders (which only use
- * whitespace/delimiters), this includes camelCase boundaries because
- * token match needs to detect reordering at the semantic word level.
- */
-const findTokenWordStarts = (
-  haystack: string,
-  classification: { classes: number[]; bonuses: number[] },
-): number[] => {
-  const m = haystack.length
-  const starts: number[] = [0]
-  for (let j = 1; j < m; j++) {
-    const prevCls = classification.classes[j - 1]!
-    const currCls = classification.classes[j]!
-    // Whitespace/delimiter boundary
-    if (prevCls === CharClass.White || prevCls === CharClass.Delimiter) {
-      starts.push(j)
-    }
-    // CamelCase transition: lowercase → uppercase
-    else if (prevCls === CharClass.Lower && currCls === CharClass.Upper) {
-      starts.push(j)
-    }
-  }
-  return starts
-}
-
-import { CharClass, ScoreMatch } from './constants.js'

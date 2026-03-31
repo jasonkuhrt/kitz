@@ -2,6 +2,7 @@ import { Option } from 'effect'
 import { assignmentScore } from './assignment.js'
 import { hasMatch } from './has-match.js'
 import { subsequenceScore } from './subsequence.js'
+import { tokenMatch } from './token-match.js'
 
 /**
  * Return the haystack indices where needle characters matched, in needle order.
@@ -30,6 +31,16 @@ export function positions(
 
 const positionsImpl = (needle: string, haystack: string): Option.Option<ReadonlyArray<number>> => {
   if (needle.length === 0) return Option.some([])
+
+  // Token path: split on spaces, match each term independently.
+  // This runs before hasMatch because hasMatch rejects space characters
+  // not in the haystack (e.g. 'config reload' vs 'configReload').
+  if (needle.includes(' ')) {
+    const token = tokenMatch(needle, haystack)
+    if (token !== null) return Option.some(token.positions)
+    // Token matching failed — fall through to character-level matching
+  }
+
   if (!hasMatch(needle, haystack)) return Option.none()
 
   const subseq = subsequenceScore(needle, haystack)
