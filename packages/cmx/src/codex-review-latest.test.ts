@@ -5,8 +5,7 @@
  * P1: Token reorder scoring — reordered terms outscore in-order (FIXED)
  * P2: choiceUndo pops treePath for leaf choices
  */
-import { describe, expect, test } from 'vitest'
-import { it } from '@effect/vitest'
+import { describe, expect, it, test } from 'vitest'
 import { Effect, Layer, ServiceMap, Schema as S } from 'effect'
 import { Session } from './session.js'
 import { Command } from './command.js'
@@ -21,45 +20,42 @@ import { configNs, bufferNs, defaultProximities } from './test-fixtures.js'
 // ============================================================================
 
 describe('P1: Fuzzy slot source with service dependency', () => {
-  it.effect('fuzzy slot source that reads a service provides candidates', () =>
-    Effect.gen(function* () {
-      class UserService extends ServiceMap.Service<UserService, { readonly users: string[] }>()(
-        'test/UserService',
-      ) {}
+  it('fuzzy slot source that reads a service provides candidates', () => {
+    class UserService extends ServiceMap.Service<UserService, { readonly users: string[] }>()(
+      'test/UserService',
+    ) {}
 
-      const userSlot = Slot.Fuzzy.make({
-        name: 'user',
-        schema: S.String,
-        source: Effect.gen(function* () {
-          const svc = yield* UserService
-          return svc.users.map((u) => ({ value: u, label: u }))
-        }),
-      })
+    const userSlot = Slot.Fuzzy.make({
+      name: 'user',
+      schema: S.String,
+      source: Effect.gen(function* () {
+        const svc = yield* UserService
+        return svc.users.map((u) => ({ value: u, label: u }))
+      }),
+    })
 
-      const assignCap = Capability.make({
-        name: 'assign',
-        slots: [userSlot],
-        execute: Effect.void,
-      })
-      const cmd = Command.Leaf.make({ name: 'assign', capability: assignCap })
+    const assignCap = Capability.make({
+      name: 'assign',
+      slots: [userSlot],
+      execute: Effect.void,
+    })
+    const cmd = Command.Leaf.make({ name: 'assign', capability: assignCap })
 
-      const userLayer = Layer.succeed(UserService)({ users: ['alice', 'bob'] })
+    const userLayer = Layer.succeed(UserService)({ users: ['alice', 'bob'] })
 
-      const session = Session.create([cmd], new Map(), {
-        scopeLayers: [userLayer],
-      })
+    const session = Session.create([cmd], new Map(), {
+      scopeLayers: [userLayer],
+    })
 
-      // Navigate to assign — enters slot phase
-      session.queryPush('a')
-      expect(session.getPhase()).toBe('slot')
+    // Navigate to assign — enters slot phase
+    session.queryPush('a')
+    expect(session.getPhase()).toBe('slot')
 
-      // Bug: eagerLoadFuzzyCandidates uses runSyncExit with no layer provision.
-      // The source Effect needs UserService but it's not provided, so it fails
-      // silently and candidates stay empty.
-      const res = session.getResolution()
-      expect(res.choices.length).toBeGreaterThan(0)
-    }),
-  )
+    // eagerLoadFuzzyCandidates runs the source Effect synchronously with
+    // the combined scope layers. UserService is provided, so candidates load.
+    const res = session.getResolution()
+    expect(res.choices.length).toBeGreaterThan(0)
+  })
 })
 
 // ============================================================================

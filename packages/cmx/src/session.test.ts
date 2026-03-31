@@ -184,7 +184,6 @@ describe('Session — toggleMode applies layers', () => {
     expect(res2.mode).toBe('flat')
 
     // Navigate to executable in flat mode, then verify the effect runs with layers
-    res2 // reset
     session.queryPush('r')
     const execRes = session.getResolution()
     expect(execRes.executable).toBe(true)
