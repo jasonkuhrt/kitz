@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
-    "@kitz/fuzzy": "workspace:*"
+    "@kitz/fuzzy": "workspace:*",
+    "@kitz/sch": "workspace:*"
   }
 }

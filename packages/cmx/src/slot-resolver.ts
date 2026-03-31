@@ -1,4 +1,5 @@
-import { Option, Schema, SchemaAST } from 'effect'
+import { Option, Schema } from 'effect'
+import { Sch } from '@kitz/sch'
 import type { AnySlot, SlotEnum, SlotFuzzy, SlotSearch, SlotText, SlotCandidate } from './slot.js'
 import type { Choice } from './choice.js'
 import type { SlotState } from './resolution.js'
@@ -71,38 +72,14 @@ const buildSlotChoices = (state: SlotResolverState, matcher: MatcherService): Ch
   }
 }
 
-/** Get enum candidates from a Literal schema using public SchemaAST API. */
-const getEnumCandidates = (slot: SlotEnum): Choice[] => {
-  const ast = SchemaAST.getAST(slot.schema)
-
-  if (SchemaAST.isUnion(ast)) {
-    const choices: Choice[] = []
-    for (const member of ast.types) {
-      if (SchemaAST.isLiteral(member)) {
-        choices.push({
-          token: String(member.literal),
-          kind: 'value' as const,
-          executable: false,
-          description: slot.description,
-        })
-      }
-    }
-    return choices
-  }
-
-  if (SchemaAST.isLiteral(ast)) {
-    return [
-      {
-        token: String(ast.literal),
-        kind: 'value' as const,
-        executable: false,
-        description: slot.description,
-      },
-    ]
-  }
-
-  return []
-}
+/** Get enum candidates from a Literal schema via @kitz/sch AST helpers. */
+const getEnumCandidates = (slot: SlotEnum): Choice[] =>
+  Sch.AST.extractLiterals(slot.schema).map((literal) => ({
+    token: String(literal),
+    kind: 'value' as const,
+    executable: false,
+    description: slot.description,
+  }))
 
 /** Score and rank slot choices through the pluggable Matcher. */
 const matchSlotChoices = (choices: Choice[], query: string, matcher: MatcherService): Choice[] => {
