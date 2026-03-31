@@ -1,3 +1,5 @@
+import type { AnyCommand } from './command.js'
+
 /** A single entry in the choices list. */
 export interface Choice {
   readonly token: string
@@ -13,7 +15,7 @@ export interface Choice {
   readonly group?: string | undefined
   readonly aliases?: ReadonlyArray<string> | undefined
   /** @internal Command reference for shortcut identity matching. */
-  readonly _command?: unknown
+  readonly _command?: AnyCommand
 }
 
 /** An accepted command token with the query that was active when it was taken. */
