@@ -46,24 +46,16 @@ test('subsequence match scores higher than out-of-order match', () => {
   expect(subseq!).toBeGreaterThan(ooo!)
 })
 
-test('score agrees with hasMatch — score returns None when hasMatch returns false', () => {
-  // "foo bar" has a space, but "foobar" does not. hasMatch uses multiset containment
-  // which will report false (space char missing). The token branch in score() must
-  // not bypass this gate.
-  const cases = [
-    ['foo bar', 'foobar'], // space not in haystack
-    ['a b', 'ab'], // same pattern
-  ] as const
-  for (const [needle, haystack] of cases) {
-    const matched = hasMatch(needle, haystack)
-    const scored = unwrap(needle, haystack)
-    if (!matched) {
-      expect(
-        scored,
-        `score('${needle}', '${haystack}') should be null when hasMatch is false`,
-      ).toBeNull()
-    }
-  }
+test('space-containing needles match via token splitting even when hasMatch rejects the space char', () => {
+  // Token match splits on spaces and matches each term independently.
+  // 'config reload' → ['config', 'reload'] both exist in 'configReload'.
+  // hasMatch would reject because the space char isn't in the haystack,
+  // but token match runs first and succeeds.
+  const result = score('config reload', 'configReload')
+  expect(Option.isSome(result), `score('config reload', 'configReload') should be Some`).toBe(true)
+
+  const result2 = score('foo bar', 'foobar')
+  expect(Option.isSome(result2), `score('foo bar', 'foobar') should be Some`).toBe(true)
 })
 
 test('out-of-order matches are positive, not zero', () => {

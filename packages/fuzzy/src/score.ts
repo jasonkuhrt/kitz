@@ -27,19 +27,20 @@ export function score(
 const scoreImpl = (needle: string, haystack: string): Option.Option<number> => {
   if (needle.length === 0) return Option.some(0)
 
-  if (!hasMatch(needle, haystack)) return Option.none()
-
   // Token match: if the needle contains spaces, try matching each term
   // independently against the haystack. Terms can match in any order.
   // A reorder penalty applies when terms don't match in needle order.
-  // This runs after hasMatch so that needles with spaces that aren't in
-  // the haystack are correctly rejected (multiset containment gate).
+  // This runs BEFORE hasMatch because hasMatch rejects space characters
+  // not in the haystack, but token match splits on spaces and matches
+  // each term independently (e.g. 'config reload' matches 'configReload').
   if (needle.includes(' ')) {
     const tokenScore = scoreTokenMatch(needle, haystack)
     if (tokenScore !== null) return Option.some(tokenScore)
     // If token matching fails (some term not found), fall through to
     // character-level matching below.
   }
+
+  if (!hasMatch(needle, haystack)) return Option.none()
 
   // Try subsequence path first — optimal DP alignment
   const subseq = subsequenceScore(needle, haystack)
