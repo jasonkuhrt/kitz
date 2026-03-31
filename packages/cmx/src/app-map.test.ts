@@ -5,21 +5,12 @@ import { Pat } from '@kitz/core'
 import { AppMap } from './app-map.js'
 import { Command } from './command.js'
 import { Capability } from './capability.js'
+import { reloadCmd, replyCmd, closeCmd, threadNs, bufferNs } from './test-fixtures.js'
 
-const reload = Capability.make({ name: 'reload', execute: Effect.void })
-const reply = Capability.make({ name: 'reply', execute: Effect.void })
 const nav = Capability.make({ name: 'nav', execute: Effect.void })
-const close = Capability.make({ name: 'close', execute: Effect.void })
-
-const reloadCmd = Command.Leaf.make({ name: 'reload', capability: reload })
-const replyCmd = Command.Leaf.make({ name: 'reply', capability: reply })
 const navCmd = Command.Leaf.make({ name: 'nav', capability: nav })
-const closeCmd = Command.Leaf.make({ name: 'close', capability: close })
-
-const configNs = Command.Namespace.make({ name: 'Config', children: [reloadCmd] })
-const threadNs = Command.Namespace.make({ name: 'Thread', children: [replyCmd] })
 const navNs = Command.Namespace.make({ name: 'Nav', children: [navCmd] })
-const bufferNs = Command.Namespace.make({ name: 'Buffer', children: [closeCmd] })
+const configNs = Command.Namespace.make({ name: 'Config', children: [reloadCmd] })
 
 describe('AppMap.make', () => {
   it('creates root with commands', () => {
@@ -407,11 +398,10 @@ describe('AppMap.getActiveShortcuts conditional (if)', () => {
 // Scenario: 50 shortcuts in scope (25 unconditional, 25 conditional),
 // 3-level deep AppMap. All 3 filter sites called per keypress.
 //
-// Budget: <3ms p99 combined per keypress (local), <100ms (CI).
+// Local gates use MEAN (robust to OS scheduling jitter, GC pauses).
+// CI gates use P99 (controlled VM, reliable tail latency enforcement).
 // Rationale: at 120Hz the frame budget is ~8.3ms. Shortcut filtering
 // is one of several hot-path steps (fuzzy matching, ranking, rendering).
-// Observed mean is well under 1ms; the 3ms local gate catches real
-// regressions while tolerating p99 jitter from dev machine CPU load.
 // See docs/rationales/0001-effect-on-hot-path.md.
 //
 // For detailed profiling tables: bun run --cwd packages/cmx bench
@@ -448,11 +438,11 @@ describe('AppMap performance gate', () => {
   const deepPath = ['workspace', 'thread'] as const
   const state = { mode: 'mode1' }
 
-  // Budget: 3ms p99 for the combined keypress path (all 3 filter sites).
-  // CI observed baseline: ~36ms combined. Threshold at ~3x for variance.
-  // Local 3ms tolerates p99 noise while still catching real regressions.
+  // Budget: combined cost of all 3 filter sites per keypress.
+  // CI observed baseline: ~36ms combined p99. Threshold at ~3x for variance.
+  // Local: gate on mean (robust to jitter). CI: gate on p99 (strict).
   const IS_CI = !!process.env['CI']
-  const BUDGET_P99_MS = IS_CI ? 100 : 3
+  const COMBINED_BUDGET = { localMean: 1, ciP99: 100 }
 
   test('combined keypress path (resolveShortcut + computeScope + getActiveShortcuts) stays within budget', async () => {
     const b = new Bench({
@@ -480,7 +470,6 @@ describe('AppMap performance gate', () => {
     const scope = b.getTask('computeScope')!.result!
     const active = b.getTask('getActiveShortcuts')!.result!
 
-    // Combined p99: worst-case per-keypress cost across all 3 sites
     const combinedP99 = resolve.p99 + scope.p99 + active.p99
     const combinedMean = resolve.mean + scope.mean + active.mean
 
@@ -492,15 +481,23 @@ describe('AppMap performance gate', () => {
         `    computeScope    : mean=${scope.mean.toFixed(4)}ms  p99=${scope.p99.toFixed(4)}ms  hz=${scope.hz.toFixed(0)}`,
         `    getActiveShrtcts: mean=${active.mean.toFixed(4)}ms  p99=${active.p99.toFixed(4)}ms  hz=${active.hz.toFixed(0)}`,
         `    ──────────────────────────────────────────────────`,
-        `    combined        : mean=${combinedMean.toFixed(4)}ms  p99=${combinedP99.toFixed(4)}ms  budget=${BUDGET_P99_MS}ms`,
+        `    combined        : mean=${combinedMean.toFixed(4)}ms  p99=${combinedP99.toFixed(4)}ms`,
+        `    budget: ${IS_CI ? `p99 < ${COMBINED_BUDGET.ciP99}ms` : `mean < ${COMBINED_BUDGET.localMean}ms`}`,
       ].join('\n'),
     )
 
-    // Gate: combined p99 must stay within budget
-    expect(
-      combinedP99,
-      `combined p99 ${combinedP99.toFixed(3)}ms exceeds ${BUDGET_P99_MS}ms budget`,
-    ).toBeLessThan(BUDGET_P99_MS)
+    // Gate: local checks mean (stable), CI checks p99 (strict tail latency)
+    if (IS_CI) {
+      expect(
+        combinedP99,
+        `combined p99 ${combinedP99.toFixed(3)}ms exceeds CI budget ${COMBINED_BUDGET.ciP99}ms`,
+      ).toBeLessThan(COMBINED_BUDGET.ciP99)
+    } else {
+      expect(
+        combinedMean,
+        `combined mean ${combinedMean.toFixed(3)}ms exceeds local budget ${COMBINED_BUDGET.localMean}ms`,
+      ).toBeLessThan(COMBINED_BUDGET.localMean)
+    }
 
     // Sanity: each individual site should contribute meaningfully (not degenerate)
     // CI observed: ~982 hz. Threshold at ~3x below for variance.

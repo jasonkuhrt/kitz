@@ -1,37 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { Effect } from 'effect'
 import { CommandResolver } from './command-resolver.js'
 import { Command } from './command.js'
-import { Capability } from './capability.js'
-
-const reload = Capability.make({ name: 'reload', execute: Effect.void })
-const exportCap = Capability.make({ name: 'export', execute: Effect.void })
-const close = Capability.make({ name: 'close', execute: Effect.void })
-const lazyOpen = Capability.make({ name: 'lazy-open', execute: Effect.void })
-const lazyReload = Capability.make({ name: 'reload', execute: Effect.void })
-
-const configNs = Command.Namespace.make({
-  name: 'Config',
-  children: [
-    Command.Leaf.make({ name: 'reload', capability: reload }),
-    Command.Leaf.make({ name: 'export', capability: exportCap }),
-  ],
-})
-const bufferNs = Command.Namespace.make({
-  name: 'Buffer',
-  children: [Command.Leaf.make({ name: 'close', capability: close })],
-})
-const lazyHybrid = Command.Hybrid.make({
-  name: 'Lazy',
-  capability: lazyOpen,
-  children: [Command.Leaf.make({ name: 'reload', capability: lazyReload })],
-})
-
-const proximities = new Map([
-  ['Config', 2],
-  ['Buffer', 1],
-  ['Lazy', 3],
-])
+import { reload, configNs, bufferNs, lazyHybrid, defaultProximities as proximities } from './test-fixtures.js'
 
 describe('CommandResolver initial state', () => {
   it('starts in flat mode', () => {

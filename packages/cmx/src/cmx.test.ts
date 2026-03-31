@@ -1,26 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { Effect } from 'effect'
 import { createCmx } from './cmx.js'
 import { AppMap } from './app-map.js'
 import { Command } from './command.js'
-import { Capability } from './capability.js'
 import { Controls } from './controls.js'
 import { Matcher } from './matcher.js'
-
-const reload = Capability.make({ name: 'reload', execute: Effect.void })
-const exportCap = Capability.make({ name: 'export', execute: Effect.void })
-const close = Capability.make({ name: 'close', execute: Effect.void })
+import { reload, exportCap, exportCmd, bufferNs } from './test-fixtures.js'
 
 const reloadCmd = Command.Leaf.make({
   name: 'reload',
   capability: reload,
   description: 'Reload config',
 })
-const exportCmd = Command.Leaf.make({ name: 'export', capability: exportCap })
-const closeCmd = Command.Leaf.make({ name: 'close', capability: close })
 
 const configNs = Command.Namespace.make({ name: 'Config', children: [reloadCmd, exportCmd] })
-const bufferNs = Command.Namespace.make({ name: 'Buffer', children: [closeCmd] })
 
 const appMap = AppMap.make({
   commands: [configNs, bufferNs],

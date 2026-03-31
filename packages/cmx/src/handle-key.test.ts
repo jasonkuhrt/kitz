@@ -1,39 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { Effect } from 'effect'
 import { createHandleKey } from './handle-key.js'
 import { AppMap } from './app-map.js'
 import { Command } from './command.js'
-import { Capability } from './capability.js'
 import { Controls } from './controls.js'
 import { Matcher } from './matcher.js'
-
-const reload = Capability.make({ name: 'reload', execute: Effect.void })
-const exportCap = Capability.make({ name: 'export', execute: Effect.void })
-const close = Capability.make({ name: 'close', execute: Effect.void })
-const reply = Capability.make({ name: 'reply', execute: Effect.void })
-
-const reloadCmd = Command.Leaf.make({ name: 'reload', capability: reload })
-const exportCmd = Command.Leaf.make({ name: 'export', capability: exportCap })
-const closeCmd = Command.Leaf.make({ name: 'close', capability: close })
-const replyCmd = Command.Leaf.make({ name: 'reply', capability: reply })
-
-const configNs = Command.Namespace.make({ name: 'Config', children: [reloadCmd, exportCmd] })
-const bufferNs = Command.Namespace.make({ name: 'Buffer', children: [closeCmd] })
-const threadNs = Command.Namespace.make({ name: 'Thread', children: [replyCmd] })
-
-const appMap = AppMap.make({
-  commands: [configNs, bufferNs],
-  shortcuts: [{ key: 'r', command: reloadCmd }],
-  children: [
-    AppMap.Node.make({
-      name: 'workspace',
-      commands: [threadNs],
-      shortcuts: [{ key: 't', command: replyCmd }],
-    }),
-  ],
-})
-
-const ctx = { path: ['workspace'] }
+import { reload, configNs, appMap, workspaceCtx as ctx } from './test-fixtures.js'
 
 describe('Tier 1 — no active session', () => {
   it('returns Nil for unrecognized key', () => {
