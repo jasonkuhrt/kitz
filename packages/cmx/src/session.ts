@@ -2,7 +2,7 @@ import { Effect, Exit, Layer } from 'effect'
 import type { AnyCommand, CommandLeaf, CommandHybrid } from './command.js'
 import type { Resolution, SlotState } from './resolution.js'
 import type { Choice } from './choice.js'
-import type { AnyCapability } from './capability.js'
+import type { AnyCapability, CapabilityComposite } from './capability.js'
 import type { AnySlot } from './slot.js'
 import { CommandResolver } from './command-resolver.js'
 import { SlotResolver } from './slot-resolver.js'
@@ -28,14 +28,31 @@ interface SessionState {
   scopeLayers: ReadonlyArray<AnyLayer>
 }
 
-/** Recursively collect execute Effects from a composite capability's steps. */
-const collectStepEffects = (capability: AnyCapability): Effect.Effect<void>[] => {
-  if (capability._tag === 'Capability') return [capability.execute]
-  const effects: Effect.Effect<void>[] = []
-  for (const step of capability.steps) {
-    effects.push(...collectStepEffects(step.capability))
-  }
-  return effects
+/**
+ * Build a composite execution Effect where each step sees only its declared slots.
+ * This enforces the documented contract: "Each capability sees only the slots it declared."
+ */
+const buildScopedCompositeEffect = (
+  composite: CapabilityComposite,
+  allValues: Readonly<Record<string, unknown>>,
+  layers?: Layer.Layer<any>,
+): Effect.Effect<void> => {
+  const stepEffects = composite.steps.map((step) => {
+    // Scope slot values to only this step's declared slots
+    const declaredSlotNames = new Set(step.capability.slots.map((s) => s.name))
+    const scopedValues: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(allValues)) {
+      if (declaredSlotNames.has(k)) scopedValues[k] = v
+    }
+
+    const stepEffect =
+      step.capability._tag === 'Capability'
+        ? step.capability.execute
+        : buildScopedCompositeEffect(step.capability as CapabilityComposite, allValues, layers)
+
+    return buildExecutableEffect(stepEffect, scopedValues, layers)
+  })
+  return Effect.all(stepEffects, { discard: true })
 }
 
 /**
@@ -63,9 +80,7 @@ const buildCombinedResolution = (state: SessionState): Resolution => {
         effect = buildExecutableEffect(capability.execute, slotValues, combinedLayers)
         executable = true
       } else if (capability._tag === 'Composite') {
-        const stepEffects = collectStepEffects(capability)
-        const sequenced = Effect.all(stepEffects, { discard: true })
-        effect = buildExecutableEffect(sequenced, slotValues, combinedLayers)
+        effect = buildScopedCompositeEffect(capability, slotValues, combinedLayers)
         executable = true
       }
     }
@@ -158,6 +173,34 @@ const buildCombinedLayers = (state: SessionState): AnyLayer | undefined => {
 }
 
 /**
+ * Confirm the focused slot — handles all slot kinds in one place.
+ * This eliminates scattered slot-kind branching in Session methods.
+ *
+ * - Optional + empty query → skip (not submit "")
+ * - Text → validate through schema and submit
+ * - Non-text → take top choice
+ */
+const confirmFocusedSlot = (resolver: ReturnType<typeof SlotResolver.create>): void => {
+  const slot = resolver.getFocusedSlot()
+  if (!slot) return
+
+  // Optional slot with empty query → skip
+  if (slot.required === false && resolver.getQuery() === '') {
+    resolver.skipOptional()
+    return
+  }
+
+  // Text → validate and submit
+  if (slot._tag === 'Text') {
+    resolver.submitText()
+    return
+  }
+
+  // Non-text → take top choice
+  resolver.takeTop()
+}
+
+/**
  * Eagerly load candidates for Fuzzy slots by running their source Effect
  * synchronously. If the source requires async or services, this is a no-op
  * and the caller must load candidates externally via setCandidates.
@@ -203,9 +246,10 @@ export const Session = {
       readonly matcher?: MatcherService
     },
   ) => {
+    const matcher = options?.matcher
     const state: SessionState = {
       phase: 'command',
-      commandResolver: CommandResolver.create(commands, proximities, options?.matcher),
+      commandResolver: CommandResolver.create(commands, proximities, matcher),
       slotResolver: null,
       resolvedCommand: null,
       dynamicLayers: options?.dynamicLayers ?? {},
@@ -225,12 +269,13 @@ export const Session = {
         if (cmd && cmd.capability.slots.length > 0) {
           state.phase = 'slot'
           state.resolvedCommand = cmd
-          state.slotResolver = SlotResolver.create(cmd.capability.slots)
+          state.slotResolver = SlotResolver.create(cmd.capability.slots, matcher)
           eagerLoadFuzzyCandidates(cmd.capability.slots, state.slotResolver)
           return buildCombinedResolution(state)
         }
       }
-      return resolution
+      // INVARIANT: always return through buildCombinedResolution so layers are applied
+      return buildCombinedResolution(state)
     }
 
     /** Push a character to the current resolver. */
@@ -274,12 +319,7 @@ export const Session = {
     /** Take the top choice in the current resolver. */
     const choiceTakeTop = (): Resolution => {
       if (state.phase === 'slot' && state.slotResolver) {
-        const slot = state.slotResolver.getFocusedSlot()
-        if (slot && slot._tag === 'Text') {
-          state.slotResolver.submitText()
-        } else {
-          state.slotResolver.takeTop()
-        }
+        confirmFocusedSlot(state.slotResolver)
         return buildCombinedResolution(state)
       }
 
@@ -309,12 +349,7 @@ export const Session = {
     /** Confirm the current state (Enter key). */
     const confirm = (): Resolution => {
       if (state.phase === 'slot' && state.slotResolver) {
-        const slot = state.slotResolver.getFocusedSlot()
-        if (slot && slot._tag === 'Text') {
-          state.slotResolver.submitText()
-        } else {
-          state.slotResolver.takeTop()
-        }
+        confirmFocusedSlot(state.slotResolver)
         return buildCombinedResolution(state)
       }
 

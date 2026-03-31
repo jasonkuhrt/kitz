@@ -69,9 +69,11 @@ export const createHandleKey = (
       }
     }
 
-    // Update dynamic layers on the active session if they changed
-    if (active && context.layers) {
-      active.session.setDynamicLayers(context.layers)
+    // Always sync dynamic layers — if context.layers is absent, clear them.
+    // Without unconditional sync, removing layers from context leaves stale
+    // layers on the session forever.
+    if (active) {
+      active.session.setDynamicLayers(context.layers ?? {})
     }
 
     if (active) {
