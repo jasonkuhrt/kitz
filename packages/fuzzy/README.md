@@ -148,7 +148,7 @@ for (const { candidate, score } of results) {
 | Coverage ratio | (n/m) × 10 | Assignment | |
 | Window compactness | (n/window) × 5 | Assignment | |
 | Gap penalty | −3 start, −1 extend | Both | Affine model |
-| Token match | Per-term score × 0.7 reorder | Score orchestrator | Space-separated terms |
+| Token match | Per-term score × 0.7 reorder | Score orchestrator | Space-separated terms, word-level reorder detection (incl. camelCase) |
 | Word coverage | words_hit × 6 | Both (multi-word) | Whitespace/delimiter boundaries only |
 | Complete-word hit | +10 | Both (multi-word) | Needle = entire haystack word |
 | Tail-word weight | +5 per tail char | Both (multi-word) | Last word is most specific |
