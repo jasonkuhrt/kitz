@@ -19,17 +19,27 @@ import { Fuzzy } from './_.js'
 const shortString = fc.string({ minLength: 0, maxLength: 20 })
 const asciiString = fc.string()
 
-Test.property('hasMatch = true implies score is Some', shortString, shortString, (needle, haystack) => {
-  if (Fuzzy.hasMatch(needle, haystack)) {
-    expect(Option.isSome(Fuzzy.score(needle, haystack))).toBe(true)
-  }
-})
+Test.property(
+  'hasMatch = true implies score is Some',
+  shortString,
+  shortString,
+  (needle, haystack) => {
+    if (Fuzzy.hasMatch(needle, haystack)) {
+      expect(Option.isSome(Fuzzy.score(needle, haystack))).toBe(true)
+    }
+  },
+)
 
-Test.property('hasMatch = false implies score is None', shortString, shortString, (needle, haystack) => {
-  if (!Fuzzy.hasMatch(needle, haystack)) {
-    expect(Option.isNone(Fuzzy.score(needle, haystack))).toBe(true)
-  }
-})
+Test.property(
+  'hasMatch = false implies score is None',
+  shortString,
+  shortString,
+  (needle, haystack) => {
+    if (!Fuzzy.hasMatch(needle, haystack)) {
+      expect(Option.isNone(Fuzzy.score(needle, haystack))).toBe(true)
+    }
+  },
+)
 
 Test.property(
   'hasMatch = true implies positions length equals needle length',
@@ -44,17 +54,12 @@ Test.property(
   },
 )
 
-Test.property(
-  'positions indices are unique',
-  shortString,
-  shortString,
-  (needle, haystack) => {
-    if (Fuzzy.hasMatch(needle, haystack)) {
-      const pos = Option.getOrThrow(Fuzzy.positions(needle, haystack))
-      expect(new Set(pos).size).toBe(pos.length)
-    }
-  },
-)
+Test.property('positions indices are unique', shortString, shortString, (needle, haystack) => {
+  if (Fuzzy.hasMatch(needle, haystack)) {
+    const pos = Option.getOrThrow(Fuzzy.positions(needle, haystack))
+    expect(new Set(pos).size).toBe(pos.length)
+  }
+})
 
 Test.property(
   'positions indices are within bounds',
@@ -85,12 +90,8 @@ Test.property(
   },
 )
 
-Test.property(
-  'empty needle always matches with score 0',
-  asciiString,
-  (haystack) => {
-    expect(Fuzzy.hasMatch('', haystack)).toBe(true)
-    expect(Option.getOrThrow(Fuzzy.score('', haystack))).toBe(0)
-    expect(Option.getOrThrow(Fuzzy.positions('', haystack))).toEqual([])
-  },
-)
+Test.property('empty needle always matches with score 0', asciiString, (haystack) => {
+  expect(Fuzzy.hasMatch('', haystack)).toBe(true)
+  expect(Option.getOrThrow(Fuzzy.score('', haystack))).toBe(0)
+  expect(Option.getOrThrow(Fuzzy.positions('', haystack))).toEqual([])
+})

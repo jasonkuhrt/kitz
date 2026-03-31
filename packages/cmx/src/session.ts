@@ -168,7 +168,11 @@ const eagerLoadFuzzyCandidates = (
 ): void => {
   for (const slot of slots) {
     if (slot._tag !== 'Fuzzy') continue
-    const exit = Effect.runSyncExit(slot.source as Effect.Effect<ReadonlyArray<{ value: unknown; label: string; description?: string }>>)
+    const exit = Effect.runSyncExit(
+      slot.source as Effect.Effect<
+        ReadonlyArray<{ value: unknown; label: string; description?: string }>
+      >,
+    )
     if (Exit.isSuccess(exit)) {
       resolver.setCandidates(slot.name, exit.value as any)
     }

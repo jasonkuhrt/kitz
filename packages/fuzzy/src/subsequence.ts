@@ -274,7 +274,10 @@ export const subsequenceScore = (
       const pos = positions[k]!
       let wordIdx = 0
       for (let w = wordStarts.length - 1; w >= 0; w--) {
-        if (pos >= wordStarts[w]!) { wordIdx = w; break }
+        if (pos >= wordStarts[w]!) {
+          wordIdx = w
+          break
+        }
       }
       wordsHit.add(wordIdx)
     }
@@ -311,11 +314,17 @@ export const subsequenceScore = (
     if (n >= 2 && wordsHit.size >= 2) {
       let firstCharWordIdx = -1
       for (let w = wordStarts.length - 1; w >= 0; w--) {
-        if (positions[0]! >= wordStarts[w]!) { firstCharWordIdx = w; break }
+        if (positions[0]! >= wordStarts[w]!) {
+          firstCharWordIdx = w
+          break
+        }
       }
       let lastCharWordIdx = -1
       for (let w = wordStarts.length - 1; w >= 0; w--) {
-        if (positions[n - 1]! >= wordStarts[w]!) { lastCharWordIdx = w; break }
+        if (positions[n - 1]! >= wordStarts[w]!) {
+          lastCharWordIdx = w
+          break
+        }
       }
       if (firstCharWordIdx === 0 && lastCharWordIdx > 0) {
         adjustedScore += 4 // scope narrowing bonus

@@ -44,7 +44,11 @@ Test.describe('subsequenceScore — positions')
   .test()
 
 test('case insensitive matching', () => {
-  for (const [needle, haystack] of [['abc', 'ABC'], ['ABC', 'abc'], ['AbC', 'aBc']] as const) {
+  for (const [needle, haystack] of [
+    ['abc', 'ABC'],
+    ['ABC', 'abc'],
+    ['AbC', 'aBc'],
+  ] as const) {
     const result = subsequenceScore(needle, haystack)
     expect(result, `${needle} should match ${haystack}`).not.toBeNull()
     expect(result!.positions).toEqual([0, 1, 2])

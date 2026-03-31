@@ -16,7 +16,10 @@ import { subsequenceScore } from './subsequence.js'
  */
 export function score(needle: string, haystack: string): Option.Option<number>
 export function score(needle: string): (haystack: string) => Option.Option<number>
-export function score(needle: string, haystack?: string): Option.Option<number> | ((haystack: string) => Option.Option<number>) {
+export function score(
+  needle: string,
+  haystack?: string,
+): Option.Option<number> | ((haystack: string) => Option.Option<number>) {
   if (haystack === undefined) return (h: string) => scoreImpl(needle, h)
   return scoreImpl(needle, haystack)
 }

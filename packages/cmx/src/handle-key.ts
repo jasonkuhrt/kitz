@@ -106,8 +106,7 @@ export const createHandleKey = (
       // Pre-position at the shortcut's command
       const resolution = active.session.getResolution()
       const matchingChoice = resolution.choices.find(
-        (c) =>
-          c.token === kb.command.name || c.token.endsWith(` ${kb.command.name}`),
+        (c) => c.token === kb.command.name || c.token.endsWith(` ${kb.command.name}`),
       )
       if (matchingChoice) {
         const afterTake = active.session.choiceTake(matchingChoice)

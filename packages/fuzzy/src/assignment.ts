@@ -132,7 +132,16 @@ export const assignmentScore = (
   // if the global score improves.
 
   const sortBuf = new Array<number>(n)
-  let currentScore = computeScore(assigned, needleCodes, haystackCodes, bonuses, classes, n, m, sortBuf)
+  let currentScore = computeScore(
+    assigned,
+    needleCodes,
+    haystackCodes,
+    bonuses,
+    classes,
+    n,
+    m,
+    sortBuf,
+  )
 
   for (const i of order) {
     if (occurrences[i]!.length <= 1) continue // no alternatives
@@ -150,7 +159,16 @@ export const assignmentScore = (
         // Try the swap
         assigned[i] = altPos
         assigned[otherI] = currentPos
-        const newScore = computeScore(assigned, needleCodes, haystackCodes, bonuses, classes, n, m, sortBuf)
+        const newScore = computeScore(
+          assigned,
+          needleCodes,
+          haystackCodes,
+          bonuses,
+          classes,
+          n,
+          m,
+          sortBuf,
+        )
 
         if (newScore > currentScore) {
           // Accept swap
@@ -165,7 +183,16 @@ export const assignmentScore = (
         assigned[i] = altPos
         used.delete(currentPos)
         used.add(altPos)
-        const newScore = computeScore(assigned, needleCodes, haystackCodes, bonuses, classes, n, m, sortBuf)
+        const newScore = computeScore(
+          assigned,
+          needleCodes,
+          haystackCodes,
+          bonuses,
+          classes,
+          n,
+          m,
+          sortBuf,
+        )
 
         if (newScore > currentScore) {
           currentScore = newScore
@@ -217,7 +244,13 @@ const computeScore = (
     // Vowels: a, e, i, o, u (lowercase charCodes: 97, 101, 105, 111, 117)
     const lowerCode = toLower(haystackCodes[pos]!)
     if (classes[pos] === CharClass.Lower || classes[pos] === CharClass.Upper) {
-      if (lowerCode !== 97 && lowerCode !== 101 && lowerCode !== 105 && lowerCode !== 111 && lowerCode !== 117) {
+      if (
+        lowerCode !== 97 &&
+        lowerCode !== 101 &&
+        lowerCode !== 105 &&
+        lowerCode !== 111 &&
+        lowerCode !== 117
+      ) {
         score += 2 // consonant bonus
       }
     }
@@ -312,12 +345,18 @@ const computeScore = (
       // Check if the first needle char lands in word 0
       let firstCharWordIdx = -1
       for (let w = wordStarts.length - 1; w >= 0; w--) {
-        if (assigned[0]! >= wordStarts[w]!) { firstCharWordIdx = w; break }
+        if (assigned[0]! >= wordStarts[w]!) {
+          firstCharWordIdx = w
+          break
+        }
       }
       // Check if the last needle char lands in a later word
       let lastCharWordIdx = -1
       for (let w = wordStarts.length - 1; w >= 0; w--) {
-        if (assigned[n - 1]! >= wordStarts[w]!) { lastCharWordIdx = w; break }
+        if (assigned[n - 1]! >= wordStarts[w]!) {
+          lastCharWordIdx = w
+          break
+        }
       }
       if (firstCharWordIdx === 0 && lastCharWordIdx > 0) {
         score += 4 // scope narrowing bonus
@@ -330,9 +369,15 @@ const computeScore = (
       const wStart = wordStarts[w]!
       const wEnd = w + 1 < wordStarts.length ? wordStarts[w + 1]! : m
       let wEndTrimmed = wEnd
-      while (wEndTrimmed > wStart && (classes[wEndTrimmed - 1] === CharClass.White || classes[wEndTrimmed - 1] === CharClass.Delimiter)) wEndTrimmed--
+      while (
+        wEndTrimmed > wStart &&
+        (classes[wEndTrimmed - 1] === CharClass.White ||
+          classes[wEndTrimmed - 1] === CharClass.Delimiter)
+      )
+        wEndTrimmed--
       let word = ''
-      for (let j = wStart; j < wEndTrimmed; j++) word += String.fromCharCode(toLower(haystackCodes[j]!))
+      for (let j = wStart; j < wEndTrimmed; j++)
+        word += String.fromCharCode(toLower(haystackCodes[j]!))
       if (word === needleLowerStr) {
         score += 10
         break

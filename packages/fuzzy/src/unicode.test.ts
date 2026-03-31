@@ -16,11 +16,7 @@ import { Fuzzy } from './_.js'
 Test.describe('ASCII case folding')
   .on(Fuzzy.hasMatch)
   // dprint-ignore
-  .cases(
-    [['abc', 'ABC'], true],
-    [['ABC', 'abc'], true],
-    [['aBc', 'AbC'], true],
-  )
+  .cases([['abc', 'ABC'], true], [['ABC', 'abc'], true], [['aBc', 'AbC'], true])
   .test()
 
 // Non-ASCII: same character matches (no folding needed)

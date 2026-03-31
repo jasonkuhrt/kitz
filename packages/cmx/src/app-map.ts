@@ -84,7 +84,11 @@ const resolveChain = (
  * Compute the scope from an AppMap at a given path.
  * Walks deepest-first, collecting commands, shortcuts, and proximity values.
  */
-const computeScope = (root: AppMapRoot, path: ReadonlyArray<string>, context?: ShortcutContext): Scope => {
+const computeScope = (
+  root: AppMapRoot,
+  path: ReadonlyArray<string>,
+  context?: ShortcutContext,
+): Scope => {
   const chain = resolveChain(root, path)
   const commands: AnyCommand[] = []
   const shortcuts: Shortcut[] = []
@@ -158,8 +162,7 @@ const getActiveShortcuts = (
     const nodeName = i === 0 ? '(root)' : (node as AppMapNode).name
     const state = context?.state ?? {}
     const activeShortcuts = node.shortcuts.filter(
-      (kb) =>
-        (!kb.local || i === chain.length - 1) && (!kb.if || Pat.isMatch(state, kb.if)),
+      (kb) => (!kb.local || i === chain.length - 1) && (!kb.if || Pat.isMatch(state, kb.if)),
     )
     if (activeShortcuts.length > 0) {
       result.push({ nodeName, shortcuts: activeShortcuts })

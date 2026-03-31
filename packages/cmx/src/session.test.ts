@@ -187,11 +187,15 @@ describe('Session — composite capability', () => {
     const log: string[] = []
     const trackedA = Capability.make({
       name: 'stepA',
-      execute: Effect.sync(() => { log.push('a') }),
+      execute: Effect.sync(() => {
+        log.push('a')
+      }),
     })
     const trackedB = Capability.make({
       name: 'stepB',
-      execute: Effect.sync(() => { log.push('b') }),
+      execute: Effect.sync(() => {
+        log.push('b')
+      }),
     })
     const tracked = Capability.Composite.make({
       name: 'deploy',

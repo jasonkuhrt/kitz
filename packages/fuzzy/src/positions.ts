@@ -15,8 +15,15 @@ import { subsequenceScore } from './subsequence.js'
  * Data-last form: `positions(needle)` returns `(haystack) => Option<ReadonlyArray<number>>`
  */
 export function positions(needle: string, haystack: string): Option.Option<ReadonlyArray<number>>
-export function positions(needle: string): (haystack: string) => Option.Option<ReadonlyArray<number>>
-export function positions(needle: string, haystack?: string): Option.Option<ReadonlyArray<number>> | ((haystack: string) => Option.Option<ReadonlyArray<number>>) {
+export function positions(
+  needle: string,
+): (haystack: string) => Option.Option<ReadonlyArray<number>>
+export function positions(
+  needle: string,
+  haystack?: string,
+):
+  | Option.Option<ReadonlyArray<number>>
+  | ((haystack: string) => Option.Option<ReadonlyArray<number>>) {
   if (haystack === undefined) return (h: string) => positionsImpl(needle, h)
   return positionsImpl(needle, haystack)
 }

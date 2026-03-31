@@ -14,7 +14,14 @@ import { Controls } from './controls.js'
 import { CommandResolver } from './command-resolver.js'
 import { SlotResolver } from './slot-resolver.js'
 import { Slot } from './slot.js'
-import { appMap, bufferNs, configNs, defaultProximities, rootCtx, workspaceCtx } from './test-fixtures.js'
+import {
+  appMap,
+  bufferNs,
+  configNs,
+  defaultProximities,
+  rootCtx,
+  workspaceCtx,
+} from './test-fixtures.js'
 
 // ============================================================================
 // P1: Stale session after executable shortcuts
