@@ -13,13 +13,7 @@ import { Capability } from './capability.js'
 import { Slot } from './slot.js'
 import { Controls } from './controls.js'
 import { AppMap } from './app-map.js'
-import {
-  appMap,
-  configNs,
-  bufferNs,
-  reloadCmd,
-  defaultProximities,
-} from './test-fixtures.js'
+import { appMap, configNs, bufferNs, reloadCmd, defaultProximities } from './test-fixtures.js'
 
 // ============================================================================
 // P1: Search slots are unusable — always returns [] choices
@@ -30,10 +24,11 @@ describe('P1: Search slots produce choices from cached candidates', () => {
     const searchSlot = Slot.Search.make({
       name: 'query',
       schema: S.String,
-      source: (_q: string) => Effect.succeed([
-        { value: 'result1', label: 'Result 1' },
-        { value: 'result2', label: 'Result 2' },
-      ]),
+      source: (_q: string) =>
+        Effect.succeed([
+          { value: 'result1', label: 'Result 1' },
+          { value: 'result2', label: 'Result 2' },
+        ]),
     })
 
     const resolver = SlotResolver.create([searchSlot])
@@ -54,10 +49,11 @@ describe('P1: Search slots produce choices from cached candidates', () => {
     const searchSlot = Slot.Search.make({
       name: 'query',
       schema: S.String,
-      source: (_q: string) => Effect.succeed([
-        { value: 'result1', label: 'Result 1' },
-        { value: 'alpha', label: 'Alpha' },
-      ]),
+      source: (_q: string) =>
+        Effect.succeed([
+          { value: 'result1', label: 'Result 1' },
+          { value: 'alpha', label: 'Alpha' },
+        ]),
     })
 
     const resolver = SlotResolver.create([searchSlot])
@@ -86,10 +82,7 @@ describe('P1: hybrid children navigable in tree mode', () => {
       children: [Command.Leaf.make({ name: 'reload', capability: childCap })],
     })
 
-    const resolver = CommandResolver.create(
-      [hybrid],
-      new Map([['Lazy', 1]]),
-    )
+    const resolver = CommandResolver.create([hybrid], new Map([['Lazy', 1]]))
     resolver.toggleMode() // switch to tree mode
 
     const initial = resolver.getResolution()
@@ -112,10 +105,7 @@ describe('P1: hybrid children navigable in tree mode', () => {
 
 describe('P2: treePath undo only pops for namespace tokens', () => {
   it('undoing a leaf inside a namespace stays in that namespace', () => {
-    const resolver = CommandResolver.create(
-      [configNs, bufferNs],
-      defaultProximities,
-    )
+    const resolver = CommandResolver.create([configNs, bufferNs], defaultProximities)
     resolver.toggleMode()
 
     // Drill into Config
