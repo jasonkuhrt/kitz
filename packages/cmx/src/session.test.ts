@@ -249,3 +249,39 @@ describe('Session — composite capability', () => {
     expect(log).toEqual(['a', 'b'])
   })
 })
+
+describe('Session — Search slot source triggering', () => {
+  it('queryPush triggers Search slot source and populates choices', () => {
+    // Search slots have source: (query) => Effect<candidates[]>
+    // The Session should call source(query) when query changes and inject results
+    const searchSlot = Slot.Search.make({
+      name: 'user',
+      schema: S.String,
+      source: (query: string) =>
+        Effect.succeed(
+          query.length > 0
+            ? [
+                { value: `${query}-1`, label: `${query} result 1` },
+                { value: `${query}-2`, label: `${query} result 2` },
+              ]
+            : [],
+        ),
+    })
+    const searchCap = Capability.make({
+      name: 'find-user',
+      slots: [searchSlot],
+      execute: Effect.void,
+    })
+    const cmd = Command.Leaf.make({ name: 'find', capability: searchCap })
+    const session = Session.create([cmd], defaultProximities)
+
+    // Navigate to the command (should auto-advance to slot phase)
+    session.queryPush('f')
+    expect(session.getPhase()).toBe('slot')
+
+    // Push a query character — should trigger search source
+    const res = session.queryPush('a')
+    expect(res.choices.length).toBe(2)
+    expect(res.choices[0]!.token).toBe('a result 1')
+  })
+})

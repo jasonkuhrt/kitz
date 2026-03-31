@@ -3,7 +3,7 @@ import type { AnyCommand, CommandLeaf, CommandHybrid } from './command.js'
 import type { Resolution, SlotState } from './resolution.js'
 import type { Choice } from './choice.js'
 import type { AnyCapability, CapabilityComposite } from './capability.js'
-import type { AnySlot } from './slot.js'
+import type { AnySlot, SlotSearch } from './slot.js'
 import { CommandResolver } from './command-resolver.js'
 import { SlotResolver } from './slot-resolver.js'
 import type { MatcherService } from './matcher.js'
@@ -230,6 +230,27 @@ const eagerLoadFuzzyCandidates = (
 }
 
 /**
+ * Trigger the source function for a Search slot when the focused slot
+ * is Search and the query has changed. Runs the source Effect synchronously
+ * and injects the results via setCandidates.
+ */
+const triggerSearchSource = (state: SessionState): void => {
+  if (!state.slotResolver) return
+  const slot = state.slotResolver.getFocusedSlot()
+  if (!slot || slot._tag !== 'Search') return
+
+  const query = state.slotResolver.getQuery()
+  const source = (slot as SlotSearch).source
+  const sourceEffect = source(query)
+  const combinedLayer = buildCombinedLayers(state)
+  const provided = combinedLayer ? Effect.provide(sourceEffect, combinedLayer) : sourceEffect
+  const exit = Effect.runSyncExit(provided)
+  if (Exit.isSuccess(exit)) {
+    state.slotResolver.setCandidates(slot.name, exit.value as any)
+  }
+}
+
+/**
  * Create a Session — the state machine that coordinates command resolution,
  * slot resolution, and effect building.
  *
@@ -287,6 +308,8 @@ export const Session = {
     const queryPush = (char: string): Resolution => {
       if (state.phase === 'slot' && state.slotResolver) {
         state.slotResolver.queryPush(char)
+        // Trigger Search slot source when the focused slot is Search
+        triggerSearchSource(state)
         return buildCombinedResolution(state)
       }
 
