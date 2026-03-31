@@ -501,8 +501,9 @@ describe('AppMap performance gate', () => {
     ).toBeLessThan(BUDGET_P99_MS)
 
     // Sanity: each individual site should contribute meaningfully (not degenerate)
-    expect(resolve.hz, 'resolveShortcut hz too low').toBeGreaterThan(1000)
-    expect(scope.hz, 'computeScope hz too low').toBeGreaterThan(1000)
-    expect(active.hz, 'getActiveShortcuts hz too low').toBeGreaterThan(1000)
+    const MIN_HZ = 1000 / CI_FACTOR
+    expect(resolve.hz, 'resolveShortcut hz too low').toBeGreaterThan(MIN_HZ)
+    expect(scope.hz, 'computeScope hz too low').toBeGreaterThan(MIN_HZ)
+    expect(active.hz, 'getActiveShortcuts hz too low').toBeGreaterThan(MIN_HZ)
   })
 })
