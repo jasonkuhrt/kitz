@@ -12,6 +12,8 @@ export interface Choice {
   readonly deprecated?: { readonly replacement: string } | undefined
   readonly group?: string | undefined
   readonly aliases?: ReadonlyArray<string> | undefined
+  /** @internal Command reference for shortcut identity matching. */
+  readonly _command?: unknown | undefined
 }
 
 /** An accepted command token with the query that was active when it was taken. */

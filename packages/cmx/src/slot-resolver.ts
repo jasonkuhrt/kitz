@@ -49,8 +49,20 @@ const buildSlotChoices = (state: SlotResolverState, matcher: MatcherService): Ch
       )
     }
     case 'Search': {
-      // Search candidates come from the source — managed externally
-      return []
+      // Search candidates are injected via setCandidates after the consumer
+      // runs the slot's source Effect. Same caching pattern as Fuzzy.
+      const cached = state.cachedCandidates.get(slot.name) ?? []
+      return matchSlotChoices(
+        cached.map((c) => ({
+          token: c.label,
+          kind: 'value' as const,
+          executable: false,
+          description: c.description,
+          _value: c.value,
+        })),
+        state.query,
+        matcher,
+      )
     }
     case 'Text': {
       // No candidates for text slots
@@ -153,8 +165,9 @@ export const SlotResolver = {
       const slot = getFocusedSlot()
       if (!slot) return
 
-      // For Text slots, any character is valid (including space)
-      if (slot._tag === 'Text') {
+      // For Text and Search slots, any character is valid.
+      // Text has no candidates. Search candidates update externally per query.
+      if (slot._tag === 'Text' || slot._tag === 'Search') {
         state.query += char
         return
       }
@@ -260,11 +273,12 @@ export const SlotResolver = {
 
     /** Undo the last taken choice (go back to previous slot). */
     const choiceUndo = (): boolean => {
-      state.query = ''
       // If past the end (all slots filled), back up to the last slot
       if (state.focusedIndex >= state.slots.length && state.slots.length > 0) {
         state.focusedIndex = state.slots.length - 1
         const lastSlot = state.slots[state.focusedIndex]!
+        const filled = state.values.get(lastSlot.name)
+        state.query = filled?.preTakeQuery ?? ''
         state.values.delete(lastSlot.name)
         return true
       }
@@ -273,10 +287,13 @@ export const SlotResolver = {
         if (currentSlot) state.values.delete(currentSlot.name)
         state.focusedIndex--
         const prevSlot = state.slots[state.focusedIndex]!
+        const filled = state.values.get(prevSlot.name)
+        state.query = filled?.preTakeQuery ?? ''
         state.values.delete(prevSlot.name)
         return true
       }
       // At first slot — caller should return to command resolution
+      state.query = ''
       return false
     }
 

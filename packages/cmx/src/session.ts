@@ -250,8 +250,9 @@ export const Session = {
         const query = state.slotResolver.getQuery()
         const focusedSlot = state.slotResolver.getFocusedSlot()
 
-        // If at first slot with empty query, transition back to command phase
-        if (query === '' && focusedSlot === state.slotResolver.getFocusedSlot()) {
+        // If at first slot with empty query, try to undo into previous slot
+        // or transition back to command phase
+        if (query === '') {
           const undoOk = state.slotResolver.choiceUndo()
           if (!undoOk) {
             // At first slot boundary — return to command resolution

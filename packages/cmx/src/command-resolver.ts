@@ -41,6 +41,7 @@ const buildFlatChoices = (
       deprecated: p.command.deprecated,
       group: p.command.group,
       aliases: p.command.aliases,
+      _command: p.command,
     }),
   )
 }
@@ -62,6 +63,7 @@ const buildTreeChoices = (commands: ReadonlyArray<AnyCommand>, treePath: string[
       executable: cmd._tag === 'Leaf' || cmd._tag === 'Hybrid',
       description: cmd.description,
       aliases: cmd.aliases,
+      _command: cmd,
     }),
   )
 }
@@ -231,8 +233,8 @@ export const CommandResolver = {
           preTakeQuery: state.query,
         })
         state.query = ''
-        // In tree mode, descend into the namespace if it's not a leaf
-        if (state.mode === 'tree' && taken.kind === 'namespace') {
+        // In tree mode, descend into the namespace/hybrid if it has children
+        if (state.mode === 'tree' && (taken.kind === 'namespace' || taken.kind === 'hybrid')) {
           state.treePath.push(taken.token)
         }
       }
@@ -246,10 +248,15 @@ export const CommandResolver = {
       } else if (state.acceptedTokens.length > 0) {
         const last = state.acceptedTokens.pop()!
         state.query = last.preTakeQuery
-        // In tree mode, if the popped token was a namespace that pushed
-        // onto treePath, pop treePath too. Otherwise the resolver shows
-        // child choices but the user can't navigate back to the parent.
-        if (state.mode === 'tree' && state.treePath.length > 0) {
+        // In tree mode, only pop treePath if the popped token matches
+        // the current treePath tail (meaning it was a namespace/hybrid
+        // that pushed onto treePath when taken). Leaf tokens don't push
+        // to treePath, so undoing them shouldn't pop it.
+        if (
+          state.mode === 'tree' &&
+          state.treePath.length > 0 &&
+          state.treePath[state.treePath.length - 1] === last.token
+        ) {
           state.treePath.pop()
         }
       }
@@ -264,8 +271,11 @@ export const CommandResolver = {
           preTakeQuery: state.query,
         })
         state.query = ''
-        // If the taken choice is a namespace in tree mode, descend
-        if (state.mode === 'tree' && resolution.topChoice.kind === 'namespace') {
+        // If the taken choice is a namespace or hybrid in tree mode, descend
+        if (
+          state.mode === 'tree' &&
+          (resolution.topChoice.kind === 'namespace' || resolution.topChoice.kind === 'hybrid')
+        ) {
           state.treePath.push(resolution.topChoice.token)
         }
       }
@@ -278,7 +288,7 @@ export const CommandResolver = {
         preTakeQuery: state.query,
       })
       state.query = ''
-      if (state.mode === 'tree' && choice.kind === 'namespace') {
+      if (state.mode === 'tree' && (choice.kind === 'namespace' || choice.kind === 'hybrid')) {
         state.treePath.push(choice.token)
       }
       return buildResolution(state, matcher)

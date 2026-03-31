@@ -133,9 +133,32 @@ for (const { candidate, score } of results) {
 }
 ```
 
+### Booster weights
+
+| Booster | Weight | Path | Notes |
+| --- | --- | --- | --- |
+| Edge hit | fzf boundary table (7–10) | Both | See [Scoring Constants](#scoring-constants-exported) |
+| Consecutive run | Chunk rule (4+) | DP | Carries first-bonus through run |
+| Exact case | +1 per match | Both | |
+| Consonant weight | +2 per consonant | Assignment | Vowels: a, e, i, o, u |
+| Subsequence order | +8 | Assignment | When LIS = needle length |
+| Order-coherence | LIS × 2 | Assignment | |
+| Acronym alignment | 8 × n (replaces edges) | Assignment | Only when all chars on boundaries |
+| Scope narrowing | +4 | Both (multi-word) | Early chars in word 1, later in word 2+ |
+| Coverage ratio | (n/m) × 10 | Assignment | |
+| Window compactness | (n/window) × 5 | Assignment | |
+| Gap penalty | −3 start, −1 extend | Both | Affine model |
+| Token match | Per-term score − 5 reorder | Score orchestrator | Space-separated terms |
+| Word coverage | words_hit × 6 | Both (multi-word) | Whitespace/delimiter boundaries only |
+| Complete-word hit | +10 | Both (multi-word) | Needle = entire haystack word |
+| Tail-word weight | +5 per tail char | Both (multi-word) | Last word is most specific |
+| Candidate-count | 0 / 3 / 8 penalty | match() | Assignment penalty by set size |
+
+Word boundaries are defined by whitespace and delimiter transitions only — camelCase transitions are internal structure, not word boundaries.
+
 ### Candidate-count heuristic
 
-[`match()`](#api-overview) auto-tunes booster weights based on `candidates.length`. Small sets (≤15) are tuned for recall — the order booster weighs less, so out-of-order matches score closer to subsequence matches. Large sets (80+) are tuned for precision — the order booster weighs more, density signals tighten. [`score()`](#api-overview) uses default weights (no candidate count available). This is internal — not exposed as configuration.
+[`match()`](#api-overview) auto-tunes scoring based on `candidates.length`. Small sets (≤15) apply no assignment penalty — out-of-order matches compete equally. Medium sets (15–80) apply a −3 penalty to assignment-path scores. Large sets (80+) apply −8. This is internal — not exposed as configuration.
 
 ## Usage
 
