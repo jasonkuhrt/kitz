@@ -62,7 +62,9 @@ const scoreImpl = (needle: string, haystack: string): Option.Option<number> => {
  */
 const scoreTokenMatch = (needle: string, haystack: string): number | null => {
   const terms = needle.split(' ').filter((t) => t.length > 0)
-  if (terms.length === 0) return 0
+  // All-whitespace needle: no terms to match but the needle wasn't empty,
+  // so this is not a vacuous match — fall through to character-level matching.
+  if (terms.length === 0) return null
 
   // Pre-compute haystack classification once, shared across all term scoring calls.
   const classification = classifyHaystack(haystack)
@@ -89,10 +91,21 @@ const scoreTokenMatch = (needle: string, haystack: string): number | null => {
   // Sum term scores
   let total = termScores.reduce((a, b) => a + b, 0)
 
-  // Reorder penalty: check if match positions are monotonically increasing
+  // Reorder penalty: detect whether terms match haystack words in needle order.
+  // Find which haystack word each term primarily matches (by first character
+  // position), then check if word indices are monotonically increasing.
+  // Word boundaries include whitespace, delimiters, AND camelCase transitions.
+  const wordStarts = findTokenWordStarts(haystack, classification)
+  const termWordIndices = matchPositions.map((pos) => {
+    for (let w = wordStarts.length - 1; w >= 0; w--) {
+      if (pos >= wordStarts[w]!) return w
+    }
+    return 0
+  })
+
   let inOrder = true
-  for (let i = 1; i < matchPositions.length; i++) {
-    if (matchPositions[i]! <= matchPositions[i - 1]!) {
+  for (let i = 1; i < termWordIndices.length; i++) {
+    if (termWordIndices[i]! < termWordIndices[i - 1]!) {
       inOrder = false
       break
     }
@@ -106,4 +119,31 @@ const scoreTokenMatch = (needle: string, haystack: string): number | null => {
   return total
 }
 
-import { ScoreMatch } from './constants.js'
+/**
+ * Find word start positions including camelCase transitions.
+ * Unlike the subsequence/assignment word-start finders (which only use
+ * whitespace/delimiters), this includes camelCase boundaries because
+ * token match needs to detect reordering at the semantic word level.
+ */
+const findTokenWordStarts = (
+  haystack: string,
+  classification: { classes: number[]; bonuses: number[] },
+): number[] => {
+  const m = haystack.length
+  const starts: number[] = [0]
+  for (let j = 1; j < m; j++) {
+    const prevCls = classification.classes[j - 1]!
+    const currCls = classification.classes[j]!
+    // Whitespace/delimiter boundary
+    if (prevCls === CharClass.White || prevCls === CharClass.Delimiter) {
+      starts.push(j)
+    }
+    // CamelCase transition: lowercase → uppercase
+    else if (prevCls === CharClass.Lower && currCls === CharClass.Upper) {
+      starts.push(j)
+    }
+  }
+  return starts
+}
+
+import { CharClass, ScoreMatch } from './constants.js'

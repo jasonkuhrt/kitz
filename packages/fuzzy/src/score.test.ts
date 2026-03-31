@@ -75,6 +75,26 @@ test('multi-term token match scores each term via subsequence independently', ()
   expect(inOrder).toBeGreaterThan(reordered)
 })
 
+test('token match reorder detection works for camelCase haystacks', () => {
+  // For camelCase haystacks, reorder penalty should be based on which
+  // camelCase word each term matches, not raw character position.
+  // 'config reload' vs 'configReload': terms match in haystack word order → no penalty
+  const inOrder = unwrap('config reload', 'configReload')!
+  // 'reload config' vs 'configReload': terms match in reverse word order → penalty
+  const reordered = unwrap('reload config', 'configReload')!
+  expect(inOrder).toBeGreaterThan(reordered)
+
+  // Same with mixed case: 'Config Reload' → configReload is in-order
+  const inOrder2 = unwrap('Config Reload', 'configReload')!
+  const reordered2 = unwrap('Reload Config', 'configReload')!
+  expect(inOrder2).toBeGreaterThan(reordered2)
+
+  // For space-delimited haystacks, same principle applies
+  const inOrder3 = unwrap('config reload', 'config reload')!
+  const reordered3 = unwrap('reload config', 'config reload')!
+  expect(inOrder3).toBeGreaterThan(reordered3)
+})
+
 test('out-of-order matches are positive, not zero', () => {
   const result = unwrap('vdi', 'david')
   expect(result).not.toBeNull()
