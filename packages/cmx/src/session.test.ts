@@ -250,6 +250,66 @@ describe('Session — composite capability', () => {
   })
 })
 
+describe('Session — nested composite scoping', () => {
+  it('inner composite step does NOT see outer step slot values', async () => {
+    // Triple-nested: outerComposite → [ stepWithSlot, innerComposite → [ innerStep ] ]
+    // innerStep should see ONLY its own declared slots, not stepWithSlot's slot.
+    const observedValues: Array<Readonly<Record<string, unknown>>> = []
+
+    const outerSlot = Slot.Text.make({ name: 'outerParam', schema: S.String })
+    const stepWithSlot = Capability.make({
+      name: 'outer-step',
+      slots: [outerSlot],
+      execute: Effect.gen(function* () {
+        const vals = yield* SlotValues
+        observedValues.push({ ...vals })
+      }),
+    })
+
+    const innerStep = Capability.make({
+      name: 'inner-step',
+      // No slots declared — should see empty values
+      execute: Effect.gen(function* () {
+        const vals = yield* SlotValues
+        observedValues.push({ ...vals })
+      }),
+    })
+
+    const innerComposite = Capability.Composite.make({
+      name: 'inner-composite',
+      steps: [{ capability: innerStep }],
+    })
+
+    const outerComposite = Capability.Composite.make({
+      name: 'outer-composite',
+      steps: [{ capability: stepWithSlot }, { capability: innerComposite }],
+    })
+
+    const cmd = Command.Leaf.make({ name: 'deploy', capability: outerComposite })
+    const session = Session.create([cmd], defaultProximities)
+
+    // Auto-advance to slot phase
+    session.queryPush('d')
+    expect(session.getPhase()).toBe('slot')
+
+    // Fill the outerParam slot
+    for (const c of 'myvalue') session.queryPush(c)
+    session.confirm() // submitText
+
+    const res = session.getResolution()
+    expect(res.executable).toBe(true)
+    expect(res.effect).not.toBeNull()
+
+    await Effect.runPromise(res.effect!)
+
+    // stepWithSlot should see { outerParam: 'myvalue' }
+    expect(observedValues[0]).toEqual({ outerParam: 'myvalue' })
+    // innerStep should see {} — it declared no slots, and the composite
+    // should NOT leak outerParam into it
+    expect(observedValues[1]).toEqual({})
+  })
+})
+
 describe('Session — Search slot source triggering', () => {
   it('queryPush triggers Search slot source and populates choices', () => {
     // Search slots have source: (query) => Effect<candidates[]>
