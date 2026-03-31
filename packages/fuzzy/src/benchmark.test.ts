@@ -78,12 +78,15 @@ const largeCandidates = Array.from({ length: 500 }, (_, i) => ({
 
 // --- Performance gates -------------------------------------------------------
 
-// CI runners are significantly slower than local dev machines.
-// Scale thresholds to avoid flaky failures on shared infrastructure.
-const CI_FACTOR = process.env['CI'] ? 10 : 1
+// CI runners are shared VMs, ~10x slower than local dev machines.
+// Thresholds are calibrated for CI (the primary enforcement surface).
+// Observed CI baselines: match=12ms, hasMatch=7ms, score=4ms, positions<1ms.
+// Thresholds set at ~3x observed to allow for VM variance without
+// being so loose they miss real regressions.
+const IS_CI = !!process.env['CI']
 
 describe('fuzzy performance gate', () => {
-  const MATCH_BUDGET_P99_MS = 5 * CI_FACTOR
+  const MATCH_BUDGET_P99_MS = IS_CI ? 40 : 5
 
   test(`match() 500 candidates < ${MATCH_BUDGET_P99_MS}ms p99`, async () => {
     const b = new Bench({
@@ -160,10 +163,11 @@ describe('fuzzy performance gate', () => {
       `\n  hasMatch 500 candidates: mean=${result.mean.toFixed(3)}ms  p99=${result.p99.toFixed(3)}ms  hz=${result.hz.toFixed(0)}`,
     )
 
+    const HAS_MATCH_BUDGET = IS_CI ? 20 : 1
     expect(
       result.p99,
-      `hasMatch p99 ${result.p99.toFixed(3)}ms exceeds ${1 * CI_FACTOR}ms`,
-    ).toBeLessThan(1 * CI_FACTOR)
+      `hasMatch p99 ${result.p99.toFixed(3)}ms exceeds ${HAS_MATCH_BUDGET}ms`,
+    ).toBeLessThan(HAS_MATCH_BUDGET)
   })
 
   test('score 50 candidates < 1ms p99', async () => {
@@ -199,14 +203,15 @@ describe('fuzzy performance gate', () => {
       ].join('\n'),
     )
 
+    const SCORE_BUDGET = IS_CI ? 15 : 1
     expect(
       twoChar.p99,
-      `score/2-char p99 ${twoChar.p99.toFixed(3)}ms exceeds ${1 * CI_FACTOR}ms`,
-    ).toBeLessThan(1 * CI_FACTOR)
+      `score/2-char p99 ${twoChar.p99.toFixed(3)}ms exceeds ${SCORE_BUDGET}ms`,
+    ).toBeLessThan(SCORE_BUDGET)
     expect(
       fourChar.p99,
-      `score/4-char p99 ${fourChar.p99.toFixed(3)}ms exceeds ${1 * CI_FACTOR}ms`,
-    ).toBeLessThan(1 * CI_FACTOR)
+      `score/4-char p99 ${fourChar.p99.toFixed(3)}ms exceeds ${SCORE_BUDGET}ms`,
+    ).toBeLessThan(SCORE_BUDGET)
   })
 
   test('positions < 0.1ms p99 per pair', async () => {
@@ -238,9 +243,8 @@ describe('fuzzy performance gate', () => {
       ].join('\n'),
     )
 
-    expect(subseq.p99, `positions/subseq p99 exceeds ${0.1 * CI_FACTOR}ms`).toBeLessThan(
-      0.1 * CI_FACTOR,
-    )
-    expect(ooo.p99, `positions/ooo p99 exceeds ${0.1 * CI_FACTOR}ms`).toBeLessThan(0.1 * CI_FACTOR)
+    const POS_BUDGET = IS_CI ? 1 : 0.1
+    expect(subseq.p99, `positions/subseq p99 exceeds ${POS_BUDGET}ms`).toBeLessThan(POS_BUDGET)
+    expect(ooo.p99, `positions/ooo p99 exceeds ${POS_BUDGET}ms`).toBeLessThan(POS_BUDGET)
   })
 })

@@ -447,10 +447,10 @@ describe('AppMap performance gate', () => {
   const deepPath = ['workspace', 'thread'] as const
   const state = { mode: 'mode1' }
 
-  // Budget: 1ms p99 for the combined keypress path (all 3 filter sites)
-  // CI runners are ~10x slower than local dev machines.
-  const CI_FACTOR = process.env['CI'] ? 50 : 1
-  const BUDGET_P99_MS = 1 * CI_FACTOR
+  // Budget: 1ms p99 for the combined keypress path (all 3 filter sites).
+  // CI observed baseline: ~36ms combined. Threshold at ~3x for variance.
+  const IS_CI = !!process.env['CI']
+  const BUDGET_P99_MS = IS_CI ? 100 : 1
 
   test('combined keypress path (resolveShortcut + computeScope + getActiveShortcuts) stays within budget', async () => {
     const b = new Bench({
@@ -501,7 +501,8 @@ describe('AppMap performance gate', () => {
     ).toBeLessThan(BUDGET_P99_MS)
 
     // Sanity: each individual site should contribute meaningfully (not degenerate)
-    const MIN_HZ = 1000 / CI_FACTOR
+    // CI observed: ~982 hz. Threshold at ~3x below for variance.
+    const MIN_HZ = IS_CI ? 300 : 1000
     expect(resolve.hz, 'resolveShortcut hz too low').toBeGreaterThan(MIN_HZ)
     expect(scope.hz, 'computeScope hz too low').toBeGreaterThan(MIN_HZ)
     expect(active.hz, 'getActiveShortcuts hz too low').toBeGreaterThan(MIN_HZ)
