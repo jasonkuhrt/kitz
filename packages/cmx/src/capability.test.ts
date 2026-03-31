@@ -15,7 +15,10 @@ describe('Capability.make', () => {
   })
 
   it('creates with slots', () => {
-    const formatSlot = Slot.Enum.make({ name: 'format', schema: S.Union([S.Literal('json'), S.Literal('yaml')]) })
+    const formatSlot = Slot.Enum.make({
+      name: 'format',
+      schema: S.Union([S.Literal('json'), S.Literal('yaml')]),
+    })
     const cap = Capability.make({
       name: 'export',
       slots: [formatSlot],
@@ -41,7 +44,10 @@ describe('Capability.Composite.make', () => {
 
   it('aggregates slots from steps', () => {
     const step1 = Capability.make({ name: 'write', execute: Effect.void })
-    const formatSlot = Slot.Enum.make({ name: 'format', schema: S.Union([S.Literal('json'), S.Literal('yaml')]) })
+    const formatSlot = Slot.Enum.make({
+      name: 'format',
+      schema: S.Union([S.Literal('json'), S.Literal('yaml')]),
+    })
     const step2 = Capability.make({
       name: 'export',
       slots: [formatSlot],

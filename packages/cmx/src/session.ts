@@ -296,7 +296,11 @@ export const Session = {
           state.phase = 'slot'
           state.resolvedCommand = cmd
           state.slotResolver = SlotResolver.create(cmd.capability.slots, matcher)
-          eagerLoadFuzzyCandidates(cmd.capability.slots, state.slotResolver, buildCombinedLayers(state))
+          eagerLoadFuzzyCandidates(
+            cmd.capability.slots,
+            state.slotResolver,
+            buildCombinedLayers(state),
+          )
           return buildCombinedResolution(state)
         }
       }

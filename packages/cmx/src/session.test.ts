@@ -10,7 +10,9 @@ import { SlotValues } from './slot-values.js'
 const reload = Capability.make({ name: 'reload', execute: Effect.void })
 const exportCap = Capability.make({
   name: 'export',
-  slots: [Slot.Enum.make({ name: 'format', schema: S.Union([S.Literal('json'), S.Literal('yaml')]) })],
+  slots: [
+    Slot.Enum.make({ name: 'format', schema: S.Union([S.Literal('json'), S.Literal('yaml')]) }),
+  ],
   execute: Effect.void,
 })
 const close = Capability.make({ name: 'close', execute: Effect.void })

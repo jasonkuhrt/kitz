@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { CommandResolver } from './command-resolver.js'
 import { Command } from './command.js'
-import { reload, configNs, bufferNs, lazyHybrid, defaultProximities as proximities } from './test-fixtures.js'
+import {
+  reload,
+  configNs,
+  bufferNs,
+  lazyHybrid,
+  defaultProximities as proximities,
+} from './test-fixtures.js'
 
 describe('CommandResolver initial state', () => {
   it('starts in flat mode', () => {
