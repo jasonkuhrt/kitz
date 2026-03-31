@@ -58,8 +58,14 @@ Test.property(
     const p = Fuzzy.positions(needle, haystack)
 
     if (Option.isSome(s)) {
-      expect(m.length, `score=Some but match=[] for (${JSON.stringify(needle)}, ${JSON.stringify(haystack)})`).toBeGreaterThan(0)
-      expect(Option.isSome(p), `score=Some but positions=None for (${JSON.stringify(needle)}, ${JSON.stringify(haystack)})`).toBe(true)
+      expect(
+        m.length,
+        `score=Some but match=[] for (${JSON.stringify(needle)}, ${JSON.stringify(haystack)})`,
+      ).toBeGreaterThan(0)
+      expect(
+        Option.isSome(p),
+        `score=Some but positions=None for (${JSON.stringify(needle)}, ${JSON.stringify(haystack)})`,
+      ).toBe(true)
     }
     if (m.length > 0) {
       expect(Option.isSome(s), `match has results but score=None`).toBe(true)
