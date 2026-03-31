@@ -31,9 +31,58 @@ describe('SlotResolver — Enum slot', () => {
   it('shows enum candidates as choices', () => {
     const resolver = SlotResolver.create([formatSlot])
     const choices = resolver.getChoices()
-    // S.Union([S.Literal('json'), S.Literal('yaml')]) should produce exactly 2 enum candidates
     expect(choices.length).toBe(2)
     expect(choices.map((c) => c.token).sort()).toEqual(['json', 'yaml'])
+  })
+
+  it('extracts candidates from a single Literal schema', () => {
+    const slot = Slot.Enum.make({ name: 'mode', schema: S.Literal('debug') })
+    const resolver = SlotResolver.create([slot])
+    const choices = resolver.getChoices()
+    expect(choices.length).toBe(1)
+    expect(choices[0]!.token).toBe('debug')
+  })
+
+  it('extracts candidates from numeric Literal union', () => {
+    const slot = Slot.Enum.make({
+      name: 'count',
+      schema: S.Union([S.Literal(1), S.Literal(2), S.Literal(3)]),
+    })
+    const resolver = SlotResolver.create([slot])
+    const choices = resolver.getChoices()
+    expect(choices.length).toBe(3)
+    expect(choices.map((c) => c.token).sort()).toEqual(['1', '2', '3'])
+  })
+
+  it('returns empty candidates for non-literal schema (String)', () => {
+    const slot = Slot.Enum.make({ name: 'free', schema: S.String })
+    const resolver = SlotResolver.create([slot])
+    const choices = resolver.getChoices()
+    expect(choices.length).toBe(0)
+  })
+
+  it('extracts only literal members from mixed Union', () => {
+    const slot = Slot.Enum.make({
+      name: 'mixed',
+      schema: S.Union([S.Literal('auto'), S.String]),
+    })
+    const resolver = SlotResolver.create([slot])
+    const choices = resolver.getChoices()
+    expect(choices.length).toBe(1)
+    expect(choices[0]!.token).toBe('auto')
+  })
+
+  it('propagates slot description to each candidate choice', () => {
+    const slot = Slot.Enum.make({
+      name: 'fmt',
+      schema: S.Union([S.Literal('json'), S.Literal('yaml')]),
+      description: 'Output format',
+    })
+    const resolver = SlotResolver.create([slot])
+    const choices = resolver.getChoices()
+    for (const c of choices) {
+      expect(c.description).toBe('Output format')
+    }
   })
 
   it('is not complete before filling', () => {

@@ -1,4 +1,4 @@
-import { Effect, Exit, Layer } from 'effect'
+import { Cause, Effect, Exit, Layer } from 'effect'
 import type { AnyCommand, CommandLeaf, CommandHybrid } from './command.js'
 import type { Resolution, SlotState } from './resolution.js'
 import type { Choice } from './choice.js'
@@ -15,6 +15,12 @@ type AnyLayer = Layer.Layer<any>
 /** The phase of the session lifecycle. */
 type SessionPhase = 'command' | 'slot'
 
+/** A diagnostic record for a slot source Effect that failed at runtime. */
+export interface SourceError {
+  readonly slotName: string
+  readonly message: string
+}
+
 /** Internal session state. */
 interface SessionState {
   phase: SessionPhase
@@ -26,6 +32,8 @@ interface SessionState {
   dynamicLayers: Record<string, AnyLayer>
   /** Static layers collected from the AppMap scope chain. */
   scopeLayers: ReadonlyArray<AnyLayer>
+  /** Accumulated errors from slot source Effect failures. */
+  sourceErrors: SourceError[]
 }
 
 /**
@@ -212,8 +220,9 @@ const confirmFocusedSlot = (resolver: ReturnType<typeof SlotResolver.create>): v
 const eagerLoadFuzzyCandidates = (
   slots: ReadonlyArray<AnySlot>,
   resolver: ReturnType<typeof SlotResolver.create>,
-  combinedLayer?: AnyLayer,
+  state: SessionState,
 ): void => {
+  const combinedLayer = buildCombinedLayers(state)
   for (const slot of slots) {
     if (slot._tag !== 'Fuzzy') continue
     const source = slot.source as Effect.Effect<
@@ -223,9 +232,12 @@ const eagerLoadFuzzyCandidates = (
     const exit = Effect.runSyncExit(provided)
     if (Exit.isSuccess(exit)) {
       resolver.setCandidates(slot.name, exit.value as any)
+    } else {
+      state.sourceErrors.push({
+        slotName: slot.name,
+        message: Cause.pretty(exit.cause),
+      })
     }
-    // If the Effect requires async, runSyncExit returns a failure.
-    // The slot stays in loading state — callers can use setCandidates later.
   }
 }
 
@@ -247,6 +259,11 @@ const triggerSearchSource = (state: SessionState): void => {
   const exit = Effect.runSyncExit(provided)
   if (Exit.isSuccess(exit)) {
     state.slotResolver.setCandidates(slot.name, exit.value as any)
+  } else {
+    state.sourceErrors.push({
+      slotName: slot.name,
+      message: Cause.pretty(exit.cause),
+    })
   }
 }
 
@@ -280,6 +297,7 @@ export const Session = {
       resolvedCommand: null,
       dynamicLayers: options?.dynamicLayers ?? {},
       scopeLayers: options?.scopeLayers ?? [],
+      sourceErrors: [],
     }
 
     /** Get the current combined resolution. */
@@ -299,7 +317,7 @@ export const Session = {
           eagerLoadFuzzyCandidates(
             cmd.capability.slots,
             state.slotResolver,
-            buildCombinedLayers(state),
+            state,
           )
           return buildCombinedResolution(state)
         }
@@ -420,6 +438,9 @@ export const Session = {
       state.dynamicLayers = layers
     }
 
+    /** Get accumulated source Effect errors for diagnostics. */
+    const getSourceErrors = (): ReadonlyArray<SourceError> => state.sourceErrors
+
     return {
       getResolution,
       getPhase,
@@ -427,6 +448,7 @@ export const Session = {
       getSlotValues,
       getDynamicLayers,
       setDynamicLayers,
+      getSourceErrors,
       queryPush,
       queryUndo,
       choiceTakeTop,

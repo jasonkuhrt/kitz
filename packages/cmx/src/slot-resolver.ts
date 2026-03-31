@@ -1,4 +1,4 @@
-import { Option, Schema } from 'effect'
+import { Option, Schema, SchemaAST } from 'effect'
 import type { AnySlot, SlotEnum, SlotFuzzy, SlotSearch, SlotText, SlotCandidate } from './slot.js'
 import type { Choice } from './choice.js'
 import type { SlotState } from './resolution.js'
@@ -71,33 +71,36 @@ const buildSlotChoices = (state: SlotResolverState, matcher: MatcherService): Ch
   }
 }
 
-/** Get enum candidates from a Literal schema. */
+/** Get enum candidates from a Literal schema using public SchemaAST API. */
 const getEnumCandidates = (slot: SlotEnum): Choice[] => {
-  // Extract literal values from the schema
-  // This uses internal Schema structure — simplified for now
-  try {
-    const ast = (slot.schema as any).ast ?? slot.schema
-    if (ast && ast._tag === 'Union' && ast.types) {
-      return ast.types.map((t: any) => ({
-        token: String(t.value ?? t.literal ?? t),
-        kind: 'value' as const,
-        executable: false,
-        description: slot.description,
-      }))
-    }
-    if (ast && ast._tag === 'Literal') {
-      return [
-        {
-          token: String(ast.literal),
+  const ast = SchemaAST.getAST(slot.schema)
+
+  if (SchemaAST.isUnion(ast)) {
+    const choices: Choice[] = []
+    for (const member of ast.types) {
+      if (SchemaAST.isLiteral(member)) {
+        choices.push({
+          token: String(member.literal),
           kind: 'value' as const,
           executable: false,
           description: slot.description,
-        },
-      ]
+        })
+      }
     }
-  } catch {
-    // fallback
+    return choices
   }
+
+  if (SchemaAST.isLiteral(ast)) {
+    return [
+      {
+        token: String(ast.literal),
+        kind: 'value' as const,
+        executable: false,
+        description: slot.description,
+      },
+    ]
+  }
+
   return []
 }
 
