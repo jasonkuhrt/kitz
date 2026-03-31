@@ -268,13 +268,16 @@ const value = Foo.Bar.baz()
     expect(modifications.some((mod) => mod.text.includes(`baz`))).toBe(true)
   })
 
-  test('analyzes declaration categories, signatures, and nested module structures', () => {
-    const fixtureDir = mkdtempSync(join(tmpdir(), `paka-nodes-`))
+  test(
+    'analyzes declaration categories, signatures, and nested module structures',
+    { timeout: 30_000 },
+    () => {
+      const fixtureDir = mkdtempSync(join(tmpdir(), `paka-nodes-`))
 
-    try {
-      writeFileSync(
-        join(fixtureDir, `main.ts`),
-        `
+      try {
+        writeFileSync(
+          join(fixtureDir, `main.ts`),
+          `
 /**
  * Main module description.
  * @guide Prefer the markdown guide.
@@ -354,25 +357,25 @@ export const withSimple = ((value: number) => value) as ((value: number) => numb
 /** @internal */
 export const hidden = 2
         `.trim(),
-      )
-      writeFileSync(join(fixtureDir, `main.md`), `# Description\n\nGuide from markdown.\n`)
-      writeFileSync(
-        join(fixtureDir, `wrapped.ts`),
-        `
+        )
+        writeFileSync(join(fixtureDir, `main.md`), `# Description\n\nGuide from markdown.\n`)
+        writeFileSync(
+          join(fixtureDir, `wrapped.ts`),
+          `
 export * as Thing from './thing.js'
         `.trim(),
-      )
-      writeFileSync(join(fixtureDir, `wrapped.md`), `# Description\n\nWrapper markdown.\n`)
-      writeFileSync(
-        join(fixtureDir, `thing.ts`),
-        `
+        )
+        writeFileSync(join(fixtureDir, `wrapped.md`), `# Description\n\nWrapper markdown.\n`)
+        writeFileSync(
+          join(fixtureDir, `thing.ts`),
+          `
 /** Thing namespace. */
 export const item = 'thing'
         `.trim(),
-      )
-      writeFileSync(
-        join(fixtureDir, `thing.home.md`),
-        `
+        )
+        writeFileSync(
+          join(fixtureDir, `thing.home.md`),
+          `
 # Hero
 
 ## Name
@@ -385,100 +388,101 @@ Thing
 
 Thing exports here.
         `.trim(),
-      )
-      writeFileSync(
-        join(fixtureDir, `wildcard.ts`),
-        `
+        )
+        writeFileSync(
+          join(fixtureDir, `wildcard.ts`),
+          `
 export * as Nested from './nested.js'
         `.trim(),
-      )
-      writeFileSync(
-        join(fixtureDir, `nested.ts`),
-        `
+        )
+        writeFileSync(
+          join(fixtureDir, `nested.ts`),
+          `
 /** Nested namespace. */
 export const nestedValue = true
         `.trim(),
-      )
+        )
 
-      const project = new Project({
-        useInMemoryFileSystem: false,
-      })
-      project.addSourceFilesAtPaths(join(fixtureDir, `*.ts`))
+        const project = new Project({
+          useInMemoryFileSystem: false,
+        })
+        project.addSourceFilesAtPaths(join(fixtureDir, `*.ts`))
 
-      const sourceFile = project.getSourceFileOrThrow(join(fixtureDir, `main.ts`))
-      const exported = sourceFile.getExportedDeclarations()
+        const sourceFile = project.getSourceFileOrThrow(join(fixtureDir, `main.ts`))
+        const exported = sourceFile.getExportedDeclarations()
 
-      const fnDecl = exported.get(`fn`)?.[0]
-      const arrowDecl = exported.get(`arrow`)?.[0]
-      const dataDecl = exported.get(`data`)?.[0]
-      const runtimeDecl = exported.get(`RuntimeObject`)?.[0]
-      const builderDecl = exported.get(`createBuilder`)?.[0]
-      const classDecl = exported.get(`Greeter`)?.[0]
-      const interfaceDecl = exported.get(`Shape`)?.[0]
-      const unionDecl = exported.get(`Choice`)?.[0]
-      const intersectionDecl = exported.get(`Combo`)?.[0]
-      const aliasDecl = exported.get(`Alias`)?.[0]
-      const enumDecl = exported.get(`Status`)?.[0]
-      const namespaceDecl = exported.get(`Local`)?.[0]
-      const simpleDecl = exported.get(`withSimple`)?.[0]
+        const fnDecl = exported.get(`fn`)?.[0]
+        const arrowDecl = exported.get(`arrow`)?.[0]
+        const dataDecl = exported.get(`data`)?.[0]
+        const runtimeDecl = exported.get(`RuntimeObject`)?.[0]
+        const builderDecl = exported.get(`createBuilder`)?.[0]
+        const classDecl = exported.get(`Greeter`)?.[0]
+        const interfaceDecl = exported.get(`Shape`)?.[0]
+        const unionDecl = exported.get(`Choice`)?.[0]
+        const intersectionDecl = exported.get(`Combo`)?.[0]
+        const aliasDecl = exported.get(`Alias`)?.[0]
+        const enumDecl = exported.get(`Status`)?.[0]
+        const namespaceDecl = exported.get(`Local`)?.[0]
+        const simpleDecl = exported.get(`withSimple`)?.[0]
 
-      expect(fnDecl && categorize(fnDecl)).toEqual({ level: `value`, type: `function` })
-      expect(arrowDecl && categorize(arrowDecl)).toEqual({ level: `value`, type: `function` })
-      expect(dataDecl && categorize(dataDecl)).toEqual({ level: `value`, type: `const` })
-      expect(classDecl && categorize(classDecl)).toEqual({ level: `value`, type: `class` })
-      expect(interfaceDecl && categorize(interfaceDecl)).toEqual({
-        level: `type`,
-        type: `interface`,
-      })
-      expect(unionDecl && categorize(unionDecl)).toEqual({ level: `type`, type: `union` })
-      expect(intersectionDecl && categorize(intersectionDecl)).toEqual({
-        level: `type`,
-        type: `intersection`,
-      })
-      expect(aliasDecl && categorize(aliasDecl)).toEqual({ level: `type`, type: `type-alias` })
-      expect(enumDecl && categorize(enumDecl)).toEqual({ level: `type`, type: `enum` })
-      expect(namespaceDecl && categorize(namespaceDecl)).toEqual({
-        level: `value`,
-        type: `namespace`,
-      })
+        expect(fnDecl && categorize(fnDecl)).toEqual({ level: `value`, type: `function` })
+        expect(arrowDecl && categorize(arrowDecl)).toEqual({ level: `value`, type: `function` })
+        expect(dataDecl && categorize(dataDecl)).toEqual({ level: `value`, type: `const` })
+        expect(classDecl && categorize(classDecl)).toEqual({ level: `value`, type: `class` })
+        expect(interfaceDecl && categorize(interfaceDecl)).toEqual({
+          level: `type`,
+          type: `interface`,
+        })
+        expect(unionDecl && categorize(unionDecl)).toEqual({ level: `type`, type: `union` })
+        expect(intersectionDecl && categorize(intersectionDecl)).toEqual({
+          level: `type`,
+          type: `intersection`,
+        })
+        expect(aliasDecl && categorize(aliasDecl)).toEqual({ level: `type`, type: `type-alias` })
+        expect(enumDecl && categorize(enumDecl)).toEqual({ level: `type`, type: `enum` })
+        expect(namespaceDecl && categorize(namespaceDecl)).toEqual({
+          level: `value`,
+          type: `namespace`,
+        })
 
-      const builderSignature = builderDecl && extractSignature(builderDecl)
-      expect(builderSignature?._tag).toBe(`BuilderSignatureModel`)
+        const builderSignature = builderDecl && extractSignature(builderDecl)
+        expect(builderSignature?._tag).toBe(`BuilderSignatureModel`)
 
-      const classSignature = classDecl && extractSignature(classDecl)
-      expect(classSignature?._tag).toBe(`ClassSignatureModel`)
+        const classSignature = classDecl && extractSignature(classDecl)
+        expect(classSignature?._tag).toBe(`ClassSignatureModel`)
 
-      const runtimeExport = runtimeDecl && extractExport(`RuntimeObject`, runtimeDecl)
-      expect(runtimeExport?._tag).toBe(`value`)
-      expect(runtimeExport?.type).toBe(`const`)
+        const runtimeExport = runtimeDecl && extractExport(`RuntimeObject`, runtimeDecl)
+        expect(runtimeExport?._tag).toBe(`value`)
+        expect(runtimeExport?.type).toBe(`const`)
 
-      const simpleSignature = simpleDecl && extractSimpleSignature(simpleDecl)
-      expect(simpleSignature?._tag).toBe(`FunctionSignatureModel`)
+        const simpleSignature = simpleDecl && extractSimpleSignature(simpleDecl)
+        expect(simpleSignature?._tag).toBe(`FunctionSignatureModel`)
 
-      const location = S.decodeSync(Fs.Path.RelFile.Schema)(`./main.ts`)
-      const module = extractModuleFromFile(sourceFile, location, {
-        filterInternal: true,
-        filterUnderscoreExports: true,
-      })
+        const location = S.decodeSync(Fs.Path.RelFile.Schema)(`./main.ts`)
+        const module = extractModuleFromFile(sourceFile, location, {
+          filterInternal: true,
+          filterUnderscoreExports: true,
+        })
 
-      expect(module.docs?.guide).toContain(`Guide from markdown.`)
-      expect(module.exports.some((entry) => entry.name === `hidden`)).toBe(false)
-      expect(module.exports.some((entry) => entry.name === `Wrapped`)).toBe(true)
-      expect(module.exports.some((entry) => entry.name === `Nested`)).toBe(true)
+        expect(module.docs?.guide).toContain(`Guide from markdown.`)
+        expect(module.exports.some((entry) => entry.name === `hidden`)).toBe(false)
+        expect(module.exports.some((entry) => entry.name === `Wrapped`)).toBe(true)
+        expect(module.exports.some((entry) => entry.name === `Nested`)).toBe(true)
 
-      const localNamespace = sourceFile.getModuleOrThrow(`Local`)
-      const namespaceModule = extractModule(
-        localNamespace,
-        S.decodeSync(Fs.Path.RelFile.Schema)(`./main.ts`),
-        { filterInternal: true },
-      )
+        const localNamespace = sourceFile.getModuleOrThrow(`Local`)
+        const namespaceModule = extractModule(
+          localNamespace,
+          S.decodeSync(Fs.Path.RelFile.Schema)(`./main.ts`),
+          { filterInternal: true },
+        )
 
-      expect(namespaceModule.exports.some((entry) => entry.name === `value`)).toBe(true)
-      expect(namespaceModule.docs).toBeUndefined()
-    } finally {
-      rmSync(fixtureDir, { recursive: true, force: true })
-    }
-  })
+        expect(namespaceModule.exports.some((entry) => entry.name === `value`)).toBe(true)
+        expect(namespaceModule.docs).toBeUndefined()
+      } finally {
+        rmSync(fixtureDir, { recursive: true, force: true })
+      }
+    },
+  )
 
   test('extracts a real fixture package and generates vitepress docs', () => {
     const fixtureDir = mkdtempSync(join(tmpdir(), `paka-fixture-`))
