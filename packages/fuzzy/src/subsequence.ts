@@ -21,9 +21,34 @@ import {
  *
  * The algorithm runs in O(n×m) time where n = needle length, m = haystack length.
  */
+/** Pre-computed haystack character classification, reusable across calls. */
+export interface HaystackClassification {
+  readonly classes: CharClass[]
+  readonly bonuses: number[]
+}
+
+/** Classify a haystack string into character classes and boundary bonuses. */
+export const classifyHaystack = (haystack: string): HaystackClassification => {
+  const m = haystack.length
+  const classes = new Array<CharClass>(m)
+  const bonuses = new Array<number>(m)
+  let prevClass: CharClass = CharClass.White
+
+  for (let j = 0; j < m; j++) {
+    const charCode = haystack.charCodeAt(j)
+    const currClass = charClassOf(charCode)
+    classes[j] = currClass
+    bonuses[j] = boundaryBonus(prevClass, currClass)
+    prevClass = currClass
+  }
+
+  return { classes, bonuses }
+}
+
 export const subsequenceScore = (
   needle: string,
   haystack: string,
+  precomputed?: HaystackClassification,
 ): { score: number; positions: number[] } | null => {
   const n = needle.length
   const m = haystack.length
@@ -36,23 +61,10 @@ export const subsequenceScore = (
   if (!isSubsequence(needle, haystack)) return null
 
   // ---------------------------------------------------------------
-  // Phase 1: Precompute haystack character classes and boundary bonuses
+  // Phase 1: Haystack character classes and boundary bonuses
   // ---------------------------------------------------------------
-
-  // Classify each haystack character. The start of the string is treated
-  // as if preceded by a White character (so position 0 always earns
-  // BonusBoundaryWhite).
-  const classes = new Array<CharClass>(m)
-  const bonuses = new Array<number>(m)
-  let prevClass: CharClass = CharClass.White // start of string = White
-
-  for (let j = 0; j < m; j++) {
-    const charCode = haystack.charCodeAt(j)
-    const currClass = charClassOf(charCode)
-    classes[j] = currClass
-    bonuses[j] = boundaryBonus(prevClass, currClass)
-    prevClass = currClass
-  }
+  // Use pre-computed classification if provided, otherwise compute inline.
+  const { classes, bonuses } = precomputed ?? classifyHaystack(haystack)
 
   // ---------------------------------------------------------------
   // Phase 2: Fill M and D matrices

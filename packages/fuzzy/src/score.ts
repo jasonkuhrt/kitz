@@ -1,7 +1,7 @@
 import { Option } from 'effect'
 import { assignmentScore } from './assignment.js'
 import { hasMatch } from './has-match.js'
-import { subsequenceScore } from './subsequence.js'
+import { classifyHaystack, subsequenceScore } from './subsequence.js'
 
 /**
  * Score a needle against a haystack. Returns `Option.some(score)` when the
@@ -64,13 +64,16 @@ const scoreTokenMatch = (needle: string, haystack: string): number | null => {
   const terms = needle.split(' ').filter((t) => t.length > 0)
   if (terms.length === 0) return 0
 
+  // Pre-compute haystack classification once, shared across all term scoring calls.
+  const classification = classifyHaystack(haystack)
+
   const haystackLower = haystack.toLowerCase()
   const matchPositions: number[] = [] // first match position of each term
   const termScores: number[] = []
 
   for (const term of terms) {
-    // Try subsequence match of term against full haystack
-    const subseq = subsequenceScore(term, haystack)
+    // Try subsequence match of term against full haystack, reusing classification
+    const subseq = subsequenceScore(term, haystack, classification)
     if (subseq !== null) {
       termScores.push(subseq.score)
       matchPositions.push(subseq.positions[0] ?? 0)

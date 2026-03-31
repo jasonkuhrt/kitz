@@ -58,6 +58,23 @@ test('space-containing needles match via token splitting even when hasMatch reje
   expect(Option.isSome(result2), `score('foo bar', 'foobar') should be Some`).toBe(true)
 })
 
+test('multi-term token match scores each term via subsequence independently', () => {
+  // Each term is scored through subsequenceScore. After the optimization to
+  // pre-compute haystack classification, scores must remain identical.
+  const r1 = unwrap('config reload', 'config reload')
+  expect(r1).not.toBeNull()
+  expect(r1!).toBeGreaterThan(0)
+
+  const r2 = unwrap('git push', 'git push origin')
+  expect(r2).not.toBeNull()
+  expect(r2!).toBeGreaterThan(0)
+
+  // Reordered terms still match but with penalty
+  const inOrder = unwrap('config reload', 'config reload')!
+  const reordered = unwrap('reload config', 'config reload')!
+  expect(inOrder).toBeGreaterThan(reordered)
+})
+
 test('out-of-order matches are positive, not zero', () => {
   const result = unwrap('vdi', 'david')
   expect(result).not.toBeNull()
