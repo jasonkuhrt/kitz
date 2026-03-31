@@ -129,7 +129,7 @@ describe('P2: optional non-text slots can be skipped', () => {
   it('takeTop on empty query for optional enum slot skips instead of auto-filling', () => {
     const optionalFormat = Slot.Enum.make({
       name: 'format',
-      schema: S.Literal('json', 'yaml'),
+      schema: S.Union([S.Literal('json'), S.Literal('yaml')]),
       description: 'Output format',
       required: false,
     })

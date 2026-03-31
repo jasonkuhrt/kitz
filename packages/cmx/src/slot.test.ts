@@ -6,7 +6,7 @@ describe('Slot.Enum', () => {
   it('creates with schema', () => {
     const slot = Slot.Enum.make({
       name: 'format',
-      schema: S.Literal('json', 'yaml'),
+      schema: S.Union([S.Literal('json'), S.Literal('yaml')]),
     })
     expect(slot._tag).toBe('Enum')
     expect(slot.name).toBe('format')
@@ -20,7 +20,7 @@ describe('Slot.Enum', () => {
   it('accepts documentation fields', () => {
     const slot = Slot.Enum.make({
       name: 'format',
-      schema: S.Literal('json', 'yaml'),
+      schema: S.Union([S.Literal('json'), S.Literal('yaml')]),
       description: 'Output format',
       detail: 'The serialization format',
       placeholder: 'Choose format',
