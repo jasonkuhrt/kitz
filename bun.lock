@@ -62,6 +62,7 @@
       "dependencies": {
         "@kitz/core": "workspace:*",
         "@kitz/fuzzy": "workspace:*",
+        "@kitz/sch": "workspace:*",
       },
     },
     "packages/color": {
