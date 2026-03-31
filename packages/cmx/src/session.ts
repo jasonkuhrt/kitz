@@ -202,24 +202,29 @@ const confirmFocusedSlot = (resolver: ReturnType<typeof SlotResolver.create>): v
 
 /**
  * Eagerly load candidates for Fuzzy slots by running their source Effect
- * synchronously. If the source requires async or services, this is a no-op
+ * synchronously. If the source requires async, this is a no-op
  * and the caller must load candidates externally via setCandidates.
+ *
+ * When a combined layer is provided, it is applied to each source Effect
+ * before running — this allows sources that depend on services (provided
+ * via scopeLayers/dynamicLayers) to resolve synchronously.
  */
 const eagerLoadFuzzyCandidates = (
   slots: ReadonlyArray<AnySlot>,
   resolver: ReturnType<typeof SlotResolver.create>,
+  combinedLayer?: AnyLayer,
 ): void => {
   for (const slot of slots) {
     if (slot._tag !== 'Fuzzy') continue
-    const exit = Effect.runSyncExit(
-      slot.source as Effect.Effect<
-        ReadonlyArray<{ value: unknown; label: string; description?: string }>
-      >,
-    )
+    const source = slot.source as Effect.Effect<
+      ReadonlyArray<{ value: unknown; label: string; description?: string }>
+    >
+    const provided = combinedLayer ? Effect.provide(source, combinedLayer) : source
+    const exit = Effect.runSyncExit(provided)
     if (Exit.isSuccess(exit)) {
       resolver.setCandidates(slot.name, exit.value as any)
     }
-    // If the Effect requires async/services, runSyncExit returns a failure.
+    // If the Effect requires async, runSyncExit returns a failure.
     // The slot stays in loading state — callers can use setCandidates later.
   }
 }
@@ -270,7 +275,7 @@ export const Session = {
           state.phase = 'slot'
           state.resolvedCommand = cmd
           state.slotResolver = SlotResolver.create(cmd.capability.slots, matcher)
-          eagerLoadFuzzyCandidates(cmd.capability.slots, state.slotResolver)
+          eagerLoadFuzzyCandidates(cmd.capability.slots, state.slotResolver, buildCombinedLayers(state))
           return buildCombinedResolution(state)
         }
       }
