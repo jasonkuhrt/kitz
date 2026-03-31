@@ -8,11 +8,10 @@ import { Fuzzy } from './_.js'
 // Uses tinybench Bench directly for statistically rigorous measurement.
 //
 // Scenario: command palette with 500 candidates, realistic queries.
-// Budget: <10ms p99 for `match()` (the full pipeline: hasMatch + score + sort).
-// Rationale: at 120Hz the frame budget is ~8.3ms. The fuzzy match is the
-// dominant cost in a keystroke cycle. Observed mean is <2ms; the 10ms local
-// gate catches real regressions while tolerating p99 jitter from background
-// CPU load on dev machines (GC, Spotlight, Vitest workers, etc.).
+//
+// Local gates use MEAN (robust to OS scheduling jitter, GC pauses, background
+// CPU load). CI gates use P99 (controlled VM, reliable tail latency enforcement).
+// Both are always reported in diagnostic output for comparison.
 //
 // For detailed profiling tables: bun run --cwd packages/fuzzy bench
 // =============================================================================
@@ -80,17 +79,37 @@ const largeCandidates = Array.from({ length: 500 }, (_, i) => ({
 // --- Performance gates -------------------------------------------------------
 
 // CI runners are shared VMs, ~10x slower than local dev machines.
-// Thresholds are calibrated for CI (the primary enforcement surface).
+// Local: gate on mean (stable across background load).
+// CI: gate on p99 (controlled environment, catches tail latency regressions).
 // Observed CI baselines: match=12ms, hasMatch=7ms, score=4ms, positions<1ms.
-// Thresholds set at ~3x observed to allow for VM variance without
-// being so loose they miss real regressions.
 const IS_CI = !!process.env['CI']
 
-describe('fuzzy performance gate', () => {
-  const MATCH_BUDGET_P99_MS = IS_CI ? 40 : 10
-  const HAS_MATCH_BUDGET = IS_CI ? 20 : 5
+/**
+ * Assert that a benchmark result stays within budget.
+ * Local: checks mean (robust to jitter). CI: checks p99 (strict tail latency).
+ */
+const assertWithinBudget = (
+  result: { mean: number; p99: number },
+  label: string,
+  budget: { localMean: number; ciP99: number },
+) => {
+  if (IS_CI) {
+    expect(
+      result.p99,
+      `${label} p99 ${result.p99.toFixed(3)}ms exceeds CI budget ${budget.ciP99}ms`,
+    ).toBeLessThan(budget.ciP99)
+  } else {
+    expect(
+      result.mean,
+      `${label} mean ${result.mean.toFixed(3)}ms exceeds local budget ${budget.localMean}ms`,
+    ).toBeLessThan(budget.localMean)
+  }
+}
 
-  test(`match() 500 candidates < ${MATCH_BUDGET_P99_MS}ms p99`, async () => {
+describe('fuzzy performance gate', () => {
+  const MATCH_BUDGET = { localMean: 5, ciP99: 40 }
+
+  test('match() 500 candidates within budget', async () => {
     const b = new Bench({
       time: 500,
       warmupTime: 200,
@@ -122,28 +141,18 @@ describe('fuzzy performance gate', () => {
         `    500 candidates, 2-char : mean=${short.mean.toFixed(3)}ms  p99=${short.p99.toFixed(3)}ms  hz=${short.hz.toFixed(0)}`,
         `    500 candidates, 4-char : mean=${fourChar.mean.toFixed(3)}ms  p99=${fourChar.p99.toFixed(3)}ms  hz=${fourChar.hz.toFixed(0)}`,
         `    50 candidates, OOO     : mean=${outOfOrder.mean.toFixed(3)}ms  p99=${outOfOrder.p99.toFixed(3)}ms  hz=${outOfOrder.hz.toFixed(0)}`,
-        `    budget: ${MATCH_BUDGET_P99_MS}ms p99`,
+        `    budget: ${IS_CI ? `p99 < ${MATCH_BUDGET.ciP99}ms` : `mean < ${MATCH_BUDGET.localMean}ms`}`,
       ].join('\n'),
     )
 
-    // Gate: each scenario must stay within budget at p99
-    expect(
-      short.p99,
-      `500/short p99 ${short.p99.toFixed(3)}ms exceeds ${MATCH_BUDGET_P99_MS}ms`,
-    ).toBeLessThan(MATCH_BUDGET_P99_MS)
-
-    expect(
-      fourChar.p99,
-      `500/4-char p99 ${fourChar.p99.toFixed(3)}ms exceeds ${MATCH_BUDGET_P99_MS}ms`,
-    ).toBeLessThan(MATCH_BUDGET_P99_MS)
-
-    expect(
-      outOfOrder.p99,
-      `50/OOO p99 ${outOfOrder.p99.toFixed(3)}ms exceeds ${MATCH_BUDGET_P99_MS}ms`,
-    ).toBeLessThan(MATCH_BUDGET_P99_MS)
+    assertWithinBudget(short, '500/short', MATCH_BUDGET)
+    assertWithinBudget(fourChar, '500/4-char', MATCH_BUDGET)
+    assertWithinBudget(outOfOrder, '50/OOO', MATCH_BUDGET)
   })
 
-  test(`hasMatch 500 candidates < ${HAS_MATCH_BUDGET}ms p99`, async () => {
+  const HAS_MATCH_BUDGET = { localMean: 1, ciP99: 20 }
+
+  test('hasMatch 500 candidates within budget', async () => {
     const b = new Bench({
       time: 500,
       warmupTime: 200,
@@ -165,13 +174,12 @@ describe('fuzzy performance gate', () => {
       `\n  hasMatch 500 candidates: mean=${result.mean.toFixed(3)}ms  p99=${result.p99.toFixed(3)}ms  hz=${result.hz.toFixed(0)}`,
     )
 
-    expect(
-      result.p99,
-      `hasMatch p99 ${result.p99.toFixed(3)}ms exceeds ${HAS_MATCH_BUDGET}ms`,
-    ).toBeLessThan(HAS_MATCH_BUDGET)
+    assertWithinBudget(result, 'hasMatch', HAS_MATCH_BUDGET)
   })
 
-  test('score 50 candidates < 1ms p99', async () => {
+  const SCORE_BUDGET = { localMean: 1, ciP99: 15 }
+
+  test('score 50 candidates within budget', async () => {
     const b = new Bench({
       time: 500,
       warmupTime: 200,
@@ -204,18 +212,13 @@ describe('fuzzy performance gate', () => {
       ].join('\n'),
     )
 
-    const SCORE_BUDGET = IS_CI ? 15 : 1
-    expect(
-      twoChar.p99,
-      `score/2-char p99 ${twoChar.p99.toFixed(3)}ms exceeds ${SCORE_BUDGET}ms`,
-    ).toBeLessThan(SCORE_BUDGET)
-    expect(
-      fourChar.p99,
-      `score/4-char p99 ${fourChar.p99.toFixed(3)}ms exceeds ${SCORE_BUDGET}ms`,
-    ).toBeLessThan(SCORE_BUDGET)
+    assertWithinBudget(twoChar, 'score/2-char', SCORE_BUDGET)
+    assertWithinBudget(fourChar, 'score/4-char', SCORE_BUDGET)
   })
 
-  test('positions < 0.1ms p99 per pair', async () => {
+  const POS_BUDGET = { localMean: 0.05, ciP99: 1 }
+
+  test('positions within budget per pair', async () => {
     const b = new Bench({
       time: 500,
       warmupTime: 200,
@@ -244,8 +247,7 @@ describe('fuzzy performance gate', () => {
       ].join('\n'),
     )
 
-    const POS_BUDGET = IS_CI ? 1 : 0.1
-    expect(subseq.p99, `positions/subseq p99 exceeds ${POS_BUDGET}ms`).toBeLessThan(POS_BUDGET)
-    expect(ooo.p99, `positions/ooo p99 exceeds ${POS_BUDGET}ms`).toBeLessThan(POS_BUDGET)
+    assertWithinBudget(subseq, 'positions/subseq', POS_BUDGET)
+    assertWithinBudget(ooo, 'positions/ooo', POS_BUDGET)
   })
 })

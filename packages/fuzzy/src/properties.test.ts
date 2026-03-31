@@ -31,11 +31,15 @@ Test.property(
 )
 
 Test.property(
-  'hasMatch = false implies score is None',
+  'hasMatch = false implies score is None (non-token needles)',
   shortString,
   shortString,
   (needle, haystack) => {
-    if (!Fuzzy.hasMatch(needle, haystack)) {
+    // Token matching (needle contains spaces) intentionally bypasses hasMatch:
+    // it splits on spaces and matches each term independently, so score can
+    // return Some even when hasMatch returns false. The invariant only holds
+    // for non-token needles.
+    if (!needle.includes(' ') && !Fuzzy.hasMatch(needle, haystack)) {
       expect(Option.isNone(Fuzzy.score(needle, haystack))).toBe(true)
     }
   },
