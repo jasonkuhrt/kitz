@@ -6,7 +6,7 @@ import { Effect } from 'effect'
 
 const formatSlot = Slot.Enum.make({
   name: 'format',
-  schema: S.Literal('json', 'yaml'),
+  schema: S.Union([S.Literal('json'), S.Literal('yaml')]),
   description: 'Output format',
 })
 
@@ -31,9 +31,9 @@ describe('SlotResolver — Enum slot', () => {
   it('shows enum candidates as choices', () => {
     const resolver = SlotResolver.create([formatSlot])
     const choices = resolver.getChoices()
-    // Should have candidates from the Literal schema
-    expect(choices.length).toBeGreaterThanOrEqual(0)
-    // Note: extracting Literal values from Schema AST is implementation-dependent
+    // S.Union([S.Literal('json'), S.Literal('yaml')]) should produce exactly 2 enum candidates
+    expect(choices.length).toBe(2)
+    expect(choices.map((c) => c.token).sort()).toEqual(['json', 'yaml'])
   })
 
   it('is not complete before filling', () => {
