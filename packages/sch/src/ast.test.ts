@@ -112,9 +112,9 @@ describe('ast helpers', () => {
   })
 
   test('extractLiterals from numeric Literals', () => {
-    expect(
-      AST.extractLiterals(S.Union([S.Literal(1), S.Literal(2), S.Literal(3)])),
-    ).toEqual([1, 2, 3])
+    expect(AST.extractLiterals(S.Union([S.Literal(1), S.Literal(2), S.Literal(3)]))).toEqual([
+      1, 2, 3,
+    ])
   })
 
   test('extractLiterals from mixed Union skips non-literals', () => {

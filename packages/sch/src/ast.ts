@@ -172,7 +172,9 @@ export const extractTagsFromUnion = (ast: EAST.Union): string[] => {
  * @param schema - The schema to extract literals from
  * @returns Array of literal values (strings, numbers, booleans, etc.)
  */
-export const extractLiterals = (schema: S.Top): ReadonlyArray<string | number | boolean | null | bigint> => {
+export const extractLiterals = (
+  schema: S.Top,
+): ReadonlyArray<string | number | boolean | null | bigint> => {
   const ast = schema.ast
   if (isUnion(ast)) {
     const literals: (string | number | boolean | null | bigint)[] = []
