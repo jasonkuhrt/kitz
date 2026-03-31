@@ -10,17 +10,24 @@ import {
 } from './constants.js'
 
 /**
- * Two-matrix DP scorer for subsequence matching.
- *
- * This implements fzy's algorithm with fzf's scoring constants:
- * - M[i][j]: best score aligning needle[0..i-1] against haystack[0..j-1]
- * - D[i][j]: best score where haystack[j-1] IS the match for needle[i-1]
- *
- * Returns the optimal score and the positions where needle characters matched,
- * or null if the needle is not a subsequence of the haystack.
- *
- * The algorithm runs in O(n×m) time where n = needle length, m = haystack length.
+ * Module-level buffer pool for DP matrices. Avoids allocating new Float64Arrays
+ * on every subsequenceScore call. Each slot grows to the high-water mark and is
+ * reused (zeroed) on subsequent calls. Safe because scoring is synchronous and
+ * single-threaded.
  */
+const bufferPool: Float64Array[] = []
+
+const acquireBuffer = (slot: number, minSize: number): Float64Array => {
+  const existing = bufferPool[slot]
+  if (existing && existing.length >= minSize) {
+    existing.fill(0, 0, minSize)
+    return existing
+  }
+  const buf = new Float64Array(minSize)
+  bufferPool[slot] = buf
+  return buf
+}
+
 /** Pre-computed haystack character classification, reusable across calls. */
 export interface HaystackClassification {
   readonly classes: CharClass[]
@@ -89,13 +96,13 @@ export const subsequenceScore = (
   // Allocate as flat arrays for cache efficiency.
   // Index: i * (m+1) + j, where i = 0..n, j = 0..m
   const stride = m + 1
-  const M = new Float64Array((n + 1) * stride)
-  const D = new Float64Array((n + 1) * stride)
+  const size = (n + 1) * stride
 
-  // Track the boundary bonus of the first match in each consecutive chunk.
-  // This is needed for the consecutive chunk rule: when extending a run,
-  // the bonus is max(currentBonus, firstBonusInChunk, BonusConsecutive).
-  const firstBonusInChunk = new Float64Array((n + 1) * stride)
+  // Reuse module-level buffers to avoid per-call Float64Array allocations.
+  // Single-threaded execution makes this safe.
+  const M = acquireBuffer(0, size)
+  const D = acquireBuffer(1, size)
+  const firstBonusInChunk = acquireBuffer(2, size)
 
   // Base cases: M[0][j] = 0 (default in Float64Array), D[0][j] = -∞
   for (let j = 0; j <= m; j++) {
