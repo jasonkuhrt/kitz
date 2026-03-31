@@ -445,7 +445,7 @@ export const toPayload = (
             ).map((c) => {
               const info = c.forScope(item.package.scope)
               return {
-                type: info.type,
+                type: info.type.value,
                 message: info.description,
                 hash: info.hash,
                 breaking: info.breaking,

@@ -244,26 +244,26 @@ describe('release low-surface coverage', () => {
 
     expect(singleCommit.forScope('core')).toEqual({
       hash: Git.Sha.make('abc1234'),
-      type: 'feat',
+      type: ConventionalCommits.Type.Standard.parse('feat'),
       description: 'new api',
       breaking: false,
     })
     expect(ReleaseCommit.forScope(multiCommit, 'core')).toEqual({
       hash: Git.Sha.make('def5678'),
-      type: 'feat',
+      type: ConventionalCommits.Type.Standard.parse('feat'),
       description: 'multi change',
       breaking: true,
     })
     expect(ReleaseCommit.forScope(multiCommit, 'docs')).toEqual({
       hash: Git.Sha.make('def5678'),
-      type: 'chore',
+      type: ConventionalCommits.Type.parse('chore'),
       description: 'multi change',
       breaking: false,
     })
 
     const cascadeCommit = makeCascadeCommit('cli', 'cascade release')
     expect(cascadeCommit.hash).toBe(Git.Sha.make('0000000'))
-    expect(cascadeCommit.forScope('cli').type).toBe('chore')
+    expect(cascadeCommit.forScope('cli').type.value).toBe('chore')
 
     const analysis = Analysis.make({
       impacts: [

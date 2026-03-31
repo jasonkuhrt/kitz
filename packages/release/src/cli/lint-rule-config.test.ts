@@ -20,6 +20,7 @@ const makeResolvedConfig = (
       releaseCommand: 'bun run release',
       prepareCommands: [],
     }),
+    resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
     lint: Api.Lint.ResolvedConfig.make({
       defaults: Api.Lint.ResolvedRuleDefaults.make({
         enabled: 'auto',

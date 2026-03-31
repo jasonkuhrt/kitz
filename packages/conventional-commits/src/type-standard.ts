@@ -52,12 +52,14 @@ export const StandardImpact: Record<StandardValue, Option.Option<BumpType>> = {
 // ─── Standard Type ──────────────────────────────────────────────
 
 /**
- * A known conventional commit type.
+ * A known conventional commit type with its impact composed from StandardImpact.
  */
 export class Standard extends Schema.TaggedClass<Standard>()('Standard', {
   value: StandardValue,
+  impact: Schema.OptionFromNullOr(Semver.BumpType),
 }) {
-  static make = this.makeUnsafe
+  static make = (params: { value: StandardValue }) =>
+    Standard.makeUnsafe({ value: params.value, impact: StandardImpact[params.value] })
   static is = Schema.is(Standard)
   static decode = Schema.decodeUnknownEffect(Standard)
   static decodeSync = Schema.decodeUnknownSync(Standard)

@@ -1,3 +1,4 @@
+import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Effect } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { type CommitEntry, format } from './format.js'
@@ -5,21 +6,21 @@ import { type CommitEntry, format } from './format.js'
 const run = <A>(effect: Effect.Effect<A>) => Effect.runSync(effect)
 
 const feat = (msg: string, hash = 'abc1234567890'): CommitEntry => ({
-  type: 'feat',
+  type: ConventionalCommits.Type.parse('feat'),
   message: msg,
   hash,
   breaking: false,
 })
 
 const fix = (msg: string, hash = 'def7890123456'): CommitEntry => ({
-  type: 'fix',
+  type: ConventionalCommits.Type.parse('fix'),
   message: msg,
   hash,
   breaking: false,
 })
 
 const breaking = (msg: string, hash = 'bbb0000000000'): CommitEntry => ({
-  type: 'feat',
+  type: ConventionalCommits.Type.parse('feat'),
   message: msg,
   hash,
   breaking: true,

@@ -49,9 +49,6 @@ export const parse = <$value extends string>(value: $value): Parse<$value> => {
 /**
  * Get impact for a Standard type.
  *
- * Returns `Option.some(BumpType)` for types that trigger a release,
- * or `Option.none()` for types that don't (style, refactor, etc.)
- *
- * For Custom types, use release config lookup instead.
+ * @deprecated Use `type.impact` directly — Standard now composes its impact.
  */
-export const impact = (type: Standard): Option.Option<BumpType> => StandardImpact[type.value]
+export const impact = (type: Standard): Option.Option<BumpType> => type.impact

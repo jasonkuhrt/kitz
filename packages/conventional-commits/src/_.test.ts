@@ -93,6 +93,7 @@ test('Type > Standard > serialization', () => {
     .toMatchInlineSnapshot(`
       {
         "_tag": "Standard",
+        "impact": "minor",
         "value": "feat",
       }
     `)
@@ -100,6 +101,7 @@ test('Type > Standard > serialization', () => {
     .toMatchInlineSnapshot(`
       {
         "_tag": "Standard",
+        "impact": null,
         "value": "chore",
       }
     `)
@@ -239,6 +241,7 @@ test('Commit.Single > serialization', () => {
         "scopes": [],
         "type": {
           "_tag": "Standard",
+          "impact": "minor",
           "value": "feat",
         },
       }
@@ -256,6 +259,7 @@ test('Commit.Single > serialization', () => {
         ],
         "type": {
           "_tag": "Standard",
+          "impact": "minor",
           "value": "feat",
         },
       }
@@ -280,6 +284,7 @@ test('Commit.Single > serialization', () => {
         ],
         "type": {
           "_tag": "Standard",
+          "impact": "minor",
           "value": "feat",
         },
       }
@@ -303,6 +308,7 @@ test('Commit.Multi > serialization', () => {
             "scope": "core",
             "type": {
               "_tag": "Standard",
+              "impact": "minor",
               "value": "feat",
             },
           },
@@ -312,6 +318,7 @@ test('Commit.Multi > serialization', () => {
             "scope": "cli",
             "type": {
               "_tag": "Standard",
+              "impact": "patch",
               "value": "fix",
             },
           },
@@ -394,33 +401,35 @@ test('parseTitle > Commit.Multi', async () => {
   if (Exit.isSuccess(result) && ConventionalCommits.Commit.Multi.is(result.value)) {
     expect(Schema.encodeSync(ConventionalCommits.Commit.Multi)(result.value))
       .toMatchInlineSnapshot(`
-      {
-        "_tag": "Multi",
-        "message": "multi change",
-        "sections": {},
-        "summary": null,
-        "targets": [
-          {
-            "_tag": "Target",
-            "breaking": false,
-            "scope": "core",
-            "type": {
-              "_tag": "Standard",
-              "value": "feat",
+        {
+          "_tag": "Multi",
+          "message": "multi change",
+          "sections": {},
+          "summary": null,
+          "targets": [
+            {
+              "_tag": "Target",
+              "breaking": false,
+              "scope": "core",
+              "type": {
+                "_tag": "Standard",
+                "impact": "minor",
+                "value": "feat",
+              },
             },
-          },
-          {
-            "_tag": "Target",
-            "breaking": false,
-            "scope": "cli",
-            "type": {
-              "_tag": "Standard",
-              "value": "fix",
+            {
+              "_tag": "Target",
+              "breaking": false,
+              "scope": "cli",
+              "type": {
+                "_tag": "Standard",
+                "impact": "patch",
+                "value": "fix",
+              },
             },
-          },
-        ],
-      }
-    `)
+          ],
+        }
+      `)
   }
 })
 
