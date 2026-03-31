@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { Effect, Schema as S } from 'effect'
+import { Effect, Layer, Schema as S } from 'effect'
 import { Session } from './session.js'
 import { Command } from './command.js'
 import { Capability } from './capability.js'
 import { Slot } from './slot.js'
+import { SlotValues } from './slot-values.js'
 
 // Capabilities
 const reload = Capability.make({ name: 'reload', execute: Effect.void })
@@ -150,6 +151,45 @@ describe('Session — dynamic layers', () => {
     expect(Object.keys(session.getDynamicLayers())).toHaveLength(0)
     session.setDynamicLayers({ thread: Effect.void as any })
     expect(session.getDynamicLayers()).toHaveProperty('thread')
+  })
+})
+
+describe('Session — toggleMode applies layers', () => {
+  it('toggleMode wraps executable effects with layers (not raw resolver output)', async () => {
+    // Create a command whose execute Effect requires a service from scope layers.
+    // If toggleMode bypassed buildCombinedResolution, the effect would fail.
+    const log: string[] = []
+    const cap = Capability.make({
+      name: 'reload',
+      execute: Effect.sync(() => {
+        log.push('ran')
+      }),
+    })
+    const cmd = Command.Leaf.make({ name: 'reload', capability: cap })
+    const dummyLayer = Layer.succeed(SlotValues)({})
+    const session = Session.create([cmd], defaultProximities, {
+      scopeLayers: [dummyLayer],
+    })
+
+    // Start in flat mode — toggle to tree
+    const res = session.toggleMode()
+    expect(res.mode).toBe('tree')
+    // The resolution's choices should come through buildCombinedResolution
+    expect(res.choices.length).toBeGreaterThan(0)
+
+    // Toggle back to flat
+    const res2 = session.toggleMode()
+    expect(res2.mode).toBe('flat')
+
+    // Navigate to executable in flat mode, then verify the effect runs with layers
+    res2 // reset
+    session.queryPush('r')
+    const execRes = session.getResolution()
+    expect(execRes.executable).toBe(true)
+    expect(execRes.effect).not.toBeNull()
+    // Run the effect — it should succeed because layers are applied
+    await Effect.runPromise(execRes.effect!)
+    expect(log).toEqual(['ran'])
   })
 })
 

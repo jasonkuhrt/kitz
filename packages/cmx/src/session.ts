@@ -346,7 +346,7 @@ export const Session = {
     /** Toggle between flat and tree mode (only in command phase). */
     const toggleMode = (): Resolution => {
       if (state.phase === 'command') {
-        return state.commandResolver.toggleMode()
+        state.commandResolver.toggleMode()
       }
       return buildCombinedResolution(state)
     }
