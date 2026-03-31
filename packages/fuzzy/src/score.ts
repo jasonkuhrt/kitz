@@ -94,7 +94,9 @@ const scoreTokenMatch = (needle: string, haystack: string): number | null => {
     }
   }
   if (!inOrder) {
-    total -= 5 // reorder penalty
+    // Multiplicative penalty ensures reordered terms always rank below in-order.
+    // A flat penalty (-5) is too small when word-level boosters add 10-20+ points.
+    total = Math.round(total * 0.7)
   }
 
   return total

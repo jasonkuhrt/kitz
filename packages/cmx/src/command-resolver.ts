@@ -296,11 +296,18 @@ export const CommandResolver = {
 
     const choiceUndo = (): Resolution => {
       state.query = ''
-      if (state.mode === 'tree' && state.treePath.length > 0) {
-        state.treePath.pop()
-      }
       if (state.acceptedTokens.length > 0) {
-        state.acceptedTokens.pop()
+        const last = state.acceptedTokens.pop()!
+        // Only pop treePath if the popped token matches the treePath tail
+        // (meaning it was a namespace/hybrid that pushed when taken).
+        // Leaf tokens don't push to treePath, so undoing them shouldn't pop.
+        if (
+          state.mode === 'tree' &&
+          state.treePath.length > 0 &&
+          state.treePath[state.treePath.length - 1] === last.token
+        ) {
+          state.treePath.pop()
+        }
       }
       return buildResolution(state, matcher)
     }

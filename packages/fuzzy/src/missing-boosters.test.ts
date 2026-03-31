@@ -289,3 +289,17 @@ describe('candidate-count heuristic', () => {
     expect(smallScore).toBeGreaterThan(largeScore)
   })
 })
+
+// =============================================================================
+// Token match: in-order terms must outscore reordered terms
+// =============================================================================
+
+describe('token match reorder penalty', () => {
+  test('in-order terms score higher than reordered terms', () => {
+    const inOrder = scoreOf('config git', 'git config')
+    const exact = scoreOf('git config', 'git config')
+    expect(exact).not.toBeNull()
+    expect(inOrder).not.toBeNull()
+    expect(exact!).toBeGreaterThan(inOrder!)
+  })
+})
