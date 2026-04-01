@@ -161,6 +161,37 @@ export const extractTagsFromUnion = (ast: EAST.Union): string[] => {
 }
 
 /**
+ * Extract literal values from a Schema.
+ *
+ * Handles:
+ * - Single Literal schemas: `S.Literal('json')` → `['json']`
+ * - Union of Literals: `S.Union([S.Literal('json'), S.Literal('yaml')])` → `['json', 'yaml']`
+ * - Mixed Unions: `S.Union([S.Literal('auto'), S.String])` → `['auto']` (non-literals skipped)
+ * - Non-literal schemas: `S.String` → `[]`
+ *
+ * @param schema - The schema to extract literals from
+ * @returns Array of literal values (strings, numbers, booleans, etc.)
+ */
+export const extractLiterals = (
+  schema: S.Top,
+): ReadonlyArray<string | number | boolean | null | bigint> => {
+  const ast = schema.ast
+  if (isUnion(ast)) {
+    const literals: (string | number | boolean | null | bigint)[] = []
+    for (const member of ast.types) {
+      if (isLiteral(member)) {
+        literals.push(member.literal)
+      }
+    }
+    return literals
+  }
+  if (isLiteral(ast)) {
+    return [ast.literal]
+  }
+  return []
+}
+
+/**
  * Copy annotations from source AST to target schema if any exist.
  *
  * Returns the original schema unchanged if annotations are undefined or empty,

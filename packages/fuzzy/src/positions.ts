@@ -1,0 +1,53 @@
+import { Option } from 'effect'
+import { assignmentScore } from './assignment.js'
+import { hasMatch } from './has-match.js'
+import { subsequenceScore } from './subsequence.js'
+import { tokenMatch } from './token-match.js'
+
+/**
+ * Return the haystack indices where needle characters matched, in needle order.
+ * `positions[0]` = where `needle[0]` matched, etc.
+ *
+ * Returns `Option.none()` when multiset containment fails (characters missing).
+ * For subsequence matches, returns the optimal DP alignment positions.
+ * For out-of-order matches, returns the greedy+repair assignment positions.
+ *
+ * Data-first form: `positions(needle, haystack)`
+ * Data-last form: `positions(needle)` returns `(haystack) => Option<ReadonlyArray<number>>`
+ */
+export function positions(needle: string, haystack: string): Option.Option<ReadonlyArray<number>>
+export function positions(
+  needle: string,
+): (haystack: string) => Option.Option<ReadonlyArray<number>>
+export function positions(
+  needle: string,
+  haystack?: string,
+):
+  | Option.Option<ReadonlyArray<number>>
+  | ((haystack: string) => Option.Option<ReadonlyArray<number>>) {
+  if (haystack === undefined) return (h: string) => positionsImpl(needle, h)
+  return positionsImpl(needle, haystack)
+}
+
+const positionsImpl = (needle: string, haystack: string): Option.Option<ReadonlyArray<number>> => {
+  if (needle.length === 0) return Option.some([])
+
+  // Token path: split on spaces, match each term independently.
+  // This runs before hasMatch because hasMatch rejects space characters
+  // not in the haystack (e.g. 'config reload' vs 'configReload').
+  if (needle.includes(' ')) {
+    const token = tokenMatch(needle, haystack)
+    if (token !== null) return Option.some(token.positions)
+    // Token matching failed — fall through to character-level matching
+  }
+
+  if (!hasMatch(needle, haystack)) return Option.none()
+
+  const subseq = subsequenceScore(needle, haystack)
+  if (subseq !== null) return Option.some(subseq.positions)
+
+  const assignment = assignmentScore(needle, haystack)
+  if (assignment !== null) return Option.some(assignment.positions)
+
+  return Option.none()
+}

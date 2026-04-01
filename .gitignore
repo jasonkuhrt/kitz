@@ -16,7 +16,10 @@ docs/.vitepress/cache/
 .playwright-mcp/
 
 # Serena MCP
-.serena/cache/
+.serena/
+
+# Ephemeral review/scratch output
+.tmp/
 
 # Claude local context (flo-generated, machine-specific)
 .claude/*.local.md

@@ -100,6 +100,32 @@ describe('ast helpers', () => {
     expect(AST.extractTagsFromUnion(union.ast as EAST.Union)).toEqual(['Tagged', 'Other'])
   })
 
+  test('extractLiterals from single Literal schema', () => {
+    expect(AST.extractLiterals(S.Literal('json'))).toEqual(['json'])
+  })
+
+  test('extractLiterals from Union of Literals', () => {
+    expect(AST.extractLiterals(S.Union([S.Literal('json'), S.Literal('yaml')]))).toEqual([
+      'json',
+      'yaml',
+    ])
+  })
+
+  test('extractLiterals from numeric Literals', () => {
+    expect(AST.extractLiterals(S.Union([S.Literal(1), S.Literal(2), S.Literal(3)]))).toEqual([
+      1, 2, 3,
+    ])
+  })
+
+  test('extractLiterals from mixed Union skips non-literals', () => {
+    expect(AST.extractLiterals(S.Union([S.Literal('auto'), S.String]))).toEqual(['auto'])
+  })
+
+  test('extractLiterals from non-literal schema returns empty', () => {
+    expect(AST.extractLiterals(S.String)).toEqual([])
+    expect(AST.extractLiterals(S.Number)).toEqual([])
+  })
+
   test('copyAnnotations preserves empty annotations and reapplies populated ones', () => {
     const base = S.String
 
