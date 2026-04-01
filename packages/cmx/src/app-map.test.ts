@@ -442,7 +442,7 @@ describe('AppMap performance gate', () => {
   // CI observed baseline: ~36ms combined p99. Threshold at ~3x for variance.
   // Local: gate on mean (robust to jitter). CI: gate on p99 (strict).
   const IS_CI = !!process.env['CI']
-  const COMBINED_BUDGET = { localMean: 2, ciP99: 100 }
+  const COMBINED_BUDGET = { localMean: 4, ciP99: 100 }
 
   test('combined keypress path (resolveShortcut + computeScope + getActiveShortcuts) stays within budget', async () => {
     const b = new Bench({

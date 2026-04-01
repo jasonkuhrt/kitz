@@ -229,6 +229,7 @@ const eagerLoadFuzzyCandidates = (
       ReadonlyArray<{ value: unknown; label: string; description?: string }>
     >
     const provided = combinedLayer ? Effect.provide(source, combinedLayer) : source
+    // oxlint-disable-next-line kitz/effect/no-effect-run-in-library-code -- session state machine handles keypresses synchronously; sources must execute inline
     const exit = Effect.runSyncExit(provided)
     if (Exit.isSuccess(exit)) {
       resolver.setCandidates(slot.name, exit.value as any)
@@ -256,6 +257,7 @@ const triggerSearchSource = (state: SessionState): void => {
   const sourceEffect = source(query)
   const combinedLayer = buildCombinedLayers(state)
   const provided = combinedLayer ? Effect.provide(sourceEffect, combinedLayer) : sourceEffect
+  // oxlint-disable-next-line kitz/effect/no-effect-run-in-library-code -- session state machine handles keypresses synchronously; sources must execute inline
   const exit = Effect.runSyncExit(provided)
   if (Exit.isSuccess(exit)) {
     state.slotResolver.setCandidates(slot.name, exit.value as any)

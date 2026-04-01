@@ -299,7 +299,8 @@ const computeScore = (
   // award an acronym bonus. This replaces per-position edge hits when higher.
   let allOnBoundaries = n > 0
   for (let i = 0; i < n; i++) {
-    if (bonuses[assigned[i]!]! === 0) {
+    const bonusValue = bonuses[assigned[i]!]!
+    if (bonusValue === 0) {
       allOnBoundaries = false
       break
     }
