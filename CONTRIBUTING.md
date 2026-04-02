@@ -53,7 +53,7 @@ bun run pre-commit
 The hook:
 
 - formats and lints the staged snapshot, then syncs fixes back to the index
-- blocks conflict markers and repo-local artifacts such as `.claude/*.local.md`, `.serena/cache/`, `.claude/worktrees/`, `.release/`, and `.DS_Store`
+- blocks conflict markers and repo-local artifacts such as `.claude/*.local.md`, `.claude/worktrees/`, `.release/`, and `.DS_Store`
 - requires tracked `hooks/*` scripts to stay executable and use a shell shebang
 - runs `shellcheck` for staged shell scripts and `bun run check:ci` for staged GitHub workflow files
 - runs `bun run check:types` when staged changes can affect TypeScript
