@@ -13,6 +13,17 @@ export interface ScopedCommitInfo {
 }
 
 /**
+ * Structural commit view required to project scope-specific release metadata.
+ *
+ * This deliberately uses the serialized commit shape rather than the class
+ * instance surface so downstream schema-driven models do not need casts.
+ */
+export interface ScopedCommitSource {
+  readonly hash: Git.Sha.Sha
+  readonly message: ConventionalCommits.Commit.Commit
+}
+
+/**
  * A git commit with a parsed conventional commit message.
  *
  * This stores the full rich data - hash, author, date, and the complete
@@ -37,7 +48,7 @@ export class ReleaseCommit extends Git.ParsedCommit<ReleaseCommit>()(
    * For Single commits: returns the commit's type/description/breaking directly.
    * For Multi commits: finds the target for the given scope.
    */
-  static forScope(commit: ReleaseCommit, scope: string): ScopedCommitInfo {
+  static forScope(commit: ScopedCommitSource, scope: string): ScopedCommitInfo {
     const parsed = commit['message']
     const hash = commit['hash']
 
@@ -51,7 +62,7 @@ export class ReleaseCommit extends Git.ParsedCommit<ReleaseCommit>()(
     }
 
     // Multi commit - find the target for this scope
-    const target = parsed.targets.find((t: any) => t.scope === scope)
+    const target = ConventionalCommits.Commit.facets(parsed).find((facet) => facet.scope === scope)
 
     return {
       hash,

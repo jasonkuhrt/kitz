@@ -1,5 +1,6 @@
 import type { Analysis } from '../analyzer/models/__.js'
-import type { ReleaseCommit } from '../analyzer/models/commit.js'
+import type { ScopedCommitSource } from '../analyzer/models/commit.js'
+import { ReleaseCommit } from '../analyzer/models/commit.js'
 import { PackageLocation } from '../analyzer/package-location.js'
 import type { Recon } from '../explorer/models/__.js'
 import { calculateNextVersion } from '../version/calculate.js'
@@ -25,11 +26,7 @@ export const forecast = (analysis: Analysis, recon: Recon): Forecast => {
       bump: impact.bump,
       currentVersion: impact.currentVersion,
       nextOfficialVersion,
-      commits: buildCommitDisplays(
-        impact.commits as unknown as readonly ReleaseCommit[],
-        impact.package.scope,
-        baseUrl,
-      ),
+      commits: buildCommitDisplays(impact.commits, impact.package.scope, baseUrl),
       sourceUrl: PackageLocation.toSourceUrl(
         PackageLocation.fromAbsolutePath(root, impact.package.path),
         {
@@ -74,12 +71,12 @@ export const forecast = (analysis: Analysis, recon: Recon): Forecast => {
  * builds GitHub commit URLs from the repository base URL.
  */
 const buildCommitDisplays = (
-  commits: readonly ReleaseCommit[],
+  commits: readonly ScopedCommitSource[],
   scope: string,
   baseUrl: string,
 ): CommitDisplay[] =>
   commits.map((commit) => {
-    const scoped = commit.forScope(scope)
+    const scoped = ReleaseCommit.forScope(commit, scope)
     return CommitDisplay.make({
       shortSha: scoped.hash.slice(0, 7),
       subject: scoped.description,

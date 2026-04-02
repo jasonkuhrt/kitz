@@ -31,6 +31,7 @@ import {
   ReleaseWorkflow,
   toReleaseInfo,
 } from './workflow.js'
+import { ReleaseCommit, type ScopedCommitSource } from '../analyzer/models/commit.js'
 
 /**
  * Result of executing the release workflow.
@@ -112,6 +113,21 @@ interface ResolvedExecutionState {
 export interface LifecycleEventLine {
   readonly level: 'info' | 'error'
   readonly message: string
+}
+
+type ReleasePayloadCommitEntry = ReleasePayloadType['releases'][number]['commits'][number]
+
+const toReleasePayloadCommitEntry = (
+  commit: ScopedCommitSource,
+  scope: string,
+): ReleasePayloadCommitEntry => {
+  const info = ReleaseCommit.forScope(commit, scope)
+  return {
+    type: info.type.value,
+    message: info.description,
+    hash: info.hash,
+    breaking: info.breaking,
+  }
 }
 
 interface ExecutionStatusBase {
@@ -440,17 +456,9 @@ export const toPayload = (
             currentVersion: item.currentVersion.pipe(Option.map((v) => v.toString())),
             nextVersion: item.nextVersion.toString(),
             bump: item.bumpType,
-            commits: (
-              item.commits as unknown as import('../analyzer/models/commit.js').ReleaseCommit[]
-            ).map((c) => {
-              const info = c.forScope(item.package.scope)
-              return {
-                type: info.type.value,
-                message: info.description,
-                hash: info.hash,
-                breaking: info.breaking,
-              }
-            }),
+            commits: item.commits.map((commit) =>
+              toReleasePayloadCommitEntry(commit, item.package.scope),
+            ),
             dependsOn: Pkg.Manifest.findLocalDependencyNames(manifest, localPackageNames),
           }
         }),

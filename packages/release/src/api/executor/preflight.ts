@@ -77,9 +77,9 @@ export interface PreflightOptions {
 
 interface PreflightLintCheckParams {
   readonly config: Lint.ResolvedConfig
-  readonly preconditionsLayer: Layer.Layer<any>
-  readonly releasePlanLayer: Layer.Layer<any>
-  readonly releaseContextLayer: Layer.Layer<any>
+  readonly preconditionsLayer: Layer.Layer<Lint.Preconditions.EvaluatedPreconditionsService>
+  readonly releasePlanLayer: Layer.Layer<Lint.ReleasePlan.ReleasePlanService>
+  readonly releaseContextLayer: Layer.Layer<Lint.ReleaseContext.ReleaseContextService>
 }
 
 export interface PreflightDependencies {
