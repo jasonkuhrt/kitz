@@ -15,7 +15,6 @@
  */
 
 import { Str } from '@kitz/core'
-import * as ansis from 'ansis'
 import { Duration, MutableHashMap, Option } from 'effect'
 import * as Core from '../core.js'
 
@@ -29,9 +28,10 @@ export const render = (
   useColors: boolean,
 ): string => {
   const b = Str.Builder()
+  const styles = Core.createStyles(useColors)
 
   // Header
-  b(useColors ? ansis.bold.cyan('Workflow Progress') : 'Workflow Progress')
+  b(styles.heading('Workflow Progress'))
   b``
 
   // Render each layer
@@ -39,7 +39,7 @@ export const render = (
     const layer = layers[i]
     if (!layer) continue
 
-    const layerLabel = useColors ? ansis.dim(`Layer ${i}:`) : `Layer ${i}:`
+    const layerLabel = styles.dim(`Layer ${i}:`)
 
     if (layer.length === 1) {
       const node = layer[0]!
@@ -47,7 +47,7 @@ export const render = (
         MutableHashMap.get(state.activities, node),
         () => 'pending' as const,
       )
-      const style = Core.stateToStyler(activityState, useColors)
+      const style = Core.stateToStyler(activityState, styles)
       const symbol = Core.stateToSymbol(activityState)
       b`  ${layerLabel} ${style(`${symbol} ${node}`)}`
     } else {
@@ -57,7 +57,7 @@ export const render = (
           MutableHashMap.get(state.activities, node),
           () => 'pending' as const,
         )
-        const style = Core.stateToStyler(activityState, useColors)
+        const style = Core.stateToStyler(activityState, styles)
         const symbol = Core.stateToSymbol(activityState)
         b`    ${style(`${symbol} ${node}`)}`
       }
@@ -68,7 +68,7 @@ export const render = (
   const elapsed = Duration.format(Duration.millis(Core.elapsedSince(state.startTime)))
   const summary = `${state.completedCount}/${state.totalCount} completed (${elapsed})`
   b``
-  b(useColors ? ansis.dim(summary) : summary)
+  b(styles.dim(summary))
 
   return b.render()
 }

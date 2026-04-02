@@ -1,7 +1,6 @@
 import { Err, Obj, Str } from '@kitz/core'
 import { Group } from '@kitz/group'
 import { Tex } from '@kitz/tex'
-import * as ansis from 'ansis'
 import { Text } from '../lib/Text/_.js'
 import type { Parameter } from '../Parameter/types.js'
 import * as SchemaRuntime from '../schema/schema-runtime.js'
@@ -82,7 +81,7 @@ export const render = (
     )
   }
 
-  const styleHeader = (string: string) => ansis.underline(Term.colors.mute(string))
+  const styleHeader = (string: string) => Term.ansi.underline(Term.colors.mute(string))
 
   const output = Tex.Tex({ terminalWidth: settings.terminalWidth })
     .block(($) => {
@@ -264,7 +263,7 @@ const parameterDefault = (parameter: Parameter) => {
   if (optionality._tag === `default`) {
     const valueOrError = Err.tryCatch(() => optionality.getValue())
     if (valueOrError instanceof Error) {
-      return ansis.bold(
+      return Term.ansi.bold(
         Term.colors.alert(`Error trying to render this default: ${valueOrError.message}`),
       )
     }
@@ -275,7 +274,7 @@ const parameterDefault = (parameter: Parameter) => {
 }
 
 const labels = {
-  required: ansis.bold(ansis.black(Term.colors.alertBoldBg(` REQUIRED `))),
+  required: Term.ansi.bold(Term.ansi.black(Term.colors.alertBoldBg(` REQUIRED `))),
 }
 
 const parameterName = (parameter: Parameter) => {

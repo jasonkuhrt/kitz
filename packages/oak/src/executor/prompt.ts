@@ -1,6 +1,5 @@
 import { Obj } from '@kitz/core'
 import { Tex } from '@kitz/tex'
-import * as ansis from 'ansis'
 import { Effect } from 'effect'
 import type { Prompter } from '../lib/Prompter/_.js'
 import { Text } from '../lib/Text/_.js'
@@ -48,7 +47,7 @@ export const prompt = (
       const optionalLabel =
         parameter.type.metadata.optionality._tag === `required`
           ? ``
-          : ansis.dim(` optional (press esc to skip)`)
+          : Term.ansi.dim(` optional (press esc to skip)`)
       const question = Tex.Tex({ orientation: `horizontal`, terminalWidth: PROMPT_TERMINAL_WIDTH })
         .block({ padding: { mainEnd: 2 } }, positionLabel)
         .block((__) =>

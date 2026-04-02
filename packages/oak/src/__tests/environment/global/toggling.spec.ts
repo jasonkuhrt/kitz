@@ -39,8 +39,7 @@ it(`can be disabled by environment`, () => {
   const args = $.parameter(`--foo`, s.default(`foo_default`)).parse({ line: [] })
   expect(args).toMatchObject({ foo: `foo_default` })
 })
-// TODO: Remove skipIf once kit#41 is fixed
-it.skipIf(process.env['CI'] === 'true')(`environment supersedes settings`, () => {
+it(`environment supersedes settings`, () => {
   expect(() =>
     $.parameter(`--foo`, s)
       .settings({
@@ -57,6 +56,5 @@ it.skipIf(process.env['CI'] === 'true')(`environment supersedes settings`, () =>
         },
       }),
   ).toThrowErrorMatchingSnapshot()
-  // Skip ANSI snapshots in CI due to environment differences
   expect(output.value).toMatchSnapshot()
 })

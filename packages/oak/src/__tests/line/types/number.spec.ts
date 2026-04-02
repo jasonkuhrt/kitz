@@ -20,8 +20,7 @@ it(`casts the input as a number`, () => {
   expect(args).toMatchObject({ age: 1 })
 })
 
-// TODO: Remove skipIf once kit#41 is fixed
-describe.skipIf(process.env['CI'] === 'true')(`errors`, () => {
+describe(`errors`, () => {
   it(`validates the  input`, () => {
     $.parameter(`--age`, n.int())
       .settings({ onOutput })

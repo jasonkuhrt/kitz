@@ -6,13 +6,19 @@
 
 import { Fn } from '@kitz/core'
 import { Tex } from '@kitz/tex'
-import * as ansis from 'ansis'
+import { Ansis } from 'ansis'
 import { MutableHashMap } from 'effect'
 import { type State as ActivityState, State as ActivityStateSchema } from '../models/activity.js'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type Styler = Fn.endo<string>
+
+export interface Styles {
+  readonly dim: Styler
+  readonly heading: Styler
+  readonly byState: Readonly<Record<ActivityState, Styler>>
+}
 
 /**
  * State of all activities for rendering.
@@ -43,15 +49,35 @@ export const elapsedSince = (startTime: Date): number =>
 
 // ─── Styling ─────────────────────────────────────────────────────────────────
 
-const stateToStylerLookup = {
-  completed: ansis.green,
-  running: ansis.yellow,
-  failed: ansis.red,
-  pending: ansis.gray,
-} as const satisfies Record<ActivityState, Styler>
+export const createStyles = (useColors: boolean): Styles => {
+  if (!useColors) {
+    return {
+      dim: Fn.identity,
+      heading: Fn.identity,
+      byState: {
+        completed: Fn.identity,
+        running: Fn.identity,
+        failed: Fn.identity,
+        pending: Fn.identity,
+      },
+    }
+  }
 
-export const stateToStyler = (state: ActivityState, useColors: boolean): Styler =>
-  useColors ? stateToStylerLookup[state] : Fn.identity
+  const ansis = new Ansis(3)
+
+  return {
+    dim: (value) => ansis.dim(value),
+    heading: (value) => ansis.bold.cyan(value),
+    byState: {
+      completed: (value) => ansis.green(value),
+      running: (value) => ansis.yellow(value),
+      failed: (value) => ansis.red(value),
+      pending: (value) => ansis.gray(value),
+    },
+  }
+}
+
+export const stateToStyler = (state: ActivityState, styles: Styles): Styler => styles.byState[state]
 
 const stateToSymbolLookup = {
   completed: Tex.Glyph.status.check,

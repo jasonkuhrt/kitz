@@ -1,14 +1,16 @@
-import * as ansis from 'ansis'
+import { Ansis } from 'ansis'
 
 export namespace Term {
+  export const ansi = new Ansis(3)
+
   export const colors = {
-    mute: ansis.gray,
-    dim: ansis.dim.gray,
-    accent: ansis.yellow,
-    alert: ansis.red,
-    alertBoldBg: ansis.bgRedBright,
-    positiveBold: ansis.bold.green,
-    positive: ansis.green,
-    secondary: ansis.blue,
+    mute: ansi.gray,
+    dim: ansi.dim.gray,
+    accent: ansi.yellow,
+    alert: ansi.red,
+    alertBoldBg: ansi.bgRedBright,
+    positiveBold: ansi.bold.green,
+    positive: ansi.green,
+    secondary: ansi.blue,
   }
 }

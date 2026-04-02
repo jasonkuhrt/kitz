@@ -17,7 +17,6 @@
 
 import { Str } from '@kitz/core'
 import { Tex } from '@kitz/tex'
-import * as ansis from 'ansis'
 import { Duration, MutableHashMap, Option } from 'effect'
 import * as Core from '../core.js'
 
@@ -50,6 +49,7 @@ export const render = (
   const space = Str.Char.spaceRegular
   const layerGap = space.repeat(4)
   const hLine = Str.Builder({ join: '' })
+  const styles = Core.createStyles(useColors)
 
   // Calculate max node name visual width for box sizing
   const allNodes = layers.flat()
@@ -90,7 +90,7 @@ export const render = (
           MutableHashMap.get(state.activities, node),
           () => 'pending' as const,
         )
-        const style = Core.stateToStyler(activityState, useColors)
+        const style = Core.stateToStyler(activityState, styles)
         const symbol = Core.stateToSymbol(activityState)
 
         // Center name in box using visual width
@@ -188,7 +188,7 @@ export const render = (
   const elapsed = Duration.format(Duration.millis(Core.elapsedSince(state.startTime)))
   const summary = `${state.completedCount}/${state.totalCount} completed (${elapsed})`
   b('')
-  b(useColors ? ansis.dim(summary) : summary)
+  b(styles.dim(summary))
 
   return b.render()
 }

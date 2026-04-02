@@ -46,8 +46,7 @@ it(`defaults to CLI_PARAM or CLI_PARAMETERS`, () => {
     })
   expect(args).toMatchObject({ foo: `qux1`, bar: `qux2` })
 })
-// TODO: Remove skipIf once kit#41 is fixed
-describe.skipIf(process.env['CI'] === 'true')(`error`, () => {
+describe(`error`, () => {
   it(`when using prefix and there is a typo`, () => {
     // TODO show not just envar prefix in error message json
     $.parameter(`--foo`, s)
@@ -87,14 +86,10 @@ describe(`default environment argument parameter name prefix`, () => {
     args = $.parameter(`--foo`, s).parse({ line: [] })
     expect(args).toMatchObject({ foo: `bar` })
   })
-  // TODO: Remove skipIf once kit#41 is fixed
-  it.skipIf(process.env['CI'] === 'true')(
-    `when both argument CLI_PARAM and CLI_PARAMETER are passed then an error is thrown`,
-    () => {
-      environmentManager.set(`cli_param_foo`, `bar1`)
-      environmentManager.set(`cli_parameter_foo`, `bar2`)
-      $.parameter(`--foo`, s).settings({ helpOnNoArguments: false, onOutput }).parse({ line: [] })
-      expect([[output.value]]).toMatchSnapshot()
-    },
-  )
+  it(`when both argument CLI_PARAM and CLI_PARAMETER are passed then an error is thrown`, () => {
+    environmentManager.set(`cli_param_foo`, `bar1`)
+    environmentManager.set(`cli_parameter_foo`, `bar2`)
+    $.parameter(`--foo`, s).settings({ helpOnNoArguments: false, onOutput }).parse({ line: [] })
+    expect([[output.value]]).toMatchSnapshot()
+  })
 })

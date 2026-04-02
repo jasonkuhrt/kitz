@@ -5,7 +5,6 @@
  */
 
 import { Str } from '@kitz/core'
-import * as ansis from 'ansis'
 import { Duration, MutableHashMap, Option } from 'effect'
 import * as Core from '../core.js'
 
@@ -33,13 +32,14 @@ export const render = (
   useColors: boolean,
 ): string => {
   const b = Str.Builder()
+  const styles = Core.createStyles(useColors)
 
   for (const name of activities) {
     const activityState = Option.getOrElse(
       MutableHashMap.get(state.activities, name),
       () => 'pending' as const,
     )
-    const style = Core.stateToStyler(activityState, useColors)
+    const style = Core.stateToStyler(activityState, styles)
     const symbol = Core.stateToSymbol(activityState)
     b`${style(symbol)} ${name}`
   }
@@ -48,7 +48,7 @@ export const render = (
   const elapsed = Duration.format(Duration.millis(Core.elapsedSince(state.startTime)))
   const summary = `${state.completedCount}/${state.totalCount} completed (${elapsed})`
   b``
-  b(useColors ? ansis.dim(summary) : summary)
+  b(styles.dim(summary))
 
   return b.render()
 }

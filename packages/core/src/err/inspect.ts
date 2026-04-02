@@ -3,7 +3,7 @@ import { Obj } from '#obj'
 import { Rec } from '#rec'
 import { Str } from '#str'
 import type { Ts } from '#ts'
-import { dim, red } from 'ansis'
+import { Ansis } from 'ansis'
 import objectInspect from 'object-inspect'
 import { getEnvironmentValue } from './env.js'
 import { cleanStackWithStats } from './stack.js'
@@ -186,6 +186,19 @@ export type InspectOptions = InferOptions<typeof optionSpecs>
  */
 export type InspectConfig = Resolve<typeof optionSpecs>
 
+interface InspectStyle {
+  readonly dim: (value: string) => string
+  readonly red: (value: string) => string
+}
+
+const createInspectStyle = (config: InspectConfig): InspectStyle => {
+  const ansis = new Ansis(config.color.value ? 3 : 0)
+  return {
+    dim: (value) => ansis.dim(value),
+    red: (value) => ansis.red(value),
+  }
+}
+
 /**
  * Render an error to a string with detailed formatting.
  *
@@ -227,16 +240,17 @@ export type InspectConfig = Resolve<typeof optionSpecs>
  */
 export const inspect = (error: Error, options?: InspectOptions): string => {
   const config = resolve(optionSpecs, options ?? {})
+  const style = createInspectStyle(config)
 
-  let inspection = _inspectResursively(error, '', config, { isRoot: true })
+  let inspection = _inspectResursively(error, '', config, style, { isRoot: true })
 
   // Only show help section if enabled
   if (config.showHelp.value) {
     inspection += '\n\n'
-    inspection += config.color.value ? dim('─'.repeat(40)) : '─'.repeat(40)
+    inspection += config.color.value ? style.dim('─'.repeat(40)) : '─'.repeat(40)
     inspection += '\n'
     inspection += config.color.value
-      ? dim('Environment Variable Configuration:')
+      ? style.dim('Environment Variable Configuration:')
       : 'Environment Variable Configuration:'
     inspection += '\n'
 
@@ -246,7 +260,7 @@ export const inspect = (error: Error, options?: InspectOptions): string => {
         state.source === 'environment' ? `= ${state.value}` : `(default: ${state.value})`
 
       const line = `  ${envVar} ${status}`
-      inspection += config.color.value ? dim(line) : line
+      inspection += config.color.value ? style.dim(line) : line
       inspection += '\n'
     }
   }
@@ -353,6 +367,7 @@ const _inspectResursively = (
   error: Error,
   parentIndent: string,
   config: InspectConfig,
+  style: InspectStyle,
   context: InspectContext = {},
 ): string => {
   if (!is(error)) {
@@ -377,16 +392,16 @@ const _inspectResursively = (
     }
 
     const indexPrefix = config.color.value
-      ? dim(`${context.index} ${treeChar}`)
+      ? style.dim(`${context.index} ${treeChar}`)
       : `${context.index} ${treeChar}`
-    const errorName = config.color.value ? red(error.name) : error.name
+    const errorName = config.color.value ? style.red(error.name) : error.name
     const errorLine = error.message ? `${errorName}: ${error.message}` : errorName
     lines.push(`${numberIndent}${indexPrefix} ${errorLine}`)
 
     // The continuation aligns with the original indent
     // Always use │ for continuation since we're using ├─ for all items
     const continuation = '│  '
-    const contPrefix = config.color.value ? dim(continuation) : continuation
+    const contPrefix = config.color.value ? style.dim(continuation) : continuation
     const childIndent = contentIndent + contPrefix
 
     // Stack (compact)
@@ -422,21 +437,23 @@ const _inspectResursively = (
       const aggregateError = error
       if (aggregateError.errors.length > 0) {
         // Add a visual separator
-        lines.push(`${childIndent}${config.color.value ? dim('↓') : '↓'}`)
+        lines.push(`${childIndent}${config.color.value ? style.dim('↓') : '↓'}`)
 
         // Render child errors
         aggregateError.errors.forEach((err, idx) => {
           const isLastChild = idx === aggregateError.errors.length - 1
           const childTreeChar = isLastChild ? '└─' : '├─'
-          const childPrefix = config.color.value ? dim(`  ${childTreeChar}`) : `  ${childTreeChar}`
+          const childPrefix = config.color.value
+            ? style.dim(`  ${childTreeChar}`)
+            : `  ${childTreeChar}`
 
-          const childErrorName = config.color.value ? red(err.name) : err.name
+          const childErrorName = config.color.value ? style.red(err.name) : err.name
           const childErrorLine = err.message ? `${childErrorName}: ${err.message}` : childErrorName
           lines.push(`${childIndent}${childPrefix} ${childErrorLine}`)
 
           // Need to account for "  " (indent) + tree char width
           const childCont = isLastChild ? '   ' : '  │'
-          const nestedIndent = childIndent + (config.color.value ? dim(childCont) : childCont)
+          const nestedIndent = childIndent + (config.color.value ? style.dim(childCont) : childCont)
 
           if (config.maxFrames.value > 0 && err.stack) {
             const cleanResult = cleanStackWithStats(err.stack, {
@@ -466,7 +483,7 @@ const _inspectResursively = (
 
   // Root or non-aggregate nested error
   // Type and Message on same line
-  const errorName = config.color.value ? red(error.name) : error.name
+  const errorName = config.color.value ? style.red(error.name) : error.name
   const errorLine = error.message ? `${errorName}: ${error.message}` : errorName
   lines.push(formatLine(errorLine, parentIndent, config))
 
@@ -533,7 +550,9 @@ const _inspectResursively = (
   // Cause - indented progressively
   if ('cause' in error && error.cause instanceof Error) {
     lines.push(formatLine('  ↓', parentIndent, config))
-    lines.push(_inspectResursively(error.cause, `${parentIndent}  `, config, { isRoot: false }))
+    lines.push(
+      _inspectResursively(error.cause, `${parentIndent}  `, config, style, { isRoot: false }),
+    )
   }
 
   // Aggregate errors
@@ -541,8 +560,8 @@ const _inspectResursively = (
     const aggregateError = error
     if (aggregateError.errors.length > 0) {
       // Visual separator - indented by 4 spaces to align with tree continuation
-      const separator1 = config.color.value ? dim('    ↓') : '    ↓'
-      const separator2 = config.color.value ? dim('    │') : '    │'
+      const separator1 = config.color.value ? style.dim('    ↓') : '    ↓'
+      const separator2 = config.color.value ? style.dim('    │') : '    │'
       lines.push(`${parentIndent}${separator1}`)
       lines.push(`${parentIndent}${separator2}`)
 
@@ -551,7 +570,7 @@ const _inspectResursively = (
       aggregateError.errors.forEach((err, index) => {
         const isLastError = index === aggregateError.errors.length - 1
         lines.push(
-          _inspectResursively(err, childIndent, config, {
+          _inspectResursively(err, childIndent, config, style, {
             isRoot: false,
             isLast: isLastError,
             index,
@@ -559,13 +578,13 @@ const _inspectResursively = (
         )
         if (!isLastError) {
           // Separator aligns with the content, not the dedented number
-          const separator = config.color.value ? dim('│') : '│'
+          const separator = config.color.value ? style.dim('│') : '│'
           lines.push(`${childIndent}${separator}`)
         }
       })
 
       // Add closing tree character aligned with tree structure
-      const closingLine = config.color.value ? dim('    └') : '    └'
+      const closingLine = config.color.value ? style.dim('    └') : '    └'
       lines.push(closingLine)
     }
   }

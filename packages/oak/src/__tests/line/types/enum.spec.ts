@@ -13,8 +13,7 @@ beforeEach(() => {
   vi.spyOn(process, 'exit').mockImplementation(() => undefined as never)
 })
 
-// TODO: Remove skipIf once kit#41 is fixed
-describe.skipIf(process.env['CI'] === 'true')(`errors`, () => {
+describe(`errors`, () => {
   it(`when argument missing (last position)`, () => {
     $.parameter(`--mode`, z.enum([`a`, `b`]))
       .settings({ onOutput })
