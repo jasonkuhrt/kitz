@@ -1,3 +1,4 @@
+import { Str } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
@@ -53,11 +54,32 @@ describe('Executor status', () => {
       detail: 'workflow crashed',
     })
 
-    expect(rendered).toContain('Release workflow status: failed')
-    expect(rendered).toContain('Execution ID: release-official:test')
+    expect(rendered).toContain('Release workflow status:')
+    expect(rendered).toContain('[FAILED]')
+    expect(rendered).toContain('Execution ID: `release-official:test`')
     expect(rendered).toContain('Packages: @kitz/core')
-    expect(rendered).toContain('Failure:')
+    expect(rendered).toContain('Failure')
     expect(rendered).toContain('workflow crashed')
+  })
+
+  test('renders colored success summaries without changing the stripped text semantics', () => {
+    const rendered = formatExecutionStatus(
+      {
+        state: 'succeeded',
+        executionId: 'release-official:test',
+        lifecycle: 'official',
+        plannedPackages: ['@kitz/core'],
+        summary: {
+          releasedPackages: ['@kitz/core'],
+          createdTags: ['@kitz/core@1.1.0'],
+          createdGHReleases: ['@kitz/core v1.1.0'],
+        },
+      },
+      { color: true },
+    )
+
+    expect(rendered).toContain('\u001b[')
+    expect(Str.Visual.strip(rendered)).toContain('Created tags: @kitz/core@1.1.0')
   })
 
   test.live('reports when the active plan has not started yet', () =>
@@ -103,8 +125,8 @@ describe('Executor status', () => {
       }
 
       const rendered = formatExecutionStatus(workflowStatus)
-      expect(rendered).toContain('Release workflow status: suspended')
-      expect(rendered).toContain('Resume: fix the blocking issue, then run `release resume`')
+      expect(rendered).toContain('[SUSPENDED]')
+      expect(rendered).toContain('Resume: Fix the blocking issue, then run `release resume`')
     }),
   )
 
@@ -125,7 +147,7 @@ describe('Executor status', () => {
       }
 
       const rendered = formatExecutionStatus(workflowStatus)
-      expect(rendered).toContain('Release workflow status: succeeded')
+      expect(rendered).toContain('[SUCCEEDED]')
       expect(rendered).toContain('Released packages: @kitz/core, @kitz/cli')
       expect(rendered).toContain(`Created tags: ${tagCore('1.1.0')}, ${tagCli('1.0.1')}`)
     }),

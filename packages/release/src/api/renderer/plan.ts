@@ -5,6 +5,7 @@ import { Option } from 'effect'
 import type { Item } from '../planner/models/item.js'
 import type { Plan } from '../planner/models/plan.js'
 import { formatGithubReleaseTitle, type PublishSemantics } from '../publishing.js'
+import { createTerminalTheme, type TerminalFormatOptions } from '../../terminal.js'
 import { renderTableText } from './table-core.js'
 
 /**
@@ -36,42 +37,60 @@ export const renderPlan = (plan: Plan): string => {
 /**
  * Render confirmation prompt before applying a plan.
  */
-export const renderApplyConfirmation = (plan: Plan, semantics: PublishSemantics): string => {
+export const renderApplyConfirmation = (
+  plan: Plan,
+  semantics: PublishSemantics,
+  options?: TerminalFormatOptions,
+): string => {
   const totalReleases = plan.releases.length + plan.cascades.length
   const output = Str.Builder()
-  output`Applying ${plan.lifecycle} release plan...`
-  output`${String(totalReleases)} package${totalReleases === 1 ? '' : 's'} to release`
-  output`npm dist-tag: ${semantics.distTag}`
+  const theme = createTerminalTheme(options)
+
+  output(
+    `${theme.badge('accent', 'APPLY')} ${theme.heading(`${formatLifecycle(plan.lifecycle)} release plan`)}`,
+  )
+  output`${theme.key('Packages')} ${String(totalReleases)} package${totalReleases === 1 ? '' : 's'} to release`
+  output`${theme.key('npm dist-tag')} ${theme.code(semantics.distTag)}`
   output``
-  output`Releases:`
+  output(theme.section('Releases'))
   for (const release of plan.releases) {
-    output`  ${formatApplyReleaseLine(release, semantics)}`
+    output`  ${formatApplyReleaseLine(release, semantics, false, theme)}`
   }
   for (const cascade of plan.cascades) {
-    output`  ${formatApplyReleaseLine(cascade, semantics, true)}`
+    output`  ${formatApplyReleaseLine(cascade, semantics, true, theme)}`
   }
   output``
-  output`This will:`
+  output(theme.section('This will'))
   output`  1. Run preflight checks`
   output`  2. Prepare publishable tarballs for every package`
   output`  3. Publish all packages to npm`
   output`  4. Create and push git tags`
   output`  5. Create GitHub releases`
   output``
-  output`Use --dry-run to preview without side effects, or --yes to skip this prompt.`
+  output(
+    `Use ${theme.code('--dry-run')} to preview without side effects, or ${theme.code('--yes')} to skip this prompt.`,
+  )
   return output.render()
 }
 
 /**
  * Render dry-run summary.
  */
-export const renderApplyDryRun = (plan: Plan, semantics: PublishSemantics): string => {
+export const renderApplyDryRun = (
+  plan: Plan,
+  semantics: PublishSemantics,
+  options?: TerminalFormatOptions,
+): string => {
   const output = Str.Builder()
-  output`[DRY RUN] Would execute ${plan.lifecycle} release plan`
-  output`npm dist-tag: ${semantics.distTag}`
+  const theme = createTerminalTheme(options)
+
+  output(
+    `${theme.badge('warn', 'DRY RUN')} Would execute ${formatLifecycle(plan.lifecycle).toLowerCase()} release plan`,
+  )
+  output`${theme.key('npm dist-tag')} ${theme.code(semantics.distTag)}`
   output``
   for (const release of [...plan.releases, ...plan.cascades]) {
-    output`  - ${formatApplyReleaseLine(release, semantics, plan.cascades.includes(release))}`
+    output`  - ${formatApplyReleaseLine(release, semantics, plan.cascades.includes(release), theme)}`
   }
   output``
   output`Would also run preflight checks, prepare tarballs, publish to npm, push git tags, and create GitHub releases.`
@@ -81,10 +100,13 @@ export const renderApplyDryRun = (plan: Plan, semantics: PublishSemantics): stri
 /**
  * Render completion summary.
  */
-export const renderApplyDone = (releasedCount: number): string => {
+export const renderApplyDone = (releasedCount: number, options?: TerminalFormatOptions): string => {
   const output = Str.Builder()
+  const theme = createTerminalTheme(options)
   output``
-  output`Done. ${String(releasedCount)} package${releasedCount === 1 ? '' : 's'} released.`
+  output(
+    `${theme.badge('success', 'DONE')} ${String(releasedCount)} package${releasedCount === 1 ? '' : 's'} released.`,
+  )
   return output.render()
 }
 
@@ -130,6 +152,7 @@ const formatApplyReleaseLine = (
   release: Item,
   semantics: PublishSemantics,
   cascade = false,
+  theme = createTerminalTheme({ color: false }),
 ): string => {
   const version = release.nextVersion.toString()
   const tag = Pkg.Pin.toString(
@@ -140,7 +163,7 @@ const formatApplyReleaseLine = (
     version,
   })
 
-  return `${release.package.name.moniker}@${version}${
-    cascade ? ' (cascade)' : ''
-  } -> npm \`${semantics.distTag}\`, git \`${tag}\`, GitHub \`${githubRelease}\``
+  return `${theme.heading(`${release.package.name.moniker}@${version}`)}${
+    cascade ? theme.warn(' (cascade)') : ''
+  } -> npm ${theme.code(semantics.distTag)}, git ${theme.code(tag)}, GitHub ${theme.code(githubRelease)}`
 }

@@ -14,9 +14,11 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
+import { Str } from '@kitz/core'
 import { Cause, Config, Effect, Exit, Match, Option, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
 import { resolvePublishSemanticsForPlan, type Publishing } from '../publishing.js'
+import { createTerminalTheme, type TerminalFormatOptions } from '../../terminal.js'
 import {
   ExecutorDependencyCycleError,
   ExecutorPreflightError,
@@ -271,64 +273,98 @@ const resolveExecutionState = (
     } satisfies ResolvedExecutionState
   })
 
-export const formatExecutionStatus = (status: ExecutionStatus): string => {
-  const lines = [
-    `Release workflow status: ${status.state}`,
-    `Execution ID: ${status.executionId}`,
-    `Lifecycle: ${status.lifecycle}`,
-    `Packages: ${status.plannedPackages.join(', ') || '(none)'}`,
-  ]
+const executionStateTone = (state: ExecutionStatus['state']) => {
+  switch (state) {
+    case 'failed':
+      return 'error' as const
+    case 'not-started':
+      return 'info' as const
+    case 'succeeded':
+      return 'success' as const
+    case 'suspended':
+      return 'warn' as const
+  }
+}
+
+export const formatExecutionStatus = (
+  status: ExecutionStatus,
+  options?: TerminalFormatOptions,
+): string => {
+  const output = Str.Builder()
+  const theme = createTerminalTheme(options)
+
+  output(
+    `${theme.heading('Release workflow status:')} ${theme.badge(
+      executionStateTone(status.state),
+      status.state.toUpperCase(),
+    )}`,
+  )
+  output`${theme.key('Execution ID')} ${theme.code(status.executionId)}`
+  output`${theme.key('Lifecycle')} ${theme.code(status.lifecycle)}`
+  output`${theme.key('Packages')} ${status.plannedPackages.join(', ') || '(none)'}`
 
   if (status.state === 'not-started') {
-    lines.push('No persisted workflow state exists for this plan yet.')
-    return lines.join('\n')
+    output``
+    output`No persisted workflow state exists for this plan yet.`
+    output`${theme.key('Next')} Run ${theme.code('release apply')} to start the workflow.`
+    return output.render()
   }
 
   if (status.state === 'suspended') {
     if (status.detail) {
-      lines.push('')
-      lines.push('Suspended on:')
-      lines.push(status.detail)
+      output``
+      output(theme.section('Suspended on'))
+      output(status.detail)
     }
-    lines.push('')
-    lines.push('Resume: fix the blocking issue, then run `release resume` with the same plan.')
-    return lines.join('\n')
+    output``
+    output(
+      `${theme.key('Resume')} Fix the blocking issue, then run ${theme.code('release resume')} with the same plan.`,
+    )
+    return output.render()
   }
 
   if (status.state === 'failed') {
-    lines.push('')
-    lines.push('Failure:')
-    lines.push(status.detail)
-    return lines.join('\n')
+    output``
+    output(theme.section('Failure'))
+    output(status.detail)
+    return output.render()
   }
 
-  lines.push(`Released packages: ${status.summary.releasedPackages.join(', ') || '(none)'}`)
-  lines.push(`Created tags: ${status.summary.createdTags.join(', ') || '(none)'}`)
-  lines.push(`GitHub releases: ${status.summary.createdGHReleases.join(', ') || '(none)'}`)
-  return lines.join('\n')
+  output``
+  output(theme.section('Completed'))
+  output`${theme.key('Released packages')} ${status.summary.releasedPackages.join(', ') || '(none)'}`
+  output`${theme.key('Created tags')} ${status.summary.createdTags.join(', ') || '(none)'}`
+  output`${theme.key('GitHub releases')} ${status.summary.createdGHReleases.join(', ') || '(none)'}`
+  return output.render()
 }
 
 /**
  * Convert workflow lifecycle events to printable log lines.
  */
-export const formatLifecycleEvent = (event: Flo.LifecycleEvent): LifecycleEventLine | undefined =>
-  Match.value(event).pipe(
+export const formatLifecycleEvent = (
+  event: Flo.LifecycleEvent,
+  options?: TerminalFormatOptions,
+): LifecycleEventLine | undefined => {
+  const theme = createTerminalTheme(options)
+
+  return Match.value(event).pipe(
     Match.tags({
       ActivityStarted: (e): LifecycleEventLine => ({
         level: 'info',
-        message: `  Starting: ${e.activity}`,
+        message: `  ${theme.info('›')} ${theme.key('Starting')} ${e.activity}`,
       }),
       ActivityCompleted: (e): LifecycleEventLine => ({
         level: 'info',
-        message: `\u2713 Completed: ${e.activity}`,
+        message: `${theme.success('\u2713')} ${theme.key('Completed')} ${e.activity}`,
       }),
       ActivityFailed: (e): LifecycleEventLine => ({
         level: 'error',
-        message: `\u2717 Failed: ${e.activity} - ${e.error}`,
+        message: `${theme.error('\u2717')} ${theme.key('Failed')} ${e.activity} ${theme.dim('-')} ${e.error}`,
       }),
     }),
     Match.orElse(() => undefined),
   )
+}
 
 /**
  * Order releases so publish dependencies always appear before their dependents.

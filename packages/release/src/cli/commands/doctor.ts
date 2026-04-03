@@ -391,7 +391,7 @@ Cli.run(
     if (args.format === 'json') {
       yield* Console.log(JSON.stringify(evaluation, null, 2))
     } else {
-      yield* Console.log(Api.Doctor.formatEvaluation(evaluation))
+      yield* Console.log(Api.Doctor.formatEvaluation(evaluation, { env: env.vars }))
     }
 
     if (Api.Doctor.hasBlockingIssues(evaluation)) {

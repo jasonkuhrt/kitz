@@ -1,3 +1,4 @@
+import { Str } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
@@ -7,7 +8,7 @@ import { ReleaseCommit } from '../analyzer/models/commit.js'
 import { Official } from '../planner/models/item-official.js'
 import { Plan } from '../planner/models/plan.js'
 import { OfficialIncrement } from '../version/models/official-increment.js'
-import { formatLifecycleEvent, toPayload } from './execute.js'
+import { formatExecutionStatus, formatLifecycleEvent, toPayload } from './execute.js'
 
 const makePackage = (scope: string) => ({
   scope,
@@ -35,7 +36,7 @@ describe('executor execute helpers', () => {
   test('formats lifecycle events into printable log lines', () => {
     expect(formatLifecycleEvent({ _tag: 'ActivityStarted', activity: 'publish' } as any)).toEqual({
       level: 'info',
-      message: '  Starting: publish',
+      message: '  › Starting: publish',
     })
     expect(formatLifecycleEvent({ _tag: 'ActivityCompleted', activity: 'publish' } as any)).toEqual(
       {
@@ -54,6 +55,27 @@ describe('executor execute helpers', () => {
       message: '✗ Failed: publish - boom',
     })
     expect(formatLifecycleEvent({ _tag: 'WorkflowStarted' } as any)).toBeUndefined()
+  })
+
+  test('renders colored lifecycle events and workflow status summaries', () => {
+    const completed = formatLifecycleEvent(
+      { _tag: 'ActivityCompleted', activity: 'publish' } as any,
+      { color: true },
+    )
+    const status = formatExecutionStatus(
+      {
+        state: 'not-started',
+        executionId: 'release-official:test',
+        lifecycle: 'official',
+        plannedPackages: ['@kitz/core'],
+      },
+      { color: true },
+    )
+
+    expect(completed?.message).toContain('\u001b[')
+    expect(Str.Visual.strip(completed?.message ?? '')).toContain('Completed: publish')
+    expect(status).toContain('\u001b[')
+    expect(Str.Visual.strip(status)).toContain('Run `release apply` to start the workflow.')
   })
 
   test('builds workflow payloads in dependency order and normalizes commit data', async () => {

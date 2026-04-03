@@ -1,7 +1,9 @@
+import { Str } from '@kitz/core'
 import { formatReport } from './lint/ops/relay.js'
 import { Finished, type Report } from './lint/models/report.js'
 import * as Severity from './lint/models/severity.js'
 import type { Plan } from './planner/models/plan.js'
+import { createTerminalTheme, type TerminalFormatOptions } from '../terminal.js'
 import type { Lifecycle } from './version/models/lifecycle.js'
 
 export interface RequestedLifecycle {
@@ -111,31 +113,37 @@ export const hasBlockingIssues = (evaluation: DoctorEvaluation): boolean =>
       : hasErrorViolations(report.report),
   )
 
-export const formatEvaluation = (evaluation: DoctorEvaluation): string => {
-  const lines: string[] = []
+export const formatEvaluation = (
+  evaluation: DoctorEvaluation,
+  options?: TerminalFormatOptions,
+): string => {
+  const output = Str.Builder()
+  const theme = createTerminalTheme(options)
 
-  lines.push('Doctor Report')
-  lines.push('-----------')
-  lines.push(`Current branch: ${evaluation.currentBranch}`)
-  lines.push(`Trunk branch: ${evaluation.trunk}`)
-  lines.push(`Scope: ${evaluation.scope}`)
-  lines.push(`${evaluation.reports.length} lifecycle checks`)
-  lines.push('')
+  output(theme.heading('Doctor Report'))
+  output(theme.dim('-----------'))
+  output`${theme.key('Current branch')} ${theme.code(evaluation.currentBranch)}`
+  output`${theme.key('Trunk branch')} ${theme.code(evaluation.trunk)}`
+  output`${theme.key('Scope')} ${evaluation.scope}`
+  output`${theme.key('Lifecycle checks')} ${String(evaluation.reports.length)}`
 
   for (const report of evaluation.reports) {
-    lines.push(titleForLifecycle(report.lifecycle))
-    lines.push('-'.repeat(titleForLifecycle(report.lifecycle).length))
+    output``
+    output(theme.section(titleForLifecycle(report.lifecycle)))
 
     if (report._tag === 'UnavailableLifecycleReport') {
-      lines.push(`Unavailable: ${report.reason}`)
-      lines.push('')
+      output`${theme.badge(report.required ? 'error' : 'deferred', 'UNAVAILABLE')} ${report.reason}`
       continue
     }
 
-    lines.push(`Planned packages: ${report.plannedPackages}`)
-    lines.push(formatReport(report.report, { includeTitle: false }))
-    lines.push('')
+    output`${theme.key('Planned packages')} ${String(report.plannedPackages)}`
+    output(
+      formatReport(report.report, {
+        includeTitle: false,
+        color: theme.color,
+      }),
+    )
   }
 
-  return lines.join('\n')
+  return output.render()
 }

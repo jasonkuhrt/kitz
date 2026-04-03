@@ -133,6 +133,56 @@ describe('forecast-lib', () => {
     expect(result.interactiveChecklist).toBe(true)
   })
 
+  test('falls back to git tags when custom tag loading is not provided', async () => {
+    const harness = await Effect.runPromise(
+      makeHarness({
+        git: {
+          root: '/repo',
+          tags: ['@kitz/core@1.2.3'],
+          commits: [],
+          isClean: true,
+        },
+        diskLayout: {},
+      }),
+    )
+    const pkg = {
+      scope: 'core',
+      name: Pkg.Moniker.parse('@kitz/core'),
+      path: Fs.Path.AbsDir.fromString('/repo/packages/core/'),
+    }
+    const analysis = { _tag: 'Analysis' } as any
+    const recon = { _tag: 'Recon' } as any
+    const forecast = Api.Forecaster.Forecast.make({
+      owner: 'jasonkuhrt',
+      repo: 'kitz',
+      branch: 'main',
+      headSha: 'abc1234',
+      releases: [],
+      cascades: [],
+    })
+    let analysisInput: Parameters<typeof Api.Analyzer.analyze>[0] | undefined
+
+    const result = await Effect.runPromise(
+      buildForecastInput({
+        loadWorkspace: Effect.succeed({
+          _tag: 'ReadyCommandWorkspace',
+          config: makeResolvedConfig(),
+          packages: [pkg],
+        }),
+        analyze: ((input) => {
+          analysisInput = input
+          return Effect.succeed(analysis)
+        }) as typeof Api.Analyzer.analyze,
+        explore: Effect.succeed(recon),
+        forecast: (() => forecast) as typeof Api.Forecaster.forecast,
+        log: () => Effect.void,
+      } as any).pipe(Effect.provide(harness.workflowLayer)),
+    )
+
+    expect(analysisInput?.tags).toEqual(['@kitz/core@1.2.3'])
+    expect(result.interactiveChecklist).toBe(false)
+  })
+
   test('loads a saved forecast envelope from disk', async () => {
     const harness = await Effect.runPromise(
       makeHarness({

@@ -123,7 +123,7 @@ Cli.run(
 
     const { events, execute, status: workflowStatus } = resumeAttempt.success
 
-    yield* Console.log(Api.Executor.formatExecutionStatus(workflowStatus))
+    yield* Console.log(Api.Executor.formatExecutionStatus(workflowStatus, { env: env.vars }))
 
     if (!args.yes) {
       const approved = yield* confirm('Resume interrupted release? [y/N] ')
@@ -135,7 +135,7 @@ Cli.run(
 
     const eventFiber = yield* events.pipe(
       Stream.tap((event) => {
-        const line = Api.Executor.formatLifecycleEvent(event)
+        const line = Api.Executor.formatLifecycleEvent(event, { env: env.vars })
         if (!line) return Effect.void
         return line.level === 'error' ? Console.error(line.message) : Console.log(line.message)
       }),
@@ -147,7 +147,9 @@ Cli.run(
 
     yield* Fiber.join(eventFiber)
 
-    yield* Console.log(Api.Renderer.renderApplyDone(result.releasedPackages.length))
+    yield* Console.log(
+      Api.Renderer.renderApplyDone(result.releasedPackages.length, { env: env.vars }),
+    )
 
     yield* Api.Planner.Store.deleteActive
   }),

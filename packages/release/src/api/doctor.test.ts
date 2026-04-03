@@ -1,3 +1,4 @@
+import { Str } from '@kitz/core'
 import { describe, expect, test } from 'vitest'
 import { Finished, Report } from './lint/models/report.js'
 import { RuleId } from './lint/models/rule-defaults.js'
@@ -62,6 +63,33 @@ describe('doctor api', () => {
     })
   })
 
+  test('explicit lifecycle selectors override active plans and empty smart scope still falls back to lifecycle scope', () => {
+    expect(
+      resolveScope({
+        lifecycle: 'official',
+        hasPrContext: true,
+        activePlan: {
+          _tag: 'Plan',
+          lifecycle: 'candidate',
+          timestamp: '',
+          releases: [],
+          cascades: [],
+        },
+      }),
+    ).toEqual({
+      _tag: 'LifecycleScope',
+      lifecycles: [{ lifecycle: 'official', required: true }],
+    })
+
+    expect(resolveScope({ hasPrContext: false })).toEqual({
+      _tag: 'LifecycleScope',
+      lifecycles: [
+        { lifecycle: 'official', required: true },
+        { lifecycle: 'candidate', required: true },
+      ],
+    })
+  })
+
   test('formats lifecycle sections and reports blocking issues', () => {
     const evaluation = {
       currentBranch: 'feat/release',
@@ -95,7 +123,7 @@ describe('doctor api', () => {
         {
           _tag: 'UnavailableLifecycleReport' as const,
           lifecycle: 'ephemeral' as const,
-          required: false,
+          required: true,
           reason: 'PR number is not available in this environment.',
         },
       ],
@@ -103,13 +131,35 @@ describe('doctor api', () => {
 
     const output = formatEvaluation(evaluation)
 
-    expect(output).toContain('Current branch: feat/release')
+    expect(output).toContain('Current branch: `feat/release`')
     expect(output).toContain('Scope: computed lifecycle scenarios')
     expect(output).toContain('Official')
     expect(output).toContain('Planned packages: 3')
-    expect(output).toContain('1 rules checked')
+    expect(output).toContain('Rules checked: 1')
     expect(output).toContain('Ephemeral')
-    expect(output).toContain('Unavailable: PR number is not available in this environment.')
+    expect(output).toContain('[UNAVAILABLE] PR number is not available in this environment.')
     expect(hasBlockingIssues(evaluation)).toBe(true)
+  })
+
+  test('supports non-blocking unavailable reports and colored doctor output', () => {
+    const evaluation = {
+      currentBranch: 'main',
+      trunk: 'main',
+      scope: 'computed lifecycle scenarios',
+      reports: [
+        {
+          _tag: 'UnavailableLifecycleReport' as const,
+          lifecycle: 'ephemeral' as const,
+          required: false,
+          reason: 'Preview-only lifecycle was skipped.',
+        },
+      ],
+    }
+
+    const output = formatEvaluation(evaluation, { color: true })
+
+    expect(output).toContain('\u001b[')
+    expect(Str.Visual.strip(output)).toContain('Preview-only lifecycle was skipped.')
+    expect(hasBlockingIssues(evaluation)).toBe(false)
   })
 })

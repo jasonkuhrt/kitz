@@ -1,6 +1,8 @@
+import { Str } from '@kitz/core'
 import { FileSystem } from 'effect'
 import type { PlatformError } from 'effect/PlatformError'
 import { Console, Effect, Match } from 'effect'
+import { createTerminalTheme } from '../../../terminal.js'
 import { Failed, Finished, type Report, Skipped } from '../models/report.js'
 import * as Severity from '../models/severity.js'
 import * as ViolationLocation from '../models/violation-location.js'
@@ -24,14 +26,18 @@ export interface RelayParams {
 export interface FormatReportOptions {
   readonly includeTitle?: boolean
   readonly title?: string
+  readonly color?: boolean
 }
 
 /**
  * Format a doctor report as human-readable text.
  */
 export const formatReport = (report: Report, options?: FormatReportOptions): string => {
-  const lines: string[] = []
+  const output = Str.Builder()
   const includeTitle = options?.includeTitle ?? true
+  const theme = createTerminalTheme(
+    options?.color === undefined ? undefined : { color: options.color },
+  )
 
   const passed = report.results.filter((r): r is Finished => Finished.is(r) && !r.violation)
   const violated = report.results.filter((r): r is Finished => Finished.is(r) && !!r.violation)
@@ -39,77 +45,80 @@ export const formatReport = (report: Report, options?: FormatReportOptions): str
   const failed = report.results.filter((r): r is Failed => Failed.is(r))
 
   if (includeTitle) {
-    lines.push(options?.title ?? 'Doctor Report')
-    lines.push(`-----------`)
+    output(theme.heading(options?.title ?? 'Doctor Report'))
+    output(theme.dim(`-----------`))
   }
-  lines.push(`${report.results.length} rules checked`)
-  lines.push(``)
+  output`${theme.key('Rules checked')} ${String(report.results.length)}`
 
   if (violated.length > 0) {
-    lines.push(`Violations (${violated.length}):`)
+    output``
+    output(theme.section(`Violations (${violated.length})`))
     for (const result of violated) {
       const level = Severity.Severity.guards.SeverityError(result.severity) ? 'error' : 'warn'
-      lines.push(`  - [${level}] ${result.rule.id}: ${result.rule.description}`)
+      output(
+        `  ${theme.badge(level, level.toUpperCase())} ${theme.code(result.rule.id)} ${theme.dim(result.rule.description)}`,
+      )
       if (result.violation) {
         const location = formatLocation(result.violation.location)
-        if (location) lines.push(`      at ${location}`)
-        if (result.violation.summary) lines.push(`      ${result.violation.summary}`)
-        if (result.violation.detail) lines.push(`      ${result.violation.detail}`)
+        if (location) output(`      ${theme.key('at')} ${location}`)
+        if (result.violation.summary) output(`      ${result.violation.summary}`)
+        if (result.violation.detail) output(`      ${result.violation.detail}`)
         if (result.violation.fix) {
-          lines.push(`      fix: ${result.violation.fix.summary}`)
+          output(`      ${theme.key('fix')} ${result.violation.fix.summary}`)
 
           if (ViolationFix.guards.ViolationGuideFix(result.violation.fix)) {
             for (const [index, step] of result.violation.fix.steps.entries()) {
-              lines.push(`      step ${String(index + 1)}: ${step.description}`)
+              output(`      ${theme.key(`step ${String(index + 1)}`)} ${step.description}`)
             }
           }
 
           if (ViolationFix.guards.ViolationCommandFix(result.violation.fix)) {
-            lines.push(`      command: ${result.violation.fix.command}`)
+            output(`      ${theme.key('command')} ${theme.code(result.violation.fix.command)}`)
           }
 
           for (const doc of result.violation.fix.docs ?? []) {
-            lines.push(`      fix docs: ${doc.label} ${doc.url}`)
+            output(`      ${theme.key('fix docs')} ${doc.label} ${theme.url(doc.url)}`)
           }
         }
         for (const hint of result.violation.hints ?? []) {
-          lines.push(`      hint: ${hint.description}`)
+          output(`      ${theme.key('hint')} ${hint.description}`)
         }
         for (const doc of result.violation.docs ?? []) {
-          lines.push(`      docs: ${doc.label} ${doc.url}`)
+          output(`      ${theme.key('docs')} ${doc.label} ${theme.url(doc.url)}`)
         }
       }
     }
-    lines.push(``)
   }
 
   if (passed.length > 0) {
-    lines.push(`Passed (${passed.length}):`)
+    output``
+    output(theme.section(`Passed (${passed.length})`))
     for (const result of passed) {
-      lines.push(`  - ${result.rule.id} (${result.duration.toFixed(1)}ms)`)
+      output(
+        `  ${theme.badge('success', 'PASS')} ${theme.code(result.rule.id)} ${theme.dim(`(${result.duration.toFixed(1)}ms)`)}`,
+      )
     }
-    lines.push(``)
   }
 
   if (skipped.length > 0) {
-    lines.push(`Skipped (${skipped.length}):`)
+    output``
+    output(theme.section(`Skipped (${skipped.length})`))
     for (const result of skipped) {
-      lines.push(`  - ${result.rule.id}`)
+      output(`  ${theme.badge('info', 'SKIP')} ${theme.code(result.rule.id)}`)
     }
-    lines.push(``)
   }
 
   if (failed.length > 0) {
-    lines.push(`Errors (${failed.length}):`)
+    output``
+    output(theme.section(`Errors (${failed.length})`))
     for (const result of failed) {
       const errorMessage =
         result.error instanceof Error ? result.error.message : String(result.error)
-      lines.push(`  - ${result.rule.id}: ${errorMessage}`)
+      output(`  ${theme.badge('error', 'FAIL')} ${theme.code(result.rule.id)} ${errorMessage}`)
     }
-    lines.push(``)
   }
 
-  return lines.join('\n')
+  return output.render()
 }
 
 const formatLocation = (location: ViolationLocation.ViolationLocation): string | undefined => {
@@ -134,10 +143,14 @@ const formatLocation = (location: ViolationLocation.ViolationLocation): string |
   return undefined
 }
 
-const formatOutput = (report: Report, format: 'text' | 'json'): string =>
+const formatOutput = (
+  report: Report,
+  format: 'text' | 'json',
+  options?: { readonly color?: boolean },
+): string =>
   Match.value(format).pipe(
     Match.when('json', () => JSON.stringify(report, null, 2)),
-    Match.when('text', () => formatReport(report)),
+    Match.when('text', () => formatReport(report, options)),
     Match.exhaustive,
   )
 
@@ -148,7 +161,9 @@ export const relay = (
   params: RelayParams,
 ): Effect.Effect<void, PlatformError, FileSystem.FileSystem> => {
   const { report, format = 'text', destination = Destination.stdout } = params
-  const output = formatOutput(report, format)
+  const output = formatOutput(report, format, {
+    color: destination._tag === 'stdout',
+  })
 
   return Match.value(destination).pipe(
     Match.when({ _tag: 'stdout' }, () => Console.log(output)),

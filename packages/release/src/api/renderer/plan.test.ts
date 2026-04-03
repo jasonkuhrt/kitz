@@ -1,3 +1,4 @@
+import { Str } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
@@ -152,6 +153,21 @@ describe('renderPlan', () => {
 
     expect(output.indexOf('@kitz/cli')).toBeLessThan(output.indexOf('@kitz/core'))
   })
+
+  test('sorts cascade rows alphabetically', () => {
+    const plan = Plan.make({
+      lifecycle: 'official',
+      timestamp: '2026-01-01T00:00:00Z',
+      releases: [],
+      cascades: [
+        makeRelease('@kitz/zeta', 'zeta', '1.0.0', '1.0.1', 'patch'),
+        makeRelease('@kitz/alpha', 'alpha', '1.0.0', '1.0.1', 'patch'),
+      ],
+    })
+    const output = renderPlan(plan)
+
+    expect(output.indexOf('@kitz/alpha')).toBeLessThan(output.indexOf('@kitz/zeta'))
+  })
 })
 
 // ── renderApplyConfirmation ──────────────────────────────────────────
@@ -166,7 +182,7 @@ describe('renderApplyConfirmation', () => {
     })
     const output = renderApplyConfirmation(plan, officialSemantics)
     expect(output).toContain('1 package to release')
-    expect(output).toContain('npm dist-tag: latest')
+    expect(output).toContain('npm dist-tag: `latest`')
     expect(output).toContain('preflight checks')
     expect(output).toContain('Prepare publishable tarballs')
     expect(output).toContain('npm')
@@ -187,6 +203,31 @@ describe('renderApplyConfirmation', () => {
     })
     const output = renderApplyConfirmation(plan, officialSemantics)
     expect(output).toContain('2 packages to release')
+  })
+
+  test('supports ansi-colored confirmation output', () => {
+    const plan = Plan.make({
+      lifecycle: 'official',
+      timestamp: '2026-01-01T00:00:00Z',
+      releases: [makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')],
+      cascades: [],
+    })
+    const output = renderApplyConfirmation(plan, officialSemantics, { color: true })
+
+    expect(output).toContain('\u001b[')
+    expect(Str.Visual.strip(output)).toContain('npm dist-tag: `latest`')
+  })
+
+  test('renders cascade entries in confirmation output', () => {
+    const plan = Plan.make({
+      lifecycle: 'official',
+      timestamp: '2026-01-01T00:00:00Z',
+      releases: [],
+      cascades: [makeRelease('@kitz/cli', 'cli', '2.0.0', '2.0.1', 'patch')],
+    })
+    const output = renderApplyConfirmation(plan, officialSemantics)
+
+    expect(output).toContain('(cascade)')
   })
 })
 
@@ -226,6 +267,23 @@ describe('renderApplyDryRun', () => {
     const output = renderApplyDryRun(plan, candidateSemantics)
     expect(output).toContain('npm `next`')
     expect(output).toContain('GitHub `@kitz/core @next`')
+  })
+
+  test('supports ansi-colored dry-run and completion output', () => {
+    const plan = Plan.make({
+      lifecycle: 'official',
+      timestamp: '2026-01-01T00:00:00Z',
+      releases: [makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')],
+      cascades: [],
+    })
+
+    const dryRun = renderApplyDryRun(plan, officialSemantics, { color: true })
+    const done = renderApplyDone(1, { color: true })
+
+    expect(dryRun).toContain('\u001b[')
+    expect(done).toContain('\u001b[')
+    expect(Str.Visual.strip(dryRun)).toContain('Would execute official release plan')
+    expect(Str.Visual.strip(done)).toContain('1 package released')
   })
 })
 

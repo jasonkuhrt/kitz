@@ -116,7 +116,7 @@ Cli.run(
 
     // Confirmation prompt (unless --yes)
     if (!args.yes && !args.dryRun) {
-      yield* Console.log(Api.Renderer.renderApplyConfirmation(plan, publish))
+      yield* Console.log(Api.Renderer.renderApplyConfirmation(plan, publish, { env: env.vars }))
       const approved = yield* confirm('Proceed with release? [y/N] ')
       if (!approved) {
         yield* Console.log('Release canceled.')
@@ -125,7 +125,7 @@ Cli.run(
     }
 
     if (args.dryRun) {
-      yield* Console.log(Api.Renderer.renderApplyDryRun(plan, publish))
+      yield* Console.log(Api.Renderer.renderApplyDryRun(plan, publish, { env: env.vars }))
       return
     }
 
@@ -149,7 +149,7 @@ Cli.run(
     // Fork event consumer to stream status updates
     const eventFiber = yield* events.pipe(
       Stream.tap((event) => {
-        const line = Api.Executor.formatLifecycleEvent(event)
+        const line = Api.Executor.formatLifecycleEvent(event, { env: env.vars })
         if (!line) return Effect.void
         return line.level === 'error' ? Console.error(line.message) : Console.log(line.message)
       }),
@@ -163,7 +163,9 @@ Cli.run(
     // Wait for events to flush
     yield* Fiber.join(eventFiber)
 
-    yield* Console.log(Api.Renderer.renderApplyDone(result.releasedPackages.length))
+    yield* Console.log(
+      Api.Renderer.renderApplyDone(result.releasedPackages.length, { env: env.vars }),
+    )
 
     yield* Api.Planner.Store.delete_(planPath)
   }),

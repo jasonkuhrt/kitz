@@ -1,3 +1,4 @@
+import { Str } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Effect, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
@@ -62,7 +63,8 @@ describe('formatReport', () => {
     const output = formatReport(report)
 
     expect(output).toContain('Doctor Report')
-    expect(output).toContain('[error] env.publish-channel-ready')
+    expect(output).toContain('[ERROR]')
+    expect(output).toContain('env.publish-channel-ready')
     expect(output).toContain('Trusted publishing is configured but OIDC is unavailable.')
     expect(output).toContain('fix: Enable OIDC for the publish job.')
     expect(output).toContain('step 1: Add `permissions.id-token: write` to the workflow.')
@@ -89,7 +91,41 @@ describe('formatReport', () => {
     const output = formatReport(report, { includeTitle: false })
 
     expect(output).not.toContain('Doctor Report')
-    expect(output).toContain('1 rules checked')
+    expect(output).toContain('Rules checked: 1')
+  })
+
+  test('supports ansi-colored terminal output and plain text file output', async () => {
+    const report = Report.make({
+      results: [
+        Finished.make({
+          rule: ruleRef('env.npm-authenticated', 'npm auth is configured'),
+          duration: 1,
+          severity: Severity.Error.make({}),
+          violation: Violation.make({
+            location: Environment.make({ message: 'npm whoami failed' }),
+            summary: 'npm CLI authentication is not configured for this runtime.',
+          }),
+        }),
+      ],
+    })
+
+    const colored = formatReport(report, { color: true })
+    expect(colored).toContain('\u001b[')
+    expect(Str.Visual.strip(colored)).toContain('npm CLI authentication is not configured')
+
+    const plain = await Effect.runPromise(
+      Effect.gen(function* () {
+        yield* relay({
+          report,
+          format: 'text',
+          destination: Destination.file('/tmp/doctor-report.txt'),
+        })
+        return yield* Fs.readString(Fs.Path.AbsFile.fromString('/tmp/doctor-report.txt'))
+      }).pipe(Effect.provide(Fs.Memory.layer({}))),
+    )
+
+    expect(plain).not.toContain('\u001b[')
+    expect(plain).toContain('env.npm-authenticated')
   })
 
   test('renders skipped, failed, command fixes, and all supported locations', () => {
@@ -159,14 +195,14 @@ describe('formatReport', () => {
 
     const output = formatReport(report)
 
-    expect(output).toContain('command: bun run release pr-title')
-    expect(output).toContain('at PR title "feat(release): ship"')
-    expect(output).toContain('at PR body line 12')
-    expect(output).toContain('at repository settings')
-    expect(output).toContain('at git history at abc1234')
-    expect(output).toContain('at packages/core/package.json:8')
-    expect(output).toContain('Skipped (1):')
-    expect(output).toContain('Errors (1):')
+    expect(output).toContain('command: `bun run release pr-title`')
+    expect(output).toContain('at: PR title "feat(release): ship"')
+    expect(output).toContain('at: PR body line 12')
+    expect(output).toContain('at: repository settings')
+    expect(output).toContain('at: git history at abc1234')
+    expect(output).toContain('at: packages/core/package.json:8')
+    expect(output).toContain('Skipped (1)')
+    expect(output).toContain('Errors (1)')
   })
 
   test('writes json output to a file destination', async () => {

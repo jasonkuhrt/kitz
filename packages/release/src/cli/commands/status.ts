@@ -91,7 +91,7 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer))(
     yield* Console.log(
       args.format === 'json'
         ? JSON.stringify(workflowStatus, null, 2)
-        : Api.Executor.formatExecutionStatus(workflowStatus),
+        : Api.Executor.formatExecutionStatus(workflowStatus, { env: env.vars }),
     )
   }),
 )
