@@ -18,6 +18,7 @@ import { Oak } from '@kitz/oak'
 import { Console, Effect, Fiber, Layer, Option, Schema, SchemaGetter, Stream } from 'effect'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
+import { formatInvalidPlanMessage, formatMissingPlanMessage, loadPlan } from './plan-file.js'
 
 /**
  * release apply
@@ -81,15 +82,22 @@ Cli.run(
   Effect.gen(function* () {
     const env = yield* Env.Env
     const planPath = args.from !== undefined ? Fs.Path.fromString(args.from) : undefined
-    const planLocation = yield* Api.Planner.Store.resolvePlanLocation(planPath)
+    const planState = yield* loadPlan({
+      ...(planPath !== undefined ? { path: planPath } : {}),
+      source: planPath === undefined ? 'active' : 'custom',
+    })
 
-    const planFileOption = yield* Api.Planner.Store.read(planPath)
+    if (planState._tag === 'PlanMissing') {
+      for (const line of formatMissingPlanMessage(planState)) {
+        yield* Console.error(line)
+      }
+      return env.exit(1)
+    }
 
-    if (Option.isNone(planFileOption)) {
-      yield* Console.error(`No release plan found at ${Fs.Path.toString(planLocation.file)}`)
-      yield* Console.error(
-        `Run 'release plan --lifecycle <official|candidate|ephemeral>${args.from ? ` --out ${args.from}` : ''}' first to generate a plan.`,
-      )
+    if (planState._tag === 'PlanInvalid') {
+      for (const line of formatInvalidPlanMessage(planState)) {
+        yield* Console.error(line)
+      }
       return env.exit(1)
     }
 
@@ -97,7 +105,7 @@ Cli.run(
     const config = yield* Api.Config.load()
 
     // Plan file now stores rich PlannedRelease data directly - no conversion needed
-    const plan = planFileOption.value
+    const plan = planState.plan
     const publish = Api.Publishing.resolvePublishSemanticsForPlan({
       plan,
       ...(args.tag !== undefined ? { tag: args.tag } : {}),
@@ -108,7 +116,7 @@ Cli.run(
 
     // Confirmation prompt (unless --yes)
     if (!args.yes && !args.dryRun) {
-      yield* Console.log(Api.Renderer.renderApplyConfirmation(plan))
+      yield* Console.log(Api.Renderer.renderApplyConfirmation(plan, publish))
       const approved = yield* confirm('Proceed with release? [y/N] ')
       if (!approved) {
         yield* Console.log('Release canceled.')
@@ -117,7 +125,7 @@ Cli.run(
     }
 
     if (args.dryRun) {
-      yield* Console.log(Api.Renderer.renderApplyDryRun(plan))
+      yield* Console.log(Api.Renderer.renderApplyDryRun(plan, publish))
       return
     }
 

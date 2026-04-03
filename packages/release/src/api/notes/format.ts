@@ -58,6 +58,16 @@ export const format = (options: FormatOptions): Effect.Effect<FormattedNotes> =>
     const breaking = commits.filter((c) => c.breaking)
     const features = commits.filter((c) => c.type.value === 'feat' && !c.breaking)
     const fixes = commits.filter((c) => c.type.value === 'fix' && !c.breaking)
+    const performance = commits.filter((c) => c.type.value === 'perf' && !c.breaking)
+    const documentation = commits.filter((c) => c.type.value === 'docs' && !c.breaking)
+    const otherChanges = commits.filter(
+      (c) =>
+        !c.breaking &&
+        c.type.value !== 'feat' &&
+        c.type.value !== 'fix' &&
+        c.type.value !== 'perf' &&
+        c.type.value !== 'docs',
+    )
 
     const lines: string[] = [`## ${scope} v${newVersion}`, '']
 
@@ -80,6 +90,30 @@ export const format = (options: FormatOptions): Effect.Effect<FormattedNotes> =>
     if (fixes.length > 0) {
       lines.push('### Bug Fixes', '')
       for (const c of fixes) {
+        lines.push(`- ${c.message} (${c.hash.slice(0, 7)})`)
+      }
+      lines.push('')
+    }
+
+    if (performance.length > 0) {
+      lines.push('### Performance', '')
+      for (const c of performance) {
+        lines.push(`- ${c.message} (${c.hash.slice(0, 7)})`)
+      }
+      lines.push('')
+    }
+
+    if (documentation.length > 0) {
+      lines.push('### Documentation', '')
+      for (const c of documentation) {
+        lines.push(`- ${c.message} (${c.hash.slice(0, 7)})`)
+      }
+      lines.push('')
+    }
+
+    if (otherChanges.length > 0) {
+      lines.push('### Other Changes', '')
+      for (const c of otherChanges) {
         lines.push(`- ${c.message} (${c.hash.slice(0, 7)})`)
       }
       lines.push('')

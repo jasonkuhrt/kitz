@@ -7,20 +7,15 @@
  * Output formats support scan-heavy CLI viewing (`table`, `tree`), shareable markdown (`md`),
  * and machine exchange (`json`).
  */
-import { FileSystem } from 'effect'
 import { Cli } from '@kitz/cli'
-import { Env } from '@kitz/env'
-import { Git } from '@kitz/git'
-import { NpmRegistry } from '@kitz/npm-registry'
 import { Oak } from '@kitz/oak'
-import { Console, Effect, Layer, Option, Schema, SchemaGetter } from 'effect'
+import { Console, Effect, Schema, SchemaGetter } from 'effect'
 import * as Api from '../../api/__.js'
-import { ChildProcessSpawnerLayer, ServicesLayer, FileSystemLayer } from '../../platform.js'
 import {
-  isReadyCommandWorkspace,
-  loadCommandWorkspace,
-  noPackagesFoundMessage,
-} from './command-workspace.js'
+  buildForecastInput,
+  ForecastCommandLayer,
+  loadForecastInputFromFile,
+} from './forecast-lib.js'
 
 const args = Oak.Command.create()
   .use(Oak.EffectSchema)
@@ -46,12 +41,7 @@ const args = Oak.Command.create()
   )
   .parse()
 
-const spawnerLayer = ChildProcessSpawnerLayer
-const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(spawnerLayer))
-
-Cli.run(
-  Layer.mergeAll(Env.Live, ServicesLayer, FileSystemLayer, Git.GitLive, spawnerLayer, npmLayer),
-)(
+Cli.run(ForecastCommandLayer)(
   Effect.gen(function* () {
     const input = yield* args.fromFile
       ? loadForecastInputFromFile(args.fromFile)
@@ -76,76 +66,3 @@ Cli.run(
     yield* Console.log(rendered)
   }),
 )
-
-interface ForecastInput {
-  readonly forecast: Api.Forecaster.Forecast
-  readonly publishState: Api.Commentator.PublishState
-  readonly publishHistory: readonly Api.Commentator.PublishRecord[]
-  readonly interactiveChecklist: boolean
-}
-
-const buildForecastInput = () =>
-  Effect.gen(function* () {
-    const git = yield* Git.Git
-    const workspace = yield* loadCommandWorkspace()
-    if (!isReadyCommandWorkspace(workspace)) {
-      yield* Console.log(noPackagesFoundMessage)
-      return {
-        forecast: Api.Forecaster.Forecast.make({
-          owner: '',
-          repo: '',
-          branch: '',
-          headSha: '',
-          releases: [],
-          cascades: [],
-        }),
-        publishState: 'idle' as const,
-        publishHistory: [],
-        interactiveChecklist: false,
-      }
-    }
-    const { config, packages } = workspace
-
-    const tags = yield* git.getTags()
-    const analysis = yield* Api.Analyzer.analyze({
-      packages,
-      tags,
-      resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
-    })
-    const recon = yield* Api.Explorer.explore()
-    const forecast = Api.Forecaster.forecast(analysis, recon)
-
-    return {
-      forecast,
-      publishState: 'idle' as const,
-      publishHistory: [],
-      interactiveChecklist: (config.publishing.ephemeral ?? { mode: 'manual' }).mode !== 'manual',
-    }
-  })
-
-const loadForecastInputFromFile = (filePath: string) =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    const jsonText = yield* fs.readFileString(filePath)
-    const envelope = yield* Schema.decodeUnknownEffect(Api.Forecaster.ForecastEnvelopeJson)(
-      jsonText,
-    ).pipe(Effect.option)
-
-    if (Option.isSome(envelope)) {
-      return {
-        forecast: envelope.value.forecast,
-        publishState: envelope.value.publishState,
-        publishHistory: envelope.value.publishHistory,
-        interactiveChecklist: false,
-      }
-    }
-
-    return {
-      forecast: yield* Schema.decodeUnknownEffect(Schema.fromJsonString(Api.Forecaster.Forecast))(
-        jsonText,
-      ),
-      publishState: 'idle' as const,
-      publishHistory: [],
-      interactiveChecklist: false,
-    }
-  })

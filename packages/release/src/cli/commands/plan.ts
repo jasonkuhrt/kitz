@@ -113,9 +113,11 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
 
     yield* Api.Planner.Store.write(plan, planPath)
 
+    const releaseCommand = workspace.config.operator.releaseCommand
     const done = Str.Builder()
     done`Plan written to ${Fs.Path.toString(planLocation.file)}`
-    done`Run 'release apply${args.out ? ` --from ${args.out}` : ''}' to execute.`
+    done`Run '${releaseCommand} doctor${args.out ? ` --from ${args.out}` : ''}' to audit publish readiness.`
+    done`Run '${releaseCommand} apply${args.out ? ` --from ${args.out}` : ''}' to execute.`
     yield* Console.log(done.render())
   }),
 )

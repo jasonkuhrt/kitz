@@ -83,12 +83,13 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer))(
 
     yield* Console.log(Str.Tpl.dedent`
 
-      Done! Release is ready.
+      Done! Release scaffolding is ready.
 
       Next steps:
-        1. Review release.config.ts
-        2. Run \`release forecast\` to inspect the current release forecast
-        3. Run \`release plan --lifecycle official\` to generate a release plan
+        1. Review release.config.ts and decide how each lifecycle should publish
+        2. Run \`release forecast\` to inspect what would release right now
+        3. Run \`release doctor --all\` to audit auth, tags, metadata, and workflow wiring
+        4. Run \`release plan --lifecycle official\` to generate the exact publish plan
     `)
   }),
 )

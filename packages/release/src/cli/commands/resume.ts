@@ -6,12 +6,19 @@
 import { Terminal } from 'effect'
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
+import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Oak } from '@kitz/oak'
-import { Console, Effect, Fiber, Layer, Option, Schema, SchemaGetter, Stream } from 'effect'
+import { Console, Effect, Fiber, Layer, Schema, SchemaGetter, Stream } from 'effect'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
+import {
+  formatInvalidPlanMessage,
+  formatMissingPlanMessage,
+  loadActivePlan,
+  loadPlan,
+} from './plan-file.js'
 
 const args = Oak.Command.create()
   .use(Oak.EffectSchema)
@@ -33,6 +40,12 @@ const args = Oak.Command.create()
       Schema.annotate({ description: 'npm dist-tag override used for the workflow identity' }),
     ),
   )
+  .parameter(
+    'from',
+    Schema.UndefinedOr(Schema.String).pipe(
+      Schema.annotate({ description: 'Read the release plan from a specific file path' }),
+    ),
+  )
   .parse()
 
 const confirm = (message: string) =>
@@ -52,18 +65,29 @@ Cli.run(
 )(
   Effect.gen(function* () {
     const env = yield* Env.Env
-    const planFileOption = yield* Api.Planner.Store.readActive
+    const planState = yield* args.from
+      ? loadPlan({
+          path: Fs.Path.fromString(args.from),
+          source: 'custom',
+        })
+      : loadActivePlan()
 
-    if (Option.isNone(planFileOption)) {
-      yield* Console.error(`No release plan found at ${Api.Planner.Store.activePlanDisplayPath}`)
-      yield* Console.error(
-        `Run 'release plan --lifecycle <official|candidate|ephemeral>' first to generate a plan.`,
-      )
+    if (planState._tag === 'PlanMissing') {
+      for (const line of formatMissingPlanMessage(planState)) {
+        yield* Console.error(line)
+      }
+      return env.exit(1)
+    }
+
+    if (planState._tag === 'PlanInvalid') {
+      for (const line of formatInvalidPlanMessage(planState)) {
+        yield* Console.error(line)
+      }
       return env.exit(1)
     }
 
     const config = yield* Api.Config.load()
-    const plan = planFileOption.value
+    const plan = planState.plan
     const publish = Api.Publishing.resolvePublishSemanticsForPlan({
       plan,
       ...(args.tag !== undefined ? { tag: args.tag } : {}),

@@ -339,18 +339,19 @@ detects the active package manager from the current environment and renders guid
 The `release` binary dispatches through file-based command routing:
 
 | Command                             | Purpose                                       |
-| ----------------------------------- | --------------------------------------------- | ----------- | ----------------------- |
+| ----------------------------------- | --------------------------------------------- |
 | `release forecast [options]`        | Show the current release forecast             |
 | `release history [options]`         | Inspect publish state and history from the PR preview comment |
-| `release plan --lifecycle <official | candidate                                     | ephemeral> [--out <file>]` | Generate a release plan |
+| `release plan --lifecycle <official\|candidate\|ephemeral> [--out <file>]` | Generate a release plan |
 | `release apply [--from <file>]`     | Execute the release plan                      |
 | `release explain <pkg>`             | Explain why a package is primary, cascade, or unchanged |
-| `release graph`                     | Render the release execution DAG for the active plan |
-| `release resume`                    | Resume an interrupted release workflow        |
-| `release status`                    | Inspect durable workflow state for the active plan |
+| `release graph [--from <file>]`     | Render the release execution DAG for the saved plan |
+| `release resume [--from <file>]`    | Resume an interrupted release workflow        |
+| `release status [--from <file>]`    | Inspect durable workflow state for the saved plan |
 | `release notes [pkg] [options]`     | Output unreleased release notes               |
-| `release doctor`                    | Run release doctor checks                     |
+| `release doctor [--from <file>]`    | Run release doctor checks                     |
 | `release init`                      | Initialize `release.config.ts` in the project |
+| `release pr ...`                    | Manage the PR preview comment and title sync  |
 
 ## Architecture
 

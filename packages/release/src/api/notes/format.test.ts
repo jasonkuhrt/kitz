@@ -19,6 +19,27 @@ const fix = (msg: string, hash = 'def7890123456'): CommitEntry => ({
   breaking: false,
 })
 
+const perf = (msg: string, hash = 'aaa1111111111'): CommitEntry => ({
+  type: ConventionalCommits.Type.parse('perf'),
+  message: msg,
+  hash,
+  breaking: false,
+})
+
+const docs = (msg: string, hash = 'bbb2222222222'): CommitEntry => ({
+  type: ConventionalCommits.Type.parse('docs'),
+  message: msg,
+  hash,
+  breaking: false,
+})
+
+const custom = (msg: string, hash = 'ccc3333333333'): CommitEntry => ({
+  type: ConventionalCommits.Type.parse('improve'),
+  message: msg,
+  hash,
+  breaking: false,
+})
+
 const breaking = (msg: string, hash = 'bbb0000000000'): CommitEntry => ({
   type: ConventionalCommits.Type.parse('feat'),
   message: msg,
@@ -136,5 +157,26 @@ describe('format', () => {
     expect(featuresIdx).toBeGreaterThan(breakingIdx)
     expect(fixesIdx).toBeGreaterThan(featuresIdx)
     expect(result.hasBreakingChanges).toBe(true)
+  })
+
+  test('renders performance, documentation, and custom change sections', () => {
+    const result = run(
+      format({
+        scope: '@kitz/release',
+        commits: [
+          perf('speed up plan rendering'),
+          docs('document trusted publishing'),
+          custom('tighten preview UX'),
+        ],
+        newVersion: '0.1.1',
+      }),
+    )
+
+    expect(result.markdown).toContain('### Performance')
+    expect(result.markdown).toContain('speed up plan rendering')
+    expect(result.markdown).toContain('### Documentation')
+    expect(result.markdown).toContain('document trusted publishing')
+    expect(result.markdown).toContain('### Other Changes')
+    expect(result.markdown).toContain('tighten preview UX')
   })
 })

@@ -3,8 +3,11 @@ import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { describe, expect, test } from 'vitest'
 import { makeCascadeCommit } from '../analyzer/models/commit.js'
+import { Candidate as CandidateItem } from '../planner/models/item-candidate.js'
 import { Official } from '../planner/models/item-official.js'
 import { Plan } from '../planner/models/plan.js'
+import { resolvePublishSemantics } from '../publishing.js'
+import { Candidate as CandidateVersion } from '../version/models/candidate.js'
 import { OfficialFirst } from '../version/models/official-first.js'
 import { OfficialIncrement } from '../version/models/official-increment.js'
 import { renderApplyConfirmation, renderApplyDone, renderApplyDryRun, renderPlan } from './plan.js'
@@ -42,6 +45,9 @@ const makeFirstRelease = (name: string, scope: string, version: string) =>
     version: OfficialFirst.make({ version: Semver.fromString(version) }),
     commits: [commit(scope, 'initial commit')],
   })
+
+const officialSemantics = resolvePublishSemantics({ lifecycle: 'official' })
+const candidateSemantics = resolvePublishSemantics({ lifecycle: 'candidate' })
 
 // ── renderPlan ───────────────────────────────────────────────────────
 
@@ -158,12 +164,15 @@ describe('renderApplyConfirmation', () => {
       releases: [makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')],
       cascades: [],
     })
-    const output = renderApplyConfirmation(plan)
+    const output = renderApplyConfirmation(plan, officialSemantics)
     expect(output).toContain('1 package to release')
+    expect(output).toContain('npm dist-tag: latest')
     expect(output).toContain('preflight checks')
+    expect(output).toContain('Prepare publishable tarballs')
     expect(output).toContain('npm')
-    expect(output).toContain('git tags')
-    expect(output).toContain('--yes')
+    expect(output).toContain('GitHub releases')
+    expect(output).toContain('@kitz/core v1.1.0')
+    expect(output).toContain('--dry-run')
   })
 
   test('pluralizes for multiple packages', () => {
@@ -176,7 +185,7 @@ describe('renderApplyConfirmation', () => {
       ],
       cascades: [],
     })
-    const output = renderApplyConfirmation(plan)
+    const output = renderApplyConfirmation(plan, officialSemantics)
     expect(output).toContain('2 packages to release')
   })
 })
@@ -191,11 +200,32 @@ describe('renderApplyDryRun', () => {
       releases: [makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')],
       cascades: [],
     })
-    const output = renderApplyDryRun(plan)
+    const output = renderApplyDryRun(plan, officialSemantics)
     expect(output).toContain('[DRY RUN]')
-    expect(output).toContain('Publish')
+    expect(output).toContain('Would execute official release plan')
     expect(output).toContain('@kitz/core')
-    expect(output).toContain('1 git tag')
+    expect(output).toContain('npm `latest`')
+    expect(output).toContain('GitHub `@kitz/core v1.1.0`')
+  })
+
+  test('uses dist-tagged GitHub release titles for candidate plans', () => {
+    const plan = Plan.make({
+      lifecycle: 'candidate',
+      timestamp: '2026-01-01T00:00:00Z',
+      releases: [
+        CandidateItem.make({
+          package: pkg('@kitz/core', 'core'),
+          baseVersion: Semver.fromString('1.1.0'),
+          prerelease: CandidateVersion.make({ iteration: 1 }),
+          commits: [commit('core', 'feat(core): candidate')],
+        }),
+      ],
+      cascades: [],
+    })
+
+    const output = renderApplyDryRun(plan, candidateSemantics)
+    expect(output).toContain('npm `next`')
+    expect(output).toContain('GitHub `@kitz/core @next`')
   })
 })
 

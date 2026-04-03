@@ -7,6 +7,7 @@ import { Effect, Layer, Option, Schema as S } from 'effect'
 import { defaultPublishing, resolvePublishChannel, type Publishing } from '../publishing.js'
 import * as Lint from '../lint/__.js'
 import { Finished } from '../lint/models/report.js'
+import { File as ViolationFile } from '../lint/models/violation-location.js'
 import type { ReleaseInfo } from './publish.js'
 
 const baseTags = ['kit', 'release', 'preflight'] as const
@@ -100,6 +101,20 @@ const runLintCheckLive = (params: PreflightLintCheckParams) =>
     Effect.mapError(toError),
   )
 
+const renderViolationMessage = (violation: Lint.Violation): string => {
+  if (ViolationFile.is(violation.location)) {
+    const suffix = violation.detail ?? violation.summary ?? `Issue in ${violation.location.path}`
+    const line = violation.location.line !== undefined ? `:${String(violation.location.line)}` : ''
+    return `${violation.location.path}${line}: ${suffix}`
+  }
+
+  if (violation.location._tag === 'ViolationLocationEnvironment') {
+    return violation.location.message
+  }
+
+  return violation.detail ?? violation.summary ?? 'Check failed'
+}
+
 /**
  * Run all preflight checks using the lint system.
  *
@@ -164,7 +179,9 @@ export const run = (
         }),
         'plan.versions-unpublished': new Lint.RuleConfig({
           overrides: new Lint.RuleDefaults({ enabled: true }),
-          options: {},
+          options: {
+            ...(options?.registry && { registry: options.registry }),
+          },
         }),
       },
     })
@@ -242,11 +259,10 @@ export const run = (
 
       // Collect violations
       if (result.violation && Lint.Error.is(result.severity)) {
-        const message =
-          result.violation.location._tag === 'ViolationLocationEnvironment'
-            ? result.violation.location.message
-            : 'Check failed'
-        violations.push({ ruleId: result.rule.id, message })
+        violations.push({
+          ruleId: result.rule.id,
+          message: renderViolationMessage(result.violation),
+        })
       }
     }
 

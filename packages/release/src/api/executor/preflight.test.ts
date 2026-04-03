@@ -214,6 +214,53 @@ describe('preflight.run', () => {
     }
 
     expect(result.failure.context.check).toBe('plan.versions-unpublished')
-    expect(result.failure.context.detail).toBe('Check failed')
+    expect(result.failure.context.detail).toBe(
+      'packages/core/package.json: Version already exists.',
+    )
+  })
+
+  test('forwards registry overrides to version-collision checks', async () => {
+    let observedRegistry: string | undefined
+    const workflowLayer = await makeWorkflowLayer()
+    const report = Report.make({
+      results: [
+        Finished.make({
+          rule: ruleRef('env.npm-authenticated', 'npm auth is configured'),
+          duration: 1,
+          severity: Severity.Warn.make({}),
+          metadata: { username: 'mock-user' },
+        }),
+        Finished.make({
+          rule: ruleRef('env.git-remote', 'git remote is configured and reachable'),
+          duration: 1,
+          severity: Severity.Warn.make({}),
+          metadata: { url: 'git@github.com:example/repo.git' },
+        }),
+        Finished.make({
+          rule: ruleRef('plan.versions-unpublished', 'planned versions are not already published'),
+          duration: 1,
+          severity: Severity.Warn.make({}),
+          metadata: { packageCount: 1 },
+        }),
+      ],
+    })
+
+    const result = await Effect.runPromise(
+      run(
+        [release],
+        { registry: 'https://registry.example.test' },
+        {
+          runLintCheck: ({ config }) => {
+            observedRegistry = config.rules['plan.versions-unpublished']?.options?.['registry'] as
+              | string
+              | undefined
+            return Effect.succeed(report)
+          },
+        },
+      ).pipe(Effect.provide(workflowLayer)),
+    )
+
+    expect(observedRegistry).toBe('https://registry.example.test')
+    expect(result.npmUser).toBe('mock-user')
   })
 })

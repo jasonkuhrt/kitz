@@ -16,6 +16,7 @@
 import { Cli } from '@kitz/cli'
 import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
+import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
 import { Cause, Console, Effect, FileSystem, Layer, Option, Schema, SchemaGetter } from 'effect'
@@ -27,6 +28,13 @@ import {
   type CommandLintRuleSpec,
 } from '../lint-rule-config.js'
 import { loadConfiguredPullRequestDiff, resolveDiffRemote } from '../pr-preview-diff.js'
+import {
+  formatIgnoredInvalidPlanMessage,
+  formatInvalidPlanMessage,
+  formatMissingPlanMessage,
+  loadActivePlan,
+  loadPlan,
+} from './plan-file.js'
 import {
   isReadyCommandWorkspace,
   loadCommandWorkspace,
@@ -104,6 +112,12 @@ const args = Oak.Command.create()
       }),
     ),
   )
+  .parameter(
+    'from',
+    Schema.UndefinedOr(Schema.String).pipe(
+      Schema.annotate({ description: 'Read the release plan from a specific file path' }),
+    ),
+  )
   .parse()
 
 const spawnerLayer = ChildProcessSpawnerLayer
@@ -138,6 +152,11 @@ Cli.run(
       return yield* Effect.fail({ _tag: 'DoctorFailures' })
     }
 
+    if (args.from && (args.lifecycle || args.all)) {
+      yield* Console.error('Choose either --from or --lifecycle/--all, not both.')
+      return yield* Effect.fail({ _tag: 'DoctorFailures' })
+    }
+
     const workspace = yield* loadCommandWorkspace({
       lint: {
         onlyRules: parseCsvStrings(args.onlyRule),
@@ -150,13 +169,40 @@ Cli.run(
     }
     const { config, packages } = workspace
 
-    const activePlan = yield* Api.Planner.Store.readActive
-    const needsSmartScope = !args.lifecycle && !args.all && activePlan._tag !== 'Some'
+    const activePlanState = args.from
+      ? yield* loadPlan({
+          path: Fs.Path.fromString(args.from),
+          source: 'custom',
+        })
+      : args.lifecycle || args.all
+        ? null
+        : yield* loadActivePlan()
+    if (activePlanState?._tag === 'PlanMissing') {
+      for (const line of formatMissingPlanMessage(activePlanState)) {
+        yield* Console.error(line)
+      }
+      return yield* Effect.fail({ _tag: 'DoctorFailures' })
+    }
+    if (activePlanState?._tag === 'PlanInvalid') {
+      const lines =
+        activePlanState.source === 'custom'
+          ? formatInvalidPlanMessage(activePlanState)
+          : formatIgnoredInvalidPlanMessage(activePlanState)
+      for (const line of lines) {
+        yield* Console.error(line)
+      }
+      if (activePlanState.source === 'custom') {
+        return yield* Effect.fail({ _tag: 'DoctorFailures' })
+      }
+    }
+    const activePlan =
+      activePlanState?._tag === 'PlanLoaded' ? Option.some(activePlanState.plan) : Option.none()
+    const needsSmartScope = !args.lifecycle && !args.all && Option.isNone(activePlan)
     const needsPrContext =
       needsSmartScope ||
       args.all ||
       args.lifecycle === 'ephemeral' ||
-      (activePlan._tag === 'Some' && activePlan.value.lifecycle === 'ephemeral')
+      (Option.isSome(activePlan) && activePlan.value.lifecycle === 'ephemeral')
     const pullRequestAttempt = needsPrContext
       ? yield* Api.Explorer.resolvePullRequest().pipe(Effect.result)
       : { _tag: 'Success' as const, success: null }
@@ -165,7 +211,7 @@ Cli.run(
     const scope = Api.Doctor.resolveScope({
       ...(args.lifecycle ? { lifecycle: args.lifecycle } : {}),
       ...(args.all ? { all: true } : {}),
-      ...(activePlan._tag === 'Some' ? { activePlan: activePlan.value } : {}),
+      ...(Option.isSome(activePlan) ? { activePlan: activePlan.value } : {}),
       hasPrContext,
     })
 
