@@ -22,11 +22,6 @@ import { Oak } from '@kitz/oak'
 import { Cause, Console, Effect, FileSystem, Layer, Option, Schema, SchemaGetter } from 'effect'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, ServicesLayer, FileSystemLayer } from '../../platform.js'
-import {
-  commandLintRule,
-  createCommandLintConfig,
-  type CommandLintRuleSpec,
-} from '../lint-rule-config.js'
 import { loadConfiguredPullRequestDiff, resolveDiffRemote } from '../pr-preview-diff.js'
 import {
   formatIgnoredInvalidPlanMessage,
@@ -41,6 +36,7 @@ import {
   noPackagesFoundMessage,
 } from './command-workspace.js'
 import { computeLifecyclePlanAttempt, toUnavailableLifecycleReport } from './doctor-lib.js'
+import { runDoctorReportForPlan } from './doctor-runtime.js'
 
 const DoctorFailuresSchema = Schema.Struct({
   _tag: Schema.Literal('DoctorFailures'),
@@ -232,132 +228,25 @@ Cli.run(
           ...(args.remote ? { remote: args.remote } : {}),
         })
       : null
-    const monorepo = {
-      packages: packages.map((pkg) => ({
-        name: pkg.name.moniker,
-        path: pkg.path.toString(),
-      })),
-      validScopes: packages.map((pkg) => pkg.scope),
-    }
-    const prContext = pullRequest ? yield* Api.Lint.fromPullRequest(pullRequest) : null
-    const lintPrContext = prContext ?? {
-      number: 0,
-      title: '',
-      body: '',
-      commit: Option.none(),
-      titleParseError: Option.none(),
-    }
-    const hasDiff = diff !== null && diff.files.length > 0
-    const diffLayer = diff ? Layer.succeed(Api.Lint.DiffService, diff) : Api.Lint.DefaultDiffLayer
-
     const reports: Api.Doctor.LifecycleReport[] = []
+    const doctorRuntimeContext = {
+      config,
+      analysis,
+      packages,
+      currentBranch,
+      pullRequest,
+      diff,
+      diffRemote,
+    } satisfies Parameters<typeof runDoctorReportForPlan>[0]
     const evaluatePlan = (plan: Api.Planner.Plan, required: boolean) =>
       Effect.gen(function* () {
-        const plannedItems = [...plan.releases, ...plan.cascades]
-        const channel = Api.Publishing.resolvePublishChannel(config.publishing, plan.lifecycle)
-        const projectedSquashCommit =
-          pullRequest && plan.releases.length > 0
-            ? Api.ProjectedSquashCommit.preview({
-                actualTitle: pullRequest.title,
-                impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis, {
-                  scopes: plan.releases.map((item) => item.package.scope),
-                }),
-              })
-            : undefined
-        const doctorRules = [
-          commandLintRule({
-            id: 'env.publish-channel-ready',
-            options: {
-              surface: 'execution',
-            },
-          }),
-          commandLintRule({
-            id: 'env.git-clean',
-          }),
-          commandLintRule({
-            id: 'env.git-remote',
-            options: {
-              remote: diffRemote,
-            },
-          }),
-          commandLintRule({
-            id: 'plan.tags-unique',
-          }),
-          commandLintRule({
-            id: 'plan.versions-unpublished',
-          }),
-          ...(channel.mode !== 'github-trusted'
-            ? [
-                commandLintRule({
-                  id: 'env.npm-authenticated',
-                }),
-              ]
-            : []),
-          ...(projectedSquashCommit?.projectedHeader
-            ? [
-                commandLintRule({
-                  id: 'pr.projected-squash-commit-sync',
-                  options: {
-                    projectedHeader: projectedSquashCommit.projectedHeader,
-                  },
-                  enabled: 'auto',
-                  severity: Api.Lint.Warn.make({}),
-                  preserveExistingOverrides: true,
-                }),
-              ]
-            : []),
-          ...(pullRequest && hasDiff
-            ? [
-                commandLintRule({
-                  id: 'pr.type.release-kind-match-diff',
-                }),
-              ]
-            : []),
-        ] satisfies readonly CommandLintRuleSpec[]
-
-        const lintConfig = createCommandLintConfig({
-          config,
-          rules: doctorRules,
-        })
-        const baseReportEffect = Api.Lint.check({ config: lintConfig }).pipe(
-          Effect.provide(
-            Layer.mergeAll(
-              diffLayer,
-              Api.Lint.DefaultGitHubLayer,
-              Api.Lint.Preconditions.make({
-                hasOpenPR: pullRequest !== null,
-                hasDiff,
-                hasReleasePlan: true,
-                isMonorepo: packages.length > 1,
-              }),
-              Api.Lint.ReleasePlan.make(
-                plannedItems.map((item) => ({
-                  packageName: item.package.name,
-                  packagePath: item.package.path,
-                  version: item.nextVersion,
-                })),
-              ),
-              Api.Lint.ReleaseContext.make({
-                lifecycle: plan.lifecycle,
-                publishing: config.publishing,
-                trunk: config.trunk,
-                currentBranch,
-              }),
-              Api.Lint.ConventionalCommitSettings.make({
-                resolvedTypes: config.resolvedConventionalCommitTypes,
-              }),
-            ),
-          ),
-          Effect.provideService(Api.Lint.MonorepoService, monorepo),
-          Effect.provideService(Api.Lint.PrService, lintPrContext),
-        )
-        const report = yield* baseReportEffect
+        const report = yield* runDoctorReportForPlan(doctorRuntimeContext, plan)
 
         reports.push({
           _tag: 'CheckedLifecycleReport' as const,
           lifecycle: plan.lifecycle,
           required,
-          plannedPackages: plannedItems.length,
+          plannedPackages: plan.releases.length + plan.cascades.length,
           report,
         })
       })

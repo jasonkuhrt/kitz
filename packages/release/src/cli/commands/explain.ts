@@ -9,7 +9,8 @@ import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Schema, SchemaGetter } from 'effect'
 import * as Api from '../../api/__.js'
-import { FileSystemLayer } from '../../platform.js'
+import { FileSystemLayer, TerminalLayer } from '../../platform.js'
+import { isInteractiveTerminal, pickOption } from '../interactive.js'
 import {
   isReadyCommandWorkspace,
   loadCommandWorkspace,
@@ -21,7 +22,7 @@ const args = Oak.Command.create()
   .description('Explain why a package is primary, cascade, or unchanged')
   .parameter(
     'pkg',
-    Schema.String.pipe(
+    Schema.UndefinedOr(Schema.String).pipe(
       Schema.annotate({ description: 'Package scope or full package name to explain' }),
     ),
   )
@@ -38,7 +39,7 @@ const args = Oak.Command.create()
   )
   .parse()
 
-Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
+Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, TerminalLayer, Git.GitLive))(
   Effect.gen(function* () {
     const env = yield* Env.Env
     const git = yield* Git.Git
@@ -47,6 +48,31 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
     if (!isReadyCommandWorkspace(workspace)) {
       yield* Console.log(noPackagesFoundMessage)
       return
+    }
+
+    const requestedPackage =
+      args.pkg ??
+      (isInteractiveTerminal({ env: env.vars })
+        ? yield* pickOption({
+            title: 'Select package to explain',
+            hint: 'Pick the package whose release outcome you want to inspect.',
+            options: [...workspace.packages]
+              .toSorted((left, right) => left.scope.localeCompare(right.scope))
+              .map((pkg) => ({
+                label: pkg.scope,
+                value: pkg.name.moniker,
+                detail: pkg.name.moniker,
+              })),
+            env: env.vars,
+            stdoutIsTTY: true,
+          })
+        : undefined)
+
+    if (!requestedPackage) {
+      yield* Console.error(
+        'Missing package target. Pass <pkg> or run `release explain` from an interactive TTY to pick one.',
+      )
+      return env.exit(1)
     }
 
     const tags = yield* git.getTags()
@@ -58,7 +84,7 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
       }),
       {
         packages: workspace.packages,
-        requestedPackage: args.pkg,
+        requestedPackage,
       },
     )
 

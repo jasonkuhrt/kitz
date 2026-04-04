@@ -18,7 +18,8 @@ import { Git } from '@kitz/git'
 import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
-import { FileSystemLayer } from '../../platform.js'
+import { FileSystemLayer, TerminalLayer } from '../../platform.js'
+import { isInteractiveTerminal, pickOption } from '../interactive.js'
 import {
   isReadyCommandWorkspace,
   loadCommandWorkspace,
@@ -35,7 +36,7 @@ const args = Oak.Command.create()
   .description('Generate a release plan')
   .parameter(
     'lifecycle l',
-    Schema.Literals(['official', 'candidate', 'ephemeral']).pipe(
+    Schema.UndefinedOr(Schema.Literals(['official', 'candidate', 'ephemeral'])).pipe(
       Schema.annotate({
         description: 'Release lifecycle: official, candidate, or ephemeral',
       }),
@@ -61,8 +62,9 @@ const args = Oak.Command.create()
   )
   .parse()
 
-Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
+Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, TerminalLayer, Git.GitLive))(
   Effect.gen(function* () {
+    const env = yield* Env.Env
     const git = yield* Git.Git
 
     const workspace = yield* loadCommandWorkspace()
@@ -72,6 +74,41 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
     }
     const { packages } = workspace
 
+    const lifecycle =
+      args.lifecycle ??
+      (isInteractiveTerminal({ env: env.vars })
+        ? yield* pickOption({
+            title: 'Select release lifecycle',
+            hint: 'Generate a draft plan for the lifecycle you want to inspect or persist.',
+            options: [
+              {
+                label: 'official',
+                value: 'official' as const,
+                detail: 'Publish semver releases to the default npm dist-tag.',
+              },
+              {
+                label: 'candidate',
+                value: 'candidate' as const,
+                detail: 'Publish prereleases to the candidate dist-tag.',
+              },
+              {
+                label: 'ephemeral',
+                value: 'ephemeral' as const,
+                detail: 'Publish PR-scoped integration builds.',
+              },
+            ],
+            env: env.vars,
+            stdoutIsTTY: true,
+          })
+        : undefined)
+
+    if (!lifecycle) {
+      yield* Console.error(
+        'Missing lifecycle target. Pass --lifecycle <official|candidate|ephemeral> or run from an interactive TTY.',
+      )
+      return env.exit(1)
+    }
+
     // Build release options
     const options = {
       ...(args.pkg && { packages: args.pkg }),
@@ -80,7 +117,7 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
 
     // Generate plan based on type
     const header = Str.Builder()
-    header`Generating ${args.lifecycle} release plan...`
+    header`Generating ${lifecycle} release plan...`
     header``
     yield* Console.log(header.render())
 
@@ -94,9 +131,9 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
     })
     const ctx = { packages }
 
-    const plan = yield* args.lifecycle === 'official'
+    const plan = yield* lifecycle === 'official'
       ? Api.Planner.official(analysis, ctx, options)
-      : args.lifecycle === 'candidate'
+      : lifecycle === 'candidate'
         ? Api.Planner.candidate(analysis, ctx, options)
         : Api.Planner.ephemeral(analysis, ctx, options)
 

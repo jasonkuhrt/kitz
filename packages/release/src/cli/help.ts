@@ -2,7 +2,7 @@ const rootCommands = [
   { usage: 'apply [options]', description: 'Execute the release plan' },
   { usage: 'doctor [options]', description: 'Run release doctor checks and publishability audits' },
   {
-    usage: 'explain <pkg> [options]',
+    usage: 'explain [pkg] [options]',
     description: 'Explain why a package is primary, cascade, or unchanged',
   },
   { usage: 'forecast [options]', description: 'Render a release forecast' },
@@ -16,13 +16,11 @@ const rootCommands = [
     usage: 'pr <preview|title <suggest|apply>>',
     description: 'Update the PR preview comment or manage the canonical PR title header',
   },
-  {
-    usage: 'plan --lifecycle <official|candidate|ephemeral> [options]',
-    description: 'Generate a release plan',
-  },
+  { usage: 'plan [options]', description: 'Generate a release plan' },
   { usage: 'graph [options]', description: 'Render the release execution DAG for the active plan' },
   { usage: 'resume [options]', description: 'Resume an interrupted release workflow' },
   { usage: 'status [options]', description: 'Inspect durable workflow state for the active plan' },
+  { usage: 'ui', description: 'Open the interactive release dashboard' },
 ] as const
 
 const helpFlags = ['-h', '--help'] as const

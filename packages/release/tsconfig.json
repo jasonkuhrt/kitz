@@ -9,11 +9,13 @@
     "composite": false,
     "declaration": false,
     "declarationMap": false,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@opentui/react",
     "paths": {
       "#release": ["./src/_.js"],
       "#release/*": ["./src/*.js"]
     }
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
   "exclude": ["build", "node_modules"]
 }

@@ -23,10 +23,11 @@ import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Layer } from 'effect'
 import * as Api from '../../api/__.js'
-import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
+import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
+import { isInteractiveTerminal, pickOption } from '../interactive.js'
 import { resolveDiffRemote } from '../pr-preview-diff.js'
 import { PreviewBlockingError, runPrPreview } from '../pr-preview.js'
-import { formatHelp, helpFlags, parseAction } from './pr-lib.js'
+import { formatHelp, helpFlags, parseAction, type ParsedAction } from './pr-lib.js'
 
 const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
 
@@ -104,18 +105,58 @@ const preparePrTitle = Effect.gen(function* () {
   } satisfies PreparedPrTitle
 })
 
-Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive, ChildProcessSpawnerLayer, npmLayer))(
+Cli.run(
+  Layer.mergeAll(
+    Env.Live,
+    FileSystemLayer,
+    TerminalLayer,
+    Git.GitLive,
+    ChildProcessSpawnerLayer,
+    npmLayer,
+  ),
+)(
   Effect.gen(function* () {
     const env = yield* Env.Env
     const argv = yield* Cli.parseArgv(env.argv)
     const args = argv.args.slice(1)
 
-    if (args.length === 0 || args.some((arg) => helpFlags.includes(arg as '-h' | '--help'))) {
+    if (args.some((arg) => helpFlags.includes(arg as '-h' | '--help'))) {
       yield* Console.log(formatHelp())
       return
     }
 
-    const action = parseAction(args)
+    const action =
+      (args.length === 0 && isInteractiveTerminal({ env: env.vars })
+        ? yield* pickOption<ParsedAction>({
+            title: 'Select PR release action',
+            hint: 'Pick the PR automation action you want to run.',
+            options: [
+              {
+                label: 'preview',
+                value: { _tag: 'preview', checkOnly: false } satisfies ParsedAction,
+                detail: 'Update the release preview comment for the connected pull request.',
+              },
+              {
+                label: 'title suggest',
+                value: { _tag: 'title', action: 'suggest' } satisfies ParsedAction,
+                detail: 'Show the canonical PR title header without changing GitHub.',
+              },
+              {
+                label: 'title apply',
+                value: { _tag: 'title', action: 'apply' } satisfies ParsedAction,
+                detail: 'Rewrite the connected PR title header on GitHub.',
+              },
+            ],
+            env: env.vars,
+            stdoutIsTTY: true,
+          })
+        : parseAction(args)) ?? null
+
+    if (args.length === 0 && action === null) {
+      yield* Console.log(formatHelp())
+      return env.exit(1)
+    }
+
     if (!action) {
       yield* Console.error(
         'Error: Expected `release pr preview` or `release pr title <suggest|apply>`.',
