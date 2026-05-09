@@ -2,7 +2,7 @@
  * Failing tests for final Codex review findings.
  * Each documents a specific bug. All should FAIL until fixed.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { Effect, Schema as S } from 'effect'
 import { createHandleKey } from './handle-key.js'
 import { CommandResolver } from './command-resolver.js'

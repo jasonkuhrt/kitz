@@ -1,8 +1,8 @@
 /* eslint-disable eslint-plugin-jest/valid-expect -- Dynamic matcher access pattern */
 import { Fn, Prom } from '@kitz/core'
+import { expect, test } from 'bun:test'
 import { Array, Effect, Layer, Option } from 'effect'
 import objectInspect from 'object-inspect'
-import { expect, test } from 'vitest'
 import type { CaseObject, CaseTuple } from './builder-types.js'
 import {
   assertEffectEqual,
@@ -345,11 +345,18 @@ export function create(state: State = defaultState): any {
           validateContextKeys(fullContext, name)
 
           if (todo) {
-            testMethod.todo(name)
+            testMethod.todo(name, () => {})
             continue
           }
 
-          testMethod(name, async (vitestContext) => {
+          const isSkipped =
+            Boolean(skip) ||
+            Boolean(state.config.skip) ||
+            Boolean(skipIf?.()) ||
+            Boolean(state.config.skipIf?.())
+          const registerTest = isSkipped ? testMethod.skip : testMethod
+
+          registerTest(name, async () => {
             // Handle runner cases
             if (isRunnerCase && runner) {
               // Build context for runner with setup
@@ -449,7 +456,6 @@ export function create(state: State = defaultState): any {
                     n: name,
                     ...setupContext,
                     ...fullContext,
-                    ...vitestContext,
                   })
                 } else {
                   if (state.config.matcher) {
@@ -466,28 +472,13 @@ export function create(state: State = defaultState): any {
                   n: name,
                   ...setupContext,
                   ...fullContext,
-                  ...vitestContext,
                 })
               }
               return
             }
 
-            // Handle skip conditions
-            if (skip || state.config.skip) {
-              vitestContext.skip(
-                typeof skip === 'string'
-                  ? skip
-                  : typeof state.config.skip === 'string'
-                    ? state.config.skip
-                    : undefined,
-              )
-              return
-            }
-
-            if (skipIf?.() || state.config.skipIf?.()) {
-              vitestContext.skip('Skipped by condition')
-              return
-            }
+            // Skip is pre-evaluated at registration via testMethod.skip,
+            // so no inline skip logic is needed here.
 
             // Run the test
             if (fn) {
@@ -528,7 +519,6 @@ export function create(state: State = defaultState): any {
                     n: name,
                     ...setupContext,
                     ...fullContext,
-                    ...vitestContext,
                   })
                   // Auto-snapshot if test returns a value AND no output was specified
                   if (!hasOutput && testResult !== undefined) {
@@ -578,7 +568,6 @@ export function create(state: State = defaultState): any {
                 n: name,
                 ...setupContext,
                 ...fullContext,
-                ...vitestContext,
               })
               const context = { i: input, n: name, o: output, ...setupContext, ...fullContext }
               // Auto-snapshot if result is returned AND no output was specified

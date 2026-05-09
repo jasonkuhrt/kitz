@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as PlatformModule from './_.js'
 import * as PublicPlatform from './__.js'
 import * as NodePlatform from './effect-platform.node.js'

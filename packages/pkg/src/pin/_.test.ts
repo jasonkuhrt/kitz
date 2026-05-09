@@ -1,6 +1,6 @@
 import { Test } from '@kitz/test'
 import { Semver } from '@kitz/semver'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as Pin from './pin.js'
 
 Test.describe('Range')

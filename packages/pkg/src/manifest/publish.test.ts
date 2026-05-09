@@ -1,5 +1,5 @@
 import { Semver } from '@kitz/semver'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { findLocalDependencyNames, findPackHooks, rewriteManifestForPack } from './publish.js'
 
 describe('Pkg.Manifest publish rewrite', () => {

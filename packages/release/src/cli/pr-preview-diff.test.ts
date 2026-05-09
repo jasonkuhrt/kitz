@@ -4,7 +4,7 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Pkg } from '@kitz/pkg'
 import { Effect, Layer, Stream } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import type { Package } from '../api/analyzer/workspace.js'
 import {
   loadConfiguredPullRequestDiff,

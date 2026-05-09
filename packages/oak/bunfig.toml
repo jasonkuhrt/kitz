@@ -1,0 +1,10 @@
+# Per-package overlay over the workspace bunfig.toml.
+# Inherits [install] / [run] / [test] settings from /bunfig.toml at repo root.
+
+[test]
+# Preload runs before each test file. Clears ambient CLI_* envs that bun:test
+# would otherwise inherit from the parent shell or from prior tests in the
+# same process. The oak parser intentionally reads CLI_PARAM_* /
+# CLI_PARAMETER_* / CLI_SETTINGS_* envs, so any stray value pollutes the
+# parser's assertions.
+preload = ["./src/__tests/_setup.ts"]

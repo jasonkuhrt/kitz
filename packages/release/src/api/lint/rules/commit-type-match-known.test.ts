@@ -1,7 +1,7 @@
 import { Git } from '@kitz/git'
 import type { Semver } from '@kitz/semver'
 import { Effect, Layer } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { resolveConventionalCommitTypes } from '../../config.js'
 import { GitHistory } from '../models/violation-location.js'
 import { Violation } from '../models/violation.js'

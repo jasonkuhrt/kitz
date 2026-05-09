@@ -1,7 +1,21 @@
+import { expect } from 'bun:test'
 import { Equivalence } from 'effect'
 import { Schema as S } from 'effect'
-import { expect } from 'vitest'
 
+declare module 'bun:test' {
+  interface Matchers<T = unknown> {
+    /**
+     * Check if two values are equivalent using Effect Schema equivalence.
+     */
+    toBeEquivalent<A, I = A, R = never>(expected: A, schema: S.Codec<A, I, R>): void
+    /**
+     * Check if two values are equivalent using a provided equivalence function.
+     */
+    toBeEquivalentWith<U>(expected: U, equivalence: Equivalence.Equivalence<U>): void
+  }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- bun:test's CustomMatcher generic prevents a precise typing of expect.extend; the public surface is fully typed via the module augmentation above.
 expect.extend({
   toBeEquivalent<A, I = A, R = never>(received: A, expected: A, schema: S.Codec<A, I, R>) {
     const equivalence = S.toEquivalence(schema)
@@ -41,4 +55,4 @@ expect.extend({
           : `Expected values to be equivalent:\n  Received: ${receivedStr}\n  Expected: ${expectedStr}`,
     }
   },
-})
+} as never)

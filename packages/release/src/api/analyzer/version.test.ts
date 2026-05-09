@@ -1,5 +1,5 @@
 import { ConventionalCommits } from '@kitz/conventional-commits'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { resolveConventionalCommitTypes } from '../config.js'
 import { getBump } from './version.js'
 

@@ -3,7 +3,7 @@ import path from 'node:path'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Effect, Layer } from 'effect'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'bun:test'
 import { Platform } from '@kitz/platform'
 import { dispatch, DiscoverCommandsDirNotFoundError, discoverCommandPointers } from './dispatch.js'
 

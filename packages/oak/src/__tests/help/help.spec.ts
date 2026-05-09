@@ -1,10 +1,9 @@
-import type { MockInstance } from 'vitest'
-import { beforeEach, expect, test, vi } from 'vitest'
+import { beforeEach, expect, test, vi, spyOn } from 'bun:test'
 import { $, s } from '../_/helpers.js'
 import { createState } from '../environment/__helpers__.js'
 
-let exitSpy: MockInstance
-let stdoutSpy: MockInstance
+let exitSpy: ReturnType<typeof spyOn>
+let stdoutSpy: ReturnType<typeof spyOn>
 
 const output = createState<string>({
   value: (values) => values.join(``),

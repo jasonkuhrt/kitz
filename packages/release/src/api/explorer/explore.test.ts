@@ -2,7 +2,7 @@ import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Effect, Layer } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import type { Recon } from './models/__.js'
 import { explore, toExecutorRuntimeConfig } from './explore.js'
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { createCmx } from './cmx.js'
 import { AppMap } from './app-map.js'
 import { Command } from './command.js'

@@ -3,7 +3,7 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Effect, Layer } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { resolveConventionalCommitTypes } from '../config.js'
 import { analyze } from './analyze.js'
 

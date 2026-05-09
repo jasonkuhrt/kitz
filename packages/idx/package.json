@@ -23,8 +23,8 @@
     "check:types": "tsgo --noEmit",
     "check:lint": "bun ../../tools/run-lint.ts src/",
     "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error",
-    "test": "vitest run --config ../../vitest.config.ts --root .",
-    "test:coverage": "vitest run --config ../../vitest.config.ts --root . --coverage",
+    "test": "bun test",
+    "test:coverage": "bun test --coverage",
     "check:cov": "bun run test:coverage"
   },
   "dependencies": {

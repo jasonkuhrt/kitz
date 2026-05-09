@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import {
   assert,
   create,
@@ -109,17 +109,20 @@ describe('arr coverage', () => {
     expect(mutable).toEqual([1, 2, 3])
 
     const dedupedFrozen = dedupe(of(1, 1, 2, 2))
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(dedupedFrozen).toEqual([1, 2])
     expect(Object.isFrozen(dedupedFrozen)).toBe(true)
   })
 
   test('covers partitioning and joining helpers', () => {
     const [odds, evens] = partition(of(1, 2, 3, 4), (value): value is number => value % 2 === 0)
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(odds).toEqual([1, 3])
     expect(evens).toEqual([2, 4])
     expect(Object.isFrozen(odds)).toBe(true)
     expect(Object.isFrozen(evens)).toBe(true)
 
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(partitionOne([1, 2, 3], (value): value is number => value === 2)).toEqual([[1, 3], 2])
     expect(() => partitionOne([1, 2, 3], (value): value is number => value > 1)).toThrow(
       'Expected at most one item to match predicate',

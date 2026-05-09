@@ -1,5 +1,5 @@
 import { Test } from '#kitz/test'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Arr } from './_.js'
 
 Test.on(Arr.transpose<number>)

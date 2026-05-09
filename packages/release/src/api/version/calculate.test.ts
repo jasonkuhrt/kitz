@@ -1,7 +1,7 @@
 import { Semver } from '@kitz/semver'
 import { Test } from '@kitz/test'
 import { Option } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { calculateNextVersion } from './calculate.js'
 
 const v = Semver.fromString

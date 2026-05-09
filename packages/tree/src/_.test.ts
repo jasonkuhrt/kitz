@@ -1,5 +1,5 @@
 import * as fc from 'fast-check'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as TreeNamespace from './_.js'
 import { arbitrary, arbitraryShapes } from './arbitrary.js'
 import { fromList, manyFromList, toList } from './conversions.js'

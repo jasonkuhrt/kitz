@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Failed, Finished, Report, RuleCheckResult, Skipped } from './report.js'
 import { RuleDefaults, RuleId } from './rule-defaults.js'
 import * as Severity from './severity.js'

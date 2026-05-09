@@ -5,7 +5,7 @@ import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Github } from '@kitz/github'
 import { Effect, Layer, Option, Ref } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as Api from '../api/__.js'
 import { Analysis, Impact, makeCascadeCommit } from '../api/analyzer/models/__.js'
 import { makeMockSpawnerLayer } from '../api/executor/test-support.js'
@@ -390,7 +390,12 @@ describe('pr preview comment sync', () => {
       'bun run release doctor --remote fork',
       'bun run release apply --yes',
     ])
-    expect(summary.summary?.deferredChecks).toContainEqual({
+    expect(summary.summary?.deferredChecks).toContainEqual<{
+      label: string
+      ruleId: string
+      preventsDescriptions: readonly string[] | undefined
+      checkCommand: string
+    }>({
       label: Api.Lint.Rules.EnvGitRemote.data.description,
       ruleId: Api.Lint.Rules.EnvGitRemote.data.id,
       preventsDescriptions: Api.Lint.Rules.EnvGitRemote.data.preventsDescriptions,
@@ -478,7 +483,12 @@ describe('pr preview comment sync', () => {
       'bun run release doctor --remote upstream',
       'bun run release apply --yes',
     ])
-    expect(summary.summary?.deferredChecks).toContainEqual({
+    expect(summary.summary?.deferredChecks).toContainEqual<{
+      label: string
+      ruleId: string
+      preventsDescriptions: readonly string[] | undefined
+      checkCommand: string
+    }>({
       label: Api.Lint.Rules.EnvGitRemote.data.description,
       ruleId: Api.Lint.Rules.EnvGitRemote.data.id,
       preventsDescriptions: Api.Lint.Rules.EnvGitRemote.data.preventsDescriptions,

@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { resolveConfig } from './config.js'
 import { RuleDefaults, RuleId } from './rule-defaults.js'
 import * as Severity from './severity.js'

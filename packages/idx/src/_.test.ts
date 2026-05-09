@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as IdxModule from './_.js'
 import { create, fromArray, Mode } from './idx.js'
 

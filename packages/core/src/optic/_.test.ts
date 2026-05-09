@@ -1,6 +1,6 @@
 import { Assert } from '#kitz/assert'
 import { Optic } from '#optic'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 
 const A = Assert.Type
 

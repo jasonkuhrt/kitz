@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as NameModule from './_.js'
 import { generate } from './name.js'
 

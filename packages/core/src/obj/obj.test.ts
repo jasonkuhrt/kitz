@@ -1,6 +1,6 @@
 import { Assert } from '#kitz/assert'
 import { Test } from '#kitz/test'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { type FromEntries, fromEntries, hasSymbolLike, hasSymbolLikeWith } from './obj.js'
 
 const sym = (name: string, val: unknown) => {
@@ -103,6 +103,7 @@ Test.describe('fromEntries')
     ],
   )
   .test(({ input, output }) => {
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(fromEntries(input)).toEqual(output)
   })
 

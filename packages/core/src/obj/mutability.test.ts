@@ -1,7 +1,7 @@
 import { Assert } from '#kitz/assert'
 import { Obj } from '#obj'
 import { Ts } from '#ts'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 
 const immutableObj = Obj.toImmutable({ a: 1 })
 type immutableObj = typeof immutableObj

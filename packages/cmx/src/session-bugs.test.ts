@@ -1,10 +1,10 @@
 /**
  * Failing tests for the 8 systemic session bugs.
- * Uses @effect/vitest for Effect-native test execution.
+ * Uses Test.effect from @kitz/test for Effect-native test execution.
  */
 import { Effect, Layer, Schema as S, ServiceMap } from 'effect'
-import { describe, expect } from 'vitest'
-import { it } from '@effect/vitest'
+import { describe, expect, it } from 'bun:test'
+import { Test } from '@kitz/test'
 import { Session } from './session.js'
 import { Command } from './command.js'
 import { Capability } from './capability.js'
@@ -24,7 +24,7 @@ const defaultProximities = new Map<string, number>()
 // --- Bug 1: Layers dropped on no-slot execution ---
 
 describe('Bug 1: no-slot execution wraps with layers', () => {
-  it.effect('auto-advanced executable resolution includes provided layers', () =>
+  Test.effect('auto-advanced executable resolution includes provided layers', () =>
     Effect.gen(function* () {
       class TestService extends ServiceMap.Service<TestService, { readonly value: string }>()(
         'test/Bug1Service',
@@ -87,7 +87,7 @@ describe('Bug 2: slot resolver uses session matcher', () => {
 // --- Bug 5: Composite SlotValues not scoped per step ---
 
 describe('Bug 5: composite steps see only their declared slots', () => {
-  it.effect('step A cannot access step B slot values', () =>
+  Test.effect('step A cannot access step B slot values', () =>
     Effect.gen(function* () {
       const formatSlot = Slot.Enum.make({ name: 'format', schema: S.Literal('json') })
       const destSlot = Slot.Text.make({ name: 'dest', schema: S.String })

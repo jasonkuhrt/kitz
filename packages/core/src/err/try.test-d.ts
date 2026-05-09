@@ -1,4 +1,4 @@
-import { test } from 'vitest'
+import { test } from 'bun:test'
 
 /**
  * Type-level tests for try.ts

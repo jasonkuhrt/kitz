@@ -1,5 +1,5 @@
 import { Result } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as Errors from '../../Errors/Errors.js'
 import {
   parse as parseEnvironment,

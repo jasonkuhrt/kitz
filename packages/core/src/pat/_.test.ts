@@ -1,7 +1,7 @@
 import { Test } from '#kitz/test'
 import { Pat } from '#pat'
 import * as S from 'effect/Schema'
-import { expect } from 'vitest'
+import { expect } from 'bun:test'
 
 Test.on(Pat.isMatch)
   .describe('Literals', [
@@ -209,9 +209,12 @@ Test.on(Pat.isMatch)
     const [value, pattern] = input
 
     // Test base function
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(Pat.isMatch(value, pattern)).toBe(output)
 
     // Test curried variants - these should produce identical results
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(Pat.isMatchOn(value)(pattern)).toBe(output)
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(Pat.isMatchWith(pattern)(value)).toBe(output)
   })

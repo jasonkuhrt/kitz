@@ -1,7 +1,7 @@
 import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
 import { Option } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Impact } from './analyzer/models/impact.js'
 import { collectScopeImpacts, preview, renderHeader } from './projected-squash-commit.js'
 

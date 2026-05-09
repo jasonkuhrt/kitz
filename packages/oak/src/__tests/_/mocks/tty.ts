@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect } from 'vitest'
+import { afterEach, beforeEach, expect } from 'bun:test'
 import { Prompter } from '../../../lib/Prompter/_.js'
 
 export let memoryPrompter: Prompter.MemoryPrompter

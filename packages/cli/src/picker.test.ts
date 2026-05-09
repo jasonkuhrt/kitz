@@ -1,7 +1,7 @@
 import { Str } from '@kitz/core'
 import * as fc from 'fast-check'
 import { Cause, Effect, Fiber, Layer, PlatformError, Queue, Terminal } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import type { PickerKeyEvent, PickerOption } from './picker.js'
 import {
   describeInteractiveTerminalRequirement,

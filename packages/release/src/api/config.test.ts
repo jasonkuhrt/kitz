@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Config, resolveConventionalCommitTypes } from './config.js'
 
 describe('resolveConventionalCommitTypes', () => {

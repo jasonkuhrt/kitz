@@ -1,5 +1,5 @@
 import { Option } from 'effect'
-import { expect, test } from 'vitest'
+import { expect, test } from 'bun:test'
 import { Fuzzy } from './_.js'
 import { assignmentScore } from './assignment.js'
 import { subsequenceScore } from './subsequence.js'

@@ -1,5 +1,5 @@
 import { Effect, Ref } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Github } from './_.js'
 
 // ============================================================================

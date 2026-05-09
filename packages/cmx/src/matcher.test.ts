@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { Matcher } from './matcher.js'
 import type { MatchCandidate } from './matcher.js'
 

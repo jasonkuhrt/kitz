@@ -1,7 +1,7 @@
 import { ChildProcessSpawner } from 'effect/unstable/process'
 import * as PlatformError from 'effect/PlatformError'
 import { Effect, Layer, Stream } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Violation } from '../models/violation.js'
 import { RuleOptionsService } from '../services/rule-options.js'
 import { rule } from './env-npm-authenticated.js'

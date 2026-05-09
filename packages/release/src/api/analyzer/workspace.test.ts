@@ -4,7 +4,7 @@ import path from 'node:path'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Effect, Layer } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { FileSystemLayer } from '../../platform.js'
 import * as Workspace from './workspace.js'
 

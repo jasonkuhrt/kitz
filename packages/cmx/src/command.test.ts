@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { Effect } from 'effect'
 import { Command, collectExecutablePaths } from './command.js'
 import { Capability } from './capability.js'

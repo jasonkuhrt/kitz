@@ -1,5 +1,5 @@
 import { Obj } from '#obj'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 
 describe('mapEntries', () => {
   test('transforms both keys and values', () => {

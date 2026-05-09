@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 // oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { join } from 'node:path'
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test } from 'bun:test'
 import {
   discoverRepoDirectories,
   inferOpportunities,

@@ -1,5 +1,5 @@
 import { Option, pipe } from 'effect'
-import { expect, test } from 'vitest'
+import { expect, test } from 'bun:test'
 import { Fuzzy } from './_.js'
 
 test('Fuzzy.hasMatch is accessible', () => {

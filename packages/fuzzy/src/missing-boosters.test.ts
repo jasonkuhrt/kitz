@@ -11,7 +11,7 @@
  * they fail because the booster doesn't affect scoring yet.
  */
 import { Option } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Fuzzy } from './_.js'
 
 const scoreOf = (needle: string, haystack: string): number | null => {

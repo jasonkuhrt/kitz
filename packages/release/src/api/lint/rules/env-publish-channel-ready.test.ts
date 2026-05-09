@@ -1,7 +1,7 @@
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Effect } from 'effect'
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test } from 'bun:test'
 import { Violation } from '../models/violation.js'
 import { ReleaseContext } from '../services/__.js'
 import { RuleOptionsService } from '../services/rule-options.js'

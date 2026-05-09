@@ -1,6 +1,6 @@
 import { property } from '#kitz/test/test'
 import * as fc from 'fast-check'
-import { expect, test } from 'vitest'
+import { expect, test } from 'bun:test'
 import { Bool } from './_.js'
 
 property('not negates booleans', fc.boolean(), (value) => {

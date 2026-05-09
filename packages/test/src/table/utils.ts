@@ -1,8 +1,8 @@
 /* eslint-disable eslint-plugin-jest/valid-describe-callback, eslint-plugin-vitest/no-conditional-tests -- Test framework implementation */
 import { Err, Fn, Lang, Obj, Prom, Str } from '@kitz/core'
+import { describe as bunDescribe, expect } from 'bun:test'
 import { Equal, Schema as S } from 'effect'
 import objectInspect from 'object-inspect'
-import { describe as vitestDescribe, expect } from 'vitest'
 
 type SnapshotSerializer = (value: any, context: any) => string
 type FormatSnapshotWithInput = (
@@ -20,7 +20,7 @@ type FormatSnapshotWithInput = (
 
 /**
  * Custom assertion that uses Effect's Equal.equals for equivalence checking.
- * Falls back to Vitest's toEqual for better error messages when values are not equal.
+ * Falls back to expect().toEqual for better error messages when values are not equal.
  */
 export const assertEffectEqual = (actual: any, expected: any) => {
   // First try Effect's Equal.equals for proper equivalence checking
@@ -73,16 +73,16 @@ export const createNestedDescribe = (description: string, callback: () => void):
   const parts = description.split(' > ').map((part) => part.trim())
 
   if (parts.length === 1) {
-    vitestDescribe(description, callback)
+    bunDescribe(description, callback)
     return
   }
 
   // Create nested describe blocks from outer to inner
   const createNested = (index: number): void => {
     if (index === parts.length - 1) {
-      vitestDescribe(parts[index]!, callback)
+      bunDescribe(parts[index]!, callback)
     } else {
-      vitestDescribe(parts[index]!, () => createNested(index + 1))
+      bunDescribe(parts[index]!, () => createNested(index + 1))
     }
   }
 

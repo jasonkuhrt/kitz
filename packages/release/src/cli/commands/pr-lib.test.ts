@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { formatHelp, parseAction } from './pr-lib.js'
 
 describe('release pr command helpers', () => {

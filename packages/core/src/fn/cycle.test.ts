@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { createCycleTracker } from './cycle.js'
 
 describe('createCycleTracker', () => {

@@ -1,6 +1,6 @@
 import { Semver } from '@kitz/semver'
 import { Option } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { CommitDisplay, Forecast, ForecastCascade, ForecastRelease } from '../forecaster/models.js'
 import { render } from './render.js'
 

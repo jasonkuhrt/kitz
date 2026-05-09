@@ -1,7 +1,7 @@
 import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
 import { Fs } from '@kitz/fs'
 import { Effect, Layer, Stream } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { NpmCliError, hasVersion, pack, publish, whoami } from './cli.js'
 
 const textEncoder = new TextEncoder()

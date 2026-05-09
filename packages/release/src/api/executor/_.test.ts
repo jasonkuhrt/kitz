@@ -3,7 +3,8 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { describe, expect, it as test } from '@effect/vitest'
+import { describe, expect, test } from 'bun:test'
+import { Test } from '@kitz/test'
 import { Effect, FileSystem, Ref } from 'effect'
 import { execute, executeObservable, toPayload } from './execute.js'
 import {
@@ -51,7 +52,7 @@ const tagC = (version: string) => tag(Pkg.Moniker.parse('@kitz/c'), version)
 const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect
 
 describe('Executor integration', () => {
-  test.live(
+  Test.live(
     'runs non-dry-run official workflow with mocked services and restores manifest semver',
     () =>
       quiet(
@@ -117,7 +118,7 @@ describe('Executor integration', () => {
       ),
   )
 
-  test.live(
+  Test.live(
     'publishes official releases to the configured npm dist-tag without a manual tag override',
     () =>
       quiet(
@@ -148,7 +149,7 @@ describe('Executor integration', () => {
       ),
   )
 
-  test.live('fails preflight on conflicting tag and does not publish', () =>
+  Test.live('fails preflight on conflicting tag and does not publish', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -193,7 +194,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.live('fails preflight when git working tree is dirty', () =>
+  Test.live('fails preflight when git working tree is dirty', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -228,7 +229,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.live('fails preflight when official release is attempted off trunk', () =>
+  Test.live('fails preflight when official release is attempted off trunk', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -264,7 +265,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.live('fails before workflow start when planned packages form a local dependency cycle', () =>
+  Test.live('fails before workflow start when planned packages form a local dependency cycle', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -327,7 +328,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.live('direct payload construction fails for dependency cycles', () =>
+  Test.live('direct payload construction fails for dependency cycles', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -392,7 +393,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.live(
+  Test.live(
     'maps publish failures to ExecutorPublishError and restores manifest after retries',
     () =>
       quiet(
@@ -447,7 +448,7 @@ describe('Executor integration', () => {
       ),
   )
 
-  test.live('surfaces pack-hook cleanup guidance when artifact preparation fails', () =>
+  Test.live('surfaces pack-hook cleanup guidance when artifact preparation fails', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -512,7 +513,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.live('updates existing GitHub candidate release when tag option is next', () =>
+  Test.live('updates existing GitHub candidate release when tag option is next', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -560,7 +561,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.live('publishes candidate releases to the default next dist-tag', () =>
+  Test.live('publishes candidate releases to the default next dist-tag', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -584,7 +585,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.live(
+  Test.live(
     'publishes candidate releases to the configured candidate dist-tag without a manual tag override',
     () =>
       quiet(
@@ -615,7 +616,7 @@ describe('Executor integration', () => {
       ),
   )
 
-  test.live(
+  Test.live(
     'updates existing GitHub candidate release when tag option uses a custom candidate dist-tag',
     () =>
       quiet(
@@ -672,7 +673,7 @@ describe('Executor integration', () => {
       ),
   )
 
-  test.live('creates a new GitHub candidate release with the custom candidate dist-tag title', () =>
+  Test.live('creates a new GitHub candidate release with the custom candidate dist-tag title', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -715,7 +716,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.live(
+  Test.live(
     'publishes ephemeral releases with a custom dist-tag while keeping GitHub prerelease semantics versioned',
     () =>
       quiet(
@@ -754,7 +755,7 @@ describe('Executor integration', () => {
       ),
   )
 
-  test.live('publishes ephemeral releases to the default PR dist-tag', () =>
+  Test.live('publishes ephemeral releases to the default PR dist-tag', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -781,7 +782,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.live('observable workflow exposes graph in dry-run mode', () =>
+  Test.live('observable workflow exposes graph in dry-run mode', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -812,7 +813,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.live('observable workflow builds the release payload only once', () =>
+  Test.live('observable workflow builds the release payload only once', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -855,7 +856,7 @@ describe('Executor integration', () => {
     ),
   )
 
-  test.live('observable execution uses caller-provided runtime services', () =>
+  Test.live('observable execution uses caller-provided runtime services', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({

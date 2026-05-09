@@ -2,7 +2,7 @@ import { Git } from '@kitz/git'
 import { Semver } from '@kitz/semver'
 import { Test } from '@kitz/test'
 import { Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import {
   Candidate,
   CandidateSchema,
@@ -155,14 +155,14 @@ describe('Ephemeral', () => {
     const next = nextEphemeral(e, newSha)
     expect(next.iteration).toBe(2)
     expect(next.prNumber).toBe(42)
-    expect(next.sha).toBe('def5678')
+    expect(next.sha).toBe<string>('def5678')
   })
 
   test('EphemeralSchema decode', () => {
     const e = parseEphemeral('pr.42.3.abc1234')
     expect(e.prNumber).toBe(42)
     expect(e.iteration).toBe(3)
-    expect(e.sha).toBe('abc1234')
+    expect(e.sha).toBe<string>('abc1234')
   })
 
   test('EphemeralSchema encode', () => {

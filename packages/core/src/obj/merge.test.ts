@@ -2,7 +2,7 @@ import { Type as A } from '#kitz/assert/assert'
 import { Obj } from '#obj'
 import { Ts } from '#ts'
 import * as fc from 'fast-check'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 
 // ---- Fixtures ----
 // NOTE: Merge functions mutate first argument, so fixtures return fresh copies
@@ -80,6 +80,7 @@ describe('mergeWith', () => {
     const { obj1, obj2 } = fixtures.withUndefined()
     const customMerge = Obj.mergeWith({ undefined: true })
     const result = customMerge(obj1, obj2)
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(result).toEqual({ a: 1, b: undefined, c: 4, d: 5 })
   })
 
@@ -87,6 +88,7 @@ describe('mergeWith', () => {
     const { obj1, obj2 } = fixtures.withUndefined()
     const customMerge = Obj.mergeWith()
     const result = customMerge(obj1, obj2)
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(result).toEqual({ a: 1, b: 2, c: 4, d: 5 })
   })
 

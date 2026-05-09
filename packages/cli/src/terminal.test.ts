@@ -1,5 +1,5 @@
 import { Str } from '@kitz/core'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { createTerminalTheme, resolveUseColor } from './terminal.js'
 
 describe('cli terminal theme', () => {

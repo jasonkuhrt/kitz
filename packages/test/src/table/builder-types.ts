@@ -1,7 +1,6 @@
 import { Arr, Fn, Obj, Rec, Ts } from '@kitz/core'
 import type { Effect, Layer } from 'effect'
 import type { IsAny, IsNever, IsUnknown } from 'type-fest'
-import type { TestContext } from 'vitest'
 
 // ============================================================================
 // Core Types
@@ -136,16 +135,14 @@ type WithMatrix<Params, Matrix> =
 
 /**
  * Test function signature for generic mode (non-.on() mode).
- * Receives destructured params with input, output, test name, setup context, and vitest TestContext.
+ * Receives destructured params with input, output, test name, and setup context.
  * Can return a value for auto-snapshot or void/undefined to skip snapshot.
  *
  * @category Type Utilities
  */
 type GenericTestFn<T extends BuilderTypeState> =
   StateIOContext<T> extends [infer I, infer O, infer Ctx]
-    ? (
-        params: WithMatrix<{ input: I; output: O; n: string } & Ctx & TestContext, T['matrix']>,
-      ) => unknown
+    ? (params: WithMatrix<{ input: I; output: O; n: string } & Ctx, T['matrix']>) => unknown
     : never
 
 /**
@@ -163,7 +160,7 @@ type GenericEffectTestFn<T extends BuilderTypeState, R> =
 
 /**
  * Test function signature for function mode (.on() mode).
- * Receives destructured params with input, result, expected output, test name, setup context, and vitest TestContext.
+ * Receives destructured params with input, result, expected output, test name, and setup context.
  * Can return a value for auto-snapshot or void/undefined to skip snapshot.
  *
  * @category Type Utilities
@@ -171,8 +168,7 @@ type GenericEffectTestFn<T extends BuilderTypeState, R> =
 type FunctionTestFn<State extends BuilderTypeState> =
   FnSignature<State> extends [infer P, infer R]
     ? (
-        params: { input: P; output: R | undefined; result: R; n: string } & State['context'] &
-          TestContext,
+        params: { input: P; output: R | undefined; result: R; n: string } & State['context'],
       ) => unknown
     : never
 

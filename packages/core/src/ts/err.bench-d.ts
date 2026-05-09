@@ -1,12 +1,12 @@
-import { bench } from '@ark/attest'
 import type * as Err from './err.js'
 
 type _baseline = Err.StaticError<'baseline'>
 
-bench('StaticError > n metadata', () => {
-  return {} as Err.StaticError<'Invalid operation'>
-}).types([31, 'instantiations'])
-
-bench('StaticError > y metadata', () => {
-  return {} as Err.StaticError<'Type mismatch', { expected: 'string'; actual: 'number' }>
-}).types([251, 'instantiations'])
+// Type-instantiation regression cases (previously gated via @ark/attest bench).
+// Kept as type aliases so tsc still exercises them; instantiation-count gating
+// will be reintroduced via a bun-native tool in a follow-up.
+type _StaticError_n_metadata = Err.StaticError<'Invalid operation'>
+type _StaticError_y_metadata = Err.StaticError<
+  'Type mismatch',
+  { expected: 'string'; actual: 'number' }
+>

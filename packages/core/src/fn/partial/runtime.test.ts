@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { _, apply, defer, isHole, partial } from './runtime.js'
 
 describe('partial', () => {
@@ -20,6 +20,7 @@ describe('partial', () => {
 
     test('hole symbol is a singleton', () => {
       expect(_).toBe(_)
+      // @ts-expect-error -- bun:test strict-typed matcher
       expect(_).toBe(Symbol.for('kit.partial.hole'))
     })
   })

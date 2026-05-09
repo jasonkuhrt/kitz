@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { $, e, s } from './_/helpers.js'
 
 const $$ = $.settings({ onError: `throw`, helpOnError: false })

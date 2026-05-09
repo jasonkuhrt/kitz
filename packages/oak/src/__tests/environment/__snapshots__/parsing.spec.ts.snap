@@ -1,9 +1,10 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-exports[`enum can be parsed > throws an error if the value does not pass validation 1`] = `
+exports[`enum can be parsed throws an error if the value does not pass validation 1`] = `
 [
   [
-    "Cannot run command, you made some mistakes:
+    
+"Cannot run command, you made some mistakes:
 
 Invalid argument (via environment variable "cli_param_foo") for parameter: "foo". The error was:
 Invalid option: expected one of "a"|"b"|"c"
@@ -13,20 +14,21 @@ Here are the docs for this command:
 
 PARAMETERS
 
-  [4m[90mName[39m[24m    [4m[90mType[39m[24m               [4m[90mDefault[39m[24m       [4m[90mEnvironment (1)[39m[24m  
+  \x1B[4m\x1B[90mName\x1B[39m\x1B[24m    \x1B[4m\x1B[90mType\x1B[39m\x1B[24m               \x1B[4m\x1B[90mDefault\x1B[39m\x1B[24m       \x1B[4m\x1B[90mEnvironment (1)\x1B[39m\x1B[24m  
                                                             
-  [1m[32mfoo[39m[22m     [34m'a'[39m[2m[90m | [39m[22m[34m'b'[39m[2m[90m | [39m[22m[34m'c'[39m    [1m[30m[101m REQUIRED [49m[39m[22m    [34m✓[39m                
+  \x1B[1m\x1B[32mfoo\x1B[39m\x1B[22m     \x1B[34m'a'\x1B[39m\x1B[2m\x1B[90m | \x1B[39m\x1B[22m\x1B[34m'b'\x1B[39m\x1B[2m\x1B[90m | \x1B[39m\x1B[22m\x1B[34m'c'\x1B[39m    \x1B[1m\x1B[30m\x1B[101m REQUIRED \x1B[49m\x1B[39m\x1B[22m    \x1B[34m✓\x1B[39m                
                                                             
-  [2m[90m     [39m[22m  
-  [2m[90mNOTES[39m[22m  
-  [2m[90m━━━━━[39m[22m  
-  [2m[90m(1) Parameters can be passed arguments via environment variables. Command[39m[22m  
-  [2m[90m    line arguments take precedence. Environment variable names are snake [39m[22m  
-  [2m[90m    cased versions of the parameter name (or its aliases), case          [39m[22m  
-  [2m[90m    insensitive. They must be prefixed with [34mCLI_PARAMETER_[90m or [34mCLI_PARAM_[90m [39m[22m  
-  [2m[90m    (case insensitive). Examples:                                        [39m[22m  
-  [2m[90m    → [34mCLI_PARAMETER_[90m[32mFOO[90m="..."                                            [39m[22m  
-",
+  \x1B[2m\x1B[90m     \x1B[39m\x1B[22m  
+  \x1B[2m\x1B[90mNOTES\x1B[39m\x1B[22m  
+  \x1B[2m\x1B[90m━━━━━\x1B[39m\x1B[22m  
+  \x1B[2m\x1B[90m(1) Parameters can be passed arguments via environment variables. Command\x1B[39m\x1B[22m  
+  \x1B[2m\x1B[90m    line arguments take precedence. Environment variable names are snake \x1B[39m\x1B[22m  
+  \x1B[2m\x1B[90m    cased versions of the parameter name (or its aliases), case          \x1B[39m\x1B[22m  
+  \x1B[2m\x1B[90m    insensitive. They must be prefixed with \x1B[34mCLI_PARAMETER_\x1B[90m or \x1B[34mCLI_PARAM_\x1B[90m \x1B[39m\x1B[22m  
+  \x1B[2m\x1B[90m    (case insensitive). Examples:                                        \x1B[39m\x1B[22m  
+  \x1B[2m\x1B[90m    → \x1B[34mCLI_PARAMETER_\x1B[90m\x1B[32mFOO\x1B[90m="..."                                            \x1B[39m\x1B[22m  
+"
+,
   ],
 ]
 `;

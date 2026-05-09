@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { inspect } from './err/inspect.js'
 import {
   tryAllOrRethrow,

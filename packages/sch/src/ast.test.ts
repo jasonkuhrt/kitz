@@ -1,6 +1,6 @@
 import { Schema as S } from 'effect'
 import * as EAST from 'effect/SchemaAST'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as AST from './ast.js'
 
 describe('ast helpers', () => {

@@ -1,5 +1,5 @@
 import { Assert } from '@kitz/assert'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'bun:test'
 import { $, n } from '../../_/helpers.js'
 import { s } from '../../_/helpers.js'
 import { createState } from '../../environment/__helpers__.js'

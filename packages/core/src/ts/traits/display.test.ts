@@ -1,6 +1,6 @@
 import { Type as A } from '#kitz/assert/assert'
 import { Ts } from '#ts'
-import { describe, test } from 'vitest'
+import { describe, test } from 'bun:test'
 
 // Alias for Ts.Display to make test cases less verbose
 type D<T, Fallback extends string | undefined = undefined> = Ts.Display<T, Fallback>

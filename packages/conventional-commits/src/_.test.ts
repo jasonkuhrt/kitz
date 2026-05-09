@@ -1,7 +1,7 @@
 import { Assert } from '@kitz/assert'
 import { Test } from '@kitz/test'
 import { Effect, Exit, Option, Result, Schema } from 'effect'
-import { expect, test } from 'vitest'
+import { expect, test } from 'bun:test'
 import { ConventionalCommits } from './_.js'
 
 // ─── Fixtures ─────────────────────────────────────────────────────

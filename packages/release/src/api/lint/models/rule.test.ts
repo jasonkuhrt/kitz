@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { HasOpenPR, HasReleasePlan } from './precondition.js'
 import { RuleDefaults, RuleId } from './rule-defaults.js'
 import { Rule } from './rule.js'
@@ -14,7 +14,7 @@ describe('Rule', () => {
     })
     expect(rule._tag).toBe('Rule')
     expect(Rule.is(rule)).toBe(true)
-    expect(rule.id).toBe('env.git-clean')
+    expect(rule.id).toBe<string>('env.git-clean')
     expect(rule.preconditions).toHaveLength(0)
   })
 
@@ -49,7 +49,7 @@ describe('Rule', () => {
     })
     const encoded = Schema.encodeSync(Rule)(rule)
     const decoded = Schema.decodeSync(Rule)(encoded)
-    expect(decoded.id).toBe('env.npm-authenticated')
+    expect(decoded.id).toBe<string>('env.npm-authenticated')
     expect(decoded.preconditions).toHaveLength(1)
     expect(decoded.defaults!.enabled).toBe('auto')
   })

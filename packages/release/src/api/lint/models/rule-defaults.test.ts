@@ -1,6 +1,6 @@
 import { Test } from '@kitz/test'
 import { Exit, Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { RuleDefaults, RuleId } from './rule-defaults.js'
 import * as Severity from './severity.js'
 
@@ -40,7 +40,7 @@ describe('RuleId', () => {
 
   test('RuleId.make creates branded value', () => {
     const id = RuleId.makeUnsafe('env.git-clean')
-    expect(id).toBe('env.git-clean')
+    expect(id).toBe<string>('env.git-clean')
   })
 })
 

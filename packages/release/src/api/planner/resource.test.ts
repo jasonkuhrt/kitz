@@ -1,7 +1,7 @@
 import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
 import { Effect, Option } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Plan } from './models/plan.js'
 import { PLAN_DIR, PLAN_FILE, resolvePlanDir, resolvePlanFile, resource } from './resource.js'
 

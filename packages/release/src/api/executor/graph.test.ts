@@ -1,7 +1,8 @@
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
-import { describe, expect, it as test } from '@effect/vitest'
+import { describe, expect, test } from 'bun:test'
+import { Test } from '@kitz/test'
 import { Effect } from 'effect'
 import { graph, toJsonGraph } from './execute.js'
 import { makeHarness, makePackageJson, planOfficial, tag } from './test-support.js'
@@ -19,7 +20,7 @@ const workspacePackages: Parameters<typeof planOfficial>[0] = [
 const tagCore = (version: string) => tag(Pkg.Moniker.parse('@kitz/core'), version)
 
 describe('Executor graph', () => {
-  test.live('builds the release DAG without starting the workflow runtime', () =>
+  Test.live('builds the release DAG without starting the workflow runtime', () =>
     Effect.gen(function* () {
       const harness = yield* makeHarness({
         git: {

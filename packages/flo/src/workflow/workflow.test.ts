@@ -1,6 +1,6 @@
 import { Effect, Exit, Fiber, Schema, Stream } from 'effect'
 import { WorkflowEngine } from 'effect/unstable/workflow'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as Flo from '../__.js'
 
 const Payload = Schema.Struct({

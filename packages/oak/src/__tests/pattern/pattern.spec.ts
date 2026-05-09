@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest'
+import { expect, it } from 'bun:test'
 import { _, match } from '../../Pattern/Pattern.js'
 
 it.each([

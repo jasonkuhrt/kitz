@@ -1,5 +1,5 @@
 import { Test } from '#kitz/test'
-import { expect, test } from 'vitest'
+import { expect, test } from 'bun:test'
 import { Str } from './_.js'
 
 Test.on(Str.Visual.width)
@@ -155,6 +155,8 @@ Test.on(Str.Visual.wrap)
 test('wrapOn/wrapWith match wrap', () => {
   const input = 'hello world here'
   const expected = Str.Visual.wrap(input, 12)
+  // @ts-expect-error -- bun:test strict-typed matcher
   expect(Str.Visual.wrapOn(input)(12)).toEqual(expected)
+  // @ts-expect-error -- bun:test strict-typed matcher
   expect(Str.Visual.wrapWith(12)(input)).toEqual(expected)
 })

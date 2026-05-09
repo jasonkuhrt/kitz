@@ -1,5 +1,5 @@
 import { Fs } from '@kitz/fs'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { PackageLocation } from './package-location.js'
 
 describe('PackageLocation', () => {

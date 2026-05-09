@@ -1,5 +1,5 @@
-import { beforeEach, expect, vi } from 'vitest'
-import { describe, it } from 'vitest'
+import { beforeEach, expect, vi } from 'bun:test'
+import { describe, it } from 'bun:test'
 import * as z from 'zod/v4'
 import { $, b, n, s } from '../_/helpers.js'
 import { createState, environmentManager } from './__helpers__.js'
@@ -95,4 +95,4 @@ it(`ignores the letter casing of env name`, () => {
   expect(args).toMatchObject({ foo: `bar` })
 })
 
-it.todo(`takes lower precedence than flags`)
+it.todo(`takes lower precedence than flags`, () => {})

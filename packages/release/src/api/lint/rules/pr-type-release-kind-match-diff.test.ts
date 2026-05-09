@@ -1,6 +1,6 @@
 import { ConventionalCommits as CC } from '@kitz/conventional-commits'
 import { Effect, Layer, Option } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { PrTitle } from '../models/violation-location.js'
 import { DiffService } from '../services/diff.js'
 import { PrService } from '../services/pr.js'

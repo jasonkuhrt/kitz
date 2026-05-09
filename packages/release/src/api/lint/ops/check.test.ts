@@ -4,7 +4,7 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Effect, Layer, Option } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { resolveConfig } from '../models/config.js'
 import { Finished } from '../models/report.js'
 import {

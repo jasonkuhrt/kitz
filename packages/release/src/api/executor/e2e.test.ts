@@ -6,7 +6,8 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
-import { describe, expect, it as test } from '@effect/vitest'
+import { describe, expect, test } from 'bun:test'
+import { Test } from '@kitz/test'
 import { Effect, Layer, Ref, Scope, Stream } from 'effect'
 import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
 import { execute, resume } from './execute.js'
@@ -545,7 +546,7 @@ const makeWorkflowTestRuntime = () => makeTestRuntime()
 const E2E_TEST_TIMEOUT_MS = 90_000
 
 describe('Executor e2e', () => {
-  test.live(
+  Test.live(
     'resumes after a prepack failure without re-packing completed packages',
     () =>
       quiet(
@@ -623,7 +624,7 @@ describe('Executor e2e', () => {
   )
 
   for (const scenario of hookFailureScenarios) {
-    test.live(
+    Test.live(
       scenario.name,
       () =>
         quiet(
@@ -666,7 +667,7 @@ describe('Executor e2e', () => {
 
             expect(secondRun._tag).toBe('Success')
             if (secondRun._tag === 'Success') {
-              expect(secondRun.success).toEqual(graphResult)
+              expect(secondRun.success).toEqual<typeof graphResult>(graphResult)
             }
 
             expect(yield* Ref.get(harness.packCalls)).toEqual(scenario.finalPackCalls)
@@ -678,7 +679,7 @@ describe('Executor e2e', () => {
   }
 
   for (const scenario of publishFailureScenarios) {
-    test.live(
+    Test.live(
       scenario.name,
       () =>
         quiet(
@@ -717,7 +718,7 @@ describe('Executor e2e', () => {
 
             expect(secondRun._tag).toBe('Success')
             if (secondRun._tag === 'Success') {
-              expect(secondRun.success).toEqual(graphResult)
+              expect(secondRun.success).toEqual<typeof graphResult>(graphResult)
             }
 
             expect(yield* Ref.get(harness.packCalls)).toEqual(graphResult.releasedPackages)

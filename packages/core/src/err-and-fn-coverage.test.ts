@@ -1,5 +1,5 @@
 import { Effect, Schema } from 'effect'
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, test, vi } from 'bun:test'
 import { TaggedContextualError, hasTag } from './err/contextual.js'
 import { guardNull, log, logUnsafe, throwNull } from './err/__.js'
 import { tryCatch, tryCatchIgnore, tryCatchify, tryOr, tryOrAsync } from './err/try.js'

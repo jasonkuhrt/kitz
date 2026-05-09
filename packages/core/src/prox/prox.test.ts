@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { createCachedGetProxy, createRecursive } from './prox.js'
 
 describe('createCachedGetProxy', () => {

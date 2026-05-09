@@ -1,5 +1,5 @@
-import { expect } from 'vitest'
-import { it } from 'vitest'
+import { expect } from 'bun:test'
+import { it } from 'bun:test'
 import { $, s } from '../_/helpers.js'
 import { environmentManager } from './__helpers__.js'
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { Controls } from './controls.js'
 
 describe('Controls.defaults', () => {

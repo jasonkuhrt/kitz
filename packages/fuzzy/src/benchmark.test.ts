@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Bench } from 'tinybench'
 import { Fuzzy } from './_.js'
 

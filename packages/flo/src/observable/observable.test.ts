@@ -1,6 +1,6 @@
 import { Effect, Exit, PubSub, Schema } from 'effect'
 import { Workflow as EffectWorkflow, WorkflowEngine } from 'effect/unstable/workflow'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as Activity from '../models/activity.js'
 import type { LifecycleEvent } from './observable.js'
 import { ObservableActivity, WorkflowEvents } from './observable.js'

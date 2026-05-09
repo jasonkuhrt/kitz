@@ -1,7 +1,7 @@
 import { Test } from '#kitz/test'
 import { property } from '#kitz/test/test'
 import * as fc from 'fast-check'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Prom } from './_.js'
 
 describe('isShape', () => {

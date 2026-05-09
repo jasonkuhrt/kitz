@@ -1,5 +1,5 @@
 import { Assert } from '@kitz/assert'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { $, b } from '../../_/helpers.js'
 
 it(`implies true`, () => {

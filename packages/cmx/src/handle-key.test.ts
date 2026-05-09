@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { createHandleKey } from './handle-key.js'
 import { AppMap } from './app-map.js'
 import { Command } from './command.js'

@@ -2,7 +2,7 @@ import assert from 'node:assert'
 import { Assert } from '@kitz/assert'
 import { Test } from '@kitz/test'
 import { Schema as S } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import {
   clearExceptTag,
   extractFields,
@@ -171,6 +171,7 @@ describe('struct helpers', () => {
 
     clearExceptTag(tagged)
 
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(tagged).toEqual({ _tag: 'Config' })
   })
 
@@ -183,10 +184,12 @@ describe('struct helpers', () => {
   })
 
   test('pickLiteral1Fields and getValueAtField expose literal schema metadata', () => {
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(pickLiteral1FieldsAsLiterals(Config)).toEqual({
       mode: 'prod',
     })
     expect(Object.keys(pickLiteral1Fields(Config))).toEqual(['_tag', 'mode'])
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(getValueAtField(Config, 'mode')).toBe('prod')
     expect(() => getValueAtField(Config, 'label')).toThrow('not a literal')
   })

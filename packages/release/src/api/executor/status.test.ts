@@ -2,7 +2,8 @@ import { Str } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
-import { describe, expect, it as test } from '@effect/vitest'
+import { describe, expect, test } from 'bun:test'
+import { Test } from '@kitz/test'
 import { Effect, Layer } from 'effect'
 import { execute, formatExecutionStatus, status } from './execute.js'
 import { makeHarness, makePackageJson, planOfficial, tag } from './test-support.js'
@@ -82,7 +83,7 @@ describe('Executor status', () => {
     expect(Str.Visual.strip(rendered)).toContain('Created tags: @kitz/core@1.1.0')
   })
 
-  test.live('reports when the active plan has not started yet', () =>
+  Test.live('reports when the active plan has not started yet', () =>
     Effect.gen(function* () {
       const harness = yield* makeStatusHarness()
       const workflowContext = yield* Layer.build(harness.workflowLayer)
@@ -100,7 +101,7 @@ describe('Executor status', () => {
     }),
   )
 
-  test.live('reports suspended workflow state and resume guidance after a publish failure', () =>
+  Test.live('reports suspended workflow state and resume guidance after a publish failure', () =>
     Effect.gen(function* () {
       const harness = yield* makeStatusHarness({
         failPublishPackages: ['@kitz/cli'],
@@ -130,7 +131,7 @@ describe('Executor status', () => {
     }),
   )
 
-  test.live('reports completed workflow results after a successful release', () =>
+  Test.live('reports completed workflow results after a successful release', () =>
     Effect.gen(function* () {
       const harness = yield* makeStatusHarness()
       const workflowContext = yield* Layer.build(harness.workflowLayer)

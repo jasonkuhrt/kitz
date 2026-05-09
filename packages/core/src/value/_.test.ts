@@ -1,6 +1,6 @@
 import { property } from '#kitz/test/test'
 import * as fc from 'fast-check'
-import { expect, test } from 'vitest'
+import { expect, test } from 'bun:test'
 import { Value } from './_.js'
 
 property('lazy wraps any value in a function', fc.anything(), (value) => {

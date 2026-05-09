@@ -1,5 +1,5 @@
 import { Effect, Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { ArgvSchema, isProcessArgvLoose, parseArgv } from './argv.js'
 import { getCommandTarget } from './commend-target.js'
 

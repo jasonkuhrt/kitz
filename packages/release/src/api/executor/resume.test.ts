@@ -1,7 +1,8 @@
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
-import { describe, expect, it as test } from '@effect/vitest'
+import { describe, expect, test } from 'bun:test'
+import { Test } from '@kitz/test'
 import { Effect, Layer, Ref } from 'effect'
 import {
   execute,
@@ -43,7 +44,7 @@ const tagCli = (version: string) => tag(Pkg.Moniker.parse('@kitz/cli'), version)
 const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect
 
 describe('Executor workflow state', () => {
-  test.live('fails when no persisted workflow state exists yet', () =>
+  Test.live('fails when no persisted workflow state exists yet', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -81,7 +82,7 @@ describe('Executor workflow state', () => {
     ),
   )
 
-  test.live('fails observable resume when no persisted workflow state exists yet', () =>
+  Test.live('fails observable resume when no persisted workflow state exists yet', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -118,7 +119,7 @@ describe('Executor workflow state', () => {
     ),
   )
 
-  test.live(
+  Test.live(
     'persists deterministic workflow identity after a partial multi-package publish failure',
     () =>
       quiet(
@@ -269,7 +270,7 @@ describe('Executor workflow state', () => {
       ),
   )
 
-  test.live('fails when the workflow already completed successfully', () =>
+  Test.live('fails when the workflow already completed successfully', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -309,7 +310,7 @@ describe('Executor workflow state', () => {
     ),
   )
 
-  test.live('fails observable resume when the workflow already completed successfully', () =>
+  Test.live('fails observable resume when the workflow already completed successfully', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({

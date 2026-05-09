@@ -1,47 +1,24 @@
-import { expect } from 'vitest'
+import { expect } from 'bun:test'
 import '../../../test/src/matchers/_.js'
 import { Path } from './_.js'
 
-interface PathMatchers<R = unknown> {
-  /**
-   * Check if the Path is absolute
-   */
-  toBeAbs(): R
-
-  /**
-   * Check if the Path is relative
-   */
-  toBeRel(): R
-
-  /**
-   * Check if the Path is a file
-   */
-  toBeFile(): R
-
-  /**
-   * Check if the Path is a directory
-   */
-  toBeDir(): R
-
-  /**
-   * Check if the Path is at root (no path segments)
-   */
-  toBeRoot(): R
-
-  /**
-   * Check if the Path is within a given directory
-   */
-  toBeWithin(parent: Path.$Dir): R
-
-  /**
-   * Check if the Path encodes to the expected string
-   */
-  toEncodeTo(expected: string): R
-}
-
-declare module 'vitest' {
-  interface Assertion<T = any> extends PathMatchers<T> {}
-  interface AsymmetricMatchersContaining extends PathMatchers {}
+declare module 'bun:test' {
+  interface Matchers<T = unknown> {
+    /** Check if the Path is absolute */
+    toBeAbs(): void
+    /** Check if the Path is relative */
+    toBeRel(): void
+    /** Check if the Path is a file */
+    toBeFile(): void
+    /** Check if the Path is a directory */
+    toBeDir(): void
+    /** Check if the Path is at root (no path segments) */
+    toBeRoot(): void
+    /** Check if the Path is within a given directory (renamed from toBeWithin to avoid bun:test's numeric range matcher) */
+    toBeWithinPath(parent: Path.$Dir): void
+    /** Check if the Path encodes to the expected string */
+    toEncodeTo(expected: string): void
+  }
 }
 
 expect.extend({
@@ -108,7 +85,7 @@ expect.extend({
     }
   },
 
-  toBeWithin(received: Path, parent: Path.$Dir) {
+  toBeWithinPath(received: Path, parent: Path.$Dir) {
     // Convert both to absolute for comparison if needed
     const receivedStr = Path.toString(received)
     const parentStr = Path.toString(parent)
@@ -143,4 +120,4 @@ expect.extend({
           : `Expected Path to encode to "${expected}", but got "${actual}"`,
     }
   },
-})
+} as never)

@@ -1,4 +1,5 @@
-import { describe, expect, it as test } from '@effect/vitest'
+import { describe, expect, test } from 'bun:test'
+import { Test } from '@kitz/test'
 import { WorkflowEngine } from 'effect/unstable/workflow'
 import { Github } from '@kitz/github'
 import { Fs } from '@kitz/fs'
@@ -6,7 +7,7 @@ import { Duration, Effect } from 'effect'
 import { makeRuntime, makeTestRuntime, makeWorkflowRuntime } from './runtime.js'
 
 describe('Executor runtime', () => {
-  test.effect('builds the SQLite-backed workflow runtime layer', (_ctx) => {
+  Test.effect('builds the SQLite-backed workflow runtime layer', () => {
     const dbPath = Fs.Path.AbsFile.fromString(
       `/tmp/kitz-workflow-runtime-${crypto.randomUUID()}.db`,
     )
@@ -30,7 +31,7 @@ describe('Executor runtime', () => {
     )
   })
 
-  test.effect('provides a helpful fallback github runtime when github config is absent', (_ctx) =>
+  Test.effect('provides a helpful fallback github runtime when github config is absent', () =>
     Effect.gen(function* () {
       const github = yield* Github.Github
 
@@ -69,7 +70,7 @@ describe('Executor runtime', () => {
     ),
   )
 
-  test.effect('builds the in-memory workflow runtime layer for tests', (_ctx) =>
+  Test.effect('builds the in-memory workflow runtime layer for tests', () =>
     Effect.gen(function* () {
       const engine = yield* WorkflowEngine.WorkflowEngine
       expect(engine).toBeDefined()

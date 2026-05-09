@@ -3,7 +3,8 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { describe, expect, it as test } from '@effect/vitest'
+import { describe, expect, test } from 'bun:test'
+import { Test } from '@kitz/test'
 import { Effect, Ref } from 'effect'
 import {
   execute as executeWorkflow,
@@ -34,7 +35,7 @@ const tagCore = (version: string) => tag(Pkg.Moniker.parse('@kitz/core'), versio
 const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect
 
 describe('Workflow integration', () => {
-  test.live(
+  Test.live(
     'runs non-dry-run official workflow with mocked services and restores manifest semver',
     () =>
       quiet(
@@ -100,7 +101,7 @@ describe('Workflow integration', () => {
       ),
   )
 
-  test.live('fails preflight on conflicting tag and does not publish', () =>
+  Test.live('fails preflight on conflicting tag and does not publish', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -145,7 +146,7 @@ describe('Workflow integration', () => {
     ),
   )
 
-  test.live(
+  Test.live(
     'maps publish failures to WorkflowPublishError and restores manifest after retries',
     () =>
       quiet(
@@ -200,7 +201,7 @@ describe('Workflow integration', () => {
       ),
   )
 
-  test.live('surfaces cleanup guidance when pack hooks exist and artifact preparation fails', () =>
+  Test.live('surfaces cleanup guidance when pack hooks exist and artifact preparation fails', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -265,7 +266,7 @@ describe('Workflow integration', () => {
     ),
   )
 
-  test.live('updates existing GitHub candidate release when tag option is next', () =>
+  Test.live('updates existing GitHub candidate release when tag option is next', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -313,7 +314,7 @@ describe('Workflow integration', () => {
     ),
   )
 
-  test.live('creates PR releases as GitHub prereleases without --tag next', () =>
+  Test.live('creates PR releases as GitHub prereleases without --tag next', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({
@@ -346,7 +347,7 @@ describe('Workflow integration', () => {
     ),
   )
 
-  test.live('observable workflow exposes graph in dry-run mode', () =>
+  Test.live('observable workflow exposes graph in dry-run mode', () =>
     quiet(
       Effect.gen(function* () {
         const harness = yield* makeHarness({

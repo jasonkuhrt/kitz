@@ -1,5 +1,5 @@
 import { Test } from '@kitz/test'
-import { describe, expect } from 'vitest'
+import { describe, expect } from 'bun:test'
 import { type Options, passesFilter } from './options.js'
 
 describe('passesFilter', () => {

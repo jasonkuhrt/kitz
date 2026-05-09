@@ -2,7 +2,7 @@ import { Assert } from '#kitz/assert'
 import { property } from '#kitz/test/test'
 import { Undefined } from '#undefined'
 import * as fc from 'fast-check'
-import { expect, test } from 'vitest'
+import { expect, test } from 'bun:test'
 
 const A = Assert.Type.exact.ofAs
 

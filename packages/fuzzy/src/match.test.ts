@@ -1,5 +1,5 @@
 import { Test } from '@kitz/test'
-import { expect, test } from 'vitest'
+import { expect, test } from 'bun:test'
 import { match } from './match.js'
 
 const texts = (results: ReadonlyArray<{ candidate: { text: string }; score: number }>) =>

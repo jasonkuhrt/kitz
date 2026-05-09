@@ -1,6 +1,6 @@
 import { Test } from '#kitz/test'
 import { Schema as S } from 'effect'
-import { expect } from 'vitest'
+import { expect } from 'bun:test'
 import { ContextualAggregateError, partitionAndAggregateErrors } from './aggregate.js'
 import { TaggedContextualError } from './contextual.js'
 
@@ -35,6 +35,7 @@ Test.describe('ContextualAggregateError > creation')
   .test(({ input, output }) => {
     const aggregate = new ContextualAggregateError(input)
 
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(aggregate._tag).toBe(output.tag)
     expect(aggregate.errors).toHaveLength(output.errorsLength)
     expect(aggregate.cause !== undefined).toBe(output.causeIsDefined)

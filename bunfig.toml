@@ -3,3 +3,38 @@ linker = "isolated"
 
 [run]
 bun = true
+
+[test]
+# Files matching these patterns are not picked up as tests
+pathIgnorePatterns = [
+  "**/build/**",
+  ".claude/**",
+  "**/*.demo.{js,jsx,ts,tsx,mjs,mts,cjs,cts}",
+  "**/*.test-d.ts",
+  "**/*.bench-d.ts",
+  "tools/oxlint-custom-rules/tests/fixtures/**",
+]
+
+# Coverage configuration. Bun uses JSC's native Inspector.Coverage agent —
+# no v8/inspector profiler dependency, so this works under bun runtime.
+coverageReporter = ["text", "lcov"]
+coverageSkipTestFiles = true
+coveragePathIgnorePatterns = [
+  "**/*.d.ts",
+  "**/*.test-d.ts",
+  "**/*.bench-d.ts",
+  "**/*.test-helpers.ts",
+  "**/*.demo.{js,jsx,ts,tsx,mjs,mts,cjs,cts}",
+  "**/__tests/**",
+  "**/__tests__/**",
+  "**/__snapshots__/**",
+  "**/__mocks__/**",
+  "**/__examples__/**",
+  "**/build/**",
+  ".claude/**",
+  "tools/oxlint-custom-rules/tests/fixtures/**",
+]
+
+[test.coverageThreshold]
+lines = 0.7
+functions = 0.7

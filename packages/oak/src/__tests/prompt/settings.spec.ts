@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import type { OakSchema } from '../../schema/oak-schema.js'
 import type { Settings } from '../../Settings/_.js'
 import { $, s, tryCatch } from '../_/helpers.js'

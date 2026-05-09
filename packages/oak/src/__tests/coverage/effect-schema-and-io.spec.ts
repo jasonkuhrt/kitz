@@ -1,5 +1,5 @@
 import { Effect, Exit, Option, Schema, SchemaGetter, Stream } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 
 /**
  * Strip ANSI escape codes from all `displayType` string values in an object tree.
@@ -481,6 +481,7 @@ describe('oak coverage helpers: effect schema and io', () => {
     const filtered = await Effect.runPromise(
       Stream.runCollect(channels.readKeyPresses({ matching: ['return'] })),
     )
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(Array.from(filtered)).toEqual([keyEvent('return')])
     expect(() => Effect.runSync(channels.readLine())).toThrow('No more values in read script.')
 

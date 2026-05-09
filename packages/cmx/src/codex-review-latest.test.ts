@@ -5,7 +5,7 @@
  * P1: Token reorder scoring — reordered terms outscore in-order (FIXED)
  * P2: choiceUndo pops treePath for leaf choices
  */
-import { describe, expect, it, test } from 'vitest'
+import { describe, expect, it, test } from 'bun:test'
 import { Effect, Layer, ServiceMap, Schema as S } from 'effect'
 import { Session } from './session.js'
 import { Command } from './command.js'

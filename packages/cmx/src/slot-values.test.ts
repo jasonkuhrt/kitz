@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { Effect, Layer, ServiceMap } from 'effect'
 import { SlotValues, makeSlotValuesLayer, buildExecutableEffect } from './slot-values.js'
 

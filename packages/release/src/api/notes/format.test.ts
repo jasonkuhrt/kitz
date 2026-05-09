@@ -1,6 +1,6 @@
 import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Effect } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { type CommitEntry, format } from './format.js'
 
 const run = <A>(effect: Effect.Effect<A>) => Effect.runSync(effect)

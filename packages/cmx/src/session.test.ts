@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { Effect, Layer, Schema as S } from 'effect'
 import { Session } from './session.js'
 import { Command } from './command.js'

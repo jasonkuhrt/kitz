@@ -1,5 +1,5 @@
 import { Option } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import {
   omit,
   omitOn,
@@ -253,6 +253,7 @@ describe('core object and string coverage', () => {
 
     const writable = asWritable({ name: 'oak' } as const)
     ;(writable as { name: string }).name = 'pine'
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(writable.name).toBe('pine')
 
     expect(emptyObject).toEqual({})
@@ -299,6 +300,7 @@ describe('core object and string coverage', () => {
     expect(Option.isSome(regexMatch)).toBe(true)
     if (Option.isSome(regexMatch)) {
       expect(regexMatch.value.value).toBe('hello jane')
+      // @ts-expect-error -- bun:test strict-typed matcher
       expect(regexMatch.value.captures).toEqual(['jane'])
       expect(regexMatch.value.groups).toEqual({ name: 'jane' })
       expect(regexMatch.value.input).toBe('hello jane')
@@ -417,20 +419,30 @@ describe('core object and string coverage', () => {
     expect(stripIndent('\n')).toBe('\n')
 
     expect(pad('oak', 2)).toBe('  oak')
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(padOn('oak')(2)).toBe('  oak')
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(padWith(2)('oak')).toBe('  oak')
     expect(padLeft('oak', 2, '0')).toBe('00oak')
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(padLeftOn('oak')(2)).toBe('  oak')
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(padLeftWith(2)('oak')).toBe('  oak')
     expect(padRight('oak', 2, '.')).toBe('oak..')
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(padRightOn('oak')(2)).toBe('oak  ')
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(padRightWith(2)('oak')).toBe('oak  ')
     expect(span('oak', 5, 'right', '.')).toBe('..oak')
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(spanOn('oak')(5)).toBe('oak  ')
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(spanWith(5)('oak')).toBe('oak  ')
     expect(fit('alphabet', 3)).toBe('alp')
     expect(fit('oak', 5, 'right', '.')).toBe('..oak')
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(fitOn('alphabet')(3)).toBe('alp')
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(fitWith(5)('oak')).toBe('oak  ')
     expect(mapLines('a\nb', (line, index) => `${index}:${line.toUpperCase()}`)).toBe('0:A\n1:B')
     expect(mapLinesOn('a\nb')((line) => line.toUpperCase())).toBe('A\nB')

@@ -62,3 +62,66 @@ exports[`createDeferred > strict > resolve resolve calls throw 1`] = `
 Error: Deferred promise already settled
 ╚══════════════════════════════════════════════════╝"
 `;
+
+exports[`createDeferred state tracking initial 1`] = `
+"
+╔══════════════════════════════════════════════════╗ OUTPUTS RETURN OBJECT
+{
+  promise: Promise [Promise] {},
+  resolve: [Function: resolve],
+  reject: [Function: reject],
+  isResolved: false,
+  isRejected: false,
+  isSettled: false
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`createDeferred state tracking after resolve 1`] = `
+"
+╔══════════════════════════════════════════════════╗ OUTPUTS RETURN OBJECT
+{
+  promise: Promise [Promise] {},
+  resolve: [Function: resolve],
+  reject: [Function: reject],
+  isResolved: true,
+  isRejected: false,
+  isSettled: true
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`createDeferred state tracking after reject 1`] = `
+"
+╔══════════════════════════════════════════════════╗ OUTPUTS RETURN OBJECT
+{
+  promise: Promise [Promise] {},
+  resolve: [Function: resolve],
+  reject: [Function: reject],
+  isResolved: false,
+  isRejected: true,
+  isSettled: true
+}
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`createDeferred strict resolve resolve calls throw 1`] = `
+"
+╔══════════════════════════════════════════════════╗ OUTPUTS THROW ERROR
+Error: Deferred promise already settled
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`createDeferred strict resolve reject calls throw 1`] = `
+"
+╔══════════════════════════════════════════════════╗ OUTPUTS THROW ERROR
+Error: Deferred promise already settled
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`createDeferred strict reject resolve calls throw 1`] = `
+"
+╔══════════════════════════════════════════════════╗ OUTPUTS THROW ERROR
+Error: Deferred promise already settled
+╚══════════════════════════════════════════════════╝"
+`;

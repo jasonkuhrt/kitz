@@ -11,7 +11,7 @@
  */
 import { Option } from 'effect'
 import * as fc from 'fast-check'
-import { expect } from 'vitest'
+import { expect } from 'bun:test'
 import { Test } from '@kitz/test'
 import { Fuzzy } from './_.js'
 

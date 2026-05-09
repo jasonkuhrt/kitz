@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { match } from '../../Pattern/Pattern.js'
 import * as Text from '../../lib/Text/Text.js'
 

@@ -1,7 +1,7 @@
 import { Str } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Effect, Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Failed, Finished, Report, Skipped } from '../models/report.js'
 import { RuleId } from '../models/rule-defaults.js'
 import * as Severity from '../models/severity.js'

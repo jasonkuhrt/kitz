@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as Severity from './severity.js'
 
 describe('Severity', () => {

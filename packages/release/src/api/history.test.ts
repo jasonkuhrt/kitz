@@ -2,7 +2,7 @@ import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Ref } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as History from './analyzer/history.js'
 
 const packageName = '@kitz/core'

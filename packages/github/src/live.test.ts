@@ -5,7 +5,7 @@ import {
   HttpClientRequest,
   HttpClientResponse,
 } from 'effect/unstable/http'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'bun:test'
 import { getGithubToken } from './env.js'
 import { Github } from './_.js'
 
@@ -113,9 +113,11 @@ const expectGithubRateLimitError = (error: unknown): Github.GithubRateLimitError
   return error
 }
 
+const realFetch = globalThis.fetch
+
 afterEach(() => {
   delete process.env[`GITHUB_TOKEN`]
-  vi.unstubAllGlobals()
+  globalThis.fetch = realFetch
 })
 
 describe('getGithubToken', () => {
@@ -455,15 +457,12 @@ describe('Github.Live', () => {
 
 describe('Github.LiveFetch', () => {
   test('provides a fully configured live layer backed by fetch', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () =>
-        jsonResponse({
-          id: 1,
-          tag_name: 'v3.0.0',
-        }),
-      ),
-    )
+    globalThis.fetch = vi.fn(async () =>
+      jsonResponse({
+        id: 1,
+        tag_name: 'v3.0.0',
+      }),
+    ) as unknown as typeof globalThis.fetch
 
     const result = await Effect.runPromise(
       Effect.gen(function* () {

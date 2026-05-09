@@ -9,7 +9,7 @@
  */
 import { Test } from '@kitz/test'
 import { Option } from 'effect'
-import { expect, test } from 'vitest'
+import { expect, test } from 'bun:test'
 import { Fuzzy } from './_.js'
 
 // ASCII case folding works

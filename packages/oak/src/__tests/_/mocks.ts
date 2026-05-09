@@ -1,7 +1,6 @@
-import type { MockInstance } from 'vitest'
-import { beforeEach, vi } from 'vitest'
+import { beforeEach, vi, spyOn } from 'bun:test'
 
-export let exit: MockInstance
+export let exit: ReturnType<typeof spyOn>
 
 beforeEach(() => {
   exit = vi.spyOn(process, `exit`).mockImplementation(() => undefined as never)

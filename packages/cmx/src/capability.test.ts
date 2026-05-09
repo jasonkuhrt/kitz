@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { Effect, Schema as S } from 'effect'
 import { Capability } from './capability.js'
 import { Slot } from './slot.js'

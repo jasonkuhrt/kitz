@@ -1,6 +1,82 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-exports[`Renderer > DAG mode > compact > renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:A', 'Publish:B' ], [ 'CreateTag' ] ], ed...) 1`] = `
+exports[`Renderer list mode renderList({ activities: [ 'Preflight', 'Publish:core', 'Publish:flo', 'CreateTag', 'PushTa...) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
+○ Preflight
+○ Publish:core
+○ Publish:flo
+○ CreateTag
+○ PushTags
+
+0/5 completed (0)
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Renderer list mode renderList({ activities: [ 'Preflight', 'Publish:core', 'Publish:flo', 'CreateTag', 'PushTa...) 2`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
+● Preflight
+○ Publish:core
+○ Publish:flo
+○ CreateTag
+○ PushTags
+
+0/5 completed (0)
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Renderer list mode renderList({ activities: [ 'Preflight', 'Publish:core', 'Publish:flo', 'CreateTag', 'PushTa...) 3`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
+✓ Preflight
+● Publish:core
+○ Publish:flo
+○ CreateTag
+○ PushTags
+
+1/5 completed (0)
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Renderer list mode renderList({ activities: [ 'Preflight', 'Publish:core', 'Publish:flo', 'CreateTag', 'PushTa...) 4`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
+✓ Preflight
+✓ Publish:core
+✓ Publish:flo
+✓ CreateTag
+✓ PushTags
+
+5/5 completed (0)
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Renderer list mode renderList({ activities: [ 'Preflight', 'Publish:core', 'Publish:flo', 'CreateTag', 'PushTa...) 5`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
+✓ Preflight
+✗ Publish:core
+○ Publish:flo
+○ CreateTag
+○ PushTags
+
+1/5 completed (0)
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Renderer list mode renderList({ activities: [ 'Step1', 'Step2', 'Step3' ], colors: true, events: [ Started { a...) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
+\x1B[32m✓\x1B[39m Step1
+\x1B[33m●\x1B[39m Step2
+\x1B[90m○\x1B[39m Step3
+
+\x1B[2m1/3 completed (0)\x1B[22m
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`Renderer DAG mode compact renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:A', 'Publish:B' ], [ 'CreateTag' ] ], ed...) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 Workflow Progress
@@ -15,7 +91,7 @@ Layer 2: ○ CreateTag
 ╚══════════════════════════════════════════════════╝"
 `;
 
-exports[`Renderer > DAG mode > compact > renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:A', 'Publish:B' ], [ 'CreateTag' ] ], ed...) 2`] = `
+exports[`Renderer DAG mode compact renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:A', 'Publish:B' ], [ 'CreateTag' ] ], ed...) 2`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 Workflow Progress
@@ -30,7 +106,7 @@ Layer 2: ○ CreateTag
 ╚══════════════════════════════════════════════════╝"
 `;
 
-exports[`Renderer > DAG mode > compact > renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:A', 'Publish:B' ], [ 'CreateTag' ] ], ed...) 3`] = `
+exports[`Renderer DAG mode compact renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:A', 'Publish:B' ], [ 'CreateTag' ] ], ed...) 3`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 Workflow Progress
@@ -45,7 +121,7 @@ Layer 2: ○ CreateTag
 ╚══════════════════════════════════════════════════╝"
 `;
 
-exports[`Renderer > DAG mode > compact > renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:A', 'Publish:B' ], [ 'CreateTag' ] ], ed...) 4`] = `
+exports[`Renderer DAG mode compact renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:A', 'Publish:B' ], [ 'CreateTag' ] ], ed...) 4`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 Workflow Progress
@@ -60,7 +136,7 @@ Layer 2: ✓ CreateTag
 ╚══════════════════════════════════════════════════╝"
 `;
 
-exports[`Renderer > DAG mode > compact > renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:A', 'Publish:B' ], [ 'CreateTag' ] ], ed...) 5`] = `
+exports[`Renderer DAG mode compact renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:A', 'Publish:B' ], [ 'CreateTag' ] ], ed...) 5`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 Workflow Progress
@@ -75,22 +151,22 @@ Layer 2: ○ CreateTag
 ╚══════════════════════════════════════════════════╝"
 `;
 
-exports[`Renderer > DAG mode > compact > renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:A', 'Publish:B' ], [ 'CreateTag' ] ], ed...) 6`] = `
+exports[`Renderer DAG mode compact renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:A', 'Publish:B' ], [ 'CreateTag' ] ], ed...) 6`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
-[1m[36mWorkflow Progress[39m[22m
+\x1B[1m\x1B[36mWorkflow Progress\x1B[39m\x1B[22m
 
-[2mLayer 0:[22m [32m✓ Preflight[39m
-[2mLayer 1:[22m
-[33m● Publish:A[39m
-[90m○ Publish:B[39m
-[2mLayer 2:[22m [90m○ CreateTag[39m
+\x1B[2mLayer 0:\x1B[22m \x1B[32m✓ Preflight\x1B[39m
+\x1B[2mLayer 1:\x1B[22m
+\x1B[33m● Publish:A\x1B[39m
+\x1B[90m○ Publish:B\x1B[39m
+\x1B[2mLayer 2:\x1B[22m \x1B[90m○ CreateTag\x1B[39m
 
-[2m1/4 completed (0)[22m
+\x1B[2m1/4 completed (0)\x1B[22m
 ╚══════════════════════════════════════════════════╝"
 `;
 
-exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ 'StepB', 'StepC' ], [ 'StepD' ] ], edges: [ [ 'StepA'...) 1`] = `
+exports[`Renderer DAG mode full renderDagFull({ layers: [ [ 'StepA' ], [ 'StepB', 'StepC' ], [ 'StepD' ] ], edges: [ [ 'StepA'...) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 
@@ -302,7 +378,7 @@ exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ '
 ╚══════════════════════════════════════════════════╝"
 `;
 
-exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ 'StepB', 'StepC' ], [ 'StepD' ] ], edges: [ [ 'StepA'...) 2`] = `
+exports[`Renderer DAG mode full renderDagFull({ layers: [ [ 'StepA' ], [ 'StepB', 'StepC' ], [ 'StepD' ] ], edges: [ [ 'StepA'...) 2`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 
@@ -514,81 +590,81 @@ exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ '
 ╚══════════════════════════════════════════════════╝"
 `;
 
-exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ 'StepB', 'StepC' ], [ 'StepD' ] ], edges: [ [ 'StepA'...) 3`] = `
+exports[`Renderer DAG mode full renderDagFull({ layers: [ [ 'StepA' ], [ 'StepB', 'StepC' ], [ 'StepD' ] ], edges: [ [ 'StepA'...) 3`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 
 
 
-[32m┌──────────┐[39m
-[32m│[39m✓  StepA   [32m│[39m
-[32m└──────────┘[39m
+\x1B[32m┌──────────┐\x1B[39m
+\x1B[32m│\x1B[39m✓  StepA   \x1B[32m│\x1B[39m
+\x1B[32m└──────────┘\x1B[39m
 
 ──→
 
-[33m┌──────────┐[39m
-[33m│[39m●  StepB   [33m│[39m
-[33m└──────────┘[39m
+\x1B[33m┌──────────┐\x1B[39m
+\x1B[33m│\x1B[39m●  StepB   \x1B[33m│\x1B[39m
+\x1B[33m└──────────┘\x1B[39m
 
 ──→
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepD   [90m│[39m
-[90m└──────────┘[39m
+\x1B[90m┌──────────┐\x1B[39m
+\x1B[90m│\x1B[39m○  StepD   \x1B[90m│\x1B[39m
+\x1B[90m└──────────┘\x1B[39m
 
 
 
-[32m┌──────────┐[39m
-[32m│[39m✓  StepA   [32m│[39m
-[32m└──────────┘[39m
-
-──→
-
-[33m┌──────────┐[39m
-[33m│[39m●  StepB   [33m│[39m
-[33m└──────────┘[39m
+\x1B[32m┌──────────┐\x1B[39m
+\x1B[32m│\x1B[39m✓  StepA   \x1B[32m│\x1B[39m
+\x1B[32m└──────────┘\x1B[39m
 
 ──→
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepD   [90m│[39m
-[90m└──────────┘[39m
-
-
-
-[32m┌──────────┐[39m
-[32m│[39m✓  StepA   [32m│[39m
-[32m└──────────┘[39m
+\x1B[33m┌──────────┐\x1B[39m
+\x1B[33m│\x1B[39m●  StepB   \x1B[33m│\x1B[39m
+\x1B[33m└──────────┘\x1B[39m
 
 ──→
 
-[33m┌──────────┐[39m
-[33m│[39m●  StepB   [33m│[39m
-[33m└──────────┘[39m
+\x1B[90m┌──────────┐\x1B[39m
+\x1B[90m│\x1B[39m○  StepD   \x1B[90m│\x1B[39m
+\x1B[90m└──────────┘\x1B[39m
+
+
+
+\x1B[32m┌──────────┐\x1B[39m
+\x1B[32m│\x1B[39m✓  StepA   \x1B[32m│\x1B[39m
+\x1B[32m└──────────┘\x1B[39m
 
 ──→
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepD   [90m│[39m
-[90m└──────────┘[39m
-
-
-
-[32m┌──────────┐[39m
-[32m│[39m✓  StepA   [32m│[39m
-[32m└──────────┘[39m
+\x1B[33m┌──────────┐\x1B[39m
+\x1B[33m│\x1B[39m●  StepB   \x1B[33m│\x1B[39m
+\x1B[33m└──────────┘\x1B[39m
 
 ──→
 
-[33m┌──────────┐[39m
-[33m│[39m●  StepB   [33m│[39m
-[33m└──────────┘[39m
+\x1B[90m┌──────────┐\x1B[39m
+\x1B[90m│\x1B[39m○  StepD   \x1B[90m│\x1B[39m
+\x1B[90m└──────────┘\x1B[39m
+
+
+
+\x1B[32m┌──────────┐\x1B[39m
+\x1B[32m│\x1B[39m✓  StepA   \x1B[32m│\x1B[39m
+\x1B[32m└──────────┘\x1B[39m
 
 ──→
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepD   [90m│[39m
-[90m└──────────┘[39m
+\x1B[33m┌──────────┐\x1B[39m
+\x1B[33m│\x1B[39m●  StepB   \x1B[33m│\x1B[39m
+\x1B[33m└──────────┘\x1B[39m
+
+──→
+
+\x1B[90m┌──────────┐\x1B[39m
+\x1B[90m│\x1B[39m○  StepD   \x1B[90m│\x1B[39m
+\x1B[90m└──────────┘\x1B[39m
 
 │
 
@@ -598,63 +674,21 @@ exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ '
 
 
 
-[32m┌──────────┐[39m
-[32m│[39m✓  StepA   [32m│[39m
-[32m└──────────┘[39m
+\x1B[32m┌──────────┐\x1B[39m
+\x1B[32m│\x1B[39m✓  StepA   \x1B[32m│\x1B[39m
+\x1B[32m└──────────┘\x1B[39m
 
 ──→
 
-[33m┌──────────┐[39m
-[33m│[39m●  StepB   [33m│[39m
-[33m└──────────┘[39m
+\x1B[33m┌──────────┐\x1B[39m
+\x1B[33m│\x1B[39m●  StepB   \x1B[33m│\x1B[39m
+\x1B[33m└──────────┘\x1B[39m
 
 ──→
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepD   [90m│[39m
-[90m└──────────┘[39m
-
-│
-
-│
-
-
-
-
-
-
-
-
-
-
-
-[90m┌──────────┐[39m
-[90m│[39m○  StepC   [90m│[39m
-[90m└──────────┘[39m
-
-──→
-
-
-
-
-
-
-
-[32m┌──────────┐[39m
-[32m│[39m✓  StepA   [32m│[39m
-[32m└──────────┘[39m
-
-──→
-
-[33m┌──────────┐[39m
-[33m│[39m●  StepB   [33m│[39m
-[33m└──────────┘[39m
-
-──→
-
-[90m┌──────────┐[39m
-[90m│[39m○  StepD   [90m│[39m
-[90m└──────────┘[39m
+\x1B[90m┌──────────┐\x1B[39m
+\x1B[90m│\x1B[39m○  StepD   \x1B[90m│\x1B[39m
+\x1B[90m└──────────┘\x1B[39m
 
 │
 
@@ -670,9 +704,9 @@ exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ '
 
 
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepC   [90m│[39m
-[90m└──────────┘[39m
+\x1B[90m┌──────────┐\x1B[39m
+\x1B[90m│\x1B[39m○  StepC   \x1B[90m│\x1B[39m
+\x1B[90m└──────────┘\x1B[39m
 
 ──→
 
@@ -682,21 +716,21 @@ exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ '
 
 
 
-[32m┌──────────┐[39m
-[32m│[39m✓  StepA   [32m│[39m
-[32m└──────────┘[39m
+\x1B[32m┌──────────┐\x1B[39m
+\x1B[32m│\x1B[39m✓  StepA   \x1B[32m│\x1B[39m
+\x1B[32m└──────────┘\x1B[39m
 
 ──→
 
-[33m┌──────────┐[39m
-[33m│[39m●  StepB   [33m│[39m
-[33m└──────────┘[39m
+\x1B[33m┌──────────┐\x1B[39m
+\x1B[33m│\x1B[39m●  StepB   \x1B[33m│\x1B[39m
+\x1B[33m└──────────┘\x1B[39m
 
 ──→
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepD   [90m│[39m
-[90m└──────────┘[39m
+\x1B[90m┌──────────┐\x1B[39m
+\x1B[90m│\x1B[39m○  StepD   \x1B[90m│\x1B[39m
+\x1B[90m└──────────┘\x1B[39m
 
 │
 
@@ -712,9 +746,9 @@ exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ '
 
 
 
-[90m┌──────────┐[39m
-[90m│[39m○  StepC   [90m│[39m
-[90m└──────────┘[39m
+\x1B[90m┌──────────┐\x1B[39m
+\x1B[90m│\x1B[39m○  StepC   \x1B[90m│\x1B[39m
+\x1B[90m└──────────┘\x1B[39m
 
 ──→
 
@@ -722,619 +756,53 @@ exports[`Renderer > DAG mode > full > renderDagFull({ layers: [ [ 'StepA' ], [ '
 
 
 
-[2m1/4 completed (0)[22m
+
+
+\x1B[32m┌──────────┐\x1B[39m
+\x1B[32m│\x1B[39m✓  StepA   \x1B[32m│\x1B[39m
+\x1B[32m└──────────┘\x1B[39m
+
+──→
+
+\x1B[33m┌──────────┐\x1B[39m
+\x1B[33m│\x1B[39m●  StepB   \x1B[33m│\x1B[39m
+\x1B[33m└──────────┘\x1B[39m
+
+──→
+
+\x1B[90m┌──────────┐\x1B[39m
+\x1B[90m│\x1B[39m○  StepD   \x1B[90m│\x1B[39m
+\x1B[90m└──────────┘\x1B[39m
+
+│
+
+│
+
+
+
+
+
+
+
+
+
+
+
+\x1B[90m┌──────────┐\x1B[39m
+\x1B[90m│\x1B[39m○  StepC   \x1B[90m│\x1B[39m
+\x1B[90m└──────────┘\x1B[39m
+
+──→
+
+
+
+
+
+\x1B[2m1/4 completed (0)\x1B[22m
 ╚══════════════════════════════════════════════════╝"
 `;
 
-exports[`Renderer > complex DAG > full > renderDagFull({ layers: [ [ 'Preflight' ], [ 'Publish:@kitz/core', 'Publish:@kitz/flo', 'Publi...) 1`] = `
-"
-╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
-
-
-
-┌────────────────────┐
-│○     Preflight      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/core │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○     CreateTag      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○      PushTags      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○     Preflight      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/core │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○     CreateTag      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○      PushTags      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○     Preflight      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/core │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○     CreateTag      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○      PushTags      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○     Preflight      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/core │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○     CreateTag      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○      PushTags      │
-└────────────────────┘
-
-
-
-│
-
-
-
-
-
-
-
-┌────────────────────┐
-│○     Preflight      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/core │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○     CreateTag      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○      PushTags      │
-└────────────────────┘
-
-
-
-│
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/flo  │
-└────────────────────┘
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌────────────────────┐
-│○     Preflight      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/core │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○     CreateTag      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○      PushTags      │
-└────────────────────┘
-
-
-
-│
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/flo  │
-└────────────────────┘
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌────────────────────┐
-│○     Preflight      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/core │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○     CreateTag      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○      PushTags      │
-└────────────────────┘
-
-
-
-│
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/flo  │
-└────────────────────┘
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌────────────────────┐
-│○     Preflight      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/core │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○     CreateTag      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○      PushTags      │
-└────────────────────┘
-
-
-
-│
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/flo  │
-└────────────────────┘
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-│
-
-
-
-
-
-
-
-┌────────────────────┐
-│○     Preflight      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/core │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○     CreateTag      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○      PushTags      │
-└────────────────────┘
-
-
-
-│
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/flo  │
-└────────────────────┘
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-│
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/syn  │
-└────────────────────┘
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌────────────────────┐
-│○     Preflight      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/core │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○     CreateTag      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○      PushTags      │
-└────────────────────┘
-
-
-
-│
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/flo  │
-└────────────────────┘
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-│
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/syn  │
-└────────────────────┘
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌────────────────────┐
-│○     Preflight      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/core │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○     CreateTag      │
-└────────────────────┘
-
-
-
-┌────────────────────┐
-│○      PushTags      │
-└────────────────────┘
-
-
-
-│
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/flo  │
-└────────────────────┘
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-│
-
-
-
-
-
-
-
-
-
-
-
-
-
-┌────────────────────┐
-│○ Publish:@kitz/syn  │
-└────────────────────┘
-
-
-
-
-
-
-
-
-
-
-
-
-
-0/6 completed (0)
-╚══════════════════════════════════════════════════╝"
-`;
-
-exports[`Renderer > complex DAG > renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:@kitz/core', 'Publish:@kitz/flo', 'Publi...) 1`] = `
+exports[`Renderer complex DAG renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:@kitz/core', 'Publish:@kitz/flo', 'Publi...) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 Workflow Progress
@@ -1351,7 +819,7 @@ Layer 3: ○ PushTags
 ╚══════════════════════════════════════════════════╝"
 `;
 
-exports[`Renderer > complex DAG > renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:@kitz/core', 'Publish:@kitz/flo', 'Publi...) 2`] = `
+exports[`Renderer complex DAG renderDag({ layers: [ [ 'Preflight' ], [ 'Publish:@kitz/core', 'Publish:@kitz/flo', 'Publi...) 2`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
 Workflow Progress
@@ -1368,78 +836,610 @@ Layer 3: ○ PushTags
 ╚══════════════════════════════════════════════════╝"
 `;
 
-exports[`Renderer > list mode > renderList({ activities: [ 'Preflight', 'Publish:core', 'Publish:flo', 'CreateTag', 'PushTa...) 1`] = `
+exports[`Renderer complex DAG full renderDagFull({ layers: [ [ 'Preflight' ], [ 'Publish:@kitz/core', 'Publish:@kitz/flo', 'Publi...) 1`] = `
 "
 ╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
-○ Preflight
-○ Publish:core
-○ Publish:flo
-○ CreateTag
-○ PushTags
 
-0/5 completed (0)
-╚══════════════════════════════════════════════════╝"
-`;
 
-exports[`Renderer > list mode > renderList({ activities: [ 'Preflight', 'Publish:core', 'Publish:flo', 'CreateTag', 'PushTa...) 2`] = `
-"
-╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
-● Preflight
-○ Publish:core
-○ Publish:flo
-○ CreateTag
-○ PushTags
 
-0/5 completed (0)
-╚══════════════════════════════════════════════════╝"
-`;
+┌────────────────────┐
+│○     Preflight      │
+└────────────────────┘
 
-exports[`Renderer > list mode > renderList({ activities: [ 'Preflight', 'Publish:core', 'Publish:flo', 'CreateTag', 'PushTa...) 3`] = `
-"
-╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
-✓ Preflight
-● Publish:core
-○ Publish:flo
-○ CreateTag
-○ PushTags
 
-1/5 completed (0)
-╚══════════════════════════════════════════════════╝"
-`;
 
-exports[`Renderer > list mode > renderList({ activities: [ 'Preflight', 'Publish:core', 'Publish:flo', 'CreateTag', 'PushTa...) 4`] = `
-"
-╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
-✓ Preflight
-✓ Publish:core
-✓ Publish:flo
-✓ CreateTag
-✓ PushTags
+┌────────────────────┐
+│○ Publish:@kitz/core │
+└────────────────────┘
 
-5/5 completed (0)
-╚══════════════════════════════════════════════════╝"
-`;
 
-exports[`Renderer > list mode > renderList({ activities: [ 'Preflight', 'Publish:core', 'Publish:flo', 'CreateTag', 'PushTa...) 5`] = `
-"
-╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
-✓ Preflight
-✗ Publish:core
-○ Publish:flo
-○ CreateTag
-○ PushTags
 
-1/5 completed (0)
-╚══════════════════════════════════════════════════╝"
-`;
+┌────────────────────┐
+│○     CreateTag      │
+└────────────────────┘
 
-exports[`Renderer > list mode > renderList({ activities: [ 'Step1', 'Step2', 'Step3' ], colors: true, events: [ Started { a...) 1`] = `
-"
-╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
-[32m✓[39m Step1
-[33m●[39m Step2
-[90m○[39m Step3
 
-[2m1/3 completed (0)[22m
+
+┌────────────────────┐
+│○      PushTags      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○     Preflight      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/core │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○     CreateTag      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○      PushTags      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○     Preflight      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/core │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○     CreateTag      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○      PushTags      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○     Preflight      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/core │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○     CreateTag      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○      PushTags      │
+└────────────────────┘
+
+
+
+│
+
+
+
+
+
+
+
+┌────────────────────┐
+│○     Preflight      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/core │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○     CreateTag      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○      PushTags      │
+└────────────────────┘
+
+
+
+│
+
+
+
+
+
+
+
+
+
+
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/flo  │
+└────────────────────┘
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+┌────────────────────┐
+│○     Preflight      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/core │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○     CreateTag      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○      PushTags      │
+└────────────────────┘
+
+
+
+│
+
+
+
+
+
+
+
+
+
+
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/flo  │
+└────────────────────┘
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+┌────────────────────┐
+│○     Preflight      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/core │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○     CreateTag      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○      PushTags      │
+└────────────────────┘
+
+
+
+│
+
+
+
+
+
+
+
+
+
+
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/flo  │
+└────────────────────┘
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+┌────────────────────┐
+│○     Preflight      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/core │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○     CreateTag      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○      PushTags      │
+└────────────────────┘
+
+
+
+│
+
+
+
+
+
+
+
+
+
+
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/flo  │
+└────────────────────┘
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+│
+
+
+
+
+
+
+
+┌────────────────────┐
+│○     Preflight      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/core │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○     CreateTag      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○      PushTags      │
+└────────────────────┘
+
+
+
+│
+
+
+
+
+
+
+
+
+
+
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/flo  │
+└────────────────────┘
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+│
+
+
+
+
+
+
+
+
+
+
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/syn  │
+└────────────────────┘
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+┌────────────────────┐
+│○     Preflight      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/core │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○     CreateTag      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○      PushTags      │
+└────────────────────┘
+
+
+
+│
+
+
+
+
+
+
+
+
+
+
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/flo  │
+└────────────────────┘
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+│
+
+
+
+
+
+
+
+
+
+
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/syn  │
+└────────────────────┘
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+┌────────────────────┐
+│○     Preflight      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/core │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○     CreateTag      │
+└────────────────────┘
+
+
+
+┌────────────────────┐
+│○      PushTags      │
+└────────────────────┘
+
+
+
+│
+
+
+
+
+
+
+
+
+
+
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/flo  │
+└────────────────────┘
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+│
+
+
+
+
+
+
+
+
+
+
+
+
+
+┌────────────────────┐
+│○ Publish:@kitz/syn  │
+└────────────────────┘
+
+
+
+
+
+
+
+
+
+
+
+
+
+0/6 completed (0)
 ╚══════════════════════════════════════════════════╝"
 `;

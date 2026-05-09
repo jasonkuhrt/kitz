@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as BldrModule from './_.js'
 import { createCallable, createCallableMutable, fromInterface } from './callable.js'
 import { StateSymbol, create } from './constructor.js'

@@ -1,5 +1,5 @@
 import { Test } from '#kitz/test'
-import { describe, expect } from 'vitest'
+import { describe, expect } from 'bun:test'
 import { lines, normalizeLineEndings, stripIndent } from './text.js'
 
 describe('stripIndent', () => {
@@ -48,6 +48,7 @@ describe('stripIndent', () => {
       ], 'd.resolve(1);\n  nested();\nd.resolve(2);'],
     )
     .test(({ result, output }) => {
+      // @ts-expect-error -- bun:test strict-typed matcher
       expect(result).toBe(output)
     })
 })

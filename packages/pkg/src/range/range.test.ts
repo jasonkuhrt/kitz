@@ -1,6 +1,6 @@
 import { Semver } from '@kitz/semver'
 import { Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as PkgRange from './range.js'
 
 describe('Pkg.Range', () => {

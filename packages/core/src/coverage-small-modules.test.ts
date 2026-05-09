@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { format as formatDuration } from './date/duration.js'
 import { ErrorInternal } from './err/internal.js'
 import { endo } from './fn/endo.js'

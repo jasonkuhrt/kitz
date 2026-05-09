@@ -1,5 +1,5 @@
 import { Assert } from '#kitz/assert'
-import { describe, test } from 'vitest'
+import { describe, test } from 'bun:test'
 import { _, fn1p, fn2p } from './_test.js'
 import { bind } from './base.js'
 

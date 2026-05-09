@@ -9,7 +9,7 @@
 
 import { Assert } from '#kitz/assert'
 import { Ts } from '#ts'
-import { test } from 'vitest'
+import { test } from 'bun:test'
 
 const A = Assert.Type
 

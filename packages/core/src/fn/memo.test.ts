@@ -1,5 +1,5 @@
 import { Fn } from '#fn'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 
 describe('memo', () => {
   test('caches sync function results', () => {

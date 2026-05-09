@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Fs } from '@kitz/fs'
 import * as EnvModule from './_.js'
 import * as PublicEnv from './__.js'
@@ -58,6 +58,7 @@ describe('env', () => {
     expect(nodeEnv.platform).toBe('node')
     expect(Array.isArray(nodeEnv.argv)).toBe(true)
     expect(nodeLive).toBeDefined()
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(PublicEnv.env.platform).toBe(runtimePlatform)
   })
 

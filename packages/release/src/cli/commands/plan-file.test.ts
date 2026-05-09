@@ -1,7 +1,7 @@
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Effect, Layer } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import {
   formatIgnoredInvalidPlanMessage,
   formatInvalidPlanMessage,

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Test } from '@kitz/test'
 import { Effect, Ref, Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Git } from './_.js'
 
 const gitEnv: NodeJS.ProcessEnv = {}
@@ -396,6 +396,7 @@ describe('Git', () => {
     )
 
     expect(tags).toContain('@kitz/core@1.0.1')
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(tagShas['@kitz/core@1.0.1']).toBe('abc1234')
     expect(createdTags).toContainEqual({ tag: '@kitz/core@1.0.1', message: 'release' })
     expect(deletedRemoteTags).toContainEqual({ tag: '@kitz/core@1.0.1', remote: 'upstream' })
@@ -416,6 +417,7 @@ describe('Commit', () => {
       date: new Date('2024-01-15'),
     })
 
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(commit.hash).toBe('abc1234')
     expect(commit.message).toBe('feat(core): add feature\n\nDetailed description')
     expect(commit.author.name).toBe('Jane Doe')
@@ -538,7 +540,7 @@ describe('Memory utilities', () => {
 // Live Layer (integration tests against real git)
 // ============================================================================
 
-describe.sequential('GitLive', () => {
+describe('GitLive', () => {
   test('GitLive uses the current working directory when it is a repo', async () => {
     const repo = makeTempGitRepo()
     const originalCwd = process.cwd()

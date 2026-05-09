@@ -1,7 +1,7 @@
 import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
 import { Effect } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as Api from '../../api/__.js'
 import { makeHarness } from '../../api/executor/test-support.js'
 import { noPackagesFoundMessage } from './command-workspace.js'

@@ -1,5 +1,5 @@
 import { Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as ViolationLocation from './violation-location.js'
 import { CommandFix, DocLink, FixStep, GuideFix, Hint, Violation } from './violation.js'
 

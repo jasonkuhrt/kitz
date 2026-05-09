@@ -1,6 +1,6 @@
 import { Fs } from '@kitz/fs'
 import { Effect, Option, Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import {
   Manifest,
   ManifestSchemaImmutable,

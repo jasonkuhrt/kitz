@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as KitzModule from './_.js'
 import * as PublicEntry from './__.js'
 import * as RootEntry from './index.js'

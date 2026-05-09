@@ -1,7 +1,7 @@
 import { Test } from '#kitz/test'
 import { Obj } from '#obj'
 import * as fc from 'fast-check'
-import { expect, test } from 'vitest'
+import { expect, test } from 'bun:test'
 
 const testObj = { a: 1, b: 2, c: 3, d: 4 }
 

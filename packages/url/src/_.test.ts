@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as UrlModule from './_.js'
 import { factory, parse, pathSeparator } from './url.js'
 

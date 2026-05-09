@@ -1,8 +1,8 @@
+import { test } from 'bun:test'
 import fc, { check, property as fcProperty } from 'fast-check'
-import * as Vitest from 'vitest'
 
 /**
- * Create a property-based test using fast-check within vitest.
+ * Create a property-based test using fast-check.
  *
  * @template Ts - Tuple type of the arbitrary values.
  *
@@ -48,7 +48,7 @@ export const property = <Ts extends [unknown, ...unknown[]]>(
 ) => {
   const description = args[0]
   const rest = args.slice(1) as Parameters<typeof fcProperty>
-  Vitest.test('PROPERTY: ' + description, () => {
+  test('PROPERTY: ' + description, () => {
     const result = check(fcProperty(...rest))
 
     if (result.failed) {

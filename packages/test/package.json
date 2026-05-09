@@ -22,9 +22,6 @@
     "object-inspect": "^1.13.4",
     "type-fest": "^5.3.1"
   },
-  "peerDependencies": {
-    "vitest": ">=2.0.0"
-  },
   "scripts": {
     "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",

@@ -1,6 +1,6 @@
 import { Type as A } from '#kitz/assert/assert'
 import { Obj } from '#obj'
-import { describe, test } from 'vitest'
+import { describe, test } from 'bun:test'
 
 describe('Obj.entries', () => {
   describe('type-level behavior', () => {

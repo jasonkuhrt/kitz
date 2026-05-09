@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { CommandResolver } from './command-resolver.js'
 import { Command } from './command.js'
 import {

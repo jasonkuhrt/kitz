@@ -1,6 +1,6 @@
 import { Github } from '@kitz/github'
 import { Effect } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as Api from '../../api/__.js'
 import {
   parsePositiveIntegerOption,
@@ -46,10 +46,10 @@ const metadataBlock = Api.Commentator.renderMetadataBlock({
 describe('release history helpers', () => {
   test('parses positive integer options and rejects invalid values', async () => {
     expect(await Effect.runPromise(parsePositiveIntegerOption(undefined, 'limit'))).toBeUndefined()
-    expect(await Effect.runPromise(parsePositiveIntegerOption(' 3 ', 'limit'))).toBe(3)
-    expect(await Effect.runPromise(parsePositiveIntegerOption('9007199254740991', 'limit'))).toBe(
-      9007199254740991,
-    )
+    expect(await Effect.runPromise(parsePositiveIntegerOption(' 3 ', 'limit'))).toBe<number>(3)
+    expect(
+      await Effect.runPromise(parsePositiveIntegerOption('9007199254740991', 'limit')),
+    ).toBe<number>(9007199254740991)
     await expect(Effect.runPromise(parsePositiveIntegerOption('0', 'limit'))).rejects.toThrow(
       /positive integer/,
     )

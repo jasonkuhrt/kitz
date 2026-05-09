@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Failed, Finished, Report, Skipped } from '../lint/models/report.js'
 import { RuleId } from '../lint/models/rule-defaults.js'
 import * as Severity from '../lint/models/severity.js'

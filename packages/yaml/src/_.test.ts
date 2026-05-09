@@ -1,7 +1,7 @@
 import { Effect, Schema } from 'effect'
 import { Fs } from '@kitz/fs'
 import { Platform } from '@kitz/platform'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Yaml } from './_.js'
 
 describe('Yaml', () => {

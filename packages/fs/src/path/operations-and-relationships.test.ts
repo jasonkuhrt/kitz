@@ -1,5 +1,5 @@
 import { Option } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as AbsDirCodec from './AbsDir/__.js'
 import * as AbsFileCodec from './AbsFile/__.js'
 import { fromLiteral, fromString } from './operations/fromString.js'

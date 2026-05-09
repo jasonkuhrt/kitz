@@ -3,7 +3,7 @@ import { Type as A } from '#kitz/assert/assert'
 import { Test } from '#kitz/test'
 import { Ts } from '#ts'
 import * as fc from 'fast-check'
-import { expect, test } from 'vitest'
+import { expect, test } from 'bun:test'
 
 Test.property('returns input unchanged for any value', fc.anything(), (value) => {
   expect(Fn.identity(value)).toBe(value)

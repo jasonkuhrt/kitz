@@ -1,6 +1,6 @@
 import { Git } from '@kitz/git'
 import { Effect } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Violation } from '../models/violation.js'
 import { RuleOptionsService } from '../services/rule-options.js'
 import { rule } from './env-git-remote.js'

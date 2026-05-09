@@ -1,5 +1,5 @@
 import { Obj } from '@kitz/core'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import * as z from 'zod/v4'
 import { $, s } from '../../_/helpers.js'
 

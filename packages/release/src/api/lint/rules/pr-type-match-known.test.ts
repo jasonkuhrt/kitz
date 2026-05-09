@@ -1,6 +1,6 @@
 import { ConventionalCommits as CC } from '@kitz/conventional-commits'
 import { Effect, Layer, Option } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { resolveConventionalCommitTypes } from '../../config.js'
 import { PrTitle } from '../models/violation-location.js'
 import { Violation } from '../models/violation.js'

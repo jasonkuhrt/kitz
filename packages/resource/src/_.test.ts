@@ -1,5 +1,5 @@
 import { Effect, Option, Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Fs } from '@kitz/fs'
 import { Platform } from '@kitz/platform'
 import * as ResourceModule from './_.js'

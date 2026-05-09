@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest'
+import { expect, it } from 'bun:test'
 import { $, n, s } from '../_/helpers.js'
 
 it(`parameter can receive configuration object`, () => {

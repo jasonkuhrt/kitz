@@ -1,5 +1,5 @@
 import * as fc from 'fast-check'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { ensure, is, isAggregateError } from './type.js'
 
 describe('is', () => {

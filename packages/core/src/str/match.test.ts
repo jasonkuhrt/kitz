@@ -1,7 +1,7 @@
 import { Assert } from '#kitz/assert'
 import { Str } from '#str'
 import { Option } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { match, matchAll, pattern, patternWith, type RegexMatch } from './match.js'
 import { replace, replaceAll } from './replace.js'
 

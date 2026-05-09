@@ -1,4 +1,4 @@
-import { beforeEach, vi } from 'vitest'
+import { beforeEach, vi } from 'bun:test'
 import { PipelineDefinition } from './__.js'
 import type { Interceptor, NonRetryingInterceptorInput } from './Interceptor/Interceptor.js'
 import { Pipeline } from './Pipeline/Pipeline.js'

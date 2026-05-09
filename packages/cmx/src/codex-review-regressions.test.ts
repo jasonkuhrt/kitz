@@ -7,7 +7,7 @@
  * P2: treePath out of sync on undo
  * P2: Optional non-text slots auto-fill instead of skip
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { Schema as S } from 'effect'
 import { createHandleKey } from './handle-key.js'
 import { Controls } from './controls.js'

@@ -1,7 +1,7 @@
 import { Err } from '#err'
 import { Assert } from '#kitz/assert'
 import { Test } from '#kitz/test'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { tryAllOrRethrow, tryOr, tryOrRethrow } from './try.js'
 import { wrapWith } from './wrap.js'
 

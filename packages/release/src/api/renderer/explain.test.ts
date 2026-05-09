@@ -2,7 +2,7 @@ import { ReleaseCommit } from '../analyzer/models/commit.js'
 import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Git } from '@kitz/git'
 import { Option } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { renderExplanation } from './explain.js'
 
 const makeCommit = (message: string) =>

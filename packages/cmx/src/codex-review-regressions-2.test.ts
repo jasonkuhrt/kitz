@@ -7,7 +7,7 @@
  * P2: Tab (complete) doesn't submit Text slots
  * P2: Aliases not included in matcher candidate text
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { Effect, Schema as S } from 'effect'
 import { Session } from './session.js'
 import { Command } from './command.js'

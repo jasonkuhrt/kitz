@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import type { Choice, AcceptedToken } from './choice.js'
 import { emptyResolution } from './resolution.js'
 import { HandleKeyResult } from './handle-key-result.js'

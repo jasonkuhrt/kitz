@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as WareNamespace from './_.js'
 import * as Ware from './__.js'
 import { initialInput2, pipeline, pipelineWithOptions, run } from './_.test-helpers.js'
@@ -191,6 +191,7 @@ describe('ware', () => {
 
     expect(intercepted).toEqual({ value: { value: `override+a:extra-a+b:extra-b` } })
 
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(await run(async ({ a }) => `short-circuit`)).toEqual({ value: `short-circuit` })
 
     const secondStepInterceptor = await run(async ({ b }) => {

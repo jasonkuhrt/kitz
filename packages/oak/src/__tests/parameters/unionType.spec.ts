@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest'
+import { expect, it } from 'bun:test'
 import * as z from 'zod/v4'
 import { $, as } from '../_/helpers.js'
 

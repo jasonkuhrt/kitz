@@ -1,6 +1,6 @@
 import { Semver } from '@kitz/semver'
 import { Option, Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { SemverFromString, SemverSelf } from './semver-schema.js'
 
 describe('Pkg.SemverSchema', () => {

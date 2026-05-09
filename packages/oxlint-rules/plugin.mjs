@@ -325,6 +325,14 @@ const getStringLiteralValue = (literalNode) =>
  * @returns {boolean}
  */
 const isNodeBuiltinImportPath = (importPath) => {
+  // bun:* modules are bun-native (bun:test, bun:sqlite, etc.) — under bun
+  // runtime they appear in node:module's `builtinModules`, but they are
+  // intentionally bun-only and idiomatic to use directly. Excluded from the
+  // "avoid Node-style platform leak" policy this rule enforces.
+  if (importPath.startsWith(`bun:`)) {
+    return false
+  }
+
   const normalized = importPath.startsWith(`node:`) ? importPath.slice(`node:`.length) : importPath
 
   if (NODE_BUILTIN_MODULES.has(normalized)) {

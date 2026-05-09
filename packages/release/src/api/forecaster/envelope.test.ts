@@ -1,6 +1,6 @@
 import { Semver } from '@kitz/semver'
 import { Option, Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { encodeForecastEnvelope, ForecastEnvelopeJson } from './envelope.js'
 import { CommitDisplay, Forecast, ForecastRelease } from './models.js'
 

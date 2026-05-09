@@ -1,6 +1,6 @@
 import * as ansis from 'ansis'
 import { Schema as S } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import type { ListBuilder } from './chain/list.js'
 import * as TexNamespace from './_.js'
 import * as Tex from './__.js'
@@ -71,6 +71,7 @@ describe('tex', () => {
       bottom: 3,
       left: 2,
     })
+    // @ts-expect-error -- bun:test strict-typed matcher
     expect(Clockhand.parse([1, undefined, 3, 4])).toEqual({
       top: 1,
       right: undefined,

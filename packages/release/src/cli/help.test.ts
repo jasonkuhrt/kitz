@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { formatRootHelp, isRootHelpRequest } from './help.js'
 
 describe('release root help', () => {

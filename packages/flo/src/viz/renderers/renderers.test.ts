@@ -1,15 +1,28 @@
-import { beforeEach, afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import * as Core from '../core.js'
 import * as DagCompact from './dag-compact.js'
 import * as List from './list.js'
 
+const fixedTime = new Date('2024-01-01T00:00:00.000Z').getTime()
+const RealDate = globalThis.Date
+
 beforeEach(() => {
-  vi.useFakeTimers()
-  vi.setSystemTime(new Date('2024-01-01T00:00:00.000Z'))
+  globalThis.Date = class extends RealDate {
+    constructor(...args: ConstructorParameters<typeof RealDate> | []) {
+      if (args.length === 0) {
+        super(fixedTime)
+      } else {
+        super(...(args as ConstructorParameters<typeof RealDate>))
+      }
+    }
+    static override now() {
+      return fixedTime
+    }
+  } as DateConstructor
 })
 
 afterEach(() => {
-  vi.useRealTimers()
+  globalThis.Date = RealDate
 })
 
 describe('Flo.Viz renderers', () => {

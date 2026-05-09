@@ -1,5 +1,5 @@
 import { Schema as S } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as ColorModule from './__.js'
 import { hexToRgb, hslToRgb } from './conversions.js'
 import { namedColors } from './named-colors.js'

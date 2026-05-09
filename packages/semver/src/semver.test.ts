@@ -1,6 +1,6 @@
 import { Schema as S } from 'effect'
 import { Test } from '@kitz/test'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Semver } from './_.js'
 
 const pre = (

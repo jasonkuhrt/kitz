@@ -1,5 +1,5 @@
 import { Pkg } from '@kitz/pkg'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as Api from '../api/__.js'
 import { createCommandLintConfig } from './lint-rule-config.js'
 

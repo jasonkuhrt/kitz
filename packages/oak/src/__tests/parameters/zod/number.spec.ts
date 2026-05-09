@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { $, l1, n } from '../../_/helpers.js'
 
 describe(`zod`, () => {

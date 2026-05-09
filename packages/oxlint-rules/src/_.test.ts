@@ -9,7 +9,7 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 // oxlint-disable-next-line kitz/module/no-nodejs-builtins
 import { fileURLToPath } from 'node:url'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { OxlintRules } from './_.js'
 
 interface OxlintDiagnostic {

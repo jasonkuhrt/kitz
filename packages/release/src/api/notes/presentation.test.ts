@@ -2,7 +2,7 @@ import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Option } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import type { PackageNotes } from './generate.js'
 import { renderMarkdownNotes, toJsonNotes } from './presentation.js'
 

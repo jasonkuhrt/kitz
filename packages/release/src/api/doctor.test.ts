@@ -1,5 +1,5 @@
 import { Str } from '@kitz/core'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Finished, Report } from './lint/models/report.js'
 import { RuleId } from './lint/models/rule-defaults.js'
 import * as Severity from './lint/models/severity.js'

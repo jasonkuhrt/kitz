@@ -1,10 +1,10 @@
 import { Assert } from '@kitz/assert'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { $, b, s } from '../_/helpers.js'
 
 describe(`errors`, () => {
-  test.todo(`when a flag and an alias of it are given there is an error`)
-  test.todo(`when a long flag and its short flag are given there is an error`)
+  test.todo(`when a flag and an alias of it are given there is an error`, () => {})
+  test.todo(`when a long flag and its short flag are given there is an error`, () => {})
 })
 
 describe(`string`, () => {

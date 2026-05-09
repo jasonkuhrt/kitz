@@ -1,5 +1,5 @@
 import type { Fn } from '@kitz/core'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import * as AssertNamespace from './_.js'
 import * as Assert from './__.js'
 import { builder } from './builder-singleton.js'

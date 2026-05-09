@@ -1,4 +1,4 @@
-import { describe, expect, it, test } from 'vitest'
+import { describe, expect, it, test } from 'bun:test'
 import { Effect } from 'effect'
 import { Bench } from 'tinybench'
 import { Pat } from '@kitz/core'

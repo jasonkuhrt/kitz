@@ -1,444 +1,13 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-exports[`boolean > required > can be toggled to "yes" > args 1`] = `
-{
-  "a": true,
-  "help": false,
-}
-`;
-
-exports[`boolean > required > can be toggled to "yes" > tty output 1`] = `
-"1/1a
-
-
-
-
-
-
-     ❯ yes / no
-
-
-     ❯ yes / no
-"
-`;
-
-exports[`boolean > required > can be toggled to "yes" and then back to "no" > args 1`] = `
-{
-  "a": false,
-  "help": false,
-}
-`;
-
-exports[`boolean > required > can be toggled to "yes" and then back to "no" > tty output 1`] = `
-"1/1a
-
-
-
-
-
-
-     ❯ yes / no
-
-
-     ❯ yes / no
-
-
-     ❯ yes / no
-"
-`;
-
-exports[`boolean > required > can use tab to toggle between "yes" and "no" > args 1`] = `
-{
-  "a": false,
-  "help": false,
-}
-`;
-
-exports[`boolean > required > can use tab to toggle between "yes" and "no" > tty output 1`] = `
-"1/1a
-
-
-
-
-
-
-     ❯ yes / no
-
-
-     ❯ yes / no
-
-
-     ❯ yes / no
-"
-`;
-
-exports[`boolean > required > defaults to "no" > args 1`] = `
-{
-  "a": false,
-  "help": false,
-}
-`;
-
-exports[`boolean > required > defaults to "no" > tty output 1`] = `
-"1/1a
-
-
-
-
-
-
-     ❯ yes / no
-"
-`;
-
-exports[`can be explicitly disabled > args 1`] = `[OakErrorMissingArgument: Missing argument for flag "a".]`;
-
-exports[`can be explicitly disabled > tty output 1`] = `""`;
-
-exports[`can be explicitly disabled with a "when" condition present > args 1`] = `[OakErrorMissingArgument: Missing argument for flag "a".]`;
-
-exports[`can be explicitly disabled with a "when" condition present > tty output 1`] = `""`;
-
-exports[`enumeration > required > can select member leftward with left key > args 1`] = `
-{
-  "a": "major",
-  "help": false,
-}
-`;
-
-exports[`enumeration > required > can select member leftward with left key > tty output 1`] = `
-"1/1a
-
-
-
-
-
-
-     ❯ major / minor / patch
-
-
-     ❯ major / minor / patch
-
-
-     ❯ major / minor / patch
-"
-`;
-
-exports[`enumeration > required > can select member rightward with right key > args 1`] = `
-{
-  "a": "minor",
-  "help": false,
-}
-`;
-
-exports[`enumeration > required > can select member rightward with right key > tty output 1`] = `
-"1/1a
-
-
-
-
-
-
-     ❯ major / minor / patch
-
-
-     ❯ major / minor / patch
-"
-`;
-
-exports[`enumeration > required > defaults to first member > args 1`] = `
-{
-  "a": "major",
-  "help": false,
-}
-`;
-
-exports[`enumeration > required > defaults to first member > tty output 1`] = `
-"1/1a
-
-
-
-
-
-
-     ❯ major / minor / patch
-"
-`;
-
-exports[`enumeration > required > loop > left key on first member loops to last member > args 1`] = `
-{
-  "a": "patch",
-  "help": false,
-}
-`;
-
-exports[`enumeration > required > loop > left key on first member loops to last member > tty output 1`] = `
-"1/1a
-
-
-
-
-
-
-     ❯ major / minor / patch
-
-
-     ❯ major / minor / patch
-"
-`;
-
-exports[`enumeration > required > loop > right key on last member loops to first member > args 1`] = `
-{
-  "a": "major",
-  "help": false,
-}
-`;
-
-exports[`enumeration > required > loop > right key on last member loops to first member > tty output 1`] = `
-"1/1a
-
-
-
-
-
-
-     ❯ major / minor / patch
-
-
-     ❯ major / minor / patch
-
-
-     ❯ major / minor / patch
-
-
-     ❯ major / minor / patch
-"
-`;
-
-exports[`enumeration > required > tab > can select member leftward with shift+tab key > args 1`] = `
-{
-  "a": "patch",
-  "help": false,
-}
-`;
-
-exports[`enumeration > required > tab > can select member leftward with shift+tab key > tty output 1`] = `
-"1/1a
-
-
-
-
-
-
-     ❯ major / minor / patch
-
-
-     ❯ major / minor / patch
-
-
-     ❯ major / minor / patch
-"
-`;
-
-exports[`enumeration > required > tab > can select member rightward with tab key > args 1`] = `
-{
-  "a": "minor",
-  "help": false,
-}
-`;
-
-exports[`enumeration > required > tab > can select member rightward with tab key > tty output 1`] = `
-"1/1a
-
-
-
-
-
-
-     ❯ major / minor / patch
-
-
-     ❯ major / minor / patch
-"
-`;
-
-exports[`number > optional > when esc is pressed the question is skipped > args 1`] = `
-{
-  "a": undefined,
-  "help": false,
-}
-`;
-
-exports[`number > optional > when esc is pressed the question is skipped > tty output 1`] = `
-"1/1a optional (press esc to skip)
-
-
-
-
-
-
-     ❯
-"
-`;
-
-exports[`number > optional > when nothing entered then value is undefined > args 1`] = `
-{
-  "a": 0,
-  "help": false,
-}
-`;
-
-exports[`number > optional > when nothing entered then value is undefined > tty output 1`] = `
-"1/1a optional (press esc to skip)
-
-
-
-
-
-
-     ❯
-"
-`;
-
-exports[`prompt when invalid input > args 1`] = `
-{
-  "a": "foo",
-  "help": false,
-}
-`;
-
-exports[`prompt when invalid input > tty output 1`] = `
-"1/1a
-
-
-
-
-
-
-     ❯
-
-
-     ❯ f
-
-
-     ❯ fo
-
-
-     ❯ foo
-"
-`;
-
-exports[`prompt when invalid input OR missing input > args 1`] = `
-{
-  "a": "foo",
-  "help": false,
-}
-`;
-
-exports[`prompt when invalid input OR missing input > tty output 1`] = `
-"1/1a
-
-
-
-
-
-
-     ❯
-
-
-     ❯ f
-
-
-     ❯ fo
-
-
-     ❯ foo
-"
-`;
-
-exports[`prompt when missing input > args 1`] = `
-{
-  "a": "foo",
-  "help": false,
-}
-`;
-
-exports[`prompt when missing input > tty output 1`] = `
-"1/1a
-
-
-
-
-
-
-     ❯
-
-
-     ❯ f
-
-
-     ❯ fo
-
-
-     ❯ foo
-"
-`;
-
-exports[`prompt when omitted > args 1`] = `
-{
-  "a": "foo",
-  "help": false,
-}
-`;
-
-exports[`prompt when omitted > tty output 1`] = `
-"1/1a optional (press esc to skip)
-
-
-
-
-
-
-     ❯
-
-
-     ❯ f
-
-
-     ❯ fo
-
-
-     ❯ foo
-"
-`;
-
-exports[`string > optional > when esc is pressed the question is skipped > args 1`] = `
-{
-  "a": undefined,
-  "help": false,
-}
-`;
-
-exports[`string > optional > when esc is pressed the question is skipped > tty output 1`] = `
-"1/1a optional (press esc to skip)
-
-
-
-
-
-
-     ❯
-"
-`;
-
-exports[`string > optional > when nothing entered then value is undefined > args 1`] = `
+exports[`string optional when nothing entered then value is undefined: args 1`] = `
 {
   "a": "",
   "help": false,
 }
 `;
 
-exports[`string > optional > when nothing entered then value is undefined > tty output 1`] = `
+exports[`string optional when nothing entered then value is undefined: tty output 1`] = `
 "1/1a optional (press esc to skip)
 
 
@@ -450,14 +19,162 @@ exports[`string > optional > when nothing entered then value is undefined > tty 
 "
 `;
 
-exports[`union > required > asks user to select member to use" > args 1`] = `
+exports[`string optional when esc is pressed the question is skipped: args 1`] = `
+{
+  "a": undefined,
+  "help": false,
+}
+`;
+
+exports[`string optional when esc is pressed the question is skipped: tty output 1`] = `
+"1/1a optional (press esc to skip)
+
+
+
+
+
+
+     ❯
+"
+`;
+
+exports[`number optional when nothing entered then value is undefined: args 1`] = `
+{
+  "a": 0,
+  "help": false,
+}
+`;
+
+exports[`number optional when nothing entered then value is undefined: tty output 1`] = `
+"1/1a optional (press esc to skip)
+
+
+
+
+
+
+     ❯
+"
+`;
+
+exports[`number optional when esc is pressed the question is skipped: args 1`] = `
+{
+  "a": undefined,
+  "help": false,
+}
+`;
+
+exports[`number optional when esc is pressed the question is skipped: tty output 1`] = `
+"1/1a optional (press esc to skip)
+
+
+
+
+
+
+     ❯
+"
+`;
+
+exports[`boolean required defaults to "no": args 1`] = `
+{
+  "a": false,
+  "help": false,
+}
+`;
+
+exports[`boolean required defaults to "no": tty output 1`] = `
+"1/1a
+
+
+
+
+
+
+     ❯ yes / no
+"
+`;
+
+exports[`boolean required can be toggled to "yes": args 1`] = `
 {
   "a": true,
   "help": false,
 }
 `;
 
-exports[`union > required > asks user to select member to use" > tty output 1`] = `
+exports[`boolean required can be toggled to "yes": tty output 1`] = `
+"1/1a
+
+
+
+
+
+
+     ❯ yes / no
+
+
+     ❯ yes / no
+"
+`;
+
+exports[`boolean required can be toggled to "yes" and then back to "no": args 1`] = `
+{
+  "a": false,
+  "help": false,
+}
+`;
+
+exports[`boolean required can be toggled to "yes" and then back to "no": tty output 1`] = `
+"1/1a
+
+
+
+
+
+
+     ❯ yes / no
+
+
+     ❯ yes / no
+
+
+     ❯ yes / no
+"
+`;
+
+exports[`boolean required can use tab to toggle between "yes" and "no": args 1`] = `
+{
+  "a": false,
+  "help": false,
+}
+`;
+
+exports[`boolean required can use tab to toggle between "yes" and "no": tty output 1`] = `
+"1/1a
+
+
+
+
+
+
+     ❯ yes / no
+
+
+     ❯ yes / no
+
+
+     ❯ yes / no
+"
+`;
+
+exports[`union required asks user to select member to use": args 1`] = `
+{
+  "a": true,
+  "help": false,
+}
+`;
+
+exports[`union required asks user to select member to use": tty output 1`] = `
 "1/1a
 
 
@@ -483,5 +200,288 @@ exports[`union > required > asks user to select member to use" > tty output 1`] 
 
 
      ❯ yes / no
+"
+`;
+
+exports[`enumeration required defaults to first member: args 1`] = `
+{
+  "a": "major",
+  "help": false,
+}
+`;
+
+exports[`enumeration required defaults to first member: tty output 1`] = `
+"1/1a
+
+
+
+
+
+
+     ❯ major / minor / patch
+"
+`;
+
+exports[`enumeration required can select member rightward with right key: args 1`] = `
+{
+  "a": "minor",
+  "help": false,
+}
+`;
+
+exports[`enumeration required can select member rightward with right key: tty output 1`] = `
+"1/1a
+
+
+
+
+
+
+     ❯ major / minor / patch
+
+
+     ❯ major / minor / patch
+"
+`;
+
+exports[`enumeration required can select member leftward with left key: args 1`] = `
+{
+  "a": "major",
+  "help": false,
+}
+`;
+
+exports[`enumeration required can select member leftward with left key: tty output 1`] = `
+"1/1a
+
+
+
+
+
+
+     ❯ major / minor / patch
+
+
+     ❯ major / minor / patch
+
+
+     ❯ major / minor / patch
+"
+`;
+
+exports[`enumeration required tab can select member rightward with tab key: args 1`] = `
+{
+  "a": "minor",
+  "help": false,
+}
+`;
+
+exports[`enumeration required tab can select member rightward with tab key: tty output 1`] = `
+"1/1a
+
+
+
+
+
+
+     ❯ major / minor / patch
+
+
+     ❯ major / minor / patch
+"
+`;
+
+exports[`enumeration required tab can select member leftward with shift+tab key: args 1`] = `
+{
+  "a": "patch",
+  "help": false,
+}
+`;
+
+exports[`enumeration required tab can select member leftward with shift+tab key: tty output 1`] = `
+"1/1a
+
+
+
+
+
+
+     ❯ major / minor / patch
+
+
+     ❯ major / minor / patch
+
+
+     ❯ major / minor / patch
+"
+`;
+
+exports[`enumeration required loop right key on last member loops to first member: args 1`] = `
+{
+  "a": "major",
+  "help": false,
+}
+`;
+
+exports[`enumeration required loop right key on last member loops to first member: tty output 1`] = `
+"1/1a
+
+
+
+
+
+
+     ❯ major / minor / patch
+
+
+     ❯ major / minor / patch
+
+
+     ❯ major / minor / patch
+
+
+     ❯ major / minor / patch
+"
+`;
+
+exports[`enumeration required loop left key on first member loops to last member: args 1`] = `
+{
+  "a": "patch",
+  "help": false,
+}
+`;
+
+exports[`enumeration required loop left key on first member loops to last member: tty output 1`] = `
+"1/1a
+
+
+
+
+
+
+     ❯ major / minor / patch
+
+
+     ❯ major / minor / patch
+"
+`;
+
+exports[`can be explicitly disabled: args 1`] = `[Error: Missing argument for flag "a".]`;
+
+exports[`can be explicitly disabled: tty output 1`] = `""`;
+
+exports[`can be explicitly disabled with a "when" condition present: args 1`] = `[Error: Missing argument for flag "a".]`;
+
+exports[`can be explicitly disabled with a "when" condition present: tty output 1`] = `""`;
+
+exports[`prompt when missing input: args 1`] = `
+{
+  "a": "foo",
+  "help": false,
+}
+`;
+
+exports[`prompt when missing input: tty output 1`] = `
+"1/1a
+
+
+
+
+
+
+     ❯
+
+
+     ❯ f
+
+
+     ❯ fo
+
+
+     ❯ foo
+"
+`;
+
+exports[`prompt when invalid input: args 1`] = `
+{
+  "a": "foo",
+  "help": false,
+}
+`;
+
+exports[`prompt when invalid input: tty output 1`] = `
+"1/1a
+
+
+
+
+
+
+     ❯
+
+
+     ❯ f
+
+
+     ❯ fo
+
+
+     ❯ foo
+"
+`;
+
+exports[`prompt when invalid input OR missing input: args 1`] = `
+{
+  "a": "foo",
+  "help": false,
+}
+`;
+
+exports[`prompt when invalid input OR missing input: tty output 1`] = `
+"1/1a
+
+
+
+
+
+
+     ❯
+
+
+     ❯ f
+
+
+     ❯ fo
+
+
+     ❯ foo
+"
+`;
+
+exports[`prompt when omitted: args 1`] = `
+{
+  "a": "foo",
+  "help": false,
+}
+`;
+
+exports[`prompt when omitted: tty output 1`] = `
+"1/1a optional (press esc to skip)
+
+
+
+
+
+
+     ❯
+
+
+     ❯ f
+
+
+     ❯ fo
+
+
+     ❯ foo
 "
 `;

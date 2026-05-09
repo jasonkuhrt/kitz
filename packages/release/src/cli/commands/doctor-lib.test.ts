@@ -4,7 +4,7 @@ import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Layer, Option } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Analysis, Impact, makeCascadeCommit } from '../../api/analyzer/models/__.js'
 import type { Package } from '../../api/analyzer/workspace.js'
 import {

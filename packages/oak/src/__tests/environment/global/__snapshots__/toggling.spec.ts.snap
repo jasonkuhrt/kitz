@@ -1,6 +1,6 @@
-// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
 
-exports[`environment supersedes settings 1`] = `[OakErrorMissingArgument: Missing argument for flag "foo".]`;
+exports[`environment supersedes settings 1`] = `"Missing argument for flag "foo"."`;
 
 exports[`environment supersedes settings 2`] = `
 "Cannot run command, you made some mistakes:
@@ -12,9 +12,9 @@ Here are the docs for this command:
 
 PARAMETERS
 
-  [4m[90mName[39m[24m    [4m[90mType[39m[24m      [4m[90mDefault[39m[24m     
+  \x1B[4m\x1B[90mName\x1B[39m\x1B[24m    \x1B[4m\x1B[90mType\x1B[39m\x1B[24m      \x1B[4m\x1B[90mDefault\x1B[39m\x1B[24m     
                                 
-  [1m[32mfoo[39m[22m     [34mstring[39m    [1m[30m[101m REQUIRED [49m[39m[22m  
+  \x1B[1m\x1B[32mfoo\x1B[39m\x1B[22m     \x1B[34mstring\x1B[39m    \x1B[1m\x1B[30m\x1B[101m REQUIRED \x1B[49m\x1B[39m\x1B[22m  
                                 
 "
 `;

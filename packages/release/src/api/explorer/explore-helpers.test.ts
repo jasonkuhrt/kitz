@@ -3,7 +3,7 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Test } from '@kitz/test'
 import { Effect, Result, Layer } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import {
   detectPrNumber,
   resolveGitHubContext,

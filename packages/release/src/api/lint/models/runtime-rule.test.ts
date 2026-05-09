@@ -1,5 +1,5 @@
 import { Effect, Schema } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { RuleDefaults, RuleId } from './rule-defaults.js'
 import { create, type RuntimeRule } from './runtime-rule.js'
 import { Environment } from './violation-location.js'
@@ -13,7 +13,7 @@ describe('RuntimeRule', () => {
       preconditions: [],
       check: Effect.succeed(undefined),
     })
-    expect(rule.data.id).toBe('env.git-clean')
+    expect(rule.data.id).toBe<string>('env.git-clean')
     expect(rule.data.description).toBe('Working directory is clean')
   })
 
@@ -27,7 +27,7 @@ describe('RuntimeRule', () => {
       preconditions: [],
       check: Effect.succeed(violation),
     })
-    expect(rule.data.id).toBe('env.git-clean')
+    expect(rule.data.id).toBe<string>('env.git-clean')
   })
 
   test('create with metadata result', () => {
@@ -37,7 +37,7 @@ describe('RuntimeRule', () => {
       preconditions: [],
       check: Effect.succeed({ metadata: { username: 'testuser' } }),
     })
-    expect(rule.data.id).toBe('env.npm-authenticated')
+    expect(rule.data.id).toBe<string>('env.npm-authenticated')
   })
 
   test('create with options schema', () => {

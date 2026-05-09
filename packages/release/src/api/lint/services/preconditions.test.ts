@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { DefaultLayer, EvaluatedPreconditionsService, make } from './preconditions.js'
 
 describe('Preconditions service', () => {

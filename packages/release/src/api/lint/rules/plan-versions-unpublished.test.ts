@@ -1,6 +1,6 @@
 import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
 import { Effect, Layer, Stream } from 'effect'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test } from 'bun:test'
 import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
