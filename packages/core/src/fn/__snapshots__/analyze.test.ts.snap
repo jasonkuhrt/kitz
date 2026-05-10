@@ -455,3 +455,18 @@ exports[`analyzeFunction error cases analyzeFunction('not a function') 1`] = `
 Error: Could not extract groups from function.
 ╚══════════════════════════════════════════════════╝"
 `;
+
+exports[`analyzeFunction body extraction analyzeFunction((a) => { const b = a + 1; const c = b * 2; return c; }) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
+{
+  body: 'const b = a + 1;\\nconst c = b * 2;\\nreturn c;',
+  parameters: [
+    {
+      type: 'name',
+      value: 'a'
+    }
+  ]
+}
+╚══════════════════════════════════════════════════╝"
+`;

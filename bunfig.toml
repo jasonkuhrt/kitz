@@ -22,7 +22,10 @@ pathIgnorePatterns = [
 
 # Coverage configuration. Bun uses JSC's native Inspector.Coverage agent —
 # no v8/inspector profiler dependency, so this works under bun runtime.
-coverageReporter = ["text", "lcov"]
+# `text` only — `lcov` adds a file-write step that intermittently fails on
+# some bun 1.3.x versions with "WriteFailed". Re-enable with explicit
+# coverageDir if a CI integration needs lcov.
+coverageReporter = ["text"]
 coverageSkipTestFiles = true
 coveragePathIgnorePatterns = [
   "**/*.d.ts",

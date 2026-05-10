@@ -8,3 +8,23 @@ preload = [
   # not warn under bun:test.
   "../../tools/test-preload.ts",
 ]
+# Re-list the workspace coverage ignores (bun reads the most-specific
+# bunfig only, not a merge), then add tui-local exclusions.
+coveragePathIgnorePatterns = [
+  "**/*.d.ts",
+  "**/*.test-d.ts",
+  "**/*.bench-d.ts",
+  "**/*.test-helpers.ts",
+  "**/*.demo.{js,jsx,ts,tsx,mjs,mts,cjs,cts}",
+  "**/__tests/**",
+  "**/__tests__/**",
+  "**/__snapshots__/**",
+  "**/__mocks__/**",
+  "**/__examples__/**",
+  "**/build/**",
+  ".claude/**",
+  # Bridge into OpenTUI's real (non-virtual) renderer. The Program runtime
+  # is fully tested via @opentui/react/test-utils' testRender; createApp
+  # and runApp need a real terminal which bun:test cannot provide.
+  "src/runtime.tsx",
+]

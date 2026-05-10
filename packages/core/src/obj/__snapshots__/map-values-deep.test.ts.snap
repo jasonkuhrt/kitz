@@ -289,3 +289,33 @@ exports[`mapValuesDeep early exit stops recursion mapValuesDeep({ replace: true,
 REPLACED
 ╚══════════════════════════════════════════════════╝"
 `;
+
+exports[`mapValuesDeep early exit on match mapValuesDeep('short', (value) => { if (typeof value === "string" && value.length > 10) { return value....) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
+short
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`mapValuesDeep early exit on match mapValuesDeep('this is a very long string', (value) => { if (typeof value === "string" && value.length > 10) { return value....) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS STRING
+this is a very long string
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`mapValuesDeep array recursion mapValuesDeep([ 'short', 'this is long' ], (value) => { if (typeof value === "string" && value.length > 10) { return value....) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS ARRAY
+[ 'short', 'this is long' ]
+╚══════════════════════════════════════════════════╝"
+`;
+
+exports[`mapValuesDeep object recursion mapValuesDeep({ str: 'short and long string' }, (value) => { if (typeof value === "string" && value.length > 10) { return value....) 1`] = `
+"
+╔══════════════════════════════════════════════════╗ THEN RETURNS OBJECT
+{
+  str: 'short and long string'
+}
+╚══════════════════════════════════════════════════╝"
+`;
