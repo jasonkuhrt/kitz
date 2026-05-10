@@ -19,12 +19,12 @@ import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 import { FileSystemLayer, TerminalLayer } from '../../platform.js'
-import { isInteractiveTerminal, pickOption } from '../interactive.js'
 import {
   isReadyCommandWorkspace,
   loadCommandWorkspace,
   noPackagesFoundMessage,
 } from './command-workspace.js'
+import { lifecyclePickerOptions, resolvePlanLifecycle } from './plan-lib.js'
 
 /**
  * release plan --lifecycle <official|candidate|ephemeral>
@@ -66,6 +66,7 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, TerminalLayer, Git.GitLive))(
   Effect.gen(function* () {
     const env = yield* Env.Env
     const git = yield* Git.Git
+    const terminal = Cli.Picker.resolveInteractiveTerminalCapabilities({ env: env.vars })
 
     const workspace = yield* loadCommandWorkspace()
     if (!isReadyCommandWorkspace(workspace)) {
@@ -74,40 +75,23 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, TerminalLayer, Git.GitLive))(
     }
     const { packages } = workspace
 
-    const lifecycle =
-      args.lifecycle ??
-      (isInteractiveTerminal({ env: env.vars })
-        ? yield* pickOption({
-            title: 'Select release lifecycle',
-            hint: 'Generate a draft plan for the lifecycle you want to inspect or persist.',
-            options: [
-              {
-                label: 'official',
-                value: 'official' as const,
-                detail: 'Publish semver releases to the default npm dist-tag.',
-              },
-              {
-                label: 'candidate',
-                value: 'candidate' as const,
-                detail: 'Publish prereleases to the candidate dist-tag.',
-              },
-              {
-                label: 'ephemeral',
-                value: 'ephemeral' as const,
-                detail: 'Publish PR-scoped integration builds.',
-              },
-            ],
-            env: env.vars,
-            stdoutIsTTY: true,
-          })
-        : undefined)
+    const lifecycleSelection = yield* resolvePlanLifecycle({
+      lifecycle: args.lifecycle,
+      terminal,
+      pickLifecycle: () =>
+        Cli.Picker.pickOption({
+          title: 'Select release lifecycle',
+          hint: 'Choose the release lifecycle to plan.',
+          options: lifecyclePickerOptions,
+          color: terminal.color,
+        }),
+    })
 
-    if (!lifecycle) {
-      yield* Console.error(
-        'Missing lifecycle target. Pass --lifecycle <official|candidate|ephemeral> or run from an interactive TTY.',
-      )
+    if (lifecycleSelection._tag === 'missing') {
+      yield* Console.error(lifecycleSelection.message)
       return env.exit(1)
     }
+    const lifecycle = lifecycleSelection.value
 
     // Build release options
     const options = {

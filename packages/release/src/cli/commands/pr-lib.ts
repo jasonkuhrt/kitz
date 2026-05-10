@@ -1,6 +1,8 @@
-export const helpFlags = ['-h', '--help'] as const
+import { Cli } from '@kitz/cli'
+import { Str } from '@kitz/core'
+import { Array as A, Effect, Option } from 'effect'
 
-export const formatHelp = (): string =>
+export const formatHelp = () =>
   [
     'Usage: release pr <preview|title <suggest|apply>>',
     '',
@@ -16,7 +18,33 @@ export type ParsedAction =
   | { readonly _tag: 'preview'; readonly checkOnly: boolean; readonly remote?: string }
   | { readonly _tag: 'title'; readonly action: 'suggest' | 'apply' }
 
-const normalizeRemoteArg = (value: string | undefined): string | null => {
+export const prActionPickerOptions = Cli.Picker.defineOptions([
+  {
+    label: 'preview',
+    value: { _tag: 'preview', checkOnly: false },
+    detail: 'Update the release preview comment for the connected pull request.',
+  },
+  {
+    label: 'title suggest',
+    value: { _tag: 'title', action: 'suggest' },
+    detail: 'Show the canonical PR title header without changing GitHub.',
+  },
+  {
+    label: 'title apply',
+    value: { _tag: 'title', action: 'apply' },
+    detail: 'Rewrite the connected PR title header on GitHub.',
+  },
+])
+
+export type ParsedActionResolution =
+  | { readonly _tag: 'resolved'; readonly action: ParsedAction }
+  | {
+      readonly _tag: 'invalid'
+      readonly message: string
+      readonly showHelp: boolean
+    }
+
+const normalizeRemoteArg = (value: string | undefined) => {
   if (!value) return null
   const normalized = value.trim()
   if (normalized.length === 0 || normalized.startsWith('--')) return null
@@ -25,18 +53,20 @@ const normalizeRemoteArg = (value: string | undefined): string | null => {
 
 export const parseAction = (args: readonly string[]): ParsedAction | null => {
   if (args[0] === 'preview') {
-    const previewArgs = args.slice(1)
+    const previewArgs = A.drop(args, 1)
     let checkOnly = false
     let remote: string | undefined
 
     for (let index = 0; index < previewArgs.length; index += 1) {
-      const arg = previewArgs[index]
+      const arg = A.getUnsafe(previewArgs, index)
       if (arg === '--check-only') {
         checkOnly = true
         continue
       }
       if (arg === '--remote') {
-        const normalizedRemote = normalizeRemoteArg(previewArgs[index + 1])
+        const normalizedRemote = normalizeRemoteArg(
+          Option.getOrUndefined(A.get(previewArgs, index + 1)),
+        )
         if (!normalizedRemote) {
           return null
         }
@@ -55,4 +85,68 @@ export const parseAction = (args: readonly string[]): ParsedAction | null => {
     return { _tag: 'title', action: args[1] }
   }
   return null
+}
+
+export const resolvePrAction = <E, R>(params: {
+  readonly args: readonly string[]
+  readonly terminal: Cli.Picker.InteractiveTerminalCapabilities
+  readonly pickAction: () => Effect.Effect<Cli.Picker.PickerResult<ParsedAction>, E, R>
+}): Effect.Effect<ParsedActionResolution, E, R> => {
+  if (params.args.length > 0) {
+    const action = parseAction(params.args)
+    return Effect.succeed(
+      action
+        ? {
+            _tag: 'resolved',
+            action,
+          }
+        : {
+            _tag: 'invalid',
+            message: 'Expected `release pr preview` or `release pr title <suggest|apply>`.',
+            showHelp: true,
+          },
+    )
+  }
+
+  return Cli.Picker.resolveInteractiveCommandSelection({
+    provided: undefined,
+    terminal: params.terminal,
+    pick: params.pickAction,
+  }).pipe(
+    Effect.map((selection) => {
+      if (selection._tag === 'resolved') {
+        return {
+          _tag: 'resolved',
+          action: selection.value,
+        }
+      }
+
+      switch (selection.reason) {
+        case 'cancelled':
+          return {
+            _tag: 'invalid',
+            message:
+              'PR action selection cancelled. Re-run with `release pr preview` or `release pr title <suggest|apply>`.',
+            showHelp: false,
+          }
+        case 'empty':
+          return {
+            _tag: 'invalid',
+            message:
+              'PR action selection has no available options. Re-run with `release pr preview` or `release pr title <suggest|apply>`.',
+            showHelp: false,
+          }
+        default: {
+          const output = Str.Builder()
+          output`Missing PR action. Pass \`release pr preview\` or \`release pr title <suggest|apply>\`.`
+          output(Cli.Picker.describeInteractiveTerminalRequirement(selection.reason))
+          return {
+            _tag: 'invalid',
+            message: output.render(),
+            showHelp: true,
+          }
+        }
+      }
+    }),
+  )
 }

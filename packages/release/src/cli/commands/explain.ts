@@ -10,12 +10,12 @@ import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Schema, SchemaGetter } from 'effect'
 import * as Api from '../../api/__.js'
 import { FileSystemLayer, TerminalLayer } from '../../platform.js'
-import { isInteractiveTerminal, pickOption } from '../interactive.js'
 import {
   isReadyCommandWorkspace,
   loadCommandWorkspace,
   noPackagesFoundMessage,
 } from './command-workspace.js'
+import { createPackagePickerOptions, resolveExplainPackage } from './explain-lib.js'
 
 const args = Oak.Command.create()
   .use(Oak.EffectSchema)
@@ -43,6 +43,7 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, TerminalLayer, Git.GitLive))(
   Effect.gen(function* () {
     const env = yield* Env.Env
     const git = yield* Git.Git
+    const terminal = Cli.Picker.resolveInteractiveTerminalCapabilities({ env: env.vars })
     const workspace = yield* loadCommandWorkspace()
 
     if (!isReadyCommandWorkspace(workspace)) {
@@ -50,30 +51,24 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, TerminalLayer, Git.GitLive))(
       return
     }
 
-    const requestedPackage =
-      args.pkg ??
-      (isInteractiveTerminal({ env: env.vars })
-        ? yield* pickOption({
-            title: 'Select package to explain',
-            hint: 'Pick the package whose release outcome you want to inspect.',
-            options: [...workspace.packages]
-              .toSorted((left, right) => left.scope.localeCompare(right.scope))
-              .map((pkg) => ({
-                label: pkg.scope,
-                value: pkg.name.moniker,
-                detail: pkg.name.moniker,
-              })),
-            env: env.vars,
-            stdoutIsTTY: true,
-          })
-        : undefined)
+    const packageOptions = createPackagePickerOptions(workspace.packages)
+    const requestedPackageSelection = yield* resolveExplainPackage({
+      pkg: args.pkg,
+      terminal,
+      pickPackage: () =>
+        Cli.Picker.pickOption({
+          title: 'Select package to explain',
+          hint: 'Choose the package whose release outcome you want to inspect.',
+          options: packageOptions,
+          color: terminal.color,
+        }),
+    })
 
-    if (!requestedPackage) {
-      yield* Console.error(
-        'Missing package target. Pass <pkg> or run `release explain` from an interactive TTY to pick one.',
-      )
+    if (requestedPackageSelection._tag === 'missing') {
+      yield* Console.error(requestedPackageSelection.message)
       return env.exit(1)
     }
+    const requestedPackage = requestedPackageSelection.value
 
     const tags = yield* git.getTags()
     const explanation = yield* Api.Planner.explain(

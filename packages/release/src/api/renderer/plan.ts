@@ -1,3 +1,4 @@
+import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
@@ -5,7 +6,6 @@ import { Option } from 'effect'
 import type { Item } from '../planner/models/item.js'
 import type { Plan } from '../planner/models/plan.js'
 import { formatGithubReleaseTitle, type PublishSemantics } from '../publishing.js'
-import { createTerminalTheme, type TerminalFormatOptions } from '../../terminal.js'
 import { renderTableText } from './table-core.js'
 
 /**
@@ -40,11 +40,11 @@ export const renderPlan = (plan: Plan): string => {
 export const renderApplyConfirmation = (
   plan: Plan,
   semantics: PublishSemantics,
-  options?: TerminalFormatOptions,
+  options?: Cli.Terminal.TerminalFormatOptions,
 ): string => {
   const totalReleases = plan.releases.length + plan.cascades.length
   const output = Str.Builder()
-  const theme = createTerminalTheme(options)
+  const theme = Cli.Terminal.createTerminalTheme(options)
 
   output(
     `${theme.badge('accent', 'APPLY')} ${theme.heading(`${formatLifecycle(plan.lifecycle)} release plan`)}`,
@@ -79,10 +79,10 @@ export const renderApplyConfirmation = (
 export const renderApplyDryRun = (
   plan: Plan,
   semantics: PublishSemantics,
-  options?: TerminalFormatOptions,
+  options?: Cli.Terminal.TerminalFormatOptions,
 ): string => {
   const output = Str.Builder()
-  const theme = createTerminalTheme(options)
+  const theme = Cli.Terminal.createTerminalTheme(options)
 
   output(
     `${theme.badge('warn', 'DRY RUN')} Would execute ${formatLifecycle(plan.lifecycle).toLowerCase()} release plan`,
@@ -100,9 +100,12 @@ export const renderApplyDryRun = (
 /**
  * Render completion summary.
  */
-export const renderApplyDone = (releasedCount: number, options?: TerminalFormatOptions): string => {
+export const renderApplyDone = (
+  releasedCount: number,
+  options?: Cli.Terminal.TerminalFormatOptions,
+): string => {
   const output = Str.Builder()
-  const theme = createTerminalTheme(options)
+  const theme = Cli.Terminal.createTerminalTheme(options)
   output``
   output(
     `${theme.badge('success', 'DONE')} ${String(releasedCount)} package${releasedCount === 1 ? '' : 's'} released.`,
@@ -152,7 +155,7 @@ const formatApplyReleaseLine = (
   release: Item,
   semantics: PublishSemantics,
   cascade = false,
-  theme = createTerminalTheme({ color: false }),
+  theme = Cli.Terminal.createTerminalTheme({ color: false }),
 ): string => {
   const version = release.nextVersion.toString()
   const tag = Pkg.Pin.toString(

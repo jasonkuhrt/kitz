@@ -61,7 +61,7 @@ packages/cmx/src/
 - [ ] **Step 1: Write failing test for error construction**
 
 ```typescript
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { CmxDuplicateNamespace, CmxDuplicateSlot, CmxInvalidAppMap, CmxInvalidPath, CmxMissingLayer, CmxSlotValidationFailure, CmxCapabilityExecutionFailure } from './errors.js'
 
 describe('CmxDuplicateNamespace', () => {
@@ -241,7 +241,7 @@ git commit -m "feat(cmx): add error definitions"
 - [ ] **Step 1: Write failing tests for all four slot kinds**
 
 ```typescript
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { Schema as S } from 'effect'
 import { Slot } from './slot.js'
 
@@ -405,7 +405,7 @@ git commit -m "feat(cmx): add Slot types (Enum, Fuzzy, Search, Text)"
 - [ ] **Step 1: Write failing tests**
 
 ```typescript
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { Effect } from 'effect'
 import { Capability } from './capability.js'
 
@@ -573,7 +573,7 @@ git commit -m "feat(cmx): add Capability types with composite slot aggregation"
 - [ ] **Step 1: Write failing tests**
 
 ```typescript
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { Effect } from 'effect'
 import { Command } from './command.js'
 import { Capability } from './capability.js'
@@ -763,7 +763,7 @@ git commit -m "feat(cmx): add Command types (Leaf, Namespace, Hybrid) with fromC
 - [ ] **Step 1: Write failing tests**
 
 ```typescript
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import type { Choice, AcceptedToken } from './choice.js'
 import type { Resolution } from './resolution.js'
 import { HandleKeyResult } from './handle-key-result.js'
@@ -908,7 +908,7 @@ git commit -m "feat(cmx): add Choice, AcceptedToken, Resolution, HandleKeyResult
 - [ ] **Step 1: Write failing tests for AppMap construction and scope**
 
 ```typescript
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { Effect } from 'effect'
 import { AppMap } from './app-map.js'
 import { Command } from './command.js'
@@ -1149,7 +1149,7 @@ git commit -m "feat(cmx): add AppMap with scope computation and proximity"
 - [ ] **Step 1: Write failing tests**
 
 ```typescript
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { Controls } from './controls.js'
 
 describe('Controls.defaults', () => {
@@ -1277,7 +1277,7 @@ This is the largest task — the core state machine for command tree navigation.
 - [ ] **Step 1: Write failing tests for basic query.push and choices**
 
 ```typescript
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'bun:test'
 import { Effect } from 'effect'
 import { CommandResolver } from './command-resolver.js'
 import { Command } from './command.js'

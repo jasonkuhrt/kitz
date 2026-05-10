@@ -5,6 +5,11 @@ linker = "isolated"
 bun = true
 
 [test]
+# Workspace-wide preloads. Per-package bunfig.toml (e.g. packages/oak) extends
+# this list, but bun reads the most-specific bunfig only — per-package files
+# must re-list this preload if they need it.
+preload = ["./tools/test-preload.ts"]
+
 # Files matching these patterns are not picked up as tests
 pathIgnorePatterns = [
   "**/build/**",

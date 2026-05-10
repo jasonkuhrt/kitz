@@ -1,8 +1,8 @@
+import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'
 import { FileSystem } from 'effect'
 import type { PlatformError } from 'effect/PlatformError'
 import { Console, Effect, Match } from 'effect'
-import { createTerminalTheme } from '../../../terminal.js'
 import { Failed, Finished, type Report, Skipped } from '../models/report.js'
 import * as Severity from '../models/severity.js'
 import * as ViolationLocation from '../models/violation-location.js'
@@ -35,7 +35,7 @@ export interface FormatReportOptions {
 export const formatReport = (report: Report, options?: FormatReportOptions): string => {
   const output = Str.Builder()
   const includeTitle = options?.includeTitle ?? true
-  const theme = createTerminalTheme(
+  const theme = Cli.Terminal.createTerminalTheme(
     options?.color === undefined ? undefined : { color: options.color },
   )
 

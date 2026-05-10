@@ -8,6 +8,7 @@
 import { ChildProcessSpawner } from 'effect/unstable/process'
 import { Workflow as DurableWorkflow, WorkflowEngine } from 'effect/unstable/workflow'
 import { FileSystem } from 'effect'
+import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Flo } from '@kitz/flo'
 import { Fs } from '@kitz/fs'
@@ -18,7 +19,6 @@ import { Str } from '@kitz/core'
 import { Cause, Config, Effect, Exit, Match, Option, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
 import { resolvePublishSemanticsForPlan, type Publishing } from '../publishing.js'
-import { createTerminalTheme, type TerminalFormatOptions } from '../../terminal.js'
 import {
   ExecutorDependencyCycleError,
   ExecutorPreflightError,
@@ -288,10 +288,10 @@ const executionStateTone = (state: ExecutionStatus['state']) => {
 
 export const formatExecutionStatus = (
   status: ExecutionStatus,
-  options?: TerminalFormatOptions,
+  options?: Cli.Terminal.TerminalFormatOptions,
 ): string => {
   const output = Str.Builder()
-  const theme = createTerminalTheme(options)
+  const theme = Cli.Terminal.createTerminalTheme(options)
 
   output(
     `${theme.heading('Release workflow status:')} ${theme.badge(
@@ -343,9 +343,9 @@ export const formatExecutionStatus = (
  */
 export const formatLifecycleEvent = (
   event: Flo.LifecycleEvent,
-  options?: TerminalFormatOptions,
+  options?: Cli.Terminal.TerminalFormatOptions,
 ): LifecycleEventLine | undefined => {
-  const theme = createTerminalTheme(options)
+  const theme = Cli.Terminal.createTerminalTheme(options)
 
   return Match.value(event).pipe(
     Match.tags({

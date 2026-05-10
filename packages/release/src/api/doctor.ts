@@ -1,9 +1,9 @@
+import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'
 import { formatReport } from './lint/ops/relay.js'
 import { Finished, type Report } from './lint/models/report.js'
 import * as Severity from './lint/models/severity.js'
 import type { Plan } from './planner/models/plan.js'
-import { createTerminalTheme, type TerminalFormatOptions } from '../terminal.js'
 import type { Lifecycle } from './version/models/lifecycle.js'
 
 export interface RequestedLifecycle {
@@ -115,10 +115,10 @@ export const hasBlockingIssues = (evaluation: DoctorEvaluation): boolean =>
 
 export const formatEvaluation = (
   evaluation: DoctorEvaluation,
-  options?: TerminalFormatOptions,
+  options?: Cli.Terminal.TerminalFormatOptions,
 ): string => {
   const output = Str.Builder()
-  const theme = createTerminalTheme(options)
+  const theme = Cli.Terminal.createTerminalTheme(options)
 
   output(theme.heading('Doctor Report'))
   output(theme.dim('-----------'))

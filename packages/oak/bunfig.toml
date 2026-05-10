@@ -1,10 +1,15 @@
 # Per-package overlay over the workspace bunfig.toml.
-# Inherits [install] / [run] / [test] settings from /bunfig.toml at repo root.
+# Bun reads the most-specific bunfig only, so any workspace-level preloads
+# must be re-listed here.
 
 [test]
-# Preload runs before each test file. Clears ambient CLI_* envs that bun:test
-# would otherwise inherit from the parent shell or from prior tests in the
-# same process. The oak parser intentionally reads CLI_PARAM_* /
-# CLI_PARAMETER_* / CLI_SETTINGS_* envs, so any stray value pollutes the
-# parser's assertions.
-preload = ["./src/__tests/_setup.ts"]
+preload = [
+  # Workspace preload (mirrors /bunfig.toml's preload list). Sets
+  # IS_REACT_ACT_ENVIRONMENT so React's act() does not warn under bun:test.
+  "../../tools/test-preload.ts",
+  # Per-package preload — clears ambient CLI_PARAM_* / CLI_PARAMETER_* /
+  # CLI_SETTINGS_* envs before each test (bun:test inherits parent shell env
+  # unlike vitest's forked workers); also globally neuters process.exit so
+  # error-path tests do not terminate the test process.
+  "./src/__tests/_setup.ts",
+]

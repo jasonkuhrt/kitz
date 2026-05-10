@@ -1,0 +1,10 @@
+# Per-package overlay over the workspace bunfig.toml.
+# Bun reads the most-specific bunfig only, so any workspace-level preloads
+# must be re-listed here.
+
+[test]
+preload = [
+  # Workspace preload — sets IS_REACT_ACT_ENVIRONMENT so React's act() does
+  # not warn under bun:test.
+  "../../tools/test-preload.ts",
+]

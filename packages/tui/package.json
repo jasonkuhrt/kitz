@@ -9,7 +9,8 @@
   },
   "exports": {
     ".": "./src/_.ts",
-    "./__": "./src/__.ts"
+    "./__": "./src/__.ts",
+    "./test": "./src/test.tsx"
   },
   "files": [
     "build",
@@ -20,7 +21,10 @@
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
     "check:lint": "bun ../../tools/run-lint.ts src/",
-    "check:package": "publint && attw --pack"
+    "check:package": "publint && attw --pack",
+    "test": "bun test",
+    "test:coverage": "bun test --coverage",
+    "check:cov": "bun run test:coverage"
   },
   "dependencies": {
     "@kitz/core": "workspace:*",

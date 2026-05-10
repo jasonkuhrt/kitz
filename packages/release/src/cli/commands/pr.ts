@@ -17,31 +17,19 @@
  */
 import { Cli } from '@kitz/cli'
 import { ConventionalCommits } from '@kitz/conventional-commits'
+import { Str } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
-import { Console, Effect, Layer } from 'effect'
+import { Array as A, Console, Effect, Layer } from 'effect'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
-import { isInteractiveTerminal, pickOption } from '../interactive.js'
 import { resolveDiffRemote } from '../pr-preview-diff.js'
 import { PreviewBlockingError, runPrPreview } from '../pr-preview.js'
-import { formatHelp, helpFlags, parseAction, type ParsedAction } from './pr-lib.js'
+import { formatHelp, type ParsedAction, prActionPickerOptions, resolvePrAction } from './pr-lib.js'
 
 const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
-
-interface PreparedPrTitle {
-  readonly githubContext: Api.Explorer.ResolvedGitHubContext
-  readonly pullRequest: {
-    readonly number: number
-    readonly title: string
-    readonly body: string | null
-  }
-  readonly projectedHeader: string
-  readonly suggestedTitle: string | null
-  readonly titleRewriteError: string | null
-}
 
 const preparePrTitle = Effect.gen(function* () {
   const git = yield* Git.Git
@@ -102,7 +90,7 @@ const preparePrTitle = Effect.gen(function* () {
     projectedHeader,
     suggestedTitle: rewriteAttempt._tag === 'Success' ? rewriteAttempt.success : null,
     titleRewriteError: rewriteAttempt._tag === 'Failure' ? rewriteAttempt.failure.message : null,
-  } satisfies PreparedPrTitle
+  }
 })
 
 Cli.run(
@@ -118,53 +106,37 @@ Cli.run(
   Effect.gen(function* () {
     const env = yield* Env.Env
     const argv = yield* Cli.parseArgv(env.argv)
-    const args = argv.args.slice(1)
+    const args = A.drop(argv.args, 1)
+    const terminal = Cli.Picker.resolveInteractiveTerminalCapabilities({ env: env.vars })
 
-    if (args.some((arg) => helpFlags.includes(arg as '-h' | '--help'))) {
+    if (A.some(args, (arg) => arg === '-h' || arg === '--help')) {
       yield* Console.log(formatHelp())
       return
     }
 
-    const action =
-      (args.length === 0 && isInteractiveTerminal({ env: env.vars })
-        ? yield* pickOption<ParsedAction>({
-            title: 'Select PR release action',
-            hint: 'Pick the PR automation action you want to run.',
-            options: [
-              {
-                label: 'preview',
-                value: { _tag: 'preview', checkOnly: false } satisfies ParsedAction,
-                detail: 'Update the release preview comment for the connected pull request.',
-              },
-              {
-                label: 'title suggest',
-                value: { _tag: 'title', action: 'suggest' } satisfies ParsedAction,
-                detail: 'Show the canonical PR title header without changing GitHub.',
-              },
-              {
-                label: 'title apply',
-                value: { _tag: 'title', action: 'apply' } satisfies ParsedAction,
-                detail: 'Rewrite the connected PR title header on GitHub.',
-              },
-            ],
-            env: env.vars,
-            stdoutIsTTY: true,
-          })
-        : parseAction(args)) ?? null
+    const actionResolution = yield* resolvePrAction({
+      args,
+      terminal,
+      pickAction: () =>
+        Cli.Picker.pickOption<ParsedAction>({
+          title: 'Select PR release action',
+          hint: 'Choose the PR release workflow to run.',
+          options: prActionPickerOptions,
+          color: terminal.color,
+        }),
+    })
 
-    if (args.length === 0 && action === null) {
-      yield* Console.log(formatHelp())
+    if (actionResolution._tag === 'invalid') {
+      const output = Str.Builder()
+      output`Error: ${actionResolution.message}`
+      if (actionResolution.showHelp) {
+        output``
+        output(formatHelp())
+      }
+      yield* Console.error(output.render())
       return env.exit(1)
     }
-
-    if (!action) {
-      yield* Console.error(
-        'Error: Expected `release pr preview` or `release pr title <suggest|apply>`.',
-      )
-      yield* Console.error('')
-      yield* Console.error(formatHelp())
-      return env.exit(1)
-    }
+    const action = actionResolution.action
 
     if (action._tag === 'preview') {
       const previewResult = yield* runPrPreview(

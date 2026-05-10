@@ -1,5 +1,5 @@
 import { Str } from '@kitz/core'
-import { Effect, PlatformError, Queue, Terminal } from 'effect'
+import { Array as A, Effect, PlatformError, Queue, Terminal } from 'effect'
 import { createTerminalTheme, resolveUseColor, type TerminalFormatOptions } from './terminal.js'
 
 const ANSI_ALT_SCREEN_ENTER = '\u001b[?1049h'
@@ -38,6 +38,10 @@ export interface PickerOption<T> {
   readonly value: T
   readonly detail?: string
 }
+
+export const defineOptions = <const Options extends readonly PickerOption<unknown>[]>(
+  options: Options,
+) => options
 
 export interface PickerParams<T> extends TerminalFormatOptions {
   readonly title: string
@@ -303,8 +307,10 @@ export const withAlternateScreen = <A, E, R>(
         .pipe(Effect.ignore),
   )
 
-const pickCancelled = { _tag: 'cancelled' } as const satisfies PickerResult<never>
-const pickEmpty = { _tag: 'empty' } as const satisfies PickerResult<never>
+const pickCancelled: PickerResult<never> = { _tag: 'cancelled' }
+const pickEmpty: PickerResult<never> = { _tag: 'empty' }
+const pickSelected = <T>(value: T): PickerResult<T> => ({ _tag: 'selected', value })
+const toPickerKeyEvent = (event: PickerKeyEvent) => event
 
 const isPickerCancelEvent = (event: PickerKeyEvent): boolean =>
   event.name === 'escape' ||
@@ -329,10 +335,7 @@ export const pickOptionWith = <T>(
         }
 
         if (event.name === 'return') {
-          return Effect.succeed({
-            _tag: 'selected',
-            value: params.options[index]!.value,
-          } satisfies PickerResult<T>)
+          return Effect.succeed(pickSelected(A.getUnsafe(params.options, index).value))
         }
 
         if (event.name === 'up' || event.name === 'k') {
@@ -370,8 +373,8 @@ export const pickOption = <T>(
               Effect.result,
               Effect.map((result) =>
                 result._tag === 'Success'
-                  ? (result.success.key satisfies PickerKeyEvent)
-                  : { ctrl: false, meta: false, name: 'escape', shift: false },
+                  ? toPickerKeyEvent(result.success.key)
+                  : toPickerKeyEvent({ ctrl: false, meta: false, name: 'escape', shift: false }),
               ),
             ),
           },

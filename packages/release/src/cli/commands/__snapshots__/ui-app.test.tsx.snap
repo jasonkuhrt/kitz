@@ -1,0 +1,137 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`ui-app dashboard renders consistently at width=80 1`] = `
+"Plan: /repo/.release/plan.json  State: missing  official plan: 0 packages.      
+ Lifecycle   OFFICIAL   CANDIDATE  EPHEMERAL                                    
+╭─ Packages ─────╮╭─ Draft Plan ───────────────────────────────────────────────╮
+│> [xcore@kitz/  ││No releases planned.                                        │
+│  [xcli @kitz/cl││                                                            │
+│                ││                                                            │
+│                ││                                                            │
+│                ││                                                            │
+│                ││                                                            │
+│                ││                                                            │
+│                ││                                                            │
+│                ││                                                            │
+│                ││                                                            │
+│                ││                                                            │
+│                │╰────────────────────────────────────────────────────────────╯
+│                │╭─ Doctor ───────────────────────────────────────────────────╮
+│                ││Doctor skipped — no planned packages.                       │
+│                ││                                                            │
+│                ││                                                            │
+│                ││                                                            │
+│                ││                                                            │
+│                ││                                                            │
+│                ││                                                            │
+│                ││                                                            │
+│                ││                                                            │
+│                ││                                                            │
+│                │╰────────────────────────────────────────────────────────────╯
+│                │╭─ Diff ─────────────────────────────────────────────────────╮
+╰────────────────╯╰No─draft─to─compare.────────────────────────────────────────╯
+[ ]lifecycle t toggle     Tabpane  j/kscroll  ppersist  rrefresh  ?help  qquit  
+"
+`;
+
+exports[`ui-app dashboard renders consistently at width=100 1`] = `
+"Plan: /repo/.release/plan.json  State: missing  official plan: 0 packages.                          
+ Lifecycle   OFFICIAL   CANDIDATE  EPHEMERAL                                                        
+╭─ Packages ──────────╮╭─ Draft Plan ──────────────────────────────────────────────────────────────╮
+│> [x] core @kitz/core││No releases planned.                                                       │
+│  [x] cli @kitz/cli  ││                                                                           │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     │╰───────────────────────────────────────────────────────────────────────────╯
+│                     │╭─ Doctor ──────────────────────────────────────────────────────────────────╮
+│                     ││Doctor skipped — no planned packages.                                      │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     ││                                                                           │
+│                     │╰───────────────────────────────────────────────────────────────────────────╯
+│                     │╭─ Diff ────────────────────────────────────────────────────────────────────╮
+╰─────────────────────╯╰No─draft─to─compare.───────────────────────────────────────────────────────╯
+[ ] lifecycle  t toggle pkg  Tab pane  j/k scroll  p persist  r refresh  ? help  q quit             
+"
+`;
+
+exports[`ui-app dashboard renders consistently at width=140 1`] = `
+"Plan: /repo/.release/plan.json  State: missing  official plan: 0 packages.                                                                  
+ Lifecycle   OFFICIAL   CANDIDATE  EPHEMERAL                                                                                                
+╭─ Packages ───────────────────╮╭─ Draft Plan ─────────────────────────────────────────────────────────────────────────────────────────────╮
+│> [x] core @kitz/core         ││No releases planned.                                                                                      │
+│  [x] cli @kitz/cli           ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              │╰──────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+│                              │╭─ Doctor ─────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                              ││Doctor skipped — no planned packages.                                                                     │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              ││                                                                                                          │
+│                              │╰──────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+│                              │╭─ Diff ───────────────────────────────────────────────────────────────────────────────────────────────────╮
+╰──────────────────────────────╯╰No─draft─to─compare.──────────────────────────────────────────────────────────────────────────────────────╯
+[ ] lifecycle  t toggle pkg  Tab pane  j/k scroll  p persist  r refresh  ? help  q quit                                                     
+"
+`;
+
+exports[`ui-app dashboard renders the help overlay consistently 1`] = `
+"╭─ Help (press ? to close) ────────────────────────────────────────────────────────────────────────╮
+│Release UI — Interactive Release Dashboard                                                       █│
+│                                                                                                 █│
+│CONCEPTS                                                                                         █│
+│                                                                                                 █│
+│  Lifecycle    Determines how versions are calculated:                                           █│
+│               official — standard semver (feat→minor, fix→patch)                                █│
+│               candidate — pre-release with -next.<N> suffix                                     █│
+│               ephemeral — PR-scoped builds (0.0.0-pr.<N>)                                       █│
+│                                                                                                 █│
+│  Packages     Every package starts included [x] in the release plan.                            █│
+│               Toggle a package to exclude [ ] it — excluded packages                            █│
+│               won't get releases. The plan, doctor, and diff panes                              █│
+│               update automatically when you change the selection.                               █│
+│                                                                                                 █│
+│  Draft Plan   A preview of what would be released. Computed from                                 │
+│               git history, the chosen lifecycle, and which packages                              │
+│               are included. Not persisted until you press 'p'.                                   │
+│                                                                                                  │
+│  Doctor       Checks that run against the draft plan to verify                                   │
+│               the environment is ready for release (npm auth,                                    │
+│               git state, version uniqueness, etc.)                                               │
+│                                                                                                  │
+│  Persist /    Writes the draft plan to .release/plan.json so that                                │
+│  Diff         'release apply' can execute it. The diff pane shows                                │
+│               what would change on disk.                                                         │
+│                                                                                                  │
+│NAVIGATION                                                                                        │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+"
+`;
