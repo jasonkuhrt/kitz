@@ -70,4 +70,28 @@ describe('KeyHints', () => {
       setup.renderer.destroy()
     }
   })
+
+  test('layout snapshot for typical dashboard hint set', async () => {
+    const setup = await TuiTest.render(
+      <KeyHints
+        hints={[
+          { key: '[ ]', label: 'lifecycle' },
+          { key: 't', label: 'toggle pkg' },
+          { key: 'Tab', label: 'pane' },
+          { key: 'q', label: 'quit' },
+        ]}
+      />,
+      { width: 60, height: 1 },
+    )
+
+    try {
+      await act(async () => {
+        await setup.renderOnce()
+      })
+
+      expect(setup.captureCharFrame()).toMatchSnapshot()
+    } finally {
+      setup.renderer.destroy()
+    }
+  })
 })

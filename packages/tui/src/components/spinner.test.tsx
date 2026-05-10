@@ -48,4 +48,21 @@ describe('Spinner', () => {
       setup.renderer.destroy()
     }
   })
+
+  test('layout snapshot at default width', async () => {
+    const setup = await TuiTest.render(<Spinner label="Building plan..." />, {
+      width: 30,
+      height: 1,
+    })
+
+    try {
+      await act(async () => {
+        await setup.renderOnce()
+      })
+
+      expect(setup.captureCharFrame()).toMatchSnapshot()
+    } finally {
+      setup.renderer.destroy()
+    }
+  })
 })

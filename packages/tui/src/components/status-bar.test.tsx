@@ -85,4 +85,27 @@ describe('StatusBar', () => {
       setup.renderer.destroy()
     }
   })
+
+  test('layout snapshot: dashboard-style entries + message', async () => {
+    const setup = await TuiTest.render(
+      <StatusBar
+        entries={[
+          { label: 'Plan', value: '/repo/.release/plan.json' },
+          { label: 'State', value: 'official plan' },
+        ]}
+        message="Loaded 5 packages."
+      />,
+      { width: 100, height: 1 },
+    )
+
+    try {
+      await act(async () => {
+        await setup.renderOnce()
+      })
+
+      expect(setup.captureCharFrame()).toMatchSnapshot()
+    } finally {
+      setup.renderer.destroy()
+    }
+  })
 })

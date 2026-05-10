@@ -87,4 +87,24 @@ describe('Panel', () => {
       setup.renderer.destroy()
     }
   })
+
+  test('layout snapshot: bordered panel with title and content', async () => {
+    const setup = await TuiTest.render(
+      <Panel title="Packages" width={30} height={5} active>
+        <text content="alpha" />
+        <text content="beta" />
+      </Panel>,
+      { width: 30, height: 5 },
+    )
+
+    try {
+      await act(async () => {
+        await setup.renderOnce()
+      })
+
+      expect(setup.captureCharFrame()).toMatchSnapshot()
+    } finally {
+      setup.renderer.destroy()
+    }
+  })
 })

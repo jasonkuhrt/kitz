@@ -618,6 +618,72 @@ describe('program runtime', () => {
     }
   })
 
+  test('synchronous throw in spec.onKey is caught and logged, keypress is dropped', async () => {
+    const errors: ReadonlyArray<unknown>[] = []
+    const realConsoleError = console.error
+    console.error = (...args: unknown[]) => {
+      errors.push(args)
+    }
+
+    let updateCalls = 0
+    type State = { readonly v: number }
+    type Action = { readonly _tag: 'Bumped' }
+
+    function View({ state }: ViewProps<State, Action>) {
+      return <text content={`v=${state.v}`} />
+    }
+
+    const spec = defineProgramSpec<State, Action, never>({
+      initialState: { v: 0 },
+      update(state, _action) {
+        updateCalls++
+        return Transition.next({ v: state.v + 1 })
+      },
+      run() {
+        return Effect.succeed([])
+      },
+      onKey(_state, event) {
+        if (event.name === 'b') {
+          throw new Error('onKey exploded')
+        }
+        return [{ _tag: 'Bumped' as const }]
+      },
+      view: View,
+    })
+
+    const setup = await TuiTest.renderProgram({ spec }, { width: 30, height: 2 })
+
+    try {
+      await act(async () => {
+        await setup.flush()
+      })
+
+      // Bad keypress — onKey throws. Should be caught + logged, no
+      // dispatch, no update.
+      await act(async () => {
+        setup.mockInput.pressKey('b')
+        await setup.flush()
+      })
+      expect(updateCalls).toBe(0)
+
+      const surfaced = errors.find((args) =>
+        args.some((arg) => typeof arg === 'string' && arg.includes('onKey threw')),
+      )
+      expect(surfaced).toBeDefined()
+
+      // Subsequent good keypress still dispatches — proves the keyboard
+      // handler recovered.
+      await act(async () => {
+        setup.mockInput.pressKey('g')
+        await setup.flush()
+      })
+      expect(updateCalls).toBe(1)
+    } finally {
+      console.error = realConsoleError
+      setup.renderer.destroy()
+    }
+  })
+
   test('start() is idempotent — initialCommands run only once', async () => {
     let runCalls = 0
     type State = { readonly initialized: boolean }

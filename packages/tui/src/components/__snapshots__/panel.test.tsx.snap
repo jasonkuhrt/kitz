@@ -1,0 +1,10 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`Panel layout snapshot: bordered panel with title and content 1`] = `
+"╭─ Packages ─────────────────╮
+│alpha                       │
+│beta                        │
+│                            │
+╰────────────────────────────╯
+"
+`;

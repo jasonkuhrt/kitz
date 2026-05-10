@@ -385,13 +385,34 @@ function ProgramInner<State, Action, Command, R = never>(
   useEffect(() => {
     controller.start()
     return () => {
-      void controller.dispose()
+      // dispose returns a Promise — surface any rejection (interrupted
+      // fiber error, runtime-disposal failure) instead of silently
+      // discarding it via fire-and-forget. React's useEffect cleanup is
+      // sync (no async return), so a native Promise.catch is the only
+      // option here.
+      // oxlint-disable-next-line kitz/effect/no-promise-then-chain -- React useEffect cleanup is sync; cannot yield Effect
+      controller.dispose().catch((error) => {
+        // oxlint-disable-next-line eslint/no-console -- intentional surfacing of dispose failures
+        console.error('[Tui.Program] controller dispose failed:', error)
+      })
     }
   }, [controller])
 
   useKeyboard((event) => {
     if (!spec.onKey) return
-    controller.dispatchMany(normalizeBatch(spec.onKey(controller.getSnapshot(), event)))
+    // Guard against `spec.onKey` throwing synchronously. OpenTUI's keyHandler
+    // is an EventEmitter; an uncaught throw in a handler would propagate
+    // unpredictably (sometimes `error` event, sometimes process abort).
+    // Logging + dropping the keypress is the resilient choice.
+    let actions: Batch<Action>
+    try {
+      actions = spec.onKey(controller.getSnapshot(), event)
+    } catch (error) {
+      // oxlint-disable-next-line eslint/no-console -- intentional surfacing of unrecoverable onKey failures
+      console.error('[Tui.Program] onKey threw on event:', event, error)
+      return
+    }
+    controller.dispatchMany(normalizeBatch(actions))
   })
 
   const View = spec.view

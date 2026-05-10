@@ -165,7 +165,7 @@ export const buildPlan = (
       case 'ephemeral':
         return yield* Api.Planner.ephemeral(workspace.analysis, ctx, options)
     }
-  })
+  }).pipe(Effect.withSpan('buildPlan', { attributes: { lifecycle } }))
 
 export const buildDoctorReport = (workspace: WorkspaceContext, plan: Api.Planner.Plan) =>
   Effect.gen(function* () {
@@ -185,7 +185,7 @@ export const buildDoctorReport = (workspace: WorkspaceContext, plan: Api.Planner
     return summary
       ? Api.Commentator.renderDoctorSummary(summary)
       : 'Doctor found no issues for the current draft.'
-  })
+  }).pipe(Effect.withSpan('buildDoctorReport', { attributes: { lifecycle: plan.lifecycle } }))
 
 export const renderPlanText = (plan: Api.Planner.Plan) => {
   const planned = plan.releases.length + plan.cascades.length

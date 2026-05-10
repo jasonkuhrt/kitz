@@ -50,4 +50,12 @@ describe('Badge', () => {
     expect(frame).toContain('ALPHA')
     expect(frame).toContain('BETA')
   })
+
+  test('layout snapshot: active vs inactive', async () => {
+    // Snapshot the rendered frame for both states. Locks in
+    // active/inactive pad-width math + color-code positioning. Update
+    // via `bun test --update-snapshots` after intentional UI changes.
+    expect(await renderToFrame(<Badge label="OFFICIAL" active />)).toMatchSnapshot()
+    expect(await renderToFrame(<Badge label="OFFICIAL" />)).toMatchSnapshot()
+  })
 })

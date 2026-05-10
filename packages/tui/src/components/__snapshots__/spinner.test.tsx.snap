@@ -1,0 +1,6 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`Spinner layout snapshot at default width 1`] = `
+"⠋ Building plan...            
+"
+`;
