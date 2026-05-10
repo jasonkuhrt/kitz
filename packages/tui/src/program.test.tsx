@@ -315,8 +315,10 @@ describe('program runtime', () => {
       await act(async () => {
         await setup.flush()
       })
-      // Recover ran after Boom failed — proves the program kept processing
-      // after a command defect rather than freezing.
+      // Recover ran INDEPENDENTLY of Boom — initial commands fork in parallel
+      // (off the dispatch lock), so a defect in one command cannot freeze the
+      // others. The final state reaches `status=after-fail` because Recover's
+      // Recovered action processes regardless of Boom's defect.
       expect(setup.captureCharFrame()).toContain('status=after-fail')
       // The defect was surfaced via console.error.
       const surfaced = errors.find((args) =>

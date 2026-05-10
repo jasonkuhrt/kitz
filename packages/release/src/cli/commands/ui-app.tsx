@@ -116,7 +116,12 @@ function DashboardView({ state }: Tui.ViewProps<DashboardState, DashboardAction>
 
 export const dashboardProgram = Tui.defineProgramSpec({
   initialState: initialDashboardState,
-  initialCommands: [{ _tag: 'LoadWorkspace' }],
+  // Boot uses requestId 0, matching initialDashboardState.workspaceRequestSeq.
+  // Subsequent LoadWorkspace dispatches (via RefreshRequested or
+  // PersistSucceeded) increment the seq, so any boot LoadWorkspace whose
+  // result lands AFTER a user-triggered refresh is correctly discarded as
+  // stale by the WorkspaceLoaded/WorkspaceLoadFailed guards.
+  initialCommands: [{ _tag: 'LoadWorkspace', requestId: 0 }],
   update: dashboardUpdate,
   run: runDashboardCommand,
   onKey: handleDashboardKey,

@@ -47,6 +47,16 @@ export interface DashboardState {
   readonly workspaceLoads: number
   readonly plan: ResourceState<DraftPlanView>
   readonly doctor: ResourceState<string>
+  // Request-generation counters guarding against stale command results
+  // overwriting fresh state. Each time a new command of the named kind is
+  // issued the counter increments; the result action carries the same
+  // requestId, and the handler discards results whose requestId no longer
+  // matches the latest counter. Necessary because the @kitz/tui runtime
+  // forks commands off the dispatch lock — two BuildPlans (etc.) can run
+  // in parallel and resolve out-of-order.
+  readonly planRequestSeq: number
+  readonly workspaceRequestSeq: number
+  readonly doctorRequestSeq: number
 }
 
 export type DashboardAction =
@@ -59,28 +69,34 @@ export type DashboardAction =
   | { readonly _tag: 'PersistFailed'; readonly message: string }
   | { readonly _tag: 'PersistRequested' }
   | { readonly _tag: 'PersistSucceeded'; readonly cleared: boolean }
-  | { readonly _tag: 'PlanBuildFailed'; readonly message: string }
-  | { readonly _tag: 'PlanBuilt'; readonly draft: DraftPlanView }
+  | { readonly _tag: 'PlanBuildFailed'; readonly requestId: number; readonly message: string }
+  | { readonly _tag: 'PlanBuilt'; readonly requestId: number; readonly draft: DraftPlanView }
   | { readonly _tag: 'QuitRequested' }
   | { readonly _tag: 'RefreshRequested' }
-  | { readonly _tag: 'WorkspaceLoadFailed'; readonly message: string }
-  | { readonly _tag: 'WorkspaceLoaded'; readonly workspace: WorkspaceContext | null }
-  | { readonly _tag: 'DoctorBuildFailed'; readonly message: string }
-  | { readonly _tag: 'DoctorBuilt'; readonly text: string }
+  | { readonly _tag: 'WorkspaceLoadFailed'; readonly requestId: number; readonly message: string }
+  | {
+      readonly _tag: 'WorkspaceLoaded'
+      readonly requestId: number
+      readonly workspace: WorkspaceContext | null
+    }
+  | { readonly _tag: 'DoctorBuildFailed'; readonly requestId: number; readonly message: string }
+  | { readonly _tag: 'DoctorBuilt'; readonly requestId: number; readonly text: string }
 
 export type DashboardCommand =
   | {
       readonly _tag: 'BuildDoctor'
+      readonly requestId: number
       readonly workspace: WorkspaceContext
       readonly plan: Api.Planner.Plan
     }
   | {
       readonly _tag: 'BuildPlan'
+      readonly requestId: number
       readonly workspace: WorkspaceContext
       readonly lifecycle: Lifecycle
       readonly excludedPackages: readonly string[]
     }
-  | { readonly _tag: 'LoadWorkspace' }
+  | { readonly _tag: 'LoadWorkspace'; readonly requestId: number }
   | { readonly _tag: 'PersistPlan'; readonly clear: boolean; readonly plan: Api.Planner.Plan }
   | { readonly _tag: 'Quit' }
 
@@ -101,6 +117,9 @@ export const initialDashboardState: DashboardState = {
   workspaceLoads: 0,
   plan: idle(),
   doctor: idle(),
+  planRequestSeq: 0,
+  workspaceRequestSeq: 0,
+  doctorRequestSeq: 0,
 }
 
 const toMessage = (error: unknown): string =>
@@ -139,23 +158,27 @@ const beginPlanBuild = (
   workspace: WorkspaceContext,
   lifecycle: Lifecycle,
   excludedPackages: readonly string[],
-): Tui.ProgramTransition<DashboardState, DashboardCommand> =>
-  Tui.Transition.command(
+): Tui.ProgramTransition<DashboardState, DashboardCommand> => {
+  const planRequestSeq = state.planRequestSeq + 1
+  return Tui.Transition.command(
     {
       ...state,
       lifecycle,
       excludedPackages,
       plan: loading(),
       doctor: idle(),
+      planRequestSeq,
       message: `Building ${lifecycle} plan...`,
     },
     {
       _tag: 'BuildPlan',
+      requestId: planRequestSeq,
       workspace,
       lifecycle,
       excludedPackages,
     },
   )
+}
 
 export const dashboardUpdate = (
   state: DashboardState,
@@ -218,22 +241,30 @@ export const dashboardUpdate = (
       )
     }
     case 'PersistSucceeded': {
+      const workspaceRequestSeq = state.workspaceRequestSeq + 1
       if (state.workspace._tag !== 'Ready') {
-        return Tui.Transition.next({
-          ...state,
-          message: action.cleared ? 'Cleared the plan.' : 'Persisted the draft.',
-        })
+        return Tui.Transition.command(
+          {
+            ...state,
+            workspaceRequestSeq,
+            message: action.cleared ? 'Cleared the plan.' : 'Persisted the draft.',
+          },
+          { _tag: 'LoadWorkspace', requestId: workspaceRequestSeq },
+        )
       }
       return Tui.Transition.command(
         {
           ...state,
+          workspaceRequestSeq,
           message: action.cleared ? 'Cleared the plan.' : 'Persisted the draft.',
           workspace: { ...state.workspace, refreshing: true },
         },
-        { _tag: 'LoadWorkspace' },
+        { _tag: 'LoadWorkspace', requestId: workspaceRequestSeq },
       )
     }
     case 'PlanBuildFailed':
+      // Stale: a newer BuildPlan has been issued since this one. Discard.
+      if (action.requestId !== state.planRequestSeq) return Tui.Transition.next(state)
       return Tui.Transition.next({
         ...state,
         plan: failure(action.message),
@@ -241,7 +272,14 @@ export const dashboardUpdate = (
         message: `Plan error: ${action.message}`,
       })
     case 'PlanBuilt': {
+      // Stale: a newer BuildPlan has been issued since this one. Discard
+      // entirely — applying it would stomp the in-flight latest request's
+      // state with stale draft data (the bug surfaced by forking commands
+      // off the dispatch lock).
+      if (action.requestId !== state.planRequestSeq) return Tui.Transition.next(state)
       const workspace = getWorkspaceValue(state)
+      const willBuildDoctor = workspace !== null && action.draft.plannedPackages > 0
+      const doctorRequestSeq = willBuildDoctor ? state.doctorRequestSeq + 1 : state.doctorRequestSeq
       const nextState: DashboardState = {
         ...state,
         plan: ready(action.draft),
@@ -249,32 +287,40 @@ export const dashboardUpdate = (
           action.draft.plannedPackages === 0
             ? ready('Doctor skipped — no planned packages.')
             : loading(),
+        doctorRequestSeq,
         message: `${state.lifecycle} plan: ${action.draft.plannedPackages} packages.`,
       }
-      if (workspace === null || action.draft.plannedPackages === 0) {
+      if (!willBuildDoctor) {
         return Tui.Transition.next(nextState)
       }
       return Tui.Transition.command(nextState, {
         _tag: 'BuildDoctor',
-        workspace,
+        requestId: doctorRequestSeq,
+        // workspace narrowed via willBuildDoctor.
+        workspace: workspace as WorkspaceContext,
         plan: action.draft.plan,
       })
     }
     case 'QuitRequested':
       return Tui.Transition.command(state, { _tag: 'Quit' })
-    case 'RefreshRequested':
+    case 'RefreshRequested': {
+      const workspaceRequestSeq = state.workspaceRequestSeq + 1
       return Tui.Transition.command(
         {
           ...state,
+          workspaceRequestSeq,
           message: 'Refreshing...',
           workspace:
             state.workspace._tag === 'Ready'
               ? { ...state.workspace, refreshing: true }
               : { _tag: 'Loading' },
         },
-        { _tag: 'LoadWorkspace' },
+        { _tag: 'LoadWorkspace', requestId: workspaceRequestSeq },
       )
+    }
     case 'WorkspaceLoadFailed':
+      // Stale: a newer LoadWorkspace has been issued since this one. Discard.
+      if (action.requestId !== state.workspaceRequestSeq) return Tui.Transition.next(state)
       if (state.workspace._tag === 'Ready') {
         return Tui.Transition.next({
           ...state,
@@ -288,6 +334,8 @@ export const dashboardUpdate = (
         message: `Workspace error: ${action.message}`,
       })
     case 'WorkspaceLoaded': {
+      // Stale: a newer LoadWorkspace has been issued since this one. Discard.
+      if (action.requestId !== state.workspaceRequestSeq) return Tui.Transition.next(state)
       const workspaceLoads = state.workspaceLoads + 1
       if (action.workspace === null) {
         return Tui.Transition.next({
@@ -305,6 +353,7 @@ export const dashboardUpdate = (
       const excludedPackages = A.filter(state.excludedPackages, (scope) =>
         A.some(workspace.uiPackages, (pkg) => pkg.scope === scope),
       )
+      const planRequestSeq = state.planRequestSeq + 1
       const nextState: DashboardState = {
         ...state,
         lifecycle,
@@ -314,22 +363,28 @@ export const dashboardUpdate = (
         packageCursor: clampCursor(state.packageCursor, workspace.uiPackages.length),
         plan: loading(),
         doctor: idle(),
+        planRequestSeq,
         message: `Loaded ${workspace.uiPackages.length} packages.`,
       }
       return Tui.Transition.command(nextState, {
         _tag: 'BuildPlan',
+        requestId: planRequestSeq,
         workspace,
         lifecycle,
         excludedPackages,
       })
     }
     case 'DoctorBuildFailed':
+      // Stale: a newer BuildDoctor has been issued since this one. Discard.
+      if (action.requestId !== state.doctorRequestSeq) return Tui.Transition.next(state)
       return Tui.Transition.next({
         ...state,
         doctor: failure(action.message),
         message: `Doctor error: ${action.message}`,
       })
     case 'DoctorBuilt':
+      // Stale: a newer BuildDoctor has been issued since this one. Discard.
+      if (action.requestId !== state.doctorRequestSeq) return Tui.Transition.next(state)
       return Tui.Transition.next({
         ...state,
         doctor: ready(action.text),
@@ -384,17 +439,22 @@ export const runDashboardCommand = (
   _state: DashboardState,
 ): Effect.Effect<readonly DashboardAction[], never, Data | Tui.Control> => {
   switch (command._tag) {
-    case 'BuildDoctor':
+    case 'BuildDoctor': {
+      const requestId = command.requestId
       return Effect.gen(function* () {
         const data = yield* Data
         return yield* data.buildDoctorReport(command.workspace, command.plan).pipe(
-          Effect.map((text) => actions({ _tag: 'DoctorBuilt', text })),
+          Effect.map((text) => actions({ _tag: 'DoctorBuilt', requestId, text })),
           Effect.catch((error) =>
-            Effect.succeed(actions({ _tag: 'DoctorBuildFailed', message: toMessage(error) })),
+            Effect.succeed(
+              actions({ _tag: 'DoctorBuildFailed', requestId, message: toMessage(error) }),
+            ),
           ),
         )
       })
-    case 'BuildPlan':
+    }
+    case 'BuildPlan': {
+      const requestId = command.requestId
       return Effect.gen(function* () {
         const data = yield* Data
         return yield* data
@@ -404,6 +464,7 @@ export const runDashboardCommand = (
               const plannedPackages = plan.releases.length + plan.cascades.length
               return actions({
                 _tag: 'PlanBuilt',
+                requestId,
                 draft: {
                   plan,
                   text: renderPlanText(plan),
@@ -413,20 +474,27 @@ export const runDashboardCommand = (
               })
             }),
             Effect.catch((error) =>
-              Effect.succeed(actions({ _tag: 'PlanBuildFailed', message: toMessage(error) })),
+              Effect.succeed(
+                actions({ _tag: 'PlanBuildFailed', requestId, message: toMessage(error) }),
+              ),
             ),
           )
       })
-    case 'LoadWorkspace':
+    }
+    case 'LoadWorkspace': {
+      const requestId = command.requestId
       return Effect.gen(function* () {
         const data = yield* Data
         return yield* data.loadWorkspaceContext.pipe(
-          Effect.map((workspace) => actions({ _tag: 'WorkspaceLoaded', workspace })),
+          Effect.map((workspace) => actions({ _tag: 'WorkspaceLoaded', requestId, workspace })),
           Effect.catch((error) =>
-            Effect.succeed(actions({ _tag: 'WorkspaceLoadFailed', message: toMessage(error) })),
+            Effect.succeed(
+              actions({ _tag: 'WorkspaceLoadFailed', requestId, message: toMessage(error) }),
+            ),
           ),
         )
       })
+    }
     case 'PersistPlan':
       return Effect.gen(function* () {
         const data = yield* Data

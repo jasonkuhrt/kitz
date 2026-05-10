@@ -89,6 +89,8 @@ describe('ui-model', () => {
 
     const transition = dashboardUpdate(initialDashboardState, {
       _tag: 'WorkspaceLoaded',
+      // requestId 0 matches initialDashboardState.workspaceRequestSeq.
+      requestId: 0,
       workspace,
     })
 
@@ -97,6 +99,9 @@ describe('ui-model', () => {
     expect(transition.commands).toEqual([
       {
         _tag: 'BuildPlan',
+        // The handler increments planRequestSeq from 0 to 1 when issuing
+        // the follow-up BuildPlan.
+        requestId: 1,
         workspace,
         lifecycle: 'candidate',
         excludedPackages: [],
@@ -118,6 +123,9 @@ describe('ui-model', () => {
 
     const transition = dashboardUpdate(state, {
       _tag: 'WorkspaceLoaded',
+      // requestId 0 matches state.workspaceRequestSeq inherited from
+      // initialDashboardState.
+      requestId: 0,
       workspace: newWorkspace,
     })
 
@@ -127,6 +135,7 @@ describe('ui-model', () => {
     expect(transition.commands).toEqual([
       {
         _tag: 'BuildPlan',
+        requestId: 1,
         workspace: newWorkspace,
         lifecycle: 'ephemeral',
         excludedPackages: ['beta'],
@@ -152,6 +161,9 @@ describe('ui-model', () => {
 
     const transition = dashboardUpdate(state, {
       _tag: 'PlanBuilt',
+      // requestId 0 matches state.planRequestSeq inherited from
+      // initialDashboardState.
+      requestId: 0,
       draft: {
         plan: Api.Planner.Plan.make({
           lifecycle: 'official',

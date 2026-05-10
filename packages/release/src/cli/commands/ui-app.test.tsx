@@ -570,6 +570,98 @@ describe('ui-app', () => {
     }
   })
 
+  // Regression for the race the Phase-2 lock-fix surfaces: with commands
+  // forked off the dispatch lock, two BuildPlans can run in parallel. If
+  // the EARLIER-issued one happens to take longer (slow git, retry, etc.)
+  // and lands its PlanBuilt AFTER the LATER-issued one, the stale draft
+  // overwrites the fresh one and the user sees a plan that doesn't match
+  // the visible exclusion/lifecycle state. The fix is request-generation
+  // tokens on BuildPlan/PlanBuilt; the handler discards stale results.
+  test('Phase 4: stale BuildPlan response does not overwrite a newer one', async () => {
+    const workspace = makeWorkspace(['alpha'], 'official')
+
+    // The test sequence is:
+    //   1. boot triggers BuildPlan(official) — instant
+    //   2. user presses ']' → BuildPlan(candidate) — slow (200ms)
+    //   3. user presses ']' → BuildPlan(ephemeral) — fast (50ms)
+    // Because (3) is faster than (2), PlanBuilt(ephemeral) lands FIRST then
+    // PlanBuilt(candidate) lands second. Without the fix, the candidate
+    // plan stomps the ephemeral plan in state.
+    const layer = Layer.succeed(Data)({
+      loadWorkspaceContext: Effect.succeed(workspace),
+      buildPlan: (_workspace, lifecycle, _excludedPackages) =>
+        Effect.gen(function* () {
+          if (lifecycle === 'candidate') yield* Effect.sleep('200 millis')
+          else if (lifecycle === 'ephemeral') yield* Effect.sleep('50 millis')
+          return makeEmptyPlan(lifecycle)
+        }),
+      buildDoctorReport: (_workspace, plan) =>
+        Effect.succeed(`Doctor summary for ${plan.lifecycle}`),
+      persistPlan: (_plan) => Effect.sync(() => {}),
+      clearPersistedPlan: Effect.sync(() => {}),
+    })
+
+    type Action = Parameters<typeof dashboardProgram.update>[1]
+    type State = Parameters<typeof dashboardProgram.update>[0]
+    const updateLog: Array<{ readonly action: Action; readonly nextState: State }> = []
+    const trackedProgram = {
+      ...dashboardProgram,
+      update: (state: State, action: Action) => {
+        const transition = dashboardProgram.update(state, action)
+        updateLog.push({ action, nextState: transition.state })
+        return transition
+      },
+    }
+
+    const setup = await TuiTest.renderProgram(
+      { spec: trackedProgram, layer },
+      { width: 100, height: 30 },
+    )
+
+    try {
+      // Wait for boot's BuildPlan(official) to complete.
+      await act(async () => {
+        await setup.flush()
+      })
+
+      // Step lifecycle: official → candidate. BuildPlan(candidate) starts a
+      // 200ms sleep.
+      setup.mockInput.pressKey(']')
+
+      // Give BuildPlan(candidate) time to begin sleeping. ~20ms is enough for
+      // the keypress to propagate, dispatch, fork, and enter the sleep — well
+      // short of the 200ms total.
+      await new Promise<void>((resolve) => setTimeout(resolve, 20))
+
+      // Step lifecycle: candidate → ephemeral. BuildPlan(ephemeral) starts a
+      // 50ms sleep. Will COMPLETE before BuildPlan(candidate).
+      setup.mockInput.pressKey(']')
+
+      // Drain everything (waits for both BuildPlans to complete).
+      await act(async () => {
+        await setup.flush()
+      })
+
+      const finalEntry = updateLog[updateLog.length - 1]
+      expect(finalEntry).toBeDefined()
+      const finalState = finalEntry!.nextState
+
+      // The user-driven state changes are unambiguous (handled serially under
+      // the dispatch lock).
+      expect(finalState.lifecycle).toBe('ephemeral')
+      expect(finalState.plan._tag).toBe('Ready')
+
+      // The crucial assertion: the visible plan must reflect the LATEST
+      // request (ephemeral), not the older (candidate) that just happened to
+      // resolve later.
+      if (finalState.plan._tag === 'Ready') {
+        expect(finalState.plan.value.plan.lifecycle).toBe('ephemeral')
+      }
+    } finally {
+      setup.renderer.destroy()
+    }
+  })
+
   test('Phase 4: LoadWorkspace failure renders error state', async () => {
     const layer = Layer.succeed(Data)({
       loadWorkspaceContext: Effect.fail(
