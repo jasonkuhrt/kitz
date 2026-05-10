@@ -36,3 +36,6 @@ CLAUDE.local.md
 # shan-managed (do not edit)
 .codex/skills
 # end shan-managed
+
+.session/
+.sessions/
