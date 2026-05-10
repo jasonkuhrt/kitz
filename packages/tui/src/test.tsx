@@ -62,18 +62,26 @@ export const renderProgram = async <State, Action, Command, R>(
     // oxlint-disable-next-line kitz/effect/no-native-promise-construction -- intentional macrotask yield, see comment above
     await new Promise<void>((resolve) => setTimeout(resolve, 0))
     // Iterative drain. On each pass:
-    //   1. renderOnce() — let OpenTUI process pending events and let React
-    //      apply state updates from useSyncExternalStore.
-    //   2. settled() — await all currently-tracked work fibers (initial
-    //      commands, dispatched actions, command-completion chains).
+    //   1. settled() — await all currently-tracked work fibers (initial
+    //      commands, dispatched actions, command-completion chains). Synch-
+    //      ronous listener notification (in dispatchEffect) schedules React
+    //      re-renders during this step.
+    //   2. macrotask yield — give React's Scheduler (which uses
+    //      MessageChannel/setTimeout, NOT microtasks) time to actually run
+    //      the scheduled re-renders. Without this yield the next renderOnce
+    //      captures the pre-commit OpenTUI tree.
+    //   3. renderOnce() — render the post-commit React tree to OpenTUI's
+    //      buffer.
     // Two passes is enough for typical Elm-style action chains. Capped to
     // protect against pathological specs that infinitely re-dispatch.
     const MAX_PASSES = 4
     for (let i = 0; i < MAX_PASSES; i++) {
-      // oxlint-disable-next-line eslint/no-await-in-loop -- sequential render→settle generations by design
-      await setup.renderOnce()
-      // oxlint-disable-next-line eslint/no-await-in-loop -- see comment above
+      // oxlint-disable-next-line eslint/no-await-in-loop -- sequential settle→commit→render generations by design
       await ref.current?.settled()
+      // oxlint-disable-next-line kitz/effect/no-native-promise-construction, eslint/no-await-in-loop -- intentional macrotask yield, see step 2
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+      // oxlint-disable-next-line eslint/no-await-in-loop -- see comment above
+      await setup.renderOnce()
     }
   }
   return Object.assign(setup, { flush, drain })

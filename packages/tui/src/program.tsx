@@ -9,7 +9,6 @@ import {
   ManagedRuntime,
   Semaphore,
   ServiceMap,
-  Stream,
   SubscriptionRef,
 } from 'effect'
 import {
@@ -125,14 +124,16 @@ const createController = <State, Action, Command, R>(
   // Work fibers: dispatched actions, command-completion chains, initial-command
   // boots. These complete on their own; `settled()` drains them.
   const workFibers = new Set<Fiber.Fiber<unknown, unknown>>()
-  // Infrastructure fibers: long-running daemons (e.g. the state-change stream)
-  // that only exit when the runtime disposes. NOT drained by `settled()`.
-  const infraFibers = new Set<Fiber.Fiber<unknown, unknown>>()
-  // 1-permit semaphore serializes all dispatch entry points (initial commands,
-  // dispatch, dispatchMany). Semaphore.take is documented FIFO, so concurrent
-  // external dispatches process in arrival order — preserving the Elm-style
-  // "process action A fully before action B" semantic that fire-and-forget
-  // forking would violate.
+  // 1-permit semaphore serializes STATE UPDATES across all dispatch entry
+  // points (dispatch, dispatchMany, command-result re-entries). Semaphore.take
+  // is documented FIFO, so concurrent external dispatches process in arrival
+  // order — preserving the Elm-style "process action A's state update fully
+  // before action B's state update" semantic that fire-and-forget forking
+  // would violate. Critically, the lock is held ONLY for the synchronous
+  // state-update step inside dispatchEffect; commands themselves run on
+  // separate fibers OFF the lock, so a long-running command (e.g. the boot
+  // sequence's LoadWorkspace) does not block subsequent keypresses from
+  // updating state. See runCommand for the command-fiber lifecycle.
   const dispatchLock = runtime.runSync(Semaphore.make(1))
   let started = false
   let disposed = false
@@ -171,45 +172,34 @@ const createController = <State, Action, Command, R>(
     return fiber
   }
 
-  const forkInfra = <A,>(effect: Effect.Effect<A, never, R | Control>) => {
-    const fiber = runtime.runFork(effect)
-    trackFiber(infraFibers, fiber)
-    return fiber
-  }
-
-  forkInfra(
-    SubscriptionRef.changes(stateRef).pipe(
-      Stream.drop(1),
-      Stream.runForEach(() => notifyListeners),
-    ),
-  )
-
-  const runCommands = (
-    state: State,
-    commands: readonly Command[],
-  ): Effect.Effect<void, never, R | Control> =>
-    Effect.forEach(
-      commands,
-      (command) =>
-        spec.run(command, state).pipe(
-          // `spec.run` is typed `Effect<Batch<Action>, never, R | Control>`
-          // — error channel `never`. But defects (uncaught throws inside
-          // `Effect.sync`, missing layer services, etc.) bypass the type
-          // system and would otherwise silently kill the dispatch fiber.
-          // Convert any cause into an empty batch + console.error so the
-          // failure is observable and the program continues processing.
-          Effect.catchCause(
-            (cause: Cause.Cause<never>): Effect.Effect<Batch<Action>, never, R | Control> =>
-              Effect.sync(() => {
-                // oxlint-disable-next-line eslint/no-console -- intentional surfacing of unrecoverable spec.run failures
-                console.error(`[Tui.Program] command failed:`, command, '\n' + Cause.pretty(cause))
-                return [] as Batch<Action>
-              }),
-          ),
-          Effect.map(normalizeBatch),
-          Effect.flatMap(dispatchAll),
-        ),
-      { concurrency: 1, discard: true },
+  // Runs a single command and dispatches its resulting actions back through
+  // the dispatch pipeline. Commands run in their own fibers (forked from
+  // dispatchEffect or start) — they execute OFF the dispatch lock, so a
+  // long-running command no longer blocks other dispatches (e.g. keypresses)
+  // from acquiring the lock for their own state updates. The command's
+  // resulting actions re-acquire the lock when they dispatch back in.
+  const runCommand = (command: Command, state: State): Effect.Effect<void, never, R | Control> =>
+    spec.run(command, state).pipe(
+      // `spec.run` is typed `Effect<Batch<Action>, never, R | Control>`
+      // — error channel `never`. But defects (uncaught throws inside
+      // `Effect.sync`, missing layer services, etc.) bypass the type
+      // system and would otherwise silently kill the command fiber.
+      // Convert any cause into an empty batch + console.error so the
+      // failure is observable and the program continues processing.
+      Effect.catchCause(
+        (cause: Cause.Cause<never>): Effect.Effect<Batch<Action>, never, R | Control> =>
+          Effect.sync(() => {
+            // oxlint-disable-next-line eslint/no-console -- intentional surfacing of unrecoverable spec.run failures
+            console.error(`[Tui.Program] command failed:`, command, '\n' + Cause.pretty(cause))
+            return [] as Batch<Action>
+          }),
+      ),
+      Effect.map(normalizeBatch),
+      Effect.flatMap((actions) =>
+        // Empty action lists are common (e.g. the Quit command returns no
+        // actions). Skip the lock acquisition entirely in that case.
+        actions.length === 0 ? Effect.void : dispatchLock.withPermits(1)(dispatchAll(actions)),
+      ),
     )
 
   const dispatchAll = (actions: readonly Action[]): Effect.Effect<void, never, R | Control> =>
@@ -220,7 +210,34 @@ const createController = <State, Action, Command, R>(
       const transition = spec.update(state, action)
       return toStateModification(transition)
     })
-      .pipe(Effect.flatMap(({ state, commands }) => runCommands(state, commands)))
+      .pipe(
+        // Notify React listeners synchronously after the state mutation.
+        // Stream-based notification (via SubscriptionRef.changes) runs on its
+        // own fiber and can lag behind dispatchEffect, breaking deterministic
+        // settling in tests. Direct notification keeps state mutations and
+        // listener firings in lockstep — when settled() returns, React's
+        // re-render is already scheduled within the active act() boundary.
+        Effect.tap(() => notifyListeners),
+        Effect.flatMap(({ state, commands }) =>
+          Effect.sync(() => {
+            // Fork each command as a separate work fiber, off the dispatch
+            // lock. The lock is released as soon as this dispatchEffect
+            // returns — long-running commands no longer block other
+            // dispatches from acquiring the lock for their own state updates.
+            // The forked commands' resulting actions re-acquire the lock
+            // (via dispatchLock.withPermits inside runCommand) when they
+            // dispatch back in.
+            //
+            // If the controller has been disposed concurrently with this
+            // state update, skip forking — the runtime is about to dispose
+            // and any new fibers would be immediately interrupted.
+            if (disposed) return
+            for (const command of commands) {
+              forkWork(runCommand(command, state))
+            }
+          }),
+        ),
+      )
       .pipe(
         // Catch defects from `spec.update` throwing synchronously (typed as
         // pure but JS can't enforce that). Without this catch, the dispatch
@@ -266,14 +283,22 @@ const createController = <State, Action, Command, R>(
       started = true
       const initialCommands = spec.initialCommands ?? []
       if (initialCommands.length === 0) return
-      // Initial commands also acquire the lock — if a user keypress arrives
-      // before initial commands finish, the keypress dispatch waits its turn
-      // rather than racing with the boot sequence.
-      forkWork(
-        dispatchLock.withPermits(1)(
-          runCommands(SubscriptionRef.getUnsafe(stateRef), initialCommands),
-        ),
-      )
+      // Fork each initial command as a separate work fiber, off the dispatch
+      // lock. There's no state update to serialize at boot, so no lock is
+      // needed here; the commands' resulting actions will acquire the lock
+      // when they dispatch back in. This is what keeps user input responsive
+      // during a long-running boot — the lock isn't held for the entire
+      // duration of the initial command chain.
+      //
+      // Note: multiple initial commands run in parallel (the previous design
+      // serialized them via runCommands' concurrency:1 forEach). Specs that
+      // need ordered initial-command execution must encode that ordering in
+      // their action graph (e.g. command A's resulting action triggers
+      // command B), not in the initialCommands array.
+      const initialState = SubscriptionRef.getUnsafe(stateRef)
+      for (const command of initialCommands) {
+        forkWork(runCommand(command, initialState))
+      }
     },
     settled: async () => {
       // Drain transitively: each iteration awaits the snapshot of in-flight
@@ -294,7 +319,7 @@ const createController = <State, Action, Command, R>(
       // double-invoke or during fast unmount/remount cycles.
       if (disposed) return
       disposed = true
-      const allFibers = [...workFibers, ...infraFibers]
+      const allFibers = [...workFibers]
       if (allFibers.length > 0) {
         await runtime.runPromise(Effect.forEach(allFibers, Fiber.interrupt, { discard: true }))
       }

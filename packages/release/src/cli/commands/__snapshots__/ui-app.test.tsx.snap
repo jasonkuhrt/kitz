@@ -5,7 +5,7 @@ exports[`ui-app dashboard renders consistently at width=80 1`] = `
  Lifecycle   OFFICIAL   CANDIDATE  EPHEMERAL                                    
 ╭─ Packages ─────╮╭─ Draft Plan ───────────────────────────────────────────────╮
 │> [xcore@kitz/  ││No releases planned.                                        │
-│  [xcli @kitz/cl││                                                            │
+│  [x]cli@kitz/cl││                                                            │
 │                ││                                                            │
 │                ││                                                            │
 │                ││                                                            │

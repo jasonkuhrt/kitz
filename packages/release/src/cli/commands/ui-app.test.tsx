@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import * as TuiTest from '@kitz/tui/test'
 import { Fs } from '@kitz/fs'
+import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Array as A, Effect, Layer, Option } from 'effect'
@@ -296,6 +297,326 @@ describe('ui-app', () => {
       }
     })
   }
+
+  // Baseline: j moves the cursor down once the workspace is loaded. This
+  // pins down `event.name === 'j'` dispatching to PackageCursorMoved so the
+  // P0 input-latency regression below can't pass for the wrong reason
+  // (e.g. the keypress silently failing to dispatch).
+  test('j key moves cursor after boot completes', async () => {
+    const data = createDataLayer({
+      workspace: makeWorkspace(['alpha', 'beta'], 'official'),
+    })
+    const setup = await TuiTest.renderProgram(
+      { spec: dashboardProgram, layer: data.layer },
+      { width: 100, height: 30 },
+    )
+    try {
+      await act(async () => {
+        await setup.flush()
+      })
+      expect(setup.captureCharFrame()).toContain('> [x]alpha')
+
+      await act(async () => {
+        setup.mockInput.pressKey('j')
+        await setup.flush()
+      })
+      expect(setup.captureCharFrame()).toContain('> [x] beta')
+    } finally {
+      setup.renderer.destroy()
+    }
+  })
+
+  // P0 input-latency regression. The release TUI's initial `LoadWorkspace`
+  // command currently runs inside the dispatch lock, blocking ALL other
+  // dispatches — including keypresses — until the entire boot chain
+  // (LoadWorkspace → WorkspaceLoaded → BuildPlan → PlanBuilt) completes. In
+  // production that's ~5s of git + fs + github + plan-store calls; this test
+  // simulates it with a 200ms sleep.
+  //
+  // The user-visible symptom is "press j during boot, nothing happens, then
+  // cursor jumps multiple positions at once": the j press queues on the lock,
+  // then replays against the now-Ready workspace.
+  //
+  // The structural fix is to fork commands off the dispatch lock so the j
+  // press can dispatch immediately. With workspace still Loading, the
+  // cursor-move action is a no-op (PackageCursorMoved bails when workspace
+  // is null in ui-model.ts) — the CORRECT behaviour is for the cursor to
+  // STAY AT 0, not advance to 1 after the boot completes.
+  //
+  // The assertion targets controller STATE (via a wrapper around `update`)
+  // rather than the rendered frame. The frame is unreliable here because the
+  // SubscriptionRef → notify → React-commit chain runs on the infra stream
+  // fiber that `settled()` does not await — so a frame captured immediately
+  // after settle can lag the underlying state. Tracking state directly
+  // sidesteps this entirely and gives a deterministic green/red signal.
+  test('P0: j pressed during initial workspace load does not queue and replay', async () => {
+    const workspace = makeWorkspace(['alpha', 'beta'], 'official')
+    const layer = Layer.succeed(Data)({
+      loadWorkspaceContext: Effect.sleep('200 millis').pipe(Effect.as(workspace)),
+      buildPlan: (_workspace, lifecycle) => Effect.succeed(makeEmptyPlan(lifecycle)),
+      buildDoctorReport: (_workspace, plan) =>
+        Effect.succeed(`Doctor summary for ${plan.lifecycle}`),
+      persistPlan: (_plan) => Effect.sync(() => {}),
+      clearPersistedPlan: Effect.sync(() => {}),
+    })
+
+    // Wrapper spec that captures every (action, resulting-state) pair seen by
+    // `update`. The last entry's resulting state is the source of truth for
+    // the assertion below.
+    type Action = Parameters<typeof dashboardProgram.update>[1]
+    type State = Parameters<typeof dashboardProgram.update>[0]
+    const updateLog: Array<{ readonly action: Action; readonly nextState: State }> = []
+    const trackedProgram = {
+      ...dashboardProgram,
+      update: (state: State, action: Action) => {
+        const transition = dashboardProgram.update(state, action)
+        updateLog.push({ action, nextState: transition.state })
+        return transition
+      },
+    }
+
+    const setup = await TuiTest.renderProgram(
+      { spec: trackedProgram, layer },
+      { width: 100, height: 30 },
+    )
+
+    try {
+      // Wait long enough that the boot fiber has DEFINITELY started, acquired
+      // the dispatch lock, called spec.run, entered loadWorkspaceContext, and
+      // suspended on Effect.sleep('200 millis'). 50ms is plenty for that
+      // chain (React useEffect → start() → forkWork → fiber scheduling).
+      await new Promise<void>((resolve) => setTimeout(resolve, 50))
+
+      // Confirm boot is genuinely in flight at the moment we press j.
+      // If this assertion fails, the test setup itself is wrong (boot
+      // completed too early) and the rest is meaningless.
+      await setup.renderOnce()
+      expect(setup.captureCharFrame()).toContain('Loading workspace...')
+
+      // Press j WHILE workspace is still Loading.
+      setup.mockInput.pressKey('j')
+
+      // Drain everything (boot + j-press fiber, in whatever order they
+      // complete). With the bug: boot eventually releases the lock with
+      // workspace Ready, then the queued j-dispatch acquires the lock and
+      // moves the cursor to 1. With the fix: the j-dispatch acquires the
+      // lock briefly, sees workspace Loading, no-ops, releases the lock.
+      await act(async () => {
+        await setup.flush()
+      })
+
+      // Verify the dispatch actually happened — `j` produced PackageCursorMoved.
+      const cursorActions = updateLog.filter((e) => e.action._tag === 'PackageCursorMoved')
+      expect(cursorActions).toHaveLength(1)
+
+      // The state seen at the moment PackageCursorMoved was processed reveals
+      // whether the bug manifested:
+      //   - BUG: workspace was Ready → cursor moved to 1 (replay symptom)
+      //   - FIX: workspace was Loading → cursor stayed at 0 (no-op)
+      const finalEntry = updateLog[updateLog.length - 1]
+      expect(finalEntry).toBeDefined()
+      expect(finalEntry!.nextState.packageCursor).toBe(0)
+    } finally {
+      setup.renderer.destroy()
+    }
+  })
+
+  // Phase 4 QA — additional scenarios where the lock-during-commands bug
+  // would have manifested as user-visible unresponsiveness during boot.
+
+  test('Phase 4: multiple j presses during boot do not accumulate and replay', async () => {
+    const workspace = makeWorkspace(['a', 'b', 'c', 'd', 'e'], 'official')
+    const layer = Layer.succeed(Data)({
+      loadWorkspaceContext: Effect.sleep('200 millis').pipe(Effect.as(workspace)),
+      buildPlan: (_workspace, lifecycle) => Effect.succeed(makeEmptyPlan(lifecycle)),
+      buildDoctorReport: (_workspace, plan) =>
+        Effect.succeed(`Doctor summary for ${plan.lifecycle}`),
+      persistPlan: (_plan) => Effect.sync(() => {}),
+      clearPersistedPlan: Effect.sync(() => {}),
+    })
+
+    type Action = Parameters<typeof dashboardProgram.update>[1]
+    type State = Parameters<typeof dashboardProgram.update>[0]
+    const updateLog: Array<{ readonly action: Action; readonly nextState: State }> = []
+    const trackedProgram = {
+      ...dashboardProgram,
+      update: (state: State, action: Action) => {
+        const transition = dashboardProgram.update(state, action)
+        updateLog.push({ action, nextState: transition.state })
+        return transition
+      },
+    }
+
+    const setup = await TuiTest.renderProgram(
+      { spec: trackedProgram, layer },
+      { width: 100, height: 30 },
+    )
+
+    try {
+      await new Promise<void>((resolve) => setTimeout(resolve, 50))
+
+      // Press j three times during boot. With the bug, all three would
+      // queue and replay against the Ready workspace, advancing the cursor
+      // to index 3 (d). With the fix, all three no-op and cursor stays at 0.
+      setup.mockInput.pressKey('j')
+      setup.mockInput.pressKey('j')
+      setup.mockInput.pressKey('j')
+
+      await act(async () => {
+        await setup.flush()
+      })
+
+      const cursorActions = updateLog.filter((e) => e.action._tag === 'PackageCursorMoved')
+      expect(cursorActions).toHaveLength(3)
+
+      const finalEntry = updateLog[updateLog.length - 1]
+      expect(finalEntry).toBeDefined()
+      // Cursor must remain at 0 — the multi-jump symptom is the visible
+      // form of the lock-blocking bug.
+      expect(finalEntry!.nextState.packageCursor).toBe(0)
+    } finally {
+      setup.renderer.destroy()
+    }
+  })
+
+  test('Phase 4: ? toggle during boot is responsive', async () => {
+    const workspace = makeWorkspace(['alpha'], 'official')
+    const layer = Layer.succeed(Data)({
+      loadWorkspaceContext: Effect.sleep('200 millis').pipe(Effect.as(workspace)),
+      buildPlan: (_workspace, lifecycle) => Effect.succeed(makeEmptyPlan(lifecycle)),
+      buildDoctorReport: (_workspace, plan) =>
+        Effect.succeed(`Doctor summary for ${plan.lifecycle}`),
+      persistPlan: (_plan) => Effect.sync(() => {}),
+      clearPersistedPlan: Effect.sync(() => {}),
+    })
+
+    type Action = Parameters<typeof dashboardProgram.update>[1]
+    type State = Parameters<typeof dashboardProgram.update>[0]
+    const updateLog: Array<{ readonly action: Action; readonly nextState: State }> = []
+    const trackedProgram = {
+      ...dashboardProgram,
+      update: (state: State, action: Action) => {
+        const transition = dashboardProgram.update(state, action)
+        updateLog.push({ action, nextState: transition.state })
+        return transition
+      },
+    }
+
+    const setup = await TuiTest.renderProgram(
+      { spec: trackedProgram, layer },
+      { width: 100, height: 30 },
+    )
+
+    try {
+      await new Promise<void>((resolve) => setTimeout(resolve, 50))
+      // Press ? during boot. This action is NOT gated on workspace state,
+      // so it should toggle showHelp regardless of when it dispatches.
+      setup.mockInput.pressKey('?')
+
+      await act(async () => {
+        await setup.flush()
+      })
+
+      const helpToggles = updateLog.filter((e) => e.action._tag === 'HelpToggled')
+      expect(helpToggles).toHaveLength(1)
+      const finalEntry = updateLog[updateLog.length - 1]
+      expect(finalEntry).toBeDefined()
+      // showHelp must be true — the ? press dispatched and updated state,
+      // regardless of boot timing.
+      expect(finalEntry!.nextState.showHelp).toBe(true)
+    } finally {
+      setup.renderer.destroy()
+    }
+  })
+
+  test('Phase 4: q pressed during boot exits cleanly without waiting for boot', async () => {
+    const workspace = makeWorkspace(['alpha'], 'official')
+    const layer = Layer.succeed(Data)({
+      // Long boot — if q has to wait for it, the test will time out.
+      loadWorkspaceContext: Effect.sleep('1000 millis').pipe(Effect.as(workspace)),
+      buildPlan: (_workspace, lifecycle) => Effect.succeed(makeEmptyPlan(lifecycle)),
+      buildDoctorReport: (_workspace, plan) =>
+        Effect.succeed(`Doctor summary for ${plan.lifecycle}`),
+      persistPlan: (_plan) => Effect.sync(() => {}),
+      clearPersistedPlan: Effect.sync(() => {}),
+    })
+
+    const setup = await TuiTest.renderProgram(
+      { spec: dashboardProgram, layer },
+      { width: 100, height: 30 },
+    )
+
+    const destroyed = new Promise<void>((resolve) => {
+      setup.renderer.once('destroy', () => resolve())
+    })
+
+    try {
+      await new Promise<void>((resolve) => setTimeout(resolve, 50))
+      // Press q during boot. With the bug, this would block on the lock
+      // until the 1000ms boot completes. With the fix, the Quit command
+      // forks off the lock and destroys the renderer immediately.
+      const startedWaiting = Date.now()
+      setup.mockInput.pressKey('q')
+      await destroyed
+      const elapsed = Date.now() - startedWaiting
+
+      // Should have destroyed well within 500ms (much less than the 1000ms
+      // boot). Any value above ~500ms indicates the lock is still holding
+      // q hostage, which is the bug.
+      expect(elapsed).toBeLessThan(500)
+    } catch {
+      setup.renderer.destroy()
+      throw new Error('q during boot did not destroy the renderer in time')
+    }
+  })
+
+  test('Phase 4: LoadWorkspace failure renders error state', async () => {
+    const layer = Layer.succeed(Data)({
+      loadWorkspaceContext: Effect.fail(
+        new Git.GitError({
+          context: { operation: 'getRoot', detail: 'git fetch exploded' },
+          cause: new Error('git fetch exploded'),
+        }),
+      ),
+      buildPlan: (_workspace, lifecycle) => Effect.succeed(makeEmptyPlan(lifecycle)),
+      buildDoctorReport: (_workspace, plan) =>
+        Effect.succeed(`Doctor summary for ${plan.lifecycle}`),
+      persistPlan: (_plan) => Effect.sync(() => {}),
+      clearPersistedPlan: Effect.sync(() => {}),
+    })
+
+    type Action = Parameters<typeof dashboardProgram.update>[1]
+    type State = Parameters<typeof dashboardProgram.update>[0]
+    const updateLog: Array<{ readonly action: Action; readonly nextState: State }> = []
+    const trackedProgram = {
+      ...dashboardProgram,
+      update: (state: State, action: Action) => {
+        const transition = dashboardProgram.update(state, action)
+        updateLog.push({ action, nextState: transition.state })
+        return transition
+      },
+    }
+
+    const setup = await TuiTest.renderProgram(
+      { spec: trackedProgram, layer },
+      { width: 100, height: 30 },
+    )
+
+    try {
+      await act(async () => {
+        await setup.flush()
+      })
+
+      const finalEntry = updateLog[updateLog.length - 1]
+      expect(finalEntry).toBeDefined()
+      expect(finalEntry!.nextState.workspace._tag).toBe('Failure')
+      // Frame should show the error message rather than spinning forever.
+      const frame = setup.captureCharFrame()
+      expect(frame).toContain('git fetch exploded')
+    } finally {
+      setup.renderer.destroy()
+    }
+  })
 
   test('dashboard renders the help overlay consistently', async () => {
     const data = createDataLayer({
