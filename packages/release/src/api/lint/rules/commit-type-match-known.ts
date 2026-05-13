@@ -13,6 +13,11 @@ const OptionsSchema = Schema.Struct({
 })
 type Options = typeof OptionsSchema.Type
 
+const isKnownType = (
+  type: ConventionalCommits.Type.Type,
+  resolvedTypes: Readonly<Record<string, unknown>>,
+): boolean => ConventionalCommits.Type.Standard.is(type) || type.value in resolvedTypes
+
 /** Verifies that every commit type in the analyzed range is recognized (standard or configured). */
 export const rule = RuntimeRule.create({
   id: RuleId.makeUnsafe('commit.type.match-known'),
@@ -35,7 +40,7 @@ export const rule = RuntimeRule.create({
       const types = ConventionalCommits.Commit.types(parsed)
 
       for (const type of types) {
-        if (!(type.value in resolvedTypes)) {
+        if (!isKnownType(type, resolvedTypes)) {
           return Violation.make({
             location: GitHistory.make({ sha: commit.hash }),
             summary: `Commit ${commit.hash.slice(0, 7)} uses unrecognized type "${type.value}".`,

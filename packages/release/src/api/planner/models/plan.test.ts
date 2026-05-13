@@ -34,7 +34,7 @@ describe('Plan', () => {
       releases: [
         Official.make({
           package: pkg('@kitz/core', 'core'),
-          version: OfficialFirst.make({ version: Semver.fromString('0.1.0') }),
+          version: OfficialFirst.make({ version: Semver.fromString('0.1.0'), bump: 'minor' }),
           commits: [commit('core')],
         }),
       ],
@@ -108,7 +108,7 @@ describe('Plan', () => {
         releases: [
           Official.make({
             package: pkg('@kitz/core', 'core'),
-            version: OfficialFirst.make({ version: Semver.fromString('0.1.0') }),
+            version: OfficialFirst.make({ version: Semver.fromString('0.1.0'), bump: 'minor' }),
             commits: [commit('core')],
           }),
         ],
@@ -125,7 +125,7 @@ describe('Plan', () => {
       releases: [
         Official.make({
           package: pkg('@kitz/core', 'core'),
-          version: OfficialFirst.make({ version: Semver.fromString('0.1.0') }),
+          version: OfficialFirst.make({ version: Semver.fromString('0.1.0'), bump: 'minor' }),
           commits: [commit('core')],
         }),
       ],
@@ -153,7 +153,7 @@ describe('Plan', () => {
       releases: [
         Official.make({
           package: pkg('@kitz/core', 'core'),
-          version: OfficialFirst.make({ version: Semver.fromString('0.1.0') }),
+          version: OfficialFirst.make({ version: Semver.fromString('0.1.0'), bump: 'minor' }),
           commits: [commit('core')],
         }),
       ],

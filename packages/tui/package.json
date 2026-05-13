@@ -1,6 +1,11 @@
 {
   "name": "@kitz/tui",
   "version": "0.0.0-kitz-release",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+  },
   "type": "module",
   "sideEffects": false,
   "imports": {
@@ -21,7 +26,7 @@
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
     "check:lint": "bun ../../tools/run-lint.ts src/",
-    "check:package": "publint && attw --pack",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error",
     "test": "bun test",
     "test:coverage": "bun test --coverage",
     "check:cov": "bun run test:coverage"

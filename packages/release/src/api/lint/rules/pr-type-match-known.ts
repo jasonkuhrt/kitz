@@ -9,6 +9,11 @@ import { ConventionalCommitSettingsService } from '../services/conventional-comm
 import { getInvalidTitleViolation, getParsedCommit } from './pr-helpers.js'
 import { PrService } from '../services/pr.js'
 
+const isKnownType = (
+  type: ConventionalCommits.Type.Type,
+  resolvedTypes: Readonly<Record<string, unknown>>,
+): boolean => ConventionalCommits.Type.Standard.is(type) || type.value in resolvedTypes
+
 /** Verifies that every PR title type is recognized (standard or configured). */
 export const rule = RuntimeRule.create({
   id: RuleId.makeUnsafe('pr.type.match-known'),
@@ -22,7 +27,7 @@ export const rule = RuntimeRule.create({
     const commit = getParsedCommit(pr)!
 
     const unknownTypes = ConventionalCommits.Commit.types(commit).filter(
-      (type) => !(type.value in resolvedTypes),
+      (type) => !isKnownType(type, resolvedTypes),
     )
 
     if (unknownTypes.length > 0) {

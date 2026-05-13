@@ -40,10 +40,15 @@ const makeRelease = (
     commits: [commit(scope, 'test commit')],
   })
 
-const makeFirstRelease = (name: string, scope: string, version: string) =>
+const makeFirstRelease = (
+  name: string,
+  scope: string,
+  version: string,
+  bump: Semver.BumpType = 'minor',
+) =>
   Official.make({
     package: pkg(name, scope),
-    version: OfficialFirst.make({ version: Semver.fromString(version) }),
+    version: OfficialFirst.make({ version: Semver.fromString(version), bump }),
     commits: [commit(scope, 'initial commit')],
   })
 
@@ -100,12 +105,13 @@ describe('renderPlan', () => {
     const plan = Plan.make({
       lifecycle: 'official',
       timestamp: '2026-01-01T00:00:00Z',
-      releases: [makeFirstRelease('@kitz/core', 'core', '0.1.0')],
+      releases: [makeFirstRelease('@kitz/core', 'core', '0.0.1', 'patch')],
       cascades: [],
     })
     const output = renderPlan(plan)
     expect(output).toContain('new')
-    expect(output).toContain('0.1.0')
+    expect(output).toContain('0.0.1')
+    expect(output).toContain('patch')
   })
 
   test('shows commit count', () => {

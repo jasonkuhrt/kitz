@@ -32,6 +32,7 @@ const plan = Plan.make({
       },
       version: OfficialFirst.make({
         version: Semver.fromString('1.0.0'),
+        bump: 'major',
       }),
       commits: [makeCascadeCommit('core', 'feature')],
     }),

@@ -48,7 +48,7 @@ describe('getBump', () => {
     expect(getBump(ConventionalCommits.Type.parse('feat'), false, types)).toBe('patch')
   })
 
-  test('returns null for a removed standard type', () => {
+  test('returns null for a standard type configured with no release impact', () => {
     const types = resolveConventionalCommitTypes({ docs: null })
     expect(getBump(ConventionalCommits.Type.parse('docs'), false, types)).toBeNull()
   })
