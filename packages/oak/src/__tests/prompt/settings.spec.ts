@@ -1,17 +1,30 @@
-import { describe, expect, it } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import type { OakSchema } from '../../schema/oak-schema.js'
 import type { Settings } from '../../Settings/_.js'
 import { $, s, tryCatch } from '../_/helpers.js'
-import { memoryPrompter } from '../_/mocks/tty.js'
+import {
+  createMemoryPrompter,
+  expectMemoryPrompterDrained,
+  type MemoryPrompter,
+} from '../_/mocks/tty.js'
 import { normalizeTerminalOutput } from '../_/snapshotSerializer.js'
 
 const S = <$Schema extends OakSchema>(settings: Settings.PromptInput<$Schema>) => settings
+let memoryPrompter: MemoryPrompter
 const foo = [
   { ctrl: false, meta: false, sequence: `f`, shift: false, name: `f` },
   { ctrl: false, meta: false, sequence: `o`, shift: false, name: `o` },
   { ctrl: false, meta: false, sequence: `o`, shift: false, name: `o` },
   { ctrl: false, meta: false, sequence: ``, shift: false, name: `return` },
 ]
+
+beforeEach(() => {
+  memoryPrompter = createMemoryPrompter()
+})
+
+afterEach(() => {
+  expectMemoryPrompterDrained(memoryPrompter)
+})
 
 describe(`parameter level`, () => {
   it(`can be passed object`, async () => {
