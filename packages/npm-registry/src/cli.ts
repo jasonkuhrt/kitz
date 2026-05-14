@@ -79,11 +79,25 @@ export interface PackOptions {
 /**
  * Result of `npm pack --json`.
  */
+export interface PackFile {
+  readonly path: string
+  readonly size?: number | undefined
+  readonly mode?: number | undefined
+}
+
 export interface PackResult {
   /** Full path to the tarball */
   readonly tarball: Fs.Path.AbsFile
   /** Filename reported by npm */
   readonly filename: string
+  /** Files included in the tarball, when reported by npm. */
+  readonly files?: readonly PackFile[] | undefined
+  /** Tarball byte size, when reported by npm. */
+  readonly size?: number | undefined
+  /** npm sha1 shasum, when reported by npm. */
+  readonly shasum?: string | undefined
+  /** npm integrity value, when reported by npm. */
+  readonly integrity?: string | undefined
 }
 
 /**
@@ -107,6 +121,18 @@ const NpmPackOutputSchema = S.fromJsonString(
   S.Array(
     S.Struct({
       filename: S.String,
+      files: S.optional(
+        S.Array(
+          S.Struct({
+            path: S.String,
+            size: S.optional(S.Number),
+            mode: S.optional(S.Number),
+          }),
+        ),
+      ),
+      size: S.optional(S.Number),
+      shasum: S.optional(S.String),
+      integrity: S.optional(S.String),
     }),
   ),
 )
@@ -241,6 +267,10 @@ export function pack(
 
     return {
       filename: entry.filename,
+      ...(entry.files !== undefined ? { files: entry.files } : {}),
+      ...(entry.size !== undefined ? { size: entry.size } : {}),
+      ...(entry.shasum !== undefined ? { shasum: entry.shasum } : {}),
+      ...(entry.integrity !== undefined ? { integrity: entry.integrity } : {}),
       tarball: Fs.Path.join(
         options.packDestination,
         Fs.Path.RelFile.fromString(`./${entry.filename}`),

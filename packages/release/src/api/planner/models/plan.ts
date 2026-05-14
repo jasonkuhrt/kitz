@@ -1,4 +1,11 @@
 import { Schema as S } from 'effect'
+import {
+  defaultProofPolicy,
+  PlanDigest,
+  PlanSourceSnapshot,
+  ProofPolicy,
+  PublishIntent,
+} from '../../release-contract.js'
 import { type Lifecycle, LifecycleSchema } from '../../version/models/lifecycle.js'
 import { Candidate } from './item-candidate.js'
 import { Ephemeral } from './item-ephemeral.js'
@@ -70,6 +77,21 @@ export const isPlanOf = <$lifecycle extends Lifecycle>(
  * is preserved; flattening for changelogs happens lazily at generation time.
  */
 export class Plan extends S.TaggedClass<Plan>()('Plan', {
+  schemaVersion: S.Literal(2).pipe(
+    S.optionalKey,
+    S.withDecodingDefaultKey(() => 2 as const),
+  ),
+  signingProfileId: S.String.pipe(
+    S.optionalKey,
+    S.withDecodingDefaultKey(() => 'local-developer'),
+  ),
+  planDigest: S.optional(PlanDigest),
+  source: S.optional(PlanSourceSnapshot),
+  publishIntent: S.optional(PublishIntent),
+  proofPolicy: ProofPolicy.pipe(
+    S.optionalKey,
+    S.withDecodingDefaultKey(() => defaultProofPolicy()),
+  ),
   lifecycle: LifecycleSchema,
   timestamp: S.String,
   releases: S.Array(ItemSchema),
@@ -86,7 +108,21 @@ export class Plan extends S.TaggedClass<Plan>()('Plan', {
     readonly timestamp: string
     readonly releases: Plan['releases']
     readonly cascades: Plan['cascades']
-  }): Plan => assertLifecycleConsistency(this.makeUnsafe(input))
+    readonly schemaVersion?: 2
+    readonly signingProfileId?: string
+    readonly planDigest?: PlanDigest
+    readonly source?: PlanSourceSnapshot
+    readonly publishIntent?: PublishIntent
+    readonly proofPolicy?: ProofPolicy
+  }): Plan =>
+    assertLifecycleConsistency(
+      this.makeUnsafe({
+        schemaVersion: 2,
+        signingProfileId: 'local-developer',
+        proofPolicy: defaultProofPolicy(),
+        ...input,
+      }),
+    )
   static is = (value: unknown): value is Plan => S.is(Plan)(value) && hasConsistentLifecycle(value)
 
   /**

@@ -51,6 +51,32 @@ const args = Oak.Command.create()
       .pipe(Schema.annotate({ description: 'Preview actions without executing', default: false })),
   )
   .parameter(
+    'prove',
+    Schema.UndefinedOr(Schema.Boolean)
+      .pipe(
+        Schema.decodeTo(Schema.Boolean, {
+          decode: SchemaGetter.transform((v) => v ?? false),
+          encode: SchemaGetter.transform((v) => v),
+        }),
+      )
+      .pipe(
+        Schema.annotate({ description: 'Refresh plan-bound proof before apply', default: false }),
+      ),
+  )
+  .parameter(
+    'rehearse',
+    Schema.UndefinedOr(Schema.Boolean)
+      .pipe(
+        Schema.decodeTo(Schema.Boolean, {
+          decode: SchemaGetter.transform((v) => v ?? false),
+          encode: SchemaGetter.transform((v) => v),
+        }),
+      )
+      .pipe(
+        Schema.annotate({ description: 'Refresh artifact manifest before apply', default: false }),
+      ),
+  )
+  .parameter(
     'tag t',
     Schema.UndefinedOr(Schema.String).pipe(
       Schema.annotate({ description: 'npm dist-tag override' }),
@@ -114,6 +140,20 @@ Cli.run(
       candidateTag: config.candidateTag,
     })
 
+    if (args.prove) {
+      const proof = yield* Api.Proof.prove(plan)
+      if (Api.Proof.hasBlockingProof(proof)) {
+        yield* Console.error(
+          'Plan proof contains blocking records. Run `release prove` for detail.',
+        )
+        return env.exit(1)
+      }
+    }
+
+    if (args.rehearse) {
+      yield* Api.Artifact.rehearse(plan)
+    }
+
     // Confirmation prompt (unless --yes)
     if (!args.yes && !args.dryRun) {
       yield* Console.log(Api.Renderer.renderApplyConfirmation(plan, publish, { env: env.vars }))
@@ -127,6 +167,29 @@ Cli.run(
     if (args.dryRun) {
       yield* Console.log(Api.Renderer.renderApplyDryRun(plan, publish, { env: env.vars }))
       return
+    }
+
+    const proof = yield* Api.Proof.readForPlan(plan)
+    if (Option.isNone(proof)) {
+      yield* Console.error('Plan-bound proof is missing.')
+      yield* Console.error(
+        'Run `release prove` or `release apply --prove --rehearse` before publishing.',
+      )
+      return env.exit(1)
+    }
+    if (Api.Proof.hasBlockingProof(proof.value)) {
+      yield* Console.error('Plan-bound proof contains blocking records.')
+      yield* Console.error('Run `release prove` and resolve every failed or unprovable proof.')
+      return env.exit(1)
+    }
+
+    const artifacts = yield* Api.Artifact.readManifest(plan)
+    if (Option.isNone(artifacts)) {
+      yield* Console.error('Artifact manifest is missing.')
+      yield* Console.error(
+        'Run `release rehearse` or `release apply --prove --rehearse` before publishing.',
+      )
+      return env.exit(1)
     }
 
     const runtime = yield* Api.Explorer.explore()

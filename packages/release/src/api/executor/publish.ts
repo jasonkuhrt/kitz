@@ -30,6 +30,7 @@ export interface ReleaseInfo {
 
 export interface PreparedArtifact extends ReleaseInfo {
   readonly tarball: Fs.Path.AbsFile
+  readonly packMetadata?: NpmRegistry.Cli.PackResult
 }
 
 /**
@@ -220,6 +221,10 @@ export const preparePackageArtifact = (
     return {
       ...release,
       tarball: artifactPath,
+      packMetadata: {
+        ...packResult.success,
+        tarball: artifactPath,
+      },
     }
   })
 
