@@ -816,10 +816,12 @@ export const publishIntentFromSemantics = (params: {
       trustedPublisherAdmin:
         params.semantics.channel.mode === 'github-trusted' ? 'npm-trust' : undefined,
     }),
-    registry: RegistryProfile.make({
-      ...defaultRegistryProfile(),
-      ...(params.registry !== undefined ? { url: params.registry } : {}),
-    }),
+    registry:
+      params.registry === undefined
+        ? defaultRegistryProfile()
+        : RegistryProfile.make(
+            Object.assign({}, defaultRegistryProfile(), { url: params.registry }),
+          ),
     access: { mode: 'publish-access', value: 'public' },
     lifecycle: params.semantics.lifecycle,
     channel: params.semantics.channel,

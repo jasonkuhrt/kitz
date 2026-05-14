@@ -14,7 +14,7 @@ const run = <A>(
   Effect.runPromise(
     (dependencies?.layer === undefined
       ? effect
-      : effect.pipe(Effect.provide(dependencies.layer))) as Effect.Effect<A, unknown, never>,
+      : effect.pipe(Effect.provide(dependencies.layer))) as Effect.Effect<A, unknown>,
   )
 
 export const digestPlan = Api.Proof.digestForPlan

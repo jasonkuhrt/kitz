@@ -658,6 +658,6 @@ describe('npm-registry cli', () => {
     expect(downloadFailure.context.detail).toContain('fetch')
     expect(notFoundDownload.context.detail).toContain('HTTP 404')
     expect(spawnFailure.context.detail).toContain('spawn failed')
-    notFoundServer.stop(true)
+    await notFoundServer.stop(true)
   })
 })

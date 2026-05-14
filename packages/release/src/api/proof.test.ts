@@ -23,6 +23,9 @@ import { sha256Text } from './digest.js'
 import {
   PlanDigest,
   PlanSourceSnapshot,
+  ProofArtifact,
+  ProofRecord,
+  CredentialIntent,
   PublishIntent,
   PublishProfile,
   publishIntentFromSemantics,
@@ -61,6 +64,20 @@ const publishIntent = publishIntentFromSemantics({
 })
 
 const contractedDigest = PlanDigest.make(sha256Text('contracted'))
+const updatePublishIntent = (intent: PublishIntent, overrides: Partial<PublishIntent>) =>
+  PublishIntent.make(Object.assign({}, intent, overrides))
+
+const updatePublishProfile = (profile: PublishProfile, overrides: Partial<PublishProfile>) =>
+  PublishProfile.make(Object.assign({}, profile, overrides))
+
+const updateCredentialIntent = (intent: CredentialIntent, overrides: Partial<CredentialIntent>) =>
+  CredentialIntent.make(Object.assign({}, intent, overrides))
+
+const updateProofArtifact = (artifact: ProofArtifact, overrides: Partial<ProofArtifact>) =>
+  ProofArtifact.make(Object.assign({}, artifact, overrides))
+
+const updateProofRecord = (record: ProofRecord, overrides: Partial<ProofRecord>) =>
+  ProofRecord.make(Object.assign({}, record, overrides))
 
 const contractedPlan = Plan.make({
   lifecycle: plan.lifecycle,
@@ -106,7 +123,7 @@ const gitError = (operation: Git.GitOperation, detail: string) =>
     cause: new Error(detail),
   })
 
-const unused = <A>() => Effect.die('unused test service operation') as Effect.Effect<A, never>
+const unused = <A>() => Effect.die('unused test service operation') as Effect.Effect<A>
 
 const npmCliLayer = (
   overrides: Partial<NpmRegistry.NpmCliService>,
@@ -360,10 +377,8 @@ describe('proof artifact', () => {
   })
 
   test('does not require Bun publish ignore-scripts when publishing a prebuilt tarball', () => {
-    const bunIntent = PublishIntent.make({
-      ...publishIntent,
-      profile: PublishProfile.make({
-        ...publishIntent.profile,
+    const bunIntent = updatePublishIntent(publishIntent, {
+      profile: updatePublishProfile(publishIntent.profile, {
         id: 'bun-tarball',
         packDriver: 'bun',
         publishInvoker: 'bun',
@@ -390,10 +405,8 @@ describe('proof artifact', () => {
   })
 
   test('provenance required mode blocks Bun and CircleCI required provenance', () => {
-    const bunIntent = PublishIntent.make({
-      ...publishIntent,
-      profile: PublishProfile.make({
-        ...publishIntent.profile,
+    const bunIntent = updatePublishIntent(publishIntent, {
+      profile: updatePublishProfile(publishIntent.profile, {
         id: 'bun-tarball',
         publishInvoker: 'bun',
       }),
@@ -421,8 +434,7 @@ describe('proof artifact', () => {
   })
 
   test('trusted publisher provenance requires configured publisher and verified OIDC claims', () => {
-    const intent = PublishIntent.make({
-      ...publishIntent,
+    const intent = updatePublishIntent(publishIntent, {
       provenance: {
         mode: 'trusted-publisher',
         required: true,
@@ -451,8 +463,7 @@ describe('proof artifact', () => {
   })
 
   test('attestation-file provenance records whether the bundle is present', () => {
-    const intent = PublishIntent.make({
-      ...publishIntent,
+    const intent = updatePublishIntent(publishIntent, {
       provenance: {
         mode: 'attestation-file',
         required: true,
@@ -481,8 +492,7 @@ describe('proof artifact', () => {
   })
 
   test('cli-flag provenance and source snapshots become explicit proof evidence', () => {
-    const intent = PublishIntent.make({
-      ...publishIntent,
+    const intent = updatePublishIntent(publishIntent, {
       provenance: {
         mode: 'cli-flag',
         required: true,
@@ -527,13 +537,11 @@ describe('proof artifact', () => {
   })
 
   test('unattended runtime cannot rely on interactive otp', () => {
-    const intent = PublishIntent.make({
-      ...publishIntent,
-      auth: {
-        ...publishIntent.auth,
+    const intent = updatePublishIntent(publishIntent, {
+      auth: updateCredentialIntent(publishIntent.auth, {
         runtimeHost: 'github-actions',
         otpPolicy: { mode: 'interactive' },
-      },
+      }),
     })
     const proof = makeProofArtifact(
       Plan.make({
@@ -553,14 +561,12 @@ describe('proof artifact', () => {
   })
 
   test('GitHub Actions trusted publishing defers identity and release permission to the named host', () => {
-    const intent = PublishIntent.make({
-      ...publishIntent,
-      auth: {
-        ...publishIntent.auth,
+    const intent = updatePublishIntent(publishIntent, {
+      auth: updateCredentialIntent(publishIntent.auth, {
         source: 'trusted-oidc',
         runtimeHost: 'github-actions',
         tokenEnv: undefined,
-      },
+      }),
     })
     const proof = makeProofArtifact(
       Plan.make({
@@ -604,13 +610,11 @@ describe('proof artifact', () => {
   })
 
   test('unattended runtime accepts otp from env without an interactive prompt', () => {
-    const intent = PublishIntent.make({
-      ...publishIntent,
-      auth: {
-        ...publishIntent.auth,
+    const intent = updatePublishIntent(publishIntent, {
+      auth: updateCredentialIntent(publishIntent.auth, {
         runtimeHost: 'local-unattended',
         otpPolicy: { mode: 'env', env: 'NPM_CONFIG_OTP' },
-      },
+      }),
     })
     const proof = makeProofArtifact(
       Plan.make({
@@ -637,19 +641,16 @@ describe('proof artifact', () => {
       githubReleasePermission: true,
       githubReleaseExists: { '@kitz/core@1.0.0': false },
     })
-    const altered = {
-      ...proof,
+    const altered = updateProofArtifact(proof, {
       records: [
-        {
-          ...proof.records[0]!,
+        updateProofRecord(proof.records[0]!, {
           expiresAt: '2026-05-13T00:00:00.000Z',
-        },
-        {
-          ...proof.records[1]!,
+        }),
+        updateProofRecord(proof.records[1]!, {
           dependsOn: ['missing-proof'],
-        },
+        }),
       ],
-    }
+    })
 
     expect(validateProof(altered, '2026-05-13T00:00:01.000Z').map((issue) => issue.code)).toEqual([
       'release.proof.missing-dependency',

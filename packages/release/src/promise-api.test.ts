@@ -92,13 +92,13 @@ describe('release promise api', () => {
       }),
     )
 
-    await expect(prove(emptyPlan, { layer })).resolves.toMatchObject({ schemaVersion: 1 })
-    await expect(rehearse(emptyPlan, { layer })).resolves.toEqual([])
-    await expect(status(emptyPlan, {}, { layer })).resolves.toMatchObject({ state: 'not-started' })
-    await expect(apply(emptyPlan, { dryRun: true }, { layer })).resolves.toMatchObject({
+    expect(await prove(emptyPlan, { layer })).toMatchObject({ schemaVersion: 1 })
+    expect(await rehearse(emptyPlan, { layer })).toEqual([])
+    expect(await status(emptyPlan, {}, { layer })).toMatchObject({ state: 'not-started' })
+    expect(await apply(emptyPlan, { dryRun: true }, { layer })).toMatchObject({
       releasedPackages: [],
     })
-    await expect(reconcile(emptyPlan, { layer })).resolves.toMatchObject({
+    expect(await reconcile(emptyPlan, { layer })).toMatchObject({
       classification: 'clean',
     })
   })

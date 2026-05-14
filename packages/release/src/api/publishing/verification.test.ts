@@ -51,6 +51,14 @@ const receipt = PublishReceipt.make({
   verifiedAt: '2026-05-14T00:00:01.000Z',
 })
 
+const updateRegistryObservation = (
+  observation: RegistryObservation,
+  overrides: Partial<RegistryObservation>,
+) => RegistryObservation.make(Object.assign({}, observation, overrides))
+
+const updatePublishReceipt = (receipt: PublishReceipt, overrides: Partial<PublishReceipt>) =>
+  PublishReceipt.make(Object.assign({}, receipt, overrides))
+
 describe('post-publish registry verification', () => {
   test('accepts matching version, dist-tag, metadata, access, and official tarball bytes', () => {
     const result = verifyRegistryObservation({
@@ -66,8 +74,7 @@ describe('post-publish registry verification', () => {
   })
 
   test('reports every registry mismatch that would make publish incomplete', () => {
-    const mismatched = RegistryObservation.make({
-      ...observation,
+    const mismatched = updateRegistryObservation(observation, {
       packageName: Pkg.Moniker.parse('@kitz/other'),
       version: Semver.fromString('9.9.9'),
       distTags: { latest: '1.2.2' },
@@ -82,8 +89,7 @@ describe('post-publish registry verification', () => {
       distTag: 'latest',
       official: true,
       requestedAccess: 'public',
-      receipt: PublishReceipt.make({
-        ...receipt,
+      receipt: updatePublishReceipt(receipt, {
         tarballSha256: sha256Json({ differentReceipt: true }),
       }),
     })
@@ -102,8 +108,7 @@ describe('post-publish registry verification', () => {
   test('does not require downloaded tarball byte equality for non-official releases', () => {
     const result = verifyRegistryObservation({
       artifact,
-      observation: RegistryObservation.make({
-        ...observation,
+      observation: updateRegistryObservation(observation, {
         downloadedTarballSha256: sha256Json({ candidate: true }),
       }),
       distTag: 'latest',

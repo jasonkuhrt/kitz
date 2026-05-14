@@ -12,6 +12,10 @@ import {
 import { PlanDigest, SideEffectEntry } from './release-contract.js'
 
 const planDigest = PlanDigest.make({ algorithm: 'sha256', value: 'a'.repeat(64) })
+const updateSideEffectEntry = (
+  entry: SideEffectEntry,
+  overrides: Partial<SideEffectEntry>,
+): SideEffectEntry => SideEffectEntry.make(Object.assign({}, entry, overrides))
 
 describe('journal hash chain', () => {
   test('detects edited entries', () => {
@@ -40,7 +44,7 @@ describe('journal hash chain', () => {
     )
 
     expect(verifyChain([first, second])).toBe(true)
-    const edited = SideEffectEntry.make({ ...second, subject: 'tampered' })
+    const edited = updateSideEffectEntry(second, { subject: 'tampered' })
     expect(verifyChain([first, edited])).toBe(false)
   })
 

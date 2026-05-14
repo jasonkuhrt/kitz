@@ -182,15 +182,16 @@ export const attachPublishContract = (params: {
     })
     const planDigest = digestPlanBody(body)
 
-    return Plan.make({
-      ...params.plan,
-      schemaVersion: 2,
-      signingProfileId,
-      planDigest,
-      source,
-      publishIntent,
-      proofPolicy,
-    })
+    return Plan.make(
+      Object.assign({}, params.plan, {
+        schemaVersion: 2,
+        signingProfileId,
+        planDigest,
+        source,
+        publishIntent,
+        proofPolicy,
+      }),
+    )
   })
 
 export const withPublishIntent = attachPublishContract

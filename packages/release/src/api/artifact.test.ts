@@ -89,6 +89,18 @@ const contractedPlan = Plan.make({
   }),
 })
 
+const updatePublishIntent = (intent: PublishIntent, overrides: Partial<PublishIntent>) =>
+  PublishIntent.make(Object.assign({}, intent, overrides))
+
+const updateArtifactPolicy = (policy: ArtifactPolicy, overrides: Partial<ArtifactPolicy>) =>
+  ArtifactPolicy.make(Object.assign({}, policy, overrides))
+
+const updateScriptPolicy = (policy: ScriptPolicy, overrides: Partial<ScriptPolicy>) =>
+  ScriptPolicy.make(Object.assign({}, policy, overrides))
+
+const updateArtifactManifest = (manifest: ArtifactManifest, overrides: Partial<ArtifactManifest>) =>
+  ArtifactManifest.make(Object.assign({}, manifest, overrides))
+
 const artifact = {
   package: pkg,
   nextVersion: Semver.fromString('1.0.0'),
@@ -322,12 +334,9 @@ describe('artifact manifest', () => {
         })
         const releasePlan = yield* planOfficial([pkg]).pipe(Effect.provide(harness.planLayer))
         const baseIntent = contractedPlan.publishIntent!
-        const intent = PublishIntent.make({
-          ...baseIntent,
-          artifacts: ArtifactPolicy.make({
-            ...baseIntent.artifacts,
-            scriptPolicy: ScriptPolicy.make({
-              ...baseIntent.artifacts.scriptPolicy,
+        const intent = updatePublishIntent(baseIntent, {
+          artifacts: updateArtifactPolicy(baseIntent.artifacts, {
+            scriptPolicy: updateScriptPolicy(baseIntent.artifacts.scriptPolicy, {
               envAllowlist: ['CI'],
             }),
           }),
@@ -403,12 +412,9 @@ describe('artifact manifest', () => {
       scripts: { prepack: 'echo preparing' },
     })
     const baseIntent = contractedPlan.publishIntent!
-    const publishIntent = PublishIntent.make({
-      ...baseIntent,
-      artifacts: ArtifactPolicy.make({
-        ...baseIntent.artifacts,
-        scriptPolicy: ScriptPolicy.make({
-          ...baseIntent.artifacts.scriptPolicy,
+    const publishIntent = updatePublishIntent(baseIntent, {
+      artifacts: updateArtifactPolicy(baseIntent.artifacts, {
+        scriptPolicy: updateScriptPolicy(baseIntent.artifacts.scriptPolicy, {
           default: 'allow-listed',
           network: 'declared-deny',
           allowlist: [
@@ -448,12 +454,9 @@ describe('artifact manifest', () => {
       scripts: { prepack: 'echo preparing' },
     })
     const baseIntent = contractedPlan.publishIntent!
-    const publishIntent = PublishIntent.make({
-      ...baseIntent,
-      artifacts: ArtifactPolicy.make({
-        ...baseIntent.artifacts,
-        scriptPolicy: ScriptPolicy.make({
-          ...baseIntent.artifacts.scriptPolicy,
+    const publishIntent = updatePublishIntent(baseIntent, {
+      artifacts: updateArtifactPolicy(baseIntent.artifacts, {
+        scriptPolicy: updateScriptPolicy(baseIntent.artifacts.scriptPolicy, {
           default: 'allow-listed',
           network: 'deny-enforced',
           allowlist: [
@@ -511,10 +514,8 @@ describe('artifact manifest', () => {
       releases: contractedPlan.releases,
       cascades: contractedPlan.cascades,
       source,
-      publishIntent: PublishIntent.make({
-        ...contractedPlan.publishIntent!,
-        artifacts: ArtifactPolicy.make({
-          ...contractedPlan.publishIntent!.artifacts,
+      publishIntent: updatePublishIntent(contractedPlan.publishIntent!, {
+        artifacts: updateArtifactPolicy(contractedPlan.publishIntent!.artifacts, {
           enginePolicy: EnginePolicy.make({
             node: 'match-runtime',
             packageManager: 'match-plan',
@@ -547,10 +548,8 @@ describe('artifact manifest', () => {
       releases: strictPlan.releases,
       cascades: strictPlan.cascades,
       source,
-      publishIntent: PublishIntent.make({
-        ...strictPlan.publishIntent!,
-        artifacts: ArtifactPolicy.make({
-          ...strictPlan.publishIntent!.artifacts,
+      publishIntent: updatePublishIntent(strictPlan.publishIntent!, {
+        artifacts: updateArtifactPolicy(strictPlan.publishIntent!.artifacts, {
           enginePolicy: EnginePolicy.make({
             node: 'allow-compatible-range',
             packageManager: 'allow-compatible-range',
@@ -634,10 +633,8 @@ describe('artifact manifest', () => {
           releases: strictPlan.releases,
           cascades: strictPlan.cascades,
           source,
-          publishIntent: PublishIntent.make({
-            ...strictPlan.publishIntent!,
-            artifacts: ArtifactPolicy.make({
-              ...strictPlan.publishIntent!.artifacts,
+          publishIntent: updatePublishIntent(strictPlan.publishIntent!, {
+            artifacts: updateArtifactPolicy(strictPlan.publishIntent!.artifacts, {
               enginePolicy: EnginePolicy.make({
                 node: 'allow-compatible-range',
                 packageManager: 'allow-compatible-range',
@@ -739,8 +736,7 @@ describe('artifact manifest', () => {
       `/.release/artifacts/${placeholder[0]!.planDigest.value}/kitz-core-1.0.0.tgz`,
     )
 
-    const mismatched = ArtifactManifest.make({
-      ...placeholder[0]!,
+    const mismatched = updateArtifactManifest(placeholder[0]!, {
       planDigest: PlanDigest.make(sha256Text('other-plan')),
       packlist: [Fs.Path.RelFile.fromString('./.env')],
     })
@@ -749,10 +745,8 @@ describe('artifact manifest', () => {
       timestamp: contractedPlan.timestamp,
       releases: contractedPlan.releases,
       cascades: contractedPlan.cascades,
-      publishIntent: PublishIntent.make({
-        ...contractedPlan.publishIntent!,
-        artifacts: ArtifactPolicy.make({
-          ...contractedPlan.publishIntent!.artifacts,
+      publishIntent: updatePublishIntent(contractedPlan.publishIntent!, {
+        artifacts: updateArtifactPolicy(contractedPlan.publishIntent!.artifacts, {
           forbiddenFilePatterns: ['.env'],
         }),
       }),

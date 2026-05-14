@@ -34,10 +34,7 @@ export const appendHash = (
     entrySha256: sha256Json('pending'),
   })
 
-  return SideEffectEntry.make({
-    ...pending,
-    entrySha256: hashEntry(pending),
-  })
+  return SideEffectEntry.make(Object.assign({}, pending, { entrySha256: hashEntry(pending) }))
 }
 
 export const verifyChain = (entries: readonly SideEffectEntry[]): boolean =>

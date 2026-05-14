@@ -81,6 +81,7 @@
     {
       "files": ["**/*.test.*", "**/*.spec.*", "**/__tests__/**", "**/__tests/**"],
       "rules": {
+        "typescript/await-thenable": "off",
         "eslint-plugin-unicorn/no-thenable": "off",
         "eslint-plugin-vitest/warn-todo": "warn"
       }
@@ -89,6 +90,12 @@
       "files": ["packages/kitz/src/**/*.ts"],
       "rules": {
         "eslint/no-restricted-imports": "off"
+      }
+    },
+    {
+      "files": ["packages/oxlint-rules/src/oxlint-rules.ts"],
+      "rules": {
+        "kitz/module/subpath-imports-integrity": "off"
       }
     }
   ],

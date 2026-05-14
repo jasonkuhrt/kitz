@@ -213,9 +213,7 @@ const toExcludeOptions = (
 type DataRequirements =
   | Effect.Services<typeof loadWorkspaceContext>
   | Effect.Services<ReturnType<typeof buildPlan>>
-  | Effect.Services<ReturnType<typeof buildDoctorReport>>
   | Effect.Services<ReturnType<typeof Api.Planner.Store.writeActive>>
-  | Effect.Services<typeof Api.Planner.Store.deleteActive>
 
 export const DataLive = Layer.effect(
   Data,

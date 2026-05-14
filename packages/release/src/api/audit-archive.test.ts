@@ -22,7 +22,7 @@ describe('audit archive bundle', () => {
         },
       ],
     })
-    const archiveBytes = new Uint8Array<ArrayBuffer>(new ArrayBuffer(bundle.bytes.byteLength))
+    const archiveBytes = new Uint8Array(new ArrayBuffer(bundle.bytes.byteLength))
     archiveBytes.set(bundle.bytes)
     const tarBytes = Bun.gunzipSync(archiveBytes)
     const tarText = new TextDecoder().decode(tarBytes)

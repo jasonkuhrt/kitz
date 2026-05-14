@@ -278,8 +278,11 @@ export const dashboardUpdate = (
       // off the dispatch lock).
       if (action.requestId !== state.planRequestSeq) return Tui.Transition.next(state)
       const workspace = getWorkspaceValue(state)
-      const willBuildDoctor = workspace !== null && action.draft.plannedPackages > 0
-      const doctorRequestSeq = willBuildDoctor ? state.doctorRequestSeq + 1 : state.doctorRequestSeq
+      const shouldBuildDoctor = action.draft.plannedPackages > 0
+      const doctorRequestSeq =
+        workspace !== null && shouldBuildDoctor
+          ? state.doctorRequestSeq + 1
+          : state.doctorRequestSeq
       const nextState: DashboardState = {
         ...state,
         plan: ready(action.draft),
@@ -290,14 +293,13 @@ export const dashboardUpdate = (
         doctorRequestSeq,
         message: `${state.lifecycle} plan: ${action.draft.plannedPackages} packages.`,
       }
-      if (!willBuildDoctor) {
+      if (workspace === null || !shouldBuildDoctor) {
         return Tui.Transition.next(nextState)
       }
       return Tui.Transition.command(nextState, {
         _tag: 'BuildDoctor',
         requestId: doctorRequestSeq,
-        // workspace narrowed via willBuildDoctor.
-        workspace: workspace as WorkspaceContext,
+        workspace,
         plan: action.draft.plan,
       })
     }
