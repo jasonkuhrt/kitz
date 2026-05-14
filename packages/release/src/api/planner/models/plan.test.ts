@@ -114,8 +114,10 @@ describe('Plan', () => {
       cascades: [],
     })
     const mismatched = Plan.makeUnsafe({
-      ...plan,
       lifecycle: 'candidate',
+      timestamp: plan.timestamp,
+      releases: plan.releases,
+      cascades: plan.cascades,
     })
 
     expect(isPlanOf('official', plan)).toBe(true)
