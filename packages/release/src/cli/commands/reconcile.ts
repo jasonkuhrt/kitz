@@ -1,10 +1,11 @@
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
+import { NpmRegistry } from '@kitz/npm-registry'
 import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Schema, SchemaGetter } from 'effect'
 import * as Api from '../../api/__.js'
-import { FileSystemLayer } from '../../platform.js'
+import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
 import { formatInvalidPlanMessage, formatMissingPlanMessage, loadPlan } from './plan-file.js'
 
 const args = Oak.Command.create()
@@ -29,7 +30,9 @@ const args = Oak.Command.create()
   )
   .parse()
 
-Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer))(
+const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
+
+Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, ChildProcessSpawnerLayer, npmLayer))(
   Effect.gen(function* () {
     const env = yield* Env.Env
     const planPath = args.from !== undefined ? Fs.Path.fromString(args.from) : undefined
@@ -48,15 +51,13 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer))(
       return env.exit(1)
     }
 
-    const digest = Api.Proof.digestForPlan(planState.plan)
-    yield* Console.log('Reconcile result: clean')
-    yield* Console.log(`Plan digest: ${digest.value}`)
+    const decision = yield* Api.Reconciler.reconcile(planState.plan)
+    yield* Console.log(`Reconcile result: ${decision.classification}`)
+    yield* Console.log(`Plan digest: ${decision.planDigest.value}`)
     if (args.explain) {
       yield* Console.log('Decision rows:')
-      for (const item of [...planState.plan.releases, ...planState.plan.cascades]) {
-        yield* Console.log(`  clean ${item.package.name.moniker}@${item.nextVersion.toString()}`)
-      }
-      yield* Console.log('Next command: none')
+      for (const row of decision.stateDiff) yield* Console.log(`  ${row}`)
+      yield* Console.log(`Next command: ${decision.nextCommand}`)
     }
   }),
 )

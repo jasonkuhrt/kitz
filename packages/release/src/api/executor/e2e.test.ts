@@ -13,6 +13,8 @@ import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
 import { execute, resume } from './execute.js'
 import { makeTestRuntime } from './runtime.js'
 import { decodeJsonRecord, planOfficial, tag } from './test-support.js'
+import { digestForPlan } from '../proof.js'
+import { sha256Bytes } from '../digest.js'
 
 interface FixturePackage {
   readonly name: string
@@ -192,6 +194,7 @@ const makeNpmLayer = (params: {
     NpmRegistry.NpmCli,
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
+      const publishedTarballs = yield* Ref.make<Record<string, Fs.Path.AbsFile>>({})
 
       const manifestFromCwd = (cwd: Fs.Path.AbsDir): Effect.Effect<Record<string, unknown>> =>
         Effect.gen(function* () {
@@ -275,6 +278,10 @@ const makeNpmLayer = (params: {
             }
 
             yield* Ref.update(params.publishCalls, (calls) => [...calls, packageName])
+            yield* Ref.update(publishedTarballs, (tarballs) => ({
+              ...tarballs,
+              [packageName]: options.tarball,
+            }))
 
             const blocked = yield* Ref.get(params.failPublishPackages)
             if (blocked.includes(packageName)) {
@@ -289,6 +296,44 @@ const makeNpmLayer = (params: {
               )
             }
           })) satisfies NpmRegistry.NpmCliService['publish'],
+        hasVersion: ((packageName) =>
+          Effect.gen(function* () {
+            const published = yield* Ref.get(params.publishCalls)
+            return published.includes(packageName)
+          })) satisfies NpmRegistry.NpmCliService['hasVersion'],
+        observeVersion: ((packageName, version, options) =>
+          Effect.gen(function* () {
+            const published = yield* Ref.get(params.publishCalls)
+            if (!published.includes(packageName)) {
+              return yield* Effect.fail(
+                new NpmRegistry.NpmCliError({
+                  context: {
+                    operation: 'view',
+                    detail: `Registry does not show ${packageName}@${version} after publish.`,
+                  },
+                  cause: new Error(
+                    `Registry does not show ${packageName}@${version} after publish.`,
+                  ),
+                }),
+              )
+            }
+            const tarballs = yield* Ref.get(publishedTarballs)
+            const tarball = tarballs[packageName]
+            const downloadedTarballSha256 =
+              options?.downloadTarball === true && tarball !== undefined
+                ? sha256Bytes(yield* fs.readFile(Fs.Path.toString(tarball)).pipe(Effect.orDie))
+                    .value
+                : undefined
+
+            return {
+              versionMetadata: { name: packageName, version },
+              distTags: { [options?.registry === undefined ? 'latest' : 'next']: version },
+              ...(downloadedTarballSha256 !== undefined ? { downloadedTarballSha256 } : {}),
+            }
+          })) satisfies NpmRegistry.NpmCliService['observeVersion'],
+        listAccessPackages: () => Effect.succeed({}),
+        listAccessCollaborators: () => Effect.succeed({}),
+        getAccessStatus: () => Effect.succeed('public' as const),
       } satisfies NpmRegistry.NpmCliService
     }),
   )
@@ -446,7 +491,7 @@ const assertGraphPlan = (plan: GraphPlanLike) => {
   ])
 }
 
-const assertGraphTarballsExist = (rootDir: Fs.Path.AbsDir) =>
+const assertGraphTarballsExist = (rootDir: Fs.Path.AbsDir, planDigest: string) =>
   Effect.gen(function* () {
     for (const [packageName, version] of [
       ['@kitz/a', '1.1.0'],
@@ -457,7 +502,7 @@ const assertGraphTarballsExist = (rootDir: Fs.Path.AbsDir) =>
       ['@kitz/f', '1.0.1'],
     ] as const) {
       const tarballPath = Fs.Path.AbsFile.fromString(
-        `${Fs.Path.toString(rootDir)}.release/artifacts/${slugPackageName(packageName)}-${version}.tgz`,
+        `${Fs.Path.toString(rootDir)}.release/artifacts/${planDigest}/${slugPackageName(packageName)}-${version}.tgz`,
       )
       expect(yield* withFileSystem(Fs.exists(tarballPath))).toBe(true)
     }
@@ -707,7 +752,7 @@ describe('Executor e2e', () => {
             expect(yield* Ref.get(harness.packCalls)).toEqual(graphResult.releasedPackages)
             expect(yield* Ref.get(harness.publishCalls)).toEqual(scenario.firstPublishCalls)
             expect(yield* Ref.get(harness.gitState.createdTags)).toEqual([])
-            yield* assertGraphTarballsExist(harness.rootDir)
+            yield* assertGraphTarballsExist(harness.rootDir, digestForPlan(plan).value)
 
             yield* Ref.set(harness.failPublishPackages, [])
 

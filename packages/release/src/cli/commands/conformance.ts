@@ -1,6 +1,6 @@
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
-import { Console, Effect, Schema } from 'effect'
+import { Console, Effect } from 'effect'
 import * as Api from '../../api/__.js'
 
 const flagValue = (args: readonly string[], name: string): string | undefined => {
@@ -33,6 +33,7 @@ Cli.run(Env.Live)(
     }
 
     const providerId = flagValue(args, '--provider') ?? 'npm'
+    const format = flagValue(args, '--format') ?? 'text'
     const provider = providerFor(providerId)
     if (provider === undefined) {
       yield* Console.error(`Unknown provider: ${providerId}`)
@@ -40,22 +41,25 @@ Cli.run(Env.Live)(
       return env.exit(1)
     }
 
-    const invalid = Api.Publisher.Models.publishCapabilityValues.filter(
-      (capability) =>
-        !Schema.is(Api.Publisher.Models.CapabilityResult)(provider.capabilityResult(capability)),
+    const report = Api.Publisher.Conformance.run(provider)
+    const invalid = report.results.filter((result) =>
+      result.errorCode?.includes('invalid-capability-result'),
     )
+    if (format === 'json') {
+      yield* Console.log(JSON.stringify(report, null, 2))
+      return
+    }
+
     if (invalid.length > 0) {
       yield* Console.error(`Conformance failed for provider ${providerId}.`)
-      for (const capability of invalid) yield* Console.error(`invalid result: ${capability}`)
+      for (const result of invalid) yield* Console.error(`invalid result: ${result.capability}`)
       return env.exit(1)
     }
 
-    const unsupported = Api.Publisher.Models.publishCapabilityValues.filter(
-      (capability) => provider.capabilityResult(capability)._tag === 'Unsupported',
-    )
+    const unsupported = report.results.filter((result) => result.result === 'unsupported')
     yield* Console.log(`Conformance passed for provider ${providerId}.`)
     yield* Console.log(
-      `Capabilities: ${String(Api.Publisher.Models.publishCapabilityValues.length - unsupported.length)} supported, ${String(unsupported.length)} unsupported.`,
+      `Capabilities: ${String(report.results.length - unsupported.length)} supported, ${String(unsupported.length)} unsupported.`,
     )
   }),
 )

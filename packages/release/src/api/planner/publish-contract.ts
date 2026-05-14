@@ -48,7 +48,12 @@ const readJsonObject = (
     )
   })
 
-const readLockfileDigests = (
+export interface SourceSnapshotIssue {
+  readonly code: string
+  readonly detail: string
+}
+
+export const readLockfileDigests = (
   cwd: Fs.Path.AbsDir,
 ): Effect.Effect<PlanSourceSnapshot['lockfiles'], never, FileSystem.FileSystem> =>
   Effect.gen(function* () {
@@ -67,6 +72,48 @@ const readLockfileDigests = (
     }
 
     return entries
+  })
+
+export const validateSourceSnapshot = (
+  source: PlanSourceSnapshot,
+  cwd: Fs.Path.AbsDir,
+): Effect.Effect<readonly SourceSnapshotIssue[], never, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const current = yield* readLockfileDigests(cwd)
+    const issues: SourceSnapshotIssue[] = []
+
+    for (const expected of source.lockfiles) {
+      const actual = current.find(
+        (entry) => Fs.Path.toString(entry.path) === Fs.Path.toString(expected.path),
+      )
+      if (actual === undefined) {
+        issues.push({
+          code: 'release.source.lockfile-missing',
+          detail: `${Fs.Path.toString(expected.path)} was present at plan time but is missing now.`,
+        })
+        continue
+      }
+      if (actual.digest.value !== expected.digest.value) {
+        issues.push({
+          code: 'release.source.lockfile-drift',
+          detail: `${Fs.Path.toString(expected.path)} changed after the release plan was written.`,
+        })
+      }
+    }
+
+    for (const actual of current) {
+      const expected = source.lockfiles.find(
+        (entry) => Fs.Path.toString(entry.path) === Fs.Path.toString(actual.path),
+      )
+      if (expected === undefined) {
+        issues.push({
+          code: 'release.source.lockfile-added',
+          detail: `${Fs.Path.toString(actual.path)} was added after the release plan was written.`,
+        })
+      }
+    }
+
+    return issues
   })
 
 export const attachPublishContract = (params: {
@@ -128,6 +175,10 @@ export const attachPublishContract = (params: {
       source,
       publishIntent,
       proofPolicy,
+      releases: [...params.plan.releases, ...params.plan.cascades].map((item) => ({
+        packageName: item.package.name,
+        nextVersion: item.nextVersion,
+      })),
     })
     const planDigest = digestPlanBody(body)
 

@@ -1,10 +1,13 @@
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
+import { Git } from '@kitz/git'
+import { Github } from '@kitz/github'
+import { NpmRegistry } from '@kitz/npm-registry'
 import { Oak } from '@kitz/oak'
 import { Console, Effect, Layer, Schema } from 'effect'
 import * as Api from '../../api/__.js'
-import { FileSystemLayer } from '../../platform.js'
+import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
 import { formatInvalidPlanMessage, formatMissingPlanMessage, loadPlan } from './plan-file.js'
 
 const args = Oak.Command.create()
@@ -18,7 +21,9 @@ const args = Oak.Command.create()
   )
   .parse()
 
-Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer))(
+const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
+
+Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, ChildProcessSpawnerLayer, npmLayer, Git.GitLive))(
   Effect.gen(function* () {
     const env = yield* Env.Env
     const planPath = args.from !== undefined ? Fs.Path.fromString(args.from) : undefined
@@ -37,7 +42,25 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer))(
       return env.exit(1)
     }
 
-    const proof = yield* Api.Proof.prove(planState.plan)
+    const localObservations = yield* Api.Proof.collectLocalObservations(planState.plan)
+    const githubObservations = yield* Api.Explorer.resolveGitHubContext().pipe(
+      Effect.flatMap((context) =>
+        Api.Proof.collectGithubObservations(planState.plan).pipe(
+          Effect.provide(
+            Github.LiveFetch({
+              owner: context.target.owner,
+              repo: context.target.repo,
+              ...(context.token !== null ? { token: context.token } : {}),
+            }),
+          ),
+        ),
+      ),
+      Effect.catch(() => Effect.succeed({})),
+    )
+    const proof = yield* Api.Proof.prove(planState.plan, {
+      ...localObservations,
+      ...githubObservations,
+    })
     const proofPath = Api.Proof.proofPathFor(env.cwd, planState.plan)
     yield* Console.log(`Proof written to ${Fs.Path.toString(proofPath)}`)
     for (const record of proof.records) {

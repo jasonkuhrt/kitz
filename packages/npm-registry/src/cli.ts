@@ -1,5 +1,6 @@
 import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
 import type { PlatformError } from 'effect/PlatformError'
+import { createHash } from 'node:crypto'
 import { Err } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Effect, Option, Schema as S, Stream, String as Str } from 'effect'
@@ -10,7 +11,7 @@ import { Effect, Option, Schema as S, Stream, String as Str } from 'effect'
 
 const baseTags = ['kit', 'npm-registry', 'cli'] as const
 
-const NpmCliOperationSchema = S.Literals(['whoami', 'pack', 'publish', 'view'])
+const NpmCliOperationSchema = S.Literals(['whoami', 'pack', 'publish', 'view', 'access'])
 const ErrorCause = S.instanceOf(Error)
 const NpmCliErrorContext = S.Struct({
   operation: NpmCliOperationSchema,
@@ -64,6 +65,14 @@ export interface PublishOptions {
   readonly access?: 'public' | 'restricted'
   /** Disable lifecycle scripts during tarball publish (default: true) */
   readonly ignoreScripts?: boolean
+  /** Simulate publish without mutating the registry. */
+  readonly dryRun?: boolean
+  /** One-time password for interactive local publishes. */
+  readonly otp?: string
+  /** Request npm provenance generation. */
+  readonly provenance?: boolean
+  /** Use a precomputed provenance bundle. */
+  readonly provenanceFile?: Fs.Path.AbsFile
 }
 
 /**
@@ -74,6 +83,8 @@ export interface PackOptions {
   readonly cwd: Fs.Path.AbsDir
   /** Destination directory for the generated tarball */
   readonly packDestination: Fs.Path.AbsDir
+  /** Explicit child environment for deterministic release packing. */
+  readonly env?: Readonly<Record<string, string | undefined>>
 }
 
 /**
@@ -108,6 +119,24 @@ export interface ViewOptions {
   readonly registry?: string
 }
 
+export interface ObserveVersionOptions extends ViewOptions {
+  /** Download the registry tarball and compute SHA-256. */
+  readonly downloadTarball?: boolean
+}
+
+export interface AccessOptions extends ViewOptions {}
+
+export type AccessStatus = 'public' | 'restricted' | 'private' | 'unknown'
+
+export interface RegistryVersionObservation {
+  readonly versionMetadata: Readonly<Record<string, unknown>>
+  readonly distTags: Readonly<Record<string, string>>
+  readonly tarballUrl?: string
+  readonly shasum?: string
+  readonly integrity?: string
+  readonly downloadedTarballSha256?: string
+}
+
 const NpmViewErrorSchema = S.Struct({
   error: S.Struct({
     code: S.String,
@@ -137,6 +166,20 @@ const NpmPackOutputSchema = S.fromJsonString(
   ),
 )
 const decodeNpmPackOutput = S.decodeUnknownEffect(NpmPackOutputSchema)
+const JsonRecordFromString = S.fromJsonString(S.Record(S.String, S.Unknown))
+const decodeJsonRecord = S.decodeUnknownEffect(JsonRecordFromString)
+const AccessStatusOutput = S.fromJsonString(
+  S.Union([
+    S.String,
+    S.Struct({
+      status: S.String,
+    }),
+    S.Struct({
+      access: S.String,
+    }),
+  ]),
+)
+const decodeAccessStatusOutput = S.decodeUnknownEffect(AccessStatusOutput)
 
 const readStreamString = (
   stream: Stream.Stream<Uint8Array, PlatformError>,
@@ -151,6 +194,148 @@ const readStreamString = (
       }
       output += decoder.decode()
       return output
+    }),
+  )
+
+const sha256Bytes = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
+
+const getNestedString = (
+  object: Readonly<Record<string, unknown>>,
+  key: string,
+): string | undefined => {
+  const value = object[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+const readNpmViewJson = (
+  args: readonly string[],
+): Effect.Effect<
+  Readonly<Record<string, unknown>>,
+  NpmCliError,
+  ChildProcessSpawner.ChildProcessSpawner
+> =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+      const command = ChildProcess.make('npm', [...args])
+      const process = yield* command
+      const { stdout, stderr, exitCode } = yield* Effect.all(
+        {
+          stdout: readStreamString(process.stdout),
+          stderr: readStreamString(process.stderr),
+          exitCode: process.exitCode,
+        },
+        { concurrency: 'unbounded' },
+      )
+
+      const stdoutText = Str.trim(stdout)
+      const stderrText = Str.trim(stderr)
+
+      if (Number(exitCode) === 0) {
+        return yield* decodeJsonRecord(stdoutText).pipe(
+          Effect.mapError(
+            (cause) =>
+              new NpmCliError({
+                context: {
+                  operation: 'view',
+                  detail: 'npm view returned unexpected JSON output',
+                },
+                cause: cause instanceof Error ? cause : new Error(String(cause)),
+              }),
+          ),
+        )
+      }
+
+      const parsed = decodeNpmViewError(stdoutText).pipe(
+        Option.orElse(() => decodeNpmViewError(stderrText)),
+      )
+      const detail = Option.isSome(parsed)
+        ? (parsed.value.error.summary ?? parsed.value.error.detail ?? 'npm view failed')
+        : stdoutText || stderrText || `npm view exited with code ${String(exitCode)}`
+
+      return yield* Effect.fail(
+        new NpmCliError({
+          context: { operation: 'view', detail },
+          cause: new Error(detail),
+        }),
+      )
+    }),
+  ).pipe(
+    Effect.mapError((cause) => {
+      if (cause instanceof NpmCliError) return cause
+      return new NpmCliError({
+        context: {
+          operation: 'view',
+          detail: cause instanceof Error ? cause.message : 'npm view failed',
+        },
+        cause: cause instanceof Error ? cause : new Error(String(cause)),
+      })
+    }),
+  )
+
+const readNpmAccessJson = (
+  args: readonly string[],
+): Effect.Effect<
+  Readonly<Record<string, unknown>>,
+  NpmCliError,
+  ChildProcessSpawner.ChildProcessSpawner
+> =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+      const command = ChildProcess.make('npm', [...args])
+      const process = yield* command
+      const { stdout, stderr, exitCode } = yield* Effect.all(
+        {
+          stdout: readStreamString(process.stdout),
+          stderr: readStreamString(process.stderr),
+          exitCode: process.exitCode,
+        },
+        { concurrency: 'unbounded' },
+      )
+
+      const stdoutText = Str.trim(stdout)
+      const stderrText = Str.trim(stderr)
+
+      if (Number(exitCode) === 0) {
+        return yield* decodeJsonRecord(stdoutText).pipe(
+          Effect.mapError(
+            (cause) =>
+              new NpmCliError({
+                context: {
+                  operation: 'access',
+                  detail: 'npm access returned unexpected JSON output',
+                },
+                cause: cause instanceof Error ? cause : new Error(String(cause)),
+              }),
+          ),
+        )
+      }
+
+      const parsed = decodeNpmViewError(stdoutText).pipe(
+        Option.orElse(() => decodeNpmViewError(stderrText)),
+      )
+      const detail = Option.isSome(parsed)
+        ? (parsed.value.error.summary ?? parsed.value.error.detail ?? 'npm access failed')
+        : stdoutText || stderrText || `npm access exited with code ${String(exitCode)}`
+
+      return yield* Effect.fail(
+        new NpmCliError({
+          context: { operation: 'access', detail },
+          cause: new Error(detail),
+        }),
+      )
+    }),
+  ).pipe(
+    Effect.mapError((cause) => {
+      if (cause instanceof NpmCliError) return cause
+      return new NpmCliError({
+        context: {
+          operation: 'access',
+          detail: cause instanceof Error ? cause.message : 'npm access failed',
+        },
+        cause: cause instanceof Error ? cause : new Error(String(cause)),
+      })
     }),
   )
 
@@ -224,6 +409,7 @@ export function pack(
 
     const command = ChildProcess.make('npm', args, {
       cwd: Fs.Path.toString(options.cwd),
+      ...(options.env !== undefined ? { env: { ...options.env }, extendEnv: false } : {}),
     })
 
     const output = yield* spawner.string(command).pipe(
@@ -313,6 +499,18 @@ export function publish(
     if (options.registry) {
       args.push('--registry', options.registry)
     }
+    if (options.otp) {
+      args.push('--otp', options.otp)
+    }
+    if (options.provenance) {
+      args.push('--provenance')
+    }
+    if (options.provenanceFile) {
+      args.push('--provenance-file', Fs.Path.toString(options.provenanceFile))
+    }
+    if (options.dryRun) {
+      args.push('--dry-run')
+    }
 
     const command = ChildProcess.make('npm', args)
 
@@ -340,6 +538,132 @@ export function publish(
       }),
     )
   })
+}
+
+/**
+ * List packages visible to an npm user or scope through npm's access API.
+ */
+export function listAccessPackages(
+  userOrScope: string,
+  options?: AccessOptions,
+): Effect.Effect<
+  Readonly<Record<string, string>>,
+  NpmCliError,
+  ChildProcessSpawner.ChildProcessSpawner
+> {
+  const args = ['access', 'list', 'packages', userOrScope, '--json']
+  if (options?.registry) args.push('--registry', options.registry)
+
+  return readNpmAccessJson(args).pipe(
+    Effect.map((record) =>
+      Object.fromEntries(
+        Object.entries(record).filter(
+          (entry): entry is [string, string] => typeof entry[1] === 'string',
+        ),
+      ),
+    ),
+  )
+}
+
+/**
+ * List collaborators for a package through npm's access API.
+ */
+export function listAccessCollaborators(
+  packageName: string,
+  options?: AccessOptions,
+): Effect.Effect<
+  Readonly<Record<string, string>>,
+  NpmCliError,
+  ChildProcessSpawner.ChildProcessSpawner
+> {
+  const args = ['access', 'list', 'collaborators', packageName, '--json']
+  if (options?.registry) args.push('--registry', options.registry)
+
+  return readNpmAccessJson(args).pipe(
+    Effect.map((record) =>
+      Object.fromEntries(
+        Object.entries(record).filter(
+          (entry): entry is [string, string] => typeof entry[1] === 'string',
+        ),
+      ),
+    ),
+  )
+}
+
+const normalizeAccessStatus = (value: unknown): AccessStatus => {
+  if (value === 'public' || value === 'restricted' || value === 'private') return value
+  return 'unknown'
+}
+
+/**
+ * Read a package's access status through npm's access API.
+ */
+export function getAccessStatus(
+  packageName: string,
+  options?: AccessOptions,
+): Effect.Effect<AccessStatus, NpmCliError, ChildProcessSpawner.ChildProcessSpawner> {
+  return Effect.scoped(
+    Effect.gen(function* () {
+      const args = ['access', 'get', 'status', packageName, '--json']
+      if (options?.registry) args.push('--registry', options.registry)
+
+      const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
+      const command = ChildProcess.make('npm', args)
+      const process = yield* command
+      const { stdout, stderr, exitCode } = yield* Effect.all(
+        {
+          stdout: readStreamString(process.stdout),
+          stderr: readStreamString(process.stderr),
+          exitCode: process.exitCode,
+        },
+        { concurrency: 'unbounded' },
+      )
+
+      const stdoutText = Str.trim(stdout)
+      const stderrText = Str.trim(stderr)
+
+      if (Number(exitCode) === 0) {
+        const output = yield* decodeAccessStatusOutput(stdoutText).pipe(
+          Effect.mapError(
+            (cause) =>
+              new NpmCliError({
+                context: {
+                  operation: 'access',
+                  detail: 'npm access get status returned unexpected JSON output',
+                },
+                cause: cause instanceof Error ? cause : new Error(String(cause)),
+              }),
+          ),
+        )
+        return typeof output === 'string'
+          ? normalizeAccessStatus(output)
+          : normalizeAccessStatus('status' in output ? output.status : output.access)
+      }
+
+      const parsed = decodeNpmViewError(stdoutText).pipe(
+        Option.orElse(() => decodeNpmViewError(stderrText)),
+      )
+      const detail = Option.isSome(parsed)
+        ? (parsed.value.error.summary ?? parsed.value.error.detail ?? 'npm access failed')
+        : stdoutText || stderrText || `npm access exited with code ${String(exitCode)}`
+
+      return yield* Effect.fail(new Error(detail))
+    }),
+  ).pipe(
+    Effect.mapError((cause) => {
+      if (cause instanceof NpmCliError) return cause
+      return new NpmCliError({
+        context: {
+          operation: 'access',
+          detail:
+            cause instanceof Error && cause.message
+              ? cause.message
+              : `npm access get status ${packageName} failed`,
+        },
+        cause: cause instanceof Error ? cause : new Error(String(cause)),
+      })
+    }),
+  )
 }
 
 /**
@@ -407,4 +731,69 @@ export function hasVersion(
       })
     }),
   )
+}
+
+/**
+ * Read exact registry metadata for a package version and its package dist-tags.
+ */
+export function observeVersion(
+  packageName: string,
+  version: string,
+  options?: ObserveVersionOptions,
+): Effect.Effect<RegistryVersionObservation, NpmCliError, ChildProcessSpawner.ChildProcessSpawner> {
+  return Effect.gen(function* () {
+    const versionArgs = ['--silent', 'view', `${packageName}@${version}`, '--json']
+    const distTagArgs = ['--silent', 'view', packageName, 'dist-tags', '--json']
+    if (options?.registry) {
+      versionArgs.push('--registry', options.registry)
+      distTagArgs.push('--registry', options.registry)
+    }
+
+    const versionMetadata = yield* readNpmViewJson(versionArgs)
+    const distTagsJson = yield* readNpmViewJson(distTagArgs)
+    const distTags = Object.fromEntries(
+      Object.entries(distTagsJson).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string',
+      ),
+    )
+    const dist = versionMetadata['dist']
+    const distRecord =
+      dist !== null && typeof dist === 'object' ? (dist as Readonly<Record<string, unknown>>) : {}
+    const tarballUrl = getNestedString(distRecord, 'tarball')
+    const shasum = getNestedString(distRecord, 'shasum')
+    const integrity = getNestedString(distRecord, 'integrity')
+
+    const downloadedTarballSha256 =
+      options?.downloadTarball === true && tarballUrl !== undefined
+        ? yield* Effect.tryPromise({
+            try: async () => {
+              const response = await fetch(tarballUrl)
+              if (!response.ok) {
+                throw new Error(`tarball download failed with HTTP ${response.status}`)
+              }
+              return sha256Bytes(new Uint8Array(await response.arrayBuffer()))
+            },
+            catch: (cause) =>
+              new NpmCliError({
+                context: {
+                  operation: 'view',
+                  detail:
+                    cause instanceof Error
+                      ? cause.message
+                      : `failed to download registry tarball for ${packageName}@${version}`,
+                },
+                cause: cause instanceof Error ? cause : new Error(String(cause)),
+              }),
+          })
+        : undefined
+
+    return {
+      versionMetadata,
+      distTags,
+      ...(tarballUrl !== undefined ? { tarballUrl } : {}),
+      ...(shasum !== undefined ? { shasum } : {}),
+      ...(integrity !== undefined ? { integrity } : {}),
+      ...(downloadedTarballSha256 !== undefined ? { downloadedTarballSha256 } : {}),
+    }
+  })
 }

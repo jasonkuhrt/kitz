@@ -102,3 +102,24 @@ export const formatIgnoredInvalidPlanMessage = (state: PlanInvalidState): readon
   ...formatInvalidPlanMessage(state),
   'Ignoring the invalid active plan and computing doctor scenarios from the current repo state.',
 ]
+
+export const formatUnsupportedExecutionPlanMessage = (
+  plan: Api.Planner.Plan,
+): readonly string[] => {
+  const missing = [
+    ...(plan.planDigest === undefined ? ['planDigest'] : []),
+    ...(plan.publishIntent === undefined ? ['publishIntent'] : []),
+  ]
+  return [
+    'This release plan is missing the frozen v2 execution contract.',
+    `Missing field(s): ${missing.join(', ')}.`,
+    'Run `release plan --lifecycle <official|candidate|ephemeral>` again with the current @kitz/release before executing, resuming, graphing, or checking durable status.',
+  ]
+}
+
+export const hasExecutablePlanContract = (
+  plan: Api.Planner.Plan,
+): plan is Api.Planner.Plan & {
+  readonly planDigest: Api.ReleaseContract.PlanDigest
+  readonly publishIntent: Api.ReleaseContract.PublishIntent
+} => plan.planDigest !== undefined && plan.publishIntent !== undefined

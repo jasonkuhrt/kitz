@@ -87,3 +87,55 @@ export const buildTrustGithubCommand = (params: {
   ...(params.yes === true ? ['--yes'] : []),
   ...(params.dryRun === true ? ['--dry-run'] : []),
 ]
+
+export const buildTrustGitlabCommand = (params: {
+  readonly packageName: string
+  readonly project: string
+  readonly workflowFile: string
+  readonly environment?: string
+  readonly registry?: string
+  readonly yes?: boolean
+  readonly dryRun?: boolean
+}): readonly string[] => [
+  'npm',
+  'trust',
+  'gitlab',
+  params.packageName,
+  '--project',
+  params.project,
+  '--file',
+  params.workflowFile,
+  ...(params.environment !== undefined ? ['--environment', params.environment] : []),
+  ...(params.registry !== undefined ? ['--registry', params.registry] : []),
+  ...(params.yes === true ? ['--yes'] : []),
+  ...(params.dryRun === true ? ['--dry-run'] : []),
+]
+
+export const buildTrustCircleciCommand = (params: {
+  readonly packageName: string
+  readonly orgId: string
+  readonly projectId: string
+  readonly pipelineDefinitionId: string
+  readonly vcsOrigin: string
+  readonly contextIds?: readonly string[]
+  readonly registry?: string
+  readonly yes?: boolean
+  readonly dryRun?: boolean
+}): readonly string[] => [
+  'npm',
+  'trust',
+  'circleci',
+  params.packageName,
+  '--org-id',
+  params.orgId,
+  '--project-id',
+  params.projectId,
+  '--pipeline-definition-id',
+  params.pipelineDefinitionId,
+  '--vcs-origin',
+  params.vcsOrigin,
+  ...(params.contextIds ?? []).flatMap((contextId) => ['--context-id', contextId]),
+  ...(params.registry !== undefined ? ['--registry', params.registry] : []),
+  ...(params.yes === true ? ['--yes'] : []),
+  ...(params.dryRun === true ? ['--dry-run'] : []),
+]

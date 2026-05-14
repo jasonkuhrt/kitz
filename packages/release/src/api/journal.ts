@@ -1,6 +1,20 @@
-import { Schema } from 'effect'
+import { Effect, FileSystem, Schema } from 'effect'
+import type { PlatformError } from 'effect/PlatformError'
+import { Env } from '@kitz/env'
+import { Fs } from '@kitz/fs'
 import { sha256Json } from './digest.js'
-import { SideEffectEntry } from './release-contract.js'
+import { PlanDigest, SideEffectEntry, type SideEffectKind } from './release-contract.js'
+
+const journalDir = Fs.Path.RelDir.fromString('./.release/journal/')
+
+export interface SideEffectInput {
+  readonly planDigest: string | PlanDigest
+  readonly kind: SideEffectKind
+  readonly subject: string
+  readonly planned: Readonly<Record<string, unknown>>
+  readonly result: SideEffectEntry['result']
+  readonly attemptedAt?: string
+}
 
 const entryDigestInput = (entry: SideEffectEntry): unknown => {
   const encoded = Schema.encodeSync(SideEffectEntry)(entry)
@@ -35,4 +49,94 @@ export const verifyChain = (entries: readonly SideEffectEntry[]): boolean =>
         ? entry.prevEntrySha256 === undefined
         : entry.prevEntrySha256?.value === expectedPrevious.value
     return hasExpectedPrevious && hashEntry(entry).value === entry.entrySha256.value
+  })
+
+export const journalPathFor = (
+  cwd: Fs.Path.AbsDir,
+  planDigest: string | PlanDigest,
+): Fs.Path.AbsFile => {
+  const digest = typeof planDigest === 'string' ? planDigest : planDigest.value
+  return Fs.Path.join(
+    Fs.Path.join(cwd, journalDir),
+    Fs.Path.RelFile.fromString(`./${digest}.jsonl`),
+  )
+}
+
+export const readEntries = (
+  path: Fs.Path.AbsFile,
+): Effect.Effect<
+  readonly SideEffectEntry[],
+  PlatformError | Schema.SchemaError,
+  FileSystem.FileSystem
+> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const exists = yield* fs.exists(Fs.Path.toString(path))
+    if (!exists) return []
+    const text = yield* fs.readFileString(Fs.Path.toString(path))
+    const lines = text
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+    return yield* Effect.all(
+      lines.map((line) => Schema.decodeUnknownEffect(Schema.fromJsonString(SideEffectEntry))(line)),
+    )
+  })
+
+export const writeEntries = (
+  path: Fs.Path.AbsFile,
+  entries: readonly SideEffectEntry[],
+): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(path)), { recursive: true })
+    yield* fs.writeFileString(
+      Fs.Path.toString(path),
+      `${entries
+        .map((entry) => JSON.stringify(Schema.encodeSync(SideEffectEntry)(entry)))
+        .join('\n')}\n`,
+    )
+  })
+
+export const makeEntry = (input: SideEffectInput, previous?: SideEffectEntry): SideEffectEntry => {
+  const planDigest =
+    typeof input.planDigest === 'string'
+      ? PlanDigest.make({ algorithm: 'sha256', value: input.planDigest })
+      : input.planDigest
+  const attemptedAt = input.attemptedAt ?? new Date().toISOString()
+  return appendHash(
+    {
+      entryId: `${input.kind}:${input.subject}:${input.result}:${attemptedAt}`,
+      planDigest,
+      kind: input.kind,
+      subject: input.subject,
+      idempotencyKey: sha256Json({
+        planDigest: planDigest.value,
+        kind: input.kind,
+        subject: input.subject,
+        planned: input.planned,
+      }).value,
+      planned: input.planned,
+      attemptedAt,
+      result: input.result,
+    },
+    previous,
+  )
+}
+
+export const appendSideEffect = (
+  input: SideEffectInput,
+): Effect.Effect<
+  SideEffectEntry,
+  PlatformError | Schema.SchemaError,
+  Env.Env | FileSystem.FileSystem
+> =>
+  Effect.gen(function* () {
+    const env = yield* Env.Env
+    const path = journalPathFor(env.cwd, input.planDigest)
+    const entries = yield* readEntries(path)
+    const previous = entries.at(-1)
+    const entry = makeEntry(input, previous)
+    yield* writeEntries(path, [...entries, entry])
+    return entry
   })

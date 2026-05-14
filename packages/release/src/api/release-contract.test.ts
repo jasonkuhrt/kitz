@@ -7,9 +7,12 @@ import { sha256Json } from './digest.js'
 import {
   ArtifactManifest,
   defaultArtifactPolicy,
+  defaultGithubHostProfile,
   defaultProofPolicy,
+  defaultRegistryProfile,
   makeUnsignedEnvelope,
   PlanBody,
+  PlanDigest,
   PlanSourceSnapshot,
   publishIntentFromSemantics,
 } from './release-contract.js'
@@ -24,6 +27,35 @@ describe('release contract models', () => {
     expect(intent.registry.url).toBe('https://registry.npmjs.org/')
     expect(intent.distTag).toBe('latest')
     expect(intent.artifacts.scriptPolicy.default).toBe('deny')
+  })
+
+  test('trusted publisher intent records registry, host, proof, and provenance defaults', () => {
+    const semantics = resolvePublishSemantics({
+      lifecycle: 'official',
+      publishing: {
+        official: { mode: 'github-trusted', workflow: 'publish.yml' },
+        candidate: { mode: 'manual' },
+        ephemeral: { mode: 'manual' },
+      },
+    })
+    const intent = publishIntentFromSemantics({
+      semantics,
+      trunk: 'main',
+      registry: 'https://registry.example.test/',
+    })
+
+    expect(intent.registry.url).toBe('https://registry.example.test/')
+    expect(intent.profile.trustedPublisherAdmin).toBe('npm-trust')
+    expect(intent.auth.source).toBe('trusted-oidc')
+    expect(intent.auth.runtimeHost).toBe('github-actions')
+    expect(intent.auth.tokenEnv).toBeUndefined()
+    expect(intent.provenance.mode).toBe('trusted-publisher')
+    expect(intent.provenance.provider).toBe('npm-github')
+    expect(defaultProofPolicy('github-actions').authProofTtlSeconds).toBe(3_600)
+    expect(defaultRegistryProfile().strictSsl).toBe(true)
+    expect(defaultGithubHostProfile().oidcIssuer).toBe(
+      'https://token.actions.githubusercontent.com',
+    )
   })
 
   test('plan envelope digest is detached from the envelope wrapper', () => {
@@ -48,6 +80,12 @@ describe('release contract models', () => {
       source,
       publishIntent: publishIntentFromSemantics({ semantics, trunk: 'main' }),
       proofPolicy: defaultProofPolicy(),
+      releases: [
+        {
+          packageName: Pkg.Moniker.parse('@kitz/core'),
+          nextVersion: Semver.fromString('1.2.3'),
+        },
+      ],
     })
     const envelope = makeUnsignedEnvelope(body)
     const encoded = Schema.encodeSync(PlanBody)(body)
@@ -59,6 +97,7 @@ describe('release contract models', () => {
   test('artifact manifests encode exact tarball metadata shape', () => {
     const manifest = ArtifactManifest.make({
       schemaVersion: 1,
+      planDigest: PlanDigest.make(sha256Json({ plan: 'core' })),
       packageName: Pkg.Moniker.parse('@kitz/core'),
       version: Semver.fromString('1.2.3'),
       driver: 'npm',

@@ -1,4 +1,5 @@
 import { Schema } from 'effect'
+import type { PublishIntent } from './release-contract.js'
 import { Ephemeral } from './planner/models/item-ephemeral.js'
 import type { Plan } from './planner/models/plan.js'
 import type { Lifecycle } from './version/models/lifecycle.js'
@@ -129,6 +130,10 @@ export const resolvePublishSemanticsForPlan = (params: {
   readonly npmTag?: string
   readonly candidateTag?: string
 }): PublishSemantics => {
+  if (params.plan.publishIntent !== undefined) {
+    return publishSemanticsFromIntent(params.plan.publishIntent)
+  }
+
   const prNumber = resolvePlanPrNumber(params.plan)
 
   return resolvePublishSemantics({
@@ -140,6 +145,23 @@ export const resolvePublishSemanticsForPlan = (params: {
     ...(prNumber !== undefined ? { prNumber } : {}),
   })
 }
+
+export const publishSemanticsFromIntent = (intent: PublishIntent): PublishSemantics => ({
+  lifecycle: intent.lifecycle,
+  channel: intent.channel,
+  distTag: intent.distTag,
+  prerelease: intent.prerelease,
+  forcePushTag: intent.forcePushTag,
+  githubReleaseStyle: intent.githubReleaseStyle,
+})
+
+export const publishingFromIntent = (intent: PublishIntent): Publishing =>
+  Publishing.make({
+    official: { mode: 'manual' },
+    candidate: { mode: 'manual' },
+    ephemeral: { mode: 'manual' },
+    [intent.lifecycle]: intent.channel,
+  })
 
 export const formatGithubReleaseTitle = (
   semantics: PublishSemantics,

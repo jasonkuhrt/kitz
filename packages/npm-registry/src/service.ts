@@ -1,5 +1,16 @@
 import { Effect, ServiceMap } from 'effect'
-import type { NpmCliError, PackOptions, PackResult, PublishOptions, WhoamiOptions } from './cli.js'
+import type {
+  AccessOptions,
+  AccessStatus,
+  NpmCliError,
+  ObserveVersionOptions,
+  PackOptions,
+  PackResult,
+  PublishOptions,
+  RegistryVersionObservation,
+  WhoamiOptions,
+} from './cli.js'
+import type { ViewOptions } from './cli.js'
 
 /**
  * Service interface for npm CLI operations.
@@ -19,6 +30,48 @@ export interface NpmCliService {
    * Run `npm publish` to publish a prepared tarball.
    */
   readonly publish: (options: PublishOptions) => Effect.Effect<void, NpmCliError>
+
+  /**
+   * Run `npm view` to check whether an exact package version exists.
+   */
+  readonly hasVersion: (
+    packageName: string,
+    version: string,
+    options?: ViewOptions,
+  ) => Effect.Effect<boolean, NpmCliError>
+
+  /**
+   * Read exact version metadata, dist-tags, and optional tarball byte proof.
+   */
+  readonly observeVersion: (
+    packageName: string,
+    version: string,
+    options?: ObserveVersionOptions,
+  ) => Effect.Effect<RegistryVersionObservation, NpmCliError>
+
+  /**
+   * List packages visible to a user or scope through `npm access`.
+   */
+  readonly listAccessPackages: (
+    userOrScope: string,
+    options?: AccessOptions,
+  ) => Effect.Effect<Readonly<Record<string, string>>, NpmCliError>
+
+  /**
+   * List collaborators for a package through `npm access`.
+   */
+  readonly listAccessCollaborators: (
+    packageName: string,
+    options?: AccessOptions,
+  ) => Effect.Effect<Readonly<Record<string, string>>, NpmCliError>
+
+  /**
+   * Read a package's access status through `npm access get status`.
+   */
+  readonly getAccessStatus: (
+    packageName: string,
+    options?: AccessOptions,
+  ) => Effect.Effect<AccessStatus, NpmCliError>
 }
 
 /**

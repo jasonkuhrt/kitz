@@ -388,6 +388,12 @@ export class PlanBody extends Schema.Class<PlanBody>('PlanBody')({
   source: PlanSourceSnapshot,
   publishIntent: PublishIntent,
   proofPolicy: ProofPolicy,
+  releases: Schema.Array(
+    Schema.Struct({
+      packageName: Pkg.Moniker.FromString,
+      nextVersion: Semver.Schema,
+    }),
+  ),
 }) {
   static is = Schema.is(PlanBody)
   static decode = Schema.decodeUnknownEffect(PlanBody)
@@ -481,8 +487,49 @@ export class ProofArtifact extends Schema.Class<ProofArtifact>('ProofArtifact')(
   static make = this.makeUnsafe
 }
 
+export class RegistryObservation extends Schema.Class<RegistryObservation>('RegistryObservation')({
+  packageName: Pkg.Moniker.FromString,
+  version: Semver.Schema,
+  registry: Schema.String,
+  observedAt: Schema.String,
+  versionMetadata: JsonRecord,
+  distTags: Schema.Record(Schema.String, Schema.String),
+  accessStatus: Schema.optional(Schema.Literals(['public', 'private', 'restricted', 'unknown'])),
+  tarballUrl: Schema.optional(Schema.String),
+  shasum: Schema.optional(Schema.String),
+  integrity: Schema.optional(Schema.String),
+  downloadedTarballSha256: Schema.optional(Digest),
+}) {
+  static is = Schema.is(RegistryObservation)
+  static decode = Schema.decodeUnknownEffect(RegistryObservation)
+  static decodeSync = Schema.decodeUnknownSync(RegistryObservation)
+  static encode = Schema.encodeUnknownEffect(RegistryObservation)
+  static encodeSync = Schema.encodeUnknownSync(RegistryObservation)
+  static equivalence = Schema.toEquivalence(RegistryObservation)
+  static ordered = false as const
+  static make = this.makeUnsafe
+}
+
+export class PublishReceipt extends Schema.Class<PublishReceipt>('PublishReceipt')({
+  schemaVersion: Schema.Literal(1),
+  planDigest: PlanDigest,
+  tarballSha256: Digest,
+  observation: RegistryObservation,
+  verifiedAt: Schema.String,
+}) {
+  static is = Schema.is(PublishReceipt)
+  static decode = Schema.decodeUnknownEffect(PublishReceipt)
+  static decodeSync = Schema.decodeUnknownSync(PublishReceipt)
+  static encode = Schema.encodeUnknownEffect(PublishReceipt)
+  static encodeSync = Schema.encodeUnknownSync(PublishReceipt)
+  static equivalence = Schema.toEquivalence(PublishReceipt)
+  static ordered = false as const
+  static make = this.makeUnsafe
+}
+
 export class ArtifactManifest extends Schema.Class<ArtifactManifest>('ArtifactManifest')({
   schemaVersion: Schema.Literal(1),
+  planDigest: PlanDigest,
   packageName: Pkg.Moniker.FromString,
   version: Semver.Schema,
   driver: Schema.String,
@@ -597,6 +644,103 @@ export class ExecutionJournal extends Schema.Class<ExecutionJournal>('ExecutionJ
   static encode = Schema.encodeUnknownEffect(ExecutionJournal)
   static encodeSync = Schema.encodeUnknownSync(ExecutionJournal)
   static equivalence = Schema.toEquivalence(ExecutionJournal)
+  static ordered = false as const
+  static make = this.makeUnsafe
+}
+
+export class ExecutionLock extends Schema.Class<ExecutionLock>('ExecutionLock')({
+  schemaVersion: Schema.Literal(1),
+  planDigest: PlanDigest,
+  owner: PrincipalRef,
+  ownerHost: Schema.String,
+  ownerProcess: Schema.String,
+  acquiredAt: Schema.String,
+  heartbeatAt: Schema.String,
+  expiresAt: Schema.String,
+  backend: Schema.Literals(['local-file', 'remote-git-ref']),
+  remoteRef: Schema.optional(Schema.String),
+  recoveryRequiresSignature: Schema.Boolean,
+}) {
+  static is = Schema.is(ExecutionLock)
+  static decode = Schema.decodeUnknownEffect(ExecutionLock)
+  static decodeSync = Schema.decodeUnknownSync(ExecutionLock)
+  static encode = Schema.encodeUnknownEffect(ExecutionLock)
+  static encodeSync = Schema.encodeUnknownSync(ExecutionLock)
+  static equivalence = Schema.toEquivalence(ExecutionLock)
+  static ordered = false as const
+  static make = this.makeUnsafe
+}
+
+export class WorkflowCallProofLink extends Schema.Class<WorkflowCallProofLink>(
+  'WorkflowCallProofLink',
+)({
+  workflowFile: Fs.Path.RelFile.Schema,
+  jobId: Schema.String,
+  caller: Schema.optional(Schema.String),
+  effectivePermissions: Schema.Record(Schema.String, Schema.String),
+  passesIdTokenWrite: Schema.Boolean,
+  passesContentsWrite: Schema.Boolean,
+}) {
+  static is = Schema.is(WorkflowCallProofLink)
+  static decode = Schema.decodeUnknownEffect(WorkflowCallProofLink)
+  static decodeSync = Schema.decodeUnknownSync(WorkflowCallProofLink)
+  static encode = Schema.encodeUnknownEffect(WorkflowCallProofLink)
+  static encodeSync = Schema.encodeUnknownSync(WorkflowCallProofLink)
+  static equivalence = Schema.toEquivalence(WorkflowCallProofLink)
+  static ordered = false as const
+  static make = this.makeUnsafe
+}
+
+export const ReconcileClassification = Schema.Literals(['clean', 'resume', 'repair', 'abort'])
+export type ReconcileClassification = typeof ReconcileClassification.Type
+
+export class ReconcileDecision extends Schema.Class<ReconcileDecision>('ReconcileDecision')({
+  classification: ReconcileClassification,
+  planDigest: PlanDigest,
+  evidenceIds: Schema.Array(Schema.String),
+  stateDiff: Schema.Array(Schema.String),
+  nextCommand: Schema.String,
+}) {
+  static is = Schema.is(ReconcileDecision)
+  static decode = Schema.decodeUnknownEffect(ReconcileDecision)
+  static decodeSync = Schema.decodeUnknownSync(ReconcileDecision)
+  static encode = Schema.encodeUnknownEffect(ReconcileDecision)
+  static encodeSync = Schema.encodeUnknownSync(ReconcileDecision)
+  static equivalence = Schema.toEquivalence(ReconcileDecision)
+  static ordered = false as const
+  static make = this.makeUnsafe
+}
+
+export const RepairAction = Schema.Literals([
+  'resume',
+  'record-remote-success',
+  'create-missing-tag',
+  'create-missing-github-release',
+  'abort-before-mutation',
+  'manual-intervention',
+])
+export type RepairAction = typeof RepairAction.Type
+
+export class AuditArchiveManifest extends Schema.Class<AuditArchiveManifest>(
+  'AuditArchiveManifest',
+)({
+  schemaVersion: Schema.Literal(1),
+  planDigest: PlanDigest,
+  createdAt: Schema.String,
+  files: Schema.Array(
+    Schema.Struct({
+      path: Fs.Path.RelFile.Schema,
+      sha256: Digest,
+    }),
+  ),
+  signature: DetachedSignature,
+}) {
+  static is = Schema.is(AuditArchiveManifest)
+  static decode = Schema.decodeUnknownEffect(AuditArchiveManifest)
+  static decodeSync = Schema.decodeUnknownSync(AuditArchiveManifest)
+  static encode = Schema.encodeUnknownEffect(AuditArchiveManifest)
+  static encodeSync = Schema.encodeUnknownSync(AuditArchiveManifest)
+  static equivalence = Schema.toEquivalence(AuditArchiveManifest)
   static ordered = false as const
   static make = this.makeUnsafe
 }

@@ -35,4 +35,9 @@ describe('pnpm publishing provider command construction', () => {
       '--no-git-checks',
     ])
   })
+
+  test('exposes pnpm capability results as provider data', () => {
+    expect(Pnpm.capabilityResult('publish:tarball')._tag).toBe('Supported')
+    expect(Pnpm.capabilityResult('publish:tolerate-republish')._tag).toBe('Unsupported')
+  })
 })

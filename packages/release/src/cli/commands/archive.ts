@@ -43,26 +43,61 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer))(
     const proof = yield* Api.Proof.readForPlan(planState.plan)
     const artifacts = yield* Api.Artifact.readManifest(planState.plan)
     const digest = Api.Proof.digestForPlan(planState.plan)
+    const journalEntries = yield* Api.Journal.readEntries(
+      Api.Journal.journalPathFor(env.cwd, digest),
+    )
     const archivePath = Fs.Path.join(
       env.cwd,
-      Fs.Path.RelFile.fromString(`./.release/archive/${digest.value}.json`),
+      Fs.Path.RelFile.fromString(`./.release/archive/${digest.value}.kitz-release-audit.tgz`),
     )
-    const body = {
-      schemaVersion: 1,
-      planDigest: Schema.encodeSync(Api.ReleaseContract.PlanDigest)(digest),
-      plan: Schema.encodeSync(Api.Planner.Plan)(planState.plan),
-      proof: Option.isSome(proof)
-        ? Schema.encodeSync(Api.ReleaseContract.ProofArtifact)(proof.value)
-        : null,
-      artifacts: Option.isSome(artifacts)
-        ? Schema.encodeSync(Schema.Array(Api.ReleaseContract.ArtifactManifest))([
-            ...artifacts.value,
-          ])
-        : [],
-    }
+    const bundle = Api.AuditArchive.makeAuditArchive({
+      planDigest: digest,
+      createdAt: new Date().toISOString(),
+      payloads: [
+        {
+          path: Fs.Path.RelFile.fromString('./plan.json'),
+          content: `${JSON.stringify(Schema.encodeSync(Api.Planner.Plan)(planState.plan), null, 2)}\n`,
+        },
+        {
+          path: Fs.Path.RelFile.fromString('./proof.json'),
+          content: `${JSON.stringify(
+            Option.isSome(proof)
+              ? Schema.encodeSync(Api.ReleaseContract.ProofArtifact)(proof.value)
+              : null,
+            null,
+            2,
+          )}\n`,
+        },
+        {
+          path: Fs.Path.RelFile.fromString('./journal.jsonl'),
+          content:
+            journalEntries
+              .map((entry) =>
+                JSON.stringify(Schema.encodeSync(Api.ReleaseContract.SideEffectEntry)(entry)),
+              )
+              .join('\n') + '\n',
+        },
+        {
+          path: Fs.Path.RelFile.fromString('./artifact-manifest.json'),
+          content: `${JSON.stringify(
+            Option.isSome(artifacts)
+              ? Schema.encodeSync(Schema.Array(Api.ReleaseContract.ArtifactManifest))([
+                  ...artifacts.value,
+                ])
+              : [],
+            null,
+            2,
+          )}\n`,
+        },
+        {
+          path: Fs.Path.RelFile.fromString('./registry-observations.json'),
+          content: '[]\n',
+        },
+      ],
+    })
 
     yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(archivePath)), { recursive: true })
-    yield* fs.writeFileString(Fs.Path.toString(archivePath), `${JSON.stringify(body, null, 2)}\n`)
+    yield* fs.writeFile(Fs.Path.toString(archivePath), bundle.bytes)
     yield* Console.log(`Audit archive written to ${Fs.Path.toString(archivePath)}`)
   }),
 )

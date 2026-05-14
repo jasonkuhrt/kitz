@@ -39,6 +39,7 @@ describe('Executor graph', () => {
       expect(result.layers.flatMap((layer) => [...layer])).toEqual([
         'Prepare:@kitz/core',
         'Publish:@kitz/core',
+        'VerifyPublish:@kitz/core',
         `CreateTag:${tagCore('1.1.0')}`,
         `PushTag:${tagCore('1.1.0')}`,
         `CreateGHRelease:${tagCore('1.1.0')}`,
@@ -48,8 +49,11 @@ describe('Executor graph', () => {
       expect(json.nodes['Publish:@kitz/core']).toEqual({
         dependencies: ['Prepare:@kitz/core'],
       })
-      expect(json.nodes[`CreateTag:${tagCore('1.1.0')}`]).toEqual({
+      expect(json.nodes['VerifyPublish:@kitz/core']).toEqual({
         dependencies: ['Publish:@kitz/core'],
+      })
+      expect(json.nodes[`CreateTag:${tagCore('1.1.0')}`]).toEqual({
+        dependencies: ['VerifyPublish:@kitz/core'],
       })
     }),
   )

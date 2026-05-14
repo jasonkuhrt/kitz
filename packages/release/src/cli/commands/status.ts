@@ -16,6 +16,8 @@ import { FileSystemLayer } from '../../platform.js'
 import {
   formatInvalidPlanMessage,
   formatMissingPlanMessage,
+  formatUnsupportedExecutionPlanMessage,
+  hasExecutablePlanContract,
   loadActivePlan,
   loadPlan,
 } from './plan-file.js'
@@ -72,20 +74,23 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer))(
       return env.exit(1)
     }
 
-    const config = yield* Api.Config.load()
     const plan = planState.plan
-    const publish = Api.Publishing.resolvePublishSemanticsForPlan({
-      plan,
-      ...(args.tag !== undefined ? { tag: args.tag } : {}),
-      publishing: config.publishing,
-      npmTag: config.npmTag,
-      candidateTag: config.candidateTag,
-    })
+    if (args.tag !== undefined) {
+      yield* Console.error(
+        'Status uses the frozen plan dist-tag; --tag cannot alter workflow identity.',
+      )
+      return env.exit(1)
+    }
+    if (!hasExecutablePlanContract(plan)) {
+      for (const line of formatUnsupportedExecutionPlanMessage(plan)) yield* Console.error(line)
+      return env.exit(1)
+    }
+    const publishing = Api.Publishing.publishingFromIntent(plan.publishIntent)
 
     const workflowStatus = yield* Api.Executor.status(plan, {
-      tag: publish.distTag,
-      publishing: config.publishing,
-      trunk: config.trunk,
+      tag: plan.publishIntent.distTag,
+      publishing,
+      trunk: plan.publishIntent.git.trunk,
     }).pipe(Effect.provide(Api.Executor.makeWorkflowRuntime()))
 
     yield* Console.log(

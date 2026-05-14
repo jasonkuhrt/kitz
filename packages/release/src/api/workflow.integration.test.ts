@@ -10,6 +10,7 @@ import {
   execute as executeWorkflow,
   executeObservable as executeWorkflowObservable,
 } from './executor/execute.js'
+import { digestForPlan } from './proof.js'
 import {
   decodeJsonRecordSync,
   decodeSemverFromManifest,
@@ -22,6 +23,7 @@ import {
 } from './executor/test-support.js'
 
 const corePackagePath = Fs.Path.AbsDir.fromString('/repo/packages/core/')
+const cliPackagePath = Fs.Path.AbsDir.fromString('/repo/packages/cli/')
 const coreManifestPath = Fs.Path.AbsFile.fromString('/repo/packages/core/package.json')
 const workspacePackages: Parameters<typeof planOfficial>[0] = [
   {
@@ -78,7 +80,7 @@ describe('Workflow integration', () => {
           const publishCalls = yield* Ref.get(harness.publishCalls)
           expect(publishCalls).toHaveLength(1)
           expect(Fs.Path.toString(publishCalls[0]!.tarball)).toBe(
-            '/repo/.release/artifacts/kitz-core-1.1.0.tgz',
+            `/repo/.release/artifacts/${digestForPlan(plan).value}/kitz-core-1.1.0.tgz`,
           )
           expect(publishCalls[0]!.ignoreScripts).toBe(true)
 
@@ -99,6 +101,125 @@ describe('Workflow integration', () => {
           ).toBe(true)
         }),
       ),
+  )
+
+  Test.live('publishes rehearsed tarballs without re-packing during apply execution', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+          },
+        })
+
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
+        const rehearsedPath = `/repo/.release/artifacts/${digestForPlan(plan).value}/kitz-core-1.1.0.tgz`
+        yield* Fs.writeString(
+          Fs.Path.AbsFile.fromString(rehearsedPath),
+          'rehearsed tarball bytes',
+        ).pipe(Effect.provide(harness.workflowLayer))
+
+        const result = yield* executeWorkflow(plan, {
+          dryRun: false,
+          rehearsedArtifacts: true,
+        }).pipe(Effect.provide(harness.workflowLayer))
+
+        expect(result.releasedPackages).toEqual(['@kitz/core'])
+
+        const packCalls = yield* Ref.get(harness.packCalls)
+        expect(packCalls).toHaveLength(0)
+
+        const publishCalls = yield* Ref.get(harness.publishCalls)
+        expect(publishCalls).toHaveLength(1)
+        expect(Fs.Path.toString(publishCalls[0]!.tarball)).toBe(rehearsedPath)
+        expect(publishCalls[0]!.ignoreScripts).toBe(true)
+      }),
+    ),
+  )
+
+  Test.live('pushes official multi-package tags atomically when the plan requires it', () =>
+    quiet(
+      Effect.gen(function* () {
+        const packages = [
+          ...workspacePackages,
+          {
+            name: Pkg.Moniker.parse('@kitz/cli'),
+            scope: 'cli',
+            path: cliPackagePath,
+          },
+        ]
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0'), tag(Pkg.Moniker.parse('@kitz/cli'), '1.0.0')],
+            commits: [
+              Git.Memory.commit('feat(core): new API'),
+              Git.Memory.commit('feat(cli): new CLI'),
+            ],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0'),
+          },
+        })
+
+        const plan = yield* planOfficial(packages).pipe(Effect.provide(harness.planLayer))
+
+        yield* executeWorkflow(plan, { dryRun: false, atomicTagPush: true }).pipe(
+          Effect.provide(harness.workflowLayer),
+        )
+
+        const pushedTags = yield* Ref.get(harness.gitState.pushedTags)
+        expect(pushedTags).toEqual([
+          {
+            tags: ['@kitz/cli@1.1.0', '@kitz/core@1.1.0'],
+            remote: 'origin',
+            force: false,
+            atomic: true,
+          },
+        ])
+      }),
+    ),
+  )
+
+  Test.live('stops before tags when post-publish registry verification fails', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+          },
+          missingRegistryVersions: ['@kitz/core@1.1.0'],
+        })
+
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
+        const outcome = yield* executeWorkflow(plan, { dryRun: false }).pipe(
+          Effect.provide(harness.workflowLayer),
+          Effect.result,
+        )
+
+        expect(outcome._tag).toBe('Failure')
+        if (outcome._tag === 'Failure') {
+          expect(outcome.failure._tag).toBe('ExecutorPublishError')
+          if (outcome.failure._tag === 'ExecutorPublishError') {
+            expect(outcome.failure.context.detail).toContain('Registry does not show')
+          }
+        }
+
+        const createdTags = yield* Ref.get(harness.gitState.createdTags)
+        expect(createdTags).toHaveLength(0)
+      }),
+    ),
   )
 
   Test.live('fails preflight on conflicting tag and does not publish', () =>
@@ -238,7 +359,9 @@ describe('Workflow integration', () => {
           expect(outcome.failure._tag).toBe('ExecutorPublishError')
           if (outcome.failure._tag === 'ExecutorPublishError') {
             expect(outcome.failure.context.detail).toContain('mock pack failure')
-            expect(outcome.failure.context.detail).toContain('Manifest cleanup restored version')
+            expect(outcome.failure.context.detail).toContain(
+              'Source package manifests were not mutated',
+            )
             expect(outcome.failure.context.detail).toContain('Pack hooks detected (prepack)')
             expect(outcome.failure.context.detail).toContain(
               'plan.packages-runtime-targets-source-oriented',
@@ -371,6 +494,7 @@ describe('Workflow integration', () => {
         const allActivities = observable.graph.layers.flatMap((layer) => [...layer])
         expect(allActivities).toContain('Prepare:@kitz/core')
         expect(allActivities).toContain('Publish:@kitz/core')
+        expect(allActivities).toContain('VerifyPublish:@kitz/core')
         expect(allActivities).toContain(`CreateTag:${tagCore('1.1.0')}`)
         expect(allActivities).toContain(`PushTag:${tagCore('1.1.0')}`)
         expect(allActivities).toContain(`CreateGHRelease:${tagCore('1.1.0')}`)

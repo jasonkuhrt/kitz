@@ -12,6 +12,7 @@ import { Effect, Layer, Option, Ref, Schema, Stream } from 'effect'
 import * as Analyzer from '../analyzer/__.js'
 import * as Planner from '../planner/__.js'
 import { makeTestRuntime } from './runtime.js'
+import { sha256Bytes } from '../digest.js'
 
 const JsonRecordSchema = Schema.Record(Schema.String, Schema.Unknown)
 const JsonRecordFromStringSchema = Schema.fromJsonString(JsonRecordSchema)
@@ -102,6 +103,7 @@ export const makeMockSpawnerLayer = (whoamiUsername: string) => {
 export interface PackCall {
   readonly cwd: Fs.Path.AbsDir
   readonly packDestination: Fs.Path.AbsDir
+  readonly env?: Readonly<Record<string, string | undefined>>
   readonly tarball: Fs.Path.AbsFile
   readonly filename: string
   readonly manifestSnapshot: Record<string, unknown>
@@ -112,6 +114,9 @@ export interface PublishCall {
   readonly tag?: string
   readonly registry?: string
   readonly ignoreScripts?: boolean
+  readonly dryRun?: boolean
+  readonly provenance?: boolean
+  readonly provenanceFile?: Fs.Path.AbsFile
 }
 
 export interface Harness {
@@ -131,11 +136,16 @@ export const makeHarness = (options: {
   readonly diskLayout: Fs.Memory.DiskLayout
   readonly failPackPackages?: readonly string[]
   readonly failPublishPackages?: readonly string[]
+  readonly missingRegistryVersions?: readonly string[]
   readonly runtimeLayer?: Layer.Layer<any>
   readonly whoamiUsername?: string
+  readonly envVars?: Record<string, string | undefined>
 }): Effect.Effect<Harness> =>
   Effect.gen(function* () {
-    const envLayer = Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') })
+    const envLayer = Env.Test({
+      cwd: Fs.Path.AbsDir.fromString('/repo/'),
+      vars: options.envVars ?? {},
+    })
     const fsLayer = Fs.Memory.layer(options.diskLayout)
     const { layer: gitLayer, state: gitState } = yield* Git.Memory.makeWithState(options.git)
     const planLayer = Layer.mergeAll(envLayer, fsLayer, gitLayer)
@@ -201,6 +211,7 @@ export const makeHarness = (options: {
                 {
                   cwd: packOptions.cwd,
                   packDestination: packOptions.packDestination,
+                  ...(packOptions.env !== undefined ? { env: packOptions.env } : {}),
                   tarball,
                   filename,
                   manifestSnapshot,
@@ -224,6 +235,13 @@ export const makeHarness = (options: {
                   ...(publishOptions.ignoreScripts !== undefined
                     ? { ignoreScripts: publishOptions.ignoreScripts }
                     : {}),
+                  ...(publishOptions.dryRun !== undefined ? { dryRun: publishOptions.dryRun } : {}),
+                  ...(publishOptions.provenance !== undefined
+                    ? { provenance: publishOptions.provenance }
+                    : {}),
+                  ...(publishOptions.provenanceFile !== undefined
+                    ? { provenanceFile: publishOptions.provenanceFile }
+                    : {}),
                 },
               ])
 
@@ -245,6 +263,79 @@ export const makeHarness = (options: {
                 )
               }
             }),
+          hasVersion: (packageName, version, _options) =>
+            Effect.gen(function* () {
+              if ((options.missingRegistryVersions ?? []).includes(`${packageName}@${version}`)) {
+                return false
+              }
+              const publishCallsSnapshot = yield* Ref.get(publishCalls)
+              const expected = `${slugPackageName(packageName)}-${version}.tgz`
+              return publishCallsSnapshot.some((call) =>
+                Fs.Path.toString(call.tarball).endsWith(expected),
+              )
+            }),
+          observeVersion: (packageName, version, observeOptions) =>
+            Effect.gen(function* () {
+              if ((options.missingRegistryVersions ?? []).includes(`${packageName}@${version}`)) {
+                return yield* Effect.fail(
+                  new NpmRegistry.NpmCliError({
+                    context: {
+                      operation: 'view',
+                      detail: `Registry does not show ${packageName}@${version} after publish.`,
+                    },
+                    cause: new Error(
+                      `Registry does not show ${packageName}@${version} after publish.`,
+                    ),
+                  }),
+                )
+              }
+
+              const publishCallsSnapshot = yield* Ref.get(publishCalls)
+              const expected = `${slugPackageName(packageName)}-${version}.tgz`
+              const publishCall = publishCallsSnapshot.find((call) =>
+                Fs.Path.toString(call.tarball).endsWith(expected),
+              )
+
+              if (publishCall === undefined) {
+                return yield* Effect.fail(
+                  new NpmRegistry.NpmCliError({
+                    context: {
+                      operation: 'view',
+                      detail: `mock registry has no publish receipt for ${packageName}@${version}`,
+                    },
+                    cause: new Error(
+                      `mock registry has no publish receipt for ${packageName}@${version}`,
+                    ),
+                  }),
+                )
+              }
+
+              const tarballUrl = `https://registry.example.test/${slugPackageName(packageName)}-${version}.tgz`
+              const downloadedTarballSha256 =
+                observeOptions?.downloadTarball === true
+                  ? sha256Bytes(
+                      yield* fs.readFile(Fs.Path.toString(publishCall.tarball)).pipe(Effect.orDie),
+                    ).value
+                  : undefined
+
+              return {
+                versionMetadata: {
+                  name: packageName,
+                  version,
+                  dist: {
+                    tarball: tarballUrl,
+                  },
+                },
+                distTags: {
+                  [publishCall.tag ?? 'latest']: version,
+                },
+                tarballUrl,
+                ...(downloadedTarballSha256 !== undefined ? { downloadedTarballSha256 } : {}),
+              }
+            }),
+          listAccessPackages: () => Effect.succeed({}),
+          listAccessCollaborators: () => Effect.succeed({}),
+          getAccessStatus: () => Effect.succeed('public' as const),
         } satisfies NpmRegistry.NpmCliService
       }),
     ).pipe(Layer.provide(planLayer))

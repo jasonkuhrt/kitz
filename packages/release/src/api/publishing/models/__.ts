@@ -1,3 +1,6 @@
+export * as Artifact from './artifact.js'
+export * as Auth from './auth.js'
 export * from './capability.js'
 export * from './driver-id.js'
 export * from './proof.js'
+export * as Provenance from './provenance.js'

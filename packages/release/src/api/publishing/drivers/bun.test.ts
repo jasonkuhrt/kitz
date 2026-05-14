@@ -2,6 +2,17 @@ import { describe, expect, test } from 'bun:test'
 import { Bun } from '../providers/__.js'
 
 describe('Bun publishing provider command construction', () => {
+  test('covers pack command shape with and without an explicit destination', () => {
+    expect(Bun.buildPackCommand()).toEqual(['bun', 'pm', 'pack'])
+    expect(Bun.buildPackCommand({ destination: '/repo/.release/artifacts/' })).toEqual([
+      'bun',
+      'pm',
+      'pack',
+      '--destination',
+      '/repo/.release/artifacts/',
+    ])
+  })
+
   test('covers publish flags required by the product matrix', () => {
     expect(
       Bun.buildPublishCommand({

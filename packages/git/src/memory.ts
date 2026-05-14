@@ -48,7 +48,16 @@ export interface GitMemoryState {
   /** Tags created (for verification) */
   readonly createdTags: Ref.Ref<Array<{ tag: string; message: string | undefined }>>
   /** Tag push operations (for verification) */
-  readonly pushedTags: Ref.Ref<Array<{ remote: string; tag?: string; force?: boolean }>>
+  readonly pushedTags: Ref.Ref<
+    Array<{
+      remote: string
+      tag?: string
+      tags?: readonly string[]
+      force?: boolean
+      atomic?: boolean
+      dryRun?: boolean
+    }>
+  >
   /** Map of tag -> SHA */
   readonly tagShas: Ref.Ref<Record<string, Sha.Sha>>
   /** Map of sha -> parent SHAs for ancestry */
@@ -73,7 +82,16 @@ export const makeState = (config: GitMemoryConfig = {}): Effect.Effect<GitMemory
     root: Ref.make(config.root ?? '/repo'),
     headSha: Ref.make(config.headSha ?? Sha.make('abc1234')),
     createdTags: Ref.make<Array<{ tag: string; message: string | undefined }>>([]),
-    pushedTags: Ref.make<Array<{ remote: string; tag?: string; force?: boolean }>>([]),
+    pushedTags: Ref.make<
+      Array<{
+        remote: string
+        tag?: string
+        tags?: readonly string[]
+        force?: boolean
+        atomic?: boolean
+        dryRun?: boolean
+      }>
+    >([]),
     tagShas: Ref.make<Record<string, Sha.Sha>>({}),
     commitParents: Ref.make<Record<string, string[]>>({}),
     deletedTags: Ref.make<string[]>([]),
@@ -148,6 +166,24 @@ const makeService = (state: GitMemoryState): GitService => ({
 
   pushTags: (remote = 'origin') =>
     Ref.update(state.pushedTags, (pushed) => [...pushed, { remote }]),
+
+  pushTagsAtomic: (tags, remote = 'origin', force = false) =>
+    Ref.update(state.pushedTags, (pushed) => [
+      ...pushed,
+      { tags: [...tags], remote, force, atomic: true },
+    ]),
+
+  pushTagDryRun: (tag, remote = 'origin', force = false) =>
+    Ref.update(state.pushedTags, (pushed) => [
+      ...pushed,
+      { tag, remote, force, dryRun: true },
+    ]).pipe(Effect.as({ stdout: `dry-run ${tag} to ${remote}` })),
+
+  pushTagsAtomicDryRun: (tags, remote = 'origin', force = false) =>
+    Ref.update(state.pushedTags, (pushed) => [
+      ...pushed,
+      { tags: [...tags], remote, force, atomic: true, dryRun: true },
+    ]).pipe(Effect.as({ stdout: `dry-run atomic ${tags.join(',')} to ${remote}` })),
 
   getRoot: () => Ref.get(state.root),
 

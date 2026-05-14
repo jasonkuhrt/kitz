@@ -18,7 +18,9 @@
   },
   "exports": {
     ".": "./src/_.ts",
-    "./__": "./src/__.ts"
+    "./__": "./src/__.ts",
+    "./api": "./src/__.ts",
+    "./promise-api": "./src/promise-api.ts"
   },
   "files": [
     "build",

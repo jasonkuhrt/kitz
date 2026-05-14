@@ -139,6 +139,53 @@ const makeGitService = (git: SimpleGit): GitService => ({
   pushTags: (remote = 'origin') =>
     gitEffect('pushTags', () => git.pushTags(remote), `to ${remote}`),
 
+  pushTagsAtomic: (tags, remote = 'origin', force = false) =>
+    gitEffect(
+      'pushTagsAtomic',
+      () =>
+        git.raw([
+          'push',
+          '--atomic',
+          ...(force ? ['--force'] : []),
+          remote,
+          ...tags.map((tag) => `refs/tags/${tag}`),
+        ]),
+      `${tags.join(', ')} to ${remote}${force ? ' (force)' : ''}`,
+    ),
+
+  pushTagDryRun: (tag, remote = 'origin', force = false) =>
+    gitEffect(
+      'pushTagDryRun',
+      () =>
+        git
+          .raw([
+            'push',
+            '--dry-run',
+            ...(force ? ['--force'] : []),
+            remote,
+            `refs/tags/${tag}:refs/tags/${tag}`,
+          ])
+          .then((stdout) => ({ stdout })),
+      `${tag} to ${remote}${force ? ' (force)' : ''}`,
+    ),
+
+  pushTagsAtomicDryRun: (tags, remote = 'origin', force = false) =>
+    gitEffect(
+      'pushTagsAtomicDryRun',
+      () =>
+        git
+          .raw([
+            'push',
+            '--dry-run',
+            '--atomic',
+            ...(force ? ['--force'] : []),
+            remote,
+            ...tags.map((tag) => `refs/tags/${tag}:refs/tags/${tag}`),
+          ])
+          .then((stdout) => ({ stdout })),
+      `${tags.join(', ')} to ${remote}${force ? ' (force)' : ''}`,
+    ),
+
   getRoot: () => gitEffect('getRoot', async () => (await git.revparse(['--show-toplevel'])).trim()),
 
   getHeadSha: () =>

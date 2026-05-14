@@ -24,11 +24,13 @@ const rootCommands = [
   { usage: 'preview [options]', description: 'Preview the frozen release plan' },
   { usage: 'prove [options]', description: 'Write plan-bound publishing proof' },
   { usage: 'reconcile [options]', description: 'Reconcile remote state with the plan' },
+  { usage: 'repair [options]', description: 'Print or apply a plan reconciliation repair action' },
   { usage: 'rehearse [options]', description: 'Build exact release artifacts' },
   { usage: 'graph [options]', description: 'Render the release execution DAG for the active plan' },
   { usage: 'prune [options]', description: 'Prune local release artifacts' },
   { usage: 'resume [options]', description: 'Resume an interrupted release workflow' },
   { usage: 'status [options]', description: 'Inspect durable workflow state for the active plan' },
+  { usage: 'trust <list|setup|verify>', description: 'Manage npm trusted-publisher setup' },
   { usage: 'ui', description: 'Open the interactive release dashboard' },
   { usage: 'validate-setup [options]', description: 'Validate release setup without planning' },
 ] as const

@@ -17,6 +17,12 @@ const makeNpmCliLayer = (options?: {
     },
     pack: () => Effect.die('unexpected npm pack call in explore test'),
     publish: () => Effect.die('unexpected npm publish call in explore test'),
+    hasVersion: () => Effect.die('unexpected npm view call in explore test'),
+    observeVersion: () => Effect.die('unexpected npm observe call in explore test'),
+    listAccessPackages: () => Effect.die('unexpected npm access packages call in explore test'),
+    listAccessCollaborators: () =>
+      Effect.die('unexpected npm access collaborators call in explore test'),
+    getAccessStatus: () => Effect.die('unexpected npm access status call in explore test'),
   })
 
 const runExplore = (

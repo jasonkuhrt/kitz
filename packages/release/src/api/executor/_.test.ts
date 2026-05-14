@@ -7,6 +7,7 @@ import { describe, expect, test } from 'bun:test'
 import { Test } from '@kitz/test'
 import { Effect, FileSystem, Ref } from 'effect'
 import { execute, executeObservable, toPayload } from './execute.js'
+import { digestForPlan } from '../proof.js'
 import {
   decodeJsonRecordSync,
   decodeSemverFromManifest,
@@ -95,7 +96,7 @@ describe('Executor integration', () => {
           const publishCalls = yield* Ref.get(harness.publishCalls)
           expect(publishCalls).toHaveLength(1)
           expect(Fs.Path.toString(publishCalls[0]!.tarball)).toBe(
-            '/repo/.release/artifacts/kitz-core-1.1.0.tgz',
+            `/repo/.release/artifacts/${digestForPlan(plan).value}/kitz-core-1.1.0.tgz`,
           )
           expect(publishCalls[0]!.ignoreScripts).toBe(true)
 
@@ -485,7 +486,9 @@ describe('Executor integration', () => {
           expect(outcome.failure._tag).toBe('ExecutorPublishError')
           if (outcome.failure._tag === 'ExecutorPublishError') {
             expect(outcome.failure.context.detail).toContain('mock pack failure')
-            expect(outcome.failure.context.detail).toContain('Manifest cleanup restored version')
+            expect(outcome.failure.context.detail).toContain(
+              'Source package manifests were not mutated',
+            )
             expect(outcome.failure.context.detail).toContain('Pack hooks detected (prepack)')
             expect(outcome.failure.context.detail).toContain(
               'plan.packages-runtime-targets-source-oriented',
@@ -806,6 +809,7 @@ describe('Executor integration', () => {
         const allActivities = observable.graph.layers.flatMap((layer) => [...layer])
         expect(allActivities).toContain('Prepare:@kitz/core')
         expect(allActivities).toContain('Publish:@kitz/core')
+        expect(allActivities).toContain('VerifyPublish:@kitz/core')
         expect(allActivities).toContain(`CreateTag:${tagCore('1.1.0')}`)
         expect(allActivities).toContain(`PushTag:${tagCore('1.1.0')}`)
         expect(allActivities).toContain(`CreateGHRelease:${tagCore('1.1.0')}`)
