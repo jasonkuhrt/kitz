@@ -8,7 +8,7 @@ import { OfficialFirst } from '../../version/models/official-first.js'
 import { OfficialIncrement } from '../../version/models/official-increment.js'
 import { Official } from './item-official.js'
 import * as PlannerResource from '../resource.js'
-import { Plan } from './plan.js'
+import { isPlanOf, Plan } from './plan.js'
 
 const pkg = (name: string, scope: string) => ({
   name: Pkg.Moniker.parse(name),
@@ -98,6 +98,29 @@ describe('Plan', () => {
     const decoded = Schema.decodeSync(Plan)(encoded)
     expect(decoded.releases).toHaveLength(1)
     expect(decoded.lifecycle).toBe('official')
+  })
+
+  test('isPlanOf narrows only plans with matching lifecycle-consistent items', () => {
+    const plan = Plan.make({
+      lifecycle: 'official',
+      timestamp: '2026-01-01T00:00:00Z',
+      releases: [
+        Official.make({
+          package: pkg('@kitz/core', 'core'),
+          version: OfficialFirst.make({ version: Semver.fromString('0.1.0'), bump: 'minor' }),
+          commits: [commit('core')],
+        }),
+      ],
+      cascades: [],
+    })
+    const mismatched = Plan.makeUnsafe({
+      ...plan,
+      lifecycle: 'candidate',
+    })
+
+    expect(isPlanOf('official', plan)).toBe(true)
+    expect(isPlanOf('candidate', plan)).toBe(false)
+    expect(isPlanOf('candidate', mismatched)).toBe(false)
   })
 
   test('rejects lifecycle-mismatched items at construction time', () => {

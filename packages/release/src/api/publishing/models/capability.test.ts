@@ -9,6 +9,7 @@ import {
   publishCapabilityValues,
   unsupported,
 } from './capability.js'
+import { PublishingCapabilityError } from '../errors.js'
 
 describe('publishing capability model', () => {
   test('capability union rejects unknown strings', () => {
@@ -50,5 +51,19 @@ describe('publishing capability model', () => {
     if (result._tag === 'Unsupported') {
       expect(result.blockingPlanFields).toEqual(['publishIntent.artifacts.scriptPolicy'])
     }
+  })
+
+  test('capability errors carry provider and operation context', () => {
+    const error = new PublishingCapabilityError('provider cannot prove operation', {
+      provider: 'bun',
+      operation: 'publish:ignore-scripts',
+    })
+
+    expect(error._tag).toBe('PublishingCapabilityError')
+    expect(error.message).toBe('provider cannot prove operation')
+    expect(error.context).toEqual({
+      provider: 'bun',
+      operation: 'publish:ignore-scripts',
+    })
   })
 })

@@ -75,7 +75,7 @@ export const makeMockSpawnerLayer = (whoamiUsername: string) => {
               Option.getOrUndefined,
             )
           : undefined
-      return Effect.succeed(
+      const handle =
         version === '9.9.9'
           ? makeHandle(`"${version}"\n`, 0)
           : makeHandle(
@@ -90,8 +90,9 @@ export const makeMockSpawnerLayer = (whoamiUsername: string) => {
                 2,
               ) + '\n',
               1,
-            ),
-      )
+            )
+
+      return Effect.succeed(handle)
     }
 
     return Effect.die(`Unexpected command in mock spawner: ${standard.command}`)
@@ -136,7 +137,9 @@ export const makeHarness = (options: {
   readonly diskLayout: Fs.Memory.DiskLayout
   readonly failPackPackages?: readonly string[]
   readonly failPublishPackages?: readonly string[]
+  readonly failAtomicPush?: boolean
   readonly missingRegistryVersions?: readonly string[]
+  readonly observedDistTags?: Readonly<Record<string, string>>
   readonly runtimeLayer?: Layer.Layer<any>
   readonly whoamiUsername?: string
   readonly envVars?: Record<string, string | undefined>
@@ -147,7 +150,28 @@ export const makeHarness = (options: {
       vars: options.envVars ?? {},
     })
     const fsLayer = Fs.Memory.layer(options.diskLayout)
-    const { layer: gitLayer, state: gitState } = yield* Git.Memory.makeWithState(options.git)
+    const { layer: gitLayerBase, state: gitState } = yield* Git.Memory.makeWithState(options.git)
+    const gitLayer = options.failAtomicPush
+      ? Layer.effect(
+          Git.Git,
+          Effect.gen(function* () {
+            const git = yield* Git.Git
+            return {
+              ...git,
+              pushTagsAtomic: () =>
+                Effect.fail(
+                  new Git.GitError({
+                    context: {
+                      operation: 'pushTagsAtomic',
+                      detail: 'mock atomic push failure',
+                    },
+                    cause: new Error('mock atomic push failure'),
+                  }),
+                ),
+            }
+          }),
+        ).pipe(Layer.provide(gitLayerBase))
+      : gitLayerBase
     const planLayer = Layer.mergeAll(envLayer, fsLayer, gitLayer)
     const { layer: githubLayer, state: githubState } = yield* Github.Memory.makeWithState({})
     const packCalls = yield* Ref.make<PackCall[]>([])
@@ -326,7 +350,7 @@ export const makeHarness = (options: {
                     tarball: tarballUrl,
                   },
                 },
-                distTags: {
+                distTags: options.observedDistTags ?? {
                   [publishCall.tag ?? 'latest']: version,
                 },
                 tarballUrl,
