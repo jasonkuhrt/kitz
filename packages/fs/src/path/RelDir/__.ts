@@ -9,7 +9,7 @@ import { Segments } from '../types/segments.js'
  */
 const Back = S.Int.pipe(
   S.check(S.isGreaterThanOrEqualTo(0)),
-  S.withConstructorDefault(() => Option.some(0)),
+  S.withConstructorDefault(Effect.succeed(0)),
 )
 
 /**
@@ -20,7 +20,6 @@ class RelDirClass extends S.TaggedClass<RelDirClass>()('FsPathRelDir', {
   back: Back,
   segments: Segments,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(RelDirClass)
   static decode = S.decodeUnknownEffect(RelDirClass)
   static decodeSync = S.decodeUnknownSync(RelDirClass)

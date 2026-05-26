@@ -469,8 +469,8 @@ export const make = <Name extends string, Payload, Result, Error>(
 
             // Build the effect to run (with optional retry)
             const activityEffect = nodeDef.retry
-              ? activity.asEffect().pipe(Activity.retry({ times: nodeDef.retry.times }))
-              : activity.asEffect()
+              ? activity.pipe(Activity.retry({ times: nodeDef.retry.times }))
+              : activity
 
             return yield* activityEffect.pipe(
               Effect.matchEffect({
@@ -540,12 +540,13 @@ export const make = <Name extends string, Payload, Result, Error>(
       const waitForTerminalResult = () =>
         Effect.gen(function* () {
           while (true) {
-            const result = yield* workflow.poll(executionId)
-            if (result === undefined) {
+            const maybeResult = yield* workflow.poll(executionId)
+            if (Option.isNone(maybeResult)) {
               yield* Effect.sleep(50)
               continue
             }
 
+            const result = maybeResult.value
             if (result._tag === 'Complete') {
               return yield* fromExit(result.exit)
             }
@@ -554,15 +555,16 @@ export const make = <Name extends string, Payload, Result, Error>(
           }
         }) as Effect.Effect<UnwrapHandles<Result>, Error, WorkflowEngine.WorkflowEngine>
 
-      if (existing === undefined) {
+      if (Option.isNone(existing)) {
         const launchFiber = yield* workflow
           .execute(payload as any)
           .pipe(Effect.result, Effect.forkChild)
         return yield* waitForTerminalResult().pipe(Effect.ensuring(Fiber.interrupt(launchFiber)))
       }
 
-      if (existing._tag === 'Complete' && Exit.isSuccess(existing.exit)) {
-        return yield* fromExit(existing.exit)
+      const existingResult = existing.value
+      if (existingResult._tag === 'Complete' && Exit.isSuccess(existingResult.exit)) {
+        return yield* fromExit(existingResult.exit)
       }
 
       yield* workflow.resume(executionId)
@@ -574,7 +576,8 @@ export const make = <Name extends string, Payload, Result, Error>(
   const poll = (payload: Payload) =>
     Effect.gen(function* () {
       const id = yield* executionId(payload)
-      return (yield* workflow.poll(id)) as
+      const result = yield* workflow.poll(id)
+      return Option.getOrUndefined(result) as
         | EffectWorkflow.Result<UnwrapHandles<Result>, Error>
         | undefined
     })

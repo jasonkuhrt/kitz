@@ -1,5 +1,4 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
@@ -746,7 +745,7 @@ export const validateProof = (
 export const write = (
   proof: ProofArtifact,
   path: Fs.Path.AbsFile,
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(path)), { recursive: true })
@@ -760,7 +759,7 @@ export const read = (
   path: Fs.Path.AbsFile,
 ): Effect.Effect<
   Option.Option<ProofArtifact>,
-  PlatformError | Schema.SchemaError,
+  PlatformError.PlatformError | Schema.SchemaError,
   FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
@@ -775,7 +774,7 @@ export const read = (
 export const prove = (
   plan: Plan,
   observations: ProofObservations = {},
-): Effect.Effect<ProofArtifact, PlatformError, Env.Env | FileSystem.FileSystem> =>
+): Effect.Effect<ProofArtifact, PlatformError.PlatformError, Env.Env | FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
     const proof = makeProofArtifact(plan, new Date().toISOString(), observations)
@@ -787,7 +786,7 @@ export const readForPlan = (
   plan: Plan,
 ): Effect.Effect<
   Option.Option<ProofArtifact>,
-  PlatformError | Schema.SchemaError,
+  PlatformError.PlatformError | Schema.SchemaError,
   Env.Env | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {

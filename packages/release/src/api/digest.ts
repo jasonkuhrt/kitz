@@ -11,7 +11,6 @@ export class Digest extends Schema.Class<Digest>('Digest')({
   static encodeSync = Schema.encodeUnknownSync(Digest)
   static equivalence = Schema.toEquivalence(Digest)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 const compareKeys = (a: string, b: string): number => a.localeCompare(b)

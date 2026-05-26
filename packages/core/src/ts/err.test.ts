@@ -1,4 +1,4 @@
-import { Assert } from '#kitz/assert'
+import { Assert } from '@kitz/assert'
 import { expect, test } from 'bun:test'
 import type * as Err from './err.js'
 

@@ -1,4 +1,4 @@
-import { Test } from '#kitz/test'
+import { Test } from '@kitz/test'
 import { expect, test } from 'bun:test'
 import { Str } from './_.js'
 

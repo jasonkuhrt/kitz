@@ -41,8 +41,8 @@ const Workspaces = S.Struct({
  * Class schema for package.json manifest
  */
 class ManifestClass extends S.Class<ManifestClass>('Manifest')({
-  name: Moniker.FromString.pipe(S.withDecodingDefaultKey(() => 'unnamed')),
-  version: SemverFromString.pipe(S.withDecodingDefaultKey(() => '0.0.0')),
+  name: Moniker.FromString.pipe(S.withDecodingDefaultKey(Effect.sync(() => 'unnamed'))),
+  version: SemverFromString.pipe(S.withDecodingDefaultKey(Effect.sync(() => '0.0.0'))),
   description: S.optional(S.String),
   main: S.optional(S.String),
   type: S.optional(S.Literals(['module', 'commonjs'])),
@@ -67,7 +67,6 @@ class ManifestClass extends S.Class<ManifestClass>('Manifest')({
   packageManager: S.optional(S.String),
   madge: S.optional(S.Unknown),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(ManifestClass)
   static decode = S.decodeUnknownEffect(ManifestClass)
   static decodeSync = S.decodeUnknownSync(ManifestClass)

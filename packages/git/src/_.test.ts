@@ -483,9 +483,7 @@ describe('Commit', () => {
       Schema.Struct({
         type: Schema.String,
       }),
-    ) {
-      static make = this.makeUnsafe
-    }
+    ) {}
 
     const commit = ReleaseCommit.make({
       hash: Git.Sha.make('abc1234'),
@@ -645,6 +643,31 @@ describe('GitLive', () => {
 
       expect(result).toBe('main')
     } finally {
+      repo.cleanup()
+    }
+  })
+
+  test('sanitizes editor environment before spawning git', async () => {
+    const repo = makeTempGitRepo()
+    const originalEditor = process.env['EDITOR']
+
+    try {
+      process.env['EDITOR'] = 'vim'
+
+      const result = await Effect.runPromise(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          return yield* git.getRoot()
+        }).pipe(Effect.provide(Git.makeGitLive(repo.root))),
+      )
+
+      expect(realpathSync(result)).toBe(realpathSync(repo.root))
+    } finally {
+      if (originalEditor === undefined) {
+        delete process.env['EDITOR']
+      } else {
+        process.env['EDITOR'] = originalEditor
+      }
       repo.cleanup()
     }
   })

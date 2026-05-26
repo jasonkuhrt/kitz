@@ -10,7 +10,6 @@ export class FileName extends S.TaggedClass<FileName>()('FileName', {
   stem: S.String,
   extension: S.NullOr(Extension.Extension),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(FileName)
   static decode = S.decodeUnknownEffect(FileName)
   static decodeSync = S.decodeUnknownSync(FileName)

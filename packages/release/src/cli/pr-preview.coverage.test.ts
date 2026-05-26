@@ -1,6 +1,5 @@
 import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
-import * as PlatformError from 'effect/PlatformError'
-import { Sink, Stream, Effect, Layer, Option } from 'effect'
+import { Sink, Stream, Effect, Layer, Option, PlatformError } from 'effect'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
@@ -131,6 +130,7 @@ const makeHandle = (stdout: string): ChildProcessSpawner.ChildProcessHandle =>
     pid: ChildProcessSpawner.ProcessId(1),
     exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(0)),
     isRunning: Effect.succeed(false),
+    unref: Effect.succeed(Effect.void),
     kill: () => Effect.void,
     stderr: Stream.empty,
     stdin: Sink.drain,
@@ -170,7 +170,7 @@ const makeDiffSpawnerLayer = (
   )
 
 const ruleRef = (id: string, description: string) => ({
-  id: RuleId.makeUnsafe(id),
+  id: RuleId.make(id),
   description,
 })
 

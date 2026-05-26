@@ -1,5 +1,5 @@
 import { Err } from '@kitz/core'
-import { Effect, Schema as S, ServiceMap } from 'effect'
+import { Effect, Schema as S, Context } from 'effect'
 import { Commit } from './commit.js'
 import * as Sha from './sha.js'
 
@@ -190,4 +190,4 @@ export interface GitService {
 /**
  * Git service tag.
  */
-export class Git extends ServiceMap.Service<Git, GitService>()('Git') {}
+export class Git extends Context.Service<Git, GitService>()('Git') {}

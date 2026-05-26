@@ -17,7 +17,7 @@ import {
 import { Destination, formatReport, relay } from './relay.js'
 
 const ruleRef = (id: string, description = 'Test rule') => ({
-  id: RuleId.makeUnsafe(id),
+  id: RuleId.make(id),
   description,
 })
 

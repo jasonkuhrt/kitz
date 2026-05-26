@@ -34,7 +34,6 @@ export class ReleaseCommit extends Git.ParsedCommit<ReleaseCommit>()(
   'ReleaseCommit',
   ConventionalCommits.Commit.Commit,
 ) {
-  static make = this.makeUnsafe
   /**
    * Instance sugar for {@link ReleaseCommit.forScope}.
    */

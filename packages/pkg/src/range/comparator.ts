@@ -15,7 +15,6 @@ class ComparatorClass extends S.Class<ComparatorClass>('PkgRangeComparator')({
 }) {
   static equivalence = S.toEquivalence(ComparatorClass)
   static ordered = false as const
-  static make = this.makeUnsafe
   static is = S.is(ComparatorClass)
   static get decode(): any {
     return S.decode(ComparatorClass)

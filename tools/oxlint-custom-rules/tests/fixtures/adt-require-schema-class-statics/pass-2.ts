@@ -4,7 +4,6 @@ export class Scoped extends S.TaggedClass<Scoped>()('Scoped', {
   scope: S.String,
   name: S.String,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Scoped)
   static decode = S.decode(Scoped)
   static decodeSync = S.decodeSync(Scoped)

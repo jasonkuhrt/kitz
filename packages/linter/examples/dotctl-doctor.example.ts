@@ -4,7 +4,7 @@ import { Finding, Linter } from '@kitz/linter'
 const DoctorInput = Schema.Struct({
   showPass: Schema.Boolean.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => false),
+    Schema.withDecodingDefaultKey(Effect.sync(() => false)),
   ),
   render: Schema.optional(Schema.Literals(['focus', 'sectioned', 'compact', 'table', 'tree'])),
 })

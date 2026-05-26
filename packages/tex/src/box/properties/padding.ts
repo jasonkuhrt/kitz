@@ -31,9 +31,7 @@ export const Value = S.Union([S.Number, S.String, S.BigInt])
  *
  * @category Text Formatting
  */
-export class Padding extends Sided.Class<Padding>('Padding')(Value) {
-  static make = this.makeUnsafe
-}
+export class Padding extends Sided.Class<Padding>('Padding')(Value) {}
 
 /**
  * Parse padding input into a Padding instance.

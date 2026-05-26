@@ -1,4 +1,4 @@
-import { Test } from '#kitz/test'
+import { Test } from '@kitz/test'
 import type { Optic } from '#optic'
 import { describe, expect, test } from 'bun:test'
 import { compose, compose2 } from './compose.js'

@@ -1,4 +1,4 @@
-import { Schema as S } from 'effect'
+import { Effect, Schema as S } from 'effect'
 import {
   defaultProofPolicy,
   PlanDigest,
@@ -79,18 +79,18 @@ export const isPlanOf = <$lifecycle extends Lifecycle>(
 export class Plan extends S.TaggedClass<Plan>()('Plan', {
   schemaVersion: S.Literal(2).pipe(
     S.optionalKey,
-    S.withDecodingDefaultKey(() => 2 as const),
+    S.withDecodingDefaultKey(Effect.sync(() => 2 as const)),
   ),
   signingProfileId: S.String.pipe(
     S.optionalKey,
-    S.withDecodingDefaultKey(() => 'local-developer'),
+    S.withDecodingDefaultKey(Effect.sync(() => 'local-developer')),
   ),
   planDigest: S.optional(PlanDigest),
   source: S.optional(PlanSourceSnapshot),
   publishIntent: S.optional(PublishIntent),
   proofPolicy: ProofPolicy.pipe(
     S.optionalKey,
-    S.withDecodingDefaultKey(() => defaultProofPolicy()),
+    S.withDecodingDefaultKey(Effect.sync(() => defaultProofPolicy())),
   ),
   lifecycle: LifecycleSchema,
   timestamp: S.String,
@@ -103,25 +103,55 @@ export class Plan extends S.TaggedClass<Plan>()('Plan', {
   static encodeSync = S.encodeUnknownSync(Plan)
   static equivalence = S.toEquivalence(Plan)
   static ordered = false as const
-  static make = (input: {
-    readonly lifecycle: Lifecycle
-    readonly timestamp: string
-    readonly releases: Plan['releases']
-    readonly cascades: Plan['cascades']
-    readonly schemaVersion?: 2
-    readonly signingProfileId?: string
-    readonly planDigest?: PlanDigest
-    readonly source?: PlanSourceSnapshot
-    readonly publishIntent?: PublishIntent
-    readonly proofPolicy?: ProofPolicy
-  }): Plan =>
+  static override make = (
+    input: {
+      readonly lifecycle: Lifecycle
+      readonly timestamp: string
+      readonly releases: Plan['releases']
+      readonly cascades: Plan['cascades']
+      readonly schemaVersion?: 2
+      readonly signingProfileId?: string
+      readonly planDigest?: PlanDigest
+      readonly source?: PlanSourceSnapshot
+      readonly publishIntent?: PublishIntent
+      readonly proofPolicy?: ProofPolicy
+    },
+    options?: S.MakeOptions,
+  ): Plan =>
     assertLifecycleConsistency(
-      this.makeUnsafe({
+      new Plan(
+        {
+          schemaVersion: 2,
+          signingProfileId: 'local-developer',
+          proofPolicy: defaultProofPolicy(),
+          ...input,
+        },
+        options,
+      ),
+    )
+  static makeUnchecked = (
+    input: {
+      readonly lifecycle: Lifecycle
+      readonly timestamp: string
+      readonly releases: Plan['releases']
+      readonly cascades: Plan['cascades']
+      readonly schemaVersion?: 2
+      readonly signingProfileId?: string
+      readonly planDigest?: PlanDigest
+      readonly source?: PlanSourceSnapshot
+      readonly publishIntent?: PublishIntent
+      readonly proofPolicy?: ProofPolicy
+    },
+    options?: S.MakeOptions,
+  ): Plan =>
+    new Plan(
+      {
         schemaVersion: 2,
         signingProfileId: 'local-developer',
         proofPolicy: defaultProofPolicy(),
         ...input,
-      }),
+      },
+      options,
     )
   static is = (value: unknown): value is Plan => S.is(Plan)(value) && hasConsistentLifecycle(value)
 

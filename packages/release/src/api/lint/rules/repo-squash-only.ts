@@ -8,7 +8,7 @@ import { GitHubService } from '../services/github.js'
 
 /** Verifies that only squash merge is enabled on the GitHub repository. */
 export const rule = RuntimeRule.create({
-  id: RuleId.makeUnsafe('repo.squash-only'),
+  id: RuleId.make('repo.squash-only'),
   description: 'Only squash merge enabled',
   preconditions: [new Precondition.HasGitHubAccess()],
   defaults: RuleDefaults.make({ enabled: false }),

@@ -309,10 +309,8 @@ describe('tex', () => {
       bottomRight: `╯`,
       bottomLeft: `╰`,
     })
-    const boxStringCodec = Tex.Box.String as unknown as S.Top & {
-      readonly DecodingServices: never
-      readonly EncodingServices: never
-    }
+    const boxStringCodec = Tex.Box.String as unknown as S.Decoder<string, never> &
+      S.Encoder<Tex.Box.Box, never>
     expect(S.decodeSync(boxStringCodec)(base)).toBe(`seed`)
     expect(() => S.encodeSync(boxStringCodec)(`seed`)).toThrow()
 

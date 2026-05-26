@@ -53,7 +53,6 @@ export class Started extends Schema.TaggedClass<Started>()('ActivityStarted', {
     return Schema.encodeSync(Started)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -82,7 +81,6 @@ export class Completed extends Schema.TaggedClass<Completed>()('ActivityComplete
     return Schema.encodeSync(Completed)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -108,7 +106,6 @@ export class Failed extends Schema.TaggedClass<Failed>()('ActivityFailed', {
     return Schema.encodeSync(Failed)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**

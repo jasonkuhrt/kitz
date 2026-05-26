@@ -8,7 +8,6 @@ import { Schema } from 'effect'
 export class Custom extends Schema.TaggedClass<Custom>()('Custom', {
   value: Schema.String,
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(Custom)
   static decode = Schema.decodeUnknownEffect(Custom)
   static decodeSync = Schema.decodeUnknownSync(Custom)

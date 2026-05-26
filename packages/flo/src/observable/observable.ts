@@ -18,7 +18,7 @@
  */
 
 import { Activity } from 'effect/unstable/workflow'
-import { Duration, Effect, Option, PubSub, Schema, ServiceMap } from 'effect'
+import { Duration, Effect, Option, PubSub, Schema, Context } from 'effect'
 import * as ActivityTypes from '../models/activity.js'
 import * as WorkflowTypes from '../models/workflow.js'
 
@@ -56,7 +56,7 @@ export namespace LifecycleEvent {
  * When provided, {@link ObservableActivity.make} emits lifecycle events.
  * When not provided, activities execute normally without event emission.
  */
-export class WorkflowEvents extends ServiceMap.Service<
+export class WorkflowEvents extends Context.Service<
   WorkflowEvents,
   PubSub.PubSub<LifecycleEvent>
 >()('@kitz/flo/WorkflowEvents') {}
@@ -122,7 +122,7 @@ export const ObservableActivity = {
           name: config.name,
           error: config.error,
           execute: config.execute,
-        }).asEffect() as Effect.Effect<void, ObservableActivityError<E>, R>
+        }) as Effect.Effect<void, ObservableActivityError<E>, R>
         if (config.retry) {
           activity = activity.pipe(Activity.retry(config.retry))
         }
@@ -158,7 +158,7 @@ export const ObservableActivity = {
         name: config.name,
         error: config.error,
         execute: config.execute.pipe(Effect.tapError(publishFailure)),
-      }).asEffect() as Effect.Effect<void, ObservableActivityError<E>, R>
+      }) as Effect.Effect<void, ObservableActivityError<E>, R>
       if (config.retry) {
         activity = activity.pipe(Activity.retry(config.retry))
       }

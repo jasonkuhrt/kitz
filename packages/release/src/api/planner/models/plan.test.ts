@@ -113,7 +113,7 @@ describe('Plan', () => {
       ],
       cascades: [],
     })
-    const mismatched = Plan.makeUnsafe({
+    const mismatched = Plan.makeUnchecked({
       lifecycle: 'candidate',
       timestamp: plan.timestamp,
       releases: plan.releases,
@@ -144,7 +144,7 @@ describe('Plan', () => {
 
   test('resource rejects lifecycle-mismatched plans at the I/O boundary', async () => {
     const releaseDir = Fs.Path.AbsDir.fromString('/repo/.release/')
-    const invalidPlan = Plan.makeUnsafe({
+    const invalidPlan = Plan.makeUnchecked({
       lifecycle: 'candidate',
       timestamp: '2026-01-01T00:00:00Z',
       releases: [

@@ -14,7 +14,6 @@ export class Config extends S.Class<Config>('WorkspaceConfig')({
   /** Glob patterns for workspace packages. */
   packages: S.Array(S.String),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Config)
   static decode = S.decodeUnknownEffect(Config)
   static decodeSync = S.decodeUnknownSync(Config)

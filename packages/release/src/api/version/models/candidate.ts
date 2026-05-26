@@ -19,7 +19,6 @@ import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 export class Candidate extends S.TaggedClass<Candidate>()('Candidate', {
   iteration: S.Number.pipe(S.check(S.isGreaterThan(0), S.isInt())),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Candidate)
   static decode = S.decodeUnknownEffect(Candidate)
   static decodeSync = S.decodeUnknownSync(Candidate)

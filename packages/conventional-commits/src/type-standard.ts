@@ -58,8 +58,14 @@ export class Standard extends Schema.TaggedClass<Standard>()('Standard', {
   value: StandardValue,
   impact: Schema.OptionFromNullOr(Semver.BumpType),
 }) {
-  static make = (params: { value: StandardValue }) =>
-    Standard.makeUnsafe({ value: params.value, impact: StandardImpact[params.value] })
+  static override make = (
+    params: { readonly value: StandardValue; readonly impact?: Option.Option<BumpType> },
+    options?: Schema.MakeOptions,
+  ): Standard =>
+    new Standard(
+      { value: params.value, impact: params.impact ?? StandardImpact[params.value] },
+      options,
+    )
   static is = Schema.is(Standard)
   static decode = Schema.decodeUnknownEffect(Standard)
   static decodeSync = Schema.decodeUnknownSync(Standard)

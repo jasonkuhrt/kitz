@@ -1,4 +1,4 @@
-import { Test } from '#kitz/test'
+import { Test } from '@kitz/test'
 import { analyzeFunction } from './analyze.js'
 
 Test.on(analyzeFunction)

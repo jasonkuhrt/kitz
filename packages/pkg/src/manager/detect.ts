@@ -1,5 +1,4 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
@@ -7,7 +6,7 @@ import { Effect, Option } from 'effect'
 import { Manifest } from '#manifest'
 import { DetectedPackageManager, type PackageManager } from './PackageManager.js'
 
-type DetectError = PlatformError | Resource.ResourceError
+type DetectError = PlatformError.PlatformError | Resource.ResourceError
 
 const packageJsonRelFile = Fs.Path.RelFile.fromString('./package.json')
 

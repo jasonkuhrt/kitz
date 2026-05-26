@@ -22,7 +22,6 @@ export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
   iteration: S.Number.pipe(S.check(S.isGreaterThan(0), S.isInt())),
   sha: Git.Sha.Sha,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Ephemeral)
   static decode = S.decodeUnknownEffect(Ephemeral)
   static decodeSync = S.decodeUnknownSync(Ephemeral)

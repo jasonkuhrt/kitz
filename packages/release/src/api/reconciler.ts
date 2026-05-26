@@ -1,8 +1,7 @@
 import { Env } from '@kitz/env'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
-import { Effect, FileSystem, HashSet, Option, Schema } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, Effect, FileSystem, HashSet, Option, Schema } from 'effect'
 import * as Journal from './journal.js'
 import type { Plan } from './planner/models/plan.js'
 import { digestForPlan } from './proof.js'
@@ -153,7 +152,7 @@ export const reconcile = (
   plan: Plan,
 ): Effect.Effect<
   ReconcileDecision,
-  PlatformError | Schema.SchemaError | NpmRegistry.NpmCliError,
+  PlatformError.PlatformError | Schema.SchemaError | NpmRegistry.NpmCliError,
   Env.Env | FileSystem.FileSystem | NpmRegistry.NpmCli
 > =>
   Effect.gen(function* () {

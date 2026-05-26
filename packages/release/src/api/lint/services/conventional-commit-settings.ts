@@ -1,4 +1,4 @@
-import { Layer, ServiceMap } from 'effect'
+import { Layer, Context } from 'effect'
 import type { ConventionalCommitTypeImpact } from '../../config.js'
 
 /**
@@ -11,7 +11,7 @@ export interface ConventionalCommitSettings {
   readonly resolvedTypes: Record<string, ConventionalCommitTypeImpact>
 }
 
-export class ConventionalCommitSettingsService extends ServiceMap.Service<
+export class ConventionalCommitSettingsService extends Context.Service<
   ConventionalCommitSettingsService,
   ConventionalCommitSettings
 >()('ConventionalCommitSettingsService') {}

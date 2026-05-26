@@ -25,7 +25,6 @@ export class PreRelease extends S.TaggedClass<PreRelease>()(
     description: 'A semantic version with pre-release identifiers',
   },
 ) {
-  static make = this.makeUnsafe
   static is = S.is(PreRelease)
   static decode = S.decodeUnknownEffect(PreRelease)
   static decodeSync = S.decodeUnknownSync(PreRelease)

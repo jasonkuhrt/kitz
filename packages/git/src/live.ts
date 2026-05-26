@@ -9,10 +9,13 @@ import * as Sha from './sha.js'
 // oxlint-disable-next-line kitz/domain/no-process-env
 const env = process.env
 
+const unsafeGitEnvKeys = new Set(['editor', 'pager', 'prefix', 'ssh_askpass', 'visual'])
+
 const sanitizeGitEnv = (): NodeJS.ProcessEnv => {
   const nextEnv = { ...env }
   for (const key of Object.keys(nextEnv)) {
-    if (key.startsWith('GIT_')) {
+    const normalizedKey = key.toLowerCase()
+    if (key.startsWith('GIT_') || unsafeGitEnvKeys.has(normalizedKey)) {
       delete nextEnv[key]
     }
   }

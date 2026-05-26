@@ -2,7 +2,6 @@ import { Schema } from 'effect'
 
 /** Current branch has an open pull request. */
 export class HasOpenPR extends Schema.TaggedClass<HasOpenPR>()('PreconditionHasOpenPR', {}) {
-  static make = this.makeUnsafe
   static is = Schema.is(HasOpenPR)
   static decode = Schema.decodeUnknownEffect(HasOpenPR)
   static decodeSync = Schema.decodeUnknownSync(HasOpenPR)
@@ -14,7 +13,6 @@ export class HasOpenPR extends Schema.TaggedClass<HasOpenPR>()('PreconditionHasO
 
 /** PR has file changes (not an empty PR or missing diff context). */
 export class HasDiff extends Schema.TaggedClass<HasDiff>()('PreconditionHasDiff', {}) {
-  static make = this.makeUnsafe
   static is = Schema.is(HasDiff)
   static decode = Schema.decodeUnknownEffect(HasDiff)
   static decodeSync = Schema.decodeUnknownSync(HasDiff)
@@ -26,7 +24,6 @@ export class HasDiff extends Schema.TaggedClass<HasDiff>()('PreconditionHasDiff'
 
 /** Project declares monorepo workspaces in the root package.json. */
 export class IsMonorepo extends Schema.TaggedClass<IsMonorepo>()('PreconditionIsMonorepo', {}) {
-  static make = this.makeUnsafe
   static is = Schema.is(IsMonorepo)
   static decode = Schema.decodeUnknownEffect(IsMonorepo)
   static decodeSync = Schema.decodeUnknownSync(IsMonorepo)
@@ -41,7 +38,6 @@ export class HasGitHubAccess extends Schema.TaggedClass<HasGitHubAccess>()(
   'PreconditionHasGitHubAccess',
   {},
 ) {
-  static make = this.makeUnsafe
   static is = Schema.is(HasGitHubAccess)
   static decode = Schema.decodeUnknownEffect(HasGitHubAccess)
   static decodeSync = Schema.decodeUnknownSync(HasGitHubAccess)
@@ -56,7 +52,6 @@ export class HasReleasePlan extends Schema.TaggedClass<HasReleasePlan>()(
   'PreconditionHasReleasePlan',
   {},
 ) {
-  static make = this.makeUnsafe
   static is = Schema.is(HasReleasePlan)
   static decode = Schema.decodeUnknownEffect(HasReleasePlan)
   static decodeSync = Schema.decodeUnknownSync(HasReleasePlan)

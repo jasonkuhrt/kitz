@@ -35,7 +35,6 @@ export class Standard extends Schema.TaggedClass<Standard>()('Standard', {
     return Schema.encodeSync(Standard)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   static is = Schema.is(Standard)
 }
 
@@ -62,7 +61,6 @@ export class Custom extends Schema.TaggedClass<Custom>()('Custom', {
     return Schema.encodeSync(Custom)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   static is = Schema.is(Custom)
 }
 
@@ -108,9 +106,15 @@ type From<$token extends string> = $token extends StandardToken ? Standard : Cus
  * Create a Footer from a token and value.
  * Known tokens become Standard, unknown become Custom.
  */
-export const from = <$token extends string>(token: $token, value: string): From<$token> => {
-  if (token in StandardToken.enums) {
-    return new Standard({ token: token as StandardToken, value }) as From<$token>
+export const from = <$footerToken extends string>(
+  footerToken: $footerToken,
+  footerValue: string,
+): From<$footerToken> => {
+  if (footerToken in StandardToken.enums) {
+    return new Standard({
+      token: footerToken as StandardToken,
+      value: footerValue,
+    }) as From<$footerToken>
   }
-  return new Custom({ token, value }) as From<$token>
+  return new Custom({ token: footerToken, value: footerValue }) as From<$footerToken>
 }

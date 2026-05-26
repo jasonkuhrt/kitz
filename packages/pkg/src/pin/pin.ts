@@ -148,7 +148,6 @@ class RangeClass extends S.TaggedClass<RangeClass>()('PinRange', {
     return S.encodeSync(RangeClass)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   static is = S.is(RangeClass)
 
   /**
@@ -204,7 +203,6 @@ class ExactClass extends S.TaggedClass<ExactClass>()('PinExact', {
     return S.encodeSync(ExactClass)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   static is = S.is(ExactClass)
 
   /**
@@ -292,7 +290,6 @@ export class Tag extends S.TaggedClass<Tag>()('PinTag', {
     return S.encodeSync(Tag)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   static is = S.is(Tag)
 
   /**
@@ -340,7 +337,6 @@ class WorkspaceClass extends S.TaggedClass<WorkspaceClass>()('PinWorkspace', {
     return S.encodeSync(WorkspaceClass)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   static is = S.is(WorkspaceClass)
 
   /**
@@ -401,7 +397,6 @@ class GitClass extends S.TaggedClass<GitClass>()('PinGit', {
     return S.encodeSync(GitClass)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   static is = S.is(GitClass)
 
   /**
@@ -455,7 +450,6 @@ export class Path extends S.TaggedClass<Path>()('PinPath', {
     return S.encodeSync(Path)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   static is = S.is(Path)
 
   /**
@@ -503,7 +497,6 @@ export class Url extends S.TaggedClass<Url>()('PinUrl', {
     return S.encodeSync(Url)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   static is = S.is(Url)
 
   /**
@@ -556,7 +549,6 @@ export class Alias extends S.TaggedClass<Alias>()('PinAlias', {
     return S.encodeSync(Alias)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   static is = S.is(Alias)
 
   /**

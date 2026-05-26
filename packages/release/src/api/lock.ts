@@ -1,5 +1,4 @@
-import { Effect, FileSystem, Option, Schema } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, Effect, FileSystem, Option, Schema } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { ExecutionLock, type PlanDigest, PrincipalRef } from './release-contract.js'
@@ -67,7 +66,7 @@ export const read = (
   path: Fs.Path.AbsFile,
 ): Effect.Effect<
   Option.Option<ExecutionLock>,
-  PlatformError | Schema.SchemaError,
+  PlatformError.PlatformError | Schema.SchemaError,
   FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
@@ -82,7 +81,7 @@ export const read = (
 export const write = (
   path: Fs.Path.AbsFile,
   lock: ExecutionLock,
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(path)), { recursive: true })
@@ -96,7 +95,7 @@ export const acquireLocal = (
   params: LocalLockParams,
 ): Effect.Effect<
   ExecutionLock,
-  Error | PlatformError | Schema.SchemaError,
+  Error | PlatformError.PlatformError | Schema.SchemaError,
   Env.Env | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
@@ -124,7 +123,7 @@ export const acquireLocal = (
 
 export const releaseLocal = (
   planDigest: PlanDigest,
-): Effect.Effect<void, PlatformError, Env.Env | FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, Env.Env | FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
     const fs = yield* FileSystem.FileSystem
@@ -141,7 +140,7 @@ export const withLocal = <A, E, R>(
 ): Effect.Effect<
   A,
   // oxlint-disable-next-line kitz/error/require-tagged-error-types -- withLocal preserves the wrapped effect's error channel exactly.
-  E | Error | PlatformError | Schema.SchemaError,
+  E | Error | PlatformError.PlatformError | Schema.SchemaError,
   R | Env.Env | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {

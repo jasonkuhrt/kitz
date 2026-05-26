@@ -17,7 +17,6 @@ export class Impact extends S.TaggedClass<Impact>()('Impact', {
   commits: S.Array(ReleaseCommit),
   currentVersion: CurrentVersionSchema,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Impact)
   static decode = S.decodeUnknownEffect(Impact)
   static decodeSync = S.decodeUnknownSync(Impact)

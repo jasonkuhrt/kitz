@@ -1,4 +1,4 @@
-import { Layer, ServiceMap } from 'effect'
+import { Layer, Context } from 'effect'
 
 /** Package info in a monorepo. */
 export interface Package {
@@ -17,7 +17,7 @@ export interface Monorepo {
 }
 
 /** Service providing monorepo context. */
-export class MonorepoService extends ServiceMap.Service<MonorepoService, Monorepo>()(
+export class MonorepoService extends Context.Service<MonorepoService, Monorepo>()(
   'MonorepoService',
 ) {}
 

@@ -5,7 +5,6 @@ export class PrTitle extends Schema.TaggedClass<PrTitle>()('ViolationLocationPrT
   /** The PR title text. */
   title: Schema.String,
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(PrTitle)
   static decode = Schema.decodeUnknownEffect(PrTitle)
   static decodeSync = Schema.decodeUnknownSync(PrTitle)
@@ -20,7 +19,6 @@ export class PrBody extends Schema.TaggedClass<PrBody>()('ViolationLocationPrBod
   /** Line number in the body (if applicable). */
   line: Schema.optional(Schema.Number),
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(PrBody)
   static decode = Schema.decodeUnknownEffect(PrBody)
   static decodeSync = Schema.decodeUnknownSync(PrBody)
@@ -35,7 +33,6 @@ export class RepoSettings extends Schema.TaggedClass<RepoSettings>()(
   'ViolationLocationRepoSettings',
   {},
 ) {
-  static make = this.makeUnsafe
   static is = Schema.is(RepoSettings)
   static decode = Schema.decodeUnknownEffect(RepoSettings)
   static decodeSync = Schema.decodeUnknownSync(RepoSettings)
@@ -50,7 +47,6 @@ export class GitHistory extends Schema.TaggedClass<GitHistory>()('ViolationLocat
   /** Commit SHA where violation occurred. */
   sha: Schema.String,
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(GitHistory)
   static decode = Schema.decodeUnknownEffect(GitHistory)
   static decodeSync = Schema.decodeUnknownSync(GitHistory)
@@ -67,7 +63,6 @@ export class File extends Schema.TaggedClass<File>()('ViolationLocationFile', {
   /** Line number (if applicable). */
   line: Schema.optional(Schema.Number),
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(File)
   static decode = Schema.decodeUnknownEffect(File)
   static decodeSync = Schema.decodeUnknownSync(File)
@@ -82,7 +77,6 @@ export class Environment extends Schema.TaggedClass<Environment>()('ViolationLoc
   /** Human-readable description of the environment issue. */
   message: Schema.String,
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(Environment)
   static decode = Schema.decodeUnknownEffect(Environment)
   static decodeSync = Schema.decodeUnknownSync(Environment)

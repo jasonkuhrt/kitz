@@ -14,7 +14,6 @@ export class Candidate extends S.TaggedClass<Candidate>()('Candidate', {
   baseVersion: SemverSchema,
   prerelease: Version.Candidate,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Candidate)
   static decode = S.decodeUnknownEffect(Candidate)
   static decodeSync = S.decodeUnknownSync(Candidate)

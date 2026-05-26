@@ -205,7 +205,6 @@ export class Param extends S.Class<Param>('Param')({
    */
   expression: S.String,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Param)
   static decode = S.decodeUnknownEffect(Param)
   static decodeSync = S.decodeUnknownSync(Param)

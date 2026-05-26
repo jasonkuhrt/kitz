@@ -8,7 +8,7 @@ import { loadPlannedManifests, summarizePackages } from './package-manifest-shar
 
 /** Verifies that planned releases are not blocked by `private: true`. */
 export const rule = RuntimeRule.create({
-  id: RuleId.makeUnsafe('plan.packages-not-private'),
+  id: RuleId.make('plan.packages-not-private'),
   description: 'planned packages are not marked private',
   preconditions: [new Precondition.HasReleasePlan()],
   check: loadPlannedManifests.pipe(

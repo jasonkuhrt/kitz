@@ -21,6 +21,7 @@ const makeHandle = (stdout: string, exitCode: number): ChildProcessSpawner.Child
     pid: ChildProcessSpawner.ProcessId(1),
     exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(exitCode)),
     isRunning: Effect.succeed(false),
+    unref: Effect.succeed(Effect.void),
     kill: () => Effect.void,
     stderr: Stream.empty,
     stdin: Effect.void as any,

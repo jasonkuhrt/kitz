@@ -1,8 +1,7 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Err } from '@kitz/core'
 import { Fs } from '@kitz/fs'
-import { Effect, Schema as S } from 'effect'
+import { Effect, Option, Schema as S } from 'effect'
 
 /**
  * Base ES module type. Use as constraint or when module structure is unknown.
@@ -268,7 +267,7 @@ export interface DynamicImportFileOptions {
  *
  * **Return type adapts to options:**
  * - Without `bustCache`: `Effect<Module, ImportError>` - may fail with import error
- * - With `bustCache: true`: `Effect<Module, ImportError | PlatformError, FileSystem>` - also requires filesystem
+ * - With `bustCache: true`: `Effect<Module, ImportError | PlatformError.PlatformError, FileSystem>` - also requires filesystem
  *
  * @param path - Absolute file path to import
  * @param options - Import options
@@ -331,13 +330,10 @@ export const dynamicImportFile = <
   if (options?.bustCache) {
     return Effect.gen(function* () {
       const info = yield* Fs.stat(path)
-      const rawMtime = info.mtime as { getTime?: () => number } | number | undefined
-      const mtime =
-        typeof rawMtime === 'number'
-          ? rawMtime
-          : typeof rawMtime?.getTime === 'function'
-            ? rawMtime.getTime()
-            : 0
+      const mtime = Option.match(info.mtime, {
+        onNone: () => 0,
+        onSome: (modifiedAt) => modifiedAt.getTime(),
+      })
       importUrl.searchParams.set('t', String(mtime))
       return yield* doImport
     }) as any
@@ -354,7 +350,7 @@ export const dynamicImportFile = <
  */
 // oxfmt-ignore
 export type DynamicImportFileResult<$Module, $Options> =
-  $Options extends { bustCache: true } ? Effect.Effect<$Module, ImportError | PlatformError, FileSystem.FileSystem> :
+  $Options extends { bustCache: true } ? Effect.Effect<$Module, ImportError | PlatformError.PlatformError, FileSystem.FileSystem> :
                                          Effect.Effect<$Module, ImportError>
 
 /**
@@ -398,5 +394,5 @@ export const importDefault = <
  */
 // oxfmt-ignore
 export type ImportDefaultResult<$Default, $Options> =
-  $Options extends { bustCache: true } ? Effect.Effect<$Default, ImportError | PlatformError, FileSystem.FileSystem> :
+  $Options extends { bustCache: true } ? Effect.Effect<$Default, ImportError | PlatformError.PlatformError, FileSystem.FileSystem> :
                                          Effect.Effect<$Default, ImportError>

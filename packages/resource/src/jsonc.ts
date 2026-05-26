@@ -23,8 +23,7 @@
  * @module
  */
 
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Fs } from '@kitz/fs'
 import { Jsonc } from '@kitz/jsonc'
 import { Effect, Option, SchemaIssue, Schema, SchemaAST } from 'effect'
@@ -109,7 +108,7 @@ export const createJsonc = <A, I, R = never>(
 
       const exists = yield* Fs.exists(filePath).pipe(
         Effect.mapError(
-          (error: PlatformError) =>
+          (error: PlatformError.PlatformError) =>
             new ReadError({
               context: {
                 path: filePath,
@@ -123,7 +122,7 @@ export const createJsonc = <A, I, R = never>(
 
       const content = yield* Fs.readString(filePath).pipe(
         Effect.mapError(
-          (error: PlatformError) =>
+          (error: PlatformError.PlatformError) =>
             new ReadError({
               context: {
                 path: filePath,

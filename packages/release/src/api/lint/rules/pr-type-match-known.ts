@@ -16,7 +16,7 @@ const isKnownType = (
 
 /** Verifies that every PR title type is recognized (standard or configured). */
 export const rule = RuntimeRule.create({
-  id: RuleId.makeUnsafe('pr.type.match-known'),
+  id: RuleId.make('pr.type.match-known'),
   description: 'Type(s) use recognized conventional-commit kinds',
   preconditions: [new Precondition.HasOpenPR()],
   check: Effect.gen(function* () {

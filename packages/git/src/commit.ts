@@ -58,7 +58,6 @@ export class Commit extends Schema.TaggedClass<Commit>()('Commit', {
   static encodeSync = Schema.encodeUnknownSync(Commit)
   static equivalence = Schema.toEquivalence(Commit)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**

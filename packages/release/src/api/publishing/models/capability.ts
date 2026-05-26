@@ -89,7 +89,6 @@ export class CapabilityMatrixRow extends Schema.Class<CapabilityMatrixRow>('Capa
   static encodeSync = Schema.encodeUnknownSync(CapabilityMatrixRow)
   static equivalence = Schema.toEquivalence(CapabilityMatrixRow)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 const ownerFor = (capability: PublishCapability): CapabilityOwner => {

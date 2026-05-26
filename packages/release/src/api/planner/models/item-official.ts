@@ -23,7 +23,6 @@ export class Official extends S.TaggedClass<Official>()('Official', {
   ...ItemBaseFields,
   version: S.Union([OfficialFirst, OfficialIncrement]),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Official)
   static decode = S.decodeUnknownEffect(Official)
   static decodeSync = S.decodeUnknownSync(Official)

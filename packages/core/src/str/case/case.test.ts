@@ -1,4 +1,4 @@
-import { Test } from '#kitz/test'
+import { Test } from '@kitz/test'
 import { Str } from '#str'
 
 // Test constant case conversion

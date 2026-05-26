@@ -1,4 +1,4 @@
-import { Test } from '#kitz/test'
+import { Test } from '@kitz/test'
 import { Schema as S } from 'effect'
 import { expect } from 'bun:test'
 import { ContextualAggregateError, partitionAndAggregateErrors } from './aggregate.js'

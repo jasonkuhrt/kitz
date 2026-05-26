@@ -11,7 +11,6 @@ export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
   ...ItemBaseFields,
   prerelease: Version.Ephemeral,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Ephemeral)
   static decode = S.decodeUnknownEffect(Ephemeral)
   static decodeSync = S.decodeUnknownSync(Ephemeral)

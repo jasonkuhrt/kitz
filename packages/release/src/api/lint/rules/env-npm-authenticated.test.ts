@@ -1,6 +1,5 @@
 import { ChildProcessSpawner } from 'effect/unstable/process'
-import * as PlatformError from 'effect/PlatformError'
-import { Effect, Layer, Stream } from 'effect'
+import { Effect, Layer, PlatformError, Stream } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { Violation } from '../models/violation.js'
 import { RuleOptionsService } from '../services/rule-options.js'
@@ -26,6 +25,7 @@ const makeSpawnerLayer = (mode: 'success' | 'failure') =>
           pid: ChildProcessSpawner.ProcessId(1),
           exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(0)),
           isRunning: Effect.succeed(false),
+          unref: Effect.succeed(Effect.void),
           kill: () => Effect.void,
           stderr: Stream.empty,
           stdin: Effect.void as any,

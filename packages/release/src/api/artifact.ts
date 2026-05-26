@@ -1,5 +1,4 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { NpmRegistry } from '@kitz/npm-registry'
@@ -52,7 +51,7 @@ export const releaseInfosForPlan = (plan: Plan): ReleaseInfo[] =>
 export const makeManifestFromPrepared = (
   plan: Plan,
   artifacts: readonly PreparedArtifact[],
-): Effect.Effect<ArtifactManifest[], PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<ArtifactManifest[], PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const manifests: ArtifactManifest[] = []
@@ -214,7 +213,7 @@ export const validateManifestForPlan = (
 export const validateManifestFilesForPlan = (
   plan: Plan,
   manifests: readonly ArtifactManifest[],
-): Effect.Effect<readonly ArtifactIssue[], PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<readonly ArtifactIssue[], PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const baseIssues = validateManifestForPlan(plan, manifests)
@@ -246,7 +245,7 @@ export const validateManifestFilesForPlan = (
 
 export const validateScriptPolicyForPlan = (
   plan: Plan,
-): Effect.Effect<readonly ArtifactIssue[], PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<readonly ArtifactIssue[], PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const policy = plan.publishIntent?.artifacts.scriptPolicy
     if (policy === undefined) return []
@@ -328,7 +327,7 @@ export const validateScriptPolicyForPlan = (
 
 export const validateEnginePolicyForPlan = (
   plan: Plan,
-): Effect.Effect<readonly ArtifactIssue[], PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<readonly ArtifactIssue[], PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const policy = plan.publishIntent?.artifacts.enginePolicy
     if (policy === undefined) return []
@@ -417,7 +416,7 @@ export const validateEnginePolicyForPlan = (
 export const writeManifest = (
   plan: Plan,
   manifests: readonly ArtifactManifest[],
-): Effect.Effect<void, PlatformError, Env.Env | FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, Env.Env | FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
     const fs = yield* FileSystem.FileSystem
@@ -433,7 +432,7 @@ export const readManifest = (
   plan: Plan,
 ): Effect.Effect<
   Option.Option<readonly ArtifactManifest[]>,
-  PlatformError | Schema.SchemaError,
+  PlatformError.PlatformError | Schema.SchemaError,
   Env.Env | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
@@ -453,7 +452,7 @@ export const rehearse = (
   plan: Plan,
 ): Effect.Effect<
   ArtifactManifest[],
-  PublishError | PlatformError | Resource.ResourceError,
+  PublishError | PlatformError.PlatformError | Resource.ResourceError,
   Env.Env | FileSystem.FileSystem | NpmRegistry.NpmCli
 > =>
   Effect.gen(function* () {

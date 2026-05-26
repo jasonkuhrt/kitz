@@ -10,7 +10,6 @@ import { Segments } from '../types/segments.js'
 class AbsDirClass extends S.TaggedClass<AbsDirClass>()('FsPathAbsDir', {
   segments: Segments,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(AbsDirClass)
   static decode = S.decodeUnknownEffect(AbsDirClass)
   static decodeSync = S.decodeUnknownSync(AbsDirClass)

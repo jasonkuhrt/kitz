@@ -1,7 +1,7 @@
 import assert from 'node:assert'
 import { Assert } from '@kitz/assert'
 import { Test } from '@kitz/test'
-import { Schema as S } from 'effect'
+import { Effect, Schema as S } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import {
   clearExceptTag,
@@ -30,7 +30,7 @@ Test.describe('hasRequiredFields')
     [[S.Struct({ name: S.optional(S.String) })], false, { comment: 'optional field' }],
     // Optional: Schema.optional with default
     [
-      [S.Struct({ port: S.Number.pipe(S.withDecodingDefaultKey(() => 3000)) })],
+      [S.Struct({ port: S.Number.pipe(S.withDecodingDefaultKey(Effect.sync(() => 3000))) })],
       false,
       {
         comment: 'optionalWith default',
@@ -41,7 +41,7 @@ Test.describe('hasRequiredFields')
       [
         S.Struct({
           apiKey: S.String, // required
-          port: S.Number.pipe(S.withDecodingDefaultKey(() => 3000)), // optional
+          port: S.Number.pipe(S.withDecodingDefaultKey(Effect.sync(() => 3000))), // optional
         }),
       ],
       true,
@@ -51,8 +51,8 @@ Test.describe('hasRequiredFields')
     [
       [
         S.Struct({
-          trunk: S.String.pipe(S.withDecodingDefaultKey(() => 'main')),
-          port: S.Number.pipe(S.withDecodingDefaultKey(() => 8080)),
+          trunk: S.String.pipe(S.withDecodingDefaultKey(Effect.sync(() => 'main'))),
+          port: S.Number.pipe(S.withDecodingDefaultKey(Effect.sync(() => 8080))),
         }),
       ],
       false,
@@ -97,7 +97,7 @@ Test.describe('hasRequiredFields > Schema.Class')
     [
       [
         class extends S.Class<any>('Config')({
-          trunk: S.String.pipe(S.withDecodingDefaultKey(() => 'main')),
+          trunk: S.String.pipe(S.withDecodingDefaultKey(Effect.sync(() => 'main'))),
         }) {},
       ],
       false,
@@ -108,7 +108,7 @@ Test.describe('hasRequiredFields > Schema.Class')
       [
         class extends S.Class<any>('Config')({
           apiKey: S.String,
-          port: S.Number.pipe(S.withDecodingDefaultKey(() => 3000)),
+          port: S.Number.pipe(S.withDecodingDefaultKey(Effect.sync(() => 3000))),
         }) {},
       ],
       true,
@@ -126,7 +126,9 @@ const _reqSchema = S.Struct({ apiKey: S.String })
 type _reqString = Assert.exact.of<HasRequiredFields<typeof _reqSchema>, true>
 
 // All optional → false
-const _optSchema = S.Struct({ port: S.Number.pipe(S.withDecodingDefaultKey(() => 3000)) })
+const _optSchema = S.Struct({
+  port: S.Number.pipe(S.withDecodingDefaultKey(Effect.sync(() => 3000))),
+})
 type _optAll = Assert.exact.of<HasRequiredFields<typeof _optSchema>, false>
 
 // Empty struct → false
@@ -141,7 +143,7 @@ Test.describe('HasRequiredFields runtime').test(() => {
 
   // Optional with default
   const optSchema = S.Struct({
-    port: S.Number.pipe(S.withDecodingDefaultKey(() => 3000)),
+    port: S.Number.pipe(S.withDecodingDefaultKey(Effect.sync(() => 3000))),
   })
   assert.equal(hasRequiredFields(optSchema), false)
 

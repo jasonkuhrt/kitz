@@ -1,5 +1,4 @@
-import { Effect, FileSystem, Schema } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, Effect, FileSystem, Schema } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { sha256Json } from './digest.js'
@@ -63,7 +62,7 @@ export const readEntries = (
   path: Fs.Path.AbsFile,
 ): Effect.Effect<
   readonly SideEffectEntry[],
-  PlatformError | Schema.SchemaError,
+  PlatformError.PlatformError | Schema.SchemaError,
   FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
@@ -83,7 +82,7 @@ export const readEntries = (
 export const writeEntries = (
   path: Fs.Path.AbsFile,
   entries: readonly SideEffectEntry[],
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(path)), { recursive: true })
@@ -125,7 +124,7 @@ export const appendSideEffect = (
   input: SideEffectInput,
 ): Effect.Effect<
   SideEffectEntry,
-  PlatformError | Schema.SchemaError,
+  PlatformError.PlatformError | Schema.SchemaError,
   Env.Env | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {

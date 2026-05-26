@@ -1,5 +1,5 @@
-import { Assert } from '#kitz/assert'
-import { Test } from '#kitz/test'
+import { Assert } from '@kitz/assert'
+import { Test } from '@kitz/test'
 import { describe, expect, test } from 'bun:test'
 import { type FromEntries, fromEntries, hasSymbolLike, hasSymbolLikeWith } from './obj.js'
 

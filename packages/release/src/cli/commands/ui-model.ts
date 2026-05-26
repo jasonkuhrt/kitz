@@ -104,7 +104,7 @@ const idle = <A>(): ResourceState<A> => ({ _tag: 'Idle' })
 const loading = <A>(): ResourceState<A> => ({ _tag: 'Loading' })
 const failure = <A>(message: string): ResourceState<A> => ({ _tag: 'Failure', message })
 const ready = <A>(value: A): ResourceState<A> => ({ _tag: 'Ready', value })
-const actions = <const Actions extends readonly DashboardAction[]>(...actions: Actions) => actions
+const actions = <const Actions extends readonly DashboardAction[]>(...items: Actions) => items
 
 export const initialDashboardState: DashboardState = {
   lifecycle: 'official',
@@ -126,7 +126,10 @@ const toMessage = (error: unknown): string =>
   error instanceof Error ? error.message : String(error)
 
 const nextLifecycle = (current: Lifecycle, direction: 'next' | 'previous'): Lifecycle => {
-  const index = A.findFirstIndex(lifecycles, (lifecycle) => lifecycle === current) ?? 0
+  const index = Option.getOrElse(
+    A.findFirstIndex(lifecycles, (lifecycle) => lifecycle === current),
+    () => 0,
+  )
   const nextIndex =
     direction === 'next'
       ? (index + 1) % lifecycles.length
@@ -137,7 +140,12 @@ const nextLifecycle = (current: Lifecycle, direction: 'next' | 'previous'): Life
 const nextFocusPane = (current: FocusPane): FocusPane =>
   A.getUnsafe(
     focusOrder,
-    ((A.findFirstIndex(focusOrder, (pane) => pane === current) ?? 0) + 1) % focusOrder.length,
+    (Option.getOrElse(
+      A.findFirstIndex(focusOrder, (pane) => pane === current),
+      () => 0,
+    ) +
+      1) %
+      focusOrder.length,
   )
 
 const moveCursor = (cursor: number, size: number, direction: 'next' | 'previous'): number => {

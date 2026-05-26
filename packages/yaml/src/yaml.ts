@@ -1,6 +1,5 @@
 import { Resource } from '@kitz/resource'
-import { Effect, Option, Schema, SchemaIssue, SchemaTransformation } from 'effect'
-import * as FileSystem from 'effect/FileSystem'
+import { Effect, FileSystem, Option, Schema, SchemaIssue, SchemaTransformation } from 'effect'
 import * as YAML from 'yaml'
 
 const yamlParseSchemaId = Symbol.for('kitz/schema/ParseYaml')

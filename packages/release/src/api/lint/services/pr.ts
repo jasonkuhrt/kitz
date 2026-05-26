@@ -1,6 +1,6 @@
 import type { ConventionalCommits } from '@kitz/conventional-commits'
 import { ConventionalCommits as CC } from '@kitz/conventional-commits'
-import { Effect, Result, Layer, Option, ServiceMap } from 'effect'
+import { Effect, Result, Layer, Option, Context } from 'effect'
 
 /** PR data available to lint rules. */
 export interface Pr {
@@ -17,7 +17,7 @@ export interface Pr {
 }
 
 /** Service providing PR context. */
-export class PrService extends ServiceMap.Service<PrService, Pr>()('PrService') {}
+export class PrService extends Context.Service<PrService, Pr>()('PrService') {}
 
 const fallbackPr: Pr = {
   number: 0,

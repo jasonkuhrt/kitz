@@ -463,23 +463,30 @@ describe('AppMap performance gate', () => {
       AppMap.getActiveShortcuts(perfMap, deepPath, { state })
     })
 
-    await b.warmup()
     await b.run()
 
     const resolve = b.getTask('resolveShortcut')!.result!
     const scope = b.getTask('computeScope')!.result!
     const active = b.getTask('getActiveShortcuts')!.result!
 
-    const combinedP99 = resolve.p99 + scope.p99 + active.p99
-    const combinedMean = resolve.mean + scope.mean + active.mean
+    if (
+      resolve.state !== 'completed' ||
+      scope.state !== 'completed' ||
+      active.state !== 'completed'
+    ) {
+      throw new Error('Expected all benchmark tasks to complete')
+    }
+
+    const combinedP99 = resolve.latency.p99 + scope.latency.p99 + active.latency.p99
+    const combinedMean = resolve.latency.mean + scope.latency.mean + active.latency.mean
 
     // Diagnostic output — visible in vitest verbose mode and CI logs
     console.log(
       [
         `\n  Shortcut filter performance (50 shortcuts, 3-level path):`,
-        `    resolveShortcut : mean=${resolve.mean.toFixed(4)}ms  p99=${resolve.p99.toFixed(4)}ms  hz=${resolve.hz.toFixed(0)}`,
-        `    computeScope    : mean=${scope.mean.toFixed(4)}ms  p99=${scope.p99.toFixed(4)}ms  hz=${scope.hz.toFixed(0)}`,
-        `    getActiveShrtcts: mean=${active.mean.toFixed(4)}ms  p99=${active.p99.toFixed(4)}ms  hz=${active.hz.toFixed(0)}`,
+        `    resolveShortcut : mean=${resolve.latency.mean.toFixed(4)}ms  p99=${resolve.latency.p99.toFixed(4)}ms  hz=${resolve.throughput.mean.toFixed(0)}`,
+        `    computeScope    : mean=${scope.latency.mean.toFixed(4)}ms  p99=${scope.latency.p99.toFixed(4)}ms  hz=${scope.throughput.mean.toFixed(0)}`,
+        `    getActiveShrtcts: mean=${active.latency.mean.toFixed(4)}ms  p99=${active.latency.p99.toFixed(4)}ms  hz=${active.throughput.mean.toFixed(0)}`,
         `    ──────────────────────────────────────────────────`,
         `    combined        : mean=${combinedMean.toFixed(4)}ms  p99=${combinedP99.toFixed(4)}ms`,
         `    budget: ${IS_CI ? `p99 < ${COMBINED_BUDGET.ciP99}ms` : `mean < ${COMBINED_BUDGET.localMean}ms`}`,
@@ -502,8 +509,8 @@ describe('AppMap performance gate', () => {
     // Sanity: each individual site should contribute meaningfully (not degenerate)
     // CI observed: ~982 hz. Threshold at ~3x below for variance.
     const MIN_HZ = IS_CI ? 300 : 1000
-    expect(resolve.hz, 'resolveShortcut hz too low').toBeGreaterThan(MIN_HZ)
-    expect(scope.hz, 'computeScope hz too low').toBeGreaterThan(MIN_HZ)
-    expect(active.hz, 'getActiveShortcuts hz too low').toBeGreaterThan(MIN_HZ)
+    expect(resolve.throughput.mean, 'resolveShortcut hz too low').toBeGreaterThan(MIN_HZ)
+    expect(scope.throughput.mean, 'computeScope hz too low').toBeGreaterThan(MIN_HZ)
+    expect(active.throughput.mean, 'getActiveShortcuts hz too low').toBeGreaterThan(MIN_HZ)
   })
 })

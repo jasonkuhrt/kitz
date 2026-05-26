@@ -40,7 +40,6 @@ export class BorderEdges extends S.Class<BorderEdges>('BorderEdges')({
    */
   left: S.optional(S.String),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(BorderEdges)
   static decode = S.decodeUnknownEffect(BorderEdges)
   static decodeSync = S.decodeUnknownSync(BorderEdges)
@@ -76,7 +75,6 @@ export class BorderCorners extends S.Class<BorderCorners>('BorderCorners')({
    */
   bottomLeft: S.optional(S.String),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(BorderCorners)
   static decode = S.decodeUnknownEffect(BorderCorners)
   static decodeSync = S.decodeUnknownSync(BorderCorners)
@@ -112,7 +110,6 @@ export class Border extends S.Class<Border>('Border')({
    */
   corners: S.optional(BorderCorners),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Border)
   static decode = S.decodeUnknownEffect(Border)
   static decodeSync = S.decodeUnknownSync(Border)

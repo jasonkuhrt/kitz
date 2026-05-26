@@ -9,7 +9,7 @@ import { loadPlannedManifests, summarizePackages } from './package-manifest-shar
 
 /** Advises when planned packages do not declare repository metadata. */
 export const rule = RuntimeRule.create({
-  id: RuleId.makeUnsafe('plan.packages-repository-present'),
+  id: RuleId.make('plan.packages-repository-present'),
   description: 'planned packages declare repository metadata',
   defaults: RuleDefaults.make({ severity: Severity.Warn.make({}) }),
   preconditions: [new Precondition.HasReleasePlan()],

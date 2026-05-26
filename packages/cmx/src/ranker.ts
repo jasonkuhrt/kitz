@@ -1,4 +1,4 @@
-import { ServiceMap } from 'effect'
+import { Context } from 'effect'
 import type { Choice } from './choice.js'
 
 /** A scored choice for ranking. */
@@ -13,7 +13,7 @@ export interface RankerService {
 }
 
 /** Effect service tag for Ranker. */
-export class Ranker extends ServiceMap.Service<Ranker, RankerService>()('cmx/Ranker') {}
+export class Ranker extends Context.Service<Ranker, RankerService>()('cmx/Ranker') {}
 
 /** Default ranking: sort by score descending, alphabetical tiebreaker. */
 export const defaultRanker: RankerService = {

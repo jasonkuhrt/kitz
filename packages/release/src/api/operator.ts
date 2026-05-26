@@ -1,5 +1,4 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
@@ -15,15 +14,14 @@ export class Operator extends Schema.Class<Operator>('Operator')({
   /** Script used to invoke the release CLI locally. */
   releaseScript: Schema.String.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(defaultReleaseScript),
+    Schema.withDecodingDefaultKey(Effect.sync(defaultReleaseScript)),
   ),
   /** Optional repo-specific preparation scripts to run before release steps. */
   prepareScripts: Schema.Array(Schema.String).pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(defaultPrepareScripts as () => readonly string[]),
+    Schema.withDecodingDefaultKey(Effect.sync(defaultPrepareScripts as () => readonly string[])),
   ),
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(Operator)
   static decode = Schema.decodeUnknownEffect(Operator)
   static decodeSync = Schema.decodeUnknownSync(Operator)
@@ -41,7 +39,6 @@ export class ResolvedOperator extends Schema.Class<ResolvedOperator>('ResolvedOp
   releaseCommand: Schema.String,
   prepareCommands: Schema.Array(Schema.String),
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(ResolvedOperator)
   static decode = Schema.decodeUnknownEffect(ResolvedOperator)
   static decodeSync = Schema.decodeUnknownSync(ResolvedOperator)
@@ -53,7 +50,7 @@ export class ResolvedOperator extends Schema.Class<ResolvedOperator>('ResolvedOp
 
 export const defaultOperator = (): Operator => Operator.make({})
 
-export type ResolveError = PlatformError | Resource.ResourceError
+export type ResolveError = PlatformError.PlatformError | Resource.ResourceError
 
 export const resolve = (
   operator: Operator,

@@ -106,6 +106,23 @@ const assertWithinBudget = (
   }
 }
 
+const getBenchResult = (
+  bench: Bench,
+  taskName: string,
+): { mean: number; p99: number; hz: number } => {
+  const result = bench.getTask(taskName)!.result!
+
+  if (result.state !== 'completed') {
+    throw new Error(`Expected benchmark task ${taskName} to complete`)
+  }
+
+  return {
+    mean: result.latency.mean,
+    p99: result.latency.p99,
+    hz: result.throughput.mean,
+  }
+}
+
 describe('fuzzy performance gate', () => {
   const MATCH_BUDGET = { localMean: 12, ciP99: 40 }
 
@@ -128,12 +145,11 @@ describe('fuzzy performance gate', () => {
       Fuzzy.match(commandCandidates, 'rc')
     })
 
-    await b.warmup()
     await b.run()
 
-    const short = b.getTask('match 500, short query')!.result!
-    const fourChar = b.getTask('match 500, 4-char query')!.result!
-    const outOfOrder = b.getTask('match 50, out-of-order query')!.result!
+    const short = getBenchResult(b, 'match 500, short query')
+    const fourChar = getBenchResult(b, 'match 500, 4-char query')
+    const outOfOrder = getBenchResult(b, 'match 50, out-of-order query')
 
     console.log(
       [
@@ -165,10 +181,9 @@ describe('fuzzy performance gate', () => {
       }
     })
 
-    await b.warmup()
     await b.run()
 
-    const result = b.getTask('hasMatch 500')!.result!
+    const result = getBenchResult(b, 'hasMatch 500')
 
     console.log(
       `\n  hasMatch 500 candidates: mean=${result.mean.toFixed(3)}ms  p99=${result.p99.toFixed(3)}ms  hz=${result.hz.toFixed(0)}`,
@@ -198,11 +213,10 @@ describe('fuzzy performance gate', () => {
       }
     })
 
-    await b.warmup()
     await b.run()
 
-    const twoChar = b.getTask('score 50, 2-char')!.result!
-    const fourChar = b.getTask('score 50, 4-char')!.result!
+    const twoChar = getBenchResult(b, 'score 50, 2-char')
+    const fourChar = getBenchResult(b, 'score 50, 4-char')
 
     console.log(
       [
@@ -233,11 +247,10 @@ describe('fuzzy performance gate', () => {
       Fuzzy.positions('vdi', 'david')
     })
 
-    await b.warmup()
     await b.run()
 
-    const subseq = b.getTask('positions subsequence')!.result!
-    const ooo = b.getTask('positions out-of-order')!.result!
+    const subseq = getBenchResult(b, 'positions subsequence')
+    const ooo = getBenchResult(b, 'positions out-of-order')
 
     console.log(
       [

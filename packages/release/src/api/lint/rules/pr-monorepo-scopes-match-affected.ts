@@ -11,7 +11,7 @@ import { ConventionalCommits } from '@kitz/conventional-commits'
 
 /** Verifies that PR title scopes match the packages actually affected by the diff. */
 export const rule = RuntimeRule.create({
-  id: RuleId.makeUnsafe('pr.monorepo.scopes.match-affected'),
+  id: RuleId.make('pr.monorepo.scopes.match-affected'),
   description: 'Scope(s) match affected packages',
   preconditions: [
     new Precondition.HasOpenPR(),

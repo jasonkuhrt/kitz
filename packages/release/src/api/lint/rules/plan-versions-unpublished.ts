@@ -22,7 +22,7 @@ interface Metadata {
 
 /** Verifies that planned package versions are not already published to npm. */
 export const rule = RuntimeRule.create({
-  id: RuleId.makeUnsafe('plan.versions-unpublished'),
+  id: RuleId.make('plan.versions-unpublished'),
   description: 'planned package versions are not already published to npm',
   preventsDescriptions: [
     'npm publish failing because the exact version is already present in the registry',

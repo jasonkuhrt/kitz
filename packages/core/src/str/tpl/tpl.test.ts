@@ -1,4 +1,4 @@
-import { Test } from '#kitz/test'
+import { Test } from '@kitz/test'
 import * as Tpl from './tpl.js'
 
 const getTpl = (...args: Tpl.CallInput) => args[0]

@@ -10,7 +10,7 @@ import { Segments } from '../types/segments.js'
  */
 const Back = S.Int.pipe(
   S.check(S.isGreaterThanOrEqualTo(0)),
-  S.withConstructorDefault(() => Option.some(0)),
+  S.withConstructorDefault(Effect.succeed(0)),
 )
 
 /**
@@ -22,7 +22,6 @@ class RelFileClass extends S.TaggedClass<RelFileClass>()('FsPathRelFile', {
   segments: Segments,
   fileName: FileName,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(RelFileClass)
   static decode = S.decodeUnknownEffect(RelFileClass)
   static decodeSync = S.decodeUnknownSync(RelFileClass)

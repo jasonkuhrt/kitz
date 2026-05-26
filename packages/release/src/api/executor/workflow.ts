@@ -20,8 +20,7 @@ import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, FileSystem, Option, Schema } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, Effect, FileSystem, Option, Schema } from 'effect'
 import * as Notes from '../notes/__.js'
 import { Digest, sha256Bytes } from '../digest.js'
 import { formatGithubReleaseTitle, Publishing, resolvePublishSemantics } from '../publishing.js'
@@ -217,7 +216,11 @@ const resolvePayloadPrNumber = (payload: ReleasePayloadType): number | undefined
 const assertRehearsedArtifactExists = (
   release: ReleaseInfo,
   planDigest: string | undefined,
-): Effect.Effect<void, PublishError | PlatformError, Env.Env | FileSystem.FileSystem> =>
+): Effect.Effect<
+  void,
+  PublishError | PlatformError.PlatformError,
+  Env.Env | FileSystem.FileSystem
+> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
     const fs = yield* FileSystem.FileSystem

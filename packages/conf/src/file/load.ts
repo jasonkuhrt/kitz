@@ -1,5 +1,4 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Fs } from '@kitz/fs'
 import { Mod } from '@kitz/mod'
 import { Effect, Option, SchemaIssue, pipe, Schema } from 'effect'
@@ -28,7 +27,11 @@ const decodeJsonObject = Schema.decodeUnknownEffect(JsonObjectFromStringSchema)
 const searchForConfig = (
   definition: ConfigDefinition<Schema.Top>,
   cwd: Fs.Path.AbsDir,
-): Effect.Effect<SearchResult, PlatformError | Schema.SchemaError, FileSystem.FileSystem> => {
+): Effect.Effect<
+  SearchResult,
+  PlatformError.PlatformError | Schema.SchemaError,
+  FileSystem.FileSystem
+> => {
   const { name, extensions, json, packageJson } = definition
 
   return Effect.gen(function* () {
@@ -80,7 +83,7 @@ const loadRawConfig = (
   definition: ConfigDefinition<Schema.Top>,
 ): Effect.Effect<
   unknown,
-  Mod.ImportError | PlatformError | InvalidExportError | Schema.SchemaError,
+  Mod.ImportError | PlatformError.PlatformError | InvalidExportError | Schema.SchemaError,
   FileSystem.FileSystem
 > => {
   return Effect.gen(function* () {
@@ -142,7 +145,7 @@ export type LoadError =
   | NotFoundError
   | InvalidExportError
   | Mod.ImportError
-  | PlatformError
+  | PlatformError.PlatformError
   | Schema.SchemaError
 
 /**

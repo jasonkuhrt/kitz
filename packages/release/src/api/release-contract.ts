@@ -38,7 +38,6 @@ export class PrincipalRef extends Schema.Class<PrincipalRef>('PrincipalRef')({
   static encodeSync = Schema.encodeUnknownSync(PrincipalRef)
   static equivalence = Schema.toEquivalence(PrincipalRef)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class TrustRootRef extends Schema.Class<TrustRootRef>('TrustRootRef')({
@@ -54,7 +53,6 @@ export class TrustRootRef extends Schema.Class<TrustRootRef>('TrustRootRef')({
   static encodeSync = Schema.encodeUnknownSync(TrustRootRef)
   static equivalence = Schema.toEquivalence(TrustRootRef)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class SigningIdentityProfile extends Schema.Class<SigningIdentityProfile>(
@@ -74,7 +72,6 @@ export class SigningIdentityProfile extends Schema.Class<SigningIdentityProfile>
   static encodeSync = Schema.encodeUnknownSync(SigningIdentityProfile)
   static equivalence = Schema.toEquivalence(SigningIdentityProfile)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class RegistryProfile extends Schema.Class<RegistryProfile>('RegistryProfile')({
@@ -93,7 +90,6 @@ export class RegistryProfile extends Schema.Class<RegistryProfile>('RegistryProf
   static encodeSync = Schema.encodeUnknownSync(RegistryProfile)
   static equivalence = Schema.toEquivalence(RegistryProfile)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class GithubHostProfile extends Schema.Class<GithubHostProfile>('GithubHostProfile')({
@@ -110,7 +106,6 @@ export class GithubHostProfile extends Schema.Class<GithubHostProfile>('GithubHo
   static encodeSync = Schema.encodeUnknownSync(GithubHostProfile)
   static equivalence = Schema.toEquivalence(GithubHostProfile)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class PublishProfile extends Schema.Class<PublishProfile>('PublishProfile')({
@@ -128,7 +123,6 @@ export class PublishProfile extends Schema.Class<PublishProfile>('PublishProfile
   static encodeSync = Schema.encodeUnknownSync(PublishProfile)
   static equivalence = Schema.toEquivalence(PublishProfile)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export const OtpPolicy = Schema.Union([
@@ -157,7 +151,6 @@ export class CredentialIntent extends Schema.Class<CredentialIntent>('Credential
   static encodeSync = Schema.encodeUnknownSync(CredentialIntent)
   static equivalence = Schema.toEquivalence(CredentialIntent)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export const ProvenanceMode = Schema.Literals([
@@ -181,7 +174,6 @@ export class ProvenanceIntent extends Schema.Class<ProvenanceIntent>('Provenance
   static encodeSync = Schema.encodeUnknownSync(ProvenanceIntent)
   static equivalence = Schema.toEquivalence(ProvenanceIntent)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class ScriptPolicy extends Schema.Class<ScriptPolicy>('ScriptPolicy')({
@@ -204,7 +196,6 @@ export class ScriptPolicy extends Schema.Class<ScriptPolicy>('ScriptPolicy')({
   static encodeSync = Schema.encodeUnknownSync(ScriptPolicy)
   static equivalence = Schema.toEquivalence(ScriptPolicy)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class EnginePolicy extends Schema.Class<EnginePolicy>('EnginePolicy')({
@@ -218,7 +209,6 @@ export class EnginePolicy extends Schema.Class<EnginePolicy>('EnginePolicy')({
   static encodeSync = Schema.encodeUnknownSync(EnginePolicy)
   static equivalence = Schema.toEquivalence(EnginePolicy)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class ArtifactPolicy extends Schema.Class<ArtifactPolicy>('ArtifactPolicy')({
@@ -234,7 +224,6 @@ export class ArtifactPolicy extends Schema.Class<ArtifactPolicy>('ArtifactPolicy
   static encodeSync = Schema.encodeUnknownSync(ArtifactPolicy)
   static equivalence = Schema.toEquivalence(ArtifactPolicy)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class GitSideEffectIntent extends Schema.Class<GitSideEffectIntent>('GitSideEffectIntent')({
@@ -250,7 +239,6 @@ export class GitSideEffectIntent extends Schema.Class<GitSideEffectIntent>('GitS
   static encodeSync = Schema.encodeUnknownSync(GitSideEffectIntent)
   static equivalence = Schema.toEquivalence(GitSideEffectIntent)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class GithubReleaseIntent extends Schema.Class<GithubReleaseIntent>('GithubReleaseIntent')({
@@ -266,7 +254,6 @@ export class GithubReleaseIntent extends Schema.Class<GithubReleaseIntent>('Gith
   static encodeSync = Schema.encodeUnknownSync(GithubReleaseIntent)
   static equivalence = Schema.toEquivalence(GithubReleaseIntent)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class PublishIntent extends Schema.Class<PublishIntent>('PublishIntent')({
@@ -298,7 +285,6 @@ export class PublishIntent extends Schema.Class<PublishIntent>('PublishIntent')(
   static encodeSync = Schema.encodeUnknownSync(PublishIntent)
   static equivalence = Schema.toEquivalence(PublishIntent)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export const ProofStatus = Schema.Literals([
@@ -336,7 +322,6 @@ export class ProofPolicy extends Schema.Class<ProofPolicy>('ProofPolicy')({
   static encodeSync = Schema.encodeUnknownSync(ProofPolicy)
   static equivalence = Schema.toEquivalence(ProofPolicy)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class PlanDigest extends Schema.Class<PlanDigest>('PlanDigest')({
@@ -350,7 +335,6 @@ export class PlanDigest extends Schema.Class<PlanDigest>('PlanDigest')({
   static encodeSync = Schema.encodeUnknownSync(PlanDigest)
   static equivalence = Schema.toEquivalence(PlanDigest)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class PlanSourceSnapshot extends Schema.Class<PlanSourceSnapshot>('PlanSourceSnapshot')({
@@ -379,7 +363,6 @@ export class PlanSourceSnapshot extends Schema.Class<PlanSourceSnapshot>('PlanSo
   static encodeSync = Schema.encodeUnknownSync(PlanSourceSnapshot)
   static equivalence = Schema.toEquivalence(PlanSourceSnapshot)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class PlanBody extends Schema.Class<PlanBody>('PlanBody')({
@@ -402,7 +385,6 @@ export class PlanBody extends Schema.Class<PlanBody>('PlanBody')({
   static encodeSync = Schema.encodeUnknownSync(PlanBody)
   static equivalence = Schema.toEquivalence(PlanBody)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class DetachedSignature extends Schema.Class<DetachedSignature>('DetachedSignature')({
@@ -417,7 +399,6 @@ export class DetachedSignature extends Schema.Class<DetachedSignature>('Detached
   static encodeSync = Schema.encodeUnknownSync(DetachedSignature)
   static equivalence = Schema.toEquivalence(DetachedSignature)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class PlanEnvelope extends Schema.Class<PlanEnvelope>('PlanEnvelope')({
@@ -433,7 +414,6 @@ export class PlanEnvelope extends Schema.Class<PlanEnvelope>('PlanEnvelope')({
   static encodeSync = Schema.encodeUnknownSync(PlanEnvelope)
   static equivalence = Schema.toEquivalence(PlanEnvelope)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class ProofTransition extends Schema.Class<ProofTransition>('ProofTransition')({
@@ -449,7 +429,6 @@ export class ProofTransition extends Schema.Class<ProofTransition>('ProofTransit
   static encodeSync = Schema.encodeUnknownSync(ProofTransition)
   static equivalence = Schema.toEquivalence(ProofTransition)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class ProofRecord extends Schema.Class<ProofRecord>('ProofRecord')({
@@ -469,7 +448,6 @@ export class ProofRecord extends Schema.Class<ProofRecord>('ProofRecord')({
   static encodeSync = Schema.encodeUnknownSync(ProofRecord)
   static equivalence = Schema.toEquivalence(ProofRecord)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class ProofArtifact extends Schema.Class<ProofArtifact>('ProofArtifact')({
@@ -484,7 +462,6 @@ export class ProofArtifact extends Schema.Class<ProofArtifact>('ProofArtifact')(
   static encodeSync = Schema.encodeUnknownSync(ProofArtifact)
   static equivalence = Schema.toEquivalence(ProofArtifact)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class RegistryObservation extends Schema.Class<RegistryObservation>('RegistryObservation')({
@@ -507,7 +484,6 @@ export class RegistryObservation extends Schema.Class<RegistryObservation>('Regi
   static encodeSync = Schema.encodeUnknownSync(RegistryObservation)
   static equivalence = Schema.toEquivalence(RegistryObservation)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class PublishReceipt extends Schema.Class<PublishReceipt>('PublishReceipt')({
@@ -524,7 +500,6 @@ export class PublishReceipt extends Schema.Class<PublishReceipt>('PublishReceipt
   static encodeSync = Schema.encodeUnknownSync(PublishReceipt)
   static equivalence = Schema.toEquivalence(PublishReceipt)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class ArtifactManifest extends Schema.Class<ArtifactManifest>('ArtifactManifest')({
@@ -549,7 +524,6 @@ export class ArtifactManifest extends Schema.Class<ArtifactManifest>('ArtifactMa
   static encodeSync = Schema.encodeUnknownSync(ArtifactManifest)
   static equivalence = Schema.toEquivalence(ArtifactManifest)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export const SideEffectKind = Schema.Literals([
@@ -581,7 +555,6 @@ export class SideEffectEntry extends Schema.Class<SideEffectEntry>('SideEffectEn
   static encodeSync = Schema.encodeUnknownSync(SideEffectEntry)
   static equivalence = Schema.toEquivalence(SideEffectEntry)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class FailureObservation extends Schema.Class<FailureObservation>('FailureObservation')({
@@ -608,7 +581,6 @@ export class FailureObservation extends Schema.Class<FailureObservation>('Failur
   static encodeSync = Schema.encodeUnknownSync(FailureObservation)
   static equivalence = Schema.toEquivalence(FailureObservation)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class ExecutionPrincipals extends Schema.Class<ExecutionPrincipals>('ExecutionPrincipals')({
@@ -626,7 +598,6 @@ export class ExecutionPrincipals extends Schema.Class<ExecutionPrincipals>('Exec
   static encodeSync = Schema.encodeUnknownSync(ExecutionPrincipals)
   static equivalence = Schema.toEquivalence(ExecutionPrincipals)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class ExecutionJournal extends Schema.Class<ExecutionJournal>('ExecutionJournal')({
@@ -645,7 +616,6 @@ export class ExecutionJournal extends Schema.Class<ExecutionJournal>('ExecutionJ
   static encodeSync = Schema.encodeUnknownSync(ExecutionJournal)
   static equivalence = Schema.toEquivalence(ExecutionJournal)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class ExecutionLock extends Schema.Class<ExecutionLock>('ExecutionLock')({
@@ -668,7 +638,6 @@ export class ExecutionLock extends Schema.Class<ExecutionLock>('ExecutionLock')(
   static encodeSync = Schema.encodeUnknownSync(ExecutionLock)
   static equivalence = Schema.toEquivalence(ExecutionLock)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class WorkflowCallProofLink extends Schema.Class<WorkflowCallProofLink>(
@@ -688,7 +657,6 @@ export class WorkflowCallProofLink extends Schema.Class<WorkflowCallProofLink>(
   static encodeSync = Schema.encodeUnknownSync(WorkflowCallProofLink)
   static equivalence = Schema.toEquivalence(WorkflowCallProofLink)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export const ReconcileClassification = Schema.Literals(['clean', 'resume', 'repair', 'abort'])
@@ -708,7 +676,6 @@ export class ReconcileDecision extends Schema.Class<ReconcileDecision>('Reconcil
   static encodeSync = Schema.encodeUnknownSync(ReconcileDecision)
   static equivalence = Schema.toEquivalence(ReconcileDecision)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export const RepairAction = Schema.Literals([
@@ -742,7 +709,6 @@ export class AuditArchiveManifest extends Schema.Class<AuditArchiveManifest>(
   static encodeSync = Schema.encodeUnknownSync(AuditArchiveManifest)
   static equivalence = Schema.toEquivalence(AuditArchiveManifest)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export const defaultScriptPolicy = (): ScriptPolicy =>

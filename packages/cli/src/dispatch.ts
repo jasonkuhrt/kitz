@@ -1,5 +1,4 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Err, Str } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
@@ -71,7 +70,7 @@ export function dispatch(
   commandsDirPath: Fs.Path.AbsDir,
 ): Effect.Effect<
   void,
-  DiscoverCommandsDirNotFoundError | PlatformError | S.SchemaError | Mod.ImportError,
+  DiscoverCommandsDirNotFoundError | PlatformError.PlatformError | S.SchemaError | Mod.ImportError,
   Env.Env | FileSystem.FileSystem
 > {
   return Effect.gen(function* () {
@@ -126,7 +125,7 @@ export function discoverCommandPointers(
   commandsDirPath: Fs.Path.AbsDir,
 ): Effect.Effect<
   Fs.Path.AbsFile[],
-  DiscoverCommandsDirNotFoundError | PlatformError,
+  DiscoverCommandsDirNotFoundError | PlatformError.PlatformError,
   FileSystem.FileSystem
 > {
   return Effect.gen(function* () {

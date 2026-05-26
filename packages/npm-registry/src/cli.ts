@@ -1,9 +1,8 @@
 import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
-import type { PlatformError } from 'effect/PlatformError'
 import { createHash } from 'node:crypto'
 import { Err } from '@kitz/core'
 import { Fs } from '@kitz/fs'
-import { Effect, Option, Schema as S, Stream, String as Str } from 'effect'
+import { PlatformError, Effect, Option, Schema as S, Stream, String as Str } from 'effect'
 
 // ============================================================================
 // Errors
@@ -182,8 +181,8 @@ const AccessStatusOutput = S.fromJsonString(
 const decodeAccessStatusOutput = S.decodeUnknownEffect(AccessStatusOutput)
 
 const readStreamString = (
-  stream: Stream.Stream<Uint8Array, PlatformError>,
-): Effect.Effect<string, PlatformError> =>
+  stream: Stream.Stream<Uint8Array, PlatformError.PlatformError>,
+): Effect.Effect<string, PlatformError.PlatformError> =>
   stream.pipe(
     Stream.runCollect,
     Effect.map((chunks) => {

@@ -25,7 +25,6 @@ export class Single extends Schema.TaggedClass<Single>()('Single', {
   /** Commit footers */
   footers: Schema.Array(Footer),
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(Single)
   static decode = Schema.decodeUnknownEffect(Single)
   static decodeSync = Schema.decodeUnknownSync(Single)

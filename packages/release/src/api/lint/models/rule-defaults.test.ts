@@ -39,7 +39,7 @@ describe('RuleId', () => {
     })
 
   test('RuleId.make creates branded value', () => {
-    const id = RuleId.makeUnsafe('env.git-clean')
+    const id = RuleId.make('env.git-clean')
     expect(id).toBe<string>('env.git-clean')
   })
 })

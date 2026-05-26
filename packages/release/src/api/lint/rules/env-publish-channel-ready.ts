@@ -14,7 +14,7 @@ const githubWorkflowRefRe = /\.github\/workflows\/([^@/]+)@/
 const OptionsSchema = Schema.Struct({
   surface: Schema.Literals(['execution', 'preview']).pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => 'execution' as const),
+    Schema.withDecodingDefaultKey(Effect.sync(() => 'execution' as const)),
   ),
 })
 type Options = typeof OptionsSchema.Type
@@ -41,7 +41,7 @@ export const rule = RuntimeRule.create<
   never,
   Env.Env | ReleaseContextService | RuleOptionsService
 >({
-  id: RuleId.makeUnsafe('env.publish-channel-ready'),
+  id: RuleId.make('env.publish-channel-ready'),
   description: 'declared publish channel matches the active runtime',
   preconditions: [new Precondition.HasReleasePlan()],
   optionsSchema: OptionsSchema,

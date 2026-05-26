@@ -1,4 +1,4 @@
-import { Effect, ServiceMap } from 'effect'
+import { Effect, Context } from 'effect'
 import type {
   AccessOptions,
   AccessStatus,
@@ -96,4 +96,4 @@ export interface NpmCliService {
  * program.pipe(Effect.provide(NpmRegistry.NpmCliDryRun))
  * ```
  */
-export class NpmCli extends ServiceMap.Service<NpmCli, NpmCliService>()('NpmCli') {}
+export class NpmCli extends Context.Service<NpmCli, NpmCliService>()('NpmCli') {}

@@ -7,7 +7,6 @@ export class Author extends Schema.TaggedClass<Author>()('Author', {
   name: Schema.String,
   email: Schema.String,
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(Author)
   static decode = Schema.decodeUnknownEffect(Author)
   static decodeSync = Schema.decodeUnknownSync(Author)

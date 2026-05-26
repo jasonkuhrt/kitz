@@ -30,9 +30,7 @@ export type Input = Axied.Input<Value>
  *
  * @category Text Formatting
  */
-export class Gap extends Axied.Class<Gap>('Gap')(ValueSchema) {
-  static make = this.makeUnsafe
-}
+export class Gap extends Axied.Class<Gap>('Gap')(ValueSchema) {}
 
 /**
  * Parse gap input into a Gap instance.

@@ -1,6 +1,6 @@
-import { ServiceMap } from 'effect'
+import { Context } from 'effect'
 
 /** Service providing rule-specific options (pre-validated at config resolution). */
-export class RuleOptionsService extends ServiceMap.Service<RuleOptionsService, unknown>()(
+export class RuleOptionsService extends Context.Service<RuleOptionsService, unknown>()(
   'RuleOptionsService',
 ) {}

@@ -1,4 +1,4 @@
-import { Test } from '#kitz/test'
+import { Test } from '@kitz/test'
 import { Str } from './_.js'
 
 Test.on(Str.Visual.Table.render)

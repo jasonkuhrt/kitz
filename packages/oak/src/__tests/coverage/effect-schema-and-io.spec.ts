@@ -46,7 +46,7 @@ const EffectSchemaInternals = EffectSchemaInternalsMaybe as Required<
   typeof EffectSchemaInternalsMaybe
 >
 const decodeSync = (schema: Schema.Top) =>
-  Schema.decodeSync(schema as Schema.Top & { readonly DecodingServices: never })
+  Schema.decodeSync(schema as Schema.Decoder<unknown, never>)
 
 const keyEvent = (name: KeyPressEvent['name'], params?: Partial<KeyPressEvent>): KeyPressEvent => ({
   name,

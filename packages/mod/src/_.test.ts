@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { Effect, FileSystem } from 'effect'
+import { Effect, FileSystem, Option } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { Fs } from '@kitz/fs'
 import { Platform } from '@kitz/platform'
@@ -87,19 +87,19 @@ describe('mod', () => {
         stat: () =>
           Effect.succeed<FileSystem.File.Info>({
             type: 'File',
-            mtime: { getTime: () => [1000, 2000][statCallCount++] ?? 2000 } as Date,
-            atime: undefined,
-            birthtime: undefined,
+            mtime: Option.some({ getTime: () => [1000, 2000][statCallCount++] ?? 2000 } as Date),
+            atime: Option.none(),
+            birthtime: Option.none(),
             dev: 0,
-            ino: undefined,
+            ino: Option.none(),
             mode: 0,
-            nlink: undefined,
-            uid: undefined,
-            gid: undefined,
-            rdev: undefined,
+            nlink: Option.none(),
+            uid: Option.none(),
+            gid: Option.none(),
+            rdev: Option.none(),
             size: FileSystem.Size(0n),
-            blksize: undefined,
-            blocks: undefined,
+            blksize: Option.none(),
+            blocks: Option.none(),
           }),
       }
 

@@ -1,4 +1,4 @@
-import { Schema } from 'effect'
+import { Effect, Schema } from 'effect'
 import type { PublishIntent } from './release-contract.js'
 import { Ephemeral } from './planner/models/item-ephemeral.js'
 import type { Plan } from './planner/models/plan.js'
@@ -13,7 +13,7 @@ export const PublishChannelManual = Schema.Struct({
 export const PublishChannelGitHubToken = Schema.Struct({
   mode: Schema.Literal('github-token'),
   workflow: Schema.String,
-  tokenEnv: Schema.String.pipe(Schema.withDecodingDefaultKey(defaultTokenEnv)),
+  tokenEnv: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.sync(defaultTokenEnv))),
 })
 
 export const PublishChannelGitHubTrusted = Schema.Struct({
@@ -50,9 +50,9 @@ const defaultManualChannel = (): PublishChannel => ({
  * are relevant and what operator guidance should be shown.
  */
 export class Publishing extends Schema.Class<Publishing>('Publishing')({
-  official: PublishChannel.pipe(Schema.withDecodingDefaultKey(defaultManualChannel)),
-  candidate: PublishChannel.pipe(Schema.withDecodingDefaultKey(defaultManualChannel)),
-  ephemeral: PublishChannel.pipe(Schema.withDecodingDefaultKey(defaultManualChannel)),
+  official: PublishChannel.pipe(Schema.withDecodingDefaultKey(Effect.sync(defaultManualChannel))),
+  candidate: PublishChannel.pipe(Schema.withDecodingDefaultKey(Effect.sync(defaultManualChannel))),
+  ephemeral: PublishChannel.pipe(Schema.withDecodingDefaultKey(Effect.sync(defaultManualChannel))),
 }) {
   static is = Schema.is(Publishing)
   static decode = Schema.decodeUnknownEffect(Publishing)
@@ -61,7 +61,6 @@ export class Publishing extends Schema.Class<Publishing>('Publishing')({
   static encodeSync = Schema.encodeUnknownSync(Publishing)
   static equivalence = Schema.toEquivalence(Publishing)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export const defaultPublishing = (): Publishing => Publishing.decodeSync({})

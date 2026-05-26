@@ -1,5 +1,5 @@
 import { expect } from 'bun:test'
-import '../../../test/src/matchers/_.js'
+import '@kitz/test/matchers'
 import { Path } from './_.js'
 
 declare module 'bun:test' {

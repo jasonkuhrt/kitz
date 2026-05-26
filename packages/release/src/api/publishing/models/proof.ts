@@ -19,7 +19,6 @@ export class DriverVersionProof extends Schema.Class<DriverVersionProof>('Driver
   static encodeSync = Schema.encodeUnknownSync(DriverVersionProof)
   static equivalence = Schema.toEquivalence(DriverVersionProof)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class SubcommandProof extends Schema.Class<SubcommandProof>('SubcommandProof')({
@@ -35,7 +34,6 @@ export class SubcommandProof extends Schema.Class<SubcommandProof>('SubcommandPr
   static encodeSync = Schema.encodeUnknownSync(SubcommandProof)
   static equivalence = Schema.toEquivalence(SubcommandProof)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class PackedArtifact extends Schema.Class<PackedArtifact>('PackedArtifact')({
@@ -53,7 +51,6 @@ export class PackedArtifact extends Schema.Class<PackedArtifact>('PackedArtifact
   static encodeSync = Schema.encodeUnknownSync(PackedArtifact)
   static equivalence = Schema.toEquivalence(PackedArtifact)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class PublishDryRunProof extends Schema.Class<PublishDryRunProof>('PublishDryRunProof')({
@@ -69,7 +66,6 @@ export class PublishDryRunProof extends Schema.Class<PublishDryRunProof>('Publis
   static encodeSync = Schema.encodeUnknownSync(PublishDryRunProof)
   static equivalence = Schema.toEquivalence(PublishDryRunProof)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export class PublishReceipt extends Schema.Class<PublishReceipt>('PublishReceipt')({
@@ -88,5 +84,4 @@ export class PublishReceipt extends Schema.Class<PublishReceipt>('PublishReceipt
   static encodeSync = Schema.encodeUnknownSync(PublishReceipt)
   static equivalence = Schema.toEquivalence(PublishReceipt)
   static ordered = false as const
-  static make = this.makeUnsafe
 }

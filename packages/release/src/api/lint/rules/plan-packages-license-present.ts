@@ -9,7 +9,7 @@ import { loadPlannedManifests, summarizePackages } from './package-manifest-shar
 
 /** Advises when planned packages do not declare a license. */
 export const rule = RuntimeRule.create({
-  id: RuleId.makeUnsafe('plan.packages-license-present'),
+  id: RuleId.make('plan.packages-license-present'),
   description: 'planned packages declare a license',
   defaults: RuleDefaults.make({ severity: Severity.Warn.make({}) }),
   preconditions: [new Precondition.HasReleasePlan()],

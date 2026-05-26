@@ -32,8 +32,8 @@
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
-    "@octokit/types": "^13.10.0",
-    "effect": "4.0.0-beta.31"
+    "@octokit/types": "^16.0.0",
+    "effect": "4.0.0-beta.70"
   },
   "devDependencies": {
     "@kitz/test": "workspace:*"

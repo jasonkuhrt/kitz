@@ -14,7 +14,6 @@ export class RuleConfig extends Schema.TaggedClass<RuleConfig>()('RuleConfig', {
   overrides: RuleDefaults,
   options: Schema.Record(Schema.String, Schema.Unknown),
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(RuleConfig)
   static decode = Schema.decodeUnknownEffect(RuleConfig)
   static decodeSync = Schema.decodeUnknownSync(RuleConfig)
@@ -33,7 +32,6 @@ export class Config extends Schema.TaggedClass<Config>()('Config', {
   /** Skip rules matching these IDs. */
   skipRules: Schema.optional(Schema.Array(Schema.String)),
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(Config)
   static decode = Schema.decodeUnknownEffect(Config)
   static decodeSync = Schema.decodeUnknownSync(Config)
@@ -51,7 +49,6 @@ export class ResolvedRuleDefaults extends Schema.TaggedClass<ResolvedRuleDefault
     severity: Severity_.Severity,
   },
 ) {
-  static make = this.makeUnsafe
   static is = Schema.is(ResolvedRuleDefaults)
   static decode = Schema.decodeUnknownEffect(ResolvedRuleDefaults)
   static decodeSync = Schema.decodeUnknownSync(ResolvedRuleDefaults)
@@ -69,7 +66,6 @@ export class ResolvedRuleConfig extends Schema.TaggedClass<ResolvedRuleConfig>()
     options: Schema.Record(Schema.String, Schema.Unknown),
   },
 ) {
-  static make = this.makeUnsafe
   static is = Schema.is(ResolvedRuleConfig)
   static decode = Schema.decodeUnknownEffect(ResolvedRuleConfig)
   static decodeSync = Schema.decodeUnknownSync(ResolvedRuleConfig)
@@ -88,7 +84,6 @@ export class ResolvedConfig extends Schema.TaggedClass<ResolvedConfig>()('Resolv
   /** Skip rules matching these IDs. */
   skipRules: Schema.optional(Schema.Array(Schema.String)),
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(ResolvedConfig)
   static decode = Schema.decodeUnknownEffect(ResolvedConfig)
   static decodeSync = Schema.decodeUnknownSync(ResolvedConfig)

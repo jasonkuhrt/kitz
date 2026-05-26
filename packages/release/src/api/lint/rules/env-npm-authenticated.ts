@@ -17,7 +17,7 @@ interface Metadata {
 
 /** Verifies that npm CLI is authenticated (can run `npm whoami`). */
 export const rule = RuntimeRule.create({
-  id: RuleId.makeUnsafe('env.npm-authenticated'),
+  id: RuleId.make('env.npm-authenticated'),
   description: 'npm auth is configured (npm whoami succeeds)',
   preventsDescriptions: [
     'npm publish failing because your npm session or token is missing, expired, or scoped incorrectly',

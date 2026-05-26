@@ -1,4 +1,4 @@
-import { Assert } from '#kitz/assert'
+import { Assert } from '@kitz/assert'
 import { Result } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import {

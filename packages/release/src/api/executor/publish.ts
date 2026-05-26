@@ -1,5 +1,4 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
@@ -105,7 +104,7 @@ const stagedPackageDirFor = (repoRoot: Fs.Path.AbsDir, release: ReleaseInfo): Fs
 const copyPackageDirectory = (
   from: Fs.Path.AbsDir,
   to: Fs.Path.AbsDir,
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fromString = Fs.Path.toString(from)
@@ -202,7 +201,7 @@ export const preparePackageArtifact = (
   options?: ArtifactPathOptions,
 ): Effect.Effect<
   PreparedArtifact,
-  PublishError | Resource.ResourceError | PlatformError,
+  PublishError | Resource.ResourceError | PlatformError.PlatformError,
   FileSystem.FileSystem | NpmRegistry.NpmCli | Env.Env
 > =>
   Effect.gen(function* () {

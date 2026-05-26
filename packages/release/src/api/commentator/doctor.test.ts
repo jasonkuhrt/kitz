@@ -14,7 +14,7 @@ import { Environment } from '../lint/models/violation-location.js'
 import { createDoctorSummary, renderDoctorSummary } from './doctor.js'
 
 const ruleRef = (id: string, description: string) => ({
-  id: RuleId.makeUnsafe(id),
+  id: RuleId.make(id),
   description,
 })
 

@@ -1,9 +1,7 @@
-import { PlatformError, systemError } from 'effect/PlatformError'
-import { FileSystem, make as makeFileSystem } from 'effect/FileSystem'
-import { Effect, Layer, Stream } from 'effect'
+import { Effect, FileSystem, Layer, PlatformError, Stream } from 'effect'
 
 const createUnsupportedError = (method: string, operation: string) =>
-  systemError({
+  PlatformError.systemError({
     _tag: 'PermissionDenied',
     module: 'FileSystem',
     method,
@@ -11,7 +9,7 @@ const createUnsupportedError = (method: string, operation: string) =>
   })
 
 const createNotFoundError = (method: string, path: string, operation: string) =>
-  systemError({
+  PlatformError.systemError({
     _tag: 'NotFound',
     module: 'FileSystem',
     method,
@@ -76,7 +74,7 @@ export const layer = (initialDiskLayout: DiskLayout) => {
   // Create mutable copy of disk layout for write operations
   const diskLayout: DiskLayout = { ...initialDiskLayout }
 
-  const impl = makeFileSystem({
+  const impl = FileSystem.make({
     // Read directory contents
     readDirectory: (path: string) => {
       const normalizedPath = path.endsWith('/') ? path : path + '/'
@@ -248,7 +246,7 @@ export const layer = (initialDiskLayout: DiskLayout) => {
     },
   })
 
-  return Layer.succeed(FileSystem, impl)
+  return Layer.succeed(FileSystem.FileSystem, impl)
 }
 
 /**

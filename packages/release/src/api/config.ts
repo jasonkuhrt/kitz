@@ -1,5 +1,4 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Conf } from '@kitz/conf'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
@@ -41,7 +40,7 @@ export type ConventionalCommitTypeImpact = Semver.BumpType | null
 const ConventionalCommitSettingsSchema = Schema.Struct({
   types: CustomTypesSchema.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => ({}) as CustomTypes),
+    Schema.withDecodingDefaultKey(Effect.sync(() => ({}) as CustomTypes)),
   ),
 })
 export type ConventionalCommitSettings = typeof ConventionalCommitSettingsSchema.Type
@@ -82,34 +81,37 @@ export class Config extends Schema.Class<Config>('Config')({
   /** Main branch name (default: 'main') */
   trunk: Schema.String.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => 'main'),
+    Schema.withDecodingDefaultKey(Effect.sync(() => 'main')),
   ),
   /** Dist-tag for official releases (default: 'latest') */
   npmTag: Schema.String.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => 'latest'),
+    Schema.withDecodingDefaultKey(Effect.sync(() => 'latest')),
   ),
   /** Dist-tag for candidate releases (default: 'next') */
   candidateTag: Schema.String.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => 'next'),
+    Schema.withDecodingDefaultKey(Effect.sync(() => 'next')),
   ),
   /** Scope to package config mapping (auto-scanned if not provided) */
   packages: PackageMapSchema.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => ({}) as PackageMap),
+    Schema.withDecodingDefaultKey(Effect.sync(() => ({}) as PackageMap)),
   ),
   /** Declares how each lifecycle is published. */
   publishing: Publishing.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => ({})),
+    Schema.withDecodingDefaultKey(Effect.sync(() => ({}))),
   ),
   /** Operator-facing command surface for local guidance and runbooks. */
-  operator: Operator.pipe(Schema.optionalKey, Schema.withDecodingDefaultKey(defaultOperator)),
+  operator: Operator.pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(Effect.sync(defaultOperator)),
+  ),
   /** Conventional commit settings (custom type→impact mappings). */
   conventionalCommitSettings: ConventionalCommitSettingsSchema.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(defaultConventionalCommitSettings),
+    Schema.withDecodingDefaultKey(Effect.sync(defaultConventionalCommitSettings)),
   ),
   /** Lint configuration */
   lint: Schema.optional(LintConfig.Config),
@@ -121,7 +123,6 @@ export class Config extends Schema.Class<Config>('Config')({
   static encodeSync = Schema.encodeUnknownSync(Config)
   static equivalence = Schema.toEquivalence(Config)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -150,7 +151,6 @@ export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig
   static encodeSync = Schema.encodeUnknownSync(ResolvedConfig)
   static equivalence = Schema.toEquivalence(ResolvedConfig)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -280,7 +280,7 @@ export interface InitOptions {
  */
 export const init = (
   options?: InitOptions,
-): Effect.Effect<InitResult, PlatformError, FileSystem.FileSystem | Env.Env> =>
+): Effect.Effect<InitResult, PlatformError.PlatformError, FileSystem.FileSystem | Env.Env> =>
   Conf.File.init(ConfigFile, {
     defineConfigImport: {
       specifier: '@kitz/release',

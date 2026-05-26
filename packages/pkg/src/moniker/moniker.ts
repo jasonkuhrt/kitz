@@ -25,7 +25,6 @@ export class Scoped extends S.TaggedClass<Scoped>()('Scoped', {
     return S.encodeSync(Scoped)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   static is = S.is(Scoped)
 
   /**
@@ -82,7 +81,6 @@ export class Unscoped extends S.TaggedClass<Unscoped>()('Unscoped', {
     return S.encodeSync(Unscoped)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   static is = S.is(Unscoped)
 
   /**

@@ -1,5 +1,4 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Monorepo } from '@kitz/monorepo'
@@ -78,7 +77,7 @@ const inferConfiguredPackage = (
 export type ScanError =
   | Monorepo.Workspace.Errors.ConfigNotFoundError
   | Monorepo.Workspace.Errors.GlobError
-  | PlatformError
+  | PlatformError.PlatformError
   | Resource.ResourceError
 
 export class PackageResolutionError extends Data.TaggedError('PackageResolutionError')<{

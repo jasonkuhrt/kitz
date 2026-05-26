@@ -20,7 +20,7 @@ const isKnownType = (
 
 /** Verifies that every commit type in the analyzed range is recognized (standard or configured). */
 export const rule = RuntimeRule.create({
-  id: RuleId.makeUnsafe('commit.type.match-known'),
+  id: RuleId.make('commit.type.match-known'),
   description: 'Commit type(s) use recognized conventional-commit kinds',
   preconditions: [],
   optionsSchema: OptionsSchema,

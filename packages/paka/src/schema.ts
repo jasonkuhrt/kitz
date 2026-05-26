@@ -85,7 +85,6 @@ export class Example extends S.Class<Example>('Example')({
     return S.toEquivalence(Example)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -119,7 +118,6 @@ export class ImportExample extends S.Class<ImportExample>('ImportExample')({
     return S.toEquivalence(ImportExample)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -150,7 +148,6 @@ export class SourceLocation extends S.Class<SourceLocation>('SourceLocation')({
     return S.toEquivalence(SourceLocation)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 // ============================================================================
@@ -184,7 +181,6 @@ export class JSDocProvenance extends S.TaggedClass<JSDocProvenance>()('jsdoc', {
     return S.toEquivalence(JSDocProvenance)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -214,7 +210,6 @@ export class MdFileProvenance extends S.TaggedClass<MdFileProvenance>()('md-file
     return S.toEquivalence(MdFileProvenance)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -259,7 +254,6 @@ export class Docs extends S.Class<Docs>('Docs')({
     return S.toEquivalence(Docs)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -290,7 +284,6 @@ export class Feature extends S.Class<Feature>('Feature')({
     return S.toEquivalence(Feature)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -345,7 +338,6 @@ export class Home extends S.Class<Home>('Home')({
     return S.toEquivalence(Home)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -378,7 +370,6 @@ export class ModuleDocs extends S.Class<ModuleDocs>('ModuleDocs')({
     return S.toEquivalence(ModuleDocs)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -411,7 +402,6 @@ export class DocsProvenance extends S.Class<DocsProvenance>('DocsProvenance')({
     return S.toEquivalence(DocsProvenance)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 // ============================================================================
@@ -455,7 +445,6 @@ export class TypeParameter extends S.Class<TypeParameter>('TypeParameter')({
     return S.toEquivalence(TypeParameter)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -505,7 +494,6 @@ export class Parameter extends S.Class<Parameter>('Parameter')({
     return S.toEquivalence(Parameter)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -556,7 +544,6 @@ export class FunctionSignature extends S.Class<FunctionSignature>('FunctionSigna
     return S.toEquivalence(FunctionSignature)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -604,7 +591,6 @@ export class FunctionSignatureModel extends S.TaggedClass<FunctionSignatureModel
     return S.toEquivalence(FunctionSignatureModel)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -669,7 +655,6 @@ export class BuilderMethod extends S.Class<BuilderMethod>('BuilderMethod')({
     return S.toEquivalence(BuilderMethod)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -754,7 +739,6 @@ export class BuilderSignatureModel extends S.TaggedClass<BuilderSignatureModel>(
     return S.toEquivalence(BuilderSignatureModel)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -788,7 +772,6 @@ export class TypeSignatureModel extends S.TaggedClass<TypeSignatureModel>()('Typ
     return S.toEquivalence(TypeSignatureModel)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -829,7 +812,6 @@ export class ValueSignatureModel extends S.TaggedClass<ValueSignatureModel>()(
     return S.toEquivalence(ValueSignatureModel)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -883,7 +865,6 @@ export class ClassProperty extends S.Class<ClassProperty>('ClassProperty')({
     return S.toEquivalence(ClassProperty)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -929,7 +910,6 @@ export class ClassMethod extends S.Class<ClassMethod>('ClassMethod')({
     return S.toEquivalence(ClassMethod)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -990,7 +970,6 @@ export class ClassSignatureModel extends S.TaggedClass<ClassSignatureModel>()(
     return S.toEquivalence(ClassSignatureModel)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -1083,7 +1062,6 @@ export class Module extends S.Class<Module>('Module')({
     return S.toEquivalence(Module)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   /**
    * Get namespace exports (value exports with type='namespace' and nested module).
    */
@@ -1191,7 +1169,6 @@ export class ValueExport extends S.TaggedClass<ValueExport>('ValueExport')('valu
     return S.toEquivalence(ValueExport)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   static get is() {
     return S.is(ValueExport)
   }
@@ -1238,7 +1215,6 @@ export class TypeExport extends S.TaggedClass<TypeExport>('TypeExport')('type', 
     return S.toEquivalence(TypeExport)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   static get is() {
     return S.is(TypeExport)
   }
@@ -1352,7 +1328,6 @@ export class DrillableNamespaceEntrypoint extends S.TaggedClass<DrillableNamespa
     return S.toEquivalence(DrillableNamespaceEntrypoint)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   /**
    * Generate import examples for this entrypoint.
    *
@@ -1435,7 +1410,6 @@ export class SimpleEntrypoint extends S.TaggedClass<SimpleEntrypoint>()('SimpleE
     return S.toEquivalence(SimpleEntrypoint)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
   /**
    * Derive PascalCase module name from path.
    * Handles kebab-case conversion properly.
@@ -1523,7 +1497,6 @@ export class PackageMetadata extends S.Class<PackageMetadata>('PackageMetadata')
     return S.toEquivalence(PackageMetadata)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -1558,7 +1531,6 @@ export class Package extends S.Class<Package>('Package')({
     return S.toEquivalence(Package)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
