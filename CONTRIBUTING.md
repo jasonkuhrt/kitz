@@ -29,25 +29,25 @@ Some packages have their own conventions in `packages/<name>/.claude/CONVENTIONS
 
 ## Architecture
 
-Kitz is a Bun workspace monorepo with packages under `packages/`. All packages are scoped under `@kitz/` except the `kitz` aggregator-package.
+Kitz is a pnpm workspace monorepo with Bun as its script and test runtime. Packages live under `packages/`. All packages are scoped under `@kitz/` except the `kitz` aggregator-package.
 
-**Build system**: Bun workspaces + tsgo (TypeScript Go port)
+**Build system**: pnpm workspaces + Bun runtime + tsgo (TypeScript Go port)
 
 ```bash
-bun run build:packages                       # All packages
-bun run --filter @kitz/core build            # Single package
+pnpm run build:packages                      # All packages
+pnpm --filter @kitz/core run build           # Single package
 ```
 
 **Cross-package dependencies**: Use `workspace:*` and import by package name. Note that `#` imports are scoped per-package - cross-package `#` imports are not valid.
 
 ## Commit Hook
 
-`hooks/pre-commit` is tracked in the repo and installed by `bun run prepare`.
+`hooks/pre-commit` is tracked in the repo and installed by `pnpm run prepare`.
 
 Run it manually with:
 
 ```bash
-bun run pre-commit
+pnpm run pre-commit
 ```
 
 The hook:
@@ -55,9 +55,9 @@ The hook:
 - formats and lints the staged snapshot, then syncs fixes back to the index
 - blocks conflict markers and repo-local artifacts such as `.claude/*.local.md`, `.claude/worktrees/`, `.release/`, and `.DS_Store`
 - requires tracked `hooks/*` scripts to stay executable and use a shell shebang
-- runs `shellcheck` for staged shell scripts and `bun run check:ci` for staged GitHub workflow files
-- runs `bun run check:types` when staged changes can affect TypeScript
-- runs `bun run check:cov:packages` on every commit
+- runs `shellcheck` for staged shell scripts and `pnpm run check:ci` for staged GitHub workflow files
+- runs `pnpm run check:types` when staged changes can affect TypeScript
+- runs `pnpm run check:cov:packages` on every commit
 
 ## Linting (Custom Rules)
 
@@ -69,12 +69,12 @@ Custom Oxlint rules use two paths:
 `kitz/ts/no-type-assertion` remains disabled. `typescript/no-unsafe-type-assertion` is also disabled for now because it is currently too noisy for this repo's function-body typing policy. `typescript/no-explicit-any` and `eslint-plugin-promise/prefer-await-to-then` are also temporarily disabled while the warning backlog is reduced. `kitz/error/no-throw` is temporarily disabled in repo lint configs while the remaining throw sites are migrated back onto typed failure channels; keep the rule implementation and fixture coverage intact so it can be restored once that backlog is cleared.
 
 ```bash
-bun run check:lint                        # Lint (custom rules as warnings)
-bun run check:lint:type-aware             # Lint with checker-backed rules enabled
-bun run check:lint:strict-custom-rules    # Lint (custom rules as errors)
-bun run check:lint:strict-custom-rules:type-aware
-bun run test:oxlint-custom-rules          # Fixture tests for custom rules
-bun run test:oxlint-rules                 # Fixtures + package preset surface
+pnpm run check:lint                        # Lint (custom rules as warnings)
+pnpm run check:lint:type-aware             # Lint with checker-backed rules enabled
+pnpm run check:lint:strict-custom-rules    # Lint (custom rules as errors)
+pnpm run check:lint:strict-custom-rules:type-aware
+pnpm run test:oxlint-custom-rules          # Fixture tests for custom rules
+pnpm run test:oxlint-rules                 # Fixtures + package preset surface
 ```
 
 Rule details and migration guidance: `docs/oxlint-custom-rules.md`.

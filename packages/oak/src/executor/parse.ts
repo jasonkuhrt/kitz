@@ -218,6 +218,7 @@ export const parse = (
             if (v.prompt.enabled) {
               return `arg` in v.prompt ? [k, v.prompt.arg] : null
             } else if (v.openingParseResult._tag === `supplied`) {
+              if (v.openingParseResult.value === undefined) return null
               return [k, v.openingParseResult.value]
             } else if (v.openingParseResult._tag === `omitted`) {
               // Handle omitted parameters - use the omittedValue from optionality metadata

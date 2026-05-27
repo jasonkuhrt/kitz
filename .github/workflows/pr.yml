@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - run: bun run format:check
+      - run: pnpm run format:check
 
   api-model-style:
     needs: check-type
@@ -48,7 +48,7 @@ jobs:
         if: needs.check-type.outputs.skip-code-checks != 'true'
       - name: Check API model style
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: bun run check:api-model-style
+        run: pnpm run check:api-model-style
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
@@ -62,7 +62,7 @@ jobs:
         if: needs.check-type.outputs.skip-code-checks != 'true'
       - name: Build packages
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: bun run build:packages
+        run: pnpm run build:packages
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
@@ -76,7 +76,7 @@ jobs:
         if: needs.check-type.outputs.skip-code-checks != 'true'
       - name: Type check packages
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: bun run check:types:packages
+        run: pnpm run check:types:packages
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
@@ -90,7 +90,7 @@ jobs:
         if: needs.check-type.outputs.skip-code-checks != 'true'
       - name: Lint codebase
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: bun run check:lint:type-aware
+        run: pnpm run check:lint:type-aware
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
@@ -104,7 +104,7 @@ jobs:
         if: needs.check-type.outputs.skip-code-checks != 'true'
       - name: Check published package shapes
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: bun run check:package:packages
+        run: pnpm run check:package:packages
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
@@ -118,7 +118,7 @@ jobs:
         if: needs.check-type.outputs.skip-code-checks != 'true'
       - name: Test packages
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: bun run test:packages
+        run: pnpm run test:packages
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
@@ -142,7 +142,7 @@ jobs:
           SKIP_CODE_CHECKS: ${{ needs.check-type.outputs.skip-code-checks }}
         run: |
           if [[ "${SKIP_CODE_CHECKS}" == "true" ]]; then
-            bun run release pr preview --check-only
+            pnpm run release pr preview --check-only
           else
-            bun run release pr preview
+            pnpm run release pr preview
           fi

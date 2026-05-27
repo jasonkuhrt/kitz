@@ -25,13 +25,13 @@ I will focus on JSDoc before writing here.
 
 ```sh
 # Main package (includes all modules)
-bun add kitz
+pnpm add kitz
 
 # Or install individual packages
-bun add @kitz/core
-bun add @kitz/fs
-bun add @kitz/cli
-bun add @kitz/yaml
+pnpm add @kitz/core
+pnpm add @kitz/fs
+pnpm add @kitz/cli
+pnpm add @kitz/yaml
 # ... etc
 ```
 

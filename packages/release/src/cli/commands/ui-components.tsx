@@ -11,7 +11,9 @@ export function LifecycleTabs({ value }: { readonly value: Lifecycle }) {
     <box flexDirection="row" height={1} paddingLeft={1}>
       <text content="Lifecycle " fg="#888888" />
       {A.map(lifecycles, (lc) => (
-        <Tui.Badge key={lc} label={lc.toUpperCase()} active={lc === value} />
+        <box key={lc} height={1}>
+          <Tui.Badge label={lc.toUpperCase()} active={lc === value} />
+        </box>
       ))}
     </box>
   )

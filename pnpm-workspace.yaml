@@ -1,0 +1,13 @@
+packages:
+  - packages/*
+
+enableGlobalVirtualStore: true
+
+overrides:
+  fflate: 0.8.2
+
+allowBuilds:
+  better-sqlite3: true
+  esbuild: true
+  msgpackr-extract: true
+  oxfmt: true

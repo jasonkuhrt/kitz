@@ -16,7 +16,8 @@ type TestCommandBuilder = CommandBuilder<
 >
 
 // todo enable throw on all tests
-export const $: TestCommandBuilder = Command.create().use(Zod) // .settings({ onError: `throw` })
+export const createTestCommand = (): TestCommandBuilder => Command.create().use(Zod)
+export const $: TestCommandBuilder = createTestCommand() // .settings({ onError: `throw` })
 
 export const assertAssignable = <T>(_: T): [T] => 0 as any
 export const as = <T>(): T => undefined as any

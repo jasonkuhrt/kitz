@@ -4,15 +4,17 @@
 import { spawnSync } from 'node:child_process'
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   readdirSync,
   rmSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { extname, join } from 'node:path'
+import { dirname, extname, join, relative } from 'node:path'
 
 const FORMATTABLE_EXTENSIONS = new Set([
   '.js',
@@ -258,13 +260,49 @@ const runCoverageInSnapshot = (snapshotRoot: string): CommandResult =>
   run(join(snapshotRoot, 'tools', 'run-workspace-coverage.mjs'), [], { cwd: snapshotRoot })
 
 const runTypecheck = (snapshotRoot: string): CommandResult =>
-  run('bun', ['run', 'check:types'], { cwd: snapshotRoot })
+  run('pnpm', ['run', 'check:types'], { cwd: snapshotRoot })
 
 const runShellcheck = (snapshotRoot: string, paths: readonly string[]): CommandResult =>
   run('shellcheck', [...paths], { cwd: snapshotRoot })
 
 const runActionlint = (snapshotRoot: string, paths: readonly string[]): CommandResult =>
-  run('bun', ['run', 'check:ci', '--', ...paths], { cwd: snapshotRoot })
+  run('pnpm', ['run', 'check:ci', '--', ...paths], { cwd: snapshotRoot })
+
+const getSnapshotSymlinkTarget = (
+  sourcePath: string,
+  targetPath: string,
+  snapshotRoot: string,
+): string => {
+  const realTarget = realpathSync(sourcePath)
+  if (realTarget === repoRoot || realTarget.startsWith(`${repoRoot}/`)) {
+    const snapshotTarget = join(snapshotRoot, relative(repoRoot, realTarget))
+    return relative(dirname(targetPath), snapshotTarget)
+  }
+
+  return realTarget
+}
+
+const mirrorNodeModulesSymlinks = (
+  sourceRoot: string,
+  targetRoot: string,
+  snapshotRoot: string,
+): void => {
+  mkdirSync(targetRoot, { recursive: true })
+
+  for (const entry of readdirSync(sourceRoot, { withFileTypes: true })) {
+    const sourcePath = join(sourceRoot, entry.name)
+    const targetPath = join(targetRoot, entry.name)
+
+    if (entry.isSymbolicLink()) {
+      symlinkSync(getSnapshotSymlinkTarget(sourcePath, targetPath, snapshotRoot), targetPath)
+      continue
+    }
+
+    if (entry.isDirectory() && entry.name.startsWith('@')) {
+      mirrorNodeModulesSymlinks(sourcePath, targetPath, snapshotRoot)
+    }
+  }
+}
 
 const materializeIndexSnapshot = (): string => {
   const tempDir = mkdtempSync(join(tmpdir(), 'kitz-pre-commit-'))
@@ -280,7 +318,11 @@ const materializeIndexSnapshot = (): string => {
     for (const packageName of readdirSync(packagesRoot)) {
       const packageNodeModulesPath = join(packagesRoot, packageName, 'node_modules')
       if (!existsSync(packageNodeModulesPath)) continue
-      symlinkSync(packageNodeModulesPath, join(tempDir, 'packages', packageName, 'node_modules'))
+      mirrorNodeModulesSymlinks(
+        packageNodeModulesPath,
+        join(tempDir, 'packages', packageName, 'node_modules'),
+        tempDir,
+      )
     }
   }
   return tempDir

@@ -178,7 +178,7 @@ Packages fall into two groups: library packages re-exported through the metapack
 | [`@kitz/jsonc`](./packages/jsonc)       | `Jsonc`      | JSON-with-comments parse/stringify                                                     |
 | [`@kitz/log`](./packages/log)           | `Log`        | Structured logger with levels, filters, and pluggable renderers                        |
 | [`@kitz/mod`](./packages/mod)           | `Mod`        | Dynamic module import with error normalization                                         |
-| [`@kitz/monorepo`](./packages/monorepo) | `Monorepo`   | Bun workspace introspection and package discovery                                      |
+| [`@kitz/monorepo`](./packages/monorepo) | `Monorepo`   | Workspace introspection and package discovery                                          |
 | [`@kitz/name`](./packages/name)         | `Name`       | Case conversion between camel, pascal, kebab, snake, and other naming conventions      |
 | [`@kitz/num`](./packages/num)           | `ExtNum`     | Branded numeric types: integers, floats, fractions, complex numbers, even/odd, degrees |
 | [`@kitz/oak`](./packages/oak)           | `Oak`        | Declarative CLI argument parser with typed command trees                               |
@@ -246,9 +246,9 @@ The core package bundles these namespaces. Each is also available as a subpath i
 ## Development
 
 ```bash
-bun install                 # bootstrap workspace
-bun run build:packages      # build all packages
-bun run check:types:packages # typecheck all packages
-bun run check:lint          # lint with oxlint
-bun run format              # format with oxfmt
+pnpm install                  # bootstrap workspace
+pnpm run build:packages       # build all packages
+pnpm run check:types:packages # typecheck all packages
+pnpm run check:lint           # lint with oxlint
+pnpm run format               # format with oxfmt
 ```

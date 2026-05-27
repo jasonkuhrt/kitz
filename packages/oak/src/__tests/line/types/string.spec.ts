@@ -1,6 +1,6 @@
 import { Assert } from '@kitz/assert'
 import { describe, expect, it } from 'bun:test'
-import { $, n, s } from '../../_/helpers.js'
+import { $, createTestCommand, n, s } from '../../_/helpers.js'
 
 describe(`errors`, () => {
   it.each([
@@ -24,17 +24,25 @@ describe(`errors`, () => {
 
 describe(`optional`, () => {
   it(`specified input can be omitted, missing key is possible`, () => {
-    const args = $.parameter(`--foo`, s.optional()).parse({ line: [] })
+    const args = createTestCommand()
+      .parameter(`--foo`, s.optional())
+      .parse({ line: [], environment: {} })
     Assert.on(args).exact.of({} as { foo: string | undefined })
     expect(Object.keys(args)).not.toContain(`foo`)
   })
   it(`input can be given`, () => {
-    const args = $.parameter(`--foo`, s.optional()).parse({ line: [`--foo`, `bar`] })
+    const args = createTestCommand()
+      .parameter(`--foo`, s.optional())
+      .parse({ line: [`--foo`, `bar`] })
     Assert.on(args).exact.of({} as { foo: string | undefined })
     expect(args).toMatchObject({ foo: `bar` })
   })
 })
 
 it(`is not trimmed by default`, () => {
-  expect($.parameter(`name`, s).parse({ line: [`--name`, `foobar  `] })).toMatchSnapshot()
+  expect(
+    createTestCommand()
+      .parameter(`name`, s)
+      .parse({ line: [`--name`, `foobar  `] }),
+  ).toMatchSnapshot()
 })
