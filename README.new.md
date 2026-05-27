@@ -182,6 +182,7 @@ Packages fall into two groups: library packages re-exported through the metapack
 | [`@kitz/name`](./packages/name)         | `Name`       | Case conversion between camel, pascal, kebab, snake, and other naming conventions      |
 | [`@kitz/num`](./packages/num)           | `ExtNum`     | Branded numeric types: integers, floats, fractions, complex numbers, even/odd, degrees |
 | [`@kitz/oak`](./packages/oak)           | `Oak`        | Declarative CLI argument parser with typed command trees                               |
+| [`@kitz/otel`](./packages/otel)         | `Otel`       | OpenTelemetry trace parsing and ASCII rendering                                        |
 | [`@kitz/paka`](./packages/paka)         | `Paka`       | Package metadata extraction and JSDoc generation from Markdown                         |
 | [`@kitz/pkg`](./packages/pkg)           | `Pkg`        | package.json schema, version pin types, and package-manager detection                  |
 | [`@kitz/resource`](./packages/resource) | `Resource`   | JSONC-backed resource files with typed read/write                                      |

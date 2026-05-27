@@ -269,6 +269,7 @@
         "@kitz/name": "workspace:*",
         "@kitz/num": "workspace:*",
         "@kitz/oak": "workspace:*",
+        "@kitz/otel": "workspace:*",
         "@kitz/paka": "workspace:*",
         "@kitz/pkg": "workspace:*",
         "@kitz/platform": "workspace:*",
@@ -362,6 +363,13 @@
         "ansis": "^4.3.0",
         "effect": "4.0.0-beta.70",
         "zod": "^4.4.3",
+      },
+    },
+    "packages/otel": {
+      "name": "@kitz/otel",
+      "version": "0.0.0-kitz-release",
+      "dependencies": {
+        "effect": "4.0.0-beta.70",
       },
     },
     "packages/oxlint-rules": {
@@ -676,6 +684,8 @@
     "@kitz/num": ["@kitz/num@workspace:packages/num"],
 
     "@kitz/oak": ["@kitz/oak@workspace:packages/oak"],
+
+    "@kitz/otel": ["@kitz/otel@workspace:packages/otel"],
 
     "@kitz/oxlint-rules": ["@kitz/oxlint-rules@workspace:packages/oxlint-rules"],
 

@@ -110,6 +110,7 @@ You will also find these conventions:
 | [`@kitz/name`](./packages/name)                       | Naming convention utilities        |
 | [`@kitz/num`](./packages/num)                         | Extended number utilities          |
 | [`@kitz/oak`](./packages/oak)                         | CLI argument parsing               |
+| [`@kitz/otel`](./packages/otel)                       | OpenTelemetry trace utilities      |
 | [`@kitz/package-manager`](./packages/package-manager) | Package manager utilities          |
 | [`@kitz/paka`](./packages/paka)                       | Package utilities                  |
 | [`@kitz/prox`](./packages/prox)                       | Extended proxy utilities           |
