@@ -37,6 +37,7 @@ export class Glyphs extends S.Class<Glyphs>('OtelGlyphs')({
 
 export class PrintOptions extends S.Class<PrintOptions>('OtelPrintOptions')({
   glyphs: S.optional(Glyphs),
+  showAttributes: S.optional(S.Boolean),
   showDuration: S.optional(S.Boolean),
   showService: S.optional(S.Boolean),
   showSpanIds: S.optional(S.Boolean),
@@ -61,6 +62,7 @@ export class Span extends S.Class<Span>('OtelSpan')({
   parentSpanId: S.optional(S.String),
   name: S.String,
   serviceName: S.optional(S.String),
+  attributes: S.optional(S.Record(S.String, S.String)),
   startTimeUnixNano: S.optional(S.String),
   endTimeUnixNano: S.optional(S.String),
   statusCode: S.optional(SpanStatusCode),
@@ -103,6 +105,7 @@ type UnknownRecord = Readonly<Record<string, unknown>>
 type Ordering = -1 | 0 | 1
 
 interface ResolvedPrintOptions {
+  readonly showAttributes: boolean
   readonly showDuration: boolean
   readonly showService: boolean
   readonly showSpanIds: boolean
@@ -119,6 +122,7 @@ interface SpanNode {
 
 const defaultPrintOptions = {
   glyphs: Glyphs.unicode,
+  showAttributes: true,
   showDuration: true,
   showService: true,
   showSpanIds: false,
@@ -130,6 +134,7 @@ const defaultPrintOptions = {
 const resolvePrintOptions = (options: PrintOptionsInput | undefined): ResolvedPrintOptions => ({
   glyphs:
     options?.glyphs === undefined ? defaultPrintOptions.glyphs : Glyphs.decodeSync(options.glyphs),
+  showAttributes: options?.showAttributes ?? defaultPrintOptions.showAttributes,
   showDuration: options?.showDuration ?? defaultPrintOptions.showDuration,
   showService: options?.showService ?? defaultPrintOptions.showService,
   showSpanIds: options?.showSpanIds ?? defaultPrintOptions.showSpanIds,
@@ -202,6 +207,7 @@ const spanFromOtlp = (span: unknown, serviceName: string | undefined): Span | un
   const startTimeUnixNano = nonEmptyStringFrom(get(span, 'startTimeUnixNano'))
   const endTimeUnixNano = nonEmptyStringFrom(get(span, 'endTimeUnixNano'))
   const statusCode = statusCodeFrom(get(span, 'status'))
+  const attributes = attributesRecord(get(span, 'attributes'))
 
   return Span.make({
     traceId,
@@ -209,6 +215,7 @@ const spanFromOtlp = (span: unknown, serviceName: string | undefined): Span | un
     name,
     ...(parentSpanId === undefined ? {} : { parentSpanId }),
     ...(serviceName === undefined ? {} : { serviceName }),
+    ...(Object.keys(attributes).length === 0 ? {} : { attributes }),
     ...(startTimeUnixNano === undefined ? {} : { startTimeUnixNano }),
     ...(endTimeUnixNano === undefined ? {} : { endTimeUnixNano }),
     ...(statusCode === undefined ? {} : { statusCode }),
@@ -274,6 +281,22 @@ const formatDuration = (nanos: bigint): string => {
   if (nanos < 1_000_000n) return formatDecimal(nanos, 1_000n, 'us')
   if (nanos < 1_000_000_000n) return formatDecimal(nanos, 1_000_000n, 'ms')
   return formatDecimal(nanos, 1_000_000_000n, 's')
+}
+
+const safeAttributeValue = /^[\w./:@-]+$/u
+
+const formatAttributeValue = (value: string): string =>
+  safeAttributeValue.test(value) ? value : JSON.stringify(value)
+
+const formatAttributes = (
+  attributes: Readonly<Record<string, string>> | undefined,
+): string | undefined => {
+  if (attributes === undefined) return undefined
+
+  const entries = Object.entries(attributes)
+  if (entries.length === 0) return undefined
+
+  return `{${entries.map(([key, value]) => `${key}=${formatAttributeValue(value)}`).join(' ')}}`
 }
 
 const compareString = (a: string, b: string): Ordering => {
@@ -353,10 +376,14 @@ const nodesFor = (trace: Trace, options: ResolvedPrintOptions): readonly SpanNod
 }
 
 const spanLabel = (span: Span, options: ResolvedPrintOptions): string => {
-  const parts = [span.name]
+  const parts = [
+    ...(options.showService && span.serviceName !== undefined ? [`[${span.serviceName}]`] : []),
+    span.name,
+  ]
   const duration = span.durationUnixNano
+  const attributes = formatAttributes(span.attributes)
 
-  if (options.showService && span.serviceName !== undefined) parts.push(`[${span.serviceName}]`)
+  if (options.showAttributes && attributes !== undefined) parts.push(attributes)
   if (options.showDuration && duration !== undefined) parts.push(formatDuration(duration))
   if (options.showStatus && span.statusCode !== undefined && span.statusCode !== 'unset') {
     parts.push(Glyphs.status(options.glyphs, span.statusCode))

@@ -1,15 +1,16 @@
 import { HashSet } from 'effect'
-import type { PublishCapability } from '../models/capability.js'
-import { unsupported, supported, type CapabilityResult } from '../models/capability.js'
+import * as Capability from '../models/capability.js'
 
 export interface FakeProvider {
   readonly id: 'fake-registry'
   readonly owner: 'test-only'
-  readonly supportedCapabilities: HashSet.HashSet<PublishCapability>
-  readonly capabilityResult: (capability: PublishCapability) => CapabilityResult
+  readonly supportedCapabilities: HashSet.HashSet<Capability.PublishCapability>
+  readonly capabilityResult: (
+    capability: Capability.PublishCapability,
+  ) => Capability.CapabilityResult
 }
 
-export const make = (capabilities: Iterable<PublishCapability>): FakeProvider => {
+export const make = (capabilities: Iterable<Capability.PublishCapability>): FakeProvider => {
   const supportedCapabilities = HashSet.fromIterable(capabilities)
   return {
     id: 'fake-registry',
@@ -17,12 +18,12 @@ export const make = (capabilities: Iterable<PublishCapability>): FakeProvider =>
     supportedCapabilities,
     capabilityResult: (capability) =>
       HashSet.has(supportedCapabilities, capability)
-        ? supported({
+        ? Capability.Supported.from({
             capability,
             provider: 'fake-registry',
             evidence: [`fake fixture supports ${capability}`],
           })
-        : unsupported({
+        : Capability.Unsupported.from({
             capability,
             provider: 'fake-registry',
             reason: 'not-supported-by-provider',

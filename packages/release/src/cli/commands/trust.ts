@@ -36,7 +36,7 @@ Cli.run(Env.Live)(
           ...(packageName === undefined ? {} : { packageName }),
           ...(registry === undefined ? {} : { registry }),
           json: has(args, '--json'),
-        }).join(' '),
+        }).argv.join(' '),
       )
       return
     }
@@ -81,7 +81,7 @@ Cli.run(Env.Live)(
           ...(registry === undefined ? {} : { registry }),
           yes: has(args, '--yes'),
           dryRun: has(args, '--dry-run'),
-        }).join(' '),
+        }).argv.join(' '),
       )
       return
     }
@@ -104,7 +104,7 @@ Cli.run(Env.Live)(
           ...(registry === undefined ? {} : { registry }),
           yes: has(args, '--yes'),
           dryRun: has(args, '--dry-run'),
-        }).join(' '),
+        }).argv.join(' '),
       )
       return
     }
@@ -134,7 +134,7 @@ Cli.run(Env.Live)(
           ...(registry === undefined ? {} : { registry }),
           yes: has(args, '--yes'),
           dryRun: has(args, '--dry-run'),
-        }).join(' '),
+        }).argv.join(' '),
       )
       return
     }

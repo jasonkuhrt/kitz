@@ -17,8 +17,8 @@ describe('otel', () => {
         Span.make({
           traceId: 'trace-1',
           spanId: 'root',
-          name: 'release.apply',
-          serviceName: 'releasemanager',
+          name: 'apply',
+          serviceName: 'releaseManager',
           startTimeUnixNano: '1000000000',
           endTimeUnixNano: '1120000000',
         }),
@@ -27,7 +27,8 @@ describe('otel', () => {
           spanId: 'pack',
           parentSpanId: 'root',
           name: 'pack',
-          serviceName: 'packagemanager',
+          serviceName: 'packageManager',
+          attributes: { 'release.package.name': '@kitz/core' },
           startTimeUnixNano: '1010000000',
           endTimeUnixNano: '1030000000',
         }),
@@ -36,7 +37,8 @@ describe('otel', () => {
           spanId: 'publish',
           parentSpanId: 'root',
           name: 'publish',
-          serviceName: 'packageregistry',
+          serviceName: 'packageRegistry',
+          attributes: { 'release.package.name': '@kitz/core' },
           startTimeUnixNano: '1040000000',
           endTimeUnixNano: '1110000000',
           statusCode: 'error',
@@ -47,9 +49,9 @@ describe('otel', () => {
     expect(print(trace)).toBe(
       [
         'trace trace-1 (3 spans)',
-        '└─ release.apply [releasemanager] 120ms',
-        '   ├─ pack [packagemanager] 20ms',
-        '   └─ publish [packageregistry] 70ms ✗',
+        '└─ [releaseManager] apply 120ms',
+        '   ├─ [packageManager] pack {release.package.name=@kitz/core} 20ms',
+        '   └─ [packageRegistry] publish {release.package.name=@kitz/core} 70ms ✗',
       ].join('\n'),
     )
   })
@@ -61,7 +63,7 @@ describe('otel', () => {
         Span.make({
           traceId: 'trace-1',
           spanId: 'root',
-          name: 'release.apply',
+          name: 'apply',
           statusCode: 'ok',
         }),
         Span.make({
@@ -91,12 +93,9 @@ describe('otel', () => {
     })
 
     expect(print(trace, { glyphs, showDuration: false })).toBe(
-      [
-        'trace trace-1 (3 spans)',
-        '╘═ release.apply pass',
-        '   ╞═ pack pass',
-        '   ╘═ publish fail',
-      ].join('\n'),
+      ['trace trace-1 (3 spans)', '╘═ apply pass', '   ╞═ pack pass', '   ╘═ publish fail'].join(
+        '\n',
+      ),
     )
   })
 
@@ -145,7 +144,8 @@ describe('otel', () => {
                   traceId: 'a',
                   spanId: 'child',
                   parentSpanId: 'root',
-                  name: 'filesystem.read',
+                  name: 'read',
+                  attributes: [{ key: 'fs.path', value: { stringValue: './package.json' } }],
                   startTimeUnixNano: '1200',
                   endTimeUnixNano: '1500',
                 },
@@ -167,11 +167,11 @@ describe('otel', () => {
     expect(printAll(traces, { showTraceId: true })).toBe(
       [
         'trace a (2 spans)',
-        '└─ workflow [release] 1us ✓',
-        '   └─ filesystem.read [release] 300ns',
+        '└─ [release] workflow 1us ✓',
+        '   └─ [release] read {fs.path=./package.json} 300ns',
         '',
         'trace b (1 span)',
-        '└─ credentials.resolve [release] 1us ✗',
+        '└─ [release] credentials.resolve 1us ✗',
       ].join('\n'),
     )
   })
@@ -214,7 +214,7 @@ describe('otel', () => {
     )
 
     expect(printAll(traces)).toBe(
-      ['trace a (2 spans)', '└─ git.push [git]', '   └─ github.release [github]'].join('\n'),
+      ['trace a (2 spans)', '└─ [git] git.push', '   └─ [github] github.release'].join('\n'),
     )
   })
 })

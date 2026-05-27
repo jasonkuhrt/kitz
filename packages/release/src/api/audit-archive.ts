@@ -1,5 +1,5 @@
 import { Fs } from '@kitz/fs'
-import { Schema } from 'effect'
+import { Array as A, Schema } from 'effect'
 import { Digest, sha256Text } from './digest.js'
 import { AuditArchiveManifest, DetachedSignature, type PlanDigest } from './release-contract.js'
 
@@ -52,17 +52,17 @@ const tarEntry = (path: string, content: Uint8Array): Uint8Array => {
   writeAscii(header, 265, 32, 'kitz')
   writeAscii(header, 297, 32, 'kitz')
 
-  const checksum = header.reduce((sum, byte) => sum + byte, 0)
+  const checksum = A.reduce(header, 0, (sum, byte) => sum + byte)
   writeAscii(header, 148, 8, checksum.toString(8).padStart(6, '0') + '\0 ')
   output.set(content, 512)
   return output
 }
 
 const tar = (files: readonly AuditPayloadFile[]): Uint8Array => {
-  const entries = files.map((file) =>
+  const entries = A.map(files, (file) =>
     tarEntry(Fs.Path.toString(file.path), encoder.encode(file.content)),
   )
-  const size = entries.reduce((sum, entry) => sum + entry.length, 1024)
+  const size = A.reduce(entries, 1024, (sum, entry) => sum + entry.length)
   const output = new Uint8Array(size)
   let offset = 0
 
@@ -83,7 +83,7 @@ export const makeAuditManifest = (params: {
     schemaVersion: 1,
     planDigest: params.planDigest,
     createdAt: params.createdAt,
-    files: params.payloads.map((payload) => ({
+    files: A.map(params.payloads, (payload) => ({
       path: payload.path,
       sha256: sha256Text(payload.content),
     })),
@@ -101,11 +101,12 @@ export const makeAuditArchive = (params: {
 }): AuditArchiveBundle => {
   const manifest = makeAuditManifest(params)
   const manifestJson = `${JSON.stringify(Schema.encodeSync(AuditArchiveManifest)(manifest), null, 2)}\n`
-  const checksums = params.payloads
-    .map((payload) => `${sha256Text(payload.content).value}  ${Fs.Path.toString(payload.path)}`)
-    .join('\n')
+  const checksums = A.map(
+    params.payloads,
+    (payload) => `${sha256Text(payload.content).value}  ${Fs.Path.toString(payload.path)}`,
+  ).join('\n')
   const signature = `${JSON.stringify(Schema.encodeSync(DetachedSignature)(manifest.signature), null, 2)}\n`
-  const payloads: AuditPayloadFile[] = [
+  const payloads = [
     { path: Fs.Path.RelFile.fromString('./manifest.json'), content: manifestJson },
     { path: Fs.Path.RelFile.fromString('./sha256sums.txt'), content: `${checksums}\n` },
     { path: Fs.Path.RelFile.fromString('./manifest.json.sig'), content: signature },

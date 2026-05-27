@@ -11,7 +11,7 @@ import { Effect, FileSystem, Layer, Option, Ref } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { makeCascadeCommit } from './analyzer/models/commit.js'
 import { sha256Bytes, sha256Text } from './digest.js'
-import { preparePackageArtifact } from './executor/publish.js'
+import { preparePackageArtifact, PublishError } from './executor/publish.js'
 import {
   makeManifestFromPrepared,
   makeManifestFromPlan,
@@ -307,7 +307,7 @@ describe('artifact manifest', () => {
     )
 
     expect(result.packCalls).toEqual([])
-    expect(result.error._tag).toBe('PublishError')
+    expect(result.error).toBeInstanceOf(PublishError)
   })
 
   test('rehearsal gives pack child processes only the plan-approved environment', async () => {
@@ -404,7 +404,12 @@ describe('artifact manifest', () => {
         ),
       ),
     )
-    expect((rehearseError as any).context.detail).toContain('lifecycle-script-disallowed')
+    expect(rehearseError).toBeInstanceOf(PublishError)
+    if (rehearseError instanceof PublishError) {
+      expect('detail' in rehearseError.context ? rehearseError.context.detail : '').toContain(
+        'lifecycle-script-disallowed',
+      )
+    }
   })
 
   test('accepts lifecycle scripts only when command and package source digests match', async () => {
@@ -709,7 +714,12 @@ describe('artifact manifest', () => {
       'release.artifact.engine-node-mismatch',
       'release.artifact.package-manager-mismatch',
     ])
-    expect((rehearseError as any).context.detail).toContain('engine-node-mismatch')
+    expect(rehearseError).toBeInstanceOf(PublishError)
+    if (rehearseError instanceof PublishError) {
+      expect('detail' in rehearseError.context ? rehearseError.context.detail : '').toContain(
+        'engine-node-mismatch',
+      )
+    }
   })
 
   test('validates plan digest, required release artifacts, forbidden files, and bytes', async () => {

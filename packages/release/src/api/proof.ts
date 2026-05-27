@@ -1,25 +1,27 @@
-import { PlatformError, FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
-import { Effect, Option, Schema } from 'effect'
+import {
+  Array as A,
+  Clock,
+  Effect,
+  FileSystem,
+  Option,
+  PlatformError,
+  Result,
+  Schema,
+} from 'effect'
 import { sha256Json } from './digest.js'
 import type { Plan } from './planner/models/plan.js'
-import {
-  capabilityResultForProvider,
-  type CapabilityProviderId,
-  type PublishCapability,
-} from './publishing/models/capability.js'
+import * as Capability from './publishing/models/capability.js'
 import {
   PlanDigest,
   ProofArtifact,
   ProofRecord,
   ProofTransition,
-  type ProvenanceMode,
-  type RuntimeHost,
   type ProofStatus,
 } from './release-contract.js'
 
@@ -90,19 +92,31 @@ const observedRecord = (params: {
 
 const capabilityRecord = (params: {
   readonly id: string
-  readonly provider: CapabilityProviderId
-  readonly capability: PublishCapability
+  readonly provider: Capability.CapabilityProviderId
+  readonly capability: Capability.PublishCapability
   readonly now: string
 }): ProofRecord => {
-  const result = capabilityResultForProvider({
+  const result = Capability.CapabilityMatrixRow.resultForProvider({
     capability: params.capability,
     provider: params.provider,
   })
-  const status: ProofStatus = result._tag === 'Supported' ? 'proven' : 'blocked'
-  const reason =
-    result._tag === 'Supported'
-      ? 'provider capability supported'
-      : `provider capability unsupported: ${result.reason}`
+  const status = result.isSupported ? 'proven' : 'blocked'
+  const reason = Capability.Unsupported.is(result)
+    ? `provider capability unsupported: ${result.reason}`
+    : 'provider capability supported'
+  const evidence = Capability.Unsupported.is(result)
+    ? {
+        capability: result.capability,
+        provider: result.provider,
+        reason: result.reason,
+        evidence: result.evidence,
+        blockingPlanFields: result.blockingPlanFields,
+      }
+    : {
+        capability: result.capability,
+        provider: result.provider,
+        evidence: result.evidence,
+      }
 
   return ProofRecord.make({
     id: params.id,
@@ -110,7 +124,7 @@ const capabilityRecord = (params: {
     dependsOn: ['plan.publish-intent'],
     recheckMode: 'pre-apply',
     observedAt: params.now,
-    evidence: result,
+    evidence,
     proofHistory: [transition(status, reason, params.now)],
   })
 }
@@ -120,7 +134,7 @@ const capabilityRecordsForPlan = (plan: Plan, now: string): ProofRecord[] => {
 
   const packDriver = plan.publishIntent.profile.packDriver
   const publishInvoker = plan.publishIntent.profile.publishInvoker
-  const publishCapabilities: PublishCapability[] = [
+  const publishCapabilities: Capability.PublishCapability[] = [
     'publish:tarball',
     'publish:tag',
     'publish:registry',
@@ -156,7 +170,7 @@ const capabilityRecordsForPlan = (plan: Plan, now: string): ProofRecord[] => {
       capability: 'pack:packlist',
       now,
     }),
-    ...publishCapabilities.map((capability) =>
+    ...A.map(publishCapabilities, (capability) =>
       capabilityRecord({
         id: `capability.${capability.replace(':', '.')}`,
         provider: publishInvoker,
@@ -168,7 +182,7 @@ const capabilityRecordsForPlan = (plan: Plan, now: string): ProofRecord[] => {
 }
 
 const releaseSubjectsForPlan = (plan: Plan) =>
-  [...plan.releases, ...plan.cascades].map((item) => ({
+  A.map([...plan.releases, ...plan.cascades], (item) => ({
     packageName: item.package.name.moniker,
     version: item.nextVersion.toString(),
     tag: Pkg.Pin.toString(
@@ -202,11 +216,11 @@ const credentialRecordsForPlan = (
 
   const intent = plan.publishIntent
   const subjects = releaseSubjectsForPlan(plan)
-  const packageRecords = subjects.flatMap((subject) => {
+  const packageRecords = A.flatMap(subjects, (subject) => {
     const name = subject.packageName
     const access = observations.packageAccess?.[name]
     const accessError = observations.packageAccessErrors?.[name]
-    const status: ProofStatus =
+    const status =
       access !== undefined
         ? intent.access.mode === 'omit' || access === intent.access.value
           ? 'proven'
@@ -257,12 +271,12 @@ const credentialRecordsForPlan = (
     ]
   })
 
-  const runtimeHost: RuntimeHost = intent.auth.runtimeHost
+  const runtimeHost = intent.auth.runtimeHost
   const otp = intent.auth.otpPolicy
   const unattended = runtimeHost !== 'local-interactive'
-  const otpStatus: ProofStatus =
+  const otpStatus =
     otp.mode === 'forbidden' || otp.mode === 'env' || !unattended ? 'proven' : 'unprovable'
-  const identityStatus: ProofStatus =
+  const identityStatus =
     observations.identity !== undefined
       ? 'proven'
       : observations.identityError !== undefined
@@ -316,7 +330,7 @@ const sideEffectProofRecordsForPlan = (
 
   const intent = plan.publishIntent
   const subjects = releaseSubjectsForPlan(plan)
-  const gitRecords = subjects.map((subject) => {
+  const gitRecords = A.map(subjects, (subject) => {
     const proof = observations.gitPushDryRun?.[subject.tag]
     const status = gitDryRunStatus(proof)
     return observedRecord({
@@ -345,14 +359,14 @@ const sideEffectProofRecordsForPlan = (
           observedRecord({
             id: 'env.git.push-dry-run.atomic',
             status: gitDryRunStatus(observations.atomicGitPushDryRun),
-            dependsOn: gitRecords.map((record) => record.id),
+            dependsOn: A.map(gitRecords, (record) => record.id),
             now,
             reason:
               gitDryRunStatus(observations.atomicGitPushDryRun) === 'proven'
                 ? 'git dry-run accepted atomic multi-tag push'
                 : 'git dry-run did not prove atomic multi-tag push',
             evidence: {
-              tags: subjects.map((subject) => subject.tag),
+              tags: A.map(subjects, (subject) => subject.tag),
               remote: intent.git.remote,
               ...gitDryRunEvidence(observations.atomicGitPushDryRun),
             },
@@ -361,7 +375,7 @@ const sideEffectProofRecordsForPlan = (
         ]
       : []
 
-  const releasePermissionStatus: ProofStatus =
+  const releasePermissionStatus =
     observations.githubReleasePermission === true
       ? 'proven'
       : observations.githubReleasePermission === false
@@ -391,7 +405,7 @@ const sideEffectProofRecordsForPlan = (
       },
       recheckMode: 'pre-apply-and-on-mutation-failure',
     }),
-    ...subjects.map((subject) =>
+    ...A.map(subjects, (subject) =>
       observedRecord({
         id: `env.github.release-by-tag.${subject.tag}`,
         status:
@@ -422,7 +436,7 @@ const provenanceRecordForPlan = (
 ): ProofRecord[] => {
   if (plan.publishIntent === undefined) return []
   const intent = plan.publishIntent
-  const mode: ProvenanceMode = intent.provenance.mode
+  const mode = intent.provenance.mode
 
   if (!intent.provenance.required && mode === 'none') {
     return [
@@ -600,13 +614,12 @@ export const collectLocalObservations = (
     const registry = intent.registry.url
     const subjects = releaseSubjectsForPlan(plan)
     const identityResult = yield* cli.whoami({ registry }).pipe(Effect.result)
-    const identity = identityResult._tag === 'Success' ? identityResult.success : undefined
-    const identityError =
-      identityResult._tag === 'Failure'
-        ? identityResult.failure instanceof Error
-          ? identityResult.failure.message
-          : String(identityResult.failure)
-        : undefined
+    const identity = Result.isSuccess(identityResult) ? identityResult.success : undefined
+    const identityError = Result.isFailure(identityResult)
+      ? identityResult.failure instanceof Error
+        ? identityResult.failure.message
+        : String(identityResult.failure)
+      : undefined
     const packageAccess: Record<string, 'public' | 'restricted'> = {}
     const packageAccessErrors: Record<string, string> = {}
     const gitPushDryRun: Record<string, { ok: boolean; detail?: string }> = {}
@@ -616,11 +629,11 @@ export const collectLocalObservations = (
         .getAccessStatus(subject.packageName, { registry })
         .pipe(Effect.result)
       if (
-        accessResult._tag === 'Success' &&
+        Result.isSuccess(accessResult) &&
         (accessResult.success === 'public' || accessResult.success === 'restricted')
       ) {
         packageAccess[subject.packageName] = accessResult.success
-      } else if (accessResult._tag === 'Success') {
+      } else if (Result.isSuccess(accessResult)) {
         packageAccessErrors[subject.packageName] =
           `npm access status is ${accessResult.success}, not public or restricted`
       } else {
@@ -633,38 +646,33 @@ export const collectLocalObservations = (
       const gitResult = yield* git
         .pushTagDryRun(subject.tag, intent.git.remote, intent.forcePushTag)
         .pipe(Effect.result)
-      gitPushDryRun[subject.tag] =
-        gitResult._tag === 'Success'
-          ? { ok: true, detail: gitResult.success.stdout }
-          : {
-              ok: false,
-              detail:
-                gitResult.failure instanceof Error
-                  ? gitResult.failure.message
-                  : String(gitResult.failure),
-            }
+      gitPushDryRun[subject.tag] = Result.match(gitResult, {
+        onSuccess: (success) => ({ ok: true, detail: success.stdout }),
+        onFailure: (failure) => ({
+          ok: false,
+          detail: failure instanceof Error ? failure.message : String(failure),
+        }),
+      })
     }
 
     const atomicGitPushDryRun =
       intent.git.atomicTagPush && subjects.length > 1
         ? yield* git
             .pushTagsAtomicDryRun(
-              subjects.map((subject) => subject.tag),
+              A.map(subjects, (subject) => subject.tag),
               intent.git.remote,
               intent.forcePushTag,
             )
             .pipe(
               Effect.result,
               Effect.map((result) =>
-                result._tag === 'Success'
-                  ? { ok: true, detail: result.success.stdout }
-                  : {
-                      ok: false,
-                      detail:
-                        result.failure instanceof Error
-                          ? result.failure.message
-                          : String(result.failure),
-                    },
+                Result.match(result, {
+                  onSuccess: (success) => ({ ok: true, detail: success.stdout }),
+                  onFailure: (failure) => ({
+                    ok: false,
+                    detail: failure instanceof Error ? failure.message : String(failure),
+                  }),
+                }),
               ),
             )
         : undefined
@@ -690,7 +698,7 @@ export const collectGithubObservations = (
 
     for (const subject of releaseSubjectsForPlan(plan)) {
       const result = yield* github.releaseExists(subject.tag).pipe(Effect.result)
-      if (result._tag === 'Success') {
+      if (Result.isSuccess(result)) {
         githubReleaseExists[subject.tag] = result.success
       }
     }
@@ -704,40 +712,41 @@ export const validateProof = (
   proof: ProofArtifact,
   now: string = new Date().toISOString(),
 ): readonly ProofIssue[] => {
-  const ids = proof.records.map((record) => record.id)
-  const blocking = proof.records
-    .filter((record) => record.status !== 'proven' && record.status !== 'deferredToHost')
-    .map(
-      (record): ProofIssue => ({
-        recordId: record.id,
-        code: `release.proof.${record.status}`,
-        detail: `Proof record ${record.id} is ${record.status}.`,
-      }),
-    )
-
-  const missingDependencies = proof.records.flatMap((record) =>
-    record.dependsOn
-      .filter((dependency) => !ids.includes(dependency))
-      .map(
-        (dependency): ProofIssue => ({
-          recordId: record.id,
-          code: 'release.proof.missing-dependency',
-          detail: `Proof record ${record.id} depends on missing record ${dependency}.`,
-        }),
-      ),
+  const ids = A.map(proof.records, (record) => record.id)
+  const blocking = A.map(
+    A.filter(
+      proof.records,
+      (record) => record.status !== 'proven' && record.status !== 'deferredToHost',
+    ),
+    (record): ProofIssue => ({
+      recordId: record.id,
+      code: `release.proof.${record.status}`,
+      detail: `Proof record ${record.id} is ${record.status}.`,
+    }),
   )
 
-  const expired = proof.records
-    .filter(
-      (record) => record.expiresAt !== undefined && Date.parse(record.expiresAt) <= Date.parse(now),
-    )
-    .map(
-      (record): ProofIssue => ({
+  const missingDependencies = A.flatMap(proof.records, (record) =>
+    A.map(
+      A.filter(record.dependsOn, (dependency) => !A.contains(ids, dependency)),
+      (dependency): ProofIssue => ({
         recordId: record.id,
-        code: 'release.proof.expired',
-        detail: `Proof record ${record.id} expired at ${record.expiresAt}.`,
+        code: 'release.proof.missing-dependency',
+        detail: `Proof record ${record.id} depends on missing record ${dependency}.`,
       }),
-    )
+    ),
+  )
+
+  const expired = A.map(
+    A.filter(
+      proof.records,
+      (record) => record.expiresAt !== undefined && Date.parse(record.expiresAt) <= Date.parse(now),
+    ),
+    (record): ProofIssue => ({
+      recordId: record.id,
+      code: 'release.proof.expired',
+      detail: `Proof record ${record.id} expired at ${record.expiresAt}.`,
+    }),
+  )
 
   return [...blocking, ...missingDependencies, ...expired]
 }
@@ -777,7 +786,8 @@ export const prove = (
 ): Effect.Effect<ProofArtifact, PlatformError.PlatformError, Env.Env | FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
-    const proof = makeProofArtifact(plan, new Date().toISOString(), observations)
+    const now = yield* Clock.currentTimeMillis
+    const proof = makeProofArtifact(plan, new Date(now).toISOString(), observations)
     yield* write(proof, proofPathFor(env.cwd, plan))
     return proof
   })

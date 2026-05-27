@@ -12,6 +12,7 @@ import {
   PlanSourceSnapshot,
   publishIntentFromSemantics,
 } from '../release-contract.js'
+import { agentFromProjectManager } from '../publishing/package-manager.js'
 import { resolvePublishSemanticsForPlan } from '../publishing.js'
 import { Plan } from './models/plan.js'
 
@@ -130,9 +131,14 @@ export const attachPublishContract = (params: {
       Fs.Path.join(env.cwd, Fs.Path.RelFile.fromString('./package.json')),
     )
     const packageManagerValue = rootPackageJson['packageManager']
-    const packageManager = splitPackageManager(
+    const declaredPackageManager = splitPackageManager(
       typeof packageManagerValue === 'string' ? packageManagerValue : undefined,
     )
+    const detectedPackageManager = params.config.operator.manager.name
+    const packageManagerVersion =
+      declaredPackageManager.name === detectedPackageManager
+        ? declaredPackageManager.version
+        : 'unknown'
     const headSha = yield* git.getHeadSha().pipe(Effect.orElseSucceed(() => 'unknown'))
     const lockfileDigests = yield* readLockfileDigests(env.cwd)
     const proofPolicy = params.plan.proofPolicy ?? defaultProofPolicy()
@@ -146,6 +152,7 @@ export const attachPublishContract = (params: {
     const publishIntent = publishIntentFromSemantics({
       semantics: publishSemantics,
       trunk: params.config.trunk,
+      packageManager: agentFromProjectManager(params.config.operator.manager.name),
       ...(params.registry !== undefined ? { registry: params.registry } : {}),
     })
     const source = PlanSourceSnapshot.make({
@@ -155,16 +162,16 @@ export const attachPublishContract = (params: {
       releaseConfigDigestSource: 'canonical-effective-config',
       lockfiles: lockfileDigests,
       packageManager: {
-        name: packageManager.name,
-        version: packageManager.version,
-        binary: packageManager.name,
+        name: detectedPackageManager,
+        version: packageManagerVersion,
+        binary: detectedPackageManager,
         subcommands: {
           pack: true,
           publish: true,
         },
       },
       toolVersions: {
-        [packageManager.name]: packageManager.version,
+        [detectedPackageManager]: packageManagerVersion,
       },
     })
     const signingProfileId =

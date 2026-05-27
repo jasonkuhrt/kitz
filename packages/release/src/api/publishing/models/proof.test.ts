@@ -35,7 +35,7 @@ describe('publishing proof models', () => {
     })
     const dryRun = PublishDryRunProof.make({
       driver: 'npm',
-      command: ['npm', 'publish', '--dry-run'],
+      command: Pkg.Manager.Command.fromParts('npm', ['publish', '--dry-run']),
       capabilities: ['publish:tarball', 'publish:dry-run'],
       observedAt: '2026-05-13T00:00:00.000Z',
     })
@@ -45,7 +45,7 @@ describe('publishing proof models', () => {
       version: Semver.fromString('1.0.0'),
       distTag: 'latest',
       registry: 'https://registry.npmjs.org/',
-      command: ['npm', 'publish'],
+      command: Pkg.Manager.Command.fromParts('npm', ['publish']),
       observedAt: '2026-05-13T00:00:00.000Z',
     })
 
@@ -56,6 +56,7 @@ describe('publishing proof models', () => {
     )
     expect(PublishDryRunProof.decodeSync(PublishDryRunProof.encodeSync(dryRun))).toEqual(dryRun)
     expect(PublishReceipt.decodeSync(PublishReceipt.encodeSync(receipt))).toEqual(receipt)
+    expect(receipt.command.argv).toEqual(['npm', 'publish'])
     expect(PublishReceipt.equivalence(receipt, receipt)).toBe(true)
   })
 })

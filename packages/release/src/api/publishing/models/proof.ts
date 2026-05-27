@@ -55,7 +55,7 @@ export class PackedArtifact extends Schema.Class<PackedArtifact>('PackedArtifact
 
 export class PublishDryRunProof extends Schema.Class<PublishDryRunProof>('PublishDryRunProof')({
   driver: PublishDriverId,
-  command: Schema.Array(Schema.String),
+  command: Pkg.Manager.Command,
   capabilities: Schema.Array(PublishCapability),
   observedAt: Schema.String,
 }) {
@@ -74,7 +74,7 @@ export class PublishReceipt extends Schema.Class<PublishReceipt>('PublishReceipt
   version: Semver.Schema,
   distTag: Schema.String,
   registry: Schema.String,
-  command: Schema.Array(Schema.String),
+  command: Pkg.Manager.Command,
   observedAt: Schema.String,
 }) {
   static is = Schema.is(PublishReceipt)

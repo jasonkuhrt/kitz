@@ -8,6 +8,9 @@ import { Test } from '@kitz/test'
 import { Effect, FileSystem, Ref } from 'effect'
 import { execute, executeObservable, toPayload } from './execute.js'
 import { digestForPlan } from '../proof.js'
+import { publishIntentFromSemantics } from '../release-contract.js'
+import { resolvePublishSemantics } from '../publishing.js'
+import { Plan } from '../planner/models/plan.js'
 import {
   decodeJsonRecordSync,
   decodeSemverFromManifest,
@@ -117,6 +120,46 @@ describe('Executor integration', () => {
           ).toBe(true)
         }),
       ),
+  )
+
+  Test.live('uses the frozen publish profile package-manager driver for pack and publish', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+          },
+        })
+
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
+        const contractedPlan = Plan.make({
+          lifecycle: plan.lifecycle,
+          timestamp: plan.timestamp,
+          releases: plan.releases,
+          cascades: plan.cascades,
+          publishIntent: publishIntentFromSemantics({
+            semantics: resolvePublishSemantics({ lifecycle: 'official' }),
+            trunk: 'main',
+            packageManager: 'pnpm',
+          }),
+        })
+
+        yield* execute(contractedPlan, { dryRun: false }).pipe(
+          Effect.provide(harness.workflowLayer),
+        )
+
+        const packCalls = yield* Ref.get(harness.packCalls)
+        const publishCalls = yield* Ref.get(harness.publishCalls)
+
+        expect(packCalls[0]?.packageManager).toBe('pnpm')
+        expect(publishCalls[0]?.packageManager).toBe('pnpm')
+      }),
+    ),
   )
 
   Test.live(

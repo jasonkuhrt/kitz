@@ -136,6 +136,8 @@ describe('executor execute helpers', () => {
         ephemeral: { mode: 'manual' },
       },
       trunk: 'main',
+      packDriver: 'npm',
+      publishInvoker: 'npm',
     })
   })
 })

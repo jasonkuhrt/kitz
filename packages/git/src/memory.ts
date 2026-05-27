@@ -1,4 +1,4 @@
-import { Effect, Layer, Ref } from 'effect'
+import { Effect, HashSet, Layer, Ref } from 'effect'
 import { Author } from './author.js'
 import { Commit } from './commit.js'
 import { Git, GitError, type GitService } from './service.js'
@@ -210,13 +210,13 @@ const makeService = (state: GitMemoryState): GitService => ({
       const parents = yield* Ref.get(state.commitParents)
 
       // BFS to find if sha1 is reachable from sha2
-      const visited = new Set<string>()
+      let visited = HashSet.empty<string>()
       const queue = [sha2]
       while (queue.length > 0) {
         const current = queue.shift()!
         if (current === sha1) return true
-        if (visited.has(current)) continue
-        visited.add(current)
+        if (HashSet.has(visited, current)) continue
+        visited = HashSet.add(visited, current)
         const currentParents = parents[current] ?? []
         queue.push(...currentParents)
       }

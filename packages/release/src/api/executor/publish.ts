@@ -1,4 +1,3 @@
-import { PlatformError, FileSystem } from 'effect'
 import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
@@ -6,7 +5,15 @@ import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
 import { Semver } from '@kitz/semver'
-import { Effect, Result, Schema as S } from 'effect'
+import {
+  Array as A,
+  Effect,
+  FileSystem,
+  PlatformError,
+  Record as EffectRecord,
+  Result,
+  Schema as S,
+} from 'effect'
 import type { Package } from '../analyzer/workspace.js'
 
 const baseTags = ['kit', 'release', 'publish'] as const
@@ -19,7 +26,7 @@ const JsonRecordFromStringSchema = S.fromJsonString(JsonRecordSchema)
 const decodeJsonRecord = S.decodeUnknownEffect(JsonRecordFromStringSchema)
 const artifactRelDir = Fs.Path.RelDir.fromString('./.release/artifacts/')
 const workspaceRelDir = Fs.Path.RelDir.fromString('./.release/workspaces/')
-const stagingIgnore: readonly string[] = ['.git', '.release', 'node_modules']
+const stagingIgnore = ['.git', '.release', 'node_modules']
 
 /**
  * Minimal release info needed for publish preparation and tarball publish.
@@ -37,6 +44,7 @@ export interface PreparedArtifact extends ReleaseInfo {
 export interface ArtifactPathOptions {
   readonly planDigest?: string
   readonly packEnv?: Readonly<Record<string, string | undefined>>
+  readonly packageManager?: NpmRegistry.Cli.PackageManagerCli
 }
 
 /**
@@ -60,6 +68,8 @@ export type PublishError = InstanceType<typeof PublishError>
  * Options for tarball publish.
  */
 export interface PublishOptions {
+  /** Package manager CLI selected by the frozen publish profile. */
+  readonly packageManager?: NpmRegistry.Cli.PackageManagerCli
   /** npm dist-tag (default: 'latest') */
   readonly tag?: string
   /** Registry URL */
@@ -138,7 +148,9 @@ const copyPackageDirectory = (
 const workspaceVersionsFor = (
   releases: readonly ReleaseInfo[],
 ): Readonly<Record<string, Semver.Semver>> =>
-  Object.fromEntries(releases.map((release) => [release.package.name.moniker, release.nextVersion]))
+  A.reduce(releases, EffectRecord.empty<string, Semver.Semver>(), (versions, release) =>
+    EffectRecord.set(versions, release.package.name.moniker, release.nextVersion),
+  )
 
 const renderCleanupReminder = (): string =>
   'Re-run `release doctor --onlyRule plan.packages-runtime-targets-source-oriented` after publish to confirm the repo returned to source-first state.'
@@ -152,14 +164,15 @@ const renderPrepareFailureDetail = (params: {
   readonly prepareError: unknown
   readonly packHooks: readonly string[]
 }): string =>
-  [
-    formatUnknownError(params.prepareError),
-    'Source package manifests were not mutated; packing ran from an isolated release workspace.',
-    renderPackHookDisclaimer(params.packHooks),
-    renderCleanupReminder(),
-  ]
-    .filter((part) => part !== undefined)
-    .join(' ')
+  A.filter(
+    [
+      formatUnknownError(params.prepareError),
+      'Source package manifests were not mutated; packing ran from an isolated release workspace.',
+      renderPackHookDisclaimer(params.packHooks),
+      renderCleanupReminder(),
+    ],
+    (part): part is string => part !== undefined,
+  ).join(' ')
 
 const renderPublishFailureDetail = (publishError: unknown): string =>
   [
@@ -245,6 +258,9 @@ export const preparePackageArtifact = (
       .pack({
         cwd: stagedPackageDir,
         packDestination: artifactDir,
+        ...(options?.packageManager !== undefined
+          ? { packageManager: options.packageManager }
+          : {}),
         ...(options?.packEnv !== undefined ? { env: options.packEnv } : {}),
       })
       .pipe(Effect.result)
@@ -290,6 +306,9 @@ export const publishPreparedArtifact = (
     const publishResult = yield* cli
       .publish({
         tarball: artifact.tarball,
+        ...(options?.packageManager !== undefined
+          ? { packageManager: options.packageManager }
+          : {}),
         access: 'public',
         ignoreScripts: true,
         ...(options?.tag && { tag: options.tag }),

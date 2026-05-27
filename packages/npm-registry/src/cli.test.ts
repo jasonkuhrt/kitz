@@ -33,6 +33,7 @@ const makeHandle = (stdout: string, exitCode: number): ChildProcessSpawner.Child
 
 const makeSpawnerLayer = (options?: { readonly notFoundTarballUrl?: string }) => {
   const commands: string[][] = []
+  const commandNames: string[] = []
   const commandOptions: ChildProcess.StandardCommand['options'][] = []
   const spawner = ChildProcessSpawner.make((command) => {
     const standard = ChildProcess.isStandardCommand(command) ? command : undefined
@@ -42,6 +43,7 @@ const makeSpawnerLayer = (options?: { readonly notFoundTarballUrl?: string }) =>
 
     const args = standard.args
     const cwd = standard.options?.cwd
+    commandNames.push(standard.command)
     commands.push(args ? [...args] : [])
     commandOptions.push(standard.options)
 
@@ -216,7 +218,23 @@ const makeSpawnerLayer = (options?: { readonly notFoundTarballUrl?: string }) =>
         return Effect.succeed(makeHandle('[]\n', 0))
       }
 
+      if (standard.command === 'pnpm') {
+        return Effect.succeed(
+          makeHandle(
+            JSON.stringify({
+              filename: '/repo/.release/artifacts/react-19.2.0.tgz',
+              files: [{ path: 'package.json' }],
+            }) + '\n',
+            0,
+          ),
+        )
+      }
+
       return Effect.succeed(makeHandle('[{"filename":"react-19.2.0.tgz"}]\n', 0))
+    }
+
+    if (standard.command === 'bun' && args?.[0] === 'pm' && args?.[1] === 'pack') {
+      return Effect.succeed(makeHandle('/repo/.release/artifacts/react-19.2.0.tgz\n', 0))
     }
 
     // npm publish
@@ -298,6 +316,7 @@ const makeSpawnerLayer = (options?: { readonly notFoundTarballUrl?: string }) =>
 
   return {
     commands,
+    commandNames,
     commandOptions,
     layer: Layer.succeed(ChildProcessSpawner.ChildProcessSpawner, spawner),
   }
@@ -389,6 +408,29 @@ describe('npm-registry cli', () => {
     })
   })
 
+  test('pack can run through pnpm native pack output', async () => {
+    const spawner = makeSpawnerLayer()
+
+    const result = await Effect.runPromise(
+      pack({
+        packageManager: 'pnpm',
+        cwd: Fs.Path.AbsDir.fromString('/repo/packages/react/'),
+        packDestination: Fs.Path.AbsDir.fromString('/repo/.release/artifacts/'),
+      }).pipe(Effect.provide(spawner.layer)),
+    )
+
+    expect(result.filename).toBe('react-19.2.0.tgz')
+    expect(Fs.Path.toString(result.tarball)).toBe('/repo/.release/artifacts/react-19.2.0.tgz')
+    expect(result.files).toEqual([{ path: 'package.json' }])
+    expect(spawner.commandNames.at(-1)).toBe('pnpm')
+    expect(spawner.commands).toContainEqual([
+      'pack',
+      '--json',
+      '--pack-destination',
+      '/repo/.release/artifacts/',
+    ])
+  })
+
   test('pack maps invalid JSON and empty pack metadata to NpmCliError', async () => {
     const spawnError = await Effect.runPromise(
       pack({
@@ -452,6 +494,42 @@ describe('npm-registry cli', () => {
       '--provenance',
       '--provenance-file',
       '/repo/provenance.jsonl',
+      '--dry-run',
+    ])
+  })
+
+  test('publish can run through pnpm native publish with release-safe flags', async () => {
+    const spawner = makeSpawnerLayer()
+
+    await Effect.runPromise(
+      publish({
+        packageManager: 'pnpm',
+        tarball: Fs.Path.AbsFile.fromString('/repo/.release/artifacts/react-19.2.0.tgz'),
+        tag: 'next',
+        registry: 'https://registry.example.test/',
+        access: 'public',
+        ignoreScripts: true,
+        dryRun: true,
+        otp: '123456',
+        provenance: true,
+      }).pipe(Effect.provide(spawner.layer)),
+    )
+
+    expect(spawner.commandNames.at(-1)).toBe('pnpm')
+    expect(spawner.commands).toContainEqual([
+      'publish',
+      '/repo/.release/artifacts/react-19.2.0.tgz',
+      '--access',
+      'public',
+      '--ignore-scripts',
+      '--no-git-checks',
+      '--tag',
+      'next',
+      '--registry',
+      'https://registry.example.test/',
+      '--otp',
+      '123456',
+      '--provenance',
       '--dry-run',
     ])
   })

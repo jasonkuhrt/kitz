@@ -2,6 +2,7 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Effect, Layer } from 'effect'
 import { describe, expect, test } from 'bun:test'
+import { Command } from './Command.js'
 import { detect } from './detect.js'
 import { renderScriptCommand } from './render.js'
 
@@ -153,5 +154,17 @@ describe('Pkg.Manager.renderScriptCommand', () => {
   test('renders yarn and unknown managers with trimmed arguments', () => {
     expect(renderScriptCommand('yarn', 'release', ' doctor ')).toBe('yarn release doctor')
     expect(renderScriptCommand('unknown', 'release')).toBe('release')
+  })
+})
+
+describe('Pkg.Manager.Command', () => {
+  test('keeps package-manager command and args as separate structured data', () => {
+    const command = Command.fromParts('pnpm', ['publish', '--dry-run'])
+    const roundTrip = Command.decodeSync(Command.encodeSync(command))
+
+    expect(Command.is(roundTrip)).toBe(true)
+    expect(roundTrip.command).toBe('pnpm')
+    expect(roundTrip.args).toEqual(['publish', '--dry-run'])
+    expect(roundTrip.argv).toEqual(['pnpm', 'publish', '--dry-run'])
   })
 })

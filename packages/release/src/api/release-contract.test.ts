@@ -29,6 +29,19 @@ describe('release contract models', () => {
     expect(intent.artifacts.scriptPolicy.default).toBe('deny')
   })
 
+  test('publish intent can use the project package-manager driver', () => {
+    const semantics = resolvePublishSemantics({ lifecycle: 'official' })
+    const intent = publishIntentFromSemantics({
+      semantics,
+      trunk: 'main',
+      packageManager: 'pnpm',
+    })
+
+    expect(intent.profile.id).toBe('pnpm-tarball')
+    expect(intent.profile.packDriver).toBe('pnpm')
+    expect(intent.profile.publishInvoker).toBe('pnpm')
+  })
+
   test('trusted publisher intent records registry, host, proof, and provenance defaults', () => {
     const semantics = resolvePublishSemantics({
       lifecycle: 'official',

@@ -1,4 +1,4 @@
-import type { Effect, Option } from 'effect'
+import { Context, Effect, Option } from 'effect'
 import type { PublishingCapabilityError } from './errors.js'
 import type {
   AccessProof,
@@ -15,7 +15,7 @@ import type {
   VersionQuery,
 } from './requests.js'
 
-export interface RegistryClient {
+export interface PackageRegistryService {
   readonly viewPackageVersion: (
     request: VersionQuery,
   ) => Effect.Effect<Option.Option<VersionProof>, PublishingCapabilityError>
@@ -36,3 +36,7 @@ export interface RegistryClient {
     request: VersionQuery,
   ) => Effect.Effect<RegistryTarballObservation, PublishingCapabilityError>
 }
+
+export class PackageRegistry extends Context.Service<PackageRegistry, PackageRegistryService>()(
+  'packageregistry',
+) {}

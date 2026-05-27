@@ -79,8 +79,8 @@ describe('planner publish contract', () => {
     expect(result.signingProfileId).toBe('developer-key')
     expect(result.publishIntent?.distTag).toBe('latest')
     expect(result.publishIntent?.registry.url).toBe('https://registry.example.test/')
-    expect(result.publishIntent?.profile.packDriver).toBe('npm')
-    expect(result.publishIntent?.profile.publishInvoker).toBe('npm')
+    expect(result.publishIntent?.profile.packDriver).toBe('pnpm')
+    expect(result.publishIntent?.profile.publishInvoker).toBe('pnpm')
     expect(result.source?.headSha).toBe('abc1234')
     expect(result.source?.packageManager).toEqual({
       name: 'pnpm',
@@ -180,6 +180,37 @@ describe('planner publish contract', () => {
 
     expect(result.planDigest).toBeDefined()
     expect(result.releases.map((release) => release.package.name.moniker)).toEqual(['@kitz/core'])
+  })
+
+  test('source snapshot uses the resolved package-manager detection when manifest version is absent', async () => {
+    const result = await Effect.runPromise(
+      withPublishIntent({
+        plan,
+        config: resolvedConfig,
+      }).pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            Fs.Memory.layer({
+              '/repo/package.json': JSON.stringify({ name: 'fixture' }),
+              '/repo/pnpm-lock.yaml': 'lockfile-content',
+            }),
+            Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') }),
+            Git.Memory.make({ headSha: Git.Sha.make('abc1234') }),
+          ),
+        ),
+      ),
+    )
+
+    expect(result.publishIntent?.profile.packDriver).toBe('pnpm')
+    expect(result.source?.packageManager).toEqual({
+      name: 'pnpm',
+      version: 'unknown',
+      binary: 'pnpm',
+      subcommands: {
+        pack: true,
+        publish: true,
+      },
+    })
   })
 
   test('source snapshot validation catches missing, changed, and newly added lockfiles', async () => {

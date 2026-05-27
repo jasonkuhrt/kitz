@@ -316,4 +316,4 @@ export interface GithubService {
 /**
  * GitHub service tag.
  */
-export class Github extends Context.Service<Github, GithubService>()('Github') {}
+export class Github extends Context.Service<Github, GithubService>()('github') {}

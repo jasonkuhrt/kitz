@@ -190,4 +190,4 @@ export interface GitService {
 /**
  * Git service tag.
  */
-export class Git extends Context.Service<Git, GitService>()('Git') {}
+export class Git extends Context.Service<Git, GitService>()('git') {}

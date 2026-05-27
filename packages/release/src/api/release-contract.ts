@@ -771,12 +771,13 @@ export const publishIntentFromSemantics = (params: {
   readonly semantics: PublishSemantics
   readonly trunk: string
   readonly registry?: string
+  readonly packageManager?: PublishDriverId
 }): PublishIntent =>
   PublishIntent.make({
     profile: PublishProfile.make({
-      id: 'npm-tarball',
-      packDriver: 'npm',
-      publishInvoker: 'npm',
+      id: `${params.packageManager ?? 'npm'}-tarball`,
+      packDriver: params.packageManager ?? 'npm',
+      publishInvoker: params.packageManager ?? 'npm',
       registryClient: 'npm-registry-api',
       credentialProvider: params.semantics.channel.mode,
       trustedPublisherAdmin:

@@ -1,4 +1,6 @@
-import { HashMap, Option, Schema } from 'effect'
+import { Array as A, HashMap, Option, Schema } from 'effect'
+import { ReleaseIoDomain } from './domain.js'
+import { PublishDriverId, publishDriverIdValues } from './driver-id.js'
 
 export const publishCapabilityValues = [
   'tool:version-proof',
@@ -47,38 +49,133 @@ export const UnsupportedCapabilityReason = Schema.Literals([
 ])
 export type UnsupportedCapabilityReason = typeof UnsupportedCapabilityReason.Type
 
-export const CapabilityResult = Schema.Union([
-  Schema.Struct({
-    _tag: Schema.Literal('Supported'),
-    capability: PublishCapability,
-    provider: Schema.String,
-    evidence: Schema.Array(Schema.String),
-  }),
-  Schema.Struct({
-    _tag: Schema.Literal('Unsupported'),
-    capability: PublishCapability,
-    provider: Schema.String,
-    reason: UnsupportedCapabilityReason,
-    evidence: Schema.Array(Schema.String),
-    blockingPlanFields: Schema.Array(Schema.String),
-  }),
-])
-export type CapabilityResult = typeof CapabilityResult.Type
+export class Supported extends Schema.TaggedClass<Supported>()('CapabilityResultSupported', {
+  capability: PublishCapability,
+  provider: Schema.String,
+  evidence: Schema.Array(Schema.String),
+}) {
+  static is = Schema.is(Supported)
+  static decode = Schema.decodeUnknownEffect(Supported)
+  static decodeSync = Schema.decodeUnknownSync(Supported)
+  static encode = Schema.encodeUnknownEffect(Supported)
+  static encodeSync = Schema.encodeUnknownSync(Supported)
+  static equivalence = Schema.toEquivalence(Supported)
+  static ordered = false as const
 
-export const CapabilityOwner = Schema.Literals([
-  'tool',
-  'pack-driver',
-  'publish-invoker',
-  'registry-client',
-  'credential-provider',
-  'trusted-publisher-admin',
-])
+  static from = (params: {
+    readonly capability: PublishCapability
+    readonly provider: string
+    readonly evidence: readonly string[]
+  }) =>
+    Supported.make({
+      capability: params.capability,
+      provider: params.provider,
+      evidence: [...params.evidence],
+    })
+
+  get isSupported() {
+    return true as const
+  }
+
+  get supportState() {
+    return 'supported' as const
+  }
+}
+
+export class Unsupported extends Schema.TaggedClass<Unsupported>()('CapabilityResultUnsupported', {
+  capability: PublishCapability,
+  provider: Schema.String,
+  reason: UnsupportedCapabilityReason,
+  evidence: Schema.Array(Schema.String),
+  blockingPlanFields: Schema.Array(Schema.String),
+}) {
+  static is = Schema.is(Unsupported)
+  static decode = Schema.decodeUnknownEffect(Unsupported)
+  static decodeSync = Schema.decodeUnknownSync(Unsupported)
+  static encode = Schema.encodeUnknownEffect(Unsupported)
+  static encodeSync = Schema.encodeUnknownSync(Unsupported)
+  static equivalence = Schema.toEquivalence(Unsupported)
+  static ordered = false as const
+
+  static from = (params: {
+    readonly capability: PublishCapability
+    readonly provider: string
+    readonly reason: UnsupportedCapabilityReason
+    readonly evidence: readonly string[]
+    readonly blockingPlanFields?: readonly string[]
+  }) =>
+    Unsupported.make({
+      capability: params.capability,
+      provider: params.provider,
+      reason: params.reason,
+      evidence: [...params.evidence],
+      blockingPlanFields: [...(params.blockingPlanFields ?? [])],
+    })
+
+  get conformanceErrorCode() {
+    return `release.conformance.unsupported.${this.capability.replace(':', '.')}`
+  }
+
+  get isSupported() {
+    return false as const
+  }
+
+  get supportState() {
+    return 'unsupported' as const
+  }
+}
+
+export type CapabilityResult = Supported | Unsupported
+export const CapabilityResult = Schema.Union([Supported, Unsupported])
+export const decodeResultOption = Schema.decodeUnknownOption(CapabilityResult)
+export const isResult = Schema.is(CapabilityResult)
+
+export const CapabilityOwner = ReleaseIoDomain
 export type CapabilityOwner = typeof CapabilityOwner.Type
+
+export const CapabilitySupportState = Schema.Literals(['supported', 'unsupported'])
+export type CapabilitySupportState = typeof CapabilitySupportState.Type
+
+export type CapabilityProviderId = PublishDriverId
+const capabilityOwnerByCapability = {
+  'tool:version-proof': 'packagemanager',
+  'tool:subcommand-proof': 'packagemanager',
+  'tool:flag-proof': 'packagemanager',
+  'tool:invocation-context-proof': 'packagemanager',
+  'pack:tarball': 'packagemanager',
+  'pack:manifest-json': 'packagemanager',
+  'pack:packlist': 'packagemanager',
+  'pack:dry-run': 'packagemanager',
+  'publish:tarball': 'packagemanager',
+  'publish:folder': 'packagemanager',
+  'publish:dry-run': 'packagemanager',
+  'publish:tag': 'packagemanager',
+  'publish:registry': 'packagemanager',
+  'publish:access': 'packagemanager',
+  'publish:otp': 'packagemanager',
+  'publish:provenance-flag': 'packagemanager',
+  'publish:provenance-file': 'packagemanager',
+  'publish:trusted-oidc': 'packagemanager',
+  'publish:ignore-scripts': 'packagemanager',
+  'publish:tolerate-republish': 'packagemanager',
+  'publish:summary-real': 'packagemanager',
+  'registry:view-version': 'packageregistry',
+  'registry:view-dist-tags': 'packageregistry',
+  'registry:view-access': 'packageregistry',
+  'registry:view-tarball-metadata': 'packageregistry',
+  'registry:download-tarball': 'packageregistry',
+  'credential:whoami': 'credentials',
+  'credential:otp': 'credentials',
+  'trust:list': 'credentials',
+  'trust:setup-github': 'credentials',
+  'trust:setup-gitlab': 'credentials',
+  'trust:setup-circleci': 'credentials',
+} as const satisfies Record<PublishCapability, CapabilityOwner>
 
 export class CapabilityMatrixRow extends Schema.Class<CapabilityMatrixRow>('CapabilityMatrixRow')({
   capability: PublishCapability,
   owner: CapabilityOwner,
-  providers: Schema.Record(Schema.String, Schema.Literals(['supported', 'unsupported'])),
+  providers: Schema.Record(PublishDriverId, CapabilitySupportState),
   evidence: Schema.Array(Schema.String),
   conformance: Schema.Array(Schema.String),
 }) {
@@ -89,104 +186,85 @@ export class CapabilityMatrixRow extends Schema.Class<CapabilityMatrixRow>('Capa
   static encodeSync = Schema.encodeUnknownSync(CapabilityMatrixRow)
   static equivalence = Schema.toEquivalence(CapabilityMatrixRow)
   static ordered = false as const
-}
 
-const ownerFor = (capability: PublishCapability): CapabilityOwner => {
-  if (capability.startsWith('tool:')) return 'tool'
-  if (capability.startsWith('pack:')) return 'pack-driver'
-  if (capability.startsWith('publish:')) return 'publish-invoker'
-  if (capability.startsWith('registry:')) return 'registry-client'
-  if (capability.startsWith('credential:')) return 'credential-provider'
-  return 'trusted-publisher-admin'
-}
+  static fromCapability = (capability: PublishCapability) =>
+    CapabilityMatrixRow.make({
+      capability,
+      owner: CapabilityMatrixRow.ownerFor(capability),
+      providers: CapabilityMatrixRow.supportFor(capability),
+      evidence: [`${capability} provider contract`],
+      conformance: [`publisher/drivers/conformance.test.ts:${capability}`],
+    })
 
-const supportFor = (
-  capability: PublishCapability,
-): Readonly<Record<'npm' | 'pnpm' | 'bun', 'supported' | 'unsupported'>> => {
-  if (capability.startsWith('trust:')) {
-    return { npm: 'supported', pnpm: 'unsupported', bun: 'unsupported' }
+  static ownerFor = (capability: PublishCapability): CapabilityOwner =>
+    capabilityOwnerByCapability[capability]
+
+  static supportFor = (
+    capability: PublishCapability,
+  ): Readonly<Record<CapabilityProviderId, CapabilitySupportState>> => {
+    if (capability.startsWith('trust:')) {
+      return { npm: 'supported', pnpm: 'unsupported', bun: 'unsupported' }
+    }
+    if (capability === 'publish:ignore-scripts') {
+      return { npm: 'supported', pnpm: 'supported', bun: 'unsupported' }
+    }
+    if (capability === 'publish:summary-real') {
+      return { npm: 'supported', pnpm: 'supported', bun: 'unsupported' }
+    }
+    if (capability === 'publish:tolerate-republish') {
+      return { npm: 'unsupported', pnpm: 'unsupported', bun: 'supported' }
+    }
+    if (capability === 'publish:trusted-oidc') {
+      return { npm: 'supported', pnpm: 'supported', bun: 'unsupported' }
+    }
+    if (capability === 'publish:provenance-file') {
+      return { npm: 'unsupported', pnpm: 'unsupported', bun: 'unsupported' }
+    }
+    return { npm: 'supported', pnpm: 'supported', bun: 'supported' }
   }
-  if (capability === 'publish:ignore-scripts') {
-    return { npm: 'supported', pnpm: 'supported', bun: 'unsupported' }
+
+  static resultForProvider = (params: {
+    readonly capability: PublishCapability
+    readonly provider: CapabilityProviderId
+  }) => {
+    const row = Option.getOrUndefined(HashMap.get(capabilityMatrixByCapability, params.capability))
+    if (row === undefined) {
+      return Unsupported.from({
+        capability: params.capability,
+        provider: params.provider,
+        reason: 'not-supported-by-provider',
+        evidence: [`${params.capability} has no generated matrix row`],
+        blockingPlanFields: [],
+      })
+    }
+    return row.resultForProvider(params.provider)
   }
-  if (capability === 'publish:summary-real') {
-    return { npm: 'supported', pnpm: 'supported', bun: 'unsupported' }
+
+  get supportedProviderIds() {
+    return A.filter(publishDriverIdValues, (provider) => this.providers[provider] === 'supported')
   }
-  if (capability === 'publish:tolerate-republish') {
-    return { npm: 'unsupported', pnpm: 'unsupported', bun: 'supported' }
-  }
-  if (capability === 'publish:trusted-oidc') {
-    return { npm: 'supported', pnpm: 'supported', bun: 'unsupported' }
-  }
-  if (capability === 'publish:provenance-file') {
-    return { npm: 'unsupported', pnpm: 'unsupported', bun: 'unsupported' }
-  }
-  return { npm: 'supported', pnpm: 'supported', bun: 'supported' }
-}
 
-export const capabilityMatrix = publishCapabilityValues.map((capability) =>
-  CapabilityMatrixRow.make({
-    capability,
-    owner: ownerFor(capability),
-    providers: supportFor(capability),
-    evidence: [`${capability} provider contract`],
-    conformance: [`publisher/drivers/conformance.test.ts:${capability}`],
-  }),
-)
+  resultForProvider(provider: CapabilityProviderId) {
+    if (this.providers[provider] === 'supported') {
+      return Supported.from({
+        capability: this.capability,
+        provider,
+        evidence: this.evidence,
+      })
+    }
 
-export const capabilityMatrixByCapability = HashMap.fromIterable(
-  capabilityMatrix.map((row) => [row.capability, row] as const),
-)
-
-export type CapabilityProviderId = 'npm' | 'pnpm' | 'bun'
-
-export const supported = (params: {
-  readonly capability: PublishCapability
-  readonly provider: string
-  readonly evidence: readonly string[]
-}): CapabilityResult => ({
-  _tag: 'Supported',
-  capability: params.capability,
-  provider: params.provider,
-  evidence: [...params.evidence],
-})
-
-export const unsupported = (params: {
-  readonly capability: PublishCapability
-  readonly provider: string
-  readonly reason: UnsupportedCapabilityReason
-  readonly evidence: readonly string[]
-  readonly blockingPlanFields?: readonly string[]
-}): CapabilityResult => ({
-  _tag: 'Unsupported',
-  capability: params.capability,
-  provider: params.provider,
-  reason: params.reason,
-  evidence: [...params.evidence],
-  blockingPlanFields: [...(params.blockingPlanFields ?? [])],
-})
-
-export const capabilityResultForProvider = (params: {
-  readonly capability: PublishCapability
-  readonly provider: CapabilityProviderId
-}): CapabilityResult => {
-  const row = Option.getOrUndefined(HashMap.get(capabilityMatrixByCapability, params.capability))
-  const state = row?.providers[params.provider] ?? 'unsupported'
-  const evidence = row?.evidence ?? [`${params.capability} has no generated matrix row`]
-
-  if (state === 'supported') {
-    return supported({
-      capability: params.capability,
-      provider: params.provider,
-      evidence,
+    return Unsupported.from({
+      capability: this.capability,
+      provider,
+      reason: 'not-supported-by-provider',
+      evidence: this.evidence,
+      blockingPlanFields: [],
     })
   }
-
-  return unsupported({
-    capability: params.capability,
-    provider: params.provider,
-    reason: 'not-supported-by-provider',
-    evidence,
-    blockingPlanFields: [],
-  })
 }
+
+export const capabilityMatrix = A.map(publishCapabilityValues, CapabilityMatrixRow.fromCapability)
+
+export const capabilityMatrixByCapability = HashMap.fromIterable(
+  A.map(capabilityMatrix, (row) => [row.capability, row] as const),
+)

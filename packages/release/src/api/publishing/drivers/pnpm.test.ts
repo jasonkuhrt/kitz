@@ -1,7 +1,17 @@
 import { describe, expect, test } from 'bun:test'
+import * as Capability from '../models/capability.js'
 import { Pnpm } from '../providers/__.js'
 
 describe('pnpm publishing provider command construction', () => {
+  test('covers native pack flags required for artifact rehearsal', () => {
+    expect(
+      Pnpm.buildPackCommand({
+        packDestination: './.release/artifacts',
+        dryRun: true,
+      }).argv,
+    ).toEqual(['pnpm', 'pack', '--json', '--pack-destination', './.release/artifacts', '--dry-run'])
+  })
+
   test('covers native publish flags required by the product matrix', () => {
     expect(
       Pnpm.buildPublishCommand({
@@ -15,7 +25,7 @@ describe('pnpm publishing provider command construction', () => {
         json: true,
         reportSummary: true,
         noGitChecks: true,
-      }),
+      }).argv,
     ).toEqual([
       'pnpm',
       'publish',
@@ -37,7 +47,9 @@ describe('pnpm publishing provider command construction', () => {
   })
 
   test('exposes pnpm capability results as provider data', () => {
-    expect(Pnpm.capabilityResult('publish:tarball')._tag).toBe('Supported')
-    expect(Pnpm.capabilityResult('publish:tolerate-republish')._tag).toBe('Unsupported')
+    expect(Pnpm.capabilityResult('publish:tarball').isSupported).toBe(true)
+    expect(Capability.Unsupported.is(Pnpm.capabilityResult('publish:tolerate-republish'))).toBe(
+      true,
+    )
   })
 })

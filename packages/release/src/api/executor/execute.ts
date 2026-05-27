@@ -537,6 +537,8 @@ export const toPayload = (
           : options.trunk
             ? { trunk: options.trunk }
             : {}),
+        packDriver: plan.publishIntent?.profile.packDriver ?? 'npm',
+        publishInvoker: plan.publishIntent?.profile.publishInvoker ?? 'npm',
       },
     }
   })

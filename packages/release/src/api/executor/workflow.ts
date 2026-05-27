@@ -31,6 +31,7 @@ import {
   RegistryObservation,
 } from '../release-contract.js'
 import { verifyRegistryObservation } from '../publishing/verification.js'
+import { PublishDriverId } from '../publishing/models/driver-id.js'
 import { EphemeralSchema } from '../version/models/ephemeral.js'
 import { LifecycleSchema } from '../version/models/lifecycle.js'
 import {
@@ -95,6 +96,8 @@ export const ReleasePayload = Schema.Struct({
     lifecycle: Schema.optional(LifecycleSchema),
     publishing: Schema.optional(Publishing),
     trunk: Schema.optional(Schema.String),
+    packDriver: PublishDriverId,
+    publishInvoker: PublishDriverId,
   }),
 })
 
@@ -111,6 +114,8 @@ const releaseWorkflowIdempotencyKey = (payload: ReleasePayloadType): string =>
       atomicTagPush: payload.options.atomicTagPush,
       lifecycle: payload.options.lifecycle ?? null,
       trunk: payload.options.trunk ?? null,
+      packDriver: payload.options.packDriver,
+      publishInvoker: payload.options.publishInvoker,
     },
     releases: payload.releases
       .toSorted((a, b) => a.packageName.localeCompare(b.packageName))
@@ -306,13 +311,12 @@ export const ReleaseWorkflow = Flo.Workflow.make({
             yield* assertRehearsedArtifactExists(releaseInfo, payload.options.planDigest)
           } else {
             yield* Effect.log(`Preparing ${tag}...`)
-            yield* preparePackageArtifact(
-              releaseInfo,
-              plannedReleases,
-              payload.options.planDigest === undefined
-                ? undefined
-                : { planDigest: payload.options.planDigest },
-            )
+            yield* preparePackageArtifact(releaseInfo, plannedReleases, {
+              packageManager: payload.options.packDriver,
+              ...(payload.options.planDigest === undefined
+                ? {}
+                : { planDigest: payload.options.planDigest }),
+            })
           }
 
           return release.packageName
@@ -384,6 +388,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
                 {
                   ...(publishTag !== undefined ? { tag: publishTag } : {}),
                   ...(payload.options.registry && { registry: payload.options.registry }),
+                  packageManager: payload.options.publishInvoker,
                 },
               ).pipe(Effect.as(release.packageName)),
             })
@@ -477,7 +482,7 @@ export const ReleaseWorkflow = Flo.Workflow.make({
             planDigest,
             packageName: releaseInfo.package.name,
             version: releaseInfo.nextVersion,
-            driver: 'npm',
+            driver: payload.options.packDriver,
             tarball,
             sha256: tarballSha256,
             sizeBytes: tarballBytes.length,

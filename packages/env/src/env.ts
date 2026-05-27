@@ -40,7 +40,7 @@ export interface EnvService {
  * Effect.runPromise(Effect.provide(program, Env.Live))
  * ```
  */
-export class Env extends Context.Service<Env, EnvService>()('Env') {}
+export class Env extends Context.Service<Env, EnvService>()('env') {}
 
 /**
  * Test layer for mocking environment in tests.

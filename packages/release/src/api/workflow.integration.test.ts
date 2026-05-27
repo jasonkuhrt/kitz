@@ -749,6 +749,8 @@ describe('Workflow integration', () => {
             dryRun: false,
             rehearsedArtifacts: false,
             atomicTagPush: false,
+            packDriver: 'npm',
+            publishInvoker: 'npm',
           },
         }).pipe(Effect.provide(harness.workflowLayer))
 

@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import * as Capability from '../models/capability.js'
 import { Npm } from '../providers/__.js'
 
 describe('npm publishing provider command construction', () => {
@@ -7,7 +8,7 @@ describe('npm publishing provider command construction', () => {
       Npm.buildPackCommand({
         packDestination: '/repo/.release/artifacts/',
         dryRun: true,
-      }),
+      }).argv,
     ).toEqual([
       'npm',
       'pack',
@@ -28,7 +29,7 @@ describe('npm publishing provider command construction', () => {
         provenanceFile: '/repo/attestation.jsonl',
         dryRun: true,
         ignoreScripts: false,
-      }),
+      }).argv,
     ).toEqual([
       'npm',
       'publish',
@@ -54,7 +55,7 @@ describe('npm publishing provider command construction', () => {
         packageName: '@kitz/core',
         registry: 'https://registry.npmjs.org/',
         json: true,
-      }),
+      }).argv,
     ).toEqual([
       'npm',
       'trust',
@@ -73,7 +74,7 @@ describe('npm publishing provider command construction', () => {
         environment: 'npm',
         yes: true,
         dryRun: true,
-      }),
+      }).argv,
     ).toEqual([
       'npm',
       'trust',
@@ -99,7 +100,7 @@ describe('npm publishing provider command construction', () => {
         environment: 'npm',
         registry: 'https://registry.npmjs.org/',
         yes: true,
-      }),
+      }).argv,
     ).toEqual([
       'npm',
       'trust',
@@ -125,7 +126,7 @@ describe('npm publishing provider command construction', () => {
         vcsOrigin: 'github.com/jasonkuhrt/kitz',
         contextIds: ['ctx-1', 'ctx-2'],
         dryRun: true,
-      }),
+      }).argv,
     ).toEqual([
       'npm',
       'trust',
@@ -148,7 +149,7 @@ describe('npm publishing provider command construction', () => {
   })
 
   test('exposes npm capability results as provider data', () => {
-    expect(Npm.capabilityResult('publish:tarball')._tag).toBe('Supported')
-    expect(Npm.capabilityResult('publish:tolerate-republish')._tag).toBe('Unsupported')
+    expect(Npm.capabilityResult('publish:tarball').isSupported).toBe(true)
+    expect(Capability.Unsupported.is(Npm.capabilityResult('publish:tolerate-republish'))).toBe(true)
   })
 })

@@ -103,6 +103,7 @@ export const makeMockSpawnerLayer = (whoamiUsername: string) => {
 }
 
 export interface PackCall {
+  readonly packageManager?: NpmRegistry.Cli.PackageManagerCli
   readonly cwd: Fs.Path.AbsDir
   readonly packDestination: Fs.Path.AbsDir
   readonly env?: Readonly<Record<string, string | undefined>>
@@ -112,6 +113,7 @@ export interface PackCall {
 }
 
 export interface PublishCall {
+  readonly packageManager?: NpmRegistry.Cli.PackageManagerCli
   readonly tarball: Fs.Path.AbsFile
   readonly tag?: string
   readonly registry?: string
@@ -236,6 +238,9 @@ export const makeHarness = (options: {
                 {
                   cwd: packOptions.cwd,
                   packDestination: packOptions.packDestination,
+                  ...(packOptions.packageManager !== undefined
+                    ? { packageManager: packOptions.packageManager }
+                    : {}),
                   ...(packOptions.env !== undefined ? { env: packOptions.env } : {}),
                   tarball,
                   filename,
@@ -255,6 +260,9 @@ export const makeHarness = (options: {
                 ...calls,
                 {
                   tarball: publishOptions.tarball,
+                  ...(publishOptions.packageManager !== undefined
+                    ? { packageManager: publishOptions.packageManager }
+                    : {}),
                   ...(publishOptions.tag && { tag: publishOptions.tag }),
                   ...(publishOptions.registry && { registry: publishOptions.registry }),
                   ...(publishOptions.ignoreScripts !== undefined

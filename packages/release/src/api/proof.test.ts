@@ -123,7 +123,7 @@ const gitError = (operation: Git.GitOperation, detail: string) =>
     cause: new Error(detail),
   })
 
-const unused = <A>() => Effect.die('unused test service operation') as Effect.Effect<A>
+const unused = () => Effect.die('unused test service operation')
 
 const npmCliLayer = (
   overrides: Partial<NpmRegistry.NpmCliService>,

@@ -2,7 +2,16 @@ import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
 import { createHash } from 'node:crypto'
 import { Err } from '@kitz/core'
 import { Fs } from '@kitz/fs'
-import { PlatformError, Effect, Option, Schema as S, Stream, String as Str } from 'effect'
+import {
+  Effect,
+  Option,
+  PlatformError,
+  Record as EffectRecord,
+  Result,
+  Schema as S,
+  Stream,
+  String as Str,
+} from 'effect'
 
 // ============================================================================
 // Errors
@@ -53,7 +62,11 @@ export interface WhoamiOptions {
 /**
  * Options for npm publish command.
  */
+export type PackageManagerCli = 'npm' | 'pnpm' | 'bun'
+
 export interface PublishOptions {
+  /** Package manager CLI to invoke for pack/publish operations. */
+  readonly packageManager?: PackageManagerCli
   /** Prepared tarball to publish */
   readonly tarball: Fs.Path.AbsFile
   /** npm dist-tag (default: 'latest') */
@@ -78,6 +91,8 @@ export interface PublishOptions {
  * Options for npm pack command.
  */
 export interface PackOptions {
+  /** Package manager CLI to invoke for pack/publish operations. */
+  readonly packageManager?: PackageManagerCli
   /** Package directory to pack from */
   readonly cwd: Fs.Path.AbsDir
   /** Destination directory for the generated tarball */
@@ -145,26 +160,147 @@ const NpmViewErrorSchema = S.Struct({
 })
 
 const decodeNpmViewError = S.decodeUnknownOption(S.fromJsonString(NpmViewErrorSchema))
-const NpmPackOutputSchema = S.fromJsonString(
-  S.Array(
-    S.Struct({
-      filename: S.String,
-      files: S.optional(
-        S.Array(
-          S.Struct({
-            path: S.String,
-            size: S.optional(S.Number),
-            mode: S.optional(S.Number),
-          }),
-        ),
-      ),
-      size: S.optional(S.Number),
-      shasum: S.optional(S.String),
-      integrity: S.optional(S.String),
-    }),
+const PackOutputEntrySchema = S.Struct({
+  filename: S.String,
+  files: S.optional(
+    S.Array(
+      S.Struct({
+        path: S.String,
+        size: S.optional(S.Number),
+        mode: S.optional(S.Number),
+      }),
+    ),
   ),
-)
-const decodeNpmPackOutput = S.decodeUnknownEffect(NpmPackOutputSchema)
+  size: S.optional(S.Number),
+  shasum: S.optional(S.String),
+  integrity: S.optional(S.String),
+})
+type PackOutputEntry = typeof PackOutputEntrySchema.Type
+
+const JsonPackOutputArraySchema = S.fromJsonString(S.Array(PackOutputEntrySchema))
+const JsonPackOutputEntrySchema = S.fromJsonString(PackOutputEntrySchema)
+
+const decodeJsonPackOutput = (
+  output: string,
+): Effect.Effect<readonly PackOutputEntry[], S.SchemaError> =>
+  S.decodeUnknownEffect(JsonPackOutputArraySchema)(output).pipe(
+    Effect.catch(() =>
+      S.decodeUnknownEffect(JsonPackOutputEntrySchema)(output).pipe(
+        Effect.map((entry): readonly PackOutputEntry[] => [entry]),
+      ),
+    ),
+  )
+
+const decodeBunPackOutput = (output: string): Effect.Effect<PackOutputEntry, Error> =>
+  Effect.try({
+    try: () => {
+      const filename = output
+        .split(/\r?\n/u)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .at(-1)
+
+      if (filename === undefined) throw new Error('bun pm pack returned no tarball path')
+      return { filename }
+    },
+    catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
+  })
+
+const packOutputFor = (
+  packageManager: PackageManagerCli,
+  output: string,
+): Effect.Effect<readonly PackOutputEntry[], Error | S.SchemaError> => {
+  if (packageManager === 'bun') {
+    return decodeBunPackOutput(output).pipe(
+      Effect.map((entry): readonly PackOutputEntry[] => [entry]),
+    )
+  }
+
+  return decodeJsonPackOutput(output)
+}
+
+const buildPackCommand = (options: PackOptions) => {
+  const packDestination = Fs.Path.toString(options.packDestination)
+  const packageManager = options.packageManager ?? 'npm'
+
+  switch (packageManager) {
+    case 'bun':
+      return ChildProcess.make('bun', ['pm', 'pack', '--quiet', '--destination', packDestination], {
+        cwd: Fs.Path.toString(options.cwd),
+        ...(options.env !== undefined ? { env: { ...options.env }, extendEnv: false } : {}),
+      })
+    case 'pnpm':
+      return ChildProcess.make('pnpm', ['pack', '--json', '--pack-destination', packDestination], {
+        cwd: Fs.Path.toString(options.cwd),
+        ...(options.env !== undefined ? { env: { ...options.env }, extendEnv: false } : {}),
+      })
+    case 'npm':
+      return ChildProcess.make('npm', ['pack', '--json', '--pack-destination', packDestination], {
+        cwd: Fs.Path.toString(options.cwd),
+        ...(options.env !== undefined ? { env: { ...options.env }, extendEnv: false } : {}),
+      })
+  }
+}
+
+const tarballPathForPackEntry = (
+  packDestination: Fs.Path.AbsDir,
+  filename: string,
+): Fs.Path.AbsFile =>
+  filename.startsWith('/')
+    ? Fs.Path.AbsFile.fromString(filename)
+    : Fs.Path.join(packDestination, Fs.Path.RelFile.fromString(`./${filename}`))
+
+const filenameForPackEntry = (filename: string): string => filename.split('/').at(-1) ?? filename
+
+const buildPublishCommand = (options: PublishOptions) => {
+  const tarball = Fs.Path.toString(options.tarball)
+  const packageManager = options.packageManager ?? 'npm'
+
+  switch (packageManager) {
+    case 'bun':
+      return ChildProcess.make('bun', [
+        'publish',
+        tarball,
+        '--access',
+        options.access ?? 'public',
+        ...((options.ignoreScripts ?? true) ? ['--ignore-scripts'] : []),
+        ...(options.tag ? ['--tag', options.tag] : []),
+        ...(options.registry ? ['--registry', options.registry] : []),
+        ...(options.otp ? ['--otp', options.otp] : []),
+        ...(options.dryRun ? ['--dry-run'] : []),
+      ])
+    case 'pnpm':
+      return ChildProcess.make('pnpm', [
+        'publish',
+        tarball,
+        '--access',
+        options.access ?? 'public',
+        ...((options.ignoreScripts ?? true) ? ['--ignore-scripts'] : []),
+        '--no-git-checks',
+        ...(options.tag ? ['--tag', options.tag] : []),
+        ...(options.registry ? ['--registry', options.registry] : []),
+        ...(options.otp ? ['--otp', options.otp] : []),
+        ...(options.provenance ? ['--provenance'] : []),
+        ...(options.dryRun ? ['--dry-run'] : []),
+      ])
+    case 'npm':
+      return ChildProcess.make('npm', [
+        'publish',
+        tarball,
+        '--access',
+        options.access ?? 'public',
+        ...((options.ignoreScripts ?? true) ? ['--ignore-scripts'] : []),
+        ...(options.tag ? ['--tag', options.tag] : []),
+        ...(options.registry ? ['--registry', options.registry] : []),
+        ...(options.otp ? ['--otp', options.otp] : []),
+        ...(options.provenance ? ['--provenance'] : []),
+        ...(options.provenanceFile !== undefined
+          ? ['--provenance-file', Fs.Path.toString(options.provenanceFile)]
+          : []),
+        ...(options.dryRun ? ['--dry-run'] : []),
+      ])
+  }
+}
 const JsonRecordFromString = S.fromJsonString(S.Record(S.String, S.Unknown))
 const decodeJsonRecord = S.decodeUnknownEffect(JsonRecordFromString)
 const AccessStatusOutput = S.fromJsonString(
@@ -205,6 +341,16 @@ const getNestedString = (
   const value = object[key]
   return typeof value === 'string' ? value : undefined
 }
+
+const isObjectLike = (value: unknown): value is Readonly<Record<string, unknown>> =>
+  value !== null && typeof value === 'object'
+
+const stringValuesOnly = (
+  record: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, string>> =>
+  EffectRecord.filterMap(record, (value) =>
+    typeof value === 'string' ? Result.succeed(value) : Result.failVoid,
+  )
 
 const readNpmViewJson = (
   args: readonly string[],
@@ -404,12 +550,8 @@ export function pack(
 ): Effect.Effect<PackResult, NpmCliError, ChildProcessSpawner.ChildProcessSpawner> {
   return Effect.gen(function* () {
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-    const args = ['pack', '--json', '--pack-destination', Fs.Path.toString(options.packDestination)]
-
-    const command = ChildProcess.make('npm', args, {
-      cwd: Fs.Path.toString(options.cwd),
-      ...(options.env !== undefined ? { env: { ...options.env }, extendEnv: false } : {}),
-    })
+    const packageManager = options.packageManager ?? 'npm'
+    const command = buildPackCommand(options)
 
     const output = yield* spawner.string(command).pipe(
       Effect.mapError(
@@ -417,20 +559,23 @@ export function pack(
           new NpmCliError({
             context: {
               operation: 'pack',
-              detail: 'npm pack failed while preparing a release artifact.',
+              detail: `${packageManager} pack failed while preparing a release artifact.`,
             },
             cause: cause instanceof Error ? cause : new Error(String(cause)),
           }),
       ),
     )
 
-    const packEntries = yield* decodeNpmPackOutput(output).pipe(
+    const packEntries = yield* packOutputFor(packageManager, output).pipe(
       Effect.mapError(
         (cause) =>
           new NpmCliError({
             context: {
               operation: 'pack',
-              detail: 'npm pack returned unexpected JSON output',
+              detail:
+                packageManager === 'bun'
+                  ? 'bun pack returned unexpected output'
+                  : `${packageManager} pack returned unexpected JSON output`,
             },
             cause: cause instanceof Error ? cause : new Error(String(cause)),
           }),
@@ -451,15 +596,12 @@ export function pack(
     }
 
     return {
-      filename: entry.filename,
+      filename: filenameForPackEntry(entry.filename),
       ...(entry.files !== undefined ? { files: entry.files } : {}),
       ...(entry.size !== undefined ? { size: entry.size } : {}),
       ...(entry.shasum !== undefined ? { shasum: entry.shasum } : {}),
       ...(entry.integrity !== undefined ? { integrity: entry.integrity } : {}),
-      tarball: Fs.Path.join(
-        options.packDestination,
-        Fs.Path.RelFile.fromString(`./${entry.filename}`),
-      ),
+      tarball: tarballPathForPackEntry(options.packDestination, entry.filename),
     }
   })
 }
@@ -482,36 +624,8 @@ export function publish(
 ): Effect.Effect<void, NpmCliError, ChildProcessSpawner.ChildProcessSpawner> {
   return Effect.gen(function* () {
     const spawner = yield* ChildProcessSpawner.ChildProcessSpawner
-    const args = ['publish', Fs.Path.toString(options.tarball)]
-
-    // Default to public access for scoped packages
-    args.push('--access', options.access ?? 'public')
-
-    if (options.ignoreScripts ?? true) {
-      args.push('--ignore-scripts')
-    }
-
-    if (options.tag) {
-      args.push('--tag', options.tag)
-    }
-
-    if (options.registry) {
-      args.push('--registry', options.registry)
-    }
-    if (options.otp) {
-      args.push('--otp', options.otp)
-    }
-    if (options.provenance) {
-      args.push('--provenance')
-    }
-    if (options.provenanceFile) {
-      args.push('--provenance-file', Fs.Path.toString(options.provenanceFile))
-    }
-    if (options.dryRun) {
-      args.push('--dry-run')
-    }
-
-    const command = ChildProcess.make('npm', args)
+    const packageManager = options.packageManager ?? 'npm'
+    const command = buildPublishCommand(options)
 
     yield* spawner.exitCode(command).pipe(
       Effect.flatMap((code) => {
@@ -520,9 +634,9 @@ export function publish(
             new NpmCliError({
               context: {
                 operation: 'publish',
-                detail: `npm publish exited with code ${code}`,
+                detail: `${packageManager} publish exited with code ${code}`,
               },
-              cause: new Error(`npm publish exited with code ${code}`),
+              cause: new Error(`${packageManager} publish exited with code ${code}`),
             }),
           )
         }
@@ -553,15 +667,7 @@ export function listAccessPackages(
   const args = ['access', 'list', 'packages', userOrScope, '--json']
   if (options?.registry) args.push('--registry', options.registry)
 
-  return readNpmAccessJson(args).pipe(
-    Effect.map((record) =>
-      Object.fromEntries(
-        Object.entries(record).filter(
-          (entry): entry is [string, string] => typeof entry[1] === 'string',
-        ),
-      ),
-    ),
-  )
+  return readNpmAccessJson(args).pipe(Effect.map(stringValuesOnly))
 }
 
 /**
@@ -578,15 +684,7 @@ export function listAccessCollaborators(
   const args = ['access', 'list', 'collaborators', packageName, '--json']
   if (options?.registry) args.push('--registry', options.registry)
 
-  return readNpmAccessJson(args).pipe(
-    Effect.map((record) =>
-      Object.fromEntries(
-        Object.entries(record).filter(
-          (entry): entry is [string, string] => typeof entry[1] === 'string',
-        ),
-      ),
-    ),
-  )
+  return readNpmAccessJson(args).pipe(Effect.map(stringValuesOnly))
 }
 
 const normalizeAccessStatus = (value: unknown): AccessStatus => {
@@ -750,14 +848,9 @@ export function observeVersion(
 
     const versionMetadata = yield* readNpmViewJson(versionArgs)
     const distTagsJson = yield* readNpmViewJson(distTagArgs)
-    const distTags = Object.fromEntries(
-      Object.entries(distTagsJson).filter(
-        (entry): entry is [string, string] => typeof entry[1] === 'string',
-      ),
-    )
+    const distTags = stringValuesOnly(distTagsJson)
     const dist = versionMetadata['dist']
-    const distRecord =
-      dist !== null && typeof dist === 'object' ? (dist as Readonly<Record<string, unknown>>) : {}
+    const distRecord = isObjectLike(dist) ? dist : {}
     const tarballUrl = getNestedString(distRecord, 'tarball')
     const shasum = getNestedString(distRecord, 'shasum')
     const integrity = getNestedString(distRecord, 'integrity')

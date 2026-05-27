@@ -1,10 +1,11 @@
 import { describe, expect, test } from 'bun:test'
+import * as Capability from '../models/capability.js'
 import { Bun } from '../providers/__.js'
 
 describe('Bun publishing provider command construction', () => {
   test('covers pack command shape with and without an explicit destination', () => {
-    expect(Bun.buildPackCommand()).toEqual(['bun', 'pm', 'pack'])
-    expect(Bun.buildPackCommand({ destination: '/repo/.release/artifacts/' })).toEqual([
+    expect(Bun.buildPackCommand().argv).toEqual(['bun', 'pm', 'pack'])
+    expect(Bun.buildPackCommand({ destination: '/repo/.release/artifacts/' }).argv).toEqual([
       'bun',
       'pm',
       'pack',
@@ -24,7 +25,7 @@ describe('Bun publishing provider command construction', () => {
         authType: 'legacy',
         dryRun: true,
         tolerateRepublish: true,
-      }),
+      }).argv,
     ).toEqual([
       'bun',
       'publish',
@@ -47,8 +48,9 @@ describe('Bun publishing provider command construction', () => {
   test('models missing ignore-scripts support as typed unsupported capability data', () => {
     const result = Bun.capabilityResult('publish:ignore-scripts')
 
-    expect(result._tag).toBe('Unsupported')
-    if (result._tag === 'Unsupported') {
+    expect(result.isSupported).toBe(false)
+    expect(Capability.Unsupported.is(result)).toBe(true)
+    if (Capability.Unsupported.is(result)) {
       expect(result.reason).toBe('not-supported-by-provider')
     }
   })

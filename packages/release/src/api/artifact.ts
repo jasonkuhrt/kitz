@@ -1,11 +1,20 @@
-import { PlatformError, FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
 import { Semver } from '@kitz/semver'
-import { Effect, Option, Schema } from 'effect'
+import {
+  Array as A,
+  Effect,
+  FileSystem,
+  HashSet,
+  Option,
+  PlatformError,
+  Record as EffectRecord,
+  Result,
+  Schema,
+} from 'effect'
 import { sha256Bytes, sha256Text } from './digest.js'
 import {
   preparePackageArtifact,
@@ -28,7 +37,7 @@ const PackageJsonScriptsFromString = Schema.fromJsonString(
   }),
 )
 
-const safePackEnvKeys = ['PATH', 'HOME', 'TMPDIR', 'TMP', 'TEMP'] as const
+const safePackEnvKeys = ['PATH', 'HOME', 'TMPDIR', 'TMP', 'TEMP']
 
 export const manifestPathFor = (cwd: Fs.Path.AbsDir, plan: Plan): Fs.Path.AbsFile =>
   Fs.Path.join(
@@ -43,7 +52,7 @@ const manifestRelPath = (path: string): Fs.Path.RelFile =>
   Fs.Path.RelFile.fromString(path.startsWith('./') ? path : `./${path}`)
 
 export const releaseInfosForPlan = (plan: Plan): ReleaseInfo[] =>
-  [...plan.releases, ...plan.cascades].map((item) => ({
+  A.map([...plan.releases, ...plan.cascades], (item) => ({
     package: item.package,
     nextVersion: item.nextVersion,
   }))
@@ -54,13 +63,12 @@ export const makeManifestFromPrepared = (
 ): Effect.Effect<ArtifactManifest[], PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
-    const manifests: ArtifactManifest[] = []
     const planDigest = digestForPlan(plan)
 
-    for (const artifact of artifacts) {
-      const tarballBytes = yield* fs.readFile(Fs.Path.toString(artifact.tarball))
-      manifests.push(
-        ArtifactManifest.make({
+    const manifests = yield* Effect.forEach(artifacts, (artifact) =>
+      Effect.gen(function* () {
+        const tarballBytes = yield* fs.readFile(Fs.Path.toString(artifact.tarball))
+        return ArtifactManifest.make({
           schemaVersion: 1,
           planDigest,
           packageName: artifact.package.name,
@@ -73,7 +81,7 @@ export const makeManifestFromPrepared = (
             name: artifact.package.name.moniker,
             version: Semver.toString(artifact.nextVersion),
           },
-          packlist: (artifact.packMetadata?.files ?? []).map((file) => manifestRelPath(file.path)),
+          packlist: A.map(artifact.packMetadata?.files ?? [], (file) => manifestRelPath(file.path)),
           rewrittenFields: ['version', 'dependencies', 'devDependencies', 'peerDependencies'],
           ...(artifact.packMetadata?.integrity !== undefined
             ? { npmRegistryIntegrity: artifact.packMetadata.integrity }
@@ -81,15 +89,14 @@ export const makeManifestFromPrepared = (
           ...(artifact.packMetadata?.shasum !== undefined
             ? { npmRegistryShasum: artifact.packMetadata.shasum }
             : {}),
-        }),
-      )
-    }
-
-    return manifests
+        })
+      }),
+    )
+    return [...manifests]
   })
 
 export const makeManifestFromPlan = (plan: Plan, cwd: Fs.Path.AbsDir): ArtifactManifest[] =>
-  releaseInfosForPlan(plan).map((release) =>
+  A.map(releaseInfosForPlan(plan), (release) =>
     ArtifactManifest.make({
       schemaVersion: 1,
       planDigest: digestForPlan(plan),
@@ -150,11 +157,10 @@ export const packEnvironmentForPlan = (
     ...(plan.publishIntent?.artifacts.scriptPolicy.envAllowlist ?? []),
   ]
 
-  return Object.fromEntries(
-    allowlist.flatMap((key) => {
-      const value = vars[key]
-      return value === undefined ? [] : [[key, value]]
-    }),
+  const allowed = HashSet.fromIterable(allowlist)
+
+  return EffectRecord.filterMap(vars, (value, key) =>
+    value !== undefined && HashSet.has(allowed, key) ? Result.succeed(value) : Result.failVoid,
   )
 }
 
@@ -261,7 +267,7 @@ export const validateScriptPolicyForPlan = (
       const pathString = Fs.Path.toString(packageJsonPath)
       const raw = yield* fs.readFileString(pathString).pipe(Effect.result)
 
-      if (raw._tag === 'Failure') {
+      if (Result.isFailure(raw)) {
         issues.push({
           code: 'release.artifact.package-json-unreadable',
           detail: `${pathString} could not be read for lifecycle-script policy validation.`,
@@ -285,10 +291,8 @@ export const validateScriptPolicyForPlan = (
       const hooks = Pkg.Manifest.findPackHooks(
         scripts === undefined
           ? undefined
-          : Object.fromEntries(
-              Object.entries(scripts).filter(
-                (entry): entry is [string, string] => typeof entry[1] === 'string',
-              ),
+          : EffectRecord.filterMap(scripts, (value) =>
+              typeof value === 'string' ? Result.succeed(value) : Result.failVoid,
             ),
       )
 
@@ -343,7 +347,7 @@ export const validateEnginePolicyForPlan = (
       const pathString = Fs.Path.toString(packageJsonPath)
       const raw = yield* fs.readFileString(pathString).pipe(Effect.result)
 
-      if (raw._tag === 'Failure') {
+      if (Result.isFailure(raw)) {
         issues.push({
           code: 'release.artifact.package-json-unreadable',
           detail: `${pathString} could not be read for engine policy validation.`,
@@ -464,7 +468,9 @@ export const rehearse = (
         new PublishError({
           context: {
             package: releases[0]?.package.path ?? Fs.Path.AbsDir.fromString('/'),
-            detail: scriptPolicyIssues.map((issue) => `${issue.code}: ${issue.detail}`).join('\n'),
+            detail: A.map(scriptPolicyIssues, (issue) => `${issue.code}: ${issue.detail}`).join(
+              '\n',
+            ),
           },
         }),
       )
@@ -475,28 +481,32 @@ export const rehearse = (
         new PublishError({
           context: {
             package: releases[0]?.package.path ?? Fs.Path.AbsDir.fromString('/'),
-            detail: enginePolicyIssues.map((issue) => `${issue.code}: ${issue.detail}`).join('\n'),
+            detail: A.map(enginePolicyIssues, (issue) => `${issue.code}: ${issue.detail}`).join(
+              '\n',
+            ),
           },
         }),
       )
     }
 
-    const preparedArtifacts: PreparedArtifact[] = []
-
     const planDigest = digestForPlan(plan).value
     const packEnv = packEnvironmentForPlan(plan, env.vars)
-
-    for (const release of releases) {
-      preparedArtifacts.push(
-        yield* preparePackageArtifact(release, releases, { planDigest, packEnv }),
-      )
-    }
+    const packDriver = plan.publishIntent?.profile.packDriver ?? 'npm'
+    const publishInvoker = plan.publishIntent?.profile.publishInvoker ?? 'npm'
+    const preparedArtifacts = yield* Effect.forEach(releases, (release) =>
+      preparePackageArtifact(release, releases, {
+        planDigest,
+        packEnv,
+        packageManager: packDriver,
+      }),
+    )
 
     const manifests = yield* makeManifestFromPrepared(plan, preparedArtifacts)
 
     for (const artifact of preparedArtifacts) {
       yield* publishPreparedArtifact(artifact, {
         dryRun: true,
+        packageManager: publishInvoker,
         ...(plan.publishIntent !== undefined ? { tag: plan.publishIntent.distTag } : {}),
         ...(plan.publishIntent !== undefined ? { registry: plan.publishIntent.registry.url } : {}),
         ...(plan.publishIntent?.provenance.mode === 'cli-flag' ? { provenance: true } : {}),
