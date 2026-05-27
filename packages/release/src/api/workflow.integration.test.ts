@@ -25,13 +25,13 @@ const corePackagePath = Fs.Path.AbsDir.fromString('/repo/packages/core/')
 const coreManifestPath = Fs.Path.AbsFile.fromString('/repo/packages/core/package.json')
 const workspacePackages: Parameters<typeof planOfficial>[0] = [
   {
-    name: Pkg.Moniker.parse('@kitz/core'),
+    name: Pkg.Moniker.parse('@scope/core'),
     scope: 'core',
     path: corePackagePath,
   },
 ]
 
-const tagCore = (version: string) => tag(Pkg.Moniker.parse('@kitz/core'), version)
+const tagCore = (version: string) => tag(Pkg.Moniker.parse('@scope/core'), version)
 const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect
 
 describe('Workflow integration', () => {
@@ -47,7 +47,7 @@ describe('Workflow integration', () => {
               isClean: true,
             },
             diskLayout: {
-              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+              '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
             },
           })
 
@@ -61,7 +61,7 @@ describe('Workflow integration', () => {
             Effect.provide(harness.workflowLayer),
           )
 
-          expect(result.releasedPackages).toEqual(['@kitz/core'])
+          expect(result.releasedPackages).toEqual(['@scope/core'])
           expect(result.createdTags).toEqual([tagCore('1.1.0')])
           expect(result.createdGHReleases).toEqual([tagCore('1.1.0')])
 
@@ -78,14 +78,14 @@ describe('Workflow integration', () => {
           const publishCalls = yield* Ref.get(harness.publishCalls)
           expect(publishCalls).toHaveLength(1)
           expect(Fs.Path.toString(publishCalls[0]!.tarball)).toBe(
-            '/repo/.release/artifacts/kitz-core-1.1.0.tgz',
+            '/repo/.release/artifacts/scope-core-1.1.0.tgz',
           )
           expect(publishCalls[0]!.ignoreScripts).toBe(true)
 
           const createdReleases = yield* Ref.get(harness.githubState.createdReleases)
           expect(createdReleases).toHaveLength(1)
           expect(createdReleases[0]!.tag).toBe(tagCore('1.1.0'))
-          expect(createdReleases[0]!.title).toBe('@kitz/core v1.1.0')
+          expect(createdReleases[0]!.title).toBe('@scope/core v1.1.0')
 
           const manifestRaw = yield* Fs.readString(coreManifestPath).pipe(
             Effect.provide(harness.workflowLayer),
@@ -111,7 +111,7 @@ describe('Workflow integration', () => {
             isClean: true,
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
           },
         })
 
@@ -158,9 +158,9 @@ describe('Workflow integration', () => {
               isClean: true,
             },
             diskLayout: {
-              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+              '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
             },
-            failPublishPackages: ['@kitz/core'],
+            failPublishPackages: ['@scope/core'],
           })
 
           const plan = yield* planOfficial(workspacePackages).pipe(
@@ -176,7 +176,7 @@ describe('Workflow integration', () => {
           if (outcome._tag === 'Failure') {
             expect(outcome.failure._tag).toBe('ExecutorPublishError')
             if (outcome.failure._tag === 'ExecutorPublishError') {
-              expect(outcome.failure.context.packageName).toBe('@kitz/core')
+              expect(outcome.failure.context.packageName).toBe('@scope/core')
               expect(outcome.failure.context.detail).toContain('mock publish failure')
             }
           }
@@ -211,7 +211,7 @@ describe('Workflow integration', () => {
             isClean: true,
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0', {
               imports: {
                 '#core': './src/_.ts',
               },
@@ -223,7 +223,7 @@ describe('Workflow integration', () => {
               },
             }),
           },
-          failPackPackages: ['@kitz/core'],
+          failPackPackages: ['@scope/core'],
         })
 
         const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
@@ -276,7 +276,7 @@ describe('Workflow integration', () => {
             isClean: true,
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
           },
         })
 
@@ -293,7 +293,7 @@ describe('Workflow integration', () => {
           const gh = yield* Github.Github
           yield* gh.createRelease({
             tag: candidateTag,
-            title: '@kitz/core @next',
+            title: '@scope/core @next',
             body: 'existing',
             prerelease: true,
           })
@@ -325,7 +325,7 @@ describe('Workflow integration', () => {
             headSha: Git.Sha.make('abc1234'),
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
           },
         })
 
@@ -356,21 +356,21 @@ describe('Workflow integration', () => {
             commits: [Git.Memory.commit('feat(core): new API')],
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
           },
         })
 
         const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
 
-        const dbPath = `/tmp/kitz-release-workflow-${Date.now()}-${Math.random().toString(16).slice(2)}.db`
+        const dbPath = `/tmp/release-workflow-${Date.now()}-${Math.random().toString(16).slice(2)}.db`
         const observable = yield* executeWorkflowObservable(plan, {
           dryRun: true,
           dbPath,
         }).pipe(Effect.provide(harness.planLayer))
 
         const allActivities = observable.graph.layers.flatMap((layer) => [...layer])
-        expect(allActivities).toContain('Prepare:@kitz/core')
-        expect(allActivities).toContain('Publish:@kitz/core')
+        expect(allActivities).toContain('Prepare:@scope/core')
+        expect(allActivities).toContain('Publish:@scope/core')
         expect(allActivities).toContain(`CreateTag:${tagCore('1.1.0')}`)
         expect(allActivities).toContain(`PushTag:${tagCore('1.1.0')}`)
         expect(allActivities).toContain(`CreateGHRelease:${tagCore('1.1.0')}`)

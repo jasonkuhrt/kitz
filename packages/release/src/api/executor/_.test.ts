@@ -20,35 +20,49 @@ import {
 
 const corePackagePath = Fs.Path.AbsDir.fromString('/repo/packages/core/')
 const coreManifestPath = Fs.Path.AbsFile.fromString('/repo/packages/core/package.json')
+const rootPackagePath = Fs.Path.AbsDir.fromString('/repo/packages/root/')
+const runtimePackagePath = Fs.Path.AbsDir.fromString('/repo/packages/runtime/')
 const workspacePackages: Parameters<typeof planOfficial>[0] = [
   {
-    name: Pkg.Moniker.parse('@kitz/core'),
+    name: Pkg.Moniker.parse('@scope/core'),
     scope: 'core',
     path: corePackagePath,
   },
 ]
+const firstPublishWorkspacePackages: Parameters<typeof planOfficial>[0] = [
+  {
+    name: Pkg.Moniker.parse('@scope/root'),
+    scope: 'root',
+    path: rootPackagePath,
+  },
+  {
+    name: Pkg.Moniker.parse('@scope/runtime'),
+    scope: 'runtime',
+    path: runtimePackagePath,
+  },
+]
 const cycleWorkspacePackages: Parameters<typeof planOfficial>[0] = [
   {
-    name: Pkg.Moniker.parse('@kitz/a'),
+    name: Pkg.Moniker.parse('@scope/a'),
     scope: 'a',
     path: Fs.Path.AbsDir.fromString('/repo/packages/a/'),
   },
   {
-    name: Pkg.Moniker.parse('@kitz/b'),
+    name: Pkg.Moniker.parse('@scope/b'),
     scope: 'b',
     path: Fs.Path.AbsDir.fromString('/repo/packages/b/'),
   },
   {
-    name: Pkg.Moniker.parse('@kitz/c'),
+    name: Pkg.Moniker.parse('@scope/c'),
     scope: 'c',
     path: Fs.Path.AbsDir.fromString('/repo/packages/c/'),
   },
 ]
 
-const tagCore = (version: string) => tag(Pkg.Moniker.parse('@kitz/core'), version)
-const tagA = (version: string) => tag(Pkg.Moniker.parse('@kitz/a'), version)
-const tagB = (version: string) => tag(Pkg.Moniker.parse('@kitz/b'), version)
-const tagC = (version: string) => tag(Pkg.Moniker.parse('@kitz/c'), version)
+const tagCore = (version: string) => tag(Pkg.Moniker.parse('@scope/core'), version)
+const tagA = (version: string) => tag(Pkg.Moniker.parse('@scope/a'), version)
+const tagB = (version: string) => tag(Pkg.Moniker.parse('@scope/b'), version)
+const tagC = (version: string) => tag(Pkg.Moniker.parse('@scope/c'), version)
 const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect
 
 describe('Executor integration', () => {
@@ -64,7 +78,7 @@ describe('Executor integration', () => {
               isClean: true,
             },
             diskLayout: {
-              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+              '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
             },
           })
 
@@ -78,7 +92,7 @@ describe('Executor integration', () => {
             Effect.provide(harness.workflowLayer),
           )
 
-          expect(result.releasedPackages).toEqual(['@kitz/core'])
+          expect(result.releasedPackages).toEqual(['@scope/core'])
           expect(result.createdTags).toEqual([tagCore('1.1.0')])
           expect(result.createdGHReleases).toEqual([tagCore('1.1.0')])
 
@@ -95,14 +109,14 @@ describe('Executor integration', () => {
           const publishCalls = yield* Ref.get(harness.publishCalls)
           expect(publishCalls).toHaveLength(1)
           expect(Fs.Path.toString(publishCalls[0]!.tarball)).toBe(
-            '/repo/.release/artifacts/kitz-core-1.1.0.tgz',
+            '/repo/.release/artifacts/scope-core-1.1.0.tgz',
           )
           expect(publishCalls[0]!.ignoreScripts).toBe(true)
 
           const createdReleases = yield* Ref.get(harness.githubState.createdReleases)
           expect(createdReleases).toHaveLength(1)
           expect(createdReleases[0]!.tag).toBe(tagCore('1.1.0'))
-          expect(createdReleases[0]!.title).toBe('@kitz/core v1.1.0')
+          expect(createdReleases[0]!.title).toBe('@scope/core v1.1.0')
 
           const manifestRaw = yield* Fs.readString(coreManifestPath).pipe(
             Effect.provide(harness.workflowLayer),
@@ -130,7 +144,7 @@ describe('Executor integration', () => {
               isClean: true,
             },
             diskLayout: {
-              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+              '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
             },
           })
 
@@ -159,7 +173,7 @@ describe('Executor integration', () => {
             isClean: true,
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
           },
         })
 
@@ -194,6 +208,111 @@ describe('Executor integration', () => {
     ),
   )
 
+  Test.live('fails dry-run preflight on a planned tag collision', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
+          },
+        })
+
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
+        const plannedRelease = plan.releases[0]
+        expect(plannedRelease).toBeDefined()
+        const conflictingTag = tag(
+          plannedRelease!.package.name,
+          Semver.toString(plannedRelease!.nextVersion),
+        )
+        yield* Ref.update(harness.gitState.tags, (tags) => [...tags, conflictingTag])
+
+        const outcome = yield* execute(plan, { dryRun: true }).pipe(
+          Effect.provide(harness.workflowLayer),
+          Effect.result,
+        )
+
+        expect(outcome._tag).toBe('Failure')
+        if (outcome._tag === 'Failure') {
+          expect(outcome.failure._tag).toBe('ExecutorPreflightError')
+          if (outcome.failure._tag === 'ExecutorPreflightError') {
+            expect(outcome.failure.context.check).toBe('plan.tags-unique')
+          }
+        }
+
+        const publishAttempts = yield* Ref.get(harness.publishAttempts)
+        expect(publishAttempts).toBe(0)
+
+        const createdTags = yield* Ref.get(harness.gitState.createdTags)
+        expect(createdTags).toHaveLength(0)
+      }),
+    ),
+  )
+
+  Test.live('does not publish unresolved local runtime dependencies', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [],
+            commits: [Git.Memory.commit('feat(root): add public API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/root/package.json': makePackageJson('@scope/root', '0.0.0', {
+              dependencies: {
+                '@scope/runtime': 'workspace:*',
+              },
+            }),
+            '/repo/packages/runtime/package.json': makePackageJson('@scope/runtime', '0.0.0'),
+          },
+        })
+
+        const plan = yield* planOfficial(firstPublishWorkspacePackages).pipe(
+          Effect.provide(harness.planLayer),
+        )
+
+        const outcome = yield* execute(plan, { dryRun: false }).pipe(
+          Effect.provide(harness.workflowLayer),
+          Effect.result,
+        )
+
+        if (outcome._tag === 'Failure') {
+          const packCalls = yield* Ref.get(harness.packCalls)
+          expect(packCalls).toHaveLength(0)
+
+          const publishAttempts = yield* Ref.get(harness.publishAttempts)
+          expect(publishAttempts).toBe(0)
+          return
+        }
+
+        const packCalls = yield* Ref.get(harness.packCalls)
+        const rootPackCall = packCalls.find(
+          (call) => call.manifestSnapshot['name'] === '@scope/root',
+        )
+        expect(rootPackCall).toBeDefined()
+
+        const dependencies = rootPackCall?.manifestSnapshot['dependencies']
+        expect(dependencies).toBeDefined()
+        if (
+          typeof dependencies !== 'object' ||
+          dependencies === null ||
+          Array.isArray(dependencies)
+        ) {
+          throw new Error('expected packed manifest dependencies to be an object')
+        }
+
+        const runtimeSpecifier = dependencies['@scope/runtime']
+        expect(typeof runtimeSpecifier).toBe('string')
+        expect(String(runtimeSpecifier).startsWith('workspace:')).toBe(false)
+      }),
+    ),
+  )
+
   Test.live('fails preflight when git working tree is dirty', () =>
     quiet(
       Effect.gen(function* () {
@@ -204,7 +323,7 @@ describe('Executor integration', () => {
             isClean: false,
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
           },
         })
 
@@ -240,7 +359,7 @@ describe('Executor integration', () => {
             isClean: true,
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
           },
         })
 
@@ -278,19 +397,19 @@ describe('Executor integration', () => {
             isClean: true,
           },
           diskLayout: {
-            '/repo/packages/a/package.json': makePackageJson('@kitz/a', '1.0.0', {
+            '/repo/packages/a/package.json': makePackageJson('@scope/a', '1.0.0', {
               dependencies: {
-                '@kitz/b': 'workspace:^',
+                '@scope/b': 'workspace:^',
               },
             }),
-            '/repo/packages/b/package.json': makePackageJson('@kitz/b', '1.0.0', {
+            '/repo/packages/b/package.json': makePackageJson('@scope/b', '1.0.0', {
               dependencies: {
-                '@kitz/a': 'workspace:^',
+                '@scope/a': 'workspace:^',
               },
             }),
-            '/repo/packages/c/package.json': makePackageJson('@kitz/c', '1.0.0', {
+            '/repo/packages/c/package.json': makePackageJson('@scope/c', '1.0.0', {
               dependencies: {
-                '@kitz/a': 'workspace:^',
+                '@scope/a': 'workspace:^',
               },
             }),
           },
@@ -300,7 +419,7 @@ describe('Executor integration', () => {
           Effect.provide(harness.planLayer),
         )
 
-        expect(plan.cascades.some((item) => item.package.name.moniker === '@kitz/c')).toBe(true)
+        expect(plan.cascades.some((item) => item.package.name.moniker === '@scope/c')).toBe(true)
 
         const outcome = yield* execute(plan, { dryRun: false }).pipe(
           Effect.provide(harness.workflowLayer),
@@ -311,10 +430,10 @@ describe('Executor integration', () => {
         if (outcome._tag === 'Failure') {
           expect(outcome.failure._tag).toBe('ExecutorDependencyCycleError')
           if (outcome.failure._tag === 'ExecutorDependencyCycleError') {
-            expect(outcome.failure.context.packages).toEqual(['@kitz/a', '@kitz/b'])
+            expect(outcome.failure.context.packages).toEqual(['@scope/a', '@scope/b'])
             expect(outcome.failure.context.edges).toEqual([
-              '@kitz/a -> @kitz/b',
-              '@kitz/b -> @kitz/a',
+              '@scope/a -> @scope/b',
+              '@scope/b -> @scope/a',
             ])
           }
         }
@@ -341,19 +460,19 @@ describe('Executor integration', () => {
             isClean: true,
           },
           diskLayout: {
-            '/repo/packages/a/package.json': makePackageJson('@kitz/a', '1.0.0', {
+            '/repo/packages/a/package.json': makePackageJson('@scope/a', '1.0.0', {
               dependencies: {
-                '@kitz/b': 'workspace:^',
+                '@scope/b': 'workspace:^',
               },
             }),
-            '/repo/packages/b/package.json': makePackageJson('@kitz/b', '1.0.0', {
+            '/repo/packages/b/package.json': makePackageJson('@scope/b', '1.0.0', {
               dependencies: {
-                '@kitz/a': 'workspace:^',
+                '@scope/a': 'workspace:^',
               },
             }),
-            '/repo/packages/c/package.json': makePackageJson('@kitz/c', '1.0.0', {
+            '/repo/packages/c/package.json': makePackageJson('@scope/c', '1.0.0', {
               dependencies: {
-                '@kitz/a': 'workspace:^',
+                '@scope/a': 'workspace:^',
               },
             }),
           },
@@ -372,17 +491,17 @@ describe('Executor integration', () => {
         if (outcome._tag === 'Failure') {
           expect(outcome.failure._tag).toBe('ExecutorDependencyCycleError')
           if (outcome.failure._tag === 'ExecutorDependencyCycleError') {
-            expect(outcome.failure.context.packages).toEqual(['@kitz/a', '@kitz/b'])
+            expect(outcome.failure.context.packages).toEqual(['@scope/a', '@scope/b'])
             expect(outcome.failure.context.edges).toEqual([
-              '@kitz/a -> @kitz/b',
-              '@kitz/b -> @kitz/a',
+              '@scope/a -> @scope/b',
+              '@scope/b -> @scope/a',
             ])
           }
         }
 
         const observableAttempt = yield* executeObservable(plan, {
           dryRun: true,
-          dbPath: `/tmp/kitz-release-workflow-${Date.now()}-${Math.random().toString(16).slice(2)}.db`,
+          dbPath: `/tmp/release-workflow-${Date.now()}-${Math.random().toString(16).slice(2)}.db`,
         }).pipe(Effect.provide(harness.planLayer), Effect.result)
 
         expect(observableAttempt._tag).toBe('Failure')
@@ -405,9 +524,9 @@ describe('Executor integration', () => {
               isClean: true,
             },
             diskLayout: {
-              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+              '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
             },
-            failPublishPackages: ['@kitz/core'],
+            failPublishPackages: ['@scope/core'],
           })
 
           const plan = yield* planOfficial(workspacePackages).pipe(
@@ -423,7 +542,7 @@ describe('Executor integration', () => {
           if (outcome._tag === 'Failure') {
             expect(outcome.failure._tag).toBe('ExecutorPublishError')
             if (outcome.failure._tag === 'ExecutorPublishError') {
-              expect(outcome.failure.context.packageName).toBe('@kitz/core')
+              expect(outcome.failure.context.packageName).toBe('@scope/core')
               expect(outcome.failure.context.detail).toContain('mock publish failure')
             }
           }
@@ -458,7 +577,7 @@ describe('Executor integration', () => {
             isClean: true,
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0', {
               imports: {
                 '#core': './src/_.ts',
               },
@@ -470,7 +589,7 @@ describe('Executor integration', () => {
               },
             }),
           },
-          failPackPackages: ['@kitz/core'],
+          failPackPackages: ['@scope/core'],
         })
 
         const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
@@ -523,7 +642,7 @@ describe('Executor integration', () => {
             isClean: true,
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
           },
         })
 
@@ -540,7 +659,7 @@ describe('Executor integration', () => {
           const gh = yield* Github.Github
           yield* gh.createRelease({
             tag: candidateTag,
-            title: '@kitz/core @next',
+            title: '@scope/core @next',
             body: 'existing',
             prerelease: true,
           })
@@ -571,7 +690,7 @@ describe('Executor integration', () => {
             isClean: true,
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
           },
         })
 
@@ -597,7 +716,7 @@ describe('Executor integration', () => {
               isClean: true,
             },
             diskLayout: {
-              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+              '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
             },
           })
 
@@ -628,7 +747,7 @@ describe('Executor integration', () => {
               isClean: true,
             },
             diskLayout: {
-              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+              '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
             },
           })
 
@@ -647,7 +766,7 @@ describe('Executor integration', () => {
             const gh = yield* Github.Github
             yield* gh.createRelease({
               tag: candidateTag,
-              title: '@kitz/core @next',
+              title: '@scope/core @next',
               body: 'existing',
               prerelease: true,
             })
@@ -666,9 +785,9 @@ describe('Executor integration', () => {
           expect(createdReleases.filter((r) => r.tag === candidateTag)).toHaveLength(1)
           expect(updatedReleases.filter((r) => r.tag === candidateTag)).toHaveLength(1)
           expect(updatedReleases.find((r) => r.tag === candidateTag)?.params.title).toBe(
-            '@kitz/core @candidate',
+            '@scope/core @candidate',
           )
-          expect(releases[candidateTag]?.name).toBe('@kitz/core @candidate')
+          expect(releases[candidateTag]?.name).toBe('@scope/core @candidate')
         }),
       ),
   )
@@ -683,7 +802,7 @@ describe('Executor integration', () => {
             isClean: true,
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
           },
         })
 
@@ -708,7 +827,7 @@ describe('Executor integration', () => {
 
         expect(createdCandidateRelease).toMatchObject({
           tag: candidateTag,
-          title: '@kitz/core @candidate',
+          title: '@scope/core @candidate',
           prerelease: true,
         })
         expect(pushedTags).toContainEqual({ tag: candidateTag, remote: 'origin', force: true })
@@ -729,7 +848,7 @@ describe('Executor integration', () => {
               headSha: Git.Sha.make('abc1234'),
             },
             diskLayout: {
-              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+              '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
             },
           })
 
@@ -766,7 +885,7 @@ describe('Executor integration', () => {
             headSha: Git.Sha.make('abc1234'),
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
           },
         })
 
@@ -791,21 +910,21 @@ describe('Executor integration', () => {
             commits: [Git.Memory.commit('feat(core): new API')],
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
           },
         })
 
         const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
 
-        const dbPath = `/tmp/kitz-release-workflow-${Date.now()}-${Math.random().toString(16).slice(2)}.db`
+        const dbPath = `/tmp/release-workflow-${Date.now()}-${Math.random().toString(16).slice(2)}.db`
         const observable = yield* executeObservable(plan, {
           dryRun: true,
           dbPath,
         }).pipe(Effect.provide(harness.planLayer))
 
         const allActivities = observable.graph.layers.flatMap((layer) => [...layer])
-        expect(allActivities).toContain('Prepare:@kitz/core')
-        expect(allActivities).toContain('Publish:@kitz/core')
+        expect(allActivities).toContain('Prepare:@scope/core')
+        expect(allActivities).toContain('Publish:@scope/core')
         expect(allActivities).toContain(`CreateTag:${tagCore('1.1.0')}`)
         expect(allActivities).toContain(`PushTag:${tagCore('1.1.0')}`)
         expect(allActivities).toContain(`CreateGHRelease:${tagCore('1.1.0')}`)
@@ -822,7 +941,7 @@ describe('Executor integration', () => {
             commits: [Git.Memory.commit('feat(core): new API')],
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
           },
         })
 
@@ -833,7 +952,7 @@ describe('Executor integration', () => {
           const fileSystem = yield* FileSystem.FileSystem
           return yield* executeObservable(plan, {
             dryRun: true,
-            dbPath: `/tmp/kitz-release-workflow-${Date.now()}-${Math.random().toString(16).slice(2)}.db`,
+            dbPath: `/tmp/release-workflow-${Date.now()}-${Math.random().toString(16).slice(2)}.db`,
           }).pipe(
             Effect.provideService(FileSystem.FileSystem, {
               ...fileSystem,
@@ -849,7 +968,7 @@ describe('Executor integration', () => {
         }).pipe(Effect.provide(harness.planLayer))
 
         expect(observable.graph.layers.flatMap((layer) => [...layer])).toContain(
-          'Prepare:@kitz/core',
+          'Prepare:@scope/core',
         )
         expect(yield* Ref.get(manifestReads)).toBe(1)
       }),
@@ -866,7 +985,7 @@ describe('Executor integration', () => {
             isClean: true,
           },
           diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+            '/repo/packages/core/package.json': makePackageJson('@scope/core', '1.0.0'),
           },
         })
 
@@ -874,12 +993,12 @@ describe('Executor integration', () => {
 
         const observable = yield* executeObservable(plan, {
           dryRun: false,
-          dbPath: `/tmp/kitz-release-workflow-${Date.now()}-${Math.random().toString(16).slice(2)}.db`,
+          dbPath: `/tmp/release-workflow-${Date.now()}-${Math.random().toString(16).slice(2)}.db`,
         }).pipe(Effect.provide(harness.planLayer))
 
         const result = yield* observable.execute.pipe(Effect.provide(harness.workflowLayer))
 
-        expect(result.releasedPackages).toEqual(['@kitz/core'])
+        expect(result.releasedPackages).toEqual(['@scope/core'])
         expect(result.createdTags).toEqual([tagCore('1.1.0')])
         expect(result.createdGHReleases).toEqual([tagCore('1.1.0')])
       }),
