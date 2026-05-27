@@ -1,5 +1,3 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
 import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
@@ -7,7 +5,15 @@ import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
 import { Semver } from '@kitz/semver'
-import { Effect, Result, Schema as S } from 'effect'
+import {
+  Array as A,
+  Effect,
+  FileSystem,
+  PlatformError,
+  Record as EffectRecord,
+  Result,
+  Schema as S,
+} from 'effect'
 import type { Package } from '../analyzer/workspace.js'
 
 const baseTags = ['kit', 'release', 'publish'] as const
@@ -19,6 +25,8 @@ const JsonRecordSchema = S.Record(S.String, S.Unknown)
 const JsonRecordFromStringSchema = S.fromJsonString(JsonRecordSchema)
 const decodeJsonRecord = S.decodeUnknownEffect(JsonRecordFromStringSchema)
 const artifactRelDir = Fs.Path.RelDir.fromString('./.release/artifacts/')
+const workspaceRelDir = Fs.Path.RelDir.fromString('./.release/workspaces/')
+const stagingIgnore = ['.git', '.release', 'node_modules']
 
 /**
  * Minimal release info needed for publish preparation and tarball publish.
@@ -30,6 +38,13 @@ export interface ReleaseInfo {
 
 export interface PreparedArtifact extends ReleaseInfo {
   readonly tarball: Fs.Path.AbsFile
+  readonly packMetadata?: NpmRegistry.Cli.PackResult
+}
+
+export interface ArtifactPathOptions {
+  readonly planDigest?: string
+  readonly packEnv?: Readonly<Record<string, string | undefined>>
+  readonly packageManager?: NpmRegistry.Cli.PackageManagerCli
 }
 
 /**
@@ -53,10 +68,20 @@ export type PublishError = InstanceType<typeof PublishError>
  * Options for tarball publish.
  */
 export interface PublishOptions {
+  /** Package manager CLI selected by the frozen publish profile. */
+  readonly packageManager?: NpmRegistry.Cli.PackageManagerCli
   /** npm dist-tag (default: 'latest') */
   readonly tag?: string
   /** Registry URL */
   readonly registry?: string
+  /** Simulate the package-manager publish command without a registry mutation. */
+  readonly dryRun?: boolean
+  /** OTP value supplied through a provider-approved path. */
+  readonly otp?: string
+  /** Request provider-native provenance. */
+  readonly provenance?: boolean
+  /** Use a precomputed provenance bundle. */
+  readonly provenanceFile?: Fs.Path.AbsFile
 }
 
 const formatUnknownError = (error: unknown): string =>
@@ -78,10 +103,54 @@ const slugPackageName = (packageName: string): string =>
 const artifactFilename = (release: ReleaseInfo): string =>
   `${slugPackageName(release.package.name.moniker)}-${Semver.toString(release.nextVersion)}.tgz`
 
+const stagedPackageDirFor = (repoRoot: Fs.Path.AbsDir, release: ReleaseInfo): Fs.Path.AbsDir =>
+  Fs.Path.join(
+    Fs.Path.join(repoRoot, workspaceRelDir),
+    Fs.Path.RelDir.fromString(
+      `./${slugPackageName(release.package.name.moniker)}-${Semver.toString(release.nextVersion)}/`,
+    ),
+  )
+
+const copyPackageDirectory = (
+  from: Fs.Path.AbsDir,
+  to: Fs.Path.AbsDir,
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const fromString = Fs.Path.toString(from)
+    const toString = Fs.Path.toString(to)
+
+    yield* fs.makeDirectory(toString, { recursive: true })
+    const entries = yield* fs.readDirectory(fromString)
+
+    for (const entry of entries) {
+      if (stagingIgnore.includes(entry)) continue
+
+      const source = `${fromString}${entry}`
+      const target = `${toString}${entry}`
+      const stat = yield* fs.stat(source)
+
+      if (stat.type === 'Directory') {
+        yield* copyPackageDirectory(
+          Fs.Path.AbsDir.fromString(`${source}/`),
+          Fs.Path.AbsDir.fromString(`${target}/`),
+        )
+        continue
+      }
+
+      if (stat.type === 'File') {
+        const bytes = yield* fs.readFile(source)
+        yield* fs.writeFile(target, bytes)
+      }
+    }
+  })
+
 const workspaceVersionsFor = (
   releases: readonly ReleaseInfo[],
 ): Readonly<Record<string, Semver.Semver>> =>
-  Object.fromEntries(releases.map((release) => [release.package.name.moniker, release.nextVersion]))
+  A.reduce(releases, EffectRecord.empty<string, Semver.Semver>(), (versions, release) =>
+    EffectRecord.set(versions, release.package.name.moniker, release.nextVersion),
+  )
 
 const renderCleanupReminder = (): string =>
   'Re-run `release doctor --onlyRule plan.packages-runtime-targets-source-oriented` after publish to confirm the repo returned to source-first state.'
@@ -93,32 +162,17 @@ const renderPackHookDisclaimer = (hooks: readonly string[]): string | undefined 
 
 const renderPrepareFailureDetail = (params: {
   readonly prepareError: unknown
-  readonly cleanupFailureDetail?: string
   readonly packHooks: readonly string[]
 }): string =>
-  [
-    formatUnknownError(params.prepareError),
-    params.cleanupFailureDetail === undefined
-      ? 'Manifest cleanup restored version, runtime targets, and dependency specifiers.'
-      : `Manifest cleanup failed: ${params.cleanupFailureDetail}. Inspect package.json before retrying.`,
-    renderPackHookDisclaimer(params.packHooks),
-    renderCleanupReminder(),
-  ]
-    .filter((part) => part !== undefined)
-    .join(' ')
-
-const renderCleanupWarning = (params: {
-  readonly cleanupError: unknown
-  readonly packHooks: readonly string[]
-}): string =>
-  [
-    `Artifact prepared, but manifest cleanup failed: ${formatUnknownError(params.cleanupError)}.`,
-    'Publish can continue because the tarball is already packed, but the local repo may be left dirty until you restore package.json.',
-    renderPackHookDisclaimer(params.packHooks),
-    renderCleanupReminder(),
-  ]
-    .filter((part) => part !== undefined)
-    .join(' ')
+  A.filter(
+    [
+      formatUnknownError(params.prepareError),
+      'Source package manifests were not mutated; packing ran from an isolated release workspace.',
+      renderPackHookDisclaimer(params.packHooks),
+      renderCleanupReminder(),
+    ],
+    (part): part is string => part !== undefined,
+  ).join(' ')
 
 const renderPublishFailureDetail = (publishError: unknown): string =>
   [
@@ -129,9 +183,24 @@ const renderPublishFailureDetail = (publishError: unknown): string =>
 /**
  * Deterministic artifact path for a prepared package tarball.
  */
-export const artifactPathFor = (repoRoot: Fs.Path.AbsDir, release: ReleaseInfo): Fs.Path.AbsFile =>
+const artifactDirectoryFor = (
+  repoRoot: Fs.Path.AbsDir,
+  options?: ArtifactPathOptions,
+): Fs.Path.AbsDir =>
+  options?.planDigest === undefined
+    ? Fs.Path.join(repoRoot, artifactRelDir)
+    : Fs.Path.join(
+        Fs.Path.join(repoRoot, artifactRelDir),
+        Fs.Path.RelDir.fromString(`./${options.planDigest}/`),
+      )
+
+export const artifactPathFor = (
+  repoRoot: Fs.Path.AbsDir,
+  release: ReleaseInfo,
+  options?: ArtifactPathOptions,
+): Fs.Path.AbsFile =>
   Fs.Path.join(
-    Fs.Path.join(repoRoot, artifactRelDir),
+    artifactDirectoryFor(repoRoot, options),
     Fs.Path.RelFile.fromString(`./${artifactFilename(release)}`),
   )
 
@@ -142,9 +211,10 @@ export const artifactPathFor = (repoRoot: Fs.Path.AbsDir, release: ReleaseInfo):
 export const preparePackageArtifact = (
   release: ReleaseInfo,
   releases: readonly ReleaseInfo[],
+  options?: ArtifactPathOptions,
 ): Effect.Effect<
   PreparedArtifact,
-  PublishError | Resource.ResourceError | PlatformError,
+  PublishError | Resource.ResourceError | PlatformError.PlatformError,
   FileSystem.FileSystem | NpmRegistry.NpmCli | Env.Env
 > =>
   Effect.gen(function* () {
@@ -156,8 +226,13 @@ export const preparePackageArtifact = (
       Fs.Path.RelFile.fromString('./package.json'),
     )
     const packageJsonPathString = Fs.Path.toString(packageJsonPath)
-    const artifactDir = Fs.Path.join(env.cwd, artifactRelDir)
-    const artifactPath = artifactPathFor(env.cwd, release)
+    const artifactDir = artifactDirectoryFor(env.cwd, options)
+    const artifactPath = artifactPathFor(env.cwd, release, options)
+    const stagedPackageDir = stagedPackageDirFor(env.cwd, release)
+    const stagedPackageJsonPath = Fs.Path.join(
+      stagedPackageDir,
+      Fs.Path.RelFile.fromString('./package.json'),
+    )
 
     const originalJson = yield* fs.readFileString(packageJsonPathString)
     const originalManifest = yield* decodeJsonRecordOrFail(release.package.path, originalJson)
@@ -168,8 +243,12 @@ export const preparePackageArtifact = (
       workspaceVersions: workspaceVersionsFor(releases),
     })
 
+    yield* fs
+      .remove(Fs.Path.toString(stagedPackageDir), { recursive: true, force: true })
+      .pipe(Effect.ignore)
+    yield* copyPackageDirectory(release.package.path, stagedPackageDir)
     yield* fs.writeFileString(
-      packageJsonPathString,
+      Fs.Path.toString(stagedPackageJsonPath),
       JSON.stringify(rewrittenManifest, null, 2) + '\n',
     )
     yield* fs.makeDirectory(Fs.Path.toString(artifactDir), { recursive: true })
@@ -177,26 +256,22 @@ export const preparePackageArtifact = (
 
     const packResult = yield* cli
       .pack({
-        cwd: release.package.path,
+        cwd: stagedPackageDir,
         packDestination: artifactDir,
+        ...(options?.packageManager !== undefined
+          ? { packageManager: options.packageManager }
+          : {}),
+        ...(options?.packEnv !== undefined ? { env: options.packEnv } : {}),
       })
       .pipe(Effect.result)
 
-    const restoreResult = yield* fs
-      .writeFileString(packageJsonPathString, originalJson)
-      .pipe(Effect.result)
-
     if (Result.isFailure(packResult)) {
-      const cleanupFailureDetail = Result.isFailure(restoreResult)
-        ? formatUnknownError(restoreResult.failure)
-        : undefined
       return yield* Effect.fail(
         new PublishError({
           context: {
             package: release.package.path,
             detail: renderPrepareFailureDetail({
               prepareError: packResult.failure,
-              ...(cleanupFailureDetail === undefined ? {} : { cleanupFailureDetail }),
               packHooks,
             }),
           },
@@ -208,18 +283,13 @@ export const preparePackageArtifact = (
       yield* fs.rename(Fs.Path.toString(packResult.success.tarball), Fs.Path.toString(artifactPath))
     }
 
-    if (Result.isFailure(restoreResult)) {
-      yield* Effect.logWarning(
-        `[release] ${release.package.name.moniker}: ${renderCleanupWarning({
-          cleanupError: restoreResult.failure,
-          packHooks,
-        })}`,
-      )
-    }
-
     return {
       ...release,
       tarball: artifactPath,
+      packMetadata: {
+        ...packResult.success,
+        tarball: artifactPath,
+      },
     }
   })
 
@@ -236,10 +306,19 @@ export const publishPreparedArtifact = (
     const publishResult = yield* cli
       .publish({
         tarball: artifact.tarball,
+        ...(options?.packageManager !== undefined
+          ? { packageManager: options.packageManager }
+          : {}),
         access: 'public',
         ignoreScripts: true,
         ...(options?.tag && { tag: options.tag }),
         ...(options?.registry && { registry: options.registry }),
+        ...(options?.dryRun === true ? { dryRun: true } : {}),
+        ...(options?.otp !== undefined ? { otp: options.otp } : {}),
+        ...(options?.provenance === true ? { provenance: true } : {}),
+        ...(options?.provenanceFile !== undefined
+          ? { provenanceFile: options.provenanceFile }
+          : {}),
       })
       .pipe(Effect.result)
 

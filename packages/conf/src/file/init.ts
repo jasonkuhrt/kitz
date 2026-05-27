@@ -1,5 +1,4 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Data, Effect, type Schema } from 'effect'
@@ -119,7 +118,7 @@ export default ${namedExport}({})
 export const init = <S extends Schema.Top>(
   definition: ConfigDefinition<S>,
   options: InitOptions,
-): Effect.Effect<InitResult, PlatformError, FileSystem.FileSystem | Env.Env> =>
+): Effect.Effect<InitResult, PlatformError.PlatformError, FileSystem.FileSystem | Env.Env> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
     const directory = options.directory ?? env.cwd

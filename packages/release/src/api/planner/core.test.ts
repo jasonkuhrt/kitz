@@ -91,6 +91,7 @@ describe('planner core', () => {
             package: impact.package,
             version: OfficialFirst.make({
               version: Semver.fromString('9.9.9'),
+              bump: 'minor',
             }),
             commits: impact.commits,
           })

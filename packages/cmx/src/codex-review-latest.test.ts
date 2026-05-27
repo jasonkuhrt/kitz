@@ -6,7 +6,7 @@
  * P2: choiceUndo pops treePath for leaf choices
  */
 import { describe, expect, it, test } from 'bun:test'
-import { Effect, Layer, ServiceMap, Schema as S } from 'effect'
+import { Effect, Layer, Context, Schema as S } from 'effect'
 import { Session } from './session.js'
 import { Command } from './command.js'
 import { Capability } from './capability.js'
@@ -21,7 +21,7 @@ import { configNs, bufferNs, defaultProximities } from './test-fixtures.js'
 
 describe('P1: Fuzzy slot source with service dependency', () => {
   it('fuzzy slot source that reads a service provides candidates', () => {
-    class UserService extends ServiceMap.Service<UserService, { readonly users: string[] }>()(
+    class UserService extends Context.Service<UserService, { readonly users: string[] }>()(
       'test/UserService',
     ) {}
 
@@ -64,7 +64,7 @@ describe('P1: Fuzzy slot source with service dependency', () => {
 
 describe('source error diagnostics', () => {
   test('getSourceErrors captures Fuzzy source failure with slot name and message', () => {
-    class MissingService extends ServiceMap.Service<MissingService, { data: string[] }>()(
+    class MissingService extends Context.Service<MissingService, { data: string[] }>()(
       'test/MissingService',
     ) {}
 
@@ -98,7 +98,7 @@ describe('source error diagnostics', () => {
   })
 
   test('getSourceErrors is empty when sources succeed', () => {
-    class GoodService extends ServiceMap.Service<GoodService, { items: string[] }>()(
+    class GoodService extends Context.Service<GoodService, { items: string[] }>()(
       'test/GoodService',
     ) {}
 
@@ -126,8 +126,8 @@ describe('source error diagnostics', () => {
   })
 
   test('getSourceErrors captures multiple failures from multiple slots', () => {
-    class Svc1 extends ServiceMap.Service<Svc1, { x: number }>()('test/Svc1') {}
-    class Svc2 extends ServiceMap.Service<Svc2, { y: number }>()('test/Svc2') {}
+    class Svc1 extends Context.Service<Svc1, { x: number }>()('test/Svc1') {}
+    class Svc2 extends Context.Service<Svc2, { y: number }>()('test/Svc2') {}
 
     const slot1 = Slot.Fuzzy.make({
       name: 'slot1',

@@ -10,7 +10,7 @@ import { PrService } from '../services/pr.js'
 
 /** Requires the PR title to include at least one scope. */
 export const rule = RuntimeRule.create({
-  id: RuleId.makeUnsafe('pr.scope.require'),
+  id: RuleId.make('pr.scope.require'),
   description: 'At least one scope required',
   preconditions: [new Precondition.HasOpenPR()],
   defaults: RuleDefaults.make({ enabled: false }),

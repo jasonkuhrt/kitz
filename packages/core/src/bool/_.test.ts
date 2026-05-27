@@ -1,4 +1,4 @@
-import { property } from '#kitz/test/test'
+import { property } from '@kitz/test/test'
 import * as fc from 'fast-check'
 import { expect, test } from 'bun:test'
 import { Bool } from './_.js'

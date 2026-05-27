@@ -6,9 +6,12 @@ import {
   formatIgnoredInvalidPlanMessage,
   formatInvalidPlanMessage,
   formatMissingPlanMessage,
+  formatUnsupportedExecutionPlanMessage,
+  hasExecutablePlanContract,
   loadActivePlan,
   loadPlan,
 } from './plan-file.js'
+import * as Api from '../../api/__.js'
 
 describe('plan-file helpers', () => {
   test('loads a missing active plan as PlanMissing', async () => {
@@ -86,5 +89,16 @@ describe('plan-file helpers', () => {
     const message = formatMissingPlanMessage(result).join('\n')
     expect(message).toContain('/repo/tmp/release-plan.json')
     expect(message).toContain('--out /repo/tmp/release-plan.json')
+  })
+
+  test('formats unsupported execution plans with the missing frozen contract fields', () => {
+    const plan = Api.Planner.Plan.empty
+
+    expect(hasExecutablePlanContract(plan)).toBe(false)
+    expect(formatUnsupportedExecutionPlanMessage(plan)).toEqual([
+      'This release plan is missing the frozen v2 execution contract.',
+      'Missing field(s): planDigest, publishIntent.',
+      'Run `release plan --lifecycle <official|candidate|ephemeral>` again with the current @kitz/release before executing, resuming, graphing, or checking durable status.',
+    ])
   })
 })

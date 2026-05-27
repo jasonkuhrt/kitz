@@ -7,7 +7,7 @@ import { Environment } from './violation-location.js'
 import { Violation } from './violation.js'
 
 const ruleRef = (id: string) => ({
-  id: RuleId.makeUnsafe(id),
+  id: RuleId.make(id),
   description: 'Test rule',
 })
 

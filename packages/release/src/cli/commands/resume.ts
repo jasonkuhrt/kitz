@@ -16,6 +16,8 @@ import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../
 import {
   formatInvalidPlanMessage,
   formatMissingPlanMessage,
+  formatUnsupportedExecutionPlanMessage,
+  hasExecutablePlanContract,
   loadActivePlan,
   loadPlan,
 } from './plan-file.js'
@@ -86,15 +88,18 @@ Cli.run(
       return env.exit(1)
     }
 
-    const config = yield* Api.Config.load()
     const plan = planState.plan
-    const publish = Api.Publishing.resolvePublishSemanticsForPlan({
-      plan,
-      ...(args.tag !== undefined ? { tag: args.tag } : {}),
-      publishing: config.publishing,
-      npmTag: config.npmTag,
-      candidateTag: config.candidateTag,
-    })
+    if (args.tag !== undefined) {
+      yield* Console.error(
+        'Resume uses the frozen plan dist-tag; --tag cannot alter workflow identity.',
+      )
+      return env.exit(1)
+    }
+    if (!hasExecutablePlanContract(plan)) {
+      for (const line of formatUnsupportedExecutionPlanMessage(plan)) yield* Console.error(line)
+      return env.exit(1)
+    }
+    const publishing = Api.Publishing.publishingFromIntent(plan.publishIntent)
 
     const runtime = yield* Api.Explorer.explore()
     const runtimeConfig = Api.Explorer.toExecutorRuntimeConfig(runtime)
@@ -106,9 +111,9 @@ Cli.run(
 
     const resumeAttempt = yield* Api.Executor.resumeObservable(plan, {
       dryRun: false,
-      tag: publish.distTag,
-      publishing: config.publishing,
-      trunk: config.trunk,
+      tag: plan.publishIntent.distTag,
+      publishing,
+      trunk: plan.publishIntent.git.trunk,
       github: runtimeConfig.github,
     }).pipe(Effect.provide(Api.Executor.makeWorkflowRuntime()), Effect.result)
 

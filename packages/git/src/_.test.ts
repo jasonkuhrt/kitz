@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Test } from '@kitz/test'
@@ -281,6 +281,59 @@ describe('Git', () => {
     })
   })
 
+  test('pushTagsAtomic records atomic multi-tag pushes', async () => {
+    const { layer, state } = await Effect.runPromise(Git.Memory.makeWithState({}))
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const git = yield* Git.Git
+        yield* git.pushTagsAtomic(['@kitz/core@1.0.0', '@kitz/cli@1.0.0'], 'origin')
+      }).pipe(Effect.provide(layer)),
+    )
+
+    const pushed = await Effect.runPromise(Ref.get(state.pushedTags))
+    expect(pushed).toContainEqual({
+      tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0'],
+      remote: 'origin',
+      force: false,
+      atomic: true,
+    })
+  })
+
+  test('dry-run push proofs record non-mutating tag pushes', async () => {
+    const { layer, state } = await Effect.runPromise(Git.Memory.makeWithState({}))
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const git = yield* Git.Git
+        const single = yield* git.pushTagDryRun('@kitz/core@1.0.0', 'origin')
+        const atomic = yield* git.pushTagsAtomicDryRun(
+          ['@kitz/core@1.0.0', '@kitz/cli@1.0.0'],
+          'upstream',
+          true,
+        )
+        return { single, atomic }
+      }).pipe(Effect.provide(layer)),
+    )
+
+    const pushed = await Effect.runPromise(Ref.get(state.pushedTags))
+    expect(result.single.stdout).toContain('@kitz/core@1.0.0')
+    expect(result.atomic.stdout).toContain('atomic')
+    expect(pushed).toContainEqual({
+      tag: '@kitz/core@1.0.0',
+      remote: 'origin',
+      force: false,
+      dryRun: true,
+    })
+    expect(pushed).toContainEqual({
+      tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0'],
+      remote: 'upstream',
+      force: true,
+      atomic: true,
+      dryRun: true,
+    })
+  })
+
   test('deleteTag removes tag and records deletion', async () => {
     const { layer, state } = await Effect.runPromise(
       Git.Memory.makeWithState({ tags: ['@kitz/core@1.0.0'] }),
@@ -430,9 +483,7 @@ describe('Commit', () => {
       Schema.Struct({
         type: Schema.String,
       }),
-    ) {
-      static make = this.makeUnsafe
-    }
+    ) {}
 
     const commit = ReleaseCommit.make({
       hash: Git.Sha.make('abc1234'),
@@ -596,6 +647,31 @@ describe('GitLive', () => {
     }
   })
 
+  test('sanitizes editor environment before spawning git', async () => {
+    const repo = makeTempGitRepo()
+    const originalEditor = process.env['EDITOR']
+
+    try {
+      process.env['EDITOR'] = 'vim'
+
+      const result = await Effect.runPromise(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          return yield* git.getRoot()
+        }).pipe(Effect.provide(Git.makeGitLive(repo.root))),
+      )
+
+      expect(realpathSync(result)).toBe(realpathSync(repo.root))
+    } finally {
+      if (originalEditor === undefined) {
+        delete process.env['EDITOR']
+      } else {
+        process.env['EDITOR'] = originalEditor
+      }
+      repo.cleanup()
+    }
+  })
+
   test('isClean returns the repo status', async () => {
     const repo = makeTempGitRepo()
 
@@ -672,7 +748,13 @@ describe('GitLive', () => {
           yield* git.createTag('scratch')
           yield* git.createTagAt('v1.0.0-hotfix', repo.releaseSha, 'hotfix release')
           yield* git.createTagAt('v1.0.0-lightweight', repo.releaseSha)
+          const dryRun = yield* git.pushTagDryRun('v1.0.0-hotfix', 'origin')
+          const atomicDryRun = yield* git.pushTagsAtomicDryRun(
+            ['v1.0.0-hotfix', 'v1.0.0-lightweight'],
+            'origin',
+          )
           yield* git.pushTags('origin')
+          yield* git.pushTagsAtomic(['v1.0.0-lightweight'], 'origin', true)
           yield* git.pushTag('v1.0.0-lightweight', 'origin', true)
           yield* git.deleteRemoteTag('v1.0.0-lightweight', 'origin')
           yield* git.deleteTag('v1.0.1')
@@ -686,6 +768,8 @@ describe('GitLive', () => {
             existingCommit,
             missingCommit,
             remoteUrl,
+            dryRun,
+            atomicDryRun,
           }
         }).pipe(Effect.provide(Git.makeGitLive(repo.root))),
       )
@@ -698,6 +782,8 @@ describe('GitLive', () => {
       expect(result.existingCommit).toBe(true)
       expect(result.missingCommit).toBe(false)
       expect(realpathSync(result.remoteUrl)).toBe(realpathSync(repo.remote))
+      expect(typeof result.dryRun.stdout).toBe('string')
+      expect(typeof result.atomicDryRun.stdout).toBe('string')
       expect(runGit(repo.root, ['tag'])).not.toContain('v1.0.1')
       expect(runGit(repo.root, ['ls-remote', '--tags', 'origin'])).not.toContain(
         'v1.0.0-lightweight',
@@ -725,6 +811,44 @@ describe('GitLive', () => {
       }
     } finally {
       rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  test('wraps live git output parse failures in GitParseError', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'kitz-git-parse-invalid-'))
+    const bin = mkdtempSync(join(tmpdir(), 'kitz-git-fake-bin-'))
+    const fakeGit = join(bin, 'git')
+    const originalPath = process.env['PATH']
+
+    writeFileSync(
+      fakeGit,
+      `#!/bin/sh
+case "$*" in
+  *"rev-parse --short HEAD"*) echo "not-a-sha"; exit 0 ;;
+  *) echo "unexpected git invocation: $*" >&2; exit 1 ;;
+esac
+`,
+    )
+    chmodSync(fakeGit, 0o755)
+
+    try {
+      process.env['PATH'] = `${bin}:${originalPath ?? ''}`
+      const result = await Effect.runPromise(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          return yield* git.getHeadSha()
+        }).pipe(Effect.provide(Git.makeGitLive(root)), Effect.result),
+      )
+
+      expect(result._tag).toBe('Failure')
+      if (result._tag === 'Failure') {
+        expect(result.failure._tag).toBe('GitParseError')
+        expect(result.failure.context.operation).toBe('getHeadSha')
+      }
+    } finally {
+      process.env['PATH'] = originalPath
+      rmSync(root, { recursive: true, force: true })
+      rmSync(bin, { recursive: true, force: true })
     }
   })
 })

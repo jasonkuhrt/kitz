@@ -6,7 +6,7 @@ import {
   HttpClientError,
   HttpClientResponse,
 } from 'effect/unstable/http'
-import { Effect, Layer, ServiceMap } from 'effect'
+import { Effect, Layer, Option } from 'effect'
 import { getGithubToken } from './env.js'
 import {
   Github,
@@ -23,7 +23,7 @@ import {
   type UpdatePullRequestParams,
 } from './service.js'
 
-type HttpClientService = ServiceMap.Service.Shape<typeof HttpClient.HttpClient>
+type HttpClientService = HttpClient.HttpClient
 type GithubLiveLayer = (config: GithubConfig) => Layer.Layer<Github, never, HttpClient.HttpClient>
 type GithubLiveFetchLayer = (config: GithubConfig) => Layer.Layer<Github>
 
@@ -60,7 +60,7 @@ const defaultRateLimitReset = (): Date => {
  * Parse rate limit reset time from response headers.
  */
 const parseRateLimitReset = (headers: Headers.Headers): Date => {
-  const resetHeader = Headers.get(headers, 'x-ratelimit-reset')
+  const resetHeader = Option.getOrUndefined(Headers.get(headers, 'x-ratelimit-reset'))
   if (resetHeader !== undefined) {
     const resetSeconds = parseInt(resetHeader, 10)
     if (!isNaN(resetSeconds)) {
@@ -75,7 +75,7 @@ const parseRateLimitReset = (headers: Headers.Headers): Date => {
  */
 const isRateLimited = (response: HttpClientResponse.HttpClientResponse): boolean => {
   if (response.status !== 403) return false
-  const remaining = Headers.get(response.headers, 'x-ratelimit-remaining')
+  const remaining = Option.getOrUndefined(Headers.get(response.headers, 'x-ratelimit-remaining'))
   return remaining !== undefined && remaining === '0'
 }
 
@@ -219,7 +219,8 @@ const makeGithubService = (
         HttpClientResponse.filterStatusOk(response),
       ),
       Effect.flatMap(
-        (response) => response.json as Effect.Effect<$data, HttpClientError.HttpClientError>,
+        (response: HttpClientResponse.HttpClientResponse) =>
+          response.json as Effect.Effect<$data, HttpClientError.HttpClientError>,
       ),
       Effect.mapError((error: HttpClientError.HttpClientError) =>
         mapHttpError(error, operation, path),
@@ -236,7 +237,8 @@ const makeGithubService = (
         HttpClientResponse.filterStatusOk(response),
       ),
       Effect.flatMap(
-        (response) => response.json as Effect.Effect<$data, HttpClientError.HttpClientError>,
+        (response: HttpClientResponse.HttpClientResponse) =>
+          response.json as Effect.Effect<$data, HttpClientError.HttpClientError>,
       ),
       Effect.mapError((error: HttpClientError.HttpClientError) =>
         mapHttpPostError(error, operation, path),
@@ -253,7 +255,8 @@ const makeGithubService = (
         HttpClientResponse.filterStatusOk(response),
       ),
       Effect.flatMap(
-        (response) => response.json as Effect.Effect<$data, HttpClientError.HttpClientError>,
+        (response: HttpClientResponse.HttpClientResponse) =>
+          response.json as Effect.Effect<$data, HttpClientError.HttpClientError>,
       ),
       Effect.mapError((error: HttpClientError.HttpClientError) =>
         mapHttpError(error, operation, path),

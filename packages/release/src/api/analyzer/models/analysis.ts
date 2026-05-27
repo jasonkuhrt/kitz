@@ -15,7 +15,6 @@ export class Analysis extends S.TaggedClass<Analysis>()('Analysis', {
   unchanged: S.Array(PackageSchema),
   tags: S.Array(S.String),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Analysis)
   static decode = S.decodeUnknownEffect(Analysis)
   static decodeSync = S.decodeUnknownSync(Analysis)

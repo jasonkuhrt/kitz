@@ -462,7 +462,7 @@ export function renderSyntaxError(input: {
 export const processLogFilterInput = (
   defaults: Defaults,
   pattern: string,
-  foundIn: string | undefined = undefined,
+  foundIn?: string,
 ): null | Parsed[] => {
   const errPatterns = parse(defaults, pattern)
   const [goodOnes, badOnes] = Arr.partitionErrors(errPatterns)

@@ -308,7 +308,7 @@ export class Box extends S.Class<Box>('Box')({
    * Content of the box - can be a string, styled text, or array of strings/boxes.
    * Defaults to empty string if not provided or undefined.
    */
-  content: BoxContentSchema.pipe(S.withDecodingDefaultKey(() => '')),
+  content: BoxContentSchema.pipe(S.withDecodingDefaultKey(Effect.sync(() => ''))),
 
   /**
    * Flow direction of the box.
@@ -363,7 +363,6 @@ export class Box extends S.Class<Box>('Box')({
    */
   gap: S.optional(PropGap.Gap),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Box as any) as (value: unknown) => value is Box
   static get decode(): any {
     return S.decode(Box as any)
@@ -866,9 +865,9 @@ export const String = Box.pipe(
 
 // Box is service-free at runtime; DecodingServices: unknown comes only from
 // the recursive S.suspend(() => Box) type annotation, not real services.
-export const makeFromEncoded = S.decodeSync(
-  Box as unknown as S.Top & { readonly DecodingServices: never },
-) as (input: typeof Box.Encoded) => Box
+export const makeFromEncoded = S.decodeSync(Box as unknown as S.Decoder<Box, never>) as (
+  input: typeof Box.Encoded,
+) => Box
 
 export type Encoded = typeof Box.Encoded
 
@@ -905,7 +904,7 @@ const BorderInput = S.Struct({
  * Encoding is forbidden (one-way transformation).
  */
 const BoxFromInput = S.Struct({
-  content: BoxContentSchema.pipe(S.withDecodingDefaultKey(() => '')),
+  content: BoxContentSchema.pipe(S.withDecodingDefaultKey(Effect.sync(() => ''))),
   orientation: S.optional(PropOrientation.Orientation),
   span: S.optional(PropSpan.fromInput),
   spanRange: S.optional(PropSpanRange.SpanRange),
@@ -941,9 +940,7 @@ const BoxFromInput = S.Struct({
  */
 // BoxFromInput is service-free at runtime; DecodingServices: unknown comes only
 // from the recursive S.suspend(() => Box) type annotation in BoxContentSchema.
-export const makeFromInput = S.decodeSync(
-  BoxFromInput as unknown as S.Top & { readonly DecodingServices: never },
-)
+export const makeFromInput = S.decodeSync(BoxFromInput as unknown as S.Decoder<Box, never>)
 
 /**
  * Input type for makeFromInput - accepts shorthand forms.

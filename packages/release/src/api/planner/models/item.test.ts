@@ -39,7 +39,7 @@ describe('Official item', () => {
   test('nextVersion for first release', () => {
     const item = Official.make({
       package: pkg('@kitz/core', 'core'),
-      version: OfficialFirst.make({ version: Semver.fromString('0.1.0') }),
+      version: OfficialFirst.make({ version: Semver.fromString('0.1.0'), bump: 'minor' }),
       commits: [commit('core')],
     })
     expect(Semver.equivalence(item.nextVersion, Semver.fromString('0.1.0'))).toBe(true)
@@ -64,7 +64,7 @@ describe('Official item', () => {
   test('currentVersion for first release is None', () => {
     const item = Official.make({
       package: pkg('@kitz/core', 'core'),
-      version: OfficialFirst.make({ version: Semver.fromString('0.1.0') }),
+      version: OfficialFirst.make({ version: Semver.fromString('0.1.0'), bump: 'minor' }),
       commits: [commit('core')],
     })
     expect(Option.isNone(item.currentVersion)).toBe(true)
@@ -83,13 +83,13 @@ describe('Official item', () => {
     expect(item.bumpType).toBe('major')
   })
 
-  test('bumpType for first release is minor', () => {
+  test('bumpType for first release is preserved from the release impact', () => {
     const item = Official.make({
       package: pkg('@kitz/core', 'core'),
-      version: OfficialFirst.make({ version: Semver.fromString('0.1.0') }),
+      version: OfficialFirst.make({ version: Semver.fromString('0.0.1'), bump: 'patch' }),
       commits: [commit('core')],
     })
-    expect(item.bumpType).toBe('minor')
+    expect(item.bumpType).toBe('patch')
   })
 })
 

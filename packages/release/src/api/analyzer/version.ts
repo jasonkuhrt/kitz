@@ -7,6 +7,7 @@ import type { Candidate } from '../version/models/candidate.js'
 import { CandidateSchema } from '../version/models/candidate.js'
 import type { Ephemeral } from '../version/models/ephemeral.js'
 import { EphemeralSchema } from '../version/models/ephemeral.js'
+import type { ConventionalCommitTypeImpact } from '../config.js'
 import { ReleaseCommit } from './models/commit.js'
 
 /**
@@ -20,12 +21,12 @@ export interface CommitImpact {
 }
 
 /**
- * Resolved type→bump map from config.
+ * Resolved type→impact map from config.
  */
-export type ResolvedConventionalCommitTypes = Record<string, Semver.BumpType>
+export type ResolvedConventionalCommitTypes = Record<string, ConventionalCommitTypeImpact>
 
 /**
- * Get bump type from CC type using the resolved type→bump config.
+ * Get bump type from CC type using the resolved type→impact config.
  *
  * Breaking always returns 'major'. Otherwise looks up the type name
  * in the resolved config map. Returns null for unrecognized types

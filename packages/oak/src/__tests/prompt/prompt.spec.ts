@@ -1,11 +1,15 @@
 import { Assert } from '@kitz/assert'
-import { beforeEach, describe, expect, it } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, it } from 'bun:test'
 import * as z from 'zod/v4'
 import type { BuilderCommandState } from '../../builders/command/state.js'
 import type { CommandBuilder } from '../../builders/command/types.js'
 import type { KeyPress } from '../../lib/KeyPress/_.js'
 import { $, b, e, l1, n, s, tryCatch } from '../_/helpers.js'
-import { memoryPrompter } from '../_/mocks/tty.js'
+import {
+  createMemoryPrompter,
+  expectMemoryPrompterDrained,
+  type MemoryPrompter,
+} from '../_/mocks/tty.js'
 import { normalizeTerminalOutput } from '../_/snapshotSerializer.js'
 
 // TODO test that prompt order is based on order of parameter definition
@@ -15,11 +19,17 @@ const $$ = $.settings({ onError: `throw`, helpOnError: false })
 let answers: string[]
 let keyPresses: KeyPress.KeyPressEvent[]
 let line: string[]
+let memoryPrompter: MemoryPrompter
 
 beforeEach(() => {
   answers = []
   keyPresses = []
   line = []
+  memoryPrompter = createMemoryPrompter()
+})
+
+afterEach(() => {
+  expectMemoryPrompterDrained(memoryPrompter)
 })
 
 describe(`string`, () => {

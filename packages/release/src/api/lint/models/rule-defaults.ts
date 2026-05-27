@@ -30,7 +30,6 @@ export class RuleDefaults extends Schema.TaggedClass<RuleDefaults>()('RuleDefaul
    */
   severity: Schema.optional(Severity),
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(RuleDefaults)
   static decode = Schema.decodeUnknownEffect(RuleDefaults)
   static decodeSync = Schema.decodeUnknownSync(RuleDefaults)

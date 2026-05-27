@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test'
-import { Effect, Layer, ServiceMap } from 'effect'
+import { Effect, Layer, Context } from 'effect'
 import { SlotValues, makeSlotValuesLayer, buildExecutableEffect } from './slot-values.js'
 
 describe('SlotValues', () => {
@@ -42,7 +42,7 @@ describe('SlotValues', () => {
   })
 
   it('buildExecutableEffect merges additional layers', async () => {
-    class TestService extends ServiceMap.Service<TestService, { readonly value: string }>()(
+    class TestService extends Context.Service<TestService, { readonly value: string }>()(
       'test/TestService',
     ) {}
 

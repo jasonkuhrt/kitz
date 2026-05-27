@@ -1,5 +1,4 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
@@ -48,7 +47,11 @@ type ReadResult<O extends ReadOptions | undefined> =
   O extends { expand: true }     ? ExpandedConfig :
                                    Config
 
-type ReadError = ConfigNotFoundError | GlobError | PlatformError | Resource.ResourceError
+type ReadError =
+  | ConfigNotFoundError
+  | GlobError
+  | PlatformError.PlatformError
+  | Resource.ResourceError
 
 const toExpandedConfig = (
   _config: Config,

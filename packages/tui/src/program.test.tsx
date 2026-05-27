@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { Effect, Layer, ServiceMap } from 'effect'
+import { Effect, Layer, Context } from 'effect'
 import { act } from 'react'
 import { Control, Transition, defineProgramSpec, type ViewProps } from './__.js'
 import * as TuiTest from './test.js'
@@ -576,7 +576,7 @@ describe('program runtime', () => {
     // Synthetic service that the command interpreter requires. This proves
     // the program's Effect runtime composes the user's layer alongside the
     // built-in Control service.
-    class Greeter extends ServiceMap.Service<Greeter, { readonly greet: () => string }>()(
+    class Greeter extends Context.Service<Greeter, { readonly greet: () => string }>()(
       '@kitz/tui-test/Greeter',
     ) {}
 

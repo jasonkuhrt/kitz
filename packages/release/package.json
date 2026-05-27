@@ -18,7 +18,9 @@
   },
   "exports": {
     ".": "./src/_.ts",
-    "./__": "./src/__.ts"
+    "./__": "./src/__.ts",
+    "./api": "./src/__.ts",
+    "./promise-api": "./src/promise-api.ts"
   },
   "files": [
     "build",
@@ -38,8 +40,8 @@
     "release": "./build/cli/cli.js"
   },
   "dependencies": {
-    "@effect/sql-sqlite-bun": "4.0.0-beta.31",
-    "@effect/sql-sqlite-node": "4.0.0-beta.31",
+    "@effect/sql-sqlite-bun": "4.0.0-beta.70",
+    "@effect/sql-sqlite-node": "4.0.0-beta.70",
     "@kitz/cli": "workspace:*",
     "@kitz/conf": "workspace:*",
     "@kitz/conventional-commits": "workspace:*",
@@ -59,13 +61,14 @@
     "@kitz/resource": "workspace:*",
     "@kitz/semver": "workspace:*",
     "@kitz/tui": "workspace:*",
-    "@opentui/core": "0.1.96",
-    "@opentui/react": "0.1.96",
-    "effect": "4.0.0-beta.31",
-    "react": "19.1.0"
+    "@opentui/core": "0.2.15",
+    "@opentui/react": "0.2.15",
+    "effect": "4.0.0-beta.70",
+    "react": "19.2.6"
   },
   "devDependencies": {
+    "@kitz/otel": "workspace:*",
     "@kitz/test": "workspace:*",
-    "@types/react": "^19.2.14"
+    "@types/react": "^19.2.15"
   }
 }

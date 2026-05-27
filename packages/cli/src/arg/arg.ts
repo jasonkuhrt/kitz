@@ -310,7 +310,6 @@ class ArgLongFlag extends S.TaggedClass<ArgLongFlag>()('long-flag', {
   value: S.NullOr(S.String),
   original: S.String,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(ArgLongFlag)
   static decode = S.decodeUnknownEffect(ArgLongFlag)
   static decodeSync = S.decodeUnknownSync(ArgLongFlag)
@@ -328,7 +327,6 @@ class ArgShortFlag extends S.TaggedClass<ArgShortFlag>()('short-flag', {
   value: S.NullOr(S.String),
   original: S.String,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(ArgShortFlag)
   static decode = S.decodeUnknownEffect(ArgShortFlag)
   static decodeSync = S.decodeUnknownSync(ArgShortFlag)
@@ -347,7 +345,6 @@ class ArgShortFlagCluster extends S.TaggedClass<ArgShortFlagCluster>()('short-fl
   flags: S.Array(ArgShortFlag).pipe(S.check(S.isMinLength(2))),
   original: S.String,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(ArgShortFlagCluster)
   static decode = S.decodeUnknownEffect(ArgShortFlagCluster)
   static decodeSync = S.decodeUnknownSync(ArgShortFlagCluster)
@@ -364,7 +361,6 @@ class ArgPositional extends S.TaggedClass<ArgPositional>()('positional', {
   value: S.String,
   original: S.String,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(ArgPositional)
   static decode = S.decodeUnknownEffect(ArgPositional)
   static decodeSync = S.decodeUnknownSync(ArgPositional)
@@ -381,7 +377,6 @@ class ArgSeparator extends S.TaggedClass<ArgSeparator>()('separator', {
   value: S.Null,
   original: S.Literal('--'),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(ArgSeparator)
   static decode = S.decodeUnknownEffect(ArgSeparator)
   static decodeSync = S.decodeUnknownSync(ArgSeparator)

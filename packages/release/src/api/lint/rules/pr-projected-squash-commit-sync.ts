@@ -21,7 +21,7 @@ const OptionsSchema = Schema.Struct({
 type Options = typeof OptionsSchema.Type
 
 export const rule = RuntimeRule.create({
-  id: RuleId.makeUnsafe('pr.projected-squash-commit-sync'),
+  id: RuleId.make('pr.projected-squash-commit-sync'),
   description: 'PR title header matches the canonical squash-merge header',
   preventsDescriptions: [
     'GitHub using a squash-merge title whose conventional-commit header drifts from the canonical release header.',

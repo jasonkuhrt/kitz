@@ -20,6 +20,7 @@ import {
   planOfficial,
   tag,
 } from './test-support.js'
+import { digestForPlan } from '../proof.js'
 
 const corePackagePath = Fs.Path.AbsDir.fromString('/repo/packages/core/')
 const coreManifestPath = Fs.Path.AbsFile.fromString('/repo/packages/core/package.json')
@@ -201,9 +202,10 @@ describe('Executor workflow state', () => {
           })
 
           const firstPublishCalls = yield* Ref.get(harness.publishCalls)
+          const artifactRoot = `/repo/.release/artifacts/${digestForPlan(plan).value}`
           expect(firstPublishCalls.map((call) => Fs.Path.toString(call.tarball))).toEqual([
-            '/repo/.release/artifacts/kitz-core-1.1.0.tgz',
-            '/repo/.release/artifacts/kitz-cli-1.0.1.tgz',
+            `${artifactRoot}/kitz-core-1.1.0.tgz`,
+            `${artifactRoot}/kitz-cli-1.0.1.tgz`,
           ])
 
           const firstCreatedTags = yield* Ref.get(harness.gitState.createdTags)
@@ -256,9 +258,9 @@ describe('Executor workflow state', () => {
 
           const finalPublishCalls = yield* Ref.get(harness.publishCalls)
           expect(finalPublishCalls.map((call) => Fs.Path.toString(call.tarball))).toEqual([
-            '/repo/.release/artifacts/kitz-core-1.1.0.tgz',
-            '/repo/.release/artifacts/kitz-cli-1.0.1.tgz',
-            '/repo/.release/artifacts/kitz-cli-1.0.1.tgz',
+            `${artifactRoot}/kitz-core-1.1.0.tgz`,
+            `${artifactRoot}/kitz-cli-1.0.1.tgz`,
+            `${artifactRoot}/kitz-cli-1.0.1.tgz`,
           ])
 
           const finalCreatedTags = yield* Ref.get(harness.gitState.createdTags)

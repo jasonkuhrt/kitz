@@ -23,7 +23,6 @@ export class OfficialRelease extends S.TaggedClass<OfficialRelease>()(
     description: 'A semantic version that is an official release (no pre-release identifiers)',
   },
 ) {
-  static make = this.makeUnsafe
   static is = S.is(OfficialRelease)
   static decode = S.decodeUnknownEffect(OfficialRelease)
   static decodeSync = S.decodeUnknownSync(OfficialRelease)

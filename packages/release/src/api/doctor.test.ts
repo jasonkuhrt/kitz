@@ -13,7 +13,7 @@ import {
 } from './doctor.js'
 
 const ruleRef = (id: string, description = 'Test rule') => ({
-  id: RuleId.makeUnsafe(id),
+  id: RuleId.make(id),
   description,
 })
 

@@ -1,6 +1,6 @@
 import { Lang } from '@kitz/core'
 import { Fs } from '@kitz/fs'
-import { Layer, ServiceMap } from 'effect'
+import { Layer, Context } from 'effect'
 import type { Arch, Os, Platform } from './types.js'
 
 /**
@@ -40,7 +40,7 @@ export interface EnvService {
  * Effect.runPromise(Effect.provide(program, Env.Live))
  * ```
  */
-export class Env extends ServiceMap.Service<Env, EnvService>()('Env') {}
+export class Env extends Context.Service<Env, EnvService>()('env') {}
 
 /**
  * Test layer for mocking environment in tests.

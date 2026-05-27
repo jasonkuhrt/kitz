@@ -1,6 +1,6 @@
 import { Str } from '@kitz/core'
 import * as fc from 'fast-check'
-import { Cause, Effect, Fiber, Layer, PlatformError, Queue, Terminal } from 'effect'
+import { Cause, Effect, Fiber, Layer, Option, PlatformError, Queue, Terminal } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import type { PickerKeyEvent, PickerOption } from './picker.js'
 import {
@@ -44,7 +44,7 @@ const keyEvent = (name: string, overrides: Partial<PickerKeyEvent> = {}): Picker
 })
 
 const userInput = (name: string, overrides: Partial<Terminal.Key> = {}): Terminal.UserInput => ({
-  input: undefined,
+  input: Option.none(),
   key: {
     ctrl: false,
     meta: false,
@@ -82,6 +82,7 @@ const makeTerminalRig = async (options: { readonly failAtDisplayCall?: number } 
 
   const terminal = Terminal.make({
     columns: Effect.succeed(80),
+    rows: Effect.succeed(24),
     readInput: Effect.succeed(queue),
     readLine: Effect.fail(new Terminal.QuitError()),
     display: (text) => {

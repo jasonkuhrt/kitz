@@ -110,4 +110,58 @@ describe('pr.type.match-known', () => {
 
     expect(result).toBeUndefined()
   })
+
+  test('passes when a custom type is configured with no release impact', async () => {
+    const result = await Effect.runPromise(
+      rule.check.pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            makePrLayer(
+              'tests(core): add property tests',
+              new CC.Commit.Single({
+                type: CC.Type.parse('tests'),
+                scopes: ['core'],
+                breaking: false,
+                message: 'add property tests',
+                body: Option.none(),
+                footers: [],
+              }),
+            ),
+            Layer.succeed(ConventionalCommitSettingsService, {
+              resolvedTypes: resolveConventionalCommitTypes({ tests: null }),
+            }),
+            emptyOptionsLayer,
+          ),
+        ),
+      ),
+    )
+
+    expect(result).toBeUndefined()
+  })
+
+  test('passes when a standard no-release type has no configured impact', async () => {
+    const result = await Effect.runPromise(
+      rule.check.pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            makePrLayer(
+              'chore(release): ignore session dirs',
+              new CC.Commit.Single({
+                type: CC.Type.parse('chore'),
+                scopes: ['release'],
+                breaking: false,
+                message: 'ignore session dirs',
+                body: Option.none(),
+                footers: [],
+              }),
+            ),
+            defaultSettingsLayer,
+            emptyOptionsLayer,
+          ),
+        ),
+      ),
+    )
+
+    expect(result).toBeUndefined()
+  })
 })

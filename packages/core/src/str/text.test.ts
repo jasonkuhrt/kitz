@@ -1,4 +1,4 @@
-import { Test } from '#kitz/test'
+import { Test } from '@kitz/test'
 import { describe, expect } from 'bun:test'
 import { lines, normalizeLineEndings, stripIndent } from './text.js'
 

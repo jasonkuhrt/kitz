@@ -1,5 +1,5 @@
 import { Err } from '@kitz/core'
-import { Effect, Schema as S, ServiceMap } from 'effect'
+import { Effect, Schema as S, Context } from 'effect'
 import { Commit } from './commit.js'
 import * as Sha from './sha.js'
 
@@ -20,6 +20,9 @@ export type GitOperation =
   | 'isClean'
   | 'createTag'
   | 'pushTags'
+  | 'pushTagsAtomic'
+  | 'pushTagDryRun'
+  | 'pushTagsAtomicDryRun'
   | 'getRoot'
   | 'getHeadSha'
   | 'getTagSha'
@@ -38,6 +41,9 @@ const GitOperationSchema = S.Literals([
   'isClean',
   'createTag',
   'pushTags',
+  'pushTagsAtomic',
+  'pushTagDryRun',
+  'pushTagsAtomicDryRun',
   'getRoot',
   'getHeadSha',
   'getTagSha',
@@ -89,6 +95,10 @@ export const GitParseError: Err.TaggedContextualErrorClass<
 
 export type GitParseError = InstanceType<typeof GitParseError>
 
+export interface GitPushDryRunResult {
+  readonly stdout: string
+}
+
 // ============================================================================
 // Service Interface
 // ============================================================================
@@ -116,6 +126,27 @@ export interface GitService {
 
   /** Push tags to remote */
   readonly pushTags: (remote?: string) => Effect.Effect<void, GitError>
+
+  /** Push specific tags atomically to remote */
+  readonly pushTagsAtomic: (
+    tags: readonly string[],
+    remote?: string,
+    force?: boolean,
+  ) => Effect.Effect<void, GitError>
+
+  /** Prove a single tag can be pushed without mutating the remote */
+  readonly pushTagDryRun: (
+    tag: string,
+    remote?: string,
+    force?: boolean,
+  ) => Effect.Effect<GitPushDryRunResult, GitError>
+
+  /** Prove specific tags can be pushed atomically without mutating the remote */
+  readonly pushTagsAtomicDryRun: (
+    tags: readonly string[],
+    remote?: string,
+    force?: boolean,
+  ) => Effect.Effect<GitPushDryRunResult, GitError>
 
   /** Get the repository root path */
   readonly getRoot: () => Effect.Effect<string, GitError>
@@ -159,4 +190,4 @@ export interface GitService {
 /**
  * Git service tag.
  */
-export class Git extends ServiceMap.Service<Git, GitService>()('Git') {}
+export class Git extends Context.Service<Git, GitService>()('git') {}

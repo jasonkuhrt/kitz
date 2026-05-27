@@ -11,7 +11,6 @@ class AbsFileClass extends S.TaggedClass<AbsFileClass>()('FsPathAbsFile', {
   segments: Segments,
   fileName: FileName,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(AbsFileClass)
   static decode = S.decodeUnknownEffect(AbsFileClass)
   static decodeSync = S.decodeUnknownSync(AbsFileClass)

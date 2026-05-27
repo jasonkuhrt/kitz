@@ -30,6 +30,7 @@ const subpathImports = [
   './null.js',
   './num.js',
   './oak.js',
+  './otel.js',
   './obj.js',
   './optic.js',
   './paka.js',

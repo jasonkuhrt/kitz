@@ -29,9 +29,7 @@ export const ValueSchema = S.Union([S.Number, S.String, S.BigInt])
  *
  * @category Text Formatting
  */
-export class Margin extends Sided.Class<Margin>('Margin')(ValueSchema) {
-  static make = this.makeUnsafe
-}
+export class Margin extends Sided.Class<Margin>('Margin')(ValueSchema) {}
 
 /**
  * Parse margin input into a Margin instance.

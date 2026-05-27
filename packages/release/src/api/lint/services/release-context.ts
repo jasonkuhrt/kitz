@@ -1,4 +1,4 @@
-import { Layer, ServiceMap } from 'effect'
+import { Layer, Context } from 'effect'
 import { defaultPublishing, type Publishing } from '../../publishing.js'
 import type { Lifecycle } from '../../version/models/lifecycle.js'
 
@@ -15,10 +15,9 @@ export interface ReleaseContext {
   readonly currentBranch: string | null
 }
 
-export class ReleaseContextService extends ServiceMap.Service<
-  ReleaseContextService,
-  ReleaseContext
->()('ReleaseContextService') {}
+export class ReleaseContextService extends Context.Service<ReleaseContextService, ReleaseContext>()(
+  'ReleaseContextService',
+) {}
 
 export const make = (context: Partial<ReleaseContext>): Layer.Layer<ReleaseContextService> =>
   Layer.succeed(ReleaseContextService, {

@@ -1,6 +1,6 @@
 import { Err } from '@kitz/core'
 import type { Endpoints } from '@octokit/types'
-import { Effect, Schema as S, ServiceMap } from 'effect'
+import { Effect, Schema as S, Context } from 'effect'
 
 // ============================================================================
 // Types from @octokit/types
@@ -316,4 +316,4 @@ export interface GithubService {
 /**
  * GitHub service tag.
  */
-export class Github extends ServiceMap.Service<Github, GithubService>()('Github') {}
+export class Github extends Context.Service<Github, GithubService>()('github') {}

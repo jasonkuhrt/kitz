@@ -104,7 +104,6 @@ class Entry extends S.Class<Entry>('GitignoreEntry')({
   /** Whether negated with ! prefix */
   negated: S.Boolean,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Entry)
   static decode = S.decodeUnknownEffect(Entry)
   static decodeSync = S.decodeUnknownSync(Entry)
@@ -127,7 +126,6 @@ class Section extends S.Class<Section>('GitignoreSection')({
   /** Entries in this section */
   entries: S.Array(Entry),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Section)
   static decode = S.decodeUnknownEffect(Section)
   static decodeSync = S.decodeUnknownSync(Section)
@@ -241,7 +239,6 @@ export class Gitignore extends S.Class<Gitignore>('Gitignore')({
   /** Sections (patterns grouped by preceding comments) */
   sections: S.Array(Section),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Gitignore)
   static decode = S.decodeUnknownEffect(Gitignore)
   static decodeSync = S.decodeUnknownSync(Gitignore)

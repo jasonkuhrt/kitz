@@ -11,7 +11,6 @@ export class Config extends S.Class<Config>('PnpmWorkspaceConfig')({
   /** Named catalogs for different dependency sets (pnpm 9+). */
   catalogs: S.optional(S.Record(S.String, S.Record(S.String, S.String))),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Config)
   static decode = S.decodeUnknownEffect(Config)
   static decodeSync = S.decodeUnknownSync(Config)

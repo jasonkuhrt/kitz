@@ -1,5 +1,4 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
@@ -54,7 +53,7 @@ type ReadError =
   | YamlParseError
   | ConfigValidationError
   | GlobError
-  | PlatformError
+  | PlatformError.PlatformError
   | Resource.ResourceError
 
 const CONFIG_FILENAME = 'pnpm-workspace.yaml'
@@ -76,7 +75,11 @@ const toDiscoveredConfig = (
 
 const locate = (
   startDir: Fs.Path.AbsDir,
-): Effect.Effect<Option.Option<Fs.Path.AbsFile>, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<
+  Option.Option<Fs.Path.AbsFile>,
+  PlatformError.PlatformError,
+  FileSystem.FileSystem
+> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     let current = startDir

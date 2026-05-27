@@ -11,7 +11,6 @@ export class TargetSection extends Schema.TaggedClass<TargetSection>()('TargetSe
   /** Footers within this section (including BREAKING CHANGE) */
   footers: Schema.Array(Footer),
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(TargetSection)
   static decode = Schema.decodeUnknownEffect(TargetSection)
   static decodeSync = Schema.decodeUnknownSync(TargetSection)

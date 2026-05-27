@@ -124,6 +124,9 @@ describe('executor execute helpers', () => {
     expect(payload.releases[0]!.currentVersion).toEqual(Option.some('1.0.0'))
     expect(payload.options).toEqual({
       dryRun: true,
+      planDigest: expect.any(String),
+      rehearsedArtifacts: false,
+      atomicTagPush: false,
       tag: 'next',
       registry: 'https://registry.npmjs.org',
       lifecycle: 'official',
@@ -133,6 +136,8 @@ describe('executor execute helpers', () => {
         ephemeral: { mode: 'manual' },
       },
       trunk: 'main',
+      packDriver: 'npm',
+      publishInvoker: 'npm',
     })
   })
 })

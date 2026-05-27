@@ -1,4 +1,4 @@
-import { Test } from '#kitz/test'
+import { Test } from '@kitz/test'
 import { Obj } from '#obj'
 
 const stripDollarPrefix = (key: string, value: Obj.DeepObjectValue) =>

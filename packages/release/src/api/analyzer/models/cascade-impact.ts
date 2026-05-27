@@ -16,7 +16,6 @@ export class CascadeImpact extends S.TaggedClass<CascadeImpact>()('CascadeImpact
   triggeredBy: S.Array(PackageSchema),
   currentVersion: CurrentVersionSchema,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(CascadeImpact)
   static decode = S.decodeUnknownEffect(CascadeImpact)
   static decodeSync = S.decodeUnknownSync(CascadeImpact)

@@ -8,7 +8,7 @@ import {
   Layer,
   ManagedRuntime,
   Semaphore,
-  ServiceMap,
+  Context,
   SubscriptionRef,
 } from 'effect'
 import {
@@ -25,7 +25,7 @@ import {
   type ReactNode,
 } from 'react'
 
-export class Control extends ServiceMap.Service<Control, { readonly exit: Effect.Effect<void> }>()(
+export class Control extends Context.Service<Control, { readonly exit: Effect.Effect<void> }>()(
   '@kitz/tui/Control',
 ) {}
 

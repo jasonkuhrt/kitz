@@ -1,4 +1,5 @@
-import { Schema } from 'effect'
+import { Effect, Schema } from 'effect'
+import type { PublishIntent } from './release-contract.js'
 import { Ephemeral } from './planner/models/item-ephemeral.js'
 import type { Plan } from './planner/models/plan.js'
 import type { Lifecycle } from './version/models/lifecycle.js'
@@ -12,7 +13,7 @@ export const PublishChannelManual = Schema.Struct({
 export const PublishChannelGitHubToken = Schema.Struct({
   mode: Schema.Literal('github-token'),
   workflow: Schema.String,
-  tokenEnv: Schema.String.pipe(Schema.withDecodingDefaultKey(defaultTokenEnv)),
+  tokenEnv: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.sync(defaultTokenEnv))),
 })
 
 export const PublishChannelGitHubTrusted = Schema.Struct({
@@ -49,9 +50,9 @@ const defaultManualChannel = (): PublishChannel => ({
  * are relevant and what operator guidance should be shown.
  */
 export class Publishing extends Schema.Class<Publishing>('Publishing')({
-  official: PublishChannel.pipe(Schema.withDecodingDefaultKey(defaultManualChannel)),
-  candidate: PublishChannel.pipe(Schema.withDecodingDefaultKey(defaultManualChannel)),
-  ephemeral: PublishChannel.pipe(Schema.withDecodingDefaultKey(defaultManualChannel)),
+  official: PublishChannel.pipe(Schema.withDecodingDefaultKey(Effect.sync(defaultManualChannel))),
+  candidate: PublishChannel.pipe(Schema.withDecodingDefaultKey(Effect.sync(defaultManualChannel))),
+  ephemeral: PublishChannel.pipe(Schema.withDecodingDefaultKey(Effect.sync(defaultManualChannel))),
 }) {
   static is = Schema.is(Publishing)
   static decode = Schema.decodeUnknownEffect(Publishing)
@@ -60,7 +61,6 @@ export class Publishing extends Schema.Class<Publishing>('Publishing')({
   static encodeSync = Schema.encodeUnknownSync(Publishing)
   static equivalence = Schema.toEquivalence(Publishing)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 export const defaultPublishing = (): Publishing => Publishing.decodeSync({})
@@ -129,6 +129,10 @@ export const resolvePublishSemanticsForPlan = (params: {
   readonly npmTag?: string
   readonly candidateTag?: string
 }): PublishSemantics => {
+  if (params.plan.publishIntent !== undefined) {
+    return publishSemanticsFromIntent(params.plan.publishIntent)
+  }
+
   const prNumber = resolvePlanPrNumber(params.plan)
 
   return resolvePublishSemantics({
@@ -140,6 +144,23 @@ export const resolvePublishSemanticsForPlan = (params: {
     ...(prNumber !== undefined ? { prNumber } : {}),
   })
 }
+
+export const publishSemanticsFromIntent = (intent: PublishIntent): PublishSemantics => ({
+  lifecycle: intent.lifecycle,
+  channel: intent.channel,
+  distTag: intent.distTag,
+  prerelease: intent.prerelease,
+  forcePushTag: intent.forcePushTag,
+  githubReleaseStyle: intent.githubReleaseStyle,
+})
+
+export const publishingFromIntent = (intent: PublishIntent): Publishing =>
+  Publishing.make({
+    official: { mode: 'manual' },
+    candidate: { mode: 'manual' },
+    ephemeral: { mode: 'manual' },
+    [intent.lifecycle]: intent.channel,
+  })
 
 export const formatGithubReleaseTitle = (
   semantics: PublishSemantics,

@@ -13,7 +13,6 @@ export class Target extends Schema.TaggedClass<Target>()('Target', {
   /** Whether this target represents a breaking change */
   breaking: Schema.Boolean,
 }) {
-  static make = this.makeUnsafe
   static is = Schema.is(Target)
   static decode = Schema.decodeUnknownEffect(Target)
   static decodeSync = Schema.decodeUnknownSync(Target)

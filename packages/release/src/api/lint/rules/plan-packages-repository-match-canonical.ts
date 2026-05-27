@@ -34,7 +34,7 @@ const extractRepositoryTarget = (repository: unknown): string | null => {
 
 /** Advises when planned packages point at a repo other than the canonical GitHub release target. */
 export const rule = RuntimeRule.create({
-  id: RuleId.makeUnsafe('plan.packages-repository-match-canonical'),
+  id: RuleId.make('plan.packages-repository-match-canonical'),
   description: 'planned package repository metadata points at the canonical GitHub repo',
   defaults: RuleDefaults.make({ severity: Severity.Warn.make({}) }),
   preconditions: [new Precondition.HasReleasePlan()],

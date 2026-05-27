@@ -1,12 +1,10 @@
 import { Schema } from 'effect'
 
 class _Error extends Schema.TaggedClass<_Error>()('Error', {}) {
-  static make = this.makeUnsafe
   static is = Schema.is(_Error)
 }
 
 class _Warn extends Schema.TaggedClass<_Warn>()('Warn', {}) {
-  static make = this.makeUnsafe
   static is = Schema.is(_Warn)
 }
 

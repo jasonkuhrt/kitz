@@ -7,7 +7,7 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
-import { Array as A, Effect, FileSystem, Layer, Order, ServiceMap } from 'effect'
+import { Array as A, Effect, FileSystem, Layer, Order, Context } from 'effect'
 import * as Api from '../../api/__.js'
 import {
   ChildProcessSpawnerLayer,
@@ -47,7 +47,7 @@ export interface WorkspaceContext {
 
 // ─── Service Layer ───────────────────────────────────────────────────
 
-export class Data extends ServiceMap.Service<
+export class Data extends Context.Service<
   Data,
   {
     readonly loadWorkspaceContext: Effect.Effect<
@@ -213,23 +213,21 @@ const toExcludeOptions = (
 type DataRequirements =
   | Effect.Services<typeof loadWorkspaceContext>
   | Effect.Services<ReturnType<typeof buildPlan>>
-  | Effect.Services<ReturnType<typeof buildDoctorReport>>
   | Effect.Services<ReturnType<typeof Api.Planner.Store.writeActive>>
-  | Effect.Services<typeof Api.Planner.Store.deleteActive>
 
 export const DataLive = Layer.effect(
   Data,
   Effect.gen(function* () {
-    const services = yield* Effect.services<DataRequirements>()
+    const services = yield* Effect.context<DataRequirements>()
 
     return {
-      loadWorkspaceContext: Effect.provideServices(loadWorkspaceContext, services),
+      loadWorkspaceContext: Effect.provideContext(loadWorkspaceContext, services),
       buildPlan: (workspace, lifecycle, excludedPackages) =>
-        Effect.provideServices(buildPlan(workspace, lifecycle, excludedPackages), services),
+        Effect.provideContext(buildPlan(workspace, lifecycle, excludedPackages), services),
       buildDoctorReport: (workspace, plan) =>
-        Effect.provideServices(buildDoctorReport(workspace, plan), services),
-      persistPlan: (plan) => Effect.provideServices(Api.Planner.Store.writeActive(plan), services),
-      clearPersistedPlan: Effect.provideServices(
+        Effect.provideContext(buildDoctorReport(workspace, plan), services),
+      persistPlan: (plan) => Effect.provideContext(Api.Planner.Store.writeActive(plan), services),
+      clearPersistedPlan: Effect.provideContext(
         Api.Planner.Store.deleteActive.pipe(Effect.asVoid),
         services,
       ),

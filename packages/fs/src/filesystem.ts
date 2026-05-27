@@ -8,8 +8,7 @@
  * @module
  */
 
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Lang } from '@kitz/core'
 import type { Json } from '@kitz/json'
 import { Effect, Schema as S, Scope, Sink, Stream } from 'effect'
@@ -115,7 +114,7 @@ export type WriteFileStringOptions = {
  */
 export const exists = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
-): Effect.Effect<boolean, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<boolean, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
@@ -133,7 +132,7 @@ export const exists = <loc extends Path.Input.Any>(
 export const access = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
   options?: AccessFileOptions,
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
@@ -151,7 +150,7 @@ export const access = <loc extends Path.Input.Any>(
 export const chmod = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
   mode: number,
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
@@ -171,7 +170,7 @@ export const chown = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
   uid: number,
   gid: number,
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
@@ -189,7 +188,11 @@ export const chown = <loc extends Path.Input.Any>(
 export const open = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
   options?: OpenFileOptions,
-): Effect.Effect<FileSystem.File, PlatformError, FileSystem.FileSystem | Scope.Scope> =>
+): Effect.Effect<
+  FileSystem.File,
+  PlatformError.PlatformError,
+  FileSystem.FileSystem | Scope.Scope
+> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
@@ -222,14 +225,14 @@ export const open = <loc extends Path.Input.Any>(
 export const read: {
   <L extends Path.$File | string>(
     loc: Path.Guard.File<L>,
-  ): Effect.Effect<Uint8Array, PlatformError, FileSystem.FileSystem>
+  ): Effect.Effect<Uint8Array, PlatformError.PlatformError, FileSystem.FileSystem>
 
   <L extends Path.$Dir | string>(
     loc: Path.Guard.Dir<L>,
     options?: ReadDirectoryOptions,
   ): Effect.Effect<
     readonly (L extends Path.AbsDir ? Path.$Abs : L extends string ? Path : Path.$Rel)[],
-    PlatformError,
+    PlatformError.PlatformError,
     FileSystem.FileSystem
   >
 
@@ -248,13 +251,13 @@ export const read: {
         : L extends Path.$Dir
           ? readonly (L extends Path.AbsDir ? Path.$Abs : Path.$Rel)[]
           : never,
-    PlatformError,
+    PlatformError.PlatformError,
     FileSystem.FileSystem
   >
 } = (
   loc: any,
   options?: ReadDirectoryOptions,
-): Effect.Effect<any, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<any, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
@@ -320,7 +323,7 @@ export const read: {
 export const readString = <loc extends Path.Input.File>(
   loc: Path.Guard.File<loc>,
   encoding: string = 'utf-8',
-): Effect.Effect<string, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<string, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
@@ -338,7 +341,7 @@ export const readString = <loc extends Path.Input.File>(
  */
 export const readLink = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
-): Effect.Effect<Path, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<Path, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
@@ -357,7 +360,7 @@ export const readLink = <loc extends Path.Input.Any>(
  */
 export const realPath = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
-): Effect.Effect<Path, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<Path, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
@@ -385,7 +388,7 @@ export const realPath = <loc extends Path.Input.Any>(
  */
 export const clear = <loc extends Path.Input.Dir>(
   loc: Path.Guard.Dir<loc>,
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> => {
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> => {
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
@@ -422,7 +425,7 @@ export const clear = <loc extends Path.Input.Dir>(
 export const remove = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
   options: RemoveOptions = { recursive: false },
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
@@ -440,7 +443,7 @@ export const remove = <loc extends Path.Input.Any>(
 export const sink = <loc extends Path.Input.File>(
   loc: Path.Guard.File<loc>,
   options: SinkOptions = {},
-): Sink.Sink<void, Uint8Array, never, PlatformError, FileSystem.FileSystem> => {
+): Sink.Sink<void, Uint8Array, never, PlatformError.PlatformError, FileSystem.FileSystem> => {
   return Sink.unwrap(
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
@@ -459,7 +462,7 @@ export const sink = <loc extends Path.Input.File>(
  */
 export const stat = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
-): Effect.Effect<FileSystem.File.Info, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<FileSystem.File.Info, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
@@ -477,7 +480,7 @@ export const stat = <loc extends Path.Input.Any>(
 export const stream = <loc extends Path.Input.File>(
   loc: Path.Guard.File<loc>,
   options: StreamOptions = {},
-): Stream.Stream<Uint8Array, PlatformError, FileSystem.FileSystem> => {
+): Stream.Stream<Uint8Array, PlatformError.PlatformError, FileSystem.FileSystem> => {
   return Stream.unwrap(
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
@@ -498,7 +501,7 @@ export const stream = <loc extends Path.Input.File>(
 export const truncate = <loc extends Path.Input.File>(
   loc: Path.Guard.File<loc>,
   length?: FileSystem.SizeInput,
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
@@ -518,7 +521,7 @@ export const utimes = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
   atime: Date | number,
   mtime: Date | number,
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
@@ -535,7 +538,7 @@ export const utimes = <loc extends Path.Input.Any>(
  */
 export const watch = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
-): Stream.Stream<FileSystem.WatchEvent, PlatformError, FileSystem.FileSystem> => {
+): Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError, FileSystem.FileSystem> => {
   return Stream.unwrap(
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
@@ -597,14 +600,14 @@ export const write: {
         ? string | Uint8Array | Json.Object // Dynamic path, allow all content types
         : never,
     options?: WriteFileOptions | WriteFileStringOptions,
-  ): Effect.Effect<void, PlatformError, FileSystem.FileSystem>
+  ): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem>
   <loc extends Path.$Dir | string>(
     loc: Path.Guard.Dir<loc>,
     options?: MakeDirectoryOptions,
-  ): Effect.Effect<void, PlatformError, FileSystem.FileSystem>
+  ): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem>
 } = ((
   ...params: WriteParametersInternal
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
 
@@ -710,7 +713,7 @@ export const writeString = <loc extends Path.Input.File>(
   loc: Path.Guard.File<loc>,
   data: string,
   options: WriteFileStringOptions = {},
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
@@ -749,7 +752,7 @@ export const copy = <from extends Path.Input.Any, to extends Path.Input.Any>(
   from: Path.Guard.Any<from>,
   to: Path.Guard.Any<to>,
   options: CopyOptions = {},
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fromLoc = Path.normalizeDynamicInput(Path.Schema)(from)
@@ -775,7 +778,7 @@ export const copy = <from extends Path.Input.Any, to extends Path.Input.Any>(
 export const link = <from extends Path.Input.Any, to extends Path.Input.Any>(
   from: Path.Guard.Any<from>,
   to: Path.Guard.Any<to>,
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fromLoc = Path.normalizeDynamicInput(Path.Schema)(from)
@@ -809,12 +812,15 @@ export const rename: {
   <Old extends Path.$File | string, New extends Path.$File | string>(
     oldPath: Path.Guard.File<Old>,
     newPath: Path.Guard.File<New>,
-  ): Effect.Effect<void, PlatformError, FileSystem.FileSystem>
+  ): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem>
   <Old extends Path.$Dir | string, New extends Path.$Dir | string>(
     oldPath: Path.Guard.Dir<Old>,
     newPath: Path.Guard.Dir<New>,
-  ): Effect.Effect<void, PlatformError, FileSystem.FileSystem>
-} = (oldPath: any, newPath: any): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+  ): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem>
+} = (
+  oldPath: any,
+  newPath: any,
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const oldLoc = Path.normalizeDynamicInput(Path.Schema)(oldPath)
@@ -833,7 +839,7 @@ export const rename: {
 export const symlink = <from extends Path.Input.Any, to extends Path.Input.Any>(
   from: Path.Guard.Any<from>,
   to: Path.Guard.Any<to>,
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fromLoc = Path.normalizeDynamicInput(Path.Schema)(from)
@@ -897,7 +903,7 @@ export type MakeTempOptions = TempFileOptions | TempDirectoryOptions
  */
 export const makeTempDirectory = (
   options: MakeTempDirectoryOptions = {},
-): Effect.Effect<Path.AbsDir, PlatformError, FileSystem.FileSystem> =>
+): Effect.Effect<Path.AbsDir, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const path = yield* fs.makeTempDirectory(options)
@@ -932,7 +938,7 @@ export const makeTempDirectory = (
  */
 export const makeTempDirectoryScoped = (
   options: MakeTempDirectoryOptions = {},
-): Effect.Effect<Path.AbsDir, PlatformError, FileSystem.FileSystem | Scope.Scope> =>
+): Effect.Effect<Path.AbsDir, PlatformError.PlatformError, FileSystem.FileSystem | Scope.Scope> =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const path = yield* fs.makeTempDirectoryScoped(options)
@@ -962,7 +968,7 @@ export const makeTemp = <T extends MakeTempOptions>(
   options: T,
 ): Effect.Effect<
   T extends TempFileOptions ? Path.AbsFile : Path.AbsDir,
-  PlatformError,
+  PlatformError.PlatformError,
   FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
@@ -1008,7 +1014,7 @@ export const makeTempScoped = <T extends MakeTempOptions>(
   options: T,
 ): Effect.Effect<
   T extends TempFileOptions ? Path.AbsFile : Path.AbsDir,
-  PlatformError,
+  PlatformError.PlatformError,
   FileSystem.FileSystem | Scope.Scope
 > =>
   Effect.gen(function* () {

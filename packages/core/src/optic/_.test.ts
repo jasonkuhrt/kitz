@@ -1,4 +1,4 @@
-import { Assert } from '#kitz/assert'
+import { Assert } from '@kitz/assert'
 import { Optic } from '#optic'
 import { describe, expect, test } from 'bun:test'
 
@@ -122,12 +122,3 @@ describe('Optic.Get - type-level only', () => {
     A.exact.ofAs<string>().onAs<Result>()
   })
 })
-
-//
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ • Static Error Detection
-//
-
-// test('value-level get rejects invalid property', () => {
-//   // @ts-expect-error - .bad does not exist on User, should be caught by parameter guard
-//   Optic.get('.bad', user)
-// })

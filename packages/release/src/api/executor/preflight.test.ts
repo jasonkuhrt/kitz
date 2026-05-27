@@ -59,7 +59,7 @@ describe('preflight.run', () => {
     ).workflowLayer
 
   const ruleRef = (id: string, description: string) => ({
-    id: RuleId.makeUnsafe(id),
+    id: RuleId.make(id),
     description,
   })
 

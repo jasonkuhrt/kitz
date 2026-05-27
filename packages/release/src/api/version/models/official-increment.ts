@@ -13,7 +13,6 @@ export class OfficialIncrement extends S.TaggedClass<OfficialIncrement>()('Offic
   to: SemverSchema,
   bump: Semver.BumpType,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(OfficialIncrement)
   static decode = S.decodeUnknownEffect(OfficialIncrement)
   static decodeSync = S.decodeUnknownSync(OfficialIncrement)

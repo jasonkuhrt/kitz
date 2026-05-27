@@ -2,7 +2,6 @@ import { Schema } from 'effect'
 
 // Missing ordering declaration entirely (no static order, no static ordered = false)
 export class Error extends Schema.TaggedClass<Error>()('Error', {}) {
-  static make = this.makeUnsafe
   static is = Schema.is(Error)
   static decode = Schema.decode(Error)
   static decodeSync = Schema.decodeSync(Error)

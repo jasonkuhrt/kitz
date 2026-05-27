@@ -2,7 +2,7 @@
  * Failing tests for the 8 systemic session bugs.
  * Uses Test.effect from @kitz/test for Effect-native test execution.
  */
-import { Effect, Layer, Schema as S, ServiceMap } from 'effect'
+import { Effect, Layer, Schema as S, Context } from 'effect'
 import { describe, expect, it } from 'bun:test'
 import { Test } from '@kitz/test'
 import { Session } from './session.js'
@@ -26,7 +26,7 @@ const defaultProximities = new Map<string, number>()
 describe('Bug 1: no-slot execution wraps with layers', () => {
   Test.effect('auto-advanced executable resolution includes provided layers', () =>
     Effect.gen(function* () {
-      class TestService extends ServiceMap.Service<TestService, { readonly value: string }>()(
+      class TestService extends Context.Service<TestService, { readonly value: string }>()(
         'test/Bug1Service',
       ) {}
 

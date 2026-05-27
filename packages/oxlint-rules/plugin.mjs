@@ -3831,7 +3831,6 @@ const classHasOrderedFalse = (classBody) => {
 }
 
 const REQUIRED_SCHEMA_STATICS = [
-  `make`,
   `is`,
   `decode`,
   `decodeSync`,
@@ -3843,8 +3842,6 @@ const REQUIRED_ORDERING_STATICS = [`min`, `max`, `lessThan`, `greaterThan`]
 
 const getStaticTemplate = (staticName, className) => {
   switch (staticName) {
-    case `make`:
-      return `  static make = this.makeUnsafe`
     case `is`:
       return `  static is = Schema.is(${className})`
     case `decode`:
@@ -3897,7 +3894,7 @@ const requireSchemaClassStaticsRule = defineRule({
   meta: {
     type: `problem`,
     docs: {
-      description: `Require standard statics (make, is, decode, decodeSync, encode, encodeSync, equivalence) on every Schema.TaggedClass and Schema.Class.`,
+      description: `Require standard statics (is, decode, decodeSync, encode, encodeSync, equivalence) on every Schema.TaggedClass and Schema.Class.`,
       recommended: true,
     },
     fixable: `code`,

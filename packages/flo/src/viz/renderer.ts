@@ -33,7 +33,7 @@
  * ```
  */
 
-import { MutableHashMap } from 'effect'
+import { Effect, MutableHashMap } from 'effect'
 import { State as ActivityStateSchema } from '../models/activity.js'
 import { LifecycleEvent } from '../observable/__.js'
 import * as Core from './core.js'

@@ -2,13 +2,20 @@ import { describe, expect, test } from 'bun:test'
 import { Config, resolveConventionalCommitTypes } from './config.js'
 
 describe('resolveConventionalCommitTypes', () => {
-  test('defaults include spec-mandated types (feat=minor, fix=patch) and Angular convention (docs=patch, perf=patch)', () => {
+  test('defaults include release-impact and no-release Angular convention types', () => {
     const result = resolveConventionalCommitTypes({})
     expect(result).toEqual({
       feat: 'minor',
       fix: 'patch',
       docs: 'patch',
       perf: 'patch',
+      style: null,
+      refactor: null,
+      test: null,
+      build: null,
+      ci: null,
+      chore: null,
+      revert: null,
     })
   })
 
@@ -23,45 +30,41 @@ describe('resolveConventionalCommitTypes', () => {
     expect(result['feat']).toBe('patch')
   })
 
-  test('removes a standard type when set to null', () => {
+  test('marks a standard type as recognized with no release impact when set to null', () => {
     const result = resolveConventionalCommitTypes({ docs: null })
-    expect(result['docs']).toBeUndefined()
+    expect(result['docs']).toBeNull()
     expect(result['feat']).toBe('minor')
     expect(result['fix']).toBe('patch')
     expect(result['perf']).toBe('patch')
   })
 
-  test('removes multiple standard types', () => {
+  test('marks multiple standard types as recognized with no release impact', () => {
     const result = resolveConventionalCommitTypes({ docs: null, perf: null })
-    expect(result['docs']).toBeUndefined()
-    expect(result['perf']).toBeUndefined()
+    expect(result['docs']).toBeNull()
+    expect(result['perf']).toBeNull()
     expect(result['feat']).toBe('minor')
     expect(result['fix']).toBe('patch')
   })
 
-  test('combines adding, overriding, and removing in a single config', () => {
+  test('combines adding, overriding, and no-release impacts in a single config', () => {
     const result = resolveConventionalCommitTypes({
       deps: 'patch',
       feat: 'patch',
       docs: null,
     })
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       feat: 'patch',
       fix: 'patch',
-      perf: 'patch',
+      docs: null,
       deps: 'patch',
     })
   })
 
-  test('setting an unknown type to null is a no-op', () => {
+  test('setting an unknown type to null marks it as recognized with no release impact', () => {
     const result = resolveConventionalCommitTypes({ wip: null })
-    expect(result['wip']).toBeUndefined()
-    expect(result).toEqual({
-      feat: 'minor',
-      fix: 'patch',
-      docs: 'patch',
-      perf: 'patch',
-    })
+    expect(result['wip']).toBeNull()
+    expect(result['feat']).toBe('minor')
+    expect(result['fix']).toBe('patch')
   })
 })
 

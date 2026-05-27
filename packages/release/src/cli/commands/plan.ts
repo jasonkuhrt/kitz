@@ -115,11 +115,16 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, TerminalLayer, Git.GitLive))(
     })
     const ctx = { packages }
 
-    const plan = yield* lifecycle === 'official'
+    const rawPlan = yield* lifecycle === 'official'
       ? Api.Planner.official(analysis, ctx, options)
       : lifecycle === 'candidate'
         ? Api.Planner.candidate(analysis, ctx, options)
         : Api.Planner.ephemeral(analysis, ctx, options)
+
+    const plan = yield* Api.Planner.attachPublishContract({
+      plan: rawPlan,
+      config: workspace.config,
+    })
 
     if (plan.releases.length === 0) {
       yield* Console.log('No releases planned - no unreleased changes found.')
@@ -137,7 +142,8 @@ Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, TerminalLayer, Git.GitLive))(
     const releaseCommand = workspace.config.operator.releaseCommand
     const done = Str.Builder()
     done`Plan written to ${Fs.Path.toString(planLocation.file)}`
-    done`Run '${releaseCommand} doctor${args.out ? ` --from ${args.out}` : ''}' to audit publish readiness.`
+    done`Run '${releaseCommand} prove${args.out ? ` --from ${args.out}` : ''}' to write plan-bound proof.`
+    done`Run '${releaseCommand} rehearse${args.out ? ` --from ${args.out}` : ''}' to build exact artifacts.`
     done`Run '${releaseCommand} apply${args.out ? ` --from ${args.out}` : ''}' to execute.`
     yield* Console.log(done.render())
   }),

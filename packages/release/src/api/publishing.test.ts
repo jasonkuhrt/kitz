@@ -12,11 +12,14 @@ import {
   formatEphemeralDistTag,
   PublishChannelGitHubToken,
   Publishing,
+  publishingFromIntent,
+  publishSemanticsFromIntent,
   resolvePublishChannel,
   resolvePlanPrNumber,
   resolvePublishSemantics,
   resolvePublishSemanticsForPlan,
 } from './publishing.js'
+import { publishIntentFromSemantics } from './release-contract.js'
 
 describe('Publishing', () => {
   const ephemeralPlan = Plan.make({
@@ -117,6 +120,33 @@ describe('Publishing', () => {
     })
 
     expect(semantics.distTag).toBe('preview-42')
+  })
+
+  test('frozen publish intent wins over live publish semantic overrides', () => {
+    const frozenSemantics = resolvePublishSemantics({
+      lifecycle: 'candidate',
+      tag: 'frozen-next',
+    })
+    const intent = publishIntentFromSemantics({ semantics: frozenSemantics, trunk: 'main' })
+    const frozenPlan = Plan.make({
+      lifecycle: ephemeralPlan.lifecycle,
+      timestamp: ephemeralPlan.timestamp,
+      releases: ephemeralPlan.releases,
+      cascades: ephemeralPlan.cascades,
+      publishIntent: intent,
+    })
+
+    expect(
+      resolvePublishSemanticsForPlan({
+        plan: frozenPlan,
+        tag: 'ignored-live-tag',
+        candidateTag: 'ignored-candidate-tag',
+      }),
+    ).toEqual(publishSemanticsFromIntent(intent))
+
+    const publishing = publishingFromIntent(intent)
+    expect(resolvePublishChannel(publishing, 'candidate')).toEqual(intent.channel)
+    expect(resolvePublishChannel(publishing, 'official')).toEqual({ mode: 'manual' })
   })
 
   test('resolves ephemeral dist-tag semantics independently of candidate config', () => {

@@ -1,4 +1,4 @@
-import { Layer, ServiceMap } from 'effect'
+import { Layer, Context } from 'effect'
 
 /** GitHub repository merge settings. */
 export interface GitHubMergeSettings {
@@ -17,7 +17,7 @@ export interface GitHub {
 }
 
 /** Service providing GitHub API context. */
-export class GitHubService extends ServiceMap.Service<GitHubService, GitHub>()('GitHubService') {}
+export class GitHubService extends Context.Service<GitHubService, GitHub>()('GitHubService') {}
 
 /** Safe default GitHub context for runs where GitHub-dependent rules are skipped. */
 export const DefaultGitHubLayer = Layer.succeed(GitHubService, {

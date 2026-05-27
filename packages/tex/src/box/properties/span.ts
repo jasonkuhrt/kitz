@@ -26,9 +26,7 @@ export type Input = Axied.Input<Value>
  *
  * @category Text Formatting
  */
-export class Span extends Axied.Class<Span>('Span')(ValueSchema) {
-  static make = this.makeUnsafe
-}
+export class Span extends Axied.Class<Span>('Span')(ValueSchema) {}
 
 /**
  * Parse span input into a Span instance.

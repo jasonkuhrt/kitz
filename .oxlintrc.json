@@ -16,6 +16,8 @@
     "eslint/no-unused-vars": "off",
     "eslint/no-unused-expressions": ["error", { "allowTaggedTemplates": true }],
     "eslint/no-control-regex": "off",
+    "eslint/no-shadow": "off",
+    "eslint/no-underscore-dangle": "off",
     "typescript/no-explicit-any": "off",
     "typescript/no-unsafe-type-assertion": "off",
     "typescript/unbound-method": "off",
@@ -81,6 +83,7 @@
     {
       "files": ["**/*.test.*", "**/*.spec.*", "**/__tests__/**", "**/__tests/**"],
       "rules": {
+        "typescript/await-thenable": "off",
         "eslint-plugin-unicorn/no-thenable": "off",
         "eslint-plugin-vitest/warn-todo": "warn"
       }
@@ -89,6 +92,12 @@
       "files": ["packages/kitz/src/**/*.ts"],
       "rules": {
         "eslint/no-restricted-imports": "off"
+      }
+    },
+    {
+      "files": ["packages/oxlint-rules/src/oxlint-rules.ts"],
+      "rules": {
+        "kitz/module/subpath-imports-integrity": "off"
       }
     }
   ],

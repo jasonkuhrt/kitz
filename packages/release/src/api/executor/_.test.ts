@@ -7,6 +7,10 @@ import { describe, expect, test } from 'bun:test'
 import { Test } from '@kitz/test'
 import { Effect, FileSystem, Ref } from 'effect'
 import { execute, executeObservable, toPayload } from './execute.js'
+import { digestForPlan } from '../proof.js'
+import { publishIntentFromSemantics } from '../release-contract.js'
+import { resolvePublishSemantics } from '../publishing.js'
+import { Plan } from '../planner/models/plan.js'
 import {
   decodeJsonRecordSync,
   decodeSemverFromManifest,
@@ -95,7 +99,7 @@ describe('Executor integration', () => {
           const publishCalls = yield* Ref.get(harness.publishCalls)
           expect(publishCalls).toHaveLength(1)
           expect(Fs.Path.toString(publishCalls[0]!.tarball)).toBe(
-            '/repo/.release/artifacts/kitz-core-1.1.0.tgz',
+            `/repo/.release/artifacts/${digestForPlan(plan).value}/kitz-core-1.1.0.tgz`,
           )
           expect(publishCalls[0]!.ignoreScripts).toBe(true)
 
@@ -116,6 +120,46 @@ describe('Executor integration', () => {
           ).toBe(true)
         }),
       ),
+  )
+
+  Test.live('uses the frozen publish profile package-manager driver for pack and publish', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+          },
+        })
+
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
+        const contractedPlan = Plan.make({
+          lifecycle: plan.lifecycle,
+          timestamp: plan.timestamp,
+          releases: plan.releases,
+          cascades: plan.cascades,
+          publishIntent: publishIntentFromSemantics({
+            semantics: resolvePublishSemantics({ lifecycle: 'official' }),
+            trunk: 'main',
+            packageManager: 'pnpm',
+          }),
+        })
+
+        yield* execute(contractedPlan, { dryRun: false }).pipe(
+          Effect.provide(harness.workflowLayer),
+        )
+
+        const packCalls = yield* Ref.get(harness.packCalls)
+        const publishCalls = yield* Ref.get(harness.publishCalls)
+
+        expect(packCalls[0]?.packageManager).toBe('pnpm')
+        expect(publishCalls[0]?.packageManager).toBe('pnpm')
+      }),
+    ),
   )
 
   Test.live(
@@ -485,7 +529,9 @@ describe('Executor integration', () => {
           expect(outcome.failure._tag).toBe('ExecutorPublishError')
           if (outcome.failure._tag === 'ExecutorPublishError') {
             expect(outcome.failure.context.detail).toContain('mock pack failure')
-            expect(outcome.failure.context.detail).toContain('Manifest cleanup restored version')
+            expect(outcome.failure.context.detail).toContain(
+              'Source package manifests were not mutated',
+            )
             expect(outcome.failure.context.detail).toContain('Pack hooks detected (prepack)')
             expect(outcome.failure.context.detail).toContain(
               'plan.packages-runtime-targets-source-oriented',
@@ -806,6 +852,7 @@ describe('Executor integration', () => {
         const allActivities = observable.graph.layers.flatMap((layer) => [...layer])
         expect(allActivities).toContain('Prepare:@kitz/core')
         expect(allActivities).toContain('Publish:@kitz/core')
+        expect(allActivities).toContain('VerifyPublish:@kitz/core')
         expect(allActivities).toContain(`CreateTag:${tagCore('1.1.0')}`)
         expect(allActivities).toContain(`PushTag:${tagCore('1.1.0')}`)
         expect(allActivities).toContain(`CreateGHRelease:${tagCore('1.1.0')}`)

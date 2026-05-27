@@ -1,19 +1,10 @@
-import { Test } from '#kitz/test'
-import { property } from '#kitz/test/test'
+import { Test } from '@kitz/test'
+import { property } from '@kitz/test/test'
 import * as fc from 'fast-check'
 import { describe, expect, test } from 'bun:test'
 import { Prom } from './_.js'
 
 describe('isShape', () => {
-  // test('detects promises and thenables', () => {
-  //   expect(Prom.isShape(Promise.resolve(42))).toBe(true)
-  //   // eslint-disable-next-line unicorn/no-thenable
-  //   expect(Prom.isShape({ then: () => {}, catch: () => {}, finally: () => {} })).toBe(true)
-  //   // eslint-disable-next-line unicorn/no-thenable
-  //   expect(Prom.isShape({ then: () => {} })).toBe(false)
-  //   // eslint-disable-next-line unicorn/no-thenable
-  //   expect(Prom.isShape({ then: 'not a function', catch: () => {}, finally: () => {} })).toBe(false)
-  // })
   Test.on(Prom.isShape)
     .describe('true', [
       [[Promise.resolve(42)], true],

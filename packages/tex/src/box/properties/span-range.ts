@@ -28,7 +28,6 @@ export class SpanRange extends S.Class<SpanRange>('SpanRange')({
     }),
   ),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(SpanRange)
   static decode = S.decodeUnknownEffect(SpanRange)
   static decodeSync = S.decodeUnknownSync(SpanRange)

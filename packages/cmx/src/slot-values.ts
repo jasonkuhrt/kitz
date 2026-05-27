@@ -1,4 +1,4 @@
-import { Effect, Layer, ServiceMap } from 'effect'
+import { Effect, Layer, Context } from 'effect'
 
 /** Consumer-provided Layer whose service type is erased at storage boundaries. */
 type AnyLayer = Layer.Layer<any>
@@ -22,7 +22,7 @@ type AnyLayer = Layer.Layer<any>
  * })
  * ```
  */
-export class SlotValues extends ServiceMap.Service<SlotValues, Readonly<Record<string, unknown>>>()(
+export class SlotValues extends Context.Service<SlotValues, Readonly<Record<string, unknown>>>()(
   'cmx/SlotValues',
 ) {}
 

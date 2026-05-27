@@ -5,14 +5,17 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
+import { Otel } from '@kitz/otel'
 import { Pkg } from '@kitz/pkg'
 import { describe, expect, test } from 'bun:test'
 import { Test } from '@kitz/test'
 import { Effect, Layer, Ref, Scope, Stream } from 'effect'
 import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
-import { execute, resume } from './execute.js'
+import { execute, executeObservable, resume, type ExecutionGraph } from './execute.js'
 import { makeTestRuntime } from './runtime.js'
 import { decodeJsonRecord, planOfficial, tag } from './test-support.js'
+import { digestForPlan } from '../proof.js'
+import { sha256Bytes } from '../digest.js'
 
 interface FixturePackage {
   readonly name: string
@@ -46,6 +49,7 @@ const makeHandle = (stdout: string, exitCode: number): ChildProcessSpawner.Child
     pid: ChildProcessSpawner.ProcessId(1),
     exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(exitCode)),
     isRunning: Effect.succeed(false),
+    unref: Effect.succeed(Effect.void),
     kill: () => Effect.void,
     stderr: Stream.empty,
     stdin: Effect.void as any,
@@ -192,6 +196,7 @@ const makeNpmLayer = (params: {
     NpmRegistry.NpmCli,
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
+      const publishedTarballs = yield* Ref.make<Record<string, Fs.Path.AbsFile>>({})
 
       const manifestFromCwd = (cwd: Fs.Path.AbsDir): Effect.Effect<Record<string, unknown>> =>
         Effect.gen(function* () {
@@ -275,6 +280,10 @@ const makeNpmLayer = (params: {
             }
 
             yield* Ref.update(params.publishCalls, (calls) => [...calls, packageName])
+            yield* Ref.update(publishedTarballs, (tarballs) => ({
+              ...tarballs,
+              [packageName]: options.tarball,
+            }))
 
             const blocked = yield* Ref.get(params.failPublishPackages)
             if (blocked.includes(packageName)) {
@@ -289,6 +298,44 @@ const makeNpmLayer = (params: {
               )
             }
           })) satisfies NpmRegistry.NpmCliService['publish'],
+        hasVersion: ((packageName) =>
+          Effect.gen(function* () {
+            const published = yield* Ref.get(params.publishCalls)
+            return published.includes(packageName)
+          })) satisfies NpmRegistry.NpmCliService['hasVersion'],
+        observeVersion: ((packageName, version, options) =>
+          Effect.gen(function* () {
+            const published = yield* Ref.get(params.publishCalls)
+            if (!published.includes(packageName)) {
+              return yield* Effect.fail(
+                new NpmRegistry.NpmCliError({
+                  context: {
+                    operation: 'view',
+                    detail: `Registry does not show ${packageName}@${version} after publish.`,
+                  },
+                  cause: new Error(
+                    `Registry does not show ${packageName}@${version} after publish.`,
+                  ),
+                }),
+              )
+            }
+            const tarballs = yield* Ref.get(publishedTarballs)
+            const tarball = tarballs[packageName]
+            const downloadedTarballSha256 =
+              options?.downloadTarball === true && tarball !== undefined
+                ? sha256Bytes(yield* fs.readFile(Fs.Path.toString(tarball)).pipe(Effect.orDie))
+                    .value
+                : undefined
+
+            return {
+              versionMetadata: { name: packageName, version },
+              distTags: { [options?.registry === undefined ? 'latest' : 'next']: version },
+              ...(downloadedTarballSha256 !== undefined ? { downloadedTarballSha256 } : {}),
+            }
+          })) satisfies NpmRegistry.NpmCliService['observeVersion'],
+        listAccessPackages: () => Effect.succeed({}),
+        listAccessCollaborators: () => Effect.succeed({}),
+        getAccessStatus: () => Effect.succeed('public' as const),
       } satisfies NpmRegistry.NpmCliService
     }),
   )
@@ -446,7 +493,7 @@ const assertGraphPlan = (plan: GraphPlanLike) => {
   ])
 }
 
-const assertGraphTarballsExist = (rootDir: Fs.Path.AbsDir) =>
+const assertGraphTarballsExist = (rootDir: Fs.Path.AbsDir, planDigest: string) =>
   Effect.gen(function* () {
     for (const [packageName, version] of [
       ['@kitz/a', '1.1.0'],
@@ -457,7 +504,7 @@ const assertGraphTarballsExist = (rootDir: Fs.Path.AbsDir) =>
       ['@kitz/f', '1.0.1'],
     ] as const) {
       const tarballPath = Fs.Path.AbsFile.fromString(
-        `${Fs.Path.toString(rootDir)}.release/artifacts/${slugPackageName(packageName)}-${version}.tgz`,
+        `${Fs.Path.toString(rootDir)}.release/artifacts/${planDigest}/${slugPackageName(packageName)}-${version}.tgz`,
       )
       expect(yield* withFileSystem(Fs.exists(tarballPath))).toBe(true)
     }
@@ -542,10 +589,203 @@ const publishFailureScenarios: readonly PublishFailureScenario[] = [
 
 const makeWorkflowTestRuntime = () => makeTestRuntime()
 
+const releaseTraceId = 'release.integration'
+
+const activityParts = (activity: string) => {
+  const separator = activity.indexOf(':')
+
+  return separator === -1
+    ? { operation: activity }
+    : {
+        operation: activity.slice(0, separator),
+        subject: activity.slice(separator + 1),
+      }
+}
+
+const operationName = (activityOperation: string) => {
+  switch (activityOperation) {
+    case 'CreateGHRelease':
+      return 'createRelease'
+    case 'CreateTag':
+      return 'createTag'
+    case 'Prepare':
+      return 'prepare'
+    case 'Publish':
+      return 'publish'
+    case 'PushTag':
+      return 'pushTag'
+    case 'PushTagsAtomic':
+      return 'pushTagsAtomic'
+    case 'VerifyPublish':
+      return 'verifyPublish'
+    default:
+      return activityOperation
+  }
+}
+
+const serviceName = (activityOperation: string) => {
+  switch (activityOperation) {
+    case 'CreateGHRelease':
+      return 'github'
+    case 'CreateTag':
+    case 'PushTag':
+    case 'PushTagsAtomic':
+      return 'git'
+    case 'Prepare':
+      return 'artifacter'
+    case 'Publish':
+    case 'VerifyPublish':
+      return 'packageRegistry'
+    default:
+      return 'workflow'
+  }
+}
+
+const activitySpanName = (activity: string) => {
+  const parts = activityParts(activity)
+
+  return operationName(parts.operation)
+}
+
+const tagAttributes = (tagName: string) => {
+  const versionSeparator = tagName.lastIndexOf('@')
+  const packageName = versionSeparator > 0 ? tagName.slice(0, versionSeparator) : tagName
+  const version = versionSeparator > 0 ? tagName.slice(versionSeparator + 1) : undefined
+
+  return {
+    'release.package.name': packageName,
+    ...(version === undefined ? {} : { 'release.version': version }),
+    'release.tag': tagName,
+  }
+}
+
+const activityAttributes = (activity: string) => {
+  const parts = activityParts(activity)
+  if (parts.subject === undefined) return undefined
+
+  switch (parts.operation) {
+    case 'CreateGHRelease':
+    case 'CreateTag':
+    case 'PushTag':
+      return tagAttributes(parts.subject)
+    case 'Prepare':
+    case 'Publish':
+    case 'VerifyPublish':
+      return { 'release.package.name': parts.subject }
+    case 'PushTagsAtomic':
+      return { 'release.tags.count': parts.subject }
+    default:
+      return undefined
+  }
+}
+
+const traceFromExecutionGraph = (graph: ExecutionGraph) =>
+  Otel.Trace.make({
+    traceId: releaseTraceId,
+    spans: [
+      Otel.Span.make({
+        traceId: releaseTraceId,
+        spanId: 'workflow.apply',
+        name: 'apply',
+        serviceName: 'workflow',
+      }),
+      ...graph.layers.flatMap((layer, layerIndex) => {
+        const layerSpanId = `workflow.layer.${layerIndex + 1}`
+
+        return [
+          Otel.Span.make({
+            traceId: releaseTraceId,
+            spanId: layerSpanId,
+            parentSpanId: 'workflow.apply',
+            name: `stage ${layerIndex + 1}`,
+            serviceName: 'workflow',
+          }),
+          ...layer.map((activity, activityIndex) => {
+            const { operation } = activityParts(activity)
+            const attributes = activityAttributes(activity)
+
+            return Otel.Span.make({
+              traceId: releaseTraceId,
+              spanId: `workflow.layer.${layerIndex + 1}.activity.${activityIndex + 1}`,
+              parentSpanId: layerSpanId,
+              name: activitySpanName(activity),
+              serviceName: serviceName(operation),
+              ...(attributes === undefined ? {} : { attributes }),
+            })
+          }),
+        ]
+      }),
+    ],
+  })
+
 // These scenarios run real pack/publish-style workflow steps and need CI headroom.
 const E2E_TEST_TIMEOUT_MS = 90_000
 
 describe('Executor e2e', () => {
+  Test.live(
+    'renders the release workflow as an otel trace snapshot',
+    () =>
+      quiet(
+        Effect.gen(function* () {
+          const harness = yield* makeRealHarness({
+            packages: [
+              { name: '@kitz/a' },
+              { name: '@kitz/b', dependencies: { '@kitz/a': 'workspace:^' } },
+            ],
+            commits: [Git.Memory.commit('feat(a): add feature')],
+          })
+
+          const plan = yield* planOfficial(harness.workspacePackages).pipe(
+            Effect.provide(harness.planLayer),
+          )
+          const workflowContext = yield* Layer.build(harness.workflowLayer)
+          const observable = yield* executeObservable(plan, {
+            dryRun: false,
+            dbPath: `${Fs.Path.toString(harness.rootDir)}.release/workflow.db`,
+          }).pipe(Effect.provide(workflowContext))
+          const result = yield* observable.execute.pipe(Effect.provide(workflowContext))
+
+          expect(result).toEqual({
+            releasedPackages: ['@kitz/a', '@kitz/b'],
+            createdTags: [
+              tag(Pkg.Moniker.parse('@kitz/a'), '1.1.0'),
+              tag(Pkg.Moniker.parse('@kitz/b'), '1.0.1'),
+            ],
+            createdGHReleases: [
+              tag(Pkg.Moniker.parse('@kitz/a'), '1.1.0'),
+              tag(Pkg.Moniker.parse('@kitz/b'), '1.0.1'),
+            ],
+          })
+
+          expect(Otel.print(traceFromExecutionGraph(observable.graph), { sort: 'input' }))
+            .toMatchInlineSnapshot(`
+"trace release.integration (20 spans)
+└─ [workflow] apply
+   ├─ [workflow] stage 1
+   │  ├─ [artifacter] prepare {release.package.name=@kitz/a}
+   │  └─ [artifacter] prepare {release.package.name=@kitz/b}
+   ├─ [workflow] stage 2
+   │  └─ [packageRegistry] publish {release.package.name=@kitz/a}
+   ├─ [workflow] stage 3
+   │  ├─ [packageRegistry] publish {release.package.name=@kitz/b}
+   │  └─ [packageRegistry] verifyPublish {release.package.name=@kitz/a}
+   ├─ [workflow] stage 4
+   │  ├─ [packageRegistry] verifyPublish {release.package.name=@kitz/b}
+   │  └─ [git] createTag {release.package.name=@kitz/a release.version=1.1.0 release.tag=@kitz/a@1.1.0}
+   ├─ [workflow] stage 5
+   │  ├─ [git] createTag {release.package.name=@kitz/b release.version=1.0.1 release.tag=@kitz/b@1.0.1}
+   │  └─ [git] pushTag {release.package.name=@kitz/a release.version=1.1.0 release.tag=@kitz/a@1.1.0}
+   ├─ [workflow] stage 6
+   │  ├─ [git] pushTag {release.package.name=@kitz/b release.version=1.0.1 release.tag=@kitz/b@1.0.1}
+   │  └─ [github] createRelease {release.package.name=@kitz/a release.version=1.1.0 release.tag=@kitz/a@1.1.0}
+   └─ [workflow] stage 7
+      └─ [github] createRelease {release.package.name=@kitz/b release.version=1.0.1 release.tag=@kitz/b@1.0.1}"
+`)
+        }),
+      ),
+    E2E_TEST_TIMEOUT_MS,
+  )
+
   Test.live(
     'resumes after a prepack failure without re-packing completed packages',
     () =>
@@ -707,7 +947,7 @@ describe('Executor e2e', () => {
             expect(yield* Ref.get(harness.packCalls)).toEqual(graphResult.releasedPackages)
             expect(yield* Ref.get(harness.publishCalls)).toEqual(scenario.firstPublishCalls)
             expect(yield* Ref.get(harness.gitState.createdTags)).toEqual([])
-            yield* assertGraphTarballsExist(harness.rootDir)
+            yield* assertGraphTarballsExist(harness.rootDir, digestForPlan(plan).value)
 
             yield* Ref.set(harness.failPublishPackages, [])
 

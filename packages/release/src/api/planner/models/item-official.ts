@@ -23,7 +23,6 @@ export class Official extends S.TaggedClass<Official>()('Official', {
   ...ItemBaseFields,
   version: S.Union([OfficialFirst, OfficialIncrement]),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Official)
   static decode = S.decodeUnknownEffect(Official)
   static decodeSync = S.decodeUnknownSync(Official)
@@ -42,8 +41,8 @@ export class Official extends S.TaggedClass<Official>()('Official', {
     return 'from' in this.version ? Option.some(this.version.from) : Option.none()
   }
 
-  /** The semver bump type. Defaults to `'minor'` for first releases (0.x convention). */
+  /** The semver bump type that produced this official release. */
   get bumpType(): Semver.BumpType {
-    return 'bump' in this.version ? this.version.bump : 'minor'
+    return this.version.bump
   }
 }

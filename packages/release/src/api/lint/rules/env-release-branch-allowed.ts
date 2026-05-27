@@ -9,7 +9,7 @@ import { ReleasePlanService } from '../services/release-plan.js'
 
 /** Verifies that official and candidate releases are only run from the configured trunk branch. */
 export const rule = RuntimeRule.create({
-  id: RuleId.makeUnsafe('env.release-branch-allowed'),
+  id: RuleId.make('env.release-branch-allowed'),
   description: 'active branch is allowed for the planned release lifecycle',
   preventsDescriptions: [
     'publishing official or candidate releases from non-trunk branches and tagging code that has not landed on trunk',

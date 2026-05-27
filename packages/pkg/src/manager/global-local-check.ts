@@ -29,9 +29,9 @@ interface GlobalLocalCheckOptions {
 
 const DependencyMapSchema = S.Record(S.String, S.String)
 const PackageJsonSchema = S.Struct({
-  dependencies: DependencyMapSchema.pipe(S.withDecodingDefaultKey(() => ({}))),
-  devDependencies: DependencyMapSchema.pipe(S.withDecodingDefaultKey(() => ({}))),
-  peerDependencies: DependencyMapSchema.pipe(S.withDecodingDefaultKey(() => ({}))),
+  dependencies: DependencyMapSchema.pipe(S.withDecodingDefaultKey(Effect.sync(() => ({})))),
+  devDependencies: DependencyMapSchema.pipe(S.withDecodingDefaultKey(Effect.sync(() => ({})))),
+  peerDependencies: DependencyMapSchema.pipe(S.withDecodingDefaultKey(Effect.sync(() => ({})))),
 })
 const decodePackageJson = S.decodeUnknownOption(S.fromJsonString(PackageJsonSchema))
 

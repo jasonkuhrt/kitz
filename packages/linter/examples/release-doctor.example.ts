@@ -7,7 +7,7 @@ const DoctorInput = Schema.Struct({
   lifecycle: Schema.optional(Lifecycle),
   all: Schema.Boolean.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => false),
+    Schema.withDecodingDefaultKey(Effect.sync(() => false)),
   ),
 })
 

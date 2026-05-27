@@ -44,7 +44,6 @@ export class Color extends S.TaggedClass<Color>()('Color', {
   g: S.Number.pipe(S.check(S.isInt(), S.isBetween({ minimum: 0, maximum: 255 }))),
   b: S.Number.pipe(S.check(S.isInt(), S.isBetween({ minimum: 0, maximum: 255 }))),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Color)
   static decode = S.decodeUnknownEffect(Color)
   static decodeSync = S.decodeUnknownSync(Color)

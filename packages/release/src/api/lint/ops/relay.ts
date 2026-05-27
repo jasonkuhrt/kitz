@@ -1,7 +1,6 @@
 import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Console, Effect, Match } from 'effect'
 import { Failed, Finished, type Report, Skipped } from '../models/report.js'
 import * as Severity from '../models/severity.js'
@@ -159,7 +158,7 @@ const formatOutput = (
  */
 export const relay = (
   params: RelayParams,
-): Effect.Effect<void, PlatformError, FileSystem.FileSystem> => {
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> => {
   const { report, format = 'text', destination = Destination.stdout } = params
   const output = formatOutput(report, format, {
     color: destination._tag === 'stdout',

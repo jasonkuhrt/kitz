@@ -14,7 +14,6 @@ export class CommitDisplay extends S.TaggedClass<CommitDisplay>()('CommitDisplay
   breaking: S.Boolean,
   commitUrl: S.String,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(CommitDisplay)
   static decode = S.decodeUnknownEffect(CommitDisplay)
   static decodeSync = S.decodeUnknownSync(CommitDisplay)
@@ -36,7 +35,6 @@ export class ForecastRelease extends S.TaggedClass<ForecastRelease>()('ForecastR
   commits: S.Array(CommitDisplay),
   sourceUrl: S.String,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(ForecastRelease)
   static decode = S.decodeUnknownEffect(ForecastRelease)
   static decodeSync = S.decodeUnknownSync(ForecastRelease)
@@ -64,7 +62,6 @@ export class ForecastCascade extends S.TaggedClass<ForecastCascade>()('ForecastC
   triggeredBy: S.Array(S.String),
   sourceUrl: S.String,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(ForecastCascade)
   static decode = S.decodeUnknownEffect(ForecastCascade)
   static decodeSync = S.decodeUnknownSync(ForecastCascade)
@@ -89,7 +86,6 @@ export class Forecast extends S.TaggedClass<Forecast>()('Forecast', {
   releases: S.Array(ForecastRelease),
   cascades: S.Array(ForecastCascade),
 }) {
-  static make = this.makeUnsafe
   static is = S.is(Forecast)
   static decode = S.decodeUnknownEffect(Forecast)
   static decodeSync = S.decodeUnknownSync(Forecast)

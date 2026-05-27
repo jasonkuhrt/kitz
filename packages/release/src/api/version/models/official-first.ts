@@ -8,8 +8,8 @@ const SemverSchema = Semver.Semver
  */
 export class OfficialFirst extends S.TaggedClass<OfficialFirst>()('OfficialFirst', {
   version: SemverSchema,
+  bump: Semver.BumpType,
 }) {
-  static make = this.makeUnsafe
   static is = S.is(OfficialFirst)
   static decode = S.decodeUnknownEffect(OfficialFirst)
   static decodeSync = S.decodeUnknownSync(OfficialFirst)

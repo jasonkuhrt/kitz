@@ -1,3 +1,4 @@
+export * from './Command.js'
 export * from './detect.js'
 export * from './global-local-check.js'
 export * from './LinkProtocol.js'

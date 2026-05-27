@@ -28,7 +28,6 @@ export class Completed extends Schema.TaggedClass<Completed>()('WorkflowComplete
     return Schema.encodeSync(Completed)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -53,7 +52,6 @@ export class Failed extends Schema.TaggedClass<Failed>()('WorkflowFailed', {
     return Schema.encodeSync(Failed)
   }
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**

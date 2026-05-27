@@ -1,5 +1,4 @@
 import { Git } from '@kitz/git'
-import type { Semver } from '@kitz/semver'
 import { Effect, Layer } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { resolveConventionalCommitTypes } from '../../config.js'
@@ -11,7 +10,7 @@ import { rule } from './commit-type-match-known.js'
 
 const defaultTypes = resolveConventionalCommitTypes({})
 
-const makeSettingsLayer = (resolvedTypes: Record<string, Semver.BumpType> = defaultTypes) =>
+const makeSettingsLayer = (resolvedTypes = defaultTypes) =>
   Layer.succeed(ConventionalCommitSettingsService, { resolvedTypes })
 
 const emptyOptionsLayer = Layer.succeed(RuleOptionsService, {})
@@ -74,6 +73,42 @@ describe('commit.type.match-known', () => {
             emptyOptionsLayer,
             Git.Memory.make({
               commits: [Git.Memory.commit('deps(core): bump lodash')],
+            }),
+          ),
+        ),
+      ),
+    )
+
+    expect(result).toBeUndefined()
+  })
+
+  test('passes when a custom type is configured with no release impact', async () => {
+    const result = await Effect.runPromise(
+      rule.check.pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            makeSettingsLayer(resolveConventionalCommitTypes({ tests: null })),
+            emptyOptionsLayer,
+            Git.Memory.make({
+              commits: [Git.Memory.commit('tests(core): add property tests')],
+            }),
+          ),
+        ),
+      ),
+    )
+
+    expect(result).toBeUndefined()
+  })
+
+  test('passes when a standard no-release type has no configured impact', async () => {
+    const result = await Effect.runPromise(
+      rule.check.pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            makeSettingsLayer(),
+            emptyOptionsLayer,
+            Git.Memory.make({
+              commits: [Git.Memory.commit('chore(core): ignore session dirs')],
             }),
           ),
         ),

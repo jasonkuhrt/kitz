@@ -48,7 +48,7 @@ export const official = (
             to: nextVersion,
             bump: impact.bump,
           })
-        : OfficialFirst.make({ version: nextVersion })
+        : OfficialFirst.make({ version: nextVersion, bump: impact.bump })
 
       return Official.make({
         package: impact.package,

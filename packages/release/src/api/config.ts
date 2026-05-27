@@ -1,5 +1,4 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Conf } from '@kitz/conf'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
@@ -26,13 +25,14 @@ const PackageMapSchema = Schema.Record(
 )
 
 /**
- * Conventional commit type→bump mapping.
+ * Conventional commit type→impact mapping.
  *
- * `null` removes a standard type from the recognized set.
- * Non-null values define the bump level for that type.
+ * `null` marks a type as recognized with no release impact.
+ * Non-null values mark a type as recognized and define its bump level.
  */
 const CustomTypesSchema = Schema.Record(Schema.String, Schema.NullOr(Semver.BumpType))
 export type CustomTypes = typeof CustomTypesSchema.Type
+export type ConventionalCommitTypeImpact = Semver.BumpType | null
 
 /**
  * Conventional commit settings.
@@ -40,7 +40,7 @@ export type CustomTypes = typeof CustomTypesSchema.Type
 const ConventionalCommitSettingsSchema = Schema.Struct({
   types: CustomTypesSchema.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => ({}) as CustomTypes),
+    Schema.withDecodingDefaultKey(Effect.sync(() => ({}) as CustomTypes)),
   ),
 })
 export type ConventionalCommitSettings = typeof ConventionalCommitSettingsSchema.Type
@@ -50,26 +50,28 @@ const defaultConventionalCommitSettings = (): ConventionalCommitSettings => ({
 })
 
 /**
- * Resolve the full type→bump map by merging user overrides over StandardImpact defaults.
+ * Resolve the full type→impact map by merging user overrides over StandardImpact defaults.
  *
- * Returns only types with non-null impacts (null removes a type).
+ * Entries with `null` are recognized but do not trigger releases.
  */
 export const resolveConventionalCommitTypes = (
   userTypes: CustomTypes,
-): Record<string, Semver.BumpType> => {
-  const standardDefaults: Record<string, Semver.BumpType> = {
+): Record<string, ConventionalCommitTypeImpact> => {
+  const standardDefaults: Record<string, ConventionalCommitTypeImpact> = {
     feat: 'minor',
     fix: 'patch',
     docs: 'patch',
     perf: 'patch',
+    style: null,
+    refactor: null,
+    test: null,
+    build: null,
+    ci: null,
+    chore: null,
+    revert: null,
   }
 
-  const merged = { ...standardDefaults, ...userTypes }
-  const result: Record<string, Semver.BumpType> = {}
-  for (const [key, value] of Object.entries(merged)) {
-    if (value !== null) result[key] = value
-  }
-  return result
+  return { ...standardDefaults, ...userTypes }
 }
 
 /**
@@ -79,34 +81,37 @@ export class Config extends Schema.Class<Config>('Config')({
   /** Main branch name (default: 'main') */
   trunk: Schema.String.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => 'main'),
+    Schema.withDecodingDefaultKey(Effect.sync(() => 'main')),
   ),
   /** Dist-tag for official releases (default: 'latest') */
   npmTag: Schema.String.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => 'latest'),
+    Schema.withDecodingDefaultKey(Effect.sync(() => 'latest')),
   ),
   /** Dist-tag for candidate releases (default: 'next') */
   candidateTag: Schema.String.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => 'next'),
+    Schema.withDecodingDefaultKey(Effect.sync(() => 'next')),
   ),
   /** Scope to package config mapping (auto-scanned if not provided) */
   packages: PackageMapSchema.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => ({}) as PackageMap),
+    Schema.withDecodingDefaultKey(Effect.sync(() => ({}) as PackageMap)),
   ),
   /** Declares how each lifecycle is published. */
   publishing: Publishing.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(() => ({})),
+    Schema.withDecodingDefaultKey(Effect.sync(() => ({}))),
   ),
   /** Operator-facing command surface for local guidance and runbooks. */
-  operator: Operator.pipe(Schema.optionalKey, Schema.withDecodingDefaultKey(defaultOperator)),
-  /** Conventional commit settings (custom type→bump mappings). */
+  operator: Operator.pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(Effect.sync(defaultOperator)),
+  ),
+  /** Conventional commit settings (custom type→impact mappings). */
   conventionalCommitSettings: ConventionalCommitSettingsSchema.pipe(
     Schema.optionalKey,
-    Schema.withDecodingDefaultKey(defaultConventionalCommitSettings),
+    Schema.withDecodingDefaultKey(Effect.sync(defaultConventionalCommitSettings)),
   ),
   /** Lint configuration */
   lint: Schema.optional(LintConfig.Config),
@@ -118,16 +123,15 @@ export class Config extends Schema.Class<Config>('Config')({
   static encodeSync = Schema.encodeUnknownSync(Config)
   static equivalence = Schema.toEquivalence(Config)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
  * Resolved release configuration schema (after merging and resolution).
  */
 /**
- * Resolved type→bump map. Only types with non-null impacts (standard defaults merged with user overrides).
+ * Resolved type→impact map. Null values are recognized but do not trigger releases.
  */
-const ResolvedTypesSchema = Schema.Record(Schema.String, Semver.BumpType)
+const ResolvedTypesSchema = Schema.Record(Schema.String, Schema.NullOr(Semver.BumpType))
 
 export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig')({
   trunk: Schema.String,
@@ -136,7 +140,7 @@ export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig
   packages: PackageMapSchema,
   publishing: Publishing,
   operator: ResolvedOperator,
-  /** Resolved type→bump mapping (standard defaults merged with user customTypes, nulls removed). */
+  /** Resolved type→impact mapping (standard defaults merged with user customTypes). */
   resolvedConventionalCommitTypes: ResolvedTypesSchema,
   lint: LintConfig.ResolvedConfig,
 }) {
@@ -147,7 +151,6 @@ export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig
   static encodeSync = Schema.encodeUnknownSync(ResolvedConfig)
   static equivalence = Schema.toEquivalence(ResolvedConfig)
   static ordered = false as const
-  static make = this.makeUnsafe
 }
 
 /**
@@ -277,7 +280,7 @@ export interface InitOptions {
  */
 export const init = (
   options?: InitOptions,
-): Effect.Effect<InitResult, PlatformError, FileSystem.FileSystem | Env.Env> =>
+): Effect.Effect<InitResult, PlatformError.PlatformError, FileSystem.FileSystem | Env.Env> =>
   Conf.File.init(ConfigFile, {
     defineConfigImport: {
       specifier: '@kitz/release',

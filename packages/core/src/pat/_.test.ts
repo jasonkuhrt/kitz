@@ -1,4 +1,4 @@
-import { Test } from '#kitz/test'
+import { Test } from '@kitz/test'
 import { Pat } from '#pat'
 import * as S from 'effect/Schema'
 import { expect } from 'bun:test'

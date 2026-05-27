@@ -26,16 +26,17 @@ import { OfficialIncrement } from './official-increment.js'
 
 describe('OfficialFirst', () => {
   test('make and is()', () => {
-    const v = OfficialFirst.make({ version: Semver.fromString('0.1.0') })
+    const v = OfficialFirst.make({ version: Semver.fromString('0.1.0'), bump: 'minor' })
     expect(v._tag).toBe('OfficialFirst')
     expect(OfficialFirst.is(v)).toBe(true)
   })
 
   test('schema roundtrip', () => {
-    const v = OfficialFirst.make({ version: Semver.fromString('1.0.0') })
+    const v = OfficialFirst.make({ version: Semver.fromString('1.0.0'), bump: 'major' })
     const encoded = Schema.encodeSync(OfficialFirst)(v)
     const decoded = Schema.decodeSync(OfficialFirst)(encoded)
     expect(Semver.equivalence(decoded.version, Semver.fromString('1.0.0'))).toBe(true)
+    expect(decoded.bump).toBe('major')
   })
 })
 

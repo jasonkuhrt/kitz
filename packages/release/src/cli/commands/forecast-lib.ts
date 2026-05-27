@@ -20,10 +20,10 @@ export interface ForecastInput {
 }
 
 export interface BuildForecastInputDependencies {
-  readonly loadWorkspace: Effect.Effect<CommandWorkspace, Error, never>
-  readonly tags: Effect.Effect<readonly string[], Error, never>
+  readonly loadWorkspace: Effect.Effect<CommandWorkspace, Error>
+  readonly tags: Effect.Effect<readonly string[], Error>
   readonly analyze: typeof Api.Analyzer.analyze
-  readonly explore: Effect.Effect<any, Error, never>
+  readonly explore: Effect.Effect<any, Error>
   readonly forecast: typeof Api.Forecaster.forecast
   readonly log: typeof Console.log
 }
@@ -35,7 +35,7 @@ export function buildForecastInput(): Effect.Effect<
 >
 export function buildForecastInput(
   dependencies: BuildForecastInputDependencies,
-): Effect.Effect<ForecastInput, Error, never>
+): Effect.Effect<ForecastInput, Error>
 export function buildForecastInput(
   dependencies?: BuildForecastInputDependencies,
 ): Effect.Effect<

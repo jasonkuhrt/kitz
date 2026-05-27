@@ -1,4 +1,4 @@
-import { Option, Schema as S } from 'effect'
+import { Effect, Schema as S } from 'effect'
 import * as Segment from './segment.js'
 
 /**
@@ -12,5 +12,5 @@ const SegmentsArray = S.Array(Segment.Segment)
  * Required in the Type, optional in the constructor (defaults to []).
  */
 export const Segments = SegmentsArray.pipe(
-  S.withConstructorDefault(() => Option.some([] as S.Schema.Type<typeof SegmentsArray>)),
+  S.withConstructorDefault(Effect.succeed([] as S.Schema.Type<typeof SegmentsArray>)),
 )

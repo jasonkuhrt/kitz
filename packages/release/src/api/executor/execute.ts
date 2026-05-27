@@ -18,7 +18,11 @@ import { Pkg } from '@kitz/pkg'
 import { Str } from '@kitz/core'
 import { Cause, Config, Effect, Exit, Match, Option, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
-import { resolvePublishSemanticsForPlan, type Publishing } from '../publishing.js'
+import {
+  publishingFromIntent,
+  resolvePublishSemanticsForPlan,
+  type Publishing,
+} from '../publishing.js'
 import {
   ExecutorDependencyCycleError,
   ExecutorPreflightError,
@@ -34,6 +38,7 @@ import {
   toReleaseInfo,
 } from './workflow.js'
 import { ReleaseCommit, type ScopedCommitSource } from '../analyzer/models/commit.js'
+import { digestForPlan } from '../proof.js'
 
 /**
  * Result of executing the release workflow.
@@ -96,6 +101,8 @@ interface ExecutionOptions {
   readonly dryRun?: boolean
   readonly tag?: string
   readonly registry?: string
+  readonly rehearsedArtifacts?: boolean
+  readonly atomicTagPush?: boolean
   readonly publishing?: Publishing
   readonly npmTag?: string
   readonly candidateTag?: string
@@ -457,6 +464,8 @@ export const toPayload = (
     dryRun?: boolean
     tag?: string
     registry?: string
+    rehearsedArtifacts?: boolean
+    atomicTagPush?: boolean
     publishing?: Publishing
     npmTag?: string
     candidateTag?: string
@@ -471,7 +480,12 @@ export const toPayload = (
       ...(options.npmTag !== undefined ? { npmTag: options.npmTag } : {}),
       ...(options.candidateTag !== undefined ? { candidateTag: options.candidateTag } : {}),
     })
+    const publishing =
+      plan.publishIntent === undefined
+        ? options.publishing
+        : publishingFromIntent(plan.publishIntent)
     const resolvedTag =
+      plan.publishIntent !== undefined ||
       options.tag !== undefined ||
       options.npmTag !== undefined ||
       options.candidateTag !== undefined ||
@@ -507,11 +521,24 @@ export const toPayload = (
       releases: orderedReleases,
       options: {
         dryRun: options.dryRun ?? false,
+        planDigest: digestForPlan(plan).value,
+        rehearsedArtifacts: options.rehearsedArtifacts ?? false,
+        atomicTagPush: plan.publishIntent?.git.atomicTagPush ?? options.atomicTagPush ?? false,
         ...(resolvedTag !== undefined ? { tag: resolvedTag } : {}),
-        ...(options.registry && { registry: options.registry }),
+        ...(plan.publishIntent !== undefined
+          ? { registry: plan.publishIntent.registry.url }
+          : options.registry
+            ? { registry: options.registry }
+            : {}),
         lifecycle: plan.lifecycle,
-        ...(options.publishing && { publishing: options.publishing }),
-        ...(options.trunk && { trunk: options.trunk }),
+        ...(publishing && { publishing }),
+        ...(plan.publishIntent !== undefined
+          ? { trunk: plan.publishIntent.git.trunk }
+          : options.trunk
+            ? { trunk: options.trunk }
+            : {}),
+        packDriver: plan.publishIntent?.profile.packDriver ?? 'npm',
+        publishInvoker: plan.publishIntent?.profile.publishInvoker ?? 'npm',
       },
     }
   })

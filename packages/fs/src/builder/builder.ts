@@ -1,5 +1,4 @@
-import { FileSystem } from 'effect'
-import type { PlatformError } from 'effect/PlatformError'
+import { PlatformError, FileSystem } from 'effect'
 import { Effect, Scope } from 'effect'
 import { makeTempDirectory, makeTempDirectoryScoped } from '../filesystem.js'
 import { Path } from '../path/_.js'
@@ -45,7 +44,7 @@ export const create = (base: Path.Input.AbsDir): Builder => ({
  */
 export const createTemp = (): Effect.Effect<
   Builder,
-  PlatformError,
+  PlatformError.PlatformError,
   Scope.Scope | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
@@ -67,7 +66,11 @@ export const createTemp = (): Effect.Effect<
  * yield* Fs.remove(temp.base, { recursive: true })
  * ```
  */
-export const createTempUnsafe = (): Effect.Effect<Builder, PlatformError, FileSystem.FileSystem> =>
+export const createTempUnsafe = (): Effect.Effect<
+  Builder,
+  PlatformError.PlatformError,
+  FileSystem.FileSystem
+> =>
   Effect.gen(function* () {
     const absDir = yield* makeTempDirectory({ prefix: 'kit-builder-' })
     return create(absDir)
