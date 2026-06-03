@@ -5,18 +5,16 @@
  *
  * Reads the plan from `.release/plan.json` by default, runs preflight checks,
  * publishes packages, creates git tags, pushes tags, and creates
- * GitHub releases. Supports `--dry-run` for inspection and `--yes`
- * to skip the interactive confirmation prompt (for CI).
+ * GitHub releases. Use `--yes` to skip the interactive confirmation prompt
+ * (for CI). For non-mutating review use `release preview` before applying.
  */
-import { Terminal } from 'effect'
-import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
-import { Oak } from '@kitz/oak'
-import { Console, Effect, Fiber, Layer, Option, Schema, SchemaGetter, Stream } from 'effect'
+import { Console, Effect, Fiber, Layer, Option, Stream, Terminal } from 'effect'
+import { Command, Flag } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
 import {
@@ -26,76 +24,6 @@ import {
   hasExecutablePlanContract,
   loadPlan,
 } from './plan-file.js'
-
-/**
- * release apply
- *
- * Execute the release plan. Requires plan file from 'release plan'.
- */
-const args = Oak.Command.create()
-  .use(Oak.EffectSchema)
-  .description('Execute the release plan')
-  .parameter(
-    'yes y',
-    Schema.UndefinedOr(Schema.Boolean)
-      .pipe(
-        Schema.decodeTo(Schema.Boolean, {
-          decode: SchemaGetter.transform((v) => v ?? false),
-          encode: SchemaGetter.transform((v) => v),
-        }),
-      )
-      .pipe(Schema.annotate({ description: 'Skip confirmation prompt (for CI)', default: false })),
-  )
-  .parameter(
-    'dry-run d',
-    Schema.UndefinedOr(Schema.Boolean)
-      .pipe(
-        Schema.decodeTo(Schema.Boolean, {
-          decode: SchemaGetter.transform((v) => v ?? false),
-          encode: SchemaGetter.transform((v) => v),
-        }),
-      )
-      .pipe(Schema.annotate({ description: 'Preview actions without executing', default: false })),
-  )
-  .parameter(
-    'prove',
-    Schema.UndefinedOr(Schema.Boolean)
-      .pipe(
-        Schema.decodeTo(Schema.Boolean, {
-          decode: SchemaGetter.transform((v) => v ?? false),
-          encode: SchemaGetter.transform((v) => v),
-        }),
-      )
-      .pipe(
-        Schema.annotate({ description: 'Refresh plan-bound proof before apply', default: false }),
-      ),
-  )
-  .parameter(
-    'rehearse',
-    Schema.UndefinedOr(Schema.Boolean)
-      .pipe(
-        Schema.decodeTo(Schema.Boolean, {
-          decode: SchemaGetter.transform((v) => v ?? false),
-          encode: SchemaGetter.transform((v) => v),
-        }),
-      )
-      .pipe(
-        Schema.annotate({ description: 'Refresh artifact manifest before apply', default: false }),
-      ),
-  )
-  .parameter(
-    'tag t',
-    Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotate({ description: 'npm dist-tag override' }),
-    ),
-  )
-  .parameter(
-    'from f',
-    Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotate({ description: 'Read the release plan from a specific file path' }),
-    ),
-  )
-  .parse()
 
 const confirm = (message: string) =>
   Effect.gen(function* () {
@@ -109,217 +37,242 @@ const confirm = (message: string) =>
 const commandLayer = ChildProcessSpawnerLayer
 const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(commandLayer))
 
-Cli.run(
-  Layer.mergeAll(Env.Live, FileSystemLayer, TerminalLayer, Git.GitLive, commandLayer, npmLayer),
-)(
-  Effect.gen(function* () {
-    const env = yield* Env.Env
+export const apply = Command.make(
+  'apply',
+  {
+    yes: Flag.boolean('yes').pipe(
+      Flag.withAlias('y'),
+      Flag.withDescription('Skip confirmation prompt (for CI)'),
+      Flag.withDefault(false),
+    ),
+    prove: Flag.boolean('prove').pipe(
+      Flag.withDescription('Refresh plan-bound proof before apply'),
+      Flag.withDefault(false),
+    ),
+    rehearse: Flag.boolean('rehearse').pipe(
+      Flag.withDescription('Refresh artifact manifest before apply'),
+      Flag.withDefault(false),
+    ),
+    tag: Flag.string('tag').pipe(
+      Flag.withAlias('t'),
+      Flag.withDescription('npm dist-tag override'),
+      Flag.optional,
+    ),
+    from: Flag.string('from').pipe(
+      Flag.withAlias('f'),
+      Flag.withDescription('Read the release plan from a specific file path'),
+      Flag.optional,
+    ),
+  },
+  ({ yes, prove, rehearse, tag, from }) =>
+    Effect.gen(function* () {
+      const env = yield* Env.Env
 
-    if (args.dryRun) {
-      yield* Console.error('`release apply --dry-run` is no longer part of publish execution.')
-      yield* Console.error(
-        'Use `release preview` for non-mutating review, then `release prove` and `release rehearse` before `release apply`.',
-      )
-      return env.exit(1)
-    }
-
-    if (args.tag !== undefined) {
-      yield* Console.error('`release apply --tag` cannot override a frozen release plan.')
-      yield* Console.error(
-        'Regenerate the plan with the desired publish profile so apply can execute the plan-bound dist-tag.',
-      )
-      return env.exit(1)
-    }
-
-    const planPath = args.from !== undefined ? Fs.Path.fromString(args.from) : undefined
-    const planState = yield* loadPlan({
-      ...(planPath !== undefined ? { path: planPath } : {}),
-      source: planPath === undefined ? 'active' : 'custom',
-    })
-
-    if (planState._tag === 'PlanMissing') {
-      for (const line of formatMissingPlanMessage(planState)) {
-        yield* Console.error(line)
+      if (Option.isSome(tag)) {
+        yield* Console.error('`release apply --tag` cannot override a frozen release plan.')
+        yield* Console.error(
+          'Regenerate the plan with the desired publish profile so apply can execute the plan-bound dist-tag.',
+        )
+        return env.exit(1)
       }
-      return env.exit(1)
-    }
 
-    if (planState._tag === 'PlanInvalid') {
-      for (const line of formatInvalidPlanMessage(planState)) {
-        yield* Console.error(line)
+      const planPath = Option.isSome(from) ? Fs.Path.fromString(from.value) : undefined
+      const planState = yield* loadPlan({
+        ...(planPath !== undefined ? { path: planPath } : {}),
+        source: planPath === undefined ? 'active' : 'custom',
+      })
+
+      if (planState._tag === 'PlanMissing') {
+        for (const line of formatMissingPlanMessage(planState)) {
+          yield* Console.error(line)
+        }
+        return env.exit(1)
       }
-      return env.exit(1)
-    }
 
-    // Plan file now stores rich PlannedRelease data directly - no conversion needed
-    const plan = planState.plan
-    if (!hasExecutablePlanContract(plan)) {
-      for (const line of formatUnsupportedExecutionPlanMessage(plan)) {
-        yield* Console.error(line)
+      if (planState._tag === 'PlanInvalid') {
+        for (const line of formatInvalidPlanMessage(planState)) {
+          yield* Console.error(line)
+        }
+        return env.exit(1)
       }
-      return env.exit(1)
-    }
 
-    const publish = Api.Publishing.resolvePublishSemanticsForPlan({
-      plan,
-    })
-    const planDigest = Api.Proof.digestForPlan(plan)
+      // Plan file now stores rich PlannedRelease data directly - no conversion needed
+      const plan = planState.plan
+      if (!hasExecutablePlanContract(plan)) {
+        for (const line of formatUnsupportedExecutionPlanMessage(plan)) {
+          yield* Console.error(line)
+        }
+        return env.exit(1)
+      }
 
-    yield* Api.Lock.withLocal(
-      {
-        planDigest,
-        ownerId: env.vars['USER'] ?? 'local-operator',
-        ownerHost: env.vars['HOST'] ?? env.vars['HOSTNAME'] ?? 'local-host',
-        ownerProcess: env.vars['KITZ_RELEASE_PROCESS_ID'] ?? 'local-process',
-        now: new Date().toISOString(),
-      },
-      Effect.gen(function* () {
-        if (args.prove) {
-          const localObservations = yield* Api.Proof.collectLocalObservations(plan)
-          const githubObservations = yield* Api.Explorer.resolveGitHubContext().pipe(
-            Effect.flatMap((context) =>
-              Api.Proof.collectGithubObservations(plan).pipe(
-                Effect.provide(
-                  Github.LiveFetch({
-                    owner: context.target.owner,
-                    repo: context.target.repo,
-                    ...(context.token !== null ? { token: context.token } : {}),
-                  }),
+      const publish = Api.Publishing.resolvePublishSemanticsForPlan({
+        plan,
+      })
+      const planDigest = Api.Proof.digestForPlan(plan)
+
+      yield* Api.Lock.withLocal(
+        {
+          planDigest,
+          ownerId: env.vars['USER'] ?? 'local-operator',
+          ownerHost: env.vars['HOST'] ?? env.vars['HOSTNAME'] ?? 'local-host',
+          ownerProcess: env.vars['KITZ_RELEASE_PROCESS_ID'] ?? 'local-process',
+          now: new Date().toISOString(),
+        },
+        Effect.gen(function* () {
+          if (prove) {
+            const localObservations = yield* Api.Proof.collectLocalObservations(plan)
+            const githubObservations = yield* Api.Explorer.resolveGitHubContext().pipe(
+              Effect.flatMap((context) =>
+                Api.Proof.collectGithubObservations(plan).pipe(
+                  Effect.provide(
+                    Github.LiveFetch({
+                      owner: context.target.owner,
+                      repo: context.target.repo,
+                      ...(context.token !== null ? { token: context.token } : {}),
+                    }),
+                  ),
                 ),
               ),
-            ),
-            Effect.catch(() => Effect.succeed({})),
-          )
-          const proof = yield* Api.Proof.prove(plan, {
-            ...localObservations,
-            ...githubObservations,
-          })
-          if (Api.Proof.hasBlockingProof(proof)) {
+              Effect.catch(() => Effect.succeed({})),
+            )
+            const proof = yield* Api.Proof.prove(plan, {
+              ...localObservations,
+              ...githubObservations,
+            })
+            if (Api.Proof.hasBlockingProof(proof)) {
+              yield* Console.error(
+                'Plan proof contains blocking records. Run `release prove` for detail.',
+              )
+              return env.exit(1)
+            }
+          }
+
+          if (rehearse) {
+            yield* Api.Artifact.rehearse(plan)
+          }
+
+          // Confirmation prompt (unless --yes)
+          if (!yes) {
+            yield* Console.log(
+              Api.Renderer.renderApplyConfirmation(plan, publish, { env: env.vars }),
+            )
+            const approved = yield* confirm('Proceed with release? [y/N] ')
+            if (!approved) {
+              yield* Console.log('Release canceled.')
+              return env.exit(1)
+            }
+          }
+
+          const proof = yield* Api.Proof.readForPlan(plan)
+          if (Option.isNone(proof)) {
+            yield* Console.error('Plan-bound proof is missing.')
             yield* Console.error(
-              'Plan proof contains blocking records. Run `release prove` for detail.',
+              'Run `release prove` or `release apply --prove --rehearse` before publishing.',
             )
             return env.exit(1)
           }
-        }
-
-        if (args.rehearse) {
-          yield* Api.Artifact.rehearse(plan)
-        }
-
-        // Confirmation prompt (unless --yes)
-        if (!args.yes && !args.dryRun) {
-          yield* Console.log(Api.Renderer.renderApplyConfirmation(plan, publish, { env: env.vars }))
-          const approved = yield* confirm('Proceed with release? [y/N] ')
-          if (!approved) {
-            yield* Console.log('Release canceled.')
+          if (Api.Proof.hasBlockingProof(proof.value)) {
+            yield* Console.error('Plan-bound proof contains blocking records.')
+            yield* Console.error(
+              'Run `release prove` and resolve every failed or unprovable proof.',
+            )
             return env.exit(1)
           }
-        }
 
-        if (args.dryRun) {
-          yield* Console.log(Api.Renderer.renderApplyDryRun(plan, publish, { env: env.vars }))
-          return
-        }
-
-        const proof = yield* Api.Proof.readForPlan(plan)
-        if (Option.isNone(proof)) {
-          yield* Console.error('Plan-bound proof is missing.')
-          yield* Console.error(
-            'Run `release prove` or `release apply --prove --rehearse` before publishing.',
-          )
-          return env.exit(1)
-        }
-        if (Api.Proof.hasBlockingProof(proof.value)) {
-          yield* Console.error('Plan-bound proof contains blocking records.')
-          yield* Console.error('Run `release prove` and resolve every failed or unprovable proof.')
-          return env.exit(1)
-        }
-
-        const artifacts = yield* Api.Artifact.readManifest(plan)
-        if (Option.isNone(artifacts)) {
-          yield* Console.error('Artifact manifest is missing.')
-          yield* Console.error(
-            'Run `release rehearse` or `release apply --prove --rehearse` before publishing.',
-          )
-          return env.exit(1)
-        }
-        const artifactIssues = yield* Api.Artifact.validateManifestFilesForPlan(
-          plan,
-          artifacts.value,
-        )
-        if (artifactIssues.length > 0) {
-          yield* Console.error('Artifact manifest does not match the frozen plan.')
-          for (const issue of artifactIssues) yield* Console.error(`${issue.code}: ${issue.detail}`)
-          return env.exit(1)
-        }
-        if (plan.source !== undefined) {
-          const sourceIssues = yield* Api.Planner.validateSourceSnapshot(plan.source, env.cwd)
-          if (sourceIssues.length > 0) {
-            yield* Console.error('Release source snapshot is stale.')
-            for (const issue of sourceIssues) yield* Console.error(`${issue.code}: ${issue.detail}`)
+          const artifacts = yield* Api.Artifact.readManifest(plan)
+          if (Option.isNone(artifacts)) {
+            yield* Console.error('Artifact manifest is missing.')
+            yield* Console.error(
+              'Run `release rehearse` or `release apply --prove --rehearse` before publishing.',
+            )
             return env.exit(1)
           }
-        }
-        const scriptPolicyIssues = yield* Api.Artifact.validateScriptPolicyForPlan(plan)
-        if (scriptPolicyIssues.length > 0) {
-          yield* Console.error('Release artifact script policy is not satisfied.')
-          for (const issue of scriptPolicyIssues) {
-            yield* Console.error(`${issue.code}: ${issue.detail}`)
+          const artifactIssues = yield* Api.Artifact.validateManifestFilesForPlan(
+            plan,
+            artifacts.value,
+          )
+          if (artifactIssues.length > 0) {
+            yield* Console.error('Artifact manifest does not match the frozen plan.')
+            for (const issue of artifactIssues)
+              yield* Console.error(`${issue.code}: ${issue.detail}`)
+            return env.exit(1)
           }
-          return env.exit(1)
-        }
-        const enginePolicyIssues = yield* Api.Artifact.validateEnginePolicyForPlan(plan)
-        if (enginePolicyIssues.length > 0) {
-          yield* Console.error('Release artifact engine policy is not satisfied.')
-          for (const issue of enginePolicyIssues) {
-            yield* Console.error(`${issue.code}: ${issue.detail}`)
+          if (plan.source !== undefined) {
+            const sourceIssues = yield* Api.Planner.validateSourceSnapshot(plan.source, env.cwd)
+            if (sourceIssues.length > 0) {
+              yield* Console.error('Release source snapshot is stale.')
+              for (const issue of sourceIssues)
+                yield* Console.error(`${issue.code}: ${issue.detail}`)
+              return env.exit(1)
+            }
           }
-          return env.exit(1)
-        }
+          const scriptPolicyIssues = yield* Api.Artifact.validateScriptPolicyForPlan(plan)
+          if (scriptPolicyIssues.length > 0) {
+            yield* Console.error('Release artifact script policy is not satisfied.')
+            for (const issue of scriptPolicyIssues) {
+              yield* Console.error(`${issue.code}: ${issue.detail}`)
+            }
+            return env.exit(1)
+          }
+          const enginePolicyIssues = yield* Api.Artifact.validateEnginePolicyForPlan(plan)
+          if (enginePolicyIssues.length > 0) {
+            yield* Console.error('Release artifact engine policy is not satisfied.')
+            for (const issue of enginePolicyIssues) {
+              yield* Console.error(`${issue.code}: ${issue.detail}`)
+            }
+            return env.exit(1)
+          }
 
-        const runtime = yield* Api.Explorer.explore()
-        const runtimeConfig = Api.Explorer.toExecutorRuntimeConfig(runtime)
-        if (!runtimeConfig.github) {
-          yield* Console.error('GitHub release target and token are required for release apply.')
-          yield* Console.error('Set GITHUB_TOKEN and ensure origin points to GitHub, then retry.')
-          return env.exit(1)
-        }
+          const runtime = yield* Api.Explorer.explore()
+          const runtimeConfig = Api.Explorer.toExecutorRuntimeConfig(runtime)
+          if (!runtimeConfig.github) {
+            yield* Console.error('GitHub release target and token are required for release apply.')
+            yield* Console.error('Set GITHUB_TOKEN and ensure origin points to GitHub, then retry.')
+            return env.exit(1)
+          }
 
-        // Execute with observable workflow
-        const { events, execute } = yield* Api.Executor.executeObservable(plan, {
-          dryRun: args.dryRun,
-          tag: publish.distTag,
-          rehearsedArtifacts: true,
-          ...(plan.publishIntent !== undefined
-            ? { registry: plan.publishIntent.registry.url }
-            : {}),
-          ...(plan.publishIntent !== undefined ? { trunk: plan.publishIntent.git.trunk } : {}),
-          github: runtimeConfig.github,
-        })
+          // Execute with observable workflow
+          const { events, execute } = yield* Api.Executor.executeObservable(plan, {
+            dryRun: false,
+            tag: publish.distTag,
+            rehearsedArtifacts: true,
+            ...(plan.publishIntent !== undefined
+              ? { registry: plan.publishIntent.registry.url }
+              : {}),
+            ...(plan.publishIntent !== undefined ? { trunk: plan.publishIntent.git.trunk } : {}),
+            github: runtimeConfig.github,
+          })
 
-        // Fork event consumer to stream status updates
-        const eventFiber = yield* events.pipe(
-          Stream.tap((event) => {
-            const line = Api.Executor.formatLifecycleEvent(event, { env: env.vars })
-            if (!line) return Effect.void
-            return line.level === 'error' ? Console.error(line.message) : Console.log(line.message)
-          }),
-          Stream.runDrain,
-          Effect.forkChild,
-        )
+          // Fork event consumer to stream status updates
+          const eventFiber = yield* events.pipe(
+            Stream.tap((event) => {
+              const line = Api.Executor.formatLifecycleEvent(event, { env: env.vars })
+              if (!line) return Effect.void
+              return line.level === 'error'
+                ? Console.error(line.message)
+                : Console.log(line.message)
+            }),
+            Stream.runDrain,
+            Effect.forkChild,
+          )
 
-        // Run workflow
-        const result = yield* execute
+          // Run workflow
+          const result = yield* execute
 
-        // Wait for events to flush
-        yield* Fiber.join(eventFiber)
+          // Wait for events to flush
+          yield* Fiber.join(eventFiber)
 
-        yield* Console.log(
-          Api.Renderer.renderApplyDone(result.releasedPackages.length, { env: env.vars }),
-        )
+          yield* Console.log(
+            Api.Renderer.renderApplyDone(result.releasedPackages.length, { env: env.vars }),
+          )
 
-        yield* Api.Planner.Store.delete_(planPath)
-      }),
-    )
-  }),
+          yield* Api.Planner.Store.delete_(planPath)
+        }),
+      )
+    }),
+).pipe(
+  Command.withDescription('Execute the release plan'),
+  Command.provide(
+    Layer.mergeAll(Env.Live, FileSystemLayer, TerminalLayer, Git.GitLive, commandLayer, npmLayer),
+  ),
 )
