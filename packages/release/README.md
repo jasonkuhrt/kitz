@@ -253,12 +253,15 @@ The Renderer produces **CLI-facing output** from Forecasts and Plans: forecast t
 
 <!-- @doc lint/overview -->
 
-The doctor rule engine validates release-related invariants across four domains:
+The doctor rule engine validates release-related invariants across five domains:
 
 - **Environment rules** (`env.*`): publish-channel readiness, npm authentication, git cleanliness, git remote reachability
 - **PR rules** (`pr.*`): commit message format, scope requirements, type validation, monorepo scope matching
+- **Commit rules** (`commit.*`): commit-type recognition across the analyzed history
 - **Plan rules** (`plan.*`): version availability, tag uniqueness, publish-safe package manifests
 - **Git rules** (`git.*`): history monotonicity (no version regressions)
+
+The `pr.*` and `commit.*` type checks share one policy with the `release git commit validate` CLI (see [CLI](#cli)) — `@kitz/release` is the single source of truth, so local pre-commit validation and PR/CI checks never disagree.
 
 Rules are composable and configurable. Each rule can be enabled, disabled, or have its severity adjusted. `release doctor` automatically loads `.release/plan.json` when present, so plan-aware rules can be run before `release apply`. Error-severity violations fail the command; warn-severity violations are reported but do not block release execution.
 
@@ -336,7 +339,7 @@ detects the active package manager from the current environment and renders guid
 
 ## CLI
 
-The `release` binary dispatches through file-based command routing:
+The `release` binary is an `effect/unstable/cli` command tree. The most-used commands:
 
 | Command                             | Purpose                                       |
 | ----------------------------------- | --------------------------------------------- |
@@ -352,6 +355,12 @@ The `release` binary dispatches through file-based command routing:
 | `release doctor [--from <file>]`    | Run release doctor checks                     |
 | `release init`                      | Initialize `release.config.ts` in the project |
 | `release pr ...`                    | Manage the PR preview comment and title sync  |
+| `release git commit validate --message-file <path>` | Validate a commit message against repo commit policy |
+| `release git hooks install`         | Install the idempotent `commit-msg` hook that runs the validator |
+
+The full, always-current command list is available via `release --help` (and `release <command> --help` for any subcommand).
+
+`release git commit validate` enforces the same commit-type policy as the `pr.*`/`commit.*` doctor rules, locally before a commit lands; `release git hooks install` wires it into an idempotent `commit-msg` hook under the repo's configured hooks directory (honoring `core.hooksPath`).
 
 ## Architecture
 
@@ -362,6 +371,7 @@ packages/release/src/
 ├── api/
 │   ├── __.ts               # Public API surface
 │   ├── config.ts           # Configuration loading and resolution
+│   ├── commit-policy.ts    # Commit-type policy (shared by lint rules + CLI validator)
 │   ├── explorer/           # Phase 1: environmental reconnaissance
 │   │   ├── explore.ts      #   Recon gathering
 │   │   ├── errors.ts       #   ExplorerError
@@ -398,5 +408,5 @@ packages/release/src/
 │   └── version/            # Version calculation and lifecycle models
 └── cli/                    # CLI entry point and command modules
     ├── cli.ts
-    └── commands/           # File-based command routing
+    └── commands/           # Command modules (effect/unstable/cli tree)
 ```
