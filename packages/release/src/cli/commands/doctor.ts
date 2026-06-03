@@ -185,6 +185,7 @@ export const doctor = Command.make(
         packages,
         tags,
         resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
+        commitOverrides: config.commitOverrides,
       })
       const currentBranch = yield* git.getCurrentBranch()
       const diffRemote = resolveDiffRemote(config, args.remote)

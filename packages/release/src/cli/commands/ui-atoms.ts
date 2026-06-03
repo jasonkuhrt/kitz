@@ -104,6 +104,7 @@ export const loadWorkspaceContext = Effect.gen(function* () {
     packages,
     tags,
     resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
+    commitOverrides: config.commitOverrides,
   }).pipe(Effect.withSpan('analyze'))
   const diffRemote = resolveDiffRemote(config)
   const pullRequestAttempt = yield* Api.Explorer.resolvePullRequest().pipe(Effect.result)

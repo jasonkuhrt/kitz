@@ -25,6 +25,7 @@ const makeResolvedConfig = (
       prepareCommands: [],
     }),
     resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
+    commitOverrides: {},
     lint: Api.Lint.resolveConfig({}),
   })
 
@@ -122,6 +123,7 @@ describe('forecast-lib', () => {
       packages: [pkg],
       tags,
       resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
+      commitOverrides: {},
     })
     expect(forecastArgs).toEqual({
       analysis,

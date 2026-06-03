@@ -60,6 +60,7 @@ export const explain = Command.make(
           packages: [...workspace.packages],
           tags,
           resolvedConventionalCommitTypes: workspace.config.resolvedConventionalCommitTypes,
+          commitOverrides: workspace.config.commitOverrides,
         }),
         {
           packages: workspace.packages,

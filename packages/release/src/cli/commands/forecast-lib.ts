@@ -80,6 +80,7 @@ export function buildForecastInput(
       packages,
       tags: resolvedTags,
       resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
+      commitOverrides: config.commitOverrides,
     })
     const recon = yield* explore
     const renderedForecast = forecast(analysis, recon)

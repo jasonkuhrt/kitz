@@ -1,5 +1,6 @@
 import { PlatformError, FileSystem } from 'effect'
 import { Conf } from '@kitz/conf'
+import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Semver } from '@kitz/semver'
@@ -75,6 +76,58 @@ export const resolveConventionalCommitTypes = (
 }
 
 /**
+ * A single SHA-keyed changelog-text override.
+ *
+ * `body` replaces the rendered changelog/notes description for the matching
+ * commit and nothing else: type, scope, breaking, the computed version bump,
+ * and package attribution are all derived from the commit's parsed header,
+ * which the overlay never touches. `reason` is an optional free-form note
+ * (a mandatory-reason audit model lands with the later semantic-override phase).
+ */
+const CommitOverride = Schema.Struct({
+  body: Schema.String,
+  reason: Schema.optional(Schema.String),
+})
+export type CommitOverride = typeof CommitOverride.Type
+
+/**
+ * Commit-override SHA keys: a git short (≥7) or full (40) hex prefix. A floor of
+ * 7 hex characters matches git's default short SHA and keeps a tiny prefix from
+ * silently matching many commits.
+ */
+const CommitOverrideSha = Schema.String.check(Schema.isPattern(/^[0-9a-f]{7,40}$/i))
+
+/**
+ * Map of commit SHA-prefix → changelog-text override, validated on read.
+ *
+ * Each body is rejected at config-load time (a hard error with non-zero exit)
+ * when it is empty, spans multiple lines, or carries a breaking-change signal —
+ * a leading `!`, a breaking header, or a `BREAKING CHANGE:` / `BREAKING-CHANGE:`
+ * footer (see {@link ConventionalCommits.BreakingChange.hasSignal}). The
+ * breaking-change guard is the deliberate seam later phases widen to admit
+ * semantic overrides behind a mandatory-reason + audit model.
+ */
+const CommitOverridesSchema = Schema.Record(CommitOverrideSha, CommitOverride).check(
+  Schema.makeFilter((overrides) => {
+    const issues: Array<Schema.FilterIssue> = []
+    for (const [sha, override] of Object.entries(overrides)) {
+      const reject = (detail: string): void => {
+        issues.push({ path: [sha, 'body'], issue: `commit override ${sha}: ${detail}` })
+      }
+      if (override.body.trim().length === 0) {
+        reject('body must not be empty')
+      } else if (override.body.includes('\n')) {
+        reject('body must be a single line')
+      } else if (ConventionalCommits.BreakingChange.hasSignal(override.body)) {
+        reject('breaking-change content is not supported')
+      }
+    }
+    return issues
+  }),
+)
+export type CommitOverrides = typeof CommitOverridesSchema.Type
+
+/**
  * Release configuration schema (input from file).
  */
 export class Config extends Schema.Class<Config>('Config')({
@@ -113,6 +166,15 @@ export class Config extends Schema.Class<Config>('Config')({
     Schema.optionalKey,
     Schema.withDecodingDefaultKey(Effect.sync(defaultConventionalCommitSettings)),
   ),
+  /**
+   * SHA-keyed changelog-text overlays. Each entry rewrites only the rendered
+   * changelog description for the matching commit; release semantics are never
+   * affected. Validated on read (see {@link CommitOverridesSchema}).
+   */
+  commitOverrides: CommitOverridesSchema.pipe(
+    Schema.optionalKey,
+    Schema.withDecodingDefaultKey(Effect.sync(() => ({}) as CommitOverrides)),
+  ),
   /** Lint configuration */
   lint: Schema.optional(LintConfig.Config),
 }) {
@@ -142,6 +204,8 @@ export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig
   operator: ResolvedOperator,
   /** Resolved type→impact mapping (standard defaults merged with user customTypes). */
   resolvedConventionalCommitTypes: ResolvedTypesSchema,
+  /** SHA-keyed changelog-text overlays (validated at load). */
+  commitOverrides: CommitOverridesSchema,
   lint: LintConfig.ResolvedConfig,
 }) {
   static is = Schema.is(ResolvedConfig)
@@ -186,6 +250,12 @@ const ConfigFile = Conf.File.define({
  *   operator: {
  *     releaseScript: 'release',
  *     prepareScripts: [],
+ *   },
+ *   // Correct the rendered changelog text for a specific commit by SHA prefix.
+ *   // Changelog text only — never affects type/scope/breaking/bump. A `body`
+ *   // carrying a breaking-change signal is rejected at config-load time.
+ *   commitOverrides: {
+ *     e348957: { body: 'fix(core): correct the off-by-one in the cursor', reason: 'typo in original' },
  *   },
  *   lint: {
  *     rules: {
@@ -248,6 +318,7 @@ export const load = (
       resolvedConventionalCommitTypes: resolveConventionalCommitTypes(
         conventionalCommitSettings.types ?? {},
       ),
+      commitOverrides: options?.commitOverrides ?? fileConfig.commitOverrides ?? {},
       lint: LintConfig.resolveConfig({
         defaults: options?.lint?.defaults ?? fileConfig.lint?.defaults,
         rules: options?.lint?.rules ?? fileConfig.lint?.rules,

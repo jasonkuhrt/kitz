@@ -49,6 +49,33 @@ describe('Notes.generate', () => {
     expect(result.notes[0]!.notes.markdown).not.toContain('newer change should be excluded')
   })
 
+  test('applies a SHA-keyed commit-body override to the rendered notes', async () => {
+    const hash = Git.Sha.make('abc1234')
+
+    const result = await Effect.runPromise(
+      generate({
+        packages,
+        tags: [],
+        resolvedConventionalCommitTypes: defaultTypes,
+        commitOverrides: { abc1234: { body: 'correct the wording for the core feature' } },
+      }).pipe(
+        Effect.provide(
+          Git.Memory.make({
+            commits: [Git.Memory.commit('feat(core): original muddled wording', { hash })],
+          }),
+        ),
+      ),
+    )
+
+    expect(result.notes).toHaveLength(1)
+    const markdown = result.notes[0]!.notes.markdown
+    expect(markdown).toContain('correct the wording for the core feature')
+    expect(markdown).not.toContain('original muddled wording')
+    // The override is changelog text only: the bump is still the original `feat`
+    // (minor), even though the replacement text reads like a `fix`.
+    expect(result.notes[0]!.bump).toBe('minor')
+  })
+
   test('respects tag until boundaries when building package notes', async () => {
     const result = await Effect.runPromise(
       generate({
