@@ -21,7 +21,7 @@
     "@kitz/tex": "workspace:*",
     "@standard-schema/spec": "^1.1.0",
     "alge": "^0.8.1",
-    "ansis": "^4.3.0",
+    "ansis": "catalog:",
     "effect": "catalog:",
     "zod": "^4.4.3"
   },

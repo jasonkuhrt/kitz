@@ -114,11 +114,11 @@
     "check:cov": "bun run test:coverage"
   },
   "dependencies": {
-    "ansis": "^4.3.0",
+    "ansis": "catalog:",
     "arkregex": "^0.0.5",
     "consola": "^3.4.2",
     "es-toolkit": "^1.47.0",
-    "object-inspect": "^1.13.4",
+    "object-inspect": "catalog:",
     "pluralize-esm": "^9.0.5",
     "ts-toolbelt": "^9.6.0",
     "type-fest": "catalog:",
@@ -135,6 +135,6 @@
   "devDependencies": {
     "@kitz/assert": "workspace:*",
     "@kitz/test": "workspace:*",
-    "@types/object-inspect": "^1.13.0"
+    "@types/object-inspect": "catalog:"
   }
 }

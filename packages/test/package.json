@@ -17,10 +17,10 @@
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
-    "@types/object-inspect": "^1.13.0",
+    "@types/object-inspect": "catalog:",
     "effect": "catalog:",
-    "fast-check": "^4.8.0",
-    "object-inspect": "^1.13.4",
+    "fast-check": "catalog:",
+    "object-inspect": "catalog:",
     "type-fest": "catalog:"
   },
   "scripts": {
