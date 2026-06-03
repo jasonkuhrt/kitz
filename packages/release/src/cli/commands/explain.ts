@@ -3,96 +3,83 @@
  *
  * Explain why a package is primary, cascade, or unchanged in the current release state.
  */
-import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
-import { Oak } from '@kitz/oak'
-import { Console, Effect, Layer, Schema, SchemaGetter } from 'effect'
+import { Console, Effect, Layer, Option } from 'effect'
+import { Argument, Command, Flag, Prompt } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
-import { FileSystemLayer, TerminalLayer } from '../../platform.js'
+import { FileSystemLayer } from '../../platform.js'
 import {
   isReadyCommandWorkspace,
   loadCommandWorkspace,
   noPackagesFoundMessage,
 } from './command-workspace.js'
-import { createPackagePickerOptions, resolveExplainPackage } from './explain-lib.js'
+import { createPackagePickerOptions } from './explain-lib.js'
 
-const args = Oak.Command.create()
-  .use(Oak.EffectSchema)
-  .description('Explain why a package is primary, cascade, or unchanged')
-  .parameter(
-    'pkg',
-    Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotate({ description: 'Package scope or full package name to explain' }),
+export const explain = Command.make(
+  'explain',
+  {
+    pkg: Argument.string('pkg').pipe(
+      Argument.withDescription('Package scope or full package name to explain'),
+      Argument.optional,
     ),
-  )
-  .parameter(
-    'format f',
-    Schema.UndefinedOr(Schema.Literals(['text', 'json']))
-      .pipe(
-        Schema.decodeTo(Schema.Literals(['text', 'json']), {
-          decode: SchemaGetter.transform((value) => value ?? 'text'),
-          encode: SchemaGetter.transform((value) => value),
+    format: Flag.choice('format', ['text', 'json']).pipe(
+      Flag.withAlias('f'),
+      Flag.withDescription('Output format'),
+      Flag.withDefault('text'),
+    ),
+  },
+  ({ pkg, format }) =>
+    Effect.gen(function* () {
+      const env = yield* Env.Env
+      const git = yield* Git.Git
+      const workspace = yield* loadCommandWorkspace()
+
+      if (!isReadyCommandWorkspace(workspace)) {
+        yield* Console.log(noPackagesFoundMessage)
+        return
+      }
+
+      // #215: pkg is a positional argument. When omitted, prompt interactively
+      // (effect cli's Prompt handles non-TTY by failing, replacing the hand-rolled
+      // Cli.Picker TTY-capability machinery).
+      const requestedPackage = Option.isSome(pkg)
+        ? pkg.value
+        : yield* Prompt.select({
+            message: 'Select package to explain',
+            choices: createPackagePickerOptions(workspace.packages).map((option) => ({
+              title: option.label,
+              value: option.value,
+              description: option.detail,
+            })),
+          })
+
+      const tags = yield* git.getTags()
+      const explanation = yield* Api.Planner.explain(
+        yield* Api.Analyzer.analyze({
+          packages: [...workspace.packages],
+          tags,
+          resolvedConventionalCommitTypes: workspace.config.resolvedConventionalCommitTypes,
         }),
+        {
+          packages: workspace.packages,
+          requestedPackage,
+        },
       )
-      .pipe(Schema.annotate({ description: 'Output format', default: 'text' })),
-  )
-  .parse()
 
-Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, TerminalLayer, Git.GitLive))(
-  Effect.gen(function* () {
-    const env = yield* Env.Env
-    const git = yield* Git.Git
-    const terminal = Cli.Picker.resolveInteractiveTerminalCapabilities({ env: env.vars })
-    const workspace = yield* loadCommandWorkspace()
+      const output =
+        format === 'json'
+          ? JSON.stringify(explanation, null, 2)
+          : Api.Renderer.renderExplanation(explanation)
 
-    if (!isReadyCommandWorkspace(workspace)) {
-      yield* Console.log(noPackagesFoundMessage)
-      return
-    }
+      if (explanation.decision === 'missing') {
+        yield* Console.error(output)
+        return env.exit(1)
+      }
 
-    const packageOptions = createPackagePickerOptions(workspace.packages)
-    const requestedPackageSelection = yield* resolveExplainPackage({
-      pkg: args.pkg,
-      terminal,
-      pickPackage: () =>
-        Cli.Picker.pickOption({
-          title: 'Select package to explain',
-          hint: 'Choose the package whose release outcome you want to inspect.',
-          options: packageOptions,
-          color: terminal.color,
-        }),
-    })
-
-    if (requestedPackageSelection._tag === 'missing') {
-      yield* Console.error(requestedPackageSelection.message)
-      return env.exit(1)
-    }
-    const requestedPackage = requestedPackageSelection.value
-
-    const tags = yield* git.getTags()
-    const explanation = yield* Api.Planner.explain(
-      yield* Api.Analyzer.analyze({
-        packages: [...workspace.packages],
-        tags,
-        resolvedConventionalCommitTypes: workspace.config.resolvedConventionalCommitTypes,
-      }),
-      {
-        packages: workspace.packages,
-        requestedPackage,
-      },
-    )
-
-    const output =
-      args.format === 'json'
-        ? JSON.stringify(explanation, null, 2)
-        : Api.Renderer.renderExplanation(explanation)
-
-    if (explanation.decision === 'missing') {
-      yield* Console.error(output)
-      return env.exit(1)
-    }
-
-    yield* Console.log(output)
-  }),
+      yield* Console.log(output)
+    }),
+).pipe(
+  Command.withDescription('Explain why a package is primary, cascade, or unchanged'),
+  Command.provide(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive)),
 )
