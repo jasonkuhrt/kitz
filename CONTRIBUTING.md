@@ -6,20 +6,21 @@ This project is designed for Claude Code-assisted development. Common workflows 
 
 | Skill                      | Purpose                                        |
 | -------------------------- | ---------------------------------------------- |
-| `creating-packages`        | Create new packages with full scaffolding      |
-| `creating-modules`         | Add modules to existing packages               |
-| `creating-rules`           | Add conventions with correct scoping           |
-| `writing-tests`            | Test patterns and organization                 |
-| `committing-changes`       | Conventional commits and CI validation         |
-| `authoring-global-scripts` | Manage `_:*` template scripts                  |
-| `syncing-tsconfig-paths`   | Keep tsconfig paths in sync with imports       |
-| `refreshing-docs`          | Update README tables                           |
-| `auditing-project`         | Check for out-of-band inconsistencies          |
-| `kitz-cli-output`          | CLI output with Str.Builder and Effect Console |
-| `kitz-data-modeling`       | Schema, Match, lookup tables for domain types  |
-| `kitz-fs`                  | Filesystem and path operations with @kitz/fs   |
-| `kitz-functions`           | Function design with currying patterns         |
-| `kitz-services`            | Effect services with multiple implementations  |
+| `creating-packages`        | Create new packages with full scaffolding         |
+| `creating-modules`         | Add modules to existing packages                  |
+| `creating-rules`           | Add conventions with correct scoping              |
+| `committing-changes`       | Conventional commits and CI validation            |
+| `authoring-global-scripts` | Manage `_:*` template scripts                     |
+| `syncing-tsconfig-paths`   | Keep tsconfig paths in sync with imports          |
+| `refreshing-docs`          | Update README tables                              |
+| `auditing-project`         | Check for out-of-band inconsistencies             |
+| `filing-issues`            | File cold-startable GitHub bug/feature issues     |
+| `fp-pipeline-refactor`     | Refactor imperative TS to Effect-first pipelines  |
+| `kitz-cli-output`          | CLI output with Str.Builder and Effect Console    |
+| `kitz-data-modeling`       | Schema, Match, lookup tables for domain types     |
+| `kitz-fs`                  | Filesystem and path operations with @kitz/fs      |
+| `kitz-functions`           | Function design with currying patterns            |
+| `kitz-services`            | Effect services with multiple implementations     |
 
 Just describe what you need and Claude Code will handle it.
 
