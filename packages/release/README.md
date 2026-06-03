@@ -406,7 +406,567 @@ packages/release/src/
 │   │   └── services/       #   Preconditions, PR, diff, monorepo contexts
 │   ├── notes/              # Release notes generation
 │   └── version/            # Version calculation and lifecycle models
-└── cli/                    # CLI entry point and command modules
-    ├── cli.ts
-    └── commands/           # Command modules (effect/unstable/cli tree)
+└── cli/                    # CLI entry point and command tree
+    ├── cli.ts              # Entry point (runMain + CLI environment)
+    ├── tree.ts             # Root command tree (importable for doc generation)
+    └── commands/           # Command modules (effect/unstable/cli)
 ```
+
+## CLI Reference
+
+Generated from the command tree — run `bun run gen:cli-docs` to refresh. The content between the markers is generated from the live CLI; do not edit it by hand.
+
+<details>
+<summary>Full CLI reference (every command and flag)</summary>
+
+<!-- CLI_REFERENCE_START -->
+
+#### `release`
+
+Kitz release toolkit
+
+```
+release <subcommand> [flags]
+```
+
+#### `release apply`
+
+Execute the release plan
+
+```
+release apply [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--yes`, `-y` | `boolean` | Skip confirmation prompt (for CI) |
+| `--prove` | `boolean` | Refresh plan-bound proof before apply |
+| `--rehearse` | `boolean` | Refresh artifact manifest before apply |
+| `--tag`, `-t` | `string` | npm dist-tag override |
+| `--from`, `-f` | `string` | Read the release plan from a specific file path |
+
+#### `release archive`
+
+Export a release audit archive
+
+```
+release archive <subcommand> [flags]
+```
+
+#### `release archive export`
+
+Export a release audit archive
+
+```
+release archive export [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--from`, `-f` | `string` | Plan file to archive (default: the active plan) |
+
+#### `release conformance`
+
+Run provider conformance checks
+
+```
+release conformance <subcommand> [flags]
+```
+
+#### `release conformance run`
+
+Run provider conformance checks
+
+```
+release conformance run [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--provider` | `string` | Provider to check (npm, pnpm, bun) |
+| `--format` | `string` | Output format (text, json) |
+
+#### `release doctor`
+
+Run doctor checks (default: active plan if present, otherwise official and candidate; add ephemeral when PR context exists)
+
+```
+release doctor [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--lifecycle`, `-l` | `choice` | Only evaluate a single release lifecycle (choices: official, candidate, ephemeral) |
+| `--all`, `-a` | `boolean` | Force all lifecycles, including ephemeral without detected PR context |
+| `--only-rule` | `string` | Only run matching rules (comma-separated patterns) |
+| `--skip-rule` | `string` | Skip matching rules (comma-separated patterns) |
+| `--format`, `-f` | `choice` | Output format (text or json) (choices: text, json) |
+| `--remote`, `-r` | `string` | Remote to use for env.git-remote validation and PR diff-aware checks (default: configured env.git-remote or origin) |
+| `--from` | `string` | Read the release plan from a specific file path |
+
+#### `release explain`
+
+Explain why a package is primary, cascade, or unchanged
+
+```
+release explain [flags] [<pkg>]
+```
+
+**Arguments**
+
+| Argument | Type | Required | Description |
+| --- | --- | --- | --- |
+| `pkg` | `string` | no | Package scope or full package name to explain |
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--format`, `-f` | `choice` | Output format (choices: text, json) |
+
+#### `release forecast`
+
+Render a release forecast
+
+```
+release forecast [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--format`, `-f` | `choice` | Output format (choices: table, tree, md, json) |
+| `--from-file` | `string` | Read saved forecast JSON from a file instead of computing from the repo |
+
+#### `release git`
+
+Git integration: commit-message validation and hook installation
+
+```
+release git <subcommand> [flags]
+```
+
+#### `release git commit`
+
+Commit-message policy commands
+
+```
+release git commit <subcommand> [flags]
+```
+
+#### `release git commit validate`
+
+Validate a commit message file against repo commit policy
+
+```
+release git commit validate [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--message-file` | `string` | Path to the commit message file to validate (the commit-msg hook's $1) |
+
+#### `release git hooks`
+
+Manage the kitz-release git hooks
+
+```
+release git hooks <subcommand> [flags]
+```
+
+#### `release git hooks install`
+
+Install the idempotent commit-msg hook that runs the validator
+
+```
+release git hooks install [flags]
+```
+
+#### `release graph`
+
+Render the release execution DAG for a saved plan
+
+```
+release graph [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--format`, `-f` | `choice` | Output format (choices: text, json) |
+| `--tag`, `-t` | `string` | npm dist-tag override used for the workflow identity |
+| `--from` | `string` | Read the release plan from a specific file path |
+
+#### `release history`
+
+Show publish state and history from the PR release preview comment
+
+```
+release history [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--format`, `-f` | `choice` | Output format (choices: text, json) |
+| `--pr`, `-p` | `string` | Explicit pull request number to inspect instead of the connected branch |
+| `--limit`, `-n` | `string` | Maximum number of publish records to render (default: all) |
+
+#### `release init`
+
+Initialize release configuration
+
+```
+release init [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--force`, `-f` | `boolean` | Overwrite existing config |
+
+#### `release inspect`
+
+Inspect a published or local release subject
+
+```
+release inspect [flags] <target>
+```
+
+**Arguments**
+
+| Argument | Type | Required | Description |
+| --- | --- | --- | --- |
+| `target` | `string` | yes | Release subject to inspect (<package>@<version>) |
+
+#### `release matrix`
+
+Verify the publishing capability matrix
+
+```
+release matrix <subcommand> [flags]
+```
+
+#### `release matrix verify`
+
+Verify the publishing capability matrix
+
+```
+release matrix verify [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--latest` | `boolean` | Report latest-mode behavior |
+| `--write` | `boolean` | Report write-mode behavior |
+
+#### `release notes`
+
+Show unreleased release notes since the last release
+
+```
+release notes [flags] [<pkg>]
+```
+
+**Arguments**
+
+| Argument | Type | Required | Description |
+| --- | --- | --- | --- |
+| `pkg` | `string` | no | Filter to specific package (default: all packages) |
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--format`, `-f` | `choice` | Output format (choices: md, json) |
+| `--since`, `-s` | `string` | Show changes since this tag (default: last release tag) |
+| `--until`, `-u` | `string` | Stop at this tag or SHA instead of HEAD |
+
+#### `release plan`
+
+Generate a release plan
+
+```
+release plan [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--lifecycle`, `-l` | `choice` | Release lifecycle: official, candidate, or ephemeral (choices: official, candidate, ephemeral) |
+| `--pkg`, `-p` | `string` | Only include specific package(s) |
+| `--exclude`, `-x` | `string` | Exclude package(s) |
+| `--out`, `-o` | `string` | Write the generated plan to a specific file path |
+
+#### `release preview`
+
+Preview the frozen release plan without building artifacts
+
+```
+release preview [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--from`, `-f` | `string` | Read the release plan from a specific file path |
+
+#### `release pr`
+
+Maintain the release preview comment or canonical PR title
+
+```
+release pr <subcommand> [flags]
+```
+
+#### `release pr preview`
+
+Update the release preview comment and fail on blocking preview checks
+
+```
+release pr preview [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--check-only` | `boolean` | Run release preview checks without updating the PR comment |
+| `--remote` | `string` | Override the PR diff remote for this run |
+
+#### `release pr title`
+
+Inspect or rewrite the connected PR title release header
+
+```
+release pr title <subcommand> [flags]
+```
+
+#### `release pr title suggest`
+
+Show the canonical release header and suggested PR title
+
+```
+release pr title suggest [flags]
+```
+
+#### `release pr title apply`
+
+Update the connected PR title by replacing only its header
+
+```
+release pr title apply [flags]
+```
+
+#### `release prove`
+
+Write plan-bound publishing proof
+
+```
+release prove [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--from`, `-f` | `string` | Read the release plan from a specific file path |
+
+#### `release prune`
+
+Prune stale release artifact directories
+
+```
+release prune [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--yes`, `-y` | `boolean` | Remove the stale artifact directories instead of listing them |
+
+#### `release reconcile`
+
+Reconcile remote release state with the frozen plan
+
+```
+release reconcile [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--from`, `-f` | `string` | Read the release plan from a specific file path |
+| `--explain` | `boolean` | Print decision evidence |
+
+#### `release rehearse`
+
+Build the plan-bound artifact manifest
+
+```
+release rehearse [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--from`, `-f` | `string` | Read the release plan from a specific file path |
+
+#### `release repair`
+
+Print the repair action for a reconciled release plan
+
+```
+release repair [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--from`, `-f` | `string` | Read the release plan from a specific file path |
+| `--yes` | `boolean` | Acknowledge the printed repair action |
+
+#### `release resume`
+
+Resume an interrupted release workflow
+
+```
+release resume [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--yes`, `-y` | `boolean` | Skip confirmation prompt (for CI) |
+| `--tag`, `-t` | `string` | npm dist-tag override used for the workflow identity |
+| `--from` | `string` | Read the release plan from a specific file path |
+
+#### `release status`
+
+Show durable workflow state for a saved release plan
+
+```
+release status [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--format`, `-f` | `choice` | Output format (choices: text, json) |
+| `--tag`, `-t` | `string` | npm dist-tag override used for the workflow identity |
+| `--from` | `string` | Read the release plan from a specific file path |
+
+#### `release trust`
+
+Manage npm trusted-publisher (OIDC) provisioning commands
+
+```
+release trust <subcommand> [flags]
+```
+
+#### `release trust list`
+
+List trusted-publisher configuration for a package
+
+```
+release trust list [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--pkg` | `string` | Package name |
+| `--registry` | `string` | Registry URL |
+| `--json` | `boolean` | Emit the npm command with JSON output |
+
+#### `release trust setup`
+
+Render the npm trusted-publisher provisioning command
+
+```
+release trust setup [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--provider` | `string` | Trusted-publisher provider (github, gitlab, circleci) |
+| `--pkg` | `string` | Package name |
+| `--workflow` | `string` | GitHub workflow file |
+| `--repo` | `string` | GitHub repository (owner/name) |
+| `--file` | `string` | GitLab workflow file |
+| `--project` | `string` | GitLab project (namespace/project) |
+| `--org-id` | `string` | CircleCI org id |
+| `--project-id` | `string` | CircleCI project id |
+| `--pipeline-definition-id` | `string` | CircleCI pipeline definition id |
+| `--vcs-origin` | `string` | CircleCI VCS origin |
+| `--env` | `string` | Deployment environment |
+| `--registry` | `string` | Registry URL |
+| `--yes` | `boolean` | Skip confirmation prompts |
+| `--dry-run` | `boolean` | Emit the command without applying it |
+
+#### `release trust verify`
+
+Verify trusted-publisher configuration for a plan
+
+```
+release trust verify [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--from` | `string` | Plan file to verify |
+
+#### `release ui`
+
+Open the interactive release dashboard
+
+```
+release ui [flags]
+```
+
+#### `release validate-setup`
+
+Validate release setup without producing a package release plan
+
+```
+release validate-setup [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--strict` | `boolean` | Fail on drift-prone local setup |
+
+<!-- CLI_REFERENCE_END -->
+
+</details>

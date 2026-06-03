@@ -38,6 +38,14 @@ jobs:
       - uses: ./.github/actions/setup
       - run: bun run format:check
 
+  check-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Check generated CLI reference is current
+        run: bun run check:docs
+
   api-model-style:
     needs: check-type
     runs-on: ubuntu-latest
