@@ -55,8 +55,14 @@ export const extractImpacts = (
   resolvedConventionalCommitTypes: ResolvedConventionalCommitTypes,
 ): Effect.Effect<CommitImpact[]> =>
   Effect.gen(function* () {
-    // Parse the commit title (first line)
-    const title = gitCommit.message.split('\n')[0] ?? gitCommit.message
+    // Extract the subject line via the shared @kitz/git primitive, so version
+    // analysis, the lint rules, and the CLI validator all agree on what "the
+    // commit title" is (skipping blank/comment lead-in).
+    const title = Git.CommitMessage.subject(gitCommit.message)
+    if (title === null) {
+      // Empty or comment-only message - no impacts
+      return []
+    }
     const parseResult = yield* Effect.result(ConventionalCommits.Title.parse(title))
 
     if (Result.isFailure(parseResult)) {

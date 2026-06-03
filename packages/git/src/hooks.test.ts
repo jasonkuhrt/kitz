@@ -57,6 +57,23 @@ describe('Hooks.upsertManagedSection', () => {
     expect(out).toContain(START)
     expect(countSections(out)).toBe(1)
   })
+
+  test('recovers from a corrupted block with a missing end marker (no duplication)', () => {
+    const corrupted = `#!/usr/bin/env sh\nset -eu\n\n${START}\necho stale\n` // end marker hand-deleted
+    const out = Hooks.upsertManagedSection(corrupted, MARKER, BODY)
+    expect(countSections(out)).toBe(1)
+    expect(out).toContain(BODY)
+    expect(out).not.toContain('echo stale')
+    expect(Hooks.upsertManagedSection(out, MARKER, BODY)).toBe(out) // idempotent from recovered state
+  })
+
+  test('recovers from reversed markers without duplicating the block', () => {
+    const reversed = `#!/usr/bin/env sh\n\n# <<< ${MARKER} <<<\n${START}\n`
+    const out = Hooks.upsertManagedSection(reversed, MARKER, BODY)
+    expect(countSections(out)).toBe(1)
+    expect(out).toContain(BODY)
+    expect(Hooks.upsertManagedSection(out, MARKER, BODY)).toBe(out)
+  })
 })
 
 // ─── getHooksDir (live) ─────────────────────────────────────────────

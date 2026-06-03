@@ -39,10 +39,14 @@ export const upsertManagedSection = (
   }
 
   const startIndex = existing.indexOf(start)
-  const endIndex = existing.indexOf(end)
-  if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+  if (startIndex !== -1) {
+    // Replace the managed region in place. Search for the end marker *after* the
+    // start so reversed or duplicate markers can't mis-pair; a missing end (a
+    // hand-corrupted block) means the region runs to EOF — replacing it recovers
+    // a clean, idempotent block instead of appending a duplicate.
+    const endIndex = existing.indexOf(end, startIndex + start.length)
     const before = existing.slice(0, startIndex)
-    const after = existing.slice(endIndex + end.length)
+    const after = endIndex === -1 ? '' : existing.slice(endIndex + end.length)
     return `${before}${block}${after}`
   }
 

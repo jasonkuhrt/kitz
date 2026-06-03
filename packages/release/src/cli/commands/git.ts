@@ -40,8 +40,13 @@ const gitCommitValidate = Command.make(
     Effect.gen(function* () {
       const env = yield* Env.Env
       const fs = yield* FileSystem.FileSystem
-      const config = yield* Api.Config.load()
 
+      if (!(yield* fs.exists(messageFile))) {
+        yield* Console.error(`Commit message file not found: ${messageFile}`)
+        return env.exit(1)
+      }
+
+      const config = yield* Api.Config.load()
       const raw = yield* fs.readFileString(messageFile)
       const outcome = validateCommitMessage(raw, config.resolvedConventionalCommitTypes)
 

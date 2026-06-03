@@ -12,15 +12,19 @@
 /**
  * Extract the subject line from a raw git commit message.
  *
- * Skips leading blank lines and `#` comment lines (git's default comment
- * character), so it behaves the same for `-m` messages and for editor/template
- * messages whose user text follows commented guidance. Returns `null` when the
- * message has no subject (empty, whitespace-only, or comments-only).
+ * Skips leading blank lines and comment lines so it behaves the same for `-m`
+ * messages and for editor/template messages whose user text follows commented
+ * guidance. Returns `null` when the message has no subject (empty,
+ * whitespace-only, or comments-only).
+ *
+ * `commentChar` is the comment prefix (default `#`, git's default). Pass the
+ * repo's `core.commentChar` when it differs; `core.commentChar=auto` is not
+ * resolved here — pass the effective character if you need it.
  */
-export const subject = (raw: string): string | null => {
+export const subject = (raw: string, commentChar = '#'): string | null => {
   for (const line of raw.split('\n')) {
     const trimmed = line.trim()
-    if (trimmed === '' || trimmed.startsWith('#')) continue
+    if (trimmed === '' || trimmed.startsWith(commentChar)) continue
     return trimmed
   }
   return null

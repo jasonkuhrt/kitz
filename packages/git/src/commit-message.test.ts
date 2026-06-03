@@ -20,3 +20,9 @@ test('CommitMessage.subject > returns null when no subject exists', () => {
   expect(CommitMessage.subject('')).toBeNull()
   expect(CommitMessage.subject('# only a comment\n# another comment\n')).toBeNull()
 })
+
+test('CommitMessage.subject > honors a custom comment character', () => {
+  expect(CommitMessage.subject('; editor guidance\nfeat: x', ';')).toBe('feat: x')
+  // With commentChar ';', a leading '#' line is content, not a comment.
+  expect(CommitMessage.subject('# heading\nfeat: x', ';')).toBe('# heading')
+})
