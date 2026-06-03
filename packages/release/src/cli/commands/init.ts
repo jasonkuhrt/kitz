@@ -7,13 +7,12 @@
  * the workspace for packages, and adds `.release/` to `.gitignore`.
  * Safe to run multiple times (idempotent).
  */
-import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
-import { Oak } from '@kitz/oak'
-import { Console, Effect, Layer, Match, SchemaGetter, Schema as S } from 'effect'
+import { Console, Effect, Layer, Match } from 'effect'
+import { Command, Flag } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
 import { FileSystemLayer } from '../../platform.js'
 
@@ -24,72 +23,68 @@ const RELEASE_DIR_PATTERN = '.release/'
  *
  * Initialize release in a project.
  */
-const args = Oak.Command.create()
-  .use(Oak.EffectSchema)
-  .description('Initialize release configuration')
-  .parameter(
-    'force f',
-    S.UndefinedOr(S.Boolean)
-      .pipe(
-        S.decodeTo(S.Boolean, {
-          decode: SchemaGetter.transform((v) => v ?? false),
-          encode: SchemaGetter.transform((v) => v),
+export const init = Command.make(
+  'init',
+  {
+    force: Flag.boolean('force').pipe(
+      Flag.withAlias('f'),
+      Flag.withDescription('Overwrite existing config'),
+      Flag.withDefault(false),
+    ),
+  },
+  ({ force }) =>
+    Effect.gen(function* () {
+      const env = yield* Env.Env
+
+      const header = Str.Builder()
+      header`Initializing release...`
+      header``
+      yield* Console.log(header.render())
+
+      // Initialize config file
+      const configResult = yield* Api.Config.init({ force })
+      yield* Match.value(configResult).pipe(
+        Match.tagsExhaustive({
+          Created: (r) => Console.log(`✓ Created ${r.path.name}`),
+          AlreadyExists: () => Console.log(`✓ Config already exists`),
         }),
       )
-      .pipe(S.annotate({ description: 'Overwrite existing config', default: false })),
-  )
-  .parse()
 
-Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer))(
-  Effect.gen(function* () {
-    const env = yield* Env.Env
+      // Scan packages
+      const packages = yield* Api.Analyzer.Workspace.scan
+      yield* Console.log(`✓ Detected ${packages.length} package${packages.length === 1 ? '' : 's'}`)
 
-    const header = Str.Builder()
-    header`Initializing release...`
-    header``
-    yield* Console.log(header.render())
+      // Add .release/ to .gitignore
+      const gitignorePath = Fs.Path.join(env.cwd, Git.Paths.GITIGNORE)
+      const existingContent = yield* Fs.readString(gitignorePath).pipe(
+        Effect.catchTag('PlatformError', () => Effect.succeed('')),
+      )
 
-    // Initialize config file
-    const configResult = yield* Api.Config.init({ force: args.force })
-    yield* Match.value(configResult).pipe(
-      Match.tagsExhaustive({
-        Created: (r) => Console.log(`✓ Created ${r.path.name}`),
-        AlreadyExists: () => Console.log(`✓ Config already exists`),
-      }),
-    )
+      const gitignore =
+        existingContent === '' ? Git.Gitignore.empty : Git.Gitignore.fromString(existingContent)
 
-    // Scan packages
-    const packages = yield* Api.Analyzer.Workspace.scan
-    yield* Console.log(`✓ Detected ${packages.length} package${packages.length === 1 ? '' : 's'}`)
+      if (gitignore.hasPattern(RELEASE_DIR_PATTERN)) {
+        yield* Console.log(`✓ ${RELEASE_DIR_PATTERN} already in .gitignore`)
+      } else {
+        const updated = gitignore.addPattern(RELEASE_DIR_PATTERN)
+        yield* Fs.write(gitignorePath, Git.Gitignore.toString(updated))
 
-    // Add .release/ to .gitignore
-    const gitignorePath = Fs.Path.join(env.cwd, Git.Paths.GITIGNORE)
-    const existingContent = yield* Fs.readString(gitignorePath).pipe(
-      Effect.catchTag('PlatformError', () => Effect.succeed('')),
-    )
+        const action = existingContent === '' ? 'Created .gitignore with' : 'Added'
+        yield* Console.log(`✓ ${action} ${RELEASE_DIR_PATTERN} to .gitignore`)
+      }
 
-    const gitignore =
-      existingContent === '' ? Git.Gitignore.empty : Git.Gitignore.fromString(existingContent)
+      yield* Console.log(Str.Tpl.dedent`
 
-    if (gitignore.hasPattern(RELEASE_DIR_PATTERN)) {
-      yield* Console.log(`✓ ${RELEASE_DIR_PATTERN} already in .gitignore`)
-    } else {
-      const updated = gitignore.addPattern(RELEASE_DIR_PATTERN)
-      yield* Fs.write(gitignorePath, Git.Gitignore.toString(updated))
+        Done! Release scaffolding is ready.
 
-      const action = existingContent === '' ? 'Created .gitignore with' : 'Added'
-      yield* Console.log(`✓ ${action} ${RELEASE_DIR_PATTERN} to .gitignore`)
-    }
-
-    yield* Console.log(Str.Tpl.dedent`
-
-      Done! Release scaffolding is ready.
-
-      Next steps:
-        1. Review release.config.ts and decide how each lifecycle should publish
-        2. Run \`release forecast\` to inspect what would release right now
-        3. Run \`release doctor --all\` to audit auth, tags, metadata, and workflow wiring
-        4. Run \`release plan --lifecycle official\` to generate the exact publish plan
-    `)
-  }),
+        Next steps:
+          1. Review release.config.ts and decide how each lifecycle should publish
+          2. Run \`release forecast\` to inspect what would release right now
+          3. Run \`release doctor --all\` to audit auth, tags, metadata, and workflow wiring
+          4. Run \`release plan --lifecycle official\` to generate the exact publish plan
+      `)
+    }),
+).pipe(
+  Command.withDescription('Initialize release configuration'),
+  Command.provide(Layer.mergeAll(Env.Live, FileSystemLayer)),
 )

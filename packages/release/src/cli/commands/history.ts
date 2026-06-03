@@ -3,12 +3,11 @@
  *
  * Show publish state and history embedded in the PR release preview comment.
  */
-import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
-import { Oak } from '@kitz/oak'
-import { Console, Effect, Layer, Schema, SchemaGetter } from 'effect'
+import { Console, Effect, Layer, Option } from 'effect'
+import { Command, Flag } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
 import {
   parsePositiveIntegerOption,
@@ -17,62 +16,54 @@ import {
   toPreviewPublishReport,
 } from './history-lib.js'
 
-const args = Oak.Command.create()
-  .use(Oak.EffectSchema)
-  .description('Show publish state and history from the PR release preview comment')
-  .parameter(
-    'format f',
-    Schema.UndefinedOr(Schema.Literals(['text', 'json']))
-      .pipe(
-        Schema.decodeTo(Schema.Literals(['text', 'json']), {
-          decode: SchemaGetter.transform((value) => value ?? 'text'),
-          encode: SchemaGetter.transform((value) => value),
-        }),
-      )
-      .pipe(Schema.annotate({ description: 'Output format', default: 'text' })),
-  )
-  .parameter(
-    'pr p',
-    Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotate({
-        description: 'Explicit pull request number to inspect instead of the connected branch',
-      }),
+export const history = Command.make(
+  'history',
+  {
+    format: Flag.choice('format', ['text', 'json']).pipe(
+      Flag.withAlias('f'),
+      Flag.withDescription('Output format'),
+      Flag.withDefault('text'),
     ),
-  )
-  .parameter(
-    'limit n',
-    Schema.UndefinedOr(Schema.String).pipe(
-      Schema.annotate({
-        description: 'Maximum number of publish records to render (default: all)',
-      }),
-    ),
-  )
-  .parse()
-
-Cli.run(Layer.mergeAll(Env.Live, Git.GitLive))(
-  Effect.gen(function* () {
-    const context = yield* Api.Explorer.resolveGitHubContext()
-    const prNumber = yield* parsePositiveIntegerOption(args.pr, 'pr')
-    const limit = yield* parsePositiveIntegerOption(args.limit, 'limit')
-
-    const surface = yield* resolvePreviewPublishSurface(context, {
-      ...(prNumber !== undefined ? { prNumber } : {}),
-    }).pipe(
-      Effect.provide(
-        Github.LiveFetch({
-          owner: context.target.owner,
-          repo: context.target.repo,
-          ...(context.token ? { token: context.token } : {}),
-        }),
+    pr: Flag.string('pr').pipe(
+      Flag.withAlias('p'),
+      Flag.withDescription(
+        'Explicit pull request number to inspect instead of the connected branch',
       ),
-    )
+      Flag.optional,
+    ),
+    limit: Flag.string('limit').pipe(
+      Flag.withAlias('n'),
+      Flag.withDescription('Maximum number of publish records to render (default: all)'),
+      Flag.optional,
+    ),
+  },
+  ({ format, pr, limit }) =>
+    Effect.gen(function* () {
+      const context = yield* Api.Explorer.resolveGitHubContext()
+      const prNumber = yield* parsePositiveIntegerOption(Option.getOrUndefined(pr), 'pr')
+      const limitValue = yield* parsePositiveIntegerOption(Option.getOrUndefined(limit), 'limit')
 
-    const report = toPreviewPublishReport(surface, {
-      ...(limit !== undefined ? { limit } : {}),
-    })
+      const surface = yield* resolvePreviewPublishSurface(context, {
+        ...(prNumber !== undefined ? { prNumber } : {}),
+      }).pipe(
+        Effect.provide(
+          Github.LiveFetch({
+            owner: context.target.owner,
+            repo: context.target.repo,
+            ...(context.token ? { token: context.token } : {}),
+          }),
+        ),
+      )
 
-    yield* Console.log(
-      args.format === 'json' ? JSON.stringify(report, null, 2) : renderPreviewPublishReport(report),
-    )
-  }),
+      const report = toPreviewPublishReport(surface, {
+        ...(limitValue !== undefined ? { limit: limitValue } : {}),
+      })
+
+      yield* Console.log(
+        format === 'json' ? JSON.stringify(report, null, 2) : renderPreviewPublishReport(report),
+      )
+    }),
+).pipe(
+  Command.withDescription('Show publish state and history from the PR release preview comment'),
+  Command.provide(Layer.mergeAll(Env.Live, Git.GitLive)),
 )
