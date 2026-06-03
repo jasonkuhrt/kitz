@@ -452,7 +452,6 @@
         "@kitz/monorepo": "workspace:*",
         "@kitz/npm-registry": "workspace:*",
         "@kitz/num": "workspace:*",
-        "@kitz/oak": "workspace:*",
         "@kitz/pkg": "workspace:*",
         "@kitz/platform": "workspace:*",
         "@kitz/resource": "workspace:*",
