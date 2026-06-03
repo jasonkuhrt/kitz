@@ -15,21 +15,28 @@
  * `release pr title apply` updates the connected PR title on GitHub by replacing
  * only the conventional-commit header and preserving the current subject verbatim.
  */
-import { Cli } from '@kitz/cli'
 import { ConventionalCommits } from '@kitz/conventional-commits'
-import { Str } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
-import { Array as A, Console, Effect, Layer } from 'effect'
+import { Console, Effect, Layer, Option } from 'effect'
+import { Command, Flag } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
 import { resolveDiffRemote } from '../pr-preview-diff.js'
 import { PreviewBlockingError, runPrPreview } from '../pr-preview.js'
-import { formatHelp, type ParsedAction, prActionPickerOptions, resolvePrAction } from './pr-lib.js'
 
 const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
+
+const PrCommandLayer = Layer.mergeAll(
+  Env.Live,
+  FileSystemLayer,
+  TerminalLayer,
+  Git.GitLive,
+  ChildProcessSpawnerLayer,
+  npmLayer,
+)
 
 const preparePrTitle = Effect.gen(function* () {
   const git = yield* Git.Git
@@ -93,57 +100,28 @@ const preparePrTitle = Effect.gen(function* () {
   }
 })
 
-Cli.run(
-  Layer.mergeAll(
-    Env.Live,
-    FileSystemLayer,
-    TerminalLayer,
-    Git.GitLive,
-    ChildProcessSpawnerLayer,
-    npmLayer,
-  ),
-)(
-  Effect.gen(function* () {
-    const env = yield* Env.Env
-    const argv = yield* Cli.parseArgv(env.argv)
-    const args = A.drop(argv.args, 1)
-    const terminal = Cli.Picker.resolveInteractiveTerminalCapabilities({ env: env.vars })
+const prPreview = Command.make(
+  'preview',
+  {
+    checkOnly: Flag.boolean('check-only').pipe(
+      Flag.withDescription('Run release preview checks without updating the PR comment'),
+      Flag.withDefault(false),
+    ),
+    remote: Flag.string('remote').pipe(
+      Flag.withDescription('Override the PR diff remote for this run'),
+      Flag.optional,
+    ),
+  },
+  ({ checkOnly, remote }) =>
+    Effect.gen(function* () {
+      const env = yield* Env.Env
+      const remoteValue = Option.isSome(remote) ? remote.value : undefined
 
-    if (A.some(args, (arg) => arg === '-h' || arg === '--help')) {
-      yield* Console.log(formatHelp())
-      return
-    }
-
-    const actionResolution = yield* resolvePrAction({
-      args,
-      terminal,
-      pickAction: () =>
-        Cli.Picker.pickOption<ParsedAction>({
-          title: 'Select PR release action',
-          hint: 'Choose the PR release workflow to run.',
-          options: prActionPickerOptions,
-          color: terminal.color,
-        }),
-    })
-
-    if (actionResolution._tag === 'invalid') {
-      const output = Str.Builder()
-      output`Error: ${actionResolution.message}`
-      if (actionResolution.showHelp) {
-        output``
-        output(formatHelp())
-      }
-      yield* Console.error(output.render())
-      return env.exit(1)
-    }
-    const action = actionResolution.action
-
-    if (action._tag === 'preview') {
       const previewResult = yield* runPrPreview(
-        action.checkOnly || action.remote
+        checkOnly || remoteValue
           ? {
-              ...(action.checkOnly ? { checkOnly: true } : {}),
-              ...(action.remote ? { remote: action.remote } : {}),
+              ...(checkOnly ? { checkOnly: true } : {}),
+              ...(remoteValue ? { remote: remoteValue } : {}),
             }
           : undefined,
       ).pipe(Effect.result)
@@ -172,25 +150,33 @@ Cli.run(
 
       yield* Console.log('Updated release preview comment.')
       yield* Console.log(`Comment: ${previewResult.success.issueComment.html_url}`)
-      return
-    }
+    }),
+).pipe(
+  Command.withDescription('Update the release preview comment and fail on blocking preview checks'),
+)
 
+const prTitleSuggest = Command.make('suggest', {}, () =>
+  Effect.gen(function* () {
     const prepared = yield* preparePrTitle
     if (!prepared) return
 
-    if (action.action === 'suggest') {
-      yield* Console.log(`Projected release header: \`${prepared.projectedHeader}\``)
+    yield* Console.log(`Projected release header: \`${prepared.projectedHeader}\``)
 
-      if (prepared.suggestedTitle) {
-        yield* Console.log(`Suggested PR title: \`${prepared.suggestedTitle}\``)
-      } else if (prepared.titleRewriteError) {
-        yield* Console.log(
-          `Current PR title cannot be rewritten automatically: ${prepared.titleRewriteError}`,
-        )
-      }
-
-      return
+    if (prepared.suggestedTitle) {
+      yield* Console.log(`Suggested PR title: \`${prepared.suggestedTitle}\``)
+    } else if (prepared.titleRewriteError) {
+      yield* Console.log(
+        `Current PR title cannot be rewritten automatically: ${prepared.titleRewriteError}`,
+      )
     }
+  }),
+).pipe(Command.withDescription('Show the canonical release header and suggested PR title'))
+
+const prTitleApply = Command.make('apply', {}, () =>
+  Effect.gen(function* () {
+    const env = yield* Env.Env
+    const prepared = yield* preparePrTitle
+    if (!prepared) return
 
     const nextTitle = yield* ConventionalCommits.Title.rewriteHeader(
       prepared.pullRequest.title,
@@ -232,4 +218,15 @@ Cli.run(
     yield* Console.log(`Before: \`${prepared.pullRequest.title}\``)
     yield* Console.log(`After:  \`${updated.title}\``)
   }),
+).pipe(Command.withDescription('Update the connected PR title by replacing only its header'))
+
+const prTitle = Command.make('title').pipe(
+  Command.withDescription('Inspect or rewrite the connected PR title release header'),
+  Command.withSubcommands([prTitleSuggest, prTitleApply]),
+)
+
+export const pr = Command.make('pr').pipe(
+  Command.withDescription('Maintain the release preview comment or canonical PR title'),
+  Command.withSubcommands([prPreview, prTitle]),
+  Command.provide(PrCommandLayer),
 )

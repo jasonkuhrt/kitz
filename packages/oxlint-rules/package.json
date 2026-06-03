@@ -38,7 +38,7 @@
   },
   "dependencies": {
     "@oxlint/plugins": "^1.67.0",
-    "effect": "4.0.0-beta.70"
+    "effect": "catalog:"
   },
   "peerDependencies": {
     "oxlint": "1.67.0"

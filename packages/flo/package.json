@@ -33,8 +33,8 @@
   "dependencies": {
     "@kitz/core": "workspace:*",
     "@kitz/tex": "workspace:*",
-    "ansis": "^4.3.0",
-    "effect": "4.0.0-beta.70"
+    "ansis": "catalog:",
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@kitz/test": "workspace:*"

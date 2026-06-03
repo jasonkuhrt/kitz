@@ -40,8 +40,8 @@
     "release": "./build/cli/cli.js"
   },
   "dependencies": {
-    "@effect/sql-sqlite-bun": "4.0.0-beta.70",
-    "@effect/sql-sqlite-node": "4.0.0-beta.70",
+    "@effect/sql-sqlite-bun": "catalog:",
+    "@effect/sql-sqlite-node": "catalog:",
     "@kitz/cli": "workspace:*",
     "@kitz/conf": "workspace:*",
     "@kitz/conventional-commits": "workspace:*",
@@ -55,20 +55,19 @@
     "@kitz/monorepo": "workspace:*",
     "@kitz/npm-registry": "workspace:*",
     "@kitz/num": "workspace:*",
-    "@kitz/oak": "workspace:*",
     "@kitz/pkg": "workspace:*",
     "@kitz/platform": "workspace:*",
     "@kitz/resource": "workspace:*",
     "@kitz/semver": "workspace:*",
     "@kitz/tui": "workspace:*",
-    "@opentui/core": "0.2.15",
-    "@opentui/react": "0.2.15",
-    "effect": "4.0.0-beta.70",
-    "react": "19.2.6"
+    "@opentui/core": "0.3.1",
+    "@opentui/react": "0.3.1",
+    "effect": "catalog:",
+    "react": "19.2.7"
   },
   "devDependencies": {
     "@kitz/otel": "workspace:*",
     "@kitz/test": "workspace:*",
-    "@types/react": "^19.2.15"
+    "@types/react": "^19.2.16"
   }
 }

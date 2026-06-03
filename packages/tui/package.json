@@ -33,14 +33,14 @@
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
-    "@opentui/core": "0.2.15",
-    "@opentui/react": "0.2.15",
+    "@opentui/core": "0.3.1",
+    "@opentui/react": "0.3.1",
     "@effect-atom/atom": "0.5.3",
     "@effect-atom/atom-react": "0.5.0",
-    "react": "19.2.6",
-    "effect": "4.0.0-beta.70"
+    "react": "19.2.7",
+    "effect": "catalog:"
   },
   "devDependencies": {
-    "@types/react": "^19.2.15"
+    "@types/react": "^19.2.16"
   }
 }

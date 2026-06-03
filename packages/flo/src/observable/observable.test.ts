@@ -7,8 +7,7 @@ import { ObservableActivity, WorkflowEvents } from './observable.js'
 
 const makeWorkflowInstance = (name: string) =>
   WorkflowEngine.WorkflowInstance.initial(
-    EffectWorkflow.make({
-      name,
+    EffectWorkflow.make(name, {
       payload: Schema.Struct({}),
       success: Schema.Unknown,
       error: Schema.Never,
