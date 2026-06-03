@@ -12,7 +12,7 @@
         "@types/bun": "^1.3.14",
         "@types/node": "^25.9.1",
         "@typescript/native-preview": "^7.0.0-dev.20260526.1",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
         "fast-check": "^4.8.0",
         "oxfmt": "^0.52.0",
         "oxlint": "1.67.0",
@@ -26,7 +26,7 @@
       "version": "0.0.0-kitz-release",
       "dependencies": {
         "@kitz/core": "workspace:*",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@kitz/platform": "workspace:*",
@@ -49,7 +49,7 @@
         "@kitz/fs": "workspace:*",
         "@kitz/mod": "workspace:*",
         "@kitz/platform": "workspace:*",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
     },
     "packages/cmx": {
@@ -68,7 +68,7 @@
       "name": "@kitz/color",
       "version": "0.0.0-kitz-release",
       "dependencies": {
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
     },
     "packages/conf": {
@@ -80,8 +80,8 @@
         "@kitz/fs": "workspace:*",
         "@kitz/mod": "workspace:*",
         "@kitz/sch": "workspace:*",
-        "effect": "4.0.0-beta.70",
-        "type-fest": "^5.6.0",
+        "effect": "catalog:",
+        "type-fest": "catalog:",
       },
     },
     "packages/conventional-commits": {
@@ -90,7 +90,7 @@
       "dependencies": {
         "@kitz/core": "workspace:*",
         "@kitz/semver": "workspace:*",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@kitz/assert": "workspace:*",
@@ -108,7 +108,7 @@
         "object-inspect": "^1.13.4",
         "pluralize-esm": "^9.0.5",
         "ts-toolbelt": "^9.6.0",
-        "type-fest": "^5.6.0",
+        "type-fest": "catalog:",
         "zod": "^4.4.3",
       },
       "devDependencies": {
@@ -117,7 +117,7 @@
         "@types/object-inspect": "^1.13.0",
       },
       "peerDependencies": {
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
       "optionalPeers": [
         "effect",
@@ -132,7 +132,7 @@
       "dependencies": {
         "@kitz/core": "workspace:*",
         "@kitz/platform": "workspace:*",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
     },
     "packages/env": {
@@ -141,7 +141,7 @@
       "dependencies": {
         "@kitz/core": "workspace:*",
         "@kitz/fs": "workspace:*",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
     },
     "packages/flo": {
@@ -151,7 +151,7 @@
         "@kitz/core": "workspace:*",
         "@kitz/tex": "workspace:*",
         "ansis": "^4.3.0",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@kitz/test": "workspace:*",
@@ -163,7 +163,7 @@
       "dependencies": {
         "@kitz/core": "workspace:*",
         "@kitz/json": "workspace:*",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
         "tinyglobby": "^0.2.16",
       },
       "devDependencies": {
@@ -175,7 +175,7 @@
       "name": "@kitz/fuzzy",
       "version": "0.0.0-kitz-release",
       "dependencies": {
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@kitz/test": "workspace:*",
@@ -188,7 +188,7 @@
         "@kitz/core": "workspace:*",
         "@kitz/fs": "workspace:*",
         "@kitz/resource": "workspace:*",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
         "simple-git": "^3.36.0",
       },
       "devDependencies": {
@@ -201,7 +201,7 @@
       "dependencies": {
         "@kitz/core": "workspace:*",
         "@octokit/types": "^16.0.0",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@kitz/test": "workspace:*",
@@ -227,21 +227,21 @@
       "version": "0.0.0-kitz-release",
       "dependencies": {
         "@kitz/core": "workspace:*",
-        "type-fest": "^5.6.0",
+        "type-fest": "catalog:",
       },
     },
     "packages/json": {
       "name": "@kitz/json",
       "version": "0.0.0-kitz-release",
       "dependencies": {
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
     },
     "packages/jsonc": {
       "name": "@kitz/jsonc",
       "version": "0.0.0-kitz-release",
       "dependencies": {
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
         "jsonc-parser": "^3.3.1",
       },
     },
@@ -290,7 +290,7 @@
       "version": "0.0.0-kitz-release",
       "dependencies": {
         "@kitz/core": "workspace:*",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
         "es-toolkit": "^1.47.0",
         "object-inspect": "^1.13.4",
       },
@@ -304,7 +304,7 @@
       "dependencies": {
         "@kitz/core": "workspace:*",
         "@kitz/fs": "workspace:*",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@kitz/platform": "workspace:*",
@@ -319,7 +319,7 @@
         "@kitz/fs": "workspace:*",
         "@kitz/pkg": "workspace:*",
         "@kitz/resource": "workspace:*",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
         "yaml": "^2.9.0",
       },
     },
@@ -338,7 +338,7 @@
         "@kitz/fs": "workspace:*",
         "@kitz/pkg": "workspace:*",
         "@kitz/semver": "workspace:*",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
     },
     "packages/num": {
@@ -346,7 +346,7 @@
       "version": "0.0.0-kitz-release",
       "dependencies": {
         "@kitz/core": "workspace:*",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
     },
     "packages/oak": {
@@ -361,7 +361,7 @@
         "@standard-schema/spec": "^1.1.0",
         "alge": "^0.8.1",
         "ansis": "^4.3.0",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
         "zod": "^4.4.3",
       },
     },
@@ -369,7 +369,7 @@
       "name": "@kitz/otel",
       "version": "0.0.0-kitz-release",
       "dependencies": {
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
     },
     "packages/oxlint-rules": {
@@ -377,7 +377,7 @@
       "version": "0.0.0-kitz-release",
       "dependencies": {
         "@oxlint/plugins": "^1.67.0",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
       "peerDependencies": {
         "oxlint": "1.67.0",
@@ -394,7 +394,7 @@
         "@kitz/syn": "workspace:*",
         "@microsoft/tsdoc": "^0.16.0",
         "@types/mdast": "^4.0.4",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
         "mdast": "^3.0.0",
         "mdast-util-to-string": "^4.0.0",
         "remark-gfm": "^4.0.1",
@@ -414,7 +414,7 @@
         "@kitz/resource": "workspace:*",
         "@kitz/semver": "workspace:*",
         "@vltpkg/semver": "1.0.0-rc.31",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@kitz/assert": "workspace:*",
@@ -427,7 +427,7 @@
       "dependencies": {
         "@effect/platform-bun": "4.0.0-beta.70",
         "@effect/platform-node": "4.0.0-beta.70",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
     },
     "packages/release": {
@@ -460,7 +460,7 @@
         "@kitz/tui": "workspace:*",
         "@opentui/core": "0.2.15",
         "@opentui/react": "0.2.15",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
         "react": "19.2.6",
       },
       "devDependencies": {
@@ -476,7 +476,7 @@
         "@kitz/core": "workspace:*",
         "@kitz/fs": "workspace:*",
         "@kitz/jsonc": "workspace:*",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@kitz/platform": "workspace:*",
@@ -487,7 +487,7 @@
       "version": "0.0.0-kitz-release",
       "dependencies": {
         "@kitz/core": "workspace:*",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@kitz/assert": "workspace:*",
@@ -498,7 +498,7 @@
       "name": "@kitz/semver",
       "version": "0.0.0-kitz-release",
       "dependencies": {
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
       "devDependencies": {
         "@kitz/test": "workspace:*",
@@ -518,10 +518,10 @@
       "dependencies": {
         "@kitz/core": "workspace:*",
         "@types/object-inspect": "^1.13.0",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
         "fast-check": "^4.8.0",
         "object-inspect": "^1.13.4",
-        "type-fest": "^5.6.0",
+        "type-fest": "catalog:",
       },
     },
     "packages/tex": {
@@ -532,7 +532,7 @@
         "@kitz/core": "workspace:*",
         "@types/node": "^25.9.1",
         "ansis": "^4.3.0",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
       },
     },
     "packages/tree": {
@@ -551,7 +551,7 @@
         "@kitz/core": "workspace:*",
         "@opentui/core": "0.2.15",
         "@opentui/react": "0.2.15",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
         "react": "19.2.6",
       },
       "devDependencies": {
@@ -570,7 +570,7 @@
         "@kitz/conf": "workspace:*",
         "@kitz/core": "workspace:*",
         "@kitz/log": "workspace:*",
-        "type-fest": "^5.6.0",
+        "type-fest": "catalog:",
       },
     },
     "packages/yaml": {
@@ -578,7 +578,7 @@
       "version": "0.0.0-kitz-release",
       "dependencies": {
         "@kitz/resource": "workspace:*",
-        "effect": "4.0.0-beta.70",
+        "effect": "catalog:",
         "yaml": "^2.9.0",
       },
       "devDependencies": {
@@ -591,6 +591,10 @@
     "oxfmt",
     "better-sqlite3",
   ],
+  "catalog": {
+    "effect": "4.0.0-beta.76",
+    "type-fest": "^5.7.0",
+  },
   "packages": {
     "@andrewbranch/untar.js": ["@andrewbranch/untar.js@1.0.3", "", {}, "sha512-Jh15/qVmrLGhkKJBdXlK1+9tY4lZruYjsgkDFj08ZmDiWVBLJcqkok7Z0/R0In+i1rScBpJlSvrTS2Lm41Pbnw=="],
 
@@ -996,7 +1000,7 @@
 
     "diff": ["diff@9.0.0", "", {}, "sha512-svtcdpS8CgJyqAjEQIXdb3OjhFVVYjzGAPO8WGCmRbrml64SPw/jJD4GoE98aR7r25A0XcgrK3F02yw9R/vhQw=="],
 
-    "effect": ["effect@4.0.0-beta.70", "", { "dependencies": { "@standard-schema/spec": "^1.1.0", "fast-check": "^4.8.0", "find-my-way-ts": "^0.1.6", "ini": "^7.0.0", "kubernetes-types": "^1.30.0", "msgpackr": "^2.0.1", "multipasta": "^0.2.7", "toml": "^4.1.1", "uuid": "^14.0.0", "yaml": "^2.9.0" } }, "sha512-8AwGTRiNriirHGEYHrOS0E9fzdhIqCdZjiHP1YXmNo2UyPGS43ILsymsSHT7V0DJS+8dvlKq2RxnrDBUhDNZHg=="],
+    "effect": ["effect@4.0.0-beta.76", "", { "dependencies": { "@standard-schema/spec": "^1.1.0", "fast-check": "^4.8.0", "find-my-way-ts": "^0.1.6", "ini": "^7.0.0", "kubernetes-types": "^1.30.0", "msgpackr": "^2.0.1", "multipasta": "^0.2.7", "toml": "^4.1.1", "uuid": "^14.0.0", "yaml": "^2.9.0" } }, "sha512-hiX9cyJni4o7xn1rCYn5ASkLQOYePY23QxvHh5vM9K9cCNauNeXnwufvetXoUVISD/swzBYxGbHUC3rnjqUF+g=="],
 
     "emoji-regex": ["emoji-regex@10.6.0", "", {}, "sha512-toUI84YS5YmxW219erniWD0CIVOo46xGKColeNQRgOzDorgBi1v4D71/OFzgD9GO2UGKIv1C3Sp8DAn0+j5w7A=="],
 
@@ -1298,7 +1302,7 @@
 
     "tunnel-agent": ["tunnel-agent@0.6.0", "", { "dependencies": { "safe-buffer": "^5.0.1" } }, "sha512-McnNiV1l8RYeY8tBgEpuodCC1mLUdbSN+CYBL7kJsJNInOP8UjDDEwdk6Mw60vdLLrr5NHKZhMAOSrR2NZuQ+w=="],
 
-    "type-fest": ["type-fest@5.6.0", "", { "dependencies": { "tagged-tag": "^1.0.0" } }, "sha512-8ZiHFm91orbSAe2PSAiSVBVko18pbhbiB3U9GglSzF/zCGkR+rxpHx6sEMCUm4kxY4LjDIUGgCfUMtwfZfjfUA=="],
+    "type-fest": ["type-fest@5.7.0", "", { "dependencies": { "tagged-tag": "^1.0.0" } }, "sha512-1URUxUqfHFM1c+zfSPsa3gnkO7Aq21qyH75SIduNYz4SzY964rn1X2vCMQaHSHhktiw+0kPa2iyb6PUpXqB6Vg=="],
 
     "typescript": ["typescript@5.6.1-rc", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-E3b2+1zEFu84jB0YQi9BORDjz9+jGbwwy1Zi3G0LUNw7a7cePUrHMRNy8aPh53nXpkFGVHSxIZo5vKTfYaFiBQ=="],
 

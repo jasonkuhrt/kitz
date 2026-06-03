@@ -400,8 +400,7 @@ const defaultIdempotencyKey = (payload: unknown): string => JSON.stringify(paylo
 export const make = <Name extends string, Payload, Result, Error>(
   config: WorkflowConfig<Name, Payload, Result, Error>,
 ): WorkflowInstance<Name, Payload, Result, Error> => {
-  const workflow = EffectWorkflow.make({
-    name: config.name,
+  const workflow = EffectWorkflow.make(config.name, {
     payload: config.payload as any,
     success: Schema.Unknown,
     error: (config.error ?? Schema.Never) as any,

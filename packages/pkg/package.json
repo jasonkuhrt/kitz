@@ -51,7 +51,7 @@
     "@kitz/resource": "workspace:*",
     "@kitz/semver": "workspace:*",
     "@vltpkg/semver": "1.0.0-rc.31",
-    "effect": "4.0.0-beta.70"
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@kitz/assert": "workspace:*",

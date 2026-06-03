@@ -14,7 +14,7 @@
     "./__": "./src/__.ts"
   },
   "dependencies": {
-    "effect": "4.0.0-beta.70",
+    "effect": "catalog:",
     "jsonc-parser": "^3.3.1"
   },
   "scripts": {

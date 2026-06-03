@@ -36,7 +36,7 @@
     "@kitz/fs": "workspace:*",
     "@kitz/mod": "workspace:*",
     "@kitz/sch": "workspace:*",
-    "effect": "4.0.0-beta.70",
-    "type-fest": "^5.6.0"
+    "effect": "catalog:",
+    "type-fest": "catalog:"
   }
 }

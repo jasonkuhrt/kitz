@@ -17,7 +17,7 @@
   "dependencies": {
     "@kitz/core": "workspace:*",
     "@kitz/json": "workspace:*",
-    "effect": "4.0.0-beta.70",
+    "effect": "catalog:",
     "tinyglobby": "^0.2.16"
   },
   "devDependencies": {

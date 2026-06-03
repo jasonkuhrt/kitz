@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
-    "effect": "4.0.0-beta.70",
+    "effect": "catalog:",
     "es-toolkit": "^1.47.0",
     "object-inspect": "^1.13.4"
   },

@@ -34,7 +34,7 @@
     "@kitz/core": "workspace:*",
     "@kitz/fs": "workspace:*",
     "@kitz/resource": "workspace:*",
-    "effect": "4.0.0-beta.70",
+    "effect": "catalog:",
     "simple-git": "^3.36.0"
   },
   "devDependencies": {

@@ -21,7 +21,7 @@
   "dependencies": {
     "@effect/platform-bun": "4.0.0-beta.70",
     "@effect/platform-node": "4.0.0-beta.70",
-    "effect": "4.0.0-beta.70"
+    "effect": "catalog:"
   },
   "scripts": {
     "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
