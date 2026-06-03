@@ -191,6 +191,14 @@ const makeGitService = (git: SimpleGit): GitService => ({
 
   getRoot: () => gitEffect('getRoot', async () => (await git.revparse(['--show-toplevel'])).trim()),
 
+  getHooksDir: () =>
+    gitEffect('getHooksDir', async () =>
+      // `--path-format=absolute` yields a cwd-independent absolute path and
+      // `--git-path hooks` honors `core.hooksPath` (falling back to
+      // `<git-dir>/hooks`), so git itself owns the resolution rules.
+      (await git.raw(['rev-parse', '--path-format=absolute', '--git-path', 'hooks'])).trim(),
+    ),
+
   getHeadSha: () =>
     gitEffect('getHeadSha', () => git.revparse(['--short', 'HEAD']), {
       map: (sha) => Sha.make(sha.trim()),

@@ -391,6 +391,31 @@ Test.describe('parseTitle > errors')
   .cases([['not a valid commit'], null], [['feat:'], null])
   .test()
 
+// ─── parseTitle > dotted custom types ────────────────────────────
+
+test('parseTitle > accepts dotted custom type (chore.docs)', () => {
+  const parsed = parseTitleSync('chore.docs: reconcile skills table')
+  expect(parsed).not.toBeNull()
+  expect(parsed?.type._tag).toBe('Custom')
+  expect(parsed?.type.value).toBe('chore.docs')
+  expect(parsed?.message).toBe('reconcile skills table')
+})
+
+test('parseTitle > accepts dotted custom type with scopes', () => {
+  const parsed = parseTitleSync('chore.docs(release, core): update tables')
+  expect(parsed?.type.value).toBe('chore.docs')
+  expect(parsed?.scopes).toEqual(['release', 'core'])
+})
+
+Test.describe('parseTitle > rejects malformed dotted types')
+  .on(parseTitleSync)
+  .cases(
+    [['.docs: leading dot'], null],
+    [['chore.: trailing dot'], null],
+    [['chore..docs: double dot'], null],
+  )
+  .test()
+
 // ─── parseTitle > Commit.Multi ────────────────────────────────────
 
 test('parseTitle > Commit.Multi', async () => {

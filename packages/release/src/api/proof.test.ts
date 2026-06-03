@@ -161,6 +161,7 @@ const gitLayer = (overrides: Partial<Git.GitService>): Layer.Layer<Git.Git> =>
     pushTag: () => unused(),
     deleteRemoteTag: () => unused(),
     getRemoteUrl: () => unused(),
+    getHooksDir: () => unused(),
     ...overrides,
   })
 

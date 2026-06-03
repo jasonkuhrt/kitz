@@ -18,6 +18,8 @@ export interface GitMemoryConfig {
   readonly isClean?: boolean
   /** Repository root path */
   readonly root?: string
+  /** Absolute hooks directory (defaults to `<root>/.git/hooks`) */
+  readonly hooksDir?: string
   /** HEAD commit SHA (short form) */
   readonly headSha?: Sha.Sha
   /** Remote URL */
@@ -43,6 +45,8 @@ export interface GitMemoryState {
   readonly isClean: Ref.Ref<boolean>
   /** Repository root */
   readonly root: Ref.Ref<string>
+  /** Absolute hooks directory */
+  readonly hooksDir: Ref.Ref<string>
   /** HEAD commit SHA */
   readonly headSha: Ref.Ref<Sha.Sha>
   /** Tags created (for verification) */
@@ -80,6 +84,7 @@ export const makeState = (config: GitMemoryConfig = {}): Effect.Effect<GitMemory
     branch: Ref.make(config.branch ?? 'main'),
     isClean: Ref.make(config.isClean ?? true),
     root: Ref.make(config.root ?? '/repo'),
+    hooksDir: Ref.make(config.hooksDir ?? `${config.root ?? '/repo'}/.git/hooks`),
     headSha: Ref.make(config.headSha ?? Sha.make('abc1234')),
     createdTags: Ref.make<Array<{ tag: string; message: string | undefined }>>([]),
     pushedTags: Ref.make<
@@ -186,6 +191,8 @@ const makeService = (state: GitMemoryState): GitService => ({
     ]).pipe(Effect.as({ stdout: `dry-run atomic ${tags.join(',')} to ${remote}` })),
 
   getRoot: () => Ref.get(state.root),
+
+  getHooksDir: () => Ref.get(state.hooksDir),
 
   getHeadSha: () => Ref.get(state.headSha),
 

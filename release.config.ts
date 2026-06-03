@@ -4,6 +4,8 @@ export default defineConfig({
   conventionalCommitSettings: {
     types: {
       improve: 'minor',
+      // Repo docs-chore convention (README/guide edits): recognized, no release.
+      'chore.docs': null,
       // Historical no-release types in existing git history.
       refator: null,
       tests: null,

@@ -38,6 +38,7 @@
     "simple-git": "^3.36.0"
   },
   "devDependencies": {
+    "@kitz/platform": "workspace:*",
     "@kitz/test": "workspace:*"
   }
 }
