@@ -46,6 +46,7 @@ export * as Forecaster from './forecaster/__.js'
 export * as Renderer from './renderer/__.js'
 
 // Supporting modules
+export * as CommitPolicy from './commit-policy.js'
 export * as Config from './config.js'
 export * as Digest from './digest.js'
 export * as Doctor from './doctor.js'

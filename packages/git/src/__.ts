@@ -1,5 +1,7 @@
+export * as CommitMessage from './commit-message.js'
 export * from './commit.js'
 export { Gitignore } from './gitignore.js'
+export * as Hooks from './hooks.js'
 export * from './live.js'
 export * as Memory from './memory.js'
 export * as Paths from './paths.js'

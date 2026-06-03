@@ -19,6 +19,7 @@ import { conformance } from './commands/conformance.js'
 import { doctor } from './commands/doctor.js'
 import { explain } from './commands/explain.js'
 import { forecast } from './commands/forecast.js'
+import { git } from './commands/git.js'
 import { graph } from './commands/graph.js'
 import { history } from './commands/history.js'
 import { init } from './commands/init.js'
@@ -48,6 +49,7 @@ const release = Command.make('release').pipe(
     doctor,
     explain,
     forecast,
+    git,
     graph,
     history,
     init,

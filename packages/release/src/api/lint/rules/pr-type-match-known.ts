@@ -1,5 +1,5 @@
-import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Effect } from 'effect'
+import * as CommitPolicy from '../../commit-policy.js'
 import * as Precondition from '../models/precondition.js'
 import { RuleId } from '../models/rule-defaults.js'
 import * as RuntimeRule from '../models/runtime-rule.js'
@@ -8,11 +8,6 @@ import { FixStep, GuideFix, Violation } from '../models/violation.js'
 import { ConventionalCommitSettingsService } from '../services/conventional-commit-settings.js'
 import { getInvalidTitleViolation, getParsedCommit } from './pr-helpers.js'
 import { PrService } from '../services/pr.js'
-
-const isKnownType = (
-  type: ConventionalCommits.Type.Type,
-  resolvedTypes: Readonly<Record<string, unknown>>,
-): boolean => ConventionalCommits.Type.Standard.is(type) || type.value in resolvedTypes
 
 /** Verifies that every PR title type is recognized (standard or configured). */
 export const rule = RuntimeRule.create({
@@ -26,9 +21,7 @@ export const rule = RuntimeRule.create({
     if (invalidTitle) return invalidTitle
     const commit = getParsedCommit(pr)!
 
-    const unknownTypes = ConventionalCommits.Commit.types(commit).filter(
-      (type) => !isKnownType(type, resolvedTypes),
-    )
+    const unknownTypes = CommitPolicy.findUnknownTypes(commit, resolvedTypes)
 
     if (unknownTypes.length > 0) {
       const names = unknownTypes.map((t) => `"${t.value}"`).join(', ')

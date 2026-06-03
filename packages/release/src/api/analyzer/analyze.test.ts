@@ -182,6 +182,7 @@ describe('analyzer.analyze', () => {
       pushTag: () => Effect.void,
       deleteRemoteTag: () => Effect.void,
       getRemoteUrl: () => Effect.succeed('git@github.com:example/repo.git'),
+      getHooksDir: () => Effect.succeed('/repo/.git/hooks'),
     } satisfies Git.GitService)
 
     const result = await Effect.runPromise(

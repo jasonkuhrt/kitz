@@ -32,7 +32,13 @@ export type ParseTitleError = InstanceType<typeof ParseTitleError>
 export type ParsedTitle = Single | Multi
 
 // Regex for a single type-scope group: type(scope!, scope2)?!?
-const TYPE_SCOPE_PATTERN = /^([a-z]+)(?:\(([^)]+)\))?(!)?$/
+//
+// The type token allows dot-separated lowercase segments (`chore.docs`) so
+// dotted custom types parse to `Type.Custom` — consistent with `Type.parse`,
+// which already maps any non-standard string to `Custom`. A leading/trailing/
+// doubled dot fails to match, keeping malformed headers invalid. Which dotted
+// types are *allowed* is a consumer policy decision, not a grammar one.
+const TYPE_SCOPE_PATTERN = /^([a-z]+(?:\.[a-z]+)*)(?:\(([^)]+)\))?(!)?$/
 
 /**
  * Parse a conventional commit title line.
