@@ -76,6 +76,7 @@ export const notes = Command.make(
         until: Option.getOrUndefined(until),
         filter: Option.isSome(pkg) ? [pkg.value] : undefined,
         resolvedConventionalCommitTypes: workspace.config.resolvedConventionalCommitTypes,
+        commitOverrides: workspace.config.commitOverrides,
       })
 
       if (result.notes.length === 0) {

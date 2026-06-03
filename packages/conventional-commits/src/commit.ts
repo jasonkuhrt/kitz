@@ -76,6 +76,37 @@ export const types = (commit: Commit): readonly Type[] => {
 }
 
 /**
+ * Return a copy of the commit with its rendered description (the subject line
+ * after the header) replaced.
+ *
+ * Only the human-facing description text changes; the type/scope/breaking
+ * structure — and, for the records that carry them, the body, footers, summary,
+ * and per-scope sections — are preserved verbatim. Because the breaking-change
+ * facets live in separate fields, swapping the description can never change a
+ * commit's release semantics, which is exactly what SHA-keyed changelog
+ * overrides need.
+ */
+export const withDescription = (commit: Commit, description: string): Commit => {
+  if (Commit.guards.Single(commit)) {
+    return Single.make({
+      type: commit.type,
+      scopes: commit.scopes,
+      breaking: commit.breaking,
+      message: description,
+      body: commit.body,
+      footers: commit.footers,
+    })
+  }
+
+  return Multi.make({
+    targets: commit.targets,
+    message: description,
+    summary: commit.summary,
+    sections: commit.sections,
+  })
+}
+
+/**
  * Render a canonical conventional-commit header from a parsed commit.
  */
 export const renderHeader = (commit: Commit): string => {

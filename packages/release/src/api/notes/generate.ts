@@ -50,6 +50,9 @@ export interface GenerateOptions {
   readonly filter?: readonly string[] | undefined
   /** Resolved type→bump mapping from config */
   readonly resolvedConventionalCommitTypes: ResolvedConventionalCommitTypes
+  /** SHA-keyed changelog-text overrides. Rewrites only rendered descriptions;
+   *  never affects bump/type/scope/breaking. */
+  readonly commitOverrides?: import('../config.js').CommitOverrides | undefined
 }
 
 /**
@@ -170,7 +173,7 @@ export const generate = (
 
       const impactsByCommit = yield* Effect.all(
         boundedCommits.map((commit) =>
-          extractImpacts(commit, options.resolvedConventionalCommitTypes),
+          extractImpacts(commit, options.resolvedConventionalCommitTypes, options.commitOverrides),
         ),
         { concurrency: 'unbounded' },
       )

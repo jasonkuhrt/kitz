@@ -103,6 +103,7 @@ export const plan = Command.make(
         filter: filterPackages,
         exclude: excludePackages,
         resolvedConventionalCommitTypes: workspace.config.resolvedConventionalCommitTypes,
+        commitOverrides: workspace.config.commitOverrides,
       })
       const ctx = { packages }
 

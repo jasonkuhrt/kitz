@@ -7,7 +7,8 @@ import type { Candidate } from '../version/models/candidate.js'
 import { CandidateSchema } from '../version/models/candidate.js'
 import type { Ephemeral } from '../version/models/ephemeral.js'
 import { EphemeralSchema } from '../version/models/ephemeral.js'
-import type { ConventionalCommitTypeImpact } from '../config.js'
+import type { CommitOverrides, ConventionalCommitTypeImpact } from '../config.js'
+import { resolveOverride } from './commit-override.js'
 import { ReleaseCommit } from './models/commit.js'
 
 /**
@@ -49,10 +50,17 @@ const decodeExactPin = S.decodeUnknownOption(Pkg.Pin.Exact.FromString)
  * Parses the commit message as conventional commit and returns
  * which packages are affected and what bump type each needs.
  * Stores the full ReleaseCommit (not flattened per-scope).
+ *
+ * When a SHA-keyed changelog-text override matches `gitCommit.hash`, only the
+ * stored commit's rendered description is rewritten (via
+ * {@link ConventionalCommits.Commit.withDescription}); every bump below is still
+ * derived from the original parse, so type/scope/breaking/bump are provably
+ * untouched by any override.
  */
 export const extractImpacts = (
   gitCommit: Git.Commit,
   resolvedConventionalCommitTypes: ResolvedConventionalCommitTypes,
+  commitOverrides?: CommitOverrides,
 ): Effect.Effect<CommitImpact[]> =>
   Effect.gen(function* () {
     // Extract the subject line via the shared @kitz/git primitive, so version
@@ -71,11 +79,17 @@ export const extractImpacts = (
     }
 
     const parsedCC = parseResult.success
+    // Changelog-text overlay: a matching override replaces only the rendered
+    // description. The parsed header (type/scope/breaking) — and therefore every
+    // bump computed from `parsedCC` below — is left exactly as parsed.
+    const override = resolveOverride(commitOverrides, gitCommit.hash)
     const releaseCommit = ReleaseCommit.make({
       hash: gitCommit.hash,
       author: gitCommit.author,
       date: gitCommit.date,
-      message: parsedCC,
+      message: override
+        ? ConventionalCommits.Commit.withDescription(parsedCC, override.body)
+        : parsedCC,
     })
     const impacts: CommitImpact[] = []
 

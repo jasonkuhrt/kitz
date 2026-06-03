@@ -36,6 +36,7 @@ const resolvedConfig = ResolvedConfig.make({
     prepareCommands: [],
   }),
   resolvedConventionalCommitTypes: {},
+  commitOverrides: {},
   lint: LintConfig.resolveConfig({}),
 })
 

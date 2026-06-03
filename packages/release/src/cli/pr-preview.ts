@@ -436,6 +436,7 @@ export const runPrPreview = (
       tags,
       since: `${diffRemote}/${pullRequest.base.ref}`,
       resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
+      commitOverrides: config.commitOverrides,
     })
     const projectedSquashCommit = Api.ProjectedSquashCommit.preview({
       actualTitle: pullRequest.title,

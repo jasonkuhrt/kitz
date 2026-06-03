@@ -71,6 +71,7 @@ const preparePrTitle = Effect.gen(function* () {
     tags,
     since: `${remote}/${pullRequest.base.ref}`,
     resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
+    commitOverrides: config.commitOverrides,
   })
   const projectedHeader = Api.ProjectedSquashCommit.renderHeader({
     impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis, { primaryOnly: true }),

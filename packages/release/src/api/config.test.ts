@@ -99,3 +99,68 @@ describe('release config package mappings', () => {
     })
   })
 })
+
+describe('release config commit overrides', () => {
+  test('defaults to an empty map when omitted', () => {
+    const config = Config.decodeSync({})
+    expect(config.commitOverrides).toEqual({})
+  })
+
+  test('accepts a SHA-keyed changelog-text override', () => {
+    const config = Config.decodeSync({
+      commitOverrides: {
+        abc1234: { body: 'fix(core): correct the off-by-one', reason: 'original typo' },
+      },
+    })
+
+    expect(config.commitOverrides).toEqual({
+      abc1234: { body: 'fix(core): correct the off-by-one', reason: 'original typo' },
+    })
+  })
+
+  test('reason is optional', () => {
+    const config = Config.decodeSync({
+      commitOverrides: { abc1234: { body: 'reworded changelog line' } },
+    })
+    expect(config.commitOverrides?.['abc1234']?.body).toBe('reworded changelog line')
+    expect(config.commitOverrides?.['abc1234']?.reason).toBeUndefined()
+  })
+
+  test('rejects a body carrying a breaking-change marker, naming the SHA', () => {
+    expect(() =>
+      Config.decodeSync({
+        commitOverrides: { abc1234: { body: 'feat!: sneak in a breaking change' } },
+      }),
+    ).toThrow(/commit override abc1234: breaking-change content is not supported/)
+  })
+
+  test('rejects a BREAKING CHANGE footer token in the body', () => {
+    expect(() =>
+      Config.decodeSync({
+        commitOverrides: {
+          abc1234: { body: 'BREAKING-CHANGE: removed the old API' },
+        },
+      }),
+    ).toThrow(/breaking-change content is not supported/)
+  })
+
+  test('rejects an empty body', () => {
+    expect(() => Config.decodeSync({ commitOverrides: { abc1234: { body: '   ' } } })).toThrow(
+      /commit override abc1234: body must not be empty/,
+    )
+  })
+
+  test('rejects a multi-line body', () => {
+    expect(() =>
+      Config.decodeSync({
+        commitOverrides: { abc1234: { body: 'line one\nline two' } },
+      }),
+    ).toThrow(/commit override abc1234: body must be a single line/)
+  })
+
+  test('rejects an implausibly short / non-hex SHA key', () => {
+    expect(() =>
+      Config.decodeSync({ commitOverrides: { 'nope!': { body: 'reworded' } } }),
+    ).toThrow()
+  })
+})
