@@ -1,4 +1,5 @@
-import { Array as A, Record as EffectRecord, Schema } from 'effect'
+import { Json } from '@kitz/json'
+import { Schema } from 'effect'
 
 export class Digest extends Schema.Class<Digest>('Digest')({
   algorithm: Schema.Literal('sha256'),
@@ -13,24 +14,16 @@ export class Digest extends Schema.Class<Digest>('Digest')({
   static ordered = false as const
 }
 
-const compareKeys = (a: string, b: string): number => a.localeCompare(b)
-
-const isObjectLike = (value: unknown): value is Readonly<Record<string, unknown>> =>
-  value !== null && typeof value === 'object'
-
-const normalizeJsonValue = (value: unknown): unknown => {
-  if (value instanceof Date) return value.toISOString()
-  if (Array.isArray(value)) return A.map(value, normalizeJsonValue)
-  if (!isObjectLike(value)) return value
-
-  return A.reduce(
-    A.filter(Object.keys(value), (key) => value[key] !== undefined).toSorted(compareKeys),
-    EffectRecord.empty<string, unknown>(),
-    (record, key) => EffectRecord.set(record, key.normalize('NFC'), normalizeJsonValue(value[key])),
-  )
-}
-
-export const canonicalJson = (value: unknown): string => JSON.stringify(normalizeJsonValue(value))
+/**
+ * RFC 8785 (JCS) canonical JSON used as digest input.
+ *
+ * Every plan, config, and idempotency digest rides on this, so canonicalization
+ * must be byte-stable across machines and locales. The implementation lives in
+ * {@link Json.canonicalize} (a general JSON primitive); release only composes
+ * it: object members sort by UTF-16 code unit (not locale collation), keys are
+ * never Unicode-normalized, and numbers/strings use ECMAScript serialization.
+ */
+export const canonicalJson = (value: unknown): string => Json.canonicalize(value)
 
 export const sha256Text = (value: string): Digest =>
   Digest.make({
