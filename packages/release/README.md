@@ -446,6 +446,7 @@ release apply [flags]
 | `--rehearse` | `boolean` | Refresh artifact manifest before apply |
 | `--tag`, `-t` | `string` | npm dist-tag override |
 | `--from`, `-f` | `string` | Read the release plan from a specific file path |
+| `--allow-prerelease-latest` | `boolean` | Permit a prerelease plan to publish to the `latest` dist-tag |
 
 #### `release archive`
 
