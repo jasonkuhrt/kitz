@@ -159,14 +159,18 @@ const compareCodeUnits = (a: string, b: string): number => (a < b ? -1 : a > b ?
  * representation (matching `JSON.stringify`: `undefined`, functions, and
  * symbols are absent). Throws for values that JSON cannot represent but that
  * must not silently degrade in a digest (`NaN`/`Infinity`/`bigint`).
+ *
+ * `key` is the member key (object property name, array index string, or `''`
+ * at the root) and is forwarded to `toJSON`, exactly as `JSON.stringify` does.
  */
-const serialize = (input: unknown): string | undefined => {
-  // Honor `toJSON` (Date, Effect Inspectable, …) exactly like `JSON.stringify`.
+const serialize = (input: unknown, key: string): string | undefined => {
+  // Honor `toJSON` (Date, Effect Inspectable, …) exactly like `JSON.stringify`:
+  // any value carrying a callable `toJSON` is replaced by `toJSON(key)`.
   const value =
     input !== null &&
-    typeof input === 'object' &&
+    (typeof input === 'object' || typeof input === 'function') &&
     typeof (input as { toJSON?: unknown }).toJSON === 'function'
-      ? (input as { toJSON: (key: string) => unknown }).toJSON('')
+      ? (input as { toJSON: (key: string) => unknown }).toJSON(key)
       : input
 
   if (value === null) return 'null'
@@ -189,14 +193,21 @@ const serialize = (input: unknown): string | undefined => {
       throw new TypeError('Cannot canonicalize a bigint')
     case 'object': {
       if (Array.isArray(value)) {
-        return `[${value.map((item) => serialize(item) ?? 'null').join(',')}]`
+        // Index loop, not `.map`: `.map` skips array holes, which would emit
+        // invalid `,,`. Holes and `undefined`/function/symbol elements become
+        // `null`, matching `JSON.stringify`.
+        const items: string[] = []
+        for (let index = 0; index < value.length; index++) {
+          items.push(serialize(value[index], String(index)) ?? 'null')
+        }
+        return `[${items.join(',')}]`
       }
       const record = value as Record<string, unknown>
       const members: string[] = []
-      for (const key of Object.keys(record).sort(compareCodeUnits)) {
-        const serialized = serialize(record[key])
+      for (const memberKey of Object.keys(record).sort(compareCodeUnits)) {
+        const serialized = serialize(record[memberKey], memberKey)
         if (serialized === undefined) continue
-        members.push(`${JSON.stringify(key)}:${serialized}`)
+        members.push(`${JSON.stringify(memberKey)}:${serialized}`)
       }
       return `{${members.join(',')}}`
     }
@@ -231,7 +242,7 @@ const serialize = (input: unknown): string | undefined => {
  * @category Serialization
  */
 export const canonicalize = (value: unknown): string => {
-  const serialized = serialize(value)
+  const serialized = serialize(value, '')
   if (serialized === undefined) {
     throw new TypeError(`Cannot canonicalize a value of type ${typeof value}`)
   }

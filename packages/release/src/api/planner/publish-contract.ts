@@ -3,7 +3,7 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Effect, Schema } from 'effect'
-import type { ResolvedConfig } from '../config.js'
+import { ResolvedConfig } from '../config.js'
 import { sha256Json, sha256Text } from '../digest.js'
 import {
   defaultProofPolicy,
@@ -81,11 +81,16 @@ const lockfileKey = (entry: PlanSourceSnapshot['lockfiles'][number]): string =>
 /**
  * Compare a plan's frozen source snapshot against a freshly observed snapshot
  * and report every drift that makes the plan stale: HEAD SHA, effective release
- * config digest, lockfiles, the package-manager toolchain, the subcommands the
- * plan relies on, and recorded tool versions.
+ * config digest, lockfiles, the package-manager toolchain (name/version/binary),
+ * and recorded tool versions.
  *
- * Pure: build the observed snapshot with {@link buildSourceSnapshot} so apply
- * validates the full proof set, not just lockfile drift.
+ * Subcommand *invocation* proofs are deliberately out of scope here — those are
+ * enforced by the plan-bound Proof gate that apply already requires
+ * (`Proof.readForPlan` + `hasBlockingProof`), which proves `pack`/`publish`
+ * against the live binary. The snapshot's `subcommands` field is static, so
+ * comparing it here would never detect drift.
+ *
+ * Pure: build the observed snapshot with {@link buildSourceSnapshot}.
  */
 export const validateSourceSnapshot = (
   source: PlanSourceSnapshot,
@@ -147,15 +152,6 @@ export const validateSourceSnapshot = (
     })
   }
 
-  for (const [subcommand, required] of Object.entries(expectedPm.subcommands)) {
-    if (required && actualPm.subcommands[subcommand] !== true) {
-      issues.push({
-        code: 'release.source.subcommand-unavailable',
-        detail: `The package manager no longer proves the \`${subcommand}\` subcommand the plan relies on.`,
-      })
-    }
-  }
-
   for (const [tool, version] of Object.entries(source.toolVersions)) {
     if (observed.toolVersions[tool] !== version) {
       issues.push({
@@ -197,7 +193,10 @@ export const buildSourceSnapshot = (params: {
     return PlanSourceSnapshot.make({
       headSha,
       trunk: params.config.trunk,
-      releaseConfigDigest: sha256Json(params.config),
+      // Digest the schema-encoded config (the established encode-first pattern),
+      // not the raw class instance, so the digest never depends on Schema.Class
+      // enumerable-field internals.
+      releaseConfigDigest: sha256Json(ResolvedConfig.encodeSync(params.config)),
       releaseConfigDigestSource: 'canonical-effective-config',
       lockfiles: lockfileDigests,
       packageManager: {

@@ -254,7 +254,7 @@ describe('planner publish contract', () => {
         name: 'pnpm',
         version: '12.0.0', // toolchain version changed
         binary: 'pnpm',
-        subcommands: { pack: false, publish: true }, // pack subcommand no longer proved
+        subcommands: { pack: true, publish: true },
       },
       toolVersions: { pnpm: '12.0.0' }, // recorded tool version changed
     })
@@ -266,7 +266,9 @@ describe('planner publish contract', () => {
     expect(codes).toContain('release.source.lockfile-missing')
     expect(codes).toContain('release.source.lockfile-added')
     expect(codes).toContain('release.source.toolchain-drift')
-    expect(codes).toContain('release.source.subcommand-unavailable')
     expect(codes).toContain('release.source.tool-version-drift')
+    // Subcommand invocation proofs are enforced by the plan-bound Proof gate
+    // (apply: Proof.readForPlan + hasBlockingProof), not the source snapshot.
+    expect(codes).not.toContain('release.source.subcommand-unavailable')
   })
 })

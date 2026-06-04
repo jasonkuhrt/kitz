@@ -147,8 +147,23 @@ describe('canonicalize (RFC 8785 JCS)', () => {
     expect(canonicalize({ a: 1, f: () => 1 })).toBe('{"a":1}')
   })
 
+  test('renders sparse-array holes as null (never an invalid `,,`)', () => {
+    // A true hole (not an explicit `undefined`): `.map` would skip it and emit
+    // `[1,,3]`, which is not valid JSON. JSON.stringify renders holes as null.
+    const sparse = [1]
+    sparse[2] = 3
+    expect(canonicalize(sparse)).toBe('[1,null,3]')
+    expect(canonicalize(sparse)).toBe(JSON.stringify(sparse))
+  })
+
   test('honors toJSON (e.g. Date) like JSON.stringify', () => {
     expect(canonicalize({ at: new Date(0) })).toBe('{"at":"1970-01-01T00:00:00.000Z"}')
+  })
+
+  test('forwards the member key to toJSON, like JSON.stringify', () => {
+    const probe = { toJSON: (key: string) => key }
+    expect(canonicalize({ at: probe })).toBe('{"at":"at"}')
+    expect(canonicalize([probe])).toBe('["0"]') // array index is the key
   })
 
   test('canonicalize is reachable through the Json namespace', () => {
