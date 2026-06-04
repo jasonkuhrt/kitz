@@ -63,8 +63,12 @@ export const apply = Command.make(
       Flag.withDescription('Read the release plan from a specific file path'),
       Flag.optional,
     ),
+    allowPrereleaseLatest: Flag.boolean('allow-prerelease-latest').pipe(
+      Flag.withDescription('Permit a prerelease plan to publish to the `latest` dist-tag'),
+      Flag.withDefault(false),
+    ),
   },
-  ({ yes, prove, rehearse, tag, from }) =>
+  ({ yes, prove, rehearse, tag, from, allowPrereleaseLatest }) =>
     Effect.gen(function* () {
       const env = yield* Env.Env
 
@@ -105,9 +109,16 @@ export const apply = Command.make(
         return env.exit(1)
       }
 
-      const publish = Api.Publishing.resolvePublishSemanticsForPlan({
-        plan,
-      })
+      // Single intent resolver: resolves the frozen publish intent and enforces
+      // the prerelease-to-`latest` guard before any mutation.
+      const intentResult = yield* Effect.result(
+        Api.Publishing.resolvePublishIntentForPlan(plan, { allowPrereleaseLatest }),
+      )
+      if (intentResult._tag === 'Failure') {
+        yield* Console.error(intentResult.failure.message)
+        return env.exit(1)
+      }
+      const publish = Api.Publishing.publishSemanticsFromIntent(intentResult.success)
       const planDigest = Api.Proof.digestForPlan(plan)
 
       yield* Api.Lock.withLocal(
@@ -198,7 +209,21 @@ export const apply = Command.make(
             return env.exit(1)
           }
           if (plan.source !== undefined) {
-            const sourceIssues = yield* Api.Planner.validateSourceSnapshot(plan.source, env.cwd)
+            // Validate the full staleness proof set (config digest, head SHA,
+            // toolchain, subcommands, lockfiles) against a freshly observed
+            // snapshot, not just lockfile drift.
+            const configResult = yield* Effect.result(Api.Config.load())
+            if (configResult._tag === 'Failure') {
+              yield* Console.error(
+                'Cannot verify release staleness: failed to load the current release config.',
+              )
+              yield* Console.error(configResult.failure.message)
+              return env.exit(1)
+            }
+            const observedSource = yield* Api.Planner.buildSourceSnapshot({
+              config: configResult.success,
+            })
+            const sourceIssues = Api.Planner.validateSourceSnapshot(plan.source, observedSource)
             if (sourceIssues.length > 0) {
               yield* Console.error('Release source snapshot is stale.')
               for (const issue of sourceIssues)
@@ -266,7 +291,13 @@ export const apply = Command.make(
             Api.Renderer.renderApplyDone(result.releasedPackages.length, { env: env.vars }),
           )
 
-          yield* Api.Planner.Store.delete_(planPath)
+          // Archive the executed plan immutably by digest, then clear the
+          // active pointer (instead of deleting the only copy of the plan).
+          const archiveFile = yield* Api.Planner.Store.archive(plan, planDigest)
+          yield* Console.log(`Plan archived to ${Fs.Path.toString(archiveFile)}`)
+          if (planPath === undefined) {
+            yield* Api.Planner.Store.deleteActive
+          }
         }),
       )
     }),

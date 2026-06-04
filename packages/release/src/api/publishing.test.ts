@@ -16,10 +16,13 @@ import {
   publishSemanticsFromIntent,
   resolvePublishChannel,
   resolvePlanPrNumber,
+  resolvePublishIntentForPlan,
   resolvePublishSemantics,
   resolvePublishSemanticsForPlan,
 } from './publishing.js'
 import { publishIntentFromSemantics } from './release-contract.js'
+import type { Lifecycle } from './version/models/lifecycle.js'
+import type { PublishIntent } from './release-contract.js'
 
 describe('Publishing', () => {
   const ephemeralPlan = Plan.make({
@@ -200,5 +203,77 @@ describe('Publishing', () => {
       candidate: { mode: 'manual' },
       ephemeral: { mode: 'github-trusted', workflow: 'publish-preview.yml' },
     })
+  })
+})
+
+describe('resolvePublishIntentForPlan (single intent resolver)', () => {
+  const planWithIntent = (intent: PublishIntent, lifecycle: Lifecycle = 'candidate'): Plan =>
+    Plan.make({
+      lifecycle,
+      timestamp: '2026-03-18T00:00:00.000Z',
+      releases: [],
+      cascades: [],
+      publishIntent: intent,
+    })
+
+  test('fails with PlanIntentUnavailable when the plan has no frozen intent', async () => {
+    const plan = Plan.make({
+      lifecycle: 'official',
+      timestamp: '2026-03-18T00:00:00.000Z',
+      releases: [],
+      cascades: [],
+    })
+    const result = await Effect.runPromise(Effect.result(resolvePublishIntentForPlan(plan)))
+    expect(result._tag).toBe('Failure')
+    if (result._tag === 'Failure') {
+      expect(result.failure.context.reason).toBe('missing-publish-intent')
+    }
+  })
+
+  test('rejects a prerelease plan that targets the `latest` dist-tag', async () => {
+    const intent = publishIntentFromSemantics({
+      semantics: resolvePublishSemantics({ lifecycle: 'candidate', tag: 'latest' }),
+      trunk: 'main',
+    })
+    expect(intent.prerelease).toBe(true)
+    expect(intent.distTag).toBe('latest')
+    const result = await Effect.runPromise(
+      Effect.result(resolvePublishIntentForPlan(planWithIntent(intent))),
+    )
+    expect(result._tag).toBe('Failure')
+    if (result._tag === 'Failure') {
+      expect(result.failure.context.reason).toBe('prerelease-targets-latest')
+    }
+  })
+
+  test('permits prerelease -> `latest` only when allowPrereleaseLatest is set', async () => {
+    const intent = publishIntentFromSemantics({
+      semantics: resolvePublishSemantics({ lifecycle: 'candidate', tag: 'latest' }),
+      trunk: 'main',
+    })
+    const result = await Effect.runPromise(
+      Effect.result(
+        resolvePublishIntentForPlan(planWithIntent(intent), { allowPrereleaseLatest: true }),
+      ),
+    )
+    expect(result._tag).toBe('Success')
+    if (result._tag === 'Success') {
+      expect(result.success).toEqual(intent)
+    }
+  })
+
+  test('resolves a normal (non-prerelease) plan intent unchanged', async () => {
+    const intent = publishIntentFromSemantics({
+      semantics: resolvePublishSemantics({ lifecycle: 'official' }),
+      trunk: 'main',
+    })
+    expect(intent.prerelease).toBe(false)
+    const result = await Effect.runPromise(
+      Effect.result(resolvePublishIntentForPlan(planWithIntent(intent, 'official'))),
+    )
+    expect(result._tag).toBe('Success')
+    if (result._tag === 'Success') {
+      expect(result.success).toEqual(intent)
+    }
   })
 })

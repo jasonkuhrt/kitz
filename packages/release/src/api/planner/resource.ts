@@ -14,6 +14,15 @@ export const PLAN_DIR = Fs.Path.fromString('./.release/')
 export const PLAN_FILE = Fs.Path.fromString('./.release/plan.json')
 
 /**
+ * Directory where executed plans are archived, immutably, keyed by plan digest.
+ *
+ * A successful `apply` writes `.release/plans/<planDigest>.json` here (append
+ * only) and clears the active `plan.json` pointer, rather than deleting the
+ * only copy of the plan.
+ */
+export const PLANS_DIR = Fs.Path.fromString('./.release/plans/')
+
+/**
  * Resource for reading/writing plan.json with Schema validation.
  *
  * Reads and writes rich Plan data directly - no manual conversion needed.

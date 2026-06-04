@@ -1,7 +1,8 @@
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
-import { Effect } from 'effect'
+import { Effect, FileSystem } from 'effect'
+import { type PlanDigest } from '../release-contract.js'
 import { type Plan } from './models/plan.js'
 import { PLAN_FILE, resolvePlanDir, resolvePlanFile, resource } from './resource.js'
 
@@ -52,6 +53,36 @@ export const write = (plan: Plan, path?: Fs.Path) =>
   withPlanPath(path, (resolvedPath) => resource.write(plan, resolvedPath))
 
 export const delete_ = (path?: Fs.Path) => withPlanPath(path, resource.delete)
+
+/**
+ * Resolve the immutable archive path for a plan digest:
+ * `<cwd>/.release/plans/<planDigest>.json`.
+ */
+export const resolveArchiveLocation = (
+  planDigest: PlanDigest,
+): Effect.Effect<Fs.Path.AbsFile, never, Env.Env> =>
+  Effect.gen(function* () {
+    const env = yield* Env.Env
+    return Fs.Path.join(
+      env.cwd,
+      Fs.Path.RelFile.fromString(`./.release/plans/${planDigest.value}.json`),
+    )
+  })
+
+/**
+ * Archive a plan immutably under `.release/plans/<planDigest>.json` and return
+ * the archive path. Append-only: the digest-addressed name makes re-archiving
+ * the same plan idempotent. Does not touch the active `plan.json` pointer.
+ */
+export const archive = (
+  plan: Plan,
+  planDigest: PlanDigest,
+): Effect.Effect<Fs.Path.AbsFile, Resource.ResourceError, Env.Env | FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const file = yield* resolveArchiveLocation(planDigest)
+    yield* resource.write(plan, file)
+    return file
+  })
 
 export const readActive = read()
 

@@ -2,6 +2,7 @@ import { Effect, Schema } from 'effect'
 import type { PublishIntent } from './release-contract.js'
 import { Ephemeral } from './planner/models/item-ephemeral.js'
 import type { Plan } from './planner/models/plan.js'
+import { PlanIntentUnavailableError } from './publishing/errors.js'
 import type { Lifecycle } from './version/models/lifecycle.js'
 
 const defaultTokenEnv = (): string => 'NPM_TOKEN'
@@ -143,6 +144,47 @@ export const resolvePublishSemanticsForPlan = (params: {
     ...(params.candidateTag !== undefined ? { candidateTag: params.candidateTag } : {}),
     ...(prNumber !== undefined ? { prNumber } : {}),
   })
+}
+
+/**
+ * The single resolver that turns a plan into the frozen {@link PublishIntent}
+ * an executor runs. Every producer (CLI, CI, programmatic) funnels through here
+ * so the same guards apply uniformly.
+ *
+ * Fails with {@link PlanIntentUnavailableError} when the plan has no frozen
+ * intent, or when the intent is a prerelease targeting the `latest` dist-tag
+ * and `allowPrereleaseLatest` was not explicitly set (publishing a prerelease
+ * to `latest` would silently move the default install target onto an unstable
+ * build).
+ */
+export const resolvePublishIntentForPlan = (
+  plan: Plan,
+  options?: { readonly allowPrereleaseLatest?: boolean },
+): Effect.Effect<PublishIntent, PlanIntentUnavailableError> => {
+  const intent = plan.publishIntent
+  if (intent === undefined) {
+    return Effect.fail(
+      new PlanIntentUnavailableError({
+        context: {
+          reason: 'missing-publish-intent',
+          detail:
+            'This release plan has no frozen publish intent. Regenerate it with `release plan` before applying.',
+        },
+      }),
+    )
+  }
+  if (intent.prerelease && intent.distTag === 'latest' && options?.allowPrereleaseLatest !== true) {
+    return Effect.fail(
+      new PlanIntentUnavailableError({
+        context: {
+          reason: 'prerelease-targets-latest',
+          detail:
+            'This plan is a prerelease but its dist-tag is `latest`. Publishing a prerelease to `latest` moves the default install target onto an unstable build. Re-run with --allow-prerelease-latest to override.',
+        },
+      }),
+    )
+  }
+  return Effect.succeed(intent)
 }
 
 export const publishSemanticsFromIntent = (intent: PublishIntent): PublishSemantics => ({

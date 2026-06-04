@@ -75,55 +75,108 @@ export const readLockfileDigests = (
     return entries
   })
 
+const lockfileKey = (entry: PlanSourceSnapshot['lockfiles'][number]): string =>
+  Fs.Path.toString(entry.path)
+
+/**
+ * Compare a plan's frozen source snapshot against a freshly observed snapshot
+ * and report every drift that makes the plan stale: HEAD SHA, effective release
+ * config digest, lockfiles, the package-manager toolchain, the subcommands the
+ * plan relies on, and recorded tool versions.
+ *
+ * Pure: build the observed snapshot with {@link buildSourceSnapshot} so apply
+ * validates the full proof set, not just lockfile drift.
+ */
 export const validateSourceSnapshot = (
   source: PlanSourceSnapshot,
-  cwd: Fs.Path.AbsDir,
-): Effect.Effect<readonly SourceSnapshotIssue[], never, FileSystem.FileSystem> =>
-  Effect.gen(function* () {
-    const current = yield* readLockfileDigests(cwd)
-    const issues: SourceSnapshotIssue[] = []
+  observed: PlanSourceSnapshot,
+): readonly SourceSnapshotIssue[] => {
+  const issues: SourceSnapshotIssue[] = []
 
-    for (const expected of source.lockfiles) {
-      const actual = current.find(
-        (entry) => Fs.Path.toString(entry.path) === Fs.Path.toString(expected.path),
-      )
-      if (actual === undefined) {
-        issues.push({
-          code: 'release.source.lockfile-missing',
-          detail: `${Fs.Path.toString(expected.path)} was present at plan time but is missing now.`,
-        })
-        continue
-      }
-      if (actual.digest.value !== expected.digest.value) {
-        issues.push({
-          code: 'release.source.lockfile-drift',
-          detail: `${Fs.Path.toString(expected.path)} changed after the release plan was written.`,
-        })
-      }
+  if (observed.headSha !== source.headSha) {
+    issues.push({
+      code: 'release.source.head-sha-drift',
+      detail: `HEAD was ${source.headSha} at plan time but is ${observed.headSha} now.`,
+    })
+  }
+
+  if (observed.releaseConfigDigest.value !== source.releaseConfigDigest.value) {
+    issues.push({
+      code: 'release.source.config-digest-drift',
+      detail: 'The effective release config changed after the release plan was written.',
+    })
+  }
+
+  for (const expected of source.lockfiles) {
+    const actual = observed.lockfiles.find((entry) => lockfileKey(entry) === lockfileKey(expected))
+    if (actual === undefined) {
+      issues.push({
+        code: 'release.source.lockfile-missing',
+        detail: `${lockfileKey(expected)} was present at plan time but is missing now.`,
+      })
+      continue
     }
-
-    for (const actual of current) {
-      const expected = source.lockfiles.find(
-        (entry) => Fs.Path.toString(entry.path) === Fs.Path.toString(actual.path),
-      )
-      if (expected === undefined) {
-        issues.push({
-          code: 'release.source.lockfile-added',
-          detail: `${Fs.Path.toString(actual.path)} was added after the release plan was written.`,
-        })
-      }
+    if (actual.digest.value !== expected.digest.value) {
+      issues.push({
+        code: 'release.source.lockfile-drift',
+        detail: `${lockfileKey(expected)} changed after the release plan was written.`,
+      })
     }
+  }
 
-    return issues
-  })
+  for (const actual of observed.lockfiles) {
+    const expected = source.lockfiles.find((entry) => lockfileKey(entry) === lockfileKey(actual))
+    if (expected === undefined) {
+      issues.push({
+        code: 'release.source.lockfile-added',
+        detail: `${lockfileKey(actual)} was added after the release plan was written.`,
+      })
+    }
+  }
 
-export const attachPublishContract = (params: {
-  readonly plan: Plan
+  const expectedPm = source.packageManager
+  const actualPm = observed.packageManager
+  if (
+    expectedPm.name !== actualPm.name ||
+    expectedPm.version !== actualPm.version ||
+    expectedPm.binary !== actualPm.binary
+  ) {
+    issues.push({
+      code: 'release.source.toolchain-drift',
+      detail: `Package manager was ${expectedPm.name}@${expectedPm.version} (${expectedPm.binary}) at plan time but is ${actualPm.name}@${actualPm.version} (${actualPm.binary}) now.`,
+    })
+  }
+
+  for (const [subcommand, required] of Object.entries(expectedPm.subcommands)) {
+    if (required && actualPm.subcommands[subcommand] !== true) {
+      issues.push({
+        code: 'release.source.subcommand-unavailable',
+        detail: `The package manager no longer proves the \`${subcommand}\` subcommand the plan relies on.`,
+      })
+    }
+  }
+
+  for (const [tool, version] of Object.entries(source.toolVersions)) {
+    if (observed.toolVersions[tool] !== version) {
+      issues.push({
+        code: 'release.source.tool-version-drift',
+        detail: `Tool ${tool} was ${version} at plan time but is ${observed.toolVersions[tool] ?? 'absent'} now.`,
+      })
+    }
+  }
+
+  return issues
+}
+
+/**
+ * Observe the current source snapshot — HEAD SHA, effective release config
+ * digest, lockfile digests, and the package-manager toolchain. Used to freeze a
+ * plan ({@link attachPublishContract}) and, with the same shape, to detect
+ * staleness at apply ({@link validateSourceSnapshot}).
+ */
+export const buildSourceSnapshot = (params: {
   readonly config: ResolvedConfig
-  readonly tag?: string
-  readonly registry?: string
-  readonly signingProfileId?: string
-}): Effect.Effect<Plan, never, Env.Env | FileSystem.FileSystem | Git.Git> =>
+}): Effect.Effect<PlanSourceSnapshot, never, Env.Env | FileSystem.FileSystem | Git.Git> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
     const git = yield* Git.Git
@@ -141,21 +194,7 @@ export const attachPublishContract = (params: {
         : 'unknown'
     const headSha = yield* git.getHeadSha().pipe(Effect.orElseSucceed(() => 'unknown'))
     const lockfileDigests = yield* readLockfileDigests(env.cwd)
-    const proofPolicy = params.plan.proofPolicy ?? defaultProofPolicy()
-    const publishSemantics = resolvePublishSemanticsForPlan({
-      plan: params.plan,
-      publishing: params.config.publishing,
-      ...(params.tag !== undefined ? { tag: params.tag } : {}),
-      npmTag: params.config.npmTag,
-      candidateTag: params.config.candidateTag,
-    })
-    const publishIntent = publishIntentFromSemantics({
-      semantics: publishSemantics,
-      trunk: params.config.trunk,
-      packageManager: agentFromProjectManager(params.config.operator.manager.name),
-      ...(params.registry !== undefined ? { registry: params.registry } : {}),
-    })
-    const source = PlanSourceSnapshot.make({
+    return PlanSourceSnapshot.make({
       headSha,
       trunk: params.config.trunk,
       releaseConfigDigest: sha256Json(params.config),
@@ -174,6 +213,31 @@ export const attachPublishContract = (params: {
         [detectedPackageManager]: packageManagerVersion,
       },
     })
+  })
+
+export const attachPublishContract = (params: {
+  readonly plan: Plan
+  readonly config: ResolvedConfig
+  readonly tag?: string
+  readonly registry?: string
+  readonly signingProfileId?: string
+}): Effect.Effect<Plan, never, Env.Env | FileSystem.FileSystem | Git.Git> =>
+  Effect.gen(function* () {
+    const proofPolicy = params.plan.proofPolicy ?? defaultProofPolicy()
+    const publishSemantics = resolvePublishSemanticsForPlan({
+      plan: params.plan,
+      publishing: params.config.publishing,
+      ...(params.tag !== undefined ? { tag: params.tag } : {}),
+      npmTag: params.config.npmTag,
+      candidateTag: params.config.candidateTag,
+    })
+    const publishIntent = publishIntentFromSemantics({
+      semantics: publishSemantics,
+      trunk: params.config.trunk,
+      packageManager: agentFromProjectManager(params.config.operator.manager.name),
+      ...(params.registry !== undefined ? { registry: params.registry } : {}),
+    })
+    const source = yield* buildSourceSnapshot({ config: params.config })
     const signingProfileId =
       params.signingProfileId ?? params.plan.signingProfileId ?? 'local-developer'
     const body = PlanBody.make({
