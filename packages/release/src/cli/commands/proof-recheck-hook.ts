@@ -16,11 +16,14 @@ import type { BeforeMutationHook } from '../../api/executor/execute.js'
  * Build the proof-aware before-mutation gate a release command injects into the
  * executor.
  *
- * The hook re-observes local credential and registry surfaces, re-derives the
- * `pre-each-mutation` proof records from those fresh observations, and blocks the
- * pending mutation when the recheck turns up a blocking record (e.g. a credential
- * or local surface changed mid-release). It persists nothing — it only re-observes
- * and gates — so its requirements stay `Git.Git | NpmRegistry.NpmCli`.
+ * The hook re-observes local credential and registry surfaces, rebuilds the proof
+ * by overlaying those fresh observations on the prior artifact's evidence, and
+ * blocks the pending mutation when the recheck turns up a blocking record (e.g. a
+ * credential or local surface changed mid-release). Gathering only local
+ * observations is what scopes this to a per-mutation, locally-re-observable
+ * recheck — the GitHub/static records carry forward from prior evidence. It
+ * persists nothing — it only re-observes and gates — so its requirements stay
+ * `Git.Git | NpmRegistry.NpmCli`.
  */
 export const makeProofRecheckHook =
   (params: {
@@ -33,7 +36,6 @@ export const makeProofRecheckHook =
       const rechecked = Api.Proof.recheckProof({
         plan: params.plan,
         prior: params.prior,
-        phase: 'pre-mutation',
         observations,
         now: new Date().toISOString(),
       })
@@ -44,7 +46,7 @@ export const makeProofRecheckHook =
               kind: ctx.kind,
               subject: ctx.subject,
               detail:
-                'A pre-each-mutation proof recheck found blocking records (a credential or local surface changed mid-release).',
+                'A pre-mutation proof recheck found blocking records (a credential or local surface changed mid-release).',
             },
           }),
         )

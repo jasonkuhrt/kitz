@@ -218,11 +218,11 @@ export const apply = Command.make(
             return env.exit(1)
           }
 
-          // Honor recheckMode 'pre-apply' (and the pre-apply leg of
-          // 'pre-apply-and-on-mutation-failure'): re-observe local credential and
-          // GitHub surfaces and re-derive those records immediately before
-          // mutation, so a credential that expired since `release prove` blocks
-          // the apply.
+          // Re-observe local credential and GitHub surfaces and rebuild the proof
+          // by overlaying those fresh observations on the prior artifact's
+          // evidence, immediately before mutation — so a credential that expired
+          // since `release prove` blocks the apply. Gathering both local and
+          // GitHub observations rebuilds essentially every observable record fresh.
           const recheckLocal = yield* Api.Proof.collectLocalObservations(plan)
           const recheckGithub = yield* Api.Explorer.resolveGitHubContext().pipe(
             Effect.flatMap((context) =>
@@ -243,7 +243,6 @@ export const apply = Command.make(
           const rechecked = Api.Proof.recheckProof({
             plan,
             prior: proof.value,
-            phase: 'pre-apply',
             observations: recheckObservations,
             now: reproveNow,
           })

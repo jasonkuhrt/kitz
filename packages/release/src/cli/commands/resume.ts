@@ -89,7 +89,7 @@ export const resume = Command.make(
       const publishing = Api.Publishing.publishingFromIntent(plan.publishIntent)
 
       // The plan-bound proof that `release apply` wrote is the basis for the
-      // pre-each-mutation recheck the executor runs before the single
+      // pre-mutation recheck the executor runs before the single
       // not-yet-completed mutation this resume is driving into. Resume is the
       // exact window where a credential can expire (an operator suspends, fixes
       // an unrelated issue, and resumes later), so the gate must fire here too —

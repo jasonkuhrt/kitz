@@ -220,7 +220,7 @@ export type ExecutorGHReleaseError = InstanceType<typeof ExecutorGHReleaseError>
  * **Proof-blindness**: the executor only knows that *a* gate rejected *a*
  * mutation. It does not know the gate concerns proofs — the gate's meaning is
  * owned entirely by the caller that supplied it (e.g. the apply boundary drives
- * a `pre-each-mutation` proof recheck here).
+ * a pre-mutation proof recheck here).
  *
  * **What to do**: inspect `kind`, `subject`, and `detail` for the gate's reason,
  * resolve the underlying condition, then run `release resume` to continue from

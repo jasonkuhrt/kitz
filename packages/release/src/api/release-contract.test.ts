@@ -113,7 +113,6 @@ describe('release contract models', () => {
       id: 'env.publish.access-level.@kitz/core',
       status: 'blocked',
       dependsOn: ['env.publish.package-access.@kitz/core'],
-      recheckMode: 'pre-each-mutation',
       observedAt: '2026-05-13T00:00:00.000Z',
       evidence: {},
       blockedBy: 'env.publish.package-access.@kitz/core',

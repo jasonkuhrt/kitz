@@ -18,9 +18,10 @@ import { sha256Text } from '../../api/digest.js'
 import { OfficialFirst } from '../../api/version/models/official-first.js'
 import { makeProofRecheckHook } from './proof-recheck-hook.js'
 
-// A Plan WITH publishIntent so the proof artifact carries the
-// `pre-each-mutation` records the recheck hook re-derives (package access,
-// access level, and git push dry-run for @kitz/core@1.0.0).
+// A Plan WITH publishIntent so the proof artifact carries the locally
+// re-observable records the recheck hook rebuilds from fresh observations
+// (identity, package access, access level, and git push dry-run for
+// @kitz/core@1.0.0).
 const contractedPlan = Plan.make({
   lifecycle: 'official',
   timestamp: '2026-01-01T00:00:00Z',
@@ -40,9 +41,10 @@ const contractedPlan = Plan.make({
   ],
   cascades: [],
   planDigest: PlanDigest.make(sha256Text('contracted')),
-  // A frozen source snapshot so the out-of-phase `plan.source` proof record is
-  // `proven` in the prior — otherwise it stays `unprovable` and blocks the
-  // healthy case for a reason unrelated to the pre-each-mutation recheck.
+  // A frozen source snapshot so the static `plan.source` proof record is
+  // `proven` in the prior (and carries forward unchanged through the recheck) —
+  // otherwise it stays `unprovable` and blocks the healthy case for a reason
+  // unrelated to the locally re-observed surfaces.
   source: PlanSourceSnapshot.make({
     headSha: 'abc1234',
     trunk: 'main',
@@ -118,8 +120,8 @@ const gitLayer = (overrides: Partial<Git.GitService>): Layer.Layer<Git.Git> =>
     ...overrides,
   })
 
-// A healthy `prior` proof: every pre-each-mutation surface (identity, package
-// access, git push dry-run) is proven before the run starts.
+// A healthy `prior` proof: every locally re-observable surface (identity,
+// package access, git push dry-run) is proven before the run starts.
 const healthyPrior = () =>
   makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
     identity: 'octocat',
@@ -155,8 +157,9 @@ describe('makeProofRecheckHook', () => {
     )
 
     // The hook re-observed local surfaces via collectLocalObservations (whoami
-    // now fails), re-derived the pre-each-mutation records, found a blocking
-    // record, and aborted the mutation with the executor's gate error.
+    // now fails), rebuilt the proof by overlaying those fresh observations,
+    // found a blocking record, and aborted the mutation with the executor's gate
+    // error.
     expect(error._tag).toBe('ExecutorBeforeMutationError')
   })
 
@@ -170,7 +173,7 @@ describe('makeProofRecheckHook', () => {
     )
 
     // whoami succeeds, getAccessStatus is 'public', and the git push dry-run is
-    // accepted — the re-derived pre-each-mutation records stay proven, so the
+    // accepted — the rebuilt locally re-observed records stay proven, so the
     // gate lets the mutation proceed.
     expect(Exit.isSuccess(exit)).toBe(true)
   })

@@ -149,7 +149,7 @@ export const makeHarness = (options: {
    * Override the registry access status `getAccessStatus` reports. The release
    * workflow itself never calls `getAccessStatus`; only the proof recheck does.
    * Setting this to a value that mismatches the publish intent lets a test drive
-   * a pre-each-mutation proof block without disturbing any workflow npm op.
+   * a pre-mutation proof block without disturbing any workflow npm op.
    */
   readonly accessStatus?: 'public' | 'restricted'
   readonly envVars?: Record<string, string | undefined>

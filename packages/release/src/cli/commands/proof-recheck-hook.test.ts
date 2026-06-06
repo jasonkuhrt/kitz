@@ -17,7 +17,7 @@ import { sha256Text } from '../../api/digest.js'
 import { makeProofRecheckHook } from './proof-recheck-hook.js'
 
 // The hook factory + its wiring into the executor are the two halves of AC #4's
-// pre-each-mutation recheck. `apply.test.ts` proves the factory in isolation and
+// pre-mutation recheck. `apply.test.ts` proves the factory in isolation and
 // `execute.test.ts` proves the seam with a trivial injected hook. This test
 // closes the gap they leave: it drives the REAL `makeProofRecheckHook` through
 // the REAL executor, so a regression in the apply/resume -> executor wiring is
@@ -46,9 +46,10 @@ const publishIntent = publishIntentFromSemantics({
   trunk: 'main',
 })
 
-// A frozen source snapshot so the out-of-phase `plan.source` proof record is
-// `proven` in the prior — otherwise it stays `unprovable` and blocks the healthy
-// case for a reason unrelated to the pre-each-mutation recheck.
+// A frozen source snapshot so the static `plan.source` proof record is `proven`
+// in the prior (and carries forward unchanged through the recheck) — otherwise it
+// stays `unprovable` and blocks the healthy case for a reason unrelated to the
+// locally re-observed surfaces.
 const source = PlanSourceSnapshot.make({
   headSha: 'abc1234',
   trunk: 'main',
@@ -65,8 +66,8 @@ const source = PlanSourceSnapshot.make({
 })
 
 // A Plan carrying a frozen publishIntent + planDigest + source so its proof
-// artifact has the `pre-each-mutation` credential records the hook re-derives
-// and no unrelated blocking records.
+// artifact has the locally re-observable credential records the hook rebuilds
+// from fresh observations and no unrelated blocking records.
 const contractPlan = (plan: Plan) =>
   Plan.make({
     lifecycle: plan.lifecycle,
@@ -78,8 +79,8 @@ const contractPlan = (plan: Plan) =>
     publishIntent,
   })
 
-// A healthy prior proof — what `release prove` / the pre-apply recheck wrote
-// before the run started: every pre-each-mutation surface proven.
+// A healthy prior proof — what `release prove` / the apply recheck wrote
+// before the run started: every locally re-observable surface proven.
 const healthyPrior = (plan: Plan) =>
   makeProofArtifact(plan, '2026-05-13T00:00:00.000Z', {
     identity: 'octocat',
@@ -94,7 +95,7 @@ const uniqueDbPath = () =>
 
 // The release workflow never calls `getAccessStatus`; only the proof recheck
 // does. `accessStatus: 'restricted'` makes the recheck observe a registry access
-// that mismatches the publish intent (`public`), so the pre-each-mutation block
+// that mismatches the publish intent (`public`), so the pre-mutation block
 // fires WITHOUT disturbing any npm op the workflow itself drives.
 const makeSeamHarness = (accessStatus?: 'public' | 'restricted') =>
   makeHarness({
@@ -113,7 +114,7 @@ describe('makeProofRecheckHook driven through executeObservable', () => {
   Test.live('aborts the run before any mutation when registry access drifted since prove', () =>
     Effect.gen(function* () {
       // Registry access drifts to 'restricted' (publish intent wants 'public')
-      // after prove — the pre-each-mutation recheck must catch it.
+      // after prove — the pre-mutation recheck must catch it.
       const harness = yield* makeSeamHarness('restricted')
       const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
       const contracted = contractPlan(plan)
@@ -128,8 +129,8 @@ describe('makeProofRecheckHook driven through executeObservable', () => {
       const exit = yield* observable.execute.pipe(Effect.provide(workflowContext), Effect.exit)
 
       // The real hook re-observed local surfaces (access now restricted),
-      // re-derived the pre-each-mutation records, found package-access blocking,
-      // and aborted the FIRST mutation.
+      // rebuilt the proof by overlaying those fresh observations, found
+      // package-access blocking, and aborted the FIRST mutation.
       expect(Exit.isFailure(exit)).toBe(true)
       if (Exit.isFailure(exit)) {
         expect(JSON.stringify(exit.cause)).toContain('ExecutorBeforeMutationError')
@@ -160,7 +161,7 @@ describe('makeProofRecheckHook driven through executeObservable', () => {
       }).pipe(Effect.provide(workflowContext))
 
       // Harness npm stays healthy (whoami succeeds, access 'public'), so each
-      // re-derived pre-each-mutation record stays proven and the gate lets every
+      // rebuilt locally re-observed record stays proven and the gate lets every
       // mutation proceed to a full publish.
       const result = yield* observable.execute.pipe(Effect.provide(workflowContext))
 

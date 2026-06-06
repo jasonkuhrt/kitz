@@ -296,13 +296,6 @@ export const ProofStatus = Schema.Literals([
 ])
 export type ProofStatus = typeof ProofStatus.Type
 
-export const ProofRecheckMode = Schema.Literals([
-  'pre-apply',
-  'pre-each-mutation',
-  'pre-apply-and-on-mutation-failure',
-])
-export type ProofRecheckMode = typeof ProofRecheckMode.Type
-
 export const ProofGateClass = Schema.Literals(['hard', 'soft'])
 export type ProofGateClass = typeof ProofGateClass.Type
 
@@ -312,7 +305,6 @@ export class ProofPolicy extends Schema.Class<ProofPolicy>('ProofPolicy')({
   authProofTtlSeconds: Schema.Number,
   registryProofTtlSeconds: Schema.Number,
   maxClockSkewSeconds: Schema.Number,
-  defaultRecheckMode: ProofRecheckMode,
   hostDeferral: Schema.Struct({
     allowed: Schema.Boolean,
     runtimeHosts: Schema.Array(RuntimeHost),
@@ -455,7 +447,6 @@ export class ProofRecord extends Schema.Class<ProofRecord>('ProofRecord')({
   id: Schema.String,
   status: ProofStatus,
   dependsOn: Schema.Array(Schema.String),
-  recheckMode: ProofRecheckMode,
   observedAt: Schema.String,
   expiresAt: Schema.optional(Schema.String),
   blockedBy: Schema.optional(Schema.String),
@@ -472,7 +463,7 @@ export class ProofRecord extends Schema.Class<ProofRecord>('ProofRecord')({
 }
 
 export class ProofArtifact extends Schema.Class<ProofArtifact>('ProofArtifact')({
-  schemaVersion: Schema.Literal(2),
+  schemaVersion: Schema.Literal(3),
   planDigest: PlanDigest,
   records: Schema.Array(ProofRecord),
 }) {
@@ -766,7 +757,6 @@ export const defaultProofPolicy = (runtimeHost: RuntimeHost = 'local-interactive
     authProofTtlSeconds: runtimeHost === 'local-interactive' ? 86_400 : 3_600,
     registryProofTtlSeconds: runtimeHost === 'local-interactive' ? 3_600 : 1_800,
     maxClockSkewSeconds: 300,
-    defaultRecheckMode: 'pre-apply',
     hostDeferral: { allowed: false, runtimeHosts: [] },
     byteVerifyRegistryTarball: 'always',
   })

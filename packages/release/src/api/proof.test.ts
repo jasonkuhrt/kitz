@@ -5,7 +5,7 @@ import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { describe, expect, test } from 'bun:test'
-import { Effect, FileSystem, Layer, Option, Result, Schema } from 'effect'
+import { Array as A, Effect, FileSystem, Layer, Option, Result, Schema } from 'effect'
 import { Env } from '@kitz/env'
 import { makeCascadeCommit } from './analyzer/models/commit.js'
 import { OfficialFirst } from './version/models/official-first.js'
@@ -18,6 +18,7 @@ import {
   hasBlockingProof,
   makeProofArtifact,
   mergeProofHistory,
+  priorObservationsFromArtifact,
   proofPathFor,
   prove,
   readForPlan,
@@ -942,35 +943,32 @@ describe('dependsOn blocked cascade', () => {
     expect(accessLevel?.blockedBy).toBe('env.publish.package-access.@kitz/core')
   })
 
-  test('a forward dependency reference fails loud instead of silently skipping the cascade', () => {
-    // A dependent constructed BEFORE the failed dependency it points at. The
-    // forward-pass cascade can only see resolved (already-visited) dependencies,
-    // so a forward reference would read as non-blocking and silently skip the
-    // cascade. The guard must reject this mis-ordering instead.
-    const base = {
-      recheckMode: 'pre-apply',
-      observedAt: '2026-05-13T00:00:00.000Z',
-      evidence: {},
-      proofHistory: [],
-    } as const
-    const misordered = updateProofArtifact(makeProofArtifact(contractedPlan), {
-      records: [
-        // dependent first, pointing at a root constructed after it...
-        ProofRecord.make({ ...base, id: 'dependent', status: 'proven', dependsOn: ['root'] }),
-        // ...root (failed) constructed after its dependent.
-        ProofRecord.make({ ...base, id: 'root', status: 'failed', dependsOn: [] }),
-      ],
+  test('makeProofArtifact constructs every record after its in-set dependencies', () => {
+    // The forward-pass cascade can only see resolved (already-visited)
+    // dependencies; a forward reference (a dependency present in the set but
+    // constructed after its dependent) would silently skip a cascade that should
+    // fire. The cascade guard fails loud on such mis-ordering, so the only way to
+    // keep `cascadeBlocked` sound is for `makeProofArtifact` to emit records in
+    // dependency-before-dependent order. Assert that topological invariant on the
+    // real, fully-populated record set.
+    const proof = makeProofArtifact(multiContractedPlan, '2026-05-13T00:00:00.000Z', {
+      identity: 'octocat',
+      packageAccess: { '@kitz/core': 'public', '@kitz/cli': 'public' },
+      gitPushDryRun: { '@kitz/core@1.0.0': true, '@kitz/cli@1.0.0': true },
+      githubReleasePermission: true,
+      githubReleaseExists: { '@kitz/core@1.0.0': false, '@kitz/cli@1.0.0': false },
     })
 
-    expect(() =>
-      recheckProof({
-        plan: contractedPlan,
-        prior: misordered,
-        phase: 'pre-apply',
-        observations: {},
-        now: '2026-05-13T01:00:00.000Z',
-      }),
-    ).toThrow(/cascade invariant violated/)
+    const idsInSet = A.map(proof.records, (record) => record.id)
+    const seen: string[] = []
+    for (const record of proof.records) {
+      for (const dependencyId of record.dependsOn) {
+        if (A.contains(idsInSet, dependencyId)) {
+          expect(A.contains(seen, dependencyId)).toBe(true)
+        }
+      }
+      seen.push(record.id)
+    }
   })
 })
 
@@ -1045,7 +1043,7 @@ describe('soft vs hard proof-gate classification', () => {
   })
 })
 
-describe('recheckProof honors recheckMode', () => {
+describe('recheckProof overlays fresh observations on prior evidence', () => {
   const provenProof = () =>
     makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
       identity: 'octocat',
@@ -1055,16 +1053,15 @@ describe('recheckProof honors recheckMode', () => {
       githubReleaseExists: { '@kitz/core@1.0.0': false },
     })
 
-  test('pre-apply recheck re-derives pre-apply records from fresh observations', () => {
+  test('a fresh identity failure flips env.publish.identity and grows its history', () => {
     const prior = provenProof()
-    // package-access is a pre-each-mutation record (NOT pre-apply); identity is
-    // a pre-apply record. A pre-apply recheck with a fresh identity failure must
-    // flip env.publish.identity but leave pre-each-mutation records untouched.
+    // Fresh observations carry only an identity failure. recheckProof rebuilds
+    // env.publish.identity from the fresh failure and reconstructs every other
+    // record from prior evidence.
     const rechecked = recheckProof({
       plan: contractedPlan,
       prior,
-      phase: 'pre-apply',
-      observations: { identityError: 'token expired', packageAccess: { '@kitz/core': 'public' } },
+      observations: { identityError: 'token expired' },
       now: '2026-05-13T01:00:00.000Z',
     })
 
@@ -1074,31 +1071,12 @@ describe('recheckProof honors recheckMode', () => {
     expect(identity?.proofHistory.length).toBeGreaterThan(1)
   })
 
-  test('pre-apply recheck does not touch pre-each-mutation records', () => {
+  test('a fresh package-access failure flips its record and grows its history', () => {
     const prior = provenProof()
     const rechecked = recheckProof({
       plan: contractedPlan,
       prior,
-      phase: 'pre-apply',
-      // fresh observations would flip package-access to failed, but it is a
-      // pre-each-mutation record and must be skipped by a pre-apply recheck.
-      observations: { identity: 'octocat', packageAccessErrors: { '@kitz/core': 'forbidden' } },
-      now: '2026-05-13T01:00:00.000Z',
-    })
-
-    const packageAccess = rechecked.records.find(
-      (record) => record.id === 'env.publish.package-access.@kitz/core',
-    )
-    expect(packageAccess?.status).toBe('proven')
-    expect(packageAccess?.proofHistory).toHaveLength(1)
-  })
-
-  test('pre-mutation recheck re-derives pre-each-mutation records and appends history', () => {
-    const prior = provenProof()
-    const rechecked = recheckProof({
-      plan: contractedPlan,
-      prior,
-      phase: 'pre-mutation',
+      // Fresh package-access error; identity still proven (carried from prior).
       observations: { identity: 'octocat', packageAccessErrors: { '@kitz/core': 'forbidden' } },
       now: '2026-05-13T01:00:00.000Z',
     })
@@ -1111,17 +1089,13 @@ describe('recheckProof honors recheckMode', () => {
     expect(packageAccess?.proofHistory[1]?.from).toBe('proven')
   })
 
-  test('a clean pre-mutation recheck leaves a proven record unchanged', () => {
+  test('a recheck with no contradicting observation leaves proven records unchanged', () => {
     const prior = provenProof()
+    // Carry-forward only: no fresh observation contradicts the prior.
     const rechecked = recheckProof({
       plan: contractedPlan,
       prior,
-      phase: 'pre-mutation',
-      observations: {
-        identity: 'octocat',
-        packageAccess: { '@kitz/core': 'public' },
-        gitPushDryRun: { '@kitz/core@1.0.0': true },
-      },
+      observations: {},
       now: '2026-05-13T01:00:00.000Z',
     })
 
@@ -1130,18 +1104,19 @@ describe('recheckProof honors recheckMode', () => {
     )
     expect(packageAccess?.status).toBe('proven')
     expect(packageAccess?.proofHistory).toHaveLength(1)
+    const identity = rechecked.records.find((record) => record.id === 'env.publish.identity')
+    expect(identity?.status).toBe('proven')
+    expect(identity?.proofHistory).toHaveLength(1)
   })
 
-  test('an in-phase failure cascades to its out-of-phase dependents', () => {
+  test('a fresh identity failure cascades to dependents and is itself failed (head-on catch)', () => {
     const prior = provenProof()
-    // identity is a pre-apply record (in-phase); package-access is a
-    // pre-each-mutation record (out-of-phase) that dependsOn identity. A
-    // pre-apply recheck that fails identity must still cascade package-access to
-    // blocked so the rechecked artifact stays internally consistent.
+    // The original bug: a fresh identity failure with a fresh public access
+    // observation. Identity must be `failed` in the SAME artifact its dependents
+    // point at — no dangling blockedBy referencing a proven cause.
     const rechecked = recheckProof({
       plan: contractedPlan,
       prior,
-      phase: 'pre-apply',
       observations: { identityError: 'token expired', packageAccess: { '@kitz/core': 'public' } },
       now: '2026-05-13T01:00:00.000Z',
     })
@@ -1158,5 +1133,142 @@ describe('recheckProof honors recheckMode', () => {
     expect(last?.to).toBe('blocked')
     expect(last?.from).toBe('proven')
     expect(last?.cause).toBe('env.publish.identity')
+
+    // The decisive regression assertion: no blocked record may point at a cause
+    // that is itself proven (or deferredToHost) in the rechecked artifact.
+    for (const record of rechecked.records) {
+      if (record.status === 'blocked' && record.blockedBy !== undefined) {
+        const blockedBy = record.blockedBy
+        const cause = A.findFirst(rechecked.records, (other) => other.id === blockedBy).pipe(
+          Option.getOrUndefined,
+        )
+        if (cause !== undefined) {
+          expect(cause.status).not.toBe('proven')
+          expect(cause.status).not.toBe('deferredToHost')
+        }
+      }
+    }
+  })
+})
+
+describe('priorObservationsFromArtifact inverts the record builders', () => {
+  const fullObservations = {
+    identity: 'octocat',
+    packageAccess: { '@kitz/core': 'public' } as const,
+    gitPushDryRun: { '@kitz/core@1.0.0': { ok: true, detail: 'dry-run accepted' } },
+    githubReleasePermission: true,
+    githubReleaseExists: { '@kitz/core@1.0.0': false },
+  }
+
+  test('round-trips proven observations to identical record statuses', () => {
+    const original = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', fullObservations)
+    const reconstructed = priorObservationsFromArtifact(original)
+    const rebuilt = makeProofArtifact(contractedPlan, '2026-05-13T02:00:00.000Z', reconstructed)
+
+    const statusOf = (artifact: ProofArtifact) =>
+      Object.fromEntries(artifact.records.map((record) => [record.id, record.status]))
+    expect(statusOf(rebuilt)).toEqual(statusOf(original))
+  })
+
+  test('round-trips a failed/blocked artifact to identical record statuses', () => {
+    const original = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+      identityError: 'npm whoami failed',
+      packageAccessErrors: { '@kitz/core': 'forbidden' },
+      gitPushDryRun: { '@kitz/core@1.0.0': { ok: false, detail: 'remote rejected' } },
+      githubReleasePermission: false,
+      githubReleaseExists: { '@kitz/core@1.0.0': false },
+    })
+    const reconstructed = priorObservationsFromArtifact(original)
+    const rebuilt = makeProofArtifact(contractedPlan, '2026-05-13T02:00:00.000Z', reconstructed)
+
+    const statusOf = (artifact: ProofArtifact) =>
+      Object.fromEntries(artifact.records.map((record) => [record.id, record.status]))
+    expect(statusOf(rebuilt)).toEqual(statusOf(original))
+  })
+
+  test('round-trips a multi-subject atomic-push artifact to identical record statuses', () => {
+    const atomicPlan = Plan.make({
+      lifecycle: multiContractedPlan.lifecycle,
+      timestamp: multiContractedPlan.timestamp,
+      releases: multiContractedPlan.releases,
+      cascades: multiContractedPlan.cascades,
+      planDigest: contractedDigest,
+      publishIntent: updatePublishIntent(publishIntent, {
+        git: { ...publishIntent.git, atomicTagPush: true },
+      }),
+    })
+    const original = makeProofArtifact(atomicPlan, '2026-05-13T00:00:00.000Z', {
+      identity: 'octocat',
+      packageAccess: { '@kitz/core': 'public', '@kitz/cli': 'public' },
+      gitPushDryRun: {
+        '@kitz/core@1.0.0': { ok: true },
+        '@kitz/cli@1.0.0': { ok: true },
+      },
+      atomicGitPushDryRun: { ok: true },
+      githubReleasePermission: true,
+      githubReleaseExists: { '@kitz/core@1.0.0': false, '@kitz/cli@1.0.0': false },
+    })
+    const reconstructed = priorObservationsFromArtifact(original)
+    const rebuilt = makeProofArtifact(atomicPlan, '2026-05-13T02:00:00.000Z', reconstructed)
+
+    const statusOf = (artifact: ProofArtifact) =>
+      Object.fromEntries(artifact.records.map((record) => [record.id, record.status]))
+    expect(statusOf(rebuilt)).toEqual(statusOf(original))
+  })
+})
+
+describe('validateProof guards against an inconsistent blocked cause', () => {
+  test('emits a blocked-cause-consistency issue for a blocked record pointing at a proven cause', () => {
+    const base = {
+      observedAt: '2026-05-13T00:00:00.000Z',
+      evidence: {},
+      proofHistory: [],
+    } as const
+    // A hand-built inconsistent artifact: a blocked record whose blockedBy names a
+    // record that is proven in the same set. The refactor makes this impossible to
+    // construct via recheckProof, but the guard must catch it if it ever appears.
+    const inconsistent = updateProofArtifact(makeProofArtifact(contractedPlan), {
+      records: [
+        ProofRecord.make({ ...base, id: 'cause', status: 'proven', dependsOn: [] }),
+        ProofRecord.make({
+          ...base,
+          id: 'dependent',
+          status: 'blocked',
+          dependsOn: ['cause'],
+          blockedBy: 'cause',
+        }),
+      ],
+    })
+
+    const issue = validateProof(inconsistent, '2026-05-13T00:00:00.000Z').find(
+      (entry) => entry.code === 'release.proof.blocked-cause-consistency',
+    )
+    expect(issue?.recordId).toBe('dependent')
+    expect(issue?.severity).toBe('hard')
+  })
+
+  test('does not emit the guard issue for a blocked record pointing at a failed cause', () => {
+    const base = {
+      observedAt: '2026-05-13T00:00:00.000Z',
+      evidence: {},
+      proofHistory: [],
+    } as const
+    const consistent = updateProofArtifact(makeProofArtifact(contractedPlan), {
+      records: [
+        ProofRecord.make({ ...base, id: 'cause', status: 'failed', dependsOn: [] }),
+        ProofRecord.make({
+          ...base,
+          id: 'dependent',
+          status: 'blocked',
+          dependsOn: ['cause'],
+          blockedBy: 'cause',
+        }),
+      ],
+    })
+
+    const issue = validateProof(consistent, '2026-05-13T00:00:00.000Z').find(
+      (entry) => entry.code === 'release.proof.blocked-cause-consistency',
+    )
+    expect(issue).toBeUndefined()
   })
 })

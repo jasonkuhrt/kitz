@@ -92,7 +92,7 @@ describe('release promise api', () => {
       }),
     )
 
-    expect(await prove(emptyPlan, { layer })).toMatchObject({ schemaVersion: 2 })
+    expect(await prove(emptyPlan, { layer })).toMatchObject({ schemaVersion: 3 })
     expect(await rehearse(emptyPlan, { layer })).toEqual([])
     expect(await status(emptyPlan, {}, { layer })).toMatchObject({ state: 'not-started' })
     expect(await apply(emptyPlan, { dryRun: true }, { layer })).toMatchObject({

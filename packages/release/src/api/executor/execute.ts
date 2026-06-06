@@ -121,7 +121,7 @@ interface ObservableExecutionOptions extends ExecutionOptions {
    * forwards only generic mutation identity and treats this as an opaque
    * allow/abort gate; a failure aborts the mutation before its side effect runs
    * (the durable workflow suspends, resumable). The apply boundary supplies this
-   * to drive a `pre-each-mutation` proof recheck — the executor stays proof-blind.
+   * to drive a pre-mutation proof recheck — the executor stays proof-blind.
    */
   readonly beforeMutation?: BeforeMutationHook
 }

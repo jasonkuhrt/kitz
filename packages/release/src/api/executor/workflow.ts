@@ -178,7 +178,7 @@ export interface MutationContext {
  * treats the hook as an opaque allow/abort gate. A failure aborts the mutation
  * before any side effect runs (the durable workflow suspends, resumable). The
  * caller (the apply boundary) owns the gate's meaning — it closes over the
- * proof artifact and drives a `pre-each-mutation` proof recheck inside the hook.
+ * proof artifact and drives a pre-mutation proof recheck inside the hook.
  */
 export type BeforeMutationHook = (
   ctx: MutationContext,

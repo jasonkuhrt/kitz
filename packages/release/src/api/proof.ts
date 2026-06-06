@@ -86,13 +86,11 @@ const observedRecord = (params: {
   readonly now: string
   readonly reason: string
   readonly evidence: Readonly<Record<string, unknown>>
-  readonly recheckMode?: ProofRecord['recheckMode']
 }): ProofRecord =>
   ProofRecord.make({
     id: params.id,
     status: params.status,
     dependsOn: [...params.dependsOn],
-    recheckMode: params.recheckMode ?? 'pre-apply',
     observedAt: params.now,
     evidence: params.evidence,
     proofHistory: [transition(params.status, params.reason, params.now)],
@@ -130,7 +128,6 @@ const capabilityRecord = (params: {
     id: params.id,
     status,
     dependsOn: ['plan.publish-intent'],
-    recheckMode: 'pre-apply',
     observedAt: params.now,
     evidence,
     proofHistory: [transition(status, reason, params.now)],
@@ -251,7 +248,6 @@ const credentialRecordsForPlan = (
         now,
         reason: statusReason,
         evidence: { packageName: name, access: access ?? null, requested: intent.access },
-        recheckMode: 'pre-each-mutation',
       }),
       observedRecord({
         id: `env.publish.access-level.${name}`,
@@ -274,7 +270,6 @@ const credentialRecordsForPlan = (
               ? 'registry access status matches requested publish access'
               : (accessError ?? 'registry access status does not match requested publish access'),
         evidence: { packageName: name, access: access ?? null, requested: intent.access },
-        recheckMode: 'pre-each-mutation',
       }),
     ]
   })
@@ -358,7 +353,6 @@ const sideEffectProofRecordsForPlan = (
         remote: intent.git.remote,
         ...gitDryRunEvidence(proof),
       },
-      recheckMode: 'pre-each-mutation',
     })
   })
 
@@ -379,7 +373,6 @@ const sideEffectProofRecordsForPlan = (
               remote: intent.git.remote,
               ...gitDryRunEvidence(observations.atomicGitPushDryRun),
             },
-            recheckMode: 'pre-each-mutation',
           }),
         ]
       : []
@@ -413,7 +406,6 @@ const sideEffectProofRecordsForPlan = (
         permission: observations.githubReleasePermission ?? null,
         runtimeHost: intent.auth.runtimeHost,
       },
-      recheckMode: 'pre-apply-and-on-mutation-failure',
     }),
     ...A.map(subjects, (subject) =>
       observedRecord({
@@ -431,7 +423,6 @@ const sideEffectProofRecordsForPlan = (
           exists: observations.githubReleaseExists?.[subject.tag] ?? null,
           existingReleasePolicy: intent.github.existingReleasePolicy,
         },
-        recheckMode: 'pre-apply-and-on-mutation-failure',
       }),
     ),
   ]
@@ -617,7 +608,6 @@ export const makeProofArtifact = (
       id: 'plan.digest',
       status: plan.planDigest === undefined ? 'unprovable' : 'proven',
       dependsOn: [],
-      recheckMode: 'pre-apply',
       observedAt,
       evidence:
         plan.planDigest === undefined
@@ -635,7 +625,6 @@ export const makeProofArtifact = (
       id: 'plan.publish-intent',
       status: plan.publishIntent === undefined ? 'unprovable' : 'proven',
       dependsOn: ['plan.digest'],
-      recheckMode: 'pre-apply',
       observedAt,
       evidence:
         plan.publishIntent === undefined
@@ -657,7 +646,6 @@ export const makeProofArtifact = (
       id: 'plan.source',
       status: plan.source === undefined ? 'unprovable' : 'proven',
       dependsOn: ['plan.digest'],
-      recheckMode: 'pre-apply',
       observedAt,
       evidence:
         plan.source === undefined
@@ -682,7 +670,7 @@ export const makeProofArtifact = (
   ]
 
   return ProofArtifact.make({
-    schemaVersion: 2,
+    schemaVersion: 3,
     planDigest: digestForPlan(plan),
     records: cascadeBlocked(records, observedAt),
   })
@@ -866,7 +854,30 @@ export const validateProof = (
     }),
   )
 
-  return [...blocking, ...missingDependencies, ...expired]
+  // A `blocked` record's `blockedBy` is its cascade root cause. If that cause is
+  // itself in the set, it must be a non-passing status — a `blocked` record
+  // pointing at a `proven`/`deferredToHost` cause is an internally inconsistent
+  // artifact (the exact dangling-reference class the observation-layer recheck
+  // makes unconstructable, but cheap to police against any future regression).
+  const statusById = MutableHashMap.fromIterable(
+    A.map(proof.records, (record) => [record.id, record.status] as const),
+  )
+  const inconsistentBlockedCauses = A.filterMap(proof.records, (record) => {
+    if (record.status !== 'blocked' || record.blockedBy === undefined) return Result.failVoid
+    const causeStatus = MutableHashMap.get(statusById, record.blockedBy)
+    if (Option.isNone(causeStatus)) return Result.failVoid
+    if (causeStatus.value !== 'proven' && causeStatus.value !== 'deferredToHost') {
+      return Result.failVoid
+    }
+    return Result.succeed<ProofIssue>({
+      recordId: record.id,
+      code: 'release.proof.blocked-cause-consistency',
+      detail: `Proof record ${record.id} is blocked by ${record.blockedBy}, which is ${causeStatus.value}.`,
+      severity: 'hard',
+    })
+  })
+
+  return [...blocking, ...missingDependencies, ...expired, ...inconsistentBlockedCauses]
 }
 
 export const write = (
@@ -937,67 +948,278 @@ export const mergeProofHistory = (prior: ProofArtifact, fresh: ProofArtifact): P
   })
 }
 
-/**
- * The mutation phases at which `recheckMode` requests a fresh proof. Each phase
- * targets the subset of records whose `recheckMode` opts into that phase.
- */
-export type RecheckPhase = 'pre-apply' | 'pre-mutation' | 'on-mutation-failure'
+const observedReason = (record: ProofRecord | undefined): string | undefined =>
+  record?.proofHistory[0]?.reason
 
-const recheckModesForPhase = (phase: RecheckPhase): readonly ProofRecord['recheckMode'][] => {
-  switch (phase) {
-    case 'pre-apply':
-      return ['pre-apply', 'pre-apply-and-on-mutation-failure']
-    case 'pre-mutation':
-      return ['pre-each-mutation']
-    case 'on-mutation-failure':
-      return ['pre-apply-and-on-mutation-failure']
+const stringEvidence = (record: ProofRecord | undefined, key: string): string | undefined => {
+  const value = record?.evidence[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+const booleanEvidence = (record: ProofRecord | undefined, key: string): boolean | undefined => {
+  const value = record?.evidence[key]
+  return typeof value === 'boolean' ? value : undefined
+}
+
+/**
+ * Reconstruct the {@link ProofObservations} a prior artifact was built from, by
+ * reading them back out of each record's stamped `evidence`. This is the exact
+ * inverse of how {@link credentialRecordsForPlan}, {@link sideEffectProofRecordsForPlan},
+ * and {@link provenanceRecordForPlan} stamp evidence, so that
+ * `makeProofArtifact(plan, now, priorObservationsFromArtifact(prior))` reproduces
+ * the prior's per-record statuses. {@link recheckProof} uses it to carry forward
+ * the surfaces a fresh recheck did not re-observe, then overlays the fresh
+ * observations on top so a single consistent `makeProofArtifact` pass rebuilds the
+ * whole set.
+ *
+ * Fidelity contract (covered by a round-trip test): for every observation surface
+ * that drives a record status, the evidence read here must produce a value that
+ * re-derives the same status. `failed` credential/access records (no positive
+ * observation in evidence) are reconstructed via their observed-reason error
+ * string; `deferredToHost`/`unprovable` records carry no observation so the
+ * rebuild re-derives those statuses from the plan intent alone.
+ */
+export const priorObservationsFromArtifact = (prior: ProofArtifact): ProofObservations => {
+  const observations: {
+    identity?: string
+    identityError?: string
+    packageAccess: Record<string, 'public' | 'restricted'>
+    packageAccessErrors: Record<string, string>
+    gitPushDryRun: Record<string, { readonly ok: boolean; readonly detail?: string }>
+    atomicGitPushDryRun?: { readonly ok: boolean; readonly detail?: string }
+    githubReleasePermission?: boolean
+    githubReleasePermissionError?: string
+    githubReleaseExists: Record<string, boolean>
+    trustedPublisherConfigured?: boolean
+    oidcClaimsVerified?: boolean
+    provenanceBundleExists?: boolean
+  } = {
+    packageAccess: {},
+    packageAccessErrors: {},
+    gitPushDryRun: {},
+    githubReleaseExists: {},
+  }
+
+  for (const record of prior.records) {
+    if (record.id === 'env.publish.identity') {
+      const identity = stringEvidence(record, 'identity')
+      if (identity !== undefined) {
+        observations.identity = identity
+      } else if (record.status === 'failed') {
+        observations.identityError = observedReason(record) ?? 'publish identity failed'
+      }
+      continue
+    }
+
+    const accessPrefix = 'env.publish.package-access.'
+    if (record.id.startsWith(accessPrefix)) {
+      const name = stringEvidence(record, 'packageName') ?? record.id.slice(accessPrefix.length)
+      const access = record.evidence['access']
+      if (access === 'public' || access === 'restricted') {
+        observations.packageAccess[name] = access
+      } else if (record.status === 'failed') {
+        observations.packageAccessErrors[name] =
+          observedReason(record) ?? 'package access does not satisfy publish intent'
+      }
+      continue
+    }
+
+    if (record.id === 'env.git.push-dry-run.atomic') {
+      const ok = booleanEvidence(record, 'ok')
+      if (ok !== undefined) {
+        const detail = stringEvidence(record, 'detail')
+        observations.atomicGitPushDryRun = detail === undefined ? { ok } : { ok, detail }
+      }
+      continue
+    }
+
+    const gitPrefix = 'env.git.push-dry-run.'
+    if (record.id.startsWith(gitPrefix)) {
+      const tag = stringEvidence(record, 'tag') ?? record.id.slice(gitPrefix.length)
+      const ok = booleanEvidence(record, 'ok')
+      if (ok !== undefined) {
+        const detail = stringEvidence(record, 'detail')
+        observations.gitPushDryRun[tag] = detail === undefined ? { ok } : { ok, detail }
+      }
+      continue
+    }
+
+    if (record.id === 'env.github.release-permission') {
+      const permission = booleanEvidence(record, 'permission')
+      if (permission !== undefined) {
+        observations.githubReleasePermission = permission
+        if (permission === false) {
+          observations.githubReleasePermissionError =
+            observedReason(record) ?? 'github release permission failed'
+        }
+      }
+      continue
+    }
+
+    const releaseByTagPrefix = 'env.github.release-by-tag.'
+    if (record.id.startsWith(releaseByTagPrefix)) {
+      const tag = stringEvidence(record, 'tag') ?? record.id.slice(releaseByTagPrefix.length)
+      const exists = booleanEvidence(record, 'exists')
+      if (exists !== undefined) observations.githubReleaseExists[tag] = exists
+      continue
+    }
+
+    if (record.id === 'publish.provenance-policy') {
+      const trustedPublisherConfigured = booleanEvidence(record, 'trustedPublisherConfigured')
+      if (trustedPublisherConfigured !== undefined) {
+        observations.trustedPublisherConfigured = trustedPublisherConfigured
+      }
+      const oidcClaimsVerified = booleanEvidence(record, 'oidcClaimsVerified')
+      if (oidcClaimsVerified !== undefined) observations.oidcClaimsVerified = oidcClaimsVerified
+    }
+  }
+
+  return {
+    ...(observations.identity !== undefined ? { identity: observations.identity } : {}),
+    ...(observations.identityError !== undefined
+      ? { identityError: observations.identityError }
+      : {}),
+    ...(Object.keys(observations.packageAccess).length > 0
+      ? { packageAccess: observations.packageAccess }
+      : {}),
+    ...(Object.keys(observations.packageAccessErrors).length > 0
+      ? { packageAccessErrors: observations.packageAccessErrors }
+      : {}),
+    ...(Object.keys(observations.gitPushDryRun).length > 0
+      ? { gitPushDryRun: observations.gitPushDryRun }
+      : {}),
+    ...(observations.atomicGitPushDryRun !== undefined
+      ? { atomicGitPushDryRun: observations.atomicGitPushDryRun }
+      : {}),
+    ...(observations.githubReleasePermission !== undefined
+      ? { githubReleasePermission: observations.githubReleasePermission }
+      : {}),
+    ...(observations.githubReleasePermissionError !== undefined
+      ? { githubReleasePermissionError: observations.githubReleasePermissionError }
+      : {}),
+    ...(Object.keys(observations.githubReleaseExists).length > 0
+      ? { githubReleaseExists: observations.githubReleaseExists }
+      : {}),
+    ...(observations.trustedPublisherConfigured !== undefined
+      ? { trustedPublisherConfigured: observations.trustedPublisherConfigured }
+      : {}),
+    ...(observations.oidcClaimsVerified !== undefined
+      ? { oidcClaimsVerified: observations.oidcClaimsVerified }
+      : {}),
   }
 }
 
 /**
- * Re-derive only the proof records whose `recheckMode` opts into the given
- * mutation `phase`, from fresh observations, and merge them onto the prior
- * artifact. Records outside the phase keep their prior status and history;
- * records inside the phase take their freshly observed status and grow their
- * history via {@link mergeProofHistory} (so a status flip is recorded, an
- * unchanged status appends nothing). This is the proof-blind recheck primitive
- * the apply boundary and any executor mutation hook drive to honor
- * `recheckMode`.
+ * Overlay freshly gathered observations onto the prior-reconstructed observations
+ * so that "fresh wins" holds at the SURFACE level, not merely the field level.
+ * Several surfaces carry a success/error field pair where exactly one side is
+ * present at a time (identity success vs. error; per-package access vs. access
+ * error; github release permission vs. its error). A naive object spread would
+ * keep the prior's success field while the fresh observation only sets the error
+ * field, leaving the surface stuck at its prior status. This merge re-observes a
+ * surface as a unit: a fresh signal for either side of a pair drops the prior's
+ * other side before applying the fresh values. Per-key surfaces (git dry-runs,
+ * github release existence, per-package access) merge key-by-key so unobserved
+ * keys carry forward from the prior.
+ */
+const mergeObservations = (
+  prior: ProofObservations,
+  fresh: ProofObservations,
+): ProofObservations => {
+  const freshObservesIdentity = fresh.identity !== undefined || fresh.identityError !== undefined
+  const identitySource = freshObservesIdentity ? fresh : prior
+
+  const freshObservesPermission =
+    fresh.githubReleasePermission !== undefined || fresh.githubReleasePermissionError !== undefined
+  const permissionSource = freshObservesPermission ? fresh : prior
+
+  const accessNames = A.dedupe([
+    ...Object.keys(prior.packageAccess ?? {}),
+    ...Object.keys(prior.packageAccessErrors ?? {}),
+    ...Object.keys(fresh.packageAccess ?? {}),
+    ...Object.keys(fresh.packageAccessErrors ?? {}),
+  ])
+  const packageAccess: Record<string, 'public' | 'restricted'> = {}
+  const packageAccessErrors: Record<string, string> = {}
+  for (const name of accessNames) {
+    const freshObservesName =
+      fresh.packageAccess?.[name] !== undefined || fresh.packageAccessErrors?.[name] !== undefined
+    const source = freshObservesName ? fresh : prior
+    const access = source.packageAccess?.[name]
+    const accessError = source.packageAccessErrors?.[name]
+    if (access !== undefined) packageAccess[name] = access
+    if (accessError !== undefined) packageAccessErrors[name] = accessError
+  }
+
+  return {
+    ...(identitySource.identity !== undefined ? { identity: identitySource.identity } : {}),
+    ...(identitySource.identityError !== undefined
+      ? { identityError: identitySource.identityError }
+      : {}),
+    ...(Object.keys(packageAccess).length > 0 ? { packageAccess } : {}),
+    ...(Object.keys(packageAccessErrors).length > 0 ? { packageAccessErrors } : {}),
+    ...(prior.packageVersions !== undefined || fresh.packageVersions !== undefined
+      ? { packageVersions: { ...prior.packageVersions, ...fresh.packageVersions } }
+      : {}),
+    ...(prior.gitPushDryRun !== undefined || fresh.gitPushDryRun !== undefined
+      ? { gitPushDryRun: { ...prior.gitPushDryRun, ...fresh.gitPushDryRun } }
+      : {}),
+    ...(fresh.atomicGitPushDryRun !== undefined
+      ? { atomicGitPushDryRun: fresh.atomicGitPushDryRun }
+      : prior.atomicGitPushDryRun !== undefined
+        ? { atomicGitPushDryRun: prior.atomicGitPushDryRun }
+        : {}),
+    ...(permissionSource.githubReleasePermission !== undefined
+      ? { githubReleasePermission: permissionSource.githubReleasePermission }
+      : {}),
+    ...(permissionSource.githubReleasePermissionError !== undefined
+      ? { githubReleasePermissionError: permissionSource.githubReleasePermissionError }
+      : {}),
+    ...(prior.githubReleaseExists !== undefined || fresh.githubReleaseExists !== undefined
+      ? { githubReleaseExists: { ...prior.githubReleaseExists, ...fresh.githubReleaseExists } }
+      : {}),
+    ...(fresh.trustedPublisherConfigured !== undefined
+      ? { trustedPublisherConfigured: fresh.trustedPublisherConfigured }
+      : prior.trustedPublisherConfigured !== undefined
+        ? { trustedPublisherConfigured: prior.trustedPublisherConfigured }
+        : {}),
+    ...(fresh.oidcClaimsVerified !== undefined
+      ? { oidcClaimsVerified: fresh.oidcClaimsVerified }
+      : prior.oidcClaimsVerified !== undefined
+        ? { oidcClaimsVerified: prior.oidcClaimsVerified }
+        : {}),
+    ...(fresh.provenanceBundleExists !== undefined
+      ? { provenanceBundleExists: fresh.provenanceBundleExists }
+      : prior.provenanceBundleExists !== undefined
+        ? { provenanceBundleExists: prior.provenanceBundleExists }
+        : {}),
+  }
+}
+
+/**
+ * Re-derive a proof artifact against fresh observations and merge it onto the
+ * prior. The splice is at the OBSERVATION layer, not the record layer: the
+ * caller hands in whatever observations it freshly gathered (the pre-mutation
+ * hook gathers local surfaces; apply gathers local + GitHub), those are overlaid
+ * on the observations reconstructed from the prior artifact's evidence (fresh
+ * wins per surface — see {@link mergeObservations}), and a single pure
+ * {@link makeProofArtifact} pass rebuilds and cascades the whole set. The result
+ * is internally consistent by construction — every `blocked` record points at a
+ * cause that is genuinely non-`proven` in the same artifact, because every record
+ * was derived from one observation epoch. History grows per record via
+ * {@link mergeProofHistory} (a status flip is recorded, an unchanged status
+ * appends nothing). This is the proof-blind recheck primitive the apply boundary
+ * and any executor mutation hook drive.
  */
 export const recheckProof = (params: {
   readonly plan: Plan
   readonly prior: ProofArtifact
-  readonly phase: RecheckPhase
   readonly observations: ProofObservations
   readonly now: string
 }): ProofArtifact => {
-  const targetModes = recheckModesForPhase(params.phase)
-  const fresh = makeProofArtifact(params.plan, params.now, params.observations)
-  const freshById = MutableHashMap.fromIterable(
-    A.map(fresh.records, (record) => [record.id, record] as const),
-  )
-
-  // Build a hybrid fresh artifact: in-phase records take the freshly observed
-  // record, out-of-phase records keep the prior record verbatim.
-  const hybridRecords = A.map(params.prior.records, (priorRecord) => {
-    if (!A.contains(targetModes, priorRecord.recheckMode)) return priorRecord
-    return Option.getOrElse(MutableHashMap.get(freshById, priorRecord.id), () => priorRecord)
-  })
-
-  // Re-run the cascade over the hybrid set so a freshly failed in-phase record
-  // blocks its dependents regardless of their phase. Without this, an
-  // out-of-phase dependent of a freshly failed dependency keeps its stale prior
-  // status, producing an internally inconsistent artifact (a `proven` record
-  // whose dependency is `failed`). Already-blocked records are skipped by
-  // `cascadeBlocked`, so fresh in-phase records that cascaded inside
-  // `makeProofArtifact` are not re-transitioned. Then merge history against the
-  // prior so only records whose status actually changed grow their history.
-  const cascadedRecords = cascadeBlocked(hybridRecords, params.now)
-
-  return mergeProofHistory(
-    params.prior,
-    ProofArtifact.make({ ...params.prior, records: cascadedRecords }),
-  )
+  const merged = mergeObservations(priorObservationsFromArtifact(params.prior), params.observations)
+  const fresh = makeProofArtifact(params.plan, params.now, merged)
+  return mergeProofHistory(params.prior, fresh)
 }
 
 export const prove = (

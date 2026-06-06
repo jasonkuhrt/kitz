@@ -25,7 +25,6 @@ export {
   ProofGateClass,
   ProofPolicy,
   ProofRecord,
-  ProofRecheckMode,
   ProofStatus,
   ProofTransition,
   PublishReceipt,
