@@ -40,6 +40,14 @@ const ExecutorGHReleaseErrorContext = S.Struct({
   /** Details about the failure */
   detail: S.String,
 })
+const ExecutorBeforeMutationErrorContext = S.Struct({
+  /** The mutation kind the before-mutation gate rejected */
+  kind: S.String,
+  /** The mutation subject (e.g. the pin tag) the gate rejected */
+  subject: S.String,
+  /** Details about why the gate rejected the mutation */
+  detail: S.String,
+})
 
 /**
  * #### `ExecutorPublishError`
@@ -199,6 +207,38 @@ export const ExecutorGHReleaseError: Err.TaggedContextualErrorClass<
 export type ExecutorGHReleaseError = InstanceType<typeof ExecutorGHReleaseError>
 
 /**
+ * #### `ExecutorBeforeMutationError`
+ *
+ * Raised when an injected before-mutation gate rejects a pending mutating node
+ * (publish, tag create/push, or GitHub release) before its side effect runs.
+ *
+ * **When it occurs**: inside the per-mutation side-effect boundary, immediately
+ * before the mutation executes. The mutation has not yet run, so no partial side
+ * effect is produced; the durable workflow suspends and can resume once the
+ * caller resolves whatever the gate flagged.
+ *
+ * **Proof-blindness**: the executor only knows that *a* gate rejected *a*
+ * mutation. It does not know the gate concerns proofs — the gate's meaning is
+ * owned entirely by the caller that supplied it (e.g. the apply boundary drives
+ * a `pre-each-mutation` proof recheck here).
+ *
+ * **What to do**: inspect `kind`, `subject`, and `detail` for the gate's reason,
+ * resolve the underlying condition, then run `release resume` to continue from
+ * the suspended mutation.
+ */
+export const ExecutorBeforeMutationError: Err.TaggedContextualErrorClass<
+  'ExecutorBeforeMutationError',
+  typeof baseTags,
+  typeof ExecutorBeforeMutationErrorContext,
+  undefined
+> = Err.TaggedContextualError('ExecutorBeforeMutationError', baseTags, {
+  context: ExecutorBeforeMutationErrorContext,
+  message: (ctx) => `Before-mutation gate rejected ${ctx.kind} ${ctx.subject}: ${ctx.detail}`,
+})
+
+export type ExecutorBeforeMutationError = InstanceType<typeof ExecutorBeforeMutationError>
+
+/**
  * Schema union of all executor errors.
  *
  * Used by the workflow module to define the error channel of the release workflow.
@@ -209,6 +249,7 @@ export const ExecutorError = S.Union([
   ExecutorPreflightError,
   ExecutorDependencyCycleError,
   ExecutorGHReleaseError,
+  ExecutorBeforeMutationError,
 ])
 
 export type ExecutorError =
@@ -217,6 +258,7 @@ export type ExecutorError =
   | ExecutorPreflightError
   | ExecutorDependencyCycleError
   | ExecutorGHReleaseError
+  | ExecutorBeforeMutationError
 
 /** Union of all executor-facing errors */
 export type All = ExecutorError | ExecutorResumeError
