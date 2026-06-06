@@ -303,8 +303,12 @@ export const ProofRecheckMode = Schema.Literals([
 ])
 export type ProofRecheckMode = typeof ProofRecheckMode.Type
 
+export const ProofGateClass = Schema.Literals(['hard', 'soft'])
+export type ProofGateClass = typeof ProofGateClass.Type
+
 export class ProofPolicy extends Schema.Class<ProofPolicy>('ProofPolicy')({
   requiredStatuses: Schema.Array(ProofStatus),
+  softStatuses: Schema.Array(ProofStatus),
   authProofTtlSeconds: Schema.Number,
   registryProofTtlSeconds: Schema.Number,
   maxClockSkewSeconds: Schema.Number,
@@ -421,6 +425,7 @@ export class ProofTransition extends Schema.Class<ProofTransition>('ProofTransit
   to: ProofStatus,
   at: Schema.String,
   reason: Schema.String,
+  cause: Schema.optional(Schema.String),
 }) {
   static is = Schema.is(ProofTransition)
   static decode = Schema.decodeUnknownEffect(ProofTransition)
@@ -431,6 +436,21 @@ export class ProofTransition extends Schema.Class<ProofTransition>('ProofTransit
   static ordered = false as const
 }
 
+export class DeferredProof extends Schema.Class<DeferredProof>('DeferredProof')({
+  recordId: Schema.String,
+  deferredTo: RuntimeHost,
+  reason: Schema.String,
+  observedAt: Schema.String,
+}) {
+  static is = Schema.is(DeferredProof)
+  static decode = Schema.decodeUnknownEffect(DeferredProof)
+  static decodeSync = Schema.decodeUnknownSync(DeferredProof)
+  static encode = Schema.encodeUnknownEffect(DeferredProof)
+  static encodeSync = Schema.encodeUnknownSync(DeferredProof)
+  static equivalence = Schema.toEquivalence(DeferredProof)
+  static ordered = false as const
+}
+
 export class ProofRecord extends Schema.Class<ProofRecord>('ProofRecord')({
   id: Schema.String,
   status: ProofStatus,
@@ -438,6 +458,7 @@ export class ProofRecord extends Schema.Class<ProofRecord>('ProofRecord')({
   recheckMode: ProofRecheckMode,
   observedAt: Schema.String,
   expiresAt: Schema.optional(Schema.String),
+  blockedBy: Schema.optional(Schema.String),
   evidence: JsonRecord,
   proofHistory: Schema.Array(ProofTransition),
 }) {
@@ -451,7 +472,7 @@ export class ProofRecord extends Schema.Class<ProofRecord>('ProofRecord')({
 }
 
 export class ProofArtifact extends Schema.Class<ProofArtifact>('ProofArtifact')({
-  schemaVersion: Schema.Literal(1),
+  schemaVersion: Schema.Literal(2),
   planDigest: PlanDigest,
   records: Schema.Array(ProofRecord),
 }) {
@@ -741,6 +762,7 @@ export const defaultArtifactPolicy = (): ArtifactPolicy =>
 export const defaultProofPolicy = (runtimeHost: RuntimeHost = 'local-interactive'): ProofPolicy =>
   ProofPolicy.make({
     requiredStatuses: ['proven'],
+    softStatuses: [],
     authProofTtlSeconds: runtimeHost === 'local-interactive' ? 86_400 : 3_600,
     registryProofTtlSeconds: runtimeHost === 'local-interactive' ? 3_600 : 1_800,
     maxClockSkewSeconds: 300,

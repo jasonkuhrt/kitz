@@ -150,7 +150,12 @@ export const apply = Command.make(
               ...localObservations,
               ...githubObservations,
             })
-            if (Api.Proof.hasBlockingProof(proof)) {
+            for (const issue of Api.Proof.validateProof(proof, undefined, plan.proofPolicy)) {
+              if (issue.severity === 'soft') {
+                yield* Console.error(`warning: ${issue.code}: ${issue.detail}`)
+              }
+            }
+            if (Api.Proof.hasBlockingProof(proof, plan.proofPolicy)) {
               yield* Console.error(
                 'Plan proof contains blocking records. Run `release prove` for detail.',
               )
@@ -182,10 +187,58 @@ export const apply = Command.make(
             )
             return env.exit(1)
           }
-          if (Api.Proof.hasBlockingProof(proof.value)) {
+          for (const issue of Api.Proof.validateProof(proof.value, undefined, plan.proofPolicy)) {
+            if (issue.severity === 'soft') {
+              yield* Console.error(`warning: ${issue.code}: ${issue.detail}`)
+            }
+          }
+          if (Api.Proof.hasBlockingProof(proof.value, plan.proofPolicy)) {
             yield* Console.error('Plan-bound proof contains blocking records.')
             yield* Console.error(
               'Run `release prove` and resolve every failed or unprovable proof.',
+            )
+            return env.exit(1)
+          }
+
+          // Honor recheckMode 'pre-apply' (and the pre-apply leg of
+          // 'pre-apply-and-on-mutation-failure'): re-observe local credential and
+          // GitHub surfaces and re-derive those records immediately before
+          // mutation, so a credential that expired since `release prove` blocks
+          // the apply.
+          const recheckLocal = yield* Api.Proof.collectLocalObservations(plan)
+          const recheckGithub = yield* Api.Explorer.resolveGitHubContext().pipe(
+            Effect.flatMap((context) =>
+              Api.Proof.collectGithubObservations(plan).pipe(
+                Effect.provide(
+                  Github.LiveFetch({
+                    owner: context.target.owner,
+                    repo: context.target.repo,
+                    ...(context.token !== null ? { token: context.token } : {}),
+                  }),
+                ),
+              ),
+            ),
+            Effect.catch(() => Effect.succeed({})),
+          )
+          const recheckObservations = { ...recheckLocal, ...recheckGithub }
+          const reproveNow = new Date().toISOString()
+          const rechecked = Api.Proof.recheckProof({
+            plan,
+            prior: proof.value,
+            phase: 'pre-apply',
+            observations: recheckObservations,
+            now: reproveNow,
+          })
+          yield* Api.Proof.write(rechecked, Api.Proof.proofPathFor(env.cwd, plan))
+          for (const issue of Api.Proof.validateProof(rechecked, reproveNow, plan.proofPolicy)) {
+            if (issue.severity === 'soft') {
+              yield* Console.error(`warning: ${issue.code}: ${issue.detail}`)
+            }
+          }
+          if (Api.Proof.hasBlockingProof(rechecked, plan.proofPolicy)) {
+            yield* Console.error('Pre-apply proof recheck found blocking records.')
+            yield* Console.error(
+              'A credential or environment surface changed since `release prove`; re-prove and resolve.',
             )
             return env.exit(1)
           }

@@ -9,6 +9,7 @@ import {
   Clock,
   Effect,
   FileSystem,
+  MutableHashMap,
   Option,
   PlatformError,
   Result,
@@ -18,10 +19,15 @@ import { sha256Json } from './digest.js'
 import type { Plan } from './planner/models/plan.js'
 import * as Capability from './publishing/models/capability.js'
 import {
+  DeferredProof,
+  defaultProofPolicy,
   PlanDigest,
   ProofArtifact,
+  ProofPolicy,
   ProofRecord,
   ProofTransition,
+  RuntimeHost,
+  type ProofGateClass,
   type ProofStatus,
 } from './release-contract.js'
 
@@ -31,6 +37,7 @@ export interface ProofIssue {
   readonly recordId: string
   readonly code: string
   readonly detail: string
+  readonly severity: ProofGateClass
 }
 
 export interface ProofObservations {
@@ -304,6 +311,7 @@ const credentialRecordsForPlan = (
         source: intent.auth.source,
         tokenEnv: intent.auth.tokenEnv ?? null,
         identity: observations.identity ?? null,
+        runtimeHost,
       },
     }),
     observedRecord({
@@ -402,6 +410,7 @@ const sideEffectProofRecordsForPlan = (
         repository: intent.github.repository,
         host: intent.github.host.apiUrl,
         permission: observations.githubReleasePermission ?? null,
+        runtimeHost: intent.auth.runtimeHost,
       },
       recheckMode: 'pre-apply-and-on-mutation-failure',
     }),
@@ -520,6 +529,58 @@ const provenanceRecordForPlan = (
   ]
 }
 
+/**
+ * Cascade `blocked` status through the `dependsOn` DAG. A record whose any
+ * dependency resolves to `failed` or `blocked` is itself flipped to `blocked`,
+ * gains a `blockedBy` reference to the first such dependency (the root cause),
+ * and appends a `ProofTransition` carrying `from` (its pre-cascade status) and
+ * `cause` (the root-cause id). `deferredToHost` dependencies are pass states
+ * and do not cascade.
+ *
+ * Records are constructed parent-before-child, so a single forward pass with a
+ * resolved-status map propagates the cascade transitively (a record blocked by
+ * cascade is itself a blocking dependency for its later dependents).
+ */
+const cascadeBlocked = (records: readonly ProofRecord[], now: string): ProofRecord[] => {
+  const statusById = MutableHashMap.empty<string, ProofStatus>()
+  return A.map(records, (record) => {
+    const blockingDependency = A.findFirst(record.dependsOn, (dependencyId) => {
+      const dependencyStatus = MutableHashMap.get(statusById, dependencyId)
+      return Option.exists(
+        dependencyStatus,
+        (status) => status === 'failed' || status === 'blocked',
+      )
+    })
+
+    if (Option.isNone(blockingDependency) || record.status === 'blocked') {
+      MutableHashMap.set(statusById, record.id, record.status)
+      return record
+    }
+
+    const cause = blockingDependency.value
+    const causeStatus = Option.getOrElse(
+      MutableHashMap.get(statusById, cause),
+      (): ProofStatus => 'blocked',
+    )
+    MutableHashMap.set(statusById, record.id, 'blocked')
+    return ProofRecord.make({
+      ...record,
+      status: 'blocked',
+      blockedBy: cause,
+      proofHistory: [
+        ...record.proofHistory,
+        ProofTransition.make({
+          from: record.status,
+          to: 'blocked',
+          at: now,
+          reason: `dependency ${cause} is ${causeStatus}`,
+          cause,
+        }),
+      ],
+    })
+  })
+}
+
 export const makeProofArtifact = (
   plan: Plan,
   now: string = new Date().toISOString(),
@@ -596,11 +657,36 @@ export const makeProofArtifact = (
   ]
 
   return ProofArtifact.make({
-    schemaVersion: 1,
+    schemaVersion: 2,
     planDigest: digestForPlan(plan),
-    records,
+    records: cascadeBlocked(records, observedAt),
   })
 }
+
+/**
+ * Project the host-delegated proof records (status `deferredToHost`) of an
+ * artifact into structured {@link DeferredProof} records. The status literal
+ * and the structured projection are deliberately kept distinct: the record
+ * carries the `deferredToHost` status, this projection carries the host the
+ * proof is delegated to (read from the record's `runtimeHost` evidence).
+ */
+const isRuntimeHost = Schema.is(RuntimeHost)
+
+export const deferredProofsForArtifact = (proof: ProofArtifact): readonly DeferredProof[] =>
+  A.filterMap(proof.records, (record) => {
+    if (record.status !== 'deferredToHost') return Result.failVoid
+    const runtimeHost = record.evidence['runtimeHost']
+    if (!isRuntimeHost(runtimeHost)) return Result.failVoid
+    const lastTransition = record.proofHistory[record.proofHistory.length - 1]
+    return Result.succeed(
+      DeferredProof.make({
+        recordId: record.id,
+        deferredTo: runtimeHost,
+        reason: lastTransition?.reason ?? '',
+        observedAt: record.observedAt,
+      }),
+    )
+  })
 
 export const collectLocalObservations = (
   plan: Plan,
@@ -706,11 +792,15 @@ export const collectGithubObservations = (
     return Object.keys(githubReleaseExists).length > 0 ? { githubReleaseExists } : {}
   })
 
-export const hasBlockingProof = (proof: ProofArtifact): boolean => validateProof(proof).length > 0
+export const hasBlockingProof = (
+  proof: ProofArtifact,
+  policy: ProofPolicy = defaultProofPolicy(),
+): boolean => A.some(validateProof(proof, undefined, policy), (issue) => issue.severity === 'hard')
 
 export const validateProof = (
   proof: ProofArtifact,
   now: string = new Date().toISOString(),
+  policy: ProofPolicy = defaultProofPolicy(),
 ): readonly ProofIssue[] => {
   const ids = A.map(proof.records, (record) => record.id)
   const blocking = A.map(
@@ -722,6 +812,7 @@ export const validateProof = (
       recordId: record.id,
       code: `release.proof.${record.status}`,
       detail: `Proof record ${record.id} is ${record.status}.`,
+      severity: A.contains(policy.softStatuses, record.status) ? 'soft' : 'hard',
     }),
   )
 
@@ -732,6 +823,7 @@ export const validateProof = (
         recordId: record.id,
         code: 'release.proof.missing-dependency',
         detail: `Proof record ${record.id} depends on missing record ${dependency}.`,
+        severity: 'hard',
       }),
     ),
   )
@@ -745,6 +837,7 @@ export const validateProof = (
       recordId: record.id,
       code: 'release.proof.expired',
       detail: `Proof record ${record.id} expired at ${record.expiresAt}.`,
+      severity: 'hard',
     }),
   )
 
@@ -780,6 +873,99 @@ export const read = (
     return Option.some(decoded)
   })
 
+const lastTransitionStatus = (record: ProofRecord): ProofStatus | undefined =>
+  record.proofHistory[record.proofHistory.length - 1]?.to
+
+/**
+ * Merge a freshly observed proof artifact onto a prior one, growing
+ * `proofHistory` per record id rather than overwriting it. For each fresh
+ * record that has a matching prior record, the prior history is carried forward
+ * and the fresh record's latest transition is appended only when the status
+ * actually changed since the prior's last transition (re-proving with no change
+ * appends nothing). Records absent from the prior keep their fresh
+ * single-element history.
+ */
+export const mergeProofHistory = (prior: ProofArtifact, fresh: ProofArtifact): ProofArtifact => {
+  const priorById = MutableHashMap.fromIterable(
+    A.map(prior.records, (record) => [record.id, record] as const),
+  )
+
+  return ProofArtifact.make({
+    ...fresh,
+    records: A.map(fresh.records, (freshRecord) => {
+      const priorRecordOption = MutableHashMap.get(priorById, freshRecord.id)
+      if (Option.isNone(priorRecordOption)) return freshRecord
+      const priorRecord = priorRecordOption.value
+
+      const statusUnchanged = lastTransitionStatus(priorRecord) === freshRecord.status
+      const latestFresh = freshRecord.proofHistory[freshRecord.proofHistory.length - 1]
+      const appended =
+        statusUnchanged || latestFresh === undefined
+          ? []
+          : [ProofTransition.make({ ...latestFresh, from: priorRecord.status })]
+
+      return ProofRecord.make({
+        ...freshRecord,
+        proofHistory: [...priorRecord.proofHistory, ...appended],
+      })
+    }),
+  })
+}
+
+/**
+ * The mutation phases at which `recheckMode` requests a fresh proof. Each phase
+ * targets the subset of records whose `recheckMode` opts into that phase.
+ */
+export type RecheckPhase = 'pre-apply' | 'pre-mutation' | 'on-mutation-failure'
+
+const recheckModesForPhase = (phase: RecheckPhase): readonly ProofRecord['recheckMode'][] => {
+  switch (phase) {
+    case 'pre-apply':
+      return ['pre-apply', 'pre-apply-and-on-mutation-failure']
+    case 'pre-mutation':
+      return ['pre-each-mutation']
+    case 'on-mutation-failure':
+      return ['pre-apply-and-on-mutation-failure']
+  }
+}
+
+/**
+ * Re-derive only the proof records whose `recheckMode` opts into the given
+ * mutation `phase`, from fresh observations, and merge them onto the prior
+ * artifact. Records outside the phase keep their prior status and history;
+ * records inside the phase take their freshly observed status and grow their
+ * history via {@link mergeProofHistory} (so a status flip is recorded, an
+ * unchanged status appends nothing). This is the proof-blind recheck primitive
+ * the apply boundary and any executor mutation hook drive to honor
+ * `recheckMode`.
+ */
+export const recheckProof = (params: {
+  readonly plan: Plan
+  readonly prior: ProofArtifact
+  readonly phase: RecheckPhase
+  readonly observations: ProofObservations
+  readonly now: string
+}): ProofArtifact => {
+  const targetModes = recheckModesForPhase(params.phase)
+  const fresh = makeProofArtifact(params.plan, params.now, params.observations)
+  const freshById = MutableHashMap.fromIterable(
+    A.map(fresh.records, (record) => [record.id, record] as const),
+  )
+
+  // Build a hybrid fresh artifact: in-phase records take the freshly observed
+  // record, out-of-phase records keep the prior record verbatim. Then merge
+  // history against the prior so only changed in-phase records grow history.
+  const hybridRecords = A.map(params.prior.records, (priorRecord) => {
+    if (!A.contains(targetModes, priorRecord.recheckMode)) return priorRecord
+    return Option.getOrElse(MutableHashMap.get(freshById, priorRecord.id), () => priorRecord)
+  })
+
+  return mergeProofHistory(
+    params.prior,
+    ProofArtifact.make({ ...params.prior, records: hybridRecords }),
+  )
+}
+
 export const prove = (
   plan: Plan,
   observations: ProofObservations = {},
@@ -787,9 +973,15 @@ export const prove = (
   Effect.gen(function* () {
     const env = yield* Env.Env
     const now = yield* Clock.currentTimeMillis
-    const proof = makeProofArtifact(plan, new Date(now).toISOString(), observations)
-    yield* write(proof, proofPathFor(env.cwd, plan))
-    return proof
+    const fresh = makeProofArtifact(plan, new Date(now).toISOString(), observations)
+    const path = proofPathFor(env.cwd, plan)
+    const prior = yield* read(path).pipe(Effect.orElseSucceed(() => Option.none<ProofArtifact>()))
+    const merged = Option.match(prior, {
+      onNone: () => fresh,
+      onSome: (priorProof) => mergeProofHistory(priorProof, fresh),
+    })
+    yield* write(merged, path)
+    return merged
   })
 
 export const readForPlan = (

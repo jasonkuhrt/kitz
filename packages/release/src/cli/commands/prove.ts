@@ -63,7 +63,12 @@ export const prove = Command.make(
       for (const record of proof.records) {
         yield* Console.log(`${record.status.padEnd(14)} ${record.id}`)
       }
-      if (Api.Proof.hasBlockingProof(proof)) return env.exit(1)
+      for (const issue of Api.Proof.validateProof(proof, undefined, planState.plan.proofPolicy)) {
+        if (issue.severity === 'soft') {
+          yield* Console.error(`warning: ${issue.code}: ${issue.detail}`)
+        }
+      }
+      if (Api.Proof.hasBlockingProof(proof, planState.plan.proofPolicy)) return env.exit(1)
     }),
 ).pipe(
   Command.withDescription('Write plan-bound publishing proof'),
