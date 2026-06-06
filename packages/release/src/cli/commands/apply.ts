@@ -13,10 +13,9 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
-import { Console, Effect, Fiber, Layer, Option, Stream, Terminal } from 'effect'
+import { Console, Effect, Fiber, Layer, Option, Schema, Stream, Terminal } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
-import type { BeforeMutationHook } from '../../api/executor/execute.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
 import {
   formatInvalidPlanMessage,
@@ -25,6 +24,7 @@ import {
   hasExecutablePlanContract,
   loadPlan,
 } from './plan-file.js'
+import { makeProofRecheckHook } from './proof-recheck-hook.js'
 
 const confirm = (message: string) =>
   Effect.gen(function* () {
@@ -34,46 +34,6 @@ const confirm = (message: string) =>
     const normalized = answer.trim().toLowerCase()
     return normalized === 'y' || normalized === 'yes'
   })
-
-/**
- * Build the proof-aware before-mutation gate the apply boundary injects into the
- * executor. The executor stays proof-blind: it runs this opaque hook immediately
- * before every mutating node and aborts the mutation if the hook fails.
- *
- * The hook re-observes local credential and registry surfaces, re-derives the
- * `pre-each-mutation` proof records from those fresh observations, and blocks the
- * pending mutation when the recheck turns up a blocking record (e.g. a credential
- * or local surface changed mid-release). It persists nothing — it only re-observes
- * and gates — so its requirements stay `Git.Git | NpmRegistry.NpmCli`.
- */
-export const makeProofRecheckHook =
-  (params: {
-    readonly plan: Api.Planner.Plan
-    readonly prior: Api.ReleaseContract.ProofArtifact
-  }): BeforeMutationHook =>
-  (ctx) =>
-    Effect.gen(function* () {
-      const observations = yield* Api.Proof.collectLocalObservations(params.plan)
-      const rechecked = Api.Proof.recheckProof({
-        plan: params.plan,
-        prior: params.prior,
-        phase: 'pre-mutation',
-        observations,
-        now: new Date().toISOString(),
-      })
-      if (Api.Proof.hasBlockingProof(rechecked, params.plan.proofPolicy)) {
-        return yield* Effect.fail(
-          new Api.Executor.Errors.ExecutorBeforeMutationError({
-            context: {
-              kind: ctx.kind,
-              subject: ctx.subject,
-              detail:
-                'A pre-each-mutation proof recheck found blocking records (a credential or local surface changed mid-release).',
-            },
-          }),
-        )
-      }
-    })
 
 const commandLayer = ChildProcessSpawnerLayer
 const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(commandLayer))
@@ -220,7 +180,24 @@ export const apply = Command.make(
             }
           }
 
-          const proof = yield* Api.Proof.readForPlan(plan)
+          // A plan-bound proof on disk that fails to decode (e.g. it was written
+          // against an older proof schema version) is treated like a missing
+          // proof: the operator must re-prove. Surface the same actionable
+          // guidance instead of leaking a raw decode error.
+          const proofResult = yield* Effect.result(Api.Proof.readForPlan(plan))
+          if (proofResult._tag === 'Failure') {
+            if (Schema.isSchemaError(proofResult.failure)) {
+              yield* Console.error(
+                'Plan-bound proof is unreadable (stale or invalid proof schema).',
+              )
+              yield* Console.error(
+                'Run `release prove` or `release apply --prove --rehearse` to refresh it before publishing.',
+              )
+              return env.exit(1)
+            }
+            return yield* Effect.fail(proofResult.failure)
+          }
+          const proof = proofResult.success
           if (Option.isNone(proof)) {
             yield* Console.error('Plan-bound proof is missing.')
             yield* Console.error(

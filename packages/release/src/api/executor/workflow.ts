@@ -158,7 +158,13 @@ export const toReleaseInfo = (release: ReleasePayloadType['releases'][number]): 
  * {@link BeforeMutationHook} and never inspects what the hook does with it.
  */
 export interface MutationContext {
-  /** One of the four MUTATING side-effect kinds. */
+  /**
+   * The mutating side-effect kind this hook is gating. The release workflow
+   * drives the gate for five of the {@link Journal.SideEffectInput} kinds —
+   * `registry-publish`, `git-tag-create`, `git-tag-push`,
+   * `github-release-create`, and `github-release-update`. A single-package
+   * official release exercises four of them (no pre-existing release to update).
+   */
   readonly kind: Journal.SideEffectInput['kind']
   /** The mutation subject — the pin tag (or comma-joined tags for an atomic push). */
   readonly subject: string
@@ -331,7 +337,7 @@ const assertRehearsedArtifactExists = (
  * Build the release workflow, optionally injecting a proof-blind
  * {@link BeforeMutationHook}. The hook (when supplied) is captured by the
  * `graph` closure and forwarded to every mutating side-effect boundary, so it
- * runs immediately before each of the four mutating node kinds. Passing no hook
+ * runs immediately before each mutating node. Passing no hook
  * yields the un-gated workflow (the graph structure is identical either way —
  * the hook only affects runtime behavior inside node effects, never the DAG).
  */

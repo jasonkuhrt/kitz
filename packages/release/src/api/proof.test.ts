@@ -5,7 +5,7 @@ import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { describe, expect, test } from 'bun:test'
-import { Effect, Layer, Option } from 'effect'
+import { Effect, FileSystem, Layer, Option, Result, Schema } from 'effect'
 import { Env } from '@kitz/env'
 import { makeCascadeCommit } from './analyzer/models/commit.js'
 import { OfficialFirst } from './version/models/official-first.js'
@@ -18,6 +18,7 @@ import {
   hasBlockingProof,
   makeProofArtifact,
   mergeProofHistory,
+  proofPathFor,
   prove,
   readForPlan,
   recheckProof,
@@ -203,6 +204,34 @@ describe('proof artifact', () => {
     expect(result.written.planDigest.value).toBe(
       Option.isSome(result.read) ? result.read.value.planDigest.value : '',
     )
+  })
+
+  test('a stale-schema proof on disk surfaces a SchemaError, not a silent empty read', async () => {
+    // The ProofArtifact schemaVersion is a closed literal (2). A proof written by
+    // an older release version (schemaVersion 1) fails to decode. readForPlan must
+    // surface that as a Schema.SchemaError so the apply/resume boundary can route
+    // it to "re-prove" guidance — not swallow it into Option.none (which would
+    // read as "no proof" and hide a stale artifact).
+    const cwd = Fs.Path.AbsDir.fromString('/repo/')
+    const path = proofPathFor(cwd, contractedPlan)
+    const staleV1Proof = JSON.stringify({
+      schemaVersion: 1,
+      planDigest: { value: contractedDigest.value },
+      records: [],
+    })
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem
+        yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(path)), { recursive: true })
+        yield* fs.writeFileString(Fs.Path.toString(path), staleV1Proof)
+        return yield* Effect.result(readForPlan(contractedPlan))
+      }).pipe(Effect.provide(Layer.mergeAll(Fs.Memory.layer({}), Env.Test({ cwd })))),
+    )
+
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect(Schema.isSchemaError(result.failure)).toBe(true)
+    }
   })
 
   test('re-prove appends to proofHistory rather than overwriting it', async () => {
@@ -911,6 +940,37 @@ describe('dependsOn blocked cascade', () => {
     expect(packageAccess?.blockedBy).toBe('env.publish.identity')
     expect(accessLevel?.status).toBe('blocked')
     expect(accessLevel?.blockedBy).toBe('env.publish.package-access.@kitz/core')
+  })
+
+  test('a forward dependency reference fails loud instead of silently skipping the cascade', () => {
+    // A dependent constructed BEFORE the failed dependency it points at. The
+    // forward-pass cascade can only see resolved (already-visited) dependencies,
+    // so a forward reference would read as non-blocking and silently skip the
+    // cascade. The guard must reject this mis-ordering instead.
+    const base = {
+      recheckMode: 'pre-apply',
+      observedAt: '2026-05-13T00:00:00.000Z',
+      evidence: {},
+      proofHistory: [],
+    } as const
+    const misordered = updateProofArtifact(makeProofArtifact(contractedPlan), {
+      records: [
+        // dependent first, pointing at a root constructed after it...
+        ProofRecord.make({ ...base, id: 'dependent', status: 'proven', dependsOn: ['root'] }),
+        // ...root (failed) constructed after its dependent.
+        ProofRecord.make({ ...base, id: 'root', status: 'failed', dependsOn: [] }),
+      ],
+    })
+
+    expect(() =>
+      recheckProof({
+        plan: contractedPlan,
+        prior: misordered,
+        phase: 'pre-apply',
+        observations: {},
+        now: '2026-05-13T01:00:00.000Z',
+      }),
+    ).toThrow(/cascade invariant violated/)
   })
 })
 

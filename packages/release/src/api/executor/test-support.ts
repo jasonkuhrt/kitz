@@ -145,6 +145,13 @@ export const makeHarness = (options: {
   readonly observedDistTags?: Readonly<Record<string, string>>
   readonly runtimeLayer?: Layer.Layer<any>
   readonly whoamiUsername?: string
+  /**
+   * Override the registry access status `getAccessStatus` reports. The release
+   * workflow itself never calls `getAccessStatus`; only the proof recheck does.
+   * Setting this to a value that mismatches the publish intent lets a test drive
+   * a pre-each-mutation proof block without disturbing any workflow npm op.
+   */
+  readonly accessStatus?: 'public' | 'restricted'
   readonly envVars?: Record<string, string | undefined>
 }): Effect.Effect<Harness> =>
   Effect.gen(function* () {
@@ -368,7 +375,7 @@ export const makeHarness = (options: {
             }),
           listAccessPackages: () => Effect.succeed({}),
           listAccessCollaborators: () => Effect.succeed({}),
-          getAccessStatus: () => Effect.succeed('public' as const),
+          getAccessStatus: () => Effect.succeed(options.accessStatus ?? ('public' as const)),
         } satisfies NpmRegistry.NpmCliService
       }),
     ).pipe(Layer.provide(planLayer))

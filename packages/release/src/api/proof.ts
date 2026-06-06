@@ -9,6 +9,7 @@ import {
   Clock,
   Effect,
   FileSystem,
+  HashSet,
   MutableHashMap,
   Option,
   PlatformError,
@@ -539,11 +540,35 @@ const provenanceRecordForPlan = (
  *
  * Records are constructed parent-before-child, so a single forward pass with a
  * resolved-status map propagates the cascade transitively (a record blocked by
- * cascade is itself a blocking dependency for its later dependents).
+ * cascade is itself a blocking dependency for its later dependents). This
+ * forward-pass correctness rests on a topological invariant: every dependency
+ * id that is itself present in the record set must be constructed *before* the
+ * record that depends on it. A forward reference (a dependency present in the
+ * set but not yet resolved when its dependent is visited) would silently read
+ * as non-blocking and skip a cascade that should fire — the exact "hidden
+ * fallback that makes data loss look successful" the correctness policy forbids.
+ * The guard below fails loud on such mis-ordering instead. Dependencies that are
+ * genuinely absent from the set are not this function's concern — `validateProof`
+ * reports them as `missing-dependency`.
  */
 const cascadeBlocked = (records: readonly ProofRecord[], now: string): ProofRecord[] => {
+  const idsInSet = HashSet.fromIterable(A.map(records, (record) => record.id))
   const statusById = MutableHashMap.empty<string, ProofStatus>()
   return A.map(records, (record) => {
+    for (const dependencyId of record.dependsOn) {
+      if (
+        HashSet.has(idsInSet, dependencyId) &&
+        Option.isNone(MutableHashMap.get(statusById, dependencyId))
+      ) {
+        throw new Error(
+          `Proof cascade invariant violated: record ${record.id} depends on ${dependencyId}, ` +
+            `which is present in the artifact but constructed after it. The blocked-cascade is a ` +
+            `single forward pass and requires dependencies to precede their dependents; reorder the ` +
+            `record construction so ${dependencyId} comes before ${record.id}.`,
+        )
+      }
+    }
+
     const blockingDependency = A.findFirst(record.dependsOn, (dependencyId) => {
       const dependencyStatus = MutableHashMap.get(statusById, dependencyId)
       return Option.exists(

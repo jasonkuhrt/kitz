@@ -16,7 +16,7 @@ import {
 } from '../../api/release-contract.js'
 import { sha256Text } from '../../api/digest.js'
 import { OfficialFirst } from '../../api/version/models/official-first.js'
-import { makeProofRecheckHook } from './apply.js'
+import { makeProofRecheckHook } from './proof-recheck-hook.js'
 
 // A Plan WITH publishIntent so the proof artifact carries the
 // `pre-each-mutation` records the recheck hook re-derives (package access,
