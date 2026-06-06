@@ -3,7 +3,7 @@ import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import type { Semver } from '@kitz/semver'
-import { Effect, Result, Option } from 'effect'
+import { Effect, Layer, Result, Option } from 'effect'
 import * as Analyzer from './analyzer/__.js'
 import type { Analysis } from './analyzer/models/analysis.js'
 import type { ResolvedConfig } from './config.js'
@@ -227,11 +227,16 @@ export const suggestPrTitle = (params: {
  * preserving its subject verbatim. Returns `changed: false` when the title is
  * already canonical; otherwise requires a non-empty `GITHUB_TOKEN` and updates
  * the PR title on GitHub, returning the before/after titles.
+ *
+ * `params.githubLayer` injects the `Github` service directly (e.g. a
+ * `Github.Memory` test double); production callers omit it and the connected
+ * PR's resolved owner/repo/token are wired to `Github.LiveFetch`.
  */
 export const applyPrTitle = (params: {
   readonly pullRequest: Github.PullRequest
   readonly projectedHeader: string
   readonly githubContext: Explorer.ResolvedPullRequestContext
+  readonly githubLayer?: Layer.Layer<Github.Github>
 }) =>
   Effect.gen(function* () {
     const env = yield* Env.Env
@@ -258,11 +263,12 @@ export const applyPrTitle = (params: {
       return yield* github.updatePullRequest(params.pullRequest.number, { title: nextTitle })
     }).pipe(
       Effect.provide(
-        Github.LiveFetch({
-          owner: params.githubContext.target.owner,
-          repo: params.githubContext.target.repo,
-          token,
-        }),
+        params.githubLayer ??
+          Github.LiveFetch({
+            owner: params.githubContext.target.owner,
+            repo: params.githubContext.target.repo,
+            token,
+          }),
       ),
     )
 

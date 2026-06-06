@@ -10,6 +10,7 @@ import {
   Effect,
   FileSystem,
   HashSet,
+  Layer,
   MutableHashMap,
   Option,
   PlatformError,
@@ -802,26 +803,35 @@ export const collectGithubObservations = (
  * GitHub context cannot be resolved or the fetch fails, GitHub observations are
  * dropped and the local observations stand alone. Local keys are overlaid by
  * GitHub keys in the merged result.
+ *
+ * `options.githubLayer` injects the `Github` service directly (e.g. a
+ * `Github.Memory` test double), bypassing live-context resolution; production
+ * callers omit it and the GitHub target is resolved from the environment and
+ * wired to `Github.LiveFetch`.
  */
 export const collectObservations = (
   plan: Plan,
+  options?: { readonly githubLayer?: Layer.Layer<Github.Github> },
 ): Effect.Effect<ProofObservations, never, Env.Env | Git.Git | NpmRegistry.NpmCli> =>
   Effect.gen(function* () {
     const localObservations = yield* collectLocalObservations(plan)
-    const githubObservations = yield* Explorer.resolveGitHubContext().pipe(
-      Effect.flatMap((context) =>
-        collectGithubObservations(plan).pipe(
-          Effect.provide(
-            Github.LiveFetch({
-              owner: context.target.owner,
-              repo: context.target.repo,
-              ...(context.token !== null ? { token: context.token } : {}),
-            }),
-          ),
-        ),
-      ),
-      Effect.orElseSucceed(() => ({})),
-    )
+    const githubObservations = yield* (
+      options?.githubLayer !== undefined
+        ? collectGithubObservations(plan).pipe(Effect.provide(options.githubLayer))
+        : Explorer.resolveGitHubContext().pipe(
+            Effect.flatMap((context) =>
+              collectGithubObservations(plan).pipe(
+                Effect.provide(
+                  Github.LiveFetch({
+                    owner: context.target.owner,
+                    repo: context.target.repo,
+                    ...(context.token !== null ? { token: context.token } : {}),
+                  }),
+                ),
+              ),
+            ),
+          )
+    ).pipe(Effect.orElseSucceed(() => ({})))
     return { ...localObservations, ...githubObservations }
   })
 

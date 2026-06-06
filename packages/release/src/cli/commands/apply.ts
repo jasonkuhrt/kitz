@@ -131,6 +131,9 @@ export const apply = Command.make(
           const result = yield* Api.Apply.apply(plan, {
             prove,
             rehearse,
+            // Soft (non-blocking) proof warnings print at the point they arise —
+            // e.g. prove warnings before the confirmation prompt below.
+            onSoftWarning: (message) => Console.error(message),
             // The confirmation prompt is operator IO, so it stays in the CLI and
             // is handed to the gauntlet as a callback (only when --yes is unset).
             ...(yes
@@ -168,13 +171,10 @@ export const apply = Command.make(
               return env.exit(1)
             }
             case 'Blocked': {
-              for (const warning of result.softWarnings) yield* Console.error(warning)
               for (const message of result.messages) yield* Console.error(message)
               return env.exit(1)
             }
             case 'Ready': {
-              for (const warning of result.softWarnings) yield* Console.error(warning)
-
               // Execute with observable workflow. The per-mutation recheck hook
               // starts from the gauntlet's rechecked artifact.
               const { events, execute } = yield* Api.Executor.executeObservable(plan, {
