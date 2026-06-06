@@ -1,7 +1,20 @@
+import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
-import { Array as A, Schema } from 'effect'
+import { Array as A, Effect, FileSystem, Option, Schema } from 'effect'
+import * as Artifact from './artifact.js'
 import { Digest, sha256Text } from './digest.js'
-import { AuditArchiveManifest, DetachedSignature, type PlanDigest } from './release-contract.js'
+import * as Journal from './journal.js'
+import { Plan } from './planner/models/plan.js'
+import * as Proof from './proof.js'
+import {
+  ArtifactManifest,
+  AuditArchiveManifest,
+  DetachedSignature,
+  digestForPlan,
+  type PlanDigest,
+  ProofArtifact,
+  SideEffectEntry,
+} from './release-contract.js'
 
 export interface AuditPayloadFile {
   readonly path: Fs.Path.RelFile
@@ -118,3 +131,64 @@ export const makeAuditArchive = (params: {
     bytes: Bun.gzipSync(asArrayBufferBytes(tar(payloads))),
   }
 }
+
+/**
+ * Compose the full release audit archive for a plan: read the plan-bound proof,
+ * artifact manifest, and side-effect journal, then bundle them with the plan
+ * into the fixed five-payload archive (plan, proof, journal, artifact manifest,
+ * registry observations). Returns the gzipped bundle plus the conventional
+ * archive path so the caller only has to write the bytes.
+ */
+export const bundleForPlan = (plan: Plan, options: { readonly createdAt: string }) =>
+  Effect.gen(function* () {
+    const env = yield* Env.Env
+    const proof = yield* Proof.readForPlan(plan)
+    const artifacts = yield* Artifact.readManifest(plan)
+    const digest = digestForPlan(plan)
+    const journalEntries = yield* Journal.readEntries(Journal.journalPathFor(env.cwd, digest))
+    const archivePath = Fs.Path.join(
+      env.cwd,
+      Fs.Path.RelFile.fromString(`./.release/archive/${digest.value}.kitz-release-audit.tgz`),
+    )
+    const bundle = makeAuditArchive({
+      planDigest: digest,
+      createdAt: options.createdAt,
+      payloads: [
+        {
+          path: Fs.Path.RelFile.fromString('./plan.json'),
+          content: `${JSON.stringify(Schema.encodeSync(Plan)(plan), null, 2)}\n`,
+        },
+        {
+          path: Fs.Path.RelFile.fromString('./proof.json'),
+          content: `${JSON.stringify(
+            Option.isSome(proof) ? Schema.encodeSync(ProofArtifact)(proof.value) : null,
+            null,
+            2,
+          )}\n`,
+        },
+        {
+          path: Fs.Path.RelFile.fromString('./journal.jsonl'),
+          content:
+            journalEntries
+              .map((entry) => JSON.stringify(Schema.encodeSync(SideEffectEntry)(entry)))
+              .join('\n') + '\n',
+        },
+        {
+          path: Fs.Path.RelFile.fromString('./artifact-manifest.json'),
+          content: `${JSON.stringify(
+            Option.isSome(artifacts)
+              ? Schema.encodeSync(Schema.Array(ArtifactManifest))([...artifacts.value])
+              : [],
+            null,
+            2,
+          )}\n`,
+        },
+        {
+          path: Fs.Path.RelFile.fromString('./registry-observations.json'),
+          content: '[]\n',
+        },
+      ],
+    })
+
+    return { bundle, archivePath }
+  })

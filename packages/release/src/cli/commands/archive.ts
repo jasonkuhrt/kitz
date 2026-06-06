@@ -6,7 +6,7 @@
  */
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
-import { Console, Effect, FileSystem, Layer, Option, Schema } from 'effect'
+import { Console, Effect, FileSystem, Layer, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
 import { FileSystemLayer } from '../../platform.js'
@@ -42,60 +42,8 @@ const archiveExport = Command.make(
         return env.exit(1)
       }
 
-      const proof = yield* Api.Proof.readForPlan(planState.plan)
-      const artifacts = yield* Api.Artifact.readManifest(planState.plan)
-      const digest = Api.ReleaseContract.digestForPlan(planState.plan)
-      const journalEntries = yield* Api.Journal.readEntries(
-        Api.Journal.journalPathFor(env.cwd, digest),
-      )
-      const archivePath = Fs.Path.join(
-        env.cwd,
-        Fs.Path.RelFile.fromString(`./.release/archive/${digest.value}.kitz-release-audit.tgz`),
-      )
-      const bundle = Api.AuditArchive.makeAuditArchive({
-        planDigest: digest,
+      const { bundle, archivePath } = yield* Api.AuditArchive.bundleForPlan(planState.plan, {
         createdAt: new Date().toISOString(),
-        payloads: [
-          {
-            path: Fs.Path.RelFile.fromString('./plan.json'),
-            content: `${JSON.stringify(Schema.encodeSync(Api.Planner.Plan)(planState.plan), null, 2)}\n`,
-          },
-          {
-            path: Fs.Path.RelFile.fromString('./proof.json'),
-            content: `${JSON.stringify(
-              Option.isSome(proof)
-                ? Schema.encodeSync(Api.ReleaseContract.ProofArtifact)(proof.value)
-                : null,
-              null,
-              2,
-            )}\n`,
-          },
-          {
-            path: Fs.Path.RelFile.fromString('./journal.jsonl'),
-            content:
-              journalEntries
-                .map((entry) =>
-                  JSON.stringify(Schema.encodeSync(Api.ReleaseContract.SideEffectEntry)(entry)),
-                )
-                .join('\n') + '\n',
-          },
-          {
-            path: Fs.Path.RelFile.fromString('./artifact-manifest.json'),
-            content: `${JSON.stringify(
-              Option.isSome(artifacts)
-                ? Schema.encodeSync(Schema.Array(Api.ReleaseContract.ArtifactManifest))([
-                    ...artifacts.value,
-                  ])
-                : [],
-              null,
-              2,
-            )}\n`,
-          },
-          {
-            path: Fs.Path.RelFile.fromString('./registry-observations.json'),
-            content: '[]\n',
-          },
-        ],
       })
 
       yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(archivePath)), { recursive: true })
