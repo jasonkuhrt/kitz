@@ -3,12 +3,38 @@ import { Fs } from '@kitz/fs'
 import { describe, expect, test } from 'bun:test'
 import { Effect, Exit, Layer, Option } from 'effect'
 import { sha256Json } from './digest.js'
-import { acquireLocal, lockPathFor, make, read, releaseLocal, validate, withLocal } from './lock.js'
+import {
+  acquireLocal,
+  lockPathFor,
+  make,
+  read,
+  releaseLocal,
+  resolveLocalOwner,
+  validate,
+  withLocal,
+} from './lock.js'
 import { PlanDigest } from './release-contract.js'
 
 const digest = PlanDigest.make(sha256Json({ plan: 'lock' }))
 
 describe('release execution lock', () => {
+  test('resolveLocalOwner maps env vars to owner identity with fallbacks', () => {
+    expect(
+      resolveLocalOwner({ USER: 'alice', HOSTNAME: 'box', KITZ_RELEASE_PROCESS_ID: 'p1' }),
+    ).toEqual({
+      ownerId: 'alice',
+      ownerHost: 'box',
+      ownerProcess: 'p1',
+    })
+    expect(resolveLocalOwner({})).toEqual({
+      ownerId: 'local-operator',
+      ownerHost: 'local-host',
+      ownerProcess: 'local-process',
+    })
+    // HOST takes precedence over HOSTNAME when both are present.
+    expect(resolveLocalOwner({ HOST: 'primary', HOSTNAME: 'secondary' }).ownerHost).toBe('primary')
+  })
+
   test('validates active and expired locks', () => {
     const active = make({
       planDigest: digest,

@@ -3,23 +3,9 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { ChildProcessSpawner } from 'effect/unstable/process'
-import { Data, Effect, FileSystem, Layer } from 'effect'
+import { Data, Effect, FileSystem } from 'effect'
 import * as Api from '../api/__.js'
-import {
-  commandLintRule,
-  createCommandLintConfig,
-  type CommandLintRuleSpec,
-} from './lint-rule-config.js'
 import { loadPullRequestDiff, resolveDiffRemote } from './pr-preview-diff.js'
-
-const manualPreviewDeferredRules = [
-  Api.Lint.Rules.EnvNpmAuthenticated,
-  Api.Lint.Rules.EnvGitClean,
-  Api.Lint.Rules.EnvGitRemote,
-] as const
-
-const appendReleaseCommand = (releaseCommand: string, suffix: string): string =>
-  `${releaseCommand} ${suffix}`
 
 const hasBlockingViolations = (report: Api.Lint.Report): boolean =>
   report.results.some(
@@ -217,51 +203,16 @@ export const buildPreviewDoctorSummary = (
     const titleSeverity = params.blockingTitleChecks
       ? Api.Lint.Error.make({})
       : params.config.lint.defaults.severity
-    const commentDoctorRules = [
-      commandLintRule({
-        id: 'env.publish-channel-ready',
-        options: {
-          surface: 'preview',
-        },
-      }),
-      commandLintRule({
-        id: 'plan.packages-not-private',
-      }),
-      commandLintRule({
-        id: 'plan.packages-license-present',
-      }),
-      commandLintRule({
-        id: 'plan.packages-repository-present',
-      }),
-      commandLintRule({
-        id: 'plan.packages-repository-match-canonical',
-      }),
-      commandLintRule({
-        id: 'plan.versions-unpublished',
-      }),
-      commandLintRule({
-        id: 'plan.tags-unique',
-      }),
-      commandLintRule({
-        id: 'pr.type.release-kind-match-diff',
-        severity: titleSeverity,
-      }),
+    const rules = Api.Lint.previewDoctorRules({
       ...(params.projectedSquashCommit?.projectedHeader
-        ? [
-            commandLintRule({
-              id: 'pr.projected-squash-commit-sync',
-              options: {
-                projectedHeader: params.projectedSquashCommit.projectedHeader,
-              },
-              severity: titleSeverity,
-            }),
-          ]
-        : []),
-    ] satisfies readonly CommandLintRuleSpec[]
-    const lintConfig = createCommandLintConfig({
+        ? { projectedHeader: params.projectedSquashCommit.projectedHeader }
+        : {}),
+      titleSeverity,
+    })
+    const lintConfig = Api.Lint.createCommandLintConfig({
       config: params.config,
-      rules: commentDoctorRules,
-      onlyRules: commentDoctorRules.map((rule) => rule.id),
+      rules,
+      onlyRules: rules.map((rule) => rule.id),
       skipRules: [],
     })
 
@@ -273,77 +224,41 @@ export const buildPreviewDoctorSummary = (
         pullRequest: params.pullRequest,
         plan,
       }) ??
-        Api.Lint.check({ config: lintConfig }).pipe(
-          Effect.provide(
-            Layer.mergeAll(
-              Layer.succeed(Api.Lint.DiffService, params.diff),
-              Api.Lint.DefaultGitHubLayer,
-              Api.Lint.Preconditions.make({
-                hasOpenPR: true,
-                hasDiff: params.diff.files.length > 0,
-                hasReleasePlan: true,
-                isMonorepo: params.packages.length > 1,
-              }),
-              Api.Lint.ReleasePlan.make(
-                plannedItems.map((item) => ({
-                  packageName: item.package.name,
-                  packagePath: item.package.path,
-                  version: item.nextVersion,
-                })),
-              ),
-              Api.Lint.ReleaseContext.make({
-                lifecycle: plan.lifecycle,
-                publishing: params.config.publishing,
-              }),
-              Api.Lint.ConventionalCommitSettings.make({
-                resolvedTypes: params.config.resolvedConventionalCommitTypes,
-              }),
-            ),
-          ),
-          Effect.provideService(Api.Lint.MonorepoService, toMonorepo(params.packages)),
-          Effect.provideService(
-            Api.Lint.PrService,
-            yield* Api.Lint.fromPullRequest(params.pullRequest),
-          ),
-        )
+        Api.Lint.checkForPreview({
+          config: lintConfig,
+          diff: params.diff,
+          packageCount: params.packages.length,
+          monorepo: toMonorepo(params.packages),
+          releasePlan: plannedItems.map((item) => ({
+            packageName: item.package.name,
+            packagePath: item.package.path,
+            version: item.nextVersion,
+          })),
+          lifecycle: plan.lifecycle,
+          publishing: params.config.publishing,
+          resolvedConventionalCommitTypes: params.config.resolvedConventionalCommitTypes,
+          pullRequest: params.pullRequest,
+        })
     )
+
+    const manualPreview =
+      publish.channel.mode === 'manual' && plan.lifecycle === 'ephemeral'
+        ? Api.Commentator.buildManualPreviewRunbook({
+            prepareCommands: params.config.operator.prepareCommands,
+            releaseCommand: params.config.operator.releaseCommand,
+            prNumber:
+              plan.releases.find(Api.Planner.Ephemeral.is)?.prerelease.prNumber ??
+              params.pullRequest.number,
+            distTag: publish.distTag,
+            diffRemote,
+          })
+        : undefined
 
     const summary = Api.Commentator.createDoctorSummary(report, {
       lifecycle: plan.lifecycle,
       plannedPackages: plannedItems.length,
-      ...(publish.channel.mode === 'manual' && plan.lifecycle === 'ephemeral'
-        ? {
-            runbook: {
-              title: 'Manual Preview Runbook',
-              commands: [
-                ...params.config.operator.prepareCommands,
-                `PR_NUMBER=${String(plan.releases.find(Api.Planner.Ephemeral.is)?.prerelease.prNumber ?? params.pullRequest.number)} ${appendReleaseCommand(params.config.operator.releaseCommand, 'plan --lifecycle ephemeral')}`,
-                appendReleaseCommand(
-                  params.config.operator.releaseCommand,
-                  renderDoctorCommandSuffix(diffRemote),
-                ),
-                appendReleaseCommand(params.config.operator.releaseCommand, 'apply --yes'),
-              ],
-              note:
-                'Step 2 writes the exact ephemeral publish plan to `.release/plan.json`. ' +
-                `Step 4 publishes those packages to the \`${publish.distTag}\` dist-tag automatically.`,
-            },
-            deferredChecks: manualPreviewDeferredRules.flatMap((rule) =>
-              rule.data.preventsDescriptions && rule.data.preventsDescriptions.length > 0
-                ? [
-                    {
-                      label: rule.data.description,
-                      ruleId: rule.data.id,
-                      preventsDescriptions: rule.data.preventsDescriptions,
-                      checkCommand: appendReleaseCommand(
-                        params.config.operator.releaseCommand,
-                        renderDoctorCommandSuffix(diffRemote, [`--onlyRule ${rule.data.id}`]),
-                      ),
-                    },
-                  ]
-                : [],
-            ),
-          }
+      ...(manualPreview
+        ? { runbook: manualPreview.runbook, deferredChecks: manualPreview.deferredChecks }
         : {}),
     })
 
@@ -511,15 +426,3 @@ export const runPrPreview = (
     | FileSystem.FileSystem
     | NpmRegistry.NpmCli
   >
-
-const renderDoctorCommandSuffix = (
-  diffRemote: string | undefined,
-  extraArgs: readonly string[] = [],
-): string => {
-  const args = ['doctor']
-  if (diffRemote && diffRemote !== 'origin') {
-    args.push(`--remote ${diffRemote}`)
-  }
-  args.push(...extraArgs)
-  return args.join(' ')
-}

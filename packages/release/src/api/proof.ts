@@ -9,19 +9,27 @@ import {
   Clock,
   Effect,
   FileSystem,
+  HashSet,
+  Layer,
+  MutableHashMap,
   Option,
   PlatformError,
   Result,
   Schema,
 } from 'effect'
-import { sha256Json } from './digest.js'
+import * as Explorer from './explorer/__.js'
 import type { Plan } from './planner/models/plan.js'
 import * as Capability from './publishing/models/capability.js'
 import {
-  PlanDigest,
+  DeferredProof,
+  defaultProofPolicy,
+  digestForPlan,
   ProofArtifact,
+  ProofPolicy,
   ProofRecord,
   ProofTransition,
+  RuntimeHost,
+  type ProofGateClass,
   type ProofStatus,
 } from './release-contract.js'
 
@@ -31,6 +39,7 @@ export interface ProofIssue {
   readonly recordId: string
   readonly code: string
   readonly detail: string
+  readonly severity: ProofGateClass
 }
 
 export interface ProofObservations {
@@ -39,7 +48,6 @@ export interface ProofObservations {
   readonly identityError?: string
   readonly packageAccess?: Readonly<Record<string, 'public' | 'restricted'>>
   readonly packageAccessErrors?: Readonly<Record<string, string>>
-  readonly packageVersions?: Readonly<Record<string, boolean>>
   readonly gitPushDryRun?: Readonly<
     Record<string, boolean | { readonly ok: boolean; readonly detail?: string }>
   >
@@ -51,16 +59,6 @@ export interface ProofObservations {
   readonly oidcClaimsVerified?: boolean
   readonly provenanceBundleExists?: boolean
 }
-
-export const digestForPlan = (plan: Plan): PlanDigest =>
-  plan.planDigest ?? PlanDigest.make(sha256Json(Schema.encodeSync(PlanForDigest)(plan)))
-
-const PlanForDigest = Schema.Struct({
-  lifecycle: Schema.String,
-  timestamp: Schema.String,
-  releases: Schema.Array(Schema.Unknown),
-  cascades: Schema.Array(Schema.Unknown),
-})
 
 export const proofPathFor = (cwd: Fs.Path.AbsDir, plan: Plan): Fs.Path.AbsFile =>
   Fs.Path.join(
@@ -78,13 +76,11 @@ const observedRecord = (params: {
   readonly now: string
   readonly reason: string
   readonly evidence: Readonly<Record<string, unknown>>
-  readonly recheckMode?: ProofRecord['recheckMode']
 }): ProofRecord =>
   ProofRecord.make({
     id: params.id,
     status: params.status,
     dependsOn: [...params.dependsOn],
-    recheckMode: params.recheckMode ?? 'pre-apply',
     observedAt: params.now,
     evidence: params.evidence,
     proofHistory: [transition(params.status, params.reason, params.now)],
@@ -122,7 +118,6 @@ const capabilityRecord = (params: {
     id: params.id,
     status,
     dependsOn: ['plan.publish-intent'],
-    recheckMode: 'pre-apply',
     observedAt: params.now,
     evidence,
     proofHistory: [transition(status, reason, params.now)],
@@ -243,7 +238,6 @@ const credentialRecordsForPlan = (
         now,
         reason: statusReason,
         evidence: { packageName: name, access: access ?? null, requested: intent.access },
-        recheckMode: 'pre-each-mutation',
       }),
       observedRecord({
         id: `env.publish.access-level.${name}`,
@@ -266,7 +260,6 @@ const credentialRecordsForPlan = (
               ? 'registry access status matches requested publish access'
               : (accessError ?? 'registry access status does not match requested publish access'),
         evidence: { packageName: name, access: access ?? null, requested: intent.access },
-        recheckMode: 'pre-each-mutation',
       }),
     ]
   })
@@ -304,6 +297,7 @@ const credentialRecordsForPlan = (
         source: intent.auth.source,
         tokenEnv: intent.auth.tokenEnv ?? null,
         identity: observations.identity ?? null,
+        runtimeHost,
       },
     }),
     observedRecord({
@@ -349,7 +343,6 @@ const sideEffectProofRecordsForPlan = (
         remote: intent.git.remote,
         ...gitDryRunEvidence(proof),
       },
-      recheckMode: 'pre-each-mutation',
     })
   })
 
@@ -370,7 +363,6 @@ const sideEffectProofRecordsForPlan = (
               remote: intent.git.remote,
               ...gitDryRunEvidence(observations.atomicGitPushDryRun),
             },
-            recheckMode: 'pre-each-mutation',
           }),
         ]
       : []
@@ -402,8 +394,8 @@ const sideEffectProofRecordsForPlan = (
         repository: intent.github.repository,
         host: intent.github.host.apiUrl,
         permission: observations.githubReleasePermission ?? null,
+        runtimeHost: intent.auth.runtimeHost,
       },
-      recheckMode: 'pre-apply-and-on-mutation-failure',
     }),
     ...A.map(subjects, (subject) =>
       observedRecord({
@@ -421,7 +413,6 @@ const sideEffectProofRecordsForPlan = (
           exists: observations.githubReleaseExists?.[subject.tag] ?? null,
           existingReleasePolicy: intent.github.existingReleasePolicy,
         },
-        recheckMode: 'pre-apply-and-on-mutation-failure',
       }),
     ),
   ]
@@ -503,6 +494,7 @@ const provenanceRecordForPlan = (
             : 'attestation file was not observed',
         evidence: {
           file: intent.provenance.file ? Fs.Path.toString(intent.provenance.file) : null,
+          provenanceBundleExists: observations.provenanceBundleExists ?? null,
         },
       }),
     ]
@@ -520,6 +512,83 @@ const provenanceRecordForPlan = (
   ]
 }
 
+/**
+ * Cascade `blocked` status through the `dependsOn` DAG. A record whose any
+ * dependency resolves to `failed` or `blocked` is itself flipped to `blocked`,
+ * gains a `blockedBy` reference to the first such dependency (the root cause),
+ * and appends a `ProofTransition` carrying `from` (its pre-cascade status) and
+ * `cause` (the root-cause id). `deferredToHost` dependencies are pass states
+ * and do not cascade.
+ *
+ * Records are constructed parent-before-child, so a single forward pass with a
+ * resolved-status map propagates the cascade transitively (a record blocked by
+ * cascade is itself a blocking dependency for its later dependents). This
+ * forward-pass correctness rests on a topological invariant: every dependency
+ * id that is itself present in the record set must be constructed *before* the
+ * record that depends on it. A forward reference (a dependency present in the
+ * set but not yet resolved when its dependent is visited) would silently read
+ * as non-blocking and skip a cascade that should fire — the exact "hidden
+ * fallback that makes data loss look successful" the correctness policy forbids.
+ * The guard below fails loud on such mis-ordering instead. Dependencies that are
+ * genuinely absent from the set are not this function's concern — `validateProof`
+ * reports them as `missing-dependency`.
+ */
+const cascadeBlocked = (records: readonly ProofRecord[], now: string): ProofRecord[] => {
+  const idsInSet = HashSet.fromIterable(A.map(records, (record) => record.id))
+  const statusById = MutableHashMap.empty<string, ProofStatus>()
+  return A.map(records, (record) => {
+    for (const dependencyId of record.dependsOn) {
+      if (
+        HashSet.has(idsInSet, dependencyId) &&
+        Option.isNone(MutableHashMap.get(statusById, dependencyId))
+      ) {
+        throw new Error(
+          `Proof cascade invariant violated: record ${record.id} depends on ${dependencyId}, ` +
+            `which is present in the artifact but constructed after it. The blocked-cascade is a ` +
+            `single forward pass and requires dependencies to precede their dependents; reorder the ` +
+            `record construction so ${dependencyId} comes before ${record.id}.`,
+        )
+      }
+    }
+
+    const blockingDependency = A.findFirst(record.dependsOn, (dependencyId) => {
+      const dependencyStatus = MutableHashMap.get(statusById, dependencyId)
+      return Option.exists(
+        dependencyStatus,
+        (status) => status === 'failed' || status === 'blocked',
+      )
+    })
+
+    if (Option.isNone(blockingDependency) || record.status === 'blocked') {
+      MutableHashMap.set(statusById, record.id, record.status)
+      return record
+    }
+
+    const cause = blockingDependency.value
+    const causeStatus = Option.getOrElse(
+      MutableHashMap.get(statusById, cause),
+      (): ProofStatus => 'blocked',
+    )
+    MutableHashMap.set(statusById, record.id, 'blocked')
+    return ProofRecord.make({
+      // oxlint-disable-next-line typescript/no-misused-spread -- field bag for .make(), which rebuilds the Schema.Class instance with overrides
+      ...record,
+      status: 'blocked',
+      blockedBy: cause,
+      proofHistory: [
+        ...record.proofHistory,
+        ProofTransition.make({
+          from: record.status,
+          to: 'blocked',
+          at: now,
+          reason: `dependency ${cause} is ${causeStatus}`,
+          cause,
+        }),
+      ],
+    })
+  })
+}
+
 export const makeProofArtifact = (
   plan: Plan,
   now: string = new Date().toISOString(),
@@ -531,7 +600,6 @@ export const makeProofArtifact = (
       id: 'plan.digest',
       status: plan.planDigest === undefined ? 'unprovable' : 'proven',
       dependsOn: [],
-      recheckMode: 'pre-apply',
       observedAt,
       evidence:
         plan.planDigest === undefined
@@ -549,7 +617,6 @@ export const makeProofArtifact = (
       id: 'plan.publish-intent',
       status: plan.publishIntent === undefined ? 'unprovable' : 'proven',
       dependsOn: ['plan.digest'],
-      recheckMode: 'pre-apply',
       observedAt,
       evidence:
         plan.publishIntent === undefined
@@ -571,7 +638,6 @@ export const makeProofArtifact = (
       id: 'plan.source',
       status: plan.source === undefined ? 'unprovable' : 'proven',
       dependsOn: ['plan.digest'],
-      recheckMode: 'pre-apply',
       observedAt,
       evidence:
         plan.source === undefined
@@ -596,11 +662,36 @@ export const makeProofArtifact = (
   ]
 
   return ProofArtifact.make({
-    schemaVersion: 1,
+    schemaVersion: 3,
     planDigest: digestForPlan(plan),
-    records,
+    records: cascadeBlocked(records, observedAt),
   })
 }
+
+/**
+ * Project the host-delegated proof records (status `deferredToHost`) of an
+ * artifact into structured {@link DeferredProof} records. The status literal
+ * and the structured projection are deliberately kept distinct: the record
+ * carries the `deferredToHost` status, this projection carries the host the
+ * proof is delegated to (read from the record's `runtimeHost` evidence).
+ */
+const isRuntimeHost = Schema.is(RuntimeHost)
+
+export const deferredProofsForArtifact = (proof: ProofArtifact): readonly DeferredProof[] =>
+  A.filterMap(proof.records, (record) => {
+    if (record.status !== 'deferredToHost') return Result.failVoid
+    const runtimeHost = record.evidence['runtimeHost']
+    if (!isRuntimeHost(runtimeHost)) return Result.failVoid
+    const lastTransition = record.proofHistory[record.proofHistory.length - 1]
+    return Result.succeed(
+      DeferredProof.make({
+        recordId: record.id,
+        deferredTo: runtimeHost,
+        reason: lastTransition?.reason ?? '',
+        observedAt: record.observedAt,
+      }),
+    )
+  })
 
 export const collectLocalObservations = (
   plan: Plan,
@@ -706,11 +797,53 @@ export const collectGithubObservations = (
     return Object.keys(githubReleaseExists).length > 0 ? { githubReleaseExists } : {}
   })
 
-export const hasBlockingProof = (proof: ProofArtifact): boolean => validateProof(proof).length > 0
+/**
+ * Collect the full observation set for a plan: local credential/registry/git
+ * surfaces plus GitHub release surfaces. GitHub evidence is best-effort — if the
+ * GitHub context cannot be resolved or the fetch fails, GitHub observations are
+ * dropped and the local observations stand alone. Local keys are overlaid by
+ * GitHub keys in the merged result.
+ *
+ * `options.githubLayer` injects the `Github` service directly (e.g. a
+ * `Github.Memory` test double), bypassing live-context resolution; production
+ * callers omit it and the GitHub target is resolved from the environment and
+ * wired to `Github.LiveFetch`.
+ */
+export const collectObservations = (
+  plan: Plan,
+  options?: { readonly githubLayer?: Layer.Layer<Github.Github> },
+): Effect.Effect<ProofObservations, never, Env.Env | Git.Git | NpmRegistry.NpmCli> =>
+  Effect.gen(function* () {
+    const localObservations = yield* collectLocalObservations(plan)
+    const githubObservations = yield* (
+      options?.githubLayer !== undefined
+        ? collectGithubObservations(plan).pipe(Effect.provide(options.githubLayer))
+        : Explorer.resolveGitHubContext().pipe(
+            Effect.flatMap((context) =>
+              collectGithubObservations(plan).pipe(
+                Effect.provide(
+                  Github.LiveFetch({
+                    owner: context.target.owner,
+                    repo: context.target.repo,
+                    ...(context.token !== null ? { token: context.token } : {}),
+                  }),
+                ),
+              ),
+            ),
+          )
+    ).pipe(Effect.orElseSucceed(() => ({})))
+    return { ...localObservations, ...githubObservations }
+  })
+
+export const hasBlockingProof = (
+  proof: ProofArtifact,
+  policy: ProofPolicy = defaultProofPolicy(),
+): boolean => A.some(validateProof(proof, undefined, policy), (issue) => issue.severity === 'hard')
 
 export const validateProof = (
   proof: ProofArtifact,
   now: string = new Date().toISOString(),
+  policy: ProofPolicy = defaultProofPolicy(),
 ): readonly ProofIssue[] => {
   const ids = A.map(proof.records, (record) => record.id)
   const blocking = A.map(
@@ -722,6 +855,7 @@ export const validateProof = (
       recordId: record.id,
       code: `release.proof.${record.status}`,
       detail: `Proof record ${record.id} is ${record.status}.`,
+      severity: A.contains(policy.softStatuses, record.status) ? 'soft' : 'hard',
     }),
   )
 
@@ -732,6 +866,7 @@ export const validateProof = (
         recordId: record.id,
         code: 'release.proof.missing-dependency',
         detail: `Proof record ${record.id} depends on missing record ${dependency}.`,
+        severity: 'hard',
       }),
     ),
   )
@@ -745,10 +880,34 @@ export const validateProof = (
       recordId: record.id,
       code: 'release.proof.expired',
       detail: `Proof record ${record.id} expired at ${record.expiresAt}.`,
+      severity: 'hard',
     }),
   )
 
-  return [...blocking, ...missingDependencies, ...expired]
+  // A `blocked` record's `blockedBy` is its cascade root cause. If that cause is
+  // itself in the set, it must be a non-passing status — a `blocked` record
+  // pointing at a `proven`/`deferredToHost` cause is an internally inconsistent
+  // artifact (the exact dangling-reference class the observation-layer recheck
+  // makes unconstructable, but cheap to police against any future regression).
+  const statusById = MutableHashMap.fromIterable(
+    A.map(proof.records, (record) => [record.id, record.status] as const),
+  )
+  const inconsistentBlockedCauses = A.filterMap(proof.records, (record) => {
+    if (record.status !== 'blocked' || record.blockedBy === undefined) return Result.failVoid
+    const causeStatus = MutableHashMap.get(statusById, record.blockedBy)
+    if (Option.isNone(causeStatus)) return Result.failVoid
+    if (causeStatus.value !== 'proven' && causeStatus.value !== 'deferredToHost') {
+      return Result.failVoid
+    }
+    return Result.succeed<ProofIssue>({
+      recordId: record.id,
+      code: 'release.proof.blocked-cause-consistency',
+      detail: `Proof record ${record.id} is blocked by ${record.blockedBy}, which is ${causeStatus.value}.`,
+      severity: 'hard',
+    })
+  })
+
+  return [...blocking, ...missingDependencies, ...expired, ...inconsistentBlockedCauses]
 }
 
 export const write = (
@@ -780,6 +939,335 @@ export const read = (
     return Option.some(decoded)
   })
 
+const lastTransitionStatus = (record: ProofRecord): ProofStatus | undefined =>
+  record.proofHistory[record.proofHistory.length - 1]?.to
+
+/**
+ * Merge a freshly observed proof artifact onto a prior one, growing
+ * `proofHistory` per record id rather than overwriting it. For each fresh
+ * record that has a matching prior record, the prior history is carried forward
+ * and the fresh record's latest transition is appended only when the status
+ * actually changed since the prior's last transition (re-proving with no change
+ * appends nothing). Records absent from the prior keep their fresh
+ * single-element history.
+ */
+export const mergeProofHistory = (prior: ProofArtifact, fresh: ProofArtifact): ProofArtifact => {
+  const priorById = MutableHashMap.fromIterable(
+    A.map(prior.records, (record) => [record.id, record] as const),
+  )
+
+  return ProofArtifact.make({
+    // oxlint-disable-next-line typescript/no-misused-spread -- field bag for .make(), which rebuilds the Schema.Class instance with overrides
+    ...fresh,
+    records: A.map(fresh.records, (freshRecord) => {
+      const priorRecordOption = MutableHashMap.get(priorById, freshRecord.id)
+      if (Option.isNone(priorRecordOption)) return freshRecord
+      const priorRecord = priorRecordOption.value
+
+      const statusUnchanged = lastTransitionStatus(priorRecord) === freshRecord.status
+      const latestFresh = freshRecord.proofHistory[freshRecord.proofHistory.length - 1]
+      const appended =
+        statusUnchanged || latestFresh === undefined
+          ? []
+          : [
+              // oxlint-disable-next-line typescript/no-misused-spread -- field bag for .make(), which rebuilds the Schema.Class instance with overrides
+              ProofTransition.make({ ...latestFresh, from: priorRecord.status }),
+            ]
+
+      return ProofRecord.make({
+        // oxlint-disable-next-line typescript/no-misused-spread -- field bag for .make(), which rebuilds the Schema.Class instance with overrides
+        ...freshRecord,
+        proofHistory: [...priorRecord.proofHistory, ...appended],
+      })
+    }),
+  })
+}
+
+// Read the reason of the record's *latest* transition, not its first. The
+// latest transition is the one into the record's current status, so for a
+// `failed` record this is the current failure reason. Reading `proofHistory[0]`
+// would, on a record carried through a status flip (e.g. proven -> failed),
+// reconstruct the *original* status's reason — e.g. a stale "publish identity
+// observed" success string mislabeled as the failure reason — because
+// `mergeProofHistory` preserves the prior's first transition.
+const observedReason = (record: ProofRecord | undefined): string | undefined =>
+  record?.proofHistory[record.proofHistory.length - 1]?.reason
+
+const stringEvidence = (record: ProofRecord | undefined, key: string): string | undefined => {
+  const value = record?.evidence[key]
+  return typeof value === 'string' ? value : undefined
+}
+
+const booleanEvidence = (record: ProofRecord | undefined, key: string): boolean | undefined => {
+  const value = record?.evidence[key]
+  return typeof value === 'boolean' ? value : undefined
+}
+
+/**
+ * Reconstruct the {@link ProofObservations} a prior artifact was built from, by
+ * reading them back out of each record's stamped `evidence`. This is the exact
+ * inverse of how {@link credentialRecordsForPlan}, {@link sideEffectProofRecordsForPlan},
+ * and {@link provenanceRecordForPlan} stamp evidence, so that
+ * `makeProofArtifact(plan, now, priorObservationsFromArtifact(prior))` reproduces
+ * the prior's per-record statuses. {@link recheckProof} uses it to carry forward
+ * the surfaces a fresh recheck did not re-observe, then overlays the fresh
+ * observations on top so a single consistent `makeProofArtifact` pass rebuilds the
+ * whole set.
+ *
+ * Fidelity contract (covered by a round-trip test): for every observation surface
+ * that drives a record status, the evidence read here must produce a value that
+ * re-derives the same status. `failed` credential/access records (no positive
+ * observation in evidence) are reconstructed via their observed-reason error
+ * string; `deferredToHost`/`unprovable` records carry no observation so the
+ * rebuild re-derives those statuses from the plan intent alone.
+ */
+export const priorObservationsFromArtifact = (prior: ProofArtifact): ProofObservations => {
+  const observations: {
+    identity?: string
+    identityError?: string
+    packageAccess: Record<string, 'public' | 'restricted'>
+    packageAccessErrors: Record<string, string>
+    gitPushDryRun: Record<string, { readonly ok: boolean; readonly detail?: string }>
+    atomicGitPushDryRun?: { readonly ok: boolean; readonly detail?: string }
+    githubReleasePermission?: boolean
+    githubReleasePermissionError?: string
+    githubReleaseExists: Record<string, boolean>
+    trustedPublisherConfigured?: boolean
+    oidcClaimsVerified?: boolean
+    provenanceBundleExists?: boolean
+  } = {
+    packageAccess: {},
+    packageAccessErrors: {},
+    gitPushDryRun: {},
+    githubReleaseExists: {},
+  }
+
+  for (const record of prior.records) {
+    if (record.id === 'env.publish.identity') {
+      const identity = stringEvidence(record, 'identity')
+      if (identity !== undefined) {
+        observations.identity = identity
+      } else if (record.status === 'failed') {
+        observations.identityError = observedReason(record) ?? 'publish identity failed'
+      }
+      continue
+    }
+
+    const accessPrefix = 'env.publish.package-access.'
+    if (record.id.startsWith(accessPrefix)) {
+      const name = stringEvidence(record, 'packageName') ?? record.id.slice(accessPrefix.length)
+      const access = record.evidence['access']
+      if (access === 'public' || access === 'restricted') {
+        observations.packageAccess[name] = access
+      } else if (record.status === 'failed') {
+        observations.packageAccessErrors[name] =
+          observedReason(record) ?? 'package access does not satisfy publish intent'
+      }
+      continue
+    }
+
+    if (record.id === 'env.git.push-dry-run.atomic') {
+      const ok = booleanEvidence(record, 'ok')
+      if (ok !== undefined) {
+        const detail = stringEvidence(record, 'detail')
+        observations.atomicGitPushDryRun = detail === undefined ? { ok } : { ok, detail }
+      }
+      continue
+    }
+
+    const gitPrefix = 'env.git.push-dry-run.'
+    if (record.id.startsWith(gitPrefix)) {
+      const tag = stringEvidence(record, 'tag') ?? record.id.slice(gitPrefix.length)
+      const ok = booleanEvidence(record, 'ok')
+      if (ok !== undefined) {
+        const detail = stringEvidence(record, 'detail')
+        observations.gitPushDryRun[tag] = detail === undefined ? { ok } : { ok, detail }
+      }
+      continue
+    }
+
+    if (record.id === 'env.github.release-permission') {
+      const permission = booleanEvidence(record, 'permission')
+      if (permission !== undefined) {
+        observations.githubReleasePermission = permission
+        if (permission === false) {
+          observations.githubReleasePermissionError =
+            observedReason(record) ?? 'github release permission failed'
+        }
+      }
+      continue
+    }
+
+    const releaseByTagPrefix = 'env.github.release-by-tag.'
+    if (record.id.startsWith(releaseByTagPrefix)) {
+      const tag = stringEvidence(record, 'tag') ?? record.id.slice(releaseByTagPrefix.length)
+      const exists = booleanEvidence(record, 'exists')
+      if (exists !== undefined) observations.githubReleaseExists[tag] = exists
+      continue
+    }
+
+    if (record.id === 'publish.provenance-policy') {
+      const trustedPublisherConfigured = booleanEvidence(record, 'trustedPublisherConfigured')
+      if (trustedPublisherConfigured !== undefined) {
+        observations.trustedPublisherConfigured = trustedPublisherConfigured
+      }
+      const oidcClaimsVerified = booleanEvidence(record, 'oidcClaimsVerified')
+      if (oidcClaimsVerified !== undefined) observations.oidcClaimsVerified = oidcClaimsVerified
+      const provenanceBundleExists = booleanEvidence(record, 'provenanceBundleExists')
+      if (provenanceBundleExists !== undefined) {
+        observations.provenanceBundleExists = provenanceBundleExists
+      }
+    }
+  }
+
+  return {
+    ...(observations.identity !== undefined ? { identity: observations.identity } : {}),
+    ...(observations.identityError !== undefined
+      ? { identityError: observations.identityError }
+      : {}),
+    ...(Object.keys(observations.packageAccess).length > 0
+      ? { packageAccess: observations.packageAccess }
+      : {}),
+    ...(Object.keys(observations.packageAccessErrors).length > 0
+      ? { packageAccessErrors: observations.packageAccessErrors }
+      : {}),
+    ...(Object.keys(observations.gitPushDryRun).length > 0
+      ? { gitPushDryRun: observations.gitPushDryRun }
+      : {}),
+    ...(observations.atomicGitPushDryRun !== undefined
+      ? { atomicGitPushDryRun: observations.atomicGitPushDryRun }
+      : {}),
+    ...(observations.githubReleasePermission !== undefined
+      ? { githubReleasePermission: observations.githubReleasePermission }
+      : {}),
+    ...(observations.githubReleasePermissionError !== undefined
+      ? { githubReleasePermissionError: observations.githubReleasePermissionError }
+      : {}),
+    ...(Object.keys(observations.githubReleaseExists).length > 0
+      ? { githubReleaseExists: observations.githubReleaseExists }
+      : {}),
+    ...(observations.trustedPublisherConfigured !== undefined
+      ? { trustedPublisherConfigured: observations.trustedPublisherConfigured }
+      : {}),
+    ...(observations.oidcClaimsVerified !== undefined
+      ? { oidcClaimsVerified: observations.oidcClaimsVerified }
+      : {}),
+    ...(observations.provenanceBundleExists !== undefined
+      ? { provenanceBundleExists: observations.provenanceBundleExists }
+      : {}),
+  }
+}
+
+/**
+ * Overlay freshly gathered observations onto the prior-reconstructed observations
+ * so that "fresh wins" holds at the SURFACE level, not merely the field level.
+ * Several surfaces carry a success/error field pair where exactly one side is
+ * present at a time (identity success vs. error; per-package access vs. access
+ * error; github release permission vs. its error). A naive object spread would
+ * keep the prior's success field while the fresh observation only sets the error
+ * field, leaving the surface stuck at its prior status. This merge re-observes a
+ * surface as a unit: a fresh signal for either side of a pair drops the prior's
+ * other side before applying the fresh values. Per-key surfaces (git dry-runs,
+ * github release existence, per-package access) merge key-by-key so unobserved
+ * keys carry forward from the prior.
+ */
+const mergeObservations = (
+  prior: ProofObservations,
+  fresh: ProofObservations,
+): ProofObservations => {
+  const freshObservesIdentity = fresh.identity !== undefined || fresh.identityError !== undefined
+  const identitySource = freshObservesIdentity ? fresh : prior
+
+  const freshObservesPermission =
+    fresh.githubReleasePermission !== undefined || fresh.githubReleasePermissionError !== undefined
+  const permissionSource = freshObservesPermission ? fresh : prior
+
+  const accessNames = A.dedupe([
+    ...Object.keys(prior.packageAccess ?? {}),
+    ...Object.keys(prior.packageAccessErrors ?? {}),
+    ...Object.keys(fresh.packageAccess ?? {}),
+    ...Object.keys(fresh.packageAccessErrors ?? {}),
+  ])
+  const packageAccess: Record<string, 'public' | 'restricted'> = {}
+  const packageAccessErrors: Record<string, string> = {}
+  for (const name of accessNames) {
+    const freshObservesName =
+      fresh.packageAccess?.[name] !== undefined || fresh.packageAccessErrors?.[name] !== undefined
+    const source = freshObservesName ? fresh : prior
+    const access = source.packageAccess?.[name]
+    const accessError = source.packageAccessErrors?.[name]
+    if (access !== undefined) packageAccess[name] = access
+    if (accessError !== undefined) packageAccessErrors[name] = accessError
+  }
+
+  return {
+    ...(identitySource.identity !== undefined ? { identity: identitySource.identity } : {}),
+    ...(identitySource.identityError !== undefined
+      ? { identityError: identitySource.identityError }
+      : {}),
+    ...(Object.keys(packageAccess).length > 0 ? { packageAccess } : {}),
+    ...(Object.keys(packageAccessErrors).length > 0 ? { packageAccessErrors } : {}),
+    ...(prior.gitPushDryRun !== undefined || fresh.gitPushDryRun !== undefined
+      ? { gitPushDryRun: { ...prior.gitPushDryRun, ...fresh.gitPushDryRun } }
+      : {}),
+    ...(fresh.atomicGitPushDryRun !== undefined
+      ? { atomicGitPushDryRun: fresh.atomicGitPushDryRun }
+      : prior.atomicGitPushDryRun !== undefined
+        ? { atomicGitPushDryRun: prior.atomicGitPushDryRun }
+        : {}),
+    ...(permissionSource.githubReleasePermission !== undefined
+      ? { githubReleasePermission: permissionSource.githubReleasePermission }
+      : {}),
+    ...(permissionSource.githubReleasePermissionError !== undefined
+      ? { githubReleasePermissionError: permissionSource.githubReleasePermissionError }
+      : {}),
+    ...(prior.githubReleaseExists !== undefined || fresh.githubReleaseExists !== undefined
+      ? { githubReleaseExists: { ...prior.githubReleaseExists, ...fresh.githubReleaseExists } }
+      : {}),
+    ...(fresh.trustedPublisherConfigured !== undefined
+      ? { trustedPublisherConfigured: fresh.trustedPublisherConfigured }
+      : prior.trustedPublisherConfigured !== undefined
+        ? { trustedPublisherConfigured: prior.trustedPublisherConfigured }
+        : {}),
+    ...(fresh.oidcClaimsVerified !== undefined
+      ? { oidcClaimsVerified: fresh.oidcClaimsVerified }
+      : prior.oidcClaimsVerified !== undefined
+        ? { oidcClaimsVerified: prior.oidcClaimsVerified }
+        : {}),
+    ...(fresh.provenanceBundleExists !== undefined
+      ? { provenanceBundleExists: fresh.provenanceBundleExists }
+      : prior.provenanceBundleExists !== undefined
+        ? { provenanceBundleExists: prior.provenanceBundleExists }
+        : {}),
+  }
+}
+
+/**
+ * Re-derive a proof artifact against fresh observations and merge it onto the
+ * prior. The splice is at the OBSERVATION layer, not the record layer: the
+ * caller hands in whatever observations it freshly gathered (the pre-mutation
+ * hook gathers local surfaces; apply gathers local + GitHub), those are overlaid
+ * on the observations reconstructed from the prior artifact's evidence (fresh
+ * wins per surface — see {@link mergeObservations}), and a single pure
+ * {@link makeProofArtifact} pass rebuilds and cascades the whole set. The result
+ * is internally consistent by construction — every `blocked` record points at a
+ * cause that is genuinely non-`proven` in the same artifact, because every record
+ * was derived from one observation epoch. History grows per record via
+ * {@link mergeProofHistory} (a status flip is recorded, an unchanged status
+ * appends nothing). This is the proof-blind recheck primitive the apply boundary
+ * and any executor mutation hook drive.
+ */
+export const recheckProof = (params: {
+  readonly plan: Plan
+  readonly prior: ProofArtifact
+  readonly observations: ProofObservations
+  readonly now: string
+}): ProofArtifact => {
+  const merged = mergeObservations(priorObservationsFromArtifact(params.prior), params.observations)
+  const fresh = makeProofArtifact(params.plan, params.now, merged)
+  return mergeProofHistory(params.prior, fresh)
+}
+
 export const prove = (
   plan: Plan,
   observations: ProofObservations = {},
@@ -787,9 +1275,15 @@ export const prove = (
   Effect.gen(function* () {
     const env = yield* Env.Env
     const now = yield* Clock.currentTimeMillis
-    const proof = makeProofArtifact(plan, new Date(now).toISOString(), observations)
-    yield* write(proof, proofPathFor(env.cwd, plan))
-    return proof
+    const fresh = makeProofArtifact(plan, new Date(now).toISOString(), observations)
+    const path = proofPathFor(env.cwd, plan)
+    const prior = yield* read(path).pipe(Effect.orElseSucceed(() => Option.none<ProofArtifact>()))
+    const merged = Option.match(prior, {
+      onNone: () => fresh,
+      onSome: (priorProof) => mergeProofHistory(priorProof, fresh),
+    })
+    yield* write(merged, path)
+    return merged
   })
 
 export const readForPlan = (
@@ -803,3 +1297,15 @@ export const readForPlan = (
     const env = yield* Env.Env
     return yield* read(proofPathFor(env.cwd, plan))
   })
+
+/**
+ * Internal surface exposed only for tests. `cascadeBlocked` carries a fail-loud
+ * topological invariant (see its doc comment) that no production caller can trip
+ * — `makeProofArtifact` always emits records in dependency-before-dependent order
+ * — so the guard's negative path is otherwise unreachable from any public entry.
+ * This namespace lets the test pin that guard directly without widening the
+ * public API.
+ */
+export const _ = {
+  cascadeBlocked,
+} as const

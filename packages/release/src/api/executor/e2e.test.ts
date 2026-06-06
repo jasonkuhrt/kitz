@@ -9,12 +9,12 @@ import { Otel } from '@kitz/otel'
 import { Pkg } from '@kitz/pkg'
 import { describe, expect, test } from 'bun:test'
 import { Test } from '@kitz/test'
-import { Effect, Layer, Ref, Scope, Stream } from 'effect'
+import { Effect, Layer, Ref, Scope } from 'effect'
 import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
 import { execute, executeObservable, resume, type ExecutionGraph } from './execute.js'
 import { makeTestRuntime } from './runtime.js'
-import { decodeJsonRecord, planOfficial, tag } from './test-support.js'
-import { digestForPlan } from '../proof.js'
+import { decodeJsonRecord, makeHandle, planOfficial, tag } from './test-support.js'
+import { digestForPlan } from '../release-contract.js'
 import { sha256Bytes } from '../digest.js'
 
 interface FixturePackage {
@@ -41,23 +41,6 @@ interface RealHarness {
   readonly publishCalls: Ref.Ref<readonly string[]>
   readonly failPublishPackages: Ref.Ref<readonly string[]>
 }
-
-const textEncoder = new TextEncoder()
-
-const makeHandle = (stdout: string, exitCode: number): ChildProcessSpawner.ChildProcessHandle =>
-  ChildProcessSpawner.makeHandle({
-    pid: ChildProcessSpawner.ProcessId(1),
-    exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(exitCode)),
-    isRunning: Effect.succeed(false),
-    unref: Effect.succeed(Effect.void),
-    kill: () => Effect.void,
-    stderr: Stream.empty,
-    stdin: Effect.void as any,
-    stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
-    all: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
-    getInputFd: () => Effect.void as any,
-    getOutputFd: () => Stream.empty,
-  })
 
 const slugPackageName = (packageName: string): string =>
   packageName.replace(/^@/u, '').replace(/\//gu, '-')

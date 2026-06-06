@@ -32,13 +32,17 @@ import {
 import { type PreflightError, run as runPreflight } from './preflight.js'
 import { makeRuntime, type RuntimeConfig } from './runtime.js'
 import {
+  type BeforeMutationHook,
+  makeReleaseWorkflow,
   ReleasePayload,
   type ReleasePayloadType,
   ReleaseWorkflow,
   toReleaseInfo,
 } from './workflow.js'
+
+export type { BeforeMutationHook, MutationContext } from './workflow.js'
 import { ReleaseCommit, type ScopedCommitSource } from '../analyzer/models/commit.js'
-import { digestForPlan } from '../proof.js'
+import { digestForPlan } from '../release-contract.js'
 
 /**
  * Result of executing the release workflow.
@@ -112,6 +116,14 @@ interface ExecutionOptions {
 interface ObservableExecutionOptions extends ExecutionOptions {
   readonly dbPath?: string
   readonly github?: RuntimeConfig['github']
+  /**
+   * Proof-blind gate run immediately before each mutating node. The executor
+   * forwards only generic mutation identity and treats this as an opaque
+   * allow/abort gate; a failure aborts the mutation before its side effect runs
+   * (the durable workflow suspends, resumable). The apply boundary supplies this
+   * to drive a pre-mutation proof recheck — the executor stays proof-blind.
+   */
+  readonly beforeMutation?: BeforeMutationHook
 }
 
 interface ResolvedExecutionState {
@@ -517,11 +529,17 @@ export const toPayload = (
 
     const orderedReleases = yield* orderReleaseEntries(releaseEntries)
 
+    const access =
+      plan.publishIntent === undefined || plan.publishIntent.access.mode === 'omit'
+        ? undefined
+        : plan.publishIntent.access.value
+
     return {
       releases: orderedReleases,
       options: {
         dryRun: options.dryRun ?? false,
         planDigest: digestForPlan(plan).value,
+        ...(access !== undefined ? { access } : {}),
         rehearsedArtifacts: options.rehearsedArtifacts ?? false,
         atomicTagPush: plan.publishIntent?.git.atomicTagPush ?? options.atomicTagPush ?? false,
         ...(resolvedTag !== undefined ? { tag: resolvedTag } : {}),
@@ -693,7 +711,14 @@ const makeObservableResult = (
 ): Effect.Effect<ObservableResult<ObservableExecutionRequirements>, ObservableExecutionError> =>
   Effect.gen(function* () {
     const graphInfo = graphFromPayload(payload)
-    const { events, execute: workflowExecute } = yield* ReleaseWorkflow.observable(payload)
+    // Build a workflow that carries the injected before-mutation gate (if any)
+    // into every mutating side-effect boundary. The graph structure is identical
+    // to the default workflow; only runtime behavior inside node effects differs.
+    const workflow =
+      options.beforeMutation !== undefined
+        ? makeReleaseWorkflow(options.beforeMutation)
+        : ReleaseWorkflow
+    const { events, execute: workflowExecute } = yield* workflow.observable(payload)
 
     const runtimeConfig: RuntimeConfig = {
       ...(options.dbPath && { dbPath: options.dbPath }),

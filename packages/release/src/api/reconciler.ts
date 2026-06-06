@@ -4,7 +4,7 @@ import { Pkg } from '@kitz/pkg'
 import { PlatformError, Effect, FileSystem, HashSet, Option, Schema } from 'effect'
 import * as Journal from './journal.js'
 import type { Plan } from './planner/models/plan.js'
-import { digestForPlan } from './proof.js'
+import { digestForPlan } from './release-contract.js'
 import { PlanDigest, ReconcileDecision, type SideEffectEntry } from './release-contract.js'
 
 export interface ReconcileInput {

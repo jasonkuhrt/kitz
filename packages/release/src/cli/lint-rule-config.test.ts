@@ -1,7 +1,6 @@
 import { Pkg } from '@kitz/pkg'
 import { describe, expect, test } from 'bun:test'
 import * as Api from '../api/__.js'
-import { createCommandLintConfig } from './lint-rule-config.js'
 
 const makeResolvedConfig = (
   lint: Partial<typeof Api.Lint.ResolvedConfig.Type> = {},
@@ -51,7 +50,7 @@ describe('command lint rule config', () => {
       },
     })
 
-    const lintConfig = createCommandLintConfig({
+    const lintConfig = Api.Lint.createCommandLintConfig({
       config,
       rules: [
         {
@@ -101,7 +100,7 @@ describe('command lint rule config', () => {
       },
     })
 
-    const lintConfig = createCommandLintConfig({
+    const lintConfig = Api.Lint.createCommandLintConfig({
       config,
       rules: [
         {
@@ -144,7 +143,7 @@ describe('command lint rule config', () => {
       },
     })
 
-    const lintConfig = createCommandLintConfig({
+    const lintConfig = Api.Lint.createCommandLintConfig({
       config,
       rules: [
         {

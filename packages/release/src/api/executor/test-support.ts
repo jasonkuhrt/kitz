@@ -17,7 +17,7 @@ import { sha256Bytes } from '../digest.js'
 const JsonRecordSchema = Schema.Record(Schema.String, Schema.Unknown)
 const JsonRecordFromStringSchema = Schema.fromJsonString(JsonRecordSchema)
 export const decodeJsonRecord = Schema.decodeUnknownEffect(JsonRecordFromStringSchema)
-const textEncoder = new TextEncoder()
+export const textEncoder = new TextEncoder()
 
 export const decodeJsonRecordSync = Schema.decodeUnknownSync(JsonRecordFromStringSchema)
 
@@ -37,7 +37,10 @@ export const tag = (name: Pkg.Moniker.Moniker, version: string) =>
 const slugPackageName = (packageName: string): string =>
   packageName.replace(/^@/u, '').replace(/\//gu, '-')
 
-const makeHandle = (stdout: string, exitCode: number): ChildProcessSpawner.ChildProcessHandle =>
+export const makeHandle = (
+  stdout: string,
+  exitCode: number,
+): ChildProcessSpawner.ChildProcessHandle =>
   ChildProcessSpawner.makeHandle({
     pid: ChildProcessSpawner.ProcessId(1),
     exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(exitCode)),
@@ -117,6 +120,7 @@ export interface PublishCall {
   readonly tarball: Fs.Path.AbsFile
   readonly tag?: string
   readonly registry?: string
+  readonly access?: 'public' | 'restricted'
   readonly ignoreScripts?: boolean
   readonly dryRun?: boolean
   readonly provenance?: boolean
@@ -145,6 +149,13 @@ export const makeHarness = (options: {
   readonly observedDistTags?: Readonly<Record<string, string>>
   readonly runtimeLayer?: Layer.Layer<any>
   readonly whoamiUsername?: string
+  /**
+   * Override the registry access status `getAccessStatus` reports. The release
+   * workflow itself never calls `getAccessStatus`; only the proof recheck does.
+   * Setting this to a value that mismatches the publish intent lets a test drive
+   * a pre-mutation proof block without disturbing any workflow npm op.
+   */
+  readonly accessStatus?: 'public' | 'restricted'
   readonly envVars?: Record<string, string | undefined>
 }): Effect.Effect<Harness> =>
   Effect.gen(function* () {
@@ -265,6 +276,7 @@ export const makeHarness = (options: {
                     : {}),
                   ...(publishOptions.tag && { tag: publishOptions.tag }),
                   ...(publishOptions.registry && { registry: publishOptions.registry }),
+                  ...(publishOptions.access !== undefined ? { access: publishOptions.access } : {}),
                   ...(publishOptions.ignoreScripts !== undefined
                     ? { ignoreScripts: publishOptions.ignoreScripts }
                     : {}),
@@ -368,7 +380,7 @@ export const makeHarness = (options: {
             }),
           listAccessPackages: () => Effect.succeed({}),
           listAccessCollaborators: () => Effect.succeed({}),
-          getAccessStatus: () => Effect.succeed('public' as const),
+          getAccessStatus: () => Effect.succeed(options.accessStatus ?? ('public' as const)),
         } satisfies NpmRegistry.NpmCliService
       }),
     ).pipe(Layer.provide(planLayer))

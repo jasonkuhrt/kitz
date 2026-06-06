@@ -7,7 +7,7 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
-import { Console, Effect, Fiber, Layer, Option, Stream, Terminal } from 'effect'
+import { Console, Effect, Fiber, Layer, Option, Schema, Stream, Terminal } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
@@ -19,6 +19,7 @@ import {
   loadActivePlan,
   loadPlan,
 } from './plan-file.js'
+import { makeProofRecheckHook } from './proof-recheck-hook.js'
 
 const confirm = (message: string) =>
   Effect.gen(function* () {
@@ -87,6 +88,34 @@ export const resume = Command.make(
       }
       const publishing = Api.Publishing.publishingFromIntent(plan.publishIntent)
 
+      // The plan-bound proof that `release apply` wrote is the basis for the
+      // pre-mutation recheck the executor runs before the single
+      // not-yet-completed mutation this resume is driving into. Resume is the
+      // exact window where a credential can expire (an operator suspends, fixes
+      // an unrelated issue, and resumes later), so the gate must fire here too —
+      // not just on the original fresh apply. Without a proof on disk there is
+      // nothing to recheck against; refuse rather than resume un-gated.
+      const proofResult = yield* Effect.result(Api.Proof.readForPlan(plan))
+      if (proofResult._tag === 'Failure') {
+        if (Schema.isSchemaError(proofResult.failure)) {
+          yield* Console.error('Plan-bound proof is unreadable (stale or invalid proof schema).')
+          yield* Console.error('Run `release prove` to refresh it before resuming.')
+          return env.exit(1)
+        }
+        return yield* Effect.fail(proofResult.failure)
+      }
+      const proof = proofResult.success
+      if (Option.isNone(proof)) {
+        yield* Console.error('Plan-bound proof is missing; cannot recheck credentials on resume.')
+        yield* Console.error('Run `release prove` before resuming.')
+        return env.exit(1)
+      }
+      if (Api.Proof.hasBlockingProof(proof.value, plan.proofPolicy)) {
+        yield* Console.error('Plan-bound proof contains blocking records.')
+        yield* Console.error('Run `release prove` and resolve every failed or unprovable proof.')
+        return env.exit(1)
+      }
+
       const runtime = yield* Api.Explorer.explore()
       const runtimeConfig = Api.Explorer.toExecutorRuntimeConfig(runtime)
       if (!runtimeConfig.github) {
@@ -101,6 +130,7 @@ export const resume = Command.make(
         publishing,
         trunk: plan.publishIntent.git.trunk,
         github: runtimeConfig.github,
+        beforeMutation: makeProofRecheckHook({ plan, prior: proof.value }),
       }).pipe(Effect.provide(Api.Executor.makeWorkflowRuntime()), Effect.result)
 
       if (resumeAttempt._tag === 'Failure') {

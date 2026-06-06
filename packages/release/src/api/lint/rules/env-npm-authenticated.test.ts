@@ -1,11 +1,10 @@
 import { ChildProcessSpawner } from 'effect/unstable/process'
-import { Effect, Layer, PlatformError, Stream } from 'effect'
+import { Effect, Layer, PlatformError } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { Violation } from '../models/violation.js'
 import { RuleOptionsService } from '../services/rule-options.js'
+import { makeHandle } from '../../executor/test-support.js'
 import { rule } from './env-npm-authenticated.js'
-
-const textEncoder = new TextEncoder()
 
 const makeSpawnerLayer = (mode: 'success' | 'failure') =>
   Layer.succeed(
@@ -20,21 +19,7 @@ const makeSpawnerLayer = (mode: 'success' | 'failure') =>
           }),
         ) as any
       }
-      return Effect.succeed(
-        ChildProcessSpawner.makeHandle({
-          pid: ChildProcessSpawner.ProcessId(1),
-          exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(0)),
-          isRunning: Effect.succeed(false),
-          unref: Effect.succeed(Effect.void),
-          kill: () => Effect.void,
-          stderr: Stream.empty,
-          stdin: Effect.void as any,
-          stdout: Stream.fromIterable([textEncoder.encode('jasonkuhrt\n')]),
-          all: Stream.fromIterable([textEncoder.encode('jasonkuhrt\n')]),
-          getInputFd: () => Effect.void as any,
-          getOutputFd: () => Stream.empty,
-        }),
-      )
+      return Effect.succeed(makeHandle('jasonkuhrt\n', 0))
     }),
   )
 

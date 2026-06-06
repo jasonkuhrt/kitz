@@ -14,6 +14,7 @@ import {
   PlanBody,
   PlanDigest,
   PlanSourceSnapshot,
+  ProofRecord,
   publishIntentFromSemantics,
 } from './release-contract.js'
 import { resolvePublishSemantics } from './publishing.js'
@@ -105,6 +106,31 @@ describe('release contract models', () => {
 
     expect(envelope.digest.value).toBe(sha256Json(encoded).value)
     expect(envelope.signature.signature).toBe('unsigned')
+  })
+
+  test('proof record round-trips with a cascade root-cause reference', () => {
+    const record = ProofRecord.make({
+      id: 'env.publish.access-level.@kitz/core',
+      status: 'blocked',
+      dependsOn: ['env.publish.package-access.@kitz/core'],
+      observedAt: '2026-05-13T00:00:00.000Z',
+      evidence: {},
+      blockedBy: 'env.publish.package-access.@kitz/core',
+      proofHistory: [
+        {
+          from: 'failed',
+          to: 'blocked',
+          at: '2026-05-13T00:00:00.000Z',
+          reason: 'dependency env.publish.package-access.@kitz/core is failed',
+          cause: 'env.publish.package-access.@kitz/core',
+        },
+      ],
+    })
+
+    const roundTrip = Schema.decodeSync(ProofRecord)(Schema.encodeSync(ProofRecord)(record))
+    expect(roundTrip.blockedBy).toBe('env.publish.package-access.@kitz/core')
+    expect(roundTrip.proofHistory[0]?.cause).toBe('env.publish.package-access.@kitz/core')
+    expect(roundTrip.proofHistory[0]?.from).toBe('failed')
   })
 
   test('artifact manifests encode exact tarball metadata shape', () => {

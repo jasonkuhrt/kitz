@@ -4,7 +4,7 @@ import path from 'node:path'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
-import { NpmRegistry } from '@kitz/npm-registry'
+import { make as makeNpmCliTest } from '@kitz/npm-registry/test'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, FileSystem, Layer, Option, Ref } from 'effect'
@@ -208,6 +208,28 @@ describe('artifact manifest', () => {
       writeFileSync(path.join(rootDir, 'packages/core/src/index.ts'), 'export const value = 1\n')
 
       const packageRoot = Fs.Path.AbsDir.fromString(`${rootDir}/packages/core/`)
+      const npm = makeNpmCliTest({ whoamiUser: 'mock-user', hasVersion: false })
+      npm.pack.every((options) =>
+        Effect.gen(function* () {
+          const manifest = readFileSync(`${Fs.Path.toString(options.cwd)}package.json`, 'utf8')
+          const parsed = decodeJsonRecordSync(manifest)
+          const name = parsed['name']
+          const version = parsed['version']
+          if (typeof name !== 'string' || typeof version !== 'string') {
+            return yield* Effect.die('expected staged manifest name and version')
+          }
+          const tarball = Fs.Path.join(
+            options.packDestination,
+            Fs.Path.RelFile.fromString('./kitz-core-1.1.0.tgz'),
+          )
+          writeFileSync(Fs.Path.toString(tarball), `packed:${name}@${version}`)
+          return {
+            tarball,
+            filename: 'kitz-core-1.1.0.tgz',
+            files: [{ path: 'src/index.ts', size: 23 }],
+          }
+        }),
+      )
       const staged = await Effect.runPromise(
         Effect.gen(function* () {
           const artifact = yield* preparePackageArtifact(
@@ -240,38 +262,7 @@ describe('artifact manifest', () => {
             Layer.mergeAll(
               FileSystemLayer,
               Env.Test({ cwd: Fs.Path.AbsDir.fromString(`${rootDir}/`) }),
-              Layer.succeed(NpmRegistry.NpmCli, {
-                whoami: () => Effect.succeed('mock-user'),
-                pack: (options) =>
-                  Effect.gen(function* () {
-                    const manifest = readFileSync(
-                      `${Fs.Path.toString(options.cwd)}package.json`,
-                      'utf8',
-                    )
-                    const parsed = decodeJsonRecordSync(manifest)
-                    const name = parsed['name']
-                    const version = parsed['version']
-                    if (typeof name !== 'string' || typeof version !== 'string') {
-                      return yield* Effect.die('expected staged manifest name and version')
-                    }
-                    const tarball = Fs.Path.join(
-                      options.packDestination,
-                      Fs.Path.RelFile.fromString('./kitz-core-1.1.0.tgz'),
-                    )
-                    writeFileSync(Fs.Path.toString(tarball), `packed:${name}@${version}`)
-                    return {
-                      tarball,
-                      filename: 'kitz-core-1.1.0.tgz',
-                      files: [{ path: 'src/index.ts', size: 23 }],
-                    }
-                  }),
-                publish: () => Effect.void,
-                hasVersion: () => Effect.succeed(false),
-                observeVersion: () => Effect.die('unexpected observeVersion'),
-                listAccessPackages: () => Effect.succeed({}),
-                listAccessCollaborators: () => Effect.succeed({}),
-                getAccessStatus: () => Effect.succeed('public' as const),
-              }),
+              npm.$test.layer(),
             ),
           ),
         ),
@@ -390,16 +381,7 @@ describe('artifact manifest', () => {
                 scripts: { prepack: 'echo preparing' },
               }),
             }),
-            Layer.succeed(NpmRegistry.NpmCli, {
-              whoami: () => Effect.die('unexpected whoami'),
-              pack: () => Effect.die('unexpected pack'),
-              publish: () => Effect.die('unexpected publish'),
-              hasVersion: () => Effect.die('unexpected hasVersion'),
-              observeVersion: () => Effect.die('unexpected observeVersion'),
-              listAccessPackages: () => Effect.die('unexpected listAccessPackages'),
-              listAccessCollaborators: () => Effect.die('unexpected listAccessCollaborators'),
-              getAccessStatus: () => Effect.die('unexpected getAccessStatus'),
-            }),
+            makeNpmCliTest().$test.layer(),
           ),
         ),
       ),
@@ -681,16 +663,7 @@ describe('artifact manifest', () => {
                 engines: { node: '20.0.0' },
               }),
             }),
-            Layer.succeed(NpmRegistry.NpmCli, {
-              whoami: () => Effect.die('unexpected whoami'),
-              pack: () => Effect.die('unexpected pack'),
-              publish: () => Effect.die('unexpected publish'),
-              hasVersion: () => Effect.die('unexpected hasVersion'),
-              observeVersion: () => Effect.die('unexpected observeVersion'),
-              listAccessPackages: () => Effect.die('unexpected listAccessPackages'),
-              listAccessCollaborators: () => Effect.die('unexpected listAccessCollaborators'),
-              getAccessStatus: () => Effect.die('unexpected getAccessStatus'),
-            }),
+            makeNpmCliTest().$test.layer(),
           ),
         ),
       ),

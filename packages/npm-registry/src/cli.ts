@@ -73,7 +73,7 @@ export interface PublishOptions {
   readonly tag?: string
   /** Registry URL */
   readonly registry?: string
-  /** npm access level (default: 'public') */
+  /** npm access level. Omitted leaves the package-manager default in effect. */
   readonly access?: 'public' | 'restricted'
   /** Disable lifecycle scripts during tarball publish (default: true) */
   readonly ignoreScripts?: boolean
@@ -261,8 +261,7 @@ const buildPublishCommand = (options: PublishOptions) => {
       return ChildProcess.make('bun', [
         'publish',
         tarball,
-        '--access',
-        options.access ?? 'public',
+        ...(options.access !== undefined ? ['--access', options.access] : []),
         ...((options.ignoreScripts ?? true) ? ['--ignore-scripts'] : []),
         ...(options.tag ? ['--tag', options.tag] : []),
         ...(options.registry ? ['--registry', options.registry] : []),
@@ -273,8 +272,7 @@ const buildPublishCommand = (options: PublishOptions) => {
       return ChildProcess.make('pnpm', [
         'publish',
         tarball,
-        '--access',
-        options.access ?? 'public',
+        ...(options.access !== undefined ? ['--access', options.access] : []),
         ...((options.ignoreScripts ?? true) ? ['--ignore-scripts'] : []),
         '--no-git-checks',
         ...(options.tag ? ['--tag', options.tag] : []),
@@ -287,8 +285,7 @@ const buildPublishCommand = (options: PublishOptions) => {
       return ChildProcess.make('npm', [
         'publish',
         tarball,
-        '--access',
-        options.access ?? 'public',
+        ...(options.access !== undefined ? ['--access', options.access] : []),
         ...((options.ignoreScripts ?? true) ? ['--ignore-scripts'] : []),
         ...(options.tag ? ['--tag', options.tag] : []),
         ...(options.registry ? ['--registry', options.registry] : []),

@@ -34,6 +34,7 @@ export { defineConfig } from './config.js'
 
 // Pipeline modules (in execution order)
 export * as Analyzer from './analyzer/__.js'
+export * as Apply from './apply.js'
 export * as Artifact from './artifact.js'
 export * as AuditArchive from './audit-archive.js'
 export * as Executor from './executor/__.js'

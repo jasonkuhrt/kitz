@@ -1,5 +1,5 @@
 import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
-import { Effect, Layer, Stream } from 'effect'
+import { Effect, Layer } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
@@ -7,24 +7,8 @@ import { Semver } from '@kitz/semver'
 import { Violation } from '../models/violation.js'
 import { RuleOptionsService } from '../services/rule-options.js'
 import { ReleasePlan } from '../services/__.js'
+import { makeHandle } from '../../executor/test-support.js'
 import { rule } from './plan-versions-unpublished.js'
-
-const textEncoder = new TextEncoder()
-
-const makeHandle = (stdout: string, exitCode: number): ChildProcessSpawner.ChildProcessHandle =>
-  ChildProcessSpawner.makeHandle({
-    pid: ChildProcessSpawner.ProcessId(1),
-    exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(exitCode)),
-    isRunning: Effect.succeed(false),
-    unref: Effect.succeed(Effect.void),
-    kill: () => Effect.void,
-    stderr: Stream.empty,
-    stdin: Effect.void as any,
-    stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
-    all: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
-    getInputFd: () => Effect.void as any,
-    getOutputFd: () => Stream.empty,
-  })
 
 const makeSpawnerLayer = (exists: boolean) =>
   Layer.succeed(

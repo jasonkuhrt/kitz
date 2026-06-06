@@ -74,6 +74,12 @@ export interface PublishOptions {
   readonly tag?: string
   /** Registry URL */
   readonly registry?: string
+  /**
+   * Registry access level resolved from the publish intent. Omitted when the
+   * intent declares `access: { mode: 'omit' }`, leaving the access flag to the
+   * package-manager default.
+   */
+  readonly access?: 'public' | 'restricted'
   /** Simulate the package-manager publish command without a registry mutation. */
   readonly dryRun?: boolean
   /** OTP value supplied through a provider-approved path. */
@@ -309,7 +315,7 @@ export const publishPreparedArtifact = (
         ...(options?.packageManager !== undefined
           ? { packageManager: options.packageManager }
           : {}),
-        access: 'public',
+        ...(options?.access !== undefined ? { access: options.access } : {}),
         ignoreScripts: true,
         ...(options?.tag && { tag: options.tag }),
         ...(options?.registry && { registry: options.registry }),

@@ -1,6 +1,7 @@
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
+import { make as makeGitTest } from '@kitz/git/test'
 import { Pkg } from '@kitz/pkg'
 import { Effect, Layer } from 'effect'
 import { describe, expect, test } from 'bun:test'
@@ -151,39 +152,17 @@ describe('analyzer.analyze', () => {
   test('treats missing until-tag history as an empty newer-commit window', async () => {
     const commits = [Git.Memory.commit('feat(core): add api', { hash: Git.Sha.make('abc1234') })]
     const tags = ['@kitz/core@1.0.0']
-    const gitLayer = Layer.succeed(Git.Git, {
-      getTags: () => Effect.succeed(tags),
-      getCurrentBranch: () => Effect.succeed('main'),
-      getCommitsSince: (tag: string | undefined) =>
-        tag === '@kitz/core@1.0.0'
-          ? Effect.fail(
-              new Git.GitError({
-                context: {
-                  operation: 'getCommitsSince',
-                  detail: tag,
-                },
-                cause: new Error('tag history unavailable'),
-              }),
-            )
-          : Effect.succeed(commits),
-      isClean: () => Effect.succeed(true),
-      createTag: () => Effect.void,
-      pushTags: () => Effect.void,
-      pushTagsAtomic: () => Effect.void,
-      pushTagDryRun: () => Effect.succeed({ stdout: '' }),
-      pushTagsAtomicDryRun: () => Effect.succeed({ stdout: '' }),
-      getRoot: () => Effect.succeed('/repo'),
-      getHeadSha: () => Effect.succeed(Git.Sha.make('abc1234')),
-      getTagSha: () => Effect.succeed(Git.Sha.make('abc1234')),
-      isAncestor: () => Effect.succeed(false),
-      createTagAt: () => Effect.void,
-      deleteTag: () => Effect.void,
-      commitExists: () => Effect.succeed(true),
-      pushTag: () => Effect.void,
-      deleteRemoteTag: () => Effect.void,
-      getRemoteUrl: () => Effect.succeed('git@github.com:example/repo.git'),
-      getHooksDir: () => Effect.succeed('/repo/.git/hooks'),
-    } satisfies Git.GitService)
+    const git = makeGitTest({ tags })
+    git.getCommitsSince.everySuccess(commits)
+    git.getCommitsSince.when('@kitz/core@1.0.0').everyFail(
+      new Git.GitError({
+        context: {
+          operation: 'getCommitsSince',
+          detail: '@kitz/core@1.0.0',
+        },
+        cause: new Error('tag history unavailable'),
+      }),
+    )
 
     const result = await Effect.runPromise(
       analyze({
@@ -195,7 +174,7 @@ describe('analyzer.analyze', () => {
       }).pipe(
         Effect.provide(
           Layer.mergeAll(
-            gitLayer,
+            git.$test.layer(),
             Fs.Memory.layer({
               '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
             }),

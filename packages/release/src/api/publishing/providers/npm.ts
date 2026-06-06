@@ -43,8 +43,7 @@ export const buildPublishCommand = (params: NpmPublishCommandOptions) =>
   Pkg.Manager.Command.fromParts('npm', [
     'publish',
     params.target,
-    '--access',
-    params.access ?? 'public',
+    ...(params.access !== undefined ? ['--access', params.access] : []),
     ...((params.ignoreScripts ?? true) ? ['--ignore-scripts'] : []),
     ...(params.tag !== undefined ? ['--tag', params.tag] : []),
     ...(params.registry !== undefined ? ['--registry', params.registry] : []),

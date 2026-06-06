@@ -29,7 +29,9 @@ export const prune = Command.make(
         Effect.orElseSucceed(() => undefined),
       )
       const retainedDigest =
-        planState?._tag === 'PlanLoaded' ? Api.Proof.digestForPlan(planState.plan).value : undefined
+        planState?._tag === 'PlanLoaded'
+          ? Api.ReleaseContract.digestForPlan(planState.plan).value
+          : undefined
       const artifactRoot = Fs.Path.join(env.cwd, Fs.Path.RelDir.fromString('./.release/artifacts/'))
       const dirs = yield* fs
         .readDirectory(Fs.Path.toString(artifactRoot))

@@ -534,6 +534,24 @@ describe('npm-registry cli', () => {
     ])
   })
 
+  test('publish omits the --access flag when access is undefined', async () => {
+    const materializedCommands = await Promise.all(
+      (['npm', 'pnpm', 'bun'] as const).map((packageManager) => {
+        const spawner = makeSpawnerLayer()
+        return Effect.runPromise(
+          publish({
+            packageManager,
+            tarball: Fs.Path.AbsFile.fromString('/repo/.release/artifacts/react-19.2.0.tgz'),
+          }).pipe(Effect.provide(spawner.layer)),
+        ).then(() => spawner.commands.at(-1) ?? [])
+      }),
+    )
+
+    for (const command of materializedCommands) {
+      expect(command).not.toContain('--access')
+    }
+  })
+
   test('publish maps non-zero exits and spawner failures to NpmCliError', async () => {
     const exitError = await Effect.runPromise(
       publish({

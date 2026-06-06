@@ -20,7 +20,7 @@ import {
   planOfficial,
   tag,
 } from './test-support.js'
-import { digestForPlan } from '../proof.js'
+import { digestForPlan } from '../release-contract.js'
 
 const corePackagePath = Fs.Path.AbsDir.fromString('/repo/packages/core/')
 const coreManifestPath = Fs.Path.AbsFile.fromString('/repo/packages/core/package.json')

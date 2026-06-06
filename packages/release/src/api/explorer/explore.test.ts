@@ -1,47 +1,31 @@
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
-import { NpmRegistry } from '@kitz/npm-registry'
+import { make as makeNpmCliTest } from '@kitz/npm-registry/test'
 import { Effect, Layer } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import type { Recon } from './models/__.js'
 import { explore, toExecutorRuntimeConfig } from './explore.js'
 
-const makeNpmCliLayer = (options?: {
-  readonly username?: string
-  readonly onWhoami?: (options: { readonly registry?: string } | undefined) => void
-}) =>
-  Layer.succeed(NpmRegistry.NpmCli, {
-    whoami: (whoamiOptions) => {
-      options?.onWhoami?.(whoamiOptions)
-      return Effect.succeed(options?.username ?? 'npm-user')
-    },
-    pack: () => Effect.die('unexpected npm pack call in explore test'),
-    publish: () => Effect.die('unexpected npm publish call in explore test'),
-    hasVersion: () => Effect.die('unexpected npm view call in explore test'),
-    observeVersion: () => Effect.die('unexpected npm observe call in explore test'),
-    listAccessPackages: () => Effect.die('unexpected npm access packages call in explore test'),
-    listAccessCollaborators: () =>
-      Effect.die('unexpected npm access collaborators call in explore test'),
-    getAccessStatus: () => Effect.die('unexpected npm access status call in explore test'),
-  })
-
-const runExplore = (
+const runExplore = async (
   vars: Record<string, string | undefined>,
   gitConfig: Parameters<typeof Git.Memory.make>[0] = {},
-  npmOptions?: Parameters<typeof makeNpmCliLayer>[0],
-) =>
-  Effect.runPromise(
+  npmOptions?: { readonly username?: string },
+) => {
+  const npm = makeNpmCliTest({ whoamiUser: npmOptions?.username ?? 'npm-user' })
+  const result = await Effect.runPromise(
     explore().pipe(
       Effect.provide(
-        Layer.mergeAll(Env.Test({ vars }), Git.Memory.make(gitConfig), makeNpmCliLayer(npmOptions)),
+        Layer.mergeAll(Env.Test({ vars }), Git.Memory.make(gitConfig), npm.$test.layer()),
       ),
       Effect.result,
     ),
   )
+  return { result, npm }
+}
 
 describe('explore', () => {
   test('resolves in CI from GITHUB_REPOSITORY + GITHUB_TOKEN', async () => {
-    const result = await runExplore({
+    const { result } = await runExplore({
       CI: 'true',
       GITHUB_ACTIONS: 'true',
       GITHUB_REPOSITORY: 'kitz-org/kitz',
@@ -64,7 +48,7 @@ describe('explore', () => {
   })
 
   test('resolves locally from origin remote + GITHUB_TOKEN', async () => {
-    const result = await runExplore(
+    const { result } = await runExplore(
       {
         GITHUB_TOKEN: 'token-123',
       },
@@ -85,7 +69,7 @@ describe('explore', () => {
   })
 
   test('resolves locally from GITHUB_REPOSITORY + GITHUB_TOKEN even if remote is not github', async () => {
-    const result = await runExplore(
+    const { result } = await runExplore(
       {
         GITHUB_REPOSITORY: 'kitz-org/kitz',
         GITHUB_TOKEN: 'token-123',
@@ -104,7 +88,7 @@ describe('explore', () => {
   })
 
   test('succeeds with null credentials when token is missing', async () => {
-    const result = await runExplore({
+    const { result } = await runExplore({
       GITHUB_REPOSITORY: 'kitz-org/kitz',
     })
 
@@ -120,7 +104,7 @@ describe('explore', () => {
   })
 
   test('fails when GITHUB_REPOSITORY format is invalid', async () => {
-    const result = await runExplore({
+    const { result } = await runExplore({
       GITHUB_REPOSITORY: 'invalid-repo-format',
       GITHUB_TOKEN: 'token-123',
     })
@@ -133,7 +117,7 @@ describe('explore', () => {
   })
 
   test('fails when neither env repository nor github origin is available', async () => {
-    const result = await runExplore(
+    const { result } = await runExplore(
       {
         GITHUB_TOKEN: 'token-123',
       },
@@ -152,7 +136,7 @@ describe('explore', () => {
   })
 
   test('reports discovered npm auth and origin remote instead of placeholders', async () => {
-    const result = await runExplore(
+    const { result } = await runExplore(
       {
         GITHUB_TOKEN: 'token-123',
       },
@@ -175,33 +159,24 @@ describe('explore', () => {
   })
 
   test('lets npm resolve registry config when no registry env var is set', async () => {
-    let seenWhoamiOptions: { readonly registry?: string } | undefined
-
-    const result = await runExplore(
+    const { result, npm } = await runExplore(
       {
         GITHUB_TOKEN: 'token-123',
       },
       {
         remoteUrl: 'git@github.com:jasonkuhrt/kitz.git',
       },
-      {
-        onWhoami: (options) => {
-          seenWhoamiOptions = options
-        },
-      },
     )
 
     expect(result._tag).toBe('Success')
     if (result._tag === 'Success') {
-      expect(seenWhoamiOptions).toBeUndefined()
+      expect(npm.whoami.calls).toEqual([[undefined]])
       expect(result.success.npm.registry).toBeNull()
     }
   })
 
   test('reports the explicit npm registry from environment when one is set', async () => {
-    let seenWhoamiOptions: { readonly registry?: string } | undefined
-
-    const result = await runExplore(
+    const { result, npm } = await runExplore(
       {
         GITHUB_TOKEN: 'token-123',
         NPM_CONFIG_REGISTRY: 'https://npm.pkg.github.com',
@@ -209,16 +184,11 @@ describe('explore', () => {
       {
         remoteUrl: 'git@github.com:jasonkuhrt/kitz.git',
       },
-      {
-        onWhoami: (options) => {
-          seenWhoamiOptions = options
-        },
-      },
     )
 
     expect(result._tag).toBe('Success')
     if (result._tag === 'Success') {
-      expect(seenWhoamiOptions).toEqual({ registry: 'https://npm.pkg.github.com' })
+      expect(npm.whoami.calls).toEqual([[{ registry: 'https://npm.pkg.github.com' }]])
       expect(result.success.npm.registry).toBe('https://npm.pkg.github.com')
     }
   })
@@ -255,7 +225,7 @@ describe('explore', () => {
             Git.Memory.make({
               remoteUrl: 'git@github.com:jasonkuhrt/kitz.git',
             }),
-            makeNpmCliLayer(),
+            makeNpmCliTest({ whoamiUser: 'npm-user' }).$test.layer(),
           ),
         ),
         Effect.result,

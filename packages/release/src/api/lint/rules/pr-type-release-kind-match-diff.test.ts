@@ -3,7 +3,7 @@ import { Effect, Layer, Option } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { PrTitle } from '../models/violation-location.js'
 import { DiffService } from '../services/diff.js'
-import { PrService } from '../services/pr.js'
+import { makePrLayer } from '../test-support.js'
 import { rule } from './pr-type-release-kind-match-diff.js'
 
 const diffWithSrcChanges = Layer.succeed(DiffService, {
@@ -12,15 +12,6 @@ const diffWithSrcChanges = Layer.succeed(DiffService, {
   ],
   affectedPackages: ['release'],
 })
-
-const makePrLayer = (title: string, commit: CC.Commit.Commit) =>
-  Layer.succeed(PrService, {
-    number: 129,
-    title,
-    body: '',
-    commit: Option.some(commit),
-    titleParseError: Option.none(),
-  })
 
 describe('pr.type.release-kind-match-diff', () => {
   test('passes when a mixed-type title includes at least one release-triggering target', async () => {

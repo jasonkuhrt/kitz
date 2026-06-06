@@ -1,31 +1,44 @@
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
+import { make as makeGitTest } from '@kitz/git/test'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
+import { make as makeNpmCliTest } from '@kitz/npm-registry/test'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { describe, expect, test } from 'bun:test'
-import { Effect, Layer, Option } from 'effect'
+import { Array as A, Effect, FileSystem, Layer, Option, Result, Schema } from 'effect'
 import { Env } from '@kitz/env'
 import { makeCascadeCommit } from './analyzer/models/commit.js'
 import { OfficialFirst } from './version/models/official-first.js'
 import { Official } from './planner/models/item-official.js'
 import { Plan } from './planner/models/plan.js'
 import {
+  _ as ProofInternal,
   collectLocalObservations,
   collectGithubObservations,
+  collectObservations,
+  deferredProofsForArtifact,
+  hasBlockingProof,
   makeProofArtifact,
+  mergeProofHistory,
+  priorObservationsFromArtifact,
+  proofPathFor,
   prove,
   readForPlan,
+  recheckProof,
   validateProof,
 } from './proof.js'
 import { sha256Text } from './digest.js'
 import {
+  DeferredProof,
   PlanDigest,
   PlanSourceSnapshot,
   ProofArtifact,
   ProofRecord,
   CredentialIntent,
+  defaultProofPolicy,
+  ProofPolicy,
   PublishIntent,
   PublishProfile,
   publishIntentFromSemantics,
@@ -76,6 +89,9 @@ const updateCredentialIntent = (intent: CredentialIntent, overrides: Partial<Cre
 const updateProofArtifact = (artifact: ProofArtifact, overrides: Partial<ProofArtifact>) =>
   ProofArtifact.make(Object.assign({}, artifact, overrides))
 
+const updateProofPolicy = (policy: ProofPolicy, overrides: Partial<ProofPolicy>) =>
+  ProofPolicy.make(Object.assign({}, policy, overrides))
+
 const updateProofRecord = (record: ProofRecord, overrides: Partial<ProofRecord>) =>
   ProofRecord.make(Object.assign({}, record, overrides))
 
@@ -123,48 +139,6 @@ const gitError = (operation: Git.GitOperation, detail: string) =>
     cause: new Error(detail),
   })
 
-const unused = () => Effect.die('unused test service operation')
-
-const npmCliLayer = (
-  overrides: Partial<NpmRegistry.NpmCliService>,
-): Layer.Layer<NpmRegistry.NpmCli> =>
-  Layer.succeed(NpmRegistry.NpmCli, {
-    whoami: () => Effect.succeed('octocat'),
-    pack: () => unused(),
-    publish: () => unused(),
-    hasVersion: () => unused(),
-    observeVersion: () => unused(),
-    listAccessPackages: () => unused(),
-    listAccessCollaborators: () => unused(),
-    getAccessStatus: () => Effect.succeed('public'),
-    ...overrides,
-  })
-
-const gitLayer = (overrides: Partial<Git.GitService>): Layer.Layer<Git.Git> =>
-  Layer.succeed(Git.Git, {
-    getTags: () => unused(),
-    getCurrentBranch: () => unused(),
-    getCommitsSince: () => unused(),
-    isClean: () => unused(),
-    createTag: () => unused(),
-    pushTags: () => unused(),
-    pushTagsAtomic: () => unused(),
-    pushTagDryRun: () => Effect.succeed({ stdout: 'dry-run accepted' }),
-    pushTagsAtomicDryRun: () => Effect.succeed({ stdout: 'atomic dry-run accepted' }),
-    getRoot: () => unused(),
-    getHeadSha: () => unused(),
-    getTagSha: () => unused(),
-    isAncestor: () => unused(),
-    createTagAt: () => unused(),
-    deleteTag: () => unused(),
-    commitExists: () => unused(),
-    pushTag: () => unused(),
-    deleteRemoteTag: () => unused(),
-    getRemoteUrl: () => unused(),
-    getHooksDir: () => unused(),
-    ...overrides,
-  })
-
 describe('proof artifact', () => {
   test('uncontracted plans produce blocking proof records', () => {
     const proof = makeProofArtifact(plan)
@@ -193,6 +167,122 @@ describe('proof artifact', () => {
     expect(result.written.planDigest.value).toBe(
       Option.isSome(result.read) ? result.read.value.planDigest.value : '',
     )
+  })
+
+  test.each([1, 2])(
+    'a stale schemaVersion %i proof on disk surfaces a SchemaError, not a silent empty read',
+    async (staleSchemaVersion) => {
+      // The ProofArtifact schemaVersion is a closed literal (3). A proof written by
+      // an older release version fails to decode. The realistic stale artifact an
+      // operator has on disk is v2 (the immediately-prior schema), so the v2 boundary
+      // is the one the 2->3 bump actually moved; v1 is the older case. readForPlan
+      // must surface either as a Schema.SchemaError so the apply/resume boundary can
+      // route it to "re-prove" guidance — not swallow it into Option.none (which would
+      // read as "no proof" and hide a stale artifact).
+      const cwd = Fs.Path.AbsDir.fromString('/repo/')
+      const path = proofPathFor(cwd, contractedPlan)
+      const staleProof = JSON.stringify({
+        schemaVersion: staleSchemaVersion,
+        planDigest: { value: contractedDigest.value },
+        records: [],
+      })
+      const result = await Effect.runPromise(
+        Effect.gen(function* () {
+          const fs = yield* FileSystem.FileSystem
+          yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(path)), { recursive: true })
+          yield* fs.writeFileString(Fs.Path.toString(path), staleProof)
+          return yield* Effect.result(readForPlan(contractedPlan))
+        }).pipe(Effect.provide(Layer.mergeAll(Fs.Memory.layer({}), Env.Test({ cwd })))),
+      )
+
+      expect(Result.isFailure(result)).toBe(true)
+      if (Result.isFailure(result)) {
+        expect(Schema.isSchemaError(result.failure)).toBe(true)
+      }
+    },
+  )
+
+  test('re-prove appends to proofHistory rather than overwriting it', async () => {
+    const recordId = 'env.publish.package-access.@kitz/core'
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const first = yield* prove(contractedPlan, {
+          packageAccessErrors: { '@kitz/core': 'forbidden' },
+        })
+        const second = yield* prove(contractedPlan, {
+          identity: 'octocat',
+          packageAccess: { '@kitz/core': 'public' },
+        })
+        return { first, second }
+      }).pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            Fs.Memory.layer({}),
+            Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') }),
+          ),
+        ),
+      ),
+    )
+
+    const firstRecord = result.first.records.find((record) => record.id === recordId)
+    const secondRecord = result.second.records.find((record) => record.id === recordId)
+    expect(firstRecord?.proofHistory).toHaveLength(1)
+    expect(secondRecord?.proofHistory).toHaveLength(2)
+    expect(secondRecord?.proofHistory[1]?.from).toBe(firstRecord?.status)
+    expect(secondRecord?.proofHistory[1]?.to).toBe(secondRecord?.status)
+    expect(secondRecord?.status).toBe('proven')
+  })
+
+  test('re-prove with an unchanged status appends no duplicate transition', async () => {
+    const recordId = 'env.publish.package-access.@kitz/core'
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        yield* prove(contractedPlan, {
+          identity: 'octocat',
+          packageAccess: { '@kitz/core': 'public' },
+        })
+        return yield* prove(contractedPlan, {
+          identity: 'octocat',
+          packageAccess: { '@kitz/core': 'public' },
+        })
+      }).pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            Fs.Memory.layer({}),
+            Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') }),
+          ),
+        ),
+      ),
+    )
+
+    expect(result.records.find((record) => record.id === recordId)?.proofHistory).toHaveLength(1)
+  })
+
+  test('mergeProofHistory carries prior history forward only for shared ids; new ids stay single', () => {
+    const prior = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+      packageAccessErrors: { '@kitz/core': 'forbidden' },
+    })
+    // Fresh proof shares the same id set but flips package-access to proven.
+    const fresh = makeProofArtifact(contractedPlan, '2026-05-13T01:00:00.000Z', {
+      identity: 'octocat',
+      packageAccess: { '@kitz/core': 'public' },
+    })
+    // Drop one id from the prior so it is "new" relative to prior.
+    const priorMissingIdentity = updateProofArtifact(prior, {
+      records: prior.records.filter((record) => record.id !== 'env.publish.identity'),
+    })
+
+    const merged = mergeProofHistory(priorMissingIdentity, fresh)
+    // env.publish.identity was absent from prior -> single fresh element.
+    expect(
+      merged.records.find((record) => record.id === 'env.publish.identity')?.proofHistory,
+    ).toHaveLength(1)
+    // package-access existed in prior with a different status -> appended.
+    const packageAccess = merged.records.find(
+      (record) => record.id === 'env.publish.package-access.@kitz/core',
+    )
+    expect(packageAccess?.proofHistory).toHaveLength(2)
+    expect(packageAccess?.proofHistory[1]?.from).toBe('failed')
   })
 
   test('records selected provider capability proofs from the frozen publish intent', () => {
@@ -257,10 +347,13 @@ describe('proof artifact', () => {
     expect(failed.records.find((record) => record.id === 'env.publish.identity')?.status).toBe(
       'failed',
     )
-    expect(
-      failed.records.find((record) => record.id === 'env.publish.package-access.@kitz/core')
-        ?.status,
-    ).toBe('failed')
+    // package-access dependsOn the failed identity, so it cascades to blocked
+    // (root-caused by identity) rather than reporting its own observed failure.
+    const failedPackageAccess = failed.records.find(
+      (record) => record.id === 'env.publish.package-access.@kitz/core',
+    )
+    expect(failedPackageAccess?.status).toBe('blocked')
+    expect(failedPackageAccess?.blockedBy).toBe('env.publish.identity')
     expect(
       failed.records.find((record) => record.id === 'env.git.push-dry-run.@kitz/core@1.0.0')
         ?.status,
@@ -335,28 +428,83 @@ describe('proof artifact', () => {
     ).toBe('proven')
   })
 
-  test('local proof observation records identity, access, git, and atomic dry-run failures', async () => {
+  test('collectObservations merges local observations and drops GitHub when context cannot resolve', async () => {
+    // No GITHUB_REPOSITORY and a non-GitHub origin remote → resolveGitHubContext fails
+    // (parseGitHubRemote rejects it) → the catch-to-empty fallback yields local-only
+    // observations with no network call to GitHub.
     const observations = await Effect.runPromise(
-      collectLocalObservations(multiContractedPlan).pipe(
+      collectObservations(contractedPlan).pipe(
         Effect.provide(
           Layer.mergeAll(
-            npmCliLayer({
-              whoami: () => Effect.fail(npmCliError('whoami', 'identity denied')),
-              getAccessStatus: (packageName) =>
-                packageName === '@kitz/core'
-                  ? Effect.succeed('unknown')
-                  : Effect.fail(npmCliError('access', 'access denied')),
-            }),
-            gitLayer({
-              pushTagDryRun: (tag) =>
-                tag === '@kitz/core@1.0.0'
-                  ? Effect.fail(gitError('pushTagDryRun', 'tag rejected'))
-                  : Effect.succeed({ stdout: 'cli accepted' }),
-              pushTagsAtomicDryRun: () =>
-                Effect.fail(gitError('pushTagsAtomicDryRun', 'atomic rejected')),
-            }),
+            Env.Test({ vars: {} }),
+            NpmRegistry.NpmCliDryRun,
+            Git.Memory.make({ remoteUrl: 'git@gitlab.com:example/repo.git' }),
           ),
         ),
+      ),
+    )
+
+    expect(observations.identity).toBe('dry-run-user')
+    expect(observations.packageAccess).toEqual({ '@kitz/core': 'public' })
+    expect(observations.gitPushDryRun?.['@kitz/core@1.0.0']).toMatchObject({ ok: true })
+    expect(observations.githubReleaseExists).toBeUndefined()
+  })
+
+  test('collectLocalObservations performs no mutating git/npm operations (read-only contract)', async () => {
+    // Observation must be side-effect-free. The shared doubles record every call,
+    // so assert the mutating methods are never invoked — an explicit contract that
+    // replaces (and strengthens) the inline stubs' incidental die-on-unused guard.
+    const git = makeGitTest()
+    const npm = makeNpmCliTest({ whoamiUser: 'octocat' })
+    await Effect.runPromise(
+      collectLocalObservations(contractedPlan).pipe(
+        Effect.provide(Layer.mergeAll(npm.$test.layer(), git.$test.layer())),
+      ),
+    )
+
+    expect(npm.publish.calls).toHaveLength(0)
+    expect(git.createTag.calls).toHaveLength(0)
+    expect(git.createTagAt.calls).toHaveLength(0)
+    expect(git.pushTags.calls).toHaveLength(0)
+    expect(git.pushTagsAtomic.calls).toHaveLength(0)
+    expect(git.pushTag.calls).toHaveLength(0)
+    expect(git.deleteTag.calls).toHaveLength(0)
+    expect(git.deleteRemoteTag.calls).toHaveLength(0)
+  })
+
+  test('collectObservations collects GitHub observations from an injected Github layer', async () => {
+    // The GitHub service is injected as a test double (no live-context resolution,
+    // no network): collectObservations merges its observations into the result.
+    const observations = await Effect.runPromise(
+      collectObservations(contractedPlan, { githubLayer: Github.Memory.make({}) }).pipe(
+        Effect.provide(
+          Layer.mergeAll(Env.Test({ vars: {} }), NpmRegistry.NpmCliDryRun, Git.Memory.make({})),
+        ),
+      ),
+    )
+
+    expect(observations.identity).toBe('dry-run-user')
+    // githubReleaseExists is PRESENT (not dropped) — the GitHub layer was consulted.
+    expect(observations.githubReleaseExists).toEqual({ '@kitz/core@1.0.0': false })
+  })
+
+  test('local proof observation records identity, access, git, and atomic dry-run failures', async () => {
+    const npm = makeNpmCliTest()
+    npm.whoami.everyFail(npmCliError('whoami', 'identity denied'))
+    // Subjects iterate @kitz/core then @kitz/cli: core access reads as 'unknown'
+    // (neither public nor restricted), cli's access lookup fails outright.
+    npm.getAccessStatus.nextSuccess('unknown')
+    npm.getAccessStatus.nextFail(npmCliError('access', 'access denied'))
+
+    const git = makeGitTest()
+    // core@1.0.0's dry-run push is rejected; cli@1.0.0's is accepted; atomic fails.
+    git.pushTagDryRun.nextFail(gitError('pushTagDryRun', 'tag rejected'))
+    git.pushTagDryRun.nextSuccess({ stdout: 'cli accepted' })
+    git.pushTagsAtomicDryRun.everyFail(gitError('pushTagsAtomicDryRun', 'atomic rejected'))
+
+    const observations = await Effect.runPromise(
+      collectLocalObservations(multiContractedPlan).pipe(
+        Effect.provide(Layer.mergeAll(npm.$test.layer(), git.$test.layer())),
       ),
     )
 
@@ -657,5 +805,612 @@ describe('proof artifact', () => {
       'release.proof.missing-dependency',
       'release.proof.expired',
     ])
+  })
+})
+
+const oidcDeferredPlan = (() => {
+  const intent = updatePublishIntent(publishIntent, {
+    auth: updateCredentialIntent(publishIntent.auth, {
+      source: 'trusted-oidc',
+      runtimeHost: 'github-actions',
+      tokenEnv: undefined,
+    }),
+  })
+  return Plan.make({
+    lifecycle: contractedPlan.lifecycle,
+    timestamp: contractedPlan.timestamp,
+    releases: contractedPlan.releases,
+    cascades: contractedPlan.cascades,
+    planDigest: contractedDigest,
+    publishIntent: intent,
+  })
+})()
+
+describe('DeferredProof projection', () => {
+  test('DeferredProof is a distinct class, not the deferredToHost status', () => {
+    const proof = makeProofArtifact(oidcDeferredPlan, '2026-05-13T00:00:00.000Z', {
+      packageAccess: { '@kitz/core': 'public' },
+      gitPushDryRun: { '@kitz/core@1.0.0': true },
+    })
+
+    // The status literal stays intact on the record.
+    expect(proof.records.find((record) => record.id === 'env.publish.identity')?.status).toBe(
+      'deferredToHost',
+    )
+
+    // The structured projection is its own DeferredProof record.
+    const deferred = deferredProofsForArtifact(proof)
+    const identity = deferred.find((entry) => entry.recordId === 'env.publish.identity')
+    expect(DeferredProof.is(identity)).toBe(true)
+    expect(identity?.deferredTo).toBe('github-actions')
+    expect(deferred.map((entry) => entry.recordId)).toContain('env.github.release-permission')
+  })
+
+  test('DeferredProof round-trips through its own codec', () => {
+    const deferred = DeferredProof.make({
+      recordId: 'env.publish.identity',
+      deferredTo: 'github-actions',
+      reason: 'identity is deferred to trusted runtime host',
+      observedAt: '2026-05-13T00:00:00.000Z',
+    })
+
+    const roundTrip = DeferredProof.decodeSync(DeferredProof.encodeSync(deferred))
+    expect(roundTrip.recordId).toBe('env.publish.identity')
+    expect(roundTrip.deferredTo).toBe('github-actions')
+  })
+
+  test('a plan with no host-deferred records projects no DeferredProofs', () => {
+    const proof = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+      identity: 'octocat',
+      packageAccess: { '@kitz/core': 'public' },
+      gitPushDryRun: { '@kitz/core@1.0.0': true },
+      githubReleasePermission: true,
+      githubReleaseExists: { '@kitz/core@1.0.0': false },
+    })
+
+    expect(deferredProofsForArtifact(proof)).toEqual([])
+  })
+})
+
+describe('dependsOn blocked cascade', () => {
+  test('a failed dependency cascades its dependents to blocked with the root cause', () => {
+    const proof = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+      identity: 'octocat',
+      packageAccessErrors: { '@kitz/core': 'forbidden' },
+      gitPushDryRun: { '@kitz/core@1.0.0': true },
+      githubReleasePermission: true,
+      githubReleaseExists: { '@kitz/core@1.0.0': false },
+    })
+
+    // The root cause record is the failed package-access observation.
+    const root = proof.records.find(
+      (record) => record.id === 'env.publish.package-access.@kitz/core',
+    )
+    expect(root?.status).toBe('failed')
+    expect(root?.blockedBy).toBeUndefined()
+
+    // Its dependent (access-level) cascades to blocked carrying the root cause.
+    const dependent = proof.records.find(
+      (record) => record.id === 'env.publish.access-level.@kitz/core',
+    )
+    expect(dependent?.status).toBe('blocked')
+    expect(dependent?.blockedBy).toBe('env.publish.package-access.@kitz/core')
+  })
+
+  test('cascade appends a transition with from + cause to the dependent history', () => {
+    const proof = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+      identity: 'octocat',
+      packageAccessErrors: { '@kitz/core': 'forbidden' },
+      gitPushDryRun: { '@kitz/core@1.0.0': true },
+      githubReleasePermission: true,
+      githubReleaseExists: { '@kitz/core@1.0.0': false },
+    })
+
+    const dependent = proof.records.find(
+      (record) => record.id === 'env.publish.access-level.@kitz/core',
+    )
+    const last = dependent?.proofHistory[dependent.proofHistory.length - 1]
+    expect(last?.to).toBe('blocked')
+    expect(last?.from).toBe('failed')
+    expect(last?.cause).toBe('env.publish.package-access.@kitz/core')
+  })
+
+  test('a fully proven plan cascades nothing', () => {
+    const proof = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+      identity: 'octocat',
+      packageAccess: { '@kitz/core': 'public' },
+      gitPushDryRun: { '@kitz/core@1.0.0': true },
+      githubReleasePermission: true,
+      githubReleaseExists: { '@kitz/core@1.0.0': false },
+    })
+
+    expect(proof.records.some((record) => record.blockedBy !== undefined)).toBe(false)
+  })
+
+  test('a deferredToHost dependency does not cascade its dependents', () => {
+    const proof = makeProofArtifact(oidcDeferredPlan, '2026-05-13T00:00:00.000Z', {
+      packageAccess: { '@kitz/core': 'public' },
+      gitPushDryRun: { '@kitz/core@1.0.0': true },
+    })
+
+    // release-by-tag dependsOn release-permission which is deferredToHost; it
+    // must remain its observed status, not cascade to blocked.
+    const releaseByTag = proof.records.find(
+      (record) => record.id === 'env.github.release-by-tag.@kitz/core@1.0.0',
+    )
+    expect(releaseByTag?.status).not.toBe('blocked')
+    expect(releaseByTag?.blockedBy).toBeUndefined()
+  })
+
+  test('a root blocked dependency cascades transitively through the dependency chain', () => {
+    const proof = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+      identityError: 'npm whoami failed',
+      packageAccessErrors: { '@kitz/core': 'forbidden' },
+      gitPushDryRun: { '@kitz/core@1.0.0': true },
+      githubReleasePermission: true,
+      githubReleaseExists: { '@kitz/core@1.0.0': false },
+    })
+
+    // package-access dependsOn identity (failed) -> package-access cascades to
+    // blocked -> access-level dependsOn package-access -> also blocked.
+    const packageAccess = proof.records.find(
+      (record) => record.id === 'env.publish.package-access.@kitz/core',
+    )
+    const accessLevel = proof.records.find(
+      (record) => record.id === 'env.publish.access-level.@kitz/core',
+    )
+    expect(packageAccess?.status).toBe('blocked')
+    expect(packageAccess?.blockedBy).toBe('env.publish.identity')
+    expect(accessLevel?.status).toBe('blocked')
+    expect(accessLevel?.blockedBy).toBe('env.publish.package-access.@kitz/core')
+  })
+
+  test('makeProofArtifact constructs every record after its in-set dependencies', () => {
+    // The forward-pass cascade can only see resolved (already-visited)
+    // dependencies; a forward reference (a dependency present in the set but
+    // constructed after its dependent) would silently skip a cascade that should
+    // fire. The cascade guard fails loud on such mis-ordering, so the only way to
+    // keep `cascadeBlocked` sound is for `makeProofArtifact` to emit records in
+    // dependency-before-dependent order. Assert that topological invariant on the
+    // real, fully-populated record set.
+    const proof = makeProofArtifact(multiContractedPlan, '2026-05-13T00:00:00.000Z', {
+      identity: 'octocat',
+      packageAccess: { '@kitz/core': 'public', '@kitz/cli': 'public' },
+      gitPushDryRun: { '@kitz/core@1.0.0': true, '@kitz/cli@1.0.0': true },
+      githubReleasePermission: true,
+      githubReleaseExists: { '@kitz/core@1.0.0': false, '@kitz/cli@1.0.0': false },
+    })
+
+    const idsInSet = A.map(proof.records, (record) => record.id)
+    const seen: string[] = []
+    for (const record of proof.records) {
+      for (const dependencyId of record.dependsOn) {
+        if (A.contains(idsInSet, dependencyId)) {
+          expect(A.contains(seen, dependencyId)).toBe(true)
+        }
+      }
+      seen.push(record.id)
+    }
+  })
+
+  test('cascadeBlocked fails loud on a forward dependency reference', () => {
+    // A record whose dependency is present in the set but constructed AFTER it.
+    // The forward-pass cascade would silently read the unresolved dependency as
+    // non-blocking and skip a cascade that should fire, so the guard throws
+    // instead. No production path can construct this (makeProofArtifact emits
+    // records in dependency-before-dependent order), so this is the only test
+    // that exercises the guard's negative path.
+    const base = {
+      observedAt: '2026-05-13T00:00:00.000Z',
+      evidence: {},
+      proofHistory: [],
+    } as const
+    const misordered = [
+      ProofRecord.make({ ...base, id: 'dependent', status: 'proven', dependsOn: ['cause'] }),
+      ProofRecord.make({ ...base, id: 'cause', status: 'failed', dependsOn: [] }),
+    ]
+    expect(() => ProofInternal.cascadeBlocked(misordered, '2026-05-13T00:00:00.000Z')).toThrow(
+      'Proof cascade invariant violated',
+    )
+  })
+})
+
+describe('soft vs hard proof-gate classification', () => {
+  const unprovenProof = () =>
+    makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+      // identity left unobserved -> env.publish.identity is unprovable.
+      packageAccess: { '@kitz/core': 'public' },
+      gitPushDryRun: { '@kitz/core@1.0.0': true },
+      githubReleasePermission: true,
+      githubReleaseExists: { '@kitz/core@1.0.0': false },
+    })
+
+  test('default policy classifies every non-passing record as a hard gate', () => {
+    const proof = unprovenProof()
+    const issue = validateProof(proof, '2026-05-13T00:00:00.000Z').find(
+      (entry) => entry.recordId === 'env.publish.identity',
+    )
+    expect(issue?.severity).toBe('hard')
+    expect(hasBlockingProof(proof)).toBe(true)
+  })
+
+  test('a policy listing a status as soft warns but does not block', () => {
+    const proof = unprovenProof()
+    const policy = updateProofPolicy(defaultProofPolicy(), { softStatuses: ['unprovable'] })
+    const issue = validateProof(proof, '2026-05-13T00:00:00.000Z', policy).find(
+      (entry) => entry.recordId === 'env.publish.identity',
+    )
+    expect(issue?.severity).toBe('soft')
+    expect(hasBlockingProof(proof, policy)).toBe(false)
+  })
+
+  test('a hard record still blocks even when other statuses are soft', () => {
+    const proof = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+      identityError: 'npm whoami failed',
+      packageAccess: { '@kitz/core': 'public' },
+      gitPushDryRun: { '@kitz/core@1.0.0': true },
+      githubReleasePermission: true,
+      githubReleaseExists: { '@kitz/core@1.0.0': false },
+    })
+    // 'failed' is hard (not in softStatuses); 'unprovable' is soft.
+    const policy = updateProofPolicy(defaultProofPolicy(), { softStatuses: ['unprovable'] })
+    const failedIssue = validateProof(proof, '2026-05-13T00:00:00.000Z', policy).find(
+      (entry) => entry.recordId === 'env.publish.identity',
+    )
+    expect(failedIssue?.severity).toBe('hard')
+    expect(hasBlockingProof(proof, policy)).toBe(true)
+  })
+
+  test('missing-dependency and expired issues are always hard regardless of policy', () => {
+    const proof = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+      identity: 'octocat',
+      packageAccess: { '@kitz/core': 'public' },
+      gitPushDryRun: { '@kitz/core@1.0.0': true },
+      githubReleasePermission: true,
+      githubReleaseExists: { '@kitz/core@1.0.0': false },
+    })
+    const altered = updateProofArtifact(proof, {
+      records: [
+        updateProofRecord(proof.records[1]!, { dependsOn: ['missing-proof'] }),
+        updateProofRecord(proof.records[0]!, { expiresAt: '2026-05-13T00:00:00.000Z' }),
+      ],
+    })
+    const policy = updateProofPolicy(defaultProofPolicy(), {
+      softStatuses: ['unprovable', 'failed', 'blocked'],
+    })
+    const issues = validateProof(altered, '2026-05-13T00:00:01.000Z', policy)
+    expect(
+      issues.find((entry) => entry.code === 'release.proof.missing-dependency')?.severity,
+    ).toBe('hard')
+    expect(issues.find((entry) => entry.code === 'release.proof.expired')?.severity).toBe('hard')
+  })
+})
+
+describe('recheckProof overlays fresh observations on prior evidence', () => {
+  const provenProof = () =>
+    makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+      identity: 'octocat',
+      packageAccess: { '@kitz/core': 'public' },
+      gitPushDryRun: { '@kitz/core@1.0.0': true },
+      githubReleasePermission: true,
+      githubReleaseExists: { '@kitz/core@1.0.0': false },
+    })
+
+  test('a fresh identity failure flips env.publish.identity and grows its history', () => {
+    const prior = provenProof()
+    // Fresh observations carry only an identity failure. recheckProof rebuilds
+    // env.publish.identity from the fresh failure and reconstructs every other
+    // record from prior evidence.
+    const rechecked = recheckProof({
+      plan: contractedPlan,
+      prior,
+      observations: { identityError: 'token expired' },
+      now: '2026-05-13T01:00:00.000Z',
+    })
+
+    const identity = rechecked.records.find((record) => record.id === 'env.publish.identity')
+    expect(identity?.status).toBe('failed')
+    // History grew because identity changed proven -> failed.
+    expect(identity?.proofHistory.length).toBeGreaterThan(1)
+  })
+
+  test('a fresh package-access failure flips its record and grows its history', () => {
+    const prior = provenProof()
+    const rechecked = recheckProof({
+      plan: contractedPlan,
+      prior,
+      // Fresh package-access error; identity still proven (carried from prior).
+      observations: { identity: 'octocat', packageAccessErrors: { '@kitz/core': 'forbidden' } },
+      now: '2026-05-13T01:00:00.000Z',
+    })
+
+    const packageAccess = rechecked.records.find(
+      (record) => record.id === 'env.publish.package-access.@kitz/core',
+    )
+    expect(packageAccess?.status).toBe('failed')
+    expect(packageAccess?.proofHistory).toHaveLength(2)
+    expect(packageAccess?.proofHistory[1]?.from).toBe('proven')
+  })
+
+  test('a recheck with no contradicting observation leaves proven records unchanged', () => {
+    const prior = provenProof()
+    // Carry-forward only: no fresh observation contradicts the prior.
+    const rechecked = recheckProof({
+      plan: contractedPlan,
+      prior,
+      observations: {},
+      now: '2026-05-13T01:00:00.000Z',
+    })
+
+    const packageAccess = rechecked.records.find(
+      (record) => record.id === 'env.publish.package-access.@kitz/core',
+    )
+    expect(packageAccess?.status).toBe('proven')
+    expect(packageAccess?.proofHistory).toHaveLength(1)
+    const identity = rechecked.records.find((record) => record.id === 'env.publish.identity')
+    expect(identity?.status).toBe('proven')
+    expect(identity?.proofHistory).toHaveLength(1)
+  })
+
+  test('a fresh identity failure cascades to dependents and is itself failed (head-on catch)', () => {
+    const prior = provenProof()
+    // The original bug: a fresh identity failure with a fresh public access
+    // observation. Identity must be `failed` in the SAME artifact its dependents
+    // point at — no dangling blockedBy referencing a proven cause.
+    const rechecked = recheckProof({
+      plan: contractedPlan,
+      prior,
+      observations: { identityError: 'token expired', packageAccess: { '@kitz/core': 'public' } },
+      now: '2026-05-13T01:00:00.000Z',
+    })
+
+    const identity = rechecked.records.find((record) => record.id === 'env.publish.identity')
+    expect(identity?.status).toBe('failed')
+
+    const packageAccess = rechecked.records.find(
+      (record) => record.id === 'env.publish.package-access.@kitz/core',
+    )
+    expect(packageAccess?.status).toBe('blocked')
+    expect(packageAccess?.blockedBy).toBe('env.publish.identity')
+    const last = packageAccess?.proofHistory[packageAccess.proofHistory.length - 1]
+    expect(last?.to).toBe('blocked')
+    expect(last?.from).toBe('proven')
+    expect(last?.cause).toBe('env.publish.identity')
+
+    // The decisive regression assertion: no blocked record may point at a cause
+    // that is itself proven (or deferredToHost) in the rechecked artifact.
+    for (const record of rechecked.records) {
+      if (record.status === 'blocked' && record.blockedBy !== undefined) {
+        const blockedBy = record.blockedBy
+        const cause = A.findFirst(rechecked.records, (other) => other.id === blockedBy).pipe(
+          Option.getOrUndefined,
+        )
+        if (cause !== undefined) {
+          expect(cause.status).not.toBe('proven')
+          expect(cause.status).not.toBe('deferredToHost')
+        }
+      }
+    }
+  })
+
+  test('a carried-forward identity failure keeps its failure reason across a second recheck', () => {
+    // proven -> failed flips identity; mergeProofHistory preserves the prior
+    // proven transition at proofHistory[0]. A second carry-forward recheck must
+    // reconstruct the *failure* reason, not the stale proven reason at index 0.
+    const failed = recheckProof({
+      plan: contractedPlan,
+      prior: provenProof(),
+      observations: { identityError: 'npm whoami: ENEEDAUTH' },
+      now: '2026-05-13T01:00:00.000Z',
+    })
+    const carried = recheckProof({
+      plan: contractedPlan,
+      prior: failed,
+      observations: {},
+      now: '2026-05-13T02:00:00.000Z',
+    })
+
+    const identity = carried.records.find((record) => record.id === 'env.publish.identity')
+    expect(identity?.status).toBe('failed')
+    const last = identity?.proofHistory[identity.proofHistory.length - 1]
+    expect(last?.reason).toBe('npm whoami: ENEEDAUTH')
+  })
+})
+
+describe('priorObservationsFromArtifact inverts the record builders', () => {
+  const fullObservations = {
+    identity: 'octocat',
+    packageAccess: { '@kitz/core': 'public' } as const,
+    gitPushDryRun: { '@kitz/core@1.0.0': { ok: true, detail: 'dry-run accepted' } },
+    githubReleasePermission: true,
+    githubReleaseExists: { '@kitz/core@1.0.0': false },
+  }
+
+  test('round-trips proven observations to identical record statuses', () => {
+    const original = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', fullObservations)
+    const reconstructed = priorObservationsFromArtifact(original)
+    const rebuilt = makeProofArtifact(contractedPlan, '2026-05-13T02:00:00.000Z', reconstructed)
+
+    const statusOf = (artifact: ProofArtifact) =>
+      Object.fromEntries(artifact.records.map((record) => [record.id, record.status]))
+    expect(statusOf(rebuilt)).toEqual(statusOf(original))
+  })
+
+  test('round-trips a failed/blocked artifact to identical record statuses', () => {
+    const original = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+      identityError: 'npm whoami failed',
+      packageAccessErrors: { '@kitz/core': 'forbidden' },
+      gitPushDryRun: { '@kitz/core@1.0.0': { ok: false, detail: 'remote rejected' } },
+      githubReleasePermission: false,
+      githubReleaseExists: { '@kitz/core@1.0.0': false },
+    })
+    const reconstructed = priorObservationsFromArtifact(original)
+    const rebuilt = makeProofArtifact(contractedPlan, '2026-05-13T02:00:00.000Z', reconstructed)
+
+    const statusOf = (artifact: ProofArtifact) =>
+      Object.fromEntries(artifact.records.map((record) => [record.id, record.status]))
+    expect(statusOf(rebuilt)).toEqual(statusOf(original))
+  })
+
+  test('round-trips a multi-subject atomic-push artifact to identical record statuses', () => {
+    const atomicPlan = Plan.make({
+      lifecycle: multiContractedPlan.lifecycle,
+      timestamp: multiContractedPlan.timestamp,
+      releases: multiContractedPlan.releases,
+      cascades: multiContractedPlan.cascades,
+      planDigest: contractedDigest,
+      publishIntent: updatePublishIntent(publishIntent, {
+        // oxlint-disable-next-line typescript/no-misused-spread -- field bag for the update; the override builds a fresh git config
+        git: { ...publishIntent.git, atomicTagPush: true },
+      }),
+    })
+    const original = makeProofArtifact(atomicPlan, '2026-05-13T00:00:00.000Z', {
+      identity: 'octocat',
+      packageAccess: { '@kitz/core': 'public', '@kitz/cli': 'public' },
+      gitPushDryRun: {
+        '@kitz/core@1.0.0': { ok: true },
+        '@kitz/cli@1.0.0': { ok: true },
+      },
+      atomicGitPushDryRun: { ok: true },
+      githubReleasePermission: true,
+      githubReleaseExists: { '@kitz/core@1.0.0': false, '@kitz/cli@1.0.0': false },
+    })
+    const reconstructed = priorObservationsFromArtifact(original)
+    const rebuilt = makeProofArtifact(atomicPlan, '2026-05-13T02:00:00.000Z', reconstructed)
+
+    const statusOf = (artifact: ProofArtifact) =>
+      Object.fromEntries(artifact.records.map((record) => [record.id, record.status]))
+    expect(statusOf(rebuilt)).toEqual(statusOf(original))
+  })
+
+  // The provenance surfaces drive `publish.provenance-policy` from observations
+  // (trustedPublisherConfigured/oidcClaimsVerified for trusted-publisher;
+  // provenanceBundleExists for attestation-file) and neither surface is gathered by
+  // a recheck collector, so each must carry forward through evidence on every
+  // recheck. A missing inverse silently regresses a proven policy to `unprovable`
+  // (a hard block) on every recheck — the round-trip below pins the inverse.
+  test('round-trips a proven trusted-publisher provenance policy', () => {
+    const trustedPlan = Plan.make({
+      lifecycle: contractedPlan.lifecycle,
+      timestamp: contractedPlan.timestamp,
+      releases: contractedPlan.releases,
+      cascades: contractedPlan.cascades,
+      planDigest: contractedDigest,
+      publishIntent: updatePublishIntent(publishIntent, {
+        provenance: { mode: 'trusted-publisher', required: true, provider: 'npm-github' },
+      }),
+    })
+    const original = makeProofArtifact(trustedPlan, '2026-05-13T00:00:00.000Z', {
+      ...fullObservations,
+      trustedPublisherConfigured: true,
+      oidcClaimsVerified: true,
+    })
+    const rebuilt = makeProofArtifact(
+      trustedPlan,
+      '2026-05-13T02:00:00.000Z',
+      priorObservationsFromArtifact(original),
+    )
+
+    expect(
+      rebuilt.records.find((record) => record.id === 'publish.provenance-policy')?.status,
+    ).toBe('proven')
+  })
+
+  test('round-trips a proven attestation-file provenance policy', () => {
+    const attestationPlan = Plan.make({
+      lifecycle: contractedPlan.lifecycle,
+      timestamp: contractedPlan.timestamp,
+      releases: contractedPlan.releases,
+      cascades: contractedPlan.cascades,
+      planDigest: contractedDigest,
+      publishIntent: updatePublishIntent(publishIntent, {
+        provenance: {
+          mode: 'attestation-file',
+          required: true,
+          file: Fs.Path.AbsFile.fromString('/repo/provenance.jsonl'),
+        },
+      }),
+    })
+    const original = makeProofArtifact(attestationPlan, '2026-05-13T00:00:00.000Z', {
+      ...fullObservations,
+      provenanceBundleExists: true,
+    })
+    const rebuilt = makeProofArtifact(
+      attestationPlan,
+      '2026-05-13T02:00:00.000Z',
+      priorObservationsFromArtifact(original),
+    )
+
+    expect(
+      rebuilt.records.find((record) => record.id === 'publish.provenance-policy')?.status,
+    ).toBe('proven')
+
+    // The recheck primitive must also preserve it (the pre-mutation hook scenario:
+    // fresh observations never include provenanceBundleExists, so it carries forward).
+    const rechecked = recheckProof({
+      plan: attestationPlan,
+      prior: original,
+      observations: {},
+      now: '2026-05-13T03:00:00.000Z',
+    })
+    expect(
+      rechecked.records.find((record) => record.id === 'publish.provenance-policy')?.status,
+    ).toBe('proven')
+  })
+})
+
+describe('validateProof guards against an inconsistent blocked cause', () => {
+  test('emits a blocked-cause-consistency issue for a blocked record pointing at a proven cause', () => {
+    const base = {
+      observedAt: '2026-05-13T00:00:00.000Z',
+      evidence: {},
+      proofHistory: [],
+    } as const
+    // A hand-built inconsistent artifact: a blocked record whose blockedBy names a
+    // record that is proven in the same set. The refactor makes this impossible to
+    // construct via recheckProof, but the guard must catch it if it ever appears.
+    const inconsistent = updateProofArtifact(makeProofArtifact(contractedPlan), {
+      records: [
+        ProofRecord.make({ ...base, id: 'cause', status: 'proven', dependsOn: [] }),
+        ProofRecord.make({
+          ...base,
+          id: 'dependent',
+          status: 'blocked',
+          dependsOn: ['cause'],
+          blockedBy: 'cause',
+        }),
+      ],
+    })
+
+    const issue = validateProof(inconsistent, '2026-05-13T00:00:00.000Z').find(
+      (entry) => entry.code === 'release.proof.blocked-cause-consistency',
+    )
+    expect(issue?.recordId).toBe('dependent')
+    expect(issue?.severity).toBe('hard')
+  })
+
+  test('does not emit the guard issue for a blocked record pointing at a failed cause', () => {
+    const base = {
+      observedAt: '2026-05-13T00:00:00.000Z',
+      evidence: {},
+      proofHistory: [],
+    } as const
+    const consistent = updateProofArtifact(makeProofArtifact(contractedPlan), {
+      records: [
+        ProofRecord.make({ ...base, id: 'cause', status: 'failed', dependsOn: [] }),
+        ProofRecord.make({
+          ...base,
+          id: 'dependent',
+          status: 'blocked',
+          dependsOn: ['cause'],
+          blockedBy: 'cause',
+        }),
+      ],
+    })
+
+    const issue = validateProof(consistent, '2026-05-13T00:00:00.000Z').find(
+      (entry) => entry.code === 'release.proof.blocked-cause-consistency',
+    )
+    expect(issue).toBeUndefined()
   })
 })

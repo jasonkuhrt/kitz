@@ -7,8 +7,8 @@ import { describe, expect, test } from 'bun:test'
 import { Test } from '@kitz/test'
 import { Effect, FileSystem, Ref } from 'effect'
 import { execute, executeObservable, toPayload } from './execute.js'
-import { digestForPlan } from '../proof.js'
-import { publishIntentFromSemantics } from '../release-contract.js'
+import { digestForPlan } from '../release-contract.js'
+import { PublishIntent, publishIntentFromSemantics } from '../release-contract.js'
 import { resolvePublishSemantics } from '../publishing.js'
 import { Plan } from '../planner/models/plan.js'
 import {
@@ -54,6 +54,18 @@ const tagA = (version: string) => tag(Pkg.Moniker.parse('@kitz/a'), version)
 const tagB = (version: string) => tag(Pkg.Moniker.parse('@kitz/b'), version)
 const tagC = (version: string) => tag(Pkg.Moniker.parse('@kitz/c'), version)
 const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect
+
+const updatePublishIntent = (intent: PublishIntent, overrides: Partial<PublishIntent>) =>
+  PublishIntent.make(Object.assign({}, intent, overrides))
+
+const contractedPlanWith = (plan: Plan, intent: PublishIntent) =>
+  Plan.make({
+    lifecycle: plan.lifecycle,
+    timestamp: plan.timestamp,
+    releases: plan.releases,
+    cascades: plan.cascades,
+    publishIntent: intent,
+  })
 
 describe('Executor integration', () => {
   Test.live(
@@ -158,6 +170,122 @@ describe('Executor integration', () => {
 
         expect(packCalls[0]?.packageManager).toBe('pnpm')
         expect(publishCalls[0]?.packageManager).toBe('pnpm')
+      }),
+    ),
+  )
+
+  Test.live('threads a restricted publish intent access through to the publish invocation', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+          },
+        })
+
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
+        const intent = updatePublishIntent(
+          publishIntentFromSemantics({
+            semantics: resolvePublishSemantics({ lifecycle: 'official' }),
+            trunk: 'main',
+          }),
+          { access: { mode: 'publish-access', value: 'restricted' } },
+        )
+
+        yield* execute(contractedPlanWith(plan, intent), { dryRun: false }).pipe(
+          Effect.provide(harness.workflowLayer),
+        )
+
+        const publishCalls = yield* Ref.get(harness.publishCalls)
+        expect(publishCalls).toHaveLength(1)
+        expect(publishCalls[0]?.access).toBe('restricted')
+      }),
+    ),
+  )
+
+  Test.live('omits publish access from the publish invocation when the intent omits it', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+          },
+        })
+
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
+        const intent = updatePublishIntent(
+          publishIntentFromSemantics({
+            semantics: resolvePublishSemantics({ lifecycle: 'official' }),
+            trunk: 'main',
+          }),
+          { access: { mode: 'omit' } },
+        )
+
+        yield* execute(contractedPlanWith(plan, intent), { dryRun: false }).pipe(
+          Effect.provide(harness.workflowLayer),
+        )
+
+        const publishCalls = yield* Ref.get(harness.publishCalls)
+        expect(publishCalls).toHaveLength(1)
+        expect(publishCalls[0]?.access).toBeUndefined()
+      }),
+    ),
+  )
+
+  Test.live('resolves payload access from the publish intent (restricted, omit, public)', () =>
+    quiet(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tagCore('1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+          },
+        })
+
+        const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
+        const baseIntent = publishIntentFromSemantics({
+          semantics: resolvePublishSemantics({ lifecycle: 'official' }),
+          trunk: 'main',
+        })
+
+        const restrictedPayload = yield* toPayload(
+          contractedPlanWith(
+            plan,
+            updatePublishIntent(baseIntent, {
+              access: { mode: 'publish-access', value: 'restricted' },
+            }),
+          ),
+        ).pipe(Effect.provide(harness.planLayer))
+        expect(restrictedPayload.options.access).toBe('restricted')
+
+        const omitPayload = yield* toPayload(
+          contractedPlanWith(plan, updatePublishIntent(baseIntent, { access: { mode: 'omit' } })),
+        ).pipe(Effect.provide(harness.planLayer))
+        expect(omitPayload.options.access).toBeUndefined()
+
+        const publicPayload = yield* toPayload(
+          contractedPlanWith(
+            plan,
+            updatePublishIntent(baseIntent, {
+              access: { mode: 'publish-access', value: 'public' },
+            }),
+          ),
+        ).pipe(Effect.provide(harness.planLayer))
+        expect(publicPayload.options.access).toBe('public')
       }),
     ),
   )

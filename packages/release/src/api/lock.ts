@@ -19,6 +19,21 @@ export interface LocalLockParams {
   readonly ttlSeconds?: number
 }
 
+/**
+ * Resolve the local lock owner identity from environment variables: USER →
+ * owner id, HOST/HOSTNAME → owner host, KITZ_RELEASE_PROCESS_ID → owner
+ * process, each with a fallback literal. The env-var-to-owner mapping is lock
+ * domain knowledge, so callers spread the result into a lock-acquire call
+ * rather than hand-rolling it.
+ */
+export const resolveLocalOwner = (
+  vars: Record<string, string | undefined>,
+): { readonly ownerId: string; readonly ownerHost: string; readonly ownerProcess: string } => ({
+  ownerId: vars['USER'] ?? 'local-operator',
+  ownerHost: vars['HOST'] ?? vars['HOSTNAME'] ?? 'local-host',
+  ownerProcess: vars['KITZ_RELEASE_PROCESS_ID'] ?? 'local-process',
+})
+
 export const lockPathFor = (cwd: Fs.Path.AbsDir, digest: PlanDigest): Fs.Path.AbsFile =>
   Fs.Path.join(Fs.Path.join(cwd, lockDir), Fs.Path.RelFile.fromString(`./${digest.value}.json`))
 

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
-import { NpmRegistry } from '@kitz/npm-registry'
+import { make as makeNpmCliTest } from '@kitz/npm-registry/test'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Layer } from 'effect'
@@ -128,29 +128,17 @@ describe('release reconciliation classifier', () => {
   })
 
   test('registry subjects query exact parsed package versions and skip malformed subjects', async () => {
-    const calls: string[] = []
+    const npm = makeNpmCliTest()
     const result = await Effect.runPromise(
       registrySubjects(['@kitz/core@1.0.0', 'not-a-subject'], 'https://registry.npmjs.org/').pipe(
-        Effect.provide(
-          Layer.succeed(NpmRegistry.NpmCli, {
-            whoami: () => Effect.die('unexpected whoami'),
-            pack: () => Effect.die('unexpected pack'),
-            publish: () => Effect.die('unexpected publish'),
-            observeVersion: () => Effect.die('unexpected observe'),
-            hasVersion: (packageName, version, options) => {
-              calls.push(`${packageName}@${version}:${options?.registry ?? ''}`)
-              return Effect.succeed(true)
-            },
-            listAccessPackages: () => Effect.die('unexpected listAccessPackages'),
-            listAccessCollaborators: () => Effect.die('unexpected listAccessCollaborators'),
-            getAccessStatus: () => Effect.die('unexpected getAccessStatus'),
-          }),
-        ),
+        Effect.provide(npm.$test.layer()),
       ),
     )
 
     expect(result).toEqual(['@kitz/core@1.0.0'])
-    expect(calls).toEqual(['@kitz/core@1.0.0:https://registry.npmjs.org/'])
+    expect(npm.hasVersion.calls).toEqual([
+      [['@kitz/core', '1.0.0', { registry: 'https://registry.npmjs.org/' }]],
+    ])
   })
 
   test('reconcile reads the plan-bound journal and registry state', async () => {
@@ -191,16 +179,7 @@ describe('release reconciliation classifier', () => {
           Layer.mergeAll(
             Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') }),
             Fs.Memory.layer({}),
-            Layer.succeed(NpmRegistry.NpmCli, {
-              whoami: () => Effect.die('unexpected whoami'),
-              pack: () => Effect.die('unexpected pack'),
-              publish: () => Effect.die('unexpected publish'),
-              observeVersion: () => Effect.die('unexpected observe'),
-              hasVersion: () => Effect.succeed(true),
-              listAccessPackages: () => Effect.die('unexpected listAccessPackages'),
-              listAccessCollaborators: () => Effect.die('unexpected listAccessCollaborators'),
-              getAccessStatus: () => Effect.die('unexpected getAccessStatus'),
-            }),
+            makeNpmCliTest().$test.layer(),
           ),
         ),
       ),

@@ -1,7 +1,6 @@
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
-import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Layer, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
@@ -39,31 +38,19 @@ export const prove = Command.make(
         return env.exit(1)
       }
 
-      const localObservations = yield* Api.Proof.collectLocalObservations(planState.plan)
-      const githubObservations = yield* Api.Explorer.resolveGitHubContext().pipe(
-        Effect.flatMap((context) =>
-          Api.Proof.collectGithubObservations(planState.plan).pipe(
-            Effect.provide(
-              Github.LiveFetch({
-                owner: context.target.owner,
-                repo: context.target.repo,
-                ...(context.token !== null ? { token: context.token } : {}),
-              }),
-            ),
-          ),
-        ),
-        Effect.catch(() => Effect.succeed({})),
-      )
-      const proof = yield* Api.Proof.prove(planState.plan, {
-        ...localObservations,
-        ...githubObservations,
-      })
+      const observations = yield* Api.Proof.collectObservations(planState.plan)
+      const proof = yield* Api.Proof.prove(planState.plan, observations)
       const proofPath = Api.Proof.proofPathFor(env.cwd, planState.plan)
       yield* Console.log(`Proof written to ${Fs.Path.toString(proofPath)}`)
       for (const record of proof.records) {
         yield* Console.log(`${record.status.padEnd(14)} ${record.id}`)
       }
-      if (Api.Proof.hasBlockingProof(proof)) return env.exit(1)
+      for (const issue of Api.Proof.validateProof(proof, undefined, planState.plan.proofPolicy)) {
+        if (issue.severity === 'soft') {
+          yield* Console.error(`warning: ${issue.code}: ${issue.detail}`)
+        }
+      }
+      if (Api.Proof.hasBlockingProof(proof, planState.plan.proofPolicy)) return env.exit(1)
     }),
 ).pipe(
   Command.withDescription('Write plan-bound publishing proof'),

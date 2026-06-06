@@ -3,31 +3,15 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Pkg } from '@kitz/pkg'
-import { Effect, Layer, Stream } from 'effect'
+import { Effect, Layer } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import type { Package } from '../api/analyzer/workspace.js'
+import { makeHandle } from '../api/executor/test-support.js'
 import {
   loadConfiguredPullRequestDiff,
   loadPullRequestDiff,
   resolveDiffRemote,
 } from './pr-preview-diff.js'
-
-const textEncoder = new TextEncoder()
-
-const makeHandle = (stdout: string, exitCode: number): ChildProcessSpawner.ChildProcessHandle =>
-  ChildProcessSpawner.makeHandle({
-    pid: ChildProcessSpawner.ProcessId(1),
-    exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(exitCode)),
-    isRunning: Effect.succeed(false),
-    unref: Effect.succeed(Effect.void),
-    kill: () => Effect.void,
-    stderr: Stream.empty,
-    stdin: Effect.void as any,
-    stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
-    all: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
-    getInputFd: () => Effect.void as any,
-    getOutputFd: () => Stream.empty,
-  })
 
 const makeSpawnerLayer = (run: (command: ChildProcess.StandardCommand) => string) =>
   Layer.succeed(
