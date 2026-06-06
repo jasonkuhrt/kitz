@@ -17,6 +17,7 @@ import {
   Schema,
 } from 'effect'
 import { sha256Json } from './digest.js'
+import * as Explorer from './explorer/__.js'
 import type { Plan } from './planner/models/plan.js'
 import * as Capability from './publishing/models/capability.js'
 import {
@@ -803,6 +804,35 @@ export const collectGithubObservations = (
     }
 
     return Object.keys(githubReleaseExists).length > 0 ? { githubReleaseExists } : {}
+  })
+
+/**
+ * Collect the full observation set for a plan: local credential/registry/git
+ * surfaces plus GitHub release surfaces. GitHub evidence is best-effort — if the
+ * GitHub context cannot be resolved or the fetch fails, GitHub observations are
+ * dropped and the local observations stand alone. Local keys are overlaid by
+ * GitHub keys in the merged result.
+ */
+export const collectObservations = (
+  plan: Plan,
+): Effect.Effect<ProofObservations, never, Env.Env | Git.Git | NpmRegistry.NpmCli> =>
+  Effect.gen(function* () {
+    const localObservations = yield* collectLocalObservations(plan)
+    const githubObservations = yield* Explorer.resolveGitHubContext().pipe(
+      Effect.flatMap((context) =>
+        collectGithubObservations(plan).pipe(
+          Effect.provide(
+            Github.LiveFetch({
+              owner: context.target.owner,
+              repo: context.target.repo,
+              ...(context.token !== null ? { token: context.token } : {}),
+            }),
+          ),
+        ),
+      ),
+      Effect.orElseSucceed(() => ({})),
+    )
+    return { ...localObservations, ...githubObservations }
   })
 
 export const hasBlockingProof = (

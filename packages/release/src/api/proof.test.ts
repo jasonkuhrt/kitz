@@ -15,6 +15,7 @@ import {
   _ as ProofInternal,
   collectLocalObservations,
   collectGithubObservations,
+  collectObservations,
   deferredProofsForArtifact,
   hasBlockingProof,
   makeProofArtifact,
@@ -465,6 +466,28 @@ describe('proof artifact', () => {
       proof.records.find((record) => record.id === 'env.github.release-by-tag.@kitz/core@1.0.0')
         ?.status,
     ).toBe('proven')
+  })
+
+  test('collectObservations merges local observations and drops GitHub when context cannot resolve', async () => {
+    // No GITHUB_REPOSITORY and a non-GitHub origin remote → resolveGitHubContext fails
+    // (parseGitHubRemote rejects it) → the catch-to-empty fallback yields local-only
+    // observations with no network call to GitHub.
+    const observations = await Effect.runPromise(
+      collectObservations(contractedPlan).pipe(
+        Effect.provide(
+          Layer.mergeAll(
+            Env.Test({ vars: {} }),
+            NpmRegistry.NpmCliDryRun,
+            Git.Memory.make({ remoteUrl: 'git@gitlab.com:example/repo.git' }),
+          ),
+        ),
+      ),
+    )
+
+    expect(observations.identity).toBe('dry-run-user')
+    expect(observations.packageAccess).toEqual({ '@kitz/core': 'public' })
+    expect(observations.gitPushDryRun?.['@kitz/core@1.0.0']).toMatchObject({ ok: true })
+    expect(observations.githubReleaseExists).toBeUndefined()
   })
 
   test('local proof observation records identity, access, git, and atomic dry-run failures', async () => {

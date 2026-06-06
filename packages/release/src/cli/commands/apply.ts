@@ -11,7 +11,6 @@
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
-import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Fiber, Layer, Option, Schema, Stream, Terminal } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
@@ -132,25 +131,8 @@ export const apply = Command.make(
         },
         Effect.gen(function* () {
           if (prove) {
-            const localObservations = yield* Api.Proof.collectLocalObservations(plan)
-            const githubObservations = yield* Api.Explorer.resolveGitHubContext().pipe(
-              Effect.flatMap((context) =>
-                Api.Proof.collectGithubObservations(plan).pipe(
-                  Effect.provide(
-                    Github.LiveFetch({
-                      owner: context.target.owner,
-                      repo: context.target.repo,
-                      ...(context.token !== null ? { token: context.token } : {}),
-                    }),
-                  ),
-                ),
-              ),
-              Effect.catch(() => Effect.succeed({})),
-            )
-            const proof = yield* Api.Proof.prove(plan, {
-              ...localObservations,
-              ...githubObservations,
-            })
+            const observations = yield* Api.Proof.collectObservations(plan)
+            const proof = yield* Api.Proof.prove(plan, observations)
             for (const issue of Api.Proof.validateProof(proof, undefined, plan.proofPolicy)) {
               if (issue.severity === 'soft') {
                 yield* Console.error(`warning: ${issue.code}: ${issue.detail}`)
@@ -223,22 +205,7 @@ export const apply = Command.make(
           // evidence, immediately before mutation — so a credential that expired
           // since `release prove` blocks the apply. Gathering both local and
           // GitHub observations rebuilds essentially every observable record fresh.
-          const recheckLocal = yield* Api.Proof.collectLocalObservations(plan)
-          const recheckGithub = yield* Api.Explorer.resolveGitHubContext().pipe(
-            Effect.flatMap((context) =>
-              Api.Proof.collectGithubObservations(plan).pipe(
-                Effect.provide(
-                  Github.LiveFetch({
-                    owner: context.target.owner,
-                    repo: context.target.repo,
-                    ...(context.token !== null ? { token: context.token } : {}),
-                  }),
-                ),
-              ),
-            ),
-            Effect.catch(() => Effect.succeed({})),
-          )
-          const recheckObservations = { ...recheckLocal, ...recheckGithub }
+          const recheckObservations = yield* Api.Proof.collectObservations(plan)
           const reproveNow = new Date().toISOString()
           const rechecked = Api.Proof.recheckProof({
             plan,
