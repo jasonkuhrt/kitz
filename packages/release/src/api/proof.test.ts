@@ -1,7 +1,9 @@
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
+import { make as makeGitTest } from '@kitz/git/test'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
+import { make as makeNpmCliTest } from '@kitz/npm-registry/test'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { describe, expect, test } from 'bun:test'
@@ -135,48 +137,6 @@ const gitError = (operation: Git.GitOperation, detail: string) =>
   new Git.GitError({
     context: { operation, detail },
     cause: new Error(detail),
-  })
-
-const unused = () => Effect.die('unused test service operation')
-
-const npmCliLayer = (
-  overrides: Partial<NpmRegistry.NpmCliService>,
-): Layer.Layer<NpmRegistry.NpmCli> =>
-  Layer.succeed(NpmRegistry.NpmCli, {
-    whoami: () => Effect.succeed('octocat'),
-    pack: () => unused(),
-    publish: () => unused(),
-    hasVersion: () => unused(),
-    observeVersion: () => unused(),
-    listAccessPackages: () => unused(),
-    listAccessCollaborators: () => unused(),
-    getAccessStatus: () => Effect.succeed('public'),
-    ...overrides,
-  })
-
-const gitLayer = (overrides: Partial<Git.GitService>): Layer.Layer<Git.Git> =>
-  Layer.succeed(Git.Git, {
-    getTags: () => unused(),
-    getCurrentBranch: () => unused(),
-    getCommitsSince: () => unused(),
-    isClean: () => unused(),
-    createTag: () => unused(),
-    pushTags: () => unused(),
-    pushTagsAtomic: () => unused(),
-    pushTagDryRun: () => Effect.succeed({ stdout: 'dry-run accepted' }),
-    pushTagsAtomicDryRun: () => Effect.succeed({ stdout: 'atomic dry-run accepted' }),
-    getRoot: () => unused(),
-    getHeadSha: () => unused(),
-    getTagSha: () => unused(),
-    isAncestor: () => unused(),
-    createTagAt: () => unused(),
-    deleteTag: () => unused(),
-    commitExists: () => unused(),
-    pushTag: () => unused(),
-    deleteRemoteTag: () => unused(),
-    getRemoteUrl: () => unused(),
-    getHooksDir: () => unused(),
-    ...overrides,
   })
 
 describe('proof artifact', () => {
@@ -491,27 +451,22 @@ describe('proof artifact', () => {
   })
 
   test('local proof observation records identity, access, git, and atomic dry-run failures', async () => {
+    const npm = makeNpmCliTest()
+    npm.whoami.everyFail(npmCliError('whoami', 'identity denied'))
+    // Subjects iterate @kitz/core then @kitz/cli: core access reads as 'unknown'
+    // (neither public nor restricted), cli's access lookup fails outright.
+    npm.getAccessStatus.nextSuccess('unknown')
+    npm.getAccessStatus.nextFail(npmCliError('access', 'access denied'))
+
+    const git = makeGitTest()
+    // core@1.0.0's dry-run push is rejected; cli@1.0.0's is accepted; atomic fails.
+    git.pushTagDryRun.nextFail(gitError('pushTagDryRun', 'tag rejected'))
+    git.pushTagDryRun.nextSuccess({ stdout: 'cli accepted' })
+    git.pushTagsAtomicDryRun.everyFail(gitError('pushTagsAtomicDryRun', 'atomic rejected'))
+
     const observations = await Effect.runPromise(
       collectLocalObservations(multiContractedPlan).pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            npmCliLayer({
-              whoami: () => Effect.fail(npmCliError('whoami', 'identity denied')),
-              getAccessStatus: (packageName) =>
-                packageName === '@kitz/core'
-                  ? Effect.succeed('unknown')
-                  : Effect.fail(npmCliError('access', 'access denied')),
-            }),
-            gitLayer({
-              pushTagDryRun: (tag) =>
-                tag === '@kitz/core@1.0.0'
-                  ? Effect.fail(gitError('pushTagDryRun', 'tag rejected'))
-                  : Effect.succeed({ stdout: 'cli accepted' }),
-              pushTagsAtomicDryRun: () =>
-                Effect.fail(gitError('pushTagsAtomicDryRun', 'atomic rejected')),
-            }),
-          ),
-        ),
+        Effect.provide(Layer.mergeAll(npm.$test.layer(), git.$test.layer())),
       ),
     )
 

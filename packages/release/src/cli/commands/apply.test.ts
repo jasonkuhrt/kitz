@@ -1,6 +1,7 @@
 import { Fs } from '@kitz/fs'
-import { Git } from '@kitz/git'
+import { make as makeGitTest } from '@kitz/git/test'
 import { NpmRegistry } from '@kitz/npm-registry'
+import { make as makeNpmCliTest } from '@kitz/npm-registry/test'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { describe, expect, test } from 'bun:test'
@@ -78,48 +79,6 @@ const npmCliError = (operation: NpmRegistry.Cli.NpmCliOperation, detail: string)
     cause: new Error(detail),
   })
 
-const unused = () => Effect.die('unused test service operation')
-
-const npmCliLayer = (
-  overrides: Partial<NpmRegistry.NpmCliService>,
-): Layer.Layer<NpmRegistry.NpmCli> =>
-  Layer.succeed(NpmRegistry.NpmCli, {
-    whoami: () => Effect.succeed('octocat'),
-    pack: () => unused(),
-    publish: () => unused(),
-    hasVersion: () => unused(),
-    observeVersion: () => unused(),
-    listAccessPackages: () => unused(),
-    listAccessCollaborators: () => unused(),
-    getAccessStatus: () => Effect.succeed('public'),
-    ...overrides,
-  })
-
-const gitLayer = (overrides: Partial<Git.GitService>): Layer.Layer<Git.Git> =>
-  Layer.succeed(Git.Git, {
-    getTags: () => unused(),
-    getCurrentBranch: () => unused(),
-    getCommitsSince: () => unused(),
-    isClean: () => unused(),
-    createTag: () => unused(),
-    pushTags: () => unused(),
-    pushTagsAtomic: () => unused(),
-    pushTagDryRun: () => Effect.succeed({ stdout: 'dry-run accepted' }),
-    pushTagsAtomicDryRun: () => Effect.succeed({ stdout: 'atomic dry-run accepted' }),
-    getRoot: () => unused(),
-    getHeadSha: () => unused(),
-    getTagSha: () => unused(),
-    isAncestor: () => unused(),
-    createTagAt: () => unused(),
-    deleteTag: () => unused(),
-    commitExists: () => unused(),
-    pushTag: () => unused(),
-    deleteRemoteTag: () => unused(),
-    getRemoteUrl: () => unused(),
-    getHooksDir: () => unused(),
-    ...overrides,
-  })
-
 // A healthy `prior` proof: every locally re-observable surface (identity,
 // package access, git push dry-run) is proven before the run starts.
 const healthyPrior = () =>
@@ -140,19 +99,15 @@ const mutationContext = {
 describe('makeProofRecheckHook', () => {
   test('blocks the next mutation when a credential expired mid-run', async () => {
     const hook = makeProofRecheckHook({ plan: contractedPlan, prior: healthyPrior() })
+    const npm = makeNpmCliTest({ whoamiUser: 'octocat' })
+    npm.whoami.everyFail(npmCliError('whoami', 'token expired'))
+    const git = makeGitTest()
     // Effect.flip surfaces the gate's tagged error as the success value; a no-op
     // hook (or one that succeeded) would have no error to flip and would die.
     const error = await Effect.runPromise(
       hook(mutationContext).pipe(
         Effect.flip,
-        Effect.provide(
-          Layer.mergeAll(
-            npmCliLayer({
-              whoami: () => Effect.fail(npmCliError('whoami', 'token expired')),
-            }),
-            gitLayer({}),
-          ),
-        ),
+        Effect.provide(Layer.mergeAll(npm.$test.layer(), git.$test.layer())),
       ),
     )
 
@@ -165,10 +120,12 @@ describe('makeProofRecheckHook', () => {
 
   test('allows the mutation when credentials are still healthy', async () => {
     const hook = makeProofRecheckHook({ plan: contractedPlan, prior: healthyPrior() })
+    const npm = makeNpmCliTest({ whoamiUser: 'octocat' })
+    const git = makeGitTest()
     const exit = await Effect.runPromise(
       hook(mutationContext).pipe(
         Effect.exit,
-        Effect.provide(Layer.mergeAll(npmCliLayer({}), gitLayer({}))),
+        Effect.provide(Layer.mergeAll(npm.$test.layer(), git.$test.layer())),
       ),
     )
 
