@@ -571,9 +571,9 @@ export const makeReleaseWorkflow = (beforeMutation?: BeforeMutationHook) =>
               observation,
               distTag: publishTag,
               official: payload.options.lifecycle === 'official',
-              ...(payload.options.access !== undefined
-                ? { requestedAccess: payload.options.access }
-                : {}),
+              // Access is proven pre-publish by the proof path (proof.ts:225-272);
+              // the post-publish verify node does not re-fetch registry access, so
+              // it does not pass requestedAccess (which would be inert here).
               receipt,
             })
             if (verification.issues.length > 0) {
