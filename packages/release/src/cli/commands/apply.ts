@@ -124,9 +124,7 @@ export const apply = Command.make(
       yield* Api.Lock.withLocal(
         {
           planDigest,
-          ownerId: env.vars['USER'] ?? 'local-operator',
-          ownerHost: env.vars['HOST'] ?? env.vars['HOSTNAME'] ?? 'local-host',
-          ownerProcess: env.vars['KITZ_RELEASE_PROCESS_ID'] ?? 'local-process',
+          ...Api.Lock.resolveLocalOwner(env.vars),
           now: new Date().toISOString(),
         },
         Effect.gen(function* () {
