@@ -12,7 +12,7 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
-import { Console, Effect, Fiber, Layer, Option, Schema, Stream, Terminal } from 'effect'
+import { Console, Effect, Fiber, Layer, Option, Stream, Terminal } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
@@ -128,45 +128,30 @@ export const apply = Command.make(
           now: new Date().toISOString(),
         },
         Effect.gen(function* () {
-          if (prove) {
-            const observations = yield* Api.Proof.collectObservations(plan)
-            const proof = yield* Api.Proof.prove(plan, observations)
-            for (const issue of Api.Proof.validateProof(proof, undefined, plan.proofPolicy)) {
-              if (issue.severity === 'soft') {
-                yield* Console.error(`warning: ${issue.code}: ${issue.detail}`)
-              }
-            }
-            if (Api.Proof.hasBlockingProof(proof, plan.proofPolicy)) {
-              yield* Console.error(
-                'Plan proof contains blocking records. Run `release prove` for detail.',
-              )
-              return env.exit(1)
-            }
-          }
+          const result = yield* Api.Apply.apply(plan, {
+            prove,
+            rehearse,
+            // The confirmation prompt is operator IO, so it stays in the CLI and
+            // is handed to the gauntlet as a callback (only when --yes is unset).
+            ...(yes
+              ? {}
+              : {
+                  beforeConfirm: () =>
+                    Effect.gen(function* () {
+                      yield* Console.log(
+                        Api.Renderer.renderApplyConfirmation(plan, publish, { env: env.vars }),
+                      )
+                      return yield* confirm('Proceed with release? [y/N] ')
+                    }),
+                }),
+          })
 
-          if (rehearse) {
-            yield* Api.Artifact.rehearse(plan)
-          }
-
-          // Confirmation prompt (unless --yes)
-          if (!yes) {
-            yield* Console.log(
-              Api.Renderer.renderApplyConfirmation(plan, publish, { env: env.vars }),
-            )
-            const approved = yield* confirm('Proceed with release? [y/N] ')
-            if (!approved) {
+          switch (result._tag) {
+            case 'Canceled': {
               yield* Console.log('Release canceled.')
               return env.exit(1)
             }
-          }
-
-          // A plan-bound proof on disk that fails to decode (e.g. it was written
-          // against an older proof schema version) is treated like a missing
-          // proof: the operator must re-prove. Surface the same actionable
-          // guidance instead of leaking a raw decode error.
-          const proofResult = yield* Effect.result(Api.Proof.readForPlan(plan))
-          if (proofResult._tag === 'Failure') {
-            if (Schema.isSchemaError(proofResult.failure)) {
+            case 'ProofUnreadable': {
               yield* Console.error(
                 'Plan-bound proof is unreadable (stale or invalid proof schema).',
               )
@@ -175,164 +160,66 @@ export const apply = Command.make(
               )
               return env.exit(1)
             }
-            return yield* Effect.fail(proofResult.failure)
-          }
-          const proof = proofResult.success
-          if (Option.isNone(proof)) {
-            yield* Console.error('Plan-bound proof is missing.')
-            yield* Console.error(
-              'Run `release prove` or `release apply --prove --rehearse` before publishing.',
-            )
-            return env.exit(1)
-          }
-          for (const issue of Api.Proof.validateProof(proof.value, undefined, plan.proofPolicy)) {
-            if (issue.severity === 'soft') {
-              yield* Console.error(`warning: ${issue.code}: ${issue.detail}`)
-            }
-          }
-          if (Api.Proof.hasBlockingProof(proof.value, plan.proofPolicy)) {
-            yield* Console.error('Plan-bound proof contains blocking records.')
-            yield* Console.error(
-              'Run `release prove` and resolve every failed or unprovable proof.',
-            )
-            return env.exit(1)
-          }
-
-          // Re-observe local credential and GitHub surfaces and rebuild the proof
-          // by overlaying those fresh observations on the prior artifact's
-          // evidence, immediately before mutation — so a credential that expired
-          // since `release prove` blocks the apply. Gathering both local and
-          // GitHub observations rebuilds essentially every observable record fresh.
-          const recheckObservations = yield* Api.Proof.collectObservations(plan)
-          const reproveNow = new Date().toISOString()
-          const rechecked = Api.Proof.recheckProof({
-            plan,
-            prior: proof.value,
-            observations: recheckObservations,
-            now: reproveNow,
-          })
-          yield* Api.Proof.write(rechecked, Api.Proof.proofPathFor(env.cwd, plan))
-          for (const issue of Api.Proof.validateProof(rechecked, reproveNow, plan.proofPolicy)) {
-            if (issue.severity === 'soft') {
-              yield* Console.error(`warning: ${issue.code}: ${issue.detail}`)
-            }
-          }
-          if (Api.Proof.hasBlockingProof(rechecked, plan.proofPolicy)) {
-            yield* Console.error('Pre-apply proof recheck found blocking records.')
-            yield* Console.error(
-              'A credential or environment surface changed since `release prove`; re-prove and resolve.',
-            )
-            return env.exit(1)
-          }
-
-          const artifacts = yield* Api.Artifact.readManifest(plan)
-          if (Option.isNone(artifacts)) {
-            yield* Console.error('Artifact manifest is missing.')
-            yield* Console.error(
-              'Run `release rehearse` or `release apply --prove --rehearse` before publishing.',
-            )
-            return env.exit(1)
-          }
-          const artifactIssues = yield* Api.Artifact.validateManifestFilesForPlan(
-            plan,
-            artifacts.value,
-          )
-          if (artifactIssues.length > 0) {
-            yield* Console.error('Artifact manifest does not match the frozen plan.')
-            for (const issue of artifactIssues)
-              yield* Console.error(`${issue.code}: ${issue.detail}`)
-            return env.exit(1)
-          }
-          if (plan.source !== undefined) {
-            // Validate the full staleness proof set (config digest, head SHA,
-            // toolchain, subcommands, lockfiles) against a freshly observed
-            // snapshot, not just lockfile drift.
-            const configResult = yield* Effect.result(Api.Config.load())
-            if (configResult._tag === 'Failure') {
+            case 'ProofMissing': {
+              yield* Console.error('Plan-bound proof is missing.')
               yield* Console.error(
-                'Cannot verify release staleness: failed to load the current release config.',
+                'Run `release prove` or `release apply --prove --rehearse` before publishing.',
               )
-              yield* Console.error(configResult.failure.message)
               return env.exit(1)
             }
-            const observedSource = yield* Api.Planner.buildSourceSnapshot({
-              config: configResult.success,
-            })
-            const sourceIssues = Api.Planner.validateSourceSnapshot(plan.source, observedSource)
-            if (sourceIssues.length > 0) {
-              yield* Console.error('Release source snapshot is stale.')
-              for (const issue of sourceIssues)
-                yield* Console.error(`${issue.code}: ${issue.detail}`)
+            case 'Blocked': {
+              for (const warning of result.softWarnings) yield* Console.error(warning)
+              for (const message of result.messages) yield* Console.error(message)
               return env.exit(1)
             }
-          }
-          const scriptPolicyIssues = yield* Api.Artifact.validateScriptPolicyForPlan(plan)
-          if (scriptPolicyIssues.length > 0) {
-            yield* Console.error('Release artifact script policy is not satisfied.')
-            for (const issue of scriptPolicyIssues) {
-              yield* Console.error(`${issue.code}: ${issue.detail}`)
+            case 'Ready': {
+              for (const warning of result.softWarnings) yield* Console.error(warning)
+
+              // Execute with observable workflow. The per-mutation recheck hook
+              // starts from the gauntlet's rechecked artifact.
+              const { events, execute } = yield* Api.Executor.executeObservable(plan, {
+                dryRun: false,
+                tag: publish.distTag,
+                rehearsedArtifacts: true,
+                ...(plan.publishIntent !== undefined
+                  ? { registry: plan.publishIntent.registry.url }
+                  : {}),
+                ...(plan.publishIntent !== undefined
+                  ? { trunk: plan.publishIntent.git.trunk }
+                  : {}),
+                github: result.github,
+                beforeMutation: makeProofRecheckHook({ plan, prior: result.rechecked }),
+              })
+
+              // Fork event consumer to stream status updates
+              const eventFiber = yield* events.pipe(
+                Stream.tap((event) => {
+                  const line = Api.Executor.formatLifecycleEvent(event, { env: env.vars })
+                  if (!line) return Effect.void
+                  return line.level === 'error'
+                    ? Console.error(line.message)
+                    : Console.log(line.message)
+                }),
+                Stream.runDrain,
+                Effect.forkChild,
+              )
+
+              const executed = yield* execute
+              yield* Fiber.join(eventFiber)
+
+              yield* Console.log(
+                Api.Renderer.renderApplyDone(executed.releasedPackages.length, { env: env.vars }),
+              )
+
+              // Archive the executed plan immutably by digest, then clear the
+              // active pointer (instead of deleting the only copy of the plan).
+              const archiveFile = yield* Api.Planner.Store.archive(plan, planDigest)
+              yield* Console.log(`Plan archived to ${Fs.Path.toString(archiveFile)}`)
+              if (planPath === undefined) {
+                yield* Api.Planner.Store.deleteActive
+              }
+              return
             }
-            return env.exit(1)
-          }
-          const enginePolicyIssues = yield* Api.Artifact.validateEnginePolicyForPlan(plan)
-          if (enginePolicyIssues.length > 0) {
-            yield* Console.error('Release artifact engine policy is not satisfied.')
-            for (const issue of enginePolicyIssues) {
-              yield* Console.error(`${issue.code}: ${issue.detail}`)
-            }
-            return env.exit(1)
-          }
-
-          const runtime = yield* Api.Explorer.explore()
-          const runtimeConfig = Api.Explorer.toExecutorRuntimeConfig(runtime)
-          if (!runtimeConfig.github) {
-            yield* Console.error('GitHub release target and token are required for release apply.')
-            yield* Console.error('Set GITHUB_TOKEN and ensure origin points to GitHub, then retry.')
-            return env.exit(1)
-          }
-
-          // Execute with observable workflow
-          const { events, execute } = yield* Api.Executor.executeObservable(plan, {
-            dryRun: false,
-            tag: publish.distTag,
-            rehearsedArtifacts: true,
-            ...(plan.publishIntent !== undefined
-              ? { registry: plan.publishIntent.registry.url }
-              : {}),
-            ...(plan.publishIntent !== undefined ? { trunk: plan.publishIntent.git.trunk } : {}),
-            github: runtimeConfig.github,
-            beforeMutation: makeProofRecheckHook({ plan, prior: rechecked }),
-          })
-
-          // Fork event consumer to stream status updates
-          const eventFiber = yield* events.pipe(
-            Stream.tap((event) => {
-              const line = Api.Executor.formatLifecycleEvent(event, { env: env.vars })
-              if (!line) return Effect.void
-              return line.level === 'error'
-                ? Console.error(line.message)
-                : Console.log(line.message)
-            }),
-            Stream.runDrain,
-            Effect.forkChild,
-          )
-
-          // Run workflow
-          const result = yield* execute
-
-          // Wait for events to flush
-          yield* Fiber.join(eventFiber)
-
-          yield* Console.log(
-            Api.Renderer.renderApplyDone(result.releasedPackages.length, { env: env.vars }),
-          )
-
-          // Archive the executed plan immutably by digest, then clear the
-          // active pointer (instead of deleting the only copy of the plan).
-          const archiveFile = yield* Api.Planner.Store.archive(plan, planDigest)
-          yield* Console.log(`Plan archived to ${Fs.Path.toString(archiveFile)}`)
-          if (planPath === undefined) {
-            yield* Api.Planner.Store.deleteActive
           }
         }),
       )
