@@ -264,6 +264,7 @@ describe('Mock.make — proxy reflection invariants', () => {
   test('a method controller enumerates without throwing', () => {
     const sample = Mock.make(Sample)
     expect(() => Object.getOwnPropertyNames(sample.greet)).not.toThrow()
+    // oxlint-disable-next-line typescript/no-misused-spread -- regression: a callable mock-method proxy must spread without throwing (the ownKeys invariant)
     expect(() => ({ ...sample.greet })).not.toThrow()
     const keys = Object.getOwnPropertyNames(sample.greet)
     expect(keys).toContain('calls')
