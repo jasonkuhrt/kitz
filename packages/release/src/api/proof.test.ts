@@ -1071,4 +1071,32 @@ describe('recheckProof honors recheckMode', () => {
     expect(packageAccess?.status).toBe('proven')
     expect(packageAccess?.proofHistory).toHaveLength(1)
   })
+
+  test('an in-phase failure cascades to its out-of-phase dependents', () => {
+    const prior = provenProof()
+    // identity is a pre-apply record (in-phase); package-access is a
+    // pre-each-mutation record (out-of-phase) that dependsOn identity. A
+    // pre-apply recheck that fails identity must still cascade package-access to
+    // blocked so the rechecked artifact stays internally consistent.
+    const rechecked = recheckProof({
+      plan: contractedPlan,
+      prior,
+      phase: 'pre-apply',
+      observations: { identityError: 'token expired', packageAccess: { '@kitz/core': 'public' } },
+      now: '2026-05-13T01:00:00.000Z',
+    })
+
+    const identity = rechecked.records.find((record) => record.id === 'env.publish.identity')
+    expect(identity?.status).toBe('failed')
+
+    const packageAccess = rechecked.records.find(
+      (record) => record.id === 'env.publish.package-access.@kitz/core',
+    )
+    expect(packageAccess?.status).toBe('blocked')
+    expect(packageAccess?.blockedBy).toBe('env.publish.identity')
+    const last = packageAccess?.proofHistory[packageAccess.proofHistory.length - 1]
+    expect(last?.to).toBe('blocked')
+    expect(last?.from).toBe('proven')
+    expect(last?.cause).toBe('env.publish.identity')
+  })
 })

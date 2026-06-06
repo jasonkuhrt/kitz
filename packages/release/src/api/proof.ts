@@ -953,16 +953,25 @@ export const recheckProof = (params: {
   )
 
   // Build a hybrid fresh artifact: in-phase records take the freshly observed
-  // record, out-of-phase records keep the prior record verbatim. Then merge
-  // history against the prior so only changed in-phase records grow history.
+  // record, out-of-phase records keep the prior record verbatim.
   const hybridRecords = A.map(params.prior.records, (priorRecord) => {
     if (!A.contains(targetModes, priorRecord.recheckMode)) return priorRecord
     return Option.getOrElse(MutableHashMap.get(freshById, priorRecord.id), () => priorRecord)
   })
 
+  // Re-run the cascade over the hybrid set so a freshly failed in-phase record
+  // blocks its dependents regardless of their phase. Without this, an
+  // out-of-phase dependent of a freshly failed dependency keeps its stale prior
+  // status, producing an internally inconsistent artifact (a `proven` record
+  // whose dependency is `failed`). Already-blocked records are skipped by
+  // `cascadeBlocked`, so fresh in-phase records that cascaded inside
+  // `makeProofArtifact` are not re-transitioned. Then merge history against the
+  // prior so only records whose status actually changed grow their history.
+  const cascadedRecords = cascadeBlocked(hybridRecords, params.now)
+
   return mergeProofHistory(
     params.prior,
-    ProofArtifact.make({ ...params.prior, records: hybridRecords }),
+    ProofArtifact.make({ ...params.prior, records: cascadedRecords }),
   )
 }
 
