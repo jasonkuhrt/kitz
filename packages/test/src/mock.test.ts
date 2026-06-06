@@ -16,6 +16,8 @@ interface SampleService {
   readonly ping: () => Effect.Effect<'pong', SampleError>
   readonly find: (id: string) => Effect.Effect<Option.Option<string>, SampleError>
   readonly label: string
+  /** Nested synchronous config object — exercises nested `override` proxying. */
+  readonly meta: { readonly version: string; readonly nested: { readonly deep: number } }
 }
 
 class SampleError {
@@ -238,6 +240,89 @@ describe('Mock.make — missing-mock behavior', () => {
     const sample = Mock.make(Sample)
     const exit = await runExit(sample.greet('x'))
     expect(exit._tag).toBe('Failure')
+  })
+})
+
+// ─── Proxy reflection invariants ─────────────────────────────────────────────
+//
+// Test frameworks, assertion libraries (`expect().toEqual`), serializers, and
+// snapshot tools enumerate or spread objects. The driver and its method
+// controllers are callable Proxies; their `ownKeys`/`getOwnPropertyDescriptor`
+// traps must satisfy the Proxy invariants or every such operation throws.
+
+describe('Mock.make — proxy reflection invariants', () => {
+  test('the root driver enumerates and spreads without throwing', () => {
+    const sample = Mock.make(Sample)
+    expect(() => Object.keys(sample)).not.toThrow()
+    expect(() => Object.getOwnPropertyNames(sample)).not.toThrow()
+    expect(() => Reflect.ownKeys(sample)).not.toThrow()
+    expect(() => ({ ...sample })).not.toThrow()
+    // `$test` is reported as a (non-enumerable) own property.
+    expect(Object.getOwnPropertyNames(sample)).toContain('$test')
+  })
+
+  test('a method controller enumerates without throwing', () => {
+    const sample = Mock.make(Sample)
+    expect(() => Object.getOwnPropertyNames(sample.greet)).not.toThrow()
+    expect(() => ({ ...sample.greet })).not.toThrow()
+    const keys = Object.getOwnPropertyNames(sample.greet)
+    expect(keys).toContain('calls')
+    expect(keys).toContain('nextSuccess')
+    expect(keys).toContain('when')
+  })
+
+  test('the controller surface answers `in` checks', () => {
+    const sample = Mock.make(Sample)
+    expect('calls' in sample.greet).toBe(true)
+    expect('nextSuccess' in sample.greet).toBe(true)
+    expect('$test' in sample).toBe(true)
+  })
+})
+
+// ─── Override surface ─────────────────────────────────────────────────────────
+
+describe('Mock.make — override', () => {
+  test('override pins a nested object and deep-merges partial updates', () => {
+    const sample = Mock.make(Sample)
+    // `label` is the only declared sync field; exercise nested override on a
+    // structurally-typed read to cover the override-proxy path.
+    sample.$test.override({ label: 'first' })
+    expect(sample.label).toBe('first')
+
+    sample.$test.override({ label: 'second' })
+    expect(sample.label).toBe('second')
+  })
+
+  test('reset() drops overrides', () => {
+    const sample = Mock.make(Sample)
+    sample.$test.override({ label: 'pinned' })
+    expect(sample.label).toBe('pinned')
+
+    sample.$test.reset()
+    // After reset the override is gone; the field is no longer the pinned value.
+    expect(sample.label).not.toBe('pinned')
+  })
+
+  test('override pins a nested object and deep-merges a partial update', () => {
+    const sample = Mock.make(Sample)
+    sample.$test.override({ meta: { version: '1.0.0', nested: { deep: 7 } } })
+    expect(sample.meta.version).toBe('1.0.0')
+    expect(sample.meta.nested.deep).toBe(7)
+
+    // A partial update to a sibling key must preserve the unrelated nested branch.
+    sample.$test.override({ meta: { version: '2.0.0' } })
+    expect(sample.meta.version).toBe('2.0.0')
+    expect(sample.meta.nested.deep).toBe(7)
+  })
+
+  test('the override proxy enumerates and answers `in` without throwing', () => {
+    const sample = Mock.make(Sample)
+    sample.$test.override({ meta: { version: '1.0.0', nested: { deep: 1 } } })
+    const meta = sample.meta
+    expect(() => Object.keys(meta)).not.toThrow()
+    expect(Object.keys(meta)).toContain('version')
+    expect('version' in meta).toBe(true)
+    expect(() => Object.getOwnPropertyDescriptor(meta, 'version')).not.toThrow()
   })
 })
 

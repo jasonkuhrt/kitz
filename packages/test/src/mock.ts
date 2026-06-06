@@ -611,8 +611,12 @@ function createDriverProxy(state: RuntimeState, path: ReadonlyArray<string>): un
     return cached
   }
 
-  // oxlint-disable-next-line eslint/prefer-arrow-callback -- named function expression supplies proxy.name (callable Proxy target) used in error messages and runtime identification
-  const proxy = new Proxy(function mockServiceMethod() {}, {
+  // Arrow function target: callable (for the `apply` trap) but — unlike a
+  // `function` expression — carries no own `prototype` property. A `function`
+  // target's `prototype` is non-configurable, so an `ownKeys` trap that omits
+  // it violates the Proxy invariant and makes `Object.keys`/spread/`Reflect
+  // .ownKeys` on the driver throw. The arrow target has no such key.
+  const proxy = new Proxy(() => {}, {
     get(_target, prop) {
       if (prop === 'then') {
         return undefined
