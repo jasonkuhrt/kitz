@@ -214,46 +214,61 @@ describe('planner publish contract', () => {
     })
   })
 
-  test('source snapshot validation catches missing, changed, and newly added lockfiles', async () => {
-    const source = PlanSourceSnapshot.make({
-      headSha: 'abc1234',
+  const frozenSource = PlanSourceSnapshot.make({
+    headSha: 'abc1234',
+    trunk: 'main',
+    releaseConfigDigest: sha256Text('config'),
+    releaseConfigDigestSource: 'canonical-effective-config',
+    lockfiles: [
+      { path: Fs.Path.RelFile.fromString('./pnpm-lock.yaml'), digest: sha256Text('old-lock') },
+      {
+        path: Fs.Path.RelFile.fromString('./package-lock.json'),
+        digest: sha256Text('missing-lock'),
+      },
+    ],
+    packageManager: {
+      name: 'pnpm',
+      version: '11.0.0',
+      binary: 'pnpm',
+      subcommands: { pack: true, publish: true },
+    },
+    toolVersions: { pnpm: '11.0.0' },
+  })
+
+  test('source snapshot validation reports no issues when nothing drifted', () => {
+    expect(validateSourceSnapshot(frozenSource, frozenSource)).toEqual([])
+  })
+
+  test('source snapshot validation catches the full staleness set', () => {
+    const observed = PlanSourceSnapshot.make({
+      headSha: 'def5678', // head SHA moved
       trunk: 'main',
-      releaseConfigDigest: sha256Text('config'),
+      releaseConfigDigest: sha256Text('config-changed'), // effective config changed
       releaseConfigDigestSource: 'canonical-effective-config',
       lockfiles: [
-        {
-          path: Fs.Path.RelFile.fromString('./pnpm-lock.yaml'),
-          digest: sha256Text('old-lock'),
-        },
-        {
-          path: Fs.Path.RelFile.fromString('./package-lock.json'),
-          digest: sha256Text('missing-lock'),
-        },
+        { path: Fs.Path.RelFile.fromString('./pnpm-lock.yaml'), digest: sha256Text('new-lock') }, // drift
+        // package-lock.json disappeared -> missing
+        { path: Fs.Path.RelFile.fromString('./bun.lock'), digest: sha256Text('added-lock') }, // added
       ],
       packageManager: {
         name: 'pnpm',
-        version: '11.0.0',
+        version: '12.0.0', // toolchain version changed
         binary: 'pnpm',
         subcommands: { pack: true, publish: true },
       },
-      toolVersions: { pnpm: '11.0.0' },
+      toolVersions: { pnpm: '12.0.0' }, // recorded tool version changed
     })
 
-    const issues = await Effect.runPromise(
-      validateSourceSnapshot(source, Fs.Path.AbsDir.fromString('/repo/')).pipe(
-        Effect.provide(
-          Fs.Memory.layer({
-            '/repo/pnpm-lock.yaml': 'new-lock',
-            '/repo/bun.lock': 'added-lock',
-          }),
-        ),
-      ),
-    )
-
-    expect(issues.map((issue) => issue.code)).toEqual([
-      'release.source.lockfile-drift',
-      'release.source.lockfile-missing',
-      'release.source.lockfile-added',
-    ])
+    const codes = validateSourceSnapshot(frozenSource, observed).map((issue) => issue.code)
+    expect(codes).toContain('release.source.head-sha-drift')
+    expect(codes).toContain('release.source.config-digest-drift')
+    expect(codes).toContain('release.source.lockfile-drift')
+    expect(codes).toContain('release.source.lockfile-missing')
+    expect(codes).toContain('release.source.lockfile-added')
+    expect(codes).toContain('release.source.toolchain-drift')
+    expect(codes).toContain('release.source.tool-version-drift')
+    // Subcommand invocation proofs are enforced by the plan-bound Proof gate
+    // (apply: Proof.readForPlan + hasBlockingProof), not the source snapshot.
+    expect(codes).not.toContain('release.source.subcommand-unavailable')
   })
 })

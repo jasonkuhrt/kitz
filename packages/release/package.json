@@ -51,6 +51,7 @@
     "@kitz/fs": "workspace:*",
     "@kitz/git": "workspace:*",
     "@kitz/github": "workspace:*",
+    "@kitz/json": "workspace:*",
     "@kitz/mod": "workspace:*",
     "@kitz/monorepo": "workspace:*",
     "@kitz/npm-registry": "workspace:*",
