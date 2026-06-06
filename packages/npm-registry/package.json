@@ -14,7 +14,8 @@
   },
   "exports": {
     ".": "./src/_.ts",
-    "./__": "./src/__.ts"
+    "./__": "./src/__.ts",
+    "./test": "./src/test.ts"
   },
   "files": [
     "build",
@@ -35,6 +36,7 @@
     "@kitz/fs": "workspace:*",
     "@kitz/pkg": "workspace:*",
     "@kitz/semver": "workspace:*",
+    "@kitz/test": "workspace:*",
     "effect": "catalog:"
   }
 }
