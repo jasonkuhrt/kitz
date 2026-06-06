@@ -117,6 +117,7 @@ export interface PublishCall {
   readonly tarball: Fs.Path.AbsFile
   readonly tag?: string
   readonly registry?: string
+  readonly access?: 'public' | 'restricted'
   readonly ignoreScripts?: boolean
   readonly dryRun?: boolean
   readonly provenance?: boolean
@@ -272,6 +273,7 @@ export const makeHarness = (options: {
                     : {}),
                   ...(publishOptions.tag && { tag: publishOptions.tag }),
                   ...(publishOptions.registry && { registry: publishOptions.registry }),
+                  ...(publishOptions.access !== undefined ? { access: publishOptions.access } : {}),
                   ...(publishOptions.ignoreScripts !== undefined
                     ? { ignoreScripts: publishOptions.ignoreScripts }
                     : {}),

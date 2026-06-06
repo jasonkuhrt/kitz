@@ -91,6 +91,7 @@ export const ReleasePayload = Schema.Struct({
     dryRun: Schema.Boolean,
     tag: Schema.optional(Schema.String),
     registry: Schema.optional(Schema.String),
+    access: Schema.optional(Schema.Literals(['public', 'restricted'])),
     planDigest: Schema.optional(Schema.String),
     rehearsedArtifacts: Schema.Boolean,
     atomicTagPush: Schema.Boolean,
@@ -110,6 +111,7 @@ const releaseWorkflowIdempotencyKey = (payload: ReleasePayloadType): string =>
       dryRun: payload.options.dryRun,
       tag: payload.options.tag ?? null,
       registry: payload.options.registry ?? null,
+      access: payload.options.access ?? null,
       planDigest: payload.options.planDigest ?? null,
       rehearsedArtifacts: payload.options.rehearsedArtifacts,
       atomicTagPush: payload.options.atomicTagPush,
@@ -456,6 +458,9 @@ export const makeReleaseWorkflow = (beforeMutation?: BeforeMutationHook) =>
                   {
                     ...(publishTag !== undefined ? { tag: publishTag } : {}),
                     ...(payload.options.registry && { registry: payload.options.registry }),
+                    ...(payload.options.access !== undefined
+                      ? { access: payload.options.access }
+                      : {}),
                     packageManager: payload.options.publishInvoker,
                   },
                 ).pipe(Effect.as(release.packageName)),
@@ -566,7 +571,9 @@ export const makeReleaseWorkflow = (beforeMutation?: BeforeMutationHook) =>
               observation,
               distTag: publishTag,
               official: payload.options.lifecycle === 'official',
-              requestedAccess: 'public',
+              ...(payload.options.access !== undefined
+                ? { requestedAccess: payload.options.access }
+                : {}),
               receipt,
             })
             if (verification.issues.length > 0) {

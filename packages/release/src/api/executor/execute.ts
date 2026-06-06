@@ -529,11 +529,17 @@ export const toPayload = (
 
     const orderedReleases = yield* orderReleaseEntries(releaseEntries)
 
+    const access =
+      plan.publishIntent === undefined || plan.publishIntent.access.mode === 'omit'
+        ? undefined
+        : plan.publishIntent.access.value
+
     return {
       releases: orderedReleases,
       options: {
         dryRun: options.dryRun ?? false,
         planDigest: digestForPlan(plan).value,
+        ...(access !== undefined ? { access } : {}),
         rehearsedArtifacts: options.rehearsedArtifacts ?? false,
         atomicTagPush: plan.publishIntent?.git.atomicTagPush ?? options.atomicTagPush ?? false,
         ...(resolvedTag !== undefined ? { tag: resolvedTag } : {}),
