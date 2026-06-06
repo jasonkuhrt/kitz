@@ -16,6 +16,7 @@ import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Fiber, Layer, Option, Stream, Terminal } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
+import type { BeforeMutationHook } from '../../api/executor/execute.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
 import {
   formatInvalidPlanMessage,
@@ -33,6 +34,46 @@ const confirm = (message: string) =>
     const normalized = answer.trim().toLowerCase()
     return normalized === 'y' || normalized === 'yes'
   })
+
+/**
+ * Build the proof-aware before-mutation gate the apply boundary injects into the
+ * executor. The executor stays proof-blind: it runs this opaque hook immediately
+ * before every mutating node and aborts the mutation if the hook fails.
+ *
+ * The hook re-observes local credential and registry surfaces, re-derives the
+ * `pre-each-mutation` proof records from those fresh observations, and blocks the
+ * pending mutation when the recheck turns up a blocking record (e.g. a credential
+ * or local surface changed mid-release). It persists nothing — it only re-observes
+ * and gates — so its requirements stay `Git.Git | NpmRegistry.NpmCli`.
+ */
+export const makeProofRecheckHook =
+  (params: {
+    readonly plan: Api.Planner.Plan
+    readonly prior: Api.ReleaseContract.ProofArtifact
+  }): BeforeMutationHook =>
+  (ctx) =>
+    Effect.gen(function* () {
+      const observations = yield* Api.Proof.collectLocalObservations(params.plan)
+      const rechecked = Api.Proof.recheckProof({
+        plan: params.plan,
+        prior: params.prior,
+        phase: 'pre-mutation',
+        observations,
+        now: new Date().toISOString(),
+      })
+      if (Api.Proof.hasBlockingProof(rechecked, params.plan.proofPolicy)) {
+        return yield* Effect.fail(
+          new Api.Executor.Errors.ExecutorBeforeMutationError({
+            context: {
+              kind: ctx.kind,
+              subject: ctx.subject,
+              detail:
+                'A pre-each-mutation proof recheck found blocking records (a credential or local surface changed mid-release).',
+            },
+          }),
+        )
+      }
+    })
 
 const commandLayer = ChildProcessSpawnerLayer
 const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(commandLayer))
@@ -319,6 +360,7 @@ export const apply = Command.make(
               : {}),
             ...(plan.publishIntent !== undefined ? { trunk: plan.publishIntent.git.trunk } : {}),
             github: runtimeConfig.github,
+            beforeMutation: makeProofRecheckHook({ plan, prior: rechecked }),
           })
 
           // Fork event consumer to stream status updates
