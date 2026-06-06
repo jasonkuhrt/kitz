@@ -47,7 +47,6 @@ export interface ProofObservations {
   readonly identityError?: string
   readonly packageAccess?: Readonly<Record<string, 'public' | 'restricted'>>
   readonly packageAccessErrors?: Readonly<Record<string, string>>
-  readonly packageVersions?: Readonly<Record<string, boolean>>
   readonly gitPushDryRun?: Readonly<
     Record<string, boolean | { readonly ok: boolean; readonly detail?: string }>
   >
@@ -504,6 +503,7 @@ const provenanceRecordForPlan = (
             : 'attestation file was not observed',
         evidence: {
           file: intent.provenance.file ? Fs.Path.toString(intent.provenance.file) : null,
+          provenanceBundleExists: observations.provenanceBundleExists ?? null,
         },
       }),
     ]
@@ -948,8 +948,15 @@ export const mergeProofHistory = (prior: ProofArtifact, fresh: ProofArtifact): P
   })
 }
 
+// Read the reason of the record's *latest* transition, not its first. The
+// latest transition is the one into the record's current status, so for a
+// `failed` record this is the current failure reason. Reading `proofHistory[0]`
+// would, on a record carried through a status flip (e.g. proven -> failed),
+// reconstruct the *original* status's reason — e.g. a stale "publish identity
+// observed" success string mislabeled as the failure reason — because
+// `mergeProofHistory` preserves the prior's first transition.
 const observedReason = (record: ProofRecord | undefined): string | undefined =>
-  record?.proofHistory[0]?.reason
+  record?.proofHistory[record.proofHistory.length - 1]?.reason
 
 const stringEvidence = (record: ProofRecord | undefined, key: string): string | undefined => {
   const value = record?.evidence[key]
@@ -1071,6 +1078,10 @@ export const priorObservationsFromArtifact = (prior: ProofArtifact): ProofObserv
       }
       const oidcClaimsVerified = booleanEvidence(record, 'oidcClaimsVerified')
       if (oidcClaimsVerified !== undefined) observations.oidcClaimsVerified = oidcClaimsVerified
+      const provenanceBundleExists = booleanEvidence(record, 'provenanceBundleExists')
+      if (provenanceBundleExists !== undefined) {
+        observations.provenanceBundleExists = provenanceBundleExists
+      }
     }
   }
 
@@ -1105,6 +1116,9 @@ export const priorObservationsFromArtifact = (prior: ProofArtifact): ProofObserv
       : {}),
     ...(observations.oidcClaimsVerified !== undefined
       ? { oidcClaimsVerified: observations.oidcClaimsVerified }
+      : {}),
+    ...(observations.provenanceBundleExists !== undefined
+      ? { provenanceBundleExists: observations.provenanceBundleExists }
       : {}),
   }
 }
@@ -1158,9 +1172,6 @@ const mergeObservations = (
       : {}),
     ...(Object.keys(packageAccess).length > 0 ? { packageAccess } : {}),
     ...(Object.keys(packageAccessErrors).length > 0 ? { packageAccessErrors } : {}),
-    ...(prior.packageVersions !== undefined || fresh.packageVersions !== undefined
-      ? { packageVersions: { ...prior.packageVersions, ...fresh.packageVersions } }
-      : {}),
     ...(prior.gitPushDryRun !== undefined || fresh.gitPushDryRun !== undefined
       ? { gitPushDryRun: { ...prior.gitPushDryRun, ...fresh.gitPushDryRun } }
       : {}),
@@ -1251,3 +1262,15 @@ export const readForPlan = (
     const env = yield* Env.Env
     return yield* read(proofPathFor(env.cwd, plan))
   })
+
+/**
+ * Internal surface exposed only for tests. `cascadeBlocked` carries a fail-loud
+ * topological invariant (see its doc comment) that no production caller can trip
+ * — `makeProofArtifact` always emits records in dependency-before-dependent order
+ * — so the guard's negative path is otherwise unreachable from any public entry.
+ * This namespace lets the test pin that guard directly without widening the
+ * public API.
+ */
+export const _ = {
+  cascadeBlocked,
+} as const

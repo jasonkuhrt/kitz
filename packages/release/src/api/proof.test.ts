@@ -12,6 +12,7 @@ import { OfficialFirst } from './version/models/official-first.js'
 import { Official } from './planner/models/item-official.js'
 import { Plan } from './planner/models/plan.js'
 import {
+  _ as ProofInternal,
   collectLocalObservations,
   collectGithubObservations,
   deferredProofsForArtifact,
@@ -207,33 +208,38 @@ describe('proof artifact', () => {
     )
   })
 
-  test('a stale-schema proof on disk surfaces a SchemaError, not a silent empty read', async () => {
-    // The ProofArtifact schemaVersion is a closed literal (2). A proof written by
-    // an older release version (schemaVersion 1) fails to decode. readForPlan must
-    // surface that as a Schema.SchemaError so the apply/resume boundary can route
-    // it to "re-prove" guidance — not swallow it into Option.none (which would
-    // read as "no proof" and hide a stale artifact).
-    const cwd = Fs.Path.AbsDir.fromString('/repo/')
-    const path = proofPathFor(cwd, contractedPlan)
-    const staleV1Proof = JSON.stringify({
-      schemaVersion: 1,
-      planDigest: { value: contractedDigest.value },
-      records: [],
-    })
-    const result = await Effect.runPromise(
-      Effect.gen(function* () {
-        const fs = yield* FileSystem.FileSystem
-        yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(path)), { recursive: true })
-        yield* fs.writeFileString(Fs.Path.toString(path), staleV1Proof)
-        return yield* Effect.result(readForPlan(contractedPlan))
-      }).pipe(Effect.provide(Layer.mergeAll(Fs.Memory.layer({}), Env.Test({ cwd })))),
-    )
+  test.each([1, 2])(
+    'a stale schemaVersion %i proof on disk surfaces a SchemaError, not a silent empty read',
+    async (staleSchemaVersion) => {
+      // The ProofArtifact schemaVersion is a closed literal (3). A proof written by
+      // an older release version fails to decode. The realistic stale artifact an
+      // operator has on disk is v2 (the immediately-prior schema), so the v2 boundary
+      // is the one the 2->3 bump actually moved; v1 is the older case. readForPlan
+      // must surface either as a Schema.SchemaError so the apply/resume boundary can
+      // route it to "re-prove" guidance — not swallow it into Option.none (which would
+      // read as "no proof" and hide a stale artifact).
+      const cwd = Fs.Path.AbsDir.fromString('/repo/')
+      const path = proofPathFor(cwd, contractedPlan)
+      const staleProof = JSON.stringify({
+        schemaVersion: staleSchemaVersion,
+        planDigest: { value: contractedDigest.value },
+        records: [],
+      })
+      const result = await Effect.runPromise(
+        Effect.gen(function* () {
+          const fs = yield* FileSystem.FileSystem
+          yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(path)), { recursive: true })
+          yield* fs.writeFileString(Fs.Path.toString(path), staleProof)
+          return yield* Effect.result(readForPlan(contractedPlan))
+        }).pipe(Effect.provide(Layer.mergeAll(Fs.Memory.layer({}), Env.Test({ cwd })))),
+      )
 
-    expect(Result.isFailure(result)).toBe(true)
-    if (Result.isFailure(result)) {
-      expect(Schema.isSchemaError(result.failure)).toBe(true)
-    }
-  })
+      expect(Result.isFailure(result)).toBe(true)
+      if (Result.isFailure(result)) {
+        expect(Schema.isSchemaError(result.failure)).toBe(true)
+      }
+    },
+  )
 
   test('re-prove appends to proofHistory rather than overwriting it', async () => {
     const recordId = 'env.publish.package-access.@kitz/core'
@@ -970,6 +976,27 @@ describe('dependsOn blocked cascade', () => {
       seen.push(record.id)
     }
   })
+
+  test('cascadeBlocked fails loud on a forward dependency reference', () => {
+    // A record whose dependency is present in the set but constructed AFTER it.
+    // The forward-pass cascade would silently read the unresolved dependency as
+    // non-blocking and skip a cascade that should fire, so the guard throws
+    // instead. No production path can construct this (makeProofArtifact emits
+    // records in dependency-before-dependent order), so this is the only test
+    // that exercises the guard's negative path.
+    const base = {
+      observedAt: '2026-05-13T00:00:00.000Z',
+      evidence: {},
+      proofHistory: [],
+    } as const
+    const misordered = [
+      ProofRecord.make({ ...base, id: 'dependent', status: 'proven', dependsOn: ['cause'] }),
+      ProofRecord.make({ ...base, id: 'cause', status: 'failed', dependsOn: [] }),
+    ]
+    expect(() => ProofInternal.cascadeBlocked(misordered, '2026-05-13T00:00:00.000Z')).toThrow(
+      'Proof cascade invariant violated',
+    )
+  })
 })
 
 describe('soft vs hard proof-gate classification', () => {
@@ -1149,6 +1176,29 @@ describe('recheckProof overlays fresh observations on prior evidence', () => {
       }
     }
   })
+
+  test('a carried-forward identity failure keeps its failure reason across a second recheck', () => {
+    // proven -> failed flips identity; mergeProofHistory preserves the prior
+    // proven transition at proofHistory[0]. A second carry-forward recheck must
+    // reconstruct the *failure* reason, not the stale proven reason at index 0.
+    const failed = recheckProof({
+      plan: contractedPlan,
+      prior: provenProof(),
+      observations: { identityError: 'npm whoami: ENEEDAUTH' },
+      now: '2026-05-13T01:00:00.000Z',
+    })
+    const carried = recheckProof({
+      plan: contractedPlan,
+      prior: failed,
+      observations: {},
+      now: '2026-05-13T02:00:00.000Z',
+    })
+
+    const identity = carried.records.find((record) => record.id === 'env.publish.identity')
+    expect(identity?.status).toBe('failed')
+    const last = identity?.proofHistory[identity.proofHistory.length - 1]
+    expect(last?.reason).toBe('npm whoami: ENEEDAUTH')
+  })
 })
 
 describe('priorObservationsFromArtifact inverts the record builders', () => {
@@ -1214,6 +1264,81 @@ describe('priorObservationsFromArtifact inverts the record builders', () => {
     const statusOf = (artifact: ProofArtifact) =>
       Object.fromEntries(artifact.records.map((record) => [record.id, record.status]))
     expect(statusOf(rebuilt)).toEqual(statusOf(original))
+  })
+
+  // The provenance surfaces drive `publish.provenance-policy` from observations
+  // (trustedPublisherConfigured/oidcClaimsVerified for trusted-publisher;
+  // provenanceBundleExists for attestation-file) and neither surface is gathered by
+  // a recheck collector, so each must carry forward through evidence on every
+  // recheck. A missing inverse silently regresses a proven policy to `unprovable`
+  // (a hard block) on every recheck — the round-trip below pins the inverse.
+  test('round-trips a proven trusted-publisher provenance policy', () => {
+    const trustedPlan = Plan.make({
+      lifecycle: contractedPlan.lifecycle,
+      timestamp: contractedPlan.timestamp,
+      releases: contractedPlan.releases,
+      cascades: contractedPlan.cascades,
+      planDigest: contractedDigest,
+      publishIntent: updatePublishIntent(publishIntent, {
+        provenance: { mode: 'trusted-publisher', required: true, provider: 'npm-github' },
+      }),
+    })
+    const original = makeProofArtifact(trustedPlan, '2026-05-13T00:00:00.000Z', {
+      ...fullObservations,
+      trustedPublisherConfigured: true,
+      oidcClaimsVerified: true,
+    })
+    const rebuilt = makeProofArtifact(
+      trustedPlan,
+      '2026-05-13T02:00:00.000Z',
+      priorObservationsFromArtifact(original),
+    )
+
+    expect(
+      rebuilt.records.find((record) => record.id === 'publish.provenance-policy')?.status,
+    ).toBe('proven')
+  })
+
+  test('round-trips a proven attestation-file provenance policy', () => {
+    const attestationPlan = Plan.make({
+      lifecycle: contractedPlan.lifecycle,
+      timestamp: contractedPlan.timestamp,
+      releases: contractedPlan.releases,
+      cascades: contractedPlan.cascades,
+      planDigest: contractedDigest,
+      publishIntent: updatePublishIntent(publishIntent, {
+        provenance: {
+          mode: 'attestation-file',
+          required: true,
+          file: Fs.Path.AbsFile.fromString('/repo/provenance.jsonl'),
+        },
+      }),
+    })
+    const original = makeProofArtifact(attestationPlan, '2026-05-13T00:00:00.000Z', {
+      ...fullObservations,
+      provenanceBundleExists: true,
+    })
+    const rebuilt = makeProofArtifact(
+      attestationPlan,
+      '2026-05-13T02:00:00.000Z',
+      priorObservationsFromArtifact(original),
+    )
+
+    expect(
+      rebuilt.records.find((record) => record.id === 'publish.provenance-policy')?.status,
+    ).toBe('proven')
+
+    // The recheck primitive must also preserve it (the pre-mutation hook scenario:
+    // fresh observations never include provenanceBundleExists, so it carries forward).
+    const rechecked = recheckProof({
+      plan: attestationPlan,
+      prior: original,
+      observations: {},
+      now: '2026-05-13T03:00:00.000Z',
+    })
+    expect(
+      rechecked.records.find((record) => record.id === 'publish.provenance-policy')?.status,
+    ).toBe('proven')
   })
 })
 

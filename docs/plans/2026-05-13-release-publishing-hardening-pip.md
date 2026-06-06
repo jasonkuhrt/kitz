@@ -570,6 +570,10 @@ export class ProofPolicy extends Schema.Class<ProofPolicy>('ProofPolicy')({
 }) {}
 ```
 
+> Superseded: the shipped `ProofPolicy` has no `defaultRecheckMode` field. The
+> recheck-mode taxonomy was replaced by observation-layer recheck — see the
+> "Superseded: proof recheck policy" note below.
+
 `official` lifecycle plans default `byteVerifyRegistryTarball` to `always`. `ephemeral` lifecycle plans may use `official-only` or `never` only when the plan marks registry tarball byte equality as non-blocking.
 
 Proof policy defaults:
@@ -584,6 +588,16 @@ Proof policy defaults:
 Proofs from the future beyond `maxClockSkewSeconds` are invalid. Journal timestamps must be monotonic per plan digest except for explicitly recorded clock-skew corrections.
 
 Proof recheck policy:
+
+> Superseded: the per-record `recheckMode` taxonomy below was not shipped.
+> Recheck is now spliced at the observation layer: a recheck gathers whatever
+> fresh observations it can (the pre-mutation hook gathers local surfaces; apply
+> gathers local + GitHub), overlays them onto the observations reconstructed from
+> the prior artifact's evidence, and rebuilds the whole artifact through one pure
+> `makeProofArtifact` pass. There is no per-proof recheck-mode routing; see
+> `packages/release/src/api/proof.ts` (`recheckProof`, `mergeObservations`,
+> `priorObservationsFromArtifact`). The table is retained as the original design
+> intent only.
 
 | Proof family | Recheck mode | Reason |
 | --- | --- | --- |
@@ -709,6 +723,10 @@ export const ProofStatus = Schema.Literals('proven', 'failed', 'unprovable', 'de
 export const ProofRecheckMode = Schema.Literals('pre-apply', 'pre-each-mutation', 'pre-apply-and-on-mutation-failure')
 ```
 
+> Superseded: `ProofRecheckMode` was not shipped. Recheck is spliced at the
+> observation layer, not routed per record — see the "Superseded: proof recheck
+> policy" note above.
+
 Define a proof record:
 
 ```ts
@@ -730,6 +748,10 @@ export class ProofRecord extends Schema.Class<ProofRecord>('ProofRecord')({
   proofHistory: Schema.Array(ProofTransition),
 }) {}
 ```
+
+> Superseded: the shipped `ProofRecord` carries no `recheckMode` field (it does
+> add a `blockedBy` cascade root-cause reference instead). Recheck is spliced at
+> the observation layer — see the "Superseded: proof recheck policy" note above.
 
 Define a deferred obligation:
 
@@ -785,8 +807,8 @@ Lint integration:
 - Reads `.release/proofs/<planDigest>.json`.
 - Fails before side effects if missing, stale, failed, unprovable, or deferred for the wrong runtime.
 - `--prove` runs proof checks before execution and writes proof.
-- Before each external mutation, refreshes every proof whose `recheckMode` is `pre-each-mutation`.
-- On mutation failure, refreshes every proof whose `recheckMode` is `pre-apply-and-on-mutation-failure` before reconcile classifies the failure.
+- Before each external mutation, re-derives the proof against freshly gathered observations and merges it onto the prior artifact (`recheckProof`), then re-gates. There is no per-proof `recheckMode`; the whole artifact is rebuilt from one observation epoch so it stays internally consistent by construction.
+- On mutation failure, the same observation-layer recheck runs before reconcile classifies the failure.
 
 ### Tests
 
