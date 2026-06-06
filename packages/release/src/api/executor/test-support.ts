@@ -17,7 +17,7 @@ import { sha256Bytes } from '../digest.js'
 const JsonRecordSchema = Schema.Record(Schema.String, Schema.Unknown)
 const JsonRecordFromStringSchema = Schema.fromJsonString(JsonRecordSchema)
 export const decodeJsonRecord = Schema.decodeUnknownEffect(JsonRecordFromStringSchema)
-const textEncoder = new TextEncoder()
+export const textEncoder = new TextEncoder()
 
 export const decodeJsonRecordSync = Schema.decodeUnknownSync(JsonRecordFromStringSchema)
 
@@ -37,7 +37,10 @@ export const tag = (name: Pkg.Moniker.Moniker, version: string) =>
 const slugPackageName = (packageName: string): string =>
   packageName.replace(/^@/u, '').replace(/\//gu, '-')
 
-const makeHandle = (stdout: string, exitCode: number): ChildProcessSpawner.ChildProcessHandle =>
+export const makeHandle = (
+  stdout: string,
+  exitCode: number,
+): ChildProcessSpawner.ChildProcessHandle =>
   ChildProcessSpawner.makeHandle({
     pid: ChildProcessSpawner.ProcessId(1),
     exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(exitCode)),

@@ -1,5 +1,5 @@
 import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
-import { Sink, Stream, Effect, Layer, Option, PlatformError } from 'effect'
+import { Effect, Layer, Option, PlatformError } from 'effect'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
@@ -14,7 +14,7 @@ import { Finished, Report } from '../api/lint/models/report.js'
 import { RuleId } from '../api/lint/models/rule-defaults.js'
 import * as Severity from '../api/lint/models/severity.js'
 import { Ephemeral as PlannerEphemeral } from '../api/planner/models/item-ephemeral.js'
-import { makeHarness, makePackageJson } from '../api/executor/test-support.js'
+import { makeHandle, makeHarness, makePackageJson } from '../api/executor/test-support.js'
 import { loadPullRequestDiff } from './pr-preview-diff.js'
 import {
   type PreviewCommentUpdateParams,
@@ -22,8 +22,6 @@ import {
   buildPreviewDoctorSummary,
   runPrPreview,
 } from './pr-preview.js'
-
-const textEncoder = new TextEncoder()
 
 const makePackage = (scope: string) => ({
   scope,
@@ -126,21 +124,6 @@ const baseForecast = Forecast.make({
   cascades: [],
 })
 
-const makeHandle = (stdout: string): ChildProcessSpawner.ChildProcessHandle =>
-  ChildProcessSpawner.makeHandle({
-    pid: ChildProcessSpawner.ProcessId(1),
-    exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(0)),
-    isRunning: Effect.succeed(false),
-    unref: Effect.succeed(Effect.void),
-    kill: () => Effect.void,
-    stderr: Stream.empty,
-    stdin: Sink.drain,
-    stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
-    all: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
-    getInputFd: () => Sink.drain,
-    getOutputFd: () => Stream.empty,
-  })
-
 const makeDiffSpawnerLayer = (
   result:
     | { readonly stdout: string }
@@ -166,7 +149,7 @@ const makeDiffSpawnerLayer = (
         ) as any
       }
 
-      return Effect.succeed(makeHandle(result.stdout))
+      return Effect.succeed(makeHandle(result.stdout, 0))
     }),
   )
 
