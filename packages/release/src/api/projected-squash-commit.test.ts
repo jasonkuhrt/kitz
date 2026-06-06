@@ -1,9 +1,34 @@
+import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
+import { Github } from '@kitz/github'
 import { Pkg } from '@kitz/pkg'
-import { Option } from 'effect'
+import { Effect, Option } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { Impact } from './analyzer/models/impact.js'
-import { collectScopeImpacts, preview, renderHeader } from './projected-squash-commit.js'
+import {
+  applyPrTitle,
+  collectScopeImpacts,
+  preview,
+  renderHeader,
+} from './projected-squash-commit.js'
+
+const pullRequestFixture = (title: string) =>
+  ({
+    number: 129,
+    html_url: 'https://github.com/org/repo/pull/129',
+    title,
+    body: null,
+    base: { ref: 'main' },
+    head: { ref: 'feature/x' },
+  }) satisfies Github.PullRequest
+
+const githubContextFixture = (pullRequest: Github.PullRequest) => ({
+  branch: 'feature/x',
+  explicitPrNumber: 129,
+  target: { owner: 'org', repo: 'repo', source: 'env:GITHUB_REPOSITORY' as const },
+  token: 'token',
+  pullRequest,
+})
 
 const makeImpact = (scope: string, bump: 'major' | 'minor' | 'patch') =>
   Impact.make({
@@ -168,5 +193,43 @@ describe('projected squash commit', () => {
     expect(result.actualTitle).toBe('')
     expect(result.projectedHeader).toBeNull()
     expect(result.inSync).toBe(true)
+  })
+})
+
+describe('applyPrTitle', () => {
+  test('returns changed: false when the PR title already carries the canonical header', async () => {
+    const pullRequest = pullRequestFixture('feat(core): already canonical')
+    const result = await Effect.runPromise(
+      applyPrTitle({
+        pullRequest,
+        projectedHeader: 'feat(core)',
+        githubContext: githubContextFixture(pullRequest),
+      }).pipe(Effect.provide(Env.Test({ vars: {} }))),
+    )
+
+    expect(result.changed).toBe(false)
+    expect(result.after).toBe('feat(core): already canonical')
+  })
+
+  test('rewrites only the header and updates the PR via the injected Github service', async () => {
+    const pullRequest = pullRequestFixture('feat: legacy subject')
+    // GitHub injected as a memory double — no live fetch, no network. result.after
+    // is the title returned by the double's updatePullRequest, proving the update
+    // was routed through the injected service.
+    const { layer } = await Effect.runPromise(
+      Github.Memory.makeWithState({ pullRequests: [pullRequest] }),
+    )
+    const result = await Effect.runPromise(
+      applyPrTitle({
+        pullRequest,
+        projectedHeader: 'feat(core)',
+        githubContext: githubContextFixture(pullRequest),
+        githubLayer: layer,
+      }).pipe(Effect.provide(Env.Test({ vars: { GITHUB_TOKEN: 'token' } }))),
+    )
+
+    expect(result.changed).toBe(true)
+    expect(result.before).toBe('feat: legacy subject')
+    expect(result.after).toBe('feat(core): legacy subject')
   })
 })

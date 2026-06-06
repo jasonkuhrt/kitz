@@ -450,6 +450,44 @@ describe('proof artifact', () => {
     expect(observations.githubReleaseExists).toBeUndefined()
   })
 
+  test('collectLocalObservations performs no mutating git/npm operations (read-only contract)', async () => {
+    // Observation must be side-effect-free. The shared doubles record every call,
+    // so assert the mutating methods are never invoked — an explicit contract that
+    // replaces (and strengthens) the inline stubs' incidental die-on-unused guard.
+    const git = makeGitTest()
+    const npm = makeNpmCliTest({ whoamiUser: 'octocat' })
+    await Effect.runPromise(
+      collectLocalObservations(contractedPlan).pipe(
+        Effect.provide(Layer.mergeAll(npm.$test.layer(), git.$test.layer())),
+      ),
+    )
+
+    expect(npm.publish.calls).toHaveLength(0)
+    expect(git.createTag.calls).toHaveLength(0)
+    expect(git.createTagAt.calls).toHaveLength(0)
+    expect(git.pushTags.calls).toHaveLength(0)
+    expect(git.pushTagsAtomic.calls).toHaveLength(0)
+    expect(git.pushTag.calls).toHaveLength(0)
+    expect(git.deleteTag.calls).toHaveLength(0)
+    expect(git.deleteRemoteTag.calls).toHaveLength(0)
+  })
+
+  test('collectObservations collects GitHub observations from an injected Github layer', async () => {
+    // The GitHub service is injected as a test double (no live-context resolution,
+    // no network): collectObservations merges its observations into the result.
+    const observations = await Effect.runPromise(
+      collectObservations(contractedPlan, { githubLayer: Github.Memory.make({}) }).pipe(
+        Effect.provide(
+          Layer.mergeAll(Env.Test({ vars: {} }), NpmRegistry.NpmCliDryRun, Git.Memory.make({})),
+        ),
+      ),
+    )
+
+    expect(observations.identity).toBe('dry-run-user')
+    // githubReleaseExists is PRESENT (not dropped) — the GitHub layer was consulted.
+    expect(observations.githubReleaseExists).toEqual({ '@kitz/core@1.0.0': false })
+  })
+
   test('local proof observation records identity, access, git, and atomic dry-run failures', async () => {
     const npm = makeNpmCliTest()
     npm.whoami.everyFail(npmCliError('whoami', 'identity denied'))
