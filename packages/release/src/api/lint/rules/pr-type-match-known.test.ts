@@ -5,18 +5,9 @@ import { resolveConventionalCommitTypes } from '../../config.js'
 import { PrTitle } from '../models/violation-location.js'
 import { Violation } from '../models/violation.js'
 import { ConventionalCommitSettingsService } from '../services/conventional-commit-settings.js'
-import { PrService } from '../services/pr.js'
 import { RuleOptionsService } from '../services/rule-options.js'
+import { makePrLayer } from '../test-support.js'
 import { rule } from './pr-type-match-known.js'
-
-const makePrLayer = (title: string, commit: CC.Commit.Commit) =>
-  Layer.succeed(PrService, {
-    number: 129,
-    title,
-    body: '',
-    commit: Option.some(commit),
-    titleParseError: Option.none(),
-  })
 
 const defaultSettingsLayer = Layer.succeed(ConventionalCommitSettingsService, {
   resolvedTypes: resolveConventionalCommitTypes({}),

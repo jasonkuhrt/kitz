@@ -6,7 +6,7 @@ import { RuleOptionsService } from '../services/rule-options.js'
 import { PrService } from '../services/pr.js'
 import { rule } from './pr-projected-squash-commit-sync.js'
 
-const makePrLayer = (title: string, parseError?: string) =>
+const makePrLayerFromTitle = (title: string, parseError?: string) =>
   Layer.succeed(PrService, {
     number: 129,
     title,
@@ -29,7 +29,7 @@ describe('pr.projected-squash-commit-sync', () => {
   test('passes when the PR title header already matches the canonical release header', async () => {
     const result = await Effect.runPromise(
       rule.check.pipe(
-        Effect.provide(makePrLayer('feat(core): release 1 packages')),
+        Effect.provide(makePrLayerFromTitle('feat(core): release 1 packages')),
         Effect.provideService(RuleOptionsService, {
           projectedHeader: 'feat(core)',
         }),
@@ -46,7 +46,7 @@ describe('pr.projected-squash-commit-sync', () => {
   test('warns when the PR title header differs from the canonical release header', async () => {
     const result = await Effect.runPromise(
       rule.check.pipe(
-        Effect.provide(makePrLayer('feat(release): polish')),
+        Effect.provide(makePrLayerFromTitle('feat(release): polish')),
         Effect.provideService(RuleOptionsService, {
           projectedHeader: 'feat(cli, core)',
         }),
@@ -70,7 +70,7 @@ describe('pr.projected-squash-commit-sync', () => {
   test('returns the invalid-title violation when the PR title is not parseable', async () => {
     const result = await Effect.runPromise(
       rule.check.pipe(
-        Effect.provide(makePrLayer('bad title', 'Missing colon separator: "bad title"')),
+        Effect.provide(makePrLayerFromTitle('bad title', 'Missing colon separator: "bad title"')),
         Effect.provideService(RuleOptionsService, {
           projectedHeader: 'feat(core)',
         }),
