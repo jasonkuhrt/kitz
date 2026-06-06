@@ -570,6 +570,7 @@ const cascadeBlocked = (records: readonly ProofRecord[], now: string): ProofReco
     )
     MutableHashMap.set(statusById, record.id, 'blocked')
     return ProofRecord.make({
+      // oxlint-disable-next-line typescript/no-misused-spread -- field bag for .make(), which rebuilds the Schema.Class instance with overrides
       ...record,
       status: 'blocked',
       blockedBy: cause,
@@ -946,6 +947,7 @@ export const mergeProofHistory = (prior: ProofArtifact, fresh: ProofArtifact): P
   )
 
   return ProofArtifact.make({
+    // oxlint-disable-next-line typescript/no-misused-spread -- field bag for .make(), which rebuilds the Schema.Class instance with overrides
     ...fresh,
     records: A.map(fresh.records, (freshRecord) => {
       const priorRecordOption = MutableHashMap.get(priorById, freshRecord.id)
@@ -957,9 +959,13 @@ export const mergeProofHistory = (prior: ProofArtifact, fresh: ProofArtifact): P
       const appended =
         statusUnchanged || latestFresh === undefined
           ? []
-          : [ProofTransition.make({ ...latestFresh, from: priorRecord.status })]
+          : [
+              // oxlint-disable-next-line typescript/no-misused-spread -- field bag for .make(), which rebuilds the Schema.Class instance with overrides
+              ProofTransition.make({ ...latestFresh, from: priorRecord.status }),
+            ]
 
       return ProofRecord.make({
+        // oxlint-disable-next-line typescript/no-misused-spread -- field bag for .make(), which rebuilds the Schema.Class instance with overrides
         ...freshRecord,
         proofHistory: [...priorRecord.proofHistory, ...appended],
       })

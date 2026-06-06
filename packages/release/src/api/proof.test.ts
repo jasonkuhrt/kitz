@@ -1267,6 +1267,7 @@ describe('priorObservationsFromArtifact inverts the record builders', () => {
       cascades: multiContractedPlan.cascades,
       planDigest: contractedDigest,
       publishIntent: updatePublishIntent(publishIntent, {
+        // oxlint-disable-next-line typescript/no-misused-spread -- field bag for the update; the override builds a fresh git config
         git: { ...publishIntent.git, atomicTagPush: true },
       }),
     })
