@@ -1,7 +1,7 @@
 /**
  * Tag-owned test double for the {@link Git} service.
  *
- * `Test.make(config?)` returns a {@link Test.Mock} driver whose every method is
+ * `make(config?)` returns a {@link Test.Mock} driver whose every method is
  * pre-scripted to succeed with happy-path defaults (mirroring
  * {@link Memory.make}). Callers wire it in with `driver.$test.layer()`, inspect
  * calls via `driver.<method>.calls`, and inject failures on any method without
@@ -9,9 +9,10 @@
  *
  * @example
  * ```ts
+ * import { make as makeGitTest } from '@kitz/git/test'
  * import { Git } from '@kitz/git'
  *
- * const git = Git.Test.make({ branch: 'develop' })
+ * const git = makeGitTest({ branch: 'develop' })
  * git.createTag.everyFail(new Git.GitError({ context: { operation: 'createTag' }, cause: new Error('x') }))
  * const layer = git.$test.layer()
  * ```

@@ -14,10 +14,13 @@
  * → that branch's `every` → the global `next` FIFO → the global `every`
  * fallback → otherwise the call dies with an unimplemented-mock error.
  *
- * The driver is the generic core of the Prisma test driver with the
- * Prisma-specific delegate taxonomy removed; it works on flat services (every
- * method directly on the service) and nested services (methods grouped under
- * sub-objects) alike.
+ * The driver works on flat services (every method directly on the service) and
+ * nested services (methods grouped under sub-objects) alike.
+ *
+ * Synchronous (non-`Effect`) fields have no control surface; they must be
+ * pinned with `$test.override(...)` before being read. Reading an
+ * un-overridden synchronous field returns a callable mock-method proxy, not the
+ * field's value or `undefined`.
  *
  * @example
  * ```ts
@@ -120,6 +123,13 @@ type MockImplementation<TArgs extends ReadonlyArray<any>, TReturn extends AnyEff
 ) => TReturn
 
 type MockInspection<TArgs extends ReadonlyArray<any>> = {
+  /**
+   * Recorded calls, one normalized argument shape per call. Args are
+   * normalized the same way the controls observe them: `[]` and `[undefined]`
+   * both record as `[undefined]`, so for a method with an optional leading
+   * param a zero-arg call and an explicit-`undefined` call are
+   * indistinguishable here.
+   */
   readonly calls: ReadonlyArray<MockCall<TArgs>>
   clear(): void
   reset(): void

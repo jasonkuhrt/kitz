@@ -8,7 +8,7 @@ const { GitError } = Git
 const run = <A, E>(effect: Effect.Effect<A, E>) => Effect.runPromise(effect as Effect.Effect<A>)
 const runExit = <A, E>(effect: Effect.Effect<A, E>) => Effect.runPromiseExit(effect)
 
-describe('Git.Test — happy-path defaults', () => {
+describe('Git test service — happy-path defaults', () => {
   test('make() provides a driver with all methods scripted to succeed', async () => {
     const git = GitTest.make()
 
@@ -62,7 +62,7 @@ describe('Git.Test — happy-path defaults', () => {
   })
 })
 
-describe('Git.Test — failure injection without re-stubbing', () => {
+describe('Git test service — failure injection without re-stubbing', () => {
   test('inject a createTag failure on the happy-path driver', async () => {
     const git = GitTest.make()
     git.createTag.everyFail(
@@ -101,7 +101,7 @@ describe('Git.Test — failure injection without re-stubbing', () => {
   })
 })
 
-describe('Git.Test — call inspection', () => {
+describe('Git test service — call inspection', () => {
   test('records calls to driven methods', async () => {
     const git = GitTest.make()
 
