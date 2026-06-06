@@ -14,7 +14,7 @@ import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
 import { execute, executeObservable, resume, type ExecutionGraph } from './execute.js'
 import { makeTestRuntime } from './runtime.js'
 import { decodeJsonRecord, planOfficial, tag } from './test-support.js'
-import { digestForPlan } from '../proof.js'
+import { digestForPlan } from '../release-contract.js'
 import { sha256Bytes } from '../digest.js'
 
 interface FixturePackage {

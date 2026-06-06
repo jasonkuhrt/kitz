@@ -16,14 +16,13 @@ import {
   Result,
   Schema,
 } from 'effect'
-import { sha256Json } from './digest.js'
 import * as Explorer from './explorer/__.js'
 import type { Plan } from './planner/models/plan.js'
 import * as Capability from './publishing/models/capability.js'
 import {
   DeferredProof,
   defaultProofPolicy,
-  PlanDigest,
+  digestForPlan,
   ProofArtifact,
   ProofPolicy,
   ProofRecord,
@@ -59,16 +58,6 @@ export interface ProofObservations {
   readonly oidcClaimsVerified?: boolean
   readonly provenanceBundleExists?: boolean
 }
-
-export const digestForPlan = (plan: Plan): PlanDigest =>
-  plan.planDigest ?? PlanDigest.make(sha256Json(Schema.encodeSync(PlanForDigest)(plan)))
-
-const PlanForDigest = Schema.Struct({
-  lifecycle: Schema.String,
-  timestamp: Schema.String,
-  releases: Schema.Array(Schema.Unknown),
-  cascades: Schema.Array(Schema.Unknown),
-})
 
 export const proofPathFor = (cwd: Fs.Path.AbsDir, plan: Plan): Fs.Path.AbsFile =>
   Fs.Path.join(

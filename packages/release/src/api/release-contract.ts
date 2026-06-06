@@ -3,6 +3,7 @@ import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Schema } from 'effect'
 import { Digest, sha256Json } from './digest.js'
+import type { Plan } from './planner/models/plan.js'
 import { PublishDriverId } from './publishing/models/driver-id.js'
 import { type PublishSemantics, PublishChannel } from './publishing.js'
 import { LifecycleSchema } from './version/models/lifecycle.js'
@@ -848,6 +849,22 @@ export const digestPlanBody = (body: PlanBody): PlanDigest => {
   const digest = sha256Json(Schema.encodeSync(PlanBody)(body))
   return PlanDigest.make(digest)
 }
+
+const PlanForDigest = Schema.Struct({
+  lifecycle: Schema.String,
+  timestamp: Schema.String,
+  releases: Schema.Array(Schema.Unknown),
+  cascades: Schema.Array(Schema.Unknown),
+})
+
+/**
+ * Content-identity hash of a plan: the plan's own `planDigest` when present,
+ * otherwise a sha256 over its lifecycle/timestamp/releases/cascades. Pure plan
+ * identity with no proof-specific logic, so the executor and artifact layers
+ * can compute it without importing the proof module.
+ */
+export const digestForPlan = (plan: Plan): PlanDigest =>
+  plan.planDigest ?? PlanDigest.make(sha256Json(Schema.encodeSync(PlanForDigest)(plan)))
 
 export const makeUnsignedEnvelope = (body: PlanBody): PlanEnvelope =>
   PlanEnvelope.make({

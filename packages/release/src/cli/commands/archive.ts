@@ -44,7 +44,7 @@ const archiveExport = Command.make(
 
       const proof = yield* Api.Proof.readForPlan(planState.plan)
       const artifacts = yield* Api.Artifact.readManifest(planState.plan)
-      const digest = Api.Proof.digestForPlan(planState.plan)
+      const digest = Api.ReleaseContract.digestForPlan(planState.plan)
       const journalEntries = yield* Api.Journal.readEntries(
         Api.Journal.journalPathFor(env.cwd, digest),
       )

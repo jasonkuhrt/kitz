@@ -42,7 +42,7 @@ import {
 
 export type { BeforeMutationHook, MutationContext } from './workflow.js'
 import { ReleaseCommit, type ScopedCommitSource } from '../analyzer/models/commit.js'
-import { digestForPlan } from '../proof.js'
+import { digestForPlan } from '../release-contract.js'
 
 /**
  * Result of executing the release workflow.

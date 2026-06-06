@@ -24,7 +24,7 @@ import {
   type ReleaseInfo,
 } from './executor/publish.js'
 import type { Plan } from './planner/models/plan.js'
-import { digestForPlan } from './proof.js'
+import { digestForPlan } from './release-contract.js'
 import { ArtifactManifest } from './release-contract.js'
 
 const artifactDir = Fs.Path.RelDir.fromString('./.release/artifacts/')

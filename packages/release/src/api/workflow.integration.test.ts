@@ -13,7 +13,7 @@ import {
   executeObservable as executeWorkflowObservable,
 } from './executor/execute.js'
 import { ReleaseWorkflow } from './executor/workflow.js'
-import { digestForPlan } from './proof.js'
+import { digestForPlan } from './release-contract.js'
 import {
   decodeJsonRecordSync,
   decodeSemverFromManifest,

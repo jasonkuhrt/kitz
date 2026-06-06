@@ -17,7 +17,7 @@ const run = <A>(
       : effect.pipe(Effect.provide(dependencies.layer))) as Effect.Effect<A, unknown>,
   )
 
-export const digestPlan = Api.Proof.digestForPlan
+export const digestPlan = Api.ReleaseContract.digestForPlan
 export const makeProofArtifact = Api.Proof.makeProofArtifact
 export const validateProof = Api.Proof.validateProof
 export const validateArtifactManifest = Api.Artifact.validateManifestForPlan

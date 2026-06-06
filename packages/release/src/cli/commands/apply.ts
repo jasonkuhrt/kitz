@@ -119,7 +119,7 @@ export const apply = Command.make(
         return env.exit(1)
       }
       const publish = Api.Publishing.publishSemanticsFromIntent(intentResult.success)
-      const planDigest = Api.Proof.digestForPlan(plan)
+      const planDigest = Api.ReleaseContract.digestForPlan(plan)
 
       yield* Api.Lock.withLocal(
         {
