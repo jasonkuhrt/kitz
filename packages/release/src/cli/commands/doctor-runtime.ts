@@ -2,11 +2,6 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Effect, Layer, Option } from 'effect'
 import * as Api from '../../api/__.js'
-import {
-  commandLintRule,
-  createCommandLintConfig,
-  type CommandLintRuleSpec,
-} from '../lint-rule-config.js'
 
 export interface DoctorPlanRuntimeContext {
   readonly config: Api.Config.ResolvedConfig
@@ -48,37 +43,37 @@ export const runDoctorReportForPlan = (context: DoctorPlanRuntimeContext, plan: 
           })
         : undefined
     const doctorRules = [
-      commandLintRule({
+      Api.Lint.commandLintRule({
         id: 'env.publish-channel-ready',
         options: {
           surface: 'execution',
         },
       }),
-      commandLintRule({
+      Api.Lint.commandLintRule({
         id: 'env.git-clean',
       }),
-      commandLintRule({
+      Api.Lint.commandLintRule({
         id: 'env.git-remote',
         options: {
           remote: context.diffRemote,
         },
       }),
-      commandLintRule({
+      Api.Lint.commandLintRule({
         id: 'plan.tags-unique',
       }),
-      commandLintRule({
+      Api.Lint.commandLintRule({
         id: 'plan.versions-unpublished',
       }),
       ...(channel.mode !== 'github-trusted'
         ? [
-            commandLintRule({
+            Api.Lint.commandLintRule({
               id: 'env.npm-authenticated',
             }),
           ]
         : []),
       ...(projectedSquashCommit?.projectedHeader
         ? [
-            commandLintRule({
+            Api.Lint.commandLintRule({
               id: 'pr.projected-squash-commit-sync',
               options: {
                 projectedHeader: projectedSquashCommit.projectedHeader,
@@ -91,14 +86,14 @@ export const runDoctorReportForPlan = (context: DoctorPlanRuntimeContext, plan: 
         : []),
       ...(context.pullRequest && context.diff && context.diff.files.length > 0
         ? [
-            commandLintRule({
+            Api.Lint.commandLintRule({
               id: 'pr.type.release-kind-match-diff',
             }),
           ]
         : []),
-    ] satisfies readonly CommandLintRuleSpec[]
+    ] satisfies readonly Api.Lint.CommandLintRuleSpec[]
 
-    const lintConfig = createCommandLintConfig({
+    const lintConfig = Api.Lint.createCommandLintConfig({
       config: context.config,
       rules: doctorRules,
     })

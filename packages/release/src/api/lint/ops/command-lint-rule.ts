@@ -1,4 +1,6 @@
-import * as Api from '../api/__.js'
+import type { ResolvedConfig as ReleaseResolvedConfig } from '../../config.js'
+import { ResolvedConfig, ResolvedRuleConfig, ResolvedRuleDefaults } from '../models/config.js'
+import type { Severity } from '../models/severity.js'
 
 interface CommandLintRuleOptions {
   readonly 'env.publish-channel-ready': {
@@ -27,7 +29,7 @@ export interface CommandLintRuleSpec<K extends CommandLintRuleId = CommandLintRu
   readonly id: K
   readonly options?: CommandLintRuleOptions[K]
   readonly enabled?: boolean | 'auto'
-  readonly severity?: Api.Lint.Severity
+  readonly severity?: Severity
   readonly preserveExistingOverrides?: boolean
 }
 
@@ -36,9 +38,9 @@ export const commandLintRule = <K extends CommandLintRuleId>(
 ): CommandLintRuleSpec<K> => spec
 
 const buildEnabledRuleConfig = <K extends CommandLintRuleId>(
-  config: Api.Config.ResolvedConfig,
+  config: ReleaseResolvedConfig,
   spec: CommandLintRuleSpec<K>,
-): Api.Lint.ResolvedRuleConfig => {
+): ResolvedRuleConfig => {
   const existing = config.lint.rules[spec.id]
   const enabled = spec.preserveExistingOverrides
     ? (existing?.overrides.enabled ?? spec.enabled ?? 'auto')
@@ -47,8 +49,8 @@ const buildEnabledRuleConfig = <K extends CommandLintRuleId>(
     ? (existing?.overrides.severity ?? spec.severity ?? config.lint.defaults.severity)
     : (spec.severity ?? existing?.overrides.severity ?? config.lint.defaults.severity)
 
-  return Api.Lint.ResolvedRuleConfig.make({
-    overrides: Api.Lint.ResolvedRuleDefaults.make({
+  return ResolvedRuleConfig.make({
+    overrides: ResolvedRuleDefaults.make({
       enabled,
       severity,
     }),
@@ -67,12 +69,12 @@ const resolveRuleList = (
 export const createCommandLintConfig = <
   const TRules extends readonly CommandLintRuleSpec[],
 >(params: {
-  readonly config: Api.Config.ResolvedConfig
+  readonly config: ReleaseResolvedConfig
   readonly rules: TRules
   readonly onlyRules?: readonly string[]
   readonly skipRules?: readonly string[]
-}): Api.Lint.ResolvedConfig => {
-  const rules = params.rules.reduce<Record<string, Api.Lint.ResolvedRuleConfig>>((acc, spec) => {
+}): ResolvedConfig => {
+  const rules = params.rules.reduce<Record<string, ResolvedRuleConfig>>((acc, spec) => {
     acc[spec.id] = buildEnabledRuleConfig(params.config, spec)
     return acc
   }, {})
@@ -80,7 +82,7 @@ export const createCommandLintConfig = <
   const onlyRules = resolveRuleList(params.onlyRules, params.config.lint.onlyRules)
   const skipRules = resolveRuleList(params.skipRules, params.config.lint.skipRules)
 
-  return Api.Lint.ResolvedConfig.make({
+  return ResolvedConfig.make({
     defaults: params.config.lint.defaults,
     rules: {
       ...params.config.lint.rules,

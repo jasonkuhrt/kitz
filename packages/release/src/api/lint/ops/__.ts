@@ -1,3 +1,5 @@
 export * from './check.js'
+export * from './command-lint-rule.js'
 export * as Monotonic from './monotonic.js'
+export * from './preview.js'
 export * from './relay.js'
