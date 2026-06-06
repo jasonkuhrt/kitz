@@ -54,11 +54,6 @@ export type DeepPartial<TValue> = TValue extends (...args: ReadonlyArray<any>) =
       ? { readonly [TKey in keyof TValue]?: DeepPartial<TValue[TKey]> }
       : TValue
 
-/**
- * Normalize a method's parameter tuple to the shape the controls observe:
- * zero params → `undefined`, one param → that param, multiple params → the
- * tuple.
- */
 /** Distribute a head prepend over a union of tuple tails. */
 type Prepend<THead, TTail extends ReadonlyArray<any>> = TTail extends TTail
   ? readonly [THead, ...TTail]
