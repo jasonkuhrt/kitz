@@ -1,7 +1,13 @@
-import type { Analysis } from './analyzer/models/analysis.js'
+import { Env } from '@kitz/env'
 import { ConventionalCommits } from '@kitz/conventional-commits'
+import { Git } from '@kitz/git'
+import { Github } from '@kitz/github'
 import type { Semver } from '@kitz/semver'
-import { Result, Option } from 'effect'
+import { Effect, Result, Option } from 'effect'
+import * as Analyzer from './analyzer/__.js'
+import type { Analysis } from './analyzer/models/analysis.js'
+import type { ResolvedConfig } from './config.js'
+import * as Explorer from './explorer/__.js'
 
 export interface ScopeImpact {
   readonly scope: string
@@ -146,3 +152,119 @@ export const preview = (params: {
     reason: null,
   }
 }
+
+/**
+ * Resolve the connected pull request and project the canonical release-header
+ * title for it. Returns `null` when the workspace has no packages (a graceful
+ * no-op the caller reports), fails with an {@link Explorer.ExplorerError} when
+ * no open PR is connected or no primary release impacts exist, and otherwise
+ * returns the projected header plus the suggested rewritten title (or the
+ * rewrite error). `diffRemote` is supplied by the caller so this op stays free
+ * of CLI diff-remote resolution.
+ */
+export const suggestPrTitle = (params: {
+  readonly config: ResolvedConfig
+  readonly diffRemote: string
+}) =>
+  Effect.gen(function* () {
+    const git = yield* Git.Git
+    const packages = yield* Analyzer.Workspace.resolvePackages(params.config.packages)
+
+    if (packages.length === 0) return null
+
+    const githubContext = yield* Explorer.resolvePullRequestContext()
+    const pullRequest = githubContext.pullRequest
+    if (!pullRequest) {
+      return yield* Effect.fail(
+        new Explorer.ExplorerError({
+          context: {
+            detail:
+              'Could not resolve an open pull request for the current branch. Set PR_NUMBER explicitly or open a PR first.',
+          },
+        }),
+      )
+    }
+
+    const tags = yield* git.getTags()
+    const analysis = yield* Analyzer.analyze({
+      packages,
+      tags,
+      since: `${params.diffRemote}/${pullRequest.base.ref}`,
+      resolvedConventionalCommitTypes: params.config.resolvedConventionalCommitTypes,
+      commitOverrides: params.config.commitOverrides,
+    })
+    const projectedHeader = renderHeader({
+      impacts: collectScopeImpacts(analysis, { primaryOnly: true }),
+    })
+
+    if (!projectedHeader) {
+      return yield* Effect.fail(
+        new Explorer.ExplorerError({
+          context: {
+            detail:
+              'No primary release impacts were found, so no canonical PR title header exists.',
+          },
+        }),
+      )
+    }
+
+    const rewriteAttempt = yield* ConventionalCommits.Title.rewriteHeader(
+      pullRequest.title,
+      projectedHeader,
+    ).pipe(Effect.result)
+
+    return {
+      githubContext,
+      pullRequest,
+      projectedHeader,
+      suggestedTitle: rewriteAttempt._tag === 'Success' ? rewriteAttempt.success : null,
+      titleRewriteError: rewriteAttempt._tag === 'Failure' ? rewriteAttempt.failure.message : null,
+    }
+  })
+
+/**
+ * Apply the canonical release header to a connected pull request title,
+ * preserving its subject verbatim. Returns `changed: false` when the title is
+ * already canonical; otherwise requires a non-empty `GITHUB_TOKEN` and updates
+ * the PR title on GitHub, returning the before/after titles.
+ */
+export const applyPrTitle = (params: {
+  readonly pullRequest: Github.PullRequest
+  readonly projectedHeader: string
+  readonly githubContext: Explorer.ResolvedPullRequestContext
+}) =>
+  Effect.gen(function* () {
+    const env = yield* Env.Env
+    const nextTitle = yield* ConventionalCommits.Title.rewriteHeader(
+      params.pullRequest.title,
+      params.projectedHeader,
+    )
+
+    if (nextTitle === params.pullRequest.title) {
+      return { before: params.pullRequest.title, after: params.pullRequest.title, changed: false }
+    }
+
+    const token = env.vars['GITHUB_TOKEN']
+    if (!token || token.trim() === '') {
+      return yield* Effect.fail(
+        new Github.GithubConfigError({
+          context: { detail: 'GITHUB_TOKEN is required to apply PR title updates.' },
+        }),
+      )
+    }
+
+    const updated = yield* Effect.gen(function* () {
+      const github = yield* Github.Github
+      return yield* github.updatePullRequest(params.pullRequest.number, { title: nextTitle })
+    }).pipe(
+      Effect.provide(
+        Github.LiveFetch({
+          owner: params.githubContext.target.owner,
+          repo: params.githubContext.target.repo,
+          token,
+        }),
+      ),
+    )
+
+    return { before: params.pullRequest.title, after: updated.title, changed: true }
+  })

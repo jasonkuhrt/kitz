@@ -15,10 +15,8 @@
  * `release pr title apply` updates the connected PR title on GitHub by replacing
  * only the conventional-commit header and preserving the current subject verbatim.
  */
-import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
-import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Layer, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
@@ -38,67 +36,16 @@ const PrCommandLayer = Layer.mergeAll(
   npmLayer,
 )
 
+const noPackagesMessage =
+  'No packages found. Check release.config.ts `packages` field ' +
+  'or ensure the root package.json defines workspace packages.'
+
 const preparePrTitle = Effect.gen(function* () {
-  const git = yield* Git.Git
   const config = yield* Api.Config.load()
-  const packages = yield* Api.Analyzer.Workspace.resolvePackages(config.packages)
-
-  if (packages.length === 0) {
-    yield* Console.log(
-      'No packages found. Check release.config.ts `packages` field ' +
-        'or ensure the root package.json defines workspace packages.',
-    )
-    return null
-  }
-
-  const pullRequestContext = yield* Api.Explorer.resolvePullRequestContext()
-  const pullRequest = pullRequestContext.pullRequest
-  if (!pullRequest) {
-    return yield* Effect.fail(
-      new Api.Explorer.ExplorerError({
-        context: {
-          detail:
-            'Could not resolve an open pull request for the current branch. Set PR_NUMBER explicitly or open a PR first.',
-        },
-      }),
-    )
-  }
-
-  const tags = yield* git.getTags()
-  const remote = resolveDiffRemote(config)
-  const analysis = yield* Api.Analyzer.analyze({
-    packages,
-    tags,
-    since: `${remote}/${pullRequest.base.ref}`,
-    resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
-    commitOverrides: config.commitOverrides,
+  return yield* Api.ProjectedSquashCommit.suggestPrTitle({
+    config,
+    diffRemote: resolveDiffRemote(config),
   })
-  const projectedHeader = Api.ProjectedSquashCommit.renderHeader({
-    impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis, { primaryOnly: true }),
-  })
-
-  if (!projectedHeader) {
-    return yield* Effect.fail(
-      new Api.Explorer.ExplorerError({
-        context: {
-          detail: 'No primary release impacts were found, so no canonical PR title header exists.',
-        },
-      }),
-    )
-  }
-
-  const rewriteAttempt = yield* ConventionalCommits.Title.rewriteHeader(
-    pullRequest.title,
-    projectedHeader,
-  ).pipe(Effect.result)
-
-  return {
-    githubContext: pullRequestContext,
-    pullRequest,
-    projectedHeader,
-    suggestedTitle: rewriteAttempt._tag === 'Success' ? rewriteAttempt.success : null,
-    titleRewriteError: rewriteAttempt._tag === 'Failure' ? rewriteAttempt.failure.message : null,
-  }
 })
 
 const prPreview = Command.make(
@@ -159,7 +106,10 @@ const prPreview = Command.make(
 const prTitleSuggest = Command.make('suggest', {}, () =>
   Effect.gen(function* () {
     const prepared = yield* preparePrTitle
-    if (!prepared) return
+    if (!prepared) {
+      yield* Console.log(noPackagesMessage)
+      return
+    }
 
     yield* Console.log(`Projected release header: \`${prepared.projectedHeader}\``)
 
@@ -175,49 +125,26 @@ const prTitleSuggest = Command.make('suggest', {}, () =>
 
 const prTitleApply = Command.make('apply', {}, () =>
   Effect.gen(function* () {
-    const env = yield* Env.Env
     const prepared = yield* preparePrTitle
-    if (!prepared) return
+    if (!prepared) {
+      yield* Console.log(noPackagesMessage)
+      return
+    }
 
-    const nextTitle = yield* ConventionalCommits.Title.rewriteHeader(
-      prepared.pullRequest.title,
-      prepared.projectedHeader,
-    )
+    const result = yield* Api.ProjectedSquashCommit.applyPrTitle({
+      pullRequest: prepared.pullRequest,
+      projectedHeader: prepared.projectedHeader,
+      githubContext: prepared.githubContext,
+    })
 
-    if (nextTitle === prepared.pullRequest.title) {
+    if (!result.changed) {
       yield* Console.log('PR title already uses the canonical release header.')
       return
     }
 
-    const token = env.vars['GITHUB_TOKEN']
-    if (!token || token.trim() === '') {
-      return yield* Effect.fail(
-        new Github.GithubConfigError({
-          context: {
-            detail: 'GITHUB_TOKEN is required to apply PR title updates.',
-          },
-        }),
-      )
-    }
-
-    const updated = yield* Effect.gen(function* () {
-      const github = yield* Github.Github
-      return yield* github.updatePullRequest(prepared.pullRequest.number, {
-        title: nextTitle,
-      })
-    }).pipe(
-      Effect.provide(
-        Github.LiveFetch({
-          owner: prepared.githubContext.target.owner,
-          repo: prepared.githubContext.target.repo,
-          token,
-        }),
-      ),
-    )
-
-    yield* Console.log(`Updated PR #${String(updated.number)} title.`)
-    yield* Console.log(`Before: \`${prepared.pullRequest.title}\``)
-    yield* Console.log(`After:  \`${updated.title}\``)
+    yield* Console.log(`Updated PR #${String(prepared.pullRequest.number)} title.`)
+    yield* Console.log(`Before: \`${result.before}\``)
+    yield* Console.log(`After:  \`${result.after}\``)
   }),
 ).pipe(Command.withDescription('Update the connected PR title by replacing only its header'))
 
