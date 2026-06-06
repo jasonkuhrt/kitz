@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 import { Env } from '@kitz/env'
-import { NpmRegistry } from '@kitz/npm-registry'
+import { make as makeNpmCliTest } from '@kitz/npm-registry/test'
 import { Pkg } from '@kitz/pkg'
 import { Fs } from '@kitz/fs'
 import { Semver } from '@kitz/semver'
-import { Effect, Layer } from 'effect'
+import { Layer } from 'effect'
 import { WorkflowEngine } from 'effect/unstable/workflow'
 import { Official } from './api/planner/models/item-official.js'
 import { Plan } from './api/planner/models/plan.js'
@@ -80,16 +80,7 @@ describe('release promise api', () => {
       Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') }),
       Fs.Memory.layer({}),
       WorkflowEngine.layerMemory,
-      Layer.succeed(NpmRegistry.NpmCli, {
-        whoami: () => Effect.die('unexpected whoami'),
-        pack: () => Effect.die('unexpected pack'),
-        publish: () => Effect.die('unexpected publish'),
-        observeVersion: () => Effect.die('unexpected observe'),
-        hasVersion: () => Effect.succeed(true),
-        listAccessPackages: () => Effect.die('unexpected listAccessPackages'),
-        listAccessCollaborators: () => Effect.die('unexpected listAccessCollaborators'),
-        getAccessStatus: () => Effect.die('unexpected getAccessStatus'),
-      }),
+      makeNpmCliTest().$test.layer(),
     )
 
     expect(await prove(emptyPlan, { layer })).toMatchObject({ schemaVersion: 3 })
