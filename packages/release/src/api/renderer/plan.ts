@@ -40,11 +40,12 @@ export const renderPlan = (plan: Plan): string => {
 export const renderApplyConfirmation = (
   plan: Plan,
   semantics: PublishSemantics,
-  options?: Cli.Terminal.TerminalFormatOptions,
+  options?: Cli.Terminal.TerminalFormatOptions & { readonly releaseCommand?: string },
 ): string => {
   const totalReleases = plan.releases.length + plan.cascades.length
   const output = Str.Builder()
   const theme = Cli.Terminal.createTerminalTheme(options)
+  const releaseCommand = options?.releaseCommand ?? 'release'
 
   output(
     `${theme.badge('accent', 'APPLY')} ${theme.heading(`${formatLifecycle(plan.lifecycle)} release plan`)}`,
@@ -68,7 +69,7 @@ export const renderApplyConfirmation = (
   output`  5. Create GitHub releases`
   output``
   output(
-    `Use ${theme.code('--dry-run')} to preview without side effects, or ${theme.code('--yes')} to skip this prompt.`,
+    `Use ${theme.code(`${releaseCommand} preview`)}, ${theme.code(`${releaseCommand} prove`)}, and ${theme.code(`${releaseCommand} rehearse`)} before apply, or ${theme.code('--yes')} to skip this prompt.`,
   )
   return output.render()
 }

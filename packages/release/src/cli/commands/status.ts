@@ -8,7 +8,7 @@
  */
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
-import { Console, Effect, Layer, Option } from 'effect'
+import { Console, Effect, FileSystem, Layer, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
 import { FileSystemLayer } from '../../platform.js'
@@ -75,6 +75,13 @@ export const status = Command.make(
         return env.exit(1)
       }
       const publishing = Api.Publishing.publishingFromIntent(plan.publishIntent)
+      const fs = yield* FileSystem.FileSystem
+      yield* fs.makeDirectory(
+        Fs.Path.toString(Fs.Path.join(env.cwd, Fs.Path.RelDir.fromString('./.release/'))),
+        {
+          recursive: true,
+        },
+      )
 
       const workflowStatus = yield* Api.Executor.status(plan, {
         tag: plan.publishIntent.distTag,
