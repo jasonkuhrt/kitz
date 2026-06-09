@@ -1,4 +1,6 @@
+import { existsSync } from 'node:fs'
 import { Err } from '@kitz/core'
+import { Fs } from '@kitz/fs'
 import { Effect, Layer } from 'effect'
 import { type SimpleGit, simpleGit } from 'simple-git'
 import { Author } from './author.js'
@@ -22,9 +24,28 @@ const sanitizeGitEnv = (): NodeJS.ProcessEnv => {
   return nextEnv
 }
 
+const gitDirPath = (dir: Fs.Path.AbsDir): Fs.Path.AbsFile =>
+  Fs.Path.join(dir, Fs.Path.RelFile.fromString('./.git'))
+
+const findWorkTreeRoot = (start: Fs.Path.AbsDir): Fs.Path.AbsDir | undefined => {
+  if (existsSync(Fs.Path.toString(gitDirPath(start)))) return start
+
+  const parent = Fs.Path.up(start)
+  return Fs.Path.toString(parent) === Fs.Path.toString(start) ? undefined : findWorkTreeRoot(parent)
+}
+
 const createGit = (cwd?: string): SimpleGit => {
-  const git = cwd ? simpleGit(cwd) : simpleGit()
-  return git.env(sanitizeGitEnv())
+  const baseDir = cwd ?? process.cwd()
+  const git = simpleGit(baseDir)
+  const gitEnv = sanitizeGitEnv()
+  const workTreeRoot = findWorkTreeRoot(Fs.Path.AbsDir.fromString(baseDir))
+
+  if (workTreeRoot !== undefined) {
+    gitEnv['GIT_DIR'] = Fs.Path.toString(gitDirPath(workTreeRoot))
+    gitEnv['GIT_WORK_TREE'] = Fs.Path.toString(workTreeRoot)
+  }
+
+  return git.env(gitEnv)
 }
 
 // ============================================================================

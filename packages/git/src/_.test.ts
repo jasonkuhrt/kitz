@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Test } from '@kitz/test'
@@ -607,6 +607,44 @@ describe('GitLive', () => {
       )
 
       expect(result).toBe('main')
+    } finally {
+      process.chdir(originalCwd)
+      repo.cleanup()
+    }
+  })
+
+  test('GitLive treats a cwd under bare git config as the work tree', async () => {
+    const repo = makeTempGitRepo()
+    const originalCwd = process.cwd()
+
+    try {
+      runGit(repo.root, ['config', 'core.bare', 'true'])
+      const nested = join(repo.root, 'packages', 'git')
+      mkdirSync(nested, { recursive: true })
+
+      const probe = async (cwd: string) => {
+        process.chdir(cwd)
+        return await Effect.runPromise(
+          Effect.gen(function* () {
+            const git = yield* Git.Git
+            return {
+              branch: yield* git.getCurrentBranch(),
+              clean: yield* git.isClean(),
+              root: yield* git.getRoot(),
+            }
+          }).pipe(Effect.provide(Git.GitLive)),
+        )
+      }
+
+      const rootResult = await probe(repo.root)
+      const nestedResult = await probe(nested)
+
+      expect(rootResult.branch).toBe('main')
+      expect(rootResult.clean).toBe(true)
+      expect(realpathSync(rootResult.root)).toBe(realpathSync(repo.root))
+      expect(nestedResult.branch).toBe('main')
+      expect(nestedResult.clean).toBe(true)
+      expect(realpathSync(nestedResult.root)).toBe(realpathSync(repo.root))
     } finally {
       process.chdir(originalCwd)
       repo.cleanup()
