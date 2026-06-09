@@ -315,7 +315,7 @@ export default defineConfig({
 
 Programmatic callers can override file config per-field via `Config.load(options)` without modifying `release.config.ts`.
 
-Use `release apply --dry-run` when you want to preview a release without publishing packages or mutating git and GitHub state.
+Use `release preview` to inspect the frozen plan, `release prove` to refresh plan-bound environment proof, and `release rehearse` to build the exact artifacts before running `release apply`.
 
 Use `release plan --out <file>` when you want to persist a plan somewhere other than `.release/plan.json`, and pair it with `release apply --from <file>` to execute that exact snapshot without moving the active plan file.
 

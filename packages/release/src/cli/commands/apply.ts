@@ -164,8 +164,15 @@ export const apply = Command.make(
 
           // Confirmation prompt (unless --yes)
           if (!yes) {
+            const releaseCommand = yield* Api.Config.load().pipe(
+              Effect.map((config) => config.operator.releaseCommand),
+              Effect.catch(() => Effect.succeed('release')),
+            )
             yield* Console.log(
-              Api.Renderer.renderApplyConfirmation(plan, publish, { env: env.vars }),
+              Api.Renderer.renderApplyConfirmation(plan, publish, {
+                env: env.vars,
+                releaseCommand,
+              }),
             )
             const approved = yield* confirm('Proceed with release? [y/N] ')
             if (!approved) {

@@ -67,7 +67,7 @@
     "platform:verify": "bun run check:platform",
     "pre-commit": "bun tools/pre-commit.ts",
     "release:plan:ephemeral": "bun run release plan --lifecycle ephemeral",
-    "release:apply:ephemeral": "bun run release apply --yes --tag pr",
+    "release:apply:ephemeral": "bun run release apply --yes",
     "_:build": "tsgo -p tsconfig.build.json",
     "_:dev": "tsgo -p tsconfig.build.json --watch",
     "_:check:types": "bun run --workspaces check:types",

@@ -194,7 +194,9 @@ describe('renderApplyConfirmation', () => {
     expect(output).toContain('npm')
     expect(output).toContain('GitHub releases')
     expect(output).toContain('@kitz/core v1.1.0')
-    expect(output).toContain('--dry-run')
+    expect(output).toContain('release preview')
+    expect(output).toContain('release prove')
+    expect(output).toContain('release rehearse')
   })
 
   test('pluralizes for multiple packages', () => {
@@ -222,6 +224,22 @@ describe('renderApplyConfirmation', () => {
 
     expect(output).toContain('\u001b[')
     expect(Str.Visual.strip(output)).toContain('npm dist-tag: `latest`')
+  })
+
+  test('uses the resolved release command for command guidance', () => {
+    const plan = Plan.make({
+      lifecycle: 'official',
+      timestamp: '2026-01-01T00:00:00Z',
+      releases: [makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')],
+      cascades: [],
+    })
+    const output = renderApplyConfirmation(plan, officialSemantics, {
+      releaseCommand: 'bun run ship',
+    })
+
+    expect(output).toContain('bun run ship preview')
+    expect(output).toContain('bun run ship prove')
+    expect(output).toContain('bun run ship rehearse')
   })
 
   test('renders cascade entries in confirmation output', () => {

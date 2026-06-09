@@ -12,7 +12,7 @@ import { Test } from '@kitz/test'
 import { Effect, Layer, Option, Schema } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import * as ReleaseConfig from './api/config.js'
-import { Analyzer, Planner } from './__.js'
+import { Analyzer, Planner, Publishing, ReleaseContract } from './__.js'
 
 // ─── Test Helpers ───────────────────────────────────────────────────
 
@@ -266,6 +266,68 @@ describe('release package scripts', () => {
       expect(output).toContain('real release test runs')
       expect(output).not.toContain('mirrored worktree test should not run')
       expect(output).not.toContain('.claude/worktrees')
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('release status cli', () => {
+  test('reports not-started for a custom plan before .release exists', () => {
+    const projectDir = mkdtempSync(path.join(os.tmpdir(), 'kitz-release-status-'))
+
+    try {
+      writeFileSync(
+        path.join(projectDir, 'package.json'),
+        JSON.stringify({ name: 'fixture', private: true, type: 'module' }, null, 2),
+      )
+
+      const plan = Planner.Plan.make({
+        lifecycle: 'official',
+        timestamp: '2026-06-09T00:00:00.000Z',
+        releases: [],
+        cascades: [],
+        planDigest: ReleaseContract.PlanDigest.make({
+          algorithm: 'sha256',
+          value: 'a'.repeat(64),
+        }),
+        publishIntent: ReleaseContract.publishIntentFromSemantics({
+          semantics: Publishing.resolvePublishSemantics({ lifecycle: 'official' }),
+          trunk: 'main',
+        }),
+      })
+      writeFileSync(
+        path.join(projectDir, 'release-plan.json'),
+        `${JSON.stringify(Schema.encodeSync(Planner.Plan)(plan), null, 2)}\n`,
+      )
+
+      const result = spawnSync(
+        process.execPath,
+        [
+          fileURLToPath(new URL('./cli/cli.ts', import.meta.url)),
+          'status',
+          '--from',
+          'release-plan.json',
+          '--format',
+          'json',
+        ],
+        {
+          cwd: projectDir,
+          encoding: 'utf8',
+          env: process.env,
+        },
+      )
+
+      if (result.error) {
+        throw result.error
+      }
+
+      expect(result.stderr).toBe('')
+      expect(result.status).toBe(0)
+      expect(decodeJsonRecordSync(result.stdout)).toMatchObject({
+        state: 'not-started',
+        plannedPackages: [],
+      })
     } finally {
       rmSync(projectDir, { recursive: true, force: true })
     }
