@@ -2,8 +2,9 @@ import { FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
-import { Console, Effect, Layer, Option, Schema } from 'effect'
+import { Console, Effect, HashSet, Layer, Option, Schema } from 'effect'
 import * as Api from '../../api/__.js'
+import { Analysis, CascadeImpact } from '../../api/analyzer/models/__.js'
 import { ChildProcessSpawnerLayer, ServicesLayer, FileSystemLayer } from '../../platform.js'
 import {
   type CommandWorkspace,
@@ -24,7 +25,7 @@ export interface BuildForecastInputDependencies {
   readonly tags: Effect.Effect<readonly string[], Error>
   readonly analyze: typeof Api.Analyzer.analyze
   readonly explore: Effect.Effect<any, Error>
-  readonly forecast: typeof Api.Forecaster.forecast
+  readonly forecast?: typeof Api.Forecaster.forecast
   readonly log: typeof Console.log
 }
 
@@ -82,8 +83,12 @@ export function buildForecastInput(
       resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
       commitOverrides: config.commitOverrides,
     })
+    const forecastAnalysis =
+      dependencies?.forecast === undefined
+        ? yield* addOfficialPlanCascades(analysis, packages)
+        : analysis
     const recon = yield* explore
-    const renderedForecast = forecast(analysis, recon)
+    const renderedForecast = forecast(forecastAnalysis, recon)
 
     return {
       forecast: renderedForecast,
@@ -91,6 +96,44 @@ export function buildForecastInput(
       publishHistory: [],
       interactiveChecklist: (config.publishing.ephemeral ?? { mode: 'manual' }).mode !== 'manual',
     }
+  })
+}
+
+export const addOfficialPlanCascades = (
+  analysis: Analysis,
+  packages: readonly Api.Analyzer.Workspace.Package[],
+): Effect.Effect<Analysis, Error, Effect.Services<ReturnType<typeof Api.Planner.official>>> =>
+  Effect.gen(function* () {
+    return withOfficialPlanCascades(analysis, yield* Api.Planner.official(analysis, { packages }))
+  })
+
+const withOfficialPlanCascades = (
+  analysis: Analysis,
+  plan: Api.Planner.PlanOf<'official'>,
+): Analysis => {
+  const existingCascadeNames = HashSet.fromIterable(
+    analysis.cascades.map((cascade) => cascade.package.name.moniker),
+  )
+  const planOnlyCascades = plan.cascades.filter(
+    (cascade) => !HashSet.has(existingCascadeNames, cascade.package.name.moniker),
+  )
+
+  if (planOnlyCascades.length === 0) return analysis
+
+  return Analysis.make({
+    impacts: analysis.impacts,
+    cascades: [
+      ...analysis.cascades,
+      ...planOnlyCascades.map((cascade) =>
+        CascadeImpact.make({
+          package: cascade.package,
+          currentVersion: cascade.currentVersion,
+          triggeredBy: [],
+        }),
+      ),
+    ],
+    unchanged: analysis.unchanged,
+    tags: analysis.tags,
   })
 }
 

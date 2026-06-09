@@ -10,6 +10,7 @@ import {
   createCommandLintConfig,
   type CommandLintRuleSpec,
 } from './lint-rule-config.js'
+import { addOfficialPlanCascades } from './commands/forecast-lib.js'
 import { loadPullRequestDiff, resolveDiffRemote } from './pr-preview-diff.js'
 
 const manualPreviewDeferredRules = [
@@ -475,7 +476,11 @@ export const runPrPreview = (
       } satisfies RunPrPreviewResult
     }
 
-    const forecast = (dependencies.forecast ?? Api.Forecaster.forecast)(analysis, runtime)
+    const forecastAnalysis =
+      dependencies.forecast === undefined
+        ? yield* addOfficialPlanCascades(analysis, packages)
+        : analysis
+    const forecast = (dependencies.forecast ?? Api.Forecaster.forecast)(forecastAnalysis, runtime)
     const previewEffect = (
       dependencies.upsertPullRequestPreviewComment ?? upsertPullRequestPreviewComment
     )({

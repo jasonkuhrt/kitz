@@ -296,9 +296,14 @@ const executionStateTone = (state: ExecutionStatus['state']) => {
   }
 }
 
+export interface FormatExecutionStatusOptions extends Cli.Terminal.TerminalFormatOptions {
+  readonly nextApplyCommand?: string
+  readonly resumeCommand?: string
+}
+
 export const formatExecutionStatus = (
   status: ExecutionStatus,
-  options?: Cli.Terminal.TerminalFormatOptions,
+  options?: FormatExecutionStatusOptions,
 ): string => {
   const output = Str.Builder()
   const theme = Cli.Terminal.createTerminalTheme(options)
@@ -316,7 +321,7 @@ export const formatExecutionStatus = (
   if (status.state === 'not-started') {
     output``
     output`No persisted workflow state exists for this plan yet.`
-    output`${theme.key('Next')} Run ${theme.code('release apply')} to start the workflow.`
+    output`${theme.key('Next')} Run ${theme.code(options?.nextApplyCommand ?? 'release apply')} to start the workflow.`
     return output.render()
   }
 
@@ -328,7 +333,7 @@ export const formatExecutionStatus = (
     }
     output``
     output(
-      `${theme.key('Resume')} Fix the blocking issue, then run ${theme.code('release resume')} with the same plan.`,
+      `${theme.key('Resume')} Fix the blocking issue, then run ${theme.code(options?.resumeCommand ?? 'release resume')} with the same plan.`,
     )
     return output.render()
   }

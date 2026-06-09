@@ -121,14 +121,35 @@ export const apply = Command.make(
       const publish = Api.Publishing.publishSemanticsFromIntent(intentResult.success)
       const planDigest = Api.Proof.digestForPlan(plan)
 
-      yield* Api.Lock.withLocal(
-        {
-          planDigest,
-          ownerId: env.vars['USER'] ?? 'local-operator',
-          ownerHost: env.vars['HOST'] ?? env.vars['HOSTNAME'] ?? 'local-host',
-          ownerProcess: env.vars['KITZ_RELEASE_PROCESS_ID'] ?? 'local-process',
-          now: new Date().toISOString(),
-        },
+      const lockParams = {
+        planDigest,
+        ownerId: env.vars['USER'] ?? 'local-operator',
+        ownerHost: env.vars['HOST'] ?? env.vars['HOSTNAME'] ?? 'local-host',
+        ownerProcess: env.vars['KITZ_RELEASE_PROCESS_ID'] ?? 'local-process',
+        now: new Date().toISOString(),
+      } satisfies Api.Lock.LocalLockParams
+
+      // Confirmation prompt (unless --yes)
+      if (!yes) {
+        const releaseCommand = yield* Api.Config.load().pipe(
+          Effect.map((config) => config.operator.releaseCommand),
+          Effect.catch(() => Effect.succeed('release')),
+        )
+        yield* Console.log(
+          Api.Renderer.renderApplyConfirmation(plan, publish, {
+            env: env.vars,
+            releaseCommand,
+          }),
+        )
+        const approved = yield* confirm('Proceed with release? [y/N] ')
+        if (!approved) {
+          yield* Console.log('Release canceled.')
+          return env.exit(1)
+        }
+      }
+
+      const applied = yield* Api.Lock.withLocal(
+        lockParams,
         Effect.gen(function* () {
           if (prove) {
             const localObservations = yield* Api.Proof.collectLocalObservations(plan)
@@ -154,31 +175,12 @@ export const apply = Command.make(
               yield* Console.error(
                 'Plan proof contains blocking records. Run `release prove` for detail.',
               )
-              return env.exit(1)
+              return false
             }
           }
 
           if (rehearse) {
             yield* Api.Artifact.rehearse(plan)
-          }
-
-          // Confirmation prompt (unless --yes)
-          if (!yes) {
-            const releaseCommand = yield* Api.Config.load().pipe(
-              Effect.map((config) => config.operator.releaseCommand),
-              Effect.catch(() => Effect.succeed('release')),
-            )
-            yield* Console.log(
-              Api.Renderer.renderApplyConfirmation(plan, publish, {
-                env: env.vars,
-                releaseCommand,
-              }),
-            )
-            const approved = yield* confirm('Proceed with release? [y/N] ')
-            if (!approved) {
-              yield* Console.log('Release canceled.')
-              return env.exit(1)
-            }
           }
 
           const proof = yield* Api.Proof.readForPlan(plan)
@@ -187,14 +189,14 @@ export const apply = Command.make(
             yield* Console.error(
               'Run `release prove` or `release apply --prove --rehearse` before publishing.',
             )
-            return env.exit(1)
+            return false
           }
           if (Api.Proof.hasBlockingProof(proof.value)) {
             yield* Console.error('Plan-bound proof contains blocking records.')
             yield* Console.error(
               'Run `release prove` and resolve every failed or unprovable proof.',
             )
-            return env.exit(1)
+            return false
           }
 
           const artifacts = yield* Api.Artifact.readManifest(plan)
@@ -203,7 +205,7 @@ export const apply = Command.make(
             yield* Console.error(
               'Run `release rehearse` or `release apply --prove --rehearse` before publishing.',
             )
-            return env.exit(1)
+            return false
           }
           const artifactIssues = yield* Api.Artifact.validateManifestFilesForPlan(
             plan,
@@ -213,7 +215,7 @@ export const apply = Command.make(
             yield* Console.error('Artifact manifest does not match the frozen plan.')
             for (const issue of artifactIssues)
               yield* Console.error(`${issue.code}: ${issue.detail}`)
-            return env.exit(1)
+            return false
           }
           if (plan.source !== undefined) {
             // Validate the full staleness proof set (config digest, head SHA,
@@ -225,7 +227,7 @@ export const apply = Command.make(
                 'Cannot verify release staleness: failed to load the current release config.',
               )
               yield* Console.error(configResult.failure.message)
-              return env.exit(1)
+              return false
             }
             const observedSource = yield* Api.Planner.buildSourceSnapshot({
               config: configResult.success,
@@ -235,7 +237,7 @@ export const apply = Command.make(
               yield* Console.error('Release source snapshot is stale.')
               for (const issue of sourceIssues)
                 yield* Console.error(`${issue.code}: ${issue.detail}`)
-              return env.exit(1)
+              return false
             }
           }
           const scriptPolicyIssues = yield* Api.Artifact.validateScriptPolicyForPlan(plan)
@@ -244,7 +246,7 @@ export const apply = Command.make(
             for (const issue of scriptPolicyIssues) {
               yield* Console.error(`${issue.code}: ${issue.detail}`)
             }
-            return env.exit(1)
+            return false
           }
           const enginePolicyIssues = yield* Api.Artifact.validateEnginePolicyForPlan(plan)
           if (enginePolicyIssues.length > 0) {
@@ -252,7 +254,7 @@ export const apply = Command.make(
             for (const issue of enginePolicyIssues) {
               yield* Console.error(`${issue.code}: ${issue.detail}`)
             }
-            return env.exit(1)
+            return false
           }
 
           const runtime = yield* Api.Explorer.explore()
@@ -260,7 +262,7 @@ export const apply = Command.make(
           if (!runtimeConfig.github) {
             yield* Console.error('GitHub release target and token are required for release apply.')
             yield* Console.error('Set GITHUB_TOKEN and ensure origin points to GitHub, then retry.')
-            return env.exit(1)
+            return false
           }
 
           // Execute with observable workflow
@@ -305,8 +307,14 @@ export const apply = Command.make(
           if (planPath === undefined) {
             yield* Api.Planner.Store.deleteActive
           }
+
+          return true
         }),
       )
+
+      if (!applied) {
+        return env.exit(1)
+      }
     }),
 ).pipe(
   Command.withDescription('Execute the release plan'),

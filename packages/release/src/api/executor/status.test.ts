@@ -63,6 +63,22 @@ describe('Executor status', () => {
     expect(rendered).toContain('workflow crashed')
   })
 
+  test('preserves custom plan paths in not-started next-step guidance', () => {
+    const rendered = formatExecutionStatus(
+      {
+        state: 'not-started',
+        executionId: 'release-official:test',
+        lifecycle: 'official',
+        plannedPackages: ['@kitz/core'],
+      },
+      {
+        nextApplyCommand: 'release apply --from ./.release/custom-plan.json',
+      },
+    )
+
+    expect(rendered).toContain('Run `release apply --from ./.release/custom-plan.json`')
+  })
+
   test('renders colored success summaries without changing the stripped text semantics', () => {
     const rendered = formatExecutionStatus(
       {
@@ -128,6 +144,11 @@ describe('Executor status', () => {
       const rendered = formatExecutionStatus(workflowStatus)
       expect(rendered).toContain('[SUSPENDED]')
       expect(rendered).toContain('Resume: Fix the blocking issue, then run `release resume`')
+      expect(
+        formatExecutionStatus(workflowStatus, {
+          resumeCommand: 'release resume --from ./.release/custom-plan.json',
+        }),
+      ).toContain('run `release resume --from ./.release/custom-plan.json`')
     }),
   )
 
