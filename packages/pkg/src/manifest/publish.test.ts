@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   findLocalDependencyNames,
   findPackHooks,
+  findPublishedManifestWorkspaceDependencyNames,
   findPublishOrderDependencyNames,
   rewriteManifestForPack,
 } from './publish.js'
@@ -147,5 +148,28 @@ describe('Pkg.Manifest publish rewrite', () => {
         '@kitz/git',
       ]),
     ).toEqual([])
+  })
+
+  test('findPublishedManifestWorkspaceDependencyNames only reports packed workspace protocols', () => {
+    expect(
+      findPublishedManifestWorkspaceDependencyNames(
+        {
+          dependencies: {
+            '@kitz/core': '^1.0.0',
+            '@kitz/fs': 'workspace:*',
+          },
+          peerDependencies: {
+            '@kitz/git': 'workspace:^',
+          },
+          optionalDependencies: {
+            '@kitz/env': 'workspace:~',
+          },
+          devDependencies: {
+            '@kitz/assert': 'workspace:*',
+          },
+        },
+        ['@kitz/assert', '@kitz/core', '@kitz/env', '@kitz/fs', '@kitz/git'],
+      ),
+    ).toEqual(['@kitz/fs', '@kitz/git', '@kitz/env'])
   })
 })

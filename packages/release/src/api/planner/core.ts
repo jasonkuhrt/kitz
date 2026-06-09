@@ -5,7 +5,7 @@ import { buildDependencyGraph, type DependencyGraph } from '../analyzer/cascade.
 import type { Analysis, Impact } from '../analyzer/models/__.js'
 import type { Package } from '../analyzer/workspace.js'
 import type { Lifecycle } from '../version/models/lifecycle.js'
-import { detect as detectOfficialCascades } from './cascade.js'
+import { detect as detectOfficialCascades, detectPublishDependencyClosure } from './cascade.js'
 import type { Official } from './models/item-official.js'
 import { make, type PlanOf, type PlannedItem } from './models/plan.js'
 import { passesFilter } from './options.js'
@@ -33,6 +33,7 @@ export interface PlanLifecycleParams<
   readonly lifecycle: $lifecycle
   readonly options?: $options
   readonly toPrimaryRelease: (impact: Impact) => PlannedItem<$lifecycle>
+  readonly toSecondaryRelease: (release: Official) => PlannedItem<$lifecycle>
   readonly toCascades: (params: CascadeParams<$lifecycle>) => readonly PlannedItem<$lifecycle>[]
 }
 
@@ -74,6 +75,14 @@ export const planLifecycle = <
       dependencyGraph,
       tags: [...params.analysis.tags],
     })
+    const dependencyReleases = yield* detectPublishDependencyClosure(
+      [...params.packages],
+      [...releases, ...cascades],
+      [...params.analysis.tags],
+    )
 
-    return make(params.lifecycle, releases, [...cascades])
+    return make(params.lifecycle, releases, [
+      ...cascades,
+      ...dependencyReleases.map(params.toSecondaryRelease),
+    ])
   })

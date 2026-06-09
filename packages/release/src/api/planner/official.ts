@@ -56,6 +56,7 @@ export const official = (
         commits: impact.commits,
       })
     },
+    toSecondaryRelease: (release) => release,
     toCascades: ({ packages, primaryReleases, dependencyGraph, tags }) =>
       detectCascades(packages, [...primaryReleases], dependencyGraph, [...tags]),
   })
