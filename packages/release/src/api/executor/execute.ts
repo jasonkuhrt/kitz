@@ -509,7 +509,7 @@ export const toPayload = (
             commits: item.commits.map((commit) =>
               toReleasePayloadCommitEntry(commit, item.package.scope),
             ),
-            dependsOn: Pkg.Manifest.findLocalDependencyNames(manifest, localPackageNames),
+            dependsOn: Pkg.Manifest.findPublishOrderDependencyNames(manifest, localPackageNames),
           }
         }),
       ),
