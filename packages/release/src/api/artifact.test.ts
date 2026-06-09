@@ -118,6 +118,63 @@ const artifact = {
   },
 }
 
+const coreGit = {
+  tags: [tag(pkg.name, '1.0.0')],
+  commits: [Git.Memory.commit('feat(core): new API')],
+  isClean: true,
+}
+
+const coreDiskLayout = {
+  '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+}
+
+const makeCoreHarness = (params?: {
+  readonly diskLayout?: Fs.Memory.DiskLayout
+  readonly envVars?: Record<string, string | undefined>
+  readonly failPublishPackages?: readonly string[]
+}) =>
+  makeHarness({
+    git: coreGit,
+    diskLayout: params?.diskLayout ?? coreDiskLayout,
+    ...(params?.envVars !== undefined ? { envVars: params.envVars } : {}),
+    ...(params?.failPublishPackages !== undefined
+      ? { failPublishPackages: params.failPublishPackages }
+      : {}),
+  })
+
+const rehearseCorePackage = ({
+  envVars,
+  publishIntent,
+  rehearseOptions,
+}: {
+  readonly envVars?: Record<string, string | undefined>
+  readonly publishIntent?: PublishIntent
+  readonly rehearseOptions?: Parameters<typeof rehearse>[1]
+} = {}) =>
+  Effect.gen(function* () {
+    const harness = yield* makeCoreHarness({ ...(envVars !== undefined ? { envVars } : {}) })
+    const releasePlan = yield* planOfficial([pkg]).pipe(Effect.provide(harness.planLayer))
+    const plan =
+      publishIntent === undefined
+        ? releasePlan
+        : Plan.make({
+            lifecycle: releasePlan.lifecycle,
+            timestamp: releasePlan.timestamp,
+            releases: releasePlan.releases,
+            cascades: releasePlan.cascades,
+            publishIntent,
+          })
+    const manifests = yield* rehearse(plan, rehearseOptions).pipe(
+      Effect.provide(harness.workflowLayer),
+    )
+
+    return {
+      manifests,
+      publishCalls: yield* Ref.get(harness.publishCalls),
+      packCalls: yield* Ref.get(harness.packCalls),
+    }
+  })
+
 describe('artifact manifest', () => {
   test('records actual tarball bytes, packlist, and npm metadata from prepared artifacts', async () => {
     const manifests = await Effect.runPromise(
@@ -161,27 +218,17 @@ describe('artifact manifest', () => {
     expect(result.value[0]?.packageName.moniker).toBe('@kitz/core')
   })
 
-  test('rehearsal proves the exact tarball publish command with package-manager dry-run', async () => {
-    const result = await Effect.runPromise(
-      Effect.gen(function* () {
-        const harness = yield* makeHarness({
-          git: {
-            tags: [tag(Pkg.Moniker.parse('@kitz/core'), '1.0.0')],
-            commits: [Git.Memory.commit('feat(core): new API')],
-            isClean: true,
-          },
-          diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
-            '/repo/packages/core/src/index.ts': 'export const value = 1\n',
-          },
-        })
-        const releasePlan = yield* planOfficial([pkg]).pipe(Effect.provide(harness.planLayer))
-        const manifests = yield* rehearse(releasePlan).pipe(Effect.provide(harness.workflowLayer))
-        const publishCalls = yield* Ref.get(harness.publishCalls)
-        const packCalls = yield* Ref.get(harness.packCalls)
+  test('rehearsal writes artifact manifests without package-manager publish dry-run by default', async () => {
+    const result = await Effect.runPromise(rehearseCorePackage())
 
-        return { manifests, publishCalls, packCalls }
-      }),
+    expect(result.manifests).toHaveLength(1)
+    expect(result.packCalls).toHaveLength(1)
+    expect(result.publishCalls).toEqual([])
+  })
+
+  test('rehearsal can prove the exact tarball publish command with package-manager dry-run', async () => {
+    const result = await Effect.runPromise(
+      rehearseCorePackage({ rehearseOptions: { publishDryRun: true } }),
     )
 
     expect(result.manifests).toHaveLength(1)
@@ -194,6 +241,29 @@ describe('artifact manifest', () => {
     expect(Fs.Path.toString(result.publishCalls[0]!.tarball)).toBe(
       `/repo/.release/artifacts/${manifest.planDigest.value}/kitz-core-1.1.0.tgz`,
     )
+  })
+
+  test('rehearsal does not trust manifests when publish dry-run fails', async () => {
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const harness = yield* makeCoreHarness({ failPublishPackages: ['@kitz/core'] })
+        const releasePlan = yield* planOfficial([pkg]).pipe(Effect.provide(harness.planLayer))
+        const error = yield* rehearse(releasePlan, { publishDryRun: true }).pipe(
+          Effect.flip,
+          Effect.provide(harness.workflowLayer),
+        )
+        const manifest = yield* readManifest(releasePlan).pipe(
+          Effect.provide(harness.workflowLayer),
+        )
+        const publishCalls = yield* Ref.get(harness.publishCalls)
+
+        return { error, manifest, publishCalls }
+      }),
+    )
+
+    expect(result.error).toBeInstanceOf(PublishError)
+    expect(result.publishCalls).toHaveLength(1)
+    expect(Option.isNone(result.manifest)).toBe(true)
   })
 
   test('artifact preparation recursively stages package directories outside the source tree', async () => {
@@ -290,12 +360,7 @@ describe('artifact manifest', () => {
   test('rehearsal rejects malformed source manifests before pack', async () => {
     const result = await Effect.runPromise(
       Effect.gen(function* () {
-        const harness = yield* makeHarness({
-          git: {
-            tags: [tag(Pkg.Moniker.parse('@kitz/core'), '1.0.0')],
-            commits: [Git.Memory.commit('feat(core): new API')],
-            isClean: true,
-          },
+        const harness = yield* makeCoreHarness({
           diskLayout: {
             '/repo/packages/core/package.json': '{bad json',
           },
@@ -346,50 +411,29 @@ describe('artifact manifest', () => {
   })
 
   test('rehearsal gives pack child processes only the plan-approved environment', async () => {
+    const baseIntent = contractedPlan.publishIntent!
     const result = await Effect.runPromise(
-      Effect.gen(function* () {
-        const harness = yield* makeHarness({
-          git: {
-            tags: [tag(Pkg.Moniker.parse('@kitz/core'), '1.0.0')],
-            commits: [Git.Memory.commit('feat(core): new API')],
-            isClean: true,
-          },
-          diskLayout: {
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
-          },
-          envVars: {
-            PATH: '/bin:/usr/bin',
-            HOME: '/Users/test',
-            CI: 'true',
-            NPM_TOKEN: 'secret',
-            GITHUB_TOKEN: 'secret',
-            NPM_CONFIG_OTP: '123456',
-            RANDOM_UNRELATED_ENV: 'nope',
-          },
-        })
-        const releasePlan = yield* planOfficial([pkg]).pipe(Effect.provide(harness.planLayer))
-        const baseIntent = contractedPlan.publishIntent!
-        const intent = updatePublishIntent(baseIntent, {
+      rehearseCorePackage({
+        envVars: {
+          PATH: '/bin:/usr/bin',
+          HOME: '/Users/test',
+          CI: 'true',
+          NPM_TOKEN: 'secret',
+          GITHUB_TOKEN: 'secret',
+          NPM_CONFIG_OTP: '123456',
+          RANDOM_UNRELATED_ENV: 'nope',
+        },
+        publishIntent: updatePublishIntent(baseIntent, {
           artifacts: updateArtifactPolicy(baseIntent.artifacts, {
             scriptPolicy: updateScriptPolicy(baseIntent.artifacts.scriptPolicy, {
               envAllowlist: ['CI'],
             }),
           }),
-        })
-        const contracted = Plan.make({
-          lifecycle: releasePlan.lifecycle,
-          timestamp: releasePlan.timestamp,
-          releases: releasePlan.releases,
-          cascades: releasePlan.cascades,
-          publishIntent: intent,
-        })
-
-        yield* rehearse(contracted).pipe(Effect.provide(harness.workflowLayer))
-        return yield* Ref.get(harness.packCalls)
+        }),
       }),
     )
 
-    expect(result[0]?.env).toEqual({
+    expect(result.packCalls[0]?.env).toEqual({
       PATH: '/bin:/usr/bin',
       HOME: '/Users/test',
       CI: 'true',

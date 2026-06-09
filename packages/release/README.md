@@ -833,6 +833,7 @@ release rehearse [flags]
 | Flag | Type | Description |
 | --- | --- | --- |
 | `--from`, `-f` | `string` | Read the release plan from a specific file path |
+| `--publish-dry-run` | `boolean` | Also run package-manager publish --dry-run for each artifact |
 
 #### `release repair`
 

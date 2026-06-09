@@ -17,8 +17,12 @@ export const rehearse = Command.make(
       Flag.withDescription('Read the release plan from a specific file path'),
       Flag.optional,
     ),
+    publishDryRun: Flag.boolean('publish-dry-run').pipe(
+      Flag.withDescription('Also run package-manager publish --dry-run for each artifact'),
+      Flag.withDefault(false),
+    ),
   },
-  ({ from }) =>
+  ({ from, publishDryRun }) =>
     Effect.gen(function* () {
       const env = yield* Env.Env
       const planPath = Option.isSome(from) ? Fs.Path.fromString(from.value) : undefined
@@ -37,7 +41,7 @@ export const rehearse = Command.make(
         return env.exit(1)
       }
 
-      const manifests = yield* Api.Artifact.rehearse(planState.plan)
+      const manifests = yield* Api.Artifact.rehearse(planState.plan, { publishDryRun })
       yield* Console.log(`Artifact manifest written for ${manifests.length} package(s).`)
     }),
 ).pipe(

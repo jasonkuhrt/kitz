@@ -7,7 +7,7 @@
 
 import { ChildProcessSpawner } from 'effect/unstable/process'
 import { Workflow as DurableWorkflow, WorkflowEngine } from 'effect/unstable/workflow'
-import { FileSystem } from 'effect'
+import { FileSystem, PlatformError } from 'effect'
 import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Flo } from '@kitz/flo'
@@ -95,7 +95,10 @@ export type ObservableExecutionRequirements =
   | Git.Git
   | NpmRegistry.NpmCli
 
-export type ObservableExecutionError = Config.ConfigError | ExecutorError
+export type ObservableExecutionError =
+  | Config.ConfigError
+  | ExecutorError
+  | PlatformError.PlatformError
 
 interface ExecutionOptions {
   readonly dryRun?: boolean

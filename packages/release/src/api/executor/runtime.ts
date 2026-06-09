@@ -12,8 +12,9 @@ import {
 } from 'effect/unstable/cluster'
 import { SqliteClient } from '#platform:executor/sqlite-client'
 import { WorkflowEngine } from 'effect/unstable/workflow'
+import { Fs } from '@kitz/fs'
 import { Github } from '@kitz/github'
-import { Effect, Layer } from 'effect'
+import { Effect, FileSystem, Layer } from 'effect'
 
 /**
  * Default database path for workflow state.
@@ -36,21 +37,44 @@ export interface RuntimeConfig {
   }
 }
 
+const dbDirectoryPath = (dbPath: string): string => {
+  const file = dbPath.startsWith('/')
+    ? Fs.Path.AbsFile.fromString(dbPath)
+    : Fs.Path.RelFile.fromString(
+        dbPath.startsWith('./') || dbPath.startsWith('../') ? dbPath : `./${dbPath}`,
+      )
+
+  return Fs.Path.toString(Fs.Path.toDir(file))
+}
+
+const makeWorkflowSqliteLayer = (dbPath: string) =>
+  Layer.unwrap(
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem
+      yield* fs.makeDirectory(dbDirectoryPath(dbPath), { recursive: true })
+
+      return SqliteClient.layer({ filename: dbPath })
+    }),
+  )
+
 /**
  * Create the durable workflow engine layer with SQLite-backed state.
  */
 export const makeWorkflowRuntime = (
   config: Pick<RuntimeConfig, 'dbPath' | 'shardingConfig'> = {},
-) =>
-  ClusterWorkflowEngine.layer.pipe(
+) => {
+  const dbPath = config.dbPath ?? DEFAULT_DB
+
+  return ClusterWorkflowEngine.layer.pipe(
     Layer.provide(
       SingleRunner.layer({
         runnerStorage: 'sql',
         ...(config.shardingConfig && { shardingConfig: config.shardingConfig }),
       }),
     ),
-    Layer.provideMerge(SqliteClient.layer({ filename: config.dbPath ?? DEFAULT_DB })),
+    Layer.provideMerge(makeWorkflowSqliteLayer(dbPath)),
   )
+}
 
 const makeGithubRuntime = (github?: RuntimeConfig['github']) =>
   github

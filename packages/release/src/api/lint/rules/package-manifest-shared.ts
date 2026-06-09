@@ -15,7 +15,9 @@ export const loadPlannedManifests = Effect.gen(function* () {
     Pkg.Manifest.resource.readOrEmpty(release.packagePath).pipe(
       Effect.map((manifest) => ({
         packageName: release.packageName.moniker,
-        packageJsonPath: `${Fs.Path.toString(release.packagePath)}package.json`,
+        packageJsonPath: Fs.Path.toString(
+          Fs.Path.join(release.packagePath, Fs.Path.RelFile.fromString('./package.json')),
+        ),
         manifest,
       })),
     ),
