@@ -9,9 +9,16 @@ const dependencyFieldNames = [
   'optionalDependencies',
 ] as const
 const publishOrderDependencyFieldNames = ['dependencies', 'optionalDependencies'] as const
+const publishedManifestWorkspaceDependencyFieldNames = [
+  'dependencies',
+  'peerDependencies',
+  'optionalDependencies',
+] as const
 
 type DependencyFieldName = (typeof dependencyFieldNames)[number]
 type PublishOrderDependencyFieldName = (typeof publishOrderDependencyFieldNames)[number]
+type PublishedManifestWorkspaceDependencyFieldName =
+  (typeof publishedManifestWorkspaceDependencyFieldNames)[number]
 type JsonRecord = Record<string, unknown>
 
 interface RewriteDependencyOptions {
@@ -156,5 +163,43 @@ export const findPublishOrderDependencyNames = (
   return names
 }
 
+/**
+ * Find local workspace-protocol dependencies that remain in published manifests
+ * unless the release plan includes a version for them.
+ *
+ * Dev dependencies are removed from packed manifests, while peer dependencies
+ * remain and must also have their workspace protocol rewritten.
+ */
+export const findPublishedManifestWorkspaceDependencyNames = (
+  manifest: {
+    readonly dependencies?: Readonly<Record<string, string>> | undefined
+    readonly devDependencies?: Readonly<Record<string, string>> | undefined
+    readonly peerDependencies?: Readonly<Record<string, string>> | undefined
+    readonly optionalDependencies?: Readonly<Record<string, string>> | undefined
+  },
+  localPackageNames: readonly string[],
+): readonly string[] => {
+  const names: string[] = []
+
+  for (const fieldName of publishedManifestWorkspaceDependencyFieldNames) {
+    const field = manifest[fieldName]
+    if (field === undefined) continue
+
+    for (const [dependencyName, specifier] of Object.entries(field)) {
+      if (
+        specifier.startsWith('workspace:') &&
+        localPackageNames.includes(dependencyName) &&
+        !names.includes(dependencyName)
+      ) {
+        names.push(dependencyName)
+      }
+    }
+  }
+
+  return names
+}
+
 export type DependencyField = DependencyFieldName
 export type PublishOrderDependencyField = PublishOrderDependencyFieldName
+export type PublishedManifestWorkspaceDependencyField =
+  PublishedManifestWorkspaceDependencyFieldName
