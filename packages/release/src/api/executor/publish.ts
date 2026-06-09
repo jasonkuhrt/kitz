@@ -87,6 +87,29 @@ export interface PublishOptions {
 const formatUnknownError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error)
 
+const isStringRecord = (value: unknown): value is Record<string, string> =>
+  typeof value === 'object' &&
+  value !== null &&
+  !Array.isArray(value) &&
+  Object.values(value).every((entry) => typeof entry === 'string')
+
+const catalogVersionsFrom = (manifest: Record<string, unknown>): Record<string, string> => {
+  const catalog = manifest['catalog']
+  return isStringRecord(catalog) ? catalog : {}
+}
+
+const packedDependencyFieldNames = ['dependencies', 'peerDependencies', 'optionalDependencies']
+
+const unresolvedCatalogDependenciesIn = (manifest: Record<string, unknown>): readonly string[] =>
+  A.flatMap(packedDependencyFieldNames, (fieldName) => {
+    const field = manifest[fieldName]
+    if (!isStringRecord(field)) return []
+
+    return Object.entries(field)
+      .filter(([, specifier]) => specifier === 'catalog:')
+      .map(([dependencyName]) => dependencyName)
+  })
+
 const decodeJsonRecordOrFail = (pkgDir: Fs.Path.AbsDir, json: string) =>
   decodeJsonRecord(json).pipe(
     Effect.mapError(
@@ -225,6 +248,7 @@ export const preparePackageArtifact = (
       release.package.path,
       Fs.Path.RelFile.fromString('./package.json'),
     )
+    const rootPackageJsonPath = Fs.Path.join(env.cwd, Fs.Path.RelFile.fromString('./package.json'))
     const packageJsonPathString = Fs.Path.toString(packageJsonPath)
     const artifactDir = artifactDirectoryFor(env.cwd, options)
     const artifactPath = artifactPathFor(env.cwd, release, options)
@@ -236,12 +260,29 @@ export const preparePackageArtifact = (
 
     const originalJson = yield* fs.readFileString(packageJsonPathString)
     const originalManifest = yield* decodeJsonRecordOrFail(release.package.path, originalJson)
+    const catalogVersions = yield* fs.readFileString(Fs.Path.toString(rootPackageJsonPath)).pipe(
+      Effect.flatMap((rootJson) => decodeJsonRecordOrFail(env.cwd, rootJson)),
+      Effect.map(catalogVersionsFrom),
+      Effect.orElseSucceed(() => ({})),
+    )
     const typedManifest = yield* Pkg.Manifest.resource.readOrEmpty(release.package.path)
     const packHooks = Pkg.Manifest.findPackHooks(typedManifest.scripts)
     const rewrittenManifest = Pkg.Manifest.rewriteManifestForPack(originalManifest, {
       version: release.nextVersion,
       workspaceVersions: workspaceVersionsFor(releases),
+      catalogVersions,
     })
+    const unresolvedCatalogDependencies = unresolvedCatalogDependenciesIn(rewrittenManifest)
+    if (unresolvedCatalogDependencies.length > 0) {
+      return yield* Effect.fail(
+        new PublishError({
+          context: {
+            package: release.package.path,
+            detail: `Unresolved catalog dependencies in staged manifest: ${unresolvedCatalogDependencies.join(', ')}`,
+          },
+        }),
+      )
+    }
 
     yield* fs
       .remove(Fs.Path.toString(stagedPackageDir), { recursive: true, force: true })

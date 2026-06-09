@@ -103,6 +103,12 @@ describe('executor execute helpers', () => {
             '/repo/packages/core/package.json': JSON.stringify({
               name: '@kitz/core',
               version: '1.0.0',
+              peerDependencies: {
+                '@kitz/cli': 'workspace:*',
+              },
+              devDependencies: {
+                '@kitz/cli': 'workspace:*',
+              },
             }),
             '/repo/packages/cli/package.json': JSON.stringify({
               name: '@kitz/cli',
@@ -120,6 +126,7 @@ describe('executor execute helpers', () => {
       '@kitz/core',
       '@kitz/cli',
     ])
+    expect(payload.releases[0]!.dependsOn).toEqual([])
     expect(payload.releases[1]!.dependsOn).toEqual(['@kitz/core'])
     expect(payload.releases[0]!.currentVersion).toEqual(Option.some('1.0.0'))
     expect(payload.options).toEqual({

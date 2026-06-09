@@ -310,6 +310,41 @@ describe('artifact manifest', () => {
     expect(result.error).toBeInstanceOf(PublishError)
   })
 
+  test('rehearsal rejects unresolved catalog dependencies before pack', async () => {
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const harness = yield* makeHarness({
+          git: {
+            tags: [tag(Pkg.Moniker.parse('@kitz/core'), '1.0.0')],
+            commits: [Git.Memory.commit('feat(core): new API')],
+            isClean: true,
+          },
+          diskLayout: {
+            '/repo/package.json': JSON.stringify({ name: 'repo', catalog: {} }),
+            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
+              dependencies: {
+                ansis: 'catalog:',
+              },
+            }),
+          },
+        })
+        const releasePlan = yield* planOfficial([pkg]).pipe(Effect.provide(harness.planLayer))
+        const error = yield* rehearse(releasePlan).pipe(
+          Effect.flip,
+          Effect.provide(harness.workflowLayer),
+        )
+        const packCalls = yield* Ref.get(harness.packCalls)
+        return { error, packCalls }
+      }),
+    )
+
+    expect(result.packCalls).toEqual([])
+    if (!(result.error instanceof PublishError)) {
+      throw new Error('expected PublishError')
+    }
+    expect(result.error.message).toContain('ansis')
+  })
+
   test('rehearsal gives pack child processes only the plan-approved environment', async () => {
     const result = await Effect.runPromise(
       Effect.gen(function* () {
