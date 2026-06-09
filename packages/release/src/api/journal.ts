@@ -1,10 +1,13 @@
-import { PlatformError, Effect, FileSystem, Schema } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
+import { Resource } from '@kitz/resource'
+import { Effect, FileSystem, Schema } from 'effect'
 import { sha256Json } from './digest.js'
+import { jsonLinesFile } from './persistence.js'
 import { PlanDigest, SideEffectEntry, type SideEffectKind } from './release-contract.js'
 
 const journalDir = Fs.Path.RelDir.fromString('./.release/journal/')
+const journalResource = jsonLinesFile(SideEffectEntry)
 
 export interface SideEffectInput {
   readonly planDigest: string | PlanDigest
@@ -60,39 +63,14 @@ export const journalPathFor = (
 
 export const readEntries = (
   path: Fs.Path.AbsFile,
-): Effect.Effect<
-  readonly SideEffectEntry[],
-  PlatformError.PlatformError | Schema.SchemaError,
-  FileSystem.FileSystem
-> =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    const exists = yield* fs.exists(Fs.Path.toString(path))
-    if (!exists) return []
-    const text = yield* fs.readFileString(Fs.Path.toString(path))
-    const lines = text
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-    return yield* Effect.all(
-      lines.map((line) => Schema.decodeUnknownEffect(Schema.fromJsonString(SideEffectEntry))(line)),
-    )
-  })
+): Effect.Effect<readonly SideEffectEntry[], Resource.ResourceError, FileSystem.FileSystem> =>
+  journalResource.read(path)
 
 export const writeEntries = (
   path: Fs.Path.AbsFile,
   entries: readonly SideEffectEntry[],
-): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(path)), { recursive: true })
-    yield* fs.writeFileString(
-      Fs.Path.toString(path),
-      `${entries
-        .map((entry) => JSON.stringify(Schema.encodeSync(SideEffectEntry)(entry)))
-        .join('\n')}\n`,
-    )
-  })
+): Effect.Effect<void, Resource.ResourceError, FileSystem.FileSystem> =>
+  journalResource.write(entries, path)
 
 export const makeEntry = (input: SideEffectInput, previous?: SideEffectEntry): SideEffectEntry => {
   const planDigest =
@@ -122,11 +100,7 @@ export const makeEntry = (input: SideEffectInput, previous?: SideEffectEntry): S
 
 export const appendSideEffect = (
   input: SideEffectInput,
-): Effect.Effect<
-  SideEffectEntry,
-  PlatformError.PlatformError | Schema.SchemaError,
-  Env.Env | FileSystem.FileSystem
-> =>
+): Effect.Effect<SideEffectEntry, Resource.ResourceError, Env.Env | FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
     const path = journalPathFor(env.cwd, input.planDigest)

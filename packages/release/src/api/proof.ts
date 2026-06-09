@@ -4,17 +4,10 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
-import {
-  Array as A,
-  Clock,
-  Effect,
-  FileSystem,
-  Option,
-  PlatformError,
-  Result,
-  Schema,
-} from 'effect'
+import { Resource } from '@kitz/resource'
+import { Array as A, Clock, Effect, FileSystem, Option, Result, Schema } from 'effect'
 import { sha256Json } from './digest.js'
+import { jsonFile } from './persistence.js'
 import type { Plan } from './planner/models/plan.js'
 import * as Capability from './publishing/models/capability.js'
 import {
@@ -26,6 +19,7 @@ import {
 } from './release-contract.js'
 
 const proofDir = Fs.Path.RelDir.fromString('./.release/proofs/')
+const proofResource = jsonFile(ProofArtifact)
 
 export interface ProofIssue {
   readonly recordId: string
@@ -754,36 +748,18 @@ export const validateProof = (
 export const write = (
   proof: ProofArtifact,
   path: Fs.Path.AbsFile,
-): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(path)), { recursive: true })
-    yield* fs.writeFileString(
-      Fs.Path.toString(path),
-      `${JSON.stringify(Schema.encodeSync(ProofArtifact)(proof), null, 2)}\n`,
-    )
-  })
+): Effect.Effect<void, Resource.ResourceError, FileSystem.FileSystem> =>
+  proofResource.write(proof, path)
 
 export const read = (
   path: Fs.Path.AbsFile,
-): Effect.Effect<
-  Option.Option<ProofArtifact>,
-  PlatformError.PlatformError | Schema.SchemaError,
-  FileSystem.FileSystem
-> =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    const exists = yield* fs.exists(Fs.Path.toString(path))
-    if (!exists) return Option.none()
-    const text = yield* fs.readFileString(Fs.Path.toString(path))
-    const decoded = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(ProofArtifact))(text)
-    return Option.some(decoded)
-  })
+): Effect.Effect<Option.Option<ProofArtifact>, Resource.ResourceError, FileSystem.FileSystem> =>
+  proofResource.read(path)
 
 export const prove = (
   plan: Plan,
   observations: ProofObservations = {},
-): Effect.Effect<ProofArtifact, PlatformError.PlatformError, Env.Env | FileSystem.FileSystem> =>
+): Effect.Effect<ProofArtifact, Resource.ResourceError, Env.Env | FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
     const now = yield* Clock.currentTimeMillis
@@ -796,7 +772,7 @@ export const readForPlan = (
   plan: Plan,
 ): Effect.Effect<
   Option.Option<ProofArtifact>,
-  PlatformError.PlatformError | Schema.SchemaError,
+  Resource.ResourceError,
   Env.Env | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {

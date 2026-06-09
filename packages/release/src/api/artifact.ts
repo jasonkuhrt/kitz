@@ -23,12 +23,14 @@ import {
   type PreparedArtifact,
   type ReleaseInfo,
 } from './executor/publish.js'
+import { jsonFile } from './persistence.js'
 import type { Plan } from './planner/models/plan.js'
 import { digestForPlan } from './proof.js'
 import { ArtifactManifest } from './release-contract.js'
 
 const artifactDir = Fs.Path.RelDir.fromString('./.release/artifacts/')
 const artifactManifestFile = Fs.Path.RelFile.fromString('./manifest.json')
+const artifactManifestResource = jsonFile(Schema.Array(ArtifactManifest))
 const PackageJsonScriptsFromString = Schema.fromJsonString(
   Schema.Struct({
     scripts: Schema.optional(Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown))),
@@ -433,36 +435,22 @@ export const validateEnginePolicyForPlan = (
 export const writeManifest = (
   plan: Plan,
   manifests: readonly ArtifactManifest[],
-): Effect.Effect<void, PlatformError.PlatformError, Env.Env | FileSystem.FileSystem> =>
+): Effect.Effect<void, Resource.ResourceError, Env.Env | FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
-    const fs = yield* FileSystem.FileSystem
-    const path = manifestPathFor(env.cwd, plan)
-    yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(path)), { recursive: true })
-    yield* fs.writeFileString(
-      Fs.Path.toString(path),
-      `${JSON.stringify(Schema.encodeSync(Schema.Array(ArtifactManifest))([...manifests]), null, 2)}\n`,
-    )
+    yield* artifactManifestResource.write([...manifests], manifestPathFor(env.cwd, plan))
   })
 
 export const readManifest = (
   plan: Plan,
 ): Effect.Effect<
   Option.Option<readonly ArtifactManifest[]>,
-  PlatformError.PlatformError | Schema.SchemaError,
+  Resource.ResourceError,
   Env.Env | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
     const env = yield* Env.Env
-    const fs = yield* FileSystem.FileSystem
-    const path = manifestPathFor(env.cwd, plan)
-    const exists = yield* fs.exists(Fs.Path.toString(path))
-    if (!exists) return Option.none()
-    const text = yield* fs.readFileString(Fs.Path.toString(path))
-    const decoded = yield* Schema.decodeUnknownEffect(
-      Schema.fromJsonString(Schema.Array(ArtifactManifest)),
-    )(text)
-    return Option.some(decoded)
+    return yield* artifactManifestResource.read(manifestPathFor(env.cwd, plan))
   })
 
 export interface RehearseOptions {
