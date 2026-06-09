@@ -7,6 +7,12 @@ export interface AdapterDependencies {
   readonly layer?: Layer.Layer<any, any, any>
 }
 
+type RehearseOptions = NonNullable<Parameters<typeof Api.Artifact.rehearse>[1]>
+
+const isAdapterDependencies = (
+  value: RehearseOptions | AdapterDependencies | undefined,
+): value is AdapterDependencies => value !== undefined && 'layer' in value
+
 const run = <A>(
   effect: Effect.Effect<A, unknown, unknown>,
   dependencies?: AdapterDependencies,
@@ -27,8 +33,18 @@ export const inspectLegitimacy = Api.Reconciler.inspectVerdict
 export const prove = (plan: Plan, dependencies?: AdapterDependencies) =>
   run(Api.Proof.prove(plan), dependencies)
 
-export const rehearse = (plan: Plan, dependencies?: AdapterDependencies) =>
-  run(Api.Artifact.rehearse(plan), dependencies)
+export const rehearse = (
+  plan: Plan,
+  optionsOrDependencies?: RehearseOptions | AdapterDependencies,
+  dependencies?: AdapterDependencies,
+) => {
+  const options = isAdapterDependencies(optionsOrDependencies) ? {} : (optionsOrDependencies ?? {})
+  const resolvedDependencies = isAdapterDependencies(optionsOrDependencies)
+    ? optionsOrDependencies
+    : dependencies
+
+  return run(Api.Artifact.rehearse(plan, options), resolvedDependencies)
+}
 
 export const apply = (
   plan: Plan,

@@ -54,28 +54,25 @@ const makeFirstRelease = (
 
 const officialSemantics = resolvePublishSemantics({ lifecycle: 'official' })
 const candidateSemantics = resolvePublishSemantics({ lifecycle: 'candidate' })
+const makeOfficialPlan = (releases: Official[] = [], cascades: Official[] = []) =>
+  Plan.make({
+    lifecycle: 'official',
+    timestamp: '2026-01-01T00:00:00Z',
+    releases,
+    cascades,
+  })
 
 // ── renderPlan ───────────────────────────────────────────────────────
 
 describe('renderPlan', () => {
   test('empty plan returns no releases message', () => {
-    const plan = Plan.make({
-      lifecycle: 'official',
-      timestamp: '2026-01-01T00:00:00Z',
-      releases: [],
-      cascades: [],
-    })
-    expect(renderPlan(plan)).toBe('No releases planned.')
+    expect(renderPlan(makeOfficialPlan())).toBe('No releases planned.')
   })
 
   test('single release without cascades', () => {
-    const plan = Plan.make({
-      lifecycle: 'official',
-      timestamp: '2026-01-01T00:00:00Z',
-      releases: [makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')],
-      cascades: [],
-    })
-    const output = renderPlan(plan)
+    const output = renderPlan(
+      makeOfficialPlan([makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')]),
+    )
     expect(output).toContain('Official release plan')
     expect(output).toContain('@kitz/core')
     expect(output).toContain('1.0.0')
@@ -86,13 +83,12 @@ describe('renderPlan', () => {
   })
 
   test('multiple releases with cascades', () => {
-    const plan = Plan.make({
-      lifecycle: 'official',
-      timestamp: '2026-01-01T00:00:00Z',
-      releases: [makeRelease('@kitz/core', 'core', '1.0.0', '2.0.0', 'major')],
-      cascades: [makeRelease('@kitz/cli', 'cli', '1.0.0', '1.0.1', 'patch')],
-    })
-    const output = renderPlan(plan)
+    const output = renderPlan(
+      makeOfficialPlan(
+        [makeRelease('@kitz/core', 'core', '1.0.0', '2.0.0', 'major')],
+        [makeRelease('@kitz/cli', 'cli', '1.0.0', '1.0.1', 'patch')],
+      ),
+    )
     expect(output).toContain('Official release plan')
     expect(output).toContain('Releases (1)')
     expect(output).toContain('Cascades (1)')
@@ -102,34 +98,24 @@ describe('renderPlan', () => {
   })
 
   test('first release shows "new" instead of current version', () => {
-    const plan = Plan.make({
-      lifecycle: 'official',
-      timestamp: '2026-01-01T00:00:00Z',
-      releases: [makeFirstRelease('@kitz/core', 'core', '0.0.1', 'patch')],
-      cascades: [],
-    })
-    const output = renderPlan(plan)
+    const output = renderPlan(
+      makeOfficialPlan([makeFirstRelease('@kitz/core', 'core', '0.0.1', 'patch')]),
+    )
     expect(output).toContain('new')
     expect(output).toContain('0.0.1')
     expect(output).toContain('patch')
   })
 
   test('shows commit count', () => {
-    const plan = Plan.make({
-      lifecycle: 'official',
-      timestamp: '2026-01-01T00:00:00Z',
-      releases: [makeRelease('@kitz/core', 'core', '1.0.0', '1.0.1', 'patch')],
-      cascades: [],
-    })
-    const output = renderPlan(plan)
+    const output = renderPlan(
+      makeOfficialPlan([makeRelease('@kitz/core', 'core', '1.0.0', '1.0.1', 'patch')]),
+    )
     expect(output).toContain('1')
   })
 
   test('sorts release rows by commit count descending', () => {
-    const plan = Plan.make({
-      lifecycle: 'official',
-      timestamp: '2026-01-01T00:00:00Z',
-      releases: [
+    const output = renderPlan(
+      makeOfficialPlan([
         Official.make({
           package: pkg('@kitz/core', 'core'),
           version: OfficialIncrement.make({
@@ -152,25 +138,22 @@ describe('renderPlan', () => {
             commit('cli', 'fix(cli): third'),
           ],
         }),
-      ],
-      cascades: [],
-    })
-    const output = renderPlan(plan)
+      ]),
+    )
 
     expect(output.indexOf('@kitz/cli')).toBeLessThan(output.indexOf('@kitz/core'))
   })
 
   test('sorts cascade rows alphabetically', () => {
-    const plan = Plan.make({
-      lifecycle: 'official',
-      timestamp: '2026-01-01T00:00:00Z',
-      releases: [],
-      cascades: [
-        makeRelease('@kitz/zeta', 'zeta', '1.0.0', '1.0.1', 'patch'),
-        makeRelease('@kitz/alpha', 'alpha', '1.0.0', '1.0.1', 'patch'),
-      ],
-    })
-    const output = renderPlan(plan)
+    const output = renderPlan(
+      makeOfficialPlan(
+        [],
+        [
+          makeRelease('@kitz/zeta', 'zeta', '1.0.0', '1.0.1', 'patch'),
+          makeRelease('@kitz/alpha', 'alpha', '1.0.0', '1.0.1', 'patch'),
+        ],
+      ),
+    )
 
     expect(output.indexOf('@kitz/alpha')).toBeLessThan(output.indexOf('@kitz/zeta'))
   })
@@ -180,12 +163,7 @@ describe('renderPlan', () => {
 
 describe('renderApplyConfirmation', () => {
   test('shows release count and steps', () => {
-    const plan = Plan.make({
-      lifecycle: 'official',
-      timestamp: '2026-01-01T00:00:00Z',
-      releases: [makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')],
-      cascades: [],
-    })
+    const plan = makeOfficialPlan([makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')])
     const output = renderApplyConfirmation(plan, officialSemantics)
     expect(output).toContain('1 package to release')
     expect(output).toContain('npm dist-tag: `latest`')
@@ -200,26 +178,16 @@ describe('renderApplyConfirmation', () => {
   })
 
   test('pluralizes for multiple packages', () => {
-    const plan = Plan.make({
-      lifecycle: 'official',
-      timestamp: '2026-01-01T00:00:00Z',
-      releases: [
-        makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor'),
-        makeRelease('@kitz/cli', 'cli', '2.0.0', '2.0.1', 'patch'),
-      ],
-      cascades: [],
-    })
+    const plan = makeOfficialPlan([
+      makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor'),
+      makeRelease('@kitz/cli', 'cli', '2.0.0', '2.0.1', 'patch'),
+    ])
     const output = renderApplyConfirmation(plan, officialSemantics)
     expect(output).toContain('2 packages to release')
   })
 
   test('supports ansi-colored confirmation output', () => {
-    const plan = Plan.make({
-      lifecycle: 'official',
-      timestamp: '2026-01-01T00:00:00Z',
-      releases: [makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')],
-      cascades: [],
-    })
+    const plan = makeOfficialPlan([makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')])
     const output = renderApplyConfirmation(plan, officialSemantics, { color: true })
 
     expect(output).toContain('\u001b[')
@@ -243,12 +211,7 @@ describe('renderApplyConfirmation', () => {
   })
 
   test('renders cascade entries in confirmation output', () => {
-    const plan = Plan.make({
-      lifecycle: 'official',
-      timestamp: '2026-01-01T00:00:00Z',
-      releases: [],
-      cascades: [makeRelease('@kitz/cli', 'cli', '2.0.0', '2.0.1', 'patch')],
-    })
+    const plan = makeOfficialPlan([], [makeRelease('@kitz/cli', 'cli', '2.0.0', '2.0.1', 'patch')])
     const output = renderApplyConfirmation(plan, officialSemantics)
 
     expect(output).toContain('(cascade)')
@@ -259,12 +222,7 @@ describe('renderApplyConfirmation', () => {
 
 describe('renderApplyDryRun', () => {
   test('shows DRY RUN prefix and actions', () => {
-    const plan = Plan.make({
-      lifecycle: 'official',
-      timestamp: '2026-01-01T00:00:00Z',
-      releases: [makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')],
-      cascades: [],
-    })
+    const plan = makeOfficialPlan([makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')])
     const output = renderApplyDryRun(plan, officialSemantics)
     expect(output).toContain('[DRY RUN]')
     expect(output).toContain('Would execute official release plan')
@@ -294,12 +252,7 @@ describe('renderApplyDryRun', () => {
   })
 
   test('supports ansi-colored dry-run and completion output', () => {
-    const plan = Plan.make({
-      lifecycle: 'official',
-      timestamp: '2026-01-01T00:00:00Z',
-      releases: [makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')],
-      cascades: [],
-    })
+    const plan = makeOfficialPlan([makeRelease('@kitz/core', 'core', '1.0.0', '1.1.0', 'minor')])
 
     const dryRun = renderApplyDryRun(plan, officialSemantics, { color: true })
     const done = renderApplyDone(1, { color: true })

@@ -51,6 +51,23 @@ export const manifestPathFor = (cwd: Fs.Path.AbsDir, plan: Plan): Fs.Path.AbsFil
 const manifestRelPath = (path: string): Fs.Path.RelFile =>
   Fs.Path.RelFile.fromString(path.startsWith('./') ? path : `./${path}`)
 
+const artifactTarballPathFor = (
+  cwd: Fs.Path.AbsDir,
+  plan: Plan,
+  release: ReleaseInfo,
+): Fs.Path.AbsFile =>
+  Fs.Path.join(
+    Fs.Path.join(
+      Fs.Path.join(cwd, artifactDir),
+      Fs.Path.RelDir.fromString(`./${digestForPlan(plan).value}/`),
+    ),
+    Fs.Path.RelFile.fromString(
+      `./${release.package.name.moniker.replace(/^@/u, '').replace(/\//gu, '-')}-${Semver.toString(
+        release.nextVersion,
+      )}.tgz`,
+    ),
+  )
+
 export const releaseInfosForPlan = (plan: Plan): ReleaseInfo[] =>
   A.map([...plan.releases, ...plan.cascades], (item) => ({
     package: item.package,
@@ -103,11 +120,7 @@ export const makeManifestFromPlan = (plan: Plan, cwd: Fs.Path.AbsDir): ArtifactM
       packageName: release.package.name,
       version: release.nextVersion,
       driver: plan.publishIntent?.profile.packDriver ?? 'npm',
-      tarball: Fs.Path.AbsFile.fromString(
-        `${Fs.Path.toString(cwd)}.release/artifacts/${digestForPlan(plan).value}/${release.package.name.moniker
-          .replace(/^@/u, '')
-          .replace(/\//gu, '-')}-${Semver.toString(release.nextVersion)}.tgz`,
-      ),
+      tarball: artifactTarballPathFor(cwd, plan, release),
       sha256: sha256Bytes(new Uint8Array()),
       sizeBytes: 0,
       manifest: {
@@ -452,8 +465,13 @@ export const readManifest = (
     return Option.some(decoded)
   })
 
+export interface RehearseOptions {
+  readonly publishDryRun?: boolean
+}
+
 export const rehearse = (
   plan: Plan,
+  options: RehearseOptions = {},
 ): Effect.Effect<
   ArtifactManifest[],
   PublishError | PlatformError.PlatformError | Resource.ResourceError,
@@ -503,20 +521,25 @@ export const rehearse = (
 
     const manifests = yield* makeManifestFromPrepared(plan, preparedArtifacts)
 
-    for (const artifact of preparedArtifacts) {
-      yield* publishPreparedArtifact(artifact, {
-        dryRun: true,
-        packageManager: publishInvoker,
-        ...(plan.publishIntent !== undefined ? { tag: plan.publishIntent.distTag } : {}),
-        ...(plan.publishIntent !== undefined ? { registry: plan.publishIntent.registry.url } : {}),
-        ...(plan.publishIntent?.provenance.mode === 'cli-flag' ? { provenance: true } : {}),
-        ...(plan.publishIntent?.provenance.mode === 'attestation-file' &&
-        plan.publishIntent.provenance.file !== undefined
-          ? { provenanceFile: plan.publishIntent.provenance.file }
-          : {}),
-      })
+    if (options.publishDryRun === true) {
+      for (const artifact of preparedArtifacts) {
+        yield* publishPreparedArtifact(artifact, {
+          dryRun: true,
+          packageManager: publishInvoker,
+          ...(plan.publishIntent !== undefined ? { tag: plan.publishIntent.distTag } : {}),
+          ...(plan.publishIntent !== undefined
+            ? { registry: plan.publishIntent.registry.url }
+            : {}),
+          ...(plan.publishIntent?.provenance.mode === 'cli-flag' ? { provenance: true } : {}),
+          ...(plan.publishIntent?.provenance.mode === 'attestation-file' &&
+          plan.publishIntent.provenance.file !== undefined
+            ? { provenanceFile: plan.publishIntent.provenance.file }
+            : {}),
+        })
+      }
     }
 
     yield* writeManifest(plan, manifests)
+
     return manifests
   })

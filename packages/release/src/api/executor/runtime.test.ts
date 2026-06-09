@@ -5,11 +5,12 @@ import { Github } from '@kitz/github'
 import { Fs } from '@kitz/fs'
 import { Duration, Effect } from 'effect'
 import { makeRuntime, makeTestRuntime, makeWorkflowRuntime } from './runtime.js'
+import { FileSystemLayer } from '../../platform.js'
 
 describe('Executor runtime', () => {
   Test.effect('builds the SQLite-backed workflow runtime layer', () => {
     const dbPath = Fs.Path.AbsFile.fromString(
-      `/tmp/kitz-workflow-runtime-${crypto.randomUUID()}.db`,
+      `/tmp/kitz-workflow-runtime-${crypto.randomUUID()}/missing/workflow.db`,
     )
 
     return Effect.gen(function* () {
@@ -28,6 +29,7 @@ describe('Executor runtime', () => {
           },
         }),
       ),
+      Effect.provide(FileSystemLayer),
     )
   })
 
@@ -67,6 +69,7 @@ describe('Executor runtime', () => {
           dbPath: `/tmp/kitz-runtime-fallback-${crypto.randomUUID()}.db`,
         }),
       ),
+      Effect.provide(FileSystemLayer),
     ),
   )
 

@@ -4,7 +4,7 @@ import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Fs } from '@kitz/fs'
 import { Semver } from '@kitz/semver'
-import { Effect, Layer } from 'effect'
+import { Effect, FileSystem, Layer } from 'effect'
 import { WorkflowEngine } from 'effect/unstable/workflow'
 import { Official } from './api/planner/models/item-official.js'
 import { Plan } from './api/planner/models/plan.js'
@@ -101,5 +101,82 @@ describe('release promise api', () => {
     expect(await reconcile(emptyPlan, { layer })).toMatchObject({
       classification: 'clean',
     })
+  })
+
+  test('threads rehearsal options through the promise adapter', async () => {
+    const plan = Plan.make({
+      lifecycle: 'official',
+      timestamp: '2026-05-14T00:00:00.000Z',
+      releases: [
+        Official.make({
+          package: pkg,
+          version: OfficialFirst.make({
+            version: Semver.fromString('1.0.0'),
+            bump: 'major',
+          }),
+          commits: [makeCascadeCommit('core', 'feature')],
+        }),
+      ],
+      cascades: [],
+      publishIntent: publishIntentFromSemantics({
+        semantics: {
+          lifecycle: 'official',
+          channel: { mode: 'manual' },
+          distTag: 'latest',
+          prerelease: false,
+          forcePushTag: false,
+          githubReleaseStyle: 'versioned',
+        },
+        trunk: 'main',
+      }),
+    })
+    const publishCalls: Array<{ readonly dryRun: boolean | undefined }> = []
+    const fsLayer = Fs.Memory.layer({
+      '/repo/packages/core/package.json': JSON.stringify({
+        name: '@kitz/core',
+        version: '0.0.0',
+      }),
+    })
+    const npmLayer = Layer.effect(
+      NpmRegistry.NpmCli,
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem
+
+        return {
+          whoami: () => Effect.die('unexpected whoami'),
+          pack: (options) =>
+            Effect.gen(function* () {
+              const tarball = Fs.Path.join(
+                options.packDestination,
+                Fs.Path.RelFile.fromString('./kitz-core-1.0.0.tgz'),
+              )
+              yield* fs.writeFileString(Fs.Path.toString(tarball), 'packed').pipe(Effect.orDie)
+
+              return {
+                tarball,
+                filename: 'kitz-core-1.0.0.tgz',
+                files: [],
+              }
+            }),
+          publish: (options) =>
+            Effect.sync(() => {
+              publishCalls.push({ dryRun: options.dryRun })
+            }),
+          observeVersion: () => Effect.die('unexpected observe'),
+          hasVersion: () => Effect.succeed(false),
+          listAccessPackages: () => Effect.die('unexpected listAccessPackages'),
+          listAccessCollaborators: () => Effect.die('unexpected listAccessCollaborators'),
+          getAccessStatus: () => Effect.die('unexpected getAccessStatus'),
+        }
+      }),
+    ).pipe(Layer.provide(fsLayer))
+    const layer = Layer.mergeAll(
+      Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') }),
+      fsLayer,
+      npmLayer,
+    )
+
+    expect(await rehearse(plan, { publishDryRun: true }, { layer })).toHaveLength(1)
+    expect(publishCalls).toEqual([{ dryRun: true }])
   })
 })

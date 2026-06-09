@@ -46,7 +46,9 @@ export const rule = RuntimeRule.create({
             exists
               ? {
                   packageName: release.packageName.moniker,
-                  packageJsonPath: `${Fs.Path.toString(release.packagePath)}package.json`,
+                  packageJsonPath: Fs.Path.toString(
+                    Fs.Path.join(release.packagePath, Fs.Path.RelFile.fromString('./package.json')),
+                  ),
                   version: Semver.toString(release.version),
                 }
               : null,
