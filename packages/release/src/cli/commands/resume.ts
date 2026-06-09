@@ -14,6 +14,7 @@ import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../
 import {
   formatInvalidPlanMessage,
   formatMissingPlanMessage,
+  formatPlanCommand,
   formatUnsupportedExecutionPlanMessage,
   hasExecutablePlanContract,
   loadActivePlan,
@@ -114,7 +115,12 @@ export const resume = Command.make(
 
       const { events, execute, status: workflowStatus } = resumeAttempt.success
 
-      yield* Console.log(Api.Executor.formatExecutionStatus(workflowStatus, { env: env.vars }))
+      yield* Console.log(
+        Api.Executor.formatExecutionStatus(workflowStatus, {
+          env: env.vars,
+          resumeCommand: formatPlanCommand('release resume', from),
+        }),
+      )
 
       if (!yes) {
         const approved = yield* confirm('Resume interrupted release? [y/N] ')

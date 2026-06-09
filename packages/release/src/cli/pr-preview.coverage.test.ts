@@ -18,6 +18,7 @@ import { makeHarness, makePackageJson } from '../api/executor/test-support.js'
 import { loadPullRequestDiff } from './pr-preview-diff.js'
 import {
   type PreviewCommentUpdateParams,
+  type RunPrPreviewDependencies,
   PreviewBlockingError,
   buildPreviewDoctorSummary,
   runPrPreview,
@@ -33,6 +34,7 @@ const makePackage = (scope: string) => ({
 
 const corePackage = makePackage('core')
 const utilsPackage = makePackage('utils')
+const docsPackage = makePackage('docs')
 
 const makeConfig = (
   publishing: Api.Config.ResolvedConfig['publishing'] = Api.Publishing.defaultPublishing(),
@@ -124,6 +126,39 @@ const baseForecast = Forecast.make({
   headSha: 'abc1234',
   releases: [],
   cascades: [],
+})
+
+const changedCoreDiff = {
+  files: [{ path: 'packages/core/src/index.ts', status: 'modified' as const }],
+  affectedPackages: ['core'],
+}
+
+const renderedPreviewComment = {
+  body: 'rendered preview',
+  issueComment: {
+    id: 41,
+    body: 'rendered preview',
+    html_url: 'https://github.com/org/repo/pull/129#issuecomment-41',
+  },
+}
+
+const capturePreviewComment =
+  (capture: (params: PreviewCommentUpdateParams) => void) =>
+  (params: PreviewCommentUpdateParams) => {
+    capture(params)
+    return Effect.succeed(renderedPreviewComment)
+  }
+
+const previewDeps = (overrides: RunPrPreviewDependencies = {}): RunPrPreviewDependencies => ({
+  loadConfig: () => Effect.succeed(makeConfig()),
+  resolvePackages: () => Effect.succeed([corePackage]),
+  resolvePullRequestContext: () => Effect.succeed(makePullRequestContext()),
+  exploreFromContext: () => Effect.succeed(makeRuntime()),
+  getTags: () => Effect.succeed([]),
+  analyze: () => Effect.succeed(makeAnalysis()),
+  loadPullRequestDiff: () => Effect.succeed({ files: [], affectedPackages: [] }),
+  buildPreviewDoctorSummary: () => Effect.succeed({ blocking: false }),
+  ...overrides,
 })
 
 const makeHandle = (stdout: string): ChildProcessSpawner.ChildProcessHandle =>
@@ -515,10 +550,9 @@ describe('pr preview coverage', () => {
       assumePure(
         runPrPreview(
           {},
-          {
-            loadConfig: () => Effect.succeed(makeConfig()),
+          previewDeps({
             resolvePackages: () => Effect.succeed([]),
-          },
+          }),
         ).pipe(Effect.result),
       ),
     )
@@ -536,9 +570,7 @@ describe('pr preview coverage', () => {
       assumePure(
         runPrPreview(
           {},
-          {
-            loadConfig: () => Effect.succeed(makeConfig()),
-            resolvePackages: () => Effect.succeed([corePackage]),
+          previewDeps({
             resolvePullRequestContext: () =>
               Effect.fail(
                 new Api.Explorer.ExplorerError({
@@ -547,7 +579,7 @@ describe('pr preview coverage', () => {
                   },
                 }),
               ),
-          },
+          }),
         ).pipe(Effect.result),
       ),
     )
@@ -565,13 +597,10 @@ describe('pr preview coverage', () => {
       assumePure(
         runPrPreview(
           {},
-          {
-            loadConfig: () => Effect.succeed(makeConfig()),
-            resolvePackages: () => Effect.succeed([corePackage]),
+          previewDeps({
             resolvePullRequestContext: () =>
               Effect.succeed(makePullRequestContext({ pullRequest: null })),
-            exploreFromContext: () => Effect.succeed(makeRuntime()),
-          },
+          }),
         ).pipe(Effect.result),
       ),
     )
@@ -589,9 +618,7 @@ describe('pr preview coverage', () => {
       assumePure(
         runPrPreview(
           {},
-          {
-            loadConfig: () => Effect.succeed(makeConfig()),
-            resolvePackages: () => Effect.succeed([corePackage]),
+          previewDeps({
             resolvePullRequestContext: () =>
               Effect.succeed(makePullRequestContext({ token: null })),
             exploreFromContext: () =>
@@ -600,7 +627,7 @@ describe('pr preview coverage', () => {
                   credentials: null,
                 }),
               ),
-          },
+          }),
         ).pipe(Effect.result),
       ),
     )
@@ -618,16 +645,9 @@ describe('pr preview coverage', () => {
       assumePure(
         runPrPreview(
           { checkOnly: true },
-          {
-            loadConfig: () => Effect.succeed(makeConfig()),
-            resolvePackages: () => Effect.succeed([corePackage]),
-            resolvePullRequestContext: () => Effect.succeed(makePullRequestContext()),
-            exploreFromContext: () => Effect.succeed(makeRuntime()),
-            getTags: () => Effect.succeed([]),
-            analyze: () => Effect.succeed(makeAnalysis()),
-            loadPullRequestDiff: () => Effect.succeed({ files: [], affectedPackages: [] }),
+          previewDeps({
             buildPreviewDoctorSummary: () => Effect.succeed({ blocking: true }),
-          },
+          }),
         ).pipe(Effect.result),
       ),
     )
@@ -642,21 +662,7 @@ describe('pr preview coverage', () => {
 
   test('returns a checked result in check-only mode when doctor checks pass', async () => {
     const result = await Effect.runPromise(
-      assumePure(
-        runPrPreview(
-          { checkOnly: true },
-          {
-            loadConfig: () => Effect.succeed(makeConfig()),
-            resolvePackages: () => Effect.succeed([corePackage]),
-            resolvePullRequestContext: () => Effect.succeed(makePullRequestContext()),
-            exploreFromContext: () => Effect.succeed(makeRuntime()),
-            getTags: () => Effect.succeed([]),
-            analyze: () => Effect.succeed(makeAnalysis()),
-            loadPullRequestDiff: () => Effect.succeed({ files: [], affectedPackages: [] }),
-            buildPreviewDoctorSummary: () => Effect.succeed({ blocking: false }),
-          },
-        ),
-      ),
+      assumePure(runPrPreview({ checkOnly: true }, previewDeps())),
     )
 
     expect(result).toEqual({
@@ -680,7 +686,7 @@ describe('pr preview coverage', () => {
       assumePure(
         runPrPreview(
           {},
-          {
+          previewDeps({
             loadConfig: () =>
               Effect.succeed(
                 makeConfig(
@@ -695,16 +701,8 @@ describe('pr preview coverage', () => {
                   }),
                 ),
               ),
-            resolvePackages: () => Effect.succeed([corePackage]),
-            resolvePullRequestContext: () => Effect.succeed(makePullRequestContext()),
-            exploreFromContext: () => Effect.succeed(makeRuntime()),
-            getTags: () => Effect.succeed([]),
             analyze: () => Effect.succeed(analysis),
-            loadPullRequestDiff: () =>
-              Effect.succeed({
-                files: [{ path: 'packages/core/src/index.ts', status: 'modified' }],
-                affectedPackages: ['core'],
-              }),
+            loadPullRequestDiff: () => Effect.succeed(changedCoreDiff),
             buildPreviewDoctorSummary: () =>
               Effect.succeed({
                 blocking: false,
@@ -722,33 +720,72 @@ describe('pr preview coverage', () => {
                 },
               }),
             forecast: () => baseForecast,
-            upsertPullRequestPreviewComment: (params: PreviewCommentUpdateParams) => {
+            upsertPullRequestPreviewComment: capturePreviewComment((params) => {
               capturedUpdate = params
-              return Effect.succeed({
-                body: 'rendered preview',
-                issueComment: {
-                  id: 41,
-                  body: 'rendered preview',
-                  html_url: 'https://github.com/org/repo/pull/129#issuecomment-41',
-                },
-              })
-            },
-          },
+            }),
+          }),
         ),
       ),
     )
 
     expect(result).toEqual({
       _tag: 'updated',
-      body: 'rendered preview',
-      issueComment: {
-        id: 41,
-        body: 'rendered preview',
-        html_url: 'https://github.com/org/repo/pull/129#issuecomment-41',
-      },
+      ...renderedPreviewComment,
     })
     expect(capturedUpdate?.interactiveChecklist).toBe(true)
     expect(capturedUpdate?.projectedSquashCommit?.projectedHeader).toContain('feat(core)')
+  })
+
+  test('includes runtime dependency closure cascades in default preview forecasts', async () => {
+    const analysis = Analysis.make({
+      impacts: [
+        Impact.make({
+          package: corePackage,
+          bump: 'patch',
+          commits: [],
+          currentVersion: Option.none(),
+        }),
+      ],
+      cascades: [],
+      unchanged: [utilsPackage, docsPackage],
+      tags: [],
+    })
+    let capturedUpdate: PreviewCommentUpdateParams | undefined
+
+    await Effect.runPromise(
+      assumePure(
+        runPrPreview(
+          {},
+          previewDeps({
+            resolvePackages: () => Effect.succeed([corePackage, utilsPackage, docsPackage]),
+            analyze: () => Effect.succeed(analysis),
+            loadPullRequestDiff: () => Effect.succeed(changedCoreDiff),
+            upsertPullRequestPreviewComment: capturePreviewComment((params) => {
+              capturedUpdate = params
+            }),
+          }),
+        ).pipe(
+          Effect.provide(
+            Fs.Memory.layer({
+              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
+                dependencies: {
+                  '@kitz/utils': 'workspace:*',
+                },
+              }),
+              '/repo/packages/utils/package.json': makePackageJson('@kitz/utils', '1.0.0'),
+              '/repo/packages/docs/package.json': makePackageJson('@kitz/docs', '1.0.0'),
+            }),
+          ),
+        ),
+      ),
+    )
+
+    expect(capturedUpdate?.forecast.releases.map((item) => item.packageName)).toEqual([
+      '@kitz/core',
+    ])
+    expect(capturedUpdate?.forecast.cascades.map((item) => item.packageName)).toEqual([
+      '@kitz/utils',
+    ])
   })
 
   test('passes resolved remote (not hard-coded origin) to analyzer since parameter', async () => {

@@ -44,6 +44,14 @@ const renderRegenerateCommand = (state: PlanMissingState | PlanInvalidState): st
     state.source === 'custom' ? ` --out ${renderPlanPath(state.location)}` : ''
   }`
 
+const shellSafeArgPattern = /^[A-Za-z0-9_/:=.,@%+-]+$/u
+
+export const quoteShellArg = (value: string): string =>
+  shellSafeArgPattern.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`
+
+export const formatPlanCommand = (command: string, from: Option.Option<string>): string =>
+  Option.isSome(from) ? `${command} --from ${quoteShellArg(from.value)}` : command
+
 export const loadPlan = (
   context: PlanLookupContext,
 ): Effect.Effect<PlanState, never, Env.Env | FileSystem.FileSystem> =>

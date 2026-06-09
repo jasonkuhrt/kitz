@@ -1,11 +1,12 @@
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
-import { Effect, Layer } from 'effect'
+import { Effect, Layer, Option } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import {
   formatIgnoredInvalidPlanMessage,
   formatInvalidPlanMessage,
   formatMissingPlanMessage,
+  formatPlanCommand,
   formatUnsupportedExecutionPlanMessage,
   hasExecutablePlanContract,
   loadActivePlan,
@@ -100,5 +101,17 @@ describe('plan-file helpers', () => {
       'Missing field(s): planDigest, publishIntent.',
       'Run `release plan --lifecycle <official|candidate|ephemeral>` again with the current @kitz/release before executing, resuming, graphing, or checking durable status.',
     ])
+  })
+
+  test('formats plan follow-up commands with shell-safe custom paths', () => {
+    const custom = Option.some('./tmp/release plan.json')
+
+    expect(formatPlanCommand('release apply', Option.none())).toBe('release apply')
+    expect(formatPlanCommand('release apply', custom)).toBe(
+      "release apply --from './tmp/release plan.json'",
+    )
+    expect(formatPlanCommand('release resume', custom)).toBe(
+      "release resume --from './tmp/release plan.json'",
+    )
   })
 })

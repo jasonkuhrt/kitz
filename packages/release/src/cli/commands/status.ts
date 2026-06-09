@@ -15,6 +15,7 @@ import { FileSystemLayer } from '../../platform.js'
 import {
   formatInvalidPlanMessage,
   formatMissingPlanMessage,
+  formatPlanCommand,
   formatUnsupportedExecutionPlanMessage,
   hasExecutablePlanContract,
   loadActivePlan,
@@ -81,11 +82,14 @@ export const status = Command.make(
         publishing,
         trunk: plan.publishIntent.git.trunk,
       }).pipe(Effect.provide(Api.Executor.makeWorkflowRuntime()))
-
       yield* Console.log(
         format === 'json'
           ? JSON.stringify(workflowStatus, null, 2)
-          : Api.Executor.formatExecutionStatus(workflowStatus, { env: env.vars }),
+          : Api.Executor.formatExecutionStatus(workflowStatus, {
+              env: env.vars,
+              nextApplyCommand: formatPlanCommand('release apply', from),
+              resumeCommand: formatPlanCommand('release resume', from),
+            }),
       )
     }),
 ).pipe(

@@ -114,12 +114,12 @@ export const doctor = Command.make(
 
       if (args.lifecycle && args.all) {
         yield* Console.error('Choose either --lifecycle or --all, not both.')
-        return yield* Effect.fail({ _tag: 'DoctorFailures' as const })
+        return env.exit(1)
       }
 
       if (args.from && (args.lifecycle || args.all)) {
         yield* Console.error('Choose either --from or --lifecycle/--all, not both.')
-        return yield* Effect.fail({ _tag: 'DoctorFailures' as const })
+        return env.exit(1)
       }
 
       const workspace = yield* loadCommandWorkspace({
@@ -146,7 +146,7 @@ export const doctor = Command.make(
         for (const line of formatMissingPlanMessage(activePlanState)) {
           yield* Console.error(line)
         }
-        return yield* Effect.fail({ _tag: 'DoctorFailures' as const })
+        return env.exit(1)
       }
       if (activePlanState?._tag === 'PlanInvalid') {
         const lines =
@@ -157,7 +157,7 @@ export const doctor = Command.make(
           yield* Console.error(line)
         }
         if (activePlanState.source === 'custom') {
-          return yield* Effect.fail({ _tag: 'DoctorFailures' as const })
+          return env.exit(1)
         }
       }
       const activePlan =
@@ -258,7 +258,7 @@ export const doctor = Command.make(
       }
 
       if (Api.Doctor.hasBlockingIssues(evaluation)) {
-        return yield* Effect.fail({ _tag: 'DoctorFailures' as const })
+        return env.exit(1)
       }
     }),
 ).pipe(
