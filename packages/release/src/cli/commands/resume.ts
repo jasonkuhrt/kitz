@@ -73,7 +73,7 @@ export const resume = Command.make(
       const { events, execute, status: workflowStatus } = resumeAttempt.success
 
       yield* Console.log(
-        Api.Executor.formatExecutionStatus(workflowStatus, {
+        Api.Renderer.formatExecutionStatus(workflowStatus, {
           env: env.vars,
           resumeCommand: formatPlanCommand('release resume', from),
         }),

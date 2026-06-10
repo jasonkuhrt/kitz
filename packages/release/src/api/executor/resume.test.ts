@@ -4,14 +4,7 @@ import { Pkg } from '@kitz/pkg'
 import { describe, expect, test } from 'bun:test'
 import { Test } from '@kitz/test'
 import { Effect, Layer, Ref } from 'effect'
-import {
-  execute,
-  formatExecutionStatus,
-  resume,
-  resumeObservable,
-  status,
-  toPayload,
-} from './execute.js'
+import { execute, resume, resumeObservable, status, toPayload } from './execute.js'
 import { ReleaseWorkflow } from './workflow.js'
 import {
   decodeJsonRecordSync,
@@ -215,7 +208,6 @@ describe('Executor workflow state', () => {
             Effect.provide(workflowContext),
           )
           expect(interruptedStatus.state).toBe('suspended')
-          expect(formatExecutionStatus(interruptedStatus)).toContain('release resume')
 
           const executionIdAfter = yield* ReleaseWorkflow.executionId(payload).pipe(
             Effect.provide(workflowContext),

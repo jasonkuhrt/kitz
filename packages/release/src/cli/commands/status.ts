@@ -50,7 +50,7 @@ export const status = Command.make(
       yield* Console.log(
         format === 'json'
           ? JSON.stringify(workflowStatus, null, 2)
-          : Api.Executor.formatExecutionStatus(workflowStatus, {
+          : Api.Renderer.formatExecutionStatus(workflowStatus, {
               env: env.vars,
               nextApplyCommand: formatPlanCommand('release apply', from),
               resumeCommand: formatPlanCommand('release resume', from),

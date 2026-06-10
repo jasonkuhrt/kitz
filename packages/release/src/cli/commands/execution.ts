@@ -22,7 +22,7 @@ export const runObservableCommand = <R>(
     const env = yield* Env.Env
     const eventFiber = yield* observable.events.pipe(
       Stream.tap((event) => {
-        const line = Api.Executor.formatLifecycleEvent(event, { env: env.vars })
+        const line = Api.Renderer.formatLifecycleEvent(event, { env: env.vars })
         if (!line) return Effect.void
         return line.level === 'error' ? Console.error(line.message) : Console.log(line.message)
       }),
