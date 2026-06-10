@@ -2,7 +2,7 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Console, Effect, Layer, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Renderer from '../../api/renderer/__.js'
 import { FileSystemLayer } from '../../platform.js'
 import { formatInvalidPlanMessage, formatMissingPlanMessage, loadPlan } from './plan-file.js'
 
@@ -34,7 +34,7 @@ export const preview = Command.make(
         return env.exit(1)
       }
 
-      yield* Console.log(Api.Renderer.renderPlan(planState.plan))
+      yield* Console.log(Renderer.renderPlan(planState.plan))
       if (planState.plan.publishIntent) {
         yield* Console.log('')
         yield* Console.log(`Publish profile: ${planState.plan.publishIntent.profile.id}`)

@@ -8,7 +8,7 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Console, Effect, FileSystem, Layer } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Proof from '../../api/proof.js'
 import { FileSystemLayer } from '../../platform.js'
 import { loadPlan } from './plan-file.js'
 
@@ -29,7 +29,7 @@ export const prune = Command.make(
         Effect.orElseSucceed(() => undefined),
       )
       const retainedDigest =
-        planState?._tag === 'PlanLoaded' ? Api.Proof.digestForPlan(planState.plan).value : undefined
+        planState?._tag === 'PlanLoaded' ? Proof.digestForPlan(planState.plan).value : undefined
       const artifactRoot = Fs.Path.join(env.cwd, Fs.Path.RelDir.fromString('./.release/artifacts/'))
       const dirs = yield* fs
         .readDirectory(Fs.Path.toString(artifactRoot))

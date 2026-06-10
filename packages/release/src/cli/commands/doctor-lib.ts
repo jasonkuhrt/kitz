@@ -7,11 +7,13 @@ import { Effect, FileSystem, Result } from 'effect'
 import type { Analysis } from '../../api/analyzer/models/__.js'
 import type { Package } from '../../api/analyzer/workspace.js'
 import type { Lifecycle } from '../../api/version/models/lifecycle.js'
-import * as Api from '../../api/__.js'
+import * as Doctor from '../../api/doctor.js'
+import * as Explorer from '../../api/explorer/__.js'
+import * as Planner from '../../api/planner/__.js'
 
 type DoctorPlannerError =
-  | Api.Explorer.ExplorerError
-  | Api.Planner.Errors.ReleaseError
+  | Explorer.ExplorerError
+  | Planner.Errors.ReleaseError
   | Git.GitError
   | Git.GitParseError
   | Github.GithubError
@@ -24,23 +26,17 @@ export const computeLifecyclePlan = (
   analysis: Analysis,
   packages: readonly Package[],
   lifecycle: Lifecycle,
-): Effect.Effect<
-  Api.Planner.Plan,
-  DoctorPlannerError,
-  Env.Env | FileSystem.FileSystem | Git.Git
-> => {
+): Effect.Effect<Planner.Plan, DoctorPlannerError, Env.Env | FileSystem.FileSystem | Git.Git> => {
   switch (lifecycle) {
     case 'official':
-      return Api.Planner.official(analysis, { packages }).pipe(
-        Effect.map((plan): Api.Planner.Plan => plan),
-      )
+      return Planner.official(analysis, { packages }).pipe(Effect.map((plan): Planner.Plan => plan))
     case 'candidate':
-      return Api.Planner.candidate(analysis, { packages }).pipe(
-        Effect.map((plan): Api.Planner.Plan => plan),
+      return Planner.candidate(analysis, { packages }).pipe(
+        Effect.map((plan): Planner.Plan => plan),
       )
     case 'ephemeral':
-      return Api.Planner.ephemeral(analysis, { packages }).pipe(
-        Effect.map((plan): Api.Planner.Plan => plan),
+      return Planner.ephemeral(analysis, { packages }).pipe(
+        Effect.map((plan): Planner.Plan => plan),
       )
   }
 }
@@ -50,7 +46,7 @@ export const computeLifecyclePlanAttempt = (
   packages: readonly Package[],
   lifecycle: Lifecycle,
 ): Effect.Effect<
-  Result.Result<Api.Planner.Plan, DoctorPlannerError>,
+  Result.Result<Planner.Plan, DoctorPlannerError>,
   never,
   Env.Env | FileSystem.FileSystem | Git.Git
 > => computeLifecyclePlan(analysis, packages, lifecycle).pipe(Effect.result)
@@ -59,7 +55,7 @@ export const toUnavailableLifecycleReport = (
   lifecycle: Lifecycle,
   required: boolean,
   failure: unknown,
-): Api.Doctor.UnavailableLifecycleReport => ({
+): Doctor.UnavailableLifecycleReport => ({
   _tag: 'UnavailableLifecycleReport',
   lifecycle,
   required,

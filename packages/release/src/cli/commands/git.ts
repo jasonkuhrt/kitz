@@ -11,14 +11,15 @@
  * resolved hooks directory.
  *
  * Both leaves are thin glue over bounded primitives: parsing/policy lives in
- * `@kitz/conventional-commits` + {@link Api.CommitPolicy}, and hook/message
+ * `@kitz/conventional-commits` + {@link CommitPolicy}, and hook/message
  * mechanics live in `@kitz/git`.
  */
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Console, Effect, FileSystem, Layer } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as CommitPolicy from '../../api/commit-policy.js'
+import * as Config from '../../api/config.js'
 import { FileSystemLayer } from '../../platform.js'
 import {
   COMMIT_MSG_BODY,
@@ -46,7 +47,7 @@ const gitCommitValidate = Command.make(
         return env.exit(1)
       }
 
-      const config = yield* Api.Config.load()
+      const config = yield* Config.load()
       const raw = yield* fs.readFileString(messageFile)
       const outcome = validateCommitMessage(raw, config.resolvedConventionalCommitTypes)
 

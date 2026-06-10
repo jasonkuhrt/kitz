@@ -18,7 +18,11 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Console, Effect, Layer, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Analyzer from '../../api/analyzer/__.js'
+import * as Doctor from '../../api/doctor.js'
+import * as Explorer from '../../api/explorer/__.js'
+import * as Lint from '../../api/lint/__.js'
+import * as Planner from '../../api/planner/__.js'
 import { ChildProcessSpawnerLayer, ServicesLayer, FileSystemLayer } from '../../platform.js'
 import { loadConfiguredPullRequestDiff, resolveDiffRemote } from '../pr-preview-diff.js'
 import {
@@ -54,8 +58,8 @@ const DoctorCommandLayer = Layer.mergeAll(
   ServicesLayer,
   FileSystemLayer,
   spawnerLayer,
-  Api.Lint.Preconditions.DefaultLayer,
-  Api.Lint.ReleasePlan.DefaultReleasePlanLayer,
+  Lint.Preconditions.DefaultLayer,
+  Lint.ReleasePlan.DefaultReleasePlanLayer,
   Git.GitLive,
 )
 
@@ -169,11 +173,11 @@ export const doctor = Command.make(
         args.lifecycle === 'ephemeral' ||
         (Option.isSome(activePlan) && activePlan.value.lifecycle === 'ephemeral')
       const pullRequestAttempt = needsPrContext
-        ? yield* Api.Explorer.resolvePullRequest().pipe(Effect.result)
+        ? yield* Explorer.resolvePullRequest().pipe(Effect.result)
         : { _tag: 'Success' as const, success: null }
       const pullRequest = pullRequestAttempt._tag === 'Success' ? pullRequestAttempt.success : null
       const hasPrContext = pullRequest !== null
-      const scope = Api.Doctor.resolveScope({
+      const scope = Doctor.resolveScope({
         ...(args.lifecycle ? { lifecycle: args.lifecycle } : {}),
         ...(args.all ? { all: true } : {}),
         ...(Option.isSome(activePlan) ? { activePlan: activePlan.value } : {}),
@@ -181,7 +185,7 @@ export const doctor = Command.make(
       })
 
       const tags = yield* git.getTags()
-      const analysis = yield* Api.Analyzer.analyze({
+      const analysis = yield* Analyzer.analyze({
         packages,
         tags,
         resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
@@ -198,7 +202,7 @@ export const doctor = Command.make(
             ...(args.remote ? { remote: args.remote } : {}),
           })
         : null
-      const reports: Api.Doctor.LifecycleReport[] = []
+      const reports: Doctor.LifecycleReport[] = []
       const doctorRuntimeContext = {
         config,
         analysis,
@@ -208,7 +212,7 @@ export const doctor = Command.make(
         diff,
         diffRemote,
       } satisfies Parameters<typeof runDoctorReportForPlan>[0]
-      const evaluatePlan = (plan: Api.Planner.Plan, required: boolean) =>
+      const evaluatePlan = (plan: Planner.Plan, required: boolean) =>
         Effect.gen(function* () {
           const report = yield* runDoctorReportForPlan(doctorRuntimeContext, plan)
 
@@ -249,15 +253,15 @@ export const doctor = Command.make(
             ? `active plan (${scope.plan.lifecycle})`
             : 'computed lifecycle scenarios',
         reports,
-      } satisfies Api.Doctor.DoctorEvaluation
+      } satisfies Doctor.DoctorEvaluation
 
       if (args.format === 'json') {
         yield* Console.log(JSON.stringify(evaluation, null, 2))
       } else {
-        yield* Console.log(Api.Doctor.formatEvaluation(evaluation, { env: env.vars }))
+        yield* Console.log(Doctor.formatEvaluation(evaluation, { env: env.vars }))
       }
 
-      if (Api.Doctor.hasBlockingIssues(evaluation)) {
+      if (Doctor.hasBlockingIssues(evaluation)) {
         return env.exit(1)
       }
     }),

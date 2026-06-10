@@ -6,7 +6,8 @@
 import { Env } from '@kitz/env'
 import { Console, Effect, Layer, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Executor from '../../api/executor/__.js'
+import * as Renderer from '../../api/renderer/__.js'
 import { FileSystemLayer } from '../../platform.js'
 import { loadExecutableCommandPlan } from './plan-file.js'
 
@@ -39,7 +40,7 @@ export const graph = Command.make(
       }
       const { plan, publishing } = yield* loadExecutableCommandPlan(from)
 
-      const workflowGraph = yield* Api.Executor.graph(plan, {
+      const workflowGraph = yield* Executor.graph(plan, {
         dryRun: false,
         tag: plan.publishIntent.distTag,
         publishing,
@@ -48,8 +49,8 @@ export const graph = Command.make(
 
       yield* Console.log(
         format === 'json'
-          ? JSON.stringify(Api.Executor.toJsonGraph(workflowGraph), null, 2)
-          : Api.Renderer.renderGraph(workflowGraph),
+          ? JSON.stringify(Executor.toJsonGraph(workflowGraph), null, 2)
+          : Renderer.renderGraph(workflowGraph),
       )
     }),
 ).pipe(

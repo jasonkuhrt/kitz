@@ -8,7 +8,10 @@ import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Layer, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Executor from '../../api/executor/__.js'
+import * as Explorer from '../../api/explorer/__.js'
+import * as Planner from '../../api/planner/__.js'
+import * as Renderer from '../../api/renderer/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
 import { confirm, runObservableCommand } from './execution.js'
 import { formatPlanCommand, loadExecutableCommandPlan } from './plan-file.js'
@@ -45,21 +48,21 @@ export const resume = Command.make(
       }
       const { plan, publishing } = yield* loadExecutableCommandPlan(from)
 
-      const runtime = yield* Api.Explorer.explore()
-      const runtimeConfig = Api.Explorer.toExecutorRuntimeConfig(runtime)
+      const runtime = yield* Explorer.explore()
+      const runtimeConfig = Explorer.toExecutorRuntimeConfig(runtime)
       if (!runtimeConfig.github) {
         yield* Console.error('GitHub release target and token are required for release resume.')
         yield* Console.error('Set GITHUB_TOKEN and ensure origin points to GitHub, then retry.')
         return env.exit(1)
       }
 
-      const resumeAttempt = yield* Api.Executor.resumeObservable(plan, {
+      const resumeAttempt = yield* Executor.resumeObservable(plan, {
         dryRun: false,
         tag: plan.publishIntent.distTag,
         publishing,
         trunk: plan.publishIntent.git.trunk,
         github: runtimeConfig.github,
-      }).pipe(Effect.provide(Api.Executor.makeWorkflowRuntime()), Effect.result)
+      }).pipe(Effect.provide(Executor.makeWorkflowRuntime()), Effect.result)
 
       if (resumeAttempt._tag === 'Failure') {
         if (resumeAttempt.failure._tag === 'ExecutorResumeError') {
@@ -73,7 +76,7 @@ export const resume = Command.make(
       const { events, execute, status: workflowStatus } = resumeAttempt.success
 
       yield* Console.log(
-        Api.Renderer.formatExecutionStatus(workflowStatus, {
+        Renderer.formatExecutionStatus(workflowStatus, {
           env: env.vars,
           resumeCommand: formatPlanCommand('release resume', from),
         }),
@@ -89,7 +92,7 @@ export const resume = Command.make(
 
       yield* runObservableCommand({ events, execute })
 
-      yield* Api.Planner.Store.deleteActive
+      yield* Planner.Store.deleteActive
     }),
 ).pipe(
   Command.withDescription('Resume an interrupted release workflow'),

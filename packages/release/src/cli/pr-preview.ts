@@ -4,7 +4,15 @@ import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { ChildProcessSpawner } from 'effect/unstable/process'
 import { Data, Effect, FileSystem, Layer } from 'effect'
-import * as Api from '../api/__.js'
+import * as Analyzer from '../api/analyzer/__.js'
+import * as Commentator from '../api/commentator/__.js'
+import * as Config from '../api/config.js'
+import * as Explorer from '../api/explorer/__.js'
+import * as Forecaster from '../api/forecaster/__.js'
+import * as Lint from '../api/lint/__.js'
+import * as Planner from '../api/planner/__.js'
+import * as ProjectedSquashCommit from '../api/projected-squash-commit.js'
+import * as Publishing from '../api/publishing.js'
 import {
   commandLintRule,
   createCommandLintConfig,
@@ -14,23 +22,23 @@ import { addOfficialPlanCascades } from './commands/forecast-lib.js'
 import { loadPullRequestDiff, resolveDiffRemote } from './pr-preview-diff.js'
 
 const manualPreviewDeferredRules = [
-  Api.Lint.Rules.EnvNpmAuthenticated,
-  Api.Lint.Rules.EnvGitClean,
-  Api.Lint.Rules.EnvGitRemote,
+  Lint.Rules.EnvNpmAuthenticated,
+  Lint.Rules.EnvGitClean,
+  Lint.Rules.EnvGitRemote,
 ] as const
 
 const appendReleaseCommand = (releaseCommand: string, suffix: string): string =>
   `${releaseCommand} ${suffix}`
 
-const hasBlockingViolations = (report: Api.Lint.Report): boolean =>
+const hasBlockingViolations = (report: Lint.Report): boolean =>
   report.results.some(
     (result) =>
-      Api.Lint.Finished.is(result) &&
+      Lint.Finished.is(result) &&
       result.violation !== undefined &&
-      Api.Lint.Severity.guards.SeverityError(result.severity),
+      Lint.Severity.guards.SeverityError(result.severity),
   )
 
-const toMonorepo = (packages: readonly Api.Analyzer.Workspace.Package[]) => ({
+const toMonorepo = (packages: readonly Analyzer.Workspace.Package[]) => ({
   packages: packages.map((pkg) => ({
     name: pkg.name.moniker,
     path: pkg.path.toString(),
@@ -52,9 +60,9 @@ export interface RunPrPreviewOptions {
 
 export interface PreviewCommentUpdateParams {
   readonly issueNumber: number
-  readonly forecast: Api.Forecaster.Forecast
-  readonly doctor?: Api.Commentator.DoctorSummary
-  readonly projectedSquashCommit?: Api.ProjectedSquashCommit.Preview
+  readonly forecast: Forecaster.Forecast
+  readonly doctor?: Commentator.DoctorSummary
+  readonly projectedSquashCommit?: ProjectedSquashCommit.Preview
   readonly interactiveChecklist: boolean
 }
 
@@ -72,42 +80,42 @@ export type RunPrPreviewResult =
   | ({ readonly _tag: 'updated' } & PreviewCommentUpdateResult)
 
 export interface BuildPreviewDoctorSummaryParams {
-  readonly config: Api.Config.ResolvedConfig
-  readonly analysis: Api.Analyzer.Models.Analysis
-  readonly packages: readonly Api.Analyzer.Workspace.Package[]
+  readonly config: Config.ResolvedConfig
+  readonly analysis: Analyzer.Models.Analysis
+  readonly packages: readonly Analyzer.Workspace.Package[]
   readonly pullRequest: Github.PullRequest
-  readonly projectedSquashCommit?: Api.ProjectedSquashCommit.Preview
-  readonly diff: Api.Lint.Diff
+  readonly projectedSquashCommit?: ProjectedSquashCommit.Preview
+  readonly diff: Lint.Diff
   readonly diffRemote?: string
   readonly blockingTitleChecks: boolean
 }
 
 export interface BuildPreviewDoctorSummaryDependencies {
   readonly planEphemeral?: (
-    analysis: Api.Analyzer.Models.Analysis,
+    analysis: Analyzer.Models.Analysis,
     context: {
-      readonly packages: readonly Api.Analyzer.Workspace.Package[]
+      readonly packages: readonly Analyzer.Workspace.Package[]
     },
   ) => Effect.Effect<
-    Api.Planner.PlanOf<'ephemeral'>,
+    Planner.PlanOf<'ephemeral'>,
     Error,
-    Effect.Services<ReturnType<typeof Api.Planner.ephemeral>>
+    Effect.Services<ReturnType<typeof Planner.ephemeral>>
   >
   readonly runLintCheck?: (params: {
-    readonly config: Api.Lint.ResolvedConfig
-    readonly diff: Api.Lint.Diff
-    readonly packages: readonly Api.Analyzer.Workspace.Package[]
+    readonly config: Lint.ResolvedConfig
+    readonly diff: Lint.Diff
+    readonly packages: readonly Analyzer.Workspace.Package[]
     readonly pullRequest: Github.PullRequest
-    readonly plan: Api.Planner.PlanOf<'ephemeral'>
-  }) => Effect.Effect<Api.Lint.Report, Error, Effect.Services<ReturnType<typeof Api.Lint.check>>>
+    readonly plan: Planner.PlanOf<'ephemeral'>
+  }) => Effect.Effect<Lint.Report, Error, Effect.Services<ReturnType<typeof Lint.check>>>
 }
 
 export interface BuildPreviewDoctorSummaryResult {
-  readonly summary?: Api.Commentator.DoctorSummary
+  readonly summary?: Commentator.DoctorSummary
   readonly blocking: boolean
 }
 
-const hasBlockingPreviewIssues = (doctor?: Api.Commentator.DoctorSummary): boolean =>
+const hasBlockingPreviewIssues = (doctor?: Commentator.DoctorSummary): boolean =>
   doctor?.rows.some((row) => row.status === 'error') ?? false
 
 export const renderPreviewComment = (
@@ -115,10 +123,10 @@ export const renderPreviewComment = (
     readonly existingCommentBody?: string | null
   },
 ): string =>
-  Api.Commentator.render(params.forecast, {
+  Commentator.render(params.forecast, {
     publishState: 'idle',
     publishHistory: params.existingCommentBody
-      ? Api.Commentator.parsePublishHistory(params.existingCommentBody)
+      ? Commentator.parsePublishHistory(params.existingCommentBody)
       : [],
     interactiveChecklist: params.interactiveChecklist,
     ...(params.doctor ? { doctor: params.doctor } : {}),
@@ -132,7 +140,7 @@ export const upsertPullRequestPreviewComment = (params: PreviewCommentUpdatePara
     const github = yield* Github.Github
     const existing = yield* github.findIssueCommentByMarker(
       params.issueNumber,
-      Api.Commentator.PLAN_MARKER,
+      Commentator.PLAN_MARKER,
     )
 
     const body = renderPreviewComment({
@@ -142,7 +150,7 @@ export const upsertPullRequestPreviewComment = (params: PreviewCommentUpdatePara
 
     const issueComment = yield* github.upsertIssueComment({
       issueNumber: params.issueNumber,
-      marker: Api.Commentator.PLAN_MARKER,
+      marker: Commentator.PLAN_MARKER,
       body,
       existingComment: existing,
     })
@@ -171,8 +179,8 @@ export const buildPreviewDoctorSummary = (
 ): Effect.Effect<
   BuildPreviewDoctorSummaryResult,
   Error,
-  | Effect.Services<ReturnType<typeof Api.Planner.ephemeral>>
-  | Effect.Services<ReturnType<typeof Api.Lint.check>>
+  | Effect.Services<ReturnType<typeof Planner.ephemeral>>
+  | Effect.Services<ReturnType<typeof Lint.check>>
 > =>
   Effect.gen(function* () {
     const diffRemote = params.diffRemote ?? resolveDiffRemote(params.config)
@@ -180,7 +188,7 @@ export const buildPreviewDoctorSummary = (
       dependencies.planEphemeral?.(params.analysis, {
         packages: params.packages,
       }) ??
-      Api.Planner.ephemeral(params.analysis, {
+      Planner.ephemeral(params.analysis, {
         packages: params.packages,
       })
     ).pipe(Effect.result)
@@ -198,7 +206,7 @@ export const buildPreviewDoctorSummary = (
           ],
           guidance: [],
           deferredChecks: [],
-        } satisfies Api.Commentator.DoctorSummary,
+        } satisfies Commentator.DoctorSummary,
         blocking: false,
       }
     }
@@ -209,14 +217,14 @@ export const buildPreviewDoctorSummary = (
       return { blocking: false }
     }
 
-    const publish = Api.Publishing.resolvePublishSemanticsForPlan({
+    const publish = Publishing.resolvePublishSemanticsForPlan({
       plan,
       publishing: params.config.publishing,
       npmTag: params.config.npmTag,
       candidateTag: params.config.candidateTag,
     })
     const titleSeverity = params.blockingTitleChecks
-      ? Api.Lint.Error.make({})
+      ? Lint.Error.make({})
       : params.config.lint.defaults.severity
     const commentDoctorRules = [
       commandLintRule({
@@ -274,42 +282,39 @@ export const buildPreviewDoctorSummary = (
         pullRequest: params.pullRequest,
         plan,
       }) ??
-        Api.Lint.check({ config: lintConfig }).pipe(
+        Lint.check({ config: lintConfig }).pipe(
           Effect.provide(
             Layer.mergeAll(
-              Layer.succeed(Api.Lint.DiffService, params.diff),
-              Api.Lint.DefaultGitHubLayer,
-              Api.Lint.Preconditions.make({
+              Layer.succeed(Lint.DiffService, params.diff),
+              Lint.DefaultGitHubLayer,
+              Lint.Preconditions.make({
                 hasOpenPR: true,
                 hasDiff: params.diff.files.length > 0,
                 hasReleasePlan: true,
                 isMonorepo: params.packages.length > 1,
               }),
-              Api.Lint.ReleasePlan.make(
+              Lint.ReleasePlan.make(
                 plannedItems.map((item) => ({
                   packageName: item.package.name,
                   packagePath: item.package.path,
                   version: item.nextVersion,
                 })),
               ),
-              Api.Lint.ReleaseContext.make({
+              Lint.ReleaseContext.make({
                 lifecycle: plan.lifecycle,
                 publishing: params.config.publishing,
               }),
-              Api.Lint.ConventionalCommitSettings.make({
+              Lint.ConventionalCommitSettings.make({
                 resolvedTypes: params.config.resolvedConventionalCommitTypes,
               }),
             ),
           ),
-          Effect.provideService(Api.Lint.MonorepoService, toMonorepo(params.packages)),
-          Effect.provideService(
-            Api.Lint.PrService,
-            yield* Api.Lint.fromPullRequest(params.pullRequest),
-          ),
+          Effect.provideService(Lint.MonorepoService, toMonorepo(params.packages)),
+          Effect.provideService(Lint.PrService, yield* Lint.fromPullRequest(params.pullRequest)),
         )
     )
 
-    const summary = Api.Commentator.createDoctorSummary(report, {
+    const summary = Commentator.createDoctorSummary(report, {
       lifecycle: plan.lifecycle,
       plannedPackages: plannedItems.length,
       ...(publish.channel.mode === 'manual' && plan.lifecycle === 'ephemeral'
@@ -318,7 +323,7 @@ export const buildPreviewDoctorSummary = (
               title: 'Manual Preview Runbook',
               commands: [
                 ...params.config.operator.prepareCommands,
-                `PR_NUMBER=${String(plan.releases.find(Api.Planner.Ephemeral.is)?.prerelease.prNumber ?? params.pullRequest.number)} ${appendReleaseCommand(params.config.operator.releaseCommand, 'plan --lifecycle ephemeral')}`,
+                `PR_NUMBER=${String(plan.releases.find(Planner.Ephemeral.is)?.prerelease.prNumber ?? params.pullRequest.number)} ${appendReleaseCommand(params.config.operator.releaseCommand, 'plan --lifecycle ephemeral')}`,
                 appendReleaseCommand(
                   params.config.operator.releaseCommand,
                   renderDoctorCommandSuffix(diffRemote),
@@ -355,15 +360,15 @@ export const buildPreviewDoctorSummary = (
   })
 
 export interface RunPrPreviewDependencies {
-  readonly loadConfig?: typeof Api.Config.load
-  readonly resolvePackages?: typeof Api.Analyzer.Workspace.resolvePackages
-  readonly resolvePullRequestContext?: typeof Api.Explorer.resolvePullRequestContext
-  readonly exploreFromContext?: typeof Api.Explorer.exploreFromContext
+  readonly loadConfig?: typeof Config.load
+  readonly resolvePackages?: typeof Analyzer.Workspace.resolvePackages
+  readonly resolvePullRequestContext?: typeof Explorer.resolvePullRequestContext
+  readonly exploreFromContext?: typeof Explorer.exploreFromContext
   readonly getTags?: () => ReturnType<Git.GitService['getTags']>
-  readonly analyze?: typeof Api.Analyzer.analyze
+  readonly analyze?: typeof Analyzer.analyze
   readonly loadPullRequestDiff?: typeof loadPullRequestDiff
   readonly buildPreviewDoctorSummary?: typeof buildPreviewDoctorSummary
-  readonly forecast?: typeof Api.Forecaster.forecast
+  readonly forecast?: typeof Forecaster.forecast
   readonly upsertPullRequestPreviewComment?: typeof upsertPullRequestPreviewComment
 }
 
@@ -380,14 +385,14 @@ export const runPrPreview = (
   | NpmRegistry.NpmCli
 > =>
   Effect.gen(function* () {
-    const config = yield* (dependencies.loadConfig ?? Api.Config.load)()
-    const packages = yield* (
-      dependencies.resolvePackages ?? Api.Analyzer.Workspace.resolvePackages
-    )(config.packages)
+    const config = yield* (dependencies.loadConfig ?? Config.load)()
+    const packages = yield* (dependencies.resolvePackages ?? Analyzer.Workspace.resolvePackages)(
+      config.packages,
+    )
 
     if (packages.length === 0) {
       return yield* Effect.fail(
-        new Api.Explorer.ExplorerError({
+        new Explorer.ExplorerError({
           context: {
             detail:
               'No packages found. Check release.config.ts `packages` field or ensure the workspace root declares packages.',
@@ -397,15 +402,15 @@ export const runPrPreview = (
     }
 
     const pullRequestContext = yield* (
-      dependencies.resolvePullRequestContext ?? Api.Explorer.resolvePullRequestContext
+      dependencies.resolvePullRequestContext ?? Explorer.resolvePullRequestContext
     )()
-    const runtime = yield* (dependencies.exploreFromContext ?? Api.Explorer.exploreFromContext)(
+    const runtime = yield* (dependencies.exploreFromContext ?? Explorer.exploreFromContext)(
       pullRequestContext,
     )
     const pullRequest = pullRequestContext.pullRequest
     if (!pullRequest) {
       return yield* Effect.fail(
-        new Api.Explorer.ExplorerError({
+        new Explorer.ExplorerError({
           context: {
             detail:
               'Could not resolve an open pull request for the current branch. Set PR_NUMBER explicitly or open a PR first.',
@@ -432,16 +437,16 @@ export const runPrPreview = (
           return yield* git.getTags()
         })
     const diffRemote = resolveDiffRemote(config, options.remote)
-    const analysis = yield* (dependencies.analyze ?? Api.Analyzer.analyze)({
+    const analysis = yield* (dependencies.analyze ?? Analyzer.analyze)({
       packages,
       tags,
       since: `${diffRemote}/${pullRequest.base.ref}`,
       resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
       commitOverrides: config.commitOverrides,
     })
-    const projectedSquashCommit = Api.ProjectedSquashCommit.preview({
+    const projectedSquashCommit = ProjectedSquashCommit.preview({
       actualTitle: pullRequest.title,
-      impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis, { primaryOnly: true }),
+      impacts: ProjectedSquashCommit.collectScopeImpacts(analysis, { primaryOnly: true }),
     })
     const diff = yield* (dependencies.loadPullRequestDiff ?? loadPullRequestDiff)({
       pullRequest,
@@ -480,7 +485,7 @@ export const runPrPreview = (
       dependencies.forecast === undefined
         ? yield* addOfficialPlanCascades(analysis, packages)
         : analysis
-    const forecast = (dependencies.forecast ?? Api.Forecaster.forecast)(forecastAnalysis, runtime)
+    const forecast = (dependencies.forecast ?? Forecaster.forecast)(forecastAnalysis, runtime)
     const previewEffect = (
       dependencies.upsertPullRequestPreviewComment ?? upsertPullRequestPreviewComment
     )({

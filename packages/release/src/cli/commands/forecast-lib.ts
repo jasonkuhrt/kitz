@@ -3,7 +3,11 @@ import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, HashSet, Layer, Option, Schema } from 'effect'
-import * as Api from '../../api/__.js'
+import * as Analyzer from '../../api/analyzer/__.js'
+import * as Commentator from '../../api/commentator/__.js'
+import * as Explorer from '../../api/explorer/__.js'
+import * as Forecaster from '../../api/forecaster/__.js'
+import * as Planner from '../../api/planner/__.js'
 import { Analysis, CascadeImpact } from '../../api/analyzer/models/__.js'
 import { ChildProcessSpawnerLayer, ServicesLayer, FileSystemLayer } from '../../platform.js'
 import {
@@ -14,18 +18,18 @@ import {
 } from './command-workspace.js'
 
 export interface ForecastInput {
-  readonly forecast: Api.Forecaster.Forecast
-  readonly publishState: Api.Commentator.PublishState
-  readonly publishHistory: readonly Api.Commentator.PublishRecord[]
+  readonly forecast: Forecaster.Forecast
+  readonly publishState: Commentator.PublishState
+  readonly publishHistory: readonly Commentator.PublishRecord[]
   readonly interactiveChecklist: boolean
 }
 
 export interface BuildForecastInputDependencies {
   readonly loadWorkspace: Effect.Effect<CommandWorkspace, Error>
   readonly tags: Effect.Effect<readonly string[], Error>
-  readonly analyze: typeof Api.Analyzer.analyze
+  readonly analyze: typeof Analyzer.analyze
   readonly explore: Effect.Effect<any, Error>
-  readonly forecast?: typeof Api.Forecaster.forecast
+  readonly forecast?: typeof Forecaster.forecast
   readonly log: typeof Console.log
 }
 
@@ -51,9 +55,9 @@ export function buildForecastInput(
       const git = yield* Git.Git
       return yield* git.getTags()
     })
-  const analyze = dependencies?.analyze ?? Api.Analyzer.analyze
-  const explore = dependencies?.explore ?? Api.Explorer.explore()
-  const forecast = dependencies?.forecast ?? Api.Forecaster.forecast
+  const analyze = dependencies?.analyze ?? Analyzer.analyze
+  const explore = dependencies?.explore ?? Explorer.explore()
+  const forecast = dependencies?.forecast ?? Forecaster.forecast
   const log = dependencies?.log ?? Console.log
 
   return Effect.gen(function* () {
@@ -61,7 +65,7 @@ export function buildForecastInput(
     if (!isReadyCommandWorkspace(workspace)) {
       yield* log(noPackagesFoundMessage)
       return {
-        forecast: Api.Forecaster.Forecast.make({
+        forecast: Forecaster.Forecast.make({
           owner: '',
           repo: '',
           branch: '',
@@ -101,15 +105,15 @@ export function buildForecastInput(
 
 export const addOfficialPlanCascades = (
   analysis: Analysis,
-  packages: readonly Api.Analyzer.Workspace.Package[],
-): Effect.Effect<Analysis, Error, Effect.Services<ReturnType<typeof Api.Planner.official>>> =>
+  packages: readonly Analyzer.Workspace.Package[],
+): Effect.Effect<Analysis, Error, Effect.Services<ReturnType<typeof Planner.official>>> =>
   Effect.gen(function* () {
-    return withOfficialPlanCascades(analysis, yield* Api.Planner.official(analysis, { packages }))
+    return withOfficialPlanCascades(analysis, yield* Planner.official(analysis, { packages }))
   })
 
 const withOfficialPlanCascades = (
   analysis: Analysis,
-  plan: Api.Planner.PlanOf<'official'>,
+  plan: Planner.PlanOf<'official'>,
 ): Analysis => {
   const existingCascadeNames = HashSet.fromIterable(
     analysis.cascades.map((cascade) => cascade.package.name.moniker),
@@ -141,7 +145,7 @@ export const loadForecastInputFromFile = (filePath: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const jsonText = yield* fs.readFileString(filePath)
-    const envelope = yield* Schema.decodeUnknownEffect(Api.Forecaster.ForecastEnvelopeJson)(
+    const envelope = yield* Schema.decodeUnknownEffect(Forecaster.ForecastEnvelopeJson)(
       jsonText,
     ).pipe(Effect.option)
 
@@ -155,7 +159,7 @@ export const loadForecastInputFromFile = (filePath: string) =>
     }
 
     return {
-      forecast: yield* Schema.decodeUnknownEffect(Schema.fromJsonString(Api.Forecaster.Forecast))(
+      forecast: yield* Schema.decodeUnknownEffect(Schema.fromJsonString(Forecaster.Forecast))(
         jsonText,
       ),
       publishState: 'idle' as const,

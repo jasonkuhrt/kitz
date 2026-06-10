@@ -1,6 +1,7 @@
 import { Env } from '@kitz/env'
 import { Console, Effect, Fiber, Stream, Terminal } from 'effect'
-import * as Api from '../../api/__.js'
+import * as Executor from '../../api/executor/__.js'
+import * as Renderer from '../../api/renderer/__.js'
 
 export const confirm = (message: string) =>
   Effect.gen(function* () {
@@ -12,17 +13,13 @@ export const confirm = (message: string) =>
   })
 
 export const runObservableCommand = <R>(
-  observable: Pick<Api.Executor.ObservableResult<R>, 'events' | 'execute'>,
-): Effect.Effect<
-  Api.Executor.ExecutionResult,
-  Api.Executor.ObservableExecutionError,
-  Env.Env | R
-> =>
+  observable: Pick<Executor.ObservableResult<R>, 'events' | 'execute'>,
+): Effect.Effect<Executor.ExecutionResult, Executor.ObservableExecutionError, Env.Env | R> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
     const eventFiber = yield* observable.events.pipe(
       Stream.tap((event) => {
-        const line = Api.Renderer.formatLifecycleEvent(event, { env: env.vars })
+        const line = Renderer.formatLifecycleEvent(event, { env: env.vars })
         if (!line) return Effect.void
         return line.level === 'error' ? Console.error(line.message) : Console.log(line.message)
       }),
@@ -32,8 +29,6 @@ export const runObservableCommand = <R>(
 
     const result = yield* observable.execute
     yield* Fiber.join(eventFiber)
-    yield* Console.log(
-      Api.Renderer.renderApplyDone(result.releasedPackages.length, { env: env.vars }),
-    )
+    yield* Console.log(Renderer.renderApplyDone(result.releasedPackages.length, { env: env.vars }))
     return result
   })

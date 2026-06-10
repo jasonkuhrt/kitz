@@ -7,7 +7,7 @@
 import { Env } from '@kitz/env'
 import { Console, Effect, HashSet } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Publisher from '../../api/publishing/__.js'
 
 const matrixVerify = Command.make(
   'verify',
@@ -25,8 +25,8 @@ const matrixVerify = Command.make(
     Effect.gen(function* () {
       const env = yield* Env.Env
 
-      const capabilities = Api.Publisher.Models.publishCapabilityValues
-      const rows = Api.Publisher.Models.capabilityMatrix
+      const capabilities = Publisher.Models.publishCapabilityValues
+      const rows = Publisher.Models.capabilityMatrix
       const rowCapabilities = HashSet.fromIterable(rows.map((row) => row.capability))
       const missing = capabilities.filter((capability) => !HashSet.has(rowCapabilities, capability))
       const duplicateCount = rows.length - HashSet.size(rowCapabilities)

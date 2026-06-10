@@ -9,7 +9,9 @@ import { Fs } from '@kitz/fs'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, FileSystem, Layer, Schema } from 'effect'
 import { Argument, Command } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Journal from '../../api/journal.js'
+import * as Reconciler from '../../api/reconciler.js'
+import * as ReleaseContract from '../../api/release-contract.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
 
 const parseSubject = (subject: string): { name: string; version: string } | undefined => {
@@ -46,7 +48,7 @@ export const inspect = Command.make(
       const artifactDirs = yield* fs
         .readDirectory(Fs.Path.toString(artifactRoot))
         .pipe(Effect.orElseSucceed(() => [] as string[]))
-      const matches: Api.ReleaseContract.ArtifactManifest[] = []
+      const matches: ReleaseContract.ArtifactManifest[] = []
 
       for (const dir of artifactDirs) {
         const manifestPath = Fs.Path.join(
@@ -59,7 +61,7 @@ export const inspect = Command.make(
         if (!exists) continue
         const text = yield* fs.readFileString(Fs.Path.toString(manifestPath))
         const manifests = yield* Schema.decodeUnknownEffect(
-          Schema.fromJsonString(Schema.Array(Api.ReleaseContract.ArtifactManifest)),
+          Schema.fromJsonString(Schema.Array(ReleaseContract.ArtifactManifest)),
         )(text)
         matches.push(
           ...manifests.filter(
@@ -74,11 +76,11 @@ export const inspect = Command.make(
       const journalFiles = yield* fs
         .readDirectory(Fs.Path.toString(journalRoot))
         .pipe(Effect.orElseSucceed(() => [] as string[]))
-      const journalMatches: Api.ReleaseContract.SideEffectEntry[] = []
+      const journalMatches: ReleaseContract.SideEffectEntry[] = []
 
       for (const file of journalFiles.filter((name) => name.endsWith('.jsonl'))) {
         const path = Fs.Path.join(journalRoot, Fs.Path.RelFile.fromString(`./${file}`))
-        const entries = yield* Api.Journal.readEntries(path)
+        const entries = yield* Journal.readEntries(path)
         journalMatches.push(
           ...entries.filter(
             (entry) =>
@@ -90,7 +92,7 @@ export const inspect = Command.make(
       }
 
       const onRegistry = yield* npm.hasVersion(parsed.name, parsed.version)
-      const legitimacy = Api.Reconciler.inspectVerdict({
+      const legitimacy = Reconciler.inspectVerdict({
         onRegistry,
         inJournal: journalMatches.length > 0,
       })

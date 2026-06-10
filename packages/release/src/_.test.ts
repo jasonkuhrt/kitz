@@ -11,8 +11,11 @@ import { Semver } from '@kitz/semver'
 import { Test } from '@kitz/test'
 import { Effect, Layer, Option, Schema } from 'effect'
 import { describe, expect, test } from 'bun:test'
+import * as Analyzer from './api/analyzer/__.js'
 import * as ReleaseConfig from './api/config.js'
-import { Analyzer, Planner, Publishing, ReleaseContract } from './__.js'
+import * as Planner from './api/planner/__.js'
+import * as Publishing from './api/publishing.js'
+import * as ReleaseContract from './api/release-contract.js'
 
 const mockPackages: Analyzer.Workspace.Package[] = [
   {

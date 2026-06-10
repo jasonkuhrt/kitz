@@ -11,7 +11,7 @@ import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Console, Effect, Layer, Option } from 'effect'
 import { Argument, Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Notes from '../../api/notes/__.js'
 import { FileSystemLayer } from '../../platform.js'
 import {
   isReadyCommandWorkspace,
@@ -69,7 +69,7 @@ export const notes = Command.make(
       }
 
       const tags = yield* git.getTags()
-      const result = yield* Api.Notes.generate({
+      const result = yield* Notes.generate({
         packages,
         tags,
         since: Option.getOrUndefined(since),
@@ -85,11 +85,11 @@ export const notes = Command.make(
       }
 
       if (format === 'json') {
-        yield* Console.log(JSON.stringify(Api.Notes.toJsonNotes(result.notes), null, 2))
+        yield* Console.log(JSON.stringify(Notes.toJsonNotes(result.notes), null, 2))
         return
       }
 
-      yield* Console.log(Api.Notes.renderMarkdownNotes(result.notes))
+      yield* Console.log(Notes.renderMarkdownNotes(result.notes))
     }),
 ).pipe(
   Command.withDescription('Show unreleased release notes since the last release'),

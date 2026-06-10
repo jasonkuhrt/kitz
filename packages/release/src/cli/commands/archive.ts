@@ -8,7 +8,13 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Console, Effect, FileSystem, Layer, Option, Schema } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Artifact from '../../api/artifact.js'
+import * as AuditArchive from '../../api/audit-archive.js'
+import * as Clock from '../../api/clock.js'
+import * as Journal from '../../api/journal.js'
+import * as Planner from '../../api/planner/__.js'
+import * as Proof from '../../api/proof.js'
+import * as ReleaseContract from '../../api/release-contract.js'
 import { FileSystemLayer } from '../../platform.js'
 import { loadExecutableCommandPlan } from './plan-file.js'
 
@@ -26,29 +32,27 @@ const archiveExport = Command.make(
       const env = yield* Env.Env
       const fs = yield* FileSystem.FileSystem
       const { plan, planDigest: digest } = yield* loadExecutableCommandPlan(from)
-      const proof = yield* Api.Proof.readForPlan(plan)
-      const artifacts = yield* Api.Artifact.readManifest(plan)
-      const journalEntries = yield* Api.Journal.readEntries(
-        Api.Journal.journalPathFor(env.cwd, digest),
-      )
+      const proof = yield* Proof.readForPlan(plan)
+      const artifacts = yield* Artifact.readManifest(plan)
+      const journalEntries = yield* Journal.readEntries(Journal.journalPathFor(env.cwd, digest))
       const archivePath = Fs.Path.join(
         env.cwd,
         Fs.Path.RelFile.fromString(`./.release/archive/${digest.value}.kitz-release-audit.tgz`),
       )
-      const createdAt = yield* Api.Clock.nowIso
-      const bundle = Api.AuditArchive.makeAuditArchive({
+      const createdAt = yield* Clock.nowIso
+      const bundle = AuditArchive.makeAuditArchive({
         planDigest: digest,
         createdAt,
         payloads: [
           {
             path: Fs.Path.RelFile.fromString('./plan.json'),
-            content: `${JSON.stringify(Schema.encodeSync(Api.Planner.Plan)(plan), null, 2)}\n`,
+            content: `${JSON.stringify(Schema.encodeSync(Planner.Plan)(plan), null, 2)}\n`,
           },
           {
             path: Fs.Path.RelFile.fromString('./proof.json'),
             content: `${JSON.stringify(
               Option.isSome(proof)
-                ? Schema.encodeSync(Api.ReleaseContract.ProofArtifact)(proof.value)
+                ? Schema.encodeSync(ReleaseContract.ProofArtifact)(proof.value)
                 : null,
               null,
               2,
@@ -59,7 +63,7 @@ const archiveExport = Command.make(
             content:
               journalEntries
                 .map((entry) =>
-                  JSON.stringify(Schema.encodeSync(Api.ReleaseContract.SideEffectEntry)(entry)),
+                  JSON.stringify(Schema.encodeSync(ReleaseContract.SideEffectEntry)(entry)),
                 )
                 .join('\n') + '\n',
           },
@@ -67,7 +71,7 @@ const archiveExport = Command.make(
             path: Fs.Path.RelFile.fromString('./artifact-manifest.json'),
             content: `${JSON.stringify(
               Option.isSome(artifacts)
-                ? Schema.encodeSync(Schema.Array(Api.ReleaseContract.ArtifactManifest))([
+                ? Schema.encodeSync(Schema.Array(ReleaseContract.ArtifactManifest))([
                     ...artifacts.value,
                   ])
                 : [],
