@@ -134,36 +134,29 @@ const stagedPackageDirFor = (repoRoot: Fs.Path.AbsDir, release: ReleaseInfo): Fs
     ),
   )
 
+const childDir = (parent: Fs.Path.AbsDir, name: string): Fs.Path.AbsDir =>
+  Fs.Path.join(parent, Fs.Path.RelDir.fromString(`./${name}/`))
+
+const childFile = (parent: Fs.Path.AbsDir, name: string): Fs.Path.AbsFile =>
+  Fs.Path.join(parent, Fs.Path.RelFile.fromString(`./${name}`))
+
 const copyPackageDirectory = (
   from: Fs.Path.AbsDir,
   to: Fs.Path.AbsDir,
 ): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    const fromString = Fs.Path.toString(from)
-    const toString = Fs.Path.toString(to)
+    yield* Fs.write(to, { recursive: true })
 
-    yield* fs.makeDirectory(toString, { recursive: true })
-    const entries = yield* fs.readDirectory(fromString)
+    for (const source of yield* Fs.read(from)) {
+      if (stagingIgnore.includes(source.name)) continue
 
-    for (const entry of entries) {
-      if (stagingIgnore.includes(entry)) continue
-
-      const source = `${fromString}${entry}`
-      const target = `${toString}${entry}`
-      const stat = yield* fs.stat(source)
-
-      if (stat.type === 'Directory') {
-        yield* copyPackageDirectory(
-          Fs.Path.AbsDir.fromString(`${source}/`),
-          Fs.Path.AbsDir.fromString(`${target}/`),
-        )
+      if (Fs.Path.AbsDir.is(source)) {
+        yield* copyPackageDirectory(source, childDir(to, source.name))
         continue
       }
 
-      if (stat.type === 'File') {
-        const bytes = yield* fs.readFile(source)
-        yield* fs.writeFile(target, bytes)
+      if (Fs.Path.AbsFile.is(source)) {
+        yield* Fs.write(childFile(to, source.name), yield* Fs.read(source))
       }
     }
   })
@@ -243,13 +236,11 @@ export const preparePackageArtifact = (
   Effect.gen(function* () {
     const cli = yield* NpmRegistry.NpmCli
     const env = yield* Env.Env
-    const fs = yield* FileSystem.FileSystem
     const packageJsonPath = Fs.Path.join(
       release.package.path,
       Fs.Path.RelFile.fromString('./package.json'),
     )
     const rootPackageJsonPath = Fs.Path.join(env.cwd, Fs.Path.RelFile.fromString('./package.json'))
-    const packageJsonPathString = Fs.Path.toString(packageJsonPath)
     const artifactDir = artifactDirectoryFor(env.cwd, options)
     const artifactPath = artifactPathFor(env.cwd, release, options)
     const stagedPackageDir = stagedPackageDirFor(env.cwd, release)
@@ -258,9 +249,9 @@ export const preparePackageArtifact = (
       Fs.Path.RelFile.fromString('./package.json'),
     )
 
-    const originalJson = yield* fs.readFileString(packageJsonPathString)
+    const originalJson = yield* Fs.readString(packageJsonPath)
     const originalManifest = yield* decodeJsonRecordOrFail(release.package.path, originalJson)
-    const catalogVersions = yield* fs.readFileString(Fs.Path.toString(rootPackageJsonPath)).pipe(
+    const catalogVersions = yield* Fs.readString(rootPackageJsonPath).pipe(
       Effect.flatMap((rootJson) => decodeJsonRecordOrFail(env.cwd, rootJson)),
       Effect.map(catalogVersionsFrom),
       Effect.orElseSucceed(() => ({})),
@@ -284,16 +275,11 @@ export const preparePackageArtifact = (
       )
     }
 
-    yield* fs
-      .remove(Fs.Path.toString(stagedPackageDir), { recursive: true, force: true })
-      .pipe(Effect.ignore)
+    yield* Fs.remove(stagedPackageDir, { recursive: true, force: true }).pipe(Effect.ignore)
     yield* copyPackageDirectory(release.package.path, stagedPackageDir)
-    yield* fs.writeFileString(
-      Fs.Path.toString(stagedPackageJsonPath),
-      JSON.stringify(rewrittenManifest, null, 2) + '\n',
-    )
-    yield* fs.makeDirectory(Fs.Path.toString(artifactDir), { recursive: true })
-    yield* fs.remove(Fs.Path.toString(artifactPath), { force: true }).pipe(Effect.ignore)
+    yield* Fs.write(stagedPackageJsonPath, JSON.stringify(rewrittenManifest, null, 2) + '\n')
+    yield* Fs.write(artifactDir, { recursive: true })
+    yield* Fs.remove(artifactPath, { force: true }).pipe(Effect.ignore)
 
     const packResult = yield* cli
       .pack({
@@ -321,7 +307,7 @@ export const preparePackageArtifact = (
     }
 
     if (Fs.Path.toString(packResult.success.tarball) !== Fs.Path.toString(artifactPath)) {
-      yield* fs.rename(Fs.Path.toString(packResult.success.tarball), Fs.Path.toString(artifactPath))
+      yield* Fs.rename(packResult.success.tarball, artifactPath)
     }
 
     return {
