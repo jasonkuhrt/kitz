@@ -57,4 +57,22 @@ describe('release persistence helpers', () => {
     ])
     expect(result.raw.trim().split('\n')).toHaveLength(2)
   })
+
+  test('maps JSON stringify failures to encode errors', async () => {
+    const file = Fs.Path.AbsFile.fromString('/repo/.release/unstringifiable.json')
+    const lines = Fs.Path.AbsFile.fromString('/repo/.release/unstringifiable.jsonl')
+    const json = jsonFile(Schema.Unknown)
+    const jsonl = jsonLinesFile(Schema.Unknown)
+
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const fileError = yield* json.write(1n, file).pipe(Effect.flip)
+        const linesError = yield* jsonl.write([1n], lines).pipe(Effect.flip)
+        return { fileError, linesError }
+      }).pipe(Effect.provide(Fs.Memory.layer({}))),
+    )
+
+    expect(result.fileError).toBeInstanceOf(Resource.EncodeError)
+    expect(result.linesError).toBeInstanceOf(Resource.EncodeError)
+  })
 })

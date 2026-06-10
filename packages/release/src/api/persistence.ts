@@ -64,6 +64,22 @@ const encodeUnknown = <A, I, R>(
     Effect.mapError((error) => mapEncodeError(path, formatSchemaIssue(error.issue))),
   )
 
+const stringifyJson = (
+  path: Fs.Path.AbsFile,
+  value: unknown,
+  space?: number,
+): Effect.Effect<string, Resource.ResourceError> =>
+  Effect.try({
+    try: () => {
+      const result = JSON.stringify(value, null, space)
+      if (result === undefined) {
+        throw new TypeError('JSON.stringify returned undefined')
+      }
+      return result
+    },
+    catch: (cause) => mapEncodeError(path, cause instanceof Error ? cause.message : String(cause)),
+  })
+
 export interface JsonFile<A, R = never> {
   readonly read: (
     path: Fs.Path.AbsFile,
@@ -106,7 +122,8 @@ export const jsonFile = <A, I, R = never>(
   const write = (value: A, path: Fs.Path.AbsFile) =>
     Effect.gen(function* () {
       const encoded = yield* encodeUnknown(path, schema, value, parseOptions)
-      yield* writeString(path, `${JSON.stringify(encoded, null, 2)}\n`)
+      const content = yield* stringifyJson(path, encoded, 2)
+      yield* writeString(path, `${content}\n`)
     })
 
   const delete_ = (path: Fs.Path.AbsFile) =>
@@ -162,7 +179,8 @@ export const jsonLinesFile = <A, I, R = never>(
   const write = (values: readonly A[], path: Fs.Path.AbsFile) =>
     Effect.gen(function* () {
       const encoded = yield* Effect.all(values.map((value) => encodeUnknown(path, schema, value)))
-      yield* writeString(path, `${encoded.map((value) => JSON.stringify(value)).join('\n')}\n`)
+      const lines = yield* Effect.all(encoded.map((value) => stringifyJson(path, value)))
+      yield* writeString(path, `${lines.join('\n')}\n`)
     })
 
   return { read, write }
