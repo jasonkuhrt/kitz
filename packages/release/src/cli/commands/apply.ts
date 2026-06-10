@@ -13,20 +13,12 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
-import { Console, Effect, Fiber, Layer, Option, Stream, Terminal } from 'effect'
+import { Console, Effect, Layer, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
+import { confirm, runObservableCommand } from './execution.js'
 import { loadExecutableCommandPlan } from './plan-file.js'
-
-const confirm = (message: string) =>
-  Effect.gen(function* () {
-    const terminal = yield* Terminal.Terminal
-    yield* terminal.display(message)
-    const answer = yield* terminal.readLine.pipe(Effect.catch(() => Effect.succeed('')))
-    const normalized = answer.trim().toLowerCase()
-    return normalized === 'y' || normalized === 'yes'
-  })
 
 const commandLayer = ChildProcessSpawnerLayer
 const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(commandLayer))
@@ -233,39 +225,17 @@ export const apply = Command.make(
             return false
           }
 
-          // Execute with observable workflow
-          const { events, execute } = yield* Api.Executor.executeObservable(plan, {
-            dryRun: false,
-            tag: publish.distTag,
-            rehearsedArtifacts: true,
-            ...(plan.publishIntent !== undefined
-              ? { registry: plan.publishIntent.registry.url }
-              : {}),
-            ...(plan.publishIntent !== undefined ? { trunk: plan.publishIntent.git.trunk } : {}),
-            github: runtimeConfig.github,
-          })
-
-          // Fork event consumer to stream status updates
-          const eventFiber = yield* events.pipe(
-            Stream.tap((event) => {
-              const line = Api.Executor.formatLifecycleEvent(event, { env: env.vars })
-              if (!line) return Effect.void
-              return line.level === 'error'
-                ? Console.error(line.message)
-                : Console.log(line.message)
+          const result = yield* runObservableCommand(
+            yield* Api.Executor.executeObservable(plan, {
+              dryRun: false,
+              tag: publish.distTag,
+              rehearsedArtifacts: true,
+              ...(plan.publishIntent !== undefined
+                ? { registry: plan.publishIntent.registry.url }
+                : {}),
+              ...(plan.publishIntent !== undefined ? { trunk: plan.publishIntent.git.trunk } : {}),
+              github: runtimeConfig.github,
             }),
-            Stream.runDrain,
-            Effect.forkChild,
-          )
-
-          // Run workflow
-          const result = yield* execute
-
-          // Wait for events to flush
-          yield* Fiber.join(eventFiber)
-
-          yield* Console.log(
-            Api.Renderer.renderApplyDone(result.releasedPackages.length, { env: env.vars }),
           )
 
           // Archive the executed plan immutably by digest, then clear the
