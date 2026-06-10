@@ -47,6 +47,7 @@ export * as Renderer from './renderer/__.js'
 
 // Supporting modules
 export * as CommitPolicy from './commit-policy.js'
+export * as Clock from './clock.js'
 export * as Config from './config.js'
 export * as Digest from './digest.js'
 export * as Doctor from './doctor.js'

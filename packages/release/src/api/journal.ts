@@ -2,6 +2,7 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
 import { Effect, FileSystem, Schema } from 'effect'
+import * as ReleaseClock from './clock.js'
 import { sha256Json } from './digest.js'
 import { jsonLinesFile } from './persistence.js'
 import { PlanDigest, SideEffectEntry, type SideEffectKind } from './release-contract.js'
@@ -16,6 +17,10 @@ export interface SideEffectInput {
   readonly planned: Readonly<Record<string, unknown>>
   readonly result: SideEffectEntry['result']
   readonly attemptedAt?: string
+}
+
+type TimedSideEffectInput = SideEffectInput & {
+  readonly attemptedAt: string
 }
 
 const entryDigestInput = (entry: SideEffectEntry): unknown => {
@@ -72,15 +77,17 @@ export const writeEntries = (
 ): Effect.Effect<void, Resource.ResourceError, FileSystem.FileSystem> =>
   journalResource.write(entries, path)
 
-export const makeEntry = (input: SideEffectInput, previous?: SideEffectEntry): SideEffectEntry => {
+export const makeEntry = (
+  input: TimedSideEffectInput,
+  previous?: SideEffectEntry,
+): SideEffectEntry => {
   const planDigest =
     typeof input.planDigest === 'string'
       ? PlanDigest.make({ algorithm: 'sha256', value: input.planDigest })
       : input.planDigest
-  const attemptedAt = input.attemptedAt ?? new Date().toISOString()
   return appendHash(
     {
-      entryId: `${input.kind}:${input.subject}:${input.result}:${attemptedAt}`,
+      entryId: `${input.kind}:${input.subject}:${input.result}:${input.attemptedAt}`,
       planDigest,
       kind: input.kind,
       subject: input.subject,
@@ -91,7 +98,7 @@ export const makeEntry = (input: SideEffectInput, previous?: SideEffectEntry): S
         planned: input.planned,
       }).value,
       planned: input.planned,
-      attemptedAt,
+      attemptedAt: input.attemptedAt,
       result: input.result,
     },
     previous,
@@ -106,7 +113,8 @@ export const appendSideEffect = (
     const path = journalPathFor(env.cwd, input.planDigest)
     const entries = yield* readEntries(path)
     const previous = entries.at(-1)
-    const entry = makeEntry(input, previous)
+    const attemptedAt = input.attemptedAt ?? (yield* ReleaseClock.nowIso)
+    const entry = makeEntry({ ...input, attemptedAt }, previous)
     yield* writeEntries(path, [...entries, entry])
     return entry
   })

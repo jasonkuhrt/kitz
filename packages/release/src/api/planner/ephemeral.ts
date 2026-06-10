@@ -40,6 +40,7 @@ const detectCascadesForEphemeral = (
   primaryReleases: readonly Ephemeral[],
   dependencyGraph: import('../analyzer/cascade.js').DependencyGraph,
   tags: string[],
+  timestamp: string,
   prNumber: number,
   sha: Git.Sha.Sha,
 ): readonly Ephemeral[] => {
@@ -48,6 +49,7 @@ const detectCascadesForEphemeral = (
     primaryReleases,
     dependencyGraph,
     tags,
+    timestamp,
     map: (cascade) => toEphemeralRelease(cascade, tags, prNumber, sha),
   })
 }
@@ -125,12 +127,13 @@ export const ephemeral = (
         })
       },
       toSecondaryRelease: (release) => toEphemeralRelease(release, analysis.tags, prNumber, sha),
-      toCascades: ({ packages, primaryReleases, dependencyGraph, tags }) =>
+      toCascades: ({ packages, primaryReleases, dependencyGraph, tags, timestamp }) =>
         detectCascadesForEphemeral(
           packages,
           primaryReleases,
           dependencyGraph,
           [...tags],
+          timestamp,
           prNumber,
           sha,
         ),

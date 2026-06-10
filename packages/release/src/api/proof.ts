@@ -5,7 +5,8 @@ import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
-import { Array as A, Clock, Effect, FileSystem, Option, Result, Schema } from 'effect'
+import { Array as A, Effect, FileSystem, Option, Result, Schema } from 'effect'
+import * as ReleaseClock from './clock.js'
 import { sha256Json } from './digest.js'
 import { jsonFile } from './persistence.js'
 import type { Plan } from './planner/models/plan.js'
@@ -516,7 +517,7 @@ const provenanceRecordForPlan = (
 
 export const makeProofArtifact = (
   plan: Plan,
-  now: string = new Date().toISOString(),
+  now: string,
   observations: ProofObservations = {},
 ): ProofArtifact => {
   const observedAt = observations.now ?? now
@@ -700,12 +701,10 @@ export const collectGithubObservations = (
     return Object.keys(githubReleaseExists).length > 0 ? { githubReleaseExists } : {}
   })
 
-export const hasBlockingProof = (proof: ProofArtifact): boolean => validateProof(proof).length > 0
+export const hasBlockingProof = (proof: ProofArtifact, now: string): boolean =>
+  validateProof(proof, now).length > 0
 
-export const validateProof = (
-  proof: ProofArtifact,
-  now: string = new Date().toISOString(),
-): readonly ProofIssue[] => {
+export const validateProof = (proof: ProofArtifact, now: string): readonly ProofIssue[] => {
   const ids = A.map(proof.records, (record) => record.id)
   const blocking = A.map(
     A.filter(
@@ -762,8 +761,8 @@ export const prove = (
 ): Effect.Effect<ProofArtifact, Resource.ResourceError, Env.Env | FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
-    const now = yield* Clock.currentTimeMillis
-    const proof = makeProofArtifact(plan, new Date(now).toISOString(), observations)
+    const now = yield* ReleaseClock.nowIso
+    const proof = makeProofArtifact(plan, now, observations)
     yield* write(proof, proofPathFor(env.cwd, plan))
     return proof
   })

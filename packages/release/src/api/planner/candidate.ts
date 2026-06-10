@@ -32,12 +32,14 @@ const detectCascadesForCandidate = (
   primaryReleases: readonly Candidate[],
   dependencyGraph: import('../analyzer/cascade.js').DependencyGraph,
   tags: string[],
+  timestamp: string,
 ): readonly Candidate[] => {
   return mapOfficialCascades({
     packages,
     primaryReleases,
     dependencyGraph,
     tags,
+    timestamp,
     map: (cascade) => toCandidateRelease(cascade, tags),
   })
 }
@@ -79,6 +81,6 @@ export const candidate = (
       })
     },
     toSecondaryRelease: (release) => toCandidateRelease(release, analysis.tags),
-    toCascades: ({ packages, primaryReleases, dependencyGraph, tags }) =>
-      detectCascadesForCandidate(packages, primaryReleases, dependencyGraph, [...tags]),
+    toCascades: ({ packages, primaryReleases, dependencyGraph, tags, timestamp }) =>
+      detectCascadesForCandidate(packages, primaryReleases, dependencyGraph, [...tags], timestamp),
   })

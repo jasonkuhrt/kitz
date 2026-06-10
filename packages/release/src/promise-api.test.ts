@@ -63,7 +63,9 @@ describe('release promise api', () => {
     })
 
     expect(digestPlan(plan).algorithm).toBe('sha256')
-    expect(validateProof(proof).map((issue) => issue.code)).toContain('release.proof.unprovable')
+    expect(validateProof(proof, '2026-05-14T00:00:00.000Z').map((issue) => issue.code)).toContain(
+      'release.proof.unprovable',
+    )
     expect(inspectLegitimacy({ onRegistry: true, inJournal: true })).toBe(
       'registry-matches-journal',
     )

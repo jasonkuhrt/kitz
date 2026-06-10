@@ -1,12 +1,34 @@
+import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
-import { Effect, FileSystem, Option } from 'effect'
+import { Effect, FileSystem, Option, Schema as S } from 'effect'
 import { jsonFile } from './persistence.js'
 import { ExecutionLock, type PlanDigest, PrincipalRef } from './release-contract.js'
 
+const baseTags = ['kit', 'release', 'lock'] as const
 const lockDir = Fs.Path.RelDir.fromString('./.release/locks/')
 const lockResource = jsonFile(ExecutionLock)
+
+const ActiveReleaseLockErrorContext = S.Struct({
+  planDigest: S.String,
+  ownerId: S.String,
+  expiresAt: S.String,
+})
+
+export const ActiveReleaseLockError: Err.TaggedContextualErrorClass<
+  'ActiveReleaseLockError',
+  typeof baseTags,
+  typeof ActiveReleaseLockErrorContext,
+  undefined
+> = Err.TaggedContextualError('ActiveReleaseLockError', baseTags, {
+  context: ActiveReleaseLockErrorContext,
+  message: (ctx) => `Active release lock already exists for ${ctx.planDigest}`,
+})
+
+export type ActiveReleaseLockError = InstanceType<typeof ActiveReleaseLockError>
+
+export type LockError = ActiveReleaseLockError
 
 export interface LockIssue {
   readonly code: string
@@ -78,14 +100,24 @@ export const write = (
 
 export const acquireLocal = (
   params: LocalLockParams,
-): Effect.Effect<ExecutionLock, Error | Resource.ResourceError, Env.Env | FileSystem.FileSystem> =>
+): Effect.Effect<
+  ExecutionLock,
+  LockError | Resource.ResourceError,
+  Env.Env | FileSystem.FileSystem
+> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
     const path = lockPathFor(env.cwd, params.planDigest)
     const existing = yield* read(path)
     if (Option.isSome(existing) && validate(existing.value, params.now).length === 0) {
       return yield* Effect.fail(
-        new Error(`Active release lock already exists for ${params.planDigest.value}`),
+        new ActiveReleaseLockError({
+          context: {
+            planDigest: params.planDigest.value,
+            ownerId: existing.value.owner.id,
+            expiresAt: existing.value.expiresAt,
+          },
+        }),
       )
     }
     const lock = make({
@@ -119,7 +151,7 @@ export const withLocal = <A, E, R>(
 ): Effect.Effect<
   A,
   // oxlint-disable-next-line kitz/error/require-tagged-error-types -- withLocal preserves the wrapped effect's error channel exactly.
-  E | Error | Resource.ResourceError,
+  E | LockError | Resource.ResourceError,
   R | Env.Env | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {

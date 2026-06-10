@@ -3,7 +3,8 @@ import { Fs } from '@kitz/fs'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Clock, Effect } from 'effect'
+import { Effect } from 'effect'
+import * as ReleaseClock from '../clock.js'
 import { Digest, sha256Bytes } from '../digest.js'
 import type { PublishDriverId } from '../publishing/models/driver-id.js'
 import {
@@ -34,9 +35,6 @@ export interface RegistryPublicationVerification extends PublishVerificationResu
   readonly observation: RegistryObservation
 }
 
-const isoStringFromEpochMillis = (epochMillis: number): string =>
-  new Date(epochMillis).toISOString()
-
 export const verifyRegistryPublication = (request: RegistryPublicationRequest) =>
   Effect.gen(function* () {
     const env = yield* Env.Env
@@ -60,7 +58,7 @@ export const verifyRegistryPublication = (request: RegistryPublicationRequest) =
       packageName: Pkg.Moniker.parse(request.packageName),
       version: Semver.fromString(request.nextVersion),
       registry: request.registry ?? 'https://registry.npmjs.org/',
-      observedAt: isoStringFromEpochMillis(yield* Clock.currentTimeMillis),
+      observedAt: yield* ReleaseClock.nowIso,
       versionMetadata: observed.versionMetadata,
       distTags: { ...observed.distTags },
       ...(observed.tarballUrl !== undefined ? { tarballUrl: observed.tarballUrl } : {}),
@@ -80,7 +78,7 @@ export const verifyRegistryPublication = (request: RegistryPublicationRequest) =
       planDigest,
       tarballSha256,
       observation,
-      verifiedAt: isoStringFromEpochMillis(yield* Clock.currentTimeMillis),
+      verifiedAt: yield* ReleaseClock.nowIso,
     })
     const artifact = ArtifactManifest.make({
       schemaVersion: 1,

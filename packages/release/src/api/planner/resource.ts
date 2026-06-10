@@ -30,7 +30,7 @@ export const PLANS_DIR = Fs.Path.fromString('./.release/plans/')
  * @example
  * ```ts
  * // Create and write a plan
- * const plan = Plan.make('official', releases, cascades)
+ * const plan = Plan.make('official', releases, cascades, timestamp)
  * yield* resource.write(plan, releaseDir)
  *
  * // Read a plan directly
