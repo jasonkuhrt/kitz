@@ -69,6 +69,7 @@
   "devDependencies": {
     "@kitz/otel": "workspace:*",
     "@kitz/test": "workspace:*",
+    "@kitz/yaml": "workspace:*",
     "@types/react": "^19.2.16"
   }
 }
