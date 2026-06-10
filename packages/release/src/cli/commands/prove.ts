@@ -3,11 +3,11 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
-import { Console, Effect, Layer, Option } from 'effect'
+import { Console, Effect, Layer } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
-import { formatInvalidPlanMessage, formatMissingPlanMessage, loadPlan } from './plan-file.js'
+import { loadExecutableCommandPlan } from './plan-file.js'
 
 const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
 
@@ -23,26 +23,12 @@ export const prove = Command.make(
   ({ from }) =>
     Effect.gen(function* () {
       const env = yield* Env.Env
-      const planPath = Option.isSome(from) ? Fs.Path.fromString(from.value) : undefined
-      const planState = yield* loadPlan({
-        ...(planPath !== undefined ? { path: planPath } : {}),
-        source: planPath === undefined ? 'active' : 'custom',
-      })
+      const { plan } = yield* loadExecutableCommandPlan(from)
 
-      if (planState._tag === 'PlanMissing') {
-        for (const line of formatMissingPlanMessage(planState)) yield* Console.error(line)
-        return env.exit(1)
-      }
-
-      if (planState._tag === 'PlanInvalid') {
-        for (const line of formatInvalidPlanMessage(planState)) yield* Console.error(line)
-        return env.exit(1)
-      }
-
-      const localObservations = yield* Api.Proof.collectLocalObservations(planState.plan)
+      const localObservations = yield* Api.Proof.collectLocalObservations(plan)
       const githubObservations = yield* Api.Explorer.resolveGitHubContext().pipe(
         Effect.flatMap((context) =>
-          Api.Proof.collectGithubObservations(planState.plan).pipe(
+          Api.Proof.collectGithubObservations(plan).pipe(
             Effect.provide(
               Github.LiveFetch({
                 owner: context.target.owner,
@@ -54,11 +40,11 @@ export const prove = Command.make(
         ),
         Effect.catch(() => Effect.succeed({})),
       )
-      const proof = yield* Api.Proof.prove(planState.plan, {
+      const proof = yield* Api.Proof.prove(plan, {
         ...localObservations,
         ...githubObservations,
       })
-      const proofPath = Api.Proof.proofPathFor(env.cwd, planState.plan)
+      const proofPath = Api.Proof.proofPathFor(env.cwd, plan)
       yield* Console.log(`Proof written to ${Fs.Path.toString(proofPath)}`)
       for (const record of proof.records) {
         yield* Console.log(`${record.status.padEnd(14)} ${record.id}`)
