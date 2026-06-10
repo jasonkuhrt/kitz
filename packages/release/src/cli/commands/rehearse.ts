@@ -2,7 +2,7 @@ import { Env } from '@kitz/env'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Layer } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Artifact from '../../api/artifact.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
 import { loadExecutableCommandPlan } from './plan-file.js'
 
@@ -25,7 +25,7 @@ export const rehearse = Command.make(
     Effect.gen(function* () {
       const { plan } = yield* loadExecutableCommandPlan(from)
 
-      const manifests = yield* Api.Artifact.rehearse(plan, { publishDryRun })
+      const manifests = yield* Artifact.rehearse(plan, { publishDryRun })
       yield* Console.log(`Artifact manifest written for ${manifests.length} package(s).`)
     }),
 ).pipe(

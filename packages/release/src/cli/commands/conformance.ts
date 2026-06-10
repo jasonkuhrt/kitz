@@ -7,16 +7,16 @@
 import { Env } from '@kitz/env'
 import { Console, Effect } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Publisher from '../../api/publishing/__.js'
 
 const providerFor = (provider: string) => {
   switch (provider) {
     case 'npm':
-      return Api.Publisher.Providers.Npm
+      return Publisher.Providers.Npm
     case 'pnpm':
-      return Api.Publisher.Providers.Pnpm
+      return Publisher.Providers.Pnpm
     case 'bun':
-      return Api.Publisher.Providers.Bun
+      return Publisher.Providers.Bun
     default:
       return undefined
   }
@@ -45,7 +45,7 @@ const conformanceRun = Command.make(
         return env.exit(1)
       }
 
-      const report = Api.Publisher.Conformance.run(provider)
+      const report = Publisher.Conformance.run(provider)
       const invalid = report.results.filter((result) =>
         result.errorCode?.includes('invalid-capability-result'),
       )

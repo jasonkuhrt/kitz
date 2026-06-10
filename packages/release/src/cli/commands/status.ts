@@ -9,7 +9,8 @@
 import { Env } from '@kitz/env'
 import { Console, Effect, Layer, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Executor from '../../api/executor/__.js'
+import * as Renderer from '../../api/renderer/__.js'
 import { FileSystemLayer } from '../../platform.js'
 import { formatPlanCommand, loadExecutableCommandPlan } from './plan-file.js'
 
@@ -42,15 +43,15 @@ export const status = Command.make(
       }
       const { plan, publishing } = yield* loadExecutableCommandPlan(from)
 
-      const workflowStatus = yield* Api.Executor.status(plan, {
+      const workflowStatus = yield* Executor.status(plan, {
         tag: plan.publishIntent.distTag,
         publishing,
         trunk: plan.publishIntent.git.trunk,
-      }).pipe(Effect.provide(Api.Executor.makeWorkflowRuntime()))
+      }).pipe(Effect.provide(Executor.makeWorkflowRuntime()))
       yield* Console.log(
         format === 'json'
           ? JSON.stringify(workflowStatus, null, 2)
-          : Api.Renderer.formatExecutionStatus(workflowStatus, {
+          : Renderer.formatExecutionStatus(workflowStatus, {
               env: env.vars,
               nextApplyCommand: formatPlanCommand('release apply', from),
               resumeCommand: formatPlanCommand('release resume', from),

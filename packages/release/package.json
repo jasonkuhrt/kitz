@@ -9,7 +9,7 @@
   "type": "module",
   "sideEffects": false,
   "imports": {
-    "#release": "./src/_.ts",
+    "#release": "./src/__.ts",
     "#release/*": "./src/*.ts",
     "#platform:executor/sqlite-client": {
       "bun": "./src/api/executor/sqlite-client.bun.ts",
@@ -17,9 +17,8 @@
     }
   },
   "exports": {
-    ".": "./src/_.ts",
+    ".": "./src/__.ts",
     "./__": "./src/__.ts",
-    "./api": "./src/__.ts",
     "./promise-api": "./src/promise-api.ts"
   },
   "files": [

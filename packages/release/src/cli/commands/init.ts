@@ -13,7 +13,8 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Console, Effect, Layer, Match } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Analyzer from '../../api/analyzer/__.js'
+import * as Config from '../../api/config.js'
 import { FileSystemLayer } from '../../platform.js'
 
 const RELEASE_DIR_PATTERN = '.release/'
@@ -42,7 +43,7 @@ export const init = Command.make(
       yield* Console.log(header.render())
 
       // Initialize config file
-      const configResult = yield* Api.Config.init({ force })
+      const configResult = yield* Config.init({ force })
       yield* Match.value(configResult).pipe(
         Match.tagsExhaustive({
           Created: (r) => Console.log(`✓ Created ${r.path.name}`),
@@ -51,7 +52,7 @@ export const init = Command.make(
       )
 
       // Scan packages
-      const packages = yield* Api.Analyzer.Workspace.scan
+      const packages = yield* Analyzer.Workspace.scan
       yield* Console.log(`✓ Detected ${packages.length} package${packages.length === 1 ? '' : 's'}`)
 
       // Add .release/ to .gitignore

@@ -2,7 +2,7 @@ import { Env } from '@kitz/env'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Layer } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Reconciler from '../../api/reconciler.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
 import { loadExecutableCommandPlan } from './plan-file.js'
 
@@ -25,7 +25,7 @@ export const reconcile = Command.make(
     Effect.gen(function* () {
       const { plan } = yield* loadExecutableCommandPlan(from)
 
-      const decision = yield* Api.Reconciler.reconcile(plan)
+      const decision = yield* Reconciler.reconcile(plan)
       yield* Console.log(`Reconcile result: ${decision.classification}`)
       yield* Console.log(`Plan digest: ${decision.planDigest.value}`)
       if (explain) {

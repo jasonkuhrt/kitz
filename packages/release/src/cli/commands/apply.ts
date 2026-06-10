@@ -15,7 +15,16 @@ import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Layer, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Artifact from '../../api/artifact.js'
+import * as Clock from '../../api/clock.js'
+import * as Config from '../../api/config.js'
+import * as Executor from '../../api/executor/__.js'
+import * as Explorer from '../../api/explorer/__.js'
+import * as Lock from '../../api/lock.js'
+import * as Planner from '../../api/planner/__.js'
+import * as Proof from '../../api/proof.js'
+import * as Publishing from '../../api/publishing.js'
+import * as Renderer from '../../api/renderer/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
 import { confirm, runObservableCommand } from './execution.js'
 import { loadExecutableCommandPlan } from './plan-file.js'
@@ -72,15 +81,15 @@ export const apply = Command.make(
       // Single intent resolver: resolves the frozen publish intent and enforces
       // the prerelease-to-`latest` guard before any mutation.
       const intentResult = yield* Effect.result(
-        Api.Publishing.resolvePublishIntentForPlan(plan, { allowPrereleaseLatest }),
+        Publishing.resolvePublishIntentForPlan(plan, { allowPrereleaseLatest }),
       )
       if (intentResult._tag === 'Failure') {
         yield* Console.error(intentResult.failure.message)
         return env.exit(1)
       }
-      const publish = Api.Publishing.publishSemanticsFromIntent(intentResult.success)
+      const publish = Publishing.publishSemanticsFromIntent(intentResult.success)
       const planDigest = executablePlan.planDigest
-      const lockNow = yield* Api.Clock.nowIso
+      const lockNow = yield* Clock.nowIso
 
       const lockParams = {
         planDigest,
@@ -88,16 +97,16 @@ export const apply = Command.make(
         ownerHost: env.vars['HOST'] ?? env.vars['HOSTNAME'] ?? 'local-host',
         ownerProcess: env.vars['KITZ_RELEASE_PROCESS_ID'] ?? 'local-process',
         now: lockNow,
-      } satisfies Api.Lock.LocalLockParams
+      } satisfies Lock.LocalLockParams
 
       // Confirmation prompt (unless --yes)
       if (!yes) {
-        const releaseCommand = yield* Api.Config.load().pipe(
+        const releaseCommand = yield* Config.load().pipe(
           Effect.map((config) => config.operator.releaseCommand),
           Effect.catch(() => Effect.succeed('release')),
         )
         yield* Console.log(
-          Api.Renderer.renderApplyConfirmation(plan, publish, {
+          Renderer.renderApplyConfirmation(plan, publish, {
             env: env.vars,
             releaseCommand,
           }),
@@ -109,14 +118,14 @@ export const apply = Command.make(
         }
       }
 
-      const applied = yield* Api.Lock.withLocal(
+      const applied = yield* Lock.withLocal(
         lockParams,
         Effect.gen(function* () {
           if (prove) {
-            const localObservations = yield* Api.Proof.collectLocalObservations(plan)
-            const githubObservations = yield* Api.Explorer.resolveGitHubContext().pipe(
+            const localObservations = yield* Proof.collectLocalObservations(plan)
+            const githubObservations = yield* Explorer.resolveGitHubContext().pipe(
               Effect.flatMap((context) =>
-                Api.Proof.collectGithubObservations(plan).pipe(
+                Proof.collectGithubObservations(plan).pipe(
                   Effect.provide(
                     Github.LiveFetch({
                       owner: context.target.owner,
@@ -128,11 +137,11 @@ export const apply = Command.make(
               ),
               Effect.catch(() => Effect.succeed({})),
             )
-            const proof = yield* Api.Proof.prove(plan, {
+            const proof = yield* Proof.prove(plan, {
               ...localObservations,
               ...githubObservations,
             })
-            if (Api.Proof.hasBlockingProof(proof, yield* Api.Clock.nowIso)) {
+            if (Proof.hasBlockingProof(proof, yield* Clock.nowIso)) {
               yield* Console.error(
                 'Plan proof contains blocking records. Run `release prove` for detail.',
               )
@@ -141,10 +150,10 @@ export const apply = Command.make(
           }
 
           if (rehearse) {
-            yield* Api.Artifact.rehearse(plan)
+            yield* Artifact.rehearse(plan)
           }
 
-          const proof = yield* Api.Proof.readForPlan(plan)
+          const proof = yield* Proof.readForPlan(plan)
           if (Option.isNone(proof)) {
             yield* Console.error('Plan-bound proof is missing.')
             yield* Console.error(
@@ -152,7 +161,7 @@ export const apply = Command.make(
             )
             return false
           }
-          if (Api.Proof.hasBlockingProof(proof.value, yield* Api.Clock.nowIso)) {
+          if (Proof.hasBlockingProof(proof.value, yield* Clock.nowIso)) {
             yield* Console.error('Plan-bound proof contains blocking records.')
             yield* Console.error(
               'Run `release prove` and resolve every failed or unprovable proof.',
@@ -160,7 +169,7 @@ export const apply = Command.make(
             return false
           }
 
-          const artifacts = yield* Api.Artifact.readManifest(plan)
+          const artifacts = yield* Artifact.readManifest(plan)
           if (Option.isNone(artifacts)) {
             yield* Console.error('Artifact manifest is missing.')
             yield* Console.error(
@@ -168,10 +177,7 @@ export const apply = Command.make(
             )
             return false
           }
-          const artifactIssues = yield* Api.Artifact.validateManifestFilesForPlan(
-            plan,
-            artifacts.value,
-          )
+          const artifactIssues = yield* Artifact.validateManifestFilesForPlan(plan, artifacts.value)
           if (artifactIssues.length > 0) {
             yield* Console.error('Artifact manifest does not match the frozen plan.')
             for (const issue of artifactIssues)
@@ -182,7 +188,7 @@ export const apply = Command.make(
             // Validate the full staleness proof set (config digest, head SHA,
             // toolchain, subcommands, lockfiles) against a freshly observed
             // snapshot, not just lockfile drift.
-            const configResult = yield* Effect.result(Api.Config.load())
+            const configResult = yield* Effect.result(Config.load())
             if (configResult._tag === 'Failure') {
               yield* Console.error(
                 'Cannot verify release staleness: failed to load the current release config.',
@@ -190,10 +196,10 @@ export const apply = Command.make(
               yield* Console.error(configResult.failure.message)
               return false
             }
-            const observedSource = yield* Api.Planner.buildSourceSnapshot({
+            const observedSource = yield* Planner.buildSourceSnapshot({
               config: configResult.success,
             })
-            const sourceIssues = Api.Planner.validateSourceSnapshot(plan.source, observedSource)
+            const sourceIssues = Planner.validateSourceSnapshot(plan.source, observedSource)
             if (sourceIssues.length > 0) {
               yield* Console.error('Release source snapshot is stale.')
               for (const issue of sourceIssues)
@@ -201,7 +207,7 @@ export const apply = Command.make(
               return false
             }
           }
-          const scriptPolicyIssues = yield* Api.Artifact.validateScriptPolicyForPlan(plan)
+          const scriptPolicyIssues = yield* Artifact.validateScriptPolicyForPlan(plan)
           if (scriptPolicyIssues.length > 0) {
             yield* Console.error('Release artifact script policy is not satisfied.')
             for (const issue of scriptPolicyIssues) {
@@ -209,7 +215,7 @@ export const apply = Command.make(
             }
             return false
           }
-          const enginePolicyIssues = yield* Api.Artifact.validateEnginePolicyForPlan(plan)
+          const enginePolicyIssues = yield* Artifact.validateEnginePolicyForPlan(plan)
           if (enginePolicyIssues.length > 0) {
             yield* Console.error('Release artifact engine policy is not satisfied.')
             for (const issue of enginePolicyIssues) {
@@ -218,8 +224,8 @@ export const apply = Command.make(
             return false
           }
 
-          const runtime = yield* Api.Explorer.explore()
-          const runtimeConfig = Api.Explorer.toExecutorRuntimeConfig(runtime)
+          const runtime = yield* Explorer.explore()
+          const runtimeConfig = Explorer.toExecutorRuntimeConfig(runtime)
           if (!runtimeConfig.github) {
             yield* Console.error('GitHub release target and token are required for release apply.')
             yield* Console.error('Set GITHUB_TOKEN and ensure origin points to GitHub, then retry.')
@@ -227,7 +233,7 @@ export const apply = Command.make(
           }
 
           const result = yield* runObservableCommand(
-            yield* Api.Executor.executeObservable(plan, {
+            yield* Executor.executeObservable(plan, {
               dryRun: false,
               tag: publish.distTag,
               rehearsedArtifacts: true,
@@ -241,10 +247,10 @@ export const apply = Command.make(
 
           // Archive the executed plan immutably by digest, then clear the
           // active pointer (instead of deleting the only copy of the plan).
-          const archiveFile = yield* Api.Planner.Store.archive(plan, planDigest)
+          const archiveFile = yield* Planner.Store.archive(plan, planDigest)
           yield* Console.log(`Plan archived to ${Fs.Path.toString(archiveFile)}`)
           if (executablePlan.source === 'active') {
-            yield* Api.Planner.Store.deleteActive
+            yield* Planner.Store.deleteActive
           }
 
           return true

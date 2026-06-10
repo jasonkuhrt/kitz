@@ -22,7 +22,10 @@ import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Layer, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Analyzer from '../../api/analyzer/__.js'
+import * as Config from '../../api/config.js'
+import * as Explorer from '../../api/explorer/__.js'
+import * as ProjectedSquashCommit from '../../api/projected-squash-commit.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
 import { resolveDiffRemote } from '../pr-preview-diff.js'
 import { PreviewBlockingError, runPrPreview } from '../pr-preview.js'
@@ -40,8 +43,8 @@ const PrCommandLayer = Layer.mergeAll(
 
 const preparePrTitle = Effect.gen(function* () {
   const git = yield* Git.Git
-  const config = yield* Api.Config.load()
-  const packages = yield* Api.Analyzer.Workspace.resolvePackages(config.packages)
+  const config = yield* Config.load()
+  const packages = yield* Analyzer.Workspace.resolvePackages(config.packages)
 
   if (packages.length === 0) {
     yield* Console.log(
@@ -51,11 +54,11 @@ const preparePrTitle = Effect.gen(function* () {
     return null
   }
 
-  const pullRequestContext = yield* Api.Explorer.resolvePullRequestContext()
+  const pullRequestContext = yield* Explorer.resolvePullRequestContext()
   const pullRequest = pullRequestContext.pullRequest
   if (!pullRequest) {
     return yield* Effect.fail(
-      new Api.Explorer.ExplorerError({
+      new Explorer.ExplorerError({
         context: {
           detail:
             'Could not resolve an open pull request for the current branch. Set PR_NUMBER explicitly or open a PR first.',
@@ -66,20 +69,20 @@ const preparePrTitle = Effect.gen(function* () {
 
   const tags = yield* git.getTags()
   const remote = resolveDiffRemote(config)
-  const analysis = yield* Api.Analyzer.analyze({
+  const analysis = yield* Analyzer.analyze({
     packages,
     tags,
     since: `${remote}/${pullRequest.base.ref}`,
     resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
     commitOverrides: config.commitOverrides,
   })
-  const projectedHeader = Api.ProjectedSquashCommit.renderHeader({
-    impacts: Api.ProjectedSquashCommit.collectScopeImpacts(analysis, { primaryOnly: true }),
+  const projectedHeader = ProjectedSquashCommit.renderHeader({
+    impacts: ProjectedSquashCommit.collectScopeImpacts(analysis, { primaryOnly: true }),
   })
 
   if (!projectedHeader) {
     return yield* Effect.fail(
-      new Api.Explorer.ExplorerError({
+      new Explorer.ExplorerError({
         context: {
           detail: 'No primary release impacts were found, so no canonical PR title header exists.',
         },

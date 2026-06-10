@@ -1,7 +1,7 @@
 import { Tui } from '@kitz/tui'
 import type { KeyEvent } from '@opentui/core'
 import { Array as A, Effect, Option } from 'effect'
-import * as Api from '../../api/__.js'
+import * as Planner from '../../api/planner/__.js'
 import {
   Data,
   renderPlanText,
@@ -15,7 +15,7 @@ const focusOrder: readonly FocusPane[] = ['packages', 'plan', 'doctor', 'diff']
 const lifecycles: readonly Lifecycle[] = ['official', 'candidate', 'ephemeral']
 
 interface DraftPlanView {
-  readonly plan: Api.Planner.Plan
+  readonly plan: Planner.Plan
   readonly text: string
   readonly draftJson: string | undefined
   readonly plannedPackages: number
@@ -87,7 +87,7 @@ export type DashboardCommand =
       readonly _tag: 'BuildDoctor'
       readonly requestId: number
       readonly workspace: WorkspaceContext
-      readonly plan: Api.Planner.Plan
+      readonly plan: Planner.Plan
     }
   | {
       readonly _tag: 'BuildPlan'
@@ -97,7 +97,7 @@ export type DashboardCommand =
       readonly excludedPackages: readonly string[]
     }
   | { readonly _tag: 'LoadWorkspace'; readonly requestId: number }
-  | { readonly _tag: 'PersistPlan'; readonly clear: boolean; readonly plan: Api.Planner.Plan }
+  | { readonly _tag: 'PersistPlan'; readonly clear: boolean; readonly plan: Planner.Plan }
   | { readonly _tag: 'Quit' }
 
 const idle = <A>(): ResourceState<A> => ({ _tag: 'Idle' })

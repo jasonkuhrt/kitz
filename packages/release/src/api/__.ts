@@ -27,6 +27,9 @@
  * - **Notes**: Release notes generation from commit history.
  * - **Config**: Configuration loading and resolution.
  * - **Version**: Version calculation and lifecycle models.
+ *
+ * This barrel is the public API surface. Internal release modules should import
+ * producer-owned modules directly instead of depending on this aggregate shape.
  */
 
 // Top-level convenience

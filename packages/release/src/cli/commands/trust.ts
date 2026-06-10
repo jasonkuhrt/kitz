@@ -7,7 +7,7 @@
 import { Env } from '@kitz/env'
 import { Console, Effect, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Publisher from '../../api/publishing/__.js'
 
 const get = (option: Option.Option<string>): string | undefined =>
   Option.isSome(option) ? option.value : undefined
@@ -27,7 +27,7 @@ const trustList = Command.make(
       const packageName = get(pkg)
       const registryValue = get(registry)
       yield* Console.log(
-        Api.Publisher.Providers.Npm.buildTrustListCommand({
+        Publisher.Providers.Npm.buildTrustListCommand({
           ...(packageName === undefined ? {} : { packageName }),
           ...(registryValue === undefined ? {} : { registry: registryValue }),
           json,
@@ -119,7 +119,7 @@ const trustSetup = Command.make(
         const environment = get(flags.env)
         const registry = get(flags.registry)
         yield* Console.log(
-          Api.Publisher.Providers.Npm.buildTrustGithubCommand({
+          Publisher.Providers.Npm.buildTrustGithubCommand({
             packageName,
             repository,
             workflowFile: workflow,
@@ -142,7 +142,7 @@ const trustSetup = Command.make(
         const environment = get(flags.env)
         const registry = get(flags.registry)
         yield* Console.log(
-          Api.Publisher.Providers.Npm.buildTrustGitlabCommand({
+          Publisher.Providers.Npm.buildTrustGitlabCommand({
             packageName,
             project,
             workflowFile: workflow,
@@ -171,7 +171,7 @@ const trustSetup = Command.make(
         }
         const registry = get(flags.registry)
         yield* Console.log(
-          Api.Publisher.Providers.Npm.buildTrustCircleciCommand({
+          Publisher.Providers.Npm.buildTrustCircleciCommand({
             packageName,
             orgId,
             projectId,

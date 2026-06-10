@@ -9,7 +9,8 @@
  */
 import { Console, Effect, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Forecaster from '../../api/forecaster/__.js'
+import * as Renderer from '../../api/renderer/__.js'
 import {
   buildForecastInput,
   ForecastCommandLayer,
@@ -39,15 +40,15 @@ export const forecast = Command.make(
 
       const rendered =
         format === 'table'
-          ? Api.Renderer.renderTable(input.forecast)
+          ? Renderer.renderTable(input.forecast)
           : format === 'tree'
-            ? Api.Renderer.renderTree(input.forecast)
+            ? Renderer.renderTree(input.forecast)
             : format === 'md'
-              ? Api.Renderer.renderForecastMarkdown(input.forecast, {
+              ? Renderer.renderForecastMarkdown(input.forecast, {
                   publishState: input.publishState,
                   publishHistory: input.publishHistory,
                 })
-              : Api.Forecaster.encodeForecastEnvelope({
+              : Forecaster.encodeForecastEnvelope({
                   forecast: input.forecast,
                   publishState: input.publishState,
                   publishHistory: input.publishHistory,

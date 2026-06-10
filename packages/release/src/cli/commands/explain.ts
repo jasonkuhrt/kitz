@@ -7,7 +7,9 @@ import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Console, Effect, Layer, Option } from 'effect'
 import { Argument, Command, Flag, Prompt } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Analyzer from '../../api/analyzer/__.js'
+import * as Planner from '../../api/planner/__.js'
+import * as Renderer from '../../api/renderer/__.js'
 import { FileSystemLayer } from '../../platform.js'
 import {
   isReadyCommandWorkspace,
@@ -55,8 +57,8 @@ export const explain = Command.make(
           })
 
       const tags = yield* git.getTags()
-      const explanation = yield* Api.Planner.explain(
-        yield* Api.Analyzer.analyze({
+      const explanation = yield* Planner.explain(
+        yield* Analyzer.analyze({
           packages: [...workspace.packages],
           tags,
           resolvedConventionalCommitTypes: workspace.config.resolvedConventionalCommitTypes,
@@ -71,7 +73,7 @@ export const explain = Command.make(
       const output =
         format === 'json'
           ? JSON.stringify(explanation, null, 2)
-          : Api.Renderer.renderExplanation(explanation)
+          : Renderer.renderExplanation(explanation)
 
       if (explanation.decision === 'missing') {
         yield* Console.error(output)

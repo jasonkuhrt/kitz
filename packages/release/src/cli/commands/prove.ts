@@ -5,7 +5,9 @@ import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Layer } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Clock from '../../api/clock.js'
+import * as Explorer from '../../api/explorer/__.js'
+import * as Proof from '../../api/proof.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
 import { loadExecutableCommandPlan } from './plan-file.js'
 
@@ -25,10 +27,10 @@ export const prove = Command.make(
       const env = yield* Env.Env
       const { plan } = yield* loadExecutableCommandPlan(from)
 
-      const localObservations = yield* Api.Proof.collectLocalObservations(plan)
-      const githubObservations = yield* Api.Explorer.resolveGitHubContext().pipe(
+      const localObservations = yield* Proof.collectLocalObservations(plan)
+      const githubObservations = yield* Explorer.resolveGitHubContext().pipe(
         Effect.flatMap((context) =>
-          Api.Proof.collectGithubObservations(plan).pipe(
+          Proof.collectGithubObservations(plan).pipe(
             Effect.provide(
               Github.LiveFetch({
                 owner: context.target.owner,
@@ -40,16 +42,16 @@ export const prove = Command.make(
         ),
         Effect.catch(() => Effect.succeed({})),
       )
-      const proof = yield* Api.Proof.prove(plan, {
+      const proof = yield* Proof.prove(plan, {
         ...localObservations,
         ...githubObservations,
       })
-      const proofPath = Api.Proof.proofPathFor(env.cwd, plan)
+      const proofPath = Proof.proofPathFor(env.cwd, plan)
       yield* Console.log(`Proof written to ${Fs.Path.toString(proofPath)}`)
       for (const record of proof.records) {
         yield* Console.log(`${record.status.padEnd(14)} ${record.id}`)
       }
-      if (Api.Proof.hasBlockingProof(proof, yield* Api.Clock.nowIso)) return env.exit(1)
+      if (Proof.hasBlockingProof(proof, yield* Clock.nowIso)) return env.exit(1)
     }),
 ).pipe(
   Command.withDescription('Write plan-bound publishing proof'),

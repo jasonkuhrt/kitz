@@ -8,7 +8,7 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Console, Effect, Layer, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Explorer from '../../api/explorer/__.js'
 import {
   parsePositiveIntegerOption,
   renderPreviewPublishReport,
@@ -39,7 +39,7 @@ export const history = Command.make(
   },
   ({ format, pr, limit }) =>
     Effect.gen(function* () {
-      const context = yield* Api.Explorer.resolveGitHubContext()
+      const context = yield* Explorer.resolveGitHubContext()
       const prNumber = yield* parsePositiveIntegerOption(Option.getOrUndefined(pr), 'pr')
       const limitValue = yield* parsePositiveIntegerOption(Option.getOrUndefined(limit), 'limit')
 

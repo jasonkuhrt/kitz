@@ -16,7 +16,9 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Console, Effect, Layer, Option } from 'effect'
 import { Command, Flag, Prompt } from 'effect/unstable/cli'
-import * as Api from '../../api/__.js'
+import * as Analyzer from '../../api/analyzer/__.js'
+import * as Planner from '../../api/planner/__.js'
+import * as Renderer from '../../api/renderer/__.js'
 import { FileSystemLayer } from '../../platform.js'
 import {
   isReadyCommandWorkspace,
@@ -97,7 +99,7 @@ export const plan = Command.make(
       yield* Console.log(header.render())
 
       const tags = yield* git.getTags()
-      const analysis = yield* Api.Analyzer.analyze({
+      const analysis = yield* Analyzer.analyze({
         packages,
         tags,
         filter: filterPackages,
@@ -108,12 +110,12 @@ export const plan = Command.make(
       const ctx = { packages }
 
       const rawPlan = yield* resolvedLifecycle === 'official'
-        ? Api.Planner.official(analysis, ctx, options)
+        ? Planner.official(analysis, ctx, options)
         : resolvedLifecycle === 'candidate'
-          ? Api.Planner.candidate(analysis, ctx, options)
-          : Api.Planner.ephemeral(analysis, ctx, options)
+          ? Planner.candidate(analysis, ctx, options)
+          : Planner.ephemeral(analysis, ctx, options)
 
-      const plan = yield* Api.Planner.attachPublishContract({
+      const plan = yield* Planner.attachPublishContract({
         plan: rawPlan,
         config: workspace.config,
       })
@@ -124,13 +126,13 @@ export const plan = Command.make(
       }
 
       // Display plan
-      yield* Console.log(Api.Renderer.renderPlan(plan))
+      yield* Console.log(Renderer.renderPlan(plan))
 
       const outPath = Option.getOrUndefined(out)
       const planPath = outPath !== undefined ? Fs.Path.fromString(outPath) : undefined
-      const planLocation = yield* Api.Planner.Store.resolvePlanLocation(planPath)
+      const planLocation = yield* Planner.Store.resolvePlanLocation(planPath)
 
-      yield* Api.Planner.Store.write(plan, planPath)
+      yield* Planner.Store.write(plan, planPath)
 
       const releaseCommand = workspace.config.operator.releaseCommand
       const done = Str.Builder()

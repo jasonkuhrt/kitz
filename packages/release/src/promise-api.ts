@@ -1,13 +1,16 @@
 /* oxlint-disable kitz/effect/no-effect-run-in-library-code, kitz/error/require-typed-effect-errors -- This module is the explicit Promise adapter boundary for non-Effect callers. */
 import { Effect, Layer } from 'effect'
-import * as Api from './api/__.js'
+import * as Artifact from './api/artifact.js'
+import * as Executor from './api/executor/__.js'
 import type { Plan } from './api/planner/models/plan.js'
+import * as Proof from './api/proof.js'
+import * as Reconciler from './api/reconciler.js'
 
 export interface AdapterDependencies {
   readonly layer?: Layer.Layer<any, any, any>
 }
 
-type RehearseOptions = NonNullable<Parameters<typeof Api.Artifact.rehearse>[1]>
+type RehearseOptions = NonNullable<Parameters<typeof Artifact.rehearse>[1]>
 
 const isAdapterDependencies = (
   value: RehearseOptions | AdapterDependencies | undefined,
@@ -23,15 +26,15 @@ const run = <A>(
       : effect.pipe(Effect.provide(dependencies.layer))) as Effect.Effect<A, unknown>,
   )
 
-export const digestPlan = Api.Proof.digestForPlan
-export const makeProofArtifact = Api.Proof.makeProofArtifact
-export const validateProof = Api.Proof.validateProof
-export const validateArtifactManifest = Api.Artifact.validateManifestForPlan
-export const classifyReconciliation = Api.Reconciler.classify
-export const inspectLegitimacy = Api.Reconciler.inspectVerdict
+export const digestPlan = Proof.digestForPlan
+export const makeProofArtifact = Proof.makeProofArtifact
+export const validateProof = Proof.validateProof
+export const validateArtifactManifest = Artifact.validateManifestForPlan
+export const classifyReconciliation = Reconciler.classify
+export const inspectLegitimacy = Reconciler.inspectVerdict
 
 export const prove = (plan: Plan, dependencies?: AdapterDependencies) =>
-  run(Api.Proof.prove(plan), dependencies)
+  run(Proof.prove(plan), dependencies)
 
 export const rehearse = (
   plan: Plan,
@@ -43,20 +46,20 @@ export const rehearse = (
     ? optionsOrDependencies
     : dependencies
 
-  return run(Api.Artifact.rehearse(plan, options), resolvedDependencies)
+  return run(Artifact.rehearse(plan, options), resolvedDependencies)
 }
 
 export const apply = (
   plan: Plan,
-  options: Parameters<typeof Api.Executor.execute>[1] = {},
+  options: Parameters<typeof Executor.execute>[1] = {},
   dependencies?: AdapterDependencies,
-) => run(Api.Executor.execute(plan, options), dependencies)
+) => run(Executor.execute(plan, options), dependencies)
 
 export const status = (
   plan: Plan,
-  options: Parameters<typeof Api.Executor.status>[1] = {},
+  options: Parameters<typeof Executor.status>[1] = {},
   dependencies?: AdapterDependencies,
-) => run(Api.Executor.status(plan, options), dependencies)
+) => run(Executor.status(plan, options), dependencies)
 
 export const reconcile = (plan: Plan, dependencies?: AdapterDependencies) =>
-  run(Api.Reconciler.reconcile(plan), dependencies)
+  run(Reconciler.reconcile(plan), dependencies)

@@ -2,7 +2,9 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
 import { Console, Effect, FileSystem, Option } from 'effect'
-import * as Api from '../../api/__.js'
+import * as Planner from '../../api/planner/__.js'
+import * as Publishing from '../../api/publishing.js'
+import * as ReleaseContract from '../../api/release-contract.js'
 
 type PlanSource = 'active' | 'custom'
 
@@ -12,13 +14,13 @@ interface PlanLookupContext {
 }
 
 interface BasePlanState {
-  readonly location: Api.Planner.Store.ActivePlanLocation
+  readonly location: Planner.Store.ActivePlanLocation
   readonly source: PlanSource
 }
 
 export interface PlanLoadedState extends BasePlanState {
   readonly _tag: 'PlanLoaded'
-  readonly plan: Api.Planner.Plan
+  readonly plan: Planner.Plan
 }
 
 export interface PlanMissingState extends BasePlanState {
@@ -32,22 +34,22 @@ export interface PlanInvalidState extends BasePlanState {
 
 export type PlanState = PlanLoadedState | PlanMissingState | PlanInvalidState
 
-export type ExecutablePlan = Api.Planner.Plan & {
-  readonly planDigest: Api.ReleaseContract.PlanDigest
-  readonly publishIntent: Api.ReleaseContract.PublishIntent
+export type ExecutablePlan = Planner.Plan & {
+  readonly planDigest: ReleaseContract.PlanDigest
+  readonly publishIntent: ReleaseContract.PublishIntent
 }
 
 export interface ExecutableCommandPlan extends Omit<PlanLoadedState, 'plan'> {
   readonly plan: ExecutablePlan
-  readonly planDigest: Api.ReleaseContract.PlanDigest
-  readonly publishIntent: Api.ReleaseContract.PublishIntent
-  readonly publishing: Api.Publishing.Publishing
+  readonly planDigest: ReleaseContract.PlanDigest
+  readonly publishIntent: ReleaseContract.PublishIntent
+  readonly publishing: Publishing.Publishing
 }
 
 const renderPlanLabel = (source: PlanSource): string =>
   source === 'active' ? 'Active release plan' : 'Release plan'
 
-const renderPlanPath = (location: Api.Planner.Store.ActivePlanLocation): string =>
+const renderPlanPath = (location: Planner.Store.ActivePlanLocation): string =>
   Fs.Path.toString(location.file)
 
 const renderRegenerateCommand = (state: PlanMissingState | PlanInvalidState): string =>
@@ -67,8 +69,8 @@ export const loadPlan = (
   context: PlanLookupContext,
 ): Effect.Effect<PlanState, never, Env.Env | FileSystem.FileSystem> =>
   Effect.gen(function* () {
-    const location = yield* Api.Planner.Store.resolvePlanLocation(context.path)
-    const result = yield* Api.Planner.Store.read(context.path).pipe(Effect.result)
+    const location = yield* Planner.Store.resolvePlanLocation(context.path)
+    const result = yield* Planner.Store.read(context.path).pipe(Effect.result)
 
     if (result._tag === 'Failure') {
       return {
@@ -150,7 +152,7 @@ export const loadExecutableCommandPlan = (
       plan: loaded.plan,
       planDigest: loaded.plan.planDigest,
       publishIntent: loaded.plan.publishIntent,
-      publishing: Api.Publishing.publishingFromIntent(loaded.plan.publishIntent),
+      publishing: Publishing.publishingFromIntent(loaded.plan.publishIntent),
     } satisfies ExecutableCommandPlan
   })
 
@@ -175,9 +177,7 @@ export const formatIgnoredInvalidPlanMessage = (state: PlanInvalidState): readon
   'Ignoring the invalid active plan and computing doctor scenarios from the current repo state.',
 ]
 
-export const formatUnsupportedExecutionPlanMessage = (
-  plan: Api.Planner.Plan,
-): readonly string[] => {
+export const formatUnsupportedExecutionPlanMessage = (plan: Planner.Plan): readonly string[] => {
   const missing = [
     ...(plan.planDigest === undefined ? ['planDigest'] : []),
     ...(plan.publishIntent === undefined ? ['publishIntent'] : []),
@@ -190,8 +190,8 @@ export const formatUnsupportedExecutionPlanMessage = (
 }
 
 export const hasExecutablePlanContract = (
-  plan: Api.Planner.Plan,
-): plan is Api.Planner.Plan & {
-  readonly planDigest: Api.ReleaseContract.PlanDigest
-  readonly publishIntent: Api.ReleaseContract.PublishIntent
+  plan: Planner.Plan,
+): plan is Planner.Plan & {
+  readonly planDigest: ReleaseContract.PlanDigest
+  readonly publishIntent: ReleaseContract.PublishIntent
 } => plan.planDigest !== undefined && plan.publishIntent !== undefined
