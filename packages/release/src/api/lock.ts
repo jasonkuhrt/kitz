@@ -1,9 +1,12 @@
-import { PlatformError, Effect, FileSystem, Option, Schema } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
+import { Resource } from '@kitz/resource'
+import { Effect, FileSystem, Option } from 'effect'
+import { jsonFile } from './persistence.js'
 import { ExecutionLock, type PlanDigest, PrincipalRef } from './release-contract.js'
 
 const lockDir = Fs.Path.RelDir.fromString('./.release/locks/')
+const lockResource = jsonFile(ExecutionLock)
 
 export interface LockIssue {
   readonly code: string
@@ -64,40 +67,18 @@ export const validate = (lock: ExecutionLock, now: string): readonly LockIssue[]
 
 export const read = (
   path: Fs.Path.AbsFile,
-): Effect.Effect<
-  Option.Option<ExecutionLock>,
-  PlatformError.PlatformError | Schema.SchemaError,
-  FileSystem.FileSystem
-> =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    const exists = yield* fs.exists(Fs.Path.toString(path))
-    if (!exists) return Option.none()
-    const text = yield* fs.readFileString(Fs.Path.toString(path))
-    const lock = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(ExecutionLock))(text)
-    return Option.some(lock)
-  })
+): Effect.Effect<Option.Option<ExecutionLock>, Resource.ResourceError, FileSystem.FileSystem> =>
+  lockResource.read(path)
 
 export const write = (
   path: Fs.Path.AbsFile,
   lock: ExecutionLock,
-): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem
-    yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(path)), { recursive: true })
-    yield* fs.writeFileString(
-      Fs.Path.toString(path),
-      `${JSON.stringify(Schema.encodeSync(ExecutionLock)(lock), null, 2)}\n`,
-    )
-  })
+): Effect.Effect<void, Resource.ResourceError, FileSystem.FileSystem> =>
+  lockResource.write(lock, path)
 
 export const acquireLocal = (
   params: LocalLockParams,
-): Effect.Effect<
-  ExecutionLock,
-  Error | PlatformError.PlatformError | Schema.SchemaError,
-  Env.Env | FileSystem.FileSystem
-> =>
+): Effect.Effect<ExecutionLock, Error | Resource.ResourceError, Env.Env | FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
     const path = lockPathFor(env.cwd, params.planDigest)
@@ -123,13 +104,11 @@ export const acquireLocal = (
 
 export const releaseLocal = (
   planDigest: PlanDigest,
-): Effect.Effect<void, PlatformError.PlatformError, Env.Env | FileSystem.FileSystem> =>
+): Effect.Effect<void, Resource.ResourceError, Env.Env | FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
-    const fs = yield* FileSystem.FileSystem
     const path = lockPathFor(env.cwd, planDigest)
-    const exists = yield* fs.exists(Fs.Path.toString(path))
-    if (exists) yield* fs.remove(Fs.Path.toString(path))
+    yield* lockResource.delete(path)
   })
 
 // oxlint-disable-next-line kitz/error/require-tagged-error-types -- withLocal preserves the wrapped effect's error channel exactly.
@@ -140,7 +119,7 @@ export const withLocal = <A, E, R>(
 ): Effect.Effect<
   A,
   // oxlint-disable-next-line kitz/error/require-tagged-error-types -- withLocal preserves the wrapped effect's error channel exactly.
-  E | Error | PlatformError.PlatformError | Schema.SchemaError,
+  E | Error | Resource.ResourceError,
   R | Env.Env | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {
