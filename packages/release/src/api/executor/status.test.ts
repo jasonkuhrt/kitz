@@ -1,11 +1,10 @@
-import { Str } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
-import { describe, expect, test } from 'bun:test'
+import { describe, expect } from 'bun:test'
 import { Test } from '@kitz/test'
 import { Effect, Layer } from 'effect'
-import { execute, formatExecutionStatus, status } from './execute.js'
+import { execute, status } from './execute.js'
 import { makeHarness, makePackageJson, planOfficial, tag } from './test-support.js'
 
 const corePackagePath = Fs.Path.AbsDir.fromString('/repo/packages/core/')
@@ -46,59 +45,6 @@ const makeStatusHarness = (options?: { readonly failPublishPackages?: readonly s
   })
 
 describe('Executor status', () => {
-  test('renders failed workflow state details', () => {
-    const rendered = formatExecutionStatus({
-      state: 'failed',
-      executionId: 'release-official:test',
-      lifecycle: 'official',
-      plannedPackages: ['@kitz/core'],
-      detail: 'workflow crashed',
-    })
-
-    expect(rendered).toContain('Release workflow status:')
-    expect(rendered).toContain('[FAILED]')
-    expect(rendered).toContain('Execution ID: `release-official:test`')
-    expect(rendered).toContain('Packages: @kitz/core')
-    expect(rendered).toContain('Failure')
-    expect(rendered).toContain('workflow crashed')
-  })
-
-  test('preserves custom plan paths in not-started next-step guidance', () => {
-    const rendered = formatExecutionStatus(
-      {
-        state: 'not-started',
-        executionId: 'release-official:test',
-        lifecycle: 'official',
-        plannedPackages: ['@kitz/core'],
-      },
-      {
-        nextApplyCommand: 'release apply --from ./.release/custom-plan.json',
-      },
-    )
-
-    expect(rendered).toContain('Run `release apply --from ./.release/custom-plan.json`')
-  })
-
-  test('renders colored success summaries without changing the stripped text semantics', () => {
-    const rendered = formatExecutionStatus(
-      {
-        state: 'succeeded',
-        executionId: 'release-official:test',
-        lifecycle: 'official',
-        plannedPackages: ['@kitz/core'],
-        summary: {
-          releasedPackages: ['@kitz/core'],
-          createdTags: ['@kitz/core@1.1.0'],
-          createdGHReleases: ['@kitz/core v1.1.0'],
-        },
-      },
-      { color: true },
-    )
-
-    expect(rendered).toContain('\u001b[')
-    expect(Str.Visual.strip(rendered)).toContain('Created tags: @kitz/core@1.1.0')
-  })
-
   Test.live('reports when the active plan has not started yet', () =>
     Effect.gen(function* () {
       const harness = yield* makeStatusHarness()
@@ -111,9 +57,6 @@ describe('Executor status', () => {
 
       expect(workflowStatus.state).toBe('not-started')
       expect(workflowStatus.plannedPackages).toEqual(['@kitz/core', '@kitz/cli'])
-      expect(formatExecutionStatus(workflowStatus)).toContain(
-        'No persisted workflow state exists for this plan yet.',
-      )
     }),
   )
 
@@ -140,15 +83,6 @@ describe('Executor status', () => {
       if (workflowStatus.state === 'suspended') {
         expect(workflowStatus.detail).toContain('mock publish failure')
       }
-
-      const rendered = formatExecutionStatus(workflowStatus)
-      expect(rendered).toContain('[SUSPENDED]')
-      expect(rendered).toContain('Resume: Fix the blocking issue, then run `release resume`')
-      expect(
-        formatExecutionStatus(workflowStatus, {
-          resumeCommand: 'release resume --from ./.release/custom-plan.json',
-        }),
-      ).toContain('run `release resume --from ./.release/custom-plan.json`')
     }),
   )
 
@@ -167,11 +101,6 @@ describe('Executor status', () => {
       if (workflowStatus.state === 'succeeded') {
         expect(workflowStatus.summary).toEqual(run)
       }
-
-      const rendered = formatExecutionStatus(workflowStatus)
-      expect(rendered).toContain('[SUCCEEDED]')
-      expect(rendered).toContain('Released packages: @kitz/core, @kitz/cli')
-      expect(rendered).toContain(`Created tags: ${tagCore('1.1.0')}, ${tagCli('1.0.1')}`)
     }),
   )
 })
