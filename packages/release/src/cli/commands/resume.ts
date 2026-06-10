@@ -4,22 +4,13 @@
  * Resume an interrupted durable release workflow for the active release plan.
  */
 import { Env } from '@kitz/env'
-import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Fiber, Layer, Option, Stream, Terminal } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
-import {
-  formatInvalidPlanMessage,
-  formatMissingPlanMessage,
-  formatPlanCommand,
-  formatUnsupportedExecutionPlanMessage,
-  hasExecutablePlanContract,
-  loadActivePlan,
-  loadPlan,
-} from './plan-file.js'
+import { formatPlanCommand, loadExecutableCommandPlan } from './plan-file.js'
 
 const confirm = (message: string) =>
   Effect.gen(function* () {
@@ -54,39 +45,13 @@ export const resume = Command.make(
   ({ yes, tag, from }) =>
     Effect.gen(function* () {
       const env = yield* Env.Env
-      const planState = yield* Option.isSome(from)
-        ? loadPlan({
-            path: Fs.Path.fromString(from.value),
-            source: 'custom',
-          })
-        : loadActivePlan()
-
-      if (planState._tag === 'PlanMissing') {
-        for (const line of formatMissingPlanMessage(planState)) {
-          yield* Console.error(line)
-        }
-        return env.exit(1)
-      }
-
-      if (planState._tag === 'PlanInvalid') {
-        for (const line of formatInvalidPlanMessage(planState)) {
-          yield* Console.error(line)
-        }
-        return env.exit(1)
-      }
-
-      const plan = planState.plan
       if (Option.isSome(tag)) {
         yield* Console.error(
           'Resume uses the frozen plan dist-tag; --tag cannot alter workflow identity.',
         )
         return env.exit(1)
       }
-      if (!hasExecutablePlanContract(plan)) {
-        for (const line of formatUnsupportedExecutionPlanMessage(plan)) yield* Console.error(line)
-        return env.exit(1)
-      }
-      const publishing = Api.Publishing.publishingFromIntent(plan.publishIntent)
+      const { plan, publishing } = yield* loadExecutableCommandPlan(from)
 
       const runtime = yield* Api.Explorer.explore()
       const runtimeConfig = Api.Explorer.toExecutorRuntimeConfig(runtime)

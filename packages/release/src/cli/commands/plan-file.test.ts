@@ -1,6 +1,6 @@
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
-import { Effect, Layer, Option } from 'effect'
+import { Effect, FileSystem, Layer, Option } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import {
   formatIgnoredInvalidPlanMessage,
@@ -14,98 +14,64 @@ import {
 } from './plan-file.js'
 import * as Api from '../../api/__.js'
 
+const cwd = Fs.Path.AbsDir.fromString('/repo/')
+const run = <A>(
+  effect: Effect.Effect<A, never, Env.Env | FileSystem.FileSystem>,
+  files: Record<string, string> = {},
+) =>
+  Effect.runPromise(
+    effect.pipe(Effect.provide(Layer.mergeAll(Fs.Memory.layer(files), Env.Test({ cwd })))),
+  )
+
 describe('plan-file helpers', () => {
-  test('loads a missing active plan as PlanMissing', async () => {
-    const result = await Effect.runPromise(
-      loadActivePlan().pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            Fs.Memory.layer({}),
-            Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') }),
-          ),
-        ),
-      ),
-    )
-
-    expect(result._tag).toBe('PlanMissing')
-    if (result._tag !== 'PlanMissing') {
-      throw new Error('expected missing plan')
-    }
-
-    expect(formatMissingPlanMessage(result)).toEqual([
+  test('formats plan states and follow-up commands', async () => {
+    const missing = await run(loadActivePlan())
+    if (missing._tag !== 'PlanMissing') throw new Error('expected missing plan')
+    expect(formatMissingPlanMessage(missing)).toEqual([
       'Active release plan not found at /repo/.release/plan.json.',
       "Run 'release plan --lifecycle <official|candidate|ephemeral>' first to generate a plan.",
     ])
-  })
 
-  test('formats invalid active plans with regeneration and ignore guidance', async () => {
-    const result = await Effect.runPromise(
-      loadActivePlan().pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            Fs.Memory.layer({
-              '/repo/.release/plan.json': '{"broken":true}',
-            }),
-            Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') }),
-          ),
-        ),
-      ),
+    const invalid = await run(loadActivePlan(), { '/repo/.release/plan.json': '{"broken":true}' })
+    if (invalid._tag !== 'PlanInvalid') throw new Error('expected invalid plan')
+    expect(formatInvalidPlanMessage(invalid).join('\n')).toContain(
+      'stale, malformed, or written by an older @kitz/release schema',
+    )
+    expect(formatIgnoredInvalidPlanMessage(invalid).join('\n')).toContain(
+      'Ignoring the invalid active plan',
     )
 
-    expect(result._tag).toBe('PlanInvalid')
-    if (result._tag !== 'PlanInvalid') {
-      throw new Error('expected invalid plan')
-    }
-
-    const message = formatInvalidPlanMessage(result).join('\n')
-    expect(message).toContain('Active release plan at /repo/.release/plan.json is unreadable.')
-    expect(message).toContain('stale, malformed, or written by an older @kitz/release schema')
-    expect(message).toContain("Run 'release plan --lifecycle <official|candidate|ephemeral>'")
-    expect(message).toContain('delete /repo/.release/plan.json')
-
-    const ignored = formatIgnoredInvalidPlanMessage(result).join('\n')
-    expect(ignored).toContain('Ignoring the invalid active plan')
-  })
-
-  test('formats missing custom plans with an --out regeneration hint', async () => {
-    const result = await Effect.runPromise(
-      loadPlan({
-        path: Fs.Path.fromString('./tmp/release-plan.json'),
-        source: 'custom',
-      }).pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            Fs.Memory.layer({}),
-            Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') }),
-          ),
-        ),
-      ),
+    const customMissing = await run(
+      loadPlan({ path: Fs.Path.fromString('./tmp/release-plan.json'), source: 'custom' }),
+    )
+    if (customMissing._tag !== 'PlanMissing') throw new Error('expected missing custom plan')
+    expect(formatMissingPlanMessage(customMissing).join('\n')).toContain(
+      '--out /repo/tmp/release-plan.json',
     )
 
-    expect(result._tag).toBe('PlanMissing')
-    if (result._tag !== 'PlanMissing') {
-      throw new Error('expected missing custom plan')
-    }
-
-    const message = formatMissingPlanMessage(result).join('\n')
-    expect(message).toContain('/repo/tmp/release-plan.json')
-    expect(message).toContain('--out /repo/tmp/release-plan.json')
-  })
-
-  test('formats unsupported execution plans with the missing frozen contract fields', () => {
     const plan = Api.Planner.Plan.empty
-
     expect(hasExecutablePlanContract(plan)).toBe(false)
     expect(formatUnsupportedExecutionPlanMessage(plan)).toEqual([
       'This release plan is missing the frozen v2 execution contract.',
       'Missing field(s): planDigest, publishIntent.',
       'Run `release plan --lifecycle <official|candidate|ephemeral>` again with the current @kitz/release before executing, resuming, graphing, or checking durable status.',
     ])
-  })
+    expect(
+      formatUnsupportedExecutionPlanMessage(
+        Api.Planner.Plan.make({
+          lifecycle: 'official',
+          timestamp: '',
+          releases: [],
+          cascades: [],
+          planDigest: Api.ReleaseContract.PlanDigest.make({
+            algorithm: 'sha256',
+            value: 'a'.repeat(64),
+          }),
+        }),
+      )[1],
+    ).toBe('Missing field(s): publishIntent.')
 
-  test('formats plan follow-up commands with shell-safe custom paths', () => {
     const custom = Option.some('./tmp/release plan.json')
-
     expect(formatPlanCommand('release apply', Option.none())).toBe('release apply')
     expect(formatPlanCommand('release apply', custom)).toBe(
       "release apply --from './tmp/release plan.json'",

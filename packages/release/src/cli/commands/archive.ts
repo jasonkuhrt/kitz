@@ -10,7 +10,7 @@ import { Console, Effect, FileSystem, Layer, Option, Schema } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
 import { FileSystemLayer } from '../../platform.js'
-import { formatInvalidPlanMessage, formatMissingPlanMessage, loadPlan } from './plan-file.js'
+import { loadExecutableCommandPlan } from './plan-file.js'
 
 const archiveExport = Command.make(
   'export',
@@ -25,26 +25,9 @@ const archiveExport = Command.make(
     Effect.gen(function* () {
       const env = yield* Env.Env
       const fs = yield* FileSystem.FileSystem
-
-      const planPath = Option.isSome(from) ? Fs.Path.fromString(from.value) : undefined
-      const planState = yield* loadPlan({
-        ...(planPath !== undefined ? { path: planPath } : {}),
-        source: planPath === undefined ? 'active' : 'custom',
-      })
-
-      if (planState._tag === 'PlanMissing') {
-        for (const line of formatMissingPlanMessage(planState)) yield* Console.error(line)
-        return env.exit(1)
-      }
-
-      if (planState._tag === 'PlanInvalid') {
-        for (const line of formatInvalidPlanMessage(planState)) yield* Console.error(line)
-        return env.exit(1)
-      }
-
-      const proof = yield* Api.Proof.readForPlan(planState.plan)
-      const artifacts = yield* Api.Artifact.readManifest(planState.plan)
-      const digest = Api.Proof.digestForPlan(planState.plan)
+      const { plan, planDigest: digest } = yield* loadExecutableCommandPlan(from)
+      const proof = yield* Api.Proof.readForPlan(plan)
+      const artifacts = yield* Api.Artifact.readManifest(plan)
       const journalEntries = yield* Api.Journal.readEntries(
         Api.Journal.journalPathFor(env.cwd, digest),
       )
@@ -58,7 +41,7 @@ const archiveExport = Command.make(
         payloads: [
           {
             path: Fs.Path.RelFile.fromString('./plan.json'),
-            content: `${JSON.stringify(Schema.encodeSync(Api.Planner.Plan)(planState.plan), null, 2)}\n`,
+            content: `${JSON.stringify(Schema.encodeSync(Api.Planner.Plan)(plan), null, 2)}\n`,
           },
           {
             path: Fs.Path.RelFile.fromString('./proof.json'),

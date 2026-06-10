@@ -17,13 +17,7 @@ import { Console, Effect, Fiber, Layer, Option, Stream, Terminal } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
-import {
-  formatInvalidPlanMessage,
-  formatMissingPlanMessage,
-  formatUnsupportedExecutionPlanMessage,
-  hasExecutablePlanContract,
-  loadPlan,
-} from './plan-file.js'
+import { loadExecutableCommandPlan } from './plan-file.js'
 
 const confirm = (message: string) =>
   Effect.gen(function* () {
@@ -80,34 +74,8 @@ export const apply = Command.make(
         return env.exit(1)
       }
 
-      const planPath = Option.isSome(from) ? Fs.Path.fromString(from.value) : undefined
-      const planState = yield* loadPlan({
-        ...(planPath !== undefined ? { path: planPath } : {}),
-        source: planPath === undefined ? 'active' : 'custom',
-      })
-
-      if (planState._tag === 'PlanMissing') {
-        for (const line of formatMissingPlanMessage(planState)) {
-          yield* Console.error(line)
-        }
-        return env.exit(1)
-      }
-
-      if (planState._tag === 'PlanInvalid') {
-        for (const line of formatInvalidPlanMessage(planState)) {
-          yield* Console.error(line)
-        }
-        return env.exit(1)
-      }
-
-      // Plan file now stores rich PlannedRelease data directly - no conversion needed
-      const plan = planState.plan
-      if (!hasExecutablePlanContract(plan)) {
-        for (const line of formatUnsupportedExecutionPlanMessage(plan)) {
-          yield* Console.error(line)
-        }
-        return env.exit(1)
-      }
+      const executablePlan = yield* loadExecutableCommandPlan(from)
+      const plan = executablePlan.plan
 
       // Single intent resolver: resolves the frozen publish intent and enforces
       // the prerelease-to-`latest` guard before any mutation.
@@ -119,7 +87,7 @@ export const apply = Command.make(
         return env.exit(1)
       }
       const publish = Api.Publishing.publishSemanticsFromIntent(intentResult.success)
-      const planDigest = Api.Proof.digestForPlan(plan)
+      const planDigest = executablePlan.planDigest
 
       const lockParams = {
         planDigest,
@@ -304,7 +272,7 @@ export const apply = Command.make(
           // active pointer (instead of deleting the only copy of the plan).
           const archiveFile = yield* Api.Planner.Store.archive(plan, planDigest)
           yield* Console.log(`Plan archived to ${Fs.Path.toString(archiveFile)}`)
-          if (planPath === undefined) {
+          if (executablePlan.source === 'active') {
             yield* Api.Planner.Store.deleteActive
           }
 

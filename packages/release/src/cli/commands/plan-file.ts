@@ -1,8 +1,7 @@
-import { FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
-import { Effect, Option } from 'effect'
+import { Console, Effect, FileSystem, Option } from 'effect'
 import * as Api from '../../api/__.js'
 
 type PlanSource = 'active' | 'custom'
@@ -32,6 +31,18 @@ export interface PlanInvalidState extends BasePlanState {
 }
 
 export type PlanState = PlanLoadedState | PlanMissingState | PlanInvalidState
+
+export type ExecutablePlan = Api.Planner.Plan & {
+  readonly planDigest: Api.ReleaseContract.PlanDigest
+  readonly publishIntent: Api.ReleaseContract.PublishIntent
+}
+
+export interface ExecutableCommandPlan extends Omit<PlanLoadedState, 'plan'> {
+  readonly plan: ExecutablePlan
+  readonly planDigest: Api.ReleaseContract.PlanDigest
+  readonly publishIntent: Api.ReleaseContract.PublishIntent
+  readonly publishing: Api.Publishing.Publishing
+}
 
 const renderPlanLabel = (source: PlanSource): string =>
   source === 'active' ? 'Active release plan' : 'Release plan'
@@ -89,6 +100,59 @@ export const loadActivePlan = (): Effect.Effect<
   never,
   Env.Env | FileSystem.FileSystem
 > => loadPlan({ source: 'active' })
+
+const planLookupFromFlag = (from: Option.Option<string>): PlanLookupContext =>
+  Option.isSome(from)
+    ? {
+        path: Fs.Path.fromString(from.value),
+        source: 'custom',
+      }
+    : { source: 'active' }
+
+const writeErrorLines = (lines: readonly string[]): Effect.Effect<void> =>
+  Effect.forEach(lines, (line) => Console.error(line), { discard: true })
+
+const exitWithPlanMessage = (lines: readonly string[]): Effect.Effect<never, never, Env.Env> =>
+  Effect.gen(function* () {
+    const env = yield* Env.Env
+    yield* writeErrorLines(lines)
+    return env.exit(1)
+  })
+
+export const loadCommandPlan = (
+  from: Option.Option<string>,
+): Effect.Effect<PlanLoadedState, never, Env.Env | FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const state = yield* loadPlan(planLookupFromFlag(from))
+
+    switch (state._tag) {
+      case 'PlanLoaded':
+        return state
+      case 'PlanMissing':
+        return yield* exitWithPlanMessage(formatMissingPlanMessage(state))
+      case 'PlanInvalid':
+        return yield* exitWithPlanMessage(formatInvalidPlanMessage(state))
+    }
+  })
+
+export const loadExecutableCommandPlan = (
+  from: Option.Option<string>,
+): Effect.Effect<ExecutableCommandPlan, never, Env.Env | FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const loaded = yield* loadCommandPlan(from)
+
+    if (!hasExecutablePlanContract(loaded.plan)) {
+      return yield* exitWithPlanMessage(formatUnsupportedExecutionPlanMessage(loaded.plan))
+    }
+
+    return {
+      ...loaded,
+      plan: loaded.plan,
+      planDigest: loaded.plan.planDigest,
+      publishIntent: loaded.plan.publishIntent,
+      publishing: Api.Publishing.publishingFromIntent(loaded.plan.publishIntent),
+    } satisfies ExecutableCommandPlan
+  })
 
 export const formatMissingPlanMessage = (state: PlanMissingState): readonly string[] => [
   `${renderPlanLabel(state.source)} not found at ${renderPlanPath(state.location)}.`,
