@@ -12,7 +12,7 @@ import {
   PlanSourceSnapshot,
   publishIntentFromSemantics,
 } from '../release-contract.js'
-import { agentFromProjectManager } from '../publishing/package-manager.js'
+import { agentFromProjectManager } from '../publishing/driver.js'
 import { resolvePublishSemanticsForPlan } from '../publishing.js'
 import { Plan } from './models/plan.js'
 
