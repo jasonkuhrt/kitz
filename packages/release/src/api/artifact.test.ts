@@ -51,6 +51,12 @@ const pkg = {
   scope: 'core',
   path: Fs.Path.AbsDir.fromString('/repo/packages/core/'),
 }
+const corePackageJsonPath = '/repo/packages/core/package.json'
+const coreManifest = (options?: Parameters<typeof makePackageJson>[2]) =>
+  makePackageJson('@kitz/core', '1.0.0', options)
+const coreDisk = (content = coreManifest()): Fs.Memory.DiskLayout => ({
+  [corePackageJsonPath]: content,
+})
 
 const tarball = Fs.Path.AbsFile.fromString('/repo/.release/artifacts/kitz-core-1.0.0.tgz')
 const tarballBytes = new Uint8Array([1, 2, 3, 4])
@@ -89,6 +95,21 @@ const contractedPlan = Plan.make({
   }),
 })
 
+const sourceSnapshot = PlanSourceSnapshot.make({
+  headSha: 'abc1234',
+  trunk: 'main',
+  releaseConfigDigest: sha256Text('config'),
+  releaseConfigDigestSource: 'canonical-effective-config',
+  lockfiles: [],
+  packageManager: {
+    name: 'bun',
+    version: '1.3.6',
+    binary: 'bun',
+    subcommands: { pack: true, publish: true },
+  },
+  toolVersions: { node: '22.14.0', bun: '1.3.6' },
+})
+
 const updatePublishIntent = (intent: PublishIntent, overrides: Partial<PublishIntent>) =>
   PublishIntent.make(Object.assign({}, intent, overrides))
 
@@ -100,6 +121,84 @@ const updateScriptPolicy = (policy: ScriptPolicy, overrides: Partial<ScriptPolic
 
 const updateArtifactManifest = (manifest: ArtifactManifest, overrides: Partial<ArtifactManifest>) =>
   ArtifactManifest.make(Object.assign({}, manifest, overrides))
+
+const makeContractedPlan = ({
+  source,
+  publishIntent = contractedPlan.publishIntent!,
+}: {
+  readonly source?: PlanSourceSnapshot
+  readonly publishIntent?: PublishIntent
+} = {}) =>
+  Plan.make({
+    lifecycle: contractedPlan.lifecycle,
+    timestamp: contractedPlan.timestamp,
+    releases: contractedPlan.releases,
+    cascades: contractedPlan.cascades,
+    ...(source === undefined ? {} : { source }),
+    publishIntent,
+  })
+
+const updateContractedArtifactPolicy = (overrides: Partial<ArtifactPolicy>): PublishIntent =>
+  updatePublishIntent(contractedPlan.publishIntent!, {
+    artifacts: updateArtifactPolicy(contractedPlan.publishIntent!.artifacts, overrides),
+  })
+
+const updateContractedScriptPolicy = (overrides: Partial<ScriptPolicy>): PublishIntent =>
+  updateContractedArtifactPolicy({
+    scriptPolicy: updateScriptPolicy(
+      contractedPlan.publishIntent!.artifacts.scriptPolicy,
+      overrides,
+    ),
+  })
+
+const updateContractedEnginePolicy = (
+  overrides: Parameters<typeof EnginePolicy.make>[0],
+): PublishIntent =>
+  updateContractedArtifactPolicy({
+    enginePolicy: EnginePolicy.make(overrides),
+  })
+
+const issueCodes = (issues: readonly { readonly code: string }[]) =>
+  issues.map((issue) => issue.code)
+
+const engineIssueCodes = (releasePlan: Plan, diskLayout: Fs.Memory.DiskLayout) =>
+  Effect.runPromise(
+    validateEnginePolicyForPlan(releasePlan).pipe(
+      Effect.provide(Fs.Memory.layer(diskLayout)),
+      Effect.map(issueCodes),
+    ),
+  )
+
+const scriptIssueCodes = (releasePlan: Plan, packageJson: string) =>
+  Effect.runPromise(
+    validateScriptPolicyForPlan(releasePlan).pipe(
+      Effect.provide(Fs.Memory.layer(coreDisk(packageJson))),
+      Effect.map(issueCodes),
+    ),
+  )
+
+const allowlistedPrepackPlan = (network: ScriptPolicy['network']) => {
+  const command = 'echo preparing'
+  const packageJson = coreManifest({ scripts: { prepack: command } })
+
+  return {
+    packageJson,
+    plan: makeContractedPlan({
+      publishIntent: updateContractedScriptPolicy({
+        default: 'allow-listed',
+        network,
+        allowlist: [
+          {
+            packageName: Pkg.Moniker.parse('@kitz/core'),
+            script: 'prepack',
+            commandSha256: sha256Text(command),
+            packageSourceDigest: sha256Text(packageJson),
+          },
+        ],
+      }),
+    }),
+  }
+}
 
 const artifact = {
   package: pkg,
@@ -124,9 +223,7 @@ const coreGit = {
   isClean: true,
 }
 
-const coreDiskLayout = {
-  '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
-}
+const coreDiskLayout = coreDisk()
 
 const makeCoreHarness = (params?: {
   readonly diskLayout?: Fs.Memory.DiskLayout
@@ -458,21 +555,10 @@ describe('artifact manifest', () => {
   })
 
   test('rejects disallowed lifecycle scripts before rehearsal can pack artifacts', async () => {
-    const issues = await Effect.runPromise(
-      validateScriptPolicyForPlan(contractedPlan).pipe(
-        Effect.provide(
-          Fs.Memory.layer({
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
-              scripts: { prepack: 'echo preparing' },
-            }),
-          }),
-        ),
-      ),
-    )
+    const packageJson = coreManifest({ scripts: { prepack: 'echo preparing' } })
+    const issues = await scriptIssueCodes(contractedPlan, packageJson)
 
-    expect(issues.map((issue) => issue.code)).toEqual([
-      'release.artifact.lifecycle-script-disallowed',
-    ])
+    expect(issues).toEqual(['release.artifact.lifecycle-script-disallowed'])
 
     const rehearseError = await Effect.runPromise(
       rehearse(contractedPlan).pipe(
@@ -480,11 +566,7 @@ describe('artifact manifest', () => {
         Effect.provide(
           Layer.mergeAll(
             Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') }),
-            Fs.Memory.layer({
-              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
-                scripts: { prepack: 'echo preparing' },
-              }),
-            }),
+            Fs.Memory.layer(coreDisk(packageJson)),
             Layer.succeed(NpmRegistry.NpmCli, {
               whoami: () => Effect.die('unexpected whoami'),
               pack: () => Effect.die('unexpected pack'),
@@ -508,262 +590,75 @@ describe('artifact manifest', () => {
   })
 
   test('accepts lifecycle scripts only when command and package source digests match', async () => {
-    const packageJson = makePackageJson('@kitz/core', '1.0.0', {
-      scripts: { prepack: 'echo preparing' },
-    })
-    const baseIntent = contractedPlan.publishIntent!
-    const publishIntent = updatePublishIntent(baseIntent, {
-      artifacts: updateArtifactPolicy(baseIntent.artifacts, {
-        scriptPolicy: updateScriptPolicy(baseIntent.artifacts.scriptPolicy, {
-          default: 'allow-listed',
-          network: 'declared-deny',
-          allowlist: [
-            {
-              packageName: Pkg.Moniker.parse('@kitz/core'),
-              script: 'prepack',
-              commandSha256: sha256Text('echo preparing'),
-              packageSourceDigest: sha256Text(packageJson),
-            },
-          ],
-        }),
-      }),
-    })
-    const allowedPlan = Plan.make({
-      lifecycle: contractedPlan.lifecycle,
-      timestamp: contractedPlan.timestamp,
-      releases: contractedPlan.releases,
-      cascades: contractedPlan.cascades,
-      publishIntent,
-    })
+    const { packageJson, plan } = allowlistedPrepackPlan('declared-deny')
 
-    const issues = await Effect.runPromise(
-      validateScriptPolicyForPlan(allowedPlan).pipe(
-        Effect.provide(
-          Fs.Memory.layer({
-            '/repo/packages/core/package.json': packageJson,
-          }),
-        ),
-      ),
-    )
-
-    expect(issues).toEqual([])
+    expect(await scriptIssueCodes(plan, packageJson)).toEqual([])
   })
 
   test('allowlisted lifecycle scripts still require an explicit network-denial answer', async () => {
-    const packageJson = makePackageJson('@kitz/core', '1.0.0', {
-      scripts: { prepack: 'echo preparing' },
-    })
-    const baseIntent = contractedPlan.publishIntent!
-    const publishIntent = updatePublishIntent(baseIntent, {
-      artifacts: updateArtifactPolicy(baseIntent.artifacts, {
-        scriptPolicy: updateScriptPolicy(baseIntent.artifacts.scriptPolicy, {
-          default: 'allow-listed',
-          network: 'deny-enforced',
-          allowlist: [
-            {
-              packageName: Pkg.Moniker.parse('@kitz/core'),
-              script: 'prepack',
-              commandSha256: sha256Text('echo preparing'),
-              packageSourceDigest: sha256Text(packageJson),
-            },
-          ],
-        }),
-      }),
-    })
-    const allowlistedPlan = Plan.make({
-      lifecycle: contractedPlan.lifecycle,
-      timestamp: contractedPlan.timestamp,
-      releases: contractedPlan.releases,
-      cascades: contractedPlan.cascades,
-      publishIntent,
-    })
+    const { packageJson, plan } = allowlistedPrepackPlan('deny-enforced')
 
-    const issues = await Effect.runPromise(
-      validateScriptPolicyForPlan(allowlistedPlan).pipe(
-        Effect.provide(
-          Fs.Memory.layer({
-            '/repo/packages/core/package.json': packageJson,
-          }),
-        ),
-      ),
-    )
-
-    expect(issues.map((issue) => issue.code)).toEqual([
+    expect(await scriptIssueCodes(plan, packageJson)).toEqual([
       'release.artifact.network-denial-unprovable',
     ])
   })
 
   test('enforces engine and package-manager policy before artifact construction', async () => {
-    const source = PlanSourceSnapshot.make({
-      headSha: 'abc1234',
-      trunk: 'main',
-      releaseConfigDigest: sha256Text('config'),
-      releaseConfigDigestSource: 'canonical-effective-config',
-      lockfiles: [],
-      packageManager: {
-        name: 'bun',
-        version: '1.3.6',
-        binary: 'bun',
-        subcommands: { pack: true, publish: true },
-      },
-      toolVersions: { node: '22.14.0', bun: '1.3.6' },
-    })
-    const strictPlan = Plan.make({
-      lifecycle: contractedPlan.lifecycle,
-      timestamp: contractedPlan.timestamp,
-      releases: contractedPlan.releases,
-      cascades: contractedPlan.cascades,
-      source,
-      publishIntent: updatePublishIntent(contractedPlan.publishIntent!, {
-        artifacts: updateArtifactPolicy(contractedPlan.publishIntent!.artifacts, {
-          enginePolicy: EnginePolicy.make({
-            node: 'match-runtime',
-            packageManager: 'match-plan',
-          }),
-        }),
+    const strictPlan = makeContractedPlan({
+      source: sourceSnapshot,
+      publishIntent: updateContractedEnginePolicy({
+        node: 'match-runtime',
+        packageManager: 'match-plan',
       }),
     })
 
-    const issues = await Effect.runPromise(
-      validateEnginePolicyForPlan(strictPlan).pipe(
-        Effect.provide(
-          Fs.Memory.layer({
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
-              engines: { node: '20.0.0' },
-              packageManager: 'pnpm@11.0.0',
-            }),
-          }),
-        ),
-      ),
+    const issues = await engineIssueCodes(
+      strictPlan,
+      coreDisk(coreManifest({ engines: { node: '20.0.0' }, packageManager: 'pnpm@11.0.0' })),
     )
 
-    expect(issues.map((issue) => issue.code)).toEqual([
+    expect(issues).toEqual([
       'release.artifact.engine-node-mismatch',
       'release.artifact.package-manager-mismatch',
     ])
 
-    const compatiblePlan = Plan.make({
-      lifecycle: strictPlan.lifecycle,
-      timestamp: strictPlan.timestamp,
-      releases: strictPlan.releases,
-      cascades: strictPlan.cascades,
-      source,
-      publishIntent: updatePublishIntent(strictPlan.publishIntent!, {
-        artifacts: updateArtifactPolicy(strictPlan.publishIntent!.artifacts, {
-          enginePolicy: EnginePolicy.make({
-            node: 'allow-compatible-range',
-            packageManager: 'allow-compatible-range',
-          }),
+    const compatibleIssues = await engineIssueCodes(
+      makeContractedPlan({
+        source: sourceSnapshot,
+        publishIntent: updateContractedEnginePolicy({
+          node: 'allow-compatible-range',
+          packageManager: 'allow-compatible-range',
         }),
       }),
-    })
-    const compatibleIssues = await Effect.runPromise(
-      validateEnginePolicyForPlan(compatiblePlan).pipe(
-        Effect.provide(
-          Fs.Memory.layer({
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
-              engines: { node: '>=22.0.0' },
-              packageManager: 'bun@^1.3.0',
-            }),
-          }),
-        ),
-      ),
+      coreDisk(coreManifest({ engines: { node: '>=22.0.0' }, packageManager: 'bun@^1.3.0' })),
     )
 
     expect(compatibleIssues).toEqual([])
   })
 
   test('reports all engine policy input failures before pack can run', async () => {
-    const source = PlanSourceSnapshot.make({
-      headSha: 'abc1234',
-      trunk: 'main',
-      releaseConfigDigest: sha256Text('config'),
-      releaseConfigDigestSource: 'canonical-effective-config',
-      lockfiles: [],
-      packageManager: {
-        name: 'bun',
-        version: '1.3.6',
-        binary: 'bun',
-        subcommands: { pack: true, publish: true },
-      },
-      toolVersions: { node: '22.14.0', bun: '1.3.6' },
-    })
-    const strictPlan = Plan.make({
-      lifecycle: contractedPlan.lifecycle,
-      timestamp: contractedPlan.timestamp,
-      releases: contractedPlan.releases,
-      cascades: contractedPlan.cascades,
-      source,
-      publishIntent: contractedPlan.publishIntent!,
-    })
-
-    const unreadable = await Effect.runPromise(
-      validateEnginePolicyForPlan(strictPlan).pipe(Effect.provide(Fs.Memory.layer({}))),
+    const strictPlan = makeContractedPlan({ source: sourceSnapshot })
+    const unreadable = await engineIssueCodes(strictPlan, {})
+    const malformed = await engineIssueCodes(strictPlan, coreDisk('{bad json'))
+    const missingSource = await engineIssueCodes(
+      makeContractedPlan(),
+      coreDisk(coreManifest({ engines: { node: '22.14.0' }, packageManager: 'bun@1.3.6' })),
     )
-    const malformed = await Effect.runPromise(
-      validateEnginePolicyForPlan(strictPlan).pipe(
-        Effect.provide(Fs.Memory.layer({ '/repo/packages/core/package.json': '{bad json' })),
-      ),
-    )
-    const missingSource = await Effect.runPromise(
-      validateEnginePolicyForPlan(
-        Plan.make({
-          lifecycle: strictPlan.lifecycle,
-          timestamp: strictPlan.timestamp,
-          releases: strictPlan.releases,
-          cascades: strictPlan.cascades,
-          publishIntent: strictPlan.publishIntent!,
+    const invalidComparable = await engineIssueCodes(
+      makeContractedPlan({
+        source: sourceSnapshot,
+        publishIntent: updateContractedEnginePolicy({
+          node: 'allow-compatible-range',
+          packageManager: 'allow-compatible-range',
         }),
-      ).pipe(
-        Effect.provide(
-          Fs.Memory.layer({
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
-              engines: { node: '22.14.0' },
-              packageManager: 'bun@1.3.6',
-            }),
-          }),
-        ),
+      }),
+      coreDisk(
+        coreManifest({ engines: { node: 'not-a-range' }, packageManager: 'bun@not-a-range' }),
       ),
     )
-    const invalidComparable = await Effect.runPromise(
-      validateEnginePolicyForPlan(
-        Plan.make({
-          lifecycle: strictPlan.lifecycle,
-          timestamp: strictPlan.timestamp,
-          releases: strictPlan.releases,
-          cascades: strictPlan.cascades,
-          source,
-          publishIntent: updatePublishIntent(strictPlan.publishIntent!, {
-            artifacts: updateArtifactPolicy(strictPlan.publishIntent!.artifacts, {
-              enginePolicy: EnginePolicy.make({
-                node: 'allow-compatible-range',
-                packageManager: 'allow-compatible-range',
-              }),
-            }),
-          }),
-        }),
-      ).pipe(
-        Effect.provide(
-          Fs.Memory.layer({
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
-              engines: { node: 'not-a-range' },
-              packageManager: 'bun@not-a-range',
-            }),
-          }),
-        ),
-      ),
-    )
-    const invalidStrict = await Effect.runPromise(
-      validateEnginePolicyForPlan(strictPlan).pipe(
-        Effect.provide(
-          Fs.Memory.layer({
-            '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
-              engines: { node: 'not-a-semver' },
-              packageManager: 'bun',
-            }),
-          }),
-        ),
-      ),
+    const invalidStrict = await engineIssueCodes(
+      strictPlan,
+      coreDisk(coreManifest({ engines: { node: 'not-a-semver' }, packageManager: 'bun' })),
     )
     const rehearseError = await Effect.runPromise(
       rehearse(strictPlan).pipe(
@@ -771,11 +666,7 @@ describe('artifact manifest', () => {
         Effect.provide(
           Layer.mergeAll(
             Env.Test({ cwd: Fs.Path.AbsDir.fromString('/repo/') }),
-            Fs.Memory.layer({
-              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
-                engines: { node: '20.0.0' },
-              }),
-            }),
+            Fs.Memory.layer(coreDisk(coreManifest({ engines: { node: '20.0.0' } }))),
             Layer.succeed(NpmRegistry.NpmCli, {
               whoami: () => Effect.die('unexpected whoami'),
               pack: () => Effect.die('unexpected pack'),
@@ -791,21 +682,17 @@ describe('artifact manifest', () => {
       ),
     )
 
-    expect(unreadable.map((issue) => issue.code)).toEqual([
-      'release.artifact.package-json-unreadable',
-    ])
-    expect(malformed.map((issue) => issue.code)).toEqual([
-      'release.artifact.package-json-malformed',
-    ])
-    expect(missingSource.map((issue) => issue.code)).toEqual([
+    expect(unreadable).toEqual(['release.artifact.package-json-unreadable'])
+    expect(malformed).toEqual(['release.artifact.package-json-malformed'])
+    expect(missingSource).toEqual([
       'release.artifact.engine-policy-source-missing',
       'release.artifact.package-manager-mismatch',
     ])
-    expect(invalidComparable.map((issue) => issue.code)).toEqual([
+    expect(invalidComparable).toEqual([
       'release.artifact.engine-node-mismatch',
       'release.artifact.package-manager-mismatch',
     ])
-    expect(invalidStrict.map((issue) => issue.code)).toEqual([
+    expect(invalidStrict).toEqual([
       'release.artifact.engine-node-mismatch',
       'release.artifact.package-manager-mismatch',
     ])

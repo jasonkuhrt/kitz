@@ -720,45 +720,44 @@ const traceFromExecutionGraph = (graph: ExecutionGraph) =>
 
 // These scenarios run real pack/publish-style workflow steps and need CI headroom.
 const E2E_TEST_TIMEOUT_MS = 90_000
+const testE2E = <Error>(name: string, effect: () => Effect.Effect<void, Error, Scope.Scope>) =>
+  Test.live(name, () => quiet(effect()), E2E_TEST_TIMEOUT_MS)
 
 describe('Executor e2e', () => {
-  Test.live(
-    'renders the release workflow as an otel trace snapshot',
-    () =>
-      quiet(
-        Effect.gen(function* () {
-          const harness = yield* makeRealHarness({
-            packages: [
-              { name: '@kitz/a' },
-              { name: '@kitz/b', dependencies: { '@kitz/a': 'workspace:^' } },
-            ],
-            commits: [Git.Memory.commit('feat(a): add feature')],
-          })
+  testE2E('renders the release workflow as an otel trace snapshot', () =>
+    Effect.gen(function* () {
+      const harness = yield* makeRealHarness({
+        packages: [
+          { name: '@kitz/a' },
+          { name: '@kitz/b', dependencies: { '@kitz/a': 'workspace:^' } },
+        ],
+        commits: [Git.Memory.commit('feat(a): add feature')],
+      })
 
-          const plan = yield* planOfficial(harness.workspacePackages).pipe(
-            Effect.provide(harness.planLayer),
-          )
-          const workflowContext = yield* Layer.build(harness.workflowLayer)
-          const observable = yield* executeObservable(plan, {
-            dryRun: false,
-            dbPath: `${Fs.Path.toString(harness.rootDir)}.release/workflow.db`,
-          }).pipe(Effect.provide(workflowContext))
-          const result = yield* observable.execute.pipe(Effect.provide(workflowContext))
+      const plan = yield* planOfficial(harness.workspacePackages).pipe(
+        Effect.provide(harness.planLayer),
+      )
+      const workflowContext = yield* Layer.build(harness.workflowLayer)
+      const observable = yield* executeObservable(plan, {
+        dryRun: false,
+        dbPath: `${Fs.Path.toString(harness.rootDir)}.release/workflow.db`,
+      }).pipe(Effect.provide(workflowContext))
+      const result = yield* observable.execute.pipe(Effect.provide(workflowContext))
 
-          expect(result).toEqual({
-            releasedPackages: ['@kitz/a', '@kitz/b'],
-            createdTags: [
-              tag(Pkg.Moniker.parse('@kitz/a'), '1.1.0'),
-              tag(Pkg.Moniker.parse('@kitz/b'), '1.0.1'),
-            ],
-            createdGHReleases: [
-              tag(Pkg.Moniker.parse('@kitz/a'), '1.1.0'),
-              tag(Pkg.Moniker.parse('@kitz/b'), '1.0.1'),
-            ],
-          })
+      expect(result).toEqual({
+        releasedPackages: ['@kitz/a', '@kitz/b'],
+        createdTags: [
+          tag(Pkg.Moniker.parse('@kitz/a'), '1.1.0'),
+          tag(Pkg.Moniker.parse('@kitz/b'), '1.0.1'),
+        ],
+        createdGHReleases: [
+          tag(Pkg.Moniker.parse('@kitz/a'), '1.1.0'),
+          tag(Pkg.Moniker.parse('@kitz/b'), '1.0.1'),
+        ],
+      })
 
-          expect(Otel.print(traceFromExecutionGraph(observable.graph), { sort: 'input' }))
-            .toMatchInlineSnapshot(`
+      expect(Otel.print(traceFromExecutionGraph(observable.graph), { sort: 'input' }))
+        .toMatchInlineSnapshot(`
 "trace release.integration (20 spans)
 └─ [workflow] apply
    ├─ [workflow] stage 1
@@ -781,191 +780,171 @@ describe('Executor e2e', () => {
    └─ [workflow] stage 7
       └─ [github] createRelease {release.package.name=@kitz/b release.version=1.0.1 release.tag=@kitz/b@1.0.1}"
 `)
-        }),
-      ),
-    E2E_TEST_TIMEOUT_MS,
+    }),
   )
 
-  Test.live(
-    'resumes after a prepack failure without re-packing completed packages',
-    () =>
-      quiet(
-        Effect.gen(function* () {
-          const failingPackages: readonly FixturePackage[] = [
-            ...alphaPackages.slice(0, 2),
-            {
-              name: '@kitz/c',
-              scripts: {
-                prepack: "sh -c 'exit 23'",
-              },
-            },
-          ]
+  testE2E('resumes after a prepack failure without re-packing completed packages', () =>
+    Effect.gen(function* () {
+      const failingPackages: readonly FixturePackage[] = [
+        ...alphaPackages.slice(0, 2),
+        {
+          name: '@kitz/c',
+          scripts: {
+            prepack: "sh -c 'exit 23'",
+          },
+        },
+      ]
 
-          const harness = yield* makeRealHarness({
-            packages: failingPackages,
-            commits: [
-              Git.Memory.commit('feat(a): add feature'),
-              Git.Memory.commit('feat(b): add feature'),
-              Git.Memory.commit('feat(c): add feature'),
-            ],
-          })
+      const harness = yield* makeRealHarness({
+        packages: failingPackages,
+        commits: [
+          Git.Memory.commit('feat(a): add feature'),
+          Git.Memory.commit('feat(b): add feature'),
+          Git.Memory.commit('feat(c): add feature'),
+        ],
+      })
 
-          const plan = yield* planOfficial(harness.workspacePackages).pipe(
-            Effect.provide(harness.planLayer),
-          )
+      const plan = yield* planOfficial(harness.workspacePackages).pipe(
+        Effect.provide(harness.planLayer),
+      )
 
-          expect(plan.releases.map((item) => item.package.name.moniker).toSorted()).toEqual([
-            '@kitz/a',
-            '@kitz/b',
-            '@kitz/c',
-          ])
+      expect(plan.releases.map((item) => item.package.name.moniker).toSorted()).toEqual([
+        '@kitz/a',
+        '@kitz/b',
+        '@kitz/c',
+      ])
 
-          const workflowContext = yield* Layer.build(harness.workflowLayer)
+      const workflowContext = yield* Layer.build(harness.workflowLayer)
 
-          const firstRun = yield* execute(plan, { dryRun: false }).pipe(
-            Effect.provide(workflowContext),
-            Effect.result,
-          )
+      const firstRun = yield* execute(plan, { dryRun: false }).pipe(
+        Effect.provide(workflowContext),
+        Effect.result,
+      )
 
-          expect(firstRun._tag).toBe('Failure')
-          expect(yield* Ref.get(harness.packCalls)).toEqual(['@kitz/a', '@kitz/b', '@kitz/c'])
-          expect(yield* Ref.get(harness.publishCalls)).toEqual([])
+      expect(firstRun._tag).toBe('Failure')
+      expect(yield* Ref.get(harness.packCalls)).toEqual(['@kitz/a', '@kitz/b', '@kitz/c'])
+      expect(yield* Ref.get(harness.publishCalls)).toEqual([])
 
-          const failingPackageJsonPath = harness.packageJsonPaths['@kitz/c']!
-          yield* withFileSystem(
-            Fs.write(
-              failingPackageJsonPath,
-              makePackageJson({
-                name: '@kitz/c',
-              }),
-            ),
-          ).pipe(Effect.orDie)
+      const failingPackageJsonPath = harness.packageJsonPaths['@kitz/c']!
+      yield* withFileSystem(
+        Fs.write(
+          failingPackageJsonPath,
+          makePackageJson({
+            name: '@kitz/c',
+          }),
+        ),
+      ).pipe(Effect.orDie)
 
-          const secondRun = yield* resume(plan, { dryRun: false }).pipe(
-            Effect.provide(workflowContext),
-            Effect.result,
-          )
+      const secondRun = yield* resume(plan, { dryRun: false }).pipe(
+        Effect.provide(workflowContext),
+        Effect.result,
+      )
 
-          expect(secondRun._tag).toBe('Success')
-          if (secondRun._tag === 'Success') {
-            expect(secondRun.success.releasedPackages).toEqual(['@kitz/a', '@kitz/b', '@kitz/c'])
-          }
+      expect(secondRun._tag).toBe('Success')
+      if (secondRun._tag === 'Success') {
+        expect(secondRun.success.releasedPackages).toEqual(['@kitz/a', '@kitz/b', '@kitz/c'])
+      }
 
-          expect(yield* Ref.get(harness.packCalls)).toEqual([
-            '@kitz/a',
-            '@kitz/b',
-            '@kitz/c',
-            '@kitz/c',
-          ])
-          expect(yield* Ref.get(harness.publishCalls)).toEqual(['@kitz/a', '@kitz/b', '@kitz/c'])
-        }),
-      ),
-    E2E_TEST_TIMEOUT_MS,
+      expect(yield* Ref.get(harness.packCalls)).toEqual([
+        '@kitz/a',
+        '@kitz/b',
+        '@kitz/c',
+        '@kitz/c',
+      ])
+      expect(yield* Ref.get(harness.publishCalls)).toEqual(['@kitz/a', '@kitz/b', '@kitz/c'])
+    }),
   )
 
   for (const scenario of hookFailureScenarios) {
-    Test.live(
-      scenario.name,
-      () =>
-        quiet(
-          Effect.gen(function* () {
-            const packages = withScripts(graphPackages, scenario.packageName, scenario.scripts)
-            const harness = yield* makeRealHarness({
-              packages,
-              commits: graphCommits,
-            })
+    testE2E(scenario.name, () =>
+      Effect.gen(function* () {
+        const packages = withScripts(graphPackages, scenario.packageName, scenario.scripts)
+        const harness = yield* makeRealHarness({
+          packages,
+          commits: graphCommits,
+        })
 
-            const plan = yield* planOfficial(harness.workspacePackages).pipe(
-              Effect.provide(harness.planLayer),
-            )
+        const plan = yield* planOfficial(harness.workspacePackages).pipe(
+          Effect.provide(harness.planLayer),
+        )
 
-            assertGraphPlan(plan)
+        assertGraphPlan(plan)
 
-            const workflowContext = yield* Layer.build(harness.workflowLayer)
+        const workflowContext = yield* Layer.build(harness.workflowLayer)
 
-            const firstRun = yield* execute(plan, { dryRun: false }).pipe(
-              Effect.provide(workflowContext),
-              Effect.result,
-            )
+        const firstRun = yield* execute(plan, { dryRun: false }).pipe(
+          Effect.provide(workflowContext),
+          Effect.result,
+        )
 
-            expect(firstRun._tag).toBe('Failure')
-            expect(yield* Ref.get(harness.packCalls)).toEqual(scenario.firstPackCalls)
-            expect(yield* Ref.get(harness.publishCalls)).toEqual([])
+        expect(firstRun._tag).toBe('Failure')
+        expect(yield* Ref.get(harness.packCalls)).toEqual(scenario.firstPackCalls)
+        expect(yield* Ref.get(harness.publishCalls)).toEqual([])
 
-            const fixedPackage = fixtureByName(graphPackages, scenario.packageName)
-            yield* withFileSystem(
-              Fs.write(
-                harness.packageJsonPaths[scenario.packageName]!,
-                makePackageJson(fixedPackage),
-              ),
-            ).pipe(Effect.orDie)
+        const fixedPackage = fixtureByName(graphPackages, scenario.packageName)
+        yield* withFileSystem(
+          Fs.write(harness.packageJsonPaths[scenario.packageName]!, makePackageJson(fixedPackage)),
+        ).pipe(Effect.orDie)
 
-            const secondRun = yield* resume(plan, { dryRun: false }).pipe(
-              Effect.provide(workflowContext),
-              Effect.result,
-            )
+        const secondRun = yield* resume(plan, { dryRun: false }).pipe(
+          Effect.provide(workflowContext),
+          Effect.result,
+        )
 
-            expect(secondRun._tag).toBe('Success')
-            if (secondRun._tag === 'Success') {
-              expect(secondRun.success).toEqual<typeof graphResult>(graphResult)
-            }
+        expect(secondRun._tag).toBe('Success')
+        if (secondRun._tag === 'Success') {
+          expect(secondRun.success).toEqual<typeof graphResult>(graphResult)
+        }
 
-            expect(yield* Ref.get(harness.packCalls)).toEqual(scenario.finalPackCalls)
-            expect(yield* Ref.get(harness.publishCalls)).toEqual(graphResult.releasedPackages)
-          }),
-        ),
-      E2E_TEST_TIMEOUT_MS,
+        expect(yield* Ref.get(harness.packCalls)).toEqual(scenario.finalPackCalls)
+        expect(yield* Ref.get(harness.publishCalls)).toEqual(graphResult.releasedPackages)
+      }),
     )
   }
 
   for (const scenario of publishFailureScenarios) {
-    Test.live(
-      scenario.name,
-      () =>
-        quiet(
-          Effect.gen(function* () {
-            const harness = yield* makeRealHarness({
-              packages: graphPackages,
-              commits: graphCommits,
-              failPublishPackages: [scenario.packageName],
-            })
+    testE2E(scenario.name, () =>
+      Effect.gen(function* () {
+        const harness = yield* makeRealHarness({
+          packages: graphPackages,
+          commits: graphCommits,
+          failPublishPackages: [scenario.packageName],
+        })
 
-            const plan = yield* planOfficial(harness.workspacePackages).pipe(
-              Effect.provide(harness.planLayer),
-            )
+        const plan = yield* planOfficial(harness.workspacePackages).pipe(
+          Effect.provide(harness.planLayer),
+        )
 
-            assertGraphPlan(plan)
+        assertGraphPlan(plan)
 
-            const workflowContext = yield* Layer.build(harness.workflowLayer)
+        const workflowContext = yield* Layer.build(harness.workflowLayer)
 
-            const firstRun = yield* execute(plan, { dryRun: false }).pipe(
-              Effect.provide(workflowContext),
-              Effect.result,
-            )
+        const firstRun = yield* execute(plan, { dryRun: false }).pipe(
+          Effect.provide(workflowContext),
+          Effect.result,
+        )
 
-            expect(firstRun._tag).toBe('Failure')
-            expect(yield* Ref.get(harness.packCalls)).toEqual(graphResult.releasedPackages)
-            expect(yield* Ref.get(harness.publishCalls)).toEqual(scenario.firstPublishCalls)
-            expect(yield* Ref.get(harness.gitState.createdTags)).toEqual([])
-            yield* assertGraphTarballsExist(harness.rootDir, digestForPlan(plan).value)
+        expect(firstRun._tag).toBe('Failure')
+        expect(yield* Ref.get(harness.packCalls)).toEqual(graphResult.releasedPackages)
+        expect(yield* Ref.get(harness.publishCalls)).toEqual(scenario.firstPublishCalls)
+        expect(yield* Ref.get(harness.gitState.createdTags)).toEqual([])
+        yield* assertGraphTarballsExist(harness.rootDir, digestForPlan(plan).value)
 
-            yield* Ref.set(harness.failPublishPackages, [])
+        yield* Ref.set(harness.failPublishPackages, [])
 
-            const secondRun = yield* resume(plan, { dryRun: false }).pipe(
-              Effect.provide(workflowContext),
-              Effect.result,
-            )
+        const secondRun = yield* resume(plan, { dryRun: false }).pipe(
+          Effect.provide(workflowContext),
+          Effect.result,
+        )
 
-            expect(secondRun._tag).toBe('Success')
-            if (secondRun._tag === 'Success') {
-              expect(secondRun.success).toEqual<typeof graphResult>(graphResult)
-            }
+        expect(secondRun._tag).toBe('Success')
+        if (secondRun._tag === 'Success') {
+          expect(secondRun.success).toEqual<typeof graphResult>(graphResult)
+        }
 
-            expect(yield* Ref.get(harness.packCalls)).toEqual(graphResult.releasedPackages)
-            expect(yield* Ref.get(harness.publishCalls)).toEqual(scenario.finalPublishCalls)
-          }),
-        ),
-      E2E_TEST_TIMEOUT_MS,
+        expect(yield* Ref.get(harness.packCalls)).toEqual(graphResult.releasedPackages)
+        expect(yield* Ref.get(harness.publishCalls)).toEqual(scenario.finalPublishCalls)
+      }),
     )
   }
 })
