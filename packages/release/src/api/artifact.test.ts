@@ -176,6 +176,13 @@ const rehearseCorePackage = ({
   })
 
 describe('artifact manifest', () => {
+  const artifactCopyHelperSource = () => {
+    const source = readFileSync(new URL('./executor/publish.ts', import.meta.url), 'utf8')
+    const start = source.indexOf('const copyPackageDirectory =')
+    const end = source.indexOf('\nconst workspaceVersionsFor', start)
+    return source.slice(start, end)
+  }
+
   test('records actual tarball bytes, packlist, and npm metadata from prepared artifacts', async () => {
     const manifests = await Effect.runPromise(
       makeManifestFromPrepared(plan, [artifact]).pipe(
@@ -355,6 +362,15 @@ describe('artifact manifest', () => {
     } finally {
       rmSync(rootDir, { recursive: true, force: true })
     }
+  })
+
+  test('artifact staging copy stays on the typed filesystem facade', () => {
+    const source = artifactCopyHelperSource()
+
+    expect(source).toContain('Fs.read(')
+    expect(source).toContain('Fs.write(')
+    expect(source).not.toContain('yield* FileSystem.FileSystem')
+    expect(source).not.toMatch(/\bfs\./u)
   })
 
   test('rehearsal rejects malformed source manifests before pack', async () => {
