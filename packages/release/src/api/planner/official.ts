@@ -57,6 +57,6 @@ export const official = (
       })
     },
     toSecondaryRelease: (release) => release,
-    toCascades: ({ packages, primaryReleases, dependencyGraph, tags }) =>
-      detectCascades(packages, [...primaryReleases], dependencyGraph, [...tags]),
+    toCascades: ({ packages, primaryReleases, dependencyGraph, tags, timestamp }) =>
+      detectCascades(packages, [...primaryReleases], dependencyGraph, [...tags], timestamp),
   })

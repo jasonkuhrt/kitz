@@ -79,6 +79,9 @@ describe('release execution lock', () => {
     )
 
     expect(Exit.isFailure(result.exit)).toBe(true)
+    const failure = Option.getOrUndefined(Exit.findErrorOption(result.exit))
+    expect(failure).toBeInstanceOf(Error)
+    expect((failure as Error).message).toBe('publish failed')
     expect(Option.isNone(result.after)).toBe(true)
   })
 
@@ -102,5 +105,13 @@ describe('release execution lock', () => {
     )
 
     expect(Exit.isFailure(exit)).toBe(true)
+    const failure = Option.getOrUndefined(Exit.findErrorOption(exit))
+    expect(failure).toMatchObject({
+      _tag: 'ActiveReleaseLockError',
+      tags: ['kit', 'release', 'lock'],
+      context: {
+        planDigest: digest.value,
+      },
+    })
   })
 })

@@ -12,6 +12,8 @@ import { OfficialIncrement } from '../version/models/official-increment.js'
 import { Official } from './models/item-official.js'
 import type { Item } from './models/item.js'
 
+const syntheticCommitDate = '1970-01-01T00:00:00.000Z'
+
 /**
  * Result of cascade analysis for a single requested package identifier.
  *
@@ -95,6 +97,7 @@ export const detect = (
   primaryReleases: Item[],
   dependencyGraph: DependencyGraph,
   tags: string[],
+  timestamp: string = syntheticCommitDate,
 ): Official[] => {
   // Set of packages already getting released (use string form for Set/Map operations)
   const releasing = MutableHashSet.fromIterable(primaryReleases.map((r) => r.package.name.moniker))
@@ -149,6 +152,7 @@ export const detect = (
           makeCascadeCommit(
             pkg.scope,
             `Depends on ${primary.package.name.moniker}@${primary.nextVersion.toString()}`,
+            timestamp,
           ),
         )
       }
@@ -156,7 +160,7 @@ export const detect = (
 
     // If no triggers found, add a generic cascade commit
     if (cascadeCommits.length === 0) {
-      cascadeCommits.push(makeCascadeCommit(pkg.scope, 'Cascade release'))
+      cascadeCommits.push(makeCascadeCommit(pkg.scope, 'Cascade release', timestamp))
     }
 
     // Build version union
@@ -201,6 +205,7 @@ export const detectPublishDependencyClosure = (
   packages: readonly Package[],
   plannedItems: readonly Item[],
   tags: readonly string[],
+  timestamp: string = syntheticCommitDate,
 ): Effect.Effect<readonly Official[], Resource.ResourceError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const localPackageNames = packages.map((pkg) => pkg.name.moniker)
@@ -234,7 +239,11 @@ export const detectPublishDependencyClosure = (
         queue.push(dependencyName)
         closureReleases.push(
           makePatchRelease(dependencyPackage, tags, [
-            makeCascadeCommit(dependencyPackage.scope, `Runtime dependency of ${packageName}`),
+            makeCascadeCommit(
+              dependencyPackage.scope,
+              `Runtime dependency of ${packageName}`,
+              timestamp,
+            ),
           ]),
         )
       }

@@ -35,9 +35,10 @@ const archiveExport = Command.make(
         env.cwd,
         Fs.Path.RelFile.fromString(`./.release/archive/${digest.value}.kitz-release-audit.tgz`),
       )
+      const createdAt = yield* Api.Clock.nowIso
       const bundle = Api.AuditArchive.makeAuditArchive({
         planDigest: digest,
-        createdAt: new Date().toISOString(),
+        createdAt,
         payloads: [
           {
             path: Fs.Path.RelFile.fromString('./plan.json'),

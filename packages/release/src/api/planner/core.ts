@@ -1,6 +1,7 @@
 import { FileSystem } from 'effect'
 import { Resource } from '@kitz/resource'
 import { Effect } from 'effect'
+import * as ReleaseClock from '../clock.js'
 import { buildDependencyGraph, type DependencyGraph } from '../analyzer/cascade.js'
 import type { Analysis, Impact } from '../analyzer/models/__.js'
 import type { Package } from '../analyzer/workspace.js'
@@ -22,6 +23,7 @@ interface CascadeParams<$lifecycle extends Lifecycle> {
   readonly primaryReleases: readonly PlannedItem<$lifecycle>[]
   readonly dependencyGraph: DependencyGraph
   readonly tags: readonly string[]
+  readonly timestamp: string
 }
 
 export interface PlanLifecycleParams<
@@ -45,6 +47,7 @@ export const mapOfficialCascades = <
   readonly primaryReleases: readonly $release[]
   readonly dependencyGraph: DependencyGraph
   readonly tags: readonly string[]
+  readonly timestamp: string
   readonly map: (cascade: Official) => $cascade
 }): readonly $cascade[] =>
   detectOfficialCascades(
@@ -52,6 +55,7 @@ export const mapOfficialCascades = <
     [...params.primaryReleases],
     params.dependencyGraph,
     [...params.tags],
+    params.timestamp,
   ).map(params.map)
 
 export const planLifecycle = <
@@ -61,6 +65,7 @@ export const planLifecycle = <
   params: PlanLifecycleParams<$lifecycle, $options>,
 ): Effect.Effect<PlanOf<$lifecycle>, Resource.ResourceError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
+    const timestamp = yield* ReleaseClock.nowIso
     const releases: PlannedItem<$lifecycle>[] = []
 
     for (const impact of params.analysis.impacts) {
@@ -74,15 +79,19 @@ export const planLifecycle = <
       primaryReleases: releases,
       dependencyGraph,
       tags: [...params.analysis.tags],
+      timestamp,
     })
     const dependencyReleases = yield* detectPublishDependencyClosure(
       [...params.packages],
       [...releases, ...cascades],
       [...params.analysis.tags],
+      timestamp,
     )
 
-    return make(params.lifecycle, releases, [
-      ...cascades,
-      ...dependencyReleases.map(params.toSecondaryRelease),
-    ])
+    return make(
+      params.lifecycle,
+      releases,
+      [...cascades, ...dependencyReleases.map(params.toSecondaryRelease)],
+      timestamp,
+    )
   })

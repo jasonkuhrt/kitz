@@ -340,7 +340,7 @@ describe('release low-surface coverage', () => {
       }),
     )
 
-    const plan = makePlan('official', [], [])
+    const plan = makePlan('official', [], [], '2026-01-01T00:00:00.000Z')
 
     expect(plan.lifecycle).toBe('official')
     expect(plan.releases).toHaveLength(0)

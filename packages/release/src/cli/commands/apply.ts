@@ -80,13 +80,14 @@ export const apply = Command.make(
       }
       const publish = Api.Publishing.publishSemanticsFromIntent(intentResult.success)
       const planDigest = executablePlan.planDigest
+      const lockNow = yield* Api.Clock.nowIso
 
       const lockParams = {
         planDigest,
         ownerId: env.vars['USER'] ?? 'local-operator',
         ownerHost: env.vars['HOST'] ?? env.vars['HOSTNAME'] ?? 'local-host',
         ownerProcess: env.vars['KITZ_RELEASE_PROCESS_ID'] ?? 'local-process',
-        now: new Date().toISOString(),
+        now: lockNow,
       } satisfies Api.Lock.LocalLockParams
 
       // Confirmation prompt (unless --yes)
@@ -131,7 +132,7 @@ export const apply = Command.make(
               ...localObservations,
               ...githubObservations,
             })
-            if (Api.Proof.hasBlockingProof(proof)) {
+            if (Api.Proof.hasBlockingProof(proof, yield* Api.Clock.nowIso)) {
               yield* Console.error(
                 'Plan proof contains blocking records. Run `release prove` for detail.',
               )
@@ -151,7 +152,7 @@ export const apply = Command.make(
             )
             return false
           }
-          if (Api.Proof.hasBlockingProof(proof.value)) {
+          if (Api.Proof.hasBlockingProof(proof.value, yield* Api.Clock.nowIso)) {
             yield* Console.error('Plan-bound proof contains blocking records.')
             yield* Console.error(
               'Run `release prove` and resolve every failed or unprovable proof.',

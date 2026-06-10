@@ -2,7 +2,8 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, HashMap, Option } from 'effect'
+import { Effect, HashMap, Layer, Option } from 'effect'
+import { TestClock } from 'effect/testing'
 import { describe, expect, test } from 'bun:test'
 import { Env } from '@kitz/env'
 import { Analysis, Impact, makeCascadeCommit } from '../analyzer/models/__.js'
@@ -189,6 +190,18 @@ describe('planner core', () => {
     expect(result.cascades.every((release) => release.nextVersion.toString() === '0.0.1')).toBe(
       true,
     )
+  })
+
+  test('plans read timestamps from Effect Clock', async () => {
+    const timestamp = '2026-05-14T01:02:03.000Z'
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        yield* TestClock.setTime(Date.parse(timestamp))
+        return yield* official(singleImpactAnalysis, { packages })
+      }).pipe(Effect.provide(Layer.mergeAll(workspaceLayer, TestClock.layer()))),
+    )
+
+    expect(result.timestamp).toBe(timestamp)
   })
 
   test('candidate planning preserves candidate typing and remaps cascade iterations', async () => {
