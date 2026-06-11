@@ -234,6 +234,28 @@ const getFailureDetail = (error: unknown): string => {
 
 const assumePure = <A, E>(effect: Effect.Effect<A, E, unknown>) => effect as Effect.Effect<A, E>
 
+const diffLayer = (result: Parameters<typeof makeDiffSpawnerLayer>[0]) =>
+  Layer.mergeAll(Git.Memory.make({ root: '/repo' }), makeDiffSpawnerLayer(result))
+
+const runPreviewResult = (
+  options: Parameters<typeof runPrPreview>[0],
+  dependencies: RunPrPreviewDependencies = {},
+) =>
+  Effect.runPromise(
+    assumePure(runPrPreview(options, previewDeps(dependencies)).pipe(Effect.result)),
+  )
+
+type PreviewResult = Awaited<ReturnType<typeof runPreviewResult>>
+
+const expectPreviewFailure = (result: PreviewResult) => {
+  expect(result._tag).toBe('Failure')
+  if (result._tag !== 'Failure') {
+    throw new Error('expected preview to fail')
+  }
+
+  return result.failure
+}
+
 describe('pr preview coverage', () => {
   test('returns null for optional diff checks when the pull request base ref is missing', async () => {
     const result = await Effect.runPromise(
@@ -244,11 +266,7 @@ describe('pr preview coverage', () => {
         },
         packages: [corePackage],
         required: false,
-      }).pipe(
-        Effect.provide(
-          Layer.mergeAll(Git.Memory.make({ root: '/repo' }), makeDiffSpawnerLayer({ stdout: '' })),
-        ),
-      ),
+      }).pipe(Effect.provide(diffLayer({ stdout: '' }))),
     )
 
     expect(result).toBeNull()
@@ -262,16 +280,13 @@ describe('pr preview coverage', () => {
         required: true,
       }).pipe(
         Effect.provide(
-          Layer.mergeAll(
-            Git.Memory.make({ root: '/repo' }),
-            makeDiffSpawnerLayer({
-              stdout: [
-                'M\tpackages/core/src/index.ts',
-                'R100\tpackages/core/src/old.ts\tpackages/utils/src/index.ts',
-                'A\tREADME.md',
-              ].join('\n'),
-            }),
-          ),
+          diffLayer({
+            stdout: [
+              'M\tpackages/core/src/index.ts',
+              'R100\tpackages/core/src/old.ts\tpackages/utils/src/index.ts',
+              'A\tREADME.md',
+            ].join('\n'),
+          }),
         ),
       ),
     )
@@ -292,16 +307,7 @@ describe('pr preview coverage', () => {
         pullRequest,
         packages: [corePackage],
         required: false,
-      }).pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            Git.Memory.make({ root: '/repo' }),
-            makeDiffSpawnerLayer({
-              failure: new Error('diff exploded'),
-            }),
-          ),
-        ),
-      ),
+      }).pipe(Effect.provide(diffLayer({ failure: new Error('diff exploded') }))),
     )
 
     expect(result).toEqual({
@@ -316,17 +322,7 @@ describe('pr preview coverage', () => {
         pullRequest,
         packages: [corePackage],
         required: true,
-      }).pipe(
-        Effect.provide(
-          Layer.mergeAll(
-            Git.Memory.make({ root: '/repo' }),
-            makeDiffSpawnerLayer({
-              failure: new Error('diff exploded'),
-            }),
-          ),
-        ),
-        Effect.result,
-      ),
+      }).pipe(Effect.provide(diffLayer({ failure: new Error('diff exploded') })), Effect.result),
     )
 
     expect(result._tag).toBe('Failure')
@@ -546,118 +542,68 @@ describe('pr preview coverage', () => {
   })
 
   test('fails early when no releasable packages are resolved', async () => {
-    const result = await Effect.runPromise(
-      assumePure(
-        runPrPreview(
-          {},
-          previewDeps({
-            resolvePackages: () => Effect.succeed([]),
-          }),
-        ).pipe(Effect.result),
-      ),
+    const failure = expectPreviewFailure(
+      await runPreviewResult({}, { resolvePackages: () => Effect.succeed([]) }),
     )
 
-    expect(result._tag).toBe('Failure')
-    if (result._tag !== 'Failure') {
-      throw new Error('expected preview to fail')
-    }
-
-    expect(getFailureDetail(result.failure)).toContain('No packages found')
+    expect(getFailureDetail(failure)).toContain('No packages found')
   })
 
   test('fails when pull-request context resolution fails', async () => {
-    const result = await Effect.runPromise(
-      assumePure(
-        runPrPreview(
-          {},
-          previewDeps({
-            resolvePullRequestContext: () =>
-              Effect.fail(
-                new Api.Explorer.ExplorerError({
-                  context: {
-                    detail: 'context exploded',
-                  },
-                }),
-              ),
-          }),
-        ).pipe(Effect.result),
+    const failure = expectPreviewFailure(
+      await runPreviewResult(
+        {},
+        {
+          resolvePullRequestContext: () =>
+            Effect.fail(
+              new Api.Explorer.ExplorerError({
+                context: { detail: 'context exploded' },
+              }),
+            ),
+        },
       ),
     )
 
-    expect(result._tag).toBe('Failure')
-    if (result._tag !== 'Failure') {
-      throw new Error('expected preview to fail')
-    }
-
-    expect(getFailureDetail(result.failure)).toContain('context exploded')
+    expect(getFailureDetail(failure)).toContain('context exploded')
   })
 
   test('fails when no open pull request can be resolved for the branch', async () => {
-    const result = await Effect.runPromise(
-      assumePure(
-        runPrPreview(
-          {},
-          previewDeps({
-            resolvePullRequestContext: () =>
-              Effect.succeed(makePullRequestContext({ pullRequest: null })),
-          }),
-        ).pipe(Effect.result),
+    const failure = expectPreviewFailure(
+      await runPreviewResult(
+        {},
+        {
+          resolvePullRequestContext: () =>
+            Effect.succeed(makePullRequestContext({ pullRequest: null })),
+        },
       ),
     )
 
-    expect(result._tag).toBe('Failure')
-    if (result._tag !== 'Failure') {
-      throw new Error('expected preview to fail')
-    }
-
-    expect(getFailureDetail(result.failure)).toContain('Could not resolve an open pull request')
+    expect(getFailureDetail(failure)).toContain('Could not resolve an open pull request')
   })
 
   test('fails when the runtime does not provide a GitHub token', async () => {
-    const result = await Effect.runPromise(
-      assumePure(
-        runPrPreview(
-          {},
-          previewDeps({
-            resolvePullRequestContext: () =>
-              Effect.succeed(makePullRequestContext({ token: null })),
-            exploreFromContext: () =>
-              Effect.succeed(
-                makeRuntime({
-                  credentials: null,
-                }),
-              ),
-          }),
-        ).pipe(Effect.result),
+    const failure = expectPreviewFailure(
+      await runPreviewResult(
+        {},
+        {
+          resolvePullRequestContext: () => Effect.succeed(makePullRequestContext({ token: null })),
+          exploreFromContext: () => Effect.succeed(makeRuntime({ credentials: null })),
+        },
       ),
     )
 
-    expect(result._tag).toBe('Failure')
-    if (result._tag !== 'Failure') {
-      throw new Error('expected preview to fail')
-    }
-
-    expect(result.failure).toBeInstanceOf(Github.GithubConfigError)
+    expect(failure).toBeInstanceOf(Github.GithubConfigError)
   })
 
   test('raises a blocking error in check-only mode when doctor checks fail', async () => {
-    const result = await Effect.runPromise(
-      assumePure(
-        runPrPreview(
-          { checkOnly: true },
-          previewDeps({
-            buildPreviewDoctorSummary: () => Effect.succeed({ blocking: true }),
-          }),
-        ).pipe(Effect.result),
+    const failure = expectPreviewFailure(
+      await runPreviewResult(
+        { checkOnly: true },
+        { buildPreviewDoctorSummary: () => Effect.succeed({ blocking: true }) },
       ),
     )
 
-    expect(result._tag).toBe('Failure')
-    if (result._tag !== 'Failure') {
-      throw new Error('expected preview to fail')
-    }
-
-    expect(result.failure).toBeInstanceOf(PreviewBlockingError)
+    expect(failure).toBeInstanceOf(PreviewBlockingError)
   })
 
   test('returns a checked result in check-only mode when doctor checks pass', async () => {
