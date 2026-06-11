@@ -12,6 +12,7 @@ import { publishIntentFromSemantics } from '../release-contract.js'
 import { resolvePublishSemantics } from '../publishing.js'
 import { Plan } from '../planner/models/plan.js'
 import {
+  type Harness,
   decodeJsonRecordSync,
   decodeSemverFromManifest,
   makeHarness,
@@ -138,6 +139,29 @@ const expectRestoredCoreManifest = (manifestRaw: string) => {
   return manifest
 }
 
+const expectSingleReleaseTag = (plan: Plan) => {
+  const plannedRelease = plan.releases[0]
+  expect(plannedRelease).toBeDefined()
+  return tag(plannedRelease!.package.name, Semver.toString(plannedRelease!.nextVersion))
+}
+
+const seedExistingCandidateRelease = (candidateTag: string) =>
+  Effect.gen(function* () {
+    const gh = yield* Github.Github
+    yield* gh.createRelease({
+      tag: candidateTag,
+      title: '@kitz/core @next',
+      body: 'existing',
+      prerelease: true,
+    })
+  })
+
+const expectFirstPublishTag = (harness: Harness, expected: string) =>
+  Effect.gen(function* () {
+    const publishCalls = yield* Ref.get(harness.publishCalls)
+    expect(publishCalls[0]?.tag).toBe(expected)
+  })
+
 describe('Executor integration', () => {
   Test.live(
     'runs non-dry-run official workflow with mocked services and restores manifest semver',
@@ -237,8 +261,7 @@ describe('Executor integration', () => {
             npmTag: 'beta',
           }).pipe(Effect.provide(harness.workflowLayer))
 
-          const publishCalls = yield* Ref.get(harness.publishCalls)
-          expect(publishCalls[0]?.tag).toBe('beta')
+          yield* expectFirstPublishTag(harness, 'beta')
         }),
       ),
   )
@@ -249,12 +272,7 @@ describe('Executor integration', () => {
         const harness = yield* makeCoreHarness()
 
         const plan = yield* planOfficial(workspacePackages).pipe(Effect.provide(harness.planLayer))
-        const plannedRelease = plan.releases[0]
-        expect(plannedRelease).toBeDefined()
-        const conflictingTag = tag(
-          plannedRelease!.package.name,
-          Semver.toString(plannedRelease!.nextVersion),
-        )
+        const conflictingTag = expectSingleReleaseTag(plan)
         yield* Ref.update(harness.gitState.tags, (tags) => [...tags, conflictingTag])
 
         const outcome = yield* execute(plan, { dryRun: false }).pipe(
@@ -460,23 +478,11 @@ describe('Executor integration', () => {
         })
 
         const plan = yield* planCandidate(workspacePackages).pipe(Effect.provide(harness.planLayer))
+        const candidateTag = expectSingleReleaseTag(plan)
 
-        const plannedRelease = plan.releases[0]
-        expect(plannedRelease).toBeDefined()
-        const candidateTag = tag(
-          plannedRelease!.package.name,
-          Semver.toString(plannedRelease!.nextVersion),
+        yield* seedExistingCandidateRelease(candidateTag).pipe(
+          Effect.provide(harness.workflowLayer),
         )
-
-        yield* Effect.gen(function* () {
-          const gh = yield* Github.Github
-          yield* gh.createRelease({
-            tag: candidateTag,
-            title: '@kitz/core @next',
-            body: 'existing',
-            prerelease: true,
-          })
-        }).pipe(Effect.provide(harness.workflowLayer))
 
         const result = yield* execute(plan, { dryRun: false, tag: 'next' }).pipe(
           Effect.provide(harness.workflowLayer),
@@ -502,8 +508,7 @@ describe('Executor integration', () => {
 
         yield* execute(plan, { dryRun: false }).pipe(Effect.provide(harness.workflowLayer))
 
-        const publishCalls = yield* Ref.get(harness.publishCalls)
-        expect(publishCalls[0]?.tag).toBe('next')
+        yield* expectFirstPublishTag(harness, 'next')
       }),
     ),
   )
@@ -524,8 +529,7 @@ describe('Executor integration', () => {
             candidateTag: 'candidate',
           }).pipe(Effect.provide(harness.workflowLayer))
 
-          const publishCalls = yield* Ref.get(harness.publishCalls)
-          expect(publishCalls[0]?.tag).toBe('candidate')
+          yield* expectFirstPublishTag(harness, 'candidate')
         }),
       ),
   )
@@ -542,23 +546,11 @@ describe('Executor integration', () => {
           const plan = yield* planCandidate(workspacePackages).pipe(
             Effect.provide(harness.planLayer),
           )
+          const candidateTag = expectSingleReleaseTag(plan)
 
-          const plannedRelease = plan.releases[0]
-          expect(plannedRelease).toBeDefined()
-          const candidateTag = tag(
-            plannedRelease!.package.name,
-            Semver.toString(plannedRelease!.nextVersion),
+          yield* seedExistingCandidateRelease(candidateTag).pipe(
+            Effect.provide(harness.workflowLayer),
           )
-
-          yield* Effect.gen(function* () {
-            const gh = yield* Github.Github
-            yield* gh.createRelease({
-              tag: candidateTag,
-              title: '@kitz/core @next',
-              body: 'existing',
-              prerelease: true,
-            })
-          }).pipe(Effect.provide(harness.workflowLayer))
 
           const result = yield* execute(plan, { dryRun: false, tag: 'candidate' }).pipe(
             Effect.provide(harness.workflowLayer),
@@ -586,13 +578,7 @@ describe('Executor integration', () => {
         const harness = yield* makeCoreHarness()
 
         const plan = yield* planCandidate(workspacePackages).pipe(Effect.provide(harness.planLayer))
-
-        const plannedRelease = plan.releases[0]
-        expect(plannedRelease).toBeDefined()
-        const candidateTag = tag(
-          plannedRelease!.package.name,
-          Semver.toString(plannedRelease!.nextVersion),
-        )
+        const candidateTag = expectSingleReleaseTag(plan)
 
         const result = yield* execute(plan, { dryRun: false, tag: 'candidate' }).pipe(
           Effect.provide(harness.workflowLayer),
@@ -633,11 +619,10 @@ describe('Executor integration', () => {
 
           expect(result.createdGHReleases).toHaveLength(1)
 
-          const publishCalls = yield* Ref.get(harness.publishCalls)
           const pushedTags = yield* Ref.get(harness.gitState.pushedTags)
           const createdReleases = yield* Ref.get(harness.githubState.createdReleases)
 
-          expect(publishCalls[0]?.tag).toBe('preview-42')
+          yield* expectFirstPublishTag(harness, 'preview-42')
           expect(pushedTags[0]).toMatchObject({ force: false })
           expect(createdReleases[0]?.title).toContain(' v0.0.0-pr.42.1.')
           expect(createdReleases[0]?.prerelease).toBe(true)
@@ -658,8 +643,7 @@ describe('Executor integration', () => {
 
         yield* execute(plan, { dryRun: false }).pipe(Effect.provide(harness.workflowLayer))
 
-        const publishCalls = yield* Ref.get(harness.publishCalls)
-        expect(publishCalls[0]?.tag).toBe('pr-42')
+        yield* expectFirstPublishTag(harness, 'pr-42')
       }),
     ),
   )
