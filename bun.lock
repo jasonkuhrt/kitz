@@ -64,6 +64,10 @@
         "@kitz/test": "workspace:*",
       },
     },
+    "packages/codec": {
+      "name": "@kitz/codec",
+      "version": "0.0.0-kitz-release",
+    },
     "packages/color": {
       "name": "@kitz/color",
       "version": "0.0.0-kitz-release",
@@ -149,6 +153,7 @@
       "version": "0.0.0-kitz-release",
       "dependencies": {
         "@kitz/core": "workspace:*",
+        "@kitz/graph": "workspace:*",
         "@kitz/tex": "workspace:*",
         "ansis": "catalog:",
         "effect": "catalog:",
@@ -206,6 +211,18 @@
       },
       "devDependencies": {
         "@kitz/test": "workspace:*",
+      },
+    },
+    "packages/graph": {
+      "name": "@kitz/graph",
+      "version": "0.0.0-kitz-release",
+      "dependencies": {
+        "@kitz/core": "workspace:*",
+        "effect": "catalog:",
+      },
+      "devDependencies": {
+        "@kitz/test": "workspace:*",
+        "fast-check": "catalog:",
       },
     },
     "packages/group": {
@@ -442,6 +459,7 @@
         "@effect/sql-sqlite-bun": "catalog:",
         "@effect/sql-sqlite-node": "catalog:",
         "@kitz/cli": "workspace:*",
+        "@kitz/codec": "workspace:*",
         "@kitz/conf": "workspace:*",
         "@kitz/conventional-commits": "workspace:*",
         "@kitz/core": "workspace:*",
@@ -450,6 +468,7 @@
         "@kitz/fs": "workspace:*",
         "@kitz/git": "workspace:*",
         "@kitz/github": "workspace:*",
+        "@kitz/graph": "workspace:*",
         "@kitz/json": "workspace:*",
         "@kitz/mod": "workspace:*",
         "@kitz/monorepo": "workspace:*",
@@ -458,6 +477,7 @@
         "@kitz/pkg": "workspace:*",
         "@kitz/platform": "workspace:*",
         "@kitz/resource": "workspace:*",
+        "@kitz/sch": "workspace:*",
         "@kitz/semver": "workspace:*",
         "@kitz/tui": "workspace:*",
         "@opentui/core": "0.3.1",
@@ -468,6 +488,7 @@
       "devDependencies": {
         "@kitz/otel": "workspace:*",
         "@kitz/test": "workspace:*",
+        "@kitz/yaml": "workspace:*",
         "@types/react": "^19.2.16",
       },
     },
@@ -652,6 +673,8 @@
 
     "@kitz/cmx": ["@kitz/cmx@workspace:packages/cmx"],
 
+    "@kitz/codec": ["@kitz/codec@workspace:packages/codec"],
+
     "@kitz/color": ["@kitz/color@workspace:packages/color"],
 
     "@kitz/conf": ["@kitz/conf@workspace:packages/conf"],
@@ -673,6 +696,8 @@
     "@kitz/git": ["@kitz/git@workspace:packages/git"],
 
     "@kitz/github": ["@kitz/github@workspace:packages/github"],
+
+    "@kitz/graph": ["@kitz/graph@workspace:packages/graph"],
 
     "@kitz/group": ["@kitz/group@workspace:packages/group"],
 

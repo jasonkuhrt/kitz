@@ -3,18 +3,18 @@ import { Conf } from '@kitz/conf'
 import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
+import { Sch } from '@kitz/sch'
 import { Semver } from '@kitz/semver'
 import { Effect, Schema } from 'effect'
 import type { PackageMap } from './analyzer/workspace.js'
 import * as LintConfig from './lint/models/config.js'
 import {
-  defaultOperator,
   Operator,
   type ResolveError as OperatorResolveError,
   ResolvedOperator,
   resolve as resolveOperator,
 } from './operator.js'
-import { defaultPublishing, Publishing } from './publishing.js'
+import { Publishing } from './publishing.js'
 
 const PackageConfigEntrySchema = Schema.Struct({
   name: Schema.String,
@@ -40,15 +40,10 @@ export type ConventionalCommitTypeImpact = Semver.BumpType | null
  */
 const ConventionalCommitSettingsSchema = Schema.Struct({
   types: CustomTypesSchema.pipe(
-    Schema.optionalKey,
     Schema.withDecodingDefaultKey(Effect.sync(() => ({}) as CustomTypes)),
   ),
 })
 export type ConventionalCommitSettings = typeof ConventionalCommitSettingsSchema.Type
-
-const defaultConventionalCommitSettings = (): ConventionalCommitSettings => ({
-  types: {},
-})
 
 /**
  * Resolve the full type→impact map by merging user overrides over StandardImpact defaults.
@@ -129,42 +124,29 @@ export type CommitOverrides = typeof CommitOverridesSchema.Type
 
 /**
  * Release configuration schema (input from file).
+ *
+ * Every default lives here on the schema (encoded keys are optional, decoded
+ * values are always present) — `load` performs no second round of literal
+ * fallbacks.
  */
-export class Config extends Schema.Class<Config>('Config')({
+export class Config extends Sch.Class<Config>()('Config', {
   /** Main branch name (default: 'main') */
-  trunk: Schema.String.pipe(
-    Schema.optionalKey,
-    Schema.withDecodingDefaultKey(Effect.sync(() => 'main')),
-  ),
+  trunk: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.sync(() => 'main'))),
   /** Dist-tag for official releases (default: 'latest') */
-  npmTag: Schema.String.pipe(
-    Schema.optionalKey,
-    Schema.withDecodingDefaultKey(Effect.sync(() => 'latest')),
-  ),
+  npmTag: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.sync(() => 'latest'))),
   /** Dist-tag for candidate releases (default: 'next') */
-  candidateTag: Schema.String.pipe(
-    Schema.optionalKey,
-    Schema.withDecodingDefaultKey(Effect.sync(() => 'next')),
-  ),
+  candidateTag: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.sync(() => 'next'))),
   /** Scope to package config mapping (auto-scanned if not provided) */
   packages: PackageMapSchema.pipe(
-    Schema.optionalKey,
     Schema.withDecodingDefaultKey(Effect.sync(() => ({}) as PackageMap)),
   ),
   /** Declares how each lifecycle is published. */
-  publishing: Publishing.pipe(
-    Schema.optionalKey,
-    Schema.withDecodingDefaultKey(Effect.sync(() => ({}))),
-  ),
+  publishing: Publishing.pipe(Schema.withDecodingDefaultKey(Effect.sync(() => ({})))),
   /** Operator-facing command surface for local guidance and runbooks. */
-  operator: Operator.pipe(
-    Schema.optionalKey,
-    Schema.withDecodingDefaultKey(Effect.sync(defaultOperator)),
-  ),
+  operator: Operator.pipe(Schema.withDecodingDefaultKey(Effect.sync(() => ({})))),
   /** Conventional commit settings (custom type→impact mappings). */
   conventionalCommitSettings: ConventionalCommitSettingsSchema.pipe(
-    Schema.optionalKey,
-    Schema.withDecodingDefaultKey(Effect.sync(defaultConventionalCommitSettings)),
+    Schema.withDecodingDefaultKey(Effect.sync(() => ({}))),
   ),
   /**
    * SHA-keyed changelog-text overlays. Each entry rewrites only the rendered
@@ -172,20 +154,11 @@ export class Config extends Schema.Class<Config>('Config')({
    * affected. Validated on read (see {@link CommitOverridesSchema}).
    */
   commitOverrides: CommitOverridesSchema.pipe(
-    Schema.optionalKey,
     Schema.withDecodingDefaultKey(Effect.sync(() => ({}) as CommitOverrides)),
   ),
   /** Lint configuration */
   lint: Schema.optional(LintConfig.Config),
-}) {
-  static is = Schema.is(Config)
-  static decode = Schema.decodeUnknownEffect(Config)
-  static decodeSync = Schema.decodeUnknownSync(Config)
-  static encode = Schema.encodeUnknownEffect(Config)
-  static encodeSync = Schema.encodeUnknownSync(Config)
-  static equivalence = Schema.toEquivalence(Config)
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Resolved release configuration schema (after merging and resolution).
@@ -195,7 +168,7 @@ export class Config extends Schema.Class<Config>('Config')({
  */
 const ResolvedTypesSchema = Schema.Record(Schema.String, Schema.NullOr(Semver.BumpType))
 
-export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig')({
+export class ResolvedConfig extends Sch.Class<ResolvedConfig>()('ResolvedConfig', {
   trunk: Schema.String,
   npmTag: Schema.String,
   candidateTag: Schema.String,
@@ -207,15 +180,7 @@ export class ResolvedConfig extends Schema.Class<ResolvedConfig>('ResolvedConfig
   /** SHA-keyed changelog-text overlays (validated at load). */
   commitOverrides: CommitOverridesSchema,
   lint: LintConfig.ResolvedConfig,
-}) {
-  static is = Schema.is(ResolvedConfig)
-  static decode = Schema.decodeUnknownEffect(ResolvedConfig)
-  static decodeSync = Schema.decodeUnknownSync(ResolvedConfig)
-  static encode = Schema.encodeUnknownEffect(ResolvedConfig)
-  static encodeSync = Schema.encodeUnknownSync(ResolvedConfig)
-  static equivalence = Schema.toEquivalence(ResolvedConfig)
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Config file definition for @kitz/release.
@@ -265,7 +230,9 @@ const ConfigFile = Conf.File.define({
  * })
  * ```
  */
-export const defineConfig = Conf.File.createDefineConfig(ConfigFile)
+// Identity over the ENCODED form: config files author the serialized shape
+// (all keys optional); `load` decodes it, applying the schema defaults.
+export const defineConfig = (config: typeof Config.Encoded): typeof Config.Encoded => config
 
 /**
  * Error types from config loading.
@@ -296,29 +263,27 @@ export const load = (
 ): Effect.Effect<ResolvedConfig, ConfigError, FileSystem.FileSystem | Env.Env> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
+    // Schema decoding is the single source of defaults: every field of
+    // `fileConfig` is already defined here. Options only override defined
+    // call-site values.
     const fileConfig = yield* Conf.File.load(ConfigFile, Fs.Path.toString(env.cwd))
 
-    // Merge call-site overrides with file config (overrides replace per-field)
-    const operator = yield* resolveOperator(
-      options?.operator ?? fileConfig.operator ?? defaultOperator(),
-    )
+    const operator = yield* resolveOperator(options?.operator ?? fileConfig.operator)
 
     const conventionalCommitSettings =
-      options?.conventionalCommitSettings ??
-      fileConfig.conventionalCommitSettings ??
-      defaultConventionalCommitSettings()
+      options?.conventionalCommitSettings ?? fileConfig.conventionalCommitSettings
 
     return ResolvedConfig.make({
-      trunk: options?.trunk ?? fileConfig.trunk ?? 'main',
-      npmTag: options?.npmTag ?? fileConfig.npmTag ?? 'latest',
-      candidateTag: options?.candidateTag ?? fileConfig.candidateTag ?? 'next',
-      packages: options?.packages ?? fileConfig.packages ?? {},
-      publishing: options?.publishing ?? fileConfig.publishing ?? defaultPublishing(),
+      trunk: options?.trunk ?? fileConfig.trunk,
+      npmTag: options?.npmTag ?? fileConfig.npmTag,
+      candidateTag: options?.candidateTag ?? fileConfig.candidateTag,
+      packages: options?.packages ?? fileConfig.packages,
+      publishing: options?.publishing ?? fileConfig.publishing,
       operator,
       resolvedConventionalCommitTypes: resolveConventionalCommitTypes(
-        conventionalCommitSettings.types ?? {},
+        conventionalCommitSettings.types,
       ),
-      commitOverrides: options?.commitOverrides ?? fileConfig.commitOverrides ?? {},
+      commitOverrides: options?.commitOverrides ?? fileConfig.commitOverrides,
       lint: LintConfig.resolveConfig({
         defaults: options?.lint?.defaults ?? fileConfig.lint?.defaults,
         rules: options?.lint?.rules ?? fileConfig.lint?.rules,

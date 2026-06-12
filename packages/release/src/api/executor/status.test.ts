@@ -81,7 +81,7 @@ describe('Executor status', () => {
 
       expect(workflowStatus.state).toBe('suspended')
       if (workflowStatus.state === 'suspended') {
-        expect(workflowStatus.detail).toContain('mock publish failure')
+        expect(workflowStatus.detail).toContain('publish failure injected for @kitz/cli')
       }
     }),
   )

@@ -1,3 +1,4 @@
+import { Err } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
 import { Effect, Option } from 'effect'
@@ -60,7 +61,7 @@ const validatePlan = <T extends Plan>(
       new Resource.ParseError({
         context: {
           path: resolvePlanFile(path),
-          detail: cause instanceof Error ? cause.message : String(cause),
+          detail: Err.ensure(cause).message,
         },
       }),
   })

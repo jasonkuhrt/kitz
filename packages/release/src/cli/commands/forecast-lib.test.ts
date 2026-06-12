@@ -1,34 +1,24 @@
+import { Console, Effect, Layer, Option } from 'effect'
 import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
-import { Effect, Option } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import * as Api from '../../api/__.js'
 import { Analysis, Impact, makeCascadeCommit } from '../../api/analyzer/models/__.js'
 import { makeHarness } from '../../api/executor/test-support.js'
+import { testConfig } from '../../test-support.js'
 import { noPackagesFoundMessage } from './command-workspace.js'
-import { buildForecastInput, loadForecastInputFromFile } from './forecast-lib.js'
+import {
+  ForecastData,
+  type ForecastDataShape,
+  buildForecastInput,
+  buildForecastWithCascades,
+  loadForecastInputFromFile,
+  makeForecastData,
+} from './forecast-lib.js'
 
 const makeResolvedConfig = (
   publishing: Api.Config.ResolvedConfig['publishing'] = Api.Publishing.defaultPublishing(),
-): Api.Config.ResolvedConfig =>
-  Api.Config.ResolvedConfig.make({
-    trunk: 'main',
-    npmTag: 'latest',
-    candidateTag: 'next',
-    packages: {},
-    publishing,
-    operator: Api.Operator.ResolvedOperator.make({
-      manager: Pkg.Manager.DetectedPackageManager.make({
-        name: 'bun',
-        source: 'runtime',
-      }),
-      releaseCommand: 'bun run release',
-      prepareCommands: [],
-    }),
-    resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
-    commitOverrides: {},
-    lint: Api.Lint.resolveConfig({}),
-  })
+): Api.Config.ResolvedConfig => testConfig({ publishing })
 
 const workspacePackage = (scope: string) => ({
   scope,
@@ -62,6 +52,13 @@ const makeRecon = (): Api.Explorer.Recon => ({
   },
 })
 
+const emptyAnalysis = Analysis.make({
+  impacts: [],
+  cascades: [],
+  unchanged: [],
+  tags: [],
+})
+
 const packageJson = (scope: string, fields: Record<string, unknown> = {}) =>
   JSON.stringify({
     name: `@kitz/${scope}`,
@@ -69,27 +66,40 @@ const packageJson = (scope: string, fields: Record<string, unknown> = {}) =>
     ...fields,
   })
 
+/** Stub layer builder: all seams die unless overridden. */
+const forecastDataLayer = (overrides: Partial<ForecastDataShape>): Layer.Layer<ForecastData> =>
+  Layer.succeed(ForecastData)({
+    loadWorkspace: Effect.die('loadWorkspace should not run'),
+    tags: Effect.die('tags should not be read'),
+    analyze: () => Effect.die('analysis should not run'),
+    explore: Effect.die('explore should not run'),
+    forecast: () => Effect.die('forecast should not run'),
+    ...overrides,
+  })
+
+const captureConsole = (logs: string[]) => ({
+  ...globalThis.console,
+  log: (...args: ReadonlyArray<unknown>) => {
+    logs.push(args.join(' '))
+  },
+})
+
 describe('forecast-lib', () => {
   test('returns an empty idle forecast when no packages are configured', async () => {
     const logs: string[] = []
 
     const result = await Effect.runPromise(
-      buildForecastInput({
-        loadWorkspace: Effect.succeed({
-          _tag: 'EmptyCommandWorkspace',
-          config: makeResolvedConfig(),
-        }),
-        tags: Effect.die('tags should not be read'),
-        analyze: (() => Effect.die('analysis should not run')) as typeof Api.Analyzer.analyze,
-        explore: Effect.die('explore should not run'),
-        forecast: (() => {
-          throw new Error('forecast should not run')
-        }) as typeof Api.Forecaster.forecast,
-        log: (message) =>
-          Effect.sync(() => {
-            logs.push(message)
+      buildForecastInput().pipe(
+        Effect.provide(
+          forecastDataLayer({
+            loadWorkspace: Effect.succeed({
+              _tag: 'EmptyCommandWorkspace',
+              config: makeResolvedConfig(),
+            }),
           }),
-      }),
+        ),
+        Effect.provideService(Console.Console, captureConsole(logs)),
+      ),
     )
 
     expect(logs).toEqual([noPackagesFoundMessage])
@@ -103,8 +113,7 @@ describe('forecast-lib', () => {
   test('builds forecast input from analyzed workspace packages', async () => {
     const pkg = workspacePackage('core')
     const tags = ['@kitz/core@1.0.0']
-    const analysis = { _tag: 'Analysis' } as any
-    const recon = { _tag: 'Recon' } as any
+    const recon = makeRecon()
     const forecast = makeForecast()
     let analysisInput: Parameters<typeof Api.Analyzer.analyze>[0] | undefined
     let forecastArgs:
@@ -115,37 +124,40 @@ describe('forecast-lib', () => {
       | undefined
 
     const result = await Effect.runPromise(
-      buildForecastInput({
-        loadWorkspace: Effect.succeed({
-          _tag: 'ReadyCommandWorkspace',
-          config: makeResolvedConfig(
-            Api.Publishing.Publishing.make({
-              official: { mode: 'manual' },
-              candidate: { mode: 'manual' },
-              ephemeral: {
-                mode: 'github-token',
-                workflow: '.github/workflows/release.yml',
-                tokenEnv: 'NPM_TOKEN',
-              },
+      buildForecastInput().pipe(
+        Effect.provide(
+          forecastDataLayer({
+            loadWorkspace: Effect.succeed({
+              _tag: 'ReadyCommandWorkspace',
+              config: makeResolvedConfig(
+                Api.Publishing.Publishing.make({
+                  official: { mode: 'manual' },
+                  candidate: { mode: 'manual' },
+                  ephemeral: {
+                    mode: 'github-token',
+                    workflow: '.github/workflows/release.yml',
+                    tokenEnv: 'NPM_TOKEN',
+                  },
+                }),
+              ),
+              packages: [pkg],
             }),
-          ),
-          packages: [pkg],
-        }),
-        tags: Effect.succeed(tags),
-        analyze: ((input) => {
-          analysisInput = input
-          return Effect.succeed(analysis)
-        }) as typeof Api.Analyzer.analyze,
-        explore: Effect.succeed(recon),
-        forecast: ((receivedAnalysis, receivedRecon) => {
-          forecastArgs = {
-            analysis: receivedAnalysis,
-            recon: receivedRecon,
-          }
-          return forecast
-        }) as typeof Api.Forecaster.forecast,
-        log: () => Effect.void,
-      }),
+            tags: Effect.succeed(tags),
+            analyze: (input) => {
+              analysisInput = input
+              return Effect.succeed(emptyAnalysis)
+            },
+            explore: Effect.succeed(recon),
+            forecast: (params) => {
+              forecastArgs = {
+                analysis: params.analysis,
+                recon: params.recon,
+              }
+              return Effect.succeed(forecast)
+            },
+          }),
+        ),
+      ),
     )
 
     expect(analysisInput).toEqual({
@@ -155,7 +167,7 @@ describe('forecast-lib', () => {
       commitOverrides: {},
     })
     expect(forecastArgs).toEqual({
-      analysis,
+      analysis: emptyAnalysis,
       recon,
     })
     expect(result.forecast).toEqual(forecast)
@@ -181,28 +193,30 @@ describe('forecast-lib', () => {
       unchanged: [platformPackage, docsPackage],
       tags: [],
     })
+    const fsLayer = Fs.Memory.layer({
+      '/repo/packages/app/package.json': packageJson('app', {
+        dependencies: {
+          '@kitz/platform': 'workspace:*',
+        },
+      }),
+      '/repo/packages/platform/package.json': packageJson('platform'),
+      '/repo/packages/docs/package.json': packageJson('docs'),
+    })
 
     const result = await Effect.runPromise(
-      buildForecastInput({
-        loadWorkspace: Effect.succeed({
-          _tag: 'ReadyCommandWorkspace',
-          config: makeResolvedConfig(),
-          packages: [appPackage, platformPackage, docsPackage],
-        }),
-        tags: Effect.succeed([]),
-        analyze: (() => Effect.succeed(analysis)) as typeof Api.Analyzer.analyze,
-        explore: Effect.succeed(makeRecon()),
-        log: () => Effect.void,
-      }).pipe(
+      buildForecastInput().pipe(
         Effect.provide(
-          Fs.Memory.layer({
-            '/repo/packages/app/package.json': packageJson('app', {
-              dependencies: {
-                '@kitz/platform': 'workspace:*',
-              },
+          forecastDataLayer({
+            loadWorkspace: Effect.succeed({
+              _tag: 'ReadyCommandWorkspace',
+              config: makeResolvedConfig(),
+              packages: [appPackage, platformPackage, docsPackage],
             }),
-            '/repo/packages/platform/package.json': packageJson('platform'),
-            '/repo/packages/docs/package.json': packageJson('docs'),
+            tags: Effect.succeed([]),
+            analyze: () => Effect.succeed(analysis),
+            explore: Effect.succeed(makeRecon()),
+            // The REAL forecast projection (cascade fold) over a memory fs.
+            forecast: (params) => buildForecastWithCascades(params).pipe(Effect.provide(fsLayer)),
           }),
         ),
       ),
@@ -212,7 +226,7 @@ describe('forecast-lib', () => {
     expect(result.forecast.cascades.map((item) => item.packageName)).toEqual(['@kitz/platform'])
   })
 
-  test('falls back to git tags when custom tag loading is not provided', async () => {
+  test('live ForecastData reads git tags through the harness services', async () => {
     const harness = await Effect.runPromise(
       makeHarness({
         git: {
@@ -225,26 +239,32 @@ describe('forecast-lib', () => {
       }),
     )
     const pkg = workspacePackage('core')
-    const analysis = { _tag: 'Analysis' } as any
-    const recon = { _tag: 'Recon' } as any
+    const recon = makeRecon()
     const forecast = makeForecast()
     let analysisInput: Parameters<typeof Api.Analyzer.analyze>[0] | undefined
 
     const result = await Effect.runPromise(
-      buildForecastInput({
-        loadWorkspace: Effect.succeed({
-          _tag: 'ReadyCommandWorkspace',
-          config: makeResolvedConfig(),
-          packages: [pkg],
-        }),
-        analyze: ((input) => {
-          analysisInput = input
-          return Effect.succeed(analysis)
-        }) as typeof Api.Analyzer.analyze,
-        explore: Effect.succeed(recon),
-        forecast: (() => forecast) as typeof Api.Forecaster.forecast,
-        log: () => Effect.void,
-      } as any).pipe(Effect.provide(harness.workflowLayer)),
+      Effect.gen(function* () {
+        // Build the LIVE implementation against harness services, then
+        // override the seams that would hit the network/registry.
+        const live = yield* makeForecastData
+        return yield* buildForecastInput().pipe(
+          Effect.provideService(ForecastData, {
+            ...live,
+            loadWorkspace: Effect.succeed({
+              _tag: 'ReadyCommandWorkspace' as const,
+              config: makeResolvedConfig(),
+              packages: [pkg],
+            }),
+            analyze: (input) => {
+              analysisInput = input
+              return Effect.succeed(emptyAnalysis)
+            },
+            explore: Effect.succeed(recon),
+            forecast: () => Effect.succeed(forecast),
+          }),
+        )
+      }).pipe(Effect.provide(harness.workflowLayer)),
     )
 
     expect(analysisInput?.tags).toEqual(['@kitz/core@1.2.3'])

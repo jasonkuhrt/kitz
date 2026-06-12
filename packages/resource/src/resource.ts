@@ -26,7 +26,7 @@
 
 import { PlatformError, FileSystem } from 'effect'
 import { Fs } from '@kitz/fs'
-import { Effect, Option, SchemaIssue, Schema, SchemaAST } from 'effect'
+import { Effect, Option, SchemaGetter, SchemaIssue, Schema, SchemaAST } from 'effect'
 import { EncodeError, NotFoundError, ParseError, ReadError, WriteError } from './errors.js'
 
 export { EncodeError, NotFoundError, ParseError, ReadError, WriteError }
@@ -369,6 +369,180 @@ export const createJson = <A, I, R = never>(
   // fromJsonString(schema) produces Schema<A, string> for create()
   const jsonSchema = Schema.fromJsonString(schema)
   return create(filename, jsonSchema, emptyValue, options)
+}
+
+// ─── JSON Lines Convenience ──────────────────────────────────────────────────
+
+/**
+ * A JSON Lines (JSONL) file resource.
+ *
+ * Extends {@link Resource} over `ReadonlyArray<A>` with an `append` operation
+ * that adds a single item without reading or rewriting the existing file.
+ *
+ * @typeParam A - The in-memory item type after decoding
+ * @typeParam R - Effect requirements (typically FileSystem)
+ */
+export interface JsonLinesResource<A, R = FileSystem.FileSystem> extends Resource<
+  ReadonlyArray<A>,
+  R
+> {
+  /**
+   * Append a single item as one JSON line.
+   *
+   * Encodes only the given item and appends it with the filesystem append
+   * flag (`a`) — the existing file content is never read back or rewritten,
+   * so a crash during append cannot truncate prior entries. If the file is
+   * missing it is created (parent directories included). If the existing
+   * file does not end with a newline, a separating newline is written first
+   * so the appended record stays a valid JSON Lines entry.
+   *
+   * @param value - Item to encode and append
+   * @param path - Directory containing the resource, or absolute file path
+   */
+  append: (value: A, path: Fs.Path.$Abs) => Effect.Effect<void, ResourceError, R>
+}
+
+/**
+ * Create a JSON Lines (JSONL) resource for an item schema.
+ *
+ * The resource value is `ReadonlyArray<A>`: each item is encoded as one
+ * compact JSON line terminated by a newline. `write` rewrites the whole
+ * file; `append` adds a single item using the filesystem append flag,
+ * making it safe for append-only files such as journals.
+ *
+ * @param filename - Filename to use when path is a directory
+ * @param itemSchema - Schema for a single line's JSON object type
+ * @param options - Optional configuration
+ *
+ * @example
+ * ```ts
+ * const journal = Resource.createJsonLines(
+ *   'journal.jsonl',
+ *   Schema.Struct({ id: Schema.String, at: Schema.String }),
+ * )
+ *
+ * yield* journal.append({ id: 'a', at: '2026-01-01T00:00:00Z' }, dir)
+ * const entries = yield* journal.readOrEmpty(dir)
+ * ```
+ */
+export const createJsonLines = <A, I, R = never>(
+  filename: string,
+  itemSchema: Schema.Codec<A, I, R>,
+  options?: CreateOptions,
+): JsonLinesResource<A, FileSystem.FileSystem | R> => {
+  const parseOptions: SchemaAST.ParseOptions | undefined = options?.preserveExcessProperties
+    ? { onExcessProperty: 'preserve' }
+    : undefined
+
+  // One JSON line per item: Schema<A, string>
+  const lineSchema = Schema.fromJsonString(itemSchema)
+
+  // Whole file: Schema<ReadonlyArray<A>, string>. Decode splits into lines
+  // (skipping blank lines); encode joins each line with a trailing newline,
+  // so files always end with a newline — the invariant `append` relies on.
+  const fileSchema = Schema.String.pipe(
+    Schema.decodeTo(Schema.Array(lineSchema), {
+      decode: SchemaGetter.transform((content: string) =>
+        content.split('\n').filter((line) => line.trim().length > 0),
+      ),
+      encode: SchemaGetter.transform((lines: ReadonlyArray<string>) =>
+        lines.map((line) => `${line}\n`).join(''),
+      ),
+    }),
+  )
+
+  const resource = create(filename, fileSchema, [], options)
+
+  const encodeLine = (value: A, filePath: Fs.Path.AbsFile) =>
+    Schema.encodeEffect(lineSchema)(value, parseOptions).pipe(
+      Effect.mapError(
+        (error) =>
+          new EncodeError({
+            context: {
+              path: filePath,
+              detail: SchemaIssue.makeFormatterDefault()(error.issue),
+            },
+          }),
+      ),
+    )
+
+  /**
+   * Check whether the existing file ends with a newline by reading only its
+   * last byte. Empty files need no separator, so they report `true`.
+   *
+   * Filesystems without file-handle support (e.g. the in-memory test
+   * filesystem rejects `open`) fall back to reading the whole file — the
+   * probe is read-only either way, so append's crash-safety (never rewriting
+   * existing bytes) is unaffected.
+   */
+  const endsWithNewline = (filePath: Fs.Path.AbsFile) =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const file = yield* Fs.open(filePath, { flag: 'r' })
+        const info = yield* file.stat
+        if (info.size === 0n) return true
+        yield* file.seek(info.size - 1n, 'start')
+        const lastByte = yield* file.readAlloc(1)
+        return Option.isSome(lastByte) && lastByte.value[0] === 0x0a
+      }),
+    ).pipe(
+      // oxlint-disable-next-line kitz/effect/no-promise-then-chain -- Effect.catch combinator, not a Promise chain.
+      Effect.catch(() =>
+        Effect.map(
+          Fs.readString(filePath),
+          (content) => content.length === 0 || content.endsWith('\n'),
+        ),
+      ),
+    )
+
+  const append = (value: A, path: Fs.Path.$Abs) =>
+    Effect.gen(function* () {
+      const filePath = resolvePath(path, filename)
+      const line = yield* encodeLine(value, filePath)
+
+      const exists = yield* Fs.exists(filePath).pipe(
+        Effect.mapError(
+          (error: PlatformError.PlatformError) =>
+            new WriteError({
+              context: {
+                path: filePath,
+                detail: `check exists: ${error.message}`,
+              },
+            }),
+        ),
+      )
+
+      const hasTrailingNewline = exists
+        ? yield* endsWithNewline(filePath).pipe(
+            Effect.mapError(
+              (error: PlatformError.PlatformError) =>
+                new WriteError({
+                  context: {
+                    path: filePath,
+                    detail: `check trailing newline: ${error.message}`,
+                  },
+                }),
+            ),
+          )
+        : true
+
+      // Fs.write auto-creates parent directories
+      yield* Fs.write(filePath, hasTrailingNewline ? `${line}\n` : `\n${line}\n`, {
+        flag: 'a',
+      }).pipe(
+        Effect.mapError(
+          (error: PlatformError.PlatformError) =>
+            new WriteError({
+              context: {
+                path: filePath,
+                detail: error.message,
+              },
+            }),
+        ),
+      )
+    })
+
+  return { ...resource, append }
 }
 
 // ─── Type Guards ─────────────────────────────────────────────────────────────

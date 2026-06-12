@@ -4,7 +4,7 @@ import { Fs } from '@kitz/fs'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, Layer } from 'effect'
+import { DateTime, Effect, Layer } from 'effect'
 import { sha256Json } from './digest.js'
 import { journalPathFor, makeEntry, writeEntries } from './journal.js'
 import { Official } from './planner/models/item-official.js'
@@ -79,7 +79,7 @@ describe('release reconciliation classifier', () => {
         subject: '@kitz/core@1.0.0',
         planned: {},
         result: 'attempting',
-        attemptedAt: '2026-05-14T00:00:00.000Z',
+        attemptedAt: DateTime.makeUnsafe('2026-05-14T00:00:00.000Z'),
       }),
       makeEntry({
         planDigest: digest,
@@ -87,7 +87,7 @@ describe('release reconciliation classifier', () => {
         subject: '@kitz/core@1.0.0',
         planned: {},
         result: 'succeeded',
-        attemptedAt: '2026-05-14T00:00:01.000Z',
+        attemptedAt: DateTime.makeUnsafe('2026-05-14T00:00:01.000Z'),
       }),
       makeEntry({
         planDigest: digest,
@@ -95,7 +95,7 @@ describe('release reconciliation classifier', () => {
         subject: '@kitz/core@1.0.0',
         planned: {},
         result: 'succeeded',
-        attemptedAt: '2026-05-14T00:00:02.000Z',
+        attemptedAt: DateTime.makeUnsafe('2026-05-14T00:00:02.000Z'),
       }),
     ]
 
@@ -180,7 +180,7 @@ describe('release reconciliation classifier', () => {
       subject: '@kitz/core@1.0.0',
       planned: {},
       result: 'succeeded',
-      attemptedAt: '2026-05-14T00:00:00.000Z',
+      attemptedAt: DateTime.makeUnsafe('2026-05-14T00:00:00.000Z'),
     })
     const decision = await Effect.runPromise(
       Effect.gen(function* () {

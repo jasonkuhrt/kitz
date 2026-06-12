@@ -1,6 +1,7 @@
 export * from './builder.js'
 export * from './case/_.js'
 export * from './char/_.js'
+export * from './diff/_.js'
 export * from './is.js'
 export * from './length.js'
 export * from './match.js'

@@ -85,46 +85,56 @@ You will also find these conventions:
 
 <!-- PACKAGES_TABLE_START -->
 
-| Package                                               | Description                        |
-| ----------------------------------------------------- | ---------------------------------- |
-| [`@kitz/assert`](./packages/assert)                   | Assertion utilities                |
-| [`@kitz/bldr`](./packages/bldr)                       | Builder pattern utilities          |
-| [`@kitz/cli`](./packages/cli)                         | CLI framework                      |
-| [`@kitz/color`](./packages/color)                     | Color manipulation utilities       |
-| [`@kitz/config-manager`](./packages/config-manager)   | Configuration file management      |
-| [`@kitz/configurator`](./packages/configurator)       | Configurator pattern utilities     |
-| [`@kitz/core`](./packages/core)                       | Core data structures and utilities |
-| [`@kitz/env`](./packages/env)                         | Environment variable utilities     |
-| [`@kitz/fs`](./packages/fs)                           | Filesystem utilities               |
-| [`@kitz/group`](./packages/group)                     | Grouping utilities                 |
-| [`@kitz/html`](./packages/html)                       | HTML utilities                     |
-| [`@kitz/http`](./packages/http)                       | HTTP utilities                     |
-| [`@kitz/idx`](./packages/idx)                         | Index data structure               |
-| [`@kitz/json`](./packages/json)                       | JSON utilities                     |
-| [`@kitz/jsonc`](./packages/jsonc)                     | JSON with comments utilities       |
-| [`kitz`](./packages/kitz)                             | A TypeScript standard library      |
-| [`@kitz/log`](./packages/log)                         | Logging utilities                  |
-| [`@kitz/manifest`](./packages/manifest)               | Manifest file utilities            |
-| [`@kitz/mask`](./packages/mask)                       | Data masking utilities             |
-| [`@kitz/mod`](./packages/mod)                         | Module utilities                   |
-| [`@kitz/name`](./packages/name)                       | Naming convention utilities        |
-| [`@kitz/num`](./packages/num)                         | Extended number utilities          |
-| [`@kitz/oak`](./packages/oak)                         | CLI argument parsing               |
-| [`@kitz/otel`](./packages/otel)                       | OpenTelemetry trace utilities      |
-| [`@kitz/package-manager`](./packages/package-manager) | Package manager utilities          |
-| [`@kitz/paka`](./packages/paka)                       | Package utilities                  |
-| [`@kitz/prox`](./packages/prox)                       | Extended proxy utilities           |
-| [`@kitz/ref`](./packages/ref)                         | Reference utilities                |
-| [`@kitz/resource`](./packages/resource)               | Resource management utilities      |
-| [`@kitz/sch`](./packages/sch)                         | Schema utilities                   |
-| [`@kitz/semver`](./packages/semver)                   | Semantic versioning utilities      |
-| [`@kitz/syn`](./packages/syn)                         | Syntax utilities                   |
-| [`@kitz/test`](./packages/test)                       | Testing utilities                  |
-| [`@kitz/tex`](./packages/tex)                         | Text and box formatting utilities  |
-| [`@kitz/tree`](./packages/tree)                       | Tree data structure utilities      |
-| [`@kitz/url`](./packages/url)                         | URL utilities                      |
-| [`@kitz/ware`](./packages/ware)                       | Middleware utilities               |
-| [`@kitz/yaml`](./packages/yaml)                       | YAML codecs and resources          |
+| Package | Description |
+| ------- | ----------- |
+| [`@kitz/assert`](./packages/assert) | Assertion utilities |
+| [`@kitz/bldr`](./packages/bldr) | Builder pattern utilities |
+| [`@kitz/cli`](./packages/cli) | CLI framework |
+| [`@kitz/cmx`](./packages/cmx) | _No description_ |
+| [`@kitz/codec`](./packages/codec) | Byte-format codecs (tar, ...) |
+| [`@kitz/color`](./packages/color) | Color manipulation utilities |
+| [`@kitz/conf`](./packages/conf) | _No description_ |
+| [`@kitz/conventional-commits`](./packages/conventional-commits) | _No description_ |
+| [`@kitz/core`](./packages/core) | Core data structures and utilities |
+| [`@kitz/doc-inject`](./packages/doc-inject) | _No description_ |
+| [`@kitz/env`](./packages/env) | Environment variable utilities |
+| [`@kitz/flo`](./packages/flo) | _No description_ |
+| [`@kitz/fs`](./packages/fs) | Filesystem utilities |
+| [`@kitz/fuzzy`](./packages/fuzzy) | Fuzzy matching with fzy's DP core and fzf's scoring constants |
+| [`@kitz/git`](./packages/git) | _No description_ |
+| [`@kitz/github`](./packages/github) | _No description_ |
+| [`@kitz/graph`](./packages/graph) | Pure graph algorithms over generic adjacency input |
+| [`@kitz/group`](./packages/group) | Grouping utilities |
+| [`@kitz/html`](./packages/html) | HTML utilities |
+| [`@kitz/http`](./packages/http) | HTTP utilities |
+| [`@kitz/idx`](./packages/idx) | Index data structure |
+| [`@kitz/json`](./packages/json) | JSON utilities |
+| [`@kitz/jsonc`](./packages/jsonc) | JSON with comments utilities |
+| [`kitz`](./packages/kitz) | A TypeScript standard library |
+| [`@kitz/log`](./packages/log) | Logging utilities |
+| [`@kitz/mod`](./packages/mod) | Module utilities |
+| [`@kitz/monorepo`](./packages/monorepo) | _No description_ |
+| [`@kitz/name`](./packages/name) | Naming convention utilities |
+| [`@kitz/npm-registry`](./packages/npm-registry) | _No description_ |
+| [`@kitz/num`](./packages/num) | Extended number utilities |
+| [`@kitz/oak`](./packages/oak) | CLI argument parsing |
+| [`@kitz/otel`](./packages/otel) | OpenTelemetry trace utilities |
+| [`@kitz/oxlint-rules`](./packages/oxlint-rules) | Kitz Oxlint presets and custom rules for agent engineering |
+| [`@kitz/paka`](./packages/paka) | Package utilities |
+| [`@kitz/pkg`](./packages/pkg) | Package utilities (manifest schema, manager helpers) |
+| [`@kitz/platform`](./packages/platform) | Effect platform runtime passthrough |
+| [`@kitz/release`](./packages/release) | _No description_ |
+| [`@kitz/resource`](./packages/resource) | Resource management utilities |
+| [`@kitz/sch`](./packages/sch) | Schema utilities |
+| [`@kitz/semver`](./packages/semver) | Semantic versioning utilities |
+| [`@kitz/syn`](./packages/syn) | Syntax utilities |
+| [`@kitz/test`](./packages/test) | Testing utilities |
+| [`@kitz/tex`](./packages/tex) | Text and box formatting utilities |
+| [`@kitz/tree`](./packages/tree) | Tree data structure utilities |
+| [`@kitz/tui`](./packages/tui) | _No description_ |
+| [`@kitz/url`](./packages/url) | URL utilities |
+| [`@kitz/ware`](./packages/ware) | Middleware utilities |
+| [`@kitz/yaml`](./packages/yaml) | YAML codecs and resources |
 
 <!-- PACKAGES_TABLE_END -->
 
@@ -132,25 +142,27 @@ You will also find these conventions:
 
 <!-- CORE_NAMESPACE_INDEX_START -->
 
-| Module      | Description                                                                 |
-| ----------- | --------------------------------------------------------------------------- |
-| `Arr`       | Array utilities for working with readonly and mutable arrays.               |
-| `Bool`      | Boolean utilities for logical operations and predicates.                    |
-| `Err`       | Error handling utilities for robust error management.                       |
-| `Fn`        | Function utilities for functional programming patterns.                     |
-| `Lang`      | Language utilities for type inspection and formatting.                      |
-| `Null`      | Null utilities for nullable type handling.                                  |
-| `Num`       | Number utilities for numeric operations and type guards.                    |
-| `Obj`       | Object utilities for working with plain JavaScript objects.                 |
-| `Optic`     | Optic utilities for type-safe data access and transformation.               |
-| `Pat`       | Pattern matching utilities for declarative value matching.                  |
-| `Prom`      | Promise utilities for asynchronous operations.                              |
-| `Prox`      | Proxy utilities for dynamic object behavior.                                |
-| `Rec`       | Record utilities for working with plain JavaScript objects as dictionaries. |
-| `Str`       | String utilities for text manipulation and analysis.                        |
-| `Ts`        | TypeScript type utilities and type-level programming helpers.               |
-| `Tup`       | Tuple utilities for fixed-length array operations.                          |
-| `Undefined` | Undefined utilities for optional type handling.                             |
+| Module | Description |
+| ------ | ----------- |
+| `Arr` | Array utilities for working with readonly and mutable arrays. |
+| `Bool` | Boolean utilities for logical operations and predicates. |
+| `Date` | _No description_ |
+| `Err` | Error handling utilities for robust error management. |
+| `Fn` | Function utilities for functional programming patterns. |
+| `Lang` | Language utilities for type inspection and formatting. |
+| `Null` | Null utilities for nullable type handling. |
+| `Num` | Number utilities for numeric operations and type guards. |
+| `Obj` | Object utilities for working with plain JavaScript objects. |
+| `Optic` | Optic utilities for type-safe data access and transformation. |
+| `Pat` | Pattern matching utilities for declarative value matching. |
+| `Prom` | Promise utilities for asynchronous operations. |
+| `Prox` | Proxy utilities for dynamic object behavior. |
+| `Rec` | Record utilities for working with plain JavaScript objects as dictionaries. |
+| `Ref` | Reference equality operations for objects, arrays, and functions. |
+| `Str` | String utilities for text manipulation and analysis. |
+| `Ts` | TypeScript type utilities and type-level programming helpers. |
+| `Tup` | Tuple utilities for fixed-length array operations. |
+| `Undefined` | Undefined utilities for optional type handling. |
 
 <!-- CORE_NAMESPACE_INDEX_END -->
 

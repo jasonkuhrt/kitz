@@ -33,9 +33,22 @@
  * ```
  */
 
+import { Graph as KitzGraph } from '@kitz/graph'
 import { Activity, Workflow as EffectWorkflow } from 'effect/unstable/workflow'
 import { WorkflowEngine } from 'effect/unstable/workflow'
-import { Cause, Clock, Effect, Exit, Fiber, Graph, Option, PubSub, Schema, Stream } from 'effect'
+import {
+  Cause,
+  Clock,
+  Effect,
+  Exit,
+  Fiber,
+  Graph,
+  Option,
+  PubSub,
+  Result,
+  Schema,
+  Stream,
+} from 'effect'
 import { Activity as ActivityModel, Workflow as WorkflowModel } from '../models/__.js'
 import { type LifecycleEvent, WorkflowEvents } from '../observable/__.js'
 
@@ -196,38 +209,19 @@ const buildEffectGraph = <Error>(
  *
  * Nodes in the same layer have no dependencies on each other and may execute
  * concurrently if the workflow's configured layer concurrency allows it.
+ *
+ * Throws `Graph.Errors.CycleError` when the graph contains a cycle (or an
+ * unresolvable dependency), preserving the workflow boundary's fail-fast
+ * behavior.
  */
-const computeLayers = <Error>(nodes: Map<string, NodeDef<Error>>): string[][] => {
-  const layers: string[][] = []
-  const completed = new Set<string>()
-  const remaining = new Set(nodes.keys())
-
-  while (remaining.size > 0) {
-    // Find nodes whose dependencies are all completed
-    const layer: string[] = []
-    for (const name of remaining) {
-      const def = nodes.get(name)!
-      const depsCompleted = def.dependencies.every((d) => completed.has(d))
-      if (depsCompleted) {
-        layer.push(name)
-      }
-    }
-
-    if (layer.length === 0) {
-      // Cycle detected or invalid graph
-      throw new Error(`Cycle detected in workflow graph. Remaining: ${[...remaining].join(', ')}`)
-    }
-
-    // Move layer nodes from remaining to completed
-    for (const name of layer) {
-      remaining.delete(name)
-      completed.add(name)
-    }
-
-    layers.push(layer)
-  }
-
-  return layers
+const computeLayers = <Error>(
+  nodes: Map<string, NodeDef<Error>>,
+): ReadonlyArray<ReadonlyArray<string>> => {
+  const result = KitzGraph.topologicalLayers(
+    new Map([...nodes].map(([name, def]) => [name, def.dependencies])),
+  )
+  if (Result.isFailure(result)) throw result.failure
+  return result.success
 }
 
 // ============================================================================

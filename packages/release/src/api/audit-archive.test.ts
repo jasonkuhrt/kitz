@@ -1,4 +1,5 @@
 import { Fs } from '@kitz/fs'
+import { DateTime } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { sha256Json } from './digest.js'
 import { makeAuditArchive } from './audit-archive.js'
@@ -10,7 +11,7 @@ describe('audit archive bundle', () => {
   test('builds a gzip tarball with manifest, checksums, signature, and payload files', () => {
     const bundle = makeAuditArchive({
       planDigest: digest,
-      createdAt: '2026-05-14T00:00:00.000Z',
+      createdAt: DateTime.makeUnsafe('2026-05-14T00:00:00.000Z'),
       payloads: [
         {
           path: Fs.Path.RelFile.fromString('./plan.json'),

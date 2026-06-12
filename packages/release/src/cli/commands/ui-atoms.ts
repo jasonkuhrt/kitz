@@ -22,7 +22,8 @@ import {
   ServicesLayer,
   TerminalLayer,
 } from '../../platform.js'
-import { loadConfiguredPullRequestDiff, resolveDiffRemote } from '../pr-preview-diff.js'
+import { loadConfiguredPullRequestDiff, resolveDiffRemote } from './pr-lib-diff.js'
+import { plannerFor } from './_shared.js'
 import { isReadyCommandWorkspace, loadCommandWorkspace } from './command-workspace.js'
 import { createDoctorSummaryForPlan, runDoctorReportForPlan } from './doctor-runtime.js'
 import { loadActivePlan } from './plan-file.js'
@@ -161,19 +162,11 @@ export const buildPlan = (
   lifecycle: Lifecycle,
   excludedPackages: readonly string[],
 ) =>
-  Effect.gen(function* () {
-    const options = toExcludeOptions(excludedPackages, workspace.uiPackages)
-    const ctx = { packages: workspace.packages }
-
-    switch (lifecycle) {
-      case 'official':
-        return yield* Planner.official(workspace.analysis, ctx, options)
-      case 'candidate':
-        return yield* Planner.candidate(workspace.analysis, ctx, options)
-      case 'ephemeral':
-        return yield* Planner.ephemeral(workspace.analysis, ctx, options)
-    }
-  }).pipe(Effect.withSpan('buildPlan', { attributes: { lifecycle } }))
+  plannerFor(lifecycle)(
+    workspace.analysis,
+    { packages: workspace.packages },
+    toExcludeOptions(excludedPackages, workspace.uiPackages),
+  ).pipe(Effect.withSpan('buildPlan', { attributes: { lifecycle } }))
 
 export const buildDoctorReport = (workspace: WorkspaceContext, plan: Planner.Plan) =>
   Effect.gen(function* () {

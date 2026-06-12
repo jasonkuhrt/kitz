@@ -1,4 +1,5 @@
 import { Git } from '@kitz/git'
+import { Sch } from '@kitz/sch'
 import { Semver } from '@kitz/semver'
 import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 
@@ -17,19 +18,11 @@ import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
  * S.encodeSync(EphemeralSchema)(eph) // 'pr.123.5.gabc1234'
  * ```
  */
-export class Ephemeral extends S.TaggedClass<Ephemeral>()('Ephemeral', {
+export class Ephemeral extends Sch.TaggedClass<Ephemeral>()('Ephemeral', {
   prNumber: S.Number.pipe(S.check(S.isGreaterThan(0), S.isInt())),
   iteration: S.Number.pipe(S.check(S.isGreaterThan(0), S.isInt())),
   sha: Git.Sha.Sha,
 }) {
-  static is = S.is(Ephemeral)
-  static decode = S.decodeUnknownEffect(Ephemeral)
-  static decodeSync = S.decodeUnknownSync(Ephemeral)
-  static encode = S.encodeUnknownEffect(Ephemeral)
-  static encodeSync = S.encodeUnknownSync(Ephemeral)
-  static equivalence = S.toEquivalence(Ephemeral)
-  static ordered = false as const
-
   /** Compute ephemeral version: 0.0.0-pr.N.iter.gSHA */
   static calculateVersion(prNumber: number, iteration: number, sha: Git.Sha.Sha): Semver.Semver {
     // Prefix SHA with 'g' (git convention) to ensure it's always a valid
@@ -66,29 +59,3 @@ export const EphemeralSchema = EphemeralEncoded.pipe(
     encode: SchemaGetter.transform((eph) => `pr.${eph.prNumber}.${eph.iteration}.g${eph.sha}`),
   }),
 )
-
-// ============================================================================
-// Constructors
-// ============================================================================
-
-/**
- * Create an Ephemeral from parts.
- */
-export const makeEphemeral = (prNumber: number, iteration: number, sha: Git.Sha.Sha): Ephemeral =>
-  Ephemeral.make({ prNumber, iteration, sha })
-
-/**
- * Parse an ephemeral prerelease string.
- */
-export const parseEphemeral = (value: string): Ephemeral => S.decodeSync(EphemeralSchema)(value)
-
-/**
- * Encode an Ephemeral to string.
- */
-export const encodeEphemeral = (eph: Ephemeral): string => S.encodeSync(EphemeralSchema)(eph)
-
-/**
- * Calculate the next iteration for an ephemeral prerelease.
- */
-export const nextEphemeral = (eph: Ephemeral, sha: Git.Sha.Sha): Ephemeral =>
-  Ephemeral.make({ prNumber: eph.prNumber, iteration: eph.iteration + 1, sha })

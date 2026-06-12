@@ -1,7 +1,7 @@
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Effect } from 'effect'
-import { ExecutorPublishError } from '../../errors.js'
+import { ExecutorPublishError, mapToExecutorError } from '../../errors.js'
 import {
   artifactPathFor,
   preparePackageArtifact,
@@ -71,13 +71,10 @@ export const prepareRelease = (params: {
 
     return params.release.packageName
   }).pipe(
-    Effect.mapError(
-      (e) =>
+    mapToExecutorError(
+      (detail) =>
         new ExecutorPublishError({
-          context: {
-            packageName: params.release.packageName,
-            detail: e instanceof Error ? e.message : String(e),
-          },
+          context: { packageName: params.release.packageName, detail },
         }),
     ),
   )

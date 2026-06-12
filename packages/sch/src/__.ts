@@ -1,4 +1,5 @@
 export * as AST from './ast.js'
+export * from './class.js'
 export * as Hashable from './hashable.js'
 export * as Predicates from './predicates.js'
 export * from './sch.js'

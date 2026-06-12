@@ -1,21 +1,16 @@
-import { ChildProcess, ChildProcessSpawner } from 'effect/unstable/process'
 import { FileSystem } from 'effect'
-import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
-import { NpmRegistry } from '@kitz/npm-registry'
 import { Otel } from '@kitz/otel'
 import { Pkg } from '@kitz/pkg'
-import { describe, expect, test } from 'bun:test'
+import { describe, expect } from 'bun:test'
 import { Test } from '@kitz/test'
-import { Effect, Layer, Ref, Scope, Stream } from 'effect'
-import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
+import { Effect, Layer, Ref, Scope } from 'effect'
+import { FileSystemLayer } from '../../platform.js'
 import { execute, executeObservable, resume, type ExecutionGraph } from './execute.js'
-import { makeTestRuntime } from './runtime.js'
-import { decodeJsonRecord, planOfficial, tag } from './test-support.js'
+import { makeHarness, planOfficial, slugPackageName, tag } from './test-support.js'
 import { digestForPlan } from '../proof.js'
-import { sha256Bytes } from '../digest.js'
 
 interface FixturePackage {
   readonly name: string
@@ -37,32 +32,12 @@ interface RealHarness {
   readonly workflowLayer: Layer.Layer<any, any, any>
   readonly gitState: Git.Memory.GitMemoryState
   readonly githubState: Github.Memory.GithubMemoryState
-  readonly packCalls: Ref.Ref<readonly string[]>
-  readonly publishCalls: Ref.Ref<readonly string[]>
+  /** Ordered package names of every pack attempt (including failing ones). */
+  readonly packCallNames: Effect.Effect<readonly string[]>
+  /** Ordered package names of every publish attempt (including failing ones). */
+  readonly publishCallNames: Effect.Effect<readonly string[]>
   readonly failPublishPackages: Ref.Ref<readonly string[]>
 }
-
-const textEncoder = new TextEncoder()
-
-const makeHandle = (stdout: string, exitCode: number): ChildProcessSpawner.ChildProcessHandle =>
-  ChildProcessSpawner.makeHandle({
-    pid: ChildProcessSpawner.ProcessId(1),
-    exitCode: Effect.succeed(ChildProcessSpawner.ExitCode(exitCode)),
-    isRunning: Effect.succeed(false),
-    unref: Effect.succeed(Effect.void),
-    kill: () => Effect.void,
-    stderr: Stream.empty,
-    stdin: Effect.void as any,
-    stdout: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
-    all: stdout.length > 0 ? Stream.fromIterable([textEncoder.encode(stdout)]) : Stream.empty,
-    getInputFd: () => Effect.void as any,
-    getOutputFd: () => Stream.empty,
-  })
-
-const slugPackageName = (packageName: string): string =>
-  packageName.replace(/^@/u, '').replace(/\//gu, '-')
-
-const quiet = <A, E, R>(effect: Effect.Effect<A, E, R>) => effect
 
 const withFileSystem = <A, E, R>(effect: Effect.Effect<A, E, R | FileSystem.FileSystem>) =>
   effect.pipe(Effect.provide(FileSystemLayer))
@@ -144,201 +119,23 @@ const writeFixtureWorkspace = (
     return packageJsonPaths
   })
 
-const makeCommandLayer = () => {
-  const baseLayer = ChildProcessSpawnerLayer
-
-  return Layer.effect(
-    ChildProcessSpawner.ChildProcessSpawner,
-    Effect.gen(function* () {
-      const base = yield* ChildProcessSpawner.ChildProcessSpawner
-
-      const wrapSpawn: typeof base.spawn = (command) => {
-        const standard = ChildProcess.isStandardCommand(command) ? command : undefined
-        if (
-          standard?.command === 'npm' &&
-          standard.args?.[0] === '--silent' &&
-          standard.args?.[1] === 'view'
-        ) {
-          return Effect.succeed(
-            makeHandle(
-              JSON.stringify(
-                {
-                  error: {
-                    code: 'E404',
-                    summary: 'fixture version not found',
-                  },
-                },
-                null,
-                2,
-              ) + '\n',
-              1,
-            ),
-          )
-        }
-        if (standard?.command === 'npm' && standard.args?.[0] === 'whoami') {
-          return Effect.succeed(makeHandle('fixture-user\n', 0))
-        }
-        return base.spawn(command)
-      }
-
-      return ChildProcessSpawner.make(wrapSpawn)
-    }),
-  ).pipe(Layer.provide(baseLayer))
-}
-
-const makeNpmLayer = (params: {
-  readonly packages: readonly FixturePackage[]
-  readonly packCalls: Ref.Ref<readonly string[]>
-  readonly publishCalls: Ref.Ref<readonly string[]>
-  readonly failPublishPackages: Ref.Ref<readonly string[]>
-}) =>
-  Layer.effect(
-    NpmRegistry.NpmCli,
-    Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem
-      const publishedTarballs = yield* Ref.make<Record<string, Fs.Path.AbsFile>>({})
-
-      const manifestFromCwd = (cwd: Fs.Path.AbsDir): Effect.Effect<Record<string, unknown>> =>
-        Effect.gen(function* () {
-          const packageJsonPath = Fs.Path.join(cwd, Fs.Path.RelFile.fromString('./package.json'))
-          const manifestRaw = yield* fs
-            .readFileString(Fs.Path.toString(packageJsonPath))
-            .pipe(Effect.orDie)
-          return yield* decodeJsonRecord(manifestRaw).pipe(Effect.orDie)
-        })
-
-      const packageNameFromCwd = (cwd: Fs.Path.AbsDir): Effect.Effect<string> =>
-        Effect.gen(function* () {
-          const manifest = yield* manifestFromCwd(cwd)
-          const packageName = manifest['name']
-          if (typeof packageName !== 'string') {
-            return yield* Effect.die(new Error('fixture package.json missing name'))
-          }
-          return packageName
-        })
-
-      const packageNameFromTarball = (tarball: Fs.Path.AbsFile) => {
-        const tarballPath = Fs.Path.toString(tarball)
-        return params.packages.find((pkg) => tarballPath.includes(`${slugPackageName(pkg.name)}-`))
-          ?.name
-      }
-
-      return {
-        whoami: () => Effect.succeed('fixture-user'),
-        pack: ((options) =>
-          Effect.gen(function* () {
-            const manifest = yield* manifestFromCwd(options.cwd)
-            const packageName = yield* packageNameFromCwd(options.cwd)
-            yield* Ref.update(params.packCalls, (calls) => [...calls, packageName])
-
-            const version = manifest['version']
-            if (typeof version !== 'string') {
-              return yield* Effect.die(new Error('fixture package.json missing version'))
-            }
-
-            const scripts = manifest['scripts']
-            const failingPackHook =
-              typeof scripts === 'object' &&
-              scripts !== null &&
-              [`prepack`, `postpack`].some((hookName) => {
-                const script = Reflect.get(scripts, hookName)
-                return typeof script === 'string' && script.includes(`exit 23`)
-              })
-
-            if (failingPackHook) {
-              return yield* Effect.fail(
-                new NpmRegistry.NpmCliError({
-                  context: {
-                    operation: 'pack',
-                    detail: 'fixture pack hook failure',
-                  },
-                  cause: new Error('fixture pack hook failure'),
-                }),
-              )
-            }
-
-            const filename = `${slugPackageName(packageName)}-${version}.tgz`
-            const tarball = Fs.Path.join(
-              options.packDestination,
-              Fs.Path.RelFile.fromString(`./${filename}`),
-            )
-
-            yield* fs
-              .writeFileString(Fs.Path.toString(tarball), `packed:${packageName}@${version}`)
-              .pipe(Effect.orDie)
-
-            return {
-              tarball,
-              filename,
-            }
-          })) satisfies NpmRegistry.NpmCliService['pack'],
-        publish: ((options) =>
-          Effect.gen(function* () {
-            const packageName = packageNameFromTarball(options.tarball)
-            if (packageName === undefined) {
-              return yield* Effect.die(new Error('could not resolve package name from tarball'))
-            }
-
-            yield* Ref.update(params.publishCalls, (calls) => [...calls, packageName])
-            yield* Ref.update(publishedTarballs, (tarballs) => ({
-              ...tarballs,
-              [packageName]: options.tarball,
-            }))
-
-            const blocked = yield* Ref.get(params.failPublishPackages)
-            if (blocked.includes(packageName)) {
-              return yield* Effect.fail(
-                new NpmRegistry.NpmCliError({
-                  context: {
-                    operation: 'publish',
-                    detail: 'fixture publish failure',
-                  },
-                  cause: new Error('fixture publish failure'),
-                }),
-              )
-            }
-          })) satisfies NpmRegistry.NpmCliService['publish'],
-        hasVersion: ((packageName) =>
-          Effect.gen(function* () {
-            const published = yield* Ref.get(params.publishCalls)
-            return published.includes(packageName)
-          })) satisfies NpmRegistry.NpmCliService['hasVersion'],
-        observeVersion: ((packageName, version, options) =>
-          Effect.gen(function* () {
-            const published = yield* Ref.get(params.publishCalls)
-            if (!published.includes(packageName)) {
-              return yield* Effect.fail(
-                new NpmRegistry.NpmCliError({
-                  context: {
-                    operation: 'view',
-                    detail: `Registry does not show ${packageName}@${version} after publish.`,
-                  },
-                  cause: new Error(
-                    `Registry does not show ${packageName}@${version} after publish.`,
-                  ),
-                }),
-              )
-            }
-            const tarballs = yield* Ref.get(publishedTarballs)
-            const tarball = tarballs[packageName]
-            const downloadedTarballSha256 =
-              options?.downloadTarball === true && tarball !== undefined
-                ? sha256Bytes(yield* fs.readFile(Fs.Path.toString(tarball)).pipe(Effect.orDie))
-                    .value
-                : undefined
-
-            return {
-              versionMetadata: { name: packageName, version },
-              distTags: { [options?.registry === undefined ? 'latest' : 'next']: version },
-              ...(downloadedTarballSha256 !== undefined ? { downloadedTarballSha256 } : {}),
-            }
-          })) satisfies NpmRegistry.NpmCliService['observeVersion'],
-        listAccessPackages: () => Effect.succeed({}),
-        listAccessCollaborators: () => Effect.succeed({}),
-        getAccessStatus: () => Effect.succeed('public' as const),
-      } satisfies NpmRegistry.NpmCliService
-    }),
+/**
+ * Manifest-driven pack failure used to simulate failing prepack/postpack
+ * hooks. The trigger lives in the on-disk manifest, so rewriting the fixture
+ * package.json heals the failure across resume — exactly how real hooks
+ * behave.
+ */
+const failingPackHook = (manifest: Readonly<Record<string, unknown>>): boolean => {
+  const scripts = manifest['scripts']
+  return (
+    typeof scripts === 'object' &&
+    scripts !== null &&
+    [`prepack`, `postpack`].some((hookName) => {
+      const script = Reflect.get(scripts, hookName)
+      return typeof script === 'string' && script.includes(`exit 23`)
+    })
   )
+}
 
 const makeRealHarness = (
   options: RealHarnessOptions,
@@ -366,48 +163,48 @@ const makeRealHarness = (
 
       const tags = options.packages.map((pkg) => tag(Pkg.Moniker.parse(pkg.name), '1.0.0'))
 
-      const envLayer = Env.Test({ cwd: rootDir })
-      const { layer: gitLayer, state: gitState } = yield* Git.Memory.makeWithState({
-        branch: 'main',
-        tags,
-        commits: [...options.commits],
-        isClean: true,
+      const harness = yield* makeHarness({
+        git: {
+          branch: 'main',
+          tags,
+          commits: [...options.commits],
+          isClean: true,
+        },
+        cwd: rootDir,
+        fsLayer: FileSystemLayer,
+        whoamiUsername: 'fixture-user',
+        packShouldFail: failingPackHook,
+        ...(options.failPublishPackages !== undefined
+          ? { failPublishPackages: options.failPublishPackages }
+          : {}),
       })
-      const { layer: githubLayer, state: githubState } = yield* Github.Memory.makeWithState({})
-      const packCalls = yield* Ref.make<readonly string[]>([])
-      const publishCalls = yield* Ref.make<readonly string[]>([])
-      const failPublishPackages = yield* Ref.make<readonly string[]>(
-        options.failPublishPackages ?? [],
-      )
 
-      const planLayer = Layer.mergeAll(envLayer, FileSystemLayer, gitLayer)
-      const commandLayer = makeCommandLayer()
-      const npmLayer = makeNpmLayer({
-        packages: options.packages,
-        packCalls,
-        publishCalls,
-        failPublishPackages,
-      }).pipe(Layer.provide(Layer.mergeAll(FileSystemLayer, commandLayer)))
-
-      const workflowLayer = Layer.mergeAll(
-        planLayer,
-        githubLayer,
-        commandLayer,
-        npmLayer,
-        makeWorkflowTestRuntime(),
-      )
+      const nameFromTarball = (tarball: Fs.Path.AbsFile): string => {
+        const tarballPath = Fs.Path.toString(tarball)
+        const fixture = options.packages.find((pkg) =>
+          tarballPath.includes(`${slugPackageName(pkg.name)}-`),
+        )
+        if (fixture === undefined) {
+          throw new Error(`could not resolve package name from tarball: ${tarballPath}`)
+        }
+        return fixture.name
+      }
 
       return {
         rootDir,
         workspacePackages,
         packageJsonPaths,
-        planLayer,
-        workflowLayer,
-        gitState,
-        githubState,
-        packCalls,
-        publishCalls,
-        failPublishPackages,
+        planLayer: harness.planLayer,
+        workflowLayer: harness.workflowLayer,
+        gitState: harness.gitState,
+        githubState: harness.githubState,
+        packCallNames: harness.packCalls.pipe(
+          Effect.map((calls) => calls.map((call) => String(call.manifestSnapshot['name']))),
+        ),
+        publishCallNames: harness.publishCalls.pipe(
+          Effect.map((calls) => calls.map((call) => nameFromTarball(call.tarball))),
+        ),
+        failPublishPackages: harness.failPublishPackages,
       }
     }),
     (harness) =>
@@ -587,8 +384,6 @@ const publishFailureScenarios: readonly PublishFailureScenario[] = [
   },
 ]
 
-const makeWorkflowTestRuntime = () => makeTestRuntime()
-
 const releaseTraceId = 'release.integration'
 
 const activityParts = (activity: string) => {
@@ -721,7 +516,7 @@ const traceFromExecutionGraph = (graph: ExecutionGraph) =>
 // These scenarios run real pack/publish-style workflow steps and need CI headroom.
 const E2E_TEST_TIMEOUT_MS = 90_000
 const testE2E = <Error>(name: string, effect: () => Effect.Effect<void, Error, Scope.Scope>) =>
-  Test.live(name, () => quiet(effect()), E2E_TEST_TIMEOUT_MS)
+  Test.live(name, () => effect(), E2E_TEST_TIMEOUT_MS)
 
 describe('Executor e2e', () => {
   testE2E('renders the release workflow as an otel trace snapshot', () =>
@@ -822,8 +617,8 @@ describe('Executor e2e', () => {
       )
 
       expect(firstRun._tag).toBe('Failure')
-      expect(yield* Ref.get(harness.packCalls)).toEqual(['@kitz/a', '@kitz/b', '@kitz/c'])
-      expect(yield* Ref.get(harness.publishCalls)).toEqual([])
+      expect(yield* harness.packCallNames).toEqual(['@kitz/a', '@kitz/b', '@kitz/c'])
+      expect(yield* harness.publishCallNames).toEqual([])
 
       const failingPackageJsonPath = harness.packageJsonPaths['@kitz/c']!
       yield* withFileSystem(
@@ -845,13 +640,8 @@ describe('Executor e2e', () => {
         expect(secondRun.success.releasedPackages).toEqual(['@kitz/a', '@kitz/b', '@kitz/c'])
       }
 
-      expect(yield* Ref.get(harness.packCalls)).toEqual([
-        '@kitz/a',
-        '@kitz/b',
-        '@kitz/c',
-        '@kitz/c',
-      ])
-      expect(yield* Ref.get(harness.publishCalls)).toEqual(['@kitz/a', '@kitz/b', '@kitz/c'])
+      expect(yield* harness.packCallNames).toEqual(['@kitz/a', '@kitz/b', '@kitz/c', '@kitz/c'])
+      expect(yield* harness.publishCallNames).toEqual(['@kitz/a', '@kitz/b', '@kitz/c'])
     }),
   )
 
@@ -878,8 +668,8 @@ describe('Executor e2e', () => {
         )
 
         expect(firstRun._tag).toBe('Failure')
-        expect(yield* Ref.get(harness.packCalls)).toEqual(scenario.firstPackCalls)
-        expect(yield* Ref.get(harness.publishCalls)).toEqual([])
+        expect(yield* harness.packCallNames).toEqual(scenario.firstPackCalls)
+        expect(yield* harness.publishCallNames).toEqual([])
 
         const fixedPackage = fixtureByName(graphPackages, scenario.packageName)
         yield* withFileSystem(
@@ -896,8 +686,8 @@ describe('Executor e2e', () => {
           expect(secondRun.success).toEqual<typeof graphResult>(graphResult)
         }
 
-        expect(yield* Ref.get(harness.packCalls)).toEqual(scenario.finalPackCalls)
-        expect(yield* Ref.get(harness.publishCalls)).toEqual(graphResult.releasedPackages)
+        expect(yield* harness.packCallNames).toEqual(scenario.finalPackCalls)
+        expect(yield* harness.publishCallNames).toEqual(graphResult.releasedPackages)
       }),
     )
   }
@@ -925,8 +715,8 @@ describe('Executor e2e', () => {
         )
 
         expect(firstRun._tag).toBe('Failure')
-        expect(yield* Ref.get(harness.packCalls)).toEqual(graphResult.releasedPackages)
-        expect(yield* Ref.get(harness.publishCalls)).toEqual(scenario.firstPublishCalls)
+        expect(yield* harness.packCallNames).toEqual(graphResult.releasedPackages)
+        expect(yield* harness.publishCallNames).toEqual(scenario.firstPublishCalls)
         expect(yield* Ref.get(harness.gitState.createdTags)).toEqual([])
         yield* assertGraphTarballsExist(harness.rootDir, digestForPlan(plan).value)
 
@@ -942,8 +732,8 @@ describe('Executor e2e', () => {
           expect(secondRun.success).toEqual<typeof graphResult>(graphResult)
         }
 
-        expect(yield* Ref.get(harness.packCalls)).toEqual(graphResult.releasedPackages)
-        expect(yield* Ref.get(harness.publishCalls)).toEqual(scenario.finalPublishCalls)
+        expect(yield* harness.packCallNames).toEqual(graphResult.releasedPackages)
+        expect(yield* harness.publishCallNames).toEqual(scenario.finalPublishCalls)
       }),
     )
   }

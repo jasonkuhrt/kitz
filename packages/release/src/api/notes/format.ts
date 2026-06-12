@@ -5,7 +5,6 @@
  */
 
 import { ConventionalCommits } from '@kitz/conventional-commits'
-import { Effect } from 'effect'
 
 /**
  * A commit entry for release note generation.
@@ -40,87 +39,55 @@ export interface FormattedNotes {
 }
 
 /**
+ * Changelog sections in render order. Each commit lands in the FIRST section
+ * whose predicate matches (ordered consumption), so breaking commits never
+ * repeat under their type's section and `Other Changes` is the remainder.
+ */
+const sections: ReadonlyArray<readonly [title: string, matches: (commit: CommitEntry) => boolean]> =
+  [
+    ['Breaking Changes', (commit) => commit.breaking],
+    ['Features', (commit) => commit.type.value === 'feat'],
+    ['Bug Fixes', (commit) => commit.type.value === 'fix'],
+    ['Performance', (commit) => commit.type.value === 'perf'],
+    ['Documentation', (commit) => commit.type.value === 'docs'],
+    ['Other Changes', () => true],
+  ]
+
+/**
  * Format commits into markdown release notes.
  *
  * @example
  * ```ts
- * const notes = Effect.runSync(format({
+ * const notes = format({
  *   scope: '@kitz/core',
  *   commits: [{ type: ConventionalCommits.Type.parse('feat'), message: 'add new API', hash: 'abc123', breaking: false }],
  *   newVersion: '1.0.0',
- * }))
+ * })
  * ```
  */
-export const format = (options: FormatOptions): Effect.Effect<FormattedNotes> =>
-  Effect.sync(() => {
-    const { scope, commits, newVersion } = options
+export const format = (options: FormatOptions): FormattedNotes => {
+  const { scope, commits, newVersion } = options
 
-    const breaking = commits.filter((c) => c.breaking)
-    const features = commits.filter((c) => c.type.value === 'feat' && !c.breaking)
-    const fixes = commits.filter((c) => c.type.value === 'fix' && !c.breaking)
-    const performance = commits.filter((c) => c.type.value === 'perf' && !c.breaking)
-    const documentation = commits.filter((c) => c.type.value === 'docs' && !c.breaking)
-    const otherChanges = commits.filter(
-      (c) =>
-        !c.breaking &&
-        c.type.value !== 'feat' &&
-        c.type.value !== 'fix' &&
-        c.type.value !== 'perf' &&
-        c.type.value !== 'docs',
-    )
+  const buckets = sections.map((): CommitEntry[] => [])
+  for (const commit of commits) {
+    buckets[sections.findIndex(([, matches]) => matches(commit))]!.push(commit)
+  }
 
-    const lines: string[] = [`## ${scope} v${newVersion}`, '']
+  const lines: string[] = [`## ${scope} v${newVersion}`, '']
 
-    if (breaking.length > 0) {
-      lines.push('### Breaking Changes', '')
-      for (const c of breaking) {
-        lines.push(`- ${c.message} (${c.hash.slice(0, 7)})`)
-      }
-      lines.push('')
+  sections.forEach(([title], index) => {
+    const bucket = buckets[index]!
+    if (bucket.length === 0) return
+
+    lines.push(`### ${title}`, '')
+    for (const commit of bucket) {
+      lines.push(`- ${commit.message} (${commit.hash.slice(0, 7)})`)
     }
-
-    if (features.length > 0) {
-      lines.push('### Features', '')
-      for (const c of features) {
-        lines.push(`- ${c.message} (${c.hash.slice(0, 7)})`)
-      }
-      lines.push('')
-    }
-
-    if (fixes.length > 0) {
-      lines.push('### Bug Fixes', '')
-      for (const c of fixes) {
-        lines.push(`- ${c.message} (${c.hash.slice(0, 7)})`)
-      }
-      lines.push('')
-    }
-
-    if (performance.length > 0) {
-      lines.push('### Performance', '')
-      for (const c of performance) {
-        lines.push(`- ${c.message} (${c.hash.slice(0, 7)})`)
-      }
-      lines.push('')
-    }
-
-    if (documentation.length > 0) {
-      lines.push('### Documentation', '')
-      for (const c of documentation) {
-        lines.push(`- ${c.message} (${c.hash.slice(0, 7)})`)
-      }
-      lines.push('')
-    }
-
-    if (otherChanges.length > 0) {
-      lines.push('### Other Changes', '')
-      for (const c of otherChanges) {
-        lines.push(`- ${c.message} (${c.hash.slice(0, 7)})`)
-      }
-      lines.push('')
-    }
-
-    return {
-      markdown: lines.join('\n'),
-      hasBreakingChanges: breaking.length > 0,
-    }
+    lines.push('')
   })
+
+  return {
+    markdown: lines.join('\n'),
+    hasBreakingChanges: buckets[0]!.length > 0,
+  }
+}

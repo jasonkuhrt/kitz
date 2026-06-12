@@ -1,7 +1,14 @@
 import { describe, expect, test } from 'bun:test'
-import { Effect, Layer, Context } from 'effect'
+import { Deferred, Effect, Layer, Context } from 'effect'
 import { act } from 'react'
-import { Control, Transition, defineProgramSpec, type ViewProps } from './__.js'
+import {
+  Control,
+  Transition,
+  defineProgramSpec,
+  isKeyedCommand,
+  keyedCommand,
+  type ViewProps,
+} from './__.js'
 import * as TuiTest from './test.js'
 
 describe('Transition', () => {
@@ -30,6 +37,232 @@ describe('Transition', () => {
 
     expect(transition.state).toEqual({ count: 3 })
     expect(transition.commands).toEqual([{ _tag: 'A' }, { _tag: 'B' }])
+  })
+
+  test('command with key options wraps the command in a keyed entry', () => {
+    const transition = Transition.command<{ count: number }, { _tag: 'Save' }>(
+      { count: 2 },
+      { _tag: 'Save' },
+      { key: 'save', mode: 'switch' },
+    )
+
+    const entry = transition.commands[0]!
+    expect(isKeyedCommand(entry)).toBe(true)
+    if (isKeyedCommand(entry)) {
+      expect(entry.command).toEqual({ _tag: 'Save' })
+      expect(entry.key).toBe('save')
+      expect(entry.mode).toBe('switch')
+    }
+  })
+
+  test('isKeyedCommand distinguishes keyed entries from plain commands', () => {
+    expect(isKeyedCommand<{ _tag: 'X' }>({ _tag: 'X' })).toBe(false)
+    expect(isKeyedCommand(keyedCommand({ _tag: 'X' }, { key: 'x', mode: 'switch' }))).toBe(true)
+  })
+})
+
+describe('keyed commands', () => {
+  test('switch mode interrupts the previous in-flight command for the same key', async () => {
+    // Deterministic latest-wins proof, no sleeps: the First command blocks on
+    // a Deferred that is never resolved — the only way it can end is by being
+    // interrupted. Dispatching Second under the same key must interrupt First
+    // (finalizer flips firstInterrupted) and then apply only Second's action.
+    const firstGate = Effect.runSync(Deferred.make<void>())
+    let firstInterrupted = false
+
+    type State = { readonly log: readonly string[] }
+    type Action = { readonly _tag: 'Recorded'; readonly source: string }
+    type Command = { readonly _tag: 'First' } | { readonly _tag: 'Second' }
+
+    function View({ state }: ViewProps<State, Action>) {
+      return <text content={state.log.join(',') || 'empty'} />
+    }
+
+    const spec = defineProgramSpec<State, Action, Command>({
+      initialState: { log: [] },
+      // Boot path: initial commands accept keyed entries too.
+      initialCommands: [keyedCommand({ _tag: 'First' }, { key: 'load', mode: 'switch' })],
+      update(state, action) {
+        if (action._tag === 'Recorded') {
+          return Transition.next({ log: [...state.log, action.source] })
+        }
+        return Transition.next(state)
+      },
+      run(command) {
+        switch (command._tag) {
+          case 'First':
+            return Deferred.await(firstGate).pipe(
+              Effect.as([{ _tag: 'Recorded' as const, source: 'first' }]),
+              Effect.onInterrupt(() =>
+                Effect.sync(() => {
+                  firstInterrupted = true
+                }),
+              ),
+            )
+          case 'Second':
+            return Effect.succeed([{ _tag: 'Recorded' as const, source: 'second' }])
+        }
+      },
+      onKey(_state, event) {
+        return event.name === 's' ? [{ _tag: 'Recorded' as const, source: 'key' }] : []
+      },
+      view: View,
+    })
+
+    // Wrap update so pressing 's' issues the keyed Second command: the
+    // dispatch path (not just boot) must route through keyed forking.
+    const keyedSpec = {
+      ...spec,
+      update: (state: State, action: Action) => {
+        if (action._tag === 'Recorded' && action.source === 'key') {
+          return Transition.command<State, Command>(
+            state,
+            { _tag: 'Second' },
+            {
+              key: 'load',
+              mode: 'switch',
+            },
+          )
+        }
+        return spec.update(state, action)
+      },
+    }
+
+    const setup = await TuiTest.renderProgram({ spec: keyedSpec }, { width: 40, height: 2 })
+
+    try {
+      // Boot: First forks and suspends on the gate. flush() drains work
+      // fibers — but First never completes, so do NOT flush here; instead
+      // give the fiber a tick to start.
+      await new Promise<void>((resolve) => setTimeout(resolve, 10))
+      expect(firstInterrupted).toBe(false)
+
+      await act(async () => {
+        setup.mockInput.pressKey('s')
+        await setup.flush()
+      })
+
+      expect(firstInterrupted).toBe(true)
+      const frame = setup.captureCharFrame()
+      // Only Second's result landed; First was interrupted before producing
+      // its action. (The 'key' trigger action is intercepted by the wrapper
+      // and issues the Second command without logging itself.)
+      expect(frame).toContain('second')
+      expect(frame).not.toContain('first')
+    } finally {
+      setup.renderer.destroy()
+    }
+  })
+
+  test('a superseded keyed command cannot dispatch actions after its replacement', async () => {
+    // Slow/fast race: Slow (issued first) takes 200ms, Fast (issued second)
+    // takes 0ms. Without switch semantics Slow's action would land LAST and
+    // stomp Fast's. With switch semantics Slow is interrupted when Fast is
+    // issued, so the final state reflects Fast only.
+    type State = { readonly latest: string }
+    type Action =
+      | { readonly _tag: 'Issue'; readonly which: 'slow' | 'fast' }
+      | { readonly _tag: 'Landed'; readonly which: string }
+    type Command = { readonly _tag: 'Build'; readonly which: 'slow' | 'fast' }
+
+    function View({ state }: ViewProps<State, Action>) {
+      return <text content={`latest=${state.latest}`} />
+    }
+
+    const spec = defineProgramSpec<State, Action, Command>({
+      initialState: { latest: 'none' },
+      update(state, action) {
+        switch (action._tag) {
+          case 'Issue':
+            return Transition.command(state, { _tag: 'Build', which: action.which } as const, {
+              key: 'build',
+              mode: 'switch',
+            })
+          case 'Landed':
+            return Transition.next({ latest: action.which })
+        }
+      },
+      run(command) {
+        const delay = command.which === 'slow' ? '200 millis' : '0 millis'
+        return Effect.sleep(delay).pipe(
+          Effect.as([{ _tag: 'Landed' as const, which: command.which }]),
+        )
+      },
+      onKey(_state, event) {
+        if (event.name === 'a') return [{ _tag: 'Issue' as const, which: 'slow' as const }]
+        if (event.name === 'b') return [{ _tag: 'Issue' as const, which: 'fast' as const }]
+        return []
+      },
+      view: View,
+    })
+
+    const setup = await TuiTest.renderProgram({ spec }, { width: 30, height: 2 })
+
+    try {
+      await act(async () => {
+        setup.mockInput.pressKey('a')
+        // Give Slow time to fork and enter its sleep, then supersede it.
+        await new Promise<void>((resolve) => setTimeout(resolve, 20))
+        setup.mockInput.pressKey('b')
+        await setup.flush()
+      })
+
+      expect(setup.captureCharFrame()).toContain('latest=fast')
+    } finally {
+      setup.renderer.destroy()
+    }
+  })
+
+  test('commands with different keys run independently', async () => {
+    type State = { readonly log: readonly string[] }
+    type Action = { readonly _tag: 'Kick' } | { readonly _tag: 'Landed'; readonly which: string }
+    type Command = { readonly _tag: 'Build'; readonly which: string }
+
+    function View({ state }: ViewProps<State, Action>) {
+      return <text content={state.log.toSorted().join(',') || 'empty'} />
+    }
+
+    const spec = defineProgramSpec<State, Action, Command>({
+      initialState: { log: [] },
+      update(state, action) {
+        switch (action._tag) {
+          case 'Kick':
+            return Transition.commands<State, Command>(state, [
+              keyedCommand<Command>(
+                { _tag: 'Build', which: 'alpha' },
+                { key: 'alpha', mode: 'switch' },
+              ),
+              keyedCommand<Command>(
+                { _tag: 'Build', which: 'beta' },
+                { key: 'beta', mode: 'switch' },
+              ),
+            ])
+          case 'Landed':
+            return Transition.next({ log: [...state.log, action.which] })
+        }
+      },
+      run(command) {
+        return Effect.succeed([{ _tag: 'Landed' as const, which: command.which }])
+      },
+      onKey(_state, event) {
+        return event.name === 'k' ? [{ _tag: 'Kick' as const }] : []
+      },
+      view: View,
+    })
+
+    const setup = await TuiTest.renderProgram({ spec }, { width: 40, height: 2 })
+
+    try {
+      await act(async () => {
+        setup.mockInput.pressKey('k')
+        await setup.flush()
+      })
+
+      // Both keyed commands completed — neither interrupted the other.
+      expect(setup.captureCharFrame()).toContain('alpha,beta')
+    } finally {
+      setup.renderer.destroy()
+    }
   })
 })
 

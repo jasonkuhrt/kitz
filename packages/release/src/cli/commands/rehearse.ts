@@ -1,21 +1,14 @@
-import { Env } from '@kitz/env'
-import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Layer } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Artifact from '../../api/artifact.js'
-import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
+import { ChildProcessSpawnerLayer } from '../../platform.js'
+import { CommandBaseLayer, NpmCliLayer, fromFlag } from './_shared.js'
 import { loadExecutableCommandPlan } from './plan-file.js'
-
-const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
 
 export const rehearse = Command.make(
   'rehearse',
   {
-    from: Flag.string('from').pipe(
-      Flag.withAlias('f'),
-      Flag.withDescription('Read the release plan from a specific file path'),
-      Flag.optional,
-    ),
+    from: fromFlag,
     publishDryRun: Flag.boolean('publish-dry-run').pipe(
       Flag.withDescription('Also run package-manager publish --dry-run for each artifact'),
       Flag.withDefault(false),
@@ -30,5 +23,5 @@ export const rehearse = Command.make(
     }),
 ).pipe(
   Command.withDescription('Build the plan-bound artifact manifest'),
-  Command.provide(Layer.mergeAll(Env.Live, FileSystemLayer, ChildProcessSpawnerLayer, npmLayer)),
+  Command.provide(Layer.mergeAll(CommandBaseLayer, ChildProcessSpawnerLayer, NpmCliLayer)),
 )

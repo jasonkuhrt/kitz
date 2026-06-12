@@ -23,8 +23,8 @@ import * as Doctor from '../../api/doctor.js'
 import * as Explorer from '../../api/explorer/__.js'
 import * as Lint from '../../api/lint/__.js'
 import * as Planner from '../../api/planner/__.js'
-import { ChildProcessSpawnerLayer, ServicesLayer, FileSystemLayer } from '../../platform.js'
-import { loadConfiguredPullRequestDiff, resolveDiffRemote } from '../pr-preview-diff.js'
+import { ChildProcessSpawnerLayer, ServicesLayer } from '../../platform.js'
+import { loadConfiguredPullRequestDiff, resolveDiffRemote } from './pr-lib-diff.js'
 import {
   formatIgnoredInvalidPlanMessage,
   formatInvalidPlanMessage,
@@ -33,11 +33,13 @@ import {
   loadPlan,
 } from './plan-file.js'
 import {
-  isReadyCommandWorkspace,
-  loadCommandWorkspace,
-  noPackagesFoundMessage,
-} from './command-workspace.js'
-import { computeLifecyclePlanAttempt, toUnavailableLifecycleReport } from './doctor-lib.js'
+  CommandBaseLayer,
+  failWith,
+  fromFlagNoAlias,
+  plannerFor,
+  withReadyWorkspace,
+} from './_shared.js'
+import { toUnavailableLifecycleReport } from './doctor-lib.js'
 import { runDoctorReportForPlan } from './doctor-runtime.js'
 
 const parseCsvStrings = (value: string | undefined): readonly string[] | undefined => {
@@ -51,13 +53,10 @@ const parseCsvStrings = (value: string | undefined): readonly string[] | undefin
   return parts.length > 0 ? parts : undefined
 }
 
-const spawnerLayer = ChildProcessSpawnerLayer
-
 const DoctorCommandLayer = Layer.mergeAll(
-  Env.Live,
+  CommandBaseLayer,
   ServicesLayer,
-  FileSystemLayer,
-  spawnerLayer,
+  ChildProcessSpawnerLayer,
   Lint.Preconditions.DefaultLayer,
   Lint.ReleasePlan.DefaultReleasePlanLayer,
   Git.GitLive,
@@ -96,10 +95,7 @@ export const doctor = Command.make(
       ),
       Flag.optional,
     ),
-    from: Flag.string('from').pipe(
-      Flag.withDescription('Read the release plan from a specific file path'),
-      Flag.optional,
-    ),
+    from: fromFlagNoAlias,
   },
   (flags) =>
     Effect.gen(function* () {
@@ -117,153 +113,146 @@ export const doctor = Command.make(
       const git = yield* Git.Git
 
       if (args.lifecycle && args.all) {
-        yield* Console.error('Choose either --lifecycle or --all, not both.')
-        return env.exit(1)
+        return yield* failWith('Choose either --lifecycle or --all, not both.')
       }
 
       if (args.from && (args.lifecycle || args.all)) {
-        yield* Console.error('Choose either --from or --lifecycle/--all, not both.')
-        return env.exit(1)
+        return yield* failWith('Choose either --from or --lifecycle/--all, not both.')
       }
 
-      const workspace = yield* loadCommandWorkspace({
-        lint: {
-          onlyRules: parseCsvStrings(args.onlyRule),
-          skipRules: parseCsvStrings(args.skipRule),
+      return yield* withReadyWorkspace(
+        ({ config, packages }) =>
+          Effect.gen(function* () {
+            const activePlanState = args.from
+              ? yield* loadPlan({
+                  path: Fs.Path.fromString(args.from),
+                  source: 'custom',
+                })
+              : args.lifecycle || args.all
+                ? null
+                : yield* loadActivePlan()
+            if (activePlanState?._tag === 'PlanMissing') {
+              return yield* failWith(...formatMissingPlanMessage(activePlanState))
+            }
+            if (activePlanState?._tag === 'PlanInvalid') {
+              if (activePlanState.source === 'custom') {
+                return yield* failWith(...formatInvalidPlanMessage(activePlanState))
+              }
+              yield* Console.error(formatIgnoredInvalidPlanMessage(activePlanState).join('\n'))
+            }
+            const activePlan =
+              activePlanState?._tag === 'PlanLoaded'
+                ? Option.some(activePlanState.plan)
+                : Option.none()
+            const needsSmartScope = !args.lifecycle && !args.all && Option.isNone(activePlan)
+            const needsPrContext =
+              needsSmartScope ||
+              args.all ||
+              args.lifecycle === 'ephemeral' ||
+              (Option.isSome(activePlan) && activePlan.value.lifecycle === 'ephemeral')
+            const pullRequestAttempt = needsPrContext
+              ? yield* Explorer.resolvePullRequest().pipe(Effect.result)
+              : { _tag: 'Success' as const, success: null }
+            const pullRequest =
+              pullRequestAttempt._tag === 'Success' ? pullRequestAttempt.success : null
+            const hasPrContext = pullRequest !== null
+            const scope = Doctor.resolveScope({
+              ...(args.lifecycle ? { lifecycle: args.lifecycle } : {}),
+              ...(args.all ? { all: true } : {}),
+              ...(Option.isSome(activePlan) ? { activePlan: activePlan.value } : {}),
+              hasPrContext,
+            })
+
+            const tags = yield* git.getTags()
+            const analysis = yield* Analyzer.analyze({
+              packages,
+              tags,
+              resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
+              commitOverrides: config.commitOverrides,
+            })
+            const currentBranch = yield* git.getCurrentBranch()
+            const diffRemote = resolveDiffRemote(config, args.remote)
+            const diff = pullRequest
+              ? yield* loadConfiguredPullRequestDiff({
+                  config,
+                  pullRequest,
+                  packages,
+                  required: false,
+                  ...(args.remote ? { remote: args.remote } : {}),
+                })
+              : null
+            const reports: Doctor.LifecycleReport[] = []
+            const doctorRuntimeContext = {
+              config,
+              analysis,
+              packages,
+              currentBranch,
+              pullRequest,
+              diff,
+              diffRemote,
+            } satisfies Parameters<typeof runDoctorReportForPlan>[0]
+            const evaluatePlan = (plan: Planner.Plan, required: boolean) =>
+              Effect.gen(function* () {
+                const report = yield* runDoctorReportForPlan(doctorRuntimeContext, plan)
+
+                reports.push({
+                  _tag: 'CheckedLifecycleReport' as const,
+                  lifecycle: plan.lifecycle,
+                  required,
+                  plannedPackages: plan.releases.length + plan.cascades.length,
+                  report,
+                })
+              })
+            if (scope._tag === 'ActivePlanScope') {
+              yield* evaluatePlan(scope.plan, true)
+            } else {
+              for (const target of scope.lifecycles) {
+                const planAttempt = yield* plannerFor(target.lifecycle)(analysis, {
+                  packages,
+                }).pipe(Effect.result)
+
+                if (planAttempt._tag === 'Failure') {
+                  reports.push(
+                    toUnavailableLifecycleReport(
+                      target.lifecycle,
+                      target.required,
+                      planAttempt.failure,
+                    ),
+                  )
+                  continue
+                }
+
+                yield* evaluatePlan(planAttempt.success, target.required)
+              }
+            }
+
+            const evaluation = {
+              currentBranch,
+              trunk: config.trunk,
+              scope:
+                scope._tag === 'ActivePlanScope'
+                  ? `active plan (${scope.plan.lifecycle})`
+                  : 'computed lifecycle scenarios',
+              reports,
+            } satisfies Doctor.DoctorEvaluation
+
+            if (args.format === 'json') {
+              yield* Console.log(JSON.stringify(evaluation, null, 2))
+            } else {
+              yield* Console.log(Doctor.formatEvaluation(evaluation, { env: env.vars }))
+            }
+
+            if (Doctor.hasBlockingIssues(evaluation)) {
+              return env.exit(1)
+            }
+          }),
+        {
+          lint: {
+            onlyRules: parseCsvStrings(args.onlyRule),
+            skipRules: parseCsvStrings(args.skipRule),
+          },
         },
-      })
-      if (!isReadyCommandWorkspace(workspace)) {
-        yield* Console.log(noPackagesFoundMessage)
-        return
-      }
-      const { config, packages } = workspace
-
-      const activePlanState = args.from
-        ? yield* loadPlan({
-            path: Fs.Path.fromString(args.from),
-            source: 'custom',
-          })
-        : args.lifecycle || args.all
-          ? null
-          : yield* loadActivePlan()
-      if (activePlanState?._tag === 'PlanMissing') {
-        for (const line of formatMissingPlanMessage(activePlanState)) {
-          yield* Console.error(line)
-        }
-        return env.exit(1)
-      }
-      if (activePlanState?._tag === 'PlanInvalid') {
-        const lines =
-          activePlanState.source === 'custom'
-            ? formatInvalidPlanMessage(activePlanState)
-            : formatIgnoredInvalidPlanMessage(activePlanState)
-        for (const line of lines) {
-          yield* Console.error(line)
-        }
-        if (activePlanState.source === 'custom') {
-          return env.exit(1)
-        }
-      }
-      const activePlan =
-        activePlanState?._tag === 'PlanLoaded' ? Option.some(activePlanState.plan) : Option.none()
-      const needsSmartScope = !args.lifecycle && !args.all && Option.isNone(activePlan)
-      const needsPrContext =
-        needsSmartScope ||
-        args.all ||
-        args.lifecycle === 'ephemeral' ||
-        (Option.isSome(activePlan) && activePlan.value.lifecycle === 'ephemeral')
-      const pullRequestAttempt = needsPrContext
-        ? yield* Explorer.resolvePullRequest().pipe(Effect.result)
-        : { _tag: 'Success' as const, success: null }
-      const pullRequest = pullRequestAttempt._tag === 'Success' ? pullRequestAttempt.success : null
-      const hasPrContext = pullRequest !== null
-      const scope = Doctor.resolveScope({
-        ...(args.lifecycle ? { lifecycle: args.lifecycle } : {}),
-        ...(args.all ? { all: true } : {}),
-        ...(Option.isSome(activePlan) ? { activePlan: activePlan.value } : {}),
-        hasPrContext,
-      })
-
-      const tags = yield* git.getTags()
-      const analysis = yield* Analyzer.analyze({
-        packages,
-        tags,
-        resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
-        commitOverrides: config.commitOverrides,
-      })
-      const currentBranch = yield* git.getCurrentBranch()
-      const diffRemote = resolveDiffRemote(config, args.remote)
-      const diff = pullRequest
-        ? yield* loadConfiguredPullRequestDiff({
-            config,
-            pullRequest,
-            packages,
-            required: false,
-            ...(args.remote ? { remote: args.remote } : {}),
-          })
-        : null
-      const reports: Doctor.LifecycleReport[] = []
-      const doctorRuntimeContext = {
-        config,
-        analysis,
-        packages,
-        currentBranch,
-        pullRequest,
-        diff,
-        diffRemote,
-      } satisfies Parameters<typeof runDoctorReportForPlan>[0]
-      const evaluatePlan = (plan: Planner.Plan, required: boolean) =>
-        Effect.gen(function* () {
-          const report = yield* runDoctorReportForPlan(doctorRuntimeContext, plan)
-
-          reports.push({
-            _tag: 'CheckedLifecycleReport' as const,
-            lifecycle: plan.lifecycle,
-            required,
-            plannedPackages: plan.releases.length + plan.cascades.length,
-            report,
-          })
-        })
-      if (scope._tag === 'ActivePlanScope') {
-        yield* evaluatePlan(scope.plan, true)
-      } else {
-        for (const target of scope.lifecycles) {
-          const planAttempt = yield* computeLifecyclePlanAttempt(
-            analysis,
-            packages,
-            target.lifecycle,
-          )
-
-          if (planAttempt._tag === 'Failure') {
-            reports.push(
-              toUnavailableLifecycleReport(target.lifecycle, target.required, planAttempt.failure),
-            )
-            continue
-          }
-
-          yield* evaluatePlan(planAttempt.success, target.required)
-        }
-      }
-
-      const evaluation = {
-        currentBranch,
-        trunk: config.trunk,
-        scope:
-          scope._tag === 'ActivePlanScope'
-            ? `active plan (${scope.plan.lifecycle})`
-            : 'computed lifecycle scenarios',
-        reports,
-      } satisfies Doctor.DoctorEvaluation
-
-      if (args.format === 'json') {
-        yield* Console.log(JSON.stringify(evaluation, null, 2))
-      } else {
-        yield* Console.log(Doctor.formatEvaluation(evaluation, { env: env.vars }))
-      }
-
-      if (Doctor.hasBlockingIssues(evaluation)) {
-        return env.exit(1)
-      }
+      )
     }),
 ).pipe(
   Command.withDescription(

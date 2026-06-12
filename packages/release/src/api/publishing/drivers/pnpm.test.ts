@@ -30,19 +30,19 @@ describe('pnpm publishing provider command construction', () => {
       'pnpm',
       'publish',
       './dist/kitz-core-1.0.0.tgz',
+      '--access',
+      'public',
+      '--no-git-checks',
       '--tag',
       'next',
       '--registry',
       'https://registry.npmjs.org/',
-      '--access',
-      'public',
       '--otp',
       '123456',
       '--provenance',
       '--dry-run',
       '--json',
       '--report-summary',
-      '--no-git-checks',
     ])
   })
 

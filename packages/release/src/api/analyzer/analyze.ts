@@ -8,13 +8,13 @@
 
 import { FileSystem } from 'effect'
 import { Git } from '@kitz/git'
+import { Graph } from '@kitz/graph'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
-import { Effect, HashMap, HashSet, MutableHashSet, Option } from 'effect'
-import { buildDependencyGraph } from './cascade.js'
+import { Effect, Exit, HashMap, HashSet, MutableHashSet, Option } from 'effect'
+import { buildDependencyGraph, findDirectTriggers } from './cascade.js'
 import { Analysis } from './models/analysis.js'
 import { CascadeImpact } from './models/cascade-impact.js'
-import type { ReleaseCommit } from './models/commit.js'
 import { Impact } from './models/impact.js'
 import { aggregateByPackage, extractImpacts, findLatestTagVersion } from './version.js'
 import type { Package } from './workspace.js'
@@ -44,16 +44,47 @@ export interface AnalyzeOptions {
 }
 
 const findLatestReleaseTag = (pkg: Package, tags: readonly string[]): string | undefined => {
-  const version = findLatestTagVersion(pkg.name, tags as string[])
+  const version = findLatestTagVersion(pkg.name, tags)
   return Option.isSome(version)
     ? Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version: version.value }))
     : undefined
 }
 
-const trimCommitsUntilBoundary = (
+/**
+ * How to treat an `until` boundary that cannot be located.
+ *
+ * - `lenient` — the analyzer's stance: an `until` that matches no commit in
+ *   the window and is not a known tag silently keeps the whole window; a tag
+ *   whose history cannot be loaded is treated as an empty newer-commit window
+ *   (again keeping the whole window).
+ * - `strict` — the notes generator's stance: an `until` that matches no commit
+ *   must resolve through git (tag SHA, commit existence, or caller tag
+ *   snapshot); otherwise the pipeline fails with a descriptive `GitError`
+ *   rather than silently including commits beyond the boundary.
+ */
+export type UntilBoundaryStrictness = 'lenient' | 'strict'
+
+const dropCommitsNewerThanBoundary = (
+  commits: readonly Git.Commit[],
+  newerCommits: readonly Git.Commit[],
+): readonly Git.Commit[] => {
+  const newerHashes = HashSet.fromIterable(newerCommits.map((commit) => commit.hash))
+  return commits.filter((commit) => !HashSet.has(newerHashes, commit.hash))
+}
+
+/**
+ * Trim a commit window at the `until` boundary.
+ *
+ * When the boundary appears in the window (by hash or hash prefix), commits
+ * newer than it are dropped directly. Otherwise the boundary's own history is
+ * fetched and subtracted; how an unresolvable boundary is handled depends on
+ * {@link UntilBoundaryStrictness}.
+ */
+export const trimCommitsUntilBoundary = (
   commits: readonly Git.Commit[],
   until: string | undefined,
   tags: readonly string[],
+  strictness: UntilBoundaryStrictness,
 ): Effect.Effect<readonly Git.Commit[], Git.GitError | Git.GitParseError, Git.Git> =>
   Effect.gen(function* () {
     if (!until) return commits
@@ -67,20 +98,87 @@ const trimCommitsUntilBoundary = (
       return commits.slice(boundaryIndex)
     }
 
-    if (!tags.includes(until)) {
-      return commits
+    const git = yield* Git.Git
+
+    if (strictness === 'lenient') {
+      if (!tags.includes(until)) {
+        return commits
+      }
+
+      const newerCommits = yield* git
+        .getCommitsSince(until)
+        .pipe(Effect.catchTag('GitError', () => Effect.succeed([])))
+      return dropCommitsNewerThanBoundary(commits, newerCommits)
     }
 
-    const git = yield* Git.Git
-    const newerCommits = yield* git
-      .getCommitsSince(until)
-      .pipe(Effect.catchTag('GitError', () => Effect.succeed([])))
-    const newerHashes = HashSet.fromIterable(
-      newerCommits.map((commit: { hash: string }) => commit.hash),
-    )
+    const newerCommitsExit = yield* Effect.exit(git.getCommitsSince(until))
 
-    return commits.filter((commit) => !HashSet.has(newerHashes, commit.hash))
+    if (Exit.isFailure(newerCommitsExit)) {
+      const knownTag = yield* Effect.option(git.getTagSha(until))
+      if (Option.isSome(knownTag)) {
+        return yield* Effect.failCause(newerCommitsExit.cause)
+      }
+
+      const knownCommit = yield* Effect.option(git.commitExists(until))
+      if (Option.getOrElse(knownCommit, () => false)) {
+        return yield* Effect.failCause(newerCommitsExit.cause)
+      }
+
+      if (tags.includes(until)) {
+        return yield* Effect.failCause(newerCommitsExit.cause)
+      }
+
+      return yield* Effect.fail(
+        new Git.GitError({
+          context: {
+            operation: 'getCommitsSince',
+            detail: `Could not resolve release notes until boundary "${until}" as a known tag or commit.`,
+          },
+          cause: new Error(
+            `Could not resolve release notes until boundary "${until}" as a known tag or commit.`,
+          ),
+        }),
+      )
+    }
+
+    return dropCommitsNewerThanBoundary(commits, newerCommitsExit.value)
   })
+
+/**
+ * Create a commit-range fetcher that caches windows by their `since` boundary
+ * and trims each window at the shared `until` boundary.
+ *
+ * Several packages frequently share the same `since` (an explicit override, or
+ * `undefined` for never-released packages), so caching avoids re-walking the
+ * same git history per package.
+ */
+export const makeCommitRangeFetcher = (options: {
+  readonly until: string | undefined
+  readonly tags: readonly string[]
+  readonly strictness: UntilBoundaryStrictness
+}): ((
+  since: string | undefined,
+) => Effect.Effect<readonly Git.Commit[], Git.GitError | Git.GitParseError, Git.Git>) => {
+  // oxlint-disable-next-line kitz/domain/no-native-map-set -- Local read-only lookup table; never escapes this scope.
+  const cache = new Map<string | undefined, readonly Git.Commit[]>()
+
+  return (since) =>
+    Effect.gen(function* () {
+      const cached = cache.get(since)
+      if (cached !== undefined) return cached
+
+      const git = yield* Git.Git
+      const commits = yield* git.getCommitsSince(since)
+      const trimmed = yield* trimCommitsUntilBoundary(
+        commits,
+        options.until,
+        options.tags,
+        options.strictness,
+      )
+      cache.set(since, trimmed)
+      return trimmed
+    })
+}
 
 const collectScopedCommits = (
   options: AnalyzeOptions,
@@ -93,29 +191,25 @@ const collectScopedCommits = (
   Git.Git
 > =>
   Effect.gen(function* () {
-    const git = yield* Git.Git
-    const cache: Array<{ since: string | undefined; commits: readonly Git.Commit[] }> = []
+    const fetchRange = makeCommitRangeFetcher({
+      until: options.until,
+      tags: options.tags,
+      strictness: 'lenient',
+    })
     const allowedHashesByScopeEntries: Array<[string, HashSet.HashSet<string>]> = []
     const uniqueCommits: Git.Commit[] = []
     const seenHashes = MutableHashSet.empty<string>()
 
     for (const pkg of options.packages) {
       const since = options.since ?? findLatestReleaseTag(pkg, options.tags)
-      let cached = cache.find((entry) => entry.since === since)
-
-      if (!cached) {
-        const commits = yield* git.getCommitsSince(since)
-        const trimmedCommits = yield* trimCommitsUntilBoundary(commits, options.until, options.tags)
-        cached = { since, commits: trimmedCommits }
-        cache.push(cached)
-      }
+      const commits = yield* fetchRange(since)
 
       allowedHashesByScopeEntries.push([
         pkg.scope,
-        HashSet.fromIterable(cached.commits.map((commit) => commit.hash)),
+        HashSet.fromIterable(commits.map((commit) => commit.hash)),
       ])
 
-      for (const commit of cached.commits) {
+      for (const commit of commits) {
         if (MutableHashSet.has(seenHashes, commit.hash)) continue
         MutableHashSet.add(seenHashes, commit.hash)
         uniqueCommits.push(commit)
@@ -185,20 +279,20 @@ export const analyze = (
     const aggregated = aggregateByPackage(flatImpacts)
 
     // Pre-compute lookup maps (used for both impact extraction and cascade detection)
-    const scopeToPackage = HashMap.fromIterable(
-      packages.map((p): [string, Package] => [p.scope, p]),
-    )
-    const nameToPackage = HashMap.fromIterable(
-      packages.map((p): [string, Package] => [p.name.moniker, p]),
-    )
+    // oxlint-disable-next-line kitz/domain/no-native-map-set -- Local read-only lookup table; never escapes this scope.
+    const scopeToPackage = new Map(packages.map((p): [string, Package] => [p.scope, p]))
+    // oxlint-disable-next-line kitz/domain/no-native-map-set -- Local read-only lookup table; never escapes this scope.
+    const nameToPackage = new Map(packages.map((p): [string, Package] => [p.name.moniker, p]))
 
     // Build impacts and track changed scopes
     const impacts: Impact[] = []
-    const changedScopes = MutableHashSet.empty<string>()
-    const impactedPackages = MutableHashSet.empty<string>()
+    // oxlint-disable-next-line kitz/domain/no-native-map-set -- Local read-only lookup table; never escapes this scope.
+    const changedScopes = new Set<string>()
+    // oxlint-disable-next-line kitz/domain/no-native-map-set -- Local read-only lookup table; never escapes this scope.
+    const impactedPackages = new Set<string>()
 
     for (const [scope, { bump, commits: packageCommits }] of aggregated) {
-      const pkg = Option.getOrUndefined(HashMap.get(scopeToPackage, scope))
+      const pkg = scopeToPackage.get(scope)
       if (!pkg) continue
 
       // Apply filter if specified
@@ -209,11 +303,11 @@ export const analyze = (
       // Apply exclude if specified
       if (exclude?.includes(pkg.name.moniker)) continue
 
-      MutableHashSet.add(changedScopes, scope)
-      MutableHashSet.add(impactedPackages, pkg.name.moniker)
+      changedScopes.add(scope)
+      impactedPackages.add(pkg.name.moniker)
 
       // Find current version from tags
-      const currentVersion = findLatestTagVersion(pkg.name, tags as string[])
+      const currentVersion = findLatestTagVersion(pkg.name, tags)
 
       impacts.push(
         Impact.make({
@@ -226,49 +320,30 @@ export const analyze = (
     }
 
     // ── Step 4: Detect cascade impacts ────────────────────────────────
-    const dependencyGraph = yield* buildDependencyGraph([...packages])
+    const dependencyGraph = yield* buildDependencyGraph(packages)
 
-    // BFS to find all packages that transitively depend on impacted packages.
-    // Visited guard prevents infinite loops from circular dependencies.
-    const needsCascade = MutableHashSet.empty<string>()
-    const visited = MutableHashSet.fromIterable(impactedPackages)
-    const queue = Array.from(impactedPackages)
-
-    while (queue.length > 0) {
-      const pkgName = queue.shift()!
-      const dependents = Option.getOrElse(
-        HashMap.get(dependencyGraph, pkgName),
-        (): readonly string[] => [],
-      )
-
-      for (const dependent of dependents) {
-        if (MutableHashSet.has(visited, dependent)) continue
-        MutableHashSet.add(visited, dependent)
-        MutableHashSet.add(needsCascade, dependent)
-        queue.push(dependent)
-      }
-    }
+    // All packages transitively depending on impacted packages need cascades
+    // (the closure includes its seeds, so subtract the impacted set).
+    // oxlint-disable-next-line kitz/domain/no-native-map-set -- Local read-only lookup table; never escapes this scope.
+    const needsCascade = new Set(
+      [...Graph.transitiveClosure(dependencyGraph, impactedPackages)].filter(
+        (name) => !impactedPackages.has(name),
+      ),
+    )
 
     // Build cascade impact objects
     const cascades: CascadeImpact[] = []
 
     for (const name of needsCascade) {
-      const pkg = Option.getOrUndefined(HashMap.get(nameToPackage, name))
+      const pkg = nameToPackage.get(name)
       if (!pkg) continue
 
       // Find which impacted packages triggered this cascade
-      const triggeredBy: Package[] = []
-      for (const impact of impacts) {
-        const impactDependents = Option.getOrElse(
-          HashMap.get(dependencyGraph, impact.package.name.moniker),
-          (): readonly string[] => [],
-        )
-        if (impactDependents.includes(name)) {
-          triggeredBy.push(impact.package)
-        }
-      }
+      const triggeredBy = findDirectTriggers(dependencyGraph, impacts, name).map(
+        (impact) => impact.package,
+      )
 
-      const currentVersion = findLatestTagVersion(pkg.name, tags as string[])
+      const currentVersion = findLatestTagVersion(pkg.name, tags)
 
       cascades.push(
         CascadeImpact.make({
@@ -285,16 +360,13 @@ export const analyze = (
         return false
       }
       if (exclude?.includes(p.name.moniker)) return false
-      return (
-        !MutableHashSet.has(changedScopes, p.scope) &&
-        !MutableHashSet.has(needsCascade, p.name.moniker)
-      )
+      return !changedScopes.has(p.scope) && !needsCascade.has(p.name.moniker)
     })
 
     return Analysis.make({
       impacts,
       cascades,
-      unchanged: [...unchanged],
-      tags: [...tags],
+      unchanged,
+      tags,
     })
   })

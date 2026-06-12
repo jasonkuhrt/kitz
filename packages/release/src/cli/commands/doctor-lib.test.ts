@@ -7,11 +7,8 @@ import { Effect, Layer, Option } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { Analysis, Impact, makeCascadeCommit } from '../../api/analyzer/models/__.js'
 import type { Package } from '../../api/analyzer/workspace.js'
-import {
-  computeLifecyclePlan,
-  computeLifecyclePlanAttempt,
-  toUnavailableLifecycleReport,
-} from './doctor-lib.js'
+import { plannerFor } from './_shared.js'
+import { toUnavailableLifecycleReport } from './doctor-lib.js'
 
 const packages: readonly Package[] = [
   {
@@ -57,7 +54,7 @@ const workspaceLayer = Fs.Memory.layer({
 describe('doctor lifecycle planning helpers', () => {
   test('dispatches official lifecycle planning through the official planner', async () => {
     const result = await Effect.runPromise(
-      computeLifecyclePlan(analysis, packages, 'official').pipe(
+      plannerFor('official')(analysis, { packages }).pipe(
         Effect.provide(Layer.mergeAll(workspaceLayer, Env.Test(), Git.Memory.make())),
       ),
     )
@@ -68,7 +65,8 @@ describe('doctor lifecycle planning helpers', () => {
 
   test('dispatches candidate lifecycle planning through the candidate planner', async () => {
     const result = await Effect.runPromise(
-      computeLifecyclePlanAttempt(analysis, packages, 'candidate').pipe(
+      plannerFor('candidate')(analysis, { packages }).pipe(
+        Effect.result,
         Effect.provide(Layer.mergeAll(workspaceLayer, Env.Test(), Git.Memory.make())),
       ),
     )
@@ -82,7 +80,7 @@ describe('doctor lifecycle planning helpers', () => {
 
   test('dispatches ephemeral lifecycle planning through the ephemeral planner', async () => {
     const result = await Effect.runPromise(
-      computeLifecyclePlan(analysis, packages, 'ephemeral').pipe(
+      plannerFor('ephemeral')(analysis, { packages }).pipe(
         Effect.provide(
           Layer.mergeAll(
             workspaceLayer,

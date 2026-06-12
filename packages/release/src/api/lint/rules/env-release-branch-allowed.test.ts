@@ -31,7 +31,7 @@ describe('env.release-branch-allowed', () => {
       1,
     )
 
-    const result = await Effect.runPromise(rule.check.pipe(Effect.provide(layer)))
+    const result = await Effect.runPromise(rule.check().pipe(Effect.provide(layer)))
 
     expect(Violation.is(result)).toBe(true)
     expect(Violation.is(result) ? result.summary : undefined).toContain('official releases')
@@ -39,7 +39,7 @@ describe('env.release-branch-allowed', () => {
 
   test('allows candidate release on trunk and ephemeral off trunk', async () => {
     const candidateResult = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check().pipe(
         Effect.provide(
           withPlan(
             ReleaseContext.make({
@@ -54,7 +54,7 @@ describe('env.release-branch-allowed', () => {
     )
 
     const ephemeralResult = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check().pipe(
         Effect.provide(
           withPlan(
             ReleaseContext.make({
@@ -74,7 +74,7 @@ describe('env.release-branch-allowed', () => {
 
   test('does not violate when no packages are planned', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check().pipe(
         Effect.provide(
           withPlan(
             ReleaseContext.make({

@@ -42,7 +42,7 @@ describe('plan.packages-publish-hooks-present', () => {
       releasePlanLayer,
     )
 
-    const result = await Effect.runPromise(rule.check.pipe(Effect.provide(layer)))
+    const result = await Effect.runPromise(rule.check().pipe(Effect.provide(layer)))
 
     expect(Violation.is(result)).toBe(true)
     expect(Violation.is(result) ? result.summary : undefined).toContain('tarballs')
@@ -68,7 +68,7 @@ describe('plan.packages-publish-hooks-present', () => {
       releasePlanLayer,
     )
 
-    const result = await Effect.runPromise(rule.check.pipe(Effect.provide(layer)))
+    const result = await Effect.runPromise(rule.check().pipe(Effect.provide(layer)))
 
     expect(Violation.is(result)).toBe(false)
     if (Violation.is(result) || result === undefined || !('metadata' in result)) {

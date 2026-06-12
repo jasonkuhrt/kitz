@@ -151,6 +151,16 @@ export const Schema = S.String.pipe(
   }),
 )
 
+/**
+ * Codec between an optional {@link Semver} and a nullable semver string.
+ *
+ * Decodes `null` to `Option.none()` and a semver string to `Option.some(...)`;
+ * encodes back to `string | null`. Use for JSON models where an absent version
+ * is represented as `null` (e.g. a package's current version before any
+ * release exists).
+ */
+export const OptionFromNullOrString = S.OptionFromNullOr(Schema)
+
 // ============================================================================
 // Type
 // ============================================================================

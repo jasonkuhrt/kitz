@@ -4,7 +4,7 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, HashMap, Layer, Option } from 'effect'
+import { Effect, Layer, Option } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { Analysis } from '../analyzer/models/analysis.js'
 import { Impact } from '../analyzer/models/impact.js'
@@ -178,7 +178,8 @@ describe('planner coverage helpers', () => {
   test('uses generic cascade commits for transitive releases and ignores unknown packages', () => {
     const packages = [makePackage('core'), makePackage('utils'), makePackage('cli')]
     const releases = [makeOfficialRelease('core', '1.0.0', '1.1.0', 'minor')]
-    const dependencyGraph = HashMap.fromIterable<string, readonly string[]>([
+    // oxlint-disable-next-line kitz/domain/no-native-map-set -- Read-only fixture matching detect()'s native-Map parameter type.
+    const dependencyGraph = new Map<string, readonly string[]>([
       ['@kitz/core', ['@kitz/utils', '@kitz/ghost']],
       ['@kitz/utils', ['@kitz/cli']],
     ])

@@ -5,10 +5,12 @@
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, Exit, HashSet, MutableHashSet, Option } from 'effect'
+import { Effect, HashMap, Option } from 'effect'
+import { makeCommitRangeFetcher } from '../analyzer/analyze.js'
 import type { ReleaseCommit } from '../analyzer/models/commit.js'
 import {
   type ResolvedConventionalCommitTypes,
+  aggregateByPackage,
   extractImpacts,
   findLatestTagVersion,
 } from '../analyzer/version.js'
@@ -71,67 +73,15 @@ export interface GenerateResult {
 const toReleaseTag = (pkg: Package, version: Semver.Semver): string =>
   Pkg.Pin.toString(Pkg.Pin.Exact.make({ name: pkg.name, version }))
 
-const trimCommitsUntilBoundary = (
-  commits: readonly Git.Commit[],
-  until: string | undefined,
-  tags: readonly string[],
-): Effect.Effect<readonly Git.Commit[], Git.GitError | Git.GitParseError, Git.Git> =>
-  Effect.gen(function* () {
-    if (!until) return commits
-
-    const boundaryIndex = commits.findIndex(
-      (commit) =>
-        commit.hash === until || commit.hash.startsWith(until) || until.startsWith(commit.hash),
-    )
-
-    if (boundaryIndex >= 0) {
-      return commits.slice(boundaryIndex)
-    }
-
-    const git = yield* Git.Git
-    const newerCommitsExit = yield* Effect.exit(git.getCommitsSince(until))
-
-    if (Exit.isFailure(newerCommitsExit)) {
-      const knownTag = yield* Effect.option(git.getTagSha(until))
-      if (Option.isSome(knownTag)) {
-        return yield* Effect.failCause(newerCommitsExit.cause)
-      }
-
-      const knownCommit = yield* Effect.option(git.commitExists(until))
-      if (Option.getOrElse(knownCommit, () => false)) {
-        return yield* Effect.failCause(newerCommitsExit.cause)
-      }
-
-      if (tags.includes(until)) {
-        return yield* Effect.failCause(newerCommitsExit.cause)
-      }
-
-      return yield* Effect.fail(
-        new Git.GitError({
-          context: {
-            operation: 'getCommitsSince',
-            detail: `Could not resolve release notes until boundary "${until}" as a known tag or commit.`,
-          },
-          cause: new Error(
-            `Could not resolve release notes until boundary "${until}" as a known tag or commit.`,
-          ),
-        }),
-      )
-    }
-
-    const newerCommits = newerCommitsExit.value
-    const newerHashes = HashSet.fromIterable(
-      newerCommits.map((commit: { hash: string }) => commit.hash),
-    )
-
-    return commits.filter((commit) => !HashSet.has(newerHashes, commit.hash))
-  })
-
 /**
  * Generate release notes for packages with changes.
  *
  * Fetches commits since last release, extracts impacts per package,
  * calculates next versions, and formats changelogs.
+ *
+ * Unlike the analyzer's lenient stance, an `until` boundary that cannot be
+ * resolved fails the pipeline (`strictness: 'strict'`) so notes never silently
+ * include commits beyond the requested boundary.
  *
  * @example
  * ```ts
@@ -149,8 +99,12 @@ export const generate = (
   options: GenerateOptions,
 ): Effect.Effect<GenerateResult, Git.GitError | Git.GitParseError, Git.Git> =>
   Effect.gen(function* () {
-    const git = yield* Git.Git
     const { packages, tags, filter } = options
+    const fetchRange = makeCommitRangeFetcher({
+      until: options.until,
+      tags,
+      strictness: 'strict',
+    })
 
     // Generate release notes package-by-package so each package uses its own release boundary.
     const notes: PackageNotes[] = []
@@ -161,15 +115,14 @@ export const generate = (
         continue
       }
 
-      const currentVersion = findLatestTagVersion(pkg.name, tags as string[])
+      const currentVersion = findLatestTagVersion(pkg.name, tags)
       const since =
         options.since ??
         Option.match(currentVersion, {
           onNone: () => undefined,
           onSome: (version) => toReleaseTag(pkg, version),
         })
-      const commits = yield* git.getCommitsSince(since)
-      const boundedCommits = yield* trimCommitsUntilBoundary(commits, options.until, tags)
+      const boundedCommits = yield* fetchRange(since)
 
       const impactsByCommit = yield* Effect.all(
         boundedCommits.map((commit) =>
@@ -177,26 +130,16 @@ export const generate = (
         ),
         { concurrency: 'unbounded' },
       )
-      const impacts = impactsByCommit.flat().filter((impact) => impact.scope === pkg.scope)
+      const aggregated = Option.getOrUndefined(
+        HashMap.get(aggregateByPackage(impactsByCommit.flat()), pkg.scope),
+      )
 
-      if (impacts.length === 0) {
+      if (aggregated === undefined) {
         unchanged.push(pkg)
         continue
       }
 
-      let bump = impacts[0]!.bump
-      const seenCommits = MutableHashSet.empty<string>()
-      const packageCommits: ReleaseCommit[] = []
-
-      for (const impact of impacts) {
-        bump = Semver.maxBump(bump, impact.bump)
-        const commitHash = impact.commit['hash']
-        if (!MutableHashSet.has(seenCommits, commitHash)) {
-          MutableHashSet.add(seenCommits, commitHash)
-          packageCommits.push(impact.commit)
-        }
-      }
-
+      const { bump, commits: packageCommits } = aggregated
       const nextVersion = calculateNextVersion(currentVersion, bump)
       const commitEntries: CommitEntry[] = packageCommits.map((commit) => {
         const info = commit.forScope(pkg.scope)
@@ -208,7 +151,7 @@ export const generate = (
         }
       })
 
-      const renderedNotes = yield* format({
+      const renderedNotes = format({
         scope: pkg.name.moniker,
         commits: commitEntries,
         previousVersion: Option.isSome(currentVersion)

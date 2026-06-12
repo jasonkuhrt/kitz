@@ -1,6 +1,5 @@
-import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
-import { Effect, Layer, Option } from 'effect'
+import { Effect } from 'effect'
 import * as Analyzer from '../../api/analyzer/__.js'
 import * as Commentator from '../../api/commentator/__.js'
 import * as Config from '../../api/config.js'
@@ -13,6 +12,7 @@ import {
   createCommandLintConfig,
   type CommandLintRuleSpec,
 } from '../lint-rule-config.js'
+import { provideLintRunEnv } from '../lint-run-env.js'
 
 export interface DoctorPlanRuntimeContext {
   readonly config: Config.ResolvedConfig
@@ -24,25 +24,8 @@ export interface DoctorPlanRuntimeContext {
   readonly diffRemote: string
 }
 
-const toMonorepo = (packages: readonly Analyzer.Workspace.Package[]) => ({
-  packages: packages.map((pkg) => ({
-    name: pkg.name.moniker,
-    path: pkg.path.toString(),
-  })),
-  validScopes: packages.map((pkg) => pkg.scope),
-})
-
-const emptyPrContext = {
-  number: 0,
-  title: '',
-  body: '',
-  commit: Option.none(),
-  titleParseError: Option.none(),
-} as const
-
 export const runDoctorReportForPlan = (context: DoctorPlanRuntimeContext, plan: Planner.Plan) =>
   Effect.gen(function* () {
-    const plannedItems = [...plan.releases, ...plan.cascades]
     const channel = Publishing.resolvePublishChannel(context.config.publishing, plan.lifecycle)
     const projectedSquashCommit =
       context.pullRequest && plan.releases.length > 0
@@ -90,7 +73,7 @@ export const runDoctorReportForPlan = (context: DoctorPlanRuntimeContext, plan: 
                 projectedHeader: projectedSquashCommit.projectedHeader,
               },
               enabled: 'auto',
-              severity: Lint.Warn.make({}),
+              severity: 'warn',
               preserveExistingOverrides: true,
             }),
           ]
@@ -108,45 +91,20 @@ export const runDoctorReportForPlan = (context: DoctorPlanRuntimeContext, plan: 
       config: context.config,
       rules: doctorRules,
     })
-    const diffLayer = context.diff
-      ? Layer.succeed(Lint.DiffService, context.diff)
-      : Lint.DefaultDiffLayer
-    const hasDiff = context.diff !== null && context.diff.files.length > 0
-    const prContext = context.pullRequest
-      ? yield* Lint.fromPullRequest(context.pullRequest)
-      : emptyPrContext
 
     return yield* Lint.check({ config: lintConfig }).pipe(
-      Effect.provide(
-        Layer.mergeAll(
-          diffLayer,
-          Lint.DefaultGitHubLayer,
-          Lint.Preconditions.make({
-            hasOpenPR: context.pullRequest !== null,
-            hasDiff,
-            hasReleasePlan: true,
-            isMonorepo: context.packages.length > 1,
-          }),
-          Lint.ReleasePlan.make(
-            plannedItems.map((item) => ({
-              packageName: item.package.name,
-              packagePath: item.package.path,
-              version: item.nextVersion,
-            })),
-          ),
-          Lint.ReleaseContext.make({
-            lifecycle: plan.lifecycle,
-            publishing: context.config.publishing,
-            trunk: context.config.trunk,
-            currentBranch: context.currentBranch,
-          }),
-          Lint.ConventionalCommitSettings.make({
-            resolvedTypes: context.config.resolvedConventionalCommitTypes,
-          }),
-        ),
-      ),
-      Effect.provideService(Lint.MonorepoService, toMonorepo(context.packages)),
-      Effect.provideService(Lint.PrService, prContext),
+      provideLintRunEnv({
+        config: context.config,
+        plan,
+        packages: context.packages,
+        diff: context.diff,
+        pullRequest: context.pullRequest,
+        // Execution surface: gate official/candidate plans to the trunk branch.
+        branchContext: {
+          trunk: context.config.trunk,
+          currentBranch: context.currentBranch,
+        },
+      }),
     )
   })
 

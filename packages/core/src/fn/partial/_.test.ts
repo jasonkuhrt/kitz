@@ -9,11 +9,4 @@ describe('Fn.Partial namespace', () => {
     expect(Partial.defer).toBeDefined()
     expect(Partial.isHole).toBeDefined()
   })
-
-  // test('exports generator functions', () => {
-  //   expect(Partial.Generator).toBeDefined()
-  //   expect(Partial.Generator.generate).toBeDefined()
-  //   expect(Partial.Generator.generateForFile).toBeDefined()
-  //   expect(Partial.Generator.createProjectFromProgram).toBeDefined()
-  // })
 })

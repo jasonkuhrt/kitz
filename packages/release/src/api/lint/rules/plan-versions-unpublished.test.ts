@@ -5,7 +5,6 @@ import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Violation } from '../models/violation.js'
-import { RuleOptionsService } from '../services/rule-options.js'
 import { ReleasePlan } from '../services/__.js'
 import { rule } from './plan-versions-unpublished.js'
 
@@ -78,11 +77,7 @@ const releasePlanLayer = ReleasePlan.make([
 describe('plan.versions-unpublished', () => {
   test('violates when the planned package version already exists on npm', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
-        Effect.provide(releasePlanLayer),
-        Effect.provide(makeSpawnerLayer(true)),
-        Effect.provideService(RuleOptionsService, {}),
-      ),
+      rule.check({}).pipe(Effect.provide(releasePlanLayer), Effect.provide(makeSpawnerLayer(true))),
     )
 
     expect(Violation.is(result)).toBe(true)
@@ -91,11 +86,9 @@ describe('plan.versions-unpublished', () => {
 
   test('passes when the planned package version is still unpublished', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
-        Effect.provide(releasePlanLayer),
-        Effect.provide(makeSpawnerLayer(false)),
-        Effect.provideService(RuleOptionsService, {}),
-      ),
+      rule
+        .check({})
+        .pipe(Effect.provide(releasePlanLayer), Effect.provide(makeSpawnerLayer(false))),
     )
 
     expect(Violation.is(result)).toBe(false)

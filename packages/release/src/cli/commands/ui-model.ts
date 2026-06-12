@@ -1,3 +1,4 @@
+import { Err } from '@kitz/core'
 import { Tui } from '@kitz/tui'
 import type { KeyEvent } from '@opentui/core'
 import { Array as A, Effect, Option } from 'effect'
@@ -122,8 +123,7 @@ export const initialDashboardState: DashboardState = {
   doctorRequestSeq: 0,
 }
 
-const toMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error)
+const toMessage = (error: unknown): string => Err.ensure(error).message
 
 const nextLifecycle = (current: Lifecycle, direction: 'next' | 'previous'): Lifecycle => {
   const index = Option.getOrElse(

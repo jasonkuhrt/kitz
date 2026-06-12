@@ -19,7 +19,7 @@ interface FilterOptionsLike {
 type PrereleaseLifecycle = Exclude<Lifecycle, 'official'>
 
 interface CascadeParams<$lifecycle extends Lifecycle> {
-  readonly packages: Package[]
+  readonly packages: readonly Package[]
   readonly primaryReleases: readonly PlannedItem<$lifecycle>[]
   readonly dependencyGraph: DependencyGraph
   readonly tags: readonly string[]
@@ -43,7 +43,7 @@ export const mapOfficialCascades = <
   $release extends PlannedItem<Lifecycle>,
   $cascade extends PlannedItem<PrereleaseLifecycle>,
 >(params: {
-  readonly packages: Package[]
+  readonly packages: readonly Package[]
   readonly primaryReleases: readonly $release[]
   readonly dependencyGraph: DependencyGraph
   readonly tags: readonly string[]
@@ -51,10 +51,10 @@ export const mapOfficialCascades = <
   readonly map: (cascade: Official) => $cascade
 }): readonly $cascade[] =>
   detectOfficialCascades(
-    [...params.packages],
-    [...params.primaryReleases],
+    params.packages,
+    params.primaryReleases,
     params.dependencyGraph,
-    [...params.tags],
+    params.tags,
     params.timestamp,
   ).map(params.map)
 
@@ -73,18 +73,18 @@ export const planLifecycle = <
       releases.push(params.toPrimaryRelease(impact))
     }
 
-    const dependencyGraph = yield* buildDependencyGraph([...params.packages])
+    const dependencyGraph = yield* buildDependencyGraph(params.packages)
     const cascades = params.toCascades({
-      packages: [...params.packages],
+      packages: params.packages,
       primaryReleases: releases,
       dependencyGraph,
-      tags: [...params.analysis.tags],
+      tags: params.analysis.tags,
       timestamp,
     })
     const dependencyReleases = yield* detectPublishDependencyClosure(
-      [...params.packages],
+      params.packages,
       [...releases, ...cascades],
-      [...params.analysis.tags],
+      params.analysis.tags,
       timestamp,
     )
 

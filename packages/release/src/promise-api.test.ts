@@ -4,7 +4,7 @@ import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Fs } from '@kitz/fs'
 import { Semver } from '@kitz/semver'
-import { Effect, FileSystem, Layer } from 'effect'
+import { DateTime, Effect, FileSystem, Layer } from 'effect'
 import { WorkflowEngine } from 'effect/unstable/workflow'
 import { Official } from './api/planner/models/item-official.js'
 import { Plan } from './api/planner/models/plan.js'
@@ -58,14 +58,16 @@ describe('release promise api', () => {
       }),
     })
 
-    const proof = makeProofArtifact(plan, '2026-05-14T00:00:00.000Z', {
+    const proof = makeProofArtifact(plan, DateTime.makeUnsafe('2026-05-14T00:00:00.000Z'), {
       packageAccess: { '@kitz/core': 'public' },
     })
 
     expect(digestPlan(plan).algorithm).toBe('sha256')
-    expect(validateProof(proof, '2026-05-14T00:00:00.000Z').map((issue) => issue.code)).toContain(
-      'release.proof.unprovable',
-    )
+    expect(
+      validateProof(proof, DateTime.makeUnsafe('2026-05-14T00:00:00.000Z')).map(
+        (issue) => issue.code,
+      ),
+    ).toContain('release.proof.unprovable')
     expect(inspectLegitimacy({ onRegistry: true, inJournal: true })).toBe(
       'registry-matches-journal',
     )

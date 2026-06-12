@@ -1,26 +1,18 @@
 import { Git } from '@kitz/git'
 import { Semver } from '@kitz/semver'
 import { Test } from '@kitz/test'
-import { Schema } from 'effect'
+import { Option, Schema } from 'effect'
 import { describe, expect, test } from 'bun:test'
-import {
-  Candidate,
-  CandidateSchema,
-  encodeCandidate,
-  makeCandidate,
-  nextCandidate,
-  parseCandidate,
-} from './candidate.js'
-import {
-  encodeEphemeral,
-  Ephemeral,
-  EphemeralSchema,
-  makeEphemeral,
-  nextEphemeral,
-  parseEphemeral,
-} from './ephemeral.js'
+import { Candidate, CandidateSchema } from './candidate.js'
+import { Ephemeral, EphemeralSchema } from './ephemeral.js'
+import { Official } from './official.js'
 import { OfficialFirst } from './official-first.js'
 import { OfficialIncrement } from './official-increment.js'
+
+const decodeCandidate = Schema.decodeSync(CandidateSchema)
+const encodeCandidate = Schema.encodeSync(CandidateSchema)
+const decodeEphemeral = Schema.decodeSync(EphemeralSchema)
+const encodeEphemeral = Schema.encodeSync(EphemeralSchema)
 
 // ── OfficialFirst ────────────────────────────────────────────────────
 
@@ -53,13 +45,6 @@ describe('OfficialIncrement', () => {
     expect(OfficialIncrement.is(v)).toBe(true)
   })
 
-  test('fromImpact factory', () => {
-    const v = OfficialIncrement.fromImpact(Semver.fromString('1.0.0'), 'patch')
-    expect(Semver.equivalence(v.from, Semver.fromString('1.0.0'))).toBe(true)
-    expect(Semver.equivalence(v.to, Semver.fromString('1.0.1'))).toBe(true)
-    expect(v.bump).toBe('patch')
-  })
-
   test('schema roundtrip', () => {
     const v = OfficialIncrement.make({
       from: Semver.fromString('2.0.0'),
@@ -69,6 +54,44 @@ describe('OfficialIncrement', () => {
     const encoded = Schema.encodeSync(OfficialIncrement)(v)
     const decoded = Schema.decodeSync(OfficialIncrement)(encoded)
     expect(decoded.bump).toBe('major')
+  })
+})
+
+// ── Official.fromCurrent ─────────────────────────────────────────────
+
+describe('Official.fromCurrent', () => {
+  test('existing current version yields an increment with the calculated next version', () => {
+    const v = Official.fromCurrent(Option.some(Semver.fromString('1.0.0')), 'patch')
+    expect(OfficialIncrement.is(v)).toBe(true)
+    if (OfficialIncrement.is(v)) {
+      expect(Semver.equivalence(v.from, Semver.fromString('1.0.0'))).toBe(true)
+      expect(Semver.equivalence(v.to, Semver.fromString('1.0.1'))).toBe(true)
+      expect(v.bump).toBe('patch')
+    }
+  })
+
+  test('no current version yields a first release (initial phase)', () => {
+    const minor = Official.fromCurrent(Option.none(), 'minor')
+    expect(OfficialFirst.is(minor)).toBe(true)
+    if (OfficialFirst.is(minor)) {
+      expect(Semver.toString(minor.version)).toBe('0.1.0')
+      expect(minor.bump).toBe('minor')
+    }
+
+    const patch = Official.fromCurrent(Option.none(), 'patch')
+    expect(OfficialFirst.is(patch)).toBe(true)
+    if (OfficialFirst.is(patch)) {
+      expect(Semver.toString(patch.version)).toBe('0.0.1')
+    }
+  })
+
+  test('phase-aware bump: major on 0.x.x increments minor', () => {
+    const v = Official.fromCurrent(Option.some(Semver.fromString('0.2.0')), 'major')
+    expect(OfficialIncrement.is(v)).toBe(true)
+    if (OfficialIncrement.is(v)) {
+      expect(Semver.toString(v.to)).toBe('0.3.0')
+      expect(v.bump).toBe('major')
+    }
   })
 })
 
@@ -88,17 +111,6 @@ describe('Candidate', () => {
     expect(Semver.toString(version)).toContain('next')
   })
 
-  test('makeCandidate', () => {
-    const c = makeCandidate(5)
-    expect(c.iteration).toBe(5)
-  })
-
-  test('nextCandidate increments iteration', () => {
-    const c = makeCandidate(1)
-    const next = nextCandidate(c)
-    expect(next.iteration).toBe(2)
-  })
-
   Test.describe('CandidateSchema decode')
     .inputType<string>()
     .outputType<number>()
@@ -108,19 +120,19 @@ describe('Candidate', () => {
       { input: 'next.100', output: 100 },
     )
     .test(({ input, output }) => {
-      const result = parseCandidate(input)
+      const result = decodeCandidate(input)
       expect(result.iteration).toBe(output)
     })
 
   test('CandidateSchema encode', () => {
-    const c = makeCandidate(3)
+    const c = Candidate.make({ iteration: 3 })
     expect(encodeCandidate(c)).toBe('next.3')
   })
 
   test('invalid format fails decode', () => {
-    expect(() => parseCandidate('invalid')).toThrow(/./)
-    expect(() => parseCandidate('next.')).toThrow(/./)
-    expect(() => parseCandidate('pre.1')).toThrow(/./)
+    expect(() => decodeCandidate('invalid')).toThrow(/./)
+    expect(() => decodeCandidate('next.')).toThrow(/./)
+    expect(() => decodeCandidate('pre.1')).toThrow(/./)
   })
 })
 
@@ -144,36 +156,21 @@ describe('Ephemeral', () => {
     expect(str).toContain('42')
   })
 
-  test('makeEphemeral', () => {
-    const e = makeEphemeral(99, 2, sha)
-    expect(e.prNumber).toBe(99)
-    expect(e.iteration).toBe(2)
-  })
-
-  test('nextEphemeral increments iteration', () => {
-    const e = makeEphemeral(42, 1, sha)
-    const newSha = Git.Sha.make('def5678')
-    const next = nextEphemeral(e, newSha)
-    expect(next.iteration).toBe(2)
-    expect(next.prNumber).toBe(42)
-    expect(next.sha).toBe<string>('def5678')
-  })
-
   test('EphemeralSchema decode', () => {
-    const e = parseEphemeral('pr.42.3.abc1234')
+    const e = decodeEphemeral('pr.42.3.abc1234')
     expect(e.prNumber).toBe(42)
     expect(e.iteration).toBe(3)
     expect(e.sha).toBe<string>('abc1234')
   })
 
   test('EphemeralSchema encode', () => {
-    const e = makeEphemeral(42, 3, sha)
+    const e = Ephemeral.make({ prNumber: 42, iteration: 3, sha })
     expect(encodeEphemeral(e)).toBe('pr.42.3.gabc1234')
   })
 
   test('invalid format fails decode', () => {
-    expect(() => parseEphemeral('invalid')).toThrow(/./)
-    expect(() => parseEphemeral('pr.42.3')).toThrow(/./)
-    expect(() => parseEphemeral('pr.abc.3.abc1234')).toThrow(/./)
+    expect(() => decodeEphemeral('invalid')).toThrow(/./)
+    expect(() => decodeEphemeral('pr.42.3')).toThrow(/./)
+    expect(() => decodeEphemeral('pr.abc.3.abc1234')).toThrow(/./)
   })
 })

@@ -1,23 +1,18 @@
-import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
-import { Console, Effect, Layer, Option } from 'effect'
-import { Command, Flag } from 'effect/unstable/cli'
+import { Str } from '@kitz/core'
+import { Console, Effect, Option } from 'effect'
+import { Command } from 'effect/unstable/cli'
 import * as Renderer from '../../api/renderer/__.js'
-import { FileSystemLayer } from '../../platform.js'
+import { CommandBaseLayer, failWith, fromFlag } from './_shared.js'
 import { formatInvalidPlanMessage, formatMissingPlanMessage, loadPlan } from './plan-file.js'
 
 export const preview = Command.make(
   'preview',
   {
-    from: Flag.string('from').pipe(
-      Flag.withAlias('f'),
-      Flag.withDescription('Read the release plan from a specific file path'),
-      Flag.optional,
-    ),
+    from: fromFlag,
   },
   ({ from }) =>
     Effect.gen(function* () {
-      const env = yield* Env.Env
       const planPath = Option.isSome(from) ? Fs.Path.fromString(from.value) : undefined
       const planState = yield* loadPlan({
         ...(planPath !== undefined ? { path: planPath } : {}),
@@ -25,24 +20,24 @@ export const preview = Command.make(
       })
 
       if (planState._tag === 'PlanMissing') {
-        for (const line of formatMissingPlanMessage(planState)) yield* Console.error(line)
-        return env.exit(1)
+        return yield* failWith(...formatMissingPlanMessage(planState))
       }
 
       if (planState._tag === 'PlanInvalid') {
-        for (const line of formatInvalidPlanMessage(planState)) yield* Console.error(line)
-        return env.exit(1)
+        return yield* failWith(...formatInvalidPlanMessage(planState))
       }
 
-      yield* Console.log(Renderer.renderPlan(planState.plan))
+      const b = Str.Builder()
+      b`${Renderer.renderPlan(planState.plan)}`
       if (planState.plan.publishIntent) {
-        yield* Console.log('')
-        yield* Console.log(`Publish profile: ${planState.plan.publishIntent.profile.id}`)
-        yield* Console.log(`Registry: ${planState.plan.publishIntent.registry.url}`)
-        yield* Console.log(`Dist-tag: ${planState.plan.publishIntent.distTag}`)
+        b``
+        b`Publish profile: ${planState.plan.publishIntent.profile.id}`
+        b`Registry: ${planState.plan.publishIntent.registry.url}`
+        b`Dist-tag: ${planState.plan.publishIntent.distTag}`
       }
+      yield* Console.log(b.render())
     }),
 ).pipe(
   Command.withDescription('Preview the frozen release plan without building artifacts'),
-  Command.provide(Layer.mergeAll(Env.Live, FileSystemLayer)),
+  Command.provide(CommandBaseLayer),
 )

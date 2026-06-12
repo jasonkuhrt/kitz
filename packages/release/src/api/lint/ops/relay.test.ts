@@ -4,7 +4,6 @@ import { Effect, Schema } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { Failed, Finished, Report, Skipped } from '../models/report.js'
 import { RuleId } from '../models/rule-defaults.js'
-import * as Severity from '../models/severity.js'
 import { CommandFix, DocLink, FixStep, GuideFix, Hint, Violation } from '../models/violation.js'
 import {
   Environment,
@@ -14,6 +13,7 @@ import {
   PrTitle,
   RepoSettings,
 } from '../models/violation-location.js'
+import { PreconditionsNotMetError } from './check.js'
 import { Destination, formatReport, relay } from './relay.js'
 
 const ruleRef = (id: string, description = 'Test rule') => ({
@@ -31,7 +31,7 @@ describe('formatReport', () => {
             'declared publish channel matches the active runtime',
           ),
           duration: 4,
-          severity: Severity.Error.make({}),
+          severity: 'error',
           violation: Violation.make({
             location: Environment.make({ message: 'ACTIONS_ID_TOKEN_REQUEST_URL is missing.' }),
             summary: 'Trusted publishing is configured but OIDC is unavailable.',
@@ -83,7 +83,7 @@ describe('formatReport', () => {
         Finished.make({
           rule: ruleRef('env.release-branch-allowed', 'active branch is allowed'),
           duration: 1,
-          severity: Severity.Error.make({}),
+          severity: 'error',
         }),
       ],
     })
@@ -100,7 +100,7 @@ describe('formatReport', () => {
         Finished.make({
           rule: ruleRef('env.npm-authenticated', 'npm auth is configured'),
           duration: 1,
-          severity: Severity.Error.make({}),
+          severity: 'error',
           violation: Violation.make({
             location: Environment.make({ message: 'npm whoami failed' }),
             summary: 'npm CLI authentication is not configured for this runtime.',
@@ -134,7 +134,7 @@ describe('formatReport', () => {
         Finished.make({
           rule: ruleRef('pr.title', 'title is valid'),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           violation: Violation.make({
             location: PrTitle.make({ title: 'feat(release): ship' }),
             summary: 'Title needs a release scope.',
@@ -148,7 +148,7 @@ describe('formatReport', () => {
         Finished.make({
           rule: ruleRef('pr.body', 'body is valid'),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           violation: Violation.make({
             location: PrBody.make({ line: 12 }),
             summary: 'Body is missing details.',
@@ -157,7 +157,7 @@ describe('formatReport', () => {
         Finished.make({
           rule: ruleRef('repo.settings', 'repo settings are valid'),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           violation: Violation.make({
             location: RepoSettings.make({}),
             summary: 'Repository settings need attention.',
@@ -166,7 +166,7 @@ describe('formatReport', () => {
         Finished.make({
           rule: ruleRef('git.history', 'history is monotonic'),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           violation: Violation.make({
             location: GitHistory.make({ sha: 'abc1234' }),
             summary: 'History is out of order.',
@@ -175,7 +175,7 @@ describe('formatReport', () => {
         Finished.make({
           rule: ruleRef('file.rule', 'file metadata is present'),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           violation: Violation.make({
             location: File.make({ path: 'packages/core/package.json', line: 8 }),
             summary: 'Repository field is missing.',
@@ -205,6 +205,29 @@ describe('formatReport', () => {
     expect(output).toContain('Errors (1)')
   })
 
+  test('renders failed preconditions from a PreconditionsNotMetError', () => {
+    const report = Report.make({
+      results: [
+        Failed.make({
+          rule: ruleRef('pr.scope.require', 'At least one scope required'),
+          duration: 0,
+          error: new PreconditionsNotMetError({
+            context: {
+              ruleId: RuleId.make('pr.scope.require'),
+              failed: ['hasOpenPR', 'hasDiff'],
+            },
+          }),
+        }),
+      ],
+    })
+
+    const output = formatReport(report)
+
+    expect(output).toContain('Errors (1)')
+    expect(output).toContain('pr.scope.require')
+    expect(output).toContain('Preconditions not met: hasOpenPR, hasDiff')
+  })
+
   test('writes json output to a file destination', async () => {
     const report = Report.make({
       results: [
@@ -214,7 +237,7 @@ describe('formatReport', () => {
             'declared publish channel matches the active runtime',
           ),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
         }),
       ],
     })

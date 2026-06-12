@@ -12,6 +12,7 @@ import {
   Stream,
   String as Str,
 } from 'effect'
+import * as Argv from './argv.js'
 
 // ============================================================================
 // Errors
@@ -60,13 +61,16 @@ export interface WhoamiOptions {
 }
 
 /**
+ * Package manager CLIs supported for pack/publish operations.
+ */
+export type { PackageManagerCli } from './argv.js'
+
+/**
  * Options for npm publish command.
  */
-export type PackageManagerCli = 'npm' | 'pnpm' | 'bun'
-
 export interface PublishOptions {
   /** Package manager CLI to invoke for pack/publish operations. */
-  readonly packageManager?: PackageManagerCli
+  readonly packageManager?: Argv.PackageManagerCli
   /** Prepared tarball to publish */
   readonly tarball: Fs.Path.AbsFile
   /** npm dist-tag (default: 'latest') */
@@ -77,6 +81,8 @@ export interface PublishOptions {
   readonly access?: 'public' | 'restricted'
   /** Disable lifecycle scripts during tarball publish (default: true) */
   readonly ignoreScripts?: boolean
+  /** pnpm only: skip git state checks for staged tarball publishes (default: true) */
+  readonly noGitChecks?: boolean
   /** Simulate publish without mutating the registry. */
   readonly dryRun?: boolean
   /** One-time password for interactive local publishes. */
@@ -92,7 +98,7 @@ export interface PublishOptions {
  */
 export interface PackOptions {
   /** Package manager CLI to invoke for pack/publish operations. */
-  readonly packageManager?: PackageManagerCli
+  readonly packageManager?: Argv.PackageManagerCli
   /** Package directory to pack from */
   readonly cwd: Fs.Path.AbsDir
   /** Destination directory for the generated tarball */
@@ -207,7 +213,7 @@ const decodeBunPackOutput = (output: string): Effect.Effect<PackOutputEntry, Err
   })
 
 const packOutputFor = (
-  packageManager: PackageManagerCli,
+  packageManager: Argv.PackageManagerCli,
   output: string,
 ): Effect.Effect<readonly PackOutputEntry[], Error | S.SchemaError> => {
   if (packageManager === 'bun') {
@@ -222,23 +228,22 @@ const packOutputFor = (
 const buildPackCommand = (options: PackOptions) => {
   const packDestination = Fs.Path.toString(options.packDestination)
   const packageManager = options.packageManager ?? 'npm'
+  const spawnOptions = {
+    cwd: Fs.Path.toString(options.cwd),
+    ...(options.env !== undefined ? { env: { ...options.env }, extendEnv: false } : {}),
+  }
 
   switch (packageManager) {
     case 'bun':
-      return ChildProcess.make('bun', ['pm', 'pack', '--quiet', '--destination', packDestination], {
-        cwd: Fs.Path.toString(options.cwd),
-        ...(options.env !== undefined ? { env: { ...options.env }, extendEnv: false } : {}),
-      })
+      return ChildProcess.make(
+        'bun',
+        Argv.bunPack({ destination: packDestination, quiet: true }),
+        spawnOptions,
+      )
     case 'pnpm':
-      return ChildProcess.make('pnpm', ['pack', '--json', '--pack-destination', packDestination], {
-        cwd: Fs.Path.toString(options.cwd),
-        ...(options.env !== undefined ? { env: { ...options.env }, extendEnv: false } : {}),
-      })
+      return ChildProcess.make('pnpm', Argv.pnpmPack({ packDestination }), spawnOptions)
     case 'npm':
-      return ChildProcess.make('npm', ['pack', '--json', '--pack-destination', packDestination], {
-        cwd: Fs.Path.toString(options.cwd),
-        ...(options.env !== undefined ? { env: { ...options.env }, extendEnv: false } : {}),
-      })
+      return ChildProcess.make('npm', Argv.npmPack({ packDestination }), spawnOptions)
   }
 }
 
@@ -253,52 +258,41 @@ const tarballPathForPackEntry = (
 const filenameForPackEntry = (filename: string): string => filename.split('/').at(-1) ?? filename
 
 const buildPublishCommand = (options: PublishOptions) => {
-  const tarball = Fs.Path.toString(options.tarball)
   const packageManager = options.packageManager ?? 'npm'
+  const common = {
+    target: Fs.Path.toString(options.tarball),
+    access: options.access ?? 'public',
+    ignoreScripts: options.ignoreScripts ?? true,
+    tag: options.tag,
+    registry: options.registry,
+    otp: options.otp,
+    dryRun: options.dryRun,
+  }
 
   switch (packageManager) {
     case 'bun':
-      return ChildProcess.make('bun', [
-        'publish',
-        tarball,
-        '--access',
-        options.access ?? 'public',
-        ...((options.ignoreScripts ?? true) ? ['--ignore-scripts'] : []),
-        ...(options.tag ? ['--tag', options.tag] : []),
-        ...(options.registry ? ['--registry', options.registry] : []),
-        ...(options.otp ? ['--otp', options.otp] : []),
-        ...(options.dryRun ? ['--dry-run'] : []),
-      ])
+      return ChildProcess.make('bun', Argv.bunPublish(common))
     case 'pnpm':
-      return ChildProcess.make('pnpm', [
-        'publish',
-        tarball,
-        '--access',
-        options.access ?? 'public',
-        ...((options.ignoreScripts ?? true) ? ['--ignore-scripts'] : []),
-        '--no-git-checks',
-        ...(options.tag ? ['--tag', options.tag] : []),
-        ...(options.registry ? ['--registry', options.registry] : []),
-        ...(options.otp ? ['--otp', options.otp] : []),
-        ...(options.provenance ? ['--provenance'] : []),
-        ...(options.dryRun ? ['--dry-run'] : []),
-      ])
+      return ChildProcess.make(
+        'pnpm',
+        Argv.pnpmPublish({
+          ...common,
+          noGitChecks: options.noGitChecks ?? true,
+          provenance: options.provenance,
+        }),
+      )
     case 'npm':
-      return ChildProcess.make('npm', [
-        'publish',
-        tarball,
-        '--access',
-        options.access ?? 'public',
-        ...((options.ignoreScripts ?? true) ? ['--ignore-scripts'] : []),
-        ...(options.tag ? ['--tag', options.tag] : []),
-        ...(options.registry ? ['--registry', options.registry] : []),
-        ...(options.otp ? ['--otp', options.otp] : []),
-        ...(options.provenance ? ['--provenance'] : []),
-        ...(options.provenanceFile !== undefined
-          ? ['--provenance-file', Fs.Path.toString(options.provenanceFile)]
-          : []),
-        ...(options.dryRun ? ['--dry-run'] : []),
-      ])
+      return ChildProcess.make(
+        'npm',
+        Argv.npmPublish({
+          ...common,
+          provenance: options.provenance,
+          provenanceFile:
+            options.provenanceFile !== undefined
+              ? Fs.Path.toString(options.provenanceFile)
+              : undefined,
+        }),
+      )
   }
 }
 const JsonRecordFromString = S.fromJsonString(S.Record(S.String, S.Unknown))

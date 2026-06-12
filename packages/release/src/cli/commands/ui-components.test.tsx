@@ -85,8 +85,14 @@ describe('ui-components', () => {
       })
 
       const frame = setup.captureCharFrame()
-      expect(frame).toContain('1 - {')
-      expect(frame).toContain('1 + {')
+      // Real line diff: unchanged lines are context, only the changed line
+      // carries -/+ markers (regression: the old implementation emitted every
+      // line as removed+added, rendering any change as a 100%-changed wall).
+      expect(frame).toContain('2 -   "a": 1')
+      expect(frame).toContain('2 +   "a": 2')
+      expect(frame).toContain('1   {')
+      expect(frame).not.toContain('- {')
+      expect(frame).not.toContain('+ {')
     } finally {
       setup.renderer.destroy()
     }

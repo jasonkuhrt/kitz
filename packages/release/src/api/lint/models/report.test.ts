@@ -1,8 +1,7 @@
 import { Schema } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { Failed, Finished, Report, RuleCheckResult, Skipped } from './report.js'
-import { RuleDefaults, RuleId } from './rule-defaults.js'
-import * as Severity from './severity.js'
+import { RuleId } from './rule-defaults.js'
 import { Environment } from './violation-location.js'
 import { Violation } from './violation.js'
 
@@ -16,7 +15,7 @@ describe('Finished', () => {
     const r = Finished.make({
       rule: ruleRef('env.git-clean'),
       duration: 42,
-      severity: Severity.Error.make({}),
+      severity: 'error',
     })
     expect(r._tag).toBe('RuleCheckResultFinished')
     expect(Finished.is(r)).toBe(true)
@@ -27,7 +26,7 @@ describe('Finished', () => {
     const r = Finished.make({
       rule: ruleRef('env.npm-authenticated'),
       duration: 100,
-      severity: Severity.Error.make({}),
+      severity: 'error',
       violation: Violation.make({
         location: Environment.make({ message: 'Not logged in to npm.' }),
       }),
@@ -40,11 +39,11 @@ describe('Finished', () => {
     const r = Finished.make({
       rule: ruleRef('env.npm-authenticated'),
       duration: 50,
-      severity: Severity.Warn.make({}),
+      severity: 'warn',
       metadata: { username: 'testuser' },
     })
     expect(r.metadata).toEqual({ username: 'testuser' })
-    expect(r.severity._tag).toBe('SeverityWarn')
+    expect(r.severity).toBe('warn')
   })
 })
 
@@ -85,7 +84,7 @@ describe('RuleCheckResult union', () => {
     const r = Finished.make({
       rule: ruleRef('env.git-clean'),
       duration: 42,
-      severity: Severity.Error.make({}),
+      severity: 'error',
     })
     const encoded = Schema.encodeSync(RuleCheckResult)(r)
     const decoded = Schema.decodeSync(RuleCheckResult)(encoded)
@@ -114,7 +113,7 @@ describe('Report', () => {
         Finished.make({
           rule: ruleRef('env.git-clean'),
           duration: 10,
-          severity: Severity.Error.make({}),
+          severity: 'error',
         }),
         Failed.make({ rule: ruleRef('env.git-remote'), duration: 5, error: 'fail' }),
         Skipped.make({ rule: ruleRef('pr.scope.require'), reason: 'filtered' }),
@@ -130,7 +129,7 @@ describe('Report', () => {
         Finished.make({
           rule: ruleRef('env.git-clean'),
           duration: 10,
-          severity: Severity.Error.make({}),
+          severity: 'error',
         }),
       ],
     })

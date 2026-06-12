@@ -1,3 +1,4 @@
+import { Str } from '@kitz/core'
 import { Tui } from '@kitz/tui'
 import { Array as A } from 'effect'
 import type { FocusPane, Lifecycle, UiPackage } from './ui-atoms.js'
@@ -88,27 +89,18 @@ function normalizeJson(text: string): string {
   }
 }
 
-function createUnifiedDiff(
+export function createUnifiedDiff(
   oldText: string,
   newText: string,
   oldLabel: string,
   newLabel: string,
 ): string {
-  const oldLines = oldText.split('\n')
-  const newLines = newText.split('\n')
-  const result: string[] = []
-  result.push(`--- ${oldLabel}`)
-  result.push(`+++ ${newLabel}`)
-
-  result.push(`@@ -1,${oldLines.length} +1,${newLines.length} @@`)
-  for (const line of oldLines) {
-    result.push(`-${line}`)
-  }
-  for (const line of newLines) {
-    result.push(`+${line}`)
-  }
-
-  return result.join('\n')
+  return [
+    `--- ${oldLabel}`,
+    `+++ ${newLabel}`,
+    `@@ -1,${Str.Diff.lines(oldText).length} +1,${Str.Diff.lines(newText).length} @@`,
+    ...Str.Diff.toUnifiedLines(Str.Diff.diff(oldText, newText)),
+  ].join('\n')
 }
 
 // ─── Help Overlay ────────────────────────────────────────────────────

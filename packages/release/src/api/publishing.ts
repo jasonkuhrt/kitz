@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Effect, Schema } from 'effect'
 import type { PublishIntent } from './release-contract.js'
 import { Ephemeral } from './planner/models/item-ephemeral.js'
@@ -50,19 +51,11 @@ const defaultManualChannel = (): PublishChannel => ({
  * This is used by lint and runbook-style surfaces to decide which checks
  * are relevant and what operator guidance should be shown.
  */
-export class Publishing extends Schema.Class<Publishing>('Publishing')({
+export class Publishing extends Sch.Class<Publishing>()('Publishing', {
   official: PublishChannel.pipe(Schema.withDecodingDefaultKey(Effect.sync(defaultManualChannel))),
   candidate: PublishChannel.pipe(Schema.withDecodingDefaultKey(Effect.sync(defaultManualChannel))),
   ephemeral: PublishChannel.pipe(Schema.withDecodingDefaultKey(Effect.sync(defaultManualChannel))),
-}) {
-  static is = Schema.is(Publishing)
-  static decode = Schema.decodeUnknownEffect(Publishing)
-  static decodeSync = Schema.decodeUnknownSync(Publishing)
-  static encode = Schema.encodeUnknownEffect(Publishing)
-  static encodeSync = Schema.encodeUnknownSync(Publishing)
-  static equivalence = Schema.toEquivalence(Publishing)
-  static ordered = false as const
-}
+}) {}
 
 export const defaultPublishing = (): Publishing => Publishing.decodeSync({})
 

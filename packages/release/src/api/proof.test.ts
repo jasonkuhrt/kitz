@@ -5,7 +5,7 @@ import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { describe, expect, test } from 'bun:test'
-import { Effect, Layer, Option } from 'effect'
+import { DateTime, Effect, Layer, Option } from 'effect'
 import { Env } from '@kitz/env'
 import { makeCascadeCommit } from './analyzer/models/commit.js'
 import { OfficialFirst } from './version/models/official-first.js'
@@ -21,7 +21,6 @@ import {
 } from './proof.js'
 import { sha256Text } from './digest.js'
 import {
-  PlanDigest,
   PlanSourceSnapshot,
   ProofArtifact,
   ProofRecord,
@@ -30,6 +29,8 @@ import {
   PublishProfile,
   publishIntentFromSemantics,
 } from './release-contract.js'
+
+const utc = (iso: string): DateTime.Utc => DateTime.makeUnsafe(iso)
 
 const plan = Plan.make({
   lifecycle: 'official',
@@ -63,7 +64,7 @@ const publishIntent = publishIntentFromSemantics({
   trunk: 'main',
 })
 
-const contractedDigest = PlanDigest.make(sha256Text('contracted'))
+const contractedDigest = sha256Text('contracted')
 const updatePublishIntent = (intent: PublishIntent, overrides: Partial<PublishIntent>) =>
   PublishIntent.make(Object.assign({}, intent, overrides))
 
@@ -167,7 +168,7 @@ const gitLayer = (overrides: Partial<Git.GitService>): Layer.Layer<Git.Git> =>
 
 describe('proof artifact', () => {
   test('uncontracted plans produce blocking proof records', () => {
-    const proof = makeProofArtifact(plan, '2026-05-13T00:00:00.000Z')
+    const proof = makeProofArtifact(plan, utc('2026-05-13T00:00:00.000Z'))
 
     expect(proof.records.map((record) => record.status)).toContain('unprovable')
     expect(proof.records.some((record) => record.dependsOn.includes('plan.digest'))).toBe(true)
@@ -196,10 +197,10 @@ describe('proof artifact', () => {
   })
 
   test('records selected provider capability proofs from the frozen publish intent', () => {
-    const proof = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+    const proof = makeProofArtifact(contractedPlan, utc('2026-05-13T00:00:00.000Z'), {
       identity: 'octocat',
       packageAccess: { '@kitz/core': 'public' },
-      gitPushDryRun: { '@kitz/core@1.0.0': true },
+      gitPushDryRun: { '@kitz/core@1.0.0': { ok: true } },
       githubReleasePermission: true,
       githubReleaseExists: { '@kitz/core@1.0.0': false },
     })
@@ -220,7 +221,7 @@ describe('proof artifact', () => {
   })
 
   test('credential, git, and GitHub proof records distinguish Feature 5 success and failure states', () => {
-    const proven = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+    const proven = makeProofArtifact(contractedPlan, utc('2026-05-13T00:00:00.000Z'), {
       identity: 'octocat',
       packageAccess: { '@kitz/core': 'public' },
       gitPushDryRun: {
@@ -229,7 +230,7 @@ describe('proof artifact', () => {
       githubReleasePermission: true,
       githubReleaseExists: { '@kitz/core@1.0.0': false },
     })
-    const failed = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+    const failed = makeProofArtifact(contractedPlan, utc('2026-05-13T00:00:00.000Z'), {
       identityError: 'npm whoami failed',
       packageAccessErrors: { '@kitz/core': 'forbidden' },
       gitPushDryRun: {
@@ -271,7 +272,7 @@ describe('proof artifact', () => {
   })
 
   test('atomic tag dry-run proof is recorded for multi-package plans', () => {
-    const proof = makeProofArtifact(multiContractedPlan, '2026-05-13T00:00:00.000Z', {
+    const proof = makeProofArtifact(multiContractedPlan, utc('2026-05-13T00:00:00.000Z'), {
       identity: 'octocat',
       packageAccess: { '@kitz/core': 'public', '@kitz/cli': 'public' },
       gitPushDryRun: {
@@ -301,7 +302,7 @@ describe('proof artifact', () => {
         Effect.provide(Layer.mergeAll(NpmRegistry.NpmCliDryRun, Git.Memory.make({}))),
       ),
     )
-    const proof = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', observations)
+    const proof = makeProofArtifact(contractedPlan, utc('2026-05-13T00:00:00.000Z'), observations)
 
     expect(observations.identity).toBe('dry-run-user')
     expect(observations.packageAccess).toEqual({ '@kitz/core': 'public' })
@@ -323,7 +324,7 @@ describe('proof artifact', () => {
         return yield* collectGithubObservations(contractedPlan)
       }).pipe(Effect.provide(Github.Memory.make({}))),
     )
-    const proof = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+    const proof = makeProofArtifact(contractedPlan, utc('2026-05-13T00:00:00.000Z'), {
       githubReleasePermission: true,
       ...observations,
     })
@@ -394,7 +395,7 @@ describe('proof artifact', () => {
         planDigest: contractedDigest,
         publishIntent: bunIntent,
       }),
-      '2026-05-13T00:00:00.000Z',
+      utc('2026-05-13T00:00:00.000Z'),
     )
 
     expect(proof.records.map((record) => record.id)).not.toContain(
@@ -426,7 +427,7 @@ describe('proof artifact', () => {
         planDigest: contractedDigest,
         publishIntent: bunIntent,
       }),
-      '2026-05-13T00:00:00.000Z',
+      utc('2026-05-13T00:00:00.000Z'),
     )
 
     expect(proof.records.find((record) => record.id === 'publish.provenance-policy')?.status).toBe(
@@ -451,7 +452,7 @@ describe('proof artifact', () => {
         planDigest: contractedDigest,
         publishIntent: intent,
       }),
-      '2026-05-13T00:00:00.000Z',
+      utc('2026-05-13T00:00:00.000Z'),
       {
         trustedPublisherConfigured: true,
         oidcClaimsVerified: true,
@@ -481,12 +482,12 @@ describe('proof artifact', () => {
     })
 
     expect(
-      makeProofArtifact(basePlan, '2026-05-13T00:00:00.000Z').records.find(
+      makeProofArtifact(basePlan, utc('2026-05-13T00:00:00.000Z')).records.find(
         (record) => record.id === 'publish.provenance-policy',
       )?.status,
     ).toBe('unprovable')
     expect(
-      makeProofArtifact(basePlan, '2026-05-13T00:00:00.000Z', {
+      makeProofArtifact(basePlan, utc('2026-05-13T00:00:00.000Z'), {
         provenanceBundleExists: true,
       }).records.find((record) => record.id === 'publish.provenance-policy')?.status,
     ).toBe('proven')
@@ -523,7 +524,7 @@ describe('proof artifact', () => {
         source,
         publishIntent: intent,
       }),
-      '2026-05-13T00:00:00.000Z',
+      utc('2026-05-13T00:00:00.000Z'),
     )
 
     expect(
@@ -553,7 +554,7 @@ describe('proof artifact', () => {
         planDigest: contractedDigest,
         publishIntent: intent,
       }),
-      '2026-05-13T00:00:00.000Z',
+      utc('2026-05-13T00:00:00.000Z'),
     )
 
     expect(proof.records.find((record) => record.id === 'env.publish.mfa-policy')?.status).toBe(
@@ -578,10 +579,10 @@ describe('proof artifact', () => {
         planDigest: contractedDigest,
         publishIntent: intent,
       }),
-      '2026-05-13T00:00:00.000Z',
+      utc('2026-05-13T00:00:00.000Z'),
       {
         packageAccess: { '@kitz/core': 'public' },
-        gitPushDryRun: { '@kitz/core@1.0.0': true },
+        gitPushDryRun: { '@kitz/core@1.0.0': { ok: true } },
       },
     )
 
@@ -594,7 +595,7 @@ describe('proof artifact', () => {
   })
 
   test('unobserved Feature 5 proof surfaces are unprovable instead of assumed successful', () => {
-    const proof = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z')
+    const proof = makeProofArtifact(contractedPlan, utc('2026-05-13T00:00:00.000Z'))
 
     expect(proof.records.find((record) => record.id === 'env.publish.identity')?.status).toBe(
       'unprovable',
@@ -626,7 +627,7 @@ describe('proof artifact', () => {
         planDigest: contractedDigest,
         publishIntent: intent,
       }),
-      '2026-05-13T00:00:00.000Z',
+      utc('2026-05-13T00:00:00.000Z'),
     )
 
     expect(proof.records.find((record) => record.id === 'env.publish.mfa-policy')?.status).toBe(
@@ -635,17 +636,17 @@ describe('proof artifact', () => {
   })
 
   test('proof validation flags blocking, missing dependency, and expiry', () => {
-    const proof = makeProofArtifact(contractedPlan, '2026-05-13T00:00:00.000Z', {
+    const proof = makeProofArtifact(contractedPlan, utc('2026-05-13T00:00:00.000Z'), {
       identity: 'octocat',
       packageAccess: { '@kitz/core': 'public' },
-      gitPushDryRun: { '@kitz/core@1.0.0': true },
+      gitPushDryRun: { '@kitz/core@1.0.0': { ok: true } },
       githubReleasePermission: true,
       githubReleaseExists: { '@kitz/core@1.0.0': false },
     })
     const altered = updateProofArtifact(proof, {
       records: [
         updateProofRecord(proof.records[0]!, {
-          expiresAt: '2026-05-13T00:00:00.000Z',
+          expiresAt: utc('2026-05-13T00:00:00.000Z'),
         }),
         updateProofRecord(proof.records[1]!, {
           dependsOn: ['missing-proof'],
@@ -653,9 +654,8 @@ describe('proof artifact', () => {
       ],
     })
 
-    expect(validateProof(altered, '2026-05-13T00:00:01.000Z').map((issue) => issue.code)).toEqual([
-      'release.proof.missing-dependency',
-      'release.proof.expired',
-    ])
+    expect(
+      validateProof(altered, utc('2026-05-13T00:00:01.000Z')).map((issue) => issue.code),
+    ).toEqual(['release.proof.missing-dependency', 'release.proof.expired'])
   })
 })

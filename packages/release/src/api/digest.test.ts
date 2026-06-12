@@ -1,5 +1,8 @@
 import { Json } from '@kitz/json'
+import { Test } from '@kitz/test'
 import { describe, expect, test } from 'bun:test'
+import * as fc from 'fast-check'
+import { arbJsonRecord } from '../test-support.js'
 import { canonicalJson, sha256Json } from './digest.js'
 
 describe('release digest', () => {
@@ -33,3 +36,31 @@ describe('release digest', () => {
     expect(canonicalJson(value)).toBe(Json.canonicalize(value))
   })
 })
+
+// \u2500\u2500 Properties \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+
+/** Fisher\u2013Yates shuffle driven entirely by a fast-check seed (no `Math.random`). */
+const shuffleBySeed = <T>(values: readonly T[], seed: readonly number[]): T[] => {
+  const shuffled = [...values]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = (seed[i % seed.length] ?? 0) % (i + 1)
+    ;[shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!]
+  }
+  return shuffled
+}
+
+Test.property(
+  'sha256Json is key-insertion-order invariant for any JSON record',
+  arbJsonRecord,
+  fc.array(fc.nat(), { maxLength: 16 }),
+  (record, seed) => {
+    // Object.fromEntries defines own properties, so even a generated
+    // "__proto__" key survives the reordering clone intact.
+    const clone = Object.fromEntries(
+      shuffleBySeed(Object.keys(record), seed).map((key) => [key, record[key]]),
+    )
+
+    expect(canonicalJson(clone)).toBe(canonicalJson(record))
+    expect(sha256Json(clone).value).toBe(sha256Json(record).value)
+  },
+)

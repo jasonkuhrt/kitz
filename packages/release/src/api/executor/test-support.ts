@@ -12,7 +12,6 @@ import { Effect, Layer, Option, Ref, Schema, Stream } from 'effect'
 import * as Analyzer from '../analyzer/__.js'
 import * as Planner from '../planner/__.js'
 import { makeTestRuntime } from './runtime.js'
-import { sha256Bytes } from '../digest.js'
 
 const JsonRecordSchema = Schema.Record(Schema.String, Schema.Unknown)
 const JsonRecordFromStringSchema = Schema.fromJsonString(JsonRecordSchema)
@@ -34,7 +33,7 @@ export const tag = (name: Pkg.Moniker.Moniker, version: string) =>
     Pkg.Pin.Exact.make({ name, version: Schema.decodeUnknownSync(Semver.Schema)(version) }),
   )
 
-const slugPackageName = (packageName: string): string =>
+export const slugPackageName = (packageName: string): string =>
   packageName.replace(/^@/u, '').replace(/\//gu, '-')
 
 const makeHandle = (stdout: string, exitCode: number): ChildProcessSpawner.ChildProcessHandle =>
@@ -128,17 +127,33 @@ export interface Harness {
   readonly workflowLayer: Layer.Layer<any>
   readonly gitState: Git.Memory.GitMemoryState
   readonly githubState: Github.Memory.GithubMemoryState
-  readonly packCalls: Ref.Ref<PackCall[]>
-  readonly publishCalls: Ref.Ref<PublishCall[]>
-  readonly publishAttempts: Ref.Ref<number>
+  /** Inspectable registry state of the underlying `NpmRegistry.Memory` fake. */
+  readonly npmState: NpmRegistry.Memory.NpmCliMemoryState
+  /** Ordered pack attempts (including failing ones), with manifest snapshots. */
+  readonly packCalls: Effect.Effect<readonly PackCall[]>
+  /** Ordered publish attempts (including failing and dry-run ones). */
+  readonly publishCalls: Effect.Effect<readonly PublishCall[]>
+  readonly publishAttempts: Effect.Effect<number>
   readonly failPackPackages: Ref.Ref<readonly string[]>
   readonly failPublishPackages: Ref.Ref<readonly string[]>
 }
 
 export const makeHarness = (options: {
   readonly git: Parameters<typeof Git.Memory.makeWithState>[0]
-  readonly diskLayout: Fs.Memory.DiskLayout
+  /** In-memory disk layout (ignored when `fsLayer` is provided). */
+  readonly diskLayout?: Fs.Memory.DiskLayout
+  /** Workspace root (default `/repo/`). */
+  readonly cwd?: Fs.Path.AbsDir
+  /** Filesystem override, e.g. the real platform FS for e2e fixtures. */
+  readonly fsLayer?: Layer.Layer<FileSystem.FileSystem>
   readonly failPackPackages?: readonly string[]
+  /**
+   * Manifest-driven pack failure (e2e hook simulation): when the predicate
+   * matches the manifest read at pack time, the pack fails. Because the
+   * trigger lives in the on-disk manifest, rewriting the package heals the
+   * failure — exactly how real pack hooks behave across resume.
+   */
+  readonly packShouldFail?: (manifest: Readonly<Record<string, unknown>>) => boolean
   readonly failPublishPackages?: readonly string[]
   readonly failAtomicPush?: boolean
   readonly missingRegistryVersions?: readonly string[]
@@ -149,10 +164,10 @@ export const makeHarness = (options: {
 }): Effect.Effect<Harness> =>
   Effect.gen(function* () {
     const envLayer = Env.Test({
-      cwd: Fs.Path.AbsDir.fromString('/repo/'),
+      cwd: options.cwd ?? Fs.Path.AbsDir.fromString('/repo/'),
       vars: options.envVars ?? {},
     })
-    const fsLayer = Fs.Memory.layer(options.diskLayout)
+    const fsLayer = options.fsLayer ?? Fs.Memory.layer(options.diskLayout ?? {})
     const { layer: gitLayerBase, state: gitState } = yield* Git.Memory.makeWithState(options.git)
     const gitLayer = options.failAtomicPush
       ? Layer.effect(
@@ -177,63 +192,57 @@ export const makeHarness = (options: {
       : gitLayerBase
     const planLayer = Layer.mergeAll(envLayer, fsLayer, gitLayer)
     const { layer: githubLayer, state: githubState } = yield* Github.Memory.makeWithState({})
-    const packCalls = yield* Ref.make<PackCall[]>([])
-    const publishCalls = yield* Ref.make<PublishCall[]>([])
-    const publishAttempts = yield* Ref.make(0)
-    const failPackPackages = yield* Ref.make<readonly string[]>(options.failPackPackages ?? [])
-    const failPublishPackages = yield* Ref.make<readonly string[]>(
-      options.failPublishPackages ?? [],
-    )
+    // Registry semantics come from the real NpmRegistry.Memory fake; the
+    // wrapper below only adds what Memory cannot know: pack-time manifest
+    // snapshots (the executor restores manifests afterwards), the
+    // manifest-driven hook-failure predicate, and dist-tag observation
+    // overrides for contradiction scenarios.
+    const { layer: npmMemoryLayer, state: npmState } = yield* NpmRegistry.Memory.makeWithState({
+      user: options.whoamiUsername ?? 'mock-user',
+      ...(options.failPackPackages !== undefined
+        ? { failPackPackages: options.failPackPackages }
+        : {}),
+      ...(options.failPublishPackages !== undefined
+        ? { failPublishPackages: options.failPublishPackages }
+        : {}),
+      ...(options.missingRegistryVersions !== undefined
+        ? { missingVersions: options.missingRegistryVersions }
+        : {}),
+    })
+
+    const packAttempts = yield* Ref.make<readonly PackCall[]>([])
 
     const npmLayerBase = Layer.effect(
       NpmRegistry.NpmCli,
       Effect.gen(function* () {
+        const base = yield* NpmRegistry.NpmCli
         const fs = yield* FileSystem.FileSystem
 
-        return {
-          whoami: () => Effect.succeed(options.whoamiUsername ?? 'mock-user'),
-          pack: (packOptions) =>
-            Effect.gen(function* () {
-              const packageJsonPath = Fs.Path.join(
-                packOptions.cwd,
-                Fs.Path.RelFile.fromString('./package.json'),
-              )
-              const manifestRaw = yield* fs
-                .readFileString(Fs.Path.toString(packageJsonPath))
-                .pipe(Effect.orDie)
-              const manifestSnapshot = yield* decodeJsonRecord(manifestRaw).pipe(Effect.orDie)
-              const packageName = manifestSnapshot['name']
-              const version = manifestSnapshot['version']
-
-              if (typeof packageName !== 'string' || typeof version !== 'string') {
-                return yield* Effect.die(
-                  new Error('Mock npm pack expected package.json with string name and version'),
-                )
-              }
-
-              const blockedPackages = yield* Ref.get(failPackPackages)
-              if (blockedPackages.includes(packageName)) {
-                return yield* Effect.fail(
-                  new NpmRegistry.NpmCliError({
-                    context: {
-                      operation: 'pack',
-                      detail: 'mock pack failure',
-                    },
-                    cause: new Error('mock pack failure'),
-                  }),
-                )
-              }
-
-              const filename = `${slugPackageName(packageName)}-${version}.tgz`
-              const tarball = Fs.Path.join(
-                packOptions.packDestination,
-                Fs.Path.RelFile.fromString(`./${filename}`),
+        const pack: typeof base.pack = (packOptions) =>
+          Effect.gen(function* () {
+            const packageJsonPath = Fs.Path.join(
+              packOptions.cwd,
+              Fs.Path.RelFile.fromString('./package.json'),
+            )
+            const manifestSnapshot = yield* fs
+              .readFileString(Fs.Path.toString(packageJsonPath))
+              .pipe(
+                Effect.flatMap((raw) => decodeJsonRecord(raw)),
+                Effect.option,
               )
 
-              yield* fs
-                .writeFileString(Fs.Path.toString(tarball), `packed:${packageName}@${version}`)
-                .pipe(Effect.orDie)
-              yield* Ref.update(packCalls, (calls) => [
+            if (
+              manifestSnapshot._tag === 'Some' &&
+              typeof manifestSnapshot.value['name'] === 'string' &&
+              typeof manifestSnapshot.value['version'] === 'string'
+            ) {
+              const packageName = manifestSnapshot.value['name']
+              const version = manifestSnapshot.value['version']
+
+              // Record the attempt before any failure path (mirrors publish):
+              // resume flows assert the exact ordered sequence of pack
+              // attempts, including the failing one.
+              yield* Ref.update(packAttempts, (calls) => [
                 ...calls,
                 {
                   cwd: packOptions.cwd,
@@ -242,136 +251,50 @@ export const makeHarness = (options: {
                     ? { packageManager: packOptions.packageManager }
                     : {}),
                   ...(packOptions.env !== undefined ? { env: packOptions.env } : {}),
-                  tarball,
-                  filename,
-                  manifestSnapshot,
+                  tarball: NpmRegistry.Tarball.path(
+                    packOptions.packDestination,
+                    packageName,
+                    version,
+                  ),
+                  filename: NpmRegistry.Tarball.filename(packageName, version),
+                  manifestSnapshot: manifestSnapshot.value,
                 },
               ])
 
-              return {
-                tarball,
-                filename,
-              }
-            }),
-          publish: (publishOptions) =>
-            Effect.gen(function* () {
-              yield* Ref.update(publishAttempts, (n) => n + 1)
-              yield* Ref.update(publishCalls, (calls) => [
-                ...calls,
-                {
-                  tarball: publishOptions.tarball,
-                  ...(publishOptions.packageManager !== undefined
-                    ? { packageManager: publishOptions.packageManager }
-                    : {}),
-                  ...(publishOptions.tag && { tag: publishOptions.tag }),
-                  ...(publishOptions.registry && { registry: publishOptions.registry }),
-                  ...(publishOptions.ignoreScripts !== undefined
-                    ? { ignoreScripts: publishOptions.ignoreScripts }
-                    : {}),
-                  ...(publishOptions.dryRun !== undefined ? { dryRun: publishOptions.dryRun } : {}),
-                  ...(publishOptions.provenance !== undefined
-                    ? { provenance: publishOptions.provenance }
-                    : {}),
-                  ...(publishOptions.provenanceFile !== undefined
-                    ? { provenanceFile: publishOptions.provenanceFile }
-                    : {}),
-                },
-              ])
-
-              const blockedPackages = yield* Ref.get(failPublishPackages)
-              const tarballPath = Fs.Path.toString(publishOptions.tarball)
-              const shouldFail = blockedPackages.some((packageName) =>
-                tarballPath.includes(`${slugPackageName(packageName)}-`),
-              )
-
-              if (shouldFail) {
+              if (options.packShouldFail?.(manifestSnapshot.value) === true) {
                 return yield* Effect.fail(
                   new NpmRegistry.NpmCliError({
                     context: {
-                      operation: 'publish',
-                      detail: 'mock publish failure',
+                      operation: 'pack',
+                      detail: `pack hook failure injected for ${packageName}`,
                     },
-                    cause: new Error('mock publish failure'),
+                    cause: new Error(`pack hook failure injected for ${packageName}`),
                   }),
                 )
               }
-            }),
-          hasVersion: (packageName, version, _options) =>
-            Effect.gen(function* () {
-              if ((options.missingRegistryVersions ?? []).includes(`${packageName}@${version}`)) {
-                return false
-              }
-              const publishCallsSnapshot = yield* Ref.get(publishCalls)
-              const expected = `${slugPackageName(packageName)}-${version}.tgz`
-              return publishCallsSnapshot.some((call) =>
-                Fs.Path.toString(call.tarball).endsWith(expected),
-              )
-            }),
-          observeVersion: (packageName, version, observeOptions) =>
-            Effect.gen(function* () {
-              if ((options.missingRegistryVersions ?? []).includes(`${packageName}@${version}`)) {
-                return yield* Effect.fail(
-                  new NpmRegistry.NpmCliError({
-                    context: {
-                      operation: 'view',
-                      detail: `Registry does not show ${packageName}@${version} after publish.`,
-                    },
-                    cause: new Error(
-                      `Registry does not show ${packageName}@${version} after publish.`,
-                    ),
-                  }),
+            }
+
+            return yield* base.pack(packOptions)
+          })
+
+        const observeVersion: typeof base.observeVersion =
+          options.observedDistTags === undefined
+            ? base.observeVersion
+            : (packageName, version, observeOptions) =>
+                base.observeVersion(packageName, version, observeOptions).pipe(
+                  Effect.map((observation) => ({
+                    ...observation,
+                    distTags: options.observedDistTags!,
+                  })),
                 )
-              }
 
-              const publishCallsSnapshot = yield* Ref.get(publishCalls)
-              const expected = `${slugPackageName(packageName)}-${version}.tgz`
-              const publishCall = publishCallsSnapshot.find((call) =>
-                Fs.Path.toString(call.tarball).endsWith(expected),
-              )
-
-              if (publishCall === undefined) {
-                return yield* Effect.fail(
-                  new NpmRegistry.NpmCliError({
-                    context: {
-                      operation: 'view',
-                      detail: `mock registry has no publish receipt for ${packageName}@${version}`,
-                    },
-                    cause: new Error(
-                      `mock registry has no publish receipt for ${packageName}@${version}`,
-                    ),
-                  }),
-                )
-              }
-
-              const tarballUrl = `https://registry.example.test/${slugPackageName(packageName)}-${version}.tgz`
-              const downloadedTarballSha256 =
-                observeOptions?.downloadTarball === true
-                  ? sha256Bytes(
-                      yield* fs.readFile(Fs.Path.toString(publishCall.tarball)).pipe(Effect.orDie),
-                    ).value
-                  : undefined
-
-              return {
-                versionMetadata: {
-                  name: packageName,
-                  version,
-                  dist: {
-                    tarball: tarballUrl,
-                  },
-                },
-                distTags: options.observedDistTags ?? {
-                  [publishCall.tag ?? 'latest']: version,
-                },
-                tarballUrl,
-                ...(downloadedTarballSha256 !== undefined ? { downloadedTarballSha256 } : {}),
-              }
-            }),
-          listAccessPackages: () => Effect.succeed({}),
-          listAccessCollaborators: () => Effect.succeed({}),
-          getAccessStatus: () => Effect.succeed('public' as const),
+        return {
+          ...base,
+          pack,
+          observeVersion,
         } satisfies NpmRegistry.NpmCliService
       }),
-    ).pipe(Layer.provide(planLayer))
+    ).pipe(Layer.provide(npmMemoryLayer), Layer.provide(planLayer))
 
     const commandLayer = makeMockSpawnerLayer(options.whoamiUsername ?? 'mock-user')
     const runtimeLayer = options.runtimeLayer ?? makeTestRuntime()
@@ -384,16 +307,48 @@ export const makeHarness = (options: {
       commandLayer,
     )
 
+    const publishCalls = Ref.get(npmState.calls).pipe(
+      Effect.map((calls) =>
+        calls.flatMap((call): PublishCall[] => {
+          if (call.operation !== 'publish') return []
+          const publishOptions = call.options
+          return [
+            {
+              tarball: publishOptions.tarball,
+              ...(publishOptions.packageManager !== undefined
+                ? { packageManager: publishOptions.packageManager }
+                : {}),
+              ...(publishOptions.tag !== undefined ? { tag: publishOptions.tag } : {}),
+              ...(publishOptions.registry !== undefined
+                ? { registry: publishOptions.registry }
+                : {}),
+              ...(publishOptions.ignoreScripts !== undefined
+                ? { ignoreScripts: publishOptions.ignoreScripts }
+                : {}),
+              ...(publishOptions.dryRun !== undefined ? { dryRun: publishOptions.dryRun } : {}),
+              ...(publishOptions.provenance !== undefined
+                ? { provenance: publishOptions.provenance }
+                : {}),
+              ...(publishOptions.provenanceFile !== undefined
+                ? { provenanceFile: publishOptions.provenanceFile }
+                : {}),
+            },
+          ]
+        }),
+      ),
+    )
+
     return {
       planLayer,
       workflowLayer,
       gitState,
       githubState,
-      packCalls,
+      npmState,
+      packCalls: Ref.get(packAttempts),
       publishCalls,
-      publishAttempts,
-      failPackPackages,
-      failPublishPackages,
+      publishAttempts: Effect.map(publishCalls, (calls) => calls.length),
+      failPackPackages: npmState.failPackPackages,
+      failPublishPackages: npmState.failPublishPackages,
     }
   })
 

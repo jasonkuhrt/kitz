@@ -3,7 +3,7 @@ import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:
 import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, test } from 'bun:test'
-import { Schema } from 'effect'
+import { DateTime, Schema } from 'effect'
 import * as Api from '../../api/__.js'
 
 const cliPath = path.resolve(import.meta.dir, '../cli.ts')
@@ -54,7 +54,7 @@ const writeActiveLock = (rootDir: string) => {
         Api.Lock.make({
           planDigest: digest,
           ownerId: 'other',
-          acquiredAt: new Date(Date.now() + 60_000).toISOString(),
+          acquiredAt: DateTime.makeUnsafe(Date.now() + 60_000),
           ttlSeconds: 3_600,
         }),
       ),

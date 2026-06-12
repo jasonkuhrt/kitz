@@ -6,116 +6,96 @@
  */
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
+import { Str } from '@kitz/core'
 import { NpmRegistry } from '@kitz/npm-registry'
-import { Console, Effect, FileSystem, Layer, Schema } from 'effect'
+import {
+  Array as A,
+  Console,
+  Effect,
+  FileSystem,
+  Layer,
+  Option,
+  Schema,
+  SchemaGetter,
+  SchemaIssue,
+} from 'effect'
 import { Argument, Command } from 'effect/unstable/cli'
+import * as Artifact from '../../api/artifact.js'
 import * as Journal from '../../api/journal.js'
 import * as Reconciler from '../../api/reconciler.js'
-import * as ReleaseContract from '../../api/release-contract.js'
-import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
+import { ChildProcessSpawnerLayer } from '../../platform.js'
+import { CommandBaseLayer, NpmCliLayer } from './_shared.js'
 
-const parseSubject = (subject: string): { name: string; version: string } | undefined => {
-  const versionSeparator = subject.lastIndexOf('@')
-  if (versionSeparator <= 0) return undefined
-  return {
-    name: subject.slice(0, versionSeparator),
-    version: subject.slice(versionSeparator + 1),
-  }
-}
-
-const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
+/** `<package>@<version>` — split on the LAST `@` so scoped names parse. */
+const ReleaseSubject = Schema.String.pipe(
+  Schema.decodeTo(
+    Schema.Struct({
+      name: Schema.String,
+      version: Schema.String,
+    }),
+    {
+      decode: SchemaGetter.transformOrFail((subject: string) => {
+        const versionSeparator = subject.lastIndexOf('@')
+        if (versionSeparator <= 0 || versionSeparator === subject.length - 1) {
+          return Effect.fail(
+            new SchemaIssue.InvalidValue(Option.some(subject), {
+              message: 'Expected a release subject of the form <package>@<version>',
+            }),
+          )
+        }
+        return Effect.succeed({
+          name: subject.slice(0, versionSeparator),
+          version: subject.slice(versionSeparator + 1),
+        })
+      }),
+      encode: SchemaGetter.transform(
+        ({ name, version }: { name: string; version: string }) => `${name}@${version}`,
+      ),
+    },
+  ),
+)
 
 export const inspect = Command.make(
   'inspect',
   {
     target: Argument.string('target').pipe(
       Argument.withDescription('Release subject to inspect (<package>@<version>)'),
+      Argument.withSchema(ReleaseSubject),
     ),
   },
-  ({ target: subject }) =>
+  ({ target }) =>
     Effect.gen(function* () {
-      const env = yield* Env.Env
-      const fs = yield* FileSystem.FileSystem
       const npm = yield* NpmRegistry.NpmCli
+      const subject = `${target.name}@${target.version}`
 
-      const parsed = parseSubject(subject)
-      if (parsed === undefined) {
-        yield* Console.error('Usage: release inspect <package>@<version>')
-        return env.exit(1)
-      }
-
-      const artifactRoot = Fs.Path.join(env.cwd, Fs.Path.RelDir.fromString('./.release/artifacts/'))
-      const artifactDirs = yield* fs
-        .readDirectory(Fs.Path.toString(artifactRoot))
-        .pipe(Effect.orElseSucceed(() => [] as string[]))
-      const matches: ReleaseContract.ArtifactManifest[] = []
-
-      for (const dir of artifactDirs) {
-        const manifestPath = Fs.Path.join(
-          Fs.Path.join(artifactRoot, Fs.Path.RelDir.fromString(`./${dir}/`)),
-          Fs.Path.RelFile.fromString('./manifest.json'),
-        )
-        const exists = yield* fs
-          .exists(Fs.Path.toString(manifestPath))
-          .pipe(Effect.orElseSucceed(() => false))
-        if (!exists) continue
-        const text = yield* fs.readFileString(Fs.Path.toString(manifestPath))
-        const manifests = yield* Schema.decodeUnknownEffect(
-          Schema.fromJsonString(Schema.Array(ReleaseContract.ArtifactManifest)),
-        )(text)
-        matches.push(
-          ...manifests.filter(
-            (manifest) =>
-              manifest.packageName.moniker === parsed.name &&
-              manifest.version.toString() === parsed.version,
-          ),
-        )
-      }
-
-      const journalRoot = Fs.Path.join(env.cwd, Fs.Path.RelDir.fromString('./.release/journal/'))
-      const journalFiles = yield* fs
-        .readDirectory(Fs.Path.toString(journalRoot))
-        .pipe(Effect.orElseSucceed(() => [] as string[]))
-      const journalMatches: ReleaseContract.SideEffectEntry[] = []
-
-      for (const file of journalFiles.filter((name) => name.endsWith('.jsonl'))) {
-        const path = Fs.Path.join(journalRoot, Fs.Path.RelFile.fromString(`./${file}`))
-        const entries = yield* Journal.readEntries(path)
-        journalMatches.push(
-          ...entries.filter(
-            (entry) =>
-              entry.kind === 'registry-publish' &&
-              entry.result === 'succeeded' &&
-              entry.subject === subject,
-          ),
-        )
-      }
-
-      const onRegistry = yield* npm.hasVersion(parsed.name, parsed.version)
+      const matches = yield* Artifact.findManifests({
+        packageName: target.name,
+        version: target.version,
+      })
+      const journalMatches = yield* Journal.findPublishEntries(subject)
+      const onRegistry = yield* npm.hasVersion(target.name, target.version)
       const legitimacy = Reconciler.inspectVerdict({
         onRegistry,
         inJournal: journalMatches.length > 0,
       })
 
-      yield* Console.log(`Inspection subject: ${subject}`)
-      yield* Console.log(`Registry version: ${onRegistry ? 'present' : 'missing'}`)
-      yield* Console.log(
-        `Journal entries: ${journalMatches.map((entry) => entry.entryId).join(', ') || 'none'}`,
-      )
+      const b = Str.Builder()
+      b`Inspection subject: ${subject}`
+      b`Registry version: ${onRegistry ? 'present' : 'missing'}`
+      b`Journal entries: ${journalMatches.map((entry) => entry.entryId).join(', ') || 'none'}`
       if (matches.length === 0) {
-        yield* Console.log('Local artifact manifest: missing')
-        yield* Console.log(`Legitimacy: ${legitimacy}`)
-        return
+        b`Local artifact manifest: missing`
+      } else {
+        for (const match of matches) {
+          b`Local artifact manifest: ${Fs.Path.toString(match.tarball)}`
+          b`SHA-256: ${match.sha256.value}`
+          b`Packlist entries: ${String(match.packlist.length)}`
+        }
       }
-
-      for (const match of matches) {
-        yield* Console.log(`Local artifact manifest: ${Fs.Path.toString(match.tarball)}`)
-        yield* Console.log(`SHA-256: ${match.sha256.value}`)
-        yield* Console.log(`Packlist entries: ${String(match.packlist.length)}`)
-      }
-      yield* Console.log(`Legitimacy: ${legitimacy}`)
+      b`Legitimacy: ${legitimacy}`
+      yield* Console.log(b.render())
     }),
 ).pipe(
   Command.withDescription('Inspect a published or local release subject'),
-  Command.provide(Layer.mergeAll(Env.Live, FileSystemLayer, ChildProcessSpawnerLayer, npmLayer)),
+  Command.provide(Layer.mergeAll(CommandBaseLayer, ChildProcessSpawnerLayer, NpmCliLayer)),
 )

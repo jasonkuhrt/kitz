@@ -2,7 +2,6 @@ import { Str } from '@kitz/core'
 import { describe, expect, test } from 'bun:test'
 import { Finished, Report } from './lint/models/report.js'
 import { RuleId } from './lint/models/rule-defaults.js'
-import * as Severity from './lint/models/severity.js'
 import { Violation } from './lint/models/violation.js'
 import { Environment } from './lint/models/violation-location.js'
 import {
@@ -109,7 +108,7 @@ describe('doctor api', () => {
                   'active branch is allowed for the planned release lifecycle',
                 ),
                 duration: 2,
-                severity: Severity.Error.make({}),
+                severity: 'error',
                 violation: Violation.make({
                   location: Environment.make({
                     message:

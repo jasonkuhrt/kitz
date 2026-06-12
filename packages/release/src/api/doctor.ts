@@ -2,7 +2,6 @@ import { Cli } from '@kitz/cli'
 import { Str } from '@kitz/core'
 import { formatReport } from './lint/ops/relay.js'
 import { Finished, type Report } from './lint/models/report.js'
-import * as Severity from './lint/models/severity.js'
 import type { Plan } from './planner/models/plan.js'
 import type { Lifecycle } from './version/models/lifecycle.js'
 
@@ -95,15 +94,12 @@ export interface DoctorEvaluation {
   readonly reports: readonly LifecycleReport[]
 }
 
-const titleForLifecycle = (lifecycle: Lifecycle): string =>
-  lifecycle.charAt(0).toUpperCase() + lifecycle.slice(1)
+const titleForLifecycle = (lifecycle: Lifecycle): string => Str.Case.capFirst(lifecycle)
 
 const hasErrorViolations = (report: Report): boolean =>
   report.results.some(
     (result) =>
-      Finished.is(result) &&
-      result.violation !== undefined &&
-      Severity.Severity.guards.SeverityError(result.severity),
+      Finished.is(result) && result.violation !== undefined && result.severity === 'error',
   )
 
 export const hasBlockingIssues = (evaluation: DoctorEvaluation): boolean =>

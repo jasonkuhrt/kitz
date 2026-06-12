@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { Failed, Finished, Report, Skipped } from '../lint/models/report.js'
 import { RuleId } from '../lint/models/rule-defaults.js'
-import * as Severity from '../lint/models/severity.js'
 import {
   CommandFix,
   DocLink,
@@ -28,7 +27,7 @@ describe('commentator doctor', () => {
             'declared publish channel matches the active runtime',
           ),
           duration: 1,
-          severity: Severity.Error.make({}),
+          severity: 'error',
           metadata: {
             status: 'deferred',
             mode: 'github-token',
@@ -43,7 +42,7 @@ describe('commentator doctor', () => {
             'PR title header matches the canonical squash-merge header',
           ),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           metadata: { projectedHeader: 'feat(release)' },
         }),
         Finished.make({
@@ -52,12 +51,12 @@ describe('commentator doctor', () => {
             'No-release type cannot have src changes',
           ),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
         }),
         Finished.make({
           rule: ruleRef('plan.packages-license-present', 'planned packages declare a license'),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           metadata: { packageCount: 2 },
         }),
         Finished.make({
@@ -66,7 +65,7 @@ describe('commentator doctor', () => {
             'planned package repository metadata points at the canonical GitHub repo',
           ),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           violation: Violation.make({
             location: Environment.make({ message: 'repository mismatch' }),
             summary: 'Repository metadata should point at jasonkuhrt/kitz.',
@@ -139,7 +138,7 @@ describe('commentator doctor', () => {
             'declared publish channel matches the active runtime',
           ),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           metadata: {
             status: 'manual',
             mode: 'manual',
@@ -151,12 +150,12 @@ describe('commentator doctor', () => {
             'planned packages declare repository metadata',
           ),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
         }),
         Finished.make({
           rule: ruleRef('plan.tags-unique', 'planned release tags are unique'),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           metadata: {
             conflictingTags: [],
             existingTags: ['@kitz/core@1.0.0'],
@@ -165,19 +164,19 @@ describe('commentator doctor', () => {
         Finished.make({
           rule: ruleRef('plan.versions-unpublished', 'planned versions are not already published'),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           metadata: { packageCount: 3 },
         }),
         Finished.make({
           rule: ruleRef('plan.packages-repository-match-canonical', 'canonical repository matches'),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           metadata: { canonicalRepo: 'jasonkuhrt/kitz', packageCount: 3 },
         }),
         Finished.make({
           rule: ruleRef('pr.type.release-kind-match-diff', 'PR title kind matches changed files'),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
         }),
         Failed.make({
           rule: ruleRef('plan.packages-license-present', 'planned packages declare a license'),
@@ -248,7 +247,7 @@ describe('commentator doctor', () => {
             'declared publish channel matches the active runtime',
           ),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           metadata: {
             status: 'ready',
             mode: 'github-trusted',
@@ -261,7 +260,7 @@ describe('commentator doctor', () => {
             'planned package repository metadata points at the canonical GitHub repo',
           ),
           duration: 1,
-          severity: Severity.Error.make({}),
+          severity: 'error',
           violation: Violation.make({
             location: Environment.make({ message: 'repository mismatch' }),
             summary: 'Repository metadata needs an update.',
@@ -314,7 +313,7 @@ describe('commentator doctor', () => {
             'declared publish channel matches the active runtime',
           ),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           metadata: {
             status: 'deferred',
             mode: 'github-token',
@@ -325,7 +324,7 @@ describe('commentator doctor', () => {
         Finished.make({
           rule: ruleRef('plan.tags-unique', 'planned release tags are unique'),
           duration: 1,
-          severity: Severity.Error.make({}),
+          severity: 'error',
           violation: Violation.make({
             location: Environment.make({ message: 'tag already exists' }),
             summary: 'Release tags need attention.',
@@ -368,7 +367,7 @@ describe('commentator doctor', () => {
               'declared publish channel matches the active runtime',
             ),
             duration: 1,
-            severity: Severity.Warn.make({}),
+            severity: 'warn',
           }),
         ],
       }),
@@ -387,7 +386,7 @@ describe('commentator doctor', () => {
               'declared publish channel matches the active runtime',
             ),
             duration: 1,
-            severity: Severity.Warn.make({}),
+            severity: 'warn',
             metadata: {
               status: 'ready',
               mode: 'github-token',
@@ -421,7 +420,7 @@ describe('commentator doctor', () => {
               'planned versions are not already published',
             ),
             duration: 1,
-            severity: Severity.Warn.make({}),
+            severity: 'warn',
           }),
           Finished.make({
             rule: ruleRef(
@@ -429,7 +428,7 @@ describe('commentator doctor', () => {
               'PR title header matches the canonical squash-merge header',
             ),
             duration: 1,
-            severity: Severity.Warn.make({}),
+            severity: 'warn',
           }),
         ],
       }),

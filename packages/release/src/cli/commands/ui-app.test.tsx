@@ -11,27 +11,11 @@ import { Analysis } from '../../api/analyzer/models/analysis.js'
 import { makeCascadeCommit } from '../../api/analyzer/models/commit.js'
 import { Official } from '../../api/planner/models/item-official.js'
 import { OfficialFirst } from '../../api/version/models/official-first.js'
+import { testConfig } from '../../test-support.js'
 import { dashboardProgram } from './ui-app.js'
 import { Data, type Lifecycle, type WorkspaceContext } from './ui-atoms.js'
 
-const config = Api.Config.ResolvedConfig.make({
-  trunk: 'main',
-  npmTag: 'latest',
-  candidateTag: 'next',
-  packages: {},
-  publishing: Api.Publishing.defaultPublishing(),
-  operator: Api.Operator.ResolvedOperator.make({
-    manager: Pkg.Manager.DetectedPackageManager.make({
-      name: 'bun',
-      source: 'runtime',
-    }),
-    releaseCommand: 'bun run release',
-    prepareCommands: [],
-  }),
-  resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
-  commitOverrides: {},
-  lint: Api.Lint.resolveConfig({}),
-})
+const config = testConfig()
 
 const analysis = Analysis.make({
   impacts: [],

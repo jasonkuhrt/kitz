@@ -1,116 +1,90 @@
+import { Sch } from '@kitz/sch'
 import { Schema } from 'effect'
-import { RuleDefaults, RuleId } from './rule-defaults.js'
+import { RuleDefaults } from './rule-defaults.js'
 import * as Severity_ from './severity.js'
-import type { Severity } from './severity.js'
 
 /** Rule-specific options (varies per rule). */
-export type RuleConfigOptions = object
+const RuleOptions = Schema.Record(Schema.String, Schema.Unknown)
 
-/** User input format (supports shorthand). */
-export type RuleConfigInput = Severity | readonly [Severity, RuleConfigOptions] | RuleConfig
+/** Rule-specific options (varies per rule). */
+export type RuleConfigOptions = typeof RuleOptions.Type
 
 /** Normalized form of rule config. */
-export class RuleConfig extends Schema.TaggedClass<RuleConfig>()('RuleConfig', {
+export class RuleConfig extends Sch.TaggedClass<RuleConfig>()('RuleConfig', {
   overrides: RuleDefaults,
-  options: Schema.Record(Schema.String, Schema.Unknown),
-}) {
-  static is = Schema.is(RuleConfig)
-  static decode = Schema.decodeUnknownEffect(RuleConfig)
-  static decodeSync = Schema.decodeUnknownSync(RuleConfig)
-  static encode = Schema.encodeUnknownEffect(RuleConfig)
-  static encodeSync = Schema.encodeUnknownSync(RuleConfig)
-  static equivalence = Schema.toEquivalence(RuleConfig)
-  static ordered = false as const
-}
+  options: RuleOptions,
+}) {}
+
+/**
+ * User input grammar for a single rule's config (supports shorthand):
+ *
+ * - bare severity — `'warn'`
+ * - `[severity, options]` tuple — `['error', { remote: 'upstream' }]`
+ * - full {@link RuleConfig} object
+ *
+ * Invalid values (e.g. a number) fail decoding with a typed schema error
+ * instead of crashing later during resolution.
+ */
+export const RuleConfigInput = Schema.Union([
+  Severity_.Severity,
+  Schema.Tuple([Severity_.Severity, RuleOptions]),
+  RuleConfig,
+])
+export type RuleConfigInput = typeof RuleConfigInput.Type
 
 /** User configuration for lint. */
-export class Config extends Schema.TaggedClass<Config>()('Config', {
+export class Config extends Sch.TaggedClass<Config>()('Config', {
   defaults: Schema.optional(RuleDefaults),
-  rules: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
+  rules: Schema.optional(Schema.Record(Schema.String, RuleConfigInput)),
   /** Only run rules matching these IDs. */
   onlyRules: Schema.optional(Schema.Array(Schema.String)),
   /** Skip rules matching these IDs. */
   skipRules: Schema.optional(Schema.Array(Schema.String)),
-}) {
-  static is = Schema.is(Config)
-  static decode = Schema.decodeUnknownEffect(Config)
-  static decodeSync = Schema.decodeUnknownSync(Config)
-  static encode = Schema.encodeUnknownEffect(Config)
-  static encodeSync = Schema.encodeUnknownSync(Config)
-  static equivalence = Schema.toEquivalence(Config)
-  static ordered = false as const
-}
+}) {}
 
 /** Resolved (normalized) rule defaults. */
-export class ResolvedRuleDefaults extends Schema.TaggedClass<ResolvedRuleDefaults>()(
+export class ResolvedRuleDefaults extends Sch.TaggedClass<ResolvedRuleDefaults>()(
   'ResolvedRuleDefaults',
   {
     enabled: Schema.Union([Schema.Boolean, Schema.Literal('auto')]),
     severity: Severity_.Severity,
   },
-) {
-  static is = Schema.is(ResolvedRuleDefaults)
-  static decode = Schema.decodeUnknownEffect(ResolvedRuleDefaults)
-  static decodeSync = Schema.decodeUnknownSync(ResolvedRuleDefaults)
-  static encode = Schema.encodeUnknownEffect(ResolvedRuleDefaults)
-  static encodeSync = Schema.encodeUnknownSync(ResolvedRuleDefaults)
-  static equivalence = Schema.toEquivalence(ResolvedRuleDefaults)
-  static ordered = false as const
-}
+) {}
 
 /** Resolved (normalized) rule config. */
-export class ResolvedRuleConfig extends Schema.TaggedClass<ResolvedRuleConfig>()(
+export class ResolvedRuleConfig extends Sch.TaggedClass<ResolvedRuleConfig>()(
   'ResolvedRuleConfig',
   {
     overrides: ResolvedRuleDefaults,
-    options: Schema.Record(Schema.String, Schema.Unknown),
+    options: RuleOptions,
   },
-) {
-  static is = Schema.is(ResolvedRuleConfig)
-  static decode = Schema.decodeUnknownEffect(ResolvedRuleConfig)
-  static decodeSync = Schema.decodeUnknownSync(ResolvedRuleConfig)
-  static encode = Schema.encodeUnknownEffect(ResolvedRuleConfig)
-  static encodeSync = Schema.encodeUnknownSync(ResolvedRuleConfig)
-  static equivalence = Schema.toEquivalence(ResolvedRuleConfig)
-  static ordered = false as const
-}
+) {}
 
 /** Resolved (normalized) configuration. */
-export class ResolvedConfig extends Schema.TaggedClass<ResolvedConfig>()('ResolvedConfig', {
+export class ResolvedConfig extends Sch.TaggedClass<ResolvedConfig>()('ResolvedConfig', {
   defaults: ResolvedRuleDefaults,
   rules: Schema.Record(Schema.String, ResolvedRuleConfig),
   /** Only run rules matching these IDs. */
   onlyRules: Schema.optional(Schema.Array(Schema.String)),
   /** Skip rules matching these IDs. */
   skipRules: Schema.optional(Schema.Array(Schema.String)),
-}) {
-  static is = Schema.is(ResolvedConfig)
-  static decode = Schema.decodeUnknownEffect(ResolvedConfig)
-  static decodeSync = Schema.decodeUnknownSync(ResolvedConfig)
-  static encode = Schema.encodeUnknownEffect(ResolvedConfig)
-  static encodeSync = Schema.encodeUnknownSync(ResolvedConfig)
-  static equivalence = Schema.toEquivalence(ResolvedConfig)
-  static ordered = false as const
-}
+}) {}
 
 /** System defaults. */
 const systemDefaults = ResolvedRuleDefaults.make({
   enabled: 'auto',
-  severity: Severity_.Error.make({}),
+  severity: 'error',
 })
 
 /**
  * Normalize user config to fully resolved config.
  *
  * **Precedence** (later wins):
- * 1. System defaults — `enabled: 'auto'`, `severity: Error`
+ * 1. System defaults — `enabled: 'auto'`, `severity: 'error'`
  * 2. `config.defaults` — global overrides from user config
  * 3. Per-rule config — `config.rules[id]` overrides for individual rules
  *
- * Rule config supports three input forms:
- * - `Severity` shorthand (just the severity, inherits enabled from defaults)
- * - `[Severity, options]` tuple (severity + rule-specific options)
- * - Full `RuleConfig` object (explicit overrides + options)
+ * Per-rule input follows the {@link RuleConfigInput} grammar.
  */
 export const resolveConfig = (config: Partial<Config>): ResolvedConfig => {
   // Merge global defaults
@@ -119,13 +93,12 @@ export const resolveConfig = (config: Partial<Config>): ResolvedConfig => {
     severity: config.defaults?.severity ?? systemDefaults.severity,
   })
 
-  // Normalize each rule config
-  const rules: Record<string, ResolvedRuleConfig> = {}
-  if (config.rules) {
-    for (const [id, input] of Object.entries(config.rules) as [RuleId, RuleConfigInput][]) {
-      rules[id] = normalizeRuleConfig(input, defaults)
-    }
-  }
+  const rules = Object.fromEntries(
+    Object.entries(config.rules ?? {}).map(([id, input]) => [
+      id,
+      resolveRuleConfig(input, defaults),
+    ]),
+  )
 
   return ResolvedConfig.make({
     defaults,
@@ -135,14 +108,12 @@ export const resolveConfig = (config: Partial<Config>): ResolvedConfig => {
   })
 }
 
-const isSeverity = (input: RuleConfigInput): input is Severity => Severity_.is(input)
-
-const normalizeRuleConfig = (
+const resolveRuleConfig = (
   input: RuleConfigInput,
   globalDefaults: ResolvedRuleDefaults,
 ): ResolvedRuleConfig => {
-  // Severity shorthand
-  if (isSeverity(input)) {
+  // Bare severity shorthand
+  if (Severity_.is(input)) {
     return ResolvedRuleConfig.make({
       overrides: ResolvedRuleDefaults.make({
         enabled: globalDefaults.enabled,
@@ -152,25 +123,24 @@ const normalizeRuleConfig = (
     })
   }
 
-  // Tuple shorthand [Severity, options]
-  if (Array.isArray(input)) {
-    const [severity, options] = input
+  // Full RuleConfig object
+  if (RuleConfig.is(input)) {
     return ResolvedRuleConfig.make({
       overrides: ResolvedRuleDefaults.make({
-        enabled: globalDefaults.enabled,
-        severity,
+        enabled: input.overrides.enabled ?? globalDefaults.enabled,
+        severity: input.overrides.severity ?? globalDefaults.severity,
       }),
-      options,
+      options: input.options,
     })
   }
 
-  // Full RuleConfig object
-  const ruleConfig = input as RuleConfig
+  // [severity, options] tuple shorthand
+  const [severity, options] = input
   return ResolvedRuleConfig.make({
     overrides: ResolvedRuleDefaults.make({
-      enabled: ruleConfig['overrides'].enabled ?? globalDefaults.enabled,
-      severity: ruleConfig['overrides'].severity ?? globalDefaults.severity,
+      enabled: globalDefaults.enabled,
+      severity,
     }),
-    options: ruleConfig['options'],
+    options,
   })
 }

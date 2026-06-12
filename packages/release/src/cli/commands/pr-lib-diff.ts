@@ -3,10 +3,10 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Effect, MutableHashSet } from 'effect'
-import { PackageLocation } from '../api/analyzer/package-location.js'
-import { ExplorerError } from '../api/explorer/errors.js'
-import type { ChangedFile, Diff } from '../api/lint/services/diff.js'
-import type { Package } from '../api/analyzer/workspace.js'
+import { PackageLocation } from '../../api/analyzer/package-location.js'
+import { ExplorerError } from '../../api/explorer/errors.js'
+import type { ChangedFile, Diff } from '../../api/lint/services/diff.js'
+import type { Package } from '../../api/analyzer/workspace.js'
 
 export interface DiffRemoteConfigLike {
   readonly lint?: {
@@ -69,11 +69,13 @@ const toAffectedPackages = (
   packages: readonly Package[],
   root: Fs.Path.AbsDir,
 ): readonly string[] => {
+  // Packages whose path cannot be expressed relative to the repo root can
+  // never match a repo-relative diff path — skip them.
   const packageRoots = packages
-    .map((pkg) => ({
-      scope: pkg.scope,
-      location: PackageLocation.fromAbsolutePath(root, pkg.path),
-    }))
+    .flatMap((pkg) => {
+      const location = PackageLocation.fromAbsolutePath(root, pkg.path)
+      return location._tag === 'Success' ? [{ scope: pkg.scope, location: location.success }] : []
+    })
     .toSorted(
       (left, right) =>
         PackageLocation.toRelativePathString(right.location).length -

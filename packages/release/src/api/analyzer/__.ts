@@ -1,5 +1,6 @@
 export * from './analyze.js'
 export * as Cascade from './cascade.js'
+export * as Errors from './errors.js'
 export * as History from './history.js'
 export * as PackageLocation from './package-location.js'
 export type * as Models from './models/__.js'

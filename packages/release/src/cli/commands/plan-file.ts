@@ -1,10 +1,11 @@
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
-import { Console, Effect, FileSystem, Option } from 'effect'
+import { Effect, FileSystem, Option } from 'effect'
 import * as Planner from '../../api/planner/__.js'
 import * as Publishing from '../../api/publishing.js'
 import * as ReleaseContract from '../../api/release-contract.js'
+import { failWith } from './_shared.js'
 
 type PlanSource = 'active' | 'custom'
 
@@ -111,16 +112,6 @@ const planLookupFromFlag = (from: Option.Option<string>): PlanLookupContext =>
       }
     : { source: 'active' }
 
-const writeErrorLines = (lines: readonly string[]): Effect.Effect<void> =>
-  Effect.forEach(lines, (line) => Console.error(line), { discard: true })
-
-const exitWithPlanMessage = (lines: readonly string[]): Effect.Effect<never, never, Env.Env> =>
-  Effect.gen(function* () {
-    const env = yield* Env.Env
-    yield* writeErrorLines(lines)
-    return env.exit(1)
-  })
-
 export const loadCommandPlan = (
   from: Option.Option<string>,
 ): Effect.Effect<PlanLoadedState, never, Env.Env | FileSystem.FileSystem> =>
@@ -131,9 +122,9 @@ export const loadCommandPlan = (
       case 'PlanLoaded':
         return state
       case 'PlanMissing':
-        return yield* exitWithPlanMessage(formatMissingPlanMessage(state))
+        return yield* failWith(...formatMissingPlanMessage(state))
       case 'PlanInvalid':
-        return yield* exitWithPlanMessage(formatInvalidPlanMessage(state))
+        return yield* failWith(...formatInvalidPlanMessage(state))
     }
   })
 
@@ -144,7 +135,7 @@ export const loadExecutableCommandPlan = (
     const loaded = yield* loadCommandPlan(from)
 
     if (!hasExecutablePlanContract(loaded.plan)) {
-      return yield* exitWithPlanMessage(formatUnsupportedExecutionPlanMessage(loaded.plan))
+      return yield* failWith(...formatUnsupportedExecutionPlanMessage(loaded.plan))
     }
 
     return {

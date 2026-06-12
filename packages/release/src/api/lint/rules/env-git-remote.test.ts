@@ -2,16 +2,14 @@ import { Git } from '@kitz/git'
 import { Effect } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { Violation } from '../models/violation.js'
-import { RuleOptionsService } from '../services/rule-options.js'
 import { rule } from './env-git-remote.js'
 
 describe('env.git-remote', () => {
   test('returns remote metadata when the configured remote is reachable', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
-        Effect.provide(Git.Memory.make({ remoteUrl: 'git@github.com:jasonkuhrt/kitz.git' })),
-        Effect.provideService(RuleOptionsService, { remote: 'origin' }),
-      ),
+      rule
+        .check({ remote: 'origin' })
+        .pipe(Effect.provide(Git.Memory.make({ remoteUrl: 'git@github.com:jasonkuhrt/kitz.git' }))),
     )
 
     expect(Violation.is(result)).toBe(false)
@@ -26,7 +24,7 @@ describe('env.git-remote', () => {
 
   test('reports a violation when the remote is unavailable', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check({ remote: 'upstream' }).pipe(
         Effect.provideService(Git.Git, {
           getRemoteUrl: () =>
             Effect.fail(
@@ -39,7 +37,6 @@ describe('env.git-remote', () => {
               }),
             ),
         } as any),
-        Effect.provideService(RuleOptionsService, { remote: 'upstream' }),
       ),
     )
 

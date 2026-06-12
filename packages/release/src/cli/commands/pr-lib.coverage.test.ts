@@ -6,23 +6,28 @@ import { Github } from '@kitz/github'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { describe, expect, test } from 'bun:test'
-import * as Api from '../api/__.js'
-import { Analysis } from '../api/analyzer/models/analysis.js'
-import { Impact } from '../api/analyzer/models/impact.js'
-import { Forecast } from '../api/forecaster/models.js'
-import { Finished, Report } from '../api/lint/models/report.js'
-import { RuleId } from '../api/lint/models/rule-defaults.js'
-import * as Severity from '../api/lint/models/severity.js'
-import { Ephemeral as PlannerEphemeral } from '../api/planner/models/item-ephemeral.js'
-import { makeHarness, makePackageJson } from '../api/executor/test-support.js'
-import { loadPullRequestDiff } from './pr-preview-diff.js'
+import * as Api from '../../api/__.js'
+import { Analysis } from '../../api/analyzer/models/analysis.js'
+import { Impact } from '../../api/analyzer/models/impact.js'
+import { Forecast } from '../../api/forecaster/models.js'
+import { Finished, Report } from '../../api/lint/models/report.js'
+import { RuleId } from '../../api/lint/models/rule-defaults.js'
+import { Ephemeral as PlannerEphemeral } from '../../api/planner/models/item-ephemeral.js'
+import { makeHarness, makePackageJson } from '../../api/executor/test-support.js'
+import { testConfig, testOperator } from '../../test-support.js'
+import { loadPullRequestDiff } from './pr-lib-diff.js'
 import {
   type PreviewCommentUpdateParams,
-  type RunPrPreviewDependencies,
+  type PreviewDoctorShape,
+  type PreviewLintCheckParams,
   PreviewBlockingError,
+  PreviewDoctor,
+  PrPreview,
   buildPreviewDoctorSummary,
+  buildPreviewForecast,
+  runPreviewLintCheck,
   runPrPreview,
-} from './pr-preview.js'
+} from './pr-lib.js'
 
 const textEncoder = new TextEncoder()
 
@@ -39,26 +44,14 @@ const docsPackage = makePackage('docs')
 const makeConfig = (
   publishing: Api.Config.ResolvedConfig['publishing'] = Api.Publishing.defaultPublishing(),
 ) =>
-  Api.Config.ResolvedConfig.make({
-    trunk: 'main',
-    npmTag: 'latest',
-    candidateTag: 'next',
+  testConfig({
     packages: { core: '@kitz/core' },
     publishing,
-    operator: Api.Operator.ResolvedOperator.make({
-      manager: Pkg.Manager.DetectedPackageManager.make({
-        name: 'bun',
-        source: 'runtime',
-      }),
-      releaseCommand: 'bun run release',
-      prepareCommands: ['bun run release:build'],
-    }),
-    resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
-    commitOverrides: {},
+    operator: testOperator({ prepareCommands: ['bun run release:build'] }),
     lint: Api.Lint.resolveConfig({
       defaults: Api.Lint.RuleDefaults.make({
         enabled: 'auto',
-        severity: Severity.Warn.make({}),
+        severity: 'warn',
       }),
     }),
   })
@@ -149,17 +142,34 @@ const capturePreviewComment =
     return Effect.succeed(renderedPreviewComment)
   }
 
-const previewDeps = (overrides: RunPrPreviewDependencies = {}): RunPrPreviewDependencies => ({
-  loadConfig: () => Effect.succeed(makeConfig()),
-  resolvePackages: () => Effect.succeed([corePackage]),
-  resolvePullRequestContext: () => Effect.succeed(makePullRequestContext()),
-  exploreFromContext: () => Effect.succeed(makeRuntime()),
-  getTags: () => Effect.succeed([]),
-  analyze: () => Effect.succeed(makeAnalysis()),
-  loadPullRequestDiff: () => Effect.succeed({ files: [], affectedPackages: [] }),
-  buildPreviewDoctorSummary: () => Effect.succeed({ blocking: false }),
-  ...overrides,
-})
+type PrPreviewShape = typeof PrPreview.Service
+
+/**
+ * Stub layer for the {@link PrPreview} pipeline service. Every seam defaults
+ * to a sensible stub; tests override the seams they exercise.
+ */
+const previewLayer = (overrides: Partial<PrPreviewShape> = {}): Layer.Layer<PrPreview> =>
+  Layer.succeed(PrPreview)({
+    loadConfig: Effect.succeed(makeConfig()),
+    resolvePackages: () => Effect.succeed([corePackage]),
+    resolvePullRequestContext: Effect.succeed(makePullRequestContext()),
+    exploreFromContext: () => Effect.succeed(makeRuntime()),
+    getTags: Effect.succeed([]),
+    analyze: () => Effect.succeed(makeAnalysis()),
+    loadPullRequestDiff: () => Effect.succeed({ files: [], affectedPackages: [] }),
+    buildDoctorSummary: () => Effect.succeed({ blocking: false }),
+    forecast: () => Effect.succeed(baseForecast),
+    upsertPreviewComment: capturePreviewComment(() => {}),
+    ...overrides,
+  })
+
+/** Stub layer for the {@link PreviewDoctor} seams. */
+const previewDoctorLayer = (overrides: Partial<PreviewDoctorShape>): Layer.Layer<PreviewDoctor> =>
+  Layer.succeed(PreviewDoctor)({
+    planEphemeral: () => Effect.die('planEphemeral should not run'),
+    runLintCheck: () => Effect.die('runLintCheck should not run'),
+    ...overrides,
+  })
 
 const makeHandle = (stdout: string): ChildProcessSpawner.ChildProcessHandle =>
   ChildProcessSpawner.makeHandle({
@@ -232,17 +242,15 @@ const getFailureDetail = (error: unknown): string => {
   return typeof context.detail === 'string' ? context.detail : ''
 }
 
-const assumePure = <A, E>(effect: Effect.Effect<A, E, unknown>) => effect as Effect.Effect<A, E>
-
 const diffLayer = (result: Parameters<typeof makeDiffSpawnerLayer>[0]) =>
   Layer.mergeAll(Git.Memory.make({ root: '/repo' }), makeDiffSpawnerLayer(result))
 
 const runPreviewResult = (
   options: Parameters<typeof runPrPreview>[0],
-  dependencies: RunPrPreviewDependencies = {},
+  overrides: Partial<PrPreviewShape> = {},
 ) =>
   Effect.runPromise(
-    assumePure(runPrPreview(options, previewDeps(dependencies)).pipe(Effect.result)),
+    runPrPreview(options).pipe(Effect.provide(previewLayer(overrides)), Effect.result),
   )
 
 type PreviewResult = Awaited<ReturnType<typeof runPreviewResult>>
@@ -337,19 +345,18 @@ describe('pr preview coverage', () => {
 
   test('returns a warning summary when ephemeral planning fails', async () => {
     const result = await Effect.runPromise(
-      assumePure(
-        buildPreviewDoctorSummary(
-          {
-            config: makeConfig(),
-            analysis: makeAnalysis(),
-            packages: [corePackage],
-            pullRequest,
-            diff: { files: [], affectedPackages: [] },
-            blockingTitleChecks: true,
-          },
-          {
+      buildPreviewDoctorSummary({
+        config: makeConfig(),
+        analysis: makeAnalysis(),
+        packages: [corePackage],
+        pullRequest,
+        diff: { files: [], affectedPackages: [] },
+        blockingTitleChecks: true,
+      }).pipe(
+        Effect.provide(
+          previewDoctorLayer({
             planEphemeral: () => Effect.fail(new Error('ephemeral planning failed')),
-          },
+          }),
         ),
       ),
     )
@@ -366,24 +373,23 @@ describe('pr preview coverage', () => {
 
   test('returns no doctor summary when the ephemeral plan is empty', async () => {
     const result = await Effect.runPromise(
-      assumePure(
-        buildPreviewDoctorSummary(
-          {
-            config: makeConfig(),
-            analysis: makeAnalysis(),
-            packages: [corePackage],
-            pullRequest,
-            diff: { files: [], affectedPackages: [] },
-            blockingTitleChecks: true,
-          },
-          {
+      buildPreviewDoctorSummary({
+        config: makeConfig(),
+        analysis: makeAnalysis(),
+        packages: [corePackage],
+        pullRequest,
+        diff: { files: [], affectedPackages: [] },
+        blockingTitleChecks: true,
+      }).pipe(
+        Effect.provide(
+          previewDoctorLayer({
             planEphemeral: () =>
               Effect.succeed({
                 lifecycle: 'ephemeral' as const,
                 releases: [],
                 cascades: [],
               } as any),
-          },
+          }),
         ),
       ),
     )
@@ -392,7 +398,7 @@ describe('pr preview coverage', () => {
   })
 
   test('builds manual preview runbooks and deferred checks from injected planning and lint results', async () => {
-    let captured: { config: Api.Lint.ResolvedConfig } | undefined
+    let captured: PreviewLintCheckParams | undefined
     const report = Report.make({
       results: [
         Finished.make({
@@ -401,7 +407,7 @@ describe('pr preview coverage', () => {
             'declared publish channel matches the active runtime',
           ),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           metadata: {
             status: 'manual',
             mode: 'manual',
@@ -411,31 +417,30 @@ describe('pr preview coverage', () => {
     })
 
     const result = await Effect.runPromise(
-      assumePure(
-        buildPreviewDoctorSummary(
-          {
-            config: makeConfig(
-              Api.Publishing.Publishing.make({
-                official: { mode: 'manual' },
-                candidate: { mode: 'manual' },
-                ephemeral: { mode: 'manual' },
-              }),
-            ),
-            analysis: makeAnalysis(),
-            packages: [corePackage],
-            pullRequest,
-            projectedSquashCommit: {
-              actualTitle: pullRequest.title,
-              actualHeader: 'feat(core): release',
-              actualTitleError: null,
-              projectedHeader: 'feat(core): projected release header',
-              inSync: false,
-              reason: null,
-            },
-            diff: { files: [], affectedPackages: [] },
-            blockingTitleChecks: false,
-          },
-          {
+      buildPreviewDoctorSummary({
+        config: makeConfig(
+          Api.Publishing.Publishing.make({
+            official: { mode: 'manual' },
+            candidate: { mode: 'manual' },
+            ephemeral: { mode: 'manual' },
+          }),
+        ),
+        analysis: makeAnalysis(),
+        packages: [corePackage],
+        pullRequest,
+        projectedSquashCommit: {
+          actualTitle: pullRequest.title,
+          actualHeader: 'feat(core): release',
+          actualTitleError: null,
+          projectedHeader: 'feat(core): projected release header',
+          inSync: false,
+          reason: null,
+        },
+        diff: { files: [], affectedPackages: [] },
+        blockingTitleChecks: false,
+      }).pipe(
+        Effect.provide(
+          previewDoctorLayer({
             planEphemeral: () =>
               Effect.succeed({
                 lifecycle: 'ephemeral' as const,
@@ -456,7 +461,7 @@ describe('pr preview coverage', () => {
               captured = params
               return Effect.succeed(report)
             },
-          },
+          }),
         ),
       ),
     )
@@ -471,9 +476,9 @@ describe('pr preview coverage', () => {
     expect(result.summary?.deferredChecks.map((check) => check.ruleId)).toContain(
       'env.npm-authenticated',
     )
-    expect(captured?.config.onlyRules).toContain('pr.projected-squash-commit-sync')
-    expect(captured?.config.rules['pr.type.release-kind-match-diff']?.overrides.severity._tag).toBe(
-      'SeverityWarn',
+    expect(captured?.lintConfig.onlyRules).toContain('pr.projected-squash-commit-sync')
+    expect(captured?.lintConfig.rules['pr.type.release-kind-match-diff']?.overrides.severity).toBe(
+      'warn',
     )
   })
 
@@ -499,43 +504,47 @@ describe('pr preview coverage', () => {
     )
 
     const result = await Effect.runPromise(
-      buildPreviewDoctorSummary(
-        {
-          config: makeConfig(
-            Api.Publishing.Publishing.make({
-              official: { mode: 'manual' },
-              candidate: { mode: 'manual' },
-              ephemeral: { mode: 'manual' },
-            }),
-          ),
-          analysis: makeAnalysis(),
-          packages: [corePackage],
-          pullRequest,
-          diff: {
-            files: [{ path: 'packages/core/src/index.ts', status: 'modified' }],
-            affectedPackages: ['core'],
-          },
-          blockingTitleChecks: true,
+      buildPreviewDoctorSummary({
+        config: makeConfig(
+          Api.Publishing.Publishing.make({
+            official: { mode: 'manual' },
+            candidate: { mode: 'manual' },
+            ephemeral: { mode: 'manual' },
+          }),
+        ),
+        analysis: makeAnalysis(),
+        packages: [corePackage],
+        pullRequest,
+        diff: {
+          files: [{ path: 'packages/core/src/index.ts', status: 'modified' }],
+          affectedPackages: ['core'],
         },
-        {
-          planEphemeral: () =>
-            Effect.succeed({
-              lifecycle: 'ephemeral' as const,
-              releases: [
-                PlannerEphemeral.make({
-                  package: corePackage,
-                  commits: [],
-                  prerelease: Api.Version.Ephemeral.make({
-                    prNumber: 129,
-                    iteration: 1,
-                    sha: Git.Sha.make('abc1234'),
+        blockingTitleChecks: true,
+      }).pipe(
+        Effect.provide(
+          previewDoctorLayer({
+            planEphemeral: () =>
+              Effect.succeed({
+                lifecycle: 'ephemeral' as const,
+                releases: [
+                  PlannerEphemeral.make({
+                    package: corePackage,
+                    commits: [],
+                    prerelease: Api.Version.Ephemeral.make({
+                      prNumber: 129,
+                      iteration: 1,
+                      sha: Git.Sha.make('abc1234'),
+                    }),
                   }),
-                }),
-              ],
-              cascades: [],
-            } as any),
-        },
-      ).pipe(Effect.provide(harness.workflowLayer)),
+                ],
+                cascades: [],
+              } as any),
+            // The REAL lint wiring, provided with the harness services.
+            runLintCheck: (params) =>
+              runPreviewLintCheck(params).pipe(Effect.provide(harness.workflowLayer)),
+          }),
+        ),
+      ),
     )
 
     expect(result.summary?.rows.length).toBeGreaterThan(0)
@@ -554,12 +563,11 @@ describe('pr preview coverage', () => {
       await runPreviewResult(
         {},
         {
-          resolvePullRequestContext: () =>
-            Effect.fail(
-              new Api.Explorer.ExplorerError({
-                context: { detail: 'context exploded' },
-              }),
-            ),
+          resolvePullRequestContext: Effect.fail(
+            new Api.Explorer.ExplorerError({
+              context: { detail: 'context exploded' },
+            }),
+          ),
         },
       ),
     )
@@ -572,8 +580,7 @@ describe('pr preview coverage', () => {
       await runPreviewResult(
         {},
         {
-          resolvePullRequestContext: () =>
-            Effect.succeed(makePullRequestContext({ pullRequest: null })),
+          resolvePullRequestContext: Effect.succeed(makePullRequestContext({ pullRequest: null })),
         },
       ),
     )
@@ -586,7 +593,7 @@ describe('pr preview coverage', () => {
       await runPreviewResult(
         {},
         {
-          resolvePullRequestContext: () => Effect.succeed(makePullRequestContext({ token: null })),
+          resolvePullRequestContext: Effect.succeed(makePullRequestContext({ token: null })),
           exploreFromContext: () => Effect.succeed(makeRuntime({ credentials: null })),
         },
       ),
@@ -599,7 +606,7 @@ describe('pr preview coverage', () => {
     const failure = expectPreviewFailure(
       await runPreviewResult(
         { checkOnly: true },
-        { buildPreviewDoctorSummary: () => Effect.succeed({ blocking: true }) },
+        { buildDoctorSummary: () => Effect.succeed({ blocking: true }) },
       ),
     )
 
@@ -608,7 +615,7 @@ describe('pr preview coverage', () => {
 
   test('returns a checked result in check-only mode when doctor checks pass', async () => {
     const result = await Effect.runPromise(
-      assumePure(runPrPreview({ checkOnly: true }, previewDeps())),
+      runPrPreview({ checkOnly: true }).pipe(Effect.provide(previewLayer())),
     )
 
     expect(result).toEqual({
@@ -629,27 +636,25 @@ describe('pr preview coverage', () => {
     let capturedUpdate: PreviewCommentUpdateParams | undefined
 
     const result = await Effect.runPromise(
-      assumePure(
-        runPrPreview(
-          {},
-          previewDeps({
-            loadConfig: () =>
-              Effect.succeed(
-                makeConfig(
-                  Api.Publishing.Publishing.make({
-                    official: { mode: 'manual' },
-                    candidate: { mode: 'manual' },
-                    ephemeral: {
-                      mode: 'github-token',
-                      workflow: 'preview.yml',
-                      tokenEnv: 'NPM_TOKEN',
-                    },
-                  }),
-                ),
+      runPrPreview({}).pipe(
+        Effect.provide(
+          previewLayer({
+            loadConfig: Effect.succeed(
+              makeConfig(
+                Api.Publishing.Publishing.make({
+                  official: { mode: 'manual' },
+                  candidate: { mode: 'manual' },
+                  ephemeral: {
+                    mode: 'github-token',
+                    workflow: 'preview.yml',
+                    tokenEnv: 'NPM_TOKEN',
+                  },
+                }),
               ),
+            ),
             analyze: () => Effect.succeed(analysis),
             loadPullRequestDiff: () => Effect.succeed(changedCoreDiff),
-            buildPreviewDoctorSummary: () =>
+            buildDoctorSummary: () =>
               Effect.succeed({
                 blocking: false,
                 summary: {
@@ -665,8 +670,8 @@ describe('pr preview coverage', () => {
                   deferredChecks: [],
                 },
               }),
-            forecast: () => baseForecast,
-            upsertPullRequestPreviewComment: capturePreviewComment((params) => {
+            forecast: () => Effect.succeed(baseForecast),
+            upsertPreviewComment: capturePreviewComment((params) => {
               capturedUpdate = params
             }),
           }),
@@ -697,31 +702,30 @@ describe('pr preview coverage', () => {
       tags: [],
     })
     let capturedUpdate: PreviewCommentUpdateParams | undefined
+    const fsLayer = Fs.Memory.layer({
+      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
+        dependencies: {
+          '@kitz/utils': 'workspace:*',
+        },
+      }),
+      '/repo/packages/utils/package.json': makePackageJson('@kitz/utils', '1.0.0'),
+      '/repo/packages/docs/package.json': makePackageJson('@kitz/docs', '1.0.0'),
+    })
 
     await Effect.runPromise(
-      assumePure(
-        runPrPreview(
-          {},
-          previewDeps({
+      runPrPreview({}).pipe(
+        Effect.provide(
+          previewLayer({
             resolvePackages: () => Effect.succeed([corePackage, utilsPackage, docsPackage]),
             analyze: () => Effect.succeed(analysis),
             loadPullRequestDiff: () => Effect.succeed(changedCoreDiff),
-            upsertPullRequestPreviewComment: capturePreviewComment((params) => {
+            // The REAL forecast projection (official-plan cascade fold) over
+            // a memory filesystem.
+            forecast: (params) => buildPreviewForecast(params).pipe(Effect.provide(fsLayer)),
+            upsertPreviewComment: capturePreviewComment((params) => {
               capturedUpdate = params
             }),
           }),
-        ).pipe(
-          Effect.provide(
-            Fs.Memory.layer({
-              '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0', {
-                dependencies: {
-                  '@kitz/utils': 'workspace:*',
-                },
-              }),
-              '/repo/packages/utils/package.json': makePackageJson('@kitz/utils', '1.0.0'),
-              '/repo/packages/docs/package.json': makePackageJson('@kitz/docs', '1.0.0'),
-            }),
-          ),
         ),
       ),
     )
@@ -739,32 +743,19 @@ describe('pr preview coverage', () => {
     const analysis = makeAnalysis()
 
     const makeConfigWithRemote = () =>
-      Api.Config.ResolvedConfig.make({
-        trunk: 'main',
-        npmTag: 'latest',
-        candidateTag: 'next',
+      testConfig({
         packages: { core: '@kitz/core' },
-        publishing: Api.Publishing.defaultPublishing(),
-        operator: Api.Operator.ResolvedOperator.make({
-          manager: Pkg.Manager.DetectedPackageManager.make({
-            name: 'bun',
-            source: 'runtime',
-          }),
-          releaseCommand: 'bun run release',
-          prepareCommands: ['bun run release:build'],
-        }),
-        resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
-        commitOverrides: {},
+        operator: testOperator({ prepareCommands: ['bun run release:build'] }),
         lint: Api.Lint.resolveConfig({
           defaults: Api.Lint.RuleDefaults.make({
             enabled: 'auto',
-            severity: Severity.Warn.make({}),
+            severity: 'warn',
           }),
           rules: {
             'env.git-remote': Api.Lint.RuleConfig.make({
               overrides: Api.Lint.RuleDefaults.make({
                 enabled: true,
-                severity: Severity.Error.make({}),
+                severity: 'error',
               }),
               options: {
                 remote: 'upstream',
@@ -775,22 +766,15 @@ describe('pr preview coverage', () => {
       })
 
     await Effect.runPromise(
-      assumePure(
-        runPrPreview(
-          { checkOnly: true },
-          {
-            loadConfig: () => Effect.succeed(makeConfigWithRemote()),
-            resolvePackages: () => Effect.succeed([corePackage]),
-            resolvePullRequestContext: () => Effect.succeed(makePullRequestContext()),
-            exploreFromContext: () => Effect.succeed(makeRuntime()),
-            getTags: () => Effect.succeed([]),
+      runPrPreview({ checkOnly: true }).pipe(
+        Effect.provide(
+          previewLayer({
+            loadConfig: Effect.succeed(makeConfigWithRemote()),
             analyze: (options) => {
               capturedSince = options.since
               return Effect.succeed(analysis)
             },
-            loadPullRequestDiff: () => Effect.succeed({ files: [], affectedPackages: [] }),
-            buildPreviewDoctorSummary: () => Effect.succeed({ blocking: false }),
-          },
+          }),
         ),
       ),
     )

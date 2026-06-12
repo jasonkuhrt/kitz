@@ -19,15 +19,13 @@ const PreflightErrorContext = S.Struct({
 })
 const decodeNpmAuthMetadata = S.decodeUnknownOption(NpmAuthMetadataSchema)
 const decodeGitRemoteMetadata = S.decodeUnknownOption(GitRemoteMetadataSchema)
-const toError = (error: unknown): Error =>
-  error instanceof Error ? error : new Error(String(error))
 const toPreflightError =
   (check: string) =>
   (error: unknown): PreflightError =>
     new PreflightError({
       context: {
         check,
-        detail: error instanceof Error ? error.message : String(error),
+        detail: Err.ensure(error).message,
       },
     })
 
@@ -98,8 +96,11 @@ const runLintCheckLive = (params: PreflightLintCheckParams) =>
         params.releaseContextLayer,
       ),
     ),
-    Effect.mapError(toError),
+    Effect.mapError(Err.ensure),
   )
+
+const getCurrentBranchLive = (git: Git.GitService): Effect.Effect<string, Error> =>
+  git.getCurrentBranch()
 
 const renderViolationMessage = (violation: Lint.Violation): string => {
   if (ViolationFile.is(violation.location)) {
@@ -192,16 +193,9 @@ export const run = (
       packagePath: r.package.path,
       version: r.nextVersion,
     }))
-    let currentBranch: string
-    if (dependencies.getCurrentBranch !== undefined) {
-      currentBranch = yield* dependencies
-        .getCurrentBranch(git)
-        .pipe(Effect.mapError(toPreflightError('env.release-branch-allowed')))
-    } else {
-      currentBranch = yield* git
-        .getCurrentBranch()
-        .pipe(Effect.mapError(toPreflightError('env.release-branch-allowed')))
-    }
+    const currentBranch = yield* (dependencies.getCurrentBranch ?? getCurrentBranchLive)(git).pipe(
+      Effect.mapError(toPreflightError('env.release-branch-allowed')),
+    )
 
     const preconditionsLayer = Lint.Preconditions.make({
       hasReleasePlan: plannedReleases.length > 0,
@@ -216,24 +210,12 @@ export const run = (
     })
 
     // Run lint check, mapping any errors to PreflightError
-    let report: Lint.Report
-    if (dependencies.runLintCheck !== undefined) {
-      report = yield* dependencies
-        .runLintCheck({
-          config,
-          preconditionsLayer,
-          releasePlanLayer,
-          releaseContextLayer,
-        })
-        .pipe(Effect.mapError(toPreflightError('lint-execution')))
-    } else {
-      report = yield* runLintCheckLive({
-        config,
-        preconditionsLayer,
-        releasePlanLayer,
-        releaseContextLayer,
-      }).pipe(Effect.mapError(toPreflightError('lint-execution')))
-    }
+    const report = yield* (dependencies.runLintCheck ?? runLintCheckLive)({
+      config,
+      preconditionsLayer,
+      releasePlanLayer,
+      releaseContextLayer,
+    }).pipe(Effect.mapError(toPreflightError('lint-execution')))
 
     // Extract metadata and check for violations
     let npmUser = '(unknown)'
@@ -258,7 +240,7 @@ export const run = (
       }
 
       // Collect violations
-      if (result.violation && Lint.Error.is(result.severity)) {
+      if (result.violation && result.severity === 'error') {
         violations.push({
           ruleId: result.rule.id,
           message: renderViolationMessage(result.violation),
@@ -285,8 +267,4 @@ export const run = (
       npmUser,
       gitRemote,
     } satisfies PreflightResult
-  }) as Effect.Effect<
-    PreflightResult,
-    PreflightError,
-    Env.Env | Git.Git | ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem
-  >
+  })

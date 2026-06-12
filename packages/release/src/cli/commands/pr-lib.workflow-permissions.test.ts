@@ -19,7 +19,7 @@ const Workflow = Yaml.parseYaml().pipe(
 )
 
 const workflow = Schema.decodeUnknownSync(Workflow)(
-  readFileSync(new URL('../../../../.github/workflows/pr.yml', import.meta.url), 'utf8'),
+  readFileSync(new URL('../../../../../.github/workflows/pr.yml', import.meta.url), 'utf8'),
 )
 
 describe('release preview workflow permissions', () => {

@@ -2,13 +2,33 @@ import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
-import { Effect, FileSystem, Option, Schema as S } from 'effect'
-import { jsonFile } from './persistence.js'
-import { ExecutionLock, type PlanDigest, PrincipalRef } from './release-contract.js'
+import { DateTime, Effect, FileSystem, Option, Schema as S } from 'effect'
+import { ExecutionLock } from './contract/lock.js'
+import { PrincipalRef } from './contract/trust.js'
+import { Digest } from './digest.js'
 
 const baseTags = ['kit', 'release', 'lock'] as const
 const lockDir = Fs.Path.RelDir.fromString('./.release/locks/')
-const lockResource = jsonFile(ExecutionLock)
+
+/**
+ * `readOrEmpty` placeholder only: an epoch-expired lock, so accidental use of
+ * the empty value behaves like "no active lock" instead of an eternal one.
+ */
+const emptyLock = (): ExecutionLock =>
+  ExecutionLock.make({
+    schemaVersion: 1,
+    planDigest: Digest.make({ algorithm: 'sha256', value: '' }),
+    owner: PrincipalRef.make({ kind: 'human', id: 'nobody' }),
+    ownerHost: 'none',
+    ownerProcess: 'none',
+    acquiredAt: DateTime.makeUnsafe(0),
+    heartbeatAt: DateTime.makeUnsafe(0),
+    expiresAt: DateTime.makeUnsafe(0),
+    backend: 'local-file',
+    recoveryRequiresSignature: true,
+  })
+
+const lockResource = Resource.createJson('lock.json', ExecutionLock, emptyLock())
 
 const ActiveReleaseLockErrorContext = S.Struct({
   planDigest: S.String,
@@ -36,31 +56,30 @@ export interface LockIssue {
 }
 
 export interface LocalLockParams {
-  readonly planDigest: PlanDigest
+  readonly planDigest: Digest
   readonly ownerId: string
   readonly ownerHost?: string
   readonly ownerProcess?: string
-  readonly now: string
+  readonly now: DateTime.Utc
   readonly ttlSeconds?: number
 }
 
-export const lockPathFor = (cwd: Fs.Path.AbsDir, digest: PlanDigest): Fs.Path.AbsFile =>
+export const lockPathFor = (cwd: Fs.Path.AbsDir, digest: Digest): Fs.Path.AbsFile =>
   Fs.Path.join(Fs.Path.join(cwd, lockDir), Fs.Path.RelFile.fromString(`./${digest.value}.json`))
 
 export const make = (params: {
-  readonly planDigest: PlanDigest
+  readonly planDigest: Digest
   readonly ownerId: string
   readonly ownerHost?: string
   readonly ownerProcess?: string
-  readonly acquiredAt: string
-  readonly heartbeatAt?: string
+  readonly acquiredAt: DateTime.Utc
+  readonly heartbeatAt?: DateTime.Utc
   readonly ttlSeconds: number
   readonly backend?: ExecutionLock['backend']
   readonly remoteRef?: string
   readonly recoveryRequiresSignature?: boolean
-}): ExecutionLock => {
-  const expiresAt = new Date(Date.parse(params.acquiredAt) + params.ttlSeconds * 1000).toISOString()
-  return ExecutionLock.make({
+}): ExecutionLock =>
+  ExecutionLock.make({
     schemaVersion: 1,
     planDigest: params.planDigest,
     owner: PrincipalRef.make({ kind: 'human', id: params.ownerId }),
@@ -68,24 +87,28 @@ export const make = (params: {
     ownerProcess: params.ownerProcess ?? 'local-process',
     acquiredAt: params.acquiredAt,
     heartbeatAt: params.heartbeatAt ?? params.acquiredAt,
-    expiresAt,
+    expiresAt: DateTime.add(params.acquiredAt, { seconds: params.ttlSeconds }),
     backend: params.backend ?? 'local-file',
     ...(params.remoteRef !== undefined ? { remoteRef: params.remoteRef } : {}),
     recoveryRequiresSignature: params.recoveryRequiresSignature ?? true,
   })
-}
 
-export const validate = (lock: ExecutionLock, now: string): readonly LockIssue[] => {
-  if (Date.parse(lock.expiresAt) <= Date.parse(now)) {
-    return [
-      {
-        code: 'release.lock.expired',
-        detail: `Execution lock expired at ${lock.expiresAt}.`,
-      },
-    ]
-  }
-  return []
-}
+/**
+ * Lock expiry. Total over `DateTime.Utc` values — malformed timestamps are
+ * unrepresentable post-decode, so there is no NaN fail-open path.
+ */
+export const isExpired = (lock: ExecutionLock, now: DateTime.Utc): boolean =>
+  DateTime.isLessThanOrEqualTo(lock.expiresAt, now)
+
+export const validate = (lock: ExecutionLock, now: DateTime.Utc): readonly LockIssue[] =>
+  isExpired(lock, now)
+    ? [
+        {
+          code: 'release.lock.expired',
+          detail: `Execution lock expired at ${DateTime.formatIso(lock.expiresAt)}.`,
+        },
+      ]
+    : []
 
 export const read = (
   path: Fs.Path.AbsFile,
@@ -109,13 +132,13 @@ export const acquireLocal = (
     const env = yield* Env.Env
     const path = lockPathFor(env.cwd, params.planDigest)
     const existing = yield* read(path)
-    if (Option.isSome(existing) && validate(existing.value, params.now).length === 0) {
+    if (Option.isSome(existing) && !isExpired(existing.value, params.now)) {
       return yield* Effect.fail(
         new ActiveReleaseLockError({
           context: {
             planDigest: params.planDigest.value,
             ownerId: existing.value.owner.id,
-            expiresAt: existing.value.expiresAt,
+            expiresAt: DateTime.formatIso(existing.value.expiresAt),
           },
         }),
       )
@@ -135,7 +158,7 @@ export const acquireLocal = (
   })
 
 export const releaseLocal = (
-  planDigest: PlanDigest,
+  planDigest: Digest,
 ): Effect.Effect<void, Resource.ResourceError, Env.Env | FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
@@ -154,7 +177,10 @@ export const withLocal = <A, E, R>(
   E | LockError | Resource.ResourceError,
   R | Env.Env | FileSystem.FileSystem
 > =>
-  Effect.gen(function* () {
-    yield* acquireLocal(params)
-    return yield* effect.pipe(Effect.ensuring(releaseLocal(params.planDigest).pipe(Effect.orDie)))
-  })
+  // Uninterruptible acquire + guaranteed release: an interruption arriving
+  // after the lock file is written can no longer leak the lock.
+  Effect.acquireUseRelease(
+    acquireLocal(params),
+    () => effect,
+    () => releaseLocal(params.planDigest).pipe(Effect.orDie),
+  )

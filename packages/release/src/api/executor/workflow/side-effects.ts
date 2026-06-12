@@ -1,3 +1,4 @@
+import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Effect, FileSystem } from 'effect'
 import * as Journal from '../../journal.js'
@@ -41,7 +42,7 @@ export const recordSideEffect = <E, R>(params: {
           subject: params.subject,
           planned: {
             ...params.planned,
-            error: error instanceof Error ? error.message : String(error),
+            error: Err.ensure(error).message,
           },
           result: 'failed',
         }).pipe(Effect.orDie),

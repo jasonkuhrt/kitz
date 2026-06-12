@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Schema } from 'effect'
 import { Severity } from './severity.js'
 
@@ -16,7 +17,7 @@ export type RuleId = typeof RuleId.Type
 /**
  * Default values for user-configurable rule properties.
  */
-export class RuleDefaults extends Schema.TaggedClass<RuleDefaults>()('RuleDefaults', {
+export class RuleDefaults extends Sch.TaggedClass<RuleDefaults>()('RuleDefaults', {
   /**
    * false: disabled.
    * true: enabled, errors if any precondition fails.
@@ -26,15 +27,7 @@ export class RuleDefaults extends Schema.TaggedClass<RuleDefaults>()('RuleDefaul
   enabled: Schema.optional(Schema.Union([Schema.Boolean, Schema.Literal('auto')])),
   /**
    * Severity level when rule produces violations.
-   * @default Severity.Error
+   * @default 'error'
    */
   severity: Schema.optional(Severity),
-}) {
-  static is = Schema.is(RuleDefaults)
-  static decode = Schema.decodeUnknownEffect(RuleDefaults)
-  static decodeSync = Schema.decodeUnknownSync(RuleDefaults)
-  static encode = Schema.encodeUnknownEffect(RuleDefaults)
-  static encodeSync = Schema.encodeUnknownSync(RuleDefaults)
-  static equivalence = Schema.toEquivalence(RuleDefaults)
-  static ordered = false as const
-}
+}) {}

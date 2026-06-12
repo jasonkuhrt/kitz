@@ -1,4 +1,4 @@
-import { Schema as S } from 'effect'
+import { Option, Schema as S } from 'effect'
 import { Test } from '@kitz/test'
 import { describe, expect, test } from 'bun:test'
 import { Semver } from './_.js'
@@ -178,5 +178,23 @@ describe('Semver core combinators', () => {
 
     expect(matchVersion(Semver.fromString('3.0.0'))).toBe('release:3')
     expect(matchVersion(Semver.fromString('3.0.0-beta.2'))).toBe('pre:beta.2')
+  })
+})
+
+describe('OptionFromNullOrString', () => {
+  test('decodes null to none and semver strings to some', () => {
+    const decode = S.decodeSync(Semver.OptionFromNullOrString)
+    expect(decode(null)).toEqual(Option.none())
+    const decoded = decode('1.2.3')
+    expect(Option.isSome(decoded)).toBe(true)
+    if (Option.isSome(decoded)) {
+      expect(Semver.toString(decoded.value)).toBe('1.2.3')
+    }
+  })
+
+  test('encodes none to null and some to the semver string', () => {
+    const encode = S.encodeSync(Semver.OptionFromNullOrString)
+    expect(encode(Option.none())).toBeNull()
+    expect(encode(Option.some(Semver.fromString('1.2.3-rc.1')))).toBe('1.2.3-rc.1')
   })
 })

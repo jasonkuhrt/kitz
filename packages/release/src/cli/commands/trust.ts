@@ -2,15 +2,20 @@
  * @module cli/commands/trust
  *
  * Render npm trusted-publisher provisioning commands (`release trust list`,
- * `release trust setup`, `release trust verify`) for npm OIDC trusted publishing.
+ * `release trust setup <provider>`) for npm OIDC trusted publishing.
+ *
+ * Provider-specific requirements are expressed as framework-required flags on
+ * provider subcommands (`trust setup github|gitlab|circleci`) — the framework
+ * owns requiredness validation. Flag→argv projection lives in `trust-lib.ts`.
  */
-import { Env } from '@kitz/env'
-import { Console, Effect, Option } from 'effect'
+import { Console, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Publisher from '../../api/publishing/__.js'
-
-const get = (option: Option.Option<string>): string | undefined =>
-  Option.isSome(option) ? option.value : undefined
+import {
+  renderTrustCircleciCommand,
+  renderTrustGithubCommand,
+  renderTrustGitlabCommand,
+  renderTrustListCommand,
+} from './trust-lib.js'
 
 const trustList = Command.make(
   'list',
@@ -23,175 +28,110 @@ const trustList = Command.make(
     ),
   },
   ({ pkg, registry, json }) =>
-    Effect.gen(function* () {
-      const packageName = get(pkg)
-      const registryValue = get(registry)
-      yield* Console.log(
-        Publisher.Providers.Npm.buildTrustListCommand({
-          ...(packageName === undefined ? {} : { packageName }),
-          ...(registryValue === undefined ? {} : { registry: registryValue }),
-          json,
-        }).argv.join(' '),
-      )
-    }),
+    Console.log(
+      renderTrustListCommand({
+        packageName: Option.getOrUndefined(pkg),
+        registry: Option.getOrUndefined(registry),
+        json,
+      }),
+    ),
 ).pipe(Command.withDescription('List trusted-publisher configuration for a package'))
 
-const trustVerify = Command.make(
-  'verify',
-  {
-    from: Flag.string('from').pipe(Flag.withDescription('Plan file to verify'), Flag.optional),
-  },
-  ({ from }) =>
-    Effect.gen(function* () {
-      const env = yield* Env.Env
-      const fromValue = get(from)
-      if (fromValue === undefined) {
-        yield* Console.error('Missing required --from <plan>.')
-        return env.exit(1)
-      }
-      yield* Console.log(`Trusted-publisher verification is plan-bound: ${fromValue}`)
-    }),
-).pipe(Command.withDescription('Verify trusted-publisher configuration for a plan'))
+// Flags shared by every `trust setup <provider>` subcommand. `--pkg` is
+// framework-required; the rest are optional refinements.
+const setupCommonFlags = {
+  pkg: Flag.string('pkg').pipe(Flag.withDescription('Package name')),
+  env: Flag.string('env').pipe(Flag.withDescription('Deployment environment'), Flag.optional),
+  registry: Flag.string('registry').pipe(Flag.withDescription('Registry URL'), Flag.optional),
+  yes: Flag.boolean('yes').pipe(
+    Flag.withDescription('Skip confirmation prompts'),
+    Flag.withDefault(false),
+  ),
+  dryRun: Flag.boolean('dry-run').pipe(
+    Flag.withDescription('Emit the command without applying it'),
+    Flag.withDefault(false),
+  ),
+}
 
-const trustSetup = Command.make(
-  'setup',
+const commonSetupParams = (flags: {
+  readonly pkg: string
+  readonly env: Option.Option<string>
+  readonly registry: Option.Option<string>
+  readonly yes: boolean
+  readonly dryRun: boolean
+}) => ({
+  packageName: flags.pkg,
+  environment: Option.getOrUndefined(flags.env),
+  registry: Option.getOrUndefined(flags.registry),
+  yes: flags.yes,
+  dryRun: flags.dryRun,
+})
+
+const trustSetupGithub = Command.make(
+  'github',
   {
-    provider: Flag.string('provider').pipe(
-      Flag.withDescription('Trusted-publisher provider (github, gitlab, circleci)'),
-      Flag.optional,
+    ...setupCommonFlags,
+    workflow: Flag.string('workflow').pipe(Flag.withDescription('GitHub workflow file')),
+    repo: Flag.string('repo').pipe(Flag.withDescription('GitHub repository (owner/name)')),
+  },
+  (flags) =>
+    Console.log(
+      renderTrustGithubCommand({
+        ...commonSetupParams(flags),
+        repository: flags.repo,
+        workflowFile: flags.workflow,
+      }),
     ),
-    pkg: Flag.string('pkg').pipe(Flag.withDescription('Package name'), Flag.optional),
-    workflow: Flag.string('workflow').pipe(
-      Flag.withDescription('GitHub workflow file'),
-      Flag.optional,
-    ),
-    repo: Flag.string('repo').pipe(
-      Flag.withDescription('GitHub repository (owner/name)'),
-      Flag.optional,
-    ),
-    file: Flag.string('file').pipe(Flag.withDescription('GitLab workflow file'), Flag.optional),
+).pipe(Command.withDescription('Render the GitHub Actions trusted-publisher provisioning command'))
+
+const trustSetupGitlab = Command.make(
+  'gitlab',
+  {
+    ...setupCommonFlags,
+    file: Flag.string('file').pipe(Flag.withDescription('GitLab workflow file')),
     project: Flag.string('project').pipe(
       Flag.withDescription('GitLab project (namespace/project)'),
-      Flag.optional,
-    ),
-    orgId: Flag.string('org-id').pipe(Flag.withDescription('CircleCI org id'), Flag.optional),
-    projectId: Flag.string('project-id').pipe(
-      Flag.withDescription('CircleCI project id'),
-      Flag.optional,
-    ),
-    pipelineDefinitionId: Flag.string('pipeline-definition-id').pipe(
-      Flag.withDescription('CircleCI pipeline definition id'),
-      Flag.optional,
-    ),
-    vcsOrigin: Flag.string('vcs-origin').pipe(
-      Flag.withDescription('CircleCI VCS origin'),
-      Flag.optional,
-    ),
-    env: Flag.string('env').pipe(Flag.withDescription('Deployment environment'), Flag.optional),
-    registry: Flag.string('registry').pipe(Flag.withDescription('Registry URL'), Flag.optional),
-    yes: Flag.boolean('yes').pipe(
-      Flag.withDescription('Skip confirmation prompts'),
-      Flag.withDefault(false),
-    ),
-    dryRun: Flag.boolean('dry-run').pipe(
-      Flag.withDescription('Emit the command without applying it'),
-      Flag.withDefault(false),
     ),
   },
   (flags) =>
-    Effect.gen(function* () {
-      const env = yield* Env.Env
+    Console.log(
+      renderTrustGitlabCommand({
+        ...commonSetupParams(flags),
+        project: flags.project,
+        workflowFile: flags.file,
+      }),
+    ),
+).pipe(Command.withDescription('Render the GitLab CI trusted-publisher provisioning command'))
 
-      const provider = get(flags.provider)
-      const packageName = get(flags.pkg)
-      if (provider === undefined || packageName === undefined) {
-        yield* Console.error('Missing required --provider and --pkg.')
-        return env.exit(1)
-      }
+const trustSetupCircleci = Command.make(
+  'circleci',
+  {
+    ...setupCommonFlags,
+    orgId: Flag.string('org-id').pipe(Flag.withDescription('CircleCI org id')),
+    projectId: Flag.string('project-id').pipe(Flag.withDescription('CircleCI project id')),
+    pipelineDefinitionId: Flag.string('pipeline-definition-id').pipe(
+      Flag.withDescription('CircleCI pipeline definition id'),
+    ),
+    vcsOrigin: Flag.string('vcs-origin').pipe(Flag.withDescription('CircleCI VCS origin')),
+  },
+  (flags) =>
+    Console.log(
+      renderTrustCircleciCommand({
+        ...commonSetupParams(flags),
+        orgId: flags.orgId,
+        projectId: flags.projectId,
+        pipelineDefinitionId: flags.pipelineDefinitionId,
+        vcsOrigin: flags.vcsOrigin,
+      }),
+    ),
+).pipe(Command.withDescription('Render the CircleCI trusted-publisher provisioning command'))
 
-      if (provider === 'github') {
-        const workflow = get(flags.workflow)
-        const repository = get(flags.repo)
-        if (workflow === undefined || repository === undefined) {
-          yield* Console.error('GitHub trusted setup requires --workflow and --repo.')
-          return env.exit(1)
-        }
-        const environment = get(flags.env)
-        const registry = get(flags.registry)
-        yield* Console.log(
-          Publisher.Providers.Npm.buildTrustGithubCommand({
-            packageName,
-            repository,
-            workflowFile: workflow,
-            ...(environment === undefined ? {} : { environment }),
-            ...(registry === undefined ? {} : { registry }),
-            yes: flags.yes,
-            dryRun: flags.dryRun,
-          }).argv.join(' '),
-        )
-        return
-      }
-
-      if (provider === 'gitlab') {
-        const workflow = get(flags.file)
-        const project = get(flags.project)
-        if (workflow === undefined || project === undefined) {
-          yield* Console.error('GitLab trusted setup requires --file and --project.')
-          return env.exit(1)
-        }
-        const environment = get(flags.env)
-        const registry = get(flags.registry)
-        yield* Console.log(
-          Publisher.Providers.Npm.buildTrustGitlabCommand({
-            packageName,
-            project,
-            workflowFile: workflow,
-            ...(environment === undefined ? {} : { environment }),
-            ...(registry === undefined ? {} : { registry }),
-            yes: flags.yes,
-            dryRun: flags.dryRun,
-          }).argv.join(' '),
-        )
-        return
-      }
-
-      if (provider === 'circleci') {
-        const orgId = get(flags.orgId)
-        const projectId = get(flags.projectId)
-        const pipelineDefinitionId = get(flags.pipelineDefinitionId)
-        const vcsOrigin = get(flags.vcsOrigin)
-        if (
-          orgId === undefined ||
-          projectId === undefined ||
-          pipelineDefinitionId === undefined ||
-          vcsOrigin === undefined
-        ) {
-          yield* Console.error('CircleCI trusted setup is missing required ids.')
-          return env.exit(1)
-        }
-        const registry = get(flags.registry)
-        yield* Console.log(
-          Publisher.Providers.Npm.buildTrustCircleciCommand({
-            packageName,
-            orgId,
-            projectId,
-            pipelineDefinitionId,
-            vcsOrigin,
-            ...(registry === undefined ? {} : { registry }),
-            yes: flags.yes,
-            dryRun: flags.dryRun,
-          }).argv.join(' '),
-        )
-        return
-      }
-
-      yield* Console.error(`Unsupported trusted-publisher provider: ${provider}`)
-      return env.exit(1)
-    }),
-).pipe(Command.withDescription('Render the npm trusted-publisher provisioning command'))
+const trustSetup = Command.make('setup').pipe(
+  Command.withDescription('Render the npm trusted-publisher provisioning command for a provider'),
+  Command.withSubcommands([trustSetupGithub, trustSetupGitlab, trustSetupCircleci]),
+)
 
 export const trust = Command.make('trust').pipe(
   Command.withDescription('Manage npm trusted-publisher (OIDC) provisioning commands'),
-  Command.withSubcommands([trustList, trustSetup, trustVerify]),
-  Command.provide(Env.Live),
+  Command.withSubcommands([trustList, trustSetup]),
 )

@@ -1,9 +1,7 @@
 import { Schema } from 'effect'
 import { describe, expect, test } from 'bun:test'
-import { HasOpenPR, HasReleasePlan } from './precondition.js'
 import { RuleDefaults, RuleId } from './rule-defaults.js'
 import { Rule } from './rule.js'
-import * as Severity from './severity.js'
 
 describe('Rule', () => {
   test('make minimal rule', () => {
@@ -22,29 +20,29 @@ describe('Rule', () => {
     const rule = Rule.make({
       id: RuleId.make('pr.type.match-known'),
       description: 'PR type must be a known conventional commit type',
-      preconditions: [HasOpenPR.make({})],
+      preconditions: ['hasOpenPR'],
     })
     expect(rule.preconditions).toHaveLength(1)
-    expect(rule.preconditions[0]!._tag).toBe('PreconditionHasOpenPR')
+    expect(rule.preconditions[0]).toBe('hasOpenPR')
   })
 
   test('make with defaults', () => {
     const rule = Rule.make({
       id: RuleId.make('plan.tags-unique'),
       description: 'Planned tags must not already exist',
-      preconditions: [HasReleasePlan.make({})],
-      defaults: RuleDefaults.make({ enabled: true, severity: Severity.Warn.make({}) }),
+      preconditions: ['hasReleasePlan'],
+      defaults: RuleDefaults.make({ enabled: true, severity: 'warn' }),
     })
     expect(rule.defaults).toBeDefined()
     expect(rule.defaults!.enabled).toBe(true)
-    expect(rule.defaults!.severity!._tag).toBe('SeverityWarn')
+    expect(rule.defaults!.severity).toBe('warn')
   })
 
   test('schema roundtrip', () => {
     const rule = Rule.make({
       id: RuleId.make('env.npm-authenticated'),
       description: 'npm must be authenticated',
-      preconditions: [HasReleasePlan.make({})],
+      preconditions: ['hasReleasePlan'],
       defaults: RuleDefaults.make({ enabled: 'auto' }),
     })
     const encoded = Schema.encodeSync(Rule)(rule)

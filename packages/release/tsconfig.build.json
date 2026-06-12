@@ -9,5 +9,14 @@
     "declarationMap": false,
     "rewriteRelativeImportExtensions": true
   },
-  "exclude": ["build", "node_modules", "**/*.test.ts", "**/*.test.tsx", "**/*.test-d.ts", "**/*.bench-d.ts"]
+  "exclude": [
+    "build",
+    "node_modules",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.test-d.ts",
+    "**/*.bench-d.ts",
+    "src/api/executor/test-support.ts",
+    "src/test-support.ts"
+  ]
 }

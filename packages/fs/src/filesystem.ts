@@ -51,6 +51,24 @@ export type AccessFileOptions = {
 export type CopyOptions = {
   readonly overwrite?: boolean | undefined
   readonly preserveTimestamps?: boolean | undefined
+  /**
+   * When copying a directory, decide per entry (at every depth) whether it is
+   * copied. Returning `false` skips the entry — and, for directories, their
+   * entire subtree. Ignored when copying a single file.
+   */
+  readonly filter?: ((entry: CopyFilterEntry) => boolean) | undefined
+}
+
+/**
+ * A directory entry offered to {@link CopyOptions.filter}.
+ */
+export interface CopyFilterEntry {
+  /** Base name of the entry (e.g. `'node_modules'`). */
+  readonly name: string
+  /** Full source path of the entry. */
+  readonly path: string
+  /** Entry kind. Symlinks are resolved through `stat`. */
+  readonly type: 'file' | 'directory' | 'other'
 }
 export type MakeDirectoryOptions = {
   readonly recursive?: boolean | undefined
@@ -724,11 +742,44 @@ export const writeString = <loc extends Path.Input.File>(
 // Two-path operations
 // ============================================================================
 
+const joinPathString = (parent: string, name: string): string =>
+  parent.endsWith('/') ? `${parent}${name}` : `${parent}/${name}`
+
+/**
+ * Recursive directory copy honoring a {@link CopyOptions.filter} predicate.
+ */
+const copyDirectoryFiltered = (
+  fs: FileSystem.FileSystem,
+  from: string,
+  to: string,
+  filter: (entry: CopyFilterEntry) => boolean,
+): Effect.Effect<void, PlatformError.PlatformError> =>
+  Effect.gen(function* () {
+    yield* fs.makeDirectory(to, { recursive: true })
+
+    for (const name of yield* fs.readDirectory(from)) {
+      const fromPath = joinPathString(from, name)
+      const info = yield* fs.stat(fromPath)
+      const type = info.type === 'Directory' ? 'directory' : info.type === 'File' ? 'file' : 'other'
+
+      if (!filter({ name, path: fromPath, type })) continue
+
+      const toPath = joinPathString(to, name)
+      if (type === 'directory') {
+        yield* copyDirectoryFiltered(fs, fromPath, toPath, filter)
+      } else if (type === 'file') {
+        yield* fs.copyFile(fromPath, toPath)
+      }
+    }
+  })
+
 /**
  * Wrapper for {@link FileSystem.FileSystem.copy} and {@link FileSystem.FileSystem.copyFile} that accepts FsLoc types.
  *
  * Takes FsLoc locations instead of string paths. Intelligently dispatches:
  * - When both locations are files: uses optimized `copyFile`
+ * - When a {@link CopyOptions.filter} is given and the source is a directory:
+ *   recursive copy that skips entries (at every depth) rejected by the filter
  * - Otherwise: uses general `copy`
  *
  * @param from - Source location (any FsLoc type)
@@ -746,6 +797,11 @@ export const writeString = <loc extends Path.Input.File>(
  * const srcDir = S.decodeSync(Path.AbsDir.Schema)('/src/dir/')
  * const dstDir = S.decodeSync(Path.AbsDir.Schema)('/dst/dir/')
  * yield* Fs.copy(srcDir, dstDir)
+ *
+ * // Directory to directory, skipping entries by name at any depth
+ * yield* Fs.copy(srcDir, dstDir, {
+ *   filter: (entry) => !['node_modules', '.git'].includes(entry.name),
+ * })
  * ```
  */
 export const copy = <from extends Path.Input.Any, to extends Path.Input.Any>(
@@ -761,6 +817,16 @@ export const copy = <from extends Path.Input.Any, to extends Path.Input.Any>(
     // If both source and destination are files, use the optimized copyFile
     if (Path.$File.is(fromLoc) && Path.$File.is(toLoc)) {
       return yield* fs.copyFile(Path.toString(fromLoc) as string, Path.toString(toLoc) as string)
+    }
+
+    // Filtered directory copy walks the tree itself so the filter can prune it
+    if (options.filter !== undefined && Path.$Dir.is(fromLoc)) {
+      return yield* copyDirectoryFiltered(
+        fs,
+        Path.toString(fromLoc) as string,
+        Path.toString(toLoc) as string,
+        options.filter,
+      )
     }
 
     // Otherwise use the general copy (for directories or mixed types)

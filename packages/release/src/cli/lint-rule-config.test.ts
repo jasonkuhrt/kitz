@@ -1,31 +1,16 @@
-import { Pkg } from '@kitz/pkg'
 import { describe, expect, test } from 'bun:test'
 import * as Api from '../api/__.js'
+import { testConfig } from '../test-support.js'
 import { createCommandLintConfig } from './lint-rule-config.js'
 
 const makeResolvedConfig = (
   lint: Partial<typeof Api.Lint.ResolvedConfig.Type> = {},
 ): Api.Config.ResolvedConfig =>
-  Api.Config.ResolvedConfig.make({
-    trunk: 'main',
-    npmTag: 'latest',
-    candidateTag: 'next',
-    packages: {},
-    publishing: Api.Publishing.defaultPublishing(),
-    operator: Api.Operator.ResolvedOperator.make({
-      manager: Pkg.Manager.DetectedPackageManager.make({
-        name: 'bun',
-        source: 'runtime',
-      }),
-      releaseCommand: 'bun run release',
-      prepareCommands: [],
-    }),
-    resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
-    commitOverrides: {},
+  testConfig({
     lint: Api.Lint.ResolvedConfig.make({
       defaults: Api.Lint.ResolvedRuleDefaults.make({
         enabled: 'auto',
-        severity: Api.Lint.Error.make({}),
+        severity: 'error',
       }),
       rules: {},
       ...(lint.defaults !== undefined ? { defaults: lint.defaults } : {}),
@@ -42,7 +27,7 @@ describe('command lint rule config', () => {
         'env.publish-channel-ready': Api.Lint.ResolvedRuleConfig.make({
           overrides: Api.Lint.ResolvedRuleDefaults.make({
             enabled: 'auto',
-            severity: Api.Lint.Warn.make({}),
+            severity: 'warn',
           }),
           options: {
             surface: 'execution',
@@ -69,7 +54,7 @@ describe('command lint rule config', () => {
     expect(lintConfig.rules['env.publish-channel-ready']).toMatchObject({
       overrides: {
         enabled: true,
-        severity: { _tag: 'SeverityWarn' },
+        severity: 'warn',
       },
       options: {
         surface: 'preview',
@@ -78,7 +63,7 @@ describe('command lint rule config', () => {
     expect(lintConfig.rules['plan.tags-unique']).toMatchObject({
       overrides: {
         enabled: true,
-        severity: { _tag: 'SeverityError' },
+        severity: 'error',
       },
       options: {},
     })
@@ -92,7 +77,7 @@ describe('command lint rule config', () => {
         'pr.projected-squash-commit-sync': Api.Lint.ResolvedRuleConfig.make({
           overrides: Api.Lint.ResolvedRuleDefaults.make({
             enabled: 'auto',
-            severity: Api.Lint.Warn.make({}),
+            severity: 'warn',
           }),
           options: {
             projectedHeader: 'fix(core): old header',
@@ -109,7 +94,7 @@ describe('command lint rule config', () => {
           options: {
             projectedHeader: 'feat(core): release',
           },
-          severity: Api.Lint.Error.make({}),
+          severity: 'error',
         },
       ],
       onlyRules: ['pr.projected-squash-commit-sync'],
@@ -121,7 +106,7 @@ describe('command lint rule config', () => {
     expect(lintConfig.rules['pr.projected-squash-commit-sync']).toMatchObject({
       overrides: {
         enabled: true,
-        severity: { _tag: 'SeverityError' },
+        severity: 'error',
       },
       options: {
         projectedHeader: 'feat(core): release',
@@ -135,7 +120,7 @@ describe('command lint rule config', () => {
         'pr.projected-squash-commit-sync': Api.Lint.ResolvedRuleConfig.make({
           overrides: Api.Lint.ResolvedRuleDefaults.make({
             enabled: false,
-            severity: Api.Lint.Error.make({}),
+            severity: 'error',
           }),
           options: {
             projectedHeader: 'fix(core): old header',
@@ -153,7 +138,7 @@ describe('command lint rule config', () => {
             projectedHeader: 'feat(core): release',
           },
           enabled: 'auto',
-          severity: Api.Lint.Warn.make({}),
+          severity: 'warn',
           preserveExistingOverrides: true,
         },
       ],
@@ -162,7 +147,7 @@ describe('command lint rule config', () => {
     expect(lintConfig.rules['pr.projected-squash-commit-sync']).toMatchObject({
       overrides: {
         enabled: false,
-        severity: { _tag: 'SeverityError' },
+        severity: 'error',
       },
       options: {
         projectedHeader: 'feat(core): release',

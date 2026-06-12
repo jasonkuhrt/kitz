@@ -2,7 +2,6 @@ import { Test } from '@kitz/test'
 import { Exit, Schema } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { RuleDefaults, RuleId } from './rule-defaults.js'
-import * as Severity from './severity.js'
 
 // ── RuleId ───────────────────────────────────────────────────────────
 
@@ -69,15 +68,15 @@ describe('RuleDefaults', () => {
   })
 
   test('make with severity', () => {
-    const d = RuleDefaults.make({ severity: Severity.Warn.make({}) })
-    expect(d.severity!._tag).toBe('SeverityWarn')
+    const d = RuleDefaults.make({ severity: 'warn' })
+    expect(d.severity).toBe('warn')
   })
 
   test('schema roundtrip', () => {
-    const d = RuleDefaults.make({ enabled: true, severity: Severity.Error.make({}) })
+    const d = RuleDefaults.make({ enabled: true, severity: 'error' })
     const encoded = Schema.encodeSync(RuleDefaults)(d)
     const decoded = Schema.decodeSync(RuleDefaults)(encoded)
     expect(decoded.enabled).toBe(true)
-    expect(decoded.severity!._tag).toBe('SeverityError')
+    expect(decoded.severity).toBe('error')
   })
 })

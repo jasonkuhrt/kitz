@@ -6,10 +6,10 @@
  */
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
-import { Console, Effect, FileSystem, Layer } from 'effect'
+import { Console, Effect, FileSystem } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Proof from '../../api/proof.js'
-import { FileSystemLayer } from '../../platform.js'
+import { CommandBaseLayer } from './_shared.js'
 import { loadPlan } from './plan-file.js'
 
 export const prune = Command.make(
@@ -58,5 +58,5 @@ export const prune = Command.make(
     }),
 ).pipe(
   Command.withDescription('Prune stale release artifact directories'),
-  Command.provide(Layer.mergeAll(Env.Live, FileSystemLayer)),
+  Command.provide(CommandBaseLayer),
 )

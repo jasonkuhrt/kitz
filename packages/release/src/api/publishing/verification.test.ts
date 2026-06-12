@@ -2,6 +2,7 @@ import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { describe, expect, test } from 'bun:test'
+import { DateTime } from 'effect'
 import { sha256Bytes, sha256Json } from '../digest.js'
 import {
   ArtifactManifest,
@@ -33,7 +34,7 @@ const observation = RegistryObservation.make({
   packageName: Pkg.Moniker.parse('@kitz/core'),
   version: Semver.fromString('1.2.3'),
   registry: 'https://registry.npmjs.org/',
-  observedAt: '2026-05-14T00:00:00.000Z',
+  observedAt: DateTime.makeUnsafe('2026-05-14T00:00:00.000Z'),
   versionMetadata: { name: '@kitz/core', version: '1.2.3' },
   distTags: { latest: '1.2.3' },
   accessStatus: 'public',
@@ -48,7 +49,7 @@ const receipt = PublishReceipt.make({
   planDigest: digest,
   tarballSha256: artifact.sha256,
   observation,
-  verifiedAt: '2026-05-14T00:00:01.000Z',
+  verifiedAt: DateTime.makeUnsafe('2026-05-14T00:00:01.000Z'),
 })
 
 const updateRegistryObservation = (

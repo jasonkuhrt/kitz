@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Effect, Schema as S } from 'effect'
 import {
   defaultProofPolicy,
@@ -76,7 +77,7 @@ export const isPlanOf = <$lifecycle extends Lifecycle>(
  * to execute releases. Commit metadata (author, date, full CC structure)
  * is preserved; flattening for changelogs happens lazily at generation time.
  */
-export class Plan extends S.TaggedClass<Plan>()('Plan', {
+export class Plan extends Sch.TaggedClass<Plan>()('Plan', {
   schemaVersion: S.Literal(2).pipe(
     S.optionalKey,
     S.withDecodingDefaultKey(Effect.sync(() => 2 as const)),
@@ -97,12 +98,6 @@ export class Plan extends S.TaggedClass<Plan>()('Plan', {
   releases: S.Array(ItemSchema),
   cascades: S.Array(ItemSchema),
 }) {
-  static decode = S.decodeUnknownEffect(Plan)
-  static decodeSync = S.decodeUnknownSync(Plan)
-  static encode = S.encodeUnknownEffect(Plan)
-  static encodeSync = S.encodeUnknownSync(Plan)
-  static equivalence = S.toEquivalence(Plan)
-  static ordered = false as const
   static override make = (
     input: {
       readonly lifecycle: Lifecycle
@@ -153,7 +148,8 @@ export class Plan extends S.TaggedClass<Plan>()('Plan', {
       },
       options,
     )
-  static is = (value: unknown): value is Plan => S.is(Plan)(value) && hasConsistentLifecycle(value)
+  static override is = (value: unknown): value is Plan =>
+    S.is(Plan)(value) && hasConsistentLifecycle(value)
 
   /**
    * Empty plan for resource initialization.

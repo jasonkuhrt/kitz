@@ -2,7 +2,6 @@ import { ChildProcessSpawner } from 'effect/unstable/process'
 import { Effect, Layer, PlatformError, Stream } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { Violation } from '../models/violation.js'
-import { RuleOptionsService } from '../services/rule-options.js'
 import { rule } from './env-npm-authenticated.js'
 
 const textEncoder = new TextEncoder()
@@ -41,10 +40,7 @@ const makeSpawnerLayer = (mode: 'success' | 'failure') =>
 describe('env.npm-authenticated', () => {
   test('returns a guided fix when npm whoami fails', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
-        Effect.provide(makeSpawnerLayer('failure')),
-        Effect.provideService(RuleOptionsService, {}),
-      ),
+      rule.check({}).pipe(Effect.provide(makeSpawnerLayer('failure'))),
     )
 
     expect(Violation.is(result)).toBe(false)
@@ -72,10 +68,7 @@ describe('env.npm-authenticated', () => {
 
   test('passes when npm whoami succeeds', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
-        Effect.provide(makeSpawnerLayer('success')),
-        Effect.provideService(RuleOptionsService, {}),
-      ),
+      rule.check({}).pipe(Effect.provide(makeSpawnerLayer('success'))),
     )
 
     expect(Violation.is(result)).toBe(false)

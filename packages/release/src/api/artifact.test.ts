@@ -185,7 +185,6 @@ const allowlistedPrepackPlan = (network: ScriptPolicy['network']) => {
     packageJson,
     plan: makeContractedPlan({
       publishIntent: updateContractedScriptPolicy({
-        default: 'allow-listed',
         network,
         allowlist: [
           {
@@ -267,18 +266,14 @@ const rehearseCorePackage = ({
 
     return {
       manifests,
-      publishCalls: yield* Ref.get(harness.publishCalls),
-      packCalls: yield* Ref.get(harness.packCalls),
+      publishCalls: yield* harness.publishCalls,
+      packCalls: yield* harness.packCalls,
     }
   })
 
 describe('artifact manifest', () => {
-  const artifactCopyHelperSource = () => {
-    const source = readFileSync(new URL('./executor/publish.ts', import.meta.url), 'utf8')
-    const start = source.indexOf('const copyPackageDirectory =')
-    const end = source.indexOf('\nconst workspaceVersionsFor', start)
-    return source.slice(start, end)
-  }
+  const publishSource = () =>
+    readFileSync(new URL('./executor/publish.ts', import.meta.url), 'utf8')
 
   test('records actual tarball bytes, packlist, and npm metadata from prepared artifacts', async () => {
     const manifests = await Effect.runPromise(
@@ -359,7 +354,7 @@ describe('artifact manifest', () => {
         const manifest = yield* readManifest(releasePlan).pipe(
           Effect.provide(harness.workflowLayer),
         )
-        const publishCalls = yield* Ref.get(harness.publishCalls)
+        const publishCalls = yield* harness.publishCalls
 
         return { error, manifest, publishCalls }
       }),
@@ -462,12 +457,11 @@ describe('artifact manifest', () => {
   })
 
   test('artifact staging copy stays on the typed filesystem facade', () => {
-    const source = artifactCopyHelperSource()
+    const source = publishSource()
 
-    expect(source).toContain('Fs.read(')
-    expect(source).toContain('Fs.write(')
+    expect(source).toContain('Fs.copy(')
+    expect(source).not.toContain('const copyPackageDirectory')
     expect(source).not.toContain('yield* FileSystem.FileSystem')
-    expect(source).not.toMatch(/\bfs\./u)
   })
 
   test('rehearsal rejects malformed source manifests before pack', async () => {
@@ -479,7 +473,7 @@ describe('artifact manifest', () => {
           },
         })
         const error = yield* rehearse(plan).pipe(Effect.flip, Effect.provide(harness.workflowLayer))
-        const packCalls = yield* Ref.get(harness.packCalls)
+        const packCalls = yield* harness.packCalls
         return { error, packCalls }
       }),
     )
@@ -511,7 +505,7 @@ describe('artifact manifest', () => {
           Effect.flip,
           Effect.provide(harness.workflowLayer),
         )
-        const packCalls = yield* Ref.get(harness.packCalls)
+        const packCalls = yield* harness.packCalls
         return { error, packCalls }
       }),
     )
@@ -597,6 +591,28 @@ describe('artifact manifest', () => {
 
   test('allowlisted lifecycle scripts still require an explicit network-denial answer', async () => {
     const { packageJson, plan } = allowlistedPrepackPlan('deny-enforced')
+
+    expect(await scriptIssueCodes(plan, packageJson)).toEqual([
+      'release.artifact.network-denial-unprovable',
+    ])
+  })
+
+  test('shipped default policy: allowlisted hook yields exactly the network-denial-unprovable issue', async () => {
+    const command = 'echo preparing'
+    const packageJson = coreManifest({ scripts: { prepack: command } })
+    // Shipped defaults (network 'deny-enforced') with only an allowlist entry added.
+    const plan = makeContractedPlan({
+      publishIntent: updateContractedScriptPolicy({
+        allowlist: [
+          {
+            packageName: Pkg.Moniker.parse('@kitz/core'),
+            script: 'prepack',
+            commandSha256: sha256Text(command),
+            packageSourceDigest: sha256Text(packageJson),
+          },
+        ],
+      }),
+    })
 
     expect(await scriptIssueCodes(plan, packageJson)).toEqual([
       'release.artifact.network-denial-unprovable',

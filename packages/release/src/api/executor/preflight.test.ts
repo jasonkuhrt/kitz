@@ -6,7 +6,6 @@ import { Effect } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { Finished, Report } from '../lint/models/report.js'
 import { RuleId } from '../lint/models/rule-defaults.js'
-import * as Severity from '../lint/models/severity.js'
 import { Violation } from '../lint/models/violation.js'
 import { File } from '../lint/models/violation-location.js'
 import { PreflightError, run } from './preflight.js'
@@ -181,19 +180,19 @@ describe('preflight.run', () => {
         Finished.make({
           rule: ruleRef('env.npm-authenticated', 'npm auth is configured'),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           metadata: { account: 'mock-user' },
         }),
         Finished.make({
           rule: ruleRef('env.git-remote', 'git remote is configured and reachable'),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           metadata: { href: 'git@github.com:example/repo.git' },
         }),
         Finished.make({
           rule: ruleRef('plan.versions-unpublished', 'planned versions are not already published'),
           duration: 1,
-          severity: Severity.Error.make({}),
+          severity: 'error',
           violation: Violation.make({
             location: File.make({ path: 'packages/core/package.json' }),
             summary: 'Version already exists.',
@@ -227,19 +226,19 @@ describe('preflight.run', () => {
         Finished.make({
           rule: ruleRef('env.npm-authenticated', 'npm auth is configured'),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           metadata: { username: 'mock-user' },
         }),
         Finished.make({
           rule: ruleRef('env.git-remote', 'git remote is configured and reachable'),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           metadata: { url: 'git@github.com:example/repo.git' },
         }),
         Finished.make({
           rule: ruleRef('plan.versions-unpublished', 'planned versions are not already published'),
           duration: 1,
-          severity: Severity.Warn.make({}),
+          severity: 'warn',
           metadata: { packageCount: 1 },
         }),
       ],

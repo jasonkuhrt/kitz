@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
+    "@kitz/graph": "workspace:*",
     "@kitz/tex": "workspace:*",
     "ansis": "catalog:",
     "effect": "catalog:"

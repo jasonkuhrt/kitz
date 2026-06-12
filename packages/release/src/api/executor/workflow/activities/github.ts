@@ -8,7 +8,7 @@ import {
   resolvePublishSemantics,
   type PublishSemantics,
 } from '../../../publishing.js'
-import { ExecutorGHReleaseError } from '../../errors.js'
+import { ExecutorGHReleaseError, mapToExecutorError } from '../../errors.js'
 import type { ReleasePayloadType } from '../payload.js'
 import { type ReleasePayloadEntry, tagForRelease } from '../release-info.js'
 import { recordSideEffect } from '../side-effects.js'
@@ -40,7 +40,7 @@ export const createGithubRelease = (params: {
 
     yield* Effect.log(`Creating GH release: ${tag}`)
 
-    const changelog = yield* Notes.format({
+    const changelog = Notes.format({
       scope: params.release.packageName,
       commits: params.release.commits.map((c) => ({
         ...c,
@@ -120,13 +120,8 @@ export const createGithubRelease = (params: {
 
     return tag
   }).pipe(
-    Effect.mapError(
-      (e) =>
-        new ExecutorGHReleaseError({
-          context: {
-            tag: tagForRelease(params.release),
-            detail: e instanceof Error ? e.message : String(e),
-          },
-        }),
+    mapToExecutorError(
+      (detail) =>
+        new ExecutorGHReleaseError({ context: { tag: tagForRelease(params.release), detail } }),
     ),
   )

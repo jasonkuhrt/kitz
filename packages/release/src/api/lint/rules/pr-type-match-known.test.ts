@@ -6,7 +6,6 @@ import { PrTitle } from '../models/violation-location.js'
 import { Violation } from '../models/violation.js'
 import { ConventionalCommitSettingsService } from '../services/conventional-commit-settings.js'
 import { PrService } from '../services/pr.js'
-import { RuleOptionsService } from '../services/rule-options.js'
 import { rule } from './pr-type-match-known.js'
 
 const makePrLayer = (title: string, commit: CC.Commit.Commit) =>
@@ -22,12 +21,10 @@ const defaultSettingsLayer = Layer.succeed(ConventionalCommitSettingsService, {
   resolvedTypes: resolveConventionalCommitTypes({}),
 })
 
-const emptyOptionsLayer = Layer.succeed(RuleOptionsService, {})
-
 describe('pr.type.match-known', () => {
   test('passes when every target type is standard', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check().pipe(
         Effect.provide(
           Layer.mergeAll(
             makePrLayer(
@@ -43,7 +40,6 @@ describe('pr.type.match-known', () => {
               }),
             ),
             defaultSettingsLayer,
-            emptyOptionsLayer,
           ),
         ),
       ),
@@ -54,7 +50,7 @@ describe('pr.type.match-known', () => {
 
   test('violates when a type is not in the resolved types', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check().pipe(
         Effect.provide(
           Layer.mergeAll(
             makePrLayer(
@@ -70,7 +66,6 @@ describe('pr.type.match-known', () => {
               }),
             ),
             defaultSettingsLayer,
-            emptyOptionsLayer,
           ),
         ),
       ),
@@ -85,7 +80,7 @@ describe('pr.type.match-known', () => {
 
   test('passes when a custom type is configured in resolved types', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check().pipe(
         Effect.provide(
           Layer.mergeAll(
             makePrLayer(
@@ -102,7 +97,6 @@ describe('pr.type.match-known', () => {
             Layer.succeed(ConventionalCommitSettingsService, {
               resolvedTypes: resolveConventionalCommitTypes({ deps: 'patch' }),
             }),
-            emptyOptionsLayer,
           ),
         ),
       ),
@@ -113,7 +107,7 @@ describe('pr.type.match-known', () => {
 
   test('passes when a custom type is configured with no release impact', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check().pipe(
         Effect.provide(
           Layer.mergeAll(
             makePrLayer(
@@ -130,7 +124,6 @@ describe('pr.type.match-known', () => {
             Layer.succeed(ConventionalCommitSettingsService, {
               resolvedTypes: resolveConventionalCommitTypes({ tests: null }),
             }),
-            emptyOptionsLayer,
           ),
         ),
       ),
@@ -141,7 +134,7 @@ describe('pr.type.match-known', () => {
 
   test('passes when a standard no-release type has no configured impact', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check().pipe(
         Effect.provide(
           Layer.mergeAll(
             makePrLayer(
@@ -156,7 +149,6 @@ describe('pr.type.match-known', () => {
               }),
             ),
             defaultSettingsLayer,
-            emptyOptionsLayer,
           ),
         ),
       ),
