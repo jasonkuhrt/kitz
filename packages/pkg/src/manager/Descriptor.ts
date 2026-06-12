@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { Moniker } from '#moniker'
 
@@ -16,18 +17,10 @@ import { Moniker } from '#moniker'
  *
  * @see {@link https://nodejs.org/api/packages.html#packagemanager | Node.js packageManager field}
  */
-export class Descriptor extends S.Class<Descriptor>('PackageManagerDescriptor')({
+export class Descriptor extends Sch.Class<Descriptor>()('PackageManagerDescriptor', {
   name: Moniker.FromString,
   version: S.OptionFromUndefinedOr(S.String),
 }) {
-  static is = S.is(Descriptor)
-  static decode = S.decodeUnknownEffect(Descriptor)
-  static decodeSync = S.decodeUnknownSync(Descriptor)
-  static encode = S.encodeUnknownEffect(Descriptor)
-  static encodeSync = S.encodeUnknownSync(Descriptor)
-  static equivalence = S.toEquivalence(Descriptor)
-  static ordered = false as const
-
   /**
    * String codec for package-manager descriptors.
    *

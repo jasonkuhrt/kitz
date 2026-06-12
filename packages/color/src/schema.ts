@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 /**
  * Effect schemas for color validation with branded types.
  *
@@ -39,19 +40,11 @@ import { parse } from './parser.js'
  * @see https://en.wikipedia.org/wiki/RGB_color_model - RGB color model explanation
  * @see https://effect.website/docs/guides/schema/branded-types - Effect Schema branded types
  */
-export class Color extends S.TaggedClass<Color>()('Color', {
+export class Color extends Sch.TaggedClass<Color>()('Color', {
   r: S.Number.pipe(S.check(S.isInt(), S.isBetween({ minimum: 0, maximum: 255 }))),
   g: S.Number.pipe(S.check(S.isInt(), S.isBetween({ minimum: 0, maximum: 255 }))),
   b: S.Number.pipe(S.check(S.isInt(), S.isBetween({ minimum: 0, maximum: 255 }))),
 }) {
-  static is = S.is(Color)
-  static decode = S.decodeUnknownEffect(Color)
-  static decodeSync = S.decodeUnknownSync(Color)
-  static encode = S.encodeUnknownEffect(Color)
-  static encodeSync = S.encodeUnknownSync(Color)
-  static equivalence = S.toEquivalence(Color)
-  static ordered = false as const
-
   override toString() {
     return S.encodeSync(Color.String)(this)
   }

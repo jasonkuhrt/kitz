@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Semver } from '@kitz/semver'
 import { Option, Schema } from 'effect'
 
@@ -54,7 +55,7 @@ export const StandardImpact: Record<StandardValue, Option.Option<BumpType>> = {
 /**
  * A known conventional commit type with its impact composed from StandardImpact.
  */
-export class Standard extends Schema.TaggedClass<Standard>()('Standard', {
+export class Standard extends Sch.TaggedClass<Standard>()('Standard', {
   value: StandardValue,
   impact: Schema.OptionFromNullOr(Semver.BumpType),
 }) {
@@ -66,12 +67,5 @@ export class Standard extends Schema.TaggedClass<Standard>()('Standard', {
       { value: params.value, impact: params.impact ?? StandardImpact[params.value] },
       options,
     )
-  static is = Schema.is(Standard)
-  static decode = Schema.decodeUnknownEffect(Standard)
-  static decodeSync = Schema.decodeUnknownSync(Standard)
-  static encode = Schema.encodeUnknownEffect(Standard)
-  static encodeSync = Schema.encodeUnknownSync(Standard)
-  static equivalence = Schema.toEquivalence(Standard)
-  static ordered = false as const
   static parse = (value: StandardValue) => Standard.make({ value })
 }

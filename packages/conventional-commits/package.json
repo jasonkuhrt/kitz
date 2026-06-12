@@ -32,6 +32,7 @@
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
+    "@kitz/sch": "workspace:*",
     "@kitz/semver": "workspace:*",
     "effect": "catalog:"
   },

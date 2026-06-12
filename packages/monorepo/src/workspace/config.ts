@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Schema as S } from 'effect'
 
 /**
@@ -10,15 +11,7 @@ import { Schema as S } from 'effect'
  * }
  * ```
  */
-export class Config extends S.Class<Config>('WorkspaceConfig')({
+export class Config extends Sch.Class<Config>()('WorkspaceConfig', {
   /** Glob patterns for workspace packages. */
   packages: S.Array(S.String),
-}) {
-  static is = S.is(Config)
-  static decode = S.decodeUnknownEffect(Config)
-  static decodeSync = S.decodeUnknownSync(Config)
-  static encode = S.encodeUnknownEffect(Config)
-  static encodeSync = S.encodeUnknownSync(Config)
-  static equivalence = S.toEquivalence(Config)
-  static ordered = false as const
-}
+}) {}

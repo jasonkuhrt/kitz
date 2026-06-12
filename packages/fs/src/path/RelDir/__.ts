@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { analyze, backPrefix, herePrefix, separator } from '../../path-analyzer/codec-string/__.js'
 import { Segments } from '../types/segments.js'
@@ -16,17 +17,10 @@ const Back = S.Int.pipe(
  * Relative directory location class.
  * Internal implementation - use via RelDir namespace.
  */
-class RelDirClass extends S.TaggedClass<RelDirClass>()('FsPathRelDir', {
+class RelDirClass extends Sch.TaggedClass<RelDirClass>()('FsPathRelDir', {
   back: Back,
   segments: Segments,
 }) {
-  static is = S.is(RelDirClass)
-  static decode = S.decodeUnknownEffect(RelDirClass)
-  static decodeSync = S.decodeUnknownSync(RelDirClass)
-  static encode = S.encodeUnknownEffect(RelDirClass)
-  static encodeSync = S.encodeUnknownSync(RelDirClass)
-  static equivalence = S.toEquivalence(RelDirClass)
-  static ordered = false as const
   override toString() {
     return S.encodeSync(Schema)(this)
   }

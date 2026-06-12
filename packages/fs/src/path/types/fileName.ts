@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Effect, Exit, Match, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { CodecString as Analyzer } from '../../path-analyzer/codec-string/_.js'
 import * as Extension from './extension.js'
@@ -6,18 +7,10 @@ import * as Extension from './extension.js'
  * Schema representing a filename (stem + extension).
  * Used within file path members to represent file information.
  */
-export class FileName extends S.TaggedClass<FileName>()('FileName', {
+export class FileName extends Sch.TaggedClass<FileName>()('FileName', {
   stem: S.String,
   extension: S.NullOr(Extension.Extension),
 }) {
-  static is = S.is(FileName)
-  static decode = S.decodeUnknownEffect(FileName)
-  static decodeSync = S.decodeUnknownSync(FileName)
-  static encode = S.encodeUnknownEffect(FileName)
-  static encodeSync = S.encodeUnknownSync(FileName)
-  static equivalence = S.toEquivalence(FileName)
-  static ordered = false as const
-
   /**
    * Schema for transforming between string and FileName class.
    */

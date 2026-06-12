@@ -27,6 +27,7 @@
 
 import { Str } from '@kitz/core'
 import { Resource } from '@kitz/resource'
+import { Sch } from '@kitz/sch'
 import { SchemaGetter, Schema as S } from 'effect'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -98,20 +99,12 @@ const decodePattern = S.decodeSync(Pattern)
 /**
  * A single gitignore entry (pattern line).
  */
-class Entry extends S.Class<Entry>('GitignoreEntry')({
+class Entry extends Sch.Class<Entry>()('GitignoreEntry', {
   /** The pattern (normalized) */
   pattern: Pattern,
   /** Whether negated with ! prefix */
   negated: S.Boolean,
-}) {
-  static is = S.is(Entry)
-  static decode = S.decodeUnknownEffect(Entry)
-  static decodeSync = S.decodeUnknownSync(Entry)
-  static encode = S.encodeUnknownEffect(Entry)
-  static encodeSync = S.encodeUnknownSync(Entry)
-  static equivalence = S.toEquivalence(Entry)
-  static ordered = false as const
-}
+}) {}
 
 /**
  * A section of entries, optionally preceded by a comment header.
@@ -120,20 +113,12 @@ class Entry extends S.Class<Entry>('GitignoreEntry')({
  * Sections preserve the structure of gitignore files that use
  * comments to organize patterns (e.g., `# Dependencies`).
  */
-class Section extends S.Class<Section>('GitignoreSection')({
+class Section extends Sch.Class<Section>()('GitignoreSection', {
   /** Comment lines (including #), empty array for no header */
   comments: S.Array(S.String),
   /** Entries in this section */
   entries: S.Array(Entry),
-}) {
-  static is = S.is(Section)
-  static decode = S.decodeUnknownEffect(Section)
-  static decodeSync = S.decodeUnknownSync(Section)
-  static encode = S.encodeUnknownEffect(Section)
-  static encodeSync = S.encodeUnknownSync(Section)
-  static equivalence = S.toEquivalence(Section)
-  static ordered = false as const
-}
+}) {}
 
 // ─── Internal Parse/Stringify ─────────────────────────────────────────────────
 
@@ -235,17 +220,10 @@ const toStringGitignore = (gitignore: Gitignore): string => {
  * Git.Gitignore.toString(updated)
  * ```
  */
-export class Gitignore extends S.Class<Gitignore>('Gitignore')({
+export class Gitignore extends Sch.Class<Gitignore>()('Gitignore', {
   /** Sections (patterns grouped by preceding comments) */
   sections: S.Array(Section),
 }) {
-  static is = S.is(Gitignore)
-  static decode = S.decodeUnknownEffect(Gitignore)
-  static decodeSync = S.decodeUnknownSync(Gitignore)
-  static encode = S.encodeUnknownEffect(Gitignore)
-  static encodeSync = S.encodeUnknownSync(Gitignore)
-  static equivalence = S.toEquivalence(Gitignore)
-  static ordered = false as const
   // ─── Internal Types (exposed for advanced use) ─────────────────────────────
 
   /** A single gitignore entry (pattern line). */

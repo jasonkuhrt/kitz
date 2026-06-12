@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Array as A, Option, Record as EffectRecord, Schema as S } from 'effect'
 
 export const SpanStatusCode = S.Literals(['unset', 'ok', 'error'] as const)
@@ -6,7 +7,7 @@ export type SpanStatusCode = typeof SpanStatusCode.Type
 export const PrintSort = S.Literals(['input', 'name', 'start-time'] as const)
 export type PrintSort = typeof PrintSort.Type
 
-export class Glyphs extends S.Class<Glyphs>('OtelGlyphs')({
+export class Glyphs extends Sch.Class<Glyphs>()('OtelGlyphs', {
   branch: S.String,
   last: S.String,
   vertical: S.String,
@@ -14,14 +15,6 @@ export class Glyphs extends S.Class<Glyphs>('OtelGlyphs')({
   statusOk: S.String,
   statusError: S.String,
 }) {
-  static is = S.is(Glyphs)
-  static decode = S.decodeUnknownEffect(Glyphs)
-  static decodeSync = S.decodeUnknownSync(Glyphs)
-  static encode = S.encodeUnknownEffect(Glyphs)
-  static encodeSync = S.encodeUnknownSync(Glyphs)
-  static equivalence = S.toEquivalence(Glyphs)
-  static ordered = false as const
-
   static unicode = Glyphs.make({
     branch: '├─ ',
     last: '└─ ',
@@ -35,7 +28,7 @@ export class Glyphs extends S.Class<Glyphs>('OtelGlyphs')({
     status === 'ok' ? glyphs.statusOk : glyphs.statusError
 }
 
-export class PrintOptions extends S.Class<PrintOptions>('OtelPrintOptions')({
+export class PrintOptions extends Sch.Class<PrintOptions>()('OtelPrintOptions', {
   glyphs: S.optional(Glyphs),
   showAttributes: S.optional(S.Boolean),
   showDuration: S.optional(S.Boolean),
@@ -44,19 +37,11 @@ export class PrintOptions extends S.Class<PrintOptions>('OtelPrintOptions')({
   showStatus: S.optional(S.Boolean),
   showTraceId: S.optional(S.Boolean),
   sort: S.optional(PrintSort),
-}) {
-  static is = S.is(PrintOptions)
-  static decode = S.decodeUnknownEffect(PrintOptions)
-  static decodeSync = S.decodeUnknownSync(PrintOptions)
-  static encode = S.encodeUnknownEffect(PrintOptions)
-  static encodeSync = S.encodeUnknownSync(PrintOptions)
-  static equivalence = S.toEquivalence(PrintOptions)
-  static ordered = false as const
-}
+}) {}
 
 export type PrintOptionsInput = typeof PrintOptions.Encoded
 
-export class Span extends S.Class<Span>('OtelSpan')({
+export class Span extends Sch.Class<Span>()('OtelSpan', {
   traceId: S.String,
   spanId: S.String,
   parentSpanId: S.optional(S.String),
@@ -67,31 +52,15 @@ export class Span extends S.Class<Span>('OtelSpan')({
   endTimeUnixNano: S.optional(S.String),
   statusCode: S.optional(SpanStatusCode),
 }) {
-  static is = S.is(Span)
-  static decode = S.decodeUnknownEffect(Span)
-  static decodeSync = S.decodeUnknownSync(Span)
-  static encode = S.encodeUnknownEffect(Span)
-  static encodeSync = S.encodeUnknownSync(Span)
-  static equivalence = S.toEquivalence(Span)
-  static ordered = false as const
-
   get durationUnixNano() {
     return durationUnixNano(this)
   }
 }
 
-export class Trace extends S.Class<Trace>('OtelTrace')({
+export class Trace extends Sch.Class<Trace>()('OtelTrace', {
   traceId: S.String,
   spans: S.Array(Span),
 }) {
-  static is = S.is(Trace)
-  static decode = S.decodeUnknownEffect(Trace)
-  static decodeSync = S.decodeUnknownSync(Trace)
-  static encode = S.encodeUnknownEffect(Trace)
-  static encodeSync = S.encodeUnknownSync(Trace)
-  static equivalence = S.toEquivalence(Trace)
-  static ordered = false as const
-
   static print(trace: Trace, options?: PrintOptionsInput) {
     return print(trace, options)
   }

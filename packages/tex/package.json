@@ -16,6 +16,7 @@
   "dependencies": {
     "@kitz/color": "workspace:*",
     "@kitz/core": "workspace:*",
+    "@kitz/sch": "workspace:*",
     "@types/node": "^25.9.1",
     "ansis": "catalog:",
     "effect": "catalog:"

@@ -35,6 +35,7 @@
     "@kitz/core": "workspace:*",
     "@kitz/fs": "workspace:*",
     "@kitz/resource": "workspace:*",
+    "@kitz/sch": "workspace:*",
     "@kitz/test": "workspace:*",
     "effect": "catalog:",
     "simple-git": "^3.36.0"

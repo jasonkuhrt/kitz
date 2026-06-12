@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Schema } from 'effect'
 import { TargetSection } from './target-section.js'
 import { Target } from './target.js'
@@ -25,7 +26,7 @@ import { Target } from './target.js'
  * Per-package body for arr.
  * ```
  */
-export class Multi extends Schema.TaggedClass<Multi>()('Multi', {
+export class Multi extends Sch.TaggedClass<Multi>()('Multi', {
   /** Targets with independent type/scope/breaking */
   targets: Schema.NonEmptyArray(Target),
   /** Commit message (first line after type-scope groups) */
@@ -34,12 +35,4 @@ export class Multi extends Schema.TaggedClass<Multi>()('Multi', {
   summary: Schema.OptionFromNullOr(Schema.String),
   /** Per-package sections keyed by scope name */
   sections: Schema.Record(Schema.String, TargetSection),
-}) {
-  static is = Schema.is(Multi)
-  static decode = Schema.decodeUnknownEffect(Multi)
-  static decodeSync = Schema.decodeUnknownSync(Multi)
-  static encode = Schema.encodeUnknownEffect(Multi)
-  static encodeSync = Schema.encodeUnknownSync(Multi)
-  static equivalence = Schema.toEquivalence(Multi)
-  static ordered = false as const
-}
+}) {}

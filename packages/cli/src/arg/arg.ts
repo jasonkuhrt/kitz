@@ -1,4 +1,5 @@
 import { Str, Ts } from '@kitz/core'
+import { Sch } from '@kitz/sch'
 import { Effect, SchemaGetter, Schema as S } from 'effect'
 
 /**
@@ -304,87 +305,47 @@ export function analyze_(input: string): Analysis {
 /**
  * Schema for long flag argument (`--verbose`, `--count=5`).
  */
-class ArgLongFlag extends S.TaggedClass<ArgLongFlag>()('long-flag', {
+class ArgLongFlag extends Sch.TaggedClass<ArgLongFlag>()('long-flag', {
   name: S.String,
   negated: S.Boolean,
   value: S.NullOr(S.String),
   original: S.String,
-}) {
-  static is = S.is(ArgLongFlag)
-  static decode = S.decodeUnknownEffect(ArgLongFlag)
-  static decodeSync = S.decodeUnknownSync(ArgLongFlag)
-  static encode = S.encodeUnknownEffect(ArgLongFlag)
-  static encodeSync = S.encodeUnknownSync(ArgLongFlag)
-  static equivalence = S.toEquivalence(ArgLongFlag)
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Schema for short flag argument (`-v`, `-n=10`).
  */
-class ArgShortFlag extends S.TaggedClass<ArgShortFlag>()('short-flag', {
+class ArgShortFlag extends Sch.TaggedClass<ArgShortFlag>()('short-flag', {
   name: S.String,
   value: S.NullOr(S.String),
   original: S.String,
-}) {
-  static is = S.is(ArgShortFlag)
-  static decode = S.decodeUnknownEffect(ArgShortFlag)
-  static decodeSync = S.decodeUnknownSync(ArgShortFlag)
-  static encode = S.encodeUnknownEffect(ArgShortFlag)
-  static encodeSync = S.encodeUnknownSync(ArgShortFlag)
-  static equivalence = S.toEquivalence(ArgShortFlag)
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Schema for short flag cluster argument (`-abc`, `-xyz=value`).
  *
  * Represents a multi-character short flag that expands into individual flags.
  */
-class ArgShortFlagCluster extends S.TaggedClass<ArgShortFlagCluster>()('short-flag-cluster', {
+class ArgShortFlagCluster extends Sch.TaggedClass<ArgShortFlagCluster>()('short-flag-cluster', {
   flags: S.Array(ArgShortFlag).pipe(S.check(S.isMinLength(2))),
   original: S.String,
-}) {
-  static is = S.is(ArgShortFlagCluster)
-  static decode = S.decodeUnknownEffect(ArgShortFlagCluster)
-  static decodeSync = S.decodeUnknownSync(ArgShortFlagCluster)
-  static encode = S.encodeUnknownEffect(ArgShortFlagCluster)
-  static encodeSync = S.encodeUnknownSync(ArgShortFlagCluster)
-  static equivalence = S.toEquivalence(ArgShortFlagCluster)
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Schema for positional argument (`file.txt`, `123`).
  */
-class ArgPositional extends S.TaggedClass<ArgPositional>()('positional', {
+class ArgPositional extends Sch.TaggedClass<ArgPositional>()('positional', {
   value: S.String,
   original: S.String,
-}) {
-  static is = S.is(ArgPositional)
-  static decode = S.decodeUnknownEffect(ArgPositional)
-  static decodeSync = S.decodeUnknownSync(ArgPositional)
-  static encode = S.encodeUnknownEffect(ArgPositional)
-  static encodeSync = S.encodeUnknownSync(ArgPositional)
-  static equivalence = S.toEquivalence(ArgPositional)
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Schema for separator argument (`--`).
  */
-class ArgSeparator extends S.TaggedClass<ArgSeparator>()('separator', {
+class ArgSeparator extends Sch.TaggedClass<ArgSeparator>()('separator', {
   value: S.Null,
   original: S.Literal('--'),
-}) {
-  static is = S.is(ArgSeparator)
-  static decode = S.decodeUnknownEffect(ArgSeparator)
-  static decodeSync = S.decodeUnknownSync(ArgSeparator)
-  static encode = S.encodeUnknownEffect(ArgSeparator)
-  static encodeSync = S.encodeUnknownSync(ArgSeparator)
-  static equivalence = S.toEquivalence(ArgSeparator)
-  static ordered = false as const
-}
+}) {}
 
 const _ArgSchema = S.Union([
   ArgLongFlag,

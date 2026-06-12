@@ -1,5 +1,6 @@
 import { Arr, Str } from '@kitz/core'
 import { Fs } from '@kitz/fs'
+import { Sch } from '@kitz/sch'
 import { Schema as S } from 'effect'
 
 // ============================================================================
@@ -56,7 +57,7 @@ export type BuilderMethodCategory = typeof BuilderMethodCategory.Type
 /**
  * Code example extracted from JSDoc @example tags.
  */
-export class Example extends S.Class<Example>('Example')({
+export class Example extends Sch.Class<Example>()('Example', {
   /** The source code of the example */
   code: S.String,
   /** Optional title from @example annotation */
@@ -65,27 +66,7 @@ export class Example extends S.Class<Example>('Example')({
   twoslashEnabled: S.Boolean,
   /** Programming language for syntax highlighting */
   language: S.String,
-}) {
-  static get is() {
-    return S.is(Example)
-  }
-  static get decode(): any {
-    return S.decode(Example)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(Example)
-  }
-  static get encode(): any {
-    return S.encode(Example)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(Example)
-  }
-  static get equivalence() {
-    return S.toEquivalence(Example)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Import example for documentation UI.
@@ -93,62 +74,22 @@ export class Example extends S.Class<Example>('Example')({
  * Non-serialized class used for rendering import tabs in documentation.
  * Returned by Entrypoint instance methods to provide structured import examples.
  */
-export class ImportExample extends S.Class<ImportExample>('ImportExample')({
+export class ImportExample extends Sch.Class<ImportExample>()('ImportExample', {
   /** Tab label (e.g., "Namespace", "Barrel") */
   label: S.String,
   /** Import code snippet */
   content: S.String,
-}) {
-  static get is() {
-    return S.is(ImportExample)
-  }
-  static get decode(): any {
-    return S.decode(ImportExample)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(ImportExample)
-  }
-  static get encode(): any {
-    return S.encode(ImportExample)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(ImportExample)
-  }
-  static get equivalence() {
-    return S.toEquivalence(ImportExample)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Source location for "View source" links.
  */
-export class SourceLocation extends S.Class<SourceLocation>('SourceLocation')({
+export class SourceLocation extends Sch.Class<SourceLocation>()('SourceLocation', {
   /** Relative file path from project root - portable across systems */
   file: Fs.Path.RelFile.Schema,
   /** Line number where the export is defined */
   line: S.Number,
-}) {
-  static get is() {
-    return S.is(SourceLocation)
-  }
-  static get decode(): any {
-    return S.decode(SourceLocation)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(SourceLocation)
-  }
-  static get encode(): any {
-    return S.encode(SourceLocation)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(SourceLocation)
-  }
-  static get equivalence() {
-    return S.toEquivalence(SourceLocation)
-  }
-  static ordered = false as const
-}
+}) {}
 
 // ============================================================================
 // Documentation Provenance
@@ -158,59 +99,19 @@ export class SourceLocation extends S.Class<SourceLocation>('SourceLocation')({
  * Provenance for JSDoc-sourced documentation.
  * Tracks whether it came from a shadow namespace or regular JSDoc.
  */
-export class JSDocProvenance extends S.TaggedClass<JSDocProvenance>()('jsdoc', {
+export class JSDocProvenance extends Sch.TaggedClass<JSDocProvenance>()('jsdoc', {
   /** Whether description came from shadow namespace pattern */
   shadowNamespace: S.Boolean,
-}) {
-  static get is() {
-    return S.is(JSDocProvenance)
-  }
-  static get decode(): any {
-    return S.decode(JSDocProvenance)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(JSDocProvenance)
-  }
-  static get encode(): any {
-    return S.encode(JSDocProvenance)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(JSDocProvenance)
-  }
-  static get equivalence() {
-    return S.toEquivalence(JSDocProvenance)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Provenance for markdown file-sourced documentation.
  * Includes file path for "Edit this page" links.
  */
-export class MdFileProvenance extends S.TaggedClass<MdFileProvenance>()('md-file', {
+export class MdFileProvenance extends Sch.TaggedClass<MdFileProvenance>()('md-file', {
   /** Relative path to the source markdown file */
   filePath: Fs.Path.RelFile.Schema,
-}) {
-  static get is() {
-    return S.is(MdFileProvenance)
-  }
-  static get decode(): any {
-    return S.decode(MdFileProvenance)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(MdFileProvenance)
-  }
-  static get encode(): any {
-    return S.encode(MdFileProvenance)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(MdFileProvenance)
-  }
-  static get equivalence() {
-    return S.toEquivalence(MdFileProvenance)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Union of all possible documentation provenance types.
@@ -229,62 +130,22 @@ export namespace Provenance {
  * Documentation content for modules and exports.
  * Groups descriptive and guide content together.
  */
-export class Docs extends S.Class<Docs>('Docs')({
+export class Docs extends Sch.Class<Docs>()('Docs', {
   /** Brief technical description (API reference style) - from JSDoc/shadow */
   description: S.optional(S.String),
   /** Long-form guide/tutorial content (narrative style) - from .md files or @guide tag */
   guide: S.optional(S.String),
-}) {
-  static get is() {
-    return S.is(Docs)
-  }
-  static get decode(): any {
-    return S.decode(Docs)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(Docs)
-  }
-  static get encode(): any {
-    return S.encode(Docs)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(Docs)
-  }
-  static get equivalence() {
-    return S.toEquivalence(Docs)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Landing page feature card.
  */
-export class Feature extends S.Class<Feature>('Feature')({
+export class Feature extends Sch.Class<Feature>()('Feature', {
   /** Feature title (from ## heading) */
   title: S.String,
   /** Feature description (markdown content) */
   body: S.String,
-}) {
-  static get is() {
-    return S.is(Feature)
-  }
-  static get decode(): any {
-    return S.decode(Feature)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(Feature)
-  }
-  static get encode(): any {
-    return S.encode(Feature)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(Feature)
-  }
-  static get equivalence() {
-    return S.toEquivalence(Feature)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Landing page body section (content or exports marker).
@@ -305,7 +166,7 @@ export type BodySection = typeof BodySection.Type
  * Landing page structured content.
  * At least one of hero, highlights, or body must be present (validated during parsing).
  */
-export class Home extends S.Class<Home>('Home')({
+export class Home extends Sch.Class<Home>()('Home', {
   /** Hero section (optional - fallback to module.name if missing) */
   hero: S.optional(
     S.Struct({
@@ -318,91 +179,31 @@ export class Home extends S.Class<Home>('Home')({
   highlights: S.optional(S.Array(Feature)),
   /** Body sections with exports insertion points (optional) */
   body: S.optional(S.Array(BodySection)),
-}) {
-  static get is() {
-    return S.is(Home)
-  }
-  static get decode(): any {
-    return S.decode(Home)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(Home)
-  }
-  static get encode(): any {
-    return S.encode(Home)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(Home)
-  }
-  static get equivalence() {
-    return S.toEquivalence(Home)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Module-specific documentation with landing page support.
  */
-export class ModuleDocs extends S.Class<ModuleDocs>('ModuleDocs')({
+export class ModuleDocs extends Sch.Class<ModuleDocs>()('ModuleDocs', {
   /** Brief technical description */
   description: S.optional(S.String),
   /** Long-form guide content */
   guide: S.optional(S.String),
   /** Landing page content (triggers hero layout) */
   home: S.optional(Home),
-}) {
-  static get is() {
-    return S.is(ModuleDocs)
-  }
-  static get decode(): any {
-    return S.decode(ModuleDocs)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(ModuleDocs)
-  }
-  static get encode(): any {
-    return S.encode(ModuleDocs)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(ModuleDocs)
-  }
-  static get equivalence() {
-    return S.toEquivalence(ModuleDocs)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Provenance tracking for documentation sources.
  * Maps each doc field (description/guide) to its source.
  * Note: home field doesn't need provenance - it can only come from *.home.md files.
  */
-export class DocsProvenance extends S.Class<DocsProvenance>('DocsProvenance')({
+export class DocsProvenance extends Sch.Class<DocsProvenance>()('DocsProvenance', {
   /** Provenance for the description field */
   description: S.optional(Provenance),
   /** Provenance for the guide field */
   guide: S.optional(Provenance),
-}) {
-  static get is() {
-    return S.is(DocsProvenance)
-  }
-  static get decode(): any {
-    return S.decode(DocsProvenance)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(DocsProvenance)
-  }
-  static get encode(): any {
-    return S.encode(DocsProvenance)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(DocsProvenance)
-  }
-  static get equivalence() {
-    return S.toEquivalence(DocsProvenance)
-  }
-  static ordered = false as const
-}
+}) {}
 
 // ============================================================================
 // Signature Models
@@ -418,34 +219,14 @@ export class DocsProvenance extends S.Class<DocsProvenance>('DocsProvenance')({
  * { name: 'T', constraint: 'string', default: "'default'" }
  * ```
  */
-export class TypeParameter extends S.Class<TypeParameter>('TypeParameter')({
+export class TypeParameter extends Sch.Class<TypeParameter>()('TypeParameter', {
   /** Type parameter name (e.g., 'T', 'U', 'Result') */
   name: S.String,
   /** Optional constraint (e.g., 'extends string') */
   constraint: S.optional(S.String),
   /** Optional default value (e.g., '= unknown') */
   default: S.optional(S.String),
-}) {
-  static get is() {
-    return S.is(TypeParameter)
-  }
-  static get decode(): any {
-    return S.decode(TypeParameter)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(TypeParameter)
-  }
-  static get encode(): any {
-    return S.encode(TypeParameter)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(TypeParameter)
-  }
-  static get equivalence() {
-    return S.toEquivalence(TypeParameter)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Function/method parameter.
@@ -461,7 +242,7 @@ export class TypeParameter extends S.Class<TypeParameter>('TypeParameter')({
  * ]
  * ```
  */
-export class Parameter extends S.Class<Parameter>('Parameter')({
+export class Parameter extends Sch.Class<Parameter>()('Parameter', {
   /** Parameter name */
   name: S.String,
   /** Parameter type (as string) */
@@ -474,27 +255,7 @@ export class Parameter extends S.Class<Parameter>('Parameter')({
   defaultValue: S.optional(S.String),
   /** Parameter description from @param JSDoc tag */
   description: S.optional(S.String),
-}) {
-  static get is() {
-    return S.is(Parameter)
-  }
-  static get decode(): any {
-    return S.decode(Parameter)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(Parameter)
-  }
-  static get encode(): any {
-    return S.encode(Parameter)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(Parameter)
-  }
-  static get equivalence() {
-    return S.toEquivalence(Parameter)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Single function signature (one overload).
@@ -513,7 +274,7 @@ export class Parameter extends S.Class<Parameter>('Parameter')({
  * }
  * ```
  */
-export class FunctionSignature extends S.Class<FunctionSignature>('FunctionSignature')({
+export class FunctionSignature extends Sch.Class<FunctionSignature>()('FunctionSignature', {
   /** Generic type parameters */
   typeParameters: S.Array(TypeParameter),
   /** Function parameters */
@@ -524,27 +285,7 @@ export class FunctionSignature extends S.Class<FunctionSignature>('FunctionSigna
   returnDoc: S.optional(S.String),
   /** Error descriptions from @throws JSDoc tags */
   throws: S.Array(S.String),
-}) {
-  static get is() {
-    return S.is(FunctionSignature)
-  }
-  static get decode(): any {
-    return S.decode(FunctionSignature)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(FunctionSignature)
-  }
-  static get encode(): any {
-    return S.encode(FunctionSignature)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(FunctionSignature)
-  }
-  static get equivalence() {
-    return S.toEquivalence(FunctionSignature)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Function signature model supporting multiple overloads.
@@ -565,33 +306,13 @@ export class FunctionSignature extends S.Class<FunctionSignature>('FunctionSigna
  * }
  * ```
  */
-export class FunctionSignatureModel extends S.TaggedClass<FunctionSignatureModel>()(
+export class FunctionSignatureModel extends Sch.TaggedClass<FunctionSignatureModel>()(
   'FunctionSignatureModel',
   {
     /** Function overloads (multiple signatures for same function) */
     overloads: S.Array(FunctionSignature),
   },
-) {
-  static get is() {
-    return S.is(FunctionSignatureModel)
-  }
-  static get decode(): any {
-    return S.decode(FunctionSignatureModel)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(FunctionSignatureModel)
-  }
-  static get encode(): any {
-    return S.encode(FunctionSignatureModel)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(FunctionSignatureModel)
-  }
-  static get equivalence() {
-    return S.toEquivalence(FunctionSignatureModel)
-  }
-  static ordered = false as const
-}
+) {}
 
 /**
  * Builder method on a builder interface.
@@ -626,7 +347,7 @@ export class FunctionSignatureModel extends S.TaggedClass<FunctionSignatureModel
  * }
  * ```
  */
-export class BuilderMethod extends S.Class<BuilderMethod>('BuilderMethod')({
+export class BuilderMethod extends Sch.Class<BuilderMethod>()('BuilderMethod', {
   /** Method name */
   name: S.String,
   /** Method overloads (same structure as function overloads) */
@@ -635,27 +356,7 @@ export class BuilderMethod extends S.Class<BuilderMethod>('BuilderMethod')({
   category: BuilderMethodCategory,
   /** For transform methods, the name of the returned builder type */
   transformsTo: S.optional(S.String),
-}) {
-  static get is() {
-    return S.is(BuilderMethod)
-  }
-  static get decode(): any {
-    return S.decode(BuilderMethod)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(BuilderMethod)
-  }
-  static get encode(): any {
-    return S.encode(BuilderMethod)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(BuilderMethod)
-  }
-  static get equivalence() {
-    return S.toEquivalence(BuilderMethod)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Builder signature model for fluent/builder pattern APIs.
@@ -705,7 +406,7 @@ export class BuilderMethod extends S.Class<BuilderMethod>('BuilderMethod')({
  * }
  * ```
  */
-export class BuilderSignatureModel extends S.TaggedClass<BuilderSignatureModel>()(
+export class BuilderSignatureModel extends Sch.TaggedClass<BuilderSignatureModel>()(
   'BuilderSignatureModel',
   {
     /** The builder type name (e.g., "TestBuilder") */
@@ -719,27 +420,7 @@ export class BuilderSignatureModel extends S.TaggedClass<BuilderSignatureModel>(
     /** Methods that transform to a different builder type */
     transformMethods: S.Array(BuilderMethod),
   },
-) {
-  static get is() {
-    return S.is(BuilderSignatureModel)
-  }
-  static get decode(): any {
-    return S.decode(BuilderSignatureModel)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(BuilderSignatureModel)
-  }
-  static get encode(): any {
-    return S.encode(BuilderSignatureModel)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(BuilderSignatureModel)
-  }
-  static get equivalence() {
-    return S.toEquivalence(BuilderSignatureModel)
-  }
-  static ordered = false as const
-}
+) {}
 
 /**
  * Type signature model (interfaces, type aliases, etc).
@@ -749,30 +430,13 @@ export class BuilderSignatureModel extends S.TaggedClass<BuilderSignatureModel>(
  *
  * Future: Could be expanded to structured form (properties, methods, etc).
  */
-export class TypeSignatureModel extends S.TaggedClass<TypeSignatureModel>()('TypeSignatureModel', {
-  /** Full type text */
-  text: S.String,
-}) {
-  static get is() {
-    return S.is(TypeSignatureModel)
-  }
-  static get decode(): any {
-    return S.decode(TypeSignatureModel)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(TypeSignatureModel)
-  }
-  static get encode(): any {
-    return S.encode(TypeSignatureModel)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(TypeSignatureModel)
-  }
-  static get equivalence() {
-    return S.toEquivalence(TypeSignatureModel)
-  }
-  static ordered = false as const
-}
+export class TypeSignatureModel extends Sch.TaggedClass<TypeSignatureModel>()(
+  'TypeSignatureModel',
+  {
+    /** Full type text */
+    text: S.String,
+  },
+) {}
 
 /**
  * Value signature model (simple const values, primitives).
@@ -786,33 +450,13 @@ export class TypeSignatureModel extends S.TaggedClass<TypeSignatureModel>()('Typ
  * { _tag: 'ValueSignatureModel', type: 'number' }
  * ```
  */
-export class ValueSignatureModel extends S.TaggedClass<ValueSignatureModel>()(
+export class ValueSignatureModel extends Sch.TaggedClass<ValueSignatureModel>()(
   'ValueSignatureModel',
   {
     /** Inferred type of the value */
     type: S.String,
   },
-) {
-  static get is() {
-    return S.is(ValueSignatureModel)
-  }
-  static get decode(): any {
-    return S.decode(ValueSignatureModel)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(ValueSignatureModel)
-  }
-  static get encode(): any {
-    return S.encode(ValueSignatureModel)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(ValueSignatureModel)
-  }
-  static get equivalence() {
-    return S.toEquivalence(ValueSignatureModel)
-  }
-  static ordered = false as const
-}
+) {}
 
 /**
  * Class property.
@@ -832,7 +476,7 @@ export class ValueSignatureModel extends S.TaggedClass<ValueSignatureModel>()(
  * ]
  * ```
  */
-export class ClassProperty extends S.Class<ClassProperty>('ClassProperty')({
+export class ClassProperty extends Sch.Class<ClassProperty>()('ClassProperty', {
   /** Property name */
   name: S.String,
   /** Property type (as string) */
@@ -845,27 +489,7 @@ export class ClassProperty extends S.Class<ClassProperty>('ClassProperty')({
   static: S.Boolean,
   /** Property description from JSDoc */
   description: S.optional(S.String),
-}) {
-  static get is() {
-    return S.is(ClassProperty)
-  }
-  static get decode(): any {
-    return S.decode(ClassProperty)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(ClassProperty)
-  }
-  static get encode(): any {
-    return S.encode(ClassProperty)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(ClassProperty)
-  }
-  static get equivalence() {
-    return S.toEquivalence(ClassProperty)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Class method.
@@ -883,34 +507,14 @@ export class ClassProperty extends S.Class<ClassProperty>('ClassProperty')({
  * ]
  * ```
  */
-export class ClassMethod extends S.Class<ClassMethod>('ClassMethod')({
+export class ClassMethod extends Sch.Class<ClassMethod>()('ClassMethod', {
   /** Method name */
   name: S.String,
   /** Method overloads (same structure as function overloads) */
   overloads: S.Array(FunctionSignature),
   /** Whether method is static */
   static: S.Boolean,
-}) {
-  static get is() {
-    return S.is(ClassMethod)
-  }
-  static get decode(): any {
-    return S.decode(ClassMethod)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(ClassMethod)
-  }
-  static get encode(): any {
-    return S.encode(ClassMethod)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(ClassMethod)
-  }
-  static get equivalence() {
-    return S.toEquivalence(ClassMethod)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Class signature model with structured class information.
@@ -940,7 +544,7 @@ export class ClassMethod extends S.Class<ClassMethod>('ClassMethod')({
  * }
  * ```
  */
-export class ClassSignatureModel extends S.TaggedClass<ClassSignatureModel>()(
+export class ClassSignatureModel extends Sch.TaggedClass<ClassSignatureModel>()(
   'ClassSignatureModel',
   {
     /** Constructor signature (optional - may be implicit) */
@@ -950,27 +554,7 @@ export class ClassSignatureModel extends S.TaggedClass<ClassSignatureModel>()(
     /** Class methods */
     methods: S.Array(ClassMethod),
   },
-) {
-  static get is() {
-    return S.is(ClassSignatureModel)
-  }
-  static get decode(): any {
-    return S.decode(ClassSignatureModel)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(ClassSignatureModel)
-  }
-  static get encode(): any {
-    return S.encode(ClassSignatureModel)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(ClassSignatureModel)
-  }
-  static get equivalence() {
-    return S.toEquivalence(ClassSignatureModel)
-  }
-  static ordered = false as const
-}
+) {}
 
 /**
  * Signature model - tagged union of all signature types.
@@ -1028,7 +612,7 @@ export type ModuleEncoded = {
 /**
  * Module schema implementation.
  */
-export class Module extends S.Class<Module>('Module')({
+export class Module extends Sch.Class<Module>()('Module', {
   /**
    * Source file location relative to project root.
    * Portable across package registry, GitHub repo, local dev, etc.
@@ -1043,25 +627,6 @@ export class Module extends S.Class<Module>('Module')({
   /** All exports in this module */
   exports: S.Array(S.suspend((): S.Codec<Export, ExportEncoded> => Export as any)),
 }) {
-  static get is() {
-    return S.is(Module)
-  }
-  static get decode(): any {
-    return S.decode(Module)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(Module)
-  }
-  static get encode(): any {
-    return S.encode(Module)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(Module)
-  }
-  static get equivalence() {
-    return S.toEquivalence(Module)
-  }
-  static ordered = false as const
   /**
    * Get namespace exports (value exports with type='namespace' and nested module).
    */
@@ -1147,32 +712,12 @@ export type ValueExportEncoded = {
 /**
  * Value export schema implementation.
  */
-export class ValueExport extends S.TaggedClass<ValueExport>('ValueExport')('value', {
+export class ValueExport extends Sch.TaggedClass<ValueExport>('ValueExport')('value', {
   ...BaseExportFields,
   type: ValueExportType,
   /** Nested module for namespace exports */
   module: S.optional(S.suspend((): S.Codec<Module, ModuleEncoded> => Module as any)),
 }) {
-  static get decode(): any {
-    return S.decode(ValueExport)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(ValueExport)
-  }
-  static get encode(): any {
-    return S.encode(ValueExport)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(ValueExport)
-  }
-  static get equivalence() {
-    return S.toEquivalence(ValueExport)
-  }
-  static ordered = false as const
-  static get is() {
-    return S.is(ValueExport)
-  }
-
   /**
    * Get type icon/badge for documentation rendering.
    *
@@ -1195,30 +740,10 @@ export class ValueExport extends S.TaggedClass<ValueExport>('ValueExport')('valu
 /**
  * Type export schema implementation.
  */
-export class TypeExport extends S.TaggedClass<TypeExport>('TypeExport')('type', {
+export class TypeExport extends Sch.TaggedClass<TypeExport>('TypeExport')('type', {
   ...BaseExportFields,
   type: TypeExportType,
 }) {
-  static get decode(): any {
-    return S.decode(TypeExport)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(TypeExport)
-  }
-  static get encode(): any {
-    return S.encode(TypeExport)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(TypeExport)
-  }
-  static get equivalence() {
-    return S.toEquivalence(TypeExport)
-  }
-  static ordered = false as const
-  static get is() {
-    return S.is(TypeExport)
-  }
-
   /**
    * Get type icon/badge for documentation rendering.
    *
@@ -1298,7 +823,7 @@ export type ExportEncoded = ValueExportEncoded | typeof TypeExport.Encoded
  * // Namespace points to src/z.ts, subpath points to src/a.ts → NOT drillable (different files)
  * ```
  */
-export class DrillableNamespaceEntrypoint extends S.TaggedClass<DrillableNamespaceEntrypoint>()(
+export class DrillableNamespaceEntrypoint extends Sch.TaggedClass<DrillableNamespaceEntrypoint>()(
   'DrillableNamespaceEntrypoint',
   {
     /**
@@ -1309,25 +834,6 @@ export class DrillableNamespaceEntrypoint extends S.TaggedClass<DrillableNamespa
     module: Module,
   },
 ) {
-  static get is() {
-    return S.is(DrillableNamespaceEntrypoint)
-  }
-  static get decode(): any {
-    return S.decode(DrillableNamespaceEntrypoint)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(DrillableNamespaceEntrypoint)
-  }
-  static get encode(): any {
-    return S.encode(DrillableNamespaceEntrypoint)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(DrillableNamespaceEntrypoint)
-  }
-  static get equivalence() {
-    return S.toEquivalence(DrillableNamespaceEntrypoint)
-  }
-  static ordered = false as const
   /**
    * Generate import examples for this entrypoint.
    *
@@ -1381,7 +887,7 @@ export class DrillableNamespaceEntrypoint extends S.TaggedClass<DrillableNamespa
 /**
  * Simple entrypoint without special import pattern.
  */
-export class SimpleEntrypoint extends S.TaggedClass<SimpleEntrypoint>()('SimpleEntrypoint', {
+export class SimpleEntrypoint extends Sch.TaggedClass<SimpleEntrypoint>()('SimpleEntrypoint', {
   /**
    * Package export path (key from package.json "exports").
    * Module specifier without extension.
@@ -1391,25 +897,6 @@ export class SimpleEntrypoint extends S.TaggedClass<SimpleEntrypoint>()('SimpleE
   /** The extracted module interface */
   module: Module,
 }) {
-  static get is() {
-    return S.is(SimpleEntrypoint)
-  }
-  static get decode(): any {
-    return S.decode(SimpleEntrypoint)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(SimpleEntrypoint)
-  }
-  static get encode(): any {
-    return S.encode(SimpleEntrypoint)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(SimpleEntrypoint)
-  }
-  static get equivalence() {
-    return S.toEquivalence(SimpleEntrypoint)
-  }
-  static ordered = false as const
   /**
    * Derive PascalCase module name from path.
    * Handles kebab-case conversion properly.
@@ -1472,37 +959,17 @@ export type Entrypoint = typeof Entrypoint.Type
 /**
  * Package metadata.
  */
-export class PackageMetadata extends S.Class<PackageMetadata>('PackageMetadata')({
+export class PackageMetadata extends Sch.Class<PackageMetadata>()('PackageMetadata', {
   /** When the extraction was performed */
   extractedAt: S.Date,
   /** Version of the extractor tool */
   extractorVersion: S.String,
-}) {
-  static get is() {
-    return S.is(PackageMetadata)
-  }
-  static get decode(): any {
-    return S.decode(PackageMetadata)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(PackageMetadata)
-  }
-  static get encode(): any {
-    return S.encode(PackageMetadata)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(PackageMetadata)
-  }
-  static get equivalence() {
-    return S.toEquivalence(PackageMetadata)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Package represents the complete extracted documentation model.
  */
-export class Package extends S.Class<Package>('Package')({
+export class Package extends Sch.Class<Package>()('Package', {
   /** Package name from package.json */
   name: S.String,
   /** Package version from package.json */
@@ -1511,27 +978,7 @@ export class Package extends S.Class<Package>('Package')({
   entrypoints: S.Array(Entrypoint),
   /** Extraction metadata */
   metadata: PackageMetadata,
-}) {
-  static get is() {
-    return S.is(Package)
-  }
-  static get decode(): any {
-    return S.decode(Package)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(Package)
-  }
-  static get encode(): any {
-    return S.encode(Package)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(Package)
-  }
-  static get equivalence() {
-    return S.toEquivalence(Package)
-  }
-  static ordered = false as const
-}
+}) {}
 
 /**
  * The complete interface model output.

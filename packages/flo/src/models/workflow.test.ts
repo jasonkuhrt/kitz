@@ -39,9 +39,6 @@ describe('Flo.WorkflowEvent', () => {
     )
     expect(Workflow.Failed.equivalence(failed, Workflow.Failed.make(failedInput))).toBe(true)
 
-    expect(Workflow.Completed.ordered).toBe(false)
-    expect(Workflow.Failed.ordered).toBe(false)
-
     expect(typeof Workflow.Completed.decode).toBe('function')
     expect(typeof Workflow.Completed.encode).toBe('function')
     expect(typeof Workflow.Failed.decode).toBe('function')

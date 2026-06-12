@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Schema } from 'effect'
 import { Footer } from './footer.js'
 import { Type } from './type.js'
@@ -11,7 +12,7 @@ import { Type } from './type.js'
  * - `feat(core, cli): add feature` (multiple scopes, same type/breaking for all)
  * - `feat(core)!: breaking change` (breaking applies to all scopes)
  */
-export class Single extends Schema.TaggedClass<Single>()('Single', {
+export class Single extends Sch.TaggedClass<Single>()('Single', {
   /** Commit type */
   type: Type,
   /** Package scopes (can be empty, one, or multiple—all get same treatment) */
@@ -24,12 +25,4 @@ export class Single extends Schema.TaggedClass<Single>()('Single', {
   body: Schema.OptionFromNullOr(Schema.String),
   /** Commit footers */
   footers: Schema.Array(Footer),
-}) {
-  static is = Schema.is(Single)
-  static decode = Schema.decodeUnknownEffect(Single)
-  static decodeSync = Schema.decodeUnknownSync(Single)
-  static encode = Schema.encodeUnknownEffect(Single)
-  static encodeSync = Schema.encodeUnknownSync(Single)
-  static equivalence = Schema.toEquivalence(Single)
-  static ordered = false as const
-}
+}) {}

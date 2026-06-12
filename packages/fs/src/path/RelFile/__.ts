@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { analyze, backPrefix, herePrefix, separator } from '../../path-analyzer/codec-string/__.js'
 import { FileName } from '../types/fileName.js'
@@ -17,18 +18,11 @@ const Back = S.Int.pipe(
  * Relative file location class.
  * Internal implementation - use via RelFile namespace.
  */
-class RelFileClass extends S.TaggedClass<RelFileClass>()('FsPathRelFile', {
+class RelFileClass extends Sch.TaggedClass<RelFileClass>()('FsPathRelFile', {
   back: Back,
   segments: Segments,
   fileName: FileName,
 }) {
-  static is = S.is(RelFileClass)
-  static decode = S.decodeUnknownEffect(RelFileClass)
-  static decodeSync = S.decodeUnknownSync(RelFileClass)
-  static encode = S.encodeUnknownEffect(RelFileClass)
-  static encodeSync = S.encodeUnknownSync(RelFileClass)
-  static equivalence = S.toEquivalence(RelFileClass)
-  static ordered = false as const
   override toString() {
     return S.encodeSync(Schema)(this)
   }

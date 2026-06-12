@@ -1,4 +1,5 @@
 import { Obj, Str } from '@kitz/core'
+import { Sch } from '@kitz/sch'
 import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { extractChar, extractStyle } from './ansi.js'
 
@@ -303,7 +304,7 @@ const BoxContentSchema = S.Union([
  *
  * @category Text Formatting
  */
-export class Box extends S.Class<Box>('Box')({
+export class Box extends Sch.Class<Box>()('Box', {
   /**
    * Content of the box - can be a string, styled text, or array of strings/boxes.
    * Defaults to empty string if not provided or undefined.
@@ -363,21 +364,6 @@ export class Box extends S.Class<Box>('Box')({
    */
   gap: S.optional(PropGap.Gap),
 }) {
-  static is = S.is(Box as any) as (value: unknown) => value is Box
-  static get decode(): any {
-    return S.decode(Box as any)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(Box as any)
-  }
-  static get encode(): any {
-    return S.encode(Box as any)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(Box as any)
-  }
-  static equivalence = S.toEquivalence(Box as any)
-  static ordered = false as const
   // Hook storage (private, not part of schema)
   private paddingHooks: Partial<
     Record<keyof PropPadding.Padding, Array<(ctx: any) => number | ((v: number) => number)>>

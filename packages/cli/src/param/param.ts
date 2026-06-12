@@ -1,4 +1,5 @@
 import { Str, Ts } from '@kitz/core'
+import { Sch } from '@kitz/sch'
 import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 
 /**
@@ -175,7 +176,7 @@ const stripeDashPrefix = (name: string): string => {
  * // Error: "A long flag must be two (2) or more characters..."
  * ```
  */
-export class Param extends S.Class<Param>('Param')({
+export class Param extends Sch.Class<Param>()('Param', {
   /**
    * The canonical (primary) name for the flag.
    * Long names take precedence over short names.
@@ -205,13 +206,6 @@ export class Param extends S.Class<Param>('Param')({
    */
   expression: S.String,
 }) {
-  static is = S.is(Param)
-  static decode = S.decodeUnknownEffect(Param)
-  static decodeSync = S.decodeUnknownSync(Param)
-  static encode = S.encodeUnknownEffect(Param)
-  static encodeSync = S.encodeUnknownSync(Param)
-  static equivalence = S.toEquivalence(Param)
-  static ordered = false as const
   /**
    * Schema for parsing from/encoding to string representation.
    * Use this when you need to accept string parameter expressions.

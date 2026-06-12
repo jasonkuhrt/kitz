@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Schema } from 'effect'
 
 // ─── Standard Token ────────────────────────────────────────────
@@ -17,52 +18,20 @@ export type StandardToken = typeof StandardToken.Type
 /**
  * A standard footer with a spec-defined token (e.g., BREAKING CHANGE).
  */
-export class Standard extends Schema.TaggedClass<Standard>()('Standard', {
+export class Standard extends Sch.TaggedClass<Standard>()('Standard', {
   token: StandardToken,
   value: Schema.String,
-}) {
-  static equivalence = Schema.toEquivalence(Standard)
-  static get decode(): any {
-    return Schema.decode(Standard)
-  }
-  static get decodeSync(): any {
-    return Schema.decodeSync(Standard)
-  }
-  static get encode(): any {
-    return Schema.encode(Standard)
-  }
-  static get encodeSync(): any {
-    return Schema.encodeSync(Standard)
-  }
-  static ordered = false as const
-  static is = Schema.is(Standard)
-}
+}) {}
 
 // ─── Custom Footer ─────────────────────────────────────────────
 
 /**
  * A custom footer with a user-defined token (e.g., Fixes, Closes, Reviewed-by).
  */
-export class Custom extends Schema.TaggedClass<Custom>()('Custom', {
+export class Custom extends Sch.TaggedClass<Custom>()('Custom', {
   token: Schema.String,
   value: Schema.String,
-}) {
-  static equivalence = Schema.toEquivalence(Custom)
-  static get decode(): any {
-    return Schema.decode(Custom)
-  }
-  static get decodeSync(): any {
-    return Schema.decodeSync(Custom)
-  }
-  static get encode(): any {
-    return Schema.encode(Custom)
-  }
-  static get encodeSync(): any {
-    return Schema.encodeSync(Custom)
-  }
-  static ordered = false as const
-  static is = Schema.is(Custom)
-}
+}) {}
 
 // ─── Footer Union ──────────────────────────────────────────────
 

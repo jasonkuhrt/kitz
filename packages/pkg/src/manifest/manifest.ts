@@ -2,6 +2,7 @@ import { Moniker } from '#moniker'
 import { Ts } from '@kitz/core'
 import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
+import { Sch } from '@kitz/sch'
 import { Semver } from '@kitz/semver'
 import { Effect, Option, Schema as S } from 'effect'
 import { SemverFromString, type SemverValue } from '../semver-schema.js'
@@ -40,7 +41,7 @@ const Workspaces = S.Struct({
 /**
  * Class schema for package.json manifest
  */
-class ManifestClass extends S.Class<ManifestClass>('Manifest')({
+class ManifestClass extends Sch.Class<ManifestClass>()('Manifest', {
   name: Moniker.FromString.pipe(S.withDecodingDefaultKey(Effect.sync(() => 'unnamed'))),
   version: SemverFromString.pipe(S.withDecodingDefaultKey(Effect.sync(() => '0.0.0'))),
   description: S.optional(S.String),
@@ -67,13 +68,6 @@ class ManifestClass extends S.Class<ManifestClass>('Manifest')({
   packageManager: S.optional(S.String),
   madge: S.optional(S.Unknown),
 }) {
-  static is = S.is(ManifestClass)
-  static decode = S.decodeUnknownEffect(ManifestClass)
-  static decodeSync = S.decodeUnknownSync(ManifestClass)
-  static encode = S.encodeUnknownEffect(ManifestClass)
-  static encodeSync = S.encodeUnknownSync(ManifestClass)
-  static equivalence = S.toEquivalence(ManifestClass)
-  static ordered = false as const
   /**
    * Create a mutable copy of this manifest.
    * Useful when you need to perform multiple mutations efficiently.

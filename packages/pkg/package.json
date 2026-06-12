@@ -49,6 +49,7 @@
     "@kitz/env": "workspace:*",
     "@kitz/fs": "workspace:*",
     "@kitz/resource": "workspace:*",
+    "@kitz/sch": "workspace:*",
     "@kitz/semver": "workspace:*",
     "@vltpkg/semver": "1.0.0-rc.31",
     "effect": "catalog:"

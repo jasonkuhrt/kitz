@@ -69,10 +69,6 @@ describe('Flo.Activity', () => {
     )
     expect(Activity.Failed.equivalence(failed, Activity.Failed.make(failedInput))).toBe(true)
 
-    expect(Activity.Started.ordered).toBe(false)
-    expect(Activity.Completed.ordered).toBe(false)
-    expect(Activity.Failed.ordered).toBe(false)
-
     expect(typeof Activity.Started.decode).toBe('function')
     expect(typeof Activity.Started.encode).toBe('function')
     expect(typeof Activity.Completed.decode).toBe('function')

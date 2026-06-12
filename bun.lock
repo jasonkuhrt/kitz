@@ -49,6 +49,7 @@
         "@kitz/fs": "workspace:*",
         "@kitz/mod": "workspace:*",
         "@kitz/platform": "workspace:*",
+        "@kitz/sch": "workspace:*",
         "effect": "catalog:",
       },
     },
@@ -72,6 +73,7 @@
       "name": "@kitz/color",
       "version": "0.0.0-kitz-release",
       "dependencies": {
+        "@kitz/sch": "workspace:*",
         "effect": "catalog:",
       },
     },
@@ -93,6 +95,7 @@
       "version": "0.0.0-kitz-release",
       "dependencies": {
         "@kitz/core": "workspace:*",
+        "@kitz/sch": "workspace:*",
         "@kitz/semver": "workspace:*",
         "effect": "catalog:",
       },
@@ -154,6 +157,7 @@
       "dependencies": {
         "@kitz/core": "workspace:*",
         "@kitz/graph": "workspace:*",
+        "@kitz/sch": "workspace:*",
         "@kitz/tex": "workspace:*",
         "ansis": "catalog:",
         "effect": "catalog:",
@@ -168,6 +172,7 @@
       "dependencies": {
         "@kitz/core": "workspace:*",
         "@kitz/json": "workspace:*",
+        "@kitz/sch": "workspace:*",
         "effect": "catalog:",
         "tinyglobby": "^0.2.16",
       },
@@ -193,6 +198,7 @@
         "@kitz/core": "workspace:*",
         "@kitz/fs": "workspace:*",
         "@kitz/resource": "workspace:*",
+        "@kitz/sch": "workspace:*",
         "@kitz/test": "workspace:*",
         "effect": "catalog:",
         "simple-git": "^3.36.0",
@@ -337,6 +343,7 @@
         "@kitz/fs": "workspace:*",
         "@kitz/pkg": "workspace:*",
         "@kitz/resource": "workspace:*",
+        "@kitz/sch": "workspace:*",
         "effect": "catalog:",
         "yaml": "^2.9.0",
       },
@@ -388,6 +395,7 @@
       "name": "@kitz/otel",
       "version": "0.0.0-kitz-release",
       "dependencies": {
+        "@kitz/sch": "workspace:*",
         "effect": "catalog:",
       },
     },
@@ -410,6 +418,7 @@
         "@dprint/markdown": "^0.22.1",
         "@kitz/core": "workspace:*",
         "@kitz/fs": "workspace:*",
+        "@kitz/sch": "workspace:*",
         "@kitz/syn": "workspace:*",
         "@microsoft/tsdoc": "^0.16.0",
         "@types/mdast": "^4.0.4",
@@ -431,6 +440,7 @@
         "@kitz/env": "workspace:*",
         "@kitz/fs": "workspace:*",
         "@kitz/resource": "workspace:*",
+        "@kitz/sch": "workspace:*",
         "@kitz/semver": "workspace:*",
         "@vltpkg/semver": "1.0.0-rc.31",
         "effect": "catalog:",
@@ -521,6 +531,7 @@
       "name": "@kitz/semver",
       "version": "0.0.0-kitz-release",
       "dependencies": {
+        "@kitz/sch": "workspace:*",
         "effect": "catalog:",
       },
       "devDependencies": {
@@ -553,6 +564,7 @@
       "dependencies": {
         "@kitz/color": "workspace:*",
         "@kitz/core": "workspace:*",
+        "@kitz/sch": "workspace:*",
         "@types/node": "^25.9.1",
         "ansis": "catalog:",
         "effect": "catalog:",

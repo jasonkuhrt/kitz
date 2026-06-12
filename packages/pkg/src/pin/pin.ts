@@ -1,5 +1,6 @@
 import { Moniker } from '#moniker'
 import { Range as SemverRange } from '#range'
+import { Sch } from '@kitz/sch'
 import { Semver } from '@kitz/semver'
 import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { SemverFromString, SemverSelf } from '../semver-schema.js'
@@ -130,26 +131,10 @@ export type DistTag = typeof DistTag.Type
  *
  * @see {@link https://docs.npmjs.com/cli/v10/configuring-npm/package-json#dependencies | npm dependencies}
  */
-class RangeClass extends S.TaggedClass<RangeClass>()('PinRange', {
+class RangeClass extends Sch.TaggedClass<RangeClass>()('PinRange', {
   name: Moniker.FromString,
   range: SemverRange.Schema,
 }) {
-  static equivalence = S.toEquivalence(RangeClass)
-  static get decode(): any {
-    return S.decode(RangeClass)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(RangeClass)
-  }
-  static get encode(): any {
-    return S.encode(RangeClass)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(RangeClass)
-  }
-  static ordered = false as const
-  static is = S.is(RangeClass)
-
   /**
    * Parse a range pin from string.
    *
@@ -185,26 +170,10 @@ export type Range = RangeClass
  */
 export type Exact = ExactClass
 
-class ExactClass extends S.TaggedClass<ExactClass>()('PinExact', {
+class ExactClass extends Sch.TaggedClass<ExactClass>()('PinExact', {
   name: Moniker.FromString,
   version: SemverSelf,
 }) {
-  static equivalence = S.toEquivalence(ExactClass)
-  static get decode(): any {
-    return S.decode(ExactClass)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(ExactClass)
-  }
-  static get encode(): any {
-    return S.encode(ExactClass)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(ExactClass)
-  }
-  static ordered = false as const
-  static is = S.is(ExactClass)
-
   /**
    * String codec for exact pins.
    *
@@ -272,26 +241,10 @@ export const Exact: typeof ExactClass = ExactClass
  *
  * @see {@link https://docs.npmjs.com/cli/v10/commands/npm-dist-tag | npm dist-tag command}
  */
-export class Tag extends S.TaggedClass<Tag>()('PinTag', {
+export class Tag extends Sch.TaggedClass<Tag>()('PinTag', {
   name: Moniker.FromString,
   tag: DistTag,
 }) {
-  static equivalence = S.toEquivalence(Tag)
-  static get decode(): any {
-    return S.decode(Tag)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(Tag)
-  }
-  static get encode(): any {
-    return S.encode(Tag)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(Tag)
-  }
-  static ordered = false as const
-  static is = S.is(Tag)
-
   /**
    * Parse a tag pin from string.
    *
@@ -319,26 +272,10 @@ export class Tag extends S.TaggedClass<Tag>()('PinTag', {
  * @see {@link https://bun.sh/docs/install/workspaces | Bun workspaces}
  * @see {@link https://yarnpkg.com/features/workspaces#publishing-workspaces | Yarn workspace protocol}
  */
-class WorkspaceClass extends S.TaggedClass<WorkspaceClass>()('PinWorkspace', {
+class WorkspaceClass extends Sch.TaggedClass<WorkspaceClass>()('PinWorkspace', {
   name: Moniker.FromString,
   range: WorkspaceRange,
 }) {
-  static equivalence = S.toEquivalence(WorkspaceClass)
-  static get decode(): any {
-    return S.decode(WorkspaceClass)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(WorkspaceClass)
-  }
-  static get encode(): any {
-    return S.encode(WorkspaceClass)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(WorkspaceClass)
-  }
-  static ordered = false as const
-  static is = S.is(WorkspaceClass)
-
   /**
    * Parse a workspace pin from string.
    *
@@ -374,7 +311,7 @@ export type Workspace = WorkspaceClass
  *
  * @see {@link https://docs.npmjs.com/cli/v10/configuring-npm/package-json#git-urls-as-dependencies | npm git URLs}
  */
-class GitClass extends S.TaggedClass<GitClass>()('PinGit', {
+class GitClass extends Sch.TaggedClass<GitClass>()('PinGit', {
   name: Moniker.FromString,
   /** Full git URL including protocol. */
   url: S.String,
@@ -383,22 +320,6 @@ class GitClass extends S.TaggedClass<GitClass>()('PinGit', {
   /** Semver range for git tags (used with #semver: fragment). */
   semver: S.OptionFromUndefinedOr(SemverRange.Schema),
 }) {
-  static equivalence = S.toEquivalence(GitClass)
-  static get decode(): any {
-    return S.decode(GitClass)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(GitClass)
-  }
-  static get encode(): any {
-    return S.encode(GitClass)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(GitClass)
-  }
-  static ordered = false as const
-  static is = S.is(GitClass)
-
   /**
    * Parse a git pin from string.
    *
@@ -431,27 +352,11 @@ export type Git = GitClass
  *
  * @see {@link https://docs.npmjs.com/cli/v10/configuring-npm/package-json#local-paths | npm local paths}
  */
-export class Path extends S.TaggedClass<Path>()('PinPath', {
+export class Path extends Sch.TaggedClass<Path>()('PinPath', {
   name: Moniker.FromString,
   /** Relative or absolute filesystem path. */
   path: S.String,
 }) {
-  static equivalence = S.toEquivalence(Path)
-  static get decode(): any {
-    return S.decode(Path)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(Path)
-  }
-  static get encode(): any {
-    return S.encode(Path)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(Path)
-  }
-  static ordered = false as const
-  static is = S.is(Path)
-
   /**
    * Parse a path pin from string.
    *
@@ -478,27 +383,11 @@ export class Path extends S.TaggedClass<Path>()('PinPath', {
  *
  * @see {@link https://docs.npmjs.com/cli/v10/configuring-npm/package-json#urls-as-dependencies | npm URLs}
  */
-export class Url extends S.TaggedClass<Url>()('PinUrl', {
+export class Url extends Sch.TaggedClass<Url>()('PinUrl', {
   name: Moniker.FromString,
   /** Full URL to the tarball. */
   url: S.String,
 }) {
-  static equivalence = S.toEquivalence(Url)
-  static get decode(): any {
-    return S.decode(Url)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(Url)
-  }
-  static get encode(): any {
-    return S.encode(Url)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(Url)
-  }
-  static ordered = false as const
-  static is = S.is(Url)
-
   /**
    * Parse a URL pin from string.
    *
@@ -527,7 +416,7 @@ export class Url extends S.TaggedClass<Url>()('PinUrl', {
  *
  * @see {@link https://docs.npmjs.com/cli/v10/configuring-npm/package-json#npm-aliases | npm aliases}
  */
-export class Alias extends S.TaggedClass<Alias>()('PinAlias', {
+export class Alias extends Sch.TaggedClass<Alias>()('PinAlias', {
   /** The alias name (what you import as). */
   name: Moniker.FromString,
   /** The actual package being installed. */
@@ -535,22 +424,6 @@ export class Alias extends S.TaggedClass<Alias>()('PinAlias', {
   /** Version specifier for the target package (range or tag). */
   targetSpecifier: S.String,
 }) {
-  static equivalence = S.toEquivalence(Alias)
-  static get decode(): any {
-    return S.decode(Alias)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(Alias)
-  }
-  static get encode(): any {
-    return S.encode(Alias)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(Alias)
-  }
-  static ordered = false as const
-  static is = S.is(Alias)
-
   /**
    * Parse an alias pin from string.
    *

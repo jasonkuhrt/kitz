@@ -101,11 +101,11 @@ export const Class =
  * ```
  */
 export const TaggedClass =
-  <Self = never, Brand = {}>() =>
+  <Self = never, Brand = {}>(identifier?: string) =>
   <Tag extends string, const Fields extends S.Struct.Fields>(
     tag: Tag,
     fields: Fields,
     annotations?: S.Annotations.Declaration<Self, readonly [S.TaggedStruct<Tag, Fields>]>,
   ): S.Class<Self, S.TaggedStruct<Tag, Fields>, Brand> &
     DomainStatics<S.Class<Self, S.TaggedStruct<Tag, Fields>, Brand>> =>
-    withDomainStatics(S.TaggedClass<Self, Brand>()(tag, fields, annotations) as AnyClass)
+    withDomainStatics(S.TaggedClass<Self, Brand>(identifier)(tag, fields, annotations) as AnyClass)

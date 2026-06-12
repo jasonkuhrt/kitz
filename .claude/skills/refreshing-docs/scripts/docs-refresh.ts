@@ -69,14 +69,14 @@ interface ModuleInfo {
 
 /**
  * Parse core/src/index.ts to extract namespace exports.
- * Pattern: `export { Namespace } from './dir/_.js'`
+ * Pattern: `export { Namespace } from '#dir'`
  */
 const getCoreModules = (): ModuleInfo[] => {
   const indexPath = path.join(corePackageSrcDir, 'index.ts')
   const content = fs.readFileSync(indexPath, 'utf-8')
 
   const modules: ModuleInfo[] = []
-  const regex = /export\s*\{\s*(\w+)\s*\}\s*from\s*'\.\/(\w+)\/_.js'/g
+  const regex = /^export\s*\{\s*(\w+)\s*\}\s*from\s*'#(\w+)'/gm
 
   let match
   while ((match = regex.exec(content)) !== null) {

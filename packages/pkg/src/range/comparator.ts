@@ -1,4 +1,5 @@
 import { Lang } from '@kitz/core'
+import { Sch } from '@kitz/sch'
 import { SchemaGetter, Schema as S } from 'effect'
 import type { SemverValue } from '../semver-schema.js'
 import { SemverSelf } from '../semver-schema.js'
@@ -9,26 +10,10 @@ import { Operator } from './operator.js'
  *
  * Represents one atomic comparison in a range expression.
  */
-class ComparatorClass extends S.Class<ComparatorClass>('PkgRangeComparator')({
+class ComparatorClass extends Sch.Class<ComparatorClass>()('PkgRangeComparator', {
   operator: Operator,
   version: SemverSelf,
 }) {
-  static equivalence = S.toEquivalence(ComparatorClass)
-  static ordered = false as const
-  static is = S.is(ComparatorClass)
-  static get decode(): any {
-    return S.decode(ComparatorClass)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(ComparatorClass)
-  }
-  static get encode(): any {
-    return S.encode(ComparatorClass)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(ComparatorClass)
-  }
-
   static render = (c: ComparatorClass): string => {
     const v = c.version
     const prerelease = v._tag === 'SemverPreRelease' ? `-${v.prerelease.join('.')}` : ''
