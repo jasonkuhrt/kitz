@@ -64,8 +64,8 @@ describe('ast helpers', () => {
 
     expect(valueSchema).toBeDefined()
     expect(nameSchema).toBeDefined()
-    expect(S.decodeUnknownSync(valueSchema! as S.Decoder<string, never>)('demo')).toBe('demo')
-    expect(S.decodeUnknownSync(nameSchema! as S.Decoder<string, never>)('demo')).toBe('demo')
+    expect(S.decodeUnknownSync(valueSchema! as S.Decoder<string>)('demo')).toBe('demo')
+    expect(S.decodeUnknownSync(nameSchema! as S.Decoder<string>)('demo')).toBe('demo')
     expect(AST.getFieldSchema(Tagged, 'missing')).toBeUndefined()
   })
 

@@ -119,7 +119,7 @@ Test.property(
     if (!needle.includes(' ') && Fuzzy.hasMatch(needle, haystack)) {
       const pos = Option.getOrThrow(Fuzzy.positions(needle, haystack))
       for (let i = 0; i < needle.length; i++) {
-        expect(haystack[pos[i]!]!.toLowerCase()).toBe(needle[i]!.toLowerCase())
+        expect(haystack[pos[i]].toLowerCase()).toBe(needle[i].toLowerCase())
       }
     }
   },

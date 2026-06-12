@@ -282,7 +282,7 @@ describe('candidate-count heuristic', () => {
     const largeTarget = largeSet.find((r) => r.candidate.text === 'configReload')
     expect(largeTarget).toBeDefined()
 
-    const smallScore = smallSet[0]!.score
+    const smallScore = smallSet[0].score
     const largeScore = largeTarget!.score
 
     // Large set should have a lower score due to assignment penalty

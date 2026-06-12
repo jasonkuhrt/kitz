@@ -398,7 +398,7 @@ const makeService = (state: NpmCliMemoryState, fs: FileSystem.FileSystem): NpmCl
           yield* Ref.update(state.published, (published) => ({
             ...published,
             [packageName]: published[packageName]?.includes(version)
-              ? published[packageName]!
+              ? published[packageName]
               : [...(published[packageName] ?? []), version],
           }))
           yield* Ref.update(state.distTags, (distTags) => ({

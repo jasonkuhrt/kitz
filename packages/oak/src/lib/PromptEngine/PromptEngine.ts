@@ -113,7 +113,7 @@ export namespace PromptEngine {
       const initialState = args.initialState
       refresh(initialState)
 
-      return (yield* pipe(
+      return yield* pipe(
         channels.readKeyPresses(),
         Stream.takeUntil(
           (value) => !Exit.isExit(value) && args.skippable && value.name === `escape`,
@@ -141,8 +141,8 @@ export namespace PromptEngine {
           cleanup()
           return Effect.void
         }),
-      )) as Ret
-    }) as Effect.Effect<Ret>
+      )
+    })
   }
 
   export interface Channels {

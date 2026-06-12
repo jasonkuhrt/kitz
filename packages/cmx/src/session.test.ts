@@ -343,6 +343,6 @@ describe('Session — Search slot source triggering', () => {
     // Push a query character — should trigger search source
     const res = session.queryPush('a')
     expect(res.choices.length).toBe(2)
-    expect(res.choices[0]!.token).toBe('a result 1')
+    expect(res.choices[0].token).toBe('a result 1')
   })
 })

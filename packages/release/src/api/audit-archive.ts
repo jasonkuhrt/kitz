@@ -18,7 +18,7 @@ export interface AuditArchiveBundle {
 const encoder = new TextEncoder()
 
 const asArrayBufferBytes = (bytes: Uint8Array): Uint8Array<ArrayBuffer> => {
-  const copy = new Uint8Array<ArrayBuffer>(new ArrayBuffer(bytes.byteLength))
+  const copy = new Uint8Array(new ArrayBuffer(bytes.byteLength))
   copy.set(bytes)
   return copy
 }

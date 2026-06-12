@@ -437,7 +437,6 @@ export const buildPreviewForecast = (params: {
 
 type PrPreviewRequirements =
   | Effect.Services<ReturnType<typeof Config.load>>
-  | Effect.Services<ReturnType<typeof Analyzer.Workspace.resolvePackages>>
   | Effect.Services<ReturnType<typeof Explorer.resolvePullRequestContext>>
   | Effect.Services<ReturnType<typeof Explorer.exploreFromContext>>
   | Effect.Services<ReturnType<typeof Analyzer.analyze>>

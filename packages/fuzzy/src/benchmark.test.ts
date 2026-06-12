@@ -110,7 +110,7 @@ const getBenchResult = (
   bench: Bench,
   taskName: string,
 ): { mean: number; p99: number; hz: number } => {
-  const result = bench.getTask(taskName)!.result!
+  const result = bench.getTask(taskName)!.result
 
   if (result.state !== 'completed') {
     throw new Error(`Expected benchmark task ${taskName} to complete`)

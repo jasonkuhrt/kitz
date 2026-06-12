@@ -12,7 +12,7 @@ beforeEach(() => {
       if (args.length === 0) {
         super(fixedTime)
       } else {
-        super(...(args as ConstructorParameters<typeof RealDate>))
+        super(...args)
       }
     }
     static override now() {

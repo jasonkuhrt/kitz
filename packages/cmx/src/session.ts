@@ -56,7 +56,7 @@ const buildScopedCompositeEffect = (
     const stepEffect =
       step.capability._tag === 'Capability'
         ? step.capability.execute
-        : buildScopedCompositeEffect(step.capability as CapabilityComposite, scopedValues, layers)
+        : buildScopedCompositeEffect(step.capability, scopedValues, layers)
 
     return buildExecutableEffect(stepEffect, scopedValues, layers)
   })
