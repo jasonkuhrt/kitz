@@ -374,7 +374,7 @@ const makeService = (state: NpmCliMemoryState, fs: FileSystem.FileSystem): NpmCl
         const blocked = yield* Ref.get(state.failPublishPackages)
         if (isBlocked(blocked, packageName, options.tarball)) {
           const subject = packageName ?? tarballBasename(options.tarball)
-          return yield* Effect.fail(
+          yield* Effect.fail(
             new NpmCliError({
               context: {
                 operation: 'publish',

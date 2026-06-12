@@ -66,10 +66,12 @@ const prPreview = Command.make(
             )
             yield* Console.log(`Comment: ${previewResult.failure.commentUrl}`)
           }
-          return yield* failWith('Blocking release preview issues remain.')
+          yield* failWith('Blocking release preview issues remain.')
+          return
         }
 
-        return yield* Effect.fail(previewResult.failure)
+        yield* Effect.fail(previewResult.failure)
+        return
       }
 
       if (previewResult.success._tag === 'checked') {
@@ -121,13 +123,14 @@ const prTitleApply = Command.make('apply', {}, () =>
 
     const token = env.vars['GITHUB_TOKEN']
     if (!token || token.trim() === '') {
-      return yield* Effect.fail(
+      yield* Effect.fail(
         new Github.GithubConfigError({
           context: {
             detail: 'GITHUB_TOKEN is required to apply PR title updates.',
           },
         }),
       )
+      return
     }
 
     const updated = yield* Effect.gen(function* () {

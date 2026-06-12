@@ -112,7 +112,8 @@ const loadRawConfig = (
         const content = yield* fs.readFileString(Fs.Path.toString(result.path))
         return yield* decodeJsonUnknown(content)
       }
-      case 'PackageJson': {
+      // 'PackageJson'
+      default: {
         const content = yield* fs.readFileString(Fs.Path.toString(result.path))
         const pkg = yield* decodeJsonObject(content)
         return pkg[result.field]

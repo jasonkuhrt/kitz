@@ -72,11 +72,15 @@ export const BuildId = S.String.pipe(
 export type BuildId = typeof BuildId.Type
 
 /**
- * Array of build identifiers (can be empty).
+ * Non-empty array of build identifiers.
+ *
+ * Non-empty by construction: `build: []` and an absent `build` would encode
+ * to the same string but decode to different values, so the empty form is
+ * unrepresentable (absence is expressed by omitting the optional field).
  */
-export const BuildIds = S.Array(BuildId).annotate({
+export const BuildIds = S.NonEmptyArray(BuildId).annotate({
   identifier: 'BuildIds',
-  description: 'Array of build metadata identifiers',
+  description: 'Non-empty array of build metadata identifiers',
 })
 
 export type BuildIds = typeof BuildIds.Type

@@ -469,8 +469,8 @@ const renderTemplateValue = (value: unknown): string => {
   return JSON.stringify(value)
 }
 
-const defaultTemplateHandler = <$State extends State, $CallArgs extends unknown[]>(
-  call: (state: $State, ...args: $CallArgs) => $State | void,
+const defaultTemplateHandler = <$State extends State>(
+  call: (state: $State, ...args: any[]) => $State | void,
 ) => {
   return (state: $State, strings: TemplateStringsArray, ...values: unknown[]) => {
     const result = strings.reduce((acc, s, i) => acc + s + renderTemplateValue(values[i]), ``)
@@ -479,9 +479,7 @@ const defaultTemplateHandler = <$State extends State, $CallArgs extends unknown[
   }
 }
 
-const defaultMutableTemplateHandler = <$CallArgs extends unknown[]>(
-  call: (...args: $CallArgs) => void,
-) => {
+const defaultMutableTemplateHandler = (call: (...args: any[]) => void) => {
   return (strings: TemplateStringsArray, ...values: unknown[]) => {
     const result = strings.reduce((acc, s, i) => acc + s + renderTemplateValue(values[i]), ``) // Pass interpolated string to call handler (assumes call takes single string arg)
     ;(call as any)(result)

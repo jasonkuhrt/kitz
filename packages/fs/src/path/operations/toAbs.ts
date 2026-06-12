@@ -1,4 +1,5 @@
-/* oxlint-disable typescript-eslint(no-unnecessary-type-assertion) -- branded conditional path return types require explicit assertions; oxlint misidentifies them as redundant. */
+/* oxlint-disable typescript/no-unnecessary-type-parameters -- Single-use type parameters bind literal path strings into branded conditional return types; inlining them widens the public API. */
+/* oxlint-disable typescript/no-unnecessary-type-assertion -- branded conditional path return types require explicit assertions; oxlint misidentifies them as redundant. */
 import { Match } from 'effect'
 import type { $Abs } from '../$Abs/_.js'
 import type { $Rel } from '../$Rel/_.js'

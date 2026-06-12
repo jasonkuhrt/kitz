@@ -657,7 +657,7 @@ export const builder = (): Builder => {
     addLine(`| - | - |`)
     for (const [key, value] of entries) {
       const valueStr =
-        typeof value === 'object' && '__markdownFormatted' in value ? value.content : String(value)
+        typeof value === 'object' && '__markdownFormatted' in value ? value.content : value
       addLine(`| **${key}** | ${valueStr} |`)
     }
     return builderFn

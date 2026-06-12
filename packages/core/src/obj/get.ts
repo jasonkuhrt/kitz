@@ -143,10 +143,7 @@ const toKeys = <obj extends object>(obj: obj): (keyof obj)[] => Object.keys(obj)
  * getValueAtPath(obj, ['a', 'x'])  // undefined
  * ```
  */
-export const getValueAtPath = <$T, ___Path extends readonly string[]>(
-  obj: $T,
-  path: ___Path,
-): any => {
+export const getValueAtPath = (obj: unknown, path: readonly string[]): any => {
   let current: any = obj
 
   for (const key of path) {

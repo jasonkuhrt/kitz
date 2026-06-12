@@ -410,10 +410,6 @@ ${bold(b(`Examples`))}
 }
 
 const isParseError = (value: unknown): value is ParseError => value instanceof Error
-const getError = <$T>(value: unknown): null | $T => {
-  if (value instanceof Error) return value as any
-  return null
-}
 
 export function renderSyntaxError(input: {
   errPatterns: (ParseError | Parsed)[]
@@ -428,7 +424,7 @@ export function renderSyntaxError(input: {
   let message
 
   if (!multipleInputs) {
-    const e = getError<ParseError>(badOnes[0]!)
+    const e = badOnes[0]
     const pattern = e?.context.pattern
     const hint = e?.context.hint ? `. ${e.context.hint}` : ``
     message = `Your log filter's pattern${foundIn} was invalid: "${Lang.colorize(
@@ -436,7 +432,7 @@ export function renderSyntaxError(input: {
       pattern ?? '',
     )}${hint}"\n\n${renderSyntaxManual()}`
   } else if (!multipleErrors) {
-    const e = getError<ParseError>(badOnes[0]!)
+    const e = badOnes[0]
     const pattern = e?.context.pattern
     const hint = e?.context.hint ? `. ${e.context.hint}` : ``
     message = `One of the patterns in your log filter${foundIn} was invalid: "${Lang.colorize(

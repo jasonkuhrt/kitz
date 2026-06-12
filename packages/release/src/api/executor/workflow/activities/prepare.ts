@@ -22,7 +22,7 @@ const assertRehearsedArtifactExists = (release: ReleaseInfo, planDigest: string 
     const artifactPath = artifact.toString()
     const exists = yield* Fs.exists(artifact).pipe(Effect.orElseSucceed(() => false))
     if (!exists) {
-      return yield* Effect.fail(
+      yield* Effect.fail(
         new PublishError({
           context: {
             package: release.package.path,
@@ -34,7 +34,7 @@ const assertRehearsedArtifactExists = (release: ReleaseInfo, planDigest: string 
 
     const bytes = yield* Fs.read(artifact)
     if (bytes.length === 0) {
-      return yield* Effect.fail(
+      yield* Effect.fail(
         new PublishError({
           context: {
             package: release.package.path,

@@ -1,4 +1,4 @@
-/* oxlint-disable typescript-eslint(no-unnecessary-type-assertion) -- branded filesystem helpers need explicit assertions to preserve generic location types across Effect/platform boundaries. */
+/* oxlint-disable typescript/no-unnecessary-type-assertion -- branded filesystem helpers need explicit assertions to preserve generic location types across Effect/platform boundaries. */
 /**
  * Type-safe filesystem operations using FsLoc types.
  *
@@ -702,7 +702,7 @@ export const write: {
     }
 
     // Exhaustive check
-    Lang.neverCase(loc)
+    return Lang.neverCase(loc)
   })) as any
 
 /**

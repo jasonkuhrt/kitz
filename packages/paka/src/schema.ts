@@ -731,7 +731,8 @@ export class ValueExport extends Sch.TaggedClass<ValueExport>('ValueExport')('va
         return 'C'
       case 'class':
         return 'Class'
-      case 'namespace':
+      // 'namespace'
+      default:
         return 'NS'
     }
   }
@@ -759,7 +760,8 @@ export class TypeExport extends Sch.TaggedClass<TypeExport>('TypeExport')('type'
         return 'E'
       case 'union':
         return 'U'
-      case 'intersection':
+      // 'intersection'
+      default:
         return '∩'
     }
   }

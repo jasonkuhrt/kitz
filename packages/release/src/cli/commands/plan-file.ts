@@ -123,7 +123,8 @@ export const loadCommandPlan = (
         return state
       case 'PlanMissing':
         return yield* failWith(...formatMissingPlanMessage(state))
-      case 'PlanInvalid':
+      // 'PlanInvalid'
+      default:
         return yield* failWith(...formatInvalidPlanMessage(state))
     }
   })

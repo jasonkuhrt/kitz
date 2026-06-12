@@ -36,7 +36,8 @@ const matrixVerify = Command.make('verify', {}, () =>
       for (const row of incomplete) {
         b`incomplete row: ${row.capability}`
       }
-      return yield* failWith(b.render())
+      yield* failWith(b.render())
+      return
     }
 
     yield* Console.log(`Publishing capability matrix verified (${rows.length} capabilities).`)

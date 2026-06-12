@@ -34,10 +34,8 @@ describe('Flo.WorkflowEvent', () => {
     expect(Workflow.Completed.encodeSync(completed)).toEqual(completedInput)
     expect(Workflow.Failed.encodeSync(failed)).toEqual(failedInput)
 
-    expect(Workflow.Completed.equivalence(completed, Workflow.Completed.make(completedInput))).toBe(
-      true,
-    )
-    expect(Workflow.Failed.equivalence(failed, Workflow.Failed.make(failedInput))).toBe(true)
+    expect(Workflow.Completed.equals(completed, Workflow.Completed.make(completedInput))).toBe(true)
+    expect(Workflow.Failed.equals(failed, Workflow.Failed.make(failedInput))).toBe(true)
 
     expect(typeof Workflow.Completed.decode).toBe('function')
     expect(typeof Workflow.Completed.encode).toBe('function')

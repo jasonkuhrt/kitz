@@ -1,3 +1,4 @@
+/* oxlint-disable typescript/no-unnecessary-type-parameters -- Single-use type parameters bind literal path strings into branded conditional return types; inlining them widens the public API. */
 import { Ts } from '@kitz/core'
 import { Schema as S } from 'effect'
 import type { CodecString as Analyzer } from '../path-analyzer/codec-string/_.js'

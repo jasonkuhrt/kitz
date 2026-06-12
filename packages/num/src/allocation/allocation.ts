@@ -1,3 +1,5 @@
+import { Lang } from '@kitz/core'
+
 /**
  * Rounding mode for allocation results.
  */
@@ -24,6 +26,8 @@ const applyRounding = (value: number, mode: RoundingMode): number => {
       return Math.round(value)
     case 'none':
       return value
+    default:
+      return Lang.neverCase(mode)
   }
 }
 

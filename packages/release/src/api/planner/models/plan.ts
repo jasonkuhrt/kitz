@@ -36,7 +36,8 @@ const matchesLifecycle = <$lifecycle extends Lifecycle>(
       return Official.is(item)
     case 'candidate':
       return Candidate.is(item)
-    case 'ephemeral':
+    // 'ephemeral'
+    default:
       return Ephemeral.is(item)
   }
 }

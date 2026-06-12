@@ -68,6 +68,11 @@ const MESSAGE_IDS = {
   subpathImportsIntegrityNoTypesField: `subpathImportsIntegrityNoTypesField`,
   subpathImportsIntegrityConditionMismatch: `subpathImportsIntegrityConditionMismatch`,
   subpathImportsIntegrityTsconfigDrift: `subpathImportsIntegrityTsconfigDrift`,
+  boundaryContractImportsMismatch: `boundaryContractImportsMismatch`,
+  boundaryContractForbiddenValueImport: `boundaryContractForbiddenValueImport`,
+  boundaryContractForbiddenContent: `boundaryContractForbiddenContent`,
+  boundaryContractMissingContent: `boundaryContractMissingContent`,
+  boundaryContractMissingFile: `boundaryContractMissingFile`,
   resolverPlatformDispatchRuntimeProbe: `resolverPlatformDispatchRuntimeProbe`,
   resolverPlatformDispatchDirectImport: `resolverPlatformDispatchDirectImport`,
   schemaParsingContractReleaseTagCodec: `schemaParsingContractReleaseTagCodec`,
@@ -129,6 +134,11 @@ const MESSAGES = {
   [MESSAGE_IDS.subpathImportsIntegrityNoTypesField]: `Do not declare package.json types metadata; rely on colocated .d.ts resolution from published build output.`,
   [MESSAGE_IDS.subpathImportsIntegrityConditionMismatch]: `Conditional import target filename does not match its condition key (e.g. browser condition should target *.browser.* file).`,
   [MESSAGE_IDS.subpathImportsIntegrityTsconfigDrift]: `tsconfig.json paths have drifted from package.json imports. Auto-fixing.`,
+  [MESSAGE_IDS.boundaryContractImportsMismatch]: `Module imports violate this module's boundary contract. Expected exactly: {{expected}}. Found: {{actual}}. Keep the module's direct dependencies limited to its declared collaborators and delegate other concerns to its submodules.`,
+  [MESSAGE_IDS.boundaryContractForbiddenValueImport]: `Value import of '{{specifier}}' crosses a forbidden module boundary. Depend on the boundary's public contract instead of reaching into the forbidden module. Type-only imports remain allowed.`,
+  [MESSAGE_IDS.boundaryContractForbiddenContent]: `Module contains content forbidden by its boundary contract: {{pattern}}. Delegate this concern across the module boundary instead of implementing or referencing it here.`,
+  [MESSAGE_IDS.boundaryContractMissingContent]: `Module is missing content required by its boundary contract: {{pattern}}. The contract pins this module to that delegation; restore it or change the contract deliberately.`,
+  [MESSAGE_IDS.boundaryContractMissingFile]: `Module boundary contract requires a file named '{{fileName}}' under this module's directory.`,
   [MESSAGE_IDS.resolverPlatformDispatchRuntimeProbe]: `Move platform selection to package imports/resolver dispatch via a stable #platform:* alias instead of runtime probing.`,
   [MESSAGE_IDS.resolverPlatformDispatchDirectImport]: `Move platform selection to package imports/resolver dispatch via a stable #platform:* alias instead of direct platform-specific imports.`,
   [MESSAGE_IDS.schemaParsingContractReleaseTagCodec]: `Exact release tags must decode through Pkg.Pin.Exact.FromString, not ad hoc parseExactReleaseTag/decodeExactReleaseTag helpers.`,
@@ -3890,6 +3900,242 @@ const buildStaticsFix = (classNode, className, missingStatics) => {
   }
 }
 
+/**
+ * @typedef {object} BoundaryContractImports
+ * @property {string[]=} ignorePrefixes — import specifier prefixes excluded from the exact-list comparison
+ * @property {string[]} exactly — the exact ordered list of remaining import specifiers the module must have
+ */
+
+/**
+ * @typedef {object} BoundaryContract
+ * @property {string[]} files — glob patterns (suffix-matched against the absolute file path) selecting the files this contract governs
+ * @property {BoundaryContractImports=} imports — exact-import-list policy (covers value and type imports with a from clause)
+ * @property {string[]=} forbiddenValueImports — import specifiers banned as value (non-type) imports, matched exactly
+ * @property {string[]=} forbiddenValueImportPrefixes — import specifier prefixes banned as value (non-type) imports
+ * @property {string[]=} forbiddenContent — literal source-text fragments the module must not contain
+ * @property {string[]=} forbiddenContentPatterns — regular expression sources the module source must not match
+ * @property {string[]=} requiredContent — literal source-text fragments the module must contain
+ * @property {string[]=} requiredFiles — file names that must exist somewhere under the module's directory tree
+ */
+
+/**
+ * @param {string} directoryPath
+ * @param {string} fileName
+ * @returns {boolean}
+ */
+const directoryTreeContainsFileName = (directoryPath, fileName) => {
+  let directoryEntries
+  try {
+    directoryEntries = fs.readdirSync(directoryPath, { withFileTypes: true })
+  } catch {
+    return false
+  }
+
+  for (const entry of directoryEntries) {
+    if (entry.isFile() && entry.name === fileName) {
+      return true
+    }
+  }
+
+  for (const entry of directoryEntries) {
+    if (
+      entry.isDirectory() &&
+      entry.name !== `node_modules` &&
+      directoryTreeContainsFileName(path.join(directoryPath, entry.name), fileName)
+    ) {
+      return true
+    }
+  }
+
+  return false
+}
+
+const boundaryContractRule = defineRule({
+  meta: {
+    type: `problem`,
+    docs: {
+      description: `Enforce declarative per-module boundary contracts: exact import lists, forbidden boundary-crossing imports and references, required delegations, and required files.`,
+      recommended: false,
+    },
+    messages: MESSAGES,
+    schema: [
+      {
+        type: `object`,
+        properties: {
+          contracts: {
+            type: `array`,
+            description: `Per-module boundary contracts. Each contract selects files by glob and declares import/content/file policies. Defaults to [] (rule is a no-op).`,
+            items: {
+              type: `object`,
+              properties: {
+                files: { type: `array`, items: { type: `string` } },
+                imports: {
+                  type: `object`,
+                  properties: {
+                    ignorePrefixes: { type: `array`, items: { type: `string` } },
+                    exactly: { type: `array`, items: { type: `string` } },
+                  },
+                  required: [`exactly`],
+                  additionalProperties: false,
+                },
+                forbiddenValueImports: { type: `array`, items: { type: `string` } },
+                forbiddenValueImportPrefixes: { type: `array`, items: { type: `string` } },
+                forbiddenContent: { type: `array`, items: { type: `string` } },
+                forbiddenContentPatterns: { type: `array`, items: { type: `string` } },
+                requiredContent: { type: `array`, items: { type: `string` } },
+                requiredFiles: { type: `array`, items: { type: `string` } },
+              },
+              required: [`files`],
+              additionalProperties: false,
+            },
+          },
+        },
+        additionalProperties: false,
+      },
+    ],
+  },
+  create(context) {
+    const options = /** @type {{ contracts?: BoundaryContract[] }} */ (context.options[0] ?? {})
+    const contracts = options.contracts ?? []
+    if (contracts.length === 0) {
+      return {}
+    }
+
+    const absoluteFilePath = normalizePath(path.resolve(context.cwd, context.filename))
+    if (isTestFilePath(absoluteFilePath) || absoluteFilePath.endsWith(`test-support.ts`)) {
+      return {}
+    }
+
+    const applicableContracts = contracts.filter((contract) =>
+      contract.files.some((pattern) => matchesGlobPattern(absoluteFilePath, `**/${pattern}`)),
+    )
+    if (applicableContracts.length === 0) {
+      return {}
+    }
+
+    return {
+      Program(node) {
+        const sourceText = fs.readFileSync(path.resolve(context.cwd, context.filename), `utf8`)
+
+        /** @type {import('@oxlint/plugins').ESTree.ImportDeclaration[]} */
+        const importDeclarations = []
+        for (const statement of node.body) {
+          if (statement.type === `ImportDeclaration`) {
+            importDeclarations.push(statement)
+          }
+        }
+
+        for (const contract of applicableContracts) {
+          if (contract.imports !== undefined) {
+            const ignorePrefixes = contract.imports.ignorePrefixes ?? []
+            /** @type {string[]} */
+            const actualImports = []
+            for (const declaration of importDeclarations) {
+              if (declaration.specifiers.length === 0) {
+                continue
+              }
+
+              const specifier = getStringLiteralValue(declaration.source)
+              if (specifier === null) {
+                continue
+              }
+
+              if (ignorePrefixes.some((prefix) => specifier.startsWith(prefix))) {
+                continue
+              }
+
+              actualImports.push(specifier)
+            }
+
+            const expectedImports = contract.imports.exactly
+            const importsMatch =
+              actualImports.length === expectedImports.length &&
+              actualImports.every((specifier, index) => specifier === expectedImports[index])
+
+            if (!importsMatch) {
+              context.report({
+                node,
+                messageId: MESSAGE_IDS.boundaryContractImportsMismatch,
+                data: {
+                  expected: expectedImports.join(`, `),
+                  actual: actualImports.length === 0 ? `(none)` : actualImports.join(`, `),
+                },
+              })
+            }
+          }
+
+          const forbiddenValueImports = contract.forbiddenValueImports ?? []
+          const forbiddenValueImportPrefixes = contract.forbiddenValueImportPrefixes ?? []
+          if (forbiddenValueImports.length > 0 || forbiddenValueImportPrefixes.length > 0) {
+            for (const declaration of importDeclarations) {
+              if (declaration.importKind === `type`) {
+                continue
+              }
+
+              const specifier = getStringLiteralValue(declaration.source)
+              if (specifier === null) {
+                continue
+              }
+
+              if (
+                forbiddenValueImports.includes(specifier) ||
+                forbiddenValueImportPrefixes.some((prefix) => specifier.startsWith(prefix))
+              ) {
+                context.report({
+                  node: declaration.source,
+                  messageId: MESSAGE_IDS.boundaryContractForbiddenValueImport,
+                  data: { specifier },
+                })
+              }
+            }
+          }
+
+          for (const fragment of contract.forbiddenContent ?? []) {
+            if (sourceText.includes(fragment)) {
+              context.report({
+                node,
+                messageId: MESSAGE_IDS.boundaryContractForbiddenContent,
+                data: { pattern: fragment },
+              })
+            }
+          }
+
+          for (const patternSource of contract.forbiddenContentPatterns ?? []) {
+            if (new RegExp(patternSource, `u`).test(sourceText)) {
+              context.report({
+                node,
+                messageId: MESSAGE_IDS.boundaryContractForbiddenContent,
+                data: { pattern: patternSource },
+              })
+            }
+          }
+
+          for (const fragment of contract.requiredContent ?? []) {
+            if (!sourceText.includes(fragment)) {
+              context.report({
+                node,
+                messageId: MESSAGE_IDS.boundaryContractMissingContent,
+                data: { pattern: fragment },
+              })
+            }
+          }
+
+          for (const fileName of contract.requiredFiles ?? []) {
+            const moduleDirectory = path.dirname(path.resolve(context.cwd, context.filename))
+            if (!directoryTreeContainsFileName(moduleDirectory, fileName)) {
+              context.report({
+                node,
+                messageId: MESSAGE_IDS.boundaryContractMissingFile,
+                data: { fileName },
+              })
+            }
+          }
+        }
+      },
+    }
+  },
+})
+
 const requireSchemaClassStaticsRule = defineRule({
   meta: {
     type: `problem`,
@@ -4152,6 +4398,7 @@ export default definePlugin({
     'module/no-deep-imports': noDeepImportsWhenNamespaceEntrypointExistsRule,
     'module/prefer-subpath-imports': preferSubpathImportsRule,
     'module/subpath-imports-integrity': subpathImportsIntegrityRule,
+    'module/boundary-contract': boundaryContractRule,
     'adt/require-schema-class-statics': requireSchemaClassStaticsRule,
     'adt/require-schema-class-ordering': requireSchemaClassOrderingRule,
     'adt/require-tagged-union-companion': requireTaggedUnionCompanionRule,

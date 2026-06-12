@@ -20,11 +20,13 @@ export const preview = Command.make(
       })
 
       if (planState._tag === 'PlanMissing') {
-        return yield* failWith(...formatMissingPlanMessage(planState))
+        yield* failWith(...formatMissingPlanMessage(planState))
+        return
       }
 
       if (planState._tag === 'PlanInvalid') {
-        return yield* failWith(...formatInvalidPlanMessage(planState))
+        yield* failWith(...formatInvalidPlanMessage(planState))
+        return
       }
 
       const b = Str.Builder()

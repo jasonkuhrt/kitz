@@ -2,6 +2,7 @@ export interface GetProxyOptions {
   symbols?: boolean
 }
 
+/* oxlint-disable typescript/no-unnecessary-type-parameters -- `type` is an explicit type-argument injection point: the caller supplies the proxy's surface type. */
 export const createCachedGetProxy = <type, options extends GetProxyOptions>(
   createValue: (
     propertyName: options['symbols'] extends true ? symbol | string : string,
@@ -34,6 +35,7 @@ export const createCachedGetProxy = <type, options extends GetProxyOptions>(
     },
   })
 }
+/* oxlint-enable typescript/no-unnecessary-type-parameters */
 
 /**
  * Creates an infinite self-referencing proxy.
@@ -55,6 +57,7 @@ export const createCachedGetProxy = <type, options extends GetProxyOptions>(
  * builder.exact.equiv.of<string>()('hello')  // All properties return the proxy
  * ```
  */
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- `$Type` is an explicit type-argument injection point: the caller supplies the proxy's surface type.
 export const createRecursive = <$Type>(): $Type => {
   const proxy: any = new Proxy(() => {}, {
     get: () => proxy,

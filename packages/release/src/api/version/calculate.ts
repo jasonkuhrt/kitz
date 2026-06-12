@@ -33,7 +33,8 @@ export const calculateNextVersion: (
         case 'major':
         case 'minor':
           return Semver.make(0, 1, 0)
-        case 'patch':
+        // 'patch'
+        default:
           return Semver.make(0, 0, 1)
       }
     },

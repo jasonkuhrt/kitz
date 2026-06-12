@@ -224,7 +224,7 @@ export const visualStringTakeWords = (
     if (getLength(word) > size) {
       // TODO hyphen the word?
       words.shift()
-      taken += String(word)
+      taken += word
       break
     }
 

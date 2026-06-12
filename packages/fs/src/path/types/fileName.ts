@@ -7,9 +7,22 @@ import * as Extension from './extension.js'
  * Schema representing a filename (stem + extension).
  * Used within file path members to represent file information.
  */
+// Canonical-form generators. The structural fields admit values whose string
+// encoding re-decodes differently (stem 'a.b' + null extension encodes to
+// 'a.b', which decodes as stem 'a' + extension '.b'). A stem CHECK can't
+// forbid dots — real decodes produce dotted stems ('b.tar.gz' → stem
+// 'b.tar'). So GENERATION is constrained instead: dot-free stems,
+// single-dot extensions. Validation is unchanged.
+const stemField = S.String.annotate({
+  toArbitrary: () => (fc) => fc.stringMatching(/^[A-Za-z0-9_-]{1,12}$/),
+})
+const extensionField = Extension.Extension.annotate({
+  toArbitrary: () => (fc) => fc.stringMatching(/^\.[A-Za-z0-9]{1,8}$/),
+})
+
 export class FileName extends Sch.TaggedClass<FileName>()('FileName', {
-  stem: S.String,
-  extension: S.NullOr(Extension.Extension),
+  stem: stemField,
+  extension: S.NullOr(extensionField),
 }) {
   /**
    * Schema for transforming between string and FileName class.

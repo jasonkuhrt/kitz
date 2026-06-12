@@ -64,7 +64,8 @@ export const explain = Command.make(
             : Renderer.renderExplanation(explanation)
 
         if (explanation.decision === 'missing') {
-          return yield* failWith(output)
+          yield* failWith(output)
+          return
         }
 
         yield* Console.log(output)

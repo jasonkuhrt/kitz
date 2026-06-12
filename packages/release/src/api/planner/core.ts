@@ -39,12 +39,9 @@ export interface PlanLifecycleParams<
   readonly toCascades: (params: CascadeParams<$lifecycle>) => readonly PlannedItem<$lifecycle>[]
 }
 
-export const mapOfficialCascades = <
-  $release extends PlannedItem<Lifecycle>,
-  $cascade extends PlannedItem<PrereleaseLifecycle>,
->(params: {
+export const mapOfficialCascades = <$cascade extends PlannedItem<PrereleaseLifecycle>>(params: {
   readonly packages: readonly Package[]
-  readonly primaryReleases: readonly $release[]
+  readonly primaryReleases: readonly PlannedItem<Lifecycle>[]
   readonly dependencyGraph: DependencyGraph
   readonly tags: readonly string[]
   readonly timestamp: string

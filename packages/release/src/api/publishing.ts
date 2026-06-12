@@ -102,7 +102,8 @@ export const resolvePublishSemantics = (params: {
         forcePushTag: true,
         githubReleaseStyle: 'dist-tagged',
       }
-    case 'ephemeral':
+    // 'ephemeral'
+    default:
       return {
         lifecycle: params.lifecycle,
         channel,

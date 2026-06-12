@@ -4,22 +4,26 @@ import { Obj } from '#obj'
 // Test visitors
 const errorToMessage = (value: any) => {
   if (value instanceof Error) return value.message
+  return undefined
 }
 
 const truncateLongStrings = (value: any) => {
   if (typeof value === 'string' && value.length > 10) {
     return value.slice(0, 10) + '...'
   }
+  return undefined
 }
 
 const doubleNumbers = (value: any) => {
   if (typeof value === 'number') return value * 2
+  return undefined
 }
 
 const replaceSpecificObject = (value: any) => {
   if (typeof value === 'object' && value !== null && 'replace' in value) {
     return 'REPLACED'
   }
+  return undefined
 }
 
 Test.on(Obj.mapValuesDeep)

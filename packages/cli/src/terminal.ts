@@ -102,7 +102,8 @@ export const createTerminalTheme = (options?: TerminalFormatOptions): TerminalTh
         return style(BG_MAGENTA, FG_WHITE)(value)
       case 'success':
         return style(BG_GREEN, FG_BLACK)(value)
-      case 'warn':
+      // 'warn'
+      default:
         return style(BG_YELLOW, FG_BLACK)(value)
     }
   }

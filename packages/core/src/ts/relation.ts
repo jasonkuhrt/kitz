@@ -56,6 +56,7 @@ export namespace Relation {
    * ```
    */
   export type IsExact<A, B> =
+    // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the single-use `T` generic signatures are the canonical invariance trick for exact type equality; removal breaks the comparison.
     (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false
 
   /**

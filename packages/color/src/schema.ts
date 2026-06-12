@@ -134,7 +134,7 @@ export class Color extends Sch.TaggedClass<Color>()('Color', {
    * const color3 = Color.fromString('red')
    * ```
    */
-  static fromString = <const input extends string>(input: input) => {
+  static fromString = (input: string) => {
     return S.decodeSync(Color.String)(input)
   }
 

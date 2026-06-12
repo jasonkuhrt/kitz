@@ -1,6 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/refs/heads/main/npm/oxlint/configuration_schema.json",
-  "extends": ["./recommended.json"],
+  "extends": [
+    "./recommended.json"
+  ],
   "rules": {
     "kitz/schema/no-json-parse": "error",
     "kitz/effect/no-native-promise-construction": "error",
@@ -28,7 +30,13 @@
     "kitz/module/prefer-subpath-imports": "error",
     "kitz/module/subpath-imports-integrity": [
       "error",
-      { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }
-    ]
+      {
+        "requiredEntryPatterns": [
+          "src/*/_.ts",
+          "src/*/core/_.ts"
+        ]
+      }
+    ],
+    "kitz/module/boundary-contract": "error"
   }
 }

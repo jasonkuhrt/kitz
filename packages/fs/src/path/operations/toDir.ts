@@ -1,4 +1,4 @@
-/* oxlint-disable typescript-eslint(no-unnecessary-type-assertion) -- branded conditional path return types require explicit assertions; oxlint misidentifies them as redundant. */
+/* oxlint-disable typescript/no-unnecessary-type-assertion -- branded conditional path return types require explicit assertions; oxlint misidentifies them as redundant. */
 import { Match } from 'effect'
 import type { $Dir } from '../$Dir/_.js'
 import type { $File } from '../$File/_.js'

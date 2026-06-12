@@ -47,7 +47,8 @@ const conformanceRun = Command.make(
         for (const result of invalid) {
           b`invalid result: ${result.capability}`
         }
-        return yield* failWith(b.render())
+        yield* failWith(b.render())
+        return
       }
 
       const unsupported = report.results.filter((result) => result.result === 'unsupported')

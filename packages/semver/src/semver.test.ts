@@ -198,3 +198,25 @@ describe('OptionFromNullOrString', () => {
     expect(encode(Option.some(Semver.fromString('1.2.3-rc.1')))).toBe('1.2.3-rc.1')
   })
 })
+
+// ─── Derived-arbitrary contract properties ───────────────────────────
+//
+// Pins that Schema.toArbitrary on the Semver union generates values that
+// satisfy the schema AND survive the string codec (identifier grammars are
+// expressed as field checks, so the generator derives from them).
+
+const arbSemver = S.toArbitrary(Semver.Semver)
+
+Test.property('generated Semver values satisfy the schema', arbSemver, (version) => {
+  expect(S.is(Semver.Semver)(version)).toBe(true)
+})
+
+Test.property(
+  'generated Semver values roundtrip through the string codec',
+  arbSemver,
+  (version) => {
+    const encoded = S.encodeSync(Semver.Schema)(version)
+    const decoded = S.decodeSync(Semver.Schema)(encoded)
+    expect(Semver.equivalence(decoded, version)).toBe(true)
+  },
+)

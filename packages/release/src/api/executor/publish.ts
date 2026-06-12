@@ -317,7 +317,7 @@ export const publishPreparedArtifact = (
       .pipe(Effect.result)
 
     if (Result.isFailure(publishResult)) {
-      return yield* Effect.fail(
+      yield* Effect.fail(
         new PublishError({
           context: {
             package: artifact.package.path,

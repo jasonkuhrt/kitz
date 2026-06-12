@@ -169,7 +169,7 @@ export const BookmarksDoctor = Linter.create('bookmarks')
           uniqueStrings(facts.targets.map((target) => target.browserProcessName)),
           (browserName) =>
             Effect.gen(function* () {
-              const browserLabel = String(browserName)
+              const browserLabel = browserName
               const running = yield* checkBrowserRunning(browserName)
               return running
                 ? Finding.fail({

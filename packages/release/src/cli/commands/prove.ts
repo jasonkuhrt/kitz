@@ -48,7 +48,7 @@ export const prove = Command.make(
         b`${record.status.padEnd(14)} ${record.id}`
       }
       yield* Console.log(b.render())
-      if (Proof.hasBlockingProof(proof, yield* Clock.now)) return env.exit(1)
+      if (Proof.hasBlockingProof(proof, yield* Clock.now)) env.exit(1)
     }),
 ).pipe(
   Command.withDescription('Write plan-bound publishing proof'),

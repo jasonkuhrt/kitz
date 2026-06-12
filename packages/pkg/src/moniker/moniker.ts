@@ -9,8 +9,11 @@ import { SchemaGetter, Schema as S } from 'effect'
  * Scoped package name (e.g., "\@kitz/core").
  */
 export class Scoped extends Sch.TaggedClass<Scoped>()('Scoped', {
-  scope: S.String,
-  name: S.String,
+  // Constrained to the `@scope/name` string grammar so the class cannot hold
+  // values whose encoded form re-parses differently (e.g. a scope containing
+  // `/`), and so derived arbitraries generate contract-valid instances.
+  scope: S.String.pipe(S.check(S.isPattern(/^[^/]+$/), S.isMinLength(1))),
+  name: S.String.pipe(S.check(S.isPattern(/^[^/]+$/), S.isMinLength(1))),
 }) {
   /**
    * Full package name string (e.g., "\@kitz/core").
@@ -50,7 +53,8 @@ export const ScopedFromString: S.Codec<Scoped, string> = S.String.pipe(
  * Unscoped package name (e.g., "lodash").
  */
 export class Unscoped extends Sch.TaggedClass<Unscoped>()('Unscoped', {
-  name: S.String,
+  // Mirrors the UnscopedFromString grammar (no leading `@`, no `/`).
+  name: S.String.pipe(S.check(S.isPattern(/^[^@/][^/]*$/), S.isMinLength(1))),
 }) {
   /**
    * Full package name string.

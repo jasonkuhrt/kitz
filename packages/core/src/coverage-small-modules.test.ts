@@ -216,7 +216,7 @@ describe('core small-module coverage', () => {
   })
 
   test('covers object, record, reference, and pattern helpers', () => {
-    expect(mapValues({ a: 1, b: 2 }, (value, key) => `${String(key)}:${value * 2}`)).toEqual({
+    expect(mapValues({ a: 1, b: 2 }, (value, key) => `${key}:${value * 2}`)).toEqual({
       a: 'a:2',
       b: 'b:4',
     })

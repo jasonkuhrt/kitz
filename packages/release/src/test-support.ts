@@ -41,35 +41,20 @@ export const roundtrips = <
 // ============================================================================
 // Leaf arbitraries
 //
-// These construct values through the same parsers production uses
-// (`Pkg.Moniker.parse`, `Semver.make`, `Fs.Path.*.fromString`), so every
-// generated value is valid by construction on both the type and encoded side.
+// Derived straight from the domain schemas (their field grammars and
+// canonical-form generator annotations make generated values contract-valid
+// on both the type and encoded side — pinned by property tests in
+// @kitz/pkg, @kitz/semver, and @kitz/fs).
 // ============================================================================
 
 /** Lowercase identifier-ish word: package scopes, path segments, file stems. */
 export const arbWord: fc.Arbitrary<string> = fc.stringMatching(/^[a-z][a-z0-9-]{0,8}$/)
 
-export const arbMoniker: fc.Arbitrary<Pkg.Moniker.Moniker> = fc
-  .tuple(arbWord, arbWord)
-  .map(([scope, name]) => Pkg.Moniker.parse(`@${scope}/${name}`))
-
-const arbPrereleaseIdentifier = fc.oneof(
-  fc.nat({ max: 999 }).map(String),
-  fc.stringMatching(/^[a-z][a-z0-9-]{0,5}$/),
+export const arbMoniker: fc.Arbitrary<Pkg.Moniker.Moniker> = Schema.toArbitrary(
+  Pkg.Moniker.FromString,
 )
 
-export const arbSemver: fc.Arbitrary<Semver.Semver> = fc
-  .tuple(
-    fc.nat({ max: 999 }),
-    fc.nat({ max: 999 }),
-    fc.nat({ max: 999 }),
-    fc.option(fc.array(arbPrereleaseIdentifier, { minLength: 1, maxLength: 3 }), {
-      nil: undefined,
-    }),
-  )
-  .map(([major, minor, patch, prerelease]) =>
-    Semver.make(major, minor, patch, prerelease?.join('.')),
-  )
+export const arbSemver: fc.Arbitrary<Semver.Semver> = Schema.toArbitrary(Semver.Semver)
 
 export const arbBump: fc.Arbitrary<Semver.BumpType> = fc.constantFrom('major', 'minor', 'patch')
 
@@ -78,21 +63,9 @@ export const arbIso: fc.Arbitrary<string> = fc
   .integer({ min: 0, max: 4_102_444_800_000 })
   .map((epochMs) => new Date(epochMs).toISOString())
 
-export const arbAbsFile: fc.Arbitrary<Fs.Path.AbsFile> = fc
-  .tuple(fc.array(arbWord, { maxLength: 3 }), arbWord, fc.constantFrom('tgz', 'json', 'ts'))
-  .map(([directories, stem, extension]) =>
-    Fs.Path.AbsFile.fromString(
-      `/${directories.map((directory) => `${directory}/`).join('')}${stem}.${extension}`,
-    ),
-  )
+export const arbAbsFile: fc.Arbitrary<Fs.Path.AbsFile> = Schema.toArbitrary(Fs.Path.AbsFile.Schema)
 
-export const arbRelFile: fc.Arbitrary<Fs.Path.RelFile> = fc
-  .tuple(fc.array(arbWord, { maxLength: 3 }), arbWord, fc.constantFrom('tgz', 'json', 'ts'))
-  .map(([directories, stem, extension]) =>
-    Fs.Path.RelFile.fromString(
-      `./${directories.map((directory) => `${directory}/`).join('')}${stem}.${extension}`,
-    ),
-  )
+export const arbRelFile: fc.Arbitrary<Fs.Path.RelFile> = Schema.toArbitrary(Fs.Path.RelFile.Schema)
 
 /** Arbitrary JSON-serializable record (matches the contract `JsonRecord`s). */
 export const arbJsonRecord: fc.Arbitrary<Record<string, unknown>> = fc.dictionary(

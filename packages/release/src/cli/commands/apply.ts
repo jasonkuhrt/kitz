@@ -73,7 +73,8 @@ export const apply = Command.make(
         Publishing.resolvePublishIntentForPlan(plan, { allowPrereleaseLatest }),
       )
       if (intentResult._tag === 'Failure') {
-        return yield* failWith(intentResult.failure.message)
+        yield* failWith(intentResult.failure.message)
+        return
       }
       const publish = Publishing.publishSemanticsFromIntent(intentResult.success)
       const planDigest = executablePlan.planDigest
@@ -102,7 +103,8 @@ export const apply = Command.make(
         const approved = yield* confirm('Proceed with release? [y/N] ')
         if (!approved) {
           yield* Console.log('Release canceled.')
-          return env.exit(1)
+          env.exit(1)
+          return
         }
       }
 
@@ -185,7 +187,7 @@ export const apply = Command.make(
       )
 
       if (!applied) {
-        return env.exit(1)
+        env.exit(1)
       }
     }),
 ).pipe(

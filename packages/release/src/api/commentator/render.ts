@@ -284,7 +284,8 @@ const renderStatusBanner = (
       return interactiveChecklist
         ? `> **Publish failed.** Check the [workflow run](https://github.com/${owner}/${repo}/actions) for details. Re-check a checkbox to retry.`
         : `> **Publish failed.** Check the [workflow run](https://github.com/${owner}/${repo}/actions) for details.`
-    case 'idle':
+    // 'idle'
+    default:
       return ''
   }
 }

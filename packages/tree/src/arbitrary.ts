@@ -1,4 +1,4 @@
-import fc from 'fast-check'
+import * as fc from 'fast-check'
 import { Node, Tree } from './data.js'
 import type { Tree as TreeType } from './data.js'
 

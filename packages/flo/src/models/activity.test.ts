@@ -63,11 +63,9 @@ describe('Flo.Activity', () => {
     expect(Activity.Completed.encodeSync(completed)).toEqual(completedInput)
     expect(Activity.Failed.encodeSync(failed)).toEqual(failedInput)
 
-    expect(Activity.Started.equivalence(started, Activity.Started.make(startedInput))).toBe(true)
-    expect(Activity.Completed.equivalence(completed, Activity.Completed.make(completedInput))).toBe(
-      true,
-    )
-    expect(Activity.Failed.equivalence(failed, Activity.Failed.make(failedInput))).toBe(true)
+    expect(Activity.Started.equals(started, Activity.Started.make(startedInput))).toBe(true)
+    expect(Activity.Completed.equals(completed, Activity.Completed.make(completedInput))).toBe(true)
+    expect(Activity.Failed.equals(failed, Activity.Failed.make(failedInput))).toBe(true)
 
     expect(typeof Activity.Started.decode).toBe('function')
     expect(typeof Activity.Started.encode).toBe('function')

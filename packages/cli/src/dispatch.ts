@@ -93,7 +93,8 @@ export function dispatch(
           `Error: No such command "${moduleTargetName}".\n\nAvailable commands:\n${availableCommands}`,
         )
       }
-      return env.exit(1)
+      env.exit(1)
+      return
     }
 
     yield* Mod.dynamicImportFile(commandFile)

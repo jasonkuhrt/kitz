@@ -502,12 +502,14 @@ export interface TestBuilder<State extends BuilderTypeState> {
    *   })
    * ```
    */
+  // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- `I` is an explicit type-argument injection point: the caller supplies the input type.
   inputType<I>(): TestBuilder<UpdateState<State, { input: I }>>
 
   /**
    * Set the output/expected type for generic mode testing.
    * Only available before `.on()` is called.
    */
+  // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- `O` is an explicit type-argument injection point: the caller supplies the output type.
   outputType<O>(): State['fn'] extends undefined
     ? TestBuilder<UpdateState<State, { output: O }>>
     : never
@@ -516,6 +518,7 @@ export interface TestBuilder<State extends BuilderTypeState> {
    * Set the context type for test cases.
    * Context properties are additional fields beyond `input` and `output`.
    */
+  // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- `Ctx` is an explicit type-argument injection point: the caller supplies the context type.
   contextType<Ctx extends {} = {}>(): TestBuilder<UpdateState<State, { context: Ctx }>>
 
   /**
@@ -773,7 +776,7 @@ export interface TestBuilder<State extends BuilderTypeState> {
    *
    * @param cases - Array of test cases (static or function-based)
    */
-  cases<const Cases extends readonly any[] = readonly []>(
+  cases(
     ...cases: State['fn'] extends undefined
       ? Array<GenericCase<State['input'], State['output'], State['context']>>
       : State['fn'] extends Fn.AnyAny

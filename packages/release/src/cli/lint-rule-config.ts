@@ -65,11 +65,9 @@ const resolveRuleList = (
   current: readonly string[] | undefined,
 ): readonly string[] | undefined => override ?? current
 
-export const createCommandLintConfig = <
-  const TRules extends readonly CommandLintRuleSpec[],
->(params: {
+export const createCommandLintConfig = (params: {
   readonly config: Config.ResolvedConfig
-  readonly rules: TRules
+  readonly rules: readonly CommandLintRuleSpec[]
   readonly onlyRules?: readonly string[]
   readonly skipRules?: readonly string[]
 }): Lint.ResolvedConfig => {

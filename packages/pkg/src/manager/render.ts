@@ -19,7 +19,8 @@ export const renderScriptCommand = (
       return trimmedArgs ? `yarn ${script} ${trimmedArgs}` : `yarn ${script}`
     case 'npm':
       return trimmedArgs ? `npm run ${script} -- ${trimmedArgs}` : `npm run ${script}`
-    case 'unknown':
+    // 'unknown'
+    default:
       return trimmedArgs ? `${script} ${trimmedArgs}` : script
   }
 }

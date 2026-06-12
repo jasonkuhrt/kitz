@@ -17,7 +17,8 @@ const executionStateTone = (state: ExecutionStatus['state']) => {
       return 'info' as const
     case 'succeeded':
       return 'success' as const
-    case 'suspended':
+    // 'suspended'
+    default:
       return 'warn' as const
   }
 }

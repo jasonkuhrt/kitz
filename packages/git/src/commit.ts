@@ -91,6 +91,7 @@ const baseFields = {
  * commit.message // ← ConventionalCommits.Commit.Commit (not string)
  * ```
  */
+/* oxlint-disable typescript/no-unnecessary-type-parameters -- Self is the Effect Schema self-type pattern (class extends ParsedCommit<Self>()(...)), Tag preserves the literal `_tag` type, and P the parsed message schema type in the returned class; widening any of them loses public signature precision */
 export const ParsedCommit =
   <Self = never>(identifier?: string) =>
   <Tag extends string, P extends Schema.Top>(tag: Tag, parsedSchema: P) =>
@@ -100,3 +101,4 @@ export const ParsedCommit =
       date: baseFields.date,
       message: parsedSchema,
     })
+/* oxlint-enable typescript/no-unnecessary-type-parameters */

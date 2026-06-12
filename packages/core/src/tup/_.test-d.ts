@@ -1,4 +1,4 @@
-/* oxlint-disable typescript-eslint(no-unnecessary-type-arguments) -- explicit type arguments keep type-level regression cases readable. */
+/* oxlint-disable typescript/no-unnecessary-type-arguments -- explicit type arguments keep type-level regression cases readable. */
 import type { Type as A } from '@kitz/assert/assert'
 import { Ts } from '#ts'
 import { Tup } from './_.js'

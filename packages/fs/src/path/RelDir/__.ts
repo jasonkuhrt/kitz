@@ -1,17 +1,9 @@
+/* oxlint-disable typescript/no-unnecessary-type-parameters -- Single-use type parameters bind literal path strings into branded conditional return types; inlining them widens the public API. */
 import { Sch } from '@kitz/sch'
 import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { analyze, backPrefix, herePrefix, separator } from '../../path-analyzer/codec-string/__.js'
+import { Back } from '../types/back.js'
 import { Segments } from '../types/segments.js'
-
-/**
- * Back field with default 0.
- * Represents the count of unresolved parent directory traversals (..).
- * Required in the Type, optional in the constructor (defaults to 0).
- */
-const Back = S.Int.pipe(
-  S.check(S.isGreaterThanOrEqualTo(0)),
-  S.withConstructorDefault(Effect.succeed(0)),
-)
 
 /**
  * Relative directory location class.

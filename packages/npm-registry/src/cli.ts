@@ -242,7 +242,8 @@ const buildPackCommand = (options: PackOptions) => {
       )
     case 'pnpm':
       return ChildProcess.make('pnpm', Argv.pnpmPack({ packDestination }), spawnOptions)
-    case 'npm':
+    // 'npm'
+    default:
       return ChildProcess.make('npm', Argv.npmPack({ packDestination }), spawnOptions)
   }
 }
@@ -281,7 +282,8 @@ const buildPublishCommand = (options: PublishOptions) => {
           provenance: options.provenance,
         }),
       )
-    case 'npm':
+    // 'npm'
+    default:
       return ChildProcess.make(
         'npm',
         Argv.npmPublish({

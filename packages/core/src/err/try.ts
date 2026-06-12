@@ -138,7 +138,7 @@ export function tryCatch<returned, thrown>(
       if (predicates.some((predicate) => predicate(error))) {
         return error
       }
-      Lang.throw(error)
+      return Lang.throw(error)
     },
   })
 }

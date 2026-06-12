@@ -84,10 +84,12 @@ export function pick<T extends object, K extends keyof T>(
  * @category Filtering
  */
 export const pickWith =
-  <K extends PropertyKey>(
-    keysOrPredicate: readonly K[] | ((key: PropertyKey, value?: any, obj?: any) => boolean),
+  (
+    keysOrPredicate:
+      | readonly PropertyKey[]
+      | ((key: PropertyKey, value?: any, obj?: any) => boolean),
   ) =>
-  <T extends object>(obj: T): any => {
+  (obj: object): any => {
     return pick(obj, keysOrPredicate as any)
   }
 
@@ -98,8 +100,8 @@ export const pickWith =
  */
 export const pickOn =
   <T extends object>(obj: T) =>
-  <K extends keyof T>(
-    keysOrPredicate: readonly K[] | ((key: keyof T, value?: any, obj?: any) => boolean),
+  (
+    keysOrPredicate: readonly (keyof T)[] | ((key: keyof T, value?: any, obj?: any) => boolean),
   ): any => {
     return pick(obj, keysOrPredicate as any)
   }
@@ -178,10 +180,12 @@ export function omit<T extends object, K extends keyof T>(
  * @category Filtering
  */
 export const omitWith =
-  <K extends PropertyKey>(
-    keysOrPredicate: readonly K[] | ((key: PropertyKey, value?: any, obj?: any) => boolean),
+  (
+    keysOrPredicate:
+      | readonly PropertyKey[]
+      | ((key: PropertyKey, value?: any, obj?: any) => boolean),
   ) =>
-  <T extends object>(obj: T): any => {
+  (obj: object): any => {
     return omit(obj, keysOrPredicate as any)
   }
 
@@ -192,8 +196,8 @@ export const omitWith =
  */
 export const omitOn =
   <T extends object>(obj: T) =>
-  <K extends keyof T>(
-    keysOrPredicate: readonly K[] | ((key: keyof T, value?: any, obj?: any) => boolean),
+  (
+    keysOrPredicate: readonly (keyof T)[] | ((key: keyof T, value?: any, obj?: any) => boolean),
   ): any => {
     return omit(obj, keysOrPredicate as any)
   }

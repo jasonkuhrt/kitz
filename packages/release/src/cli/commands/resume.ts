@@ -46,10 +46,11 @@ export const resume = Command.make(
       const runtime = yield* Explorer.explore()
       const runtimeConfig = Explorer.toExecutorRuntimeConfig(runtime)
       if (!runtimeConfig.github) {
-        return yield* failWith(
+        yield* failWith(
           'GitHub release target and token are required for release resume.',
           'Set GITHUB_TOKEN and ensure origin points to GitHub, then retry.',
         )
+        return
       }
 
       const resumeAttempt = yield* Executor.resumeObservable(plan, {
@@ -62,10 +63,12 @@ export const resume = Command.make(
 
       if (resumeAttempt._tag === 'Failure') {
         if (resumeAttempt.failure._tag === 'ExecutorResumeError') {
-          return yield* failWith(resumeAttempt.failure.message)
+          yield* failWith(resumeAttempt.failure.message)
+          return
         }
 
-        return yield* Effect.fail(resumeAttempt.failure)
+        yield* Effect.fail(resumeAttempt.failure)
+        return
       }
 
       const { events, execute, status: workflowStatus } = resumeAttempt.success
@@ -81,7 +84,8 @@ export const resume = Command.make(
         const approved = yield* confirm('Resume interrupted release? [y/N] ')
         if (!approved) {
           yield* Console.log('Release resume canceled.')
-          return env.exit(1)
+          env.exit(1)
+          return
         }
       }
 

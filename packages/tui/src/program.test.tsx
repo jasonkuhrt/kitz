@@ -99,7 +99,8 @@ describe('keyed commands', () => {
                 }),
               ),
             )
-          case 'Second':
+          // 'Second'
+          default:
             return Effect.succeed([{ _tag: 'Recorded' as const, source: 'second' }])
         }
       },
@@ -178,7 +179,8 @@ describe('keyed commands', () => {
               key: 'build',
               mode: 'switch',
             })
-          case 'Landed':
+          // 'Landed'
+          default:
             return Transition.next({ latest: action.which })
         }
       },
@@ -237,7 +239,8 @@ describe('keyed commands', () => {
                 { key: 'beta', mode: 'switch' },
               ),
             ])
-          case 'Landed':
+          // 'Landed'
+          default:
             return Transition.next({ log: [...state.log, action.which] })
         }
       },
@@ -305,7 +308,8 @@ describe('program runtime', () => {
               { count: state.count, status: 'working' },
               { _tag: 'CompleteIncrement', count: state.count + 1 },
             )
-          case 'IncrementCompleted':
+          // 'IncrementCompleted'
+          default:
             return Transition.next({ count: action.count, status: 'done' })
         }
       },
@@ -313,7 +317,8 @@ describe('program runtime', () => {
         switch (command._tag) {
           case 'Load':
             return Effect.succeed([{ _tag: 'Loaded' }])
-          case 'CompleteIncrement':
+          // 'CompleteIncrement'
+          default:
             return Effect.succeed([{ _tag: 'IncrementCompleted', count: command.count }])
         }
       },
@@ -352,21 +357,17 @@ describe('program runtime', () => {
 
     const spec = defineProgramSpec<State, Action, Command>({
       initialState: { open: true },
-      update(state, action) {
-        switch (action._tag) {
-          case 'QuitRequested':
-            return Transition.command(state, { _tag: 'Quit' })
-        }
+      // Action has a single tag: 'QuitRequested'
+      update(state, _action) {
+        return Transition.command(state, { _tag: 'Quit' })
       },
-      run(command) {
-        switch (command._tag) {
-          case 'Quit':
-            return Effect.gen(function* () {
-              const control = yield* Control
-              yield* control.exit
-              return []
-            })
-        }
+      // Command has a single tag: 'Quit'
+      run(_command) {
+        return Effect.gen(function* () {
+          const control = yield* Control
+          yield* control.exit
+          return []
+        })
       },
       onKey(_state, event) {
         return event.name === 'q' ? [{ _tag: 'QuitRequested' }] : []
@@ -409,17 +410,15 @@ describe('program runtime', () => {
       update(state, _action) {
         return Transition.next(state)
       },
-      run(command) {
-        switch (command._tag) {
-          case 'WaitForever':
-            return Effect.never.pipe(
-              Effect.ensuring(
-                Effect.sync(() => {
-                  finalized = true
-                }),
-              ),
-            )
-        }
+      // Command has a single tag: 'WaitForever'
+      run(_command) {
+        return Effect.never.pipe(
+          Effect.ensuring(
+            Effect.sync(() => {
+              finalized = true
+            }),
+          ),
+        )
       },
       view: View,
     })
@@ -463,13 +462,11 @@ describe('program runtime', () => {
           { _tag: 'Tick', key: action.key },
         )
       },
-      run(command) {
-        switch (command._tag) {
-          case 'Tick':
-            // Tiny delay forces the fiber to suspend — a second dispatch
-            // arriving during this window would race without the semaphore.
-            return Effect.sleep('1 millis').pipe(Effect.as([]))
-        }
+      // Command has a single tag: 'Tick'
+      run(_command) {
+        // Tiny delay forces the fiber to suspend — a second dispatch
+        // arriving during this window would race without the semaphore.
+        return Effect.sleep('1 millis').pipe(Effect.as([]))
       },
       onKey(_state, event) {
         if (event.name && event.name.length === 1) {
@@ -524,7 +521,8 @@ describe('program runtime', () => {
         switch (action._tag) {
           case 'Trigger':
             return Transition.next(state)
-          case 'Recovered':
+          // 'Recovered'
+          default:
             return Transition.next({ status: 'after-fail' })
         }
       },
@@ -535,7 +533,8 @@ describe('program runtime', () => {
             return Effect.sync(() => {
               throw new Error('synthetic boom')
             })
-          case 'Recover':
+          // 'Recover'
+          default:
             return Effect.succeed([{ _tag: 'Recovered' } as const])
         }
       },

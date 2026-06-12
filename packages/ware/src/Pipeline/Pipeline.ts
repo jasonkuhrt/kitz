@@ -22,7 +22,7 @@ export type StepsIndex<
   $ExecutableStep extends Step = Step,
 > = Map<$Name, $ExecutableStep>
 
-export const createStepsIndex = <$Steps extends Step[]>(steps: $Steps): StepsIndex => {
+export const createStepsIndex = (steps: Step[]): StepsIndex => {
   return new Map(steps.map((step) => [step.name, step]))
 }
 

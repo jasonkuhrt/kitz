@@ -132,11 +132,13 @@ export const doctor = Command.make(
                 ? null
                 : yield* loadActivePlan()
             if (activePlanState?._tag === 'PlanMissing') {
-              return yield* failWith(...formatMissingPlanMessage(activePlanState))
+              yield* failWith(...formatMissingPlanMessage(activePlanState))
+              return
             }
             if (activePlanState?._tag === 'PlanInvalid') {
               if (activePlanState.source === 'custom') {
-                return yield* failWith(...formatInvalidPlanMessage(activePlanState))
+                yield* failWith(...formatInvalidPlanMessage(activePlanState))
+                return
               }
               yield* Console.error(formatIgnoredInvalidPlanMessage(activePlanState).join('\n'))
             }
@@ -243,7 +245,7 @@ export const doctor = Command.make(
             }
 
             if (Doctor.hasBlockingIssues(evaluation)) {
-              return env.exit(1)
+              env.exit(1)
             }
           }),
         {

@@ -65,7 +65,8 @@ const buildSlotChoices = (state: SlotResolverState, matcher: MatcherService): Ch
         matcher,
       )
     }
-    case 'Text': {
+    // 'Text'
+    default: {
       // No candidates for text slots
       return []
     }

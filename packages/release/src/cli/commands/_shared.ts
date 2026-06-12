@@ -131,7 +131,8 @@ export const plannerFor =
         return Planner.official(analysis, ctx, options)
       case 'candidate':
         return Planner.candidate(analysis, ctx, options)
-      case 'ephemeral':
+      // 'ephemeral'
+      default:
         return Planner.ephemeral(analysis, ctx, options)
     }
   }

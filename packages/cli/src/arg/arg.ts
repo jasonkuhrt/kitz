@@ -408,7 +408,8 @@ const ArgNamespace = {
               original: analysis.original,
             })
 
-          case 'separator':
+          // 'separator'
+          default:
             return ArgSeparator.make({
               value: null,
               original: analysis.original,

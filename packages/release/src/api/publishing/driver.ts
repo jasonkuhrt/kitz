@@ -15,8 +15,8 @@ export const agentFromProjectManager = (
     case 'npm':
     case 'pnpm':
       return manager
-    case 'unknown':
-    case 'yarn':
+    // 'unknown' | 'yarn'
+    default:
       return 'npm'
   }
 }

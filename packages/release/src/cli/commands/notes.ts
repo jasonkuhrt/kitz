@@ -49,11 +49,12 @@ export const notes = Command.make(
           const requested = pkg.value
           const known = packages.some((p) => p.scope === requested || p.name.moniker === requested)
           if (!known) {
-            return yield* failWith(
+            yield* failWith(
               `Package "${requested}" was not found in the workspace.`,
               'Available package identifiers:',
               ...packages.map((p) => `  ${p.scope}`),
             )
+            return
           }
         }
 

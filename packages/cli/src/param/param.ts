@@ -105,6 +105,7 @@ type Append<$Tuple extends readonly any[], $Element> = [...$Tuple, $Element]
  * // { expression: '-v --verbose', canonical: 'verbose', short: 'v', long: 'verbose', aliases: { short: [], long: [] } }
  * ```
  */
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- $input's literal type flows into the inferred return (`expression: $input`) for compile-time analysis; widening to string loses that precision
 export function analyze<const $input extends string>($input: $input) {
   const names = $input
     .trim()

@@ -288,27 +288,6 @@ it(`array value`, () => {
   })
 })
 
-// TODO
-// it(`static error when fields from different event types matched in single pattern`, () => {
-//   $
-//     .parameter(`a`, s)
-//     .settings({ prompt: { when: { result: `rejected`, value: 1 } } })
-//   // TODO excess properties should be an error in the pattern match but for some reason are not being here.
-//   $.parameter(`a`, {
-//     type: s,
-//     prompt: {
-//       when: {
-//         result: `rejected`,
-//         error: `OakErrorInvalidArgument`,
-//         value: 1,
-//         foo: 2,
-//         blah: 3,
-//         '........ :(': 1,
-//       },
-//     },
-//   })
-// })
-
 it(`Static type tests`, () => {
   Assert.equiv
     .ofAs<() => { a: 1 }>()

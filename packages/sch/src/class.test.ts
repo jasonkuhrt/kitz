@@ -1,4 +1,4 @@
-import { Effect, Option, Schema as S } from 'effect'
+import { Effect, Option, Result, Schema as S } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { Class, TaggedClass } from './class.js'
 
@@ -45,13 +45,24 @@ describe('Class', () => {
     expect(Order.decodeSync(Order.encodeSync(order))).toEqual(order)
   })
 
-  test('equivalence compares by fields', () => {
-    expect(
-      Order.equivalence(new Order({ id: 'a', amount: 1 }), new Order({ id: 'a', amount: 1 })),
-    ).toBe(true)
-    expect(
-      Order.equivalence(new Order({ id: 'a', amount: 1 }), new Order({ id: 'a', amount: 2 })),
-    ).toBe(false)
+  test('equals compares by fields', () => {
+    expect(Order.equals(new Order({ id: 'a', amount: 1 }), new Order({ id: 'a', amount: 1 }))).toBe(
+      true,
+    )
+    expect(Order.equals(new Order({ id: 'a', amount: 1 }), new Order({ id: 'a', amount: 2 }))).toBe(
+      false,
+    )
+  })
+
+  test('decodeResult and encodeResult return Result values', () => {
+    expect(Result.isSuccess(Order.decodeResult({ id: 'a', amount: 1 }))).toBe(true)
+    expect(Result.isFailure(Order.decodeResult({ id: 1 }))).toBe(true)
+    const order = Order.decodeSync({ id: 'a', amount: 1 })
+    expect(Result.isSuccess(Order.encodeResult(order))).toBe(true)
+  })
+
+  test('$ is the class itself, usable in expression positions', () => {
+    expect(Order.$).toBe(Order)
   })
 
   test('derivations are memoized per class', () => {
@@ -61,6 +72,10 @@ describe('Class', () => {
 })
 
 describe('TaggedClass', () => {
+  test('exposes the tag literal as a static', () => {
+    expect(Event._tag).toBe('Event')
+  })
+
   test('carries the _tag literal through construction and decode', () => {
     const event = new Event({ name: 'created' })
     expect(event._tag).toBe('Event')

@@ -31,6 +31,7 @@ export type { IsAny, IsNever, IsUnknown } from './inhabitance.js'
  *
  * @category Utilities
  */
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- `$value` is an explicit type-argument injection point: the caller supplies the cast target type.
 export const as = <$value>(value?: unknown): $value => value as any
 
 /**

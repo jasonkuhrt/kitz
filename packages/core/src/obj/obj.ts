@@ -62,6 +62,7 @@ export function assert(value: unknown): asserts value is object {
  * })
  * ```
  */
+/* oxlint-disable typescript/no-unnecessary-type-parameters -- `type` is an explicit type-argument injection point: the caller supplies the guarded type. */
 export const isShape =
   <type>(spec: Record<PropertyKey, Lang.TypeofTypes>) =>
   (value: unknown): value is type => {
@@ -72,6 +73,7 @@ export const isShape =
       return typeof obj_[key] === typeofType
     })
   }
+/* oxlint-enable typescript/no-unnecessary-type-parameters */
 
 // Note: IsEmpty, Empty, empty, isEmpty, isEmpty$ moved to type.ts
 
@@ -150,6 +152,7 @@ export const setPrivateState = <obj extends Any>(obj: obj, value: object): obj =
  * // meta is typed as Metadata
  * ```
  */
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- `state` is an explicit type-argument injection point: the caller supplies the expected state type.
 export const getPrivateState = <state extends Any>(obj: Any): state => {
   const descriptor = Object.getOwnPropertyDescriptor(obj, PrivateStateSymbol)
   if (!descriptor) throw new Error('Private state not found')

@@ -26,6 +26,7 @@ export type Logical<$value> = {
  * export class Padding extends Sided.Class<Padding>('Padding')(ValueSchema) {}
  * ```
  */
+/* oxlint-disable typescript/no-unnecessary-type-parameters -- Self is the Effect Schema self-type pattern (class extends Sided.Class<Self>('...')(...)) and $valueSchema flows into the inferred field types of the returned class; widening either loses public signature precision */
 export const Class =
   <Self = never>(identifier: string) =>
   <$valueSchema extends S.Top>(valueSchema: $valueSchema) =>
@@ -35,6 +36,7 @@ export const Class =
       crossStart: S.optional(valueSchema),
       crossEnd: S.optional(valueSchema),
     })
+/* oxlint-enable typescript/no-unnecessary-type-parameters */
 
 /**
  * Value specification for a single axis.

@@ -392,7 +392,8 @@ export const dashboardUpdate = (
         doctor: failure(action.message),
         message: `Doctor error: ${action.message}`,
       })
-    case 'DoctorBuilt':
+    // 'DoctorBuilt'
+    default:
       // Stale: a newer BuildDoctor has been issued since this one. Discard.
       if (action.requestId !== state.doctorRequestSeq) return Tui.Transition.next(state)
       return Tui.Transition.next({
@@ -516,7 +517,8 @@ export const runDashboardCommand = (
           ),
         )
       })
-    case 'Quit':
+    // 'Quit'
+    default:
       return Effect.gen(function* () {
         const control = yield* Tui.Control
         yield* control.exit

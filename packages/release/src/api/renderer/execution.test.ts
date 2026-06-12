@@ -1,62 +1,13 @@
-import { readdirSync, readFileSync } from 'node:fs'
 import { Str } from '@kitz/core'
 import { Flo } from '@kitz/flo'
 import { describe, expect, test } from 'bun:test'
 import { formatExecutionStatus, formatLifecycleEvent } from './execution.js'
 
 const date = new Date('2026-01-01T00:00:00.000Z')
-const executorDir = new URL('../executor/', import.meta.url)
-const source = (url: URL) => readFileSync(url, 'utf8')
 
-const executorSources = (
-  dir = executorDir,
-  prefix = '',
-): readonly {
-  readonly name: string
-  readonly source: string
-}[] =>
-  readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const name = `${prefix}${entry.name}`
-    const url = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dir)
-
-    if (entry.isDirectory()) return [...executorSources(url, `${name}/`)]
-    if (!name.endsWith('.ts') || name.endsWith('.test.ts') || name.endsWith('test-support.ts')) {
-      return []
-    }
-
-    return [{ name, source: source(url) }]
-  })
-
-const valueImportModules = (fileSource: string): readonly string[] =>
-  [
-    ...fileSource.matchAll(/import\s+(?!type\b)(?:[\s\S]*?)\s+from\s+['"]([^'"]+)['"]/gu),
-    ...fileSource.matchAll(/import\s+['"]([^'"]+)['"]/gu),
-  ].map((match) => match[1]!)
-
+// The executor/renderer import-boundary policies formerly asserted here are
+// enforced by the `kitz/module/boundary-contract` oxlint rule (see .oxlintrc.json).
 describe('execution renderers', () => {
-  test('executor implementation owns structured workflow data without renderer dependencies', () => {
-    const offenders = executorSources().flatMap((file) =>
-      valueImportModules(file.source)
-        .filter(
-          (module) =>
-            module === '@kitz/cli' ||
-            module.startsWith('../renderer') ||
-            module.startsWith('./renderer'),
-        )
-        .map((module) => `${file.name} -> ${module}`),
-    )
-
-    expect(offenders).toEqual([])
-  })
-
-  test('executor barrel does not re-export terminal renderers', () => {
-    const barrel = source(new URL('../executor/__.ts', import.meta.url))
-
-    expect(barrel).not.toContain('formatExecutionStatus')
-    expect(barrel).not.toContain('formatLifecycleEvent')
-    expect(barrel).not.toContain('LifecycleEventLine')
-  })
-
   test('formats lifecycle events into printable log lines', () => {
     expect(
       formatLifecycleEvent(

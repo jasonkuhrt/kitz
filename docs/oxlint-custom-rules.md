@@ -729,6 +729,28 @@ Subpath imports (`#`) provide a canonical, location-independent way to reference
 
 Replace relative imports to `_.ts`/`__.ts` with the corresponding `#` subpath import from `package.json`.
 
+## `kitz/module/boundary-contract`
+
+### Checks
+
+Declarative per-file import/content boundary contracts, configured via rule options. Each contract names target files (suffix-matched globs) and may assert:
+
+- `imports.exactly` — the file's static import specifiers (optionally after dropping `imports.ignorePrefixes`) must equal an exact ordered list
+- `forbiddenValueImports` / `forbiddenValueImportPrefixes` — value imports of the named specifiers/prefixes are rejected (type-only imports allowed)
+- `forbiddenContent` / `forbiddenContentPatterns` — literal substrings or regexes that must not appear
+- `requiredContent` — literal substrings that must appear
+- `requiredFiles` — sibling files that must exist in the directory tree
+
+Test files and `*test-support.ts` are exempt. With no options configured the rule is a no-op, so published presets stay repo-agnostic; this repo's contracts live in `.oxlintrc.json`.
+
+### Rationale
+
+Replaces hand-rolled source-scanning "structure tests" (recursive readers + import extraction inside test files) with declarative lint configuration. The policies — executor workflow import boundaries, renderer/execution separation, publishing service-shell bans — become repo-wide and run with every lint instead of only inside one package's test suite.
+
+### Migration Guidance
+
+Express each structure-test assertion as a contract entry; delete the rig test. If an assertion is not expressible (none found so far), keep only that residual assertion as a test.
+
 ## Running
 
 ### Lint (custom rules as warnings)
