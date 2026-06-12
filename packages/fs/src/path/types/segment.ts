@@ -13,6 +13,11 @@ export const Segment = S.String.pipe(
   S.annotate({
     identifier: 'Segment',
     description: 'A valid path segment (POSIX-compliant)',
+    // Canonical-form generator: '.' and '..' are VALID segments (validation
+    // unchanged) but the string codecs normalize them, so generated values
+    // would not roundtrip. Generation sticks to ordinary segments.
+    toArbitrary: () => (fc) =>
+      fc.stringMatching(/^[A-Za-z0-9._ -]{1,12}$/).filter((s) => s !== '.' && s !== '..'),
   }),
 )
 

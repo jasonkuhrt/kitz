@@ -1,10 +1,10 @@
-import { Obj } from '@kitz/core'
-import { Git } from '@kitz/git'
-import { Effect, SchemaIssue, Schema } from 'effect'
+import { Err, Obj } from '@kitz/core'
+import { Effect, Schema } from 'effect'
 import type { ResolvedConfig } from '../models/config.js'
-import * as Precondition from '../models/precondition.js'
+import { Precondition } from '../models/precondition.js'
 import { Failed, Finished, Report, RuleCheckResult, Skipped } from '../models/report.js'
-import * as RuntimeRule from '../models/runtime-rule.js'
+import { RuleId } from '../models/rule-defaults.js'
+import type * as RuntimeRule from '../models/runtime-rule.js'
 import type { Severity } from '../models/severity.js'
 import { Violation } from '../models/violation.js'
 import * as Rules from '../rules/__.js'
@@ -12,21 +12,47 @@ import {
   type EvaluatedPreconditions,
   EvaluatedPreconditionsService,
 } from '../services/preconditions.js'
-import { RuleOptionsService } from '../services/rule-options.js'
 
-/** Compute the list of all registered rules. Called per check invocation to pick up any dynamic changes. */
+const baseTags = ['kit', 'release', 'lint'] as const
+
+const PreconditionsNotMetErrorContext = Schema.Struct({
+  /** The rule whose preconditions failed. */
+  ruleId: RuleId,
+  /** The preconditions that were not satisfied. */
+  failed: Schema.Array(Precondition),
+})
+
+/**
+ * An explicitly-requested rule could not run because one or more of its
+ * preconditions were not satisfied.
+ */
+export const PreconditionsNotMetError: Err.TaggedContextualErrorClass<
+  'PreconditionsNotMetError',
+  typeof baseTags,
+  typeof PreconditionsNotMetErrorContext,
+  undefined
+> = Err.TaggedContextualError('PreconditionsNotMetError', baseTags, {
+  context: PreconditionsNotMetErrorContext,
+  message: (ctx) => `Preconditions not met for ${ctx.ruleId}: ${ctx.failed.join(', ')}`,
+})
+
+export type PreconditionsNotMetError = InstanceType<typeof PreconditionsNotMetError>
+
 type RegisteredRule = (typeof Rules)[keyof typeof Rules]
 type RegisteredRuleError =
-  RegisteredRule extends RuntimeRule.RuntimeRule<unknown, unknown, infer Error, unknown>
+  RegisteredRule extends RuntimeRule.RuntimeRule<infer _O, infer _M, infer Error, infer _C>
     ? Error
     : never
 type RegisteredRuleContext =
-  RegisteredRule extends RuntimeRule.RuntimeRule<unknown, unknown, unknown, infer Context>
+  RegisteredRule extends RuntimeRule.RuntimeRule<infer _O, infer _M, infer _E, infer Context>
     ? Context
     : never
-type RegisteredRuleContextWithoutOptions = Exclude<RegisteredRuleContext, RuleOptionsService>
 
+/** All registered rules. */
 const getAllRules = (): RegisteredRule[] => Obj.values(Rules) as RegisteredRule[]
+
+/** Maximum number of rules checked at once (rules do network and process IO). */
+const ruleConcurrency = 8
 
 export interface CheckParams {
   config: ResolvedConfig
@@ -105,7 +131,7 @@ const resolveRulesToRun = (
     // Resolve enabled: per-rule config > rule defaults > global defaults
     const ruleConfig = config.rules[rule.data.id]
     const enabled =
-      ruleConfig?.['overrides'].enabled ?? rule.data.defaults?.enabled ?? config.defaults.enabled
+      ruleConfig?.overrides.enabled ?? rule.data.defaults?.enabled ?? config.defaults.enabled
 
     if (enabled === false) {
       inactive.push(rule)
@@ -123,29 +149,14 @@ const resolveRulesToRun = (
 }
 
 /**
- * Evaluate whether a single precondition is satisfied.
- */
-const evaluatePrecondition = (
-  precondition: Precondition.Precondition,
-  evaluated: EvaluatedPreconditions,
-): boolean =>
-  Precondition.Precondition.match(precondition, {
-    PreconditionHasOpenPR: () => evaluated.hasOpenPR,
-    PreconditionHasDiff: () => evaluated.hasDiff,
-    PreconditionIsMonorepo: () => evaluated.isMonorepo,
-    PreconditionHasGitHubAccess: () => evaluated.hasGitHubAccess,
-    PreconditionHasReleasePlan: () => evaluated.hasReleasePlan,
-  })
-
-/**
  * Evaluate all preconditions for a rule.
  * Returns the list of failed preconditions (empty if all pass).
  */
 const evaluatePreconditions = (
-  preconditions: readonly Precondition.Precondition[],
+  preconditions: readonly Precondition[],
   evaluated: EvaluatedPreconditions,
-): Precondition.Precondition[] => {
-  return preconditions.filter((p) => !evaluatePrecondition(p, evaluated))
+): Precondition[] => {
+  return preconditions.filter((precondition) => !evaluated[precondition])
 }
 
 /**
@@ -156,7 +167,7 @@ export const check = (
 ): Effect.Effect<
   Report,
   Schema.SchemaError | RegisteredRuleError,
-  EvaluatedPreconditionsService | RegisteredRuleContextWithoutOptions
+  EvaluatedPreconditionsService | RegisteredRuleContext
 > => {
   const { config } = params
   const { active } = resolveRulesToRun(getAllRules(), config)
@@ -175,11 +186,14 @@ export const check = (
       )
     }
 
-    // Run included rules
-    for (const { rule, explicitlyRequested } of active.included) {
-      const result = yield* checkRule(rule, config, explicitlyRequested, preconditions)
-      results.push(result)
-    }
+    // Run included rules concurrently (order-preserving; duration is measured per-rule).
+    const finished = yield* Effect.forEach(
+      active.included,
+      ({ rule, explicitlyRequested }) =>
+        checkRule(rule, config, explicitlyRequested, preconditions),
+      { concurrency: ruleConcurrency },
+    )
+    results.push(...finished)
 
     return Report.make({ results })
   })
@@ -193,7 +207,7 @@ const checkRule = (
 ): Effect.Effect<
   RuleCheckResult,
   Schema.SchemaError | RegisteredRuleError,
-  RegisteredRuleContextWithoutOptions
+  RegisteredRuleContext
 > => {
   return Effect.gen(function* () {
     const ruleRef = { id: rule.data.id, description: rule.data.description }
@@ -205,11 +219,12 @@ const checkRule = (
     if (failedPreconditions.length > 0) {
       if (explicitlyRequested) {
         // Explicitly requested but preconditions not met → Error
-        const failedNames = failedPreconditions.map((p) => p._tag.replace('Precondition', ''))
         return Failed.make({
           rule: ruleRef,
           duration: 0,
-          error: new Error(`Preconditions not met: ${failedNames.join(', ')}`),
+          error: new PreconditionsNotMetError({
+            context: { ruleId: rule.data.id, failed: failedPreconditions },
+          }),
         })
       } else {
         // Auto-enabled and preconditions not met → Skip silently
@@ -220,25 +235,10 @@ const checkRule = (
       }
     }
 
-    // Get rule options from config
-    const rawOptions = config.rules[rule.data.id]?.['options'] ?? {}
-
-    // Validate options against rule's schema (if defined)
-    const options = rule.optionsSchema
-      ? yield* Schema.decodeUnknownEffect(rule.optionsSchema)(rawOptions)
-      : rawOptions
-
-    // Run the check with options provided
+    // Decode rule options from config and run the check
+    const rawOptions = config.rules[rule.data.id]?.options ?? {}
     const start = performance.now()
-
-    const checkEffect: Effect.Effect<
-      RuntimeRule.CheckResult,
-      RegisteredRuleError,
-      RegisteredRuleContext
-    > = rule.check
-
-    const result = yield* checkEffect.pipe(Effect.provideService(RuleOptionsService, options))
-
+    const result = yield* rule.run(rawOptions)
     const duration = performance.now() - start
 
     // Normalize result: can be undefined, Violation, or { violation?, metadata? }
@@ -251,18 +251,12 @@ const checkRule = (
       violation,
       metadata,
     })
-  }) as Effect.Effect<
-    RuleCheckResult,
-    Schema.SchemaError | RegisteredRuleError,
-    RegisteredRuleContextWithoutOptions
-  >
+  })
 }
 
 const resolveRuleSeverity = (rule: RegisteredRule, config: ResolvedConfig): Severity => {
   const ruleConfig = config.rules[rule.data.id]
-  return (
-    ruleConfig?.['overrides'].severity ?? rule.data.defaults?.severity ?? config.defaults.severity
-  )
+  return ruleConfig?.overrides.severity ?? rule.data.defaults?.severity ?? config.defaults.severity
 }
 
 /**

@@ -2,25 +2,20 @@ import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
-import { NpmRegistry } from '@kitz/npm-registry'
+import { Str } from '@kitz/core'
 import { Console, Effect, Layer } from 'effect'
-import { Command, Flag } from 'effect/unstable/cli'
+import { Command } from 'effect/unstable/cli'
 import * as Clock from '../../api/clock.js'
 import * as Explorer from '../../api/explorer/__.js'
 import * as Proof from '../../api/proof.js'
-import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
+import { ChildProcessSpawnerLayer } from '../../platform.js'
+import { CommandBaseLayer, NpmCliLayer, fromFlag } from './_shared.js'
 import { loadExecutableCommandPlan } from './plan-file.js'
-
-const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
 
 export const prove = Command.make(
   'prove',
   {
-    from: Flag.string('from').pipe(
-      Flag.withAlias('f'),
-      Flag.withDescription('Read the release plan from a specific file path'),
-      Flag.optional,
-    ),
+    from: fromFlag,
   },
   ({ from }) =>
     Effect.gen(function* () {
@@ -47,15 +42,17 @@ export const prove = Command.make(
         ...githubObservations,
       })
       const proofPath = Proof.proofPathFor(env.cwd, plan)
-      yield* Console.log(`Proof written to ${Fs.Path.toString(proofPath)}`)
+      const b = Str.Builder()
+      b`Proof written to ${Fs.Path.toString(proofPath)}`
       for (const record of proof.records) {
-        yield* Console.log(`${record.status.padEnd(14)} ${record.id}`)
+        b`${record.status.padEnd(14)} ${record.id}`
       }
-      if (Proof.hasBlockingProof(proof, yield* Clock.nowIso)) return env.exit(1)
+      yield* Console.log(b.render())
+      if (Proof.hasBlockingProof(proof, yield* Clock.now)) env.exit(1)
     }),
 ).pipe(
   Command.withDescription('Write plan-bound publishing proof'),
   Command.provide(
-    Layer.mergeAll(Env.Live, FileSystemLayer, ChildProcessSpawnerLayer, npmLayer, Git.GitLive),
+    Layer.mergeAll(CommandBaseLayer, ChildProcessSpawnerLayer, NpmCliLayer, Git.GitLive),
   ),
 )

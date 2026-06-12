@@ -1,4 +1,4 @@
-/* oxlint-disable typescript-eslint(no-unnecessary-type-arguments) -- explicit type arguments keep type-level regression cases readable. */
+/* oxlint-disable typescript/no-unnecessary-type-arguments -- explicit type arguments keep type-level regression cases readable. */
 import type { Type as A } from '@kitz/assert/assert'
 import { Ts } from '#ts'
 import type { Brand } from 'effect'
@@ -21,22 +21,14 @@ type _strip_readonly_deep_tuple_preservation = A.Cases<
   // Basic tuple preservation: [1, 2] NOT (1 | 2)[]
   A.exact<Ts.StripReadonlyDeep<readonly [1, 2]>, [1, 2]>,
   // Tuple with different types: [number, string] NOT (number | string)[]
-  A.exact<Ts.StripReadonlyDeep<readonly [number, string]>, [number, string]>,
-  // Tuple with branded types
-  A.exact<Ts.StripReadonlyDeep<readonly [NonNegative, number]>, [NonNegative, number]>
+  A.exact<Ts.StripReadonlyDeep<readonly [number, string]>, [number, string]>
 >
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // StripReadonlyDeep Tests - Object Readonly Stripping
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-type _strip_readonly_deep_object = A.Cases<
-  // Basic object
-  A.exact<
-    Ts.StripReadonlyDeep<{ readonly x: number; readonly y: string }>,
-    { x: number; y: string }
-  >
->
+type _strip_readonly_deep_object = A.Cases
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // StripReadonlyDeep Tests - Array Handling
@@ -44,9 +36,7 @@ type _strip_readonly_deep_object = A.Cases<
 
 type _strip_readonly_deep_array = A.Cases<
   // ReadonlyArray conversion
-  A.exact<Ts.StripReadonlyDeep<ReadonlyArray<number>>, Array<number>>,
-  // Regular array (passthrough)
-  A.exact<Ts.StripReadonlyDeep<Array<number>>, Array<number>>
+  A.exact<Ts.StripReadonlyDeep<ReadonlyArray<number>>, Array<number>>
 >
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -1,9 +1,9 @@
 import type { KeyEvent } from '@opentui/core'
-import { Pkg } from '@kitz/pkg'
 import { Array as A } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import * as Api from '../../api/__.js'
 import { Analysis } from '../../api/analyzer/models/analysis.js'
+import { testConfig } from '../../test-support.js'
 import {
   dashboardUpdate,
   handleDashboardKey,
@@ -12,24 +12,7 @@ import {
 } from './ui-model.js'
 import type { Lifecycle } from './ui-atoms.js'
 
-const config = Api.Config.ResolvedConfig.make({
-  trunk: 'main',
-  npmTag: 'latest',
-  candidateTag: 'next',
-  packages: {},
-  publishing: Api.Publishing.defaultPublishing(),
-  operator: Api.Operator.ResolvedOperator.make({
-    manager: Pkg.Manager.DetectedPackageManager.make({
-      name: 'bun',
-      source: 'runtime',
-    }),
-    releaseCommand: 'bun run release',
-    prepareCommands: [],
-  }),
-  resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
-  commitOverrides: {},
-  lint: Api.Lint.resolveConfig({}),
-})
+const config = testConfig()
 
 const analysis = Analysis.make({
   impacts: [],

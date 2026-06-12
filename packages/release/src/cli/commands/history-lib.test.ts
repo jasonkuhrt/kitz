@@ -3,7 +3,6 @@ import { Effect } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import * as Api from '../../api/__.js'
 import {
-  parsePositiveIntegerOption,
   renderPreviewPublishReport,
   resolvePreviewPublishSurface,
   toPreviewPublishReport,
@@ -44,30 +43,6 @@ const metadataBlock = Api.Commentator.renderMetadataBlock({
 })
 
 describe('release history helpers', () => {
-  test('parses positive integer options and rejects invalid values', async () => {
-    expect(await Effect.runPromise(parsePositiveIntegerOption(undefined, 'limit'))).toBeUndefined()
-    expect(await Effect.runPromise(parsePositiveIntegerOption(' 3 ', 'limit'))).toBe<number>(3)
-    expect(
-      await Effect.runPromise(parsePositiveIntegerOption('9007199254740991', 'limit')),
-    ).toBe<number>(9007199254740991)
-    await expect(Effect.runPromise(parsePositiveIntegerOption('0', 'limit'))).rejects.toThrow(
-      /positive integer/,
-    )
-    await expect(Effect.runPromise(parsePositiveIntegerOption('abc', 'pr'))).rejects.toThrow(
-      /positive integer/,
-    )
-
-    await Promise.all(
-      ['3abc', '3.0', '3.14', '1e3', '+3', '03', '-1', '   '].map((value) =>
-        expect(Effect.runPromise(parsePositiveIntegerOption(value, 'pr'))).rejects.toThrow(/--pr/),
-      ),
-    )
-
-    await expect(
-      Effect.runPromise(parsePositiveIntegerOption('9007199254740992', 'limit')),
-    ).rejects.toThrow(/--limit/)
-  })
-
   test('resolves publish metadata from the connected pull request preview comment', async () => {
     const { layer } = await Effect.runPromise(
       Github.Memory.makeWithState({

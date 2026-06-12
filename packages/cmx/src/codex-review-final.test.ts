@@ -194,7 +194,7 @@ describe('P2: slot phase undo restores preTakeQuery', () => {
     // Manually take the first choice
     const choices = resolver.getChoices()
     expect(choices.length).toBeGreaterThanOrEqual(2)
-    resolver.takeChoice(choices[0]!)
+    resolver.takeChoice(choices[0])
 
     // Now focused on 'destination' with empty query
     expect(resolver.getFocusedSlotName()).toBe('destination')

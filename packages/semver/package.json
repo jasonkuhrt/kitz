@@ -11,9 +11,12 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/_.ts",
-    "./__": "./src/__.ts"
+    "./__": "./src/__.ts",
+    "./official-release": "./src/official-release.ts",
+    "./pre-release": "./src/pre-release.ts"
   },
   "dependencies": {
+    "@kitz/sch": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

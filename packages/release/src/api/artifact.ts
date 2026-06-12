@@ -15,6 +15,7 @@ import {
   Result,
   Schema,
 } from 'effect'
+import { ArtifactManifest } from './contract/artifact.js'
 import { sha256Bytes, sha256Text } from './digest.js'
 import {
   preparePackageArtifact,
@@ -23,14 +24,16 @@ import {
   type PreparedArtifact,
   type ReleaseInfo,
 } from './executor/publish.js'
-import { jsonFile } from './persistence.js'
+import { digestForPlan } from './plan-digest.js'
 import type { Plan } from './planner/models/plan.js'
-import { digestForPlan } from './proof.js'
-import { ArtifactManifest } from './release-contract.js'
 
 const artifactDir = Fs.Path.RelDir.fromString('./.release/artifacts/')
 const artifactManifestFile = Fs.Path.RelFile.fromString('./manifest.json')
-const artifactManifestResource = jsonFile(Schema.Array(ArtifactManifest))
+const artifactManifestResource = Resource.createJson(
+  'manifest.json',
+  Schema.Array(ArtifactManifest),
+  [],
+)
 const PackageJsonScriptsFromString = Schema.fromJsonString(
   Schema.Struct({
     scripts: Schema.optional(Schema.NullOr(Schema.Record(Schema.String, Schema.Unknown))),
@@ -38,8 +41,11 @@ const PackageJsonScriptsFromString = Schema.fromJsonString(
     packageManager: Schema.optional(Schema.String),
   }),
 )
+type PackageJsonForPolicy = typeof PackageJsonScriptsFromString.Type
 
 const safePackEnvKeys = ['PATH', 'HOME', 'TMPDIR', 'TMP', 'TEMP']
+
+const policyValidationConcurrency = 4
 
 export const manifestPathFor = (cwd: Fs.Path.AbsDir, plan: Plan): Fs.Path.AbsFile =>
   Fs.Path.join(
@@ -139,29 +145,23 @@ export interface ArtifactIssue {
   readonly detail: string
 }
 
-const splitPackageManager = (value: string): { name: string; version: string } | null => {
-  const separator = value.lastIndexOf(String.fromCharCode(64))
-  if (separator <= 0) return null
-  const name = value.slice(0, separator)
-  const version = value.slice(separator + 1)
-  return name.length > 0 && version.length > 0 ? { name, version } : null
-}
+const decodeSemverOption = Schema.decodeUnknownOption(Semver.Schema)
+const decodeRangeOption = Schema.decodeUnknownOption(Pkg.Range.Schema)
+const decodePackageManagerDescriptorOption = Schema.decodeUnknownOption(
+  Pkg.Manager.Descriptor.FromString,
+)
 
-const versionSatisfiesRange = (version: string, range: string): boolean => {
-  try {
-    return Pkg.Range.satisfies(Semver.fromString(version), Pkg.Range.fromString(range))
-  } catch {
-    return false
-  }
-}
+const versionSatisfiesRange = (version: string, range: string): boolean =>
+  Option.match(Option.all([decodeSemverOption(version), decodeRangeOption(range)]), {
+    onNone: () => false,
+    onSome: ([semver, parsedRange]) => Pkg.Range.satisfies(semver, parsedRange),
+  })
 
-const exactVersionMatches = (version: string, expected: string): boolean => {
-  try {
-    return Semver.equivalence(Semver.fromString(version), Semver.fromString(expected))
-  } catch {
-    return false
-  }
-}
+const exactVersionMatches = (version: string, expected: string): boolean =>
+  Option.match(Option.all([decodeSemverOption(version), decodeSemverOption(expected)]), {
+    onNone: () => false,
+    onSome: ([left, right]) => Semver.equivalence(left, right),
+  })
 
 export const packEnvironmentForPlan = (
   plan: Plan,
@@ -238,30 +238,82 @@ export const validateManifestFilesForPlan = (
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const baseIssues = validateManifestForPlan(plan, manifests)
-    const fileIssues: ArtifactIssue[] = []
 
-    for (const manifest of manifests) {
-      const exists = yield* fs
-        .exists(Fs.Path.toString(manifest.tarball))
-        .pipe(Effect.orElseSucceed(() => false))
-      if (!exists) {
-        fileIssues.push({
-          code: 'release.artifact.tarball-missing',
-          detail: `${Fs.Path.toString(manifest.tarball)} is missing.`,
-        })
-        continue
-      }
-      const bytes = yield* fs.readFile(Fs.Path.toString(manifest.tarball))
-      const actual = sha256Bytes(bytes)
-      if (actual.value !== manifest.sha256.value) {
-        fileIssues.push({
-          code: 'release.artifact.sha256-mismatch',
-          detail: `${Fs.Path.toString(manifest.tarball)} does not match the rehearsed SHA-256.`,
-        })
-      }
+    const fileIssueGroups = yield* Effect.forEach(
+      manifests,
+      (manifest) =>
+        Effect.gen(function* () {
+          const exists = yield* fs
+            .exists(Fs.Path.toString(manifest.tarball))
+            .pipe(Effect.orElseSucceed(() => false))
+          if (!exists) {
+            return [
+              {
+                code: 'release.artifact.tarball-missing',
+                detail: `${Fs.Path.toString(manifest.tarball)} is missing.`,
+              },
+            ]
+          }
+          const bytes = yield* fs.readFile(Fs.Path.toString(manifest.tarball))
+          const actual = sha256Bytes(bytes)
+          return actual.value === manifest.sha256.value
+            ? []
+            : [
+                {
+                  code: 'release.artifact.sha256-mismatch',
+                  detail: `${Fs.Path.toString(manifest.tarball)} does not match the rehearsed SHA-256.`,
+                },
+              ]
+        }),
+      { concurrency: policyValidationConcurrency },
+    )
+
+    return [...baseIssues, ...fileIssueGroups.flat()]
+  })
+
+/**
+ * Read and decode a release's `package.json` for policy validation.
+ *
+ * Failure is data: an {@link ArtifactIssue} naming the unreadable or
+ * malformed manifest, so both policy validators report identical input
+ * failures.
+ */
+const readPackageJsonForPolicy = (
+  release: ReleaseInfo,
+  purpose: string,
+): Effect.Effect<
+  Result.Result<{ readonly raw: string; readonly parsed: PackageJsonForPolicy }, ArtifactIssue>,
+  never,
+  FileSystem.FileSystem
+> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const packageJsonPath = Fs.Path.join(
+      release.package.path,
+      Fs.Path.RelFile.fromString('./package.json'),
+    )
+    const pathString = Fs.Path.toString(packageJsonPath)
+    const raw = yield* fs.readFileString(pathString).pipe(Effect.result)
+
+    if (Result.isFailure(raw)) {
+      return Result.fail<ArtifactIssue>({
+        code: 'release.artifact.package-json-unreadable',
+        detail: `${pathString} could not be read for ${purpose}.`,
+      })
     }
 
-    return [...baseIssues, ...fileIssues]
+    const parsed = yield* Schema.decodeUnknownEffect(PackageJsonScriptsFromString)(
+      raw.success,
+    ).pipe(Effect.option)
+
+    if (Option.isNone(parsed)) {
+      return Result.fail<ArtifactIssue>({
+        code: 'release.artifact.package-json-malformed',
+        detail: `${pathString} could not be parsed for ${purpose}.`,
+      })
+    }
+
+    return Result.succeed({ raw: raw.success, parsed: parsed.value })
   })
 
 export const validateScriptPolicyForPlan = (
@@ -271,77 +323,63 @@ export const validateScriptPolicyForPlan = (
     const policy = plan.publishIntent?.artifacts.scriptPolicy
     if (policy === undefined) return []
 
-    const fs = yield* FileSystem.FileSystem
-    const issues: ArtifactIssue[] = []
+    const issueGroups = yield* Effect.forEach(
+      releaseInfosForPlan(plan),
+      (release) =>
+        Effect.gen(function* () {
+          const source = yield* readPackageJsonForPolicy(
+            release,
+            'lifecycle-script policy validation',
+          )
+          if (Result.isFailure(source)) return [source.failure]
 
-    for (const release of releaseInfosForPlan(plan)) {
-      const packageJsonPath = Fs.Path.join(
-        release.package.path,
-        Fs.Path.RelFile.fromString('./package.json'),
-      )
-      const pathString = Fs.Path.toString(packageJsonPath)
-      const raw = yield* fs.readFileString(pathString).pipe(Effect.result)
+          const issues: ArtifactIssue[] = []
+          const scripts = source.success.parsed.scripts ?? undefined
+          const hooks = Pkg.Manifest.findPackHooks(
+            scripts === undefined
+              ? undefined
+              : EffectRecord.filterMap(scripts, (value) =>
+                  typeof value === 'string' ? Result.succeed(value) : Result.failVoid,
+                ),
+          )
 
-      if (Result.isFailure(raw)) {
-        issues.push({
-          code: 'release.artifact.package-json-unreadable',
-          detail: `${pathString} could not be read for lifecycle-script policy validation.`,
-        })
-        continue
-      }
+          for (const hook of hooks) {
+            const command = scripts?.[hook]
+            if (typeof command !== 'string') continue
 
-      const parsed = yield* Schema.decodeUnknownEffect(PackageJsonScriptsFromString)(
-        raw.success,
-      ).pipe(Effect.option)
+            const commandSha256 = sha256Text(command)
+            const packageSourceDigest = sha256Text(source.success.raw)
+            const allowed = policy.allowlist.some(
+              (entry) =>
+                entry.packageName.moniker === release.package.name.moniker &&
+                entry.script === hook &&
+                entry.commandSha256.value === commandSha256.value &&
+                entry.packageSourceDigest.value === packageSourceDigest.value,
+            )
 
-      if (Option.isNone(parsed)) {
-        issues.push({
-          code: 'release.artifact.package-json-malformed',
-          detail: `${pathString} could not be parsed for lifecycle-script policy validation.`,
-        })
-        continue
-      }
-
-      const scripts = parsed.value.scripts ?? undefined
-      const hooks = Pkg.Manifest.findPackHooks(
-        scripts === undefined
-          ? undefined
-          : EffectRecord.filterMap(scripts, (value) =>
-              typeof value === 'string' ? Result.succeed(value) : Result.failVoid,
-            ),
-      )
-
-      for (const hook of hooks) {
-        const command = scripts?.[hook]
-        if (typeof command !== 'string') continue
-
-        const commandSha256 = sha256Text(command)
-        const packageSourceDigest = sha256Text(raw.success)
-        const allowed = policy.allowlist.some(
-          (entry) =>
-            entry.packageName.moniker === release.package.name.moniker &&
-            entry.script === hook &&
-            entry.commandSha256.value === commandSha256.value &&
-            entry.packageSourceDigest.value === packageSourceDigest.value,
-        )
-
-        if (policy.default === 'deny' || !allowed) {
-          if (!allowed) {
-            issues.push({
-              code: 'release.artifact.lifecycle-script-disallowed',
-              detail: `${release.package.name.moniker} defines ${hook}; add a matching command and package source digest to the publish artifact script allowlist or remove the hook before rehearsal.`,
-            })
+            // Deny-by-default: a hook may only run with a matching allowlist
+            // entry; an allowlisted hook is still unprovable under the
+            // deny-enforced network policy until a network-denial backend
+            // exists.
+            if (!allowed) {
+              issues.push({
+                code: 'release.artifact.lifecycle-script-disallowed',
+                detail: `${release.package.name.moniker} defines ${hook}; add a matching command and package source digest to the publish artifact script allowlist or remove the hook before rehearsal.`,
+              })
+            } else if (policy.network === 'deny-enforced') {
+              issues.push({
+                code: 'release.artifact.network-denial-unprovable',
+                detail: `${release.package.name.moniker} defines allowlisted ${hook}, but no pack-time network-denial backend is active for the deny-enforced script policy.`,
+              })
+            }
           }
-        } else if (policy.network === 'deny-enforced') {
-          issues.push({
-            code: 'release.artifact.network-denial-unprovable',
-            detail: `${release.package.name.moniker} defines allowlisted ${hook}, but no pack-time network-denial backend is active for the deny-enforced script policy.`,
-          })
-        }
-      }
-    }
 
-    return issues
+          return issues
+        }),
+      { concurrency: policyValidationConcurrency },
+    )
+
+    return issueGroups.flat()
   })
 
 export const validateEnginePolicyForPlan = (
@@ -351,85 +389,73 @@ export const validateEnginePolicyForPlan = (
     const policy = plan.publishIntent?.artifacts.enginePolicy
     if (policy === undefined) return []
 
-    const fs = yield* FileSystem.FileSystem
-    const issues: ArtifactIssue[] = []
+    const issueGroups = yield* Effect.forEach(
+      releaseInfosForPlan(plan),
+      (release) =>
+        Effect.gen(function* () {
+          const source = yield* readPackageJsonForPolicy(release, 'engine policy validation')
+          if (Result.isFailure(source)) return [source.failure]
 
-    for (const release of releaseInfosForPlan(plan)) {
-      const packageJsonPath = Fs.Path.join(
-        release.package.path,
-        Fs.Path.RelFile.fromString('./package.json'),
-      )
-      const pathString = Fs.Path.toString(packageJsonPath)
-      const raw = yield* fs.readFileString(pathString).pipe(Effect.result)
+          const issues: ArtifactIssue[] = []
+          const parsed = source.success.parsed
 
-      if (Result.isFailure(raw)) {
-        issues.push({
-          code: 'release.artifact.package-json-unreadable',
-          detail: `${pathString} could not be read for engine policy validation.`,
-        })
-        continue
-      }
-
-      const parsed = yield* Schema.decodeUnknownEffect(PackageJsonScriptsFromString)(
-        raw.success,
-      ).pipe(Effect.option)
-
-      if (Option.isNone(parsed)) {
-        issues.push({
-          code: 'release.artifact.package-json-malformed',
-          detail: `${pathString} could not be parsed for engine policy validation.`,
-        })
-        continue
-      }
-
-      const nodeRange = parsed.value.engines?.['node']
-      if (typeof nodeRange === 'string') {
-        const runtimeNode = plan.source?.toolVersions['node']
-        if (runtimeNode === undefined) {
-          issues.push({
-            code: 'release.artifact.engine-policy-source-missing',
-            detail: `${release.package.name.moniker} declares engines.node but the plan source snapshot has no node runtime version.`,
-          })
-        } else {
-          const matches =
-            policy.node === 'match-runtime'
-              ? exactVersionMatches(runtimeNode, nodeRange)
-              : versionSatisfiesRange(runtimeNode, nodeRange)
-          if (!matches) {
-            issues.push({
-              code: 'release.artifact.engine-node-mismatch',
-              detail: `${release.package.name.moniker} declares engines.node=${nodeRange}, which does not satisfy planned node ${runtimeNode} under ${policy.node}.`,
-            })
+          const nodeRange = parsed.engines?.['node']
+          if (typeof nodeRange === 'string') {
+            const runtimeNode = plan.source?.toolVersions['node']
+            if (runtimeNode === undefined) {
+              issues.push({
+                code: 'release.artifact.engine-policy-source-missing',
+                detail: `${release.package.name.moniker} declares engines.node but the plan source snapshot has no node runtime version.`,
+              })
+            } else {
+              const matches =
+                policy.node === 'match-runtime'
+                  ? exactVersionMatches(runtimeNode, nodeRange)
+                  : versionSatisfiesRange(runtimeNode, nodeRange)
+              if (!matches) {
+                issues.push({
+                  code: 'release.artifact.engine-node-mismatch',
+                  detail: `${release.package.name.moniker} declares engines.node=${nodeRange}, which does not satisfy planned node ${runtimeNode} under ${policy.node}.`,
+                })
+              }
+            }
           }
-        }
-      }
 
-      const packageManager = parsed.value.packageManager
-      if (typeof packageManager === 'string') {
-        const declared = splitPackageManager(packageManager)
-        const planned = plan.source?.packageManager
-        if (declared === null || planned === undefined) {
-          issues.push({
-            code: 'release.artifact.package-manager-mismatch',
-            detail: `${release.package.name.moniker} declares packageManager=${packageManager}, but the plan does not contain a comparable package-manager source snapshot.`,
-          })
-        } else {
-          const matches =
-            declared.name === planned.name &&
-            (policy.packageManager === 'match-plan'
-              ? declared.version === planned.version
-              : versionSatisfiesRange(planned.version, declared.version))
-          if (!matches) {
-            issues.push({
-              code: 'release.artifact.package-manager-mismatch',
-              detail: `${release.package.name.moniker} declares packageManager=${packageManager}, which does not match planned ${planned.name}@${planned.version} under ${policy.packageManager}.`,
-            })
+          const packageManager = parsed.packageManager
+          if (typeof packageManager === 'string') {
+            const declared = decodePackageManagerDescriptorOption(packageManager)
+            const declaredVersion = Option.flatMap(declared, (descriptor) => descriptor.version)
+            const planned = plan.source?.packageManager
+            if (
+              Option.isNone(declared) ||
+              Option.isNone(declaredVersion) ||
+              planned === undefined
+            ) {
+              issues.push({
+                code: 'release.artifact.package-manager-mismatch',
+                detail: `${release.package.name.moniker} declares packageManager=${packageManager}, but the plan does not contain a comparable package-manager source snapshot.`,
+              })
+            } else {
+              const matches =
+                declared.value.name.moniker === planned.name &&
+                (policy.packageManager === 'match-plan'
+                  ? declaredVersion.value === planned.version
+                  : versionSatisfiesRange(planned.version, declaredVersion.value))
+              if (!matches) {
+                issues.push({
+                  code: 'release.artifact.package-manager-mismatch',
+                  detail: `${release.package.name.moniker} declares packageManager=${packageManager}, which does not match planned ${planned.name}@${planned.version} under ${policy.packageManager}.`,
+                })
+              }
+            }
           }
-        }
-      }
-    }
 
-    return issues
+          return issues
+        }),
+      { concurrency: policyValidationConcurrency },
+    )
+
+    return issueGroups.flat()
   })
 
 export const writeManifest = (
@@ -451,6 +477,49 @@ export const readManifest = (
   Effect.gen(function* () {
     const env = yield* Env.Env
     return yield* artifactManifestResource.read(manifestPathFor(env.cwd, plan))
+  })
+
+/**
+ * All rehearsed artifact manifests for a release subject, scanned across
+ * every plan-digest directory under `.release/artifacts/`.
+ */
+export const findManifests = (query: {
+  readonly packageName: string
+  readonly version: string
+}): Effect.Effect<
+  readonly ArtifactManifest[],
+  Resource.ResourceError,
+  Env.Env | FileSystem.FileSystem
+> =>
+  Effect.gen(function* () {
+    const env = yield* Env.Env
+    const fs = yield* FileSystem.FileSystem
+    const root = Fs.Path.join(env.cwd, artifactDir)
+    const directories = yield* fs
+      .readDirectory(Fs.Path.toString(root))
+      .pipe(Effect.orElseSucceed(() => [] as string[]))
+
+    const groups = yield* Effect.forEach(
+      directories,
+      (directory) =>
+        artifactManifestResource
+          .read(
+            Fs.Path.join(
+              Fs.Path.join(root, Fs.Path.RelDir.fromString(`./${directory}/`)),
+              artifactManifestFile,
+            ),
+          )
+          .pipe(Effect.map(Option.getOrElse(() => [] as readonly ArtifactManifest[]))),
+      { concurrency: policyValidationConcurrency },
+    )
+
+    return groups
+      .flat()
+      .filter(
+        (manifest) =>
+          manifest.packageName.moniker === query.packageName &&
+          manifest.version.toString() === query.version,
+      )
   })
 
 export interface RehearseOptions {

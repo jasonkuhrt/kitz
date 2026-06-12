@@ -3,7 +3,16 @@ import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { describe, expect, test } from 'bun:test'
 import { Schema } from 'effect'
-import { sha256Json } from './digest.js'
+import * as fc from 'fast-check'
+import {
+  arbAbsFile,
+  arbJsonRecord,
+  arbMoniker,
+  arbRelFile,
+  arbSemver,
+  roundtrips,
+} from '../test-support.js'
+import { Digest, sha256Json } from './digest.js'
 import {
   ArtifactManifest,
   defaultArtifactPolicy,
@@ -14,6 +23,7 @@ import {
   PlanBody,
   PlanDigest,
   PlanSourceSnapshot,
+  ProofArtifact,
   publishIntentFromSemantics,
 } from './release-contract.js'
 import { resolvePublishSemantics } from './publishing.js'
@@ -26,7 +36,6 @@ describe('release contract models', () => {
     expect(intent.profile.publishInvoker).toBe('npm')
     expect(intent.registry.url).toBe('https://registry.npmjs.org/')
     expect(intent.distTag).toBe('latest')
-    expect(intent.artifacts.scriptPolicy.default).toBe('deny')
   })
 
   test('publish intent can use the project package-manager driver', () => {
@@ -129,3 +138,33 @@ describe('release contract models', () => {
     expect(defaultArtifactPolicy().forbiddenFilePatterns).toContain('.npmrc')
   })
 })
+
+// ── Properties ───────────────────────────────────────────────────────
+
+roundtrips('ProofArtifact', ProofArtifact)
+
+// `Schema.toArbitrary(ArtifactManifest)` is unusable directly: the upstream
+// leaf class schemas (`Pkg.Moniker`, `Semver`, `Fs.Path.*`) derive type-side
+// arbitraries that violate their encoded contracts (scopes containing `/`,
+// path segments containing `/`, numeric-string prerelease identifiers). Those
+// leaves are generated through their production parsers instead; everything
+// else still comes from `Schema.toArbitrary`.
+const arbDigest = Schema.toArbitrary(Digest)
+
+const arbArtifactManifest = fc
+  .record({
+    schemaVersion: fc.constant(1 as const),
+    planDigest: arbDigest,
+    packageName: arbMoniker,
+    version: arbSemver,
+    driver: fc.string(),
+    tarball: arbAbsFile,
+    sha256: arbDigest,
+    sizeBytes: fc.nat(),
+    manifest: arbJsonRecord,
+    packlist: fc.array(arbRelFile, { maxLength: 4 }),
+    rewrittenFields: fc.array(fc.string(), { maxLength: 3 }),
+  })
+  .map((fields) => ArtifactManifest.make(fields))
+
+roundtrips('ArtifactManifest', ArtifactManifest, arbArtifactManifest)

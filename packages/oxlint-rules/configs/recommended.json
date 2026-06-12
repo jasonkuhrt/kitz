@@ -1,6 +1,11 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/refs/heads/main/npm/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "import", "vitest", "promise"],
+  "plugins": [
+    "typescript",
+    "import",
+    "vitest",
+    "promise"
+  ],
   "jsPlugins": [
     {
       "name": "kitz",
@@ -14,7 +19,12 @@
   },
   "rules": {
     "eslint/no-unused-vars": "off",
-    "eslint/no-unused-expressions": ["error", { "allowTaggedTemplates": true }],
+    "eslint/no-unused-expressions": [
+      "error",
+      {
+        "allowTaggedTemplates": true
+      }
+    ],
     "eslint/no-control-regex": "off",
     "typescript/no-explicit-any": "off",
     "typescript/no-unsafe-type-assertion": "off",
@@ -52,8 +62,19 @@
     "kitz/module/prefer-subpath-imports": "warn",
     "kitz/module/subpath-imports-integrity": [
       "warn",
-      { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }
-    ]
+      {
+        "requiredEntryPatterns": [
+          "src/*/_.ts",
+          "src/*/core/_.ts"
+        ]
+      }
+    ],
+    "kitz/module/boundary-contract": "warn"
   },
-  "ignorePatterns": ["**/build/**", "**/node_modules/**", "**/*.d.ts", "**/__examples__/**"]
+  "ignorePatterns": [
+    "**/build/**",
+    "**/node_modules/**",
+    "**/*.d.ts",
+    "**/__examples__/**"
+  ]
 }

@@ -1,21 +1,15 @@
-import { Env } from '@kitz/env'
-import { NpmRegistry } from '@kitz/npm-registry'
+import { Str } from '@kitz/core'
 import { Console, Effect, Layer } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Reconciler from '../../api/reconciler.js'
-import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
+import { ChildProcessSpawnerLayer } from '../../platform.js'
+import { CommandBaseLayer, NpmCliLayer, fromFlag } from './_shared.js'
 import { loadExecutableCommandPlan } from './plan-file.js'
-
-const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
 
 export const reconcile = Command.make(
   'reconcile',
   {
-    from: Flag.string('from').pipe(
-      Flag.withAlias('f'),
-      Flag.withDescription('Read the release plan from a specific file path'),
-      Flag.optional,
-    ),
+    from: fromFlag,
     explain: Flag.boolean('explain').pipe(
       Flag.withDescription('Print decision evidence'),
       Flag.withDefault(false),
@@ -26,15 +20,19 @@ export const reconcile = Command.make(
       const { plan } = yield* loadExecutableCommandPlan(from)
 
       const decision = yield* Reconciler.reconcile(plan)
-      yield* Console.log(`Reconcile result: ${decision.classification}`)
-      yield* Console.log(`Plan digest: ${decision.planDigest.value}`)
+      const b = Str.Builder()
+      b`Reconcile result: ${decision.classification}`
+      b`Plan digest: ${decision.planDigest.value}`
       if (explain) {
-        yield* Console.log('Decision rows:')
-        for (const row of decision.stateDiff) yield* Console.log(`  ${row}`)
-        yield* Console.log(`Next command: ${decision.nextCommand}`)
+        b`Decision rows:`
+        for (const row of decision.stateDiff) {
+          b`  ${row}`
+        }
+        b`Next command: ${decision.nextCommand}`
       }
+      yield* Console.log(b.render())
     }),
 ).pipe(
   Command.withDescription('Reconcile remote release state with the frozen plan'),
-  Command.provide(Layer.mergeAll(Env.Live, FileSystemLayer, ChildProcessSpawnerLayer, npmLayer)),
+  Command.provide(Layer.mergeAll(CommandBaseLayer, ChildProcessSpawnerLayer, NpmCliLayer)),
 )

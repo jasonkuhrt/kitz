@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Array as A, HashMap, Option, Schema } from 'effect'
 import { PublishDriverId, publishDriverIdValues } from './driver-id.js'
 
@@ -48,19 +49,11 @@ export const UnsupportedCapabilityReason = Schema.Literals([
 ])
 export type UnsupportedCapabilityReason = typeof UnsupportedCapabilityReason.Type
 
-export class Supported extends Schema.TaggedClass<Supported>()('CapabilityResultSupported', {
+export class Supported extends Sch.TaggedClass<Supported>()('CapabilityResultSupported', {
   capability: PublishCapability,
   provider: Schema.String,
   evidence: Schema.Array(Schema.String),
 }) {
-  static is = Schema.is(Supported)
-  static decode = Schema.decodeUnknownEffect(Supported)
-  static decodeSync = Schema.decodeUnknownSync(Supported)
-  static encode = Schema.encodeUnknownEffect(Supported)
-  static encodeSync = Schema.encodeUnknownSync(Supported)
-  static equivalence = Schema.toEquivalence(Supported)
-  static ordered = false as const
-
   static from = (params: {
     readonly capability: PublishCapability
     readonly provider: string
@@ -81,21 +74,13 @@ export class Supported extends Schema.TaggedClass<Supported>()('CapabilityResult
   }
 }
 
-export class Unsupported extends Schema.TaggedClass<Unsupported>()('CapabilityResultUnsupported', {
+export class Unsupported extends Sch.TaggedClass<Unsupported>()('CapabilityResultUnsupported', {
   capability: PublishCapability,
   provider: Schema.String,
   reason: UnsupportedCapabilityReason,
   evidence: Schema.Array(Schema.String),
   blockingPlanFields: Schema.Array(Schema.String),
 }) {
-  static is = Schema.is(Unsupported)
-  static decode = Schema.decodeUnknownEffect(Unsupported)
-  static decodeSync = Schema.decodeUnknownSync(Unsupported)
-  static encode = Schema.encodeUnknownEffect(Unsupported)
-  static encodeSync = Schema.encodeUnknownSync(Unsupported)
-  static equivalence = Schema.toEquivalence(Unsupported)
-  static ordered = false as const
-
   static from = (params: {
     readonly capability: PublishCapability
     readonly provider: string
@@ -171,21 +156,13 @@ const capabilityOwnerByCapability = {
   'trust:setup-circleci': 'credentials',
 } as const satisfies Record<PublishCapability, CapabilityOwner>
 
-export class CapabilityMatrixRow extends Schema.Class<CapabilityMatrixRow>('CapabilityMatrixRow')({
+export class CapabilityMatrixRow extends Sch.Class<CapabilityMatrixRow>()('CapabilityMatrixRow', {
   capability: PublishCapability,
   owner: CapabilityOwner,
   providers: Schema.Record(PublishDriverId, CapabilitySupportState),
   evidence: Schema.Array(Schema.String),
   conformance: Schema.Array(Schema.String),
 }) {
-  static is = Schema.is(CapabilityMatrixRow)
-  static decode = Schema.decodeUnknownEffect(CapabilityMatrixRow)
-  static decodeSync = Schema.decodeUnknownSync(CapabilityMatrixRow)
-  static encode = Schema.encodeUnknownEffect(CapabilityMatrixRow)
-  static encodeSync = Schema.encodeUnknownSync(CapabilityMatrixRow)
-  static equivalence = Schema.toEquivalence(CapabilityMatrixRow)
-  static ordered = false as const
-
   static fromCapability = (capability: PublishCapability) =>
     CapabilityMatrixRow.make({
       capability,

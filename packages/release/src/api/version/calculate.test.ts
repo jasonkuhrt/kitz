@@ -2,6 +2,7 @@ import { Semver } from '@kitz/semver'
 import { Test } from '@kitz/test'
 import { Option } from 'effect'
 import { describe, expect, test } from 'bun:test'
+import { arbBump, arbSemver } from '../../test-support.js'
 import { calculateNextVersion } from './calculate.js'
 
 const v = Semver.fromString
@@ -76,4 +77,38 @@ describe('calculateNextVersion', () => {
     const result = calculateNextVersion(some(v('1.0.0')), 'patch')
     expect(Semver.toString(result)).toBe('1.0.1')
   })
+
+  // ── Properties ─────────────────────────────────────────────────────
+
+  Test.property(
+    'strictly increases for every bump type from any current version (incl. prereleases)',
+    arbSemver,
+    arbBump,
+    (current, bump) => {
+      const next = calculateNextVersion(some(current), bump)
+      expect(Semver.greaterThan(next, current)).toBe(true)
+    },
+  )
+
+  Test.property(
+    '0.x major-absorption: no bump from a 0.x version ever graduates to 1.0.0',
+    arbSemver.filter((version) => version.major === 0),
+    arbBump,
+    (current, bump) => {
+      const next = calculateNextVersion(some(current), bump)
+      expect(next.major).toBe(0)
+      expect(Semver.isPhaseInitial(next)).toBe(true)
+    },
+  )
+
+  Test.property(
+    'public phase (1.x.x+) follows standard semver: no absorption, prerelease stripped',
+    arbSemver.filter((version) => version.major >= 1),
+    arbBump,
+    (current, bump) => {
+      const next = calculateNextVersion(some(current), bump)
+      expect(Semver.equivalence(next, Semver.increment(current, bump))).toBe(true)
+      expect(Semver.getPrerelease(next)).toBeUndefined()
+    },
+  )
 })

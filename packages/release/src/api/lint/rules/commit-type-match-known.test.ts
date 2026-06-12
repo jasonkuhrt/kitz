@@ -5,7 +5,6 @@ import { resolveConventionalCommitTypes } from '../../config.js'
 import { GitHistory } from '../models/violation-location.js'
 import { Violation } from '../models/violation.js'
 import { ConventionalCommitSettingsService } from '../services/conventional-commit-settings.js'
-import { RuleOptionsService } from '../services/rule-options.js'
 import { rule } from './commit-type-match-known.js'
 
 const defaultTypes = resolveConventionalCommitTypes({})
@@ -13,16 +12,13 @@ const defaultTypes = resolveConventionalCommitTypes({})
 const makeSettingsLayer = (resolvedTypes = defaultTypes) =>
   Layer.succeed(ConventionalCommitSettingsService, { resolvedTypes })
 
-const emptyOptionsLayer = Layer.succeed(RuleOptionsService, {})
-
 describe('commit.type.match-known', () => {
   test('passes when all commits use recognized types', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check({}).pipe(
         Effect.provide(
           Layer.mergeAll(
             makeSettingsLayer(),
-            emptyOptionsLayer,
             Git.Memory.make({
               commits: [
                 Git.Memory.commit('feat(core): add api'),
@@ -40,11 +36,10 @@ describe('commit.type.match-known', () => {
   test('violates when a commit uses an unrecognized type', async () => {
     const badHash = Git.Sha.make('bad1234')
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check({}).pipe(
         Effect.provide(
           Layer.mergeAll(
             makeSettingsLayer(),
-            emptyOptionsLayer,
             Git.Memory.make({
               commits: [
                 Git.Memory.commit('feat(core): add api'),
@@ -66,11 +61,10 @@ describe('commit.type.match-known', () => {
 
   test('passes when a custom type is configured', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check({}).pipe(
         Effect.provide(
           Layer.mergeAll(
             makeSettingsLayer({ ...defaultTypes, deps: 'patch' }),
-            emptyOptionsLayer,
             Git.Memory.make({
               commits: [Git.Memory.commit('deps(core): bump lodash')],
             }),
@@ -84,11 +78,10 @@ describe('commit.type.match-known', () => {
 
   test('passes when a custom type is configured with no release impact', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check({}).pipe(
         Effect.provide(
           Layer.mergeAll(
             makeSettingsLayer(resolveConventionalCommitTypes({ tests: null })),
-            emptyOptionsLayer,
             Git.Memory.make({
               commits: [Git.Memory.commit('tests(core): add property tests')],
             }),
@@ -102,11 +95,10 @@ describe('commit.type.match-known', () => {
 
   test('passes when a standard no-release type has no configured impact', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check({}).pipe(
         Effect.provide(
           Layer.mergeAll(
             makeSettingsLayer(),
-            emptyOptionsLayer,
             Git.Memory.make({
               commits: [Git.Memory.commit('chore(core): ignore session dirs')],
             }),
@@ -120,11 +112,10 @@ describe('commit.type.match-known', () => {
 
   test('skips non-conventional commits without violating', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check({}).pipe(
         Effect.provide(
           Layer.mergeAll(
             makeSettingsLayer(),
-            emptyOptionsLayer,
             Git.Memory.make({
               commits: [
                 Git.Memory.commit('Merge branch main into feature'),

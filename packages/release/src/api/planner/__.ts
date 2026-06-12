@@ -1,3 +1,4 @@
+export * from './by-lifecycle.js'
 export * from './candidate.js'
 export * as Cascade from './cascade.js'
 export * from './ephemeral.js'

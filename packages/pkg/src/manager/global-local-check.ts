@@ -172,7 +172,7 @@ export const checkGlobalVsLocal = (
     const projectDir = yield* findPackageInAncestors(packageName)
 
     if (projectDir) {
-      return yield* Effect.fail(
+      yield* Effect.fail(
         createGlobalLocalConflictError(packageName, projectDir, options.errorMessageTemplate),
       )
     }

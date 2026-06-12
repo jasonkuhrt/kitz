@@ -1,6 +1,6 @@
-import { Num } from '@kitz/num'
+import { Str } from '@kitz/core'
 import { Github } from '@kitz/github'
-import { Effect, Option, Schema, SchemaGetter, SchemaIssue } from 'effect'
+import { Effect } from 'effect'
 import * as Commentator from '../../api/commentator/__.js'
 import * as Explorer from '../../api/explorer/__.js'
 
@@ -21,88 +21,6 @@ export interface PreviewPublishReport {
   readonly truncated: boolean
   readonly publishHistory: readonly Commentator.PublishRecord[]
 }
-
-type PositiveSafeInt = Num.SafeInt.SafeInt
-
-const PositiveSafeInt = Schema.Number.check(
-  Schema.isInt({
-    message: 'Expected a canonical positive integer',
-  }),
-  Schema.isBetween(
-    {
-      minimum: 1,
-      maximum: Number.MAX_SAFE_INTEGER,
-    },
-    {
-      message: 'Expected a positive safe integer',
-    },
-  ),
-)
-
-const PositiveSafeIntFromString = Schema.String.pipe(
-  Schema.decodeTo(PositiveSafeInt, {
-    decode: SchemaGetter.transformOrFail((input) => {
-      const normalized = input.trim()
-      if (!/^[1-9]\d*$/u.test(normalized)) {
-        return Effect.fail(
-          new SchemaIssue.InvalidValue(Option.some(input), {
-            message: 'Expected a canonical positive integer string',
-          }),
-        )
-      }
-
-      const parsed = Number(normalized)
-      const safeInt = Num.SafeInt.tryFrom(parsed)
-      if (safeInt === null || safeInt <= 0) {
-        return Effect.fail(
-          new SchemaIssue.InvalidValue(Option.some(input), {
-            message: 'Expected a positive safe integer',
-          }),
-        )
-      }
-
-      return Effect.succeed(safeInt)
-    }),
-    encode: SchemaGetter.transform((value) => String(value)),
-  }),
-)
-
-const decodePositiveSafeInt = (
-  input: unknown,
-): Effect.Effect<PositiveSafeInt, Schema.SchemaError> =>
-  Schema.decodeUnknownEffect(PositiveSafeIntFromString)(input).pipe(
-    Effect.map((value) => value as PositiveSafeInt),
-  )
-
-export const parsePositiveIntegerOption = (
-  value: string | undefined,
-  label: string,
-): Effect.Effect<PositiveSafeInt | undefined, Explorer.ExplorerError> =>
-  Effect.gen(function* () {
-    if (value === undefined) return undefined
-
-    const normalized = value.trim()
-    if (normalized.length === 0) {
-      return yield* Effect.fail(
-        new Explorer.ExplorerError({
-          context: {
-            detail: `Expected --${label} to be a positive integer, but received an empty value.`,
-          },
-        }),
-      )
-    }
-
-    return yield* decodePositiveSafeInt(normalized).pipe(
-      Effect.mapError(
-        () =>
-          new Explorer.ExplorerError({
-            context: {
-              detail: `Expected --${label} to be a positive integer, but received "${value}".`,
-            },
-          }),
-      ),
-    )
-  })
 
 export const resolvePreviewPublishSurface = (
   context: Explorer.ResolvedGitHubContext,
@@ -192,30 +110,27 @@ export const toPreviewPublishReport = (
 }
 
 export const renderPreviewPublishReport = (report: PreviewPublishReport): string => {
-  const lines = [
-    `Release preview publish status for PR #${String(report.pullRequestNumber)}`,
-    `Pull request: ${report.pullRequestUrl}`,
-    `Comment: ${report.commentUrl}`,
-    `Head SHA: ${report.headSha || '(unknown)'}`,
-    `Publish state: ${report.publishState}`,
-  ]
+  const b = Str.Builder()
+  b`Release preview publish status for PR #${String(report.pullRequestNumber)}`
+  b`Pull request: ${report.pullRequestUrl}`
+  b`Comment: ${report.commentUrl}`
+  b`Head SHA: ${report.headSha || '(unknown)'}`
+  b`Publish state: ${report.publishState}`
 
   if (report.totalPublishes === 0) {
-    lines.push('Publish history: (none)')
-    return lines.join('\n')
+    b`Publish history: (none)`
+    return b.render()
   }
 
-  lines.push(
+  b(
     report.truncated
       ? `Publish history (showing ${String(report.publishHistory.length)} of ${String(report.totalPublishes)}):`
       : `Publish history (${String(report.totalPublishes)}):`,
   )
 
   for (const record of report.publishHistory) {
-    lines.push(
-      `- ${record.timestamp} ${record.package}@${record.version} (iteration ${String(record.iteration)}, run ${record.runId}, sha ${record.sha})`,
-    )
+    b`- ${record.timestamp} ${record.package}@${record.version} (iteration ${String(record.iteration)}, run ${record.runId}, sha ${record.sha})`
   }
 
-  return lines.join('\n')
+  return b.render()
 }

@@ -36,7 +36,7 @@ describe('plan.packages-runtime-targets-source-oriented', () => {
       releasePlanLayer,
     )
 
-    const result = await Effect.runPromise(rule.check.pipe(Effect.provide(layer)))
+    const result = await Effect.runPromise(rule.check().pipe(Effect.provide(layer)))
 
     expect(Violation.is(result)).toBe(true)
     expect(Violation.is(result) ? result.summary : undefined).toContain('Source-first')
@@ -64,7 +64,7 @@ describe('plan.packages-runtime-targets-source-oriented', () => {
       releasePlanLayer,
     )
 
-    const result = await Effect.runPromise(rule.check.pipe(Effect.provide(layer)))
+    const result = await Effect.runPromise(rule.check().pipe(Effect.provide(layer)))
 
     expect(Violation.is(result)).toBe(false)
     if (Violation.is(result) || result === undefined || !('metadata' in result)) {

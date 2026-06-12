@@ -1,18 +1,11 @@
 import { Json } from '@kitz/json'
+import { Sch } from '@kitz/sch'
 import { Schema } from 'effect'
 
-export class Digest extends Schema.Class<Digest>('Digest')({
+export class Digest extends Sch.Class<Digest>()('Digest', {
   algorithm: Schema.Literal('sha256'),
   value: Schema.String,
-}) {
-  static is = Schema.is(Digest)
-  static decode = Schema.decodeUnknownEffect(Digest)
-  static decodeSync = Schema.decodeUnknownSync(Digest)
-  static encode = Schema.encodeUnknownEffect(Digest)
-  static encodeSync = Schema.encodeUnknownSync(Digest)
-  static equivalence = Schema.toEquivalence(Digest)
-  static ordered = false as const
-}
+}) {}
 
 /**
  * RFC 8785 (JCS) canonical JSON used as digest input.
@@ -25,16 +18,19 @@ export class Digest extends Schema.Class<Digest>('Digest')({
  */
 export const canonicalJson = (value: unknown): string => Json.canonicalize(value)
 
-export const sha256Text = (value: string): Digest =>
+/**
+ * SHA-256 digest of text or raw bytes (`Bun.CryptoHasher` accepts both).
+ */
+export const sha256 = (value: string | Uint8Array): Digest =>
   Digest.make({
     algorithm: 'sha256',
     value: new Bun.CryptoHasher('sha256').update(value).digest('hex'),
   })
 
-export const sha256Bytes = (value: Uint8Array): Digest =>
-  Digest.make({
-    algorithm: 'sha256',
-    value: new Bun.CryptoHasher('sha256').update(value).digest('hex'),
-  })
+/** Input-narrowed view of {@link sha256} for text content. */
+export const sha256Text: (value: string) => Digest = sha256
 
-export const sha256Json = (value: unknown): Digest => sha256Text(canonicalJson(value))
+/** Input-narrowed view of {@link sha256} for raw bytes. */
+export const sha256Bytes: (value: Uint8Array) => Digest = sha256
+
+export const sha256Json = (value: unknown): Digest => sha256(canonicalJson(value))

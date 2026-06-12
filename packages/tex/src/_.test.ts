@@ -294,7 +294,7 @@ describe('tex', () => {
       span: [2, 20],
       gap: 1,
       border: { corners: `rounded` },
-    }) as Tex.Box.Box
+    })
     expect(fromInputBox).toBeInstanceOf(Tex.Box.Box)
     expect(fromInputBox.content).toBe(`input`)
     expect(fromInputBox.padding).toMatchObject({
@@ -309,8 +309,7 @@ describe('tex', () => {
       bottomRight: `╯`,
       bottomLeft: `╰`,
     })
-    const boxStringCodec = Tex.Box.String as unknown as S.Decoder<string, never> &
-      S.Encoder<Tex.Box.Box, never>
+    const boxStringCodec = Tex.Box.String as unknown as S.Decoder<string> & S.Encoder<Tex.Box.Box>
     expect(S.decodeSync(boxStringCodec)(base)).toBe(`seed`)
     expect(() => S.encodeSync(boxStringCodec)(`seed`)).toThrow()
 

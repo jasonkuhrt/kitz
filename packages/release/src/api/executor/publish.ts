@@ -84,9 +84,6 @@ export interface PublishOptions {
   readonly provenanceFile?: Fs.Path.AbsFile
 }
 
-const formatUnknownError = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error)
-
 const isStringRecord = (value: unknown): value is Record<string, string> =>
   typeof value === 'object' &&
   value !== null &&
@@ -120,46 +117,13 @@ const decodeJsonRecordOrFail = (pkgDir: Fs.Path.AbsDir, json: string) =>
     ),
   )
 
-const slugPackageName = (packageName: string): string =>
-  packageName.replace(/^@/u, '').replace(/\//gu, '-')
-
-const artifactFilename = (release: ReleaseInfo): string =>
-  `${slugPackageName(release.package.name.moniker)}-${Semver.toString(release.nextVersion)}.tgz`
-
 const stagedPackageDirFor = (repoRoot: Fs.Path.AbsDir, release: ReleaseInfo): Fs.Path.AbsDir =>
   Fs.Path.join(
     Fs.Path.join(repoRoot, workspaceRelDir),
     Fs.Path.RelDir.fromString(
-      `./${slugPackageName(release.package.name.moniker)}-${Semver.toString(release.nextVersion)}/`,
+      `./${NpmRegistry.Tarball.slugifyPackageName(release.package.name.moniker)}-${Semver.toString(release.nextVersion)}/`,
     ),
   )
-
-const childDir = (parent: Fs.Path.AbsDir, name: string): Fs.Path.AbsDir =>
-  Fs.Path.join(parent, Fs.Path.RelDir.fromString(`./${name}/`))
-
-const childFile = (parent: Fs.Path.AbsDir, name: string): Fs.Path.AbsFile =>
-  Fs.Path.join(parent, Fs.Path.RelFile.fromString(`./${name}`))
-
-const copyPackageDirectory = (
-  from: Fs.Path.AbsDir,
-  to: Fs.Path.AbsDir,
-): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
-  Effect.gen(function* () {
-    yield* Fs.write(to, { recursive: true })
-
-    for (const source of yield* Fs.read(from)) {
-      if (stagingIgnore.includes(source.name)) continue
-
-      if (Fs.Path.AbsDir.is(source)) {
-        yield* copyPackageDirectory(source, childDir(to, source.name))
-        continue
-      }
-
-      if (Fs.Path.AbsFile.is(source)) {
-        yield* Fs.write(childFile(to, source.name), yield* Fs.read(source))
-      }
-    }
-  })
 
 const workspaceVersionsFor = (
   releases: readonly ReleaseInfo[],
@@ -182,7 +146,7 @@ const renderPrepareFailureDetail = (params: {
 }): string =>
   A.filter(
     [
-      formatUnknownError(params.prepareError),
+      Err.ensure(params.prepareError).message,
       'Source package manifests were not mutated; packing ran from an isolated release workspace.',
       renderPackHookDisclaimer(params.packHooks),
       renderCleanupReminder(),
@@ -192,7 +156,7 @@ const renderPrepareFailureDetail = (params: {
 
 const renderPublishFailureDetail = (publishError: unknown): string =>
   [
-    formatUnknownError(publishError),
+    Err.ensure(publishError).message,
     'Tarball publish ran with lifecycle scripts disabled, so this failure happened after artifact preparation.',
   ].join(' ')
 
@@ -215,9 +179,10 @@ export const artifactPathFor = (
   release: ReleaseInfo,
   options?: ArtifactPathOptions,
 ): Fs.Path.AbsFile =>
-  Fs.Path.join(
+  NpmRegistry.Tarball.path(
     artifactDirectoryFor(repoRoot, options),
-    Fs.Path.RelFile.fromString(`./${artifactFilename(release)}`),
+    release.package.name.moniker,
+    Semver.toString(release.nextVersion),
   )
 
 /**
@@ -276,7 +241,9 @@ export const preparePackageArtifact = (
     }
 
     yield* Fs.remove(stagedPackageDir, { recursive: true, force: true }).pipe(Effect.ignore)
-    yield* copyPackageDirectory(release.package.path, stagedPackageDir)
+    yield* Fs.copy(release.package.path, stagedPackageDir, {
+      filter: (entry) => !stagingIgnore.includes(entry.name),
+    })
     yield* Fs.write(stagedPackageJsonPath, JSON.stringify(rewrittenManifest, null, 2) + '\n')
     yield* Fs.write(artifactDir, { recursive: true })
     yield* Fs.remove(artifactPath, { force: true }).pipe(Effect.ignore)
@@ -350,7 +317,7 @@ export const publishPreparedArtifact = (
       .pipe(Effect.result)
 
     if (Result.isFailure(publishResult)) {
-      return yield* Effect.fail(
+      yield* Effect.fail(
         new PublishError({
           context: {
             package: artifact.package.path,

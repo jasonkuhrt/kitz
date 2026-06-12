@@ -11,7 +11,6 @@
  * The plan is written to `.release/plan.json` by default and can be executed with `release apply`.
  */
 import { Str } from '@kitz/core'
-import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Console, Effect, Layer, Option } from 'effect'
@@ -19,12 +18,7 @@ import { Command, Flag, Prompt } from 'effect/unstable/cli'
 import * as Analyzer from '../../api/analyzer/__.js'
 import * as Planner from '../../api/planner/__.js'
 import * as Renderer from '../../api/renderer/__.js'
-import { FileSystemLayer } from '../../platform.js'
-import {
-  isReadyCommandWorkspace,
-  loadCommandWorkspace,
-  noPackagesFoundMessage,
-} from './command-workspace.js'
+import { CommandBaseLayer, plannerFor, withReadyWorkspace } from './_shared.js'
 
 const lifecycleChoices = [
   {
@@ -69,80 +63,74 @@ export const plan = Command.make(
     ),
   },
   ({ lifecycle, pkg, exclude, out }) =>
-    Effect.gen(function* () {
-      const git = yield* Git.Git
+    withReadyWorkspace((workspace) =>
+      Effect.gen(function* () {
+        const git = yield* Git.Git
+        const { packages } = workspace
 
-      const workspace = yield* loadCommandWorkspace()
-      if (!isReadyCommandWorkspace(workspace)) {
-        yield* Console.log(noPackagesFoundMessage)
-        return
-      }
-      const { packages } = workspace
+        const resolvedLifecycle = Option.isSome(lifecycle)
+          ? lifecycle.value
+          : yield* Prompt.select({
+              message: 'Select release lifecycle',
+              choices: lifecycleChoices,
+            })
 
-      const resolvedLifecycle = Option.isSome(lifecycle)
-        ? lifecycle.value
-        : yield* Prompt.select({ message: 'Select release lifecycle', choices: lifecycleChoices })
+        const filterPackages = pkg.length > 0 ? [...pkg] : undefined
+        const excludePackages = exclude.length > 0 ? [...exclude] : undefined
 
-      const filterPackages = pkg.length > 0 ? [...pkg] : undefined
-      const excludePackages = exclude.length > 0 ? [...exclude] : undefined
+        // Build release options
+        const options = {
+          ...(filterPackages && { packages: filterPackages }),
+          ...(excludePackages && { exclude: excludePackages }),
+        }
 
-      // Build release options
-      const options = {
-        ...(filterPackages && { packages: filterPackages }),
-        ...(excludePackages && { exclude: excludePackages }),
-      }
+        // Generate plan based on type
+        const header = Str.Builder()
+        header`Generating ${resolvedLifecycle} release plan...`
+        header``
+        yield* Console.log(header.render())
 
-      // Generate plan based on type
-      const header = Str.Builder()
-      header`Generating ${resolvedLifecycle} release plan...`
-      header``
-      yield* Console.log(header.render())
+        const tags = yield* git.getTags()
+        const analysis = yield* Analyzer.analyze({
+          packages,
+          tags,
+          filter: filterPackages,
+          exclude: excludePackages,
+          resolvedConventionalCommitTypes: workspace.config.resolvedConventionalCommitTypes,
+          commitOverrides: workspace.config.commitOverrides,
+        })
 
-      const tags = yield* git.getTags()
-      const analysis = yield* Analyzer.analyze({
-        packages,
-        tags,
-        filter: filterPackages,
-        exclude: excludePackages,
-        resolvedConventionalCommitTypes: workspace.config.resolvedConventionalCommitTypes,
-        commitOverrides: workspace.config.commitOverrides,
-      })
-      const ctx = { packages }
+        const rawPlan = yield* plannerFor(resolvedLifecycle)(analysis, { packages }, options)
 
-      const rawPlan = yield* resolvedLifecycle === 'official'
-        ? Planner.official(analysis, ctx, options)
-        : resolvedLifecycle === 'candidate'
-          ? Planner.candidate(analysis, ctx, options)
-          : Planner.ephemeral(analysis, ctx, options)
+        const plan = yield* Planner.attachPublishContract({
+          plan: rawPlan,
+          config: workspace.config,
+        })
 
-      const plan = yield* Planner.attachPublishContract({
-        plan: rawPlan,
-        config: workspace.config,
-      })
+        if (plan.releases.length === 0) {
+          yield* Console.log('No releases planned - no unreleased changes found.')
+          return
+        }
 
-      if (plan.releases.length === 0) {
-        yield* Console.log('No releases planned - no unreleased changes found.')
-        return
-      }
+        // Display plan
+        yield* Console.log(Renderer.renderPlan(plan))
 
-      // Display plan
-      yield* Console.log(Renderer.renderPlan(plan))
+        const outPath = Option.getOrUndefined(out)
+        const planPath = outPath !== undefined ? Fs.Path.fromString(outPath) : undefined
+        const planLocation = yield* Planner.Store.resolvePlanLocation(planPath)
 
-      const outPath = Option.getOrUndefined(out)
-      const planPath = outPath !== undefined ? Fs.Path.fromString(outPath) : undefined
-      const planLocation = yield* Planner.Store.resolvePlanLocation(planPath)
+        yield* Planner.Store.write(plan, planPath)
 
-      yield* Planner.Store.write(plan, planPath)
-
-      const releaseCommand = workspace.config.operator.releaseCommand
-      const done = Str.Builder()
-      done`Plan written to ${Fs.Path.toString(planLocation.file)}`
-      done`Run '${releaseCommand} prove${outPath ? ` --from ${outPath}` : ''}' to write plan-bound proof.`
-      done`Run '${releaseCommand} rehearse${outPath ? ` --from ${outPath}` : ''}' to build exact artifacts.`
-      done`Run '${releaseCommand} apply${outPath ? ` --from ${outPath}` : ''}' to execute.`
-      yield* Console.log(done.render())
-    }),
+        const releaseCommand = workspace.config.operator.releaseCommand
+        const done = Str.Builder()
+        done`Plan written to ${Fs.Path.toString(planLocation.file)}`
+        done`Run '${releaseCommand} prove${outPath ? ` --from ${outPath}` : ''}' to write plan-bound proof.`
+        done`Run '${releaseCommand} rehearse${outPath ? ` --from ${outPath}` : ''}' to build exact artifacts.`
+        done`Run '${releaseCommand} apply${outPath ? ` --from ${outPath}` : ''}' to execute.`
+        yield* Console.log(done.render())
+      }),
+    ),
 ).pipe(
   Command.withDescription('Generate a release plan'),
-  Command.provide(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive)),
+  Command.provide(Layer.mergeAll(CommandBaseLayer, Git.GitLive)),
 )

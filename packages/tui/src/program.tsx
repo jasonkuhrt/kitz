@@ -34,19 +34,72 @@ export interface ViewProps<State, Action> {
   readonly dispatch: (action: Action) => void
 }
 
+const KeyedCommandTypeId = Symbol.for('@kitz/tui/KeyedCommand')
+
+export interface KeyedCommandOptions {
+  /**
+   * Concurrency key. Commands sharing a key belong to the same logical
+   * request stream (e.g. every "rebuild the plan" command uses key `'plan'`).
+   */
+  readonly key: string
+  /**
+   * `'switch'` — latest wins: issuing a new command for a key interrupts the
+   * previous in-flight fiber registered under that key. The new command only
+   * starts once the superseded fiber has settled, so a stale command can
+   * never dispatch its resulting actions after its replacement was issued.
+   */
+  readonly mode: 'switch'
+}
+
+/**
+ * A command annotated with keyed-concurrency semantics. Construct with
+ * {@link keyedCommand} or via the options argument of {@link Transition.command}.
+ */
+export interface KeyedCommand<Command> extends KeyedCommandOptions {
+  readonly [KeyedCommandTypeId]: typeof KeyedCommandTypeId
+  readonly command: Command
+}
+
+/** A transition/boot command entry: either a plain command or a keyed one. */
+export type ProgramCommand<Command> = Command | KeyedCommand<Command>
+
+/** Annotate a command with keyed-concurrency semantics. */
+export const keyedCommand = <Command,>(
+  command: Command,
+  options: KeyedCommandOptions,
+): KeyedCommand<Command> => ({
+  [KeyedCommandTypeId]: KeyedCommandTypeId,
+  command,
+  key: options.key,
+  mode: options.mode,
+})
+
+/** Type guard distinguishing {@link KeyedCommand} entries from plain commands. */
+export const isKeyedCommand = <Command,>(
+  candidate: ProgramCommand<Command>,
+): candidate is KeyedCommand<Command> =>
+  typeof candidate === 'object' && candidate !== null && KeyedCommandTypeId in candidate
+
 export interface Transition<State, Command> {
   readonly state: State
-  readonly commands: readonly Command[]
+  readonly commands: readonly ProgramCommand<Command>[]
 }
 
 export const Transition = {
   next<State, Command>(state: State): Transition<State, Command> {
     return { state, commands: [] }
   },
-  command<State, Command>(state: State, command: Command): Transition<State, Command> {
-    return { state, commands: [command] }
+  command<State, Command>(
+    state: State,
+    command: Command,
+    options?: KeyedCommandOptions,
+  ): Transition<State, Command> {
+    return { state, commands: [options ? keyedCommand(command, options) : command] }
   },
-  commands<State, Command>(state: State, commands: readonly Command[]): Transition<State, Command> {
+  commands<State, Command>(
+    state: State,
+    commands: readonly ProgramCommand<Command>[],
+  ): Transition<State, Command> {
     return { state, commands }
   },
 }
@@ -57,7 +110,7 @@ const isBatchArray = <Item,>(batch: Batch<Item>): batch is readonly Item[] => A.
 
 export interface ProgramSpec<State, Action, Command, R = never> {
   readonly initialState: State
-  readonly initialCommands?: readonly Command[]
+  readonly initialCommands?: readonly ProgramCommand<Command>[]
   readonly update: (state: State, action: Action) => Transition<State, Command>
   readonly run: (command: Command, state: State) => Effect.Effect<Batch<Action>, never, R | Control>
   readonly onKey?: (state: State, event: KeyEvent) => Batch<Action>
@@ -172,6 +225,40 @@ const createController = <State, Action, Command, R>(
     return fiber
   }
 
+  // Latest in-flight fiber per concurrency key. A keyed 'switch' command
+  // interrupts and replaces the entry for its key; completed fibers remove
+  // themselves (when still the registered fiber for the key).
+  const keyedFibers = new Map<string, Fiber.Fiber<unknown, unknown>>()
+
+  // Forks one transition/boot command. Plain commands fork directly. Keyed
+  // 'switch' commands first interrupt the previous in-flight fiber under the
+  // same key: the replacement fiber AWAITS that interruption before running
+  // its own command, so a superseded command can never dispatch its actions
+  // after the replacement was issued — latest wins, deterministically. (If
+  // the superseded fiber already completed, the interrupt resolves
+  // immediately and its actions — dispatched before the replacement existed
+  // — are simply overwritten by the replacement's later ones.)
+  const forkProgramCommand = (entry: ProgramCommand<Command>, state: State): void => {
+    if (!isKeyedCommand(entry)) {
+      forkWork(runCommand(entry, state))
+      return
+    }
+    const previous = keyedFibers.get(entry.key)
+    const fiber = forkWork(
+      previous === undefined
+        ? runCommand(entry.command, state)
+        : Effect.flatMap(Fiber.interrupt(previous), () => runCommand(entry.command, state)),
+    )
+    keyedFibers.set(entry.key, fiber)
+    runtime.runCallback(Fiber.await(fiber).pipe(Effect.asVoid), {
+      onExit: () => {
+        if (keyedFibers.get(entry.key) === fiber) {
+          keyedFibers.delete(entry.key)
+        }
+      },
+    })
+  }
+
   // Runs a single command and dispatches its resulting actions back through
   // the dispatch pipeline. Commands run in their own fibers (forked from
   // dispatchEffect or start) — they execute OFF the dispatch lock, so a
@@ -233,7 +320,7 @@ const createController = <State, Action, Command, R>(
             // and any new fibers would be immediately interrupted.
             if (disposed) return
             for (const command of commands) {
-              forkWork(runCommand(command, state))
+              forkProgramCommand(command, state)
             }
           }),
         ),
@@ -297,7 +384,7 @@ const createController = <State, Action, Command, R>(
       // command B), not in the initialCommands array.
       const initialState = SubscriptionRef.getUnsafe(stateRef)
       for (const command of initialCommands) {
-        forkWork(runCommand(command, initialState))
+        forkProgramCommand(command, initialState)
       }
     },
     settled: async () => {

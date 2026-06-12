@@ -173,6 +173,7 @@ export const defaultSnapshotSerializer = (
             }
           }
           // Return undefined to continue recursing
+          return undefined
         })
       : value
 
@@ -263,7 +264,7 @@ const buildBox = ({ width, parts }: { width: number; parts: BoxPart[] }) => {
       }
 
       default:
-        return Lang.neverCase(part)
+        Lang.neverCase(part)
     }
   })
 

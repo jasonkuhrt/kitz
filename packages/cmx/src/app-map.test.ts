@@ -465,9 +465,9 @@ describe('AppMap performance gate', () => {
 
     await b.run()
 
-    const resolve = b.getTask('resolveShortcut')!.result!
-    const scope = b.getTask('computeScope')!.result!
-    const active = b.getTask('getActiveShortcuts')!.result!
+    const resolve = b.getTask('resolveShortcut')!.result
+    const scope = b.getTask('computeScope')!.result
+    const active = b.getTask('getActiveShortcuts')!.result
 
     if (
       resolve.state !== 'completed' ||

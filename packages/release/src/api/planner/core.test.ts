@@ -2,7 +2,7 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, HashMap, Layer, Option } from 'effect'
+import { Effect, Layer, Option } from 'effect'
 import { TestClock } from 'effect/testing'
 import { describe, expect, test } from 'bun:test'
 import { Env } from '@kitz/env'
@@ -116,9 +116,7 @@ describe('planner core', () => {
             '@kitz/core',
           ])
           expect(tags).toEqual(['@kitz/core@1.0.0'])
-          expect(Option.getOrUndefined(HashMap.get(dependencyGraph, '@kitz/core'))).toEqual([
-            '@kitz/cli',
-          ])
+          expect(dependencyGraph.get('@kitz/core')).toEqual(['@kitz/cli'])
           return []
         },
       }).pipe(Effect.provide(workspaceLayer)),

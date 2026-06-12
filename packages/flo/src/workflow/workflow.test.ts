@@ -1,3 +1,4 @@
+import { Graph } from '@kitz/graph'
 import { Effect, Exit, Fiber, Schema, Stream } from 'effect'
 import { WorkflowEngine } from 'effect/unstable/workflow'
 import { describe, expect, test } from 'bun:test'
@@ -86,7 +87,8 @@ describe('Flo.Workflow', () => {
       },
     })
 
-    expect(() => workflow.toGraph({})).toThrow('Cycle detected in workflow graph')
+    expect(() => workflow.toGraph({})).toThrow(Graph.Errors.CycleError)
+    expect(() => workflow.toGraph({})).toThrow('Cycle detected in graph among A, B')
   })
 
   test('emits observable success and failure events', async () => {

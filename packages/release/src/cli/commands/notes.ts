@@ -7,17 +7,11 @@
  * commit impacts, and formats them as markdown or JSON. Optionally
  * filters to a specific package.
  */
-import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Console, Effect, Layer, Option } from 'effect'
 import { Argument, Command, Flag } from 'effect/unstable/cli'
 import * as Notes from '../../api/notes/__.js'
-import { FileSystemLayer } from '../../platform.js'
-import {
-  isReadyCommandWorkspace,
-  loadCommandWorkspace,
-  noPackagesFoundMessage,
-} from './command-workspace.js'
+import { CommandBaseLayer, failWith, withReadyWorkspace } from './_shared.js'
 
 export const notes = Command.make(
   'notes',
@@ -43,55 +37,52 @@ export const notes = Command.make(
     ),
   },
   ({ pkg, format, since, until }) =>
-    Effect.gen(function* () {
-      const env = yield* Env.Env
-      const git = yield* Git.Git
+    withReadyWorkspace((workspace) =>
+      Effect.gen(function* () {
+        const git = yield* Git.Git
+        const { packages } = workspace
 
-      const workspace = yield* loadCommandWorkspace()
-      if (!isReadyCommandWorkspace(workspace)) {
-        yield* Console.log(noPackagesFoundMessage)
-        return
-      }
-      const { packages } = workspace
-
-      // #216: validate an explicitly-requested package against the workspace, so a
-      // typo'd name reports "not found" with the available identifiers rather than
-      // masquerading as "No unreleased release notes found."
-      if (Option.isSome(pkg)) {
-        const requested = pkg.value
-        const known = packages.some((p) => p.scope === requested || p.name.moniker === requested)
-        if (!known) {
-          yield* Console.error(`Package "${requested}" was not found in the workspace.`)
-          yield* Console.error('Available package identifiers:')
-          for (const p of packages) yield* Console.error(`  ${p.scope}`)
-          return env.exit(1)
+        // #216: validate an explicitly-requested package against the workspace, so a
+        // typo'd name reports "not found" with the available identifiers rather than
+        // masquerading as "No unreleased release notes found."
+        if (Option.isSome(pkg)) {
+          const requested = pkg.value
+          const known = packages.some((p) => p.scope === requested || p.name.moniker === requested)
+          if (!known) {
+            yield* failWith(
+              `Package "${requested}" was not found in the workspace.`,
+              'Available package identifiers:',
+              ...packages.map((p) => `  ${p.scope}`),
+            )
+            return
+          }
         }
-      }
 
-      const tags = yield* git.getTags()
-      const result = yield* Notes.generate({
-        packages,
-        tags,
-        since: Option.getOrUndefined(since),
-        until: Option.getOrUndefined(until),
-        filter: Option.isSome(pkg) ? [pkg.value] : undefined,
-        resolvedConventionalCommitTypes: workspace.config.resolvedConventionalCommitTypes,
-        commitOverrides: workspace.config.commitOverrides,
-      })
+        const tags = yield* git.getTags()
+        const result = yield* Notes.generate({
+          packages,
+          tags,
+          since: Option.getOrUndefined(since),
+          until: Option.getOrUndefined(until),
+          filter: Option.isSome(pkg) ? [pkg.value] : undefined,
+          resolvedConventionalCommitTypes: workspace.config.resolvedConventionalCommitTypes,
+          commitOverrides: workspace.config.commitOverrides,
+        })
 
-      if (result.notes.length === 0) {
-        yield* Console.log('No unreleased release notes found.')
-        return
-      }
+        if (result.notes.length === 0) {
+          yield* Console.log('No unreleased release notes found.')
+          return
+        }
 
-      if (format === 'json') {
-        yield* Console.log(JSON.stringify(Notes.toJsonNotes(result.notes), null, 2))
-        return
-      }
+        if (format === 'json') {
+          yield* Console.log(JSON.stringify(Notes.toJsonNotes(result.notes), null, 2))
+          return
+        }
 
-      yield* Console.log(Notes.renderMarkdownNotes(result.notes))
-    }),
+        yield* Console.log(Notes.renderMarkdownNotes(result.notes))
+      }),
+    ),
 ).pipe(
   Command.withDescription('Show unreleased release notes since the last release'),
-  Command.provide(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive)),
+  Command.provide(Layer.mergeAll(CommandBaseLayer, Git.GitLive)),
 )

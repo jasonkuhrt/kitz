@@ -44,7 +44,8 @@ const gitCommitValidate = Command.make(
 
       if (!(yield* fs.exists(messageFile))) {
         yield* Console.error(`Commit message file not found: ${messageFile}`)
-        return env.exit(1)
+        env.exit(1)
+        return
       }
 
       const config = yield* Config.load()
@@ -53,7 +54,7 @@ const gitCommitValidate = Command.make(
 
       if (outcome.ok) return
       yield* Console.error(outcome.lines.join('\n'))
-      return env.exit(1)
+      env.exit(1)
     }),
 ).pipe(Command.withDescription('Validate a commit message file against repo commit policy'))
 

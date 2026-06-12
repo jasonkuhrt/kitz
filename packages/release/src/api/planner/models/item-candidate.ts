@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Semver } from '@kitz/semver'
 import { Option, Schema as S } from 'effect'
 import * as Version from '../../version/__.js'
@@ -9,19 +10,11 @@ const SemverSchema = Semver.Semver
  * A candidate release plan item.
  * Version format: `${baseVersion}-next.${iteration}`
  */
-export class Candidate extends S.TaggedClass<Candidate>()('Candidate', {
+export class Candidate extends Sch.TaggedClass<Candidate>()('Candidate', {
   ...ItemBaseFields,
   baseVersion: SemverSchema,
   prerelease: Version.Candidate,
 }) {
-  static is = S.is(Candidate)
-  static decode = S.decodeUnknownEffect(Candidate)
-  static decodeSync = S.decodeUnknownSync(Candidate)
-  static encode = S.encodeUnknownEffect(Candidate)
-  static encodeSync = S.encodeUnknownSync(Candidate)
-  static equivalence = S.toEquivalence(Candidate)
-  static ordered = false as const
-
   get nextVersion(): Semver.Semver {
     return Semver.withPre(this.baseVersion, ['next', this.prerelease.iteration])
   }

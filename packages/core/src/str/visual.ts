@@ -463,7 +463,7 @@ export const takeWords = (text: string, size: number): { taken: string; remainin
     if (width(word) > size) {
       // TODO hyphen the word?
       words.shift()
-      taken += String(word)
+      taken += word
       break
     }
 

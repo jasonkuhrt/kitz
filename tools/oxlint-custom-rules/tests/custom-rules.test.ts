@@ -335,6 +335,33 @@ const rules: ReadonlyArray<{
     ],
   },
   {
+    name: `module/boundary-contract`,
+    failingFixtures: [
+      `boundary-contract/fail-workflow-imports/packages/release/src/api/executor/workflow.ts`,
+      `boundary-contract/fail-workflow-content/packages/release/src/api/executor/workflow.ts`,
+      `boundary-contract/fail-workflow-reexport/packages/release/src/api/executor/workflow.ts`,
+      `boundary-contract/fail-verify-delegation/packages/release/src/api/executor/workflow/activities/verify.ts`,
+      `boundary-contract/fail-prepare-fs/packages/release/src/api/executor/workflow/activities/prepare.ts`,
+      `boundary-contract/fail-executor-renderer-import/packages/release/src/api/executor/status.ts`,
+      `boundary-contract/fail-executor-cli-import/packages/release/src/api/executor/publish.ts`,
+      `boundary-contract/fail-executor-barrel/packages/release/src/api/executor/__.ts`,
+      `boundary-contract/fail-publishing-service-shell/packages/release/src/api/publishing/registry.ts`,
+      `boundary-contract/fail-publishing-barrel/packages/release/src/api/publishing/__.ts`,
+      `boundary-contract/fail-publishing-missing-conformance/packages/release/src/api/publishing/__.ts`,
+    ],
+    passingFixtures: [
+      `boundary-contract/pass/packages/release/src/api/executor/workflow.ts`,
+      `boundary-contract/pass/packages/release/src/api/executor/workflow/activities/verify.ts`,
+      `boundary-contract/pass/packages/release/src/api/executor/workflow/activities/prepare.ts`,
+      `boundary-contract/pass/packages/release/src/api/executor/status.ts`,
+      `boundary-contract/pass/packages/release/src/api/executor/__.ts`,
+      `boundary-contract/pass/packages/release/src/api/executor/test-support.ts`,
+      `boundary-contract/pass-test-exempt/packages/release/src/api/executor/status.test.ts`,
+      `boundary-contract/pass/packages/release/src/api/publishing/__.ts`,
+      `boundary-contract/pass/packages/release/src/api/publishing/driver.ts`,
+    ],
+  },
+  {
     name: `adt/require-schema-class-statics`,
     failingFixtures: [
       `adt-require-schema-class-statics/fail-1.ts`,

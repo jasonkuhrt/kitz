@@ -20,7 +20,7 @@ test('repair: greedy picks distant boundary, repair chooses compact cluster', ()
   // The compact pair {0,3} has less gap penalty than {0,5}
   // If repair works, positions should include 3 (the compact option)
   const sorted = [...result!.positions].sort((a, b) => a - b)
-  const gap = sorted[1]! - sorted[0]!
+  const gap = sorted[1] - sorted[0]
   // Greedy picks {0,5} (gap=5). Repair SHOULD swap to {0,3} (gap=2) but
   // currently doesn't because the boundary bonus at 5 (delimiter, +9)
   // outweighs the gap penalty saving. The repair only swaps when net score
@@ -54,8 +54,8 @@ test('assignment: positions in needle order map to correct characters', () => {
   const haystack = 'david'
   const needle = 'vdi'
   for (let k = 0; k < needle.length; k++) {
-    const pos = result!.positions[k]!
-    expect(haystack[pos]!.toLowerCase()).toBe(needle[k]!.toLowerCase())
+    const pos = result!.positions[k]
+    expect(haystack[pos].toLowerCase()).toBe(needle[k].toLowerCase())
   }
 })
 

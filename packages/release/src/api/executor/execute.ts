@@ -12,9 +12,10 @@ import { Env } from '@kitz/env'
 import { Flo } from '@kitz/flo'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
+import { Graph } from '@kitz/graph'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
-import { Cause, Config, Effect, Exit, Option, Schema, Stream } from 'effect'
+import { Cause, Config, Effect, Exit, Option, Result, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
 import {
   publishingFromIntent,
@@ -171,23 +172,23 @@ const WorkflowExecutionSchema = Schema.Struct({
   createTags: Schema.Array(Schema.String),
   createGHReleases: Schema.Array(Schema.String),
 })
-const decodeWorkflowExecution = Schema.decodeUnknownOption(WorkflowExecutionSchema)
+const decodeWorkflowExecution = Schema.decodeUnknownSync(WorkflowExecutionSchema)
 
-const normalizeWorkflowResult = (result: unknown): ExecutionResult =>
-  decodeWorkflowExecution(result).pipe(
-    Option.map((value) => ({
-      releasedPackages: [...value.publishes],
-      createdTags: [...value.createTags],
-      createdGHReleases: [...value.createGHReleases],
-    })),
-    Option.getOrElse(
-      (): ExecutionResult => ({
-        releasedPackages: [],
-        createdTags: [],
-        createdGHReleases: [],
-      }),
-    ),
-  )
+/**
+ * Decode the durable workflow's success value into an {@link ExecutionResult}.
+ *
+ * The value comes from our own workflow definition, so a shape mismatch is a
+ * defect: this throws the decode failure (a defect inside Effect code paths)
+ * instead of fabricating an empty "0 packages released" success.
+ */
+export const normalizeWorkflowResult = (result: unknown): ExecutionResult => {
+  const value = decodeWorkflowExecution(result)
+  return {
+    releasedPackages: [...value.publishes],
+    createdTags: [...value.createTags],
+    createdGHReleases: [...value.createGHReleases],
+  }
+}
 
 const summarizeWorkflowStatus = (params: {
   readonly plan: Plan
@@ -279,82 +280,53 @@ const resolveExecutionState = (
 /**
  * Order releases so publish dependencies always appear before their dependents.
  * Cycles are rejected with a clear error instead of dropping dependency edges.
+ *
+ * Ordering is deterministic: dependency layers come from
+ * {@link Graph.topologicalLayers} over alphabetically-sorted entries, so each
+ * layer lists its packages alphabetically.
  */
 const orderReleaseEntries = (
   entries: ReadonlyArray<ReleasePayloadType['releases'][number]>,
 ): Effect.Effect<ReleasePayloadType['releases'], ExecutorDependencyCycleError> => {
-  const dependencies = Object.fromEntries(
-    entries.map((entry) => [
-      entry.packageName,
-      entry.dependsOn.filter((name) => name !== entry.packageName),
-    ]),
-  ) as Record<string, readonly string[]>
-  let remaining = [...entries]
-  const ordered: Array<ReleasePayloadType['releases'][number]> = []
-  const resolved: string[] = []
+  // oxlint-disable-next-line kitz/domain/no-native-map-set -- Local read-only lookup table; never escapes this scope.
+  const entryByPackage = new Map(entries.map((entry) => [entry.packageName, entry]))
+  // oxlint-disable-next-line kitz/domain/no-native-map-set -- Adjacency/lookup input for @kitz/graph's ReadonlyMap-based API.
+  const dependencies = new Map(
+    [...entryByPackage.keys()]
+      .toSorted((a, b) => a.localeCompare(b))
+      .map((packageName) => [
+        packageName,
+        entryByPackage.get(packageName)!.dependsOn.filter((name) => name !== packageName),
+      ]),
+  )
 
-  while (remaining.length > 0) {
-    const ready = remaining
-      .filter((entry) =>
-        (dependencies[entry.packageName] ?? []).every((name) => resolved.includes(name)),
-      )
-      .toSorted((a, b) => a.packageName.localeCompare(b.packageName))
-
-    if (ready.length === 0) {
-      const remainingPackages = remaining
-        .map((entry) => entry.packageName)
-        .toSorted((a, b) => a.localeCompare(b))
-      const canReach = (start: string, target: string, seen: readonly string[] = []): boolean => {
-        if (start === target) return true
-        if (seen.includes(start)) return false
-
-        return (dependencies[start] ?? [])
-          .filter((name) => remainingPackages.includes(name))
-          .some((name) => canReach(name, target, [...seen, start]))
-      }
-
-      const cyclePackages = remainingPackages.filter((packageName) =>
-        (dependencies[packageName] ?? [])
-          .filter((name) => remainingPackages.includes(name))
-          .some((name) => canReach(name, packageName)),
-      )
-      const reportedPackages = cyclePackages.length > 0 ? cyclePackages : remainingPackages
-      const edges = remaining
-        .filter((entry) => reportedPackages.includes(entry.packageName))
-        .toSorted((a, b) => a.packageName.localeCompare(b.packageName))
-        .flatMap((entry) =>
-          (dependencies[entry.packageName] ?? [])
-            .filter((name) => reportedPackages.includes(name))
-            .toSorted((a, b) => a.localeCompare(b))
-            .map((name) => `${entry.packageName} -> ${name}`),
-        )
-
-      return Effect.fail(
-        new ExecutorDependencyCycleError({
-          context: {
-            packages: reportedPackages,
-            edges,
-          },
-        }),
-      )
-    }
-
-    const next = ready[0]
-    if (next === undefined) break
-
-    ordered.push({
-      ...next,
-      dependsOn: next.dependsOn
-        .filter((name) => resolved.includes(name))
-        .toSorted((a, b) => a.localeCompare(b)),
-    })
-    remaining = remaining.filter((entry) => entry.packageName !== next.packageName)
-    if (!resolved.includes(next.packageName)) {
-      resolved.push(next.packageName)
-    }
-  }
-
-  return Effect.succeed(ordered)
+  return Graph.topologicalLayers(dependencies).pipe(
+    Result.match({
+      onFailure: (cycle) =>
+        Effect.fail(
+          new ExecutorDependencyCycleError({
+            context: {
+              packages: [...cycle.context.nodes].toSorted((a, b) => a.localeCompare(b)),
+              edges: cycle.context.edges
+                .map(([from, to]) => `${from} -> ${to}`)
+                .toSorted((a, b) => a.localeCompare(b)),
+            },
+          }),
+        ),
+      onSuccess: (layers) =>
+        Effect.succeed(
+          layers.flat().map((packageName) => {
+            const entry = entryByPackage.get(packageName)!
+            return {
+              ...entry,
+              dependsOn: entry.dependsOn
+                .filter((name) => name !== packageName)
+                .toSorted((a, b) => a.localeCompare(b)),
+            }
+          }),
+        ),
+    }),
+  )
 }
 
 /**
@@ -397,6 +369,8 @@ export const toPayload = (
         : undefined
     const planItems = [...plan.releases, ...plan.cascades]
     const localPackageNames = planItems.map((item) => item.package.name.moniker)
+    // Per-package manifest reads are independent; run them concurrently.
+    // Effect.all preserves input order, so the result stays deterministic.
     const releaseEntries = yield* Effect.all(
       planItems.map((item) =>
         Effect.gen(function* () {
@@ -416,6 +390,7 @@ export const toPayload = (
           }
         }),
       ),
+      { concurrency: 'unbounded' },
     )
 
     const orderedReleases = yield* orderReleaseEntries(releaseEntries)

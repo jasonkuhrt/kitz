@@ -1,10 +1,9 @@
 import { FileSystem } from 'effect'
 import { Resource } from '@kitz/resource'
-import { Effect, Option } from 'effect'
+import { Effect } from 'effect'
 import type { Analysis } from '../analyzer/models/__.js'
-import { calculateNextVersion } from '../version/calculate.js'
-import { OfficialFirst } from '../version/models/official-first.js'
-import { OfficialIncrement } from '../version/models/official-increment.js'
+import type { Package } from '../analyzer/workspace.js'
+import * as Version from '../version/__.js'
 import { detect as detectCascades } from './cascade.js'
 import { planLifecycle } from './core.js'
 import { Official } from './models/item-official.js'
@@ -15,7 +14,7 @@ import { type Options } from './options.js'
  * Context required for planning.
  */
 export interface Context {
-  readonly packages: readonly import('../analyzer/workspace.js').Package[]
+  readonly packages: readonly Package[]
 }
 
 /**
@@ -40,23 +39,13 @@ export const official = (
     packages: ctx.packages,
     lifecycle: 'official',
     options,
-    toPrimaryRelease: (impact) => {
-      const nextVersion = calculateNextVersion(impact.currentVersion, impact.bump)
-      const version: OfficialFirst | OfficialIncrement = Option.isSome(impact.currentVersion)
-        ? OfficialIncrement.make({
-            from: impact.currentVersion.value,
-            to: nextVersion,
-            bump: impact.bump,
-          })
-        : OfficialFirst.make({ version: nextVersion, bump: impact.bump })
-
-      return Official.make({
+    toPrimaryRelease: (impact) =>
+      Official.make({
         package: impact.package,
-        version,
+        version: Version.Official.fromCurrent(impact.currentVersion, impact.bump),
         commits: impact.commits,
-      })
-    },
+      }),
     toSecondaryRelease: (release) => release,
     toCascades: ({ packages, primaryReleases, dependencyGraph, tags, timestamp }) =>
-      detectCascades(packages, [...primaryReleases], dependencyGraph, [...tags], timestamp),
+      detectCascades(packages, primaryReleases, dependencyGraph, tags, timestamp),
   })

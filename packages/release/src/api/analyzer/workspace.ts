@@ -4,7 +4,8 @@ import { Fs } from '@kitz/fs'
 import { Monorepo } from '@kitz/monorepo'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
-import { Data, Effect, Exit } from 'effect'
+import { Effect, Result } from 'effect'
+import { PackageResolutionError } from './errors.js'
 import { PackageLocation } from './package-location.js'
 
 /**
@@ -53,22 +54,37 @@ const inferConfiguredPackage = (
   cwd: Fs.Path.AbsDir,
   scope: string,
   entry: string | PackageConfigEntry,
-): Package => {
+): Result.Result<Package, PackageResolutionError> => {
   const name = resolveConfiguredName(entry)
-  const explicitPath =
+  const path =
     typeof entry === 'string' || entry.path === undefined
-      ? undefined
-      : PackageLocation.fromAbsolutePath(
-          cwd,
-          Fs.Path.join(cwd, normalizeConfiguredPath(entry.path)),
+      ? Result.succeed(PackageLocation.inferDefault(cwd, scope).path)
+      : Result.match(
+          PackageLocation.fromAbsolutePath(
+            cwd,
+            Fs.Path.join(cwd, normalizeConfiguredPath(entry.path)),
+          ),
+          {
+            onSuccess: (location) => Result.succeed(location.path),
+            onFailure: (error) =>
+              Result.fail(
+                new PackageResolutionError({
+                  context: {
+                    scope,
+                    packageName: name,
+                    detail: `Configured path for scope "${scope}" cannot be resolved: ${error.message}`,
+                  },
+                  cause: error,
+                }),
+              ),
+          },
         )
-  const location = PackageLocation.inferDefault(cwd, scope)
 
-  return {
+  return Result.map(path, (resolvedPath) => ({
     scope,
     name: Pkg.Moniker.parse(name),
-    path: explicitPath?.path ?? location.path,
-  }
+    path: resolvedPath,
+  }))
 }
 
 /**
@@ -79,14 +95,6 @@ export type ScanError =
   | Monorepo.Workspace.Errors.GlobError
   | PlatformError.PlatformError
   | Resource.ResourceError
-
-export class PackageResolutionError extends Data.TaggedError('PackageResolutionError')<{
-  readonly context: {
-    readonly detail: string
-    readonly scope: string
-    readonly packageName: string
-  }
-}> {}
 
 export type ResolvePackagesError = ScanError | PackageResolutionError
 
@@ -130,13 +138,8 @@ export const scan: Effect.Effect<Package[], ScanError, FileSystem.FileSystem | E
  * // { core: '@kitz/core', kitz: 'kitz' }
  * ```
  */
-export const toPackageMap = (packages: Package[]): PackageMap => {
-  const map: PackageMap = {}
-  for (const pkg of packages) {
-    map[pkg.scope] = pkg.name.moniker
-  }
-  return map
-}
+export const toPackageMap = (packages: readonly Package[]): PackageMap =>
+  Object.fromEntries(packages.map((pkg) => [pkg.scope, pkg.name.moniker]))
 
 /**
  * Resolve config packages with scan fallback.
@@ -159,17 +162,14 @@ export const resolvePackages = (
     )
 
     if (entriesNeedingDiscovery.length === 0) {
-      return configuredEntries.map(([scope, entry]) =>
-        inferConfiguredPackage(env.cwd, scope, entry),
-      )
+      const packages: Package[] = []
+      for (const [scope, entry] of configuredEntries) {
+        packages.push(yield* Effect.fromResult(inferConfiguredPackage(env.cwd, scope, entry)))
+      }
+      return packages
     }
 
-    const discoveredPackagesExit = yield* Effect.exit(scan)
-    if (Exit.isFailure(discoveredPackagesExit)) {
-      return yield* Effect.failCause(discoveredPackagesExit.cause)
-    }
-
-    const discoveredPackages = discoveredPackagesExit.value
+    const discoveredPackages = yield* scan
     const discoveredByName = Object.fromEntries(
       discoveredPackages.map((pkg): [string, Package] => [pkg.name.moniker, pkg]),
     ) as Record<string, Package>
@@ -197,19 +197,24 @@ export const resolvePackages = (
       )
     }
 
-    return configuredEntries.map(([scope, entry]) => {
+    const resolved: Package[] = []
+    for (const [scope, entry] of configuredEntries) {
       if (typeof entry !== 'string' && entry.path !== undefined) {
-        return inferConfiguredPackage(env.cwd, scope, entry)
+        resolved.push(yield* Effect.fromResult(inferConfiguredPackage(env.cwd, scope, entry)))
+        continue
       }
 
       const name = resolveConfiguredName(entry)
       const matched = discoveredByName[name]
-      return matched
-        ? {
-            scope,
-            name: matched.name,
-            path: matched.path,
-          }
-        : inferConfiguredPackage(env.cwd, scope, entry)
-    })
+      resolved.push(
+        matched
+          ? {
+              scope,
+              name: matched.name,
+              path: matched.path,
+            }
+          : yield* Effect.fromResult(inferConfiguredPackage(env.cwd, scope, entry)),
+      )
+    }
+    return resolved
   })

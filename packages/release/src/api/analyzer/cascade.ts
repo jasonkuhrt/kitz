@@ -1,13 +1,16 @@
 import { FileSystem } from 'effect'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
-import { Effect, HashMap, HashSet, MutableHashMap, Option } from 'effect'
+import { Effect, Option } from 'effect'
 import type { Package } from './workspace.js'
 
 /**
  * Dependency graph: package name -> list of packages that depend on it.
+ *
+ * A plain adjacency map so it plugs directly into `@kitz/graph` algorithms
+ * (`Graph.transitiveClosure`, `Graph.findPath`).
  */
-export type DependencyGraph = HashMap.HashMap<string, readonly string[]>
+export type DependencyGraph = ReadonlyMap<string, ReadonlyArray<string>>
 
 /**
  * Build a reverse dependency graph from package.json files.
@@ -16,13 +19,13 @@ export type DependencyGraph = HashMap.HashMap<string, readonly string[]>
  * Uses Effect's FileSystem service for testability.
  */
 export const buildDependencyGraph = (
-  packages: Package[],
+  packages: readonly Package[],
 ): Effect.Effect<DependencyGraph, Resource.ResourceError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
-    const graph = MutableHashMap.fromIterable(
-      packages.map((p): [string, string[]] => [p.name.moniker, []]),
-    )
-    const packageNames = HashSet.fromIterable(packages.map((p) => p.name.moniker))
+    // oxlint-disable-next-line kitz/domain/no-native-map-set -- Adjacency/lookup input for @kitz/graph's ReadonlyMap-based API.
+    const graph = new Map<string, string[]>(packages.map((p) => [p.name.moniker, []]))
+    // oxlint-disable-next-line kitz/domain/no-native-map-set -- Adjacency/lookup input for @kitz/graph's ReadonlyMap-based API.
+    const packageNames = new Set(packages.map((p) => p.name.moniker))
 
     for (const pkg of packages) {
       // Read manifest using typed resource
@@ -35,13 +38,26 @@ export const buildDependencyGraph = (
       // changes do not require re-publishing dependents.
       for (const depName of Object.keys(manifest.dependencies ?? {})) {
         // Only track workspace dependencies
-        if (!HashSet.has(packageNames, depName)) continue
-
-        const dependents = Option.getOrElse(MutableHashMap.get(graph, depName), (): string[] => [])
-        dependents.push(pkg.name.moniker)
-        MutableHashMap.set(graph, depName, dependents)
+        if (!packageNames.has(depName)) continue
+        graph.get(depName)!.push(pkg.name.moniker)
       }
     }
 
-    return HashMap.fromIterable(graph)
+    return graph
   })
+
+/**
+ * Filter release candidates to those that directly trigger a cascade of the
+ * given package — i.e. whose package the cascaded package directly depends on.
+ *
+ * Shared by the analyzer (to attribute `triggeredBy` on cascade impacts) and
+ * the planner (to synthesize cascade commits naming their triggers).
+ */
+export const findDirectTriggers = <item extends { readonly package: Package }>(
+  dependencyGraph: DependencyGraph,
+  candidates: readonly item[],
+  cascadedPackageName: string,
+): item[] =>
+  candidates.filter((candidate) =>
+    (dependencyGraph.get(candidate.package.name.moniker) ?? []).includes(cascadedPackageName),
+  )

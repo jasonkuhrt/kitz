@@ -15,6 +15,7 @@
  */
 
 import { FileSystem, Path as PlatformPath } from 'effect'
+import { Lang } from '@kitz/core'
 import { Platform } from '@kitz/platform'
 import { Effect, Result, pipe } from 'effect'
 import { Project } from 'ts-morph'
@@ -75,6 +76,20 @@ type GenerateBuilderError =
   | { _tag: 'MissingExtractorMetadata'; missingMetadata: readonly string[] }
   | { _tag: 'ExtractorMissingMetadata'; extractorName: string }
 
+const generateBuilderErrorTags: ReadonlyArray<GenerateBuilderError['_tag']> = [
+  'RegistryFileNotFound',
+  'LensRegistryInterfaceMissing',
+  'ExtractorPropertyMissingTypeAnnotation',
+  'MissingExtractorMetadata',
+  'ExtractorMissingMetadata',
+]
+
+const isGenerateBuilderError = (error: unknown): error is GenerateBuilderError =>
+  typeof error === 'object' &&
+  error !== null &&
+  '_tag' in error &&
+  (generateBuilderErrorTags as readonly unknown[]).includes(error._tag)
+
 const formatGenerateBuilderError = (error: GenerateBuilderError): string => {
   switch (error._tag) {
     case 'RegistryFileNotFound':
@@ -90,10 +105,12 @@ const formatGenerateBuilderError = (error: GenerateBuilderError): string => {
       )
     case 'ExtractorMissingMetadata':
       return `Extractor '${error.extractorName}' is in registry but has no metadata`
+    default:
+      return Lang.neverCase(error)
   }
 }
 
-const fromEither = <A, E>(value: Result.Result<A, E>) =>
+const fromEither = <A, E>(value: Result.Result<A, E>): Effect.Effect<A, E> =>
   Result.isFailure(value) ? Effect.fail(value.failure) : Effect.succeed(value.success)
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Constants
@@ -253,7 +270,10 @@ const loadExtractorRegistry = () =>
     const registryFilePath = join(CORE_PACKAGE_DIR, 'src/optic/registry.ts')
     const registryFileExists = yield* pathExists(registryFilePath)
     if (!registryFileExists) {
-      return yield* Effect.fail({ _tag: 'RegistryFileNotFound', registryFilePath })
+      return yield* Effect.fail<GenerateBuilderError>({
+        _tag: 'RegistryFileNotFound',
+        registryFilePath,
+      })
     }
 
     const project = new Project({
@@ -263,7 +283,10 @@ const loadExtractorRegistry = () =>
 
     const registryInterface = sourceFile.getInterface('LensRegistry')
     if (!registryInterface) {
-      return yield* Effect.fail({ _tag: 'LensRegistryInterfaceMissing', registryFilePath })
+      return yield* Effect.fail<GenerateBuilderError>({
+        _tag: 'LensRegistryInterfaceMissing',
+        registryFilePath,
+      })
     }
 
     const registry: Record<string, string> = {}
@@ -272,7 +295,10 @@ const loadExtractorRegistry = () =>
       const typeNode = property.getTypeNode()
 
       if (!typeNode) {
-        return yield* Effect.fail({ _tag: 'ExtractorPropertyMissingTypeAnnotation', extractorName })
+        return yield* Effect.fail<GenerateBuilderError>({
+          _tag: 'ExtractorPropertyMissingTypeAnnotation',
+          extractorName,
+        })
       }
 
       registry[extractorName] = typeNode.getText()
@@ -1050,7 +1076,9 @@ const program = pipe(
   Effect.catch((error) =>
     pipe(
       Effect.logError(
-        `Failed to initialize extractor registry:\n${formatGenerateBuilderError(error)}`,
+        `Failed to initialize extractor registry:\n${
+          isGenerateBuilderError(error) ? formatGenerateBuilderError(error) : error.message
+        }`,
       ),
       Effect.andThen(Effect.fail(error)),
     ),

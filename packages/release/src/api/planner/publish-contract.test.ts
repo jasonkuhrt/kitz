@@ -5,14 +5,12 @@ import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
 import { Effect, Layer } from 'effect'
 import { describe, expect, test } from 'bun:test'
-import { ResolvedConfig } from '../config.js'
 import { makeCascadeCommit } from '../analyzer/models/commit.js'
-import * as LintConfig from '../lint/models/config.js'
 import { ResolvedOperator } from '../operator.js'
 import { sha256Text } from '../digest.js'
-import { defaultPublishing } from '../publishing.js'
 import { digestPlanBody, PlanBody, PlanSourceSnapshot } from '../release-contract.js'
 import { OfficialFirst } from '../version/models/official-first.js'
+import { testConfig } from '../../test-support.js'
 import { Official } from './models/item-official.js'
 import { Plan } from './models/plan.js'
 import {
@@ -21,12 +19,7 @@ import {
   withPublishIntent,
 } from './publish-contract.js'
 
-const resolvedConfig = ResolvedConfig.make({
-  trunk: 'main',
-  npmTag: 'latest',
-  candidateTag: 'next',
-  packages: {},
-  publishing: defaultPublishing(),
+const resolvedConfig = testConfig({
   operator: ResolvedOperator.make({
     manager: Pkg.Manager.DetectedPackageManager.make({
       name: 'pnpm',
@@ -36,8 +29,6 @@ const resolvedConfig = ResolvedConfig.make({
     prepareCommands: [],
   }),
   resolvedConventionalCommitTypes: {},
-  commitOverrides: {},
-  lint: LintConfig.resolveConfig({}),
 })
 
 const plan = Plan.make({

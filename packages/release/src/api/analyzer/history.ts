@@ -2,13 +2,14 @@ import { Str } from '@kitz/core'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Data, Effect, MutableHashSet, Option, Schema as S } from 'effect'
+import { Effect, MutableHashSet, Option, Schema as S } from 'effect'
 import {
   auditPackageHistory,
   type AuditResult,
+  getPackageTagInfos,
   validateAdjacent,
-  type ValidationResult,
 } from '../lint/ops/monotonic.js'
+import { HistoryError, MonotonicViolationError, TagExistsError } from './errors.js'
 
 /**
  * Options for setting a release tag.
@@ -38,30 +39,6 @@ export interface SetResult {
   readonly action: 'created' | 'moved' | 'unchanged'
   readonly pushed: boolean
 }
-
-/**
- * Error for history operations.
- */
-export class HistoryError extends Data.TaggedError('HistoryError')<{
-  readonly message: string
-  readonly cause?: unknown
-}> {}
-
-/**
- * Error when a tag already exists at a different SHA.
- */
-export class TagExistsError extends Data.TaggedError('TagExistsError')<{
-  readonly tag: string
-  readonly existingSha: string
-  readonly requestedSha: string
-}> {}
-
-/**
- * Error when monotonic validation fails.
- */
-export class MonotonicViolationError extends Data.TaggedError('MonotonicViolationError')<{
-  readonly validation: ValidationResult
-}> {}
 
 /**
  * Set a release tag at a specific commit.
@@ -106,7 +83,9 @@ export const set = (
     const shaExists = yield* git.commitExists(options.sha)
     if (!shaExists) {
       return yield* Effect.fail(
-        new HistoryError({ message: `Commit ${options.sha} does not exist in repository` }),
+        new HistoryError({
+          context: { detail: `Commit ${options.sha} does not exist in repository` },
+        }),
       )
     }
 
@@ -130,9 +109,11 @@ export const set = (
       if (!move) {
         return yield* Effect.fail(
           new TagExistsError({
-            tag,
-            existingSha,
-            requestedSha: options.sha,
+            context: {
+              tag,
+              existingSha,
+              requestedSha: options.sha,
+            },
           }),
         )
       }
@@ -143,7 +124,7 @@ export const set = (
       existingTagIndex !== -1 && move ? tags.filter((candidate) => candidate !== tag) : tags
     const validation = yield* validateAdjacent(options.sha, options.pkg, version, tagsForValidation)
     if (!validation.valid) {
-      return yield* Effect.fail(new MonotonicViolationError({ validation }))
+      return yield* Effect.fail(new MonotonicViolationError({ context: { validation } }))
     }
 
     if (existingTagIndex !== -1 && move) {
@@ -213,7 +194,8 @@ export const audit = (
     // Audit each package
     const results: AuditResult[] = []
     for (const packageName of packagesToAudit) {
-      const result = yield* auditPackageHistory(packageName, tags)
+      const tagInfos = yield* getPackageTagInfos(packageName, tags)
+      const result = yield* auditPackageHistory(packageName, tagInfos)
       results.push(result)
     }
 
@@ -250,9 +232,9 @@ export const formatSetResult = (result: SetResult): string => {
  */
 export const formatTagExistsError = (error: TagExistsError): string => {
   const b = Str.Builder()
-  b`Error: Tag ${error.tag} already exists at ${error.existingSha.slice(0, 7)}`
+  b`Error: Tag ${error.context.tag} already exists at ${error.context.existingSha.slice(0, 7)}`
   b``
-  b`  You requested to set it at ${error.requestedSha.slice(0, 7)}.`
+  b`  You requested to set it at ${error.context.requestedSha.slice(0, 7)}.`
   b`  Use --move to relocate the tag.`
   b``
   b`  ⚠️  Moving tags may break GitHub releases if immutable releases are enabled.`
@@ -263,7 +245,7 @@ export const formatTagExistsError = (error: TagExistsError): string => {
  * Format a MonotonicViolationError for display.
  */
 export const formatMonotonicViolationError = (error: MonotonicViolationError): string => {
-  const { validation } = error
+  const { validation } = error.context
   const b = Str.Builder()
   b`Error: Cannot set ${validation.version.toString()} at ${validation.sha.slice(0, 7)}`
   b``

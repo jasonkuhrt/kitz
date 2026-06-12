@@ -186,7 +186,8 @@ export const createHandleKey = (
         return HKR.Resolution(res)
       }
 
-      case 'openPalette': {
+      // 'openPalette'
+      default: {
         return HKR.Nil()
       }
     }

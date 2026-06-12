@@ -1,5 +1,5 @@
 import { Err } from '@kitz/core'
-import { Schema as S } from 'effect'
+import { Effect, Schema as S } from 'effect'
 
 const baseTags = ['kit', 'release', 'executor'] as const
 const ExecutorPublishErrorContext = S.Struct({
@@ -220,3 +220,22 @@ export type ExecutorError =
 
 /** Union of all executor-facing errors */
 export type All = ExecutorError | ExecutorResumeError
+
+/**
+ * Map any failure on an activity's error channel into a typed executor error.
+ *
+ * The failure's message is extracted with `Err.ensure` and handed to `make`,
+ * which builds the concrete executor error carrying activity context.
+ *
+ * @example
+ * ```ts
+ * activity.pipe(
+ *   mapToExecutorError((detail) => new ExecutorTagError({ context: { tag, detail } })),
+ * )
+ * ```
+ */
+export const mapToExecutorError =
+  <error extends ExecutorError>(make: (detail: string) => error) =>
+  // oxlint-disable-next-line kitz/error/require-tagged-error-types -- Combinator consumes any failure and produces a tagged ExecutorError.
+  <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, error, R> =>
+    effect.pipe(Effect.mapError((cause) => make(Err.ensure(cause).message)))

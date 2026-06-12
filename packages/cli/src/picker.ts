@@ -93,7 +93,8 @@ export const describeInteractiveTerminalRequirement = (
       return 'Interactive selection requires stdin to be a TTY.'
     case 'stdout-not-tty':
       return 'Interactive selection requires stdout to be a TTY.'
-    case 'stdin-and-stdout-not-tty':
+    // 'stdin-and-stdout-not-tty'
+    default:
       return 'Interactive selection requires both stdin and stdout to be TTYs.'
   }
 }
@@ -130,7 +131,8 @@ export const resolveInteractiveCommandSelection = <T, E, R>(params: {
             _tag: 'missing',
             reason: 'cancelled',
           }
-        case 'empty':
+        // 'empty'
+        default:
           return {
             _tag: 'missing',
             reason: 'empty',

@@ -7,6 +7,7 @@ import { createJsonc } from './jsonc.js'
 import {
   create,
   createJson,
+  createJsonLines,
   EncodeError,
   isEncodeError,
   isParseError,
@@ -24,6 +25,7 @@ describe('resource', () => {
   test('exports the Resource namespace', () => {
     expect(ResourceModule.Resource.create).toBe(create)
     expect(ResourceModule.Resource.createJson).toBe(createJson)
+    expect(ResourceModule.Resource.createJsonLines).toBe(createJsonLines)
     expect(ResourceModule.Resource.createJsonc).toBe(createJsonc)
     expect(ResourceModule.Resource.Errors.ReadError).toBe(ReadError)
   })
@@ -181,5 +183,215 @@ describe('resource', () => {
     expect(isResourceError(parseError)).toBe(true)
     expect(isResourceError(encodeError)).toBe(true)
     expect(isResourceError(outcome.missingRequired)).toBe(false)
+  })
+})
+
+describe('json lines', () => {
+  const Entry = Schema.Struct({
+    id: Schema.String,
+    value: Schema.Number,
+  })
+
+  test('writes one JSON line per item and reads them back', async () => {
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const tempDir = yield* Fs.makeTempDirectoryScoped({ prefix: 'kitz-resource-jsonl-' })
+        const filePath = Fs.Path.join(tempDir, Fs.Path.RelFile.fromString('./entries.jsonl'))
+        const entries = createJsonLines('entries.jsonl', Entry)
+
+        const missing = yield* entries.read(tempDir)
+        const missingOrEmpty = yield* entries.readOrEmpty(tempDir)
+
+        yield* entries.write(
+          [
+            { id: 'a', value: 1 },
+            { id: 'b', value: 2 },
+          ],
+          tempDir,
+        )
+
+        const raw = yield* Fs.readString(filePath)
+        const decoded = yield* entries.readRequired(filePath)
+
+        return { missing, missingOrEmpty, raw, decoded }
+      }).pipe(Effect.scoped, Effect.provide(Platform.FileSystem.layer)),
+    )
+
+    expect(result.missing).toEqual(Option.none())
+    expect(result.missingOrEmpty).toEqual([])
+    expect(result.raw).toBe('{"id":"a","value":1}\n{"id":"b","value":2}\n')
+    expect(result.decoded).toEqual([
+      { id: 'a', value: 1 },
+      { id: 'b', value: 2 },
+    ])
+  })
+
+  test('fails required reads for missing json lines resources', async () => {
+    const error = await Effect.runPromise(
+      Effect.gen(function* () {
+        const tempDir = yield* Fs.makeTempDirectoryScoped({ prefix: 'kitz-resource-jsonl-' })
+        const entries = createJsonLines('entries.jsonl', Entry)
+
+        return yield* entries.readRequired(tempDir).pipe(Effect.flip)
+      }).pipe(Effect.scoped, Effect.provide(Platform.FileSystem.layer)),
+    )
+
+    expect(error).toBeInstanceOf(NotFoundError)
+  })
+
+  test('append creates a missing file and extends an existing one', async () => {
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const tempDir = yield* Fs.makeTempDirectoryScoped({ prefix: 'kitz-resource-jsonl-' })
+        const filePath = Fs.Path.join(tempDir, Fs.Path.RelFile.fromString('./entries.jsonl'))
+        const entries = createJsonLines('entries.jsonl', Entry)
+
+        yield* entries.append({ id: 'a', value: 1 }, tempDir)
+        const afterFirst = yield* Fs.readString(filePath)
+
+        yield* entries.append({ id: 'b', value: 2 }, tempDir)
+        yield* entries.append({ id: 'c', value: 3 }, filePath)
+        const afterAll = yield* Fs.readString(filePath)
+        const decoded = yield* entries.readRequired(tempDir)
+
+        return { afterFirst, afterAll, decoded }
+      }).pipe(Effect.scoped, Effect.provide(Platform.FileSystem.layer)),
+    )
+
+    expect(result.afterFirst).toBe('{"id":"a","value":1}\n')
+    expect(result.afterAll).toBe(
+      '{"id":"a","value":1}\n{"id":"b","value":2}\n{"id":"c","value":3}\n',
+    )
+    expect(result.decoded).toEqual([
+      { id: 'a', value: 1 },
+      { id: 'b', value: 2 },
+      { id: 'c', value: 3 },
+    ])
+  })
+
+  test('append preserves entries written by write without blank lines', async () => {
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const tempDir = yield* Fs.makeTempDirectoryScoped({ prefix: 'kitz-resource-jsonl-' })
+        const filePath = Fs.Path.join(tempDir, Fs.Path.RelFile.fromString('./entries.jsonl'))
+        const entries = createJsonLines('entries.jsonl', Entry)
+
+        yield* entries.write(
+          [
+            { id: 'a', value: 1 },
+            { id: 'b', value: 2 },
+          ],
+          tempDir,
+        )
+        yield* entries.append({ id: 'c', value: 3 }, tempDir)
+
+        const raw = yield* Fs.readString(filePath)
+        const decoded = yield* entries.readRequired(tempDir)
+
+        return { raw, decoded }
+      }).pipe(Effect.scoped, Effect.provide(Platform.FileSystem.layer)),
+    )
+
+    expect(result.raw).toBe('{"id":"a","value":1}\n{"id":"b","value":2}\n{"id":"c","value":3}\n')
+    expect(result.raw).not.toContain('\n\n')
+    expect(result.decoded).toEqual([
+      { id: 'a', value: 1 },
+      { id: 'b', value: 2 },
+      { id: 'c', value: 3 },
+    ])
+  })
+
+  test('append repairs framing when the file lacks a trailing newline', async () => {
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const tempDir = yield* Fs.makeTempDirectoryScoped({ prefix: 'kitz-resource-jsonl-' })
+        const filePath = Fs.Path.join(tempDir, Fs.Path.RelFile.fromString('./entries.jsonl'))
+        const entries = createJsonLines('entries.jsonl', Entry)
+
+        // Foreign file without trailing newline
+        yield* Fs.write(filePath, '{"id":"a","value":1}')
+        yield* entries.append({ id: 'b', value: 2 }, tempDir)
+
+        const raw = yield* Fs.readString(filePath)
+        const decoded = yield* entries.readRequired(tempDir)
+
+        return { raw, decoded }
+      }).pipe(Effect.scoped, Effect.provide(Platform.FileSystem.layer)),
+    )
+
+    expect(result.raw).toBe('{"id":"a","value":1}\n{"id":"b","value":2}\n')
+    expect(result.decoded).toEqual([
+      { id: 'a', value: 1 },
+      { id: 'b', value: 2 },
+    ])
+  })
+
+  test('append to an existing empty file adds no blank line', async () => {
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const tempDir = yield* Fs.makeTempDirectoryScoped({ prefix: 'kitz-resource-jsonl-' })
+        const filePath = Fs.Path.join(tempDir, Fs.Path.RelFile.fromString('./entries.jsonl'))
+        const entries = createJsonLines('entries.jsonl', Entry)
+
+        yield* Fs.write(filePath, '')
+        yield* entries.append({ id: 'a', value: 1 }, tempDir)
+
+        return yield* Fs.readString(filePath)
+      }).pipe(Effect.scoped, Effect.provide(Platform.FileSystem.layer)),
+    )
+
+    expect(result).toBe('{"id":"a","value":1}\n')
+  })
+
+  test('writing an empty array round-trips through an empty file', async () => {
+    const result = await Effect.runPromise(
+      Effect.gen(function* () {
+        const tempDir = yield* Fs.makeTempDirectoryScoped({ prefix: 'kitz-resource-jsonl-' })
+        const filePath = Fs.Path.join(tempDir, Fs.Path.RelFile.fromString('./entries.jsonl'))
+        const entries = createJsonLines('entries.jsonl', Entry)
+
+        yield* entries.write([], tempDir)
+
+        const raw = yield* Fs.readString(filePath)
+        const decoded = yield* entries.readRequired(tempDir)
+
+        return { raw, decoded }
+      }).pipe(Effect.scoped, Effect.provide(Platform.FileSystem.layer)),
+    )
+
+    expect(result.raw).toBe('')
+    expect(result.decoded).toEqual([])
+  })
+
+  test('surfaces ParseError for invalid JSON lines', async () => {
+    const error = await Effect.runPromise(
+      Effect.gen(function* () {
+        const tempDir = yield* Fs.makeTempDirectoryScoped({ prefix: 'kitz-resource-jsonl-' })
+        const filePath = Fs.Path.join(tempDir, Fs.Path.RelFile.fromString('./entries.jsonl'))
+        const entries = createJsonLines('entries.jsonl', Entry)
+
+        yield* Fs.write(filePath, '{"id":"a","value":1}\nnot json\n')
+
+        return yield* entries.readRequired(tempDir).pipe(Effect.flip)
+      }).pipe(Effect.scoped, Effect.provide(Platform.FileSystem.layer)),
+    )
+
+    expect(error).toBeInstanceOf(ParseError)
+  })
+
+  test('surfaces ParseError when a line fails item schema decoding', async () => {
+    const error = await Effect.runPromise(
+      Effect.gen(function* () {
+        const tempDir = yield* Fs.makeTempDirectoryScoped({ prefix: 'kitz-resource-jsonl-' })
+        const filePath = Fs.Path.join(tempDir, Fs.Path.RelFile.fromString('./entries.jsonl'))
+        const entries = createJsonLines('entries.jsonl', Entry)
+
+        yield* Fs.write(filePath, '{"id":"a","value":"not a number"}\n')
+
+        return yield* entries.readRequired(tempDir).pipe(Effect.flip)
+      }).pipe(Effect.scoped, Effect.provide(Platform.FileSystem.layer)),
+    )
+
+    expect(error).toBeInstanceOf(ParseError)
   })
 })

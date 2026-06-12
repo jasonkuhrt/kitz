@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Schema as S } from 'effect'
 import { BuildIds, PrereleaseIds } from './identifiers.js'
 
@@ -10,7 +11,7 @@ const formatPreRelease = (version: PreRelease): string => {
 /**
  * A semantic version with pre-release identifiers.
  */
-export class PreRelease extends S.TaggedClass<PreRelease>()(
+export class PreRelease extends Sch.TaggedClass<PreRelease>()(
   'SemverPreRelease',
   {
     major: S.Number.pipe(S.check(S.isInt(), S.isGreaterThanOrEqualTo(0))),
@@ -25,13 +26,6 @@ export class PreRelease extends S.TaggedClass<PreRelease>()(
     description: 'A semantic version with pre-release identifiers',
   },
 ) {
-  static is = S.is(PreRelease)
-  static decode = S.decodeUnknownEffect(PreRelease)
-  static decodeSync = S.decodeUnknownSync(PreRelease)
-  static encode = S.encodeUnknownEffect(PreRelease)
-  static encodeSync = S.encodeUnknownSync(PreRelease)
-  static equivalence = S.toEquivalence(PreRelease)
-  static ordered = false as const
   static override toString = (version: PreRelease): string => formatPreRelease(version)
 
   /** String representation for JS coercion (template literals, logging) */

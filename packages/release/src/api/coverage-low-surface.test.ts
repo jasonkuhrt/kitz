@@ -8,7 +8,7 @@ import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Platform } from '@kitz/platform'
 import { Semver } from '@kitz/semver'
-import { Effect, FileSystem, Layer, Option, Ref } from 'effect'
+import { Effect, FileSystem, Layer, Option, Ref, Result } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { defineConfig, init as initConfig, load as loadConfig } from './config.js'
 import { forecast } from './forecaster/forecast.js'
@@ -23,7 +23,6 @@ import { rule as matchKnownRule } from './lint/rules/pr-monorepo-scopes-match-kn
 import { rule as repoSquashOnlyRule } from './lint/rules/repo-squash-only.js'
 import { GitHistory, PrTitle, RepoSettings } from './lint/models/violation-location.js'
 import { RuleDefaults } from './lint/models/rule-defaults.js'
-import { Warn } from './lint/models/severity.js'
 import { Operator as OperatorConfig, resolve as resolveOperator } from './operator.js'
 import { make as makePlan, Plan } from './planner/models/plan.js'
 import { Analysis } from './analyzer/models/analysis.js'
@@ -93,9 +92,9 @@ describe('release low-surface coverage', () => {
             prepareScripts: ['build'],
           }),
           lint: {
-            defaults: RuleDefaults.make({ severity: Warn.make({}) }),
+            defaults: RuleDefaults.make({ severity: 'warn' }),
             rules: {
-              'repo.squash-only': Warn.make({}),
+              'repo.squash-only': 'warn',
             },
           },
         })
@@ -121,10 +120,8 @@ describe('release low-surface coverage', () => {
     expect(result.loaded.candidateTag).toBe('next')
     expect(result.loaded.packages).toEqual({ core: '@kitz/core' })
     expect(result.loaded.operator.releaseCommand).toBe('bun run ship')
-    expect(result.loaded.lint.defaults.severity._tag).toBe('SeverityWarn')
-    expect(result.loaded.lint.rules['repo.squash-only']?.overrides.severity._tag).toBe(
-      'SeverityWarn',
-    )
+    expect(result.loaded.lint.defaults.severity).toBe('warn')
+    expect(result.loaded.lint.rules['repo.squash-only']?.overrides.severity).toBe('warn')
     expect(result.created._tag).toBe('Created')
     expect(result.content).toContain("import { defineConfig } from '@kitz/release'")
     expect(result.content).toContain('export default defineConfig({})')
@@ -285,33 +282,35 @@ describe('release low-surface coverage', () => {
       tags: [],
     })
 
-    const result = forecast(analysis, {
-      ci: {
-        detected: false,
-        provider: null,
-        prNumber: null,
-      },
-      github: {
-        target: {
-          owner: 'org',
-          repo: 'repo',
-          source: 'git:origin',
+    const result = Result.getOrThrow(
+      forecast(analysis, {
+        ci: {
+          detected: false,
+          provider: null,
+          prNumber: null,
         },
-        credentials: null,
-      },
-      npm: {
-        authenticated: false,
-        username: null,
-        registry: 'https://registry.npmjs.org/',
-      },
-      git: {
-        root: Fs.Path.AbsDir.fromString('/repo/'),
-        clean: true,
-        branch: 'main',
-        headSha: 'abc1234',
-        remotes: {},
-      },
-    })
+        github: {
+          target: {
+            owner: 'org',
+            repo: 'repo',
+            source: 'git:origin',
+          },
+          credentials: null,
+        },
+        npm: {
+          authenticated: false,
+          username: null,
+          registry: 'https://registry.npmjs.org/',
+        },
+        git: {
+          root: Fs.Path.AbsDir.fromString('/repo/'),
+          clean: true,
+          branch: 'main',
+          headSha: 'abc1234',
+          remotes: {},
+        },
+      }),
+    )
 
     expect(result.owner).toBe('org')
     expect(result.releases[0]).toMatchObject({
@@ -376,7 +375,7 @@ describe('release low-surface coverage', () => {
     expect(defaultPr.number).toBe(0)
 
     const knownValid = await runRule(
-      matchKnownRule.check,
+      matchKnownRule.check(),
       Layer.mergeAll(
         Layer.succeed(PrService, validPr),
         Layer.succeed(MonorepoService, {
@@ -388,7 +387,7 @@ describe('release low-surface coverage', () => {
     expect(knownValid).toBeUndefined()
 
     const knownInvalid = await runRule(
-      matchKnownRule.check,
+      matchKnownRule.check(),
       Layer.mergeAll(
         Layer.succeed(
           PrService,
@@ -409,7 +408,7 @@ describe('release low-surface coverage', () => {
     expect(PrTitle.is(getLocation(knownInvalid))).toBe(true)
 
     const affectedInvalid = await runRule(
-      matchAffectedRule.check,
+      matchAffectedRule.check(),
       Layer.mergeAll(
         Layer.succeed(PrService, validPr),
         Layer.succeed(DiffService, {
@@ -423,7 +422,7 @@ describe('release low-surface coverage', () => {
 
   test('covers repository and monotonic-history lint rules', async () => {
     const squashValid = await runRule(
-      repoSquashOnlyRule.check,
+      repoSquashOnlyRule.check(),
       Layer.succeed(GitHubService, {
         settings: {
           allowSquashMerge: true,
@@ -435,7 +434,7 @@ describe('release low-surface coverage', () => {
     expect(squashValid).toBeUndefined()
 
     const squashInvalid = await runRule(
-      repoSquashOnlyRule.check,
+      repoSquashOnlyRule.check(),
       Layer.succeed(GitHubService, {
         settings: {
           allowSquashMerge: true,
@@ -460,7 +459,7 @@ describe('release low-surface coverage', () => {
           bbb2222: ['aaa1111'],
         })
 
-        return yield* gitHistoryMonotonicRule.check.pipe(Effect.provide(layer))
+        return yield* gitHistoryMonotonicRule.check().pipe(Effect.provide(layer))
       }),
     )
 

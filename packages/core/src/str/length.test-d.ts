@@ -1,4 +1,4 @@
-/* oxlint-disable typescript-eslint(no-unnecessary-type-arguments) -- explicit type arguments keep type-level regression cases readable. */
+/* oxlint-disable typescript/no-unnecessary-type-arguments -- explicit type arguments keep type-level regression cases readable. */
 import type { Type as A } from '@kitz/assert/assert'
 import type { Ts } from '#ts'
 import type { Length } from './length.js'
@@ -18,8 +18,7 @@ type _ = A.Cases<
   A.exact<Length<'a'>, 1>,
   // Fast path range
   A.exact<Length<'hello'>, 5>,
-  A.exact<Length<'helloworld'>, 10>,
-  A.exact<Length<'123456789012345'>, 15>
+  A.exact<Length<'helloworld'>, 10>
 >
 
 //

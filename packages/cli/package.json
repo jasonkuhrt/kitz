@@ -19,6 +19,7 @@
     "@kitz/fs": "workspace:*",
     "@kitz/mod": "workspace:*",
     "@kitz/platform": "workspace:*",
+    "@kitz/sch": "workspace:*",
     "effect": "catalog:"
   },
   "scripts": {

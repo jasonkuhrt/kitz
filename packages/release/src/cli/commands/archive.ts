@@ -6,8 +6,8 @@
  */
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
-import { Console, Effect, FileSystem, Layer, Option, Schema } from 'effect'
-import { Command, Flag } from 'effect/unstable/cli'
+import { Console, Effect, FileSystem, Option, Schema } from 'effect'
+import { Command } from 'effect/unstable/cli'
 import * as Artifact from '../../api/artifact.js'
 import * as AuditArchive from '../../api/audit-archive.js'
 import * as Clock from '../../api/clock.js'
@@ -15,17 +15,13 @@ import * as Journal from '../../api/journal.js'
 import * as Planner from '../../api/planner/__.js'
 import * as Proof from '../../api/proof.js'
 import * as ReleaseContract from '../../api/release-contract.js'
-import { FileSystemLayer } from '../../platform.js'
+import { CommandBaseLayer, fromFlag } from './_shared.js'
 import { loadExecutableCommandPlan } from './plan-file.js'
 
 const archiveExport = Command.make(
   'export',
   {
-    from: Flag.string('from').pipe(
-      Flag.withAlias('f'),
-      Flag.withDescription('Plan file to archive (default: the active plan)'),
-      Flag.optional,
-    ),
+    from: fromFlag,
   },
   ({ from }) =>
     Effect.gen(function* () {
@@ -39,7 +35,7 @@ const archiveExport = Command.make(
         env.cwd,
         Fs.Path.RelFile.fromString(`./.release/archive/${digest.value}.kitz-release-audit.tgz`),
       )
-      const createdAt = yield* Clock.nowIso
+      const createdAt = yield* Clock.now
       const bundle = AuditArchive.makeAuditArchive({
         planDigest: digest,
         createdAt,
@@ -95,5 +91,5 @@ const archiveExport = Command.make(
 export const archive = Command.make('archive').pipe(
   Command.withDescription('Export a release audit archive'),
   Command.withSubcommands([archiveExport]),
-  Command.provide(Layer.mergeAll(Env.Live, FileSystemLayer)),
+  Command.provide(CommandBaseLayer),
 )

@@ -1,6 +1,8 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "extends": ["./.oxlintrc.json"],
+  "extends": [
+    "./.oxlintrc.json"
+  ],
   "ignorePatterns": [
     "**/build/**",
     "**/node_modules/**",
@@ -34,7 +36,124 @@
     "kitz/module/prefer-subpath-imports": "error",
     "kitz/module/subpath-imports-integrity": [
       "error",
-      { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }
+      {
+        "requiredEntryPatterns": [
+          "src/*/_.ts",
+          "src/*/core/_.ts"
+        ]
+      }
+    ],
+    "kitz/module/boundary-contract": [
+      "error",
+      {
+        "contracts": [
+          {
+            "files": [
+              "packages/release/src/api/executor/workflow.ts"
+            ],
+            "imports": {
+              "ignorePrefixes": [
+                "./workflow/"
+              ],
+              "exactly": [
+                "@kitz/flo",
+                "../publishing.js",
+                "./errors.js"
+              ]
+            },
+            "forbiddenContent": [
+              "export const ReleasePayload = Schema.Struct",
+              "const releaseWorkflowIdempotencyKey =",
+              "ArtifactManifest.make",
+              "PublishReceipt.make",
+              "RegistryObservation.make",
+              "fs.readFile",
+              "new Date().toISOString()"
+            ],
+            "forbiddenContentPatterns": [
+              "export\\s*\\{[^}]*tagForRelease[^}]*\\}\\s*from\\s*['\"]\\./workflow/release-info\\.js['\"]"
+            ]
+          },
+          {
+            "files": [
+              "packages/release/src/api/executor/workflow/activities/verify.ts"
+            ],
+            "requiredContent": [
+              "../../registry-verification.js"
+            ],
+            "forbiddenContent": [
+              "FileSystem",
+              "NpmRegistry.NpmCli",
+              "ArtifactManifest.make",
+              "PublishReceipt.make",
+              "RegistryObservation.make",
+              "sha256Bytes",
+              "new Date"
+            ]
+          },
+          {
+            "files": [
+              "packages/release/src/api/executor/workflow/activities/prepare.ts"
+            ],
+            "requiredContent": [
+              "Fs.exists(artifact)",
+              "Fs.read(artifact)"
+            ],
+            "forbiddenContent": [
+              "FileSystem",
+              "fs.exists",
+              "fs.readFile"
+            ]
+          },
+          {
+            "files": [
+              "packages/release/src/api/executor/**"
+            ],
+            "forbiddenValueImports": [
+              "@kitz/cli"
+            ],
+            "forbiddenValueImportPrefixes": [
+              "../renderer",
+              "./renderer"
+            ]
+          },
+          {
+            "files": [
+              "packages/release/src/api/executor/__.ts"
+            ],
+            "forbiddenContent": [
+              "formatExecutionStatus",
+              "formatLifecycleEvent",
+              "LifecycleEventLine"
+            ]
+          },
+          {
+            "files": [
+              "packages/release/src/api/publishing/**"
+            ],
+            "forbiddenContent": [
+              "Context.Service"
+            ]
+          },
+          {
+            "files": [
+              "packages/release/src/api/publishing/__.ts"
+            ],
+            "forbiddenContentPatterns": [
+              "['\"]\\./artifacter\\.js['\"]",
+              "['\"]\\./credentials\\.js['\"]",
+              "['\"]\\./package-manager\\.js['\"]",
+              "['\"]\\./package-registry\\.js['\"]",
+              "['\"]\\./release-manager\\.js['\"]",
+              "['\"]\\./requests\\.js['\"]",
+              "['\"]\\./results\\.js['\"]"
+            ],
+            "requiredFiles": [
+              "conformance.ts"
+            ]
+          }
+        ]
+      }
     ],
     "kitz/jsdoc/require-on-exports": "off",
     "kitz/jsdoc/min-words": "off",

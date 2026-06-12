@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Semver } from '@kitz/semver'
 import { Option, Schema as S } from 'effect'
 import { ReleaseCommit } from '../../analyzer/models/commit.js'
@@ -19,18 +20,10 @@ export const ItemBaseFields = {
 /**
  * An official release plan item.
  */
-export class Official extends S.TaggedClass<Official>()('Official', {
+export class Official extends Sch.TaggedClass<Official>()('Official', {
   ...ItemBaseFields,
   version: S.Union([OfficialFirst, OfficialIncrement]),
 }) {
-  static is = S.is(Official)
-  static decode = S.decodeUnknownEffect(Official)
-  static decodeSync = S.decodeUnknownSync(Official)
-  static encode = S.encodeUnknownEffect(Official)
-  static encodeSync = S.encodeUnknownSync(Official)
-  static equivalence = S.toEquivalence(Official)
-  static ordered = false as const
-
   /** The version this release will produce. Extracts `to` from increments, `version` from firsts. */
   get nextVersion(): Semver.Semver {
     return 'to' in this.version ? this.version.to : this.version.version

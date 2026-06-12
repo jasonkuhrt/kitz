@@ -84,7 +84,7 @@ export const clampWith =
 
 export const isOn =
   (value: unknown) =>
-  <Min extends number, Max extends number>(min: Min, max: Max): boolean => {
+  (min: number, max: number): boolean => {
     return is(value, min, max)
   }
 

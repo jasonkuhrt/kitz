@@ -14,6 +14,7 @@
     "./__": "./src/__.ts"
   },
   "dependencies": {
+    "@kitz/sch": "workspace:*",
     "effect": "catalog:"
   },
   "scripts": {

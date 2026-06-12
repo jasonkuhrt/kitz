@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Schema as S } from 'effect'
 import { CascadeImpact } from './cascade-impact.js'
 import { Impact } from './impact.js'
@@ -9,17 +10,9 @@ import { PackageSchema } from './package-schema.js'
  * Computed once by `Analyzer.analyze()`, consumed by both `Planner` (to project
  * concrete version numbers) and `Commentator` (to render PR comment projections).
  */
-export class Analysis extends S.TaggedClass<Analysis>()('Analysis', {
+export class Analysis extends Sch.TaggedClass<Analysis>()('Analysis', {
   impacts: S.Array(Impact),
   cascades: S.Array(CascadeImpact),
   unchanged: S.Array(PackageSchema),
   tags: S.Array(S.String),
-}) {
-  static is = S.is(Analysis)
-  static decode = S.decodeUnknownEffect(Analysis)
-  static decodeSync = S.decodeUnknownSync(Analysis)
-  static encode = S.encodeUnknownEffect(Analysis)
-  static encodeSync = S.encodeUnknownSync(Analysis)
-  static equivalence = S.toEquivalence(Analysis)
-  static ordered = false as const
-}
+}) {}

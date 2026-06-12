@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Schema as S } from 'effect'
 
 /**
@@ -7,7 +8,7 @@ import { Schema as S } from 'effect'
  *
  * @category Text Formatting
  */
-export class SpanRange extends S.Class<SpanRange>('SpanRange')({
+export class SpanRange extends Sch.Class<SpanRange>()('SpanRange', {
   /**
    * Constraints for main axis span.
    */
@@ -27,12 +28,4 @@ export class SpanRange extends S.Class<SpanRange>('SpanRange')({
       max: S.optional(S.Number),
     }),
   ),
-}) {
-  static is = S.is(SpanRange)
-  static decode = S.decodeUnknownEffect(SpanRange)
-  static decodeSync = S.decodeUnknownSync(SpanRange)
-  static encode = S.encodeUnknownEffect(SpanRange)
-  static encodeSync = S.encodeUnknownSync(SpanRange)
-  static equivalence = S.toEquivalence(SpanRange)
-  static ordered = false as const
-}
+}) {}

@@ -1,24 +1,8 @@
 import { Effect } from 'effect'
 import { verifyRegistryPublication } from '../../registry-verification.js'
-import { ExecutorPublishError } from '../../errors.js'
+import { ExecutorPublishError, mapToExecutorError } from '../../errors.js'
 import type { ReleasePayloadType } from '../payload.js'
 import { type ReleasePayloadEntry, toReleaseInfo } from '../release-info.js'
-
-const toExecutorPublishError = (
-  release: ReleasePayloadEntry,
-  error: unknown,
-): ExecutorPublishError => {
-  if ((error as { readonly _tag?: string })._tag === 'ExecutorPublishError') {
-    return error as ExecutorPublishError
-  }
-
-  return new ExecutorPublishError({
-    context: {
-      packageName: release.packageName,
-      detail: error instanceof Error ? error.message : String(error),
-    },
-  })
-}
 
 export const verifyPublishedRelease = (params: {
   readonly payload: ReleasePayloadType
@@ -37,6 +21,8 @@ export const verifyPublishedRelease = (params: {
       `Verifying registry version: ${params.release.packageName}@${params.release.nextVersion}`,
     )
     const distTag = params.publishTag ?? 'latest'
+    // Only the verification probe gets wrapped, so the explicit
+    // ExecutorPublishError below can never be double-wrapped.
     const verification = yield* verifyRegistryPublication({
       packageName: params.release.packageName,
       nextVersion: params.release.nextVersion,
@@ -50,7 +36,14 @@ export const verifyPublishedRelease = (params: {
       ...(params.payload.options.registry !== undefined
         ? { registry: params.payload.options.registry }
         : {}),
-    })
+    }).pipe(
+      mapToExecutorError(
+        (detail) =>
+          new ExecutorPublishError({
+            context: { packageName: params.release.packageName, detail },
+          }),
+      ),
+    )
     if (verification.issues.length > 0) {
       return yield* Effect.fail(
         new ExecutorPublishError({
@@ -63,4 +56,4 @@ export const verifyPublishedRelease = (params: {
     }
 
     return params.release.packageName
-  }).pipe(Effect.mapError((e) => toExecutorPublishError(params.release, e)))
+  })

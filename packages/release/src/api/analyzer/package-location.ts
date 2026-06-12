@@ -1,4 +1,6 @@
 import { Fs } from '@kitz/fs'
+import { Result } from 'effect'
+import { PackageLocationError } from './errors.js'
 
 export interface PackageLocation {
   readonly path: Fs.Path.AbsDir
@@ -21,26 +23,42 @@ const normalizeRelativeDir = (path: Fs.Path.RelDir | string): string =>
     .replace(/\/+$/u, '')
 
 export namespace PackageLocation {
-  export const fromAbsolutePath = (root: Fs.Path.AbsDir, path: Fs.Path.AbsDir): PackageLocation => {
+  /**
+   * Express a package path relative to the repo root.
+   *
+   * Fails with a typed {@link PackageLocationError} when the path is not
+   * inside the root (or is the root itself) — e.g. a misconfigured package
+   * path escaping the repository.
+   */
+  export const fromAbsolutePath = (
+    root: Fs.Path.AbsDir,
+    path: Fs.Path.AbsDir,
+  ): Result.Result<PackageLocation, PackageLocationError> => {
     const normalizedRoot = normalizeAbsoluteDir(root)
     const normalizedPath = normalizeAbsoluteDir(path)
     const rootPrefix = `${normalizedRoot}/`
 
     if (!normalizedPath.startsWith(rootPrefix)) {
-      throw new TypeError(
-        `Package path "${normalizedPath}/" is not inside repo root "${normalizedRoot}/".`,
+      return Result.fail(
+        new PackageLocationError({
+          context: { root: normalizedRoot, path: normalizedPath, problem: 'outside-root' },
+        }),
       )
     }
 
     const relativePath = normalizedPath.slice(rootPrefix.length)
     if (relativePath.length === 0) {
-      throw new TypeError(`Package path "${normalizedPath}/" cannot be the repo root itself.`)
+      return Result.fail(
+        new PackageLocationError({
+          context: { root: normalizedRoot, path: normalizedPath, problem: 'is-root' },
+        }),
+      )
     }
 
-    return {
+    return Result.succeed({
       path,
       relativePath: Fs.Path.RelDir.fromString(`./${relativePath}/`),
-    }
+    })
   }
 
   export const inferDefault = (root: Fs.Path.AbsDir, scope: string): PackageLocation => {

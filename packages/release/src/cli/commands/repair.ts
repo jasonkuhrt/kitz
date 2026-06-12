@@ -1,21 +1,15 @@
-import { Env } from '@kitz/env'
-import { NpmRegistry } from '@kitz/npm-registry'
+import { Str } from '@kitz/core'
 import { Console, Effect, Layer } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Reconciler from '../../api/reconciler.js'
-import { ChildProcessSpawnerLayer, FileSystemLayer } from '../../platform.js'
+import { ChildProcessSpawnerLayer } from '../../platform.js'
+import { CommandBaseLayer, NpmCliLayer, fromFlag } from './_shared.js'
 import { loadExecutableCommandPlan } from './plan-file.js'
-
-const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
 
 export const repair = Command.make(
   'repair',
   {
-    from: Flag.string('from').pipe(
-      Flag.withAlias('f'),
-      Flag.withDescription('Read the release plan from a specific file path'),
-      Flag.optional,
-    ),
+    from: fromFlag,
     yes: Flag.boolean('yes').pipe(
       Flag.withDescription('Acknowledge the printed repair action'),
       Flag.withDefault(false),
@@ -27,13 +21,17 @@ export const repair = Command.make(
 
       const decision = yield* Reconciler.reconcile(plan)
 
-      yield* Console.log(`Repair classification: ${decision.classification}`)
-      yield* Console.log(`Next command: ${decision.nextCommand}`)
-      if (!yes && decision.classification !== 'clean') {
-        yield* Console.log('Re-run with --yes after reviewing the reconciliation evidence.')
-      }
+      const b = Str.Builder()
+      b`Repair classification: ${decision.classification}`
+      b`Next command: ${decision.nextCommand}`
+      b(
+        !yes && decision.classification !== 'clean'
+          ? 'Re-run with --yes after reviewing the reconciliation evidence.'
+          : null,
+      )
+      yield* Console.log(b.render())
     }),
 ).pipe(
   Command.withDescription('Print the repair action for a reconciled release plan'),
-  Command.provide(Layer.mergeAll(Env.Live, FileSystemLayer, ChildProcessSpawnerLayer, npmLayer)),
+  Command.provide(Layer.mergeAll(CommandBaseLayer, ChildProcessSpawnerLayer, NpmCliLayer)),
 )

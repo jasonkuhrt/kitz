@@ -88,8 +88,10 @@ export type GithubOperation =
   | 'listOpenPullRequests'
   | 'updatePullRequest'
   | 'listIssueComments'
+  | 'findIssueCommentByMarker'
   | 'createIssueComment'
   | 'updateIssueComment'
+  | 'upsertIssueComment'
 
 const GithubOperationSchema = S.Literals([
   'releaseExists',
@@ -99,8 +101,10 @@ const GithubOperationSchema = S.Literals([
   'listOpenPullRequests',
   'updatePullRequest',
   'listIssueComments',
+  'findIssueCommentByMarker',
   'createIssueComment',
   'updateIssueComment',
+  'upsertIssueComment',
 ])
 const ErrorCause = S.instanceOf(Error)
 

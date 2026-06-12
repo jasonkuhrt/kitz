@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Schema } from 'effect'
 
 /**
@@ -27,17 +28,10 @@ export const DetectionSource = Schema.Enum({
 
 export type DetectionSource = typeof DetectionSource.Type
 
-export class DetectedPackageManager extends Schema.Class<DetectedPackageManager>(
+export class DetectedPackageManager extends Sch.Class<DetectedPackageManager>()(
   'DetectedPackageManager',
-)({
-  name: PackageManager,
-  source: DetectionSource,
-}) {
-  static is = Schema.is(DetectedPackageManager)
-  static decode = Schema.decodeUnknownEffect(DetectedPackageManager)
-  static decodeSync = Schema.decodeUnknownSync(DetectedPackageManager)
-  static encode = Schema.encodeUnknownEffect(DetectedPackageManager)
-  static encodeSync = Schema.encodeUnknownSync(DetectedPackageManager)
-  static equivalence = Schema.toEquivalence(DetectedPackageManager)
-  static ordered = false as const
-}
+  {
+    name: PackageManager,
+    source: DetectionSource,
+  },
+) {}

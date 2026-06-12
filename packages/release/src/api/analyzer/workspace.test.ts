@@ -280,4 +280,50 @@ describe('Workspace.resolvePackages', () => {
       rmSync(rootDir, { recursive: true, force: true })
     }
   })
+
+  test('a configured path escaping the repo root is a typed failure, not a crash', async () => {
+    const rootDir = mkdtempSync(path.join(os.tmpdir(), 'kitz-release-workspace-escape-'))
+
+    try {
+      writeFileSync(
+        path.join(rootDir, 'package.json'),
+        JSON.stringify(
+          {
+            name: '@fixture/repo',
+            private: true,
+            type: 'module',
+            workspaces: [],
+          },
+          null,
+          2,
+        ),
+      )
+
+      const result = await Effect.runPromise(
+        Effect.provide(
+          Workspace.resolvePackages({
+            core: {
+              name: '@kitz/core',
+              path: '../outside-the-repo',
+            },
+          }),
+          Layer.mergeAll(
+            FileSystemLayer,
+            Env.Test({ cwd: Fs.Path.AbsDir.fromString(`${rootDir}/`) }),
+          ),
+        ).pipe(Effect.result),
+      )
+
+      expect(result._tag).toBe('Failure')
+      if (result._tag === 'Failure') {
+        expect(result.failure._tag).toBe('PackageResolutionError')
+        if (result.failure._tag === 'PackageResolutionError') {
+          expect(result.failure.context.scope).toBe('core')
+          expect(result.failure.context.detail).toContain('cannot be resolved')
+        }
+      }
+    } finally {
+      rmSync(rootDir, { recursive: true, force: true })
+    }
+  })
 })

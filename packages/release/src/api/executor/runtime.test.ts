@@ -38,24 +38,59 @@ describe('Executor runtime', () => {
       const github = yield* Github.Github
 
       const operations = yield* Effect.all([
-        github.releaseExists('v1.0.0').pipe(Effect.result),
-        github.createRelease({ tag: 'v1.0.0', title: 'release', body: 'body' }).pipe(Effect.result),
-        github.updateRelease('v1.0.0', { body: 'body' }).pipe(Effect.result),
-        github.listOpenPullRequests().pipe(Effect.result),
-        github.updatePullRequest(1, { title: 'title' }).pipe(Effect.result),
-        github.listIssueComments(1).pipe(Effect.result),
-        github.findIssueCommentByMarker(1, '<!-- marker -->').pipe(Effect.result),
-        github.createIssueComment({ issueNumber: 1, body: 'body' }).pipe(Effect.result),
-        github.updateIssueComment(1, { body: 'body' }).pipe(Effect.result),
-        github
-          .upsertIssueComment({ issueNumber: 1, body: 'body', marker: '<!-- marker -->' })
-          .pipe(Effect.result),
+        Effect.map(
+          github.releaseExists('v1.0.0').pipe(Effect.result),
+          (result) => ['releaseExists', result] as const,
+        ),
+        Effect.map(
+          github
+            .createRelease({ tag: 'v1.0.0', title: 'release', body: 'body' })
+            .pipe(Effect.result),
+          (result) => ['createRelease', result] as const,
+        ),
+        Effect.map(
+          github.updateRelease('v1.0.0', { body: 'body' }).pipe(Effect.result),
+          (result) => ['updateRelease', result] as const,
+        ),
+        Effect.map(
+          github.listOpenPullRequests().pipe(Effect.result),
+          (result) => ['listOpenPullRequests', result] as const,
+        ),
+        Effect.map(
+          github.updatePullRequest(1, { title: 'title' }).pipe(Effect.result),
+          (result) => ['updatePullRequest', result] as const,
+        ),
+        Effect.map(
+          github.listIssueComments(1).pipe(Effect.result),
+          (result) => ['listIssueComments', result] as const,
+        ),
+        Effect.map(
+          github.findIssueCommentByMarker(1, '<!-- marker -->').pipe(Effect.result),
+          (result) => ['findIssueCommentByMarker', result] as const,
+        ),
+        Effect.map(
+          github.createIssueComment({ issueNumber: 1, body: 'body' }).pipe(Effect.result),
+          (result) => ['createIssueComment', result] as const,
+        ),
+        Effect.map(
+          github.updateIssueComment(1, { body: 'body' }).pipe(Effect.result),
+          (result) => ['updateIssueComment', result] as const,
+        ),
+        Effect.map(
+          github
+            .upsertIssueComment({ issueNumber: 1, body: 'body', marker: '<!-- marker -->' })
+            .pipe(Effect.result),
+          (result) => ['upsertIssueComment', result] as const,
+        ),
       ])
 
-      for (const result of operations) {
+      for (const [operation, result] of operations) {
         expect(result._tag).toBe('Failure')
         if (result._tag === 'Failure') {
           expect(result.failure._tag).toBe('GithubError')
+          // Regression: findIssueCommentByMarker and upsertIssueComment used to
+          // report listIssueComments / createIssueComment.
+          expect(result.failure.context.operation).toBe(operation)
           const detail =
             'detail' in result.failure.context && typeof result.failure.context.detail === 'string'
               ? result.failure.context.detail

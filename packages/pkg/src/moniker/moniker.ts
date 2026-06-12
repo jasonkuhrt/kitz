@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { SchemaGetter, Schema as S } from 'effect'
 
 // ============================================================================
@@ -7,26 +8,13 @@ import { SchemaGetter, Schema as S } from 'effect'
 /**
  * Scoped package name (e.g., "\@kitz/core").
  */
-export class Scoped extends S.TaggedClass<Scoped>()('Scoped', {
-  scope: S.String,
-  name: S.String,
+export class Scoped extends Sch.TaggedClass<Scoped>()('Scoped', {
+  // Constrained to the `@scope/name` string grammar so the class cannot hold
+  // values whose encoded form re-parses differently (e.g. a scope containing
+  // `/`), and so derived arbitraries generate contract-valid instances.
+  scope: S.String.pipe(S.check(S.isPattern(/^[^/]+$/), S.isMinLength(1))),
+  name: S.String.pipe(S.check(S.isPattern(/^[^/]+$/), S.isMinLength(1))),
 }) {
-  static equivalence = S.toEquivalence(Scoped)
-  static get decode(): any {
-    return S.decode(Scoped)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(Scoped)
-  }
-  static get encode(): any {
-    return S.encode(Scoped)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(Scoped)
-  }
-  static ordered = false as const
-  static is = S.is(Scoped)
-
   /**
    * Full package name string (e.g., "\@kitz/core").
    */
@@ -64,25 +52,10 @@ export const ScopedFromString: S.Codec<Scoped, string> = S.String.pipe(
 /**
  * Unscoped package name (e.g., "lodash").
  */
-export class Unscoped extends S.TaggedClass<Unscoped>()('Unscoped', {
-  name: S.String,
+export class Unscoped extends Sch.TaggedClass<Unscoped>()('Unscoped', {
+  // Mirrors the UnscopedFromString grammar (no leading `@`, no `/`).
+  name: S.String.pipe(S.check(S.isPattern(/^[^@/][^/]*$/), S.isMinLength(1))),
 }) {
-  static equivalence = S.toEquivalence(Unscoped)
-  static get decode(): any {
-    return S.decode(Unscoped)
-  }
-  static get decodeSync(): any {
-    return S.decodeSync(Unscoped)
-  }
-  static get encode(): any {
-    return S.encode(Unscoped)
-  }
-  static get encodeSync(): any {
-    return S.encodeSync(Unscoped)
-  }
-  static ordered = false as const
-  static is = S.is(Unscoped)
-
   /**
    * Full package name string.
    */

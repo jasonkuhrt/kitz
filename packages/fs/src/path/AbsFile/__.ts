@@ -1,3 +1,5 @@
+/* oxlint-disable typescript/no-unnecessary-type-parameters -- Single-use type parameters bind literal path strings into branded conditional return types; inlining them widens the public API. */
+import { Sch } from '@kitz/sch'
 import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 import { analyze } from '../../path-analyzer/codec-string/__.js'
 import { FileName } from '../types/fileName.js'
@@ -7,17 +9,10 @@ import { Segments } from '../types/segments.js'
  * Absolute file location class.
  * Internal implementation - use via AbsFile namespace.
  */
-class AbsFileClass extends S.TaggedClass<AbsFileClass>()('FsPathAbsFile', {
+class AbsFileClass extends Sch.TaggedClass<AbsFileClass>()('FsPathAbsFile', {
   segments: Segments,
   fileName: FileName,
 }) {
-  static is = S.is(AbsFileClass)
-  static decode = S.decodeUnknownEffect(AbsFileClass)
-  static decodeSync = S.decodeUnknownSync(AbsFileClass)
-  static encode = S.encodeUnknownEffect(AbsFileClass)
-  static encodeSync = S.encodeUnknownSync(AbsFileClass)
-  static equivalence = S.toEquivalence(AbsFileClass)
-  static ordered = false as const
   override toString() {
     return S.encodeSync(Schema)(this)
   }

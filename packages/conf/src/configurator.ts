@@ -71,9 +71,7 @@ export const createInputResolver: InputResolver.Create = (_) => {
   return inputResolver as any
 }
 
-export const normalizeDataInput = <configuratorTypeInput extends DataInput>(
-  configuratorTypeInput: configuratorTypeInput,
-): Configurator => {
+export const normalizeDataInput = (configuratorTypeInput: DataInput): Configurator => {
   if (isBuilder(configuratorTypeInput)) {
     return configuratorTypeInput.return()
   }

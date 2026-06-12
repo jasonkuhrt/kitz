@@ -1,5 +1,6 @@
 import { Fs } from '@kitz/fs'
 import { Effect, Layer } from 'effect'
+import * as Argv from './argv.js'
 import type { PackOptions, PublishOptions, WhoamiOptions } from './cli.js'
 import { NpmCli, type NpmCliService } from './service.js'
 
@@ -17,8 +18,11 @@ export const NpmCliDryRun: Layer.Layer<NpmCli> = Layer.succeed(NpmCli, {
 
   pack: (options: PackOptions) =>
     Effect.gen(function* () {
+      const args = Argv.npmPack({
+        packDestination: Fs.Path.toString(options.packDestination),
+      })
       yield* Effect.log(
-        `[dry-run] Would run: npm pack --json --pack-destination ${Fs.Path.toString(options.packDestination)} in ${Fs.Path.toString(options.cwd)}`,
+        `[dry-run] Would run: npm ${args.join(' ')} in ${Fs.Path.toString(options.cwd)}`,
       )
       return {
         filename: 'dry-run-package-0.0.0.tgz',
@@ -31,20 +35,20 @@ export const NpmCliDryRun: Layer.Layer<NpmCli> = Layer.succeed(NpmCli, {
 
   publish: (options: PublishOptions) =>
     Effect.gen(function* () {
-      const args = [
-        'publish',
-        Fs.Path.toString(options.tarball),
-        '--access',
-        options.access ?? 'public',
-      ]
-      if (options.ignoreScripts ?? true) args.push('--ignore-scripts')
-      if (options.tag) args.push('--tag', options.tag)
-      if (options.registry) args.push('--registry', options.registry)
-      if (options.otp) args.push('--otp', '[redacted]')
-      if (options.provenance) args.push('--provenance')
-      if (options.provenanceFile)
-        args.push('--provenance-file', Fs.Path.toString(options.provenanceFile))
-      if (options.dryRun) args.push('--dry-run')
+      const args = Argv.npmPublish({
+        target: Fs.Path.toString(options.tarball),
+        access: options.access ?? 'public',
+        ignoreScripts: options.ignoreScripts ?? true,
+        tag: options.tag,
+        registry: options.registry,
+        otp: options.otp !== undefined ? '[redacted]' : undefined,
+        provenance: options.provenance,
+        provenanceFile:
+          options.provenanceFile !== undefined
+            ? Fs.Path.toString(options.provenanceFile)
+            : undefined,
+        dryRun: options.dryRun,
+      })
 
       yield* Effect.log(`[dry-run] Would run: npm ${args.join(' ')}`)
     }),

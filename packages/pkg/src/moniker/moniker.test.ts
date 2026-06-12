@@ -45,3 +45,28 @@ describe('Pkg.Moniker', () => {
     expect(() => parse('@/pkg')).toThrow()
   })
 })
+
+// ─── Derived-arbitrary contract properties ───────────────────────────
+//
+// The class field grammars are constrained so Schema.toArbitrary generates
+// instances whose encoded string form re-parses to the same value (a scope
+// containing `/` used to break `@scope/name` reparsing).
+
+import { Test } from '@kitz/test'
+
+const arbScoped = Schema.toArbitrary(Scoped)
+const arbUnscoped = Schema.toArbitrary(Unscoped)
+
+Test.property('generated Scoped roundtrips through the string codec', arbScoped, (scoped) => {
+  const encoded = Schema.encodeSync(ScopedFromString)(scoped)
+  const decoded = Schema.decodeSync(ScopedFromString)(encoded)
+  expect(Scoped.equals(decoded, scoped)).toBe(true)
+  expect(encoded).toBe(scoped.moniker)
+})
+
+Test.property('generated Unscoped roundtrips through the string codec', arbUnscoped, (unscoped) => {
+  const encoded = Schema.encodeSync(UnscopedFromString)(unscoped)
+  const decoded = Schema.decodeSync(UnscopedFromString)(encoded)
+  expect(Unscoped.equals(decoded, unscoped)).toBe(true)
+  expect(encoded).toBe(unscoped.moniker)
+})

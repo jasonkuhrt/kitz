@@ -40,7 +40,7 @@ describe('SlotResolver — Enum slot', () => {
     const resolver = SlotResolver.create([slot])
     const choices = resolver.getChoices()
     expect(choices.length).toBe(1)
-    expect(choices[0]!.token).toBe('debug')
+    expect(choices[0].token).toBe('debug')
   })
 
   it('extracts candidates from numeric Literal union', () => {
@@ -69,7 +69,7 @@ describe('SlotResolver — Enum slot', () => {
     const resolver = SlotResolver.create([slot])
     const choices = resolver.getChoices()
     expect(choices.length).toBe(1)
-    expect(choices[0]!.token).toBe('auto')
+    expect(choices[0].token).toBe('auto')
   })
 
   it('propagates slot description to each candidate choice', () => {

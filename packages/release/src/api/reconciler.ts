@@ -3,13 +3,15 @@ import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
 import { Effect, FileSystem, HashSet, Option, Schema } from 'effect'
+import type { SideEffectEntry } from './contract/journal.js'
+import { ReconcileDecision } from './contract/reconcile.js'
+import type { Digest } from './digest.js'
 import * as Journal from './journal.js'
+import { digestForPlan } from './plan-digest.js'
 import type { Plan } from './planner/models/plan.js'
-import { digestForPlan } from './proof.js'
-import { PlanDigest, ReconcileDecision, type SideEffectEntry } from './release-contract.js'
 
 export interface ReconcileInput {
-  readonly planDigest: PlanDigest
+  readonly planDigest: Digest
   readonly plannedSubjects: readonly string[]
   readonly journalSubjects: readonly string[]
   readonly registrySubjects: readonly string[]
@@ -125,18 +127,18 @@ export const registrySubjects = (
 ): Effect.Effect<readonly string[], NpmRegistry.NpmCliError, NpmRegistry.NpmCli> =>
   Effect.gen(function* () {
     const cli = yield* NpmRegistry.NpmCli
-    const existing: string[] = []
 
-    for (const subject of subjects) {
-      const parsed = splitSubject(subject)
-      if (parsed === undefined) continue
-      const exists = yield* cli.hasVersion(parsed.packageName, parsed.version, {
-        ...(registry !== undefined ? { registry } : {}),
-      })
-      if (exists) existing.push(subject)
-    }
-
-    return existing
+    return yield* Effect.filter(
+      subjects,
+      (subject) => {
+        const parsed = splitSubject(subject)
+        if (parsed === undefined) return Effect.succeed(false)
+        return cli.hasVersion(parsed.packageName, parsed.version, {
+          ...(registry !== undefined ? { registry } : {}),
+        })
+      },
+      { concurrency: 4 },
+    )
   })
 
 export const inspectVerdict = (params: {

@@ -93,8 +93,8 @@ describe('source error diagnostics', () => {
     // But the error should be captured
     const errors = session.getSourceErrors()
     expect(errors.length).toBe(1)
-    expect(errors[0]!.slotName).toBe('broken')
-    expect(errors[0]!.message).toContain('MissingService')
+    expect(errors[0].slotName).toBe('broken')
+    expect(errors[0].message).toContain('MissingService')
   })
 
   test('getSourceErrors is empty when sources succeed', () => {
@@ -155,8 +155,8 @@ describe('source error diagnostics', () => {
     const errors = session.getSourceErrors()
     expect(errors.length).toBe(2)
     expect(errors.map((e) => e.slotName).sort()).toEqual(['slot1', 'slot2'])
-    expect(errors[0]!.message).toContain('Svc')
-    expect(errors[1]!.message).toContain('Svc')
+    expect(errors[0].message).toContain('Svc')
+    expect(errors[1].message).toContain('Svc')
   })
 })
 

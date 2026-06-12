@@ -23,34 +23,12 @@ const toEphemeralRelease = (
   prNumber: number,
   sha: Git.Sha.Sha,
 ): Ephemeral => {
-  const prReleaseNumber = findLatestEphemeralNumber(release.package.name, prNumber, [...tags])
+  const prReleaseNumber = findLatestEphemeralNumber(release.package.name, prNumber, tags)
 
   return Ephemeral.make({
     package: release.package,
     prerelease: Version.Ephemeral.make({ prNumber, iteration: prReleaseNumber + 1, sha }),
     commits: release.commits,
-  })
-}
-
-/**
- * Detect cascades for ephemeral releases with ephemeral version format.
- */
-const detectCascadesForEphemeral = (
-  packages: import('../analyzer/workspace.js').Package[],
-  primaryReleases: readonly Ephemeral[],
-  dependencyGraph: import('../analyzer/cascade.js').DependencyGraph,
-  tags: string[],
-  timestamp: string,
-  prNumber: number,
-  sha: Git.Sha.Sha,
-): readonly Ephemeral[] => {
-  return mapOfficialCascades({
-    packages,
-    primaryReleases,
-    dependencyGraph,
-    tags,
-    timestamp,
-    map: (cascade) => toEphemeralRelease(cascade, tags, prNumber, sha),
   })
 }
 
@@ -112,9 +90,11 @@ export const ephemeral = (
       lifecycle: 'ephemeral',
       options,
       toPrimaryRelease: (impact) => {
-        const prReleaseNumber = findLatestEphemeralNumber(impact.package.name, prNumber, [
-          ...analysis.tags,
-        ])
+        const prReleaseNumber = findLatestEphemeralNumber(
+          impact.package.name,
+          prNumber,
+          analysis.tags,
+        )
 
         return Ephemeral.make({
           package: impact.package,
@@ -127,15 +107,10 @@ export const ephemeral = (
         })
       },
       toSecondaryRelease: (release) => toEphemeralRelease(release, analysis.tags, prNumber, sha),
-      toCascades: ({ packages, primaryReleases, dependencyGraph, tags, timestamp }) =>
-        detectCascadesForEphemeral(
-          packages,
-          primaryReleases,
-          dependencyGraph,
-          [...tags],
-          timestamp,
-          prNumber,
-          sha,
-        ),
+      toCascades: (params) =>
+        mapOfficialCascades({
+          ...params,
+          map: (cascade) => toEphemeralRelease(cascade, params.tags, prNumber, sha),
+        }),
     })
   })

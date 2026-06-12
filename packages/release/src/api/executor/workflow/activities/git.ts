@@ -1,6 +1,6 @@
 import { Git } from '@kitz/git'
 import { Effect } from 'effect'
-import { ExecutorTagError } from '../../errors.js'
+import { ExecutorTagError, mapToExecutorError } from '../../errors.js'
 import type { ReleasePayloadType } from '../payload.js'
 import { recordSideEffect } from '../side-effects.js'
 
@@ -23,15 +23,7 @@ export const createTag = (params: { readonly payload: ReleasePayloadType; readon
     }
     return params.tag
   }).pipe(
-    Effect.mapError(
-      (e) =>
-        new ExecutorTagError({
-          context: {
-            tag: params.tag,
-            detail: e instanceof Error ? e.message : String(e),
-          },
-        }),
-    ),
+    mapToExecutorError((detail) => new ExecutorTagError({ context: { tag: params.tag, detail } })),
   )
 
 export const pushTag = (params: {
@@ -55,15 +47,7 @@ export const pushTag = (params: {
     }
     return params.tag
   }).pipe(
-    Effect.mapError(
-      (e) =>
-        new ExecutorTagError({
-          context: {
-            tag: params.tag,
-            detail: e instanceof Error ? e.message : String(e),
-          },
-        }),
-    ),
+    mapToExecutorError((detail) => new ExecutorTagError({ context: { tag: params.tag, detail } })),
   )
 
 export const pushTagsAtomic = (params: {
@@ -84,13 +68,7 @@ export const pushTagsAtomic = (params: {
     })
     return params.tags.join(',')
   }).pipe(
-    Effect.mapError(
-      (e) =>
-        new ExecutorTagError({
-          context: {
-            tag: 'atomic-tag-push',
-            detail: e instanceof Error ? e.message : String(e),
-          },
-        }),
+    mapToExecutorError(
+      (detail) => new ExecutorTagError({ context: { tag: 'atomic-tag-push', detail } }),
     ),
   )

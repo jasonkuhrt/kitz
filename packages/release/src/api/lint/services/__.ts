@@ -8,7 +8,6 @@ export * from './pr.js'
 export * as Preconditions from './preconditions.js'
 export * as ReleaseContext from './release-context.js'
 export * as ReleasePlan from './release-plan.js'
-export * from './rule-options.js'
 
 import { DefaultConventionalCommitSettingsLayer } from './conventional-commit-settings.js'
 import { DefaultDiffLayer } from './diff.js'

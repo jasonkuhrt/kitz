@@ -19,7 +19,8 @@ export const validateSetup = Command.make(
       if (!isReadyCommandWorkspace(workspace)) {
         yield* Console.error('Release setup is incomplete: no packages were discovered.')
         yield* Console.error('Run `release init` and then `release validate-setup --strict`.')
-        return env.exit(1)
+        env.exit(1)
+        return
       }
 
       yield* Console.log('Release setup proof passed.')

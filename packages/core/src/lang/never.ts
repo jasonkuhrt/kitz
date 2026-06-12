@@ -71,6 +71,7 @@ export const neverCase: (value: never) => never = (value) => {
  * const result = todo<string>('implement parser')
  * ```
  */
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- `type` is an explicit type-argument injection point: the caller supplies the pretended result type.
 export const todo: <type>(message?: string) => type = (message) => {
   return panic(`todo${message ? `: ${message}` : ''}`)
 }

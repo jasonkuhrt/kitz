@@ -1,3 +1,4 @@
+import { Err } from '@kitz/core'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
@@ -5,22 +6,49 @@ import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
-import { Array as A, Effect, FileSystem, Option, Result, Schema } from 'effect'
+import {
+  Array as A,
+  DateTime,
+  Effect,
+  FileSystem,
+  Option,
+  Record as EffectRecord,
+  Result,
+} from 'effect'
 import * as ReleaseClock from './clock.js'
-import { sha256Json } from './digest.js'
-import { jsonFile } from './persistence.js'
+import { ProofArtifact, ProofRecord, ProofTransition, type ProofStatus } from './contract/proof.js'
+import { Digest } from './digest.js'
+import { digestForPlan } from './plan-digest.js'
 import type { Plan } from './planner/models/plan.js'
 import * as Capability from './publishing/models/capability.js'
-import {
-  PlanDigest,
-  ProofArtifact,
-  ProofRecord,
-  ProofTransition,
-  type ProofStatus,
-} from './release-contract.js'
+
+export { digestForPlan }
 
 const proofDir = Fs.Path.RelDir.fromString('./.release/proofs/')
-const proofResource = jsonFile(ProofArtifact)
+
+/**
+ * `readOrEmpty` placeholder only: fails closed — a single `unprovable`
+ * record means an accidentally-used empty proof can never validate as
+ * releasable.
+ */
+const emptyProofArtifact = (): ProofArtifact =>
+  ProofArtifact.make({
+    schemaVersion: 1,
+    planDigest: Digest.make({ algorithm: 'sha256', value: '' }),
+    records: [
+      ProofRecord.make({
+        id: 'proof.empty',
+        status: 'unprovable',
+        dependsOn: [],
+        recheckMode: 'pre-apply',
+        observedAt: DateTime.makeUnsafe(0),
+        evidence: { reason: 'placeholder empty proof artifact' },
+        proofHistory: [],
+      }),
+    ],
+  })
+
+const proofResource = Resource.createJson('proof.json', ProofArtifact, emptyProofArtifact())
 
 export interface ProofIssue {
   readonly recordId: string
@@ -28,17 +56,21 @@ export interface ProofIssue {
   readonly detail: string
 }
 
+/** A git dry-run observation: whether the remote accepted the ref push. */
+export interface GitDryRunObservation {
+  readonly ok: boolean
+  readonly detail?: string
+}
+
 export interface ProofObservations {
-  readonly now?: string
+  readonly now?: DateTime.Utc
   readonly identity?: string
   readonly identityError?: string
   readonly packageAccess?: Readonly<Record<string, 'public' | 'restricted'>>
   readonly packageAccessErrors?: Readonly<Record<string, string>>
   readonly packageVersions?: Readonly<Record<string, boolean>>
-  readonly gitPushDryRun?: Readonly<
-    Record<string, boolean | { readonly ok: boolean; readonly detail?: string }>
-  >
-  readonly atomicGitPushDryRun?: boolean | { readonly ok: boolean; readonly detail?: string }
+  readonly gitPushDryRun?: Readonly<Record<string, GitDryRunObservation>>
+  readonly atomicGitPushDryRun?: GitDryRunObservation
   readonly githubReleasePermission?: boolean
   readonly githubReleasePermissionError?: string
   readonly githubReleaseExists?: Readonly<Record<string, boolean>>
@@ -47,30 +79,20 @@ export interface ProofObservations {
   readonly provenanceBundleExists?: boolean
 }
 
-export const digestForPlan = (plan: Plan): PlanDigest =>
-  plan.planDigest ?? PlanDigest.make(sha256Json(Schema.encodeSync(PlanForDigest)(plan)))
-
-const PlanForDigest = Schema.Struct({
-  lifecycle: Schema.String,
-  timestamp: Schema.String,
-  releases: Schema.Array(Schema.Unknown),
-  cascades: Schema.Array(Schema.Unknown),
-})
-
 export const proofPathFor = (cwd: Fs.Path.AbsDir, plan: Plan): Fs.Path.AbsFile =>
   Fs.Path.join(
     Fs.Path.join(cwd, proofDir),
     Fs.Path.RelFile.fromString(`./${digestForPlan(plan).value}.json`),
   )
 
-const transition = (to: ProofStatus, reason: string, at: string): ProofTransition =>
+const transition = (to: ProofStatus, reason: string, at: DateTime.Utc): ProofTransition =>
   ProofTransition.make({ to, at, reason })
 
 const observedRecord = (params: {
   readonly id: string
   readonly status: ProofStatus
   readonly dependsOn: readonly string[]
-  readonly now: string
+  readonly now: DateTime.Utc
   readonly reason: string
   readonly evidence: Readonly<Record<string, unknown>>
   readonly recheckMode?: ProofRecord['recheckMode']
@@ -89,7 +111,7 @@ const capabilityRecord = (params: {
   readonly id: string
   readonly provider: Capability.CapabilityProviderId
   readonly capability: Capability.PublishCapability
-  readonly now: string
+  readonly now: DateTime.Utc
 }): ProofRecord => {
   const result = Capability.CapabilityMatrixRow.resultForProvider({
     capability: params.capability,
@@ -113,18 +135,17 @@ const capabilityRecord = (params: {
         evidence: result.evidence,
       }
 
-  return ProofRecord.make({
+  return observedRecord({
     id: params.id,
     status,
     dependsOn: ['plan.publish-intent'],
-    recheckMode: 'pre-apply',
-    observedAt: params.now,
+    now: params.now,
+    reason,
     evidence,
-    proofHistory: [transition(status, reason, params.now)],
   })
 }
 
-const capabilityRecordsForPlan = (plan: Plan, now: string): ProofRecord[] => {
+const capabilityRecordsForPlan = (plan: Plan, now: DateTime.Utc): ProofRecord[] => {
   if (plan.publishIntent === undefined) return []
 
   const packDriver = plan.publishIntent.profile.packDriver
@@ -188,23 +209,9 @@ const releaseSubjectsForPlan = (plan: Plan) =>
     ),
   }))
 
-const gitDryRunStatus = (
-  value: boolean | { readonly ok: boolean; readonly detail?: string } | undefined,
-): ProofStatus => {
-  if (value === undefined) return 'unprovable'
-  return (typeof value === 'boolean' ? value : value.ok) ? 'proven' : 'failed'
-}
-
-const gitDryRunEvidence = (
-  value: boolean | { readonly ok: boolean; readonly detail?: string } | undefined,
-): Readonly<Record<string, unknown>> => {
-  if (value === undefined) return { observed: false }
-  return typeof value === 'boolean' ? { ok: value } : { ok: value.ok, detail: value.detail ?? null }
-}
-
 const credentialRecordsForPlan = (
   plan: Plan,
-  now: string,
+  now: DateTime.Utc,
   observations: ProofObservations,
 ): ProofRecord[] => {
   if (plan.publishIntent === undefined) return []
@@ -318,7 +325,7 @@ const credentialRecordsForPlan = (
 
 const sideEffectProofRecordsForPlan = (
   plan: Plan,
-  now: string,
+  now: DateTime.Utc,
   observations: ProofObservations,
 ): ProofRecord[] => {
   if (plan.publishIntent === undefined) return []
@@ -327,7 +334,7 @@ const sideEffectProofRecordsForPlan = (
   const subjects = releaseSubjectsForPlan(plan)
   const gitRecords = A.map(subjects, (subject) => {
     const proof = observations.gitPushDryRun?.[subject.tag]
-    const status = gitDryRunStatus(proof)
+    const status = proof === undefined ? 'unprovable' : proof.ok ? 'proven' : 'failed'
     return observedRecord({
       id: `env.git.push-dry-run.${subject.tag}`,
       status,
@@ -342,28 +349,33 @@ const sideEffectProofRecordsForPlan = (
       evidence: {
         tag: subject.tag,
         remote: intent.git.remote,
-        ...gitDryRunEvidence(proof),
+        ...(proof === undefined
+          ? { observed: false }
+          : { ok: proof.ok, detail: proof.detail ?? null }),
       },
       recheckMode: 'pre-each-mutation',
     })
   })
 
+  const atomicProof = observations.atomicGitPushDryRun
   const atomicRecord =
     intent.git.atomicTagPush && subjects.length > 1
       ? [
           observedRecord({
             id: 'env.git.push-dry-run.atomic',
-            status: gitDryRunStatus(observations.atomicGitPushDryRun),
+            status: atomicProof === undefined ? 'unprovable' : atomicProof.ok ? 'proven' : 'failed',
             dependsOn: A.map(gitRecords, (record) => record.id),
             now,
             reason:
-              gitDryRunStatus(observations.atomicGitPushDryRun) === 'proven'
+              atomicProof?.ok === true
                 ? 'git dry-run accepted atomic multi-tag push'
                 : 'git dry-run did not prove atomic multi-tag push',
             evidence: {
               tags: A.map(subjects, (subject) => subject.tag),
               remote: intent.git.remote,
-              ...gitDryRunEvidence(observations.atomicGitPushDryRun),
+              ...(atomicProof === undefined
+                ? { observed: false }
+                : { ok: atomicProof.ok, detail: atomicProof.detail ?? null }),
             },
             recheckMode: 'pre-each-mutation',
           }),
@@ -426,7 +438,7 @@ const sideEffectProofRecordsForPlan = (
 
 const provenanceRecordForPlan = (
   plan: Plan,
-  now: string,
+  now: DateTime.Utc,
   observations: ProofObservations,
 ): ProofRecord[] => {
   if (plan.publishIntent === undefined) return []
@@ -517,35 +529,28 @@ const provenanceRecordForPlan = (
 
 export const makeProofArtifact = (
   plan: Plan,
-  now: string,
+  now: DateTime.Utc,
   observations: ProofObservations = {},
 ): ProofArtifact => {
   const observedAt = observations.now ?? now
   const records = [
-    ProofRecord.make({
+    observedRecord({
       id: 'plan.digest',
       status: plan.planDigest === undefined ? 'unprovable' : 'proven',
       dependsOn: [],
-      recheckMode: 'pre-apply',
-      observedAt,
+      now: observedAt,
+      reason: 'plan digest checked',
       evidence:
         plan.planDigest === undefined
           ? { reason: 'plan has no frozen digest' }
           : { digest: plan.planDigest.value },
-      proofHistory: [
-        transition(
-          plan.planDigest === undefined ? 'unprovable' : 'proven',
-          'plan digest checked',
-          observedAt,
-        ),
-      ],
     }),
-    ProofRecord.make({
+    observedRecord({
       id: 'plan.publish-intent',
       status: plan.publishIntent === undefined ? 'unprovable' : 'proven',
       dependsOn: ['plan.digest'],
-      recheckMode: 'pre-apply',
-      observedAt,
+      now: observedAt,
+      reason: 'publish intent checked',
       evidence:
         plan.publishIntent === undefined
           ? { reason: 'plan has no frozen publish intent' }
@@ -554,20 +559,13 @@ export const makeProofArtifact = (
               registry: plan.publishIntent.registry.url,
               distTag: plan.publishIntent.distTag,
             },
-      proofHistory: [
-        transition(
-          plan.publishIntent === undefined ? 'unprovable' : 'proven',
-          'publish intent checked',
-          observedAt,
-        ),
-      ],
     }),
-    ProofRecord.make({
+    observedRecord({
       id: 'plan.source',
       status: plan.source === undefined ? 'unprovable' : 'proven',
       dependsOn: ['plan.digest'],
-      recheckMode: 'pre-apply',
-      observedAt,
+      now: observedAt,
+      reason: 'source snapshot checked',
       evidence:
         plan.source === undefined
           ? { reason: 'plan has no source snapshot' }
@@ -576,13 +574,6 @@ export const makeProofArtifact = (
               configDigest: plan.source.releaseConfigDigest.value,
               packageManager: plan.source.packageManager,
             },
-      proofHistory: [
-        transition(
-          plan.source === undefined ? 'unprovable' : 'proven',
-          'source snapshot checked',
-          observedAt,
-        ),
-      ],
     }),
     ...capabilityRecordsForPlan(plan, observedAt),
     ...credentialRecordsForPlan(plan, observedAt, observations),
@@ -596,6 +587,8 @@ export const makeProofArtifact = (
     records,
   })
 }
+
+const subjectObservationConcurrency = 4
 
 export const collectLocalObservations = (
   plan: Plan,
@@ -611,44 +604,62 @@ export const collectLocalObservations = (
     const identityResult = yield* cli.whoami({ registry }).pipe(Effect.result)
     const identity = Result.isSuccess(identityResult) ? identityResult.success : undefined
     const identityError = Result.isFailure(identityResult)
-      ? identityResult.failure instanceof Error
-        ? identityResult.failure.message
-        : String(identityResult.failure)
+      ? Err.ensure(identityResult.failure).message
       : undefined
-    const packageAccess: Record<string, 'public' | 'restricted'> = {}
-    const packageAccessErrors: Record<string, string> = {}
-    const gitPushDryRun: Record<string, { ok: boolean; detail?: string }> = {}
 
-    for (const subject of subjects) {
-      const accessResult = yield* cli
-        .getAccessStatus(subject.packageName, { registry })
-        .pipe(Effect.result)
-      if (
-        Result.isSuccess(accessResult) &&
-        (accessResult.success === 'public' || accessResult.success === 'restricted')
-      ) {
-        packageAccess[subject.packageName] = accessResult.success
-      } else if (Result.isSuccess(accessResult)) {
-        packageAccessErrors[subject.packageName] =
-          `npm access status is ${accessResult.success}, not public or restricted`
-      } else {
-        packageAccessErrors[subject.packageName] =
-          accessResult.failure instanceof Error
-            ? accessResult.failure.message
-            : String(accessResult.failure)
-      }
+    const subjectObservations = yield* Effect.forEach(
+      subjects,
+      (subject) =>
+        Effect.gen(function* () {
+          const accessResult = yield* cli
+            .getAccessStatus(subject.packageName, { registry })
+            .pipe(Effect.result)
+          const access: {
+            readonly access?: 'public' | 'restricted'
+            readonly accessError?: string
+          } = Result.match(accessResult, {
+            onSuccess: (status) =>
+              status === 'public' || status === 'restricted'
+                ? { access: status }
+                : { accessError: `npm access status is ${status}, not public or restricted` },
+            onFailure: (failure) => ({ accessError: Err.ensure(failure).message }),
+          })
 
-      const gitResult = yield* git
-        .pushTagDryRun(subject.tag, intent.git.remote, intent.forcePushTag)
-        .pipe(Effect.result)
-      gitPushDryRun[subject.tag] = Result.match(gitResult, {
-        onSuccess: (success) => ({ ok: true, detail: success.stdout }),
-        onFailure: (failure) => ({
-          ok: false,
-          detail: failure instanceof Error ? failure.message : String(failure),
+          const gitResult = yield* git
+            .pushTagDryRun(subject.tag, intent.git.remote, intent.forcePushTag)
+            .pipe(Effect.result)
+          const gitPushDryRun = Result.match(gitResult, {
+            onSuccess: (success): GitDryRunObservation => ({ ok: true, detail: success.stdout }),
+            onFailure: (failure): GitDryRunObservation => ({
+              ok: false,
+              detail: Err.ensure(failure).message,
+            }),
+          })
+
+          return { subject, ...access, gitPushDryRun }
         }),
-      })
-    }
+      { concurrency: subjectObservationConcurrency },
+    )
+
+    const packageAccess = EffectRecord.fromEntries(
+      subjectObservations.flatMap((observation) =>
+        observation.access !== undefined
+          ? [[observation.subject.packageName, observation.access] as const]
+          : [],
+      ),
+    )
+    const packageAccessErrors = EffectRecord.fromEntries(
+      subjectObservations.flatMap((observation) =>
+        observation.accessError !== undefined
+          ? [[observation.subject.packageName, observation.accessError] as const]
+          : [],
+      ),
+    )
+    const gitPushDryRun = EffectRecord.fromEntries(
+      subjectObservations.map(
+        (observation) => [observation.subject.tag, observation.gitPushDryRun] as const,
+      ),
+    )
 
     const atomicGitPushDryRun =
       intent.git.atomicTagPush && subjects.length > 1
@@ -662,10 +673,13 @@ export const collectLocalObservations = (
               Effect.result,
               Effect.map((result) =>
                 Result.match(result, {
-                  onSuccess: (success) => ({ ok: true, detail: success.stdout }),
-                  onFailure: (failure) => ({
+                  onSuccess: (success): GitDryRunObservation => ({
+                    ok: true,
+                    detail: success.stdout,
+                  }),
+                  onFailure: (failure): GitDryRunObservation => ({
                     ok: false,
-                    detail: failure instanceof Error ? failure.message : String(failure),
+                    detail: Err.ensure(failure).message,
                   }),
                 }),
               ),
@@ -689,22 +703,26 @@ export const collectGithubObservations = (
     if (plan.publishIntent === undefined) return {}
 
     const github = yield* Github.Github
-    const githubReleaseExists: Record<string, boolean> = {}
-
-    for (const subject of releaseSubjectsForPlan(plan)) {
-      const result = yield* github.releaseExists(subject.tag).pipe(Effect.result)
-      if (Result.isSuccess(result)) {
-        githubReleaseExists[subject.tag] = result.success
-      }
-    }
+    const observed = yield* Effect.forEach(
+      releaseSubjectsForPlan(plan),
+      (subject) =>
+        github.releaseExists(subject.tag).pipe(
+          Effect.result,
+          Effect.map((result) =>
+            Result.isSuccess(result) ? [[subject.tag, result.success] as const] : [],
+          ),
+        ),
+      { concurrency: subjectObservationConcurrency },
+    )
+    const githubReleaseExists = EffectRecord.fromEntries(observed.flat())
 
     return Object.keys(githubReleaseExists).length > 0 ? { githubReleaseExists } : {}
   })
 
-export const hasBlockingProof = (proof: ProofArtifact, now: string): boolean =>
+export const hasBlockingProof = (proof: ProofArtifact, now: DateTime.Utc): boolean =>
   validateProof(proof, now).length > 0
 
-export const validateProof = (proof: ProofArtifact, now: string): readonly ProofIssue[] => {
+export const validateProof = (proof: ProofArtifact, now: DateTime.Utc): readonly ProofIssue[] => {
   const ids = A.map(proof.records, (record) => record.id)
   const blocking = A.map(
     A.filter(
@@ -729,16 +747,16 @@ export const validateProof = (proof: ProofArtifact, now: string): readonly Proof
     ),
   )
 
-  const expired = A.map(
-    A.filter(
-      proof.records,
-      (record) => record.expiresAt !== undefined && Date.parse(record.expiresAt) <= Date.parse(now),
-    ),
-    (record): ProofIssue => ({
-      recordId: record.id,
-      code: 'release.proof.expired',
-      detail: `Proof record ${record.id} expired at ${record.expiresAt}.`,
-    }),
+  const expired = A.flatMap(proof.records, (record): ProofIssue[] =>
+    record.expiresAt !== undefined && DateTime.isLessThanOrEqualTo(record.expiresAt, now)
+      ? [
+          {
+            recordId: record.id,
+            code: 'release.proof.expired',
+            detail: `Proof record ${record.id} expired at ${DateTime.formatIso(record.expiresAt)}.`,
+          },
+        ]
+      : [],
   )
 
   return [...blocking, ...missingDependencies, ...expired]
@@ -761,7 +779,7 @@ export const prove = (
 ): Effect.Effect<ProofArtifact, Resource.ResourceError, Env.Env | FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
-    const now = yield* ReleaseClock.nowIso
+    const now = yield* ReleaseClock.now
     const proof = makeProofArtifact(plan, now, observations)
     yield* write(proof, proofPathFor(env.cwd, plan))
     return proof

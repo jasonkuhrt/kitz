@@ -2,8 +2,9 @@ import { PlatformError, FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
 import { Resource } from '@kitz/resource'
-import { Effect, Option } from 'effect'
+import { Effect, Option, Schema as S } from 'effect'
 import { Manifest } from '#manifest'
+import { Descriptor } from './Descriptor.js'
 import { DetectedPackageManager, type PackageManager } from './PackageManager.js'
 
 type DetectError = PlatformError.PlatformError | Resource.ResourceError
@@ -18,10 +19,13 @@ const lockfileToManager: ReadonlyArray<readonly [string, PackageManager]> = [
   ['yarn.lock', 'yarn'],
 ]
 
+const decodeDescriptor = S.decodeUnknownOption(Descriptor.FromString)
+
 const parsePackageManagerName = (value: string | undefined): Option.Option<PackageManager> => {
   if (!value) return Option.none()
-  const normalized = value.trim().toLowerCase()
-  const name = normalized.split('@', 1)[0]
+  const descriptor = decodeDescriptor(value.trim())
+  if (Option.isNone(descriptor)) return Option.none()
+  const name = descriptor.value.name.moniker.toLowerCase()
 
   switch (name) {
     case 'bun':

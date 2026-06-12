@@ -147,7 +147,7 @@ export const initToRec = (headers?: HeadersInput): Record<string, string> => {
   // Plain object
   const result: Record<string, string> = {}
   for (const [key, value] of Object.entries(headers)) {
-    result[key.toLowerCase()] = String(value)
+    result[key.toLowerCase()] = value
   }
   return result
 }

@@ -3,12 +3,11 @@
  *
  * Render the release execution DAG for the active release plan.
  */
-import { Env } from '@kitz/env'
-import { Console, Effect, Layer, Option } from 'effect'
+import { Console, Effect } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Executor from '../../api/executor/__.js'
 import * as Renderer from '../../api/renderer/__.js'
-import { FileSystemLayer } from '../../platform.js'
+import { CommandBaseLayer, fromFlagNoAlias, rejectFrozenTag } from './_shared.js'
 import { loadExecutableCommandPlan } from './plan-file.js'
 
 export const graph = Command.make(
@@ -24,20 +23,11 @@ export const graph = Command.make(
       Flag.withDescription('npm dist-tag override used for the workflow identity'),
       Flag.optional,
     ),
-    from: Flag.string('from').pipe(
-      Flag.withDescription('Read the release plan from a specific file path'),
-      Flag.optional,
-    ),
+    from: fromFlagNoAlias,
   },
   ({ format, tag, from }) =>
     Effect.gen(function* () {
-      const env = yield* Env.Env
-      if (Option.isSome(tag)) {
-        yield* Console.error(
-          'Graph uses the frozen plan dist-tag; --tag cannot alter workflow identity.',
-        )
-        return env.exit(1)
-      }
+      yield* rejectFrozenTag(tag)
       const { plan, publishing } = yield* loadExecutableCommandPlan(from)
 
       const workflowGraph = yield* Executor.graph(plan, {
@@ -55,5 +45,5 @@ export const graph = Command.make(
     }),
 ).pipe(
   Command.withDescription('Render the release execution DAG for a saved plan'),
-  Command.provide(Layer.mergeAll(Env.Live, FileSystemLayer)),
+  Command.provide(CommandBaseLayer),
 )

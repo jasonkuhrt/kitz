@@ -1,49 +1,39 @@
 import { Git } from '@kitz/git'
-import { Pkg } from '@kitz/pkg'
-import { Effect, MutableHashSet, Option, Schema as S } from 'effect'
+import { Effect } from 'effect'
 import { RuleId } from '../models/rule-defaults.js'
 import * as RuntimeRule from '../models/runtime-rule.js'
 import { GitHistory } from '../models/violation-location.js'
 import { Violation } from '../models/violation.js'
 import * as Monotonic from '../ops/monotonic.js'
 
-/**
- * Extract unique package names from version tags.
- *
- * Tags are expected to be in format: `packageName@version`
- */
-const extractPackageNames = (tags: string[]): string[] => {
-  const decodeExactPin = S.decodeUnknownOption(Pkg.Pin.Exact.FromString)
-  const packageNames = MutableHashSet.empty<string>()
-  for (const tag of tags) {
-    const pin = decodeExactPin(tag)
-    if (Option.isSome(pin)) MutableHashSet.add(packageNames, pin.value.name.moniker)
-  }
-  return Array.from(packageNames)
-}
-
 /** Audits that version tags increase monotonically with commit ancestry. */
 export const rule = RuntimeRule.create({
   id: RuleId.make('git.history.monotonic'),
   description: 'Versions increase with commit order (ancestry-based)',
   preconditions: [],
-  check: Effect.gen(function* () {
-    const git = yield* Git.Git
-    const tags = yield* git.getTags()
-    const packageNames = extractPackageNames(tags)
+  check: () =>
+    Effect.gen(function* () {
+      const git = yield* Git.Git
+      const tags = yield* git.getTags()
 
-    // Audit each package's version history
-    for (const packageName of packageNames) {
-      const result = yield* Monotonic.auditPackageHistory(packageName, tags)
+      // Parse every tag once, grouped by package
+      const releaseTagsByPackage = Monotonic.groupReleaseTagsByPackage(tags)
 
-      if (!result.valid && result.violations.length > 0) {
-        const firstViolation = result.violations[0]!
-        return Violation.make({
-          location: GitHistory.make({ sha: firstViolation.later.sha }),
-        })
+      // Audit each package's version history
+      for (const [packageName, parsedTags] of releaseTagsByPackage) {
+        const tagInfos = yield* Monotonic.resolveTagShas(parsedTags)
+        const result = yield* Monotonic.auditPackageHistory(packageName, tagInfos)
+
+        if (!result.valid && result.violations.length > 0) {
+          const firstViolation = result.violations[0]!
+          return Violation.make({
+            location: GitHistory.make({ sha: firstViolation.later.sha }),
+            summary: `Version history for ${packageName} is not monotonic (${String(result.violations.length)} violation${result.violations.length === 1 ? '' : 's'}).`,
+            detail: result.violations.map((violation) => violation.message).join('; '),
+          })
+        }
       }
-    }
 
-    return undefined
-  }),
+      return undefined
+    }),
 })

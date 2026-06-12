@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Semver } from '@kitz/semver'
 import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 
@@ -16,17 +17,9 @@ import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
  * S.encodeSync(CandidateSchema)(candidate) // 'next.5'
  * ```
  */
-export class Candidate extends S.TaggedClass<Candidate>()('Candidate', {
+export class Candidate extends Sch.TaggedClass<Candidate>()('Candidate', {
   iteration: S.Number.pipe(S.check(S.isGreaterThan(0), S.isInt())),
 }) {
-  static is = S.is(Candidate)
-  static decode = S.decodeUnknownEffect(Candidate)
-  static decodeSync = S.decodeUnknownSync(Candidate)
-  static encode = S.encodeUnknownEffect(Candidate)
-  static encodeSync = S.encodeUnknownSync(Candidate)
-  static equivalence = S.toEquivalence(Candidate)
-  static ordered = false as const
-
   /** Compute candidate version: baseVersion-next.N */
   static calculateVersion(base: Semver.Semver, iteration: number): Semver.Semver {
     return Semver.withPre(base, ['next', iteration])
@@ -57,29 +50,3 @@ export const CandidateSchema = CandidateEncoded.pipe(
     encode: SchemaGetter.transform((candidate) => `next.${candidate.iteration}`),
   }),
 )
-
-// ============================================================================
-// Constructors
-// ============================================================================
-
-/**
- * Create a Candidate from iteration number.
- */
-export const makeCandidate = (iteration: number): Candidate => Candidate.make({ iteration })
-
-/**
- * Parse a candidate prerelease string.
- */
-export const parseCandidate = (value: string): Candidate => S.decodeSync(CandidateSchema)(value)
-
-/**
- * Encode a Candidate to string.
- */
-export const encodeCandidate = (candidate: Candidate): string =>
-  S.encodeSync(CandidateSchema)(candidate)
-
-/**
- * Calculate the next iteration for a candidate prerelease.
- */
-export const nextCandidate = (candidate: Candidate): Candidate =>
-  Candidate.make({ iteration: candidate.iteration + 1 })

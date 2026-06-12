@@ -16,7 +16,7 @@ const makePlannedRelease = (scope: string) => ({
 describe('plan.packages-repository-present', () => {
   test('returns package-count metadata when all planned manifests declare repository info', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check().pipe(
         Effect.provide(ReleasePlan.make([makePlannedRelease('core')])),
         Effect.provide(
           Fs.Memory.layer({
@@ -43,7 +43,7 @@ describe('plan.packages-repository-present', () => {
 
   test('reports environment-level violations when multiple planned packages are missing repository metadata', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check().pipe(
         Effect.provide(ReleasePlan.make([makePlannedRelease('core'), makePlannedRelease('cli')])),
         Effect.provide(
           Fs.Memory.layer({

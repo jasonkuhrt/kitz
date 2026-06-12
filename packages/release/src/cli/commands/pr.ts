@@ -14,95 +14,28 @@
  *
  * `release pr title apply` updates the connected PR title on GitHub by replacing
  * only the conventional-commit header and preserving the current subject verbatim.
+ *
+ * Decision logic lives in `pr-lib.ts`; this file is thin wiring.
  */
 import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
-import { NpmRegistry } from '@kitz/npm-registry'
 import { Console, Effect, Layer, Option } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
-import * as Analyzer from '../../api/analyzer/__.js'
-import * as Config from '../../api/config.js'
-import * as Explorer from '../../api/explorer/__.js'
-import * as ProjectedSquashCommit from '../../api/projected-squash-commit.js'
-import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
-import { resolveDiffRemote } from '../pr-preview-diff.js'
-import { PreviewBlockingError, runPrPreview } from '../pr-preview.js'
+import { TerminalLayer, ChildProcessSpawnerLayer } from '../../platform.js'
+import { CommandBaseLayer, NpmCliLayer, failWith } from './_shared.js'
+import { PreviewBlockingError, PrPreviewLive, preparePrTitle, runPrPreview } from './pr-lib.js'
 
-const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer))
-
-const PrCommandLayer = Layer.mergeAll(
-  Env.Live,
-  FileSystemLayer,
+const PrBaseLayer = Layer.mergeAll(
+  CommandBaseLayer,
   TerminalLayer,
   Git.GitLive,
   ChildProcessSpawnerLayer,
-  npmLayer,
+  NpmCliLayer,
 )
 
-const preparePrTitle = Effect.gen(function* () {
-  const git = yield* Git.Git
-  const config = yield* Config.load()
-  const packages = yield* Analyzer.Workspace.resolvePackages(config.packages)
-
-  if (packages.length === 0) {
-    yield* Console.log(
-      'No packages found. Check release.config.ts `packages` field ' +
-        'or ensure the root package.json defines workspace packages.',
-    )
-    return null
-  }
-
-  const pullRequestContext = yield* Explorer.resolvePullRequestContext()
-  const pullRequest = pullRequestContext.pullRequest
-  if (!pullRequest) {
-    return yield* Effect.fail(
-      new Explorer.ExplorerError({
-        context: {
-          detail:
-            'Could not resolve an open pull request for the current branch. Set PR_NUMBER explicitly or open a PR first.',
-        },
-      }),
-    )
-  }
-
-  const tags = yield* git.getTags()
-  const remote = resolveDiffRemote(config)
-  const analysis = yield* Analyzer.analyze({
-    packages,
-    tags,
-    since: `${remote}/${pullRequest.base.ref}`,
-    resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
-    commitOverrides: config.commitOverrides,
-  })
-  const projectedHeader = ProjectedSquashCommit.renderHeader({
-    impacts: ProjectedSquashCommit.collectScopeImpacts(analysis, { primaryOnly: true }),
-  })
-
-  if (!projectedHeader) {
-    return yield* Effect.fail(
-      new Explorer.ExplorerError({
-        context: {
-          detail: 'No primary release impacts were found, so no canonical PR title header exists.',
-        },
-      }),
-    )
-  }
-
-  const rewriteAttempt = yield* ConventionalCommits.Title.rewriteHeader(
-    pullRequest.title,
-    projectedHeader,
-  ).pipe(Effect.result)
-
-  return {
-    githubContext: pullRequestContext,
-    pullRequest,
-    projectedHeader,
-    suggestedTitle: rewriteAttempt._tag === 'Success' ? rewriteAttempt.success : null,
-    titleRewriteError: rewriteAttempt._tag === 'Failure' ? rewriteAttempt.failure.message : null,
-  }
-})
+const PrCommandLayer = Layer.mergeAll(PrBaseLayer, PrPreviewLive.pipe(Layer.provide(PrBaseLayer)))
 
 const prPreview = Command.make(
   'preview',
@@ -118,17 +51,12 @@ const prPreview = Command.make(
   },
   ({ checkOnly, remote }) =>
     Effect.gen(function* () {
-      const env = yield* Env.Env
-      const remoteValue = Option.isSome(remote) ? remote.value : undefined
+      const remoteValue = Option.getOrUndefined(remote)
 
-      const previewResult = yield* runPrPreview(
-        checkOnly || remoteValue
-          ? {
-              ...(checkOnly ? { checkOnly: true } : {}),
-              ...(remoteValue ? { remote: remoteValue } : {}),
-            }
-          : undefined,
-      ).pipe(Effect.result)
+      const previewResult = yield* runPrPreview({
+        ...(checkOnly ? { checkOnly: true } : {}),
+        ...(remoteValue ? { remote: remoteValue } : {}),
+      }).pipe(Effect.result)
 
       if (previewResult._tag === 'Failure') {
         if (previewResult.failure instanceof PreviewBlockingError) {
@@ -138,11 +66,12 @@ const prPreview = Command.make(
             )
             yield* Console.log(`Comment: ${previewResult.failure.commentUrl}`)
           }
-          yield* Console.error('Blocking release preview issues remain.')
-          return env.exit(1)
+          yield* failWith('Blocking release preview issues remain.')
+          return
         }
 
-        return yield* Effect.fail(previewResult.failure)
+        yield* Effect.fail(previewResult.failure)
+        return
       }
 
       if (previewResult.success._tag === 'checked') {
@@ -194,13 +123,14 @@ const prTitleApply = Command.make('apply', {}, () =>
 
     const token = env.vars['GITHUB_TOKEN']
     if (!token || token.trim() === '') {
-      return yield* Effect.fail(
+      yield* Effect.fail(
         new Github.GithubConfigError({
           context: {
             detail: 'GITHUB_TOKEN is required to apply PR title updates.',
           },
         }),
       )
+      return
     }
 
     const updated = yield* Effect.gen(function* () {

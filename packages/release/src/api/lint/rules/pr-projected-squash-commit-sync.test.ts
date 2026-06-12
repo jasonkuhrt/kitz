@@ -2,7 +2,6 @@ import { ConventionalCommits as CC } from '@kitz/conventional-commits'
 import { Effect, Layer, Option } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { PrTitle } from '../models/violation-location.js'
-import { RuleOptionsService } from '../services/rule-options.js'
 import { PrService } from '../services/pr.js'
 import { rule } from './pr-projected-squash-commit-sync.js'
 
@@ -28,12 +27,9 @@ const makePrLayer = (title: string, parseError?: string) =>
 describe('pr.projected-squash-commit-sync', () => {
   test('passes when the PR title header already matches the canonical release header', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
-        Effect.provide(makePrLayer('feat(core): release 1 packages')),
-        Effect.provideService(RuleOptionsService, {
-          projectedHeader: 'feat(core)',
-        }),
-      ),
+      rule
+        .check({ projectedHeader: 'feat(core)' })
+        .pipe(Effect.provide(makePrLayer('feat(core): release 1 packages'))),
     )
 
     expect(result).toEqual({
@@ -45,12 +41,9 @@ describe('pr.projected-squash-commit-sync', () => {
 
   test('warns when the PR title header differs from the canonical release header', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
-        Effect.provide(makePrLayer('feat(release): polish')),
-        Effect.provideService(RuleOptionsService, {
-          projectedHeader: 'feat(cli, core)',
-        }),
-      ),
+      rule
+        .check({ projectedHeader: 'feat(cli, core)' })
+        .pipe(Effect.provide(makePrLayer('feat(release): polish'))),
     )
 
     expect(result).toBeDefined()
@@ -69,12 +62,9 @@ describe('pr.projected-squash-commit-sync', () => {
 
   test('returns the invalid-title violation when the PR title is not parseable', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
-        Effect.provide(makePrLayer('bad title', 'Missing colon separator: "bad title"')),
-        Effect.provideService(RuleOptionsService, {
-          projectedHeader: 'feat(core)',
-        }),
-      ),
+      rule
+        .check({ projectedHeader: 'feat(core)' })
+        .pipe(Effect.provide(makePrLayer('bad title', 'Missing colon separator: "bad title"'))),
     )
 
     expect(result).toBeDefined()

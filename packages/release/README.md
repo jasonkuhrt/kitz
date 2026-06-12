@@ -468,7 +468,7 @@ release archive export [flags]
 
 | Flag | Type | Description |
 | --- | --- | --- |
-| `--from`, `-f` | `string` | Plan file to archive (default: the active plan) |
+| `--from`, `-f` | `string` | Read the release plan from a specific file path |
 
 #### `release conformance`
 
@@ -490,8 +490,8 @@ release conformance run [flags]
 
 | Flag | Type | Description |
 | --- | --- | --- |
-| `--provider` | `string` | Provider to check (npm, pnpm, bun) |
-| `--format` | `string` | Output format (text, json) |
+| `--provider` | `choice` | Provider to check (choices: npm, pnpm, bun) |
+| `--format` | `choice` | Output format (choices: text, json) |
 
 #### `release doctor`
 
@@ -623,8 +623,8 @@ release history [flags]
 | Flag | Type | Description |
 | --- | --- | --- |
 | `--format`, `-f` | `choice` | Output format (choices: text, json) |
-| `--pr`, `-p` | `string` | Explicit pull request number to inspect instead of the connected branch |
-| `--limit`, `-n` | `string` | Maximum number of publish records to render (default: all) |
+| `--pr`, `-p` | `integer` | Explicit pull request number to inspect instead of the connected branch |
+| `--limit`, `-n` | `integer` | Maximum number of publish records to render (default: all) |
 
 #### `release init`
 
@@ -669,13 +669,6 @@ Verify the publishing capability matrix
 ```
 release matrix verify [flags]
 ```
-
-**Flags**
-
-| Flag | Type | Description |
-| --- | --- | --- |
-| `--latest` | `boolean` | Report latest-mode behavior |
-| `--write` | `boolean` | Report write-mode behavior |
 
 #### `release notes`
 
@@ -908,44 +901,73 @@ release trust list [flags]
 
 #### `release trust setup`
 
-Render the npm trusted-publisher provisioning command
+Render the npm trusted-publisher provisioning command for a provider
 
 ```
-release trust setup [flags]
+release trust setup <subcommand> [flags]
+```
+
+#### `release trust setup github`
+
+Render the GitHub Actions trusted-publisher provisioning command
+
+```
+release trust setup github [flags]
 ```
 
 **Flags**
 
 | Flag | Type | Description |
 | --- | --- | --- |
-| `--provider` | `string` | Trusted-publisher provider (github, gitlab, circleci) |
 | `--pkg` | `string` | Package name |
-| `--workflow` | `string` | GitHub workflow file |
-| `--repo` | `string` | GitHub repository (owner/name) |
-| `--file` | `string` | GitLab workflow file |
-| `--project` | `string` | GitLab project (namespace/project) |
-| `--org-id` | `string` | CircleCI org id |
-| `--project-id` | `string` | CircleCI project id |
-| `--pipeline-definition-id` | `string` | CircleCI pipeline definition id |
-| `--vcs-origin` | `string` | CircleCI VCS origin |
 | `--env` | `string` | Deployment environment |
 | `--registry` | `string` | Registry URL |
 | `--yes` | `boolean` | Skip confirmation prompts |
 | `--dry-run` | `boolean` | Emit the command without applying it |
+| `--workflow` | `string` | GitHub workflow file |
+| `--repo` | `string` | GitHub repository (owner/name) |
 
-#### `release trust verify`
+#### `release trust setup gitlab`
 
-Verify trusted-publisher configuration for a plan
+Render the GitLab CI trusted-publisher provisioning command
 
 ```
-release trust verify [flags]
+release trust setup gitlab [flags]
 ```
 
 **Flags**
 
 | Flag | Type | Description |
 | --- | --- | --- |
-| `--from` | `string` | Plan file to verify |
+| `--pkg` | `string` | Package name |
+| `--env` | `string` | Deployment environment |
+| `--registry` | `string` | Registry URL |
+| `--yes` | `boolean` | Skip confirmation prompts |
+| `--dry-run` | `boolean` | Emit the command without applying it |
+| `--file` | `string` | GitLab workflow file |
+| `--project` | `string` | GitLab project (namespace/project) |
+
+#### `release trust setup circleci`
+
+Render the CircleCI trusted-publisher provisioning command
+
+```
+release trust setup circleci [flags]
+```
+
+**Flags**
+
+| Flag | Type | Description |
+| --- | --- | --- |
+| `--pkg` | `string` | Package name |
+| `--env` | `string` | Deployment environment |
+| `--registry` | `string` | Registry URL |
+| `--yes` | `boolean` | Skip confirmation prompts |
+| `--dry-run` | `boolean` | Emit the command without applying it |
+| `--org-id` | `string` | CircleCI org id |
+| `--project-id` | `string` | CircleCI project id |
+| `--pipeline-definition-id` | `string` | CircleCI pipeline definition id |
+| `--vcs-origin` | `string` | CircleCI VCS origin |
 
 #### `release ui`
 

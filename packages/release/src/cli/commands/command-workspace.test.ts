@@ -3,34 +3,16 @@ import os from 'node:os'
 import path from 'node:path'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
-import { Pkg } from '@kitz/pkg'
 import { Effect, Layer } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import * as Api from '../../api/__.js'
 import { FileSystemLayer } from '../../platform.js'
+import { testConfig } from '../../test-support.js'
 import { isReadyCommandWorkspace, loadCommandWorkspaceWith } from './command-workspace.js'
 
 const makeResolvedConfig = (
   packages: Api.Analyzer.Workspace.PackageMap,
-): Api.Config.ResolvedConfig =>
-  Api.Config.ResolvedConfig.make({
-    trunk: 'main',
-    npmTag: 'latest',
-    candidateTag: 'next',
-    packages,
-    publishing: Api.Publishing.defaultPublishing(),
-    operator: Api.Operator.ResolvedOperator.make({
-      manager: Pkg.Manager.DetectedPackageManager.make({
-        name: 'bun',
-        source: 'runtime',
-      }),
-      releaseCommand: 'bun run release',
-      prepareCommands: [],
-    }),
-    resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
-    commitOverrides: {},
-    lint: Api.Lint.resolveConfig({}),
-  })
+): Api.Config.ResolvedConfig => testConfig({ packages })
 
 describe('command workspace bootstrap', () => {
   test('honors config.packages when resolving workspace packages', async () => {

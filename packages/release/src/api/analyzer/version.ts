@@ -2,7 +2,7 @@ import { ConventionalCommits } from '@kitz/conventional-commits'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, Result, HashMap, MutableHashMap, Option, Schema as S } from 'effect'
+import { Array as A, Effect, Result, HashMap, MutableHashMap, Option, Schema as S } from 'effect'
 import type { Candidate } from '../version/models/candidate.js'
 import { CandidateSchema } from '../version/models/candidate.js'
 import type { Ephemeral } from '../version/models/ephemeral.js'
@@ -117,30 +117,49 @@ export const extractImpacts = (
  * Aggregate impacts by package, keeping the highest bump for each.
  * Returns Map<scope, { bump, commits: ReleaseCommit[] }>.
  *
- * Note: Same commit may appear in multiple scopes if it affects multiple packages.
+ * Notes:
+ * - The same commit may appear in multiple scopes if it affects multiple packages.
+ * - Within a scope, commits are deduplicated by hash (a multi-target commit
+ *   can name the same scope more than once) while keeping first-seen order.
  */
 export const aggregateByPackage = (
-  impacts: CommitImpact[],
+  impacts: readonly CommitImpact[],
 ): HashMap.HashMap<string, { bump: Semver.BumpType; commits: ReleaseCommit[] }> => {
   const result = MutableHashMap.empty<string, { bump: Semver.BumpType; commits: ReleaseCommit[] }>()
 
   for (const impact of impacts) {
-    const existing = MutableHashMap.get(result, impact.scope)
-    if (Option.isSome(existing)) {
-      MutableHashMap.set(result, impact.scope, {
-        bump: Semver.maxBump(existing.value.bump, impact.bump),
-        commits: [...existing.value.commits, impact.commit],
-      })
-    } else {
+    const existing = Option.getOrUndefined(MutableHashMap.get(result, impact.scope))
+    if (existing === undefined) {
       MutableHashMap.set(result, impact.scope, {
         bump: impact.bump,
         commits: [impact.commit],
       })
+      continue
     }
+
+    MutableHashMap.set(result, impact.scope, {
+      bump: Semver.maxBump(existing.bump, impact.bump),
+      commits: existing.commits.some((commit) => commit.hash === impact.commit.hash)
+        ? existing.commits
+        : [...existing.commits, impact.commit],
+    })
   }
 
   return HashMap.fromIterable(result)
 }
+
+/**
+ * Adapt an `Option` to the `Result` filter shape expected by {@link A.filterMap}.
+ */
+const keepSome = <value>(option: Option.Option<value>): Result.Result<value, void> =>
+  Result.fromOption(option, () => undefined)
+
+/**
+ * Decode a tag into an exact pin for the given package, or `None` when the
+ * tag belongs to another package or is not a release tag at all.
+ */
+const decodePackagePin = (packageName: Pkg.Moniker.Moniker, tag: string) =>
+  Option.filter(decodeExactPin(tag), (pin) => pin.name.moniker === packageName.moniker)
 
 /**
  * Find the latest version for a package from git tags.
@@ -149,24 +168,67 @@ export const aggregateByPackage = (
  */
 export const findLatestTagVersion = (
   packageName: Pkg.Moniker.Moniker,
-  tags: string[],
+  tags: readonly string[],
 ): Option.Option<Semver.Semver> => {
-  const versions: Semver.Semver[] = []
+  const versions = A.filterMap(tags, (tag) =>
+    keepSome(
+      Option.map(
+        // Current released version baseline is always an official release.
+        Option.filter(
+          decodePackagePin(packageName, tag),
+          (pin) => Semver.getPrerelease(pin.version) === undefined,
+        ),
+        (pin) => pin.version,
+      ),
+    ),
+  )
 
-  for (const tag of tags) {
-    const parsed = decodeExactPin(tag)
-    if (Option.isNone(parsed)) continue
-    if (parsed.value.name.moniker !== packageName.moniker) continue
-    // Current released version baseline is always an official release.
-    if (Semver.getPrerelease(parsed.value.version)) continue
-    versions.push(parsed.value.version)
-  }
+  return versions.length === 0
+    ? Option.none()
+    : Option.some(versions.reduce((a, b) => Semver.max(a, b)))
+}
 
-  if (versions.length === 0) return Option.none()
+/**
+ * Find the highest prerelease iteration among a package's release tags.
+ *
+ * Shared skeleton for candidate and ephemeral lookups: a tag counts when it
+ * pins the package at `baseVersion` (ignoring prerelease identifiers), its
+ * prerelease segment decodes via `schema`, and `matches` accepts the decoded
+ * value. Returns the highest `iteration` found, or 0 when none match.
+ */
+const findLatestPrereleaseIteration = <decoded extends { readonly iteration: number }>(
+  packageName: Pkg.Moniker.Moniker,
+  tags: readonly string[],
+  baseVersion: Semver.Semver,
+  schema: S.Codec<decoded, string>,
+  matches: (decoded: decoded) => boolean,
+): number => {
+  const decodePrerelease = S.decodeUnknownOption(schema)
+  const strippedBase = Semver.stripPre(baseVersion)
 
-  // Sort and get the highest version
-  versions.sort((a, b) => -Semver.order(a, b)) // Descending
-  return Option.some(versions[0]!)
+  const iterations = A.filterMap(tags, (tag) =>
+    keepSome(
+      Option.map(
+        Option.filter(
+          Option.flatMap(
+            Option.filter(decodePackagePin(packageName, tag), (pin) =>
+              Semver.equivalence(Semver.stripPre(pin.version), strippedBase),
+            ),
+            (pin) => {
+              const prerelease = Semver.getPrerelease(pin.version)
+              return prerelease === undefined
+                ? Option.none()
+                : decodePrerelease(prerelease.join('.'))
+            },
+          ),
+          matches,
+        ),
+        (decoded) => decoded.iteration,
+      ),
+    ),
+  )
+
+  return iterations.reduce((a, b) => Math.max(a, b), 0)
 }
 
 /**
@@ -178,28 +240,9 @@ export const findLatestTagVersion = (
 export const findLatestCandidateNumber = (
   packageName: Pkg.Moniker.Moniker,
   baseVersion: Semver.Semver,
-  tags: string[],
-): number => {
-  let highest = 0
-
-  for (const tag of tags) {
-    const parsed = decodeExactPin(tag)
-    if (Option.isNone(parsed)) continue
-    if (parsed.value.name.moniker !== packageName.moniker) continue
-    if (!Semver.equivalence(Semver.stripPre(parsed.value.version), Semver.stripPre(baseVersion)))
-      continue
-
-    const prerelease = Semver.getPrerelease(parsed.value.version)
-    if (!prerelease) continue
-
-    const decoded = S.decodeUnknownOption(CandidateSchema)(prerelease.join('.'))
-    if (Option.isSome(decoded) && decoded.value.iteration > highest) {
-      highest = decoded.value.iteration
-    }
-  }
-
-  return highest
-}
+  tags: readonly string[],
+): number =>
+  findLatestPrereleaseIteration(packageName, tags, baseVersion, CandidateSchema, () => true)
 
 /**
  * Find the highest ephemeral release number for a package and PR.
@@ -210,28 +253,12 @@ export const findLatestCandidateNumber = (
 export const findLatestEphemeralNumber = (
   packageName: Pkg.Moniker.Moniker,
   prNumber: number,
-  tags: string[],
-): number => {
-  let highest = 0
-
-  for (const tag of tags) {
-    const parsed = decodeExactPin(tag)
-    if (Option.isNone(parsed)) continue
-    if (parsed.value.name.moniker !== packageName.moniker) continue
-    if (!Semver.equivalence(Semver.stripPre(parsed.value.version), Semver.zero)) continue
-
-    const prerelease = Semver.getPrerelease(parsed.value.version)
-    if (!prerelease) continue
-
-    const decoded = S.decodeUnknownOption(EphemeralSchema)(prerelease.join('.'))
-    if (
-      Option.isSome(decoded) &&
-      decoded.value.prNumber === prNumber &&
-      decoded.value.iteration > highest
-    ) {
-      highest = decoded.value.iteration
-    }
-  }
-
-  return highest
-}
+  tags: readonly string[],
+): number =>
+  findLatestPrereleaseIteration(
+    packageName,
+    tags,
+    Semver.zero,
+    EphemeralSchema,
+    (decoded) => decoded.prNumber === prNumber,
+  )

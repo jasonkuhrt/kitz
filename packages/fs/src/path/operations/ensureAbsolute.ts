@@ -1,3 +1,4 @@
+/* oxlint-disable typescript/no-unnecessary-type-parameters -- Single-use type parameters bind literal path strings into branded conditional return types; inlining them widens the public API. */
 import { Fn } from '@kitz/core'
 import { Schema as S } from 'effect'
 import type { $Abs } from '../$Abs/_.js'

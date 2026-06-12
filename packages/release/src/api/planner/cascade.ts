@@ -1,14 +1,17 @@
 import { FileSystem } from 'effect'
+import { Graph } from '@kitz/graph'
 import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
 import { Effect, HashMap, MutableHashSet, Option } from 'effect'
-import { buildDependencyGraph, type DependencyGraph } from '../analyzer/cascade.js'
+import {
+  buildDependencyGraph,
+  type DependencyGraph,
+  findDirectTriggers,
+} from '../analyzer/cascade.js'
 import { makeCascadeCommit, type ReleaseCommit } from '../analyzer/models/commit.js'
 import { findLatestTagVersion } from '../analyzer/version.js'
 import type { Package } from '../analyzer/workspace.js'
-import { calculateNextVersion } from '../version/calculate.js'
-import { OfficialFirst } from '../version/models/official-first.js'
-import { OfficialIncrement } from '../version/models/official-increment.js'
+import * as Version from '../version/__.js'
 import { Official } from './models/item-official.js'
 import type { Item } from './models/item.js'
 
@@ -32,10 +35,10 @@ export interface CascadeQueryResult {
  * Requested identifiers may be either full package names or workspace scopes.
  */
 export const analyzeRequested = (
-  packages: Package[],
+  packages: readonly Package[],
   releases: readonly Item[],
   requestedPackages: readonly string[],
-  tags: string[],
+  tags: readonly string[],
 ): Effect.Effect<readonly CascadeQueryResult[], Resource.ResourceError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const dependencyGraph = yield* buildDependencyGraph(packages)
@@ -75,124 +78,80 @@ export const analyzeRequested = (
   })
 
 /**
- * Find all packages that need cascade releases using BFS traversal.
+ * Find all packages that need cascade releases.
  *
- * **Algorithm**: Starting from the set of primary releases, performs a
- * breadth-first search over the reverse dependency graph (dependents).
- * Each unvisited dependent is marked for a cascade patch release.
- * The BFS continues from cascade packages to find transitive dependents.
+ * **Algorithm**: takes the transitive closure of the primary releases over the
+ * reverse dependency graph ({@link Graph.transitiveClosure}); every member of
+ * the closure that is not itself a primary release gets a cascade patch
+ * release.
  *
  * A package needs a cascade release if:
  * 1. It depends (directly or transitively) on a package being released
  * 2. It is not already in the primary releases list
  *
- * **Circular dependencies**: The visited set prevents infinite loops.
+ * **Circular dependencies**: the closure visits every node at most once.
  * If A depends on B and B depends on A, each is visited at most once.
  *
  * **Version strategy**: All cascade releases receive a patch bump.
  * If no current version exists, a first release is created.
  */
 export const detect = (
-  packages: Package[],
-  primaryReleases: Item[],
+  packages: readonly Package[],
+  primaryReleases: readonly Item[],
   dependencyGraph: DependencyGraph,
-  tags: string[],
+  tags: readonly string[],
   timestamp: string = syntheticCommitDate,
 ): Official[] => {
   // Set of packages already getting released (use string form for Set/Map operations)
-  const releasing = MutableHashSet.fromIterable(primaryReleases.map((r) => r.package.name.moniker))
+  // oxlint-disable-next-line kitz/domain/no-native-map-set -- Local read-only lookup table; never escapes this scope.
+  const releasing = new Set(primaryReleases.map((r) => r.package.name.moniker))
 
-  // Set of packages that need cascade releases
-  const needsCascade = MutableHashSet.empty<string>()
-
-  // BFS traversal with visited guard to handle circular dependencies safely
-  const visited = MutableHashSet.fromIterable(releasing)
-  const queue = Array.from(releasing)
-
-  while (queue.length > 0) {
-    const pkgName = queue.shift()!
-    const dependents = Option.getOrElse(
-      HashMap.get(dependencyGraph, pkgName),
-      (): readonly string[] => [],
-    )
-
-    for (const dependent of dependents) {
-      // Skip if already visited (releasing, already queued for cascade, or in queue)
-      if (MutableHashSet.has(visited, dependent)) continue
-
-      MutableHashSet.add(visited, dependent)
-      MutableHashSet.add(needsCascade, dependent)
-      queue.push(dependent) // Propagate cascades
-    }
-  }
+  // The closure includes its seeds; cascades are the rest.
+  const needsCascade = [...Graph.transitiveClosure(dependencyGraph, releasing)].filter(
+    (name) => !releasing.has(name),
+  )
 
   // Build cascade releases (use string keys for Map lookup)
-  const nameToPackage = HashMap.fromIterable(
-    packages.map((p): [string, Package] => [p.name.moniker, p]),
-  )
+  // oxlint-disable-next-line kitz/domain/no-native-map-set -- Local read-only lookup table; never escapes this scope.
+  const nameToPackage = new Map(packages.map((p): [string, Package] => [p.name.moniker, p]))
   const cascades: Official[] = []
 
   for (const name of needsCascade) {
-    const pkg = Option.getOrUndefined(HashMap.get(nameToPackage, name))
+    const pkg = nameToPackage.get(name)
     if (!pkg) continue
-
-    const currentVersion = findLatestTagVersion(pkg.name, tags)
-    const nextVersion = calculateNextVersion(currentVersion, 'patch')
 
     // Find which primary release(s) triggered this cascade
     // Create synthetic commit entries for changelog generation
-    const cascadeCommits: ReleaseCommit[] = []
-    for (const primary of primaryReleases) {
-      const primaryDependents = Option.getOrElse(
-        HashMap.get(dependencyGraph, primary.package.name.moniker),
-        (): readonly string[] => [],
-      )
-      if (primaryDependents.includes(name)) {
-        cascadeCommits.push(
-          makeCascadeCommit(
-            pkg.scope,
-            `Depends on ${primary.package.name.moniker}@${primary.nextVersion.toString()}`,
-            timestamp,
-          ),
-        )
-      }
-    }
+    const cascadeCommits = findDirectTriggers(dependencyGraph, primaryReleases, name).map(
+      (primary) =>
+        makeCascadeCommit(
+          pkg.scope,
+          `Depends on ${primary.package.name.moniker}@${primary.nextVersion.toString()}`,
+          timestamp,
+        ),
+    )
 
     // If no triggers found, add a generic cascade commit
     if (cascadeCommits.length === 0) {
       cascadeCommits.push(makeCascadeCommit(pkg.scope, 'Cascade release', timestamp))
     }
 
-    // Build version union
-    const version: OfficialFirst | OfficialIncrement = Option.isSome(currentVersion)
-      ? OfficialIncrement.make({ from: currentVersion.value, to: nextVersion, bump: 'patch' })
-      : OfficialFirst.make({ version: nextVersion, bump: 'patch' })
-
-    cascades.push(
-      Official.make({
-        package: pkg,
-        version,
-        commits: cascadeCommits,
-      }),
-    )
+    cascades.push(makePatchRelease(pkg, tags, cascadeCommits))
   }
 
   return cascades
 }
 
-const makePatchRelease = (pkg: Package, tags: readonly string[], commits: ReleaseCommit[]) => {
-  const currentVersion = findLatestTagVersion(pkg.name, [...tags])
-  const nextVersion = calculateNextVersion(currentVersion, 'patch')
-  const version: OfficialFirst | OfficialIncrement = Option.isSome(currentVersion)
-    ? OfficialIncrement.make({ from: currentVersion.value, to: nextVersion, bump: 'patch' })
-    : OfficialFirst.make({ version: nextVersion, bump: 'patch' })
-
-  return Official.make({
+const makePatchRelease = (
+  pkg: Package,
+  tags: readonly string[],
+  commits: ReleaseCommit[],
+): Official =>
+  Official.make({
     package: pkg,
-    version,
+    version: Version.Official.fromCurrent(findLatestTagVersion(pkg.name, tags), 'patch'),
     commits,
   })
-}
 
 /**
  * Find runtime workspace dependencies that must be part of a publish plan.

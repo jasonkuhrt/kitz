@@ -3,8 +3,8 @@ import type { Objekt } from './_prelude.js'
 import type { Step } from './Step.js'
 
 export namespace StepTrigger {
-  export const create = <$OriginalInput, $Fn extends StepTriggerRaw>(
-    originalInput: $OriginalInput,
+  export const create = <$Fn extends StepTriggerRaw>(
+    originalInput: unknown,
     fn: $Fn,
   ): StepTrigger<$Fn> => {
     // ): $Hook & { input: $OriginalInput } => {

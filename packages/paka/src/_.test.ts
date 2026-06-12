@@ -93,8 +93,7 @@ describe('paka', () => {
       expect(typeof schemaClass.decodeSync).toBe(`function`)
       expect(typeof schemaClass.encode).toBe(`function`)
       expect(typeof schemaClass.encodeSync).toBe(`function`)
-      expect(typeof schemaClass.equivalence).toBe(`function`)
-      expect(schemaClass.ordered).toBe(false)
+      expect(typeof schemaClass.equals).toBe(`function`)
       expect(typeof schemaClass.make).toBe(`function`)
     }
 

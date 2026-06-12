@@ -78,11 +78,21 @@ export const layer = (initialDiskLayout: DiskLayout) => {
     // Read directory contents
     readDirectory: (path: string) => {
       const normalizedPath = path.endsWith('/') ? path : path + '/'
-      const entries = Object.keys(diskLayout)
-        .filter((filePath) => filePath.startsWith(normalizedPath))
-        .map((filePath) => filePath.slice(normalizedPath.length))
-        .filter((relativePath) => relativePath.length > 0 && !relativePath.includes('/'))
-        .filter((entry) => !entry.endsWith('.dir_marker')) // Filter out directory markers
+      // Direct children: files directly under the path, plus subdirectory
+      // names implied by deeper keys (e.g. '/src/lib/util.ts' implies 'lib').
+      const entries = [
+        ...new Set(
+          Object.keys(diskLayout)
+            .filter((filePath) => filePath.startsWith(normalizedPath))
+            .map((filePath) => filePath.slice(normalizedPath.length))
+            .filter((relativePath) => relativePath.length > 0)
+            .map((relativePath) =>
+              relativePath.includes('/')
+                ? relativePath.slice(0, relativePath.indexOf('/'))
+                : relativePath,
+            ),
+        ),
+      ].filter((entry) => !entry.endsWith('.dir_marker')) // Filter out directory markers
 
       // Check if directory exists (has marker or files)
       const dirExists = `${normalizedPath}.dir_marker` in diskLayout || entries.length > 0
@@ -135,7 +145,26 @@ export const layer = (initialDiskLayout: DiskLayout) => {
     },
 
     // Write operations
-    writeFile: (path: string, content: Uint8Array) => {
+    writeFile: (
+      path: string,
+      content: Uint8Array,
+      options?: {
+        readonly flag?: FileSystem.OpenFlag | undefined
+        readonly mode?: number | undefined
+      },
+    ) => {
+      // Honor the append flag so append-only consumers (e.g. JSONL journals)
+      // behave identically on the memory filesystem and real disks.
+      const existing = options?.flag === 'a' ? diskLayout[path] : undefined
+      if (existing !== undefined) {
+        const existingBytes =
+          typeof existing === 'string' ? new TextEncoder().encode(existing) : existing
+        const combined = new Uint8Array(existingBytes.byteLength + content.byteLength)
+        combined.set(existingBytes)
+        combined.set(content, existingBytes.byteLength)
+        diskLayout[path] = combined
+        return Effect.void
+      }
       diskLayout[path] = content
       return Effect.void
     },

@@ -1,27 +1,21 @@
+import { Sch } from '@kitz/sch'
 import { Array as A, Option, Schema } from 'effect'
 import * as Capability from './models/capability.js'
 
 export const ConformanceScenarioOutcome = Schema.Literals(['supported', 'unsupported'])
 export type ConformanceScenarioOutcome = typeof ConformanceScenarioOutcome.Type
 
-export class ConformanceScenarioResult extends Schema.Class<ConformanceScenarioResult>(
+export class ConformanceScenarioResult extends Sch.Class<ConformanceScenarioResult>()(
   'ConformanceScenarioResult',
-)({
-  providerId: Schema.String,
-  capability: Capability.PublishCapability,
-  scenarioId: Schema.String,
-  result: ConformanceScenarioOutcome,
-  evidence: Schema.Array(Schema.String),
-  errorCode: Schema.optional(Schema.String),
-}) {
-  static is = Schema.is(ConformanceScenarioResult)
-  static decode = Schema.decodeUnknownEffect(ConformanceScenarioResult)
-  static decodeSync = Schema.decodeUnknownSync(ConformanceScenarioResult)
-  static encode = Schema.encodeUnknownEffect(ConformanceScenarioResult)
-  static encodeSync = Schema.encodeUnknownSync(ConformanceScenarioResult)
-  static equivalence = Schema.toEquivalence(ConformanceScenarioResult)
-  static ordered = false as const
-
+  {
+    providerId: Schema.String,
+    capability: Capability.PublishCapability,
+    scenarioId: Schema.String,
+    result: ConformanceScenarioOutcome,
+    evidence: Schema.Array(Schema.String),
+    errorCode: Schema.optional(Schema.String),
+  },
+) {
   static scenarioIdFor = (capability: Capability.PublishCapability) => `capability:${capability}`
 
   static invalidCapabilityResult = (params: {
@@ -71,20 +65,12 @@ export interface ConformanceProvider {
   ) => Capability.CapabilityResult
 }
 
-export class ConformanceReport extends Schema.Class<ConformanceReport>('ConformanceReport')({
+export class ConformanceReport extends Sch.Class<ConformanceReport>()('ConformanceReport', {
   schemaVersion: Schema.Literal(1),
   providerId: Schema.String,
   productionSelectable: Schema.Boolean,
   results: Schema.Array(ConformanceScenarioResult),
 }) {
-  static is = Schema.is(ConformanceReport)
-  static decode = Schema.decodeUnknownEffect(ConformanceReport)
-  static decodeSync = Schema.decodeUnknownSync(ConformanceReport)
-  static encode = Schema.encodeUnknownEffect(ConformanceReport)
-  static encodeSync = Schema.encodeUnknownSync(ConformanceReport)
-  static equivalence = Schema.toEquivalence(ConformanceReport)
-  static ordered = false as const
-
   static fromProvider = (provider: ConformanceProvider) =>
     ConformanceReport.make({
       schemaVersion: 1,

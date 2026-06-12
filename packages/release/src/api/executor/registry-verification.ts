@@ -58,7 +58,7 @@ export const verifyRegistryPublication = (request: RegistryPublicationRequest) =
       packageName: Pkg.Moniker.parse(request.packageName),
       version: Semver.fromString(request.nextVersion),
       registry: request.registry ?? 'https://registry.npmjs.org/',
-      observedAt: yield* ReleaseClock.nowIso,
+      observedAt: yield* ReleaseClock.now,
       versionMetadata: observed.versionMetadata,
       distTags: { ...observed.distTags },
       ...(observed.tarballUrl !== undefined ? { tarballUrl: observed.tarballUrl } : {}),
@@ -78,7 +78,7 @@ export const verifyRegistryPublication = (request: RegistryPublicationRequest) =
       planDigest,
       tarballSha256,
       observation,
-      verifiedAt: yield* ReleaseClock.nowIso,
+      verifiedAt: yield* ReleaseClock.now,
     })
     const artifact = ArtifactManifest.make({
       schemaVersion: 1,

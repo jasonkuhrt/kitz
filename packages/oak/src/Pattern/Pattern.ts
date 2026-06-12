@@ -37,6 +37,7 @@ export type PatternForObject<
 
 type Or<T> = T | T[]
 
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- P infers from the pattern argument independently of D, so structurally invalid patterns fail to typecheck (pinned by @ts-expect-error specs); inlining it lets D widen to accommodate bad patterns.
 export const match = <D extends SomeData, P extends Pattern<D> | undefined>(
   data: D,
   pattern: P,

@@ -1,5 +1,6 @@
 export * from './candidate.js'
 export * from './ephemeral.js'
 export * from './lifecycle.js'
+export * from './official.js'
 export * from './official-first.js'
 export * from './official-increment.js'

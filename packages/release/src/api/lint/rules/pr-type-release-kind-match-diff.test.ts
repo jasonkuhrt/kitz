@@ -25,7 +25,7 @@ const makePrLayer = (title: string, commit: CC.Commit.Commit) =>
 describe('pr.type.release-kind-match-diff', () => {
   test('passes when a mixed-type title includes at least one release-triggering target', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check().pipe(
         Effect.provide(diffWithSrcChanges),
         Effect.provide(
           makePrLayer(
@@ -49,7 +49,7 @@ describe('pr.type.release-kind-match-diff', () => {
 
   test('passes when a nominally no-release type is marked breaking', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check().pipe(
         Effect.provide(diffWithSrcChanges),
         Effect.provide(
           makePrLayer(
@@ -72,7 +72,7 @@ describe('pr.type.release-kind-match-diff', () => {
 
   test('violates when every target is no-release and src files changed', async () => {
     const result = await Effect.runPromise(
-      rule.check.pipe(
+      rule.check().pipe(
         Effect.provide(diffWithSrcChanges),
         Effect.provide(
           makePrLayer(

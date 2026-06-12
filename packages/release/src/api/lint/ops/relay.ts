@@ -1,11 +1,11 @@
 import { Cli } from '@kitz/cli'
-import { Str } from '@kitz/core'
+import { Err, Str } from '@kitz/core'
 import { PlatformError, FileSystem } from 'effect'
 import { Console, Effect, Match } from 'effect'
 import { Failed, Finished, type Report, Skipped } from '../models/report.js'
-import * as Severity from '../models/severity.js'
-import * as ViolationLocation from '../models/violation-location.js'
+import { ViolationLocation } from '../models/violation-location.js'
 import { ViolationFix } from '../models/violation.js'
+import { PreconditionsNotMetError } from './check.js'
 
 export type Destination =
   | { readonly _tag: 'stdout' }
@@ -53,7 +53,7 @@ export const formatReport = (report: Report, options?: FormatReportOptions): str
     output``
     output(theme.section(`Violations (${violated.length})`))
     for (const result of violated) {
-      const level = Severity.Severity.guards.SeverityError(result.severity) ? 'error' : 'warn'
+      const level = result.severity
       output(
         `  ${theme.badge(level, level.toUpperCase())} ${theme.code(result.rule.id)} ${theme.dim(result.rule.description)}`,
       )
@@ -111,35 +111,33 @@ export const formatReport = (report: Report, options?: FormatReportOptions): str
     output``
     output(theme.section(`Errors (${failed.length})`))
     for (const result of failed) {
-      const errorMessage =
-        result.error instanceof Error ? result.error.message : String(result.error)
-      output(`  ${theme.badge('error', 'FAIL')} ${theme.code(result.rule.id)} ${errorMessage}`)
+      output(
+        `  ${theme.badge('error', 'FAIL')} ${theme.code(result.rule.id)} ${formatFailedError(result.error)}`,
+      )
     }
   }
 
   return output.render()
 }
 
-const formatLocation = (location: ViolationLocation.ViolationLocation): string | undefined => {
-  if (ViolationLocation.PrTitle.is(location)) {
-    return `PR title "${location.title}"`
+const formatLocation = ViolationLocation.match({
+  ViolationLocationPrTitle: (location) => `PR title "${location.title}"`,
+  ViolationLocationPrBody: (location) =>
+    location.line ? `PR body line ${String(location.line)}` : 'PR body',
+  ViolationLocationRepoSettings: () => 'repository settings',
+  ViolationLocationGitHistory: (location) => `git history at ${location.sha}`,
+  ViolationLocationFile: (location) =>
+    location.line ? `${location.path}:${String(location.line)}` : location.path,
+  ViolationLocationEnvironment: (location) => location.message,
+})
+
+/** Render the stored error of a {@link Failed} result as a single line. */
+const formatFailedError = (error: unknown): string => {
+  if (error instanceof PreconditionsNotMetError) {
+    // The rule id is already printed on the line; show only the failed preconditions.
+    return `Preconditions not met: ${error.context.failed.join(', ')}`
   }
-  if (ViolationLocation.PrBody.is(location)) {
-    return location.line ? `PR body line ${String(location.line)}` : 'PR body'
-  }
-  if (ViolationLocation.RepoSettings.is(location)) {
-    return 'repository settings'
-  }
-  if (ViolationLocation.GitHistory.is(location)) {
-    return `git history at ${location.sha}`
-  }
-  if (ViolationLocation.File.is(location)) {
-    return location.line ? `${location.path}:${String(location.line)}` : location.path
-  }
-  if (ViolationLocation.Environment.is(location)) {
-    return location.message
-  }
-  return undefined
+  return Err.ensure(error).message
 }
 
 const formatOutput = (

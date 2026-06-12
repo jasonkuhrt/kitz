@@ -52,10 +52,7 @@ export const isHole = (value: unknown): value is _ => value === _
  * const result = partial(add, 1, 2) // 3
  * ```
  */
-export const partial = <$Fn extends Fn.AnyAny, const $Args extends readonly unknown[]>(
-  fn: $Fn,
-  ...args: $Args
-): any => {
+export const partial = (fn: Fn.AnyAny, ...args: readonly unknown[]): any => {
   // Count holes to determine if we should execute or return a function
   const holeCount = args.filter(isHole).length
 

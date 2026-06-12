@@ -39,6 +39,7 @@
     "@kitz/fs": "workspace:*",
     "@kitz/pkg": "workspace:*",
     "@kitz/resource": "workspace:*",
+    "@kitz/sch": "workspace:*",
     "effect": "catalog:",
     "yaml": "^2.9.0"
   }

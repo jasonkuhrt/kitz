@@ -45,8 +45,7 @@ const EffectSchema = EffectSchemaMaybe as Required<typeof EffectSchemaMaybe>
 const EffectSchemaInternals = EffectSchemaInternalsMaybe as Required<
   typeof EffectSchemaInternalsMaybe
 >
-const decodeSync = (schema: Schema.Top) =>
-  Schema.decodeSync(schema as Schema.Decoder<unknown, never>)
+const decodeSync = (schema: Schema.Top) => Schema.decodeSync(schema as Schema.Decoder<unknown>)
 
 const keyEvent = (name: KeyPressEvent['name'], params?: Partial<KeyPressEvent>): KeyPressEvent => ({
   name,

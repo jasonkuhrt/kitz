@@ -19,6 +19,7 @@ type TestCommandBuilder = CommandBuilder<
 export const $: TestCommandBuilder = Command.create().use(Zod) // .settings({ onError: `throw` })
 
 export const assertAssignable = <T>(_: T): [T] => 0 as any
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- intentional cast factory: callers supply T explicitly (as<SomeType>()) to fabricate typed test values
 export const as = <T>(): T => undefined as any
 export const n = z.number()
 export const s = z.string()

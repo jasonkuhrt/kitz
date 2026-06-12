@@ -1,15 +1,31 @@
-import { FileSystem } from 'effect'
-import { Env } from '@kitz/env'
+/**
+ * @module cli/commands/forecast-lib
+ *
+ * Decision logic behind `release forecast`: assembling the forecast input
+ * from the workspace, analyzer, and environmental recon. Data seams are
+ * expressed as the {@link ForecastData} Effect service; tests provide stub
+ * layers instead of hand-rolled dependency records.
+ */
 import { Git } from '@kitz/git'
-import { NpmRegistry } from '@kitz/npm-registry'
-import { Console, Effect, HashSet, Layer, Option, Schema } from 'effect'
+import {
+  Console,
+  Context,
+  Effect,
+  FileSystem,
+  HashSet,
+  Layer,
+  Option,
+  Result,
+  Schema,
+} from 'effect'
 import * as Analyzer from '../../api/analyzer/__.js'
 import * as Commentator from '../../api/commentator/__.js'
 import * as Explorer from '../../api/explorer/__.js'
 import * as Forecaster from '../../api/forecaster/__.js'
 import * as Planner from '../../api/planner/__.js'
 import { Analysis, CascadeImpact } from '../../api/analyzer/models/__.js'
-import { ChildProcessSpawnerLayer, ServicesLayer, FileSystemLayer } from '../../platform.js'
+import { ChildProcessSpawnerLayer, ServicesLayer } from '../../platform.js'
+import { CommandBaseLayer, NpmCliLayer } from './_shared.js'
 import {
   type CommandWorkspace,
   isReadyCommandWorkspace,
@@ -24,84 +40,129 @@ export interface ForecastInput {
   readonly interactiveChecklist: boolean
 }
 
-export interface BuildForecastInputDependencies {
+// ─── ForecastData service ────────────────────────────────────────────
+
+export interface ForecastDataShape {
   readonly loadWorkspace: Effect.Effect<CommandWorkspace, Error>
   readonly tags: Effect.Effect<readonly string[], Error>
-  readonly analyze: typeof Analyzer.analyze
-  readonly explore: Effect.Effect<any, Error>
-  readonly forecast?: typeof Forecaster.forecast
-  readonly log: typeof Console.log
+  readonly analyze: (
+    params: Parameters<typeof Analyzer.analyze>[0],
+  ) => Effect.Effect<Analyzer.Models.Analysis, Error>
+  readonly explore: Effect.Effect<Explorer.Recon, Error>
+  /**
+   * Render the forecast for an analysis. The live implementation folds
+   * official-plan dependency cascades into the analysis before forecasting.
+   */
+  readonly forecast: (params: {
+    readonly analysis: Analyzer.Models.Analysis
+    readonly packages: readonly Analyzer.Workspace.Package[]
+    readonly recon: Explorer.Recon
+  }) => Effect.Effect<Forecaster.Forecast, Error>
 }
 
-export function buildForecastInput(): Effect.Effect<
-  ForecastInput,
-  Error,
-  Env.Env | FileSystem.FileSystem | Git.Git | NpmRegistry.NpmCli
->
-export function buildForecastInput(
-  dependencies: BuildForecastInputDependencies,
-): Effect.Effect<ForecastInput, Error>
-export function buildForecastInput(
-  dependencies?: BuildForecastInputDependencies,
-): Effect.Effect<
-  ForecastInput,
-  Error,
-  Env.Env | FileSystem.FileSystem | Git.Git | NpmRegistry.NpmCli
-> {
-  const loadWorkspace = dependencies?.loadWorkspace ?? loadCommandWorkspace()
-  const tags =
-    dependencies?.tags ??
-    Effect.gen(function* () {
-      const git = yield* Git.Git
-      return yield* git.getTags()
-    })
-  const analyze = dependencies?.analyze ?? Analyzer.analyze
-  const explore = dependencies?.explore ?? Explorer.explore()
-  const forecast = dependencies?.forecast ?? Forecaster.forecast
-  const log = dependencies?.log ?? Console.log
+/**
+ * Data seams of the forecast pipeline. {@link ForecastDataLive} wires the
+ * real workspace/git/analyzer/explorer; tests provide stub layers.
+ */
+export class ForecastData extends Context.Service<ForecastData, ForecastDataShape>()(
+  '@kitz/release/cli/ForecastData',
+) {}
 
-  return Effect.gen(function* () {
-    const workspace = yield* loadWorkspace
-    if (!isReadyCommandWorkspace(workspace)) {
-      yield* log(noPackagesFoundMessage)
-      return {
-        forecast: Forecaster.Forecast.make({
-          owner: '',
-          repo: '',
-          branch: '',
-          headSha: '',
-          releases: [],
-          cascades: [],
+/** The live forecast projection (exported for tests exercising the real cascade fold). */
+export const buildForecastWithCascades = (params: {
+  readonly analysis: Analyzer.Models.Analysis
+  readonly packages: readonly Analyzer.Workspace.Package[]
+  readonly recon: Explorer.Recon
+}) =>
+  addOfficialPlanCascades(params.analysis, params.packages).pipe(
+    Effect.flatMap(
+      (analysis): Effect.Effect<Forecaster.Forecast, Error> =>
+        Forecaster.hasGithubTarget(params.recon)
+          ? Result.match(Forecaster.forecast(analysis, params.recon), {
+              onFailure: Effect.fail,
+              onSuccess: Effect.succeed,
+            })
+          : Effect.fail(
+              new Explorer.ExplorerError({
+                context: {
+                  detail: 'no GitHub repository target was resolved from the git remote',
+                },
+              }),
+            ),
+    ),
+  )
+
+type ForecastDataRequirements =
+  | Effect.Services<ReturnType<typeof loadCommandWorkspace>>
+  | Effect.Services<ReturnType<typeof Analyzer.analyze>>
+  | Effect.Services<ReturnType<typeof Explorer.explore>>
+  | Effect.Services<ReturnType<typeof buildForecastWithCascades>>
+  | Git.Git
+
+/** Build the live {@link ForecastData} implementation, capturing required services. */
+export const makeForecastData: Effect.Effect<ForecastDataShape, never, ForecastDataRequirements> =
+  Effect.gen(function* () {
+    const services = yield* Effect.context<ForecastDataRequirements>()
+    return {
+      loadWorkspace: Effect.provideContext(loadCommandWorkspace(), services),
+      tags: Effect.provideContext(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          return yield* git.getTags()
         }),
-        publishState: 'idle' as const,
-        publishHistory: [],
-        interactiveChecklist: false,
-      }
+        services,
+      ),
+      analyze: (params) => Effect.provideContext(Analyzer.analyze(params), services),
+      explore: Effect.provideContext(Explorer.explore(), services),
+      forecast: (params) => Effect.provideContext(buildForecastWithCascades(params), services),
+    }
+  })
+
+export const ForecastDataLive = Layer.effect(ForecastData, makeForecastData)
+
+// ─── Forecast input assembly ─────────────────────────────────────────
+
+const emptyForecastInput: ForecastInput = {
+  forecast: Forecaster.Forecast.make({
+    owner: '',
+    repo: '',
+    branch: '',
+    headSha: '',
+    releases: [],
+    cascades: [],
+  }),
+  publishState: 'idle',
+  publishHistory: [],
+  interactiveChecklist: false,
+}
+
+export const buildForecastInput = (): Effect.Effect<ForecastInput, Error, ForecastData> =>
+  Effect.gen(function* () {
+    const data = yield* ForecastData
+    const workspace = yield* data.loadWorkspace
+    if (!isReadyCommandWorkspace(workspace)) {
+      yield* Console.log(noPackagesFoundMessage)
+      return emptyForecastInput
     }
     const { config, packages } = workspace
 
-    const resolvedTags = yield* tags
-    const analysis = yield* analyze({
+    const tags = yield* data.tags
+    const analysis = yield* data.analyze({
       packages,
-      tags: resolvedTags,
+      tags,
       resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
       commitOverrides: config.commitOverrides,
     })
-    const forecastAnalysis =
-      dependencies?.forecast === undefined
-        ? yield* addOfficialPlanCascades(analysis, packages)
-        : analysis
-    const recon = yield* explore
-    const renderedForecast = forecast(forecastAnalysis, recon)
+    const recon = yield* data.explore
+    const forecast = yield* data.forecast({ analysis, packages, recon })
 
     return {
-      forecast: renderedForecast,
+      forecast,
       publishState: 'idle' as const,
       publishHistory: [],
       interactiveChecklist: (config.publishing.ephemeral ?? { mode: 'manual' }).mode !== 'manual',
     }
   })
-}
 
 export const addOfficialPlanCascades = (
   analysis: Analysis,
@@ -168,11 +229,15 @@ export const loadForecastInputFromFile = (filePath: string) =>
     } satisfies ForecastInput
   })
 
-export const ForecastCommandLayer = Layer.mergeAll(
-  Env.Live,
+const ForecastBaseLayer = Layer.mergeAll(
+  CommandBaseLayer,
   ServicesLayer,
-  FileSystemLayer,
   Git.GitLive,
   ChildProcessSpawnerLayer,
-  NpmRegistry.NpmCliLive.pipe(Layer.provide(ChildProcessSpawnerLayer)),
+  NpmCliLayer,
+)
+
+export const ForecastCommandLayer = Layer.mergeAll(
+  ForecastBaseLayer,
+  ForecastDataLive.pipe(Layer.provide(ForecastBaseLayer)),
 )

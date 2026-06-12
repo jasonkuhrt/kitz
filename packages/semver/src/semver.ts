@@ -19,7 +19,7 @@ interface ParsedVersion {
   minor: number
   patch: number
   prerelease: (string | number)[] | undefined
-  build: string[] | undefined
+  build: [string, ...string[]] | undefined
 }
 
 /** Parse a semver string. Returns undefined if invalid. */
@@ -47,7 +47,10 @@ const parse = (input: string): ParsedVersion | undefined => {
       })
     : undefined
 
-  const build = buildStr ? buildStr.split('.') : undefined
+  const buildParts = buildStr ? buildStr.split('.') : []
+  const [buildHead, ...buildRest] = buildParts
+  const build =
+    buildHead === undefined ? undefined : ([buildHead, ...buildRest] as [string, ...string[]])
 
   return { major, minor, patch, prerelease, build }
 }
@@ -150,6 +153,16 @@ export const Schema = S.String.pipe(
     encode: SchemaGetter.transform((semver: OfficialRelease | PreRelease) => formatSemver(semver)),
   }),
 )
+
+/**
+ * Codec between an optional {@link Semver} and a nullable semver string.
+ *
+ * Decodes `null` to `Option.none()` and a semver string to `Option.some(...)`;
+ * encodes back to `string | null`. Use for JSON models where an absent version
+ * is represented as `null` (e.g. a package's current version before any
+ * release exists).
+ */
+export const OptionFromNullOrString = S.OptionFromNullOr(Schema)
 
 // ============================================================================
 // Type
@@ -361,7 +374,8 @@ export const increment = (version: Semver, bump: BumpType): Semver => {
       return OfficialRelease.make({ major: version.major + 1, minor: 0, patch: 0 })
     case 'minor':
       return OfficialRelease.make({ major: version.major, minor: version.minor + 1, patch: 0 })
-    case 'patch':
+    // 'patch'
+    default:
       return OfficialRelease.make({
         major: version.major,
         minor: version.minor,

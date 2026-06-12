@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Effect, Option, SchemaGetter, SchemaIssue, Schema as S } from 'effect'
 
 /**
@@ -19,7 +20,7 @@ export type BorderStyle = typeof BorderStyleSchema.Type
  *
  * @category Text Formatting
  */
-export class BorderEdges extends S.Class<BorderEdges>('BorderEdges')({
+export class BorderEdges extends Sch.Class<BorderEdges>()('BorderEdges', {
   /**
    * Top edge character.
    */
@@ -39,22 +40,14 @@ export class BorderEdges extends S.Class<BorderEdges>('BorderEdges')({
    * Left edge character.
    */
   left: S.optional(S.String),
-}) {
-  static is = S.is(BorderEdges)
-  static decode = S.decodeUnknownEffect(BorderEdges)
-  static decodeSync = S.decodeUnknownSync(BorderEdges)
-  static encode = S.encodeUnknownEffect(BorderEdges)
-  static encodeSync = S.encodeUnknownSync(BorderEdges)
-  static equivalence = S.toEquivalence(BorderEdges)
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Border corner characters (physical coordinates).
  *
  * @category Text Formatting
  */
-export class BorderCorners extends S.Class<BorderCorners>('BorderCorners')({
+export class BorderCorners extends Sch.Class<BorderCorners>()('BorderCorners', {
   /**
    * Top-left corner character.
    */
@@ -74,15 +67,7 @@ export class BorderCorners extends S.Class<BorderCorners>('BorderCorners')({
    * Bottom-left corner character.
    */
   bottomLeft: S.optional(S.String),
-}) {
-  static is = S.is(BorderCorners)
-  static decode = S.decodeUnknownEffect(BorderCorners)
-  static decodeSync = S.decodeUnknownSync(BorderCorners)
-  static encode = S.encodeUnknownEffect(BorderCorners)
-  static encodeSync = S.encodeUnknownSync(BorderCorners)
-  static equivalence = S.toEquivalence(BorderCorners)
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Border configuration.
@@ -92,7 +77,7 @@ export class BorderCorners extends S.Class<BorderCorners>('BorderCorners')({
  *
  * @category Text Formatting
  */
-export class Border extends S.Class<Border>('Border')({
+export class Border extends Sch.Class<Border>()('Border', {
   /**
    * Preset border style (provides edges and corners).
    */
@@ -109,15 +94,7 @@ export class Border extends S.Class<Border>('Border')({
    * Overrides corners from style if both are provided.
    */
   corners: S.optional(BorderCorners),
-}) {
-  static is = S.is(Border)
-  static decode = S.decodeUnknownEffect(Border)
-  static decodeSync = S.decodeUnknownSync(Border)
-  static encode = S.encodeUnknownEffect(Border)
-  static encodeSync = S.encodeUnknownSync(Border)
-  static equivalence = S.toEquivalence(Border)
-  static ordered = false as const
-}
+}) {}
 
 export const makeFromEncoded = S.decodeSync(Border)
 

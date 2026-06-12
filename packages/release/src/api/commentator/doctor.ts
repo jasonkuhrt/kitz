@@ -1,7 +1,6 @@
-import { Str } from '@kitz/core'
+import { Err, Str } from '@kitz/core'
 import { Option, Schema } from 'effect'
 import { Failed, Finished, type Report, Skipped } from '../lint/models/report.js'
-import type { Severity } from '../lint/models/severity.js'
 import { Violation, ViolationFix } from '../lint/models/violation.js'
 import {
   PublishChannelReadyMetadataSchema,
@@ -113,9 +112,6 @@ const doctorRuleLabels: Record<(typeof doctorRuleOrder)[number], string> = {
 
 const escapeMarkdownCell = (value: string): string => value.replaceAll('|', '\\|')
 
-const errorMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error)
-
 const renderPublishChannelNote = (metadata: PublishChannelReadyMetadata): string => {
   if (metadata.status === 'manual') {
     return 'Declared as manual. Merging does not publish automatically.'
@@ -142,62 +138,61 @@ const renderPublishChannelNote = (metadata: PublishChannelReadyMetadata): string
   return 'Publish channel is ready.'
 }
 
-const renderPassNote = (
-  ruleId: (typeof doctorRuleOrder)[number],
-  metadata: unknown,
-  plannedPackages: number,
-): string => {
-  if (ruleId === 'env.publish-channel-ready') {
-    return decodePublishChannelMetadata(metadata).pipe(
+/** Resolve the planned-package count from rule metadata, with a fallback. */
+const decodedPackageCount = (metadata: unknown, fallback: number): number =>
+  decodePackageCountMetadata(metadata).pipe(
+    Option.match({
+      onNone: () => fallback,
+      onSome: (value) => value.packageCount,
+    }),
+  )
+
+type PassNoteRenderer = (metadata: unknown, plannedPackages: number) => string
+
+const packageCountPassNote =
+  (note: (count: number) => string): PassNoteRenderer =>
+  (metadata, plannedPackages) =>
+    note(decodedPackageCount(metadata, plannedPackages))
+
+const passNoteByRule = {
+  'env.publish-channel-ready': (metadata) =>
+    decodePublishChannelMetadata(metadata).pipe(
       Option.match({
         onNone: () => 'Publish channel is ready.',
         onSome: renderPublishChannelNote,
       }),
-    )
-  }
-
-  if (ruleId === 'plan.packages-not-private') {
-    const count = decodePackageCountMetadata(metadata).pipe(
+    ),
+  'pr.projected-squash-commit-sync': (metadata) =>
+    decodeProjectedSquashCommitMetadata(metadata).pipe(
       Option.match({
-        onNone: () => plannedPackages,
-        onSome: (value) => value.packageCount,
+        onNone: () => 'PR title header already matches the canonical release header.',
+        onSome: (value) => `Canonical release header is \`${value.projectedHeader}\`.`,
       }),
-    )
-    return `All ${String(count)} planned packages are publishable and not marked \`private: true\`.`
-  }
-
-  if (ruleId === 'plan.packages-license-present') {
-    const count = decodePackageCountMetadata(metadata).pipe(
-      Option.match({
-        onNone: () => plannedPackages,
-        onSome: (value) => value.packageCount,
-      }),
-    )
-    return `All ${String(count)} planned packages declare a license.`
-  }
-
-  if (ruleId === 'plan.packages-repository-present') {
-    const count = decodePackageCountMetadata(metadata).pipe(
-      Option.match({
-        onNone: () => plannedPackages,
-        onSome: (value) => value.packageCount,
-      }),
-    )
-    return `All ${String(count)} planned packages declare repository metadata.`
-  }
-
-  if (ruleId === 'plan.packages-repository-match-canonical') {
-    return decodeRepositoryCanonicalMetadata(metadata).pipe(
+    ),
+  'pr.type.release-kind-match-diff': () => 'PR title kind matches the changed source files.',
+  'plan.packages-not-private': packageCountPassNote(
+    (count) =>
+      `All ${String(count)} planned packages are publishable and not marked \`private: true\`.`,
+  ),
+  'plan.packages-license-present': packageCountPassNote(
+    (count) => `All ${String(count)} planned packages declare a license.`,
+  ),
+  'plan.packages-repository-present': packageCountPassNote(
+    (count) => `All ${String(count)} planned packages declare repository metadata.`,
+  ),
+  'plan.packages-repository-match-canonical': (metadata) =>
+    decodeRepositoryCanonicalMetadata(metadata).pipe(
       Option.match({
         onNone: () => 'All planned packages point at the canonical GitHub repository.',
         onSome: (value) =>
           `All ${String(value.packageCount)} planned packages point at \`${value.canonicalRepo}\`.`,
       }),
-    )
-  }
-
-  if (ruleId === 'plan.tags-unique') {
-    return decodeTagsUniqueMetadata(metadata).pipe(
+    ),
+  'plan.versions-unpublished': packageCountPassNote(
+    (count) => `All ${String(count)} planned package versions are still unpublished on npm.`,
+  ),
+  'plan.tags-unique': (metadata) =>
+    decodeTagsUniqueMetadata(metadata).pipe(
       Option.match({
         onNone: () => 'Planned release tags are unique.',
         onSome: (value) =>
@@ -205,37 +200,14 @@ const renderPassNote = (
             ? 'No planned release tags collide with existing git tags.'
             : 'Planned release tags are unique.',
       }),
-    )
-  }
+    ),
+} as const satisfies Record<(typeof doctorRuleOrder)[number], PassNoteRenderer>
 
-  if (ruleId === 'plan.versions-unpublished') {
-    const count = decodePackageCountMetadata(metadata).pipe(
-      Option.match({
-        onNone: () => plannedPackages,
-        onSome: (value) => value.packageCount,
-      }),
-    )
-    return `All ${String(count)} planned package versions are still unpublished on npm.`
-  }
-
-  if (ruleId === 'pr.projected-squash-commit-sync') {
-    return decodeProjectedSquashCommitMetadata(metadata).pipe(
-      Option.match({
-        onNone: () => 'PR title header already matches the canonical release header.',
-        onSome: (value) => `Canonical release header is \`${value.projectedHeader}\`.`,
-      }),
-    )
-  }
-
-  if (ruleId === 'pr.type.release-kind-match-diff') {
-    return 'PR title kind matches the changed source files.'
-  }
-
-  return 'Check passed.'
-}
-
-const toDoctorStatus = (severity: Severity): DoctorStatus =>
-  severity._tag === 'SeverityError' ? 'error' : 'warn'
+const renderPassNote = (
+  ruleId: (typeof doctorRuleOrder)[number],
+  metadata: unknown,
+  plannedPackages: number,
+): string => passNoteByRule[ruleId](metadata, plannedPackages)
 
 const toGuidanceFix = (violation: Violation): DoctorGuidance['fix'] | undefined => {
   if (!violation.fix) return undefined
@@ -289,7 +261,7 @@ export const createDoctorSummary = (
       rows.push({
         label,
         status: 'error',
-        notes: errorMessage(result.error),
+        notes: Err.ensure(result.error).message,
       })
       continue
     }
@@ -299,7 +271,7 @@ export const createDoctorSummary = (
     if (result.violation) {
       rows.push({
         label,
-        status: toDoctorStatus(result.severity),
+        status: result.severity,
         notes: result.violation.summary ?? result.rule.description,
       })
       guidance.push(toGuidance(label, result.violation))
@@ -335,83 +307,77 @@ export const createDoctorSummary = (
 }
 
 export const renderDoctorSummary = (summary: DoctorSummary): string => {
-  const lines: string[] = []
+  const b = Str.Builder()
 
-  lines.push('### Doctor')
-  lines.push('')
-  lines.push('| Check | Status | Notes |')
-  lines.push('| --- | --- | --- |')
+  b`### Doctor`
+  b``
+  b`| Check | Status | Notes |`
+  b`| --- | --- | --- |`
 
   for (const row of summary.rows) {
-    lines.push(
-      `| ${escapeMarkdownCell(row.label)} | \`${row.status}\` | ${escapeMarkdownCell(row.notes)} |`,
-    )
+    b`| ${escapeMarkdownCell(row.label)} | \`${row.status}\` | ${escapeMarkdownCell(row.notes)} |`
   }
 
   if (summary.guidance.length > 0) {
-    lines.push('')
-    lines.push(`<details><summary>Guidance (${String(summary.guidance.length)})</summary>`)
-    lines.push('')
+    b``
+    b`<details><summary>Guidance (${String(summary.guidance.length)})</summary>`
+    b``
 
     for (const item of summary.guidance) {
-      lines.push(`- **${item.label}**: ${item.summary}`)
-      if (item.detail) lines.push(`  ${item.detail}`)
+      b`- **${item.label}**: ${item.summary}`
+      if (item.detail) b`  ${item.detail}`
       if (item.fix) {
-        lines.push(`  Fix: ${item.fix.summary}`)
+        b`  Fix: ${item.fix.summary}`
         if ('steps' in item.fix) {
           for (const [index, step] of item.fix.steps.entries()) {
-            lines.push(`  ${String(index + 1)}. ${step}`)
+            b`  ${String(index + 1)}. ${step}`
           }
         }
         if ('command' in item.fix) {
-          lines.push(`  Command: \`${item.fix.command}\``)
+          b`  Command: \`${item.fix.command}\``
         }
         for (const doc of item.fix.docs) {
-          lines.push(`  Fix docs: [${doc.label}](${doc.url})`)
+          b`  Fix docs: [${doc.label}](${doc.url})`
         }
       }
       for (const hint of item.hints) {
-        lines.push(`  Hint: ${hint}`)
+        b`  Hint: ${hint}`
       }
       for (const doc of item.docs) {
-        lines.push(`  Docs: [${doc.label}](${doc.url})`)
+        b`  Docs: [${doc.label}](${doc.url})`
       }
     }
 
-    lines.push('')
-    lines.push('</details>')
+    b``
+    b`</details>`
   }
 
   if (summary.runbook) {
-    lines.push('')
-    lines.push(`#### ${summary.runbook.title}`)
-    lines.push('')
+    b``
+    b`#### ${summary.runbook.title}`
+    b``
 
     for (const [index, command] of summary.runbook.commands.entries()) {
-      lines.push(`${String(index + 1)}. \`${command}\``)
+      b`${String(index + 1)}. \`${command}\``
     }
 
     if (summary.runbook.note) {
-      lines.push('')
-      lines.push(summary.runbook.note)
+      b``
+      b(summary.runbook.note)
     }
   }
 
   if (summary.deferredChecks.length > 0) {
-    lines.push('')
-    lines.push('#### Could Still Go Wrong Locally')
-    lines.push('')
-    lines.push(
-      'This comment cannot verify your local machine. Before applying the manual preview release, these checks still need to pass:',
-    )
-    lines.push('')
+    b``
+    b`#### Could Still Go Wrong Locally`
+    b``
+    b`This comment cannot verify your local machine. Before applying the manual preview release, these checks still need to pass:`
+    b``
 
     for (const item of summary.deferredChecks) {
-      lines.push(
-        `- \`${item.ruleId}\`: prevents ${item.preventsDescriptions.join('; ')}. Check with \`${item.checkCommand}\`.`,
-      )
+      b`- \`${item.ruleId}\`: prevents ${item.preventsDescriptions.join('; ')}. Check with \`${item.checkCommand}\`.`
     }
   }
 
-  return Str.Text.unlines(lines)
+  return b.render()
 }

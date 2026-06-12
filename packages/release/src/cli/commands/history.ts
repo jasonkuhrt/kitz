@@ -6,15 +6,22 @@
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
-import { Console, Effect, Layer, Option } from 'effect'
+import { Console, Effect, Layer, Option, Schema } from 'effect'
 import { Command, Flag } from 'effect/unstable/cli'
 import * as Explorer from '../../api/explorer/__.js'
 import {
-  parsePositiveIntegerOption,
   renderPreviewPublishReport,
   resolvePreviewPublishSurface,
   toPreviewPublishReport,
 } from './history-lib.js'
+
+const PositiveInt = Schema.Number.check(
+  Schema.isInt({ message: 'Expected an integer' }),
+  Schema.isBetween(
+    { minimum: 1, maximum: Number.MAX_SAFE_INTEGER },
+    { message: 'Expected a positive integer' },
+  ),
+)
 
 export const history = Command.make(
   'history',
@@ -24,24 +31,26 @@ export const history = Command.make(
       Flag.withDescription('Output format'),
       Flag.withDefault('text'),
     ),
-    pr: Flag.string('pr').pipe(
+    pr: Flag.integer('pr').pipe(
       Flag.withAlias('p'),
       Flag.withDescription(
         'Explicit pull request number to inspect instead of the connected branch',
       ),
+      Flag.withSchema(PositiveInt),
       Flag.optional,
     ),
-    limit: Flag.string('limit').pipe(
+    limit: Flag.integer('limit').pipe(
       Flag.withAlias('n'),
       Flag.withDescription('Maximum number of publish records to render (default: all)'),
+      Flag.withSchema(PositiveInt),
       Flag.optional,
     ),
   },
   ({ format, pr, limit }) =>
     Effect.gen(function* () {
       const context = yield* Explorer.resolveGitHubContext()
-      const prNumber = yield* parsePositiveIntegerOption(Option.getOrUndefined(pr), 'pr')
-      const limitValue = yield* parsePositiveIntegerOption(Option.getOrUndefined(limit), 'limit')
+      const prNumber = Option.getOrUndefined(pr)
+      const limitValue = Option.getOrUndefined(limit)
 
       const surface = yield* resolvePreviewPublishSurface(context, {
         ...(prNumber !== undefined ? { prNumber } : {}),

@@ -1,3 +1,4 @@
+import { Sch } from '@kitz/sch'
 import { Effect, Option, Schema, SchemaGetter, SchemaIssue } from 'effect'
 import { Author } from './author.js'
 import { Sha } from './sha.js'
@@ -44,21 +45,13 @@ const CommitDate = Schema.String.pipe(
  * The `message` field contains the full raw commit message (subject + body).
  * Use a parser like ConventionalCommits to extract structure from it.
  */
-export class Commit extends Schema.TaggedClass<Commit>()('Commit', {
+export class Commit extends Sch.TaggedClass<Commit>()('Commit', {
   hash: Sha,
   /** Full raw commit message (subject line + body) */
   message: Schema.String,
   author: Author,
   date: CommitDate,
-}) {
-  static is = Schema.is(Commit)
-  static decode = Schema.decodeUnknownEffect(Commit)
-  static decodeSync = Schema.decodeUnknownSync(Commit)
-  static encode = Schema.encodeUnknownEffect(Commit)
-  static encodeSync = Schema.encodeUnknownSync(Commit)
-  static equivalence = Schema.toEquivalence(Commit)
-  static ordered = false as const
-}
+}) {}
 
 /**
  * Fields type for ParsedCommit with the message field replaced by a parsed schema.
@@ -98,6 +91,7 @@ const baseFields = {
  * commit.message // ← ConventionalCommits.Commit.Commit (not string)
  * ```
  */
+/* oxlint-disable typescript/no-unnecessary-type-parameters -- Self is the Effect Schema self-type pattern (class extends ParsedCommit<Self>()(...)), Tag preserves the literal `_tag` type, and P the parsed message schema type in the returned class; widening any of them loses public signature precision */
 export const ParsedCommit =
   <Self = never>(identifier?: string) =>
   <Tag extends string, P extends Schema.Top>(tag: Tag, parsedSchema: P) =>
@@ -107,3 +101,4 @@ export const ParsedCommit =
       date: baseFields.date,
       message: parsedSchema,
     })
+/* oxlint-enable typescript/no-unnecessary-type-parameters */

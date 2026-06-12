@@ -1,3 +1,4 @@
+import { Err } from '@kitz/core'
 import { Tui } from '@kitz/tui'
 import type { KeyEvent } from '@opentui/core'
 import { Array as A, Effect, Option } from 'effect'
@@ -122,8 +123,7 @@ export const initialDashboardState: DashboardState = {
   doctorRequestSeq: 0,
 }
 
-const toMessage = (error: unknown): string =>
-  error instanceof Error ? error.message : String(error)
+const toMessage = (error: unknown): string => Err.ensure(error).message
 
 const nextLifecycle = (current: Lifecycle, direction: 'next' | 'previous'): Lifecycle => {
   const index = Option.getOrElse(
@@ -392,7 +392,8 @@ export const dashboardUpdate = (
         doctor: failure(action.message),
         message: `Doctor error: ${action.message}`,
       })
-    case 'DoctorBuilt':
+    // 'DoctorBuilt'
+    default:
       // Stale: a newer BuildDoctor has been issued since this one. Discard.
       if (action.requestId !== state.doctorRequestSeq) return Tui.Transition.next(state)
       return Tui.Transition.next({
@@ -516,7 +517,8 @@ export const runDashboardCommand = (
           ),
         )
       })
-    case 'Quit':
+    // 'Quit'
+    default:
       return Effect.gen(function* () {
         const control = yield* Tui.Control
         yield* control.exit

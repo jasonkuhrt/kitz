@@ -42,7 +42,7 @@ describe('plan.packages-repository-match-canonical', () => {
       ]),
     )
 
-    const result = await Effect.runPromise(rule.check.pipe(Effect.provide(layer)))
+    const result = await Effect.runPromise(rule.check().pipe(Effect.provide(layer)))
 
     expect(Violation.is(result)).toBe(true)
     expect(Violation.is(result) ? result.summary : undefined).toContain('jasonkuhrt/kitz')

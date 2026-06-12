@@ -106,11 +106,25 @@ describe('renderPlan', () => {
     expect(output).toContain('patch')
   })
 
-  test('shows commit count', () => {
+  test('shows commit count in the Commits column', () => {
+    // 7 commits: a count that cannot collide with any version digit in the row.
     const output = renderPlan(
-      makeOfficialPlan([makeRelease('@kitz/core', 'core', '1.0.0', '1.0.1', 'patch')]),
+      makeOfficialPlan([
+        Official.make({
+          package: pkg('@kitz/core', 'core'),
+          version: OfficialIncrement.make({
+            from: Semver.fromString('1.0.0'),
+            to: Semver.fromString('1.0.1'),
+            bump: 'patch',
+          }),
+          commits: Array.from({ length: 7 }, (_, index) => commit('core', `commit ${index}`)),
+        }),
+      ]),
     )
-    expect(output).toContain('1')
+
+    expect(output).toContain('Commits')
+    const row = output.split('\n').find((line) => line.includes('@kitz/core'))
+    expect(row?.trimEnd().endsWith('7')).toBe(true)
   })
 
   test('sorts release rows by commit count descending', () => {

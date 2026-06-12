@@ -1,8 +1,9 @@
 import { Fs } from '@kitz/fs'
+import { Graph } from '@kitz/graph'
 import { Resource } from '@kitz/resource'
 import { Semver } from '@kitz/semver'
 import { FileSystem } from 'effect'
-import { Effect, HashMap, Option } from 'effect'
+import { Effect, Option } from 'effect'
 import { buildDependencyGraph, type DependencyGraph } from '../analyzer/cascade.js'
 import type { Analysis } from '../analyzer/models/analysis.js'
 import type { ReleaseCommit } from '../analyzer/models/commit.js'
@@ -83,41 +84,6 @@ const resolveRequestedPackage = (
   requestedPackage: string,
 ): Package | undefined => packages.find((pkg) => matchesRequestedPackage(pkg, requestedPackage))
 
-const findPathBetweenPackages = (
-  dependencyGraph: DependencyGraph,
-  startPackageName: string,
-  targetPackageName: string,
-): readonly string[] | undefined => {
-  if (startPackageName === targetPackageName) return [startPackageName]
-
-  const queue: Array<{ readonly current: string; readonly path: readonly string[] }> = [
-    { current: startPackageName, path: [startPackageName] },
-  ]
-  const visited = [startPackageName]
-
-  while (queue.length > 0) {
-    const next = queue.shift()!
-    const dependents = Option.getOrElse(
-      HashMap.get(dependencyGraph, next.current),
-      (): readonly string[] => [],
-    )
-
-    for (const dependent of dependents) {
-      if (visited.includes(dependent)) continue
-
-      const path = [...next.path, dependent]
-      if (dependent === targetPackageName) {
-        return path
-      }
-
-      visited.push(dependent)
-      queue.push({ current: dependent, path })
-    }
-  }
-
-  return undefined
-}
-
 const buildDependencyPaths = (
   dependencyGraph: DependencyGraph,
   packages: readonly Package[],
@@ -127,10 +93,8 @@ const buildDependencyPaths = (
   const dependencyPaths: ExplanationDependencyPath[] = []
 
   for (const impactedPackage of impactedPackages) {
-    const path = findPathBetweenPackages(
-      dependencyGraph,
-      impactedPackage.name.moniker,
-      targetPackage.name.moniker,
+    const path = Option.getOrUndefined(
+      Graph.findPath(dependencyGraph, impactedPackage.name.moniker, targetPackage.name.moniker),
     )
 
     if (!path) continue
@@ -188,7 +152,7 @@ export const explain = (
       (impact) => impact.package.name.moniker === targetPackage.name.moniker,
     )
     if (cascadeImpact) {
-      const dependencyGraph = yield* buildDependencyGraph([...options.packages])
+      const dependencyGraph = yield* buildDependencyGraph(options.packages)
       const impactedPackages = analysis.impacts.map((impact) => impact.package)
       const dependencyPaths = buildDependencyPaths(
         dependencyGraph,
@@ -226,7 +190,7 @@ export const explain = (
       decision: 'unchanged',
       requestedPackage: options.requestedPackage,
       package: toExplainedPackage(targetPackage),
-      currentVersion: toVersionString(findLatestTagVersion(targetPackage.name, [...analysis.tags])),
+      currentVersion: toVersionString(findLatestTagVersion(targetPackage.name, analysis.tags)),
       nextOfficialVersion: null,
     } satisfies UnchangedExplanation
   })
