@@ -59,8 +59,8 @@
         "effect",
       ],
     },
-    "packages/fs": {
-      "name": "@kitz/fs",
+    "packages/effect": {
+      "name": "@kitz/effect",
       "version": "0.0.0-kitz-release",
       "dependencies": {
         "tinyglobby": "^0.2.16",
@@ -143,7 +143,7 @@
 
     "@kitz/core": ["@kitz/core@workspace:packages/core"],
 
-    "@kitz/fs": ["@kitz/fs@workspace:packages/fs"],
+    "@kitz/effect": ["@kitz/effect@workspace:packages/effect"],
 
     "@kitz/json": ["@kitz/json@workspace:packages/json"],
 

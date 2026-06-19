@@ -1,17 +1,18 @@
 {
-  "name": "@kitz/fs",
+  "name": "@kitz/effect",
   "version": "0.0.0-kitz-release",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jasonkuhrt/kitz.git"
   },
-  "description": "Filesystem utilities",
+  "description": "Filesystem operations and a typed path ADT for the Effect ecosystem",
   "type": "module",
   "sideEffects": false,
   "exports": {
     ".": "./src/_.ts",
-    "./__": "./src/__.ts",
+    "./FileSystem": "./src/__.ts",
+    "./Path": "./src/path/_.ts",
     "./path/types/fileName": "./src/path/types/fileName.ts"
   },
   "dependencies": {
