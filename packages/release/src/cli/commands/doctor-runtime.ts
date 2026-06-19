@@ -1,13 +1,7 @@
 import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { Effect, Layer, Option } from 'effect'
-import * as Analyzer from '../../api/analyzer/__.js'
-import * as Commentator from '../../api/commentator/__.js'
-import * as Config from '../../api/config.js'
-import * as Lint from '../../api/lint/__.js'
-import * as Planner from '../../api/planner/__.js'
-import * as ProjectedSquashCommit from '../../api/projected-squash-commit.js'
-import * as Publishing from '../../api/publishing.js'
+import * as Api from '../../api/__.js'
 import {
   commandLintRule,
   createCommandLintConfig,
@@ -15,16 +9,16 @@ import {
 } from '../lint-rule-config.js'
 
 export interface DoctorPlanRuntimeContext {
-  readonly config: Config.ResolvedConfig
-  readonly analysis: Analyzer.Models.Analysis
-  readonly packages: readonly Analyzer.Workspace.Package[]
+  readonly config: Api.Config.ResolvedConfig
+  readonly analysis: Api.Analyzer.Models.Analysis
+  readonly packages: readonly Api.Analyzer.Workspace.Package[]
   readonly currentBranch: string
   readonly pullRequest: Github.PullRequest | null
-  readonly diff: Lint.Diff | null
+  readonly diff: Api.Lint.Diff | null
   readonly diffRemote: string
 }
 
-const toMonorepo = (packages: readonly Analyzer.Workspace.Package[]) => ({
+const toMonorepo = (packages: readonly Api.Analyzer.Workspace.Package[]) => ({
   packages: packages.map((pkg) => ({
     name: pkg.name.moniker,
     path: pkg.path.toString(),
@@ -40,15 +34,15 @@ const emptyPrContext = {
   titleParseError: Option.none(),
 } as const
 
-export const runDoctorReportForPlan = (context: DoctorPlanRuntimeContext, plan: Planner.Plan) =>
+export const runDoctorReportForPlan = (context: DoctorPlanRuntimeContext, plan: Api.Planner.Plan) =>
   Effect.gen(function* () {
     const plannedItems = [...plan.releases, ...plan.cascades]
-    const channel = Publishing.resolvePublishChannel(context.config.publishing, plan.lifecycle)
+    const channel = Api.Publishing.resolvePublishChannel(context.config.publishing, plan.lifecycle)
     const projectedSquashCommit =
       context.pullRequest && plan.releases.length > 0
-        ? ProjectedSquashCommit.preview({
+        ? Api.ProjectedSquashCommit.preview({
             actualTitle: context.pullRequest.title,
-            impacts: ProjectedSquashCommit.collectScopeImpacts(context.analysis, {
+            impacts: Api.ProjectedSquashCommit.collectScopeImpacts(context.analysis, {
               scopes: plan.releases.map((item) => item.package.scope),
             }),
           })
@@ -90,7 +84,7 @@ export const runDoctorReportForPlan = (context: DoctorPlanRuntimeContext, plan: 
                 projectedHeader: projectedSquashCommit.projectedHeader,
               },
               enabled: 'auto',
-              severity: Lint.Warn.make({}),
+              severity: Api.Lint.Warn.make({}),
               preserveExistingOverrides: true,
             }),
           ]
@@ -109,52 +103,52 @@ export const runDoctorReportForPlan = (context: DoctorPlanRuntimeContext, plan: 
       rules: doctorRules,
     })
     const diffLayer = context.diff
-      ? Layer.succeed(Lint.DiffService, context.diff)
-      : Lint.DefaultDiffLayer
+      ? Layer.succeed(Api.Lint.DiffService, context.diff)
+      : Api.Lint.DefaultDiffLayer
     const hasDiff = context.diff !== null && context.diff.files.length > 0
     const prContext = context.pullRequest
-      ? yield* Lint.fromPullRequest(context.pullRequest)
+      ? yield* Api.Lint.fromPullRequest(context.pullRequest)
       : emptyPrContext
 
-    return yield* Lint.check({ config: lintConfig }).pipe(
+    return yield* Api.Lint.check({ config: lintConfig }).pipe(
       Effect.provide(
         Layer.mergeAll(
           diffLayer,
-          Lint.DefaultGitHubLayer,
-          Lint.Preconditions.make({
+          Api.Lint.DefaultGitHubLayer,
+          Api.Lint.Preconditions.make({
             hasOpenPR: context.pullRequest !== null,
             hasDiff,
             hasReleasePlan: true,
             isMonorepo: context.packages.length > 1,
           }),
-          Lint.ReleasePlan.make(
+          Api.Lint.ReleasePlan.make(
             plannedItems.map((item) => ({
               packageName: item.package.name,
               packagePath: item.package.path,
               version: item.nextVersion,
             })),
           ),
-          Lint.ReleaseContext.make({
+          Api.Lint.ReleaseContext.make({
             lifecycle: plan.lifecycle,
             publishing: context.config.publishing,
             trunk: context.config.trunk,
             currentBranch: context.currentBranch,
           }),
-          Lint.ConventionalCommitSettings.make({
+          Api.Lint.ConventionalCommitSettings.make({
             resolvedTypes: context.config.resolvedConventionalCommitTypes,
           }),
         ),
       ),
-      Effect.provideService(Lint.MonorepoService, toMonorepo(context.packages)),
-      Effect.provideService(Lint.PrService, prContext),
+      Effect.provideService(Api.Lint.MonorepoService, toMonorepo(context.packages)),
+      Effect.provideService(Api.Lint.PrService, prContext),
     )
   })
 
 export const createDoctorSummaryForPlan = (
-  plan: Planner.Plan,
-  report: Lint.Report,
-): Commentator.DoctorSummary | undefined =>
-  Commentator.createDoctorSummary(report, {
+  plan: Api.Planner.Plan,
+  report: Api.Lint.Report,
+): Api.Commentator.DoctorSummary | undefined =>
+  Api.Commentator.createDoctorSummary(report, {
     lifecycle: plan.lifecycle,
     plannedPackages: plan.releases.length + plan.cascades.length,
   })

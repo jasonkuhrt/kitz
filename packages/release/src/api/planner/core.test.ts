@@ -2,8 +2,7 @@ import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { Pkg } from '@kitz/pkg'
 import { Semver } from '@kitz/semver'
-import { Effect, HashMap, Layer, Option } from 'effect'
-import { TestClock } from 'effect/testing'
+import { Effect, HashMap, Option } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import { Env } from '@kitz/env'
 import { Analysis, Impact, makeCascadeCommit } from '../analyzer/models/__.js'
@@ -15,7 +14,6 @@ import { Candidate } from './models/item-candidate.js'
 import { Ephemeral } from './models/item-ephemeral.js'
 import { ephemeral } from './ephemeral.js'
 import { planLifecycle } from './core.js'
-import { official } from './official.js'
 
 const packages: readonly Package[] = [
   {
@@ -29,18 +27,6 @@ const packages: readonly Package[] = [
     path: Fs.Path.AbsDir.fromString('/repo/packages/cli/'),
   },
 ]
-
-const platformPackage: Package = {
-  scope: 'platform',
-  name: Pkg.Moniker.parse('@kitz/platform'),
-  path: Fs.Path.AbsDir.fromString('/repo/packages/platform/'),
-}
-
-const assertPackage: Package = {
-  scope: 'assert',
-  name: Pkg.Moniker.parse('@kitz/assert'),
-  path: Fs.Path.AbsDir.fromString('/repo/packages/assert/'),
-}
 
 const analysis = Analysis.make({
   impacts: [
@@ -110,7 +96,6 @@ describe('planner core', () => {
             commits: impact.commits,
           })
         },
-        toSecondaryRelease: (release) => release,
         toCascades: ({ primaryReleases, dependencyGraph, tags }) => {
           expect(primaryReleases.map((release) => release.package.name.moniker)).toEqual([
             '@kitz/core',
@@ -128,80 +113,6 @@ describe('planner core', () => {
     expect(result.lifecycle).toBe('official')
     expect(result.releases).toHaveLength(1)
     expect(result.cascades).toHaveLength(0)
-  })
-
-  test('adds runtime workspace dependencies needed to pack planned packages', async () => {
-    const cliPackage = packages[1]!
-    const result = await Effect.runPromise(
-      official(
-        Analysis.make({
-          impacts: [
-            Impact.make({
-              package: cliPackage,
-              bump: 'patch',
-              commits: [makeCascadeCommit('cli', 'fix')],
-              currentVersion: Option.some(Semver.fromString('2.0.0')),
-            }),
-          ],
-          cascades: [],
-          unchanged: [packages[0]!, platformPackage],
-          tags: ['@kitz/cli@2.0.0', '@kitz/core@1.0.0'],
-        }),
-        { packages: [...packages, assertPackage, platformPackage] },
-      ).pipe(
-        Effect.provide(
-          Fs.Memory.layer({
-            '/repo/packages/core/package.json': JSON.stringify({
-              name: '@kitz/core',
-              version: '1.0.0',
-            }),
-            '/repo/packages/cli/package.json': JSON.stringify({
-              name: '@kitz/cli',
-              version: '2.0.0',
-              dependencies: {
-                '@kitz/platform': 'workspace:*',
-                '@kitz/core': '^1.0.0',
-              },
-              peerDependencies: {
-                '@kitz/assert': 'workspace:^',
-              },
-              devDependencies: {
-                '@kitz/core': 'workspace:*',
-              },
-            }),
-            '/repo/packages/platform/package.json': JSON.stringify({
-              name: '@kitz/platform',
-              version: '0.0.0-kitz-release',
-            }),
-            '/repo/packages/assert/package.json': JSON.stringify({
-              name: '@kitz/assert',
-              version: '0.0.0-kitz-release',
-            }),
-          }),
-        ),
-      ),
-    )
-
-    expect(result.releases.map((release) => release.package.name.moniker)).toEqual(['@kitz/cli'])
-    expect(result.cascades.map((release) => release.package.name.moniker).toSorted()).toEqual([
-      '@kitz/assert',
-      '@kitz/platform',
-    ])
-    expect(result.cascades.every((release) => release.nextVersion.toString() === '0.0.1')).toBe(
-      true,
-    )
-  })
-
-  test('plans read timestamps from Effect Clock', async () => {
-    const timestamp = '2026-05-14T01:02:03.000Z'
-    const result = await Effect.runPromise(
-      Effect.gen(function* () {
-        yield* TestClock.setTime(Date.parse(timestamp))
-        return yield* official(singleImpactAnalysis, { packages })
-      }).pipe(Effect.provide(Layer.mergeAll(workspaceLayer, TestClock.layer()))),
-    )
-
-    expect(result.timestamp).toBe(timestamp)
   })
 
   test('candidate planning preserves candidate typing and remaps cascade iterations', async () => {

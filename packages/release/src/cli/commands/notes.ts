@@ -7,11 +7,12 @@
  * commit impacts, and formats them as markdown or JSON. Optionally
  * filters to a specific package.
  */
+import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
-import { Console, Effect, Layer, Option } from 'effect'
-import { Argument, Command, Flag } from 'effect/unstable/cli'
-import * as Notes from '../../api/notes/__.js'
+import { Oak } from '@kitz/oak'
+import { Console, Effect, Layer, Schema, SchemaGetter } from 'effect'
+import * as Api from '../../api/__.js'
 import { FileSystemLayer } from '../../platform.js'
 import {
   isReadyCommandWorkspace,
@@ -19,79 +20,80 @@ import {
   noPackagesFoundMessage,
 } from './command-workspace.js'
 
-export const notes = Command.make(
-  'notes',
-  {
-    pkg: Argument.string('pkg').pipe(
-      Argument.withDescription('Filter to specific package (default: all packages)'),
-      Argument.optional,
+/**
+ * release notes [pkg]
+ *
+ * Show unreleased release notes since the last release.
+ */
+const args = Oak.Command.create()
+  .use(Oak.EffectSchema)
+  .description('Show unreleased release notes since the last release')
+  .parameter(
+    'pkg p',
+    Schema.UndefinedOr(Schema.String).pipe(
+      Schema.annotate({ description: 'Filter to specific package (default: all packages)' }),
     ),
-    format: Flag.choice('format', ['md', 'json']).pipe(
-      Flag.withAlias('f'),
-      Flag.withDescription('Output format'),
-      Flag.withDefault('md'),
+  )
+  .parameter(
+    'format f',
+    Schema.UndefinedOr(Schema.Literals(['md', 'json']))
+      .pipe(
+        Schema.decodeTo(Schema.Literals(['md', 'json']), {
+          decode: SchemaGetter.transform((v) => v ?? 'md'),
+          encode: SchemaGetter.transform((v) => v),
+        }),
+      )
+      .pipe(Schema.annotate({ description: 'Output format', default: 'md' })),
+  )
+  .parameter(
+    'since s',
+    Schema.UndefinedOr(Schema.String).pipe(
+      Schema.annotate({
+        description: 'Show changes since this tag (default: last release tag)',
+      }),
     ),
-    since: Flag.string('since').pipe(
-      Flag.withAlias('s'),
-      Flag.withDescription('Show changes since this tag (default: last release tag)'),
-      Flag.optional,
+  )
+  .parameter(
+    'until u',
+    Schema.UndefinedOr(Schema.String).pipe(
+      Schema.annotate({
+        description: 'Stop at this tag or SHA instead of HEAD',
+      }),
     ),
-    until: Flag.string('until').pipe(
-      Flag.withAlias('u'),
-      Flag.withDescription('Stop at this tag or SHA instead of HEAD'),
-      Flag.optional,
-    ),
-  },
-  ({ pkg, format, since, until }) =>
-    Effect.gen(function* () {
-      const env = yield* Env.Env
-      const git = yield* Git.Git
+  )
+  .parse()
 
-      const workspace = yield* loadCommandWorkspace()
-      if (!isReadyCommandWorkspace(workspace)) {
-        yield* Console.log(noPackagesFoundMessage)
-        return
-      }
-      const { packages } = workspace
+Cli.run(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive))(
+  Effect.gen(function* () {
+    const git = yield* Git.Git
 
-      // #216: validate an explicitly-requested package against the workspace, so a
-      // typo'd name reports "not found" with the available identifiers rather than
-      // masquerading as "No unreleased release notes found."
-      if (Option.isSome(pkg)) {
-        const requested = pkg.value
-        const known = packages.some((p) => p.scope === requested || p.name.moniker === requested)
-        if (!known) {
-          yield* Console.error(`Package "${requested}" was not found in the workspace.`)
-          yield* Console.error('Available package identifiers:')
-          for (const p of packages) yield* Console.error(`  ${p.scope}`)
-          return env.exit(1)
-        }
-      }
+    const workspace = yield* loadCommandWorkspace()
+    if (!isReadyCommandWorkspace(workspace)) {
+      yield* Console.log(noPackagesFoundMessage)
+      return
+    }
+    const { packages } = workspace
 
-      const tags = yield* git.getTags()
-      const result = yield* Notes.generate({
-        packages,
-        tags,
-        since: Option.getOrUndefined(since),
-        until: Option.getOrUndefined(until),
-        filter: Option.isSome(pkg) ? [pkg.value] : undefined,
-        resolvedConventionalCommitTypes: workspace.config.resolvedConventionalCommitTypes,
-        commitOverrides: workspace.config.commitOverrides,
-      })
+    const tags = yield* git.getTags()
+    const result = yield* Api.Notes.generate({
+      packages,
+      tags,
+      since: args.since,
+      until: args.until,
+      filter: args.pkg ? [args.pkg] : undefined,
+      resolvedConventionalCommitTypes: workspace.config.resolvedConventionalCommitTypes,
+    })
 
-      if (result.notes.length === 0) {
-        yield* Console.log('No unreleased release notes found.')
-        return
-      }
+    if (result.notes.length === 0) {
+      yield* Console.log('No unreleased release notes found.')
+      return
+    }
 
-      if (format === 'json') {
-        yield* Console.log(JSON.stringify(Notes.toJsonNotes(result.notes), null, 2))
-        return
-      }
+    if (args.format === 'json') {
+      yield* Console.log(JSON.stringify(Api.Notes.toJsonNotes(result.notes), null, 2))
+      return
+    }
 
-      yield* Console.log(Notes.renderMarkdownNotes(result.notes))
-    }),
-).pipe(
-  Command.withDescription('Show unreleased release notes since the last release'),
-  Command.provide(Layer.mergeAll(Env.Live, FileSystemLayer, Git.GitLive)),
+    yield* Console.log(Api.Notes.renderMarkdownNotes(result.notes))
+  }),
 )

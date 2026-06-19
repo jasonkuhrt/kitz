@@ -17,21 +17,18 @@
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
-    "@types/object-inspect": "catalog:",
-    "effect": "catalog:",
-    "fast-check": "catalog:",
-    "object-inspect": "catalog:",
-    "type-fest": "catalog:"
+    "@types/object-inspect": "^1.13.0",
+    "effect": "4.0.0-beta.70",
+    "fast-check": "^4.8.0",
+    "object-inspect": "^1.13.4",
+    "type-fest": "^5.6.0"
   },
   "scripts": {
     "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
     "dev": "tsgo -p tsconfig.build.json --watch",
     "check:types": "tsgo --noEmit",
     "check:lint": "bun ../../tools/run-lint.ts src/",
-    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error",
-    "test": "bun test",
-    "test:coverage": "bun test --coverage",
-    "check:cov": "bun run test:coverage"
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error"
   },
   "files": [
     "build",

@@ -1,4 +1,5 @@
 import { Array as A, HashMap, Option, Schema } from 'effect'
+import { ReleaseIoDomain } from './domain.js'
 import { PublishDriverId, publishDriverIdValues } from './driver-id.js'
 
 export const publishCapabilityValues = [
@@ -129,7 +130,7 @@ export const CapabilityResult = Schema.Union([Supported, Unsupported])
 export const decodeResultOption = Schema.decodeUnknownOption(CapabilityResult)
 export const isResult = Schema.is(CapabilityResult)
 
-export const CapabilityOwner = Schema.Literals(['packagemanager', 'packageregistry', 'credentials'])
+export const CapabilityOwner = ReleaseIoDomain
 export type CapabilityOwner = typeof CapabilityOwner.Type
 
 export const CapabilitySupportState = Schema.Literals(['supported', 'unsupported'])

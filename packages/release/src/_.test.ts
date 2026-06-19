@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 import os from 'node:os'
 import path from 'node:path'
@@ -11,11 +11,10 @@ import { Semver } from '@kitz/semver'
 import { Test } from '@kitz/test'
 import { Effect, Layer, Option, Schema } from 'effect'
 import { describe, expect, test } from 'bun:test'
-import * as Analyzer from './api/analyzer/__.js'
 import * as ReleaseConfig from './api/config.js'
-import * as Planner from './api/planner/__.js'
-import * as Publishing from './api/publishing.js'
-import * as ReleaseContract from './api/release-contract.js'
+import { Analyzer, Planner } from './__.js'
+
+// ─── Test Helpers ───────────────────────────────────────────────────
 
 const mockPackages: Analyzer.Workspace.Package[] = [
   {
@@ -63,22 +62,39 @@ const makePackageJson = (
     2,
   )
 
+/** Type-safe version assertion */
 const expectVersion = (actual: Semver.Semver | undefined, expected: string) => {
   expect(actual).toBeDefined()
   expect(Semver.equivalence(actual!, Semver.fromString(expected))).toBe(true)
 }
 
-const pkgJson = (
-  scope: string,
-  options?: Parameters<typeof makePackageJson>[2],
-): readonly [string, string] => [
-  `/repo/packages/${scope}/package.json`,
-  makePackageJson(`@kitz/${scope}`, '1.0.0', options),
-]
+const JsonRecordFromStringSchema = Schema.fromJsonString(
+  Schema.Record(Schema.String, Schema.Unknown),
+)
+const decodeJsonRecordSync = Schema.decodeUnknownSync(JsonRecordFromStringSchema)
 
-const packageJsons = (...entries: readonly (readonly [string, string])[]) =>
-  Object.fromEntries(entries)
+const getOptionalStringField = (
+  record: Record<string, unknown>,
+  key: string,
+): string | undefined => {
+  const value = record[key]
+  return typeof value === 'string' ? value : undefined
+}
 
+const getOptionalRecordField = (
+  record: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> | undefined => {
+  const value = record[key]
+  return typeof value === 'object' && value !== null
+    ? (value as Record<string, unknown>)
+    : undefined
+}
+
+/**
+ * Pipeline helper: analyze → plan official.
+ * Mirrors the two-step pipeline CLI commands use.
+ */
 const analyzeAndPlanOfficial = (
   packages: readonly Analyzer.Workspace.Package[],
   options?: Planner.Options,
@@ -94,142 +110,218 @@ const analyzeAndPlanOfficial = (
     return yield* Planner.official(analysis, { packages }, options)
   })
 
-const analyzeWorkspace = ({
-  git,
-  diskLayout,
-  until,
-}: {
-  readonly git: Parameters<typeof Git.Memory.make>[0]
-  readonly diskLayout?: Fs.Memory.DiskLayout
-  readonly until?: string
-}) =>
-  Effect.runPromise(
-    Effect.gen(function* () {
-      const gitService = yield* Git.Git
-      return yield* Analyzer.analyze({
-        packages: mockPackages,
-        tags: yield* gitService.getTags(),
-        ...(until === undefined ? {} : { until }),
-        resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}),
-      })
-    }).pipe(Effect.provide(makeTestLayer(git, diskLayout))),
-  )
+/**
+ * Pipeline helper: analyze → plan candidate.
+ */
+const analyzeAndPlanCandidate = (
+  packages: readonly Analyzer.Workspace.Package[],
+  options?: Planner.Options,
+) =>
+  Effect.gen(function* () {
+    const git = yield* Git.Git
+    const tags = yield* git.getTags()
+    const analysis = yield* Analyzer.analyze({
+      packages,
+      tags,
+      resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}),
+    })
+    return yield* Planner.candidate(analysis, { packages }, options)
+  })
 
-const runOfficial = ({
-  git,
-  diskLayout,
-  options,
-}: {
-  readonly git: Parameters<typeof Git.Memory.make>[0]
-  readonly diskLayout?: Fs.Memory.DiskLayout
-  readonly options?: Planner.Options
-}) =>
-  Effect.runPromise(
-    analyzeAndPlanOfficial(mockPackages, options).pipe(
-      Effect.provide(makeTestLayer(git, diskLayout)),
-    ),
-  )
+/**
+ * Pipeline helper: analyze → plan ephemeral.
+ */
+const analyzeAndPlanEphemeral = (
+  packages: readonly Analyzer.Workspace.Package[],
+  options?: Planner.EphemeralOptions,
+) =>
+  Effect.gen(function* () {
+    const git = yield* Git.Git
+    const tags = yield* git.getTags()
+    const analysis = yield* Analyzer.analyze({
+      packages,
+      tags,
+      resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}),
+    })
+    return yield* Planner.ephemeral(analysis, { packages }, options)
+  })
 
-describe('release status cli', () => {
-  test('reports not-started for a custom plan before .release exists', () => {
-    const projectDir = mkdtempSync(path.join(os.tmpdir(), 'kitz-release-status-'))
+describe('release package scripts', () => {
+  test('does not expose inert skipNpm configuration', () => {
+    expect('skipNpm' in ReleaseConfig.Config.fields).toBe(false)
+    expect('skipNpm' in ReleaseConfig.ResolvedConfig.fields).toBe(false)
+
+    const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8')
+    expect(readme).not.toContain('skipNpm')
+  })
+
+  test.skip('pins the package test script to the local release src tree', () => {
+    const packageJson = decodeJsonRecordSync(
+      readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+    )
+
+    const scripts = getOptionalRecordField(packageJson, 'scripts')
+    const testScript = scripts ? getOptionalStringField(scripts, 'test') : undefined
+    expect(testScript).toBeDefined()
+
+    const projectDir = mkdtempSync(path.join(os.tmpdir(), 'kitz-release-test-scope-'))
+    const releaseDir = path.join(projectDir, 'packages', 'release')
 
     try {
-      writeFileSync(
-        path.join(projectDir, 'package.json'),
-        JSON.stringify({ name: 'fixture', private: true, type: 'module' }, null, 2),
-      )
-
-      const plan = Planner.Plan.make({
-        lifecycle: 'official',
-        timestamp: '2026-06-09T00:00:00.000Z',
-        releases: [],
-        cascades: [],
-        planDigest: ReleaseContract.PlanDigest.make({
-          algorithm: 'sha256',
-          value: 'a'.repeat(64),
-        }),
-        publishIntent: ReleaseContract.publishIntentFromSemantics({
-          semantics: Publishing.resolvePublishSemantics({ lifecycle: 'official' }),
-          trunk: 'main',
-        }),
-      })
-      writeFileSync(
-        path.join(projectDir, 'release plan.json'),
-        `${JSON.stringify(Schema.encodeSync(Planner.Plan)(plan), null, 2)}\n`,
-      )
-
-      const result = spawnSync(
-        process.execPath,
-        [
-          fileURLToPath(new URL('./cli/cli.ts', import.meta.url)),
-          'status',
-          '--from',
-          'release plan.json',
-        ],
+      mkdirSync(path.join(releaseDir, 'src'), { recursive: true })
+      mkdirSync(
+        path.join(projectDir, '.claude', 'worktrees', 'mirror', 'packages', 'release', 'src'),
         {
-          cwd: projectDir,
-          encoding: 'utf8',
-          env: process.env,
+          recursive: true,
         },
       )
+
+      writeFileSync(
+        path.join(projectDir, 'vitest.config.ts'),
+        [
+          `import { defineConfig } from 'vitest/config'`,
+          ``,
+          `export default defineConfig({`,
+          `  test: {`,
+          `    globals: false,`,
+          `    globalSetup: ['./vitest.global-setup.ts'],`,
+          `  },`,
+          `})`,
+          ``,
+        ].join('\n'),
+        'utf8',
+      )
+      writeFileSync(
+        path.join(releaseDir, 'vitest.global-setup.ts'),
+        `export default async function setup() {}\n`,
+        'utf8',
+      )
+      writeFileSync(
+        path.join(releaseDir, 'package.json'),
+        JSON.stringify(
+          {
+            name: '@kitz/release-test-scope',
+            private: true,
+            type: 'module',
+            scripts: {
+              test: testScript,
+            },
+          },
+          null,
+          2,
+        ) + '\n',
+        'utf8',
+      )
+      writeFileSync(
+        path.join(releaseDir, 'src', 'real.test.ts'),
+        [
+          `import { expect, test } from 'bun:test'`,
+          ``,
+          `test('real release test runs', () => {`,
+          `  expect(true).toBe(true)`,
+          `})`,
+          ``,
+        ].join('\n'),
+        'utf8',
+      )
+      writeFileSync(
+        path.join(
+          projectDir,
+          '.claude',
+          'worktrees',
+          'mirror',
+          'packages',
+          'release',
+          'src',
+          'mirrored.test.ts',
+        ),
+        [
+          `import { test } from 'bun:test'`,
+          ``,
+          `test('mirrored worktree test should not run', () => {`,
+          `  throw new Error('mirrored worktree test should not run')`,
+          `})`,
+          ``,
+        ].join('\n'),
+        'utf8',
+      )
+
+      const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
+      symlinkSync(path.join(repoRoot, 'node_modules'), path.join(projectDir, 'node_modules'))
+      const result = spawnSync('/bin/sh', ['-c', `${testScript} --reporter=verbose`], {
+        cwd: releaseDir,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          PATH: `${path.join(repoRoot, 'node_modules', '.bin')}:${process.env['PATH'] ?? ''}`,
+        },
+      })
 
       if (result.error) {
         throw result.error
       }
 
-      expect(result.stderr).toBe('')
+      const output = `${result.stdout}\n${result.stderr}`
       expect(result.status).toBe(0)
-      expect(result.stdout).toContain('Release workflow status: [NOT-STARTED]')
-      expect(result.stdout).toContain("Run `release apply --from 'release plan.json'`")
+      expect(output).toContain('real release test runs')
+      expect(output).not.toContain('mirrored worktree test should not run')
+      expect(output).not.toContain('.claude/worktrees')
     } finally {
       rmSync(projectDir, { recursive: true, force: true })
     }
   })
 })
 
+// ─── Planner.official ────────────────────────────────────────────────
+
 describe('Planner.official', () => {
   test('no releases when no commits since last tag', async () => {
-    const result = await runOfficial({
-      git: {
-        tags: ['@kitz/core@1.0.0'],
-        commits: [],
-      },
+    const layer = makeTestLayer({
+      tags: ['@kitz/core@1.0.0'],
+      commits: [],
     })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
 
     expect(result.releases).toHaveLength(0)
     expect(result.cascades).toHaveLength(0)
   })
 
   test('uses the most recent package tag in git history as analysis baseline', async () => {
-    const result = await runOfficial({
-      git: {
-        tags: ['@kitz/core@9.0.0', '@kitz/cli@1.0.0'],
-        commits: [
-          Git.Memory.commit('chore: housekeeping'),
-          Git.Memory.commit('feat(cli): 1.0.0 release'),
-          Git.Memory.commit('chore: bridge'),
-          Git.Memory.commit('feat(core): 9.0.0 release'),
-        ],
-      },
+    const layer = makeTestLayer({
+      tags: ['@kitz/core@9.0.0', '@kitz/cli@1.0.0'],
+      commits: [
+        Git.Memory.commit('chore: housekeeping'),
+        Git.Memory.commit('feat(cli): 1.0.0 release'),
+        Git.Memory.commit('chore: bridge'),
+        Git.Memory.commit('feat(core): 9.0.0 release'),
+      ],
     })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
 
     expect(result.releases).toHaveLength(0)
     expect(result.cascades).toHaveLength(0)
   })
 
   test('keeps unreleased package commits even when another package was released more recently', async () => {
-    const result = await runOfficial({
-      git: {
-        tags: ['@kitz/core@9.0.0', '@kitz/cli@1.0.0'],
-        commits: [
-          Git.Memory.commit('feat(cli): 1.0.0 release'),
-          Git.Memory.commit('fix(core): patch after the core release'),
-          Git.Memory.commit('feat(core): feature after the core release'),
-          Git.Memory.commit('feat(core): 9.0.0 release'),
-        ],
-      },
+    const layer = makeTestLayer({
+      tags: ['@kitz/core@9.0.0', '@kitz/cli@1.0.0'],
+      commits: [
+        Git.Memory.commit('feat(cli): 1.0.0 release'),
+        Git.Memory.commit('fix(core): patch after the core release'),
+        Git.Memory.commit('feat(core): feature after the core release'),
+        Git.Memory.commit('feat(core): 9.0.0 release'),
+      ],
     })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
 
     expect(result.releases).toHaveLength(1)
     expect(result.releases[0]!.package.name.moniker).toBe('@kitz/core')
@@ -264,9 +356,14 @@ describe('Planner.official', () => {
       },
     )
     .test(async ({ input, output }) => {
-      const result = await runOfficial({
-        git: { tags: input.tags, commits: [Git.Memory.commit(input.commit)] },
+      const layer = makeTestLayer({
+        tags: input.tags,
+        commits: [Git.Memory.commit(input.commit)],
       })
+
+      const result = await Effect.runPromise(
+        Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+      )
 
       expect(result.releases).toHaveLength(1)
       expect(result.releases[0]!.bumpType).toBe(output.bump)
@@ -274,16 +371,18 @@ describe('Planner.official', () => {
     })
 
   test('aggregates multiple commits to highest bump', async () => {
-    const result = await runOfficial({
-      git: {
-        tags: ['@kitz/core@1.0.0'],
-        commits: [
-          Git.Memory.commit('fix(core): bug fix 1'),
-          Git.Memory.commit('feat(core): new feature'),
-          Git.Memory.commit('fix(core): bug fix 2'),
-        ],
-      },
+    const layer = makeTestLayer({
+      tags: ['@kitz/core@1.0.0'],
+      commits: [
+        Git.Memory.commit('fix(core): bug fix 1'),
+        Git.Memory.commit('feat(core): new feature'),
+        Git.Memory.commit('fix(core): bug fix 2'),
+      ],
     })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
 
     expect(result.releases).toHaveLength(1)
     expect(result.releases[0]!.bumpType).toBe('minor')
@@ -291,15 +390,17 @@ describe('Planner.official', () => {
   })
 
   test('handles multiple packages', async () => {
-    const result = await runOfficial({
-      git: {
-        tags: ['@kitz/core@1.0.0', '@kitz/cli@2.0.0'],
-        commits: [
-          Git.Memory.commit('feat(core): core feature'),
-          Git.Memory.commit('fix(cli): cli fix'),
-        ],
-      },
+    const layer = makeTestLayer({
+      tags: ['@kitz/core@1.0.0', '@kitz/cli@2.0.0'],
+      commits: [
+        Git.Memory.commit('feat(core): core feature'),
+        Git.Memory.commit('fix(cli): cli fix'),
+      ],
     })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
 
     expect(result.releases).toHaveLength(2)
 
@@ -314,35 +415,135 @@ describe('Planner.official', () => {
   })
 
   test('respects package filter', async () => {
-    const result = await runOfficial({
-      git: {
-        tags: [],
-        commits: [Git.Memory.commit('feat(core): core'), Git.Memory.commit('feat(cli): cli')],
-      },
-      options: { packages: ['@kitz/core'] },
+    const layer = makeTestLayer({
+      tags: [],
+      commits: [Git.Memory.commit('feat(core): core'), Git.Memory.commit('feat(cli): cli')],
     })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages, { packages: ['@kitz/core'] }), layer),
+    )
 
     expect(result.releases).toHaveLength(1)
     expect(result.releases[0]!.package.name.moniker).toBe('@kitz/core')
   })
 })
 
+// ─── Planner.candidate ───────────────────────────────────────────────
+
+describe('Planner.candidate', () => {
+  test('generates candidate version', async () => {
+    const layer = makeTestLayer({
+      tags: ['@kitz/core@1.0.0'],
+      commits: [Git.Memory.commit('feat(core): new feature')],
+    })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanCandidate(mockPackages), layer),
+    )
+
+    expect(result.releases).toHaveLength(1)
+    expectVersion(result.releases[0]!.nextVersion, '1.1.0-next.1')
+  })
+
+  test('increments candidate number', async () => {
+    const layer = makeTestLayer({
+      tags: ['@kitz/core@1.0.0', '@kitz/core@1.1.0-next.1', '@kitz/core@1.1.0-next.2'],
+      commits: [Git.Memory.commit('feat(core): new feature')],
+    })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanCandidate(mockPackages), layer),
+    )
+
+    expect(result.releases).toHaveLength(1)
+    expectVersion(result.releases[0]!.nextVersion, '1.1.0-next.3')
+  })
+})
+
+// ─── Planner.ephemeral ────────────────────────────────────────────────────
+
+describe('Planner.ephemeral', () => {
+  test('generates ephemeral version with explicit prNumber', async () => {
+    const layer = makeTestLayer({
+      tags: ['@kitz/core@1.0.0'],
+      commits: [Git.Memory.commit('feat(core): new feature')],
+      headSha: Git.Sha.make('abc1234'),
+    })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanEphemeral(mockPackages, { prNumber: 42 }), layer),
+    )
+
+    expect(result.releases).toHaveLength(1)
+    expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.42.1.gabc1234')
+  })
+
+  test('increments ephemeral iteration', async () => {
+    const layer = makeTestLayer({
+      tags: ['@kitz/core@1.0.0', '@kitz/core@0.0.0-pr.42.1.def5678'],
+      commits: [Git.Memory.commit('feat(core): new feature')],
+      headSha: Git.Sha.make('abc1234'),
+    })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanEphemeral(mockPackages, { prNumber: 42 }), layer),
+    )
+
+    expect(result.releases).toHaveLength(1)
+    expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.42.2.gabc1234')
+  })
+
+  test('detects PR number from environment', async () => {
+    const envWithPr = Env.Test({
+      cwd: Fs.Path.AbsDir.fromString('/repo/'),
+      vars: { PR_NUMBER: '123' },
+    })
+
+    const layer = Layer.mergeAll(
+      Git.Memory.make({
+        tags: ['@kitz/core@1.0.0'],
+        commits: [Git.Memory.commit('feat(core): feature')],
+        headSha: Git.Sha.make('def7890'),
+      }),
+      Fs.Memory.layer({}),
+      envWithPr,
+    )
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanEphemeral(mockPackages), layer),
+    )
+
+    expect(result.releases).toHaveLength(1)
+    expectVersion(result.releases[0]!.nextVersion, '0.0.0-pr.123.1.gdef7890')
+  })
+})
+
+// ─── Cascade Detection ──────────────────────────────────────────────
+
 describe('Cascade', () => {
   test('detects dependent packages', async () => {
-    const result = await runOfficial({
-      git: {
+    const diskLayout: Fs.Memory.DiskLayout = {
+      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+      '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
+        dependencies: {
+          '@kitz/core': 'workspace:*',
+        },
+      }),
+    }
+
+    const layer = Layer.mergeAll(
+      Git.Memory.make({
         tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0'],
         commits: [Git.Memory.commit('feat(core): new API')],
-      },
-      diskLayout: packageJsons(
-        pkgJson('core'),
-        pkgJson('cli', {
-          dependencies: {
-            '@kitz/core': 'workspace:*',
-          },
-        }),
-      ),
-    })
+      }),
+      Fs.Memory.layer(diskLayout),
+      testEnv,
+    )
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
 
     expect(result.releases).toHaveLength(1)
     expect(result.releases[0]!.package.name.moniker).toBe('@kitz/core')
@@ -353,25 +554,32 @@ describe('Cascade', () => {
   })
 
   test('detects transitive cascades', async () => {
-    const result = await runOfficial({
-      git: {
+    const diskLayout: Fs.Memory.DiskLayout = {
+      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+      '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
+        dependencies: {
+          '@kitz/core': 'workspace:*',
+        },
+      }),
+      '/repo/packages/utils/package.json': makePackageJson('@kitz/utils', '1.0.0', {
+        dependencies: {
+          '@kitz/core': 'workspace:*',
+        },
+      }),
+    }
+
+    const layer = Layer.mergeAll(
+      Git.Memory.make({
         tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0', '@kitz/utils@1.0.0'],
         commits: [Git.Memory.commit('feat(core): new API')],
-      },
-      diskLayout: packageJsons(
-        pkgJson('core'),
-        pkgJson('cli', {
-          dependencies: {
-            '@kitz/core': 'workspace:*',
-          },
-        }),
-        pkgJson('utils', {
-          dependencies: {
-            '@kitz/core': 'workspace:*',
-          },
-        }),
-      ),
-    })
+      }),
+      Fs.Memory.layer(diskLayout),
+      testEnv,
+    )
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
 
     expect(result.cascades).toHaveLength(2)
     const cascadeNames = result.cascades.map((c) => c.package.name.moniker)
@@ -380,20 +588,27 @@ describe('Cascade', () => {
   })
 
   test('annotates cascade commits with triggering primary release', async () => {
-    const result = await runOfficial({
-      git: {
+    const diskLayout: Fs.Memory.DiskLayout = {
+      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+      '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
+        dependencies: {
+          '@kitz/core': 'workspace:*',
+        },
+      }),
+    }
+
+    const layer = Layer.mergeAll(
+      Git.Memory.make({
         tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0'],
         commits: [Git.Memory.commit('feat(core): new API')],
-      },
-      diskLayout: packageJsons(
-        pkgJson('core'),
-        pkgJson('cli', {
-          dependencies: {
-            '@kitz/core': 'workspace:*',
-          },
-        }),
-      ),
-    })
+      }),
+      Fs.Memory.layer(diskLayout),
+      testEnv,
+    )
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
 
     expect(result.cascades).toHaveLength(1)
     const cascade = result.cascades[0]!
@@ -401,49 +616,141 @@ describe('Cascade', () => {
 
     expect(info.description).toContain('Depends on @kitz/core@1.1.0')
   })
+
+  test('does not cascade through devDependencies', async () => {
+    const diskLayout: Fs.Memory.DiskLayout = {
+      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+      '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
+        devDependencies: {
+          '@kitz/core': 'workspace:*',
+        },
+      }),
+    }
+
+    const layer = Layer.mergeAll(
+      Git.Memory.make({
+        tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0'],
+        commits: [Git.Memory.commit('feat(core): new API')],
+      }),
+      Fs.Memory.layer(diskLayout),
+      testEnv,
+    )
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
+
+    expect(result.releases).toHaveLength(1)
+    expect(result.releases[0]!.package.name.moniker).toBe('@kitz/core')
+    expect(result.cascades).toHaveLength(0)
+  })
+
+  test('does not cascade through peerDependencies', async () => {
+    const diskLayout: Fs.Memory.DiskLayout = {
+      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+      '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
+        peerDependencies: {
+          '@kitz/core': 'workspace:*',
+        },
+      }),
+    }
+
+    const layer = Layer.mergeAll(
+      Git.Memory.make({
+        tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0'],
+        commits: [Git.Memory.commit('feat(core): new API')],
+      }),
+      Fs.Memory.layer(diskLayout),
+      testEnv,
+    )
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
+
+    expect(result.releases).toHaveLength(1)
+    expect(result.releases[0]!.package.name.moniker).toBe('@kitz/core')
+    expect(result.cascades).toHaveLength(0)
+  })
 })
 
 describe('Analyzer', () => {
   test('records cascade trigger packages in analysis output', async () => {
-    const analysis = await analyzeWorkspace({
-      git: {
+    const diskLayout: Fs.Memory.DiskLayout = {
+      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+      '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
+        dependencies: {
+          '@kitz/core': 'workspace:*',
+        },
+      }),
+    }
+
+    const layer = Layer.mergeAll(
+      Git.Memory.make({
         tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0'],
         commits: [Git.Memory.commit('feat(core): new API')],
-      },
-      diskLayout: packageJsons(
-        pkgJson('core'),
-        pkgJson('cli', {
-          dependencies: {
-            '@kitz/core': 'workspace:*',
-          },
+      }),
+      Fs.Memory.layer(diskLayout),
+      testEnv,
+    )
+
+    const analysis = await Effect.runPromise(
+      Effect.provide(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          const tags = yield* git.getTags()
+          return yield* Analyzer.analyze({
+            packages: mockPackages,
+            tags,
+            resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}),
+          })
         }),
+        layer,
       ),
-    })
+    )
 
     expect(analysis.cascades).toHaveLength(1)
     expect(analysis.cascades[0]!.triggeredBy.map((pkg) => pkg.name.moniker)).toContain('@kitz/core')
   })
 
   test('ignores dev and peer dependency edges when recording cascades', async () => {
-    const analysis = await analyzeWorkspace({
-      git: {
+    const diskLayout: Fs.Memory.DiskLayout = {
+      '/repo/packages/core/package.json': makePackageJson('@kitz/core', '1.0.0'),
+      '/repo/packages/cli/package.json': makePackageJson('@kitz/cli', '1.0.0', {
+        devDependencies: {
+          '@kitz/core': 'workspace:*',
+        },
+      }),
+      '/repo/packages/utils/package.json': makePackageJson('@kitz/utils', '1.0.0', {
+        peerDependencies: {
+          '@kitz/core': 'workspace:*',
+        },
+      }),
+    }
+
+    const layer = Layer.mergeAll(
+      Git.Memory.make({
         tags: ['@kitz/core@1.0.0', '@kitz/cli@1.0.0', '@kitz/utils@1.0.0'],
         commits: [Git.Memory.commit('feat(core): new API')],
-      },
-      diskLayout: packageJsons(
-        pkgJson('core'),
-        pkgJson('cli', {
-          devDependencies: {
-            '@kitz/core': 'workspace:*',
-          },
+      }),
+      Fs.Memory.layer(diskLayout),
+      testEnv,
+    )
+
+    const analysis = await Effect.runPromise(
+      Effect.provide(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          const tags = yield* git.getTags()
+          return yield* Analyzer.analyze({
+            packages: mockPackages,
+            tags,
+            resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}),
+          })
         }),
-        pkgJson('utils', {
-          peerDependencies: {
-            '@kitz/core': 'workspace:*',
-          },
-        }),
+        layer,
       ),
-    })
+    )
 
     expect(analysis.impacts).toHaveLength(1)
     expect(analysis.impacts[0]!.package.name.moniker).toBe('@kitz/core')
@@ -454,16 +761,29 @@ describe('Analyzer', () => {
     const olderHash = Git.Sha.make('1111111')
     const newerHash = Git.Sha.make('2222222')
 
-    const analysis = await analyzeWorkspace({
-      git: {
-        tags: [],
-        commits: [
-          Git.Memory.commit('feat(core): should be excluded by until', { hash: newerHash }),
-          Git.Memory.commit('chore(core): boundary commit', { hash: olderHash }),
-        ],
-      },
-      until: olderHash,
+    const layer = makeTestLayer({
+      tags: [],
+      commits: [
+        Git.Memory.commit('feat(core): should be excluded by until', { hash: newerHash }),
+        Git.Memory.commit('chore(core): boundary commit', { hash: olderHash }),
+      ],
     })
+
+    const analysis = await Effect.runPromise(
+      Effect.provide(
+        Effect.gen(function* () {
+          const git = yield* Git.Git
+          const tags = yield* git.getTags()
+          return yield* Analyzer.analyze({
+            packages: mockPackages,
+            tags,
+            until: olderHash,
+            resolvedConventionalCommitTypes: ReleaseConfig.resolveConventionalCommitTypes({}),
+          })
+        }),
+        layer,
+      ),
+    )
 
     expect(analysis.impacts).toHaveLength(0)
   })
@@ -514,5 +834,72 @@ describe('Analyzer', () => {
         '@kitz/core',
       )
     }
+  })
+})
+
+// ─── Getter Methods ───────────────────────────────────────────────
+
+describe('PlannedRelease getters', () => {
+  test('nextVersion returns correct version', async () => {
+    const layer = makeTestLayer({
+      tags: ['@kitz/core@1.0.0'],
+      commits: [Git.Memory.commit('feat(core): feature')],
+    })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
+
+    const release = result.releases[0]!
+
+    expect(Semver.equivalence(release.nextVersion, Semver.fromString('1.1.0'))).toBe(true)
+  })
+
+  test('currentVersion returns Option for existing version', async () => {
+    const layer = makeTestLayer({
+      tags: ['@kitz/core@1.0.0'],
+      commits: [Git.Memory.commit('feat(core): feature')],
+    })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
+
+    const release = result.releases[0]!
+
+    expect(Option.isSome(release.currentVersion)).toBe(true)
+    expect(
+      Semver.equivalence(Option.getOrThrow(release.currentVersion), Semver.fromString('1.0.0')),
+    ).toBe(true)
+  })
+
+  test('currentVersion returns None for first release', async () => {
+    const layer = makeTestLayer({
+      tags: [],
+      commits: [Git.Memory.commit('feat(core): initial')],
+    })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
+
+    const release = result.releases[0]!
+
+    expect(Option.isNone(release.currentVersion)).toBe(true)
+  })
+
+  test('bumpType returns bump type for official releases', async () => {
+    const layer = makeTestLayer({
+      tags: ['@kitz/core@1.0.0'],
+      commits: [Git.Memory.commit('feat(core): feature')],
+    })
+
+    const result = await Effect.runPromise(
+      Effect.provide(analyzeAndPlanOfficial(mockPackages), layer),
+    )
+
+    const release = result.releases[0]!
+
+    expect(release.bumpType).toBe('minor')
   })
 })

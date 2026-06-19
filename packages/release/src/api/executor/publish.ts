@@ -87,29 +87,6 @@ export interface PublishOptions {
 const formatUnknownError = (error: unknown): string =>
   error instanceof Error ? error.message : String(error)
 
-const isStringRecord = (value: unknown): value is Record<string, string> =>
-  typeof value === 'object' &&
-  value !== null &&
-  !Array.isArray(value) &&
-  Object.values(value).every((entry) => typeof entry === 'string')
-
-const catalogVersionsFrom = (manifest: Record<string, unknown>): Record<string, string> => {
-  const catalog = manifest['catalog']
-  return isStringRecord(catalog) ? catalog : {}
-}
-
-const packedDependencyFieldNames = ['dependencies', 'peerDependencies', 'optionalDependencies']
-
-const unresolvedCatalogDependenciesIn = (manifest: Record<string, unknown>): readonly string[] =>
-  A.flatMap(packedDependencyFieldNames, (fieldName) => {
-    const field = manifest[fieldName]
-    if (!isStringRecord(field)) return []
-
-    return Object.entries(field)
-      .filter(([, specifier]) => specifier === 'catalog:')
-      .map(([dependencyName]) => dependencyName)
-  })
-
 const decodeJsonRecordOrFail = (pkgDir: Fs.Path.AbsDir, json: string) =>
   decodeJsonRecord(json).pipe(
     Effect.mapError(
@@ -134,29 +111,36 @@ const stagedPackageDirFor = (repoRoot: Fs.Path.AbsDir, release: ReleaseInfo): Fs
     ),
   )
 
-const childDir = (parent: Fs.Path.AbsDir, name: string): Fs.Path.AbsDir =>
-  Fs.Path.join(parent, Fs.Path.RelDir.fromString(`./${name}/`))
-
-const childFile = (parent: Fs.Path.AbsDir, name: string): Fs.Path.AbsFile =>
-  Fs.Path.join(parent, Fs.Path.RelFile.fromString(`./${name}`))
-
 const copyPackageDirectory = (
   from: Fs.Path.AbsDir,
   to: Fs.Path.AbsDir,
 ): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
   Effect.gen(function* () {
-    yield* Fs.write(to, { recursive: true })
+    const fs = yield* FileSystem.FileSystem
+    const fromString = Fs.Path.toString(from)
+    const toString = Fs.Path.toString(to)
 
-    for (const source of yield* Fs.read(from)) {
-      if (stagingIgnore.includes(source.name)) continue
+    yield* fs.makeDirectory(toString, { recursive: true })
+    const entries = yield* fs.readDirectory(fromString)
 
-      if (Fs.Path.AbsDir.is(source)) {
-        yield* copyPackageDirectory(source, childDir(to, source.name))
+    for (const entry of entries) {
+      if (stagingIgnore.includes(entry)) continue
+
+      const source = `${fromString}${entry}`
+      const target = `${toString}${entry}`
+      const stat = yield* fs.stat(source)
+
+      if (stat.type === 'Directory') {
+        yield* copyPackageDirectory(
+          Fs.Path.AbsDir.fromString(`${source}/`),
+          Fs.Path.AbsDir.fromString(`${target}/`),
+        )
         continue
       }
 
-      if (Fs.Path.AbsFile.is(source)) {
-        yield* Fs.write(childFile(to, source.name), yield* Fs.read(source))
+      if (stat.type === 'File') {
+        const bytes = yield* fs.readFile(source)
+        yield* fs.writeFile(target, bytes)
       }
     }
   })
@@ -236,11 +220,12 @@ export const preparePackageArtifact = (
   Effect.gen(function* () {
     const cli = yield* NpmRegistry.NpmCli
     const env = yield* Env.Env
+    const fs = yield* FileSystem.FileSystem
     const packageJsonPath = Fs.Path.join(
       release.package.path,
       Fs.Path.RelFile.fromString('./package.json'),
     )
-    const rootPackageJsonPath = Fs.Path.join(env.cwd, Fs.Path.RelFile.fromString('./package.json'))
+    const packageJsonPathString = Fs.Path.toString(packageJsonPath)
     const artifactDir = artifactDirectoryFor(env.cwd, options)
     const artifactPath = artifactPathFor(env.cwd, release, options)
     const stagedPackageDir = stagedPackageDirFor(env.cwd, release)
@@ -249,37 +234,25 @@ export const preparePackageArtifact = (
       Fs.Path.RelFile.fromString('./package.json'),
     )
 
-    const originalJson = yield* Fs.readString(packageJsonPath)
+    const originalJson = yield* fs.readFileString(packageJsonPathString)
     const originalManifest = yield* decodeJsonRecordOrFail(release.package.path, originalJson)
-    const catalogVersions = yield* Fs.readString(rootPackageJsonPath).pipe(
-      Effect.flatMap((rootJson) => decodeJsonRecordOrFail(env.cwd, rootJson)),
-      Effect.map(catalogVersionsFrom),
-      Effect.orElseSucceed(() => ({})),
-    )
     const typedManifest = yield* Pkg.Manifest.resource.readOrEmpty(release.package.path)
     const packHooks = Pkg.Manifest.findPackHooks(typedManifest.scripts)
     const rewrittenManifest = Pkg.Manifest.rewriteManifestForPack(originalManifest, {
       version: release.nextVersion,
       workspaceVersions: workspaceVersionsFor(releases),
-      catalogVersions,
     })
-    const unresolvedCatalogDependencies = unresolvedCatalogDependenciesIn(rewrittenManifest)
-    if (unresolvedCatalogDependencies.length > 0) {
-      return yield* Effect.fail(
-        new PublishError({
-          context: {
-            package: release.package.path,
-            detail: `Unresolved catalog dependencies in staged manifest: ${unresolvedCatalogDependencies.join(', ')}`,
-          },
-        }),
-      )
-    }
 
-    yield* Fs.remove(stagedPackageDir, { recursive: true, force: true }).pipe(Effect.ignore)
+    yield* fs
+      .remove(Fs.Path.toString(stagedPackageDir), { recursive: true, force: true })
+      .pipe(Effect.ignore)
     yield* copyPackageDirectory(release.package.path, stagedPackageDir)
-    yield* Fs.write(stagedPackageJsonPath, JSON.stringify(rewrittenManifest, null, 2) + '\n')
-    yield* Fs.write(artifactDir, { recursive: true })
-    yield* Fs.remove(artifactPath, { force: true }).pipe(Effect.ignore)
+    yield* fs.writeFileString(
+      Fs.Path.toString(stagedPackageJsonPath),
+      JSON.stringify(rewrittenManifest, null, 2) + '\n',
+    )
+    yield* fs.makeDirectory(Fs.Path.toString(artifactDir), { recursive: true })
+    yield* fs.remove(Fs.Path.toString(artifactPath), { force: true }).pipe(Effect.ignore)
 
     const packResult = yield* cli
       .pack({
@@ -307,7 +280,7 @@ export const preparePackageArtifact = (
     }
 
     if (Fs.Path.toString(packResult.success.tarball) !== Fs.Path.toString(artifactPath)) {
-      yield* Fs.rename(packResult.success.tarball, artifactPath)
+      yield* fs.rename(Fs.Path.toString(packResult.success.tarball), Fs.Path.toString(artifactPath))
     }
 
     return {

@@ -21,7 +21,6 @@ const makeResolvedConfig = (
       prepareCommands: [],
     }),
     resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
-    commitOverrides: {},
     lint: Api.Lint.ResolvedConfig.make({
       defaults: Api.Lint.ResolvedRuleDefaults.make({
         enabled: 'auto',

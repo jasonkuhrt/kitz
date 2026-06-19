@@ -1,14 +1,10 @@
+import { PlatformError, Effect, FileSystem, Schema } from 'effect'
 import { Env } from '@kitz/env'
 import { Fs } from '@kitz/fs'
-import { Resource } from '@kitz/resource'
-import { Effect, FileSystem, Schema } from 'effect'
-import * as ReleaseClock from './clock.js'
 import { sha256Json } from './digest.js'
-import { jsonLinesFile } from './persistence.js'
 import { PlanDigest, SideEffectEntry, type SideEffectKind } from './release-contract.js'
 
 const journalDir = Fs.Path.RelDir.fromString('./.release/journal/')
-const journalResource = jsonLinesFile(SideEffectEntry)
 
 export interface SideEffectInput {
   readonly planDigest: string | PlanDigest
@@ -17,10 +13,6 @@ export interface SideEffectInput {
   readonly planned: Readonly<Record<string, unknown>>
   readonly result: SideEffectEntry['result']
   readonly attemptedAt?: string
-}
-
-type TimedSideEffectInput = SideEffectInput & {
-  readonly attemptedAt: string
 }
 
 const entryDigestInput = (entry: SideEffectEntry): unknown => {
@@ -68,26 +60,49 @@ export const journalPathFor = (
 
 export const readEntries = (
   path: Fs.Path.AbsFile,
-): Effect.Effect<readonly SideEffectEntry[], Resource.ResourceError, FileSystem.FileSystem> =>
-  journalResource.read(path)
+): Effect.Effect<
+  readonly SideEffectEntry[],
+  PlatformError.PlatformError | Schema.SchemaError,
+  FileSystem.FileSystem
+> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const exists = yield* fs.exists(Fs.Path.toString(path))
+    if (!exists) return []
+    const text = yield* fs.readFileString(Fs.Path.toString(path))
+    const lines = text
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+    return yield* Effect.all(
+      lines.map((line) => Schema.decodeUnknownEffect(Schema.fromJsonString(SideEffectEntry))(line)),
+    )
+  })
 
 export const writeEntries = (
   path: Fs.Path.AbsFile,
   entries: readonly SideEffectEntry[],
-): Effect.Effect<void, Resource.ResourceError, FileSystem.FileSystem> =>
-  journalResource.write(entries, path)
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(path)), { recursive: true })
+    yield* fs.writeFileString(
+      Fs.Path.toString(path),
+      `${entries
+        .map((entry) => JSON.stringify(Schema.encodeSync(SideEffectEntry)(entry)))
+        .join('\n')}\n`,
+    )
+  })
 
-export const makeEntry = (
-  input: TimedSideEffectInput,
-  previous?: SideEffectEntry,
-): SideEffectEntry => {
+export const makeEntry = (input: SideEffectInput, previous?: SideEffectEntry): SideEffectEntry => {
   const planDigest =
     typeof input.planDigest === 'string'
       ? PlanDigest.make({ algorithm: 'sha256', value: input.planDigest })
       : input.planDigest
+  const attemptedAt = input.attemptedAt ?? new Date().toISOString()
   return appendHash(
     {
-      entryId: `${input.kind}:${input.subject}:${input.result}:${input.attemptedAt}`,
+      entryId: `${input.kind}:${input.subject}:${input.result}:${attemptedAt}`,
       planDigest,
       kind: input.kind,
       subject: input.subject,
@@ -98,7 +113,7 @@ export const makeEntry = (
         planned: input.planned,
       }).value,
       planned: input.planned,
-      attemptedAt: input.attemptedAt,
+      attemptedAt,
       result: input.result,
     },
     previous,
@@ -107,14 +122,17 @@ export const makeEntry = (
 
 export const appendSideEffect = (
   input: SideEffectInput,
-): Effect.Effect<SideEffectEntry, Resource.ResourceError, Env.Env | FileSystem.FileSystem> =>
+): Effect.Effect<
+  SideEffectEntry,
+  PlatformError.PlatformError | Schema.SchemaError,
+  Env.Env | FileSystem.FileSystem
+> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
     const path = journalPathFor(env.cwd, input.planDigest)
     const entries = yield* readEntries(path)
     const previous = entries.at(-1)
-    const attemptedAt = input.attemptedAt ?? (yield* ReleaseClock.nowIso)
-    const entry = makeEntry({ ...input, attemptedAt }, previous)
+    const entry = makeEntry(input, previous)
     yield* writeEntries(path, [...entries, entry])
     return entry
   })

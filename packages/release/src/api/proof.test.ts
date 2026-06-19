@@ -161,13 +161,12 @@ const gitLayer = (overrides: Partial<Git.GitService>): Layer.Layer<Git.Git> =>
     pushTag: () => unused(),
     deleteRemoteTag: () => unused(),
     getRemoteUrl: () => unused(),
-    getHooksDir: () => unused(),
     ...overrides,
   })
 
 describe('proof artifact', () => {
   test('uncontracted plans produce blocking proof records', () => {
-    const proof = makeProofArtifact(plan, '2026-05-13T00:00:00.000Z')
+    const proof = makeProofArtifact(plan)
 
     expect(proof.records.map((record) => record.status)).toContain('unprovable')
     expect(proof.records.some((record) => record.dependsOn.includes('plan.digest'))).toBe(true)

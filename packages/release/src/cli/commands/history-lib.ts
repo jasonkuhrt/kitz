@@ -1,13 +1,12 @@
 import { Num } from '@kitz/num'
 import { Github } from '@kitz/github'
 import { Effect, Option, Schema, SchemaGetter, SchemaIssue } from 'effect'
-import * as Commentator from '../../api/commentator/__.js'
-import * as Explorer from '../../api/explorer/__.js'
+import * as Api from '../../api/__.js'
 
 export interface PreviewPublishSurface {
   readonly pullRequest: Pick<Github.PullRequest, 'number' | 'html_url'>
   readonly issueComment: Pick<Github.IssueComment, 'id' | 'html_url'>
-  readonly metadata: Commentator.Metadata
+  readonly metadata: Api.Commentator.Metadata
 }
 
 export interface PreviewPublishReport {
@@ -16,10 +15,10 @@ export interface PreviewPublishReport {
   readonly commentId: number
   readonly commentUrl: string
   readonly headSha: string
-  readonly publishState: Commentator.PublishState
+  readonly publishState: Api.Commentator.PublishState
   readonly totalPublishes: number
   readonly truncated: boolean
-  readonly publishHistory: readonly Commentator.PublishRecord[]
+  readonly publishHistory: readonly Api.Commentator.PublishRecord[]
 }
 
 type PositiveSafeInt = Num.SafeInt.SafeInt
@@ -77,14 +76,14 @@ const decodePositiveSafeInt = (
 export const parsePositiveIntegerOption = (
   value: string | undefined,
   label: string,
-): Effect.Effect<PositiveSafeInt | undefined, Explorer.ExplorerError> =>
+): Effect.Effect<PositiveSafeInt | undefined, Api.Explorer.ExplorerError> =>
   Effect.gen(function* () {
     if (value === undefined) return undefined
 
     const normalized = value.trim()
     if (normalized.length === 0) {
       return yield* Effect.fail(
-        new Explorer.ExplorerError({
+        new Api.Explorer.ExplorerError({
           context: {
             detail: `Expected --${label} to be a positive integer, but received an empty value.`,
           },
@@ -95,7 +94,7 @@ export const parsePositiveIntegerOption = (
     return yield* decodePositiveSafeInt(normalized).pipe(
       Effect.mapError(
         () =>
-          new Explorer.ExplorerError({
+          new Api.Explorer.ExplorerError({
             context: {
               detail: `Expected --${label} to be a positive integer, but received "${value}".`,
             },
@@ -105,21 +104,21 @@ export const parsePositiveIntegerOption = (
   })
 
 export const resolvePreviewPublishSurface = (
-  context: Explorer.ResolvedGitHubContext,
+  context: Api.Explorer.ResolvedGitHubContext,
   options: {
     readonly prNumber?: number
   } = {},
 ) =>
   Effect.gen(function* () {
     const github = yield* Github.Github
-    const pullRequest = yield* Explorer.resolvePullRequestFromContext({
+    const pullRequest = yield* Api.Explorer.resolvePullRequestFromContext({
       ...context,
       explicitPrNumber: options.prNumber ?? context.explicitPrNumber,
     })
 
     if (!pullRequest) {
       return yield* Effect.fail(
-        new Explorer.ExplorerError({
+        new Api.Explorer.ExplorerError({
           context: {
             detail:
               'Could not resolve an open pull request for release history. Set `--pr <number>` or PR_NUMBER explicitly, or run from a branch with an open pull request.',
@@ -130,11 +129,11 @@ export const resolvePreviewPublishSurface = (
 
     const issueComment = yield* github.findIssueCommentByMarker(
       pullRequest.number,
-      Commentator.PLAN_MARKER,
+      Api.Commentator.PLAN_MARKER,
     )
     if (!issueComment?.body) {
       return yield* Effect.fail(
-        new Explorer.ExplorerError({
+        new Api.Explorer.ExplorerError({
           context: {
             detail:
               `No release preview comment with publish metadata was found for PR #${String(pullRequest.number)}. ` +
@@ -144,10 +143,10 @@ export const resolvePreviewPublishSurface = (
       )
     }
 
-    const metadata = Commentator.parseMetadata(issueComment.body)
+    const metadata = Api.Commentator.parseMetadata(issueComment.body)
     if (!metadata) {
       return yield* Effect.fail(
-        new Explorer.ExplorerError({
+        new Api.Explorer.ExplorerError({
           context: {
             detail: `Release preview comment for PR #${String(pullRequest.number)} did not contain readable publish metadata.`,
           },
@@ -174,7 +173,7 @@ export const toPreviewPublishReport = (
     readonly limit?: number
   } = {},
 ): PreviewPublishReport => {
-  const orderedHistory = Commentator.orderPublishHistory(surface.metadata.publishHistory)
+  const orderedHistory = Api.Commentator.orderPublishHistory(surface.metadata.publishHistory)
   const publishHistory =
     options.limit === undefined ? orderedHistory : orderedHistory.slice(0, options.limit)
 

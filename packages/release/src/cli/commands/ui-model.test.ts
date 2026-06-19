@@ -27,7 +27,6 @@ const config = Api.Config.ResolvedConfig.make({
     prepareCommands: [],
   }),
   resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
-  commitOverrides: {},
   lint: Api.Lint.resolveConfig({}),
 })
 

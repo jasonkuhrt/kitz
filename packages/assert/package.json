@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
-    "effect": "catalog:"
+    "effect": "4.0.0-beta.70"
   },
   "devDependencies": {
     "@kitz/platform": "workspace:*",

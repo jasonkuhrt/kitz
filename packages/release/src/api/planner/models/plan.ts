@@ -173,12 +173,11 @@ export const make = <$lifecycle extends Lifecycle>(
   lifecycle: $lifecycle,
   releases: PlannedItem<$lifecycle>[],
   cascades: PlannedItem<$lifecycle>[],
-  timestamp: string,
 ): PlanOf<$lifecycle> =>
   assertLifecycleConsistency(
     Plan.make({
       lifecycle,
-      timestamp,
+      timestamp: new Date().toISOString(),
       releases: [...releases],
       cascades: [...cascades],
     }),

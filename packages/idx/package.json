@@ -29,6 +29,6 @@
   },
   "dependencies": {
     "@kitz/core": "workspace:*",
-    "type-fest": "catalog:"
+    "type-fest": "^5.6.0"
   }
 }

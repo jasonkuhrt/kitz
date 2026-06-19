@@ -7,14 +7,16 @@
 
 import { ChildProcessSpawner } from 'effect/unstable/process'
 import { Workflow as DurableWorkflow, WorkflowEngine } from 'effect/unstable/workflow'
-import { FileSystem, PlatformError } from 'effect'
+import { FileSystem } from 'effect'
+import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
 import { Flo } from '@kitz/flo'
 import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
-import { Cause, Config, Effect, Exit, Option, Schema, Stream } from 'effect'
+import { Str } from '@kitz/core'
+import { Cause, Config, Effect, Exit, Match, Option, Schema, Stream } from 'effect'
 import type { Plan } from '../planner/models/__.js'
 import {
   publishingFromIntent,
@@ -93,10 +95,7 @@ export type ObservableExecutionRequirements =
   | Git.Git
   | NpmRegistry.NpmCli
 
-export type ObservableExecutionError =
-  | Config.ConfigError
-  | ExecutorError
-  | PlatformError.PlatformError
+export type ObservableExecutionError = Config.ConfigError | ExecutorError
 
 interface ExecutionOptions {
   readonly dryRun?: boolean
@@ -118,6 +117,11 @@ interface ObservableExecutionOptions extends ExecutionOptions {
 interface ResolvedExecutionState {
   readonly payload: ReleasePayloadType
   readonly status: ExecutionStatus
+}
+
+export interface LifecycleEventLine {
+  readonly level: 'info' | 'error'
+  readonly message: string
 }
 
 type ReleasePayloadCommitEntry = ReleasePayloadType['releases'][number]['commits'][number]
@@ -276,6 +280,99 @@ const resolveExecutionState = (
     } satisfies ResolvedExecutionState
   })
 
+const executionStateTone = (state: ExecutionStatus['state']) => {
+  switch (state) {
+    case 'failed':
+      return 'error' as const
+    case 'not-started':
+      return 'info' as const
+    case 'succeeded':
+      return 'success' as const
+    case 'suspended':
+      return 'warn' as const
+  }
+}
+
+export const formatExecutionStatus = (
+  status: ExecutionStatus,
+  options?: Cli.Terminal.TerminalFormatOptions,
+): string => {
+  const output = Str.Builder()
+  const theme = Cli.Terminal.createTerminalTheme(options)
+
+  output(
+    `${theme.heading('Release workflow status:')} ${theme.badge(
+      executionStateTone(status.state),
+      status.state.toUpperCase(),
+    )}`,
+  )
+  output`${theme.key('Execution ID')} ${theme.code(status.executionId)}`
+  output`${theme.key('Lifecycle')} ${theme.code(status.lifecycle)}`
+  output`${theme.key('Packages')} ${status.plannedPackages.join(', ') || '(none)'}`
+
+  if (status.state === 'not-started') {
+    output``
+    output`No persisted workflow state exists for this plan yet.`
+    output`${theme.key('Next')} Run ${theme.code('release apply')} to start the workflow.`
+    return output.render()
+  }
+
+  if (status.state === 'suspended') {
+    if (status.detail) {
+      output``
+      output(theme.section('Suspended on'))
+      output(status.detail)
+    }
+    output``
+    output(
+      `${theme.key('Resume')} Fix the blocking issue, then run ${theme.code('release resume')} with the same plan.`,
+    )
+    return output.render()
+  }
+
+  if (status.state === 'failed') {
+    output``
+    output(theme.section('Failure'))
+    output(status.detail)
+    return output.render()
+  }
+
+  output``
+  output(theme.section('Completed'))
+  output`${theme.key('Released packages')} ${status.summary.releasedPackages.join(', ') || '(none)'}`
+  output`${theme.key('Created tags')} ${status.summary.createdTags.join(', ') || '(none)'}`
+  output`${theme.key('GitHub releases')} ${status.summary.createdGHReleases.join(', ') || '(none)'}`
+  return output.render()
+}
+
+/**
+ * Convert workflow lifecycle events to printable log lines.
+ */
+export const formatLifecycleEvent = (
+  event: Flo.LifecycleEvent,
+  options?: Cli.Terminal.TerminalFormatOptions,
+): LifecycleEventLine | undefined => {
+  const theme = Cli.Terminal.createTerminalTheme(options)
+
+  return Match.value(event).pipe(
+    Match.tags({
+      ActivityStarted: (e): LifecycleEventLine => ({
+        level: 'info',
+        message: `  ${theme.info('›')} ${theme.key('Starting')} ${e.activity}`,
+      }),
+      ActivityCompleted: (e): LifecycleEventLine => ({
+        level: 'info',
+        message: `${theme.success('\u2713')} ${theme.key('Completed')} ${e.activity}`,
+      }),
+      ActivityFailed: (e): LifecycleEventLine => ({
+        level: 'error',
+        message: `${theme.error('\u2717')} ${theme.key('Failed')} ${e.activity} ${theme.dim('-')} ${e.error}`,
+      }),
+    }),
+    Match.orElse(() => undefined),
+  )
+}
+
 /**
  * Order releases so publish dependencies always appear before their dependents.
  * Cycles are rejected with a clear error instead of dropping dependency edges.
@@ -412,7 +509,7 @@ export const toPayload = (
             commits: item.commits.map((commit) =>
               toReleasePayloadCommitEntry(commit, item.package.scope),
             ),
-            dependsOn: Pkg.Manifest.findPublishOrderDependencyNames(manifest, localPackageNames),
+            dependsOn: Pkg.Manifest.findLocalDependencyNames(manifest, localPackageNames),
           }
         }),
       ),

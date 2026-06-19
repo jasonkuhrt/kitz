@@ -4,11 +4,17 @@ import { Git } from '@kitz/git'
 import { Github } from '@kitz/github'
 import { NpmRegistry } from '@kitz/npm-registry'
 import { Pkg } from '@kitz/pkg'
-import { Resource } from '@kitz/resource'
-import { Array as A, Effect, FileSystem, Option, Result, Schema } from 'effect'
-import * as ReleaseClock from './clock.js'
+import {
+  Array as A,
+  Clock,
+  Effect,
+  FileSystem,
+  Option,
+  PlatformError,
+  Result,
+  Schema,
+} from 'effect'
 import { sha256Json } from './digest.js'
-import { jsonFile } from './persistence.js'
 import type { Plan } from './planner/models/plan.js'
 import * as Capability from './publishing/models/capability.js'
 import {
@@ -20,7 +26,6 @@ import {
 } from './release-contract.js'
 
 const proofDir = Fs.Path.RelDir.fromString('./.release/proofs/')
-const proofResource = jsonFile(ProofArtifact)
 
 export interface ProofIssue {
   readonly recordId: string
@@ -517,7 +522,7 @@ const provenanceRecordForPlan = (
 
 export const makeProofArtifact = (
   plan: Plan,
-  now: string,
+  now: string = new Date().toISOString(),
   observations: ProofObservations = {},
 ): ProofArtifact => {
   const observedAt = observations.now ?? now
@@ -701,10 +706,12 @@ export const collectGithubObservations = (
     return Object.keys(githubReleaseExists).length > 0 ? { githubReleaseExists } : {}
   })
 
-export const hasBlockingProof = (proof: ProofArtifact, now: string): boolean =>
-  validateProof(proof, now).length > 0
+export const hasBlockingProof = (proof: ProofArtifact): boolean => validateProof(proof).length > 0
 
-export const validateProof = (proof: ProofArtifact, now: string): readonly ProofIssue[] => {
+export const validateProof = (
+  proof: ProofArtifact,
+  now: string = new Date().toISOString(),
+): readonly ProofIssue[] => {
   const ids = A.map(proof.records, (record) => record.id)
   const blocking = A.map(
     A.filter(
@@ -747,22 +754,40 @@ export const validateProof = (proof: ProofArtifact, now: string): readonly Proof
 export const write = (
   proof: ProofArtifact,
   path: Fs.Path.AbsFile,
-): Effect.Effect<void, Resource.ResourceError, FileSystem.FileSystem> =>
-  proofResource.write(proof, path)
+): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    yield* fs.makeDirectory(Fs.Path.toString(Fs.Path.toDir(path)), { recursive: true })
+    yield* fs.writeFileString(
+      Fs.Path.toString(path),
+      `${JSON.stringify(Schema.encodeSync(ProofArtifact)(proof), null, 2)}\n`,
+    )
+  })
 
 export const read = (
   path: Fs.Path.AbsFile,
-): Effect.Effect<Option.Option<ProofArtifact>, Resource.ResourceError, FileSystem.FileSystem> =>
-  proofResource.read(path)
+): Effect.Effect<
+  Option.Option<ProofArtifact>,
+  PlatformError.PlatformError | Schema.SchemaError,
+  FileSystem.FileSystem
+> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const exists = yield* fs.exists(Fs.Path.toString(path))
+    if (!exists) return Option.none()
+    const text = yield* fs.readFileString(Fs.Path.toString(path))
+    const decoded = yield* Schema.decodeUnknownEffect(Schema.fromJsonString(ProofArtifact))(text)
+    return Option.some(decoded)
+  })
 
 export const prove = (
   plan: Plan,
   observations: ProofObservations = {},
-): Effect.Effect<ProofArtifact, Resource.ResourceError, Env.Env | FileSystem.FileSystem> =>
+): Effect.Effect<ProofArtifact, PlatformError.PlatformError, Env.Env | FileSystem.FileSystem> =>
   Effect.gen(function* () {
     const env = yield* Env.Env
-    const now = yield* ReleaseClock.nowIso
-    const proof = makeProofArtifact(plan, now, observations)
+    const now = yield* Clock.currentTimeMillis
+    const proof = makeProofArtifact(plan, new Date(now).toISOString(), observations)
     yield* write(proof, proofPathFor(env.cwd, plan))
     return proof
   })
@@ -771,7 +796,7 @@ export const readForPlan = (
   plan: Plan,
 ): Effect.Effect<
   Option.Option<ProofArtifact>,
-  Resource.ResourceError,
+  PlatformError.PlatformError | Schema.SchemaError,
   Env.Env | FileSystem.FileSystem
 > =>
   Effect.gen(function* () {

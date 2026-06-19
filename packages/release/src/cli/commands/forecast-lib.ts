@@ -2,13 +2,8 @@ import { FileSystem } from 'effect'
 import { Env } from '@kitz/env'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
-import { Console, Effect, HashSet, Layer, Option, Schema } from 'effect'
-import * as Analyzer from '../../api/analyzer/__.js'
-import * as Commentator from '../../api/commentator/__.js'
-import * as Explorer from '../../api/explorer/__.js'
-import * as Forecaster from '../../api/forecaster/__.js'
-import * as Planner from '../../api/planner/__.js'
-import { Analysis, CascadeImpact } from '../../api/analyzer/models/__.js'
+import { Console, Effect, Layer, Option, Schema } from 'effect'
+import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, ServicesLayer, FileSystemLayer } from '../../platform.js'
 import {
   type CommandWorkspace,
@@ -18,18 +13,18 @@ import {
 } from './command-workspace.js'
 
 export interface ForecastInput {
-  readonly forecast: Forecaster.Forecast
-  readonly publishState: Commentator.PublishState
-  readonly publishHistory: readonly Commentator.PublishRecord[]
+  readonly forecast: Api.Forecaster.Forecast
+  readonly publishState: Api.Commentator.PublishState
+  readonly publishHistory: readonly Api.Commentator.PublishRecord[]
   readonly interactiveChecklist: boolean
 }
 
 export interface BuildForecastInputDependencies {
   readonly loadWorkspace: Effect.Effect<CommandWorkspace, Error>
   readonly tags: Effect.Effect<readonly string[], Error>
-  readonly analyze: typeof Analyzer.analyze
+  readonly analyze: typeof Api.Analyzer.analyze
   readonly explore: Effect.Effect<any, Error>
-  readonly forecast?: typeof Forecaster.forecast
+  readonly forecast: typeof Api.Forecaster.forecast
   readonly log: typeof Console.log
 }
 
@@ -55,9 +50,9 @@ export function buildForecastInput(
       const git = yield* Git.Git
       return yield* git.getTags()
     })
-  const analyze = dependencies?.analyze ?? Analyzer.analyze
-  const explore = dependencies?.explore ?? Explorer.explore()
-  const forecast = dependencies?.forecast ?? Forecaster.forecast
+  const analyze = dependencies?.analyze ?? Api.Analyzer.analyze
+  const explore = dependencies?.explore ?? Api.Explorer.explore()
+  const forecast = dependencies?.forecast ?? Api.Forecaster.forecast
   const log = dependencies?.log ?? Console.log
 
   return Effect.gen(function* () {
@@ -65,7 +60,7 @@ export function buildForecastInput(
     if (!isReadyCommandWorkspace(workspace)) {
       yield* log(noPackagesFoundMessage)
       return {
-        forecast: Forecaster.Forecast.make({
+        forecast: Api.Forecaster.Forecast.make({
           owner: '',
           repo: '',
           branch: '',
@@ -85,14 +80,9 @@ export function buildForecastInput(
       packages,
       tags: resolvedTags,
       resolvedConventionalCommitTypes: config.resolvedConventionalCommitTypes,
-      commitOverrides: config.commitOverrides,
     })
-    const forecastAnalysis =
-      dependencies?.forecast === undefined
-        ? yield* addOfficialPlanCascades(analysis, packages)
-        : analysis
     const recon = yield* explore
-    const renderedForecast = forecast(forecastAnalysis, recon)
+    const renderedForecast = forecast(analysis, recon)
 
     return {
       forecast: renderedForecast,
@@ -103,49 +93,11 @@ export function buildForecastInput(
   })
 }
 
-export const addOfficialPlanCascades = (
-  analysis: Analysis,
-  packages: readonly Analyzer.Workspace.Package[],
-): Effect.Effect<Analysis, Error, Effect.Services<ReturnType<typeof Planner.official>>> =>
-  Effect.gen(function* () {
-    return withOfficialPlanCascades(analysis, yield* Planner.official(analysis, { packages }))
-  })
-
-const withOfficialPlanCascades = (
-  analysis: Analysis,
-  plan: Planner.PlanOf<'official'>,
-): Analysis => {
-  const existingCascadeNames = HashSet.fromIterable(
-    analysis.cascades.map((cascade) => cascade.package.name.moniker),
-  )
-  const planOnlyCascades = plan.cascades.filter(
-    (cascade) => !HashSet.has(existingCascadeNames, cascade.package.name.moniker),
-  )
-
-  if (planOnlyCascades.length === 0) return analysis
-
-  return Analysis.make({
-    impacts: analysis.impacts,
-    cascades: [
-      ...analysis.cascades,
-      ...planOnlyCascades.map((cascade) =>
-        CascadeImpact.make({
-          package: cascade.package,
-          currentVersion: cascade.currentVersion,
-          triggeredBy: [],
-        }),
-      ),
-    ],
-    unchanged: analysis.unchanged,
-    tags: analysis.tags,
-  })
-}
-
 export const loadForecastInputFromFile = (filePath: string) =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const jsonText = yield* fs.readFileString(filePath)
-    const envelope = yield* Schema.decodeUnknownEffect(Forecaster.ForecastEnvelopeJson)(
+    const envelope = yield* Schema.decodeUnknownEffect(Api.Forecaster.ForecastEnvelopeJson)(
       jsonText,
     ).pipe(Effect.option)
 
@@ -159,7 +111,7 @@ export const loadForecastInputFromFile = (filePath: string) =>
     }
 
     return {
-      forecast: yield* Schema.decodeUnknownEffect(Schema.fromJsonString(Forecaster.Forecast))(
+      forecast: yield* Schema.decodeUnknownEffect(Schema.fromJsonString(Api.Forecaster.Forecast))(
         jsonText,
       ),
       publishState: 'idle' as const,

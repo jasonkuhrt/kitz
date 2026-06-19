@@ -1,12 +1,6 @@
 import { Semver } from '@kitz/semver'
 import { describe, expect, test } from 'bun:test'
-import {
-  findLocalDependencyNames,
-  findPackHooks,
-  findPublishedManifestWorkspaceDependencyNames,
-  findPublishOrderDependencyNames,
-  rewriteManifestForPack,
-} from './publish.js'
+import { findLocalDependencyNames, findPackHooks, rewriteManifestForPack } from './publish.js'
 
 describe('Pkg.Manifest publish rewrite', () => {
   test('rewrites version, runtime targets, and workspace protocol dependencies for pack', () => {
@@ -27,15 +21,11 @@ describe('Pkg.Manifest publish rewrite', () => {
         dependencies: {
           '@kitz/core': 'workspace:*',
           '@kitz/fs': 'workspace:^',
-          ansis: 'catalog:',
           effect: '^3.19.13',
         },
         peerDependencies: {
           '@kitz/env': 'workspace:~',
           '@kitz/git': 'workspace:^1.0.0',
-        },
-        devDependencies: {
-          '@kitz/platform': 'workspace:*',
         },
       },
       {
@@ -45,9 +35,6 @@ describe('Pkg.Manifest publish rewrite', () => {
           '@kitz/fs': Semver.fromString('2.0.0'),
           '@kitz/env': Semver.fromString('3.0.0'),
           '@kitz/git': Semver.fromString('4.0.0'),
-        },
-        catalogVersions: {
-          ansis: '^4.3.1',
         },
       },
     )
@@ -66,14 +53,12 @@ describe('Pkg.Manifest publish rewrite', () => {
     expect(result['dependencies']).toEqual({
       '@kitz/core': '1.0.0',
       '@kitz/fs': '^2.0.0',
-      ansis: '^4.3.1',
       effect: '^3.19.13',
     })
     expect(result['peerDependencies']).toEqual({
       '@kitz/env': '~3.0.0',
       '@kitz/git': '^1.0.0',
     })
-    expect(result).not.toHaveProperty('devDependencies')
   })
 
   test.each([
@@ -112,64 +97,5 @@ describe('Pkg.Manifest publish rewrite', () => {
         ['@kitz/core', '@kitz/fs', '@kitz/git'],
       ),
     ).toEqual(['@kitz/core', '@kitz/fs'])
-  })
-
-  test('findPublishOrderDependencyNames ignores local dev and peer dependency cycles', () => {
-    const manifestWithNonRuntimeDeps = {
-      dependencies: {},
-      optionalDependencies: {},
-      devDependencies: {
-        '@kitz/assert': 'workspace:*',
-      },
-      peerDependencies: {
-        '@kitz/fs': 'workspace:*',
-      },
-    }
-
-    expect(
-      findPublishOrderDependencyNames(
-        {
-          dependencies: {
-            '@kitz/core': 'workspace:*',
-          },
-          optionalDependencies: {
-            '@kitz/git': 'workspace:*',
-          },
-        },
-        ['@kitz/assert', '@kitz/core', '@kitz/fs', '@kitz/git'],
-      ),
-    ).toEqual(['@kitz/core', '@kitz/git'])
-
-    expect(
-      findPublishOrderDependencyNames(manifestWithNonRuntimeDeps, [
-        '@kitz/assert',
-        '@kitz/core',
-        '@kitz/fs',
-        '@kitz/git',
-      ]),
-    ).toEqual([])
-  })
-
-  test('findPublishedManifestWorkspaceDependencyNames only reports packed workspace protocols', () => {
-    expect(
-      findPublishedManifestWorkspaceDependencyNames(
-        {
-          dependencies: {
-            '@kitz/core': '^1.0.0',
-            '@kitz/fs': 'workspace:*',
-          },
-          peerDependencies: {
-            '@kitz/git': 'workspace:^',
-          },
-          optionalDependencies: {
-            '@kitz/env': 'workspace:~',
-          },
-          devDependencies: {
-            '@kitz/assert': 'workspace:*',
-          },
-        },
-        ['@kitz/assert', '@kitz/core', '@kitz/env', '@kitz/fs', '@kitz/git'],
-      ),
-    ).toEqual(['@kitz/fs', '@kitz/git', '@kitz/env'])
   })
 })

@@ -12,25 +12,9 @@ import * as Version from '../version/__.js'
 import { mapOfficialCascades, planLifecycle } from './core.js'
 import { ReleaseError } from './errors.js'
 import { Ephemeral } from './models/item-ephemeral.js'
-import type { Official } from './models/item-official.js'
 import type { PlanOf } from './models/plan.js'
 import type { Context } from './official.js'
 import { type EphemeralOptions } from './options.js'
-
-const toEphemeralRelease = (
-  release: Official,
-  tags: readonly string[],
-  prNumber: number,
-  sha: Git.Sha.Sha,
-): Ephemeral => {
-  const prReleaseNumber = findLatestEphemeralNumber(release.package.name, prNumber, [...tags])
-
-  return Ephemeral.make({
-    package: release.package,
-    prerelease: Version.Ephemeral.make({ prNumber, iteration: prReleaseNumber + 1, sha }),
-    commits: release.commits,
-  })
-}
 
 /**
  * Detect cascades for ephemeral releases with ephemeral version format.
@@ -40,7 +24,6 @@ const detectCascadesForEphemeral = (
   primaryReleases: readonly Ephemeral[],
   dependencyGraph: import('../analyzer/cascade.js').DependencyGraph,
   tags: string[],
-  timestamp: string,
   prNumber: number,
   sha: Git.Sha.Sha,
 ): readonly Ephemeral[] => {
@@ -49,8 +32,15 @@ const detectCascadesForEphemeral = (
     primaryReleases,
     dependencyGraph,
     tags,
-    timestamp,
-    map: (cascade) => toEphemeralRelease(cascade, tags, prNumber, sha),
+    map: (cascade) => {
+      const prReleaseNumber = findLatestEphemeralNumber(cascade.package.name, prNumber, tags)
+
+      return Ephemeral.make({
+        package: cascade.package,
+        prerelease: Version.Ephemeral.make({ prNumber, iteration: prReleaseNumber + 1, sha }),
+        commits: cascade.commits,
+      })
+    },
   })
 }
 
@@ -126,14 +116,12 @@ export const ephemeral = (
           commits: impact.commits,
         })
       },
-      toSecondaryRelease: (release) => toEphemeralRelease(release, analysis.tags, prNumber, sha),
-      toCascades: ({ packages, primaryReleases, dependencyGraph, tags, timestamp }) =>
+      toCascades: ({ packages, primaryReleases, dependencyGraph, tags }) =>
         detectCascadesForEphemeral(
           packages,
           primaryReleases,
           dependencyGraph,
           [...tags],
-          timestamp,
           prNumber,
           sha,
         ),

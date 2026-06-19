@@ -1,5 +1,4 @@
 import { FileSystem } from 'effect'
-import { Pkg } from '@kitz/pkg'
 import { Resource } from '@kitz/resource'
 import { Effect, HashMap, MutableHashSet, Option } from 'effect'
 import { buildDependencyGraph, type DependencyGraph } from '../analyzer/cascade.js'
@@ -11,8 +10,6 @@ import { OfficialFirst } from '../version/models/official-first.js'
 import { OfficialIncrement } from '../version/models/official-increment.js'
 import { Official } from './models/item-official.js'
 import type { Item } from './models/item.js'
-
-const syntheticCommitDate = '1970-01-01T00:00:00.000Z'
 
 /**
  * Result of cascade analysis for a single requested package identifier.
@@ -97,7 +94,6 @@ export const detect = (
   primaryReleases: Item[],
   dependencyGraph: DependencyGraph,
   tags: string[],
-  timestamp: string = syntheticCommitDate,
 ): Official[] => {
   // Set of packages already getting released (use string form for Set/Map operations)
   const releasing = MutableHashSet.fromIterable(primaryReleases.map((r) => r.package.name.moniker))
@@ -152,7 +148,6 @@ export const detect = (
           makeCascadeCommit(
             pkg.scope,
             `Depends on ${primary.package.name.moniker}@${primary.nextVersion.toString()}`,
-            timestamp,
           ),
         )
       }
@@ -160,7 +155,7 @@ export const detect = (
 
     // If no triggers found, add a generic cascade commit
     if (cascadeCommits.length === 0) {
-      cascadeCommits.push(makeCascadeCommit(pkg.scope, 'Cascade release', timestamp))
+      cascadeCommits.push(makeCascadeCommit(pkg.scope, 'Cascade release'))
     }
 
     // Build version union
@@ -179,75 +174,3 @@ export const detect = (
 
   return cascades
 }
-
-const makePatchRelease = (pkg: Package, tags: readonly string[], commits: ReleaseCommit[]) => {
-  const currentVersion = findLatestTagVersion(pkg.name, [...tags])
-  const nextVersion = calculateNextVersion(currentVersion, 'patch')
-  const version: OfficialFirst | OfficialIncrement = Option.isSome(currentVersion)
-    ? OfficialIncrement.make({ from: currentVersion.value, to: nextVersion, bump: 'patch' })
-    : OfficialFirst.make({ version: nextVersion, bump: 'patch' })
-
-  return Official.make({
-    package: pkg,
-    version,
-    commits,
-  })
-}
-
-/**
- * Find runtime workspace dependencies that must be part of a publish plan.
- *
- * Artifact staging rewrites workspace dependency specifiers from the planned
- * version map. If a planned package has a runtime workspace dependency outside
- * the plan, its staged manifest still contains `workspace:*` and cannot pack.
- */
-export const detectPublishDependencyClosure = (
-  packages: readonly Package[],
-  plannedItems: readonly Item[],
-  tags: readonly string[],
-  timestamp: string = syntheticCommitDate,
-): Effect.Effect<readonly Official[], Resource.ResourceError, FileSystem.FileSystem> =>
-  Effect.gen(function* () {
-    const localPackageNames = packages.map((pkg) => pkg.name.moniker)
-    const packageByName = HashMap.fromIterable(
-      packages.map((pkg): [string, Package] => [pkg.name.moniker, pkg]),
-    )
-    const plannedNames = MutableHashSet.fromIterable(
-      plannedItems.map((item) => item.package.name.moniker),
-    )
-    const queue = plannedItems.map((item) => item.package.name.moniker)
-    const closureReleases: Official[] = []
-
-    while (queue.length > 0) {
-      const packageName = queue.shift()!
-      const pkg = Option.getOrUndefined(HashMap.get(packageByName, packageName))
-      if (pkg === undefined) continue
-
-      const manifestOption = yield* Pkg.Manifest.resource.read(pkg.path)
-      if (Option.isNone(manifestOption)) continue
-
-      for (const dependencyName of Pkg.Manifest.findPublishedManifestWorkspaceDependencyNames(
-        manifestOption.value,
-        localPackageNames,
-      )) {
-        if (MutableHashSet.has(plannedNames, dependencyName)) continue
-
-        const dependencyPackage = Option.getOrUndefined(HashMap.get(packageByName, dependencyName))
-        if (dependencyPackage === undefined) continue
-
-        MutableHashSet.add(plannedNames, dependencyName)
-        queue.push(dependencyName)
-        closureReleases.push(
-          makePatchRelease(dependencyPackage, tags, [
-            makeCascadeCommit(
-              dependencyPackage.scope,
-              `Runtime dependency of ${packageName}`,
-              timestamp,
-            ),
-          ]),
-        )
-      }
-    }
-
-    return closureReleases
-  })

@@ -14,8 +14,7 @@
   },
   "exports": {
     ".": "./src/_.ts",
-    "./__": "./src/__.ts",
-    "./test": "./src/test.ts"
+    "./__": "./src/__.ts"
   },
   "files": [
     "build",
@@ -35,11 +34,10 @@
     "@kitz/core": "workspace:*",
     "@kitz/fs": "workspace:*",
     "@kitz/resource": "workspace:*",
-    "@kitz/test": "workspace:*",
-    "effect": "catalog:",
+    "effect": "4.0.0-beta.70",
     "simple-git": "^3.36.0"
   },
   "devDependencies": {
-    "@kitz/platform": "workspace:*"
+    "@kitz/test": "workspace:*"
   }
 }

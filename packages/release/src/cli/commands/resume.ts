@@ -3,100 +3,159 @@
  *
  * Resume an interrupted durable release workflow for the active release plan.
  */
+import { Terminal } from 'effect'
+import { Cli } from '@kitz/cli'
 import { Env } from '@kitz/env'
+import { Fs } from '@kitz/fs'
 import { Git } from '@kitz/git'
 import { NpmRegistry } from '@kitz/npm-registry'
-import { Console, Effect, Layer, Option } from 'effect'
-import { Command, Flag } from 'effect/unstable/cli'
-import * as Executor from '../../api/executor/__.js'
-import * as Explorer from '../../api/explorer/__.js'
-import * as Planner from '../../api/planner/__.js'
-import * as Renderer from '../../api/renderer/__.js'
+import { Oak } from '@kitz/oak'
+import { Console, Effect, Fiber, Layer, Schema, SchemaGetter, Stream } from 'effect'
+import * as Api from '../../api/__.js'
 import { ChildProcessSpawnerLayer, FileSystemLayer, TerminalLayer } from '../../platform.js'
-import { confirm, runObservableCommand } from './execution.js'
-import { formatPlanCommand, loadExecutableCommandPlan } from './plan-file.js'
+import {
+  formatInvalidPlanMessage,
+  formatMissingPlanMessage,
+  formatUnsupportedExecutionPlanMessage,
+  hasExecutablePlanContract,
+  loadActivePlan,
+  loadPlan,
+} from './plan-file.js'
+
+const args = Oak.Command.create()
+  .use(Oak.EffectSchema)
+  .description('Resume an interrupted release workflow')
+  .parameter(
+    'yes y',
+    Schema.UndefinedOr(Schema.Boolean)
+      .pipe(
+        Schema.decodeTo(Schema.Boolean, {
+          decode: SchemaGetter.transform((v) => v ?? false),
+          encode: SchemaGetter.transform((v) => v),
+        }),
+      )
+      .pipe(Schema.annotate({ description: 'Skip confirmation prompt (for CI)', default: false })),
+  )
+  .parameter(
+    'tag t',
+    Schema.UndefinedOr(Schema.String).pipe(
+      Schema.annotate({ description: 'npm dist-tag override used for the workflow identity' }),
+    ),
+  )
+  .parameter(
+    'from',
+    Schema.UndefinedOr(Schema.String).pipe(
+      Schema.annotate({ description: 'Read the release plan from a specific file path' }),
+    ),
+  )
+  .parse()
+
+const confirm = (message: string) =>
+  Effect.gen(function* () {
+    const terminal = yield* Terminal.Terminal
+    yield* terminal.display(message)
+    const answer = yield* terminal.readLine.pipe(Effect.catch(() => Effect.succeed('')))
+    const normalized = answer.trim().toLowerCase()
+    return normalized === 'y' || normalized === 'yes'
+  })
 
 const commandLayer = ChildProcessSpawnerLayer
 const npmLayer = NpmRegistry.NpmCliLive.pipe(Layer.provide(commandLayer))
 
-export const resume = Command.make(
-  'resume',
-  {
-    yes: Flag.boolean('yes').pipe(
-      Flag.withAlias('y'),
-      Flag.withDescription('Skip confirmation prompt (for CI)'),
-      Flag.withDefault(false),
-    ),
-    tag: Flag.string('tag').pipe(
-      Flag.withAlias('t'),
-      Flag.withDescription('npm dist-tag override used for the workflow identity'),
-      Flag.optional,
-    ),
-    from: Flag.string('from').pipe(
-      Flag.withDescription('Read the release plan from a specific file path'),
-      Flag.optional,
-    ),
-  },
-  ({ yes, tag, from }) =>
-    Effect.gen(function* () {
-      const env = yield* Env.Env
-      if (Option.isSome(tag)) {
-        yield* Console.error(
-          'Resume uses the frozen plan dist-tag; --tag cannot alter workflow identity.',
-        )
-        return env.exit(1)
+Cli.run(
+  Layer.mergeAll(Env.Live, FileSystemLayer, TerminalLayer, Git.GitLive, commandLayer, npmLayer),
+)(
+  Effect.gen(function* () {
+    const env = yield* Env.Env
+    const planState = yield* args.from
+      ? loadPlan({
+          path: Fs.Path.fromString(args.from),
+          source: 'custom',
+        })
+      : loadActivePlan()
+
+    if (planState._tag === 'PlanMissing') {
+      for (const line of formatMissingPlanMessage(planState)) {
+        yield* Console.error(line)
       }
-      const { plan, publishing } = yield* loadExecutableCommandPlan(from)
+      return env.exit(1)
+    }
 
-      const runtime = yield* Explorer.explore()
-      const runtimeConfig = Explorer.toExecutorRuntimeConfig(runtime)
-      if (!runtimeConfig.github) {
-        yield* Console.error('GitHub release target and token are required for release resume.')
-        yield* Console.error('Set GITHUB_TOKEN and ensure origin points to GitHub, then retry.')
-        return env.exit(1)
+    if (planState._tag === 'PlanInvalid') {
+      for (const line of formatInvalidPlanMessage(planState)) {
+        yield* Console.error(line)
       }
+      return env.exit(1)
+    }
 
-      const resumeAttempt = yield* Executor.resumeObservable(plan, {
-        dryRun: false,
-        tag: plan.publishIntent.distTag,
-        publishing,
-        trunk: plan.publishIntent.git.trunk,
-        github: runtimeConfig.github,
-      }).pipe(Effect.provide(Executor.makeWorkflowRuntime()), Effect.result)
-
-      if (resumeAttempt._tag === 'Failure') {
-        if (resumeAttempt.failure._tag === 'ExecutorResumeError') {
-          yield* Console.error(resumeAttempt.failure.message)
-          return env.exit(1)
-        }
-
-        return yield* Effect.fail(resumeAttempt.failure)
-      }
-
-      const { events, execute, status: workflowStatus } = resumeAttempt.success
-
-      yield* Console.log(
-        Renderer.formatExecutionStatus(workflowStatus, {
-          env: env.vars,
-          resumeCommand: formatPlanCommand('release resume', from),
-        }),
+    const plan = planState.plan
+    if (args.tag !== undefined) {
+      yield* Console.error(
+        'Resume uses the frozen plan dist-tag; --tag cannot alter workflow identity.',
       )
+      return env.exit(1)
+    }
+    if (!hasExecutablePlanContract(plan)) {
+      for (const line of formatUnsupportedExecutionPlanMessage(plan)) yield* Console.error(line)
+      return env.exit(1)
+    }
+    const publishing = Api.Publishing.publishingFromIntent(plan.publishIntent)
 
-      if (!yes) {
-        const approved = yield* confirm('Resume interrupted release? [y/N] ')
-        if (!approved) {
-          yield* Console.log('Release resume canceled.')
-          return env.exit(1)
-        }
+    const runtime = yield* Api.Explorer.explore()
+    const runtimeConfig = Api.Explorer.toExecutorRuntimeConfig(runtime)
+    if (!runtimeConfig.github) {
+      yield* Console.error('GitHub release target and token are required for release resume.')
+      yield* Console.error('Set GITHUB_TOKEN and ensure origin points to GitHub, then retry.')
+      return env.exit(1)
+    }
+
+    const resumeAttempt = yield* Api.Executor.resumeObservable(plan, {
+      dryRun: false,
+      tag: plan.publishIntent.distTag,
+      publishing,
+      trunk: plan.publishIntent.git.trunk,
+      github: runtimeConfig.github,
+    }).pipe(Effect.provide(Api.Executor.makeWorkflowRuntime()), Effect.result)
+
+    if (resumeAttempt._tag === 'Failure') {
+      if (resumeAttempt.failure._tag === 'ExecutorResumeError') {
+        yield* Console.error(resumeAttempt.failure.message)
+        return env.exit(1)
       }
 
-      yield* runObservableCommand({ events, execute })
+      return yield* Effect.fail(resumeAttempt.failure)
+    }
 
-      yield* Planner.Store.deleteActive
-    }),
-).pipe(
-  Command.withDescription('Resume an interrupted release workflow'),
-  Command.provide(
-    Layer.mergeAll(Env.Live, FileSystemLayer, TerminalLayer, Git.GitLive, commandLayer, npmLayer),
-  ),
+    const { events, execute, status: workflowStatus } = resumeAttempt.success
+
+    yield* Console.log(Api.Executor.formatExecutionStatus(workflowStatus, { env: env.vars }))
+
+    if (!args.yes) {
+      const approved = yield* confirm('Resume interrupted release? [y/N] ')
+      if (!approved) {
+        yield* Console.log('Release resume canceled.')
+        return env.exit(1)
+      }
+    }
+
+    const eventFiber = yield* events.pipe(
+      Stream.tap((event) => {
+        const line = Api.Executor.formatLifecycleEvent(event, { env: env.vars })
+        if (!line) return Effect.void
+        return line.level === 'error' ? Console.error(line.message) : Console.log(line.message)
+      }),
+      Stream.runDrain,
+      Effect.forkChild,
+    )
+
+    const result = yield* execute
+
+    yield* Fiber.join(eventFiber)
+
+    yield* Console.log(
+      Api.Renderer.renderApplyDone(result.releasedPackages.length, { env: env.vars }),
+    )
+
+    yield* Api.Planner.Store.deleteActive
+  }),
 )

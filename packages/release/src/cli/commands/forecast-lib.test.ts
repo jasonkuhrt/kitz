@@ -1,9 +1,8 @@
 import { Fs } from '@kitz/fs'
 import { Pkg } from '@kitz/pkg'
-import { Effect, Option } from 'effect'
+import { Effect } from 'effect'
 import { describe, expect, test } from 'bun:test'
 import * as Api from '../../api/__.js'
-import { Analysis, Impact, makeCascadeCommit } from '../../api/analyzer/models/__.js'
 import { makeHarness } from '../../api/executor/test-support.js'
 import { noPackagesFoundMessage } from './command-workspace.js'
 import { buildForecastInput, loadForecastInputFromFile } from './forecast-lib.js'
@@ -26,47 +25,7 @@ const makeResolvedConfig = (
       prepareCommands: [],
     }),
     resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
-    commitOverrides: {},
     lint: Api.Lint.resolveConfig({}),
-  })
-
-const workspacePackage = (scope: string) => ({
-  scope,
-  name: Pkg.Moniker.parse(`@kitz/${scope}`),
-  path: Fs.Path.AbsDir.fromString(`/repo/packages/${scope}/`),
-})
-
-const makeForecast = (headSha = 'abc1234') =>
-  Api.Forecaster.Forecast.make({
-    owner: 'jasonkuhrt',
-    repo: 'kitz',
-    branch: 'main',
-    headSha,
-    releases: [],
-    cascades: [],
-  })
-
-const makeRecon = (): Api.Explorer.Recon => ({
-  ci: { detected: false, provider: null, prNumber: null },
-  github: {
-    target: { owner: 'jasonkuhrt', repo: 'kitz', source: 'git:origin' },
-    credentials: null,
-  },
-  npm: { authenticated: false, username: null, registry: null },
-  git: {
-    root: Fs.Path.AbsDir.fromString('/repo/'),
-    clean: true,
-    branch: 'main',
-    headSha: 'abc1234',
-    remotes: {},
-  },
-})
-
-const packageJson = (scope: string, fields: Record<string, unknown> = {}) =>
-  JSON.stringify({
-    name: `@kitz/${scope}`,
-    version: '0.0.0-kitz-release',
-    ...fields,
   })
 
 describe('forecast-lib', () => {
@@ -101,11 +60,22 @@ describe('forecast-lib', () => {
   })
 
   test('builds forecast input from analyzed workspace packages', async () => {
-    const pkg = workspacePackage('core')
+    const pkg = {
+      scope: 'core',
+      name: Pkg.Moniker.parse('@kitz/core'),
+      path: Fs.Path.AbsDir.fromString('/repo/packages/core/'),
+    }
     const tags = ['@kitz/core@1.0.0']
     const analysis = { _tag: 'Analysis' } as any
     const recon = { _tag: 'Recon' } as any
-    const forecast = makeForecast()
+    const forecast = Api.Forecaster.Forecast.make({
+      owner: 'jasonkuhrt',
+      repo: 'kitz',
+      branch: 'main',
+      headSha: 'abc1234',
+      releases: [],
+      cascades: [],
+    })
     let analysisInput: Parameters<typeof Api.Analyzer.analyze>[0] | undefined
     let forecastArgs:
       | {
@@ -152,7 +122,6 @@ describe('forecast-lib', () => {
       packages: [pkg],
       tags,
       resolvedConventionalCommitTypes: Api.Config.resolveConventionalCommitTypes({}),
-      commitOverrides: {},
     })
     expect(forecastArgs).toEqual({
       analysis,
@@ -162,54 +131,6 @@ describe('forecast-lib', () => {
     expect(result.publishState).toBe('idle')
     expect(result.publishHistory).toEqual([])
     expect(result.interactiveChecklist).toBe(true)
-  })
-
-  test('includes runtime dependency closure cascades from official planning', async () => {
-    const appPackage = workspacePackage('app')
-    const platformPackage = workspacePackage('platform')
-    const docsPackage = workspacePackage('docs')
-    const analysis = Analysis.make({
-      impacts: [
-        Impact.make({
-          package: appPackage,
-          bump: 'patch',
-          commits: [makeCascadeCommit('app', 'fix')],
-          currentVersion: Option.none(),
-        }),
-      ],
-      cascades: [],
-      unchanged: [platformPackage, docsPackage],
-      tags: [],
-    })
-
-    const result = await Effect.runPromise(
-      buildForecastInput({
-        loadWorkspace: Effect.succeed({
-          _tag: 'ReadyCommandWorkspace',
-          config: makeResolvedConfig(),
-          packages: [appPackage, platformPackage, docsPackage],
-        }),
-        tags: Effect.succeed([]),
-        analyze: (() => Effect.succeed(analysis)) as typeof Api.Analyzer.analyze,
-        explore: Effect.succeed(makeRecon()),
-        log: () => Effect.void,
-      }).pipe(
-        Effect.provide(
-          Fs.Memory.layer({
-            '/repo/packages/app/package.json': packageJson('app', {
-              dependencies: {
-                '@kitz/platform': 'workspace:*',
-              },
-            }),
-            '/repo/packages/platform/package.json': packageJson('platform'),
-            '/repo/packages/docs/package.json': packageJson('docs'),
-          }),
-        ),
-      ),
-    )
-
-    expect(result.forecast.releases.map((item) => item.packageName)).toEqual(['@kitz/app'])
-    expect(result.forecast.cascades.map((item) => item.packageName)).toEqual(['@kitz/platform'])
   })
 
   test('falls back to git tags when custom tag loading is not provided', async () => {
@@ -224,10 +145,21 @@ describe('forecast-lib', () => {
         diskLayout: {},
       }),
     )
-    const pkg = workspacePackage('core')
+    const pkg = {
+      scope: 'core',
+      name: Pkg.Moniker.parse('@kitz/core'),
+      path: Fs.Path.AbsDir.fromString('/repo/packages/core/'),
+    }
     const analysis = { _tag: 'Analysis' } as any
     const recon = { _tag: 'Recon' } as any
-    const forecast = makeForecast()
+    const forecast = Api.Forecaster.Forecast.make({
+      owner: 'jasonkuhrt',
+      repo: 'kitz',
+      branch: 'main',
+      headSha: 'abc1234',
+      releases: [],
+      cascades: [],
+    })
     let analysisInput: Parameters<typeof Api.Analyzer.analyze>[0] | undefined
 
     const result = await Effect.runPromise(
@@ -257,7 +189,14 @@ describe('forecast-lib', () => {
         git: { root: '/repo', tags: [], commits: [], isClean: true },
         diskLayout: {
           '/tmp/forecast.json': Api.Forecaster.encodeForecastEnvelope({
-            forecast: makeForecast(),
+            forecast: Api.Forecaster.Forecast.make({
+              owner: 'jasonkuhrt',
+              repo: 'kitz',
+              branch: 'main',
+              headSha: 'abc1234',
+              releases: [],
+              cascades: [],
+            }),
             publishState: 'published',
             publishHistory: [
               {
@@ -289,7 +228,16 @@ describe('forecast-lib', () => {
         git: { root: '/repo', tags: [], commits: [], isClean: true },
         diskLayout: {
           '/tmp/raw-forecast.json': JSON.stringify(
-            Api.Forecaster.Forecast.encodeSync(makeForecast('def5678')),
+            Api.Forecaster.Forecast.encodeSync(
+              Api.Forecaster.Forecast.make({
+                owner: 'jasonkuhrt',
+                repo: 'kitz',
+                branch: 'main',
+                headSha: 'def5678',
+                releases: [],
+                cascades: [],
+              }),
+            ),
           ),
         },
       }),

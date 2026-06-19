@@ -27,9 +27,6 @@
  * - **Notes**: Release notes generation from commit history.
  * - **Config**: Configuration loading and resolution.
  * - **Version**: Version calculation and lifecycle models.
- *
- * This barrel is the public API surface. Internal release modules should import
- * producer-owned modules directly instead of depending on this aggregate shape.
  */
 
 // Top-level convenience
@@ -49,8 +46,6 @@ export * as Forecaster from './forecaster/__.js'
 export * as Renderer from './renderer/__.js'
 
 // Supporting modules
-export * as CommitPolicy from './commit-policy.js'
-export * as Clock from './clock.js'
 export * as Config from './config.js'
 export * as Digest from './digest.js'
 export * as Doctor from './doctor.js'

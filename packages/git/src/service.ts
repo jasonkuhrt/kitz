@@ -33,7 +33,6 @@ export type GitOperation =
   | 'pushTag'
   | 'deleteRemoteTag'
   | 'getRemoteUrl'
-  | 'getHooksDir'
 
 const GitOperationSchema = S.Literals([
   'getTags',
@@ -55,7 +54,6 @@ const GitOperationSchema = S.Literals([
   'pushTag',
   'deleteRemoteTag',
   'getRemoteUrl',
-  'getHooksDir',
 ])
 
 const baseTags = ['kit', 'git'] as const
@@ -152,14 +150,6 @@ export interface GitService {
 
   /** Get the repository root path */
   readonly getRoot: () => Effect.Effect<string, GitError>
-
-  /**
-   * Resolve the absolute hooks directory, honoring `core.hooksPath`.
-   *
-   * Returns the configured hooks path (absolute, or resolved against the
-   * working-tree root when relative), or `<git-dir>/hooks` when unset.
-   */
-  readonly getHooksDir: () => Effect.Effect<string, GitError>
 
   /** Get the short SHA of HEAD commit */
   readonly getHeadSha: () => Effect.Effect<Sha.Sha, GitError | GitParseError>

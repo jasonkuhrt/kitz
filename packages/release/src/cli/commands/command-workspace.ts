@@ -1,6 +1,5 @@
 import { Effect } from 'effect'
-import * as Analyzer from '../../api/analyzer/__.js'
-import * as Config from '../../api/config.js'
+import * as Api from '../../api/__.js'
 
 export const noPackagesFoundMessage =
   'No packages found. Check release.config.ts `packages` field ' +
@@ -8,13 +7,13 @@ export const noPackagesFoundMessage =
 
 export interface ReadyCommandWorkspace {
   readonly _tag: 'ReadyCommandWorkspace'
-  readonly config: Config.ResolvedConfig
-  readonly packages: readonly Analyzer.Workspace.Package[]
+  readonly config: Api.Config.ResolvedConfig
+  readonly packages: readonly Api.Analyzer.Workspace.Package[]
 }
 
 export interface EmptyCommandWorkspace {
   readonly _tag: 'EmptyCommandWorkspace'
-  readonly config: Config.ResolvedConfig
+  readonly config: Api.Config.ResolvedConfig
 }
 
 export type CommandWorkspace = ReadyCommandWorkspace | EmptyCommandWorkspace
@@ -24,11 +23,11 @@ export const isReadyCommandWorkspace = (
 ): workspace is ReadyCommandWorkspace => workspace._tag === 'ReadyCommandWorkspace'
 
 export const loadCommandWorkspaceWith = <E, R>(
-  loadConfig: Effect.Effect<Config.ResolvedConfig, E, R>,
+  loadConfig: Effect.Effect<Api.Config.ResolvedConfig, E, R>,
 ) =>
   Effect.gen(function* () {
     const config = yield* loadConfig
-    const packages = yield* Analyzer.Workspace.resolvePackages(config.packages)
+    const packages = yield* Api.Analyzer.Workspace.resolvePackages(config.packages)
 
     return packages.length === 0
       ? ({
@@ -42,5 +41,5 @@ export const loadCommandWorkspaceWith = <E, R>(
         } satisfies ReadyCommandWorkspace)
   })
 
-export const loadCommandWorkspace = (options?: Config.LoadOptions) =>
-  loadCommandWorkspaceWith(Config.load(options))
+export const loadCommandWorkspace = (options?: Api.Config.LoadOptions) =>
+  loadCommandWorkspaceWith(Api.Config.load(options))

@@ -7,22 +7,9 @@ import * as Version from '../version/__.js'
 import { calculateNextVersion } from '../version/calculate.js'
 import { mapOfficialCascades, planLifecycle } from './core.js'
 import { Candidate } from './models/item-candidate.js'
-import type { Official } from './models/item-official.js'
 import type { PlanOf } from './models/plan.js'
 import type { Context } from './official.js'
 import { type Options } from './options.js'
-
-const toCandidateRelease = (release: Official, tags: readonly string[]): Candidate => {
-  const baseVersion = release.nextVersion
-  const candidateNumber = findLatestCandidateNumber(release.package.name, baseVersion, [...tags])
-
-  return Candidate.make({
-    package: release.package,
-    baseVersion,
-    prerelease: Version.Candidate.make({ iteration: candidateNumber + 1 }),
-    commits: release.commits,
-  })
-}
 
 /**
  * Detect cascades for candidate releases with candidate version format.
@@ -32,15 +19,23 @@ const detectCascadesForCandidate = (
   primaryReleases: readonly Candidate[],
   dependencyGraph: import('../analyzer/cascade.js').DependencyGraph,
   tags: string[],
-  timestamp: string,
 ): readonly Candidate[] => {
   return mapOfficialCascades({
     packages,
     primaryReleases,
     dependencyGraph,
     tags,
-    timestamp,
-    map: (cascade) => toCandidateRelease(cascade, tags),
+    map: (cascade) => {
+      const baseVersion = cascade.nextVersion
+      const candidateNumber = findLatestCandidateNumber(cascade.package.name, baseVersion, tags)
+
+      return Candidate.make({
+        package: cascade.package,
+        baseVersion,
+        prerelease: Version.Candidate.make({ iteration: candidateNumber + 1 }),
+        commits: cascade.commits,
+      })
+    },
   })
 }
 
@@ -80,7 +75,6 @@ export const candidate = (
         commits: impact.commits,
       })
     },
-    toSecondaryRelease: (release) => toCandidateRelease(release, analysis.tags),
-    toCascades: ({ packages, primaryReleases, dependencyGraph, tags, timestamp }) =>
-      detectCascadesForCandidate(packages, primaryReleases, dependencyGraph, [...tags], timestamp),
+    toCascades: ({ packages, primaryReleases, dependencyGraph, tags }) =>
+      detectCascadesForCandidate(packages, primaryReleases, dependencyGraph, [...tags]),
   })
