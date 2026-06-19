@@ -1,4 +1,4 @@
-import { Str } from '@kitz/core'
+import type * as Str from './str-types.js'
 import type { Analysis } from './analyzer.js'
 
 /**

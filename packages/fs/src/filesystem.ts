@@ -8,9 +8,8 @@
  * @module
  */
 
-import { PlatformError, FileSystem } from 'effect'
-import { Lang } from '@kitz/core'
-import type { Json } from '@kitz/json'
+import { FileSystem, Function, PlatformError } from 'effect'
+import type { JsonObject } from './json-types.js'
 import { Effect, Schema as S, Scope, Sink, Stream } from 'effect'
 import { Path } from './path/_.js'
 
@@ -32,15 +31,15 @@ export type InferFileContent<$Path extends Path.$File> =
  */
 // oxfmt-ignore
 type InferContentFromExtension<Ext> =
-     Ext extends '.json'                                                                                                           ? Json.Object
+     Ext extends '.json'                                                                                                           ? JsonObject
    : Ext extends '.txt' | '.md' | '.yml' | '.yaml' | '.xml' | '.html' | '.css' | '.js' | '.ts' | '.jsx' | '.tsx' | '.mjs' | '.cjs' ? string
    : Ext extends '.png' | '.jpg' | '.jpeg' | '.gif' | '.bmp' | '.ico' | '.svg' | '.webp'           ? Uint8Array
    : Ext extends '.pdf' | '.doc' | '.docx' | '.xls' | '.xlsx' | '.ppt' | '.pptx'                   ? Uint8Array
    : Ext extends '.zip' | '.tar' | '.gz' | '.bz2' | '.7z' | '.rar'                                 ? Uint8Array
    : Ext extends '.bin' | '.exe' | '.dll' | '.so' | '.dylib'                                       ? Uint8Array
    : Ext extends '.mp3' | '.mp4' | '.avi' | '.mov' | '.wmv' | '.flv' | '.webm' | '.ogg' | '.wav'   ? Uint8Array
-   : Ext extends null                                                                              ? string | Uint8Array | Json.Object  // No extension
-   :                                                                                                 string | Uint8Array | Json.Object // Unknown/dynamic extension
+   : Ext extends null                                                                              ? string | Uint8Array | JsonObject  // No extension
+   :                                                                                                 string | Uint8Array | JsonObject // Unknown/dynamic extension
 
 // In Effect v4, FileSystem option types are inlined. Define them here for backwards compat.
 export type AccessFileOptions = {
@@ -550,7 +549,7 @@ export const watch = <loc extends Path.Input.Any>(
 
 type WriteFileParameters = [
   loc: Path.$File,
-  content: string | Uint8Array | Json.Object,
+  content: string | Uint8Array | JsonObject,
   options?: WriteFileOptions | WriteFileStringOptions,
 ]
 
@@ -597,7 +596,7 @@ export const write: {
     content: loc extends Path.$File
       ? InferFileContent<loc>
       : loc extends string
-        ? string | Uint8Array | Json.Object // Dynamic path, allow all content types
+        ? string | Uint8Array | JsonObject // Dynamic path, allow all content types
         : never,
     options?: WriteFileOptions | WriteFileStringOptions,
   ): Effect.Effect<void, PlatformError.PlatformError, FileSystem.FileSystem>
@@ -686,7 +685,7 @@ export const write: {
     }
 
     // Exhaustive check
-    Lang.neverCase(loc as never)
+    Function.absurd(loc as never)
   })) as any
 
 /**

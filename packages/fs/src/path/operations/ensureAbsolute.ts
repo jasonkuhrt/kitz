@@ -1,4 +1,3 @@
-import { Fn } from '@kitz/core'
 import { Schema as S } from 'effect'
 import type { $Abs } from '../$Abs/_.js'
 import { $Abs as Abs } from '../$Abs/_.js'
@@ -61,7 +60,8 @@ export const ensureAbsolute = <L extends Path, B extends AbsDir>(
  */
 export const ensureAbsoluteOn: <L extends Path>(
   path: L,
-) => <B extends AbsDir>(base: B) => ensureAbsolute<L> = Fn.curry(ensureAbsolute) as any
+) => <B extends AbsDir>(base: B) => ensureAbsolute<L> = ((p: any) => (b: any) =>
+  ensureAbsolute(p, b)) as any
 
 /**
  * Curried variant of {@link ensureAbsolute}.
@@ -77,7 +77,8 @@ export const ensureAbsoluteOn: <L extends Path>(
  */
 export const ensureAbsoluteWith: <B extends AbsDir>(
   base: B,
-) => <L extends Path>(path: L) => ensureAbsolute<L> = Fn.flipCurried(ensureAbsoluteOn) as any
+) => <L extends Path>(path: L) => ensureAbsolute<L> = ((b: any) => (p: any) =>
+  ensureAbsolute(p, b)) as any
 
 /**
  * Type-level ensureOptionalAbsolute operation.
@@ -122,9 +123,8 @@ export const ensureOptionalAbsolute = <L extends Path | undefined, B extends Abs
  */
 export const ensureOptionalAbsoluteOn: <L extends Path | undefined>(
   path: L,
-) => <B extends AbsDir>(base: B) => ensureOptionalAbsolute<L> = Fn.curry(
-  ensureOptionalAbsolute,
-) as any
+) => <B extends AbsDir>(base: B) => ensureOptionalAbsolute<L> = ((p: any) => (b: any) =>
+  ensureOptionalAbsolute(p, b)) as any
 
 /**
  * Curried variant of {@link ensureOptionalAbsolute}.
@@ -140,6 +140,5 @@ export const ensureOptionalAbsoluteOn: <L extends Path | undefined>(
  */
 export const ensureOptionalAbsoluteWith: <B extends AbsDir>(
   base: B,
-) => <L extends Path | undefined>(path: L) => ensureOptionalAbsolute<L> = Fn.flipCurried(
-  ensureOptionalAbsoluteOn,
-) as any
+) => <L extends Path | undefined>(path: L) => ensureOptionalAbsolute<L> = ((b: any) => (p: any) =>
+  ensureOptionalAbsolute(p, b)) as any

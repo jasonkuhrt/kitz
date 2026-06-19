@@ -1,5 +1,5 @@
 import { PlatformError, FileSystem } from 'effect'
-import type { Json } from '@kitz/json'
+import type { JsonObject } from '../json-types.js'
 import { Effect } from 'effect'
 import type { InferFileContent } from '../filesystem.js'
 import { Path } from '../path/_.js'
@@ -25,7 +25,7 @@ export interface DirChain extends SpecBuilder {
     content: path extends Path.RelFile
       ? InferFileContent<path>
       : path extends string
-        ? string | Uint8Array | Json.Object
+        ? string | Uint8Array | JsonObject
         : never,
   ): DirChain
 
@@ -57,7 +57,7 @@ export interface DirChain extends SpecBuilder {
     content: path extends Path.RelFile
       ? InferFileContent<path>
       : path extends string
-        ? string | Uint8Array | Json.Object
+        ? string | Uint8Array | JsonObject
         : never,
   ): DirChain
 

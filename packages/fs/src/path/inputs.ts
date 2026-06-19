@@ -1,4 +1,4 @@
-import { Ts } from '@kitz/core'
+import type { StaticError } from './static-error.js'
 import { Schema as S } from 'effect'
 import type { CodecString as Analyzer } from '../path-analyzer/codec-string/_.js'
 import type { $Abs } from './$Abs/_.js'
@@ -14,7 +14,7 @@ import { RelFile } from './RelFile/_.js'
 /**
  * Error for when a string must be a literal to be statically parsed.
  */
-export interface ErrorStringNotLiteral extends Ts.Err.StaticError<
+export interface ErrorStringNotLiteral extends StaticError<
   ['fs', 'path', 'string-not-literal'],
   { message: 'When giving a string, it must be a literal so that it can be statically parsed.' }
 > {}
@@ -22,7 +22,7 @@ export interface ErrorStringNotLiteral extends Ts.Err.StaticError<
 /**
  * Error for when path validation fails.
  */
-export interface ErrorPathValidation<$tag, $input> extends Ts.Err.StaticError<
+export interface ErrorPathValidation<$tag, $input> extends StaticError<
   ['fs', 'path', 'validation'],
   {
     message: GetValidationError<$tag>['message']
@@ -34,7 +34,7 @@ export interface ErrorPathValidation<$tag, $input> extends Ts.Err.StaticError<
 /**
  * Error for when input must be a Path type or string.
  */
-export interface ErrorMustBePathOrString<$input> extends Ts.Err.StaticError<
+export interface ErrorMustBePathOrString<$input> extends StaticError<
   ['fs', 'path', 'must-be-path-or-string'],
   {
     message: 'Must be a Path type or string'
@@ -120,7 +120,7 @@ export namespace Input {
  * validation fails at compile time. The StaticError type provides helpful
  * error messages to guide users toward correct path formats.
  */
-export type InputOrError<$path extends Path = Path> = Input<$path> | Ts.Err.StaticError
+export type InputOrError<$path extends Path = Path> = Input<$path> | StaticError
 
 /**
  * Validates an input against a target Path type.
@@ -239,7 +239,7 @@ export namespace Guard {
 
 // oxfmt-ignore
 export type normalize<$input extends InputOrError> =
-  $input extends Ts.Err.StaticError         ? never :
+  $input extends StaticError         ? never :
   $input extends string                     ? FromAnalysis<Analyzer.Analyze<$input>> :
                                               $input
 
