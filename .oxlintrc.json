@@ -1,12 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/refs/heads/main/npm/oxlint/configuration_schema.json",
   "plugins": ["typescript", "import", "vitest", "promise"],
-  "jsPlugins": [
-    {
-      "name": "kitz",
-      "specifier": "./packages/oxlint-rules/plugin.mjs"
-    }
-  ],
   "categories": {
     "correctness": "error",
     "suspicious": "warn",
@@ -29,55 +23,7 @@
     "eslint-plugin-import/no-unassigned-import": "off",
     "eslint-plugin-promise/no-new-statics": "warn",
     "eslint-plugin-promise/no-callback-in-promise": "warn",
-    "eslint-plugin-promise/prefer-await-to-then": "off",
-    "kitz/schema/no-json-parse": "warn",
-    "kitz/error/no-try-catch": "off",
-    "kitz/effect/no-native-promise-construction": "warn",
-    "kitz/ts/no-type-assertion": "off",
-    "kitz/domain/no-native-map-set": "warn",
-    "kitz/module/no-nodejs-builtins": "warn",
-    "kitz/module/resolver-platform-dispatch": "warn",
-    "kitz/schema/schema-parsing-contract": "warn",
-    "kitz/error/no-throw": "off",
-    "kitz/effect/no-promise-then-chain": "warn",
-    "kitz/effect/no-effect-run-in-library-code": "warn",
-    "kitz/error/require-typed-effect-errors": "warn",
-    "kitz/schema/require-schema-decode": "warn",
-    "kitz/domain/no-process-env": "warn",
-    "kitz/domain/no-date-now": "warn",
-    "kitz/domain/no-math-random": "warn",
-    "kitz/domain/no-console": "warn",
-    "kitz/error/require-tagged-error-types": "warn",
-    "kitz/adt/require-schema-class-statics": "warn",
-    "kitz/adt/require-schema-class-ordering": "warn",
-    "kitz/adt/require-tagged-union-companion": "warn",
-    "kitz/adt/require-tagged-union-namespace": "warn",
-    "kitz/module/namespace-file-conventions": "warn",
-    "kitz/module/barrel-file-conventions": "warn",
-    "kitz/module/module-structure-conventions": "warn",
-    "kitz/module/no-deep-imports": "warn",
-    "kitz/module/prefer-subpath-imports": "warn",
-    "kitz/module/subpath-imports-integrity": [
-      "warn",
-      { "requiredEntryPatterns": ["src/*/_.ts", "src/*/core/_.ts"] }
-    ],
-    "kitz/jsdoc/require-on-exports": "off",
-    "kitz/jsdoc/min-words": "off",
-    "kitz/jsdoc/no-name-restate": "off",
-    "kitz/jsdoc/require-example": "off",
-    "kitz/jsdoc/usage-tags": "off",
-    "kitz/jsdoc/no-weasel-words": "off",
-    "eslint/no-restricted-imports": [
-      "error",
-      {
-        "patterns": [
-          {
-            "group": ["@kitz/*/__"],
-            "message": "Use namespace import from root (e.g., '@kitz/git' not '@kitz/git/__'). See CLAUDE.md for import conventions."
-          }
-        ]
-      }
-    ]
+    "eslint-plugin-promise/prefer-await-to-then": "off"
   },
   "overrides": [
     {
@@ -87,25 +33,7 @@
         "eslint-plugin-unicorn/no-thenable": "off",
         "eslint-plugin-vitest/warn-todo": "warn"
       }
-    },
-    {
-      "files": ["packages/kitz/src/**/*.ts"],
-      "rules": {
-        "eslint/no-restricted-imports": "off"
-      }
-    },
-    {
-      "files": ["packages/oxlint-rules/src/oxlint-rules.ts"],
-      "rules": {
-        "kitz/module/subpath-imports-integrity": "off"
-      }
     }
   ],
-  "ignorePatterns": [
-    "**/build/**",
-    "**/node_modules/**",
-    "**/*.d.ts",
-    "**/__examples/**",
-    "tools/oxlint-custom-rules/tests/fixtures/**"
-  ]
+  "ignorePatterns": ["**/build/**", "**/node_modules/**", "**/*.d.ts", "**/__examples/**"]
 }

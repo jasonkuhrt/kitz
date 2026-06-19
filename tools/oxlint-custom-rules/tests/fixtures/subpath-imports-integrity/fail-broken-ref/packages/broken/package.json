@@ -1,7 +1,0 @@
-{
-  "name": "@kitz/broken",
-  "imports": {
-    "#alpha": "./src/alpha/_.ts",
-    "#beta": "./src/nonexistent/_.ts"
-  }
-}

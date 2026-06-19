@@ -1,1 +1,0 @@
-globalThis.console.error('boom')

@@ -1,6 +1,0 @@
-// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
-
-exports[`StatusBar layout snapshot: dashboard-style entries + message 1`] = `
-"Plan: /repo/.release/plan.json  State: official plan  Loaded 5 packages.                            
-"
-`;

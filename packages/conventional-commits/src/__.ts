@@ -1,7 +1,0 @@
-export * as BreakingChange from './breaking-change.js'
-export * as Commit from './commit.js'
-export * as Footer from './footer.js'
-export * from './target-section.js'
-export * from './target.js'
-export * as Title from './title.js'
-export * as Type from './type.js'

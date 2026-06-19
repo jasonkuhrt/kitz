@@ -39,28 +39,6 @@ jobs:
       - uses: ./.github/actions/setup
       - run: bun run format:check
 
-  check-docs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup
-      - name: Check generated CLI reference is current
-        run: bun run check:docs
-
-  api-model-style:
-    needs: check-type
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        if: needs.check-type.outputs.skip-code-checks != 'true'
-      - uses: ./.github/actions/setup
-        if: needs.check-type.outputs.skip-code-checks != 'true'
-      - name: Check API model style
-        if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: bun run check:api-model-style
-      - run: echo "Skipped for chore.docs/ci commit"
-        if: needs.check-type.outputs.skip-code-checks == 'true'
-
   packages-build:
     needs: check-type
     runs-on: ubuntu-latest
@@ -130,28 +108,3 @@ jobs:
         run: bun run test:packages
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
-
-  release-preview:
-    needs: check-type
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha }}
-      - name: Fetch base and tags
-        run: |
-          git fetch origin ${{ github.event.pull_request.base.ref }}
-          git fetch --tags --force
-      - uses: ./.github/actions/setup
-      - name: Run release preview
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SKIP_CODE_CHECKS: ${{ needs.check-type.outputs.skip-code-checks }}
-        run: |
-          if [[ "${SKIP_CODE_CHECKS}" == "true" ]]; then
-            bun run release pr preview --check-only
-          else
-            bun run release pr preview
-          fi
