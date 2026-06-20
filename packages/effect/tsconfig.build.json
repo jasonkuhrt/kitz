@@ -11,5 +11,5 @@
       "#fs/*": ["./src/*.js"]
     }
   },
-  "exclude": ["src/**/*.test.ts", "src/**/*.test-matchers.ts"]
+  "exclude": ["src/**/*.test.ts", "src/**/*.test-d.ts"]
 }

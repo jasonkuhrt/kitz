@@ -1,5 +1,5 @@
+import { describe, expect, test } from '@effect/vitest'
 import { Effect, Exit, Schema as S } from 'effect'
-import { describe, expect, test } from 'bun:test'
 import * as AbsDirCodec from './AbsDir/__.js'
 import * as AbsFileCodec from './AbsFile/__.js'
 import * as Constants from './constants.js'
