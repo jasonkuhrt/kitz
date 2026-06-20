@@ -1,12 +1,16 @@
 {
   "name": "@kitz/effect",
   "version": "0.0.0-kitz-release",
+  "description": "Filesystem operations and a typed path ADT for the Effect ecosystem",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jasonkuhrt/kitz.git"
   },
-  "description": "Filesystem operations and a typed path ADT for the Effect ecosystem",
+  "files": [
+    "build",
+    "src"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -15,29 +19,25 @@
     "./Path": "./src/path/_.ts",
     "./path/types/fileName": "./src/path/types/fileName.ts"
   },
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json --clean && tsc -b tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch",
+    "check:types": "tsc --noEmit",
+    "check:lint": "vp lint src/",
+    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error",
+    "test": "vp test run",
+    "test:coverage": "vp test run --coverage",
+    "check:cov": "vp test run --coverage"
+  },
   "dependencies": {
     "tinyglobby": "^0.2.16"
   },
-  "peerDependencies": {
-    "effect": "4.0.0-beta.76"
-  },
   "devDependencies": {
-    "@effect/vitest": "4.0.0-beta.84",
+    "@effect/vitest": "catalog:",
     "effect": "catalog:",
-    "vitest": "4.1.4"
+    "vitest": "catalog:"
   },
-  "scripts": {
-    "build": "tsgo -b tsconfig.build.json --clean && tsgo -b tsconfig.build.json",
-    "dev": "tsgo -p tsconfig.build.json --watch",
-    "check:types": "tsgo --noEmit",
-    "check:lint": "bun ../../tools/run-lint.ts src/",
-    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error",
-    "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
-    "check:cov": "vitest run --coverage"
-  },
-  "files": [
-    "build",
-    "src"
-  ]
+  "peerDependencies": {
+    "effect": "^4.0.0-beta.85"
+  }
 }

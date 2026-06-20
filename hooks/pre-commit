@@ -1,4 +1,10 @@
 #!/usr/bin/env sh
 set -eu
 
-bun run pre-commit
+# Format, lint, and type-check before committing.
+# NOTE: uses the explicit scripts rather than `vp check` because vp 0.2.1's
+# combined `check` does not honor .oxfmtrc.json (no fmt --config passthrough),
+# which would silently reformat to vp's defaults instead of the house style.
+pnpm check:format
+pnpm check:lint
+pnpm check:types

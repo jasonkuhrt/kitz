@@ -8,7 +8,8 @@ import { Schema as S } from 'effect'
 export const Segment = S.String.pipe(
   S.check(
     S.makeFilter((s) => s.length > 0, { message: 'Path segment cannot be empty' }),
-    S.isPattern(/^[^/\0]+$/, { message: 'Path segment cannot contain / or null bytes' }),
+    // oxlint-disable-next-line no-control-regex -- matching NUL is intentional: POSIX path segments may not contain it.
+    S.isPattern(/^[^/\u0000]+$/, { message: 'Path segment cannot contain / or null bytes' }),
   ),
   S.annotate({
     identifier: 'Segment',

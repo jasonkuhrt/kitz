@@ -168,7 +168,7 @@ export const layer = (initialDiskLayout: DiskLayout) => {
 
     makeDirectory: (
       path: string,
-      options?: { readonly recursive?: boolean | undefined; readonly mode?: number | undefined },
+      _options?: { readonly recursive?: boolean | undefined; readonly mode?: number | undefined },
     ) => {
       // Track empty directories by adding a marker
       // This allows exists() to find them

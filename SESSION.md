@@ -5,6 +5,7 @@
 **Rule**: All `Schema.Class` and `Schema.TaggedClass` instances MUST use `.make()` for construction. `new ClassName(...)` is NOT acceptable.
 
 **Implementation**:
+
 - Every Schema.Class and TaggedClass definition has `static make = this.makeUnsafe` added (135 classes across 61 files)
 - All call sites use `X.make({...})` instead of `new X({...})`
 - Only exception: standalone factory functions (`export const make = (args) => new XClass(args)`) in fs path modules — these ARE the public `.make()` API and use `new` internally
@@ -40,17 +41,17 @@ bash tools/verify-no-new-schema-classes.sh
 
 Commit `861876ce` — all 9/9 jobs pass:
 
-| Job | Status |
-|-----|--------|
-| check-type | PASS |
-| format | PASS |
-| packages-types | PASS |
-| packages-build | PASS |
-| packages-test | PASS |
-| packages-lint | PASS |
-| api-model-style | PASS |
-| publint | PASS |
-| release-preview | PASS |
+| Job             | Status |
+| --------------- | ------ |
+| check-type      | PASS   |
+| format          | PASS   |
+| packages-types  | PASS   |
+| packages-build  | PASS   |
+| packages-test   | PASS   |
+| packages-lint   | PASS   |
+| api-model-style | PASS   |
+| publint         | PASS   |
+| release-preview | PASS   |
 
 ## Other changes in this session
 

@@ -1,0 +1,17 @@
+# Build output
+build/
+**/build/
+**/node_modules/
+*.tsbuildinfo
+
+# Agent scratch / notes — not source, do not format
+.claude/
+
+# Docs prose + generated content
+docs/
+
+# Snapshots (managed by the test runner)
+**/__snapshots__/
+
+# Lockfiles
+pnpm-lock.yaml

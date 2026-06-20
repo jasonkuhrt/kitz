@@ -1,0 +1,28 @@
+packages:
+  - 'packages/*'
+
+# NOTE (2026-06-20): enableGlobalVirtualStore was requested but is currently
+# DISABLED. pnpm 11's GVS symlinks packages into a shared `links/` store; under
+# that layout @effect/vitest executes from the store path and cannot resolve
+# `@vitest/runner` (a sub-package of its `vitest` peer) via ESM — the test suite
+# fails to load (verified: GVS on => 0 tests load; GVS off => 30/30 pass).
+# public-hoist of @vitest/* does not fix it (the package runs from the store, not
+# the project node_modules). This is the documented GVS+ESM hoisting limitation.
+# Revisit enabling GVS once pnpm/@effect/vitest resolve symlinked-store ESM.
+# enableGlobalVirtualStore: true
+
+catalog:
+  effect: 4.0.0-beta.85
+  '@effect/vitest': 4.0.0-beta.85
+  '@effect/platform-node': 4.0.0-beta.85
+  # Pinned to the exact vitest vite-plus@0.2.1 bundles, so @effect/vitest's
+  # vitest peer resolves to a single shared copy (no dual-vitest under pnpm).
+  vitest: 4.1.9
+  fast-check: ^4.8.0
+
+minimumReleaseAgeExclude:
+  - '@effect/vitest@4.0.0-beta.85'
+  - effect@4.0.0-beta.85
+
+allowBuilds:
+  msgpackr-extract: false
