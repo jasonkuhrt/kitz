@@ -50,9 +50,8 @@ export interface DiskLayout {
  *
  * @example
  * ```ts
- * import { Fs } from '@wollybeard/kit'
- * import { FileSystem } from 'effect'
- * import { Effect } from 'effect'
+ * import { Effect, FileSystem as EffectFileSystem } from 'effect'
+ * import { FileSystem } from '@kitz/effect'
  *
  * const diskLayout = {
  *   '/config.json': '{"name": "test"}',
@@ -60,13 +59,13 @@ export interface DiskLayout {
  * }
  *
  * const program = Effect.gen(function* () {
- *   const fs = yield* FileSystem.FileSystem
+ *   const fs = yield* EffectFileSystem.FileSystem
  *   const content = yield* fs.readFileString('/config.json')
  *   console.log(content) // {"name": "test"}
  * })
  *
  * Effect.runPromise(
- *   Effect.provide(program, Fs.Memory.layer(diskLayout))
+ *   Effect.provide(program, FileSystem.Memory.layer(diskLayout))
  * )
  * ```
  */
@@ -258,9 +257,9 @@ export const layer = (initialDiskLayout: DiskLayout) => {
  *
  * @example
  * ```ts
- * import { Fs } from '@wollybeard/kit'
+ * import { FileSystem } from '@kitz/effect'
  *
- * const testFs = Fs.Memory.layerFromDiskLayout({
+ * const testFs = FileSystem.Memory.layerFromDiskLayout({
  *   '/package.json': '{"name": "test-project"}',
  *   '/src/index.js': 'export default "hello"'
  * })

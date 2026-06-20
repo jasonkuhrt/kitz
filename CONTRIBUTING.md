@@ -30,26 +30,27 @@ Some packages have their own conventions in `packages/<name>/.claude/CONVENTIONS
 
 ## Architecture
 
-Kitz is a Bun workspace monorepo with packages under `packages/`. All packages are scoped under `@kitz/` except the `kitz` aggregator-package.
+Kitz is a pnpm workspace (`packages/`). It currently ships a single package,
+`@kitz/effect`, which layers filesystem + typed-path enhancements on the Effect
+ecosystem. `effect` is a peer dependency.
 
-**Build system**: Bun workspaces + tsgo (TypeScript Go port)
+**Toolchain**: pnpm 11 + [Vite+](https://viteplus.dev) (`vp`) + official TypeScript 7
+(`tsc`), on Node (>=22.12).
 
 ```bash
-bun run build:packages                       # All packages
-bun run --filter @kitz/core build            # Single package
+pnpm build          # build (tsc, file-by-file, no bundler)
+pnpm check:types    # typecheck (tsc --noEmit)
+pnpm check:lint     # lint (oxlint via vp)
+pnpm check:format   # format check (oxfmt via vp)
+pnpm test           # tests (Vitest + @effect/vitest, on Node)
+pnpm check:package  # publint + attw on the built package
 ```
-
-**Cross-package dependencies**: Use `workspace:*` and import by package name. Note that `#` imports are scoped per-package - cross-package `#` imports are not valid.
 
 ## Commit Hook
 
-`hooks/pre-commit` is tracked in the repo and installed by `bun run prepare`.
-
-Run it manually with:
-
-```bash
-bun run pre-commit
-```
+`hooks/pre-commit` is tracked in the repo and installed by `pnpm run prepare`
+(which points `core.hooksPath` at `hooks/`). It runs `check:format`, `check:lint`,
+and `check:types`.
 
 The hook:
 

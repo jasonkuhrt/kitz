@@ -1,23 +1,55 @@
 {
   "name": "@kitz/effect",
-  "version": "0.0.0-kitz-release",
+  "version": "0.1.0",
   "description": "Filesystem operations and a typed path ADT for the Effect ecosystem",
+  "keywords": [
+    "effect",
+    "effect-ts",
+    "filesystem",
+    "fs",
+    "path",
+    "typescript",
+    "schema"
+  ],
   "license": "MIT",
+  "author": {
+    "name": "Jason Kuhrt",
+    "url": "https://kuhrt.me"
+  },
+  "homepage": "https://github.com/jasonkuhrt/kitz/tree/main/packages/effect#readme",
+  "bugs": {
+    "url": "https://github.com/jasonkuhrt/kitz/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jasonkuhrt/kitz.git"
+    "url": "git+https://github.com/jasonkuhrt/kitz.git",
+    "directory": "packages/effect"
   },
-  "files": [
-    "build",
-    "src"
-  ],
   "type": "module",
   "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "build"
+  ],
   "exports": {
-    ".": "./src/_.ts",
-    "./FileSystem": "./src/__.ts",
-    "./Path": "./src/path/_.ts",
-    "./path/types/fileName": "./src/path/types/fileName.ts"
+    ".": {
+      "types": "./build/_.d.ts",
+      "default": "./build/_.js"
+    },
+    "./FileSystem": {
+      "types": "./build/__.d.ts",
+      "default": "./build/__.js"
+    },
+    "./Path": {
+      "types": "./build/path/_.d.ts",
+      "default": "./build/path/_.js"
+    },
+    "./path/types/fileName": {
+      "types": "./build/path/types/fileName.d.ts",
+      "default": "./build/path/types/fileName.js"
+    }
   },
   "scripts": {
     "build": "tsc -b tsconfig.build.json --clean && tsc -b tsconfig.build.json",

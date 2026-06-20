@@ -26,8 +26,7 @@ type InferReturnType<T extends Path.$Rel> = T extends Path.RelFile
  *
  * @example
  * ```ts
- * import { Fs } from '@kitz/fs'
- * import { Fs } from '@kitz/fs'
+ * import { FileSystem, Path } from '@kitz/effect'
  *
  * const dir = Path.AbsDir.decodeStringSync('/project/')
  * const paths = [
@@ -35,7 +34,7 @@ type InferReturnType<T extends Path.$Rel> = T extends Path.RelFile
  *   Path.RelFile.decodeStringSync('./config.json')
  * ]
  *
- * const result = yield* Fs.findFirstUnderDir(dir)(paths)
+ * const result = yield* FileSystem.findFirstUnderDir(dir)(paths)
  * // result: Option<AbsFile> since all inputs are RelFile
  * ```
  */

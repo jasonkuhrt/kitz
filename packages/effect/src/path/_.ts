@@ -15,7 +15,7 @@
  *
  * @example
  * ```ts
- * import { Path } from '@kitz/fs'
+ * import { Path } from '@kitz/effect'
  *
  * // Data - Union of all members
  * type AnyPath = typeof Path.Any.Type

@@ -108,7 +108,7 @@ export type WriteFileStringOptions = {
  * @example
  * ```ts
  * const file = S.decodeSync(Path.AbsFile.Schema)('/etc/passwd')
- * const exists = yield* Fs.exists(file)
+ * const exists = yield* FileSystem.exists(file)
  * ```
  */
 export const exists = <loc extends Path.Input.Any>(
@@ -213,11 +213,11 @@ export const open = <loc extends Path.Input.Any>(
  * ```ts
  * // Reading a file returns Uint8Array
  * const file = S.decodeSync(Path.AbsFile.Schema)('/data/file.bin')
- * const bytes = yield* Fs.read(file)
+ * const bytes = yield* FileSystem.read(file)
  *
  * // Reading a directory returns FsLoc array
  * const dir = S.decodeSync(Path.AbsDir.Schema)('/home/user/')
- * const entries = yield* Fs.read(dir)
+ * const entries = yield* FileSystem.read(dir)
  * // entries is Path.$Abs[] (union of AbsFile | AbsDir)
  * ```
  */
@@ -315,7 +315,7 @@ export const read: {
  * @example
  * ```ts
  * const config = S.decodeSync(Path.AbsFile.Schema)('/etc/config.json')
- * const content = yield* Fs.readString(config)
+ * const content = yield* FileSystem.readString(config)
  * const data = JSON.parse(content)
  * ```
  */
@@ -381,7 +381,7 @@ export const realPath = <loc extends Path.Input.Any>(
  * @example
  * ```ts
  * const cache = S.decodeSync(Path.AbsDir.Schema)('/tmp/cache/')
- * yield* Fs.clear(cache)
+ * yield* FileSystem.clear(cache)
  * // /tmp/cache/ now exists but is empty
  * ```
  */
@@ -418,7 +418,7 @@ export const clear = <loc extends Path.Input.Dir>(
  * @example
  * ```ts
  * const tempDir = S.decodeSync(Path.AbsDir.Schema)('/tmp/build/')
- * yield* Fs.remove(tempDir, { recursive: true })
+ * yield* FileSystem.remove(tempDir, { recursive: true })
  * ```
  */
 export const remove = <loc extends Path.Input.Any>(
@@ -575,19 +575,19 @@ type WriteParametersInternal = WriteFileParameters | WriteDirectoryParameters
  * ```ts
  * // JSON file - accepts Json.Value
  * const config = S.decodeSync(Path.AbsFile.Schema)('/config.json')
- * yield* Fs.write(config, { name: 'app', version: '1.0' })
+ * yield* FileSystem.write(config, { name: 'app', version: '1.0' })
  *
  * // Text file - accepts string
  * const readme = S.decodeSync(Path.AbsFile.Schema)('/README.md')
- * yield* Fs.write(readme, '# My Project')
+ * yield* FileSystem.write(readme, '# My Project')
  *
  * // Binary file - accepts Uint8Array
  * const image = S.decodeSync(Path.AbsFile.Schema)('/logo.png')
- * yield* Fs.write(image, imageBytes)
+ * yield* FileSystem.write(image, imageBytes)
  *
  * // Creating a directory
  * const dir = S.decodeSync(Path.AbsDir.Schema)('/data/output/')
- * yield* Fs.write(dir, { recursive: true })
+ * yield* FileSystem.write(dir, { recursive: true })
  * ```
  */
 export const write: {
@@ -703,9 +703,9 @@ export const write: {
  * const config = S.decodeSync(Path.AbsFile.Schema)('/etc/config.json')
  * const data = JSON.stringify({ key: 'value' }, null, 2)
  * // Old way (deprecated):
- * yield* Fs.writeString(config, data)
+ * yield* FileSystem.writeString(config, data)
  * // New way:
- * yield* Fs.write(config, data)
+ * yield* FileSystem.write(config, data)
  * ```
  */
 export const writeString = <loc extends Path.Input.File>(
@@ -739,12 +739,12 @@ export const writeString = <loc extends Path.Input.File>(
  * // File to file - uses optimized copyFile internally
  * const src = S.decodeSync(Path.AbsFile.Schema)('/src/file.txt')
  * const dst = S.decodeSync(Path.AbsFile.Schema)('/dst/file.txt')
- * yield* Fs.copy(src, dst)
+ * yield* FileSystem.copy(src, dst)
  *
  * // Directory to directory - uses general copy
  * const srcDir = S.decodeSync(Path.AbsDir.Schema)('/src/dir/')
  * const dstDir = S.decodeSync(Path.AbsDir.Schema)('/dst/dir/')
- * yield* Fs.copy(srcDir, dstDir)
+ * yield* FileSystem.copy(srcDir, dstDir)
  * ```
  */
 export const copy = <from extends Path.Input.Any, to extends Path.Input.Any>(
@@ -799,12 +799,12 @@ export const link = <from extends Path.Input.Any, to extends Path.Input.Any>(
  * // File to file rename
  * const old = S.decodeSync(Path.AbsFile.Schema)('/tmp/old.txt')
  * const new = S.decodeSync(Path.AbsFile.Schema)('/tmp/new.txt')
- * yield* Fs.rename(old, new)
+ * yield* FileSystem.rename(old, new)
  *
  * // Directory to directory rename
  * const oldDir = S.decodeSync(Path.AbsDir.Schema)('/tmp/old/')
  * const newDir = S.decodeSync(Path.AbsDir.Schema)('/tmp/new/')
- * yield* Fs.rename(oldDir, newDir)
+ * yield* FileSystem.rename(oldDir, newDir)
  * ```
  */
 export const rename: {
@@ -885,16 +885,16 @@ export type MakeTempOptions = TempFileOptions | TempDirectoryOptions
  *
  * @example
  * ```ts
- * import { Fs } from '@kitz/fs'
+ * import { FileSystem } from '@kitz/effect'
  *
  * // Create a temporary directory with default options
- * const tempDir = yield* Fs.makeTempDirectory()
+ * const tempDir = yield* FileSystem.makeTempDirectory()
  *
  * // Create with a prefix
- * const testDir = yield* Fs.makeTempDirectory({ prefix: 'test-' })
+ * const testDir = yield* FileSystem.makeTempDirectory({ prefix: 'test-' })
  *
  * // Create in a specific parent directory
- * const buildDir = yield* Fs.makeTempDirectory({
+ * const buildDir = yield* FileSystem.makeTempDirectory({
  *   directory: '/tmp/builds',
  *   prefix: 'build-'
  * })
@@ -920,15 +920,15 @@ export const makeTempDirectory = (
  *
  * @example
  * ```ts
- * import { Fs } from '@kitz/fs'
+ * import { FileSystem, Path } from '@kitz/effect'
  * import { Effect, Scope } from 'effect'
  *
  * Effect.gen(function*() {
  *   // Directory will be cleaned up when scope ends
- *   const tempDir = yield* Fs.makeTempDirectoryScoped({ prefix: 'test-' })
+ *   const tempDir = yield* FileSystem.makeTempDirectoryScoped({ prefix: 'test-' })
  *
  *   // Use the directory...
- *   yield* Fs.writeString(
+ *   yield* FileSystem.writeString(
  *     Path.join(tempDir, S.decodeSync(Path.RelFile.Schema)('./data.txt')),
  *     'test data'
  *   )
@@ -957,10 +957,10 @@ export const makeTempDirectoryScoped = (
  * @example
  * ```ts
  * // Create a temporary file
- * const tempFile = yield* Fs.makeTemp({ type: 'file', suffix: '.txt' })
+ * const tempFile = yield* FileSystem.makeTemp({ type: 'file', suffix: '.txt' })
  *
  * // Create a temporary directory
- * const tempDir = yield* Fs.makeTemp({ type: 'directory', prefix: 'test-' })
+ * const tempDir = yield* FileSystem.makeTemp({ type: 'directory', prefix: 'test-' })
  * ```
  */
 export const makeTemp = <T extends MakeTempOptions>(
@@ -1005,7 +1005,7 @@ export const makeTemp = <T extends MakeTempOptions>(
  * @example
  * ```ts
  * // Create a scoped temporary file
- * const tempFile = yield* Fs.makeTempScoped({ type: 'file' })
+ * const tempFile = yield* FileSystem.makeTempScoped({ type: 'file' })
  * // File is automatically deleted when scope ends
  * ```
  */

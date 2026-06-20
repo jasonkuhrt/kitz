@@ -6,7 +6,7 @@ Effect v4 source is available at `~/repo-references/effect-v4/`. Always read the
 
 ## Critical: Effect v4 Beta API Differences
 
-This repo uses `effect@4.0.0-beta.31`. Many patterns from v3 docs are wrong at runtime.
+This repo uses `effect@4.0.0-beta.85` (peer dependency of `@kitz/effect`). Many patterns from v3 docs are wrong at runtime.
 
 ### Service Tags
 

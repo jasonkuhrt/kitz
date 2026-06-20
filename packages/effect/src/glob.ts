@@ -59,23 +59,22 @@ type InferGlobReturn<O extends GlobOptions | undefined> = O extends undefined
  *
  * @example
  * ```ts
- * import { Fs } from '@kitz/fs'
- * import { Fs } from '@kitz/fs'
+ * import { FileSystem, Path } from '@kitz/effect'
  * import { Effect } from 'effect'
  *
  * const program = Effect.gen(function* () {
  *   // Returns relative files (onlyFiles defaults to true)
- *   const relFiles = yield* Fs.glob('src/**' + '/*.ts')
+ *   const relFiles = yield* FileSystem.glob('src/**' + '/*.ts')
  *
  *   // Returns absolute files only
- *   const absFiles = yield* Fs.glob('src/**' + '/*.ts', { absolute: true, onlyFiles: true })
+ *   const absFiles = yield* FileSystem.glob('src/**' + '/*.ts', { absolute: true, onlyFiles: true })
  *
  *   // Returns directories only
- *   const dirs = yield* Fs.glob('src/**', { onlyDirectories: true })
+ *   const dirs = yield* FileSystem.glob('src/**', { onlyDirectories: true })
  *
  *   // Search from a specific directory using FsLoc
  *   const srcDir = Path.AbsDir.decodeStringSync('/path/to/project/')
- *   const srcFiles = yield* Fs.glob('**' + '/*.ts', { cwd: srcDir })
+ *   const srcFiles = yield* FileSystem.glob('**' + '/*.ts', { cwd: srcDir })
  *
  *   // Get string path from FsLoc
  *   const path = Path.encodeSync(relFiles[0])
@@ -131,20 +130,19 @@ export const glob = <O extends GlobOptions | undefined = undefined>(
  *
  * @example
  * ```ts
- * import { Fs } from '@kitz/fs'
- * import { Fs } from '@kitz/fs'
+ * import { FileSystem, Path } from '@kitz/effect'
  * import { Effect } from 'effect'
  *
  * const program = Effect.gen(function* () {
  *   // Search from a specific directory using FsLoc
  *   const distDir = Path.AbsDir.decodeStringSync('./dist/')
- *   const relFiles = yield* Fs.globSync('**' + '/*.js', { cwd: distDir })
+ *   const relFiles = yield* FileSystem.globSync('**' + '/*.js', { cwd: distDir })
  *
  *   // Returns absolute files only
- *   const absFiles = yield* Fs.globSync('**' + '/*.js', { absolute: true, onlyFiles: true })
+ *   const absFiles = yield* FileSystem.globSync('**' + '/*.js', { absolute: true, onlyFiles: true })
  *
  *   // Returns directories only
- *   const dirs = yield* Fs.globSync('src/**', { onlyDirectories: true })
+ *   const dirs = yield* FileSystem.globSync('src/**', { onlyDirectories: true })
  * })
  *
  * Effect.runSync(program)

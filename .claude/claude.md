@@ -5,14 +5,16 @@
 
 ## Workflow
 
-- Drive meaningful repo workflows through project-defined Bun scripts.
-- This repo uses **bun:test** as the test runner, not vitest. Tests import from `'bun:test'`. The shared `@kitz/test` package wraps bun:test with `Test.describe`, `Test.property`, `Test.effect`, `Test.live`, and Effect Schema matchers.
-- Do not introduce `vitest`, `@vitest/*`, `@effect/vitest`, or `@ark/attest` — they were removed during the bun-pure migration. Coverage is `bun test --coverage` (native JSC `Inspector.Coverage`).
-- Run tests through `bun run <script>` or `bun run --cwd <package> <script>`.
-- If a focused test workflow does not exist yet, add an appropriate Bun script first and then run that script.
+- **Package manager:** pnpm 11 (`pnpm-workspace.yaml`). Dev/CI runtime is Node (>=22.12). Drive workflows through the project-defined pnpm scripts.
+- **Toolchain:** [Vite+](https://viteplus.dev) (`vp`) for test/lint/format, official TypeScript 7 (`tsc`) for build + typecheck. `effect` is a peer dependency pinned to the v4 beta line.
+- **Test runner:** Vitest via `@effect/vitest` (`it.effect`, `it.scoped`, `it.live`, `it.prop`). Tests run on Node. Run the suite with `pnpm test` (or `pnpm -C packages/<pkg> test`). `addEqualityTesters()` (in `vitest.setup.ts`) wires Effect-data equality into `expect`.
+- **Build/typecheck:** `pnpm build` (tsc, file-by-file emit — no bundler) and `pnpm check:types`.
+- **Lint/format:** `pnpm check:lint` (oxlint via `vp lint`) and `pnpm check:format` (oxfmt via `vp format`; the scripts pass `--config .oxfmtrc.json` because vp 0.2.1 does not auto-discover it). House style: single-quote, no-semi.
 - Prefer canonical repo or package scripts over one-off shell commands when the workflow matters.
 - Follow `.claude/rules/commit-conventions.md` when writing git commits or PR titles.
 - Treat `oxlint` warnings as blocking. Keep rule severities at `warn` so IDEs do not visually conflate lint findings with type-check errors, but do not close work while any `oxlint` warning is still live.
+
+> History: this repo was previously a 48-package bun-pure monorepo (bun runtime + bun:test + tsgo). It was collapsed to a single shippable package, `@kitz/effect`, and migrated to the pnpm + Vite+ + TS7 toolchain. The earlier `bun:test`/`@kitz/test` and "no vitest" guidance no longer applies.
 
 ## Backwards Compatibility
 

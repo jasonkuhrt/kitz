@@ -19,7 +19,7 @@ export interface Builder {
  *
  * @example
  * ```ts
- * const builder = Fs.Builder.create('/project')
+ * const builder = FileSystem.Builder.create('/project')
  * ```
  */
 export const create = (base: Path.Input.AbsDir): Builder => ({
@@ -36,7 +36,7 @@ export const create = (base: Path.Input.AbsDir): Builder => ({
  * ```ts
  * const program = Effect.scoped(
  *   Effect.gen(function* () {
- *     const temp = yield* Fs.Builder.createTemp()
+ *     const temp = yield* FileSystem.Builder.createTemp()
  *     // Use temp directory...
  *   }) // Automatically cleaned up when scope ends
  * )
@@ -60,10 +60,10 @@ export const createTemp = (): Effect.Effect<
  *
  * @example
  * ```ts
- * const temp = yield* Fs.Builder.createTempUnsafe()
+ * const temp = yield* FileSystem.Builder.createTempUnsafe()
  * // Use temp directory...
  * // Must manually clean up when done
- * yield* Fs.remove(temp.base, { recursive: true })
+ * yield* FileSystem.remove(temp.base, { recursive: true })
  * ```
  */
 export const createTempUnsafe = (): Effect.Effect<

@@ -7,8 +7,8 @@
  * ## Naming Convention
  *
  * This module follows Kit's namespace naming convention:
- * - **PascalCase** = Data/Types/Schemas (e.g., `Fs.Path.AbsFile`, `Fs.PathAnalyzer.Analysis`)
- * - **camelCase** = Operations - both term-level and type-level (e.g., `Fs.Path.up()`, `Fs.PathAnalyzer.analyze<T>`)
+ * - **PascalCase** = Data/Types/Schemas (e.g., `Path.AbsFile`, `FileSystem.PathAnalyzer.Analysis`)
+ * - **camelCase** = Operations - both term-level and type-level (e.g., `Path.up()`, `FileSystem.PathAnalyzer.analyze<T>`)
  *
  * This pattern applies recursively at all namespace levels.
  *
