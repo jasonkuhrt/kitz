@@ -45,8 +45,6 @@
     "test:packages": "bun tools/run-package-tests.ts test --if-present",
     "check:cov:packages": "./tools/run-workspace-coverage.mjs",
     "check:ci": "actionlint",
-    "check:platform": "bun run --cwd packages/platform check:types && bun run --cwd packages/platform check:lint && bun run --cwd packages/platform build && bun run --cwd packages/platform check:package",
-    "platform:verify": "bun run check:platform",
     "pre-commit": "bun tools/pre-commit.ts",
     "_:build": "tsgo -p tsconfig.build.json",
     "_:dev": "tsgo -p tsconfig.build.json --watch",
