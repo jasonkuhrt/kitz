@@ -1,30 +1,43 @@
-import { Effect, Schema as S } from 'effect'
-import * as TinyGlobby from 'tinyglobby'
+import { Effect, FileSystem, type PlatformError } from 'effect'
+import picomatch from 'picomatch'
 import { Path } from './path/_.js'
 
 /**
- * Options for globbing file patterns, excluding the patterns parameter.
- * The `cwd` option only accepts {@link Path.AbsDir} or URL for type safety.
+ * Options for globbing file patterns.
+ *
+ * Globbing walks the injected {@link FileSystem.FileSystem} service, so it honors
+ * whatever platform layer is provided (Node, Bun, or the in-memory layer) — it is
+ * not tied to the real filesystem.
  */
-export type GlobOptions = Omit<TinyGlobby.GlobOptions, 'patterns' | 'cwd'> & {
+export interface GlobOptions {
   /**
-   * The working directory in which to search. Results will be returned relative to this directory.
-   * Only accepts {@link Path.AbsDir} or URL for type-safe filesystem paths.
-   * @default process.cwd() as Path.AbsDir
+   * Directory to search from. Results are returned relative to it (or absolute when
+   * `absolute` is set and an {@link Path.AbsDir} is given).
+   *
+   * Defaults to `'.'` (the platform layer's current directory). Pass a
+   * {@link Path.AbsDir} to produce absolute results.
    */
   cwd?: Path.AbsDir | URL
+  /** Match files only. @default true (unless `onlyDirectories` is set) */
+  onlyFiles?: boolean
+  /** Match directories only. @default false */
+  onlyDirectories?: boolean
+  /** Return absolute paths. Requires an {@link Path.AbsDir} `cwd`. @default false */
+  absolute?: boolean
+  /** Include entries that start with a dot. @default false */
+  dot?: boolean
+  /** Glob pattern(s) to exclude from results. */
+  ignore?: string | string[]
 }
 
 /**
- * Type helper to infer FsLoc return type based on glob options.
- * - If onlyFiles is true (default), returns only File types
- * - If onlyDirectories is true, returns only Dir types
- * - If onlyFiles is false, returns both File and Dir types
- * - If absolute is true, returns absolute locations
- * - Otherwise returns relative locations
+ * Type helper to infer the Path return type based on glob options.
+ * - `onlyDirectories: true` -> Dir types; otherwise File types (onlyFiles defaults true)
+ * - `onlyFiles: false` -> both File and Dir
+ * - `absolute: true` -> absolute locations; otherwise relative
  */
 type InferGlobReturn<O extends GlobOptions | undefined> = O extends undefined
-  ? Path.RelFile // Explicit undefined type param
+  ? Path.RelFile
   : O extends { onlyDirectories: true; absolute: true }
     ? Path.AbsDir
     : O extends { onlyDirectories: true }
@@ -33,148 +46,113 @@ type InferGlobReturn<O extends GlobOptions | undefined> = O extends undefined
         ? Path.$Abs
         : O extends { onlyFiles: false }
           ? Path.$Rel
-          : O extends { onlyFiles: true; absolute: true }
+          : O extends { absolute: true }
             ? Path.AbsFile
-            : O extends { onlyFiles: true }
+            : O extends GlobOptions
               ? Path.RelFile
-              : O extends { absolute: true }
-                ? Path.AbsFile // onlyFiles defaults to true
-                : O extends GlobOptions
-                  ? Path.RelFile // Default case for bare GlobOptions/{}
-                  : never // Should never reach here
+              : never
+
+/** Join two POSIX path fragments, collapsing the separator. */
+const joinPosix = (base: string, name: string): string =>
+  base === '' || base === '.' ? name : `${base.replace(/\/+$/, '')}/${name}`
+
+const cwdToString = (cwd: Path.AbsDir | URL | undefined): string => {
+  if (cwd === undefined) return '.'
+  if (cwd instanceof URL) return cwd.pathname
+  return Path.toString(cwd)
+}
 
 /**
- * Effect-based wrapper for globbing file patterns.
- * Returns an Effect that resolves to an array of matched FsLoc objects.
+ * Recursively collect every entry under `root`, walking one directory level at a
+ * time through the FileSystem service. Returns root-relative paths tagged with
+ * whether each is a directory.
+ */
+const walk = (
+  root: string,
+  dir: string,
+): Effect.Effect<
+  ReadonlyArray<{ readonly rel: string; readonly isDirectory: boolean }>,
+  PlatformError.PlatformError,
+  FileSystem.FileSystem
+> =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem
+    const absDir = joinPosix(root, dir)
+    const names = yield* fs.readDirectory(absDir === '' ? '.' : absDir)
+    const out: Array<{ rel: string; isDirectory: boolean }> = []
+    for (const name of names) {
+      const rel = joinPosix(dir, name)
+      const info = yield* fs.stat(joinPosix(root, rel))
+      const isDirectory = info.type === 'Directory'
+      out.push({ rel, isDirectory })
+      if (isDirectory) {
+        out.push(...(yield* walk(root, rel)))
+      }
+    }
+    return out
+  })
+
+/**
+ * Glob for paths matching `pattern`, returning typed {@link Path} values.
  *
- * The return type is determined by the options:
- * - With `onlyFiles: true` (default), returns only file locations
- * - With `onlyDirectories: true`, returns only directory locations
- * - With `absolute: true`, returns absolute locations
- * - Otherwise, returns relative locations
+ * Walks the injected {@link FileSystem.FileSystem} service (so it works against any
+ * platform layer, including the in-memory one) and matches with
+ * [picomatch](https://github.com/micromatch/picomatch). The return type is refined
+ * by the options (files vs directories, relative vs absolute).
  *
- * @param pattern - The glob pattern(s) to match against
- * @param options - Additional globbing options
- * @returns Effect containing array of matched FsLoc objects
+ * @param pattern - The glob pattern(s) to match (matched against cwd-relative paths)
+ * @param options - {@link GlobOptions}
+ * @returns Effect of matched {@link Path} values; requires a `FileSystem` layer
  *
  * @example
  * ```ts
- * import { FileSystem, Path } from '@kitz/effect'
  * import { Effect } from 'effect'
+ * import { NodeContext } from '@effect/platform-node'
+ * import { FileSystem, Path } from '@kitz/effect'
  *
  * const program = Effect.gen(function* () {
- *   // Returns relative files (onlyFiles defaults to true)
  *   const relFiles = yield* FileSystem.glob('src/**' + '/*.ts')
- *
- *   // Returns absolute files only
- *   const absFiles = yield* FileSystem.glob('src/**' + '/*.ts', { absolute: true, onlyFiles: true })
- *
- *   // Returns directories only
  *   const dirs = yield* FileSystem.glob('src/**', { onlyDirectories: true })
- *
- *   // Search from a specific directory using FsLoc
- *   const srcDir = Path.AbsDir.decodeStringSync('/path/to/project/')
- *   const srcFiles = yield* FileSystem.glob('**' + '/*.ts', { cwd: srcDir })
- *
- *   // Get string path from FsLoc
- *   const path = Path.encodeSync(relFiles[0])
+ *   const srcDir = Path.AbsDir.fromString('/project/')
+ *   const absFiles = yield* FileSystem.glob('**' + '/*.ts', { cwd: srcDir, absolute: true })
  * })
  *
- * Effect.runPromise(program)
+ * program.pipe(Effect.provide(NodeContext.layer), Effect.runPromise)
  * ```
  */
 export const glob = <O extends GlobOptions | undefined = undefined>(
   pattern: string | string[],
   options?: O,
-): Effect.Effect<InferGlobReturn<O>[], Error> =>
-  Effect.tryPromise({
-    try: () => {
-      // Convert Path.AbsDir to string for TinyGlobby
-      const tinyGlobbyOptions =
-        options && options.cwd && Path.AbsDir.is(options.cwd)
-          ? { ...options, cwd: S.encodeSync(Path.AbsDir.Schema)(options.cwd) }
-          : options
-      return TinyGlobby.glob(pattern, tinyGlobbyOptions as TinyGlobby.GlobOptions)
-    },
-    catch: (error) => new Error(`Failed to glob pattern: ${String(error)}`),
-  }).pipe(
-    Effect.flatMap((paths) =>
-      Effect.try({
-        try: () =>
-          paths.map((path) => {
-            // Normalize relative paths to start with ./
-            const normalizedPath =
-              path.startsWith('/') || path.startsWith('./') || path.startsWith('../')
-                ? path
-                : `./${path}`
-            return Path.fromString(normalizedPath) as InferGlobReturn<O>
-          }),
-        catch: (error) => new Error(`Failed to decode glob results: ${String(error)}`),
-      }),
-    ),
-  )
+): Effect.Effect<InferGlobReturn<O>[], PlatformError.PlatformError, FileSystem.FileSystem> =>
+  Effect.gen(function* () {
+    const root = cwdToString(options?.cwd)
+    const matchOptions = { dot: options?.dot ?? false }
+    const isMatch = picomatch(pattern, matchOptions)
+    const isIgnored = options?.ignore
+      ? picomatch(options.ignore, { dot: true })
+      : (_: string) => false
 
-/**
- * Synchronous Effect-based wrapper for globbing file patterns.
- * Uses the synchronous version of glob internally.
- *
- * The return type is determined by the options:
- * - With `onlyFiles: true` (default), returns only file locations
- * - With `onlyDirectories: true`, returns only directory locations
- * - With `absolute: true`, returns absolute locations
- * - Otherwise, returns relative locations
- *
- * @param pattern - The glob pattern(s) to match against
- * @param options - Additional globbing options
- * @returns Effect containing array of matched FsLoc objects
- *
- * @example
- * ```ts
- * import { FileSystem, Path } from '@kitz/effect'
- * import { Effect } from 'effect'
- *
- * const program = Effect.gen(function* () {
- *   // Search from a specific directory using FsLoc
- *   const distDir = Path.AbsDir.decodeStringSync('./dist/')
- *   const relFiles = yield* FileSystem.globSync('**' + '/*.js', { cwd: distDir })
- *
- *   // Returns absolute files only
- *   const absFiles = yield* FileSystem.globSync('**' + '/*.js', { absolute: true, onlyFiles: true })
- *
- *   // Returns directories only
- *   const dirs = yield* FileSystem.globSync('src/**', { onlyDirectories: true })
- * })
- *
- * Effect.runSync(program)
- * ```
- */
-export const globSync = <O extends GlobOptions | undefined = undefined>(
-  pattern: string | string[],
-  options?: O,
-): Effect.Effect<InferGlobReturn<O>[], Error> =>
-  Effect.try({
-    try: () => {
-      // Convert Path.AbsDir to string for TinyGlobby
-      const tinyGlobbyOptions =
-        options && options.cwd && Path.AbsDir.is(options.cwd)
-          ? { ...options, cwd: S.encodeSync(Path.AbsDir.Schema)(options.cwd) }
-          : options
-      return TinyGlobby.globSync(pattern, tinyGlobbyOptions as TinyGlobby.GlobOptions)
-    },
-    catch: (error) => (error instanceof Error ? error : new Error(String(error))),
-  }).pipe(
-    Effect.flatMap((paths) =>
-      Effect.try({
-        try: () =>
-          paths.map((path) => {
-            // Normalize relative paths to start with ./
-            const normalizedPath =
-              path.startsWith('/') || path.startsWith('./') || path.startsWith('../')
-                ? path
-                : `./${path}`
-            return Path.fromString(normalizedPath) as InferGlobReturn<O>
-          }),
-        catch: (error) => new Error(`Failed to decode glob results: ${String(error)}`),
-      }),
-    ),
-  )
+    const onlyDirectories = options?.onlyDirectories === true
+    const onlyFiles = !onlyDirectories && (options?.onlyFiles ?? true)
+    const absolute = options?.absolute === true
+
+    const entries = yield* walk(root, '')
+
+    const results: InferGlobReturn<O>[] = []
+    for (const { rel, isDirectory } of entries) {
+      if (onlyFiles && isDirectory) continue
+      if (onlyDirectories && !isDirectory) continue
+      if (!isMatch(rel) || isIgnored(rel)) continue
+
+      const withSlash = isDirectory ? `${rel}/` : rel
+      const pathString = absolute
+        ? `${root.replace(/\/+$/, '')}/${withSlash}`
+        : withSlash.startsWith('./') || withSlash.startsWith('../')
+          ? withSlash
+          : `./${withSlash}`
+
+      results.push(Path.fromString(pathString) as InferGlobReturn<O>)
+    }
+
+    return results
+  })

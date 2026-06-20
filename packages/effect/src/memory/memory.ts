@@ -77,16 +77,26 @@ export const layer = (initialDiskLayout: DiskLayout) => {
     // Read directory contents
     readDirectory: (path: string) => {
       const normalizedPath = path.endsWith('/') ? path : path + '/'
-      const entries = Object.keys(diskLayout)
-        .filter((filePath) => filePath.startsWith(normalizedPath))
-        .map((filePath) => filePath.slice(normalizedPath.length))
-        .filter((relativePath) => relativePath.length > 0 && !relativePath.includes('/'))
-        .filter((entry) => !entry.endsWith('.dir_marker')) // Filter out directory markers
+      // Collect immediate children: direct files AND the first segment of any
+      // deeper key (so implicit intermediate directories are listed, matching
+      // real-filesystem semantics — not just direct entries).
+      const names = new Set<string>()
+      let hasAny = false
+      for (const filePath of Object.keys(diskLayout)) {
+        if (!filePath.startsWith(normalizedPath)) continue
+        const relativePath = filePath.slice(normalizedPath.length)
+        if (relativePath.length === 0) continue
+        hasAny = true
+        const slashIndex = relativePath.indexOf('/')
+        const firstSegment = slashIndex === -1 ? relativePath : relativePath.slice(0, slashIndex)
+        if (firstSegment.endsWith('.dir_marker')) continue // skip directory markers
+        names.add(firstSegment)
+      }
 
-      // Check if directory exists (has marker or files)
-      const dirExists = `${normalizedPath}.dir_marker` in diskLayout || entries.length > 0
+      // Check if directory exists (has marker or any descendants)
+      const dirExists = `${normalizedPath}.dir_marker` in diskLayout || hasAny
 
-      return dirExists ? Effect.succeed(entries) : failNotFound('readDirectory', path, 'scandir')
+      return dirExists ? Effect.succeed([...names]) : failNotFound('readDirectory', path, 'scandir')
     },
 
     // File stats (simplified - just checks existence)

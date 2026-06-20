@@ -12,9 +12,6 @@ catalogs:
     effect:
       specifier: 4.0.0-beta.85
       version: 4.0.0-beta.85
-    fast-check:
-      specifier: ^4.8.0
-      version: 4.8.0
     vitest:
       specifier: 4.1.9
       version: 4.1.9
@@ -56,13 +53,16 @@ importers:
 
   packages/effect:
     dependencies:
-      tinyglobby:
-        specifier: ^0.2.16
-        version: 0.2.17
+      picomatch:
+        specifier: 4.0.4
+        version: 4.0.4
     devDependencies:
       '@effect/vitest':
         specifier: 'catalog:'
         version: 4.0.0-beta.85(effect@4.0.0-beta.85)(vitest@4.1.9)
+      '@types/picomatch':
+        specifier: 4.0.3
+        version: 4.0.3
       effect:
         specifier: 'catalog:'
         version: 4.0.0-beta.85
@@ -596,6 +596,9 @@ packages:
 
   '@types/node@25.9.4':
     resolution: {integrity: sha512-dszCsrKb5U7ZsVZBWiHFklTloVl0mSEnWH/iZXfZUlI4rzCUnsvGmgqfuVRHL54ugE7/wRuxEIXRa2iMZ+BG6g==}
+
+  '@types/picomatch@4.0.3':
+    resolution: {integrity: sha512-iG0T6+nYJ9FAPmx9SsUlnwcq1ZVRuCXcVEvWnntoPlrOpwtSTKNDC9uVAxTsC3PUvJ+99n4RpAcNgBbHX3JSnQ==}
 
   '@typescript/typescript-aix-ppc64@7.0.1-rc':
     resolution: {integrity: sha512-oqq2ZfEJ7BQuufcC3QBQndZLPNyamYNHLao8lKRBeeSkZKypBqxPSgkzrcFZtbYcIaBvpiyUnQP9MT7DEYHWbw==}
@@ -1831,6 +1834,8 @@ snapshots:
   '@types/node@25.9.4':
     dependencies:
       undici-types: 7.24.6
+
+  '@types/picomatch@4.0.3': {}
 
   '@typescript/typescript-aix-ppc64@7.0.1-rc':
     optional: true

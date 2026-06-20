@@ -66,11 +66,10 @@ const testFs = FileSystem.Memory.layer({
 })
 ```
 
-> **Known limitation:** `FileSystem.glob` currently uses
-> [`tinyglobby`](https://github.com/SuperchupuDev/tinyglobby) and reads the real
-> filesystem directly (`node:fs`) rather than the injected `FileSystem` layer. Glob
-> therefore works on Node/Bun but not the in-memory layer, and not on Deno. A
-> layer-aware reimplementation is planned.
+`FileSystem.glob` is layer-aware too: it walks the injected `FileSystem` service
+(via [picomatch](https://github.com/micromatch/picomatch) + `readDirectory`), so the
+same glob runs against the in-memory layer in tests and any real platform layer in
+production — no `node:fs` lock-in.
 
 ## Naming: kitz `FileSystem`/`Path` supersede Effect's
 

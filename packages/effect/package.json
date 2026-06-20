@@ -62,10 +62,11 @@
     "check:cov": "vp test run --coverage"
   },
   "dependencies": {
-    "tinyglobby": "^0.2.16"
+    "picomatch": "4.0.4"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
+    "@types/picomatch": "4.0.3",
     "effect": "catalog:",
     "vitest": "catalog:"
   },
