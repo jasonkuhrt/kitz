@@ -1,6 +1,7 @@
 # Build output
 build/
 **/build/
+**/coverage/
 **/node_modules/
 *.tsbuildinfo
 

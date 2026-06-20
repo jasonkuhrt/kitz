@@ -1,4 +1,4 @@
-import { describe, expect, it, test } from '@effect/vitest'
+import { describe, expect, it, test } from 'vite-plus/test'
 import { Path } from './_.js'
 
 // Explicit constructors correctly handle ambiguous dotfiles via hints

@@ -65,10 +65,9 @@
     "picomatch": "4.0.4"
   },
   "devDependencies": {
-    "@effect/vitest": "catalog:",
     "@types/picomatch": "4.0.3",
-    "effect": "catalog:",
-    "vitest": "catalog:"
+    "@vitest/coverage-v8": "4.1.9",
+    "effect": "catalog:"
   },
   "peerDependencies": {
     "effect": "^4.0.0-beta.85"

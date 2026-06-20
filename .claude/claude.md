@@ -7,7 +7,7 @@
 
 - **Package manager:** pnpm 11 (`pnpm-workspace.yaml`). Dev/CI runtime is Node (>=22.12). Drive workflows through the project-defined pnpm scripts.
 - **Toolchain:** [Vite+](https://viteplus.dev) (`vp`) for test/lint/format, official TypeScript 7 (`tsc`) for build + typecheck. `effect` is a peer dependency pinned to the v4 beta line.
-- **Test runner:** Vitest via `@effect/vitest` (`it.effect`, `it.scoped`, `it.live`, `it.prop`). Tests run on Node. Run the suite with `pnpm test` (or `pnpm -C packages/<pkg> test`). `addEqualityTesters()` (in `vitest.setup.ts`) wires Effect-data equality into `expect`.
+- **Test runner:** `vp test` (Vitest, bundled by Vite+). Import the test API from `vite-plus/test` (`describe`, `it`, `test`, `expect`, `vi`) — NOT from `vitest` or `@effect/vitest`; vite-plus owns vitest and re-exports it, which keeps a single vitest copy (works under GVS). Do not install `vitest` directly. Config lives in each package's `vite.config.ts` `test` block (not `vitest.config.ts`). `vitest.setup.ts` registers an Effect-`Equal`-aware equality tester on `expect`. Coverage providers are opt-in, pinned to the bundled vitest version (`@vitest/coverage-v8@4.1.9`).
 - **Build/typecheck:** `pnpm build` (tsc, file-by-file emit — no bundler) and `pnpm check:types`.
 - **Lint/format:** `pnpm check:lint` (oxlint via `vp lint`) and `pnpm check:format` (oxfmt via `vp format`; the scripts pass `--config .oxfmtrc.json` because vp 0.2.1 does not auto-discover it). House style: single-quote, no-semi.
 - Prefer canonical repo or package scripts over one-off shell commands when the workflow matters.

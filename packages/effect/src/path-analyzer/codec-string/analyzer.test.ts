@@ -1,4 +1,4 @@
-import { describe, expect, it } from '@effect/vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { analyze } from './analyzer.js'
 
 describe('hint option', () => {

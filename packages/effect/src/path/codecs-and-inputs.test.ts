@@ -1,4 +1,4 @@
-import { describe, expect, test } from '@effect/vitest'
+import { describe, expect, test } from 'vite-plus/test'
 import { Effect, Exit, Schema as S } from 'effect'
 import * as AbsDirCodec from './AbsDir/__.js'
 import * as AbsFileCodec from './AbsFile/__.js'

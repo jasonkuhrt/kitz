@@ -1,5 +1,6 @@
 build
 **/build/
+**/coverage/
 **/node_modules/
 **/.dprint/
 **/.turbo/

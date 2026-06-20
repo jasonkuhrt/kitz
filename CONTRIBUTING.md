@@ -42,7 +42,7 @@ pnpm build          # build (tsc, file-by-file, no bundler)
 pnpm check:types    # typecheck (tsc --noEmit)
 pnpm check:lint     # lint (oxlint via vp)
 pnpm check:format   # format check (oxfmt via vp)
-pnpm test           # tests (Vitest + @effect/vitest, on Node)
+pnpm test           # tests (vp test — Vitest bundled by Vite+; import from 'vite-plus/test')
 pnpm check:package  # publint + attw on the built package
 ```
 

@@ -17,15 +17,14 @@
     "fix:format": "vp format --config .oxfmtrc.json",
     "format": "vp format --config .oxfmtrc.json",
     "fix": "pnpm fix:format && pnpm fix:lint",
-    "test": "vp test run",
-    "check:cov": "vp test run --coverage",
+    "test": "pnpm -r test",
+    "check:cov": "pnpm -r check:cov",
     "check:package": "pnpm -r check:package",
     "check:ci": "actionlint",
     "format:check": "vp format --check --config .oxfmtrc.json"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
-    "@effect/vitest": "catalog:",
     "@tsconfig/node-lts": "^24.0.0",
     "@tsconfig/strictest": "^2.0.8",
     "@types/node": "^25.9.1",
