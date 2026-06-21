@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from '@kitz/vitest'
 import { analyze } from './analyzer.js'
 
 describe('hint option', () => {

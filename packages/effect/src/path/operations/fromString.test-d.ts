@@ -1,4 +1,4 @@
-import { expectTypeOf } from 'vite-plus/test'
+import { expectTypeOf } from '@kitz/vitest'
 import { Path } from '../../_.js'
 
 // fromString should infer specific types from literal strings
