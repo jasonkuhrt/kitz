@@ -1,0 +1,32 @@
+{
+  "extends": "@tsconfig/strictest/tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": [
+      "ES2024",
+      "ESNext.Array",
+      "ESNext.Collection",
+      "ESNext.Iterator",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": ["node"],
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "erasableSyntaxOnly": true,
+    "moduleDetection": "force",
+    "resolveJsonModule": true,
+    "incremental": true,
+    "skipLibCheck": true,
+    "noErrorTruncation": true,
+    "forceConsistentCasingInFileNames": true,
+    "sourceMap": true,
+    "noEmit": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": false
+  },
+  "exclude": ["node_modules", "build", "dist", ".tsbuild", "coverage"]
+}

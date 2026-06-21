@@ -1,0 +1,10 @@
+{
+  "extends": ["../../tsconfig.template.stage.development.json"],
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../.tsbuild/effect/tsconfig.development.tsbuildinfo"
+  },
+  "references": [
+    { "path": "./tsconfig.production.json" },
+    { "path": "../vitest/tsconfig.production.json" }
+  ]
+}

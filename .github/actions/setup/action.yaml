@@ -1,0 +1,26 @@
+name: Setup
+description: Boilerplate steps needed by most jobs.
+inputs:
+  node-version:
+    description: Version of Node to use.
+    required: false
+    # pnpm 11.8 requires Node >=22.13; use current LTS.
+    default: '24'
+  install-deps:
+    description: Should deps be installed?
+    required: false
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Install pnpm
+      uses: pnpm/action-setup@v4
+    - name: Use Node ${{inputs.node-version}}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{inputs.node-version}}
+        cache: pnpm
+    - name: Install Dependencies
+      run: pnpm install --frozen-lockfile
+      shell: bash
+      if: ${{inputs.install-deps}} == 'true'

@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.template.base.json",
+  "compilerOptions": {
+    "rootDir": "${configDir}/src"
+  },
+  "include": ["${configDir}/src/**/*.ts"],
+  "exclude": [
+    "${configDir}/**/*.test.ts",
+    "${configDir}/**/*.test-d.ts",
+    "${configDir}/**/*.setup.ts",
+    "${configDir}/**/*.config.ts",
+    "${configDir}/node_modules",
+    "${configDir}/build",
+    "${configDir}/dist",
+    "${configDir}/.tsbuild",
+    "${configDir}/coverage"
+  ]
+}

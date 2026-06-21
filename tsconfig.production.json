@@ -1,0 +1,13 @@
+{
+  "extends": [
+    "./tsconfig.template.stage.production.json",
+    "./tsconfig.template.topology.solution.json"
+  ],
+  "compilerOptions": {
+    "tsBuildInfoFile": ".tsbuild/tsconfig.production.tsbuildinfo"
+  },
+  "references": [
+    { "path": "./packages/effect/tsconfig.production.json" },
+    { "path": "./packages/vitest/tsconfig.production.json" }
+  ]
+}

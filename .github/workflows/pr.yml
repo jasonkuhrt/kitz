@@ -1,0 +1,111 @@
+name: pr
+on:
+  pull_request: {}
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-type:
+    runs-on: ubuntu-latest
+    outputs:
+      skip-code-checks: ${{ steps.check.outputs.skip-code-checks }}
+    steps:
+      - name: Check PR title for CC type
+        id: check
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          title="$PR_TITLE"
+          if [[ "$title" =~ ^ci(\(|:) ]]; then
+            echo "skip-code-checks=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping code checks (ci): $title"
+          elif [[ "$title" =~ ^chore\.docs(\(|:) ]]; then
+            echo "skip-code-checks=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping code checks (chore.docs): $title"
+          else
+            echo "skip-code-checks=false" >> "$GITHUB_OUTPUT"
+            echo "Running full checks for: $title"
+          fi
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Check formatting
+        run: pnpm exec vp format --check
+
+  build:
+    needs: check-type
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+      - uses: ./.github/actions/setup
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+      - name: Build
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+        run: pnpm exec vp run build
+      - run: echo "Skipped for chore.docs/ci commit"
+        if: needs.check-type.outputs.skip-code-checks == 'true'
+
+  types:
+    needs: check-type
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+      - uses: ./.github/actions/setup
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+      - name: Type check
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+        run: pnpm exec vp run check:types
+      - run: echo "Skipped for chore.docs/ci commit"
+        if: needs.check-type.outputs.skip-code-checks == 'true'
+
+  lint:
+    needs: check-type
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+      - uses: ./.github/actions/setup
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+      - name: Lint
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+        run: pnpm exec vp lint
+      - run: echo "Skipped for chore.docs/ci commit"
+        if: needs.check-type.outputs.skip-code-checks == 'true'
+
+  publint:
+    needs: check-type
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+      - uses: ./.github/actions/setup
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+      - name: Check published package shapes
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+        run: pnpm exec vp run check:package
+      - run: echo "Skipped for chore.docs/ci commit"
+        if: needs.check-type.outputs.skip-code-checks == 'true'
+
+  test:
+    needs: check-type
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+      - uses: ./.github/actions/setup
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+      - name: Test
+        if: needs.check-type.outputs.skip-code-checks != 'true'
+        run: pnpm exec vp test run
+      - run: echo "Skipped for chore.docs/ci commit"
+        if: needs.check-type.outputs.skip-code-checks == 'true'

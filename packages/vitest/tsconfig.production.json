@@ -1,0 +1,10 @@
+{
+  "extends": [
+    "../../tsconfig.template.stage.production.json",
+    "../../tsconfig.template.topology.imported.json"
+  ],
+  "compilerOptions": {
+    "outDir": "build",
+    "tsBuildInfoFile": "../../.tsbuild/vitest/tsconfig.production.tsbuildinfo"
+  }
+}

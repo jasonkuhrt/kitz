@@ -1,0 +1,28 @@
+{
+  "name": "@kitz/workspace",
+  "private": true,
+  "author": {
+    "name": "Jason Kuhrt",
+    "url": "https://kuhrt.me"
+  },
+  "type": "module",
+  "scripts": {
+    "install:ci": "pnpm install --frozen-lockfile",
+    "prepare": "git config core.hooksPath hooks"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
+    "@tsconfig/node-lts": "^24.0.0",
+    "@tsconfig/strictest": "^2.0.8",
+    "@types/node": "^25.9.1",
+    "effect": "catalog:",
+    "fast-check": "catalog:",
+    "publint": "^0.3.21",
+    "typescript": "7.0.1-rc",
+    "vite-plus": "0.2.1"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "packageManager": "pnpm@11.8.0"
+}

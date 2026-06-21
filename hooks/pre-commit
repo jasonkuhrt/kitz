@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+set -eu
+
+# Format + lint staged files via Vite+ (config in vite.config.mts `staged`).
+pnpm exec vp staged

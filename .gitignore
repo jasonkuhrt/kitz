@@ -1,0 +1,25 @@
+# Build output
+build
+**/build/
+**/coverage/
+**/node_modules/
+*.tsbuildinfo
+
+.DS_Store
+
+# Playwright MCP
+.playwright-mcp/
+
+# Ephemeral review/scratch output
+.tmp/
+
+# Claude local context (flo-generated, machine-specific)
+.claude/*.local.md
+.claude/settings.local.json
+CLAUDE.local.md
+.claude/worktrees/
+
+.worktrees/
+
+.session/
+.sessions/

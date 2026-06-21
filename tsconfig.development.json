@@ -1,0 +1,13 @@
+{
+  "extends": [
+    "./tsconfig.template.stage.development.json",
+    "./tsconfig.template.topology.solution.json"
+  ],
+  "compilerOptions": {
+    "tsBuildInfoFile": ".tsbuild/tsconfig.development.tsbuildinfo"
+  },
+  "references": [
+    { "path": "./packages/effect/tsconfig.development.json" },
+    { "path": "./packages/vitest/tsconfig.development.json" }
+  ]
+}
