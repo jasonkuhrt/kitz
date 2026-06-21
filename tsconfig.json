@@ -1,9 +1,0 @@
-{
-  "extends": "./tsconfig.base.json",
-  "compilerOptions": {
-    "noEmit": true,
-    "tsBuildInfoFile": "node_modules/.cache/.tsbuildinfo"
-  },
-  "include": [],
-  "exclude": ["packages", "node_modules"]
-}

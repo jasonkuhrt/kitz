@@ -1,6 +1,0 @@
-// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
-
-exports[`KeyHints layout snapshot for typical dashboard hint set 1`] = `
-"[ ] lifecycle  t toggle pkg  Tab pane  q quit               
-"
-`;
