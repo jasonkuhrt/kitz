@@ -10,19 +10,27 @@ This repo uses `effect@4.0.0-beta.85` (peer dependency of `@kitz/effect`). Many 
 
 ### Service Tags
 
+The service API has churned across v4 betas. As of `effect@4.0.0-beta.85`
+(verified 2026-06): `ServiceMap` is **removed**, and `Context.Service` is the
+constructor. (Earlier betas used `ServiceMap.Service`; that no longer resolves.)
+
 ```typescript
-// ❌ WRONG — Effect.Tag and Context.Tag do not exist in v4 beta
-import { Effect } from 'effect'
+// ❌ WRONG — ServiceMap was removed in beta.85 (this was correct in earlier betas)
+import { ServiceMap } from 'effect'
+class Foo extends ServiceMap.Service<Foo, Shape>()('Foo') {}
+
+// ❌ WRONG — Effect.Tag / Context.Tag are not the constructor
 class Foo extends Effect.Tag('Foo')<Foo, Shape>() {}
 
-// ❌ WRONG — Context is not a named export from 'effect'
+// ✅ CORRECT (beta.85) — Context.Service, two-stage class form
 import { Context } from 'effect'
-class Foo extends Context.Tag('Foo')<Foo, Shape>() {}
+class Foo extends Context.Service<Foo, Shape>()('Foo') {}
 
-// ✅ CORRECT — use ServiceMap.Service
-import { ServiceMap } from 'effect'
-class Foo extends ServiceMap.Service<Foo, Shape>()('cmx/Foo') {}
+// ✅ also valid — function-style key (no class)
+const Bar = Context.Service<Shape>()('Bar')
 ```
+
+Always re-verify against the installed version: `node -e "const e=require('effect'); console.log(Object.keys(e).filter(k=>/Service|Context/i.test(k)))"`.
 
 ### Layer.succeed
 

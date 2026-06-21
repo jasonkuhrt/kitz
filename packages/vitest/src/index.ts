@@ -9,7 +9,7 @@
  * `@vitest/runner`). This module re-implements the small slice of the
  * `@effect/vitest` ergonomics we want, on vitest's public API.
  */
-import { Effect, Equal, Layer, type Scope } from 'effect'
+import { Effect, Equal, Layer, ManagedRuntime, type Scope } from 'effect'
 import { FastCheck, TestClock, TestConsole } from 'effect/testing'
 import * as Vitest from 'vite-plus/test'
 
@@ -74,15 +74,94 @@ const effectHelpers = {
     ),
 }
 
+/** Effect-native test methods bound to a provided layer (no `.live` — the layer is the env). */
+export interface ScopedMethods<R> {
+  effect: <A, E>(name: string, body: EffectBody<A, E, R | TestEnv>, timeout?: number) => void
+  scoped: <A, E>(name: string, body: EffectBody<A, E, R | TestEnv>, timeout?: number) => void
+  prop: <const Arbs extends ReadonlyArray<FastCheck.Arbitrary<unknown>>, A, E>(
+    name: string,
+    arbitraries: Arbs,
+    body: (args: ArbsValues<Arbs>) => Effect.Effect<A, E, R | TestEnv>,
+    timeout?: number,
+  ) => void
+}
+
+/** A layer-bound test suite: call with an optional name + a body that receives scoped `it` methods. */
+export interface LayerSuite<R> {
+  (name: string, f: (it: ScopedMethods<R>) => void): void
+  (f: (it: ScopedMethods<R>) => void): void
+}
+
+/**
+ * Provide a `Layer` to a group of Effect tests. The layer is built ONCE
+ * (memoized via a `ManagedRuntime`), shared across every test in the group, and
+ * disposed in `afterAll`. The bound `it` inside the suite runs each body with the
+ * layer's services plus a TestClock/TestConsole/Scope.
+ *
+ * @example
+ * ```ts
+ * layer(MyService.Default)('with MyService', (it) => {
+ *   it.effect('uses the service', () =>
+ *     Effect.gen(function* () {
+ *       const svc = yield* MyService
+ *       expect(yield* svc.value).toBe(1)
+ *     }))
+ * })
+ * ```
+ */
+export const layer =
+  <R, E>(
+    layer_: Layer.Layer<R, E, never>,
+    options?: { readonly timeout?: number },
+  ): LayerSuite<R> =>
+  (...args: [string, (it: ScopedMethods<R>) => void] | [(it: ScopedMethods<R>) => void]) => {
+    const hasName = typeof args[0] === 'string'
+    const name = hasName ? (args[0] as string) : undefined
+    const f = (hasName ? args[1] : args[0]) as (it: ScopedMethods<R>) => void
+
+    const runtime = ManagedRuntime.make(Layer.merge(layer_, TestEnvLayer))
+    const runScoped = <A, E2>(effect: Effect.Effect<A, E2, R | TestEnv>): Promise<A> =>
+      runtime.runPromise(Effect.scoped(effect))
+
+    const boundIt: ScopedMethods<R> = {
+      effect: (n, body, t) => Vitest.it(n, (ctx) => runScoped(body(ctx)), t),
+      scoped: (n, body, t) => Vitest.it(n, (ctx) => runScoped(body(ctx)), t),
+      prop: (n, arbitraries, body, t) =>
+        Vitest.it(
+          n,
+          async () => {
+            const fc = FastCheck as unknown as {
+              assert: (p: unknown) => Promise<void>
+              asyncProperty: (...a: unknown[]) => unknown
+            }
+            await fc.assert(
+              fc.asyncProperty(...arbitraries, (...as_: unknown[]) =>
+                runScoped(body(as_ as ArbsValues<typeof arbitraries>)),
+              ),
+            )
+          },
+          t,
+        ),
+    }
+
+    const register = () => {
+      Vitest.afterAll(() => runtime.dispose(), options?.timeout)
+      f(boundIt)
+    }
+    if (name === undefined) register()
+    else Vitest.describe(name, register)
+  }
+
 /**
  * vitest's `it`, extended with Effect-native variants (`it.effect`, `it.live`,
- * `it.scoped`, `it.prop`). Composed as a NEW object — vite-plus's exported `it`
- * is never mutated.
+ * `it.scoped`, `it.prop`, `it.layer`). Composed as a NEW object — vite-plus's
+ * exported `it` is never mutated.
  */
-export const it: typeof Vitest.it & typeof effectHelpers = Object.assign(
+export const it: typeof Vitest.it & typeof effectHelpers & { layer: typeof layer } = Object.assign(
   ((...args: Parameters<typeof Vitest.it>) => Vitest.it(...args)) as typeof Vitest.it,
   Vitest.it,
   effectHelpers,
+  { layer },
 )
 
 /**
