@@ -1,6 +1,0 @@
-export * from './1xx-informational.js'
-export * from './2xx-successful.js'
-export * from './3xx-redirection.js'
-export * from './4xx-client-error.js'
-export * from './5xx-server-error.js'
-export * from './type.js'

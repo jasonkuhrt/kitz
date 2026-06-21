@@ -1,7 +1,0 @@
-import { Effect } from 'effect'
-
-export type Program = Effect.Effect<
-  string,
-  { _tag: 'KnownError'; message: string } | { message: string },
-  never
->

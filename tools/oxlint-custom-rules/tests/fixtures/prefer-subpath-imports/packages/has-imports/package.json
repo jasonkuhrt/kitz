@@ -1,7 +1,0 @@
-{
-  "name": "@kitz/has-imports",
-  "imports": {
-    "#bar": "./src/bar/_.ts",
-    "#bar/*": "./src/bar/*.ts"
-  }
-}

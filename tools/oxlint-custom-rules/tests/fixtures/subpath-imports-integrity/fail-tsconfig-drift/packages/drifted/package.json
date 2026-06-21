@@ -1,7 +1,0 @@
-{
-  "name": "@kitz/drifted",
-  "imports": {
-    "#alpha": "./src/alpha/_.ts",
-    "#alpha/*": "./src/alpha/*.ts"
-  }
-}

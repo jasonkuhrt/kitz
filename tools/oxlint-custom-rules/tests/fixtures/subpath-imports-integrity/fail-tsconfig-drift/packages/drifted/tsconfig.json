@@ -1,8 +1,0 @@
-{
-  "compilerOptions": {
-    "paths": {
-      "#alpha": ["./src/WRONG/_.js"],
-      "#alpha/*": ["./src/WRONG/*.js"]
-    }
-  }
-}
