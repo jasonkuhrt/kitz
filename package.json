@@ -19,7 +19,7 @@
     "fix": "pnpm fix:format && pnpm fix:lint",
     "test": "pnpm -r test",
     "check:cov": "pnpm -r check:cov",
-    "check:package": "pnpm -r check:package",
+    "check:package": "pnpm build && pnpm -r check:package",
     "check:ci": "actionlint",
     "format:check": "vp format --check --config .oxfmtrc.json"
   },
