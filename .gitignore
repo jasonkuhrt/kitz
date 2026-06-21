@@ -1,23 +1,14 @@
+# Build output
 build
 **/build/
 **/coverage/
 **/node_modules/
-**/.dprint/
-**/.turbo/
 *.tsbuildinfo
 
 .DS_Store
 
-# VitePress
-docs/.vitepress/dist/
-docs/.vitepress/cache/
-.vitepress/cache/
-
 # Playwright MCP
 .playwright-mcp/
-
-# Serena MCP
-.serena/
 
 # Ephemeral review/scratch output
 .tmp/
@@ -29,14 +20,6 @@ CLAUDE.local.md
 # Note: .claude/settings.local.json is committed for worktree permission sharing
 
 .worktrees/
-.turbo
-
-# Release CLI output
-.release/
-
-# shan-managed (do not edit)
-.codex/skills
-# end shan-managed
 
 .session/
 .sessions/

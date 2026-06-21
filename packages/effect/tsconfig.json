@@ -1,8 +1,7 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "build"
-  },
-  "include": ["src"]
+  "extends": "../../tsconfig.template.topology.solution.json",
+  "references": [
+    { "path": "./tsconfig.development.json" },
+    { "path": "./tsconfig.production.json" }
+  ]
 }

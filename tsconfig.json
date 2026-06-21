@@ -1,9 +1,7 @@
 {
-  "extends": "./tsconfig.base.json",
-  "compilerOptions": {
-    "noEmit": true,
-    "tsBuildInfoFile": "node_modules/.cache/.tsbuildinfo"
-  },
-  "include": [],
-  "exclude": ["packages", "node_modules"]
+  "extends": "./tsconfig.template.topology.solution.json",
+  "references": [
+    { "path": "./tsconfig.development.json" },
+    { "path": "./tsconfig.production.json" }
+  ]
 }

@@ -1,12 +1,15 @@
 packages:
   - 'packages/*'
 
-# pnpm 11 global virtual store. Works because the test layer follows the
-# idiomatic Vite+ path: tests import from `vite-plus/test` (vite-plus re-exports
-# vitest), so resolution goes through `vite-plus` — a properly-declared dep —
-# rather than an orphaned `@vitest/runner`. (That orphan, via @effect/vitest, was
-# the original GVS blocker.) vitest is owned by vite-plus; we do not install it.
-enableGlobalVirtualStore: true
+# pnpm 11 global virtual store — DISABLED.
+# GVS's symlinked `links/` store repeatedly breaks Vite+'s native/ESM resolution:
+# `vp run`/`vp check` cannot load vite.config.mts under GVS because vite-plus-core
+# can't resolve its rolldown native binding (`vite-plus/binding`) from the store
+# (verified: GVS on => `vp run` "Cannot find native binding"; GVS off => all tasks
+# pass). Since the toolchain drives everything through `vp run` tasks defined in
+# vite.config.mts, GVS must stay off. Revisit if vite-plus fixes binding
+# resolution under symlinked stores.
+enableGlobalVirtualStore: false
 
 catalog:
   effect: 4.0.0-beta.85

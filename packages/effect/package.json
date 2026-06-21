@@ -8,31 +8,28 @@
     "filesystem",
     "fs",
     "path",
-    "typescript",
-    "schema"
+    "schema",
+    "typescript"
   ],
+  "homepage": "https://github.com/jasonkuhrt/kitz/tree/main/packages/effect#readme",
+  "bugs": {
+    "url": "https://github.com/jasonkuhrt/kitz/issues"
+  },
   "license": "MIT",
   "author": {
     "name": "Jason Kuhrt",
     "url": "https://kuhrt.me"
-  },
-  "homepage": "https://github.com/jasonkuhrt/kitz/tree/main/packages/effect#readme",
-  "bugs": {
-    "url": "https://github.com/jasonkuhrt/kitz/issues"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jasonkuhrt/kitz.git",
     "directory": "packages/effect"
   },
-  "type": "module",
-  "sideEffects": false,
-  "publishConfig": {
-    "access": "public"
-  },
   "files": [
     "build"
   ],
+  "type": "module",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./build/_.d.ts",
@@ -51,15 +48,8 @@
       "default": "./build/path/types/fileName.js"
     }
   },
-  "scripts": {
-    "build": "tsc -b tsconfig.build.json --clean && tsc -b tsconfig.build.json",
-    "dev": "tsc -p tsconfig.build.json --watch",
-    "check:types": "tsc --noEmit",
-    "check:lint": "vp lint src/",
-    "check:package": "publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error",
-    "test": "vp test run",
-    "test:coverage": "vp test run --coverage",
-    "check:cov": "vp test run --coverage"
+  "publishConfig": {
+    "access": "public"
   },
   "dependencies": {
     "picomatch": "4.0.4"

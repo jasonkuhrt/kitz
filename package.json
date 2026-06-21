@@ -8,20 +8,7 @@
   "type": "module",
   "scripts": {
     "install:ci": "pnpm install --frozen-lockfile",
-    "prepare": "git config core.hooksPath hooks",
-    "build": "pnpm -r build",
-    "check:types": "pnpm -r check:types",
-    "check:lint": "vp lint",
-    "fix:lint": "vp lint --fix",
-    "check:format": "vp format --check --config .oxfmtrc.json",
-    "fix:format": "vp format --config .oxfmtrc.json",
-    "format": "vp format --config .oxfmtrc.json",
-    "fix": "pnpm fix:format && pnpm fix:lint",
-    "test": "pnpm -r test",
-    "check:cov": "pnpm -r check:cov",
-    "check:package": "pnpm build && pnpm -r check:package",
-    "check:ci": "actionlint",
-    "format:check": "vp format --check --config .oxfmtrc.json"
+    "prepare": "git config core.hooksPath hooks"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",

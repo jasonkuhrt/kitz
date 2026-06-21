@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.template.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "${configDir}/**/*.test.ts",
+    "${configDir}/**/*.test-d.ts",
+    "${configDir}/**/*.setup.ts",
+    "${configDir}/**/*.config.ts"
+  ]
+}

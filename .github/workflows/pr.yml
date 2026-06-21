@@ -37,10 +37,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - name: Check formatting (vp)
-        run: pnpm format:check
+      - name: Check formatting
+        run: pnpm exec vp run check:format
 
-  packages-build:
+  build:
     needs: check-type
     runs-on: ubuntu-latest
     steps:
@@ -48,13 +48,13 @@ jobs:
         if: needs.check-type.outputs.skip-code-checks != 'true'
       - uses: ./.github/actions/setup
         if: needs.check-type.outputs.skip-code-checks != 'true'
-      - name: Build packages (tsc)
+      - name: Build
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: pnpm build
+        run: pnpm exec vp run build
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
-  packages-types:
+  types:
     needs: check-type
     runs-on: ubuntu-latest
     steps:
@@ -62,13 +62,13 @@ jobs:
         if: needs.check-type.outputs.skip-code-checks != 'true'
       - uses: ./.github/actions/setup
         if: needs.check-type.outputs.skip-code-checks != 'true'
-      - name: Type check (tsc)
+      - name: Type check
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: pnpm check:types
+        run: pnpm exec vp run check:types
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
-  packages-lint:
+  lint:
     needs: check-type
     runs-on: ubuntu-latest
     steps:
@@ -76,9 +76,9 @@ jobs:
         if: needs.check-type.outputs.skip-code-checks != 'true'
       - uses: ./.github/actions/setup
         if: needs.check-type.outputs.skip-code-checks != 'true'
-      - name: Lint (vp)
+      - name: Lint
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: pnpm check:lint
+        run: pnpm exec vp run check:lint
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
@@ -92,11 +92,11 @@ jobs:
         if: needs.check-type.outputs.skip-code-checks != 'true'
       - name: Check published package shapes
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: pnpm check:package
+        run: pnpm exec vp run check:package
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 
-  packages-test:
+  test:
     needs: check-type
     runs-on: ubuntu-latest
     steps:
@@ -104,8 +104,8 @@ jobs:
         if: needs.check-type.outputs.skip-code-checks != 'true'
       - uses: ./.github/actions/setup
         if: needs.check-type.outputs.skip-code-checks != 'true'
-      - name: Test (vp)
+      - name: Test
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: pnpm test
+        run: pnpm exec vp run test
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
