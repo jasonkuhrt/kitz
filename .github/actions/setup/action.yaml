@@ -4,7 +4,8 @@ inputs:
   node-version:
     description: Version of Node to use.
     required: false
-    default: '22.12.0'
+    # pnpm 11.8 requires Node >=22.13; use current LTS.
+    default: '24'
   install-deps:
     description: Should deps be installed?
     required: false
