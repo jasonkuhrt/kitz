@@ -4,6 +4,21 @@ import { defineConfig } from 'vite-plus'
  * Single source of truth for the kitz toolchain: lint, format, test, and tasks
  * all live here (no .oxlintrc.json / .oxfmtrc.json / .prettierignore).
  */
+
+// Roots excluded from oxfmt/oxlint (mirrors the fmt/lint `ignorePatterns`).
+// Staged tasks must skip them: `vp format`/`vp lint` error when handed a file
+// set that is entirely ignored, which would otherwise break commits that only
+// touch e.g. `.claude/settings.json`.
+const STAGED_IGNORED = /(^|\/)(\.claude|docs|build|coverage|node_modules)\//
+const stagedTask =
+  (...commands: string[]) =>
+  (files: readonly string[]): string[] => {
+    const targets = files.filter((f) => !STAGED_IGNORED.test(f))
+    if (targets.length === 0) return []
+    const args = targets.map((f) => JSON.stringify(f)).join(' ')
+    return commands.map((c) => `${c} ${args}`)
+  }
+
 export default defineConfig({
   // ── oxlint ──────────────────────────────────────────────────────────────
   lint: {
@@ -90,7 +105,7 @@ export default defineConfig({
 
   // ── staged (used by the pre-commit hook via `vp staged`) ──────────────────
   staged: {
-    '**/*.{ts,mts,cts,tsx}': ['vp format', 'vp lint'],
-    '**/*.{js,mjs,cjs,json,jsonc,md,yaml,yml}': ['vp format'],
+    '**/*.{ts,mts,cts,tsx}': stagedTask('vp format', 'vp lint'),
+    '**/*.{js,mjs,cjs,json,jsonc,md,yaml,yml}': stagedTask('vp format'),
   },
 })
