@@ -22,8 +22,8 @@ Does rule apply to ONE specific package?
         │
         └─ NO → Use YAML array:
                 paths:
-                  - "packages/core/**/*"
-                  - "packages/cli/**/*"
+                  - "packages/effect/**/*"
+                  - "packages/vitest/**/*"
 ```
 
 ## File Formats
@@ -51,8 +51,8 @@ Location: `.claude/rules/<topic>.md`
 ```markdown
 ---
 paths:
-  - 'packages/core/**/*'
-  - 'packages/cli/**/*'
+  - 'packages/effect/**/*'
+  - 'packages/vitest/**/*'
 ---
 
 # <Topic>
@@ -67,14 +67,14 @@ paths:
 | Pattern                | Matches              |
 | ---------------------- | -------------------- |
 | `"packages/**/*"`      | All packages         |
-| `"packages/core/**/*"` | Single package       |
+| `"packages/effect/**/*"` | Single package       |
 | `"**/*.ts"`            | All TypeScript files |
 | `"!**/*.test.ts"`      | Exclude test files   |
 
 ## Examples
 
-**Rule for core package only:**
-→ `packages/core/.claude/CONVENTIONS.md`
+**Rule for effect package only:**
+→ `packages/effect/.claude/CONVENTIONS.md`
 
 **Rule for packages using Effect services:**
 → `.claude/rules/effect-services.md` with paths array listing those packages

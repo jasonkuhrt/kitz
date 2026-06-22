@@ -1,128 +1,67 @@
 ---
 name: creating-modules
-description: Creates new modules within existing packages following project conventions. Handles file structure, barrel exports, namespace files, package.json imports/exports, and internal import patterns.
+description: Add a namespace/module to a @kitz package — including extending the @kitz/effect namespaces. Covers the _.ts/__.ts barrel pattern, the package exports map, and import conventions.
 ---
 
 # Creating Modules
 
-## Steps
+A module is a PascalCase namespace inside a package. Two common cases:
 
-1. **Create module directory**: `packages/<pkg>/src/<module-name>/`
+- **Extend `@kitz/effect`** — add a new namespace (a concept) alongside
+  `FileSystem` and `Path`. The lightweight alternative to a whole new package
+  (`creating-packages`).
+- **Add a module to any `@kitz/*` package** — the same mechanics anywhere.
 
-2. **Create implementation files**: `<module-name>.ts` or split across multiple files
+Read `packages/effect/src/_.ts` (the root namespace bundle) and
+`packages/effect/src/path/` (a submodule namespace) as the canonical examples.
 
-3. **Create barrel file** `__.ts` (if needed):
-
-   ```typescript
-   export * from './implementation.js'
-   export * from './other-file.js'
-   ```
-
-   **CRITICAL: Prefer `export * from` in 99% of cases.** Named re-exports (`export { Foo } from`) add maintenance burden and can drift. Only use named exports when you need to:
-   - Rename on export (`export { Foo as Bar }`)
-   - Exclude specific exports (use `export *` then shadow with explicit export)
-
-   **Elision rule**: When `__.ts` would only export from ONE file, skip `__.ts` entirely and have `_.ts` export directly from the implementation file.
-
-4. **Create namespace file** `_.ts`:
-
-   ```typescript
-   // When __.ts exists (multiple source files):
-   export * as ModuleName from './__.js'
-
-   // When __.ts is elided (single source file):
-   export * as ModuleName from './module-name.js'
-   ```
-
-5. **Add to package.json imports**:
-
-   ```json
-   {
-     "imports": {
-       "#module-name": "./build/module-name/_.js",
-       "#module-name/*": "./build/module-name/*.js"
-     }
-   }
-   ```
-
-6. **Add to package.json exports**:
-
-   ```json
-   {
-     "exports": {
-       // When __.ts exists:
-       "./module-name": "./build/module-name/__.js",
-       // When __.ts is elided:
-       "./module-name": "./build/module-name/module-name.js"
-     }
-   }
-   ```
-
-7. **Sync tsconfig paths** (run `syncing-tsconfig-paths` skill script)
-
-8. **Add to main exports** in `src/__.ts`:
-   ```typescript
-   export * from '#module-name'
-   ```
-
-## Reference
-
-### Module Structure
+## Structure
 
 ```
 # Single source file (__.ts elided):
-src/module-name/
-├── _.ts              # Namespace: export * as ModuleName from './module-name.js'
-├── _.test.ts         # Module tests
-└── module-name.ts    # Implementation
+src/<module>/
+├── _.ts              # namespace: export * as <Name> from './<module>.js'
+├── _.test.ts
+└── <module>.ts       # implementation
 
 # Multiple source files:
-src/module-name/
-├── _.ts              # Namespace: export * as ModuleName from './__.js'
-├── _.test.ts         # Module tests
-├── __.ts             # Barrel: export * from './impl.js'; export * from './other.js'
-└── *.ts              # Implementation files
+src/<module>/
+├── _.ts              # namespace: export * as <Name> from './__.js'
+├── _.test.ts
+├── __.ts             # barrel: export * from './impl.js'
+└── *.ts
 ```
 
-### Import System
+- Directory: kebab-case. Namespace export: PascalCase. Functions: camelCase, no
+  namespace prefix (`by`, not `groupBy`).
+- Prefer `export * from` in barrels; use named re-exports only to rename or exclude.
+- **Elision**: when `__.ts` would re-export a single file, skip it and have `_.ts`
+  export the implementation directly.
 
-**Within a package** - use `#` imports:
+## Wire the namespace into the package
 
-```typescript
-// ✅ Correct - use # imports internally
-import { Fn } from '#fn'
-import { Obj } from '#obj'
+1. **Re-export from the package root** `src/_.ts`:
 
-// ❌ Incorrect - don't use relative or package imports internally
-import { Obj } from '@kitz/core/obj'
-import { Fn } from '../fn/_.js'
-```
+   ```ts
+   export { <Name> } from './<module>/_.js'
+   ```
 
-**Cross-package imports** - ALWAYS use namespace (root path), never barrel (`/__`):
+2. **Add the package.json exports entry** — live-types, mirroring the existing
+   entries (dev → `src`, publish → `build`):
 
-```typescript
-// ✅ Correct - namespace import from root
-import { Fs } from '@kitz/fs'
-import { Git } from '@kitz/git'
-import { Semver } from '@kitz/semver'
+   ```jsonc
+   // exports
+   "./<Name>": "./src/<module>/_.ts",
+   // publishConfig.exports
+   "./<Name>": { "types": "./build/<module>/_.d.ts", "default": "./build/<module>/_.js" }
+   ```
 
-// ❌ Incorrect - barrel imports
-import { Path } from '@kitz/fs/__'
-import { Git } from '@kitz/git/__'
-import * as Semver from '@kitz/semver/__'
-```
+3. **Verify**: `pnpm exec vp run check` and (if exported) `pnpm exec vp run check:package`.
 
-Access members via the namespace (e.g., `Git.Git`, `Git.GitError`, `Semver.fromString()`).
+## Imports
 
-**Exception**: The `kitz` aggregator package re-exports barrels to compose the umbrella package.
-
-### Naming
-
-- **Directory**: kebab-case (`group-by/`)
-- **Namespace export**: PascalCase (`GroupBy`)
-- **Functions**: camelCase, no namespace prefix (`by`, not `groupBy`)
-
-## Notes
-
-- Each package defines its own `#` imports in package.json
-- Cross-package `#` imports are not valid - use package name imports
+- **No `#` imports.** That convention was removed; packages no longer declare an
+  `imports` map. Within a package, use relative imports (`./other/_.js`).
+- **Cross-package**: import the namespace by package name and access members
+  through it — `import { FileSystem, Path } from '@kitz/effect'`, then
+  `Path.AbsFile`, `FileSystem.readString`.
