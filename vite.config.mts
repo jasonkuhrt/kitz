@@ -67,15 +67,12 @@ export default defineConfig({
     environment: 'node',
   },
 
-  // ── tasks (replaces package.json scripts; invoke with `vp run <task>`) ────
+  // ── tasks: wrap non-vp tools (tsc/publint/attw) or compose steps. ─────────
+  // First-class vp commands (lint, format, test) are run directly, not aliased.
   run: {
     tasks: {
       build: 'tsc -b tsconfig.production.json',
       'check:types': 'tsc -b tsconfig.development.json',
-      'check:lint': 'vp lint',
-      'check:format': 'vp format --check',
-      test: 'vp test run',
-      'check:cov': 'vp test run --coverage',
       'check:package': {
         command:
           'publint && attw --pack --ignore-rules no-resolution cjs-resolves-to-esm internal-resolution-error',
