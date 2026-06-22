@@ -20,6 +20,17 @@ const stagedTask =
   }
 
 export default defineConfig({
+  // ── create (vp create <name> — kitz scaffolding generators) ──────────────
+  create: {
+    templates: [
+      {
+        name: 'package',
+        description: 'Scaffold a new @kitz package (a concept).',
+        template: './packages/generator-package',
+      },
+    ],
+  },
+
   // ── oxlint ──────────────────────────────────────────────────────────────
   lint: {
     plugins: ['typescript', 'import', 'vitest', 'promise'],
