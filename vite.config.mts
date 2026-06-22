@@ -57,7 +57,13 @@ export default defineConfig({
         },
       },
     ],
-    ignorePatterns: ['**/build/**', '**/node_modules/**', '**/*.d.ts', '**/__examples/**'],
+    ignorePatterns: [
+      '**/build/**',
+      '**/.tsbuild/**',
+      '**/node_modules/**',
+      '**/*.d.ts',
+      '**/__examples/**',
+    ],
   },
 
   // ── oxfmt ───────────────────────────────────────────────────────────────
@@ -66,6 +72,7 @@ export default defineConfig({
     semi: false,
     ignorePatterns: [
       '**/build/**',
+      '**/.tsbuild/**',
       '**/coverage/**',
       '**/__snapshots__/**',
       '**/node_modules/**',
