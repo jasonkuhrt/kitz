@@ -26,30 +26,40 @@
     "directory": "packages/effect"
   },
   "files": [
-    "build"
+    "build",
+    "src"
   ],
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": {
-      "types": "./build/_.d.ts",
-      "default": "./build/_.js"
-    },
-    "./FileSystem": {
-      "types": "./build/__.d.ts",
-      "default": "./build/__.js"
-    },
-    "./Path": {
-      "types": "./build/path/_.d.ts",
-      "default": "./build/path/_.js"
-    },
-    "./path/types/fileName": {
-      "types": "./build/path/types/fileName.d.ts",
-      "default": "./build/path/types/fileName.js"
-    }
+    ".": "./src/_.ts",
+    "./FileSystem": "./src/__.ts",
+    "./Path": "./src/path/_.ts",
+    "./path/types/fileName": "./src/path/types/fileName.ts"
   },
   "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./build/_.d.ts",
+        "default": "./build/_.js"
+      },
+      "./FileSystem": {
+        "types": "./build/__.d.ts",
+        "default": "./build/__.js"
+      },
+      "./Path": {
+        "types": "./build/path/_.d.ts",
+        "default": "./build/path/_.js"
+      },
+      "./path/types/fileName": {
+        "types": "./build/path/types/fileName.d.ts",
+        "default": "./build/path/types/fileName.js"
+      }
+    },
     "access": "public"
+  },
+  "scripts": {
+    "prepack": "tsc -b tsconfig.production.json"
   },
   "dependencies": {
     "picomatch": "4.0.4"
