@@ -1,4 +1,4 @@
-# @kitz/generator-package
+# @generator/package
 
 A Vite+ ([Bingo](https://www.create.bingo)) generator that scaffolds a new
 `@kitz/<concept>` package on the kitz toolchain — live-types exports, the

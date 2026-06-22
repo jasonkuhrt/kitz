@@ -9,7 +9,7 @@ const toPascalCase = (kebab: string): string =>
 
 export default createTemplate({
   about: {
-    name: '@kitz/generator-package',
+    name: '@generator/package',
     description: 'Scaffold a new @kitz package (a concept) on the kitz toolchain.',
   },
 

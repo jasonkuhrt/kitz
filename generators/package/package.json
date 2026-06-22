@@ -1,5 +1,5 @@
 {
-  "name": "@kitz/generator-package",
+  "name": "@generator/package",
   "version": "0.0.0",
   "private": true,
   "description": "Vite+ generator: scaffold a new @kitz package (a concept).",

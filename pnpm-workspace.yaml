@@ -1,5 +1,6 @@
 packages:
   - 'packages/*'
+  - 'generators/*'
 
 # pnpm 11 global virtual store — DISABLED.
 # GVS's symlinked `links/` store repeatedly breaks Vite+'s native/ESM resolution:

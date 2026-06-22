@@ -25,8 +25,8 @@ export default defineConfig({
     templates: [
       {
         name: 'package',
-        description: 'Scaffold a new @kitz package (a concept).',
-        template: './packages/generator-package',
+        description: 'Scaffold a new @kitz package.',
+        template: './generators/package',
       },
     ],
   },

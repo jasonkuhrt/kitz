@@ -45,6 +45,19 @@ importers:
         specifier: 0.2.1
         version: 0.2.1(@arethetypeswrong/core@0.18.3)(@types/node@25.9.4)(@vitest/coverage-v8@4.1.9)(publint@0.3.21)(typescript@7.0.1-rc)(vite@8.0.16(@types/node@25.9.4)(yaml@2.9.0))(yaml@2.9.0)
 
+  generators/package:
+    dependencies:
+      bingo:
+        specifier: ^0.9.3
+        version: 0.9.3
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^25.9.1
+        version: 25.9.4
+
   packages/effect:
     dependencies:
       picomatch:
@@ -63,19 +76,6 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.0.0-beta.85
-
-  packages/generator-package:
-    dependencies:
-      bingo:
-        specifier: ^0.9.3
-        version: 0.9.3
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@types/node':
-        specifier: ^25.9.1
-        version: 25.9.4
 
   packages/vitest:
     dependencies:

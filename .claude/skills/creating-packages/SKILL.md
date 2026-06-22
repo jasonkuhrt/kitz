@@ -10,7 +10,7 @@ A package is a concept. The lighter-weight alternative — extending the
 skill when a concept warrants its own publishable `@kitz/<name>` package.
 
 Scaffolding is a real Vite+ generator: a Bingo template at
-`packages/generator-package`, registered in `vite.config.mts` under
+`generators/package`, registered in `vite.config.mts` under
 `create.templates` as `package`.
 
 ## Steps
@@ -18,13 +18,16 @@ Scaffolding is a real Vite+ generator: a Bingo template at
 1. **Generate** (non-interactive; `vp create` auto-formats the output):
 
    ```bash
-   pnpm exec vp create package -- --name <name> --directory <name> --offline --skip-requests
+   pnpm exec vp create package -- --name <name> --directory ../packages/<name> --offline --skip-requests
    ```
 
-   `<name>` is the unscoped name (`color` → `@kitz/color`), scaffolded at
-   `packages/<name>`. Add `--description "<one-liner>"` to set the description.
+   `<name>` is the unscoped name (`color` → `@kitz/color`); the library lands in
+   `packages/<name>`. The `../packages/` prefix is required because `vp create`
+   resolves `--directory` relative to the generator's own location
+   (`generators/`), so escaping up keeps generated libraries in `packages/`, not
+   `generators/`. Add `--description "<one-liner>"` to set the description.
    (Humans can also run `vp create package` interactively — it prompts for the
-   directory.)
+   directory; answer `../packages/<name>`.)
 
 2. **Wire into the root solution** — tsc project references are not globbed, so
    add the new package to both root solution configs:
@@ -53,11 +56,11 @@ packages/<name>/
 
 The output matches `@kitz/effect` — read it as the canonical example. If the
 package shape changes, update the template at
-`packages/generator-package/src/template.ts` (and validate by generating a
+`generators/package/src/template.ts` (and validate by generating a
 throwaway package, then `pnpm exec vp run check`).
 
 ## Notes
 
-- `@kitz/generator-package` is private (not published); it exists only to drive `vp create`.
+- `@generator/package` is private (not published); it exists only to drive `vp create`.
 - To add a namespace to an existing package (including `@kitz/effect`), use
   `creating-modules` — that is an in-package edit, not a generator.
