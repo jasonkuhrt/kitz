@@ -1,4 +1,4 @@
-# @kitz/fs Conventions
+# Contributing to @kitz/effect
 
 ## Path Getters Are Sugar Over Exported Functions
 
