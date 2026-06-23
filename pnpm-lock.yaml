@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@platformatic/vfs':
+      specifier: ^0.4.0
+      version: 0.4.0
     effect:
       specifier: 4.0.0-beta.85
       version: 4.0.0-beta.85
@@ -63,6 +66,9 @@ importers:
 
   packages/effect:
     dependencies:
+      '@platformatic/vfs':
+        specifier: 'catalog:'
+        version: 0.4.0
       picomatch:
         specifier: 4.0.4
         version: 4.0.4
@@ -88,6 +94,12 @@ importers:
       vite-plus:
         specifier: 0.2.1
         version: 0.2.1(@arethetypeswrong/core@0.18.3)(@types/node@25.9.4)(@vitest/coverage-v8@4.1.9)(publint@0.3.21)(typescript@7.0.1-rc)(vite@8.0.16(@types/node@25.9.4)(yaml@2.9.0))(yaml@2.9.0)
+
+  tmp/vfs-demo:
+    dependencies:
+      '@platformatic/vfs':
+        specifier: ^0.4.0
+        version: 0.4.0
 
 packages:
 
@@ -600,6 +612,10 @@ packages:
   '@oxlint/plugins@1.68.0':
     resolution: {integrity: sha512-titLmukUt/h8ho7Svlf0xSBjoy2ccZKrXjpXpZCj+v6V4CJccC2KyP45BLSCMx8YIpifMyiDyUptM4+5sruKbQ==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+
+  '@platformatic/vfs@0.4.0':
+    resolution: {integrity: sha512-JwRxSIG63e/VaDSkYXkSBajySt5MJzxYIKuknYda28fhhmJMqyUGf5rbKrGW+vO9L83nIjQH3+YI12fp7EKICQ==}
+    engines: {node: '>= 22'}
 
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
@@ -2372,6 +2388,8 @@ snapshots:
     optional: true
 
   '@oxlint/plugins@1.68.0': {}
+
+  '@platformatic/vfs@0.4.0': {}
 
   '@polka/url@1.0.0-next.29': {}
 

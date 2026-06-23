@@ -1,38 +1,31 @@
-import { Effect, FileSystem, Layer, PlatformError, Stream } from 'effect'
-
-const createUnsupportedError = (method: string, operation: string) =>
-  PlatformError.systemError({
-    _tag: 'PermissionDenied',
-    module: 'FileSystem',
-    method,
-    description: `${operation} not supported in memory filesystem`,
-  })
-
-const createNotFoundError = (method: string, path: string, operation: string) =>
-  PlatformError.systemError({
-    _tag: 'NotFound',
-    module: 'FileSystem',
-    method,
-    pathOrDescriptor: path,
-    description: `ENOENT: no such file or directory, ${operation} '${path}'`,
-  })
-
-const failUnsupported = (method: string, operation: string) =>
-  Effect.fail(createUnsupportedError(method, operation))
-
-const failNotFound = (method: string, path: string, operation: string) =>
-  Effect.fail(createNotFoundError(method, path, operation))
+/**
+ * In-memory `FileSystem` layer backed by a directly-used `@platformatic/vfs`
+ * `VirtualFileSystem` (MemoryProvider).
+ *
+ * The vfs is **not** mounted, so `node:fs` is never patched — the in-memory
+ * filesystem is scoped to this layer and hermetic (only code provided with this
+ * layer sees it). The effect `FileSystem` service is built with `FileSystem.make`,
+ * which derives `exists`/`readFileString`/`writeFileString`/`stream`/`sink` from
+ * the primitives implemented here.
+ *
+ * `@platformatic/vfs` provides correct filesystem semantics (real `stat`, recursive
+ * directories, symlinks); operations it lacks natively (recursive remove/copy,
+ * `truncate`) are emulated, and metadata ops it does not model (`chmod`/`chown`/
+ * `utimes`) are no-ops. It is the userland extraction of Node core's `node:vfs`;
+ * see `./vfs.ts`.
+ */
+import { Effect, FileSystem, Layer, Option, PlatformError, Stream } from 'effect'
+import { create as createVfs, type VfsStats, type VirtualFileSystem } from './vfs.js'
 
 /**
  * Memory filesystem disk layout specification.
- * Keys are file paths, values are file contents as strings or Uint8Array.
+ * Keys are file paths, values are file contents as strings or `Uint8Array`.
  *
  * @example
  * ```ts
  * const diskLayout: DiskLayout = {
  *   '/config.json': '{"version": "1.0.0"}',
  *   '/src/index.js': 'console.log("Hello")',
- *   '/README.md': '# My Project'
  * }
  * ```
  */
@@ -40,239 +33,319 @@ export interface DiskLayout {
   [path: string]: string | Uint8Array
 }
 
+// ── error + stat mapping ─────────────────────────────────────────────────────
+
+const tagForCode = (code: unknown): PlatformError.SystemErrorTag => {
+  switch (code) {
+    case 'ENOENT':
+      return 'NotFound'
+    case 'EEXIST':
+      return 'AlreadyExists'
+    case 'EACCES':
+    case 'EPERM':
+      return 'PermissionDenied'
+    case 'ENOTDIR':
+    case 'EISDIR':
+    case 'EINVAL':
+    case 'ENOTEMPTY':
+      return 'InvalidData'
+    case 'EBUSY':
+      return 'Busy'
+    default:
+      return 'Unknown'
+  }
+}
+
+const toError = (method: string, path: string, cause: unknown) =>
+  PlatformError.systemError({
+    _tag: tagForCode((cause as { code?: unknown } | null | undefined)?.code),
+    module: 'FileSystem',
+    method,
+    pathOrDescriptor: path,
+    description: (cause as { message?: string } | null | undefined)?.message ?? String(cause),
+    cause,
+  })
+
+const attempt = <A>(method: string, path: string, run: () => A) =>
+  Effect.try({ try: run, catch: (cause) => toError(method, path, cause) })
+
+const toInfo = (s: VfsStats): FileSystem.File.Info => ({
+  type: s.isFile()
+    ? 'File'
+    : s.isDirectory()
+      ? 'Directory'
+      : s.isSymbolicLink()
+        ? 'SymbolicLink'
+        : s.isBlockDevice()
+          ? 'BlockDevice'
+          : s.isCharacterDevice()
+            ? 'CharacterDevice'
+            : s.isFIFO()
+              ? 'FIFO'
+              : s.isSocket()
+                ? 'Socket'
+                : 'Unknown',
+  mtime: Option.some(s.mtime),
+  atime: Option.some(s.atime),
+  birthtime: Option.some(s.birthtime),
+  dev: s.dev,
+  ino: Option.some(s.ino),
+  mode: s.mode,
+  nlink: Option.some(s.nlink),
+  uid: Option.some(s.uid),
+  gid: Option.some(s.gid),
+  rdev: Option.some(s.rdev),
+  size: FileSystem.Size(s.size),
+  blksize: Option.some(FileSystem.Size(s.blksize)),
+  blocks: Option.some(s.blocks),
+})
+
+// ── path helpers ─────────────────────────────────────────────────────────────
+
+const joinPath = (dir: string, name: string): string =>
+  dir.endsWith('/') ? `${dir}${name}` : `${dir}/${name}`
+
+const parentDir = (path: string): string => {
+  const i = path.lastIndexOf('/')
+  return i <= 0 ? '/' : path.slice(0, i)
+}
+
+/** Recursively list all descendant entries of `dir`, as paths relative to it. */
+const walkRelative = (vfs: VirtualFileSystem, dir: string): Array<string> => {
+  const out: Array<string> = []
+  const recur = (relBase: string, absBase: string): void => {
+    for (const name of vfs.readdirSync(absBase)) {
+      const rel = relBase ? `${relBase}/${name}` : name
+      out.push(rel)
+      const abs = joinPath(absBase, name)
+      if (vfs.statSync(abs).isDirectory()) recur(rel, abs)
+    }
+  }
+  recur('', dir)
+  return out
+}
+
+/** Recursively remove a path (vfs has no `rmSync` and `rmdirSync` is not recursive). */
+const removeRecursive = (vfs: VirtualFileSystem, path: string): void => {
+  if (vfs.lstatSync(path).isDirectory()) {
+    for (const name of vfs.readdirSync(path)) removeRecursive(vfs, joinPath(path, name))
+    vfs.rmdirSync(path)
+  } else {
+    vfs.unlinkSync(path)
+  }
+}
+
+/** Recursively copy a path (vfs has no `cpSync`). */
+const copyRecursive = (vfs: VirtualFileSystem, from: string, to: string): void => {
+  if (vfs.statSync(from).isDirectory()) {
+    vfs.mkdirSync(to, { recursive: true })
+    for (const name of vfs.readdirSync(from))
+      copyRecursive(vfs, joinPath(from, name), joinPath(to, name))
+  } else {
+    vfs.copyFileSync(from, to)
+  }
+}
+
+let tempCounter = 0
+const makeTemp = (
+  vfs: VirtualFileSystem,
+  kind: 'directory' | 'file',
+  options?: {
+    readonly directory?: string | undefined
+    readonly prefix?: string | undefined
+    readonly suffix?: string | undefined
+  },
+): string => {
+  const base = options?.directory ?? '/tmp'
+  vfs.mkdirSync(base, { recursive: true })
+  const suffix = kind === 'file' ? (options?.suffix ?? '') : ''
+  tempCounter += 1
+  const path = joinPath(base, `${options?.prefix ?? ''}${tempCounter}${suffix}`)
+  if (kind === 'directory') vfs.mkdirSync(path)
+  else vfs.writeFileSync(path, new Uint8Array(0))
+  return path
+}
+
+/**
+ * Build an effect `File` handle over a vfs file descriptor. Reads use the fd
+ * directly; writes are emulated (vfs exposes no fd-level write) via positioned
+ * read-modify-`writeFileSync`, which is enough to back `stream`/`sink`.
+ */
+const makeFileHandle = (vfs: VirtualFileSystem, path: string, fd: number): FileSystem.File => {
+  let position = 0
+  const overwriteAt = (buffer: Uint8Array): void => {
+    const current = vfs.existsSync(path) ? vfs.readFileSync(path) : new Uint8Array(0)
+    const end = position + buffer.length
+    const next = new Uint8Array(Math.max(current.length, end))
+    next.set(current)
+    next.set(buffer, position)
+    position = end
+    vfs.writeFileSync(path, next)
+  }
+  return {
+    [FileSystem.FileTypeId]: FileSystem.FileTypeId,
+    fd: FileSystem.FileDescriptor(fd),
+    stat: attempt('stat', path, () => toInfo(vfs.fstatSync(fd))),
+    seek: (offset, from) =>
+      Effect.sync(() => {
+        position = from === 'current' ? position + Number(offset) : Number(offset)
+      }),
+    sync: Effect.void,
+    read: (buffer) =>
+      attempt('read', path, () => {
+        const bytes = vfs.readSync(fd, buffer, 0, buffer.length, position)
+        position += bytes
+        return FileSystem.Size(bytes)
+      }),
+    readAlloc: (size) =>
+      attempt('read', path, () => {
+        const buffer = new Uint8Array(Number(size))
+        const bytes = vfs.readSync(fd, buffer, 0, buffer.length, position)
+        position += bytes
+        return bytes === 0 ? Option.none() : Option.some(buffer.subarray(0, bytes))
+      }),
+    truncate: (length) =>
+      attempt('truncate', path, () => {
+        const current = vfs.readFileSync(path)
+        vfs.writeFileSync(path, current.subarray(0, Number(length ?? 0)))
+      }),
+    write: (buffer) =>
+      attempt('write', path, () => {
+        overwriteAt(buffer)
+        return FileSystem.Size(buffer.length)
+      }),
+    writeAll: (buffer) => attempt('write', path, () => overwriteAt(buffer)),
+  }
+}
+
+// ── layer ────────────────────────────────────────────────────────────────────
+
 /**
  * Creates a memory filesystem layer from a disk layout specification.
- * This layer can be composed with other layers for testing.
- * Provides a fully functional in-memory filesystem implementation.
+ * Provides a fully functional, hermetic in-memory `FileSystem` service for testing.
  *
- * @param diskLayout - Object mapping file paths to their contents
- * @returns Layer that provides a FileSystem service backed by memory
+ * @param initialDiskLayout - Object mapping file paths to their contents
+ * @returns Layer that provides a `FileSystem` service backed by memory
  *
  * @example
  * ```ts
  * import { Effect, FileSystem as EffectFileSystem } from 'effect'
  * import { FileSystem } from '@kitz/effect'
  *
- * const diskLayout = {
- *   '/config.json': '{"name": "test"}',
- *   '/src/index.js': 'export const x = 1'
- * }
- *
  * const program = Effect.gen(function* () {
  *   const fs = yield* EffectFileSystem.FileSystem
- *   const content = yield* fs.readFileString('/config.json')
- *   console.log(content) // {"name": "test"}
+ *   return yield* fs.readFileString('/config.json')
  * })
  *
  * Effect.runPromise(
- *   Effect.provide(program, FileSystem.Memory.layer(diskLayout))
+ *   Effect.provide(program, FileSystem.Memory.layer({ '/config.json': '{"name":"test"}' })),
  * )
  * ```
  */
 export const layer = (initialDiskLayout: DiskLayout) => {
-  // Create mutable copy of disk layout for write operations
-  const diskLayout: DiskLayout = { ...initialDiskLayout }
+  const vfs = createVfs()
+
+  for (const [path, content] of Object.entries(initialDiskLayout)) {
+    const dir = parentDir(path)
+    if (dir !== '/' && dir !== '') vfs.mkdirSync(dir, { recursive: true })
+    vfs.writeFileSync(path, content)
+  }
 
   const impl = FileSystem.make({
-    // Read directory contents
-    readDirectory: (path: string) => {
-      const normalizedPath = path.endsWith('/') ? path : path + '/'
-      // Collect immediate children: direct files AND the first segment of any
-      // deeper key (so implicit intermediate directories are listed, matching
-      // real-filesystem semantics — not just direct entries).
-      const names = new Set<string>()
-      let hasAny = false
-      for (const filePath of Object.keys(diskLayout)) {
-        if (!filePath.startsWith(normalizedPath)) continue
-        const relativePath = filePath.slice(normalizedPath.length)
-        if (relativePath.length === 0) continue
-        hasAny = true
-        const slashIndex = relativePath.indexOf('/')
-        const firstSegment = slashIndex === -1 ? relativePath : relativePath.slice(0, slashIndex)
-        if (firstSegment.endsWith('.dir_marker')) continue // skip directory markers
-        names.add(firstSegment)
-      }
-
-      // Check if directory exists (has marker or any descendants)
-      const dirExists = `${normalizedPath}.dir_marker` in diskLayout || hasAny
-
-      return dirExists ? Effect.succeed([...names]) : failNotFound('readDirectory', path, 'scandir')
-    },
-
-    // File stats (simplified - just checks existence)
-    stat: (path: string) => {
-      if (path in diskLayout) {
-        const content = diskLayout[path]!
-        return Effect.succeed({
-          type: 'File' as const,
-          isFile: () => true,
-          isDirectory: () => false,
-          isSymbolicLink: () => false,
-          size: typeof content === 'string' ? content.length : content.byteLength,
-        } as any)
-      }
-
-      // Check if it's a directory with marker
-      const dirPath = path.endsWith('/') ? path : path + '/'
-      if (`${dirPath}.dir_marker` in diskLayout) {
-        return Effect.succeed({
-          type: 'Directory' as const,
-          isFile: () => false,
-          isDirectory: () => true,
-          isSymbolicLink: () => false,
-          size: 0,
-        } as any)
-      }
-
-      // Check if it's a directory (has files under it)
-      const normalizedPath = path.endsWith('/') ? path : path + '/'
-      const hasChildren = Object.keys(diskLayout).some(
-        (filePath) => filePath.startsWith(normalizedPath) && filePath !== path,
-      )
-
-      if (hasChildren || normalizedPath === '/') {
-        return Effect.succeed({
-          type: 'Directory' as const,
-          isFile: () => false,
-          isDirectory: () => true,
-          isSymbolicLink: () => false,
-          size: 0,
-        } as any)
-      }
-
-      return failNotFound('stat', path, 'stat')
-    },
-
-    // Write operations
-    writeFile: (path: string, content: Uint8Array) => {
-      diskLayout[path] = content
-      return Effect.void
-    },
-
-    truncate: (path: string) => {
-      if (path in diskLayout) {
-        diskLayout[path] = ''
-        return Effect.void
-      }
-      return failNotFound('truncate', path, 'truncate')
-    },
-
-    remove: (
-      path: string,
-      options?: { readonly recursive?: boolean | undefined; readonly force?: boolean | undefined },
-    ) => {
-      if (options?.recursive) {
-        // Remove all files under this path
-        const normalizedPath = path.endsWith('/') ? path : path + '/'
-        Object.keys(diskLayout).forEach((key) => {
-          if (key === path || key.startsWith(normalizedPath)) {
-            delete diskLayout[key]
-          }
-        })
-      } else {
-        delete diskLayout[path]
-      }
-      return Effect.void
-    },
-
-    makeDirectory: (
-      path: string,
-      _options?: { readonly recursive?: boolean | undefined; readonly mode?: number | undefined },
-    ) => {
-      // Track empty directories by adding a marker
-      // This allows exists() to find them
-      if (!path.endsWith('/')) {
-        path = path + '/'
-      }
-      // Add a special marker for the directory
-      diskLayout[`${path}.dir_marker`] = ''
-      return Effect.void
-    },
-    makeTempDirectory: () => failUnsupported('makeTempDirectory', 'Write operations'),
-    makeTempDirectoryScoped: () => failUnsupported('makeTempDirectoryScoped', 'Write operations'),
-    makeTempFile: () => failUnsupported('makeTempFile', 'Write operations'),
-    makeTempFileScoped: () => failUnsupported('makeTempFileScoped', 'Write operations'),
-    open: () => failUnsupported('open', 'File operations'),
-    copy: (oldPath: string, newPath: string) => {
-      const content = diskLayout[oldPath]
-      if (content !== undefined) {
-        diskLayout[newPath] = content
-        return Effect.void
-      }
-      return failNotFound('copy', oldPath, 'copy')
-    },
-    copyFile: (oldPath: string, newPath: string) => {
-      const content = diskLayout[oldPath]
-      if (content !== undefined) {
-        diskLayout[newPath] = content
-        return Effect.void
-      }
-      return failNotFound('copyFile', oldPath, 'copy')
-    },
+    access: (path) => attempt('access', path, () => vfs.accessSync(path)),
     chmod: () => Effect.void,
     chown: () => Effect.void,
-    access: (path: string) =>
-      path in diskLayout ? Effect.void : failNotFound('access', path, 'access'),
-    link: (oldPath: string, newPath: string) => {
-      const content = diskLayout[oldPath]
-      if (content !== undefined) {
-        diskLayout[newPath] = content
-        return Effect.void
-      }
-      return failNotFound('link', oldPath, 'link')
-    },
-    realPath: (path: string) => Effect.succeed(path),
-    readFile: (path: string) => {
-      const content = diskLayout[path]
-      if (content !== undefined) {
-        return Effect.succeed(
-          typeof content === 'string' ? new TextEncoder().encode(content) : content,
-        )
-      }
-      return failNotFound('readFile', path, 'open')
-    },
-    readLink: (path: string) => Effect.succeed(path),
-    symlink: (target: string, path: string) => {
-      // For simplicity, just copy the content
-      const content = diskLayout[target]
-      if (content !== undefined) {
-        diskLayout[path] = content
-      }
-      return Effect.void
-    },
+    copy: (fromPath, toPath) =>
+      attempt('copy', fromPath, () => copyRecursive(vfs, fromPath, toPath)),
+    copyFile: (fromPath, toPath) =>
+      attempt('copyFile', fromPath, () => vfs.copyFileSync(fromPath, toPath)),
+    link: (fromPath) =>
+      Effect.fail(
+        toError('link', fromPath, {
+          code: 'ENOSYS',
+          message: 'hard links are not supported by the in-memory filesystem',
+        }),
+      ),
+    makeDirectory: (path, options) =>
+      attempt('makeDirectory', path, () => {
+        vfs.mkdirSync(path, { recursive: options?.recursive ?? false, mode: options?.mode })
+      }),
+    makeTempDirectory: (options) =>
+      attempt('makeTempDirectory', '', () => makeTemp(vfs, 'directory', options)),
+    makeTempDirectoryScoped: (options) =>
+      Effect.acquireRelease(
+        attempt('makeTempDirectory', '', () => makeTemp(vfs, 'directory', options)),
+        (path) => Effect.ignore(attempt('remove', path, () => removeRecursive(vfs, path))),
+      ),
+    makeTempFile: (options) => attempt('makeTempFile', '', () => makeTemp(vfs, 'file', options)),
+    makeTempFileScoped: (options) =>
+      Effect.acquireRelease(
+        attempt('makeTempFile', '', () => makeTemp(vfs, 'file', options)),
+        (path) => Effect.ignore(attempt('remove', path, () => vfs.unlinkSync(path))),
+      ),
+    open: (path, options) =>
+      Effect.acquireRelease(
+        attempt('open', path, () => vfs.openSync(path, options?.flag ?? 'r')),
+        (fd) =>
+          Effect.sync(() => {
+            try {
+              vfs.closeSync(fd)
+            } catch {
+              // already closed
+            }
+          }),
+      ).pipe(Effect.map((fd) => makeFileHandle(vfs, path, fd))),
+    readDirectory: (path, options) =>
+      attempt('readDirectory', path, () =>
+        options?.recursive ? walkRelative(vfs, path) : vfs.readdirSync(path),
+      ),
+    readFile: (path) => attempt('readFile', path, () => new Uint8Array(vfs.readFileSync(path))),
+    readLink: (path) => attempt('readLink', path, () => vfs.readlinkSync(path)),
+    realPath: (path) => attempt('realPath', path, () => vfs.realpathSync(path)),
+    remove: (path, options) =>
+      attempt('remove', path, () => {
+        try {
+          if (options?.recursive) {
+            removeRecursive(vfs, path)
+          } else if (vfs.lstatSync(path).isDirectory()) {
+            vfs.rmdirSync(path)
+          } else {
+            vfs.unlinkSync(path)
+          }
+        } catch (cause) {
+          if (options?.force && (cause as { code?: unknown } | null | undefined)?.code === 'ENOENT')
+            return
+          throw cause
+        }
+      }),
+    rename: (oldPath, newPath) =>
+      attempt('rename', oldPath, () => vfs.renameSync(oldPath, newPath)),
+    stat: (path) => attempt('stat', path, () => toInfo(vfs.statSync(path))),
+    symlink: (fromPath, toPath) =>
+      attempt('symlink', fromPath, () => vfs.symlinkSync(fromPath, toPath)),
+    truncate: (path, length) =>
+      attempt('truncate', path, () => {
+        const current = vfs.readFileSync(path)
+        vfs.writeFileSync(path, current.subarray(0, Number(length ?? 0)))
+      }),
     utimes: () => Effect.void,
-    watch: () => Stream.fromEffect(failUnsupported('watch', 'Watch operations')),
-
-    // Rename/move files
-    rename: (oldPath: string, newPath: string) => {
-      const content = diskLayout[oldPath]
-      if (content !== undefined) {
-        diskLayout[newPath] = content
-        delete diskLayout[oldPath]
-        return Effect.void
-      }
-      return failNotFound('rename', oldPath, 'rename')
-    },
+    watch: (path) =>
+      Stream.fail(
+        toError('watch', path, {
+          code: 'ENOSYS',
+          message: 'watch is not supported by the in-memory filesystem',
+        }),
+      ),
+    writeFile: (path, data) => attempt('writeFile', path, () => vfs.writeFileSync(path, data)),
   })
 
   return Layer.succeed(FileSystem.FileSystem, impl)
 }
 
 /**
- * Convenience function for creating memory filesystem layers from disk layout.
- * Alias for {@link layer} to match common naming patterns.
+ * Convenience alias for {@link layer}.
  *
  * @param diskLayout - Object mapping file paths to their contents
- * @returns Layer that provides an Effect Platform FileSystem service backed by memory
- *
- * @example
- * ```ts
- * import { FileSystem } from '@kitz/effect'
- *
- * const testFs = FileSystem.Memory.layerFromDiskLayout({
- *   '/package.json': '{"name": "test-project"}',
- *   '/src/index.js': 'export default "hello"'
- * })
- * ```
+ * @returns Layer that provides a `FileSystem` service backed by memory
  */
 export const layerFromDiskLayout = (diskLayout: DiskLayout) => layer(diskLayout)

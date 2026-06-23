@@ -73,6 +73,7 @@
     "prepack": "tsc -b tsconfig.production.json"
   },
   "dependencies": {
+    "@platformatic/vfs": "catalog:",
     "picomatch": "4.0.4"
   },
   "devDependencies": {
