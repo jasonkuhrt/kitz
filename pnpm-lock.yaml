@@ -20,6 +20,9 @@ importers:
       '@arethetypeswrong/cli':
         specifier: ^0.18.2
         version: 0.18.3
+      '@kitz/vitest':
+        specifier: workspace:*
+        version: link:packages/vitest
       '@tsconfig/node-lts':
         specifier: ^24.0.0
         version: 24.0.0
