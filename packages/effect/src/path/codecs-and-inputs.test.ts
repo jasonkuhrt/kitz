@@ -1,11 +1,11 @@
 import { describe, expect, test } from '@kitz/vitest'
 import { Effect, Exit, Schema as S } from 'effect'
-import * as AbsDirCodec from './AbsDir/__.js'
-import * as AbsFileCodec from './AbsFile/__.js'
+import { AbsDir as AbsDirCodec } from './AbsDir/__.js'
+import { AbsFile as AbsFileCodec } from './AbsFile/__.js'
 import * as Constants from './constants.js'
 import * as Inputs from './inputs.js'
-import * as RelDirCodec from './RelDir/__.js'
-import * as RelFileCodec from './RelFile/__.js'
+import { RelDir as RelDirCodec } from './RelDir/__.js'
+import { RelFile as RelFileCodec } from './RelFile/__.js'
 import { Schema as PathSchema } from './Schema.js'
 import { FileName } from './types/fileName.js'
 import * as Segment from './types/segment.js'
@@ -25,7 +25,7 @@ describe('fs path codecs and inputs', () => {
 
     expect(root.toString()).toBe('/')
     expect(root.name).toBe('')
-    expect(AbsDirCodec.name(root)).toBe('')
+    expect(root.name).toBe('')
     expect(AbsDirCodec.is(root)).toBe(true)
 
     expect(current.toString()).toBe('./')

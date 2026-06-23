@@ -2,32 +2,24 @@ import { Schema as S } from 'effect'
 import { AbsDir } from '../AbsDir/_.js'
 import { AbsFile } from '../AbsFile/_.js'
 
-// needed to avoid '...canot be naned...' errors
-
 /**
- * Union schema of all absolute path types with string codec baked in.
- * Includes both absolute files and absolute directories.
+ * `$Abs` — any absolute path (`AbsFile | AbsDir`).
  *
- * This schema transforms between string representation (e.g., "/home/user/file.txt" or "/home/user/")
- * and the appropriate AbsFile or AbsDir class instance.
+ * The binding **is** the union string codec, usable directly as a schema —
+ * `S.Struct({ p: $Abs })`, `S.decodeSync($Abs)(…)` — with no `.Schema` hop, and
+ * carries `is` as a static.
  *
  * @example
  * ```ts
- * // Decode from string - auto-detects file vs directory
- * const path1 = S.decodeSync($Abs.Schema)('/home/user/file.txt')  // AbsFile
- * const path2 = S.decodeSync($Abs.Schema)('/home/user/')          // AbsDir
- *
- * // Use in struct (expects string input)
- * const ConfigSchema = S.Struct({
- *   path: $Abs.Schema
- * })
+ * const p1 = S.decodeSync($Abs)('/home/user/file.txt')  // AbsFile
+ * const p2 = S.decodeSync($Abs)('/home/user/')          // AbsDir
+ * const ConfigSchema = S.Struct({ path: $Abs })
  * ```
  */
-export const Schema = S.Union([AbsFile.Schema, AbsDir.Schema]).annotate({
-  identifier: '$Abs',
-})
+class $AbsCodec extends S.asClass(S.Union([AbsFile, AbsDir]).annotate({ identifier: '$Abs' })) {
+  /** Type guard for any absolute path. */
+  static is = S.is(this)
+}
 
-/**
- * Type guard to check if a value is an absolute path.
- */
-export const is = S.is(Schema)
+export const $Abs = $AbsCodec
+export type $Abs = S.Schema.Type<typeof $AbsCodec>

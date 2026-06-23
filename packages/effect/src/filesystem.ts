@@ -107,7 +107,7 @@ export type WriteFileStringOptions = {
  *
  * @example
  * ```ts
- * const file = S.decodeSync(Path.AbsFile.Schema)('/etc/passwd')
+ * const file = S.decodeSync(Path.AbsFile)('/etc/passwd')
  * const exists = yield* FileSystem.exists(file)
  * ```
  */
@@ -212,11 +212,11 @@ export const open = <loc extends Path.Input.Any>(
  * @example
  * ```ts
  * // Reading a file returns Uint8Array
- * const file = S.decodeSync(Path.AbsFile.Schema)('/data/file.bin')
+ * const file = S.decodeSync(Path.AbsFile)('/data/file.bin')
  * const bytes = yield* FileSystem.read(file)
  *
  * // Reading a directory returns FsLoc array
- * const dir = S.decodeSync(Path.AbsDir.Schema)('/home/user/')
+ * const dir = S.decodeSync(Path.AbsDir)('/home/user/')
  * const entries = yield* FileSystem.read(dir)
  * // entries is Path.$Abs[] (union of AbsFile | AbsDir)
  * ```
@@ -284,16 +284,16 @@ export const read: {
               // Create directory FsLoc
               const dirEntry = entry
               if (Path.AbsDir.is(fsLoc)) {
-                return S.decodeSync(Path.AbsDir.Schema)(entryPath)
+                return S.decodeSync(Path.AbsDir)(entryPath)
               } else {
-                return S.decodeSync(Path.RelDir.Schema)(dirEntry)
+                return S.decodeSync(Path.RelDir)(dirEntry)
               }
             } else {
               // Create file FsLoc
               if (Path.AbsDir.is(fsLoc)) {
-                return S.decodeSync(Path.AbsFile.Schema)(entryPath)
+                return S.decodeSync(Path.AbsFile)(entryPath)
               } else {
-                return S.decodeSync(Path.RelFile.Schema)(entry)
+                return S.decodeSync(Path.RelFile)(entry)
               }
             }
           }),
@@ -314,7 +314,7 @@ export const read: {
  *
  * @example
  * ```ts
- * const config = S.decodeSync(Path.AbsFile.Schema)('/etc/config.json')
+ * const config = S.decodeSync(Path.AbsFile)('/etc/config.json')
  * const content = yield* FileSystem.readString(config)
  * const data = JSON.parse(content)
  * ```
@@ -380,7 +380,7 @@ export const realPath = <loc extends Path.Input.Any>(
  *
  * @example
  * ```ts
- * const cache = S.decodeSync(Path.AbsDir.Schema)('/tmp/cache/')
+ * const cache = S.decodeSync(Path.AbsDir)('/tmp/cache/')
  * yield* FileSystem.clear(cache)
  * // /tmp/cache/ now exists but is empty
  * ```
@@ -417,7 +417,7 @@ export const clear = <loc extends Path.Input.Dir>(
  *
  * @example
  * ```ts
- * const tempDir = S.decodeSync(Path.AbsDir.Schema)('/tmp/build/')
+ * const tempDir = S.decodeSync(Path.AbsDir)('/tmp/build/')
  * yield* FileSystem.remove(tempDir, { recursive: true })
  * ```
  */
@@ -574,19 +574,19 @@ type WriteParametersInternal = WriteFileParameters | WriteDirectoryParameters
  * @example
  * ```ts
  * // JSON file - accepts Json.Value
- * const config = S.decodeSync(Path.AbsFile.Schema)('/config.json')
+ * const config = S.decodeSync(Path.AbsFile)('/config.json')
  * yield* FileSystem.write(config, { name: 'app', version: '1.0' })
  *
  * // Text file - accepts string
- * const readme = S.decodeSync(Path.AbsFile.Schema)('/README.md')
+ * const readme = S.decodeSync(Path.AbsFile)('/README.md')
  * yield* FileSystem.write(readme, '# My Project')
  *
  * // Binary file - accepts Uint8Array
- * const image = S.decodeSync(Path.AbsFile.Schema)('/logo.png')
+ * const image = S.decodeSync(Path.AbsFile)('/logo.png')
  * yield* FileSystem.write(image, imageBytes)
  *
  * // Creating a directory
- * const dir = S.decodeSync(Path.AbsDir.Schema)('/data/output/')
+ * const dir = S.decodeSync(Path.AbsDir)('/data/output/')
  * yield* FileSystem.write(dir, { recursive: true })
  * ```
  */
@@ -627,8 +627,8 @@ export const write: {
       // Construct the parent directory from the file's path segments
       if (fileLoc.segments.length > 0) {
         const parentDir = Path.$Abs.is(loc)
-          ? S.decodeSync(Path.AbsDir.Schema)('/' + fileLoc.segments.join('/') + '/')
-          : S.decodeSync(Path.RelDir.Schema)(fileLoc.segments.join('/') + '/')
+          ? S.decodeSync(Path.AbsDir)('/' + fileLoc.segments.join('/') + '/')
+          : S.decodeSync(Path.RelDir)(fileLoc.segments.join('/') + '/')
         const parentPath = Path.toString(parentDir) as string
         yield* fs.makeDirectory(parentPath, { recursive: true })
       }
@@ -700,7 +700,7 @@ export const write: {
  *
  * @example
  * ```ts
- * const config = S.decodeSync(Path.AbsFile.Schema)('/etc/config.json')
+ * const config = S.decodeSync(Path.AbsFile)('/etc/config.json')
  * const data = JSON.stringify({ key: 'value' }, null, 2)
  * // Old way (deprecated):
  * yield* FileSystem.writeString(config, data)
@@ -737,13 +737,13 @@ export const writeString = <loc extends Path.Input.File>(
  * @example
  * ```ts
  * // File to file - uses optimized copyFile internally
- * const src = S.decodeSync(Path.AbsFile.Schema)('/src/file.txt')
- * const dst = S.decodeSync(Path.AbsFile.Schema)('/dst/file.txt')
+ * const src = S.decodeSync(Path.AbsFile)('/src/file.txt')
+ * const dst = S.decodeSync(Path.AbsFile)('/dst/file.txt')
  * yield* FileSystem.copy(src, dst)
  *
  * // Directory to directory - uses general copy
- * const srcDir = S.decodeSync(Path.AbsDir.Schema)('/src/dir/')
- * const dstDir = S.decodeSync(Path.AbsDir.Schema)('/dst/dir/')
+ * const srcDir = S.decodeSync(Path.AbsDir)('/src/dir/')
+ * const dstDir = S.decodeSync(Path.AbsDir)('/dst/dir/')
  * yield* FileSystem.copy(srcDir, dstDir)
  * ```
  */
@@ -797,13 +797,13 @@ export const link = <from extends Path.Input.Any, to extends Path.Input.Any>(
  * @example
  * ```ts
  * // File to file rename
- * const old = S.decodeSync(Path.AbsFile.Schema)('/tmp/old.txt')
- * const new = S.decodeSync(Path.AbsFile.Schema)('/tmp/new.txt')
+ * const old = S.decodeSync(Path.AbsFile)('/tmp/old.txt')
+ * const new = S.decodeSync(Path.AbsFile)('/tmp/new.txt')
  * yield* FileSystem.rename(old, new)
  *
  * // Directory to directory rename
- * const oldDir = S.decodeSync(Path.AbsDir.Schema)('/tmp/old/')
- * const newDir = S.decodeSync(Path.AbsDir.Schema)('/tmp/new/')
+ * const oldDir = S.decodeSync(Path.AbsDir)('/tmp/old/')
+ * const newDir = S.decodeSync(Path.AbsDir)('/tmp/new/')
  * yield* FileSystem.rename(oldDir, newDir)
  * ```
  */
@@ -906,7 +906,7 @@ export const makeTempDirectory = (
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const path = yield* fs.makeTempDirectory(options)
-    return S.decodeSync(Path.AbsDir.Schema)(path)
+    return S.decodeSync(Path.AbsDir)(path)
   })
 
 /**
@@ -929,7 +929,7 @@ export const makeTempDirectory = (
  *
  *   // Use the directory...
  *   yield* FileSystem.writeString(
- *     Path.join(tempDir, S.decodeSync(Path.RelFile.Schema)('./data.txt')),
+ *     Path.join(tempDir, S.decodeSync(Path.RelFile)('./data.txt')),
  *     'test data'
  *   )
  * }).pipe(Effect.scoped)
@@ -941,7 +941,7 @@ export const makeTempDirectoryScoped = (
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const path = yield* fs.makeTempDirectoryScoped(options)
-    return S.decodeSync(Path.AbsDir.Schema)(path)
+    return S.decodeSync(Path.AbsDir)(path)
   })
 
 /**
@@ -982,14 +982,14 @@ export const makeTemp = <T extends MakeTempOptions>(
         }),
       }
       const path = yield* fs.makeTempFile(fileOpts)
-      return S.decodeSync(Path.AbsFile.Schema)(path) as any
+      return S.decodeSync(Path.AbsFile)(path) as any
     } else {
       const dirOpts: MakeTempDirectoryOptions = {
         ...(options.directory !== undefined && { directory: options.directory }),
         ...(options.prefix !== undefined && { prefix: options.prefix }),
       }
       const path = yield* fs.makeTempDirectory(dirOpts)
-      return S.decodeSync(Path.AbsDir.Schema)(path) as any
+      return S.decodeSync(Path.AbsDir)(path) as any
     }
   })
 
@@ -1028,13 +1028,13 @@ export const makeTempScoped = <T extends MakeTempOptions>(
         }),
       }
       const path = yield* fs.makeTempFileScoped(fileOpts)
-      return S.decodeSync(Path.AbsFile.Schema)(path) as any
+      return S.decodeSync(Path.AbsFile)(path) as any
     } else {
       const dirOpts: MakeTempDirectoryOptions = {
         ...(options.directory !== undefined && { directory: options.directory }),
         ...(options.prefix !== undefined && { prefix: options.prefix }),
       }
       const path = yield* fs.makeTempDirectoryScoped(dirOpts)
-      return S.decodeSync(Path.AbsDir.Schema)(path) as any
+      return S.decodeSync(Path.AbsDir)(path) as any
     }
   })

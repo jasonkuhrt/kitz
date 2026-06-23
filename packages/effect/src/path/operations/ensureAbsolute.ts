@@ -1,4 +1,3 @@
-import { Schema as S } from 'effect'
 import type { $Abs } from '../$Abs/_.js'
 import { $Abs as Abs } from '../$Abs/_.js'
 import type { $Rel } from '../$Rel/_.js'
@@ -46,7 +45,7 @@ export const ensureAbsolute = <L extends Path, B extends AbsDir>(
   base: B,
 ): ensureAbsolute<L> => {
   // If already absolute, return as-is
-  if (S.is(Abs.Schema)(path)) {
+  if (Abs.is(path)) {
     return path as any
   }
 

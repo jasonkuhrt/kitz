@@ -3,29 +3,23 @@ import { RelDir } from '../RelDir/_.js'
 import { RelFile } from '../RelFile/_.js'
 
 /**
- * Union schema of all relative path types with string codec baked in.
- * Includes both relative files and relative directories.
+ * `$Rel` — any relative path (`RelFile | RelDir`).
  *
- * This schema transforms between string representation (e.g., "./file.txt" or "./src/")
- * and the appropriate RelFile or RelDir class instance.
+ * The binding **is** the union string codec, usable directly as a schema —
+ * `S.Struct({ p: $Rel })`, `S.decodeSync($Rel)(…)` — with no `.Schema` hop, and
+ * carries `is` as a static.
  *
  * @example
  * ```ts
- * // Decode from string - auto-detects file vs directory
- * const path1 = S.decodeSync($Rel.Schema)('./file.txt')  // RelFile
- * const path2 = S.decodeSync($Rel.Schema)('./src/')      // RelDir
- *
- * // Use in struct (expects string input)
- * const ConfigSchema = S.Struct({
- *   path: $Rel.Schema
- * })
+ * const p1 = S.decodeSync($Rel)('./file.txt')  // RelFile
+ * const p2 = S.decodeSync($Rel)('./src/')      // RelDir
+ * const ConfigSchema = S.Struct({ path: $Rel })
  * ```
  */
-export const Schema = S.Union([RelFile.Schema, RelDir.Schema]).annotate({
-  identifier: '$Rel',
-})
+class $RelCodec extends S.asClass(S.Union([RelFile, RelDir]).annotate({ identifier: '$Rel' })) {
+  /** Type guard for any relative path. */
+  static is = S.is(this)
+}
 
-/**
- * Type guard to check if a value is a relative path.
- */
-export const is = S.is(Schema)
+export const $Rel = $RelCodec
+export type $Rel = S.Schema.Type<typeof $RelCodec>

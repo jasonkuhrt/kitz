@@ -2,32 +2,24 @@ import { Schema as S } from 'effect'
 import { AbsDir } from '../AbsDir/_.js'
 import { RelDir } from '../RelDir/_.js'
 
-// needed to avoid '...canot be naned...' errors
-
 /**
- * Union schema of all directory path types with string codec baked in.
- * Includes both absolute and relative directories.
+ * `$Dir` — any directory path (`AbsDir | RelDir`).
  *
- * This schema transforms between string representation (e.g., "/home/user/" or "./src/")
- * and the appropriate AbsDir or RelDir class instance.
+ * The binding **is** the union string codec, usable directly as a schema —
+ * `S.Struct({ p: $Dir })`, `S.decodeSync($Dir)(…)` — with no `.Schema` hop, and
+ * carries `is` as a static.
  *
  * @example
  * ```ts
- * // Decode from string - auto-detects absolute vs relative
- * const path1 = S.decodeSync($Dir.Schema)('/home/user/')  // AbsDir
- * const path2 = S.decodeSync($Dir.Schema)('./src/')       // RelDir
- *
- * // Use in struct (expects string input)
- * const ConfigSchema = S.Struct({
- *   dir: $Dir.Schema
- * })
+ * const p1 = S.decodeSync($Dir)('/home/user/')  // AbsDir
+ * const p2 = S.decodeSync($Dir)('./src/')       // RelDir
+ * const ConfigSchema = S.Struct({ dir: $Dir })
  * ```
  */
-export const Schema = S.Union([AbsDir.Schema, RelDir.Schema]).annotate({
-  identifier: '$Dir',
-})
+class $DirCodec extends S.asClass(S.Union([AbsDir, RelDir]).annotate({ identifier: '$Dir' })) {
+  /** Type guard for any directory path. */
+  static is = S.is(this)
+}
 
-/**
- * Type guard to check if a value is a directory path.
- */
-export const is = S.is(Schema)
+export const $Dir = $DirCodec
+export type $Dir = S.Schema.Type<typeof $DirCodec>

@@ -23,7 +23,7 @@ export interface Builder {
  * ```
  */
 export const create = (base: Path.Input.AbsDir): Builder => ({
-  base: Path.normalizeDynamicInput(Path.AbsDir.Schema)(base),
+  base: Path.normalizeDynamicInput(Path.AbsDir)(base),
 })
 
 /**

@@ -1,11 +1,6 @@
-import { Match } from 'effect'
 import type { Path } from '../_.js'
-import { AbsDir } from '../AbsDir/_.js'
-import { AbsFile } from '../AbsFile/_.js'
 import type { Input } from '../inputs.js'
 import { normalizeDynamic } from '../inputs.js'
-import { RelDir } from '../RelDir/_.js'
-import { RelFile } from '../RelFile/_.js'
 import { Schema } from '../Schema.js'
 
 const normalizer = normalizeDynamic(Schema)
@@ -32,12 +27,5 @@ const normalizer = normalizeDynamic(Schema)
  */
 export const name = <$input extends Input>(path: $input): string => {
   const normalized = normalizer(path) as Path
-  return Match.value(normalized).pipe(
-    Match.tagsExhaustive({
-      FsPathAbsFile: AbsFile.name,
-      FsPathRelFile: RelFile.name,
-      FsPathAbsDir: AbsDir.name,
-      FsPathRelDir: RelDir.name,
-    }),
-  )
+  return normalized.name
 }

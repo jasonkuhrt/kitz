@@ -3,29 +3,23 @@ import { AbsFile } from '../AbsFile/_.js'
 import { RelFile } from '../RelFile/_.js'
 
 /**
- * Union schema of all file path types with string codec baked in.
- * Includes both absolute and relative files.
+ * `$File` — any file path (`AbsFile | RelFile`).
  *
- * This schema transforms between string representation (e.g., "/home/file.txt" or "./file.txt")
- * and the appropriate AbsFile or RelFile class instance.
+ * The binding **is** the union string codec, usable directly as a schema —
+ * `S.Struct({ p: $File })`, `S.decodeSync($File)(…)` — with no `.Schema` hop, and
+ * carries `is` as a static.
  *
  * @example
  * ```ts
- * // Decode from string - auto-detects absolute vs relative
- * const path1 = S.decodeSync($File.Schema)('/home/file.txt')  // AbsFile
- * const path2 = S.decodeSync($File.Schema)('./file.txt')      // RelFile
- *
- * // Use in struct (expects string input)
- * const ConfigSchema = S.Struct({
- *   file: $File.Schema
- * })
+ * const p1 = S.decodeSync($File)('/home/file.txt')  // AbsFile
+ * const p2 = S.decodeSync($File)('./file.txt')      // RelFile
+ * const ConfigSchema = S.Struct({ file: $File })
  * ```
  */
-export const Schema = S.Union([AbsFile.Schema, RelFile.Schema]).annotate({
-  identifier: '$File',
-})
+class $FileCodec extends S.asClass(S.Union([AbsFile, RelFile]).annotate({ identifier: '$File' })) {
+  /** Type guard for any file path. */
+  static is = S.is(this)
+}
 
-/**
- * Type guard to check if a value is a file path.
- */
-export const is = S.is(Schema)
+export const $File = $FileCodec
+export type $File = S.Schema.Type<typeof $FileCodec>

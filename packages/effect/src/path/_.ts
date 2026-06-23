@@ -1,35 +1,42 @@
 /**
- * Filesystem path namespace following Kit universal ADT pattern.
+ * Filesystem path namespace following the Kit universal ADT pattern.
  *
  * **Data Exports:**
- * - `.Any` = Union of all members (the complete ADT)
- * - `.<Member>` = Individual ADT members (PascalCase: AbsFile, AbsDir, RelFile, RelDir)
- * - `.$<Group>` = Cross-cutting union groupings ($ prefix: $Abs, $Rel, $File, $Dir)
+ * - `.Schema` = union of all members (the complete ADT)
+ * - `.<Member>` = individual ADT members (PascalCase: `AbsFile`, `AbsDir`, `RelFile`,
+ *   `RelDir`). Each binding **is** the member's string codec — usable directly as a
+ *   schema (`S.Struct({ p: Path.AbsFile })`) — and carries `make`/`fromString`/`is`
+ *   as statics. Decoded values are class instances with `.name` and `.toString()`.
+ * - `.$<Group>` = cross-cutting union groupings ($ prefix: `$Abs`, `$Rel`, `$File`,
+ *   `$Dir`), each also a codec with an `is` static.
  *
  * **Operation Exports:**
- * - `.<op>` = Operations on Any (camelCase: up, isDescendantOf, etc.)
- * - `.$<Group>.<op>` = Group-specific operations (when needed)
- * - `.<Member>.<op>` = Member-specific operations (as static methods on classes)
+ * - `.<op>` = operations on any path (camelCase: `up`, `isDescendantOf`, etc.)
+ * - `.<Member>.<op>` = member-specific constructors/guards (static methods)
  *
  * This pattern applies universally across all Kit ADTs.
  *
  * @example
  * ```ts
+ * import { Schema as S } from 'effect'
  * import { Path } from '@kitz/effect'
  *
- * // Data - Union of all members
- * type AnyPath = typeof Path.Any.Type
+ * // Data - union of all members
+ * type AnyPath = Path
  *
- * // Data - Individual members
- * const file = Path.AbsFile.make({ path, file })
+ * // Data - individual members (codecs + constructors)
+ * const file = Path.AbsFile.fromString('/home/user/config.json')
  *
- * // Data - Groupings
- * type AbsPath = typeof Path.$Abs.Type  // AbsFile | AbsDir
- * type FilePath = typeof Path.$File.Type  // AbsFile | RelFile
+ * // Data - groupings
+ * type AbsPath = typeof Path.$Abs.Type   // AbsFile | AbsDir
+ * type FilePath = typeof Path.$File.Type // AbsFile | RelFile
  *
- * // Operations on Any
- * const parent = Path.up(somePath)
- * const isRoot = Path.isRoot(somePath)
+ * // Use any member/group directly as a schema (no `.Schema` hop)
+ * const Config = S.Struct({ source: Path.AbsFile, out: Path.$Dir })
+ *
+ * // Operations on any path
+ * const parent = Path.up(file)
+ * const isRoot = Path.isRoot(file)
  * ```
  */
 // @ts-expect-error Duplicate identifier

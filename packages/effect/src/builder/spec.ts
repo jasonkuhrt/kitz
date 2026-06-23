@@ -317,7 +317,7 @@ export const toLayout = (spec: SpecBuilder): Layout => {
  * ```
  */
 export const spec = (base: Path.Input.AbsDir): SpecBuilder => {
-  const absBase = Path.normalizeDynamicInput(Path.AbsDir.Schema)(base)
+  const absBase = Path.normalizeDynamicInput(Path.AbsDir)(base)
   const operations: Operation[] = []
 
   const createSpec = (baseDir: Path.AbsDir, ops: Operation[]): SpecBuilder => {
@@ -328,7 +328,7 @@ export const spec = (base: Path.Input.AbsDir): SpecBuilder => {
       file(path, content) {
         const relFile =
           typeof path === 'string'
-            ? S.decodeSync(Path.RelFile.Schema)(path as string)
+            ? S.decodeSync(Path.RelFile)(path as string)
             : (path as Path.RelFile)
         const newOps = [...ops, { type: 'file' as const, path: relFile, content }]
         return createSpec(baseDir, newOps)
@@ -337,7 +337,7 @@ export const spec = (base: Path.Input.AbsDir): SpecBuilder => {
       dir(path, builder?) {
         const relDir =
           typeof path === 'string'
-            ? S.decodeSync(Path.RelDir.Schema)(path as string)
+            ? S.decodeSync(Path.RelDir)(path as string)
             : (path as Path.RelDir)
 
         if (builder) {
@@ -383,7 +383,7 @@ export const spec = (base: Path.Input.AbsDir): SpecBuilder => {
         if (typeof path === 'string') {
           // Handle special case for current directory
           const dirPath = path === '.' ? './' : (path as string)
-          relDir = S.decodeSync(Path.RelDir.Schema)(dirPath)
+          relDir = S.decodeSync(Path.RelDir)(dirPath)
         } else {
           relDir = path as Path.RelDir
         }
@@ -525,7 +525,7 @@ export const spec = (base: Path.Input.AbsDir): SpecBuilder => {
       },
 
       withBase(newBase: Path.Input.AbsDir): SpecBuilder {
-        const absNewBase = Path.normalizeDynamicInput(Path.AbsDir.Schema)(newBase)
+        const absNewBase = Path.normalizeDynamicInput(Path.AbsDir)(newBase)
         return createSpec(absNewBase, ops)
       },
 
