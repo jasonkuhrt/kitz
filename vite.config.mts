@@ -96,7 +96,7 @@ export default defineConfig({
   // ── vitest ──────────────────────────────────────────────────────────────
   test: {
     include: ['packages/*/src/**/*.test.ts'],
-    setupFiles: ['./packages/effect/vitest.setup.ts'],
+    setupFiles: ['./packages/vitest/src/setup.ts'],
     environment: 'node',
   },
 
