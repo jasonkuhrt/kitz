@@ -1,9 +1,7 @@
 /**
- * Type-level string utilities for path analysis.
- *
- * Relocated verbatim from `@kitz/core`'s `Str` module during the `@kitz/effect`
- * consolidation. Effect has no type-level string operators, so these are kept
- * local rather than depending on a separate utility package.
+ * Type-level string operators that effect's (value-level) `String` module does
+ * not provide. Re-exported from the `String` namespace alongside effect's own
+ * `String`, so consumers get both under one import.
  */
 
 /** Check if a string ends with a specific suffix. */

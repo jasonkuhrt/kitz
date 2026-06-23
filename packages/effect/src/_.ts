@@ -31,3 +31,5 @@ export * as FileSystem from './__.js'
 export namespace FileSystem {}
 
 export { Path } from './path/_.js'
+
+export * as String from './string/_.js'

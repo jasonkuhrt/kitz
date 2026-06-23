@@ -1,4 +1,4 @@
-import type * as Str from './str-types.js'
+import type * as String from '#string'
 import type { Analysis } from './analyzer.js'
 
 /**
@@ -83,9 +83,9 @@ type IsDirectory<$path extends string> = $path extends ''
         ? true
         : $path extends '../'
           ? true
-          : Str.EndsWith<$path, PATH_SEPARATOR> extends true
+          : String.EndsWith<$path, PATH_SEPARATOR> extends true
             ? true
-            : HasExtension<Str.LastSegment<Str.RemoveTrailingSlash<$path>>> extends true
+            : HasExtension<String.LastSegment<String.RemoveTrailingSlash<$path>>> extends true
               ? false
               : true // No extension = directory
 
@@ -94,7 +94,7 @@ type IsDirectory<$path extends string> = $path extends ''
 // ============================================================================
 
 type IsAbsolute<$path extends string> =
-  Str.StartsWith<$path, PATH_SEPARATOR> extends true ? true : false
+  String.StartsWith<$path, PATH_SEPARATOR> extends true ? true : false
 
 type IsRelative<$path extends string> = IsAbsolute<$path> extends true ? false : true
 
@@ -107,9 +107,9 @@ type IsRelative<$path extends string> = IsAbsolute<$path> extends true ? false :
  */
 type ExtractPathSegments<$path extends string> =
   IsDirectory<$path> extends true
-    ? Str.Split<Str.RemoveTrailingSlash<$path>, PATH_SEPARATOR>
+    ? String.Split<String.RemoveTrailingSlash<$path>, PATH_SEPARATOR>
     : $path extends `${infer __dir__}${PATH_SEPARATOR}${infer __file__}`
-      ? Str.Split<__dir__, PATH_SEPARATOR>
+      ? String.Split<__dir__, PATH_SEPARATOR>
       : []
 
 // ============================================================================
@@ -130,8 +130,8 @@ export type AnalysisFile<$path extends string = string> = {
   back: number
   path: ExtractPathSegments<$path>
   file: {
-    stem: ExtractName<Str.LastSegment<$path>>
-    extension: ExtractExtension<Str.LastSegment<$path>>
+    stem: ExtractName<String.LastSegment<$path>>
+    extension: ExtractExtension<String.LastSegment<$path>>
   }
 }
 
