@@ -29,10 +29,10 @@ export const stem = <$input extends Input>(path: $input): string => {
   const normalized = normalizer(path) as Path
   return Match.value(normalized).pipe(
     Match.tagsExhaustive({
-      FsPathAbsFile: (file) => file.fileName.stem,
-      FsPathRelFile: (file) => file.fileName.stem,
-      FsPathAbsDir: (dir) => dir.name,
-      FsPathRelDir: (dir) => dir.name,
+      AbsFile: (file) => file.fileName.stem,
+      RelFile: (file) => file.fileName.stem,
+      AbsDir: (dir) => dir.name,
+      RelDir: (dir) => dir.name,
     }),
   )
 }

@@ -9,7 +9,7 @@ import { Segment } from './Segment.js'
  * Internal; the public binding is {@link AbsDir}. Absolute paths can't lead with `..`,
  * so there is no `back`.
  */
-class AbsDirValue extends S.TaggedClass<AbsDirValue>()('FsPathAbsDir', {
+class AbsDirValue extends S.TaggedClass<AbsDirValue>()('AbsDir', {
   segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
   /** Encode back to the canonical string form (e.g. `/home/user/`). */
@@ -62,7 +62,7 @@ const codec = S.String.pipe(
       }
 
       return Effect.succeed({
-        _tag: 'FsPathAbsDir' as const,
+        _tag: 'AbsDir' as const,
         segments: analysis.path,
       })
     }),

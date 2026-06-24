@@ -29,22 +29,22 @@ export const set = (
 
   return Match.value(path).pipe(
     Match.tagsExhaustive({
-      FsPathAbsFile: () =>
+      AbsFile: () =>
         AbsFile.make({
           segments,
           fileName: fileName!,
         }),
-      FsPathRelFile: () =>
+      RelFile: () =>
         RelFile.make({
           back,
           segments,
           fileName: fileName!,
         }),
-      FsPathAbsDir: () =>
+      AbsDir: () =>
         AbsDir.make({
           segments,
         }),
-      FsPathRelDir: () =>
+      RelDir: () =>
         RelDir.make({
           back,
           segments,

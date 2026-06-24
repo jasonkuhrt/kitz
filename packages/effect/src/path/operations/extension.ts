@@ -31,10 +31,10 @@ export function extension<$input extends Input>($input: $input): string | null {
   const path = normalizer($input) as Path
   return Match.value(path).pipe(
     Match.tagsExhaustive({
-      FsPathAbsFile: (file) => file.fileName.extension,
-      FsPathRelFile: (file) => file.fileName.extension,
-      FsPathAbsDir: () => null,
-      FsPathRelDir: () => null,
+      AbsFile: (file) => file.fileName.extension,
+      RelFile: (file) => file.fileName.extension,
+      AbsDir: () => null,
+      RelDir: () => null,
     }),
   )
 }

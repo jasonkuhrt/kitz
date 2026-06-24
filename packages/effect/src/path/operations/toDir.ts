@@ -33,8 +33,8 @@ export const toDir = <$file extends File>(file: $file): toDir<$file> => {
   // Create the appropriate directory type based on whether file is absolute or relative
   return Match.value(file as File).pipe(
     Match.tagsExhaustive({
-      FsPathAbsFile: () => AbsDir.make({ segments }),
-      FsPathRelFile: (file) => RelDir.make({ back: file.back, segments }),
+      AbsFile: () => AbsDir.make({ segments }),
+      RelFile: (file) => RelDir.make({ back: file.back, segments }),
     }),
   ) as any
 }

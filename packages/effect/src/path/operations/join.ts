@@ -71,7 +71,7 @@ export const join = <$dir extends Dir, $rel extends Rel>(
   // The result keeps the absolute/relative nature of dir and file/dir nature of rel
   return Match.value(dir as Dir).pipe(
     Match.tagsExhaustive({
-      FsPathAbsDir: () => {
+      AbsDir: () => {
         // For absolute paths, remainingBack is discarded (can't go above root)
         if (fileName !== null) {
           return AbsFile.make({ segments, fileName })
@@ -79,7 +79,7 @@ export const join = <$dir extends Dir, $rel extends Rel>(
           return AbsDir.make({ segments })
         }
       },
-      FsPathRelDir: (relDir) => {
+      RelDir: (relDir) => {
         // For relative paths, combine the base's back with any remaining back
         const newBack = relDir.back + remainingBack
         if (fileName !== null) {

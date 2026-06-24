@@ -36,16 +36,16 @@ export function up<$input extends Input>($input: $input): normalize<$input> {
 
   return Match.value($path).pipe(
     Match.tagsExhaustive({
-      FsPathAbsFile: (file) =>
+      AbsFile: (file) =>
         AbsFile.make({
           segments: file.segments.slice(0, -1),
           fileName: file.fileName,
         }),
-      FsPathAbsDir: (dir) =>
+      AbsDir: (dir) =>
         AbsDir.make({
           segments: dir.segments.slice(0, -1),
         }),
-      FsPathRelFile: (file) => {
+      RelFile: (file) => {
         if (file.segments.length > 0) {
           // Has segments: pop one
           return RelFile.make({
@@ -61,7 +61,7 @@ export function up<$input extends Input>($input: $input): normalize<$input> {
           fileName: file.fileName,
         })
       },
-      FsPathRelDir: (dir) => {
+      RelDir: (dir) => {
         if (dir.segments.length > 0) {
           // Has segments: pop one
           return RelDir.make({

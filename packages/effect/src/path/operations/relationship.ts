@@ -25,20 +25,20 @@ const segmentsEquivalence = Array.makeEquivalence(
  * Uses lookup table - handles unions via union of keys.
  */
 export type MatchingTypeGroup<$a extends Path> = {
-  FsPathRelFile: Rel
-  FsPathRelDir: Rel
-  FsPathAbsFile: Abs
-  FsPathAbsDir: Abs
+  RelFile: Rel
+  RelDir: Rel
+  AbsFile: Abs
+  AbsDir: Abs
 }[$a['_tag']]
 
 /**
  * Return type for getSharedBase - directory of matching category.
  */
 export type SharedBase<$a extends Path> = {
-  FsPathRelFile: RelDir
-  FsPathRelDir: RelDir
-  FsPathAbsFile: AbsDir
-  FsPathAbsDir: AbsDir
+  RelFile: RelDir
+  RelDir: RelDir
+  AbsFile: AbsDir
+  AbsDir: AbsDir
 }[$a['_tag']]
 
 /**
@@ -46,10 +46,10 @@ export type SharedBase<$a extends Path> = {
  * Used for parent parameters since files don't contain other paths.
  */
 export type MatchingDirGroup<$a extends Path> = {
-  FsPathRelFile: RelDir
-  FsPathRelDir: RelDir
-  FsPathAbsFile: AbsDir
-  FsPathAbsDir: AbsDir
+  RelFile: RelDir
+  RelDir: RelDir
+  AbsFile: AbsDir
+  AbsDir: AbsDir
 }[$a['_tag']]
 
 /**
@@ -57,8 +57,8 @@ export type MatchingDirGroup<$a extends Path> = {
  * Used for child parameters when parent is constrained to Dir.
  */
 export type MatchingTypeGroupForDir<$a extends Dir> = {
-  FsPathRelDir: Rel
-  FsPathAbsDir: Abs
+  RelDir: Rel
+  AbsDir: Abs
 }[$a['_tag']]
 
 /**

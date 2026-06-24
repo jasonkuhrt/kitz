@@ -160,27 +160,27 @@ export type FromAnalysis<$analysis extends Analyzer.Analysis> = $analysis extend
         : never
 
 // oxfmt-ignore
-type GetValidationError<$tag> = $tag extends 'FsPathRelFile'
+type GetValidationError<$tag> = $tag extends 'RelFile'
   ? { message: 'Must be a relative file path'; hint: 'Relative files must not start with / and must have an extension' }
-  : $tag extends 'FsPathRelDir'
+  : $tag extends 'RelDir'
     ? {
       message: 'Must be a relative directory path'
       hint: 'Relative directories must not start with / and should end with / or have no extension'
     }
-  : $tag extends 'FsPathAbsDir'
+  : $tag extends 'AbsDir'
     ? {
       message: 'Must be an absolute directory path'
       hint: 'Absolute directories must start with / and should end with / or have no extension'
     }
-  : $tag extends 'FsPathAbsFile'
+  : $tag extends 'AbsFile'
     ? { message: 'Must be an absolute file path'; hint: 'Absolute files must start with / and have an extension' }
-  : $tag extends 'FsPathRelFile' | 'FsPathRelDir'
+  : $tag extends 'RelFile' | 'RelDir'
     ? { message: 'Must be a relative path'; hint: 'Relative paths must not start with /' }
-  : $tag extends 'FsPathAbsFile' | 'FsPathAbsDir'
+  : $tag extends 'AbsFile' | 'AbsDir'
     ? { message: 'Must be an absolute path'; hint: 'Absolute paths must start with /' }
-  : $tag extends 'FsPathRelFile' | 'FsPathAbsFile'
+  : $tag extends 'RelFile' | 'AbsFile'
     ? { message: 'Must be a file path'; hint: 'Files must have an extension' }
-  : $tag extends 'FsPathRelDir' | 'FsPathAbsDir'
+  : $tag extends 'RelDir' | 'AbsDir'
     ? { message: 'Must be a directory path'; hint: 'Directories should end with / or have no extension' }
   : { message: 'Must be a valid filesystem location'; hint: 'Check the path format' }
 

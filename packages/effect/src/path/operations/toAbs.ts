@@ -46,12 +46,12 @@ export const toAbs = <$rel extends Rel, $base extends AbsDir | undefined = undef
   // This essentially changes ./path to /path
   return Match.value(rel as Rel).pipe(
     Match.tagsExhaustive({
-      FsPathRelFile: (file) =>
+      RelFile: (file) =>
         AbsFile.make({
           segments: file.segments,
           fileName: file.fileName,
         }),
-      FsPathRelDir: (dir) =>
+      RelDir: (dir) =>
         AbsDir.make({
           segments: dir.segments,
         }),

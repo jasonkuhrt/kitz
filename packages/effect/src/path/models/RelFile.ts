@@ -8,7 +8,7 @@ import { Segment } from './Segment.js'
  * Relative file value — the decoded path (a step array + filename) with instance behavior.
  * Internal; the public binding is {@link RelFile}.
  */
-class RelFileValue extends S.TaggedClass<RelFileValue>()('FsPathRelFile', {
+class RelFileValue extends S.TaggedClass<RelFileValue>()('RelFile', {
   segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
   fileName: FileName,
 }) {
@@ -83,7 +83,7 @@ class RelFile_ extends Statics.Codec(
           }
 
           return Effect.succeed({
-            _tag: 'FsPathRelFile' as const,
+            _tag: 'RelFile' as const,
             // Fold the unresolved `..` count into leading Up steps (encoded as '..').
             segments: [
               ...Array.from({ length: analysis.back }, () => backSegment),
