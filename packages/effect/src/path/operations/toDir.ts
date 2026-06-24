@@ -34,7 +34,8 @@ export const toDir = <$file extends File>(file: $file): toDir<$file> => {
   return Match.value(file as File).pipe(
     Match.tagsExhaustive({
       AbsFile: () => AbsDir.make({ segments }),
-      RelFile: (file) => RelDir.make({ back: file.back, segments }),
+      // `segments` already carries any leading `..` (Up) steps; `back` is derived.
+      RelFile: () => RelDir.make({ segments }),
     }),
   ) as any
 }

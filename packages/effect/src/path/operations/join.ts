@@ -2,6 +2,7 @@
 import { Match } from 'effect'
 import type { Dir } from '../models/Dir.js'
 import type { Rel } from '../models/Rel.js'
+import type { Segment } from '../models/Segment.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
 import { RelDir } from '../models/RelDir.js'
@@ -53,41 +54,33 @@ export const join = <$dir extends Dir, $rel extends Rel>(
   dir: $dir,
   rel: $rel,
 ): join<$dir, $rel> => {
-  // Start with base directory segments
-  let baseSegments = [...dir.segments]
-  let remainingBack = rel.back
-
-  // Apply back references by popping segments from base
-  while (remainingBack > 0 && baseSegments.length > 0) {
-    baseSegments.pop()
-    remainingBack--
+  // rel.segments carries its own leading `..` (Up) steps, so resolve them against the
+  // base's trailing named segments: an Up cancels a preceding Name, otherwise it survives
+  // (propagating above the base).
+  const combined: Segment[] = [...dir.segments]
+  for (const segment of rel.segments) {
+    const last = combined.at(-1)
+    if (segment._tag === 'Up' && last !== undefined && last._tag === 'Name') {
+      combined.pop()
+    } else {
+      combined.push(segment)
+    }
   }
-
-  // Combine remaining base segments with rel segments
-  // Note: rel.segments is already normalized (no '..' in it)
-  const segments = [...baseSegments, ...rel.segments]
   const fileName = 'fileName' in rel ? rel.fileName : null
 
   // The result keeps the absolute/relative nature of dir and file/dir nature of rel
   return Match.value(dir as Dir).pipe(
     Match.tagsExhaustive({
+      // Absolute base: a `..` that couldn't cancel tried to climb above root — drop it.
       AbsDir: () => {
-        // For absolute paths, remainingBack is discarded (can't go above root)
-        if (fileName !== null) {
-          return AbsFile.make({ segments, fileName })
-        } else {
-          return AbsDir.make({ segments })
-        }
+        const segments = combined.filter((segment) => segment._tag !== 'Up')
+        return fileName !== null ? AbsFile.make({ segments, fileName }) : AbsDir.make({ segments })
       },
-      RelDir: (relDir) => {
-        // For relative paths, combine the base's back with any remaining back
-        const newBack = relDir.back + remainingBack
-        if (fileName !== null) {
-          return RelFile.make({ back: newBack, segments, fileName })
-        } else {
-          return RelDir.make({ back: newBack, segments })
-        }
-      },
+      // Relative base: surviving leading `..` steps are part of the result.
+      RelDir: () =>
+        fileName !== null
+          ? RelFile.make({ segments: combined, fileName })
+          : RelDir.make({ segments: combined }),
     }),
   ) as any
 }

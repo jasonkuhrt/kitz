@@ -8,8 +8,9 @@ import { AbsDir } from '../models/AbsDir.js'
 import { RelDir } from '../models/RelDir.js'
 import type { Segment } from '../models/Segment.js'
 
-/** Canonical string form of one segment (`..` for an Up step, the name otherwise). */
-const segmentToString = (segment: Segment): string => (segment._tag === 'Up' ? '..' : segment.name)
+/** Canonical string form of one segment (`..` for Up, `.` for Here, the name otherwise). */
+const segmentToString = (segment: Segment): string =>
+  segment._tag === 'Up' ? '..' : segment._tag === 'Here' ? '.' : segment.name
 
 // Compare segment arrays by their canonical string form
 const segmentsEquivalence = Array.makeEquivalence(
@@ -250,9 +251,10 @@ export function getSharedBase<$a extends Path>(
     return Option.none()
   }
 
-  // Return appropriate directory type
+  // Return appropriate directory type. `common` already includes the shared leading `..`
+  // (Up) steps, and the aBack/bBack guard above ensured they matched, so `back` is derived.
   if (Rel.is(a)) {
-    return Option.some(RelDir.make({ back: aBack, segments: common })) as any
+    return Option.some(RelDir.make({ segments: common })) as any
   }
   return Option.some(AbsDir.make({ segments: common })) as any
 }
@@ -283,8 +285,8 @@ export const isAncestorOfPath =
  * Curried variant of isSegmentsStartsWith - provide prefix first, then segments.
  */
 export const isSegmentsStartsWithPrefix =
-  (prefix: readonly string[]) =>
-  (segments: readonly string[]): boolean =>
+  (prefix: readonly Segment[]) =>
+  (segments: readonly Segment[]): boolean =>
     isSegmentsStartsWith(segments, prefix)
 
 /**

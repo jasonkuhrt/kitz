@@ -5,6 +5,10 @@ import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
 import { RelDir } from '../models/RelDir.js'
 import { RelFile } from '../models/RelFile.js'
+import { Segment } from '../models/Segment.js'
+
+/** A parent-traversal (`..`) step, one per base segment not shared with the target. */
+const parentStep = Segment.decodeSync('..')
 
 /**
  * Type-level toRel operation.
@@ -33,28 +37,27 @@ export const toRel = <$abs extends Abs, $base extends AbsDir>(
   abs: $abs,
   base: $base,
 ): toRel<$abs> => {
+  // Both paths are absolute, so their segments are named-only (no `..`). Find the shared
+  // prefix by canonical string form — segment values are objects, so `===` would compare
+  // by reference and never match.
   let sharedLength = 0
-  while (
-    sharedLength < abs.segments.length &&
-    sharedLength < base.segments.length &&
-    abs.segments[sharedLength] === base.segments[sharedLength]
-  ) {
+  while (sharedLength < abs.segments.length && sharedLength < base.segments.length) {
+    const a = abs.segments[sharedLength]
+    const b = base.segments[sharedLength]
+    if (a === undefined || b === undefined || Segment.encodeSync(a) !== Segment.encodeSync(b)) break
     sharedLength++
   }
 
+  // One `..` per unshared base segment, then descend into the target's remaining segments.
   const back = base.segments.length - sharedLength
-  const segments = abs.segments.slice(sharedLength)
+  const segments = [
+    ...Array.from({ length: back }, () => parentStep),
+    ...abs.segments.slice(sharedLength),
+  ]
 
   return (
     'fileName' in abs
-      ? RelFile.make({
-          back,
-          segments,
-          fileName: abs.fileName,
-        })
-      : RelDir.make({
-          back,
-          segments,
-        })
+      ? RelFile.make({ segments, fileName: abs.fileName })
+      : RelDir.make({ segments })
   ) as any
 }

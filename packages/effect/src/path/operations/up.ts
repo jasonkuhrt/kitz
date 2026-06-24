@@ -7,8 +7,12 @@ import { AbsFile } from '../models/AbsFile.js'
 import { Path as Schema } from '../models/Path.js'
 import { RelDir } from '../models/RelDir.js'
 import { RelFile } from '../models/RelFile.js'
+import { Segment } from '../models/Segment.js'
 
 const normalizer = normalizeDynamic(Schema)
+
+/** A parent-traversal (`..`) step, appended when no named segment remains to drop. */
+const parentStep = Segment.decodeSync('..')
 
 /**
  * Move one level up the path hierarchy, **preserving the path's kind**.
@@ -46,34 +50,18 @@ export function up<$input extends Input>($input: $input): normalize<$input> {
           segments: dir.segments.slice(0, -1),
         }),
       RelFile: (file) => {
-        if (file.segments.length > 0) {
-          // Has segments: pop one
-          return RelFile.make({
-            back: file.back,
-            segments: file.segments.slice(0, -1),
-            fileName: file.fileName,
-          })
-        }
-        // No segments: increment back
-        return RelFile.make({
-          back: file.back + 1,
-          segments: [],
-          fileName: file.fileName,
-        })
+        const last = file.segments.at(-1)
+        // A trailing named segment can be dropped (back out of it); otherwise there is
+        // nothing left to drop, so go one further up by appending a `..` step.
+        return last !== undefined && last._tag === 'Name'
+          ? RelFile.make({ segments: file.segments.slice(0, -1), fileName: file.fileName })
+          : RelFile.make({ segments: [...file.segments, parentStep], fileName: file.fileName })
       },
       RelDir: (dir) => {
-        if (dir.segments.length > 0) {
-          // Has segments: pop one
-          return RelDir.make({
-            back: dir.back,
-            segments: dir.segments.slice(0, -1),
-          })
-        }
-        // No segments: increment back
-        return RelDir.make({
-          back: dir.back + 1,
-          segments: [],
-        })
+        const last = dir.segments.at(-1)
+        return last !== undefined && last._tag === 'Name'
+          ? RelDir.make({ segments: dir.segments.slice(0, -1) })
+          : RelDir.make({ segments: [...dir.segments, parentStep] })
       },
     }),
   ) as normalize<$input>

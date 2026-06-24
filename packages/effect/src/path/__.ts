@@ -28,6 +28,3 @@ export { normalize as normalizeInput, normalizeDynamic as normalizeDynamicInput 
 
 // Extension types and constants
 export * as Extension from './models/Extension.js'
-
-// Service (effect Context.Service; surfaces as `Path.Path`)
-export { Path } from './service.js'

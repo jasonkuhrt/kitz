@@ -21,4 +21,11 @@ import { RelFile } from './RelFile.js'
  * const ConfigSchema = S.Struct({ path: Schema })
  * ```
  */
-export const Path = S.Union([AbsFile, AbsDir, RelFile, RelDir])
+// Pin to a compact, named codec type so declaration emit references it instead of inlining
+// each member's statics intersection (which overflows — TS7056).
+export const Path: S.Codec<AbsFile | AbsDir | RelFile | RelDir, string, never, never> = S.Union([
+  AbsFile,
+  AbsDir,
+  RelFile,
+  RelDir,
+])
