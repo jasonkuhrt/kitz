@@ -1,14 +1,15 @@
 import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
 import { analyze, backSegment, herePrefix, separator } from '../path-analyzer/codec-string/__.js'
+import { Statics } from './core.js'
 import { FileName } from './FileName.js'
-import { Segments } from './Segments.js'
+import { Segment } from './Segment.js'
 
 /**
  * Relative file value — the decoded path (a step array + filename) with instance behavior.
  * Internal; the public binding is {@link RelFile}.
  */
 class RelFileValue extends S.TaggedClass<RelFileValue>()('FsPathRelFile', {
-  segments: Segments,
+  segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
   fileName: FileName,
 }) {
   /** Encode back to the canonical string form (e.g. `./src/index.ts`). */
@@ -46,63 +47,58 @@ class RelFileValue extends S.TaggedClass<RelFileValue>()('FsPathRelFile', {
  * const ConfigSchema = S.Struct({ sourcePath: RelFile, outputPath: RelFile })
  * ```
  */
-class RelFile_ extends S.asClass(
-  S.String.pipe(
-    S.decodeTo(RelFileValue, {
-      encode: SchemaGetter.transform((decoded) => {
-        // Steps carry their own `..`, so the encoded segment array already includes
-        // any parent traversals; only the leading `./` marker is conditional.
-        const pathString = S.encodeSync(Segments)(decoded.segments).join(separator)
-        const fileString = decoded.fileName.extension
-          ? `${decoded.fileName.stem}${decoded.fileName.extension}`
-          : decoded.fileName.stem
-        if (decoded.segments.length === 0) return `${herePrefix}${fileString}`
-        const prefix = decoded.segments[0]?._tag === 'Up' ? '' : herePrefix
-        return `${prefix}${pathString}${separator}${fileString}`
-      }),
-      decode: SchemaGetter.transformOrFail((input) => {
-        // Analyze the input string with file hint for ambiguous dotfiles
-        const analysis = analyze(input, { hint: 'file' })
+class RelFile_ extends Statics.Codec(
+  S.asClass(
+    S.String.pipe(
+      S.decodeTo(RelFileValue, {
+        // The encode getter receives the ENCODED form — segments are already `string[]`
+        // (Up steps encoded as '..'); only the leading `./` marker is conditional.
+        encode: SchemaGetter.transform((encoded) => {
+          const pathString = encoded.segments.join(separator)
+          const fileString = encoded.fileName.extension
+            ? `${encoded.fileName.stem}${encoded.fileName.extension}`
+            : encoded.fileName.stem
+          if (encoded.segments.length === 0) return `${herePrefix}${fileString}`
+          const prefix = encoded.segments[0] === backSegment ? '' : herePrefix
+          return `${prefix}${pathString}${separator}${fileString}`
+        }),
+        // The decode getter returns the ENCODED form; the schema decodes `string[]` → `Segment[]`.
+        decode: SchemaGetter.transformOrFail((input) => {
+          // Analyze the input string with file hint for ambiguous dotfiles
+          const analysis = analyze(input, { hint: 'file' })
 
-        if (analysis._tag !== 'file') {
-          return Effect.fail(
-            new SchemaIssue.InvalidValue(Option.some(input), {
-              message: 'Expected a file path, got a directory path',
-            }),
-          )
-        }
-        if (analysis.isPathAbsolute) {
-          return Effect.fail(
-            new SchemaIssue.InvalidValue(Option.some(input), {
-              message: 'Relative paths must not start with /',
-            }),
-          )
-        }
+          if (analysis._tag !== 'file') {
+            return Effect.fail(
+              new SchemaIssue.InvalidValue(Option.some(input), {
+                message: 'Expected a file path, got a directory path',
+              }),
+            )
+          }
+          if (analysis.isPathAbsolute) {
+            return Effect.fail(
+              new SchemaIssue.InvalidValue(Option.some(input), {
+                message: 'Relative paths must not start with /',
+              }),
+            )
+          }
 
-        return Effect.succeed(
-          RelFileValue.make({
-            // Fold the unresolved `..` count into leading Up steps.
-            segments: S.decodeSync(Segments)([
+          return Effect.succeed({
+            _tag: 'FsPathRelFile' as const,
+            // Fold the unresolved `..` count into leading Up steps (encoded as '..').
+            segments: [
               ...Array.from({ length: analysis.back }, () => backSegment),
               ...analysis.path,
-            ]),
+            ],
             fileName: FileName.make({
               stem: analysis.file.stem,
               extension: analysis.file.extension,
             }),
-          }),
-        )
+          })
+        }),
       }),
-    }),
+    ),
   ),
-) {
-  /** Type guard for {@link RelFile} instances. */
-  static readonly is = S.is(this)
-
-  /** Decode a relative file path from a string. Throws on invalid input. */
-  static readonly fromString = <const input extends string>(input: input): RelFile =>
-    S.decodeSync(this)(input)
-}
+) {}
 
 export const RelFile = RelFile_
 export type RelFile = typeof RelFile_.Type

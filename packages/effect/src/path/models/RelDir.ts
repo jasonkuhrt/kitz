@@ -1,14 +1,14 @@
 import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
 import { analyze, backSegment, herePrefix, separator } from '../path-analyzer/codec-string/__.js'
-import { asClassPath, back } from './core.js'
-import { Segments } from './Segments.js'
+import { Statics, back } from './core.js'
+import { Segment } from './Segment.js'
 
 /**
  * Relative directory value — the decoded path (a step array) with instance behavior.
  * Internal; the public binding is {@link RelDir}.
  */
 class RelDirValue extends S.TaggedClass<RelDirValue>()('RelDir', {
-  segments: Segments,
+  segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
   /** Encode back to the canonical string form (e.g. `./src/`). */
   override toString(): string {
@@ -30,7 +30,7 @@ class RelDirValue extends S.TaggedClass<RelDirValue>()('RelDir', {
 /**
  * `RelDir` — a relative directory path. The binding **is** the `string` ⇄ `RelDir`
  * codec (usable directly as a schema) and carries `is` / `fromString` statics via
- * {@link asClassPath}.
+ * {@link Statics.Codec}.
  *
  * @example
  * ```ts
@@ -39,12 +39,12 @@ class RelDirValue extends S.TaggedClass<RelDirValue>()('RelDir', {
  */
 const codec = S.String.pipe(
   S.decodeTo(RelDirValue, {
-    encode: SchemaGetter.transform((decoded) => {
-      // Steps carry their own `..`, so the encoded segment array already includes
-      // any parent traversals; only the leading `./` marker is conditional.
-      const pathString = S.encodeSync(Segments)(decoded.segments).join(separator)
-      if (decoded.segments.length === 0) return herePrefix
-      const startsWithBack = decoded.segments[0]?._tag === 'Up'
+    // The encode getter receives the ENCODED form — segments are already `string[]`
+    // (Up steps encoded as '..'); only the leading `./` marker is conditional.
+    encode: SchemaGetter.transform((encoded) => {
+      const pathString = encoded.segments.join(separator)
+      if (encoded.segments.length === 0) return herePrefix
+      const startsWithBack = encoded.segments[0] === backSegment
       return startsWithBack ? `${pathString}${separator}` : `${herePrefix}${pathString}${separator}`
     }),
     decode: SchemaGetter.transformOrFail((input) => {
@@ -63,18 +63,15 @@ const codec = S.String.pipe(
           }),
         )
       }
-      return Effect.succeed(
-        RelDirValue.make({
-          // Fold the unresolved `..` count into leading Up steps.
-          segments: S.decodeSync(Segments)([
-            ...Array.from({ length: analysis.back }, () => backSegment),
-            ...analysis.path,
-          ]),
-        }),
-      )
+      // The decode getter returns the ENCODED form; the schema decodes `string[]` → `Segment[]`.
+      return Effect.succeed({
+        _tag: 'RelDir' as const,
+        // Fold the unresolved `..` count into leading Up steps (encoded as '..').
+        segments: [...Array.from({ length: analysis.back }, () => backSegment), ...analysis.path],
+      })
     }),
   }),
 )
 
-export const RelDir = asClassPath(codec)
+export const RelDir = Statics.Codec(S.asClass(codec))
 export type RelDir = typeof RelDir.Type

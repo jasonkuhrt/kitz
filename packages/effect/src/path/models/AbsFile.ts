@@ -1,6 +1,6 @@
 import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
 import { analyze } from '../path-analyzer/codec-string/__.js'
-import { asClassPath } from './core.js'
+import { Statics } from './core.js'
 import { FileName } from './FileName.js'
 import { Segment } from './Segment.js'
 
@@ -29,7 +29,7 @@ class AbsFileValue extends S.TaggedClass<AbsFileValue>()('AbsFile', {
 /**
  * `AbsFile` — an absolute file path. The binding **is** the `string` ⇄ `AbsFile`
  * codec (usable directly as a schema) and carries `is` / `fromString` via
- * {@link asClassPath}. The decoded value has `.name` and `.toString()`.
+ * {@link Statics.Codec}. The decoded value has `.name` and `.toString()`.
  *
  * @example
  * ```ts
@@ -72,5 +72,5 @@ const codec = S.String.pipe(
   }),
 )
 
-export const AbsFile = asClassPath(codec)
+export const AbsFile = Statics.Codec(S.asClass(codec))
 export type AbsFile = typeof AbsFile.Type

@@ -1,14 +1,16 @@
 import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
 import { stringSeparator } from '../constants.js'
 import { analyze } from '../path-analyzer/codec-string/__.js'
-import { Segments } from './Segments.js'
+import { Statics } from './core.js'
+import { Segment } from './Segment.js'
 
 /**
  * Absolute directory value — the decoded path (segments) with instance behavior.
- * Internal; the public binding is {@link AbsDir}.
+ * Internal; the public binding is {@link AbsDir}. Absolute paths can't lead with `..`,
+ * so there is no `back`.
  */
 class AbsDirValue extends S.TaggedClass<AbsDirValue>()('FsPathAbsDir', {
-  segments: Segments,
+  segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
   /** Encode back to the canonical string form (e.g. `/home/user/`). */
   override toString(): string {
@@ -23,10 +25,9 @@ class AbsDirValue extends S.TaggedClass<AbsDirValue>()('FsPathAbsDir', {
 }
 
 /**
- * `AbsDir` — an absolute directory path.
- *
- * The binding **is** the string codec (`string` ⇄ `AbsDir`), usable directly as a
- * schema — `S.Struct({ p: AbsDir })`, `S.Union([AbsDir, …])` — with no `.Schema` hop.
+ * `AbsDir` — an absolute directory path. The binding **is** the `string` ⇄ `AbsDir`
+ * codec (usable directly as a schema) and carries `is` / `fromString` via
+ * {@link Statics.Codec}.
  *
  * @example
  * ```ts
@@ -34,44 +35,39 @@ class AbsDirValue extends S.TaggedClass<AbsDirValue>()('FsPathAbsDir', {
  * const ConfigSchema = S.Struct({ sourcePath: AbsDir, outputPath: AbsDir })
  * ```
  */
-class AbsDir_ extends S.asClass(
-  S.String.pipe(
-    S.decodeTo(AbsDirValue, {
-      encode: SchemaGetter.transform((decoded) => {
-        const pathString = S.encodeSync(Segments)(decoded.segments).join(stringSeparator)
-        return decoded.segments.length === 0 ? '/' : `/${pathString}/`
-      }),
-      decode: SchemaGetter.transformOrFail((input) => {
-        // Analyze the input string with directory hint for ambiguous paths
-        const analysis = analyze(input, { hint: 'directory' })
-
-        if (analysis._tag !== 'dir') {
-          return Effect.fail(
-            new SchemaIssue.InvalidValue(Option.some(input), {
-              message: 'Expected a directory path, got a file path',
-            }),
-          )
-        }
-        if (!analysis.isPathAbsolute) {
-          return Effect.fail(
-            new SchemaIssue.InvalidValue(Option.some(input), {
-              message: 'Absolute paths must start with /',
-            }),
-          )
-        }
-
-        return Effect.succeed(AbsDirValue.make({ segments: S.decodeSync(Segments)(analysis.path) }))
-      }),
+const codec = S.String.pipe(
+  S.decodeTo(AbsDirValue, {
+    // The encode getter receives the ENCODED form — segments are already `string[]`.
+    encode: SchemaGetter.transform((encoded) => {
+      const pathString = encoded.segments.join(stringSeparator)
+      return encoded.segments.length === 0 ? '/' : `/${pathString}/`
     }),
-  ),
-) {
-  /** Type guard for {@link AbsDir} instances. */
-  static is = S.is(this)
+    // The decode getter returns the ENCODED form; the schema decodes `string[]` → `Segment[]`.
+    decode: SchemaGetter.transformOrFail((input) => {
+      const analysis = analyze(input, { hint: 'directory' })
 
-  /** Decode an absolute directory path from a string. Throws on invalid input. */
-  static fromString = <const input extends string>(input: input): AbsDir =>
-    S.decodeSync(this)(input)
-}
+      if (analysis._tag !== 'dir') {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(input), {
+            message: 'Expected a directory path, got a file path',
+          }),
+        )
+      }
+      if (!analysis.isPathAbsolute) {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(input), {
+            message: 'Absolute paths must start with /',
+          }),
+        )
+      }
 
-export const AbsDir = AbsDir_
-export type AbsDir = typeof AbsDir_.Type
+      return Effect.succeed({
+        _tag: 'FsPathAbsDir' as const,
+        segments: analysis.path,
+      })
+    }),
+  }),
+)
+
+export const AbsDir = Statics.Codec(S.asClass(codec))
+export type AbsDir = typeof AbsDir.Type
