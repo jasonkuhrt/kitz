@@ -1,4 +1,3 @@
-/* oxlint-disable typescript-eslint(no-unnecessary-type-assertion) -- branded filesystem helpers need explicit assertions to preserve generic location types across Effect/platform boundaries. */
 /**
  * Type-safe filesystem operations using FsLoc types.
  *
@@ -9,7 +8,7 @@
  */
 
 import { FileSystem, Function, PlatformError } from 'effect'
-import type { JsonObject } from './json-types.js'
+import type { JsonObject, JsonValue } from './json-types.js'
 import { Effect, Schema as S, Scope, Sink, Stream } from 'effect'
 import { Path } from './path/_.js'
 
@@ -31,7 +30,7 @@ export type InferFileContent<$Path extends Path.$File> =
  */
 // oxfmt-ignore
 type InferContentFromExtension<Ext> =
-     Ext extends '.json'                                                                                                           ? JsonObject
+     Ext extends '.json'                                                                                                           ? JsonValue
    : Ext extends '.txt' | '.md' | '.yml' | '.yaml' | '.xml' | '.html' | '.css' | '.js' | '.ts' | '.jsx' | '.tsx' | '.mjs' | '.cjs' ? string
    : Ext extends '.png' | '.jpg' | '.jpeg' | '.gif' | '.bmp' | '.ico' | '.svg' | '.webp'           ? Uint8Array
    : Ext extends '.pdf' | '.doc' | '.docx' | '.xls' | '.xlsx' | '.ppt' | '.pptx'                   ? Uint8Array
@@ -117,7 +116,7 @@ export const exists = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.exists(Path.toString(fsLoc) as string)
+    return yield* fs.exists(Path.toString(fsLoc))
   })
 
 /**
@@ -135,7 +134,7 @@ export const access = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.access(Path.toString(fsLoc) as string, options)
+    return yield* fs.access(Path.toString(fsLoc), options)
   })
 
 /**
@@ -153,7 +152,7 @@ export const chmod = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.chmod(Path.toString(fsLoc) as string, mode)
+    return yield* fs.chmod(Path.toString(fsLoc), mode)
   })
 
 /**
@@ -173,7 +172,7 @@ export const chown = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.chown(Path.toString(fsLoc) as string, uid, gid)
+    return yield* fs.chown(Path.toString(fsLoc), uid, gid)
   })
 
 /**
@@ -195,7 +194,7 @@ export const open = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.open(Path.toString(fsLoc) as string, options)
+    return yield* fs.open(Path.toString(fsLoc), options)
   })
 
 /**
@@ -262,9 +261,9 @@ export const read: {
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
 
     if (Path.$File.is(fsLoc)) {
-      return yield* fs.readFile(Path.toString(fsLoc) as string)
+      return yield* fs.readFile(Path.toString(fsLoc))
     } else {
-      const dirPath = Path.toString(fsLoc) as string
+      const dirPath = Path.toString(fsLoc)
       const entries = yield* options
         ? fs.readDirectory(dirPath, options)
         : fs.readDirectory(dirPath)
@@ -326,7 +325,7 @@ export const readString = <loc extends Path.Input.File>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.readFileString(Path.toString(fsLoc) as string, encoding)
+    return yield* fs.readFileString(Path.toString(fsLoc), encoding)
   })
 
 /**
@@ -344,7 +343,7 @@ export const readLink = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    const target = yield* fs.readLink(Path.toString(fsLoc) as string)
+    const target = yield* fs.readLink(Path.toString(fsLoc))
     return Path.fromString(target)
   })
 
@@ -363,7 +362,7 @@ export const realPath = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    const real = yield* fs.realPath(Path.toString(fsLoc) as string)
+    const real = yield* fs.realPath(Path.toString(fsLoc))
     // We can't easily determine if it's a file or directory without stat
     // So we return FsLocLoose which can be either
     return Path.fromString(real)
@@ -391,7 +390,7 @@ export const clear = <loc extends Path.Input.Dir>(
   return Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    const dirPath = Path.toString(fsLoc) as string
+    const dirPath = Path.toString(fsLoc)
 
     // Ensure the directory exists
     yield* fs.makeDirectory(dirPath, { recursive: true })
@@ -428,7 +427,7 @@ export const remove = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.remove(Path.toString(fsLoc) as string, options)
+    return yield* fs.remove(Path.toString(fsLoc), options)
   })
 
 /**
@@ -447,7 +446,7 @@ export const sink = <loc extends Path.Input.File>(
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-      return fs.sink(Path.toString(fsLoc) as string, options)
+      return fs.sink(Path.toString(fsLoc), options)
     }),
   )
 }
@@ -465,7 +464,7 @@ export const stat = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.stat(Path.toString(fsLoc) as string)
+    return yield* fs.stat(Path.toString(fsLoc))
   })
 
 /**
@@ -484,7 +483,7 @@ export const stream = <loc extends Path.Input.File>(
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-      return fs.stream(Path.toString(fsLoc) as string, options)
+      return fs.stream(Path.toString(fsLoc), options)
     }),
   )
 }
@@ -504,7 +503,7 @@ export const truncate = <loc extends Path.Input.File>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.truncate(Path.toString(fsLoc) as string, length)
+    return yield* fs.truncate(Path.toString(fsLoc), length)
   })
 
 /**
@@ -524,7 +523,7 @@ export const utimes = <loc extends Path.Input.Any>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.utimes(Path.toString(fsLoc) as string, atime, mtime)
+    return yield* fs.utimes(Path.toString(fsLoc), atime, mtime)
   })
 
 /**
@@ -533,7 +532,6 @@ export const utimes = <loc extends Path.Input.Any>(
  * Takes a FsLoc location instead of a string path.
  *
  * @param loc - The location to watch (any FsLoc type)
- * @param options - Watch options
  */
 export const watch = <loc extends Path.Input.Any>(
   loc: Path.Guard.Any<loc>,
@@ -542,7 +540,7 @@ export const watch = <loc extends Path.Input.Any>(
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem
       const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-      return fs.watch(Path.toString(fsLoc) as string)
+      return fs.watch(Path.toString(fsLoc))
     }),
   )
 }
@@ -621,7 +619,7 @@ export const write: {
         readonly fileName: { readonly extension: string | null }
       } = loc
       const [, content, options] = params
-      const filePath = Path.toString(loc) as string
+      const filePath = Path.toString(loc)
 
       // Ensure parent directory exists
       // Construct the parent directory from the file's path segments
@@ -629,7 +627,7 @@ export const write: {
         const parentDir = Path.$Abs.is(loc)
           ? S.decodeSync(Path.AbsDir)('/' + fileLoc.segments.join('/') + '/')
           : S.decodeSync(Path.RelDir)(fileLoc.segments.join('/') + '/')
-        const parentPath = Path.toString(parentDir) as string
+        const parentPath = Path.toString(parentDir)
         yield* fs.makeDirectory(parentPath, { recursive: true })
       }
 
@@ -660,13 +658,6 @@ export const write: {
           content,
           (options as WriteFileStringOptions) || {},
         )
-      } else if (typeof Buffer !== 'undefined' && Buffer.isBuffer(content)) {
-        // Node.js Buffer — Buffer extends Uint8Array, safe to pass directly
-        return yield* fs.writeFile(
-          filePath,
-          new Uint8Array(content.buffer, content.byteOffset, content.byteLength),
-          (options as WriteFileOptions) || {},
-        )
       } else {
         // Fallback: stringify anything else
         const stringContent =
@@ -681,7 +672,7 @@ export const write: {
 
     if (Path.$Dir.is(loc)) {
       const [, options] = params as WriteDirectoryParameters
-      return yield* fs.makeDirectory(Path.toString(loc) as string, options || { recursive: false })
+      return yield* fs.makeDirectory(Path.toString(loc), options || { recursive: false })
     }
 
     // Exhaustive check
@@ -716,7 +707,7 @@ export const writeString = <loc extends Path.Input.File>(
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem
     const fsLoc = Path.normalizeDynamicInput(Path.Schema)(loc)
-    return yield* fs.writeFileString(Path.toString(fsLoc) as string, data, options)
+    return yield* fs.writeFileString(Path.toString(fsLoc), data, options)
   })
 
 // ============================================================================
@@ -759,11 +750,11 @@ export const copy = <from extends Path.Input.Any, to extends Path.Input.Any>(
 
     // If both source and destination are files, use the optimized copyFile
     if (Path.$File.is(fromLoc) && Path.$File.is(toLoc)) {
-      return yield* fs.copyFile(Path.toString(fromLoc) as string, Path.toString(toLoc) as string)
+      return yield* fs.copyFile(Path.toString(fromLoc), Path.toString(toLoc))
     }
 
     // Otherwise use the general copy (for directories or mixed types)
-    return yield* fs.copy(Path.toString(fromLoc) as string, Path.toString(toLoc) as string, options)
+    return yield* fs.copy(Path.toString(fromLoc), Path.toString(toLoc), options)
   })
 
 /**
@@ -782,7 +773,7 @@ export const link = <from extends Path.Input.Any, to extends Path.Input.Any>(
     const fs = yield* FileSystem.FileSystem
     const fromLoc = Path.normalizeDynamicInput(Path.Schema)(from)
     const toLoc = Path.normalizeDynamicInput(Path.Schema)(to)
-    return yield* fs.link(Path.toString(fromLoc) as string, Path.toString(toLoc) as string)
+    return yield* fs.link(Path.toString(fromLoc), Path.toString(toLoc))
   })
 
 /**
@@ -824,7 +815,7 @@ export const rename: {
     const fs = yield* FileSystem.FileSystem
     const oldLoc = Path.normalizeDynamicInput(Path.Schema)(oldPath)
     const newLoc = Path.normalizeDynamicInput(Path.Schema)(newPath)
-    return yield* fs.rename(Path.toString(oldLoc) as string, Path.toString(newLoc) as string)
+    return yield* fs.rename(Path.toString(oldLoc), Path.toString(newLoc))
   })
 
 /**
@@ -843,7 +834,7 @@ export const symlink = <from extends Path.Input.Any, to extends Path.Input.Any>(
     const fs = yield* FileSystem.FileSystem
     const fromLoc = Path.normalizeDynamicInput(Path.Schema)(from)
     const toLoc = Path.normalizeDynamicInput(Path.Schema)(to)
-    return yield* fs.symlink(Path.toString(fromLoc) as string, Path.toString(toLoc) as string)
+    return yield* fs.symlink(Path.toString(fromLoc), Path.toString(toLoc))
   })
 
 // ============================================================================

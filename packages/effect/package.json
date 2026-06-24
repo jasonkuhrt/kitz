@@ -1,7 +1,7 @@
 {
   "name": "@kitz/effect",
   "version": "0.1.0",
-  "description": "Filesystem operations and a typed path ADT for the Effect ecosystem",
+  "description": "Filesystem operations, a typed path ADT, and string utilities for the Effect ecosystem",
   "keywords": [
     "effect",
     "effect-ts",
@@ -9,6 +9,7 @@
     "fs",
     "path",
     "schema",
+    "string",
     "typescript"
   ],
   "homepage": "https://github.com/jasonkuhrt/kitz/tree/main/packages/effect#readme",
@@ -70,7 +71,7 @@
     "access": "public"
   },
   "scripts": {
-    "prepack": "tsc -b tsconfig.production.json"
+    "prepack": "tsc -b --force tsconfig.production.json"
   },
   "dependencies": {
     "@platformatic/vfs": "catalog:",

@@ -6,8 +6,6 @@ import { Schema } from '../Schema.js'
 
 const normalizer = normalizeDynamic(Schema)
 
-export type PathWithEmptySegments<T extends Path> = T & { segments: readonly [] }
-
 /**
  * Type guard to check if a path is at root/base level.
  *

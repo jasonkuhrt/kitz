@@ -96,7 +96,7 @@ export interface DirChain extends SpecBuilder {
  */
 export const chain = (builder: Builder): DirChain => {
   // Create the underlying spec
-  let spec = Spec.spec(builder.base)
+  const spec = Spec.spec(builder.base)
 
   // Create a proxy that wraps the spec and adds commit()
   const createChainProxy = (currentSpec: SpecBuilder): DirChain => {
@@ -123,8 +123,6 @@ export const chain = (builder: Builder): DirChain => {
           return (...args: any[]) => {
             // Call the underlying spec method
             const result = (target as any)[prop](...args) as SpecBuilder
-            // Update our spec reference and return a new chain proxy
-            spec = result
             return createChainProxy(result)
           }
         }

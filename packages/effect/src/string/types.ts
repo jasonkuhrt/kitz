@@ -17,11 +17,11 @@ export type LastSegment<S extends string> = S extends `${string}/${infer Rest}`
   ? LastSegment<Rest>
   : S
 
-/** Remove a trailing slash from a string (a lone '/' is preserved). */
+/** Remove all trailing slashes from a string (a lone '/' is preserved). */
 export type RemoveTrailingSlash<S extends string> = S extends `${infer Rest}/`
   ? Rest extends ''
     ? '/'
-    : Rest
+    : RemoveTrailingSlash<Rest>
   : S
 
 /** Split a string by a delimiter, filtering out empty segments and '.' segments. */

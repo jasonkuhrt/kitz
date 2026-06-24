@@ -130,8 +130,8 @@ export type AnalysisFile<$path extends string = string> = {
   back: number
   path: ExtractPathSegments<$path>
   file: {
-    stem: ExtractName<String.LastSegment<$path>>
-    extension: ExtractExtension<String.LastSegment<$path>>
+    stem: ExtractName<String.LastSegment<String.RemoveTrailingSlash<$path>>>
+    extension: ExtractExtension<String.LastSegment<String.RemoveTrailingSlash<$path>>>
   }
 }
 
