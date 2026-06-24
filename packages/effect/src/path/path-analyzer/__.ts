@@ -1,7 +1,5 @@
 import { type Analysis, type AnalysisDir, type AnalysisFile, analyze } from './codec-string/__.js'
 
-export type { Analyze } from './codec-string/__.js'
-
 /**
  * Path analyzer namespace following Kit naming conventions:
  * - PascalCase = Data/Types (Analysis, AnalysisFile, AnalysisDir)

@@ -7,12 +7,11 @@
  *   `RelDir`). Each binding **is** the member's string codec — usable directly as a
  *   schema (`S.Struct({ p: Path.AbsFile })`) — and carries `make`/`fromString`/`is`
  *   as statics. Decoded values are class instances with `.name` and `.toString()`.
- * - `.$<Group>` = cross-cutting union groupings ($ prefix: `Abs`, `Rel`, `File`,
- *   `Dir`), each also a codec with an `is` static.
+ * - `.<Group>` = cross-cutting union groupings (`Abs`, `Rel`, `File`, `Dir`), each
+ *   also a codec with an `is` static.
  *
- * **Operation Exports:**
- * - `.<op>` = operations on any path (camelCase: `up`, `isDescendantOf`, etc.)
- * - `.<Member>.<op>` = member-specific constructors/guards (static methods)
+ * **State Exports:**
+ * - `.States.<guard>` = path depth guards (`isRoot`, `isTop`, `isSub`).
  *
  * This pattern applies universally across all Kit ADTs.
  *
@@ -34,9 +33,8 @@
  * // Use any member/group directly as a schema (no `.Schema` hop)
  * const Config = S.Struct({ source: Path.AbsFile, out: Path.Dir })
  *
- * // Operations on any path
- * const parent = Path.up(file)
- * const isRoot = Path.isRoot(file)
+ * // State guards
+ * const atRoot = Path.States.isRoot(file)
  * ```
  */
 // @ts-expect-error Duplicate identifier

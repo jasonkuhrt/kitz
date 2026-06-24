@@ -8,4 +8,3 @@ export {
   herePrefix,
   separator,
 } from './analyzer.js'
-export type * from './analyzer.types.js'

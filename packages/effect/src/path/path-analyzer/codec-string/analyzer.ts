@@ -1,5 +1,3 @@
-import type { Analyze } from './analyzer.types.js'
-
 interface AnalysisBase {
   /** Original input string */
   original: string
@@ -110,14 +108,7 @@ export interface AnalyzerOptions {
   hint?: 'file' | 'directory'
 }
 
-export function analyze<const input extends string>(
-  input: input,
-  options?: AnalyzerOptions,
-): Analyze<input> {
-  return analyze_(input, options) as Analyze<input>
-}
-
-export function analyze_(input: string, options?: AnalyzerOptions): Analysis {
+export function analyze(input: string, options?: AnalyzerOptions): Analysis {
   const isAbsolute = input.startsWith(separator)
 
   // Handle root case as an absolute directory with empty path
