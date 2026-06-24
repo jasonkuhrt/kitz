@@ -1,4 +1,4 @@
-import type * as String from '#string'
+import type * as String from '../../../string/__.js'
 import type { Analysis } from './analyzer.js'
 
 /**

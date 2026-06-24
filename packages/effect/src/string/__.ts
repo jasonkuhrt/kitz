@@ -16,4 +16,5 @@
  *
  * @module
  */
-export * as String from './__.js'
+export * from 'effect/String'
+export type * from './types.js'
