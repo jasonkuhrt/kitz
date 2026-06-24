@@ -7,7 +7,7 @@ import { AbsFile } from '../models/AbsFile.js'
 import { Path as Schema } from '../models/Path.js'
 import { RelDir } from '../models/RelDir.js'
 import { RelFile } from '../models/RelFile.js'
-import { Segment } from '../models/Segment.js'
+import { Segment } from '../models/segment/Segment.js'
 
 const normalizer = normalizeDynamic(Schema)
 

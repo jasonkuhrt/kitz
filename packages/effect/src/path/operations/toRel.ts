@@ -5,7 +5,7 @@ import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
 import { RelDir } from '../models/RelDir.js'
 import { RelFile } from '../models/RelFile.js'
-import { Segment } from '../models/Segment.js'
+import { Segment } from '../models/segment/Segment.js'
 
 /** A parent-traversal (`..`) step, one per base segment not shared with the target. */
 const parentStep = Segment.decodeSync('..')

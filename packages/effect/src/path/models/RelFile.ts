@@ -2,7 +2,7 @@ import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
 import { analyze, backSegment, herePrefix, separator } from '../path-analyzer/codec-string/__.js'
 import { Statics } from './core.js'
 import { FileName } from './FileName.js'
-import { Segment } from './Segment.js'
+import { Segment } from './segment/Segment.js'
 
 /**
  * Relative file value — the decoded path (a step array + filename) with instance behavior.

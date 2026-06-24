@@ -6,7 +6,7 @@ import { Rel } from '../models/Rel.js'
 import type { Path } from '../_.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { RelDir } from '../models/RelDir.js'
-import type { Segment } from '../models/Segment.js'
+import type { Segment } from '../models/segment/Segment.js'
 
 /** Canonical string form of one segment (`..` for Up, `.` for Here, the name otherwise). */
 const segmentToString = (segment: Segment): string =>

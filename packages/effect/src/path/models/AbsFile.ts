@@ -2,7 +2,7 @@ import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
 import { analyze } from '../path-analyzer/codec-string/__.js'
 import { Statics } from './core.js'
 import { FileName } from './FileName.js'
-import { Segment } from './Segment.js'
+import { Segment } from './segment/Segment.js'
 
 /**
  * Absolute file value — the decoded path (segments + filename) with instance behavior.

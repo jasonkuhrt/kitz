@@ -2,7 +2,7 @@
 import { Match } from 'effect'
 import type { Dir } from '../models/Dir.js'
 import type { Rel } from '../models/Rel.js'
-import type { Segment } from '../models/Segment.js'
+import type { Segment } from '../models/segment/Segment.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
 import { RelDir } from '../models/RelDir.js'
