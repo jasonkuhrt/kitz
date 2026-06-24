@@ -1,5 +1,5 @@
 import { Schema as S } from 'effect'
-import { Schema } from '../Schema.js'
+import { Path as Schema } from '../models/Path.js'
 
 /**
  * Type guard to check if a value is any Path type.

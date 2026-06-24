@@ -1,11 +1,12 @@
 import { Match } from 'effect'
-import { $Rel } from '../$Rel/_.js'
 import type { Path } from '../_.js'
-import { AbsDir } from '../AbsDir/_.js'
-import { AbsFile } from '../AbsFile/_.js'
-import { RelDir } from '../RelDir/_.js'
-import { RelFile } from '../RelFile/_.js'
-import type { FileName } from '../types/fileName.js'
+import { AbsDir } from '../models/AbsDir.js'
+import { AbsFile } from '../models/AbsFile.js'
+import type { FileName } from '../models/FileName.js'
+import { Rel } from '../models/Rel.js'
+import { RelDir } from '../models/RelDir.js'
+import { RelFile } from '../models/RelFile.js'
+import type { Segment } from '../models/Segment.js'
 
 /**
  * Internal unsafe setter for Path operations.
@@ -15,7 +16,7 @@ import type { FileName } from '../types/fileName.js'
  */
 export const set = (
   path: Path,
-  options: { segments?: readonly string[]; fileName?: FileName | null; back?: number },
+  options: { segments?: readonly Segment[]; fileName?: FileName | null; back?: number },
 ): Path => {
   const segments = options.segments ?? path.segments
   const fileName =
@@ -24,7 +25,7 @@ export const set = (
       : 'fileName' in path
         ? path.fileName
         : undefined
-  const back = options.back ?? ($Rel.is(path) ? path.back : 0)
+  const back = options.back ?? (Rel.is(path) ? path.back : 0)
 
   return Match.value(path).pipe(
     Match.tagsExhaustive({
@@ -56,17 +57,16 @@ export const set = (
  * Resolve path segments by collapsing parent references (..)
  * @internal
  */
-export const resolveSegments = (segments: readonly string[]): string[] => {
-  const resolved: string[] = []
+export const resolveSegments = (segments: readonly Segment[]): Segment[] => {
+  const resolved: Segment[] = []
 
   for (const segment of segments) {
-    if (segment === '..') {
-      // Remove the last segment if it exists and we're not at root
+    if (segment._tag === 'Up') {
+      // Collapse a parent reference (`..`) against the previous step, if any
       if (resolved.length > 0) {
         resolved.pop()
       }
-    } else if (segment !== '.' && segment !== '') {
-      // Skip current directory references and empty segments
+    } else {
       resolved.push(segment)
     }
   }

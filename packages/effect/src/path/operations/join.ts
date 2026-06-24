@@ -1,17 +1,17 @@
 /* oxlint-disable typescript-eslint(no-unnecessary-type-assertion) -- branded conditional path return types require explicit assertions; oxlint misidentifies them as redundant. */
 import { Match } from 'effect'
-import type { $Dir } from '../$Dir/_.js'
-import type { $Rel } from '../$Rel/_.js'
-import { AbsDir } from '../AbsDir/_.js'
-import { AbsFile } from '../AbsFile/_.js'
-import { RelDir } from '../RelDir/_.js'
-import { RelFile } from '../RelFile/_.js'
+import type { Dir } from '../models/Dir.js'
+import type { Rel } from '../models/Rel.js'
+import { AbsDir } from '../models/AbsDir.js'
+import { AbsFile } from '../models/AbsFile.js'
+import { RelDir } from '../models/RelDir.js'
+import { RelFile } from '../models/RelFile.js'
 
 /**
  * Type-level join operation.
  * Maps base and path types to their result type.
  */
-export type join<Base extends $Dir, Path extends $Rel> = Base extends AbsDir
+export type join<Base extends Dir, Path extends Rel> = Base extends AbsDir
   ? Path extends RelFile
     ? AbsFile
     : Path extends RelDir
@@ -49,7 +49,7 @@ export type join<Base extends $Dir, Path extends $Rel> = Base extends AbsDir
  * // AbsFile with segments: ['home', 'user', 'src'], fileName: 'index.ts'
  * ```
  */
-export const join = <$dir extends $Dir, $rel extends $Rel>(
+export const join = <$dir extends Dir, $rel extends Rel>(
   dir: $dir,
   rel: $rel,
 ): join<$dir, $rel> => {
@@ -69,7 +69,7 @@ export const join = <$dir extends $Dir, $rel extends $Rel>(
   const fileName = 'fileName' in rel ? rel.fileName : null
 
   // The result keeps the absolute/relative nature of dir and file/dir nature of rel
-  return Match.value(dir as $Dir).pipe(
+  return Match.value(dir as Dir).pipe(
     Match.tagsExhaustive({
       FsPathAbsDir: () => {
         // For absolute paths, remainingBack is discarded (can't go above root)

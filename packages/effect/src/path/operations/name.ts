@@ -1,7 +1,7 @@
 import type { Path } from '../_.js'
 import type { Input } from '../inputs.js'
 import { normalizeDynamic } from '../inputs.js'
-import { Schema } from '../Schema.js'
+import { Path as Schema } from '../models/Path.js'
 
 const normalizer = normalizeDynamic(Schema)
 

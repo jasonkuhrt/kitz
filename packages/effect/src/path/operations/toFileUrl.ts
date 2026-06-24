@@ -1,4 +1,4 @@
-import type { $Abs } from '../$Abs/_.js'
+import type { Abs } from '../models/Abs.js'
 import { toString } from './toString.js'
 
 /**
@@ -20,4 +20,4 @@ import { toString } from './toString.js'
  * // url.href === 'file:///home/user/file.ts'
  * ```
  */
-export const toFileUrl = (path: $Abs): URL => new URL(`file://${toString(path)}`)
+export const toFileUrl = (path: Abs): URL => new URL(`file://${toString(path)}`)

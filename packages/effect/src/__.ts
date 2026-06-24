@@ -14,9 +14,8 @@
  *
  * @module
  */
-export * as Builder from './builder/__.js'
-export * from './filesystem.js'
-export * from './fs.js'
-export * from './glob.js'
-export * as Memory from './memory/__.js'
-export { PathAnalyzer } from './path-analyzer/__.js'
+export * from './filesystem/filesystem.js'
+export * from './filesystem/fs.js'
+export { FileSystem } from './filesystem/service.js'
+export * as Memory from './filesystem/layers/memory.js'
+export { PathAnalyzer } from './path/path-analyzer/__.js'

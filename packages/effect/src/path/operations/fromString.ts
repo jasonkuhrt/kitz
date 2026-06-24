@@ -1,6 +1,6 @@
 import { Schema as S } from 'effect'
 import type { normalize } from '../inputs.js'
-import { Schema } from '../Schema.js'
+import { Path as Schema } from '../models/Path.js'
 
 /**
  * Decode a string literal to the appropriate Path type.

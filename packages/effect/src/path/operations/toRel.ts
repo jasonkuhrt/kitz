@@ -1,16 +1,16 @@
 /* oxlint-disable typescript-eslint(no-unnecessary-type-assertion) -- branded conditional path return types require explicit assertions; oxlint misidentifies them as redundant. */
-import type { $Abs } from '../$Abs/_.js'
-import type { $Rel } from '../$Rel/_.js'
-import { AbsDir } from '../AbsDir/_.js'
-import { AbsFile } from '../AbsFile/_.js'
-import { RelDir } from '../RelDir/_.js'
-import { RelFile } from '../RelFile/_.js'
+import type { Abs } from '../models/Abs.js'
+import type { Rel } from '../models/Rel.js'
+import { AbsDir } from '../models/AbsDir.js'
+import { AbsFile } from '../models/AbsFile.js'
+import { RelDir } from '../models/RelDir.js'
+import { RelFile } from '../models/RelFile.js'
 
 /**
  * Type-level toRel operation.
  * Maps absolute location types to their relative counterparts.
  */
-export type toRel<A extends $Abs> = A extends AbsFile ? RelFile : A extends AbsDir ? RelDir : $Rel
+export type toRel<A extends Abs> = A extends AbsFile ? RelFile : A extends AbsDir ? RelDir : Rel
 
 /**
  * Convert an absolute location to a relative location.
@@ -29,7 +29,7 @@ export type toRel<A extends $Abs> = A extends AbsFile ? RelFile : A extends AbsD
  * const relFile = toRel(absFile, base) // ./src/index.ts
  * ```
  */
-export const toRel = <$abs extends $Abs, $base extends AbsDir>(
+export const toRel = <$abs extends Abs, $base extends AbsDir>(
   abs: $abs,
   base: $base,
 ): toRel<$abs> => {

@@ -12,8 +12,8 @@ domain terms:
   schema-backed parsing, joining, and relationship queries.
 
 ```ts
-import { Effect } from 'effect'
 import { FileSystem, Path } from '@kitz/effect'
+import { Effect } from 'effect'
 
 const file = Path.AbsFile.fromString('/home/user/config.json')
 
@@ -35,60 +35,6 @@ two copies break Context/Schema identity).
 
 > **Pre-release:** this package targets Effect v4 (`effect@^4.0.0-beta.85`), which is
 > still in beta. Pin accordingly.
-
-## Runtime-agnostic by design
-
-All filesystem I/O flows through Effect's `FileSystem` service. `@kitz/effect` does not
-import `node:fs` for its core operations — you provide a platform layer, so the same
-code runs on Node, Bun, or an in-memory filesystem.
-
-```ts
-import { Effect } from 'effect'
-import { NodeContext } from '@effect/platform-node'
-import { FileSystem, Path } from '@kitz/effect'
-
-const program = Effect.gen(function* () {
-  const dir = Path.AbsDir.fromString('/tmp/out/')
-  yield* FileSystem.write(Path.AbsFile.fromString('/tmp/out/hello.txt'), 'hi')
-})
-
-// Node:
-program.pipe(Effect.provide(NodeContext.layer), Effect.runPromise)
-```
-
-For tests, provide the in-memory layer instead — no disk, no mocking:
-
-```ts
-import { FileSystem } from '@kitz/effect'
-
-const testFs = FileSystem.Memory.layer({
-  '/config.json': '{"name":"test"}',
-})
-```
-
-`FileSystem.glob` is layer-aware too: it walks the injected `FileSystem` service
-(via [picomatch](https://github.com/micromatch/picomatch) + `readDirectory`), so the
-same glob runs against the in-memory layer in tests and any real platform layer in
-production — no `node:fs` lock-in.
-
-## Naming: kitz `FileSystem`/`Path` supersede Effect's
-
-`@kitz/effect` deliberately names its namespaces `FileSystem` and `Path` to match
-Effect's own modules. They are different things:
-
-- kitz `Path` is a typed value ADT; Effect's `Path` is a string service.
-- kitz `FileSystem` is a namespace of operations; Effect's `FileSystem` is the service tag.
-
-`@kitz/effect` does **not** re-export Effect's same-named modules. If you need both in
-one file, alias the Effect import:
-
-```ts
-import { FileSystem as EffectFS } from 'effect'
-import { FileSystem, Path } from '@kitz/effect'
-
-// EffectFS.FileSystem  -> the Effect service tag
-// FileSystem.readString -> kitz operation
-```
 
 ## Subpath exports
 

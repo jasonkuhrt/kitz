@@ -69,16 +69,10 @@ importers:
       '@platformatic/vfs':
         specifier: 'catalog:'
         version: 0.4.0
-      picomatch:
-        specifier: 4.0.4
-        version: 4.0.4
     devDependencies:
       '@kitz/vitest':
         specifier: workspace:*
         version: link:../vitest
-      '@types/picomatch':
-        specifier: 4.0.3
-        version: 4.0.3
       '@vitest/coverage-v8':
         specifier: 4.1.9
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
@@ -94,12 +88,6 @@ importers:
       vite-plus:
         specifier: 0.2.1
         version: 0.2.1(@arethetypeswrong/core@0.18.3)(@types/node@25.9.4)(@vitest/coverage-v8@4.1.9)(publint@0.3.21)(typescript@7.0.1-rc)(vite@8.0.16(@types/node@25.9.4)(yaml@2.9.0))(yaml@2.9.0)
-
-  tmp/vfs-demo:
-    dependencies:
-      '@platformatic/vfs':
-        specifier: ^0.4.0
-        version: 0.4.0
 
 packages:
 
@@ -779,9 +767,6 @@ packages:
   '@types/parse-path@7.1.0':
     resolution: {integrity: sha512-EULJ8LApcVEPbrfND0cRQqutIOdiIgJ1Mgrhpy755r14xMohPTEpkV/k28SJvuOs9bHRFW8x+KeDAEPiGQPB9Q==}
     deprecated: This is a stub types definition. parse-path provides its own type definitions, so you do not need this installed.
-
-  '@types/picomatch@4.0.3':
-    resolution: {integrity: sha512-iG0T6+nYJ9FAPmx9SsUlnwcq1ZVRuCXcVEvWnntoPlrOpwtSTKNDC9uVAxTsC3PUvJ+99n4RpAcNgBbHX3JSnQ==}
 
   '@typescript/typescript-aix-ppc64@7.0.1-rc':
     resolution: {integrity: sha512-oqq2ZfEJ7BQuufcC3QBQndZLPNyamYNHLao8lKRBeeSkZKypBqxPSgkzrcFZtbYcIaBvpiyUnQP9MT7DEYHWbw==}
@@ -2502,8 +2487,6 @@ snapshots:
   '@types/parse-path@7.1.0':
     dependencies:
       parse-path: 7.1.0
-
-  '@types/picomatch@4.0.3': {}
 
   '@typescript/typescript-aix-ppc64@7.0.1-rc':
     optional: true

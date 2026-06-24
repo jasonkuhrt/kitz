@@ -1,15 +1,11 @@
-import type { StaticError } from './static-error.js'
 import { Schema as S } from 'effect'
-import type { CodecString as Analyzer } from '../path-analyzer/codec-string/_.js'
-import type { $Abs } from './$Abs/_.js'
-import type { $Dir } from './$Dir/_.js'
-import type { $File } from './$File/_.js'
-import type { $Rel } from './$Rel/_.js'
 import type { Path } from './_.js'
-import { AbsDir } from './AbsDir/_.js'
-import { AbsFile } from './AbsFile/_.js'
-import { RelDir } from './RelDir/_.js'
-import { RelFile } from './RelFile/_.js'
+import { AbsDir } from './models/AbsDir.js'
+import { AbsFile } from './models/AbsFile.js'
+import type { CodecString as Analyzer } from './path-analyzer/codec-string/_.js'
+import { RelDir } from './models/RelDir.js'
+import { RelFile } from './models/RelFile.js'
+import type { StaticError } from './static-error.js'
 
 /**
  * Error for when a string must be a literal to be statically parsed.
@@ -70,42 +66,42 @@ export namespace Input {
   /**
    * Input that accepts a relative file path.
    */
-  export type RelFile = Input<import('./RelFile/_.js').RelFile>
+  export type RelFile = Input<import('./models/RelFile.js').RelFile>
 
   /**
    * Input that accepts a relative directory path.
    */
-  export type RelDir = Input<import('./RelDir/_.js').RelDir>
+  export type RelDir = Input<import('./models/RelDir.js').RelDir>
 
   /**
    * Input that accepts an absolute file path.
    */
-  export type AbsFile = Input<import('./AbsFile/_.js').AbsFile>
+  export type AbsFile = Input<import('./models/AbsFile.js').AbsFile>
 
   /**
    * Input that accepts an absolute directory path.
    */
-  export type AbsDir = Input<import('./AbsDir/_.js').AbsDir>
+  export type AbsDir = Input<import('./models/AbsDir.js').AbsDir>
 
   /**
    * Input that accepts any file path (absolute or relative).
    */
-  export type File = Input<$File>
+  export type File = Input<import('./models/File.js').File>
 
   /**
    * Input that accepts any directory path (absolute or relative).
    */
-  export type Dir = Input<$Dir>
+  export type Dir = Input<import('./models/Dir.js').Dir>
 
   /**
    * Input that accepts any relative path (file or directory).
    */
-  export type Rel = Input<$Rel>
+  export type Rel = Input<import('./models/Rel.js').Rel>
 
   /**
    * Input that accepts any absolute path (file or directory).
    */
-  export type Abs = Input<$Abs>
+  export type Abs = Input<import('./models/Abs.js').Abs>
 
   /**
    * Input that accepts any Path type.
@@ -145,13 +141,10 @@ export type Guard<
   $input extends Input,
   $targetPath extends Path,
   ___actualPath extends Path = $input extends string ? FromAnalysis<Analyzer.Analyze<$input>> : $input,
-> =
-  string extends $input
-    ? ErrorStringNotLiteral :
-  ___actualPath['_tag'] extends $targetPath['_tag']
-    ? $input :
-  // else
-    ErrorPathValidation<$targetPath['_tag'], $input>
+> = string extends $input ? ErrorStringNotLiteral
+  : ___actualPath['_tag'] extends $targetPath['_tag'] ? $input
+  : // else
+  ErrorPathValidation<$targetPath['_tag'], $input>
 
 export type FromAnalysis<$analysis extends Analyzer.Analysis> = $analysis extends {
   _tag: 'file'
@@ -167,15 +160,28 @@ export type FromAnalysis<$analysis extends Analyzer.Analysis> = $analysis extend
         : never
 
 // oxfmt-ignore
-type GetValidationError<$tag> =
-    $tag extends 'FsPathRelFile'                                    ? { message: 'Must be a relative file path'; hint: 'Relative files must not start with / and must have an extension' }
-  : $tag extends 'FsPathRelDir'                                     ? { message: 'Must be a relative directory path'; hint: 'Relative directories must not start with / and should end with / or have no extension' }
-  : $tag extends 'FsPathAbsDir'                                     ? { message: 'Must be an absolute directory path'; hint: 'Absolute directories must start with / and should end with / or have no extension' }
-  : $tag extends 'FsPathAbsFile'                                    ? { message: 'Must be an absolute file path'; hint: 'Absolute files must start with / and have an extension' }
-  : $tag extends 'FsPathRelFile' | 'FsPathRelDir'                   ? { message: 'Must be a relative path'; hint: 'Relative paths must not start with /' }
-  : $tag extends 'FsPathAbsFile' | 'FsPathAbsDir'                   ? { message: 'Must be an absolute path'; hint: 'Absolute paths must start with /' }
-  : $tag extends 'FsPathRelFile' | 'FsPathAbsFile'                  ? { message: 'Must be a file path'; hint: 'Files must have an extension' }
-  : $tag extends 'FsPathRelDir' | 'FsPathAbsDir'                    ? { message: 'Must be a directory path'; hint: 'Directories should end with / or have no extension' }
+type GetValidationError<$tag> = $tag extends 'FsPathRelFile'
+  ? { message: 'Must be a relative file path'; hint: 'Relative files must not start with / and must have an extension' }
+  : $tag extends 'FsPathRelDir'
+    ? {
+      message: 'Must be a relative directory path'
+      hint: 'Relative directories must not start with / and should end with / or have no extension'
+    }
+  : $tag extends 'FsPathAbsDir'
+    ? {
+      message: 'Must be an absolute directory path'
+      hint: 'Absolute directories must start with / and should end with / or have no extension'
+    }
+  : $tag extends 'FsPathAbsFile'
+    ? { message: 'Must be an absolute file path'; hint: 'Absolute files must start with / and have an extension' }
+  : $tag extends 'FsPathRelFile' | 'FsPathRelDir'
+    ? { message: 'Must be a relative path'; hint: 'Relative paths must not start with /' }
+  : $tag extends 'FsPathAbsFile' | 'FsPathAbsDir'
+    ? { message: 'Must be an absolute path'; hint: 'Absolute paths must start with /' }
+  : $tag extends 'FsPathRelFile' | 'FsPathAbsFile'
+    ? { message: 'Must be a file path'; hint: 'Files must have an extension' }
+  : $tag extends 'FsPathRelDir' | 'FsPathAbsDir'
+    ? { message: 'Must be a directory path'; hint: 'Directories should end with / or have no extension' }
   : { message: 'Must be a valid filesystem location'; hint: 'Check the path format' }
 
 /**
@@ -187,45 +193,45 @@ export namespace Guard {
    * Validates that input is a relative file path.
    * Relative files must not start with `/` and must have an extension.
    */
-  export type RelFile<$input extends Input> = Guard<$input, import('./RelFile/_.js').RelFile>
+  export type RelFile<$input extends Input> = Guard<$input, import('./models/RelFile.js').RelFile>
 
   /**
    * Validates that input is a relative directory path.
    * Relative directories must not start with `/` and should end with `/` or have no extension.
    */
-  export type RelDir<$input extends Input> = Guard<$input, import('./RelDir/_.js').RelDir>
+  export type RelDir<$input extends Input> = Guard<$input, import('./models/RelDir.js').RelDir>
 
   /**
    * Validates that input is an absolute file path.
    * Absolute files must start with `/` and have an extension.
    */
-  export type AbsFile<$input extends Input> = Guard<$input, import('./AbsFile/_.js').AbsFile>
+  export type AbsFile<$input extends Input> = Guard<$input, import('./models/AbsFile.js').AbsFile>
 
   /**
    * Validates that input is an absolute directory path.
    * Absolute directories must start with `/` and should end with `/` or have no extension.
    */
-  export type AbsDir<$input extends Input> = Guard<$input, import('./AbsDir/_.js').AbsDir>
+  export type AbsDir<$input extends Input> = Guard<$input, import('./models/AbsDir.js').AbsDir>
 
   /**
    * Validates that input is a file path (either absolute or relative).
    */
-  export type File<$input extends Input> = Guard<$input, $File>
+  export type File<$input extends Input> = Guard<$input, import('./models/File.js').File>
 
   /**
    * Validates that input is a directory path (either absolute or relative).
    */
-  export type Dir<$input extends Input> = Guard<$input, $Dir>
+  export type Dir<$input extends Input> = Guard<$input, import('./models/Dir.js').Dir>
 
   /**
    * Validates that input is a relative path (either file or directory).
    */
-  export type Rel<$input extends Input> = Guard<$input, $Rel>
+  export type Rel<$input extends Input> = Guard<$input, import('./models/Rel.js').Rel>
 
   /**
    * Validates that input is an absolute path (either file or directory).
    */
-  export type Abs<$input extends Input> = Guard<$input, $Abs>
+  export type Abs<$input extends Input> = Guard<$input, import('./models/Abs.js').Abs>
 
   /**
    * Accept any Path type OR any string without validation.
@@ -238,10 +244,9 @@ export namespace Guard {
 }
 
 // oxfmt-ignore
-export type normalize<$input extends InputOrError> =
-  $input extends StaticError         ? never :
-  $input extends string                     ? FromAnalysis<Analyzer.Analyze<$input>> :
-                                              $input
+export type normalize<$input extends InputOrError> = $input extends StaticError ? never
+  : $input extends string ? FromAnalysis<Analyzer.Analyze<$input>>
+  : $input
 
 export const normalize = <$schema extends S.Top>($schema: $schema) => {
   const decodeSync = S.decodeSync($schema as any)

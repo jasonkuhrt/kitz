@@ -1,8 +1,7 @@
-import type { $Abs } from '../$Abs/_.js'
-import { $Abs as Abs } from '../$Abs/_.js'
-import type { $Rel } from '../$Rel/_.js'
+import { Abs } from '../models/Abs.js'
+import type { Rel } from '../models/Rel.js'
 import type { Path } from '../_.js'
-import type { AbsDir } from '../AbsDir/_.js'
+import type { AbsDir } from '../models/AbsDir.js'
 import { join } from './join.js'
 import type { toAbs } from './toAbs.js'
 
@@ -14,9 +13,9 @@ import type { toAbs } from './toAbs.js'
  * - RelDir → AbsDir
  * - RelFile → AbsFile
  */
-export type ensureAbsolute<$P extends Path> = $P extends $Abs
+export type ensureAbsolute<$P extends Path> = $P extends Abs
   ? $P
-  : $P extends $Rel
+  : $P extends Rel
     ? toAbs<$P>
     : never
 

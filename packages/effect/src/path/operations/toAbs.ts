@@ -1,18 +1,18 @@
 /* oxlint-disable typescript-eslint(no-unnecessary-type-assertion) -- branded conditional path return types require explicit assertions; oxlint misidentifies them as redundant. */
 import { Match } from 'effect'
-import type { $Abs } from '../$Abs/_.js'
-import type { $Rel } from '../$Rel/_.js'
-import { AbsDir } from '../AbsDir/_.js'
-import { AbsFile } from '../AbsFile/_.js'
-import { RelDir } from '../RelDir/_.js'
-import { RelFile } from '../RelFile/_.js'
+import type { Abs } from '../models/Abs.js'
+import type { Rel } from '../models/Rel.js'
+import { AbsDir } from '../models/AbsDir.js'
+import { AbsFile } from '../models/AbsFile.js'
+import { RelDir } from '../models/RelDir.js'
+import { RelFile } from '../models/RelFile.js'
 import { join } from './join.js'
 
 /**
  * Type-level toAbs operation.
  * Maps relative location types to their absolute counterparts.
  */
-export type toAbs<R extends $Rel> = R extends RelFile ? AbsFile : R extends RelDir ? AbsDir : $Abs
+export type toAbs<R extends Rel> = R extends RelFile ? AbsFile : R extends RelDir ? AbsDir : Abs
 
 /**
  * Convert a relative location to an absolute location.
@@ -33,7 +33,7 @@ export type toAbs<R extends $Rel> = R extends RelFile ? AbsFile : R extends RelD
  * const absFile2 = toAbs(relFile, base) // /home/user/src/index.ts (resolves against base)
  * ```
  */
-export const toAbs = <$rel extends $Rel, $base extends AbsDir | undefined = undefined>(
+export const toAbs = <$rel extends Rel, $base extends AbsDir | undefined = undefined>(
   rel: $rel,
   base?: $base,
 ): toAbs<$rel> => {
@@ -44,7 +44,7 @@ export const toAbs = <$rel extends $Rel, $base extends AbsDir | undefined = unde
 
   // No base: just convert relative to absolute by re-tagging
   // This essentially changes ./path to /path
-  return Match.value(rel as $Rel).pipe(
+  return Match.value(rel as Rel).pipe(
     Match.tagsExhaustive({
       FsPathRelFile: (file) =>
         AbsFile.make({

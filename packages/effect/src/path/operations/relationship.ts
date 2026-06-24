@@ -1,14 +1,20 @@
 /* oxlint-disable typescript-eslint(no-unnecessary-type-assertion) -- branded conditional path return types require explicit assertions; oxlint misidentifies them as redundant. */
 import { Array, Equivalence, Option } from 'effect'
-import type { $Abs } from '../$Abs/_.js'
-import type { $Dir } from '../$Dir/_.js'
-import { $Rel } from '../$Rel/_.js'
+import type { Abs } from '../models/Abs.js'
+import type { Dir } from '../models/Dir.js'
+import { Rel } from '../models/Rel.js'
 import type { Path } from '../_.js'
-import { AbsDir } from '../AbsDir/_.js'
-import { RelDir } from '../RelDir/_.js'
+import { AbsDir } from '../models/AbsDir.js'
+import { RelDir } from '../models/RelDir.js'
+import type { Segment } from '../models/Segment.js'
 
-// Create an equivalence for string arrays
-const segmentsEquivalence = Array.makeEquivalence(Equivalence.String)
+/** Canonical string form of one segment (`..` for an Up step, the name otherwise). */
+const segmentToString = (segment: Segment): string => (segment._tag === 'Up' ? '..' : segment.name)
+
+// Compare segment arrays by their canonical string form
+const segmentsEquivalence = Array.makeEquivalence(
+  Equivalence.make<Segment>((a, b) => segmentToString(a) === segmentToString(b)),
+)
 
 // ============================================================================
 // Type utilities
@@ -19,10 +25,10 @@ const segmentsEquivalence = Array.makeEquivalence(Equivalence.String)
  * Uses lookup table - handles unions via union of keys.
  */
 export type MatchingTypeGroup<$a extends Path> = {
-  FsPathRelFile: $Rel
-  FsPathRelDir: $Rel
-  FsPathAbsFile: $Abs
-  FsPathAbsDir: $Abs
+  FsPathRelFile: Rel
+  FsPathRelDir: Rel
+  FsPathAbsFile: Abs
+  FsPathAbsDir: Abs
 }[$a['_tag']]
 
 /**
@@ -48,11 +54,11 @@ export type MatchingDirGroup<$a extends Path> = {
 
 /**
  * Maps a directory to its matching type group.
- * Used for child parameters when parent is constrained to $Dir.
+ * Used for child parameters when parent is constrained to Dir.
  */
-export type MatchingTypeGroupForDir<$a extends $Dir> = {
-  FsPathRelDir: $Rel
-  FsPathAbsDir: $Abs
+export type MatchingTypeGroupForDir<$a extends Dir> = {
+  FsPathRelDir: Rel
+  FsPathAbsDir: Abs
 }[$a['_tag']]
 
 /**
@@ -71,13 +77,13 @@ export type MatchingTypeGroupForDir<$a extends $Dir> = {
  * ```
  */
 export function isDescendantOf<$a extends Path>(child: $a, parent: MatchingDirGroup<$a>): boolean {
-  if ($Rel.is(child) !== $Rel.is(parent as Path)) {
+  if (Rel.is(child) !== Rel.is(parent as Path)) {
     return false
   }
 
   // For relative paths, back values must match (different back = different reference points)
-  const childBack = $Rel.is(child) ? child.back : 0
-  const parentBack = $Rel.is(parent) ? parent.back : 0
+  const childBack = Rel.is(child) ? child.back : 0
+  const parentBack = Rel.is(parent) ? parent.back : 0
   if (childBack !== parentBack) {
     return false
   }
@@ -103,7 +109,7 @@ export function isDescendantOf<$a extends Path>(child: $a, parent: MatchingDirGr
  * @param child - The path that might be a descendant
  * @returns True if parent is above child, false otherwise
  */
-export function isAncestorOf<$a extends $Dir>(
+export function isAncestorOf<$a extends Dir>(
   parent: $a,
   child: MatchingTypeGroupForDir<$a>,
 ): boolean {
@@ -125,8 +131,8 @@ export function isAncestorOf<$a extends $Dir>(
  * ```
  */
 export function isSegmentsStartsWith(
-  segments: readonly string[],
-  prefix: readonly string[],
+  segments: readonly Segment[],
+  prefix: readonly Segment[],
 ): boolean {
   if (prefix.length > segments.length) {
     return false
@@ -135,7 +141,11 @@ export function isSegmentsStartsWith(
   for (let i = 0; i < prefix.length; i++) {
     const segment = segments[i]
     const prefixSegment = prefix[i]
-    if (segment === undefined || prefixSegment === undefined || segment !== prefixSegment) {
+    if (
+      segment === undefined ||
+      prefixSegment === undefined ||
+      segmentToString(segment) !== segmentToString(prefixSegment)
+    ) {
       return false
     }
   }
@@ -153,8 +163,8 @@ export function isSegmentsStartsWith(
  */
 export function isSameSegments<$a extends Path>(a: $a, b: MatchingTypeGroup<$a>): boolean {
   // For relative paths, back values must also match
-  const aBack = $Rel.is(a) ? a.back : 0
-  const bBack = $Rel.is(b) ? b.back : 0
+  const aBack = Rel.is(a) ? a.back : 0
+  const bBack = Rel.is(b) ? b.back : 0
   if (aBack !== bBack) {
     return false
   }
@@ -169,19 +179,21 @@ export function isSameSegments<$a extends Path>(a: $a, b: MatchingTypeGroup<$a>)
  *
  * @param child - The descendant path
  * @param parent - The ancestor path
- * @returns The relative segments, or null if not a descendant
+ * @returns The relative DIRECTORY segments, or null if not a descendant. Segments
+ *   are directory segments by definition — a file child's filename is not a segment
+ *   and is not included; combine with the file's `.fileName` for a full relative path.
  *
  * @example
  * ```ts
- * const parent = FsLoc.Path.Abs.make({ segments: ['home', 'user'] })
- * const child = FsLoc.Path.Abs.make({ segments: ['home', 'user', 'docs', 'readme'] })
+ * const parent = Path.AbsDir.fromString('/home/user/')
+ * const child = Path.AbsDir.fromString('/home/user/docs/readme/')
  * getRelativeSegments(child, parent) // ['docs', 'readme']
  * ```
  */
 export function getRelativeSegments<$a extends Path>(
   child: $a,
   parent: MatchingDirGroup<$a>,
-): readonly string[] | null {
+): readonly Segment[] | null {
   if (!isDescendantOf(child, parent as any)) {
     return null
   }
@@ -210,19 +222,23 @@ export function getSharedBase<$a extends Path>(
   b: MatchingTypeGroup<$a>,
 ): Option.Option<SharedBase<$a>> {
   // For relative paths, different back values means no shared base
-  const aBack = $Rel.is(a) ? a.back : 0
-  const bBack = $Rel.is(b) ? b.back : 0
+  const aBack = Rel.is(a) ? a.back : 0
+  const bBack = Rel.is(b) ? b.back : 0
   if (aBack !== bBack) {
     return Option.none()
   }
 
   const minLength = Math.min(a.segments.length, b.segments.length)
-  const common: string[] = []
+  const common: Segment[] = []
 
   for (let i = 0; i < minLength; i++) {
     const aSegment = a.segments[i]
     const bSegment = b.segments[i]
-    if (aSegment !== undefined && bSegment !== undefined && aSegment === bSegment) {
+    if (
+      aSegment !== undefined &&
+      bSegment !== undefined &&
+      segmentToString(aSegment) === segmentToString(bSegment)
+    ) {
       common.push(aSegment)
     } else {
       break
@@ -235,7 +251,7 @@ export function getSharedBase<$a extends Path>(
   }
 
   // Return appropriate directory type
-  if ($Rel.is(a)) {
+  if (Rel.is(a)) {
     return Option.some(RelDir.make({ back: aBack, segments: common })) as any
   }
   return Option.some(AbsDir.make({ segments: common })) as any
@@ -250,7 +266,7 @@ export function getSharedBase<$a extends Path>(
  * Parent must be a directory.
  */
 export const isDescendantOfPath =
-  <$a extends $Dir>(parent: $a) =>
+  <$a extends Dir>(parent: $a) =>
   (child: MatchingTypeGroupForDir<$a>): boolean =>
     isDescendantOf(child, parent as any)
 
@@ -284,8 +300,8 @@ export const isSameSegmentsAs =
  * Parent must be a directory.
  */
 export const getRelativeSegmentsFrom =
-  <$a extends $Dir>(parent: $a) =>
-  (child: MatchingTypeGroupForDir<$a>): readonly string[] | null =>
+  <$a extends Dir>(parent: $a) =>
+  (child: MatchingTypeGroupForDir<$a>): readonly Segment[] | null =>
     getRelativeSegments(child, parent as any)
 
 /**

@@ -1,5 +1,5 @@
 import { Schema as S } from 'effect'
-import { Schema } from '../Schema.js'
+import { Path as Schema } from '../models/Path.js'
 
 /**
  * Encode a Path instance to its string representation.

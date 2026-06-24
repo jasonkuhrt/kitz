@@ -2,7 +2,7 @@ import { Match } from 'effect'
 import type { Path } from '../_.js'
 import type { Input } from '../inputs.js'
 import { normalizeDynamic } from '../inputs.js'
-import { Schema } from '../Schema.js'
+import { Path as Schema } from '../models/Path.js'
 
 const normalizer = normalizeDynamic(Schema)
 
@@ -31,10 +31,8 @@ export const stem = <$input extends Input>(path: $input): string => {
     Match.tagsExhaustive({
       FsPathAbsFile: (file) => file.fileName.stem,
       FsPathRelFile: (file) => file.fileName.stem,
-      FsPathAbsDir: (dir) =>
-        dir.segments.length > 0 ? dir.segments[dir.segments.length - 1]! : '',
-      FsPathRelDir: (dir) =>
-        dir.segments.length > 0 ? dir.segments[dir.segments.length - 1]! : '',
+      FsPathAbsDir: (dir) => dir.name,
+      FsPathRelDir: (dir) => dir.name,
     }),
   )
 }

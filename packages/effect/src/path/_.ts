@@ -7,8 +7,8 @@
  *   `RelDir`). Each binding **is** the member's string codec — usable directly as a
  *   schema (`S.Struct({ p: Path.AbsFile })`) — and carries `make`/`fromString`/`is`
  *   as statics. Decoded values are class instances with `.name` and `.toString()`.
- * - `.$<Group>` = cross-cutting union groupings ($ prefix: `$Abs`, `$Rel`, `$File`,
- *   `$Dir`), each also a codec with an `is` static.
+ * - `.$<Group>` = cross-cutting union groupings ($ prefix: `Abs`, `Rel`, `File`,
+ *   `Dir`), each also a codec with an `is` static.
  *
  * **Operation Exports:**
  * - `.<op>` = operations on any path (camelCase: `up`, `isDescendantOf`, etc.)
@@ -28,11 +28,11 @@
  * const file = Path.AbsFile.fromString('/home/user/config.json')
  *
  * // Data - groupings
- * type AbsPath = typeof Path.$Abs.Type   // AbsFile | AbsDir
- * type FilePath = typeof Path.$File.Type // AbsFile | RelFile
+ * type AbsPath = typeof Path.Abs.Type   // AbsFile | AbsDir
+ * type FilePath = typeof Path.File.Type // AbsFile | RelFile
  *
  * // Use any member/group directly as a schema (no `.Schema` hop)
- * const Config = S.Struct({ source: Path.AbsFile, out: Path.$Dir })
+ * const Config = S.Struct({ source: Path.AbsFile, out: Path.Dir })
  *
  * // Operations on any path
  * const parent = Path.up(file)
@@ -42,7 +42,7 @@
 // @ts-expect-error Duplicate identifier
 export * as Path from './__.js'
 
-export type Path = typeof import('./Schema.js').Schema.Type
+export type Path = typeof import('./models/Path.js').Path.Type
 
 /**
  * Namespace anchor for {@link Path}.

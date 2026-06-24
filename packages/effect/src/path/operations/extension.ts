@@ -1,9 +1,9 @@
 import { Match } from 'effect'
-import type { $File } from '../$File/_.js'
 import type { Path } from '../_.js'
 import type { Input } from '../inputs.js'
 import { normalizeDynamic } from '../inputs.js'
-import { Schema } from '../Schema.js'
+import type { File } from '../models/File.js'
+import { Path as Schema } from '../models/Path.js'
 
 const normalizer = normalizeDynamic(Schema)
 
@@ -25,7 +25,7 @@ const normalizer = normalizeDynamic(Schema)
  * extension('./docs/README.md') // '.md'
  * ```
  */
-export function extension<$input extends Input<$File>>($input: $input): string | null
+export function extension<$input extends Input<File>>($input: $input): string | null
 export function extension<$input extends Input>($input: $input): string | null
 export function extension<$input extends Input>($input: $input): string | null {
   const path = normalizer($input) as Path

@@ -1,8 +1,9 @@
 import { describe, expect, test } from '@kitz/vitest'
 import { Option } from 'effect'
-import { AbsDir as AbsDirCodec } from './AbsDir/__.js'
-import { AbsFile as AbsFileCodec } from './AbsFile/__.js'
-import { fromLiteral, fromString } from './operations/fromString.js'
+import { AbsDir as AbsDirCodec } from './models/AbsDir.js'
+import { AbsFile as AbsFileCodec } from './models/AbsFile.js'
+import { RelDir as RelDirCodec } from './models/RelDir.js'
+import { RelFile as RelFileCodec } from './models/RelFile.js'
 import {
   ensureAbsolute,
   ensureAbsoluteOn,
@@ -12,6 +13,7 @@ import {
   ensureOptionalAbsoluteWith,
 } from './operations/ensureAbsolute.js'
 import { extension } from './operations/extension.js'
+import { fromLiteral, fromString } from './operations/fromString.js'
 import { join } from './operations/join.js'
 import { name } from './operations/name.js'
 import {
@@ -34,8 +36,6 @@ import { toDir } from './operations/toDir.js'
 import { toFileUrl } from './operations/toFileUrl.js'
 import { toRel } from './operations/toRel.js'
 import { up } from './operations/up.js'
-import { RelDir as RelDirCodec } from './RelDir/__.js'
-import { RelFile as RelFileCodec } from './RelFile/__.js'
 import { isRoot, isSub, isTop } from './states/depth.js'
 
 describe('fs path operations and relationships', () => {

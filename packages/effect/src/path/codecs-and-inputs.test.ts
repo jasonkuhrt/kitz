@@ -1,15 +1,15 @@
 import { describe, expect, test } from '@kitz/vitest'
 import { Effect, Exit, Schema as S } from 'effect'
-import { AbsDir as AbsDirCodec } from './AbsDir/__.js'
-import { AbsFile as AbsFileCodec } from './AbsFile/__.js'
 import * as Constants from './constants.js'
 import * as Inputs from './inputs.js'
-import { RelDir as RelDirCodec } from './RelDir/__.js'
-import { RelFile as RelFileCodec } from './RelFile/__.js'
-import { Schema as PathSchema } from './Schema.js'
-import { FileName } from './types/fileName.js'
-import * as Segment from './types/segment.js'
-import { Segments } from './types/segments.js'
+import { AbsDir as AbsDirCodec } from './models/AbsDir.js'
+import { AbsFile as AbsFileCodec } from './models/AbsFile.js'
+import { FileName } from './models/FileName.js'
+import { Schema as PathSchema } from './models/Path.js'
+import { RelDir as RelDirCodec } from './models/RelDir.js'
+import { RelFile as RelFileCodec } from './models/RelFile.js'
+import * as Segment from './models/Segment.js'
+import { Segments } from './models/Segments.js'
 
 describe('fs path codecs and inputs', () => {
   test('apply constructor defaults and roundtrip member codecs', () => {

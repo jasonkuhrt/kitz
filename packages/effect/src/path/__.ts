@@ -1,17 +1,17 @@
 // Union schemas with string codec baked in
-export * from './$Abs/_.js'
-export * from './$Dir/_.js'
-export * from './$File/_.js'
-export * from './$Rel/_.js'
+export * from './models/Abs.js'
+export * from './models/Dir.js'
+export * from './models/File.js'
+export * from './models/Rel.js'
 
 // Individual member schemas with string codec baked in
-export * from './AbsDir/_.js'
-export * from './AbsFile/_.js'
-export * from './RelDir/_.js'
-export * from './RelFile/_.js'
+export * from './models/AbsDir.js'
+export * from './models/AbsFile.js'
+export * from './models/RelDir.js'
+export * from './models/RelFile.js'
 
-// Top-level Any schema with string codec baked in
-export * from './Schema.js'
+// Top-level union schema of all path variants (surfaces as `Path.Schema`)
+export { Path as Schema } from './models/Path.js'
 
 // Operations
 export * from './operations/__.js'
@@ -27,4 +27,7 @@ export type { Guard, Input, InputOrError, normalize } from './inputs.js'
 export { normalize as normalizeInput, normalizeDynamic as normalizeDynamicInput } from './inputs.js'
 
 // Extension types and constants
-export * as Extension from './types/extension.js'
+export * as Extension from './models/Extension.js'
+
+// Service (effect Context.Service; surfaces as `Path.Path`)
+export { Path } from './service.js'

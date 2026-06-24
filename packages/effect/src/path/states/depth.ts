@@ -1,8 +1,8 @@
-import { $Rel } from '../$Rel/_.js'
 import type { Path } from '../_.js'
 import type { Input } from '../inputs.js'
 import { normalizeDynamic } from '../inputs.js'
-import { Schema } from '../Schema.js'
+import { Path as Schema } from '../models/Path.js'
+import { Rel } from '../models/Rel.js'
 
 const normalizer = normalizeDynamic(Schema)
 
@@ -27,7 +27,7 @@ const normalizer = normalizeDynamic(Schema)
 export function isRoot<$input extends Input>($input: $input): boolean {
   const path = normalizer($input) as Path
   // For relative paths, also check back is 0
-  const back = $Rel.is(path) ? path.back : 0
+  const back = Rel.is(path) ? path.back : 0
   return path.segments.length === 0 && back === 0
 }
 

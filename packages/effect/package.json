@@ -39,8 +39,7 @@
     ".": "./src/_.ts",
     "./FileSystem": "./src/__.ts",
     "./Path": "./src/path/_.ts",
-    "./String": "./src/string/_.ts",
-    "./path/types/fileName": "./src/path/types/fileName.ts"
+    "./String": "./src/string/_.ts"
   },
   "publishConfig": {
     "imports": {
@@ -62,10 +61,6 @@
       "./String": {
         "types": "./build/string/_.d.ts",
         "default": "./build/string/_.js"
-      },
-      "./path/types/fileName": {
-        "types": "./build/path/types/fileName.d.ts",
-        "default": "./build/path/types/fileName.js"
       }
     },
     "access": "public"
@@ -74,12 +69,10 @@
     "prepack": "tsc -b --force tsconfig.production.json"
   },
   "dependencies": {
-    "@platformatic/vfs": "catalog:",
-    "picomatch": "4.0.4"
+    "@platformatic/vfs": "catalog:"
   },
   "devDependencies": {
     "@kitz/vitest": "workspace:*",
-    "@types/picomatch": "4.0.3",
     "@vitest/coverage-v8": "4.1.9",
     "effect": "catalog:"
   },
