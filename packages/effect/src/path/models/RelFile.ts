@@ -28,9 +28,7 @@ class RelFileValue extends S.TaggedClass<RelFileValue>()('RelFile', {
 
   /** The filename including extension (e.g., `file.txt`). */
   get name(): string {
-    return this.fileName.extension
-      ? this.fileName.stem + this.fileName.extension
-      : this.fileName.stem
+    return this.fileName.stem + Option.getOrElse(this.fileName.extension, () => '')
   }
 }
 
@@ -83,10 +81,11 @@ const codec = S.String.pipe(
         _tag: 'RelFile' as const,
         // Fold the unresolved `..` count into leading Up steps (encoded as '..').
         segments: [...Array.from({ length: analysis.back }, () => backSegment), ...analysis.path],
-        fileName: FileName.make({
+        fileName: {
+          _tag: 'FileName' as const,
           stem: analysis.file.stem,
           extension: analysis.file.extension,
-        }),
+        },
       })
     }),
   }),

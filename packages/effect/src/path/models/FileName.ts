@@ -8,7 +8,7 @@ import * as Extension from './Extension.js'
  */
 export class FileName extends S.TaggedClass<FileName>()('FileName', {
   stem: S.String,
-  extension: S.Option(Extension.Extension),
+  extension: S.OptionFromNullOr(Extension.Extension),
 }) {
   /**
    * Schema for transforming between string and FileName class.
@@ -42,19 +42,17 @@ export class FileName extends S.TaggedClass<FileName>()('FileName', {
                     }),
                   )
                 }
-                return Effect.succeed(
-                  FileName.make({
-                    stem: file.file.stem,
-                    extension: Option.some(extResult.value),
-                  }),
-                )
+                return Effect.succeed({
+                  _tag: 'FileName' as const,
+                  stem: file.file.stem,
+                  extension: extResult.value,
+                })
               } else {
-                return Effect.succeed(
-                  FileName.make({
-                    stem: file.file.stem,
-                    extension: Option.none(),
-                  }),
-                )
+                return Effect.succeed({
+                  _tag: 'FileName' as const,
+                  stem: file.file.stem,
+                  extension: null,
+                })
               }
             },
             dir: () =>
