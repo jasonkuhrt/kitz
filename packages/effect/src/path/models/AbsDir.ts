@@ -1,7 +1,6 @@
 import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
 import { stringSeparator } from '../constants.js'
 import { analyze } from '../analyzer.js'
-import { Statics } from './core.js'
 import { Segment } from './segment/Segment.js'
 
 /**
@@ -69,5 +68,5 @@ const codec = S.String.pipe(
   }),
 )
 
-export const AbsDir = Statics.Codec(S.asClass(codec))
+export const AbsDir = codec
 export type AbsDir = typeof AbsDir.Type

@@ -1,6 +1,6 @@
 import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
 import { analyze, backSegment, herePrefix, separator } from '../analyzer.js'
-import { Statics, back } from './core.js'
+import { back } from './core.js'
 import { Segment } from './segment/Segment.js'
 
 /**
@@ -73,5 +73,5 @@ const codec = S.String.pipe(
   }),
 )
 
-export const RelDir = Statics.Codec(S.asClass(codec))
+export const RelDir = codec
 export type RelDir = typeof RelDir.Type

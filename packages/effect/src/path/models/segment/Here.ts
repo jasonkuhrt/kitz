@@ -1,5 +1,4 @@
 import { Schema as S, SchemaGetter } from 'effect'
-import { Statics } from '../core.js'
 
 /**
  * A current-directory step (`.`) — a no-op that resolves away during normalization.
@@ -17,15 +16,11 @@ const hereEncoded = HereEncoded.literal
 /// ━ With Codec
 
 /** Codec for a current-directory step: `'.'` ⇄ {@link HereDecoded}. */
-export const Here = Statics.Codec(
-  S.asClass(
-    HereEncoded.pipe(
-      S.decodeTo(HereDecoded, {
-        decode: SchemaGetter.transform(() => hereDecoded),
-        encode: SchemaGetter.transform(() => hereEncoded),
-      }),
-    ),
-  ),
+export const Here = HereEncoded.pipe(
+  S.decodeTo(HereDecoded, {
+    decode: SchemaGetter.transform(() => hereDecoded),
+    encode: SchemaGetter.transform(() => hereEncoded),
+  }),
 )
 
 export type Here = typeof Here.Type

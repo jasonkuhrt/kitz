@@ -1,5 +1,4 @@
 import { Schema as S } from 'effect'
-import { Statics } from '../core.js'
 import { Here } from './Here.js'
 import { Name } from './Name.js'
 import { Up } from './Up.js'
@@ -21,14 +20,5 @@ import { Up } from './Up.js'
 // instead of inlining each member's statics intersection (which overflows — TS7056).
 const schema: S.Codec<Up | Here | Name, string, never, never> = S.Union([Up, Here, Name])
 
-class Segment_ extends Statics.Codec(S.asClass(schema)) {
-  static Name = Name
-  static Up = Up
-  static Here = Here
-
-  /** Whether a step is a parent traversal (`..`). */
-  static isParent = (segment: Segment): boolean => segment._tag === 'Up'
-}
-
-export const Segment = Segment_
-export type Segment = typeof Segment_.Type
+export const Segment = schema
+export type Segment = typeof schema.Type

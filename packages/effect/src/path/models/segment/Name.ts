@@ -1,5 +1,4 @@
 import { Schema as S, SchemaGetter } from 'effect'
-import { Statics } from '../core.js'
 
 /**
  * The string payload of a {@link Name} step: a POSIX-safe path component that is
@@ -23,15 +22,11 @@ const NameEncodedString = S.String.pipe(
 class NameDecoded extends S.TaggedClass<NameDecoded>()('Name', { name: NameEncodedString }) {}
 
 /** Codec for a named-descent step: `name` ⇄ {@link NameDecoded}. */
-export const Name = Statics.Codec(
-  S.asClass(
-    NameEncodedString.pipe(
-      S.decodeTo(NameDecoded, {
-        decode: SchemaGetter.transform((name) => NameDecoded.make({ name })),
-        encode: SchemaGetter.transform((step) => step.name),
-      }),
-    ),
-  ),
+export const Name = NameEncodedString.pipe(
+  S.decodeTo(NameDecoded, {
+    decode: SchemaGetter.transform((name) => NameDecoded.make({ name })),
+    encode: SchemaGetter.transform((step) => step.name),
+  }),
 )
 
 export type Name = typeof Name.Type

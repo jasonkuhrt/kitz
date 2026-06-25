@@ -1,5 +1,8 @@
-import type { Path } from './models/Path.js'
+import { Schema as S } from 'effect'
+import { Path as PathSchema } from './models/Path.js'
 import { Rel } from './models/Rel.js'
+
+type Path = typeof PathSchema.Type
 
 /**
  * Whether a path is at root/base level.
@@ -9,7 +12,7 @@ import { Rel } from './models/Rel.js'
  * Paths with back > 0 (like `../`) are not at root.
  */
 export const isRoot = (path: Path): boolean => {
-  const back = Rel.is(path) ? path.back : 0
+  const back = S.is(Rel)(path) ? path.back : 0
   return path.segments.length === 0 && back === 0
 }
 

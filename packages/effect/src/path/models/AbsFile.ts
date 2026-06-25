@@ -1,6 +1,5 @@
 import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
 import { analyze } from '../analyzer.js'
-import { Statics } from './core.js'
 import { FileName } from './FileName.js'
 import { Segment } from './segment/Segment.js'
 
@@ -72,5 +71,5 @@ const codec = S.String.pipe(
   }),
 )
 
-export const AbsFile = Statics.Codec(S.asClass(codec))
+export const AbsFile = codec
 export type AbsFile = typeof AbsFile.Type

@@ -1,6 +1,5 @@
 import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
 import { analyze, backSegment, herePrefix, separator } from '../analyzer.js'
-import { Statics } from './core.js'
 import { FileName } from './FileName.js'
 import { Segment } from './segment/Segment.js'
 
@@ -47,58 +46,51 @@ class RelFileValue extends S.TaggedClass<RelFileValue>()('RelFile', {
  * const ConfigSchema = S.Struct({ sourcePath: RelFile, outputPath: RelFile })
  * ```
  */
-class RelFile_ extends Statics.Codec(
-  S.asClass(
-    S.String.pipe(
-      S.decodeTo(RelFileValue, {
-        // The encode getter receives the ENCODED form — segments are already `string[]`
-        // (Up steps encoded as '..'); only the leading `./` marker is conditional.
-        encode: SchemaGetter.transform((encoded) => {
-          const pathString = encoded.segments.join(separator)
-          const fileString = encoded.fileName.extension
-            ? `${encoded.fileName.stem}${encoded.fileName.extension}`
-            : encoded.fileName.stem
-          if (encoded.segments.length === 0) return `${herePrefix}${fileString}`
-          const prefix = encoded.segments[0] === backSegment ? '' : herePrefix
-          return `${prefix}${pathString}${separator}${fileString}`
+const codec = S.String.pipe(
+  S.decodeTo(RelFileValue, {
+    // The encode getter receives the ENCODED form — segments are already `string[]`
+    // (Up steps encoded as '..'); only the leading `./` marker is conditional.
+    encode: SchemaGetter.transform((encoded) => {
+      const pathString = encoded.segments.join(separator)
+      const fileString = encoded.fileName.extension
+        ? `${encoded.fileName.stem}${encoded.fileName.extension}`
+        : encoded.fileName.stem
+      if (encoded.segments.length === 0) return `${herePrefix}${fileString}`
+      const prefix = encoded.segments[0] === backSegment ? '' : herePrefix
+      return `${prefix}${pathString}${separator}${fileString}`
+    }),
+    // The decode getter returns the ENCODED form; the schema decodes `string[]` → `Segment[]`.
+    decode: SchemaGetter.transformOrFail((input) => {
+      // Analyze the input string with file hint for ambiguous dotfiles
+      const analysis = analyze(input, { hint: 'file' })
+
+      if (analysis._tag !== 'file') {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(input), {
+            message: 'Expected a file path, got a directory path',
+          }),
+        )
+      }
+      if (analysis.isPathAbsolute) {
+        return Effect.fail(
+          new SchemaIssue.InvalidValue(Option.some(input), {
+            message: 'Relative paths must not start with /',
+          }),
+        )
+      }
+
+      return Effect.succeed({
+        _tag: 'RelFile' as const,
+        // Fold the unresolved `..` count into leading Up steps (encoded as '..').
+        segments: [...Array.from({ length: analysis.back }, () => backSegment), ...analysis.path],
+        fileName: FileName.make({
+          stem: analysis.file.stem,
+          extension: analysis.file.extension,
         }),
-        // The decode getter returns the ENCODED form; the schema decodes `string[]` → `Segment[]`.
-        decode: SchemaGetter.transformOrFail((input) => {
-          // Analyze the input string with file hint for ambiguous dotfiles
-          const analysis = analyze(input, { hint: 'file' })
+      })
+    }),
+  }),
+)
 
-          if (analysis._tag !== 'file') {
-            return Effect.fail(
-              new SchemaIssue.InvalidValue(Option.some(input), {
-                message: 'Expected a file path, got a directory path',
-              }),
-            )
-          }
-          if (analysis.isPathAbsolute) {
-            return Effect.fail(
-              new SchemaIssue.InvalidValue(Option.some(input), {
-                message: 'Relative paths must not start with /',
-              }),
-            )
-          }
-
-          return Effect.succeed({
-            _tag: 'RelFile' as const,
-            // Fold the unresolved `..` count into leading Up steps (encoded as '..').
-            segments: [
-              ...Array.from({ length: analysis.back }, () => backSegment),
-              ...analysis.path,
-            ],
-            fileName: FileName.make({
-              stem: analysis.file.stem,
-              extension: analysis.file.extension,
-            }),
-          })
-        }),
-      }),
-    ),
-  ),
-) {}
-
-export const RelFile = RelFile_
-export type RelFile = typeof RelFile_.Type
+export const RelFile = codec
+export type RelFile = typeof codec.Type
