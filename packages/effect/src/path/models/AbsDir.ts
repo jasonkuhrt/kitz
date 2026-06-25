@@ -1,6 +1,5 @@
 import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
-import { stringSeparator } from '../constants.js'
-import { analyze } from '../analyzer.js'
+import { analyze, format } from '../analyzer.js'
 import { Segment } from './segment/Segment.js'
 
 /**
@@ -34,15 +33,11 @@ class AbsDirValue extends S.TaggedClass<AbsDirValue>()('AbsDir', {
  */
 const codec = S.String.pipe(
   S.decodeTo(AbsDirValue, {
-    // The encode getter receives the ENCODED form — segments are already `string[]`.
-    encode: SchemaGetter.transform((encoded) => {
-      const pathString = encoded.segments.join(stringSeparator)
-      return encoded.segments.length === 0 ? '/' : `/${pathString}/`
-    }),
-    // The decode getter returns the ENCODED form; the schema decodes `string[]` → `Segment[]`.
+    encode: SchemaGetter.transform((encoded) =>
+      format({ isPathAbsolute: true, segments: encoded.segments }),
+    ),
     decode: SchemaGetter.transformOrFail((input) => {
       const analysis = analyze(input, { hint: 'directory' })
-
       if (analysis._tag !== 'dir') {
         return Effect.fail(
           new SchemaIssue.InvalidValue(Option.some(input), {
@@ -57,11 +52,7 @@ const codec = S.String.pipe(
           }),
         )
       }
-
-      return Effect.succeed({
-        _tag: 'AbsDir' as const,
-        segments: analysis.path,
-      })
+      return Effect.succeed({ _tag: 'AbsDir' as const, segments: analysis.segments })
     }),
   }),
 )

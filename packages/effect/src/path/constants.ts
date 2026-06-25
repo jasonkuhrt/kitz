@@ -2,8 +2,6 @@ import { Schema as S } from 'effect'
 import { AbsDir } from './models/AbsDir.js'
 import { RelDir } from './models/RelDir.js'
 
-export const stringSeparator = '/'
-
 /**
  * Root directory constant (/)
  */

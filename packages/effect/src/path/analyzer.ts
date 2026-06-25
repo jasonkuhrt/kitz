@@ -1,73 +1,31 @@
-interface AnalysisBase {
-  /** Original input string */
-  original: string
-}
+// Path segment constants (internal — the codecs go through analyze/format)
+const separator = '/'
+const hereSegment = '.'
+const backSegment = '..'
+const herePrefix = `${hereSegment}${separator}` // './'
+const backPrefix = `${backSegment}${separator}` // '../'
 
-interface AnalysisNonRoot extends AnalysisBase {
-  /** Original input string */
-  original: string
-  pathType: 'absolute' | 'relative'
-  isPathAbsolute: boolean
-  isPathRelative: boolean
-}
-
+/** A path string analyzed into its kind, absoluteness, and folded segments. */
 export type Analysis = AnalysisFile | AnalysisDir
 
-export interface AnalysisFile extends AnalysisNonRoot {
+export interface AnalysisFile {
   _tag: 'file'
-  /** Original input string */
-  original: string
-  /** Count of unresolved parent directory traversals (..) */
-  back: number
-  /** Path segments (excluding the filename). Never contains '..' - always normalized. */
-  path: string[]
-  /** File metadata */
-  file: {
-    stem: string
-    extension: string | null
-  }
+  isPathAbsolute: boolean
+  /** Folded path segments (leading `..` steps), excluding the filename. */
+  segments: string[]
+  file: { stem: string; extension: string | null }
 }
 
-export interface AnalysisDir extends AnalysisNonRoot {
+export interface AnalysisDir {
   _tag: 'dir'
-  /** Original input string */
-  original: string
-  /** Count of unresolved parent directory traversals (..) */
-  back: number
-  /** Path segments (including all directory names). Never contains '..' - always normalized. */
-  path: string[]
+  isPathAbsolute: boolean
+  /** Folded path segments (leading `..` steps). */
+  segments: string[]
 }
-
-// Path segment constants
-export const separator = '/'
-export const hereSegment = '.'
-export const backSegment = '..'
-
-// Derived prefix constants
-export const herePrefix = `${hereSegment}${separator}` // './'
-export const backPrefix = `${backSegment}${separator}` // '../'
-
-/**
- * Analyze a location string to extract its components.
- *
- * @param input - The location string to analyze
- * @returns Analyzed location components
- *
- * @example
- * ```ts
- * analyze('/src/index.ts')   // { isAbsolute: true, isDirectory: false, filename: 'index.ts', ... }
- * analyze('./docs/')         // { isAbsolute: false, isDirectory: true, dirname: 'docs', ... }
- * analyze('/')               // { isAbsolute: true, isDirectory: true, dirname: undefined, ... }
- * analyze('../src/file.ts')  // { isAbsolute: false, parentRefs: 1, filename: 'file.ts', ... }
- * ```
- */
 
 /**
  * Normalize segments by resolving '..' references.
  * Returns the final back count and clean segments.
- *
- * @param initialBack - Parent refs counted before segments (leading ../)
- * @param rawSegments - Raw segments that may contain '..'
  */
 const normalizeWithBack = (
   initialBack: number,
@@ -78,12 +36,8 @@ const normalizeWithBack = (
 
   for (const segment of rawSegments) {
     if (segment === backSegment) {
-      // Parent ref: either pop a segment or increment back
-      if (segments.length > 0) {
-        segments.pop()
-      } else {
-        back++
-      }
+      if (segments.length > 0) segments.pop()
+      else back++
     } else if (segment !== hereSegment && segment !== '') {
       segments.push(segment)
     }
@@ -92,44 +46,43 @@ const normalizeWithBack = (
   return { back, segments }
 }
 
+/** Fold a back count and named segments into one segment list with leading `..` steps. */
+const fold = (back: number, segments: readonly string[]): string[] => [
+  ...Array.from({ length: back }, () => backSegment),
+  ...segments,
+]
+
 /**
  * Optional hints to influence analyzer heuristics for ambiguous cases.
  *
  * The analyzer uses extension presence to distinguish files from directories,
- * but dotfiles like `.gitignore` are ambiguous. Hints allow explicit constructors
- * to express their intent for these edge cases.
+ * but dotfiles like `.gitignore` are ambiguous. Hints let explicit constructors
+ * express their intent for these edge cases.
  */
 export interface AnalyzerOptions {
-  /**
-   * Hint for ambiguous cases (dotfiles without extensions).
-   * - 'file': Treat ambiguous paths as files
-   * - 'directory': Treat ambiguous paths as directories (default)
-   */
+  /** 'file' / 'directory' (default) resolution for ambiguous dotfiles. */
   hint?: 'file' | 'directory'
 }
 
+/**
+ * Parse a path string into its kind, absoluteness, and folded segments.
+ *
+ * @example
+ * ```ts
+ * analyze('/src/index.ts')   // { _tag: 'file', isPathAbsolute: true, segments: ['src'], file: { stem: 'index', extension: '.ts' } }
+ * analyze('../docs/')        // { _tag: 'dir', isPathAbsolute: false, segments: ['..', 'docs'] }
+ * ```
+ */
 export function analyze(input: string, options?: AnalyzerOptions): Analysis {
   const isAbsolute = input.startsWith(separator)
 
-  // Handle root case as an absolute directory with empty path
+  // Root: an absolute directory with no segments.
   if (input === separator) {
-    return {
-      _tag: 'dir',
-      pathType: 'absolute',
-      isPathAbsolute: true,
-      isPathRelative: false,
-      back: 0,
-      path: [],
-      original: input,
-    }
+    return { _tag: 'dir', isPathAbsolute: true, segments: [] }
   }
 
-  // Determine if it's a directory or file
-  // 1. Trailing slash = directory
-  // 2. Has extension = file
-  // 3. Otherwise = directory
+  // Directory iff: trailing slash, a bare here/back reference, or no extension on the last segment.
   let isDirectory: boolean
-
   if (
     input === '' ||
     input === hereSegment ||
@@ -140,125 +93,90 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
   ) {
     isDirectory = true
   } else {
-    // Check if last segment has an extension
     const segments = input.split(separator).filter((s) => s !== '')
     const lastSegment = segments[segments.length - 1]
-
     if (lastSegment) {
-      // Has extension if there's a dot that's not at the beginning
-      // .gitignore -> no extension (ambiguous - use hint or default to directory)
-      // file.txt -> has extension (clearly a file)
-      const dotIndex = lastSegment.lastIndexOf('.')
-      const hasExtension = dotIndex > 0
-
-      if (hasExtension) {
-        // Clear extension = definitely a file
-        isDirectory = false
-      } else if (options?.hint) {
-        // Ambiguous case: use hint from explicit constructor
-        isDirectory = options.hint === 'directory'
-      } else {
-        // Ambiguous case: default to directory (conservative)
-        isDirectory = true
-      }
+      // A dot that's not at index 0 marks an extension (`.gitignore` is ambiguous → hint/default).
+      const hasExtension = lastSegment.lastIndexOf('.') > 0
+      isDirectory = hasExtension ? false : options?.hint ? options.hint === 'directory' : true
     } else {
-      // No last segment, treat as directory
       isDirectory = true
     }
   }
 
-  // Normalize the input for segment extraction
-  let normalized = input
+  // Strip the leading slash / `../` / `./` markers, count parent refs.
+  let normalized = isAbsolute ? input.slice(separator.length) : input
   let parentRefs = 0
-
-  // Remove leading slash for absolute paths
-  if (isAbsolute) {
-    normalized = input.slice(separator.length)
-  }
-
-  // Count and remove parent directory references
   while (normalized.startsWith(backPrefix)) {
     parentRefs++
     normalized = normalized.slice(backPrefix.length)
   }
+  if (normalized.startsWith(herePrefix)) normalized = normalized.slice(herePrefix.length)
+  if (isDirectory && normalized.endsWith(separator)) normalized = normalized.slice(0, -1)
 
-  // Handle current directory prefix
-  if (normalized.startsWith(herePrefix)) {
-    normalized = normalized.slice(herePrefix.length)
-  }
-
-  // Remove trailing slash for directories (except root)
-  if (isDirectory && normalized.endsWith(separator)) {
-    normalized = normalized.slice(0, -1)
-  }
-
-  // Extract all segments (may contain '..' for mid-path parent refs)
   const rawSegments = normalized ? normalized.split(separator).filter((s) => s !== '') : []
-
-  // Normalize: resolve all '..' references
-  // For absolute paths, back is always 0 (can't go above root)
+  // Absolute paths can't escape root, so their back count is always 0.
   const { back, segments: normalizedSegments } = normalizeWithBack(
     isAbsolute ? 0 : parentRefs,
     rawSegments,
   )
-  // For absolute paths, discard any computed back (can't escape root)
   const finalBack = isAbsolute ? 0 : back
 
-  const pathType: 'absolute' | 'relative' = isAbsolute ? 'absolute' : 'relative'
-  const isPathAbsolute = isAbsolute
-  const isPathRelative = !isAbsolute
-
   if (isDirectory) {
-    // For directories, all segments are part of the path
     return {
       _tag: 'dir',
-      pathType,
-      isPathAbsolute,
-      isPathRelative,
-      back: finalBack,
-      path: normalizedSegments,
-      original: input,
+      isPathAbsolute: isAbsolute,
+      segments: fold(finalBack, normalizedSegments),
     }
   }
-
-  // For files, the last segment is the filename
   if (normalizedSegments.length === 0) {
-    // Edge case: empty filename or only back refs
     return {
       _tag: 'file',
-      pathType,
-      isPathAbsolute,
-      isPathRelative,
-      back: finalBack,
-      path: [],
-      file: {
-        stem: '',
-        extension: null,
-      },
-      original: input,
+      isPathAbsolute: isAbsolute,
+      segments: fold(finalBack, []),
+      file: { stem: '', extension: null },
     }
   }
 
   const path = normalizedSegments.slice(0, -1)
-  // We know normalizedSegments is non-empty here (empty case handled above)
   const filename = normalizedSegments[normalizedSegments.length - 1]!
-
-  // Extract extension
   const dotIndex = filename.lastIndexOf('.')
   const extension = dotIndex > 0 ? filename.substring(dotIndex) : null
   const stem = dotIndex > 0 ? filename.substring(0, dotIndex) : filename
 
   return {
     _tag: 'file',
-    pathType,
-    isPathAbsolute,
-    isPathRelative,
-    back: finalBack,
-    path,
-    file: {
-      stem,
-      extension,
-    },
-    original: input,
+    isPathAbsolute: isAbsolute,
+    segments: fold(finalBack, path),
+    file: { stem, extension },
   }
+}
+
+/**
+ * Build a path string from its parts — the inverse of {@link analyze}.
+ *
+ * `fileName` present → a file path; absent → a directory path (trailing `/`).
+ * Relative paths get a `./` prefix unless they already lead with `..`.
+ */
+export const format = (parts: {
+  isPathAbsolute: boolean
+  segments: readonly string[]
+  fileName?: { stem: string; extension: string | null } | null
+}): string => {
+  const body = parts.segments.join(separator)
+  const file = parts.fileName
+    ? parts.fileName.extension
+      ? `${parts.fileName.stem}${parts.fileName.extension}`
+      : parts.fileName.stem
+    : null
+
+  if (parts.isPathAbsolute) {
+    if (file !== null)
+      return body ? `${separator}${body}${separator}${file}` : `${separator}${file}`
+    return body ? `${separator}${body}${separator}` : separator
+  }
+
+  const prefix = parts.segments[0] === backSegment ? '' : herePrefix
+  if (file !== null) return body ? `${prefix}${body}${separator}${file}` : `${herePrefix}${file}`
+  return body ? `${prefix}${body}${separator}` : herePrefix
 }

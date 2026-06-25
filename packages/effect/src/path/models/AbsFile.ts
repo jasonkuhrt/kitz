@@ -1,5 +1,5 @@
 import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
-import { analyze } from '../analyzer.js'
+import { analyze, format } from '../analyzer.js'
 import { FileName } from './FileName.js'
 import { Segment } from './segment/Segment.js'
 
@@ -34,15 +34,9 @@ class AbsFileValue extends S.TaggedClass<AbsFileValue>()('AbsFile', {
  */
 const codec = S.String.pipe(
   S.decodeTo(AbsFileValue, {
-    // The encode getter receives the ENCODED form — segments are already `string[]`.
-    encode: SchemaGetter.transform((decoded) => {
-      const pathString = decoded.segments.join('/')
-      const fileString = decoded.fileName.extension
-        ? `${decoded.fileName.stem}${decoded.fileName.extension}`
-        : decoded.fileName.stem
-      return pathString.length > 0 ? `/${pathString}/${fileString}` : `/${fileString}`
-    }),
-    // The decode getter returns the ENCODED form; the schema decodes `string[]` → `Segment[]`.
+    encode: SchemaGetter.transform((encoded) =>
+      format({ isPathAbsolute: true, segments: encoded.segments, fileName: encoded.fileName }),
+    ),
     decode: SchemaGetter.transformOrFail((input) => {
       const analysis = analyze(input, { hint: 'file' })
       if (analysis._tag !== 'file') {
@@ -61,7 +55,7 @@ const codec = S.String.pipe(
       }
       return Effect.succeed({
         _tag: 'AbsFile' as const,
-        segments: analysis.path,
+        segments: analysis.segments,
         fileName: {
           _tag: 'FileName' as const,
           stem: analysis.file.stem,

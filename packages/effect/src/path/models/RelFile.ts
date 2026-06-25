@@ -1,5 +1,5 @@
 import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
-import { analyze, backSegment, herePrefix, separator } from '../analyzer.js'
+import { analyze, format } from '../analyzer.js'
 import { back } from './core.js'
 import { FileName } from './FileName.js'
 import { Segment } from './segment/Segment.js'
@@ -29,35 +29,21 @@ class RelFileValue extends S.TaggedClass<RelFileValue>()('RelFile', {
 }
 
 /**
- * `RelFile` — a relative file path.
- *
- * The binding **is** the string codec (`string` ⇄ `RelFile`), usable directly as a
- * schema — `S.Struct({ p: RelFile })`, `S.Union([RelFile, …])` — with no `.Schema` hop.
+ * `RelFile` — a relative file path, as a `string` ⇄ `RelFile` value codec.
+ * The decoded value has `.name` and `.toString()`.
  *
  * @example
  * ```ts
  * const file = S.decodeSync(RelFile)('./src/index.ts')
- * const ConfigSchema = S.Struct({ sourcePath: RelFile, outputPath: RelFile })
  * ```
  */
 const codec = S.String.pipe(
   S.decodeTo(RelFileValue, {
-    // The encode getter receives the ENCODED form — segments are already `string[]`
-    // (Up steps encoded as '..'); only the leading `./` marker is conditional.
-    encode: SchemaGetter.transform((encoded) => {
-      const pathString = encoded.segments.join(separator)
-      const fileString = encoded.fileName.extension
-        ? `${encoded.fileName.stem}${encoded.fileName.extension}`
-        : encoded.fileName.stem
-      if (encoded.segments.length === 0) return `${herePrefix}${fileString}`
-      const prefix = encoded.segments[0] === backSegment ? '' : herePrefix
-      return `${prefix}${pathString}${separator}${fileString}`
-    }),
-    // The decode getter returns the ENCODED form; the schema decodes `string[]` → `Segment[]`.
+    encode: SchemaGetter.transform((encoded) =>
+      format({ isPathAbsolute: false, segments: encoded.segments, fileName: encoded.fileName }),
+    ),
     decode: SchemaGetter.transformOrFail((input) => {
-      // Analyze the input string with file hint for ambiguous dotfiles
       const analysis = analyze(input, { hint: 'file' })
-
       if (analysis._tag !== 'file') {
         return Effect.fail(
           new SchemaIssue.InvalidValue(Option.some(input), {
@@ -72,11 +58,9 @@ const codec = S.String.pipe(
           }),
         )
       }
-
       return Effect.succeed({
         _tag: 'RelFile' as const,
-        // Fold the unresolved `..` count into leading Up steps (encoded as '..').
-        segments: [...Array.from({ length: analysis.back }, () => backSegment), ...analysis.path],
+        segments: analysis.segments,
         fileName: {
           _tag: 'FileName' as const,
           stem: analysis.file.stem,
@@ -88,4 +72,4 @@ const codec = S.String.pipe(
 )
 
 export const RelFile = codec
-export type RelFile = typeof codec.Type
+export type RelFile = typeof RelFile.Type

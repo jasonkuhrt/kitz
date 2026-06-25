@@ -1,5 +1,5 @@
 import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
-import { analyze, backSegment, herePrefix, separator } from '../analyzer.js'
+import { analyze, format } from '../analyzer.js'
 import { back } from './core.js'
 import { Segment } from './segment/Segment.js'
 
@@ -37,14 +37,9 @@ class RelDirValue extends S.TaggedClass<RelDirValue>()('RelDir', {
  */
 const codec = S.String.pipe(
   S.decodeTo(RelDirValue, {
-    // The encode getter receives the ENCODED form — segments are already `string[]`
-    // (Up steps encoded as '..'); only the leading `./` marker is conditional.
-    encode: SchemaGetter.transform((encoded) => {
-      const pathString = encoded.segments.join(separator)
-      if (encoded.segments.length === 0) return herePrefix
-      const startsWithBack = encoded.segments[0] === backSegment
-      return startsWithBack ? `${pathString}${separator}` : `${herePrefix}${pathString}${separator}`
-    }),
+    encode: SchemaGetter.transform((encoded) =>
+      format({ isPathAbsolute: false, segments: encoded.segments }),
+    ),
     decode: SchemaGetter.transformOrFail((input) => {
       const analysis = analyze(input, { hint: 'directory' })
       if (analysis._tag !== 'dir') {
@@ -61,12 +56,7 @@ const codec = S.String.pipe(
           }),
         )
       }
-      // The decode getter returns the ENCODED form; the schema decodes `string[]` → `Segment[]`.
-      return Effect.succeed({
-        _tag: 'RelDir' as const,
-        // Fold the unresolved `..` count into leading Up steps (encoded as '..').
-        segments: [...Array.from({ length: analysis.back }, () => backSegment), ...analysis.path],
-      })
+      return Effect.succeed({ _tag: 'RelDir' as const, segments: analysis.segments })
     }),
   }),
 )

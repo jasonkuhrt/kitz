@@ -24,7 +24,7 @@ export class FileName extends S.TaggedClass<FileName>()('FileName', {
           Match.tagsExhaustive({
             file: (file) => {
               // File should be just a filename, not a path
-              if (file.path.length > 0 || file.path.some((s) => s === '..')) {
+              if (file.segments.length > 0) {
                 return Effect.fail(
                   new SchemaIssue.InvalidValue(Option.some(input), {
                     message: `File should be a filename only, not a path`,
