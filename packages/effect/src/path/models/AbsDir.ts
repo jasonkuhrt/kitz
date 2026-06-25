@@ -24,13 +24,11 @@ class AbsDirValue extends S.TaggedClass<AbsDirValue>()('AbsDir', {
 }
 
 /**
- * `AbsDir` — an absolute directory path. The binding **is** the `string` ⇄ `AbsDir`
- * codec (usable directly as a schema) and carries `is` / `fromString` via
- * {@link Statics.Codec}.
+ * `AbsDir` — an absolute directory path, as a `string` ⇄ `AbsDir` value codec.
  *
  * @example
  * ```ts
- * const dir = AbsDir.fromString('/home/user/')
+ * const dir = S.decodeSync(AbsDir)('/home/user/')
  * const ConfigSchema = S.Struct({ sourcePath: AbsDir, outputPath: AbsDir })
  * ```
  */

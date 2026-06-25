@@ -1,5 +1,6 @@
 import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
 import { analyze, backSegment, herePrefix, separator } from '../analyzer.js'
+import { back } from './core.js'
 import { FileName } from './FileName.js'
 import { Segment } from './segment/Segment.js'
 
@@ -18,12 +19,7 @@ class RelFileValue extends S.TaggedClass<RelFileValue>()('RelFile', {
 
   /** Count of leading parent-traversal (`..`) steps, derived from {@link segments}. */
   get back(): number {
-    let count = 0
-    for (const segment of this.segments) {
-      if (segment._tag === 'Up') count++
-      else break
-    }
-    return count
+    return back(this.segments)
   }
 
   /** The filename including extension (e.g., `file.txt`). */
@@ -40,7 +36,7 @@ class RelFileValue extends S.TaggedClass<RelFileValue>()('RelFile', {
  *
  * @example
  * ```ts
- * const file = RelFile.fromString('./src/index.ts')
+ * const file = S.decodeSync(RelFile)('./src/index.ts')
  * const ConfigSchema = S.Struct({ sourcePath: RelFile, outputPath: RelFile })
  * ```
  */

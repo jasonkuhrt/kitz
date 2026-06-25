@@ -5,20 +5,18 @@ import { Up } from './Up.js'
 
 /**
  * `Segment` — one step of a path: a parent traversal (`..`, {@link Up}), a
- * current-dir no-op (`.`, {@link Here}), or a named descent ({@link Name}). The
- * binding **is** the `string` ⇄ step codec; its codec statics (`is`, `decodeSync`,
- * `encodeSync`, …) come from {@link Statics.Codec}.
+ * current-dir no-op (`.`, {@link Here}), or a named descent ({@link Name}), as a
+ * `string` ⇄ step value codec.
+ *
+ * Annotated to a compact named codec type so declaration emit references it instead of
+ * inlining each member (which overflows — TS7056).
  *
  * @example
  * ```ts
- * Segment.decodeSync('..')   // Up
- * Segment.decodeSync('.')    // Here
- * Segment.decodeSync('src')  // Name { name: 'src' }
+ * S.decodeSync(Segment)('..')   // Up
+ * S.decodeSync(Segment)('.')    // Here
+ * S.decodeSync(Segment)('src')  // Name { name: 'src' }
  * ```
  */
-// Pin the inner union to a compact, named codec type so declaration emit references it
-// instead of inlining each member's statics intersection (which overflows — TS7056).
-const schema: S.Codec<Up | Here | Name, string, never, never> = S.Union([Up, Here, Name])
-
-export const Segment = schema
-export type Segment = typeof schema.Type
+export const Segment: S.Codec<Up | Here | Name, string, never, never> = S.Union([Up, Here, Name])
+export type Segment = typeof Segment.Type

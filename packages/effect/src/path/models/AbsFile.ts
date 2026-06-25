@@ -24,13 +24,12 @@ class AbsFileValue extends S.TaggedClass<AbsFileValue>()('AbsFile', {
 }
 
 /**
- * `AbsFile` — an absolute file path. The binding **is** the `string` ⇄ `AbsFile`
- * codec (usable directly as a schema) and carries `is` / `fromString` via
- * {@link Statics.Codec}. The decoded value has `.name` and `.toString()`.
+ * `AbsFile` — an absolute file path, as a `string` ⇄ `AbsFile` value codec.
+ * The decoded value has `.name` and `.toString()`.
  *
  * @example
  * ```ts
- * const file = AbsFile.fromString('/home/user/file.txt')
+ * const file = S.decodeSync(AbsFile)('/home/user/file.txt')
  * ```
  */
 const codec = S.String.pipe(

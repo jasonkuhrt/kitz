@@ -28,13 +28,11 @@ class RelDirValue extends S.TaggedClass<RelDirValue>()('RelDir', {
 }
 
 /**
- * `RelDir` — a relative directory path. The binding **is** the `string` ⇄ `RelDir`
- * codec (usable directly as a schema) and carries `is` / `fromString` statics via
- * {@link Statics.Codec}.
+ * `RelDir` — a relative directory path, as a `string` ⇄ `RelDir` value codec.
  *
  * @example
  * ```ts
- * const dir = RelDir.fromString('./src/')
+ * const dir = S.decodeSync(RelDir)('./src/')
  * ```
  */
 const codec = S.String.pipe(
