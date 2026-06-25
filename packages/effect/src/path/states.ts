@@ -1,5 +1,5 @@
-import type { Path } from '../_.js'
-import { Rel } from '../models/Rel.js'
+import type { Path } from './models/Path.js'
+import { Rel } from './models/Rel.js'
 
 /**
  * Whether a path is at root/base level.

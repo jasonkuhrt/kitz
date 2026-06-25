@@ -1,5 +1,5 @@
 import { Effect, Exit, Match, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
-import { CodecString as Analyzer } from '../path-analyzer/codec-string/_.js'
+import { analyze } from '../analyzer.js'
 import * as Extension from './Extension.js'
 
 /**
@@ -8,16 +8,8 @@ import * as Extension from './Extension.js'
  */
 export class FileName extends S.TaggedClass<FileName>()('FileName', {
   stem: S.String,
-  extension: S.NullOr(Extension.Extension),
+  extension: S.Option(Extension.Extension),
 }) {
-  static is = S.is(FileName)
-  static decode = S.decodeUnknownEffect(FileName)
-  static decodeSync = S.decodeUnknownSync(FileName)
-  static encode = S.encodeUnknownEffect(FileName)
-  static encodeSync = S.encodeUnknownSync(FileName)
-  static equivalence = S.toEquivalence(FileName)
-  static ordered = false as const
-
   /**
    * Schema for transforming between string and FileName class.
    */
@@ -28,7 +20,7 @@ export class FileName extends S.TaggedClass<FileName>()('FileName', {
         return filename
       }),
       decode: SchemaGetter.transformOrFail((input) => {
-        return Match.value(Analyzer.analyze(input, { hint: 'file' })).pipe(
+        return Match.value(analyze(input, { hint: 'file' })).pipe(
           Match.tagsExhaustive({
             file: (file) => {
               // File should be just a filename, not a path
@@ -53,14 +45,14 @@ export class FileName extends S.TaggedClass<FileName>()('FileName', {
                 return Effect.succeed(
                   FileName.make({
                     stem: file.file.stem,
-                    extension: extResult.value,
+                    extension: Option.some(extResult.value),
                   }),
                 )
               } else {
                 return Effect.succeed(
                   FileName.make({
                     stem: file.file.stem,
-                    extension: null,
+                    extension: Option.none(),
                   }),
                 )
               }

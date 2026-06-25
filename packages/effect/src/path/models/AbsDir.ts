@@ -1,6 +1,6 @@
 import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
 import { stringSeparator } from '../constants.js'
-import { analyze } from '../path-analyzer/codec-string/__.js'
+import { analyze } from '../analyzer.js'
 import { Statics } from './core.js'
 import { Segment } from './segment/Segment.js'
 

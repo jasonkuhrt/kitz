@@ -17,7 +17,7 @@ export { Path as Schema } from './models/Path.js'
 export * from './constants.js'
 
 // States
-export * as States from './states/__.js'
+export * as States from './states.js'
 
 // Extension types and constants
 export * as Extension from './models/Extension.js'
