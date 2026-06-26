@@ -1,6 +1,5 @@
-import { Effect, Result, Schema as S, SchemaGetter } from 'effect'
+import { Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeFile, format } from '../analyzer.js'
-import { toIssue } from './core.js'
 import { FileName } from './FileName.js'
 import { Segment } from './segment.js'
 
@@ -31,27 +30,23 @@ class AbsFileValue extends S.TaggedClass<AbsFileValue>()('AbsFile', {
 export const AbsFile = S.String.pipe(
   S.decodeTo(AbsFileValue, {
     encode: SchemaGetter.transform((encoded) =>
-      format({
-        isPathAbsolute: true,
-        back: 0,
-        segments: encoded.segments,
-        fileName: encoded.fileName,
-      }),
+      format({ isPathAbsolute: true, back: 0, fileName: encoded.fileName })(encoded.segments),
     ),
-    decode: SchemaGetter.transformOrFail((input) => {
-      const result = analyzeFile(input, { absolute: true })
-      return Result.isFailure(result)
-        ? Effect.fail(toIssue(result.failure))
-        : Effect.succeed({
-            _tag: 'AbsFile' as const,
-            segments: result.success.segments,
-            fileName: {
-              _tag: 'FileName' as const,
-              stem: result.success.file.stem,
-              extension: result.success.file.extension,
-            },
-          })
-    }),
+    decode: SchemaGetter.transformOrFail(
+      flow(
+        analyzeFile({ absolute: true }),
+        Result.map((analysis) => ({
+          _tag: 'AbsFile' as const,
+          segments: analysis.segments,
+          fileName: {
+            _tag: 'FileName' as const,
+            stem: analysis.file.stem,
+            extension: analysis.file.extension,
+          },
+        })),
+        Effect.fromResult,
+      ),
+    ),
   }),
 )
 export type AbsFile = typeof AbsFile.Type

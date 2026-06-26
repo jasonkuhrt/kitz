@@ -1,6 +1,5 @@
-import { Effect, Result, Schema as S, SchemaGetter } from 'effect'
+import { Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeDir, format } from '../analyzer.js'
-import { toIssue } from './core.js'
 import { Segment } from './segment.js'
 
 /**
@@ -29,14 +28,15 @@ class AbsDirValue extends S.TaggedClass<AbsDirValue>()('AbsDir', {
 export const AbsDir = S.String.pipe(
   S.decodeTo(AbsDirValue, {
     encode: SchemaGetter.transform((encoded) =>
-      format({ isPathAbsolute: true, back: 0, segments: encoded.segments }),
+      format({ isPathAbsolute: true, back: 0 })(encoded.segments),
     ),
-    decode: SchemaGetter.transformOrFail((input) => {
-      const result = analyzeDir(input, { absolute: true })
-      return Result.isFailure(result)
-        ? Effect.fail(toIssue(result.failure))
-        : Effect.succeed({ _tag: 'AbsDir' as const, segments: result.success.segments })
-    }),
+    decode: SchemaGetter.transformOrFail(
+      flow(
+        analyzeDir({ absolute: true }),
+        Result.map((analysis) => ({ _tag: 'AbsDir' as const, segments: analysis.segments })),
+        Effect.fromResult,
+      ),
+    ),
   }),
 )
 export type AbsDir = typeof AbsDir.Type

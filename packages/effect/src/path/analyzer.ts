@@ -1,4 +1,4 @@
-import { Result, Schema as S } from 'effect'
+import { Option, Result, SchemaIssue } from 'effect'
 
 // Path segment constants (internal — the codecs go through analyze/format)
 const separator = '/'
@@ -29,15 +29,11 @@ export interface AnalysisDir {
   segments: string[]
 }
 
-/** A path string that didn't match the expected kind or absoluteness. */
-export class PathError extends S.TaggedErrorClass<PathError>()('PathError', {
-  input: S.String,
-  expected: S.String,
-}) {
-  override get message(): string {
-    return `Expected ${this.expected}, received ${JSON.stringify(this.input)}`
-  }
-}
+/** The schema issue for a path that didn't match the expected kind or absoluteness. */
+const invalid = (input: string, expected: string): SchemaIssue.Issue =>
+  new SchemaIssue.InvalidValue(Option.some(input), {
+    message: `Expected ${expected}, received ${JSON.stringify(input)}`,
+  })
 
 /**
  * Normalize segments by resolving '..' references.
@@ -165,67 +161,63 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
   }
 }
 
-/** Parse `input` and require it to be a file of the given absoluteness. */
-export const analyzeFile = (
-  input: string,
-  options: { absolute: boolean },
-): Result.Result<AnalysisFile, PathError> => {
-  const analysis = analyze(input, { hint: 'file' })
-  if (analysis._tag !== 'file') {
-    return Result.fail(new PathError({ input, expected: 'a file path' }))
+/** Require a file of the given absoluteness. Curried: fix absoluteness, then apply the input. */
+export const analyzeFile =
+  (options: { absolute: boolean }) =>
+  (input: string): Result.Result<AnalysisFile, SchemaIssue.Issue> => {
+    const analysis = analyze(input, { hint: 'file' })
+    if (analysis._tag !== 'file') {
+      return Result.fail(invalid(input, 'a file path'))
+    }
+    if (analysis.isPathAbsolute !== options.absolute) {
+      return Result.fail(invalid(input, options.absolute ? 'an absolute path' : 'a relative path'))
+    }
+    return Result.succeed(analysis)
   }
-  if (analysis.isPathAbsolute !== options.absolute) {
-    return Result.fail(
-      new PathError({ input, expected: options.absolute ? 'an absolute path' : 'a relative path' }),
-    )
-  }
-  return Result.succeed(analysis)
-}
 
-/** Parse `input` and require it to be a directory of the given absoluteness. */
-export const analyzeDir = (
-  input: string,
-  options: { absolute: boolean },
-): Result.Result<AnalysisDir, PathError> => {
-  const analysis = analyze(input, { hint: 'directory' })
-  if (analysis._tag !== 'dir') {
-    return Result.fail(new PathError({ input, expected: 'a directory path' }))
+/** Require a directory of the given absoluteness. Curried: fix absoluteness, then apply the input. */
+export const analyzeDir =
+  (options: { absolute: boolean }) =>
+  (input: string): Result.Result<AnalysisDir, SchemaIssue.Issue> => {
+    const analysis = analyze(input, { hint: 'directory' })
+    if (analysis._tag !== 'dir') {
+      return Result.fail(invalid(input, 'a directory path'))
+    }
+    if (analysis.isPathAbsolute !== options.absolute) {
+      return Result.fail(invalid(input, options.absolute ? 'an absolute path' : 'a relative path'))
+    }
+    return Result.succeed(analysis)
   }
-  if (analysis.isPathAbsolute !== options.absolute) {
-    return Result.fail(
-      new PathError({ input, expected: options.absolute ? 'an absolute path' : 'a relative path' }),
-    )
-  }
-  return Result.succeed(analysis)
-}
 
 /**
- * Build a path string from its parts — the inverse of {@link analyze}.
+ * Build a path string — the inverse of {@link analyze}. Curried: fix the path shape
+ * (absoluteness, `back`, optional `fileName`), then apply the segments.
  *
  * `fileName` present → a file path; absent → a directory path (trailing `/`).
  * Relative paths get one leading `../` per `back` step, or `./` when `back` is 0.
  */
-export const format = (parts: {
-  isPathAbsolute: boolean
-  back: number
-  segments: readonly string[]
-  fileName?: { stem: string; extension: string | null } | null
-}): string => {
-  const body = parts.segments.join(separator)
-  const file = parts.fileName
-    ? parts.fileName.extension
-      ? `${parts.fileName.stem}${parts.fileName.extension}`
-      : parts.fileName.stem
-    : null
+export const format =
+  (parts: {
+    isPathAbsolute: boolean
+    back: number
+    fileName?: { stem: string; extension: string | null } | null
+  }) =>
+  (segments: readonly string[]): string => {
+    const body = segments.join(separator)
+    const file = parts.fileName
+      ? parts.fileName.extension
+        ? `${parts.fileName.stem}${parts.fileName.extension}`
+        : parts.fileName.stem
+      : null
 
-  if (parts.isPathAbsolute) {
-    if (file !== null)
-      return body ? `${separator}${body}${separator}${file}` : `${separator}${file}`
-    return body ? `${separator}${body}${separator}` : separator
+    if (parts.isPathAbsolute) {
+      if (file !== null)
+        return body ? `${separator}${body}${separator}${file}` : `${separator}${file}`
+      return body ? `${separator}${body}${separator}` : separator
+    }
+
+    // One `../` per back step, else `./`.
+    const prefix = parts.back > 0 ? backPrefix.repeat(parts.back) : herePrefix
+    if (file !== null) return body ? `${prefix}${body}${separator}${file}` : `${prefix}${file}`
+    return body ? `${prefix}${body}${separator}` : prefix
   }
-
-  // One `../` per back step, else `./`.
-  const prefix = parts.back > 0 ? backPrefix.repeat(parts.back) : herePrefix
-  if (file !== null) return body ? `${prefix}${body}${separator}${file}` : `${prefix}${file}`
-  return body ? `${prefix}${body}${separator}` : prefix
-}

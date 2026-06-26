@@ -1,7 +1,6 @@
-import { Effect, Result, Schema as S, SchemaGetter } from 'effect'
+import { Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeDir, format } from '../analyzer.js'
 import { NaturalInt } from '../../schema/NaturalInt.js'
-import { toIssue } from './core.js'
 import { Segment } from './segment.js'
 
 /**
@@ -30,18 +29,19 @@ class RelDirValue extends S.TaggedClass<RelDirValue>()('RelDir', {
 export const RelDir = S.String.pipe(
   S.decodeTo(RelDirValue, {
     encode: SchemaGetter.transform((encoded) =>
-      format({ isPathAbsolute: false, back: encoded.back, segments: encoded.segments }),
+      format({ isPathAbsolute: false, back: encoded.back })(encoded.segments),
     ),
-    decode: SchemaGetter.transformOrFail((input) => {
-      const result = analyzeDir(input, { absolute: false })
-      return Result.isFailure(result)
-        ? Effect.fail(toIssue(result.failure))
-        : Effect.succeed({
-            _tag: 'RelDir' as const,
-            back: result.success.back,
-            segments: result.success.segments,
-          })
-    }),
+    decode: SchemaGetter.transformOrFail(
+      flow(
+        analyzeDir({ absolute: false }),
+        Result.map((analysis) => ({
+          _tag: 'RelDir' as const,
+          back: analysis.back,
+          segments: analysis.segments,
+        })),
+        Effect.fromResult,
+      ),
+    ),
   }),
 )
 export type RelDir = typeof RelDir.Type

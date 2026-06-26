@@ -1,7 +1,6 @@
-import { Effect, Result, Schema as S, SchemaGetter } from 'effect'
+import { Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeFile, format } from '../analyzer.js'
 import { NaturalInt } from '../../schema/NaturalInt.js'
-import { toIssue } from './core.js'
 import { FileName } from './FileName.js'
 import { Segment } from './segment.js'
 
@@ -33,28 +32,26 @@ class RelFileValue extends S.TaggedClass<RelFileValue>()('RelFile', {
 export const RelFile = S.String.pipe(
   S.decodeTo(RelFileValue, {
     encode: SchemaGetter.transform((encoded) =>
-      format({
-        isPathAbsolute: false,
-        back: encoded.back,
-        segments: encoded.segments,
-        fileName: encoded.fileName,
-      }),
+      format({ isPathAbsolute: false, back: encoded.back, fileName: encoded.fileName })(
+        encoded.segments,
+      ),
     ),
-    decode: SchemaGetter.transformOrFail((input) => {
-      const result = analyzeFile(input, { absolute: false })
-      return Result.isFailure(result)
-        ? Effect.fail(toIssue(result.failure))
-        : Effect.succeed({
-            _tag: 'RelFile' as const,
-            back: result.success.back,
-            segments: result.success.segments,
-            fileName: {
-              _tag: 'FileName' as const,
-              stem: result.success.file.stem,
-              extension: result.success.file.extension,
-            },
-          })
-    }),
+    decode: SchemaGetter.transformOrFail(
+      flow(
+        analyzeFile({ absolute: false }),
+        Result.map((analysis) => ({
+          _tag: 'RelFile' as const,
+          back: analysis.back,
+          segments: analysis.segments,
+          fileName: {
+            _tag: 'FileName' as const,
+            stem: analysis.file.stem,
+            extension: analysis.file.extension,
+          },
+        })),
+        Effect.fromResult,
+      ),
+    ),
   }),
 )
 export type RelFile = typeof RelFile.Type
