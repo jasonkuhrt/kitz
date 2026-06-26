@@ -1,3 +1,5 @@
+import { Result, Schema as S } from 'effect'
+
 // Path segment constants (internal — the codecs go through analyze/format)
 const separator = '/'
 const hereSegment = '.'
@@ -5,13 +7,15 @@ const backSegment = '..'
 const herePrefix = `${hereSegment}${separator}` // './'
 const backPrefix = `${backSegment}${separator}` // '../'
 
-/** A path string analyzed into its kind, absoluteness, and folded segments. */
+/** A path string analyzed into its kind, absoluteness, parent-traversal count, and named segments. */
 export type Analysis = AnalysisFile | AnalysisDir
 
 export interface AnalysisFile {
   _tag: 'file'
   isPathAbsolute: boolean
-  /** Folded path segments (leading `..` steps), excluding the filename. */
+  /** Parent-traversal count (leading `..`); always 0 for absolute paths. */
+  back: number
+  /** Named path segments (no `..`), excluding the filename. */
   segments: string[]
   file: { stem: string; extension: string | null }
 }
@@ -19,8 +23,20 @@ export interface AnalysisFile {
 export interface AnalysisDir {
   _tag: 'dir'
   isPathAbsolute: boolean
-  /** Folded path segments (leading `..` steps). */
+  /** Parent-traversal count (leading `..`); always 0 for absolute paths. */
+  back: number
+  /** Named path segments (no `..`). */
   segments: string[]
+}
+
+/** A path string that didn't match the expected kind or absoluteness. */
+export class PathError extends S.TaggedErrorClass<PathError>()('PathError', {
+  input: S.String,
+  expected: S.String,
+}) {
+  override get message(): string {
+    return `Expected ${this.expected}, received ${JSON.stringify(this.input)}`
+  }
 }
 
 /**
@@ -45,12 +61,6 @@ const normalizeWithBack = (
 
   return { back, segments }
 }
-
-/** Fold a back count and named segments into one segment list with leading `..` steps. */
-const fold = (back: number, segments: readonly string[]): string[] => [
-  ...Array.from({ length: back }, () => backSegment),
-  ...segments,
-]
 
 /**
  * Optional hints to influence analyzer heuristics for ambiguous cases.
@@ -78,7 +88,7 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
 
   // Root: an absolute directory with no segments.
   if (input === separator) {
-    return { _tag: 'dir', isPathAbsolute: true, segments: [] }
+    return { _tag: 'dir', isPathAbsolute: true, back: 0, segments: [] }
   }
 
   // Directory iff: trailing slash, a bare here/back reference, or no extension on the last segment.
@@ -126,14 +136,16 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
     return {
       _tag: 'dir',
       isPathAbsolute: isAbsolute,
-      segments: fold(finalBack, normalizedSegments),
+      back: finalBack,
+      segments: normalizedSegments,
     }
   }
   if (normalizedSegments.length === 0) {
     return {
       _tag: 'file',
       isPathAbsolute: isAbsolute,
-      segments: fold(finalBack, []),
+      back: finalBack,
+      segments: [],
       file: { stem: '', extension: null },
     }
   }
@@ -147,19 +159,55 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
   return {
     _tag: 'file',
     isPathAbsolute: isAbsolute,
-    segments: fold(finalBack, path),
+    back: finalBack,
+    segments: path,
     file: { stem, extension },
   }
+}
+
+/** Parse `input` and require it to be a file of the given absoluteness. */
+export const analyzeFile = (
+  input: string,
+  options: { absolute: boolean },
+): Result.Result<AnalysisFile, PathError> => {
+  const analysis = analyze(input, { hint: 'file' })
+  if (analysis._tag !== 'file') {
+    return Result.fail(new PathError({ input, expected: 'a file path' }))
+  }
+  if (analysis.isPathAbsolute !== options.absolute) {
+    return Result.fail(
+      new PathError({ input, expected: options.absolute ? 'an absolute path' : 'a relative path' }),
+    )
+  }
+  return Result.succeed(analysis)
+}
+
+/** Parse `input` and require it to be a directory of the given absoluteness. */
+export const analyzeDir = (
+  input: string,
+  options: { absolute: boolean },
+): Result.Result<AnalysisDir, PathError> => {
+  const analysis = analyze(input, { hint: 'directory' })
+  if (analysis._tag !== 'dir') {
+    return Result.fail(new PathError({ input, expected: 'a directory path' }))
+  }
+  if (analysis.isPathAbsolute !== options.absolute) {
+    return Result.fail(
+      new PathError({ input, expected: options.absolute ? 'an absolute path' : 'a relative path' }),
+    )
+  }
+  return Result.succeed(analysis)
 }
 
 /**
  * Build a path string from its parts — the inverse of {@link analyze}.
  *
  * `fileName` present → a file path; absent → a directory path (trailing `/`).
- * Relative paths get a `./` prefix unless they already lead with `..`.
+ * Relative paths get one leading `../` per `back` step, or `./` when `back` is 0.
  */
 export const format = (parts: {
   isPathAbsolute: boolean
+  back: number
   segments: readonly string[]
   fileName?: { stem: string; extension: string | null } | null
 }): string => {
@@ -176,7 +224,8 @@ export const format = (parts: {
     return body ? `${separator}${body}${separator}` : separator
   }
 
-  const prefix = parts.segments[0] === backSegment ? '' : herePrefix
-  if (file !== null) return body ? `${prefix}${body}${separator}${file}` : `${herePrefix}${file}`
-  return body ? `${prefix}${body}${separator}` : herePrefix
+  // One `../` per back step, else `./`.
+  const prefix = parts.back > 0 ? backPrefix.repeat(parts.back) : herePrefix
+  if (file !== null) return body ? `${prefix}${body}${separator}${file}` : `${prefix}${file}`
+  return body ? `${prefix}${body}${separator}` : prefix
 }

@@ -1,7 +1,8 @@
-import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
-import { analyze, format } from '../analyzer.js'
+import { Effect, Result, Option, Schema as S, SchemaGetter } from 'effect'
+import { analyzeFile, format } from '../analyzer.js'
+import { toIssue } from './core.js'
 import { FileName } from './FileName.js'
-import { Segment } from './segment/Segment.js'
+import { Segment } from './segment.js'
 
 /**
  * Absolute file value — the decoded path (segments + filename) with instance behavior.
@@ -12,11 +13,6 @@ class AbsFileValue extends S.TaggedClass<AbsFileValue>()('AbsFile', {
   segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
   fileName: FileName,
 }) {
-  /** Encode back to the canonical string form (e.g. `/home/user/file.txt`). */
-  override toString(): string {
-    return S.encodeSync(AbsFile)(this)
-  }
-
   /** The filename including extension (e.g., `file.txt`). */
   get name(): string {
     return this.fileName.stem + Option.getOrElse(this.fileName.extension, () => '')
@@ -25,46 +21,37 @@ class AbsFileValue extends S.TaggedClass<AbsFileValue>()('AbsFile', {
 
 /**
  * `AbsFile` — an absolute file path, as a `string` ⇄ `AbsFile` value codec.
- * The decoded value has `.name` and `.toString()`.
+ * The decoded value has `.name`.
  *
  * @example
  * ```ts
  * const file = S.decodeSync(AbsFile)('/home/user/file.txt')
  * ```
  */
-const codec = S.String.pipe(
+export const AbsFile = S.String.pipe(
   S.decodeTo(AbsFileValue, {
     encode: SchemaGetter.transform((encoded) =>
-      format({ isPathAbsolute: true, segments: encoded.segments, fileName: encoded.fileName }),
+      format({
+        isPathAbsolute: true,
+        back: 0,
+        segments: encoded.segments,
+        fileName: encoded.fileName,
+      }),
     ),
     decode: SchemaGetter.transformOrFail((input) => {
-      const analysis = analyze(input, { hint: 'file' })
-      if (analysis._tag !== 'file') {
-        return Effect.fail(
-          new SchemaIssue.InvalidValue(Option.some(input), {
-            message: 'Expected a file path, got a directory path',
-          }),
-        )
-      }
-      if (!analysis.isPathAbsolute) {
-        return Effect.fail(
-          new SchemaIssue.InvalidValue(Option.some(input), {
-            message: 'Absolute paths must start with /',
-          }),
-        )
-      }
-      return Effect.succeed({
-        _tag: 'AbsFile' as const,
-        segments: analysis.segments,
-        fileName: {
-          _tag: 'FileName' as const,
-          stem: analysis.file.stem,
-          extension: analysis.file.extension,
-        },
-      })
+      const result = analyzeFile(input, { absolute: true })
+      return Result.isFailure(result)
+        ? Effect.fail(toIssue(result.failure))
+        : Effect.succeed({
+            _tag: 'AbsFile' as const,
+            segments: result.success.segments,
+            fileName: {
+              _tag: 'FileName' as const,
+              stem: result.success.file.stem,
+              extension: result.success.file.extension,
+            },
+          })
     }),
   }),
 )
-
-export const AbsFile = codec
 export type AbsFile = typeof AbsFile.Type

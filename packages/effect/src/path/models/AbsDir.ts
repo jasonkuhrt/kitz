@@ -1,6 +1,7 @@
-import { Effect, Option, Schema as S, SchemaGetter, SchemaIssue } from 'effect'
-import { analyze, format } from '../analyzer.js'
-import { Segment } from './segment/Segment.js'
+import { Effect, Result, Schema as S, SchemaGetter } from 'effect'
+import { analyzeDir, format } from '../analyzer.js'
+import { toIssue } from './core.js'
+import { Segment } from './segment.js'
 
 /**
  * Absolute directory value — the decoded path (segments) with instance behavior.
@@ -10,15 +11,9 @@ import { Segment } from './segment/Segment.js'
 class AbsDirValue extends S.TaggedClass<AbsDirValue>()('AbsDir', {
   segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
-  /** Encode back to the canonical string form (e.g. `/home/user/`). */
-  override toString(): string {
-    return S.encodeSync(AbsDir)(this)
-  }
-
   /** The directory name (last segment), or empty string for root. */
   get name(): string {
-    const last = this.segments.at(-1)
-    return last !== undefined && last._tag === 'Name' ? last.name : ''
+    return this.segments.at(-1) ?? ''
   }
 }
 
@@ -31,31 +26,17 @@ class AbsDirValue extends S.TaggedClass<AbsDirValue>()('AbsDir', {
  * const ConfigSchema = S.Struct({ sourcePath: AbsDir, outputPath: AbsDir })
  * ```
  */
-const codec = S.String.pipe(
+export const AbsDir = S.String.pipe(
   S.decodeTo(AbsDirValue, {
     encode: SchemaGetter.transform((encoded) =>
-      format({ isPathAbsolute: true, segments: encoded.segments }),
+      format({ isPathAbsolute: true, back: 0, segments: encoded.segments }),
     ),
     decode: SchemaGetter.transformOrFail((input) => {
-      const analysis = analyze(input, { hint: 'directory' })
-      if (analysis._tag !== 'dir') {
-        return Effect.fail(
-          new SchemaIssue.InvalidValue(Option.some(input), {
-            message: 'Expected a directory path, got a file path',
-          }),
-        )
-      }
-      if (!analysis.isPathAbsolute) {
-        return Effect.fail(
-          new SchemaIssue.InvalidValue(Option.some(input), {
-            message: 'Absolute paths must start with /',
-          }),
-        )
-      }
-      return Effect.succeed({ _tag: 'AbsDir' as const, segments: analysis.segments })
+      const result = analyzeDir(input, { absolute: true })
+      return Result.isFailure(result)
+        ? Effect.fail(toIssue(result.failure))
+        : Effect.succeed({ _tag: 'AbsDir' as const, segments: result.success.segments })
     }),
   }),
 )
-
-export const AbsDir = codec
 export type AbsDir = typeof AbsDir.Type
