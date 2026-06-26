@@ -1,6 +1,7 @@
 import { Effect, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeDir, format } from '../analyzer.js'
-import { Back, toIssue } from './core.js'
+import { NaturalInt } from '../../schema/NaturalInt.js'
+import { toIssue } from './core.js'
 import { Segment } from './segment.js'
 
 /**
@@ -9,12 +10,12 @@ import { Segment } from './segment.js'
  */
 class RelDirValue extends S.TaggedClass<RelDirValue>()('RelDir', {
   /** Count of leading parent-traversal (`..`) steps. */
-  back: Back.pipe(S.withConstructorDefault(Effect.succeed(0))),
+  back: NaturalInt.pipe(S.withConstructorDefault(Effect.succeed(0))),
   segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
   /** The directory name (last segment), or empty string for current/parent-only paths. */
   get name(): string {
-    return this.segments.at(-1) ?? ''
+    return Segment.basename(this.segments)
   }
 }
 

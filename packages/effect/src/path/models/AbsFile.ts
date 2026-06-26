@@ -1,4 +1,4 @@
-import { Effect, Result, Option, Schema as S, SchemaGetter } from 'effect'
+import { Effect, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeFile, format } from '../analyzer.js'
 import { toIssue } from './core.js'
 import { FileName } from './FileName.js'
@@ -15,7 +15,7 @@ class AbsFileValue extends S.TaggedClass<AbsFileValue>()('AbsFile', {
 }) {
   /** The filename including extension (e.g., `file.txt`). */
   get name(): string {
-    return this.fileName.stem + Option.getOrElse(this.fileName.extension, () => '')
+    return FileName.render(this.fileName)
   }
 }
 

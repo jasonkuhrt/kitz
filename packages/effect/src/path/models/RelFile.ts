@@ -1,6 +1,7 @@
-import { Effect, Result, Option, Schema as S, SchemaGetter } from 'effect'
+import { Effect, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeFile, format } from '../analyzer.js'
-import { Back, toIssue } from './core.js'
+import { NaturalInt } from '../../schema/NaturalInt.js'
+import { toIssue } from './core.js'
 import { FileName } from './FileName.js'
 import { Segment } from './segment.js'
 
@@ -10,13 +11,13 @@ import { Segment } from './segment.js'
  */
 class RelFileValue extends S.TaggedClass<RelFileValue>()('RelFile', {
   /** Count of leading parent-traversal (`..`) steps. */
-  back: Back.pipe(S.withConstructorDefault(Effect.succeed(0))),
+  back: NaturalInt.pipe(S.withConstructorDefault(Effect.succeed(0))),
   segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
   fileName: FileName,
 }) {
   /** The filename including extension (e.g., `file.txt`). */
   get name(): string {
-    return this.fileName.stem + Option.getOrElse(this.fileName.extension, () => '')
+    return FileName.render(this.fileName)
   }
 }
 

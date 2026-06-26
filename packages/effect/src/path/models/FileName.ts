@@ -66,4 +66,9 @@ export class FileName extends S.TaggedClass<FileName>()('FileName', {
       }),
     }),
   )
+
+  /** The filename string — stem plus extension (e.g. `file.txt`). */
+  static render(self: FileName): string {
+    return self.stem + Option.getOrElse(self.extension, () => '')
+  }
 }

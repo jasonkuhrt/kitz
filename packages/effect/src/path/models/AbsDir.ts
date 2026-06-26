@@ -13,7 +13,7 @@ class AbsDirValue extends S.TaggedClass<AbsDirValue>()('AbsDir', {
 }) {
   /** The directory name (last segment), or empty string for root. */
   get name(): string {
-    return this.segments.at(-1) ?? ''
+    return Segment.basename(this.segments)
   }
 }
 

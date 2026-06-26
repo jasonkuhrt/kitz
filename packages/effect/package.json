@@ -39,6 +39,7 @@
     ".": "./src/_.ts",
     "./FileSystem": "./src/__.ts",
     "./Path": "./src/path/_.ts",
+    "./Schema": "./src/schema/_.ts",
     "./String": "./src/string/_.ts"
   },
   "publishConfig": {
@@ -57,6 +58,10 @@
       "./Path": {
         "types": "./build/path/_.d.ts",
         "default": "./build/path/_.js"
+      },
+      "./Schema": {
+        "types": "./build/schema/_.d.ts",
+        "default": "./build/schema/_.js"
       },
       "./String": {
         "types": "./build/string/_.d.ts",
