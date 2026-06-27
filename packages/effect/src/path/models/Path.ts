@@ -13,12 +13,18 @@ import { RelFile } from './RelFile.js'
  *
  * @example
  * ```ts
- * const p1 = S.decodeSync(Schema)('/home/user/file.txt')  // AbsFile
- * const p2 = S.decodeSync(Schema)('/home/user/')          // AbsDir
- * const p3 = S.decodeSync(Schema)('./src/index.ts')       // RelFile
- * const p4 = S.decodeSync(Schema)('./src/')               // RelDir
- *
- * const ConfigSchema = S.Struct({ path: Schema })
+ * const p1 = S.decodeSync(Path)('/home/user/file.txt')  // AbsFile
+ * const p2 = S.decodeSync(Path)('/home/user/')          // AbsDir
+ * const p3 = S.decodeSync(Path)('./src/index.ts')       // RelFile
+ * const p4 = S.decodeSync(Path)('./src/')               // RelDir
  * ```
  */
-export const Path = S.Union([AbsFile, AbsDir, RelFile, RelDir])
+class Path_ extends S.asClass(S.Union([AbsFile, AbsDir, RelFile, RelDir])) {
+  static readonly AbsFile = AbsFile
+  static readonly AbsDir = AbsDir
+  static readonly RelFile = RelFile
+  static readonly RelDir = RelDir
+}
+
+export const Path = Path_
+export type Path = typeof Path_.Type

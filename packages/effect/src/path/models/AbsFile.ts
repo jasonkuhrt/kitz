@@ -4,49 +4,42 @@ import { FileName } from './FileName.js'
 import { Segment } from './segment.js'
 
 /**
- * Absolute file value — the decoded path (segments + filename) with instance behavior.
- * Internal; the public binding is {@link AbsFile}. Absolute paths can't lead with `..`,
- * so there is no `back`.
+ * Absolute file value — the decoded path (segments + filename).
+ * Absolute paths can't lead with `..`, so there is no `back`.
  */
-class AbsFileValue extends S.TaggedClass<AbsFileValue>()('AbsFile', {
+class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
   segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
   fileName: FileName,
-}) {
-  /** The filename including extension (e.g., `file.txt`). */
-  get name(): string {
-    return FileName.render(this.fileName)
-  }
-}
+}) {}
 
 /**
  * `AbsFile` — an absolute file path, as a `string` ⇄ `AbsFile` value codec.
- * The decoded value has `.name`.
  *
  * @example
  * ```ts
  * const file = S.decodeSync(AbsFile)('/home/user/file.txt')
  * ```
  */
-export const AbsFile = S.String.pipe(
-  S.decodeTo(AbsFileValue, {
-    encode: SchemaGetter.transform((encoded) =>
-      format({ isPathAbsolute: true, back: 0, fileName: encoded.fileName })(encoded.segments),
-    ),
-    decode: SchemaGetter.transformOrFail(
-      flow(
-        analyzeFile({ absolute: true }),
-        Result.map((analysis) => ({
-          _tag: 'AbsFile' as const,
-          segments: analysis.segments,
-          fileName: {
-            _tag: 'FileName' as const,
-            stem: analysis.file.stem,
-            extension: analysis.file.extension,
-          },
-        })),
-        Effect.fromResult,
+class AbsFile_ extends S.asClass(
+  S.String.pipe(
+    S.decodeTo(AbsFile__, {
+      encode: SchemaGetter.transform((encoded) =>
+        format({ isPathAbsolute: true, back: 0, fileName: encoded.fileName })(encoded.segments),
       ),
-    ),
-  }),
-)
-export type AbsFile = typeof AbsFile.Type
+      decode: SchemaGetter.transformOrFail(
+        flow(
+          analyzeFile({ absolute: true }),
+          Result.map((analysis) => ({
+            _tag: 'AbsFile' as const,
+            segments: analysis.segments,
+            fileName: analysis.fileName,
+          })),
+          Effect.fromResult,
+        ),
+      ),
+    }),
+  ),
+) {}
+
+export const AbsFile = AbsFile_
+export type AbsFile = typeof AbsFile_.Type

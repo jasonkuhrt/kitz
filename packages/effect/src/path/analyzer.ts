@@ -17,7 +17,8 @@ export interface AnalysisFile {
   back: number
   /** Named path segments (no `..`), excluding the filename. */
   segments: string[]
-  file: { stem: string; extension: string | null }
+  /** The filename (last path component) as a string; the `FileName` codec owns its stem/extension split. */
+  fileName: string
 }
 
 export interface AnalysisDir {
@@ -75,7 +76,7 @@ export interface AnalyzerOptions {
  *
  * @example
  * ```ts
- * analyze('/src/index.ts')   // { _tag: 'file', isPathAbsolute: true, segments: ['src'], file: { stem: 'index', extension: '.ts' } }
+ * analyze('/src/index.ts')   // { _tag: 'file', isPathAbsolute: true, segments: ['src'], fileName: 'index.ts' }
  * analyze('../docs/')        // { _tag: 'dir', isPathAbsolute: false, segments: ['..', 'docs'] }
  * ```
  */
@@ -137,27 +138,15 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
     }
   }
   if (normalizedSegments.length === 0) {
-    return {
-      _tag: 'file',
-      isPathAbsolute: isAbsolute,
-      back: finalBack,
-      segments: [],
-      file: { stem: '', extension: null },
-    }
+    return { _tag: 'file', isPathAbsolute: isAbsolute, back: finalBack, segments: [], fileName: '' }
   }
-
-  const path = normalizedSegments.slice(0, -1)
-  const filename = normalizedSegments[normalizedSegments.length - 1]!
-  const dotIndex = filename.lastIndexOf('.')
-  const extension = dotIndex > 0 ? filename.substring(dotIndex) : null
-  const stem = dotIndex > 0 ? filename.substring(0, dotIndex) : filename
 
   return {
     _tag: 'file',
     isPathAbsolute: isAbsolute,
     back: finalBack,
-    segments: path,
-    file: { stem, extension },
+    segments: normalizedSegments.slice(0, -1),
+    fileName: normalizedSegments[normalizedSegments.length - 1]!,
   }
 }
 
@@ -189,6 +178,25 @@ export const analyzeDir =
     return Result.succeed(analysis)
   }
 
+/** Require a bare filename (no path segments) and split it into stem + extension. */
+export const analyzeFileName = (
+  input: string,
+): Result.Result<{ stem: string; extension: string | null }, SchemaIssue.Issue> => {
+  const analysis = analyze(input, { hint: 'file' })
+  if (analysis._tag !== 'file') {
+    return Result.fail(invalid(input, 'a filename'))
+  }
+  if (analysis.segments.length > 0) {
+    return Result.fail(invalid(input, 'a filename, not a path'))
+  }
+  const { fileName } = analysis
+  const dotIndex = fileName.lastIndexOf('.')
+  return Result.succeed({
+    stem: dotIndex > 0 ? fileName.substring(0, dotIndex) : fileName,
+    extension: dotIndex > 0 ? fileName.substring(dotIndex) : null,
+  })
+}
+
 /**
  * Build a path string — the inverse of {@link analyze}. Curried: fix the path shape
  * (absoluteness, `back`, optional `fileName`), then apply the segments.
@@ -197,18 +205,10 @@ export const analyzeDir =
  * Relative paths get one leading `../` per `back` step, or `./` when `back` is 0.
  */
 export const format =
-  (parts: {
-    isPathAbsolute: boolean
-    back: number
-    fileName?: { stem: string; extension: string | null } | null
-  }) =>
+  (parts: { isPathAbsolute: boolean; back: number; fileName?: string | null }) =>
   (segments: readonly string[]): string => {
     const body = segments.join(separator)
-    const file = parts.fileName
-      ? parts.fileName.extension
-        ? `${parts.fileName.stem}${parts.fileName.extension}`
-        : parts.fileName.stem
-      : null
+    const file = parts.fileName ?? null
 
     if (parts.isPathAbsolute) {
       if (file !== null)

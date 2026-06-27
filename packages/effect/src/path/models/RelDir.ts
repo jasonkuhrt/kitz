@@ -1,19 +1,18 @@
 import { Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
-import { analyzeDir, format } from '../analyzer.js'
 import { NaturalInt } from '../../schema/NaturalInt.js'
+import { analyzeDir, format } from '../analyzer.js'
 import { Segment } from './segment.js'
 
 /**
- * Relative directory value — the decoded path (a step array) with instance behavior.
- * Internal; the public binding is {@link RelDir}.
+ * Relative directory value — the decoded path (back count + segments) with instance behavior.
  */
-class RelDirValue extends S.TaggedClass<RelDirValue>()('RelDir', {
+class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
   /** Count of leading parent-traversal (`..`) steps. */
   back: NaturalInt.pipe(S.withConstructorDefault(Effect.succeed(0))),
   segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
   /** The directory name (last segment), or empty string for current/parent-only paths. */
-  get name(): string {
+  get name() {
     return Segment.basename(this.segments)
   }
 }
@@ -26,22 +25,26 @@ class RelDirValue extends S.TaggedClass<RelDirValue>()('RelDir', {
  * const dir = S.decodeSync(RelDir)('./src/')
  * ```
  */
-export const RelDir = S.String.pipe(
-  S.decodeTo(RelDirValue, {
-    encode: SchemaGetter.transform((encoded) =>
-      format({ isPathAbsolute: false, back: encoded.back })(encoded.segments),
-    ),
-    decode: SchemaGetter.transformOrFail(
-      flow(
-        analyzeDir({ absolute: false }),
-        Result.map((analysis) => ({
-          _tag: 'RelDir' as const,
-          back: analysis.back,
-          segments: analysis.segments,
-        })),
-        Effect.fromResult,
+class RelDir_ extends S.asClass(
+  S.String.pipe(
+    S.decodeTo(RelDir__, {
+      encode: SchemaGetter.transform((encoded) =>
+        format({ isPathAbsolute: false, back: encoded.back })(encoded.segments),
       ),
-    ),
-  }),
-)
-export type RelDir = typeof RelDir.Type
+      decode: SchemaGetter.transformOrFail(
+        flow(
+          analyzeDir({ absolute: false }),
+          Result.map((analysis) => ({
+            _tag: 'RelDir' as const,
+            back: analysis.back,
+            segments: analysis.segments,
+          })),
+          Effect.fromResult,
+        ),
+      ),
+    }),
+  ),
+) {}
+
+export const RelDir = RelDir_
+export type RelDir = typeof RelDir_.Type

@@ -5,5 +5,10 @@ import { RelFile } from './RelFile.js'
 /**
  * `File` — any file path (`AbsFile | RelFile`), as a `string` ⇄ value codec.
  */
-export const File = S.Union([AbsFile, RelFile])
-export type File = typeof File.Type
+class File_ extends S.asClass(S.Union([AbsFile, RelFile])) {
+  static readonly AbsFile = AbsFile
+  static readonly RelFile = RelFile
+}
+
+export const File = File_
+export type File = typeof File_.Type

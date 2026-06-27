@@ -1,9 +1,14 @@
 import { Schema as S } from 'effect'
-import { RelFile } from './RelFile.js'
 import { RelDir } from './RelDir.js'
+import { RelFile } from './RelFile.js'
 
 /**
  * `Rel` — any relative path (`RelFile | RelDir`), as a `string` ⇄ value codec.
  */
-export const Rel = S.Union([RelFile, RelDir])
-export type Rel = typeof Rel.Type
+class Rel_ extends S.asClass(S.Union([RelFile, RelDir])) {
+  static readonly RelFile = RelFile
+  static readonly RelDir = RelDir
+}
+
+export const Rel = Rel_
+export type Rel = typeof Rel_.Type
