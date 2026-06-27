@@ -1,0 +1,71 @@
+{
+  // Route Oxc LSP startup through Vite+'s editor wrappers so Zed gets the same
+  // Vite+ config gate as `vp lint`, `vp fmt`, and `vp check`.
+  "lsp": {
+    "oxlint": {
+      "binary": {
+        "path": "node_modules/vite-plus/bin/oxlint",
+        "arguments": ["--lsp"]
+      },
+      "initialization_options": {
+        "settings": {
+          // Oxlint LSP diagnostics need this initialization option to load
+          // Vite+ lint config; the CLI `-c vite.config.mts` path is not enough
+          // for editor LSP mode. Restart Oxc language servers after changing
+          // vite.config.mts.
+          // Tracks: https://github.com/oxc-project/oxc-zed/issues/162
+          "configPath": "./vite.config.mts",
+          "run": "onType",
+          "disableNestedConfig": false,
+          "fixKind": "safe_fix",
+          "unusedDisableDirectives": "deny"
+        }
+      }
+    },
+    "oxfmt": {
+      "binary": {
+        "path": "node_modules/vite-plus/bin/oxfmt",
+        "arguments": ["--lsp"]
+      },
+      "initialization_options": {
+        "settings": {
+          "fmt.configPath": "./vite.config.mts",
+          "run": "onSave"
+        }
+      }
+    }
+  },
+  "languages": {
+    // These language-level formatter entries intentionally override global Zed
+    // formatter settings so project files use oxfmt rather than dprint/prettier
+    // or formatting exposed by TypeScript language servers.
+    // Tracks: https://github.com/oxc-project/oxc-zed/issues/212
+    "JavaScript": {
+      "language_servers": ["vtsls", "!typescript-language-server", "!eslint", "oxlint", "oxfmt"],
+      "format_on_save": "on",
+      "prettier": { "allowed": false },
+      "formatter": [
+        { "language_server": { "name": "oxfmt" } },
+        { "code_action": "source.fixAll.oxc" }
+      ]
+    },
+    "TypeScript": {
+      "language_servers": ["vtsls", "!typescript-language-server", "!eslint", "oxlint", "oxfmt"],
+      "format_on_save": "on",
+      "prettier": { "allowed": false },
+      "formatter": [
+        { "language_server": { "name": "oxfmt" } },
+        { "code_action": "source.fixAll.oxc" }
+      ]
+    },
+    "TSX": {
+      "language_servers": ["vtsls", "!typescript-language-server", "!eslint", "oxlint", "oxfmt"],
+      "format_on_save": "on",
+      "prettier": { "allowed": false },
+      "formatter": [
+        { "language_server": { "name": "oxfmt" } },
+        { "code_action": "source.fixAll.oxc" }
+      ]
+    }
+  }
+}

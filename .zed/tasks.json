@@ -1,0 +1,34 @@
+[
+  {
+    "label": "check",
+    "command": "vp check",
+    "reveal": "always",
+    "hide": "on_success",
+    "show_command": false,
+    "show_summary": false
+  },
+  {
+    "label": "lint",
+    "command": "vp lint",
+    "reveal": "always",
+    "hide": "on_success",
+    "show_command": false,
+    "show_summary": false
+  },
+  {
+    "label": "test",
+    "command": "vp test",
+    "reveal": "always",
+    "hide": "on_success",
+    "show_command": false,
+    "show_summary": false
+  },
+  {
+    "label": "refresh: .session",
+    "command": "zed -a \"$(realpath .session)\"",
+    "reveal": "never",
+    "hide": "always",
+    "show_command": false,
+    "show_summary": false
+  }
+]
