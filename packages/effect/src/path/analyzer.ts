@@ -1,4 +1,4 @@
-import { Option, Result, SchemaIssue } from 'effect'
+import { flow, Option, Result, SchemaIssue } from 'effect'
 
 // Path segment constants (internal — the codecs go through analyze/format)
 const separator = '/'
@@ -150,52 +150,51 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
   }
 }
 
-/** Require a file of the given absoluteness. Curried: fix absoluteness, then apply the input. */
-export const analyzeFile =
+/**
+ * The core curried validator: parse `input`, narrow it to `kind`, and require the
+ * given absoluteness. Every public path analyzer is a partial application of this.
+ */
+const analyzeAs =
+  <K extends Analysis['_tag']>(kind: K) =>
   (options: { absolute: boolean }) =>
-  (input: string): Result.Result<AnalysisFile, SchemaIssue.Issue> => {
-    const analysis = analyze(input, { hint: 'file' })
-    if (analysis._tag !== 'file') {
-      return Result.fail(invalid(input, 'a file path'))
-    }
-    if (analysis.isPathAbsolute !== options.absolute) {
-      return Result.fail(invalid(input, options.absolute ? 'an absolute path' : 'a relative path'))
-    }
-    return Result.succeed(analysis)
+  (input: string): Result.Result<Extract<Analysis, { _tag: K }>, SchemaIssue.Issue> => {
+    const analysis = analyze(input, { hint: kind === 'dir' ? 'directory' : 'file' })
+    return analysis._tag !== kind
+      ? Result.fail(invalid(input, kind === 'dir' ? 'a directory path' : 'a file path'))
+      : analysis.isPathAbsolute !== options.absolute
+        ? Result.fail(invalid(input, options.absolute ? 'an absolute path' : 'a relative path'))
+        : Result.succeed(analysis as Extract<Analysis, { _tag: K }>)
   }
 
-/** Require a directory of the given absoluteness. Curried: fix absoluteness, then apply the input. */
-export const analyzeDir =
-  (options: { absolute: boolean }) =>
-  (input: string): Result.Result<AnalysisDir, SchemaIssue.Issue> => {
-    const analysis = analyze(input, { hint: 'directory' })
-    if (analysis._tag !== 'dir') {
-      return Result.fail(invalid(input, 'a directory path'))
-    }
-    if (analysis.isPathAbsolute !== options.absolute) {
-      return Result.fail(invalid(input, options.absolute ? 'an absolute path' : 'a relative path'))
-    }
-    return Result.succeed(analysis)
-  }
+/** Require a file of the given absoluteness. */
+export const analyzeFile = analyzeAs('file')
 
-/** Require a bare filename (no path segments) and split it into stem + extension. */
-export const analyzeFileName = (
-  input: string,
-): Result.Result<{ stem: string; extension: string | null }, SchemaIssue.Issue> => {
-  const analysis = analyze(input, { hint: 'file' })
-  if (analysis._tag !== 'file') {
-    return Result.fail(invalid(input, 'a filename'))
-  }
-  if (analysis.segments.length > 0) {
-    return Result.fail(invalid(input, 'a filename, not a path'))
-  }
-  const { fileName } = analysis
+/** Require a directory of the given absoluteness. */
+export const analyzeDir = analyzeAs('dir')
+
+/** Split a filename into stem + extension (a leading dot is part of the stem). */
+const splitExtension = (fileName: string): { stem: string; extension: string | null } => {
   const dotIndex = fileName.lastIndexOf('.')
-  return Result.succeed({
+  return {
     stem: dotIndex > 0 ? fileName.substring(0, dotIndex) : fileName,
     extension: dotIndex > 0 ? fileName.substring(dotIndex) : null,
-  })
+  }
 }
+
+/** Issue raised when a filename input is actually a path (has segments). */
+const notABareFilename = new SchemaIssue.InvalidValue(Option.none(), {
+  message: 'Expected a bare filename, not a path',
+})
+
+/** A bare filename (a relative, segment-less file) parsed into stem + extension. */
+export const analyzeFileName = flow(
+  analyzeFile({ absolute: false }),
+  Result.flatMap((analysis) =>
+    analysis.segments.length > 0
+      ? Result.fail(notABareFilename)
+      : Result.succeed(splitExtension(analysis.fileName)),
+  ),
+)
 
 /**
  * Build a path string — the inverse of {@link analyze}. Curried: fix the path shape
