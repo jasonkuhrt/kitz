@@ -38,7 +38,13 @@ export class AbsDir_ extends S.asClass(
       ),
     }),
   ),
-) {}
+) {
+  /** Type guard for `AbsDir` values. */
+  static readonly is = S.is(AbsDir_)
+
+  /** Structural equivalence for `AbsDir` values. */
+  static readonly equivalence = S.toEquivalence(AbsDir_)
+}
 
 export const AbsDir = AbsDir_
 export type AbsDir = typeof AbsDir_.Type

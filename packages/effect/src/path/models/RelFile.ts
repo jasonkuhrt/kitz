@@ -44,7 +44,13 @@ export class RelFile_ extends S.asClass(
       ),
     }),
   ),
-) {}
+) {
+  /** Type guard for `RelFile` values. */
+  static readonly is = S.is(RelFile_)
+
+  /** Structural equivalence for `RelFile` values. */
+  static readonly equivalence = S.toEquivalence(RelFile_)
+}
 
 export const RelFile = RelFile_
 export type RelFile = typeof RelFile_.Type

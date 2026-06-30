@@ -44,7 +44,13 @@ export class RelDir_ extends S.asClass(
       ),
     }),
   ),
-) {}
+) {
+  /** Type guard for `RelDir` values. */
+  static readonly is = S.is(RelDir_)
+
+  /** Structural equivalence for `RelDir` values. */
+  static readonly equivalence = S.toEquivalence(RelDir_)
+}
 
 export const RelDir = RelDir_
 export type RelDir = typeof RelDir_.Type

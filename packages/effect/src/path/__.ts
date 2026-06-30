@@ -27,3 +27,9 @@ export * as Analyzer from './analyzer.js'
 
 // Extension types and constants
 export * as Extension from './models/Extension.js'
+
+// Protocol — URL scheme enum + codec (`file` ⇄ `file://`)
+export * as Protocol from './models/Protocol.js'
+
+// Operators — value→value transforms and queries over the path ADT
+export * from './operators/__.js'

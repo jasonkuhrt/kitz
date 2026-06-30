@@ -39,7 +39,13 @@ export class AbsFile_ extends S.asClass(
       ),
     }),
   ),
-) {}
+) {
+  /** Type guard for `AbsFile` values. */
+  static readonly is = S.is(AbsFile_)
+
+  /** Structural equivalence for `AbsFile` values. */
+  static readonly equivalence = S.toEquivalence(AbsFile_)
+}
 
 export const AbsFile = AbsFile_
 export type AbsFile = typeof AbsFile_.Type
