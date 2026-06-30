@@ -67,8 +67,8 @@ const normalizeWithBack = (
  * express their intent for these edge cases.
  */
 export interface AnalyzerOptions {
-  /** 'file' / 'directory' (default) resolution for ambiguous dotfiles. */
-  hint?: 'file' | 'directory'
+  /** 'file' / 'dir' (default) resolution for ambiguous dotfiles. */
+  hint?: 'file' | 'dir'
 }
 
 /**
@@ -105,7 +105,7 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
     if (lastSegment) {
       // A dot that's not at index 0 marks an extension (`.gitignore` is ambiguous → hint/default).
       const hasExtension = lastSegment.lastIndexOf('.') > 0
-      isDirectory = hasExtension ? false : options?.hint ? options.hint === 'directory' : true
+      isDirectory = hasExtension ? false : options?.hint ? options.hint === 'dir' : true
     } else {
       isDirectory = true
     }
@@ -156,13 +156,15 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
  */
 const analyzeAs =
   <K extends Analysis['_tag']>(kind: K) =>
-  (options: { absolute: boolean }) =>
+  (anchoring: 'absolute' | 'relative') =>
   (input: string): Result.Result<Extract<Analysis, { _tag: K }>, SchemaIssue.Issue> => {
-    const analysis = analyze(input, { hint: kind === 'dir' ? 'directory' : 'file' })
+    const analysis = analyze(input, { hint: kind })
     return analysis._tag !== kind
       ? Result.fail(invalid(input, kind === 'dir' ? 'a directory path' : 'a file path'))
-      : analysis.isPathAbsolute !== options.absolute
-        ? Result.fail(invalid(input, options.absolute ? 'an absolute path' : 'a relative path'))
+      : analysis.isPathAbsolute !== (anchoring === 'absolute')
+        ? Result.fail(
+            invalid(input, anchoring === 'absolute' ? 'an absolute path' : 'a relative path'),
+          )
         : Result.succeed(analysis as Extract<Analysis, { _tag: K }>)
   }
 
@@ -188,7 +190,7 @@ const notABareFilename = new SchemaIssue.InvalidValue(Option.none(), {
 
 /** A bare filename (a relative, segment-less file) parsed into stem + extension. */
 export const analyzeFileName = flow(
-  analyzeFile({ absolute: false }),
+  analyzeFile('relative'),
   Result.flatMap((analysis) =>
     analysis.segments.length > 0
       ? Result.fail(notABareFilename)

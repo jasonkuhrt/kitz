@@ -31,7 +31,7 @@ export class AbsDir_ extends S.asClass(
       ),
       decode: SchemaGetter.transformOrFail(
         flow(
-          analyzeDir({ absolute: true }),
+          analyzeDir('absolute'),
           Result.map((analysis) => ({ _tag: 'AbsDir' as const, segments: analysis.segments })),
           Effect.fromResult,
         ),

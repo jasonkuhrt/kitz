@@ -33,7 +33,7 @@ export class RelDir_ extends S.asClass(
       ),
       decode: SchemaGetter.transformOrFail(
         flow(
-          analyzeDir({ absolute: false }),
+          analyzeDir('relative'),
           Result.map((analysis) => ({
             _tag: 'RelDir' as const,
             back: analysis.back,

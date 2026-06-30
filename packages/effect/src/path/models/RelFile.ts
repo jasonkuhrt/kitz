@@ -32,7 +32,7 @@ export class RelFile_ extends S.asClass(
       ),
       decode: SchemaGetter.transformOrFail(
         flow(
-          analyzeFile({ absolute: false }),
+          analyzeFile('relative'),
           Result.map((analysis) => ({
             _tag: 'RelFile' as const,
             back: analysis.back,

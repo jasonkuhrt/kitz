@@ -28,7 +28,7 @@ export class AbsFile_ extends S.asClass(
       ),
       decode: SchemaGetter.transformOrFail(
         flow(
-          analyzeFile({ absolute: true }),
+          analyzeFile('absolute'),
           Result.map((analysis) => ({
             _tag: 'AbsFile' as const,
             segments: analysis.segments,
