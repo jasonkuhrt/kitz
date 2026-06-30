@@ -1,12 +1,10 @@
 {
   "name": "@kitz/effect",
   "version": "0.1.0",
-  "description": "Filesystem operations, a typed path ADT, and string utilities for the Effect ecosystem",
+  "description": "A typed path ADT plus schema and string utilities for the Effect ecosystem",
   "keywords": [
     "effect",
     "effect-ts",
-    "filesystem",
-    "fs",
     "path",
     "schema",
     "string",
@@ -37,7 +35,6 @@
   },
   "exports": {
     ".": "./src/_.ts",
-    "./FileSystem": "./src/__.ts",
     "./Path": "./src/path/_.ts",
     "./Schema": "./src/schema/_.ts",
     "./String": "./src/string/_.ts"
@@ -50,10 +47,6 @@
       ".": {
         "types": "./build/_.d.ts",
         "default": "./build/_.js"
-      },
-      "./FileSystem": {
-        "types": "./build/__.d.ts",
-        "default": "./build/__.js"
       },
       "./Path": {
         "types": "./build/path/_.d.ts",

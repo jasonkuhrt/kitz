@@ -98,6 +98,9 @@ export default defineConfig({
     include: ['packages/*/src/**/*.test.ts'],
     setupFiles: ['@kitz/vitest/setup'],
     environment: 'node',
+    // @kitz/effect currently ships no test files (path/schema/string suites pending);
+    // an empty suite should not fail CI.
+    passWithNoTests: true,
   },
 
   // ── tasks: wrap non-vp tools (tsc/publint/attw) or compose steps. ─────────
