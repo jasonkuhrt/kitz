@@ -23,7 +23,7 @@ class AbsDir__ extends S.TaggedClass<AbsDir__>()('AbsDir', {
  * const dir = S.decodeSync(AbsDir)('/home/user/')
  * ```
  */
-class AbsDir_ extends S.asClass(
+export class AbsDir_ extends S.asClass(
   S.String.pipe(
     S.decodeTo(AbsDir__, {
       encode: SchemaGetter.transform((encoded) =>

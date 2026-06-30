@@ -8,7 +8,7 @@ class FileName__ extends S.TaggedClass<FileName__>()('FileName', {
   extension: S.OptionFromNullOr(Extension.Extension),
 }) {}
 
-class FileName_ extends S.asClass(
+export class FileName_ extends S.asClass(
   S.String.pipe(
     S.decodeTo(FileName__, {
       encode: SchemaGetter.transform((encoded) =>

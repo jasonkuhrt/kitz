@@ -4,11 +4,14 @@ export * from './models/Dir.js'
 export * from './models/File.js'
 export * from './models/Rel.js'
 
-// Individual member schemas with string codec baked in
-export * from './models/AbsDir.js'
-export * from './models/AbsFile.js'
-export * from './models/RelDir.js'
-export * from './models/RelFile.js'
+// Individual member schemas with string codec baked in.
+// Explicit re-exports keep the internal `_`-suffixed schema classes (exported from
+// each model file only so declaration emit can name them by reference) out of the
+// public surface.
+export { AbsDir } from './models/AbsDir.js'
+export { AbsFile } from './models/AbsFile.js'
+export { RelDir } from './models/RelDir.js'
+export { RelFile } from './models/RelFile.js'
 
 // Top-level union schema of all path variants (surfaces as `Path.Schema`)
 export { Path as Schema } from './models/Path.js'

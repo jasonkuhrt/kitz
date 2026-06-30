@@ -22,7 +22,7 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
  * const file = S.decodeSync(RelFile)('./src/index.ts')
  * ```
  */
-class RelFile_ extends S.asClass(
+export class RelFile_ extends S.asClass(
   S.String.pipe(
     S.decodeTo(RelFile__, {
       encode: SchemaGetter.transform((encoded) =>

@@ -25,7 +25,7 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
  * const dir = S.decodeSync(RelDir)('./src/')
  * ```
  */
-class RelDir_ extends S.asClass(
+export class RelDir_ extends S.asClass(
   S.String.pipe(
     S.decodeTo(RelDir__, {
       encode: SchemaGetter.transform((encoded) =>

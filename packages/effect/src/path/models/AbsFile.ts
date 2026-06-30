@@ -20,7 +20,7 @@ class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
  * const file = S.decodeSync(AbsFile)('/home/user/file.txt')
  * ```
  */
-class AbsFile_ extends S.asClass(
+export class AbsFile_ extends S.asClass(
   S.String.pipe(
     S.decodeTo(AbsFile__, {
       encode: SchemaGetter.transform((encoded) =>
