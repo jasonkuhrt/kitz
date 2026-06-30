@@ -9,7 +9,6 @@ export class Segment extends S.asClass(
   S.String.pipe(
     S.check(
       S.makeFilter((s) => s.length > 0, { message: 'Path segment cannot be empty' }),
-      // oxlint-disable-next-line no-control-regex -- matching NUL is intentional: POSIX segments may not contain it.
       S.isPattern(/^[^/\u0000]+$/, { message: 'Path segment cannot contain / or null bytes' }),
       S.makeFilter((s) => s !== '.' && s !== '..', {
         message: '"." and ".." are traversal references, not segment names',
