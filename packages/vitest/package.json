@@ -1,0 +1,15 @@
+{
+  "name": "@kitz/vitest",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Internal: Effect-native test helpers layered over Vite+'s bundled vitest (GVS-safe).",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./setup": "./src/setup.ts"
+  },
+  "dependencies": {
+    "effect": "catalog:",
+    "vite-plus": "0.2.1"
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "name": "@kitz/effect",
+  "version": "0.1.0",
+  "description": "A typed path ADT plus schema and string utilities for the Effect ecosystem",
+  "keywords": [
+    "effect",
+    "effect-ts",
+    "path",
+    "schema",
+    "string",
+    "typescript"
+  ],
+  "homepage": "https://github.com/jasonkuhrt/kitz/tree/main/packages/effect#readme",
+  "bugs": {
+    "url": "https://github.com/jasonkuhrt/kitz/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "Jason Kuhrt",
+    "url": "https://kuhrt.me"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jasonkuhrt/kitz.git",
+    "directory": "packages/effect"
+  },
+  "files": [
+    "build",
+    "src"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "imports": {
+    "#string": "./src/string/_.ts"
+  },
+  "exports": {
+    ".": "./src/_.ts",
+    "./Path": "./src/path/_.ts",
+    "./Schema": "./src/schema/_.ts",
+    "./String": "./src/string/_.ts"
+  },
+  "publishConfig": {
+    "imports": {
+      "#string": "./build/string/_.js"
+    },
+    "exports": {
+      ".": {
+        "types": "./build/_.d.ts",
+        "default": "./build/_.js"
+      },
+      "./Path": {
+        "types": "./build/path/_.d.ts",
+        "default": "./build/path/_.js"
+      },
+      "./Schema": {
+        "types": "./build/schema/_.d.ts",
+        "default": "./build/schema/_.js"
+      },
+      "./String": {
+        "types": "./build/string/_.d.ts",
+        "default": "./build/string/_.js"
+      }
+    },
+    "access": "public"
+  },
+  "scripts": {
+    "prepack": "tsc -b --force tsconfig.production.json"
+  },
+  "dependencies": {
+    "@platformatic/vfs": "catalog:"
+  },
+  "devDependencies": {
+    "@kitz/vitest": "workspace:*",
+    "@vitest/coverage-v8": "4.1.9",
+    "effect": "catalog:"
+  },
+  "peerDependencies": {
+    "effect": "^4.0.0-beta.85"
+  }
+}

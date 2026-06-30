@@ -1,0 +1,25 @@
+packages:
+  - 'packages/*'
+  - 'generators/*'
+
+# pnpm 11 global virtual store — DISABLED.
+# GVS's symlinked `links/` store repeatedly breaks Vite+'s native/ESM resolution:
+# `vp run`/`vp check` cannot load vite.config.mts under GVS because vite-plus-core
+# can't resolve its rolldown native binding (`vite-plus/binding`) from the store
+# (verified: GVS on => `vp run` "Cannot find native binding"; GVS off => all tasks
+# pass). Since the toolchain drives everything through `vp run` tasks defined in
+# vite.config.mts, GVS must stay off. Revisit if vite-plus fixes binding
+# resolution under symlinked stores.
+enableGlobalVirtualStore: false
+
+catalog:
+  effect: 4.0.0-beta.85
+  '@effect/platform-node': 4.0.0-beta.85
+  fast-check: ^4.8.0
+  '@platformatic/vfs': ^0.4.0
+
+minimumReleaseAgeExclude:
+  - effect@4.0.0-beta.85
+
+allowBuilds:
+  msgpackr-extract: false
