@@ -1,4 +1,4 @@
-import { Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
+import { Effect, flow, Option, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeFileName } from '../analyzer.js'
 import * as Extension from './Extension.js'
 
@@ -27,7 +27,30 @@ export class FileName_ extends S.asClass(
       ),
     }),
   ),
-) {}
+) {
+  /**
+   * Construct a canonical `FileName`. The stem and extension are re-joined and
+   * re-split on the last dot — the same rule the string codec applies — so a
+   * non-canonical input like `{ stem: 'a.txt', extension: none }` normalizes to
+   * `{ stem: 'a', extension: '.txt' }`. This keeps a filename's representation
+   * unique, so structurally-equal values are always the same filename.
+   */
+  static override make(input: {
+    readonly stem: string
+    readonly extension: Option.Option<Extension.Extension>
+  }): FileName__ {
+    const full = `${input.stem}${Option.getOrElse(input.extension, () => '')}`
+    const dot = full.lastIndexOf('.')
+    return super.make(
+      dot > 0
+        ? {
+            stem: full.slice(0, dot),
+            extension: Option.some(full.slice(dot) as Extension.Extension),
+          }
+        : { stem: full, extension: Option.none() },
+    )
+  }
+}
 
 export const FileName = FileName_
 export type FileName = typeof FileName_.Type
