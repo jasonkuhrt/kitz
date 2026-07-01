@@ -2,7 +2,7 @@ import { Function as Fn, Match } from 'effect'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
 import { Dir } from '../models/Dir.js'
-import { Path } from '../models/Path.js'
+import { Any } from '../models/Any.js'
 import { Rel } from '../models/Rel.js'
 import { RelDir } from '../models/RelDir.js'
 import { RelFile } from '../models/RelFile.js'
@@ -44,7 +44,7 @@ export type Join<Base extends Dir, P extends Rel> = Base extends AbsDir
 export const join: {
   <Base extends Dir, P extends Rel>(dir: Base, rel: P): Join<Base, P>
   <P extends Rel>(rel: P): <Base extends Dir>(dir: Base) => Join<Base, P>
-} = Fn.dual(2, (dir: Dir, rel: Rel): Path => {
+} = Fn.dual(2, (dir: Dir, rel: Rel): Any => {
   const baseSegments = [...dir.segments]
   let remainingBack = rel.back
   while (remainingBack > 0 && baseSegments.length > 0) {

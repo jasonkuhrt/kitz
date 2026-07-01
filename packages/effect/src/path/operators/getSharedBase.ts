@@ -1,7 +1,7 @@
 import { Function as Fn, Option } from 'effect'
 import { AbsDir } from '../models/AbsDir.js'
 import type { Dir } from '../models/Dir.js'
-import type { Path } from '../models/Path.js'
+import type { Any } from '../models/Any.js'
 import { RelDir } from '../models/RelDir.js'
 import { isRel, type MatchingTypeGroup, type SharedBase } from './_group.js'
 import { commonSegmentPrefix } from './_segments.js'
@@ -12,9 +12,9 @@ import { commonSegmentPrefix } from './_segments.js'
  * `getSharedBase(b)` for piping.
  */
 export const getSharedBase: {
-  <A extends Path>(a: A, b: MatchingTypeGroup<A>): Option.Option<SharedBase<A>>
-  <A extends Path>(b: A): (a: MatchingTypeGroup<A>) => Option.Option<SharedBase<A>>
-} = Fn.dual(2, (a: Path, b: Path): Option.Option<Dir> => {
+  <A extends Any>(a: A, b: MatchingTypeGroup<A>): Option.Option<SharedBase<A>>
+  <A extends Any>(b: A): (a: MatchingTypeGroup<A>) => Option.Option<SharedBase<A>>
+} = Fn.dual(2, (a: Any, b: Any): Option.Option<Dir> => {
   const aBack = isRel(a) ? a.back : 0
   const bBack = isRel(b) ? b.back : 0
   if (aBack !== bBack) return Option.none()

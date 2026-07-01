@@ -1,6 +1,6 @@
 import { Function as Fn } from 'effect'
 import type { Dir } from '../models/Dir.js'
-import type { Path } from '../models/Path.js'
+import type { Any } from '../models/Any.js'
 import { isRel, type MatchingDirGroup, type MatchingTypeGroupForDir } from './_group.js'
 import { isSegmentsStartsWith } from './isSegmentsStartsWith.js'
 
@@ -10,9 +10,9 @@ import { isSegmentsStartsWith } from './isSegmentsStartsWith.js'
  * Dual: `isDescendantOf(child, parent)` or `isDescendantOf(parent)` for piping.
  */
 export const isDescendantOf: {
-  <A extends Path>(child: A, parent: MatchingDirGroup<A>): boolean
+  <A extends Any>(child: A, parent: MatchingDirGroup<A>): boolean
   <A extends Dir>(parent: A): (child: MatchingTypeGroupForDir<A>) => boolean
-} = Fn.dual(2, (child: Path, parent: Dir): boolean => {
+} = Fn.dual(2, (child: Any, parent: Dir): boolean => {
   if (isRel(child) !== isRel(parent)) return false
   const childBack = isRel(child) ? child.back : 0
   const parentBack = isRel(parent) ? parent.back : 0

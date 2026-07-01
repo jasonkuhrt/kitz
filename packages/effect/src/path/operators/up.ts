@@ -1,7 +1,7 @@
 import { Array, Match } from 'effect'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
-import { Path } from '../models/Path.js'
+import { Any } from '../models/Any.js'
 import { RelDir } from '../models/RelDir.js'
 import { RelFile } from '../models/RelFile.js'
 
@@ -19,8 +19,8 @@ import { RelFile } from '../models/RelFile.js'
  * up(RelDir './')               // RelDir ../
  * ```
  */
-export const up = <P extends Path>(path: P): P => {
-  const p: Path = path
+export const up = <P extends Any>(path: P): P => {
+  const p: Any = path
   return Match.value(p).pipe(
     Match.tagsExhaustive({
       AbsFile: (file) =>

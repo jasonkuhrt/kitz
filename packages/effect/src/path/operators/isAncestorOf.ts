@@ -1,6 +1,6 @@
 import { Function as Fn } from 'effect'
 import type { Dir } from '../models/Dir.js'
-import type { Path } from '../models/Path.js'
+import type { Any } from '../models/Any.js'
 import type { MatchingDirGroup, MatchingTypeGroupForDir } from './_group.js'
 import { isDescendantOf } from './isDescendantOf.js'
 
@@ -10,5 +10,5 @@ import { isDescendantOf } from './isDescendantOf.js'
  */
 export const isAncestorOf: {
   <A extends Dir>(parent: A, child: MatchingTypeGroupForDir<A>): boolean
-  <A extends Path>(child: A): (parent: MatchingDirGroup<A>) => boolean
-} = Fn.dual(2, (parent: Dir, child: Path): boolean => isDescendantOf(child, parent as any))
+  <A extends Any>(child: A): (parent: MatchingDirGroup<A>) => boolean
+} = Fn.dual(2, (parent: Dir, child: Any): boolean => isDescendantOf(child, parent as any))

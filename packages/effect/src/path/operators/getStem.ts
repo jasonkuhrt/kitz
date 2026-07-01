@@ -1,5 +1,5 @@
 import { Match, Option } from 'effect'
-import { Path } from '../models/Path.js'
+import { Any } from '../models/Any.js'
 
 /**
  * The stem — a file's name without its extension, or a directory's name. The
@@ -11,7 +11,7 @@ import { Path } from '../models/Path.js'
  * getStem(AbsDir '/a/src/')            // 'src'
  * ```
  */
-export const getStem = (path: Path): string =>
+export const getStem = (path: Any): string =>
   Match.value(path).pipe(
     Match.tagsExhaustive({
       AbsFile: (file) => file.fileName.stem,

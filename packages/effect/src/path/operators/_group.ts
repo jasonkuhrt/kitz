@@ -2,7 +2,7 @@ import { Schema as S } from 'effect'
 import type { Abs } from '../models/Abs.js'
 import type { AbsDir } from '../models/AbsDir.js'
 import type { Dir } from '../models/Dir.js'
-import type { Path } from '../models/Path.js'
+import type { Any } from '../models/Any.js'
 import { Rel } from '../models/Rel.js'
 import type { RelDir } from '../models/RelDir.js'
 
@@ -10,7 +10,7 @@ import type { RelDir } from '../models/RelDir.js'
 export const isRel = S.is(Rel)
 
 /** Constrain a second path to the same group (absolute vs relative) as the first. */
-export type MatchingTypeGroup<A extends Path> = {
+export type MatchingTypeGroup<A extends Any> = {
   AbsFile: Abs
   AbsDir: Abs
   RelFile: Rel
@@ -18,7 +18,7 @@ export type MatchingTypeGroup<A extends Path> = {
 }[A['_tag']]
 
 /** The directory type of a path's own group — the type of a shared base. */
-export type SharedBase<A extends Path> = {
+export type SharedBase<A extends Any> = {
   AbsFile: AbsDir
   AbsDir: AbsDir
   RelFile: RelDir
@@ -26,7 +26,7 @@ export type SharedBase<A extends Path> = {
 }[A['_tag']]
 
 /** Map any path to the directory type of its group (for ancestor / parent params). */
-export type MatchingDirGroup<A extends Path> = {
+export type MatchingDirGroup<A extends Any> = {
   AbsFile: AbsDir
   AbsDir: AbsDir
   RelFile: RelDir

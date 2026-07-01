@@ -13,8 +13,8 @@ export { AbsFile } from './models/AbsFile.js'
 export { RelDir } from './models/RelDir.js'
 export { RelFile } from './models/RelFile.js'
 
-// Top-level union schema of all path variants (surfaces as `Path.Schema`)
-export { Path as Schema } from './models/Path.js'
+// Top-level union schema of all path variants (surfaces as `Path.Any`)
+export { Any } from './models/Any.js'
 
 // Constants
 export * from './constants.js'

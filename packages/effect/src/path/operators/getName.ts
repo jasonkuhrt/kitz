@@ -1,6 +1,6 @@
 import { Match, Option } from 'effect'
 import type { FileName } from '../models/FileName.js'
-import { Path } from '../models/Path.js'
+import { Any } from '../models/Any.js'
 
 const fileNameToString = (fileName: FileName): string =>
   Option.match(fileName.extension, {
@@ -18,7 +18,7 @@ const fileNameToString = (fileName: FileName): string =>
  * getName(AbsDir '/a/src/')      // 'src'
  * ```
  */
-export const getName = (path: Path): string =>
+export const getName = (path: Any): string =>
   Match.value(path).pipe(
     Match.tagsExhaustive({
       AbsFile: (file) => fileNameToString(file.fileName),

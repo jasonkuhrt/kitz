@@ -1,6 +1,6 @@
 import { Schema as S } from 'effect'
 import { Abs } from '../models/Abs.js'
-import { Path } from '../models/Path.js'
+import { Any } from '../models/Any.js'
 import { Protocol } from '../models/Protocol.js'
 
 /** The `file://` scheme prefix, encoded from the {@link Protocol} codec. */
@@ -17,4 +17,4 @@ const fileScheme = S.encodeSync(Protocol)('file')
  * toFileUrl(AbsFile '/home/user/file.ts').href // 'file:///home/user/file.ts'
  * ```
  */
-export const toFileUrl = (path: Abs): URL => new URL(`${fileScheme}${S.encodeSync(Path)(path)}`)
+export const toFileUrl = (path: Abs): URL => new URL(`${fileScheme}${S.encodeSync(Any)(path)}`)

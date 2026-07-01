@@ -1,13 +1,13 @@
 import { Function as Fn, Schema as S } from 'effect'
 import { Abs } from '../models/Abs.js'
 import { AbsDir } from '../models/AbsDir.js'
-import { Path } from '../models/Path.js'
+import { Any } from '../models/Any.js'
 import { Rel } from '../models/Rel.js'
 import { join } from './join.js'
 import type { toAbs } from './toAbs.js'
 
 /** Type-level {@link ensureAbsolute}: absolute paths pass through; relative become absolute. */
-export type ensureAbsolute<P extends Path> = P extends Abs ? P : P extends Rel ? toAbs<P> : never
+export type ensureAbsolute<P extends Any> = P extends Abs ? P : P extends Rel ? toAbs<P> : never
 
 /**
  * Ensure a path is absolute, resolving a relative path against `base`. Absolute
@@ -23,9 +23,6 @@ export type ensureAbsolute<P extends Path> = P extends Abs ? P : P extends Rel ?
  * ```
  */
 export const ensureAbsolute: {
-  <P extends Path>(path: P, base: AbsDir): ensureAbsolute<P>
-  (base: AbsDir): <P extends Path>(path: P) => ensureAbsolute<P>
-} = Fn.dual(
-  2,
-  (path: Path, base: AbsDir): Path => (S.is(Abs)(path) ? path : join(base, path as Rel)),
-)
+  <P extends Any>(path: P, base: AbsDir): ensureAbsolute<P>
+  (base: AbsDir): <P extends Any>(path: P) => ensureAbsolute<P>
+} = Fn.dual(2, (path: Any, base: AbsDir): Any => (S.is(Abs)(path) ? path : join(base, path as Rel)))
