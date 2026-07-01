@@ -1,6 +1,7 @@
 import { Array, Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
 import { NaturalInt } from '../../schema/NaturalInt.js'
 import { analyzeDirRel, format } from '../analyzer.js'
+import { withStatics } from '../core/statics.js'
 import { Segment } from './segment.js'
 
 /**
@@ -25,32 +26,28 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
  * const dir = S.decodeSync(RelDir)('./src/')
  * ```
  */
-export class RelDir_ extends S.asClass(
-  S.String.pipe(
-    S.decodeTo(RelDir__, {
-      encode: SchemaGetter.transform((encoded) =>
-        format({ isPathAbsolute: false, back: encoded.back })(encoded.segments),
-      ),
-      decode: SchemaGetter.transformOrFail(
-        flow(
-          analyzeDirRel,
-          Result.map((analysis) => ({
-            _tag: 'RelDir' as const,
-            back: analysis.back,
-            segments: analysis.segments,
-          })),
-          Effect.fromResult,
+export class RelDir_ extends withStatics(
+  S.asClass(
+    S.String.pipe(
+      S.decodeTo(RelDir__, {
+        encode: SchemaGetter.transform((encoded) =>
+          format({ isPathAbsolute: false, back: encoded.back })(encoded.segments),
         ),
-      ),
-    }),
+        decode: SchemaGetter.transformOrFail(
+          flow(
+            analyzeDirRel,
+            Result.map((analysis) => ({
+              _tag: 'RelDir' as const,
+              back: analysis.back,
+              segments: analysis.segments,
+            })),
+            Effect.fromResult,
+          ),
+        ),
+      }),
+    ),
   ),
-) {
-  /** Type guard for `RelDir` values. */
-  static readonly is = S.is(RelDir_)
-
-  /** Structural equivalence for `RelDir` values. */
-  static readonly equivalence = S.toEquivalence(RelDir_)
-}
+) {}
 
 export const RelDir = RelDir_
 export type RelDir = typeof RelDir_.Type

@@ -1,6 +1,7 @@
 import { Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
 import { NaturalInt } from '../../schema/NaturalInt.js'
 import { analyzeFileRel, format } from '../analyzer.js'
+import { withStatics } from '../core/statics.js'
 import { FileName } from './FileName.js'
 import { Segment } from './segment.js'
 
@@ -22,35 +23,31 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
  * const file = S.decodeSync(RelFile)('./src/index.ts')
  * ```
  */
-export class RelFile_ extends S.asClass(
-  S.String.pipe(
-    S.decodeTo(RelFile__, {
-      encode: SchemaGetter.transform((encoded) =>
-        format({ isPathAbsolute: false, back: encoded.back, fileName: encoded.fileName })(
-          encoded.segments,
+export class RelFile_ extends withStatics(
+  S.asClass(
+    S.String.pipe(
+      S.decodeTo(RelFile__, {
+        encode: SchemaGetter.transform((encoded) =>
+          format({ isPathAbsolute: false, back: encoded.back, fileName: encoded.fileName })(
+            encoded.segments,
+          ),
         ),
-      ),
-      decode: SchemaGetter.transformOrFail(
-        flow(
-          analyzeFileRel,
-          Result.map((analysis) => ({
-            _tag: 'RelFile' as const,
-            back: analysis.back,
-            segments: analysis.segments,
-            fileName: analysis.fileName,
-          })),
-          Effect.fromResult,
+        decode: SchemaGetter.transformOrFail(
+          flow(
+            analyzeFileRel,
+            Result.map((analysis) => ({
+              _tag: 'RelFile' as const,
+              back: analysis.back,
+              segments: analysis.segments,
+              fileName: analysis.fileName,
+            })),
+            Effect.fromResult,
+          ),
         ),
-      ),
-    }),
+      }),
+    ),
   ),
-) {
-  /** Type guard for `RelFile` values. */
-  static readonly is = S.is(RelFile_)
-
-  /** Structural equivalence for `RelFile` values. */
-  static readonly equivalence = S.toEquivalence(RelFile_)
-}
+) {}
 
 export const RelFile = RelFile_
 export type RelFile = typeof RelFile_.Type

@@ -1,5 +1,6 @@
 import { Array, Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeDirAbs, format } from '../analyzer.js'
+import { withStatics } from '../core/statics.js'
 import { Segment } from './segment.js'
 
 /**
@@ -23,28 +24,24 @@ class AbsDir__ extends S.TaggedClass<AbsDir__>()('AbsDir', {
  * const dir = S.decodeSync(AbsDir)('/home/user/')
  * ```
  */
-export class AbsDir_ extends S.asClass(
-  S.String.pipe(
-    S.decodeTo(AbsDir__, {
-      encode: SchemaGetter.transform((encoded) =>
-        format({ isPathAbsolute: true, back: 0 })(encoded.segments),
-      ),
-      decode: SchemaGetter.transformOrFail(
-        flow(
-          analyzeDirAbs,
-          Result.map((analysis) => ({ _tag: 'AbsDir' as const, segments: analysis.segments })),
-          Effect.fromResult,
+export class AbsDir_ extends withStatics(
+  S.asClass(
+    S.String.pipe(
+      S.decodeTo(AbsDir__, {
+        encode: SchemaGetter.transform((encoded) =>
+          format({ isPathAbsolute: true, back: 0 })(encoded.segments),
         ),
-      ),
-    }),
+        decode: SchemaGetter.transformOrFail(
+          flow(
+            analyzeDirAbs,
+            Result.map((analysis) => ({ _tag: 'AbsDir' as const, segments: analysis.segments })),
+            Effect.fromResult,
+          ),
+        ),
+      }),
+    ),
   ),
-) {
-  /** Type guard for `AbsDir` values. */
-  static readonly is = S.is(AbsDir_)
-
-  /** Structural equivalence for `AbsDir` values. */
-  static readonly equivalence = S.toEquivalence(AbsDir_)
-}
+) {}
 
 export const AbsDir = AbsDir_
 export type AbsDir = typeof AbsDir_.Type

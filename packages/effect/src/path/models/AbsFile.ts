@@ -1,5 +1,6 @@
 import { Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeFileAbs, format } from '../analyzer.js'
+import { withStatics } from '../core/statics.js'
 import { FileName } from './FileName.js'
 import { Segment } from './segment.js'
 
@@ -20,32 +21,28 @@ class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
  * const file = S.decodeSync(AbsFile)('/home/user/file.txt')
  * ```
  */
-export class AbsFile_ extends S.asClass(
-  S.String.pipe(
-    S.decodeTo(AbsFile__, {
-      encode: SchemaGetter.transform((encoded) =>
-        format({ isPathAbsolute: true, back: 0, fileName: encoded.fileName })(encoded.segments),
-      ),
-      decode: SchemaGetter.transformOrFail(
-        flow(
-          analyzeFileAbs,
-          Result.map((analysis) => ({
-            _tag: 'AbsFile' as const,
-            segments: analysis.segments,
-            fileName: analysis.fileName,
-          })),
-          Effect.fromResult,
+export class AbsFile_ extends withStatics(
+  S.asClass(
+    S.String.pipe(
+      S.decodeTo(AbsFile__, {
+        encode: SchemaGetter.transform((encoded) =>
+          format({ isPathAbsolute: true, back: 0, fileName: encoded.fileName })(encoded.segments),
         ),
-      ),
-    }),
+        decode: SchemaGetter.transformOrFail(
+          flow(
+            analyzeFileAbs,
+            Result.map((analysis) => ({
+              _tag: 'AbsFile' as const,
+              segments: analysis.segments,
+              fileName: analysis.fileName,
+            })),
+            Effect.fromResult,
+          ),
+        ),
+      }),
+    ),
   ),
-) {
-  /** Type guard for `AbsFile` values. */
-  static readonly is = S.is(AbsFile_)
-
-  /** Structural equivalence for `AbsFile` values. */
-  static readonly equivalence = S.toEquivalence(AbsFile_)
-}
+) {}
 
 export const AbsFile = AbsFile_
 export type AbsFile = typeof AbsFile_.Type
