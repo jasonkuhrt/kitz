@@ -1,4 +1,4 @@
-import { Match } from 'effect'
+import { Match, Option } from 'effect'
 import { Path } from '../models/Path.js'
 
 /**
@@ -16,7 +16,7 @@ export const getStem = (path: Path): string =>
     Match.tagsExhaustive({
       AbsFile: (file) => file.fileName.stem,
       RelFile: (file) => file.fileName.stem,
-      AbsDir: (dir) => dir.name,
-      RelDir: (dir) => dir.name,
+      AbsDir: (dir) => Option.getOrElse(dir.name, () => ''),
+      RelDir: (dir) => Option.getOrElse(dir.name, () => ''),
     }),
   )

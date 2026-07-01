@@ -23,7 +23,7 @@ export const getName = (path: Path): string =>
     Match.tagsExhaustive({
       AbsFile: (file) => fileNameToString(file.fileName),
       RelFile: (file) => fileNameToString(file.fileName),
-      AbsDir: (dir) => dir.name,
-      RelDir: (dir) => dir.name,
+      AbsDir: (dir) => Option.getOrElse(dir.name, () => ''),
+      RelDir: (dir) => Option.getOrElse(dir.name, () => ''),
     }),
   )

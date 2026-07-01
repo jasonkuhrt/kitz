@@ -5,6 +5,7 @@ import { Dir } from '../models/Dir.js'
 import { Path } from '../models/Path.js'
 import { Rel } from '../models/Rel.js'
 import { RelDir } from '../models/RelDir.js'
+import { commonSegmentPrefix } from './_segments.js'
 
 const segmentsEquivalence = Array.makeEquivalence(Equivalence.String)
 const isRel = S.is(Rel)
@@ -99,16 +100,18 @@ export const isSameSegments: {
 })
 
 /**
- * The segments of `child` beneath `parent`, or `null` when `child` is not a
+ * The segments of `child` beneath `parent`, or `None` when `child` is not a
  * descendant. Dual: `getRelativeSegments(child, parent)` or
  * `getRelativeSegments(parent)` for piping.
  */
 export const getRelativeSegments: {
-  <A extends Path>(child: A, parent: MatchingDirGroup<A>): readonly string[] | null
-  <A extends Dir>(parent: A): (child: MatchingTypeGroupForDir<A>) => readonly string[] | null
-} = Fn.dual(2, (child: Path, parent: Dir): readonly string[] | null => {
-  if (!isDescendantOf(child, parent as any)) return null
-  return child.segments.slice(parent.segments.length)
+  <A extends Path>(child: A, parent: MatchingDirGroup<A>): Option.Option<readonly string[]>
+  <A extends Dir>(
+    parent: A,
+  ): (child: MatchingTypeGroupForDir<A>) => Option.Option<readonly string[]>
+} = Fn.dual(2, (child: Path, parent: Dir): Option.Option<readonly string[]> => {
+  if (!isDescendantOf(child, parent as any)) return Option.none()
+  return Option.some(Array.drop(child.segments, parent.segments.length))
 })
 
 /**
@@ -124,12 +127,7 @@ export const getSharedBase: {
   const bBack = isRel(b) ? b.back : 0
   if (aBack !== bBack) return Option.none()
 
-  const minLength = Math.min(a.segments.length, b.segments.length)
-  const common: string[] = []
-  for (let i = 0; i < minLength; i++) {
-    if (a.segments[i] === b.segments[i]) common.push(a.segments[i]!)
-    else break
-  }
+  const common = commonSegmentPrefix(a.segments, b.segments)
   if (common.length === 0) return Option.none()
 
   return isRel(a)

@@ -1,6 +1,6 @@
 import { Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
 import { NaturalInt } from '../../schema/NaturalInt.js'
-import { analyzeFile, format } from '../analyzer.js'
+import { analyzeFileRel, format } from '../analyzer.js'
 import { FileName } from './FileName.js'
 import { Segment } from './segment.js'
 
@@ -32,7 +32,7 @@ export class RelFile_ extends S.asClass(
       ),
       decode: SchemaGetter.transformOrFail(
         flow(
-          analyzeFile('relative'),
+          analyzeFileRel,
           Result.map((analysis) => ({
             _tag: 'RelFile' as const,
             back: analysis.back,

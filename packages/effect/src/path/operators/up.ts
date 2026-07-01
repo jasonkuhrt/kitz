@@ -1,4 +1,4 @@
-import { Match } from 'effect'
+import { Array, Match } from 'effect'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
 import { Path } from '../models/Path.js'
@@ -24,19 +24,19 @@ export const up = <P extends Path>(path: P): P => {
   return Match.value(p).pipe(
     Match.tagsExhaustive({
       AbsFile: (file) =>
-        AbsFile.make({ segments: file.segments.slice(0, -1), fileName: file.fileName }),
-      AbsDir: (dir) => AbsDir.make({ segments: dir.segments.slice(0, -1) }),
+        AbsFile.make({ segments: Array.dropRight(file.segments, 1), fileName: file.fileName }),
+      AbsDir: (dir) => AbsDir.make({ segments: Array.dropRight(dir.segments, 1) }),
       RelFile: (file) =>
         file.segments.length > 0
           ? RelFile.make({
               back: file.back,
-              segments: file.segments.slice(0, -1),
+              segments: Array.dropRight(file.segments, 1),
               fileName: file.fileName,
             })
           : RelFile.make({ back: file.back + 1, segments: [], fileName: file.fileName }),
       RelDir: (dir) =>
         dir.segments.length > 0
-          ? RelDir.make({ back: dir.back, segments: dir.segments.slice(0, -1) })
+          ? RelDir.make({ back: dir.back, segments: Array.dropRight(dir.segments, 1) })
           : RelDir.make({ back: dir.back + 1, segments: [] }),
     }),
   ) as P

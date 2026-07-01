@@ -1,6 +1,6 @@
-import { Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
+import { Array, Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
 import { NaturalInt } from '../../schema/NaturalInt.js'
-import { analyzeDir, format } from '../analyzer.js'
+import { analyzeDirRel, format } from '../analyzer.js'
 import { Segment } from './segment.js'
 
 /**
@@ -11,9 +11,9 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
   back: NaturalInt.pipe(S.withConstructorDefault(Effect.succeed(0))),
   segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
-  /** The directory name (last segment), or empty string for current/parent-only paths. */
+  /** The directory name (last segment), or `None` for current/parent-only paths. */
   get name() {
-    return Segment.basename(this.segments)
+    return Array.last(this.segments)
   }
 }
 
@@ -33,7 +33,7 @@ export class RelDir_ extends S.asClass(
       ),
       decode: SchemaGetter.transformOrFail(
         flow(
-          analyzeDir('relative'),
+          analyzeDirRel,
           Result.map((analysis) => ({
             _tag: 'RelDir' as const,
             back: analysis.back,

@@ -1,10 +1,11 @@
-import { Function as Fn } from 'effect'
+import { Array, Function as Fn } from 'effect'
 import { Abs } from '../models/Abs.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
 import { Rel } from '../models/Rel.js'
 import { RelDir } from '../models/RelDir.js'
 import { RelFile } from '../models/RelFile.js'
+import { commonSegmentPrefix } from './_segments.js'
 
 /** Type-level {@link toRel}: maps an absolute variant to its relative counterpart. */
 export type ToRel<A extends Abs> = A extends AbsFile ? RelFile : A extends AbsDir ? RelDir : Rel
@@ -25,17 +26,10 @@ export const toRel: {
   <A extends Abs>(abs: A, base: AbsDir): ToRel<A>
   (base: AbsDir): <A extends Abs>(abs: A) => ToRel<A>
 } = Fn.dual(2, (abs: Abs, base: AbsDir): Rel => {
-  let shared = 0
-  while (
-    shared < abs.segments.length &&
-    shared < base.segments.length &&
-    abs.segments[shared] === base.segments[shared]
-  ) {
-    shared++
-  }
+  const shared = commonSegmentPrefix(abs.segments, base.segments).length
   const back = base.segments.length - shared
-  const segments = abs.segments.slice(shared)
-  return 'fileName' in abs
+  const segments = Array.drop(abs.segments, shared)
+  return abs._tag === 'AbsFile'
     ? RelFile.make({ back, segments, fileName: abs.fileName })
     : RelDir.make({ back, segments })
 })

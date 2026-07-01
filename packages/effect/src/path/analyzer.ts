@@ -174,6 +174,18 @@ export const analyzeFile = analyzeAs('file')
 /** Require a directory of the given absoluteness. */
 export const analyzeDir = analyzeAs('dir')
 
+/** Require an absolute file path. */
+export const analyzeFileAbs = analyzeFile('absolute')
+
+/** Require a relative file path. */
+export const analyzeFileRel = analyzeFile('relative')
+
+/** Require an absolute directory path. */
+export const analyzeDirAbs = analyzeDir('absolute')
+
+/** Require a relative directory path. */
+export const analyzeDirRel = analyzeDir('relative')
+
 /** Split a filename into stem + extension (a leading dot is part of the stem). */
 const splitExtension = (fileName: string): { stem: string; extension: string | null } => {
   const dotIndex = fileName.lastIndexOf('.')
@@ -190,7 +202,7 @@ const notABareFilename = new SchemaIssue.InvalidValue(Option.none(), {
 
 /** A bare filename (a relative, segment-less file) parsed into stem + extension. */
 export const analyzeFileName = flow(
-  analyzeFile('relative'),
+  analyzeFileRel,
   Result.flatMap((analysis) =>
     analysis.segments.length > 0
       ? Result.fail(notABareFilename)

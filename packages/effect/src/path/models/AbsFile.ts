@@ -1,5 +1,5 @@
 import { Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
-import { analyzeFile, format } from '../analyzer.js'
+import { analyzeFileAbs, format } from '../analyzer.js'
 import { FileName } from './FileName.js'
 import { Segment } from './segment.js'
 
@@ -28,7 +28,7 @@ export class AbsFile_ extends S.asClass(
       ),
       decode: SchemaGetter.transformOrFail(
         flow(
-          analyzeFile('absolute'),
+          analyzeFileAbs,
           Result.map((analysis) => ({
             _tag: 'AbsFile' as const,
             segments: analysis.segments,

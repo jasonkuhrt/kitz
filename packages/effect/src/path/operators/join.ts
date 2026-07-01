@@ -52,16 +52,17 @@ export const join: {
     remainingBack--
   }
   const segments = [...baseSegments, ...rel.segments]
-  const fileName = 'fileName' in rel ? rel.fileName : null
 
   return Match.value(dir).pipe(
     Match.tagsExhaustive({
       AbsDir: () =>
-        fileName !== null ? AbsFile.make({ segments, fileName }) : AbsDir.make({ segments }),
+        rel._tag === 'RelFile'
+          ? AbsFile.make({ segments, fileName: rel.fileName })
+          : AbsDir.make({ segments }),
       RelDir: (relDir) => {
         const back = relDir.back + remainingBack
-        return fileName !== null
-          ? RelFile.make({ back, segments, fileName })
+        return rel._tag === 'RelFile'
+          ? RelFile.make({ back, segments, fileName: rel.fileName })
           : RelDir.make({ back, segments })
       },
     }),

@@ -15,9 +15,4 @@ export class Segment extends S.asClass(
       }),
     ),
   ),
-) {
-  /** The trailing segment name, or empty string when there are none (a path's basename). */
-  static basename(segments: readonly string[]): string {
-    return segments.at(-1) ?? ''
-  }
-}
+) {}

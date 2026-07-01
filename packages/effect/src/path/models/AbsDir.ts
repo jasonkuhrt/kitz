@@ -1,5 +1,5 @@
-import { Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
-import { analyzeDir, format } from '../analyzer.js'
+import { Array, Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
+import { analyzeDirAbs, format } from '../analyzer.js'
 import { Segment } from './segment.js'
 
 /**
@@ -9,9 +9,9 @@ import { Segment } from './segment.js'
 class AbsDir__ extends S.TaggedClass<AbsDir__>()('AbsDir', {
   segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
-  /** The directory name (last segment), or empty string for root. */
+  /** The directory name (last segment), or `None` for root. */
   get name() {
-    return Segment.basename(this.segments)
+    return Array.last(this.segments)
   }
 }
 
@@ -31,7 +31,7 @@ export class AbsDir_ extends S.asClass(
       ),
       decode: SchemaGetter.transformOrFail(
         flow(
-          analyzeDir('absolute'),
+          analyzeDirAbs,
           Result.map((analysis) => ({ _tag: 'AbsDir' as const, segments: analysis.segments })),
           Effect.fromResult,
         ),
