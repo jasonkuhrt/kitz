@@ -5,7 +5,7 @@ import { AbsFile } from '../models/AbsFile.js'
 import { Rel } from '../models/Rel.js'
 import { RelDir } from '../models/RelDir.js'
 import { RelFile } from '../models/RelFile.js'
-import { commonSegmentPrefix } from './_segments.js'
+import { commonSegmentPrefix } from '../core/segments.js'
 
 /** Type-level {@link toRel}: maps an absolute variant to its relative counterpart. */
 export type ToRel<A extends Abs> = A extends AbsFile ? RelFile : A extends AbsDir ? RelDir : Rel

@@ -3,8 +3,8 @@ import { AbsDir } from '../models/AbsDir.js'
 import type { Dir } from '../models/Dir.js'
 import type { Any } from '../models/Any.js'
 import { RelDir } from '../models/RelDir.js'
-import { isRel, type MatchingTypeGroup, type SharedBase } from './_group.js'
-import { commonSegmentPrefix } from './_segments.js'
+import { isRel, type MatchingTypeGroup, type SharedBase } from '../core/group.js'
+import { commonSegmentPrefix } from '../core/segments.js'
 
 /**
  * The longest shared base directory of two same-group paths, or `None` when they

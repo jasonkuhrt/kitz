@@ -1,6 +1,6 @@
 import { Array, Equivalence, Function as Fn } from 'effect'
 import type { Any } from '../models/Any.js'
-import { isRel, type MatchingTypeGroup } from './_group.js'
+import { isRel, type MatchingTypeGroup } from '../core/group.js'
 
 const segmentsEquivalence = Array.makeEquivalence(Equivalence.String)
 

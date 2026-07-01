@@ -1,7 +1,7 @@
 import { Array, Function as Fn, Option } from 'effect'
 import type { Dir } from '../models/Dir.js'
 import type { Any } from '../models/Any.js'
-import type { MatchingDirGroup, MatchingTypeGroupForDir } from './_group.js'
+import type { MatchingDirGroup, MatchingTypeGroupForDir } from '../core/group.js'
 import { isDescendantOf } from './isDescendantOf.js'
 
 /**

@@ -1,8 +1,8 @@
 import { Function as Fn } from 'effect'
 import type { Dir } from '../models/Dir.js'
 import type { Any } from '../models/Any.js'
-import { isRel, type MatchingDirGroup, type MatchingTypeGroupForDir } from './_group.js'
-import { isSegmentsStartsWith } from './isSegmentsStartsWith.js'
+import { isRel, type MatchingDirGroup, type MatchingTypeGroupForDir } from '../core/group.js'
+import { isSegmentsStartsWith } from '../core/segments.js'
 
 /**
  * Whether `child` lives under `parent`. Both must be the same group (absolute or
