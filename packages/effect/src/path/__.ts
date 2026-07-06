@@ -31,5 +31,12 @@ export * as Extension from './models/Extension.js'
 // Protocol — URL scheme enum + codec (`file` ⇄ `file://`)
 export * as Protocol from './models/Protocol.js'
 
-// Operators — value→value transforms and queries over the path ADT
-export * from './operators/__.js'
+// Flat path combinators
+export * from './operators/ensureAbs.js'
+export * from './operators/getRelativeSegments.js'
+export * from './operators/getSharedBase.js'
+export * from './operators/isAncestorOf.js'
+export * from './operators/isDescendantOf.js'
+export * from './operators/isSameSegments.js'
+export * from './operators/join.js'
+export * from './operators/relativeTo.js'

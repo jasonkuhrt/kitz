@@ -11,6 +11,15 @@ export const commonSegmentPrefix = (a: readonly string[], b: readonly string[]):
   return common
 }
 
+/** Move one level up in raw path data, growing `back` when there are no segments to drop. */
+export const parentOf = (
+  back: number,
+  segments: readonly string[],
+): { back: number; segments: readonly string[] } =>
+  segments.length > 0
+    ? { back, segments: Array.dropRight(segments, 1) }
+    : { back: back + 1, segments: [] }
+
 /** Structural equivalence for segment arrays. */
 export const segmentsEquivalence = Array.makeEquivalence(Equivalence.String)
 

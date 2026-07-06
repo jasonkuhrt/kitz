@@ -1,7 +1,9 @@
 import { Array, Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
 import { NaturalInt } from '../../schema/NaturalInt.js'
 import { analyzeDirRel, format } from '../analyzer.js'
+import { parentOf } from '../core/segments.js'
 import { withStatics } from '../core/statics.js'
+import { AbsDir } from './AbsDir.js'
 import { Segment } from './segment.js'
 
 /**
@@ -15,6 +17,17 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
   /** The directory name (last segment), or `None` for current/parent-only paths. */
   get name() {
     return Array.last(this.segments)
+  }
+
+  /** The parent directory — drops the last segment (grows `back` when segment-less). */
+  get parent(): RelDir {
+    const parent = parentOf(this.back, this.segments)
+    return RelDir_.make({ back: parent.back, segments: parent.segments })
+  }
+
+  /** The directory re-anchored at the filesystem root, dropping `back` traversal (`./src/` → `/src/`). To resolve against a base directory instead, use the flat `ensureAbs`. */
+  get atRoot(): AbsDir {
+    return AbsDir.make({ segments: this.segments })
   }
 }
 

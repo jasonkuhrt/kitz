@@ -1,9 +1,9 @@
 import { Function as Fn, Match } from 'effect'
+import type { Any } from '../models/Any.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
-import { Dir } from '../models/Dir.js'
-import { Any } from '../models/Any.js'
-import { Rel } from '../models/Rel.js'
+import type { Dir } from '../models/Dir.js'
+import type { Rel } from '../models/Rel.js'
 import { RelDir } from '../models/RelDir.js'
 import { RelFile } from '../models/RelFile.js'
 
@@ -26,14 +26,10 @@ export type Join<Base extends Dir, P extends Rel> = Base extends AbsDir
     : never
 
 /**
- * Join a relative path onto a base directory.
- *
- * Leading parent-traversal (`..`) steps in `rel` consume trailing segments of
- * `dir`; any that remain are dropped for an absolute base (can't escape root) or
- * folded into the result's `back` for a relative base. The result keeps `dir`'s
- * absoluteness and `rel`'s file/dir nature.
- *
- * Dual: data-first `join(dir, rel)` or data-last `join(rel)` for piping dirs.
+ * Join a relative path onto a base directory. Leading `..` steps in `rel`
+ * consume trailing segments of `dir`; leftovers drop at an absolute root or fold
+ * into the result's `back`. Keeps `dir`'s absoluteness and `rel`'s file/dir
+ * nature. Dual: `join(dir, rel)` or `join(rel)` for piping dirs.
  *
  * @example
  * ```ts

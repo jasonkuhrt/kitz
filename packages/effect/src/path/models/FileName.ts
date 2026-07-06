@@ -6,13 +6,21 @@ import * as Extension from './Extension.js'
 class FileName__ extends S.TaggedClass<FileName__>()('FileName', {
   stem: S.String,
   extension: S.OptionFromNullOr(Extension.Extension),
-}) {}
+}) {
+  /** The rendered `stem(.ext)?` string form. */
+  get name(): string {
+    return Option.match(this.extension, {
+      onNone: () => this.stem,
+      onSome: (extension) => `${this.stem}${extension}`,
+    })
+  }
+}
 
 export class FileName_ extends S.asClass(
   S.String.pipe(
     S.decodeTo(FileName__, {
       encode: SchemaGetter.transform((encoded) =>
-        encoded.extension ? `${encoded.stem}${encoded.extension}` : encoded.stem,
+        encoded.extension === null ? encoded.stem : `${encoded.stem}${encoded.extension}`,
       ),
       decode: SchemaGetter.transformOrFail(
         flow(

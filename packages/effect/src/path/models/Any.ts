@@ -9,14 +9,11 @@ import { RelFile } from './RelFile.js'
  * `Any` — the union schema of all path variants (`AbsFile | AbsDir | RelFile |
  * RelDir`): any possible path, file or directory, absolute or relative.
  *
- * Decodes a string to the appropriate variant instance and encodes back to the
- * string form.
+ * Decodes a string to the appropriate variant instance and encodes back.
  *
  * @example
  * ```ts
  * const p1 = S.decodeSync(Any)('/home/user/file.txt')  // AbsFile
- * const p2 = S.decodeSync(Any)('/home/user/')          // AbsDir
- * const p3 = S.decodeSync(Any)('./src/index.ts')       // RelFile
  * const p4 = S.decodeSync(Any)('./src/')               // RelDir
  * ```
  */
