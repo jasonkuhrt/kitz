@@ -33,6 +33,16 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
     return this.fileName.extension
   }
 
+  /** Whether this file is directly at the relative anchor (`./file`). */
+  get isRoot(): boolean {
+    return this.ascent === 0 && this.segments.length === 0
+  }
+
+  /** Directory depth, counted by named segments before the filename; ascent and filename are excluded. */
+  get depth(): number {
+    return this.segments.length
+  }
+
   /** The file's containing directory (drops the filename). */
   get dir(): RelDir {
     return RelDir.make({ ascent: this.ascent, segments: this.segments })

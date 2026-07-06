@@ -19,6 +19,16 @@ class AbsDir__ extends S.TaggedClass<AbsDir__>()('AbsDir', {
     return Array.last(this.segments)
   }
 
+  /** Whether this directory is the filesystem root (`/`). */
+  get isRoot(): boolean {
+    return this.segments.length === 0
+  }
+
+  /** Directory depth, counted by segments from the filesystem root. */
+  get depth(): number {
+    return this.segments.length
+  }
+
   /** Reinterpret this directory path as a file by using the last segment as the filename, or `None` for root. */
   get asFile(): Option.Option<AbsFile> {
     return Option.map(this.name, (fileName) =>

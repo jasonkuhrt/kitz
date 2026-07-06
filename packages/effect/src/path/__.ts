@@ -19,9 +19,6 @@ export { Any } from './models/Any.js'
 // Constants
 export * from './constants.js'
 
-// States
-export * as States from './states.js'
-
 // Analyzer — public parse/validate/format of path strings (surfaces as `Path.Analyzer`)
 export * as Analyzer from './analyzer.js'
 

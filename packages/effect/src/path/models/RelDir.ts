@@ -21,6 +21,16 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
     return Array.last(this.segments)
   }
 
+  /** Whether this directory is the relative anchor (`./`). */
+  get isRoot(): boolean {
+    return this.ascent === 0 && this.segments.length === 0
+  }
+
+  /** Directory depth, counted by named segments from the relative anchor; ascent is excluded. */
+  get depth(): number {
+    return this.segments.length
+  }
+
   /** Reinterpret this directory path as a file by using the last segment as the filename, or `None` for segment-less dirs. */
   get asFile(): Option.Option<RelFile> {
     return Option.map(this.name, (fileName) =>

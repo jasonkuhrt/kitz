@@ -31,6 +31,16 @@ class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
     return this.fileName.extension
   }
 
+  /** Whether this file is directly at the filesystem root. */
+  get isRoot(): boolean {
+    return this.segments.length === 0
+  }
+
+  /** Directory depth, counted by segments before the filename; the filename itself is excluded. */
+  get depth(): number {
+    return this.segments.length
+  }
+
   /** The file's containing directory (drops the filename). */
   get dir(): AbsDir {
     return AbsDir.make({ segments: this.segments })
