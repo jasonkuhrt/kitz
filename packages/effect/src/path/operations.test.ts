@@ -3,21 +3,22 @@ import { Equal, Option, Result, Schema as S } from 'effect'
 import * as PrimaryKey from 'effect/PrimaryKey'
 import { FastCheck } from 'effect/testing'
 import * as Path from './__.js'
+import * as PathTesting from './testing.js'
 import './test-matchers.setup.js'
 
-const abs = FastCheck.oneof(Path.Testing.AbsDir, Path.Testing.AbsFile)
-const dir = FastCheck.oneof(Path.Testing.AbsDir, Path.Testing.RelDir)
-const rel = FastCheck.oneof(Path.Testing.RelDir, Path.Testing.RelFile)
-const relDirAscent0 = FastCheck.array(Path.Testing.Segment, { maxLength: 6 }).map((segments) =>
+const abs = FastCheck.oneof(PathTesting.AbsDir, PathTesting.AbsFile)
+const dir = FastCheck.oneof(PathTesting.AbsDir, PathTesting.RelDir)
+const rel = FastCheck.oneof(PathTesting.RelDir, PathTesting.RelFile)
+const relDirAscent0 = FastCheck.array(PathTesting.Segment, { maxLength: 6 }).map((segments) =>
   Path.RelDir.make({ ascent: 0, segments }),
 )
 const relFileAscent0 = FastCheck.record({
-  segments: FastCheck.array(Path.Testing.Segment, { maxLength: 6 }),
-  fileName: Path.Testing.FileName,
+  segments: FastCheck.array(PathTesting.Segment, { maxLength: 6 }),
+  fileName: PathTesting.FileName,
 }).map((input) => Path.RelFile.make({ ascent: 0, ...input }))
 const relAscent0 = FastCheck.oneof(relDirAscent0, relFileAscent0)
 const nonEmptyRelAscent0 = FastCheck.oneof(
-  FastCheck.array(Path.Testing.Segment, { minLength: 1, maxLength: 6 }).map((segments) =>
+  FastCheck.array(PathTesting.Segment, { minLength: 1, maxLength: 6 }).map((segments) =>
     Path.RelDir.make({ ascent: 0, segments }),
   ),
   relFileAscent0,
@@ -73,7 +74,7 @@ const unionLiteralCases = [
 describe('Path operation laws', () => {
   it('join(base, relativeTo(abs, base)) returns the original absolute path', () => {
     FastCheck.assert(
-      FastCheck.property(abs, Path.Testing.AbsDir, (path, base) => {
+      FastCheck.property(abs, PathTesting.AbsDir, (path, base) => {
         expect(Path.join(base, Path.relativeTo(path, base))).toEqual(path)
       }),
     )
@@ -81,7 +82,7 @@ describe('Path operation laws', () => {
 
   it('relative relativeTo is Some exactly when target ascent is not shallower than base ascent', () => {
     FastCheck.assert(
-      FastCheck.property(rel, Path.Testing.RelDir, (target, base) => {
+      FastCheck.property(rel, PathTesting.RelDir, (target, base) => {
         const relative = Path.relativeTo(target, base)
         const isExpressible = target.ascent >= base.ascent
 
@@ -116,7 +117,7 @@ describe('Path operation laws', () => {
 
   it('isAncestorOf is the inverse of isDescendantOf', () => {
     FastCheck.assert(
-      FastCheck.property(dir, Path.Testing.Any, (base, child) => {
+      FastCheck.property(dir, PathTesting.Any, (base, child) => {
         const sameGroup =
           (Path.AbsDir.is(base) && Path.Abs.is(child)) ||
           (Path.RelDir.is(base) && Path.Rel.is(child))
@@ -131,7 +132,7 @@ describe('Path operation laws', () => {
 
   it('getSharedBase is symmetric and returns an ancestor of both paths', () => {
     FastCheck.assert(
-      FastCheck.property(Path.Testing.Any, Path.Testing.Any, (a, b) => {
+      FastCheck.property(PathTesting.Any, PathTesting.Any, (a, b) => {
         const ab = Path.getSharedBase(a as never, b as never)
         const ba = Path.getSharedBase(b as never, a as never)
 
@@ -162,7 +163,7 @@ describe('Path operation laws', () => {
 
   it('ensureAbs is idempotent and reference-preserving for absolute inputs', () => {
     FastCheck.assert(
-      FastCheck.property(Path.Testing.Any, Path.Testing.AbsDir, (path, base) => {
+      FastCheck.property(PathTesting.Any, PathTesting.AbsDir, (path, base) => {
         const ensured = Path.ensureAbs(path, base)
         expect(Path.ensureAbs(ensured, base)).toBe(ensured)
         expect(Path.Abs.is(path) ? ensured === path : true).toBe(true)
@@ -209,7 +210,7 @@ describe('Path operation laws', () => {
 
   it('file getters and transforms stay consistent', () => {
     FastCheck.assert(
-      FastCheck.property(FastCheck.oneof(Path.Testing.AbsFile, Path.Testing.RelFile), (file) => {
+      FastCheck.property(FastCheck.oneof(PathTesting.AbsFile, PathTesting.RelFile), (file) => {
         expect(file.name).toBe(`${file.stem}${Option.getOrElse(file.extension, () => '')}`)
         expect(file.dir.segments).toEqual(file.segments)
         expect(Path.RelFile.is(file) ? file.dir.ascent : 0).toBe(
@@ -232,7 +233,7 @@ describe('Path operation laws', () => {
 
   it('withExtension Option.none drops when the remaining stem is a filename', () => {
     FastCheck.assert(
-      FastCheck.property(FastCheck.oneof(Path.Testing.AbsFile, Path.Testing.RelFile), (file) => {
+      FastCheck.property(FastCheck.oneof(PathTesting.AbsFile, PathTesting.RelFile), (file) => {
         FastCheck.pre(canDecodeFileName(file.stem))
         expect(Path.withExtension(file, Option.none()).name).toBe(file.stem)
       }),
@@ -241,7 +242,7 @@ describe('Path operation laws', () => {
 
   it('asDir/asFile round trip and root directories do not reinterpret as files', () => {
     FastCheck.assert(
-      FastCheck.property(FastCheck.oneof(Path.Testing.AbsFile, Path.Testing.RelFile), (file) => {
+      FastCheck.property(FastCheck.oneof(PathTesting.AbsFile, PathTesting.RelFile), (file) => {
         expect(file.asDir.asFile).toEqual(Option.some(file))
       }),
     )
@@ -276,7 +277,7 @@ describe('Path operation laws', () => {
 
   it('Path.order is reflexive, antisymmetric, transitive, and agrees with Equal', () => {
     FastCheck.assert(
-      FastCheck.property(Path.Testing.Any, Path.Testing.Any, Path.Testing.Any, (a, b, c) => {
+      FastCheck.property(PathTesting.Any, PathTesting.Any, PathTesting.Any, (a, b, c) => {
         const ab = Path.order(a, b)
         const ba = Path.order(b, a)
         const bc = Path.order(b, c)
@@ -292,7 +293,7 @@ describe('Path operation laws', () => {
 
   it('fileUrl round trips through fromFileUrl', () => {
     FastCheck.assert(
-      FastCheck.property(FastCheck.oneof(Path.Testing.AbsDir, Path.Testing.AbsFile), (path) => {
+      FastCheck.property(FastCheck.oneof(PathTesting.AbsDir, PathTesting.AbsFile), (path) => {
         const decoded = Path.fromFileUrl(path.fileUrl)
         expect(decoded).toEqual(Result.succeed(path))
       }),
@@ -328,7 +329,7 @@ describe('Path operation laws', () => {
 
   it('tagged union match and guards agree with variant tags and S.is', () => {
     FastCheck.assert(
-      FastCheck.property(Path.Testing.Any, (path) => {
+      FastCheck.property(PathTesting.Any, (path) => {
         const tag = Path.Any.match(path, {
           AbsDir: () => 'AbsDir',
           AbsFile: () => 'AbsFile',
@@ -357,7 +358,7 @@ describe('Path operation laws', () => {
 
   it('string, JSON, and PrimaryKey traits use the canonical encoded string', () => {
     FastCheck.assert(
-      FastCheck.property(Path.Testing.Any, (path) => {
+      FastCheck.property(PathTesting.Any, (path) => {
         const encoded = encodeAny(path)
         expect(path).toEncodeTo(encoded)
         expect(path.toJSON()).toBe(encoded)

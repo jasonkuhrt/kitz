@@ -2,18 +2,19 @@ import { describe, expect, it } from 'vite-plus/test'
 import { Equal, Schema as S } from 'effect'
 import { FastCheck } from 'effect/testing'
 import * as Path from './__.js'
+import * as PathTesting from './testing.js'
 import './test-matchers.setup.js'
 
 const codecCases = [
-  ['AbsDir', Path.AbsDir, Path.Testing.AbsDir],
-  ['AbsFile', Path.AbsFile, Path.Testing.AbsFile],
-  ['RelDir', Path.RelDir, Path.Testing.RelDir],
-  ['RelFile', Path.RelFile, Path.Testing.RelFile],
-  ['Abs', Path.Abs, FastCheck.oneof(Path.Testing.AbsDir, Path.Testing.AbsFile)],
-  ['Rel', Path.Rel, FastCheck.oneof(Path.Testing.RelDir, Path.Testing.RelFile)],
-  ['Dir', Path.Dir, FastCheck.oneof(Path.Testing.AbsDir, Path.Testing.RelDir)],
-  ['File', Path.File, FastCheck.oneof(Path.Testing.AbsFile, Path.Testing.RelFile)],
-  ['Any', Path.Any, Path.Testing.Any],
+  ['AbsDir', Path.AbsDir, PathTesting.AbsDir],
+  ['AbsFile', Path.AbsFile, PathTesting.AbsFile],
+  ['RelDir', Path.RelDir, PathTesting.RelDir],
+  ['RelFile', Path.RelFile, PathTesting.RelFile],
+  ['Abs', Path.Abs, FastCheck.oneof(PathTesting.AbsDir, PathTesting.AbsFile)],
+  ['Rel', Path.Rel, FastCheck.oneof(PathTesting.RelDir, PathTesting.RelFile)],
+  ['Dir', Path.Dir, FastCheck.oneof(PathTesting.AbsDir, PathTesting.RelDir)],
+  ['File', Path.File, FastCheck.oneof(PathTesting.AbsFile, PathTesting.RelFile)],
+  ['Any', Path.Any, PathTesting.Any],
 ] as const
 
 const canonicalizationCases = [

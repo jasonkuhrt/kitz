@@ -65,6 +65,3 @@ export * from './operators/withStem.js'
 
 // Optics for composing path updates into larger structures.
 export * as Optic from './optic.js'
-
-// Test-data generators for path property tests.
-export * as Testing from './testing.js'

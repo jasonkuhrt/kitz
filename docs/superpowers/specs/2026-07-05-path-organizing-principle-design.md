@@ -140,3 +140,17 @@ by effect v4's structural `Equal.equals`. Its private backing
   instance-getter tier: getters give variant-precise return types for free
   and eliminate the type-level mapping helpers, which flat functions over
   unions cannot.
+
+## Post-design evolution (2026-07-06)
+
+The surface tables above are the design as approved on 2026-07-05. The
+pre-merge burndown then extended the surface under the same three-tier
+principle — additional leaf getters (`.isRoot`, `.depth`, `.ancestors`,
+`.asDir`/`.asFile`), instance trait methods (`toString`/`toJSON`/inspect/
+`PrimaryKey` — the documented methods-not-getters exception), more flat ops
+(`with*`, `addExtension`, `fromFileUrl`, `order`, variadic `join`,
+Option-returning rel×rel `relativeTo`), literal constructors (`fromLiteral`),
+and test arbitraries under the `@kitz/effect/Path/Testing` subpath (kept off
+the production barrel). `getRelativeSegments` was retired into the
+generalized `relativeTo`. The authoritative current inventory and rationale
+live in `docs/superpowers/reports/2026-07-06-path-pre-merge-analysis.md`.
