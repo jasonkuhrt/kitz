@@ -35,7 +35,8 @@ ancestor of this design), PureScript `pathy`, Node `path`/`pathe`.
 | Should | Tech-debt T1 | §6 | ✅ `ede431cc` |
 | Should | Tech-debt T7 | §6 | ✅ `8d1d086c` |
 | Could | Tech-debt T10 module docs | §6 | ✅ `bac6e80b` |
-| Should | `fromLiteral` with type-level string parsing (port from old trunk) | §3 | Run 2 |
+| Should | `fromLiteral` with runtime-matching type-level string parsing | §3.1 | ✅ `8a45a34a` |
+| Should | Per-target `fromLiteral` constructors with static errors | §3.2 | ✅ `3cef3dd8` |
 | Could | Full `Input<P> = P \| string` polymorphic arguments (old trunk's crown jewel) | §3.3 | Future |
 | Defer | Glob matching, non-POSIX/URL anchors | §7 | Deferred |
 
@@ -229,11 +230,10 @@ Three adoption tiers, independent:
 - One function: `fromLiteral<const S extends string>(s: S): normalize<S>` —
   decode with the concrete variant type inferred from the literal shape.
   `fromLiteral('/home/u/f.txt') : AbsFile`, `fromLiteral('./src/') : RelDir`.
-- Requires porting the type-level analyzer (`analyzer.types.ts` from
-  `1d9ac141:packages/fs/src/path-analyzer/codec-string/`) — self-contained
-  type machinery, no runtime cost, proven in the old repo. Known limitation
-  (documented then): extensionless dotfiles (`./.gitignore`) infer as dirs; the
-  per-type constructors (Tier 2) are the escape hatch.
+- Requires porting the type-level analyzer shape (`analyzer.types.ts` from
+  `1d9ac141:packages/fs/src/path-analyzer/codec-string/`) while replacing the
+  old extension heuristic with this branch's current union-decode behavior:
+  dotfiles such as `./.gitignore` infer as files, not dirs.
 - Non-literal `string` input degrades to the `Any` union — same function
   handles both.
 
@@ -255,6 +255,7 @@ Three adoption tiers, independent:
   signature complexity interacts with the `Fn.dual` overloads.
 - Recommendation: land Tiers 1–2 first; only extend to op arguments if literal
   call sites dominate in real consumers. The tiers compose — nothing is wasted.
+- Run 2 landed Tiers 1–2; Tier 3 remains future.
 
 ---
 
