@@ -7,18 +7,19 @@ import { RelFile } from './RelFile.js'
  * `File` — any file path (`AbsFile | RelFile`), as a `string` ⇄ value codec.
  * Carries tagged-union utilities keyed by `_tag`: `cases`, `guards`, `isAnyOf`, `match`.
  */
+const FileTaggedUnion = S.Union([AbsFile, RelFile]).pipe(S.toTaggedUnion('_tag'))
+
 class File_ extends withLiteralStatics(
   withStatics(
-    S.asClass(
-      S.Union([AbsFile, RelFile]).pipe(
-        S.overrideToFormatter(() => (path) => path.toString()),
-        S.toTaggedUnion('_tag'),
-      ),
-    ),
+    S.asClass(FileTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
   ),
 ) {
   static readonly AbsFile = AbsFile
   static readonly RelFile = RelFile
+  static readonly cases = FileTaggedUnion.cases
+  static readonly guards = FileTaggedUnion.guards
+  static readonly isAnyOf = FileTaggedUnion.isAnyOf
+  static readonly match = FileTaggedUnion.match
 }
 
 export const File = File_

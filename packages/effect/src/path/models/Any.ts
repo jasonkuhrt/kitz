@@ -19,18 +19,19 @@ import { RelFile } from './RelFile.js'
  * Any.match(p1, { AbsFile: f => f.name, AbsDir: d => '', RelFile: f => f.name, RelDir: d => '' })
  * ```
  */
+const AnyTaggedUnion = S.Union([AbsFile, AbsDir, RelFile, RelDir]).pipe(S.toTaggedUnion('_tag'))
+
 class Any_ extends withStatics(
-  S.asClass(
-    S.Union([AbsFile, AbsDir, RelFile, RelDir]).pipe(
-      S.overrideToFormatter(() => (path) => path.toString()),
-      S.toTaggedUnion('_tag'),
-    ),
-  ),
+  S.asClass(AnyTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
 ) {
   static readonly AbsFile = AbsFile
   static readonly AbsDir = AbsDir
   static readonly RelFile = RelFile
   static readonly RelDir = RelDir
+  static readonly cases = AnyTaggedUnion.cases
+  static readonly guards = AnyTaggedUnion.guards
+  static readonly isAnyOf = AnyTaggedUnion.isAnyOf
+  static readonly match = AnyTaggedUnion.match
 }
 
 export const Any = Any_
