@@ -1,4 +1,4 @@
-import { Array, Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
+import { Array, Effect, flow, type Option, Result, Schema as S, SchemaGetter } from 'effect'
 import { NaturalInt } from '../../schema/NaturalInt.js'
 import { analyzeDirRel, format } from '../analyzer.js'
 import { parentOf } from '../core/segments.js'
@@ -15,7 +15,7 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
   segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
   /** The directory name (last segment), or `None` for current/parent-only paths. */
-  get name() {
+  get name(): Option.Option<Segment> {
     return Array.last(this.segments)
   }
 

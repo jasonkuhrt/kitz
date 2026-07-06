@@ -1,4 +1,4 @@
-import { Array, Effect, flow, Result, Schema as S, SchemaGetter } from 'effect'
+import { Array, Effect, flow, type Option, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeDirAbs, format } from '../analyzer.js'
 import { fileUrlOf } from '../core/fileUrl.js'
 import { parentOf } from '../core/segments.js'
@@ -13,7 +13,7 @@ class AbsDir__ extends S.TaggedClass<AbsDir__>()('AbsDir', {
   segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
   /** The directory name (last segment), or `None` for root. */
-  get name() {
+  get name(): Option.Option<Segment> {
     return Array.last(this.segments)
   }
 

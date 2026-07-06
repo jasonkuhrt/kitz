@@ -2,12 +2,13 @@ import { Schema as S } from 'effect'
 import { format } from '../analyzer.js'
 import type { FileName } from '../models/FileName.js'
 import { Protocol } from '../models/Protocol.js'
+import type { Segment } from '../models/segment.js'
 
 const fileScheme = S.encodeSync(Protocol)('file')
 
 /** Build a `file://` URL from raw absolute-path data. Kitz paths are POSIX-only. */
 export const fileUrlOf = (parts: {
-  readonly segments: readonly string[]
+  readonly segments: readonly Segment[]
   readonly fileName?: FileName
 }): URL =>
   new URL(

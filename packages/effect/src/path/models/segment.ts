@@ -5,7 +5,7 @@ import { Schema as S } from 'effect'
  * and not a `.`/`..` traversal reference (those are resolved by the analyzer into
  * the path's `back` count, never stored as segments).
  */
-export class Segment extends S.asClass(
+export class Segment_ extends S.asClass(
   S.String.pipe(
     S.check(
       S.makeFilter((s) => s.length > 0, { message: 'Path segment cannot be empty' }),
@@ -16,3 +16,6 @@ export class Segment extends S.asClass(
     ),
   ),
 ) {}
+
+export const Segment = Segment_
+export type Segment = typeof Segment_.Type

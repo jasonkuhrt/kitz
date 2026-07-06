@@ -1,11 +1,12 @@
 import { Array, Equivalence, Function as Fn } from 'effect'
+import type { Segment } from '../models/segment.js'
 
 /**
  * The leading segments common to both arrays — their longest shared prefix.
  * Backs the shared-base and relative-walk computations.
  */
-export const commonSegmentPrefix = (a: readonly string[], b: readonly string[]): string[] => {
-  const common: string[] = []
+export const commonSegmentPrefix = (a: readonly Segment[], b: readonly Segment[]): Segment[] => {
+  const common: Segment[] = []
   const max = Math.min(a.length, b.length)
   for (let i = 0; i < max && a[i] === b[i]; i++) common.push(a[i]!)
   return common
@@ -14,8 +15,8 @@ export const commonSegmentPrefix = (a: readonly string[], b: readonly string[]):
 /** Move one level up in raw path data, growing `back` when there are no segments to drop. */
 export const parentOf = (
   back: number,
-  segments: readonly string[],
-): { back: number; segments: readonly string[] } =>
+  segments: readonly Segment[],
+): { back: number; segments: readonly Segment[] } =>
   segments.length > 0
     ? { back, segments: Array.dropRight(segments, 1) }
     : { back: back + 1, segments: [] }
@@ -28,9 +29,9 @@ export const segmentsEquivalence = Array.makeEquivalence(Equivalence.String)
  * prefix)` or `isSegmentsStartsWith(prefix)` for piping.
  */
 export const isSegmentsStartsWith: {
-  (segments: readonly string[], prefix: readonly string[]): boolean
-  (prefix: readonly string[]): (segments: readonly string[]) => boolean
-} = Fn.dual(2, (segments: readonly string[], prefix: readonly string[]): boolean => {
+  (segments: readonly Segment[], prefix: readonly Segment[]): boolean
+  (prefix: readonly Segment[]): (segments: readonly Segment[]) => boolean
+} = Fn.dual(2, (segments: readonly Segment[], prefix: readonly Segment[]): boolean => {
   if (prefix.length > segments.length) return false
   for (let i = 0; i < prefix.length; i++) {
     if (segments[i] !== prefix[i]) return false
