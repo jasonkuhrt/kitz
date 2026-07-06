@@ -28,10 +28,15 @@ export * as Analyzer from './analyzer.js'
 // Extension types and constants
 export * as Extension from './models/Extension.js'
 
+// Filename and segment value codecs
+export { FileName } from './models/FileName.js'
+export { Segment } from './models/segment.js'
+
 // Protocol — URL scheme enum + codec (`file` ⇄ `file://`)
 export * as Protocol from './models/Protocol.js'
 
 // Flat path combinators
+export * from './operators/addExtension.js'
 export * from './operators/ensureAbs.js'
 export * from './operators/fromFileUrl.js'
 export * from './operators/getRelativeSegments.js'
@@ -40,3 +45,9 @@ export * from './operators/isAncestorOf.js'
 export * from './operators/isDescendantOf.js'
 export * from './operators/join.js'
 export * from './operators/relativeTo.js'
+export * from './operators/withExtension.js'
+export * from './operators/withName.js'
+export * from './operators/withStem.js'
+
+// Optics for composing path updates into larger structures.
+export * as Optic from './optic.js'

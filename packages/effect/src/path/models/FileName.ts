@@ -16,6 +16,14 @@ class FileName__ extends S.TaggedClass<FileName__>()('FileName', {
   }
 }
 
+/**
+ * `FileName` — a bare filename as a `string` ⇄ `{ stem, extension }` codec.
+ *
+ * @example
+ * ```ts
+ * const name = FileName.make({ stem: 'index', extension: Option.some('.ts') })
+ * ```
+ */
 export class FileName_ extends S.asClass(
   S.String.pipe(
     S.decodeTo(FileName__, {
