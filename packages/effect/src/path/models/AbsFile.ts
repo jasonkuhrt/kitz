@@ -124,6 +124,7 @@ export class AbsFile_ extends withStatics(
           ),
         ),
       }),
+      S.overrideToFormatter(() => (path) => path.toString()),
     ),
   ),
 ) {}

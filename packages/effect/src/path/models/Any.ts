@@ -20,7 +20,12 @@ import { RelFile } from './RelFile.js'
  * ```
  */
 class Any_ extends withStatics(
-  S.asClass(S.Union([AbsFile, AbsDir, RelFile, RelDir]).pipe(S.toTaggedUnion('_tag'))),
+  S.asClass(
+    S.Union([AbsFile, AbsDir, RelFile, RelDir]).pipe(
+      S.toTaggedUnion('_tag'),
+      S.overrideToFormatter(() => (path) => path.toString()),
+    ),
+  ),
 ) {
   static readonly AbsFile = AbsFile
   static readonly AbsDir = AbsDir

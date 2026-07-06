@@ -131,6 +131,7 @@ export class RelFile_ extends withStatics(
           ),
         ),
       }),
+      S.overrideToFormatter(() => (path) => path.toString()),
     ),
   ),
 ) {}

@@ -100,6 +100,7 @@ export class AbsDir_ extends withStatics(
           ),
         ),
       }),
+      S.overrideToFormatter(() => (path) => path.toString()),
     ),
   ),
 ) {}

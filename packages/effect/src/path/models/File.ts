@@ -8,7 +8,12 @@ import { RelFile } from './RelFile.js'
  * Carries tagged-union utilities keyed by `_tag`: `cases`, `guards`, `isAnyOf`, `match`.
  */
 class File_ extends withStatics(
-  S.asClass(S.Union([AbsFile, RelFile]).pipe(S.toTaggedUnion('_tag'))),
+  S.asClass(
+    S.Union([AbsFile, RelFile]).pipe(
+      S.toTaggedUnion('_tag'),
+      S.overrideToFormatter(() => (path) => path.toString()),
+    ),
+  ),
 ) {
   static readonly AbsFile = AbsFile
   static readonly RelFile = RelFile

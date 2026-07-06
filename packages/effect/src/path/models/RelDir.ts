@@ -112,6 +112,7 @@ export class RelDir_ extends withStatics(
           ),
         ),
       }),
+      S.overrideToFormatter(() => (path) => path.toString()),
     ),
   ),
 ) {}
