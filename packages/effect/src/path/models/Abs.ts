@@ -11,8 +11,8 @@ class Abs_ extends withLiteralStatics(
   withStatics(
     S.asClass(
       S.Union([AbsFile, AbsDir]).pipe(
-        S.toTaggedUnion('_tag'),
         S.overrideToFormatter(() => (path) => path.toString()),
+        S.toTaggedUnion('_tag'),
       ),
     ),
   ),

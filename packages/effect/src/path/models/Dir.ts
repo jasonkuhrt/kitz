@@ -11,8 +11,8 @@ class Dir_ extends withLiteralStatics(
   withStatics(
     S.asClass(
       S.Union([AbsDir, RelDir]).pipe(
-        S.toTaggedUnion('_tag'),
         S.overrideToFormatter(() => (path) => path.toString()),
+        S.toTaggedUnion('_tag'),
       ),
     ),
   ),

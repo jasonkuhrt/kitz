@@ -11,8 +11,8 @@ class File_ extends withLiteralStatics(
   withStatics(
     S.asClass(
       S.Union([AbsFile, RelFile]).pipe(
-        S.toTaggedUnion('_tag'),
         S.overrideToFormatter(() => (path) => path.toString()),
+        S.toTaggedUnion('_tag'),
       ),
     ),
   ),
