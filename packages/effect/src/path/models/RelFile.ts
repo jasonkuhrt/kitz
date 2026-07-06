@@ -27,12 +27,12 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
     return this.fileName.name
   }
 
-  /** The file's name without its extension. Split on the last dot, so `archive.tar.gz` has stem `archive.tar`. */
+  /** The file's name before the final extension. The split uses the last dot after index 0: `archive.tar.gz` has stem `archive.tar`, while `.gitignore` has no extension. */
   get stem(): string {
     return this.fileName.stem
   }
 
-  /** The file's extension (with leading dot), or `None` for an extension-less file. */
+  /** The final extension after the last dot (with leading dot), or `None`; `archive.tar.gz` has extension `.gz`. */
   get extension(): Option.Option<Extension> {
     return this.fileName.extension
   }

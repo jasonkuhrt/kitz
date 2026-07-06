@@ -2,7 +2,7 @@ import { Effect, flow, Option, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeFileName } from '../analyzer.js'
 import * as Extension from './Extension.js'
 
-/** Filename value — a stem plus optional extension (e.g. `file.txt`). */
+/** Filename value — a stem plus optional final extension, split on the last dot after index 0. */
 class FileName__ extends S.TaggedClass<FileName__>()('FileName', {
   stem: S.String,
   extension: S.OptionFromNullOr(Extension.Extension),
