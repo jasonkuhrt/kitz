@@ -1,8 +1,10 @@
-import { Array, Effect, flow, type Option, Result, Schema as S, SchemaGetter } from 'effect'
+import { Array, Effect, flow, Option, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeDirAbs, format } from '../analyzer.js'
 import { fileUrlOf } from '../core/fileUrl.js'
 import { parentOf } from '../core/segments.js'
 import { withStatics } from '../core/statics.js'
+import { AbsFile } from './AbsFile.js'
+import { FileName } from './FileName.js'
 import { Segment } from './segment.js'
 
 /**
@@ -15,6 +17,16 @@ class AbsDir__ extends S.TaggedClass<AbsDir__>()('AbsDir', {
   /** The directory name (last segment), or `None` for root. */
   get name(): Option.Option<Segment> {
     return Array.last(this.segments)
+  }
+
+  /** Reinterpret this directory path as a file by using the last segment as the filename, or `None` for root. */
+  get asFile(): Option.Option<AbsFile> {
+    return Option.map(this.name, (fileName) =>
+      AbsFile.make({
+        segments: Array.dropRight(this.segments, 1),
+        fileName: FileName.make({ stem: fileName, extension: Option.none() }),
+      }),
+    )
   }
 
   /** The parent directory — drops the last segment (root stays at root). */

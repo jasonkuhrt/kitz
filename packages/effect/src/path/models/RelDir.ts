@@ -1,9 +1,11 @@
-import { Array, Effect, flow, type Option, Result, Schema as S, SchemaGetter } from 'effect'
+import { Array, Effect, flow, Option, Result, Schema as S, SchemaGetter } from 'effect'
 import { NaturalInt } from '../../schema/NaturalInt.js'
 import { analyzeDirRel, format } from '../analyzer.js'
 import { parentOf } from '../core/segments.js'
 import { withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
+import { FileName } from './FileName.js'
+import { RelFile } from './RelFile.js'
 import { Segment } from './segment.js'
 
 /**
@@ -17,6 +19,17 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
   /** The directory name (last segment), or `None` for current/parent-only paths. */
   get name(): Option.Option<Segment> {
     return Array.last(this.segments)
+  }
+
+  /** Reinterpret this directory path as a file by using the last segment as the filename, or `None` for segment-less dirs. */
+  get asFile(): Option.Option<RelFile> {
+    return Option.map(this.name, (fileName) =>
+      RelFile.make({
+        ascent: this.ascent,
+        segments: Array.dropRight(this.segments, 1),
+        fileName: FileName.make({ stem: fileName, extension: Option.none() }),
+      }),
+    )
   }
 
   /** The parent directory — drops the last segment (grows `ascent` when segment-less). */

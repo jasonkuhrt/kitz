@@ -36,6 +36,11 @@ class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
     return AbsDir.make({ segments: this.segments })
   }
 
+  /** Reinterpret this file path as a directory by folding the filename into the segment list. */
+  get asDir(): AbsDir {
+    return AbsDir.make({ segments: [...this.segments, this.fileName.name] })
+  }
+
   /** The file relocated one directory level up — keeps the filename, drops the last directory segment (root stays at root). */
   get parent(): AbsFile {
     return AbsFile_.make({

@@ -38,6 +38,11 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
     return RelDir.make({ ascent: this.ascent, segments: this.segments })
   }
 
+  /** Reinterpret this file path as a directory by folding the filename into the segment list. */
+  get asDir(): RelDir {
+    return RelDir.make({ ascent: this.ascent, segments: [...this.segments, this.fileName.name] })
+  }
+
   /** The file relocated one directory level up — keeps the filename, drops the last directory segment (grows `ascent` when segment-less). */
   get parent(): RelFile {
     const parent = parentOf(this.ascent, this.segments)
