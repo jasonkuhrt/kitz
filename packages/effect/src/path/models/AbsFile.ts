@@ -1,5 +1,6 @@
 import { Effect, flow, type Option, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeFileAbs, format } from '../analyzer.js'
+import { ancestorSegments } from '../core/ancestors.js'
 import { fileUrlOf } from '../core/fileUrl.js'
 import { parentOf } from '../core/segments.js'
 import { withStatics } from '../core/statics.js'
@@ -49,6 +50,13 @@ class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
   /** Reinterpret this file path as a directory by folding the filename into the segment list. */
   get asDir(): AbsDir {
     return AbsDir.make({ segments: [...this.segments, this.fileName.name] })
+  }
+
+  /** Ancestor directories, starting at this file's containing directory and ending at root. */
+  get ancestors(): readonly AbsDir[] {
+    return ancestorSegments(this.segments, { includeSelf: true }).map((segments) =>
+      AbsDir.make({ segments }),
+    )
   }
 
   /** The file relocated one directory level up — keeps the filename, drops the last directory segment (root stays at root). */

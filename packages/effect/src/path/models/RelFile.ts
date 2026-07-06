@@ -1,6 +1,7 @@
 import { Effect, flow, type Option, Result, Schema as S, SchemaGetter } from 'effect'
 import { NaturalInt } from '../../schema/NaturalInt.js'
 import { analyzeFileRel, format } from '../analyzer.js'
+import { ancestorSegments } from '../core/ancestors.js'
 import { parentOf } from '../core/segments.js'
 import { withStatics } from '../core/statics.js'
 import { AbsFile } from './AbsFile.js'
@@ -51,6 +52,13 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
   /** Reinterpret this file path as a directory by folding the filename into the segment list. */
   get asDir(): RelDir {
     return RelDir.make({ ascent: this.ascent, segments: [...this.segments, this.fileName.name] })
+  }
+
+  /** Ancestor directories, starting at this file's containing directory and ending at the same relative anchor. */
+  get ancestors(): readonly RelDir[] {
+    return ancestorSegments(this.segments, { includeSelf: true }).map((segments) =>
+      RelDir.make({ ascent: this.ascent, segments }),
+    )
   }
 
   /** The file relocated one directory level up — keeps the filename, drops the last directory segment (grows `ascent` when segment-less). */

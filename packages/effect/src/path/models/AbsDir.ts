@@ -1,5 +1,6 @@
 import { Array, Effect, flow, Option, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeDirAbs, format } from '../analyzer.js'
+import { ancestorSegments } from '../core/ancestors.js'
 import { fileUrlOf } from '../core/fileUrl.js'
 import { parentOf } from '../core/segments.js'
 import { withStatics } from '../core/statics.js'
@@ -36,6 +37,13 @@ class AbsDir__ extends S.TaggedClass<AbsDir__>()('AbsDir', {
         segments: Array.dropRight(this.segments, 1),
         fileName: FileName.make({ stem: fileName, extension: Option.none() }),
       }),
+    )
+  }
+
+  /** Ancestor directories, starting at the parent and ending at root; root itself has none. */
+  get ancestors(): readonly AbsDir[] {
+    return ancestorSegments(this.segments, { includeSelf: false }).map((segments) =>
+      AbsDir_.make({ segments }),
     )
   }
 

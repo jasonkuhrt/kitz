@@ -1,6 +1,7 @@
 import { Array, Effect, flow, Option, Result, Schema as S, SchemaGetter } from 'effect'
 import { NaturalInt } from '../../schema/NaturalInt.js'
 import { analyzeDirRel, format } from '../analyzer.js'
+import { ancestorSegments } from '../core/ancestors.js'
 import { parentOf } from '../core/segments.js'
 import { withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
@@ -39,6 +40,13 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
         segments: Array.dropRight(this.segments, 1),
         fileName: FileName.make({ stem: fileName, extension: Option.none() }),
       }),
+    )
+  }
+
+  /** Ancestor directories, starting at the parent and ending at the same relative anchor; segment-less dirs have none. */
+  get ancestors(): readonly RelDir[] {
+    return ancestorSegments(this.segments, { includeSelf: false }).map((segments) =>
+      RelDir_.make({ ascent: this.ascent, segments }),
     )
   }
 
