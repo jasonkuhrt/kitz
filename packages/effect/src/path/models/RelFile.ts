@@ -6,7 +6,7 @@ import { ancestorSegments } from '../core/ancestors.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
-import { withStatics } from '../core/statics.js'
+import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsFile } from './AbsFile.js'
 import type { Extension } from './Extension.js'
 import { FileName } from './FileName.js'
@@ -109,29 +109,31 @@ attachNodeInspect<RelFile__>(RelFile__.prototype)
  * const file = S.decodeSync(RelFile)('./src/index.ts')
  * ```
  */
-export class RelFile_ extends withStatics(
-  S.asClass(
-    S.String.pipe(
-      S.decodeTo(RelFile__, {
-        encode: SchemaGetter.transform((encoded) =>
-          format({ isPathAbsolute: false, ascent: encoded.ascent, fileName: encoded.fileName })(
-            encoded.segments,
+export class RelFile_ extends withLiteralStatics(
+  withStatics(
+    S.asClass(
+      S.String.pipe(
+        S.decodeTo(RelFile__, {
+          encode: SchemaGetter.transform((encoded) =>
+            format({ isPathAbsolute: false, ascent: encoded.ascent, fileName: encoded.fileName })(
+              encoded.segments,
+            ),
           ),
-        ),
-        decode: SchemaGetter.transformOrFail(
-          flow(
-            analyzeFileRel,
-            Result.map((analysis) => ({
-              _tag: 'RelFile' as const,
-              ascent: analysis.ascent,
-              segments: analysis.segments,
-              fileName: analysis.fileName,
-            })),
-            Effect.fromResult,
+          decode: SchemaGetter.transformOrFail(
+            flow(
+              analyzeFileRel,
+              Result.map((analysis) => ({
+                _tag: 'RelFile' as const,
+                ascent: analysis.ascent,
+                segments: analysis.segments,
+                fileName: analysis.fileName,
+              })),
+              Effect.fromResult,
+            ),
           ),
-        ),
-      }),
-      S.overrideToFormatter(() => (path) => path.toString()),
+        }),
+        S.overrideToFormatter(() => (path) => path.toString()),
+      ),
     ),
   ),
 ) {}

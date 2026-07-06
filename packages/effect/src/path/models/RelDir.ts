@@ -6,7 +6,7 @@ import { ancestorSegments } from '../core/ancestors.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
-import { withStatics } from '../core/statics.js'
+import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
 import { FileName } from './FileName.js'
 import { RelFile } from './RelFile.js'
@@ -93,26 +93,28 @@ attachNodeInspect<RelDir__>(RelDir__.prototype)
  * const dir = S.decodeSync(RelDir)('./src/')
  * ```
  */
-export class RelDir_ extends withStatics(
-  S.asClass(
-    S.String.pipe(
-      S.decodeTo(RelDir__, {
-        encode: SchemaGetter.transform((encoded) =>
-          format({ isPathAbsolute: false, ascent: encoded.ascent })(encoded.segments),
-        ),
-        decode: SchemaGetter.transformOrFail(
-          flow(
-            analyzeDirRel,
-            Result.map((analysis) => ({
-              _tag: 'RelDir' as const,
-              ascent: analysis.ascent,
-              segments: analysis.segments,
-            })),
-            Effect.fromResult,
+export class RelDir_ extends withLiteralStatics(
+  withStatics(
+    S.asClass(
+      S.String.pipe(
+        S.decodeTo(RelDir__, {
+          encode: SchemaGetter.transform((encoded) =>
+            format({ isPathAbsolute: false, ascent: encoded.ascent })(encoded.segments),
           ),
-        ),
-      }),
-      S.overrideToFormatter(() => (path) => path.toString()),
+          decode: SchemaGetter.transformOrFail(
+            flow(
+              analyzeDirRel,
+              Result.map((analysis) => ({
+                _tag: 'RelDir' as const,
+                ascent: analysis.ascent,
+                segments: analysis.segments,
+              })),
+              Effect.fromResult,
+            ),
+          ),
+        }),
+        S.overrideToFormatter(() => (path) => path.toString()),
+      ),
     ),
   ),
 ) {}

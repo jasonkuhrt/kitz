@@ -6,7 +6,7 @@ import { fileUrlOf } from '../core/fileUrl.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
-import { withStatics } from '../core/statics.js'
+import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsFile } from './AbsFile.js'
 import { FileName } from './FileName.js'
 import { Segment } from './segment.js'
@@ -85,22 +85,24 @@ attachNodeInspect<AbsDir__>(AbsDir__.prototype)
  * const dir = S.decodeSync(AbsDir)('/home/user/')
  * ```
  */
-export class AbsDir_ extends withStatics(
-  S.asClass(
-    S.String.pipe(
-      S.decodeTo(AbsDir__, {
-        encode: SchemaGetter.transform((encoded) =>
-          format({ isPathAbsolute: true, ascent: 0 })(encoded.segments),
-        ),
-        decode: SchemaGetter.transformOrFail(
-          flow(
-            analyzeDirAbs,
-            Result.map((analysis) => ({ _tag: 'AbsDir' as const, segments: analysis.segments })),
-            Effect.fromResult,
+export class AbsDir_ extends withLiteralStatics(
+  withStatics(
+    S.asClass(
+      S.String.pipe(
+        S.decodeTo(AbsDir__, {
+          encode: SchemaGetter.transform((encoded) =>
+            format({ isPathAbsolute: true, ascent: 0 })(encoded.segments),
           ),
-        ),
-      }),
-      S.overrideToFormatter(() => (path) => path.toString()),
+          decode: SchemaGetter.transformOrFail(
+            flow(
+              analyzeDirAbs,
+              Result.map((analysis) => ({ _tag: 'AbsDir' as const, segments: analysis.segments })),
+              Effect.fromResult,
+            ),
+          ),
+        }),
+        S.overrideToFormatter(() => (path) => path.toString()),
+      ),
     ),
   ),
 ) {}

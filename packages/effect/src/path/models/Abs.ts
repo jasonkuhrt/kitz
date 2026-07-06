@@ -1,5 +1,5 @@
 import { Schema as S } from 'effect'
-import { withStatics } from '../core/statics.js'
+import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
 import { AbsFile } from './AbsFile.js'
 
@@ -7,11 +7,13 @@ import { AbsFile } from './AbsFile.js'
  * `Abs` — any absolute path (`AbsFile | AbsDir`), as a `string` ⇄ value codec.
  * Carries tagged-union utilities keyed by `_tag`: `cases`, `guards`, `isAnyOf`, `match`.
  */
-class Abs_ extends withStatics(
-  S.asClass(
-    S.Union([AbsFile, AbsDir]).pipe(
-      S.toTaggedUnion('_tag'),
-      S.overrideToFormatter(() => (path) => path.toString()),
+class Abs_ extends withLiteralStatics(
+  withStatics(
+    S.asClass(
+      S.Union([AbsFile, AbsDir]).pipe(
+        S.toTaggedUnion('_tag'),
+        S.overrideToFormatter(() => (path) => path.toString()),
+      ),
     ),
   ),
 ) {

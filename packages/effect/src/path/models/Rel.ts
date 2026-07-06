@@ -1,5 +1,5 @@
 import { Schema as S } from 'effect'
-import { withStatics } from '../core/statics.js'
+import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { RelDir } from './RelDir.js'
 import { RelFile } from './RelFile.js'
 
@@ -7,11 +7,13 @@ import { RelFile } from './RelFile.js'
  * `Rel` — any relative path (`RelFile | RelDir`), as a `string` ⇄ value codec.
  * Carries tagged-union utilities keyed by `_tag`: `cases`, `guards`, `isAnyOf`, `match`.
  */
-class Rel_ extends withStatics(
-  S.asClass(
-    S.Union([RelFile, RelDir]).pipe(
-      S.toTaggedUnion('_tag'),
-      S.overrideToFormatter(() => (path) => path.toString()),
+class Rel_ extends withLiteralStatics(
+  withStatics(
+    S.asClass(
+      S.Union([RelFile, RelDir]).pipe(
+        S.toTaggedUnion('_tag'),
+        S.overrideToFormatter(() => (path) => path.toString()),
+      ),
     ),
   ),
 ) {

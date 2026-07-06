@@ -6,7 +6,7 @@ import { fileUrlOf } from '../core/fileUrl.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
-import { withStatics } from '../core/statics.js'
+import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
 import type { Extension } from './Extension.js'
 import { FileName } from './FileName.js'
@@ -105,26 +105,30 @@ attachNodeInspect<AbsFile__>(AbsFile__.prototype)
  * const file = S.decodeSync(AbsFile)('/home/user/file.txt')
  * ```
  */
-export class AbsFile_ extends withStatics(
-  S.asClass(
-    S.String.pipe(
-      S.decodeTo(AbsFile__, {
-        encode: SchemaGetter.transform((encoded) =>
-          format({ isPathAbsolute: true, ascent: 0, fileName: encoded.fileName })(encoded.segments),
-        ),
-        decode: SchemaGetter.transformOrFail(
-          flow(
-            analyzeFileAbs,
-            Result.map((analysis) => ({
-              _tag: 'AbsFile' as const,
-              segments: analysis.segments,
-              fileName: analysis.fileName,
-            })),
-            Effect.fromResult,
+export class AbsFile_ extends withLiteralStatics(
+  withStatics(
+    S.asClass(
+      S.String.pipe(
+        S.decodeTo(AbsFile__, {
+          encode: SchemaGetter.transform((encoded) =>
+            format({ isPathAbsolute: true, ascent: 0, fileName: encoded.fileName })(
+              encoded.segments,
+            ),
           ),
-        ),
-      }),
-      S.overrideToFormatter(() => (path) => path.toString()),
+          decode: SchemaGetter.transformOrFail(
+            flow(
+              analyzeFileAbs,
+              Result.map((analysis) => ({
+                _tag: 'AbsFile' as const,
+                segments: analysis.segments,
+                fileName: analysis.fileName,
+              })),
+              Effect.fromResult,
+            ),
+          ),
+        }),
+        S.overrideToFormatter(() => (path) => path.toString()),
+      ),
     ),
   ),
 ) {}
