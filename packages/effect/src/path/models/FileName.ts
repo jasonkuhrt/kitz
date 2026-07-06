@@ -2,6 +2,43 @@ import { Effect, flow, Option, Result, Schema as S, SchemaGetter } from 'effect'
 import { analyzeFileName } from '../analyzer.js'
 import * as Extension from './Extension.js'
 
+const nullByte = String.fromCharCode(0)
+const fileNameText = new RegExp(
+  `^[^/${nullByte}.][^/${nullByte}]{0,31}` +
+    `(\\.[^/${nullByte}.][^/${nullByte}]{0,15})?$` +
+    `|^\\.[^/${nullByte}.][^/${nullByte}]{0,31}$`,
+)
+
+const canGenerateFileName = (name: string): boolean => {
+  const result = analyzeFileName(name)
+  return (
+    Result.isSuccess(result) &&
+    (result.success.extension === null || S.is(Extension.Extension)(result.success.extension))
+  )
+}
+
+const unsafeAnalyzeGeneratedFileName = (
+  name: string,
+): { stem: string; extension: string | null } => {
+  const result = analyzeFileName(name)
+  if (Result.isFailure(result)) throw new Error('generated invalid filename')
+  return result.success
+}
+
+const fileNameArbitrary = {
+  toArbitrary: () => (fc: typeof import('effect/testing').FastCheck) =>
+    fc
+      .stringMatching(fileNameText)
+      .filter(canGenerateFileName)
+      .map(unsafeAnalyzeGeneratedFileName)
+      .map((file) =>
+        FileName__.make({
+          stem: file.stem,
+          extension: Option.fromNullOr(file.extension),
+        }),
+      ),
+} satisfies S.Annotations.Bottom<FileName__, readonly []>
+
 /** Filename value — a stem plus optional final extension, split on the last dot after index 0. */
 class FileName__ extends S.TaggedClass<FileName__>()('FileName', {
   stem: S.String,
@@ -42,6 +79,7 @@ export class FileName_ extends S.asClass(
         ),
       ),
     }),
+    S.annotate(fileNameArbitrary),
   ),
 ) {
   /**

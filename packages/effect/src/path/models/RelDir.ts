@@ -1,6 +1,5 @@
 import { Array, Effect, flow, Option, Result, Schema as S, SchemaGetter } from 'effect'
 import * as PrimaryKey from 'effect/PrimaryKey'
-import { NaturalInt } from '../../schema/NaturalInt.js'
 import { analyzeDirRel, format } from '../analyzer.js'
 import { ancestorSegments } from '../core/ancestors.js'
 import { attachNodeInspect } from '../core/inspect.js'
@@ -8,6 +7,7 @@ import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
+import { Ascent, Segments } from './arbitrary.js'
 import { FileName } from './FileName.js'
 import { RelFile } from './RelFile.js'
 import { Segment } from './segment.js'
@@ -17,8 +17,8 @@ import { Segment } from './segment.js'
  */
 class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
   /** Count of leading parent-traversal (`..`) steps. */
-  ascent: NaturalInt.pipe(S.withConstructorDefault(Effect.succeed(0))),
-  segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
+  ascent: Ascent.pipe(S.withConstructorDefault(Effect.succeed(0))),
+  segments: Segments.pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
   /** The directory name (last segment), or `None` for current/parent-only paths. */
   get name(): Option.Option<Segment> {

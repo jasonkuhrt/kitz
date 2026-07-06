@@ -7,6 +7,7 @@ import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
+import { Segments } from './arbitrary.js'
 import { AbsFile } from './AbsFile.js'
 import { FileName } from './FileName.js'
 import { Segment } from './segment.js'
@@ -16,7 +17,7 @@ import { Segment } from './segment.js'
  * Absolute paths can't lead with `..`, so there is no `ascent`.
  */
 class AbsDir__ extends S.TaggedClass<AbsDir__>()('AbsDir', {
-  segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
+  segments: Segments.pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
   /** The directory name (last segment), or `None` for root. */
   get name(): Option.Option<Segment> {

@@ -1,6 +1,5 @@
 import { Effect, flow, type Option, Result, Schema as S, SchemaGetter } from 'effect'
 import * as PrimaryKey from 'effect/PrimaryKey'
-import { NaturalInt } from '../../schema/NaturalInt.js'
 import { analyzeFileRel, format } from '../analyzer.js'
 import { ancestorSegments } from '../core/ancestors.js'
 import { attachNodeInspect } from '../core/inspect.js'
@@ -8,18 +7,18 @@ import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsFile } from './AbsFile.js'
+import { Ascent, Segments } from './arbitrary.js'
 import type { Extension } from './Extension.js'
 import { FileName } from './FileName.js'
 import { RelDir } from './RelDir.js'
-import { Segment } from './segment.js'
 
 /**
  * Relative file value — the decoded path (ascent count + segments + filename).
  */
 class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
   /** Count of leading parent-traversal (`..`) steps. */
-  ascent: NaturalInt.pipe(S.withConstructorDefault(Effect.succeed(0))),
-  segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
+  ascent: Ascent.pipe(S.withConstructorDefault(Effect.succeed(0))),
+  segments: Segments.pipe(S.withConstructorDefault(Effect.succeed([]))),
   fileName: FileName,
 }) {
   /** The file's full name — stem plus extension (e.g. `index.ts`). */
