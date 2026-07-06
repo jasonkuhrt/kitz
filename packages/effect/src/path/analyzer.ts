@@ -60,11 +60,12 @@ const normalizeWithAscent = (
 }
 
 /**
- * Optional hints to influence analyzer heuristics for ambiguous cases.
+ * Optional hints to influence analyzer heuristics for explicit target codecs.
  *
  * The analyzer uses extension presence to distinguish files from directories,
- * but dotfiles like `.gitignore` are ambiguous. Hints let explicit constructors
- * express their intent for these edge cases.
+ * but explicit constructors already know the target kind. Hints let those
+ * constructors resolve non-trailing-slash strings without changing union decode
+ * heuristics.
  */
 export interface AnalyzerOptions {
   /** 'file' / 'dir' (default) resolution for ambiguous dotfiles. */
@@ -103,9 +104,10 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
     const segments = input.split(separator).filter((s) => s !== '')
     const lastSegment = segments[segments.length - 1]
     if (lastSegment) {
-      // A dot that's not at index 0 marks an extension (`.gitignore` is ambiguous → hint/default).
+      // A dot that's not at index 0 marks an extension. Explicit target decoders
+      // can override this heuristic; unions keep it as the file/dir tie-breaker.
       const hasExtension = lastSegment.lastIndexOf('.') > 0
-      isDirectory = hasExtension ? false : options?.hint ? options.hint === 'dir' : true
+      isDirectory = options?.hint ? options.hint === 'dir' : !hasExtension
     } else {
       isDirectory = true
     }
