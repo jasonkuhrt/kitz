@@ -5,8 +5,11 @@ import { RelFile } from './RelFile.js'
 
 /**
  * `File` — any file path (`AbsFile | RelFile`), as a `string` ⇄ value codec.
+ * Carries tagged-union utilities keyed by `_tag`: `cases`, `guards`, `isAnyOf`, `match`.
  */
-class File_ extends withStatics(S.asClass(S.Union([AbsFile, RelFile]))) {
+class File_ extends withStatics(
+  S.asClass(S.Union([AbsFile, RelFile]).pipe(S.toTaggedUnion('_tag'))),
+) {
   static readonly AbsFile = AbsFile
   static readonly RelFile = RelFile
 }

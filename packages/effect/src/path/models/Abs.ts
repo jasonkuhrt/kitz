@@ -5,8 +5,11 @@ import { AbsFile } from './AbsFile.js'
 
 /**
  * `Abs` — any absolute path (`AbsFile | AbsDir`), as a `string` ⇄ value codec.
+ * Carries tagged-union utilities keyed by `_tag`: `cases`, `guards`, `isAnyOf`, `match`.
  */
-class Abs_ extends withStatics(S.asClass(S.Union([AbsFile, AbsDir]))) {
+class Abs_ extends withStatics(
+  S.asClass(S.Union([AbsFile, AbsDir]).pipe(S.toTaggedUnion('_tag'))),
+) {
   static readonly AbsFile = AbsFile
   static readonly AbsDir = AbsDir
 }

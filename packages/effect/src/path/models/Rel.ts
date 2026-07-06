@@ -5,8 +5,11 @@ import { RelFile } from './RelFile.js'
 
 /**
  * `Rel` — any relative path (`RelFile | RelDir`), as a `string` ⇄ value codec.
+ * Carries tagged-union utilities keyed by `_tag`: `cases`, `guards`, `isAnyOf`, `match`.
  */
-class Rel_ extends withStatics(S.asClass(S.Union([RelFile, RelDir]))) {
+class Rel_ extends withStatics(
+  S.asClass(S.Union([RelFile, RelDir]).pipe(S.toTaggedUnion('_tag'))),
+) {
   static readonly RelFile = RelFile
   static readonly RelDir = RelDir
 }

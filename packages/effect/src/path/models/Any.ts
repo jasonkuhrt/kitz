@@ -9,15 +9,19 @@ import { RelFile } from './RelFile.js'
  * `Any` — the union schema of all path variants (`AbsFile | AbsDir | RelFile |
  * RelDir`): any possible path, file or directory, absolute or relative.
  *
- * Decodes a string to the appropriate variant instance and encodes back.
+ * Decodes a string to the appropriate variant instance and encodes back. Carries
+ * tagged-union utilities keyed by `_tag`: `cases`, `guards`, `isAnyOf`, `match`.
  *
  * @example
  * ```ts
  * const p1 = S.decodeSync(Any)('/home/user/file.txt')  // AbsFile
  * const p4 = S.decodeSync(Any)('./src/')               // RelDir
+ * Any.match(p1, { AbsFile: f => f.name, AbsDir: d => '', RelFile: f => f.name, RelDir: d => '' })
  * ```
  */
-class Any_ extends withStatics(S.asClass(S.Union([AbsFile, AbsDir, RelFile, RelDir]))) {
+class Any_ extends withStatics(
+  S.asClass(S.Union([AbsFile, AbsDir, RelFile, RelDir]).pipe(S.toTaggedUnion('_tag'))),
+) {
   static readonly AbsFile = AbsFile
   static readonly AbsDir = AbsDir
   static readonly RelFile = RelFile

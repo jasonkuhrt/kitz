@@ -36,6 +36,11 @@ per-operation judgment.
    codec + `is` + member re-exports and hold zero operation statics. Shared
    instance members surface on unions automatically via TypeScript union
    member access (a member exists on a union when every variant has it).
+   Each union is additionally piped through `S.toTaggedUnion('_tag')`,
+   which augments the schema with structure-derived utilities — `cases`,
+   `guards`, `isAnyOf`, and exhaustive `match` — without changing the
+   codec. (`S.TaggedUnion` proper is inapplicable: it builds members from
+   field sets via `TaggedStruct` and cannot take existing codec classes.)
 
 ## Surface
 
