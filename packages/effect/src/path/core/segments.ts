@@ -1,4 +1,4 @@
-import { Array, Equivalence, Function as Fn } from 'effect'
+import { Array, Function as Fn } from 'effect'
 import type { Segment } from '../models/segment.js'
 
 /**
@@ -20,9 +20,6 @@ export const parentOf = (
   segments.length > 0
     ? { back, segments: Array.dropRight(segments, 1) }
     : { back: back + 1, segments: [] }
-
-/** Structural equivalence for segment arrays. */
-export const segmentsEquivalence = Array.makeEquivalence(Equivalence.String)
 
 /**
  * Whether `segments` begins with `prefix`. Dual: `isSegmentsStartsWith(segments,

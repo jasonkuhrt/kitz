@@ -67,9 +67,15 @@ Derived union availability (automatic): `File.stem`/`.extension`/`.dir`,
 ### Flat `Path` functions
 
 `join`, `relativeTo`, `ensureAbs`, `isDescendantOf`, `isAncestorOf`,
-`isSameSegments`, `getRelativeSegments`, `getSharedBase`. All keep `Fn.dual`
+`getRelativeSegments`, `getSharedBase`. All keep `Fn.dual`
 data-first/data-last forms. `ensureAbs` keeps its `EnsureAbs<P>` conditional
 type (still a function over the union).
+
+`isSameSegments` was cut during implementation: it compared only
+`back` + `segments` — ignoring the variant and the filename, so a file
+always "equalled" its own directory — had zero call sites, and is subsumed
+by effect v4's structural `Equal.equals`. Its private backing
+(`segmentsEquivalence`) went with it.
 
 ## Semantics decisions
 
