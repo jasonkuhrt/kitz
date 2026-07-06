@@ -6,6 +6,8 @@ import type { Segment } from '../models/segment.js'
 
 const fileScheme = S.encodeSync(Protocol)('file')
 
+const encodePart = (part: string): string => encodeURIComponent(part)
+
 /** Build a `file://` URL from raw absolute-path data. Kitz paths are POSIX-only. */
 export const fileUrlOf = (parts: {
   readonly segments: readonly Segment[]
@@ -15,6 +17,6 @@ export const fileUrlOf = (parts: {
     `${fileScheme}${format({
       isPathAbsolute: true,
       ascent: 0,
-      fileName: parts.fileName?.name ?? null,
-    })(parts.segments)}`,
+      fileName: parts.fileName ? encodePart(parts.fileName.name) : null,
+    })(parts.segments.map(encodePart))}`,
   )

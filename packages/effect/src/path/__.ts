@@ -33,6 +33,7 @@ export * as Protocol from './models/Protocol.js'
 
 // Flat path combinators
 export * from './operators/ensureAbs.js'
+export * from './operators/fromFileUrl.js'
 export * from './operators/getRelativeSegments.js'
 export * from './operators/getSharedBase.js'
 export * from './operators/isAncestorOf.js'
