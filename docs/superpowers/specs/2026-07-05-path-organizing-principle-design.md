@@ -7,7 +7,7 @@ Design for where operations live in `@kitz/effect`'s `path` module.
 The path module models paths as a lattice of schema types: four leaf value
 classes (`AbsFile`, `AbsDir`, `RelFile`, `RelDir`), three pairwise unions
 (`Abs`, `Rel`, `Dir`, `File`), and the full union (`Any`). Operations were
-first standalone files under `operators/`, then statics on the union schema
+first standalone files under `operations/`, then statics on the union schema
 classes. Both layouts hit the same wall: __8 of 15 operations are
 polymorphic/mixed-domain__ (`join: Dir × Rel`, `isAncestorOf: Dir × Any`,
 `relativeTo: Abs × AbsDir`, …), so filing them under a single type's
@@ -100,7 +100,7 @@ by effect v4's structural `Equal.equals`. Its private backing
 
 ## Implementation shape
 
-* __Flat combinators__: one file each under `path/operators/` (restored),
+* __Flat combinators__: one file each under `path/operations/` (restored),
   importing leaves as values and unions as types. Nothing imports them but
   the barrel (and `ensureAbs → join`), so the cycle pressure that motivated
   hosting operator impls in `core/` disappears along with the union statics.

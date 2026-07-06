@@ -37,7 +37,7 @@ export * as Analyzer from './analyzer.js'
 
 // Literal string analysis and decoding
 export type { FromLiteral, LiteralAnalysis } from './core/literal.js'
-export * from './operators/fromLiteral.js'
+export * from './operations/fromLiteral.js'
 
 // Extension types and constants
 export * as Extension from './models/Extension.js'
@@ -50,18 +50,18 @@ export { Segment } from './models/segment.js'
 export * as Protocol from './models/Protocol.js'
 
 // Flat path combinators
-export * from './operators/addExtension.js'
-export * from './operators/ensureAbs.js'
-export * from './operators/fromFileUrl.js'
-export * from './operators/getSharedBase.js'
-export * from './operators/isAncestorOf.js'
-export * from './operators/isDescendantOf.js'
-export * from './operators/join.js'
-export * from './operators/order.js'
-export * from './operators/relativeTo.js'
-export * from './operators/withExtension.js'
-export * from './operators/withName.js'
-export * from './operators/withStem.js'
+export * from './operations/addExtension.js'
+export * from './operations/ensureAbs.js'
+export * from './operations/fromFileUrl.js'
+export * from './operations/getSharedBase.js'
+export * from './operations/isAncestorOf.js'
+export * from './operations/isDescendantOf.js'
+export * from './operations/join.js'
+export * from './operations/order.js'
+export * from './operations/relativeTo.js'
+export * from './operations/withExtension.js'
+export * from './operations/withName.js'
+export * from './operations/withStem.js'
 
 // Optics for composing path updates into larger structures.
 export * as Optic from './optic.js'
