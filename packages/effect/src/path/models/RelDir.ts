@@ -1,7 +1,10 @@
 import { Array, Effect, flow, Option, Result, Schema as S, SchemaGetter } from 'effect'
+import * as PrimaryKey from 'effect/PrimaryKey'
 import { NaturalInt } from '../../schema/NaturalInt.js'
 import { analyzeDirRel, format } from '../analyzer.js'
 import { ancestorSegments } from '../core/ancestors.js'
+import { attachNodeInspect } from '../core/inspect.js'
+import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
 import { withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
@@ -60,7 +63,27 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
   get atRoot(): AbsDir {
     return AbsDir.make({ segments: this.segments })
   }
+
+  /** Canonical encoded path string. */
+  override toString(): string {
+    return renderPath({
+      isPathAbsolute: false,
+      ascent: this.ascent,
+      segments: this.segments,
+    })
+  }
+
+  /** JSON representation is the canonical encoded path string. */
+  toJSON(): string {
+    return this.toString()
+  }
+
+  [PrimaryKey.symbol](): string {
+    return this.toString()
+  }
 }
+
+attachNodeInspect<RelDir__>(RelDir__.prototype)
 
 /**
  * `RelDir` — a relative directory path, as a `string` ⇄ `RelDir` value codec.

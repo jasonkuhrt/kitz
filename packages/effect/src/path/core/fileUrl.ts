@@ -1,8 +1,8 @@
 import { Schema as S } from 'effect'
-import { format } from '../analyzer.js'
 import type { FileName } from '../models/FileName.js'
 import { Protocol } from '../models/Protocol.js'
 import type { Segment } from '../models/segment.js'
+import { renderPath } from './render.js'
 
 const fileScheme = S.encodeSync(Protocol)('file')
 
@@ -14,9 +14,10 @@ export const fileUrlOf = (parts: {
   readonly fileName?: FileName
 }): URL =>
   new URL(
-    `${fileScheme}${format({
+    `${fileScheme}${renderPath({
       isPathAbsolute: true,
       ascent: 0,
+      segments: parts.segments.map(encodePart),
       fileName: parts.fileName ? encodePart(parts.fileName.name) : null,
-    })(parts.segments.map(encodePart))}`,
+    })}`,
   )

@@ -1,7 +1,10 @@
 import { Effect, flow, type Option, Result, Schema as S, SchemaGetter } from 'effect'
+import * as PrimaryKey from 'effect/PrimaryKey'
 import { analyzeFileAbs, format } from '../analyzer.js'
 import { ancestorSegments } from '../core/ancestors.js'
 import { fileUrlOf } from '../core/fileUrl.js'
+import { attachNodeInspect } from '../core/inspect.js'
+import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
 import { withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
@@ -71,7 +74,28 @@ class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
   get fileUrl(): URL {
     return fileUrlOf({ segments: this.segments, fileName: this.fileName })
   }
+
+  /** Canonical encoded path string. */
+  override toString(): string {
+    return renderPath({
+      isPathAbsolute: true,
+      ascent: 0,
+      segments: this.segments,
+      fileName: this.fileName.name,
+    })
+  }
+
+  /** JSON representation is the canonical encoded path string. */
+  toJSON(): string {
+    return this.toString()
+  }
+
+  [PrimaryKey.symbol](): string {
+    return this.toString()
+  }
 }
+
+attachNodeInspect<AbsFile__>(AbsFile__.prototype)
 
 /**
  * `AbsFile` — an absolute file path, as a `string` ⇄ `AbsFile` value codec.

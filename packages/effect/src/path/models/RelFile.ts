@@ -1,7 +1,10 @@
 import { Effect, flow, type Option, Result, Schema as S, SchemaGetter } from 'effect'
+import * as PrimaryKey from 'effect/PrimaryKey'
 import { NaturalInt } from '../../schema/NaturalInt.js'
 import { analyzeFileRel, format } from '../analyzer.js'
 import { ancestorSegments } from '../core/ancestors.js'
+import { attachNodeInspect } from '../core/inspect.js'
+import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
 import { withStatics } from '../core/statics.js'
 import { AbsFile } from './AbsFile.js'
@@ -75,7 +78,28 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
   get atRoot(): AbsFile {
     return AbsFile.make({ segments: this.segments, fileName: this.fileName })
   }
+
+  /** Canonical encoded path string. */
+  override toString(): string {
+    return renderPath({
+      isPathAbsolute: false,
+      ascent: this.ascent,
+      segments: this.segments,
+      fileName: this.fileName.name,
+    })
+  }
+
+  /** JSON representation is the canonical encoded path string. */
+  toJSON(): string {
+    return this.toString()
+  }
+
+  [PrimaryKey.symbol](): string {
+    return this.toString()
+  }
 }
+
+attachNodeInspect<RelFile__>(RelFile__.prototype)
 
 /**
  * `RelFile` — a relative file path, as a `string` ⇄ `RelFile` value codec.
