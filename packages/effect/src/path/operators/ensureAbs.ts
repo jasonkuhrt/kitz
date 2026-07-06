@@ -1,4 +1,4 @@
-import { Function as Fn } from 'effect'
+import { Function as Fn, Match } from 'effect'
 import type { Abs } from '../models/Abs.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
@@ -24,13 +24,15 @@ export type EnsureAbs<P extends Any> = P extends Abs
 export const ensureAbs: {
   <P extends Any>(path: P, base: AbsDir): EnsureAbs<P>
   (base: AbsDir): <P extends Any>(path: P) => EnsureAbs<P>
-} = Fn.dual(2, (path: Any, base: AbsDir): Abs => {
-  switch (path._tag) {
-    case 'AbsFile':
-    case 'AbsDir':
-      return path
-    case 'RelFile':
-    case 'RelDir':
-      return join(base, path)
-  }
-})
+} = Fn.dual(
+  2,
+  (path: Any, base: AbsDir): Abs =>
+    Match.value(path).pipe(
+      Match.tagsExhaustive({
+        AbsFile: (abs) => abs,
+        AbsDir: (abs) => abs,
+        RelFile: (rel) => join(base, rel),
+        RelDir: (rel) => join(base, rel),
+      }),
+    ),
+)
