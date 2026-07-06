@@ -10,7 +10,7 @@ import { Segment } from './segment.js'
 
 /**
  * Absolute file value — the decoded path (segments + filename).
- * Absolute paths can't lead with `..`, so there is no `back`.
+ * Absolute paths can't lead with `..`, so there is no `ascent`.
  */
 class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
   segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
@@ -63,7 +63,7 @@ export class AbsFile_ extends withStatics(
     S.String.pipe(
       S.decodeTo(AbsFile__, {
         encode: SchemaGetter.transform((encoded) =>
-          format({ isPathAbsolute: true, back: 0, fileName: encoded.fileName })(encoded.segments),
+          format({ isPathAbsolute: true, ascent: 0, fileName: encoded.fileName })(encoded.segments),
         ),
         decode: SchemaGetter.transformOrFail(
           flow(

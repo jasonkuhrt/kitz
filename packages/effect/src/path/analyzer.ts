@@ -3,9 +3,9 @@ import { flow, Option, Result, SchemaIssue } from 'effect'
 // Path segment constants (internal — the codecs go through analyze/format)
 const separator = '/'
 const hereSegment = '.'
-const backSegment = '..'
+const ascentSegment = '..'
 const herePrefix = `${hereSegment}${separator}` // './'
-const backPrefix = `${backSegment}${separator}` // '../'
+const ascentPrefix = `${ascentSegment}${separator}` // '../'
 
 /** A path string analyzed into its kind, absoluteness, parent-traversal count, and named segments. */
 export type Analysis = AnalysisFile | AnalysisDir
@@ -14,7 +14,7 @@ export interface AnalysisFile {
   _tag: 'file'
   isPathAbsolute: boolean
   /** Parent-traversal count (leading `..`); always 0 for absolute paths. */
-  back: number
+  ascent: number
   /** Named path segments (no `..`), excluding the filename. */
   segments: string[]
   /** The filename (last path component) as a string; the `FileName` codec owns its stem/extension split. */
@@ -25,7 +25,7 @@ export interface AnalysisDir {
   _tag: 'dir'
   isPathAbsolute: boolean
   /** Parent-traversal count (leading `..`); always 0 for absolute paths. */
-  back: number
+  ascent: number
   /** Named path segments (no `..`). */
   segments: string[]
 }
@@ -38,25 +38,25 @@ const invalid = (input: string, expected: string): SchemaIssue.Issue =>
 
 /**
  * Normalize segments by resolving '..' references.
- * Returns the final back count and clean segments.
+ * Returns the final ascent count and clean segments.
  */
-const normalizeWithBack = (
-  initialBack: number,
+const normalizeWithAscent = (
+  initialAscent: number,
   rawSegments: readonly string[],
-): { back: number; segments: string[] } => {
-  let back = initialBack
+): { ascent: number; segments: string[] } => {
+  let ascent = initialAscent
   const segments: string[] = []
 
   for (const segment of rawSegments) {
-    if (segment === backSegment) {
+    if (segment === ascentSegment) {
       if (segments.length > 0) segments.pop()
-      else back++
+      else ascent++
     } else if (segment !== hereSegment && segment !== '') {
       segments.push(segment)
     }
   }
 
-  return { back, segments }
+  return { ascent, segments }
 }
 
 /**
@@ -85,17 +85,17 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
 
   // Root: an absolute directory with no segments.
   if (input === separator) {
-    return { _tag: 'dir', isPathAbsolute: true, back: 0, segments: [] }
+    return { _tag: 'dir', isPathAbsolute: true, ascent: 0, segments: [] }
   }
 
-  // Directory iff: trailing slash, a bare here/back reference, or no extension on the last segment.
+  // Directory iff: trailing slash, a bare here/ascent reference, or no extension on the last segment.
   let isDirectory: boolean
   if (
     input === '' ||
     input === hereSegment ||
     input === herePrefix ||
-    input === backSegment ||
-    input === backPrefix ||
+    input === ascentSegment ||
+    input === ascentPrefix ||
     input.endsWith(separator)
   ) {
     isDirectory = true
@@ -114,37 +114,43 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
   // Strip the leading slash / `../` / `./` markers, count parent refs.
   let normalized = isAbsolute ? input.slice(separator.length) : input
   let parentRefs = 0
-  while (normalized.startsWith(backPrefix)) {
+  while (normalized.startsWith(ascentPrefix)) {
     parentRefs++
-    normalized = normalized.slice(backPrefix.length)
+    normalized = normalized.slice(ascentPrefix.length)
   }
   if (normalized.startsWith(herePrefix)) normalized = normalized.slice(herePrefix.length)
   if (isDirectory && normalized.endsWith(separator)) normalized = normalized.slice(0, -1)
 
   const rawSegments = normalized ? normalized.split(separator).filter((s) => s !== '') : []
-  // Absolute paths can't escape root, so their back count is always 0.
-  const { back, segments: normalizedSegments } = normalizeWithBack(
+  // Absolute paths can't escape root, so their ascent count is always 0.
+  const { ascent, segments: normalizedSegments } = normalizeWithAscent(
     isAbsolute ? 0 : parentRefs,
     rawSegments,
   )
-  const finalBack = isAbsolute ? 0 : back
+  const finalAscent = isAbsolute ? 0 : ascent
 
   if (isDirectory) {
     return {
       _tag: 'dir',
       isPathAbsolute: isAbsolute,
-      back: finalBack,
+      ascent: finalAscent,
       segments: normalizedSegments,
     }
   }
   if (normalizedSegments.length === 0) {
-    return { _tag: 'file', isPathAbsolute: isAbsolute, back: finalBack, segments: [], fileName: '' }
+    return {
+      _tag: 'file',
+      isPathAbsolute: isAbsolute,
+      ascent: finalAscent,
+      segments: [],
+      fileName: '',
+    }
   }
 
   return {
     _tag: 'file',
     isPathAbsolute: isAbsolute,
-    back: finalBack,
+    ascent: finalAscent,
     segments: normalizedSegments.slice(0, -1),
     fileName: normalizedSegments[normalizedSegments.length - 1]!,
   }
@@ -212,13 +218,13 @@ export const analyzeFileName = flow(
 
 /**
  * Build a path string — the inverse of {@link analyze}. Curried: fix the path shape
- * (absoluteness, `back`, optional `fileName`), then apply the segments.
+ * (absoluteness, `ascent`, optional `fileName`), then apply the segments.
  *
  * `fileName` present → a file path; absent → a directory path (trailing `/`).
- * Relative paths get one leading `../` per `back` step, or `./` when `back` is 0.
+ * Relative paths get one leading `../` per `ascent` step, or `./` when `ascent` is 0.
  */
 export const format =
-  (parts: { isPathAbsolute: boolean; back: number; fileName?: string | null }) =>
+  (parts: { isPathAbsolute: boolean; ascent: number; fileName?: string | null }) =>
   (segments: readonly string[]): string => {
     const body = segments.join(separator)
     const file = parts.fileName ?? null
@@ -229,8 +235,8 @@ export const format =
       return body ? `${separator}${body}${separator}` : separator
     }
 
-    // One `../` per back step, else `./`.
-    const prefix = parts.back > 0 ? backPrefix.repeat(parts.back) : herePrefix
+    // One `../` per ascent step, else `./`.
+    const prefix = parts.ascent > 0 ? ascentPrefix.repeat(parts.ascent) : herePrefix
     if (file !== null) return body ? `${prefix}${body}${separator}${file}` : `${prefix}${file}`
     return body ? `${prefix}${body}${separator}` : prefix
   }

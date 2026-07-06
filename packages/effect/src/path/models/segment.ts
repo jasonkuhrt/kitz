@@ -3,7 +3,7 @@ import { Schema as S } from 'effect'
 /**
  * A single path segment — a POSIX-safe name component: non-empty, no `/` or NUL,
  * and not a `.`/`..` traversal reference (those are resolved by the analyzer into
- * the path's `back` count, never stored as segments).
+ * the path's `ascent` count, never stored as segments).
  */
 export class Segment_ extends S.asClass(
   S.String.pipe(

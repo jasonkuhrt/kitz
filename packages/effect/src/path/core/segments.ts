@@ -3,7 +3,7 @@ import type { Segment } from '../models/segment.js'
 
 /**
  * The leading segments common to both arrays — their longest shared prefix.
- * Backs the shared-base and relative-walk computations.
+ * Underpins the shared-base and relative-walk computations.
  */
 export const commonSegmentPrefix = (a: readonly Segment[], b: readonly Segment[]): Segment[] => {
   const common: Segment[] = []
@@ -12,14 +12,14 @@ export const commonSegmentPrefix = (a: readonly Segment[], b: readonly Segment[]
   return common
 }
 
-/** Move one level up in raw path data, growing `back` when there are no segments to drop. */
+/** Move one level up in raw path data, growing `ascent` when there are no segments to drop. */
 export const parentOf = (
-  back: number,
+  ascent: number,
   segments: readonly Segment[],
-): { back: number; segments: readonly Segment[] } =>
+): { ascent: number; segments: readonly Segment[] } =>
   segments.length > 0
-    ? { back, segments: Array.dropRight(segments, 1) }
-    : { back: back + 1, segments: [] }
+    ? { ascent, segments: Array.dropRight(segments, 1) }
+    : { ascent: ascent + 1, segments: [] }
 
 /**
  * Whether `segments` begins with `prefix`. Dual: `isSegmentsStartsWith(segments,

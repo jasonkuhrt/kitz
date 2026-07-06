@@ -6,7 +6,7 @@ import type { Dir } from '../models/Dir.js'
 
 /**
  * Whether `child` lives under `parent`. Both must be the same group (absolute or
- * relative); relatives must share `back`. Dual: `(child, parent)` or `(parent)`.
+ * relative); relatives must share `ascent`. Dual: `(child, parent)` or `(parent)`.
  */
 export const isDescendantOf: {
   <A extends Any>(child: A, parent: MatchingDirGroup<A>): boolean
@@ -17,9 +17,9 @@ export const isDescendantOf: {
 
   if (childIsRel !== parentIsRel) return false
 
-  const childBack = childIsRel ? child.back : 0
-  const parentBack = parentIsRel ? parent.back : 0
-  if (childBack !== parentBack) return false
+  const childAscent = childIsRel ? child.ascent : 0
+  const parentAscent = parentIsRel ? parent.ascent : 0
+  if (childAscent !== parentAscent) return false
   if (child.segments.length < parent.segments.length) return false
 
   return isSegmentsStartsWith(child.segments, parent.segments)

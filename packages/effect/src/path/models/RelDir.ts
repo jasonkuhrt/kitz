@@ -7,11 +7,11 @@ import { AbsDir } from './AbsDir.js'
 import { Segment } from './segment.js'
 
 /**
- * Relative directory value — the decoded path (back count + segments) with instance behavior.
+ * Relative directory value — the decoded path (ascent count + segments) with instance behavior.
  */
 class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
   /** Count of leading parent-traversal (`..`) steps. */
-  back: NaturalInt.pipe(S.withConstructorDefault(Effect.succeed(0))),
+  ascent: NaturalInt.pipe(S.withConstructorDefault(Effect.succeed(0))),
   segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
   /** The directory name (last segment), or `None` for current/parent-only paths. */
@@ -19,13 +19,13 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
     return Array.last(this.segments)
   }
 
-  /** The parent directory — drops the last segment (grows `back` when segment-less). */
+  /** The parent directory — drops the last segment (grows `ascent` when segment-less). */
   get parent(): RelDir {
-    const parent = parentOf(this.back, this.segments)
-    return RelDir_.make({ back: parent.back, segments: parent.segments })
+    const parent = parentOf(this.ascent, this.segments)
+    return RelDir_.make({ ascent: parent.ascent, segments: parent.segments })
   }
 
-  /** The directory re-anchored at the filesystem root, dropping `back` traversal (`./src/` → `/src/`). To resolve against a base directory instead, use the flat `ensureAbs`. */
+  /** The directory re-anchored at the filesystem root, dropping `ascent` traversal (`./src/` → `/src/`). To resolve against a base directory instead, use the flat `ensureAbs`. */
   get atRoot(): AbsDir {
     return AbsDir.make({ segments: this.segments })
   }
@@ -44,14 +44,14 @@ export class RelDir_ extends withStatics(
     S.String.pipe(
       S.decodeTo(RelDir__, {
         encode: SchemaGetter.transform((encoded) =>
-          format({ isPathAbsolute: false, back: encoded.back })(encoded.segments),
+          format({ isPathAbsolute: false, ascent: encoded.ascent })(encoded.segments),
         ),
         decode: SchemaGetter.transformOrFail(
           flow(
             analyzeDirRel,
             Result.map((analysis) => ({
               _tag: 'RelDir' as const,
-              back: analysis.back,
+              ascent: analysis.ascent,
               segments: analysis.segments,
             })),
             Effect.fromResult,

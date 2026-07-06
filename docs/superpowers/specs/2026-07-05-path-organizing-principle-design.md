@@ -23,7 +23,7 @@ per-operation judgment.
 1. __Unary → instance getter on the leaf classes.__ An operation over a
    single path (takes only `this`) is a getter, implemented per leaf with a
    precise return type. Shared computation is factored into `core/`
-   functions over raw path data (`back`, `segments`, `fileName`); getters
+   functions over raw path data (`ascent`, `segments`, `fileName`); getters
    are thin per-variant adapters. OO dispatch replaces
    `Match.tagsExhaustive`; the `ToDir`/`ToAbs` conditional-type helpers and
    `Any.up`'s `as P` cast are deleted.
@@ -72,7 +72,7 @@ data-first/data-last forms. `ensureAbs` keeps its `EnsureAbs<P>` conditional
 type (still a function over the union).
 
 `isSameSegments` was cut during implementation: it compared only
-`back` + `segments` — ignoring the variant and the filename, so a file
+`ascent` + `segments` — ignoring the variant and the filename, so a file
 always "equalled" its own directory — had zero call sites, and is subsumed
 by effect v4's structural `Equal.equals`. Its private backing
 (`segmentsEquivalence`) went with it.
@@ -88,11 +88,11 @@ by effect v4's structural `Equal.equals`. Its private backing
   a dir's name for dirs — a convenience conflation, removed. Dirs have only
   `.name`. `.stem` is absent from `Any`; narrow to `File`.
 * __`.atRoot` names its semantics.__ It re-anchors a relative path at the
-  filesystem root, dropping `back` traversal (`./src` → `/src`) — distinct
+  filesystem root, dropping `ascent` traversal (`./src` → `/src`) — distinct
   from `Path.ensureAbs(path, base)`, which resolves against a real base
   directory.
 * __`.parent` stays total.__ An absolute root's parent is root (current
-  `up` behavior); relatives grow `back`. An `Option` return would poison
+  `up` behavior); relatives grow `ascent`. An `Option` return would poison
   chained `.parent.parent` ergonomics.
 * Getters throughout (no methods): all unary derivations are parameter-less;
   values are immutable, and `Equal.equals` is structural in effect v4, so
@@ -106,11 +106,11 @@ by effect v4's structural `Equal.equals`. Its private backing
   hosting operator impls in `core/` disappears along with the union statics.
 * __Shared getter logic in `core/`__, operating on raw data (below the
   leaves in the layer stack):
-  * `parentOf(back, segments) → { back, segments }` in `core/segments.ts` —
+  * `parentOf(ascent, segments) → { ascent, segments }` in `core/segments.ts` —
     the only real duplication among getters (drop last segment, or grow
-    `back` when segment-less). Each leaf's `.parent` calls it and wraps
-    with its own `make`; abs leaves pass `back: 0` and ignore the returned
-    `back`.
+    `ascent` when segment-less). Each leaf's `.parent` calls it and wraps
+    with its own `make`; abs leaves pass `ascent: 0` and ignore the returned
+    `ascent`.
   * `FileName` gains a string-render getter (the `fileNameToString` helper
     currently misplaced in `Any.ts` moves home); both file leaves' `.name`
     read it.

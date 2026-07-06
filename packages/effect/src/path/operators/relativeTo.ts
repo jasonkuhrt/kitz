@@ -31,9 +31,9 @@ export const relativeTo: {
   (base: AbsDir): <A extends Abs>(abs: A) => RelativeTo<A>
 } = Fn.dual(2, (abs: Abs, base: AbsDir): Rel => {
   const shared = commonSegmentPrefix(abs.segments, base.segments).length
-  const back = base.segments.length - shared
+  const ascent = base.segments.length - shared
   const segments = Array.drop(abs.segments, shared)
   return abs._tag === 'AbsFile'
-    ? RelFile.make({ back, segments, fileName: abs.fileName })
-    : RelDir.make({ back, segments })
+    ? RelFile.make({ ascent, segments, fileName: abs.fileName })
+    : RelDir.make({ ascent, segments })
 })

@@ -14,15 +14,15 @@ export const getSharedBase: {
   <A extends Any>(a: A, b: MatchingTypeGroup<A>): Option.Option<SharedBase<A>>
   <A extends Any>(b: A): (a: MatchingTypeGroup<A>) => Option.Option<SharedBase<A>>
 } = Fn.dual(2, (a: Any, b: Any): Option.Option<Dir> => {
-  const aBack = isRel(a) ? a.back : 0
-  const bBack = isRel(b) ? b.back : 0
+  const aAscent = isRel(a) ? a.ascent : 0
+  const bAscent = isRel(b) ? b.ascent : 0
 
-  if (aBack !== bBack) return Option.none()
+  if (aAscent !== bAscent) return Option.none()
 
   const common = commonSegmentPrefix(a.segments, b.segments)
   if (common.length === 0) return Option.none()
 
   return isRel(a)
-    ? Option.some(RelDir.make({ back: aBack, segments: common }))
+    ? Option.some(RelDir.make({ ascent: aAscent, segments: common }))
     : Option.some(AbsDir.make({ segments: common }))
 })

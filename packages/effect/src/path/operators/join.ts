@@ -28,7 +28,7 @@ export type Join<Base extends Dir, P extends Rel> = Base extends AbsDir
 /**
  * Join a relative path onto a base directory. Leading `..` steps in `rel`
  * consume trailing segments of `dir`; leftovers drop at an absolute root or fold
- * into the result's `back`. Keeps `dir`'s absoluteness and `rel`'s file/dir
+ * into the result's `ascent`. Keeps `dir`'s absoluteness and `rel`'s file/dir
  * nature. Dual: `join(dir, rel)` or `join(rel)` for piping dirs.
  *
  * @example
@@ -42,10 +42,10 @@ export const join: {
   <P extends Rel>(rel: P): <Base extends Dir>(dir: Base) => Join<Base, P>
 } = Fn.dual(2, (dir: Dir, rel: Rel): Any => {
   const baseSegments = [...dir.segments]
-  let remainingBack = rel.back
-  while (remainingBack > 0 && baseSegments.length > 0) {
+  let remainingAscent = rel.ascent
+  while (remainingAscent > 0 && baseSegments.length > 0) {
     baseSegments.pop()
-    remainingBack--
+    remainingAscent--
   }
   const segments = [...baseSegments, ...rel.segments]
 
@@ -56,10 +56,10 @@ export const join: {
           ? AbsFile.make({ segments, fileName: rel.fileName })
           : AbsDir.make({ segments }),
       RelDir: (relDir) => {
-        const back = relDir.back + remainingBack
+        const ascent = relDir.ascent + remainingAscent
         return rel._tag === 'RelFile'
-          ? RelFile.make({ back, segments, fileName: rel.fileName })
-          : RelDir.make({ back, segments })
+          ? RelFile.make({ ascent, segments, fileName: rel.fileName })
+          : RelDir.make({ ascent, segments })
       },
     }),
   )

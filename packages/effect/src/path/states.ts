@@ -6,12 +6,12 @@ import { Rel } from './models/Rel.js'
  * Whether a path is at root/base level.
  *
  * For absolute paths: true if segments is empty (at filesystem root `/`).
- * For relative paths: true if segments is empty AND back is 0 (at reference point `./`).
- * Paths with back > 0 (like `../`) are not at root.
+ * For relative paths: true if segments is empty AND ascent is 0 (at reference point `./`).
+ * Paths with ascent > 0 (like `../`) are not at root.
  */
 export const isRoot = (path: Any): boolean => {
-  const back = S.is(Rel)(path) ? path.back : 0
-  return path.segments.length === 0 && back === 0
+  const ascent = S.is(Rel)(path) ? path.ascent : 0
+  return path.segments.length === 0 && ascent === 0
 }
 
 /** Whether a path is top-level (exactly one segment). */

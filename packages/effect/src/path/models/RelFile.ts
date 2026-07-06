@@ -10,11 +10,11 @@ import { RelDir } from './RelDir.js'
 import { Segment } from './segment.js'
 
 /**
- * Relative file value — the decoded path (back count + segments + filename).
+ * Relative file value — the decoded path (ascent count + segments + filename).
  */
 class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
   /** Count of leading parent-traversal (`..`) steps. */
-  back: NaturalInt.pipe(S.withConstructorDefault(Effect.succeed(0))),
+  ascent: NaturalInt.pipe(S.withConstructorDefault(Effect.succeed(0))),
   segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
   fileName: FileName,
 }) {
@@ -35,20 +35,20 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
 
   /** The file's containing directory (drops the filename). */
   get dir(): RelDir {
-    return RelDir.make({ back: this.back, segments: this.segments })
+    return RelDir.make({ ascent: this.ascent, segments: this.segments })
   }
 
-  /** The file relocated one directory level up — keeps the filename, drops the last directory segment (grows `back` when segment-less). */
+  /** The file relocated one directory level up — keeps the filename, drops the last directory segment (grows `ascent` when segment-less). */
   get parent(): RelFile {
-    const parent = parentOf(this.back, this.segments)
+    const parent = parentOf(this.ascent, this.segments)
     return RelFile_.make({
-      back: parent.back,
+      ascent: parent.ascent,
       segments: parent.segments,
       fileName: this.fileName,
     })
   }
 
-  /** The file re-anchored at the filesystem root, dropping `back` traversal (`./src/a.ts` → `/src/a.ts`). To resolve against a base directory instead, use the flat `ensureAbs`. */
+  /** The file re-anchored at the filesystem root, dropping `ascent` traversal (`./src/a.ts` → `/src/a.ts`). To resolve against a base directory instead, use the flat `ensureAbs`. */
   get atRoot(): AbsFile {
     return AbsFile.make({ segments: this.segments, fileName: this.fileName })
   }
@@ -67,7 +67,7 @@ export class RelFile_ extends withStatics(
     S.String.pipe(
       S.decodeTo(RelFile__, {
         encode: SchemaGetter.transform((encoded) =>
-          format({ isPathAbsolute: false, back: encoded.back, fileName: encoded.fileName })(
+          format({ isPathAbsolute: false, ascent: encoded.ascent, fileName: encoded.fileName })(
             encoded.segments,
           ),
         ),
@@ -76,7 +76,7 @@ export class RelFile_ extends withStatics(
             analyzeFileRel,
             Result.map((analysis) => ({
               _tag: 'RelFile' as const,
-              back: analysis.back,
+              ascent: analysis.ascent,
               segments: analysis.segments,
               fileName: analysis.fileName,
             })),

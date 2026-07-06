@@ -14,7 +14,7 @@ export const fileUrlOf = (parts: {
   new URL(
     `${fileScheme}${format({
       isPathAbsolute: true,
-      back: 0,
+      ascent: 0,
       fileName: parts.fileName?.name ?? null,
     })(parts.segments)}`,
   )
