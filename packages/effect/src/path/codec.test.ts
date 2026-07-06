@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 import { Equal, Schema as S } from 'effect'
 import { FastCheck } from 'effect/testing'
 import * as Path from './__.js'
+import './test-matchers.setup.js'
 
 const codecCases = [
   ['AbsDir', Path.AbsDir, Path.Testing.AbsDir],
@@ -70,14 +71,14 @@ describe('Path codecs', () => {
   it.each(canonicalizationCases)('%s canonicalizes as %s %s', (input, tag, canonical) => {
     const path = S.decodeSync(Path.Any)(input)
     expect(path._tag).toBe(tag)
-    expect(S.encodeSync(Path.Any)(path)).toBe(canonical)
+    expect(path).toEncodeTo(canonical)
     expect(S.encodeSync(Path.Any)(S.decodeSync(Path.Any)(canonical))).toBe(canonical)
   })
 
   it.each(unionVariantCases)('Any decodes %s as %s', (input, tag, canonical) => {
     const path = S.decodeSync(Path.Any)(input)
     expect(path._tag).toBe(tag)
-    expect(S.encodeSync(Path.Any)(path)).toBe(canonical)
+    expect(path).toEncodeTo(canonical)
   })
 
   it.each(codecCases)('%s Equal agrees with canonical encoding', (_, schema, arbitrary) => {
@@ -97,19 +98,21 @@ describe('Path codecs', () => {
   it('explicit directory targets accept extension-looking names without trailing slash', () => {
     const dir = S.decodeSync(Path.AbsDir)('/releases/v1.2')
 
-    expect(dir._tag).toBe('AbsDir')
-    expect(S.encodeSync(Path.AbsDir)(dir)).toBe('/releases/v1.2/')
+    expect(dir).toBeAbs()
+    expect(dir).toBeDir()
+    expect(dir).toEncodeTo('/releases/v1.2/')
   })
 
   it('explicit file targets accept extensionless files and dotfiles', () => {
-    expect(S.encodeSync(Path.AbsFile)(S.decodeSync(Path.AbsFile)('/etc/hostname'))).toBe(
-      '/etc/hostname',
-    )
-    expect(S.encodeSync(Path.AbsFile)(S.decodeSync(Path.AbsFile)('/u/.gitignore'))).toBe(
-      '/u/.gitignore',
-    )
-    expect(S.encodeSync(Path.RelFile)(S.decodeSync(Path.RelFile)('./.env.local'))).toBe(
-      './.env.local',
-    )
+    const hostname = S.decodeSync(Path.AbsFile)('/etc/hostname')
+    const dotfile = S.decodeSync(Path.AbsFile)('/u/.gitignore')
+    const env = S.decodeSync(Path.RelFile)('./.env.local')
+
+    expect(hostname).toBeAbs()
+    expect(hostname).toBeFile()
+    expect(hostname).toEncodeTo('/etc/hostname')
+    expect(dotfile).toEncodeTo('/u/.gitignore')
+    expect(env).toBeRel()
+    expect(env).toEncodeTo('./.env.local')
   })
 })

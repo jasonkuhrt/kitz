@@ -3,6 +3,7 @@ import { Equal, Option, Result, Schema as S } from 'effect'
 import * as PrimaryKey from 'effect/PrimaryKey'
 import { FastCheck } from 'effect/testing'
 import * as Path from './__.js'
+import './test-matchers.setup.js'
 
 const abs = FastCheck.oneof(Path.Testing.AbsDir, Path.Testing.AbsFile)
 const dir = FastCheck.oneof(Path.Testing.AbsDir, Path.Testing.RelDir)
@@ -108,7 +109,7 @@ describe('Path operation laws', () => {
     FastCheck.assert(
       FastCheck.property(dir, nonEmptyRelAscent0, (base, r) => {
         const child = Path.join(base, r)
-        expect(Path.isDescendantOf(child as never, base as never)).toBe(true)
+        expect(child).toBeWithinPath(base)
       }),
     )
   })
@@ -171,6 +172,7 @@ describe('Path operation laws', () => {
 
   it('parent handles roots and segment-less relatives', () => {
     const root = Path.AbsDir.make({ segments: [] })
+    expect(root).toBeRoot()
     expect(root.parent).toEqual(root)
 
     FastCheck.assert(
@@ -357,7 +359,7 @@ describe('Path operation laws', () => {
     FastCheck.assert(
       FastCheck.property(Path.Testing.Any, (path) => {
         const encoded = encodeAny(path)
-        expect(String(path)).toBe(encoded)
+        expect(path).toEncodeTo(encoded)
         expect(path.toJSON()).toBe(encoded)
         expect(path[PrimaryKey.symbol]()).toBe(encoded)
       }),
