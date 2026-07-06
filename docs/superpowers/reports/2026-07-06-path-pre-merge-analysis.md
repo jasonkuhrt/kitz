@@ -17,8 +17,8 @@ ancestor of this design), PureScript `pathy`, Node `path`/`pathe`.
 
 | Priority | Item | Area | Status |
 | --- | --- | --- | --- |
-| Must | Property + type-level test suite (codec laws, op laws) | §5 | Run 3 |
-| Must | Curated arbitraries (fixes the unbounded-ascent encode blowup) | §4 | Run 3 |
+| Must | Property + type-level test suite (codec laws, op laws) | §5 | ✅ `ebaf1b7c` (codec laws) `0e8905d1` (op laws) `4cbf1021` (type assertions) `360b31a8` (matchers) — 4 files, 131 tests, 22 properties |
+| Must | Curated arbitraries (fixes the unbounded-ascent encode blowup) | §4 | ✅ `bfe03d9c` (`Path.Testing`, bounded ascent) |
 | Must | Lenient explicit dir decode | §8.4 | ✅ `0f43aa0a` |
 | Must | `fileUrl` percent-encoding + `fromFileUrl` | T8, §8.4 | ✅ `fb0dd76c` |
 | Must | Reinterpretation getters (`asDir` / `asFile`) | §8.4 | ✅ `c02eee1e` |
@@ -39,6 +39,13 @@ ancestor of this design), PureScript `pathy`, Node `path`/`pathe`.
 | Should | Per-target `fromLiteral` constructors with static errors | §3.2 | ✅ `3cef3dd8` |
 | Could | Full `Input<P> = P \| string` polymorphic arguments (old trunk's crown jewel) | §3.3 | Future |
 | Defer | Glob matching, non-POSIX/URL anchors | §7 | Deferred |
+
+Source bugs exposed by the Run-3 laws (fixed in dedicated commits):
+`6774420c` — `Hash` disagreed with structural `Equal` for equal path values;
+leaves now hash by canonical encoded string. `3022737c` — the
+`overrideToFormatter` pipe was dropping the `toTaggedUnion` runtime utilities
+from the union schemas. `207c7d6c` — the tagged-union utility TYPES were not
+surfacing through `asClass` on the unions.
 
 ---
 
