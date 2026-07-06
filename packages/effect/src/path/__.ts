@@ -35,6 +35,10 @@ export * from './constants.js'
 // Analyzer — public parse/validate/format of path strings (surfaces as `Path.Analyzer`)
 export * as Analyzer from './analyzer.js'
 
+// Literal string analysis and decoding
+export type { FromLiteral, LiteralAnalysis } from './core/literal.js'
+export * from './operators/fromLiteral.js'
+
 // Extension types and constants
 export * as Extension from './models/Extension.js'
 
