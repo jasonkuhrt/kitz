@@ -61,7 +61,7 @@ export class FileName_ extends S.asClass(
       dot > 0
         ? {
             stem: full.slice(0, dot),
-            extension: Option.some(full.slice(dot) as Extension.Extension),
+            extension: Option.some(S.decodeSync(Extension.Extension)(full.slice(dot))),
           }
         : { stem: full, extension: Option.none() },
     )
