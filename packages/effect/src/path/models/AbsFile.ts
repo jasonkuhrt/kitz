@@ -2,6 +2,7 @@ import { Effect, flow, type Option, Result, Schema as S, SchemaGetter } from 'ef
 import * as PrimaryKey from 'effect/PrimaryKey'
 import { analyzeFileAbs, format } from '../analyzer.js'
 import { ancestorSegments } from '../core/ancestors.js'
+import { attachPathEqual } from '../core/equality.js'
 import { fileUrlOf } from '../core/fileUrl.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
@@ -96,6 +97,7 @@ class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
 }
 
 attachNodeInspect<AbsFile__>(AbsFile__.prototype)
+attachPathEqual<AbsFile__>(AbsFile__.prototype)
 
 /**
  * `AbsFile` — an absolute file path, as a `string` ⇄ `AbsFile` value codec.

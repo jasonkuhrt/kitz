@@ -2,6 +2,7 @@ import { Effect, flow, type Option, Result, Schema as S, SchemaGetter } from 'ef
 import * as PrimaryKey from 'effect/PrimaryKey'
 import { analyzeFileRel, format } from '../analyzer.js'
 import { ancestorSegments } from '../core/ancestors.js'
+import { attachPathEqual } from '../core/equality.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
@@ -99,6 +100,7 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
 }
 
 attachNodeInspect<RelFile__>(RelFile__.prototype)
+attachPathEqual<RelFile__>(RelFile__.prototype)
 
 /**
  * `RelFile` — a relative file path, as a `string` ⇄ `RelFile` value codec.

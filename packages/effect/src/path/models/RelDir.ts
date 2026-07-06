@@ -2,6 +2,7 @@ import { Array, Effect, flow, Option, Result, Schema as S, SchemaGetter } from '
 import * as PrimaryKey from 'effect/PrimaryKey'
 import { analyzeDirRel, format } from '../analyzer.js'
 import { ancestorSegments } from '../core/ancestors.js'
+import { attachPathEqual } from '../core/equality.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
@@ -84,6 +85,7 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
 }
 
 attachNodeInspect<RelDir__>(RelDir__.prototype)
+attachPathEqual<RelDir__>(RelDir__.prototype)
 
 /**
  * `RelDir` — a relative directory path, as a `string` ⇄ `RelDir` value codec.

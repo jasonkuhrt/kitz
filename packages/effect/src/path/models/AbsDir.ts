@@ -2,6 +2,7 @@ import { Array, Effect, flow, Option, Result, Schema as S, SchemaGetter } from '
 import * as PrimaryKey from 'effect/PrimaryKey'
 import { analyzeDirAbs, format } from '../analyzer.js'
 import { ancestorSegments } from '../core/ancestors.js'
+import { attachPathEqual } from '../core/equality.js'
 import { fileUrlOf } from '../core/fileUrl.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
@@ -77,6 +78,7 @@ class AbsDir__ extends S.TaggedClass<AbsDir__>()('AbsDir', {
 }
 
 attachNodeInspect<AbsDir__>(AbsDir__.prototype)
+attachPathEqual<AbsDir__>(AbsDir__.prototype)
 
 /**
  * `AbsDir` — an absolute directory path, as a `string` ⇄ `AbsDir` value codec.
