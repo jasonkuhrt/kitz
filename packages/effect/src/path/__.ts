@@ -1,3 +1,16 @@
+/**
+ * Typed POSIX path module.
+ *
+ * Organizing principle:
+ * 1. Unary operations live as instance getters on the four leaf value classes.
+ * 2. Shared getter logic lives below the leaves in `core/`.
+ * 3. N-ary operations are flat `Fn.dual` functions exported from this barrel.
+ * 4. Union classes remain pure schemas plus tagged-union utilities.
+ * 5. String interpretation stays at the analyzer boundary.
+ *
+ * See `docs/superpowers/specs/2026-07-05-path-organizing-principle-design.md`.
+ */
+
 // Union schemas with string codec baked in
 export * from './models/Abs.js'
 export * from './models/Dir.js'
