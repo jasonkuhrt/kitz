@@ -1,4 +1,5 @@
 import { Schema as S } from 'effect'
+import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
 import { AbsFile } from './AbsFile.js'
@@ -32,6 +33,26 @@ class Any_ extends withStatics(
   static readonly guards = AnyTaggedUnion.guards
   static readonly isAnyOf = AnyTaggedUnion.isAnyOf
   static readonly match = AnyTaggedUnion.match
+
+  /**
+   * Variant schema carrying a realistic generation bias — same set as the
+   * canonical schema; generation mixes the four members' `Realistic` variants
+   * 20:1 over the canonical distribution.
+   */
+  static readonly Realistic = Any_.pipe(
+    withArbitraryHints({
+      candidate: {
+        weight: 20,
+        make: (fc) =>
+          fc.oneof(
+            S.toArbitrary(AbsFile.Realistic),
+            S.toArbitrary(AbsDir.Realistic),
+            S.toArbitrary(RelFile.Realistic),
+            S.toArbitrary(RelDir.Realistic),
+          ),
+      },
+    }),
+  )
 }
 
 export const Any = Any_

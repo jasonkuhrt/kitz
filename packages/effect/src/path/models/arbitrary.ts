@@ -3,7 +3,9 @@ import { NaturalInt } from '../../schema/NaturalInt.js'
 import { Segment } from './segment.js'
 
 const maxAscent = 8
-const maxSegments = 6
+
+/** Generation-only bound for path segment arrays, shared by the models' `Realistic` variants. */
+export const maxSegments = 6
 
 /** Generation-only bound for relative ascent. The model still accepts any natural int. */
 export const Ascent = NaturalInt.pipe(

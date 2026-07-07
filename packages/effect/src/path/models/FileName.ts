@@ -1,5 +1,11 @@
 import { Effect, flow, Option, Result, Schema as S, SchemaGetter } from 'effect'
+import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { analyzeFileName } from '../analyzer.js'
+import {
+  realisticDotfilePattern,
+  realisticExtensionPattern,
+  realisticStemPattern,
+} from '../core/realisticText.js'
 import * as Extension from './Extension.js'
 
 const nullByte = String.fromCharCode(0)
@@ -117,6 +123,38 @@ export class FileName_ extends S.asClass(
         : { stem: full, extension: Option.none() },
     )
   }
+
+  /**
+   * Variant schema carrying a realistic generation bias — same set as the
+   * canonical schema; generation mixes realistic `stem(.ext)?` names and
+   * dotfiles 20:1 over the canonical distribution.
+   */
+  static readonly Realistic = FileName_.pipe(
+    withArbitraryHints({
+      candidate: {
+        weight: 20,
+        make: (fc) =>
+          fc
+            .oneof(
+              fc
+                .tuple(
+                  fc.stringMatching(realisticStemPattern),
+                  fc.option(fc.stringMatching(realisticExtensionPattern), { nil: undefined }),
+                )
+                .map(([stem, extension]) => `${stem}${extension ?? ''}`),
+              fc.stringMatching(realisticDotfilePattern),
+            )
+            .filter(canGenerateFileName)
+            .map(unsafeAnalyzeGeneratedFileName)
+            .map((file) =>
+              FileName__.make({
+                stem: file.stem,
+                extension: Option.fromNullOr(file.extension),
+              }),
+            ),
+      },
+    }),
+  )
 }
 
 export const FileName = FileName_

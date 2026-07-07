@@ -7,10 +7,11 @@ import { fileUrlOf } from '../core/fileUrl.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
+import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
-import { Segments } from './arbitrary.js'
-import { segment } from './segment.js'
+import { maxSegments, Segments } from './arbitrary.js'
+import { Segment, segment } from './segment.js'
 import type { Extension } from './Extension.js'
 import { FileName } from './FileName.js'
 
@@ -141,7 +142,27 @@ export class AbsFile_ extends withLiteralStatics(
       ),
     ),
   ),
-) {}
+) {
+  /**
+   * Variant schema carrying a realistic generation bias — same set as the
+   * canonical schema; generation mixes realistic files 20:1 over the
+   * canonical distribution.
+   */
+  static readonly Realistic = AbsFile_.pipe(
+    withArbitraryHints({
+      candidate: {
+        weight: 20,
+        make: (fc) =>
+          fc
+            .record({
+              segments: fc.array(S.toArbitrary(Segment.Realistic), { maxLength: maxSegments }),
+              fileName: S.toArbitrary(FileName.Realistic),
+            })
+            .map((input) => AbsFile_.make(input)),
+      },
+    }),
+  )
+}
 
 export const AbsFile = AbsFile_
 export type AbsFile = typeof AbsFile_.Type

@@ -7,8 +7,9 @@ import { fileUrlOf } from '../core/fileUrl.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
+import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
-import { Segments } from './arbitrary.js'
+import { maxSegments, Segments } from './arbitrary.js'
 import { AbsFile } from './AbsFile.js'
 import { FileName } from './FileName.js'
 import { Segment } from './segment.js'
@@ -115,7 +116,24 @@ export class AbsDir_ extends withLiteralStatics(
       ),
     ),
   ),
-) {}
+) {
+  /**
+   * Variant schema carrying a realistic generation bias — same set as the
+   * canonical schema; generation mixes realistic directories 20:1 over the
+   * canonical distribution.
+   */
+  static readonly Realistic = AbsDir_.pipe(
+    withArbitraryHints({
+      candidate: {
+        weight: 20,
+        make: (fc) =>
+          fc
+            .array(S.toArbitrary(Segment.Realistic), { maxLength: maxSegments })
+            .map((segments) => AbsDir_.make({ segments })),
+      },
+    }),
+  )
+}
 
 export const AbsDir = AbsDir_
 export type AbsDir = typeof AbsDir_.Type

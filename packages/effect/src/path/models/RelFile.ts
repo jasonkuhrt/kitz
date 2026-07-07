@@ -6,13 +6,14 @@ import { attachPathEqual } from '../core/equality.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
+import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsFile } from './AbsFile.js'
-import { Ascent, Segments } from './arbitrary.js'
+import { Ascent, maxSegments, Segments } from './arbitrary.js'
 import type { Extension } from './Extension.js'
 import { FileName } from './FileName.js'
 import { RelDir } from './RelDir.js'
-import { segment } from './segment.js'
+import { Segment, segment } from './segment.js'
 
 /**
  * Relative file value — the decoded path (ascent count + segments + filename).
@@ -148,7 +149,28 @@ export class RelFile_ extends withLiteralStatics(
       ),
     ),
   ),
-) {}
+) {
+  /**
+   * Variant schema carrying a realistic generation bias — same set as the
+   * canonical schema; generation mixes realistic files 20:1 over the
+   * canonical distribution.
+   */
+  static readonly Realistic = RelFile_.pipe(
+    withArbitraryHints({
+      candidate: {
+        weight: 20,
+        make: (fc) =>
+          fc
+            .record({
+              ascent: S.toArbitrary(Ascent),
+              segments: fc.array(S.toArbitrary(Segment.Realistic), { maxLength: maxSegments }),
+              fileName: S.toArbitrary(FileName.Realistic),
+            })
+            .map((input) => RelFile_.make(input)),
+      },
+    }),
+  )
+}
 
 export const RelFile = RelFile_
 export type RelFile = typeof RelFile_.Type

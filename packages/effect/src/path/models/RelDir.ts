@@ -6,9 +6,10 @@ import { attachPathEqual } from '../core/equality.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
+import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
-import { Ascent, Segments } from './arbitrary.js'
+import { Ascent, maxSegments, Segments } from './arbitrary.js'
 import { FileName } from './FileName.js'
 import { RelFile } from './RelFile.js'
 import { Segment } from './segment.js'
@@ -126,7 +127,27 @@ export class RelDir_ extends withLiteralStatics(
       ),
     ),
   ),
-) {}
+) {
+  /**
+   * Variant schema carrying a realistic generation bias — same set as the
+   * canonical schema; generation mixes realistic directories 20:1 over the
+   * canonical distribution.
+   */
+  static readonly Realistic = RelDir_.pipe(
+    withArbitraryHints({
+      candidate: {
+        weight: 20,
+        make: (fc) =>
+          fc
+            .record({
+              ascent: S.toArbitrary(Ascent),
+              segments: fc.array(S.toArbitrary(Segment.Realistic), { maxLength: maxSegments }),
+            })
+            .map((input) => RelDir_.make(input)),
+      },
+    }),
+  )
+}
 
 export const RelDir = RelDir_
 export type RelDir = typeof RelDir_.Type
