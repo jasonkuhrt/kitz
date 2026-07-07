@@ -795,3 +795,16 @@ describe('Testing arbitraries', () => {
     expect(derivation.report.warnings).toEqual([])
   })
 })
+
+describe('Segment.Realistic', () => {
+  it('accepts the same set as Segment; generation is biased toward realistic names', () => {
+    const samples = FastCheck.sample(S.toArbitrary(Path.Segment.Realistic), {
+      numRuns: 500,
+      seed: 42,
+    })
+    for (const value of samples) expect(S.decodeSync(Path.Segment)(value)).toBe(value)
+    const realistic = samples.filter((s) => /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(s))
+    // candidate weight 20 vs base weight 1 → expected fraction ≈ 20/21
+    expect(realistic.length / samples.length).toBeGreaterThan(0.85)
+  })
+})

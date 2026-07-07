@@ -6,7 +6,12 @@ import { Any as AnySchema } from './models/Any.js'
 import { FileName as FileNameSchema } from './models/FileName.js'
 import { RelDir as RelDirSchema } from './models/RelDir.js'
 import { RelFile as RelFileSchema } from './models/RelFile.js'
-import { withArbitraryHints } from '../schema/withArbitraryHints.js'
+import {
+  realisticDotfilePattern,
+  realisticExtensionPattern,
+  realisticSegmentPattern,
+  realisticStemPattern,
+} from './core/realisticText.js'
 import { Segment as SegmentSchema } from './models/segment.js'
 
 export const Segment = S.toArbitrary(SegmentSchema)
@@ -16,20 +21,6 @@ export const AbsFile = S.toArbitrary(AbsFileSchema)
 export const RelDir = S.toArbitrary(RelDirSchema)
 export const RelFile = S.toArbitrary(RelFileSchema)
 export const Any = S.toArbitrary(AnySchema)
-
-// Realistic-name text patterns — shaped like real-world path names rather than
-// the full validated character space. Heads are alphanumeric (which also rules
-// out `.`/`..` and `/` by construction); bodies add the separators common in
-// real names. Segment and dotfile bodies allow dots; stem and extension bodies
-// do not, so the generated extension stays the sole stem–extension split point.
-const alphanumeric = 'A-Za-z0-9'
-const segmentBody = `${alphanumeric}._-`
-const nameBody = `${alphanumeric}_-`
-
-const realisticSegmentPattern = new RegExp(`^[${alphanumeric}][${segmentBody}]{0,31}$`)
-const realisticDotfilePattern = new RegExp(`^\\.[${alphanumeric}][${segmentBody}]{0,30}$`)
-const realisticStemPattern = new RegExp(`^[${alphanumeric}][${nameBody}]{0,23}$`)
-const realisticExtensionPattern = new RegExp(`^\\.[${alphanumeric}][${nameBody}]{0,7}$`)
 
 const realisticSegmentText = FastCheck.stringMatching(realisticSegmentPattern)
 
@@ -50,25 +41,7 @@ const canDecodeFileName = (name: string): boolean => {
   }
 }
 
-/**
- * Variant schemas — the canonical model schemas carrying a realistic
- * generation bias as arbitrary-derivation hints. Same sets as the originals
- * (candidates are validated by the models' own filters); only `toArbitrary`
- * output differs, mixing realistic values 20:1 over the full valid space.
- *
- * These are the first-class distribution carriers: compose one into a struct
- * or array schema and derivation picks up the bias. The `Realistic`
- * arbitraries below are derived from them.
- */
-export const RealisticSchema = {
-  Segment: SegmentSchema.pipe(
-    withArbitraryHints({
-      candidate: { weight: 20, make: (fc) => fc.stringMatching(realisticSegmentPattern) },
-    }),
-  ),
-} as const
-
-const realisticSegment = S.toArbitrary(RealisticSchema.Segment)
+const realisticSegment = S.toArbitrary(SegmentSchema.Realistic)
 
 const realisticFileNameText = FastCheck.oneof(realisticFileText, realisticDotfileText).filter(
   canDecodeFileName,

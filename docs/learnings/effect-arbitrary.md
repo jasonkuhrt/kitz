@@ -58,6 +58,13 @@ Key facts about each, probe-verified:
 - **Candidates bias, never replace.** The base generator is pinned at weight 1;
   candidates add weighted sources (`cumulatedWeights: [1, N]` visible in the
   report dump). A weight-20 candidate yields ~20/21 ≈ 0.95 of samples. ✅
+- **Candidate weights compound across ALL candidates on the schema.** A new
+  candidate's share is `w / (1 + Σ existing candidate weights + w)`, not
+  `w / (1 + w)`. Adding a weight-20 candidate to a schema that already carries
+  a weight-8 candidate (e.g. an efficiency candidate on a canonical schema's
+  filter) yields 20/29 ≈ 0.69, not 0.95. ✅ (observed on the path `Segment`
+  schema). To express "N:1 over the canonical distribution", multiply by the
+  canonical schema's total generation weight.
 - **Node override replaces the base but not the checks.** An override emitting
   values that violate a check has those values filtered out; pipe order
   (`annotate` before or after `check`) does not matter — both live on the node. ✅

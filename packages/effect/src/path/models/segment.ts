@@ -1,4 +1,6 @@
 import { Schema as S } from 'effect'
+import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
+import { realisticSegmentPattern } from '../core/realisticText.js'
 
 const nullByte = String.fromCharCode(0)
 const segmentPatternSource = `^[^/${nullByte}]+$`
@@ -40,7 +42,25 @@ export class Segment_ extends S.asClass(
     ),
     S.brand('Segment'),
   ),
-) {}
+) {
+  /**
+   * Variant schema carrying a realistic generation bias — same set as
+   * {@link Segment} (candidate output is validated by its filters); only
+   * `Schema.toArbitrary` output differs, mixing realistic names 20:1 over
+   * the full valid space. Compose it into container schemas and derivation
+   * picks up the bias.
+   */
+  static readonly Realistic = Segment_.pipe(
+    withArbitraryHints({
+      candidate: {
+        // 20:1 over the canonical distribution, whose own generation weight is
+        // 9 — base (1) + the segmentTextArbitrary candidate (8) above.
+        weight: 20 * 9,
+        make: (fc) => fc.stringMatching(realisticSegmentPattern),
+      },
+    }),
+  )
+}
 
 export const Segment = Segment_
 export type Segment = typeof Segment_.Type
