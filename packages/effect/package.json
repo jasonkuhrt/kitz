@@ -36,7 +36,6 @@
   "exports": {
     ".": "./src/_.ts",
     "./Path": "./src/path/_.ts",
-    "./Path/Testing": "./src/path/testing.ts",
     "./Schema": "./src/schema/_.ts",
     "./String": "./src/string/_.ts"
   },

@@ -16,24 +16,44 @@ import { Config, ConfigProvider, Effect, Equal, Option, Result, Schema as S } fr
 import * as PrimaryKey from 'effect/PrimaryKey'
 import { FastCheck } from 'effect/testing'
 import * as Path from './__.js'
-import * as PathTesting from './testing.js'
 
 // ─── shared generators & helpers ───
 
-const abs = FastCheck.oneof(PathTesting.AbsDir, PathTesting.AbsFile)
-const dir = FastCheck.oneof(PathTesting.AbsDir, PathTesting.RelDir)
-const rel = FastCheck.oneof(PathTesting.RelDir, PathTesting.RelFile)
-const file = FastCheck.oneof(PathTesting.AbsFile, PathTesting.RelFile)
-const relDirAscent0 = FastCheck.array(PathTesting.Segment, { maxLength: 6 }).map((segments) =>
+// Arbitraries derive on demand from the model schemas (S.toArbitrary is
+// memoized); Realistic variants are the models' own variant statics.
+const arb = {
+  Segment: S.toArbitrary(Path.Segment),
+  FileName: S.toArbitrary(Path.FileName),
+  AbsDir: S.toArbitrary(Path.AbsDir),
+  AbsFile: S.toArbitrary(Path.AbsFile),
+  RelDir: S.toArbitrary(Path.RelDir),
+  RelFile: S.toArbitrary(Path.RelFile),
+  Any: S.toArbitrary(Path.Any),
+  Realistic: {
+    Segment: S.toArbitrary(Path.Segment.Realistic),
+    FileName: S.toArbitrary(Path.FileName.Realistic),
+    AbsDir: S.toArbitrary(Path.AbsDir.Realistic),
+    AbsFile: S.toArbitrary(Path.AbsFile.Realistic),
+    RelDir: S.toArbitrary(Path.RelDir.Realistic),
+    RelFile: S.toArbitrary(Path.RelFile.Realistic),
+    Any: S.toArbitrary(Path.Any.Realistic),
+  },
+} as const
+
+const abs = FastCheck.oneof(arb.AbsDir, arb.AbsFile)
+const dir = FastCheck.oneof(arb.AbsDir, arb.RelDir)
+const rel = FastCheck.oneof(arb.RelDir, arb.RelFile)
+const file = FastCheck.oneof(arb.AbsFile, arb.RelFile)
+const relDirAscent0 = FastCheck.array(arb.Segment, { maxLength: 6 }).map((segments) =>
   Path.RelDir.make({ ascent: 0, segments }),
 )
 const relFileAscent0 = FastCheck.record({
-  segments: FastCheck.array(PathTesting.Segment, { maxLength: 6 }),
-  fileName: PathTesting.FileName,
+  segments: FastCheck.array(arb.Segment, { maxLength: 6 }),
+  fileName: arb.FileName,
 }).map((input) => Path.RelFile.make({ ascent: 0, ...input }))
 const relAscent0 = FastCheck.oneof(relDirAscent0, relFileAscent0)
 const nonEmptyRelAscent0 = FastCheck.oneof(
-  FastCheck.array(PathTesting.Segment, { minLength: 1, maxLength: 6 }).map((segments) =>
+  FastCheck.array(arb.Segment, { minLength: 1, maxLength: 6 }).map((segments) =>
     Path.RelDir.make({ ascent: 0, segments }),
   ),
   relFileAscent0,
@@ -61,15 +81,15 @@ const someRelDir = Path.RelDir.make({ ascent: 0, segments: ['src'].map(Path.segm
 // ─── codec: the string ⇄ value contract, parameterized over every model ───
 
 const codecCases = [
-  ['AbsDir', Path.AbsDir, PathTesting.AbsDir],
-  ['AbsFile', Path.AbsFile, PathTesting.AbsFile],
-  ['RelDir', Path.RelDir, PathTesting.RelDir],
-  ['RelFile', Path.RelFile, PathTesting.RelFile],
-  ['Abs', Path.Abs, FastCheck.oneof(PathTesting.AbsDir, PathTesting.AbsFile)],
-  ['Rel', Path.Rel, FastCheck.oneof(PathTesting.RelDir, PathTesting.RelFile)],
-  ['Dir', Path.Dir, FastCheck.oneof(PathTesting.AbsDir, PathTesting.RelDir)],
-  ['File', Path.File, FastCheck.oneof(PathTesting.AbsFile, PathTesting.RelFile)],
-  ['Any', Path.Any, PathTesting.Any],
+  ['AbsDir', Path.AbsDir, arb.AbsDir],
+  ['AbsFile', Path.AbsFile, arb.AbsFile],
+  ['RelDir', Path.RelDir, arb.RelDir],
+  ['RelFile', Path.RelFile, arb.RelFile],
+  ['Abs', Path.Abs, FastCheck.oneof(arb.AbsDir, arb.AbsFile)],
+  ['Rel', Path.Rel, FastCheck.oneof(arb.RelDir, arb.RelFile)],
+  ['Dir', Path.Dir, FastCheck.oneof(arb.AbsDir, arb.RelDir)],
+  ['File', Path.File, FastCheck.oneof(arb.AbsFile, arb.RelFile)],
+  ['Any', Path.Any, arb.Any],
 ] as const
 
 const canonicalizationCases = [
@@ -202,7 +222,7 @@ describe('JSON Schema', () => {
 describe('union utilities', () => {
   it('match and guards agree with variant tags and S.is', () => {
     FastCheck.assert(
-      FastCheck.property(PathTesting.Any, (path) => {
+      FastCheck.property(arb.Any, (path) => {
         const tag = Path.Any.match(path, {
           AbsDir: () => 'AbsDir',
           AbsFile: () => 'AbsFile',
@@ -349,7 +369,7 @@ describe('.ancestors', () => {
 describe('.isRoot / .depth', () => {
   it('isRoot is true exactly for segment-less, ascent-0 paths', () => {
     FastCheck.assert(
-      FastCheck.property(PathTesting.Any, (path) => {
+      FastCheck.property(arb.Any, (path) => {
         const ascent = Path.Rel.is(path) ? path.ascent : 0
         expect(path.isRoot).toBe(path.segments.length === 0 && ascent === 0)
       }),
@@ -358,7 +378,7 @@ describe('.isRoot / .depth', () => {
 
   it('depth is the segment count (files exclude the filename)', () => {
     FastCheck.assert(
-      FastCheck.property(PathTesting.Any, (path) => {
+      FastCheck.property(arb.Any, (path) => {
         expect(path.depth).toBe(path.segments.length)
       }),
     )
@@ -459,7 +479,7 @@ describe('join', () => {
 describe('relativeTo', () => {
   it('join(base, relativeTo(abs, base)) returns the original absolute path', () => {
     FastCheck.assert(
-      FastCheck.property(abs, PathTesting.AbsDir, (path, base) => {
+      FastCheck.property(abs, arb.AbsDir, (path, base) => {
         expect(Path.join(base, Path.relativeTo(path, base))).toEqual(path)
       }),
     )
@@ -467,7 +487,7 @@ describe('relativeTo', () => {
 
   it('relative relativeTo is Some exactly when target ascent is not shallower than base ascent', () => {
     FastCheck.assert(
-      FastCheck.property(rel, PathTesting.RelDir, (target, base) => {
+      FastCheck.property(rel, arb.RelDir, (target, base) => {
         const relative = Path.relativeTo(target, base)
         const isExpressible = target.ascent >= base.ascent
 
@@ -502,7 +522,7 @@ describe('relativeTo', () => {
 describe('ensureAbs', () => {
   it('is idempotent and reference-preserving for absolute inputs', () => {
     FastCheck.assert(
-      FastCheck.property(PathTesting.Any, PathTesting.AbsDir, (path, base) => {
+      FastCheck.property(arb.Any, arb.AbsDir, (path, base) => {
         const ensured = Path.ensureAbs(path, base)
         expect(Path.ensureAbs(ensured, base)).toBe(ensured)
         expect(Path.Abs.is(path) ? ensured === path : true).toBe(true)
@@ -536,7 +556,7 @@ describe('isDescendantOf', () => {
 describe('isAncestorOf', () => {
   it('is the inverse of isDescendantOf', () => {
     FastCheck.assert(
-      FastCheck.property(dir, PathTesting.Any, (base, child) => {
+      FastCheck.property(dir, arb.Any, (base, child) => {
         const sameGroup =
           (Path.AbsDir.is(base) && Path.Abs.is(child)) ||
           (Path.RelDir.is(base) && Path.Rel.is(child))
@@ -555,7 +575,7 @@ describe('isAncestorOf', () => {
 describe('getSharedBase', () => {
   it('is symmetric and returns an ancestor of both paths', () => {
     FastCheck.assert(
-      FastCheck.property(PathTesting.Any, PathTesting.Any, (a, b) => {
+      FastCheck.property(arb.Any, arb.Any, (a, b) => {
         const ab = Path.getSharedBase(a as never, b as never)
         const ba = Path.getSharedBase(b as never, a as never)
 
@@ -590,7 +610,7 @@ describe('getSharedBase', () => {
 describe('order', () => {
   it('is reflexive, antisymmetric, transitive, and agrees with Equal', () => {
     FastCheck.assert(
-      FastCheck.property(PathTesting.Any, PathTesting.Any, PathTesting.Any, (a, b, c) => {
+      FastCheck.property(arb.Any, arb.Any, arb.Any, (a, b, c) => {
         const ab = Path.order(a, b)
         const ba = Path.order(b, a)
         const bc = Path.order(b, c)
@@ -747,7 +767,7 @@ describe('Config integration', () => {
 describe('traits (toString / toJSON / PrimaryKey)', () => {
   it('use the canonical encoded string', () => {
     FastCheck.assert(
-      FastCheck.property(PathTesting.Any, (path) => {
+      FastCheck.property(arb.Any, (path) => {
         const encoded = encodeAny(path)
         expect(path).toEncodeTo(encoded)
         expect(path.toJSON()).toBe(encoded)
@@ -760,23 +780,23 @@ describe('traits (toString / toJSON / PrimaryKey)', () => {
 // ─── Path.Testing arbitraries ───
 
 const encodedSchemas = [
-  ['Segment', Path.Segment, PathTesting.Segment],
-  ['FileName', Path.FileName, PathTesting.FileName],
-  ['AbsDir', Path.AbsDir, PathTesting.AbsDir],
-  ['AbsFile', Path.AbsFile, PathTesting.AbsFile],
-  ['RelDir', Path.RelDir, PathTesting.RelDir],
-  ['RelFile', Path.RelFile, PathTesting.RelFile],
-  ['Any', Path.Any, PathTesting.Any],
+  ['Segment', Path.Segment, arb.Segment],
+  ['FileName', Path.FileName, arb.FileName],
+  ['AbsDir', Path.AbsDir, arb.AbsDir],
+  ['AbsFile', Path.AbsFile, arb.AbsFile],
+  ['RelDir', Path.RelDir, arb.RelDir],
+  ['RelFile', Path.RelFile, arb.RelFile],
+  ['Any', Path.Any, arb.Any],
 ] as const
 
 const realisticArbitraries = [
-  ['Realistic.Segment', Path.Segment, PathTesting.Realistic.Segment],
-  ['Realistic.FileName', Path.FileName, PathTesting.Realistic.FileName],
-  ['Realistic.AbsDir', Path.AbsDir, PathTesting.Realistic.AbsDir],
-  ['Realistic.AbsFile', Path.AbsFile, PathTesting.Realistic.AbsFile],
-  ['Realistic.RelDir', Path.RelDir, PathTesting.Realistic.RelDir],
-  ['Realistic.RelFile', Path.RelFile, PathTesting.Realistic.RelFile],
-  ['Realistic.Any', Path.Any, PathTesting.Realistic.Any],
+  ['Realistic.Segment', Path.Segment, arb.Realistic.Segment],
+  ['Realistic.FileName', Path.FileName, arb.Realistic.FileName],
+  ['Realistic.AbsDir', Path.AbsDir, arb.Realistic.AbsDir],
+  ['Realistic.AbsFile', Path.AbsFile, arb.Realistic.AbsFile],
+  ['Realistic.RelDir', Path.RelDir, arb.Realistic.RelDir],
+  ['Realistic.RelFile', Path.RelFile, arb.Realistic.RelFile],
+  ['Realistic.Any', Path.Any, arb.Realistic.Any],
 ] as const
 
 describe('Testing arbitraries', () => {

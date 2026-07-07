@@ -44,13 +44,23 @@ two copies break Context/Schema identity).
 ```ts
 import { Path, Schema, String } from '@kitz/effect' // all namespaces
 import { Path } from '@kitz/effect/Path' // just Path
-import * as Testing from '@kitz/effect/Path/Testing' // fast-check arbitraries for paths
 ```
 
-`Path/Testing` ships bounded, realistic fast-check arbitraries for property
-tests; it is kept off the main entry so production consumers never load
-test tooling. Vitest matchers for path values (`toBeAbs`, `toEncodeTo`,
-`toBeWithinPath`, …) live in the companion package `@kitz/vitest`.
+## Property testing
+
+Every model schema derives a fast-check arbitrary on demand — the canonical
+one covers the model's whole domain, and each model carries a `Realistic`
+variant schema biased toward readable real-world values:
+
+```ts
+import { Schema } from 'effect'
+
+Schema.toArbitrary(Path.AbsFile) // full domain — use for laws
+Schema.toArbitrary(Path.AbsFile.Realistic) // readable 20:1 mix — use for shrink output
+```
+
+Vitest matchers for path values (`toBeAbs`, `toEncodeTo`, `toBeWithinPath`, …)
+live in the companion package `@kitz/vitest`.
 
 ## License
 
