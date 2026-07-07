@@ -26,9 +26,21 @@ const unsafeAnalyzeGeneratedFileName = (
 }
 
 const fileNameArbitrary = {
-  toArbitrary: () => (fc: typeof import('effect/testing').FastCheck) =>
-    fc
-      .stringMatching(fileNameText)
+  toArbitrary: () => (fc: typeof import('effect/testing').FastCheck) => {
+    // Two equal-weight text sources keep canonical generation domain-faithful:
+    // the ASCII pattern generator (fc.stringMatching never leaves printable
+    // ASCII — see docs/learnings/effect-arbitrary.md) plus full-codepoint
+    // unicode composition. Both funnel through the same analyze/normalize
+    // pipeline, so every generated value is a canonical FileName.
+    const asciiText = fc.stringMatching(fileNameText)
+    const unicodePart = fc
+      .string({ unit: 'binary', minLength: 1, maxLength: 16 })
+      .filter((s) => !s.includes('/') && !s.includes(nullByte))
+    const unicodeText = fc
+      .tuple(unicodePart, fc.option(unicodePart, { nil: undefined }))
+      .map(([stem, extension]) => (extension === undefined ? stem : `${stem}.${extension}`))
+    return fc
+      .oneof(asciiText, unicodeText)
       .filter(canGenerateFileName)
       .map(unsafeAnalyzeGeneratedFileName)
       .map((file) =>
@@ -36,7 +48,8 @@ const fileNameArbitrary = {
           stem: file.stem,
           extension: Option.fromNullOr(file.extension),
         }),
-      ),
+      )
+  },
 } satisfies S.Annotations.Bottom<FileName__, readonly []>
 
 /** Filename value — a stem plus optional final extension, split on the last dot after index 0. */

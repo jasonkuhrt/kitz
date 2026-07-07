@@ -129,12 +129,35 @@ swapped for variant leaves after the fact).
 | Diagnostics | none | `{ report: true }` (e.g. `OpaqueFilter` warnings); fail-fast on impossible constraints / underivable nodes |
 | Architecture | ad-hoc per-module annotation IDs (`Arbitrary`, `Equivalence`, `Pretty`) | uniform `to*` pairs: every deriver (`toArbitrary`, `toEquivalence`, `toFormatter`, `toCodec`, JSON Schema) has a matching annotation hook |
 
+## fast-check string generation is ASCII-only by default
+
+Measured on the bundled fast-check 4.8.0 (2000 samples each): both
+`fc.string()` (default unit) and `fc.stringMatching(pattern)` — including
+patterns with negated character classes like `[^/\0]+` — produce **100%
+printable-ASCII output, zero high-unicode, zero control characters**. ✅
+
+Consequences:
+
+- A schema whose generation relies on `constraint.patterns` (the usual filter
+  hint) samples only an ASCII slice of its domain, no matter how wide the
+  pattern's character class is. If the domain includes unicode, the canonical
+  arbitrary silently never covers it.
+- The fix is an explicit full-codepoint candidate:
+  `fc.string({ unit: 'binary', ... })`. Verified: its output is 100%
+  well-formed (0 lone surrogates in 5000 samples) and `encodeURIComponent`-safe,
+  with ~96% high-unicode and ~11% control-character incidence. ✅
+- When measuring distributions of class-instance samples, measure the rendered
+  domain string (e.g. `.name`), not `String(instance)` — effect's Inspectable
+  `toString` JSON-escapes control characters, hiding them from the measurement.
+
 ## Organizing distributions (API-design guidance)
 
-- The **canonical** schema keeps the full-space distribution — property/law
-  tests rely on sampling the whole set (a realistic-biased canonical arb
-  silently weakens every law; a full-space arb is what caught the path
-  `fileUrl` `%`/`?`/`#` bug).
+- The **canonical** schema's arbitrary is **domain-faithful**: it covers the
+  whole valid set with balanced source weights, over-biased toward no
+  sub-region — neither toward "nice" values (realistic names) nor accidentally
+  toward ASCII (see the ASCII-only default above). Property/law tests rely on
+  this (a biased canonical arb silently weakens every law; full-space sampling
+  is what caught the path `fileUrl` `%`/`?`/`#` bug).
 - Filter-level `arbitrary` hints on the canonical schema are for making
   full-space generation *efficient and correct* (pattern-based instead of
   reject-sampled), not for biasing toward "nice" values.

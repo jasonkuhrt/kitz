@@ -6,14 +6,34 @@ const nullByte = String.fromCharCode(0)
 const segmentPatternSource = `^[^/${nullByte}]+$`
 const segmentPattern = new RegExp(segmentPatternSource)
 
-const segmentTextArbitrary = {
+const isSegmentText = (s: string): boolean =>
+  s.length > 0 && !s.includes('/') && !s.includes(nullByte) && s !== '.' && s !== '..'
+
+// Canonical generation mixes three equal-weight sources so the derived
+// arbitrary is domain-faithful — covering the whole valid set without
+// over-biasing any sub-region (biased distributions are variant schemas,
+// e.g. `Realistic` below):
+//   1. the pattern-derived base generator (printable ASCII; weight pinned at 1)
+//   2. fast-check dictionary text (adversarial JS names like `__proto__`)
+//   3. full-codepoint unicode text (`fc.stringMatching`/`fc.string` never
+//      leave printable ASCII on their own — see docs/learnings/effect-arbitrary.md)
+const canonicalGenerationWeight = 3
+
+const dictionaryTextArbitrary = {
   constraint: { minLength: 1, maxLength: 32, patterns: [segmentPatternSource] },
   candidate: {
-    weight: 8,
+    weight: 1,
     make: (fc: typeof import('effect/testing').FastCheck) =>
-      fc
-        .string({ minLength: 1, maxLength: 32 })
-        .filter((s) => !s.includes('/') && !s.includes(nullByte) && s !== '.' && s !== '..'),
+      fc.string({ minLength: 1, maxLength: 32 }).filter(isSegmentText),
+  },
+} satisfies S.Annotations.ToArbitrary.Filter
+
+const unicodeTextArbitrary = {
+  constraint: { patterns: [segmentPatternSource] },
+  candidate: {
+    weight: 1,
+    make: (fc: typeof import('effect/testing').FastCheck) =>
+      fc.string({ unit: 'binary', minLength: 1, maxLength: 32 }).filter(isSegmentText),
   },
 } satisfies S.Annotations.ToArbitrary.Filter
 
@@ -31,13 +51,11 @@ export class Segment_ extends S.asClass(
       }),
       S.isPattern(segmentPattern, {
         message: 'Path segment cannot contain / or null bytes',
-        arbitrary: {
-          constraint: { patterns: [segmentPatternSource] },
-        },
+        arbitrary: unicodeTextArbitrary,
       }),
       S.makeFilter((s) => s !== '.' && s !== '..', {
         message: '"." and ".." are traversal references, not segment names',
-        arbitrary: segmentTextArbitrary,
+        arbitrary: dictionaryTextArbitrary,
       }),
     ),
     S.brand('Segment'),
@@ -53,9 +71,9 @@ export class Segment_ extends S.asClass(
   static readonly Realistic = Segment_.pipe(
     withArbitraryHints({
       candidate: {
-        // 20:1 over the canonical distribution, whose own generation weight is
-        // 9 — base (1) + the segmentTextArbitrary candidate (8) above.
-        weight: 20 * 9,
+        // 20:1 over the canonical distribution — candidate weights compound,
+        // so the ratio is against the canonical total, not against 1.
+        weight: 20 * canonicalGenerationWeight,
         make: (fc) => fc.stringMatching(realisticSegmentPattern),
       },
     }),
