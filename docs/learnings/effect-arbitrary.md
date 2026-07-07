@@ -89,9 +89,11 @@ Probe-verified properties of this pattern (all ✅):
 
 - Bias observed at the expected weight ratio; decode/encode behavior identical
   to `Base` (same set).
-- `S.toArbitrary(Variant, { report: true })` emits **zero warnings** — a
-  hint-carrying filter is not an `OpaqueFilter` (that warning is only for
-  filters with *neither* hint).
+- The carrier adds **no derivation warnings** — a hint-carrying filter is not
+  an `OpaqueFilter`. Note the flip side: any plain predicate filter *without*
+  hints anywhere on the schema IS reported as `OpaqueFilter` (`{ _tag:
+  'OpaqueFilter', path }`), so compare warnings before/after adding the
+  carrier rather than asserting an empty list.
 - `S.toJsonSchemaDocument(Variant)` is **byte-identical** to `Base`'s — the
   carrier does not leak into JSON Schema.
 - Works at `TaggedClass` nodes: a whole-value candidate can build class

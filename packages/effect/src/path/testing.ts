@@ -6,6 +6,7 @@ import { Any as AnySchema } from './models/Any.js'
 import { FileName as FileNameSchema } from './models/FileName.js'
 import { RelDir as RelDirSchema } from './models/RelDir.js'
 import { RelFile as RelFileSchema } from './models/RelFile.js'
+import { withArbitraryHints } from '../schema/withArbitraryHints.js'
 import { Segment as SegmentSchema } from './models/segment.js'
 
 export const Segment = S.toArbitrary(SegmentSchema)
@@ -49,10 +50,25 @@ const canDecodeFileName = (name: string): boolean => {
   }
 }
 
-const realisticSegment = FastCheck.oneof(
-  { arbitrary: realisticSegmentText.map((s) => S.decodeSync(SegmentSchema)(s)), weight: 20 },
-  { arbitrary: Segment, weight: 1 },
-)
+/**
+ * Variant schemas — the canonical model schemas carrying a realistic
+ * generation bias as arbitrary-derivation hints. Same sets as the originals
+ * (candidates are validated by the models' own filters); only `toArbitrary`
+ * output differs, mixing realistic values 20:1 over the full valid space.
+ *
+ * These are the first-class distribution carriers: compose one into a struct
+ * or array schema and derivation picks up the bias. The `Realistic`
+ * arbitraries below are derived from them.
+ */
+export const RealisticSchema = {
+  Segment: SegmentSchema.pipe(
+    withArbitraryHints({
+      candidate: { weight: 20, make: (fc) => fc.stringMatching(realisticSegmentPattern) },
+    }),
+  ),
+} as const
+
+const realisticSegment = S.toArbitrary(RealisticSchema.Segment)
 
 const realisticFileNameText = FastCheck.oneof(realisticFileText, realisticDotfileText).filter(
   canDecodeFileName,
