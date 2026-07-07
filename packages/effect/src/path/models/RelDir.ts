@@ -99,6 +99,13 @@ export class RelDir_ extends withLiteralStatics(
   withStatics(
     S.asClass(
       S.String.pipe(
+        S.annotate({
+          identifier: 'RelDir',
+          title: 'Relative directory path',
+          description:
+            'A POSIX relative directory path — leading `..` steps count as ascent; canonical form starts with `./` or `../` and ends with `/` (e.g. `./src/`).',
+          examples: ['./src/', '../'],
+        }),
         S.decodeTo(RelDir__, {
           encode: SchemaGetter.transform((encoded) =>
             format({ isPathAbsolute: false, ascent: encoded.ascent })(encoded.segments),

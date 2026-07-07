@@ -114,6 +114,13 @@ export class RelFile_ extends withLiteralStatics(
   withStatics(
     S.asClass(
       S.String.pipe(
+        S.annotate({
+          identifier: 'RelFile',
+          title: 'Relative file path',
+          description:
+            'A POSIX relative file path — leading `..` steps count as ascent; canonical form starts with `./` or `../` (e.g. `./src/index.ts`).',
+          examples: ['./src/index.ts', '../notes.txt'],
+        }),
         S.decodeTo(RelFile__, {
           encode: SchemaGetter.transform((encoded) =>
             format({ isPathAbsolute: false, ascent: encoded.ascent, fileName: encoded.fileName })(

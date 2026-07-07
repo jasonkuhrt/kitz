@@ -111,6 +111,13 @@ export class AbsFile_ extends withLiteralStatics(
   withStatics(
     S.asClass(
       S.String.pipe(
+        S.annotate({
+          identifier: 'AbsFile',
+          title: 'Absolute file path',
+          description:
+            'A POSIX absolute file path — starts with `/`, does not end with `/` (e.g. `/home/user/notes.txt`).',
+          examples: ['/home/user/notes.txt', '/etc/hostname'],
+        }),
         S.decodeTo(AbsFile__, {
           encode: SchemaGetter.transform((encoded) =>
             format({ isPathAbsolute: true, ascent: 0, fileName: encoded.fileName })(

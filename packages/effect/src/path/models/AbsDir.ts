@@ -92,6 +92,13 @@ export class AbsDir_ extends withLiteralStatics(
   withStatics(
     S.asClass(
       S.String.pipe(
+        S.annotate({
+          identifier: 'AbsDir',
+          title: 'Absolute directory path',
+          description:
+            'A POSIX absolute directory path — starts with `/`; canonical form ends with `/` (e.g. `/home/user/`).',
+          examples: ['/home/user/', '/'],
+        }),
         S.decodeTo(AbsDir__, {
           encode: SchemaGetter.transform((encoded) =>
             format({ isPathAbsolute: true, ascent: 0 })(encoded.segments),

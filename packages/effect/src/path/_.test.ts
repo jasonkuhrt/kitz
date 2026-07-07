@@ -173,6 +173,30 @@ describe('codec', () => {
   })
 })
 
+// ─── JSON Schema emission ───
+
+describe('JSON Schema', () => {
+  it.each([
+    ['AbsFile', Path.AbsFile],
+    ['AbsDir', Path.AbsDir],
+    ['RelFile', Path.RelFile],
+    ['RelDir', Path.RelDir],
+  ] as const)('%s emits a self-describing string schema', (name, schema) => {
+    const document = S.toJsonSchemaDocument(schema)
+    const definition = document.definitions[name] as {
+      type?: string
+      title?: string
+      description?: string
+      examples?: readonly string[]
+    }
+
+    expect(definition.type).toBe('string')
+    expect(definition.title).toBeTruthy()
+    expect(definition.description).toBeTruthy()
+    expect(definition.examples?.length).toBeGreaterThan(0)
+  })
+})
+
 // ─── union utilities (toTaggedUnion) ───
 
 describe('union utilities', () => {
