@@ -45,10 +45,7 @@ const unicodeTextArbitrary = {
 export class Segment_ extends S.asClass(
   S.String.pipe(
     S.check(
-      S.makeFilter((s) => s.length > 0, {
-        message: 'Path segment cannot be empty',
-        arbitrary: { constraint: { minLength: 1 } },
-      }),
+      S.isNonEmpty({ message: 'Path segment cannot be empty' }),
       S.isPattern(segmentPattern, {
         message: 'Path segment cannot contain / or null bytes',
         arbitrary: unicodeTextArbitrary,
