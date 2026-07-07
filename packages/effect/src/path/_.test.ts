@@ -12,7 +12,7 @@
  * `isDescendantOf`, so the mirror law lives there).
  */
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
-import { Equal, Option, Result, Schema as S } from 'effect'
+import { Config, ConfigProvider, Effect, Equal, Option, Result, Schema as S } from 'effect'
 import * as PrimaryKey from 'effect/PrimaryKey'
 import { FastCheck } from 'effect/testing'
 import * as Path from './__.js'
@@ -720,6 +720,25 @@ describe('fromLiteral', () => {
       Path.AbsFile.fromLiteral('/a/b/')
     }
     expect(typeof staticRejections).toBe('function')
+  })
+})
+
+// ─── Config integration ───
+
+describe('Config integration', () => {
+  it('Config.schema decodes typed paths straight from a provider', () => {
+    const provider = ConfigProvider.fromUnknown({
+      CACHE_DIR: '/var/cache',
+      ENTRY: './src/index.ts',
+    })
+
+    const cacheDir = Effect.runSync(Config.schema(Path.AbsDir, 'CACHE_DIR').parse(provider))
+    expect(cacheDir).toEncodeTo('/var/cache/')
+    expectTypeOf(cacheDir).toEqualTypeOf<Path.AbsDir>()
+
+    const entry = Effect.runSync(Config.schema(Path.RelFile, 'ENTRY').parse(provider))
+    expect(entry).toEncodeTo('./src/index.ts')
+    expectTypeOf(entry).toEqualTypeOf<Path.RelFile>()
   })
 })
 
