@@ -30,7 +30,7 @@ ancestor of this design), PureScript `pathy`, Node `path`/`pathe`.
 | Could | `Order` instance | §2.6 | ✅ `412c1019` |
 | Could | Variadic `join` | §2.7 | ✅ `68adf7cd` |
 | Could | Multi-extension JSDoc pin | §2.8 | ✅ `1ebea54e` |
-| Should | JSON Schema + schema annotations | §8.3 | Skipped: beta.85 cannot make tagged unions emit one string schema without dropping `toTaggedUnion` utilities |
+| Should | JSON Schema + schema annotations | §8.3 | ✅ leaves `3cf6abdc` (encoded-side identifier/title/description/examples; pinned). Unions remain blocked: beta.85 cannot make tagged unions emit one string schema without dropping `toTaggedUnion` utilities |
 | Should | Formatter integration | §8.2 | ✅ `4b4346ed` |
 | Should | Tech-debt T1 | §6 | ✅ `ede431cc` |
 | Should | Tech-debt T7 | §6 | ✅ `8d1d086c` |
@@ -39,6 +39,17 @@ ancestor of this design), PureScript `pathy`, Node `path`/`pathe`.
 | Should | Per-target `fromLiteral` constructors with static errors | §3.2 | ✅ `3cef3dd8` |
 | Could | Full `Input<P> = P \| string` polymorphic arguments (old trunk's crown jewel) | §3.3 | Future |
 | Defer | Glob matching, non-POSIX/URL anchors | §7 | Deferred |
+
+Run 4 closeout (matchers, feature-locus tests, riders):
+`60e72400` dependency wiring `@kitz/vitest` ⇄ `@kitz/effect`;
+`548b7e8a` path matchers hosted in `@kitz/vitest` with full matcher context
+(also fixed a latent `it.each` derivation bug in `@kitz/vitest`'s custom `it`);
+`eaeb5e89` feature-locus `_.test.ts` (one feature → one test locus; type +
+value assertions co-located; 131 → 144 tests, no losses);
+`3cf6abdc` leaf JSON Schema enrichment (pinned);
+`c1ccd4f0` Config.schema integration pinned;
+`2db4b07a` package CONTRIBUTING Key Decisions ledger + README accuracy fix;
+`4448f9e8` Segment branding (T9 closed).
 
 Source bugs exposed by the Run-3 laws (fixed in dedicated commits):
 `6774420c` — `Hash` disagreed with structural `Equal` for equal path values;
@@ -367,7 +378,7 @@ the specification to execute once you green-light who writes them.
 | T6 | `getRelativeSegments` returns a segment array — model leak | `operators/getRelativeSegments.ts` | §2.2 |
 | T7 | `Protocol` is public surface (`Path.Protocol`) but exists solely to render `file://` | `models/Protocol.ts` | either document as intentional URL-interop seam (§7) or fold into `core/fileUrl.ts` and unexport |
 | T8 | **Confirmed bug**: `fileUrlOf` does no percent-encoding. Verified against the built package: spaces auto-escape fine, but `/x/100%.txt` yields a URI-malformed pathname, and `?`/`#` in a filename **silently truncate** the URL (`/q/a?b.txt` → pathname `/q/a`, remainder shunted to query/fragment — data loss) | `core/fileUrl.ts` | percent-encode each segment (`encodeURIComponent`, then un-escape the chars `file:` paths permit) before URL construction; add the §5.2 roundtrip property as the regression test |
-| T9 | `Segment` type is an unbranded `string` alias — semantic only, no nominal enforcement | `models/segment.ts` | open decision (no branding precedent in package); branding would make T1-class bugs unrepresentable |
+| T9 | `Segment` type is an unbranded `string` alias — semantic only, no nominal enforcement | `models/segment.ts` | ✅ `4448f9e8` — branded, with the `Path.segment` maker for literal construction. `Extension` deliberately stays unbranded (raw-literal `withExtension(file, '.md')` ergonomics) — the recorded asymmetry |
 | T10 | No module-level docs/README for the path module; the organizing principle lives only in the spec | `path/__.ts` | add a module JSDoc header summarizing the three-tier principle + link to spec |
 | T11 | Zero runtime tests (tracked as §5, listed here for completeness) | — | §5 |
 
