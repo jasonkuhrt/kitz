@@ -1,26 +1,29 @@
 # @kitz/effect
 
-Filesystem operations and a typed path ADT for the [Effect](https://effect.website) ecosystem.
+A typed path ADT and Effect-native utilities for the [Effect](https://effect.website) ecosystem.
 
 `@kitz/effect` layers kitz enhancements on top of Effect, exposed under Effect's own
 domain terms:
 
-- **`FileSystem`** — higher-level filesystem operations built on Effect's `FileSystem`
-  service (read/write/copy/remove with typed paths, glob, an in-memory layer, a
-  directory builder).
 - **`Path`** — a typed path ADT (`AbsFile` | `AbsDir` | `RelFile` | `RelDir`) with
-  schema-backed parsing, joining, and relationship queries.
+  schema-backed parsing. Values carry instance getters (`.name`, `.stem`,
+  `.extension`, `.dir`, `.parent`, `.ancestors`, `.asDir`/`.asFile`, `.atRoot`,
+  `.fileUrl`, …); multi-path operations are flat functions (`join`, `relativeTo`,
+  `ensureAbs`, `isDescendantOf`, `getSharedBase`, `withExtension`, `order`, …);
+  `fromLiteral` infers the precise variant from string literals at the type level.
+- **`Schema`** — small additions to Effect Schema (e.g. `NaturalInt`).
+- **`String`** — string utilities.
 
 ```ts
-import { FileSystem, Path } from '@kitz/effect'
-import { Effect } from 'effect'
+import { Path } from '@kitz/effect'
+import { Schema } from 'effect'
 
-const file = Path.AbsFile.fromString('/home/user/config.json')
+const config = Path.fromLiteral('/home/user/config.json') // typed AbsFile
+const cwd = Path.AbsDir.fromLiteral('/home/user') // dir targets accept no trailing slash
 
-const program = Effect.gen(function* () {
-  const text = yield* FileSystem.readString(file)
-  return text
-})
+Path.join(cwd, Path.fromLiteral('./notes/todo.md')) // AbsFile /home/user/notes/todo.md
+config.parent.name // 'user'
+Schema.decodeSync(Path.Any)(process.argv[2] ?? '.') // runtime strings decode to the union
 ```
 
 ## Install
@@ -39,10 +42,15 @@ two copies break Context/Schema identity).
 ## Subpath exports
 
 ```ts
-import { FileSystem, Path } from '@kitz/effect' // both namespaces
-import { FileSystem } from '@kitz/effect/FileSystem' // just FileSystem
+import { Path, Schema, String } from '@kitz/effect' // all namespaces
 import { Path } from '@kitz/effect/Path' // just Path
+import * as Testing from '@kitz/effect/Path/Testing' // fast-check arbitraries for paths
 ```
+
+`Path/Testing` ships bounded, realistic fast-check arbitraries for property
+tests; it is kept off the main entry so production consumers never load
+test tooling. Vitest matchers for path values (`toBeAbs`, `toEncodeTo`,
+`toBeWithinPath`, …) live in the companion package `@kitz/vitest`.
 
 ## License
 
