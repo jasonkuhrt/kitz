@@ -16,14 +16,26 @@ export const RelDir = S.toArbitrary(RelDirSchema)
 export const RelFile = S.toArbitrary(RelFileSchema)
 export const Any = S.toArbitrary(AnySchema)
 
-const realisticSegmentText = FastCheck.stringMatching(/^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/).filter(
-  (s) => s !== '.' && s !== '..' && !s.includes('/'),
-)
+// Realistic-name text patterns — shaped like real-world path names rather than
+// the full validated character space. Heads are alphanumeric (which also rules
+// out `.`/`..` and `/` by construction); bodies add the separators common in
+// real names. Segment and dotfile bodies allow dots; stem and extension bodies
+// do not, so the generated extension stays the sole stem–extension split point.
+const alphanumeric = 'A-Za-z0-9'
+const segmentBody = `${alphanumeric}._-`
+const nameBody = `${alphanumeric}_-`
 
-const realisticDotfileText = FastCheck.stringMatching(/^\.[A-Za-z0-9][A-Za-z0-9._-]{0,30}$/)
+const realisticSegmentPattern = new RegExp(`^[${alphanumeric}][${segmentBody}]{0,31}$`)
+const realisticDotfilePattern = new RegExp(`^\\.[${alphanumeric}][${segmentBody}]{0,30}$`)
+const realisticStemPattern = new RegExp(`^[${alphanumeric}][${nameBody}]{0,23}$`)
+const realisticExtensionPattern = new RegExp(`^\\.[${alphanumeric}][${nameBody}]{0,7}$`)
+
+const realisticSegmentText = FastCheck.stringMatching(realisticSegmentPattern)
+
+const realisticDotfileText = FastCheck.stringMatching(realisticDotfilePattern)
 const realisticFileText = FastCheck.tuple(
-  FastCheck.stringMatching(/^[A-Za-z0-9][A-Za-z0-9_-]{0,23}$/),
-  FastCheck.option(FastCheck.stringMatching(/^\.[A-Za-z0-9][A-Za-z0-9_-]{0,7}$/), {
+  FastCheck.stringMatching(realisticStemPattern),
+  FastCheck.option(FastCheck.stringMatching(realisticExtensionPattern), {
     nil: undefined,
   }),
 ).map(([stem, extension]) => `${stem}${extension ?? ''}`)
