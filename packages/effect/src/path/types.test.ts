@@ -1,5 +1,5 @@
 import { Option } from 'effect'
-import { describe, expectTypeOf, it } from 'vite-plus/test'
+import { describe, expectTypeOf, it } from '@kitz/vitest'
 import * as Path from './__.js'
 
 describe('Path type inference', () => {

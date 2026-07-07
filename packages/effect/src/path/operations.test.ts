@@ -1,10 +1,9 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from '@kitz/vitest'
 import { Equal, Option, Result, Schema as S } from 'effect'
 import * as PrimaryKey from 'effect/PrimaryKey'
 import { FastCheck } from 'effect/testing'
 import * as Path from './__.js'
 import * as PathTesting from './testing.js'
-import './test-matchers.setup.js'
 
 const abs = FastCheck.oneof(PathTesting.AbsDir, PathTesting.AbsFile)
 const dir = FastCheck.oneof(PathTesting.AbsDir, PathTesting.RelDir)

@@ -16,6 +16,7 @@ import * as Vitest from 'vite-plus/test'
 // Re-export the full vitest surface (describe, expect, vi, beforeAll, …). The
 // explicit `it` export below shadows the star-exported one.
 export * from 'vite-plus/test'
+export { Path } from './path.js'
 
 /** Services an `it.effect` body may use without providing them itself. */
 export type TestEnv = TestClock.TestClock | TestConsole.TestConsole | Scope.Scope
@@ -158,8 +159,9 @@ export const layer =
  * exported `it` is never mutated.
  */
 export const it: typeof Vitest.it & typeof effectHelpers & { layer: typeof layer } = Object.assign(
-  ((...args: Parameters<typeof Vitest.it>) => Vitest.it(...args)) as typeof Vitest.it,
-  Vitest.it,
+  // `extend({})` derives a real TestAPI clone — chainers like `.each` keep their
+  // internal collector context, which a property-copied bare wrapper loses.
+  Vitest.it.extend({}),
   effectHelpers,
   { layer },
 )

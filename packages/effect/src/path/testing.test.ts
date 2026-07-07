@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from '@kitz/vitest'
 import { Schema as S } from 'effect'
 import { FastCheck } from 'effect/testing'
 import * as Path from './__.js'

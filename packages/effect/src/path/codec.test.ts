@@ -1,9 +1,8 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it } from '@kitz/vitest'
 import { Equal, Schema as S } from 'effect'
 import { FastCheck } from 'effect/testing'
 import * as Path from './__.js'
 import * as PathTesting from './testing.js'
-import './test-matchers.setup.js'
 
 const codecCases = [
   ['AbsDir', Path.AbsDir, PathTesting.AbsDir],
