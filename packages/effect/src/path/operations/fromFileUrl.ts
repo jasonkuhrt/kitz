@@ -3,6 +3,7 @@ import type { Abs } from '../models/Abs.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
 import { FileName } from '../models/FileName.js'
+import { segment } from '../models/segment.js'
 
 const invalid = (url: URL, expected: string): SchemaIssue.Issue =>
   new SchemaIssue.InvalidValue(Option.some(url.href), {
@@ -48,9 +49,9 @@ export const fromFileUrl = (url: URL): Result.Result<Abs, SchemaIssue.Issue> => 
   return Result.try({
     try: () =>
       isDir
-        ? AbsDir.make({ segments: decodedParts })
+        ? AbsDir.make({ segments: decodedParts.map(segment) })
         : AbsFile.make({
-            segments: Array.dropRight(decodedParts, 1),
+            segments: Array.dropRight(decodedParts, 1).map(segment),
             fileName: S.decodeSync(FileName)(decodedParts[decodedParts.length - 1] ?? ''),
           }),
     catch: () => invalid(url, 'a valid absolute file path URL'),

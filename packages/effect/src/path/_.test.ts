@@ -47,16 +47,16 @@ const canDecodeFileName = (value: string): boolean =>
   Result.isSuccess(S.decodeUnknownResult(Path.FileName)(value))
 
 const someAbsFile = Path.AbsFile.make({
-  segments: ['home', 'src'],
+  segments: ['home', 'src'].map(Path.segment),
   fileName: Path.FileName.make({ stem: 'index', extension: Option.some('.ts') }),
 })
-const someAbsDir = Path.AbsDir.make({ segments: ['home'] })
+const someAbsDir = Path.AbsDir.make({ segments: ['home'].map(Path.segment) })
 const someRelFile = Path.RelFile.make({
   ascent: 0,
-  segments: ['src'],
+  segments: ['src'].map(Path.segment),
   fileName: Path.FileName.make({ stem: 'index', extension: Option.some('.ts') }),
 })
-const someRelDir = Path.RelDir.make({ ascent: 0, segments: ['src'] })
+const someRelDir = Path.RelDir.make({ ascent: 0, segments: ['src'].map(Path.segment) })
 
 // ─── codec: the string ⇄ value contract, parameterized over every model ───
 

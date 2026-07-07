@@ -1,5 +1,6 @@
 import { Array, Function as Fn, Option } from 'effect'
 import { commonSegmentPrefix } from '../core/segments.js'
+import type { Segment } from '../models/segment.js'
 import type { Abs } from '../models/Abs.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
@@ -52,7 +53,7 @@ export const relativeTo: {
   return relativeToAbs(path as Abs, base)
 })
 
-const makeRel = (path: Abs | Rel, ascent: number, segments: readonly string[]): Rel =>
+const makeRel = (path: Abs | Rel, ascent: number, segments: readonly Segment[]): Rel =>
   path._tag === 'AbsFile' || path._tag === 'RelFile'
     ? RelFile.make({ ascent, segments, fileName: path.fileName })
     : RelDir.make({ ascent, segments })

@@ -38,7 +38,7 @@ const canDecodeFileName = (name: string): boolean => {
 }
 
 const realisticSegment = FastCheck.oneof(
-  { arbitrary: realisticSegmentText, weight: 20 },
+  { arbitrary: realisticSegmentText.map((s) => S.decodeSync(SegmentSchema)(s)), weight: 20 },
   { arbitrary: Segment, weight: 1 },
 )
 

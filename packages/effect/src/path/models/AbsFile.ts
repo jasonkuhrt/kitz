@@ -10,6 +10,7 @@ import { parentOf } from '../core/segments.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
 import { Segments } from './arbitrary.js'
+import { segment } from './segment.js'
 import type { Extension } from './Extension.js'
 import { FileName } from './FileName.js'
 
@@ -53,7 +54,7 @@ class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
 
   /** Reinterpret this file path as a directory by folding the filename into the segment list. */
   get asDir(): AbsDir {
-    return AbsDir.make({ segments: [...this.segments, this.fileName.name] })
+    return AbsDir.make({ segments: [...this.segments, segment(this.fileName.name)] })
   }
 
   /** Ancestor directories, starting at this file's containing directory and ending at root. */

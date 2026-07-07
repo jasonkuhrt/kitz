@@ -44,7 +44,7 @@ export * as Extension from './models/Extension.js'
 
 // Filename and segment value codecs
 export { FileName } from './models/FileName.js'
-export { Segment } from './models/segment.js'
+export { Segment, segment } from './models/segment.js'
 
 // Protocol — URL scheme enum + codec (`file` ⇄ `file://`)
 export * as Protocol from './models/Protocol.js'

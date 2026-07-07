@@ -12,6 +12,7 @@ import { Ascent, Segments } from './arbitrary.js'
 import type { Extension } from './Extension.js'
 import { FileName } from './FileName.js'
 import { RelDir } from './RelDir.js'
+import { segment } from './segment.js'
 
 /**
  * Relative file value — the decoded path (ascent count + segments + filename).
@@ -54,7 +55,10 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
 
   /** Reinterpret this file path as a directory by folding the filename into the segment list. */
   get asDir(): RelDir {
-    return RelDir.make({ ascent: this.ascent, segments: [...this.segments, this.fileName.name] })
+    return RelDir.make({
+      ascent: this.ascent,
+      segments: [...this.segments, segment(this.fileName.name)],
+    })
   }
 
   /** Ancestor directories, starting at this file's containing directory and ending at the same relative anchor. */
