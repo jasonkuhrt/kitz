@@ -14,6 +14,8 @@
 | Flat path operations live in `path/operations/`, one file each                                                                                                                                  | "Operation" is the domain term used across spec, report, and history; `operators/` was the lone outlier                                                                                  | Keeping `operators/`                                                                       | [spec](../../docs/superpowers/specs/2026-07-05-path-organizing-principle-design.md) |
 | Tests are organized by feature in one `_.test.ts`; type + value assertions co-locate per feature block                                                                                          | One feature → one test locus; build-time vs run-time is an assertion mechanism, not an organizing axis; delete feature = delete one block                                                | Mechanism-split files (`types.test.ts`, `codec.test.ts`, …)                                | [report §5](../../docs/superpowers/reports/2026-07-06-path-pre-merge-analysis.md)   |
 | Canonical arbitraries are domain-faithful: balanced sources over the whole valid set, no over-bias to any sub-region; biased distributions are named variant schemas (e.g. `Segment.Realistic`) | We model domains; laws sample the canonical arb implicitly, so bias there weakens every property test silently — fc's ASCII-only defaults required explicit `unit: 'binary'` candidates  | Realistic-as-canonical (readable defaults, adversarial opt-in)                             | [learnings](../../docs/learnings/effect-arbitrary.md)                               |
+| No hand-written optics: `Path.Optic` removed; optics arrive via a schema-derived engine with `make`-routed setters; `with*` operations rebuild through `core/replaceFileName.ts`                | Hand-written optics were a manual preview of derivable output; the only consumers reduced to one variant-preserving fileName rebuild; derived setters must route through `make` anyway   | Maintaining the central `optic.ts` until derivation lands                                  | [#287](https://github.com/jasonkuhrt/kitz/issues/287)                               |
+| Interior tagged unions use `Data.taggedEnum` (e.g. analyzer `Analysis`); schemas are reserved for boundary types that unknown data becomes                                                      | Schema derives value→type with the full `to*` family for boundary data; Data derives type→value (Proxy constructors, `$is`/`$match`, `TaggedEnum.Value`) at zero runtime cost inside     | Manual `_tag` interfaces; schema-wrapping interior parse results                           | [learnings](../../docs/learnings/effect-arbitrary.md)                               |
 
 ## Working on the path module
 
@@ -21,8 +23,11 @@
   spec is the authoritative statement.
 - The string boundary is `path/analyzer.ts` (plus `core/fileUrl.ts` for
   `file://` URLs) — nothing else interprets or renders path strings.
-- Open decisions are tracked in the pre-merge report (e.g. `Segment` branding,
-  union JSON Schema emission, Tier-3 literal `Input` polymorphism).
+- Remaining open items: union JSON Schema emission (blocked on an effect
+  beta.85 API gap), Tier-3 literal `Input` polymorphism (deferred as Future in
+  the pre-merge report), and schema-derived optics
+  ([#287](https://github.com/jasonkuhrt/kitz/issues/287) — `Path.Optic` was
+  removed in favor of deriving optics from schemas later).
 
 ## Detail records
 

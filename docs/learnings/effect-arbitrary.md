@@ -113,10 +113,12 @@ A biased **leaf** schema flows through struct derivation compositionally:
 `S.Struct({ items: S.Array(BiasedLeaf) })` samples the leaf's biased
 distribution inside the container (~0.98 observed for a weight-50 candidate). ✅
 A loose fast-check value can't do this — you must hand-wire
-`FastCheck.record({...})` mirroring the struct shape (which is exactly what
-`packages/effect/src/path/testing.ts` does for its `Realistic` generators,
-because our model classes are fixed `TaggedClass` structs whose fields can't be
-swapped for variant leaves after the fact).
+`FastCheck.record({...})` mirroring the struct shape. For fixed `TaggedClass`
+structs whose fields can't be swapped for variant leaves after the fact, host
+that record wiring as a whole-value candidate on the container's own variant
+schema (see the path models' `Realistic` statics, e.g.
+`packages/effect/src/path/models/RelFile.ts`) — the wiring lives once, next to
+the model, and the variant composes like any schema value.
 
 ## v3 → v4
 
