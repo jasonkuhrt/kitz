@@ -252,7 +252,9 @@ describe('union utilities', () => {
   it('types: union member access matches the organizing-principle table', () => {
     const anyPath = someAbsFile as Path.Any
 
-    expectTypeOf(anyPath.parent).toEqualTypeOf<Path.Any>()
+    expectTypeOf((someAbsDir as Path.Dir).parent).toEqualTypeOf<Path.AbsDir | Path.RelDir>()
+    // @ts-expect-error parent is dir-only — absent from the Any union
+    void anyPath.parent
     // @ts-expect-error stem is file-only — absent from the Any union
     void anyPath.stem
   })
@@ -325,11 +327,35 @@ describe('.parent', () => {
     )
   })
 
-  it('types: variant-preserving', () => {
-    expectTypeOf(someAbsFile.parent).toEqualTypeOf<Path.AbsFile>()
+  it('types: dir-only; files answer "up" with .dir and relocation with .movedUp', () => {
     expectTypeOf(someAbsDir.parent).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(someRelFile.parent).toEqualTypeOf<Path.RelFile>()
     expectTypeOf(someRelDir.parent).toEqualTypeOf<Path.RelDir>()
+    // @ts-expect-error parent does not exist on files — the dirname false friend is a compile error
+    void someAbsFile.parent
+    // @ts-expect-error parent does not exist on files — the dirname false friend is a compile error
+    void someRelFile.parent
+  })
+})
+
+// ─── getters: movedUp (file relocation) ───
+
+describe('.movedUp', () => {
+  it('moves the file one directory level up, keeping the filename', () => {
+    FastCheck.assert(
+      FastCheck.property(file, (f) => {
+        const moved = f.movedUp
+        expect(moved.name).toBe(f.name)
+        expect(moved.segments).toEqual(f.segments.slice(0, -1))
+        if (Path.RelFile.is(f) && Path.RelFile.is(moved)) {
+          expect(moved.ascent).toBe(f.segments.length > 0 ? f.ascent : f.ascent + 1)
+        }
+      }),
+    )
+  })
+
+  it('types: variant-preserving', () => {
+    expectTypeOf(someAbsFile.movedUp).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(someRelFile.movedUp).toEqualTypeOf<Path.RelFile>()
   })
 })
 

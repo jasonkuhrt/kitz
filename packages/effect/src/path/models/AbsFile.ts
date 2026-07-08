@@ -65,8 +65,12 @@ class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
     )
   }
 
-  /** The file relocated one directory level up — keeps the filename, drops the last directory segment (root stays at root). */
-  get parent(): AbsFile {
+  /**
+   * The file relocated one directory level up — keeps the filename, drops the
+   * last directory segment (root stays at root). This MOVES the file; the tree
+   * parent of a file is its containing directory — see {@link dir}.
+   */
+  get movedUp(): AbsFile {
     return AbsFile_.make({
       segments: parentOf(0, this.segments).segments,
       fileName: this.fileName,

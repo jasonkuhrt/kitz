@@ -7,8 +7,9 @@ domain terms:
 
 - **`Path`** — a typed path ADT (`AbsFile` | `AbsDir` | `RelFile` | `RelDir`) with
   schema-backed parsing. Values carry instance getters (`.name`, `.stem`,
-  `.extension`, `.dir`, `.parent`, `.ancestors`, `.asDir`/`.asFile`, `.atRoot`,
-  `.fileUrl`, …); multi-path operations are flat functions (`join`, `relativeTo`,
+  `.extension`, `.dir` on files, `.parent` on dirs, `.ancestors`,
+  `.asDir`/`.asFile`, `.atRoot`, `.fileUrl`, …); multi-path operations are flat
+  functions (`join`, `relativeTo`,
   `ensureAbs`, `isDescendantOf`, `getSharedBase`, `withExtension`, `order`, …);
   `fromLiteral` infers the precise variant from string literals at the type level.
 - **`Schema`** — small additions to Effect Schema (e.g. `NaturalInt`).
@@ -22,7 +23,7 @@ const config = Path.fromLiteral('/home/user/config.json') // typed AbsFile
 const cwd = Path.AbsDir.fromLiteral('/home/user') // dir targets accept no trailing slash
 
 Path.join(cwd, Path.fromLiteral('./notes/todo.md')) // AbsFile /home/user/notes/todo.md
-config.parent.name // 'user'
+config.dir.toString() // '/home/user/' — a file's tree parent is its containing dir
 Schema.decodeSync(Path.Any)(process.argv[2] ?? '.') // runtime strings decode to the union
 ```
 

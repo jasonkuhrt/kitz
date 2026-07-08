@@ -41,11 +41,11 @@ The correct mapping is `.dir` for files, `.parent` for dirs — a variant-aware
 dispatch. Any converter (human or agent) reaching for `.parent` by name
 produces wrong paths that still typecheck. Evidence of exposure:
 `tools/dev/src/main.ts:31` (`path.dirname(configPath)` on a runtime string).
-Proposed kitz fix: this is an API-review decision — `file.parent`'s operation
-(relocate keeping filename) is rare while `dirname` is ubiquitous; the rare op
-holds the common name. Options: rename the file getter; or add a uniform
-`containingDir` on all variants; at minimum a loud JSDoc warning + migration
-lint rule.
+
+**RESOLVED**: `.parent` no longer exists on file variants — the mistake is now
+a compile error. Files answer "up the tree" with `.dir` (a file's tree parent
+IS its containing directory) and the keep-filename relocation is the
+honestly-named `.movedUp`. Ledger row added in `packages/effect/CONTRIBUTING.md`.
 
 ### T2 — canonical form diverges from node's at every string boundary
 

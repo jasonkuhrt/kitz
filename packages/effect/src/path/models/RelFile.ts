@@ -69,8 +69,12 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
     )
   }
 
-  /** The file relocated one directory level up — keeps the filename, drops the last directory segment (grows `ascent` when segment-less). */
-  get parent(): RelFile {
+  /**
+   * The file relocated one directory level up — keeps the filename, drops the
+   * last directory segment (grows `ascent` when segment-less). This MOVES the
+   * file; the tree parent of a file is its containing directory — see {@link dir}.
+   */
+  get movedUp(): RelFile {
     const parent = parentOf(this.ascent, this.segments)
     return RelFile_.make({
       ascent: parent.ascent,
