@@ -273,9 +273,19 @@ describe('.name / .stem / .extension', () => {
     expectTypeOf(someAbsFile.name).toEqualTypeOf<string>()
     expectTypeOf(someRelFile.name).toEqualTypeOf<string>()
     expectTypeOf(someAbsFile.stem).toEqualTypeOf<string>()
+    expectTypeOf(someRelFile.stem).toEqualTypeOf<string>()
     expectTypeOf(someAbsFile.extension).toEqualTypeOf<Option.Option<Path.Extension.Extension>>()
+    expectTypeOf(someRelFile.extension).toEqualTypeOf<Option.Option<Path.Extension.Extension>>()
     expectTypeOf(someAbsDir.name).toEqualTypeOf<Option.Option<Path.Segment>>()
     expectTypeOf(someRelDir.name).toEqualTypeOf<Option.Option<Path.Segment>>()
+  })
+
+  it('types: getters distribute over the File/Dir unions', () => {
+    expectTypeOf((someAbsFile as Path.File).stem).toEqualTypeOf<string>()
+    expectTypeOf((someAbsFile as Path.File).extension).toEqualTypeOf<
+      Option.Option<Path.Extension.Extension>
+    >()
+    expectTypeOf((someAbsDir as Path.Dir).name).toEqualTypeOf<Option.Option<Path.Segment>>()
   })
 })
 
@@ -294,6 +304,7 @@ describe('.dir', () => {
   it('types: variant-precise', () => {
     expectTypeOf(someAbsFile.dir).toEqualTypeOf<Path.AbsDir>()
     expectTypeOf(someRelFile.dir).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf((someAbsFile as Path.File).dir).toEqualTypeOf<Path.AbsDir | Path.RelDir>()
   })
 })
 
@@ -424,6 +435,11 @@ describe('.atRoot', () => {
 // ─── URL interop: fileUrl / fromFileUrl ───
 
 describe('fileUrl / fromFileUrl', () => {
+  it('types: fileUrl is a URL on abs variants', () => {
+    expectTypeOf(someAbsFile.fileUrl).toEqualTypeOf<URL>()
+    expectTypeOf(someAbsDir.fileUrl).toEqualTypeOf<URL>()
+  })
+
   it('round trips through fromFileUrl', () => {
     FastCheck.assert(
       FastCheck.property(abs, (path) => {
@@ -471,6 +487,11 @@ describe('join', () => {
     expectTypeOf(Path.join(someRelDir, someRelFile)).toEqualTypeOf<Path.RelFile>()
     expectTypeOf(Path.join(someRelDir)(someAbsDir)).toEqualTypeOf<Path.AbsDir>()
     expectTypeOf(Path.join(someRelFile)(someAbsDir)).toEqualTypeOf<Path.AbsFile>()
+    // the exported type utility agrees cell-by-cell
+    expectTypeOf<Path.Join<Path.AbsDir, Path.RelDir>>().toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf<Path.Join<Path.AbsDir, Path.RelFile>>().toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf<Path.Join<Path.RelDir, Path.RelDir>>().toEqualTypeOf<Path.RelDir>()
+    expectTypeOf<Path.Join<Path.RelDir, Path.RelFile>>().toEqualTypeOf<Path.RelFile>()
   })
 })
 
@@ -514,6 +535,11 @@ describe('relativeTo', () => {
   it('types: variant-precise; data-first and data-last agree', () => {
     expectTypeOf(Path.relativeTo(someAbsFile, someAbsDir)).toEqualTypeOf<Path.RelFile>()
     expectTypeOf(Path.relativeTo(someAbsDir)(someAbsFile)).toEqualTypeOf<Path.RelFile>()
+    // the exported type utility agrees cell-by-cell
+    expectTypeOf<Path.RelativeTo<Path.AbsDir>>().toEqualTypeOf<Path.RelDir>()
+    expectTypeOf<Path.RelativeTo<Path.AbsFile>>().toEqualTypeOf<Path.RelFile>()
+    expectTypeOf<Path.RelativeTo<Path.RelDir>>().toEqualTypeOf<Path.RelDir>()
+    expectTypeOf<Path.RelativeTo<Path.RelFile>>().toEqualTypeOf<Path.RelFile>()
   })
 })
 
@@ -535,6 +561,11 @@ describe('ensureAbs', () => {
     expectTypeOf(Path.ensureAbs(someAbsDir)(someRelDir)).toEqualTypeOf<Path.AbsDir>()
     expectTypeOf(Path.ensureAbs(someRelFile, someAbsDir)).toEqualTypeOf<Path.AbsFile>()
     expectTypeOf(Path.ensureAbs(someAbsFile, someAbsDir)).toEqualTypeOf<Path.AbsFile>()
+    // the exported type utility agrees cell-by-cell
+    expectTypeOf<Path.EnsureAbs<Path.AbsDir>>().toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf<Path.EnsureAbs<Path.AbsFile>>().toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf<Path.EnsureAbs<Path.RelDir>>().toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf<Path.EnsureAbs<Path.RelFile>>().toEqualTypeOf<Path.AbsFile>()
   })
 })
 
@@ -724,6 +755,12 @@ describe('fromLiteral', () => {
 
     const dynamic = '/x/y.txt' as string
     expectTypeOf(Path.fromLiteral(dynamic)).toEqualTypeOf<Path.Any>()
+
+    // the exported type utility: shapes not exercised through the function above
+    expectTypeOf<Path.FromLiteral<'/'>>().toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf<Path.FromLiteral<'../x'>>().toEqualTypeOf<Path.RelFile>()
+    expectTypeOf<Path.FromLiteral<'x.'>>().toEqualTypeOf<Path.RelDir>()
+    expectTypeOf<Path.FromLiteral<string>>().toEqualTypeOf<Path.Any>()
   })
 
   it('target constructors are lenient for dirs and statically reject mismatches', () => {
@@ -738,6 +775,12 @@ describe('fromLiteral', () => {
       Path.RelFile.fromLiteral('/abs.txt')
       // @ts-expect-error dir-shaped literal rejected by an AbsFile target
       Path.AbsFile.fromLiteral('/a/b/')
+      // @ts-expect-error relative literal rejected by an AbsFile target
+      Path.AbsFile.fromLiteral('./x')
+      // @ts-expect-error absolute literal rejected by a RelDir target
+      Path.RelDir.fromLiteral('/x/')
+      // @ts-expect-error dynamic strings rejected by literal-only target constructors
+      Path.AbsDir.fromLiteral('/x/' as string)
     }
     expect(typeof staticRejections).toBe('function')
   })
