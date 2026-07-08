@@ -327,35 +327,13 @@ describe('.parent', () => {
     )
   })
 
-  it('types: dir-only; files answer "up" with .dir and relocation with .movedUp', () => {
+  it('types: dir-only; files answer "up" with .dir', () => {
     expectTypeOf(someAbsDir.parent).toEqualTypeOf<Path.AbsDir>()
     expectTypeOf(someRelDir.parent).toEqualTypeOf<Path.RelDir>()
     // @ts-expect-error parent does not exist on files — the dirname false friend is a compile error
     void someAbsFile.parent
     // @ts-expect-error parent does not exist on files — the dirname false friend is a compile error
     void someRelFile.parent
-  })
-})
-
-// ─── getters: movedUp (file relocation) ───
-
-describe('.movedUp', () => {
-  it('moves the file one directory level up, keeping the filename', () => {
-    FastCheck.assert(
-      FastCheck.property(file, (f) => {
-        const moved = f.movedUp
-        expect(moved.name).toBe(f.name)
-        expect(moved.segments).toEqual(f.segments.slice(0, -1))
-        if (Path.RelFile.is(f) && Path.RelFile.is(moved)) {
-          expect(moved.ascent).toBe(f.segments.length > 0 ? f.ascent : f.ascent + 1)
-        }
-      }),
-    )
-  })
-
-  it('types: variant-preserving', () => {
-    expectTypeOf(someAbsFile.movedUp).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(someRelFile.movedUp).toEqualTypeOf<Path.RelFile>()
   })
 })
 

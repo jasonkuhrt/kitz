@@ -44,8 +44,11 @@ produces wrong paths that still typecheck. Evidence of exposure:
 
 **RESOLVED**: `.parent` no longer exists on file variants — the mistake is now
 a compile error. Files answer "up the tree" with `.dir` (a file's tree parent
-IS its containing directory) and the keep-filename relocation is the
-honestly-named `.movedUp`. Ledger row added in `packages/effect/CONTRIBUTING.md`.
+IS its containing directory). No relocation surface ships: zero of the 1,141
+audited call sites express "keep filename, move up", and the general form —
+`withDir(file, dir)`, completing the `with*` read/replace table against the
+`.dir` getter — is the landing spot if demand ever appears. Ledger row added
+in `packages/effect/CONTRIBUTING.md`.
 
 ### T2 — canonical form diverges from node's at every string boundary
 
