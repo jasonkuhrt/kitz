@@ -1,4 +1,4 @@
-import { flow, Option, Result, SchemaIssue } from 'effect'
+import { Data, flow, Option, Result, SchemaIssue } from 'effect'
 
 // Path segment constants (internal — the codecs go through analyze/format)
 const separator = '/'
@@ -8,27 +8,33 @@ const herePrefix = `${hereSegment}${separator}` // './'
 const ascentPrefix = `${ascentSegment}${separator}` // '../'
 
 /** A path string analyzed into its kind, absoluteness, parent-traversal count, and named segments. */
-export type Analysis = AnalysisFile | AnalysisDir
+export type Analysis = Data.TaggedEnum<{
+  file: {
+    readonly isPathAbsolute: boolean
+    /** Parent-traversal count (leading `..`); always 0 for absolute paths. */
+    readonly ascent: number
+    /** Named path segments (no `..`), excluding the filename. */
+    readonly segments: ReadonlyArray<string>
+    /** The filename (last path component) as a string; the `FileName` codec owns its stem/extension split. */
+    readonly fileName: string
+  }
+  dir: {
+    readonly isPathAbsolute: boolean
+    /** Parent-traversal count (leading `..`); always 0 for absolute paths. */
+    readonly ascent: number
+    /** Named path segments (no `..`). */
+    readonly segments: ReadonlyArray<string>
+  }
+}>
 
-export interface AnalysisFile {
-  _tag: 'file'
-  isPathAbsolute: boolean
-  /** Parent-traversal count (leading `..`); always 0 for absolute paths. */
-  ascent: number
-  /** Named path segments (no `..`), excluding the filename. */
-  segments: string[]
-  /** The filename (last path component) as a string; the `FileName` codec owns its stem/extension split. */
-  fileName: string
-}
+/** Constructors and matchers for {@link Analysis} (`Analysis.file`, `Analysis.dir`, `$is`, `$match`). */
+export const Analysis = Data.taggedEnum<Analysis>()
 
-export interface AnalysisDir {
-  _tag: 'dir'
-  isPathAbsolute: boolean
-  /** Parent-traversal count (leading `..`); always 0 for absolute paths. */
-  ascent: number
-  /** Named path segments (no `..`). */
-  segments: string[]
-}
+/** A path analysis narrowed to files. */
+export type AnalysisFile = Extract<Analysis, { _tag: 'file' }>
+
+/** A path analysis narrowed to directories. */
+export type AnalysisDir = Extract<Analysis, { _tag: 'dir' }>
 
 /** The schema issue for a path that didn't match the expected kind or absoluteness. */
 const invalid = (input: string, expected: string): SchemaIssue.Issue =>
@@ -86,7 +92,7 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
 
   // Root: an absolute directory with no segments.
   if (input === separator) {
-    return { _tag: 'dir', isPathAbsolute: true, ascent: 0, segments: [] }
+    return Analysis.dir({ isPathAbsolute: true, ascent: 0, segments: [] })
   }
 
   // Directory iff: trailing slash, a bare here/ascent reference, or no extension on the last segment.
@@ -132,30 +138,27 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
   const finalAscent = isAbsolute ? 0 : ascent
 
   if (isDirectory) {
-    return {
-      _tag: 'dir',
+    return Analysis.dir({
       isPathAbsolute: isAbsolute,
       ascent: finalAscent,
       segments: normalizedSegments,
-    }
+    })
   }
   if (normalizedSegments.length === 0) {
-    return {
-      _tag: 'file',
+    return Analysis.file({
       isPathAbsolute: isAbsolute,
       ascent: finalAscent,
       segments: [],
       fileName: '',
-    }
+    })
   }
 
-  return {
-    _tag: 'file',
+  return Analysis.file({
     isPathAbsolute: isAbsolute,
     ascent: finalAscent,
     segments: normalizedSegments.slice(0, -1),
     fileName: normalizedSegments[normalizedSegments.length - 1]!,
-  }
+  })
 }
 
 /**
@@ -167,13 +170,14 @@ const analyzeAs =
   (anchoring: 'absolute' | 'relative') =>
   (input: string): Result.Result<Extract<Analysis, { _tag: K }>, SchemaIssue.Issue> => {
     const analysis = analyze(input, { hint: kind })
-    return analysis._tag !== kind
-      ? Result.fail(invalid(input, kind === 'dir' ? 'a directory path' : 'a file path'))
-      : analysis.isPathAbsolute !== (anchoring === 'absolute')
-        ? Result.fail(
-            invalid(input, anchoring === 'absolute' ? 'an absolute path' : 'a relative path'),
-          )
-        : Result.succeed(analysis as Extract<Analysis, { _tag: K }>)
+    if (!Analysis.$is(kind)(analysis)) {
+      return Result.fail(invalid(input, kind === 'dir' ? 'a directory path' : 'a file path'))
+    }
+    return analysis.isPathAbsolute !== (anchoring === 'absolute')
+      ? Result.fail(
+          invalid(input, anchoring === 'absolute' ? 'an absolute path' : 'a relative path'),
+        )
+      : Result.succeed(analysis)
   }
 
 /** Require a file of the given absoluteness. */
