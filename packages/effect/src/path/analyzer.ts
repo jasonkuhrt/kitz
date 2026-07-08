@@ -31,10 +31,10 @@ export type Analysis = Data.TaggedEnum<{
 export const Analysis = Data.taggedEnum<Analysis>()
 
 /** A path analysis narrowed to files. */
-export type AnalysisFile = Extract<Analysis, { _tag: 'file' }>
+export type AnalysisFile = Data.TaggedEnum.Value<Analysis, 'file'>
 
 /** A path analysis narrowed to directories. */
-export type AnalysisDir = Extract<Analysis, { _tag: 'dir' }>
+export type AnalysisDir = Data.TaggedEnum.Value<Analysis, 'dir'>
 
 /** The schema issue for a path that didn't match the expected kind or absoluteness. */
 const invalid = (input: string, expected: string): SchemaIssue.Issue =>
@@ -168,7 +168,7 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
 const analyzeAs =
   <K extends Analysis['_tag']>(kind: K) =>
   (anchoring: 'absolute' | 'relative') =>
-  (input: string): Result.Result<Extract<Analysis, { _tag: K }>, SchemaIssue.Issue> => {
+  (input: string): Result.Result<Data.TaggedEnum.Value<Analysis, K>, SchemaIssue.Issue> => {
     const analysis = analyze(input, { hint: kind })
     if (!Analysis.$is(kind)(analysis)) {
       return Result.fail(invalid(input, kind === 'dir' ? 'a directory path' : 'a file path'))
