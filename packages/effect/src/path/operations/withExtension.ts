@@ -1,8 +1,8 @@
-import { Function as Fn, Match, Option } from 'effect'
+import { Function as Fn, Option } from 'effect'
+import { replaceFileName } from '../core/replaceFileName.js'
 import type { Extension } from '../models/Extension.js'
 import type { File } from '../models/File.js'
 import { FileName } from '../models/FileName.js'
-import * as PathOptic from '../optic.js'
 
 const normalizeExtension = (
   extension: Extension | Option.Option<Extension>,
@@ -21,20 +21,11 @@ const normalizeExtension = (
 export const withExtension: {
   <F extends File>(file: F, extension: Extension | Option.Option<Extension>): F
   (extension: Extension | Option.Option<Extension>): <F extends File>(file: F) => F
-} = Fn.dual(2, (file: File, extension: Extension | Option.Option<Extension>): File => {
-  const nextExtension = normalizeExtension(extension)
-  return Match.value(file).pipe(
-    Match.tagsExhaustive({
-      AbsFile: (abs) =>
-        PathOptic.AbsFile.fileName.replace(
-          FileName.make({ stem: abs.stem, extension: nextExtension }),
-          abs,
-        ),
-      RelFile: (rel) =>
-        PathOptic.RelFile.fileName.replace(
-          FileName.make({ stem: rel.stem, extension: nextExtension }),
-          rel,
-        ),
-    }),
-  )
-})
+} = Fn.dual(
+  2,
+  (file: File, extension: Extension | Option.Option<Extension>): File =>
+    replaceFileName(
+      file,
+      FileName.make({ stem: file.stem, extension: normalizeExtension(extension) }),
+    ),
+)

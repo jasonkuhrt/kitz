@@ -1,11 +1,11 @@
 import { Array, Function as Fn, Match, Option } from 'effect'
+import { replaceFileName } from '../core/replaceFileName.js'
 import type { Dir } from '../models/Dir.js'
 import type { File } from '../models/File.js'
 import type { FileName } from '../models/FileName.js'
 import type { Segment } from '../models/segment.js'
 import * as AbsDirModel from '../models/AbsDir.js'
 import * as RelDirModel from '../models/RelDir.js'
-import * as PathOptic from '../optic.js'
 
 const renameAbsDir = (dir: AbsDirModel.AbsDir, name: Segment): Option.Option<AbsDirModel.AbsDir> =>
   dir.segments.length === 0
@@ -43,8 +43,8 @@ export const withName: {
 } = Fn.dual(2, (path: File | Dir, name: FileName | Segment): File | Option.Option<Dir> =>
   Match.value(path).pipe(
     Match.tagsExhaustive({
-      AbsFile: (abs) => PathOptic.AbsFile.fileName.replace(name as FileName, abs),
-      RelFile: (rel) => PathOptic.RelFile.fileName.replace(name as FileName, rel),
+      AbsFile: (abs) => replaceFileName(abs, name as FileName),
+      RelFile: (rel) => replaceFileName(rel, name as FileName),
       AbsDir: (dir) => renameAbsDir(dir, name as Segment),
       RelDir: (dir) => renameRelDir(dir, name as Segment),
     }),

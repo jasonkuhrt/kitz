@@ -1,6 +1,7 @@
-import { Function as Fn, Match } from 'effect'
+import { Function as Fn } from 'effect'
+import { replaceFileName } from '../core/replaceFileName.js'
 import type { File } from '../models/File.js'
-import * as PathOptic from '../optic.js'
+import { FileName } from '../models/FileName.js'
 
 /**
  * Replace a file path's stem while preserving its file variant and current
@@ -18,10 +19,5 @@ export const withStem: {
 } = Fn.dual(
   2,
   (file: File, stem: string): File =>
-    Match.value(file).pipe(
-      Match.tagsExhaustive({
-        AbsFile: (abs) => PathOptic.AbsFile.stem.replace(stem, abs),
-        RelFile: (rel) => PathOptic.RelFile.stem.replace(stem, rel),
-      }),
-    ),
+    replaceFileName(file, FileName.make({ stem, extension: file.extension })),
 )

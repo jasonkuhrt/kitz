@@ -686,36 +686,6 @@ describe('withName / withStem / withExtension / addExtension', () => {
   })
 })
 
-// ─── optics ───
-
-describe('Optic', () => {
-  it('file optics satisfy lens laws and preserve prototypes', () => {
-    const source = S.decodeSync(Path.AbsFile)('/a/b/source.ts')
-
-    expect(Path.Optic.AbsFile.stem.replace(Path.Optic.AbsFile.stem.get(source), source)).toEqual(
-      source,
-    )
-
-    const replaced = Path.Optic.AbsFile.stem.replace('target', source)
-    expect(Path.Optic.AbsFile.stem.get(replaced)).toBe('target')
-    expect(replaced.parent).toEqual(S.decodeSync(Path.AbsFile)('/a/target.ts'))
-
-    const renamed = Path.Optic.AbsFile.fileName.replace(fileName('index.js'), source)
-    expect(renamed.parent).toEqual(S.decodeSync(Path.AbsFile)('/a/b/index.js').parent)
-  })
-
-  it('variant prisms satisfy get/set laws', () => {
-    const absFile = S.decodeSync(Path.AbsFile)('/a/b.txt')
-    const relDir = S.decodeSync(Path.RelDir)('./a/')
-
-    expect(Path.Optic.absFile.set(absFile)).toEqual(absFile)
-    expect(Path.Optic.absFile.getResult(Path.Optic.absFile.set(absFile))).toEqual(
-      Result.succeed(absFile),
-    )
-    expect(Result.isFailure(Path.Optic.absFile.getResult(relDir))).toBe(true)
-  })
-})
-
 // ─── literals: fromLiteral + per-target constructors ───
 
 const unionLiteralCases = [

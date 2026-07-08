@@ -1,8 +1,8 @@
-import { Function as Fn, Match, Option } from 'effect'
+import { Function as Fn, Option } from 'effect'
+import { replaceFileName } from '../core/replaceFileName.js'
 import type { Extension } from '../models/Extension.js'
 import type { File } from '../models/File.js'
 import { FileName } from '../models/FileName.js'
-import * as PathOptic from '../optic.js'
 
 /**
  * Append an extension to a file path while preserving its file variant.
@@ -18,18 +18,5 @@ export const addExtension: {
 } = Fn.dual(
   2,
   (file: File, extension: Extension): File =>
-    Match.value(file).pipe(
-      Match.tagsExhaustive({
-        AbsFile: (abs) =>
-          PathOptic.AbsFile.fileName.replace(
-            FileName.make({ stem: abs.name, extension: Option.some(extension) }),
-            abs,
-          ),
-        RelFile: (rel) =>
-          PathOptic.RelFile.fileName.replace(
-            FileName.make({ stem: rel.name, extension: Option.some(extension) }),
-            rel,
-          ),
-      }),
-    ),
+    replaceFileName(file, FileName.make({ stem: file.name, extension: Option.some(extension) })),
 )

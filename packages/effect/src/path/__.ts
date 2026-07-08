@@ -62,6 +62,3 @@ export * from './operations/relativeTo.js'
 export * from './operations/withExtension.js'
 export * from './operations/withName.js'
 export * from './operations/withStem.js'
-
-// Optics for composing path updates into larger structures.
-export * as Optic from './optic.js'
