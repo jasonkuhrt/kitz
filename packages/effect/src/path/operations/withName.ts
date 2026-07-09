@@ -1,8 +1,5 @@
 import { Array, Function as Fn, Match, Option } from 'effect'
-import { replaceFileName } from '../core/replaceFileName.js'
 import type { Dir } from '../models/Dir.js'
-import type { File } from '../models/File.js'
-import type { FileName } from '../models/FileName.js'
 import type { Segment } from '../models/segment.js'
 import * as AbsDirModel from '../models/AbsDir.js'
 import * as RelDirModel from '../models/RelDir.js'
@@ -25,28 +22,25 @@ const renameRelDir = (dir: RelDirModel.RelDir, name: Segment): Option.Option<Rel
       )
 
 /**
- * Rename the final component of a path. Files take a full `FileName` and return
- * the same file variant. Directories take a `Segment` and return `None` for
- * root or segment-less relative dirs.
+ * Rename the final directory segment. Root and segment-less relative dirs
+ * return `None`.
  *
  * @example
  * ```ts
- * withName(file, FileName.make({ stem: 'index', extension: Option.some('.ts') }))
  * withName(dir, 'src')
+ * pipe(dir, withName('src'))
  * ```
  */
 export const withName: {
-  <F extends File>(path: F, name: FileName): F
   <D extends Dir>(path: D, name: Segment): Option.Option<D>
-  (name: FileName): <F extends File>(path: F) => F
   (name: Segment): <D extends Dir>(path: D) => Option.Option<D>
-} = Fn.dual(2, (path: File | Dir, name: FileName | Segment): File | Option.Option<Dir> =>
-  Match.value(path).pipe(
-    Match.tagsExhaustive({
-      AbsFile: (abs) => replaceFileName(abs, name as FileName),
-      RelFile: (rel) => replaceFileName(rel, name as FileName),
-      AbsDir: (dir) => renameAbsDir(dir, name as Segment),
-      RelDir: (dir) => renameRelDir(dir, name as Segment),
-    }),
-  ),
+} = Fn.dual(
+  2,
+  (dir: Dir, name: Segment): Option.Option<Dir> =>
+    Match.value(dir).pipe(
+      Match.tagsExhaustive({
+        AbsDir: (dir) => renameAbsDir(dir, name),
+        RelDir: (dir) => renameRelDir(dir, name),
+      }),
+    ),
 )

@@ -1,4 +1,12 @@
-import { Effect, flow, type Option, Result, Schema as S, SchemaGetter } from 'effect'
+import {
+  Effect,
+  flow,
+  Function as Fn,
+  type Option,
+  Result,
+  Schema as S,
+  SchemaGetter,
+} from 'effect'
 import * as PrimaryKey from 'effect/PrimaryKey'
 import { analyzeFileAbs, format } from '../analyzer.js'
 import { ancestorSegments } from '../core/ancestors.js'
@@ -6,6 +14,7 @@ import { attachPathEqual } from '../core/equality.js'
 import { fileUrlOf } from '../core/fileUrl.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
+import { resolveFileName } from '../core/setParts.js'
 import { parentOf } from '../core/segments.js'
 import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
@@ -14,6 +23,27 @@ import { maxSegments, Segments } from './arbitrary.js'
 import { Segment, segment } from './segment.js'
 import type { Extension } from './Extension.js'
 import { FileName } from './FileName.js'
+
+export declare namespace AbsFile {
+  export type Parts =
+    | {
+        /** Replace the containing absolute directory. */
+        readonly dir?: AbsDir
+        /** Replace the whole filename. */
+        readonly name?: FileName
+        readonly stem?: never
+        readonly extension?: never
+      }
+    | {
+        /** Replace the containing absolute directory. */
+        readonly dir?: AbsDir
+        readonly name?: never
+        /** Replace the filename stem, preserving or composing with `extension`. */
+        readonly stem?: string
+        /** Replace the final extension; `None` removes it. */
+        readonly extension?: Extension | Option.Option<Extension>
+      }
+}
 
 /**
  * Absolute file value — the decoded path (segments + filename).
@@ -135,6 +165,25 @@ export class AbsFile_ extends withLiteralStatics(
     ),
   ),
 ) {
+  /**
+   * Rebuild an absolute file with patched file components.
+   *
+   * @example
+   * ```ts
+   * AbsFile.setParts(file, { stem: 'README' })
+   * pipe(file, AbsFile.setParts({ extension: Option.none() }))
+   * ```
+   */
+  static readonly setParts: {
+    (file: typeof AbsFile_.Type, parts: AbsFile.Parts): typeof AbsFile_.Type
+    (parts: AbsFile.Parts): (file: typeof AbsFile_.Type) => typeof AbsFile_.Type
+  } = Fn.dual(2, (file: typeof AbsFile_.Type, parts: AbsFile.Parts): typeof AbsFile_.Type =>
+    AbsFile_.make({
+      segments: parts.dir?.segments ?? file.segments,
+      fileName: resolveFileName(file.fileName, parts),
+    }),
+  )
+
   /**
    * Variant schema carrying a realistic generation bias — same set as the
    * canonical schema; generation mixes realistic files 20:1 over the

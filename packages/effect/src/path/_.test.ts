@@ -12,7 +12,7 @@
  * `isDescendantOf`, so the mirror law lives there).
  */
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
-import { Config, ConfigProvider, Effect, Equal, Option, Result, Schema as S } from 'effect'
+import { Config, ConfigProvider, Effect, Equal, Option, pipe, Result, Schema as S } from 'effect'
 import * as PrimaryKey from 'effect/PrimaryKey'
 import { FastCheck } from 'effect/testing'
 import * as Path from './__.js'
@@ -63,8 +63,6 @@ const encodeAny = S.encodeSync(Path.Any)
 const extension = (value: string) => S.decodeSync(Path.Extension.Extension)(value)
 const fileName = (value: string) => S.decodeSync(Path.FileName)(value)
 const sign = (value: number): -1 | 0 | 1 => (value < 0 ? -1 : value > 0 ? 1 : 0)
-const canDecodeFileName = (value: string): boolean =>
-  Result.isSuccess(S.decodeUnknownResult(Path.FileName)(value))
 
 const someAbsFile = Path.AbsFile.make({
   segments: ['home', 'src'].map(Path.segment),
@@ -660,33 +658,144 @@ describe('order', () => {
   })
 })
 
-// ─── operations: with* / addExtension ───
+// ─── model statics: setParts ───
 
-describe('withName / withStem / withExtension / addExtension', () => {
-  it('transform the filename while preserving the variant', () => {
+describe('setParts', () => {
+  it('name axis preserves AbsFile variant and directory', () => {
     FastCheck.assert(
-      FastCheck.property(file, (f) => {
-        const renamed = Path.withName(f, fileName('renamed.txt'))
-        expect(renamed.name).toBe('renamed.txt')
-        expect(renamed._tag).toBe(f._tag)
+      FastCheck.property(arb.AbsFile, arb.FileName, (f, name) => {
+        const renamed = Path.AbsFile.setParts(f, { name })
 
-        const stemmed = Path.withStem(f, 'next')
-        expect(stemmed.stem).toBe('next')
-        expect(stemmed._tag).toBe(f._tag)
-
-        const withAddedExtension = Path.addExtension(f, extension('.gz'))
-        expect(withAddedExtension.name).toBe(`${f.name}.gz`)
+        expect(renamed._tag).toBe('AbsFile')
+        expect(renamed.dir).toEqual(f.dir)
+        expect(renamed.fileName).toEqual(name)
       }),
     )
   })
 
-  it('withExtension Option.none drops when the remaining stem is a filename', () => {
+  it('name axis preserves RelFile variant and directory', () => {
     FastCheck.assert(
-      FastCheck.property(file, (f) => {
-        FastCheck.pre(canDecodeFileName(f.stem))
-        expect(Path.withExtension(f, Option.none()).name).toBe(f.stem)
+      FastCheck.property(arb.RelFile, arb.FileName, (f, name) => {
+        const renamed = Path.RelFile.setParts(f, { name })
+
+        expect(renamed._tag).toBe('RelFile')
+        expect(renamed.dir).toEqual(f.dir)
+        expect(renamed.fileName).toEqual(name)
       }),
     )
+  })
+
+  it('stem and extension axes rebuild the filename', () => {
+    const archive = Path.AbsFile.make({
+      segments: ['tmp'].map(Path.segment),
+      fileName: fileName('archive.tar.gz'),
+    })
+    const readme = Path.RelFile.make({
+      ascent: 1,
+      segments: ['docs'].map(Path.segment),
+      fileName: fileName('README.md'),
+    })
+
+    expect(Path.AbsFile.setParts(archive, { stem: 'bundle' }).name).toBe('bundle.gz')
+    expect(Path.AbsFile.setParts(archive, { extension: Option.none() }).name).toBe('archive.tar')
+    expect(Path.RelFile.setParts(readme, { extension: extension('.json') }).name).toBe(
+      'README.json',
+    )
+  })
+
+  it('addExtension is the stem-plus-extension setParts idiom', () => {
+    const archive = Path.AbsFile.make({ segments: [], fileName: fileName('archive.tar') })
+
+    expect(
+      Path.AbsFile.setParts(archive, { stem: archive.name, extension: extension('.gz') }).name,
+    ).toBe('archive.tar.gz')
+  })
+
+  it('dir axis moves AbsFile without changing the filename', () => {
+    FastCheck.assert(
+      FastCheck.property(arb.AbsFile, arb.AbsDir, (f, dir) => {
+        const moved = Path.AbsFile.setParts(f, { dir })
+
+        expect(moved.segments).toEqual(dir.segments)
+        expect(moved.fileName).toEqual(f.fileName)
+      }),
+    )
+  })
+
+  it('dir axis replaces RelFile ascent and segments without changing the filename', () => {
+    FastCheck.assert(
+      FastCheck.property(arb.RelFile, arb.RelDir, (f, dir) => {
+        const moved = Path.RelFile.setParts(f, { dir })
+
+        expect(moved.ascent).toBe(dir.ascent)
+        expect(moved.segments).toEqual(dir.segments)
+        expect(moved.fileName).toEqual(f.fileName)
+      }),
+    )
+  })
+
+  it('dir and filename axes compose in one call', () => {
+    const targetDir = Path.RelDir.make({
+      ascent: 2,
+      segments: ['pkg'].map(Path.segment),
+    })
+    const moved = Path.RelFile.setParts(someRelFile, { dir: targetDir, stem: 'renamed' })
+
+    expect(moved.dir).toEqual(targetDir)
+    expect(moved.name).toBe('renamed.ts')
+  })
+
+  it('supports curried pipe form', () => {
+    expect(pipe(someAbsFile, Path.AbsFile.setParts({ stem: 'x' })).name).toBe('x.ts')
+  })
+
+  it('empty parts rebuild an Equal-equal path', () => {
+    FastCheck.assert(
+      FastCheck.property(file, (f) => {
+        const rebuilt = Path.AbsFile.is(f)
+          ? Path.AbsFile.setParts(f, {})
+          : Path.RelFile.setParts(f, {})
+
+        expect(Equal.equals(rebuilt, f)).toBe(true)
+      }),
+    )
+  })
+
+  it('types: payloads reject mixed filename modes and opposite-anchor dirs', () => {
+    expectTypeOf(Path.AbsFile.setParts(someAbsFile, { stem: 'x' })).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(Path.RelFile.setParts(someRelFile, { stem: 'x' })).toEqualTypeOf<Path.RelFile>()
+
+    const staticRejections = () => {
+      // @ts-expect-error name and stem are mutually exclusive
+      Path.AbsFile.setParts(someAbsFile, { name: fileName('next.ts'), stem: 'next' })
+      // @ts-expect-error RelFile dir axis only accepts RelDir
+      Path.RelFile.setParts(someRelFile, { dir: someAbsDir })
+      // @ts-expect-error AbsFile dir axis only accepts AbsDir
+      Path.AbsFile.setParts(someAbsFile, { dir: someRelDir })
+    }
+    expect(typeof staticRejections).toBe('function')
+  })
+})
+
+// ─── operation: withName ───
+
+describe('withName', () => {
+  it('renames the final directory segment', () => {
+    expect(Path.withName(someAbsDir, Path.segment('var'))).toEqual(
+      Option.some(Path.AbsDir.make({ segments: ['var'].map(Path.segment) })),
+    )
+    expect(pipe(someRelDir, Path.withName(Path.segment('lib')))).toEqual(
+      Option.some(Path.RelDir.make({ ascent: 0, segments: ['lib'].map(Path.segment) })),
+    )
+  })
+
+  it('returns None for root and segment-less relative dirs', () => {
+    expect(Path.withName(Path.AbsDir.make({ segments: [] }), Path.segment('root'))).toEqual(
+      Option.none(),
+    )
+    expect(
+      Path.withName(Path.RelDir.make({ ascent: 2, segments: [] }), Path.segment('src')),
+    ).toEqual(Option.none())
   })
 })
 

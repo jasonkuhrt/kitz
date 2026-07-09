@@ -3,10 +3,11 @@
  *
  * Organizing principle:
  * 1. Unary operations live as instance getters on the four leaf value classes.
- * 2. Shared getter logic lives below the leaves in `core/`.
- * 3. N-ary operations are flat `Fn.dual` functions exported from this barrel.
- * 4. Union classes remain pure schemas plus tagged-union utilities.
- * 5. String interpretation stays at the analyzer boundary.
+ * 2. Variant-local component writes live as model statics.
+ * 3. Shared getter/write logic lives below the leaves in `core/`.
+ * 4. Cross-variant n-ary operations are flat `Fn.dual` functions exported from this barrel.
+ * 5. Union classes remain pure schemas plus tagged-union utilities.
+ * 6. String interpretation stays at the analyzer boundary.
  *
  * See `docs/superpowers/specs/2026-07-05-path-organizing-principle-design.md`.
  */
@@ -50,7 +51,6 @@ export { Segment, segment } from './models/segment.js'
 export * as Protocol from './models/Protocol.js'
 
 // Flat path combinators
-export * from './operations/addExtension.js'
 export * from './operations/ensureAbs.js'
 export * from './operations/fromFileUrl.js'
 export * from './operations/getSharedBase.js'
@@ -59,6 +59,4 @@ export * from './operations/isDescendantOf.js'
 export * from './operations/join.js'
 export * from './operations/order.js'
 export * from './operations/relativeTo.js'
-export * from './operations/withExtension.js'
 export * from './operations/withName.js'
-export * from './operations/withStem.js'

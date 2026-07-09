@@ -10,20 +10,23 @@ domain terms:
   `.extension`, `.dir` on files, `.parent` on dirs, `.ancestors`,
   `.asDir`/`.asFile`, `.atRoot`, `.fileUrl`, …); multi-path operations are flat
   functions (`join`, `relativeTo`,
-  `ensureAbs`, `isDescendantOf`, `getSharedBase`, `withExtension`, `order`, …);
+  `ensureAbs`, `isDescendantOf`, `getSharedBase`, `order`, …); file component
+  writes are per-model statics (`AbsFile.setParts`, `RelFile.setParts`);
   `fromLiteral` infers the precise variant from string literals at the type level.
 - **`Schema`** — small additions to Effect Schema (e.g. `NaturalInt`).
 - **`String`** — string utilities.
 
 ```ts
 import { Path } from '@kitz/effect'
-import { Schema } from 'effect'
+import { Option, pipe, Schema } from 'effect'
 
 const config = Path.fromLiteral('/home/user/config.json') // typed AbsFile
 const cwd = Path.AbsDir.fromLiteral('/home/user') // dir targets accept no trailing slash
 
 Path.join(cwd, Path.fromLiteral('./notes/todo.md')) // AbsFile /home/user/notes/todo.md
 config.dir.toString() // '/home/user/' — a file's tree parent is its containing dir
+Path.AbsFile.setParts(config, { extension: Option.none() }) // /home/user/config
+pipe(config, Path.AbsFile.setParts({ stem: 'config.local' })) // /home/user/config.local.json
 Schema.decodeSync(Path.Any)(process.argv[2] ?? '.') // runtime strings decode to the union
 ```
 
