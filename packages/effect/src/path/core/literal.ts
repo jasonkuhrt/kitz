@@ -13,6 +13,10 @@ type Separator = '/'
 type Here = '.'
 type Ascent = '..'
 
+type HasRepeatedSeparator<S extends string> = S extends `${string}${Separator}${Separator}${string}`
+  ? true
+  : false
+
 type IsAbsolute<S extends string> = S extends `${Separator}${string}` ? true : false
 
 type IsDirectorySyntax<S extends string> = S extends '' | Here | './' | Ascent | '../'
@@ -95,13 +99,15 @@ type LiteralAnalysisDir<Absolute extends boolean> = {
 }
 
 type AnalyzeLiteral<S extends string> =
-  IsAbsolute<S> extends true
-    ? CanDecodeFile<S> extends true
-      ? LiteralAnalysisFile<true>
-      : LiteralAnalysisDir<true>
-    : CanDecodeFile<S> extends true
-      ? LiteralAnalysisFile<false>
-      : LiteralAnalysisDir<false>
+  HasRepeatedSeparator<S> extends true
+    ? never
+    : IsAbsolute<S> extends true
+      ? CanDecodeFile<S> extends true
+        ? LiteralAnalysisFile<true>
+        : LiteralAnalysisDir<true>
+      : CanDecodeFile<S> extends true
+        ? LiteralAnalysisFile<false>
+        : LiteralAnalysisDir<false>
 
 type FromLiteralAnalysis<A> = A extends { readonly _tag: 'file'; readonly isPathAbsolute: true }
   ? AbsFile
@@ -215,13 +221,19 @@ export type ErrorPathValidation<Target, Received> = StaticError<
 export type FromTargetLiteral<S extends string, Target> = string extends S
   ? never
   : S extends string
-    ? IsAbsolute<S> extends true
-      ? DecodeAbsLiteralAs<S, Target>
-      : DecodeRelLiteralAs<S, Target>
+    ? [AnalyzeLiteral<S>] extends [never]
+      ? never
+      : IsAbsolute<S> extends true
+        ? DecodeAbsLiteralAs<S, Target>
+        : DecodeRelLiteralAs<S, Target>
     : never
 
-/** Guard the god literal constructor against non-literal strings. */
-export type LiteralInput<S extends string> = string extends S ? ErrorStringNotLiteral<S> : S
+/** Guard the god literal constructor against non-literal or invalid strings. */
+export type LiteralInput<S extends string> = string extends S
+  ? ErrorStringNotLiteral<S>
+  : [FromLiteral<S>] extends [never]
+    ? ErrorPathValidation<Any, S>
+    : S
 
 /** Guard a string literal against a target path schema, returning a static error on mismatch. */
 export type LiteralGuard<S extends string, Target> = string extends S
