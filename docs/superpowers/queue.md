@@ -6,7 +6,8 @@ recommendation. Tackle items here instead of losing them in chat. Reports
 referenced live in `docs/superpowers/reports/`.
 
 Statuses: `design-open` (needs a decision), `decided` (awaiting
-implementation), `mechanical` (spec-able now), `parked` (explicitly deferred).
+implementation), `mechanical` (spec-able now), `done` (landed), `parked`
+(explicitly deferred).
 
 ## 1. commonAncestor totality + locality — `design-open` (active)
 
@@ -87,25 +88,29 @@ URLs. Decide alongside item 2 (same "typed target" flavor).
 
 From the audit report (2026-07-09-vitest-package-audit.md):
 
-- P2: matcher type augmentation targets `'vite-plus/test'`; Vite+'s own
-  guidance says augment upstream `'vitest'` — fix the module identity.
-- P2: `toBeRoot` → `toBeAnchor` (impl already checks `isAnchor`); update
-  messages + the one call site.
-- P2: add a first-party matcher test suite (positive/negative/invalid/message
-  branches — none exist today).
-- P3: strict-genealogy companion matcher (name TBD: `toBeDescendantOfPath`?)
+- [x] P2: matcher type augmentation resolved as a documented constraint in
+  `25948a40`: keep `'vite-plus/test'` because the repo forbids direct
+  `vitest`/`@vitest/*` dependencies and Vite+ owns the single Vitest copy.
+- [x] P2: `toBeRoot` → `toBeAnchor` (impl already checks `isAnchor`); updated
+  messages + the one call site in `25948a40`.
+- [x] P2: add a first-party matcher test suite (positive/negative/invalid/message
+  branches) in `25948a40`.
+- [ ] P3: strict-genealogy companion matcher (name TBD: `toBeDescendantOfPath`?)
   — the only open decision in the batch.
-- P3: package README documenting lifecycle (`private`, src exports, dep
-  topology vs the ledger row).
+- [x] P3: package README documenting lifecycle (`private`, src exports, dep
+  topology vs the ledger row) in `25948a40`.
 
-## 7. Docs callouts batch — `mechanical`
+## 7. Docs callouts batch — `done`
 
-- Native `Map`/`Set` keys miss structural equality — document "use Effect
+Docs callouts landed in `2aa31465`.
+
+- [x] Native `Map`/`Set` keys miss structural equality — document "use Effect
   HashMap/HashSet or encode a string key" (round-2 P2; PrimaryKey impl already
   supports the Effect side).
-- `AbsFile.make` anchor default can silently create root files — steer
-  application construction toward `join(dir, relFile)` (round-2 P3).
-- `Any`-decode rule table lands here once item 4 decides it.
+- [x] `AbsFile.make`/`RelFile.make` anchor defaults can silently create root
+  files — steer application construction toward `join(dir, relFile)` (round-2
+  P3).
+- [ ] `Any`-decode rule table stays open, blocked on item 4.
 
 ## 8. Peer floor — `mechanical`
 
@@ -113,9 +118,11 @@ Heartbeat runs effect beta.78; kitz requires `^4.0.0-beta.85`. Round-1
 presence-probed compatible. Widen the floor after a beta.78 CI check, or
 document the true minimum.
 
-## 9. Drop dead `@platformatic/vfs` dependency — `mechanical`
+## 9. Drop dead `@platformatic/vfs` dependency — `done`
 
-Publish shape carries it in `dependencies`; `build/` never imports it.
+Done in `f4034989`: verified no imports under `packages/effect/src` or
+`packages/effect/build`, then removed the package dependency, catalog entry,
+and lockfile records.
 
 ## 10. `basename(f, suffix)` multi-suffix strip — `design-open` (small)
 
