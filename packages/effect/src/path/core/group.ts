@@ -17,14 +17,6 @@ export type MatchingTypeGroup<A extends Any> = {
   RelDir: Rel
 }[A['_tag']]
 
-/** The directory type of a path's own group — the type of a common ancestor. */
-export type CommonAncestor<A extends Any> = {
-  AbsFile: AbsDir
-  AbsDir: AbsDir
-  RelFile: RelDir
-  RelDir: RelDir
-}[A['_tag']]
-
 /** Map any path to the directory type of its group (for ancestor / parent params). */
 export type MatchingDirGroup<A extends Any> = {
   AbsFile: AbsDir

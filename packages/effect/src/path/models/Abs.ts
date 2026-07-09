@@ -1,4 +1,5 @@
-import { Schema as S } from 'effect'
+import { Function as Fn, Schema as S } from 'effect'
+import { commonSegmentPrefix } from '../core/segments.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
 import { AbsFile } from './AbsFile.js'
@@ -20,6 +21,17 @@ class Abs_ extends withLiteralStatics(
   static readonly guards = AbsTaggedUnion.guards
   static readonly isAnyOf = AbsTaggedUnion.isAnyOf
   static readonly match = AbsTaggedUnion.match
+
+  /**
+   * The deepest common ancestor directory of two absolute paths. Total: `/`
+   * is the floor when the paths share no named segment.
+   */
+  static readonly commonAncestor: {
+    (a: typeof Abs_.Type, b: typeof Abs_.Type): typeof AbsDir.Type
+    (b: typeof Abs_.Type): (a: typeof Abs_.Type) => typeof AbsDir.Type
+  } = Fn.dual(2, (a: typeof Abs_.Type, b: typeof Abs_.Type): typeof AbsDir.Type =>
+    AbsDir.make({ segments: commonSegmentPrefix(a.segments, b.segments) }),
+  )
 }
 
 export const Abs = Abs_

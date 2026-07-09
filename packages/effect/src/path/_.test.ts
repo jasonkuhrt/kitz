@@ -727,44 +727,73 @@ describe('isAncestorOf', () => {
 // ─── operation: commonAncestor ───
 
 describe('commonAncestor', () => {
-  it('is symmetric and returns an inclusive ancestor of both paths', () => {
+  it('is total and returns an inclusive ancestor of same-group paths', () => {
     FastCheck.assert(
-      FastCheck.property(arb.Any, arb.Any, (a, b) => {
-        const ab = Path.commonAncestor(a as never, b as never)
-        const ba = Path.commonAncestor(b as never, a as never)
+      FastCheck.property(abs, abs, (a, b) => {
+        const ab = Path.Abs.commonAncestor(a, b)
+        const ba = Path.Abs.commonAncestor(b, a)
 
         expect(ab).toEqual(ba)
-        expect(
-          Option.match(ab, {
-            onNone: () => true,
-            onSome: (shared) =>
-              Path.isWithin(a as never, shared as never) &&
-              Path.isWithin(b as never, shared as never),
-          }),
-        ).toBe(true)
+        expect(Path.isWithin(a, ab)).toBe(true)
+        expect(Path.isWithin(b, ab)).toBe(true)
+      }),
+    )
+
+    FastCheck.assert(
+      FastCheck.property(rel, rel, (a, b) => {
+        const ab = Path.Rel.commonAncestor(a, b)
+        const ba = Path.Rel.commonAncestor(b, a)
+
+        expect(ab).toEqual(ba)
+        expect(Path.isWithin(a, ab)).toBe(true)
+        expect(Path.isWithin(b, ab)).toBe(true)
       }),
     )
   })
 
-  it('agrees with descendant checks for directory parents', () => {
-    FastCheck.assert(
-      FastCheck.property(dir, nonEmptyRelAscent0, (base, r) => {
-        const child = Path.join(base, r)
-        const shared = Path.commonAncestor(base as never, child as never)
+  it('uses the anchor and pure-ascent floor when no named prefix exists', () => {
+    const absShared = Path.Abs.commonAncestor(
+      Path.AbsFile.fromLiteral('/apps/app.ts'),
+      Path.AbsFile.fromLiteral('/libs/lib.ts'),
+    )
+    const relShared = Path.Rel.commonAncestor(
+      Path.RelDir.make({ ascent: 0, segments: ['a'].map(Path.segment) }),
+      Path.RelDir.make({ ascent: 2, segments: [] }),
+    )
 
-        expect(Path.isDescendantOf(child as never, base as never)).toBe(true)
-        expect(shared).toEqual(base.segments.length === 0 ? Option.none() : Option.some(base))
+    expect(Equal.equals(absShared, Path.AbsDir.anchor)).toBe(true)
+    expect(Equal.equals(relShared, Path.RelDir.make({ ascent: 2, segments: [] }))).toBe(true)
+  })
+
+  it('returns the deepest self ancestor for same-path inputs', () => {
+    FastCheck.assert(
+      FastCheck.property(abs, (path) => {
+        const expected = Path.AbsFile.is(path) ? path.dir : path
+
+        expect(Equal.equals(Path.Abs.commonAncestor(path, path), expected)).toBe(true)
+      }),
+    )
+
+    FastCheck.assert(
+      FastCheck.property(rel, (path) => {
+        const expected = Path.RelFile.is(path) ? path.dir : path
+
+        expect(Equal.equals(Path.Rel.commonAncestor(path, path), expected)).toBe(true)
       }),
     )
   })
 
   it('types: data-first and data-last return the group directory type', () => {
-    expectTypeOf(Path.commonAncestor(someAbsFile, someAbsDir)).toEqualTypeOf<
-      Option.Option<Path.AbsDir>
-    >()
-    expectTypeOf(Path.commonAncestor(someRelDir)(someRelFile)).toEqualTypeOf<
-      Option.Option<Path.RelDir>
-    >()
+    expectTypeOf(Path.Abs.commonAncestor(someAbsFile, someAbsDir)).toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf(Path.Rel.commonAncestor(someRelDir)(someRelFile)).toEqualTypeOf<Path.RelDir>()
+
+    const staticRejections = () => {
+      // @ts-expect-error Abs.commonAncestor only accepts absolute paths
+      Path.Abs.commonAncestor(someAbsFile, someRelDir)
+      // @ts-expect-error Rel.commonAncestor only accepts relative paths
+      Path.Rel.commonAncestor(someAbsDir)(someRelFile)
+    }
+    expect(typeof staticRejections).toBe('function')
   })
 })
 

@@ -1,4 +1,5 @@
-import { Schema as S } from 'effect'
+import { Function as Fn, Schema as S } from 'effect'
+import { commonSegmentPrefix } from '../core/segments.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { RelDir } from './RelDir.js'
 import { RelFile } from './RelFile.js'
@@ -20,6 +21,19 @@ class Rel_ extends withLiteralStatics(
   static readonly guards = RelTaggedUnion.guards
   static readonly isAnyOf = RelTaggedUnion.isAnyOf
   static readonly match = RelTaggedUnion.match
+
+  /**
+   * The deepest common ancestor directory of two relative paths. Total: when
+   * ascents differ, their common ancestor is the higher pure-ascent dir.
+   */
+  static readonly commonAncestor: {
+    (a: typeof Rel_.Type, b: typeof Rel_.Type): typeof RelDir.Type
+    (b: typeof Rel_.Type): (a: typeof Rel_.Type) => typeof RelDir.Type
+  } = Fn.dual(2, (a: typeof Rel_.Type, b: typeof Rel_.Type): typeof RelDir.Type =>
+    a.ascent === b.ascent
+      ? RelDir.make({ ascent: a.ascent, segments: commonSegmentPrefix(a.segments, b.segments) })
+      : RelDir.make({ ascent: Math.max(a.ascent, b.ascent), segments: [] }),
+  )
 }
 
 export const Rel = Rel_
