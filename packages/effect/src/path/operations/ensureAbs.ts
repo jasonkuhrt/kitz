@@ -1,8 +1,14 @@
-import { Function as Fn, Match } from 'effect'
+import { Function as Fn, Match, Schema as S } from 'effect'
+import type {
+  ErrorPathValidation,
+  FromLiteral,
+  LiteralGuard,
+  LiteralInput,
+} from '../core/literal.js'
 import type { Abs } from '../models/Abs.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
-import type { Any } from '../models/Any.js'
+import { Any } from '../models/Any.js'
 import { RelDir } from '../models/RelDir.js'
 import { RelFile } from '../models/RelFile.js'
 import { join } from './join.js'
@@ -18,21 +24,47 @@ export type EnsureAbs<P extends Any> = P extends Abs
 
 /**
  * Ensure a path is absolute, resolving a relative path against `base`; absolute
- * inputs pass through. Dual: `ensureAbs(path, base)` or `ensureAbs(base)` for
- * piping.
+ * inputs pass through. Every path position accepts either a decoded value or a
+ * statically known string literal; literals desugar through `Path.mk`, while
+ * dynamic strings are rejected. Dual: `ensureAbs(path, base)` or
+ * `ensureAbs(base)` for piping.
  */
 export const ensureAbs: {
-  <P extends Any>(path: P, base: AbsDir): EnsureAbs<P>
-  (base: AbsDir): <P extends Any>(path: P) => EnsureAbs<P>
-} = Fn.dual(
-  2,
-  (path: Any, base: AbsDir): Abs =>
-    Match.value(path).pipe(
-      Match.tagsExhaustive({
-        AbsFile: (abs) => abs,
-        AbsDir: (abs) => abs,
-        RelFile: (rel) => join(base, rel),
-        RelDir: (rel) => join(base, rel),
-      }),
-    ),
-)
+  <const Path extends Any | string, const Base extends AbsDir | string>(
+    path: Path extends string ? LiteralGuard<Path, Any> : Path,
+    base: Base extends string
+      ? string extends Base
+        ? LiteralInput<Base>
+        : [FromLiteral<Base>] extends [never]
+          ? ErrorPathValidation<AbsDir, Base>
+          : FromLiteral<Base> extends AbsDir
+            ? Base
+            : ErrorPathValidation<AbsDir, Base>
+      : Base,
+  ): EnsureAbs<Path extends string ? FromLiteral<Path> : Path>
+  <const Base extends AbsDir | string>(
+    base: Base extends string
+      ? string extends Base
+        ? LiteralInput<Base>
+        : [FromLiteral<Base>] extends [never]
+          ? ErrorPathValidation<AbsDir, Base>
+          : FromLiteral<Base> extends AbsDir
+            ? Base
+            : ErrorPathValidation<AbsDir, Base>
+      : Base,
+  ): <const Path extends Any | string>(
+    path: Path extends string ? LiteralGuard<Path, Any> : Path,
+  ) => EnsureAbs<Path extends string ? FromLiteral<Path> : Path>
+} = Fn.dual(2, (path: Any | string, base: AbsDir | string): Abs => {
+  const pathValue = typeof path === 'string' ? S.decodeSync(Any)(path) : path
+  const baseValue = typeof base === 'string' ? (S.decodeSync(Any)(base) as AbsDir) : base
+
+  return Match.value(pathValue).pipe(
+    Match.tagsExhaustive({
+      AbsFile: (abs) => abs,
+      AbsDir: (abs) => abs,
+      RelFile: (rel) => join(baseValue, rel),
+      RelDir: (rel) => join(baseValue, rel),
+    }),
+  )
+})
