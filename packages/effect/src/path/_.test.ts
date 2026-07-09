@@ -1247,6 +1247,34 @@ describe('isAncestorOf', () => {
 // ─── operation: commonAncestor ───
 
 describe('commonAncestor', () => {
+  it('literal duality obeys the desugar law for both group statics and call shapes', () => {
+    const absA = Path.mk('/workspace/src/index.ts')
+    const absB = Path.mk('/workspace/test/')
+    const absExpected = Path.Abs.commonAncestor(absA, absB)
+
+    expect(absExpected).toEncodeTo('/workspace/')
+    expect(Path.Abs.commonAncestor('/workspace/src/index.ts', absB)).toEqual(absExpected)
+    expect(Path.Abs.commonAncestor(absA, '/workspace/test/')).toEqual(absExpected)
+    expect(Path.Abs.commonAncestor('/workspace/src/index.ts', '/workspace/test/')).toEqual(
+      absExpected,
+    )
+    expect(Path.Abs.commonAncestor('/workspace/test/')(absA)).toEqual(absExpected)
+    expect(Path.Abs.commonAncestor(absB)('/workspace/src/index.ts')).toEqual(absExpected)
+
+    const relA = Path.mk('../workspace/src/index.ts')
+    const relB = Path.mk('../workspace/test/')
+    const relExpected = Path.Rel.commonAncestor(relA, relB)
+
+    expect(relExpected).toEncodeTo('../workspace/')
+    expect(Path.Rel.commonAncestor('../workspace/src/index.ts', relB)).toEqual(relExpected)
+    expect(Path.Rel.commonAncestor(relA, '../workspace/test/')).toEqual(relExpected)
+    expect(Path.Rel.commonAncestor('../workspace/src/index.ts', '../workspace/test/')).toEqual(
+      relExpected,
+    )
+    expect(Path.Rel.commonAncestor('../workspace/test/')(relA)).toEqual(relExpected)
+    expect(Path.Rel.commonAncestor(relB)('../workspace/src/index.ts')).toEqual(relExpected)
+  })
+
   it('is total and returns an inclusive ancestor of same-group paths', () => {
     FastCheck.assert(
       FastCheck.property(abs, abs, (a, b) => {
@@ -1303,14 +1331,49 @@ describe('commonAncestor', () => {
     )
   })
 
-  it('types: data-first and data-last return the group directory type', () => {
+  it('types: literal/value matrices return the group directory and reject invalid worlds', () => {
+    expectTypeOf(Path.Abs.commonAncestor('/a/file.ts', '/a/')).toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf(Path.Abs.commonAncestor('/a/file.ts', someAbsDir)).toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf(Path.Abs.commonAncestor(someAbsFile, '/a/')).toEqualTypeOf<Path.AbsDir>()
     expectTypeOf(Path.Abs.commonAncestor(someAbsFile, someAbsDir)).toEqualTypeOf<Path.AbsDir>()
+
+    expectTypeOf(Path.Rel.commonAncestor('./a/file.ts', './a/')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.Rel.commonAncestor('./a/file.ts', someRelDir)).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.Rel.commonAncestor(someRelFile, './a/')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.Rel.commonAncestor(someRelFile, someRelDir)).toEqualTypeOf<Path.RelDir>()
+
+    expectTypeOf(Path.Abs.commonAncestor('/a/')('/a/file.ts')).toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf(Path.Abs.commonAncestor(someAbsDir)('/a/file.ts')).toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf(Path.Rel.commonAncestor('./a/')(someRelFile)).toEqualTypeOf<Path.RelDir>()
     expectTypeOf(Path.Rel.commonAncestor(someRelDir)(someRelFile)).toEqualTypeOf<Path.RelDir>()
 
+    const dynamic = '/a/' as string
+
+    // Type-only: never executed, so the @ts-expect-error rejections cannot throw.
     const staticRejections = () => {
-      // @ts-expect-error Abs.commonAncestor only accepts absolute paths
+      // @ts-expect-error dynamic strings are rejected at the first data-first position
+      Path.Abs.commonAncestor(dynamic, someAbsDir)
+      // @ts-expect-error dynamic strings are rejected at the second data-first position
+      Path.Abs.commonAncestor(someAbsFile, dynamic)
+      // @ts-expect-error dynamic strings are rejected at the data-last outer position
+      Path.Abs.commonAncestor(dynamic)
+      // @ts-expect-error dynamic strings are rejected at the data-last inner position
+      Path.Abs.commonAncestor(someAbsDir)(dynamic)
+      // @ts-expect-error invalid literals are rejected at the first position
+      Path.Rel.commonAncestor('//', someRelDir)
+      // @ts-expect-error invalid literals are rejected at the second position
+      Path.Rel.commonAncestor(someRelFile, '//')
+      // @ts-expect-error absolute statics reject relative literals at the first position
+      Path.Abs.commonAncestor('./a/file.ts', '/a/')
+      // @ts-expect-error absolute statics reject relative literals at the second position
+      Path.Abs.commonAncestor('/a/file.ts', './a/')
+      // @ts-expect-error relative statics reject absolute literals at the data-last outer position
+      Path.Rel.commonAncestor('/a/')
+      // @ts-expect-error relative statics reject absolute literals at the data-last inner position
+      Path.Rel.commonAncestor('./a/')('/a/file.ts')
+      // @ts-expect-error Abs.commonAncestor rejects relative path values
       Path.Abs.commonAncestor(someAbsFile, someRelDir)
-      // @ts-expect-error Rel.commonAncestor only accepts relative paths
+      // @ts-expect-error Rel.commonAncestor rejects absolute path values
       Path.Rel.commonAncestor(someAbsDir)(someRelFile)
     }
     expect(typeof staticRejections).toBe('function')

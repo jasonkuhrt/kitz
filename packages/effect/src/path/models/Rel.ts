@@ -1,4 +1,5 @@
 import { Function as Fn, Schema as S } from 'effect'
+import type { LiteralGuard } from '../core/literal.js'
 import { commonSegmentPrefix } from '../core/segments.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { RelDir } from './RelDir.js'
@@ -24,15 +25,32 @@ class Rel_ extends withLiteralStatics(
 
   /**
    * The deepest common ancestor directory of two relative paths. Total: when
-   * ascents differ, their common ancestor is the higher pure-ascent dir.
+   * ascents differ, their common ancestor is the higher pure-ascent dir. Each
+   * path accepts a relative value or statically known relative literal.
    */
   static readonly commonAncestor: {
-    (a: typeof Rel_.Type, b: typeof Rel_.Type): typeof RelDir.Type
-    (b: typeof Rel_.Type): (a: typeof Rel_.Type) => typeof RelDir.Type
-  } = Fn.dual(2, (a: typeof Rel_.Type, b: typeof Rel_.Type): typeof RelDir.Type =>
-    a.ascent === b.ascent
-      ? RelDir.make({ ascent: a.ascent, segments: commonSegmentPrefix(a.segments, b.segments) })
-      : RelDir.make({ ascent: Math.max(a.ascent, b.ascent), segments: [] }),
+    <const A extends typeof Rel_.Type | string, const B extends typeof Rel_.Type | string>(
+      a: A extends string ? LiteralGuard<A, typeof Rel_.Type> : A,
+      b: B extends string ? LiteralGuard<B, typeof Rel_.Type> : B,
+    ): typeof RelDir.Type
+    <const B extends typeof Rel_.Type | string>(
+      b: B extends string ? LiteralGuard<B, typeof Rel_.Type> : B,
+    ): <const A extends typeof Rel_.Type | string>(
+      a: A extends string ? LiteralGuard<A, typeof Rel_.Type> : A,
+    ) => typeof RelDir.Type
+  } = Fn.dual(
+    2,
+    (a: typeof Rel_.Type | string, b: typeof Rel_.Type | string): typeof RelDir.Type => {
+      const aValue = typeof a === 'string' ? S.decodeSync(RelTaggedUnion)(a) : a
+      const bValue = typeof b === 'string' ? S.decodeSync(RelTaggedUnion)(b) : b
+
+      return aValue.ascent === bValue.ascent
+        ? RelDir.make({
+            ascent: aValue.ascent,
+            segments: commonSegmentPrefix(aValue.segments, bValue.segments),
+          })
+        : RelDir.make({ ascent: Math.max(aValue.ascent, bValue.ascent), segments: [] })
+    },
   )
 }
 

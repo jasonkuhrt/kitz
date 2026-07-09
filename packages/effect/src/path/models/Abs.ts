@@ -1,4 +1,5 @@
 import { Function as Fn, Schema as S } from 'effect'
+import type { LiteralGuard } from '../core/literal.js'
 import { commonSegmentPrefix } from '../core/segments.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
@@ -24,13 +25,27 @@ class Abs_ extends withLiteralStatics(
 
   /**
    * The deepest common ancestor directory of two absolute paths. Total: `/`
-   * is the floor when the paths share no named segment.
+   * is the floor when the paths share no named segment. Each path accepts an
+   * absolute value or statically known absolute literal.
    */
   static readonly commonAncestor: {
-    (a: typeof Abs_.Type, b: typeof Abs_.Type): typeof AbsDir.Type
-    (b: typeof Abs_.Type): (a: typeof Abs_.Type) => typeof AbsDir.Type
-  } = Fn.dual(2, (a: typeof Abs_.Type, b: typeof Abs_.Type): typeof AbsDir.Type =>
-    AbsDir.make({ segments: commonSegmentPrefix(a.segments, b.segments) }),
+    <const A extends typeof Abs_.Type | string, const B extends typeof Abs_.Type | string>(
+      a: A extends string ? LiteralGuard<A, typeof Abs_.Type> : A,
+      b: B extends string ? LiteralGuard<B, typeof Abs_.Type> : B,
+    ): typeof AbsDir.Type
+    <const B extends typeof Abs_.Type | string>(
+      b: B extends string ? LiteralGuard<B, typeof Abs_.Type> : B,
+    ): <const A extends typeof Abs_.Type | string>(
+      a: A extends string ? LiteralGuard<A, typeof Abs_.Type> : A,
+    ) => typeof AbsDir.Type
+  } = Fn.dual(
+    2,
+    (a: typeof Abs_.Type | string, b: typeof Abs_.Type | string): typeof AbsDir.Type => {
+      const aValue = typeof a === 'string' ? S.decodeSync(AbsTaggedUnion)(a) : a
+      const bValue = typeof b === 'string' ? S.decodeSync(AbsTaggedUnion)(b) : b
+
+      return AbsDir.make({ segments: commonSegmentPrefix(aValue.segments, bValue.segments) })
+    },
   )
 }
 
