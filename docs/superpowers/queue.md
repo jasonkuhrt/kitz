@@ -62,15 +62,21 @@ name/stem/extension, ensureAbs base?); literal-vs-runtime-string split
 only literals, or runtime strings with a throw/Result channel?); one blessed
 boundary-decode helper for dynamic LHS (cwd).
 
-## 3. cwd story — `design-open` (position taken 2026-07-09, awaiting sign-off)
+## 3. cwd story — `done`
 
 Round-1 D1: 167 `path.resolve` sites; no cwd concept (deferred to the Fs era).
 Round-2 confirms (`install-state.ts:367-372` wants "realpath else resolve
 against cwd"). Interacts with `ensureAbs` naming (see report round 1) — design
 them together.
 
-Position (user leaning + agent analysis agree): **cwd is an Effect service;
-the yield ceremony is a deliberate forcing function.**
+Done:
+
+- `68bf5a02` — `Path.Cwd` is an Effect service whose Shape is the `AbsDir`
+  value, with a snapshot process layer and direct `Layer.succeed(Path.Cwd)`
+  test override.
+
+Settled decision: **cwd is `Path.Cwd`, an Effect service; the yield ceremony
+is a deliberate forcing function.**
 
 - `process.cwd()` is ambient mutable process state (`chdir` mutates mid-run);
   a service puts the dependency in the R channel — visible, mockable (tests
@@ -87,10 +93,8 @@ the yield ceremony is a deliberate forcing function.**
   see `git show 41a2d191^:src/utils/fs-loc/operations/ensure-optional-absolute-with-cwd.ts`)
   — cwd coupling leaked into the pure layer, plus optional-input polymorphism
   on top. The service design exists to prevent exactly that.
-- Open sub-questions: service home (`Path.Cwd` vs future `Fs`/platform
-  namespace); relationship to `ensureAbs` (does a `resolve`-flavored helper
-  take the service, or do callers `yield* Cwd` then call pure `ensureAbs`?
-  — position leans the latter: keep ALL path ops pure).
+- Service home: `Path.Cwd`. Relationship to path ops: callers `yield* Cwd` at
+  the edge, then pass the resulting `AbsDir` to pure path operations.
 
 ## 4. `Any`/union decode classification rules — `design-open` (deferred by user 2026-07-09)
 
@@ -99,7 +103,7 @@ RelFile via `Path.Rel`. Needs: a documented rule table in README/JSDoc for
 union decode; consider simplifying the heuristic. Target-schema decode
 (`Path.RelDir`) already gives intent — the gap is predictability of the union.
 
-## 5. File URLs — `design-open` (position taken 2026-07-09, awaiting sign-off)
+## 5. File URLs — `done`
 
 Supersedes the narrower "fromFileUrl dir form" item (round-2 P2: the ESM
 `new URL('.', import.meta.url)` directory idiom returns the file/dir union →
@@ -113,20 +117,24 @@ Facts (probed 2026-07-09 against installed effect@4.0.0-beta.85):
   native `URL` (`setHost`/`setPathname`/`mutate`/…), http-flavored, unstable.
   There is no stable foundation to extend.
 
-Position: **no reified FileUrl type; file URLs are codec variants on the
-existing models.** A file URL is an alternate ENCODING of an absolute path
+Done:
+
+- `02c064a2` — `AbsFile.FromUrl` / `AbsDir.FromUrl` target-typed native-URL
+  codecs, flat primitive `*.FromStruct` codecs on all four models, and removal
+  of the flat `fromFileUrl` operation.
+
+Settled decision: **no reified FileUrl type; file URLs are codec variants on
+the existing models.** A file URL is an alternate ENCODING of an absolute path
 (RFC 8089) — no consumer computes on file-URLs; every site immediately
 converts to a path. By the membrane litmus ("will unknown data need to BECOME
 and LIVE as this type?") the answer is no — it becomes a path. A reified
 FileUrl would be a value type with zero operations of its own.
 
-Proposed shape: per-model schema variant statics (the `Realistic` precedent):
-`AbsFile.FromFileUrl` / `AbsDir.FromFileUrl` — encoded side URL (or url
-string), Type side the path value. This subsumes the dir-form gap via
-target-typed decode: `S.decodeSync(Path.AbsDir.FromFileUrl)(new URL('.', import.meta.url))`
-— no union narrowing. `.fileUrl` getter stays as the encode direction;
-`fromFileUrl` (union-returning) either remains for unknown-kind URLs or is
-dropped in favor of `Any`-level variant.
+Implemented shape: per-model alternate codec statics. `AbsFile.FromUrl` /
+`AbsDir.FromUrl` use native `URL` on the encoded side; `*.FromStruct` uses flat
+primitive structs for JSON transport. The `.fileUrl` getter stays as the
+instance-read convenience for the URL encode direction; the old union-returning
+`fromFileUrl` operation was deleted.
 
 ## 6. Vitest package batch — `mechanical` (one name decision inside)
 

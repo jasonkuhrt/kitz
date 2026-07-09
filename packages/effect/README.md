@@ -48,6 +48,57 @@ application code that is building a non-root file should pass `dir` explicitly
 or prefer `join(dir, relFile)`. Accidentally omitting `dir` silently constructs
 an anchor-rooted file.
 
+## File URLs and structured transport
+
+`AbsFile.FromUrl` and `AbsDir.FromUrl` are target-typed codecs for native
+`file:` URL instances. They replace the old union-shaped file URL helper: pick
+the target schema you want, then choose the usual Schema channel
+(`decodeSync`, `decodeResult`, `decodeEffect`, …).
+
+```ts
+import { Path } from '@kitz/effect'
+import { Schema } from 'effect'
+
+const thisFile = Schema.decodeSync(Path.AbsFile.FromUrl)(new URL(import.meta.url))
+const thisDir = Schema.decodeSync(Path.AbsDir.FromUrl)(new URL('.', import.meta.url))
+
+Schema.encodeSync(Path.AbsFile.FromUrl)(thisFile) // URL
+```
+
+For structured JSON transports, each model also has a flat primitive
+`FromStruct` codec:
+
+```ts
+const Payload = Schema.Struct({ entry: Path.AbsFile.FromStruct })
+
+Schema.encodeSync(Payload)({ entry: thisFile })
+// { entry: { segments: [...], fileName: 'README.md' } }
+```
+
+## Current working directory
+
+`Path.Cwd` is an Effect `Context.Service` whose value is the `AbsDir` itself.
+`Path.Cwd.layer` snapshots `process.cwd()` when the layer is provided; later
+`process.chdir` calls do not update the service value. This is deliberate:
+deep code should take an explicit `AbsDir` base parameter, while edge code pays
+the `yield* Path.Cwd` ceremony where ambient process state enters the program.
+
+```ts
+import { Path } from '@kitz/effect'
+import { Effect, Schema } from 'effect'
+
+const program = Effect.gen(function* () {
+  const cwd = yield* Path.Cwd
+  return Path.join(cwd, Path.fromLiteral('./config.json'))
+}).pipe(Effect.provide(Path.Cwd.layer))
+```
+
+For non-Effect edge code, the one-liner is still just the schema decode:
+
+```ts
+const cwd = Schema.decodeSync(Path.AbsDir)(process.cwd())
+```
+
 ## node:path migrator notes
 
 These are the most common false friends when moving from `node:path` strings to
