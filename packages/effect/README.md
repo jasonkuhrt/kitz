@@ -31,6 +31,22 @@ pipe(config, Path.AbsFile.setParts({ stem: 'config.local' })) // /home/user/conf
 Schema.decodeSync(Path.Any)(process.argv[2] ?? '.') // runtime strings decode to the union
 ```
 
+**Literal duality.** Every path-typed operation position accepts either a decoded `Path` value or a
+statically known string literal. Literals desugar through `Path.mk`, so the
+direct form keeps the same runtime meaning and precise variant return type as
+constructing the value first:
+
+```ts
+Path.join(cwd, './.env')
+Path.join(cwd, Path.mk('./.env')) // equivalent desugared form
+```
+
+Plain runtime `string` values are intentionally rejected by these signatures;
+decode them through the appropriate Schema before calling the operation. This
+separates compile-time literal convenience from runtime validation without
+creating a second parser. The complete laws and type-level doctrine are in the
+[literal-duality design spec](docs/superpowers/specs/2026-07-09-literal-duality-design.md).
+
 ## Paths as keys
 
 Path values implement Effect `Equal`, `Hash`, and `PrimaryKey`, so structurally
@@ -267,7 +283,7 @@ unrepresentable.
   are the product `Dir × FileName`. `join`/`relativeTo`/`isWithin` are the
   monoid's multiplication, division, and divisibility order.
 
-**Landscape on this axis** (none of the surveyed libraries occupy the same
+**Comparison on this axis** (none of the surveyed libraries occupy the same
 cell): strings admit everything; component sequences (Rust `Components`,
 pathlib `parts`, Java name elements) deliberately preserve interior `..` as
 distinct values; PureScript `pathy` allows `ParentIn` nodes anywhere and ships

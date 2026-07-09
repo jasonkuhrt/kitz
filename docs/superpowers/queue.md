@@ -9,7 +9,7 @@ recommendation. Done items are deleted outright — their decisions live in the
 Statuses: `design-open` (needs a decision), `decided` (awaiting
 implementation), `mechanical` (spec-able now), `parked` (explicitly deferred).
 
-## 1. Literal duality across path APIs — `mechanical`
+## 1. Literal duality across path APIs — `design-open` (path positions complete)
 
 Shipped:
 
@@ -24,6 +24,16 @@ Shipped:
 - `13527e2d` — rung 3, literal duality on `join`; proved mixed variadic literal
   inference, element-local tuple errors, precise left-fold returns, and literal
   support in the binary data-last form.
+- `f2823740` — `relativeTo`; preserved its Abs/Rel computed-return distinction
+  across every literal/value mix and both dual forms.
+- `e0b14fd6` — `isDescendantOf`; mirrored the `isWithin` signature while
+  preserving strict containment semantics.
+- `93e99496` — `isAncestorOf`; applied the same constraints with the inference
+  positions swapped around its delegating implementation.
+- `f40f8373` — `Abs.commonAncestor` / `Rel.commonAncestor`; constrained each
+  literal independently to the static's absolute or relative group.
+- `18dcb653` — `withName`; added literal duality to its directory position while
+  deliberately leaving its `Segment` argument value-only.
 
 The three-rung ladder is complete. Proven recipe for mechanical rollout:
 
@@ -35,6 +45,11 @@ The three-rung ladder is complete. Proven recipe for mechanical rollout:
 - Normalize each literal generic through `FromLiteral<S>` before feeding it to
   an existing computed-return type. Normalizing later violates the computation's
   value constraint; `Extract<S, Value>` instead erases literal inputs to `never`.
+- When a computed return has a group-level wrapper, keep that outer branch
+  non-distributive while leaving the variant computation distributive. For
+  `relativeTo`, `[NormalizedPath] extends [Rel]` yields
+  `Option<RelativeTo<NormalizedPath>>`, not a union of separately wrapped
+  `Option` variants.
 - Classify directory literals strictly with `FromLiteral<S> extends DirTarget`.
   Do not use a target `LiteralGuard<S, AbsDir | RelDir>` for operation positions:
   target constructors intentionally allow file-shaped text to be interpreted as
@@ -61,10 +76,11 @@ Performance criterion: three forced development builds averaged 0.633s without
 and 0.720s with a throwaway 600-call literal-bearing `join` file: +0.087s
 (+13.7%). The synthetic file was deleted.
 
-Remaining inventory is mechanical rollout per this recipe: `relativeTo`; the
-containment trio (`isWithin` is complete, then `isDescendantOf` and
-`isAncestorOf`); `Abs.commonAncestor` / `Rel.commonAncestor`; `withName`; and
-the `setParts` path/component axes.
+The path-position operation rollout is complete. Component literal positions
+remain pending design D2: `withName`'s `Segment` argument stays value-only, and
+all `setParts` axes remain excluded as one coupled component-literal design
+surface (including its directory fields). This keeps the accounting explicit:
+path positions are shipped; component positions are not.
 
 Evidence: round-1 D2 (604 `join` sites pay decode ceremony:
 `Path.join(S.decodeSync(Path.AbsDir)(cwd), Path.mk('./.env'))`), round-2 P1
@@ -72,9 +88,8 @@ Evidence: round-1 D2 (604 `join` sites pay decode ceremony:
 a string because `.name` reads as string). Deferred as Future in the pre-merge
 report; both stress rounds independently rank it #1.
 
-The remaining program is kitz-wide literal duality across the bounded context;
-partial adoption would leave call-site affordances inconsistent. Runtime strings
-stay in explicit Schema decode channels or arrive as already-decoded values.
+Runtime strings stay in explicit Schema decode channels or arrive as
+already-decoded values.
 
 The per-model `make` overload option remains live-not-rejected for later; the
 mk decision only settles the static-literal constructor world.
