@@ -629,11 +629,62 @@ describe('isDescendantOf', () => {
       }),
     )
   })
+
+  it('keeps different-ascent pure relatives strict', () => {
+    expect(
+      Path.isDescendantOf(
+        Path.RelDir.make({ ascent: 1, segments: [] }),
+        Path.RelDir.make({ ascent: 2, segments: [] }),
+      ),
+    ).toBe(true)
+  })
 })
 
 // ─── operation: isWithin ───
 
 describe('isWithin', () => {
+  it.each([
+    [
+      './a within ./',
+      Path.RelDir.make({ ascent: 0, segments: ['a'].map(Path.segment) }),
+      Path.RelDir.anchor,
+      true,
+    ],
+    [
+      './a within ../',
+      Path.RelDir.make({ ascent: 0, segments: ['a'].map(Path.segment) }),
+      Path.RelDir.make({ ascent: 1, segments: [] }),
+      true,
+    ],
+    [
+      '../x within ../../',
+      Path.RelDir.make({ ascent: 1, segments: ['x'].map(Path.segment) }),
+      Path.RelDir.make({ ascent: 2, segments: [] }),
+      true,
+    ],
+    [
+      '../a within ../b',
+      Path.RelDir.make({ ascent: 1, segments: ['a'].map(Path.segment) }),
+      Path.RelDir.make({ ascent: 1, segments: ['b'].map(Path.segment) }),
+      false,
+    ],
+    ['../../ within ./', Path.RelDir.make({ ascent: 2, segments: [] }), Path.RelDir.anchor, false],
+    [
+      '/apps/ within /',
+      Path.AbsDir.make({ segments: ['apps'].map(Path.segment) }),
+      Path.AbsDir.anchor,
+      true,
+    ],
+    [
+      '/apps/ within /libs/',
+      Path.AbsDir.make({ segments: ['apps'].map(Path.segment) }),
+      Path.AbsDir.make({ segments: ['libs'].map(Path.segment) }),
+      false,
+    ],
+  ] as const)('%s', (_, child, parent, expected) => {
+    expect(Path.isWithin(child as never, parent as never)).toBe(expected)
+  })
+
   it('is descendant-or-directory-identity inclusive containment', () => {
     FastCheck.assert(
       FastCheck.property(arb.Any, dir, (child, parent) => {

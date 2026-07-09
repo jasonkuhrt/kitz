@@ -8,8 +8,9 @@ import type { Dir } from '../models/Dir.js'
  * Whether `child` is `parent` or lives under it — inclusive containment (the
  * analog of Python's `is_relative_to` / Rust's `starts_with`). For strict
  * containment see `isDescendantOf`. Both must be the same group (absolute or
- * relative); relatives must share `ascent`. Dual: `(child, parent)` or
- * `(parent)`.
+ * relative). Relatives share `ascent`, except pure-ascent dirs (`../`,
+ * `../../`, ...) also contain paths in their lower cone, e.g. `./a` is within
+ * `../`. Dual: `(child, parent)` or `(parent)`.
  * Containment is lexical; under symlinks a path outside `parent` may still reach a file inside it.
  */
 export const isWithin: {
@@ -23,6 +24,7 @@ export const isWithin: {
 
   const childAscent = childIsRel ? child.ascent : 0
   const parentAscent = parentIsRel ? parent.ascent : 0
+  if (childIsRel && parent.segments.length === 0 && parentAscent >= childAscent) return true
   if (childAscent !== parentAscent) return false
   if (child.segments.length < parent.segments.length) return false
 
