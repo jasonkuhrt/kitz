@@ -201,7 +201,7 @@ export interface StaticError<Message extends string, Received, Hint extends stri
 export type ErrorStringNotLiteral<Received> = StaticError<
   'Path literal constructors require a string literal',
   Received,
-  'Use Path.fromLiteral for dynamic strings, or decode the target schema at runtime.'
+  'Use a path schema codec for dynamic strings, or decode the target schema at runtime.'
 >
 
 /** Static error for a literal that does not match the target path schema. */
@@ -219,6 +219,9 @@ export type FromTargetLiteral<S extends string, Target> = string extends S
       ? DecodeAbsLiteralAs<S, Target>
       : DecodeRelLiteralAs<S, Target>
     : never
+
+/** Guard the god literal constructor against non-literal strings. */
+export type LiteralInput<S extends string> = string extends S ? ErrorStringNotLiteral<S> : S
 
 /** Guard a string literal against a target path schema, returning a static error on mismatch. */
 export type LiteralGuard<S extends string, Target> = string extends S

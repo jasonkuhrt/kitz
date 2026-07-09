@@ -25,21 +25,21 @@ export const withStatics = <Self extends S.Top>(self: Self): Self & Guard<Self> 
 /** The target-validated literal constructor attached to path schemas. */
 type LiteralConstructor<Self extends S.Top> = {
   /** Decode a string literal as this path schema, rejecting target mismatches statically. */
-  readonly fromLiteral: <const Input extends string>(
+  readonly mk: <const Input extends string>(
     input: LiteralGuard<Input, Self['Type']>,
   ) => FromTargetLiteral<Input, Self['Type']>
 }
 
 /**
- * Attach the target-validated `fromLiteral` constructor to path schemas.
+ * Attach the target-validated `mk` constructor to path schemas.
  *
- * Use this only on leaf and pairwise path schemas; `Path.fromLiteral` owns the
- * top-level `Any` union decode.
+ * Use this only on leaf and pairwise path schemas; `Path.mk` owns the top-level
+ * `Any` union decode.
  */
 export const withLiteralStatics = <Self extends S.Top>(
   self: Self,
 ): Self & LiteralConstructor<Self> =>
   Object.assign(self, {
-    fromLiteral: (input: string): Self['Type'] =>
+    mk: (input: string): Self['Type'] =>
       S.decodeSync(self as unknown as S.Decoder<Self['Type']>)(input),
   }) as unknown as Self & LiteralConstructor<Self>

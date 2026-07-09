@@ -2,9 +2,9 @@ import { Path } from '@kitz/effect/Path'
 import { describe, expect, it } from '@kitz/vitest'
 
 const absDir = Path.AbsDir.make({ segments: ['home'].map(Path.segment) })
-const absFile = Path.AbsFile.fromLiteral('/home/index.ts')
+const absFile = Path.AbsFile.mk('/home/index.ts')
 const relDir = Path.RelDir.make({ ascent: 0, segments: ['src'].map(Path.segment) })
-const relFile = Path.RelFile.fromLiteral('./src/index.ts')
+const relFile = Path.RelFile.mk('./src/index.ts')
 
 const messageOf = (assertion: () => void): string => {
   try {
@@ -114,7 +114,7 @@ describe('Path matchers', () => {
     })
 
     it('supports negation', () => {
-      expect(Path.AbsFile.fromLiteral('/var/log.txt')).not.toBeWithinPath(absDir)
+      expect(Path.AbsFile.mk('/var/log.txt')).not.toBeWithinPath(absDir)
     })
 
     it('rejects invalid received values with a within-path message', () => {

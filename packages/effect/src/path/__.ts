@@ -41,7 +41,7 @@ export * as Analyzer from './analyzer.js'
 
 // Literal string analysis and decoding
 export type { FromLiteral, LiteralAnalysis } from './core/literal.js'
-export * from './operations/fromLiteral.js'
+export * from './operations/mk.js'
 
 // Extension types and constants
 export * as Extension from './models/Extension.js'

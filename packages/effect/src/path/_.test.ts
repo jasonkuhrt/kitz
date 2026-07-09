@@ -878,8 +878,8 @@ describe('commonAncestor', () => {
 
   it('uses the anchor and pure-ascent floor when no named prefix exists', () => {
     const absShared = Path.Abs.commonAncestor(
-      Path.AbsFile.fromLiteral('/apps/app.ts'),
-      Path.AbsFile.fromLiteral('/libs/lib.ts'),
+      Path.AbsFile.mk('/apps/app.ts'),
+      Path.AbsFile.mk('/libs/lib.ts'),
     )
     const relShared = Path.Rel.commonAncestor(
       Path.RelDir.make({ ascent: 0, segments: ['a'].map(Path.segment) }),
@@ -1085,7 +1085,7 @@ describe('withName', () => {
   })
 })
 
-// ─── literals: fromLiteral + per-target constructors ───
+// ─── literals: mk + per-target constructors ───
 
 const unionLiteralCases = [
   'a/../b',
@@ -1111,19 +1111,25 @@ const unionLiteralCases = [
   './x/',
 ] as const
 
-describe('fromLiteral', () => {
-  it.each(unionLiteralCases)('fromLiteral(%s) agrees with union decode', (input) => {
-    expect(Path.fromLiteral(input)._tag).toBe(S.decodeSync(Path.Any)(input)._tag)
+describe('mk', () => {
+  it.each(unionLiteralCases)('mk(%s) agrees with union decode', (input) => {
+    expect(Path.mk(input)._tag).toBe(S.decodeSync(Path.Any)(input)._tag)
   })
 
-  it('types: literal shapes infer precise variants; plain string degrades to Any', () => {
-    expectTypeOf(Path.fromLiteral('/home/u/f.txt')).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.fromLiteral('./src/')).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.fromLiteral('./.gitignore')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.fromLiteral('../')).toEqualTypeOf<Path.RelDir>()
+  it('types: literal shapes infer precise variants; dynamic strings are rejected', () => {
+    expectTypeOf(Path.mk('/home/u/f.txt')).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(Path.mk('./src/')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.mk('./.gitignore')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.mk('../')).toEqualTypeOf<Path.RelDir>()
 
     const dynamic = '/x/y.txt' as string
-    expectTypeOf(Path.fromLiteral(dynamic)).toEqualTypeOf<Path.Any>()
+
+    // Type-only: never executed, so the @ts-expect-error rejection cannot throw.
+    const staticRejections = () => {
+      // @ts-expect-error dynamic strings are rejected by Path.mk; decode runtime strings through a schema
+      Path.mk(dynamic)
+    }
+    expect(typeof staticRejections).toBe('function')
 
     // the exported type utility: shapes not exercised through the function above
     expectTypeOf<Path.FromLiteral<'/'>>().toEqualTypeOf<Path.AbsDir>()
@@ -1133,23 +1139,23 @@ describe('fromLiteral', () => {
   })
 
   it('target constructors are lenient for dirs and statically reject mismatches', () => {
-    const decoded = Path.AbsDir.fromLiteral('/releases/v1.2')
+    const decoded = Path.AbsDir.mk('/releases/v1.2')
     expect(decoded).toEncodeTo('/releases/v1.2/')
     expectTypeOf(decoded).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.RelFile.fromLiteral('./.gitignore')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.RelFile.mk('./.gitignore')).toEqualTypeOf<Path.RelFile>()
 
     // Type-only: never executed, so the @ts-expect-error rejections cannot throw.
     const staticRejections = () => {
       // @ts-expect-error absolute literal rejected by a RelFile target
-      Path.RelFile.fromLiteral('/abs.txt')
+      Path.RelFile.mk('/abs.txt')
       // @ts-expect-error dir-shaped literal rejected by an AbsFile target
-      Path.AbsFile.fromLiteral('/a/b/')
+      Path.AbsFile.mk('/a/b/')
       // @ts-expect-error relative literal rejected by an AbsFile target
-      Path.AbsFile.fromLiteral('./x')
+      Path.AbsFile.mk('./x')
       // @ts-expect-error absolute literal rejected by a RelDir target
-      Path.RelDir.fromLiteral('/x/')
+      Path.RelDir.mk('/x/')
       // @ts-expect-error dynamic strings rejected by literal-only target constructors
-      Path.AbsDir.fromLiteral('/x/' as string)
+      Path.AbsDir.mk('/x/' as string)
     }
     expect(typeof staticRejections).toBe('function')
   })
