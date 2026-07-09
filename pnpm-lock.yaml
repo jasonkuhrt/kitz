@@ -6,9 +6,6 @@ settings:
 
 catalogs:
   default:
-    '@platformatic/vfs':
-      specifier: ^0.4.0
-      version: 0.4.0
     effect:
       specifier: 4.0.0-beta.85
       version: 4.0.0-beta.85
@@ -65,10 +62,6 @@ importers:
         version: 25.9.4
 
   packages/effect:
-    dependencies:
-      '@platformatic/vfs':
-        specifier: 'catalog:'
-        version: 0.4.0
     devDependencies:
       '@kitz/vitest':
         specifier: workspace:*
@@ -604,10 +597,6 @@ packages:
   '@oxlint/plugins@1.68.0':
     resolution: {integrity: sha512-titLmukUt/h8ho7Svlf0xSBjoy2ccZKrXjpXpZCj+v6V4CJccC2KyP45BLSCMx8YIpifMyiDyUptM4+5sruKbQ==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
-
-  '@platformatic/vfs@0.4.0':
-    resolution: {integrity: sha512-JwRxSIG63e/VaDSkYXkSBajySt5MJzxYIKuknYda28fhhmJMqyUGf5rbKrGW+vO9L83nIjQH3+YI12fp7EKICQ==}
-    engines: {node: '>= 22'}
 
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
@@ -2377,8 +2366,6 @@ snapshots:
     optional: true
 
   '@oxlint/plugins@1.68.0': {}
-
-  '@platformatic/vfs@0.4.0': {}
 
   '@polka/url@1.0.0-next.29': {}
 
