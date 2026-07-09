@@ -30,6 +30,23 @@ pipe(config, Path.AbsFile.setParts({ stem: 'config.local' })) // /home/user/conf
 Schema.decodeSync(Path.Any)(process.argv[2] ?? '.') // runtime strings decode to the union
 ```
 
+## Paths as keys
+
+Path values implement Effect `Equal`, `Hash`, and `PrimaryKey`, so structurally
+equal values work as keys in Effect `HashMap`/`HashSet`. Native JavaScript
+`Map`/`Set` use object reference identity instead: two separately decoded path
+values can encode to the same canonical string but still miss each other as
+native keys. For native collections, key by `path.toString()` or another stored
+canonical string.
+
+## File constructor defaults
+
+`AbsFile.make` and `RelFile.make` default an omitted `dir` to the matching
+anchor. That default is useful for literals and schema construction, but
+application code that is building a non-root file should pass `dir` explicitly
+or prefer `join(dir, relFile)`. Accidentally omitting `dir` silently constructs
+an anchor-rooted file.
+
 ## node:path migrator notes
 
 These are the most common false friends when moving from `node:path` strings to

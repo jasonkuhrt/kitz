@@ -47,6 +47,11 @@ export declare namespace RelFile {
  * Relative file value — the decoded path (directory + filename).
  */
 class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
+  /**
+   * Containing relative directory. Constructor default is the relative anchor
+   * for literal/schema construction; application code building non-anchor files
+   * should pass `dir` explicitly or prefer `join(dir, relFile)`.
+   */
   dir: S.suspend((): S.toType<typeof RelDir> => S.toType(RelDir)).pipe(
     S.withConstructorDefault(Effect.sync(() => RelDir.anchor)),
   ),

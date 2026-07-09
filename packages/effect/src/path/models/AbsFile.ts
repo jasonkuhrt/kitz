@@ -48,6 +48,11 @@ export declare namespace AbsFile {
  * Absolute paths can't lead with `..`, so there is no `ascent`.
  */
 class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
+  /**
+   * Containing absolute directory. Constructor default is the absolute anchor
+   * for literal/schema construction; application code building non-root files
+   * should pass `dir` explicitly or prefer `join(dir, relFile)`.
+   */
   dir: S.suspend((): S.toType<typeof AbsDir> => S.toType(AbsDir)).pipe(
     S.withConstructorDefault(Effect.sync(() => AbsDir.anchor)),
   ),
