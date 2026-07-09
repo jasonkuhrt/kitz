@@ -317,7 +317,7 @@ describe('.dir', () => {
 describe('.parent', () => {
   it('handles roots and segment-less relatives', () => {
     const root = Path.AbsDir.make({ segments: [] })
-    expect(root).toBeRoot()
+    expect(root).toBeAnchor()
     expect(root.parent).toEqual(root)
 
     FastCheck.assert(

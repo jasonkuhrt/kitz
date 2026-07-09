@@ -3,6 +3,10 @@ import { expect, type MatcherState } from 'vite-plus/test'
 
 type MatcherResult = { pass: boolean; message: () => string }
 
+// Vite+ documents upstream Vitest augmentation as the target, but this repo
+// forbids a direct Vitest dependency so Vite+ owns the single Vitest copy. We
+// augment the shim identity this repo resolves; revisit if Vite+ ships a
+// types-only augmentation entry point.
 declare module 'vite-plus/test' {
   interface Matchers<T = any> {
     /** Check if the path is absolute. */
@@ -13,8 +17,8 @@ declare module 'vite-plus/test' {
     toBeFile(): void
     /** Check if the path is a directory. */
     toBeDir(): void
-    /** Check if the path is at its root/anchor. */
-    toBeRoot(): void
+    /** Check if the path is an anchor directory. */
+    toBeAnchor(): void
     /** Check if the path is within a given directory. */
     toBeWithinPath(parent: Kitz.Path.Dir): void
     /** Check if the path encodes to the expected string. */
@@ -108,14 +112,14 @@ const matchers = {
     })
   },
 
-  toBeRoot(this: MatcherState, received: unknown): MatcherResult {
+  toBeAnchor(this: MatcherState, received: unknown): MatcherResult {
     const pass = Kitz.Path.Dir.is(received) && received.isAnchor
     const printed = this.utils.printReceived(received)
 
     return passResult(this, pass, {
-      matcherName: 'toBeRoot',
-      positive: `Expected ${printed} to be at root`,
-      negative: `Expected ${printed} not to be at root`,
+      matcherName: 'toBeAnchor',
+      positive: `Expected ${printed} to be an anchor`,
+      negative: `Expected ${printed} not to be an anchor`,
     })
   },
 
