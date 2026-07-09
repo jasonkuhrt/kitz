@@ -68,12 +68,7 @@ class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
     return this.fileName.extension
   }
 
-  /** Whether this file is directly at the filesystem root. */
-  get isRoot(): boolean {
-    return this.segments.length === 0
-  }
-
-  /** Directory depth, counted by segments before the filename; the filename itself is excluded. */
+  /** Directory depth, counted by segments from the absolute anchor before the filename; the filename itself is excluded. */
   get depth(): number {
     return this.segments.length
   }
@@ -88,7 +83,7 @@ class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
     return AbsDir.make({ segments: [...this.segments, segment(this.fileName.name)] })
   }
 
-  /** Ancestor directories, starting at this file's containing directory and ending at root; unlike Rust's `Path::ancestors`, this does not include the file itself. */
+  /** Ancestor directories, starting at this file's containing directory and ending at the root, the absolute anchor; unlike Rust's `Path::ancestors`, this does not include the file itself. */
   get ancestors(): readonly AbsDir[] {
     return ancestorSegments(this.segments, { includeSelf: true }).map((segments) =>
       AbsDir.make({ segments }),

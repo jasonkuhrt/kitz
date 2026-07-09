@@ -26,12 +26,12 @@ class AbsDir__ extends S.TaggedClass<AbsDir__>()('AbsDir', {
     return Array.last(this.segments)
   }
 
-  /** Whether this directory is the filesystem root (`/`). */
-  get isRoot(): boolean {
+  /** Whether this dir is the absolute anchor — the filesystem root `/`. */
+  get isAnchor(): boolean {
     return this.segments.length === 0
   }
 
-  /** Directory depth, counted by segments from the filesystem root. */
+  /** Directory depth, counted by segments from the absolute anchor. */
   get depth(): number {
     return this.segments.length
   }
@@ -46,7 +46,7 @@ class AbsDir__ extends S.TaggedClass<AbsDir__>()('AbsDir', {
     )
   }
 
-  /** Ancestor directories, excluding this directory, starting at the parent and ending at root; unlike Rust's `Path::ancestors`, this does not include self. */
+  /** Ancestor directories, excluding this directory, starting at the parent and ending at the root, the absolute anchor; unlike Rust's `Path::ancestors`, this does not include self. */
   get ancestors(): readonly AbsDir[] {
     return ancestorSegments(this.segments, { includeSelf: false }).map((segments) =>
       AbsDir_.make({ segments }),
@@ -117,6 +117,9 @@ export class AbsDir_ extends withLiteralStatics(
     ),
   ),
 ) {
+  /** The absolute anchor — the filesystem root `/`. */
+  static readonly anchor: typeof AbsDir_.Type = AbsDir_.make({ segments: [] })
+
   /**
    * Variant schema carrying a realistic generation bias — same set as the
    * canonical schema; generation mixes realistic directories 20:1 over the

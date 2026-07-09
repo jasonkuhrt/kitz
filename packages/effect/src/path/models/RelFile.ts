@@ -69,12 +69,7 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
     return this.fileName.extension
   }
 
-  /** Whether this file is directly at the relative anchor (`./file`). */
-  get isRoot(): boolean {
-    return this.ascent === 0 && this.segments.length === 0
-  }
-
-  /** Directory depth, counted by named segments before the filename; ascent and filename are excluded. */
+  /** Directory depth, counted by named segments from the anchor before the filename; ascent and filename are excluded. */
   get depth(): number {
     return this.segments.length
   }
@@ -92,14 +87,14 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
     })
   }
 
-  /** Ancestor directories, starting at this file's containing directory and ending at the same relative anchor; unlike Rust's `Path::ancestors`, this does not include the file itself. */
+  /** Ancestor directories, starting at this file's containing directory and ending at the anchor; unlike Rust's `Path::ancestors`, this does not include the file itself. */
   get ancestors(): readonly RelDir[] {
     return ancestorSegments(this.segments, { includeSelf: true }).map((segments) =>
       RelDir.make({ ascent: this.ascent, segments }),
     )
   }
 
-  /** The file re-anchored at the filesystem root, dropping `ascent` traversal (`./src/a.ts` → `/src/a.ts`). To resolve against a base directory instead, use the flat `ensureAbs`. */
+  /** The file re-anchors at the absolute anchor (the filesystem root), dropping `ascent` — consistent with the POSIX `/..` clamp. To resolve against a base directory instead, use the flat `ensureAbs`. */
   get atRoot(): AbsFile {
     return AbsFile.make({ segments: this.segments, fileName: this.fileName })
   }

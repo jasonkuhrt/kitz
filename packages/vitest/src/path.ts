@@ -109,7 +109,7 @@ const matchers = {
   },
 
   toBeRoot(this: MatcherState, received: unknown): MatcherResult {
-    const pass = Kitz.Path.Any.is(received) && received.isRoot
+    const pass = Kitz.Path.Dir.is(received) && received.isAnchor
     const printed = this.utils.printReceived(received)
 
     return passResult(this, pass, {

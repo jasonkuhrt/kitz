@@ -27,12 +27,12 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
     return Array.last(this.segments)
   }
 
-  /** Whether this directory is the relative anchor (`./`). */
-  get isRoot(): boolean {
+  /** Whether this dir is the relative anchor `./`. Pure-ascent paths (`../../`) are above the anchor, not at it. */
+  get isAnchor(): boolean {
     return this.ascent === 0 && this.segments.length === 0
   }
 
-  /** Directory depth, counted by named segments from the relative anchor; ascent is excluded. */
+  /** Directory depth, counted by named segments from the anchor; ascent is excluded. */
   get depth(): number {
     return this.segments.length
   }
@@ -48,7 +48,7 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
     )
   }
 
-  /** Ancestor directories, excluding this directory, starting at the parent and ending at the same relative anchor; unlike Rust's `Path::ancestors`, this does not include self. */
+  /** Ancestor directories, excluding this directory, starting at the parent and ending at the anchor; unlike Rust's `Path::ancestors`, this does not include self. */
   get ancestors(): readonly RelDir[] {
     return ancestorSegments(this.segments, { includeSelf: false }).map((segments) =>
       RelDir_.make({ ascent: this.ascent, segments }),
@@ -61,7 +61,7 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
     return RelDir_.make({ ascent: parent.ascent, segments: parent.segments })
   }
 
-  /** The directory re-anchored at the filesystem root, dropping `ascent` traversal (`./src/` → `/src/`). To resolve against a base directory instead, use the flat `ensureAbs`. */
+  /** The directory re-anchors at the absolute anchor (the filesystem root), dropping `ascent` — consistent with the POSIX `/..` clamp. To resolve against a base directory instead, use the flat `ensureAbs`. */
   get atRoot(): AbsDir {
     return AbsDir.make({ segments: this.segments })
   }
@@ -128,6 +128,9 @@ export class RelDir_ extends withLiteralStatics(
     ),
   ),
 ) {
+  /** The relative anchor `./` — the identity of `join`. */
+  static readonly anchor: typeof RelDir_.Type = RelDir_.make({ ascent: 0, segments: [] })
+
   /**
    * Variant schema carrying a realistic generation bias — same set as the
    * canonical schema; generation mixes realistic directories 20:1 over the

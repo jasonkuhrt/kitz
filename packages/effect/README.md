@@ -131,13 +131,19 @@ C++17 `std::filesystem`, Node `path`, Java NIO, .NET `System.IO.Path`, Go
 - `ascent` — no ecosystem noun exists for a leading-`..` count (Python/Rust
   model `..` as components, never a count); see the ledger.
 
-### Open question: path-domain starts
+### Anchors
 
-A cross-cutting term for the start of a path's domain — `/` for absolute paths,
-`./` for relative ones. `isRoot` currently stretches "root" over both, but in
-pathlib relative paths definitionally have no root (`root == ''`); the
-start-of-a-relative-path concept there is the **anchor**. `atRoot` (re-anchoring
-a relative at `/`) bundles into the same review.
+The start of a path's domain is its **anchor**: `/` for absolute paths, `./` for
+relative ones — pathlib's term, extended (pathlib assigns relatives an empty
+anchor rather than naming `./`). The canonical encodings already spell the
+anchor at position zero of every path. Algebraically each domain has a
+distinguished start: `/` is the minimal element of the absolute tree; `./` is
+the identity of the relative-path monoid. Dirs carry `isAnchor`; files compose
+the question through `.dir` (the old `file.isRoot` conflated "is the start" with
+"is directly in the start"). `AbsDir.anchor` / `RelDir.anchor` are the named
+values. "Root" remains in the vocabulary as the NAME of the absolute anchor
+(`atRoot` correctly means it). Pure-ascent relatives (`../../`) sit above the
+anchor, not at it.
 
 ## Design notes — model shape
 

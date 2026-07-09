@@ -332,6 +332,10 @@ describe('.parent', () => {
     void someAbsFile.parent
     // @ts-expect-error parent does not exist on files — the dirname false friend is a compile error
     void someRelFile.parent
+    // @ts-expect-error isRoot does not exist on files — derive through file.dir.isAnchor
+    void someAbsFile.isRoot
+    // @ts-expect-error isRoot does not exist on files — derive through file.dir.isAnchor
+    void someRelFile.isRoot
   })
 })
 
@@ -340,7 +344,7 @@ describe('.parent', () => {
 const iterateAbsParents = <P extends Path.AbsDir | Path.AbsFile>(
   path: P,
 ): readonly Path.AbsDir[] => {
-  if (Path.AbsDir.is(path) && path.isRoot) return []
+  if (Path.AbsDir.is(path) && path.isAnchor) return []
 
   const ancestors: Path.AbsDir[] = []
   let current = path._tag === 'AbsFile' ? path.dir : path.parent
@@ -377,14 +381,37 @@ describe('.ancestors', () => {
   })
 })
 
-// ─── getters: isRoot / depth ───
+// ─── getters: isAnchor / depth ───
 
-describe('.isRoot / .depth', () => {
-  it('isRoot is true exactly for segment-less, ascent-0 paths', () => {
+describe('.isAnchor / .depth', () => {
+  it('isAnchor is true exactly for segment-less, ascent-0 dirs', () => {
     FastCheck.assert(
-      FastCheck.property(arb.Any, (path) => {
-        const ascent = Path.Rel.is(path) ? path.ascent : 0
-        expect(path.isRoot).toBe(path.segments.length === 0 && ascent === 0)
+      FastCheck.property(dir, (path) => {
+        const ascent = Path.RelDir.is(path) ? path.ascent : 0
+        expect(path.isAnchor).toBe(path.segments.length === 0 && ascent === 0)
+      }),
+    )
+  })
+
+  it('files derive anchor checks from their containing dir', () => {
+    FastCheck.assert(
+      FastCheck.property(file, (path) => {
+        const ascent = Path.RelFile.is(path) ? path.ascent : 0
+        expect(path.dir.isAnchor).toBe(path.segments.length === 0 && ascent === 0)
+      }),
+    )
+  })
+
+  it('anchor statics are the named dir anchors', () => {
+    expect(Path.AbsDir.anchor.isAnchor).toBe(true)
+    expect(Path.RelDir.anchor.isAnchor).toBe(true)
+    expect(Path.RelDir.make({ ascent: 2, segments: [] }).isAnchor).toBe(false)
+  })
+
+  it('RelDir.anchor is the join identity for dirs', () => {
+    FastCheck.assert(
+      FastCheck.property(dir, (d) => {
+        expect(Equal.equals(Path.join(d, Path.RelDir.anchor), d)).toBe(true)
       }),
     )
   })
