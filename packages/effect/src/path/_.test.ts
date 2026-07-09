@@ -719,6 +719,29 @@ describe('join', () => {
 // ─── operation: relativeTo ───
 
 describe('relativeTo', () => {
+  it('literal duality obeys the desugar law in both call shapes', () => {
+    const absPath = Path.mk('/workspace/src/index.ts')
+    const absBase = Path.mk('/workspace/')
+    const absExpected = Path.relativeTo(absPath, absBase)
+
+    expect(absExpected).toEncodeTo('./src/index.ts')
+    expect(Path.relativeTo('/workspace/src/index.ts', absBase)).toEqual(absExpected)
+    expect(Path.relativeTo(absPath, '/workspace/')).toEqual(absExpected)
+    expect(Path.relativeTo('/workspace/src/index.ts', '/workspace/')).toEqual(absExpected)
+    expect(Path.relativeTo('/workspace/')(absPath)).toEqual(absExpected)
+    expect(Path.relativeTo(absBase)('/workspace/src/index.ts')).toEqual(absExpected)
+
+    const relPath = Path.mk('../workspace/src/')
+    const relBase = Path.mk('../workspace/')
+    const relExpected = Path.relativeTo(relPath, relBase)
+
+    expect(Path.relativeTo('../workspace/src/', relBase)).toEqual(relExpected)
+    expect(Path.relativeTo(relPath, '../workspace/')).toEqual(relExpected)
+    expect(Path.relativeTo('../workspace/src/', '../workspace/')).toEqual(relExpected)
+    expect(Path.relativeTo('../workspace/')(relPath)).toEqual(relExpected)
+    expect(Path.relativeTo(relBase)('../workspace/src/')).toEqual(relExpected)
+  })
+
   it('join(base, relativeTo(abs, base)) returns the original absolute path', () => {
     FastCheck.assert(
       FastCheck.property(abs, arb.AbsDir, (path, base) => {
@@ -753,14 +776,61 @@ describe('relativeTo', () => {
     )
   })
 
-  it('types: variant-precise; data-first and data-last agree', () => {
+  it('types: literal/value matrices preserve the precise relative return', () => {
+    expectTypeOf(Path.relativeTo('/a/file.ts', '/a/')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.relativeTo('/a/', someAbsDir)).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.relativeTo(someAbsFile, '/a/')).toEqualTypeOf<Path.RelFile>()
     expectTypeOf(Path.relativeTo(someAbsFile, someAbsDir)).toEqualTypeOf<Path.RelFile>()
+
+    expectTypeOf(Path.relativeTo('./a/file.ts', './a/')).toEqualTypeOf<
+      Option.Option<Path.RelFile>
+    >()
+    expectTypeOf(Path.relativeTo('./a/', someRelDir)).toEqualTypeOf<Option.Option<Path.RelDir>>()
+    expectTypeOf(Path.relativeTo(someRelFile, './a/')).toEqualTypeOf<Option.Option<Path.RelFile>>()
+
+    expectTypeOf(Path.relativeTo('/a/')('/a/file.ts')).toEqualTypeOf<Path.RelFile>()
     expectTypeOf(Path.relativeTo(someAbsDir)(someAbsFile)).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.relativeTo('./a/')('./a/file.ts')).toEqualTypeOf<
+      Option.Option<Path.RelFile>
+    >()
+    expectTypeOf(Path.relativeTo(someRelDir)('./a/')).toEqualTypeOf<Option.Option<Path.RelDir>>()
+
     // the exported type utility agrees cell-by-cell
     expectTypeOf<Path.RelativeTo<Path.AbsDir>>().toEqualTypeOf<Path.RelDir>()
     expectTypeOf<Path.RelativeTo<Path.AbsFile>>().toEqualTypeOf<Path.RelFile>()
     expectTypeOf<Path.RelativeTo<Path.RelDir>>().toEqualTypeOf<Path.RelDir>()
     expectTypeOf<Path.RelativeTo<Path.RelFile>>().toEqualTypeOf<Path.RelFile>()
+
+    const dynamic = '/a/' as string
+
+    // Type-only: never executed, so the @ts-expect-error rejections cannot throw.
+    const staticRejections = () => {
+      // @ts-expect-error dynamic strings are rejected at the data-first path position
+      Path.relativeTo(dynamic, someAbsDir)
+      // @ts-expect-error dynamic strings are rejected at the data-first base position
+      Path.relativeTo(someAbsFile, dynamic)
+      // @ts-expect-error dynamic strings are rejected at the data-last base position
+      Path.relativeTo(dynamic)
+      // @ts-expect-error dynamic strings are rejected at the data-last path position
+      Path.relativeTo(someAbsDir)(dynamic)
+      // @ts-expect-error invalid path literals are rejected by the shared parser
+      Path.relativeTo('//', someAbsDir)
+      // @ts-expect-error invalid base literals are rejected by the shared parser
+      Path.relativeTo(someAbsFile, '//')
+      // @ts-expect-error base literals must parse as directories
+      Path.relativeTo('/a/file.ts', '/a/base.ts')
+      // @ts-expect-error the data-last base literal must parse as a directory
+      Path.relativeTo('/a/base.ts')
+      // @ts-expect-error path and base literals must belong to the same group
+      Path.relativeTo('/a/file.ts', './a/')
+      // @ts-expect-error the curried path literal must match the base literal's group
+      Path.relativeTo('./a/')('/a/file.ts')
+      // @ts-expect-error path and base values must belong to the same group
+      Path.relativeTo(someAbsFile, someRelDir)
+      // @ts-expect-error the curried path value must match the base value's group
+      Path.relativeTo(someRelDir)(someAbsFile)
+    }
+    expect(typeof staticRejections).toBe('function')
   })
 })
 

@@ -1,9 +1,18 @@
-import { Array, Function as Fn, Option } from 'effect'
+import { Array, Function as Fn, Option, Schema as S } from 'effect'
+import { type MatchingDirGroup, type MatchingTypeGroupForDir } from '../core/group.js'
+import type {
+  ErrorPathValidation,
+  FromLiteral,
+  LiteralGuard,
+  LiteralInput,
+} from '../core/literal.js'
 import { commonSegmentPrefix } from '../core/segments.js'
 import type { Segment } from '../models/segment.js'
 import type { Abs } from '../models/Abs.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
+import { Any } from '../models/Any.js'
+import type { Dir } from '../models/Dir.js'
 import { RelDir } from '../models/RelDir.js'
 import type { Rel } from '../models/Rel.js'
 import { RelFile } from '../models/RelFile.js'
@@ -35,7 +44,10 @@ export type RelativeTo<A extends Abs | Rel> = A extends AbsFile
  * - `target.ascent < base.ascent`: not expressible from the available relative
  *   path data, so return `None`.
  *
- * Dual: `relativeTo(path, base)` or `relativeTo(base)` for piping.
+ * Every path position accepts either a decoded value or a statically known
+ * string literal; literals desugar through `Path.mk`, while dynamic strings
+ * are rejected. Dual: `relativeTo(path, base)` or `relativeTo(base)` for
+ * piping.
  *
  * @example
  * ```ts
@@ -44,13 +56,72 @@ export type RelativeTo<A extends Abs | Rel> = A extends AbsFile
  * ```
  */
 export const relativeTo: {
-  <A extends Abs>(abs: A, base: AbsDir): RelativeTo<A>
-  <R extends Rel>(rel: R, base: RelDir): Option.Option<RelativeTo<R>>
-  (base: AbsDir): <A extends Abs>(abs: A) => RelativeTo<A>
-  (base: RelDir): <R extends Rel>(rel: R) => Option.Option<RelativeTo<R>>
-} = Fn.dual(2, (path: Abs | Rel, base: AbsDir | RelDir): Rel | Option.Option<Rel> => {
-  if (base._tag === 'RelDir') return relativeToRel(path as Rel, base)
-  return relativeToAbs(path as Abs, base)
+  <const Path extends Any | string, const Base extends Dir | string>(
+    path: Path extends string ? LiteralGuard<Path, Any> : Path,
+    base: Base extends string
+      ? string extends Base
+        ? LiteralInput<Base>
+        : [FromLiteral<Base>] extends [never]
+          ? ErrorPathValidation<
+              MatchingDirGroup<Path extends string ? FromLiteral<Path> : Path>,
+              Base
+            >
+          : FromLiteral<Base> extends MatchingDirGroup<
+                Path extends string ? FromLiteral<Path> : Path
+              >
+            ? Base
+            : ErrorPathValidation<
+                MatchingDirGroup<Path extends string ? FromLiteral<Path> : Path>,
+                Base
+              >
+      : Base & MatchingDirGroup<Path extends string ? FromLiteral<Path> : Path>,
+  ): (Path extends string ? FromLiteral<Path> : Path) extends infer PathValue extends Any
+    ? [PathValue] extends [Rel]
+      ? Option.Option<RelativeTo<PathValue>>
+      : RelativeTo<PathValue>
+    : never
+  <const Base extends Dir | string>(
+    base: Base extends string
+      ? string extends Base
+        ? LiteralInput<Base>
+        : [FromLiteral<Base>] extends [never]
+          ? ErrorPathValidation<Dir, Base>
+          : FromLiteral<Base> extends Dir
+            ? Base
+            : ErrorPathValidation<Dir, Base>
+      : Base,
+  ): <const Path extends Any | string>(
+    path: Path extends string
+      ? string extends Path
+        ? LiteralInput<Path>
+        : [FromLiteral<Path>] extends [never]
+          ? ErrorPathValidation<
+              MatchingTypeGroupForDir<Extract<Base extends string ? FromLiteral<Base> : Base, Dir>>,
+              Path
+            >
+          : FromLiteral<Path> extends MatchingTypeGroupForDir<
+                Extract<Base extends string ? FromLiteral<Base> : Base, Dir>
+              >
+            ? Path
+            : ErrorPathValidation<
+                MatchingTypeGroupForDir<
+                  Extract<Base extends string ? FromLiteral<Base> : Base, Dir>
+                >,
+                Path
+              >
+      : Path &
+          MatchingTypeGroupForDir<Extract<Base extends string ? FromLiteral<Base> : Base, Dir>>,
+  ) => (Path extends string ? FromLiteral<Path> : Path) extends infer PathValue extends Any
+    ? [PathValue] extends [Rel]
+      ? Option.Option<RelativeTo<PathValue>>
+      : RelativeTo<PathValue>
+    : never
+} = Fn.dual(2, (path: Any | string, base: Dir | string): Rel | Option.Option<Rel> => {
+  const pathValue = typeof path === 'string' ? S.decodeSync(Any)(path) : path
+  const baseValue = typeof base === 'string' ? (S.decodeSync(Any)(base) as Dir) : base
+
+  if (baseValue._tag === 'RelDir') return relativeToRel(pathValue as Rel, baseValue)
+  return relativeToAbs(pathValue as Abs, baseValue)
 })
 
 const makeRel = (path: Abs | Rel, ascent: number, segments: readonly Segment[]): Rel =>
