@@ -1,5 +1,5 @@
 import { Context, Effect, Layer, Schema as S } from 'effect'
-import { AbsDir } from './models/AbsDir.js'
+import { AbsDir } from '../models/AbsDir.js'
 
 /**
  * Current working directory service.
