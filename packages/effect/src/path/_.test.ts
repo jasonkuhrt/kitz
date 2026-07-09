@@ -1167,6 +1167,24 @@ describe('isWithin', () => {
 // ─── operation: isAncestorOf ───
 
 describe('isAncestorOf', () => {
+  it('literal duality obeys the desugar law in both call shapes', () => {
+    const relParent = Path.mk('./a/')
+    const relChild = Path.mk('./a/b.txt')
+    const expected = Path.isAncestorOf(relParent, relChild)
+
+    expect(expected).toBe(true)
+    expect(Path.isAncestorOf('./a/', relChild)).toBe(expected)
+    expect(Path.isAncestorOf(relParent, './a/b.txt')).toBe(expected)
+    expect(Path.isAncestorOf('./a/', './a/b.txt')).toBe(expected)
+    expect(Path.isAncestorOf('./a/b.txt')(relParent)).toBe(expected)
+    expect(Path.isAncestorOf(relChild)('./a/')).toBe(expected)
+
+    expect(Path.isAncestorOf('/a/', '/a/b.txt')).toBe(
+      Path.isAncestorOf(Path.mk('/a/'), Path.mk('/a/b.txt')),
+    )
+    expect(Path.isAncestorOf('./a/', './a/')).toBe(false)
+  })
+
   it('is the inverse of isDescendantOf', () => {
     FastCheck.assert(
       FastCheck.property(dir, arb.Any, (base, child) => {
@@ -1180,6 +1198,49 @@ describe('isAncestorOf', () => {
         )
       }),
     )
+  })
+
+  it('types: every path position accepts values or literals and rejects invalid worlds', () => {
+    expectTypeOf(Path.isAncestorOf('/a/', '/a/b.txt')).toEqualTypeOf<boolean>()
+    expectTypeOf(Path.isAncestorOf('/a/', someAbsFile)).toEqualTypeOf<boolean>()
+    expectTypeOf(Path.isAncestorOf(someAbsDir, '/a/b.txt')).toEqualTypeOf<boolean>()
+    expectTypeOf(Path.isAncestorOf(someAbsDir, someAbsFile)).toEqualTypeOf<boolean>()
+
+    expectTypeOf(Path.isAncestorOf('/a/b.txt')('/a/')).toEqualTypeOf<boolean>()
+    expectTypeOf(Path.isAncestorOf('/a/b.txt')(someAbsDir)).toEqualTypeOf<boolean>()
+    expectTypeOf(Path.isAncestorOf(someAbsFile)('/a/')).toEqualTypeOf<boolean>()
+    expectTypeOf(Path.isAncestorOf(someAbsFile)(someAbsDir)).toEqualTypeOf<boolean>()
+
+    const dynamic = '/a/' as string
+
+    // Type-only: never executed, so the @ts-expect-error rejections cannot throw.
+    const staticRejections = () => {
+      // @ts-expect-error dynamic strings are rejected at the data-first parent position
+      Path.isAncestorOf(dynamic, someAbsFile)
+      // @ts-expect-error dynamic strings are rejected at the data-first child position
+      Path.isAncestorOf(someAbsDir, dynamic)
+      // @ts-expect-error dynamic strings are rejected at the data-last child position
+      Path.isAncestorOf(dynamic)
+      // @ts-expect-error dynamic strings are rejected at the data-last parent position
+      Path.isAncestorOf(someAbsFile)(dynamic)
+      // @ts-expect-error repeated separators are rejected at the parent position
+      Path.isAncestorOf('//', someAbsFile)
+      // @ts-expect-error repeated separators are rejected at the child position
+      Path.isAncestorOf(someAbsDir, '//')
+      // @ts-expect-error parent literals must parse as directories
+      Path.isAncestorOf('/a/parent.txt', '/a/b.txt')
+      // @ts-expect-error the data-last parent literal must parse as a directory
+      Path.isAncestorOf('/a/b.txt')('/a/parent.txt')
+      // @ts-expect-error parent and child literals must belong to the same group
+      Path.isAncestorOf('/a/', './a/b.txt')
+      // @ts-expect-error the curried parent literal must match the child literal's group
+      Path.isAncestorOf('./a/b.txt')('/a/')
+      // @ts-expect-error parent and child values must belong to the same group
+      Path.isAncestorOf(someAbsDir, someRelFile)
+      // @ts-expect-error the curried parent value must match the child value's group
+      Path.isAncestorOf(someRelFile)(someAbsDir)
+    }
+    expect(typeof staticRejections).toBe('function')
   })
 })
 
