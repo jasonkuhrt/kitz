@@ -13,7 +13,7 @@ domain terms:
   `order`, …); common ancestors are group statics (`Abs.commonAncestor`,
   `Rel.commonAncestor`); file component writes are per-model statics
   (`AbsFile.setParts`, `RelFile.setParts`);
-  `fromLiteral` infers the precise variant from string literals at the type level.
+  `mk` infers the precise variant from string literals at the type level.
 - **`Schema`** — small additions to Effect Schema (e.g. `NaturalInt`).
 - **`String`** — string utilities.
 
@@ -21,10 +21,10 @@ domain terms:
 import { Path } from '@kitz/effect'
 import { Option, pipe, Schema } from 'effect'
 
-const config = Path.fromLiteral('/home/user/config.json') // typed AbsFile
-const cwd = Path.AbsDir.fromLiteral('/home/user') // dir targets accept no trailing slash
+const config = Path.mk('/home/user/config.json') // typed AbsFile
+const cwd = Path.AbsDir.mk('/home/user') // dir targets accept no trailing slash
 
-Path.join(cwd, Path.fromLiteral('./notes/todo.md')) // AbsFile /home/user/notes/todo.md
+Path.join(cwd, Path.mk('./notes/todo.md')) // AbsFile /home/user/notes/todo.md
 config.dir.toString() // '/home/user/' — a file's tree parent is its containing dir
 Path.AbsFile.setParts(config, { extension: Option.none() }) // /home/user/config
 pipe(config, Path.AbsFile.setParts({ stem: 'config.local' })) // /home/user/config.local.json
@@ -89,7 +89,7 @@ import { Effect, Schema } from 'effect'
 
 const program = Effect.gen(function* () {
   const cwd = yield* Path.Cwd
-  return Path.join(cwd, Path.fromLiteral('./config.json'))
+  return Path.join(cwd, Path.mk('./config.json'))
 }).pipe(Effect.provide(Path.Cwd.layer))
 ```
 

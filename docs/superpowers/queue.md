@@ -9,19 +9,36 @@ recommendation. Done items are deleted outright — their decisions live in the
 Statuses: `design-open` (needs a decision), `decided` (awaiting
 implementation), `mechanical` (spec-able now), `parked` (explicitly deferred).
 
-## 1. String `Input` polymorphism (Tier-3) — `design-open` (top priority)
+## 1. Literal duality across path APIs — `design-open`
 
-The dominant adoption tax. Evidence: round-1 D2 (604 `join` sites pay
-decode ceremony: `Path.join(S.decodeSync(Path.AbsDir)(cwd), Path.fromLiteral('./.env'))`),
-round-2 P1 (`setParts({ name })` takes `FileName`, not string — the obvious
-user input is a string because `.name` reads as string). Deferred as Future in
-the pre-merge report; both stress rounds independently rank it #1.
+Shipped:
 
-Open questions: which ops accept literal/string inputs (join RHS, setParts
-name/stem/extension, ensureAbs base?); literal-vs-runtime-string split
-(fromLiteral type-level inference exists for literals — does Input accept
-only literals, or runtime strings with a throw/Result channel?); one blessed
-boundary-decode helper for dynamic LHS (`Path.Cwd` covers the cwd case).
+- `6d9d6914` — `Path.fromLiteral` and per-model `.fromLiteral` became
+  `Path.mk` / `Model.mk`; plain `string` is rejected at the parameter as a
+  `StaticError`, so mk is total.
+
+The remaining program is kitz-wide literal duality: operation signatures fork
+on literal detection across the whole path bounded context, not just at the
+entry constructor. Literal inputs get type-level parsing and precise outputs;
+runtime strings stay in explicit Schema decode channels or already-decoded
+value parameters.
+
+Evidence: round-1 D2 (604 `join` sites pay decode ceremony:
+`Path.join(S.decodeSync(Path.AbsDir)(cwd), Path.mk('./.env'))`), round-2 P1
+(`setParts({ name })` takes `FileName`, not string — the obvious user input is
+a string because `.name` reads as string). Deferred as Future in the pre-merge
+report; both stress rounds independently rank it #1.
+
+This must be all-or-nothing within the bounded context: partial literal
+overloads would make call-site affordances inconsistent. Spike on `join` first
+because it has the largest adoption tax and exercises cross-variant return
+inference. Open questions: exact literal/runtime split per operation
+(`join` RHS, `setParts` name/stem/extension, `ensureAbs` base), whether any
+operation accepts runtime strings through a Result/Effect channel, and how far
+the god `Path.mk` parser utility should be reused internally.
+
+The per-model `make` overload option remains live-not-rejected for later; the
+mk decision only settles the static-literal constructor world.
 
 ## 2. `Any`/union decode classification rules — `design-open` (deferred by user 2026-07-09)
 
