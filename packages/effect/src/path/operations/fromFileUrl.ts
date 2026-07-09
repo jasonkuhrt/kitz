@@ -51,7 +51,7 @@ export const fromFileUrl = (url: URL): Result.Result<Abs, SchemaIssue.Issue> => 
       isDir
         ? AbsDir.make({ segments: decodedParts.map(segment) })
         : AbsFile.make({
-            segments: Array.dropRight(decodedParts, 1).map(segment),
+            dir: AbsDir.make({ segments: Array.dropRight(decodedParts, 1).map(segment) }),
             fileName: S.decodeSync(FileName)(decodedParts[decodedParts.length - 1] ?? ''),
           }),
     catch: () => invalid(url, 'a valid absolute file path URL'),

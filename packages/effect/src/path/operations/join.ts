@@ -54,12 +54,12 @@ const joinBinary: {
     Match.tagsExhaustive({
       AbsDir: () =>
         rel._tag === 'RelFile'
-          ? AbsFile.make({ segments, fileName: rel.fileName })
+          ? AbsFile.make({ dir: AbsDir.make({ segments }), fileName: rel.fileName })
           : AbsDir.make({ segments }),
       RelDir: (relDir) => {
         const ascent = relDir.ascent + remainingAscent
         return rel._tag === 'RelFile'
-          ? RelFile.make({ ascent, segments, fileName: rel.fileName })
+          ? RelFile.make({ dir: RelDir.make({ ascent, segments }), fileName: rel.fileName })
           : RelDir.make({ ascent, segments })
       },
     }),

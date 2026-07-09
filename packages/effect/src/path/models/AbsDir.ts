@@ -40,7 +40,7 @@ class AbsDir__ extends S.TaggedClass<AbsDir__>()('AbsDir', {
   get asFile(): Option.Option<AbsFile> {
     return Option.map(this.name, (fileName) =>
       AbsFile.make({
-        segments: Array.dropRight(this.segments, 1),
+        dir: AbsDir_.make({ segments: Array.dropRight(this.segments, 1) }),
         fileName: FileName.make({ stem: fileName, extension: Option.none() }),
       }),
     )

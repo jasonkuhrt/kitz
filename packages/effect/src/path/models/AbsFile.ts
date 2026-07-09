@@ -15,14 +15,12 @@ import { fileUrlOf } from '../core/fileUrl.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { resolveFileName } from '../core/setParts.js'
-import { parentOf } from '../core/segments.js'
 import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
-import { maxSegments, Segments } from './arbitrary.js'
-import { Segment, segment } from './segment.js'
 import type { Extension } from './Extension.js'
 import { FileName } from './FileName.js'
+import { segment, type Segment } from './segment.js'
 
 export declare namespace AbsFile {
   export type Parts =
@@ -46,11 +44,13 @@ export declare namespace AbsFile {
 }
 
 /**
- * Absolute file value — the decoded path (segments + filename).
+ * Absolute file value — the decoded path (directory + filename).
  * Absolute paths can't lead with `..`, so there is no `ascent`.
  */
 class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
-  segments: Segments.pipe(S.withConstructorDefault(Effect.succeed([]))),
+  dir: S.suspend((): S.toType<typeof AbsDir> => S.toType(AbsDir)).pipe(
+    S.withConstructorDefault(Effect.sync(() => AbsDir.anchor)),
+  ),
   fileName: FileName,
 }) {
   /** The file's full name — stem plus extension (e.g. `index.ts`); node:path's `basename`. */
@@ -68,14 +68,14 @@ class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
     return this.fileName.extension
   }
 
-  /** Directory depth, counted by segments from the absolute anchor before the filename; the filename itself is excluded. */
-  get depth(): number {
-    return this.segments.length
+  /** Directory segments delegated from the containing dir. */
+  get segments(): ReadonlyArray<Segment> {
+    return this.dir.segments
   }
 
-  /** The file's containing directory (drops the filename). */
-  get dir(): AbsDir {
-    return AbsDir.make({ segments: this.segments })
+  /** Directory depth, counted by segments from the absolute anchor before the filename; the filename itself is excluded. */
+  get depth(): number {
+    return this.dir.depth
   }
 
   /** Reinterpret this file path as a directory by folding the filename into the segment list. */
@@ -140,7 +140,7 @@ export class AbsFile_ extends withLiteralStatics(
         S.decodeTo(AbsFile__, {
           encode: SchemaGetter.transform((encoded) =>
             format({ isPathAbsolute: true, ascent: 0, fileName: encoded.fileName })(
-              encoded.segments,
+              encoded.dir.segments,
             ),
           ),
           decode: SchemaGetter.transformOrFail(
@@ -148,7 +148,7 @@ export class AbsFile_ extends withLiteralStatics(
               analyzeFileAbs,
               Result.map((analysis) => ({
                 _tag: 'AbsFile' as const,
-                segments: analysis.segments,
+                dir: AbsDir.make({ segments: analysis.segments.map(segment) }),
                 fileName: analysis.fileName,
               })),
               Effect.fromResult,
@@ -174,7 +174,7 @@ export class AbsFile_ extends withLiteralStatics(
     (parts: AbsFile.Parts): (file: typeof AbsFile_.Type) => typeof AbsFile_.Type
   } = Fn.dual(2, (file: typeof AbsFile_.Type, parts: AbsFile.Parts): typeof AbsFile_.Type =>
     AbsFile_.make({
-      segments: parts.dir?.segments ?? file.segments,
+      dir: parts.dir ?? file.dir,
       fileName: resolveFileName(file.fileName, parts),
     }),
   )
@@ -191,7 +191,7 @@ export class AbsFile_ extends withLiteralStatics(
         make: (fc) =>
           fc
             .record({
-              segments: fc.array(S.toArbitrary(Segment.Realistic), { maxLength: maxSegments }),
+              dir: S.toArbitrary(AbsDir.Realistic),
               fileName: S.toArbitrary(FileName.Realistic),
             })
             .map((input) => AbsFile_.make(input)),

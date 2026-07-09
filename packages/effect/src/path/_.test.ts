@@ -50,7 +50,12 @@ const relDirAscent0 = FastCheck.array(arb.Segment, { maxLength: 6 }).map((segmen
 const relFileAscent0 = FastCheck.record({
   segments: FastCheck.array(arb.Segment, { maxLength: 6 }),
   fileName: arb.FileName,
-}).map((input) => Path.RelFile.make({ ascent: 0, ...input }))
+}).map((input) =>
+  Path.RelFile.make({
+    dir: Path.RelDir.make({ ascent: 0, segments: input.segments }),
+    fileName: input.fileName,
+  }),
+)
 const relAscent0 = FastCheck.oneof(relDirAscent0, relFileAscent0)
 const nonEmptyRelAscent0 = FastCheck.oneof(
   FastCheck.array(arb.Segment, { minLength: 1, maxLength: 6 }).map((segments) =>
@@ -65,13 +70,12 @@ const fileName = (value: string) => S.decodeSync(Path.FileName)(value)
 const sign = (value: number): -1 | 0 | 1 => (value < 0 ? -1 : value > 0 ? 1 : 0)
 
 const someAbsFile = Path.AbsFile.make({
-  segments: ['home', 'src'].map(Path.segment),
+  dir: Path.AbsDir.make({ segments: ['home', 'src'].map(Path.segment) }),
   fileName: Path.FileName.make({ stem: 'index', extension: Option.some('.ts') }),
 })
 const someAbsDir = Path.AbsDir.make({ segments: ['home'].map(Path.segment) })
 const someRelFile = Path.RelFile.make({
-  ascent: 0,
-  segments: ['src'].map(Path.segment),
+  dir: Path.RelDir.make({ ascent: 0, segments: ['src'].map(Path.segment) }),
   fileName: Path.FileName.make({ stem: 'index', extension: Option.some('.ts') }),
 })
 const someRelDir = Path.RelDir.make({ ascent: 0, segments: ['src'].map(Path.segment) })
@@ -762,12 +766,11 @@ describe('setParts', () => {
 
   it('stem and extension axes rebuild the filename', () => {
     const archive = Path.AbsFile.make({
-      segments: ['tmp'].map(Path.segment),
+      dir: Path.AbsDir.make({ segments: ['tmp'].map(Path.segment) }),
       fileName: fileName('archive.tar.gz'),
     })
     const readme = Path.RelFile.make({
-      ascent: 1,
-      segments: ['docs'].map(Path.segment),
+      dir: Path.RelDir.make({ ascent: 1, segments: ['docs'].map(Path.segment) }),
       fileName: fileName('README.md'),
     })
 
@@ -779,7 +782,10 @@ describe('setParts', () => {
   })
 
   it('addExtension is the stem-plus-extension setParts idiom', () => {
-    const archive = Path.AbsFile.make({ segments: [], fileName: fileName('archive.tar') })
+    const archive = Path.AbsFile.make({
+      dir: Path.AbsDir.anchor,
+      fileName: fileName('archive.tar'),
+    })
 
     expect(
       Path.AbsFile.setParts(archive, { stem: archive.name, extension: extension('.gz') }).name,

@@ -41,8 +41,10 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
   get asFile(): Option.Option<RelFile> {
     return Option.map(this.name, (fileName) =>
       RelFile.make({
-        ascent: this.ascent,
-        segments: Array.dropRight(this.segments, 1),
+        dir: RelDir_.make({
+          ascent: this.ascent,
+          segments: Array.dropRight(this.segments, 1),
+        }),
         fileName: FileName.make({ stem: fileName, extension: Option.none() }),
       }),
     )

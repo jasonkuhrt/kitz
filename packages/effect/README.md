@@ -147,8 +147,8 @@ anchor, not at it.
 
 ## Design notes — model shape
 
-Why the decoded shape is `(ascent, segments, fileName?)`, audited for illegal
-and redundant states.
+Why the decoded dir shape is `(ascent, segments)` and the decoded file shape is
+`(dir, fileName)`, audited for illegal and redundant states.
 
 **The shape is the lexical normal form.** Every POSIX relative path normalizes
 to exactly `(../)ⁿ seg₁/…/segₖ` — all traversal collapses to a leading prefix —
@@ -188,12 +188,12 @@ symlink-aware resolution requires disk access, which belongs to `Fs.*` by the
 namespace charter. Same family: over-ascent on absolutes (`/a/../../b`) clamps
 at root (`/b`) — POSIX's own `/..` semantics and Node's.
 
-**Reviewed fork, closed:** files inline their directory's fields
-(`{ascent, segments, fileName}`) rather than nesting it (`{dir, fileName}`).
-Both are equally total and canonical; hard points do not distinguish them
-(field read vs per-access construction of `.dir`, one decode construction
-shallower vs literal `File ≅ Dir × FileName`). No capability gap → the
-flattened status quo stands.
+**Files nest their directory.** `AbsFile`/`RelFile` are literally
+`{ dir, fileName }` — the product `File ≅ Dir × FileName` is the stored shape,
+not a derived view. Both shapes are equally total and canonical; nesting won on
+composability: a file's directory is a value of a type consumers already know,
+`setParts`' `dir` axis is a plain field, and `.dir` is a field read rather than
+a per-access construction. `segments`/`ascent` remain as delegating getters.
 
 ## License
 

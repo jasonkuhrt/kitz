@@ -14,15 +14,13 @@ import { attachPathEqual } from '../core/equality.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { resolveFileName } from '../core/setParts.js'
-import { parentOf } from '../core/segments.js'
 import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsFile } from './AbsFile.js'
-import { Ascent, maxSegments, Segments } from './arbitrary.js'
 import type { Extension } from './Extension.js'
 import { FileName } from './FileName.js'
 import { RelDir } from './RelDir.js'
-import { Segment, segment } from './segment.js'
+import { segment, type Segment } from './segment.js'
 
 export declare namespace RelFile {
   export type Parts =
@@ -46,12 +44,12 @@ export declare namespace RelFile {
 }
 
 /**
- * Relative file value — the decoded path (ascent count + segments + filename).
+ * Relative file value — the decoded path (directory + filename).
  */
 class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
-  /** Count of leading parent-traversal (`..`) steps. */
-  ascent: Ascent.pipe(S.withConstructorDefault(Effect.succeed(0))),
-  segments: Segments.pipe(S.withConstructorDefault(Effect.succeed([]))),
+  dir: S.suspend((): S.toType<typeof RelDir> => S.toType(RelDir)).pipe(
+    S.withConstructorDefault(Effect.sync(() => RelDir.anchor)),
+  ),
   fileName: FileName,
 }) {
   /** The file's full name — stem plus extension (e.g. `index.ts`); node:path's `basename`. */
@@ -69,14 +67,19 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
     return this.fileName.extension
   }
 
-  /** Directory depth, counted by named segments from the anchor before the filename; ascent and filename are excluded. */
-  get depth(): number {
-    return this.segments.length
+  /** Leading parent-traversal count delegated from the containing dir. */
+  get ascent(): number {
+    return this.dir.ascent
   }
 
-  /** The file's containing directory (drops the filename). */
-  get dir(): RelDir {
-    return RelDir.make({ ascent: this.ascent, segments: this.segments })
+  /** Directory segments delegated from the containing dir. */
+  get segments(): ReadonlyArray<Segment> {
+    return this.dir.segments
+  }
+
+  /** Directory depth, counted by named segments from the anchor before the filename; ascent and filename are excluded. */
+  get depth(): number {
+    return this.dir.depth
   }
 
   /** Reinterpret this file path as a directory by folding the filename into the segment list. */
@@ -96,7 +99,7 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
 
   /** The file re-anchors at the absolute anchor (the filesystem root), dropping `ascent` — consistent with the POSIX `/..` clamp. To resolve against a base directory instead, use the flat `ensureAbs`. */
   get atRoot(): AbsFile {
-    return AbsFile.make({ segments: this.segments, fileName: this.fileName })
+    return AbsFile.make({ dir: this.dir.atRoot, fileName: this.fileName })
   }
 
   /** Canonical encoded path string. */
@@ -143,17 +146,21 @@ export class RelFile_ extends withLiteralStatics(
         }),
         S.decodeTo(RelFile__, {
           encode: SchemaGetter.transform((encoded) =>
-            format({ isPathAbsolute: false, ascent: encoded.ascent, fileName: encoded.fileName })(
-              encoded.segments,
-            ),
+            format({
+              isPathAbsolute: false,
+              ascent: encoded.dir.ascent,
+              fileName: encoded.fileName,
+            })(encoded.dir.segments),
           ),
           decode: SchemaGetter.transformOrFail(
             flow(
               analyzeFileRel,
               Result.map((analysis) => ({
                 _tag: 'RelFile' as const,
-                ascent: analysis.ascent,
-                segments: analysis.segments,
+                dir: RelDir.make({
+                  ascent: analysis.ascent,
+                  segments: analysis.segments.map(segment),
+                }),
                 fileName: analysis.fileName,
               })),
               Effect.fromResult,
@@ -179,8 +186,7 @@ export class RelFile_ extends withLiteralStatics(
     (parts: RelFile.Parts): (file: typeof RelFile_.Type) => typeof RelFile_.Type
   } = Fn.dual(2, (file: typeof RelFile_.Type, parts: RelFile.Parts): typeof RelFile_.Type =>
     RelFile_.make({
-      ascent: parts.dir?.ascent ?? file.ascent,
-      segments: parts.dir?.segments ?? file.segments,
+      dir: parts.dir ?? file.dir,
       fileName: resolveFileName(file.fileName, parts),
     }),
   )
@@ -197,8 +203,7 @@ export class RelFile_ extends withLiteralStatics(
         make: (fc) =>
           fc
             .record({
-              ascent: S.toArbitrary(Ascent),
-              segments: fc.array(S.toArbitrary(Segment.Realistic), { maxLength: maxSegments }),
+              dir: S.toArbitrary(RelDir.Realistic),
               fileName: S.toArbitrary(FileName.Realistic),
             })
             .map((input) => RelFile_.make(input)),

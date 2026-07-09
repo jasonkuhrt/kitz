@@ -55,7 +55,7 @@ export const relativeTo: {
 
 const makeRel = (path: Abs | Rel, ascent: number, segments: readonly Segment[]): Rel =>
   path._tag === 'AbsFile' || path._tag === 'RelFile'
-    ? RelFile.make({ ascent, segments, fileName: path.fileName })
+    ? RelFile.make({ dir: RelDir.make({ ascent, segments }), fileName: path.fileName })
     : RelDir.make({ ascent, segments })
 
 const relativeToAbs = (abs: Abs, base: AbsDir): Rel => {
