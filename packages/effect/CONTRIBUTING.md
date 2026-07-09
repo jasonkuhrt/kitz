@@ -28,11 +28,12 @@
   spec is the authoritative statement.
 - The string boundary is `path/analyzer.ts` (plus `core/fileUrl.ts` for
   `file://` URLs) — nothing else interprets or renders path strings.
-- Remaining open items: union JSON Schema emission (blocked on an effect
-  beta.85 API gap), Tier-3 literal `Input` polymorphism (deferred as Future in
-  the pre-merge report), and schema-derived optics
-  ([#287](https://github.com/jasonkuhrt/kitz/issues/287) — `Path.Optic` was
-  removed in favor of deriving optics from schemas later).
+- Remaining open items:
+  - union JSON Schema emission (blocked on an effect beta.85 API gap)
+  - Tier-3 literal `Input` polymorphism (deferred as Future in the pre-merge report)
+  - schema-derived optics ([#287](https://github.com/jasonkuhrt/kitz/issues/287) — `Path.Optic` was removed in favor of deriving optics from schemas later)
+  - strict decode mode ([#288](https://github.com/jasonkuhrt/kitz/issues/288))
+  - symlink-aware paths / Fs-level resolution ([#289](https://github.com/jasonkuhrt/kitz/issues/289))
 
 ## Detail records
 
