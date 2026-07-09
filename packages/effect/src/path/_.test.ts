@@ -622,6 +622,24 @@ describe('Cwd', () => {
 // ─── operation: join ───
 
 describe('join', () => {
+  it('literal duality obeys the desugar law across mixed variadic positions', () => {
+    const base = Path.mk('/workspace/')
+    const first = Path.mk('./src/')
+    const second = Path.mk('./generated/')
+    const last = Path.mk('./index.ts')
+    const expected = Path.join(base, first, second, last)
+
+    expect(expected).toEncodeTo('/workspace/src/generated/index.ts')
+    expect(Path.join('/workspace/', './src/', './generated/', './index.ts')).toEqual(expected)
+    expect(Path.join('/workspace/', first, './generated/', last)).toEqual(expected)
+    expect(Path.join(base, './src/', second, './index.ts')).toEqual(expected)
+    expect(Path.join('/workspace/', './src/', second, last)).toEqual(expected)
+
+    expect(Path.join('./index.ts')('/workspace/')).toEqual(Path.join(last)(base))
+    expect(Path.join('./index.ts')(base)).toEqual(Path.join(last)(base))
+    expect(Path.join(last)('/workspace/')).toEqual(Path.join(last)(base))
+  })
+
   it('variadic join is a left fold of binary join', () => {
     FastCheck.assert(
       FastCheck.property(
@@ -638,18 +656,63 @@ describe('join', () => {
     )
   })
 
-  it('types: all four Join cells; data-first and data-last agree', () => {
+  it('types: mixed variadic literals preserve the precise left-fold return', () => {
+    expectTypeOf(Path.join('/base/', './dir/')).toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf(Path.join('/base/', './file.ts')).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(Path.join('./base/', './dir/')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.join('./base/', './file.ts')).toEqualTypeOf<Path.RelFile>()
+
     expectTypeOf(Path.join(someAbsDir, someRelDir)).toEqualTypeOf<Path.AbsDir>()
     expectTypeOf(Path.join(someAbsDir, someRelFile)).toEqualTypeOf<Path.AbsFile>()
     expectTypeOf(Path.join(someRelDir, someRelDir)).toEqualTypeOf<Path.RelDir>()
     expectTypeOf(Path.join(someRelDir, someRelFile)).toEqualTypeOf<Path.RelFile>()
+
+    expectTypeOf(
+      Path.join('/base/', './one/', someRelDir, './three/', './file.ts'),
+    ).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(
+      Path.join(someRelDir, './one/', someRelDir, './three/'),
+    ).toEqualTypeOf<Path.RelDir>()
+
+    expectTypeOf(Path.join('./file.ts')('/base/')).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(Path.join('./file.ts')('./base/')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.join('./file.ts')(someAbsDir)).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(Path.join(someRelFile)('/base/')).toEqualTypeOf<Path.AbsFile>()
     expectTypeOf(Path.join(someRelDir)(someAbsDir)).toEqualTypeOf<Path.AbsDir>()
     expectTypeOf(Path.join(someRelFile)(someAbsDir)).toEqualTypeOf<Path.AbsFile>()
+
     // the exported type utility agrees cell-by-cell
     expectTypeOf<Path.Join<Path.AbsDir, Path.RelDir>>().toEqualTypeOf<Path.AbsDir>()
     expectTypeOf<Path.Join<Path.AbsDir, Path.RelFile>>().toEqualTypeOf<Path.AbsFile>()
     expectTypeOf<Path.Join<Path.RelDir, Path.RelDir>>().toEqualTypeOf<Path.RelDir>()
     expectTypeOf<Path.Join<Path.RelDir, Path.RelFile>>().toEqualTypeOf<Path.RelFile>()
+
+    const dynamic = './dynamic/' as string
+
+    // Type-only: never executed, so the @ts-expect-error rejections cannot throw.
+    const staticRejections = () => {
+      // @ts-expect-error dynamic strings are rejected at the data-first base position
+      Path.join(dynamic, someRelFile)
+      // @ts-expect-error dynamic strings are rejected at intermediate positions
+      Path.join(someAbsDir, dynamic, someRelFile)
+      // @ts-expect-error dynamic strings are rejected at the final relative position
+      Path.join(someAbsDir, someRelDir, dynamic)
+      // @ts-expect-error dynamic strings are rejected at the data-last relative position
+      Path.join(dynamic)
+      // @ts-expect-error dynamic strings are rejected at the curried target position
+      Path.join(someRelFile)(dynamic)
+      // @ts-expect-error repeated separators are rejected in variadic parts
+      Path.join(someAbsDir, '//', someRelFile)
+      // @ts-expect-error intermediate relative parts must parse as directories
+      Path.join(someAbsDir, './middle.ts', './last.ts')
+      // @ts-expect-error relative parts cannot be absolute literals
+      Path.join(someAbsDir, './middle/', '/absolute.ts')
+      // @ts-expect-error data-last relative parts cannot be absolute literals
+      Path.join('/absolute.ts')
+      // @ts-expect-error base literals must parse as directories
+      Path.join('/base.ts', './relative.ts')
+    }
+    expect(typeof staticRejections).toBe('function')
   })
 })
 

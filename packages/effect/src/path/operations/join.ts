@@ -1,5 +1,11 @@
-import { Function as Fn, Match } from 'effect'
-import type { Any } from '../models/Any.js'
+import { Function as Fn, Match, Schema as S } from 'effect'
+import type {
+  ErrorPathValidation,
+  FromLiteral,
+  LiteralGuard,
+  LiteralInput,
+} from '../core/literal.js'
+import { Any } from '../models/Any.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
 import type { Dir } from '../models/Dir.js'
@@ -72,7 +78,9 @@ const joinBinary: {
  * POSIX `/..` clamp) or fold into the result's `ascent`. Keeps `dir`'s
  * absoluteness and `rel`'s file/dir nature. The variadic data-first form is a
  * left fold; all intermediate relative parts must be directories. The data-last
- * form stays binary only.
+ * form stays binary only. Every path position accepts either a decoded value or
+ * a statically known string literal; literals desugar through `Path.mk`, while
+ * dynamic strings are rejected.
  *
  * @example
  * ```ts
@@ -82,24 +90,101 @@ const joinBinary: {
  * ```
  */
 export const join: {
-  <Base extends Dir, const Parts extends JoinParts>(
-    dir: Base,
-    ...rels: Parts
-  ): JoinMany<Base, Parts>
-  <Base extends Dir, P extends Rel>(dir: Base, rel: P): Join<Base, P>
-  <P extends Rel>(rel: P): <Base extends Dir>(dir: Base) => Join<Base, P>
-} = ((...args: readonly [Dir, ...JoinParts] | readonly [Rel]) => {
-  if (args.length === 1) return joinBinary(args[0] as Rel)
+  <
+    const Args extends
+      | readonly [Rel | string]
+      | readonly [Dir | string, Rel | string, ...(Rel | string)[]],
+  >(
+    ...args: {
+      readonly [Index in keyof Args]: Args extends readonly [Rel | string]
+        ? Args[Index] extends string
+          ? LiteralGuard<Args[Index], Rel>
+          : Args[Index]
+        : Index extends '0'
+          ? Args[Index] extends string
+            ? string extends Args[Index]
+              ? LiteralInput<Args[Index]>
+              : [FromLiteral<Args[Index]>] extends [never]
+                ? ErrorPathValidation<Dir, Args[Index]>
+                : FromLiteral<Args[Index]> extends Dir
+                  ? Args[Index]
+                  : ErrorPathValidation<Dir, Args[Index]>
+            : Args[Index]
+          : Index extends keyof (Args extends readonly [...infer Prefix, unknown] ? Prefix : never)
+            ? Args[Index] extends string
+              ? string extends Args[Index]
+                ? LiteralInput<Args[Index]>
+                : [FromLiteral<Args[Index]>] extends [never]
+                  ? ErrorPathValidation<RelDir, Args[Index]>
+                  : FromLiteral<Args[Index]> extends RelDir
+                    ? Args[Index]
+                    : ErrorPathValidation<RelDir, Args[Index]>
+              : Args[Index] & RelDir
+            : Args[Index] extends string
+              ? LiteralGuard<Args[Index], Rel>
+              : Args[Index]
+    }
+  ): Args extends readonly [infer Part extends Rel | string]
+    ? <const Base extends Dir | string>(
+        base: Base extends string
+          ? string extends Base
+            ? LiteralInput<Base>
+            : [FromLiteral<Base>] extends [never]
+              ? ErrorPathValidation<Dir, Base>
+              : FromLiteral<Base> extends Dir
+                ? Base
+                : ErrorPathValidation<Dir, Base>
+          : Base,
+      ) => Join<
+        Base extends string
+          ? FromLiteral<Base> extends infer NormalizedBase extends Dir
+            ? NormalizedBase
+            : never
+          : Base,
+        Part extends string
+          ? FromLiteral<Part> extends infer NormalizedPart extends Rel
+            ? NormalizedPart
+            : never
+          : Part
+      >
+    : Args extends readonly [
+          infer Base extends Dir | string,
+          ...infer Parts extends readonly [Rel | string, ...(Rel | string)[]],
+        ]
+      ? JoinMany<
+          Base extends string
+            ? FromLiteral<Base> extends infer NormalizedBase extends Dir
+              ? NormalizedBase
+              : never
+            : Base,
+          Parts extends readonly [
+            ...infer Initial extends readonly (Rel | string)[],
+            infer Last extends Rel | string,
+          ]
+            ? readonly [
+                ...{
+                  readonly [Index in keyof Initial]: Initial[Index] extends string
+                    ? FromLiteral<Initial[Index]>
+                    : Initial[Index]
+                },
+                Last extends string ? FromLiteral<Last> : Last,
+              ] extends infer NormalizedParts extends JoinParts
+              ? NormalizedParts
+              : never
+            : never
+        >
+      : never
+} = Fn.dual(
+  (args) => args.length >= 2,
+  (dir: Dir | string, ...rels: readonly (Rel | string)[]): Any => {
+    const dirValue = typeof dir === 'string' ? (S.decodeSync(Any)(dir) as Dir) : dir
+    let result: Any = dirValue
 
-  const [dir, first, ...rest] = args as unknown as readonly [Dir, Rel, ...Rel[]]
-  let result: Any = joinBinary(dir, first)
-  for (const rel of rest) {
-    result = joinBinary(result as Dir, rel)
-  }
-  return result
-}) as unknown as typeof joinBinary & {
-  <Base extends Dir, const Parts extends JoinParts>(
-    dir: Base,
-    ...rels: Parts
-  ): JoinMany<Base, Parts>
-}
+    for (const rel of rels) {
+      const relValue = typeof rel === 'string' ? (S.decodeSync(Any)(rel) as Rel) : rel
+      result = joinBinary(result as Dir, relValue)
+    }
+
+    return result
+  },
+)
