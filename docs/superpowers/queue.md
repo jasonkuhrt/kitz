@@ -21,8 +21,11 @@ Shipped:
 - `39d7eaf0` — rung 2, literal duality on `ensureAbs`; proved that literal
   normalization composes with a variant-computed return without losing
   precision.
+- `13527e2d` — rung 3, literal duality on `join`; proved mixed variadic literal
+  inference, element-local tuple errors, precise left-fold returns, and literal
+  support in the binary data-last form.
 
-Proven recipe for the `join` rung and subsequent rollout:
+The three-rung ladder is complete. Proven recipe for mechanical rollout:
 
 - Use one inline generic signature per dual form. Do not use overload matrices:
   TypeScript's last-overload diagnostic points at the wrong argument for mixed
@@ -40,15 +43,28 @@ Proven recipe for the `join` rung and subsequent rollout:
   both the outer and returned-function inference; runtime still branches only on
   arity and normalizes literal arguments through the same `Any` decode channel as
   `Path.mk`.
+- For variadics, infer one `const Args` tuple and validate it with a homomorphic
+  mapped tuple. Branch by index in the mapped value: base, intermediate, final.
+  This preserves inference and places diagnostics at the offending argument.
+  A conditional validated tuple without a naked inference path collapses
+  data-first calls; intersecting `Args & ValidatedTuple` recovers inference but
+  moves the source diagnostic to the first rest argument.
+- Normalize the inferred tuple element-by-element before passing it to the
+  existing fold computation. Intermediate elements normalize to `RelDir`; the
+  final element normalizes to `Rel`; the base normalizes to `Dir`.
 - Conformance is mechanical: desugar-law checks for every literal position and
   both dual forms, precise acceptance cells for every literal/value mix, and
   parameter-local `StaticError` rejection cells for runtime strings, invalid
   literals, wrong variants, and group mismatches.
 
-Rung 3 is `join`: variadic data-first parts plus binary data-last form. Infer one
-`const` tuple, validate/map every element in place, normalize the base and each
-part before `JoinMany`, and preserve the focused argument diagnostics established
-by rungs 1–2.
+Performance criterion: three forced development builds averaged 0.633s without
+and 0.720s with a throwaway 600-call literal-bearing `join` file: +0.087s
+(+13.7%). The synthetic file was deleted.
+
+Remaining inventory is mechanical rollout per this recipe: `relativeTo`; the
+containment trio (`isWithin` is complete, then `isDescendantOf` and
+`isAncestorOf`); `Abs.commonAncestor` / `Rel.commonAncestor`; `withName`; and
+the `setParts` path/component axes.
 
 Evidence: round-1 D2 (604 `join` sites pay decode ceremony:
 `Path.join(S.decodeSync(Path.AbsDir)(cwd), Path.mk('./.env'))`), round-2 P1
