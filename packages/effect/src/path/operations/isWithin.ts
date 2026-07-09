@@ -10,6 +10,7 @@ import type { Dir } from '../models/Dir.js'
  * containment see `isDescendantOf`. Both must be the same group (absolute or
  * relative); relatives must share `ascent`. Dual: `(child, parent)` or
  * `(parent)`.
+ * Containment is lexical; under symlinks a path outside `parent` may still reach a file inside it.
  */
 export const isWithin: {
   <A extends Any>(child: A, parent: MatchingDirGroup<A>): boolean

@@ -127,6 +127,7 @@ attachPathEqual<RelFile__>(RelFile__.prototype)
 
 /**
  * `RelFile` — a relative file path, as a `string` ⇄ `RelFile` value codec.
+ * Path values are lexical: `..` folds at decode (`a/../b` decodes as `b`), so equality is normal-form identity, not filesystem-target identity — symlinks can make lexically distinct paths reach the same file. Symlink-aware resolution belongs to filesystem APIs.
  *
  * @example
  * ```ts

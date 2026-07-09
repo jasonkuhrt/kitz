@@ -80,6 +80,7 @@ export interface AnalyzerOptions {
 
 /**
  * Parse a path string into its kind, absoluteness, and folded segments.
+ * Ascending above the root clamps: `/a/../../b` decodes as `/b` (POSIX `/..` semantics).
  *
  * @example
  * ```ts

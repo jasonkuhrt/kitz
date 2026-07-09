@@ -92,6 +92,7 @@ attachPathEqual<RelDir__>(RelDir__.prototype)
 
 /**
  * `RelDir` — a relative directory path, as a `string` ⇄ `RelDir` value codec.
+ * Path values are lexical: `..` folds at decode (`a/../b` decodes as `b`), so equality is normal-form identity, not filesystem-target identity — symlinks can make lexically distinct paths reach the same file. Symlink-aware resolution belongs to filesystem APIs.
  *
  * @example
  * ```ts

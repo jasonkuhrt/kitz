@@ -120,6 +120,7 @@ attachPathEqual<AbsFile__>(AbsFile__.prototype)
 
 /**
  * `AbsFile` — an absolute file path, as a `string` ⇄ `AbsFile` value codec.
+ * Path values are lexical: `..` folds at decode (`a/../b` decodes as `b`), so equality is normal-form identity, not filesystem-target identity — symlinks can make lexically distinct paths reach the same file. Symlink-aware resolution belongs to filesystem APIs.
  *
  * @example
  * ```ts
@@ -134,7 +135,7 @@ export class AbsFile_ extends withLiteralStatics(
           identifier: 'AbsFile',
           title: 'Absolute file path',
           description:
-            'A POSIX absolute file path — starts with `/`, does not end with `/` (e.g. `/home/user/notes.txt`).',
+            'A POSIX absolute file path — starts with `/`, does not end with `/` (e.g. `/home/user/notes.txt`); ascending above the root clamps (`/a/../../b` decodes as `/b`).',
           examples: ['/home/user/notes.txt', '/etc/hostname'],
         }),
         S.decodeTo(AbsFile__, {

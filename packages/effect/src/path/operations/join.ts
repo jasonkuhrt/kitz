@@ -68,10 +68,11 @@ const joinBinary: {
 
 /**
  * Join one or more relative paths onto a base directory. Leading `..` steps in `rel`
- * consume trailing segments of `dir`; leftovers drop at an absolute root or fold
- * into the result's `ascent`. Keeps `dir`'s absoluteness and `rel`'s file/dir
- * nature. The variadic data-first form is a left fold; all intermediate relative
- * parts must be directories. The data-last form stays binary only.
+ * consume trailing segments of `dir`; leftovers drop at an absolute root (the
+ * POSIX `/..` clamp) or fold into the result's `ascent`. Keeps `dir`'s
+ * absoluteness and `rel`'s file/dir nature. The variadic data-first form is a
+ * left fold; all intermediate relative parts must be directories. The data-last
+ * form stays binary only.
  *
  * @example
  * ```ts

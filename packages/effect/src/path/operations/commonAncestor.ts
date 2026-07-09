@@ -10,6 +10,7 @@ import { RelDir } from '../models/RelDir.js'
  * The deepest common ancestor directory of two same-group paths, or `None`.
  * When `Some(d)`, both inputs satisfy `isWithin(x, d)`; a directory input may
  * itself be `d` because `isWithin` is inclusive. Dual: `(a, b)` or `(b)`.
+ * Common-ancestor calculation is lexical; under symlinks a path outside the returned ancestor may still reach a file inside it.
  */
 export const commonAncestor: {
   <A extends Any>(a: A, b: MatchingTypeGroup<A>): Option.Option<CommonAncestor<A>>

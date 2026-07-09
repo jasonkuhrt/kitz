@@ -81,6 +81,16 @@ live in the companion package `@kitz/vitest`.
 
 ## Design notes — path vocabulary
 
+### Design principle — Effect alignment, not Node
+
+Kitz aligns with the Effect ecosystem's idioms and vocabulary, not Node's.
+Effect is a categorical rejection of Node/JS standard-library design, and kitz
+inherits that stance: where this library matches `node:path` behavior (lexical
+`..` folding, `/..` clamping) that is a migration convenience and a
+compatibility observation — never the design authority. When Effect idiom and
+Node idiom conflict, Effect wins (e.g. `setParts` follows `DateTime.setParts`,
+not a `node:path` shape).
+
 The vocabulary was audited against POSIX, Python `pathlib`, Rust `std::path`,
 C++17 `std::filesystem`, Node `path`, Java NIO, .NET `System.IO.Path`, Go
 `filepath`, and the typed-path lineage (Haskell `path`, PureScript `pathy`).
@@ -145,6 +155,18 @@ values. "Root" remains in the vocabulary as the NAME of the absolute anchor
 (`atRoot` correctly means it). Pure-ascent relatives (`../../`) sit above the
 anchor, not at it.
 
+## Windows is not supported
+
+The path model is POSIX-only. Windows drive prefixes (`C:\`), UNC paths
+(`\\server\share`), drive-relative paths (`C:foo`), backslash separators,
+case-insensitive comparison, and reserved device names are all out of scope and
+unrepresentable. In practice, modern Windows APIs and runtimes commonly accept
+forward-slash paths without drive prefixes, so POSIX-shaped paths often work on
+Windows — but kitz makes no Windows guarantees and performs no Windows-specific
+validation. If Windows support ever became a goal, the model's anchor would grow
+into a drive-bearing component (cf. pathlib's `PureWindowsPath.anchor` = drive +
+root).
+
 ## Design notes — model shape
 
 Why the decoded dir shape is `(ascent, segments)` and the decoded file shape is
@@ -182,11 +204,12 @@ normal-by-construction with full expressiveness.
 unsound under symlinks (`a/../b ≠ b` when `a` is a symlink — the classic
 `normpath` caveat; the reason Rust/pathlib refuse to fold). Kitz path equality
 is therefore _lexical-normal-form identity_, not filesystem-target identity,
-irreversibly. Kept on two hard points: Node's own `normalize`/`join` fold
-identically, so a `node:path` successor matches incumbent semantics; and
-symlink-aware resolution requires disk access, which belongs to `Fs.*` by the
-namespace charter. Same family: over-ascent on absolutes (`/a/../../b`) clamps
-at root (`/b`) — POSIX's own `/..` semantics and Node's.
+irreversibly. Kept because `Path` models pure paths while symlink-aware
+resolution requires disk access, which belongs to `Fs.*` by the namespace
+charter, and because normal-form-by-construction is the model invariant. Node's
+own `normalize`/`join` fold identically, so migrators get incumbent semantics as
+a compatibility observation. Same family: over-ascent on absolutes
+(`/a/../../b`) clamps at root (`/b`) — POSIX's own `/..` semantics.
 
 **Files nest their directory.** `AbsFile`/`RelFile` are literally
 `{ dir, fileName }` — the product `File ≅ Dir × FileName` is the stored shape,
