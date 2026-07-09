@@ -1,4 +1,6 @@
-import { Array, Function as Fn, Match, Option } from 'effect'
+import { Array, Function as Fn, Match, Option, Schema as S } from 'effect'
+import type { ErrorPathValidation, FromLiteral, LiteralInput } from '../core/literal.js'
+import { Any } from '../models/Any.js'
 import type { Dir } from '../models/Dir.js'
 import type { Segment } from '../models/segment.js'
 import * as AbsDirModel from '../models/AbsDir.js'
@@ -23,24 +25,52 @@ const renameRelDir = (dir: RelDirModel.RelDir, name: Segment): Option.Option<Rel
 
 /**
  * Rename the final directory segment. Root and segment-less relative dirs
- * return `None`.
+ * return `None`. The directory accepts a decoded value or statically known
+ * path literal; the name remains a decoded `Segment` value.
  *
  * @example
  * ```ts
- * withName(dir, 'src')
- * pipe(dir, withName('src'))
+ * withName(dir, segment('src'))
+ * pipe(dir, withName(segment('src')))
  * ```
  */
 export const withName: {
-  <D extends Dir>(path: D, name: Segment): Option.Option<D>
-  (name: Segment): <D extends Dir>(path: D) => Option.Option<D>
-} = Fn.dual(
-  2,
-  (dir: Dir, name: Segment): Option.Option<Dir> =>
-    Match.value(dir).pipe(
-      Match.tagsExhaustive({
-        AbsDir: (dir) => renameAbsDir(dir, name),
-        RelDir: (dir) => renameRelDir(dir, name),
-      }),
-    ),
-)
+  <const D extends Dir | string>(
+    path: D extends string
+      ? string extends D
+        ? LiteralInput<D>
+        : [FromLiteral<D>] extends [never]
+          ? ErrorPathValidation<Dir, D>
+          : FromLiteral<D> extends Dir
+            ? D
+            : ErrorPathValidation<Dir, D>
+      : D,
+    name: Segment,
+  ): Option.Option<
+    (D extends string ? FromLiteral<D> : D) extends infer DirValue extends Dir ? DirValue : never
+  >
+  (
+    name: Segment,
+  ): <const D extends Dir | string>(
+    path: D extends string
+      ? string extends D
+        ? LiteralInput<D>
+        : [FromLiteral<D>] extends [never]
+          ? ErrorPathValidation<Dir, D>
+          : FromLiteral<D> extends Dir
+            ? D
+            : ErrorPathValidation<Dir, D>
+      : D,
+  ) => Option.Option<
+    (D extends string ? FromLiteral<D> : D) extends infer DirValue extends Dir ? DirValue : never
+  >
+} = Fn.dual(2, (dir: Dir | string, name: Segment): Option.Option<Dir> => {
+  const dirValue = typeof dir === 'string' ? (S.decodeSync(Any)(dir) as Dir) : dir
+
+  return Match.value(dirValue).pipe(
+    Match.tagsExhaustive({
+      AbsDir: (dir) => renameAbsDir(dir, name),
+      RelDir: (dir) => renameRelDir(dir, name),
+    }),
+  )
+})

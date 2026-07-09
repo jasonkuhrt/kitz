@@ -1524,6 +1524,23 @@ describe('setParts', () => {
 // ─── operation: withName ───
 
 describe('withName', () => {
+  it('path literal duality obeys the desugar law in both call shapes', () => {
+    const absDir = Path.mk('/workspace/src/')
+    const absName = Path.segment('lib')
+    const absExpected = Path.withName(absDir, absName)
+
+    expect(absExpected).toEqual(Option.some(Path.mk('/workspace/lib/')))
+    expect(Path.withName('/workspace/src/', absName)).toEqual(absExpected)
+    expect(Path.withName(absName)('/workspace/src/')).toEqual(absExpected)
+
+    const relDir = Path.mk('../workspace/src/')
+    const relName = Path.segment('test')
+    const relExpected = Path.withName(relDir, relName)
+
+    expect(Path.withName('../workspace/src/', relName)).toEqual(relExpected)
+    expect(Path.withName(relName)('../workspace/src/')).toEqual(relExpected)
+  })
+
   it('renames the final directory segment', () => {
     expect(Path.withName(someAbsDir, Path.segment('var'))).toEqual(
       Option.some(Path.AbsDir.make({ segments: ['var'].map(Path.segment) })),
@@ -1540,6 +1557,43 @@ describe('withName', () => {
     expect(
       Path.withName(Path.RelDir.make({ ascent: 2, segments: [] }), Path.segment('src')),
     ).toEqual(Option.none())
+  })
+
+  it('types: the path accepts directory values or literals while name remains Segment-only', () => {
+    const name = Path.segment('next')
+
+    expectTypeOf(Path.withName('/a/', name)).toEqualTypeOf<Option.Option<Path.AbsDir>>()
+    expectTypeOf(Path.withName('./a/', name)).toEqualTypeOf<Option.Option<Path.RelDir>>()
+    expectTypeOf(Path.withName(someAbsDir, name)).toEqualTypeOf<Option.Option<Path.AbsDir>>()
+    expectTypeOf(Path.withName(someRelDir, name)).toEqualTypeOf<Option.Option<Path.RelDir>>()
+
+    expectTypeOf(Path.withName(name)('/a/')).toEqualTypeOf<Option.Option<Path.AbsDir>>()
+    expectTypeOf(Path.withName(name)('./a/')).toEqualTypeOf<Option.Option<Path.RelDir>>()
+    expectTypeOf(Path.withName(name)(someAbsDir)).toEqualTypeOf<Option.Option<Path.AbsDir>>()
+    expectTypeOf(Path.withName(name)(someRelDir)).toEqualTypeOf<Option.Option<Path.RelDir>>()
+
+    const dynamic = '/a/' as string
+
+    // Type-only: never executed, so the @ts-expect-error rejections cannot throw.
+    const staticRejections = () => {
+      // @ts-expect-error dynamic strings are rejected at the data-first path position
+      Path.withName(dynamic, name)
+      // @ts-expect-error dynamic strings are rejected at the data-last path position
+      Path.withName(name)(dynamic)
+      // @ts-expect-error repeated separators are rejected at the data-first path position
+      Path.withName('//', name)
+      // @ts-expect-error repeated separators are rejected at the data-last path position
+      Path.withName(name)('//')
+      // @ts-expect-error path literals must parse as directories
+      Path.withName('/a/file.ts', name)
+      // @ts-expect-error data-last path literals must parse as directories
+      Path.withName(name)('./a/file.ts')
+      // @ts-expect-error component literals remain excluded pending their parser design
+      Path.withName(someAbsDir, 'next')
+      // @ts-expect-error the data-last name remains a decoded Segment value
+      Path.withName('next')(someAbsDir)
+    }
+    expect(typeof staticRejections).toBe('function')
   })
 })
 
