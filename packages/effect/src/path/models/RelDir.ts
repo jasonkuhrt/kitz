@@ -12,7 +12,7 @@ import { AbsDir } from './AbsDir.js'
 import { Ascent, maxSegments, Segments } from './arbitrary.js'
 import { FileName } from './FileName.js'
 import { RelFile } from './RelFile.js'
-import { Segment } from './segment.js'
+import { Segment, segment } from './segment.js'
 
 /**
  * Relative directory value — the decoded path (ascent count + segments) with instance behavior.
@@ -133,6 +133,31 @@ export class RelDir_ extends withLiteralStatics(
 ) {
   /** The relative anchor `./` — the identity of `join`. */
   static readonly anchor: typeof RelDir_.Type = RelDir_.make({ ascent: 0, segments: [] })
+
+  /**
+   * Decode/encode paths as flat structured JSON instead of strings.
+   *
+   * @example
+   * ```ts
+   * const Payload = S.Struct({ base: RelDir.FromStruct })
+   * ```
+   */
+  static readonly FromStruct = S.Struct({
+    ascent: Ascent,
+    segments: S.Array(Segment),
+  }).pipe(
+    S.decodeTo(RelDir__, {
+      encode: SchemaGetter.transform((encoded) => ({
+        ascent: encoded.ascent,
+        segments: encoded.segments.map(segment),
+      })),
+      decode: SchemaGetter.transform((decoded) => ({
+        _tag: 'RelDir' as const,
+        ascent: decoded.ascent,
+        segments: decoded.segments,
+      })),
+    }),
+  )
 
   /**
    * Variant schema carrying a realistic generation bias — same set as the

@@ -11,7 +11,7 @@ import * as PrimaryKey from 'effect/PrimaryKey'
 import { analyzeFileAbs, format } from '../analyzer.js'
 import { ancestorSegments } from '../core/ancestors.js'
 import { attachPathEqual } from '../core/equality.js'
-import { fileUrlOf } from '../core/fileUrl.js'
+import { fileUrlOf, pathStringFromFileUrl } from '../core/fileUrl.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { resolveFileName } from '../core/setParts.js'
@@ -20,7 +20,7 @@ import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
 import type { Extension } from './Extension.js'
 import { FileName } from './FileName.js'
-import { segment, type Segment } from './segment.js'
+import { Segment, segment } from './segment.js'
 
 export declare namespace AbsFile {
   export type Parts =
@@ -182,6 +182,59 @@ export class AbsFile_ extends withLiteralStatics(
     AbsFile_.make({
       dir: parts.dir ?? file.dir,
       fileName: resolveFileName(file.fileName, parts),
+    }),
+  )
+
+  /**
+   * Decode/encode absolute files as native `file:` URL instances.
+   *
+   * @example
+   * ```ts
+   * S.decodeSync(AbsFile.FromUrl)(new URL(import.meta.url))
+   * ```
+   */
+  static readonly FromUrl = S.URL.pipe(
+    S.decodeTo(AbsFile__, {
+      encode: SchemaGetter.transform((encoded) =>
+        fileUrlOf({ segments: encoded.dir.segments, fileName: encoded.fileName }),
+      ),
+      decode: SchemaGetter.transformOrFail(
+        flow(
+          pathStringFromFileUrl,
+          Result.flatMap(analyzeFileAbs),
+          Result.map((analysis) => ({
+            _tag: 'AbsFile' as const,
+            dir: AbsDir.make({ segments: analysis.segments.map(segment) }),
+            fileName: analysis.fileName,
+          })),
+          Effect.fromResult,
+        ),
+      ),
+    }),
+  )
+
+  /**
+   * Decode/encode paths as flat structured JSON instead of strings.
+   *
+   * @example
+   * ```ts
+   * const Payload = S.Struct({ entry: AbsFile.FromStruct })
+   * ```
+   */
+  static readonly FromStruct = S.Struct({
+    segments: S.Array(Segment),
+    fileName: FileName,
+  }).pipe(
+    S.decodeTo(AbsFile__, {
+      encode: SchemaGetter.transform((encoded) => ({
+        segments: encoded.dir.segments,
+        fileName: S.decodeSync(FileName)(encoded.fileName),
+      })),
+      decode: SchemaGetter.transform((decoded) => ({
+        _tag: 'AbsFile' as const,
+        dir: AbsDir.make({ segments: decoded.segments }),
+        fileName: S.encodeSync(FileName)(decoded.fileName),
+      })),
     }),
   )
 

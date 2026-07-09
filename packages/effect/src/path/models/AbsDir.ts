@@ -3,7 +3,7 @@ import * as PrimaryKey from 'effect/PrimaryKey'
 import { analyzeDirAbs, format } from '../analyzer.js'
 import { ancestorSegments } from '../core/ancestors.js'
 import { attachPathEqual } from '../core/equality.js'
-import { fileUrlOf } from '../core/fileUrl.js'
+import { fileUrlOf, pathStringFromFileUrl } from '../core/fileUrl.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { parentOf } from '../core/segments.js'
@@ -12,7 +12,7 @@ import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { maxSegments, Segments } from './arbitrary.js'
 import { AbsFile } from './AbsFile.js'
 import { FileName } from './FileName.js'
-import { Segment } from './segment.js'
+import { Segment, segment } from './segment.js'
 
 /**
  * Absolute directory value — the decoded path (segments) with instance behavior.
@@ -120,6 +120,48 @@ export class AbsDir_ extends withLiteralStatics(
 ) {
   /** The absolute anchor — the filesystem root `/`. */
   static readonly anchor: typeof AbsDir_.Type = AbsDir_.make({ segments: [] })
+
+  /**
+   * Decode/encode absolute dirs as native `file:` URL instances.
+   *
+   * @example
+   * ```ts
+   * S.decodeSync(AbsDir.FromUrl)(new URL('.', import.meta.url))
+   * ```
+   */
+  static readonly FromUrl = S.URL.pipe(
+    S.decodeTo(AbsDir__, {
+      encode: SchemaGetter.transform((encoded) => fileUrlOf({ segments: encoded.segments })),
+      decode: SchemaGetter.transformOrFail(
+        flow(
+          pathStringFromFileUrl,
+          Result.flatMap(analyzeDirAbs),
+          Result.map((analysis) => ({ _tag: 'AbsDir' as const, segments: analysis.segments })),
+          Effect.fromResult,
+        ),
+      ),
+    }),
+  )
+
+  /**
+   * Decode/encode paths as flat structured JSON instead of strings.
+   *
+   * @example
+   * ```ts
+   * const Payload = S.Struct({ cwd: AbsDir.FromStruct })
+   * ```
+   */
+  static readonly FromStruct = S.Struct({
+    segments: S.Array(Segment),
+  }).pipe(
+    S.decodeTo(AbsDir__, {
+      encode: SchemaGetter.transform((encoded) => ({ segments: encoded.segments.map(segment) })),
+      decode: SchemaGetter.transform((decoded) => ({
+        _tag: 'AbsDir' as const,
+        segments: decoded.segments,
+      })),
+    }),
+  )
 
   /**
    * Variant schema carrying a realistic generation bias — same set as the

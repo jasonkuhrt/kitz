@@ -52,7 +52,6 @@ export * as Protocol from './models/Protocol.js'
 
 // Flat path combinators
 export * from './operations/ensureAbs.js'
-export * from './operations/fromFileUrl.js'
 export * from './operations/isAncestorOf.js'
 export * from './operations/isDescendantOf.js'
 export * from './operations/isWithin.js'

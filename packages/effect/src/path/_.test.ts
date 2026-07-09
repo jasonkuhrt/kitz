@@ -465,20 +465,61 @@ describe('.atRoot', () => {
   })
 })
 
-// ─── URL interop: fileUrl / fromFileUrl ───
+// ─── alternate codecs: FromUrl ───
 
-describe('fileUrl / fromFileUrl', () => {
+describe('FromUrl', () => {
   it('types: fileUrl is a URL on abs variants', () => {
     expectTypeOf(someAbsFile.fileUrl).toEqualTypeOf<URL>()
     expectTypeOf(someAbsDir.fileUrl).toEqualTypeOf<URL>()
   })
 
-  it('round trips through fromFileUrl', () => {
+  it('decodes the ESM file and dir URL idioms', () => {
+    const thisFile = S.decodeSync(Path.AbsFile.FromUrl)(new URL(import.meta.url))
+    const thisDir = S.decodeSync(Path.AbsDir.FromUrl)(new URL('.', import.meta.url))
+
+    expect(thisFile).toBeAbs()
+    expect(thisFile).toBeFile()
+    expect(thisDir).toBeAbs()
+    expect(thisDir).toBeDir()
+  })
+
+  it('round trips URL encoding for generated absolute values', () => {
     FastCheck.assert(
-      FastCheck.property(abs, (path) => {
-        const decoded = Path.fromFileUrl(path.fileUrl)
-        expect(decoded).toEqual(Result.succeed(path))
+      FastCheck.property(arb.AbsFile, (path) => {
+        const encoded = S.encodeSync(Path.AbsFile.FromUrl)(path)
+        const decoded = S.decodeSync(Path.AbsFile.FromUrl)(encoded)
+
+        expect(encoded).toBeInstanceOf(URL)
+        expect(Equal.equals(decoded, path)).toBe(true)
       }),
+    )
+
+    FastCheck.assert(
+      FastCheck.property(arb.AbsDir, (path) => {
+        const encoded = S.encodeSync(Path.AbsDir.FromUrl)(path)
+        const decoded = S.decodeSync(Path.AbsDir.FromUrl)(encoded)
+
+        expect(encoded).toBeInstanceOf(URL)
+        expect(Equal.equals(decoded, path)).toBe(true)
+      }),
+    )
+  })
+
+  it('rejects non-file URLs and non-local file URL hosts', () => {
+    expect(
+      Result.isFailure(S.decodeResult(Path.AbsFile.FromUrl)(new URL('https://example.com/a'))),
+    ).toBe(true)
+    expect(
+      Result.isFailure(S.decodeResult(Path.AbsDir.FromUrl)(new URL('file://example.com/a/'))),
+    ).toBe(true)
+  })
+
+  it('pins target-specific trailing-slash behavior', () => {
+    expect(S.decodeSync(Path.AbsDir.FromUrl)(new URL('file:///releases/v1.2'))).toEncodeTo(
+      '/releases/v1.2/',
+    )
+    expect(Result.isFailure(S.decodeResult(Path.AbsFile.FromUrl)(new URL('file:///tmp/a/')))).toBe(
+      true,
     )
   })
 
@@ -490,7 +531,59 @@ describe('fileUrl / fromFileUrl', () => {
     S.decodeSync(Path.AbsFile)('/tmp/café.txt'),
     S.decodeSync(Path.AbsDir)('/tmp/a b/'),
   ])('percent-encoding regression: %s', (path) => {
-    expect(Path.fromFileUrl(path.fileUrl)).toEqual(Result.succeed(path))
+    const decoded = Path.AbsFile.is(path)
+      ? S.decodeSync(Path.AbsFile.FromUrl)(path.fileUrl)
+      : S.decodeSync(Path.AbsDir.FromUrl)(path.fileUrl)
+
+    expect(Equal.equals(decoded, path)).toBe(true)
+  })
+})
+
+// ─── alternate codecs: FromStruct ───
+
+describe('FromStruct', () => {
+  it.each([
+    ['AbsFile', Path.AbsFile.FromStruct, arb.AbsFile],
+    ['AbsDir', Path.AbsDir.FromStruct, arb.AbsDir],
+    ['RelFile', Path.RelFile.FromStruct, arb.RelFile],
+    ['RelDir', Path.RelDir.FromStruct, arb.RelDir],
+  ] as const)('%s encode/decode roundtrip', (_, schema, arbitrary) => {
+    const encode = S.encodeSync(schema)
+    const decode = S.decodeSync(schema)
+
+    FastCheck.assert(
+      FastCheck.property(arbitrary as FastCheck.Arbitrary<never>, (path) => {
+        expect(Equal.equals(decode(encode(path)), path)).toBe(true)
+      }),
+    )
+  })
+
+  it('rejects invalid wire data', () => {
+    expect(
+      Result.isFailure(S.decodeUnknownResult(Path.AbsDir.FromStruct)({ segments: ['ok', ''] })),
+    ).toBe(true)
+    expect(
+      Result.isFailure(S.decodeUnknownResult(Path.RelDir.FromStruct)({ ascent: -1, segments: [] })),
+    ).toBe(true)
+  })
+
+  it('types: encoded side is the flat primitive wire struct', () => {
+    expectTypeOf<S.Codec.Encoded<typeof Path.AbsFile.FromStruct>>().toEqualTypeOf<{
+      readonly segments: readonly string[]
+      readonly fileName: string
+    }>()
+    expectTypeOf<S.Codec.Encoded<typeof Path.RelFile.FromStruct>>().toEqualTypeOf<{
+      readonly ascent: number
+      readonly segments: readonly string[]
+      readonly fileName: string
+    }>()
+    expectTypeOf<S.Codec.Encoded<typeof Path.AbsDir.FromStruct>>().toEqualTypeOf<{
+      readonly segments: readonly string[]
+    }>()
+    expectTypeOf<S.Codec.Encoded<typeof Path.RelDir.FromStruct>>().toEqualTypeOf<{
+      readonly ascent: number
+      readonly segments: readonly string[]
+    }>()
   })
 })
 

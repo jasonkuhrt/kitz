@@ -17,10 +17,11 @@ import { resolveFileName } from '../core/setParts.js'
 import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics, withStatics } from '../core/statics.js'
 import { AbsFile } from './AbsFile.js'
+import { Ascent } from './arbitrary.js'
 import type { Extension } from './Extension.js'
 import { FileName } from './FileName.js'
 import { RelDir } from './RelDir.js'
-import { segment, type Segment } from './segment.js'
+import { Segment, segment } from './segment.js'
 
 export declare namespace RelFile {
   export type Parts =
@@ -194,6 +195,33 @@ export class RelFile_ extends withLiteralStatics(
     RelFile_.make({
       dir: parts.dir ?? file.dir,
       fileName: resolveFileName(file.fileName, parts),
+    }),
+  )
+
+  /**
+   * Decode/encode paths as flat structured JSON instead of strings.
+   *
+   * @example
+   * ```ts
+   * const Payload = S.Struct({ entry: RelFile.FromStruct })
+   * ```
+   */
+  static readonly FromStruct = S.Struct({
+    ascent: Ascent,
+    segments: S.Array(Segment),
+    fileName: FileName,
+  }).pipe(
+    S.decodeTo(RelFile__, {
+      encode: SchemaGetter.transform((encoded) => ({
+        ascent: encoded.dir.ascent,
+        segments: encoded.dir.segments,
+        fileName: S.decodeSync(FileName)(encoded.fileName),
+      })),
+      decode: SchemaGetter.transform((decoded) => ({
+        _tag: 'RelFile' as const,
+        dir: RelDir.make({ ascent: decoded.ascent, segments: decoded.segments }),
+        fileName: S.encodeSync(FileName)(decoded.fileName),
+      })),
     }),
   )
 
