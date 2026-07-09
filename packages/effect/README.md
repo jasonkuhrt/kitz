@@ -9,9 +9,10 @@ domain terms:
   schema-backed parsing. Values carry instance getters (`.name`, `.stem`,
   `.extension`, `.dir` on files, `.parent` on dirs, `.ancestors`,
   `.asDir`/`.asFile`, `.atRoot`, `.fileUrl`, …); multi-path operations are flat
-  functions (`join`, `relativeTo`,
-  `commonAncestor`, `ensureAbs`, `isDescendantOf`, `isWithin`, `order`, …); file component
-  writes are per-model statics (`AbsFile.setParts`, `RelFile.setParts`);
+  functions (`join`, `relativeTo`, `ensureAbs`, `isDescendantOf`, `isWithin`,
+  `order`, …); common ancestors are group statics (`Abs.commonAncestor`,
+  `Rel.commonAncestor`); file component writes are per-model statics
+  (`AbsFile.setParts`, `RelFile.setParts`);
   `fromLiteral` infers the precise variant from string literals at the type level.
 - **`Schema`** — small additions to Effect Schema (e.g. `NaturalInt`).
 - **`String`** — string utilities.
@@ -132,15 +133,21 @@ C++17 `std::filesystem`, Node `path`, Java NIO, .NET `System.IO.Path`, Go
 - `AbsFile`/`RelFile`/`AbsDir`/`RelDir` — exactly Haskell `path`
   (`Path Abs File`) / PureScript `pathy` vocabulary: the typed-path niche's
   established language.
-- `commonAncestor` — "common" per `os.path.commonpath` and git merge-base
-  ("best common ancestor"). The earlier name `getSharedBase` was rejected:
-  "base" means the final component across the industry (`basename`,
-  `filepath.Base`), the opposite end of the path.
+- `Abs.commonAncestor` / `Rel.commonAncestor` — "common" per
+  `os.path.commonpath` and git merge-base ("best common ancestor"). The earlier
+  name `getSharedBase` was rejected: "base" means the final component across
+  the industry (`basename`, `filepath.Base`), the opposite end of the path.
+  The operation is total and Option-free because the anchor is a genuine common
+  ancestor: `/` floors absolute pairs, and the pure-ascent line floors relative
+  pairs with unequal ascent. Round-2 P1 exposed the old `None` as a special
+  case for exactly the value `AbsDir.anchor` now names.
 - `isWithin` (inclusive) vs `isDescendantOf`/`isAncestorOf` (strict) — the
   industry reserves prefix/containment words for self-inclusive semantics
   (Python `is_relative_to`, Rust `starts_with`, Java `startsWith`) because
   genealogy words imply strictness; we honor both registers by splitting the
-  ops.
+  ops. For relatives, equal-ascent prefix containment is extended by
+  pure-ascent containers: `../` contains `./a`, while `./` does not contain
+  `../../`.
 
 **Deliberate divergences (reviewed, kept):**
 

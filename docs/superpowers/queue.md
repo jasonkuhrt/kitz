@@ -9,10 +9,17 @@ Statuses: `design-open` (needs a decision), `decided` (awaiting
 implementation), `mechanical` (spec-able now), `done` (landed), `parked`
 (explicitly deferred).
 
-## 1. commonAncestor totality + locality — `design-open` (active)
+## 1. commonAncestor totality + locality — `done`
 
 Round-2 stress P1: `commonAncestor('/apps/a.ts', '/libs/l.ts')` → `None`,
 though `/` is a real common ancestor and `AbsDir.anchor` now names it.
+
+Done:
+
+- `fc33f225` — `isWithin` recognizes pure-ascent containers; `isDescendantOf`
+  keeps strictness by comparing ascent as well as segment length.
+- `6a7ed2bb` — `commonAncestor` is total and Option-free on
+  `Abs.commonAncestor` / `Rel.commonAncestor`; the flat operation was removed.
 
 Two premise corrections that shape the space:
 
@@ -30,23 +37,16 @@ Two premise corrections that shape the space:
   rule), Rel×Rel `commonAncestor` becomes TOTAL: `m = n` → `(m, commonPrefix)`;
   `m ≠ n` → `(max(m,n), [])`.
 
-Decision stack (in order):
+Settled decisions:
 
-1. Containment semantics: keep equal-ascent-only, or adopt pure-ascent-parent
-   containment (sound in the tree model; makes `isWithin` truthful and
-   `commonAncestor` total for both groups; must update the containment laws).
+1. Containment semantics: adopt pure-ascent-parent containment (sound in the
+   tree model; makes `isWithin` truthful and `commonAncestor` total for both
+   groups; containment laws updated in tests).
 2. Locality: statics on the GROUP unions — `Abs.commonAncestor(a, b): AbsDir`
-   (total) and `Rel.commonAncestor(a, b)` (total or `Option<RelDir>` per
-   decision 1) — since inputs span file/dir within a group, the union schema
-   is the domain-constraining home (same logic as `setParts` locality, one
-   level up).
-3. Flat `commonAncestor` fate: drop (group-generic callers narrow first) vs
-   keep as the weaker `Option` form.
-
-User signal so far: pro exploiting totality; NOT ready to sign off on a
-`commonAncestorBelowRoot`-style second fn; wants the per-model/domain
-constraining. Recommendation: adopt pure-ascent containment (decision 1 yes),
-group statics total on both (2), drop the flat op (3).
+   and `Rel.commonAncestor(a, b): RelDir` — since inputs span file/dir within a
+   group, the union schema is the domain-constraining home (same logic as
+   `setParts` locality, one level up).
+3. Flat `commonAncestor` fate: dropped; group-generic callers narrow first.
 
 ## 2. String `Input` polymorphism (Tier-3) — `design-open` (top priority after #1)
 
