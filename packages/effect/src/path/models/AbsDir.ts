@@ -46,7 +46,7 @@ class AbsDir__ extends S.TaggedClass<AbsDir__>()('AbsDir', {
     )
   }
 
-  /** Ancestor directories, starting at the parent and ending at root; root itself has none. */
+  /** Ancestor directories, excluding this directory, starting at the parent and ending at root; unlike Rust's `Path::ancestors`, this does not include self. */
   get ancestors(): readonly AbsDir[] {
     return ancestorSegments(this.segments, { includeSelf: false }).map((segments) =>
       AbsDir_.make({ segments }),

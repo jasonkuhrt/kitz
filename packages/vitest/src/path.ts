@@ -53,11 +53,11 @@ const passResult = (state: MatcherState, pass: boolean, parts: Message): Matcher
 
 const isWithin = (received: Kitz.Path.Any, parent: Kitz.Path.Dir): boolean => {
   if (Kitz.Path.Abs.is(received) && Kitz.Path.AbsDir.is(parent)) {
-    return Kitz.Path.isDescendantOf(received, parent)
+    return Kitz.Path.isWithin(received, parent)
   }
 
   if (Kitz.Path.Rel.is(received) && Kitz.Path.RelDir.is(parent)) {
-    return Kitz.Path.isDescendantOf(received, parent)
+    return Kitz.Path.isWithin(received, parent)
   }
 
   return false

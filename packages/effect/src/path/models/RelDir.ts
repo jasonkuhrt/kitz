@@ -48,7 +48,7 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
     )
   }
 
-  /** Ancestor directories, starting at the parent and ending at the same relative anchor; segment-less dirs have none. */
+  /** Ancestor directories, excluding this directory, starting at the parent and ending at the same relative anchor; unlike Rust's `Path::ancestors`, this does not include self. */
   get ancestors(): readonly RelDir[] {
     return ancestorSegments(this.segments, { includeSelf: false }).map((segments) =>
       RelDir_.make({ ascent: this.ascent, segments }),

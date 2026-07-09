@@ -17,8 +17,8 @@ export type MatchingTypeGroup<A extends Any> = {
   RelDir: Rel
 }[A['_tag']]
 
-/** The directory type of a path's own group — the type of a shared base. */
-export type SharedBase<A extends Any> = {
+/** The directory type of a path's own group — the type of a common ancestor. */
+export type CommonAncestor<A extends Any> = {
   AbsFile: AbsDir
   AbsDir: AbsDir
   RelFile: RelDir

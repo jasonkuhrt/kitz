@@ -51,11 +51,12 @@ export { Segment, segment } from './models/segment.js'
 export * as Protocol from './models/Protocol.js'
 
 // Flat path combinators
+export * from './operations/commonAncestor.js'
 export * from './operations/ensureAbs.js'
 export * from './operations/fromFileUrl.js'
-export * from './operations/getSharedBase.js'
 export * from './operations/isAncestorOf.js'
 export * from './operations/isDescendantOf.js'
+export * from './operations/isWithin.js'
 export * from './operations/join.js'
 export * from './operations/order.js'
 export * from './operations/relativeTo.js'

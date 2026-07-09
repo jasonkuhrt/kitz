@@ -1,5 +1,5 @@
 import { Function as Fn, Option } from 'effect'
-import { isRel, type MatchingTypeGroup, type SharedBase } from '../core/group.js'
+import { isRel, type CommonAncestor, type MatchingTypeGroup } from '../core/group.js'
 import { commonSegmentPrefix } from '../core/segments.js'
 import type { Any } from '../models/Any.js'
 import { AbsDir } from '../models/AbsDir.js'
@@ -7,12 +7,13 @@ import type { Dir } from '../models/Dir.js'
 import { RelDir } from '../models/RelDir.js'
 
 /**
- * The longest shared base directory of two same-group paths, or `None`. Dual:
- * `(a, b)` or `(b)`.
+ * The deepest common ancestor directory of two same-group paths, or `None`.
+ * When `Some(d)`, both inputs satisfy `isWithin(x, d)`; a directory input may
+ * itself be `d` because `isWithin` is inclusive. Dual: `(a, b)` or `(b)`.
  */
-export const getSharedBase: {
-  <A extends Any>(a: A, b: MatchingTypeGroup<A>): Option.Option<SharedBase<A>>
-  <A extends Any>(b: A): (a: MatchingTypeGroup<A>) => Option.Option<SharedBase<A>>
+export const commonAncestor: {
+  <A extends Any>(a: A, b: MatchingTypeGroup<A>): Option.Option<CommonAncestor<A>>
+  <A extends Any>(b: A): (a: MatchingTypeGroup<A>) => Option.Option<CommonAncestor<A>>
 } = Fn.dual(2, (a: Any, b: Any): Option.Option<Dir> => {
   const aAscent = isRel(a) ? a.ascent : 0
   const bAscent = isRel(b) ? b.ascent : 0

@@ -582,6 +582,45 @@ describe('isDescendantOf', () => {
       }),
     )
   })
+
+  it('is strict for directory identity', () => {
+    FastCheck.assert(
+      FastCheck.property(dir, (path) => {
+        expect(Path.isDescendantOf(path, path)).toBe(false)
+      }),
+    )
+  })
+
+  it('keeps files directly inside their containing dir as descendants', () => {
+    FastCheck.assert(
+      FastCheck.property(file, (path) => {
+        expect(Path.isDescendantOf(path, path.dir)).toBe(true)
+      }),
+    )
+  })
+})
+
+// ─── operation: isWithin ───
+
+describe('isWithin', () => {
+  it('is descendant-or-directory-identity inclusive containment', () => {
+    FastCheck.assert(
+      FastCheck.property(arb.Any, dir, (child, parent) => {
+        expect(Path.isWithin(child as never, parent as never)).toBe(
+          Path.isDescendantOf(child as never, parent as never) ||
+            (Path.Dir.is(child) && Equal.equals(child, parent)),
+        )
+      }),
+    )
+  })
+
+  it('includes directory identity', () => {
+    FastCheck.assert(
+      FastCheck.property(dir, (path) => {
+        expect(Path.isWithin(path, path)).toBe(true)
+      }),
+    )
+  })
 })
 
 // ─── operation: isAncestorOf ───
@@ -603,22 +642,22 @@ describe('isAncestorOf', () => {
   })
 })
 
-// ─── operation: getSharedBase ───
+// ─── operation: commonAncestor ───
 
-describe('getSharedBase', () => {
-  it('is symmetric and returns an ancestor of both paths', () => {
+describe('commonAncestor', () => {
+  it('is symmetric and returns an inclusive ancestor of both paths', () => {
     FastCheck.assert(
       FastCheck.property(arb.Any, arb.Any, (a, b) => {
-        const ab = Path.getSharedBase(a as never, b as never)
-        const ba = Path.getSharedBase(b as never, a as never)
+        const ab = Path.commonAncestor(a as never, b as never)
+        const ba = Path.commonAncestor(b as never, a as never)
 
         expect(ab).toEqual(ba)
         expect(
           Option.match(ab, {
             onNone: () => true,
             onSome: (shared) =>
-              Path.isAncestorOf(shared as never, a as never) &&
-              Path.isAncestorOf(shared as never, b as never),
+              Path.isWithin(a as never, shared as never) &&
+              Path.isWithin(b as never, shared as never),
           }),
         ).toBe(true)
       }),
@@ -629,12 +668,21 @@ describe('getSharedBase', () => {
     FastCheck.assert(
       FastCheck.property(dir, nonEmptyRelAscent0, (base, r) => {
         const child = Path.join(base, r)
-        const shared = Path.getSharedBase(base as never, child as never)
+        const shared = Path.commonAncestor(base as never, child as never)
 
         expect(Path.isDescendantOf(child as never, base as never)).toBe(true)
         expect(shared).toEqual(base.segments.length === 0 ? Option.none() : Option.some(base))
       }),
     )
+  })
+
+  it('types: data-first and data-last return the group directory type', () => {
+    expectTypeOf(Path.commonAncestor(someAbsFile, someAbsDir)).toEqualTypeOf<
+      Option.Option<Path.AbsDir>
+    >()
+    expectTypeOf(Path.commonAncestor(someRelDir)(someRelFile)).toEqualTypeOf<
+      Option.Option<Path.RelDir>
+    >()
   })
 })
 

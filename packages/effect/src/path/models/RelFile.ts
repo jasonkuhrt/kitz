@@ -54,12 +54,12 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
   segments: Segments.pipe(S.withConstructorDefault(Effect.succeed([]))),
   fileName: FileName,
 }) {
-  /** The file's full name — stem plus extension (e.g. `index.ts`). */
+  /** The file's full name — stem plus extension (e.g. `index.ts`); node:path's `basename`. */
   get name(): string {
     return this.fileName.name
   }
 
-  /** The file's name before the final extension. The split uses the last dot after index 0: `archive.tar.gz` has stem `archive.tar`, while `.gitignore` has no extension. */
+  /** The file's name before the final extension; node:path's `parse().name` corresponds to this. The split uses the last dot after index 0: `archive.tar.gz` has stem `archive.tar`, while `.gitignore` has no extension. */
   get stem(): string {
     return this.fileName.stem
   }
@@ -92,7 +92,7 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
     })
   }
 
-  /** Ancestor directories, starting at this file's containing directory and ending at the same relative anchor. */
+  /** Ancestor directories, starting at this file's containing directory and ending at the same relative anchor; unlike Rust's `Path::ancestors`, this does not include the file itself. */
   get ancestors(): readonly RelDir[] {
     return ancestorSegments(this.segments, { includeSelf: true }).map((segments) =>
       RelDir.make({ ascent: this.ascent, segments }),

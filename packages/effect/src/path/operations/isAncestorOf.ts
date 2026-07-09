@@ -4,7 +4,7 @@ import type { Any } from '../models/Any.js'
 import type { Dir } from '../models/Dir.js'
 import { isDescendantOf } from './isDescendantOf.js'
 
-/** Whether `parent` is above `child` — the inverse of {@link isDescendantOf}. Dual. */
+/** Whether `parent` is strictly above `child`; a path is not its own ancestor. Dual. */
 export const isAncestorOf: {
   <A extends Dir>(parent: A, child: MatchingTypeGroupForDir<A>): boolean
   <A extends Any>(child: A): (parent: MatchingDirGroup<A>) => boolean
