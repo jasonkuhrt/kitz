@@ -62,27 +62,71 @@ name/stem/extension, ensureAbs base?); literal-vs-runtime-string split
 only literals, or runtime strings with a throw/Result channel?); one blessed
 boundary-decode helper for dynamic LHS (cwd).
 
-## 3. cwd/`resolve` story — `design-open`
+## 3. cwd story — `design-open` (position taken 2026-07-09, awaiting sign-off)
 
 Round-1 D1: 167 `path.resolve` sites; no cwd concept (deferred to the Fs era).
 Round-2 confirms (`install-state.ts:367-372` wants "realpath else resolve
-against cwd"). Minimal candidate: `Path.cwd(): Effect<AbsDir>` or an Fs-owned
-equivalent. Interacts with `ensureAbs` naming (see report round 1) — design
+against cwd"). Interacts with `ensureAbs` naming (see report round 1) — design
 them together.
 
-## 4. `Any`/union decode classification rules — `design-open` (small)
+Position (user leaning + agent analysis agree): **cwd is an Effect service;
+the yield ceremony is a deliberate forcing function.**
+
+- `process.cwd()` is ambient mutable process state (`chdir` mutates mid-run);
+  a service puts the dependency in the R channel — visible, mockable (tests
+  swap cwd without `chdir`), and Effect-native (an ambient global read is
+  exactly the Node-ish design the effect-alignment principle rejects).
+- The 167 sites conflate distinct bases (invocation dir, repo root, config
+  dir). Deep code should take an explicit `AbsDir` base parameter — the
+  service ceremony at the edge forces each site to name its true base.
+- NO blessed sync escape in kitz: `process.cwd()` +
+  `S.decodeSync(Path.AbsDir)` already exists for the one line at `main()`;
+  blessing a sync form would undo the forcing function.
+- History evidence FOR this stance: the old fs-loc impl inlined `Pro.cwd()`
+  directly inside a pure path operation (`ensureOptionalAbsoluteWithCwd`,
+  see `git show 41a2d191^:src/utils/fs-loc/operations/ensure-optional-absolute-with-cwd.ts`)
+  — cwd coupling leaked into the pure layer, plus optional-input polymorphism
+  on top. The service design exists to prevent exactly that.
+- Open sub-questions: service home (`Path.Cwd` vs future `Fs`/platform
+  namespace); relationship to `ensureAbs` (does a `resolve`-flavored helper
+  take the service, or do callers `yield* Cwd` then call pure `ensureAbs`?
+  — position leans the latter: keep ALL path ops pure).
+
+## 4. `Any`/union decode classification rules — `design-open` (deferred by user 2026-07-09)
 
 Round-1 D3 + round-2 confirmation: `'../lib'` (intended dir) classifies as
 RelFile via `Path.Rel`. Needs: a documented rule table in README/JSDoc for
 union decode; consider simplifying the heuristic. Target-schema decode
 (`Path.RelDir`) already gives intent — the gap is predictability of the union.
 
-## 5. `fromFileUrl` dir form — `design-open` (small)
+## 5. File URLs — `design-open` (position taken 2026-07-09, awaiting sign-off)
 
-Round-2 P2: ESM `new URL('.', import.meta.url)` directory idiom returns the
-file/dir union → hand-narrowing at every site. Candidates: `fromDirUrl`, a
-target-typed overload, or documenting `S.decodeSync`-style target decode for
-URLs. Decide alongside item 2 (same "typed target" flavor).
+Supersedes the narrower "fromFileUrl dir form" item (round-2 P2: the ESM
+`new URL('.', import.meta.url)` directory idiom returns the file/dir union →
+hand-narrowing at every site). User musing: a thin reified `FileUrl` /
+`Url.File.*` extending effect's built-in Url module.
+
+Facts (probed 2026-07-09 against installed effect@4.0.0-beta.85):
+
+- effect has NO stable `Url` module — nothing top-level, `effect/Url` does not
+  resolve. Only `effect/unstable/http/Url` exists: immutable helper fns over
+  native `URL` (`setHost`/`setPathname`/`mutate`/…), http-flavored, unstable.
+  There is no stable foundation to extend.
+
+Position: **no reified FileUrl type; file URLs are codec variants on the
+existing models.** A file URL is an alternate ENCODING of an absolute path
+(RFC 8089) — no consumer computes on file-URLs; every site immediately
+converts to a path. By the membrane litmus ("will unknown data need to BECOME
+and LIVE as this type?") the answer is no — it becomes a path. A reified
+FileUrl would be a value type with zero operations of its own.
+
+Proposed shape: per-model schema variant statics (the `Realistic` precedent):
+`AbsFile.FromFileUrl` / `AbsDir.FromFileUrl` — encoded side URL (or url
+string), Type side the path value. This subsumes the dir-form gap via
+target-typed decode: `S.decodeSync(Path.AbsDir.FromFileUrl)(new URL('.', import.meta.url))`
+— no union narrowing. `.fileUrl` getter stays as the encode direction;
+`fromFileUrl` (union-returning) either remains for unknown-kind URLs or is
+dropped in favor of `Any`-level variant.
 
 ## 6. Vitest package batch — `mechanical` (one name decision inside)
 
@@ -96,7 +140,8 @@ From the audit report (2026-07-09-vitest-package-audit.md):
 - [x] P2: add a first-party matcher test suite (positive/negative/invalid/message
   branches) in `25948a40`.
 - [ ] P3: strict-genealogy companion matcher (name TBD: `toBeDescendantOfPath`?)
-  — the only open decision in the batch.
+  — the only open decision in the batch. (Deferred by user 2026-07-09, with
+  item 8 peer floor and item 10 suffix-strip.)
 - [x] P3: package README documenting lifecycle (`private`, src exports, dep
   topology vs the ledger row) in `25948a40`.
 
@@ -146,5 +191,3 @@ has no equivalent. Decide: op, recipe docs, or wontfix.
   upstream.
 - Instance-method sugar for `setParts` (delegates to statics; deferred).
 - Heartbeat full conversion — delegable labor once items 1–4 land.
-- PR merge of `feat/restore-path-operations` — user inclined pre-stress;
-  re-confirm after the current queue burns down.
