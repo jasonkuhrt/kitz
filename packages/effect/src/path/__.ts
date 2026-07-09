@@ -33,6 +33,9 @@ export { Any } from './models/Any.js'
 // Constants
 export * from './constants.js'
 
+// Process-boundary services
+export { Cwd } from './Cwd.js'
+
 // Analyzer — public parse/validate/format of path strings (surfaces as `Path.Analyzer`)
 export * as Analyzer from './analyzer.js'
 
