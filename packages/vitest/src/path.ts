@@ -8,6 +8,8 @@ type MatcherResult = { pass: boolean; message: () => string }
 // augment the shim identity this repo resolves; revisit if Vite+ ships a
 // types-only augmentation entry point.
 declare module 'vite-plus/test' {
+  // Augmentation of @vitest/expect's `Matchers<T = any>` — the type parameter
+  // list must match the upstream declaration exactly for merging (TS2428).
   interface Matchers<T = any> {
     /** Check if the path is absolute. */
     toBeAbs(): void
