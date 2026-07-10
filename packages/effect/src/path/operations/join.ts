@@ -179,12 +179,12 @@ export const join: {
 } = Fn.dual(
   (args) => args.length >= 2,
   (dir: Dir | string, ...rels: readonly (Rel | string)[]): Any => {
-    const dirValue = typeof dir === 'string' ? (S.decodeSync(Any)(dir) as Dir) : dir
+    const dirValue: Dir = typeof dir === 'string' ? (S.decodeSync(Any)(dir) as any) : dir
     let result: Any = dirValue
 
     for (const rel of rels) {
-      const relValue = typeof rel === 'string' ? (S.decodeSync(Any)(rel) as Rel) : rel
-      result = joinBinary(result as Dir, relValue)
+      const relValue: Rel = typeof rel === 'string' ? (S.decodeSync(Any)(rel) as any) : rel
+      result = joinBinary(result as any, relValue)
     }
 
     return result

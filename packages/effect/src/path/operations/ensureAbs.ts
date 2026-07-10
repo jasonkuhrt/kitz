@@ -57,7 +57,7 @@ export const ensureAbs: {
   ) => EnsureAbs<$Path extends string ? FromLiteral<$Path> : $Path>
 } = Fn.dual(2, (path: Any | string, base: AbsDir | string): Abs => {
   const pathValue = typeof path === 'string' ? S.decodeSync(Any)(path) : path
-  const baseValue = typeof base === 'string' ? (S.decodeSync(Any)(base) as AbsDir) : base
+  const baseValue: AbsDir = typeof base === 'string' ? (S.decodeSync(Any)(base) as any) : base
 
   return Match.value(pathValue).pipe(
     Match.tagsExhaustive({

@@ -79,7 +79,7 @@ export const isDescendantOf: {
   ) => boolean
 } = Fn.dual(2, (child: Any | string, parent: Dir | string): boolean => {
   const childPath = typeof child === 'string' ? S.decodeSync(Any)(child) : child
-  const parentPath = typeof parent === 'string' ? (S.decodeSync(Any)(parent) as Dir) : parent
+  const parentPath: Dir = typeof parent === 'string' ? (S.decodeSync(Any)(parent) as any) : parent
   const childAscent = isRel(childPath) ? childPath.ascent : 0
   const parentAscent = isRel(parentPath) ? parentPath.ascent : 0
 

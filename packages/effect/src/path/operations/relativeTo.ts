@@ -120,10 +120,10 @@ export const relativeTo: {
     : never
 } = Fn.dual(2, (path: Any | string, base: Dir | string): Rel | Option.Option<Rel> => {
   const pathValue = typeof path === 'string' ? S.decodeSync(Any)(path) : path
-  const baseValue = typeof base === 'string' ? (S.decodeSync(Any)(base) as Dir) : base
+  const baseValue: Dir = typeof base === 'string' ? (S.decodeSync(Any)(base) as any) : base
 
-  if (baseValue._tag === 'RelDir') return relativeToRel(pathValue as Rel, baseValue)
-  return relativeToAbs(pathValue as Abs, baseValue)
+  if (baseValue._tag === 'RelDir') return relativeToRel(pathValue as any, baseValue)
+  return relativeToAbs(pathValue as any, baseValue)
 })
 
 const makeRel = (path: Abs | Rel, ascent: number, segments: readonly Segment[]): Rel =>

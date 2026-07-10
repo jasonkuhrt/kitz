@@ -15,4 +15,4 @@ import { Any } from '../models/Any.js'
  * worlds are the same. Non-literal `string` inputs are rejected statically.
  */
 export const mk = <const $Input extends string>(input: LiteralInput<$Input>): FromLiteral<$Input> =>
-  S.decodeSync(Any)(input as string) as FromLiteral<$Input>
+  S.decodeSync(Any)(input as any) as any

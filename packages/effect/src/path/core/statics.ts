@@ -20,7 +20,7 @@ type Guard<$Self extends S.Top> = {
  * structural for these `Equal`-bearing values.
  */
 export const withStatics = <$Self extends S.Top>(self: $Self): $Self & Guard<$Self> =>
-  Object.assign(self, { is: S.is(self) }) as $Self & Guard<$Self>
+  Object.assign(self, { is: S.is(self) })
 
 /** The target-validated literal constructor attached to path schemas. */
 type LiteralConstructor<$Self extends S.Top> = {
@@ -40,6 +40,5 @@ export const withLiteralStatics = <$Self extends S.Top>(
   self: $Self,
 ): $Self & LiteralConstructor<$Self> =>
   Object.assign(self, {
-    mk: (input: string): $Self['Type'] =>
-      S.decodeSync(self as unknown as S.Decoder<$Self['Type']>)(input),
-  }) as unknown as $Self & LiteralConstructor<$Self>
+    mk: (input: string): $Self['Type'] => S.decodeSync(self as any)(input),
+  }) as any

@@ -76,7 +76,7 @@ export const isAncestorOf: {
       : $Parent & MatchingDirGroup<$Child extends string ? FromLiteral<$Child> : $Child>,
   ) => boolean
 } = Fn.dual(2, (parent: Dir | string, child: Any | string): boolean => {
-  const parentPath = typeof parent === 'string' ? (S.decodeSync(Any)(parent) as Dir) : parent
+  const parentPath: Dir = typeof parent === 'string' ? (S.decodeSync(Any)(parent) as any) : parent
   const childPath = typeof child === 'string' ? S.decodeSync(Any)(child) : child
 
   return isDescendantOf(childPath, parentPath)

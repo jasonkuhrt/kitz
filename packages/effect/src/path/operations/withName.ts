@@ -69,7 +69,7 @@ export const withName: {
       : never
   >
 } = Fn.dual(2, (dir: Dir | string, name: Segment): Option.Option<Dir> => {
-  const dirValue = typeof dir === 'string' ? (S.decodeSync(Any)(dir) as Dir) : dir
+  const dirValue: Dir = typeof dir === 'string' ? (S.decodeSync(Any)(dir) as any) : dir
 
   return Match.value(dirValue).pipe(
     Match.tagsExhaustive({
