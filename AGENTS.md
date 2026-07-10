@@ -31,8 +31,6 @@ vp run check              # vp format --check + vp lint + tsc -b development
 vp run fix                # vp format + vp lint --fix
 ```
 
-> History: this repo was previously a 48-package bun-pure monorepo (bun runtime + bun:test + tsgo). It was collapsed to a single shippable package, `@kitz/effect`, and migrated to the pnpm + Vite+ + TS7 toolchain. The earlier `bun:test` / `@kitz/test` and "no vitest" guidance no longer applies.
-
 ## Backwards Compatibility
 
 **Default stance: Breaking changes are acceptable.**
