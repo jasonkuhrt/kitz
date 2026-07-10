@@ -35,5 +35,5 @@ import { Schema as S } from 'effect'
  */
 export const withArbitraryHints =
   (hints: S.Annotations.ToArbitrary.Filter) =>
-  <Sch extends S.Top>(self: Sch): Sch['Rebuild'] =>
-    S.check<Sch>(S.makeFilter<Sch['Type']>(() => true, { arbitrary: hints }))(self)
+  <$Sch extends S.Top>(self: $Sch): $Sch['Rebuild'] =>
+    S.check<$Sch>(S.makeFilter<$Sch['Type']>(() => true, { arbitrary: hints }))(self)

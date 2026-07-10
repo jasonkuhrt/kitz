@@ -355,8 +355,8 @@ describe('.parent', () => {
 
 // ─── getters: ancestors ───
 
-const iterateAbsParents = <P extends Path.AbsDir | Path.AbsFile>(
-  path: P,
+const iterateAbsParents = <$P extends Path.AbsDir | Path.AbsFile>(
+  path: $P,
 ): readonly Path.AbsDir[] => {
   if (Path.AbsDir.is(path) && path.isAnchor) return []
 

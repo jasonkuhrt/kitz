@@ -35,34 +35,38 @@ const renameRelDir = (dir: RelDirModel.RelDir, name: Segment): Option.Option<Rel
  * ```
  */
 export const withName: {
-  <const D extends Dir | string>(
-    path: D extends string
-      ? string extends D
-        ? LiteralInput<D>
-        : [FromLiteral<D>] extends [never]
-          ? ErrorPathValidation<Dir, D>
-          : FromLiteral<D> extends Dir
-            ? D
-            : ErrorPathValidation<Dir, D>
-      : D,
+  <const $D extends Dir | string>(
+    path: $D extends string
+      ? string extends $D
+        ? LiteralInput<$D>
+        : [FromLiteral<$D>] extends [never]
+          ? ErrorPathValidation<Dir, $D>
+          : FromLiteral<$D> extends Dir
+            ? $D
+            : ErrorPathValidation<Dir, $D>
+      : $D,
     name: Segment,
   ): Option.Option<
-    (D extends string ? FromLiteral<D> : D) extends infer DirValue extends Dir ? DirValue : never
+    ($D extends string ? FromLiteral<$D> : $D) extends infer $DirValue extends Dir
+      ? $DirValue
+      : never
   >
   (
     name: Segment,
-  ): <const D extends Dir | string>(
-    path: D extends string
-      ? string extends D
-        ? LiteralInput<D>
-        : [FromLiteral<D>] extends [never]
-          ? ErrorPathValidation<Dir, D>
-          : FromLiteral<D> extends Dir
-            ? D
-            : ErrorPathValidation<Dir, D>
-      : D,
+  ): <const $D extends Dir | string>(
+    path: $D extends string
+      ? string extends $D
+        ? LiteralInput<$D>
+        : [FromLiteral<$D>] extends [never]
+          ? ErrorPathValidation<Dir, $D>
+          : FromLiteral<$D> extends Dir
+            ? $D
+            : ErrorPathValidation<Dir, $D>
+      : $D,
   ) => Option.Option<
-    (D extends string ? FromLiteral<D> : D) extends infer DirValue extends Dir ? DirValue : never
+    ($D extends string ? FromLiteral<$D> : $D) extends infer $DirValue extends Dir
+      ? $DirValue
+      : never
   >
 } = Fn.dual(2, (dir: Dir | string, name: Segment): Option.Option<Dir> => {
   const dirValue = typeof dir === 'string' ? (S.decodeSync(Any)(dir) as Dir) : dir

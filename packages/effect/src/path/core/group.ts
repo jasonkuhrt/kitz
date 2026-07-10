@@ -10,23 +10,23 @@ import type { RelDir } from '../models/RelDir.js'
 export const isRel = S.is(Rel)
 
 /** Constrain a second path to the same group (absolute vs relative) as the first. */
-export type MatchingTypeGroup<A extends Any> = {
+export type MatchingTypeGroup<$A extends Any> = {
   AbsFile: Abs
   AbsDir: Abs
   RelFile: Rel
   RelDir: Rel
-}[A['_tag']]
+}[$A['_tag']]
 
 /** Map any path to the directory type of its group (for ancestor / parent params). */
-export type MatchingDirGroup<A extends Any> = {
+export type MatchingDirGroup<$A extends Any> = {
   AbsFile: AbsDir
   AbsDir: AbsDir
   RelFile: RelDir
   RelDir: RelDir
-}[A['_tag']]
+}[$A['_tag']]
 
 /** Map a directory to its matching group (for child params when the parent is a `Dir`). */
-export type MatchingTypeGroupForDir<A extends Dir> = {
+export type MatchingTypeGroupForDir<$A extends Dir> = {
   AbsDir: Abs
   RelDir: Rel
-}[A['_tag']]
+}[$A['_tag']]

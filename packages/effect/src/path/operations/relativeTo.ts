@@ -18,13 +18,13 @@ import type { Rel } from '../models/Rel.js'
 import { RelFile } from '../models/RelFile.js'
 
 /** Type-level {@link relativeTo}: maps a path variant to its relative counterpart. */
-export type RelativeTo<A extends Abs | Rel> = A extends AbsFile
+export type RelativeTo<$A extends Abs | Rel> = $A extends AbsFile
   ? RelFile
-  : A extends RelFile
+  : $A extends RelFile
     ? RelFile
-    : A extends AbsDir
+    : $A extends AbsDir
       ? RelDir
-      : A extends RelDir
+      : $A extends RelDir
         ? RelDir
         : Rel
 
@@ -56,65 +56,67 @@ export type RelativeTo<A extends Abs | Rel> = A extends AbsFile
  * ```
  */
 export const relativeTo: {
-  <const Path extends Any | string, const Base extends Dir | string>(
-    path: Path extends string ? LiteralGuard<Path, Any> : Path,
-    base: Base extends string
-      ? string extends Base
-        ? LiteralInput<Base>
-        : [FromLiteral<Base>] extends [never]
+  <const $Path extends Any | string, const $Base extends Dir | string>(
+    path: $Path extends string ? LiteralGuard<$Path, Any> : $Path,
+    base: $Base extends string
+      ? string extends $Base
+        ? LiteralInput<$Base>
+        : [FromLiteral<$Base>] extends [never]
           ? ErrorPathValidation<
-              MatchingDirGroup<Path extends string ? FromLiteral<Path> : Path>,
-              Base
+              MatchingDirGroup<$Path extends string ? FromLiteral<$Path> : $Path>,
+              $Base
             >
-          : FromLiteral<Base> extends MatchingDirGroup<
-                Path extends string ? FromLiteral<Path> : Path
+          : FromLiteral<$Base> extends MatchingDirGroup<
+                $Path extends string ? FromLiteral<$Path> : $Path
               >
-            ? Base
+            ? $Base
             : ErrorPathValidation<
-                MatchingDirGroup<Path extends string ? FromLiteral<Path> : Path>,
-                Base
+                MatchingDirGroup<$Path extends string ? FromLiteral<$Path> : $Path>,
+                $Base
               >
-      : Base & MatchingDirGroup<Path extends string ? FromLiteral<Path> : Path>,
-  ): (Path extends string ? FromLiteral<Path> : Path) extends infer PathValue extends Any
-    ? [PathValue] extends [Rel]
-      ? Option.Option<RelativeTo<PathValue>>
-      : RelativeTo<PathValue>
+      : $Base & MatchingDirGroup<$Path extends string ? FromLiteral<$Path> : $Path>,
+  ): ($Path extends string ? FromLiteral<$Path> : $Path) extends infer $PathValue extends Any
+    ? [$PathValue] extends [Rel]
+      ? Option.Option<RelativeTo<$PathValue>>
+      : RelativeTo<$PathValue>
     : never
-  <const Base extends Dir | string>(
-    base: Base extends string
-      ? string extends Base
-        ? LiteralInput<Base>
-        : [FromLiteral<Base>] extends [never]
-          ? ErrorPathValidation<Dir, Base>
-          : FromLiteral<Base> extends Dir
-            ? Base
-            : ErrorPathValidation<Dir, Base>
-      : Base,
-  ): <const Path extends Any | string>(
-    path: Path extends string
-      ? string extends Path
-        ? LiteralInput<Path>
-        : [FromLiteral<Path>] extends [never]
+  <const $Base extends Dir | string>(
+    base: $Base extends string
+      ? string extends $Base
+        ? LiteralInput<$Base>
+        : [FromLiteral<$Base>] extends [never]
+          ? ErrorPathValidation<Dir, $Base>
+          : FromLiteral<$Base> extends Dir
+            ? $Base
+            : ErrorPathValidation<Dir, $Base>
+      : $Base,
+  ): <const $Path extends Any | string>(
+    path: $Path extends string
+      ? string extends $Path
+        ? LiteralInput<$Path>
+        : [FromLiteral<$Path>] extends [never]
           ? ErrorPathValidation<
-              MatchingTypeGroupForDir<Extract<Base extends string ? FromLiteral<Base> : Base, Dir>>,
-              Path
+              MatchingTypeGroupForDir<
+                Extract<$Base extends string ? FromLiteral<$Base> : $Base, Dir>
+              >,
+              $Path
             >
-          : FromLiteral<Path> extends MatchingTypeGroupForDir<
-                Extract<Base extends string ? FromLiteral<Base> : Base, Dir>
+          : FromLiteral<$Path> extends MatchingTypeGroupForDir<
+                Extract<$Base extends string ? FromLiteral<$Base> : $Base, Dir>
               >
-            ? Path
+            ? $Path
             : ErrorPathValidation<
                 MatchingTypeGroupForDir<
-                  Extract<Base extends string ? FromLiteral<Base> : Base, Dir>
+                  Extract<$Base extends string ? FromLiteral<$Base> : $Base, Dir>
                 >,
-                Path
+                $Path
               >
-      : Path &
-          MatchingTypeGroupForDir<Extract<Base extends string ? FromLiteral<Base> : Base, Dir>>,
-  ) => (Path extends string ? FromLiteral<Path> : Path) extends infer PathValue extends Any
-    ? [PathValue] extends [Rel]
-      ? Option.Option<RelativeTo<PathValue>>
-      : RelativeTo<PathValue>
+      : $Path &
+          MatchingTypeGroupForDir<Extract<$Base extends string ? FromLiteral<$Base> : $Base, Dir>>,
+  ) => ($Path extends string ? FromLiteral<$Path> : $Path) extends infer $PathValue extends Any
+    ? [$PathValue] extends [Rel]
+      ? Option.Option<RelativeTo<$PathValue>>
+      : RelativeTo<$PathValue>
     : never
 } = Fn.dual(2, (path: Any | string, base: Dir | string): Rel | Option.Option<Rel> => {
   const pathValue = typeof path === 'string' ? S.decodeSync(Any)(path) : path

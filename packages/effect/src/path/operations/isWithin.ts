@@ -22,60 +22,60 @@ import type { Dir } from '../models/Dir.js'
  * Containment is lexical; under symlinks a path outside `parent` may still reach a file inside it.
  */
 export const isWithin: {
-  <const Child extends Any | string, const Parent extends Dir | string>(
-    child: Child extends string ? LiteralGuard<Child, Any> : Child,
-    parent: Parent extends string
-      ? string extends Parent
-        ? LiteralInput<Parent>
-        : [FromLiteral<Parent>] extends [never]
+  <const $Child extends Any | string, const $Parent extends Dir | string>(
+    child: $Child extends string ? LiteralGuard<$Child, Any> : $Child,
+    parent: $Parent extends string
+      ? string extends $Parent
+        ? LiteralInput<$Parent>
+        : [FromLiteral<$Parent>] extends [never]
           ? ErrorPathValidation<
-              MatchingDirGroup<Child extends string ? FromLiteral<Child> : Child>,
-              Parent
+              MatchingDirGroup<$Child extends string ? FromLiteral<$Child> : $Child>,
+              $Parent
             >
-          : FromLiteral<Parent> extends MatchingDirGroup<
-                Child extends string ? FromLiteral<Child> : Child
+          : FromLiteral<$Parent> extends MatchingDirGroup<
+                $Child extends string ? FromLiteral<$Child> : $Child
               >
-            ? Parent
+            ? $Parent
             : ErrorPathValidation<
-                MatchingDirGroup<Child extends string ? FromLiteral<Child> : Child>,
-                Parent
+                MatchingDirGroup<$Child extends string ? FromLiteral<$Child> : $Child>,
+                $Parent
               >
-      : Parent & MatchingDirGroup<Child extends string ? FromLiteral<Child> : Child>,
+      : $Parent & MatchingDirGroup<$Child extends string ? FromLiteral<$Child> : $Child>,
   ): boolean
-  <const Parent extends Dir | string>(
-    parent: Parent extends string
-      ? string extends Parent
-        ? LiteralInput<Parent>
-        : [FromLiteral<Parent>] extends [never]
-          ? ErrorPathValidation<Dir, Parent>
-          : FromLiteral<Parent> extends Dir
-            ? Parent
-            : ErrorPathValidation<Dir, Parent>
-      : Parent,
-  ): <const Child extends Any | string>(
-    child: Child extends string
-      ? string extends Child
-        ? LiteralInput<Child>
-        : [FromLiteral<Child>] extends [never]
+  <const $Parent extends Dir | string>(
+    parent: $Parent extends string
+      ? string extends $Parent
+        ? LiteralInput<$Parent>
+        : [FromLiteral<$Parent>] extends [never]
+          ? ErrorPathValidation<Dir, $Parent>
+          : FromLiteral<$Parent> extends Dir
+            ? $Parent
+            : ErrorPathValidation<Dir, $Parent>
+      : $Parent,
+  ): <const $Child extends Any | string>(
+    child: $Child extends string
+      ? string extends $Child
+        ? LiteralInput<$Child>
+        : [FromLiteral<$Child>] extends [never]
           ? ErrorPathValidation<
               MatchingTypeGroupForDir<
-                Extract<Parent extends string ? FromLiteral<Parent> : Parent, Dir>
+                Extract<$Parent extends string ? FromLiteral<$Parent> : $Parent, Dir>
               >,
-              Child
+              $Child
             >
-          : FromLiteral<Child> extends MatchingTypeGroupForDir<
-                Extract<Parent extends string ? FromLiteral<Parent> : Parent, Dir>
+          : FromLiteral<$Child> extends MatchingTypeGroupForDir<
+                Extract<$Parent extends string ? FromLiteral<$Parent> : $Parent, Dir>
               >
-            ? Child
+            ? $Child
             : ErrorPathValidation<
                 MatchingTypeGroupForDir<
-                  Extract<Parent extends string ? FromLiteral<Parent> : Parent, Dir>
+                  Extract<$Parent extends string ? FromLiteral<$Parent> : $Parent, Dir>
                 >,
-                Child
+                $Child
               >
-      : Child &
+      : $Child &
           MatchingTypeGroupForDir<
-            Extract<Parent extends string ? FromLiteral<Parent> : Parent, Dir>
+            Extract<$Parent extends string ? FromLiteral<$Parent> : $Parent, Dir>
           >,
   ) => boolean
 } = Fn.dual(2, (child: Any | string, parent: Dir | string): boolean => {

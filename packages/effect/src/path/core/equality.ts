@@ -13,17 +13,17 @@ const isPathLike = (
   typeof value.toString === 'function'
 
 /** Attach canonical-string equality/hash without exposing computed keys in class declarations. */
-export const attachPathEqual = <Self extends { readonly _tag: string; toString(): string }>(
+export const attachPathEqual = <$Self extends { readonly _tag: string; toString(): string }>(
   prototype: object,
 ): void => {
   Object.defineProperties(prototype, {
     [Equal.symbol]: {
-      value(this: Self, that: Equal.Equal): boolean {
+      value(this: $Self, that: Equal.Equal): boolean {
         return isPathLike(that) && this.toString() === that.toString()
       },
     },
     [Hash.symbol]: {
-      value(this: Self): number {
+      value(this: $Self): number {
         return Hash.string(this.toString())
       },
     },

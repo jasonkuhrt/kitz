@@ -14,11 +14,11 @@ import { RelFile } from '../models/RelFile.js'
 import { join } from './join.js'
 
 /** Type-level {@link ensureAbs}: absolute paths pass through; relatives become absolute. */
-export type EnsureAbs<P extends Any> = P extends Abs
-  ? P
-  : P extends RelFile
+export type EnsureAbs<$P extends Any> = $P extends Abs
+  ? $P
+  : $P extends RelFile
     ? AbsFile
-    : P extends RelDir
+    : $P extends RelDir
       ? AbsDir
       : never
 
@@ -30,31 +30,31 @@ export type EnsureAbs<P extends Any> = P extends Abs
  * `ensureAbs(base)` for piping.
  */
 export const ensureAbs: {
-  <const Path extends Any | string, const Base extends AbsDir | string>(
-    path: Path extends string ? LiteralGuard<Path, Any> : Path,
-    base: Base extends string
-      ? string extends Base
-        ? LiteralInput<Base>
-        : [FromLiteral<Base>] extends [never]
-          ? ErrorPathValidation<AbsDir, Base>
-          : FromLiteral<Base> extends AbsDir
-            ? Base
-            : ErrorPathValidation<AbsDir, Base>
-      : Base,
-  ): EnsureAbs<Path extends string ? FromLiteral<Path> : Path>
-  <const Base extends AbsDir | string>(
-    base: Base extends string
-      ? string extends Base
-        ? LiteralInput<Base>
-        : [FromLiteral<Base>] extends [never]
-          ? ErrorPathValidation<AbsDir, Base>
-          : FromLiteral<Base> extends AbsDir
-            ? Base
-            : ErrorPathValidation<AbsDir, Base>
-      : Base,
-  ): <const Path extends Any | string>(
-    path: Path extends string ? LiteralGuard<Path, Any> : Path,
-  ) => EnsureAbs<Path extends string ? FromLiteral<Path> : Path>
+  <const $Path extends Any | string, const $Base extends AbsDir | string>(
+    path: $Path extends string ? LiteralGuard<$Path, Any> : $Path,
+    base: $Base extends string
+      ? string extends $Base
+        ? LiteralInput<$Base>
+        : [FromLiteral<$Base>] extends [never]
+          ? ErrorPathValidation<AbsDir, $Base>
+          : FromLiteral<$Base> extends AbsDir
+            ? $Base
+            : ErrorPathValidation<AbsDir, $Base>
+      : $Base,
+  ): EnsureAbs<$Path extends string ? FromLiteral<$Path> : $Path>
+  <const $Base extends AbsDir | string>(
+    base: $Base extends string
+      ? string extends $Base
+        ? LiteralInput<$Base>
+        : [FromLiteral<$Base>] extends [never]
+          ? ErrorPathValidation<AbsDir, $Base>
+          : FromLiteral<$Base> extends AbsDir
+            ? $Base
+            : ErrorPathValidation<AbsDir, $Base>
+      : $Base,
+  ): <const $Path extends Any | string>(
+    path: $Path extends string ? LiteralGuard<$Path, Any> : $Path,
+  ) => EnsureAbs<$Path extends string ? FromLiteral<$Path> : $Path>
 } = Fn.dual(2, (path: Any | string, base: AbsDir | string): Abs => {
   const pathValue = typeof path === 'string' ? S.decodeSync(Any)(path) : path
   const baseValue = typeof base === 'string' ? (S.decodeSync(Any)(base) as AbsDir) : base

@@ -29,14 +29,14 @@ class Abs_ extends withLiteralStatics(
    * absolute value or statically known absolute literal.
    */
   static readonly commonAncestor: {
-    <const A extends typeof Abs_.Type | string, const B extends typeof Abs_.Type | string>(
-      a: A extends string ? LiteralGuard<A, typeof Abs_.Type> : A,
-      b: B extends string ? LiteralGuard<B, typeof Abs_.Type> : B,
+    <const $A extends typeof Abs_.Type | string, const $B extends typeof Abs_.Type | string>(
+      a: $A extends string ? LiteralGuard<$A, typeof Abs_.Type> : $A,
+      b: $B extends string ? LiteralGuard<$B, typeof Abs_.Type> : $B,
     ): typeof AbsDir.Type
-    <const B extends typeof Abs_.Type | string>(
-      b: B extends string ? LiteralGuard<B, typeof Abs_.Type> : B,
-    ): <const A extends typeof Abs_.Type | string>(
-      a: A extends string ? LiteralGuard<A, typeof Abs_.Type> : A,
+    <const $B extends typeof Abs_.Type | string>(
+      b: $B extends string ? LiteralGuard<$B, typeof Abs_.Type> : $B,
+    ): <const $A extends typeof Abs_.Type | string>(
+      a: $A extends string ? LiteralGuard<$A, typeof Abs_.Type> : $A,
     ) => typeof AbsDir.Type
   } = Fn.dual(
     2,

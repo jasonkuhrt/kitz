@@ -167,9 +167,9 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
  * given absoluteness. Every public path analyzer is a partial application of this.
  */
 const analyzeAs =
-  <K extends Analysis['_tag']>(kind: K) =>
+  <$K extends Analysis['_tag']>(kind: $K) =>
   (anchoring: 'absolute' | 'relative') =>
-  (input: string): Result.Result<Data.TaggedEnum.Value<Analysis, K>, SchemaIssue.Issue> => {
+  (input: string): Result.Result<Data.TaggedEnum.Value<Analysis, $K>, SchemaIssue.Issue> => {
     const analysis = analyze(input, { hint: kind })
     if (!Analysis.$is(kind)(analysis)) {
       return Result.fail(invalid(input, kind === 'dir' ? 'a directory path' : 'a file path'))

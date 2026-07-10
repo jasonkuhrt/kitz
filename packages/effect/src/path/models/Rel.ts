@@ -29,14 +29,14 @@ class Rel_ extends withLiteralStatics(
    * path accepts a relative value or statically known relative literal.
    */
   static readonly commonAncestor: {
-    <const A extends typeof Rel_.Type | string, const B extends typeof Rel_.Type | string>(
-      a: A extends string ? LiteralGuard<A, typeof Rel_.Type> : A,
-      b: B extends string ? LiteralGuard<B, typeof Rel_.Type> : B,
+    <const $A extends typeof Rel_.Type | string, const $B extends typeof Rel_.Type | string>(
+      a: $A extends string ? LiteralGuard<$A, typeof Rel_.Type> : $A,
+      b: $B extends string ? LiteralGuard<$B, typeof Rel_.Type> : $B,
     ): typeof RelDir.Type
-    <const B extends typeof Rel_.Type | string>(
-      b: B extends string ? LiteralGuard<B, typeof Rel_.Type> : B,
-    ): <const A extends typeof Rel_.Type | string>(
-      a: A extends string ? LiteralGuard<A, typeof Rel_.Type> : A,
+    <const $B extends typeof Rel_.Type | string>(
+      b: $B extends string ? LiteralGuard<$B, typeof Rel_.Type> : $B,
+    ): <const $A extends typeof Rel_.Type | string>(
+      a: $A extends string ? LiteralGuard<$A, typeof Rel_.Type> : $A,
     ) => typeof RelDir.Type
   } = Fn.dual(
     2,

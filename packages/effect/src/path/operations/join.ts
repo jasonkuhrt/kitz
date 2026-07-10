@@ -17,16 +17,16 @@ import { RelFile } from '../models/RelFile.js'
  * Type-level {@link join}: the result keeps the base's absoluteness and the
  * relative path's file/dir nature.
  */
-export type Join<Base extends Dir, P extends Rel> = Base extends AbsDir
-  ? P extends RelFile
+export type Join<$Base extends Dir, $P extends Rel> = $Base extends AbsDir
+  ? $P extends RelFile
     ? AbsFile
-    : P extends RelDir
+    : $P extends RelDir
       ? AbsDir
       : never
-  : Base extends RelDir
-    ? P extends RelFile
+  : $Base extends RelDir
+    ? $P extends RelFile
       ? RelFile
-      : P extends RelDir
+      : $P extends RelDir
         ? RelDir
         : never
     : never
@@ -34,19 +34,19 @@ export type Join<Base extends Dir, P extends Rel> = Base extends AbsDir
 type JoinParts = readonly [...RelDir[], Rel]
 
 /** Type-level variadic {@link join}: left-folds a non-empty relative path tuple. */
-export type JoinMany<Base extends Dir, Parts extends JoinParts> = Parts extends readonly [
-  infer Only extends Rel,
+export type JoinMany<$Base extends Dir, $Parts extends JoinParts> = $Parts extends readonly [
+  infer $Only extends Rel,
 ]
-  ? Join<Base, Only>
-  : Parts extends readonly [infer Head extends RelDir, ...infer Tail extends JoinParts]
-    ? Join<Base, Head> extends Dir
-      ? JoinMany<Join<Base, Head>, Tail>
+  ? Join<$Base, $Only>
+  : $Parts extends readonly [infer $Head extends RelDir, ...infer $Tail extends JoinParts]
+    ? Join<$Base, $Head> extends Dir
+      ? JoinMany<Join<$Base, $Head>, $Tail>
       : never
     : never
 
 const joinBinary: {
-  <Base extends Dir, P extends Rel>(dir: Base, rel: P): Join<Base, P>
-  <P extends Rel>(rel: P): <Base extends Dir>(dir: Base) => Join<Base, P>
+  <$Base extends Dir, $P extends Rel>(dir: $Base, rel: $P): Join<$Base, $P>
+  <$P extends Rel>(rel: $P): <$Base extends Dir>(dir: $Base) => Join<$Base, $P>
 } = Fn.dual(2, (dir: Dir, rel: Rel): Any => {
   const baseSegments = [...dir.segments]
   let remainingAscent = rel.ascent
@@ -91,85 +91,87 @@ const joinBinary: {
  */
 export const join: {
   <
-    const Args extends
+    const $Args extends
       | readonly [Rel | string]
       | readonly [Dir | string, Rel | string, ...(Rel | string)[]],
   >(
     ...args: {
-      readonly [Index in keyof Args]: Args extends readonly [Rel | string]
-        ? Args[Index] extends string
-          ? LiteralGuard<Args[Index], Rel>
-          : Args[Index]
-        : Index extends '0'
-          ? Args[Index] extends string
-            ? string extends Args[Index]
-              ? LiteralInput<Args[Index]>
-              : [FromLiteral<Args[Index]>] extends [never]
-                ? ErrorPathValidation<Dir, Args[Index]>
-                : FromLiteral<Args[Index]> extends Dir
-                  ? Args[Index]
-                  : ErrorPathValidation<Dir, Args[Index]>
-            : Args[Index]
-          : Index extends keyof (Args extends readonly [...infer Prefix, unknown] ? Prefix : never)
-            ? Args[Index] extends string
-              ? string extends Args[Index]
-                ? LiteralInput<Args[Index]>
-                : [FromLiteral<Args[Index]>] extends [never]
-                  ? ErrorPathValidation<RelDir, Args[Index]>
-                  : FromLiteral<Args[Index]> extends RelDir
-                    ? Args[Index]
-                    : ErrorPathValidation<RelDir, Args[Index]>
-              : Args[Index] & RelDir
-            : Args[Index] extends string
-              ? LiteralGuard<Args[Index], Rel>
-              : Args[Index]
+      readonly [$Index in keyof $Args]: $Args extends readonly [Rel | string]
+        ? $Args[$Index] extends string
+          ? LiteralGuard<$Args[$Index], Rel>
+          : $Args[$Index]
+        : $Index extends '0'
+          ? $Args[$Index] extends string
+            ? string extends $Args[$Index]
+              ? LiteralInput<$Args[$Index]>
+              : [FromLiteral<$Args[$Index]>] extends [never]
+                ? ErrorPathValidation<Dir, $Args[$Index]>
+                : FromLiteral<$Args[$Index]> extends Dir
+                  ? $Args[$Index]
+                  : ErrorPathValidation<Dir, $Args[$Index]>
+            : $Args[$Index]
+          : $Index extends keyof ($Args extends readonly [...infer $Prefix, unknown]
+                ? $Prefix
+                : never)
+            ? $Args[$Index] extends string
+              ? string extends $Args[$Index]
+                ? LiteralInput<$Args[$Index]>
+                : [FromLiteral<$Args[$Index]>] extends [never]
+                  ? ErrorPathValidation<RelDir, $Args[$Index]>
+                  : FromLiteral<$Args[$Index]> extends RelDir
+                    ? $Args[$Index]
+                    : ErrorPathValidation<RelDir, $Args[$Index]>
+              : $Args[$Index] & RelDir
+            : $Args[$Index] extends string
+              ? LiteralGuard<$Args[$Index], Rel>
+              : $Args[$Index]
     }
-  ): Args extends readonly [infer Part extends Rel | string]
-    ? <const Base extends Dir | string>(
-        base: Base extends string
-          ? string extends Base
-            ? LiteralInput<Base>
-            : [FromLiteral<Base>] extends [never]
-              ? ErrorPathValidation<Dir, Base>
-              : FromLiteral<Base> extends Dir
-                ? Base
-                : ErrorPathValidation<Dir, Base>
-          : Base,
+  ): $Args extends readonly [infer $Part extends Rel | string]
+    ? <const $Base extends Dir | string>(
+        base: $Base extends string
+          ? string extends $Base
+            ? LiteralInput<$Base>
+            : [FromLiteral<$Base>] extends [never]
+              ? ErrorPathValidation<Dir, $Base>
+              : FromLiteral<$Base> extends Dir
+                ? $Base
+                : ErrorPathValidation<Dir, $Base>
+          : $Base,
       ) => Join<
-        Base extends string
-          ? FromLiteral<Base> extends infer NormalizedBase extends Dir
-            ? NormalizedBase
+        $Base extends string
+          ? FromLiteral<$Base> extends infer $NormalizedBase extends Dir
+            ? $NormalizedBase
             : never
-          : Base,
-        Part extends string
-          ? FromLiteral<Part> extends infer NormalizedPart extends Rel
-            ? NormalizedPart
+          : $Base,
+        $Part extends string
+          ? FromLiteral<$Part> extends infer $NormalizedPart extends Rel
+            ? $NormalizedPart
             : never
-          : Part
+          : $Part
       >
-    : Args extends readonly [
-          infer Base extends Dir | string,
-          ...infer Parts extends readonly [Rel | string, ...(Rel | string)[]],
+    : $Args extends readonly [
+          infer $Base extends Dir | string,
+          ...infer $Parts extends readonly [Rel | string, ...(Rel | string)[]],
         ]
       ? JoinMany<
-          Base extends string
-            ? FromLiteral<Base> extends infer NormalizedBase extends Dir
-              ? NormalizedBase
+          $Base extends string
+            ? FromLiteral<$Base> extends infer $NormalizedBase extends Dir
+              ? $NormalizedBase
               : never
-            : Base,
-          Parts extends readonly [
-            ...infer Initial extends readonly (Rel | string)[],
-            infer Last extends Rel | string,
+            : $Base,
+          $Parts extends readonly [
+            ...infer $Initial extends readonly (Rel | string)[],
+            infer $Last extends Rel | string,
           ]
             ? readonly [
                 ...{
-                  readonly [Index in keyof Initial]: Initial[Index] extends string
-                    ? FromLiteral<Initial[Index]>
-                    : Initial[Index]
+                  readonly [$Index in keyof $Initial]: $Initial[$Index] extends string
+                    ? FromLiteral<$Initial[$Index]>
+                    : $Initial[$Index]
                 },
-                Last extends string ? FromLiteral<Last> : Last,
-              ] extends infer NormalizedParts extends JoinParts
-              ? NormalizedParts
+                $Last extends string ? FromLiteral<$Last> : $Last,
+              ] extends infer $NormalizedParts extends JoinParts
+              ? $NormalizedParts
               : never
             : never
         >
