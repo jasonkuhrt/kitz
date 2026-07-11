@@ -13,6 +13,10 @@ import { Any } from '../models/Any.js'
  * The literal grammar is kitz-defined: it overlaps the string codec grammar
  * because the runtime implementation reuses the analyzer, not because the two
  * worlds are the same. Non-literal `string` inputs are rejected statically.
+ *
+ * Caveat: a literal containing a lone surrogate code unit type-checks (the
+ * type-level parser cannot detect ill-formed UTF-16) and rejects at runtime,
+ * where decoding requires well-formed Unicode.
  */
 export const make = <const $Input extends string>(
   input: LiteralInput<$Input>,

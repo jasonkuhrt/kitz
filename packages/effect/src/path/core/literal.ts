@@ -204,7 +204,14 @@ export type FromTargetLiteral<$S extends string, $Target> = string extends $S
         : DecodeRelLiteralAs<$S, $Target>
     : never
 
-/** Guard the god literal constructor against non-literal or invalid strings. */
+/**
+ * Guard the god literal constructor against non-literal or invalid strings.
+ *
+ * Caveat: a literal containing a lone surrogate code unit (e.g. `'/\ud800/'`)
+ * passes this gate — template-literal parsing cannot detect ill-formed
+ * UTF-16 — and rejects at runtime instead, where decoding requires
+ * well-formed Unicode.
+ */
 export type LiteralInput<$S extends string> = string extends $S
   ? ErrorStringNotLiteral
   : Types.IsLiteral<$S> extends true
@@ -213,7 +220,11 @@ export type LiteralInput<$S extends string> = string extends $S
       : $S
     : ErrorStringNotLiteral
 
-/** Guard a string literal against a target path schema, returning a static error on mismatch. */
+/**
+ * Guard a string literal against a target path schema, returning a static
+ * error on mismatch. Same lone-surrogate caveat as {@link LiteralInput}:
+ * ill-formed UTF-16 literals reject at runtime, not here.
+ */
 export type LiteralGuard<$S extends string, $Target> =
   Types.IsLiteral<$S> extends true
     ? [AnalyzeLiteral<$S>] extends [never]

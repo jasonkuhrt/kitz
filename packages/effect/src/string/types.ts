@@ -73,6 +73,10 @@ type Take<
  * empty delimiter splits astral characters by TypeScript's template-literal
  * code-point inference. Generic UTF-16 code-unit parity is not expressible at
  * the type level.
+ *
+ * Caveat, concretely: `Split<'🚀', ''>` is `['🚀']` (one code point) while
+ * `'🚀'.split('')` is `['\ud83d', '\ude80']` (two code units) at runtime.
+ * BMP inputs, non-empty delimiters, and `limit` have exact JS parity.
  */
 export type Split<
   $S extends string,
