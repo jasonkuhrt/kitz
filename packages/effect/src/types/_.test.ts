@@ -27,15 +27,10 @@ describe('effect/Types passthrough', () => {
 
 describe('IsLiteral', () => {
   it('accepts singleton literals and rejects finite unions and open string patterns', () => {
-    // @ts-expect-error RED-PIN: Types.IsLiteral does not exist yet
     expectTypeOf<Types.IsLiteral<'./src/'>>().toEqualTypeOf<true>()
-    // @ts-expect-error RED-PIN: Types.IsLiteral does not exist yet
     expectTypeOf<Types.IsLiteral<'a' | 'b'>>().toEqualTypeOf<false>()
-    // @ts-expect-error RED-PIN: Types.IsLiteral does not exist yet
     expectTypeOf<Types.IsLiteral<`./${string}`>>().toEqualTypeOf<false>()
-    // @ts-expect-error RED-PIN: Types.IsLiteral does not exist yet
     expectTypeOf<Types.IsLiteral<`/${string}`>>().toEqualTypeOf<false>()
-    // @ts-expect-error RED-PIN: Types.IsLiteral does not exist yet
     expectTypeOf<Types.IsLiteral<Uppercase<string>>>().toEqualTypeOf<false>()
   })
 })

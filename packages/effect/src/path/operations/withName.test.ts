@@ -57,6 +57,7 @@ describe('withName', () => {
     expectTypeOf(Path.withName('next')(someRelDir)).toEqualTypeOf<Option.Option<Path.RelDir>>()
 
     const dynamic = '/a/' as string
+    const openName = 'next' as `name-${string}`
 
     // Type-only: never executed, so the @ts-expect-error rejections cannot throw.
     const staticRejections = () => {
@@ -68,6 +69,8 @@ describe('withName', () => {
       Path.withName(someAbsDir, '..')
       // @ts-expect-error segment literals cannot contain separators
       Path.withName('bad/name')(someAbsDir)
+      // @ts-expect-error open segment templates are not singleton literals
+      Path.withName(someAbsDir, openName)
     }
     expect(typeof staticRejections).toBe('function')
   })

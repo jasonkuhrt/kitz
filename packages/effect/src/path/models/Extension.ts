@@ -48,13 +48,14 @@ type ErrorMalformedExtensionLiteral<$Received extends string> = $Received extend
   : Types.StaticError<`Extension literal '${$Received}' must start with '.'.`>
 
 /** Guard a literal against the Extension runtime grammar. */
-export type ExtensionLiteralGuard<$S extends string> = string extends $S
-  ? Types.StaticError<
-      requiresLiteral<'Extension.mk', 's', 'Decode dynamic strings through Path.Extension.'>
-    >
-  : IsValidExtensionLiteral<$S> extends true
-    ? $S
-    : ErrorMalformedExtensionLiteral<$S>
+export type ExtensionLiteralGuard<$S extends string> =
+  Types.IsLiteral<$S> extends true
+    ? IsValidExtensionLiteral<$S> extends true
+      ? $S
+      : ErrorMalformedExtensionLiteral<$S>
+    : Types.StaticError<
+        requiresLiteral<'Extension.mk', 's', 'Decode dynamic strings through Path.Extension.'>
+      >
 
 /** First-class file-extension schema with a literal-only constructor. */
 export class Extension_ extends S.asClass(ExtensionSchema) {

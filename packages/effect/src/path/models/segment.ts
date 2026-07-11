@@ -137,17 +137,18 @@ type ErrorMalformedSegmentLiteral<$Received extends string> = $Received extends 
       : Types.StaticError<nullByteSegmentMessage>
 
 /** Guard a POSIX path-segment literal against the runtime Segment grammar. */
-export type SegmentLiteralGuard<$S extends string> = string extends $S
-  ? Types.StaticError<
-      requiresLiteral<
-        'Segment literal constructors',
-        '',
-        'Decode dynamic strings through Path.Segment.'
+export type SegmentLiteralGuard<$S extends string> =
+  Types.IsLiteral<$S> extends true
+    ? IsValidSegmentLiteral<$S> extends true
+      ? $S
+      : ErrorMalformedSegmentLiteral<$S>
+    : Types.StaticError<
+        requiresLiteral<
+          'Segment literal constructors',
+          '',
+          'Decode dynamic strings through Path.Segment.'
+        >
       >
-    >
-  : IsValidSegmentLiteral<$S> extends true
-    ? $S
-    : ErrorMalformedSegmentLiteral<$S>
 
 /**
  * Validate a raw string as a {@link Segment} (throws on invalid input).

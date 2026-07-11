@@ -207,15 +207,18 @@ export type FromTargetLiteral<$S extends string, $Target> = string extends $S
 /** Guard the god literal constructor against non-literal or invalid strings. */
 export type LiteralInput<$S extends string> = string extends $S
   ? ErrorStringNotLiteral
-  : [AnalyzeLiteral<$S>] extends [never]
-    ? ErrorMalformedLiteral<$S>
-    : $S
+  : Types.IsLiteral<$S> extends true
+    ? [AnalyzeLiteral<$S>] extends [never]
+      ? ErrorMalformedLiteral<$S>
+      : $S
+    : ErrorStringNotLiteral
 
 /** Guard a string literal against a target path schema, returning a static error on mismatch. */
-export type LiteralGuard<$S extends string, $Target> = string extends $S
-  ? ErrorStringNotLiteral
-  : [AnalyzeLiteral<$S>] extends [never]
-    ? ErrorMalformedLiteral<$S>
-    : [FromTargetLiteral<$S, $Target>] extends [never]
-      ? ErrorPathValidation<$Target, $S>
-      : $S
+export type LiteralGuard<$S extends string, $Target> =
+  Types.IsLiteral<$S> extends true
+    ? [AnalyzeLiteral<$S>] extends [never]
+      ? ErrorMalformedLiteral<$S>
+      : [FromTargetLiteral<$S, $Target>] extends [never]
+        ? ErrorPathValidation<$Target, $S>
+        : $S
+    : ErrorStringNotLiteral

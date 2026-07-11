@@ -30,7 +30,9 @@ const unionLiteralCases = [
 
 describe('mk', () => {
   it.each(unionLiteralCases)('mk(%s) agrees with union decode', (input) => {
-    expect(Path.mk(input)._tag).toBe(S.decodeSync(Path.Any)(input)._tag)
+    // The table callback is a finite union, deliberately outside mk's
+    // singleton-literal surface; erase it only to exercise the runtime law.
+    expect(Path.mk(input as any)._tag).toBe(S.decodeSync(Path.Any)(input)._tag)
   })
 
   it('types: literal shapes infer precise variants; dynamic strings are rejected', () => {
@@ -111,11 +113,27 @@ describe('audit round 3: literal guards reject open string patterns', () => {
     type $ExtensionExpected =
       Types.StaticError<'Extension.mk requires a string literal. Decode dynamic strings through Path.Extension.'>
 
-    // @ts-expect-error RED-PIN: open path templates currently evade the literal guard
     expectTypeOf<LiteralCore.LiteralInput<`./${string}`>>().toEqualTypeOf<$PathExpected>()
-    // @ts-expect-error RED-PIN: open segment templates currently evade the literal guard
     expectTypeOf<SegmentLiteralGuard<`name-${string}`>>().toEqualTypeOf<$SegmentExpected>()
-    // @ts-expect-error RED-PIN: open extension templates currently evade the literal guard
     expectTypeOf<ExtensionLiteralGuard<`.${string}`>>().toEqualTypeOf<$ExtensionExpected>()
+
+    const openRelative = './src/' as `./${string}`
+    const openAbsolute = '/src/' as `/${string}`
+    const intrinsic = 'SRC' as Uppercase<string>
+    const finiteUnion = './a' as './a' | './b'
+
+    const staticRejections = () => {
+      // @ts-expect-error open relative templates are not singleton literals
+      Path.mk(openRelative)
+      // @ts-expect-error target constructors reject open absolute templates
+      Path.AbsDir.mk(openAbsolute)
+      // @ts-expect-error intrinsic string patterns are not singleton literals
+      Path.mk(intrinsic)
+      // @ts-expect-error finite unions do not identify one runtime string
+      Path.mk(finiteUnion)
+      // @ts-expect-error Extension.mk rejects open templates
+      Path.Extension.mk(`.${openRelative}` as `.${string}`)
+    }
+    expect(typeof staticRejections).toBe('function')
   })
 })
