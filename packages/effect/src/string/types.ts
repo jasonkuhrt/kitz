@@ -5,23 +5,31 @@
  */
 
 /** Check if a string ends with a specific suffix. */
-export type EndsWith<$S extends string, $T extends string> = $S extends `${string}${$T}`
-  ? true
-  : false
+export type EndsWith<$S extends string, $T extends string> = string extends $S | $T
+  ? boolean
+  : $S extends `${string}${$T}`
+    ? true
+    : false
 
 /** Check if a string starts with a specific prefix. */
-export type StartsWith<$S extends string, $T extends string> = $S extends `${$T}${string}`
-  ? true
-  : false
+export type StartsWith<$S extends string, $T extends string> = string extends $S | $T
+  ? boolean
+  : $S extends `${$T}${string}`
+    ? true
+    : false
+
+type AfterLastScan<$S extends string, $D extends string, $Best extends string> = $S extends ''
+  ? $Best
+  : $S extends `${infer $Character}${infer $Rest}`
+    ? AfterLastScan<$Rest, $D, $S extends `${$D}${infer $AfterDelimiter}` ? $AfterDelimiter : $Best>
+    : $Best
 
 /** The substring after the last occurrence of a delimiter. */
 export type AfterLast<$S extends string, $D extends string> = string extends $S | $D
   ? string
   : $D extends ''
     ? ''
-    : $S extends `${string}${$D}${infer $Rest}`
-      ? AfterLast<$Rest, $D>
-      : $S
+    : AfterLastScan<$S, $D, $S>
 
 /** Recursively remove every trailing occurrence of a suffix. */
 export type RemoveTrailing<$S extends string, $Suffix extends string> = string extends $S | $Suffix
@@ -46,9 +54,32 @@ type SplitByDelimiter<
   ? SplitByDelimiter<$Rest, $D, [...$Acc, $Segment]>
   : [...$Acc, $S]
 
-/** A pure delimiter split matching `String.prototype.split`. */
-export type Split<$S extends string, $D extends string> = string extends $S | $D
-  ? string[]
-  : $D extends ''
-    ? SplitCharacters<$S>
-    : SplitByDelimiter<$S, $D>
+type Take<
+  $Tuple extends string[],
+  $Limit extends number | undefined,
+  $Acc extends string[] = [],
+> = $Limit extends undefined
+  ? $Tuple
+  : number extends $Limit
+    ? string[]
+    : $Acc['length'] extends $Limit
+      ? $Acc
+      : $Tuple extends [infer $Head extends string, ...infer $Tail extends string[]]
+        ? Take<$Tail, $Limit, [...$Acc, $Head]>
+        : $Acc
+
+/**
+ * A pure delimiter split matching `String.prototype.split`, except that an
+ * empty delimiter splits astral characters by TypeScript's template-literal
+ * code-point inference. Generic UTF-16 code-unit parity is not expressible at
+ * the type level.
+ */
+export type Split<
+  $S extends string,
+  $D extends string,
+  $Limit extends number | undefined = undefined,
+> = $Limit extends 0
+  ? []
+  : string extends $S | $D
+    ? string[]
+    : Take<$D extends '' ? SplitCharacters<$S> : SplitByDelimiter<$S, $D>, $Limit>

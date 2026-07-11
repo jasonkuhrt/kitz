@@ -5,7 +5,9 @@
  * Re-exports all of `effect/String` (value-level: `camelCase`, `split`, …) and
  * adds compile-time operators (`Split`, `EndsWith`, `StartsWith`, `AfterLast`,
  * `RemoveTrailing`) and character constants (`ZeroWidthSpace`) under the
- * same namespace.
+ * same namespace. `Split` follows `String.prototype.split` except for an empty
+ * delimiter on astral characters, where TypeScript's type level splits by code
+ * point because generic UTF-16 code-unit parity is not expressible.
  *
  * @example
  * ```ts

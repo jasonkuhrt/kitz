@@ -21,10 +21,10 @@ describe('Last', () => {
   })
 
   it('includes every possible final element of optional and rest-tailed tuples', () => {
-    // @ts-expect-error RED-PIN: optional tuple tails currently collapse to never
     expectTypeOf<Tuple.Last<readonly [1, 2?]>>().toEqualTypeOf<1 | 2>()
-    // @ts-expect-error RED-PIN: rest-tailed tuples currently collapse to never
+    expectTypeOf<Tuple.Last<readonly [undefined?]>>().toEqualTypeOf<undefined>()
     expectTypeOf<Tuple.Last<readonly [1, ...2[]]>>().toEqualTypeOf<1 | 2>()
+    expectTypeOf<Tuple.Last<readonly string[]>>().toEqualTypeOf<string>()
   })
 
   it('rejects non-array inputs', () => {

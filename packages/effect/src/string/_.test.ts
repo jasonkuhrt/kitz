@@ -26,11 +26,11 @@ describe('EndsWith / StartsWith', () => {
   })
 
   it('widens unknown operands to boolean like the runtime methods', () => {
-    // @ts-expect-error RED-PIN: a non-literal receiver currently resolves to false
     expectTypeOf<String.EndsWith<string, 'x'>>().toEqualTypeOf<boolean>()
+    expectTypeOf<String.EndsWith<'x', string>>().toEqualTypeOf<boolean>()
     expectTypeOf('value'.endsWith('x')).toEqualTypeOf<boolean>()
-    // @ts-expect-error RED-PIN: a non-literal receiver currently resolves to false
     expectTypeOf<String.StartsWith<string, 'x'>>().toEqualTypeOf<boolean>()
+    expectTypeOf<String.StartsWith<'x', string>>().toEqualTypeOf<boolean>()
     expectTypeOf('value'.startsWith('x')).toEqualTypeOf<boolean>()
   })
 })
@@ -66,7 +66,6 @@ describe('AfterLast', () => {
   })
 
   it('uses the last overlapping delimiter occurrence', () => {
-    // @ts-expect-error RED-PIN: the type currently selects the first overlap
     expectTypeOf<String.AfterLast<'aaa', 'aa'>>().toEqualTypeOf<''>()
     expect(afterLast('aaa', 'aa')).toBe('')
   })
@@ -87,16 +86,25 @@ describe('Split', () => {
     expect('abc'.split('')).toEqual(['a', 'b', 'c'])
     expectTypeOf<String.Split<'', ''>>().toEqualTypeOf<[]>()
     expect(''.split('')).toEqual([])
+  })
 
-    // @ts-expect-error RED-PIN: type-level char split currently uses code points
-    expectTypeOf<String.Split<'😀', ''>>().toEqualTypeOf<['\ud83d', '\ude00']>()
-    expect('😀'.split('')).toEqual(['\ud83d', '\ude00'])
+  it('pins the intentional astral-character divergence', () => {
+    // TypeScript template-literal inference splits by code point; JavaScript
+    // String.prototype.split('') returns UTF-16 code units.
+    expectTypeOf<String.Split<'🚀', ''>>().toEqualTypeOf<['🚀']>()
+    expect('🚀'.split('')).toEqual(['\ud83d', '\ude80'])
   })
 
   it('matches String.prototype.split limit semantics', () => {
-    // @ts-expect-error RED-PIN: Split has no limit parameter yet
     expectTypeOf<String.Split<'a/b', '/', 1>>().toEqualTypeOf<['a']>()
     expect('a/b'.split('/', 1)).toEqual(['a'])
+    expectTypeOf<String.Split<'abc', '', 1>>().toEqualTypeOf<['a']>()
+    expect('abc'.split('', 1)).toEqual(['a'])
+    expectTypeOf<String.Split<'a/b', '/', 0>>().toEqualTypeOf<[]>()
+    expect('a/b'.split('/', 0)).toEqual([])
+    expectTypeOf<String.Split<'a/b', '/', 3>>().toEqualTypeOf<['a', 'b']>()
+    expect('a/b'.split('/', 3)).toEqual(['a', 'b'])
+    expectTypeOf<String.Split<'a/b', '/', number>>().toEqualTypeOf<string[]>()
   })
 
   it('widens non-literal inputs', () => {
