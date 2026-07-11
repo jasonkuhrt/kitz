@@ -35,18 +35,21 @@ import { Schema as S } from 'effect'
  * Schema.toArbitrary(NameRealistic) // ~20/21 realistic names, full space retained
  * ```
  */
-type ArbitraryHints = S.Annotations.ToArbitrary.Filter &
-  (
-    | {
-        readonly constraint: NonNullable<S.Annotations.ToArbitrary.Filter['constraint']>
-      }
-    | {
-        readonly candidate: NonNullable<S.Annotations.ToArbitrary.Filter['candidate']>
-      }
-  )
+export declare namespace withArbitraryHints {
+  /** Options for biasing or constraining a schema's derived arbitrary. */
+  export type Options = S.Annotations.ToArbitrary.Filter &
+    (
+      | {
+          readonly constraint: NonNullable<S.Annotations.ToArbitrary.Filter['constraint']>
+        }
+      | {
+          readonly candidate: NonNullable<S.Annotations.ToArbitrary.Filter['candidate']>
+        }
+    )
+}
 
 export const withArbitraryHints =
-  (hints: ArbitraryHints) =>
+  (hints: withArbitraryHints.Options) =>
   <$Sch extends S.Top>(self: $Sch): $Sch['Rebuild'] =>
     hints.constraint === undefined && hints.candidate === undefined
       ? (self as any)

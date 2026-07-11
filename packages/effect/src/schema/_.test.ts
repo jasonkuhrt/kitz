@@ -107,7 +107,6 @@ describe('withArbitraryHints', () => {
   it('owns a public options type', () => {
     type $Expected = Parameters<typeof withArbitraryHints>[0]
 
-    // @ts-expect-error RED-PIN: withArbitraryHints.Options is not exported yet
     expectTypeOf<Schema.withArbitraryHints.Options>().toEqualTypeOf<$Expected>()
   })
 })
