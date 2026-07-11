@@ -26,7 +26,8 @@
   },
   "files": [
     "build",
-    "src"
+    "src",
+    "!src/**/*.test.ts"
   ],
   "type": "module",
   "sideEffects": false,
@@ -50,7 +51,7 @@
     "access": "public"
   },
   "scripts": {
-    "prepack": "tsc -b --force tsconfig.production.json"
+    "prepack": "node --eval \"require('node:fs').rmSync('build', { recursive: true, force: true })\" && tsc -b --force tsconfig.production.json"
   },
   "devDependencies": {
     "@kitz/vitest": "workspace:*",
