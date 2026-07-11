@@ -3,6 +3,7 @@ import type { FromTargetLiteral, LiteralGuard } from '../core/literal.js'
 import { Any } from '../models/Any.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
+import { Ascent } from '../models/arbitrary.js'
 import { Dir } from '../models/Dir.js'
 import { Rel } from '../models/Rel.js'
 import { RelDir } from '../models/RelDir.js'
@@ -59,9 +60,13 @@ const joinBinary: {
           : AbsDir.make({ segments }),
       RelDir: (relDir) => {
         const ascent = relDir.ascent + remainingAscent
+        const checkedAscent = Ascent.make(ascent)
         return rel._tag === 'RelFile'
-          ? RelFile.make({ dir: RelDir.make({ ascent, segments }), fileName: rel.fileName })
-          : RelDir.make({ ascent, segments })
+          ? RelFile.make({
+              dir: RelDir.make({ ascent: checkedAscent, segments }),
+              fileName: rel.fileName,
+            })
+          : RelDir.make({ ascent: checkedAscent, segments })
       },
     }),
   )

@@ -4,6 +4,7 @@ import type { LiteralGuard } from '../core/literal.js'
 import { relativeToRelValue } from '../core/relativeTo.js'
 import { commonSegmentPrefix } from '../core/segments.js'
 import { withLiteralStatics } from '../core/statics.js'
+import { Ascent } from './arbitrary.js'
 import { RelDir } from './RelDir.js'
 import { RelFile } from './RelFile.js'
 
@@ -49,7 +50,10 @@ class Rel_ extends withLiteralStatics(
             ascent: aValue.ascent,
             segments: commonSegmentPrefix(aValue.segments, bValue.segments),
           })
-        : RelDir.make({ ascent: Math.max(aValue.ascent, bValue.ascent), segments: [] })
+        : RelDir.make({
+            ascent: Ascent.make(Math.max(aValue.ascent, bValue.ascent)),
+            segments: [],
+          })
     },
   )
 

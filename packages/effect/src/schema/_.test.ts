@@ -114,10 +114,19 @@ describe('withArbitraryHints', () => {
 
 describe('NaturalInt', () => {
   it('carries its non-negative invariant in the Type', () => {
-    type $RejectsNegative = -1 extends Schema.NaturalInt ? false : true
+    type $NaturalInt = Schema.NaturalInt
+    type $RejectsNegative = -1 extends $NaturalInt ? false : true
 
-    // @ts-expect-error RED-PIN: NaturalInt currently collapses to number
     expectTypeOf<$RejectsNegative>().toEqualTypeOf<true>()
-    expectTypeOf<Types.Equals<Schema.NaturalInt, number>>().toEqualTypeOf<true>()
+    expectTypeOf<Types.Equals<$NaturalInt, number>>().toEqualTypeOf<false>()
+    expectTypeOf<$NaturalInt>().toEqualTypeOf<typeof Schema.NaturalInt.Type>()
+    expectTypeOf(Schema.NaturalInt.make(0)).toEqualTypeOf<$NaturalInt>()
+
+    const typeChecks = () => {
+      // @ts-expect-error negative numbers are not NaturalInt values
+      const invalid: $NaturalInt = -1
+      return invalid
+    }
+    expectTypeOf(typeChecks).toBeFunction()
   })
 })

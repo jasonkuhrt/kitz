@@ -1,10 +1,13 @@
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Option, Schema as S } from 'effect'
+import { NaturalInt } from '../../schema/NaturalInt.js'
 import { Types } from '../../types/_.js'
 import * as LiteralCore from '../core/literal.js'
 import type { ExtensionLiteralGuard } from '../models/Extension.js'
 import type { SegmentLiteralGuard } from '../models/segment.js'
 import * as Path from '../__.js'
+
+const natural = (value: number) => NaturalInt.make(value)
 
 const unionLiteralCases = [
   'a/../b',
@@ -94,7 +97,7 @@ describe('make', () => {
       extension: Option.some(Path.Extension.make('.ts')),
     })
     const absDir = Path.AbsDir.make({ segments: [segment] })
-    const relDir = Path.RelDir.make({ ascent: 1, segments: [segment] })
+    const relDir = Path.RelDir.make({ ascent: natural(1), segments: [segment] })
     const absFile = Path.AbsFile.make({ dir: absDir, fileName }, { disableChecks: false })
     const relFile = Path.RelFile.make({ dir: relDir, fileName }, { disableChecks: false })
 

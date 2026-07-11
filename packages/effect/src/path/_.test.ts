@@ -19,6 +19,7 @@ import {
 } from 'effect'
 import * as PrimaryKey from 'effect/PrimaryKey'
 import { FastCheck } from 'effect/testing'
+import { NaturalInt } from '../schema/NaturalInt.js'
 import * as LiteralCore from './core/literal.js'
 import { Types } from '../types/_.js'
 import { analyze } from './analyzer.js'
@@ -55,6 +56,7 @@ const file = FastCheck.oneof(arb.AbsFile, arb.RelFile)
 const encodeAny = S.encodeSync(Path.Any)
 const extension = (value: string) => S.decodeSync(Path.Extension)(value)
 const fileName = (value: string) => S.decodeSync(Path.FileName)(value)
+const natural = (value: number) => NaturalInt.make(value)
 
 const someAbsFile = Path.AbsFile.make({
   dir: Path.AbsDir.make({ segments: ['home', 'src'].map(Path.segment) }),
@@ -62,10 +64,10 @@ const someAbsFile = Path.AbsFile.make({
 })
 const someAbsDir = Path.AbsDir.make({ segments: ['home'].map(Path.segment) })
 const someRelFile = Path.RelFile.make({
-  dir: Path.RelDir.make({ ascent: 0, segments: ['src'].map(Path.segment) }),
+  dir: Path.RelDir.make({ ascent: natural(0), segments: ['src'].map(Path.segment) }),
   fileName: Path.FileName.make({ stem: 'index', extension: Option.some('.ts') }),
 })
-const someRelDir = Path.RelDir.make({ ascent: 0, segments: ['src'].map(Path.segment) })
+const someRelDir = Path.RelDir.make({ ascent: natural(0), segments: ['src'].map(Path.segment) })
 
 // ─── codec: the string ⇄ value contract, parameterized over every model ───
 
@@ -409,7 +411,7 @@ describe('.parent', () => {
 
     FastCheck.assert(
       FastCheck.property(FastCheck.integer({ min: 0, max: 8 }), (ascent) => {
-        const relRoot = Path.RelDir.make({ ascent, segments: [] })
+        const relRoot = Path.RelDir.make({ ascent: natural(ascent), segments: [] })
         expect(relRoot.parent.ascent).toBe(ascent + 1)
         expect(relRoot.parent.segments).toEqual([])
       }),
@@ -503,7 +505,7 @@ describe('.isAnchor / .depth', () => {
   it('anchor statics are the named dir anchors', () => {
     expect(Path.AbsDir.anchor.isAnchor).toBe(true)
     expect(Path.RelDir.anchor.isAnchor).toBe(true)
-    expect(Path.RelDir.make({ ascent: 2, segments: [] }).isAnchor).toBe(false)
+    expect(Path.RelDir.make({ ascent: natural(2), segments: [] }).isAnchor).toBe(false)
   })
 
   it('depth is the segment count (files exclude the filename)', () => {
@@ -526,7 +528,7 @@ describe('.asDir / .asFile', () => {
     )
 
     expect(Path.AbsDir.make({ segments: [] }).asFile).toEqual(Option.none())
-    expect(Path.RelDir.make({ ascent: 0, segments: [] }).asFile).toEqual(Option.none())
+    expect(Path.RelDir.make({ ascent: natural(0), segments: [] }).asFile).toEqual(Option.none())
   })
 })
 
@@ -732,12 +734,14 @@ describe('commonAncestor', () => {
       Path.AbsFile.make('/libs/lib.ts'),
     )
     const relShared = Path.Rel.commonAncestor(
-      Path.RelDir.make({ ascent: 0, segments: ['a'].map(Path.segment) }),
-      Path.RelDir.make({ ascent: 2, segments: [] }),
+      Path.RelDir.make({ ascent: natural(0), segments: ['a'].map(Path.segment) }),
+      Path.RelDir.make({ ascent: natural(2), segments: [] }),
     )
 
     expect(Equal.equals(absShared, Path.AbsDir.anchor)).toBe(true)
-    expect(Equal.equals(relShared, Path.RelDir.make({ ascent: 2, segments: [] }))).toBe(true)
+    expect(Equal.equals(relShared, Path.RelDir.make({ ascent: natural(2), segments: [] }))).toBe(
+      true,
+    )
   })
 
   it('returns the deepest self ancestor for same-path inputs', () => {
@@ -840,7 +844,7 @@ describe('setParts', () => {
       fileName: fileName('archive.tar.gz'),
     })
     const readme = Path.RelFile.make({
-      dir: Path.RelDir.make({ ascent: 1, segments: ['docs'].map(Path.segment) }),
+      dir: Path.RelDir.make({ ascent: natural(1), segments: ['docs'].map(Path.segment) }),
       fileName: fileName('README.md'),
     })
 
@@ -887,7 +891,7 @@ describe('setParts', () => {
 
   it('dir and filename axes compose in one call', () => {
     const targetDir = Path.RelDir.make({
-      ascent: 2,
+      ascent: natural(2),
       segments: ['pkg'].map(Path.segment),
     })
     const moved = Path.RelFile.setParts(someRelFile, { dir: targetDir, stem: 'renamed' })

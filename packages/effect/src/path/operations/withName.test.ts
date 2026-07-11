@@ -1,7 +1,9 @@
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Option, pipe, Schema as S } from 'effect'
+import { NaturalInt } from '../../schema/NaturalInt.js'
 import * as Path from '../__.js'
 
+const natural = (value: number) => NaturalInt.make(value)
 const someAbsDir = S.decodeSync(Path.AbsDir)('/home/')
 const someRelDir = S.decodeSync(Path.RelDir)('./src/')
 
@@ -28,7 +30,7 @@ describe('withName', () => {
       Option.some(Path.AbsDir.make({ segments: ['var'].map(Path.segment) })),
     )
     expect(pipe(someRelDir, Path.withName(Path.segment('lib')))).toEqual(
-      Option.some(Path.RelDir.make({ ascent: 0, segments: ['lib'].map(Path.segment) })),
+      Option.some(Path.RelDir.make({ ascent: natural(0), segments: ['lib'].map(Path.segment) })),
     )
   })
 
@@ -37,7 +39,7 @@ describe('withName', () => {
       Option.none(),
     )
     expect(
-      Path.withName(Path.RelDir.make({ ascent: 2, segments: [] }), Path.segment('src')),
+      Path.withName(Path.RelDir.make({ ascent: natural(2), segments: [] }), Path.segment('src')),
     ).toEqual(Option.none())
   })
 

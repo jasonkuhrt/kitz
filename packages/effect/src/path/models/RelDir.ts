@@ -66,7 +66,7 @@ class RelDir__ extends S.TaggedClass<RelDir__>('@kitz/effect/Path/RelDir')('RelD
   get parent(): RelDir {
     const parent = parentOf(this.ascent, this.segments)
     return RelDir_.make({
-      ascent: Math.min(parent.ascent, maxAscent),
+      ascent: Ascent.make(Math.min(parent.ascent, maxAscent)),
       segments: parent.segments,
     })
   }
@@ -140,13 +140,19 @@ export class RelDir_ extends withLiteralStatics(
   ),
 ) {
   /** The relative anchor `./` — the identity of `join`. */
-  static readonly anchor: typeof RelDir_.Type = RelDir_.make({ ascent: 0, segments: [] })
+  static readonly anchor: typeof RelDir_.Type = RelDir_.make({
+    ascent: Ascent.make(0),
+    segments: [],
+  })
 
   /**
    * The named parent-directory path `../`. This class static is a constant;
    * the instance getter `dir.parent` navigates upward from `dir`.
    */
-  static readonly parent: typeof RelDir_.Type = RelDir_.make({ ascent: 1, segments: [] })
+  static readonly parent: typeof RelDir_.Type = RelDir_.make({
+    ascent: Ascent.make(1),
+    segments: [],
+  })
 
   /**
    * Decode/encode paths as flat structured JSON instead of strings.
@@ -162,7 +168,7 @@ export class RelDir_ extends withLiteralStatics(
   }).pipe(
     S.decodeTo(RelDir__, {
       encode: SchemaGetter.transform((encoded) => ({
-        ascent: encoded.ascent,
+        ascent: Ascent.make(encoded.ascent),
         segments: encoded.segments.map(segment),
       })),
       decode: SchemaGetter.transform((decoded) => ({

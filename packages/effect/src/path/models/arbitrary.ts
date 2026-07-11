@@ -18,7 +18,7 @@ export const maxSegments = 6
 export const Ascent = NaturalInt.pipe(
   S.check(S.isLessThanOrEqualTo(maxAscent)),
   S.annotate({
-    toArbitrary: () => (fc) => fc.integer({ min: 0, max: maxGeneratedAscent }),
+    toArbitrary: () => (fc) => fc.integer({ min: 0, max: maxGeneratedAscent }).map(NaturalInt.make),
   }),
 )
 

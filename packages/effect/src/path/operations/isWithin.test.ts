@@ -1,8 +1,10 @@
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Equal, Schema as S } from 'effect'
 import { FastCheck } from 'effect/testing'
+import { NaturalInt } from '../../schema/NaturalInt.js'
 import * as Path from '../__.js'
 
+const natural = (value: number) => NaturalInt.make(value)
 const arb = {
   Any: S.toArbitrary(Path.Any),
   AbsDir: S.toArbitrary(Path.AbsDir),
@@ -24,29 +26,34 @@ describe('isWithin', () => {
   it.each([
     [
       './a within ./',
-      Path.RelDir.make({ ascent: 0, segments: ['a'].map(Path.segment) }),
+      Path.RelDir.make({ ascent: natural(0), segments: ['a'].map(Path.segment) }),
       Path.RelDir.anchor,
       true,
     ],
     [
       './a within ../',
-      Path.RelDir.make({ ascent: 0, segments: ['a'].map(Path.segment) }),
-      Path.RelDir.make({ ascent: 1, segments: [] }),
+      Path.RelDir.make({ ascent: natural(0), segments: ['a'].map(Path.segment) }),
+      Path.RelDir.make({ ascent: natural(1), segments: [] }),
       true,
     ],
     [
       '../x within ../../',
-      Path.RelDir.make({ ascent: 1, segments: ['x'].map(Path.segment) }),
-      Path.RelDir.make({ ascent: 2, segments: [] }),
+      Path.RelDir.make({ ascent: natural(1), segments: ['x'].map(Path.segment) }),
+      Path.RelDir.make({ ascent: natural(2), segments: [] }),
       true,
     ],
     [
       '../a within ../b',
-      Path.RelDir.make({ ascent: 1, segments: ['a'].map(Path.segment) }),
-      Path.RelDir.make({ ascent: 1, segments: ['b'].map(Path.segment) }),
+      Path.RelDir.make({ ascent: natural(1), segments: ['a'].map(Path.segment) }),
+      Path.RelDir.make({ ascent: natural(1), segments: ['b'].map(Path.segment) }),
       false,
     ],
-    ['../../ within ./', Path.RelDir.make({ ascent: 2, segments: [] }), Path.RelDir.anchor, false],
+    [
+      '../../ within ./',
+      Path.RelDir.make({ ascent: natural(2), segments: [] }),
+      Path.RelDir.anchor,
+      false,
+    ],
     [
       '/apps/ within /',
       Path.AbsDir.make({ segments: ['apps'].map(Path.segment) }),

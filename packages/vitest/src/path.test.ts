@@ -1,9 +1,11 @@
 import * as Path from '@kitz/effect/Path'
+import * as Schema from '@kitz/effect/Schema'
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
 
+const natural = (value: number) => Schema.NaturalInt.make(value)
 const absDir = Path.AbsDir.make({ segments: ['home'].map(Path.segment) })
 const absFile = Path.AbsFile.make('/home/index.ts')
-const relDir = Path.RelDir.make({ ascent: 0, segments: ['src'].map(Path.segment) })
+const relDir = Path.RelDir.make({ ascent: natural(0), segments: ['src'].map(Path.segment) })
 const relFile = Path.RelFile.make('./src/index.ts')
 
 const messageOf = (assertion: () => void): string => {

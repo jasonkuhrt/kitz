@@ -1,9 +1,11 @@
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Option, Schema as S } from 'effect'
 import { FastCheck } from 'effect/testing'
+import { NaturalInt } from '../../schema/NaturalInt.js'
 import { Types } from '../../types/_.js'
 import * as Path from '../__.js'
 
+const natural = (value: number) => NaturalInt.make(value)
 const arbSegment = S.toArbitrary(Path.Segment)
 const arbFileName = S.toArbitrary(Path.FileName)
 const arbAbsDir = S.toArbitrary(Path.AbsDir)
@@ -18,14 +20,14 @@ const abs = FastCheck.oneof(arbAbsDir, arbAbsFile)
 const rel = FastCheck.oneof(arbRelDir, arbRelFile)
 const dir = FastCheck.oneof(arbAbsDir, arbRelDir)
 const relDirAscent0 = FastCheck.array(arbSegment, { maxLength: 6 }).map((segments) =>
-  Path.RelDir.make({ ascent: 0, segments }),
+  Path.RelDir.make({ ascent: natural(0), segments }),
 )
 const relFileAscent0 = FastCheck.record({
   segments: FastCheck.array(arbSegment, { maxLength: 6 }),
   fileName: arbFileName,
 }).map((input) =>
   Path.RelFile.make({
-    dir: Path.RelDir.make({ ascent: 0, segments: input.segments }),
+    dir: Path.RelDir.make({ ascent: natural(0), segments: input.segments }),
     fileName: input.fileName,
   }),
 )

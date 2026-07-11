@@ -103,7 +103,7 @@ class RelFile__ extends S.TaggedClass<RelFile__>('@kitz/effect/Path/RelFile')('R
   }
 
   /** Leading parent-traversal count delegated from the containing dir. */
-  get ascent(): number {
+  get ascent(): typeof Ascent.Type {
     return this.dir.ascent
   }
 
