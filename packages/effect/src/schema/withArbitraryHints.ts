@@ -15,6 +15,8 @@ import { Schema as S } from 'effect'
  * output is still validated by every filter on the schema, so an invalid
  * candidate costs generation efficiency, never validity. Validation, JSON
  * Schema output, and `toArbitrary` report diagnostics are unaffected by the
+ * carrier filter. At least one of `constraint` or `candidate` is required;
+ * unchecked empty input returns the original schema without installing a
  * carrier filter.
  *
  * Because the variant is an ordinary schema value, the distribution composes:
@@ -33,7 +35,19 @@ import { Schema as S } from 'effect'
  * Schema.toArbitrary(NameRealistic) // ~20/21 realistic names, full space retained
  * ```
  */
+type ArbitraryHints = S.Annotations.ToArbitrary.Filter &
+  (
+    | {
+        readonly constraint: NonNullable<S.Annotations.ToArbitrary.Filter['constraint']>
+      }
+    | {
+        readonly candidate: NonNullable<S.Annotations.ToArbitrary.Filter['candidate']>
+      }
+  )
+
 export const withArbitraryHints =
-  (hints: S.Annotations.ToArbitrary.Filter) =>
+  (hints: ArbitraryHints) =>
   <$Sch extends S.Top>(self: $Sch): $Sch['Rebuild'] =>
-    S.check<$Sch>(S.makeFilter<$Sch['Type']>(() => true, { arbitrary: hints }))(self)
+    hints.constraint === undefined && hints.candidate === undefined
+      ? (self as any)
+      : S.check<$Sch>(S.makeFilter<$Sch['Type']>(() => true, { arbitrary: hints }))(self)

@@ -54,9 +54,21 @@ describe('withArbitraryHints', () => {
   })
 
   it('is identity when no hints reach it at runtime', () => {
-    const Unchanged = Base.pipe(withArbitraryHints({}))
+    const staticRejection = () => {
+      // @ts-expect-error withArbitraryHints requires at least one arbitrary hint
+      withArbitraryHints({})
+      // @ts-expect-error an undefined constraint is not an arbitrary hint
+      withArbitraryHints({ constraint: undefined })
+      // @ts-expect-error an undefined candidate is not an arbitrary hint
+      withArbitraryHints({ candidate: undefined })
+    }
+    const Unchanged = Base.pipe(withArbitraryHints({} as any))
 
+    expect(typeof staticRejection).toBe('function')
     expect(Unchanged).toBe(Base)
+    expect(S.toArbitrary(Unchanged, { report: true }).report).toEqual(
+      S.toArbitrary(Base, { report: true }).report,
+    )
   })
 
   it('candidate output is validated by the schema filters', () => {
