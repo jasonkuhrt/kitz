@@ -42,18 +42,40 @@ describe('relativeTo', () => {
       Types.StaticError<'Path.relativeTo requires a path narrowed to one group. Narrow with Path.Abs.is or Path.Rel.is first.'>
     type $WideBase = Parameters<typeof Path.relativeTo<Path.Any, Path.Dir>>[1]
 
-    // @ts-expect-error RED-PIN: a widened Any path currently accepts the full Dir union
     expectTypeOf<$WideBase>().toEqualTypeOf<$Expected>()
   })
 
   it('offers monomorphic Abs and Rel producer statics', () => {
-    // @ts-expect-error RED-PIN: Abs.relativeTo is not attached yet
-    const abs = Path.Abs.relativeTo('/workspace/src/index.ts', '/workspace/')
-    // @ts-expect-error RED-PIN: Rel.relativeTo is not attached yet
-    const rel = Path.Rel.relativeTo('../workspace/src/', '../workspace/')
+    const absDirect = Path.Abs.relativeTo('/workspace/src/index.ts', '/workspace/')
+    const absCurried = Path.Abs.relativeTo('/workspace/')('/workspace/src/index.ts')
+    const relDirect = Path.Rel.relativeTo('../workspace/src/', '../workspace/')
+    const relCurried = Path.Rel.relativeTo('../workspace/')('../workspace/src/')
 
-    expect(abs).toEncodeTo('./src/index.ts')
-    expect(rel).toEqual(Option.some(Path.RelDir.mk('./src/')))
+    expectTypeOf(absDirect).toEqualTypeOf<Path.Rel>()
+    expectTypeOf(absCurried).toEqualTypeOf<Path.Rel>()
+    expectTypeOf(relDirect).toEqualTypeOf<Option.Option<Path.Rel>>()
+    expectTypeOf(relCurried).toEqualTypeOf<Option.Option<Path.Rel>>()
+    expect(absDirect).toEncodeTo('./src/index.ts')
+    expect(absCurried).toEqual(absDirect)
+    expect(relDirect).toEqual(Option.some(Path.RelDir.mk('./src/')))
+    expect(relCurried).toEqual(relDirect)
+  })
+
+  it('producer statics agree with the unified operation', () => {
+    FastCheck.assert(
+      FastCheck.property(abs, arbAbsDir, (target, base) => {
+        const expected = Path.relativeTo(target, base)
+        expect(Path.Abs.relativeTo(target, base)).toEqual(expected)
+        expect(Path.Abs.relativeTo(base)(target)).toEqual(expected)
+      }),
+    )
+    FastCheck.assert(
+      FastCheck.property(rel, arbRelDir, (target, base) => {
+        const expected = Path.relativeTo(target, base)
+        expect(Path.Rel.relativeTo(target, base)).toEqual(expected)
+        expect(Path.Rel.relativeTo(base)(target)).toEqual(expected)
+      }),
+    )
   })
 
   it('literal duality obeys the desugar law in both call shapes', () => {
@@ -159,6 +181,19 @@ describe('relativeTo', () => {
       // @ts-expect-error the curried path value must match the base value's group
       Path.relativeTo(someRelDir)(someAbsFile)
     }
+    const widenedRejections = (wideAny: Path.Any, wideFile: Path.File, wideDir: Path.Dir) => {
+      // @ts-expect-error a widened Any target must be narrowed to Abs or Rel first
+      Path.relativeTo(wideAny, wideDir)
+      // @ts-expect-error a widened File target must be narrowed to Abs or Rel first
+      Path.relativeTo(wideFile, wideDir)
+      // @ts-expect-error a widened Dir target must be narrowed to Abs or Rel first
+      Path.relativeTo(wideDir, wideDir)
+      // @ts-expect-error a widened base must be narrowed before the curried call
+      Path.relativeTo(wideDir)
+      // @ts-expect-error a widened callback target must be narrowed to Abs or Rel first
+      Path.relativeTo(someAbsDir)(wideAny)
+    }
     expect(typeof staticRejections).toBe('function')
+    expect(typeof widenedRejections).toBe('function')
   })
 })

@@ -1,6 +1,7 @@
-import { Function as Fn, Schema as S } from 'effect'
+import { Function as Fn, Option, Schema as S } from 'effect'
 import { withStatics } from '../../schema/withStatics.js'
 import type { LiteralGuard } from '../core/literal.js'
+import { relativeToRelValue } from '../core/relativeTo.js'
 import { commonSegmentPrefix } from '../core/segments.js'
 import { withLiteralStatics } from '../core/statics.js'
 import { RelDir } from './RelDir.js'
@@ -51,6 +52,38 @@ class Rel_ extends withLiteralStatics(
             segments: commonSegmentPrefix(aValue.segments, bValue.segments),
           })
         : RelDir.make({ ascent: Math.max(aValue.ascent, bValue.ascent), segments: [] })
+    },
+  )
+
+  /**
+   * Express a relative path relative to a relative base directory. Returns
+   * `None` when the target has a shallower unknown anchor than the base. Dual:
+   * `Rel.relativeTo(path, base)` or `Rel.relativeTo(base)(path)`.
+   */
+  static readonly relativeTo: {
+    <
+      const $Path extends typeof Rel_.Type | string,
+      const $Base extends typeof RelDir.Type | string,
+    >(
+      path: $Path extends string ? LiteralGuard<$Path, typeof Rel_.Type> : $Path,
+      base: $Base extends string ? LiteralGuard<$Base, typeof RelDir.Type> : $Base,
+    ): Option.Option<typeof Rel_.Type>
+    <const $Base extends typeof RelDir.Type | string>(
+      base: $Base extends string ? LiteralGuard<$Base, typeof RelDir.Type> : $Base,
+    ): <const $Path extends typeof Rel_.Type | string>(
+      path: $Path extends string ? LiteralGuard<$Path, typeof Rel_.Type> : $Path,
+    ) => Option.Option<typeof Rel_.Type>
+  } = Fn.dual(
+    2,
+    (
+      path: typeof Rel_.Type | string,
+      base: typeof RelDir.Type | string,
+    ): Option.Option<typeof Rel_.Type> => {
+      const pathValue: typeof Rel_.Type =
+        typeof path === 'string' ? S.decodeSync(RelTaggedUnion)(path) : path
+      const baseValue: typeof RelDir.Type =
+        typeof base === 'string' ? S.decodeSync(RelDir)(base) : base
+      return relativeToRelValue(pathValue, baseValue)
     },
   )
 }

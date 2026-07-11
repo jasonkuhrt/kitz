@@ -1,10 +1,12 @@
 import { Function as Fn, Schema as S } from 'effect'
 import { withStatics } from '../../schema/withStatics.js'
 import type { LiteralGuard } from '../core/literal.js'
+import { relativeToAbsValue } from '../core/relativeTo.js'
 import { commonSegmentPrefix } from '../core/segments.js'
 import { withLiteralStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
 import { AbsFile } from './AbsFile.js'
+import type { Rel } from './Rel.js'
 
 /**
  * `Abs` — any absolute path (`AbsFile | AbsDir`), as a `string` ⇄ value codec.
@@ -48,6 +50,32 @@ class Abs_ extends withLiteralStatics(
       return AbsDir.make({ segments: commonSegmentPrefix(aValue.segments, bValue.segments) })
     },
   )
+
+  /**
+   * Express an absolute path relative to an absolute base directory. Total and
+   * always produces a relative path. Dual: `Abs.relativeTo(path, base)` or
+   * `Abs.relativeTo(base)(path)`.
+   */
+  static readonly relativeTo: {
+    <
+      const $Path extends typeof Abs_.Type | string,
+      const $Base extends typeof AbsDir.Type | string,
+    >(
+      path: $Path extends string ? LiteralGuard<$Path, typeof Abs_.Type> : $Path,
+      base: $Base extends string ? LiteralGuard<$Base, typeof AbsDir.Type> : $Base,
+    ): Rel
+    <const $Base extends typeof AbsDir.Type | string>(
+      base: $Base extends string ? LiteralGuard<$Base, typeof AbsDir.Type> : $Base,
+    ): <const $Path extends typeof Abs_.Type | string>(
+      path: $Path extends string ? LiteralGuard<$Path, typeof Abs_.Type> : $Path,
+    ) => Rel
+  } = Fn.dual(2, (path: typeof Abs_.Type | string, base: typeof AbsDir.Type | string): Rel => {
+    const pathValue: typeof Abs_.Type =
+      typeof path === 'string' ? S.decodeSync(AbsTaggedUnion)(path) : path
+    const baseValue: typeof AbsDir.Type =
+      typeof base === 'string' ? S.decodeSync(AbsDir)(base) : base
+    return relativeToAbsValue(pathValue, baseValue)
+  })
 }
 
 export const Abs = Abs_

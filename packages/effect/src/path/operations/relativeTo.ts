@@ -1,15 +1,15 @@
-import { Array, Function as Fn, Option, Schema as S } from 'effect'
-import { type MatchingDirGroup, type MatchingTypeGroupForDir } from '../core/group.js'
+import { Function as Fn, Option, Schema as S } from 'effect'
+import type { Types } from '../../types/_.js'
 import type { ErrorPathGroupMismatch, FromTargetLiteral, LiteralGuard } from '../core/literal.js'
-import { commonSegmentPrefix } from '../core/segments.js'
-import type { Segment } from '../models/segment.js'
-import type { Abs } from '../models/Abs.js'
+import { groupMismatchMessage } from '../core/messages.js'
+import { relativeToAbsValue, relativeToRelValue } from '../core/relativeTo.js'
+import { Abs } from '../models/Abs.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
 import { Any } from '../models/Any.js'
 import { Dir } from '../models/Dir.js'
 import { RelDir } from '../models/RelDir.js'
-import type { Rel } from '../models/Rel.js'
+import { Rel } from '../models/Rel.js'
 import { RelFile } from '../models/RelFile.js'
 
 type PathValue<$Path extends Any | string> = $Path extends string
@@ -19,6 +19,63 @@ type PathValue<$Path extends Any | string> = $Path extends string
 type BaseValue<$Base extends Dir | string> = $Base extends string
   ? FromTargetLiteral<$Base, Dir>
   : $Base
+
+type ErrorRelativeToGroupNotNarrowed =
+  Types.StaticError<'Path.relativeTo requires a path narrowed to one group. Narrow with Path.Abs.is or Path.Rel.is first.'>
+
+type GroupKind<$Path extends Any> = [$Path] extends [never]
+  ? 'Mixed'
+  : [$Path] extends [Abs]
+    ? 'Abs'
+    : [$Path] extends [Rel]
+      ? 'Rel'
+      : 'Mixed'
+
+type BaseArgument<$Base extends Dir | string, $Path extends Any> =
+  GroupKind<$Path> extends 'Abs'
+    ? [$Base] extends [string]
+      ? LiteralGuard<$Base & string, AbsDir>
+      : [$Base] extends [AbsDir]
+        ? $Base
+        : ErrorPathGroupMismatch
+    : GroupKind<$Path> extends 'Rel'
+      ? [$Base] extends [string]
+        ? LiteralGuard<$Base & string, RelDir>
+        : [$Base] extends [RelDir]
+          ? $Base
+          : ErrorPathGroupMismatch
+      : ErrorRelativeToGroupNotNarrowed
+
+type CurriedBaseArgument<$Base extends Dir | string> = [$Base] extends [string]
+  ? LiteralGuard<$Base & string, Dir>
+  : [$Base] extends [AbsDir]
+    ? $Base
+    : [$Base] extends [RelDir]
+      ? $Base
+      : ErrorRelativeToGroupNotNarrowed
+
+type PathArgument<$Path extends Any | string, $Expected extends Abs | Rel> = [$Path] extends [
+  string,
+]
+  ? LiteralGuard<$Path & string, $Expected>
+  : [$Path] extends [$Expected]
+    ? $Path
+    : GroupKind<$Path & Any> extends 'Mixed'
+      ? ErrorRelativeToGroupNotNarrowed
+      : ErrorPathGroupMismatch
+
+type PathArgumentForBase<$Path extends Any | string, $Base extends Dir | string> =
+  GroupKind<BaseValue<$Base>> extends 'Abs'
+    ? PathArgument<$Path, Abs>
+    : GroupKind<BaseValue<$Base>> extends 'Rel'
+      ? PathArgument<$Path, Rel>
+      : ErrorRelativeToGroupNotNarrowed
+
+type RelativeToResult<$Path extends Any> = [$Path] extends [Abs]
+  ? RelativeTo<$Path>
+  : [$Path] extends [Rel]
+    ? Option.Option<RelativeTo<$Path>>
+    : never
 
 /** Type-level {@link relativeTo}: maps a path variant to its relative counterpart. */
 export type RelativeTo<$A extends Abs | Rel> = $A extends AbsFile
@@ -48,9 +105,9 @@ export type RelativeTo<$A extends Abs | Rel> = $A extends AbsFile
  *   path data, so return `None`.
  *
  * Every path position accepts either a decoded value or a statically known
- * string literal; literals desugar through `Path.mk`, while dynamic strings
- * are rejected. Dual: `relativeTo(path, base)` or `relativeTo(base)` for
- * piping.
+ * string literal; literals decode through the schema for their proven group,
+ * while dynamic strings are rejected. Dual: `relativeTo(path, base)` or
+ * `relativeTo(base)` for piping.
  *
  * @example
  * ```ts
@@ -61,60 +118,31 @@ export type RelativeTo<$A extends Abs | Rel> = $A extends AbsFile
 export const relativeTo: {
   <const $Path extends Any | string, const $Base extends Dir | string>(
     path: $Path extends string ? LiteralGuard<$Path, Any> : $Path,
-    base: $Base extends string
-      ? LiteralGuard<$Base, MatchingDirGroup<PathValue<$Path>>>
-      : $Base extends MatchingDirGroup<PathValue<$Path>>
-        ? $Base
-        : ErrorPathGroupMismatch,
-  ): PathValue<$Path> extends infer $PathValue extends Any
-    ? [$PathValue] extends [Rel]
-      ? Option.Option<RelativeTo<$PathValue>>
-      : RelativeTo<$PathValue>
-    : never
+    base: BaseArgument<$Base, PathValue<$Path>>,
+  ): RelativeToResult<PathValue<$Path>>
   <const $Base extends Dir | string>(
-    base: $Base extends string ? LiteralGuard<$Base, Dir> : $Base,
+    base: CurriedBaseArgument<$Base>,
   ): <const $Path extends Any | string>(
-    path: $Path extends string
-      ? LiteralGuard<$Path, MatchingTypeGroupForDir<BaseValue<$Base>>>
-      : $Path extends MatchingTypeGroupForDir<BaseValue<$Base>>
-        ? $Path
-        : ErrorPathGroupMismatch,
-  ) => PathValue<$Path> extends infer $PathValue extends Any
-    ? [$PathValue] extends [Rel]
-      ? Option.Option<RelativeTo<$PathValue>>
-      : RelativeTo<$PathValue>
-    : never
+    path: PathArgumentForBase<$Path, $Base>,
+  ) => RelativeToResult<PathValue<$Path>>
 } = Fn.dual(2, (path: Any | string, base: Dir | string): Rel | Option.Option<Rel> => {
-  const pathValue = typeof path === 'string' ? S.decodeSync(Any)(path) : path
   const baseValue: Dir = typeof base === 'string' ? (S.decodeSync(Dir)(base) as any) : base
 
-  if (baseValue._tag === 'RelDir') return relativeToRel(pathValue as any, baseValue)
-  return relativeToAbs(pathValue as any, baseValue)
-})
-
-const makeRel = (path: Abs | Rel, ascent: number, segments: readonly Segment[]): Rel =>
-  path._tag === 'AbsFile' || path._tag === 'RelFile'
-    ? RelFile.make({ dir: RelDir.make({ ascent, segments }), fileName: path.fileName })
-    : RelDir.make({ ascent, segments })
-
-const relativeToAbs = (abs: Abs, base: AbsDir): Rel => {
-  const shared = commonSegmentPrefix(abs.segments, base.segments).length
-  const ascent = base.segments.length - shared
-  const segments = Array.drop(abs.segments, shared)
-  return makeRel(abs, ascent, segments)
-}
-
-const relativeToRel = (rel: Rel, base: RelDir): Option.Option<Rel> => {
-  if (rel.ascent < base.ascent) return Option.none()
-
-  if (rel.ascent > base.ascent) {
-    return Option.some(
-      makeRel(rel, base.segments.length + (rel.ascent - base.ascent), rel.segments),
-    )
+  if (baseValue._tag === 'RelDir') {
+    const pathValue: Rel =
+      typeof path === 'string'
+        ? S.decodeSync(Rel)(path)
+        : Rel.is(path)
+          ? path
+          : throwGroupMismatch()
+    return relativeToRelValue(pathValue, baseValue)
   }
 
-  const shared = commonSegmentPrefix(rel.segments, base.segments).length
-  const ascent = base.segments.length - shared
-  const segments = Array.drop(rel.segments, shared)
-  return Option.some(makeRel(rel, ascent, segments))
+  const pathValue: Abs =
+    typeof path === 'string' ? S.decodeSync(Abs)(path) : Abs.is(path) ? path : throwGroupMismatch()
+  return relativeToAbsValue(pathValue, baseValue)
+})
+
+const throwGroupMismatch = (): never => {
+  throw new TypeError(groupMismatchMessage)
 }
