@@ -494,3 +494,19 @@ actual deployment, but they are deliberately outside this Path-only decision.
 The Heartbeat evidence is permanent and committed at `42dd9258f4`; no further
 migration is proposed by this report. The kitz repository was not modified
 during the street test other than adding this report.
+
+## Correction — P0 dissolved by owner input (2026-07-11)
+
+The repo owner confirms Heartbeat has no Windows deployment or development
+target. Site inspection confirms every authored `path.sep` read follows one
+pattern — `split(path.sep).join('/')` / `replaceAll(path.sep, '/')` — i.e.
+defensive normalization TO POSIX that is a runtime no-op on the actual fleet,
+and both `toNamespacedPath` hits are generated Prisma vendor code that would
+never migrate.
+
+Therefore the "no host-native/Windows path algebra" finding is NOT an adoption
+blocker for Heartbeat. It inverts into a win: kitz's POSIX-canonical paths make
+all 46 insurance sites deletable. A Windows algebra should not be built without
+a real consumer (no-insurance-code). The adoption verdict's decisive gaps
+reduce to: Node-compatible `resolve`, display encoders, iterable composition,
+and the query facade — the former top-5 list minus item 1.

@@ -12,9 +12,10 @@ ceremony dominates consumer code no matter how good the path algebra is. The
 target end state for a consumer repo (Heartbeat) is a single cut banning
 `node:fs`, direct `effect/FileSystem`, `node:path`, and `effect/Path` at once,
 with `@kitz/effect` as the only path/fs surface. This document designs the fs
-half. The Path half's remaining gaps are the round-3 top-5 (native/Windows
-algebra, `resolve`, display encoders, iterable composition, query facade) and
-are tracked separately.
+half. The Path half's remaining gaps are the round-3 list as corrected by
+owner input (`resolve`, display encoders, iterable composition, query facade —
+the Windows item dissolved; see the report's correction section) and are
+tracked separately.
 
 ## Principles
 
@@ -128,16 +129,19 @@ evidence.
 - **Child-process boundary** (`cwd:`, argv paths): a future `Command`-shaped
   integration, not fs.
 - **Env/CLI input decoding**: stays schema-at-the-membrane; no fs involvement.
-- **Windows/native algebra**: Path top-5 item 1. The fs overlay inherits
-  whatever the Path algebra can represent; it does not solve host paths
-  itself. (macOS/Linux-only until that lands — same honesty as Path today.)
+- **Windows/native algebra**: explicitly NOT planned. Owner-confirmed: no
+  Heartbeat Windows target exists; every authored `path.sep` site is
+  normalize-to-POSIX insurance that kitz's POSIX-canonical paths make
+  deletable (see the round-3 report correction). No consumer, no algebra
+  (no-insurance-code). The fs overlay is POSIX-honest like Path itself.
 - **Effect version alignment in Heartbeat** (beta.78 → 97): consumer-side
   prerequisite, tracked with the cut plan, not a library concern.
 
 ## Sequencing to the Heartbeat cut
 
-1. Path top-5 (separate design/implementation track; items 3-5 are small,
-   1-2 are large).
+1. Path top-4 (separate design/implementation track; display encoders,
+   iterable composition, and the query facade are small; `resolve` is the one
+   large item).
 2. This FileSystem namespace (v1 surface above).
 3. Heartbeat effect alignment to the kitz peer line.
 4. The single-cut ban: `node:fs`, `effect/FileSystem` direct use, `node:path`,
