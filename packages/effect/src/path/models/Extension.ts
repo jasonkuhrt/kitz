@@ -55,15 +55,26 @@ export type ExtensionLiteralGuard<$S extends string> =
       ? $S
       : ErrorMalformedExtensionLiteral<$S>
     : Types.StaticError<
-        requiresLiteral<'Extension.mk', 's', 'Decode dynamic strings through Path.Extension.'>
+        requiresLiteral<
+          'Extension.make',
+          's',
+          'Use a widened string for runtime validation through Path.Extension.'
+        >
       >
 
-/** First-class file-extension schema with a literal-only constructor. */
+/** First-class file-extension schema with a literal-aware constructor. */
 export class Extension_ extends withStatics(S.asClass(ExtensionSchema)) {
-  static readonly mk = <const $Input extends string>(
-    input: ExtensionLiteralGuard<$Input>,
-  ): Extension => S.decodeSync(Extension_)(input as any)
+  /** Literals validate statically; widened strings validate at runtime. */
+  static override make<const $Input extends string>(
+    input: ExtensionMakeInput<$Input>,
+    options?: S.MakeOptions,
+  ): Extension {
+    return super.make(input as any, options)
+  }
 }
 
 export const Extension = Extension_
 export type Extension = typeof Extension_.Type
+
+type ExtensionMakeInput<$Input extends string> =
+  Types.IsLiteral<$Input> extends true ? ExtensionLiteralGuard<$Input> : $Input

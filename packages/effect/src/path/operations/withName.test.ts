@@ -7,15 +7,15 @@ const someRelDir = S.decodeSync(Path.RelDir)('./src/')
 
 describe('withName', () => {
   it('path literal duality obeys the desugar law in both call shapes', () => {
-    const absDir = Path.mk('/workspace/src/')
+    const absDir = Path.make('/workspace/src/')
     const absName = Path.segment('lib')
     const absExpected = Path.withName(absDir, absName)
 
-    expect(absExpected).toEqual(Option.some(Path.mk('/workspace/lib/')))
+    expect(absExpected).toEqual(Option.some(Path.make('/workspace/lib/')))
     expect(Path.withName('/workspace/src/', absName)).toEqual(absExpected)
     expect(Path.withName(absName)('/workspace/src/')).toEqual(absExpected)
 
-    const relDir = Path.mk('../workspace/src/')
+    const relDir = Path.make('../workspace/src/')
     const relName = Path.segment('test')
     const relExpected = Path.withName(relDir, relName)
 
@@ -78,7 +78,7 @@ describe('withName', () => {
 
 describe('finding 8: segment name positions accept validated string literals', () => {
   it('withName accepts a valid segment literal', () => {
-    const dir = Path.mk('/home/user/')
+    const dir = Path.make('/home/user/')
     const renamed = Path.withName(dir, 'renamed')
     expect(Option.map(renamed, (d) => String(d))).toEqual(Option.some('/home/renamed/'))
   })

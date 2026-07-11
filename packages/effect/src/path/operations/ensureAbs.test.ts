@@ -15,8 +15,8 @@ const someRelDir = S.decodeSync(Path.RelDir)('./src/')
 
 describe('ensureAbs', () => {
   it('literal duality obeys the desugar law in both call shapes', () => {
-    const relFile = Path.mk('./src/index.ts')
-    const base = Path.mk('/workspace/')
+    const relFile = Path.make('./src/index.ts')
+    const base = Path.make('/workspace/')
     const expected = Path.ensureAbs(relFile, base)
 
     expect(expected).toEncodeTo('/workspace/src/index.ts')
@@ -27,7 +27,7 @@ describe('ensureAbs', () => {
     expect(Path.ensureAbs(base)('./src/index.ts')).toEqual(expected)
 
     expect(Path.ensureAbs('/already/file.ts', '/elsewhere/')).toEqual(
-      Path.ensureAbs(Path.mk('/already/file.ts'), Path.mk('/elsewhere/')),
+      Path.ensureAbs(Path.make('/already/file.ts'), Path.make('/elsewhere/')),
     )
   })
 
@@ -35,10 +35,10 @@ describe('ensureAbs', () => {
     FastCheck.assert(
       FastCheck.property(arb.Any, arb.AbsDir, (path, base) => {
         expect(Path.ensureAbs('./fixed/file.ts', base)).toEqual(
-          Path.ensureAbs(Path.mk('./fixed/file.ts'), base),
+          Path.ensureAbs(Path.make('./fixed/file.ts'), base),
         )
         expect(Path.ensureAbs(path, '/fixed/base/')).toEqual(
-          Path.ensureAbs(path, Path.mk('/fixed/base/')),
+          Path.ensureAbs(path, Path.make('/fixed/base/')),
         )
       }),
     )

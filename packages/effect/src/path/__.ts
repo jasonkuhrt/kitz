@@ -35,7 +35,7 @@ export { Cwd } from './services/Cwd.js'
 
 // Literal string analysis and decoding
 export type { FromLiteral, LiteralAnalysis } from './core/literal.js'
-export * from './operations/mk.js'
+export * from './operations/make.js'
 
 // File-extension value codec
 export { Extension } from './models/Extension.js'

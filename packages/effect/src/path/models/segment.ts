@@ -103,9 +103,16 @@ export class Segment_ extends withStatics(
     ),
   ),
 ) {
-  /** Decode a statically validated segment literal. */
-  static readonly mk = <const $Input extends string>(input: SegmentLiteralGuard<$Input>): Segment =>
-    S.decodeSync(Segment_)(input as any)
+  /**
+   * Construct a segment. Literals are validated statically; widened strings
+   * retain the schema's runtime validation behavior.
+   */
+  static override make<const $Input extends string>(
+    input: SegmentMakeInput<$Input>,
+    options?: S.MakeOptions,
+  ): Segment {
+    return super.make(input as any, options)
+  }
 
   /**
    * Variant schema carrying a realistic generation bias — same set as
@@ -129,6 +136,9 @@ export class Segment_ extends withStatics(
 export const Segment = Segment_
 export type Segment = typeof Segment_.Type
 
+type SegmentMakeInput<$Input extends string> =
+  Types.IsLiteral<$Input> extends true ? SegmentLiteralGuard<$Input> : $Input
+
 type IsValidSegmentLiteral<$S extends string> = $S extends '' | here | ascent
   ? false
   : $S extends `${string}${separator}${string}` | `${string}${nullByte}${string}`
@@ -151,9 +161,9 @@ export type SegmentLiteralGuard<$S extends string> =
       : ErrorMalformedSegmentLiteral<$S>
     : Types.StaticError<
         requiresLiteral<
-          'Segment literal constructors',
-          '',
-          'Decode dynamic strings through Path.Segment.'
+          'Segment.make',
+          's',
+          'Use a widened string for runtime validation through Path.Segment.'
         >
       >
 

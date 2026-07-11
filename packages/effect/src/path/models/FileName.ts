@@ -76,6 +76,11 @@ class FileName__ extends S.TaggedClass<FileName__>()('FileName', {
   }
 }
 
+type FileNameParts = {
+  readonly stem: string
+  readonly extension: Option.Option<Extension>
+}
+
 /**
  * `FileName` — a bare filename as a `string` ⇄ `{ stem, extension }` codec.
  *
@@ -107,22 +112,17 @@ export class FileName_ extends withStatics(
     ),
   ),
 ) {
-  /** Decode a statically validated bare-filename literal. */
-  static readonly mk = <const $Input extends string>(
-    input: FileNameLiteralGuard<$Input>,
-  ): FileName => S.decodeSync(FileName_)(input as any)
-
   /**
-   * Construct a canonical `FileName`. The stem and extension are re-joined and
-   * re-split on the last dot — the same rule the string codec applies — so a
-   * non-canonical input like `{ stem: 'a.txt', extension: none }` normalizes to
-   * `{ stem: 'a', extension: '.txt' }`. This keeps a filename's representation
-   * unique, so structurally-equal values are always the same filename.
+   * Construct a canonical `FileName` from a literal, widened string, or parts.
+   * String literals are validated statically; widened strings validate at
+   * runtime. Parts are re-joined and re-split on the last dot — the same rule
+   * the string codec applies — so a non-canonical input like `{ stem: 'a.txt',
+   * extension: none }` normalizes to `{ stem: 'a', extension: '.txt' }`.
    */
-  static override make(input: {
-    readonly stem: string
-    readonly extension: Option.Option<Extension>
-  }): FileName__ {
+  static override make<const $Input extends string>(input: FileNameMakeInput<$Input>): FileName
+  static override make(input: FileNameParts): FileName__
+  static override make(input: string | FileNameParts): FileName__ {
+    if (typeof input === 'string') return S.decodeSync(FileName_)(input)
     const full = `${input.stem}${Option.getOrElse(input.extension, () => '')}`
     const decoded = S.decodeSync(FileName_)(full)
     return super.make({ stem: decoded.stem, extension: decoded.extension })
@@ -164,6 +164,9 @@ export class FileName_ extends withStatics(
 export const FileName = FileName_
 export type FileName = typeof FileName_.Type
 
+type FileNameMakeInput<$Input extends string> =
+  Types.IsLiteral<$Input> extends true ? FileNameLiteralGuard<$Input> : $Input
+
 type IsValidFileNameLiteral<$S extends string> = $S extends '' | '.' | '..'
   ? false
   : $S extends `${string}${separator}${string}` | `${string}${nullByte}${string}`
@@ -185,5 +188,9 @@ export type FileNameLiteralGuard<$S extends string> =
       ? $S
       : ErrorMalformedFileNameLiteral<$S>
     : Types.StaticError<
-        requiresLiteral<'FileName.mk', 's', 'Decode dynamic strings through Path.FileName.'>
+        requiresLiteral<
+          'FileName.make',
+          's',
+          'Use a widened string for runtime validation through Path.FileName.'
+        >
       >

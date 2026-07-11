@@ -34,8 +34,8 @@ const someRelDir = S.decodeSync(Path.RelDir)('./src/')
 
 describe('isDescendantOf', () => {
   it('literal duality obeys the desugar law in both call shapes', () => {
-    const relChild = Path.mk('./a/b.txt')
-    const relParent = Path.mk('./a/')
+    const relChild = Path.make('./a/b.txt')
+    const relParent = Path.make('./a/')
     const expected = Path.isDescendantOf(relChild, relParent)
 
     expect(expected).toBe(true)
@@ -46,7 +46,7 @@ describe('isDescendantOf', () => {
     expect(Path.isDescendantOf(relParent)('./a/b.txt')).toBe(expected)
 
     expect(Path.isDescendantOf('/a/b.txt', '/a/')).toBe(
-      Path.isDescendantOf(Path.mk('/a/b.txt'), Path.mk('/a/')),
+      Path.isDescendantOf(Path.make('/a/b.txt'), Path.make('/a/')),
     )
     expect(Path.isDescendantOf('./a/', './a/')).toBe(false)
   })

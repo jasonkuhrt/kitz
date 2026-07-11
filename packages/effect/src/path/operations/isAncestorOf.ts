@@ -17,7 +17,7 @@ type ParentValue<$Parent extends Dir | string> = $Parent extends string
  * Whether `parent` is strictly above `child`; a path is not its own ancestor.
  * Mirrors `isDescendantOf`, including relative pure-ascent ancestors. Every
  * path position accepts either a decoded value or a statically known string
- * literal; literals desugar through `Path.mk`, while dynamic strings are
+ * literal; literals desugar through `Path.make`, while dynamic strings are
  * rejected. Dual: `(parent, child)` or `(child)`.
  * Containment is lexical; under symlinks a path outside `parent` may still reach a file inside it.
  */

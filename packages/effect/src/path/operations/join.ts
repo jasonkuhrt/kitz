@@ -74,7 +74,7 @@ const joinBinary: {
  * absoluteness and `rel`'s file/dir nature. The variadic data-first form is a
  * left fold; all intermediate relative parts must be directories. The data-last
  * form stays binary only. Every path position accepts either a decoded value or
- * a statically known string literal; literals desugar through `Path.mk`, while
+ * a statically known string literal; literals desugar through `Path.make`, while
  * dynamic strings are rejected.
  *
  * @example

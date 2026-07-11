@@ -13,9 +13,9 @@ implementation), `mechanical` (spec-able now), `parked` (explicitly deferred).
 
 Shipped:
 
-- `6d9d6914` — `Path.fromLiteral` and per-model `.fromLiteral` became
-  `Path.mk` / `Model.mk`; plain `string` is rejected at the parameter as a
-  `StaticError`, so mk is total.
+- `6d9d6914` established the literal-constructor grammar; the current producer
+  surface is `Path.make` / `Model.make`. Plain path `string` remains a
+  parameter-side `StaticError`, so literal construction is total.
 - `c9c713de` — rung 1, literal duality on `isWithin`; established the inference
   and error-shaping recipe across data-first/data-last calls.
 - `39d7eaf0` — rung 2, literal duality on `ensureAbs`; proved that literal
@@ -57,7 +57,7 @@ The three-rung ladder is complete. Proven recipe for mechanical rollout:
 - `Fn.dual` needs no special literal handling. The public inline signature carries
   both the outer and returned-function inference; runtime still branches only on
   arity and normalizes literal arguments through the same `Any` decode channel as
-  `Path.mk`.
+  `Path.make`.
 - For variadics, infer one `const Args` tuple and validate it with a homomorphic
   mapped tuple. Branch by index in the mapped value: base, intermediate, final.
   This preserves inference and places diagnostics at the offending argument.
@@ -83,7 +83,7 @@ surface (including its directory fields). This keeps the accounting explicit:
 path positions are shipped; component positions are not.
 
 Evidence: round-1 D2 (604 `join` sites pay decode ceremony:
-`Path.join(S.decodeSync(Path.AbsDir)(cwd), Path.mk('./.env'))`), round-2 P1
+`Path.join(S.decodeSync(Path.AbsDir)(cwd), Path.make('./.env'))`), round-2 P1
 (`setParts({ name })` takes `FileName`, not string — the obvious user input is
 a string because `.name` reads as string). Deferred as Future in the pre-merge
 report; both stress rounds independently rank it #1.
@@ -91,8 +91,9 @@ report; both stress rounds independently rank it #1.
 Runtime strings stay in explicit Schema decode channels or arrive as
 already-decoded values.
 
-The per-model `make` overload option remains live-not-rejected for later; the
-mk decision only settles the static-literal constructor world.
+The producer decision is settled: target path schemas overload `make` between
+literal and structured Type-side inputs, while top-level `Path.make` remains
+literal-only.
 
 ## 2. `Any`/union decode classification rules — `design-open` (deferred by user 2026-07-09)
 

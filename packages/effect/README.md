@@ -13,7 +13,9 @@ domain terms:
   `order`, …); common ancestors are group statics (`Abs.commonAncestor`,
   `Rel.commonAncestor`); file component writes are per-model statics
   (`AbsFile.setParts`, `RelFile.setParts`);
-  `mk` infers the precise variant from string literals at the type level.
+  `Path.make` infers the precise variant from a string literal, while each
+  target schema's `make` overload accepts either a validated literal or its
+  original structured Type-side input.
 - **`Schema`** — small additions to Effect Schema (e.g. `NaturalInt`).
 - **`String`** — string utilities.
 
@@ -21,10 +23,10 @@ domain terms:
 import { Path } from '@kitz/effect'
 import { Option, pipe, Schema } from 'effect'
 
-const config = Path.mk('/home/user/config.json') // typed AbsFile
-const cwd = Path.AbsDir.mk('/home/user') // dir targets accept no trailing slash
+const config = Path.make('/home/user/config.json') // typed AbsFile
+const cwd = Path.AbsDir.make('/home/user') // dir targets accept no trailing slash
 
-Path.join(cwd, Path.mk('./notes/todo.md')) // AbsFile /home/user/notes/todo.md
+Path.join(cwd, Path.make('./notes/todo.md')) // AbsFile /home/user/notes/todo.md
 config.dir.toString() // '/home/user/' — a file's tree parent is its containing dir
 Path.AbsFile.setParts(config, { extension: Option.none() }) // /home/user/config
 pipe(config, Path.AbsFile.setParts({ stem: 'config.local' })) // /home/user/config.local.json
@@ -32,13 +34,13 @@ Schema.decodeSync(Path.Any)(process.argv[2] ?? '.') // runtime strings decode to
 ```
 
 **Literal duality.** Every path-typed operation position accepts either a decoded `Path` value or a
-statically known string literal. Literals desugar through `Path.mk`, so the
+statically known string literal. Literals desugar through `Path.make`, so the
 direct form keeps the same runtime meaning and precise variant return type as
 constructing the value first:
 
 ```ts
 Path.join(cwd, './.env')
-Path.join(cwd, Path.mk('./.env')) // equivalent desugared form
+Path.join(cwd, Path.make('./.env')) // equivalent desugared form
 ```
 
 Plain runtime `string` values are intentionally rejected by these signatures;
@@ -105,7 +107,7 @@ import { Effect, Schema } from 'effect'
 
 const program = Effect.gen(function* () {
   const cwd = yield* Path.Cwd
-  return Path.join(cwd, Path.mk('./config.json'))
+  return Path.join(cwd, Path.make('./config.json'))
 }).pipe(Effect.provide(Path.Cwd.layer))
 ```
 

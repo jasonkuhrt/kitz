@@ -57,7 +57,7 @@ describe('relativeTo', () => {
     expectTypeOf(relCurried).toEqualTypeOf<Option.Option<Path.Rel>>()
     expect(absDirect).toEncodeTo('./src/index.ts')
     expect(absCurried).toEqual(absDirect)
-    expect(relDirect).toEqual(Option.some(Path.RelDir.mk('./src/')))
+    expect(relDirect).toEqual(Option.some(Path.RelDir.make('./src/')))
     expect(relCurried).toEqual(relDirect)
   })
 
@@ -79,8 +79,8 @@ describe('relativeTo', () => {
   })
 
   it('literal duality obeys the desugar law in both call shapes', () => {
-    const absPath = Path.mk('/workspace/src/index.ts')
-    const absBase = Path.mk('/workspace/')
+    const absPath = Path.make('/workspace/src/index.ts')
+    const absBase = Path.make('/workspace/')
     const absExpected = Path.relativeTo(absPath, absBase)
 
     expect(absExpected).toEncodeTo('./src/index.ts')
@@ -90,8 +90,8 @@ describe('relativeTo', () => {
     expect(Path.relativeTo('/workspace/')(absPath)).toEqual(absExpected)
     expect(Path.relativeTo(absBase)('/workspace/src/index.ts')).toEqual(absExpected)
 
-    const relPath = Path.mk('../workspace/src/')
-    const relBase = Path.mk('../workspace/')
+    const relPath = Path.make('../workspace/src/')
+    const relBase = Path.make('../workspace/')
     const relExpected = Path.relativeTo(relPath, relBase)
 
     expect(Path.relativeTo('../workspace/src/', relBase)).toEqual(relExpected)

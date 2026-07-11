@@ -231,44 +231,44 @@ describe('path type⇄value grammar agreement', () => {
   })
 
   it('classifies every accepted literal identically at the type level', () => {
-    expectTypeOf(Path.mk('.')).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.mk('./')).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.mk('..')).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.mk('../')).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.mk('/')).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.mk('/.')).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.mk('/..')).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.mk('/../')).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.mk('./..')).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.mk('../.')).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.mk('a')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk('a/')).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.mk('/a')).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.mk('/a/')).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.mk('./a')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk('./a/')).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.mk('../a')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk('a/../b')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk('a/..')).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.mk('/a/..')).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.mk('/a/../../b')).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.mk('a/./b')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk('.hidden')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk('/etc/.hidden')).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.mk('a.')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk('/a.')).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.mk('a..')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk('name.tar.gz')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk('a b/c d.txt')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk('café/naïve.txt')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk(' ')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk('a//b')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk('/a//b')).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.mk('a///b/')).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.mk('//x')).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.mk('a/b/c/d/e/f/g/h/i/j/file.ts')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk('./src/')).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.mk('/usr/local/bin/node')).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(Path.make('.')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.make('./')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.make('..')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.make('../')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.make('/')).toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf(Path.make('/.')).toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf(Path.make('/..')).toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf(Path.make('/../')).toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf(Path.make('./..')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.make('../.')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.make('a')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.make('a/')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.make('/a')).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(Path.make('/a/')).toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf(Path.make('./a')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.make('./a/')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.make('../a')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.make('a/../b')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.make('a/..')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.make('/a/..')).toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf(Path.make('/a/../../b')).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(Path.make('a/./b')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.make('.hidden')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.make('/etc/.hidden')).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(Path.make('a.')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.make('/a.')).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(Path.make('a..')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.make('name.tar.gz')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.make('a b/c d.txt')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.make('café/naïve.txt')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.make(' ')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.make('a//b')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.make('/a//b')).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(Path.make('a///b/')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.make('//x')).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(Path.make('a/b/c/d/e/f/g/h/i/j/file.ts')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.make('./src/')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.make('/usr/local/bin/node')).toEqualTypeOf<Path.AbsFile>()
   })
 
   it('rejects the empty string at both levels', () => {
@@ -276,7 +276,7 @@ describe('path type⇄value grammar agreement', () => {
 
     const staticRejection = () => {
       // @ts-expect-error the empty string is not a path literal
-      Path.mk('')
+      Path.make('')
     }
     expect(typeof staticRejection).toBe('function')
   })
@@ -728,8 +728,8 @@ describe('commonAncestor', () => {
 
   it('uses the anchor and pure-ascent floor when no named prefix exists', () => {
     const absShared = Path.Abs.commonAncestor(
-      Path.AbsFile.mk('/apps/app.ts'),
-      Path.AbsFile.mk('/libs/lib.ts'),
+      Path.AbsFile.make('/apps/app.ts'),
+      Path.AbsFile.make('/libs/lib.ts'),
     )
     const relShared = Path.Rel.commonAncestor(
       Path.RelDir.make({ ascent: 0, segments: ['a'].map(Path.segment) }),
@@ -1083,8 +1083,8 @@ describe('finding 6: the empty string is not a path', () => {
 })
 
 describe('finding 9: Extension is a first-class model with a literal constructor', () => {
-  it('Extension.mk constructs from a literal', () => {
-    const ext = Path.Extension.mk('.zip')
+  it('Extension.make constructs from a literal', () => {
+    const ext = Path.Extension.make('.zip')
     expect(String(ext)).toBe('.zip')
   })
 })
@@ -1187,10 +1187,10 @@ describe('audit round 3: Protocol', () => {
 })
 
 describe('audit round 3: literal component producer contract', () => {
-  it('exposes literal constructors on Segment, Extension, and FileName', () => {
-    const segment = Path.Segment.mk('src')
-    const extensionValue = Path.Extension.mk('.ts')
-    const name = Path.FileName.mk('manifest.json')
+  it('exposes literal-aware make on Segment, Extension, and FileName', () => {
+    const segment = Path.Segment.make('src')
+    const extensionValue = Path.Extension.make('.ts')
+    const name = Path.FileName.make('manifest.json')
 
     expectTypeOf(segment).toEqualTypeOf<Path.Segment>()
     expectTypeOf(extensionValue).toEqualTypeOf<Path.Extension>()
@@ -1201,24 +1201,46 @@ describe('audit round 3: literal component producer contract', () => {
     expect(Path.Segment.is(segment)).toBe(true)
     expect(Path.Extension.is(extensionValue)).toBe(true)
     expect(Path.FileName.is(name)).toBe(true)
-    expect(Path.Segment.make('lib')).toBe(Path.Segment.mk('lib'))
-    expect(Path.Extension.make('.json')).toBe(Path.Extension.mk('.json'))
+    expect(Path.Segment.make(segment)).toBe(segment)
+    expect(Path.Extension.make(extensionValue)).toBe(extensionValue)
     expect(
       Path.FileName.make({ stem: 'manifest', extension: Option.some(extensionValue) }),
-    ).toEqual(Path.FileName.mk('manifest.ts'))
+    ).toEqual(Path.FileName.make('manifest.ts'))
 
-    const dynamic = 'dynamic' as string
+    const segmentText = 'lib' as string
+    const extensionText = '.json' as string
+    const fileNameText = 'manifest.ts' as string
+    const dynamicName = Path.FileName.make(fileNameText)
+
+    expect(Path.Segment.make(segmentText)).toBe('lib')
+    expect(Path.Extension.make(extensionText)).toBe('.json')
+    expect(dynamicName.name).toBe('manifest.ts')
+    expect(dynamicName.stem).toBe('manifest')
+    expect(dynamicName.extension).toEqual(Option.some('.ts'))
+    expect(() => Path.Segment.make('.' as string)).toThrow()
+    expect(() => Path.Extension.make('json' as string)).toThrow()
+    expect(() => Path.FileName.make('bad/name' as string)).toThrow()
+
     const staticRejections = () => {
-      // @ts-expect-error literal component constructors reject dynamic strings
-      Path.Segment.mk(dynamic)
-      // @ts-expect-error literal component constructors reject dynamic strings
-      Path.Extension.mk(dynamic)
-      // @ts-expect-error literal component constructors reject dynamic strings
-      Path.FileName.mk(dynamic)
+      // @ts-expect-error traversal literals are not segment names
+      Path.Segment.make('.')
+      // @ts-expect-error extension literals must start with a dot
+      Path.Extension.make('json')
       // @ts-expect-error filename literals cannot contain separators
-      Path.FileName.mk('bad/name')
+      Path.FileName.make('bad/name')
     }
     expect(typeof staticRejections).toBe('function')
+  })
+
+  it('preserves structured FileName normalization', () => {
+    const normalized = Path.FileName.make({
+      stem: 'archive.tar.gz',
+      extension: Option.none(),
+    })
+
+    expect(normalized.name).toBe('archive.tar.gz')
+    expect(normalized.stem).toBe('archive.tar')
+    expect(normalized.extension).toEqual(Option.some('.gz'))
   })
 })
 

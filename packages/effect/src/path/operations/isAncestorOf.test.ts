@@ -16,8 +16,8 @@ const someRelFile = S.decodeSync(Path.RelFile)('./src/index.ts')
 
 describe('isAncestorOf', () => {
   it('literal duality obeys the desugar law in both call shapes', () => {
-    const relParent = Path.mk('./a/')
-    const relChild = Path.mk('./a/b.txt')
+    const relParent = Path.make('./a/')
+    const relChild = Path.make('./a/b.txt')
     const expected = Path.isAncestorOf(relParent, relChild)
 
     expect(expected).toBe(true)
@@ -28,7 +28,7 @@ describe('isAncestorOf', () => {
     expect(Path.isAncestorOf(relChild)('./a/')).toBe(expected)
 
     expect(Path.isAncestorOf('/a/', '/a/b.txt')).toBe(
-      Path.isAncestorOf(Path.mk('/a/'), Path.mk('/a/b.txt')),
+      Path.isAncestorOf(Path.make('/a/'), Path.make('/a/b.txt')),
     )
     expect(Path.isAncestorOf('./a/', './a/')).toBe(false)
   })

@@ -64,8 +64,8 @@ describe('isWithin', () => {
   })
 
   it('literal duality obeys the desugar law in both call shapes', () => {
-    const relChild = Path.mk('./a/b.txt')
-    const relParent = Path.mk('./a/')
+    const relChild = Path.make('./a/b.txt')
+    const relParent = Path.make('./a/')
 
     expect(Path.isWithin('./a/b.txt', './a/')).toBe(true)
     expect(Path.isWithin('./a/b.txt', './x/')).toBe(false)
@@ -78,10 +78,10 @@ describe('isWithin', () => {
     expect(Path.isWithin(relParent)('./a/b.txt')).toBe(Path.isWithin(relParent)(relChild))
 
     expect(Path.isWithin('./a/b.txt', './x/')).toBe(
-      Path.isWithin(Path.mk('./a/b.txt'), Path.mk('./x/')),
+      Path.isWithin(Path.make('./a/b.txt'), Path.make('./x/')),
     )
     expect(Path.isWithin('/a/b.txt', '/a/')).toBe(
-      Path.isWithin(Path.mk('/a/b.txt'), Path.mk('/a/')),
+      Path.isWithin(Path.make('/a/b.txt'), Path.make('/a/')),
     )
   })
 
@@ -90,8 +90,8 @@ describe('isWithin', () => {
 
     FastCheck.assert(
       FastCheck.property(arb.AbsDir, (parent) => {
-        expect(Path.isWithin('/x/y.txt', parent)).toBe(Path.isWithin(Path.mk('/x/y.txt'), parent))
-        expect(Path.isWithin(parent)('/x/y.txt')).toBe(Path.isWithin(parent)(Path.mk('/x/y.txt')))
+        expect(Path.isWithin('/x/y.txt', parent)).toBe(Path.isWithin(Path.make('/x/y.txt'), parent))
+        expect(Path.isWithin(parent)('/x/y.txt')).toBe(Path.isWithin(parent)(Path.make('/x/y.txt')))
       }),
     )
   })
@@ -177,7 +177,7 @@ describe('commonAncestor containment', () => {
   })
 })
 
-describe('finding 4: operations accept target-coercible dir literals like model mk', () => {
+describe('finding 4: operations accept target-coercible dir literals like model make', () => {
   it('isWithin accepts a slashless dir parent literal', () => {
     expect(Path.isWithin('/foo/x', '/foo')).toBe(true)
   })

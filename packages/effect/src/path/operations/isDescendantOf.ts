@@ -19,7 +19,7 @@ type ParentValue<$Parent extends Dir | string> = $Parent extends string
  * share `ascent`, except pure-ascent dirs (`../`, `../../`, ...) are strict
  * ancestors of paths in their lower cone. Every path position accepts either
  * a decoded value or a statically known string literal; literals desugar
- * through `Path.mk`, while dynamic strings are rejected. Dual:
+ * through `Path.make`, while dynamic strings are rejected. Dual:
  * `(child, parent)` or `(parent)`.
  * Containment is lexical; under symlinks a path outside `parent` may still reach a file inside it.
  */

@@ -20,7 +20,7 @@ export type EnsureAbs<$P extends Any> = $P extends Abs
 /**
  * Ensure a path is absolute, resolving a relative path against `base`; absolute
  * inputs pass through. Every path position accepts either a decoded value or a
- * statically known string literal; literals desugar through `Path.mk`, while
+ * statically known string literal; literals desugar through `Path.make`, while
  * dynamic strings are rejected. Dual: `ensureAbs(path, base)` or
  * `ensureAbs(base)` for piping.
  */

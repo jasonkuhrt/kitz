@@ -4,10 +4,11 @@ Status: DRAFT — built for incremental steering. Each layer ends in decision
 boxes; a layer is locked only when its boxes are confirmed. Do not implement
 past the last locked layer.
 
-Foundation (already shipped, not up for review): `Path.mk` / `Model.mk` —
-the static-literal constructor world; plain `string` is a parameter-side
-`StaticError`; the type-level parser (`FromLiteral` in `core/literal.ts`) is
-the validation authority (`6d9d6914`).
+Foundation (already shipped, not up for review): `Path.make` is the top-level
+literal classifier, and target `Model.make` overloads literal and structured
+Type-side inputs. Plain path `string` is a parameter-side `StaticError`; the
+type-level parser (`FromLiteral` in `core/literal.ts`) is the validation
+authority.
 
 ## The paradigm in one sentence
 
@@ -17,7 +18,7 @@ data-last), literal duality makes every operation fork on input world
 context, governed by one law:
 
 > **Desugar law.** For every op `f` and every literal-accepting parameter
-> position `i`: `f(..., lit, ...)` ≡ `f(..., mk(lit), ...)` — identical
+> position `i`: `f(..., lit, ...)` ≡ `f(..., make(lit), ...)` — identical
 > return type and value.
 
 The law makes conformance mechanical: each op gets type cells
@@ -47,7 +48,7 @@ channel. Layer 1 decides whether we keep or reject that.
 ### D1. What may enter an op signature as a string?
 
 PROPOSED: **literals only.** `string` at an op position is a `StaticError`,
-exactly like `mk`. Runtime strings stay in the explicit codec channels
+exactly like `make`. Runtime strings stay in the explicit codec channels
 (`S.decode*`) or arrive as already-decoded values. Consequence: ops remain
 total — no hidden throw channel (the old `Input`'s runtime-string arm is the
 rejected alternative).
@@ -79,9 +80,9 @@ both dual forms:
 | `withName(dir, segment)` | both (segment = Segment literal) |
 | `AbsFile.setParts` / `RelFile.setParts` | `dir` axis (path literal); `name` (FileName literal); `stem` (already string); `extension` (Extension literal) |
 
-Out of scope: `make` (Type-side world), the codecs (encoded world),
-`Path.Cwd`. `mk` remains the explicit reification gate and the law's
-right-hand side.
+Out of scope: codecs for runtime encoded data and `Path.Cwd`. `make` is the
+explicit literal reification gate and the law's right-hand side; target schema
+overloads also retain their structured Type-side constructor inputs.
 
 - [ ] confirmed / steer:
 
@@ -109,7 +110,7 @@ It will appear in docs, ledger, and conformance-test block titles.
   precision equals the value form, no more (types are variant-indexed, not
   value-indexed).
 - **Runtime:** `typeof arg === 'string'` → internal decode (safe: build
-  gate makes the throw path unreachable), mirroring `mk`.
+  gate makes the throw path unreachable), mirroring `make`.
 
 - [ ] doctrine confirmed / steer:
 
@@ -138,11 +139,9 @@ ledger row; README paradigm section; heartbeat round 3 validates the tax
 actually dropped. Codex (gpt-5.6-sol) mechanizes from the proven join
 pattern; the join spike itself is hand-designed.
 
-## Open questions (parked until relevant layer)
+## Resolved producer questions
 
-- Per-model `make` overload (literal | struct) — live-not-rejected; decide
-  after rollout, with usage evidence.
-- Component-literal grammars: does `Extension` literal accept `'gz'` or
-  require `'.gz'`? (Propose: require the dot — matches the model.)
-- Whether `Path.mk` itself gains component targets (`Segment.mk`,
-  `FileName.mk`) as part of D2.
+- Target path models overload `make` between literal and structured inputs.
+- `Extension.make` literals require the leading dot.
+- `Segment`, `Extension`, and `FileName` own their literal-aware `make`
+  producers; top-level `Path.make` remains path-only.

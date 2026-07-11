@@ -38,10 +38,10 @@ describe('join', () => {
   })
 
   it('literal duality obeys the desugar law across mixed variadic positions', () => {
-    const base = Path.mk('/workspace/')
-    const first = Path.mk('./src/')
-    const second = Path.mk('./generated/')
-    const last = Path.mk('./index.ts')
+    const base = Path.make('/workspace/')
+    const first = Path.make('./src/')
+    const second = Path.make('./generated/')
+    const last = Path.make('./index.ts')
     const expected = Path.join(base, first, second, last)
 
     expect(expected).toEncodeTo('/workspace/src/generated/index.ts')
@@ -137,8 +137,8 @@ describe('join identity', () => {
   })
 })
 
-describe('finding 4: operations accept target-coercible dir literals like model mk', () => {
-  it('join accepts a slashless dir base literal, matching Dir.mk', () => {
+describe('finding 4: operations accept target-coercible dir literals like model make', () => {
+  it('join accepts a slashless dir base literal, matching Dir.make', () => {
     const joined = Path.join('/foo', './x')
     expect(String(joined)).toBe('/foo/x')
   })
