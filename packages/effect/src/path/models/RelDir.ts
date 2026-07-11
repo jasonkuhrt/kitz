@@ -138,6 +138,7 @@ export class RelDir_ extends withLiteralStatics(
       ),
     ),
   ),
+  'Path.RelDir.make',
 ) {
   /** The relative anchor `./` — the identity of `join`. */
   static readonly anchor: typeof RelDir_.Type = RelDir_.make({

@@ -52,6 +52,17 @@ export declare namespace RelFile {
 
 type RelFilePartsInput = RelFile.Parts<RelDir | string, FileName | string>
 
+type RelFileSetPartsLiteralGuard<$S extends string, $Target> = LiteralGuard<
+  $S,
+  $Target,
+  'Path.RelFile.setParts'
+>
+
+type RelFileSetPartsFileNameLiteralGuard<$S extends string> = FileNameLiteralGuard<
+  $S,
+  'Path.RelFile.setParts'
+>
+
 type Part<$Parts, $Key extends PropertyKey> = $Key extends keyof $Parts
   ? Exclude<$Parts[$Key], undefined>
   : never
@@ -59,18 +70,18 @@ type Part<$Parts, $Key extends PropertyKey> = $Key extends keyof $Parts
 type GuardedRelFileParts<$Parts extends RelFilePartsInput> = $Parts & {
   readonly dir?: Part<$Parts, 'dir'> extends infer $Dir
     ? $Dir extends string
-      ? LiteralGuard<$Dir, RelDir>
+      ? RelFileSetPartsLiteralGuard<$Dir, RelDir>
       : $Dir
     : never
   readonly name?: Part<$Parts, 'name'> extends infer $Name
     ? $Name extends string
-      ? FileNameLiteralGuard<$Name>
+      ? RelFileSetPartsFileNameLiteralGuard<$Name>
       : $Name
     : never
 }
 
 type RelFileSubject<$File extends RelFile__ | string> = $File extends string
-  ? LiteralGuard<$File, RelFile__>
+  ? RelFileSetPartsLiteralGuard<$File, RelFile__>
   : $File
 
 /**
@@ -208,6 +219,7 @@ export class RelFile_ extends withLiteralStatics(
       ),
     ),
   ),
+  'Path.RelFile.make',
 ) {
   /**
    * Rebuild a relative file with patched file components.

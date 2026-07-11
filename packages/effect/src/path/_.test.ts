@@ -1200,7 +1200,7 @@ describe('audit round 3: literal component producer contract', () => {
     expectTypeOf(extensionValue).toEqualTypeOf<Path.Extension>()
     expectTypeOf(name).toEqualTypeOf<Path.FileName>()
     expectTypeOf<
-      import('./models/FileName.js').FileNameLiteralGuard<'manifest.json'>
+      import('./models/FileName.js').FileNameLiteralGuard<'manifest.json', 'Path.FileName.make'>
     >().toEqualTypeOf<'manifest.json'>()
     expect(Path.Segment.is(segment)).toBe(true)
     expect(Path.Extension.is(extensionValue)).toBe(true)

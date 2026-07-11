@@ -5,6 +5,12 @@ import { Any } from '../models/Any.js'
 import { Dir } from '../models/Dir.js'
 import { isWithin } from './isWithin.js'
 
+type IsDescendantOfLiteralGuard<$S extends string, $Target> = LiteralGuard<
+  $S,
+  $Target,
+  'Path.isDescendantOf'
+>
+
 type ChildValue<$Child extends Any | string> = $Child extends string
   ? FromTargetLiteral<$Child, Any>
   : $Child
@@ -25,18 +31,18 @@ type ParentValue<$Parent extends Dir | string> = $Parent extends string
  */
 export const isDescendantOf: {
   <const $Child extends Any | string, const $Parent extends Dir | string>(
-    child: $Child extends string ? LiteralGuard<$Child, Any> : $Child,
+    child: $Child extends string ? IsDescendantOfLiteralGuard<$Child, Any> : $Child,
     parent: $Parent extends string
-      ? LiteralGuard<$Parent, MatchingDirGroup<ChildValue<$Child>>>
+      ? IsDescendantOfLiteralGuard<$Parent, MatchingDirGroup<ChildValue<$Child>>>
       : $Parent extends MatchingDirGroup<ChildValue<$Child>>
         ? $Parent
         : ErrorPathGroupMismatch,
   ): boolean
   <const $Parent extends Dir | string>(
-    parent: $Parent extends string ? LiteralGuard<$Parent, Dir> : $Parent,
+    parent: $Parent extends string ? IsDescendantOfLiteralGuard<$Parent, Dir> : $Parent,
   ): <const $Child extends Any | string>(
     child: $Child extends string
-      ? LiteralGuard<$Child, MatchingTypeGroupForDir<ParentValue<$Parent>>>
+      ? IsDescendantOfLiteralGuard<$Child, MatchingTypeGroupForDir<ParentValue<$Parent>>>
       : $Child extends MatchingTypeGroupForDir<ParentValue<$Parent>>
         ? $Child
         : ErrorPathGroupMismatch,

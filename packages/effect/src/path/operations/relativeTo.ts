@@ -12,6 +12,12 @@ import { RelDir } from '../models/RelDir.js'
 import { Rel } from '../models/Rel.js'
 import { RelFile } from '../models/RelFile.js'
 
+type RelativeToLiteralGuard<$S extends string, $Target> = LiteralGuard<
+  $S,
+  $Target,
+  'Path.relativeTo'
+>
+
 type PathValue<$Path extends Any | string> = $Path extends string
   ? FromTargetLiteral<$Path, Any>
   : $Path
@@ -34,20 +40,20 @@ type GroupKind<$Path extends Any> = [$Path] extends [never]
 type BaseArgument<$Base extends Dir | string, $Path extends Any> =
   GroupKind<$Path> extends 'Abs'
     ? [$Base] extends [string]
-      ? LiteralGuard<$Base & string, AbsDir>
+      ? RelativeToLiteralGuard<$Base & string, AbsDir>
       : [$Base] extends [AbsDir]
         ? $Base
         : ErrorPathGroupMismatch
     : GroupKind<$Path> extends 'Rel'
       ? [$Base] extends [string]
-        ? LiteralGuard<$Base & string, RelDir>
+        ? RelativeToLiteralGuard<$Base & string, RelDir>
         : [$Base] extends [RelDir]
           ? $Base
           : ErrorPathGroupMismatch
       : ErrorRelativeToGroupNotNarrowed
 
 type CurriedBaseArgument<$Base extends Dir | string> = [$Base] extends [string]
-  ? LiteralGuard<$Base & string, Dir>
+  ? RelativeToLiteralGuard<$Base & string, Dir>
   : [$Base] extends [AbsDir]
     ? $Base
     : [$Base] extends [RelDir]
@@ -57,7 +63,7 @@ type CurriedBaseArgument<$Base extends Dir | string> = [$Base] extends [string]
 type PathArgument<$Path extends Any | string, $Expected extends Abs | Rel> = [$Path] extends [
   string,
 ]
-  ? LiteralGuard<$Path & string, $Expected>
+  ? RelativeToLiteralGuard<$Path & string, $Expected>
   : [$Path] extends [$Expected]
     ? $Path
     : GroupKind<$Path & Any> extends 'Mixed'
@@ -117,7 +123,7 @@ export type RelativeTo<$A extends Abs | Rel> = $A extends AbsFile
  */
 export const relativeTo: {
   <const $Path extends Any | string, const $Base extends Dir | string>(
-    path: $Path extends string ? LiteralGuard<$Path, Any> : $Path,
+    path: $Path extends string ? RelativeToLiteralGuard<$Path, Any> : $Path,
     base: BaseArgument<$Base, PathValue<$Path>>,
   ): RelativeToResult<PathValue<$Path>>
   <const $Base extends Dir | string>(

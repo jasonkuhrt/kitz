@@ -51,6 +51,17 @@ export declare namespace AbsFile {
 
 type AbsFilePartsInput = AbsFile.Parts<AbsDir | string, FileName | string>
 
+type AbsFileSetPartsLiteralGuard<$S extends string, $Target> = LiteralGuard<
+  $S,
+  $Target,
+  'Path.AbsFile.setParts'
+>
+
+type AbsFileSetPartsFileNameLiteralGuard<$S extends string> = FileNameLiteralGuard<
+  $S,
+  'Path.AbsFile.setParts'
+>
+
 type Part<$Parts, $Key extends PropertyKey> = $Key extends keyof $Parts
   ? Exclude<$Parts[$Key], undefined>
   : never
@@ -58,18 +69,18 @@ type Part<$Parts, $Key extends PropertyKey> = $Key extends keyof $Parts
 type GuardedAbsFileParts<$Parts extends AbsFilePartsInput> = $Parts & {
   readonly dir?: Part<$Parts, 'dir'> extends infer $Dir
     ? $Dir extends string
-      ? LiteralGuard<$Dir, AbsDir>
+      ? AbsFileSetPartsLiteralGuard<$Dir, AbsDir>
       : $Dir
     : never
   readonly name?: Part<$Parts, 'name'> extends infer $Name
     ? $Name extends string
-      ? FileNameLiteralGuard<$Name>
+      ? AbsFileSetPartsFileNameLiteralGuard<$Name>
       : $Name
     : never
 }
 
 type AbsFileSubject<$File extends AbsFile__ | string> = $File extends string
-  ? LiteralGuard<$File, AbsFile__>
+  ? AbsFileSetPartsLiteralGuard<$File, AbsFile__>
   : $File
 
 /**
@@ -195,6 +206,7 @@ export class AbsFile_ extends withLiteralStatics(
       ),
     ),
   ),
+  'Path.AbsFile.make',
 ) {
   /**
    * Rebuild an absolute file with patched file components.

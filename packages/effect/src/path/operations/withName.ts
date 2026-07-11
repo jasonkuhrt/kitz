@@ -2,6 +2,10 @@ import { Array, Function as Fn, Match, Option, Schema as S } from 'effect'
 import type { FromTargetLiteral, LiteralGuard } from '../core/literal.js'
 import { Dir } from '../models/Dir.js'
 import { segment, type Segment, type SegmentLiteralGuard } from '../models/segment.js'
+
+type WithNameLiteralGuard<$S extends string, $Target> = LiteralGuard<$S, $Target, 'Path.withName'>
+
+type WithNameSegmentLiteralGuard<$S extends string> = SegmentLiteralGuard<$S, 'Path.withName'>
 import * as AbsDirModel from '../models/AbsDir.js'
 import * as RelDirModel from '../models/RelDir.js'
 
@@ -35,17 +39,25 @@ const renameRelDir = (dir: RelDirModel.RelDir, name: Segment): Option.Option<Rel
  */
 export const withName: {
   <const $D extends Dir | string, const $Name extends Segment | string>(
-    path: $D extends string ? LiteralGuard<$D, Dir> : $D,
-    name: $Name extends Segment ? $Name : $Name extends string ? SegmentLiteralGuard<$Name> : never,
+    path: $D extends string ? WithNameLiteralGuard<$D, Dir> : $D,
+    name: $Name extends Segment
+      ? $Name
+      : $Name extends string
+        ? WithNameSegmentLiteralGuard<$Name>
+        : never,
   ): Option.Option<
     ($D extends string ? FromTargetLiteral<$D, Dir> : $D) extends infer $DirValue extends Dir
       ? $DirValue
       : never
   >
   <const $Name extends Segment | string>(
-    name: $Name extends Segment ? $Name : $Name extends string ? SegmentLiteralGuard<$Name> : never,
+    name: $Name extends Segment
+      ? $Name
+      : $Name extends string
+        ? WithNameSegmentLiteralGuard<$Name>
+        : never,
   ): <const $D extends Dir | string>(
-    path: $D extends string ? LiteralGuard<$D, Dir> : $D,
+    path: $D extends string ? WithNameLiteralGuard<$D, Dir> : $D,
   ) => Option.Option<
     ($D extends string ? FromTargetLiteral<$D, Dir> : $D) extends infer $DirValue extends Dir
       ? $DirValue

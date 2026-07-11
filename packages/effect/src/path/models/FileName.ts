@@ -165,7 +165,7 @@ export const FileName = FileName_
 export type FileName = typeof FileName_.Type
 
 type FileNameMakeInput<$Input extends string> =
-  Types.IsLiteral<$Input> extends true ? FileNameLiteralGuard<$Input> : $Input
+  Types.IsLiteral<$Input> extends true ? FileNameLiteralGuard<$Input, 'Path.FileName.make'> : $Input
 
 type IsValidFileNameLiteral<$S extends string> = $S extends '' | '.' | '..'
   ? false
@@ -182,14 +182,14 @@ type ErrorMalformedFileNameLiteral<$Received extends string> = $Received extends
       : Types.StaticError<'Filename literals cannot contain NUL.'>
 
 /** Guard a bare-filename literal against the runtime FileName grammar. */
-export type FileNameLiteralGuard<$S extends string> =
+export type FileNameLiteralGuard<$S extends string, $Subject extends string> =
   Types.IsLiteral<$S> extends true
     ? IsValidFileNameLiteral<$S> extends true
       ? $S
       : ErrorMalformedFileNameLiteral<$S>
     : Types.StaticError<
         requiresLiteral<
-          'FileName.make',
+          $Subject,
           's',
           'Use a widened string for runtime validation through Path.FileName.'
         >

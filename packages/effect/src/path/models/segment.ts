@@ -137,7 +137,7 @@ export const Segment = Segment_
 export type Segment = typeof Segment_.Type
 
 type SegmentMakeInput<$Input extends string> =
-  Types.IsLiteral<$Input> extends true ? SegmentLiteralGuard<$Input> : $Input
+  Types.IsLiteral<$Input> extends true ? SegmentLiteralGuard<$Input, 'Path.Segment.make'> : $Input
 
 type IsValidSegmentLiteral<$S extends string> = $S extends '' | here | ascent
   ? false
@@ -154,14 +154,14 @@ type ErrorMalformedSegmentLiteral<$Received extends string> = $Received extends 
       : Types.StaticError<nullByteSegmentMessage>
 
 /** Guard a POSIX path-segment literal against the runtime Segment grammar. */
-export type SegmentLiteralGuard<$S extends string> =
+export type SegmentLiteralGuard<$S extends string, $Subject extends string> =
   Types.IsLiteral<$S> extends true
     ? IsValidSegmentLiteral<$S> extends true
       ? $S
       : ErrorMalformedSegmentLiteral<$S>
     : Types.StaticError<
         requiresLiteral<
-          'Segment.make',
+          $Subject,
           's',
           'Use a widened string for runtime validation through Path.Segment.'
         >

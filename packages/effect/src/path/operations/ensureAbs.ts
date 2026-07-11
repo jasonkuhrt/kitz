@@ -8,6 +8,8 @@ import { RelDir } from '../models/RelDir.js'
 import { RelFile } from '../models/RelFile.js'
 import { join } from './join.js'
 
+type EnsureAbsLiteralGuard<$S extends string, $Target> = LiteralGuard<$S, $Target, 'Path.ensureAbs'>
+
 /** Type-level {@link ensureAbs}: absolute paths pass through; relatives become absolute. */
 export type EnsureAbs<$P extends Any> = $P extends Abs
   ? $P
@@ -26,13 +28,13 @@ export type EnsureAbs<$P extends Any> = $P extends Abs
  */
 export const ensureAbs: {
   <const $Path extends Any | string, const $Base extends AbsDir | string>(
-    path: $Path extends string ? LiteralGuard<$Path, Any> : $Path,
-    base: $Base extends string ? LiteralGuard<$Base, AbsDir> : $Base,
+    path: $Path extends string ? EnsureAbsLiteralGuard<$Path, Any> : $Path,
+    base: $Base extends string ? EnsureAbsLiteralGuard<$Base, AbsDir> : $Base,
   ): EnsureAbs<$Path extends string ? FromLiteral<$Path> : $Path>
   <const $Base extends AbsDir | string>(
-    base: $Base extends string ? LiteralGuard<$Base, AbsDir> : $Base,
+    base: $Base extends string ? EnsureAbsLiteralGuard<$Base, AbsDir> : $Base,
   ): <const $Path extends Any | string>(
-    path: $Path extends string ? LiteralGuard<$Path, Any> : $Path,
+    path: $Path extends string ? EnsureAbsLiteralGuard<$Path, Any> : $Path,
   ) => EnsureAbs<$Path extends string ? FromLiteral<$Path> : $Path>
 } = Fn.dual(2, (path: Any | string, base: AbsDir | string): Abs => {
   const pathValue = typeof path === 'string' ? S.decodeSync(Any)(path) : path

@@ -2,6 +2,8 @@ import { Order, Schema as S } from 'effect'
 import type { LiteralGuard } from '../core/literal.js'
 import { Any } from '../models/Any.js'
 
+type OrderLiteralGuard<$S extends string> = LiteralGuard<$S, Any, 'Path.order'>
+
 const groupRank = (path: Any): 0 | 1 => (path._tag === 'AbsFile' || path._tag === 'AbsDir' ? 0 : 1)
 
 const ascentOf = (path: Any): number =>
@@ -31,8 +33,8 @@ const orderValues: Order.Order<Any> = Order.combineAll([
 ])
 
 export function order<const $Self extends Any | string, const $That extends Any | string>(
-  self: $Self extends string ? LiteralGuard<$Self, Any> : $Self,
-  that: $That extends string ? LiteralGuard<$That, Any> : $That,
+  self: $Self extends string ? OrderLiteralGuard<$Self> : $Self,
+  that: $That extends string ? OrderLiteralGuard<$That> : $That,
 ): -1 | 0 | 1
 export function order(self: Any, that: Any): -1 | 0 | 1
 export function order(self: Any | string, that: Any | string): -1 | 0 | 1 {

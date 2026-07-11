@@ -19,5 +19,5 @@ import { Any } from '../models/Any.js'
  * where decoding requires well-formed Unicode.
  */
 export const make = <const $Input extends string>(
-  input: LiteralInput<$Input>,
+  input: LiteralInput<$Input, 'Path.make'>,
 ): FromLiteral<$Input> => S.decodeSync(Any)(input as any) as any

@@ -14,6 +14,7 @@ class File_ extends withLiteralStatics(
   withStatics(
     S.asClass(FileTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
   ),
+  'Path.File.make',
 ) {
   static readonly cases = FileTaggedUnion.cases
   static readonly guards = FileTaggedUnion.guards

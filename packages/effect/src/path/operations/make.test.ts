@@ -3,6 +3,7 @@ import { Option, Schema as S } from 'effect'
 import { NaturalInt } from '../../schema/NaturalInt.js'
 import { Types } from '../../types/_.js'
 import * as LiteralCore from '../core/literal.js'
+import { requiresLiteral } from '../core/messages.js'
 import type { ExtensionLiteralGuard } from '../models/Extension.js'
 import type { SegmentLiteralGuard } from '../models/segment.js'
 import * as Path from '../__.js'
@@ -32,6 +33,21 @@ const unionLiteralCases = [
 ] as const
 
 describe('make', () => {
+  it('shares receiving-operation messages across type and value levels', () => {
+    const message = requiresLiteral(
+      'Path.join',
+      's',
+      'Use a path schema codec for dynamic strings, or decode the target schema at runtime.',
+    )
+
+    type $Expected =
+      'Path.join requires a string literal. Use a path schema codec for dynamic strings, or decode the target schema at runtime.'
+    expect(message).toBe(
+      'Path.join requires a string literal. Use a path schema codec for dynamic strings, or decode the target schema at runtime.',
+    )
+    expectTypeOf(message).toEqualTypeOf<$Expected>()
+  })
+
   it.each(unionLiteralCases)('make(%s) agrees with union decode', (input) => {
     // The table callback is a finite union, deliberately outside make's
     // singleton-literal surface; erase it only to exercise the runtime law.
@@ -117,18 +133,24 @@ describe('make', () => {
 
   it('does not let path literals escape into the structured overload', () => {
     type $Malformed = Types.StaticError<'The empty string is not a path'>
-    type $NotLiteral = LiteralCore.ErrorStringNotLiteral
+    type $NotLiteral = LiteralCore.ErrorStringNotLiteral<'Path.AbsFile.make'>
     type $MalformedParameter = Parameters<typeof Path.AbsFile.make<''>>[0]
     type $DynamicParameter = Parameters<typeof Path.AbsFile.make<string>>[0]
     type $OpenParameter = Parameters<typeof Path.AbsFile.make<`/${string}`>>[0]
     type $UnionParameter = Parameters<typeof Path.AbsFile.make<'/a' | '/b'>>[0]
 
-    expectTypeOf<LiteralCore.LiteralGuard<'', Path.AbsFile>>().toEqualTypeOf<$Malformed>()
-    expectTypeOf<LiteralCore.LiteralGuard<string, Path.AbsFile>>().toEqualTypeOf<$NotLiteral>()
     expectTypeOf<
-      LiteralCore.LiteralGuard<`/${string}`, Path.AbsFile>
+      LiteralCore.LiteralGuard<'', Path.AbsFile, 'Path.AbsFile.make'>
+    >().toEqualTypeOf<$Malformed>()
+    expectTypeOf<
+      LiteralCore.LiteralGuard<string, Path.AbsFile, 'Path.AbsFile.make'>
     >().toEqualTypeOf<$NotLiteral>()
-    expectTypeOf<LiteralCore.LiteralGuard<'/a' | '/b', Path.AbsFile>>().toEqualTypeOf<$NotLiteral>()
+    expectTypeOf<
+      LiteralCore.LiteralGuard<`/${string}`, Path.AbsFile, 'Path.AbsFile.make'>
+    >().toEqualTypeOf<$NotLiteral>()
+    expectTypeOf<
+      LiteralCore.LiteralGuard<'/a' | '/b', Path.AbsFile, 'Path.AbsFile.make'>
+    >().toEqualTypeOf<$NotLiteral>()
     expectTypeOf<$MalformedParameter>().toEqualTypeOf<$Malformed>()
     expectTypeOf<$DynamicParameter>().toEqualTypeOf<$NotLiteral>()
     expectTypeOf<$OpenParameter>().toEqualTypeOf<$NotLiteral>()
@@ -170,15 +192,21 @@ describe('finding 3: repeated separators collapse at the type level like runtime
 
 describe('audit round 3: literal guards reject open string patterns', () => {
   it('maps path, segment, and extension patterns to their dynamic-string errors', () => {
-    type $PathExpected = LiteralCore.ErrorStringNotLiteral
+    type $PathExpected = LiteralCore.ErrorStringNotLiteral<'Path.make'>
     type $SegmentExpected =
-      Types.StaticError<'Segment.make requires a string literal. Use a widened string for runtime validation through Path.Segment.'>
+      Types.StaticError<'Path.Segment.make requires a string literal. Use a widened string for runtime validation through Path.Segment.'>
     type $ExtensionExpected =
-      Types.StaticError<'Extension.make requires a string literal. Use a widened string for runtime validation through Path.Extension.'>
+      Types.StaticError<'Path.Extension.make requires a string literal. Use a widened string for runtime validation through Path.Extension.'>
 
-    expectTypeOf<LiteralCore.LiteralInput<`./${string}`>>().toEqualTypeOf<$PathExpected>()
-    expectTypeOf<SegmentLiteralGuard<`name-${string}`>>().toEqualTypeOf<$SegmentExpected>()
-    expectTypeOf<ExtensionLiteralGuard<`.${string}`>>().toEqualTypeOf<$ExtensionExpected>()
+    expectTypeOf<
+      LiteralCore.LiteralInput<`./${string}`, 'Path.make'>
+    >().toEqualTypeOf<$PathExpected>()
+    expectTypeOf<
+      SegmentLiteralGuard<`name-${string}`, 'Path.Segment.make'>
+    >().toEqualTypeOf<$SegmentExpected>()
+    expectTypeOf<
+      ExtensionLiteralGuard<`.${string}`, 'Path.Extension.make'>
+    >().toEqualTypeOf<$ExtensionExpected>()
 
     const openRelative = './src/' as `./${string}`
     const openAbsolute = '/src/' as `/${string}`

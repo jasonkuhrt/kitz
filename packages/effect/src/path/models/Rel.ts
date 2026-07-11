@@ -8,6 +8,18 @@ import { Ascent } from './arbitrary.js'
 import { RelDir } from './RelDir.js'
 import { RelFile } from './RelFile.js'
 
+type RelCommonAncestorLiteralGuard<$S extends string, $Target> = LiteralGuard<
+  $S,
+  $Target,
+  'Path.Rel.commonAncestor'
+>
+
+type RelRelativeToLiteralGuard<$S extends string, $Target> = LiteralGuard<
+  $S,
+  $Target,
+  'Path.Rel.relativeTo'
+>
+
 /**
  * `Rel` — any relative path (`RelFile | RelDir`), as a `string` ⇄ value codec.
  * Carries tagged-union utilities keyed by `_tag`: `cases`, `guards`, `isAnyOf`, `match`.
@@ -18,6 +30,7 @@ class Rel_ extends withLiteralStatics(
   withStatics(
     S.asClass(RelTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
   ),
+  'Path.Rel.make',
 ) {
   static readonly cases = RelTaggedUnion.cases
   static readonly guards = RelTaggedUnion.guards
@@ -31,13 +44,13 @@ class Rel_ extends withLiteralStatics(
    */
   static readonly commonAncestor: {
     <const $A extends typeof Rel_.Type | string, const $B extends typeof Rel_.Type | string>(
-      a: $A extends string ? LiteralGuard<$A, typeof Rel_.Type> : $A,
-      b: $B extends string ? LiteralGuard<$B, typeof Rel_.Type> : $B,
+      a: $A extends string ? RelCommonAncestorLiteralGuard<$A, typeof Rel_.Type> : $A,
+      b: $B extends string ? RelCommonAncestorLiteralGuard<$B, typeof Rel_.Type> : $B,
     ): typeof RelDir.Type
     <const $B extends typeof Rel_.Type | string>(
-      b: $B extends string ? LiteralGuard<$B, typeof Rel_.Type> : $B,
+      b: $B extends string ? RelCommonAncestorLiteralGuard<$B, typeof Rel_.Type> : $B,
     ): <const $A extends typeof Rel_.Type | string>(
-      a: $A extends string ? LiteralGuard<$A, typeof Rel_.Type> : $A,
+      a: $A extends string ? RelCommonAncestorLiteralGuard<$A, typeof Rel_.Type> : $A,
     ) => typeof RelDir.Type
   } = Fn.dual(
     2,
@@ -67,13 +80,13 @@ class Rel_ extends withLiteralStatics(
       const $Path extends typeof Rel_.Type | string,
       const $Base extends typeof RelDir.Type | string,
     >(
-      path: $Path extends string ? LiteralGuard<$Path, typeof Rel_.Type> : $Path,
-      base: $Base extends string ? LiteralGuard<$Base, typeof RelDir.Type> : $Base,
+      path: $Path extends string ? RelRelativeToLiteralGuard<$Path, typeof Rel_.Type> : $Path,
+      base: $Base extends string ? RelRelativeToLiteralGuard<$Base, typeof RelDir.Type> : $Base,
     ): Option.Option<typeof Rel_.Type>
     <const $Base extends typeof RelDir.Type | string>(
-      base: $Base extends string ? LiteralGuard<$Base, typeof RelDir.Type> : $Base,
+      base: $Base extends string ? RelRelativeToLiteralGuard<$Base, typeof RelDir.Type> : $Base,
     ): <const $Path extends typeof Rel_.Type | string>(
-      path: $Path extends string ? LiteralGuard<$Path, typeof Rel_.Type> : $Path,
+      path: $Path extends string ? RelRelativeToLiteralGuard<$Path, typeof Rel_.Type> : $Path,
     ) => Option.Option<typeof Rel_.Type>
   } = Fn.dual(
     2,

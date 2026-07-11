@@ -14,6 +14,7 @@ class Dir_ extends withLiteralStatics(
   withStatics(
     S.asClass(DirTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
   ),
+  'Path.Dir.make',
 ) {
   static readonly cases = DirTaggedUnion.cases
   static readonly guards = DirTaggedUnion.guards

@@ -8,6 +8,18 @@ import { AbsDir } from './AbsDir.js'
 import { AbsFile } from './AbsFile.js'
 import type { Rel } from './Rel.js'
 
+type AbsCommonAncestorLiteralGuard<$S extends string, $Target> = LiteralGuard<
+  $S,
+  $Target,
+  'Path.Abs.commonAncestor'
+>
+
+type AbsRelativeToLiteralGuard<$S extends string, $Target> = LiteralGuard<
+  $S,
+  $Target,
+  'Path.Abs.relativeTo'
+>
+
 /**
  * `Abs` — any absolute path (`AbsFile | AbsDir`), as a `string` ⇄ value codec.
  * Carries tagged-union utilities keyed by `_tag`: `cases`, `guards`, `isAnyOf`, `match`.
@@ -18,6 +30,7 @@ class Abs_ extends withLiteralStatics(
   withStatics(
     S.asClass(AbsTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
   ),
+  'Path.Abs.make',
 ) {
   static readonly cases = AbsTaggedUnion.cases
   static readonly guards = AbsTaggedUnion.guards
@@ -31,13 +44,13 @@ class Abs_ extends withLiteralStatics(
    */
   static readonly commonAncestor: {
     <const $A extends typeof Abs_.Type | string, const $B extends typeof Abs_.Type | string>(
-      a: $A extends string ? LiteralGuard<$A, typeof Abs_.Type> : $A,
-      b: $B extends string ? LiteralGuard<$B, typeof Abs_.Type> : $B,
+      a: $A extends string ? AbsCommonAncestorLiteralGuard<$A, typeof Abs_.Type> : $A,
+      b: $B extends string ? AbsCommonAncestorLiteralGuard<$B, typeof Abs_.Type> : $B,
     ): typeof AbsDir.Type
     <const $B extends typeof Abs_.Type | string>(
-      b: $B extends string ? LiteralGuard<$B, typeof Abs_.Type> : $B,
+      b: $B extends string ? AbsCommonAncestorLiteralGuard<$B, typeof Abs_.Type> : $B,
     ): <const $A extends typeof Abs_.Type | string>(
-      a: $A extends string ? LiteralGuard<$A, typeof Abs_.Type> : $A,
+      a: $A extends string ? AbsCommonAncestorLiteralGuard<$A, typeof Abs_.Type> : $A,
     ) => typeof AbsDir.Type
   } = Fn.dual(
     2,
@@ -59,13 +72,13 @@ class Abs_ extends withLiteralStatics(
       const $Path extends typeof Abs_.Type | string,
       const $Base extends typeof AbsDir.Type | string,
     >(
-      path: $Path extends string ? LiteralGuard<$Path, typeof Abs_.Type> : $Path,
-      base: $Base extends string ? LiteralGuard<$Base, typeof AbsDir.Type> : $Base,
+      path: $Path extends string ? AbsRelativeToLiteralGuard<$Path, typeof Abs_.Type> : $Path,
+      base: $Base extends string ? AbsRelativeToLiteralGuard<$Base, typeof AbsDir.Type> : $Base,
     ): Rel
     <const $Base extends typeof AbsDir.Type | string>(
-      base: $Base extends string ? LiteralGuard<$Base, typeof AbsDir.Type> : $Base,
+      base: $Base extends string ? AbsRelativeToLiteralGuard<$Base, typeof AbsDir.Type> : $Base,
     ): <const $Path extends typeof Abs_.Type | string>(
-      path: $Path extends string ? LiteralGuard<$Path, typeof Abs_.Type> : $Path,
+      path: $Path extends string ? AbsRelativeToLiteralGuard<$Path, typeof Abs_.Type> : $Path,
     ) => Rel
   } = Fn.dual(2, (path: typeof Abs_.Type | string, base: typeof AbsDir.Type | string): Rel => {
     const pathValue: typeof Abs_.Type =

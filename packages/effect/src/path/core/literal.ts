@@ -171,11 +171,11 @@ export type FromLiteral<$S extends string> = string extends $S
     ? FromLiteralAnalysis<AnalyzeLiteral<$S>>
     : never
 
-/** Static error for dynamic strings passed to literal-only constructors. */
-export type ErrorStringNotLiteral = Types.StaticError<
+/** Static error for dynamic strings passed to a literal-only position. */
+export type ErrorStringNotLiteral<$Subject extends string> = Types.StaticError<
   requiresLiteral<
-    'Path literal constructors',
-    '',
+    $Subject,
+    's',
     'Use a path schema codec for dynamic strings, or decode the target schema at runtime.'
   >
 >
@@ -212,24 +212,24 @@ export type FromTargetLiteral<$S extends string, $Target> = string extends $S
  * UTF-16 — and rejects at runtime instead, where decoding requires
  * well-formed Unicode.
  */
-export type LiteralInput<$S extends string> = string extends $S
-  ? ErrorStringNotLiteral
+export type LiteralInput<$S extends string, $Subject extends string> = string extends $S
+  ? ErrorStringNotLiteral<$Subject>
   : Types.IsLiteral<$S> extends true
     ? [AnalyzeLiteral<$S>] extends [never]
       ? ErrorMalformedLiteral<$S>
       : $S
-    : ErrorStringNotLiteral
+    : ErrorStringNotLiteral<$Subject>
 
 /**
  * Guard a string literal against a target path schema, returning a static
  * error on mismatch. Same lone-surrogate caveat as {@link LiteralInput}:
  * ill-formed UTF-16 literals reject at runtime, not here.
  */
-export type LiteralGuard<$S extends string, $Target> =
+export type LiteralGuard<$S extends string, $Target, $Subject extends string> =
   Types.IsLiteral<$S> extends true
     ? [AnalyzeLiteral<$S>] extends [never]
       ? ErrorMalformedLiteral<$S>
       : [FromTargetLiteral<$S, $Target>] extends [never]
         ? ErrorPathValidation<$Target, $S>
         : $S
-    : ErrorStringNotLiteral
+    : ErrorStringNotLiteral<$Subject>

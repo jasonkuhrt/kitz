@@ -49,14 +49,14 @@ type ErrorMalformedExtensionLiteral<$Received extends string> = $Received extend
   : Types.StaticError<`Extension literal '${$Received}' must start with '.'.`>
 
 /** Guard a literal against the Extension runtime grammar. */
-export type ExtensionLiteralGuard<$S extends string> =
+export type ExtensionLiteralGuard<$S extends string, $Subject extends string> =
   Types.IsLiteral<$S> extends true
     ? IsValidExtensionLiteral<$S> extends true
       ? $S
       : ErrorMalformedExtensionLiteral<$S>
     : Types.StaticError<
         requiresLiteral<
-          'Extension.make',
+          $Subject,
           's',
           'Use a widened string for runtime validation through Path.Extension.'
         >
@@ -77,4 +77,6 @@ export const Extension = Extension_
 export type Extension = typeof Extension_.Type
 
 type ExtensionMakeInput<$Input extends string> =
-  Types.IsLiteral<$Input> extends true ? ExtensionLiteralGuard<$Input> : $Input
+  Types.IsLiteral<$Input> extends true
+    ? ExtensionLiteralGuard<$Input, 'Path.Extension.make'>
+    : $Input

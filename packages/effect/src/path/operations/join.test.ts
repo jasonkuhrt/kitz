@@ -2,6 +2,7 @@ import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Equal, Schema as S } from 'effect'
 import { FastCheck } from 'effect/testing'
 import { NaturalInt } from '../../schema/NaturalInt.js'
+import type { Types } from '../../types/_.js'
 import * as Path from '../__.js'
 
 const natural = (value: number) => NaturalInt.make(value)
@@ -97,6 +98,11 @@ describe('join', () => {
     expectTypeOf(Path.join(someRelFile)('/base/')).toEqualTypeOf<Path.AbsFile>()
     expectTypeOf(Path.join(someRelDir)(someAbsDir)).toEqualTypeOf<Path.AbsDir>()
     expectTypeOf(Path.join(someRelFile)(someAbsDir)).toEqualTypeOf<Path.AbsFile>()
+
+    type $DynamicArgs = Parameters<typeof Path.join<readonly [string, Path.RelFile]>>
+    type $DynamicError =
+      Types.StaticError<'Path.join requires a string literal. Use a path schema codec for dynamic strings, or decode the target schema at runtime.'>
+    expectTypeOf<$DynamicArgs[0]>().toEqualTypeOf<$DynamicError>()
 
     // the exported type utility agrees cell-by-cell
     expectTypeOf<Path.Join<Path.AbsDir, Path.RelDir>>().toEqualTypeOf<Path.AbsDir>()

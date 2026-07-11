@@ -118,6 +118,7 @@ export class AbsDir_ extends withLiteralStatics(
       ),
     ),
   ),
+  'Path.AbsDir.make',
 ) {
   /** The absolute anchor — the filesystem root `/`. */
   static readonly anchor: typeof AbsDir_.Type = AbsDir_.make({ segments: [] })

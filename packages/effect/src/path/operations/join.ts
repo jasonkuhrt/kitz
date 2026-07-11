@@ -9,6 +9,8 @@ import { Rel } from '../models/Rel.js'
 import { RelDir } from '../models/RelDir.js'
 import { RelFile } from '../models/RelFile.js'
 
+type JoinLiteralGuard<$S extends string, $Target> = LiteralGuard<$S, $Target, 'Path.join'>
+
 /**
  * Type-level {@link join}: the result keeps the base's absoluteness and the
  * relative path's file/dir nature.
@@ -98,25 +100,25 @@ export const join: {
     ...args: {
       readonly [$Index in keyof $Args]: $Args extends readonly [Rel | string]
         ? $Args[$Index] extends string
-          ? LiteralGuard<$Args[$Index], Rel>
+          ? JoinLiteralGuard<$Args[$Index], Rel>
           : $Args[$Index]
         : $Index extends '0'
           ? $Args[$Index] extends string
-            ? LiteralGuard<$Args[$Index], Dir>
+            ? JoinLiteralGuard<$Args[$Index], Dir>
             : $Args[$Index]
           : $Index extends keyof ($Args extends readonly [...infer $Prefix, unknown]
                 ? $Prefix
                 : never)
             ? $Args[$Index] extends string
-              ? LiteralGuard<$Args[$Index], RelDir>
+              ? JoinLiteralGuard<$Args[$Index], RelDir>
               : $Args[$Index] & RelDir
             : $Args[$Index] extends string
-              ? LiteralGuard<$Args[$Index], Rel>
+              ? JoinLiteralGuard<$Args[$Index], Rel>
               : $Args[$Index]
     }
   ): $Args extends readonly [infer $Part extends Rel | string]
     ? <const $Base extends Dir | string>(
-        base: $Base extends string ? LiteralGuard<$Base, Dir> : $Base,
+        base: $Base extends string ? JoinLiteralGuard<$Base, Dir> : $Base,
       ) => Join<
         $Base extends string
           ? FromTargetLiteral<$Base, Dir> extends infer $NormalizedBase extends Dir

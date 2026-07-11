@@ -5,19 +5,19 @@ import type { FromTargetLiteral, LiteralGuard } from './literal.js'
 // Equality is intentionally not attached: `Schema.toEquivalence` mis-derives over
 // path unions, so comparison goes through structural `Equal.equals` instead.
 /** Literal-aware `make` overloads attached to path schemas. */
-type LiteralAwareMake<$Self extends S.Top> = {
+type LiteralAwareMake<$Self extends S.Top, $Subject extends string> = {
   // TypeScript reports the last failed overload, so the literal guard must be
   // declared last for malformed strings to render its branded message inline.
   /** Preserve the schema's original Type-side constructor input and options. */
   (input: $Self['~type.make.in'], options?: S.MakeOptions): $Self['Type']
   /** Decode a string literal as this path schema, rejecting target mismatches statically. */
   <const $Input extends string>(
-    input: LiteralGuard<$Input, $Self['Type']>,
+    input: LiteralGuard<$Input, $Self['Type'], $Subject>,
   ): FromTargetLiteral<$Input, $Self['Type']>
 }
 
-type LiteralMakeStatic<$Self extends S.Top> = {
-  readonly make: LiteralAwareMake<$Self>
+type LiteralMakeStatic<$Self extends S.Top, $Subject extends string> = {
+  readonly make: LiteralAwareMake<$Self, $Subject>
 }
 
 /**
@@ -27,9 +27,10 @@ type LiteralMakeStatic<$Self extends S.Top> = {
  * Use this only on leaf and pairwise path schemas; `Path.make` owns the
  * top-level `Any` union decode.
  */
-export const withLiteralStatics = <$Self extends S.Top>(
+export const withLiteralStatics = <$Self extends S.Top, const $Subject extends string>(
   self: $Self,
-): $Self & LiteralMakeStatic<$Self> => {
+  _subject: $Subject,
+): $Self & LiteralMakeStatic<$Self, $Subject> => {
   const originalMake = self.make.bind(self)
   const make = (input: unknown, options?: S.MakeOptions): $Self['Type'] =>
     typeof input === 'string'
