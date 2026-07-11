@@ -1764,3 +1764,99 @@ describe('Segment.Realistic', () => {
     expect(realistic.length / samples.length).toBeGreaterThan(0.85)
   })
 })
+
+// ─── DX stress findings — red suite (2026-07-11) ───
+// Each block encodes the DESIRED behavior for a captured finding. Runtime
+// assertions are genuinely red where runtime behavior is wrong; type-level
+// bugs are pinned with @ts-expect-error directives that the fix makes unused
+// (TS2578), forcing their removal in the fix commit.
+
+describe('finding 1: dot-only compound literals are directories at the type level', () => {
+  it('type classification matches runtime decode', () => {
+    // @ts-expect-error RED-PIN: typed AbsFile via never-leak in CanDecodeFile; runtime is AbsDir
+    expectTypeOf(Path.mk('/.')).toEqualTypeOf<Path.AbsDir>()
+    // @ts-expect-error RED-PIN: typed AbsFile; runtime is AbsDir
+    expectTypeOf(Path.mk('/..')).toEqualTypeOf<Path.AbsDir>()
+    // @ts-expect-error RED-PIN: typed RelFile; runtime is RelDir
+    expectTypeOf(Path.mk('./..')).toEqualTypeOf<Path.RelDir>()
+    // @ts-expect-error RED-PIN: typed RelFile; runtime is RelDir
+    expectTypeOf(Path.mk('../.')).toEqualTypeOf<Path.RelDir>()
+    expect(S.decodeSync(Path.Any)('/.')._tag).toBe('AbsDir')
+    expect(S.decodeSync(Path.Any)('/..')._tag).toBe('AbsDir')
+    expect(S.decodeSync(Path.Any)('./..')._tag).toBe('RelDir')
+    expect(S.decodeSync(Path.Any)('../.')._tag).toBe('RelDir')
+  })
+})
+
+describe('finding 2: setParts validates dynamic filename parts', () => {
+  const subject = Path.mk('/home/user/a.txt')
+  it('rejects a stem containing a separator', () => {
+    expect(() => Path.AbsFile.setParts(subject, { stem: 'evil/name' })).toThrow()
+  })
+  it('rejects a dotless extension', () => {
+    expect(() => Path.AbsFile.setParts(subject, { extension: 'zip' })).toThrow()
+  })
+  it('rejects an extension containing a separator', () => {
+    expect(() => Path.AbsFile.setParts(subject, { extension: '.a/b' })).toThrow()
+  })
+  it('FileName.make rejects a stem containing a separator', () => {
+    expect(() => Path.FileName.make({ stem: 'evil/name', extension: Option.none() })).toThrow()
+  })
+})
+
+describe('finding 3: repeated separators collapse at the type level like runtime', () => {
+  it('type classification matches runtime decode', () => {
+    // @ts-expect-error RED-PIN: literal guard rejects '//' while runtime collapses it
+    expectTypeOf(Path.mk('a//b')).toEqualTypeOf<Path.RelFile>()
+    // @ts-expect-error RED-PIN: literal guard rejects '//' while runtime collapses it
+    expectTypeOf(Path.mk('/a//b')).toEqualTypeOf<Path.AbsFile>()
+    // @ts-expect-error RED-PIN: literal guard rejects '//' while runtime collapses it
+    expectTypeOf(Path.mk('a///b/')).toEqualTypeOf<Path.RelDir>()
+    expect(S.decodeSync(Path.Any)('a//b')._tag).toBe('RelFile')
+    expect(S.decodeSync(Path.Any)('/a//b')._tag).toBe('AbsFile')
+    expect(S.decodeSync(Path.Any)('a///b/')._tag).toBe('RelDir')
+  })
+})
+
+describe('finding 4: operations accept target-coercible dir literals like model mk', () => {
+  it('join accepts a slashless dir base literal, matching Dir.mk', () => {
+    // @ts-expect-error RED-PIN: join classifies '/foo' target-blind (FromLiteral) and rejects
+    const joined = Path.join('/foo', './x')
+    expect(String(joined)).toBe('/foo/x')
+  })
+  it('isWithin accepts a slashless dir parent literal', () => {
+    // @ts-expect-error RED-PIN: same target-blind rejection
+    expect(Path.isWithin('/foo/x', '/foo')).toBe(true)
+  })
+})
+
+describe('finding 5: trailing-dot names are files (POSIX), not directories', () => {
+  it('decodes trailing-dot names as extensionless files', () => {
+    expect(S.decodeSync(Path.Any)('a.')._tag).toBe('RelFile')
+    expect(S.decodeSync(Path.Any)('/etc/a.')._tag).toBe('AbsFile')
+    expect(S.encodeSync(Path.Any)(S.decodeSync(Path.Any)('a.'))).toBe('./a.')
+  })
+})
+
+describe('finding 6: the empty string is not a path', () => {
+  it('rejects empty string at decode', () => {
+    expect(() => S.decodeSync(Path.Any)('')).toThrow()
+  })
+})
+
+describe('finding 8: segment name positions accept validated string literals', () => {
+  it('withName accepts a valid segment literal', () => {
+    const dir = Path.mk('/home/user/')
+    // @ts-expect-error RED-PIN: withName requires a decoded Segment; literal duality missing
+    const renamed = Path.withName(dir, 'renamed')
+    expect(Option.map(renamed, (d) => String(d))).toEqual(Option.some('/home/renamed/'))
+  })
+})
+
+describe('finding 9: Extension is a first-class model with a literal constructor', () => {
+  it('Extension.mk constructs from a literal', () => {
+    // @ts-expect-error RED-PIN: Extension is a nested namespace without mk
+    const ext = Path.Extension.mk('.zip')
+    expect(String(ext)).toBe('.zip')
+  })
+})
