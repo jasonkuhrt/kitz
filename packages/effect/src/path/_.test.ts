@@ -203,6 +203,8 @@ const acceptedLiterals = [
   ['./a/', 'RelDir'],
   ['../a', 'RelFile'],
   ['a/../b', 'RelFile'],
+  ['a/..', 'RelDir'],
+  ['/a/..', 'AbsDir'],
   ['/a/../../b', 'AbsFile'],
   ['a/./b', 'RelFile'],
   ['.hidden', 'RelFile'],
@@ -247,6 +249,8 @@ describe('path type⇄value grammar agreement', () => {
     expectTypeOf(Path.mk('./a/')).toEqualTypeOf<Path.RelDir>()
     expectTypeOf(Path.mk('../a')).toEqualTypeOf<Path.RelFile>()
     expectTypeOf(Path.mk('a/../b')).toEqualTypeOf<Path.RelFile>()
+    expectTypeOf(Path.mk('a/..')).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.mk('/a/..')).toEqualTypeOf<Path.AbsDir>()
     expectTypeOf(Path.mk('/a/../../b')).toEqualTypeOf<Path.AbsFile>()
     expectTypeOf(Path.mk('a/./b')).toEqualTypeOf<Path.RelFile>()
     expectTypeOf(Path.mk('.hidden')).toEqualTypeOf<Path.RelFile>()

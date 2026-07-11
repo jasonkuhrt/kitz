@@ -128,7 +128,7 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
   )
   const finalAscent = isAbsolute ? 0 : ascent
 
-  if (isDirectory) {
+  if (isDirectory || (options?.hint === undefined && normalizedSegments.length === 0)) {
     return Analysis.dir({
       isPathAbsolute: isAbsolute,
       ascent: finalAscent,
@@ -215,7 +215,11 @@ const nullByteInFileName = new SchemaIssue.InvalidValue(Option.none(), {
 /** A bare filename (a relative, segment-less file) parsed into stem + extension. */
 export const analyzeFileName = flow(
   (input: string) =>
-    input.includes(nullByte) ? Result.fail(nullByteInFileName) : analyzeFileRel(input),
+    input.includes(nullByte)
+      ? Result.fail(nullByteInFileName)
+      : input.includes(separator)
+        ? Result.fail(notABareFilename)
+        : analyzeFileRel(input),
   Result.flatMap((analysis) =>
     analysis.segments.length > 0
       ? Result.fail(notABareFilename)
