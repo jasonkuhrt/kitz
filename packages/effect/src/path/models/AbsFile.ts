@@ -6,10 +6,11 @@ import {
   Result,
   Schema as S,
   SchemaGetter,
+  SchemaParser,
 } from 'effect'
 import * as PrimaryKey from 'effect/PrimaryKey'
 import { withStatics } from '../../schema/withStatics.js'
-import { analyzeFileAbs, format } from '../analyzer.js'
+import { type AnalysisFile, analyzeFileAbs, format } from '../analyzer.js'
 import { ancestorSegments } from '../core/ancestors.js'
 import { attachPathEqual } from '../core/equality.js'
 import { fileUrlOf, pathStringFromFileUrl } from '../core/fileUrl.js'
@@ -124,6 +125,15 @@ class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
 attachNodeInspect<AbsFile__>(AbsFile__.prototype)
 attachPathEqual<AbsFile__>(AbsFile__.prototype)
 
+const decodeAnalysis = (analysis: AnalysisFile) =>
+  SchemaParser.decodeEffect(AbsDir.FromStruct)({ segments: analysis.segments }).pipe(
+    Effect.map((dir) => ({
+      _tag: 'AbsFile' as const,
+      dir,
+      fileName: analysis.fileName,
+    })),
+  )
+
 /**
  * `AbsFile` — an absolute file path, as a `string` ⇄ `AbsFile` value codec.
  * Path values are lexical: `..` folds at decode (`a/../b` decodes as `b`), so equality is normal-form identity, not filesystem-target identity — symlinks can make lexically distinct paths reach the same file. Symlink-aware resolution belongs to filesystem APIs.
@@ -151,15 +161,7 @@ export class AbsFile_ extends withLiteralStatics(
             ),
           ),
           decode: SchemaGetter.transformOrFail(
-            flow(
-              analyzeFileAbs,
-              Result.map((analysis) => ({
-                _tag: 'AbsFile' as const,
-                dir: AbsDir.make({ segments: analysis.segments.map(segment) }),
-                fileName: analysis.fileName,
-              })),
-              Effect.fromResult,
-            ),
+            flow(analyzeFileAbs, Effect.fromResult, Effect.flatMap(decodeAnalysis)),
           ),
         }),
         S.overrideToFormatter(() => (path) => path.toString()),
@@ -203,12 +205,8 @@ export class AbsFile_ extends withLiteralStatics(
         flow(
           pathStringFromFileUrl,
           Result.flatMap(analyzeFileAbs),
-          Result.map((analysis) => ({
-            _tag: 'AbsFile' as const,
-            dir: AbsDir.make({ segments: analysis.segments.map(segment) }),
-            fileName: analysis.fileName,
-          })),
           Effect.fromResult,
+          Effect.flatMap(decodeAnalysis),
         ),
       ),
     }),

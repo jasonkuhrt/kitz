@@ -6,10 +6,11 @@ import {
   Result,
   Schema as S,
   SchemaGetter,
+  SchemaParser,
 } from 'effect'
 import * as PrimaryKey from 'effect/PrimaryKey'
 import { withStatics } from '../../schema/withStatics.js'
-import { analyzeFileRel, format } from '../analyzer.js'
+import { type AnalysisFile, analyzeFileRel, format } from '../analyzer.js'
 import { ancestorSegments } from '../core/ancestors.js'
 import { attachPathEqual } from '../core/equality.js'
 import { attachNodeInspect } from '../core/inspect.js'
@@ -132,6 +133,18 @@ class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
 attachNodeInspect<RelFile__>(RelFile__.prototype)
 attachPathEqual<RelFile__>(RelFile__.prototype)
 
+const decodeAnalysis = (analysis: AnalysisFile) =>
+  SchemaParser.decodeEffect(RelDir.FromStruct)({
+    ascent: analysis.ascent,
+    segments: analysis.segments,
+  }).pipe(
+    Effect.map((dir) => ({
+      _tag: 'RelFile' as const,
+      dir,
+      fileName: analysis.fileName,
+    })),
+  )
+
 /**
  * `RelFile` — a relative file path, as a `string` ⇄ `RelFile` value codec.
  * Path values are lexical: `..` folds at decode (`a/../b` decodes as `b`), so equality is normal-form identity, not filesystem-target identity — symlinks can make lexically distinct paths reach the same file. Symlink-aware resolution belongs to filesystem APIs.
@@ -161,18 +174,7 @@ export class RelFile_ extends withLiteralStatics(
             })(encoded.dir.segments),
           ),
           decode: SchemaGetter.transformOrFail(
-            flow(
-              analyzeFileRel,
-              Result.map((analysis) => ({
-                _tag: 'RelFile' as const,
-                dir: RelDir.make({
-                  ascent: analysis.ascent,
-                  segments: analysis.segments.map(segment),
-                }),
-                fileName: analysis.fileName,
-              })),
-              Effect.fromResult,
-            ),
+            flow(analyzeFileRel, Effect.fromResult, Effect.flatMap(decodeAnalysis)),
           ),
         }),
         S.overrideToFormatter(() => (path) => path.toString()),

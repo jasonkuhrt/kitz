@@ -4,6 +4,7 @@ import {
   ascentPrefix,
   here,
   herePrefix,
+  nullByte,
   separator,
 } from './core/grammar.js'
 import { emptyPathMessage, targetDescription } from './core/messages.js'
@@ -206,9 +207,15 @@ const notABareFilename = new SchemaIssue.InvalidValue(Option.none(), {
   message: 'Expected a bare filename, not a path',
 })
 
+/** Issue raised when a filename contains the POSIX path terminator byte. */
+const nullByteInFileName = new SchemaIssue.InvalidValue(Option.none(), {
+  message: 'Filename cannot contain NUL',
+})
+
 /** A bare filename (a relative, segment-less file) parsed into stem + extension. */
 export const analyzeFileName = flow(
-  analyzeFileRel,
+  (input: string) =>
+    input.includes(nullByte) ? Result.fail(nullByteInFileName) : analyzeFileRel(input),
   Result.flatMap((analysis) =>
     analysis.segments.length > 0
       ? Result.fail(notABareFilename)
