@@ -18,6 +18,10 @@ domain terms:
   original structured Type-side input.
 - **`Schema`** — small additions to Effect Schema (e.g. `NaturalInt`).
 - **`String`** — string utilities.
+- **`Tuple`** — tuple type operators that complement Effect's tuple helpers
+  (e.g. `Last`).
+- **`Types`** — reusable type predicates and branded diagnostics
+  (`IsLiteral`, `StaticError`).
 
 ```ts
 import { Path } from '@kitz/effect'
@@ -47,7 +51,7 @@ Plain runtime `string` values are intentionally rejected by these signatures;
 decode them through the appropriate Schema before calling the operation. This
 separates compile-time literal convenience from runtime validation without
 creating a second parser. The complete laws and type-level doctrine are in the
-[literal-duality design spec](docs/superpowers/specs/2026-07-09-literal-duality-design.md).
+[literal-duality design spec](https://github.com/jasonkuhrt/kitz/blob/main/docs/superpowers/specs/2026-07-09-literal-duality-design.md).
 
 ## Paths as keys
 
@@ -146,8 +150,21 @@ two copies break Context/Schema identity).
 ## Subpath exports
 
 ```ts
-import { Path, Schema, String } from '@kitz/effect' // all namespaces
-import { Path } from '@kitz/effect/Path' // just Path
+import { Path, Schema, String, Tuple, Types } from '@kitz/effect'
+```
+
+Explicit subpaths expose each module directly:
+
+```ts
+import * as Path from '@kitz/effect/Path'
+import * as Schema from '@kitz/effect/Schema'
+import * as String from '@kitz/effect/String'
+import * as Tuple from '@kitz/effect/Tuple'
+import * as Types from '@kitz/effect/Types'
+
+type Last = Tuple.Last<readonly ['first', 'last']> // 'last'
+type IsFixed = Types.IsLiteral<'fixed'> // true
+type LiteralError = Types.StaticError<'Expected a string literal.'>
 ```
 
 ## Property testing
