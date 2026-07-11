@@ -1,9 +1,11 @@
 import { Schema as S } from 'effect'
 
-/** The schema-derived `is` guard attached by {@link withStatics}. */
-export type Guard<$Self extends S.Top> = {
-  /** Type guard for this schema's values. */
-  readonly is: (u: unknown) => u is $Self['Type']
+export declare namespace withStatics {
+  /** The schema-derived `is` guard attached by {@link withStatics}. */
+  export type Guard<$Self extends S.Top> = {
+    /** Type guard for this schema's values. */
+    readonly is: (u: unknown) => u is $Self['Type']
+  }
 }
 
 /**
@@ -14,5 +16,5 @@ export type Guard<$Self extends S.Top> = {
  * class remains a named, nameable declaration. This avoids TS7056 declaration
  * emit failures for large inferred schema types.
  */
-export const withStatics = <$Self extends S.Top>(self: $Self): $Self & Guard<$Self> =>
+export const withStatics = <$Self extends S.Top>(self: $Self): $Self & withStatics.Guard<$Self> =>
   Object.assign(self, { is: S.is(self) })

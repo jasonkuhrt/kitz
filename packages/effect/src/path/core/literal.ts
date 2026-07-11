@@ -1,6 +1,5 @@
-import type { StaticError } from '../../types/staticError.js'
-import type { Last } from '../../types/last.js'
-import type { Equals } from 'effect/Types'
+import type { Tuple } from '../../tuple/_.js'
+import type { Types } from '../../types/_.js'
 import type { Analysis } from '../analyzer.js'
 import type { Abs } from '../models/Abs.js'
 import type { AbsDir } from '../models/AbsDir.js'
@@ -73,7 +72,7 @@ type CanDecodeFile<$S extends string> =
     : NormalizedSegments<$S> extends infer $Segments extends readonly string[]
       ? $Segments extends readonly []
         ? false
-        : Last<$Segments> extends infer $FileName extends string
+        : Tuple.Last<$Segments> extends infer $FileName extends string
           ? IsValidFileName<$FileName>
           : false
       : false
@@ -136,21 +135,21 @@ type DecodeRelLiteralAs<$S extends string, $Target> =
       : never
 
 type TargetName<$Target> =
-  Equals<$Target, AbsFile> extends true
+  Types.Equals<$Target, AbsFile> extends true
     ? 'AbsFile'
-    : Equals<$Target, AbsDir> extends true
+    : Types.Equals<$Target, AbsDir> extends true
       ? 'AbsDir'
-      : Equals<$Target, RelFile> extends true
+      : Types.Equals<$Target, RelFile> extends true
         ? 'RelFile'
-        : Equals<$Target, RelDir> extends true
+        : Types.Equals<$Target, RelDir> extends true
           ? 'RelDir'
-          : Equals<$Target, Abs> extends true
+          : Types.Equals<$Target, Abs> extends true
             ? 'Abs'
-            : Equals<$Target, Rel> extends true
+            : Types.Equals<$Target, Rel> extends true
               ? 'Rel'
-              : Equals<$Target, File> extends true
+              : Types.Equals<$Target, File> extends true
                 ? 'File'
-                : Equals<$Target, Dir> extends true
+                : Types.Equals<$Target, Dir> extends true
                   ? 'Dir'
                   : 'Any'
 
@@ -173,7 +172,7 @@ export type FromLiteral<$S extends string> = string extends $S
     : never
 
 /** Static error for dynamic strings passed to literal-only constructors. */
-export type ErrorStringNotLiteral = StaticError<
+export type ErrorStringNotLiteral = Types.StaticError<
   requiresLiteral<
     'Path literal constructors',
     '',
@@ -183,14 +182,14 @@ export type ErrorStringNotLiteral = StaticError<
 
 /** Static error for a literal the path grammar itself rejects, naming the cause. */
 export type ErrorMalformedLiteral<$Received extends string> = $Received extends ''
-  ? StaticError<emptyPathMessage>
-  : StaticError<`Path literal '${$Received}' is not a valid path literal.`>
+  ? Types.StaticError<emptyPathMessage>
+  : Types.StaticError<`Path literal '${$Received}' is not a valid path literal.`>
 
 /** Static error for path values from different anchoring groups. */
-export type ErrorPathGroupMismatch = StaticError<groupMismatchMessage>
+export type ErrorPathGroupMismatch = Types.StaticError<groupMismatchMessage>
 
 /** Static error for a well-formed literal that does not match the target path schema. */
-export type ErrorPathValidation<$Target, $Received> = StaticError<
+export type ErrorPathValidation<$Target, $Received> = Types.StaticError<
   notTarget<$Received & string, TargetDescription<$Target>, ValidationHint<$Target>>
 >
 

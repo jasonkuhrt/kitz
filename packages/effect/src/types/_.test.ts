@@ -15,17 +15,13 @@ describe('effect/Types passthrough', () => {
     expectTypeOf<Types.Equals<1, 1>>().toEqualTypeOf<true>()
     expectTypeOf<Types.Equals<1, 2>>().toEqualTypeOf<false>()
   })
-})
 
-describe('Last', () => {
-  it('extracts tuple tails and returns never for an empty tuple', () => {
-    expectTypeOf<Types.Last<readonly ['a', 'b']>>().toEqualTypeOf<'b'>()
-    expectTypeOf<Types.Last<[42]>>().toEqualTypeOf<42>()
-    expectTypeOf<Types.Last<[]>>().toEqualTypeOf<never>()
-  })
-
-  it('extracts an explicit element after a tuple rest', () => {
-    expectTypeOf<Types.Last<[...string[], number]>>().toEqualTypeOf<number>()
+  it('does not absorb domain-owned tuple operators', () => {
+    const staticRejection = () => {
+      // @ts-expect-error Last is owned by the Tuple namespace
+      expectTypeOf<Types.Last<readonly ['a', 'b']>>()
+    }
+    expect(typeof staticRejection).toBe('function')
   })
 })
 

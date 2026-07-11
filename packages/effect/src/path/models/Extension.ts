@@ -1,5 +1,5 @@
 import { Schema as S } from 'effect'
-import type { StaticError } from '../../types/staticError.js'
+import type { Types } from '../../types/_.js'
 import { nullByte } from '../core/grammar.js'
 import type { requiresLiteral } from '../core/messages.js'
 
@@ -41,15 +41,15 @@ type IsValidExtensionLiteral<$S extends string> = $S extends `.${infer $Rest}`
 
 type ErrorMalformedExtensionLiteral<$Received extends string> = $Received extends `.${infer $Rest}`
   ? $Rest extends ''
-    ? StaticError<'Extension literals require at least one character after the dot.'>
+    ? Types.StaticError<'Extension literals require at least one character after the dot.'>
     : $Rest extends `${string}/${string}`
-      ? StaticError<`Extension literal '${$Received}' cannot contain '/'.`>
-      : StaticError<'Extension literals cannot contain NUL.'>
-  : StaticError<`Extension literal '${$Received}' must start with '.'.`>
+      ? Types.StaticError<`Extension literal '${$Received}' cannot contain '/'.`>
+      : Types.StaticError<'Extension literals cannot contain NUL.'>
+  : Types.StaticError<`Extension literal '${$Received}' must start with '.'.`>
 
 /** Guard a literal against the Extension runtime grammar. */
 export type ExtensionLiteralGuard<$S extends string> = string extends $S
-  ? StaticError<
+  ? Types.StaticError<
       requiresLiteral<'Extension.mk', 's', 'Decode dynamic strings through Path.Extension.'>
     >
   : IsValidExtensionLiteral<$S> extends true

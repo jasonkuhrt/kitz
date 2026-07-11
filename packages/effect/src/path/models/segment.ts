@@ -1,5 +1,5 @@
 import { Schema as S } from 'effect'
-import type { StaticError } from '../../types/staticError.js'
+import type { Types } from '../../types/_.js'
 import { nullByte } from '../core/grammar.js'
 import type { ascent, here, separator } from '../core/grammar.js'
 import type { requiresLiteral } from '../core/messages.js'
@@ -108,16 +108,16 @@ type IsValidSegmentLiteral<$S extends string> = $S extends '' | here | ascent
     : true
 
 type ErrorMalformedSegmentLiteral<$Received extends string> = $Received extends ''
-  ? StaticError<emptySegmentMessage>
+  ? Types.StaticError<emptySegmentMessage>
   : $Received extends here | ascent
-    ? StaticError<traversalSegmentMessage>
+    ? Types.StaticError<traversalSegmentMessage>
     : $Received extends `${string}${separator}${string}`
-      ? StaticError<separatorSegmentMessage>
-      : StaticError<nullByteSegmentMessage>
+      ? Types.StaticError<separatorSegmentMessage>
+      : Types.StaticError<nullByteSegmentMessage>
 
 /** Guard a POSIX path-segment literal against the runtime Segment grammar. */
 export type SegmentLiteralGuard<$S extends string> = string extends $S
-  ? StaticError<
+  ? Types.StaticError<
       requiresLiteral<
         'Segment literal constructors',
         '',

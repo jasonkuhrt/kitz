@@ -1,4 +1,4 @@
-import type { ZeroWidthSpace } from '../string/chars.js'
+import type { String } from '../string/_.js'
 
 /**
  * Branded string literal carrying a static error message.
@@ -10,4 +10,4 @@ import type { ZeroWidthSpace } from '../string/chars.js'
  * go-to-definition. The zero-width-space brand is invisible in diagnostics
  * yet keeps every user string un-assignable to the error type.
  */
-export type StaticError<$Message extends string> = `${$Message}${ZeroWidthSpace}`
+export type StaticError<$Message extends string> = `${$Message}${String.ZeroWidthSpace}`

@@ -5,11 +5,11 @@
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Schema as S } from 'effect'
 import { FastCheck } from 'effect/testing'
+import { Schema } from './_.js'
 import { withArbitraryHints } from './withArbitraryHints.js'
-import { withStatics } from './__.js'
 
 describe('withStatics', () => {
-  class Name extends withStatics(S.asClass(S.String)) {}
+  class Name extends Schema.withStatics(S.asClass(S.String)) {}
 
   it('attaches and inherits a schema-derived is guard', () => {
     expect(Name.is('Ada')).toBe(true)
@@ -17,6 +17,18 @@ describe('withStatics', () => {
 
     const input: unknown = 'Grace'
     if (Name.is(input)) expectTypeOf(input).toEqualTypeOf<typeof Name.Type>()
+  })
+
+  it('owns its Guard type instead of leaking a bare Schema.Guard', () => {
+    expectTypeOf<Schema.withStatics.Guard<typeof S.String>['is']>().toEqualTypeOf<
+      (u: unknown) => u is string
+    >()
+
+    const staticRejection = () => {
+      // @ts-expect-error Guard is owned by Schema.withStatics
+      expectTypeOf<Schema.Guard<typeof S.String>>()
+    }
+    expect(typeof staticRejection).toBe('function')
   })
 })
 
