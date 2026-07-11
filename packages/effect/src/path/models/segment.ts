@@ -6,8 +6,9 @@ import type { requiresLiteral } from '../core/messages.js'
 import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { realisticSegmentPattern } from '../core/realisticText.js'
 
-// This pattern is one of three composed checks; non-empty and traversal rules
-// live in the full check chain mirrored by SegmentLiteralGuard below.
+// This pattern is one of four composed checks; non-empty, well-formed Unicode,
+// and traversal rules live in the full check chain. SegmentLiteralGuard mirrors
+// every part representable by TypeScript's string-template type system.
 const segmentPatternSource = `^[^/${nullByte}]+$`
 const segmentPattern = new RegExp(segmentPatternSource)
 
@@ -21,6 +22,8 @@ type traversalSegmentMessage = '"." and ".." are traversal references, not segme
 const traversalSegmentMessage: traversalSegmentMessage =
   '"." and ".." are traversal references, not segment names'
 
+const wellFormedSegmentMessage = 'Path segment must be well-formed Unicode'
+
 type separatorSegmentMessage = "Path segment cannot contain '/'"
 export const separatorSegmentMessage: separatorSegmentMessage = "Path segment cannot contain '/'"
 
@@ -28,9 +31,14 @@ type nullByteSegmentMessage = 'Path segment cannot contain NUL'
 export const nullByteSegmentMessage: nullByteSegmentMessage = 'Path segment cannot contain NUL'
 
 const isSegmentText = (s: string): boolean =>
-  s.length > 0 && !s.includes('/') && !s.includes(nullByte) && s !== '.' && s !== '..'
+  s.length > 0 &&
+  s.isWellFormed() &&
+  !s.includes('/') &&
+  !s.includes(nullByte) &&
+  s !== '.' &&
+  s !== '..'
 
-// Canonical generation mixes three equal-weight sources so the derived
+// Canonical generation mixes four equal-weight sources so the derived
 // arbitrary is domain-faithful — covering the whole valid set without
 // over-biasing any sub-region (biased distributions are variant schemas,
 // e.g. `Realistic` below):
@@ -38,7 +46,8 @@ const isSegmentText = (s: string): boolean =>
 //   2. fast-check dictionary text (adversarial JS names like `__proto__`)
 //   3. full-codepoint unicode text (`fc.stringMatching`/`fc.string` never
 //      leave printable ASCII on their own — see docs/learnings/effect-arbitrary.md)
-const canonicalGenerationWeight = 3
+//   4. an explicitly well-formed full-codepoint source for that runtime check
+const canonicalGenerationWeight = 4
 
 const dictionaryTextArbitrary = {
   constraint: { minLength: 1, maxLength: 32, patterns: [segmentPatternSource] },
@@ -58,6 +67,14 @@ const unicodeTextArbitrary = {
   },
 } satisfies S.Annotations.ToArbitrary.Filter
 
+const wellFormedTextArbitrary = {
+  candidate: {
+    weight: 1,
+    make: (fc: typeof import('effect/testing').FastCheck) =>
+      fc.string({ unit: 'binary', minLength: 1, maxLength: 32 }).filter(isSegmentText),
+  },
+} satisfies S.Annotations.ToArbitrary.Filter
+
 /**
  * A single path segment — a POSIX-safe name component: non-empty, no `/` or NUL,
  * and not a `.`/`..` traversal reference (those are resolved by the analyzer into
@@ -70,6 +87,10 @@ export class Segment_ extends S.asClass(
       S.isPattern(segmentPattern, {
         message: patternSegmentMessage,
         arbitrary: unicodeTextArbitrary,
+      }),
+      S.makeFilter((s) => s.isWellFormed(), {
+        message: wellFormedSegmentMessage,
+        arbitrary: wellFormedTextArbitrary,
       }),
       S.makeFilter((s) => s !== '.' && s !== '..', {
         message: traversalSegmentMessage,

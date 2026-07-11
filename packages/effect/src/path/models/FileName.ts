@@ -41,7 +41,7 @@ const fileNameArbitrary = {
     const asciiText = fc.stringMatching(fileNameText)
     const unicodePart = fc
       .string({ unit: 'binary', minLength: 1, maxLength: 16 })
-      .filter((s) => !s.includes('/') && !s.includes(nullByte))
+      .filter((s) => s.isWellFormed() && !s.includes('/') && !s.includes(nullByte))
     const unicodeText = fc
       .tuple(unicodePart, fc.option(unicodePart, { nil: undefined }))
       .map(([stem, extension]) => (extension === undefined ? stem : `${stem}.${extension}`))

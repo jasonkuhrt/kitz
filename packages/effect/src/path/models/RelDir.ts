@@ -10,7 +10,7 @@ import { parentOf } from '../core/segments.js'
 import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
-import { Ascent, maxSegments, Segments } from './arbitrary.js'
+import { Ascent, maxAscent, maxSegments, Segments } from './arbitrary.js'
 import { FileName } from './FileName.js'
 import { RelFile } from './RelFile.js'
 import { Segment, segment } from './segment.js'
@@ -61,7 +61,10 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
   /** The parent directory — drops the last segment (grows `ascent` when segment-less). */
   get parent(): RelDir {
     const parent = parentOf(this.ascent, this.segments)
-    return RelDir_.make({ ascent: parent.ascent, segments: parent.segments })
+    return RelDir_.make({
+      ascent: Math.min(parent.ascent, maxAscent),
+      segments: parent.segments,
+    })
   }
 
   /** The directory re-anchors at the absolute anchor (the filesystem root), dropping `ascent` — consistent with the POSIX `/..` clamp. To resolve against a base directory instead, use the flat `ensureAbs`. */

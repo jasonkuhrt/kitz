@@ -1123,17 +1123,23 @@ describe('audit round 3: filename and path text validity', () => {
   })
 
   it('bounds relative ascent at the path grammar maximum', () => {
-    expect(
-      Result.isSuccess(
-        S.decodeUnknownResult(Path.RelDir.FromStruct)({ ascent: 4096, segments: [] }),
-      ),
-    ).toBe(true)
+    const atMaximum = S.decodeUnknownResult(Path.RelDir.FromStruct)({
+      ascent: 4096,
+      segments: [],
+    })
+    expect(Result.isSuccess(atMaximum)).toBe(true)
     expect(
       Result.isFailure(
         S.decodeUnknownResult(Path.RelDir.FromStruct)({ ascent: 4097, segments: [] }),
       ),
     ).toBe(true)
     expect(Result.isFailure(S.decodeResult(Path.RelDir)('../'.repeat(4097)))).toBe(true)
+
+    if (Result.isSuccess(atMaximum)) {
+      expect(() => atMaximum.success.toString()).not.toThrow()
+      expect(() => atMaximum.success.parent).not.toThrow()
+      expect(atMaximum.success.parent.ascent).toBe(4096)
+    }
   })
 
   it('rejects ill-formed Unicode across component and path codecs', () => {
@@ -1142,6 +1148,9 @@ describe('audit round 3: filename and path text validity', () => {
     expect(Result.isFailure(S.decodeResult(Path.Segment)(loneSurrogate))).toBe(true)
     expect(Result.isFailure(S.decodeResult(Path.FileName)(`a${loneSurrogate}`))).toBe(true)
     expect(Result.isFailure(S.decodeResult(Path.AbsDir)(`/${loneSurrogate}/`))).toBe(true)
+    expect(Result.isFailure(S.decodeResult(Path.AbsFile)(`/${loneSurrogate}`))).toBe(true)
+    expect(Result.isFailure(S.decodeResult(Path.RelDir)(`./${loneSurrogate}/`))).toBe(true)
+    expect(Result.isFailure(S.decodeResult(Path.RelFile)(`./${loneSurrogate}`))).toBe(true)
 
     const astral = S.decodeSync(Path.AbsFile)('/tmp/😀.txt')
     expect(() => astral.fileUrl).not.toThrow()

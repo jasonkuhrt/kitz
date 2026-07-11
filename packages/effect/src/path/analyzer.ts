@@ -48,6 +48,11 @@ const emptyPath = new SchemaIssue.InvalidValue(Option.some(''), {
   message: emptyPathMessage,
 })
 
+const illFormedUnicode = (input: string): SchemaIssue.Issue =>
+  new SchemaIssue.InvalidValue(Option.some(input), {
+    message: 'Path text must be well-formed Unicode',
+  })
+
 /**
  * Normalize segments by resolving '..' references.
  * Returns the final ascent count and clean segments.
@@ -161,6 +166,7 @@ const analyzeAs =
   (anchoring: 'absolute' | 'relative') =>
   (input: string): Result.Result<Data.TaggedEnum.Value<Analysis, $K>, SchemaIssue.Issue> => {
     if (input === '') return Result.fail(emptyPath)
+    if (!input.isWellFormed()) return Result.fail(illFormedUnicode(input))
     const analysis = analyze(input, { hint: kind })
     if (!Analysis.$is(kind)(analysis)) {
       return Result.fail(
