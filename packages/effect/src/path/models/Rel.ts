@@ -18,8 +18,6 @@ class Rel_ extends withLiteralStatics(
     S.asClass(RelTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
   ),
 ) {
-  static readonly RelFile = RelFile
-  static readonly RelDir = RelDir
   static readonly cases = RelTaggedUnion.cases
   static readonly guards = RelTaggedUnion.guards
   static readonly isAnyOf = RelTaggedUnion.isAnyOf

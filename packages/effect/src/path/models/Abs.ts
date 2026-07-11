@@ -19,8 +19,6 @@ class Abs_ extends withLiteralStatics(
     S.asClass(AbsTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
   ),
 ) {
-  static readonly AbsFile = AbsFile
-  static readonly AbsDir = AbsDir
   static readonly cases = AbsTaggedUnion.cases
   static readonly guards = AbsTaggedUnion.guards
   static readonly isAnyOf = AbsTaggedUnion.isAnyOf

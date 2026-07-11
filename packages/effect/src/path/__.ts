@@ -30,9 +30,6 @@ export { RelFile } from './models/RelFile.js'
 // Top-level union schema of all path variants (surfaces as `Path.Any`)
 export { Any } from './models/Any.js'
 
-// Constants
-export * from './constants.js'
-
 // Process-boundary services
 export { Cwd } from './services/Cwd.js'
 

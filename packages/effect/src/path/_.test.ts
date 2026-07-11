@@ -428,6 +428,13 @@ describe('.parent', () => {
     // @ts-expect-error isRoot does not exist on files — derive through file.dir.isAnchor
     void someRelFile.isRoot
   })
+
+  it('distinguishes the named parent constant from instance navigation', () => {
+    expectTypeOf(Path.RelDir.parent).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(Path.RelDir.parent.parent).toEqualTypeOf<Path.RelDir>()
+    expect(Path.RelDir.parent).toEncodeTo('../')
+    expect(Path.RelDir.parent.parent).toEncodeTo('../../')
+  })
 })
 
 // ─── getters: ancestors ───
@@ -1250,5 +1257,57 @@ describe('audit round 3: Analyzer ownership', () => {
 
     expect(typeof staticRejection).toBe('function')
     expect(Object.hasOwn(Path, 'Analyzer')).toBe(false)
+  })
+})
+
+describe('audit round 3: canonical ownership paths', () => {
+  it('omits flat constants and union member-schema aliases', () => {
+    const staticRejections = () => {
+      // @ts-expect-error use AbsDir.anchor
+      void Path.absDirRoot
+      // @ts-expect-error use RelDir.anchor
+      void Path.relDirCurrent
+      // @ts-expect-error use RelDir.parent
+      void Path.relDirParent
+      // @ts-expect-error use Path.AbsFile
+      void Path.Any.AbsFile
+      // @ts-expect-error use Path.AbsDir
+      void Path.Any.AbsDir
+      // @ts-expect-error use Path.RelFile
+      void Path.Any.RelFile
+      // @ts-expect-error use Path.RelDir
+      void Path.Any.RelDir
+      // @ts-expect-error use Path.AbsFile
+      void Path.Abs.AbsFile
+      // @ts-expect-error use Path.AbsDir
+      void Path.Abs.AbsDir
+      // @ts-expect-error use Path.RelFile
+      void Path.Rel.RelFile
+      // @ts-expect-error use Path.RelDir
+      void Path.Rel.RelDir
+      // @ts-expect-error use Path.AbsFile
+      void Path.File.AbsFile
+      // @ts-expect-error use Path.RelFile
+      void Path.File.RelFile
+      // @ts-expect-error use Path.AbsDir
+      void Path.Dir.AbsDir
+      // @ts-expect-error use Path.RelDir
+      void Path.Dir.RelDir
+    }
+    const duplicateOwners = [
+      [Path.Any, ['AbsFile', 'AbsDir', 'RelFile', 'RelDir']],
+      [Path.Abs, ['AbsFile', 'AbsDir']],
+      [Path.Rel, ['RelFile', 'RelDir']],
+      [Path.File, ['AbsFile', 'RelFile']],
+      [Path.Dir, ['AbsDir', 'RelDir']],
+    ] as const
+
+    expect(typeof staticRejections).toBe('function')
+    expect(Object.hasOwn(Path, 'absDirRoot')).toBe(false)
+    expect(Object.hasOwn(Path, 'relDirCurrent')).toBe(false)
+    expect(Object.hasOwn(Path, 'relDirParent')).toBe(false)
+    for (const [owner, names] of duplicateOwners) {
+      for (const name of names) expect(Object.hasOwn(owner, name)).toBe(false)
+    }
   })
 })

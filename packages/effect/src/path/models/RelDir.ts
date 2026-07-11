@@ -58,7 +58,11 @@ class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
     )
   }
 
-  /** The parent directory — drops the last segment (grows `ascent` when segment-less). */
+  /**
+   * The navigated parent directory — drops the last named segment, or grows
+   * ascent when segment-less. This instance getter performs navigation; the
+   * class static `RelDir.parent` is the named `../` constant.
+   */
   get parent(): RelDir {
     const parent = parentOf(this.ascent, this.segments)
     return RelDir_.make({
@@ -137,6 +141,12 @@ export class RelDir_ extends withLiteralStatics(
 ) {
   /** The relative anchor `./` — the identity of `join`. */
   static readonly anchor: typeof RelDir_.Type = RelDir_.make({ ascent: 0, segments: [] })
+
+  /**
+   * The named parent-directory path `../`. This class static is a constant;
+   * the instance getter `dir.parent` navigates upward from `dir`.
+   */
+  static readonly parent: typeof RelDir_.Type = RelDir_.make({ ascent: 1, segments: [] })
 
   /**
    * Decode/encode paths as flat structured JSON instead of strings.
