@@ -109,6 +109,11 @@ export class Segment_ extends withStatics(
    */
   static override make<const $Input extends string>(
     input: SegmentMakeInput<$Input>,
+    options: S.MakeOptions | undefined,
+  ): Segment
+  static override make<const $Input extends string>(input: SegmentMakeInput<$Input>): Segment
+  static override make<const $Input extends string>(
+    input: SegmentMakeInput<$Input>,
     options?: S.MakeOptions,
   ): Segment {
     return super.make(input as any, options)

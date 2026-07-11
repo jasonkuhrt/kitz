@@ -1191,6 +1191,22 @@ describe('audit round 3: Protocol', () => {
 })
 
 describe('audit round 3: literal component producer contract', () => {
+  it('keeps Segment.make point-free mappable without widening MakeOptions', () => {
+    const inputs: string[] = ['src', 'lib']
+    const segments = inputs.map(Path.Segment.make)
+
+    expectTypeOf(segments).toEqualTypeOf<Path.Segment[]>()
+    expect(segments).toEqual(['src', 'lib'])
+    expect(Path.Segment.make('src', { disableChecks: false })).toBe('src')
+    expect(Path.Segment.make('src', undefined)).toBe('src')
+
+    const staticRejections = () => {
+      // @ts-expect-error point-free compatibility must not widen MakeOptions
+      Path.Segment.make('src', 1)
+    }
+    expect(typeof staticRejections).toBe('function')
+  })
+
   it('exposes literal-aware make on Segment, Extension, and FileName', () => {
     const segment = Path.Segment.make('src')
     const extensionValue = Path.Extension.make('.ts')
