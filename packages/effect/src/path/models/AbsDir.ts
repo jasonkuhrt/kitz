@@ -19,7 +19,7 @@ import { Segment, segment } from './segment.js'
  * Absolute directory value — the decoded path (segments) with instance behavior.
  * Absolute paths can't lead with `..`, so there is no `ascent`.
  */
-class AbsDir__ extends S.TaggedClass<AbsDir__>()('AbsDir', {
+class AbsDir__ extends S.TaggedClass<AbsDir__>('@kitz/effect/Path/AbsDir')('AbsDir', {
   segments: Segments.pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
   /** The directory name (last segment), or `None` for root. */

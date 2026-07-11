@@ -76,7 +76,7 @@ type AbsFileSubject<$File extends AbsFile__ | string> = $File extends string
  * Absolute file value — the decoded path (directory + filename).
  * Absolute paths can't lead with `..`, so there is no `ascent`.
  */
-class AbsFile__ extends S.TaggedClass<AbsFile__>()('AbsFile', {
+class AbsFile__ extends S.TaggedClass<AbsFile__>('@kitz/effect/Path/AbsFile')('AbsFile', {
   /**
    * Containing absolute directory. Constructor default is the absolute anchor
    * for literal/schema construction; application code building non-root files

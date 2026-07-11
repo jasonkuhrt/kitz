@@ -18,7 +18,7 @@ import { Segment, segment } from './segment.js'
 /**
  * Relative directory value — the decoded path (ascent count + segments) with instance behavior.
  */
-class RelDir__ extends S.TaggedClass<RelDir__>()('RelDir', {
+class RelDir__ extends S.TaggedClass<RelDir__>('@kitz/effect/Path/RelDir')('RelDir', {
   /** Count of leading parent-traversal (`..`) steps. */
   ascent: Ascent.pipe(S.withConstructorDefault(Effect.succeed(0))),
   segments: Segments.pipe(S.withConstructorDefault(Effect.succeed([]))),

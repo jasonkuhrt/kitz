@@ -76,7 +76,7 @@ type RelFileSubject<$File extends RelFile__ | string> = $File extends string
 /**
  * Relative file value — the decoded path (directory + filename).
  */
-class RelFile__ extends S.TaggedClass<RelFile__>()('RelFile', {
+class RelFile__ extends S.TaggedClass<RelFile__>('@kitz/effect/Path/RelFile')('RelFile', {
   /**
    * Containing relative directory. Constructor default is the relative anchor
    * for literal/schema construction; application code building non-anchor files

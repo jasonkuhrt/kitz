@@ -63,7 +63,7 @@ const fileNameArbitrary = {
 } satisfies S.Annotations.Bottom<FileName__, readonly []>
 
 /** Filename value — a stem plus optional final extension, split on the last dot after index 0. */
-class FileName__ extends S.TaggedClass<FileName__>()('FileName', {
+class FileName__ extends S.TaggedClass<FileName__>('@kitz/effect/Path/FileName')('FileName', {
   stem: S.String,
   extension: S.OptionFromNullOr(Extension),
 }) {
