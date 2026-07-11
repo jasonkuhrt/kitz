@@ -14,27 +14,41 @@ export type StartsWith<$S extends string, $T extends string> = $S extends `${$T}
   ? true
   : false
 
-/** Extract the last segment from a path-like string (after the last '/'). */
-export type LastSegment<$S extends string> = $S extends `${string}/${infer $Rest}`
-  ? LastSegment<$Rest>
-  : $S
+/** The substring after the last occurrence of a delimiter. */
+export type AfterLast<$S extends string, $D extends string> = string extends $S | $D
+  ? string
+  : $D extends ''
+    ? ''
+    : $S extends `${string}${$D}${infer $Rest}`
+      ? AfterLast<$Rest, $D>
+      : $S
 
-/** Remove all trailing slashes from a string (a lone '/' is preserved). */
-export type RemoveTrailingSlash<$S extends string> = $S extends `${infer $Rest}/`
-  ? $Rest extends ''
-    ? '/'
-    : RemoveTrailingSlash<$Rest>
-  : $S
+/** Recursively remove every trailing occurrence of a suffix. */
+export type RemoveTrailing<$S extends string, $Suffix extends string> = string extends $S | $Suffix
+  ? string
+  : $Suffix extends ''
+    ? $S
+    : $S extends `${infer $Rest}${$Suffix}`
+      ? RemoveTrailing<$Rest, $Suffix>
+      : $S
 
-/** Split a string by a delimiter, filtering out empty segments and '.' segments. */
-export type Split<$S extends string, $D extends string, $Acc extends string[] = []> = $S extends ''
+type SplitCharacters<$S extends string, $Acc extends string[] = []> = $S extends ''
   ? $Acc
-  : $S extends `${infer $Segment}${$D}${infer $Rest}`
-    ? $Segment extends ''
-      ? Split<$Rest, $D, $Acc>
-      : $Segment extends '.'
-        ? Split<$Rest, $D, $Acc>
-        : Split<$Rest, $D, [...$Acc, $Segment]>
-    : $S extends '.'
-      ? $Acc
-      : [...$Acc, $S]
+  : $S extends `${infer $Character}${infer $Rest}`
+    ? SplitCharacters<$Rest, [...$Acc, $Character]>
+    : $Acc
+
+type SplitByDelimiter<
+  $S extends string,
+  $D extends string,
+  $Acc extends string[] = [],
+> = $S extends `${infer $Segment}${$D}${infer $Rest}`
+  ? SplitByDelimiter<$Rest, $D, [...$Acc, $Segment]>
+  : [...$Acc, $S]
+
+/** A pure delimiter split matching `String.prototype.split`. */
+export type Split<$S extends string, $D extends string> = string extends $S | $D
+  ? string[]
+  : $D extends ''
+    ? SplitCharacters<$S>
+    : SplitByDelimiter<$S, $D>

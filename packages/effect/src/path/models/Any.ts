@@ -1,6 +1,6 @@
 import { Schema as S } from 'effect'
 import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
-import { withStatics } from '../core/statics.js'
+import { withStatics } from '../../schema/withStatics.js'
 import { AbsDir } from './AbsDir.js'
 import { AbsFile } from './AbsFile.js'
 import { RelDir } from './RelDir.js'

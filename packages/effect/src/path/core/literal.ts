@@ -1,4 +1,6 @@
 import type { StaticError } from '../../types/staticError.js'
+import type { Last } from '../../types/last.js'
+import type { Equals } from 'effect/Types'
 import type { Analysis } from '../analyzer.js'
 import type { Abs } from '../models/Abs.js'
 import type { AbsDir } from '../models/AbsDir.js'
@@ -62,13 +64,6 @@ type NormalizeSegments<
 type NormalizedSegments<$S extends string> = NormalizeSegments<
   Split<StripLeadingHere<StripLeadingAscent<StripRoot<$S>>>>
 >
-
-type Last<$Items extends readonly string[]> = $Items extends readonly [
-  ...(readonly string[]),
-  infer $Last,
-]
-  ? $Last
-  : never
 
 type IsValidFileName<$S extends string> = $S extends '' | here | ascent ? false : true
 
@@ -140,24 +135,22 @@ type DecodeRelLiteralAs<$S extends string, $Target> =
       ? RelDir
       : never
 
-type IsExactly<$A, $B> = [$A] extends [$B] ? ([$B] extends [$A] ? true : false) : false
-
 type TargetName<$Target> =
-  IsExactly<$Target, AbsFile> extends true
+  Equals<$Target, AbsFile> extends true
     ? 'AbsFile'
-    : IsExactly<$Target, AbsDir> extends true
+    : Equals<$Target, AbsDir> extends true
       ? 'AbsDir'
-      : IsExactly<$Target, RelFile> extends true
+      : Equals<$Target, RelFile> extends true
         ? 'RelFile'
-        : IsExactly<$Target, RelDir> extends true
+        : Equals<$Target, RelDir> extends true
           ? 'RelDir'
-          : IsExactly<$Target, Abs> extends true
+          : Equals<$Target, Abs> extends true
             ? 'Abs'
-            : IsExactly<$Target, Rel> extends true
+            : Equals<$Target, Rel> extends true
               ? 'Rel'
-              : IsExactly<$Target, File> extends true
+              : Equals<$Target, File> extends true
                 ? 'File'
-                : IsExactly<$Target, Dir> extends true
+                : Equals<$Target, Dir> extends true
                   ? 'Dir'
                   : 'Any'
 

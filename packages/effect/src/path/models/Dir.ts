@@ -1,5 +1,6 @@
 import { Schema as S } from 'effect'
-import { withLiteralStatics, withStatics } from '../core/statics.js'
+import { withStatics } from '../../schema/withStatics.js'
+import { withLiteralStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
 import { RelDir } from './RelDir.js'
 

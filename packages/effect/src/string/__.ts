@@ -3,8 +3,8 @@
  * string operators effect does not ship.
  *
  * Re-exports all of `effect/String` (value-level: `camelCase`, `split`, …) and
- * adds compile-time operators (`Split`, `EndsWith`, `StartsWith`, `LastSegment`,
- * `RemoveTrailingSlash`) and character constants (`ZeroWidthSpace`) under the
+ * adds compile-time operators (`Split`, `EndsWith`, `StartsWith`, `AfterLast`,
+ * `RemoveTrailing`) and character constants (`ZeroWidthSpace`) under the
  * same namespace.
  *
  * @example
@@ -12,7 +12,7 @@
  * import { String } from '@kitz/effect'
  *
  * String.camelCase('foo-bar')          // effect's value-level helper
- * type Parts = String.Split<'a/b/c', '/'>  // kitz's type-level operator → ['a','b','c']
+ * type Parts = String.Split<'a//b', '/'> // kitz type operator → ['a', '', 'b']
  * ```
  *
  * @module

@@ -2,10 +2,23 @@
  * Schema namespace test suite — organized by FEATURE (see path/_.test.ts for
  * the principle statement).
  */
-import { describe, expect, it } from '@kitz/vitest'
+import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Schema as S } from 'effect'
 import { FastCheck } from 'effect/testing'
 import { withArbitraryHints } from './withArbitraryHints.js'
+import { withStatics } from './__.js'
+
+describe('withStatics', () => {
+  class Name extends withStatics(S.asClass(S.String)) {}
+
+  it('attaches and inherits a schema-derived is guard', () => {
+    expect(Name.is('Ada')).toBe(true)
+    expect(Name.is(42)).toBe(false)
+
+    const input: unknown = 'Grace'
+    if (Name.is(input)) expectTypeOf(input).toEqualTypeOf<typeof Name.Type>()
+  })
+})
 
 describe('withArbitraryHints', () => {
   const Base = S.String.pipe(S.check(S.makeFilter((s) => s.length >= 1, { message: 'non-empty' })))

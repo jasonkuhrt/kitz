@@ -1,7 +1,8 @@
 import { Function as Fn, Schema as S } from 'effect'
+import { withStatics } from '../../schema/withStatics.js'
 import type { LiteralGuard } from '../core/literal.js'
 import { commonSegmentPrefix } from '../core/segments.js'
-import { withLiteralStatics, withStatics } from '../core/statics.js'
+import { withLiteralStatics } from '../core/statics.js'
 import { RelDir } from './RelDir.js'
 import { RelFile } from './RelFile.js'
 

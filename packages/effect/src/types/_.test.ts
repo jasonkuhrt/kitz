@@ -17,6 +17,18 @@ describe('effect/Types passthrough', () => {
   })
 })
 
+describe('Last', () => {
+  it('extracts tuple tails and returns never for an empty tuple', () => {
+    expectTypeOf<Types.Last<readonly ['a', 'b']>>().toEqualTypeOf<'b'>()
+    expectTypeOf<Types.Last<[42]>>().toEqualTypeOf<42>()
+    expectTypeOf<Types.Last<[]>>().toEqualTypeOf<never>()
+  })
+
+  it('extracts an explicit element after a tuple rest', () => {
+    expectTypeOf<Types.Last<[...string[], number]>>().toEqualTypeOf<number>()
+  })
+})
+
 describe('StaticError', () => {
   it('is the message with the zero-width-space brand appended', () => {
     expectTypeOf<Types.StaticError<'boom'>>().toEqualTypeOf<`boom${String.ZeroWidthSpace}`>()
