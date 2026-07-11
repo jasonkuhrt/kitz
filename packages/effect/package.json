@@ -30,19 +30,14 @@
   ],
   "type": "module",
   "sideEffects": false,
-  "imports": {
-    "#string": "./src/string/_.ts"
-  },
   "exports": {
     ".": "./src/_.ts",
     "./Path": "./src/path/_.ts",
     "./Schema": "./src/schema/_.ts",
-    "./String": "./src/string/_.ts"
+    "./String": "./src/string/_.ts",
+    "./Types": "./src/types/_.ts"
   },
   "publishConfig": {
-    "imports": {
-      "#string": "./build/string/_.js"
-    },
     "exports": {
       ".": {
         "types": "./build/_.d.ts",
@@ -59,6 +54,10 @@
       "./String": {
         "types": "./build/string/_.d.ts",
         "default": "./build/string/_.js"
+      },
+      "./Types": {
+        "types": "./build/types/_.d.ts",
+        "default": "./build/types/_.js"
       }
     },
     "access": "public"

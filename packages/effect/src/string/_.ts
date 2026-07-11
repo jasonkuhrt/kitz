@@ -4,7 +4,8 @@
  *
  * Re-exports all of `effect/String` (value-level: `camelCase`, `split`, …) and
  * adds compile-time operators (`Split`, `EndsWith`, `StartsWith`, `LastSegment`,
- * `RemoveTrailingSlash`) under the same namespace.
+ * `RemoveTrailingSlash`) and character constants (`ZeroWidthSpace`) under the
+ * same namespace.
  *
  * @example
  * ```ts

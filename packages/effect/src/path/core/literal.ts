@@ -1,3 +1,4 @@
+import type { StaticError } from '../../types/staticError.js'
 import type { Analysis } from '../analyzer.js'
 import type { Abs } from '../models/Abs.js'
 import type { AbsDir } from '../models/AbsDir.js'
@@ -142,24 +143,24 @@ type DecodeRelLiteralAs<$S extends string, $Target> =
 
 type IsExactly<$A, $B> = [$A] extends [$B] ? ([$B] extends [$A] ? true : false) : false
 
-type ValidationMessage<$Target> =
+type TargetDescription<$Target> =
   IsExactly<$Target, AbsFile> extends true
-    ? 'Must be an absolute file path'
+    ? 'an absolute file path'
     : IsExactly<$Target, AbsDir> extends true
-      ? 'Must be an absolute directory path'
+      ? 'an absolute directory path'
       : IsExactly<$Target, RelFile> extends true
-        ? 'Must be a relative file path'
+        ? 'a relative file path'
         : IsExactly<$Target, RelDir> extends true
-          ? 'Must be a relative directory path'
+          ? 'a relative directory path'
           : IsExactly<$Target, Abs> extends true
-            ? 'Must be an absolute path'
+            ? 'an absolute path'
             : IsExactly<$Target, Rel> extends true
-              ? 'Must be a relative path'
+              ? 'a relative path'
               : IsExactly<$Target, File> extends true
-                ? 'Must be a file path'
+                ? 'a file path'
                 : IsExactly<$Target, Dir> extends true
-                  ? 'Must be a directory path'
-                  : 'Must be a path literal matching the target path type'
+                  ? 'a directory path'
+                  : 'a path literal matching the target path type'
 
 type ValidationHint<$Target> =
   IsExactly<$Target, AbsFile> extends true
@@ -194,27 +195,19 @@ export type FromLiteral<$S extends string> = string extends $S
     ? FromLiteralAnalysis<AnalyzeLiteral<$S>>
     : never
 
-/** Branded type used to make invalid path literals fail with readable static fields. */
-export interface StaticError<$Message extends string, $Received, $Hint extends string> {
-  readonly __staticError: 'PathLiteral'
-  readonly message: $Message
-  readonly received: $Received
-  readonly hint: $Hint
-}
-
 /** Static error for dynamic strings passed to literal-only constructors. */
-export type ErrorStringNotLiteral<$Received> = StaticError<
-  'Path literal constructors require a string literal',
-  $Received,
-  'Use a path schema codec for dynamic strings, or decode the target schema at runtime.'
->
+export type ErrorStringNotLiteral =
+  StaticError<'Path literal constructors require a string literal. Use a path schema codec for dynamic strings, or decode the target schema at runtime.'>
 
-/** Static error for a literal that does not match the target path schema. */
-export type ErrorPathValidation<$Target, $Received> = StaticError<
-  ValidationMessage<$Target>,
-  $Received,
-  ValidationHint<$Target>
->
+/** Static error for a literal the path grammar itself rejects, naming the cause. */
+export type ErrorMalformedLiteral<$Received extends string> =
+  HasRepeatedSeparator<$Received> extends true
+    ? StaticError<`Path literal '${$Received}' contains a repeated separator. Collapse '//' to '/'.`>
+    : StaticError<`Path literal '${$Received}' is not a valid path literal.`>
+
+/** Static error for a well-formed literal that does not match the target path schema. */
+export type ErrorPathValidation<$Target, $Received> =
+  StaticError<`Path literal '${$Received & string}' is not ${TargetDescription<$Target>}. ${ValidationHint<$Target>}`>
 
 /** Decode a string literal as a specific path target schema. */
 export type FromTargetLiteral<$S extends string, $Target> = string extends $S
@@ -229,14 +222,16 @@ export type FromTargetLiteral<$S extends string, $Target> = string extends $S
 
 /** Guard the god literal constructor against non-literal or invalid strings. */
 export type LiteralInput<$S extends string> = string extends $S
-  ? ErrorStringNotLiteral<$S>
-  : [FromLiteral<$S>] extends [never]
-    ? ErrorPathValidation<Any, $S>
+  ? ErrorStringNotLiteral
+  : [AnalyzeLiteral<$S>] extends [never]
+    ? ErrorMalformedLiteral<$S>
     : $S
 
 /** Guard a string literal against a target path schema, returning a static error on mismatch. */
 export type LiteralGuard<$S extends string, $Target> = string extends $S
-  ? ErrorStringNotLiteral<$S>
-  : [FromTargetLiteral<$S, $Target>] extends [never]
-    ? ErrorPathValidation<$Target, $S>
-    : $S
+  ? ErrorStringNotLiteral
+  : [AnalyzeLiteral<$S>] extends [never]
+    ? ErrorMalformedLiteral<$S>
+    : [FromTargetLiteral<$S, $Target>] extends [never]
+      ? ErrorPathValidation<$Target, $S>
+      : $S
