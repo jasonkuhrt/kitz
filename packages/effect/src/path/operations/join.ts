@@ -157,8 +157,14 @@ export const join: {
     const dirValue: Dir = typeof dir === 'string' ? (S.decodeSync(Dir)(dir) as any) : dir
     let result: Any = dirValue
 
-    for (const rel of rels) {
-      const relValue: Rel = typeof rel === 'string' ? (S.decodeSync(Rel)(rel) as any) : rel
+    for (const [index, rel] of rels.entries()) {
+      const isFinal = index === rels.length - 1
+      const relValue: Rel =
+        typeof rel === 'string'
+          ? isFinal
+            ? (S.decodeSync(Rel)(rel) as any)
+            : (S.decodeSync(RelDir)(rel) as any)
+          : rel
       result = joinBinary(result as any, relValue)
     }
 
