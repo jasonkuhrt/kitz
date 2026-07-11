@@ -24,6 +24,15 @@ describe('EndsWith / StartsWith', () => {
     expectTypeOf<String.StartsWith<'typescript', 'script'>>().toEqualTypeOf<false>()
     expect('typescript'.startsWith('script')).toBe(false)
   })
+
+  it('widens unknown operands to boolean like the runtime methods', () => {
+    // @ts-expect-error RED-PIN: a non-literal receiver currently resolves to false
+    expectTypeOf<String.EndsWith<string, 'x'>>().toEqualTypeOf<boolean>()
+    expectTypeOf('value'.endsWith('x')).toEqualTypeOf<boolean>()
+    // @ts-expect-error RED-PIN: a non-literal receiver currently resolves to false
+    expectTypeOf<String.StartsWith<string, 'x'>>().toEqualTypeOf<boolean>()
+    expectTypeOf('value'.startsWith('x')).toEqualTypeOf<boolean>()
+  })
 })
 
 describe('RemoveTrailing', () => {
@@ -55,6 +64,12 @@ describe('AfterLast', () => {
     expectTypeOf<String.AfterLast<'abc', ''>>().toEqualTypeOf<''>()
     expect(afterLast('abc', '')).toBe('')
   })
+
+  it('uses the last overlapping delimiter occurrence', () => {
+    // @ts-expect-error RED-PIN: the type currently selects the first overlap
+    expectTypeOf<String.AfterLast<'aaa', 'aa'>>().toEqualTypeOf<''>()
+    expect(afterLast('aaa', 'aa')).toBe('')
+  })
 })
 
 describe('Split', () => {
@@ -72,6 +87,16 @@ describe('Split', () => {
     expect('abc'.split('')).toEqual(['a', 'b', 'c'])
     expectTypeOf<String.Split<'', ''>>().toEqualTypeOf<[]>()
     expect(''.split('')).toEqual([])
+
+    // @ts-expect-error RED-PIN: type-level char split currently uses code points
+    expectTypeOf<String.Split<'😀', ''>>().toEqualTypeOf<['\ud83d', '\ude00']>()
+    expect('😀'.split('')).toEqual(['\ud83d', '\ude00'])
+  })
+
+  it('matches String.prototype.split limit semantics', () => {
+    // @ts-expect-error RED-PIN: Split has no limit parameter yet
+    expectTypeOf<String.Split<'a/b', '/', 1>>().toEqualTypeOf<['a']>()
+    expect('a/b'.split('/', 1)).toEqual(['a'])
   })
 
   it('widens non-literal inputs', () => {

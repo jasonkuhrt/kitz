@@ -20,6 +20,13 @@ describe('Last', () => {
     expectTypeOf<Tuple.Last<[...string[], number]>>().toEqualTypeOf<number>()
   })
 
+  it('includes every possible final element of optional and rest-tailed tuples', () => {
+    // @ts-expect-error RED-PIN: optional tuple tails currently collapse to never
+    expectTypeOf<Tuple.Last<readonly [1, 2?]>>().toEqualTypeOf<1 | 2>()
+    // @ts-expect-error RED-PIN: rest-tailed tuples currently collapse to never
+    expectTypeOf<Tuple.Last<readonly [1, ...2[]]>>().toEqualTypeOf<1 | 2>()
+  })
+
   it('rejects non-array inputs', () => {
     // @ts-expect-error Last is defined only for readonly tuple and array inputs
     expectTypeOf<Tuple.Last<string>>()

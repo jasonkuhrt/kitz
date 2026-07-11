@@ -27,6 +27,16 @@ const someRelFile = S.decodeSync(Path.RelFile)('./src/index.ts')
 const someRelDir = S.decodeSync(Path.RelDir)('./src/')
 
 describe('join', () => {
+  it('decodes intermediate literals as directories and obeys the desugar law', () => {
+    const expected = Path.join(
+      S.decodeSync(Path.Dir)('/root/'),
+      S.decodeSync(Path.RelDir)('a'),
+      S.decodeSync(Path.Rel)('./b.txt'),
+    )
+
+    expect(Path.join('/root/', 'a', './b.txt')).toEqual(expected)
+  })
+
   it('literal duality obeys the desugar law across mixed variadic positions', () => {
     const base = Path.mk('/workspace/')
     const first = Path.mk('./src/')

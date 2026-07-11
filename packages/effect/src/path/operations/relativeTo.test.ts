@@ -1,6 +1,7 @@
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Option, Schema as S } from 'effect'
 import { FastCheck } from 'effect/testing'
+import { Types } from '../../types/_.js'
 import * as Path from '../__.js'
 
 const arbSegment = S.toArbitrary(Path.Segment)
@@ -36,6 +37,25 @@ const someRelFile = S.decodeSync(Path.RelFile)('./src/index.ts')
 const someRelDir = S.decodeSync(Path.RelDir)('./src/')
 
 describe('relativeTo', () => {
+  it('types: widened path unions require group narrowing first', () => {
+    type $Expected =
+      Types.StaticError<'Path.relativeTo requires a path narrowed to one group. Narrow with Path.Abs.is or Path.Rel.is first.'>
+    type $WideBase = Parameters<typeof Path.relativeTo<Path.Any, Path.Dir>>[1]
+
+    // @ts-expect-error RED-PIN: a widened Any path currently accepts the full Dir union
+    expectTypeOf<$WideBase>().toEqualTypeOf<$Expected>()
+  })
+
+  it('offers monomorphic Abs and Rel producer statics', () => {
+    // @ts-expect-error RED-PIN: Abs.relativeTo is not attached yet
+    const abs = Path.Abs.relativeTo('/workspace/src/index.ts', '/workspace/')
+    // @ts-expect-error RED-PIN: Rel.relativeTo is not attached yet
+    const rel = Path.Rel.relativeTo('../workspace/src/', '../workspace/')
+
+    expect(abs).toEncodeTo('./src/index.ts')
+    expect(rel).toEqual(Option.some(Path.RelDir.mk('./src/')))
+  })
+
   it('literal duality obeys the desugar law in both call shapes', () => {
     const absPath = Path.mk('/workspace/src/index.ts')
     const absBase = Path.mk('/workspace/')

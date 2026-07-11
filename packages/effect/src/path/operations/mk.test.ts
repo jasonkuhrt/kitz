@@ -1,5 +1,9 @@
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Schema as S } from 'effect'
+import { Types } from '../../types/_.js'
+import * as LiteralCore from '../core/literal.js'
+import type { ExtensionLiteralGuard } from '../models/Extension.js'
+import type { SegmentLiteralGuard } from '../models/segment.js'
 import * as Path from '../__.js'
 
 const unionLiteralCases = [
@@ -96,5 +100,22 @@ describe('finding 3: repeated separators collapse at the type level like runtime
     expectTypeOf(Path.mk('a//b')).toEqualTypeOf<Path.RelFile>()
     expectTypeOf(Path.mk('/a//b')).toEqualTypeOf<Path.AbsFile>()
     expectTypeOf(Path.mk('a///b/')).toEqualTypeOf<Path.RelDir>()
+  })
+})
+
+describe('audit round 3: literal guards reject open string patterns', () => {
+  it('maps path, segment, and extension patterns to their dynamic-string errors', () => {
+    type $PathExpected = LiteralCore.ErrorStringNotLiteral
+    type $SegmentExpected =
+      Types.StaticError<'Segment literal constructors require a string literal. Decode dynamic strings through Path.Segment.'>
+    type $ExtensionExpected =
+      Types.StaticError<'Extension.mk requires a string literal. Decode dynamic strings through Path.Extension.'>
+
+    // @ts-expect-error RED-PIN: open path templates currently evade the literal guard
+    expectTypeOf<LiteralCore.LiteralInput<`./${string}`>>().toEqualTypeOf<$PathExpected>()
+    // @ts-expect-error RED-PIN: open segment templates currently evade the literal guard
+    expectTypeOf<SegmentLiteralGuard<`name-${string}`>>().toEqualTypeOf<$SegmentExpected>()
+    // @ts-expect-error RED-PIN: open extension templates currently evade the literal guard
+    expectTypeOf<ExtensionLiteralGuard<`.${string}`>>().toEqualTypeOf<$ExtensionExpected>()
   })
 })

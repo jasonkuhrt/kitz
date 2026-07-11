@@ -21,6 +21,7 @@ import * as PrimaryKey from 'effect/PrimaryKey'
 import { FastCheck } from 'effect/testing'
 import * as LiteralCore from './core/literal.js'
 import { Types } from '../types/_.js'
+import { analyze } from './analyzer.js'
 import * as Path from './__.js'
 
 // ─── shared generators & helpers ───
@@ -1079,5 +1080,113 @@ describe('shared message texts across type and value levels', () => {
     }
     type $Expected = Types.StaticError<'The empty string is not a path'>
     expectTypeOf<LiteralCore.ErrorMalformedLiteral<''>>().toEqualTypeOf<$Expected>()
+  })
+})
+
+// ─── Audit round 3 — RED suite (2026-07-11) ───
+
+describe('audit round 3: filename and path text validity', () => {
+  it('rejects NUL in bare filenames and path filenames', () => {
+    expect(Result.isFailure(S.decodeResult(Path.FileName)('a\0b'))).toBe(true)
+    expect(Result.isFailure(S.decodeResult(Path.AbsFile)('/tmp/a\0b'))).toBe(true)
+  })
+
+  it('represents nested segment failures in the Schema result channel', () => {
+    const decode = () => S.decodeResult(Path.RelFile)('./a\0b/file.txt')
+
+    expect(decode).not.toThrow()
+    expect(Result.isFailure(decode())).toBe(true)
+    expect(
+      Effect.runSync(
+        S.decodeEffect(Path.RelFile)('./a\0b/file.txt').pipe(
+          Effect.match({ onFailure: () => 'failure', onSuccess: () => 'success' }),
+        ),
+      ),
+    ).toBe('failure')
+  })
+
+  it('rejects traversal and multi-component syntax as a bare filename', () => {
+    expect(Result.isFailure(S.decodeResult(Path.FileName)('../evil'))).toBe(true)
+    expect(Result.isFailure(S.decodeResult(Path.FileName)('./evil'))).toBe(true)
+    expect(Result.isFailure(S.decodeResult(Path.FileName)('safe/../evil'))).toBe(true)
+
+    const subject = S.decodeSync(Path.AbsFile)('/tmp/file.txt')
+    expect(() => Path.AbsFile.setParts(subject, { stem: 'safe/../evil' })).toThrow()
+  })
+
+  it('classifies normalized-empty traversal-only input as a directory without a hint', () => {
+    expect(analyze('./..')._tag).toBe('dir')
+  })
+
+  it('bounds relative ascent at the path grammar maximum', () => {
+    expect(
+      Result.isSuccess(
+        S.decodeUnknownResult(Path.RelDir.FromStruct)({ ascent: 4096, segments: [] }),
+      ),
+    ).toBe(true)
+    expect(
+      Result.isFailure(
+        S.decodeUnknownResult(Path.RelDir.FromStruct)({ ascent: 4097, segments: [] }),
+      ),
+    ).toBe(true)
+    expect(Result.isFailure(S.decodeResult(Path.RelDir)('../'.repeat(4097)))).toBe(true)
+  })
+
+  it('rejects ill-formed Unicode across component and path codecs', () => {
+    const loneSurrogate = '\ud800'
+    expect(loneSurrogate.isWellFormed()).toBe(false)
+    expect(Result.isFailure(S.decodeResult(Path.Segment)(loneSurrogate))).toBe(true)
+    expect(Result.isFailure(S.decodeResult(Path.FileName)(`a${loneSurrogate}`))).toBe(true)
+    expect(Result.isFailure(S.decodeResult(Path.AbsDir)(`/${loneSurrogate}/`))).toBe(true)
+
+    const astral = S.decodeSync(Path.AbsFile)('/tmp/😀.txt')
+    expect(() => astral.fileUrl).not.toThrow()
+  })
+})
+
+describe('audit round 3: Protocol', () => {
+  it('rejects an encoded protocol without the :// suffix', () => {
+    expect(() => S.decodeSync(Path.Protocol.Protocol)('filexxx')).toThrow()
+  })
+
+  it('exports the protocol schema directly', () => {
+    const staticPin = () => {
+      // @ts-expect-error RED-PIN: Protocol is still nested under Path.Protocol.Protocol
+      S.decodeSync(Path.Protocol)('file://')
+    }
+    expect(typeof staticPin).toBe('function')
+  })
+})
+
+describe('audit round 3: literal component producer contract', () => {
+  it('exposes literal constructors on Segment, Extension, and FileName', () => {
+    const staticPins = () => {
+      // @ts-expect-error RED-PIN: Segment.mk is missing
+      expectTypeOf(Path.Segment.mk('src')).toEqualTypeOf<Path.Segment>()
+      expectTypeOf(Path.Extension.mk('.ts')).toEqualTypeOf<Path.Extension>()
+      // @ts-expect-error RED-PIN: FileName.mk is missing
+      expectTypeOf(Path.FileName.mk('manifest.json')).toEqualTypeOf<Path.FileName>()
+      // @ts-expect-error RED-PIN: FileNameLiteralGuard is missing
+      type $FileNameGuard = import('./models/FileName.js').FileNameLiteralGuard<'manifest.json'>
+      expectTypeOf<$FileNameGuard>().toEqualTypeOf<'manifest.json'>()
+    }
+    expect(typeof staticPins).toBe('function')
+  })
+})
+
+describe('audit round 3: setParts literal duality', () => {
+  it('accepts literals for the subject, dir, and name in both call shapes', () => {
+    // @ts-expect-error RED-PIN: setParts does not yet accept literal components
+    const direct = Path.AbsFile.setParts('/tmp/original.txt', {
+      dir: '/var',
+      name: 'manifest.json',
+    })
+    // @ts-expect-error RED-PIN: curried setParts does not yet accept literal components
+    const setRelParts = Path.RelFile.setParts({ dir: '../out', name: 'manifest.json' })
+    // @ts-expect-error RED-PIN: curried setParts does not yet accept a literal subject
+    const curried = setRelParts('./original.txt')
+
+    expect(direct).toEncodeTo('/var/manifest.json')
+    expect(curried).toEncodeTo('../out/manifest.json')
   })
 })

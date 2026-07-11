@@ -53,6 +53,12 @@ describe('withArbitraryHints', () => {
     expect(() => S.decodeSync(Biased)('')).toThrow()
   })
 
+  it('is identity when no hints reach it at runtime', () => {
+    const Unchanged = Base.pipe(withArbitraryHints({}))
+
+    expect(Unchanged).toBe(Base)
+  })
+
   it('candidate output is validated by the schema filters', () => {
     const InvalidCandidate = Base.pipe(
       withArbitraryHints({
