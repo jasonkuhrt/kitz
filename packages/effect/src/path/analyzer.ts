@@ -94,7 +94,7 @@ export interface AnalyzerOptions {
  * @example
  * ```ts
  * analyze('/src/index.ts')   // { _tag: 'file', isPathAbsolute: true, segments: ['src'], fileName: 'index.ts' }
- * analyze('../docs/')        // { _tag: 'dir', isPathAbsolute: false, segments: ['..', 'docs'] }
+ * analyze('../docs/')        // { _tag: 'dir', isPathAbsolute: false, ascent: 1, segments: ['docs'] }
  * ```
  */
 export function analyze(input: string, options?: AnalyzerOptions): Analysis {

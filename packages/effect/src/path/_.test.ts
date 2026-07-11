@@ -1240,3 +1240,15 @@ describe('audit round 3: setParts literal duality', () => {
     expectTypeOf(curried).toEqualTypeOf<Path.RelFile>()
   })
 })
+
+describe('audit round 3: Analyzer ownership', () => {
+  it('keeps analyzer machinery off the public Path namespace', () => {
+    const staticRejection = () => {
+      // @ts-expect-error Analyzer is internal codec machinery
+      void Path.Analyzer
+    }
+
+    expect(typeof staticRejection).toBe('function')
+    expect(Object.hasOwn(Path, 'Analyzer')).toBe(false)
+  })
+})

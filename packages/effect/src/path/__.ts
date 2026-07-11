@@ -36,9 +36,6 @@ export * from './constants.js'
 // Process-boundary services
 export { Cwd } from './services/Cwd.js'
 
-// Analyzer — public parse/validate/format of path strings (surfaces as `Path.Analyzer`)
-export * as Analyzer from './analyzer.js'
-
 // Literal string analysis and decoding
 export type { FromLiteral, LiteralAnalysis } from './core/literal.js'
 export * from './operations/mk.js'
