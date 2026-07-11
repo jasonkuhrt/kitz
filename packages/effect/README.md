@@ -138,7 +138,7 @@ pnpm add @kitz/effect effect
 package share a single Effect instance (Effect relies on module-level singletons;
 two copies break Context/Schema identity).
 
-> **Pre-release:** this package targets Effect v4 (`effect@^4.0.0-beta.85`), which is
+> **Pre-release:** this package targets Effect v4 (`effect@^4.0.0-beta.97`), which is
 > still in beta. Pin accordingly.
 
 ## Subpath exports

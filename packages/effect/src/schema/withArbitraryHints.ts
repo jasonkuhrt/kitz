@@ -23,7 +23,7 @@ import { Schema as S } from 'effect'
  * embed it in a struct or array and `Schema.toArbitrary` of the container
  * picks up the bias — which loose fast-check arbitraries cannot do.
  *
- * Verified semantics (effect@4.0.0-beta.85): `docs/learnings/effect-arbitrary.md`.
+ * Verified semantics (effect@4.0.0-beta.97): `docs/learnings/effect-arbitrary.md`.
  *
  * @example
  * ```ts
