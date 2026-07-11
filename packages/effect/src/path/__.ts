@@ -31,7 +31,7 @@ export { RelFile } from './models/RelFile.js'
 export { Any } from './models/Any.js'
 
 // Process-boundary services
-export { Cwd } from './services/Cwd.js'
+export { Cwd, CwdError } from './services/Cwd.js'
 
 // Literal string analysis and decoding
 export type { FromLiteral, LiteralAnalysis } from './core/literal.js'

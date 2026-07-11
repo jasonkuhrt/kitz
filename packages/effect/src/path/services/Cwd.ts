@@ -1,6 +1,12 @@
 import { Context, Effect, Layer, Schema as S } from 'effect'
 import { AbsDir } from '../models/AbsDir.js'
 
+// @kitz/effect deliberately has no @kitz/core dependency, so this process-boundary
+// adapter uses Effect's native schema-backed error instead of the repository helper.
+export class CwdError extends S.TaggedErrorClass<CwdError>()('@kitz/effect/Path/CwdError', {
+  cause: S.Defect(),
+}) {}
+
 /**
  * Current working directory service.
  *
@@ -22,5 +28,13 @@ export class Cwd extends Context.Service<Cwd, AbsDir>()('@kitz/effect/Path/Cwd')
    * Snapshot `process.cwd()` at layer provision. Tests can override it with
    * `Layer.succeed(Cwd)(someAbsDir)`.
    */
-  static readonly layer = Layer.effect(Cwd)(Effect.sync(() => S.decodeSync(AbsDir)(process.cwd())))
+  static readonly layer = Layer.effect(Cwd)(
+    Effect.try({
+      try: () => process.cwd(),
+      catch: (cause): unknown => cause,
+    }).pipe(
+      Effect.flatMap(S.decodeEffect(AbsDir)),
+      Effect.mapError((cause) => new CwdError({ cause })),
+    ),
+  )
 }
