@@ -1,4 +1,5 @@
 import { Schema as S } from 'effect'
+import { withStatics } from '../../schema/withStatics.js'
 import type { Types } from '../../types/_.js'
 import { nullByte } from '../core/grammar.js'
 import type { requiresLiteral } from '../core/messages.js'
@@ -58,7 +59,7 @@ export type ExtensionLiteralGuard<$S extends string> =
       >
 
 /** First-class file-extension schema with a literal-only constructor. */
-export class Extension_ extends S.asClass(ExtensionSchema) {
+export class Extension_ extends withStatics(S.asClass(ExtensionSchema)) {
   static readonly mk = <const $Input extends string>(
     input: ExtensionLiteralGuard<$Input>,
   ): Extension => S.decodeSync(Extension_)(input as any)

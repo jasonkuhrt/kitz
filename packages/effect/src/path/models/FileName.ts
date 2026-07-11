@@ -1,6 +1,11 @@
 import { Effect, flow, Option, Result, Schema as S, SchemaGetter } from 'effect'
 import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
+import { withStatics } from '../../schema/withStatics.js'
+import type { Types } from '../../types/_.js'
 import { analyzeFileName } from '../analyzer.js'
+import { nullByte } from '../core/grammar.js'
+import type { separator } from '../core/grammar.js'
+import type { requiresLiteral } from '../core/messages.js'
 import {
   realisticDotfilePattern,
   realisticExtensionPattern,
@@ -8,7 +13,6 @@ import {
 } from '../core/realisticText.js'
 import { Extension } from './Extension.js'
 
-const nullByte = String.fromCharCode(0)
 const fileNameText = new RegExp(
   `^[^/${nullByte}.][^/${nullByte}]{0,31}` +
     `(\\.[^/${nullByte}.][^/${nullByte}]{0,15})?$` +
@@ -80,27 +84,34 @@ class FileName__ extends S.TaggedClass<FileName__>()('FileName', {
  * const name = FileName.make({ stem: 'index', extension: Option.some('.ts') })
  * ```
  */
-export class FileName_ extends S.asClass(
-  S.String.pipe(
-    S.decodeTo(FileName__, {
-      encode: SchemaGetter.transform((encoded) =>
-        encoded.extension === null ? encoded.stem : `${encoded.stem}${encoded.extension}`,
-      ),
-      decode: SchemaGetter.transformOrFail(
-        flow(
-          analyzeFileName,
-          Result.map((file) => ({
-            _tag: 'FileName' as const,
-            stem: file.stem,
-            extension: file.extension,
-          })),
-          Effect.fromResult,
+export class FileName_ extends withStatics(
+  S.asClass(
+    S.String.pipe(
+      S.decodeTo(FileName__, {
+        encode: SchemaGetter.transform((encoded) =>
+          encoded.extension === null ? encoded.stem : `${encoded.stem}${encoded.extension}`,
         ),
-      ),
-    }),
-    S.annotate(fileNameArbitrary),
+        decode: SchemaGetter.transformOrFail(
+          flow(
+            analyzeFileName,
+            Result.map((file) => ({
+              _tag: 'FileName' as const,
+              stem: file.stem,
+              extension: file.extension,
+            })),
+            Effect.fromResult,
+          ),
+        ),
+      }),
+      S.annotate(fileNameArbitrary),
+    ),
   ),
 ) {
+  /** Decode a statically validated bare-filename literal. */
+  static readonly mk = <const $Input extends string>(
+    input: FileNameLiteralGuard<$Input>,
+  ): FileName => S.decodeSync(FileName_)(input as any)
+
   /**
    * Construct a canonical `FileName`. The stem and extension are re-joined and
    * re-split on the last dot — the same rule the string codec applies — so a
@@ -152,3 +163,27 @@ export class FileName_ extends S.asClass(
 
 export const FileName = FileName_
 export type FileName = typeof FileName_.Type
+
+type IsValidFileNameLiteral<$S extends string> = $S extends '' | '.' | '..'
+  ? false
+  : $S extends `${string}${separator}${string}` | `${string}${nullByte}${string}`
+    ? false
+    : true
+
+type ErrorMalformedFileNameLiteral<$Received extends string> = $Received extends ''
+  ? Types.StaticError<'Filename literals cannot be empty.'>
+  : $Received extends '.' | '..'
+    ? Types.StaticError<'Filename literals cannot be traversal references.'>
+    : $Received extends `${string}${separator}${string}`
+      ? Types.StaticError<`Filename literal '${$Received}' cannot contain '/'.`>
+      : Types.StaticError<'Filename literals cannot contain NUL.'>
+
+/** Guard a bare-filename literal against the runtime FileName grammar. */
+export type FileNameLiteralGuard<$S extends string> =
+  Types.IsLiteral<$S> extends true
+    ? IsValidFileNameLiteral<$S> extends true
+      ? $S
+      : ErrorMalformedFileNameLiteral<$S>
+    : Types.StaticError<
+        requiresLiteral<'FileName.mk', 's', 'Decode dynamic strings through Path.FileName.'>
+      >

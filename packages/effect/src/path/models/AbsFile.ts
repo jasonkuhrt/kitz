@@ -15,28 +15,32 @@ import { ancestorSegments } from '../core/ancestors.js'
 import { attachPathEqual } from '../core/equality.js'
 import { fileUrlOf, pathStringFromFileUrl } from '../core/fileUrl.js'
 import { attachNodeInspect } from '../core/inspect.js'
+import type { LiteralGuard } from '../core/literal.js'
 import { renderPath } from '../core/render.js'
 import { resolveFileName } from '../core/setParts.js'
 import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
 import type { Extension } from './Extension.js'
-import { FileName } from './FileName.js'
+import { FileName, type FileNameLiteralGuard } from './FileName.js'
 import { Segment, segment } from './segment.js'
 
 export declare namespace AbsFile {
-  export type Parts =
+  export type Parts<
+    $Dir extends AbsDir | string = AbsDir,
+    $Name extends FileName | string = FileName,
+  > =
     | {
         /** Replace the containing absolute directory. */
-        readonly dir?: AbsDir
+        readonly dir?: $Dir
         /** Replace the whole filename. */
-        readonly name?: FileName
+        readonly name?: $Name
         readonly stem?: never
         readonly extension?: never
       }
     | {
         /** Replace the containing absolute directory. */
-        readonly dir?: AbsDir
+        readonly dir?: $Dir
         readonly name?: never
         /** Replace the filename stem, preserving or composing with `extension`. */
         readonly stem?: string
@@ -44,6 +48,29 @@ export declare namespace AbsFile {
         readonly extension?: Extension | Option.Option<Extension>
       }
 }
+
+type AbsFilePartsInput = AbsFile.Parts<AbsDir | string, FileName | string>
+
+type Part<$Parts, $Key extends PropertyKey> = $Key extends keyof $Parts
+  ? Exclude<$Parts[$Key], undefined>
+  : never
+
+type GuardedAbsFileParts<$Parts extends AbsFilePartsInput> = $Parts & {
+  readonly dir?: Part<$Parts, 'dir'> extends infer $Dir
+    ? $Dir extends string
+      ? LiteralGuard<$Dir, AbsDir>
+      : $Dir
+    : never
+  readonly name?: Part<$Parts, 'name'> extends infer $Name
+    ? $Name extends string
+      ? FileNameLiteralGuard<$Name>
+      : $Name
+    : never
+}
+
+type AbsFileSubject<$File extends AbsFile__ | string> = $File extends string
+  ? LiteralGuard<$File, AbsFile__>
+  : $File
 
 /**
  * Absolute file value — the decoded path (directory + filename).
@@ -179,14 +206,29 @@ export class AbsFile_ extends withLiteralStatics(
    * ```
    */
   static readonly setParts: {
-    (file: typeof AbsFile_.Type, parts: AbsFile.Parts): typeof AbsFile_.Type
-    (parts: AbsFile.Parts): (file: typeof AbsFile_.Type) => typeof AbsFile_.Type
-  } = Fn.dual(2, (file: typeof AbsFile_.Type, parts: AbsFile.Parts): typeof AbsFile_.Type =>
-    AbsFile_.make({
-      dir: parts.dir ?? file.dir,
-      fileName: resolveFileName(file.fileName, parts),
-    }),
-  )
+    <const $File extends AbsFile__ | string, const $Parts extends AbsFilePartsInput>(
+      file: AbsFileSubject<$File>,
+      parts: GuardedAbsFileParts<$Parts>,
+    ): typeof AbsFile_.Type
+    <const $Parts extends AbsFilePartsInput>(
+      parts: GuardedAbsFileParts<$Parts>,
+    ): <const $File extends AbsFile__ | string>(file: AbsFileSubject<$File>) => typeof AbsFile_.Type
+  } = Fn.dual(2, (file: AbsFile__ | string, parts: AbsFilePartsInput): typeof AbsFile_.Type => {
+    const fileValue: AbsFile__ = typeof file === 'string' ? S.decodeSync(AbsFile_)(file) : file
+    const dir: AbsDir =
+      typeof parts.dir === 'string' ? S.decodeSync(AbsDir)(parts.dir) : (parts.dir ?? fileValue.dir)
+    const name: FileName | undefined =
+      typeof parts.name === 'string' ? S.decodeSync(FileName)(parts.name) : parts.name
+
+    return AbsFile_.make({
+      dir,
+      fileName: resolveFileName(fileValue.fileName, {
+        ...(name === undefined ? {} : { name }),
+        ...(parts.stem === undefined ? {} : { stem: parts.stem }),
+        ...(parts.extension === undefined ? {} : { extension: parts.extension }),
+      }),
+    })
+  }) as any
 
   /**
    * Decode/encode absolute files as native `file:` URL instances.

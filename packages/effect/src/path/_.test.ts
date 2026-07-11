@@ -909,6 +909,10 @@ describe('setParts', () => {
     expectTypeOf(Path.AbsFile.setParts(someAbsFile, { stem: 'x' })).toEqualTypeOf<Path.AbsFile>()
     expectTypeOf(Path.RelFile.setParts(someRelFile, { stem: 'x' })).toEqualTypeOf<Path.RelFile>()
 
+    const dynamicSubject = '/tmp/file.txt' as string
+    const dynamicDir = '/tmp/' as string
+    const dynamicName = 'next.ts' as string
+
     const staticRejections = () => {
       // @ts-expect-error name and stem are mutually exclusive
       Path.AbsFile.setParts(someAbsFile, { name: fileName('next.ts'), stem: 'next' })
@@ -916,6 +920,14 @@ describe('setParts', () => {
       Path.RelFile.setParts(someRelFile, { dir: someAbsDir })
       // @ts-expect-error AbsFile dir axis only accepts AbsDir
       Path.AbsFile.setParts(someAbsFile, { dir: someRelDir })
+      // @ts-expect-error dynamic subjects must be decoded through AbsFile
+      Path.AbsFile.setParts(dynamicSubject, { stem: 'next' })
+      // @ts-expect-error dynamic dirs must be decoded through AbsDir
+      Path.AbsFile.setParts(someAbsFile, { dir: dynamicDir })
+      // @ts-expect-error dynamic names must be decoded through FileName
+      Path.AbsFile.setParts(someAbsFile, { name: dynamicName })
+      // @ts-expect-error relative setParts rejects an absolute dir literal
+      Path.RelFile.setParts(someRelFile, { dir: '/tmp/' })
     }
     expect(typeof staticRejections).toBe('function')
   })
@@ -1169,33 +1181,62 @@ describe('audit round 3: Protocol', () => {
 
 describe('audit round 3: literal component producer contract', () => {
   it('exposes literal constructors on Segment, Extension, and FileName', () => {
-    const staticPins = () => {
-      // @ts-expect-error RED-PIN: Segment.mk is missing
-      expectTypeOf(Path.Segment.mk('src')).toEqualTypeOf<Path.Segment>()
-      expectTypeOf(Path.Extension.mk('.ts')).toEqualTypeOf<Path.Extension>()
-      // @ts-expect-error RED-PIN: FileName.mk is missing
-      expectTypeOf(Path.FileName.mk('manifest.json')).toEqualTypeOf<Path.FileName>()
-      // @ts-expect-error RED-PIN: FileNameLiteralGuard is missing
-      type $FileNameGuard = import('./models/FileName.js').FileNameLiteralGuard<'manifest.json'>
-      expectTypeOf<$FileNameGuard>().toEqualTypeOf<'manifest.json'>()
+    const segment = Path.Segment.mk('src')
+    const extensionValue = Path.Extension.mk('.ts')
+    const name = Path.FileName.mk('manifest.json')
+
+    expectTypeOf(segment).toEqualTypeOf<Path.Segment>()
+    expectTypeOf(extensionValue).toEqualTypeOf<Path.Extension>()
+    expectTypeOf(name).toEqualTypeOf<Path.FileName>()
+    expectTypeOf<
+      import('./models/FileName.js').FileNameLiteralGuard<'manifest.json'>
+    >().toEqualTypeOf<'manifest.json'>()
+    expect(Path.Segment.is(segment)).toBe(true)
+    expect(Path.Extension.is(extensionValue)).toBe(true)
+    expect(Path.FileName.is(name)).toBe(true)
+    expect(Path.Segment.make('lib')).toBe(Path.Segment.mk('lib'))
+    expect(Path.Extension.make('.json')).toBe(Path.Extension.mk('.json'))
+    expect(
+      Path.FileName.make({ stem: 'manifest', extension: Option.some(extensionValue) }),
+    ).toEqual(Path.FileName.mk('manifest.ts'))
+
+    const dynamic = 'dynamic' as string
+    const staticRejections = () => {
+      // @ts-expect-error literal component constructors reject dynamic strings
+      Path.Segment.mk(dynamic)
+      // @ts-expect-error literal component constructors reject dynamic strings
+      Path.Extension.mk(dynamic)
+      // @ts-expect-error literal component constructors reject dynamic strings
+      Path.FileName.mk(dynamic)
+      // @ts-expect-error filename literals cannot contain separators
+      Path.FileName.mk('bad/name')
     }
-    expect(typeof staticPins).toBe('function')
+    expect(typeof staticRejections).toBe('function')
   })
 })
 
 describe('audit round 3: setParts literal duality', () => {
   it('accepts literals for the subject, dir, and name in both call shapes', () => {
-    // @ts-expect-error RED-PIN: setParts does not yet accept literal components
     const direct = Path.AbsFile.setParts('/tmp/original.txt', {
       dir: '/var',
       name: 'manifest.json',
     })
-    // @ts-expect-error RED-PIN: curried setParts does not yet accept literal components
     const setRelParts = Path.RelFile.setParts({ dir: '../out', name: 'manifest.json' })
-    // @ts-expect-error RED-PIN: curried setParts does not yet accept a literal subject
     const curried = setRelParts('./original.txt')
+    const expectedDirect = Path.AbsFile.setParts(S.decodeSync(Path.AbsFile)('/tmp/original.txt'), {
+      dir: S.decodeSync(Path.AbsDir)('/var'),
+      name: S.decodeSync(Path.FileName)('manifest.json'),
+    })
+    const expectedCurried = Path.RelFile.setParts(S.decodeSync(Path.RelFile)('./original.txt'), {
+      dir: S.decodeSync(Path.RelDir)('../out'),
+      name: S.decodeSync(Path.FileName)('manifest.json'),
+    })
 
     expect(direct).toEncodeTo('/var/manifest.json')
     expect(curried).toEncodeTo('../out/manifest.json')
+    expect(direct).toEqual(expectedDirect)
+    expect(curried).toEqual(expectedCurried)
+    expectTypeOf(direct).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(curried).toEqualTypeOf<Path.RelFile>()
   })
 })

@@ -10,13 +10,25 @@ const sign = (value: number): -1 | 0 | 1 => (value < 0 ? -1 : value > 0 ? 1 : 0)
 
 describe('order', () => {
   it('accepts path literals and obeys the decode desugar law', () => {
-    // @ts-expect-error RED-PIN: order operands do not yet have literal duality
     const literalResult = Path.order('/a/', '/b/')
     const decodedResult = Path.order(S.decodeSync(Path.Any)('/a/'), S.decodeSync(Path.Any)('/b/'))
+    const a = S.decodeSync(Path.Any)('/a/')
+    const b = S.decodeSync(Path.Any)('/b/')
 
     expect(literalResult).toBe(decodedResult)
-    // @ts-expect-error RED-PIN: order literals are rejected by the current signature
     expectTypeOf(Path.order('/a/', '/b/')).toEqualTypeOf<-1 | 0 | 1>()
+    expect(Path.order('/a/', b)).toBe(Path.order(a, b))
+    expect(Path.order(a, '/b/')).toBe(Path.order(a, b))
+    expect([b, a].toSorted(Path.order)).toEqual([a, b])
+
+    const dynamic = '/a/' as string
+    const staticRejections = () => {
+      // @ts-expect-error dynamic strings must be decoded through Path.Any
+      Path.order(dynamic, b)
+      // @ts-expect-error dynamic strings must be decoded through Path.Any
+      Path.order(a, dynamic)
+    }
+    expect(typeof staticRejections).toBe('function')
   })
 
   it('is reflexive, antisymmetric, transitive, and agrees with Equal', () => {

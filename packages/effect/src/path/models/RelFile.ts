@@ -14,6 +14,7 @@ import { type AnalysisFile, analyzeFileRel, format } from '../analyzer.js'
 import { ancestorSegments } from '../core/ancestors.js'
 import { attachPathEqual } from '../core/equality.js'
 import { attachNodeInspect } from '../core/inspect.js'
+import type { LiteralGuard } from '../core/literal.js'
 import { renderPath } from '../core/render.js'
 import { resolveFileName } from '../core/setParts.js'
 import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
@@ -21,23 +22,26 @@ import { withLiteralStatics } from '../core/statics.js'
 import { AbsFile } from './AbsFile.js'
 import { Ascent } from './arbitrary.js'
 import type { Extension } from './Extension.js'
-import { FileName } from './FileName.js'
+import { FileName, type FileNameLiteralGuard } from './FileName.js'
 import { RelDir } from './RelDir.js'
 import { Segment, segment } from './segment.js'
 
 export declare namespace RelFile {
-  export type Parts =
+  export type Parts<
+    $Dir extends RelDir | string = RelDir,
+    $Name extends FileName | string = FileName,
+  > =
     | {
         /** Replace the containing relative directory, including its ascent. */
-        readonly dir?: RelDir
+        readonly dir?: $Dir
         /** Replace the whole filename. */
-        readonly name?: FileName
+        readonly name?: $Name
         readonly stem?: never
         readonly extension?: never
       }
     | {
         /** Replace the containing relative directory, including its ascent. */
-        readonly dir?: RelDir
+        readonly dir?: $Dir
         readonly name?: never
         /** Replace the filename stem, preserving or composing with `extension`. */
         readonly stem?: string
@@ -45,6 +49,29 @@ export declare namespace RelFile {
         readonly extension?: Extension | Option.Option<Extension>
       }
 }
+
+type RelFilePartsInput = RelFile.Parts<RelDir | string, FileName | string>
+
+type Part<$Parts, $Key extends PropertyKey> = $Key extends keyof $Parts
+  ? Exclude<$Parts[$Key], undefined>
+  : never
+
+type GuardedRelFileParts<$Parts extends RelFilePartsInput> = $Parts & {
+  readonly dir?: Part<$Parts, 'dir'> extends infer $Dir
+    ? $Dir extends string
+      ? LiteralGuard<$Dir, RelDir>
+      : $Dir
+    : never
+  readonly name?: Part<$Parts, 'name'> extends infer $Name
+    ? $Name extends string
+      ? FileNameLiteralGuard<$Name>
+      : $Name
+    : never
+}
+
+type RelFileSubject<$File extends RelFile__ | string> = $File extends string
+  ? LiteralGuard<$File, RelFile__>
+  : $File
 
 /**
  * Relative file value — the decoded path (directory + filename).
@@ -192,14 +219,29 @@ export class RelFile_ extends withLiteralStatics(
    * ```
    */
   static readonly setParts: {
-    (file: typeof RelFile_.Type, parts: RelFile.Parts): typeof RelFile_.Type
-    (parts: RelFile.Parts): (file: typeof RelFile_.Type) => typeof RelFile_.Type
-  } = Fn.dual(2, (file: typeof RelFile_.Type, parts: RelFile.Parts): typeof RelFile_.Type =>
-    RelFile_.make({
-      dir: parts.dir ?? file.dir,
-      fileName: resolveFileName(file.fileName, parts),
-    }),
-  )
+    <const $File extends RelFile__ | string, const $Parts extends RelFilePartsInput>(
+      file: RelFileSubject<$File>,
+      parts: GuardedRelFileParts<$Parts>,
+    ): typeof RelFile_.Type
+    <const $Parts extends RelFilePartsInput>(
+      parts: GuardedRelFileParts<$Parts>,
+    ): <const $File extends RelFile__ | string>(file: RelFileSubject<$File>) => typeof RelFile_.Type
+  } = Fn.dual(2, (file: RelFile__ | string, parts: RelFilePartsInput): typeof RelFile_.Type => {
+    const fileValue: RelFile__ = typeof file === 'string' ? S.decodeSync(RelFile_)(file) : file
+    const dir: RelDir =
+      typeof parts.dir === 'string' ? S.decodeSync(RelDir)(parts.dir) : (parts.dir ?? fileValue.dir)
+    const name: FileName | undefined =
+      typeof parts.name === 'string' ? S.decodeSync(FileName)(parts.name) : parts.name
+
+    return RelFile_.make({
+      dir,
+      fileName: resolveFileName(fileValue.fileName, {
+        ...(name === undefined ? {} : { name }),
+        ...(parts.stem === undefined ? {} : { stem: parts.stem }),
+        ...(parts.extension === undefined ? {} : { extension: parts.extension }),
+      }),
+    })
+  }) as any
 
   /**
    * Decode/encode paths as flat structured JSON instead of strings.

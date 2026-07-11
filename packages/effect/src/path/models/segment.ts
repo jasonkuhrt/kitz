@@ -1,4 +1,5 @@
 import { Schema as S } from 'effect'
+import { withStatics } from '../../schema/withStatics.js'
 import type { Types } from '../../types/_.js'
 import { nullByte } from '../core/grammar.js'
 import type { ascent, here, separator } from '../core/grammar.js'
@@ -80,26 +81,32 @@ const wellFormedTextArbitrary = {
  * and not a `.`/`..` traversal reference (those are resolved by the analyzer into
  * the path's `ascent` count, never stored as segments).
  */
-export class Segment_ extends S.asClass(
-  S.String.pipe(
-    S.check(
-      S.isNonEmpty({ message: emptySegmentMessage }),
-      S.isPattern(segmentPattern, {
-        message: patternSegmentMessage,
-        arbitrary: unicodeTextArbitrary,
-      }),
-      S.makeFilter((s) => s.isWellFormed(), {
-        message: wellFormedSegmentMessage,
-        arbitrary: wellFormedTextArbitrary,
-      }),
-      S.makeFilter((s) => s !== '.' && s !== '..', {
-        message: traversalSegmentMessage,
-        arbitrary: dictionaryTextArbitrary,
-      }),
+export class Segment_ extends withStatics(
+  S.asClass(
+    S.String.pipe(
+      S.check(
+        S.isNonEmpty({ message: emptySegmentMessage }),
+        S.isPattern(segmentPattern, {
+          message: patternSegmentMessage,
+          arbitrary: unicodeTextArbitrary,
+        }),
+        S.makeFilter((s) => s.isWellFormed(), {
+          message: wellFormedSegmentMessage,
+          arbitrary: wellFormedTextArbitrary,
+        }),
+        S.makeFilter((s) => s !== '.' && s !== '..', {
+          message: traversalSegmentMessage,
+          arbitrary: dictionaryTextArbitrary,
+        }),
+      ),
+      S.brand('Segment'),
     ),
-    S.brand('Segment'),
   ),
 ) {
+  /** Decode a statically validated segment literal. */
+  static readonly mk = <const $Input extends string>(input: SegmentLiteralGuard<$Input>): Segment =>
+    S.decodeSync(Segment_)(input as any)
+
   /**
    * Variant schema carrying a realistic generation bias — same set as
    * {@link Segment} (candidate output is validated by its filters); only
