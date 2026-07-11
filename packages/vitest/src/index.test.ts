@@ -1,31 +1,60 @@
 import { Effect, Layer } from 'effect'
-import { describe, expectTypeOf, it } from './index.js'
+import { FastCheck } from 'effect/testing'
+import { describe, expect, expectTypeOf, it } from './index.js'
 
 describe('Effect tester surface', () => {
   it('types: exposes native tester modifiers in both directions', () => {
-    // @ts-expect-error RED-PIN: effect helpers are currently bare functions
     expectTypeOf(it.effect.skip).toBeFunction()
-    // @ts-expect-error RED-PIN: effect helpers are currently bare functions
+    expectTypeOf(it.effect.skipIf).toBeFunction()
+    expectTypeOf(it.effect.runIf).toBeFunction()
     expectTypeOf(it.effect.only).toBeFunction()
-    // @ts-expect-error RED-PIN: effect helpers are currently bare functions
     expectTypeOf(it.effect.each).toBeFunction()
-    // @ts-expect-error RED-PIN: native testers do not currently expose Effect helpers
+    expectTypeOf(it.effect.fails).toBeFunction()
+    expectTypeOf(it.effect.prop).toBeFunction()
+    expectTypeOf(it.live.skip).toBeFunction()
+    expectTypeOf(it.live.only).toBeFunction()
+    expectTypeOf(it.scoped.skip).toBeFunction()
+    expectTypeOf(it.scoped.only).toBeFunction()
     expectTypeOf(it.skip.effect).toBeFunction()
+    expectTypeOf(it.skip.live).toBeFunction()
+    expectTypeOf(it.skip.scoped).toBeFunction()
+    expectTypeOf(it.only.effect).toBeFunction()
+    expectTypeOf(it.fails.effect).toBeFunction()
   })
 
   it.layer(Layer.empty)('layer-bound tester surface', (layerIt) => {
     layerIt.effect('types: exposes native tester modifiers', () => {
-      // @ts-expect-error RED-PIN: layer-bound Effect helpers are bare functions
       expectTypeOf(layerIt.effect.skip).toBeFunction()
-      // @ts-expect-error RED-PIN: layer-bound Effect helpers are bare functions
+      expectTypeOf(layerIt.effect.skipIf).toBeFunction()
+      expectTypeOf(layerIt.effect.runIf).toBeFunction()
       expectTypeOf(layerIt.effect.only).toBeFunction()
-      // @ts-expect-error RED-PIN: layer-bound Effect helpers are bare functions
       expectTypeOf(layerIt.effect.each).toBeFunction()
+      expectTypeOf(layerIt.effect.fails).toBeFunction()
+      expectTypeOf(layerIt.effect.prop).toBeFunction()
+      expectTypeOf(layerIt.scoped.skip).toBeFunction()
+      expectTypeOf(layerIt.skip.effect).toBeFunction()
       return Effect.void
     })
+
+    layerIt.effect.each([{ value: 1 }])('runs layer-bound table cases', ({ value }) =>
+      Effect.sync(() => expectTypeOf(value).toEqualTypeOf<number>()),
+    )
   })
 
-  // @ts-expect-error RED-PIN: effect tester has no fails modifier yet
+  it.effect.each([{ value: 1 }])('runs Effect table cases', ({ value }) =>
+    Effect.sync(() => expectTypeOf(value).toEqualTypeOf<number>()),
+  )
+
+  it.effect.prop(
+    'runs Effect property cases',
+    [FastCheck.constant(1)] as const,
+    ([value]: readonly [number], ctx) =>
+      Effect.sync(() => {
+        expect(value).toBe(1)
+        expectTypeOf(ctx).toEqualTypeOf<import('vite-plus/test').TestContext>()
+      }),
+  )
+
   it.effect.fails(
     'threads the Vitest cancellation signal into the Effect fiber',
     (ctx: import('vite-plus/test').TestContext) =>
