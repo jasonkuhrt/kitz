@@ -1,7 +1,8 @@
 import { Schema as S } from 'effect'
 import type { StaticError } from '../../types/staticError.js'
+import { nullByte } from '../core/grammar.js'
+import type { requiresLiteral } from '../core/messages.js'
 
-const nullByte = String.fromCharCode(0)
 const extensionPatternSource = `^\\.[^/${nullByte}]+$`
 
 /**
@@ -48,7 +49,9 @@ type ErrorMalformedExtensionLiteral<$Received extends string> = $Received extend
 
 /** Guard a literal against the Extension runtime grammar. */
 export type ExtensionLiteralGuard<$S extends string> = string extends $S
-  ? StaticError<'Extension.mk requires a string literal. Decode dynamic strings through Path.Extension.'>
+  ? StaticError<
+      requiresLiteral<'Extension.mk', 's', 'Decode dynamic strings through Path.Extension.'>
+    >
   : IsValidExtensionLiteral<$S> extends true
     ? $S
     : ErrorMalformedExtensionLiteral<$S>

@@ -1,7 +1,7 @@
 import { Array, Function as Fn, Match, Option, Schema as S } from 'effect'
-import type { FromTargetLiteral, LiteralGuard, SegmentLiteralGuard } from '../core/literal.js'
+import type { FromTargetLiteral, LiteralGuard } from '../core/literal.js'
 import { Dir } from '../models/Dir.js'
-import { segment, type Segment } from '../models/segment.js'
+import { segment, type Segment, type SegmentLiteralGuard } from '../models/segment.js'
 import * as AbsDirModel from '../models/AbsDir.js'
 import * as RelDirModel from '../models/RelDir.js'
 

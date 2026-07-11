@@ -1,10 +1,31 @@
 import { Schema as S } from 'effect'
+import type { StaticError } from '../../types/staticError.js'
+import { nullByte } from '../core/grammar.js'
+import type { ascent, here, separator } from '../core/grammar.js'
+import type { requiresLiteral } from '../core/messages.js'
 import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { realisticSegmentPattern } from '../core/realisticText.js'
 
-const nullByte = String.fromCharCode(0)
+// This pattern is one of three composed checks; non-empty and traversal rules
+// live in the full check chain mirrored by SegmentLiteralGuard below.
 const segmentPatternSource = `^[^/${nullByte}]+$`
 const segmentPattern = new RegExp(segmentPatternSource)
+
+type emptySegmentMessage = 'Path segment cannot be empty'
+const emptySegmentMessage: emptySegmentMessage = 'Path segment cannot be empty'
+
+type patternSegmentMessage = 'Path segment cannot contain / or NUL'
+const patternSegmentMessage: patternSegmentMessage = 'Path segment cannot contain / or NUL'
+
+type traversalSegmentMessage = '"." and ".." are traversal references, not segment names'
+const traversalSegmentMessage: traversalSegmentMessage =
+  '"." and ".." are traversal references, not segment names'
+
+type separatorSegmentMessage = "Path segment cannot contain '/'"
+export const separatorSegmentMessage: separatorSegmentMessage = "Path segment cannot contain '/'"
+
+type nullByteSegmentMessage = 'Path segment cannot contain NUL'
+export const nullByteSegmentMessage: nullByteSegmentMessage = 'Path segment cannot contain NUL'
 
 const isSegmentText = (s: string): boolean =>
   s.length > 0 && !s.includes('/') && !s.includes(nullByte) && s !== '.' && s !== '..'
@@ -45,13 +66,13 @@ const unicodeTextArbitrary = {
 export class Segment_ extends S.asClass(
   S.String.pipe(
     S.check(
-      S.isNonEmpty({ message: 'Path segment cannot be empty' }),
+      S.isNonEmpty({ message: emptySegmentMessage }),
       S.isPattern(segmentPattern, {
-        message: 'Path segment cannot contain / or null bytes',
+        message: patternSegmentMessage,
         arbitrary: unicodeTextArbitrary,
       }),
       S.makeFilter((s) => s !== '.' && s !== '..', {
-        message: '"." and ".." are traversal references, not segment names',
+        message: traversalSegmentMessage,
         arbitrary: dictionaryTextArbitrary,
       }),
     ),
@@ -79,6 +100,33 @@ export class Segment_ extends S.asClass(
 
 export const Segment = Segment_
 export type Segment = typeof Segment_.Type
+
+type IsValidSegmentLiteral<$S extends string> = $S extends '' | here | ascent
+  ? false
+  : $S extends `${string}${separator}${string}` | `${string}${nullByte}${string}`
+    ? false
+    : true
+
+type ErrorMalformedSegmentLiteral<$Received extends string> = $Received extends ''
+  ? StaticError<emptySegmentMessage>
+  : $Received extends here | ascent
+    ? StaticError<traversalSegmentMessage>
+    : $Received extends `${string}${separator}${string}`
+      ? StaticError<separatorSegmentMessage>
+      : StaticError<nullByteSegmentMessage>
+
+/** Guard a POSIX path-segment literal against the runtime Segment grammar. */
+export type SegmentLiteralGuard<$S extends string> = string extends $S
+  ? StaticError<
+      requiresLiteral<
+        'Segment literal constructors',
+        '',
+        'Decode dynamic strings through Path.Segment.'
+      >
+    >
+  : IsValidSegmentLiteral<$S> extends true
+    ? $S
+    : ErrorMalformedSegmentLiteral<$S>
 
 /**
  * Validate a raw string as a {@link Segment} (throws on invalid input).

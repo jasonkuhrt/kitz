@@ -9,30 +9,35 @@ import type { File } from '../models/File.js'
 import type { Rel } from '../models/Rel.js'
 import type { RelDir } from '../models/RelDir.js'
 import type { RelFile } from '../models/RelFile.js'
+import type { ascent, ascentPrefix, here, herePrefix, separator } from './grammar.js'
+import type {
+  emptyPathMessage,
+  groupMismatchMessage,
+  notTarget,
+  requiresLiteral,
+  targetDescription,
+  validationHint,
+} from './messages.js'
 
-type Separator = '/'
-type Here = '.'
-type Ascent = '..'
+type IsAbsolute<$S extends string> = $S extends `${separator}${string}` ? true : false
 
-type IsAbsolute<$S extends string> = $S extends `${Separator}${string}` ? true : false
-
-type IsDirectorySyntax<$S extends string> = $S extends Here | './' | Ascent | '../'
+type IsDirectorySyntax<$S extends string> = $S extends here | herePrefix | ascent | ascentPrefix
   ? true
-  : $S extends `${string}${Separator}`
+  : $S extends `${string}${separator}`
     ? true
     : false
 
-type StripRoot<$S extends string> = $S extends `${Separator}${infer $Rest}` ? $Rest : $S
+type StripRoot<$S extends string> = $S extends `${separator}${infer $Rest}` ? $Rest : $S
 
-type StripLeadingAscent<$S extends string> = $S extends `../${infer $Rest}`
+type StripLeadingAscent<$S extends string> = $S extends `${ascentPrefix}${infer $Rest}`
   ? StripLeadingAscent<$Rest>
   : $S
 
-type StripLeadingHere<$S extends string> = $S extends `./${infer $Rest}` ? $Rest : $S
+type StripLeadingHere<$S extends string> = $S extends `${herePrefix}${infer $Rest}` ? $Rest : $S
 
 type Split<$S extends string, $Acc extends readonly string[] = []> = $S extends ''
   ? $Acc
-  : $S extends `${infer $Segment}${Separator}${infer $Rest}`
+  : $S extends `${infer $Segment}${separator}${infer $Rest}`
     ? $Segment extends ''
       ? Split<$Rest, $Acc>
       : Split<$Rest, readonly [...$Acc, $Segment]>
@@ -45,11 +50,11 @@ type NormalizeSegments<
   infer $Segment extends string,
   ...infer $Rest extends readonly string[],
 ]
-  ? $Segment extends Ascent
+  ? $Segment extends ascent
     ? $Acc extends readonly [...infer $Prefix extends readonly string[], string]
       ? NormalizeSegments<$Rest, $Prefix>
       : NormalizeSegments<$Rest, $Acc>
-    : $Segment extends Here | ''
+    : $Segment extends here | ''
       ? NormalizeSegments<$Rest, $Acc>
       : NormalizeSegments<$Rest, readonly [...$Acc, $Segment]>
   : $Acc
@@ -65,7 +70,7 @@ type Last<$Items extends readonly string[]> = $Items extends readonly [
   ? $Last
   : never
 
-type IsValidFileName<$S extends string> = $S extends '' | Here | Ascent ? false : true
+type IsValidFileName<$S extends string> = $S extends '' | here | ascent ? false : true
 
 type CanDecodeFile<$S extends string> =
   IsDirectorySyntax<$S> extends true
@@ -137,43 +142,28 @@ type DecodeRelLiteralAs<$S extends string, $Target> =
 
 type IsExactly<$A, $B> = [$A] extends [$B] ? ([$B] extends [$A] ? true : false) : false
 
-type TargetDescription<$Target> =
+type TargetName<$Target> =
   IsExactly<$Target, AbsFile> extends true
-    ? 'an absolute file path'
+    ? 'AbsFile'
     : IsExactly<$Target, AbsDir> extends true
-      ? 'an absolute directory path'
+      ? 'AbsDir'
       : IsExactly<$Target, RelFile> extends true
-        ? 'a relative file path'
+        ? 'RelFile'
         : IsExactly<$Target, RelDir> extends true
-          ? 'a relative directory path'
+          ? 'RelDir'
           : IsExactly<$Target, Abs> extends true
-            ? 'an absolute path'
+            ? 'Abs'
             : IsExactly<$Target, Rel> extends true
-              ? 'a relative path'
+              ? 'Rel'
               : IsExactly<$Target, File> extends true
-                ? 'a file path'
+                ? 'File'
                 : IsExactly<$Target, Dir> extends true
-                  ? 'a directory path'
-                  : 'a path literal matching the target path type'
+                  ? 'Dir'
+                  : 'Any'
 
-type ValidationHint<$Target> =
-  IsExactly<$Target, AbsFile> extends true
-    ? 'Absolute file literals must start with / and must not be root, current/parent-only, trailing slash, or normalize to an invalid filename.'
-    : IsExactly<$Target, AbsDir> extends true
-      ? 'Absolute directory literals must start with /. Trailing slash is optional for explicit directory targets.'
-      : IsExactly<$Target, RelFile> extends true
-        ? 'Relative file literals must not start with / and must not be current/parent-only, trailing slash, or normalize to an invalid filename.'
-        : IsExactly<$Target, RelDir> extends true
-          ? 'Relative directory literals must not start with /. Trailing slash is optional for explicit directory targets.'
-          : IsExactly<$Target, Abs> extends true
-            ? 'Absolute path literals must start with /.'
-            : IsExactly<$Target, Rel> extends true
-              ? 'Relative path literals must not start with /.'
-              : IsExactly<$Target, File> extends true
-                ? 'File literals must not be current/parent-only, trailing slash, or normalize to an invalid filename.'
-                : IsExactly<$Target, Dir> extends true
-                  ? 'Directory literals may be absolute or relative. Trailing slash is optional for explicit directory targets.'
-                  : 'Use one of AbsFile, AbsDir, RelFile, RelDir, Abs, Rel, File, or Dir as the target.'
+type TargetDescription<$Target> = targetDescription<TargetName<$Target>>
+
+type ValidationHint<$Target> = validationHint<TargetName<$Target>>
 
 /** Type-level path literal analysis matching `S.decodeSync(Path.Any)` classification. */
 export type LiteralAnalysis<$S extends string> = string extends $S
@@ -190,42 +180,26 @@ export type FromLiteral<$S extends string> = string extends $S
     : never
 
 /** Static error for dynamic strings passed to literal-only constructors. */
-export type ErrorStringNotLiteral =
-  StaticError<'Path literal constructors require a string literal. Use a path schema codec for dynamic strings, or decode the target schema at runtime.'>
+export type ErrorStringNotLiteral = StaticError<
+  requiresLiteral<
+    'Path literal constructors',
+    '',
+    'Use a path schema codec for dynamic strings, or decode the target schema at runtime.'
+  >
+>
 
 /** Static error for a literal the path grammar itself rejects, naming the cause. */
 export type ErrorMalformedLiteral<$Received extends string> = $Received extends ''
-  ? StaticError<'The empty string is not a path literal.'>
+  ? StaticError<emptyPathMessage>
   : StaticError<`Path literal '${$Received}' is not a valid path literal.`>
 
 /** Static error for path values from different anchoring groups. */
-export type ErrorPathGroupMismatch =
-  StaticError<'Path arguments must share a group: both absolute or both relative.'>
-
-type IsValidSegmentLiteral<$S extends string> = $S extends '' | Here | Ascent
-  ? false
-  : $S extends `${string}${Separator}${string}` | `${string}\0${string}`
-    ? false
-    : true
-
-type ErrorMalformedSegmentLiteral<$Received extends string> = $Received extends ''
-  ? StaticError<'Path segment literals cannot be empty.'>
-  : $Received extends Here | Ascent
-    ? StaticError<`Path segment literal '${$Received}' is a traversal reference, not a segment name.`>
-    : $Received extends `${string}${Separator}${string}`
-      ? StaticError<`Path segment literal '${$Received}' cannot contain '/'.`>
-      : StaticError<'Path segment literals cannot contain NUL.'>
-
-/** Guard a POSIX path-segment literal against the runtime Segment grammar. */
-export type SegmentLiteralGuard<$S extends string> = string extends $S
-  ? StaticError<'Segment literal constructors require a string literal. Decode dynamic strings through Path.Segment.'>
-  : IsValidSegmentLiteral<$S> extends true
-    ? $S
-    : ErrorMalformedSegmentLiteral<$S>
+export type ErrorPathGroupMismatch = StaticError<groupMismatchMessage>
 
 /** Static error for a well-formed literal that does not match the target path schema. */
-export type ErrorPathValidation<$Target, $Received> =
-  StaticError<`Path literal '${$Received & string}' is not ${TargetDescription<$Target>}. ${ValidationHint<$Target>}`>
+export type ErrorPathValidation<$Target, $Received> = StaticError<
+  notTarget<$Received & string, TargetDescription<$Target>, ValidationHint<$Target>>
+>
 
 /** Decode a string literal as a specific path target schema. */
 export type FromTargetLiteral<$S extends string, $Target> = string extends $S

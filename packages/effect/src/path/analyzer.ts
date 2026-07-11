@@ -1,11 +1,12 @@
 import { Data, flow, Option, Result, SchemaIssue } from 'effect'
-
-// Path segment constants (internal — the codecs go through analyze/format)
-const separator = '/'
-const hereSegment = '.'
-const ascentSegment = '..'
-const herePrefix = `${hereSegment}${separator}` // './'
-const ascentPrefix = `${ascentSegment}${separator}` // '../'
+import {
+  ascent as ascentSegment,
+  ascentPrefix,
+  here,
+  herePrefix,
+  separator,
+} from './core/grammar.js'
+import { emptyPathMessage, targetDescription } from './core/messages.js'
 
 /** A path string analyzed into its kind, absoluteness, parent-traversal count, and named segments. */
 export type Analysis = Data.TaggedEnum<{
@@ -43,7 +44,7 @@ const invalid = (input: string, expected: string): SchemaIssue.Issue =>
   })
 
 const emptyPath = new SchemaIssue.InvalidValue(Option.some(''), {
-  message: 'The empty string is not a path',
+  message: emptyPathMessage,
 })
 
 /**
@@ -61,7 +62,7 @@ const normalizeWithAscent = (
     if (segment === ascentSegment) {
       if (segments.length > 0) segments.pop()
       else ascent++
-    } else if (segment !== hereSegment && segment !== '') {
+    } else if (segment !== here && segment !== '') {
       segments.push(segment)
     }
   }
@@ -70,15 +71,13 @@ const normalizeWithAscent = (
 }
 
 /**
- * Optional hints to influence analyzer heuristics for explicit target codecs.
+ * Optional hints to select the known path kind for explicit target codecs.
  *
- * The analyzer uses extension presence to distinguish files from directories,
- * but explicit constructors already know the target kind. Hints let those
- * constructors resolve non-trailing-slash strings without changing union decode
- * heuristics.
+ * Directory syntax always wins; otherwise explicit constructors use their known
+ * kind, while hintless analysis follows the literal grammar's file default.
  */
 export interface AnalyzerOptions {
-  /** 'file' / 'dir' (default) resolution for ambiguous dotfiles. */
+  /** Known path kind for non-directory syntax. */
   hint?: 'file' | 'dir'
 }
 
@@ -100,29 +99,15 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
     return Analysis.dir({ isPathAbsolute: true, ascent: 0, segments: [] })
   }
 
-  // Directory iff: trailing slash, a bare here/ascent reference, or no extension on the last segment.
-  let isDirectory: boolean
-  if (
+  // Directory syntax is explicit; every other hintless input defaults to a file.
+  const hasDirectorySyntax =
     input === '' ||
-    input === hereSegment ||
+    input === here ||
     input === herePrefix ||
     input === ascentSegment ||
     input === ascentPrefix ||
     input.endsWith(separator)
-  ) {
-    isDirectory = true
-  } else {
-    const segments = input.split(separator).filter((s) => s !== '')
-    const lastSegment = segments[segments.length - 1]
-    if (lastSegment) {
-      // A dot that's not at index 0 marks an extension. Explicit target decoders
-      // can override this heuristic; unions keep it as the file/dir tie-breaker.
-      const hasExtension = lastSegment.lastIndexOf('.') > 0
-      isDirectory = options?.hint ? options.hint === 'dir' : !hasExtension
-    } else {
-      isDirectory = true
-    }
-  }
+  const isDirectory = hasDirectorySyntax || options?.hint === 'dir'
 
   // Strip the leading slash / `../` / `./` markers, count parent refs.
   let normalized = isAbsolute ? input.slice(separator.length) : input
@@ -177,11 +162,13 @@ const analyzeAs =
     if (input === '') return Result.fail(emptyPath)
     const analysis = analyze(input, { hint: kind })
     if (!Analysis.$is(kind)(analysis)) {
-      return Result.fail(invalid(input, kind === 'dir' ? 'a directory path' : 'a file path'))
+      return Result.fail(
+        invalid(input, kind === 'dir' ? targetDescription.Dir : targetDescription.File),
+      )
     }
     return analysis.isPathAbsolute !== (anchoring === 'absolute')
       ? Result.fail(
-          invalid(input, anchoring === 'absolute' ? 'an absolute path' : 'a relative path'),
+          invalid(input, anchoring === 'absolute' ? targetDescription.Abs : targetDescription.Rel),
         )
       : Result.succeed(analysis)
   }

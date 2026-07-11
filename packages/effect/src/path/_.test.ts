@@ -1819,7 +1819,6 @@ describe('shared message texts across type and value levels', () => {
       expect(String(e)).not.toContain('not a path literal')
     }
     type $Expected = Types.StaticError<'The empty string is not a path'>
-    // @ts-expect-error RED-PIN: type-level text drifted to 'The empty string is not a path literal.'
     expectTypeOf<LiteralCore.ErrorMalformedLiteral<''>>().toEqualTypeOf<$Expected>()
   })
 })
