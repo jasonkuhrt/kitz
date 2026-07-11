@@ -25,6 +25,8 @@ import {
 } from 'effect'
 import * as PrimaryKey from 'effect/PrimaryKey'
 import { FastCheck } from 'effect/testing'
+import * as LiteralCore from './core/literal.js'
+import { Types } from '../types/_.js'
 import * as Path from './__.js'
 
 // ─── shared generators & helpers ───
@@ -1801,5 +1803,23 @@ describe('finding 9: Extension is a first-class model with a literal constructor
   it('Extension.mk constructs from a literal', () => {
     const ext = Path.Extension.mk('.zip')
     expect(String(ext)).toBe('.zip')
+  })
+})
+
+// ─── type⇄value message SOT (audit 2026-07-11) ───
+
+describe('shared message texts across type and value levels', () => {
+  it('empty-string rejection uses one message text at both levels', () => {
+    // Runtime text (already the unified form):
+    try {
+      S.decodeSync(Path.Any)('')
+      expect.unreachable()
+    } catch (e) {
+      expect(String(e)).toContain('The empty string is not a path')
+      expect(String(e)).not.toContain('not a path literal')
+    }
+    type $Expected = Types.StaticError<'The empty string is not a path'>
+    // @ts-expect-error RED-PIN: type-level text drifted to 'The empty string is not a path literal.'
+    expectTypeOf<LiteralCore.ErrorMalformedLiteral<''>>().toEqualTypeOf<$Expected>()
   })
 })
