@@ -1159,15 +1159,11 @@ describe('audit round 3: filename and path text validity', () => {
 
 describe('audit round 3: Protocol', () => {
   it('rejects an encoded protocol without the :// suffix', () => {
-    expect(() => S.decodeSync(Path.Protocol.Protocol)('filexxx')).toThrow()
+    expect(() => S.decodeSync(Path.Protocol)('filexxx')).toThrow()
   })
 
   it('exports the protocol schema directly', () => {
-    const staticPin = () => {
-      // @ts-expect-error RED-PIN: Protocol is still nested under Path.Protocol.Protocol
-      S.decodeSync(Path.Protocol)('file://')
-    }
-    expect(typeof staticPin).toBe('function')
+    expect(S.decodeSync(Path.Protocol)('file://')).toBe('file')
   })
 })
 

@@ -21,8 +21,10 @@ type ProtocolName = typeof ProtocolName.Type
  * ```
  */
 export const Protocol = S.String.pipe(
+  S.check(S.isEndsWith(separator)),
   S.decodeTo(ProtocolName, {
-    // Strip the separator, then `ProtocolName` validates the name is in the enum.
+    // The encoded-side check validates the separator before this slice;
+    // `ProtocolName` then validates the remaining name is in the enum.
     decode: SchemaGetter.transform((scheme) => scheme.slice(0, -separator.length) as ProtocolName),
     encode: SchemaGetter.transform((name) => `${name}${separator}`),
   }),
