@@ -1333,3 +1333,14 @@ describe('audit round 3: canonical ownership paths', () => {
     }
   })
 })
+
+describe('audit round 4: package-qualified Schema class identifiers', () => {
+  it('rejects a foreign TaggedClass that reuses the AbsDir tag', () => {
+    class ForeignAbsDir extends S.TaggedClass<ForeignAbsDir>()('AbsDir', {
+      value: S.String,
+    }) {}
+
+    const foreign = ForeignAbsDir.make({ value: 'not a path' })
+    expect(Path.AbsDir.is(foreign)).toBe(false)
+  })
+})

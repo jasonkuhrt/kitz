@@ -1,5 +1,5 @@
 import { Path } from '@kitz/effect/Path'
-import { describe, expect, it } from '@kitz/vitest'
+import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
 
 const absDir = Path.AbsDir.make({ segments: ['home'].map(Path.segment) })
 const absFile = Path.AbsFile.make('/home/index.ts')
@@ -130,6 +130,14 @@ describe('Path matchers', () => {
       expect(message).toContain('toBeWithinPath')
       expect(message).toContain('Parent:')
       expect(message).toContain('is not a path directory')
+    })
+
+    it('types: correlates the parent group with the received path', () => {
+      const assertion = expect(absFile)
+      type $Parent = Parameters<typeof assertion.toBeWithinPath>[0]
+
+      // @ts-expect-error RED-PIN: the matcher currently accepts the full Dir union
+      expectTypeOf<$Parent>().toEqualTypeOf<Path.AbsDir>()
     })
   })
 

@@ -5,6 +5,7 @@
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Schema as S } from 'effect'
 import { FastCheck } from 'effect/testing'
+import { Types } from '../types/_.js'
 import { Schema } from './_.js'
 import { withArbitraryHints } from './withArbitraryHints.js'
 
@@ -101,5 +102,22 @@ describe('withArbitraryHints', () => {
     expect(items.length).toBeGreaterThan(0)
     const fromCandidate = items.filter((i) => i === 'alpha' || i === 'beta')
     expect(fromCandidate.length / items.length).toBeGreaterThan(0.85)
+  })
+
+  it('owns a public options type', () => {
+    type $Expected = Parameters<typeof withArbitraryHints>[0]
+
+    // @ts-expect-error RED-PIN: withArbitraryHints.Options is not exported yet
+    expectTypeOf<Schema.withArbitraryHints.Options>().toEqualTypeOf<$Expected>()
+  })
+})
+
+describe('NaturalInt', () => {
+  it('carries its non-negative invariant in the Type', () => {
+    type $RejectsNegative = -1 extends Schema.NaturalInt ? false : true
+
+    // @ts-expect-error RED-PIN: NaturalInt currently collapses to number
+    expectTypeOf<$RejectsNegative>().toEqualTypeOf<true>()
+    expectTypeOf<Types.Equals<Schema.NaturalInt, number>>().toEqualTypeOf<true>()
   })
 })
