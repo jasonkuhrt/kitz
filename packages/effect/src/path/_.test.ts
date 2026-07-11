@@ -1,15 +1,9 @@
 /**
- * Path module test suite — organized by FEATURE, not by assertion mechanism.
+ * Path index suite — models, codecs, decode-side literal classification,
+ * unions, traits, and integration, organized by feature.
  *
- * One feature → one test locus. Whether a feature's contract is checked at
- * build time (`expectTypeOf`, `@ts-expect-error`) or run time (laws, tables)
- * is incidental; both kinds of assertion live in the SAME describe block.
- * Deleting a feature means deleting one block — never hunting a parallel
- * type-test file.
- *
- * Cross-feature laws live with the operation whose documented contract states
- * them (e.g. `isAncestorOf` documents itself as the inverse of
- * `isDescendantOf`, so the mirror law lives there).
+ * Operation suites are colocated in operations/<name>.test.ts. Type-level and
+ * value-level assertions remain together at each feature's test locus.
  */
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import {
@@ -56,30 +50,10 @@ const abs = FastCheck.oneof(arb.AbsDir, arb.AbsFile)
 const dir = FastCheck.oneof(arb.AbsDir, arb.RelDir)
 const rel = FastCheck.oneof(arb.RelDir, arb.RelFile)
 const file = FastCheck.oneof(arb.AbsFile, arb.RelFile)
-const relDirAscent0 = FastCheck.array(arb.Segment, { maxLength: 6 }).map((segments) =>
-  Path.RelDir.make({ ascent: 0, segments }),
-)
-const relFileAscent0 = FastCheck.record({
-  segments: FastCheck.array(arb.Segment, { maxLength: 6 }),
-  fileName: arb.FileName,
-}).map((input) =>
-  Path.RelFile.make({
-    dir: Path.RelDir.make({ ascent: 0, segments: input.segments }),
-    fileName: input.fileName,
-  }),
-)
-const relAscent0 = FastCheck.oneof(relDirAscent0, relFileAscent0)
-const nonEmptyRelAscent0 = FastCheck.oneof(
-  FastCheck.array(arb.Segment, { minLength: 1, maxLength: 6 }).map((segments) =>
-    Path.RelDir.make({ ascent: 0, segments }),
-  ),
-  relFileAscent0,
-)
 
 const encodeAny = S.encodeSync(Path.Any)
 const extension = (value: string) => S.decodeSync(Path.Extension)(value)
 const fileName = (value: string) => S.decodeSync(Path.FileName)(value)
-const sign = (value: number): -1 | 0 | 1 => (value < 0 ? -1 : value > 0 ? 1 : 0)
 
 const someAbsFile = Path.AbsFile.make({
   dir: Path.AbsDir.make({ segments: ['home', 'src'].map(Path.segment) }),
@@ -423,14 +397,6 @@ describe('.isAnchor / .depth', () => {
     expect(Path.RelDir.make({ ascent: 2, segments: [] }).isAnchor).toBe(false)
   })
 
-  it('RelDir.anchor is the join identity for dirs', () => {
-    FastCheck.assert(
-      FastCheck.property(dir, (d) => {
-        expect(Equal.equals(Path.join(d, Path.RelDir.anchor), d)).toBe(true)
-      }),
-    )
-  })
-
   it('depth is the segment count (files exclude the filename)', () => {
     FastCheck.assert(
       FastCheck.property(arb.Any, (path) => {
@@ -620,595 +586,12 @@ describe('Cwd', () => {
   })
 })
 
-// ─── operation: join ───
-
-describe('join', () => {
-  it('literal duality obeys the desugar law across mixed variadic positions', () => {
-    const base = Path.mk('/workspace/')
-    const first = Path.mk('./src/')
-    const second = Path.mk('./generated/')
-    const last = Path.mk('./index.ts')
-    const expected = Path.join(base, first, second, last)
-
-    expect(expected).toEncodeTo('/workspace/src/generated/index.ts')
-    expect(Path.join('/workspace/', './src/', './generated/', './index.ts')).toEqual(expected)
-    expect(Path.join('/workspace/', first, './generated/', last)).toEqual(expected)
-    expect(Path.join(base, './src/', second, './index.ts')).toEqual(expected)
-    expect(Path.join('/workspace/', './src/', second, last)).toEqual(expected)
-
-    expect(Path.join('./index.ts')('/workspace/')).toEqual(Path.join(last)(base))
-    expect(Path.join('./index.ts')(base)).toEqual(Path.join(last)(base))
-    expect(Path.join(last)('/workspace/')).toEqual(Path.join(last)(base))
-  })
-
-  it('variadic join is a left fold of binary join', () => {
-    FastCheck.assert(
-      FastCheck.property(
-        dir,
-        relDirAscent0,
-        relDirAscent0,
-        relAscent0,
-        (base, first, second, last) => {
-          expect(Path.join(base, first, second, last)).toEqual(
-            Path.join(Path.join(Path.join(base, first), second), last),
-          )
-        },
-      ),
-    )
-  })
-
-  it('types: mixed variadic literals preserve the precise left-fold return', () => {
-    expectTypeOf(Path.join('/base/', './dir/')).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.join('/base/', './file.ts')).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.join('./base/', './dir/')).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.join('./base/', './file.ts')).toEqualTypeOf<Path.RelFile>()
-
-    expectTypeOf(Path.join(someAbsDir, someRelDir)).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.join(someAbsDir, someRelFile)).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.join(someRelDir, someRelDir)).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.join(someRelDir, someRelFile)).toEqualTypeOf<Path.RelFile>()
-
-    expectTypeOf(
-      Path.join('/base/', './one/', someRelDir, './three/', './file.ts'),
-    ).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(
-      Path.join(someRelDir, './one/', someRelDir, './three/'),
-    ).toEqualTypeOf<Path.RelDir>()
-
-    expectTypeOf(Path.join('./file.ts')('/base/')).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.join('./file.ts')('./base/')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.join('./file.ts')(someAbsDir)).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.join(someRelFile)('/base/')).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.join(someRelDir)(someAbsDir)).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.join(someRelFile)(someAbsDir)).toEqualTypeOf<Path.AbsFile>()
-
-    // the exported type utility agrees cell-by-cell
-    expectTypeOf<Path.Join<Path.AbsDir, Path.RelDir>>().toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf<Path.Join<Path.AbsDir, Path.RelFile>>().toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf<Path.Join<Path.RelDir, Path.RelDir>>().toEqualTypeOf<Path.RelDir>()
-    expectTypeOf<Path.Join<Path.RelDir, Path.RelFile>>().toEqualTypeOf<Path.RelFile>()
-
-    const dynamic = './dynamic/' as string
-
-    // Type-only: never executed, so the @ts-expect-error rejections cannot throw.
-    const staticRejections = () => {
-      // @ts-expect-error dynamic strings are rejected at the data-first base position
-      Path.join(dynamic, someRelFile)
-      // @ts-expect-error dynamic strings are rejected at intermediate positions
-      Path.join(someAbsDir, dynamic, someRelFile)
-      // @ts-expect-error dynamic strings are rejected at the final relative position
-      Path.join(someAbsDir, someRelDir, dynamic)
-      // @ts-expect-error dynamic strings are rejected at the data-last relative position
-      Path.join(dynamic)
-      // @ts-expect-error dynamic strings are rejected at the curried target position
-      Path.join(someRelFile)(dynamic)
-      // @ts-expect-error intermediate relative parts cannot be absolute literals
-      Path.join(someAbsDir, '//', someRelFile)
-      // @ts-expect-error relative parts cannot be absolute literals
-      Path.join(someAbsDir, './middle/', '/absolute.ts')
-      // @ts-expect-error data-last relative parts cannot be absolute literals
-      Path.join('/absolute.ts')
-    }
-    expect(typeof staticRejections).toBe('function')
-  })
-})
-
-// ─── operation: relativeTo ───
-
-describe('relativeTo', () => {
-  it('literal duality obeys the desugar law in both call shapes', () => {
-    const absPath = Path.mk('/workspace/src/index.ts')
-    const absBase = Path.mk('/workspace/')
-    const absExpected = Path.relativeTo(absPath, absBase)
-
-    expect(absExpected).toEncodeTo('./src/index.ts')
-    expect(Path.relativeTo('/workspace/src/index.ts', absBase)).toEqual(absExpected)
-    expect(Path.relativeTo(absPath, '/workspace/')).toEqual(absExpected)
-    expect(Path.relativeTo('/workspace/src/index.ts', '/workspace/')).toEqual(absExpected)
-    expect(Path.relativeTo('/workspace/')(absPath)).toEqual(absExpected)
-    expect(Path.relativeTo(absBase)('/workspace/src/index.ts')).toEqual(absExpected)
-
-    const relPath = Path.mk('../workspace/src/')
-    const relBase = Path.mk('../workspace/')
-    const relExpected = Path.relativeTo(relPath, relBase)
-
-    expect(Path.relativeTo('../workspace/src/', relBase)).toEqual(relExpected)
-    expect(Path.relativeTo(relPath, '../workspace/')).toEqual(relExpected)
-    expect(Path.relativeTo('../workspace/src/', '../workspace/')).toEqual(relExpected)
-    expect(Path.relativeTo('../workspace/')(relPath)).toEqual(relExpected)
-    expect(Path.relativeTo(relBase)('../workspace/src/')).toEqual(relExpected)
-  })
-
-  it('join(base, relativeTo(abs, base)) returns the original absolute path', () => {
-    FastCheck.assert(
-      FastCheck.property(abs, arb.AbsDir, (path, base) => {
-        expect(Path.join(base, Path.relativeTo(path, base))).toEqual(path)
-      }),
-    )
-  })
-
-  it('relative relativeTo is Some exactly when target ascent is not shallower than base ascent', () => {
-    FastCheck.assert(
-      FastCheck.property(rel, arb.RelDir, (target, base) => {
-        const relative = Path.relativeTo(target, base)
-        const isExpressible = target.ascent >= base.ascent
-
-        expect(Option.isSome(relative)).toBe(isExpressible)
-        expect(Option.map(relative, (value) => Path.join(base, value))).toEqual(
-          isExpressible ? Option.some(target) : Option.none(),
-        )
-      }),
-    )
-  })
-
-  it('relativeTo(join(base, r), base) returns ascent-0 relative paths', () => {
-    FastCheck.assert(
-      FastCheck.property(dir, relAscent0, (base, r) => {
-        const joined = Path.join(base, r)
-        const relative = Path.relativeTo(joined as never, base as never)
-        const relativeOption = Option.isOption(relative) ? relative : Option.some(relative)
-
-        expect(relativeOption).toEqual(Option.some(r))
-      }),
-    )
-  })
-
-  it('types: literal/value matrices preserve the precise relative return', () => {
-    expectTypeOf(Path.relativeTo('/a/file.ts', '/a/')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.relativeTo('/a/', someAbsDir)).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.relativeTo(someAbsFile, '/a/')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.relativeTo(someAbsFile, someAbsDir)).toEqualTypeOf<Path.RelFile>()
-
-    expectTypeOf(Path.relativeTo('./a/file.ts', './a/')).toEqualTypeOf<
-      Option.Option<Path.RelFile>
-    >()
-    expectTypeOf(Path.relativeTo('./a/', someRelDir)).toEqualTypeOf<Option.Option<Path.RelDir>>()
-    expectTypeOf(Path.relativeTo(someRelFile, './a/')).toEqualTypeOf<Option.Option<Path.RelFile>>()
-
-    expectTypeOf(Path.relativeTo('/a/')('/a/file.ts')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.relativeTo(someAbsDir)(someAbsFile)).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.relativeTo('./a/')('./a/file.ts')).toEqualTypeOf<
-      Option.Option<Path.RelFile>
-    >()
-    expectTypeOf(Path.relativeTo(someRelDir)('./a/')).toEqualTypeOf<Option.Option<Path.RelDir>>()
-
-    // the exported type utility agrees cell-by-cell
-    expectTypeOf<Path.RelativeTo<Path.AbsDir>>().toEqualTypeOf<Path.RelDir>()
-    expectTypeOf<Path.RelativeTo<Path.AbsFile>>().toEqualTypeOf<Path.RelFile>()
-    expectTypeOf<Path.RelativeTo<Path.RelDir>>().toEqualTypeOf<Path.RelDir>()
-    expectTypeOf<Path.RelativeTo<Path.RelFile>>().toEqualTypeOf<Path.RelFile>()
-
-    const dynamic = '/a/' as string
-
-    // Type-only: never executed, so the @ts-expect-error rejections cannot throw.
-    const staticRejections = () => {
-      // @ts-expect-error dynamic strings are rejected at the data-first path position
-      Path.relativeTo(dynamic, someAbsDir)
-      // @ts-expect-error dynamic strings are rejected at the data-first base position
-      Path.relativeTo(someAbsFile, dynamic)
-      // @ts-expect-error dynamic strings are rejected at the data-last base position
-      Path.relativeTo(dynamic)
-      // @ts-expect-error dynamic strings are rejected at the data-last path position
-      Path.relativeTo(someAbsDir)(dynamic)
-      // @ts-expect-error path and base literals must belong to the same group
-      Path.relativeTo('/a/file.ts', './a/')
-      // @ts-expect-error the curried path literal must match the base literal's group
-      Path.relativeTo('./a/')('/a/file.ts')
-      // @ts-expect-error path and base values must belong to the same group
-      Path.relativeTo(someAbsFile, someRelDir)
-      // @ts-expect-error the curried path value must match the base value's group
-      Path.relativeTo(someRelDir)(someAbsFile)
-    }
-    expect(typeof staticRejections).toBe('function')
-  })
-})
-
-// ─── operation: ensureAbs ───
-
-describe('ensureAbs', () => {
-  it('literal duality obeys the desugar law in both call shapes', () => {
-    const relFile = Path.mk('./src/index.ts')
-    const base = Path.mk('/workspace/')
-    const expected = Path.ensureAbs(relFile, base)
-
-    expect(expected).toEncodeTo('/workspace/src/index.ts')
-    expect(Path.ensureAbs('./src/index.ts', base)).toEqual(expected)
-    expect(Path.ensureAbs(relFile, '/workspace/')).toEqual(expected)
-    expect(Path.ensureAbs('./src/index.ts', '/workspace/')).toEqual(expected)
-    expect(Path.ensureAbs('/workspace/')(relFile)).toEqual(expected)
-    expect(Path.ensureAbs(base)('./src/index.ts')).toEqual(expected)
-
-    expect(Path.ensureAbs('/already/file.ts', '/elsewhere/')).toEqual(
-      Path.ensureAbs(Path.mk('/already/file.ts'), Path.mk('/elsewhere/')),
-    )
-  })
-
-  it('literal desugaring agrees with generated path and base values', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.Any, arb.AbsDir, (path, base) => {
-        expect(Path.ensureAbs('./fixed/file.ts', base)).toEqual(
-          Path.ensureAbs(Path.mk('./fixed/file.ts'), base),
-        )
-        expect(Path.ensureAbs(path, '/fixed/base/')).toEqual(
-          Path.ensureAbs(path, Path.mk('/fixed/base/')),
-        )
-      }),
-    )
-  })
-
-  it('is idempotent and reference-preserving for absolute inputs', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.Any, arb.AbsDir, (path, base) => {
-        const ensured = Path.ensureAbs(path, base)
-        expect(Path.ensureAbs(ensured, base)).toBe(ensured)
-        expect(Path.Abs.is(path) ? ensured === path : true).toBe(true)
-      }),
-    )
-  })
-
-  it('types: literal/value matrices preserve the precise EnsureAbs return', () => {
-    expectTypeOf(Path.ensureAbs('./src/', '/workspace/')).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.ensureAbs('./src/file.ts', someAbsDir)).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.ensureAbs(someRelDir, '/workspace/')).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.ensureAbs(someRelDir, someAbsDir)).toEqualTypeOf<Path.AbsDir>()
-
-    expectTypeOf(Path.ensureAbs('/workspace/')('./src/file.ts')).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.ensureAbs('/workspace/')(someRelDir)).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.ensureAbs(someAbsDir)('./src/file.ts')).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.ensureAbs(someAbsDir)(someRelDir)).toEqualTypeOf<Path.AbsDir>()
-
-    expectTypeOf(Path.ensureAbs('/already/', someAbsDir)).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.ensureAbs('/already/file.ts', someAbsDir)).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.ensureAbs(someRelFile, someAbsDir)).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.ensureAbs(someAbsFile, someAbsDir)).toEqualTypeOf<Path.AbsFile>()
-
-    // the exported type utility agrees cell-by-cell
-    expectTypeOf<Path.EnsureAbs<Path.AbsDir>>().toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf<Path.EnsureAbs<Path.AbsFile>>().toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf<Path.EnsureAbs<Path.RelDir>>().toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf<Path.EnsureAbs<Path.RelFile>>().toEqualTypeOf<Path.AbsFile>()
-
-    const dynamic = './src/file.ts' as string
-
-    // Type-only: never executed, so the @ts-expect-error rejections cannot throw.
-    const staticRejections = () => {
-      // @ts-expect-error dynamic strings are rejected at the data-first path position
-      Path.ensureAbs(dynamic, someAbsDir)
-      // @ts-expect-error dynamic strings are rejected at the data-first base position
-      Path.ensureAbs(someRelFile, dynamic)
-      // @ts-expect-error dynamic strings are rejected at the data-last base position
-      Path.ensureAbs(dynamic)
-      // @ts-expect-error dynamic strings are rejected at the data-last path position
-      Path.ensureAbs(someAbsDir)(dynamic)
-      // @ts-expect-error base literals must be absolute
-      Path.ensureAbs(someRelFile, './workspace/')
-    }
-    expect(typeof staticRejections).toBe('function')
-  })
-})
-
-// ─── operation: isDescendantOf ───
-
-describe('isDescendantOf', () => {
-  it('literal duality obeys the desugar law in both call shapes', () => {
-    const relChild = Path.mk('./a/b.txt')
-    const relParent = Path.mk('./a/')
-    const expected = Path.isDescendantOf(relChild, relParent)
-
-    expect(expected).toBe(true)
-    expect(Path.isDescendantOf('./a/b.txt', relParent)).toBe(expected)
-    expect(Path.isDescendantOf(relChild, './a/')).toBe(expected)
-    expect(Path.isDescendantOf('./a/b.txt', './a/')).toBe(expected)
-    expect(Path.isDescendantOf('./a/')(relChild)).toBe(expected)
-    expect(Path.isDescendantOf(relParent)('./a/b.txt')).toBe(expected)
-
-    expect(Path.isDescendantOf('/a/b.txt', '/a/')).toBe(
-      Path.isDescendantOf(Path.mk('/a/b.txt'), Path.mk('/a/')),
-    )
-    expect(Path.isDescendantOf('./a/', './a/')).toBe(false)
-  })
-
-  it('joining a non-empty ascent-0 relative path makes it a descendant', () => {
-    FastCheck.assert(
-      FastCheck.property(dir, nonEmptyRelAscent0, (base, r) => {
-        const child = Path.join(base, r)
-        expect(child).toBeWithinPath(base)
-      }),
-    )
-  })
-
-  it('is strict for directory identity', () => {
-    FastCheck.assert(
-      FastCheck.property(dir, (path) => {
-        expect(Path.isDescendantOf(path, path)).toBe(false)
-      }),
-    )
-  })
-
-  it('keeps files directly inside their containing dir as descendants', () => {
-    FastCheck.assert(
-      FastCheck.property(file, (path) => {
-        expect(Path.isDescendantOf(path, path.dir)).toBe(true)
-      }),
-    )
-  })
-
-  it('keeps different-ascent pure relatives strict', () => {
-    expect(
-      Path.isDescendantOf(
-        Path.RelDir.make({ ascent: 1, segments: [] }),
-        Path.RelDir.make({ ascent: 2, segments: [] }),
-      ),
-    ).toBe(true)
-  })
-
-  it('types: every path position accepts values or literals and rejects invalid worlds', () => {
-    expectTypeOf(Path.isDescendantOf('/a/b.txt', '/a/')).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isDescendantOf('/a/b.txt', someAbsDir)).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isDescendantOf(someAbsFile, '/a/')).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isDescendantOf(someAbsFile, someAbsDir)).toEqualTypeOf<boolean>()
-
-    expectTypeOf(Path.isDescendantOf('/a/')('/a/b.txt')).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isDescendantOf('/a/')(someAbsFile)).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isDescendantOf(someAbsDir)('/a/b.txt')).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isDescendantOf(someAbsDir)(someAbsFile)).toEqualTypeOf<boolean>()
-
-    const dynamic = '/a/' as string
-
-    // Type-only: never executed, so the @ts-expect-error rejections cannot throw.
-    const staticRejections = () => {
-      // @ts-expect-error dynamic strings are rejected at the data-first child position
-      Path.isDescendantOf(dynamic, someAbsDir)
-      // @ts-expect-error dynamic strings are rejected at the data-first parent position
-      Path.isDescendantOf(someAbsFile, dynamic)
-      // @ts-expect-error dynamic strings are rejected at the data-last parent position
-      Path.isDescendantOf(dynamic)
-      // @ts-expect-error dynamic strings are rejected at the data-last child position
-      Path.isDescendantOf(someAbsDir)(dynamic)
-      // @ts-expect-error child and parent literals must belong to the same group
-      Path.isDescendantOf('/a/b.txt', './a/')
-      // @ts-expect-error the curried child literal must match the parent literal's group
-      Path.isDescendantOf('./a/')('/a/b.txt')
-      // @ts-expect-error child and parent values must belong to the same group
-      Path.isDescendantOf(someAbsFile, someRelDir)
-      // @ts-expect-error the curried child value must match the parent value's group
-      Path.isDescendantOf(someRelDir)(someAbsFile)
-    }
-    expect(typeof staticRejections).toBe('function')
-  })
-})
-
-// ─── operation: isWithin ───
-
-describe('isWithin', () => {
-  it.each([
-    [
-      './a within ./',
-      Path.RelDir.make({ ascent: 0, segments: ['a'].map(Path.segment) }),
-      Path.RelDir.anchor,
-      true,
-    ],
-    [
-      './a within ../',
-      Path.RelDir.make({ ascent: 0, segments: ['a'].map(Path.segment) }),
-      Path.RelDir.make({ ascent: 1, segments: [] }),
-      true,
-    ],
-    [
-      '../x within ../../',
-      Path.RelDir.make({ ascent: 1, segments: ['x'].map(Path.segment) }),
-      Path.RelDir.make({ ascent: 2, segments: [] }),
-      true,
-    ],
-    [
-      '../a within ../b',
-      Path.RelDir.make({ ascent: 1, segments: ['a'].map(Path.segment) }),
-      Path.RelDir.make({ ascent: 1, segments: ['b'].map(Path.segment) }),
-      false,
-    ],
-    ['../../ within ./', Path.RelDir.make({ ascent: 2, segments: [] }), Path.RelDir.anchor, false],
-    [
-      '/apps/ within /',
-      Path.AbsDir.make({ segments: ['apps'].map(Path.segment) }),
-      Path.AbsDir.anchor,
-      true,
-    ],
-    [
-      '/apps/ within /libs/',
-      Path.AbsDir.make({ segments: ['apps'].map(Path.segment) }),
-      Path.AbsDir.make({ segments: ['libs'].map(Path.segment) }),
-      false,
-    ],
-  ] as const)('%s', (_, child, parent, expected) => {
-    expect(Path.isWithin(child as never, parent as never)).toBe(expected)
-  })
-
-  it('literal duality obeys the desugar law in both call shapes', () => {
-    const relChild = Path.mk('./a/b.txt')
-    const relParent = Path.mk('./a/')
-
-    expect(Path.isWithin('./a/b.txt', './a/')).toBe(true)
-    expect(Path.isWithin('./a/b.txt', './x/')).toBe(false)
-    expect(Path.isWithin('/a/b.txt', '/a/')).toBe(true)
-
-    expect(Path.isWithin('./a/b.txt', relParent)).toBe(Path.isWithin(relChild, relParent))
-    expect(Path.isWithin(relChild, './a/')).toBe(Path.isWithin(relChild, relParent))
-    expect(Path.isWithin('./a/b.txt', './a/')).toBe(Path.isWithin(relChild, relParent))
-    expect(Path.isWithin('./a/')(relChild)).toBe(Path.isWithin(relParent)(relChild))
-    expect(Path.isWithin(relParent)('./a/b.txt')).toBe(Path.isWithin(relParent)(relChild))
-
-    expect(Path.isWithin('./a/b.txt', './x/')).toBe(
-      Path.isWithin(Path.mk('./a/b.txt'), Path.mk('./x/')),
-    )
-    expect(Path.isWithin('/a/b.txt', '/a/')).toBe(
-      Path.isWithin(Path.mk('/a/b.txt'), Path.mk('/a/')),
-    )
-  })
-
-  it('literal desugaring agrees with generated directory values', () => {
-    expect(Path.isWithin('/x/y.txt', '/x/')).toBe(true)
-
-    FastCheck.assert(
-      FastCheck.property(arb.AbsDir, (parent) => {
-        expect(Path.isWithin('/x/y.txt', parent)).toBe(Path.isWithin(Path.mk('/x/y.txt'), parent))
-        expect(Path.isWithin(parent)('/x/y.txt')).toBe(Path.isWithin(parent)(Path.mk('/x/y.txt')))
-      }),
-    )
-  })
-
-  it('is descendant-or-directory-identity inclusive containment', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.Any, dir, (child, parent) => {
-        expect(Path.isWithin(child as never, parent as never)).toBe(
-          Path.isDescendantOf(child as never, parent as never) ||
-            (Path.Dir.is(child) && Equal.equals(child, parent)),
-        )
-      }),
-    )
-  })
-
-  it('includes directory identity', () => {
-    FastCheck.assert(
-      FastCheck.property(dir, (path) => {
-        expect(Path.isWithin(path, path)).toBe(true)
-      }),
-    )
-  })
-
-  it('types: every path position accepts values or literals and rejects invalid worlds', () => {
-    expectTypeOf(Path.isWithin('/a/b.txt', '/a/')).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isWithin('/a/b.txt', someAbsDir)).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isWithin(someAbsFile, '/a/')).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isWithin(someAbsFile, someAbsDir)).toEqualTypeOf<boolean>()
-
-    expectTypeOf(Path.isWithin('/a/')('/a/b.txt')).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isWithin('/a/')(someAbsFile)).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isWithin(someAbsDir)('/a/b.txt')).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isWithin(someAbsDir)(someAbsFile)).toEqualTypeOf<boolean>()
-
-    const dynamic = '/a/' as string
-
-    // Type-only: never executed, so the @ts-expect-error rejections cannot throw.
-    const staticRejections = () => {
-      // @ts-expect-error dynamic strings are rejected at the data-first child position
-      Path.isWithin(dynamic, someAbsDir)
-      // @ts-expect-error dynamic strings are rejected at the data-first parent position
-      Path.isWithin(someAbsFile, dynamic)
-      // @ts-expect-error dynamic strings are rejected at the data-last parent position
-      Path.isWithin(dynamic)
-      // @ts-expect-error dynamic strings are rejected at the data-last child position
-      Path.isWithin(someAbsDir)(dynamic)
-      // @ts-expect-error literal child and parent must belong to the same group
-      Path.isWithin('/a/b.txt', './x/')
-      // @ts-expect-error the curried literal child must match the literal parent's group
-      Path.isWithin('./x/')('/a/b.txt')
-      // @ts-expect-error value child and parent must belong to the same group
-      Path.isWithin(someAbsFile, someRelDir)
-      // @ts-expect-error the curried value child must match the value parent's group
-      Path.isWithin(someRelDir)(someAbsFile)
-    }
-    expect(typeof staticRejections).toBe('function')
-  })
-})
-
-// ─── operation: isAncestorOf ───
-
-describe('isAncestorOf', () => {
-  it('literal duality obeys the desugar law in both call shapes', () => {
-    const relParent = Path.mk('./a/')
-    const relChild = Path.mk('./a/b.txt')
-    const expected = Path.isAncestorOf(relParent, relChild)
-
-    expect(expected).toBe(true)
-    expect(Path.isAncestorOf('./a/', relChild)).toBe(expected)
-    expect(Path.isAncestorOf(relParent, './a/b.txt')).toBe(expected)
-    expect(Path.isAncestorOf('./a/', './a/b.txt')).toBe(expected)
-    expect(Path.isAncestorOf('./a/b.txt')(relParent)).toBe(expected)
-    expect(Path.isAncestorOf(relChild)('./a/')).toBe(expected)
-
-    expect(Path.isAncestorOf('/a/', '/a/b.txt')).toBe(
-      Path.isAncestorOf(Path.mk('/a/'), Path.mk('/a/b.txt')),
-    )
-    expect(Path.isAncestorOf('./a/', './a/')).toBe(false)
-  })
-
-  it('is the inverse of isDescendantOf', () => {
-    FastCheck.assert(
-      FastCheck.property(dir, arb.Any, (base, child) => {
-        const sameGroup =
-          (Path.AbsDir.is(base) && Path.Abs.is(child)) ||
-          (Path.RelDir.is(base) && Path.Rel.is(child))
-        if (!sameGroup) return
-
-        expect(Path.isAncestorOf(base as never, child as never)).toBe(
-          Path.isDescendantOf(child as never, base as never),
-        )
-      }),
-    )
-  })
-
-  it('types: every path position accepts values or literals and rejects invalid worlds', () => {
-    expectTypeOf(Path.isAncestorOf('/a/', '/a/b.txt')).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isAncestorOf('/a/', someAbsFile)).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isAncestorOf(someAbsDir, '/a/b.txt')).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isAncestorOf(someAbsDir, someAbsFile)).toEqualTypeOf<boolean>()
-
-    expectTypeOf(Path.isAncestorOf('/a/b.txt')('/a/')).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isAncestorOf('/a/b.txt')(someAbsDir)).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isAncestorOf(someAbsFile)('/a/')).toEqualTypeOf<boolean>()
-    expectTypeOf(Path.isAncestorOf(someAbsFile)(someAbsDir)).toEqualTypeOf<boolean>()
-
-    const dynamic = '/a/' as string
-
-    // Type-only: never executed, so the @ts-expect-error rejections cannot throw.
-    const staticRejections = () => {
-      // @ts-expect-error dynamic strings are rejected at the data-first parent position
-      Path.isAncestorOf(dynamic, someAbsFile)
-      // @ts-expect-error dynamic strings are rejected at the data-first child position
-      Path.isAncestorOf(someAbsDir, dynamic)
-      // @ts-expect-error dynamic strings are rejected at the data-last child position
-      Path.isAncestorOf(dynamic)
-      // @ts-expect-error dynamic strings are rejected at the data-last parent position
-      Path.isAncestorOf(someAbsFile)(dynamic)
-      // @ts-expect-error parent and child literals must belong to the same group
-      Path.isAncestorOf('/a/', './a/b.txt')
-      // @ts-expect-error the curried parent literal must match the child literal's group
-      Path.isAncestorOf('./a/b.txt')('/a/')
-      // @ts-expect-error parent and child values must belong to the same group
-      Path.isAncestorOf(someAbsDir, someRelFile)
-      // @ts-expect-error the curried parent value must match the child value's group
-      Path.isAncestorOf(someRelFile)(someAbsDir)
-    }
-    expect(typeof staticRejections).toBe('function')
-  })
-})
-
 // ─── operation: commonAncestor ───
 
 describe('commonAncestor', () => {
   it('literal duality obeys the desugar law for both group statics and call shapes', () => {
-    const absA = Path.mk('/workspace/src/index.ts')
-    const absB = Path.mk('/workspace/test/')
+    const absA = S.decodeSync(Path.Abs)('/workspace/src/index.ts')
+    const absB = S.decodeSync(Path.Abs)('/workspace/test/')
     const absExpected = Path.Abs.commonAncestor(absA, absB)
 
     expect(absExpected).toEncodeTo('/workspace/')
@@ -1220,8 +603,8 @@ describe('commonAncestor', () => {
     expect(Path.Abs.commonAncestor('/workspace/test/')(absA)).toEqual(absExpected)
     expect(Path.Abs.commonAncestor(absB)('/workspace/src/index.ts')).toEqual(absExpected)
 
-    const relA = Path.mk('../workspace/src/index.ts')
-    const relB = Path.mk('../workspace/test/')
+    const relA = S.decodeSync(Path.Rel)('../workspace/src/index.ts')
+    const relB = S.decodeSync(Path.Rel)('../workspace/test/')
     const relExpected = Path.Rel.commonAncestor(relA, relB)
 
     expect(relExpected).toEncodeTo('../workspace/')
@@ -1232,30 +615,6 @@ describe('commonAncestor', () => {
     )
     expect(Path.Rel.commonAncestor('../workspace/test/')(relA)).toEqual(relExpected)
     expect(Path.Rel.commonAncestor(relB)('../workspace/src/index.ts')).toEqual(relExpected)
-  })
-
-  it('is total and returns an inclusive ancestor of same-group paths', () => {
-    FastCheck.assert(
-      FastCheck.property(abs, abs, (a, b) => {
-        const ab = Path.Abs.commonAncestor(a, b)
-        const ba = Path.Abs.commonAncestor(b, a)
-
-        expect(ab).toEqual(ba)
-        expect(Path.isWithin(a, ab)).toBe(true)
-        expect(Path.isWithin(b, ab)).toBe(true)
-      }),
-    )
-
-    FastCheck.assert(
-      FastCheck.property(rel, rel, (a, b) => {
-        const ab = Path.Rel.commonAncestor(a, b)
-        const ba = Path.Rel.commonAncestor(b, a)
-
-        expect(ab).toEqual(ba)
-        expect(Path.isWithin(a, ab)).toBe(true)
-        expect(Path.isWithin(b, ab)).toBe(true)
-      }),
-    )
   })
 
   it('uses the anchor and pure-ascent floor when no named prefix exists', () => {
@@ -1336,26 +695,6 @@ describe('commonAncestor', () => {
       Path.Rel.commonAncestor(someAbsDir)(someRelFile)
     }
     expect(typeof staticRejections).toBe('function')
-  })
-})
-
-// ─── operation: order ───
-
-describe('order', () => {
-  it('is reflexive, antisymmetric, transitive, and agrees with Equal', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.Any, arb.Any, arb.Any, (a, b, c) => {
-        const ab = Path.order(a, b)
-        const ba = Path.order(b, a)
-        const bc = Path.order(b, c)
-        const ac = Path.order(a, c)
-
-        expect(Path.order(a, a)).toBe(0)
-        expect(sign(ab)).toBe(sign(-ba))
-        expect(ab > 0 || bc > 0 || ac <= 0).toBe(true)
-        expect(ab === 0).toBe(Equal.equals(a, b))
-      }),
-    )
   })
 })
 
@@ -1480,158 +819,6 @@ describe('setParts', () => {
   })
 })
 
-// ─── operation: withName ───
-
-describe('withName', () => {
-  it('path literal duality obeys the desugar law in both call shapes', () => {
-    const absDir = Path.mk('/workspace/src/')
-    const absName = Path.segment('lib')
-    const absExpected = Path.withName(absDir, absName)
-
-    expect(absExpected).toEqual(Option.some(Path.mk('/workspace/lib/')))
-    expect(Path.withName('/workspace/src/', absName)).toEqual(absExpected)
-    expect(Path.withName(absName)('/workspace/src/')).toEqual(absExpected)
-
-    const relDir = Path.mk('../workspace/src/')
-    const relName = Path.segment('test')
-    const relExpected = Path.withName(relDir, relName)
-
-    expect(Path.withName('../workspace/src/', relName)).toEqual(relExpected)
-    expect(Path.withName(relName)('../workspace/src/')).toEqual(relExpected)
-  })
-
-  it('renames the final directory segment', () => {
-    expect(Path.withName(someAbsDir, Path.segment('var'))).toEqual(
-      Option.some(Path.AbsDir.make({ segments: ['var'].map(Path.segment) })),
-    )
-    expect(pipe(someRelDir, Path.withName(Path.segment('lib')))).toEqual(
-      Option.some(Path.RelDir.make({ ascent: 0, segments: ['lib'].map(Path.segment) })),
-    )
-  })
-
-  it('returns None for root and segment-less relative dirs', () => {
-    expect(Path.withName(Path.AbsDir.make({ segments: [] }), Path.segment('root'))).toEqual(
-      Option.none(),
-    )
-    expect(
-      Path.withName(Path.RelDir.make({ ascent: 2, segments: [] }), Path.segment('src')),
-    ).toEqual(Option.none())
-  })
-
-  it('types: path and name positions accept decoded values or validated literals', () => {
-    const name = Path.segment('next')
-
-    expectTypeOf(Path.withName('/a/', name)).toEqualTypeOf<Option.Option<Path.AbsDir>>()
-    expectTypeOf(Path.withName('./a/', name)).toEqualTypeOf<Option.Option<Path.RelDir>>()
-    expectTypeOf(Path.withName(someAbsDir, name)).toEqualTypeOf<Option.Option<Path.AbsDir>>()
-    expectTypeOf(Path.withName(someRelDir, name)).toEqualTypeOf<Option.Option<Path.RelDir>>()
-
-    expectTypeOf(Path.withName(name)('/a/')).toEqualTypeOf<Option.Option<Path.AbsDir>>()
-    expectTypeOf(Path.withName(name)('./a/')).toEqualTypeOf<Option.Option<Path.RelDir>>()
-    expectTypeOf(Path.withName(name)(someAbsDir)).toEqualTypeOf<Option.Option<Path.AbsDir>>()
-    expectTypeOf(Path.withName(name)(someRelDir)).toEqualTypeOf<Option.Option<Path.RelDir>>()
-    expectTypeOf(Path.withName(someAbsDir, 'next')).toEqualTypeOf<Option.Option<Path.AbsDir>>()
-    expectTypeOf(Path.withName('next')(someRelDir)).toEqualTypeOf<Option.Option<Path.RelDir>>()
-
-    const dynamic = '/a/' as string
-
-    // Type-only: never executed, so the @ts-expect-error rejections cannot throw.
-    const staticRejections = () => {
-      // @ts-expect-error dynamic strings are rejected at the data-first path position
-      Path.withName(dynamic, name)
-      // @ts-expect-error dynamic strings are rejected at the data-last path position
-      Path.withName(name)(dynamic)
-      // @ts-expect-error segment literals cannot be traversal references
-      Path.withName(someAbsDir, '..')
-      // @ts-expect-error segment literals cannot contain separators
-      Path.withName('bad/name')(someAbsDir)
-    }
-    expect(typeof staticRejections).toBe('function')
-  })
-})
-
-// ─── literals: mk + per-target constructors ───
-
-const unionLiteralCases = [
-  'a/../b',
-  './x/./y/',
-  '.',
-  '..',
-  './.env.local',
-  '/a/b',
-  'x.',
-  './.gitignore',
-  '/',
-  '/a/b/',
-  '/releases/v1.2',
-  '/etc/hostname',
-  '/u/.gitignore',
-  './',
-  '../',
-  '../x',
-  '../x/',
-  './x',
-  './x/',
-] as const
-
-describe('mk', () => {
-  it.each(unionLiteralCases)('mk(%s) agrees with union decode', (input) => {
-    expect(Path.mk(input)._tag).toBe(S.decodeSync(Path.Any)(input)._tag)
-  })
-
-  it('types: literal shapes infer precise variants; dynamic strings are rejected', () => {
-    expectTypeOf(Path.mk('/home/u/f.txt')).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.mk('./src/')).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.mk('./.gitignore')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk('../')).toEqualTypeOf<Path.RelDir>()
-
-    const dynamic = '/x/y.txt' as string
-
-    // Type-only: never executed, so the @ts-expect-error rejection cannot throw.
-    const staticRejections = () => {
-      // @ts-expect-error dynamic strings are rejected by Path.mk; decode runtime strings through a schema
-      Path.mk(dynamic)
-    }
-    expect(typeof staticRejections).toBe('function')
-
-    // the exported type utility: shapes not exercised through the function above
-    expectTypeOf<Path.FromLiteral<'/'>>().toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf<Path.FromLiteral<'../x'>>().toEqualTypeOf<Path.RelFile>()
-    expectTypeOf<Path.FromLiteral<'x.'>>().toEqualTypeOf<Path.RelFile>()
-    expectTypeOf<Path.FromLiteral<'//'>>().toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf<Path.FromLiteral<''>>().toEqualTypeOf<never>()
-    expectTypeOf<Path.FromLiteral<string>>().toEqualTypeOf<Path.Any>()
-
-    const invalidLiteralRejections = () => {
-      // @ts-expect-error the empty string is not a path literal
-      Path.mk('')
-    }
-    expect(typeof invalidLiteralRejections).toBe('function')
-  })
-
-  it('target constructors are lenient for dirs and statically reject mismatches', () => {
-    const decoded = Path.AbsDir.mk('/releases/v1.2')
-    expect(decoded).toEncodeTo('/releases/v1.2/')
-    expectTypeOf(decoded).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.RelFile.mk('./.gitignore')).toEqualTypeOf<Path.RelFile>()
-
-    // Type-only: never executed, so the @ts-expect-error rejections cannot throw.
-    const staticRejections = () => {
-      // @ts-expect-error absolute literal rejected by a RelFile target
-      Path.RelFile.mk('/abs.txt')
-      // @ts-expect-error dir-shaped literal rejected by an AbsFile target
-      Path.AbsFile.mk('/a/b/')
-      // @ts-expect-error relative literal rejected by an AbsFile target
-      Path.AbsFile.mk('./x')
-      // @ts-expect-error absolute literal rejected by a RelDir target
-      Path.RelDir.mk('/x/')
-      // @ts-expect-error dynamic strings rejected by literal-only target constructors
-      Path.AbsDir.mk('/x/' as string)
-    }
-    expect(typeof staticRejections).toBe('function')
-  })
-})
-
 // ─── Config integration ───
 
 describe('Config integration', () => {
@@ -1725,11 +912,7 @@ describe('Segment.Realistic', () => {
 // (TS2578), forcing their removal in the fix commit.
 
 describe('finding 1: dot-only compound literals are directories at the type level', () => {
-  it('type classification matches runtime decode', () => {
-    expectTypeOf(Path.mk('/.')).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.mk('/..')).toEqualTypeOf<Path.AbsDir>()
-    expectTypeOf(Path.mk('./..')).toEqualTypeOf<Path.RelDir>()
-    expectTypeOf(Path.mk('../.')).toEqualTypeOf<Path.RelDir>()
+  it('runtime decode classifies dot-only compound literals as directories', () => {
     expect(S.decodeSync(Path.Any)('/.')._tag).toBe('AbsDir')
     expect(S.decodeSync(Path.Any)('/..')._tag).toBe('AbsDir')
     expect(S.decodeSync(Path.Any)('./..')._tag).toBe('RelDir')
@@ -1738,7 +921,7 @@ describe('finding 1: dot-only compound literals are directories at the type leve
 })
 
 describe('finding 2: setParts validates dynamic filename parts', () => {
-  const subject = Path.mk('/home/user/a.txt')
+  const subject = S.decodeSync(Path.AbsFile)('/home/user/a.txt')
   it('rejects a stem containing a separator', () => {
     expect(() => Path.AbsFile.setParts(subject, { stem: 'evil/name' })).toThrow()
   })
@@ -1757,23 +940,10 @@ describe('finding 2: setParts validates dynamic filename parts', () => {
 })
 
 describe('finding 3: repeated separators collapse at the type level like runtime', () => {
-  it('type classification matches runtime decode', () => {
-    expectTypeOf(Path.mk('a//b')).toEqualTypeOf<Path.RelFile>()
-    expectTypeOf(Path.mk('/a//b')).toEqualTypeOf<Path.AbsFile>()
-    expectTypeOf(Path.mk('a///b/')).toEqualTypeOf<Path.RelDir>()
+  it('runtime decode classifies repeated separators after normalization', () => {
     expect(S.decodeSync(Path.Any)('a//b')._tag).toBe('RelFile')
     expect(S.decodeSync(Path.Any)('/a//b')._tag).toBe('AbsFile')
     expect(S.decodeSync(Path.Any)('a///b/')._tag).toBe('RelDir')
-  })
-})
-
-describe('finding 4: operations accept target-coercible dir literals like model mk', () => {
-  it('join accepts a slashless dir base literal, matching Dir.mk', () => {
-    const joined = Path.join('/foo', './x')
-    expect(String(joined)).toBe('/foo/x')
-  })
-  it('isWithin accepts a slashless dir parent literal', () => {
-    expect(Path.isWithin('/foo/x', '/foo')).toBe(true)
   })
 })
 
@@ -1788,14 +958,6 @@ describe('finding 5: trailing-dot names are files (POSIX), not directories', () 
 describe('finding 6: the empty string is not a path', () => {
   it('rejects empty string at decode', () => {
     expect(() => S.decodeSync(Path.Any)('')).toThrow()
-  })
-})
-
-describe('finding 8: segment name positions accept validated string literals', () => {
-  it('withName accepts a valid segment literal', () => {
-    const dir = Path.mk('/home/user/')
-    const renamed = Path.withName(dir, 'renamed')
-    expect(Option.map(renamed, (d) => String(d))).toEqual(Option.some('/home/renamed/'))
   })
 })
 
