@@ -1,6 +1,6 @@
 import * as Path from '@kitz/effect/Path'
 import * as Schema from '@kitz/effect/Schema'
-import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
+import { describe, expect, expectTypeOf, it, type Matchers } from '@kitz/vitest'
 
 const natural = (value: number) => Schema.NaturalInt.make(value)
 const absDir = Path.AbsDir.make({ segments: ['home'].map(Path.segment) })
@@ -120,7 +120,7 @@ describe('Path matchers', () => {
     })
 
     it('rejects invalid received values with a within-path message', () => {
-      const message = messageOf(() => expect('not a path').toBeWithinPath(absDir))
+      const message = messageOf(() => expect('not a path' as any).toBeWithinPath(absDir))
 
       expect(message).toContain('toBeWithinPath')
       expect(message).toContain('to be within')
@@ -135,11 +135,27 @@ describe('Path matchers', () => {
     })
 
     it('types: correlates the parent group with the received path', () => {
-      const assertion = expect(absFile)
-      type $Parent = Parameters<typeof assertion.toBeWithinPath>[0]
+      type $Parent<$Received> = Parameters<Matchers<$Received>['toBeWithinPath']>[0]
 
-      // @ts-expect-error RED-PIN: the matcher currently accepts the full Dir union
-      expectTypeOf<$Parent>().toEqualTypeOf<Path.AbsDir>()
+      expectTypeOf<$Parent<Path.AbsFile>>().toEqualTypeOf<Path.AbsDir>()
+      expectTypeOf<$Parent<Path.Abs>>().toEqualTypeOf<Path.AbsDir>()
+      expectTypeOf<$Parent<Path.RelFile>>().toEqualTypeOf<Path.RelDir>()
+      expectTypeOf<$Parent<Path.Rel>>().toEqualTypeOf<Path.RelDir>()
+      expectTypeOf<$Parent<Path.Any>>().toEqualTypeOf<Path.Dir>()
+      expectTypeOf<$Parent<Path.File>>().toEqualTypeOf<Path.Dir>()
+      expectTypeOf<$Parent<Path.Dir>>().toEqualTypeOf<Path.Dir>()
+      expectTypeOf<Parameters<Matchers['toBeWithinPath']>[0]>().toEqualTypeOf<Path.Dir>()
+      expectTypeOf<$Parent<string>>().toEqualTypeOf<never>()
+
+      const typeChecks = () => {
+        // @ts-expect-error absolute received paths require an absolute parent
+        expect(absFile).toBeWithinPath(Path.RelDir.anchor)
+        // @ts-expect-error relative received paths require a relative parent
+        expect(relFile).toBeWithinPath(Path.AbsDir.anchor)
+        // @ts-expect-error non-path received values reject every parent
+        expect('not a path').toBeWithinPath(Path.AbsDir.anchor)
+      }
+      expectTypeOf(typeChecks).toBeFunction()
     })
   })
 

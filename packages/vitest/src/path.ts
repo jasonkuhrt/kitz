@@ -3,6 +3,21 @@ import { expect, type MatcherState } from 'vite-plus/test'
 
 type MatcherResult = { pass: boolean; message: () => string }
 
+type IsAny<$T> = 0 extends 1 & $T ? true : false
+
+type WithinParent<$T> =
+  IsAny<$T> extends true
+    ? Path.Dir
+    : [$T] extends [never]
+      ? never
+      : [$T] extends [Path.Any]
+        ? [$T] extends [Path.Abs]
+          ? Path.AbsDir
+          : [$T] extends [Path.Rel]
+            ? Path.RelDir
+            : Path.Dir
+        : never
+
 // Vite+ documents upstream Vitest augmentation as the target, but this repo
 // forbids a direct Vitest dependency so Vite+ owns the single Vitest copy. We
 // augment the shim identity this repo resolves; revisit if Vite+ ships a
@@ -22,7 +37,7 @@ declare module 'vite-plus/test' {
     /** Check if the path is an anchor directory. */
     toBeAnchor(): void
     /** Check if the path is within a given directory. */
-    toBeWithinPath(parent: Path.Dir): void
+    toBeWithinPath(parent: WithinParent<T>): void
     /** Check if the path encodes to the expected string. */
     toEncodeTo(expected: string): void
   }
