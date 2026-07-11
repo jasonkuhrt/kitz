@@ -1,4 +1,4 @@
-import { Path } from '@kitz/effect/Path'
+import * as Path from '@kitz/effect/Path'
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
 
 const absDir = Path.AbsDir.make({ segments: ['home'].map(Path.segment) })

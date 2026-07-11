@@ -32,20 +32,20 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/_.ts",
-    "./Path": "./src/path/_.ts",
-    "./Schema": "./src/schema/_.ts",
-    "./String": "./src/string/_.ts",
-    "./Tuple": "./src/tuple/_.ts",
-    "./Types": "./src/types/_.ts"
+    "./Path": "./src/path/__.ts",
+    "./Schema": "./src/schema/__.ts",
+    "./String": "./src/string/__.ts",
+    "./Tuple": "./src/tuple/__.ts",
+    "./Types": "./src/types/__.ts"
   },
   "publishConfig": {
     "exports": {
       ".": "./build/_.js",
-      "./Path": "./build/path/_.js",
-      "./Schema": "./build/schema/_.js",
-      "./String": "./build/string/_.js",
-      "./Tuple": "./build/tuple/_.js",
-      "./Types": "./build/types/_.js"
+      "./Path": "./build/path/__.js",
+      "./Schema": "./build/schema/__.js",
+      "./String": "./build/string/__.js",
+      "./Tuple": "./build/tuple/__.js",
+      "./Types": "./build/types/__.js"
     },
     "access": "public"
   },

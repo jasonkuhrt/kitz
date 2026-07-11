@@ -1,4 +1,4 @@
-import * as Kitz from '@kitz/effect/Path'
+import * as Path from '@kitz/effect/Path'
 import { expect, type MatcherState } from 'vite-plus/test'
 
 type MatcherResult = { pass: boolean; message: () => string }
@@ -22,7 +22,7 @@ declare module 'vite-plus/test' {
     /** Check if the path is an anchor directory. */
     toBeAnchor(): void
     /** Check if the path is within a given directory. */
-    toBeWithinPath(parent: Kitz.Path.Dir): void
+    toBeWithinPath(parent: Path.Dir): void
     /** Check if the path encodes to the expected string. */
     toEncodeTo(expected: string): void
   }
@@ -57,13 +57,13 @@ const passResult = (state: MatcherState, pass: boolean, parts: Message): Matcher
   message: message(state, parts),
 })
 
-const isWithin = (received: Kitz.Path.Any, parent: Kitz.Path.Dir): boolean => {
-  if (Kitz.Path.Abs.is(received) && Kitz.Path.AbsDir.is(parent)) {
-    return Kitz.Path.isWithin(received, parent)
+const isWithin = (received: Path.Any, parent: Path.Dir): boolean => {
+  if (Path.Abs.is(received) && Path.AbsDir.is(parent)) {
+    return Path.isWithin(received, parent)
   }
 
-  if (Kitz.Path.Rel.is(received) && Kitz.Path.RelDir.is(parent)) {
-    return Kitz.Path.isWithin(received, parent)
+  if (Path.Rel.is(received) && Path.RelDir.is(parent)) {
+    return Path.isWithin(received, parent)
   }
 
   return false
@@ -71,7 +71,7 @@ const isWithin = (received: Kitz.Path.Any, parent: Kitz.Path.Dir): boolean => {
 
 const matchers = {
   toBeAbs(this: MatcherState, received: unknown): MatcherResult {
-    const pass = Kitz.Path.Abs.is(received)
+    const pass = Path.Abs.is(received)
     const printed = this.utils.printReceived(received)
 
     return passResult(this, pass, {
@@ -82,7 +82,7 @@ const matchers = {
   },
 
   toBeRel(this: MatcherState, received: unknown): MatcherResult {
-    const pass = Kitz.Path.Rel.is(received)
+    const pass = Path.Rel.is(received)
     const printed = this.utils.printReceived(received)
 
     return passResult(this, pass, {
@@ -93,7 +93,7 @@ const matchers = {
   },
 
   toBeFile(this: MatcherState, received: unknown): MatcherResult {
-    const pass = Kitz.Path.File.is(received)
+    const pass = Path.File.is(received)
     const printed = this.utils.printReceived(received)
 
     return passResult(this, pass, {
@@ -104,7 +104,7 @@ const matchers = {
   },
 
   toBeDir(this: MatcherState, received: unknown): MatcherResult {
-    const pass = Kitz.Path.Dir.is(received)
+    const pass = Path.Dir.is(received)
     const printed = this.utils.printReceived(received)
 
     return passResult(this, pass, {
@@ -115,7 +115,7 @@ const matchers = {
   },
 
   toBeAnchor(this: MatcherState, received: unknown): MatcherResult {
-    const pass = Kitz.Path.Dir.is(received) && received.isAnchor
+    const pass = Path.Dir.is(received) && received.isAnchor
     const printed = this.utils.printReceived(received)
 
     return passResult(this, pass, {
@@ -125,9 +125,8 @@ const matchers = {
     })
   },
 
-  toBeWithinPath(this: MatcherState, received: unknown, parent: Kitz.Path.Dir): MatcherResult {
-    const pass =
-      Kitz.Path.Any.is(received) && Kitz.Path.Dir.is(parent) && isWithin(received, parent)
+  toBeWithinPath(this: MatcherState, received: unknown, parent: Path.Dir): MatcherResult {
+    const pass = Path.Any.is(received) && Path.Dir.is(parent) && isWithin(received, parent)
     const printed = this.utils.printReceived(received)
     const parentPrinted = this.utils.printExpected(parent)
 
@@ -136,14 +135,14 @@ const matchers = {
       expectedLabel: 'parent',
       positive: `Expected ${printed} to be within ${parentPrinted}`,
       negative: `Expected ${printed} not to be within ${parentPrinted}`,
-      details: Kitz.Path.Dir.is(parent)
+      details: Path.Dir.is(parent)
         ? undefined
         : `Parent: ${this.utils.printExpected(parent)} is not a path directory`,
     })
   },
 
   toEncodeTo(this: MatcherState, received: unknown, expected: string): MatcherResult {
-    const actual = Kitz.Path.Any.is(received) ? received.toString() : undefined
+    const actual = Path.Any.is(received) ? received.toString() : undefined
     const pass = actual === expected
     const diff = actual === undefined ? undefined : this.utils.diff(expected, actual)
     const fallback =
@@ -167,10 +166,7 @@ const matchers = {
   },
 }
 
-/** Path-aware matchers for `@kitz/effect` values. Registered by `@kitz/vitest/setup`. */
-export const Path = {
-  /** Register the path matchers on the per-worker `expect`. */
-  addMatchers: (): void => {
-    expect.extend(matchers)
-  },
+/** Register path-aware matchers for `@kitz/effect` values on the per-worker `expect`. */
+export const addMatchers = (): void => {
+  expect.extend(matchers)
 }

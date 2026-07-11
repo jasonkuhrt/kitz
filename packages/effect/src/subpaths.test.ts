@@ -6,16 +6,24 @@ import * as Tuple from '@kitz/effect/Tuple'
 import * as Types from '@kitz/effect/Types'
 
 describe('package subpaths', () => {
-  it('expose each module directly without a duplicate namespace wrapper', () => {
-    // @ts-expect-error RED-PIN: Path subpath currently exposes Path.make
+  it('exposes Path directly', () => {
     expect(Path.make('/tmp/')).toEncodeTo('/tmp/')
-    // @ts-expect-error RED-PIN: Schema subpath currently exposes Schema.decodeSync
+  })
+
+  it('exposes Schema directly', () => {
     expect(Schema.decodeSync(Schema.NaturalInt)(0)).toBe(0)
-    // @ts-expect-error RED-PIN: String subpath currently exposes String.camelCase
+  })
+
+  it('exposes String directly', () => {
     expect(String.camelCase('hello-world')).toBe('helloWorld')
-    // @ts-expect-error RED-PIN: Tuple subpath currently exposes Tuple.Last
+  })
+
+  it('exposes Tuple directly', () => {
+    expect(Tuple.make(1, 2)).toEqual([1, 2])
     expectTypeOf<Tuple.Last<readonly [1, 2]>>().toEqualTypeOf<2>()
-    // @ts-expect-error RED-PIN: Types subpath currently exposes Types.IsLiteral
+  })
+
+  it('exposes Types directly', () => {
     expectTypeOf<Types.IsLiteral<'literal'>>().toEqualTypeOf<true>()
   })
 })

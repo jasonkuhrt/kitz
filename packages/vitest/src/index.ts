@@ -16,7 +16,7 @@ import * as Vitest from 'vite-plus/test'
 // Re-export the full vitest surface (describe, expect, vi, beforeAll, …). The
 // explicit `it` export below shadows the star-exported one.
 export * from 'vite-plus/test'
-export { Path } from './path.js'
+export * as Path from './path.js'
 
 /** Services an `it.effect` body may use without providing them itself. */
 export type TestEnv = TestClock.TestClock | TestConsole.TestConsole | Scope.Scope
