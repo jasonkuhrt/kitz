@@ -1,10 +1,5 @@
 import { Function as Fn, Match, Schema as S } from 'effect'
-import type {
-  ErrorPathValidation,
-  FromLiteral,
-  LiteralGuard,
-  LiteralInput,
-} from '../core/literal.js'
+import type { FromLiteral, LiteralGuard } from '../core/literal.js'
 import type { Abs } from '../models/Abs.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
@@ -32,32 +27,16 @@ export type EnsureAbs<$P extends Any> = $P extends Abs
 export const ensureAbs: {
   <const $Path extends Any | string, const $Base extends AbsDir | string>(
     path: $Path extends string ? LiteralGuard<$Path, Any> : $Path,
-    base: $Base extends string
-      ? string extends $Base
-        ? LiteralInput<$Base>
-        : [FromLiteral<$Base>] extends [never]
-          ? ErrorPathValidation<AbsDir, $Base>
-          : FromLiteral<$Base> extends AbsDir
-            ? $Base
-            : ErrorPathValidation<AbsDir, $Base>
-      : $Base,
+    base: $Base extends string ? LiteralGuard<$Base, AbsDir> : $Base,
   ): EnsureAbs<$Path extends string ? FromLiteral<$Path> : $Path>
   <const $Base extends AbsDir | string>(
-    base: $Base extends string
-      ? string extends $Base
-        ? LiteralInput<$Base>
-        : [FromLiteral<$Base>] extends [never]
-          ? ErrorPathValidation<AbsDir, $Base>
-          : FromLiteral<$Base> extends AbsDir
-            ? $Base
-            : ErrorPathValidation<AbsDir, $Base>
-      : $Base,
+    base: $Base extends string ? LiteralGuard<$Base, AbsDir> : $Base,
   ): <const $Path extends Any | string>(
     path: $Path extends string ? LiteralGuard<$Path, Any> : $Path,
   ) => EnsureAbs<$Path extends string ? FromLiteral<$Path> : $Path>
 } = Fn.dual(2, (path: Any | string, base: AbsDir | string): Abs => {
   const pathValue = typeof path === 'string' ? S.decodeSync(Any)(path) : path
-  const baseValue: AbsDir = typeof base === 'string' ? (S.decodeSync(Any)(base) as any) : base
+  const baseValue: AbsDir = typeof base === 'string' ? (S.decodeSync(AbsDir)(base) as any) : base
 
   return Match.value(pathValue).pipe(
     Match.tagsExhaustive({

@@ -6,7 +6,7 @@ import {
   realisticExtensionPattern,
   realisticStemPattern,
 } from '../core/realisticText.js'
-import * as Extension from './Extension.js'
+import { Extension } from './Extension.js'
 
 const nullByte = String.fromCharCode(0)
 const fileNameText = new RegExp(
@@ -19,7 +19,7 @@ const canGenerateFileName = (name: string): boolean => {
   const result = analyzeFileName(name)
   return (
     Result.isSuccess(result) &&
-    (result.success.extension === null || S.is(Extension.Extension)(result.success.extension))
+    (result.success.extension === null || S.is(Extension)(result.success.extension))
   )
 }
 
@@ -61,7 +61,7 @@ const fileNameArbitrary = {
 /** Filename value — a stem plus optional final extension, split on the last dot after index 0. */
 class FileName__ extends S.TaggedClass<FileName__>()('FileName', {
   stem: S.String,
-  extension: S.OptionFromNullOr(Extension.Extension),
+  extension: S.OptionFromNullOr(Extension),
 }) {
   /** The rendered `stem(.ext)?` string form. */
   get name(): string {
@@ -110,18 +110,11 @@ export class FileName_ extends S.asClass(
    */
   static override make(input: {
     readonly stem: string
-    readonly extension: Option.Option<Extension.Extension>
+    readonly extension: Option.Option<Extension>
   }): FileName__ {
     const full = `${input.stem}${Option.getOrElse(input.extension, () => '')}`
-    const dot = full.lastIndexOf('.')
-    return super.make(
-      dot > 0
-        ? {
-            stem: full.slice(0, dot),
-            extension: Option.some(S.decodeSync(Extension.Extension)(full.slice(dot))),
-          }
-        : { stem: full, extension: Option.none() },
-    )
+    const decoded = S.decodeSync(FileName_)(full)
+    return super.make({ stem: decoded.stem, extension: decoded.extension })
   }
 
   /**

@@ -1,14 +1,17 @@
 import { Function as Fn, Schema as S } from 'effect'
 import { type MatchingDirGroup, type MatchingTypeGroupForDir } from '../core/group.js'
-import type {
-  ErrorPathValidation,
-  FromLiteral,
-  LiteralGuard,
-  LiteralInput,
-} from '../core/literal.js'
+import type { ErrorPathGroupMismatch, FromTargetLiteral, LiteralGuard } from '../core/literal.js'
 import { Any } from '../models/Any.js'
 import { Dir } from '../models/Dir.js'
 import { isDescendantOf } from './isDescendantOf.js'
+
+type ChildValue<$Child extends Any | string> = $Child extends string
+  ? FromTargetLiteral<$Child, Any>
+  : $Child
+
+type ParentValue<$Parent extends Dir | string> = $Parent extends string
+  ? FromTargetLiteral<$Parent, Dir>
+  : $Parent
 
 /**
  * Whether `parent` is strictly above `child`; a path is not its own ancestor.
@@ -20,63 +23,24 @@ import { isDescendantOf } from './isDescendantOf.js'
  */
 export const isAncestorOf: {
   <const $Parent extends Dir | string, const $Child extends Any | string>(
-    parent: $Parent extends string
-      ? string extends $Parent
-        ? LiteralInput<$Parent>
-        : [FromLiteral<$Parent>] extends [never]
-          ? ErrorPathValidation<Dir, $Parent>
-          : FromLiteral<$Parent> extends Dir
-            ? $Parent
-            : ErrorPathValidation<Dir, $Parent>
-      : $Parent,
+    parent: $Parent extends string ? LiteralGuard<$Parent, Dir> : $Parent,
     child: $Child extends string
-      ? string extends $Child
-        ? LiteralInput<$Child>
-        : [FromLiteral<$Child>] extends [never]
-          ? ErrorPathValidation<
-              MatchingTypeGroupForDir<
-                Extract<$Parent extends string ? FromLiteral<$Parent> : $Parent, Dir>
-              >,
-              $Child
-            >
-          : FromLiteral<$Child> extends MatchingTypeGroupForDir<
-                Extract<$Parent extends string ? FromLiteral<$Parent> : $Parent, Dir>
-              >
-            ? $Child
-            : ErrorPathValidation<
-                MatchingTypeGroupForDir<
-                  Extract<$Parent extends string ? FromLiteral<$Parent> : $Parent, Dir>
-                >,
-                $Child
-              >
-      : $Child &
-          MatchingTypeGroupForDir<
-            Extract<$Parent extends string ? FromLiteral<$Parent> : $Parent, Dir>
-          >,
+      ? LiteralGuard<$Child, MatchingTypeGroupForDir<ParentValue<$Parent>>>
+      : $Child extends MatchingTypeGroupForDir<ParentValue<$Parent>>
+        ? $Child
+        : ErrorPathGroupMismatch,
   ): boolean
   <const $Child extends Any | string>(
     child: $Child extends string ? LiteralGuard<$Child, Any> : $Child,
   ): <const $Parent extends Dir | string>(
     parent: $Parent extends string
-      ? string extends $Parent
-        ? LiteralInput<$Parent>
-        : [FromLiteral<$Parent>] extends [never]
-          ? ErrorPathValidation<
-              MatchingDirGroup<$Child extends string ? FromLiteral<$Child> : $Child>,
-              $Parent
-            >
-          : FromLiteral<$Parent> extends MatchingDirGroup<
-                $Child extends string ? FromLiteral<$Child> : $Child
-              >
-            ? $Parent
-            : ErrorPathValidation<
-                MatchingDirGroup<$Child extends string ? FromLiteral<$Child> : $Child>,
-                $Parent
-              >
-      : $Parent & MatchingDirGroup<$Child extends string ? FromLiteral<$Child> : $Child>,
+      ? LiteralGuard<$Parent, MatchingDirGroup<ChildValue<$Child>>>
+      : $Parent extends MatchingDirGroup<ChildValue<$Child>>
+        ? $Parent
+        : ErrorPathGroupMismatch,
   ) => boolean
 } = Fn.dual(2, (parent: Dir | string, child: Any | string): boolean => {
-  const parentPath: Dir = typeof parent === 'string' ? (S.decodeSync(Any)(parent) as any) : parent
+  const parentPath: Dir = typeof parent === 'string' ? (S.decodeSync(Dir)(parent) as any) : parent
   const childPath = typeof child === 'string' ? S.decodeSync(Any)(child) : child
 
   return isDescendantOf(childPath, parentPath)

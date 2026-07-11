@@ -43,8 +43,8 @@ export * as Analyzer from './analyzer.js'
 export type { FromLiteral, LiteralAnalysis } from './core/literal.js'
 export * from './operations/mk.js'
 
-// Extension types and constants
-export * as Extension from './models/Extension.js'
+// File-extension value codec
+export { Extension } from './models/Extension.js'
 
 // Filename and segment value codecs
 export { FileName } from './models/FileName.js'

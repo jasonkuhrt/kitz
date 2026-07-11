@@ -75,7 +75,7 @@ const nonEmptyRelAscent0 = FastCheck.oneof(
 )
 
 const encodeAny = S.encodeSync(Path.Any)
-const extension = (value: string) => S.decodeSync(Path.Extension.Extension)(value)
+const extension = (value: string) => S.decodeSync(Path.Extension)(value)
 const fileName = (value: string) => S.decodeSync(Path.FileName)(value)
 const sign = (value: number): -1 | 0 | 1 => (value < 0 ? -1 : value > 0 ? 1 : 0)
 
@@ -110,10 +110,9 @@ const canonicalizationCases = [
   ['//', 'AbsDir', '/'],
   ['.', 'RelDir', './'],
   ['..', 'RelDir', '../'],
-  ['', 'RelDir', './'],
   ['./.env.local', 'RelFile', './.env.local'],
   ['/a/b', 'AbsFile', '/a/b'],
-  ['x.', 'RelDir', './x./'],
+  ['x.', 'RelFile', './x.'],
   ['./.gitignore', 'RelFile', './.gitignore'],
 ] as const
 
@@ -288,8 +287,8 @@ describe('.name / .stem / .extension', () => {
     expectTypeOf(someRelFile.name).toEqualTypeOf<string>()
     expectTypeOf(someAbsFile.stem).toEqualTypeOf<string>()
     expectTypeOf(someRelFile.stem).toEqualTypeOf<string>()
-    expectTypeOf(someAbsFile.extension).toEqualTypeOf<Option.Option<Path.Extension.Extension>>()
-    expectTypeOf(someRelFile.extension).toEqualTypeOf<Option.Option<Path.Extension.Extension>>()
+    expectTypeOf(someAbsFile.extension).toEqualTypeOf<Option.Option<Path.Extension>>()
+    expectTypeOf(someRelFile.extension).toEqualTypeOf<Option.Option<Path.Extension>>()
     expectTypeOf(someAbsDir.name).toEqualTypeOf<Option.Option<Path.Segment>>()
     expectTypeOf(someRelDir.name).toEqualTypeOf<Option.Option<Path.Segment>>()
   })
@@ -297,7 +296,7 @@ describe('.name / .stem / .extension', () => {
   it('types: getters distribute over the File/Dir unions', () => {
     expectTypeOf((someAbsFile as Path.File).stem).toEqualTypeOf<string>()
     expectTypeOf((someAbsFile as Path.File).extension).toEqualTypeOf<
-      Option.Option<Path.Extension.Extension>
+      Option.Option<Path.Extension>
     >()
     expectTypeOf((someAbsDir as Path.Dir).name).toEqualTypeOf<Option.Option<Path.Segment>>()
   })
@@ -701,16 +700,12 @@ describe('join', () => {
       Path.join(dynamic)
       // @ts-expect-error dynamic strings are rejected at the curried target position
       Path.join(someRelFile)(dynamic)
-      // @ts-expect-error repeated separators are rejected in variadic parts
+      // @ts-expect-error intermediate relative parts cannot be absolute literals
       Path.join(someAbsDir, '//', someRelFile)
-      // @ts-expect-error intermediate relative parts must parse as directories
-      Path.join(someAbsDir, './middle.ts', './last.ts')
       // @ts-expect-error relative parts cannot be absolute literals
       Path.join(someAbsDir, './middle/', '/absolute.ts')
       // @ts-expect-error data-last relative parts cannot be absolute literals
       Path.join('/absolute.ts')
-      // @ts-expect-error base literals must parse as directories
-      Path.join('/base.ts', './relative.ts')
     }
     expect(typeof staticRejections).toBe('function')
   })
@@ -813,14 +808,6 @@ describe('relativeTo', () => {
       Path.relativeTo(dynamic)
       // @ts-expect-error dynamic strings are rejected at the data-last path position
       Path.relativeTo(someAbsDir)(dynamic)
-      // @ts-expect-error invalid path literals are rejected by the shared parser
-      Path.relativeTo('//', someAbsDir)
-      // @ts-expect-error invalid base literals are rejected by the shared parser
-      Path.relativeTo(someAbsFile, '//')
-      // @ts-expect-error base literals must parse as directories
-      Path.relativeTo('/a/file.ts', '/a/base.ts')
-      // @ts-expect-error the data-last base literal must parse as a directory
-      Path.relativeTo('/a/base.ts')
       // @ts-expect-error path and base literals must belong to the same group
       Path.relativeTo('/a/file.ts', './a/')
       // @ts-expect-error the curried path literal must match the base literal's group
@@ -911,16 +898,8 @@ describe('ensureAbs', () => {
       Path.ensureAbs(dynamic)
       // @ts-expect-error dynamic strings are rejected at the data-last path position
       Path.ensureAbs(someAbsDir)(dynamic)
-      // @ts-expect-error repeated separators are rejected at the path position
-      Path.ensureAbs('//', someAbsDir)
-      // @ts-expect-error repeated separators are rejected at the base position
-      Path.ensureAbs(someRelFile, '//')
       // @ts-expect-error base literals must be absolute
       Path.ensureAbs(someRelFile, './workspace/')
-      // @ts-expect-error base literals must parse as directories
-      Path.ensureAbs(someRelFile, '/workspace/base.txt')
-      // @ts-expect-error the data-last base literal must parse as a directory
-      Path.ensureAbs('/workspace/base.txt')(someRelFile)
     }
     expect(typeof staticRejections).toBe('function')
   })
@@ -1004,14 +983,6 @@ describe('isDescendantOf', () => {
       Path.isDescendantOf(dynamic)
       // @ts-expect-error dynamic strings are rejected at the data-last child position
       Path.isDescendantOf(someAbsDir)(dynamic)
-      // @ts-expect-error repeated separators are rejected at the child position
-      Path.isDescendantOf('//', someAbsDir)
-      // @ts-expect-error repeated separators are rejected at the parent position
-      Path.isDescendantOf(someAbsFile, '//')
-      // @ts-expect-error parent literals must parse as directories
-      Path.isDescendantOf('/a/b.txt', '/a/parent.txt')
-      // @ts-expect-error the data-last parent literal must parse as a directory
-      Path.isDescendantOf('/a/parent.txt')
       // @ts-expect-error child and parent literals must belong to the same group
       Path.isDescendantOf('/a/b.txt', './a/')
       // @ts-expect-error the curried child literal must match the parent literal's group
@@ -1145,12 +1116,6 @@ describe('isWithin', () => {
       Path.isWithin(dynamic)
       // @ts-expect-error dynamic strings are rejected at the data-last child position
       Path.isWithin(someAbsDir)(dynamic)
-      // @ts-expect-error repeated separators are rejected by the shared literal parser
-      Path.isWithin(someAbsFile, '//')
-      // @ts-expect-error parent literals must parse as directories
-      Path.isWithin('/a/b.txt', '/a/parent.txt')
-      // @ts-expect-error the data-last parent literal must parse as a directory
-      Path.isWithin('/a/parent.txt')
       // @ts-expect-error literal child and parent must belong to the same group
       Path.isWithin('/a/b.txt', './x/')
       // @ts-expect-error the curried literal child must match the literal parent's group
@@ -1223,14 +1188,6 @@ describe('isAncestorOf', () => {
       Path.isAncestorOf(dynamic)
       // @ts-expect-error dynamic strings are rejected at the data-last parent position
       Path.isAncestorOf(someAbsFile)(dynamic)
-      // @ts-expect-error repeated separators are rejected at the parent position
-      Path.isAncestorOf('//', someAbsFile)
-      // @ts-expect-error repeated separators are rejected at the child position
-      Path.isAncestorOf(someAbsDir, '//')
-      // @ts-expect-error parent literals must parse as directories
-      Path.isAncestorOf('/a/parent.txt', '/a/b.txt')
-      // @ts-expect-error the data-last parent literal must parse as a directory
-      Path.isAncestorOf('/a/b.txt')('/a/parent.txt')
       // @ts-expect-error parent and child literals must belong to the same group
       Path.isAncestorOf('/a/', './a/b.txt')
       // @ts-expect-error the curried parent literal must match the child literal's group
@@ -1559,7 +1516,7 @@ describe('withName', () => {
     ).toEqual(Option.none())
   })
 
-  it('types: the path accepts directory values or literals while name remains Segment-only', () => {
+  it('types: path and name positions accept decoded values or validated literals', () => {
     const name = Path.segment('next')
 
     expectTypeOf(Path.withName('/a/', name)).toEqualTypeOf<Option.Option<Path.AbsDir>>()
@@ -1571,6 +1528,8 @@ describe('withName', () => {
     expectTypeOf(Path.withName(name)('./a/')).toEqualTypeOf<Option.Option<Path.RelDir>>()
     expectTypeOf(Path.withName(name)(someAbsDir)).toEqualTypeOf<Option.Option<Path.AbsDir>>()
     expectTypeOf(Path.withName(name)(someRelDir)).toEqualTypeOf<Option.Option<Path.RelDir>>()
+    expectTypeOf(Path.withName(someAbsDir, 'next')).toEqualTypeOf<Option.Option<Path.AbsDir>>()
+    expectTypeOf(Path.withName('next')(someRelDir)).toEqualTypeOf<Option.Option<Path.RelDir>>()
 
     const dynamic = '/a/' as string
 
@@ -1580,18 +1539,10 @@ describe('withName', () => {
       Path.withName(dynamic, name)
       // @ts-expect-error dynamic strings are rejected at the data-last path position
       Path.withName(name)(dynamic)
-      // @ts-expect-error repeated separators are rejected at the data-first path position
-      Path.withName('//', name)
-      // @ts-expect-error repeated separators are rejected at the data-last path position
-      Path.withName(name)('//')
-      // @ts-expect-error path literals must parse as directories
-      Path.withName('/a/file.ts', name)
-      // @ts-expect-error data-last path literals must parse as directories
-      Path.withName(name)('./a/file.ts')
-      // @ts-expect-error component literals remain excluded pending their parser design
-      Path.withName(someAbsDir, 'next')
-      // @ts-expect-error the data-last name remains a decoded Segment value
-      Path.withName('next')(someAbsDir)
+      // @ts-expect-error segment literals cannot be traversal references
+      Path.withName(someAbsDir, '..')
+      // @ts-expect-error segment literals cannot contain separators
+      Path.withName('bad/name')(someAbsDir)
     }
     expect(typeof staticRejections).toBe('function')
   })
@@ -1604,7 +1555,6 @@ const unionLiteralCases = [
   './x/./y/',
   '.',
   '..',
-  '',
   './.env.local',
   '/a/b',
   'x.',
@@ -1645,13 +1595,14 @@ describe('mk', () => {
     // the exported type utility: shapes not exercised through the function above
     expectTypeOf<Path.FromLiteral<'/'>>().toEqualTypeOf<Path.AbsDir>()
     expectTypeOf<Path.FromLiteral<'../x'>>().toEqualTypeOf<Path.RelFile>()
-    expectTypeOf<Path.FromLiteral<'x.'>>().toEqualTypeOf<Path.RelDir>()
-    expectTypeOf<Path.FromLiteral<'//'>>().toEqualTypeOf<never>()
+    expectTypeOf<Path.FromLiteral<'x.'>>().toEqualTypeOf<Path.RelFile>()
+    expectTypeOf<Path.FromLiteral<'//'>>().toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf<Path.FromLiteral<''>>().toEqualTypeOf<never>()
     expectTypeOf<Path.FromLiteral<string>>().toEqualTypeOf<Path.Any>()
 
     const invalidLiteralRejections = () => {
-      // @ts-expect-error repeated separators are invalid in the static-literal world
-      Path.mk('//')
+      // @ts-expect-error the empty string is not a path literal
+      Path.mk('')
     }
     expect(typeof invalidLiteralRejections).toBe('function')
   })
@@ -1773,13 +1724,9 @@ describe('Segment.Realistic', () => {
 
 describe('finding 1: dot-only compound literals are directories at the type level', () => {
   it('type classification matches runtime decode', () => {
-    // @ts-expect-error RED-PIN: typed AbsFile via never-leak in CanDecodeFile; runtime is AbsDir
     expectTypeOf(Path.mk('/.')).toEqualTypeOf<Path.AbsDir>()
-    // @ts-expect-error RED-PIN: typed AbsFile; runtime is AbsDir
     expectTypeOf(Path.mk('/..')).toEqualTypeOf<Path.AbsDir>()
-    // @ts-expect-error RED-PIN: typed RelFile; runtime is RelDir
     expectTypeOf(Path.mk('./..')).toEqualTypeOf<Path.RelDir>()
-    // @ts-expect-error RED-PIN: typed RelFile; runtime is RelDir
     expectTypeOf(Path.mk('../.')).toEqualTypeOf<Path.RelDir>()
     expect(S.decodeSync(Path.Any)('/.')._tag).toBe('AbsDir')
     expect(S.decodeSync(Path.Any)('/..')._tag).toBe('AbsDir')
@@ -1796,6 +1743,9 @@ describe('finding 2: setParts validates dynamic filename parts', () => {
   it('rejects a dotless extension', () => {
     expect(() => Path.AbsFile.setParts(subject, { extension: 'zip' })).toThrow()
   })
+  it('rejects a dotless extension wrapped in Option', () => {
+    expect(() => Path.AbsFile.setParts(subject, { extension: Option.some('zip') })).toThrow()
+  })
   it('rejects an extension containing a separator', () => {
     expect(() => Path.AbsFile.setParts(subject, { extension: '.a/b' })).toThrow()
   })
@@ -1806,11 +1756,8 @@ describe('finding 2: setParts validates dynamic filename parts', () => {
 
 describe('finding 3: repeated separators collapse at the type level like runtime', () => {
   it('type classification matches runtime decode', () => {
-    // @ts-expect-error RED-PIN: literal guard rejects '//' while runtime collapses it
     expectTypeOf(Path.mk('a//b')).toEqualTypeOf<Path.RelFile>()
-    // @ts-expect-error RED-PIN: literal guard rejects '//' while runtime collapses it
     expectTypeOf(Path.mk('/a//b')).toEqualTypeOf<Path.AbsFile>()
-    // @ts-expect-error RED-PIN: literal guard rejects '//' while runtime collapses it
     expectTypeOf(Path.mk('a///b/')).toEqualTypeOf<Path.RelDir>()
     expect(S.decodeSync(Path.Any)('a//b')._tag).toBe('RelFile')
     expect(S.decodeSync(Path.Any)('/a//b')._tag).toBe('AbsFile')
@@ -1820,12 +1767,10 @@ describe('finding 3: repeated separators collapse at the type level like runtime
 
 describe('finding 4: operations accept target-coercible dir literals like model mk', () => {
   it('join accepts a slashless dir base literal, matching Dir.mk', () => {
-    // @ts-expect-error RED-PIN: join classifies '/foo' target-blind (FromLiteral) and rejects
     const joined = Path.join('/foo', './x')
     expect(String(joined)).toBe('/foo/x')
   })
   it('isWithin accepts a slashless dir parent literal', () => {
-    // @ts-expect-error RED-PIN: same target-blind rejection
     expect(Path.isWithin('/foo/x', '/foo')).toBe(true)
   })
 })
@@ -1847,7 +1792,6 @@ describe('finding 6: the empty string is not a path', () => {
 describe('finding 8: segment name positions accept validated string literals', () => {
   it('withName accepts a valid segment literal', () => {
     const dir = Path.mk('/home/user/')
-    // @ts-expect-error RED-PIN: withName requires a decoded Segment; literal duality missing
     const renamed = Path.withName(dir, 'renamed')
     expect(Option.map(renamed, (d) => String(d))).toEqual(Option.some('/home/renamed/'))
   })
@@ -1855,7 +1799,6 @@ describe('finding 8: segment name positions accept validated string literals', (
 
 describe('finding 9: Extension is a first-class model with a literal constructor', () => {
   it('Extension.mk constructs from a literal', () => {
-    // @ts-expect-error RED-PIN: Extension is a nested namespace without mk
     const ext = Path.Extension.mk('.zip')
     expect(String(ext)).toBe('.zip')
   })

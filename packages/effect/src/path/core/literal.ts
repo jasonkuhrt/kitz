@@ -14,12 +14,9 @@ type Separator = '/'
 type Here = '.'
 type Ascent = '..'
 
-type HasRepeatedSeparator<$S extends string> =
-  $S extends `${string}${Separator}${Separator}${string}` ? true : false
-
 type IsAbsolute<$S extends string> = $S extends `${Separator}${string}` ? true : false
 
-type IsDirectorySyntax<$S extends string> = $S extends '' | Here | './' | Ascent | '../'
+type IsDirectorySyntax<$S extends string> = $S extends Here | './' | Ascent | '../'
   ? true
   : $S extends `${string}${Separator}`
     ? true
@@ -68,19 +65,17 @@ type Last<$Items extends readonly string[]> = $Items extends readonly [
   ? $Last
   : never
 
-type EndsWithDot<$S extends string> = $S extends `${string}.` ? true : false
-
-type IsValidFileName<$S extends string> = $S extends '' | Here | Ascent
-  ? false
-  : EndsWithDot<$S> extends true
-    ? false
-    : true
+type IsValidFileName<$S extends string> = $S extends '' | Here | Ascent ? false : true
 
 type CanDecodeFile<$S extends string> =
   IsDirectorySyntax<$S> extends true
     ? false
-    : Last<NormalizedSegments<$S>> extends infer $FileName extends string
-      ? IsValidFileName<$FileName>
+    : NormalizedSegments<$S> extends infer $Segments extends readonly string[]
+      ? $Segments extends readonly []
+        ? false
+        : Last<$Segments> extends infer $FileName extends string
+          ? IsValidFileName<$FileName>
+          : false
       : false
 
 type LiteralAnalysisFile<$Absolute extends boolean> = {
@@ -98,16 +93,15 @@ type LiteralAnalysisDir<$Absolute extends boolean> = {
   readonly segments: string[]
 }
 
-type AnalyzeLiteral<$S extends string> =
-  HasRepeatedSeparator<$S> extends true
-    ? never
-    : IsAbsolute<$S> extends true
-      ? CanDecodeFile<$S> extends true
-        ? LiteralAnalysisFile<true>
-        : LiteralAnalysisDir<true>
-      : CanDecodeFile<$S> extends true
-        ? LiteralAnalysisFile<false>
-        : LiteralAnalysisDir<false>
+type AnalyzeLiteral<$S extends string> = $S extends ''
+  ? never
+  : IsAbsolute<$S> extends true
+    ? CanDecodeFile<$S> extends true
+      ? LiteralAnalysisFile<true>
+      : LiteralAnalysisDir<true>
+    : CanDecodeFile<$S> extends true
+      ? LiteralAnalysisFile<false>
+      : LiteralAnalysisDir<false>
 
 type FromLiteralAnalysis<$A> = $A extends { readonly _tag: 'file'; readonly isPathAbsolute: true }
   ? AbsFile
@@ -200,10 +194,34 @@ export type ErrorStringNotLiteral =
   StaticError<'Path literal constructors require a string literal. Use a path schema codec for dynamic strings, or decode the target schema at runtime.'>
 
 /** Static error for a literal the path grammar itself rejects, naming the cause. */
-export type ErrorMalformedLiteral<$Received extends string> =
-  HasRepeatedSeparator<$Received> extends true
-    ? StaticError<`Path literal '${$Received}' contains a repeated separator. Collapse '//' to '/'.`>
-    : StaticError<`Path literal '${$Received}' is not a valid path literal.`>
+export type ErrorMalformedLiteral<$Received extends string> = $Received extends ''
+  ? StaticError<'The empty string is not a path literal.'>
+  : StaticError<`Path literal '${$Received}' is not a valid path literal.`>
+
+/** Static error for path values from different anchoring groups. */
+export type ErrorPathGroupMismatch =
+  StaticError<'Path arguments must share a group: both absolute or both relative.'>
+
+type IsValidSegmentLiteral<$S extends string> = $S extends '' | Here | Ascent
+  ? false
+  : $S extends `${string}${Separator}${string}` | `${string}\0${string}`
+    ? false
+    : true
+
+type ErrorMalformedSegmentLiteral<$Received extends string> = $Received extends ''
+  ? StaticError<'Path segment literals cannot be empty.'>
+  : $Received extends Here | Ascent
+    ? StaticError<`Path segment literal '${$Received}' is a traversal reference, not a segment name.`>
+    : $Received extends `${string}${Separator}${string}`
+      ? StaticError<`Path segment literal '${$Received}' cannot contain '/'.`>
+      : StaticError<'Path segment literals cannot contain NUL.'>
+
+/** Guard a POSIX path-segment literal against the runtime Segment grammar. */
+export type SegmentLiteralGuard<$S extends string> = string extends $S
+  ? StaticError<'Segment literal constructors require a string literal. Decode dynamic strings through Path.Segment.'>
+  : IsValidSegmentLiteral<$S> extends true
+    ? $S
+    : ErrorMalformedSegmentLiteral<$S>
 
 /** Static error for a well-formed literal that does not match the target path schema. */
 export type ErrorPathValidation<$Target, $Received> =

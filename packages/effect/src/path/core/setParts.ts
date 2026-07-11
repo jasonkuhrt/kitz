@@ -1,10 +1,14 @@
-import { Option } from 'effect'
-import type { Extension } from '../models/Extension.js'
+import { Option, Schema as S } from 'effect'
+import { Extension } from '../models/Extension.js'
 import { FileName } from '../models/FileName.js'
 
 const normalizeExtension = (
   extension: Extension | Option.Option<Extension>,
-): Option.Option<Extension> => (Option.isOption(extension) ? extension : Option.some(extension))
+): Option.Option<Extension> =>
+  Option.map(
+    Option.isOption(extension) ? extension : Option.some(extension),
+    S.decodeSync(Extension),
+  )
 
 export const resolveFileName = (
   current: FileName,

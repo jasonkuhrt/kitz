@@ -42,6 +42,10 @@ const invalid = (input: string, expected: string): SchemaIssue.Issue =>
     message: `Expected ${expected}, received ${JSON.stringify(input)}`,
   })
 
+const emptyPath = new SchemaIssue.InvalidValue(Option.some(''), {
+  message: 'The empty string is not a path',
+})
+
 /**
  * Normalize segments by resolving '..' references.
  * Returns the final ascent count and clean segments.
@@ -170,6 +174,7 @@ const analyzeAs =
   <$K extends Analysis['_tag']>(kind: $K) =>
   (anchoring: 'absolute' | 'relative') =>
   (input: string): Result.Result<Data.TaggedEnum.Value<Analysis, $K>, SchemaIssue.Issue> => {
+    if (input === '') return Result.fail(emptyPath)
     const analysis = analyze(input, { hint: kind })
     if (!Analysis.$is(kind)(analysis)) {
       return Result.fail(invalid(input, kind === 'dir' ? 'a directory path' : 'a file path'))
@@ -202,9 +207,10 @@ export const analyzeDirRel = analyzeDir('relative')
 /** Split a filename into stem + extension (a leading dot is part of the stem). */
 const splitExtension = (fileName: string): { stem: string; extension: string | null } => {
   const dotIndex = fileName.lastIndexOf('.')
+  const hasExtension = dotIndex > 0 && dotIndex < fileName.length - 1
   return {
-    stem: dotIndex > 0 ? fileName.substring(0, dotIndex) : fileName,
-    extension: dotIndex > 0 ? fileName.substring(dotIndex) : null,
+    stem: hasExtension ? fileName.substring(0, dotIndex) : fileName,
+    extension: hasExtension ? fileName.substring(dotIndex) : null,
   }
 }
 

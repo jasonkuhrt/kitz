@@ -1,15 +1,10 @@
 import { Function as Fn, Match, Schema as S } from 'effect'
-import type {
-  ErrorPathValidation,
-  FromLiteral,
-  LiteralGuard,
-  LiteralInput,
-} from '../core/literal.js'
+import type { FromTargetLiteral, LiteralGuard } from '../core/literal.js'
 import { Any } from '../models/Any.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
-import type { Dir } from '../models/Dir.js'
-import type { Rel } from '../models/Rel.js'
+import { Dir } from '../models/Dir.js'
+import { Rel } from '../models/Rel.js'
 import { RelDir } from '../models/RelDir.js'
 import { RelFile } from '../models/RelFile.js'
 
@@ -102,25 +97,13 @@ export const join: {
           : $Args[$Index]
         : $Index extends '0'
           ? $Args[$Index] extends string
-            ? string extends $Args[$Index]
-              ? LiteralInput<$Args[$Index]>
-              : [FromLiteral<$Args[$Index]>] extends [never]
-                ? ErrorPathValidation<Dir, $Args[$Index]>
-                : FromLiteral<$Args[$Index]> extends Dir
-                  ? $Args[$Index]
-                  : ErrorPathValidation<Dir, $Args[$Index]>
+            ? LiteralGuard<$Args[$Index], Dir>
             : $Args[$Index]
           : $Index extends keyof ($Args extends readonly [...infer $Prefix, unknown]
                 ? $Prefix
                 : never)
             ? $Args[$Index] extends string
-              ? string extends $Args[$Index]
-                ? LiteralInput<$Args[$Index]>
-                : [FromLiteral<$Args[$Index]>] extends [never]
-                  ? ErrorPathValidation<RelDir, $Args[$Index]>
-                  : FromLiteral<$Args[$Index]> extends RelDir
-                    ? $Args[$Index]
-                    : ErrorPathValidation<RelDir, $Args[$Index]>
+              ? LiteralGuard<$Args[$Index], RelDir>
               : $Args[$Index] & RelDir
             : $Args[$Index] extends string
               ? LiteralGuard<$Args[$Index], Rel>
@@ -128,23 +111,15 @@ export const join: {
     }
   ): $Args extends readonly [infer $Part extends Rel | string]
     ? <const $Base extends Dir | string>(
-        base: $Base extends string
-          ? string extends $Base
-            ? LiteralInput<$Base>
-            : [FromLiteral<$Base>] extends [never]
-              ? ErrorPathValidation<Dir, $Base>
-              : FromLiteral<$Base> extends Dir
-                ? $Base
-                : ErrorPathValidation<Dir, $Base>
-          : $Base,
+        base: $Base extends string ? LiteralGuard<$Base, Dir> : $Base,
       ) => Join<
         $Base extends string
-          ? FromLiteral<$Base> extends infer $NormalizedBase extends Dir
+          ? FromTargetLiteral<$Base, Dir> extends infer $NormalizedBase extends Dir
             ? $NormalizedBase
             : never
           : $Base,
         $Part extends string
-          ? FromLiteral<$Part> extends infer $NormalizedPart extends Rel
+          ? FromTargetLiteral<$Part, Rel> extends infer $NormalizedPart extends Rel
             ? $NormalizedPart
             : never
           : $Part
@@ -155,7 +130,7 @@ export const join: {
         ]
       ? JoinMany<
           $Base extends string
-            ? FromLiteral<$Base> extends infer $NormalizedBase extends Dir
+            ? FromTargetLiteral<$Base, Dir> extends infer $NormalizedBase extends Dir
               ? $NormalizedBase
               : never
             : $Base,
@@ -166,10 +141,10 @@ export const join: {
             ? readonly [
                 ...{
                   readonly [$Index in keyof $Initial]: $Initial[$Index] extends string
-                    ? FromLiteral<$Initial[$Index]>
+                    ? FromTargetLiteral<$Initial[$Index], RelDir>
                     : $Initial[$Index]
                 },
-                $Last extends string ? FromLiteral<$Last> : $Last,
+                $Last extends string ? FromTargetLiteral<$Last, Rel> : $Last,
               ] extends infer $NormalizedParts extends JoinParts
               ? $NormalizedParts
               : never
@@ -179,11 +154,11 @@ export const join: {
 } = Fn.dual(
   (args) => args.length >= 2,
   (dir: Dir | string, ...rels: readonly (Rel | string)[]): Any => {
-    const dirValue: Dir = typeof dir === 'string' ? (S.decodeSync(Any)(dir) as any) : dir
+    const dirValue: Dir = typeof dir === 'string' ? (S.decodeSync(Dir)(dir) as any) : dir
     let result: Any = dirValue
 
     for (const rel of rels) {
-      const relValue: Rel = typeof rel === 'string' ? (S.decodeSync(Any)(rel) as any) : rel
+      const relValue: Rel = typeof rel === 'string' ? (S.decodeSync(Rel)(rel) as any) : rel
       result = joinBinary(result as any, relValue)
     }
 
