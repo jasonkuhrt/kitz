@@ -48,11 +48,16 @@ export { Segment, segment } from './models/segment.js'
 export { Protocol } from './models/Protocol.js'
 
 // Flat path combinators
+// Absolute-group tests use the producer guard `Path.Abs.is`; there is no
+// duplicate flat `isAbsolute` predicate.
+export * from './operations/dir.js'
+export * from './operations/extension.js'
 export * from './operations/ensureAbs.js'
 export * from './operations/isAncestorOf.js'
 export * from './operations/isDescendantOf.js'
 export * from './operations/isWithin.js'
 export * from './operations/join.js'
+export * from './operations/name.js'
 export * from './operations/order.js'
 export * from './operations/relativeTo.js'
 export * from './operations/withName.js'
