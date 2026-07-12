@@ -2,7 +2,7 @@ import { Effect, flow, Option, Result, Schema as S, SchemaGetter } from 'effect'
 import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withStatics } from '../../schema/withStatics.js'
 import type { Types } from '../../types/_.js'
-import { analyzeFileName } from '../analyzer.js'
+import { analyzeFileName, splitExtension } from '../analyzer.js'
 import { nullByte } from '../core/grammar.js'
 import type { separator } from '../core/grammar.js'
 import type { requiresLiteral } from '../core/messages.js'
@@ -62,6 +62,20 @@ const fileNameArbitrary = {
   },
 } satisfies S.Annotations.Bottom<FileName__, readonly []>
 
+const splitExtensions = (
+  name: string,
+): { readonly prefix: string; readonly extensions: ReadonlyArray<Extension> } => {
+  const extensions: Extension[] = []
+  let prefix = name
+
+  while (true) {
+    const split = splitExtension(prefix)
+    if (split.extension === null) return { prefix, extensions }
+    extensions.unshift(Extension.make(split.extension))
+    prefix = split.stem
+  }
+}
+
 /** Filename value — a stem plus optional final extension, split on the last dot after index 0. */
 class FileName__ extends S.TaggedClass<FileName__>('@kitz/effect/Path/FileName')('FileName', {
   stem: S.String,
@@ -73,6 +87,20 @@ class FileName__ extends S.TaggedClass<FileName__>('@kitz/effect/Path/FileName')
       onNone: () => this.stem,
       onSome: (extension) => `${this.stem}${extension}`,
     })
+  }
+
+  /**
+   * The portion before the first non-leading extension boundary, matching
+   * Rust's `Path::file_prefix` for ordinary names and dotfiles. A trailing dot
+   * remains part of this extensionless prefix, as required by FileName grammar.
+   */
+  get prefix(): string {
+    return splitExtensions(this.name).prefix
+  }
+
+  /** The full left-to-right extension chain, with each leading dot preserved. */
+  get extensions(): ReadonlyArray<Extension> {
+    return splitExtensions(this.name).extensions
   }
 }
 

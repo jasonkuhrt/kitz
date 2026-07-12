@@ -428,6 +428,44 @@ describe('.name / .stem / .extension', () => {
   })
 })
 
+describe('FileName .prefix / .extensions', () => {
+  it.each([
+    ['name.tar.gz', 'name', ['.tar', '.gz']],
+    ['.config.toml', '.config', ['.toml']],
+    ['.gitignore', '.gitignore', []],
+    ['README', 'README', []],
+    ['a.', 'a.', []],
+    ['café.β.😀', 'café', ['.β', '.😀']],
+    ['a..b', 'a.', ['.b']],
+  ] as const)(
+    'splits %s into its grammar-aware prefix and extension chain',
+    (name, prefix, extensions) => {
+      const value = Path.FileName.make(name)
+
+      expect(value.prefix).toBe(prefix)
+      expect(value.extensions).toEqual(extensions)
+      expect(value.name).toBe(`${value.prefix}${value.extensions.join('')}`)
+    },
+  )
+
+  it('preserves the existing final stem and extension semantics', () => {
+    const value = Path.FileName.make('name.tar.gz')
+
+    expect(value.stem).toBe('name.tar')
+    expect(value.extension).toEqual(Option.some('.gz'))
+    expectTypeOf(value.prefix).toEqualTypeOf<string>()
+    expectTypeOf(value.extensions).toEqualTypeOf<ReadonlyArray<Path.Extension>>()
+  })
+
+  it('reconstructs every generated filename from prefix plus extensions', () => {
+    FastCheck.assert(
+      FastCheck.property(arb.FileName, (value) => {
+        expect(value.name).toBe(`${value.prefix}${value.extensions.join('')}`)
+      }),
+    )
+  })
+})
+
 // ─── getters: dir ───
 
 describe('.dir', () => {

@@ -199,7 +199,7 @@ export const analyzeDirAbs = analyzeDir('absolute')
 export const analyzeDirRel = analyzeDir('relative')
 
 /** Split a filename into stem + extension (a leading dot is part of the stem). */
-const splitExtension = (fileName: string): { stem: string; extension: string | null } => {
+export const splitExtension = (fileName: string): { stem: string; extension: string | null } => {
   const dotIndex = fileName.lastIndexOf('.')
   const hasExtension = dotIndex > 0 && dotIndex < fileName.length - 1
   return {
