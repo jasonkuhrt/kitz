@@ -1,5 +1,14 @@
 import { Array, Function as Fn } from 'effect'
-import type { Segment } from '../models/segment.js'
+import { Segment } from '../models/segment.js'
+
+/** Validate and append dynamic segment text to an existing normalized segment list. */
+export const appendSegmentTexts = (
+  base: readonly Segment[],
+  inputs: Iterable<string>,
+): readonly Segment[] => [
+  ...base,
+  ...Array.fromIterable(inputs).map((input) => Segment.make(input)),
+]
 
 /**
  * The leading segments common to both arrays — their longest shared prefix.

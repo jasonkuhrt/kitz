@@ -20,6 +20,16 @@ class Dir_ extends withLiteralStatics(
   static readonly guards = DirTaggedUnion.guards
   static readonly isAnyOf = DirTaggedUnion.isAnyOf
   static readonly match = DirTaggedUnion.match
+
+  /** Append validated dynamic segment text, preserving the base's path group. */
+  static readonly join = <$Base extends typeof Dir_.Type>(
+    base: $Base,
+    segments: Iterable<string>,
+  ): $Base extends AbsDir ? AbsDir : RelDir => {
+    const joined: typeof Dir_.Type =
+      base._tag === 'AbsDir' ? AbsDir.join(base, segments) : RelDir.join(base, segments)
+    return joined as any
+  }
 }
 
 export const Dir = Dir_

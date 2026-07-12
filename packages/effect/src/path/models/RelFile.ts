@@ -239,6 +239,16 @@ export class RelFile_ extends withLiteralStatics(
   ),
   'Path.RelFile.make',
 ) {
+  /** Build a relative file from a base dir, optional dynamic segments, and a validated name. */
+  static readonly join: {
+    (base: RelDir, name: string): RelFile
+    (base: RelDir, segments: Iterable<string>, name: string): RelFile
+  } = (base: RelDir, segmentsOrName: Iterable<string> | string, name?: string): RelFile => {
+    const dir: RelDir = name === undefined ? base : RelDir.join(base, segmentsOrName as any)
+    const nameText: string = name === undefined ? (segmentsOrName as any) : name
+    return RelFile_.make({ dir, fileName: FileName.make(nameText) })
+  }
+
   /**
    * Rebuild a relative file with patched file components.
    *

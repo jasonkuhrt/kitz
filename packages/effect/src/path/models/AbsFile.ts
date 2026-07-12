@@ -226,6 +226,16 @@ export class AbsFile_ extends withLiteralStatics(
   ),
   'Path.AbsFile.make',
 ) {
+  /** Build an absolute file from a base dir, optional dynamic segments, and a validated name. */
+  static readonly join: {
+    (base: AbsDir, name: string): AbsFile
+    (base: AbsDir, segments: Iterable<string>, name: string): AbsFile
+  } = (base: AbsDir, segmentsOrName: Iterable<string> | string, name?: string): AbsFile => {
+    const dir: AbsDir = name === undefined ? base : AbsDir.join(base, segmentsOrName as any)
+    const nameText: string = name === undefined ? (segmentsOrName as any) : name
+    return AbsFile_.make({ dir, fileName: FileName.make(nameText) })
+  }
+
   /**
    * Rebuild an absolute file with patched file components.
    *

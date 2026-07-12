@@ -7,7 +7,7 @@ import { attachPathEqual } from '../core/equality.js'
 import { fileUrlOf, pathStringFromFileUrl } from '../core/fileUrl.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
-import { parentOf } from '../core/segments.js'
+import { appendSegmentTexts, parentOf } from '../core/segments.js'
 import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics } from '../core/statics.js'
 import { maxSegments, Segments } from './arbitrary.js'
@@ -132,6 +132,10 @@ export class AbsDir_ extends withLiteralStatics(
 ) {
   /** The absolute anchor — the filesystem root `/`. */
   static readonly anchor: typeof AbsDir_.Type = AbsDir_.make({ segments: [] })
+
+  /** Append validated dynamic segment text, preserving the absolute group. */
+  static readonly join = (base: AbsDir, segments: Iterable<string>): AbsDir =>
+    AbsDir_.make({ segments: appendSegmentTexts(base.segments, segments) })
 
   /**
    * Decode/encode absolute dirs as native `file:` URL instances.

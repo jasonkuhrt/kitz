@@ -6,7 +6,7 @@ import { ancestorSegments } from '../core/ancestors.js'
 import { attachPathEqual } from '../core/equality.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
-import { parentOf } from '../core/segments.js'
+import { appendSegmentTexts, parentOf } from '../core/segments.js'
 import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
@@ -171,6 +171,13 @@ export class RelDir_ extends withLiteralStatics(
     ascent: Ascent.make(1),
     segments: [],
   })
+
+  /** Append validated dynamic segment text, preserving ascent and the relative group. */
+  static readonly join = (base: RelDir, segments: Iterable<string>): RelDir =>
+    RelDir_.make({
+      ascent: base.ascent,
+      segments: appendSegmentTexts(base.segments, segments),
+    })
 
   /**
    * Decode/encode paths as flat structured JSON instead of strings.

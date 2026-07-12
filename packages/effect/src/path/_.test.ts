@@ -1326,6 +1326,65 @@ describe('audit round 3: literal component producer contract', () => {
   })
 })
 
+describe('producer-owned dynamic join statics', () => {
+  it('builds Heartbeat-style dirs and files while preserving the base group', () => {
+    const root = Path.AbsDir.make('/workspace')
+    const args = { commandPath: ['apps', 'api'] }
+    const outDir = Path.Dir.join(root, args.commandPath)
+    const sanitized = 'manifest.json' as string
+    const output = Path.File.join(outDir, sanitized)
+
+    expect(outDir).toEncodeTo('/workspace/apps/api/')
+    expect(output).toEncodeTo('/workspace/apps/api/manifest.json')
+    expect(Path.File.join(root, ['dist', 'assets'], sanitized)).toEncodeTo(
+      '/workspace/dist/assets/manifest.json',
+    )
+    expectTypeOf(outDir).toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf(output).toEqualTypeOf<Path.AbsFile>()
+
+    const relBase = Path.RelDir.make('../workspace')
+    const relDir = Path.Dir.join(relBase, ['src'])
+    const relFile = Path.File.join(relDir, ['generated'], sanitized)
+
+    expect(relDir).toEncodeTo('../workspace/src/')
+    expect(relFile).toEncodeTo('../workspace/src/generated/manifest.json')
+    expectTypeOf(relDir).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(relFile).toEqualTypeOf<Path.RelFile>()
+  })
+
+  it('exposes monomorphic leaf forms and accepts any segment iterable', () => {
+    const segments = function* () {
+      yield 'generated'
+      yield 'client'
+    }
+    const absDir = Path.AbsDir.join(Path.AbsDir.anchor, segments())
+    const relDir = Path.RelDir.join(Path.RelDir.parent, segments())
+    const absFile = Path.AbsFile.join(absDir, 'index.ts')
+    const relFile = Path.RelFile.join(relDir, ['types'], 'index.ts')
+
+    expect(absDir).toEncodeTo('/generated/client/')
+    expect(relDir).toEncodeTo('../generated/client/')
+    expect(absFile).toEncodeTo('/generated/client/index.ts')
+    expect(relFile).toEncodeTo('../generated/client/types/index.ts')
+    expectTypeOf(absDir).toEqualTypeOf<Path.AbsDir>()
+    expectTypeOf(relDir).toEqualTypeOf<Path.RelDir>()
+    expectTypeOf(absFile).toEqualTypeOf<Path.AbsFile>()
+    expectTypeOf(relFile).toEqualTypeOf<Path.RelFile>()
+  })
+
+  it('rejects invalid dynamic segments and filenames through component validators', () => {
+    const root = Path.AbsDir.anchor
+    const invalid = ['', '..', 'bad\0name']
+
+    for (const segmentText of invalid) {
+      expect(() => Path.Dir.join(root, [segmentText])).toThrow()
+    }
+    for (const fileNameText of invalid) {
+      expect(() => Path.File.join(root, fileNameText)).toThrow()
+    }
+  })
+})
+
 describe('audit round 3: setParts literal duality', () => {
   it('accepts literals for the subject, dir, and name in both call shapes', () => {
     const direct = Path.AbsFile.setParts('/tmp/original.txt', {
