@@ -69,6 +69,16 @@ class AbsDir__ extends S.TaggedClass<AbsDir__>('@kitz/effect/Path/AbsDir')('AbsD
     return renderPath({ isPathAbsolute: true, ascent: 0, segments: this.segments })
   }
 
+  /**
+   * Render display text. This display-only surface makes no identity or
+   * roundtrip promise: never feed its output to a path decoder. With no options
+   * it currently returns canonical text as a sensible default, not a contract;
+   * display options may grow pragmatically.
+   */
+  format(options?: { readonly bare?: boolean }): string {
+    return renderPath({ isPathAbsolute: true, ascent: 0, segments: this.segments }, options)
+  }
+
   /** JSON representation is the canonical encoded path string. */
   toJSON(): string {
     return this.toString()

@@ -150,6 +150,24 @@ class AbsFile__ extends S.TaggedClass<AbsFile__>('@kitz/effect/Path/AbsFile')('A
     })
   }
 
+  /**
+   * Render display text. This display-only surface makes no identity or
+   * roundtrip promise: never feed its output to a path decoder. With no options
+   * it currently returns canonical text as a sensible default, not a contract;
+   * display options may grow pragmatically.
+   */
+  format(options?: { readonly bare?: boolean }): string {
+    return renderPath(
+      {
+        isPathAbsolute: true,
+        ascent: 0,
+        segments: this.segments,
+        fileName: this.fileName.name,
+      },
+      options,
+    )
+  }
+
   /** JSON representation is the canonical encoded path string. */
   toJSON(): string {
     return this.toString()

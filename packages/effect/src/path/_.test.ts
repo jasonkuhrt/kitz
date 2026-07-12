@@ -83,6 +83,21 @@ const codecCases = [
   ['Any', Path.Any, arb.Any],
 ] as const
 
+const codecStaticProducers = [
+  ['AbsDir', Path.AbsDir],
+  ['AbsFile', Path.AbsFile],
+  ['RelDir', Path.RelDir],
+  ['RelFile', Path.RelFile],
+  ['Abs', Path.Abs],
+  ['Rel', Path.Rel],
+  ['Dir', Path.Dir],
+  ['File', Path.File],
+  ['Any', Path.Any],
+  ['Segment', Path.Segment],
+  ['Extension', Path.Extension],
+  ['FileName', Path.FileName],
+] as const
+
 const canonicalizationCases = [
   ['a/../b', 'RelFile', './b'],
   ['./x/./y/', 'RelDir', './x/y/'],
@@ -111,6 +126,37 @@ const unionVariantCases = [
 ] as const
 
 describe('codec', () => {
+  it.each(codecStaticProducers)('%s owns the symmetric codec-static family', (_, producer) => {
+    expect(producer).toEqual(
+      expect.objectContaining({
+        decodeSync: expect.any(Function),
+        encodeSync: expect.any(Function),
+        decodeEffect: expect.any(Function),
+        encodeEffect: expect.any(Function),
+        decodeResult: expect.any(Function),
+        encodeResult: expect.any(Function),
+      }),
+    )
+  })
+
+  it('codec statics are point-free and agree with their Schema counterparts', () => {
+    const paths = [Path.AbsFile.make('/tmp/a.txt'), Path.AbsFile.make('/tmp/b.txt')]
+    const encoded = paths.map(Path.AbsFile.encodeSync)
+
+    expectTypeOf(encoded).toEqualTypeOf<string[]>()
+    expect(encoded).toEqual(paths.map((path) => S.encodeSync(Path.AbsFile)(path)))
+    expect(Effect.runSync(Path.AbsFile.decodeEffect('/tmp/a.txt'))).toEqual(paths[0])
+    expect(Effect.runSync(Path.AbsFile.encodeEffect(paths[0]!))).toBe('/tmp/a.txt')
+    expect(Result.getOrThrow(Path.AbsFile.decodeResult('/tmp/a.txt'))).toEqual(paths[0])
+    expect(Result.getOrThrow(Path.AbsFile.encodeResult(paths[0]!))).toBe('/tmp/a.txt')
+  })
+
+  it('does not shadow Function.prototype.toString with a codec static', () => {
+    expect(Object.hasOwn(Path.AbsFile, 'toString')).toBe(false)
+    expect(() => String(Path.AbsFile)).not.toThrow()
+    expect(String(Path.AbsFile)).toContain('class AbsFile_')
+  })
+
   it.each(codecCases)('%s decode(encode(value)) is identity', (_, schema, arbitrary) => {
     const encode = S.encodeSync(schema)
     const decode = S.decodeSync(schema)
@@ -965,16 +1011,32 @@ describe('Config integration', () => {
 
 // ─── traits ───
 
-describe('traits (toString / toJSON / PrimaryKey)', () => {
+describe('traits (toString / format / toJSON / PrimaryKey)', () => {
   it('use the canonical encoded string', () => {
     FastCheck.assert(
       FastCheck.property(arb.Any, (path) => {
         const encoded = encodeAny(path)
         expect(path).toEncodeTo(encoded)
+        expect(path.toString()).toBe(encoded)
+        expect(path.format()).toBe(encoded)
         expect(path.toJSON()).toBe(encoded)
         expect(path[PrimaryKey.symbol]()).toBe(encoded)
       }),
     )
+  })
+
+  it.each([
+    ['absolute root', '/', '/'],
+    ['nested absolute dir', '/usr/local/', '/usr/local'],
+    ['absolute file', '/usr/local/node', '/usr/local/node'],
+    ['relative anchor', './', ''],
+    ['nested relative dir', './src/lib/', 'src/lib'],
+    ['relative file', './src/index.ts', 'src/index.ts'],
+    ['parent anchor', '../', '..'],
+    ['nested parent dir', '../../src/', '../../src'],
+    ['parent-relative file', '../src/index.ts', '../src/index.ts'],
+  ] as const)('format({ bare: true }) renders %s for display', (_, canonical, bare) => {
+    expect(Path.Any.decodeSync(canonical).format({ bare: true })).toBe(bare)
   })
 })
 

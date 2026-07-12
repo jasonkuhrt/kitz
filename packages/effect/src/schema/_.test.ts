@@ -3,7 +3,7 @@
  * the principle statement).
  */
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
-import { Schema as S } from 'effect'
+import { Effect, Result, Schema as S } from 'effect'
 import { FastCheck } from 'effect/testing'
 import { Types } from '../types/_.js'
 import { Schema } from './_.js'
@@ -18,6 +18,17 @@ describe('withStatics', () => {
 
     const input: unknown = 'Grace'
     if (Name.is(input)) expectTypeOf(input).toEqualTypeOf<typeof Name.Type>()
+  })
+
+  it('attaches the symmetric Sync, Effect, and Result codec family', () => {
+    const names = ['Ada', 'Grace']
+
+    expect(names.map(Name.decodeSync)).toEqual(names)
+    expect(names.map(Name.encodeSync)).toEqual(names)
+    expect(Effect.runSync(Name.decodeEffect('Ada'))).toBe('Ada')
+    expect(Effect.runSync(Name.encodeEffect('Ada'))).toBe('Ada')
+    expect(Result.getOrThrow(Name.decodeResult('Ada'))).toBe('Ada')
+    expect(Result.getOrThrow(Name.encodeResult('Ada'))).toBe('Ada')
   })
 
   it('owns its Guard type instead of leaking a bare Schema.Guard', () => {
