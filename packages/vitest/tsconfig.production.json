@@ -6,5 +6,10 @@
   "compilerOptions": {
     "outDir": "build",
     "tsBuildInfoFile": "../../.tsbuild/vitest/tsconfig.production.tsbuildinfo"
-  }
+  },
+  "references": [
+    {
+      "path": "../effect/tsconfig.production.json"
+    }
+  ]
 }

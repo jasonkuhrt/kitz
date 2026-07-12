@@ -1,34 +1,42 @@
-import { flow, Option, Result, SchemaIssue } from 'effect'
-
-// Path segment constants (internal — the codecs go through analyze/format)
-const separator = '/'
-const hereSegment = '.'
-const backSegment = '..'
-const herePrefix = `${hereSegment}${separator}` // './'
-const backPrefix = `${backSegment}${separator}` // '../'
+import { Data, flow, Option, Result, SchemaIssue } from 'effect'
+import {
+  ascent as ascentSegment,
+  ascentPrefix,
+  here,
+  herePrefix,
+  nullByte,
+  separator,
+} from './core/grammar.js'
+import { emptyPathMessage, targetDescription } from './core/messages.js'
 
 /** A path string analyzed into its kind, absoluteness, parent-traversal count, and named segments. */
-export type Analysis = AnalysisFile | AnalysisDir
+export type Analysis = Data.TaggedEnum<{
+  file: {
+    readonly isPathAbsolute: boolean
+    /** Parent-traversal count (leading `..`); always 0 for absolute paths. */
+    readonly ascent: number
+    /** Named path segments (no `..`), excluding the filename. */
+    readonly segments: ReadonlyArray<string>
+    /** The filename (last path component) as a string; the `FileName` codec owns its stem/extension split. */
+    readonly fileName: string
+  }
+  dir: {
+    readonly isPathAbsolute: boolean
+    /** Parent-traversal count (leading `..`); always 0 for absolute paths. */
+    readonly ascent: number
+    /** Named path segments (no `..`). */
+    readonly segments: ReadonlyArray<string>
+  }
+}>
 
-export interface AnalysisFile {
-  _tag: 'file'
-  isPathAbsolute: boolean
-  /** Parent-traversal count (leading `..`); always 0 for absolute paths. */
-  back: number
-  /** Named path segments (no `..`), excluding the filename. */
-  segments: string[]
-  /** The filename (last path component) as a string; the `FileName` codec owns its stem/extension split. */
-  fileName: string
-}
+/** Constructors and matchers for {@link Analysis} (`Analysis.file`, `Analysis.dir`, `$is`, `$match`). */
+export const Analysis = Data.taggedEnum<Analysis>()
 
-export interface AnalysisDir {
-  _tag: 'dir'
-  isPathAbsolute: boolean
-  /** Parent-traversal count (leading `..`); always 0 for absolute paths. */
-  back: number
-  /** Named path segments (no `..`). */
-  segments: string[]
-}
+/** A path analysis narrowed to files. */
+export type AnalysisFile = Data.TaggedEnum.Value<Analysis, 'file'>
+
+/** A path analysis narrowed to directories. */
+export type AnalysisDir = Data.TaggedEnum.Value<Analysis, 'dir'>
 
 /** The schema issue for a path that didn't match the expected kind or absoluteness. */
 const invalid = (input: string, expected: string): SchemaIssue.Issue =>
@@ -36,48 +44,57 @@ const invalid = (input: string, expected: string): SchemaIssue.Issue =>
     message: `Expected ${expected}, received ${JSON.stringify(input)}`,
   })
 
+const emptyPath = new SchemaIssue.InvalidValue(Option.some(''), {
+  message: emptyPathMessage,
+})
+
+const illFormedUnicode = (input: string): SchemaIssue.Issue =>
+  new SchemaIssue.InvalidValue(Option.some(input), {
+    message: 'Path text must be well-formed Unicode',
+  })
+
 /**
  * Normalize segments by resolving '..' references.
- * Returns the final back count and clean segments.
+ * Returns the final ascent count and clean segments.
  */
-const normalizeWithBack = (
-  initialBack: number,
+const normalizeWithAscent = (
+  initialAscent: number,
   rawSegments: readonly string[],
-): { back: number; segments: string[] } => {
-  let back = initialBack
+): { ascent: number; segments: string[] } => {
+  let ascent = initialAscent
   const segments: string[] = []
 
   for (const segment of rawSegments) {
-    if (segment === backSegment) {
+    if (segment === ascentSegment) {
       if (segments.length > 0) segments.pop()
-      else back++
-    } else if (segment !== hereSegment && segment !== '') {
+      else ascent++
+    } else if (segment !== here && segment !== '') {
       segments.push(segment)
     }
   }
 
-  return { back, segments }
+  return { ascent, segments }
 }
 
 /**
- * Optional hints to influence analyzer heuristics for ambiguous cases.
+ * Optional hints to select the known path kind for explicit target codecs.
  *
- * The analyzer uses extension presence to distinguish files from directories,
- * but dotfiles like `.gitignore` are ambiguous. Hints let explicit constructors
- * express their intent for these edge cases.
+ * Directory syntax always wins; otherwise explicit constructors use their known
+ * kind, while hintless analysis follows the literal grammar's file default.
  */
 export interface AnalyzerOptions {
-  /** 'file' / 'dir' (default) resolution for ambiguous dotfiles. */
+  /** Known path kind for non-directory syntax. */
   hint?: 'file' | 'dir'
 }
 
 /**
  * Parse a path string into its kind, absoluteness, and folded segments.
+ * Ascending above the root clamps: `/a/../../b` decodes as `/b` (POSIX `/..` semantics).
  *
  * @example
  * ```ts
  * analyze('/src/index.ts')   // { _tag: 'file', isPathAbsolute: true, segments: ['src'], fileName: 'index.ts' }
- * analyze('../docs/')        // { _tag: 'dir', isPathAbsolute: false, segments: ['..', 'docs'] }
+ * analyze('../docs/')        // { _tag: 'dir', isPathAbsolute: false, ascent: 1, segments: ['docs'] }
  * ```
  */
 export function analyze(input: string, options?: AnalyzerOptions): Analysis {
@@ -85,69 +102,59 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
 
   // Root: an absolute directory with no segments.
   if (input === separator) {
-    return { _tag: 'dir', isPathAbsolute: true, back: 0, segments: [] }
+    return Analysis.dir({ isPathAbsolute: true, ascent: 0, segments: [] })
   }
 
-  // Directory iff: trailing slash, a bare here/back reference, or no extension on the last segment.
-  let isDirectory: boolean
-  if (
+  // Directory syntax is explicit; every other hintless input defaults to a file.
+  const hasDirectorySyntax =
     input === '' ||
-    input === hereSegment ||
+    input === here ||
     input === herePrefix ||
-    input === backSegment ||
-    input === backPrefix ||
+    input === ascentSegment ||
+    input === ascentPrefix ||
     input.endsWith(separator)
-  ) {
-    isDirectory = true
-  } else {
-    const segments = input.split(separator).filter((s) => s !== '')
-    const lastSegment = segments[segments.length - 1]
-    if (lastSegment) {
-      // A dot that's not at index 0 marks an extension (`.gitignore` is ambiguous → hint/default).
-      const hasExtension = lastSegment.lastIndexOf('.') > 0
-      isDirectory = hasExtension ? false : options?.hint ? options.hint === 'dir' : true
-    } else {
-      isDirectory = true
-    }
-  }
+  const isDirectory = hasDirectorySyntax || options?.hint === 'dir'
 
   // Strip the leading slash / `../` / `./` markers, count parent refs.
   let normalized = isAbsolute ? input.slice(separator.length) : input
   let parentRefs = 0
-  while (normalized.startsWith(backPrefix)) {
+  while (normalized.startsWith(ascentPrefix)) {
     parentRefs++
-    normalized = normalized.slice(backPrefix.length)
+    normalized = normalized.slice(ascentPrefix.length)
   }
   if (normalized.startsWith(herePrefix)) normalized = normalized.slice(herePrefix.length)
   if (isDirectory && normalized.endsWith(separator)) normalized = normalized.slice(0, -1)
 
   const rawSegments = normalized ? normalized.split(separator).filter((s) => s !== '') : []
-  // Absolute paths can't escape root, so their back count is always 0.
-  const { back, segments: normalizedSegments } = normalizeWithBack(
+  // Absolute paths can't escape root, so their ascent count is always 0.
+  const { ascent, segments: normalizedSegments } = normalizeWithAscent(
     isAbsolute ? 0 : parentRefs,
     rawSegments,
   )
-  const finalBack = isAbsolute ? 0 : back
+  const finalAscent = isAbsolute ? 0 : ascent
 
-  if (isDirectory) {
-    return {
-      _tag: 'dir',
+  if (isDirectory || (options?.hint === undefined && normalizedSegments.length === 0)) {
+    return Analysis.dir({
       isPathAbsolute: isAbsolute,
-      back: finalBack,
+      ascent: finalAscent,
       segments: normalizedSegments,
-    }
+    })
   }
   if (normalizedSegments.length === 0) {
-    return { _tag: 'file', isPathAbsolute: isAbsolute, back: finalBack, segments: [], fileName: '' }
+    return Analysis.file({
+      isPathAbsolute: isAbsolute,
+      ascent: finalAscent,
+      segments: [],
+      fileName: '',
+    })
   }
 
-  return {
-    _tag: 'file',
+  return Analysis.file({
     isPathAbsolute: isAbsolute,
-    back: finalBack,
+    ascent: finalAscent,
     segments: normalizedSegments.slice(0, -1),
     fileName: normalizedSegments[normalizedSegments.length - 1]!,
-  }
+  })
 }
 
 /**
@@ -155,17 +162,22 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
  * given absoluteness. Every public path analyzer is a partial application of this.
  */
 const analyzeAs =
-  <K extends Analysis['_tag']>(kind: K) =>
+  <$K extends Analysis['_tag']>(kind: $K) =>
   (anchoring: 'absolute' | 'relative') =>
-  (input: string): Result.Result<Extract<Analysis, { _tag: K }>, SchemaIssue.Issue> => {
+  (input: string): Result.Result<Data.TaggedEnum.Value<Analysis, $K>, SchemaIssue.Issue> => {
+    if (input === '') return Result.fail(emptyPath)
+    if (!input.isWellFormed()) return Result.fail(illFormedUnicode(input))
     const analysis = analyze(input, { hint: kind })
-    return analysis._tag !== kind
-      ? Result.fail(invalid(input, kind === 'dir' ? 'a directory path' : 'a file path'))
-      : analysis.isPathAbsolute !== (anchoring === 'absolute')
-        ? Result.fail(
-            invalid(input, anchoring === 'absolute' ? 'an absolute path' : 'a relative path'),
-          )
-        : Result.succeed(analysis as Extract<Analysis, { _tag: K }>)
+    if (!Analysis.$is(kind)(analysis)) {
+      return Result.fail(
+        invalid(input, kind === 'dir' ? targetDescription.Dir : targetDescription.File),
+      )
+    }
+    return analysis.isPathAbsolute !== (anchoring === 'absolute')
+      ? Result.fail(
+          invalid(input, anchoring === 'absolute' ? targetDescription.Abs : targetDescription.Rel),
+        )
+      : Result.succeed(analysis)
   }
 
 /** Require a file of the given absoluteness. */
@@ -174,12 +186,25 @@ export const analyzeFile = analyzeAs('file')
 /** Require a directory of the given absoluteness. */
 export const analyzeDir = analyzeAs('dir')
 
+/** Require an absolute file path. */
+export const analyzeFileAbs = analyzeFile('absolute')
+
+/** Require a relative file path. */
+export const analyzeFileRel = analyzeFile('relative')
+
+/** Require an absolute directory path. */
+export const analyzeDirAbs = analyzeDir('absolute')
+
+/** Require a relative directory path. */
+export const analyzeDirRel = analyzeDir('relative')
+
 /** Split a filename into stem + extension (a leading dot is part of the stem). */
-const splitExtension = (fileName: string): { stem: string; extension: string | null } => {
+export const splitExtension = (fileName: string): { stem: string; extension: string | null } => {
   const dotIndex = fileName.lastIndexOf('.')
+  const hasExtension = dotIndex > 0 && dotIndex < fileName.length - 1
   return {
-    stem: dotIndex > 0 ? fileName.substring(0, dotIndex) : fileName,
-    extension: dotIndex > 0 ? fileName.substring(dotIndex) : null,
+    stem: hasExtension ? fileName.substring(0, dotIndex) : fileName,
+    extension: hasExtension ? fileName.substring(dotIndex) : null,
   }
 }
 
@@ -188,9 +213,19 @@ const notABareFilename = new SchemaIssue.InvalidValue(Option.none(), {
   message: 'Expected a bare filename, not a path',
 })
 
+/** Issue raised when a filename contains the POSIX path terminator byte. */
+const nullByteInFileName = new SchemaIssue.InvalidValue(Option.none(), {
+  message: 'Filename cannot contain NUL',
+})
+
 /** A bare filename (a relative, segment-less file) parsed into stem + extension. */
 export const analyzeFileName = flow(
-  analyzeFile('relative'),
+  (input: string) =>
+    input.includes(nullByte)
+      ? Result.fail(nullByteInFileName)
+      : input.includes(separator)
+        ? Result.fail(notABareFilename)
+        : analyzeFileRel(input),
   Result.flatMap((analysis) =>
     analysis.segments.length > 0
       ? Result.fail(notABareFilename)
@@ -200,13 +235,13 @@ export const analyzeFileName = flow(
 
 /**
  * Build a path string — the inverse of {@link analyze}. Curried: fix the path shape
- * (absoluteness, `back`, optional `fileName`), then apply the segments.
+ * (absoluteness, `ascent`, optional `fileName`), then apply the segments.
  *
  * `fileName` present → a file path; absent → a directory path (trailing `/`).
- * Relative paths get one leading `../` per `back` step, or `./` when `back` is 0.
+ * Relative paths get one leading `../` per `ascent` step, or `./` when `ascent` is 0.
  */
 export const format =
-  (parts: { isPathAbsolute: boolean; back: number; fileName?: string | null }) =>
+  (parts: { isPathAbsolute: boolean; ascent: number; fileName?: string | null }) =>
   (segments: readonly string[]): string => {
     const body = segments.join(separator)
     const file = parts.fileName ?? null
@@ -217,8 +252,8 @@ export const format =
       return body ? `${separator}${body}${separator}` : separator
     }
 
-    // One `../` per back step, else `./`.
-    const prefix = parts.back > 0 ? backPrefix.repeat(parts.back) : herePrefix
+    // One `../` per ascent step, else `./`.
+    const prefix = parts.ascent > 0 ? ascentPrefix.repeat(parts.ascent) : herePrefix
     if (file !== null) return body ? `${prefix}${body}${separator}${file}` : `${prefix}${file}`
     return body ? `${prefix}${body}${separator}` : prefix
   }

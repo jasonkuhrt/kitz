@@ -6,5 +6,8 @@ import { Schema as S } from 'effect'
  * Effect ships `Int` and the `isGreaterThanOrEqualTo` check but no ready-made
  * non-negative-integer schema, so `@kitz/effect` adds it under the `Schema` namespace.
  */
-export const NaturalInt = S.Int.pipe(S.check(S.isGreaterThanOrEqualTo(0)))
+const NaturalIntBase = S.Int.pipe(S.check(S.isGreaterThanOrEqualTo(0)))
+
+export const NaturalInt: S.brand<typeof NaturalIntBase, 'NaturalInt'> =
+  S.brand('NaturalInt')(NaturalIntBase)
 export type NaturalInt = typeof NaturalInt.Type

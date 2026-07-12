@@ -26,48 +26,32 @@
   },
   "files": [
     "build",
-    "src"
+    "src",
+    "!src/**/*.test.ts"
   ],
   "type": "module",
   "sideEffects": false,
-  "imports": {
-    "#string": "./src/string/_.ts"
-  },
   "exports": {
     ".": "./src/_.ts",
-    "./Path": "./src/path/_.ts",
-    "./Schema": "./src/schema/_.ts",
-    "./String": "./src/string/_.ts"
+    "./Path": "./src/path/__.ts",
+    "./Schema": "./src/schema/__.ts",
+    "./String": "./src/string/__.ts",
+    "./Tuple": "./src/tuple/__.ts",
+    "./Types": "./src/types/__.ts"
   },
   "publishConfig": {
-    "imports": {
-      "#string": "./build/string/_.js"
-    },
     "exports": {
-      ".": {
-        "types": "./build/_.d.ts",
-        "default": "./build/_.js"
-      },
-      "./Path": {
-        "types": "./build/path/_.d.ts",
-        "default": "./build/path/_.js"
-      },
-      "./Schema": {
-        "types": "./build/schema/_.d.ts",
-        "default": "./build/schema/_.js"
-      },
-      "./String": {
-        "types": "./build/string/_.d.ts",
-        "default": "./build/string/_.js"
-      }
+      ".": "./build/_.js",
+      "./Path": "./build/path/__.js",
+      "./Schema": "./build/schema/__.js",
+      "./String": "./build/string/__.js",
+      "./Tuple": "./build/tuple/__.js",
+      "./Types": "./build/types/__.js"
     },
     "access": "public"
   },
   "scripts": {
-    "prepack": "tsc -b --force tsconfig.production.json"
-  },
-  "dependencies": {
-    "@platformatic/vfs": "catalog:"
+    "prepack": "node --eval \"require('node:fs').rmSync('build', { recursive: true, force: true })\" && tsc -b --force tsconfig.production.json"
   },
   "devDependencies": {
     "@kitz/vitest": "workspace:*",
@@ -75,6 +59,6 @@
     "effect": "catalog:"
   },
   "peerDependencies": {
-    "effect": "^4.0.0-beta.85"
+    "effect": "^4.0.0-beta.97"
   }
 }

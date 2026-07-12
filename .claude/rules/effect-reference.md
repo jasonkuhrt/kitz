@@ -6,12 +6,12 @@ Effect v4 source is available at `~/repo-references/effect-v4/`. Always read the
 
 ## Critical: Effect v4 Beta API Differences
 
-This repo uses `effect@4.0.0-beta.85` (peer dependency of `@kitz/effect`). Many patterns from v3 docs are wrong at runtime.
+This repo uses `effect@4.0.0-beta.97` (peer dependency of `@kitz/effect`). Many patterns from v3 docs are wrong at runtime.
 
 ### Service Tags
 
-The service API has churned across v4 betas. As of `effect@4.0.0-beta.85`
-(verified 2026-06): `ServiceMap` is **removed**, and `Context.Service` is the
+The service API has churned across v4 betas. As of `effect@4.0.0-beta.97`
+(verified 2026-07-10: repo typecheck + tests green on beta.97): `ServiceMap` is **removed**, and `Context.Service` is the
 constructor. (Earlier betas used `ServiceMap.Service`; that no longer resolves.)
 
 ```typescript
@@ -22,7 +22,7 @@ class Foo extends ServiceMap.Service<Foo, Shape>()('Foo') {}
 // ❌ WRONG — Effect.Tag / Context.Tag are not the constructor
 class Foo extends Effect.Tag('Foo')<Foo, Shape>() {}
 
-// ✅ CORRECT (beta.85) — Context.Service, two-stage class form
+// ✅ CORRECT (beta.97) — Context.Service, two-stage class form
 import { Context } from 'effect'
 class Foo extends Context.Service<Foo, Shape>()('Foo') {}
 

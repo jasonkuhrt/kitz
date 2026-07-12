@@ -20,13 +20,13 @@ Read `packages/effect/src/_.ts` (the root namespace bundle) and
 ```
 # Single source file (__.ts elided):
 src/<module>/
-├── _.ts              # namespace: export * as <Name> from './<module>.js'
+├── _.ts              # root assembly: export * as <Name> from './<module>.js'
 ├── _.test.ts
 └── <module>.ts       # implementation
 
 # Multiple source files:
 src/<module>/
-├── _.ts              # namespace: export * as <Name> from './__.js'
+├── _.ts              # root assembly: export * as <Name> from './__.js'
 ├── _.test.ts
 ├── __.ts             # barrel: export * from './impl.js'
 └── *.ts
@@ -37,6 +37,9 @@ src/<module>/
 - Prefer `export * from` in barrels; use named re-exports only to rename or exclude.
 - **Elision**: when `__.ts` would re-export a single file, skip it and have `_.ts`
   export the implementation directly.
+- `_.ts` exists only to assemble the namespace exported by the package root.
+  Explicit package subpaths target the module itself: `__.ts`, or the implementation
+  file when `__.ts` is elided.
 
 ## Wire the namespace into the package
 
@@ -51,9 +54,9 @@ src/<module>/
 
    ```jsonc
    // exports
-   "./<Name>": "./src/<module>/_.ts",
+   "./<Name>": "./src/<module>/__.ts",
    // publishConfig.exports
-   "./<Name>": { "types": "./build/<module>/_.d.ts", "default": "./build/<module>/_.js" }
+   "./<Name>": "./build/<module>/__.js"
    ```
 
 3. **Verify**: `pnpm exec vp run check` and (if exported) `pnpm exec vp run check:package`.
@@ -62,6 +65,7 @@ src/<module>/
 
 - **No `#` imports.** That convention was removed; packages no longer declare an
   `imports` map. Within a package, use relative imports (`./other/_.js`).
-- **Cross-package**: import the namespace by package name and access members
-  through it — `import { FileSystem, Path } from '@kitz/effect'`, then
-  `Path.AbsFile`, `FileSystem.readString`.
+- **Package root**: import assembled namespaces by name —
+  `import { FileSystem, Path } from '@kitz/effect'`.
+- **Explicit subpath**: import the direct module namespace —
+  `import * as Path from '@kitz/effect/Path'`.

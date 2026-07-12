@@ -11,5 +11,11 @@
   "dependencies": {
     "effect": "catalog:",
     "vite-plus": "0.2.1"
+  },
+  "devDependencies": {
+    "@kitz/effect": "workspace:*"
+  },
+  "peerDependencies": {
+    "@kitz/effect": "workspace:*"
   }
 }
