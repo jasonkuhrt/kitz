@@ -9,8 +9,8 @@ domain terms:
   schema-backed parsing. Values carry instance getters (`.name`, `.stem`,
   `.extension`, `.dir` on files, `.parent` on dirs, `.ancestors`,
   `.asDir`/`.asFile`, `.atRoot`, `.fileUrl`, …); multi-path operations are flat
-  functions (`join`, `relativeTo`, `ensureAbs`, `isDescendantOf`, `isWithin`,
-  `order`, …); common ancestors are group statics (`Abs.commonAncestor`,
+  functions (`join`, `joinAll`, `relativeTo`, `ensureAbs`, `isDescendantOf`,
+  `isWithin`, `order`, …); common ancestors are group statics (`Abs.commonAncestor`,
   `Rel.commonAncestor`); file component writes are per-model statics
   (`AbsFile.setParts`, `RelFile.setParts`);
   `Path.make` infers the precise variant from a string literal, while each
@@ -31,6 +31,7 @@ const config = Path.make('/home/user/config.json') // typed AbsFile
 const cwd = Path.AbsDir.make('/home/user') // dir targets accept no trailing slash
 
 Path.join(cwd, Path.make('./notes/todo.md')) // AbsFile /home/user/notes/todo.md
+Path.joinAll(cwd, ['./notes/', './archive/', './todo.md']) // tuple left fold
 config.dir.toString() // '/home/user/' — a file's tree parent is its containing dir
 Path.AbsFile.setParts(config, { extension: Option.none() }) // /home/user/config
 pipe(config, Path.AbsFile.setParts({ stem: 'config.local' })) // /home/user/config.local.json
@@ -45,6 +46,7 @@ constructing the value first:
 ```ts
 Path.join(cwd, './.env')
 Path.join(cwd, Path.make('./.env')) // equivalent desugared form
+Path.joinAll(cwd, ['./generated/', './types/', './index.ts'])
 ```
 
 Plain runtime `string` values are intentionally rejected by these signatures;
@@ -134,6 +136,23 @@ typed `Path` values:
 | `dirname(p)`    | `file.dir` / `dir.parent` | files and dirs answer "up" with different words by design      |
 | `parse(p).dir`  | `file.dir`                |                                                                |
 
+### `resolve` dissolves into explicit operations
+
+`node:path.resolve` combines three different intents. Typed paths keep those
+intents separate:
+
+| `node:path` shape              | `Path` shape                          |
+| ------------------------------ | ------------------------------------- |
+| `resolve(base, relative)`      | `Path.join(base, relative)`           |
+| `resolve(base, relA, relB, …)` | `Path.joinAll(base, [relA, relB, …])` |
+| `resolve(base, maybeAbsolute)` | `Path.ensureAbs(maybeAbsolute, base)` |
+| `resolve()`                    | `yield* Path.Cwd`                     |
+
+Node's rightmost-absolute reset law is deliberately not reproduced. It hides
+control flow inside string data by silently discarding everything to the left
+of a later absolute argument. `join`/`joinAll` require relative parts, while
+`ensureAbs` makes the absolute-or-relative branch explicit.
+
 ## Install
 
 ```sh
@@ -211,7 +230,8 @@ C++17 `std::filesystem`, Node `path`, Java NIO, .NET `System.IO.Path`, Go
   `parse().dir`/`dirname`. Files and dirs deliberately answer "up" with
   different words (see the `.parent` ledger row).
 - `ancestors` — Rust `ancestors()` (Rust's includes self; ours does not).
-- `join`, `relativeTo` — universal; Python `relative_to()` verbatim.
+- `join` / `joinAll`, `relativeTo` — universal verbs; Python
+  `relative_to()` contributes the latter spelling verbatim.
 - `segments` — Node's docs prose ("path segments"), RFC 3986/WHATWG.
   POSIX/Rust say "component", Python "parts", Java "name elements"; no industry
   consensus exists, and Node's prose is the most relevant anchor for a
