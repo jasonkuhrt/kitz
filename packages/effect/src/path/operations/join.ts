@@ -1,8 +1,8 @@
 import { Function as Fn, Match, Schema as S } from 'effect'
 import type { FromTargetLiteral, LiteralGuard } from '../core/literal.js'
-import { Any } from '../models/Any.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
+import { Any } from '../models/Any.js'
 import { Ascent } from '../models/arbitrary.js'
 import { Dir } from '../models/Dir.js'
 import { Rel } from '../models/Rel.js'
@@ -10,6 +10,8 @@ import { RelDir } from '../models/RelDir.js'
 import { RelFile } from '../models/RelFile.js'
 
 type JoinLiteralGuard<$S extends string, $Target> = LiteralGuard<$S, $Target, 'Path.join'>
+
+type JoinAllLiteralGuard<$S extends string, $Target> = LiteralGuard<$S, $Target, 'Path.joinAll'>
 
 /**
  * Type-level {@link join}: the result keeps the base's absoluteness and the
@@ -30,17 +32,61 @@ export type Join<$Base extends Dir, $P extends Rel> = $Base extends AbsDir
     : never
 
 type JoinParts = readonly [...RelDir[], Rel]
+type JoinPartsInput = readonly [Rel | string, ...(Rel | string)[]]
 
-/** Type-level variadic {@link join}: left-folds a non-empty relative path tuple. */
-export type JoinMany<$Base extends Dir, $Parts extends JoinParts> = $Parts extends readonly [
+/** Type-level {@link joinAll}: left-folds a non-empty relative path tuple. */
+export type JoinAll<$Base extends Dir, $Parts extends JoinParts> = $Parts extends readonly [
   infer $Only extends Rel,
 ]
   ? Join<$Base, $Only>
   : $Parts extends readonly [infer $Head extends RelDir, ...infer $Tail extends JoinParts]
     ? Join<$Base, $Head> extends Dir
-      ? JoinMany<Join<$Base, $Head>, $Tail>
+      ? JoinAll<Join<$Base, $Head>, $Tail>
       : never
     : never
+
+type NormalizeDir<$Base extends Dir | string> = $Base extends string
+  ? FromTargetLiteral<$Base, Dir> extends infer $Normalized extends Dir
+    ? $Normalized
+    : never
+  : $Base
+
+type NormalizeRel<$Part extends Rel | string> = $Part extends string
+  ? FromTargetLiteral<$Part, Rel> extends infer $Normalized extends Rel
+    ? $Normalized
+    : never
+  : $Part
+
+type NormalizeJoinParts<$Parts extends JoinPartsInput> = $Parts extends readonly [
+  ...infer $Initial extends readonly (Rel | string)[],
+  infer $Last extends Rel | string,
+]
+  ? readonly [
+      ...{
+        readonly [$Index in keyof $Initial]: $Initial[$Index] extends string
+          ? FromTargetLiteral<$Initial[$Index], RelDir>
+          : $Initial[$Index]
+      },
+      NormalizeRel<$Last>,
+    ] extends infer $Normalized extends JoinParts
+    ? $Normalized
+    : never
+  : never
+
+type GuardJoinParts<$Parts extends JoinPartsInput> = {
+  readonly [$Index in keyof $Parts]: $Index extends keyof ($Parts extends readonly [
+    ...infer $Initial,
+    unknown,
+  ]
+    ? $Initial
+    : never)
+    ? $Parts[$Index] extends string
+      ? JoinAllLiteralGuard<$Parts[$Index], RelDir>
+      : $Parts[$Index] & RelDir
+    : $Parts[$Index] extends string
+      ? JoinAllLiteralGuard<$Parts[$Index], Rel>
+      : $Parts[$Index]
+}
 
 const joinBinary: {
   <$Base extends Dir, $P extends Rel>(dir: $Base, rel: $P): Join<$Base, $P>
@@ -75,106 +121,58 @@ const joinBinary: {
 })
 
 /**
- * Join one or more relative paths onto a base directory. Leading `..` steps in `rel`
- * consume trailing segments of `dir`; leftovers drop at an absolute root (the
- * POSIX `/..` clamp) or fold into the result's `ascent`. Keeps `dir`'s
- * absoluteness and `rel`'s file/dir nature. The variadic data-first form is a
- * left fold; all intermediate relative parts must be directories. The data-last
- * form stays binary only. Every path position accepts either a decoded value or
- * a statically known string literal; literals desugar through `Path.make`, while
- * dynamic strings are rejected.
- *
- * @example
- * ```ts
- * join(dir, rel)         // AbsFile /home/user/src/index.ts
- * join(dir, relDir, rel) // left fold
- * pipe(dir, join(rel))   // same, data-last
- * ```
+ * Join one relative path onto a base directory. Leading `..` steps consume
+ * trailing base segments; leftovers clamp at an absolute root or fold into a
+ * relative result's ascent. The result keeps the base's group and the part's
+ * file/dir nature. Dual: `join(base, part)` or `join(part)(base)`. Both
+ * positions accept decoded values or statically known literals.
  */
 export const join: {
-  <
-    const $Args extends
-      | readonly [Rel | string]
-      | readonly [Dir | string, Rel | string, ...(Rel | string)[]],
-  >(
-    ...args: {
-      readonly [$Index in keyof $Args]: $Args extends readonly [Rel | string]
-        ? $Args[$Index] extends string
-          ? JoinLiteralGuard<$Args[$Index], Rel>
-          : $Args[$Index]
-        : $Index extends '0'
-          ? $Args[$Index] extends string
-            ? JoinLiteralGuard<$Args[$Index], Dir>
-            : $Args[$Index]
-          : $Index extends keyof ($Args extends readonly [...infer $Prefix, unknown]
-                ? $Prefix
-                : never)
-            ? $Args[$Index] extends string
-              ? JoinLiteralGuard<$Args[$Index], RelDir>
-              : $Args[$Index] & RelDir
-            : $Args[$Index] extends string
-              ? JoinLiteralGuard<$Args[$Index], Rel>
-              : $Args[$Index]
-    }
-  ): $Args extends readonly [infer $Part extends Rel | string]
-    ? <const $Base extends Dir | string>(
-        base: $Base extends string ? JoinLiteralGuard<$Base, Dir> : $Base,
-      ) => Join<
-        $Base extends string
-          ? FromTargetLiteral<$Base, Dir> extends infer $NormalizedBase extends Dir
-            ? $NormalizedBase
-            : never
-          : $Base,
-        $Part extends string
-          ? FromTargetLiteral<$Part, Rel> extends infer $NormalizedPart extends Rel
-            ? $NormalizedPart
-            : never
-          : $Part
-      >
-    : $Args extends readonly [
-          infer $Base extends Dir | string,
-          ...infer $Parts extends readonly [Rel | string, ...(Rel | string)[]],
-        ]
-      ? JoinMany<
-          $Base extends string
-            ? FromTargetLiteral<$Base, Dir> extends infer $NormalizedBase extends Dir
-              ? $NormalizedBase
-              : never
-            : $Base,
-          $Parts extends readonly [
-            ...infer $Initial extends readonly (Rel | string)[],
-            infer $Last extends Rel | string,
-          ]
-            ? readonly [
-                ...{
-                  readonly [$Index in keyof $Initial]: $Initial[$Index] extends string
-                    ? FromTargetLiteral<$Initial[$Index], RelDir>
-                    : $Initial[$Index]
-                },
-                $Last extends string ? FromTargetLiteral<$Last, Rel> : $Last,
-              ] extends infer $NormalizedParts extends JoinParts
-              ? $NormalizedParts
-              : never
-            : never
-        >
-      : never
-} = Fn.dual(
-  (args) => args.length >= 2,
-  (dir: Dir | string, ...rels: readonly (Rel | string)[]): Any => {
-    const dirValue: Dir = typeof dir === 'string' ? (S.decodeSync(Dir)(dir) as any) : dir
-    let result: Any = dirValue
+  <const $Base extends Dir | string, const $Part extends Rel | string>(
+    base: $Base extends string ? JoinLiteralGuard<$Base, Dir> : $Base,
+    part: $Part extends string ? JoinLiteralGuard<$Part, Rel> : $Part,
+  ): Join<NormalizeDir<$Base>, NormalizeRel<$Part>>
+  <const $Part extends Rel | string>(
+    part: $Part extends string ? JoinLiteralGuard<$Part, Rel> : $Part,
+  ): <const $Base extends Dir | string>(
+    base: $Base extends string ? JoinLiteralGuard<$Base, Dir> : $Base,
+  ) => Join<NormalizeDir<$Base>, NormalizeRel<$Part>>
+} = Fn.dual(2, (base: Dir | string, part: Rel | string): Any => {
+  const baseValue: Dir = typeof base === 'string' ? (S.decodeSync(Dir)(base) as any) : base
+  const partValue: Rel = typeof part === 'string' ? (S.decodeSync(Rel)(part) as any) : part
+  return joinBinary(baseValue, partValue)
+})
 
-    for (const [index, rel] of rels.entries()) {
-      const isFinal = index === rels.length - 1
-      const relValue: Rel =
-        typeof rel === 'string'
-          ? isFinal
-            ? (S.decodeSync(Rel)(rel) as any)
-            : (S.decodeSync(RelDir)(rel) as any)
-          : rel
-      result = joinBinary(result as any, relValue)
-    }
+/**
+ * Join a non-empty tuple of relative parts onto a base directory as a left
+ * fold. Every part before the final one must be a directory. Dual:
+ * `joinAll(base, parts)` or `joinAll(parts)(base)`. The base and tuple members
+ * accept decoded values or statically known literals.
+ */
+export const joinAll: {
+  <const $Base extends Dir | string, const $Parts extends JoinPartsInput>(
+    base: $Base extends string ? JoinAllLiteralGuard<$Base, Dir> : $Base,
+    parts: GuardJoinParts<$Parts>,
+  ): JoinAll<NormalizeDir<$Base>, NormalizeJoinParts<$Parts>>
+  <const $Parts extends JoinPartsInput>(
+    parts: GuardJoinParts<$Parts>,
+  ): <const $Base extends Dir | string>(
+    base: $Base extends string ? JoinAllLiteralGuard<$Base, Dir> : $Base,
+  ) => JoinAll<NormalizeDir<$Base>, NormalizeJoinParts<$Parts>>
+} = Fn.dual(2, (base: Dir | string, parts: JoinPartsInput): Any => {
+  const baseValue: Dir = typeof base === 'string' ? (S.decodeSync(Dir)(base) as any) : base
+  let result: Any = baseValue
 
-    return result
-  },
-)
+  for (const [index, part] of parts.entries()) {
+    const isFinal = index === parts.length - 1
+    const partValue: Rel =
+      typeof part === 'string'
+        ? isFinal
+          ? (S.decodeSync(Rel)(part) as any)
+          : (S.decodeSync(RelDir)(part) as any)
+        : part
+    result = joinBinary(result as any, partValue)
+  }
+
+  return result
+}) as any

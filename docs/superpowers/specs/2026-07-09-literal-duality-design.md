@@ -72,7 +72,7 @@ both dual forms:
 
 | op | positions accepting literals |
 | --- | --- |
-| `join(dir, ...rels)` | all — dir and every rel |
+| `join(dir, rel)` / `joinAll(dir, rels)` | all — dir and every rel |
 | `relativeTo(path, base)` | both |
 | `ensureAbs(rel, base)` | both |
 | `isWithin` / `isDescendantOf` / `isAncestorOf` | both |
@@ -114,16 +114,15 @@ It will appear in docs, ledger, and conformance-test block titles.
 
 - [ ] doctrine confirmed / steer:
 
-## Layer 3 — the `join` spike (confirm criteria, then build)
+## Layer 3 — the `join` / `joinAll` spike (confirm criteria, then build)
 
-`join` is the maximal case: variadic × dual × mixed positions. Acceptance
+`joinAll` is the maximal case: tuple × dual × mixed positions. Acceptance
 criteria before any other op is touched:
 
-1. `join(cwd, 'src', 'index.ts')`, `join('/home/u', lit, value, lit)` —
-   mixed static/dynamic at every position, correct variant returns.
-2. Data-last form accepts literals: `join('.env')(cwd)` (or documented,
-   confirmed impossibility with rationale — this box is where dual×const
-   may bite).
+1. `joinAll(cwd, ['src', 'index.ts'])`, `joinAll('/home/u', [lit, value, lit])`
+   — mixed literal/value tuple positions, correct variant returns.
+2. Data-last forms accept literals: `join('.env')(cwd)` and
+   `joinAll(['src', 'index.ts'])(cwd)`.
 3. A wrong literal (`join(cwd, '/abs')`) errors AT the argument with the
    readable `StaticError`, not a smeared overload dump.
 4. tsc check-time delta measured on a 600-call synthetic file (heartbeat
