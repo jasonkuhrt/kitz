@@ -1,7 +1,7 @@
 {
   "name": "@kitz/effect",
   "version": "0.1.0",
-  "description": "Typed path and filesystem operations plus utilities for the Effect ecosystem",
+  "description": "Typed extensions and missing primitives for the Effect ecosystem",
   "keywords": [
     "effect",
     "effect-ts",
