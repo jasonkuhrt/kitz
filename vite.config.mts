@@ -126,7 +126,15 @@ export default defineConfig({
 
   // ── staged (used by the pre-commit hook via `vp staged`) ──────────────────
   staged: {
-    '**/*.{ts,mts,cts,tsx}': stagedTask('vp format', 'vp lint'),
-    '**/*.{js,mjs,cjs,json,jsonc,md,yaml,yml}': stagedTask('vp format'),
+    // --no-error-on-unmatched-pattern: a staged set whose files are all
+    // tool-ignored (e.g. pnpm-lock.yaml, a .claude-only docs commit) must
+    // no-op, not fail. oxfmt/oxlint own the ignore list — we don't mirror it.
+    '**/*.{ts,mts,cts,tsx}': stagedTask(
+      'vp format --no-error-on-unmatched-pattern',
+      'vp lint --no-error-on-unmatched-pattern',
+    ),
+    '**/*.{js,mjs,cjs,json,jsonc,md,yaml,yml}': stagedTask(
+      'vp format --no-error-on-unmatched-pattern',
+    ),
   },
 })
