@@ -1,10 +1,16 @@
 # @kitz/effect
 
-A typed path ADT and Effect-native utilities for the [Effect](https://effect.website) ecosystem.
+A typed path and filesystem API plus Effect-native utilities for the [Effect](https://effect.website) ecosystem.
 
 `@kitz/effect` layers kitz enhancements on top of Effect, exposed under Effect's own
 domain terms:
 
+- **`FileSystem`** — typed-path operations over Effect's exact `FileSystem`
+  service. It currently exposes the first complete vertical slice, `exists`, as
+  both a free operation and a yielded bound facade.
+- **`MemoryFileSystem`** — an isolated in-memory provider of that same Effect
+  service. Its inode graph, configured cwd, and raw POSIX traversal back the
+  `exists` slice without touching the host filesystem.
 - **`Path`** — a typed path ADT (`AbsFile` | `AbsDir` | `RelFile` | `RelDir`) with
   schema-backed parsing. Values carry instance getters (`.name`, `.stem`,
   `.extension`, `.dir` on files, `.parent` on dirs, `.ancestors`,
@@ -54,6 +60,46 @@ decode them through the appropriate Schema before calling the operation. This
 separates compile-time literal convenience from runtime validation without
 creating a second parser. The complete laws and type-level doctrine are in the
 [literal-duality design spec](https://github.com/jasonkuhrt/kitz/blob/main/docs/superpowers/specs/2026-07-09-literal-duality-design.md).
+
+## Filesystem vertical slice
+
+Kitz keeps Effect's service identity rather than introducing an adapter tag.
+The free and yielded APIs therefore use whichever provider the application
+already supplies:
+
+```ts
+import { NodeFileSystem } from '@effect/platform-node'
+import { FileSystem, MemoryFileSystem } from '@kitz/effect'
+import { Effect } from 'effect'
+
+const program = Effect.gen(function* () {
+  const free = yield* FileSystem.exists('./config.json')
+  const fileSystem = yield* FileSystem.service
+  const bound = yield* fileSystem.exists('./config.json')
+  return free && bound
+})
+
+const inMemory = program.pipe(
+  Effect.provide(
+    MemoryFileSystem.layer({
+      cwd: '/workspace/',
+      entries: [
+        MemoryFileSystem.directory('/workspace/'),
+        MemoryFileSystem.file('/workspace/config.json', '{}'),
+      ],
+    }),
+  ),
+)
+
+const onNode = program.pipe(Effect.provide(NodeFileSystem.layer))
+```
+
+`NodeFileSystem.layer` comes directly from Effect's platform package; Kitz does
+not bundle or re-export a Node provider. Both layers provide the runtime key
+`effect/platform/FileSystem`, so direct Effect consumers and Kitz operations
+observe the same instance. In this vertical slice, Memory implements `access`
+and Effect derives `exists` from it; every other upstream primitive fails
+explicitly as unsupported until its horizontal slice is implemented.
 
 ## Paths as keys
 
@@ -163,18 +209,26 @@ pnpm add @kitz/effect effect
 package share a single Effect instance (Effect relies on module-level singletons;
 two copies break Context/Schema identity).
 
+Node applications that choose Effect's official provider install it separately:
+
+```sh
+pnpm add @effect/platform-node
+```
+
 > **Pre-release:** this package targets Effect v4 (`effect@^4.0.0-beta.97`), which is
 > still in beta. Pin accordingly.
 
 ## Subpath exports
 
 ```ts
-import { Path, Schema, String, Tuple, Types } from '@kitz/effect'
+import { FileSystem, MemoryFileSystem, Path, Schema, String, Tuple, Types } from '@kitz/effect'
 ```
 
 Explicit subpaths expose each module directly:
 
 ```ts
+import * as FileSystem from '@kitz/effect/FileSystem'
+import * as MemoryFileSystem from '@kitz/effect/MemoryFileSystem'
 import * as Path from '@kitz/effect/Path'
 import * as Schema from '@kitz/effect/Schema'
 import * as String from '@kitz/effect/String'

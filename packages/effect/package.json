@@ -1,10 +1,11 @@
 {
   "name": "@kitz/effect",
   "version": "0.1.0",
-  "description": "A typed path ADT plus schema and string utilities for the Effect ecosystem",
+  "description": "Typed path and filesystem operations plus utilities for the Effect ecosystem",
   "keywords": [
     "effect",
     "effect-ts",
+    "filesystem",
     "path",
     "schema",
     "string",
@@ -33,6 +34,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/_.ts",
+    "./FileSystem": "./src/file-system/__.ts",
     "./Path": "./src/path/__.ts",
     "./Schema": "./src/schema/__.ts",
     "./String": "./src/string/__.ts",
@@ -42,6 +44,7 @@
   "publishConfig": {
     "exports": {
       ".": "./build/_.js",
+      "./FileSystem": "./build/file-system/__.js",
       "./Path": "./build/path/__.js",
       "./Schema": "./build/schema/__.js",
       "./String": "./build/string/__.js",
@@ -54,6 +57,7 @@
     "prepack": "node --eval \"require('node:fs').rmSync('build', { recursive: true, force: true })\" && tsc -b --force tsconfig.production.json"
   },
   "devDependencies": {
+    "@effect/platform-node": "catalog:",
     "@kitz/vitest": "workspace:*",
     "@vitest/coverage-v8": "4.1.9",
     "effect": "catalog:"
