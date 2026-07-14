@@ -1,4 +1,5 @@
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
+import * as FileSystem from '@kitz/effect/FileSystem'
 import * as Path from '@kitz/effect/Path'
 import * as Schema from '@kitz/effect/Schema'
 import * as String from '@kitz/effect/String'
@@ -6,6 +7,12 @@ import * as Tuple from '@kitz/effect/Tuple'
 import * as Types from '@kitz/effect/Types'
 
 describe('package subpaths', () => {
+  it('exposes FileSystem directly', () => {
+    expectTypeOf(FileSystem.layerMemory).toBeFunction()
+    expect(FileSystem.FileSystem).toBeDefined()
+    expect(FileSystem.service).toBeDefined()
+  })
+
   it('exposes Path directly', () => {
     expect(Path.make('/tmp/')).toEncodeTo('/tmp/')
   })

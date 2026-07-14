@@ -6,7 +6,6 @@ This project is designed for Claude Code-assisted development. Common workflows 
 
 | Skill                      | Purpose                                          |
 | -------------------------- | ------------------------------------------------ |
-| `creating-packages`        | Create new packages with full scaffolding        |
 | `creating-modules`         | Add modules to existing packages                 |
 | `creating-rules`           | Add conventions with correct scoping             |
 | `committing-changes`       | Conventional commits and CI validation           |

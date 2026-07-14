@@ -59,7 +59,7 @@
   "devDependencies": {
     "@effect/platform-node": "catalog:",
     "@kitz/vitest": "workspace:*",
-    "@vitest/coverage-v8": "4.1.9",
+    "@vitest/coverage-v8": "4.1.10",
     "effect": "catalog:"
   },
   "peerDependencies": {

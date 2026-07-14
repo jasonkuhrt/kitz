@@ -763,17 +763,16 @@ describe('FromStruct', () => {
 
 describe('Cwd', () => {
   it('yields the provided cwd from a test layer', async () => {
-    const actual = await Effect.gen(function* () {
-      return yield* Path.Cwd
-    }).pipe(Effect.provide(Layer.succeed(Path.Cwd)(someAbsDir)), Effect.runPromise)
+    const actual = await Path.Cwd.pipe(
+      Effect.provide(Layer.succeed(Path.Cwd)(someAbsDir)),
+      Effect.runPromise,
+    )
 
     expect(actual).toEqual(someAbsDir)
   })
 
   it('process layer snapshots process.cwd as AbsDir', async () => {
-    const actual = await Effect.gen(function* () {
-      return yield* Path.Cwd
-    }).pipe(Effect.provide(Path.Cwd.layer), Effect.runPromise)
+    const actual = await Path.Cwd.pipe(Effect.provide(Path.Cwd.layer), Effect.runPromise)
 
     expect(actual).toBeAbs()
     expect(actual).toBeDir()

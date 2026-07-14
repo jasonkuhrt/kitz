@@ -1,7 +1,8 @@
 {
   "extends": [
     "../../tsconfig.template.stage.production.json",
-    "../../tsconfig.template.topology.imported.json"
+    "../../tsconfig.template.topology.imported.json",
+    "../../tsconfig.template.effect.json"
   ],
   "compilerOptions": {
     "outDir": "build",

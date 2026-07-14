@@ -9,7 +9,7 @@ import { defineConfig } from 'vite-plus'
 // Staged tasks must skip them: `vp format`/`vp lint` error when handed a file
 // set that is entirely ignored, which would otherwise break commits that only
 // touch e.g. `.claude/settings.json`.
-const STAGED_IGNORED = /(^|\/)(\.claude|docs|build|coverage|node_modules)\//
+const STAGED_IGNORED = /(^|\/)(\.claude|docs|build|coverage|node_modules|triage)\//
 const stagedTask =
   (...commands: string[]) =>
   (files: readonly string[]): string[] => {
@@ -20,7 +20,7 @@ const stagedTask =
   }
 
 export default defineConfig({
-  // ── create (vp create <name> — kitz scaffolding generators) ──────────────
+  // ── create (vp create package — dependency-free scaffolder) ──────────────
   create: {
     templates: [
       {
@@ -74,6 +74,7 @@ export default defineConfig({
       '**/node_modules/**',
       '**/*.d.ts',
       '**/__examples/**',
+      '**/triage/**',
     ],
   },
 
@@ -89,6 +90,7 @@ export default defineConfig({
       '**/node_modules/**',
       '.claude/**',
       'docs/**',
+      '**/triage/**',
       'pnpm-lock.yaml',
     ],
   },

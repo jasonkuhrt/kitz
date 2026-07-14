@@ -1,0 +1,199 @@
+{
+  "compilerOptions": {
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "diagnostics": true,
+        "includeSuggestionsInTsc": true,
+        "ignoreEffectSuggestionsInTscExitCode": false,
+        "ignoreEffectWarningsInTscExitCode": false,
+        "ignoreEffectErrorsInTscExitCode": false,
+        "topLevelNamedReexports": "follow",
+        "extendedKeyDetection": true,
+        "pipeableMinArgCount": 1,
+        "effectFn": ["span", "untraced", "no-span", "inferred-span", "suggested-span"],
+        "keyPatterns": [
+          {
+            "target": "service",
+            "pattern": "default",
+            "skipLeadingPath": ["src/"]
+          },
+          {
+            "target": "error",
+            "pattern": "default",
+            "skipLeadingPath": ["src/"]
+          },
+          {
+            "target": "custom",
+            "pattern": "default",
+            "skipLeadingPath": ["src/"]
+          }
+        ],
+        "diagnosticSeverity": {
+          // Mechanical diagnostic candidates: local type facts or algebraic
+          // rewrites that do not require domain, framework-boundary, or runtime
+          // architecture choices. Initial production probe: 59 diagnostics;
+          // fixed in this rollout, currently active at 0 diagnostics.
+          "catchAllToMapError": "error",
+          "catchToOrElseSucceed": "error",
+          "catchUnfailableEffect": "error",
+          "classSelfMismatch": "error",
+          "effectFnImplicitAny": "error",
+          "effectGenUsesAdapter": "error",
+          "effectInVoidSuccess": "error",
+          "effectMapFlatten": "error",
+          "effectMapVoid": "error",
+          "effectSucceedWithVoid": "error",
+          "floatingEffect": "error",
+          "lazyPromiseInEffectSync": "error",
+          "missingEffectContext": "error",
+          "missingLayerContext": "error",
+          "missingReturnYieldStar": "error",
+          "missingStarInYieldEffectGen": "error",
+          "nonObjectEffectServiceType": "error",
+          "unnecessaryEffectGen": "error",
+          "unnecessaryFailYieldableError": "error",
+          "unnecessaryPipe": "error",
+          "unnecessaryPipeChain": "error",
+
+          // Mechanical but churny/style candidates: still local and mostly
+          // semantics-preserving, but largely readability/taste or higher-volume
+          // cleanup. Current production probe: 790 diagnostics. Parked today:
+          // uncomment these `error` entries and remove/comment their matching
+          // `off` entries below to promote the group.
+          // "redundantSchemaTagIdentifier": "error",
+          // "schemaStructWithTag": "error",
+          // "schemaUnionOfLiterals": "error",
+          // "unnecessaryArrowBlock": "error",
+          // "unnecessaryTypeofType": "error",
+          // Same parked group: default suggestions stay off until promoted.
+          "redundantSchemaTagIdentifier": "off",
+          "schemaStructWithTag": "off",
+          "unnecessaryTypeofType": "off",
+          // Same parked group: default-off today, explicit for future defaults.
+          "schemaUnionOfLiterals": "off",
+          "unnecessaryArrowBlock": "off",
+
+          // Review-required discovery rules: useful findings, but fixes may
+          // change public/runtime API shape, service identity, error semantics,
+          // or architectural boundaries. Parked today: uncomment these `error`
+          // entries and remove/comment their matching `off` entries below to
+          // promote the group. Current production probe: 23,281 diagnostics.
+          // "anyUnknownInErrorContext": "error",
+          // "asyncFunction": "error",
+          // "cryptoRandomUUID": "error",
+          // "cryptoRandomUUIDInEffect": "error",
+          // "deterministicKeys": "error",
+          // "duplicatePackage": "error",
+          // "effectDoNotation": "error",
+          // "effectFnIife": "error",
+          // "effectFnOpportunity": "error",
+          // "effectInFailure": "error",
+          // "extendsNativeError": "error",
+          // "genericEffectServices": "error",
+          // "globalConsole": "error",
+          // "globalConsoleInEffect": "error",
+          // "globalDate": "error",
+          // "globalDateInEffect": "error",
+          // "globalErrorInEffectCatch": "error",
+          // "globalErrorInEffectFailure": "error",
+          // "globalFetch": "error",
+          // "globalFetchInEffect": "error",
+          // "globalRandom": "error",
+          // "globalRandomInEffect": "error",
+          // "globalTimers": "error",
+          // "globalTimersInEffect": "error",
+          // "instanceOfSchema": "error",
+          // "layerMergeAllWithDependencies": "error",
+          // "lazyEffect": "error",
+          // "leakingRequirements": "error",
+          // "missedPipeableOpportunity": "error",
+          // "missingEffectError": "error",
+          // "missingEffectServiceDependency": "error",
+          // "multipleCatchTag": "error",
+          // "multipleEffectProvide": "error",
+          // "nestedEffectGenYield": "error",
+          // "newPromise": "error",
+          // "newSchemaClass": "error",
+          // "nodeBuiltinImport": "error",
+          // "outdatedApi": "error",
+          // "overriddenSchemaConstructor": "error",
+          // "preferSchemaOverJson": "error",
+          // "processEnv": "error",
+          // "processEnvInEffect": "error",
+          // "redundantMapError": "error",
+          // "redundantOrDie": "error",
+          // "returnEffectInGen": "error",
+          // "runEffectInsideEffect": "error",
+          // "schemaNumber": "error",
+          // "schemaSyncInEffect": "error",
+          // "scopeInLayerEffect": "error",
+          // "serviceNotAsClass": "error",
+          // "strictBooleanExpressions": "error",
+          // "strictEffectProvide": "error",
+          // "tryCatchInEffectGen": "error",
+          // "unknownInEffectCatch": "error",
+          // "unsafeEffectTypeAssertion": "error",
+          // Same parked group: default errors/warnings/suggestions stay off
+          // until this review-required group is audited and promoted.
+          "duplicatePackage": "off",
+          "effectFnIife": "off",
+          "effectFnOpportunity": "off",
+          "effectInFailure": "off",
+          "genericEffectServices": "off",
+          "globalErrorInEffectCatch": "off",
+          "globalErrorInEffectFailure": "off",
+          "layerMergeAllWithDependencies": "off",
+          "lazyEffect": "off",
+          "leakingRequirements": "off",
+          "missingEffectError": "off",
+          "multipleCatchTag": "off",
+          "multipleEffectProvide": "off",
+          "outdatedApi": "off",
+          "overriddenSchemaConstructor": "off",
+          "redundantMapError": "off",
+          "redundantOrDie": "off",
+          "returnEffectInGen": "off",
+          "runEffectInsideEffect": "off",
+          "schemaNumber": "off",
+          "schemaSyncInEffect": "off",
+          "scopeInLayerEffect": "off",
+          "tryCatchInEffectGen": "off",
+          "unknownInEffectCatch": "off",
+          // Same parked group: default-off today, explicit for future defaults.
+          "anyUnknownInErrorContext": "off",
+          "asyncFunction": "off",
+          "cryptoRandomUUID": "off",
+          "cryptoRandomUUIDInEffect": "off",
+          "deterministicKeys": "off",
+          "effectDoNotation": "off",
+          "extendsNativeError": "off",
+          "globalConsole": "off",
+          "globalConsoleInEffect": "off",
+          "globalDate": "off",
+          "globalDateInEffect": "off",
+          "globalFetch": "off",
+          "globalFetchInEffect": "off",
+          "globalRandom": "off",
+          "globalRandomInEffect": "off",
+          "globalTimers": "off",
+          "globalTimersInEffect": "off",
+          "instanceOfSchema": "off",
+          "missedPipeableOpportunity": "off",
+          "missingEffectServiceDependency": "off",
+          "nestedEffectGenYield": "off",
+          "newPromise": "off",
+          "newSchemaClass": "off",
+          "nodeBuiltinImport": "off",
+          "preferSchemaOverJson": "off",
+          "processEnv": "off",
+          "processEnvInEffect": "off",
+          "serviceNotAsClass": "off",
+          "strictBooleanExpressions": "off",
+          "strictEffectProvide": "off",
+          "unsafeEffectTypeAssertion": "off"
+        }
+      }
+    ]
+  }
+}
