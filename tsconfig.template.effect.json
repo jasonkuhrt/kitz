@@ -10,7 +10,6 @@
         "ignoreEffectErrorsInTscExitCode": false,
         "topLevelNamedReexports": "follow",
         "extendedKeyDetection": true,
-        "pipeableMinArgCount": 1,
         "effectFn": ["span", "untraced", "no-span", "inferred-span", "suggested-span"],
         "keyPatterns": [
           {
@@ -66,6 +65,15 @@
           "unknownInEffectCatch": "error",
           "unnecessaryArrowBlock": "error",
 
+          // Deliberately disabled in this codebase (not merely parked):
+          // `missedPipeableOpportunity` only rewrites nested calls to the
+          // `.pipe()` method form, but this codebase's house style is the
+          // standalone `pipe(x, …)` function form. Enabling it would push code
+          // the opposite way, so it stays off until the diagnostic can target
+          // data-first style. Tracked upstream:
+          // https://github.com/Effect-TS/language-service/issues/764
+          "missedPipeableOpportunity": "off",
+
           // Mechanical but churny/style candidates: still local and mostly
           // semantics-preserving, but largely readability/taste or higher-volume
           // cleanup. Current production probe: 790 diagnostics. Parked today:
@@ -114,7 +122,6 @@
           // "layerMergeAllWithDependencies": "error",
           // "lazyEffect": "error",
           // "leakingRequirements": "error",
-          // "missedPipeableOpportunity": "error",
           // "missingEffectError": "error",
           // "missingEffectServiceDependency": "error",
           // "multipleCatchTag": "error",
@@ -181,7 +188,6 @@
           "globalTimers": "off",
           "globalTimersInEffect": "off",
           "instanceOfSchema": "off",
-          "missedPipeableOpportunity": "off",
           "missingEffectServiceDependency": "off",
           "nestedEffectGenYield": "off",
           "newPromise": "off",
