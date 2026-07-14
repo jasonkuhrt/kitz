@@ -1,23 +1,23 @@
-import * as Effect from 'effect/Effect'
-import { makeExists, type Exists } from './operations/exists.js'
-import { FileSystem } from './service-tag.js'
+import * as Context from 'effect/Context'
+import type { Exists } from './operations/exists.js'
 
-/** The typed FileSystem facade: Path-typed operations bound to one provided backend. */
+/**
+ * The typed FileSystem surface: Path-native operations. This is the shape of
+ * Kitz's own {@link FileSystem} service — the thing you get from
+ * `yield* FileSystem.FileSystem`.
+ */
 export interface Api {
   readonly exists: Exists
 }
 
 /**
- * Yield the typed, bound FileSystem facade.
+ * Kitz's own FileSystem service — a typed, Path-native capability with **no**
+ * relationship to Effect's `FileSystem`: it is not a re-export, alias, or view
+ * of that tag, and this module imports nothing from `effect/FileSystem`.
  *
- * `yield* FileSystem.service` mirrors native `yield* FileSystem.FileSystem`, but
- * its methods take Path values and checked literals instead of raw strings. This
- * maps Effect's service value to Kitz's typed method surface; it does not
- * introduce another service tag.
+ * Layers provide this tag directly (`FileSystem.layerMemory`,
+ * `FileSystem.layerNode`), and `yield* FileSystem.FileSystem` yields the typed
+ * {@link Api} — one yield point, method-only, mirroring native
+ * `yield* FileSystem.FileSystem` but with Path-typed operations.
  */
-export const service: Effect.Effect<Api, never, FileSystem> = Effect.map(
-  FileSystem,
-  (fileSystem) => ({
-    exists: makeExists(fileSystem),
-  }),
-)
+export class FileSystem extends Context.Service<FileSystem, Api>()('@kitz/effect/FileSystem') {}

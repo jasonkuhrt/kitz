@@ -365,37 +365,6 @@ validated component types. The current beta.97 behavior—where temp-file
 `prefix` names a hidden parent directory rather than the file—is replaced in
 the upstream contract so Node and Memory share the intuitive operation.
 
-## Effect contract work required for the final shape
-
-The current beta.97 service cannot express the complete design. Because the
-service identity must remain singular, these capabilities belong upstream on
-the existing Effect `FileSystem` contract:
-
-| Required upstream primitive/change | Why Kitz cannot derive it soundly |
-|---|---|
-| `lstat` | `stat` follows links, so link identity and dangling links are lost |
-| classified directory entries | `readDirectory` returns strings; `stat` cannot recover no-follow kind and introduces races/N calls |
-| incremental `openDirectory` | an eager string array cannot recover streaming/resource semantics |
-| classified, anchored streaming glob | the eager string array cannot recover backpressure, result anchoring, or entry kind |
-| `statfs` | no existing primitive exposes filesystem capacity/type metadata |
-| corrected `File.seek` result | the interface says `void`, while the Node implementation and official tests use the returned cursor position |
-| richer handle primitives | data sync, positioned/vectored I/O, and handle metadata mutation cannot be reconstructed from the current handle |
-| watch anchoring, options, and overflow semantics | the current stream hardcodes behavior, forwards ambiguous callback paths, and exposes no queue-loss contract |
-| full access/copy semantics | execute access, dereference/filter/exclusive copy policy need backend support |
-| bigint metadata | the Node adapter reads number-based stats before converting to bigint, so large inode/size/device values may already be imprecise |
-| temp entry naming | beta.97 applies file `prefix` to a temporary parent directory, not the created file basename |
-
-The upstream work keeps the runtime key unchanged. Kitz does not module-augment
-the interface and does not call `node:fs` behind Effect's back.
-
-Kitz has no runtime or peer dependency on `@effect/platform-node` and does not
-re-export it. The development workspace installs it only to run the shared
-backend laws. Application runtime wiring imports `NodeFileSystem.layer` from
-Effect's platform package directly. Effect, platform-node, and
-platform-node-shared move in lockstep so the official layer implements the
-expanded interface. Kitz remains the typed API and memory provider, not the
-owner of Node integration.
-
 ## In-memory layer
 
 `MemoryFileSystem.layer` is a real implementation of the same service, not a

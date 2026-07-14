@@ -1,5 +1,4 @@
 import * as Effect from 'effect/Effect'
-import type * as PlatformFileSystem from 'effect/FileSystem'
 import * as PlatformError from 'effect/PlatformError'
 import * as Schema from 'effect/Schema'
 import type { LiteralGuard } from '../../path/core/literal.js'
@@ -19,6 +18,9 @@ export type Exists = {
   ): Effect.Effect<boolean, PlatformError.PlatformError>
 }
 
+/** A backend's existence check over a canonical POSIX path string. */
+export type ExistsCheck = (path: string) => Effect.Effect<boolean, PlatformError.PlatformError>
+
 const decodePath = (
   path: Path.Any | string,
 ): Effect.Effect<Path.Any, PlatformError.PlatformError> =>
@@ -35,12 +37,11 @@ const decodePath = (
       )
     : Effect.succeed(path)
 
-const existsWith = (
-  fileSystem: PlatformFileSystem.FileSystem,
-  path: Path.Any | string,
-): Effect.Effect<boolean, PlatformError.PlatformError> =>
-  Effect.flatMap(decodePath(path), (decoded) => fileSystem.exists(entrySubject(decoded)))
-
-/** @internal Bind the typed `exists` method to an already-yielded Effect filesystem. */
-export const makeExists = (fileSystem: PlatformFileSystem.FileSystem): Exists =>
-  ((path: Path.Any | string) => existsWith(fileSystem, path)) as Exists
+/**
+ * Build the typed `exists` method from a backend existence check. The Path
+ * decoding and canonical-string encoding are shared; each backend supplies only
+ * the check over the encoded path string.
+ */
+export const makeExists = (check: ExistsCheck): Exists =>
+  ((path: Path.Any | string) =>
+    Effect.flatMap(decodePath(path), (decoded) => check(entrySubject(decoded)))) as Exists

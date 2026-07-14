@@ -1,5 +1,5 @@
-export { FileSystem } from './service-tag.js'
-export { service } from './service.js'
+export { FileSystem } from './service.js'
 export type { Api } from './service.js'
 export type { Exists } from './operations/exists.js'
 export { layerMemory } from './memory.js'
+export { layerNode } from './node.js'

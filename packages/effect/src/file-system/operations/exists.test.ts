@@ -1,7 +1,5 @@
 import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
-import * as NodeFileSystem from '@effect/platform-node/NodeFileSystem'
 import * as Effect from 'effect/Effect'
-import * as PlatformFileSystem from 'effect/FileSystem'
 import * as Layer from 'effect/Layer'
 import * as PlatformError from 'effect/PlatformError'
 import * as Schema from 'effect/Schema'
@@ -10,21 +8,14 @@ import { Path } from '../../path/_.js'
 import { Types } from '../../types/_.js'
 
 describe('FileSystem.exists architecture', () => {
-  it('re-exports Effect exact service and exposes a typed method facade', () => {
-    // `FileSystem.FileSystem` is Effect's own tag, re-exported unchanged, so
-    // official platform layers and the memory layer satisfy the same requirement.
-    expect(FileSystem.FileSystem).toBe(PlatformFileSystem.FileSystem)
-    expectTypeOf(FileSystem.FileSystem).toEqualTypeOf(PlatformFileSystem.FileSystem)
-    expectTypeOf(NodeFileSystem.layer).toEqualTypeOf<Layer.Layer<FileSystem.FileSystem>>()
+  it('is a Kitz-owned typed service that layers provide directly', () => {
+    // Memory and Node both provide Kitz's own FileSystem tag — not Effect's.
     expectTypeOf(FileSystem.layerMemory()).toEqualTypeOf<Layer.Layer<FileSystem.FileSystem>>()
+    expectTypeOf(FileSystem.layerNode).toEqualTypeOf<Layer.Layer<FileSystem.FileSystem>>()
 
-    // The typed facade requires the service until provided, then binds methods.
-    expectTypeOf(FileSystem.service).toEqualTypeOf<
-      Effect.Effect<FileSystem.Api, never, FileSystem.FileSystem>
-    >()
-
+    // One yield point: the tag yields the typed facade directly.
     const program = Effect.gen(function* () {
-      const fs = yield* FileSystem.service
+      const fs = yield* FileSystem.FileSystem
       return yield* fs.exists('./present.txt')
     })
     expectTypeOf<Effect.Success<typeof program>>().toEqualTypeOf<boolean>()
@@ -64,12 +55,11 @@ describe('FileSystem.exists architecture', () => {
   })
 })
 
-// The shared exists law: any backend providing the service must agree between
-// the typed facade and the raw Effect service. Seeding a non-trivial fixture
-// goes through the filesystem's own operations, so the memory backend can only
-// run this law once write ops land; until then it uses a real on-disk fixture
-// via the official Node layer. (The seeded memory variant is parked under
-// packages/effect/triage/memory-seed-dsl.)
+// The shared exists law: any backend providing the service agrees. The Node
+// backend runs against a real on-disk fixture (this test module). The memory
+// backend can only run the seeded parts once write ops land (its seed DSL is
+// parked under packages/effect/triage/memory-seed-dsl); until then it is
+// covered by the empty-layer test below.
 interface ExistsFixture {
   readonly present: Path.File
   readonly missing: Path.File
@@ -81,15 +71,12 @@ const existsLaw = <$Error>(
   fixture: ExistsFixture,
 ): void => {
   it.layer(provider)(name, (layerIt) => {
-    layerIt.effect('agrees between the typed facade and raw Effect access', () =>
+    layerIt.effect('accessible → true, missing → false, non-directory → BadResource', () =>
       Effect.gen(function* () {
-        const fs = yield* FileSystem.service
-        const upstream = yield* PlatformFileSystem.FileSystem
+        const fs = yield* FileSystem.FileSystem
 
         expect(yield* fs.exists(fixture.present)).toBe(true)
-        expect(yield* upstream.exists(fixture.present.toString())).toBe(true)
         expect(yield* fs.exists(fixture.missing)).toBe(false)
-        expect(yield* upstream.exists(fixture.missing.toString())).toBe(false)
 
         const badResource = yield* Effect.flip(fs.exists(fixture.present.asDir))
         expect(badResource.reason._tag).toBe('BadResource')
@@ -101,7 +88,7 @@ const existsLaw = <$Error>(
 const nodePresent = Schema.decodeSync(Path.AbsFile.FromUrl)(new URL(import.meta.url))
 const nodeMissing = Path.join(nodePresent.dir, './.__kitz_effect_exists_law_missing__')
 
-existsLaw('official NodeFileSystem exists law', NodeFileSystem.layer, {
+existsLaw('Node backend exists law', FileSystem.layerNode, {
   present: nodePresent,
   missing: nodeMissing,
 })
@@ -109,7 +96,7 @@ existsLaw('official NodeFileSystem exists law', NodeFileSystem.layer, {
 it.layer(FileSystem.layerMemory())('default in-memory layer', (layerIt) => {
   layerIt.effect('starts with an accessible root and no files', () =>
     Effect.gen(function* () {
-      const fs = yield* FileSystem.service
+      const fs = yield* FileSystem.FileSystem
       expect(yield* fs.exists('/')).toBe(true)
       expect(yield* fs.exists('/missing.txt')).toBe(false)
     }),
