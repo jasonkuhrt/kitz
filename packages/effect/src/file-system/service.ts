@@ -15,9 +15,9 @@ export interface Api {
  * relationship to Effect's `FileSystem`: it is not a re-export, alias, or view
  * of that tag, and this module imports nothing from `effect/FileSystem`.
  *
- * Layers provide this tag directly (`FileSystem.layerMemory`,
- * `FileSystem.layerNode`), and `yield* FileSystem.FileSystem` yields the typed
- * {@link Api} — one yield point, method-only, mirroring native
- * `yield* FileSystem.FileSystem` but with Path-typed operations.
+ * Layers provide this tag directly (`FileSystem.layerMemory`), and
+ * `yield* FileSystem.FileSystem` yields the typed {@link Api} — one yield
+ * point, method-only, mirroring native `yield* FileSystem.FileSystem` but with
+ * Path-typed operations.
  */
 export class FileSystem extends Context.Service<FileSystem, Api>()('@kitz/effect/FileSystem') {}

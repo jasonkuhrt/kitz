@@ -10,7 +10,6 @@ describe('package subpaths', () => {
   it('exposes FileSystem directly', () => {
     expectTypeOf(FileSystem.layerMemory).toBeFunction()
     expect(FileSystem.FileSystem).toBeDefined()
-    expect(FileSystem.layerNode).toBeDefined()
   })
 
   it('exposes Path directly', () => {

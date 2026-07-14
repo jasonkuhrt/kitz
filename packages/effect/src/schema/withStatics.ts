@@ -48,8 +48,8 @@ export declare namespace withStatics {
  */
 export const withStatics = <$Self extends ServiceFreeCodec>(
   self: $Self,
-): $Self & withStatics.Guard<$Self> & withStatics.Codecs<$Self> => {
-  return Object.assign(self, {
+): $Self & withStatics.Guard<$Self> & withStatics.Codecs<$Self> =>
+  Object.assign(self, {
     is: S.is(self),
     // Schema classes replace Function.prototype in their static prototype
     // chain; preserve ordinary function source-text coercion without defining
@@ -64,4 +64,3 @@ export const withStatics = <$Self extends ServiceFreeCodec>(
     decodeResult: S.decodeResult(self),
     encodeResult: S.encodeResult(self),
   }) as any
-}

@@ -125,7 +125,7 @@ export function analyze(input: string, options?: AnalyzerOptions): Analysis {
   if (normalized.startsWith(herePrefix)) normalized = normalized.slice(herePrefix.length)
   if (isDirectory && normalized.endsWith(separator)) normalized = normalized.slice(0, -1)
 
-  const rawSegments = normalized ? normalized.split(separator).filter((s) => s !== '') : []
+  const rawSegments = normalized !== '' ? normalized.split(separator).filter((s) => s !== '') : []
   // Absolute paths can't escape root, so their ascent count is always 0.
   const { ascent, segments: normalizedSegments } = normalizeWithAscent(
     isAbsolute ? 0 : parentRefs,
@@ -248,12 +248,13 @@ export const format =
 
     if (parts.isPathAbsolute) {
       if (file !== null)
-        return body ? `${separator}${body}${separator}${file}` : `${separator}${file}`
-      return body ? `${separator}${body}${separator}` : separator
+        return body !== '' ? `${separator}${body}${separator}${file}` : `${separator}${file}`
+      return body !== '' ? `${separator}${body}${separator}` : separator
     }
 
     // One `../` per ascent step, else `./`.
     const prefix = parts.ascent > 0 ? ascentPrefix.repeat(parts.ascent) : herePrefix
-    if (file !== null) return body ? `${prefix}${body}${separator}${file}` : `${prefix}${file}`
-    return body ? `${prefix}${body}${separator}` : prefix
+    if (file !== null)
+      return body !== '' ? `${prefix}${body}${separator}${file}` : `${prefix}${file}`
+    return body !== '' ? `${prefix}${body}${separator}` : prefix
   }

@@ -31,10 +31,11 @@ export class Cwd extends Context.Service<Cwd, AbsDir>()('@kitz/effect/Path/Cwd')
   static readonly layer = Layer.effect(Cwd)(
     Effect.try({
       try: () => process.cwd(),
-      catch: (cause): unknown => cause,
+      catch: (cause) => CwdError.make({ cause }),
     }).pipe(
-      Effect.flatMap(S.decodeEffect(AbsDir)),
-      Effect.mapError((cause) => new CwdError({ cause })),
+      Effect.flatMap((cwd) =>
+        Effect.mapError(S.decodeEffect(AbsDir)(cwd), (cause) => CwdError.make({ cause })),
+      ),
     ),
   )
 }

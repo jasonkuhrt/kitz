@@ -56,6 +56,16 @@
           "unnecessaryPipe": "error",
           "unnecessaryPipeChain": "error",
 
+          // Promoted from the review-required/style tiers after fixing every
+          // source occurrence (2026-07-14): each flagged a real defect in
+          // @kitz/effect source, now resolved. Held at error as a regression
+          // guard; their prior parked/`off` entries were removed.
+          "anyUnknownInErrorContext": "error",
+          "newSchemaClass": "error",
+          "strictBooleanExpressions": "error",
+          "unknownInEffectCatch": "error",
+          "unnecessaryArrowBlock": "error",
+
           // Mechanical but churny/style candidates: still local and mostly
           // semantics-preserving, but largely readability/taste or higher-volume
           // cleanup. Current production probe: 790 diagnostics. Parked today:
@@ -64,7 +74,6 @@
           // "redundantSchemaTagIdentifier": "error",
           // "schemaStructWithTag": "error",
           // "schemaUnionOfLiterals": "error",
-          // "unnecessaryArrowBlock": "error",
           // "unnecessaryTypeofType": "error",
           // Same parked group: default suggestions stay off until promoted.
           "redundantSchemaTagIdentifier": "off",
@@ -72,14 +81,12 @@
           "unnecessaryTypeofType": "off",
           // Same parked group: default-off today, explicit for future defaults.
           "schemaUnionOfLiterals": "off",
-          "unnecessaryArrowBlock": "off",
 
           // Review-required discovery rules: useful findings, but fixes may
           // change public/runtime API shape, service identity, error semantics,
           // or architectural boundaries. Parked today: uncomment these `error`
           // entries and remove/comment their matching `off` entries below to
           // promote the group. Current production probe: 23,281 diagnostics.
-          // "anyUnknownInErrorContext": "error",
           // "asyncFunction": "error",
           // "cryptoRandomUUID": "error",
           // "cryptoRandomUUIDInEffect": "error",
@@ -114,7 +121,6 @@
           // "multipleEffectProvide": "error",
           // "nestedEffectGenYield": "error",
           // "newPromise": "error",
-          // "newSchemaClass": "error",
           // "nodeBuiltinImport": "error",
           // "outdatedApi": "error",
           // "overriddenSchemaConstructor": "error",
@@ -129,10 +135,8 @@
           // "schemaSyncInEffect": "error",
           // "scopeInLayerEffect": "error",
           // "serviceNotAsClass": "error",
-          // "strictBooleanExpressions": "error",
           // "strictEffectProvide": "error",
           // "tryCatchInEffectGen": "error",
-          // "unknownInEffectCatch": "error",
           // "unsafeEffectTypeAssertion": "error",
           // Same parked group: default errors/warnings/suggestions stay off
           // until this review-required group is audited and promoted.
@@ -159,9 +163,7 @@
           "schemaSyncInEffect": "off",
           "scopeInLayerEffect": "off",
           "tryCatchInEffectGen": "off",
-          "unknownInEffectCatch": "off",
           // Same parked group: default-off today, explicit for future defaults.
-          "anyUnknownInErrorContext": "off",
           "asyncFunction": "off",
           "cryptoRandomUUID": "off",
           "cryptoRandomUUIDInEffect": "off",
@@ -183,13 +185,11 @@
           "missingEffectServiceDependency": "off",
           "nestedEffectGenYield": "off",
           "newPromise": "off",
-          "newSchemaClass": "off",
           "nodeBuiltinImport": "off",
           "preferSchemaOverJson": "off",
           "processEnv": "off",
           "processEnvInEffect": "off",
           "serviceNotAsClass": "off",
-          "strictBooleanExpressions": "off",
           "strictEffectProvide": "off",
           "unsafeEffectTypeAssertion": "off"
         }
