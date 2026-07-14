@@ -1,43 +1,46 @@
 import * as Effect from 'effect/Effect'
+import * as FileSystemEffect from 'effect/FileSystem'
 import * as Layer from 'effect/Layer'
-import * as PlatformError from 'effect/PlatformError'
+import type * as PlatformError from 'effect/PlatformError'
 import * as Result from 'effect/Result'
 import * as SynchronizedRef from 'effect/SynchronizedRef'
-import { makeExists } from './operations/exists.js'
 import { emptyState, type State, walk } from './internal/memory-graph.js'
-import { FileSystem } from './service.js'
-
-// The existence semantics Effect's own Node layer derives from `access`, here
-// implemented directly over the inode graph: accessible → true, NotFound →
-// false, any other resolution failure (e.g. a non-directory in the path) →
-// propagate.
-const existsCheck =
-  (state: SynchronizedRef.SynchronizedRef<State>) =>
-  (path: string): Effect.Effect<boolean, PlatformError.PlatformError> =>
-    SynchronizedRef.get(state).pipe(
-      Effect.flatMap((snapshot) => {
-        const result = walk(snapshot, path)
-        if (Result.isFailure(result)) {
-          return result.failure.reason._tag === 'NotFound'
-            ? Effect.succeed(false)
-            : Effect.fail(result.failure)
-        }
-        return Effect.succeed(true)
-      }),
-    )
+import { unsupportedPrimitives } from './internal/unsupported.js'
 
 /**
- * In-memory `FileSystem` layer — a fresh, empty inode graph providing Kitz's
- * own {@link FileSystem} service.
+ * The `access` primitive over the inode graph. It takes an arbitrary upstream
+ * POSIX string — not a decoded Kitz Path — because it implements Effect's raw
+ * string service contract.
  *
- * Standard, empty-start layer (mirrors Effect's `layerMemory` convention) with
- * no construction DSL: populate it by running the filesystem's own write
- * operations. Every operation is implemented directly against the graph — this
- * module imports nothing from `effect/FileSystem`.
+ * This is the only existence-related code the backend owns: `FileSystem.make`
+ * derives `exists` from it (accessible → true, `NotFound` → false, anything else
+ * propagates), so those semantics are never restated here.
  */
-export const layerMemory = (): Layer.Layer<FileSystem> =>
-  Layer.effect(FileSystem)(
-    Effect.map(SynchronizedRef.make(emptyState()), (state) => ({
-      exists: makeExists(existsCheck(state)),
-    })),
+const access =
+  (state: SynchronizedRef.SynchronizedRef<State>) =>
+  (path: string): Effect.Effect<void, PlatformError.PlatformError> =>
+    Effect.flatMap(SynchronizedRef.get(state), (snapshot) => {
+      const resolved = walk(snapshot, path)
+      return Result.isFailure(resolved) ? Effect.fail(resolved.failure) : Effect.void
+    })
+
+/**
+ * In-memory `FileSystem` layer — a fresh, empty inode graph providing Effect's
+ * own `FileSystem` tag. A real implementation of that service, not a mock and
+ * not `layerNoop`: every operation the graph does not implement yet fails
+ * loudly as unsupported (see `internal/unsupported.ts`) rather than returning a
+ * plausible wrong answer.
+ *
+ * Because it provides the upstream tag, it is a drop-in for
+ * `NodeFileSystem.layer` — any Effect code in the program, not just Kitz's
+ * typed operations, observes this filesystem.
+ *
+ * Standard empty-start layer with no construction DSL: populate it by running
+ * the filesystem's own write operations once they land.
+ */
+export const layerMemory = (): Layer.Layer<FileSystemEffect.FileSystem> =>
+  Layer.effect(FileSystemEffect.FileSystem)(
+    Effect.map(SynchronizedRef.make(emptyState()), (state) =>
+      FileSystemEffect.make({ ...unsupportedPrimitives, access: access(state) }),
+    ),
   )

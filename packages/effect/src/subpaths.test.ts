@@ -9,7 +9,7 @@ import * as Types from '@kitz/effect/Types'
 describe('package subpaths', () => {
   it('exposes FileSystem directly', () => {
     expectTypeOf(FileSystem.layerMemory).toBeFunction()
-    expect(FileSystem.FileSystem).toBeDefined()
+    expect(FileSystem.Service).toBeDefined()
   })
 
   it('exposes Path directly', () => {
