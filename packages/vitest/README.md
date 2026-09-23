@@ -19,6 +19,38 @@ That is intentional for the workspace toolchain. Vite+ consumes TypeScript
 source directly during tests, and keeping the exports on `src` avoids a build
 step before running local or CI test suites.
 
+## Property Tests
+
+Property tests run on Effect's native `Arbitrary` runner
+(`effect/unstable/arbitrary`). Inputs are Schemas, derived with
+`Arbitrary.schema`, or native `Arbitrary` values, given as a tuple or a record;
+the body receives values of the same shape.
+
+```ts
+import { Path } from '@kitz/effect'
+import { assertProperty, expect, it } from '@kitz/vitest'
+import { Effect } from 'effect'
+
+// A synchronous law.
+it('join onto an absolute dir yields an absolute path', () => {
+  assertProperty([Path.AbsDir, Path.RelFile], ([dir, file]) => {
+    expect(Path.join(dir, file)._tag).toBe('AbsFile')
+  })
+})
+
+// An effectful law. Each run gets a fresh Scope, TestClock and TestConsole.
+it.effect.prop('AbsDir round-trips through its codec', { dir: Path.AbsDir }, ({ dir }) =>
+  Effect.sync(() => {
+    expect(Path.AbsDir.decodeSync(Path.AbsDir.encodeSync(dir))).toEqual(dir)
+  }),
+)
+```
+
+Falsification works as in `@effect/vitest`: a failing run reports the shrunk
+input and a replay token. Pass native check options (runs, seed, …) through the
+test options' `arbitrary` field. `it.prop` remains as an alias of
+`it.effect.prop`.
+
 ## Dependencies
 
 Runtime dependencies:

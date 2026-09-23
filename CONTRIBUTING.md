@@ -1,91 +1,54 @@
 # Contributing
 
-This project is designed for Claude Code-assisted development. Common workflows are automated through skills.
-
-## Skills
-
-| Skill                      | Purpose                                          |
-| -------------------------- | ------------------------------------------------ |
-| `creating-modules`         | Add modules to existing packages                 |
-| `creating-rules`           | Add conventions with correct scoping             |
-| `committing-changes`       | Conventional commits and CI validation           |
-| `authoring-global-scripts` | Manage `_:*` template scripts                    |
-| `syncing-tsconfig-paths`   | Keep tsconfig paths in sync with imports         |
-| `refreshing-docs`          | Update README tables                             |
-| `auditing-project`         | Check for out-of-band inconsistencies            |
-| `filing-issues`            | File cold-startable GitHub bug/feature issues    |
-| `fp-pipeline-refactor`     | Refactor imperative TS to Effect-first pipelines |
-| `kitz-cli-output`          | CLI output with Str.Builder and Effect Console   |
-| `kitz-data-modeling`       | Schema, Match, lookup tables for domain types    |
-| `kitz-fs`                  | Filesystem and path operations with @kitz/fs     |
-| `kitz-functions`           | Function design with currying patterns           |
-| `kitz-services`            | Effect services with multiple implementations    |
-
-Just describe what you need and Claude Code will handle it.
-
-## Package Conventions
-
-Some packages have their own conventions in `packages/<name>/.claude/CONVENTIONS.md`. These are auto-loaded via `.claude/rules/package-conventions.md` when working on that package.
+This repository is built for Claude Code-assisted development. Agents load this
+file and [AGENTS.md](./AGENTS.md) (toolchain and commands) at startup, and
+common workflows are packaged as skills.
 
 ## Architecture
 
-Kitz is a pnpm workspace (`packages/`). It currently ships a single package,
-`@kitz/effect`, which layers filesystem + typed-path enhancements on the Effect
-ecosystem. `effect` is a peer dependency.
+A pnpm workspace that publishes one package:
 
-**Toolchain**: pnpm 12 + [Vite+](https://viteplus.dev) (`vp`) + official TypeScript 7
-(`tsc`), on Node (`^22.22.1 || ^24.11.0 || >=26.0.0`).
+| Member                                       | Role                                                                                                                                                          |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`packages/effect`](./packages/effect)       | `@kitz/effect`: typed paths and Effect-native utilities, exposed as namespaces (`Path`, `Schema`, `String`, `Tuple`, `Types`). `effect` is a peer dependency. |
+| [`packages/vitest`](./packages/vitest)       | `@kitz/vitest` (private): Effect-aware test helpers, the native property runner, and the path matchers.                                                       |
+| [`generators/package`](./generators/package) | The `vp create package` scaffolder.                                                                                                                           |
 
-```bash
-pnpm build          # build (tsc, file-by-file, no bundler)
-pnpm check:types    # typecheck (tsc --noEmit)
-pnpm check:lint     # lint (oxlint via vp)
-pnpm check:format   # format check (oxfmt via vp)
-pnpm test           # tests (vp test — Vitest bundled by Vite+; import from 'vite-plus/test')
-pnpm check:package  # publint + attw on the built package
-```
+New concepts land as namespaces inside `@kitz/effect` (the `creating-modules`
+skill); a new package is the exception.
 
-## Commit Hook
+## Skills
 
-`hooks/pre-commit` is tracked in the repo and installed by `pnpm run prepare`
-(which points `core.hooksPath` at `hooks/`). It runs `check:format`, `check:lint`,
-and `check:types`.
+| Skill                  | Purpose                                                  |
+| ---------------------- | -------------------------------------------------------- |
+| `committing-changes`   | Conventional commits and CI validation                   |
+| `creating-modules`     | Add a namespace to `@kitz/effect`                        |
+| `creating-rules`       | Add conventions with the right scope                     |
+| `filing-issues`        | File cold-startable GitHub bug and feature issues        |
+| `fp-pipeline-refactor` | Refactor imperative TypeScript to Effect-first pipelines |
+| `kitz-data-modeling`   | Schema, Match, and lookup tables for domain types        |
+| `kitz-functions`       | Function design and currying conventions                 |
+| `kitz-services`        | Effect services with multiple implementations            |
 
-The hook:
+## Package conventions
 
-- formats and lints the staged snapshot, then syncs fixes back to the index
-- blocks conflict markers and repo-local artifacts such as `.claude/*.local.md`, `.claude/worktrees/`, `.release/`, and `.DS_Store`
-- requires tracked `hooks/*` scripts to stay executable and use a shell shebang
-- runs `shellcheck` for staged shell scripts and `bun run check:ci` for staged GitHub workflow files
-- runs `bun run check:types` when staged changes can affect TypeScript
-- runs `bun run check:cov:packages` on every commit
+A package can carry its own conventions in
+`packages/<name>/.claude/CONVENTIONS.md`; `.claude/rules/package-conventions.md`
+loads them when working in that package.
 
-## Linting (Custom Rules)
+## Commit hook
 
-Custom Oxlint rules use two paths:
+`pnpm install` runs the root `prepare` script, which points `core.hooksPath` at
+`hooks/`. `hooks/pre-commit` runs `vp staged`: oxfmt and oxlint over the staged
+files, with fixes synced back into the index. Types, tests, the build, and the
+package checks run in CI (`.github/workflows/pr.yml`).
 
-- Published Kitz rules package and presets: `packages/oxlint-rules/`
-- Official Oxlint type-aware rules via the `oxlint-tsgolint` package
+## Lint
 
-`kitz/ts/no-type-assertion` remains disabled. `typescript/no-unsafe-type-assertion` is also disabled for now because it is currently too noisy for this repo's function-body typing policy. `typescript/no-explicit-any` and `eslint-plugin-promise/prefer-await-to-then` are also temporarily disabled while the warning backlog is reduced. `kitz/error/no-throw` is temporarily disabled in repo lint configs while the remaining throw sites are migrated back onto typed failure channels; keep the rule implementation and fixture coverage intact so it can be restored once that backlog is cleared.
-
-```bash
-bun run check:lint                        # Lint (custom rules as warnings)
-bun run check:lint:type-aware             # Lint with checker-backed rules enabled
-bun run check:lint:strict-custom-rules    # Lint (custom rules as errors)
-bun run check:lint:strict-custom-rules:type-aware
-bun run test:oxlint-custom-rules          # Fixture tests for custom rules
-bun run test:oxlint-rules                 # Fixtures + package preset surface
-```
-
-Rule details and migration guidance: `docs/oxlint-custom-rules.md`.
-
-Recent convention refinements:
-
-- `_.ts` namespace files now require a matching JSDoc `export namespace Name {}` declaration and may include type-only exports.
-- `packages/core/src/*/core/_.ts` namespace names are validated from `packages/core/package.json#imports` (`#*/core`).
-- `__.ts` files are strict barrels only when peer implementation files exist; otherwise shorthand implementation is allowed (default exports still forbidden).
-- Convention rules run without per-file allowlists or package-root exceptions; fix violations in source.
+oxlint runs through `vp lint`, configured in the `lint` block of
+[`vite.config.mts`](./vite.config.mts), which also documents every disabled or
+tuned rule. Warnings are blocking. Type-aware linting is not enabled yet
+([#128](https://github.com/jasonkuhrt/kitz/issues/128)).
 
 ## Common Errors
 
@@ -93,39 +56,38 @@ Recent convention refinements:
 
 ```
 error TS2742: The inferred type of 'X' cannot be named without a reference to
-'../node_modules/@kitz/core/build/optic/lenses/returned.js'.
+'../node_modules/@kitz/effect/build/<module>.js'.
 ```
 
-**Cause**: TypeScript declaration emit cannot do novel module resolution - it only uses specifiers resolved during program creation. When types are re-exported through ESM namespaces (`export * as X from`), TypeScript cannot discover a portable path to reference those types.
+**Cause**: TypeScript declaration emit cannot do novel module resolution; it only uses specifiers resolved during program creation. When types are re-exported through ESM namespaces (`export * as X from`), TypeScript cannot discover a portable path to reference those types.
 
-**Solution**: Library-side fix in `@kitz/core` (no consumer action needed):
+**Solution**: Fix it library-side, so no consumer action is needed:
 
-1. Add internal subpath exports to `package.json`:
+1. Add an internal subpath export for the module in `packages/effect/package.json` (in both `exports` and `publishConfig.exports`):
 
 ```json
 {
   "exports": {
-    "./_internal/optic-lenses/returned": "./build/optic/lenses/returned.js"
+    "./_internal/<module>": "./src/<module>.ts"
   }
 }
 ```
 
-2. In the library's barrel file, import and USE the internal modules in an exported type:
+2. In the namespace barrel, import the internal module and USE it in an exported type:
 
 ```typescript
-// In @kitz/core/src/optic/__.ts
-import type * as __returned from '@kitz/core/_internal/optic-lenses/returned'
+import type * as __module from '@kitz/effect/_internal/<module>'
 
 /**
  * @internal DO NOT USE - Forces TypeScript to include internal module references
  * in declaration output. Required for consumer type inference.
  */
-export type __InternalLensResolution = __returned.Get<never> | ...
+export type __InternalResolution = __module.SomeType<never>
 ```
 
 **Key insight**: Empty imports (`import type {} from '...'`) and unused namespace imports get elided from `.d.ts` output. You must USE the imports in an exported type to preserve them in declarations.
 
-See [TypeScript Issue #61700](https://github.com/microsoft/TypeScript/issues/61700) for full explanation.
+See [TypeScript Issue #61700](https://github.com/microsoft/TypeScript/issues/61700) for the full explanation.
 
 ### TS7056: Inferred Type Exceeds Serialization Length
 

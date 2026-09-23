@@ -14,7 +14,7 @@ Only two issue kinds are permitted. No other shape.
 - Exactly the two H1 headings for the kind. No extra headings, no preamble, no closing prose.
 - **Under every heading: bullet points only.** No paragraphs, no tables, no numbered lists. One fact per bullet.
 - Cold-startable: the bullets must carry everything a fresh agent needs — exact repro command, observed output, `file:line` of the root cause, and the fix direction. Put these as bullets under the *Actual* (bug) or *Current* (feature) heading.
-- Title follows Conventional Commits, matching repo issue history: `type(scope): summary` (e.g. `fix(release): ...`, `feat(cli): ...`). Scope = package name without `@kitz/`.
+- Title follows Conventional Commits, matching repo issue history: `type(scope): summary` (e.g. `fix(effect): ...`, `feat(effect): ...`). Scope = package name without `@kitz/`.
 - Label: bug kind → `bug`; feature kind → `enhancement`.
 - Dedupe before filing (see Procedure).
 
@@ -30,7 +30,7 @@ Title: `fix(<scope>): <one-line summary>`
 # Actual
 
 - <what happens instead>
-- Repro: `release <exact command>`
+- Repro: `<exact command, or a minimal code snippet>`
 - Output: `<the wrong output, verbatim or trimmed>`
 - Root cause: `packages/<pkg>/src/<file>.ts:<line>` — <why it misbehaves>
 - Fix direction: <the concrete change a future agent should make>
@@ -73,7 +73,7 @@ If any answer is missing, the issue is not cold-startable — add the bullet.
    ```bash
    gh issue create \
      --repo jasonkuhrt/kitz \
-     --title "fix(release): <summary>" \
+     --title "fix(effect): <summary>" \
      --label bug \
      --body-file /tmp/issue-body.md
    ```

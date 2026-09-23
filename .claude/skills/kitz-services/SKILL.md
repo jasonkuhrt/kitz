@@ -52,19 +52,23 @@ src/
 **service.ts** - Service definition:
 
 ```typescript
-import { Context, Effect } from 'effect'
+import { Context, Effect, Schema as S } from 'effect'
 
 // Errors
-export const MyServiceError = Err.TaggedContextualError('MyServiceError')...
-export type MyServiceError = InstanceType<typeof MyServiceError>
+export class MyServiceError extends S.TaggedError<MyServiceError>()(
+  '@kitz/effect/MyNamespace/MyServiceError',
+  { cause: S.Defect() },
+) {}
 
 // Interface
 export interface MyServiceImpl {
-  readonly doThing: () => Effect.Effect<Result, MyServiceError>
+  doThing(): Effect.Effect<Result, MyServiceError>
 }
 
 // Tag
-export class MyService extends Context.Tag('MyService')<MyService, MyServiceImpl>() {}
+export class MyService extends Context.Service<MyService, MyServiceImpl>()(
+  '@kitz/effect/MyNamespace/MyService',
+) {}
 ```
 
 **live.ts** - Live implementation:
@@ -114,7 +118,7 @@ export const make = (config?: MyServiceMemoryConfig): Layer.Layer<MyService> =>
 
 ## Notes
 
-- **Never name a file after the module** (e.g., `git.ts` in `packages/git/`) - it's redundant
-- Service tag name should match the module name (e.g., `Git` tag in `@kitz/git`)
+- **Never name a file after the module** (e.g., `path.ts` in `src/path/`) - it's redundant
+- Service keys are fully qualified: `@kitz/effect/<Namespace>/<Name>` (e.g., `Path.Cwd` is `'@kitz/effect/Path/Cwd'`)
 - Memory implementations expose state refs for test verification
 - Live implementations wrap external libraries (simple-git, database clients, etc.)
