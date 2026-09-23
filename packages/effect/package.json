@@ -55,8 +55,9 @@
   },
   "devDependencies": {
     "@kitz/vitest": "workspace:*",
-    "@vitest/coverage-v8": "4.1.9",
-    "effect": "catalog:"
+    "@vitest/coverage-v8": "catalog:",
+    "effect": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "effect": "^4.0.0-beta.97"

@@ -8,8 +8,8 @@ description: Add a namespace/module to a @kitz package — including extending t
 A module is a PascalCase namespace inside a package. Two common cases:
 
 - **Extend `@kitz/effect`** — add a new namespace (a concept) alongside
-  `FileSystem` and `Path`. The lightweight alternative to a whole new package
-  (`creating-packages`).
+  `Path` and `Schema`. The lightweight alternative to a whole new package
+  (`vp create package`).
 - **Add a module to any `@kitz/*` package** — the same mechanics anywhere.
 
 Read `packages/effect/src/_.ts` (the root namespace bundle) and

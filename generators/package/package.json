@@ -2,23 +2,9 @@
   "name": "@generator/package",
   "version": "0.0.0",
   "private": true,
-  "description": "Vite+ generator: scaffold a new @kitz package (a concept).",
-  "keywords": [
-    "vite-plus-generator"
-  ],
-  "bin": "./bin/index.ts",
-  "type": "module",
-  "scripts": {
-    "dev": "node bin/index.ts"
+  "description": "Scaffold a new @kitz package. A dependency-free vp create template (no bingo, no zod).",
+  "bin": {
+    "kitz-create-package": "./bin/index.mjs"
   },
-  "dependencies": {
-    "bingo": "^0.9.3",
-    "zod": "^3.25.76"
-  },
-  "devDependencies": {
-    "@types/node": "^25.9.1"
-  },
-  "engines": {
-    "node": ">=22.13.0"
-  }
+  "type": "module"
 }

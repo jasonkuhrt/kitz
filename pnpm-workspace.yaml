@@ -2,23 +2,30 @@ packages:
   - 'packages/*'
   - 'generators/*'
 
-# pnpm 11 global virtual store — DISABLED.
-# GVS's symlinked `links/` store repeatedly breaks Vite+'s native/ESM resolution:
-# `vp run`/`vp check` cannot load vite.config.mts under GVS because vite-plus-core
-# can't resolve its rolldown native binding (`vite-plus/binding`) from the store
-# (verified: GVS on => `vp run` "Cannot find native binding"; GVS off => all tasks
-# pass). Since the toolchain drives everything through `vp run` tasks defined in
-# vite.config.mts, GVS must stay off. Revisit if vite-plus fixes binding
-# resolution under symlinked stores.
+# pnpm global virtual store — DISABLED.
+# GVS was first turned off because vite-plus could not resolve its native
+# binding from the symlinked `links/` store (`vp run` failed with "Cannot find
+# native binding"); vite-plus 0.2.8 reports that fixed (voidzero-dev/vite-plus#2313).
+# It stays off because the root `prepare` script runs `effect-tsgo patch`, which
+# swaps the TypeScript native binary inside node_modules. Under GVS that package
+# directory lives in the machine-wide store, so the patch would leak into every
+# other project that shares the same TypeScript install.
 enableGlobalVirtualStore: false
 
 catalog:
   effect: 4.0.0-beta.97
-  '@effect/platform-node': 4.0.0-beta.97
-  fast-check: ^4.8.0
+  vite-plus: 1.0.0-rc.0
+  vite: npm:@voidzero-dev/vite-plus-core@1.0.0-rc.0
+  vitest: 5.0.1
+  '@vitest/coverage-v8': 5.0.1
 
-minimumReleaseAgeExclude:
-  - effect@4.0.0-beta.97
+overrides:
+  vite@*: 'catalog:'
+  vitest@*: 'catalog:'
+
+peerDependencyRules:
+  allowAny:
+    - vite
 
 allowBuilds:
   msgpackr-extract: false

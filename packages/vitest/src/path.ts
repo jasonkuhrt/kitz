@@ -3,10 +3,12 @@ import { expect, type MatcherState } from 'vite-plus/test'
 
 type MatcherResult = { pass: boolean; message: () => string }
 
-type IsAny<$T> = 0 extends 1 & $T ? true : false
+// `unknown` (Vitest's default received type) and `any` both leave the received
+// path statically unknown, so they accept any directory parent.
+type IsUntyped<$T> = unknown extends $T ? true : false
 
 type WithinParent<$T> =
-  IsAny<$T> extends true
+  IsUntyped<$T> extends true
     ? Path.Dir
     : [$T] extends [never]
       ? never
@@ -18,28 +20,29 @@ type WithinParent<$T> =
             : Path.Dir
         : never
 
-// Vite+ documents upstream Vitest augmentation as the target, but this repo
-// forbids a direct Vitest dependency so Vite+ owns the single Vitest copy. We
-// augment the shim identity this repo resolves; revisit if Vite+ ships a
-// types-only augmentation entry point.
+// Vite+ documents upstream Vitest augmentation as the target, but test code
+// imports the Vitest API only through `vite-plus/test` (Vite+ owns the single
+// Vitest copy). We augment the shim identity this repo resolves; revisit if
+// Vite+ ships a types-only augmentation entry point.
 declare module 'vite-plus/test' {
-  // Augmentation of @vitest/expect's `Matchers<T = any>` — the type parameter
-  // list must match the upstream declaration exactly for merging (TS2428).
-  interface Matchers<T = any> {
+  // Augmentation of Vitest's `Matchers<R, T>` (R: assertion return, T: received
+  // type) — the type parameter list must match the upstream declaration exactly
+  // for merging (TS2428).
+  interface Matchers<R extends void | Promise<void> = void | Promise<void>, T = unknown> {
     /** Check if the path is absolute. */
-    toBeAbs(): void
+    toBeAbs(): R
     /** Check if the path is relative. */
-    toBeRel(): void
+    toBeRel(): R
     /** Check if the path is a file. */
-    toBeFile(): void
+    toBeFile(): R
     /** Check if the path is a directory. */
-    toBeDir(): void
+    toBeDir(): R
     /** Check if the path is an anchor directory. */
-    toBeAnchor(): void
+    toBeAnchor(): R
     /** Check if the path is within a given directory. */
-    toBeWithinPath(parent: WithinParent<T>): void
+    toBeWithinPath(parent: WithinParent<T>): R
     /** Check if the path encodes to the expected string. */
-    toEncodeTo(expected: string): void
+    toEncodeTo(expected: string): R
   }
 }
 

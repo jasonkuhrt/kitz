@@ -731,11 +731,11 @@ describe('FromStruct', () => {
   })
 
   it('rejects invalid wire data', () => {
+    expect(Result.isFailure(S.decodeResult(Path.AbsDir.FromStruct)({ segments: ['ok', ''] }))).toBe(
+      true,
+    )
     expect(
-      Result.isFailure(S.decodeUnknownResult(Path.AbsDir.FromStruct)({ segments: ['ok', ''] })),
-    ).toBe(true)
-    expect(
-      Result.isFailure(S.decodeUnknownResult(Path.RelDir.FromStruct)({ ascent: -1, segments: [] })),
+      Result.isFailure(S.decodeResult(Path.RelDir.FromStruct)({ ascent: -1, segments: [] })),
     ).toBe(true)
   })
 
@@ -763,17 +763,14 @@ describe('FromStruct', () => {
 
 describe('Cwd', () => {
   it('yields the provided cwd from a test layer', async () => {
-    const actual = await Effect.gen(function* () {
-      return yield* Path.Cwd
-    }).pipe(Effect.provide(Layer.succeed(Path.Cwd)(someAbsDir)), Effect.runPromise)
+    const cwdTestLayer = Layer.succeed(Path.Cwd)(someAbsDir)
+    const actual = await Path.Cwd.pipe(Effect.provide(cwdTestLayer), Effect.runPromise)
 
     expect(actual).toEqual(someAbsDir)
   })
 
   it('process layer snapshots process.cwd as AbsDir', async () => {
-    const actual = await Effect.gen(function* () {
-      return yield* Path.Cwd
-    }).pipe(Effect.provide(Path.Cwd.layer), Effect.runPromise)
+    const actual = await Path.Cwd.pipe(Effect.provide(Path.Cwd.layer), Effect.runPromise)
 
     expect(actual).toBeAbs()
     expect(actual).toBeDir()
@@ -1246,15 +1243,13 @@ describe('audit round 3: filename and path text validity', () => {
   })
 
   it('bounds relative ascent at the path grammar maximum', () => {
-    const atMaximum = S.decodeUnknownResult(Path.RelDir.FromStruct)({
+    const atMaximum = S.decodeResult(Path.RelDir.FromStruct)({
       ascent: 4096,
       segments: [],
     })
     expect(Result.isSuccess(atMaximum)).toBe(true)
     expect(
-      Result.isFailure(
-        S.decodeUnknownResult(Path.RelDir.FromStruct)({ ascent: 4097, segments: [] }),
-      ),
+      Result.isFailure(S.decodeResult(Path.RelDir.FromStruct)({ ascent: 4097, segments: [] })),
     ).toBe(true)
     expect(Result.isFailure(S.decodeResult(Path.RelDir)('../'.repeat(4097)))).toBe(true)
 

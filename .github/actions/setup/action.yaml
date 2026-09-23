@@ -4,7 +4,8 @@ inputs:
   node-version:
     description: Version of Node to use.
     required: false
-    # pnpm 11.8 requires Node >=22.13; use current LTS.
+    # Vite+ 1.0 (CLI + `vp staged`) requires Node ^22.22.1 || ^24.11.0 || >=26.0.0;
+    # use current LTS.
     default: '24'
   install-deps:
     description: Should deps be installed?
@@ -14,13 +15,13 @@ runs:
   using: composite
   steps:
     - name: Install pnpm
-      uses: pnpm/action-setup@v4
+      uses: pnpm/action-setup@v6
     - name: Use Node ${{inputs.node-version}}
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v7
       with:
         node-version: ${{inputs.node-version}}
         cache: pnpm
     - name: Install Dependencies
       run: pnpm install --frozen-lockfile
       shell: bash
-      if: ${{inputs.install-deps}} == 'true'
+      if: inputs.install-deps == 'true'
