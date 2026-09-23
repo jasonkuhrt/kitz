@@ -1,11 +1,12 @@
 {
-  // Route Oxc LSP startup through Vite+'s editor wrappers so Zed gets the same
-  // Vite+ config gate as `vp lint`, `vp fmt`, and `vp check`.
+  // Route Oxc LSP startup through `vp lint --lsp` / `vp fmt --lsp` so Zed gets
+  // the same Vite+ config gate as `vp lint`, `vp fmt`, and `vp check`. (Vite+
+  // 1.0 removed the standalone oxlint/oxfmt wrappers these used to point at.)
   "lsp": {
     "oxlint": {
       "binary": {
-        "path": "node_modules/vite-plus/bin/oxlint",
-        "arguments": ["--lsp"]
+        "path": "node_modules/vite-plus/bin/vp",
+        "arguments": ["lint", "--lsp"]
       },
       "initialization_options": {
         "settings": {
@@ -24,8 +25,8 @@
     },
     "oxfmt": {
       "binary": {
-        "path": "node_modules/vite-plus/bin/oxfmt",
-        "arguments": ["--lsp"]
+        "path": "node_modules/vite-plus/bin/vp",
+        "arguments": ["fmt", "--lsp"]
       },
       "initialization_options": {
         "settings": {

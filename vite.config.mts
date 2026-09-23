@@ -5,22 +5,8 @@ import { defineConfig } from 'vite-plus'
  * all live here (no .oxlintrc.json / .oxfmtrc.json / .prettierignore).
  */
 
-// Roots excluded from oxfmt/oxlint (mirrors the fmt/lint `ignorePatterns`).
-// Staged tasks must skip them: `vp format`/`vp lint` error when handed a file
-// set that is entirely ignored, which would otherwise break commits that only
-// touch e.g. `.claude/settings.json`.
-const STAGED_IGNORED = /(^|\/)(\.claude|docs|build|coverage|node_modules)\//
-const stagedTask =
-  (...commands: string[]) =>
-  (files: readonly string[]): string[] => {
-    const targets = files.filter((f) => !STAGED_IGNORED.test(f))
-    if (targets.length === 0) return []
-    const args = targets.map((f) => JSON.stringify(f)).join(' ')
-    return commands.map((c) => `${c} ${args}`)
-  }
-
 export default defineConfig({
-  // ── create (vp create <name> — kitz scaffolding generators) ──────────────
+  // ── create (vp create package — dependency-free scaffolder) ──────────────
   create: {
     templates: [
       {
@@ -54,6 +40,10 @@ export default defineConfig({
       'eslint-plugin-jest/no-conditional-expect': 'off',
       'eslint-plugin-jest/valid-title': 'off',
       'eslint-plugin-import/no-unassigned-import': 'off',
+      // TypeScript owns namespace-member resolution (tsc rejects unknown
+      // members); this rule duplicates it and contradicts deliberate
+      // `@ts-expect-error` probes of absent public members in tests.
+      'eslint-plugin-import/namespace': 'off',
       'eslint-plugin-promise/no-new-statics': 'warn',
       'eslint-plugin-promise/no-callback-in-promise': 'warn',
       'eslint-plugin-promise/prefer-await-to-then': 'off',
@@ -98,9 +88,6 @@ export default defineConfig({
     include: ['packages/*/src/**/*.test.ts'],
     setupFiles: ['@kitz/vitest/setup'],
     environment: 'node',
-    // @kitz/effect currently ships no test files (path/schema/string suites pending);
-    // an empty suite should not fail CI.
-    passWithNoTests: true,
   },
 
   // ── tasks: wrap non-vp tools (tsc/publint/attw) or compose steps. ─────────
@@ -125,8 +112,14 @@ export default defineConfig({
   },
 
   // ── staged (used by the pre-commit hook via `vp staged`) ──────────────────
+  // --no-error-on-unmatched-pattern: a staged set whose files are all
+  // tool-ignored (e.g. pnpm-lock.yaml, a .claude-only docs commit) must
+  // no-op, not fail. oxfmt/oxlint own the ignore list — we don't mirror it.
   staged: {
-    '**/*.{ts,mts,cts,tsx}': stagedTask('vp format', 'vp lint'),
-    '**/*.{js,mjs,cjs,json,jsonc,md,yaml,yml}': stagedTask('vp format'),
+    '**/*.{ts,mts,cts,tsx}': [
+      'vp format --no-error-on-unmatched-pattern',
+      'vp lint --no-error-on-unmatched-pattern',
+    ],
+    '**/*.{js,mjs,cjs,json,jsonc,md,yaml,yml}': 'vp format --no-error-on-unmatched-pattern',
   },
 })

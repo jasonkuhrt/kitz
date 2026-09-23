@@ -24,8 +24,9 @@ step before running local or CI test suites.
 Runtime dependencies:
 
 - `effect` — used by the Effect-native test helpers and equality tester.
-- `vite-plus` — pinned at `0.2.1` so the exported test surface matches the
-  runner used by `vp test`.
+- `vite-plus` — resolved from the workspace catalog (`pnpm-workspace.yaml`),
+  the same pin the root uses, so the exported test surface matches the runner
+  used by `vp test`.
 
 Workspace dependency topology:
 
@@ -41,10 +42,13 @@ Vite+-owned Vitest instance plus the kitz matcher layer.
 ## Matcher Types
 
 Vite+ documents upstream Vitest augmentation as the general target for custom
-matcher types. This repo deliberately does not depend on `vitest` or
-`@vitest/*` directly: Vite+ owns the single Vitest copy so tests remain safe
-under global virtual store installs. The path matcher declarations therefore
-augment `vite-plus/test`, the shim identity this repo actually resolves.
+matcher types. Test code in this repo never imports `vitest` or `@vitest/*`:
+Vite+ owns the single Vitest copy, and tests reach it through `vite-plus/test`
+(re-exported here). The only direct `vitest` declaration is the peer that
+`@vitest/coverage-v8` requires, pinned to the version Vite+ bundles. The path
+matcher declarations therefore augment `vite-plus/test`, the shim identity
+test code actually resolves. They follow Vitest 5's `Matchers<R, T>` shape
+(`R`: assertion return, `T`: received type).
 
 Revisit this if Vite+ ships a types-only augmentation entry point that preserves
 the same single-copy dependency rule.

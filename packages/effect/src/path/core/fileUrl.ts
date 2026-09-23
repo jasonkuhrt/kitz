@@ -25,9 +25,10 @@ export const fileUrlOf = (parts: {
       isPathAbsolute: true,
       ascent: 0,
       segments: parts.segments.map(encodePart),
-      fileName: parts.fileName
-        ? encodePart(typeof parts.fileName === 'string' ? parts.fileName : parts.fileName.name)
-        : null,
+      fileName:
+        parts.fileName !== undefined && parts.fileName !== ''
+          ? encodePart(typeof parts.fileName === 'string' ? parts.fileName : parts.fileName.name)
+          : null,
     })}`,
   )
 
@@ -36,7 +37,7 @@ export const pathStringFromFileUrl = (url: URL): Result.Result<string, SchemaIss
   if (url.protocol !== fileProtocol) return Result.fail(invalid(url, 'a file URL'))
   if (url.host !== '' && url.host !== 'localhost')
     return Result.fail(invalid(url, 'a file URL with empty or localhost host'))
-  if (url.search || url.hash)
+  if (url.search !== '' || url.hash !== '')
     return Result.fail(invalid(url, 'a file URL without query or fragment'))
 
   return Result.try({

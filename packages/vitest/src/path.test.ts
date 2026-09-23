@@ -135,7 +135,7 @@ describe('Path matchers', () => {
     })
 
     it('types: correlates the parent group with the received path', () => {
-      type $Parent<$Received> = Parameters<Matchers<$Received>['toBeWithinPath']>[0]
+      type $Parent<$Received> = Parameters<Matchers<void, $Received>['toBeWithinPath']>[0]
 
       expectTypeOf<$Parent<Path.AbsFile>>().toEqualTypeOf<Path.AbsDir>()
       expectTypeOf<$Parent<Path.Abs>>().toEqualTypeOf<Path.AbsDir>()

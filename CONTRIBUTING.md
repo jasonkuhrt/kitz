@@ -6,7 +6,6 @@ This project is designed for Claude Code-assisted development. Common workflows 
 
 | Skill                      | Purpose                                          |
 | -------------------------- | ------------------------------------------------ |
-| `creating-packages`        | Create new packages with full scaffolding        |
 | `creating-modules`         | Add modules to existing packages                 |
 | `creating-rules`           | Add conventions with correct scoping             |
 | `committing-changes`       | Conventional commits and CI validation           |
@@ -34,8 +33,8 @@ Kitz is a pnpm workspace (`packages/`). It currently ships a single package,
 `@kitz/effect`, which layers filesystem + typed-path enhancements on the Effect
 ecosystem. `effect` is a peer dependency.
 
-**Toolchain**: pnpm 11 + [Vite+](https://viteplus.dev) (`vp`) + official TypeScript 7
-(`tsc`), on Node (>=22.12).
+**Toolchain**: pnpm 12 + [Vite+](https://viteplus.dev) (`vp`) + official TypeScript 7
+(`tsc`), on Node (`^22.22.1 || ^24.11.0 || >=26.0.0`).
 
 ```bash
 pnpm build          # build (tsc, file-by-file, no bundler)
