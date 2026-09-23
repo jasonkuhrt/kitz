@@ -27,9 +27,7 @@ type AbsRelativeToLiteralGuard<$S extends string, $Target> = LiteralGuard<
 const AbsTaggedUnion = S.Union([AbsFile, AbsDir]).pipe(S.toTaggedUnion('_tag'))
 
 class Abs_ extends withLiteralStatics(
-  withStatics(
-    S.asClass(AbsTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
-  ),
+  withStatics(AbsTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
   'Path.Abs.make',
 ) {
   static readonly cases = AbsTaggedUnion.cases

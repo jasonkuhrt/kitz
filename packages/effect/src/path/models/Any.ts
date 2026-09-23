@@ -1,5 +1,4 @@
 import { Schema as S } from 'effect'
-import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withStatics } from '../../schema/withStatics.js'
 import { AbsDir } from './AbsDir.js'
 import { AbsFile } from './AbsFile.js'
@@ -23,32 +22,12 @@ import { RelFile } from './RelFile.js'
 const AnyTaggedUnion = S.Union([AbsFile, AbsDir, RelFile, RelDir]).pipe(S.toTaggedUnion('_tag'))
 
 class Any_ extends withStatics(
-  S.asClass(AnyTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
+  AnyTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString())),
 ) {
   static readonly cases = AnyTaggedUnion.cases
   static readonly guards = AnyTaggedUnion.guards
   static readonly isAnyOf = AnyTaggedUnion.isAnyOf
   static readonly match = AnyTaggedUnion.match
-
-  /**
-   * Variant schema carrying a realistic generation bias — same set as the
-   * canonical schema; generation mixes the four members' `Realistic` variants
-   * 20:1 over the canonical distribution.
-   */
-  static readonly Realistic = Any_.pipe(
-    withArbitraryHints({
-      candidate: {
-        weight: 20,
-        make: (fc) =>
-          fc.oneof(
-            S.toArbitrary(AbsFile.Realistic),
-            S.toArbitrary(AbsDir.Realistic),
-            S.toArbitrary(RelFile.Realistic),
-            S.toArbitrary(RelDir.Realistic),
-          ),
-      },
-    }),
-  )
 }
 
 export const Any = Any_

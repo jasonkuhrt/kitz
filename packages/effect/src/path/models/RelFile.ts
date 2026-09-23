@@ -17,10 +17,9 @@ import { attachNodeInspect } from '../core/inspect.js'
 import type { LiteralGuard } from '../core/literal.js'
 import { renderPath } from '../core/render.js'
 import { resolveFileName } from '../core/setParts.js'
-import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics } from '../core/statics.js'
 import { AbsFile } from './AbsFile.js'
-import { Ascent } from './arbitrary.js'
+import { Ascent } from './ascent.js'
 import type { Extension } from './Extension.js'
 import { FileName, type FileNameLiteralGuard } from './FileName.js'
 import { RelDir } from './RelDir.js'
@@ -212,29 +211,27 @@ const decodeAnalysis = (analysis: AnalysisFile) =>
  */
 export class RelFile_ extends withLiteralStatics(
   withStatics(
-    S.asClass(
-      S.String.pipe(
-        S.annotate({
-          identifier: 'RelFile',
-          title: 'Relative file path',
-          description:
-            'A POSIX relative file path — leading `..` steps count as ascent; canonical form starts with `./` or `../` (e.g. `./src/index.ts`).',
-          examples: ['./src/index.ts', '../notes.txt'],
-        }),
-        S.decodeTo(RelFile__, {
-          encode: SchemaGetter.transform((encoded) =>
-            format({
-              isPathAbsolute: false,
-              ascent: encoded.dir.ascent,
-              fileName: encoded.fileName,
-            })(encoded.dir.segments),
-          ),
-          decode: SchemaGetter.transformOrFail(
-            flow(analyzeFileRel, Effect.fromResult, Effect.flatMap(decodeAnalysis)),
-          ),
-        }),
-        S.overrideToFormatter(() => (path) => path.toString()),
-      ),
+    S.String.pipe(
+      S.annotate({
+        identifier: 'RelFile',
+        title: 'Relative file path',
+        description:
+          'A POSIX relative file path — leading `..` steps count as ascent; canonical form starts with `./` or `../` (e.g. `./src/index.ts`).',
+        examples: ['./src/index.ts', '../notes.txt'],
+      }),
+      S.decodeTo(RelFile__, {
+        encode: SchemaGetter.transform((encoded) =>
+          format({
+            isPathAbsolute: false,
+            ascent: encoded.dir.ascent,
+            fileName: encoded.fileName,
+          })(encoded.dir.segments),
+        ),
+        decode: SchemaGetter.transformEffect(
+          flow(analyzeFileRel, Effect.fromResult, Effect.flatMap(decodeAnalysis)),
+        ),
+      }),
+      S.overrideToFormatter(() => (path) => path.toString()),
     ),
   ),
   'Path.RelFile.make',
@@ -307,26 +304,6 @@ export class RelFile_ extends withLiteralStatics(
         dir: RelDir.make({ ascent: decoded.ascent, segments: decoded.segments }),
         fileName: S.encodeSync(FileName)(decoded.fileName),
       })),
-    }),
-  )
-
-  /**
-   * Variant schema carrying a realistic generation bias — same set as the
-   * canonical schema; generation mixes realistic files 20:1 over the
-   * canonical distribution.
-   */
-  static readonly Realistic = RelFile_.pipe(
-    withArbitraryHints({
-      candidate: {
-        weight: 20,
-        make: (fc) =>
-          fc
-            .record({
-              dir: S.toArbitrary(RelDir.Realistic),
-              fileName: S.toArbitrary(FileName.Realistic),
-            })
-            .map((input) => RelFile_.make(input)),
-      },
     }),
   )
 }

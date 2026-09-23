@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import { Option, Result, Schema as S, SchemaIssue } from 'effect'
+import { Result, Schema as S, SchemaIssue } from 'effect'
 import type { FileName } from '../models/FileName.js'
 import { Protocol } from '../models/Protocol.js'
 import type { Segment } from '../models/segment.js'
@@ -9,7 +9,7 @@ const fileScheme = S.encodeSync(Protocol)('file')
 const fileProtocol = 'file:'
 
 const invalid = (url: URL, expected: string): SchemaIssue.Issue =>
-  new SchemaIssue.InvalidValue(Option.some(url.href), {
+  new SchemaIssue.InvalidValue({
     message: `Expected ${expected}, received ${JSON.stringify(url.href)}`,
   })
 

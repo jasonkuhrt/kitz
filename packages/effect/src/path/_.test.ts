@@ -5,7 +5,7 @@
  * Operation suites are colocated in operations/<name>.test.ts. Type-level and
  * value-level assertions remain together at each feature's test locus.
  */
-import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
+import { assertProperty, describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import {
   Config,
   ConfigProvider,
@@ -18,7 +18,7 @@ import {
   Schema as S,
 } from 'effect'
 import * as PrimaryKey from 'effect/PrimaryKey'
-import { FastCheck } from 'effect/testing'
+import * as Arbitrary from 'effect/unstable/arbitrary/Arbitrary'
 import { NaturalInt } from '../schema/NaturalInt.js'
 import * as LiteralCore from './core/literal.js'
 import { Types } from '../types/_.js'
@@ -27,31 +27,22 @@ import * as Path from './__.js'
 
 // ─── shared generators & helpers ───
 
-// Arbitraries derive on demand from the model schemas (S.toArbitrary is
-// memoized); Realistic variants are the models' own variant statics.
+// Arbitraries derive from the model schemas with the native `Arbitrary.schema`.
 const arb = {
-  Segment: S.toArbitrary(Path.Segment),
-  FileName: S.toArbitrary(Path.FileName),
-  AbsDir: S.toArbitrary(Path.AbsDir),
-  AbsFile: S.toArbitrary(Path.AbsFile),
-  RelDir: S.toArbitrary(Path.RelDir),
-  RelFile: S.toArbitrary(Path.RelFile),
-  Any: S.toArbitrary(Path.Any),
-  Realistic: {
-    Segment: S.toArbitrary(Path.Segment.Realistic),
-    FileName: S.toArbitrary(Path.FileName.Realistic),
-    AbsDir: S.toArbitrary(Path.AbsDir.Realistic),
-    AbsFile: S.toArbitrary(Path.AbsFile.Realistic),
-    RelDir: S.toArbitrary(Path.RelDir.Realistic),
-    RelFile: S.toArbitrary(Path.RelFile.Realistic),
-    Any: S.toArbitrary(Path.Any.Realistic),
-  },
+  Segment: Arbitrary.schema(Path.Segment),
+  FileName: Arbitrary.schema(Path.FileName),
+  AbsDir: Arbitrary.schema(Path.AbsDir),
+  AbsFile: Arbitrary.schema(Path.AbsFile),
+  RelDir: Arbitrary.schema(Path.RelDir),
+  RelFile: Arbitrary.schema(Path.RelFile),
+  Any: Arbitrary.schema(Path.Any),
 } as const
 
-const abs = FastCheck.oneof(arb.AbsDir, arb.AbsFile)
-const dir = FastCheck.oneof(arb.AbsDir, arb.RelDir)
-const rel = FastCheck.oneof(arb.RelDir, arb.RelFile)
-const file = FastCheck.oneof(arb.AbsFile, arb.RelFile)
+// Static choice is a Schema union: the native runner picks alternatives uniformly.
+const abs = Arbitrary.schema(S.Union([Path.AbsDir, Path.AbsFile]))
+const dir = Arbitrary.schema(S.Union([Path.AbsDir, Path.RelDir]))
+const rel = Arbitrary.schema(S.Union([Path.RelDir, Path.RelFile]))
+const file = Arbitrary.schema(S.Union([Path.AbsFile, Path.RelFile]))
 
 const encodeAny = S.encodeSync(Path.Any)
 const extension = (value: string) => S.decodeSync(Path.Extension)(value)
@@ -76,10 +67,10 @@ const codecCases = [
   ['AbsFile', Path.AbsFile, arb.AbsFile],
   ['RelDir', Path.RelDir, arb.RelDir],
   ['RelFile', Path.RelFile, arb.RelFile],
-  ['Abs', Path.Abs, FastCheck.oneof(arb.AbsDir, arb.AbsFile)],
-  ['Rel', Path.Rel, FastCheck.oneof(arb.RelDir, arb.RelFile)],
-  ['Dir', Path.Dir, FastCheck.oneof(arb.AbsDir, arb.RelDir)],
-  ['File', Path.File, FastCheck.oneof(arb.AbsFile, arb.RelFile)],
+  ['Abs', Path.Abs, abs],
+  ['Rel', Path.Rel, rel],
+  ['Dir', Path.Dir, dir],
+  ['File', Path.File, file],
   ['Any', Path.Any, arb.Any],
 ] as const
 
@@ -161,23 +152,19 @@ describe('codec', () => {
     const encode = S.encodeSync(schema)
     const decode = S.decodeSync(schema)
 
-    FastCheck.assert(
-      FastCheck.property(arbitrary as FastCheck.Arbitrary<never>, (path) => {
-        expect(decode(encode(path))).toEqual(path)
-      }),
-    )
+    assertProperty([arbitrary as Arbitrary.Arbitrary<never>], ([path]) => {
+      expect(decode(encode(path))).toEqual(path)
+    })
   })
 
   it.each(codecCases)('%s encode(decode(canonical)) is idempotent', (_, schema, arbitrary) => {
     const encode = S.encodeSync(schema)
     const decode = S.decodeSync(schema)
 
-    FastCheck.assert(
-      FastCheck.property(arbitrary as FastCheck.Arbitrary<never>, (path) => {
-        const canonical = encode(path)
-        expect(encode(decode(canonical))).toBe(canonical)
-      }),
-    )
+    assertProperty([arbitrary as Arbitrary.Arbitrary<never>], ([path]) => {
+      const canonical = encode(path)
+      expect(encode(decode(canonical))).toBe(canonical)
+    })
   })
 
   it.each(canonicalizationCases)('%s canonicalizes as %s %s', (input, tag, canonical) => {
@@ -196,14 +183,11 @@ describe('codec', () => {
   it.each(codecCases)('%s Equal agrees with canonical encoding', (_, schema, arbitrary) => {
     const encode = S.encodeSync(schema)
 
-    FastCheck.assert(
-      FastCheck.property(
-        arbitrary as FastCheck.Arbitrary<never>,
-        arbitrary as FastCheck.Arbitrary<never>,
-        (a, b) => {
-          expect(Equal.equals(a, b)).toBe(encode(a) === encode(b))
-        },
-      ),
+    assertProperty(
+      [arbitrary as Arbitrary.Arbitrary<never>, arbitrary as Arbitrary.Arbitrary<never>],
+      ([a, b]) => {
+        expect(Equal.equals(a, b)).toBe(encode(a) === encode(b))
+      },
     )
   })
 
@@ -358,32 +342,30 @@ describe('JSON Schema', () => {
 
 describe('union utilities', () => {
   it('match and guards agree with variant tags and S.is', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.Any, (path) => {
-        const tag = Path.Any.match(path, {
-          AbsDir: () => 'AbsDir',
-          AbsFile: () => 'AbsFile',
-          RelDir: () => 'RelDir',
-          RelFile: () => 'RelFile',
-        })
-        const guard = Path.Any.match(path, {
-          AbsDir: (value) => Path.Any.guards.AbsDir(value),
-          AbsFile: (value) => Path.Any.guards.AbsFile(value),
-          RelDir: (value) => Path.Any.guards.RelDir(value),
-          RelFile: (value) => Path.Any.guards.RelFile(value),
-        })
-        const schema = Path.Any.match(path, {
-          AbsDir: (value) => S.is(Path.Any.cases.AbsDir)(value),
-          AbsFile: (value) => S.is(Path.Any.cases.AbsFile)(value),
-          RelDir: (value) => S.is(Path.Any.cases.RelDir)(value),
-          RelFile: (value) => S.is(Path.Any.cases.RelFile)(value),
-        })
+    assertProperty([arb.Any], ([path]) => {
+      const tag = Path.Any.match(path, {
+        AbsDir: () => 'AbsDir',
+        AbsFile: () => 'AbsFile',
+        RelDir: () => 'RelDir',
+        RelFile: () => 'RelFile',
+      })
+      const guard = Path.Any.match(path, {
+        AbsDir: (value) => Path.Any.guards.AbsDir(value),
+        AbsFile: (value) => Path.Any.guards.AbsFile(value),
+        RelDir: (value) => Path.Any.guards.RelDir(value),
+        RelFile: (value) => Path.Any.guards.RelFile(value),
+      })
+      const schema = Path.Any.match(path, {
+        AbsDir: (value) => S.is(Path.Any.cases.AbsDir)(value),
+        AbsFile: (value) => S.is(Path.Any.cases.AbsFile)(value),
+        RelDir: (value) => S.is(Path.Any.cases.RelDir)(value),
+        RelFile: (value) => S.is(Path.Any.cases.RelFile)(value),
+      })
 
-        expect(tag).toBe(path._tag)
-        expect(guard).toBe(true)
-        expect(schema).toBe(true)
-      }),
-    )
+      expect(tag).toBe(path._tag)
+      expect(guard).toBe(true)
+      expect(schema).toBe(true)
+    })
   })
 
   it('types: union member access matches the organizing-principle table', () => {
@@ -401,11 +383,9 @@ describe('union utilities', () => {
 
 describe('.name / .stem / .extension', () => {
   it('file name is stem plus extension', () => {
-    FastCheck.assert(
-      FastCheck.property(file, (f) => {
-        expect(f.name).toBe(`${f.stem}${Option.getOrElse(f.extension, () => '')}`)
-      }),
-    )
+    assertProperty([file], ([f]) => {
+      expect(f.name).toBe(`${f.stem}${Option.getOrElse(f.extension, () => '')}`)
+    })
   })
 
   it('types: files are honest strings, dirs are honest Options', () => {
@@ -458,11 +438,9 @@ describe('FileName .prefix / .extensions', () => {
   })
 
   it('reconstructs every generated filename from prefix plus extensions', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.FileName, (value) => {
-        expect(value.name).toBe(`${value.prefix}${value.extensions.join('')}`)
-      }),
-    )
+    assertProperty([arb.FileName], ([value]) => {
+      expect(value.name).toBe(`${value.prefix}${value.extensions.join('')}`)
+    })
   })
 })
 
@@ -470,12 +448,10 @@ describe('FileName .prefix / .extensions', () => {
 
 describe('.dir', () => {
   it('is the containing directory with the same segments and ascent', () => {
-    FastCheck.assert(
-      FastCheck.property(file, (f) => {
-        expect(f.dir.segments).toEqual(f.segments)
-        expect(Path.RelFile.is(f) ? f.dir.ascent : 0).toBe(Path.RelFile.is(f) ? f.ascent : 0)
-      }),
-    )
+    assertProperty([file], ([f]) => {
+      expect(f.dir.segments).toEqual(f.segments)
+      expect(Path.RelFile.is(f) ? f.dir.ascent : 0).toBe(Path.RelFile.is(f) ? f.ascent : 0)
+    })
   })
 
   it('types: variant-precise', () => {
@@ -493,13 +469,11 @@ describe('.parent', () => {
     expect(root).toBeAnchor()
     expect(root.parent).toEqual(root)
 
-    FastCheck.assert(
-      FastCheck.property(FastCheck.integer({ min: 0, max: 8 }), (ascent) => {
-        const relRoot = Path.RelDir.make({ ascent: natural(ascent), segments: [] })
-        expect(relRoot.parent.ascent).toBe(ascent + 1)
-        expect(relRoot.parent.segments).toEqual([])
-      }),
-    )
+    assertProperty([S.Int.check(S.isBetween({ minimum: 0, maximum: 8 }))], ([ascent]) => {
+      const relRoot = Path.RelDir.make({ ascent: natural(ascent), segments: [] })
+      expect(relRoot.parent.ascent).toBe(ascent + 1)
+      expect(relRoot.parent.segments).toEqual([])
+    })
   })
 
   it('types: dir-only; files answer "up" with .dir', () => {
@@ -542,26 +516,22 @@ const iterateAbsParents = <$P extends Path.AbsDir | Path.AbsFile>(
 
 describe('.ancestors', () => {
   it('absolute ancestors equal repeated parent iteration to a fixed point', () => {
-    FastCheck.assert(
-      FastCheck.property(abs, (path) => {
-        expect(path.ancestors).toEqual(iterateAbsParents(path))
-      }),
-    )
+    assertProperty([abs], ([path]) => {
+      expect(path.ancestors).toEqual(iterateAbsParents(path))
+    })
   })
 
   it('relative ancestors are finite segment drops ending at the same anchor', () => {
-    FastCheck.assert(
-      FastCheck.property(rel, (path) => {
-        const ancestors = path.ancestors
-        expect(ancestors.map((a) => a.ascent)).toEqual(ancestors.map(() => path.ascent))
-        expect(ancestors.length).toBe(path.segments.length + (Path.RelFile.is(path) ? 1 : 0))
-        expect(ancestors.at(-1)).toEqual(
-          ancestors.length === 0
-            ? undefined
-            : Path.RelDir.make({ ascent: path.ascent, segments: [] }),
-        )
-      }),
-    )
+    assertProperty([rel], ([path]) => {
+      const ancestors = path.ancestors
+      expect(ancestors.map((a) => a.ascent)).toEqual(ancestors.map(() => path.ascent))
+      expect(ancestors.length).toBe(path.segments.length + (Path.RelFile.is(path) ? 1 : 0))
+      expect(ancestors.at(-1)).toEqual(
+        ancestors.length === 0
+          ? undefined
+          : Path.RelDir.make({ ascent: path.ascent, segments: [] }),
+      )
+    })
   })
 })
 
@@ -569,21 +539,17 @@ describe('.ancestors', () => {
 
 describe('.isAnchor / .depth', () => {
   it('isAnchor is true exactly for segment-less, ascent-0 dirs', () => {
-    FastCheck.assert(
-      FastCheck.property(dir, (path) => {
-        const ascent = Path.RelDir.is(path) ? path.ascent : 0
-        expect(path.isAnchor).toBe(path.segments.length === 0 && ascent === 0)
-      }),
-    )
+    assertProperty([dir], ([path]) => {
+      const ascent = Path.RelDir.is(path) ? path.ascent : 0
+      expect(path.isAnchor).toBe(path.segments.length === 0 && ascent === 0)
+    })
   })
 
   it('files derive anchor checks from their containing dir', () => {
-    FastCheck.assert(
-      FastCheck.property(file, (path) => {
-        const ascent = Path.RelFile.is(path) ? path.ascent : 0
-        expect(path.dir.isAnchor).toBe(path.segments.length === 0 && ascent === 0)
-      }),
-    )
+    assertProperty([file], ([path]) => {
+      const ascent = Path.RelFile.is(path) ? path.ascent : 0
+      expect(path.dir.isAnchor).toBe(path.segments.length === 0 && ascent === 0)
+    })
   })
 
   it('anchor statics are the named dir anchors', () => {
@@ -593,11 +559,9 @@ describe('.isAnchor / .depth', () => {
   })
 
   it('depth is the segment count (files exclude the filename)', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.Any, (path) => {
-        expect(path.depth).toBe(path.segments.length)
-      }),
-    )
+    assertProperty([arb.Any], ([path]) => {
+      expect(path.depth).toBe(path.segments.length)
+    })
   })
 })
 
@@ -605,11 +569,9 @@ describe('.isAnchor / .depth', () => {
 
 describe('.asDir / .asFile', () => {
   it('round trips files and refuses to reinterpret roots', () => {
-    FastCheck.assert(
-      FastCheck.property(file, (f) => {
-        expect(f.asDir.asFile).toEqual(Option.some(f))
-      }),
-    )
+    assertProperty([file], ([f]) => {
+      expect(f.asDir.asFile).toEqual(Option.some(f))
+    })
 
     expect(Path.AbsDir.make({ segments: [] }).asFile).toEqual(Option.none())
     expect(Path.RelDir.make({ ascent: natural(0), segments: [] }).asFile).toEqual(Option.none())
@@ -620,15 +582,13 @@ describe('.asDir / .asFile', () => {
 
 describe('.atRoot', () => {
   it('re-anchors relatives at the root, dropping ascent and keeping segments', () => {
-    FastCheck.assert(
-      FastCheck.property(rel, (path) => {
-        const rooted = path.atRoot
-        expect(rooted.segments).toEqual(path.segments)
-        expect(Path.RelFile.is(path) ? Option.some(path.fileName) : Option.none()).toEqual(
-          Path.AbsFile.is(rooted) ? Option.some(rooted.fileName) : Option.none(),
-        )
-      }),
-    )
+    assertProperty([rel], ([path]) => {
+      const rooted = path.atRoot
+      expect(rooted.segments).toEqual(path.segments)
+      expect(Path.RelFile.is(path) ? Option.some(path.fileName) : Option.none()).toEqual(
+        Path.AbsFile.is(rooted) ? Option.some(rooted.fileName) : Option.none(),
+      )
+    })
   })
 
   it('types: maps rel variants to abs counterparts', () => {
@@ -656,25 +616,21 @@ describe('FromUrl', () => {
   })
 
   it('round trips URL encoding for generated absolute values', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.AbsFile, (path) => {
-        const encoded = S.encodeSync(Path.AbsFile.FromUrl)(path)
-        const decoded = S.decodeSync(Path.AbsFile.FromUrl)(encoded)
+    assertProperty([arb.AbsFile], ([path]) => {
+      const encoded = S.encodeSync(Path.AbsFile.FromUrl)(path)
+      const decoded = S.decodeSync(Path.AbsFile.FromUrl)(encoded)
 
-        expect(encoded).toBeInstanceOf(URL)
-        expect(Equal.equals(decoded, path)).toBe(true)
-      }),
-    )
+      expect(encoded).toBeInstanceOf(URL)
+      expect(Equal.equals(decoded, path)).toBe(true)
+    })
 
-    FastCheck.assert(
-      FastCheck.property(arb.AbsDir, (path) => {
-        const encoded = S.encodeSync(Path.AbsDir.FromUrl)(path)
-        const decoded = S.decodeSync(Path.AbsDir.FromUrl)(encoded)
+    assertProperty([arb.AbsDir], ([path]) => {
+      const encoded = S.encodeSync(Path.AbsDir.FromUrl)(path)
+      const decoded = S.decodeSync(Path.AbsDir.FromUrl)(encoded)
 
-        expect(encoded).toBeInstanceOf(URL)
-        expect(Equal.equals(decoded, path)).toBe(true)
-      }),
-    )
+      expect(encoded).toBeInstanceOf(URL)
+      expect(Equal.equals(decoded, path)).toBe(true)
+    })
   })
 
   it('rejects non-file URLs and non-local file URL hosts', () => {
@@ -723,11 +679,9 @@ describe('FromStruct', () => {
     const encode = S.encodeSync(schema)
     const decode = S.decodeSync(schema)
 
-    FastCheck.assert(
-      FastCheck.property(arbitrary as FastCheck.Arbitrary<never>, (path) => {
-        expect(Equal.equals(decode(encode(path)), path)).toBe(true)
-      }),
-    )
+    assertProperty([arbitrary as Arbitrary.Arbitrary<never>], ([path]) => {
+      expect(Equal.equals(decode(encode(path)), path)).toBe(true)
+    })
   })
 
   it('rejects invalid wire data', () => {
@@ -826,21 +780,17 @@ describe('commonAncestor', () => {
   })
 
   it('returns the deepest self ancestor for same-path inputs', () => {
-    FastCheck.assert(
-      FastCheck.property(abs, (path) => {
-        const expected = Path.AbsFile.is(path) ? path.dir : path
+    assertProperty([abs], ([path]) => {
+      const expected = Path.AbsFile.is(path) ? path.dir : path
 
-        expect(Equal.equals(Path.Abs.commonAncestor(path, path), expected)).toBe(true)
-      }),
-    )
+      expect(Equal.equals(Path.Abs.commonAncestor(path, path), expected)).toBe(true)
+    })
 
-    FastCheck.assert(
-      FastCheck.property(rel, (path) => {
-        const expected = Path.RelFile.is(path) ? path.dir : path
+    assertProperty([rel], ([path]) => {
+      const expected = Path.RelFile.is(path) ? path.dir : path
 
-        expect(Equal.equals(Path.Rel.commonAncestor(path, path), expected)).toBe(true)
-      }),
-    )
+      expect(Equal.equals(Path.Rel.commonAncestor(path, path), expected)).toBe(true)
+    })
   })
 
   it('types: literal/value matrices return the group directory and reject invalid worlds', () => {
@@ -896,27 +846,23 @@ describe('commonAncestor', () => {
 
 describe('setParts', () => {
   it('name axis preserves AbsFile variant and directory', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.AbsFile, arb.FileName, (f, name) => {
-        const renamed = Path.AbsFile.setParts(f, { name })
+    assertProperty([arb.AbsFile, arb.FileName], ([f, name]) => {
+      const renamed = Path.AbsFile.setParts(f, { name })
 
-        expect(renamed._tag).toBe('AbsFile')
-        expect(renamed.dir).toEqual(f.dir)
-        expect(renamed.fileName).toEqual(name)
-      }),
-    )
+      expect(renamed._tag).toBe('AbsFile')
+      expect(renamed.dir).toEqual(f.dir)
+      expect(renamed.fileName).toEqual(name)
+    })
   })
 
   it('name axis preserves RelFile variant and directory', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.RelFile, arb.FileName, (f, name) => {
-        const renamed = Path.RelFile.setParts(f, { name })
+    assertProperty([arb.RelFile, arb.FileName], ([f, name]) => {
+      const renamed = Path.RelFile.setParts(f, { name })
 
-        expect(renamed._tag).toBe('RelFile')
-        expect(renamed.dir).toEqual(f.dir)
-        expect(renamed.fileName).toEqual(name)
-      }),
-    )
+      expect(renamed._tag).toBe('RelFile')
+      expect(renamed.dir).toEqual(f.dir)
+      expect(renamed.fileName).toEqual(name)
+    })
   })
 
   it('stem and extension axes rebuild the filename', () => {
@@ -948,26 +894,22 @@ describe('setParts', () => {
   })
 
   it('dir axis moves AbsFile without changing the filename', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.AbsFile, arb.AbsDir, (f, dir) => {
-        const moved = Path.AbsFile.setParts(f, { dir })
+    assertProperty([arb.AbsFile, arb.AbsDir], ([f, dir]) => {
+      const moved = Path.AbsFile.setParts(f, { dir })
 
-        expect(moved.segments).toEqual(dir.segments)
-        expect(moved.fileName).toEqual(f.fileName)
-      }),
-    )
+      expect(moved.segments).toEqual(dir.segments)
+      expect(moved.fileName).toEqual(f.fileName)
+    })
   })
 
   it('dir axis replaces RelFile ascent and segments without changing the filename', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.RelFile, arb.RelDir, (f, dir) => {
-        const moved = Path.RelFile.setParts(f, { dir })
+    assertProperty([arb.RelFile, arb.RelDir], ([f, dir]) => {
+      const moved = Path.RelFile.setParts(f, { dir })
 
-        expect(moved.ascent).toBe(dir.ascent)
-        expect(moved.segments).toEqual(dir.segments)
-        expect(moved.fileName).toEqual(f.fileName)
-      }),
-    )
+      expect(moved.ascent).toBe(dir.ascent)
+      expect(moved.segments).toEqual(dir.segments)
+      expect(moved.fileName).toEqual(f.fileName)
+    })
   })
 
   it('dir and filename axes compose in one call', () => {
@@ -986,15 +928,13 @@ describe('setParts', () => {
   })
 
   it('empty parts rebuild an Equal-equal path', () => {
-    FastCheck.assert(
-      FastCheck.property(file, (f) => {
-        const rebuilt = Path.AbsFile.is(f)
-          ? Path.AbsFile.setParts(f, {})
-          : Path.RelFile.setParts(f, {})
+    assertProperty([file], ([f]) => {
+      const rebuilt = Path.AbsFile.is(f)
+        ? Path.AbsFile.setParts(f, {})
+        : Path.RelFile.setParts(f, {})
 
-        expect(Equal.equals(rebuilt, f)).toBe(true)
-      }),
-    )
+      expect(Equal.equals(rebuilt, f)).toBe(true)
+    })
   })
 
   it('types: payloads reject mixed filename modes and opposite-anchor dirs', () => {
@@ -1048,16 +988,14 @@ describe('Config integration', () => {
 
 describe('traits (toString / format / toJSON / PrimaryKey)', () => {
   it('use the canonical encoded string', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.Any, (path) => {
-        const encoded = encodeAny(path)
-        expect(path).toEncodeTo(encoded)
-        expect(path.toString()).toBe(encoded)
-        expect(path.format()).toBe(encoded)
-        expect(path.toJSON()).toBe(encoded)
-        expect(path[PrimaryKey.symbol]()).toBe(encoded)
-      }),
-    )
+    assertProperty([arb.Any], ([path]) => {
+      const encoded = encodeAny(path)
+      expect(path).toEncodeTo(encoded)
+      expect(path.toString()).toBe(encoded)
+      expect(path.format()).toBe(encoded)
+      expect(path.toJSON()).toBe(encoded)
+      expect(path[PrimaryKey.symbol]()).toBe(encoded)
+    })
   })
 
   it.each([
@@ -1087,43 +1025,15 @@ const encodedSchemas = [
   ['Any', Path.Any, arb.Any],
 ] as const
 
-const realisticArbitraries = [
-  ['Realistic.Segment', Path.Segment, arb.Realistic.Segment],
-  ['Realistic.FileName', Path.FileName, arb.Realistic.FileName],
-  ['Realistic.AbsDir', Path.AbsDir, arb.Realistic.AbsDir],
-  ['Realistic.AbsFile', Path.AbsFile, arb.Realistic.AbsFile],
-  ['Realistic.RelDir', Path.RelDir, arb.Realistic.RelDir],
-  ['Realistic.RelFile', Path.RelFile, arb.Realistic.RelFile],
-  ['Realistic.Any', Path.Any, arb.Realistic.Any],
-] as const
-
 describe('Testing arbitraries', () => {
-  it.each([...encodedSchemas, ...realisticArbitraries])(
-    '%s encodes 500 sampled values',
-    (_, schema, arbitrary) => {
-      const encode = S.encodeSync(schema)
-      for (const value of FastCheck.sample(arbitrary as FastCheck.Arbitrary<unknown>, 500)) {
-        expect(() => encode(value as never)).not.toThrow()
-      }
-    },
-  )
-
-  it.each(encodedSchemas)('%s derives without opaque-filter warnings', (_, schema) => {
-    const derivation = S.toArbitrary(schema, { report: true })
-    expect(derivation.report.warnings).toEqual([])
-  })
-})
-
-describe('Segment.Realistic', () => {
-  it('accepts the same set as Segment; generation is biased toward realistic names', () => {
-    const samples = FastCheck.sample(S.toArbitrary(Path.Segment.Realistic), {
-      numRuns: 500,
-      seed: 42,
-    })
-    for (const value of samples) expect(S.decodeSync(Path.Segment)(value)).toBe(value)
-    const realistic = samples.filter((s) => /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/.test(s))
-    // candidate weight 20 vs base weight 1 → expected fraction ≈ 20/21
-    expect(realistic.length / samples.length).toBeGreaterThan(0.85)
+  it.each(encodedSchemas)('%s encodes 500 sampled values', (_, schema, arbitrary) => {
+    const encode = S.encodeSync(schema)
+    const samples = Effect.runSync(
+      Arbitrary.sampleEffect(arbitrary as Arbitrary.Arbitrary<unknown>, { count: 500 }),
+    )
+    for (const value of samples) {
+      expect(() => encode(value as never)).not.toThrow()
+    }
   })
 })
 

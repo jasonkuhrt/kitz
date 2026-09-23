@@ -18,7 +18,6 @@ import { attachNodeInspect } from '../core/inspect.js'
 import type { LiteralGuard } from '../core/literal.js'
 import { renderPath } from '../core/render.js'
 import { resolveFileName } from '../core/setParts.js'
-import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
 import type { Extension } from './Extension.js'
@@ -201,27 +200,25 @@ const decodeAnalysis = (analysis: AnalysisFile) =>
  */
 export class AbsFile_ extends withLiteralStatics(
   withStatics(
-    S.asClass(
-      S.String.pipe(
-        S.annotate({
-          identifier: 'AbsFile',
-          title: 'Absolute file path',
-          description:
-            'A POSIX absolute file path — starts with `/`, does not end with `/` (e.g. `/home/user/notes.txt`); ascending above the root clamps (`/a/../../b` decodes as `/b`).',
-          examples: ['/home/user/notes.txt', '/etc/hostname'],
-        }),
-        S.decodeTo(AbsFile__, {
-          encode: SchemaGetter.transform((encoded) =>
-            format({ isPathAbsolute: true, ascent: 0, fileName: encoded.fileName })(
-              encoded.dir.segments,
-            ),
+    S.String.pipe(
+      S.annotate({
+        identifier: 'AbsFile',
+        title: 'Absolute file path',
+        description:
+          'A POSIX absolute file path — starts with `/`, does not end with `/` (e.g. `/home/user/notes.txt`); ascending above the root clamps (`/a/../../b` decodes as `/b`).',
+        examples: ['/home/user/notes.txt', '/etc/hostname'],
+      }),
+      S.decodeTo(AbsFile__, {
+        encode: SchemaGetter.transform((encoded) =>
+          format({ isPathAbsolute: true, ascent: 0, fileName: encoded.fileName })(
+            encoded.dir.segments,
           ),
-          decode: SchemaGetter.transformOrFail(
-            flow(analyzeFileAbs, Effect.fromResult, Effect.flatMap(decodeAnalysis)),
-          ),
-        }),
-        S.overrideToFormatter(() => (path) => path.toString()),
-      ),
+        ),
+        decode: SchemaGetter.transformEffect(
+          flow(analyzeFileAbs, Effect.fromResult, Effect.flatMap(decodeAnalysis)),
+        ),
+      }),
+      S.overrideToFormatter(() => (path) => path.toString()),
     ),
   ),
   'Path.AbsFile.make',
@@ -283,7 +280,7 @@ export class AbsFile_ extends withLiteralStatics(
       encode: SchemaGetter.transform((encoded) =>
         fileUrlOf({ segments: encoded.dir.segments, fileName: encoded.fileName }),
       ),
-      decode: SchemaGetter.transformOrFail(
+      decode: SchemaGetter.transformEffect(
         flow(
           pathStringFromFileUrl,
           Result.flatMap(analyzeFileAbs),
@@ -316,26 +313,6 @@ export class AbsFile_ extends withLiteralStatics(
         dir: AbsDir.make({ segments: decoded.segments }),
         fileName: S.encodeSync(FileName)(decoded.fileName),
       })),
-    }),
-  )
-
-  /**
-   * Variant schema carrying a realistic generation bias — same set as the
-   * canonical schema; generation mixes realistic files 20:1 over the
-   * canonical distribution.
-   */
-  static readonly Realistic = AbsFile_.pipe(
-    withArbitraryHints({
-      candidate: {
-        weight: 20,
-        make: (fc) =>
-          fc
-            .record({
-              dir: S.toArbitrary(AbsDir.Realistic),
-              fileName: S.toArbitrary(FileName.Realistic),
-            })
-            .map((input) => AbsFile_.make(input)),
-      },
     }),
   )
 }

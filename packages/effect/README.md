@@ -163,8 +163,8 @@ pnpm add @kitz/effect effect
 package share a single Effect instance (Effect relies on module-level singletons;
 two copies break Context/Schema identity).
 
-> **Pre-release:** this package targets Effect v4 (`effect@^4.0.0-beta.97`), which is
-> still in beta. Pin accordingly.
+> **Pre-release:** this package targets Effect v4 (`effect@^4.0.0-rc.117`), which is
+> still a release candidate. Pin accordingly.
 
 ## Subpath exports
 
@@ -188,15 +188,15 @@ type LiteralError = Types.StaticError<'Expected a string literal.'>
 
 ## Property testing
 
-Every model schema derives a fast-check arbitrary on demand — the canonical
-one covers the model's whole domain, and each model carries a `Realistic`
-variant schema biased toward readable real-world values:
+Every model schema derives an arbitrary with Effect's native arbitrary module.
+Each model's schema encodes all of its invariants, so the derived arbitrary
+yields only valid, canonical values and covers the model's whole domain,
+including non-ASCII, control, and astral text:
 
 ```ts
-import { Schema } from 'effect'
+import { Arbitrary } from 'effect/unstable/arbitrary'
 
-Schema.toArbitrary(Path.AbsFile) // full domain — use for laws
-Schema.toArbitrary(Path.AbsFile.Realistic) // readable 20:1 mix — use for shrink output
+Arbitrary.schema(Path.AbsFile) // full domain — use for laws
 ```
 
 Vitest matchers for path values (`toBeAbs`, `toEncodeTo`, `toBeWithinPath`, …)

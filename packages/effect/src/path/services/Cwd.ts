@@ -3,7 +3,7 @@ import { AbsDir } from '../models/AbsDir.js'
 
 // @kitz/effect deliberately has no @kitz/core dependency, so this process-boundary
 // adapter uses Effect's native schema-backed error instead of the repository helper.
-export class CwdError extends S.TaggedErrorClass<CwdError>()('@kitz/effect/Path/CwdError', {
+export class CwdError extends S.TaggedError<CwdError>()('@kitz/effect/Path/CwdError', {
   cause: S.Defect(),
 }) {}
 

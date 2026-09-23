@@ -11,9 +11,7 @@ import { RelDir } from './RelDir.js'
 const DirTaggedUnion = S.Union([AbsDir, RelDir]).pipe(S.toTaggedUnion('_tag'))
 
 class Dir_ extends withLiteralStatics(
-  withStatics(
-    S.asClass(DirTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
-  ),
+  withStatics(DirTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
   'Path.Dir.make',
 ) {
   static readonly cases = DirTaggedUnion.cases

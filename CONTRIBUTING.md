@@ -134,10 +134,10 @@ error TS7056: The inferred type of this node exceeds the maximum length the
 compiler will serialize. An explicit type annotation is needed.
 ```
 
-**Cause**: Declaration emit writes a _named reference_ for a cross-file type only when that type's symbol is exported/nameable; otherwise it expands the type structurally. Declaration emit also runs with truncation disabled, so a large expansion can blow past the compiler's ~1,000,000-character serialization cap (not configurable). The classic trigger is the `asClass` "dance":
+**Cause**: Declaration emit writes a _named reference_ for a cross-file type only when that type's symbol is exported/nameable; otherwise it expands the type structurally. Declaration emit also runs with truncation disabled, so a large expansion can blow past the compiler's ~1,000,000-character serialization cap (not configurable). The classic trigger is the `_`-class "dance" — a schema class declared under a `_` name and published through a value alias:
 
 ```typescript
-class FileName_ extends S.asClass(S.String.pipe(S.decodeTo(FileName__, { ... }))) {}
+class FileName_ extends S.String.pipe(S.decodeTo(FileName__, { ... })) {}
 export const FileName = FileName_ // value alias — does NOT make the TYPE nameable
 export type FileName = typeof FileName_.Type
 ```
@@ -147,9 +147,9 @@ The schema's real type symbol is `FileName_`. Left un-exported, any field that e
 **Solution**: `export` the `_` wrapper class so its symbol is nameable across files:
 
 ```typescript
-export class FileName_ extends S.asClass(...) {}
+export class FileName_ extends S.String.pipe(...) {}
 ```
 
 Emit then writes `fileName: typeof import("./FileName.js").FileName_` (a reference) instead of inlining the structural type. Keep these `_` classes out of the public surface by re-exporting only the public binding from the barrel (`export { FileName } from './FileName.js'`, not `export *`).
 
-**Key insight**: Explicit type annotations also work (they hand emit a small named type), but exporting the wrapper class is free and exact — it makes the type's _existing_ symbol nameable instead of forcing you to re-describe it. A directly-exported `export class Segment extends S.asClass(...)` never hits this; the `_` + `export const` indirection is what hides the symbol.
+**Key insight**: Explicit type annotations also work (they hand emit a small named type), but exporting the wrapper class is free and exact — it makes the type's _existing_ symbol nameable instead of forcing you to re-describe it. A directly-exported `export class Segment extends S.String.pipe(...)` never hits this; the `_` + `export const` indirection is what hides the symbol.

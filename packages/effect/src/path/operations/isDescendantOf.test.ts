@@ -1,29 +1,38 @@
-import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
+import { assertProperty, describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Schema as S } from 'effect'
-import { FastCheck } from 'effect/testing'
+import * as Arbitrary from 'effect/unstable/arbitrary/Arbitrary'
 import { NaturalInt } from '../../schema/NaturalInt.js'
 import * as Path from '../__.js'
 
+// Uniform choice between two non-Schema arbitraries, selected by a generated
+// boolean (Schema-described alternatives use a Schema union instead).
+const oneOf = <$A, $B>(
+  first: Arbitrary.Arbitrary<$A>,
+  second: Arbitrary.Arbitrary<$B>,
+): Arbitrary.Arbitrary<$A | $B> =>
+  Arbitrary.flatMap(Arbitrary.schema(S.Boolean), (pickFirst): Arbitrary.Arbitrary<$A | $B> =>
+    pickFirst ? first : second,
+  )
+
 const natural = (value: number) => NaturalInt.make(value)
-const arbSegment = S.toArbitrary(Path.Segment)
-const arbFileName = S.toArbitrary(Path.FileName)
-const arbAbsDir = S.toArbitrary(Path.AbsDir)
-const arbAbsFile = S.toArbitrary(Path.AbsFile)
-const arbRelDir = S.toArbitrary(Path.RelDir)
-const arbRelFile = S.toArbitrary(Path.RelFile)
-const dir = FastCheck.oneof(arbAbsDir, arbRelDir)
-const file = FastCheck.oneof(arbAbsFile, arbRelFile)
-const relFileAscent0 = FastCheck.record({
-  segments: FastCheck.array(arbSegment, { maxLength: 6 }),
-  fileName: arbFileName,
-}).map((input) =>
-  Path.RelFile.make({
-    dir: Path.RelDir.make({ ascent: natural(0), segments: input.segments }),
-    fileName: input.fileName,
+const arbSegment = Arbitrary.schema(Path.Segment)
+const arbFileName = Arbitrary.schema(Path.FileName)
+// Static choice is a Schema union: the native runner picks alternatives uniformly.
+const dir = Arbitrary.schema(S.Union([Path.AbsDir, Path.RelDir]))
+const file = Arbitrary.schema(S.Union([Path.AbsFile, Path.RelFile]))
+const relFileAscent0 = Arbitrary.map(
+  Arbitrary.all({
+    segments: Arbitrary.array(arbSegment, { maxLength: 6 }),
+    fileName: arbFileName,
   }),
+  (input) =>
+    Path.RelFile.make({
+      dir: Path.RelDir.make({ ascent: natural(0), segments: input.segments }),
+      fileName: input.fileName,
+    }),
 )
-const nonEmptyRelAscent0 = FastCheck.oneof(
-  FastCheck.array(arbSegment, { minLength: 1, maxLength: 6 }).map((segments) =>
+const nonEmptyRelAscent0 = oneOf(
+  Arbitrary.map(Arbitrary.array(arbSegment, { minLength: 1, maxLength: 6 }), (segments) =>
     Path.RelDir.make({ ascent: natural(0), segments }),
   ),
   relFileAscent0,
@@ -54,28 +63,22 @@ describe('isDescendantOf', () => {
   })
 
   it('joining a non-empty ascent-0 relative path makes it a descendant', () => {
-    FastCheck.assert(
-      FastCheck.property(dir, nonEmptyRelAscent0, (base, r) => {
-        const child = Path.join(base, r)
-        expect(child).toBeWithinPath(base)
-      }),
-    )
+    assertProperty([dir, nonEmptyRelAscent0], ([base, r]) => {
+      const child = Path.join(base, r)
+      expect(child).toBeWithinPath(base)
+    })
   })
 
   it('is strict for directory identity', () => {
-    FastCheck.assert(
-      FastCheck.property(dir, (path) => {
-        expect(Path.isDescendantOf(path, path)).toBe(false)
-      }),
-    )
+    assertProperty([dir], ([path]) => {
+      expect(Path.isDescendantOf(path, path)).toBe(false)
+    })
   })
 
   it('keeps files directly inside their containing dir as descendants', () => {
-    FastCheck.assert(
-      FastCheck.property(file, (path) => {
-        expect(Path.isDescendantOf(path, path.dir)).toBe(true)
-      }),
-    )
+    assertProperty([file], ([path]) => {
+      expect(Path.isDescendantOf(path, path.dir)).toBe(true)
+    })
   })
 
   it('keeps different-ascent pure relatives strict', () => {

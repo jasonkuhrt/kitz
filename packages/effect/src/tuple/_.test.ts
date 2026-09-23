@@ -5,7 +5,7 @@ describe('effect/Tuple passthrough', () => {
   it('re-exports effect tuple utilities unchanged', () => {
     const pair = Tuple.make('a', 42)
     expect(pair).toEqual(['a', 42])
-    expectTypeOf(pair).toEqualTypeOf<[string, number]>()
+    expectTypeOf(pair).toEqualTypeOf<['a', 42]>()
   })
 })
 

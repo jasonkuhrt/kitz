@@ -4,7 +4,7 @@ import type { LiteralGuard } from '../core/literal.js'
 import { relativeToRelValue } from '../core/relativeTo.js'
 import { commonSegmentPrefix } from '../core/segments.js'
 import { withLiteralStatics } from '../core/statics.js'
-import { Ascent } from './arbitrary.js'
+import { Ascent } from './ascent.js'
 import { RelDir } from './RelDir.js'
 import { RelFile } from './RelFile.js'
 
@@ -27,9 +27,7 @@ type RelRelativeToLiteralGuard<$S extends string, $Target> = LiteralGuard<
 const RelTaggedUnion = S.Union([RelFile, RelDir]).pipe(S.toTaggedUnion('_tag'))
 
 class Rel_ extends withLiteralStatics(
-  withStatics(
-    S.asClass(RelTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
-  ),
+  withStatics(RelTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
   'Path.Rel.make',
 ) {
   static readonly cases = RelTaggedUnion.cases
@@ -72,7 +70,8 @@ class Rel_ extends withLiteralStatics(
 
   /**
    * Express a relative path relative to a relative base directory. Returns
-   * `None` when the target has a shallower unknown anchor than the base. Dual:
+   * `None` when the target has a shallower unknown anchor than the base, or
+   * when the walk up would exceed the 4096-step ascent ceiling. Dual:
    * `Rel.relativeTo(path, base)` or `Rel.relativeTo(base)(path)`.
    */
   static readonly relativeTo: {

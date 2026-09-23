@@ -1,5 +1,5 @@
 import { Effect, Layer } from 'effect'
-import { FastCheck } from 'effect/testing'
+import * as Arbitrary from 'effect/unstable/arbitrary/Arbitrary'
 import { describe, expect, expectTypeOf, it } from './index.js'
 
 describe('Effect tester surface', () => {
@@ -47,7 +47,7 @@ describe('Effect tester surface', () => {
 
   it.effect.prop(
     'runs Effect property cases',
-    [FastCheck.constant(1)] as const,
+    [Arbitrary.Constant(1)] as const,
     ([value]: readonly [number], ctx) =>
       Effect.sync(() => {
         expect(value).toBe(1)

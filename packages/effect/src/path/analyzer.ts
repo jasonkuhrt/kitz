@@ -1,4 +1,4 @@
-import { Data, flow, Option, Result, SchemaIssue } from 'effect'
+import { Data, flow, Result, SchemaIssue } from 'effect'
 import {
   ascent as ascentSegment,
   ascentPrefix,
@@ -40,16 +40,16 @@ export type AnalysisDir = Data.TaggedEnum.Value<Analysis, 'dir'>
 
 /** The schema issue for a path that didn't match the expected kind or absoluteness. */
 const invalid = (input: string, expected: string): SchemaIssue.Issue =>
-  new SchemaIssue.InvalidValue(Option.some(input), {
+  new SchemaIssue.InvalidValue({
     message: `Expected ${expected}, received ${JSON.stringify(input)}`,
   })
 
-const emptyPath = new SchemaIssue.InvalidValue(Option.some(''), {
+const emptyPath = new SchemaIssue.InvalidValue({
   message: emptyPathMessage,
 })
 
 const illFormedUnicode = (input: string): SchemaIssue.Issue =>
-  new SchemaIssue.InvalidValue(Option.some(input), {
+  new SchemaIssue.InvalidValue({
     message: 'Path text must be well-formed Unicode',
   })
 
@@ -209,12 +209,12 @@ export const splitExtension = (fileName: string): { stem: string; extension: str
 }
 
 /** Issue raised when a filename input is actually a path (has segments). */
-const notABareFilename = new SchemaIssue.InvalidValue(Option.none(), {
+const notABareFilename = new SchemaIssue.InvalidValue({
   message: 'Expected a bare filename, not a path',
 })
 
 /** Issue raised when a filename contains the POSIX path terminator byte. */
-const nullByteInFileName = new SchemaIssue.InvalidValue(Option.none(), {
+const nullByteInFileName = new SchemaIssue.InvalidValue({
   message: 'Filename cannot contain NUL',
 })
 

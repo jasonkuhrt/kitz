@@ -4,30 +4,16 @@ import type { Types } from '../../types/_.js'
 import { nullByte } from '../core/grammar.js'
 import type { requiresLiteral } from '../core/messages.js'
 
-const extensionPatternSource = `^\\.[^/${nullByte}]+$`
-
 /**
  * A file extension starting with a dot (e.g. `.ts`). POSIX-safe: any
- * character except `/` or NUL after the dot.
+ * character except `/` or NUL after the dot, as well-formed Unicode like all
+ * path text. The pattern's `u` flag lets pattern-derived generation emit astral
+ * characters.
  */
 const ExtensionSchema = S.String.pipe(
   S.check(
-    S.isPattern(new RegExp(extensionPatternSource), {
-      arbitrary: {
-        // Keep the pattern constraint for the base generator (printable
-        // ASCII) and add a full-codepoint source at equal weight, keeping
-        // canonical generation domain-faithful.
-        constraint: { patterns: [extensionPatternSource] },
-        candidate: {
-          weight: 1,
-          make: (fc: typeof import('effect/testing').FastCheck) =>
-            fc
-              .string({ unit: 'binary', minLength: 1, maxLength: 8 })
-              .filter((s) => !s.includes('/') && !s.includes(nullByte))
-              .map((s) => `.${s}`),
-        },
-      },
-    }),
+    S.isPattern(new RegExp(`^\\.[^/${nullByte}]+$`, 'u')),
+    S.makeFilter((s) => s.isWellFormed(), { message: 'Extension must be well-formed Unicode' }),
   ),
   S.annotate({ description: 'A file extension starting with a dot (POSIX-compliant)' }),
 )
@@ -63,7 +49,7 @@ export type ExtensionLiteralGuard<$S extends string, $Subject extends string> =
       >
 
 /** First-class file-extension schema with a literal-aware constructor. */
-export class Extension_ extends withStatics(S.asClass(ExtensionSchema)) {
+export class Extension_ extends withStatics(ExtensionSchema) {
   /** Literals validate statically; widened strings validate at runtime. */
   static override make<const $Input extends string>(
     input: ExtensionMakeInput<$Input>,

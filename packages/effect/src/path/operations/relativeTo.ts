@@ -99,8 +99,8 @@ export type RelativeTo<$A extends Abs | Rel> = $A extends AbsFile
  * `..` for the segments they don't share. For absolute paths this is total. For
  * relative paths this returns `None` exactly when `target.ascent < base.ascent`,
  * because joining from a relative base cannot move to a shallower unknown
- * anchor. Otherwise it satisfies `join(base, relativeTo(target, base)) ===
- * target`.
+ * anchor, or when the walk up would exceed the 4096-step ascent ceiling.
+ * Otherwise it satisfies `join(base, relativeTo(target, base)) === target`.
  *
  * Rel×rel case analysis:
  * - `target.ascent === base.ascent`: share the known segment prefix and walk up
@@ -109,6 +109,8 @@ export type RelativeTo<$A extends Abs | Rel> = $A extends AbsFile
  *   the ascent difference; no known segments can be shared.
  * - `target.ascent < base.ascent`: not expressible from the available relative
  *   path data, so return `None`.
+ * - A walk up of more than 4096 steps: not representable as a relative path, so
+ *   return `None`.
  *
  * Every path position accepts either a decoded value or a statically known
  * string literal; literals decode through the schema for their proven group,

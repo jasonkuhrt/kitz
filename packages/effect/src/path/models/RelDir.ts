@@ -7,10 +7,9 @@ import { attachPathEqual } from '../core/equality.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { appendSegmentTexts, parentOf } from '../core/segments.js'
-import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics } from '../core/statics.js'
 import { AbsDir } from './AbsDir.js'
-import { Ascent, maxAscent, maxSegments, Segments } from './arbitrary.js'
+import { Ascent, saturateAscent } from './ascent.js'
 import { FileName } from './FileName.js'
 import { RelFile } from './RelFile.js'
 import { Segment, segment } from './segment.js'
@@ -21,7 +20,7 @@ import { Segment, segment } from './segment.js'
 class RelDir__ extends S.TaggedClass<RelDir__>('@kitz/effect/Path/RelDir')('RelDir', {
   /** Count of leading parent-traversal (`..`) steps. */
   ascent: Ascent.pipe(S.withConstructorDefault(Effect.succeed(0))),
-  segments: Segments.pipe(S.withConstructorDefault(Effect.succeed([]))),
+  segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
   /** The directory name (last segment), or `None` for current/parent-only paths. */
   get name(): Option.Option<Segment> {
@@ -60,13 +59,14 @@ class RelDir__ extends S.TaggedClass<RelDir__>('@kitz/effect/Path/RelDir')('RelD
 
   /**
    * The navigated parent directory — drops the last named segment, or grows
-   * ascent when segment-less. This instance getter performs navigation; the
-   * class static `RelDir.parent` is the named `../` constant.
+   * ascent when segment-less, saturating at the 4096-step ascent ceiling. This
+   * instance getter performs navigation; the class static `RelDir.parent` is
+   * the named `../` constant.
    */
   get parent(): RelDir {
     const parent = parentOf(this.ascent, this.segments)
     return RelDir_.make({
-      ascent: Ascent.make(Math.min(parent.ascent, maxAscent)),
+      ascent: saturateAscent(parent.ascent),
       segments: parent.segments,
     })
   }
@@ -126,33 +126,31 @@ attachPathEqual<RelDir__>(RelDir__.prototype)
  */
 export class RelDir_ extends withLiteralStatics(
   withStatics(
-    S.asClass(
-      S.String.pipe(
-        S.annotate({
-          identifier: 'RelDir',
-          title: 'Relative directory path',
-          description:
-            'A POSIX relative directory path — leading `..` steps count as ascent; canonical form starts with `./` or `../` and ends with `/` (e.g. `./src/`).',
-          examples: ['./src/', '../'],
-        }),
-        S.decodeTo(RelDir__, {
-          encode: SchemaGetter.transform((encoded) =>
-            format({ isPathAbsolute: false, ascent: encoded.ascent })(encoded.segments),
+    S.String.pipe(
+      S.annotate({
+        identifier: 'RelDir',
+        title: 'Relative directory path',
+        description:
+          'A POSIX relative directory path — leading `..` steps count as ascent; canonical form starts with `./` or `../` and ends with `/` (e.g. `./src/`).',
+        examples: ['./src/', '../'],
+      }),
+      S.decodeTo(RelDir__, {
+        encode: SchemaGetter.transform((encoded) =>
+          format({ isPathAbsolute: false, ascent: encoded.ascent })(encoded.segments),
+        ),
+        decode: SchemaGetter.transformEffect(
+          flow(
+            analyzeDirRel,
+            Result.map((analysis) => ({
+              _tag: 'RelDir' as const,
+              ascent: analysis.ascent,
+              segments: analysis.segments,
+            })),
+            Effect.fromResult,
           ),
-          decode: SchemaGetter.transformOrFail(
-            flow(
-              analyzeDirRel,
-              Result.map((analysis) => ({
-                _tag: 'RelDir' as const,
-                ascent: analysis.ascent,
-                segments: analysis.segments,
-              })),
-              Effect.fromResult,
-            ),
-          ),
-        }),
-        S.overrideToFormatter(() => (path) => path.toString()),
-      ),
+        ),
+      }),
+      S.overrideToFormatter(() => (path) => path.toString()),
     ),
   ),
   'Path.RelDir.make',
@@ -201,26 +199,6 @@ export class RelDir_ extends withLiteralStatics(
         ascent: decoded.ascent,
         segments: decoded.segments,
       })),
-    }),
-  )
-
-  /**
-   * Variant schema carrying a realistic generation bias — same set as the
-   * canonical schema; generation mixes realistic directories 20:1 over the
-   * canonical distribution.
-   */
-  static readonly Realistic = RelDir_.pipe(
-    withArbitraryHints({
-      candidate: {
-        weight: 20,
-        make: (fc) =>
-          fc
-            .record({
-              ascent: S.toArbitrary(Ascent),
-              segments: fc.array(S.toArbitrary(Segment.Realistic), { maxLength: maxSegments }),
-            })
-            .map((input) => RelDir_.make(input)),
-      },
     }),
   )
 }

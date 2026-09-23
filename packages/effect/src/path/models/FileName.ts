@@ -1,66 +1,50 @@
 import { Effect, flow, Option, Result, Schema as S, SchemaGetter } from 'effect'
-import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withStatics } from '../../schema/withStatics.js'
 import type { Types } from '../../types/_.js'
 import { analyzeFileName, splitExtension } from '../analyzer.js'
-import { nullByte } from '../core/grammar.js'
+import { ascent, here, nullByte } from '../core/grammar.js'
 import type { separator } from '../core/grammar.js'
 import type { requiresLiteral } from '../core/messages.js'
-import {
-  realisticDotfilePattern,
-  realisticExtensionPattern,
-  realisticStemPattern,
-} from '../core/realisticText.js'
 import { Extension } from './Extension.js'
 
-const fileNameText = new RegExp(
-  `^[^/${nullByte}.][^/${nullByte}]{0,31}` +
-    `(\\.[^/${nullByte}.][^/${nullByte}]{0,15})?$` +
-    `|^\\.[^/${nullByte}.][^/${nullByte}]{0,31}$`,
+/**
+ * A filename stem: non-empty, well-formed text without `/` or NUL. Dots are
+ * allowed anywhere; which stems a filename can have also depends on its
+ * extension (see {@link isCanonicalSplit}). The pattern's `u` flag lets
+ * pattern-derived generation emit astral characters.
+ */
+const Stem = S.String.pipe(
+  S.check(
+    S.isNonEmpty({ message: 'Filename stem cannot be empty' }),
+    S.isPattern(new RegExp(`^[^/${nullByte}]+$`, 'u'), {
+      message: 'Filename stem cannot contain / or NUL',
+    }),
+    S.makeFilter((s) => s.isWellFormed(), { message: 'Filename stem must be well-formed Unicode' }),
+  ),
 )
 
-const canGenerateFileName = (name: string): boolean => {
-  const result = analyzeFileName(name)
-  return (
-    Result.isSuccess(result) &&
-    (result.success.extension === null || S.is(Extension)(result.success.extension))
-  )
-}
+/** A filename's final extension: an {@link Extension} with no further dot, since the split is at the last dot. */
+const FinalExtension = Extension.pipe(
+  S.check(
+    S.makeFilter((s) => s.lastIndexOf('.') === 0, {
+      message: 'A final extension cannot contain a further dot',
+    }),
+  ),
+)
 
-const unsafeAnalyzeGeneratedFileName = (
-  name: string,
-): { stem: string; extension: string | null } => {
-  const result = analyzeFileName(name)
-  if (Result.isFailure(result)) throw new Error('generated invalid filename')
-  return result.success
-}
-
-const fileNameArbitrary = {
-  toArbitrary: () => (fc: typeof import('effect/testing').FastCheck) => {
-    // Two equal-weight text sources keep canonical generation domain-faithful:
-    // the ASCII pattern generator (fc.stringMatching never leaves printable
-    // ASCII — see docs/learnings/effect-arbitrary.md) plus full-codepoint
-    // unicode composition. Both funnel through the same analyze/normalize
-    // pipeline, so every generated value is a canonical FileName.
-    const asciiText = fc.stringMatching(fileNameText)
-    const unicodePart = fc
-      .string({ unit: 'binary', minLength: 1, maxLength: 16 })
-      .filter((s) => s.isWellFormed() && !s.includes('/') && !s.includes(nullByte))
-    const unicodeText = fc
-      .tuple(unicodePart, fc.option(unicodePart, { nil: undefined }))
-      .map(([stem, extension]) => (extension === undefined ? stem : `${stem}.${extension}`))
-    return fc
-      .oneof(asciiText, unicodeText)
-      .filter(canGenerateFileName)
-      .map(unsafeAnalyzeGeneratedFileName)
-      .map((file) =>
-        FileName__.make({
-          stem: file.stem,
-          extension: Option.fromNullOr(file.extension),
-        }),
-      )
-  },
-} satisfies S.Annotations.Bottom<FileName__, readonly []>
+/**
+ * Whether the parts are the canonical split of their rendered name. With an
+ * extension, the field invariants already put the split at the extension's
+ * dot. Without one, the stem is the whole name, so it must be a valid name that
+ * {@link splitExtension} leaves whole: not `.` or `..`, and no dot after
+ * index 0 other than a final one.
+ */
+const isCanonicalSplit = (parts: {
+  readonly stem: string
+  readonly extension: Option.Option<string>
+}): boolean =>
+  Option.isSome(parts.extension) ||
+  (parts.stem !== here && parts.stem !== ascent && splitExtension(parts.stem).extension === null)
 
 const splitExtensions = (
   name: string,
@@ -76,11 +60,24 @@ const splitExtensions = (
   }
 }
 
-/** Filename value — a stem plus optional final extension, split on the last dot after index 0. */
-class FileName__ extends S.TaggedClass<FileName__>('@kitz/effect/Path/FileName')('FileName', {
-  stem: S.String,
-  extension: S.OptionFromNullOr(Extension),
-}) {
+/**
+ * Filename value — a stem plus optional final extension, split on the last dot
+ * after index 0. The fields and their check admit exactly the canonical splits
+ * of valid filenames, so every value of this type, including every value
+ * derived by `Arbitrary.schema`, renders to a name that decodes back to it.
+ */
+class FileName__ extends S.TaggedClass<FileName__>('@kitz/effect/Path/FileName')(
+  'FileName',
+  S.Struct({
+    stem: Stem,
+    extension: S.OptionFromNullOr(FinalExtension),
+  }).check(
+    S.makeFilter(isCanonicalSplit, {
+      message:
+        'Filename parts must be the canonical split of a valid name: not "." or "..", with any extension starting at the last dot after index 0',
+    }),
+  ),
+) {
   /** The rendered `stem(.ext)?` string form. */
   get name(): string {
     return Option.match(this.extension, {
@@ -118,26 +115,23 @@ type FileNameParts = {
  * ```
  */
 export class FileName_ extends withStatics(
-  S.asClass(
-    S.String.pipe(
-      S.decodeTo(FileName__, {
-        encode: SchemaGetter.transform((encoded) =>
-          encoded.extension === null ? encoded.stem : `${encoded.stem}${encoded.extension}`,
+  S.String.pipe(
+    S.decodeTo(FileName__, {
+      encode: SchemaGetter.transform((encoded) =>
+        encoded.extension === null ? encoded.stem : `${encoded.stem}${encoded.extension}`,
+      ),
+      decode: SchemaGetter.transformEffect(
+        flow(
+          analyzeFileName,
+          Result.map((file) => ({
+            _tag: 'FileName' as const,
+            stem: file.stem,
+            extension: file.extension,
+          })),
+          Effect.fromResult,
         ),
-        decode: SchemaGetter.transformOrFail(
-          flow(
-            analyzeFileName,
-            Result.map((file) => ({
-              _tag: 'FileName' as const,
-              stem: file.stem,
-              extension: file.extension,
-            })),
-            Effect.fromResult,
-          ),
-        ),
-      }),
-      S.annotate(fileNameArbitrary),
-    ),
+      ),
+    }),
   ),
 ) {
   /**
@@ -155,38 +149,6 @@ export class FileName_ extends withStatics(
     const decoded = S.decodeSync(FileName_)(full)
     return super.make({ stem: decoded.stem, extension: decoded.extension })
   }
-
-  /**
-   * Variant schema carrying a realistic generation bias — same set as the
-   * canonical schema; generation mixes realistic `stem(.ext)?` names and
-   * dotfiles 20:1 over the canonical distribution.
-   */
-  static readonly Realistic = FileName_.pipe(
-    withArbitraryHints({
-      candidate: {
-        weight: 20,
-        make: (fc) =>
-          fc
-            .oneof(
-              fc
-                .tuple(
-                  fc.stringMatching(realisticStemPattern),
-                  fc.option(fc.stringMatching(realisticExtensionPattern), { nil: undefined }),
-                )
-                .map(([stem, extension]) => `${stem}${extension ?? ''}`),
-              fc.stringMatching(realisticDotfilePattern),
-            )
-            .filter(canGenerateFileName)
-            .map(unsafeAnalyzeGeneratedFileName)
-            .map((file) =>
-              FileName__.make({
-                stem: file.stem,
-                extension: Option.fromNullOr(file.extension),
-              }),
-            ),
-      },
-    }),
-  )
 }
 
 export const FileName = FileName_

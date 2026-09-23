@@ -3,7 +3,7 @@ import type { FromTargetLiteral, LiteralGuard } from '../core/literal.js'
 import { AbsDir } from '../models/AbsDir.js'
 import { AbsFile } from '../models/AbsFile.js'
 import { Any } from '../models/Any.js'
-import { Ascent } from '../models/arbitrary.js'
+import { saturateAscent } from '../models/ascent.js'
 import { Dir } from '../models/Dir.js'
 import { Rel } from '../models/Rel.js'
 import { RelDir } from '../models/RelDir.js'
@@ -107,14 +107,13 @@ const joinBinary: {
           ? AbsFile.make({ dir: AbsDir.make({ segments }), fileName: rel.fileName })
           : AbsDir.make({ segments }),
       RelDir: (relDir) => {
-        const ascent = relDir.ascent + remainingAscent
-        const checkedAscent = Ascent.make(ascent)
+        const ascent = saturateAscent(relDir.ascent + remainingAscent)
         return rel._tag === 'RelFile'
           ? RelFile.make({
-              dir: RelDir.make({ ascent: checkedAscent, segments }),
+              dir: RelDir.make({ ascent, segments }),
               fileName: rel.fileName,
             })
-          : RelDir.make({ ascent: checkedAscent, segments })
+          : RelDir.make({ ascent, segments })
       },
     }),
   )
@@ -123,7 +122,8 @@ const joinBinary: {
 /**
  * Join one relative path onto a base directory. Leading `..` steps consume
  * trailing base segments; leftovers clamp at an absolute root or fold into a
- * relative result's ascent. The result keeps the base's group and the part's
+ * relative result's ascent, which saturates at the 4096-step ascent ceiling as
+ * `RelDir.parent` does. The result keeps the base's group and the part's
  * file/dir nature. Dual: `join(base, part)` or `join(part)(base)`. Both
  * positions accept decoded values or statically known literals.
  */

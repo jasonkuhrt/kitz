@@ -112,10 +112,10 @@
 
           // Mechanical but churny/style candidates: still local and mostly
           // semantics-preserving, but largely readability/taste or higher-volume
-          // cleanup. Production probe (2026-09-23, @effect/tsgo 0.45.0): 18
-          // diagnostics, all unnecessaryTypeofType. Parked today:
-          // uncomment these `error` entries and remove/comment their matching
-          // `off` entries below to promote the group.
+          // cleanup. Production probe (2026-09-23, @effect/tsgo 0.45.0, effect
+          // 4.0.0-rc.117): 18 diagnostics, all unnecessaryTypeofType. Parked
+          // today: uncomment these `error` entries and remove/comment their
+          // matching `off` entries below to promote the group.
           // "preferSchemaTypeProperty": "error",
           // "redundantSchemaTagIdentifier": "error",
           // "schemaStructWithTag": "error",
@@ -133,9 +133,9 @@
           // change public/runtime API shape, service identity, error semantics,
           // or architectural boundaries. Parked today: uncomment these `error`
           // entries and remove/comment their matching `off` entries below to
-          // promote the group. Production probe (2026-09-23, @effect/tsgo 0.45.0):
-          // 71 diagnostics (schemaSync 46, missingPipeableSignature 22,
-          // asyncFunction 1, deterministicKeys 1, strictEffectProvide 1).
+          // promote the group. Production probe (2026-09-23, @effect/tsgo 0.45.0,
+          // effect 4.0.0-rc.117): 71 diagnostics (schemaSync 46,
+          // missingPipeableSignature 23, deterministicKeys 1, strictEffectProvide 1).
           // "abortControllerInEffect": "error",
           // "asyncFunction": "error",
           // "cryptoRandomUUID": "error",

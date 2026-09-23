@@ -1,21 +1,18 @@
-import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
+import { assertProperty, describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Equal, Schema as S } from 'effect'
-import { FastCheck } from 'effect/testing'
+import * as Arbitrary from 'effect/unstable/arbitrary/Arbitrary'
 import { NaturalInt } from '../../schema/NaturalInt.js'
 import * as Path from '../__.js'
 
 const natural = (value: number) => NaturalInt.make(value)
 const arb = {
-  Any: S.toArbitrary(Path.Any),
-  AbsDir: S.toArbitrary(Path.AbsDir),
+  Any: Arbitrary.schema(Path.Any),
+  AbsDir: Arbitrary.schema(Path.AbsDir),
 } as const
-const arbAbsDir = arb.AbsDir
-const arbAbsFile = S.toArbitrary(Path.AbsFile)
-const arbRelDir = S.toArbitrary(Path.RelDir)
-const arbRelFile = S.toArbitrary(Path.RelFile)
-const abs = FastCheck.oneof(arbAbsDir, arbAbsFile)
-const rel = FastCheck.oneof(arbRelDir, arbRelFile)
-const dir = FastCheck.oneof(arbAbsDir, arbRelDir)
+// Static choice is a Schema union: the native runner picks alternatives uniformly.
+const abs = Arbitrary.schema(S.Union([Path.AbsDir, Path.AbsFile]))
+const rel = Arbitrary.schema(S.Union([Path.RelDir, Path.RelFile]))
+const dir = Arbitrary.schema(S.Union([Path.AbsDir, Path.RelDir]))
 
 const someAbsFile = S.decodeSync(Path.AbsFile)('/home/src/index.ts')
 const someAbsDir = S.decodeSync(Path.AbsDir)('/home/')
@@ -95,31 +92,25 @@ describe('isWithin', () => {
   it('literal desugaring agrees with generated directory values', () => {
     expect(Path.isWithin('/x/y.txt', '/x/')).toBe(true)
 
-    FastCheck.assert(
-      FastCheck.property(arb.AbsDir, (parent) => {
-        expect(Path.isWithin('/x/y.txt', parent)).toBe(Path.isWithin(Path.make('/x/y.txt'), parent))
-        expect(Path.isWithin(parent)('/x/y.txt')).toBe(Path.isWithin(parent)(Path.make('/x/y.txt')))
-      }),
-    )
+    assertProperty([arb.AbsDir], ([parent]) => {
+      expect(Path.isWithin('/x/y.txt', parent)).toBe(Path.isWithin(Path.make('/x/y.txt'), parent))
+      expect(Path.isWithin(parent)('/x/y.txt')).toBe(Path.isWithin(parent)(Path.make('/x/y.txt')))
+    })
   })
 
   it('is descendant-or-directory-identity inclusive containment', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.Any, dir, (child, parent) => {
-        expect(Path.isWithin(child as never, parent as never)).toBe(
-          Path.isDescendantOf(child as never, parent as never) ||
-            (Path.Dir.is(child) && Equal.equals(child, parent)),
-        )
-      }),
-    )
+    assertProperty([arb.Any, dir], ([child, parent]) => {
+      expect(Path.isWithin(child as never, parent as never)).toBe(
+        Path.isDescendantOf(child as never, parent as never) ||
+          (Path.Dir.is(child) && Equal.equals(child, parent)),
+      )
+    })
   })
 
   it('includes directory identity', () => {
-    FastCheck.assert(
-      FastCheck.property(dir, (path) => {
-        expect(Path.isWithin(path, path)).toBe(true)
-      }),
-    )
+    assertProperty([dir], ([path]) => {
+      expect(Path.isWithin(path, path)).toBe(true)
+    })
   })
 
   it('types: every path position accepts values or literals and rejects invalid worlds', () => {
@@ -160,27 +151,23 @@ describe('isWithin', () => {
 
 describe('commonAncestor containment', () => {
   it('commonAncestor is total and returns an inclusive ancestor of same-group paths', () => {
-    FastCheck.assert(
-      FastCheck.property(abs, abs, (a, b) => {
-        const ab = Path.Abs.commonAncestor(a, b)
-        const ba = Path.Abs.commonAncestor(b, a)
+    assertProperty([abs, abs], ([a, b]) => {
+      const ab = Path.Abs.commonAncestor(a, b)
+      const ba = Path.Abs.commonAncestor(b, a)
 
-        expect(ab).toEqual(ba)
-        expect(Path.isWithin(a, ab)).toBe(true)
-        expect(Path.isWithin(b, ab)).toBe(true)
-      }),
-    )
+      expect(ab).toEqual(ba)
+      expect(Path.isWithin(a, ab)).toBe(true)
+      expect(Path.isWithin(b, ab)).toBe(true)
+    })
 
-    FastCheck.assert(
-      FastCheck.property(rel, rel, (a, b) => {
-        const ab = Path.Rel.commonAncestor(a, b)
-        const ba = Path.Rel.commonAncestor(b, a)
+    assertProperty([rel, rel], ([a, b]) => {
+      const ab = Path.Rel.commonAncestor(a, b)
+      const ba = Path.Rel.commonAncestor(b, a)
 
-        expect(ab).toEqual(ba)
-        expect(Path.isWithin(a, ab)).toBe(true)
-        expect(Path.isWithin(b, ab)).toBe(true)
-      }),
-    )
+      expect(ab).toEqual(ba)
+      expect(Path.isWithin(a, ab)).toBe(true)
+      expect(Path.isWithin(b, ab)).toBe(true)
+    })
   })
 })
 

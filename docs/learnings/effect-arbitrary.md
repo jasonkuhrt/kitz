@@ -1,208 +1,155 @@
 # Effect v4 Arbitrary Derivation — Verified Semantics
 
-Verified against `effect@4.0.0-beta.85` on 2026-07-07 by empirical probes (all
-claims below marked ✅ were executed against the installed package, not read
-from docs). File/line references point into `node_modules/effect/dist/` at that
-version and will drift across releases — re-verify with the probes at the
-bottom before relying on them at a different version.
+Verified against `effect@4.0.0-rc.117` on 2026-09-23 by reading the installed
+source (`node_modules/effect/src/unstable/arbitrary/Arbitrary.ts` and
+`src/internal/arbitrary/{schema,regexp,model,runner}.ts`) and by empirical
+probes; claims marked ✅ were executed against the installed package. The module
+is `unstable`, so re-verify with the probes at the bottom before relying on
+these semantics at another version.
 
 ## The mental model
 
-**A schema defines a set; a generator picks a distribution over that set.**
-One set, many possible distributions. In v4 the schema *value* carries its
-distribution: `S.toArbitrary(schema)` is deterministic per schema value and
-takes no generation options — its only option is `{ report: true }`
-(diagnostics). There is no per-call override. To get a different distribution
-over the same set, you derive a **variant schema value** (same Type, different
-annotations) and call `toArbitrary` on that.
+**A schema defines a set; its derived arbitrary picks a distribution over that
+set.** `Arbitrary.schema(schema)` derives from the schema's decoded `Type` side
+(`SchemaAST.toType`). For a codec such as `Path.FileName` (string ⇄ class
+value), generation builds the class value directly and never touches the
+string decoder. So the Type side has to encode every invariant of the domain:
+native derivation reads only the schema, and there is no hook that can patch a
+generated value into validity.
 
-This is the effect-native analog of QuickCheck's newtype modifiers
-(`ASCIIString`, `Positive Int` — distribution encoded in a *type*): effect
-encodes the distribution in a *schema value* instead. Hedgehog/fast-check-style
-loose generator values remain available on top, since `toArbitrary` returns a
-plain fast-check `Arbitrary` — but loose values do not compose through schema
-derivation, variant schemas do (see "Composition" below).
+## How derivation works
 
-## How derivation works internally
+`compile` in `internal/arbitrary/schema.ts` folds over the Type AST:
 
-The deriver (`internal/schema/arbitrary.js`, `recur()`) is a fold over the AST
-with a **constraint context**:
+- **Checks.** Each check's `arbitraryConstraint` annotation (bounds, lengths,
+  patterns, order) merges into the node's generation constraint, which the base
+  generator consumes. Every `Filter` check then runs on each generated value
+  and discards failures. Generation therefore never yields a value that fails a
+  check ✅, but heavy rejection exhausts the run (`maxDiscards` defaults to
+  `max(100, 10 × runs)`).
+- **Strings with patterns.** A regexp generator (`internal/arbitrary/regexp.ts`)
+  builds matching strings. When several patterns merge, each value uses one of
+  them and the filters enforce the rest. Patterns with the `i`, `m`, or `v`
+  flag are ignored for generation, which falls back to unpatterned strings.
+  - Without the `u` flag, character classes are restricted to the BMP: no
+    astral characters ever appear ✅.
+  - With the `u` flag, classes span every code point, so astral characters
+    appear ✅.
+  - Either way the generator never emits a lone surrogate ✅, and preferred
+    code points (printable ASCII, tab through carriage return, NUL, U+0080,
+    `é`, `Ω`, `😀`, each only when the class allows it) are picked with
+    probability `1 / biasFactor`, where
+    `biasFactor = 2 + floor(log10(attempt + 1))`.
+- **Strings without patterns.** Printable ASCII (U+0020–U+007E), plus an edge
+  case corpus picked with probability `1 / biasFactor`: `""`, whitespace,
+  `"\0"`, numeric strings, `"__proto__"`-style keys, the lone surrogates
+  `"\uD800"` and `"\uDC00"`, and `"😀"` ✅.
+- **Integers.** With both bounds given, the whole range is reachable ✅.
+- **Unions.** Members are chosen uniformly ✅. There is no weighted choice:
+  Effect's design notes say to use a Schema union for static choice, and to
+  write a focused property whose input already contains a rare situation
+  instead of weighting generation toward it ("Use Schema Union for Static
+  Choice", "Prefer Targeted Scenarios to Weighted Choice" in
+  `packages/effect/ARBITRARY.md` at the `effect@4.0.0-rc.117` tag).
+- **Declarations** (classes, `Option`, …). Effect looks for a generatable
+  representation in this order: a `toCodecArbitrary` annotation (which returns
+  a `SchemaAST.Link`), a built-in representation (`BigDecimal`, `Date`, `URL`,
+  `RegExp`, `Json`, `ReadonlyMap`, `ReadonlySet`, `Uint8Array`, …), then the
+  declaration's `toCodecJson` or `toCodec` link. The link's source is
+  generated, converted through the link, and re-validated against the
+  declaration. A class therefore generates its fields struct, including
+  struct-level checks, and constructs through its constructor. `Option` links
+  to a union of `Some`/`None` structs, so about half the values are `None` ✅.
+- **Failure mode.** `Arbitrary.schema` compiles immediately and throws when it
+  cannot support a schema, rather than returning a generator that fails later.
+- **Size.** `checkEffect` grows the size from 0 to `size` (default 10) across
+  its runs (default 100); `sampleEffect` uses a fixed size (default 10) and
+  count (default 10). Size scales unconstrained string, collection, and object
+  lengths; explicit schema bounds still apply.
 
-1. If the node has a `toArbitrary` annotation → use it as the node's **base
-   generator** (replacement), then wrap in `filterLayer`.
-2. Else if the node has checks → recur on the check-less node for the base,
-   then wrap in `filterLayer`.
-3. Else → structural `base()` per AST tag. `Declaration` nodes **throw** here —
-   opaque declared types cannot be derived without a hook.
+## Customization points
 
-`filterLayer` does three jobs: merges the checks' `constraint` hints into the
-context (which base generators consume — e.g. the `String` case switches from
-`fc.string(lengthConstraints)` to `fc.stringMatching(pattern)` when the context
-carries `patterns`), mixes in the checks' weighted `candidate` sources, and
-**predicate-filters every generated value against every check**.
+| Point | Where it attaches | Semantics |
+| --- | --- | --- |
+| `arbitraryConstraint` | a check's annotations; built-ins such as `isPattern` and `isBetween` set it | refines the base generator; the check still filters |
+| `toCodecArbitrary` | a declaration's annotations | returns a `Link` from a generatable schema; generated values are decoded and re-validated |
+| `Arbitrary.map`, `filter`, `filterMap`, `flatMap`, `all`, `array`, `Constant` | loose `Arbitrary` values | composition outside schemas; it does not flow through schema derivation |
 
-Consequence: generated values satisfy the schema *by construction*. Invalid
-candidates or invalid override output cost efficiency (rejection), never
-validity. ✅
+There is no weighted candidate source and no derivation report.
 
-## The three extension points
+## Practice in this repo
 
-| Extension point | Where it attaches | Semantics | Validity guarantee |
-|---|---|---|---|
-| `toArbitrary` annotation | any node, via `S.annotate({ toArbitrary: () => (fc, ctx) => arb })` (`Annotations.Bottom`) | **replaces** the node's base generator | node's checks still filter the output ✅ |
-| `arbitrary: { constraint?, candidate? }` | a filter, via `S.makeFilter(pred, { arbitrary })` / built-ins like `S.isPattern` | **cooperates**: `constraint` refines the base generator; `candidate` adds a weighted alternative source | all checks still filter ✅ |
-| `toArbitrary` declaration hook | `S.declare` annotations (`Annotations.Declaration`) | **mandatory** — structural derivation of opaque types is impossible; hook receives derived type-parameter arbitraries | checks still filter |
+- Canonical path models encode all invariants on their Type side, so
+  `Arbitrary.schema(Model)` is valid by construction. `FileName` needed the
+  most: its fields are a `Stem` and a `FinalExtension` (an `Extension`
+  without a further dot), and a struct check admits only the canonical split of
+  a valid name. `Extension` gained the well-formed Unicode check every other
+  path text schema already had.
+- Path text patterns carry the `u` flag so generation covers astral text. For
+  these classes (`[^/\0]`) the flag does not change what validation accepts.
+- Relative ascent generates across its whole valid range 0..4096, so laws meet
+  the ceiling. Operations that can cross it are defined for it: `join` and
+  `RelDir.parent` saturate at 4096, and `Rel.relativeTo` returns `None`.
 
-Key facts about each, probe-verified:
+Measured on the path models (3 seeds × 3000 samples per model, every sample
+valid and round-tripping through decode∘encode, 2026-09-23 ✅):
 
-- **Candidates bias, never replace.** The base generator is pinned at weight 1;
-  candidates add weighted sources (`cumulatedWeights: [1, N]` visible in the
-  report dump). A weight-20 candidate yields ~20/21 ≈ 0.95 of samples. ✅
-- **Candidate weights compound across ALL candidates on the schema.** A new
-  candidate's share is `w / (1 + Σ existing candidate weights + w)`, not
-  `w / (1 + w)`. Adding a weight-20 candidate to a schema that already carries
-  a weight-8 candidate (e.g. an efficiency candidate on a canonical schema's
-  filter) yields 20/29 ≈ 0.69, not 0.95. ✅ (observed on the path `Segment`
-  schema). To express "N:1 over the canonical distribution", multiply by the
-  canonical schema's total generation weight.
-- **Node override replaces the base but not the checks.** An override emitting
-  values that violate a check has those values filtered out; pipe order
-  (`annotate` before or after `check`) does not matter — both live on the node. ✅
-- **The override receives the merged constraint context (`ctx`) but is free to
-  ignore it** — replacement shifts distribution-correctness (not validity)
-  responsibility to the author.
-- **`terminal`**: declaration hooks (and overrides) may return
-  `{ arbitrary, terminal }`; `terminal` is the finite branch used to cap
-  recursive schemas. A bare arbitrary is shorthand when no recursion is
-  involved.
+- non-ASCII text: 81–99% of encoded values, depending on the model;
+- control characters: 4–23%;
+- astral characters: 57–93%;
+- discards under `checkEffect`: at most 0.5%.
 
-## The "vacuous carrier filter" pattern (variant schemas)
+Distribution notes that matter for law strength:
 
-To attach arbitrary hints to a schema *after the fact* without changing
-validation, append an always-pass filter that exists only to carry the
-annotation:
+- Relative ascents land at 8 or below only about 10% of the time, so two
+  independently generated relative paths share an ascent about 0.2% of the
+  time.
+- Dotfiles and stems with inner dots are about 0.1–0.2% of generated names.
 
-```ts
-const Variant = Base.pipe(
-  S.check(
-    S.makeFilter(() => true, {
-      arbitrary: { candidate: { weight: 20, make: (fc) => /* ... */ } },
-    }),
-  ),
-)
-```
+A law that needs these regions should build them into its input, as the
+`relativeTo(join(base, r), base)` law does, rather than rely on independent
+draws. That is the targeted-scenario practice Effect's design notes recommend.
 
-Probe-verified properties of this pattern (all ✅):
+## History: the fast-check bridge
 
-- Bias observed at the expected weight ratio; decode/encode behavior identical
-  to `Base` (same set).
-- The carrier adds **no derivation warnings** — a hint-carrying filter is not
-  an `OpaqueFilter`. Note the flip side: any plain predicate filter *without*
-  hints anywhere on the schema IS reported as `OpaqueFilter` (`{ _tag:
-  'OpaqueFilter', path }`), so compare warnings before/after adding the
-  carrier rather than asserting an empty list.
-- `S.toJsonSchemaDocument(Variant)` is **byte-identical** to `Base`'s — the
-  carrier does not leak into JSON Schema.
-- Works at `TaggedClass` nodes: a whole-value candidate can build class
-  instances (`new P({...})` / `P.make({...})`); sampled values remain
-  `instanceof` the class.
+Until effect 4.0.0-rc.113, `Schema.toArbitrary` returned fast-check arbitraries.
+Filters carried `arbitrary: { constraint, candidate }` hints (weighted
+candidate sources), and nodes could replace their base generator with a
+`toArbitrary` annotation. Kitz built `Schema.withArbitraryHints` (hint-carrying
+pass-through filters) and `*.Realistic` variant schemas on top.
 
-## Composition — the reason variants beat loose generators
-
-A biased **leaf** schema flows through struct derivation compositionally:
-`S.Struct({ items: S.Array(BiasedLeaf) })` samples the leaf's biased
-distribution inside the container (~0.98 observed for a weight-50 candidate). ✅
-A loose fast-check value can't do this — you must hand-wire
-`FastCheck.record({...})` mirroring the struct shape. For fixed `TaggedClass`
-structs whose fields can't be swapped for variant leaves after the fact, host
-that record wiring as a whole-value candidate on the container's own variant
-schema (see the path models' `Realistic` statics, e.g.
-`packages/effect/src/path/models/RelFile.ts`) — the wiring lives once, next to
-the model, and the variant composes like any schema value.
-
-## v3 → v4
-
-| | v3 | v4 (beta.85) |
-|---|---|---|
-| Deriver | separate module: `Arbitrary.make(schema)` | integrated: `S.toArbitrary` / `S.toArbitraryLazy`, memoized |
-| Customization | single `arbitrary` annotation, **total replacement** — derivation stops at the annotated node | three stratified points (table above); replacement is per-node **base only**, checks always layer on top |
-| Validity | user's responsibility (docs warned explicitly); an override could silently violate refinements below it | guaranteed by construction — `filterLayer` always applies |
-| Filter → generator communication | none; refinements fell back to generate-then-reject | `constraint` hints merge into a context consumed by base generators (patterns, lengths, integer/ordered bounds) |
-| Diagnostics | none | `{ report: true }` (e.g. `OpaqueFilter` warnings); fail-fast on impossible constraints / underivable nodes |
-| Architecture | ad-hoc per-module annotation IDs (`Arbitrary`, `Equivalence`, `Pretty`) | uniform `to*` pairs: every deriver (`toArbitrary`, `toEquivalence`, `toFormatter`, `toCodec`, JSON Schema) has a matching annotation hook |
-
-## fast-check string generation is ASCII-only by default
-
-Measured on the bundled fast-check 4.8.0 (2000 samples each): both
-`fc.string()` (default unit) and `fc.stringMatching(pattern)` — including
-patterns with negated character classes like `[^/\0]+` — produce **100%
-printable-ASCII output, zero high-unicode, zero control characters**. ✅
-
-Consequences:
-
-- A schema whose generation relies on `constraint.patterns` (the usual filter
-  hint) samples only an ASCII slice of its domain, no matter how wide the
-  pattern's character class is. If the domain includes unicode, the canonical
-  arbitrary silently never covers it.
-- The fix is an explicit full-codepoint candidate:
-  `fc.string({ unit: 'binary', ... })`. Verified: its output is 100%
-  well-formed (0 lone surrogates in 5000 samples) and `encodeURIComponent`-safe,
-  with ~96% high-unicode and ~11% control-character incidence. ✅
-- When measuring distributions of class-instance samples, measure the rendered
-  domain string (e.g. `.name`), not `String(instance)` — effect's Inspectable
-  `toString` JSON-escapes control characters, hiding them from the measurement.
-
-## Organizing distributions (API-design guidance)
-
-- The **canonical** schema's arbitrary is **domain-faithful**: it covers the
-  whole valid set with balanced source weights, over-biased toward no
-  sub-region — neither toward "nice" values (realistic names) nor accidentally
-  toward ASCII (see the ASCII-only default above). Property/law tests rely on
-  this (a biased canonical arb silently weakens every law; full-space sampling
-  is what caught the path `fileUrl` `%`/`?`/`#` bug).
-- Filter-level `arbitrary` hints on the canonical schema are for making
-  full-space generation *efficient and correct* (pattern-based instead of
-  reject-sampled), not for biasing toward "nice" values.
-- Alternate distributions (realistic/bounded/readable) are **named variant
-  schema values** or loose generators in a testing module, never mutations of
-  the canonical schema. Ecosystem precedents: Hedgehog exports `Gen.alpha` /
-  `Gen.ascii` / `Gen.unicode` side by side over the same `Char` set; QuickCheck
-  ships newtype modifiers; proptest parameterizes with `arbitrary_with`.
-- A named preset graduates to a parameterized factory only when consumers have
-  real knobs to turn — presets are saved invocations of the factory.
+Effect 4.0.0-rc.113 removed the bridge: "Remove the fast-check bridge from the
+`effect` package, including `Schema.toArbitrary` and `effect/testing/FastCheck`.
+Replace the legacy `Schema.Annotations.ToArbitrary` callback contract with the
+native Schema-first types." Kitz removed `withArbitraryHints`, the `Realistic`
+variants, and every generation hook with it. The verified beta-era semantics
+are in this file as of commit `e5f141c6`.
 
 ## Re-verification probes
 
-Run from `packages/effect/` (adjust nothing else; hooks may delete stray
-`.mjs` files in the repo, so use `node --input-type=module -e "..."`):
+Run from `packages/effect/` with `node --input-type=module -e "..."`:
 
 ```js
-import { Schema as S } from 'effect'
-import { FastCheck } from 'effect/testing'
+import { Effect, Schema as S } from 'effect'
+import { Arbitrary } from 'effect/unstable/arbitrary'
 
-// candidate bias + base pinned at weight 1
-const Biased = S.String.pipe(
-  S.check(S.makeFilter(() => true, {
-    arbitrary: { candidate: { weight: 20, make: (fc) => fc.constantFrom('a', 'b') } },
-  })),
-)
-const s1 = FastCheck.sample(S.toArbitrary(Biased), 2000)
-console.log('bias ~0.95:', s1.filter((x) => x === 'a' || x === 'b').length / s1.length)
+const sample = (schema) =>
+  Effect.runSync(Arbitrary.sampleEffect(Arbitrary.schema(schema), { count: 3000, seed: 1 }))
+const share = (values, predicate) => values.filter(predicate).length / values.length
+const astral = (s) => [...s].some((c) => c.codePointAt(0) > 0xffff)
 
-// node override replaced base; checks still filter its invalid output
-const MinThree = S.String.pipe(
-  S.check(S.makeFilter((s) => s.length >= 3)),
-  S.annotate({ toArbitrary: () => (fc) => fc.constantFrom('hello', 'x') }),
-)
-console.log('only hello:', FastCheck.sample(S.toArbitrary(MinThree), 300).every((s) => s === 'hello'))
+// Patterns without `u` stay in the BMP; with `u` they reach astral code points.
+console.log('astral without u ~0:', share(sample(S.String.check(S.isPattern(/^[^/\0]+$/))), astral))
+console.log('astral with u > 0.5:', share(sample(S.String.check(S.isPattern(/^[^/\0]+$/u))), astral))
 
-// no JSON Schema leak from the carrier filter
-const Base = S.String
-const Carrier = Base.pipe(S.check(S.makeFilter(() => true, {
-  arbitrary: { candidate: { weight: 5, make: (fc) => fc.constant('z') } },
-})))
-console.log('doc identical:',
-  JSON.stringify(S.toJsonSchemaDocument(Base)) === JSON.stringify(S.toJsonSchemaDocument(Carrier)))
+// Filters reject; they never repair.
+const even = sample(S.Int.check(S.makeFilter((n) => n % 2 === 0)))
+console.log('filter respected:', even.every((n) => n % 2 === 0))
+
+// Union members are chosen uniformly.
+const union = sample(S.Union([S.Literal('a'), S.Literal('b')]))
+console.log('union ~0.5:', share(union, (x) => x === 'a'))
 ```
 
-Expected: `bias ~0.95` ≈ 0.95, `only hello: true`, `doc identical: true`.
+Expected: `astral without u ~0` ≈ 0, `astral with u > 0.5` above 0.5,
+`filter respected: true`, and `union ~0.5` ≈ 0.5.
