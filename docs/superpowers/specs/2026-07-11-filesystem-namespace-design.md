@@ -1,7 +1,7 @@
 # FileSystem namespace design — typed-path-native fs for `@kitz/effect`
 
 Date: 2026-07-11
-Status: DRAFT for review
+Status: SUPERSEDED by [the first-principles FileSystem design](./2026-07-12-filesystem-first-principles-design.md).
 Inputs: [heartbeat street round 3](../reports/2026-07-11-heartbeat-path-street-round3.md) (§ Boundary and integration requirements), installed `effect@4.0.0-beta.97` `FileSystem.ts`, Heartbeat usage inventory (1,489 path-API accesses; 165 `node:path` + 38 `effect` Path imports; fs imports not yet inventoried — needs the same Phase-A pass).
 
 ## Motivation
