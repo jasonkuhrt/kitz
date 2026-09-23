@@ -1,0 +1,87 @@
+name: release
+
+# Publishes @kitz/effect when a `@kitz/effect@<version>` tag is pushed.
+#
+# - The tag must equal `@kitz/effect@` + packages/effect/package.json#version.
+#   Tags are package-scoped because the bare `0.x` tags belong to this repo's
+#   earlier package, `@wollybeard/kit`.
+# - `pnpm pack` builds the tarball: it runs `prepack` (clean build) and applies
+#   `publishConfig` (including `exports`) to the packed manifest.
+# - The npm CLI publishes that tarball as packed, so its manifest already
+#   carries the publishConfig exports. It performs npm trusted publishing
+#   (OIDC): no token, and provenance is attached automatically. This is the only
+#   place npm runs; everything else in the repo uses pnpm.
+# - Publishing is skipped when the version is already on the registry. That makes
+#   the job re-runnable, and lets a manually published first version still get
+#   its GitHub release from the tag.
+
+on:
+  push:
+    tags:
+      - '@kitz/effect@*'
+
+permissions:
+  contents: write # create the GitHub release
+  id-token: write # npm trusted publishing (OIDC) and provenance
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # release notes need earlier tags
+      - uses: ./.github/actions/setup
+
+      - name: Verify the tag matches the package version
+        run: |
+          version="$(node -p "require('./packages/effect/package.json').version")"
+          expected="@kitz/effect@${version}"
+          if [ "$GITHUB_REF_NAME" != "$expected" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match ${expected}"
+            exit 1
+          fi
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+
+      - name: Check
+        run: |
+          pnpm exec vp format --check
+          pnpm exec vp lint
+          pnpm exec vp run check:types
+          pnpm exec vp test run
+          pnpm exec vp run check:package
+
+      - name: Check whether this version is already published
+        id: registry
+        run: |
+          if pnpm view "@kitz/effect@${VERSION}" version >/dev/null 2>&1; then
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pack
+        if: steps.registry.outputs.published == 'false'
+        working-directory: packages/effect
+        run: pnpm pack --out "${RUNNER_TEMP}/kitz-effect.tgz"
+
+      - name: Publish (trusted publishing)
+        if: steps.registry.outputs.published == 'false'
+        run: |
+          npm install --global npm@^11.5.1
+          npm publish "${RUNNER_TEMP}/kitz-effect.tgz" --access public
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          previous="$(git tag --list '@kitz/effect@*' --sort=-v:refname | grep -vxF "$GITHUB_REF_NAME" | head -1 || true)"
+          if [ -n "$previous" ]; then
+            gh release create "$GITHUB_REF_NAME" --verify-tag --latest --title "$GITHUB_REF_NAME" --generate-notes --notes-start-tag "$previous"
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --latest --title "$GITHUB_REF_NAME" --notes "First release of \`@kitz/effect\`. See the [README](https://github.com/jasonkuhrt/kitz/tree/main/packages/effect#readme)."
+          fi

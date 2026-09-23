@@ -50,6 +50,39 @@ oxlint runs through `vp lint`, configured in the `lint` block of
 tuned rule. Warnings are blocking. Type-aware linting is not enabled yet
 ([#128](https://github.com/jasonkuhrt/kitz/issues/128)).
 
+## Releasing
+
+`@kitz/effect` publishes from [`.github/workflows/release.yml`](./.github/workflows/release.yml)
+when a tag named `@kitz/effect@<version>` is pushed. Tags are package-scoped
+because the repository's bare `0.x` tags belong to its earlier package,
+`@wollybeard/kit`.
+
+1. Land a PR that sets `packages/effect/package.json#version` to the new version.
+2. Tag the merge commit and push the tag:
+   `git tag @kitz/effect@<version> <sha> && git push origin @kitz/effect@<version>`.
+3. The workflow checks that the tag matches the version, runs the full checks,
+   packs with `pnpm pack` (which applies `publishConfig`), publishes the tarball
+   through npm trusted publishing (OIDC: no token, provenance attached), and
+   creates the GitHub release with notes from the merged PR titles.
+
+A version that is already on the registry is not published again; the workflow
+only creates its GitHub release.
+
+### First publish
+
+npm only lets a package that already exists register a trusted publisher, so
+the first version is published by hand, once:
+
+1. `pnpm login` as an owner of the `@kitz` npm scope.
+2. From `packages/effect`: `pnpm publish --access public` (`prepack` builds first).
+3. Register the release workflow as the package's trusted publisher: on
+   npmjs.com under the package's Settings, Trusted Publisher, GitHub Actions
+   (repository `jasonkuhrt/kitz`, workflow `release.yml`); or with
+   `npm trust github @kitz/effect --file release.yml --repo jasonkuhrt/kitz --allow-publish`
+   (npm 11.15 or later).
+4. Push the version's tag. The workflow finds the version already published and
+   creates the GitHub release.
+
 ## Common Errors
 
 ### TS2742: Inferred Type Cannot Be Named
