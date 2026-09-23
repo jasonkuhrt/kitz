@@ -26,7 +26,7 @@ export default defineConfig({
       perf: 'warn',
     },
     rules: {
-      'eslint/no-unused-vars': 'off',
+      'eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'eslint/no-unused-expressions': ['error', { allowTaggedTemplates: true }],
       'eslint/no-control-regex': 'off',
       'eslint/no-shadow': 'off',
@@ -103,7 +103,11 @@ export default defineConfig({
         dependsOn: ['build'],
       },
       check: {
-        command: ['vp format --check', 'vp lint', 'tsc -b tsconfig.development.json'],
+        command: [
+          'vp format --check',
+          'vp lint --deny-warnings',
+          'tsc -b tsconfig.development.json',
+        ],
       },
       fix: {
         command: ['vp format', 'vp lint --fix'],

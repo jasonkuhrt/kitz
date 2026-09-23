@@ -40,7 +40,6 @@ const nonEmptyRelAscent0 = oneOf(
 
 const someAbsFile = S.decodeSync(Path.AbsFile)('/home/src/index.ts')
 const someAbsDir = S.decodeSync(Path.AbsDir)('/home/')
-const someRelFile = S.decodeSync(Path.RelFile)('./src/index.ts')
 const someRelDir = S.decodeSync(Path.RelDir)('./src/')
 
 describe('isDescendantOf', () => {

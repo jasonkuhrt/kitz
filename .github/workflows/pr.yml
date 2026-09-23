@@ -78,7 +78,7 @@ jobs:
         if: needs.check-type.outputs.skip-code-checks != 'true'
       - name: Lint
         if: needs.check-type.outputs.skip-code-checks != 'true'
-        run: pnpm exec vp lint
+        run: pnpm exec vp lint --deny-warnings
       - run: echo "Skipped for chore.docs/ci commit"
         if: needs.check-type.outputs.skip-code-checks == 'true'
 

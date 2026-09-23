@@ -3,7 +3,6 @@ import {
   flow,
   Function as Fn,
   type Option,
-  Result,
   Schema as S,
   SchemaGetter,
   SchemaParser,
