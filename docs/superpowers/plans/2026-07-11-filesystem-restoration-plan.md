@@ -1,7 +1,7 @@
 # FileSystem restoration plan — salvage the pre-strip `filesystem/` module
 
 Date: 2026-07-11
-Status: TEED UP — execution starts after the `feat/restore-path-operations` PR merges.
+Status: SUPERSEDED by [the first-principles FileSystem design](../specs/2026-07-12-filesystem-first-principles-design.md).
 Companion: [filesystem-namespace-design.md](../specs/2026-07-11-filesystem-namespace-design.md) (the from-scratch design; this plan replaces "build" with "salvage + adapt" where old code already solves it).
 
 ## Salvage source — this branch's own history

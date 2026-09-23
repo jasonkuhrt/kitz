@@ -54,6 +54,7 @@
     "prepack": "node --eval \"require('node:fs').rmSync('build', { recursive: true, force: true })\" && tsc -b --force tsconfig.production.json"
   },
   "devDependencies": {
+    "@effect/platform-node": "catalog:",
     "@kitz/vitest": "workspace:*",
     "@vitest/coverage-v8": "4.1.9",
     "effect": "catalog:"
