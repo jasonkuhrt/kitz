@@ -4,14 +4,13 @@ import type { Types } from '../../types/_.js'
 import { nullByte } from '../core/grammar.js'
 import type { ascent, here, separator } from '../core/grammar.js'
 import type { requiresLiteral } from '../core/messages.js'
-import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
-import { realisticSegmentPattern } from '../core/realisticText.js'
 
 // This pattern is one of four composed checks; non-empty, well-formed Unicode,
 // and traversal rules live in the full check chain. SegmentLiteralGuard mirrors
-// every part representable by TypeScript's string-template type system.
-const segmentPatternSource = `^[^/${nullByte}]+$`
-const segmentPattern = new RegExp(segmentPatternSource)
+// every part representable by TypeScript's string-template type system. The `u`
+// flag makes the class range over code points, so pattern-derived generation
+// also emits astral characters; validation is the same either way.
+const segmentPattern = new RegExp(`^[^/${nullByte}]+$`, 'u')
 
 type emptySegmentMessage = 'Path segment cannot be empty'
 const emptySegmentMessage: emptySegmentMessage = 'Path segment cannot be empty'
@@ -31,76 +30,20 @@ export const separatorSegmentMessage: separatorSegmentMessage = "Path segment ca
 type nullByteSegmentMessage = 'Path segment cannot contain NUL'
 export const nullByteSegmentMessage: nullByteSegmentMessage = 'Path segment cannot contain NUL'
 
-const isSegmentText = (s: string): boolean =>
-  s.length > 0 &&
-  s.isWellFormed() &&
-  !s.includes('/') &&
-  !s.includes(nullByte) &&
-  s !== '.' &&
-  s !== '..'
-
-// Canonical generation mixes four equal-weight sources so the derived
-// arbitrary is domain-faithful — covering the whole valid set without
-// over-biasing any sub-region (biased distributions are variant schemas,
-// e.g. `Realistic` below):
-//   1. the pattern-derived base generator (printable ASCII; weight pinned at 1)
-//   2. fast-check dictionary text (adversarial JS names like `__proto__`)
-//   3. full-codepoint unicode text (`fc.stringMatching`/`fc.string` never
-//      leave printable ASCII on their own — see docs/learnings/effect-arbitrary.md)
-//   4. an explicitly well-formed full-codepoint source for that runtime check
-const canonicalGenerationWeight = 4
-
-const dictionaryTextArbitrary = {
-  constraint: { minLength: 1, maxLength: 32, patterns: [segmentPatternSource] },
-  candidate: {
-    weight: 1,
-    make: (fc: typeof import('effect/testing').FastCheck) =>
-      fc.string({ minLength: 1, maxLength: 32 }).filter(isSegmentText),
-  },
-} satisfies S.Annotations.ToArbitrary.Filter
-
-const unicodeTextArbitrary = {
-  constraint: { patterns: [segmentPatternSource] },
-  candidate: {
-    weight: 1,
-    make: (fc: typeof import('effect/testing').FastCheck) =>
-      fc.string({ unit: 'binary', minLength: 1, maxLength: 32 }).filter(isSegmentText),
-  },
-} satisfies S.Annotations.ToArbitrary.Filter
-
-const wellFormedTextArbitrary = {
-  candidate: {
-    weight: 1,
-    make: (fc: typeof import('effect/testing').FastCheck) =>
-      fc.string({ unit: 'binary', minLength: 1, maxLength: 32 }).filter(isSegmentText),
-  },
-} satisfies S.Annotations.ToArbitrary.Filter
-
 /**
  * A single path segment — a POSIX-safe name component: non-empty, no `/` or NUL,
  * and not a `.`/`..` traversal reference (those are resolved by the analyzer into
  * the path's `ascent` count, never stored as segments).
  */
 export class Segment_ extends withStatics(
-  S.asClass(
-    S.String.pipe(
-      S.check(
-        S.isNonEmpty({ message: emptySegmentMessage }),
-        S.isPattern(segmentPattern, {
-          message: patternSegmentMessage,
-          arbitrary: unicodeTextArbitrary,
-        }),
-        S.makeFilter((s) => s.isWellFormed(), {
-          message: wellFormedSegmentMessage,
-          arbitrary: wellFormedTextArbitrary,
-        }),
-        S.makeFilter((s) => s !== '.' && s !== '..', {
-          message: traversalSegmentMessage,
-          arbitrary: dictionaryTextArbitrary,
-        }),
-      ),
-      S.brand('Segment'),
+  S.String.pipe(
+    S.check(
+      S.isNonEmpty({ message: emptySegmentMessage }),
+      S.isPattern(segmentPattern, { message: patternSegmentMessage }),
+      S.makeFilter((s) => s.isWellFormed(), { message: wellFormedSegmentMessage }),
+      S.makeFilter((s) => s !== '.' && s !== '..', { message: traversalSegmentMessage }),
     ),
+    S.brand('Segment'),
   ),
 ) {
   /**
@@ -118,24 +61,6 @@ export class Segment_ extends withStatics(
   ): Segment {
     return super.make(input as any, options)
   }
-
-  /**
-   * Variant schema carrying a realistic generation bias — same set as
-   * {@link Segment} (candidate output is validated by its filters); only
-   * `Schema.toArbitrary` output differs, mixing realistic names 20:1 over
-   * the full valid space. Compose it into container schemas and derivation
-   * picks up the bias.
-   */
-  static readonly Realistic = Segment_.pipe(
-    withArbitraryHints({
-      candidate: {
-        // 20:1 over the canonical distribution — candidate weights compound,
-        // so the ratio is against the canonical total, not against 1.
-        weight: 20 * canonicalGenerationWeight,
-        make: (fc) => fc.stringMatching(realisticSegmentPattern),
-      },
-    }),
-  )
 }
 
 export const Segment = Segment_

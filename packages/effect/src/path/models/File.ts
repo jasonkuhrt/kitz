@@ -20,9 +20,7 @@ type FileForDir<$Base extends Dir> = $Base extends AbsDir
 const FileTaggedUnion = S.Union([AbsFile, RelFile]).pipe(S.toTaggedUnion('_tag'))
 
 class File_ extends withLiteralStatics(
-  withStatics(
-    S.asClass(FileTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
-  ),
+  withStatics(FileTaggedUnion.pipe(S.overrideToFormatter(() => (path) => path.toString()))),
   'Path.File.make',
 ) {
   static readonly cases = FileTaggedUnion.cases

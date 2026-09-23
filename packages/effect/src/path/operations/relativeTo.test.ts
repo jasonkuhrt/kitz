@@ -1,37 +1,49 @@
-import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
+import { assertProperty, describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Option, Schema as S } from 'effect'
-import { FastCheck } from 'effect/testing'
+import * as Arbitrary from 'effect/unstable/arbitrary/Arbitrary'
 import { NaturalInt } from '../../schema/NaturalInt.js'
 import { Types } from '../../types/_.js'
 import * as Path from '../__.js'
+import { maxAscent } from '../models/ascent.js'
+
+// Uniform choice between two non-Schema arbitraries, selected by a generated
+// boolean (Schema-described alternatives use a Schema union instead).
+const oneOf = <$A, $B>(
+  first: Arbitrary.Arbitrary<$A>,
+  second: Arbitrary.Arbitrary<$B>,
+): Arbitrary.Arbitrary<$A | $B> =>
+  Arbitrary.flatMap(Arbitrary.schema(S.Boolean), (pickFirst): Arbitrary.Arbitrary<$A | $B> =>
+    pickFirst ? first : second,
+  )
 
 const natural = (value: number) => NaturalInt.make(value)
-const arbSegment = S.toArbitrary(Path.Segment)
-const arbFileName = S.toArbitrary(Path.FileName)
-const arbAbsDir = S.toArbitrary(Path.AbsDir)
-const arbAbsFile = S.toArbitrary(Path.AbsFile)
-const arbRelDir = S.toArbitrary(Path.RelDir)
-const arbRelFile = S.toArbitrary(Path.RelFile)
+const arbSegment = Arbitrary.schema(Path.Segment)
+const arbFileName = Arbitrary.schema(Path.FileName)
+const arbAbsDir = Arbitrary.schema(Path.AbsDir)
+const arbRelDir = Arbitrary.schema(Path.RelDir)
 const arb = {
   AbsDir: arbAbsDir,
   RelDir: arbRelDir,
 } as const
-const abs = FastCheck.oneof(arbAbsDir, arbAbsFile)
-const rel = FastCheck.oneof(arbRelDir, arbRelFile)
-const dir = FastCheck.oneof(arbAbsDir, arbRelDir)
-const relDirAscent0 = FastCheck.array(arbSegment, { maxLength: 6 }).map((segments) =>
+// Static choice is a Schema union: the native runner picks alternatives uniformly.
+const abs = Arbitrary.schema(S.Union([Path.AbsDir, Path.AbsFile]))
+const rel = Arbitrary.schema(S.Union([Path.RelDir, Path.RelFile]))
+const dir = Arbitrary.schema(S.Union([Path.AbsDir, Path.RelDir]))
+const relDirAscent0 = Arbitrary.map(Arbitrary.array(arbSegment, { maxLength: 6 }), (segments) =>
   Path.RelDir.make({ ascent: natural(0), segments }),
 )
-const relFileAscent0 = FastCheck.record({
-  segments: FastCheck.array(arbSegment, { maxLength: 6 }),
-  fileName: arbFileName,
-}).map((input) =>
-  Path.RelFile.make({
-    dir: Path.RelDir.make({ ascent: natural(0), segments: input.segments }),
-    fileName: input.fileName,
+const relFileAscent0 = Arbitrary.map(
+  Arbitrary.all({
+    segments: Arbitrary.array(arbSegment, { maxLength: 6 }),
+    fileName: arbFileName,
   }),
+  (input) =>
+    Path.RelFile.make({
+      dir: Path.RelDir.make({ ascent: natural(0), segments: input.segments }),
+      fileName: input.fileName,
+    }),
 )
-const relAscent0 = FastCheck.oneof(relDirAscent0, relFileAscent0)
+const relAscent0 = oneOf(relDirAscent0, relFileAscent0)
 
 const someAbsFile = S.decodeSync(Path.AbsFile)('/home/src/index.ts')
 const someAbsDir = S.decodeSync(Path.AbsDir)('/home/')
@@ -64,20 +76,16 @@ describe('relativeTo', () => {
   })
 
   it('producer statics agree with the unified operation', () => {
-    FastCheck.assert(
-      FastCheck.property(abs, arbAbsDir, (target, base) => {
-        const expected = Path.relativeTo(target, base)
-        expect(Path.Abs.relativeTo(target, base)).toEqual(expected)
-        expect(Path.Abs.relativeTo(base)(target)).toEqual(expected)
-      }),
-    )
-    FastCheck.assert(
-      FastCheck.property(rel, arbRelDir, (target, base) => {
-        const expected = Path.relativeTo(target, base)
-        expect(Path.Rel.relativeTo(target, base)).toEqual(expected)
-        expect(Path.Rel.relativeTo(base)(target)).toEqual(expected)
-      }),
-    )
+    assertProperty([abs, arbAbsDir], ([target, base]) => {
+      const expected = Path.relativeTo(target, base)
+      expect(Path.Abs.relativeTo(target, base)).toEqual(expected)
+      expect(Path.Abs.relativeTo(base)(target)).toEqual(expected)
+    })
+    assertProperty([rel, arbRelDir], ([target, base]) => {
+      const expected = Path.relativeTo(target, base)
+      expect(Path.Rel.relativeTo(target, base)).toEqual(expected)
+      expect(Path.Rel.relativeTo(base)(target)).toEqual(expected)
+    })
   })
 
   it('literal duality obeys the desugar law in both call shapes', () => {
@@ -104,37 +112,35 @@ describe('relativeTo', () => {
   })
 
   it('join(base, relativeTo(abs, base)) returns the original absolute path', () => {
-    FastCheck.assert(
-      FastCheck.property(abs, arb.AbsDir, (path, base) => {
-        expect(Path.join(base, Path.relativeTo(path, base))).toEqual(path)
-      }),
-    )
+    assertProperty([abs, arb.AbsDir], ([path, base]) => {
+      expect(Path.join(base, Path.relativeTo(path, base))).toEqual(path)
+    })
   })
 
-  it('relative relativeTo is Some exactly when target ascent is not shallower than base ascent', () => {
-    FastCheck.assert(
-      FastCheck.property(rel, arb.RelDir, (target, base) => {
-        const relative = Path.relativeTo(target, base)
-        const isExpressible = target.ascent >= base.ascent
+  it('relative relativeTo is Some exactly when target ascent is not shallower than base ascent and the walk up fits the ascent ceiling', () => {
+    assertProperty([rel, arb.RelDir], ([target, base]) => {
+      const relative = Path.relativeTo(target, base)
+      // Walk up out of every base segment not shared with the target, then up
+      // the ascent difference; a result needs that many leading `..` steps.
+      const shared = Path.Rel.commonAncestor(target, base).segments.length
+      const walkUp = base.segments.length - shared + (target.ascent - base.ascent)
+      const isExpressible = target.ascent >= base.ascent && walkUp <= maxAscent
 
-        expect(Option.isSome(relative)).toBe(isExpressible)
-        expect(Option.map(relative, (value) => Path.join(base, value))).toEqual(
-          isExpressible ? Option.some(target) : Option.none(),
-        )
-      }),
-    )
+      expect(Option.isSome(relative)).toBe(isExpressible)
+      expect(Option.map(relative, (value) => Path.join(base, value))).toEqual(
+        isExpressible ? Option.some(target) : Option.none(),
+      )
+    })
   })
 
   it('relativeTo(join(base, r), base) returns ascent-0 relative paths', () => {
-    FastCheck.assert(
-      FastCheck.property(dir, relAscent0, (base, r) => {
-        const joined = Path.join(base, r)
-        const relative = Path.relativeTo(joined as never, base as never)
-        const relativeOption = Option.isOption(relative) ? relative : Option.some(relative)
+    assertProperty([dir, relAscent0], ([base, r]) => {
+      const joined = Path.join(base, r)
+      const relative = Path.relativeTo(joined as never, base as never)
+      const relativeOption = Option.isOption(relative) ? relative : Option.some(relative)
 
-        expect(relativeOption).toEqual(Option.some(r))
-      }),
-    )
+      expect(relativeOption).toEqual(Option.some(r))
+    })
   })
 
   it('types: literal/value matrices preserve the precise relative return', () => {

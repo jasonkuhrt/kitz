@@ -1,29 +1,40 @@
-import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
+import { assertProperty, describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Equal, Schema as S } from 'effect'
-import { FastCheck } from 'effect/testing'
+import * as Arbitrary from 'effect/unstable/arbitrary/Arbitrary'
 import { NaturalInt } from '../../schema/NaturalInt.js'
 import type { Types } from '../../types/_.js'
 import * as Path from '../__.js'
 
+// Uniform choice between two non-Schema arbitraries, selected by a generated
+// boolean (Schema-described alternatives use a Schema union instead).
+const oneOf = <$A, $B>(
+  first: Arbitrary.Arbitrary<$A>,
+  second: Arbitrary.Arbitrary<$B>,
+): Arbitrary.Arbitrary<$A | $B> =>
+  Arbitrary.flatMap(Arbitrary.schema(S.Boolean), (pickFirst): Arbitrary.Arbitrary<$A | $B> =>
+    pickFirst ? first : second,
+  )
+
 const natural = (value: number) => NaturalInt.make(value)
-const arbSegment = S.toArbitrary(Path.Segment)
-const arbFileName = S.toArbitrary(Path.FileName)
-const arbAbsDir = S.toArbitrary(Path.AbsDir)
-const arbRelDir = S.toArbitrary(Path.RelDir)
-const dir = FastCheck.oneof(arbAbsDir, arbRelDir)
-const relDirAscent0 = FastCheck.array(arbSegment, { maxLength: 6 }).map((segments) =>
+const arbSegment = Arbitrary.schema(Path.Segment)
+const arbFileName = Arbitrary.schema(Path.FileName)
+// Static choice is a Schema union: the native runner picks alternatives uniformly.
+const dir = Arbitrary.schema(S.Union([Path.AbsDir, Path.RelDir]))
+const relDirAscent0 = Arbitrary.map(Arbitrary.array(arbSegment, { maxLength: 6 }), (segments) =>
   Path.RelDir.make({ ascent: natural(0), segments }),
 )
-const relFileAscent0 = FastCheck.record({
-  segments: FastCheck.array(arbSegment, { maxLength: 6 }),
-  fileName: arbFileName,
-}).map((input) =>
-  Path.RelFile.make({
-    dir: Path.RelDir.make({ ascent: natural(0), segments: input.segments }),
-    fileName: input.fileName,
+const relFileAscent0 = Arbitrary.map(
+  Arbitrary.all({
+    segments: Arbitrary.array(arbSegment, { maxLength: 6 }),
+    fileName: arbFileName,
   }),
+  (input) =>
+    Path.RelFile.make({
+      dir: Path.RelDir.make({ ascent: natural(0), segments: input.segments }),
+      fileName: input.fileName,
+    }),
 )
-const relAscent0 = FastCheck.oneof(relDirAscent0, relFileAscent0)
+const relAscent0 = oneOf(relDirAscent0, relFileAscent0)
 
 const someAbsDir = S.decodeSync(Path.AbsDir)('/home/')
 const someRelFile = S.decodeSync(Path.RelFile)('./src/index.ts')
@@ -59,18 +70,13 @@ describe('join', () => {
   })
 
   it('joinAll is a left fold of binary join', () => {
-    FastCheck.assert(
-      FastCheck.property(
-        dir,
-        relDirAscent0,
-        relDirAscent0,
-        relAscent0,
-        (base, first, second, last) => {
-          expect(Path.joinAll(base, [first, second, last])).toEqual(
-            Path.join(Path.join(Path.join(base, first), second), last),
-          )
-        },
-      ),
+    assertProperty(
+      [dir, relDirAscent0, relDirAscent0, relAscent0],
+      ([base, first, second, last]) => {
+        expect(Path.joinAll(base, [first, second, last])).toEqual(
+          Path.join(Path.join(Path.join(base, first), second), last),
+        )
+      },
     )
   })
 
@@ -150,11 +156,9 @@ describe('join', () => {
 
 describe('join identity', () => {
   it('RelDir.anchor is the join identity for dirs', () => {
-    FastCheck.assert(
-      FastCheck.property(dir, (d) => {
-        expect(Equal.equals(Path.join(d, Path.RelDir.anchor), d)).toBe(true)
-      }),
-    )
+    assertProperty([dir], ([d]) => {
+      expect(Equal.equals(Path.join(d, Path.RelDir.anchor), d)).toBe(true)
+    })
   })
 })
 

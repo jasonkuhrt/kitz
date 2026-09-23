@@ -41,15 +41,19 @@ export declare namespace withStatics {
  * Attach a derived `is` type guard and pre-applied Sync, Effect, and Result
  * codec functions so service-free schemas need not declare them individually.
  *
- * Apply it in an `extends` clause — `class X_ extends
- * withStatics(S.asClass(…))` — so the guard is inherited while the exported
- * class remains a named, nameable declaration. This avoids TS7056 declaration
- * emit failures for large inferred schema types.
+ * Apply it in an `extends` clause — `class X_ extends withStatics(schema)` —
+ * so the guard is inherited while the exported class remains a named,
+ * nameable declaration. This avoids TS7056 declaration emit failures for large
+ * inferred schema types.
+ *
+ * The statics go on a fresh subclass, never on the input: the input may be a
+ * shared schema (e.g. `Schema.String`), and mutating it would leak these
+ * statics into every other use of that schema.
  */
 export const withStatics = <$Self extends ServiceFreeCodec>(
   self: $Self,
 ): $Self & withStatics.Guard<$Self> & withStatics.Codecs<$Self> =>
-  Object.assign(self, {
+  Object.assign(class extends (self as any) {}, {
     is: S.is(self),
     // Schema classes replace Function.prototype in their static prototype
     // chain; preserve ordinary function source-text coercion without defining

@@ -12,14 +12,16 @@ When a module exports multiple public functions that operate on the same domain,
 
 Pattern:
 ```typescript
-Test.property('APIs agree', arbNeedle, arbHaystack, (needle, haystack) => {
-  const s = Mod.score(needle, haystack)
-  const m = Mod.match([{ text: haystack }], needle)
-  const p = Mod.positions(needle, haystack)
-  if (Option.isSome(s)) {
-    expect(m.length).toBeGreaterThan(0)
-    expect(Option.isSome(p)).toBe(true)
-  }
+it('APIs agree', () => {
+  assertProperty([Needle, Haystack], ([needle, haystack]) => {
+    const s = Mod.score(needle, haystack)
+    const m = Mod.match([{ text: haystack }], needle)
+    const p = Mod.positions(needle, haystack)
+    if (Option.isSome(s)) {
+      expect(m.length).toBeGreaterThan(0)
+      expect(Option.isSome(p)).toBe(true)
+    }
+  })
 })
 ```
 
@@ -43,7 +45,7 @@ Narrowing a test to make it pass is hiding a bug, not fixing one.
 
 ## Property Tests for Invariants
 
-Use property-based tests (`fast-check` via `Test.property`) to verify relationships between functions — not just individual function behavior:
+Use property-based tests (Effect's native `Arbitrary` runner via `@kitz/vitest`'s `assertProperty` or `it.effect.prop`; inputs are Schemas or `effect/unstable/arbitrary` Arbitraries) to verify relationships between functions — not just individual function behavior:
 
 - **Consistency**: multiple APIs agree on the same concept
 - **Roundtrip**: `decode(encode(x)) === x`

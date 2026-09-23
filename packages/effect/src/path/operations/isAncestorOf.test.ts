@@ -1,14 +1,13 @@
-import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
+import { assertProperty, describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Schema as S } from 'effect'
-import { FastCheck } from 'effect/testing'
+import * as Arbitrary from 'effect/unstable/arbitrary/Arbitrary'
 import * as Path from '../__.js'
 
 const arb = {
-  Any: S.toArbitrary(Path.Any),
+  Any: Arbitrary.schema(Path.Any),
 } as const
-const arbAbsDir = S.toArbitrary(Path.AbsDir)
-const arbRelDir = S.toArbitrary(Path.RelDir)
-const dir = FastCheck.oneof(arbAbsDir, arbRelDir)
+// Static choice is a Schema union: the native runner picks alternatives uniformly.
+const dir = Arbitrary.schema(S.Union([Path.AbsDir, Path.RelDir]))
 
 const someAbsFile = S.decodeSync(Path.AbsFile)('/home/src/index.ts')
 const someAbsDir = S.decodeSync(Path.AbsDir)('/home/')
@@ -34,18 +33,15 @@ describe('isAncestorOf', () => {
   })
 
   it('is the inverse of isDescendantOf', () => {
-    FastCheck.assert(
-      FastCheck.property(dir, arb.Any, (base, child) => {
-        const sameGroup =
-          (Path.AbsDir.is(base) && Path.Abs.is(child)) ||
-          (Path.RelDir.is(base) && Path.Rel.is(child))
-        if (!sameGroup) return
+    assertProperty([dir, arb.Any], ([base, child]) => {
+      const sameGroup =
+        (Path.AbsDir.is(base) && Path.Abs.is(child)) || (Path.RelDir.is(base) && Path.Rel.is(child))
+      if (!sameGroup) return
 
-        expect(Path.isAncestorOf(base as never, child as never)).toBe(
-          Path.isDescendantOf(child as never, base as never),
-        )
-      }),
-    )
+      expect(Path.isAncestorOf(base as never, child as never)).toBe(
+        Path.isDescendantOf(child as never, base as never),
+      )
+    })
   })
 
   it('types: every path position accepts values or literals and rejects invalid worlds', () => {

@@ -8,9 +8,7 @@ import { fileUrlOf, pathStringFromFileUrl } from '../core/fileUrl.js'
 import { attachNodeInspect } from '../core/inspect.js'
 import { renderPath } from '../core/render.js'
 import { appendSegmentTexts, parentOf } from '../core/segments.js'
-import { withArbitraryHints } from '../../schema/withArbitraryHints.js'
 import { withLiteralStatics } from '../core/statics.js'
-import { maxSegments, Segments } from './arbitrary.js'
 import { AbsFile } from './AbsFile.js'
 import { FileName } from './FileName.js'
 import { Segment, segment } from './segment.js'
@@ -20,7 +18,7 @@ import { Segment, segment } from './segment.js'
  * Absolute paths can't lead with `..`, so there is no `ascent`.
  */
 class AbsDir__ extends S.TaggedClass<AbsDir__>('@kitz/effect/Path/AbsDir')('AbsDir', {
-  segments: Segments.pipe(S.withConstructorDefault(Effect.succeed([]))),
+  segments: S.Array(Segment).pipe(S.withConstructorDefault(Effect.succeed([]))),
 }) {
   /** The directory name (last segment), or `None` for root. */
   get name(): Option.Option<Segment> {
@@ -103,29 +101,27 @@ attachPathEqual<AbsDir__>(AbsDir__.prototype)
  */
 export class AbsDir_ extends withLiteralStatics(
   withStatics(
-    S.asClass(
-      S.String.pipe(
-        S.annotate({
-          identifier: 'AbsDir',
-          title: 'Absolute directory path',
-          description:
-            'A POSIX absolute directory path — starts with `/`; canonical form ends with `/` (e.g. `/home/user/`); ascending above the root clamps (`/a/../../b` decodes as `/b`).',
-          examples: ['/home/user/', '/'],
-        }),
-        S.decodeTo(AbsDir__, {
-          encode: SchemaGetter.transform((encoded) =>
-            format({ isPathAbsolute: true, ascent: 0 })(encoded.segments),
+    S.String.pipe(
+      S.annotate({
+        identifier: 'AbsDir',
+        title: 'Absolute directory path',
+        description:
+          'A POSIX absolute directory path — starts with `/`; canonical form ends with `/` (e.g. `/home/user/`); ascending above the root clamps (`/a/../../b` decodes as `/b`).',
+        examples: ['/home/user/', '/'],
+      }),
+      S.decodeTo(AbsDir__, {
+        encode: SchemaGetter.transform((encoded) =>
+          format({ isPathAbsolute: true, ascent: 0 })(encoded.segments),
+        ),
+        decode: SchemaGetter.transformEffect(
+          flow(
+            analyzeDirAbs,
+            Result.map((analysis) => ({ _tag: 'AbsDir' as const, segments: analysis.segments })),
+            Effect.fromResult,
           ),
-          decode: SchemaGetter.transformOrFail(
-            flow(
-              analyzeDirAbs,
-              Result.map((analysis) => ({ _tag: 'AbsDir' as const, segments: analysis.segments })),
-              Effect.fromResult,
-            ),
-          ),
-        }),
-        S.overrideToFormatter(() => (path) => path.toString()),
-      ),
+        ),
+      }),
+      S.overrideToFormatter(() => (path) => path.toString()),
     ),
   ),
   'Path.AbsDir.make',
@@ -148,7 +144,7 @@ export class AbsDir_ extends withLiteralStatics(
   static readonly FromUrl = S.URL.pipe(
     S.decodeTo(AbsDir__, {
       encode: SchemaGetter.transform((encoded) => fileUrlOf({ segments: encoded.segments })),
-      decode: SchemaGetter.transformOrFail(
+      decode: SchemaGetter.transformEffect(
         flow(
           pathStringFromFileUrl,
           Result.flatMap(analyzeDirAbs),
@@ -176,23 +172,6 @@ export class AbsDir_ extends withLiteralStatics(
         _tag: 'AbsDir' as const,
         segments: decoded.segments,
       })),
-    }),
-  )
-
-  /**
-   * Variant schema carrying a realistic generation bias — same set as the
-   * canonical schema; generation mixes realistic directories 20:1 over the
-   * canonical distribution.
-   */
-  static readonly Realistic = AbsDir_.pipe(
-    withArbitraryHints({
-      candidate: {
-        weight: 20,
-        make: (fc) =>
-          fc
-            .array(S.toArbitrary(Segment.Realistic), { maxLength: maxSegments })
-            .map((segments) => AbsDir_.make({ segments })),
-      },
     }),
   )
 }

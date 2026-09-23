@@ -9,8 +9,9 @@
  * `@vitest/runner`). This module re-implements the small slice of the
  * `@effect/vitest` ergonomics we want, on vitest's public API.
  */
-import { Effect, Equal, Layer, ManagedRuntime, type Scope } from 'effect'
-import { FastCheck, TestClock, TestConsole } from 'effect/testing'
+import { Cause, Effect, Equal, Layer, ManagedRuntime, type Schema, type Scope } from 'effect'
+import { TestClock, TestConsole } from 'effect/testing'
+import * as Arbitrary from 'effect/unstable/arbitrary/Arbitrary'
 import * as Vitest from 'vite-plus/test'
 
 // Re-export the full vitest surface (describe, expect, vi, beforeAll, …). The
@@ -28,36 +29,145 @@ const TestEnvLayer: Layer.Layer<TestClock.TestClock | TestConsole.TestConsole> =
 
 type TestTimeout = number | Vitest.TestOptions
 
+/** Vitest options for a property test; `arbitrary` configures the native checker (runs, size, seed, …). */
+export type PropertyTestOptions = Vitest.TestOptions & {
+  readonly arbitrary?: Arbitrary.CheckOptions | undefined
+}
+
+type PropertyTimeout = number | PropertyTestOptions
+
 const testOptions = (timeout?: TestTimeout): Vitest.TestOptions =>
   typeof timeout === 'number' ? { timeout } : (timeout ?? {})
 
-type RunEffect<$R> = <$A, $E>(
-  effect: Effect.Effect<$A, $E, $R>,
-  ctx: Vitest.TestContext,
-) => Promise<$A>
+const splitPropertyOptions = (
+  timeout?: PropertyTimeout,
+): [Vitest.TestOptions, Arbitrary.CheckOptions | undefined] => {
+  if (typeof timeout === 'number') return [{ timeout }, undefined]
+  const { arbitrary, ...options } = timeout ?? {}
+  return [options, arbitrary]
+}
 
-const runTest: RunEffect<TestEnv> = (effect, ctx) =>
-  Effect.runPromise(Effect.scoped(Effect.provide(effect, TestEnvLayer)), {
-    signal: ctx.signal,
-  })
+/**
+ * How a tester runs one body: `provide` gives a single run its environment (a
+ * fresh scope, plus fresh TestClock/TestConsole for `it.effect`), and `run`
+ * executes the provided effect as a Vitest test body, following the test's
+ * abort signal.
+ */
+interface TestRuntime<$R, $Provided> {
+  provide<$A, $E>(effect: Effect.Effect<$A, $E, $R>): Effect.Effect<$A, $E, $Provided>
+  run<$A, $E>(effect: Effect.Effect<$A, $E, $Provided>, ctx: Vitest.TestContext): Promise<$A>
+}
 
-const runLive: RunEffect<Scope.Scope> = (effect, ctx) =>
-  Effect.runPromise(Effect.scoped(effect), { signal: ctx.signal })
+const runPromise = <$A, $E>(effect: Effect.Effect<$A, $E>, ctx: Vitest.TestContext): Promise<$A> =>
+  Effect.runPromise(effect, { signal: ctx.signal })
+
+const testRuntime: TestRuntime<TestEnv, never> = {
+  provide: (effect) => Effect.scoped(Effect.provide(effect, TestEnvLayer)),
+  run: runPromise,
+}
+
+const liveRuntime: TestRuntime<Scope.Scope, never> = {
+  provide: (effect) => Effect.scoped(effect),
+  run: runPromise,
+}
 
 type EffectBody<$A, $E, $R, $Args extends readonly unknown[] = [Vitest.TestContext]> = (
   ...args: $Args
 ) => Effect.Effect<$A, $E, $R>
 
-/** Arbitrary tuple → the tuple of generated values it produces. */
-type ArbsValues<$Arbs extends readonly unknown[]> = {
-  [$K in keyof $Arbs]: $Arbs[$K] extends { generate: infer $Generate }
-    ? $Generate extends (...args: infer _) => infer $Result
-      ? $Result extends { readonly value: infer $Value }
-        ? $Value
-        : never
+/** A property input: a Schema (derived with `Arbitrary.schema`) or a native `Arbitrary`. */
+export type ArbitraryInput = Schema.Schema<any> | Arbitrary.Arbitrary<unknown>
+
+/** Property inputs as a tuple or a record; the property body receives values of the same shape. */
+export type Arbitraries = ReadonlyArray<ArbitraryInput> | { readonly [key: string]: ArbitraryInput }
+
+type ArbitraryValue<$Input> =
+  $Input extends Schema.Schema<infer $T>
+    ? $T
+    : $Input extends Arbitrary.Arbitrary<infer $T>
+      ? $T
       : never
-    : never
+
+/** Property inputs → the generated values the property body receives. */
+export type ArbitrariesValues<$Arbs extends Arbitraries> = {
+  [$K in keyof $Arbs]: ArbitraryValue<$Arbs[$K]>
 }
+
+const isArbitraryTuple = (arbitraries: Arbitraries): arbitraries is ReadonlyArray<ArbitraryInput> =>
+  Array.isArray(arbitraries)
+
+const compileArbitraryInput = (input: ArbitraryInput): Arbitrary.Arbitrary<any> =>
+  Arbitrary.isArbitrary(input) ? input : Arbitrary.schema(input)
+
+const makeArbitrary = (arbitraries: Arbitraries): Arbitrary.Arbitrary<any> =>
+  Arbitrary.all(
+    isArbitraryTuple(arbitraries)
+      ? arbitraries.map(compileArbitraryInput)
+      : Object.fromEntries(
+          Object.entries(arbitraries).map(([key, input]) => [key, compileArbitraryInput(input)]),
+        ),
+  )
+
+/**
+ * A property holds unless it returns `false`. Any non-interruption failure —
+ * typed error, thrown exception, or defect such as a failed `expect` —
+ * falsifies it and triggers shrinking; interruption still interrupts the test.
+ */
+const normalizeProperty = <$A, $E, $R>(
+  property: (value: $A) => Effect.Effect<unknown, $E, $R>,
+  value: $A,
+): Effect.Effect<boolean, $E | Cause.Cause<$E>, $R> =>
+  Effect.catchCauseIf(
+    Effect.map(
+      Effect.suspend(() => property(value)),
+      (output) => output !== false,
+    ),
+    (cause) => !Cause.hasInterrupts(cause),
+    (cause) => Effect.fail(cause),
+  )
+
+/** Check a property with the native runner; a falsification fails the test with the shrunk counterexample. */
+const checkProperty = <$A, $E, $R>(
+  arbitrary: Arbitrary.Arbitrary<$A>,
+  property: (value: $A) => Effect.Effect<unknown, $E, $R>,
+  options: Arbitrary.CheckOptions | undefined,
+): Effect.Effect<void, never, $R> =>
+  Effect.flatMap(
+    Arbitrary.checkEffect(arbitrary, (value) => normalizeProperty(property, value), options),
+    (result) => {
+      const failure = Arbitrary.formatCheckFailure(result)
+      return failure === undefined ? Effect.void : Effect.die(new Error(failure))
+    },
+  )
+
+/**
+ * Assert a property inside an ordinary test, synchronously, with the native
+ * runner — the counterpart of fast-check's `assert(property(…))`. Inputs are
+ * Schemas or native `Arbitrary` values, as a tuple or a record. The property
+ * fails when it returns `false` or throws (e.g. a failed `expect`); the input
+ * is then shrunk and the test throws the formatted counterexample.
+ *
+ * @example
+ * ```ts
+ * it('is idempotent', () => {
+ *   assertProperty([Path.AbsDir], ([dir]) => {
+ *     expect(normalize(normalize(dir))).toEqual(normalize(dir))
+ *   })
+ * })
+ * ```
+ */
+export const assertProperty = <const $Arbs extends Arbitraries>(
+  arbitraries: $Arbs,
+  property: (values: ArbitrariesValues<$Arbs>) => unknown,
+  options?: Arbitrary.CheckOptions,
+): void =>
+  Effect.runSync(
+    checkProperty(
+      makeArbitrary(arbitraries),
+      (values: ArbitrariesValues<$Arbs>) => Effect.sync(() => property(values)),
+      options,
+    ),
+  )
 
 interface EffectTest<$R> {
   <$A, $E>(name: string, body: EffectBody<$A, $E, $R>, timeout?: TestTimeout): void
@@ -73,28 +183,30 @@ export interface EffectTester<$R> extends EffectTest<$R> {
     cases: ReadonlyArray<$Case>,
   ) => <$A, $E>(name: string, body: EffectBody<$A, $E, $R, [$Case]>, timeout?: TestTimeout) => void
   readonly fails: EffectTest<$R>
-  readonly prop: <const $Arbs extends readonly unknown[], $A, $E>(
+  /**
+   * Property test over Schema or native `Arbitrary` inputs, given as a tuple or
+   * a record. The body receives the generated values in the same shape. It
+   * fails when the body's Effect succeeds with `false` or fails in any way
+   * other than interruption, and the native runner then shrinks the input.
+   * Configure the checker through `timeout.arbitrary`.
+   */
+  prop<const $Arbs extends Arbitraries, $A, $E>(
     name: string,
     arbitraries: $Arbs,
-    body: NoInfer<
-      $Arbs extends ReadonlyArray<FastCheck.Arbitrary<any>>
-        ? EffectBody<$A, $E, $R, [ArbsValues<$Arbs>, Vitest.TestContext]>
-        : never
-    >,
-    timeout?: TestTimeout,
-  ) => void
+    body: NoInfer<EffectBody<$A, $E, $R, [ArbitrariesValues<$Arbs>, Vitest.TestContext]>>,
+    timeout?: PropertyTimeout,
+  ): void
 }
 
-const makeTester = <$R>(runEffect: RunEffect<$R>, testApi: Vitest.TestAPI): EffectTester<$R> => {
+const makeTester = <$R, $Provided>(
+  runtime: TestRuntime<$R, $Provided>,
+  testApi: Vitest.TestAPI,
+): EffectTester<$R> => {
   const run = <$A, $E, const $Args extends readonly unknown[]>(
     ctx: Vitest.TestContext,
     args: $Args,
     body: EffectBody<$A, $E, $R, $Args>,
-  ): Promise<$A> =>
-    runEffect(
-      Effect.suspend(() => body(...args)),
-      ctx,
-    )
+  ): Promise<$A> => runtime.run(runtime.provide(Effect.suspend(() => body(...args))), ctx)
 
   const test: EffectTest<$R> = (name, body, timeout) =>
     testApi(name, testOptions(timeout), (ctx) => run(ctx, [ctx], body))
@@ -123,20 +235,20 @@ const makeTester = <$R>(runEffect: RunEffect<$R>, testApi: Vitest.TestAPI): Effe
   const fails: EffectTest<$R> = (name, body, timeout) =>
     testApi.fails(name, testOptions(timeout), (ctx) => run(ctx, [ctx], body))
 
-  const prop: EffectTester<$R>['prop'] = (name, arbitraries, body, timeout) =>
-    testApi(name, testOptions(timeout), async (ctx) => {
-      // fast-check's arbitrary arities are overloaded; the public signature
-      // above stays typed via ArbsValues, so the variadic plumbing is cast.
-      const fc = FastCheck as unknown as {
-        assert: (property: unknown) => Promise<void>
-        asyncProperty: (...args: unknown[]) => unknown
-      }
-      await fc.assert(
-        fc.asyncProperty(...arbitraries, (...args: unknown[]) =>
-          run(ctx, [args as ArbsValues<typeof arbitraries>, ctx], body),
+  const prop: EffectTester<$R>['prop'] = (name, arbitraries, body, timeout) => {
+    const arbitrary = makeArbitrary(arbitraries)
+    const [options, checkOptions] = splitPropertyOptions(timeout)
+    testApi(name, options, (ctx) =>
+      runtime.run(
+        checkProperty(
+          arbitrary,
+          (values) => runtime.provide(Effect.suspend(() => body(values, ctx))),
+          checkOptions,
         ),
-      )
-    })
+        ctx,
+      ),
+    )
+  }
 
   return Object.assign(test, { skip, skipIf, runIf, only, each, fails, prop })
 }
@@ -226,14 +338,19 @@ export const layer =
     const f = (hasName ? args[1] : args[0]) as (it: ScopedMethods<$R>) => void
 
     const runtime = ManagedRuntime.make(Layer.merge(layer_, TestEnvLayer))
-    const runScoped: RunEffect<$R | TestEnv> = (effect, ctx) =>
-      runtime.runPromise(Effect.scoped(effect), { signal: ctx.signal })
+    const layerRuntime: TestRuntime<
+      $R | TestEnv,
+      $R | TestClock.TestClock | TestConsole.TestConsole
+    > = {
+      provide: (effect) => Effect.scoped(effect),
+      run: (effect, ctx) => runtime.runPromise(effect, { signal: ctx.signal }),
+    }
 
     const boundIt = makeItProxy(Vitest.it.extend({}), (testApi) => {
-      const effect = makeTester(runScoped, testApi)
+      const effect = makeTester(layerRuntime, testApi)
       return {
         effect,
-        scoped: makeTester(runScoped, testApi),
+        scoped: makeTester(layerRuntime, testApi),
         prop: effect.prop,
       }
     }) as ScopedMethods<$R>
@@ -253,11 +370,11 @@ export const layer =
  * the current test context's abort signal.
  */
 export const it = makeItProxy(Vitest.it.extend({}), (testApi) => {
-  const effect = makeTester(runTest, testApi)
+  const effect = makeTester(testRuntime, testApi)
   return {
     effect,
-    live: makeTester(runLive, testApi),
-    scoped: makeTester(runTest, testApi),
+    live: makeTester(liveRuntime, testApi),
+    scoped: makeTester(testRuntime, testApi),
     prop: effect.prop,
     layer,
   }

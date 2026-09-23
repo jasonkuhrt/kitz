@@ -13,7 +13,7 @@ packages:
 enableGlobalVirtualStore: false
 
 catalog:
-  effect: 4.0.0-beta.97
+  effect: 4.0.0-rc.117
   vite-plus: 1.0.0-rc.0
   vite: npm:@voidzero-dev/vite-plus-core@1.0.0-rc.0
   vitest: 5.0.1
@@ -26,6 +26,3 @@ overrides:
 peerDependencyRules:
   allowAny:
     - vite
-
-allowBuilds:
-  msgpackr-extract: false

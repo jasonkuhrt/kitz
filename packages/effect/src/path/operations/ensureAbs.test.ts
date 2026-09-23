@@ -1,11 +1,11 @@
-import { describe, expect, expectTypeOf, it } from '@kitz/vitest'
+import { assertProperty, describe, expect, expectTypeOf, it } from '@kitz/vitest'
 import { Schema as S } from 'effect'
-import { FastCheck } from 'effect/testing'
+import * as Arbitrary from 'effect/unstable/arbitrary/Arbitrary'
 import * as Path from '../__.js'
 
 const arb = {
-  Any: S.toArbitrary(Path.Any),
-  AbsDir: S.toArbitrary(Path.AbsDir),
+  Any: Arbitrary.schema(Path.Any),
+  AbsDir: Arbitrary.schema(Path.AbsDir),
 } as const
 
 const someAbsFile = S.decodeSync(Path.AbsFile)('/home/src/index.ts')
@@ -32,26 +32,22 @@ describe('ensureAbs', () => {
   })
 
   it('literal desugaring agrees with generated path and base values', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.Any, arb.AbsDir, (path, base) => {
-        expect(Path.ensureAbs('./fixed/file.ts', base)).toEqual(
-          Path.ensureAbs(Path.make('./fixed/file.ts'), base),
-        )
-        expect(Path.ensureAbs(path, '/fixed/base/')).toEqual(
-          Path.ensureAbs(path, Path.make('/fixed/base/')),
-        )
-      }),
-    )
+    assertProperty([arb.Any, arb.AbsDir], ([path, base]) => {
+      expect(Path.ensureAbs('./fixed/file.ts', base)).toEqual(
+        Path.ensureAbs(Path.make('./fixed/file.ts'), base),
+      )
+      expect(Path.ensureAbs(path, '/fixed/base/')).toEqual(
+        Path.ensureAbs(path, Path.make('/fixed/base/')),
+      )
+    })
   })
 
   it('is idempotent and reference-preserving for absolute inputs', () => {
-    FastCheck.assert(
-      FastCheck.property(arb.Any, arb.AbsDir, (path, base) => {
-        const ensured = Path.ensureAbs(path, base)
-        expect(Path.ensureAbs(ensured, base)).toBe(ensured)
-        expect(Path.Abs.is(path) ? ensured === path : true).toBe(true)
-      }),
-    )
+    assertProperty([arb.Any, arb.AbsDir], ([path, base]) => {
+      const ensured = Path.ensureAbs(path, base)
+      expect(Path.ensureAbs(ensured, base)).toBe(ensured)
+      expect(Path.Abs.is(path) ? ensured === path : true).toBe(true)
+    })
   })
 
   it('types: literal/value matrices preserve the precise EnsureAbs return', () => {
