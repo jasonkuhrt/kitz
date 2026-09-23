@@ -21,11 +21,11 @@ export const split = (value: string, separator: string): string[] => { ... }
 
 // *On variant - data first, returns function waiting for second arg
 export const splitOn = Fn.curry(split)
-// Usage: Str.splitOn(data)(separator)
+// Usage: splitOn(data)(separator)
 
 // *With variant - flipped, returns function waiting for data
 export const splitWith = Fn.flipCurried(Fn.curry(split))
-// Usage: Str.splitWith(separator)(data)
+// Usage: splitWith(separator)(data)
 ```
 
 ### When to Use Each Variant
@@ -34,7 +34,7 @@ export const splitWith = Fn.flipCurried(Fn.curry(split))
 
 ```typescript
 const data = 'name,age,city'
-const splitData = Str.splitOn(data)
+const splitData = splitOn(data)
 splitData(',') // ['name', 'age', 'city']
 splitData('') // individual chars
 ```
@@ -42,20 +42,16 @@ splitData('') // individual chars
 **`*With`** - When you have an operation and want to apply to different data:
 
 ```typescript
-const splitByComma = Str.splitWith(',')
+const splitByComma = splitWith(',')
 splitByComma('john,25') // ['john', '25']
 splitByComma('laptop,999') // ['laptop', '999']
 ```
 
 ### Universal Operations
 
-Maintain consistent names across data structures:
-
-| Operation | Purpose               | Examples                              |
-| --------- | --------------------- | ------------------------------------- |
-| `merge`   | Combine two instances | `Arr.merge`, `Obj.merge`, `Str.merge` |
-| `by`      | Group/index by key    | `Group.by(array, 'field')`            |
-| `is`      | Type predicate        | `Arr.is`, `Obj.is`, `Undefined.is`    |
+Keep one name per concept across namespaces. For example, every schema that
+goes through `Schema.withStatics` exposes the same `is` guard
+(`Path.AbsDir.is`, `Path.Segment.is`), never a namespace-specific spelling.
 
 ### Namespace Name Elision
 
@@ -63,13 +59,12 @@ Do NOT repeat the namespace name in function names:
 
 ```typescript
 // Correct
-Group.by(array, key)
-Undefined.is(value)
-Str.merge(a, b)
+Path.join(base, part)
+Path.AbsDir.is(value)
 
 // Incorrect
-Group.groupBy(array, key)
-Undefined.isUndefined(value)
+Path.joinPath(base, part)
+Path.AbsDir.isAbsDir(value)
 ```
 
 ### Type-Level Transformations

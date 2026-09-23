@@ -21,18 +21,18 @@ description: Creates commits following project conventions. Handles Conventional
 
 ### Scopes
 
-Package name minus `@kitz/` prefix. Comma-separate for multiple packages. Omit for repo-level.
+Package name minus the `@kitz/` prefix (`effect`, `vitest`). Comma-separate for multiple packages. Omit for repo-level.
 
 ```
-feat(core): add new utility          # @kitz/core
-fix(core, arr): update shared type   # Multiple packages
-ci: add Vercel Remote Cache          # Repo-level (no scope)
+feat(effect): add a Path operation       # @kitz/effect
+fix(effect, vitest): align matcher types  # Multiple packages
+ci: cache the pnpm store                  # Repo-level (no scope)
 ```
 
 ### Types
 
-| Type         | Description                      | Version Bump |
-| ------------ | -------------------------------- | ------------ |
+| Type         | Description                      | Semver impact |
+| ------------ | -------------------------------- | ------------- |
 | `feat`       | New feature                      | Minor        |
 | `fix`        | Bug fix                          | Patch        |
 | `docs`       | Documentation                    | Patch        |
@@ -54,7 +54,7 @@ ci: add Vercel Remote Cache          # Repo-level (no scope)
 
 **CI Skips:** `ci:` or `chore.docs:` PR titles skip code checks (only format runs)
 
-**Releases:** Handled automatically by @kitz/release based on conventional commits. No manual steps required.
+**Releases:** Tag-driven (see the root `CONTRIBUTING.md`). Squash-merged PR titles become the release notes, so the title's type and scope matter.
 
 ### Bypasses (edge cases only)
 
@@ -63,5 +63,5 @@ ci: add Vercel Remote Cache          # Repo-level (no scope)
 ## Notes
 
 - Individual PR commits don't matter - only the PR title affects releases
-- Scopes are for changelogs, not CI filtering (Turborepo uses git diff)
+- Scopes are for changelogs, not CI filtering
 - Semver rule: `feat` = "new capability", `fix` = "works better"
