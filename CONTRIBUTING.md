@@ -47,7 +47,7 @@ package checks run in CI (`.github/workflows/pr.yml`).
 
 oxlint runs through `vp lint`, configured in the `lint` block of
 [`vite.config.mts`](./vite.config.mts), which also documents every disabled or
-tuned rule. Warnings are blocking. Type-aware linting is not enabled yet
+tuned rule. Warnings are blocking: CI runs `vp lint --deny-warnings`. Type-aware linting is not enabled yet
 ([#128](https://github.com/jasonkuhrt/kitz/issues/128)).
 
 ## Releasing

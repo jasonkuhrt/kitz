@@ -12,7 +12,7 @@ this file via a file-import from `.claude/claude.md`.
 - **Build / typecheck:** `vp run build` (`tsc -b tsconfig.production.json`, file-by-file emit — no bundler; emits `.js` + `.d.ts`) and `vp run check:types` (`tsc -b tsconfig.development.json`).
 - Prefer first-class `vp` commands and the canonical `vp run` tasks over one-off shell commands when the workflow matters.
 - Follow `.claude/rules/commit-conventions.md` when writing git commits or PR titles.
-- Treat `oxlint` warnings as blocking. Keep rule severities at `warn` so IDEs do not visually conflate lint findings with type-check errors, but do not close work while any `oxlint` warning is still live.
+- Treat `oxlint` warnings as blocking; CI enforces it with `vp lint --deny-warnings`. Keep rule severities at `warn` so IDEs do not visually conflate lint findings with type-check errors, but do not close work while any `oxlint` warning is still live.
 
 Command reference:
 

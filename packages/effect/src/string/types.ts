@@ -20,7 +20,7 @@ export type StartsWith<$S extends string, $T extends string> = string extends $S
 
 type AfterLastScan<$S extends string, $D extends string, $Best extends string> = $S extends ''
   ? $Best
-  : $S extends `${infer $Character}${infer $Rest}`
+  : $S extends `${string}${infer $Rest}`
     ? AfterLastScan<$Rest, $D, $S extends `${$D}${infer $AfterDelimiter}` ? $AfterDelimiter : $Best>
     : $Best
 
